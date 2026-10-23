@@ -1,0 +1,9 @@
+{
+    "ContextMenu_MinidoracatTesla_SentryOn": "Włącz tryb wartownika",
+    "ContextMenu_MinidoracatTesla_SentryOff": "Wyłącz tryb wartownika",
+    "ContextMenu_MinidoracatTesla_CampOn": "Włącz tryb kempingowy",
+    "ContextMenu_MinidoracatTesla_Plug": "Podłącz kabel ładowania",
+    "ContextMenu_MinidoracatTesla_PlugInto": "Podłącz kabel ładowania: %1",
+    "ContextMenu_MinidoracatTesla_Unplug": "Odłącz kabel ładowania",
+    "ContextMenu_MinidoracatTesla_ChargeStatus": "Pokaż stan ładowania"
+}

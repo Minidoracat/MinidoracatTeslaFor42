@@ -1,0 +1,9 @@
+{
+    "ContextMenu_MinidoracatTesla_SentryOn": "Güvenlik Modunu Aç",
+    "ContextMenu_MinidoracatTesla_SentryOff": "Güvenlik Modunu Kapat",
+    "ContextMenu_MinidoracatTesla_CampOn": "Kamp Modunu Aç",
+    "ContextMenu_MinidoracatTesla_Plug": "Şarj kablosunu tak",
+    "ContextMenu_MinidoracatTesla_PlugInto": "Şarj kablosunu tak: %1",
+    "ContextMenu_MinidoracatTesla_Unplug": "Şarj kablosunu çıkar",
+    "ContextMenu_MinidoracatTesla_ChargeStatus": "Şarj durumunu gör"
+}

@@ -1,0 +1,9 @@
+{
+    "ContextMenu_MinidoracatTesla_SentryOn": "Activar Modo centinela",
+    "ContextMenu_MinidoracatTesla_SentryOff": "Desactivar Modo centinela",
+    "ContextMenu_MinidoracatTesla_CampOn": "Activar Modo acampada",
+    "ContextMenu_MinidoracatTesla_Plug": "Conectar cable de carga",
+    "ContextMenu_MinidoracatTesla_PlugInto": "Conectar cable de carga: %1",
+    "ContextMenu_MinidoracatTesla_Unplug": "Desconectar cable de carga",
+    "ContextMenu_MinidoracatTesla_ChargeStatus": "Ver estado de carga"
+}

@@ -1,0 +1,8 @@
+{
+    "Base.MinidoracatTesla_ModelYBatterySR": "Model Y 배터리 - 스탠다드 레인지 (62.5 kWh)",
+    "Base.MinidoracatTesla_ModelYBatteryLR": "Model Y 배터리 - 롱 레인지 (82.1 kWh)",
+    "Base.MinidoracatTesla_WallConnector": "Tesla 월 커넥터 (3세대)",
+    "Base.MinidoracatTesla_CableHang": "충전 케이블 (벽에서 내려오는 부분)",
+    "Base.MinidoracatTesla_CableFloor": "충전 케이블 (바닥 부분)",
+    "Base.MinidoracatTesla_CablePlug": "충전 케이블 (커넥터)"
+}

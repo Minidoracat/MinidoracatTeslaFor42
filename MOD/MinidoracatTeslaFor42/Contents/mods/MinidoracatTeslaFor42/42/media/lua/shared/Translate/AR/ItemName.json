@@ -1,0 +1,8 @@
+{
+    "Base.MinidoracatTesla_ModelYBatterySR": "Batería Model Y - Autonomía Estándar (62,5 kWh)",
+    "Base.MinidoracatTesla_ModelYBatteryLR": "Batería Model Y - Gran Autonomía (82,1 kWh)",
+    "Base.MinidoracatTesla_WallConnector": "Tesla Wall Connector (3.ª gen.)",
+    "Base.MinidoracatTesla_CableHang": "Cable de carga (tramo de pared)",
+    "Base.MinidoracatTesla_CableFloor": "Cable de carga (tramo de suelo)",
+    "Base.MinidoracatTesla_CablePlug": "Cable de carga (conector)"
+}

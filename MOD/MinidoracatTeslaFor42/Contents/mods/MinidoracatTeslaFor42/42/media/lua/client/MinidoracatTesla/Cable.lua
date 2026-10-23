@@ -15,7 +15,7 @@ T.Cable = C
 -- Mesh geometry (scripts/blender/props/props_blender.py): tiles; heights in levels (1 level = 2.44949 units).
 C.HANG_REACH = 0.40          -- hang segment: exit floor point -> where it lies on the floor, along the facing
 C.PLUG_REACH = 0.36          -- plug segment: its floor point -> handle tip at the port, horizontal
-C.PLUG_Z = 0.8 / 2.44949     -- handle height above the floor, levels
+C.PLUG_Z = 0.865 / 2.44949   -- handle height above the floor, levels (Model Y chargeport, references/models.md)
 C.DRAW_RANGE = 45            -- 3D: skip chargers farther than this from the local player (tiles)
 -- ponytail: floor runs longer than this are not drawn (car dragged away before the server unplugged it)
 C.MAX_FLOOR = 16
@@ -43,7 +43,8 @@ local function groundZ(sq, x, y)
     return sq:getApparentZ(x - math.floor(x), y - math.floor(y))
 end
 
--- Endpoints of one plugged cable into g. false when the car or the charger definition is not available here.
+-- Endpoints of one plugged cable into g (returned; the same table every call, read it before the next solve).
+-- false when the car or the charger definition is not available here.
 -- g.ex,ey: floor point under the charger's exit (hang origin); g.ax,ay: where the hang lies on the floor;
 -- g.bx,by,bz: plug segment origin on the floor; g.px,py: charge port; g.len: floor run a -> b.
 function C.solve(e)
@@ -80,7 +81,7 @@ function C.solve(e)
     g.ux, g.uy = 0, 0
     if g.len > 0 then g.ux, g.uy = dx / g.len, dy / g.len end
     g.floorAngle = angle(dx, dy)
-    return true
+    return g
 end
 
 -- 3D: 1 hang + ceil(len) floor + 1 plug Render3DItem per cable. Floor pieces are 1 tile long (origin = midpoint):

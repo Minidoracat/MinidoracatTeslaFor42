@@ -1,0 +1,9 @@
+{
+    "ContextMenu_MinidoracatTesla_SentryOn": "Activer le mode Sentinelle",
+    "ContextMenu_MinidoracatTesla_SentryOff": "Désactiver le mode Sentinelle",
+    "ContextMenu_MinidoracatTesla_CampOn": "Activer le mode Camping",
+    "ContextMenu_MinidoracatTesla_Plug": "Brancher le câble de recharge",
+    "ContextMenu_MinidoracatTesla_PlugInto": "Brancher le câble de recharge : %1",
+    "ContextMenu_MinidoracatTesla_Unplug": "Débrancher le câble de recharge",
+    "ContextMenu_MinidoracatTesla_ChargeStatus": "Voir l'état de la recharge"
+}

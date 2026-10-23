@@ -34,7 +34,10 @@ function ISUIElement:initialise() end
 function ISUIElement:instantiate()
     self.javaObject = {
         DrawSubTextureRGBA = function() drawCalls = drawCalls + 1 end,
-        DrawText = function() drawCalls = drawCalls + 1 end,
+        DrawText = function(_, font, text, x, y)
+            drawCalls = drawCalls + 1
+            if type(x) ~= "number" or type(y) ~= "number" then badText = (badText or 0) + 1 end -- Java NPEs on nil
+        end,
     }
 end
 function ISUIElement:setWidth(w) self.width = w end
@@ -148,6 +151,16 @@ h:update(); h:update(); h:update()
 check(h.st.doors == 1 and h.msgId == 1 and h.msgH > 0, "open door: bit set, door pill on")
 local _, y2, _, h2 = MinidoracatTeslaAPI.hudRect(0)
 check(h2 > hh and y2 + h2 == SCREEN_H, "pill grows the HUD upward; bottom stays at the screen bottom")
+-- getting in with an alert already up: the engine can call prerender before the first update()
+-- (a fresh HUD: player 1's first seat-in, no earlier build to reuse)
+local dash1 = ISVehicleDashboard:new(0, 0, 552, 121)
+dash1.playerNum = 1
+badText = 0
+dash1:setVehicle(tesla)
+local h1 = HUD.get(1)
+h1:prerender()
+check(h1.msgTitle ~= nil and badText == 0 and h1.n > 0, "first prerender after seating: quads built, pill text has a position")
+dash1:setVehicle(nil)
 tesla.parts.DoorFrontLeft.door.open = false
 
 -- ---------------------------------------------------------------- charge projection

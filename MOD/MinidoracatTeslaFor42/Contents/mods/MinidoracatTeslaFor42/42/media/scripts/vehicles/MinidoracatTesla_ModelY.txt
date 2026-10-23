@@ -18,7 +18,35 @@ module Base
         }
         skin
         {
-            texture = Vehicles/MinidoracatTesla_ModelY_shell,
+            texture = Vehicles/MinidoracatTesla_ModelY_StealthGrey,
+        }
+        skin
+        {
+            texture = Vehicles/MinidoracatTesla_ModelY_PearlWhite,
+        }
+        skin
+        {
+            texture = Vehicles/MinidoracatTesla_ModelY_DiamondBlack,
+        }
+        skin
+        {
+            texture = Vehicles/MinidoracatTesla_ModelY_Quicksilver,
+        }
+        skin
+        {
+            texture = Vehicles/MinidoracatTesla_ModelY_UltraRed,
+        }
+        skin
+        {
+            texture = Vehicles/MinidoracatTesla_ModelY_GlacierBlue,
+        }
+        skin
+        {
+            texture = Vehicles/MinidoracatTesla_ModelY_MarineBlue,
+        }
+        skin
+        {
+            texture = Vehicles/MinidoracatTesla_ModelY_FrostBlue,
         }
         textureMask = Vehicles/MinidoracatTesla_ModelY_mask,
         textureLights = Vehicles/MinidoracatTesla_ModelY_lights,
@@ -145,7 +173,7 @@ module Base
         }
         area GasTank
         {
-            xywh = 0.6795 -0.9341 0.4725 0.4725,
+            xywh = 0.6795 -0.9560 0.4725 0.4725,
         }
         area SeatFrontLeft
         {
@@ -194,7 +222,7 @@ module Base
         /* charge port: side end of the left tail light (real Model Y) */
         attachment chargeport
         {
-            offset = 0.3709 0.0277 -0.9341,
+            offset = 0.3552 0.0634 -0.9560,
             rotate = 0.0 0.0 0.0,
         }
     }

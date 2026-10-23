@@ -156,6 +156,8 @@ function HUD:attach(vehicle)
     self:readFast()
     self:readSlow()
     self:place()
+    -- prerender can run before the first update(): the quad list and text positions must exist now
+    self:build()
 end
 
 function HUD:show(vehicle)
@@ -356,6 +358,7 @@ function HUD:layout()
     self:scale()
     self:measureMessage()
     self:place()
+    self:build()
 end
 
 function HUD:place()

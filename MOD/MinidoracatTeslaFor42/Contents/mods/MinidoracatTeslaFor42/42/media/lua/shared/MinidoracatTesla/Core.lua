@@ -25,10 +25,19 @@ T.Specs = {
         kwPerKmh = 0.00456,
         massKg = 1980,
         regenEff = 0.6,
-        -- factory paints {h, s, v} (engine HSV, TeslaModelY): Stealth Grey, Pearl White, Diamond Black,
-        -- Deep Blue Metallic, Ultra Red, Quicksilver
-        colors = { { 0.61, 0.24, 0.33 }, { 0.55, 0.17, 0.92 }, { 0.61, 0.25, 0.10 }, { 0.61, 0.86, 0.42 },
-            { 0.99, 1.0, 0.66 }, { 0.59, 0.19, 0.68 } },
+        -- official Model Y paints (TeslaModelY, references/models.md): entry i = vehicle script skin i-1, and saved
+        -- games keep the skin index (BaseVehicle.java:2635/2741), so only append. h/s/v (setColorHSV) tint the
+        -- damage overlays to the paint (vehicle_common.frag.glsl:6-15); the skins themselves are full colour.
+        colors = {
+            { name = "StealthGrey", code = "PN01", h = 0.69, s = 0.58, v = 0.296 },
+            { name = "PearlWhite", code = "PPSW", h = 0.572, s = 0.49, v = 0.916 },
+            { name = "DiamondBlack", code = "PX02", h = 0.945, s = 0.492, v = 0.22 },
+            { name = "Quicksilver", code = "PN00", h = 0.752, s = 0.524, v = 0.47 },
+            { name = "UltraRed", code = "PR01", h = 0.984, s = 1.0, v = 0.536 },
+            { name = "GlacierBlue", code = "PB01", h = 0.603, s = 0.801, v = 0.479 },
+            { name = "MarineBlue", code = "PB02", h = 0.61, s = 0.879, v = 0.274 },
+            { name = "FrostBlue", code = "PB00", h = 0.603, s = 0.836, v = 0.548 },
+        },
     },
 }
 

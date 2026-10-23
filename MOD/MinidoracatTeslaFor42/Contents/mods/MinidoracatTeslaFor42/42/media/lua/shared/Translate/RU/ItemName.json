@@ -1,0 +1,8 @@
+{
+    "Base.MinidoracatTesla_ModelYBatterySR": "Батарея Model Y - стандартный запас хода (62,5 кВт·ч)",
+    "Base.MinidoracatTesla_ModelYBatteryLR": "Батарея Model Y - увеличенный запас хода (82,1 кВт·ч)",
+    "Base.MinidoracatTesla_WallConnector": "Tesla Wall Connector (3-е пок.)",
+    "Base.MinidoracatTesla_CableHang": "Зарядный кабель (спуск со стены)",
+    "Base.MinidoracatTesla_CableFloor": "Зарядный кабель (по полу)",
+    "Base.MinidoracatTesla_CablePlug": "Зарядный кабель (разъем)"
+}

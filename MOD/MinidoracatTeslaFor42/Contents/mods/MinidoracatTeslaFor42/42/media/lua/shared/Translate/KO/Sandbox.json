@@ -1,0 +1,7 @@
+{
+    "Sandbox_MinidoracatTesla": "Tesla Collection",
+    "Sandbox_MinidoracatTesla_RangeMultiplier": "주행 거리 배율",
+    "Sandbox_MinidoracatTesla_RangeMultiplier_tooltip": "배터리를 가득 채웠을 때 달릴 수 있는 거리입니다.\n1.0 = 같은 등급의 기본 차량이 연료를 가득 채웠을 때와 같은 거리, 2.0 = 그 두 배.",
+    "Sandbox_MinidoracatTesla_ChargeSpeedMultiplier": "충전 속도 배율",
+    "Sandbox_MinidoracatTesla_ChargeSpeedMultiplier_tooltip": "1.0 = 공식 충전 출력(월 커넥터 11.5 kW), 2.0 = 두 배 빠름."
+}

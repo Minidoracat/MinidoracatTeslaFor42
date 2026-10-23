@@ -1,0 +1,9 @@
+{
+    "ContextMenu_MinidoracatTesla_SentryOn": "감시 모드 켜기",
+    "ContextMenu_MinidoracatTesla_SentryOff": "감시 모드 끄기",
+    "ContextMenu_MinidoracatTesla_CampOn": "캠핑 모드 켜기",
+    "ContextMenu_MinidoracatTesla_Plug": "충전 케이블 꽂기",
+    "ContextMenu_MinidoracatTesla_PlugInto": "충전 케이블 꽂기: %1",
+    "ContextMenu_MinidoracatTesla_Unplug": "충전 케이블 뽑기",
+    "ContextMenu_MinidoracatTesla_ChargeStatus": "충전 상태 보기"
+}

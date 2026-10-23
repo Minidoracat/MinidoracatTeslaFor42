@@ -33,7 +33,8 @@ EXIT_Z = WC_Z0
 # cable
 R_CABLE = 0.026
 HANG_REACH = 0.40
-PLUG_REACH, PLUG_Z = 0.36, 0.80              # Model Y port: 0.80 units above the floor (TeslaModelY), local +x flank
+PLUG_Z = 0.865                                # Model Y port: 0.865 units above the floor (TeslaModelYFinal, models.md 3)
+PLUG_REACH = 0.36                             # handle tip reaches +x (into the car flank)
 XFORM = {"S": (0.0, 180.0, 0.0), "E": (0.0, -90.0, 0.0), "N": (0.0, 0.0, 0.0), "W": (0.0, 90.0, 0.0)}
 
 # atlas layout (build.py draws the same rects): 256 px

@@ -3,5 +3,5 @@
     "Sandbox_MinidoracatTesla_RangeMultiplier": "续航倍率",
     "Sandbox_MinidoracatTesla_RangeMultiplier_tooltip": "电池充满能开多远。\n1.0＝和原版同级车加满一箱油一样远；2.0＝两倍远。",
     "Sandbox_MinidoracatTesla_ChargeSpeedMultiplier": "充电速度倍率",
-    "Sandbox_MinidoracatTesla_ChargeSpeedMultiplier_tooltip": "1.0＝按官方功率充电（壁挂式充电桩 11.5 kW）；2.0＝两倍快。"
+    "Sandbox_MinidoracatTesla_ChargeSpeedMultiplier_tooltip": "1.0＝按官方功率充电（家庭充电桩 11.5 kW）；2.0＝两倍快。"
 }

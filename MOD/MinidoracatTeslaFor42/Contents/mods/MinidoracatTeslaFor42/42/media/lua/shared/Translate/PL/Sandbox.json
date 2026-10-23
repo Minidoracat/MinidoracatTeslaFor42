@@ -1,0 +1,7 @@
+{
+    "Sandbox_MinidoracatTesla": "Tesla Collection",
+    "Sandbox_MinidoracatTesla_RangeMultiplier": "Mnożnik zasięgu",
+    "Sandbox_MinidoracatTesla_RangeMultiplier_tooltip": "Jak daleko zajedziesz na pełnym akumulatorze.\n1.0 = tyle, co pełny bak w zwykłym samochodzie tej samej klasy; 2.0 = dwa razy dalej.",
+    "Sandbox_MinidoracatTesla_ChargeSpeedMultiplier": "Mnożnik prędkości ładowania",
+    "Sandbox_MinidoracatTesla_ChargeSpeedMultiplier_tooltip": "1.0 = oficjalna moc ładowarki (Wall Connector 11,5 kW); 2.0 = dwa razy szybciej."
+}

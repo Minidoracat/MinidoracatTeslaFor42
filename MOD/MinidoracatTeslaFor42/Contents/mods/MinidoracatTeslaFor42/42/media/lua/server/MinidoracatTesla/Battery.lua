@@ -72,9 +72,11 @@ function T.Create.Battery(vehicle, part)
 end
 
 -- Engine create (new cars only): quality 100 so it starts first try in the cold (VehicleEngine.java:317,326-340);
--- loudness as vanilla Vehicles.Create.Engine (Vehicles.lua:279-287); a factory paint from the spec
--- (setColorHSV + transmitColorHSV as vanilla Commands.setHSV, VehicleCommands.lua:440-447; parts are created after
--- the script colour, BaseVehicle.java:868 vs :1575-1577, so it sticks).
+-- loudness as vanilla Vehicles.Create.Engine (Vehicles.lua:279-287); a factory paint from the spec: skin index plus
+-- the damage tint HSV. Parts are created after every engine skin / colour pick (random skin BaseVehicle.java:822-825,
+-- zone or story skins IsoChunk.java:1346-1348 and RandomizedWorldBase.java:167-168 before addToWorld, script colour
+-- :1575-1577; createParts :868), so this wins. Transmit as vanilla Commands.setHSV / setSkinIndex
+-- (VehicleCommands.lua:440-455): server-only flag 4096 sends both (BaseVehicle.java:9209-9219, VehicleProperties.java:71-74).
 function T.Create.Motor(vehicle, part)
     if not SandboxVars.VehicleEasyUse then part:setRandomCondition(nil) end
     local script = vehicle:getScript()
@@ -83,8 +85,11 @@ function T.Create.Motor(vehicle, part)
     local s = T.spec(vehicle)
     local colors = s and s.colors
     if colors and #colors > 0 then
-        local c = colors[ZombRand(#colors) + 1]
-        vehicle:setColorHSV(c[1], c[2], c[3])
+        local i = ZombRand(#colors) + 1
+        local c = colors[i]
+        vehicle:setSkinIndex(i - 1)
+        vehicle:setColorHSV(c.h, c.s, c.v)
+        vehicle:transmitSkinIndex()
         vehicle:transmitColorHSV()
     end
 end

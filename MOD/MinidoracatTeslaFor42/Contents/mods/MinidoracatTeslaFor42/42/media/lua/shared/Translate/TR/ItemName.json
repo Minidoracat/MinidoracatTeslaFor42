@@ -1,0 +1,8 @@
+{
+    "Base.MinidoracatTesla_ModelYBatterySR": "Model Y Bataryası - Standart Menzil (62,5 kWh)",
+    "Base.MinidoracatTesla_ModelYBatteryLR": "Model Y Bataryası - Uzun Menzil (82,1 kWh)",
+    "Base.MinidoracatTesla_WallConnector": "Tesla Wall Connector (3. Nesil)",
+    "Base.MinidoracatTesla_CableHang": "Şarj Kablosu (duvar kısmı)",
+    "Base.MinidoracatTesla_CableFloor": "Şarj Kablosu (zemin kısmı)",
+    "Base.MinidoracatTesla_CablePlug": "Şarj Kablosu (konnektör)"
+}

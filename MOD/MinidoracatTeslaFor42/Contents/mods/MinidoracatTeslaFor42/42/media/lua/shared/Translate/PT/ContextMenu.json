@@ -1,0 +1,9 @@
+{
+    "ContextMenu_MinidoracatTesla_SentryOn": "Ativar Modo Sentinela",
+    "ContextMenu_MinidoracatTesla_SentryOff": "Desativar Modo Sentinela",
+    "ContextMenu_MinidoracatTesla_CampOn": "Ativar Modo Acampamento",
+    "ContextMenu_MinidoracatTesla_Plug": "Conectar cabo de carregamento",
+    "ContextMenu_MinidoracatTesla_PlugInto": "Conectar cabo de carregamento: %1",
+    "ContextMenu_MinidoracatTesla_Unplug": "Desconectar cabo de carregamento",
+    "ContextMenu_MinidoracatTesla_ChargeStatus": "Ver status do carregamento"
+}

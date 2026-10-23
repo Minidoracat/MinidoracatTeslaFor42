@@ -1,4 +1,4 @@
-"""Model Y v2: Tripo H3.1 high-poly GLB -> PZ body FBX (UV0 + UV1), wheel FBX, shell / mask / lights / wheel PNGs.
+"""Model Y v2: Tripo H3.1 high-poly GLB -> PZ body FBX (UV0 + UV1), wheel FBX, 8 paint skins / mask / lights / wheel PNGs.
 
     blender -b --factory-startup --python scripts/blender/modely/build.py -- <stage> [args]
 
@@ -6,9 +6,10 @@ stages (each reads the previous one's .blend in temp/modely/):
   prep            tripo_hi.glb -> axes, scale, body / front-left-wheel sources        -> v2_prep.blend, prev/prep_*.png
   tiers N,N,...   decimated bodies (+ liners, normals from the high-poly, UV0/UV1)     -> v2_tiers.blend, tiers/*.fbx
   wheel           wheel from the high-poly (outer half mirrored), UV, 512 bake          -> MOD wheel FBX + PNG
-  final N [TEX]   bake N-tri body at 4096, write shell (TEX = 1024|2048 for the MOD), mask, lights, body FBX,
-                  geometry block spliced into the vehicle script (copy in temp/modely/geometry_block.txt),
-                  verify.txt, prev/*.png; shell_{4096,2048,1024}.png kept in temp
+  official        official design-studio renders of the 8 paints                       -> temp/modely/official/
+  final N         bake N-tri body at 4096 (cached in bake_N.npz), one 2048 skin per paint (colour from the official
+                  render), 512 mask / lights, body FBX, geometry block spliced into the vehicle script (copy in
+                  temp/modely/geometry_block.txt), verify.txt, prev/*.png
 
 Axes (Blender): +Y front, +Z up, -X = car left (driver side), 1 unit = 1 grid; same as vanilla raw FBX coords
 (scripts/blender/modely/vanilla.py). Vehicle script: x = -mesh x, y = mesh z, z = mesh y, unscaled = grid / 1.82.
@@ -43,6 +44,29 @@ UV1_SCALE = 0.56                            # shared Veh_* 512 maps at ~vanilla 
 WHEEL_TRIS, WHEEL_TEX = 1400, 512
 # Model Y body lines (grid, ground z=0, centre y=0), checked on prev/mask_*.png against the panel gaps of the bake
 DOOR_FRONT_Y, B_PILLAR_Y, DOOR_REAR_Y, BELT_Z = 0.83, -0.14, -1.05, 0.92
+# official Model Y paints (decisions.md "車款外觀"): skin order = vehicle script skin index = Core.lua colors order;
+# saved games store the index (BaseVehicle.java:2635/2741), so after release only append
+PAINTS = [("StealthGrey", "PN01"), ("PearlWhite", "PPSW"), ("DiamondBlack", "PX02"), ("Quicksilver", "PN00"),
+          ("UltraRed", "PR01"), ("GlacierBlue", "PB01"), ("MarineBlue", "PB02"), ("FrostBlue", "PB00")]
+SKIN = 2048                                 # option 4 cap; the default option 2 shrinks it to 512 on load
+GAIN = 0.88                                 # in-game day screen / texture sRGB (E2E tesla-modely-skin-1024c/d: red
+#                                             0.80-0.86, white 0.90-0.97), calibration knob
+# per-paint, per-channel sRGB tone fix of the paint texels, tex' = a * tex + b: in-game screenshots of the car heading
+# S (E2E tesla-modely-1024e option 2, tesla-modely-skin-1024e4 option 4, closest zoom) against the official FRONT34
+# render of the same paint (same three-quarter angle; paint pixels = the ones that change between colours): slope
+# a = official / game p25-p75 spread (clamped 0.6-1.6), offset b puts the game p50 on the official p50 (/ GAIN).
+# Before: Quicksilver, Glacier Blue 35% too light, Diamond Black and Marine Blue crushed (p50 12 vs 30, R 9 vs 26).
+# Ultra Red G keeps slope 1 (fit 1.6 is the clamp: its p25-p75 spread is ~3 levels, the slope lit the A-pillar orange)
+# Calibration knob: re-measure after changing the paint mapping (.claude/skills/tesla-e2e/perf/paint_sheet.py)
+CAL = {
+    "StealthGrey": ((0.77, 0.76, 0.76), (0.054, 0.049, 0.049)), "PearlWhite": ((0.92, 0.96, 0.93), (0.034, -0.005, 0.018)),
+    "DiamondBlack": ((0.93, 0.93, 0.87), (0.082, 0.080, 0.079)), "Quicksilver": ((0.81, 0.81, 0.84), (-0.041, -0.049, -0.069)),
+    "UltraRed": ((0.84, 1.0, 0.79), (0.030, 0.058, 0.069)), "GlacierBlue": ((0.66, 0.71, 0.77), (0.048, 0.025, -0.003)),
+    "MarineBlue": ((0.98, 0.72, 0.73), (0.076, 0.079, 0.061)), "FrostBlue": ((0.71, 0.73, 0.74), (0.096, 0.108, 0.134)),
+}
+OFFICIAL = os.path.join(TMP, "official")
+COMPOSITOR = ("https://static-assets.tesla.cn/configurator/compositor?context=design_studio_2&options={}&view={}"
+              "&model=my&size=1920&bkba_opt=1&crop=0,0,0,0&overlay=0&")
 
 Z = {  # mask zone colours (media/shaders/vehicle_common.frag.h colZone*)
     "Head": (1, 0, 0), "Tail": (0, 1, 0), "DoorRH": (0, 1, 1), "DoorRT": (1, 1, 0), "DoorLH": (1, 0, 1), "DoorLT": (0, 0, 1),
@@ -544,6 +568,31 @@ def hsv(rgb):
     return mx, np.where(mx > 1e-6, (mx - mn) / np.maximum(mx, 1e-6), 0)
 
 
+FILL_RES = 150   # px per grid of the ortho rasters for the glass fill (~30 texels of the 4096 bake per pixel)
+
+
+def enclosed(u, v, sel, dark):
+    """Texels of sel whose ortho pixel (u, v) is mostly dark or cut off from the raster border by dark pixels."""
+    if not sel.any():
+        return np.zeros(u.shape, bool)
+    uu = ((u[sel] - u[sel].min()) * FILL_RES).astype(np.int64) + 1
+    vv = ((v[sel] - v[sel].min()) * FILL_RES).astype(np.int64) + 1
+    W, H = int(uu.max()) + 2, int(vv.max()) + 2
+    k = vv * W + uu
+    wall = (np.bincount(k, dark[sel], W * H) > 0.5 * np.bincount(k, None, W * H)).reshape(H, W)
+    out = np.zeros((H, W), bool)
+    out[0] = out[-1] = True
+    out[:, 0] = out[:, -1] = True
+    while True:                                                    # flood fill from the border around the walls
+        g = grow(out, 1) & ~wall
+        if (g == out).all():
+            break
+        out = g
+    res = np.zeros(u.shape, bool)
+    res[sel] = ~out.reshape(-1)[k]
+    return res
+
+
 def classify(pos, nrm, col, liner):
     covered = np.abs(np.linalg.norm(nrm, axis=-1) - 1) < 0.2     # unbaked texels decode to (-1,-1,-1)
     x, y, z = pos[..., 0], pos[..., 1], pos[..., 2]
@@ -566,9 +615,16 @@ def classify(pos, nrm, col, liner):
     put((y < -1.45) & (z > 0.55) & ((ny < -0.2) | (nz > 0.3)), "Boot", "Boot")
     put((y < -1.45) & (z <= 0.55) & ((ny < -0.3) | (y < -1.85)), "Tail", "Tail")
     # glass: dark (V < 0.215); on the roof Tripo's glass carries sky reflections (V p95 0.40) while the body-colour
-    # roof rails read V 0.43-0.64, so up there the test runs on blurred V < 0.4
-    roof = (nz > 0.3) & (z > BELT_Z + 0.12)
-    glass = covered & np.where(roof, box_blur(v, 10) < 0.4, v < 0.215) & (z > BELT_Z - 0.04) & ~liner
+    # roof rails read V 0.43-0.64, so up there the test runs on blurred V < 0.4. Tripo also shows the cabin through the
+    # windscreen (dashboard: the light block at its foot read as paint): whatever the dark glass encloses in the top,
+    # front and back ortho views (by dominant normal) is glass too. Not the side views: the mirrors project into the
+    # side windows there
+    up = covered & (z > BELT_Z - 0.04) & ~liner
+    dark = up & np.where((nz > 0.3) & (z > BELT_Z + 0.12), box_blur(v, 10) < 0.4, v < 0.215)
+    ax = np.argmax(np.abs(nrm), -1)
+    glass = dark.copy()
+    for sel, iu, iv in ((up & (ax == 2) & (nz > 0), 1, 0), (up & (ax == 1) & (ny > 0), 0, 2), (up & (ax == 1) & (ny < 0), 0, 2)):
+        glass |= enclosed(pos[..., iu], pos[..., iv], sel, dark)
     glass = (box_blur(glass.astype(np.float32), 10) > 0.5) & covered & ~liner     # majority: no ragged rail edge
     put(glass & side & (y > B_PILLAR_Y), "WinLH", "WinRH")
     put(glass & side & (y <= B_PILLAR_Y), "WinLT", "WinRT")
@@ -585,42 +641,54 @@ def classify(pos, nrm, col, liner):
     return zone, glass, head | red, covered
 
 
-def stage_final(n, shell_size):
+def stage_final(n):
     bpy.ops.wm.open_mainfile(filepath=os.path.join(TMP, "v2_tiers.blend"))
     info = json.loads(bpy.context.scene["info"])
     hi = bpy.data.objects["hi_body"]
     body = bpy.data.objects[f"body_{n}"]
     body.name = NAME
-    emission_from_base(hi)
-    b = bake_maps(body, hi, BAKE, [("pos", "pos"), ("nrm", "nrm"), ("col", "col")])
-    ao = bake_maps(body, hi, BAKE // 2, [("ao", "ao")])["ao"][..., 0]
-    ao = np.repeat(np.repeat(ao, 2, 0), 2, 1)
-    liner = raster_liner(body, BAKE)
-    col = to_srgb(b["col"][..., :3])
-    pos, nrm = b["pos"][..., :3], b["nrm"][..., :3] * 2 - 1
+    cache = os.path.join(TMP, f"bake_{n}.npz")      # the 4096 Cycles bake takes minutes; texture passes reuse it
+    if os.path.exists(cache):
+        c = np.load(cache)
+        pos, nrm, col, ao = (c[k].astype(np.float32) for k in ("pos", "nrm", "col", "ao"))
+        liner = c["liner"]
+    else:
+        emission_from_base(hi)
+        b = bake_maps(body, hi, BAKE, [("pos", "pos"), ("nrm", "nrm"), ("col", "col")])
+        ao = bake_maps(body, hi, BAKE // 2, [("ao", "ao")])["ao"][..., 0]
+        ao = np.repeat(np.repeat(ao, 2, 0), 2, 1)
+        liner = raster_liner(body, BAKE)
+        col = to_srgb(b["col"][..., :3])
+        pos, nrm = b["pos"][..., :3], b["nrm"][..., :3] * 2 - 1
+        np.savez(cache, pos=pos.astype(np.float16), nrm=nrm.astype(np.float16), col=col.astype(np.float16),
+                 ao=ao.astype(np.float16), liner=liner)
     zone, glass, lights, covered = classify(pos, nrm, col, liner)
     v, s = hsv(col)
     # paint = body grey; decided on blurred V so Tripo's dark reflection patches on the hood stay paint, while the
-    # black plastics (rocker, diffuser, grille: V 0.10-0.16) do not (door V p5 0.29, hood p5 0.16)
-    vb = box_blur(v, 24)
-    paint = covered & (vb > 0.19) & (v < 0.8) & (s < 0.3) & ~glass & ~lights & ~liner
-    paint = grow(~grow(~paint, 1), 1)                                 # open: drop single-texel specks
-    # paint texels: neutral base (S 0.35, V 0.5) x AO + high-pass of the Tripo colour (panel gaps, handles, creases);
-    # the shader keeps S/V offsets and swaps the hue (vehicle_multiuv.frag:139-144), so the detail survives any paint
-    detail = v - box_blur(v, 16)
-    pv = np.clip(0.5 * ao ** 0.8 + 1.4 * detail, 0.04, 0.96)
-    shell = np.concatenate([col, np.ones(col.shape[:2] + (1,))], -1).astype(np.float32)
-    shell[paint, 0] = pv[paint]
-    shell[paint, 1] = pv[paint] * 0.65
-    shell[paint, 2] = pv[paint] * 0.65
-    shell[paint, 3] = 0
+    # black plastics (rocker, diffuser, grille: V 0.10-0.16) do not (door V p5 0.29, hood p5 0.16). The blur skips
+    # glass texels (else the mirror caps and pillars by the dark glass turned trim). No upper V cap: Tripo's highlights
+    # by the headlight strip are paint. 7x7 majority: no ragged teeth on the glass / trim edges
+    ng = (covered & ~glass).astype(np.float32)
+    vb = box_blur(v * ng, 24) / np.maximum(box_blur(ng, 24), 1e-3)
+    # the rear-facing lip under the windscreen (y 1.07-1.15, z ~0.92) is the hidden cowl: black, not paint (as paint
+    # it showed Tripo's stretched streaks in the rear three-quarter view)
+    cowl = (nrm[..., 1] < -0.3) & (pos[..., 1] > 0.5) & (np.abs(pos[..., 0]) < 0.62) & (pos[..., 2] > 0.85) & (pos[..., 2] < 1.0)
+    free = covered & ~glass & ~lights & ~liner & ~cowl
+    paint = free & (vb > 0.19) & (s < 0.3)
+    paint = (box_blur(paint.astype(np.float32), 3) > 0.5) & free
+    base = np.concatenate([col, np.ones(col.shape[:2] + (1,))], -1).astype(np.float32)
     # glass: Tripo painted sky reflections into it; keep its tint, flatten, cap V, darken by AO
     gv = np.maximum(v, 1e-6)
     gtarget = np.clip(box_blur(v, 24), 0.05, 0.16) * (0.6 + 0.4 * ao)
-    shell[glass, :3] = (col * (gtarget / gv)[..., None])[glass]
-    trim = covered & ~paint & ~glass & ~lights & ~liner
-    shell[trim, :3] = (col * np.minimum(1, 0.3 / np.maximum(v, 1e-6))[..., None] * (0.55 + 0.45 * ao[..., None]))[trim]
-    shell[liner, :3] = 0.03
+    base[glass, :3] = (col * (gtarget / gv)[..., None])[glass]
+    def darken(m, cap):                                                 # Tripo tint, V capped, AO shaded
+        base[m, :3] = (col * np.minimum(1, cap / gv)[..., None] * (0.55 + 0.45 * ao[..., None]))[m]
+    darken(free & ~paint, 0.3)                                          # trim
+    darken(cowl & covered & ~glass & ~liner, 0.12)
+    # the light zones are grown 3 px around the bright / red cores: that ring is the dark lamp housing, not Tripo's
+    # grey body speckle
+    darken(lights & (v < 0.6) & ~((col[..., 0] > 0.3) & (col[..., 0] > 1.8 * col[..., 1])), 0.12)
+    base[liner, :3] = 0.03
     mask = np.zeros(zone.shape + (4,), np.float32)
     mask[..., 3] = 1
     for k, c in Z.items():
@@ -630,30 +698,31 @@ def stage_final(n, shell_size):
                  ("StopL", (1, 0, 0)), ("StopR", (1, 0, 0))):
         lit[zone == k] = c + (1,)
     os.makedirs(TEX_DIR, exist_ok=True)
-    mem = {}
-    for size in (4096, 2048, 1024, 512):
-        sh = shell if size == BAKE else downsample(shell, BAKE // size)
-        save_png(sh, os.path.join(TMP, f"shell_{size}.png"), f"shell{size}")
-        mem[size] = size * size * 4                                  # RGBA8, no mip flag on vehicle textures [INFERENCE: before driver compression]
-    # option (b): one full-colour skin per official paint, alpha 255 everywhere (premultiply is a no-op, so a 2048 file
-    # shrinks cleanly to the player's cap). Paint texels keep Tripo's paint light: diffuse shade = V / median paint V,
-    # highlights above the median added as white (reflections stay visible on dark paints)
-    med = float(np.median(v[paint]))
-    shade = np.clip(v / med, 0.35, 1.0) * (0.55 + 0.45 * ao)
-    spec = np.clip(v - med, 0, None) * 0.9
-    os.makedirs(os.path.join(TMP, "skins"), exist_ok=True)
-    for pname, (h, ps, pv) in PALETTE.items():
-        rgb = np.array(colorsys.hsv_to_rgb(h, max(ps - 0.15, 0.0), pv), np.float32)   # shell paint base S 0.35, V 0.5
-        sk = shell.copy()
-        sk[..., 3] = 1
-        sk[paint, :3] = np.clip(rgb * shade[paint][:, None] + spec[paint][:, None], 0, 1)
-        for size in (2048, 512):
-            save_png(downsample(sk, BAKE // size), os.path.join(TMP, "skins", f"{pname}_{size}.png"), f"{pname}{size}")
-    # shell / mask / lights load with flag 256 = capped at the "vehicle texture size" option, default 512
-    # (BaseVehicle.java:595-615, Core.java:266,3481-3495); a bigger file is shrunk on load with premultiplied alpha
-    # (TextureID.java:348-375, ImageData.java:291-297,468-482), which zeroes the paint texels (alpha 0): black paint
-    f = BAKE // shell_size
-    save_png(downsample(shell, f), os.path.join(TEX_DIR, NAME + "_shell.png"), "shell")
+    # one full-colour skin per official paint, alpha 255 everywhere, so the engine's shrink to the player's "vehicle
+    # texture size" cap (premultiplied alpha, TextureID.java:348-375, ImageData.java:291-297,468-482) keeps the colour.
+    # Paint texels keep the high-poly light: rank of Tripo V x AO over all paint texels -> colour at that V quantile of
+    # the official render's paint (official_ramp), divided by the in-game day gain
+    key = v[paint] * (0.5 + 0.5 * ao[paint])
+    q = np.empty(key.size)
+    q[np.argsort(key, kind="stable")] = (np.arange(key.size) + 0.5) / key.size
+    hsvs = {}
+    for pname, code in PAINTS:
+        ramp = official_ramp(code)
+        xp = (np.arange(len(ramp)) + 0.5) / len(ramp)
+        a, b = (np.array(t, np.float32) for t in CAL[pname])
+        tone = lambda c: np.clip(a * c / GAIN + b, 0, 1)                  # noqa: E731
+        sk = base.copy()
+        sk[paint, :3] = tone(np.stack([np.interp(q, xp, ramp[:, i]) for i in range(3)], -1))
+        save_png(downsample(sk, BAKE // SKIN), os.path.join(TEX_DIR, f"{NAME}_{pname}.png"), pname)
+        # setColorHSV for the damage overlays: the shader gives Veh_Damage* texels the paint hue and S / V offsets
+        # (vehicle_common.frag.glsl:6-15); their median S 0.03, V 0.45 should land on this skin's median paint
+        h, s_, v_ = colorsys.rgb_to_hsv(*tone(ramp[len(ramp) // 2]))
+        hsvs[pname] = [round(h, 3), round(min(1.0, s_ + 0.47), 3), round(min(1.0, v_ + 0.05), 3)]
+    print("LUA colors", "\n".join(f'{{ name = "{p}", code = "{c}", h = {hsvs[p][0]}, s = {hsvs[p][1]}, v = {hsvs[p][2]} }},'
+                                  for p, c in PAINTS))
+    # mask / lights load with flag 256 too (BaseVehicle.java:595-615): 512 = the default cap (Core.java:266,3489-3495);
+    # option 1 (256) shrinks them, harmless (mask alpha 255, lights RGB only matter where alpha is 1)
+    f = BAKE // 512
     save_png(mask[::f, ::f], os.path.join(TEX_DIR, NAME + "_mask.png"), "mask")
     save_png(downsample(lit, f), os.path.join(TEX_DIR, NAME + "_lights.png"), "lights")
     counts = {k: int((zone[::f, ::f] == k).sum()) for k in Z}
@@ -669,7 +738,7 @@ def stage_final(n, shell_size):
     body.data.materials.append(mat)
     export_fbx(body, os.path.join(VEH_DIR, NAME + ".fbx"))
     g = geometry(body, zmid, wl, info["wheel_r"])
-    g |= {"tris_body": tris(body), "tris_wheel": info["wheel_tris"], "shell": shell_size, "texture_bytes_with_mips": mem,
+    g |= {"tris_body": tris(body), "tris_wheel": info["wheel_tris"], "skin": SKIN, "skins": [p for p, _ in PAINTS],
           "scale": {k: info[k] for k in ("uniform_scale", "x_factor", "z_factor", "final_size", "official")}}
     json.dump(g, open(os.path.join(TMP, "geometry.json"), "w"), indent=1)
     print("GEOMETRY", json.dumps(g))
@@ -684,7 +753,8 @@ OY = 0.1978           # model offset == centerOfMassOffset (unscaled), ModernCar
 WHEEL_LIFT = 0.11     # rendered wheel sits this much (grid) above its script offset at rest: vanilla arch centres
 #                       minus wheel offsets, ModernCar +0.10/+0.16, SUV +0.12/+0.10 (arch circle fit); calibration knob
 WHEEL_INSET = 0.03    # tire outer face inside the measured Tripo tire (v1 E2E: flush tires looked proud of the arch)
-PORT = (-1.70, 0.80)  # charge port (mesh y, ground z): side end of the left tail light
+PORT = (-1.74, 0.865)  # charge port (mesh y, ground z, grid): inside the side end of the left tail light (real Model Y);
+#                        the red lens there spans y -1.72..-1.76, z 0.83-0.90 (bake texels R > 1.8 G, |nx| > 0.45)
 
 
 def f4(*v):
@@ -711,7 +781,7 @@ def geometry(body, zmid, wl, r):
     sx = ext[0] / 2 + aw / 2
     out = [
         "        model", "        {", f"            file = {NAME},", f"            scale = {S},", f"            offset = {f4(0, OY, 0)},", "        }",
-        "        skin", "        {", f"            texture = Vehicles/{NAME}_shell,", "        }",
+        *[ln for p, _ in PAINTS for ln in ("        skin", "        {", f"            texture = Vehicles/{NAME}_{p},", "        }")],
         f"        textureMask = Vehicles/{NAME}_mask,", f"        textureLights = Vehicles/{NAME}_lights,",
         "        textureDamage1Overlay = Vehicles/Veh_Blood_Mask,", "        textureDamage2Overlay = Vehicles/Veh_Blood_Hvy,",
         "        textureDamage1Shell = Vehicles/Veh_Damage1,", "        textureDamage2Shell = Vehicles/Veh_Damage2,",
@@ -771,28 +841,38 @@ def geometry(body, zmid, wl, r):
             "wheelbase": wl[0][1] - wl[2][1], "wheel_radius": r}
 
 
-def emulate(shell, hsv_paint):
-    """Shader paint mix with a fixed paint colour (vehicle_multiuv.frag:139-144), vectorised."""
-    rgb, a = shell[..., :3], shell[..., 3:4]
-    v, s = hsv(rgb)
-    v2 = np.clip(v + hsv_paint[2] - 0.5, 0, 0.9999)
-    s2 = np.clip(s + hsv_paint[1] - 0.5, 0, 0.9999)
-    h6 = hsv_paint[0] * 6
-    i = int(h6) % 6
-    fr = h6 - int(h6)
-    p, q, t = v2 * (1 - s2), v2 * (1 - s2 * fr), v2 * (1 - s2 * (1 - fr))
-    rgb2 = np.stack([(v2, t, p), (q, v2, p), (p, v2, t), (p, q, v2), (t, p, v2), (v2, p, q)][i], -1)
-    return np.concatenate([rgb * a + rgb2 * (1 - a), np.ones_like(a)], -1)
+def official_ramp(code, n=32):
+    """sRGB paint colour per V quantile (n bins) of the official design-studio SIDE render of `code` (stage official):
+    body side below the belt (car bbox rows 36-74%, columns 4-96%), wheel arches and rocker cut out, nose left."""
+    a = img_np(bpy.data.images.load(os.path.join(OFFICIAL, f"{code}_SIDE.png")))[::-1].astype(np.float64)  # rows top-down
+    m = a[..., 3] > 0.9
+    ys, xs = np.nonzero(m)
+    x0, y0, w, h = xs.min(), ys.min(), np.ptp(xs), np.ptp(ys)
+    yy, xx = np.mgrid[0:a.shape[0], 0:a.shape[1]]
+    u, t = (xx - x0) / w, (yy - y0) / h
+    keep = m & (t > 0.36) & (t < 0.74) & (u > 0.04) & (u < 0.96)
+    for cu in (0.165, 0.80):                                             # wheels + arches
+        keep &= ((u - cu) * w) ** 2 + ((t - 0.80) * h) ** 2 > (0.135 * w) ** 2
+    px = a[..., :3][keep]
+    px = px[np.argsort(px.max(1), kind="stable")]
+    e = np.linspace(0, len(px), n + 1).astype(int)
+    return np.array([px[e[i]:e[i + 1]].mean(0) for i in range(n)])
 
 
-PALETTE = {  # Model Y 2025 paint, engine paint HSV for this shell (see models.md "車漆")
-    "StealthGrey": (0.61, 0.24, 0.33), "PearlWhite": (0.55, 0.17, 0.92), "DiamondBlack": (0.61, 0.25, 0.10),
-    "DeepBlueMetallic": (0.61, 0.86, 0.42), "UltraRed": (0.99, 1.0, 0.66), "Quicksilver": (0.59, 0.19, 0.68),
-}
+def stage_official():
+    """Download the design-studio renders (SIDE for official_ramp, FRONT34 / REAR34 for comparison sheets)."""
+    import urllib.request
+    os.makedirs(OFFICIAL, exist_ok=True)
+    for _, code in PAINTS:
+        # $PB00 Frost Blue only exists on the Performance trim: with $MTY79 the compositor answers 412
+        opts = "$MTY70,$PB00,$WY21A,$IPB14" if code == "PB00" else f"$MTY79,${code},$WY19P,$IPB15"
+        for view in ("SIDE", "FRONT34", "REAR34"):
+            req = urllib.request.Request(COMPOSITOR.format(opts, view), headers={"User-Agent": "Mozilla/5.0"})
+            with urllib.request.urlopen(req, timeout=60) as r, open(os.path.join(OFFICIAL, f"{code}_{view}.png"), "wb") as f:
+                f.write(r.read())
 
 
 def previews(body, wl, zmid, r):
-    shell = img_np(bpy.data.images.load(os.path.join(TEX_DIR, NAME + "_shell.png")))
     wheel = bpy.data.objects[NAME + "_Wheel"]
     wimg = bpy.data.images.load(os.path.join(TEX_DIR, NAME + "_wheel.png"))
     wm = bpy.data.materials.new("prev_wheel")
@@ -812,10 +892,12 @@ def previews(body, wl, zmid, r):
     node = mat.node_tree.nodes.new("ShaderNodeTexImage")
     mat.node_tree.links.new(node.outputs[0], mat.node_tree.nodes["Principled BSDF"].inputs[0])
     mat.node_tree.nodes.active = node
-    for tag, hsvp in (("StealthGrey", PALETTE["StealthGrey"]), ("UltraRed", PALETTE["UltraRed"])):
-        node.image = save_png(emulate(shell, hsvp), os.path.join(TMP, f"prev_{tag}.png"), "prev_" + tag)
-        preview.render_views(os.path.join(PREV, tag), ortho=4.4, center=Vector((0, 0, 0)), res=(1600, 800),
-                             views={"left": Vector((-1, 0, 0)), "iso": Vector((-1, 1, 1.15)), "iso_rear": Vector((1, -1, 1.15))})
+    iso = {"iso": Vector((-1, 1, 1.15)), "iso_rear": Vector((1, -1, 1.15))}
+    for pname, _ in PAINTS:
+        node.image = bpy.data.images.load(os.path.join(TEX_DIR, f"{NAME}_{pname}.png"))
+        more = {"left": Vector((-1, 0, 0)), "front": Vector((0, 1, 0.3))} if pname in ("StealthGrey", "UltraRed") else {}
+        preview.render_views(os.path.join(PREV, pname), ortho=4.4, center=Vector((0, 0, 0)), res=(1600, 800),
+                             views=iso | more)
     node.image = bpy.data.images.load(os.path.join(TEX_DIR, NAME + "_mask.png"))
     preview.render_views(os.path.join(PREV, "mask"), ortho=4.4, center=Vector((0, 0, 0)), res=(1600, 800),
                          views={"iso": Vector((-1, 1, 1.15)), "iso_rear": Vector((1, -1, 1.15))})
@@ -856,7 +938,9 @@ if __name__ == "__main__":
         stage_tiers([int(x) for x in args[1].split(",")])
     elif st == "wheel":
         stage_wheel()
+    elif st == "official":
+        stage_official()
     elif st == "final":
-        stage_final(int(args[1]), int(args[2]) if len(args) > 2 else 512)
+        stage_final(int(args[1]))
     else:
         print(__doc__)

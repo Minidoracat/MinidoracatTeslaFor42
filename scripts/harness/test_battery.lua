@@ -136,8 +136,9 @@ T.Create.Battery(nv, B.part(nv))
 check(near(B.pct(B.part(nv)), 80), "create: good car starts at 60-100%")
 T.Create.Motor(nv, nv:getPartById("Engine"))
 check(nv.feature and nv.feature[1] == 100 and nv.feature[2] == 20 and nv.feature[3] == 5000, "motor: quality 100, script loudness and force")
-local pal = T.spec(nv).colors[4] -- ZombRand(6) with rand 0.5 = 3 -> colors[4]
-check(nv.hsv and nv.hsv[1] == pal[1] and nv.hsv[3] == pal[3] and nv.colorTx == 1, "new car gets a factory paint and transmits it")
+local pal = T.spec(nv).colors[5] -- ZombRand(8) with rand 0.5 = 4 -> colors[5], skin 4
+check(nv.skin == 4 and nv.hsv and nv.hsv[1] == pal.h and nv.hsv[2] == pal.s and nv.hsv[3] == pal.v
+    and nv.colorTx == 1 and nv.skinTx == 1, "new car gets a factory paint (skin + damage tint) and transmits it")
 T.Update.Engine(nv, nv:getPartById("Engine"), 1)
 check(nv.vanillaEngine == 1, "Update.Engine runs the vanilla engine update")
 

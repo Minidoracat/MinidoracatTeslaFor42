@@ -1,0 +1,9 @@
+{
+    "ContextMenu_MinidoracatTesla_SentryOn": "Wächter-Modus aktivieren",
+    "ContextMenu_MinidoracatTesla_SentryOff": "Wächter-Modus deaktivieren",
+    "ContextMenu_MinidoracatTesla_CampOn": "Camp-Modus aktivieren",
+    "ContextMenu_MinidoracatTesla_Plug": "Ladekabel einstecken",
+    "ContextMenu_MinidoracatTesla_PlugInto": "Ladekabel einstecken: %1",
+    "ContextMenu_MinidoracatTesla_Unplug": "Ladekabel abziehen",
+    "ContextMenu_MinidoracatTesla_ChargeStatus": "Ladestatus anzeigen"
+}

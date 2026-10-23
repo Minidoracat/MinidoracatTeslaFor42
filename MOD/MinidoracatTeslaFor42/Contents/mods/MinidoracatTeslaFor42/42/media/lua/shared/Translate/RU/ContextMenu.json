@@ -1,0 +1,9 @@
+{
+    "ContextMenu_MinidoracatTesla_SentryOn": "Включить режим часового",
+    "ContextMenu_MinidoracatTesla_SentryOff": "Выключить режим часового",
+    "ContextMenu_MinidoracatTesla_CampOn": "Включить режим кемпинга",
+    "ContextMenu_MinidoracatTesla_Plug": "Подключить зарядный кабель",
+    "ContextMenu_MinidoracatTesla_PlugInto": "Подключить зарядный кабель: %1",
+    "ContextMenu_MinidoracatTesla_Unplug": "Отключить зарядный кабель",
+    "ContextMenu_MinidoracatTesla_ChargeStatus": "Состояние зарядки"
+}

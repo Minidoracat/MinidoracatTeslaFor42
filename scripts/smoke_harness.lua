@@ -142,6 +142,8 @@ function H.vehicle(o)
     function v:setEngineFeature(q, l, f) self.feature = { q, l, f } end
     function v:setColorHSV(h, s, val) self.hsv = { h, s, val } end
     function v:transmitColorHSV() self.colorTx = (self.colorTx or 0) + 1 end
+    function v:setSkinIndex(i) self.skin = i end
+    function v:transmitSkinIndex() self.skinTx = (self.skinTx or 0) + 1 end
     function v:getScript() return { getEngineLoudness = function() return 20 end, getEngineForce = function() return 5000 end } end
     vehicles[v.id] = v
     return v

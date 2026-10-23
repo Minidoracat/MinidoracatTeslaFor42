@@ -103,12 +103,15 @@ end
 function Card:onGainJoypadFocus(joypadData)
     ISPanelJoypad.onGainJoypadFocus(self, joypadData)
     self:setISButtonForB(self.btnClose)
+    self:layout() -- the B glyph widens the close button (fit below)
     self:setJoypadFocusTopLeft(joypadData)
 end
 
 function Card:onLoseJoypadFocus(joypadData)
     ISPanelJoypad.onLoseJoypadFocus(self, joypadData)
     self:clearJoypadFocus(joypadData)
+    self:clearISButtonB() -- ISPanelJoypad.lua:303-306
+    if self.inUI then self:layout() end
 end
 
 -- ---------------------------------------------------------------- actions (server validates everything)
@@ -222,7 +225,12 @@ function Card:layout()
     local pad, gap, s8 = math.floor(PAD * S), math.floor(GAP * S), math.floor(8 * S)
     local plugged = self.state ~= "none"
     local bh = math.max(self.FH + math.floor(16 * S), math.floor(36 * S))
-    local function fit(b) return tm:MeasureStringX(UIFont.Small, b.title) + math.floor(24 * S) end
+    -- ISButton draws a joypad/icon texture left of the title and shifts it by 5 + joypadTextureWH (ISButton.lua:238-245, :451-452)
+    local function fit(b)
+        local w = tm:MeasureStringX(UIFont.Small, b.title) + math.floor(24 * S)
+        if (b.isJoypad and b.joypadTexture) or b.iconTexture then w = w + 5 + b.joypadTextureWH end
+        return w
+    end
     local toggleW, unplugW, closeW = fit(self.btnToggle), fit(self.btnUnplug), fit(self.btnClose)
     local tw = tm:MeasureStringX(UIFont.Small, self.sTarget or "") + math.floor(12 * S)
     -- the card grows for longer translations instead of letting text or buttons overlap
