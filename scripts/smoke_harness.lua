@@ -1,108 +1,224 @@
 --[[
-煙霧測試骨架：用假的 PZ 全域載入**真正的** MOD Lua，跑行為情境並斷言結果。
+Smoke harness: fake PZ globals, load the real MOD Lua, then dofile scripts/harness/test_*.lua in name order.
 
-    lua scripts/smoke_harness.lua        （repo 根目錄執行；標準 Lua 5.x 即可）
+    lua scripts/smoke_harness.lua        (run from the repo root; plain Lua 5.x)
 
-為什麼需要（兩類 luac -p 抓不到的錯誤，皆為正式服實際事故）：
-- 改函式簽章漏改呼叫點：語法完全合法，要等該路徑真的執行才炸
-  （實例：hotspotKey 兩參數改三參數，刪除成功後的 log 聚合路徑必崩）
-- 邏輯回歸：安全把關（範圍／阻隔／保護規則）被改壞時，「執行到並斷言」是唯一防線
+Each test file uses the global H (helpers below) and the real MOD tables. It is standard Lua, not Kahlua:
+next/xpcall/table.sort misuse is caught by scripts/verify_mod.py, not here. Engine-only behaviour needs E2E.
 
-限制（必須誠實面對）：這是標準 Lua，不是遊戲的 Kahlua。
-- 標準 Lua 有 next/xpcall，Kahlua 沒有——本 harness **測不出**誤用，
-  那由 scripts/verify_mod.py 的靜態掃描負責（發版前兩者都要跑）
-- Kahlua 專屬行為（table.sort 遞迴深度、Java instance field 不暴露、rawget 呼叫形式、
-  每個 table 都是 LinkedHashMap 的記憶體成本）只能靠反編譯查證與實機測試
-
-寫情境的原則：
-- 情境要「執行到會炸的路徑」——刪除後的收尾、跨 tick 的第二輪、聚合輸出，都是重災區
-- 安全邊界要有**反面**斷言（範圍外／被阻隔／受保護的對象必須存活），不是只測 happy path
-- 新防線寫完先「植入違規證明它會抓」再信任它——測不出來的測試等於沒有測試
+Writing tests: run the path that would crash (second round, cleanup), add negative assertions for every
+safety boundary, and plant a violation once to prove a new check catches it.
 ]]
 
--- 家族佈局固定，直接填死最省事；scaffold 時由模板替換佔位符
 local MEDIA = "MOD/MinidoracatTeslaFor42/Contents/mods/MinidoracatTeslaFor42/42/media/lua"
 
--- ===== 假的 PZ 全域（依 MOD 實際用到的 API 增補）=====
--- 起始時間要夠大：週期類邏輯常寫成 now - lastAt >= interval 而 lastAt 初值 0，
--- 從 0 起跳會讓第一輪永遠不觸發（遊戲的 getTimestampMs 本來就是大數）
+H = { failures = 0, sent = {}, clientSent = {}, logLines = {} }
+
+-- ---------------------------------------------------------------- side, time, sandbox
+local side = { client = false, server = true }
+function isClient() return side.client end
+function isServer() return side.server end
+function H.side(client, server) side.client, side.server = client, server end -- (false,true)=MP server, (false,false)=SP
+
+local worldHours = 1000
 local nowMs = 5000000
-local logLines = {}
-
+function H.hours() return worldHours end
+function H.setHours(h) worldHours = h end
 function getTimestampMs() return nowMs end
-function isClient() return false end
-function isServer() return true end
-function writeLog(_, text) logLines[#logLines + 1] = text end
-function getText(key) return key end
+function H.advanceMs(ms) nowMs = nowMs + ms end
+local gameTime = {
+    getWorldAgeHours = function() return worldHours end,
+    getMinutesPerDay = function() return 90 end, -- DayLength default: 1 game minute = 3.75 s
+}
+function getGameTime() return gameTime end
 
-local tickHandlers, clientCommandHandlers = {}, {}
+SandboxVars = { MinidoracatTesla = { RangeMultiplier = 1.0, ChargeSpeedMultiplier = 1.0 },
+    VehicleEasyUse = false, ZombieAttractionMultiplier = 1.0, GeneratorFuelConsumption = 0.1 }
+
+local rand = 0.5 -- ZombRandFloat returns min + rand*(max-min)
+function H.setRand(r) rand = r end
+function ZombRandFloat(a, b) return a + (b - a) * rand end
+function ZombRand(a, b) if b then return a + math.floor((b - a) * rand) end return math.floor(a * rand) end
+
+function getText(key, ...) return key end
+function getTextOrNull(key) return key end
+-- MOD log lines (print) are kept, not shown; test output uses io.write
+function print(...) local t = {} for i = 1, select("#", ...) do t[#t + 1] = tostring(select(i, ...)) end H.logLines[#H.logLines + 1] = table.concat(t, " ") end
+
+Capability = { ManipulateVehicle = "ManipulateVehicle" }
+function checkPermissions(player, cap) return player and player._admin == true end
+
+function instanceof(o, cls) return type(o) == "table" and o._class == cls end
+
+-- ---------------------------------------------------------------- events
+local handlers = {}
 Events = setmetatable({}, {
-    __index = function(_, name)
-        return {
-            Add = function(fn)
-                if name == "OnTick" then tickHandlers[#tickHandlers + 1] = fn
-                elseif name == "OnClientCommand" then clientCommandHandlers[#clientCommandHandlers + 1] = fn end
-            end,
-        }
+    __index = function(t, name)
+        local ev = { Add = function(fn) handlers[name] = handlers[name] or {}; table.insert(handlers[name], fn) end,
+            Remove = function(fn)
+                local list = handlers[name] or {}
+                for i = #list, 1, -1 do if list[i] == fn then table.remove(list, i) end end
+            end }
+        rawset(t, name, ev)
+        return ev
     end,
 })
+function H.fire(name, ...)
+    local list = handlers[name] or {}
+    for i = 1, #list do list[i](...) end
+end
+function H.count(name) return #(handlers[name] or {}) end
 
--- java 風格清單（size()/get(i)，0-based）——PZ 回傳的容器幾乎都是這個形狀
-local function javaList(items)
-    return {
-        size = function() return #items end,
-        get = function(_, i) return items[i + 1] end,
-        _raw = items,
-    }
+function sendServerCommand(player, module, command, args)
+    H.sent[#H.sent + 1] = { player = player, module = module, command = command, args = args }
+end
+function sendClientCommand(player, module, command, args)
+    H.clientSent[#H.clientSent + 1] = { player = player, module = module, command = command, args = args }
 end
 
--- ===== 載入受測程式碼 =====
+-- ---------------------------------------------------------------- vehicles
+local vehicles = {}
+function getVehicleById(id) return vehicles[id and math.floor(id)] end
+
+local function newItem(fullType, maxCap)
+    local it = { fullType = fullType, maxCap = maxCap, uses = 1 }
+    function it:getFullType() return self.fullType end
+    function it:getMaxCapacity() return self.maxCap end
+    function it:getCurrentUsesFloat() return self.uses end
+    function it:setUsedDelta(v) self.uses = v end
+    return it
+end
+H.newItem = newItem
+
+local function newPart(id, opts)
+    local p = { id = id, md = {}, item = opts.item, contentType = opts.contentType }
+    function p:getId() return self.id end
+    function p:getModData() return self.md end
+    function p:getInventoryItem() return self.item end
+    function p:getContainerContentType() return self.contentType end
+    function p:getContainerCapacity() return self.item and self.item:getMaxCapacity() or 0 end
+    function p:getContainerContentAmount() return self.md.contentAmount or 0 end
+    function p:setContainerContentAmount(v)
+        local cap = self:getContainerCapacity()
+        self.md.contentAmount = math.max(0, math.min(v, cap))
+    end
+    function p:setRandomCondition() end
+    return p
+end
+
+-- H.vehicle{ script=, kwh=, pack=(full type), running=, speed=, id=, x=, y=, z= }
+local nextId = 1
+function H.vehicle(o)
+    o = o or {}
+    local v = { id = o.id or nextId, script = o.script or "Base.MinidoracatTesla_ModelY", parts = {},
+        running = o.running or false, speed = o.speed or 0, brakeSpeed = 0, transmits = 0, usedDeltaTx = 0,
+        x = o.x or 100.5, y = o.y or 100.5, z = o.z or 0, good = o.good or false, keyId = 77, driver = nil, feature = nil }
+    nextId = math.max(nextId, v.id) + 1
+    local pack = o.pack or "Base.MinidoracatTesla_ModelYBatterySR"
+    local packCap = (pack == "Base.MinidoracatTesla_ModelYBatteryLR") and 83 or 63
+    v.parts.GasTank = newPart("GasTank", { contentType = "Electricity", item = (o.noPack and nil) or newItem(pack, packCap) })
+    v.parts.Battery = newPart("Battery", { item = newItem("Base.CarBattery3", 0) })
+    v.parts.Engine = newPart("Engine", {})
+    v.parts.Heater = newPart("Heater", {})
+    if o.kwh then v.parts.GasTank:setContainerContentAmount(o.kwh) end
+    function v:getId() return self.id end
+    function v:getScriptName() return self.script end
+    function v:getPartById(id) return self.parts[id] end
+    function v:getBattery() return self.parts.Battery end
+    function v:isEngineRunning() return self.running end
+    function v:getCurrentSpeedKmHour() return self.speed end
+    function v:getBrakeSpeedBetweenUpdate() return self.brakeSpeed end
+    function v:transmitPartModData() self.transmits = self.transmits + 1 end
+    function v:transmitPartUsedDelta() self.usedDeltaTx = self.usedDeltaTx + 1 end
+    function v:hasEnoughGasToRun() return self.parts.GasTank:getContainerContentAmount() > 0.0005 end
+    function v:isGoodCar() return self.good end
+    function v:isDriver(p) return self.driver == p end
+    function v:getDriver() return self.driver end
+    function v:getX() return self.x end
+    function v:getY() return self.y end
+    function v:getZ() return self.z end
+    function v:getKeyId() return self.keyId end
+    function v:isKeysInIgnition() return false end
+    function v:setEngineFeature(q, l, f) self.feature = { q, l, f } end
+    function v:setColorHSV(h, s, val) self.hsv = { h, s, val } end
+    function v:transmitColorHSV() self.colorTx = (self.colorTx or 0) + 1 end
+    function v:getScript() return { getEngineLoudness = function() return 20 end, getEngineForce = function() return 5000 end } end
+    vehicles[v.id] = v
+    return v
+end
+function H.removeVehicle(v) vehicles[v.id] = nil end
+
+-- H.player{ name=, admin=, x=, y=, z=, keys={id=true} }
+function H.player(o)
+    o = o or {}
+    local p = { name = o.name or "alice", _admin = o.admin or false, x = o.x or 100, y = o.y or 100, z = o.z or 0,
+        keys = o.keys or {}, vehicle = nil, _class = "IsoPlayer" }
+    function p:getUsername() return self.name end
+    function p:getVehicle() return self.vehicle end
+    function p:getX() return self.x end
+    function p:getY() return self.y end
+    function p:getZ() return self.z end
+    function p:DistTo(o2) local dx, dy = self.x - o2:getX(), self.y - o2:getY(); return math.sqrt(dx * dx + dy * dy) end
+    function p:getInventory()
+        local keys = self.keys
+        return { haveThisKeyId = function(_, id) return keys[id] and {} or nil end }
+    end
+    return p
+end
+
+-- vanilla tables the MOD calls into
+Vehicles = { Update = { Engine = function(v) v.vanillaEngine = (v.vanillaEngine or 0) + 1 end } }
+VehicleUtils = { createPartInventoryItem = function(part) return part:getInventoryItem() end }
+VehicleZoneDistribution = { parkingstall = { vehicles = {} }, good = { vehicles = {} } }
+
+-- ---------------------------------------------------------------- loader
 local loaded = {}
 function require(name)
     if loaded[name] then return true end
     loaded[name] = true
     for _, dir in ipairs({ "shared", "server", "client" }) do
         local chunk = loadfile(MEDIA .. "/" .. dir .. "/" .. name .. ".lua")
-        if chunk then chunk() return true end
+        if chunk then chunk(); return true end
     end
-    error("require 找不到: " .. name)
+    error("require: not found " .. name)
+end
+H.require = require
+-- vanilla modules a test fakes itself (e.g. "Map/SGlobalObjectSystem"): mark as loaded so require skips them
+function H.stub(name) loaded[name] = true end
+
+-- ---------------------------------------------------------------- checks
+function H.check(ok, label)
+    if ok then io.write("  PASS  ", label, "\n")
+    else H.failures = H.failures + 1; io.write("  FAIL  ", label, "\n") end
+end
+function H.near(a, b, eps) return math.abs(a - b) <= (eps or 1e-6) end
+function H.section(title) io.write(title, "\n") end
+
+-- ---------------------------------------------------------------- MOD under test (shared, then server)
+for _, name in ipairs({ "MinidoracatTesla/Core", "MinidoracatTesla/API", "MinidoracatTesla/Guard", "MinidoracatTesla/Spawns",
+    "MinidoracatTesla/Battery", "MinidoracatTesla/Regen", "MinidoracatTesla/Commands" }) do
+    require(name)
 end
 
--- TODO: require 你的 MOD 模組（shared 先於 server/client）
--- require "MyMod_Core"
--- require "MyMod_Server"
-
--- ===== 測試工具 =====
-local failures = 0
-local function check(ok, label)
-    if ok then print("  PASS  " .. label)
-    else failures = failures + 1; print("  FAIL  " .. label) end
-end
-
-local function runTicks(count)
-    for _ = 1, count do
-        for _, fn in ipairs(tickHandlers) do fn() end
+-- ---------------------------------------------------------------- tests
+local tests = {} -- both listers print in name order
+local lister = io.popen('ls scripts/harness/test_*.lua 2>/dev/null || dir /b /on scripts\\harness\\test_*.lua 2>nul')
+if lister then
+    for line in lister:lines() do
+        line = line:gsub("\r", "")
+        if not line:find("/") and not line:find("\\") then line = "scripts/harness/" .. line end
+        tests[#tests + 1] = line
     end
+    lister:close()
 end
 
--- ===== 情境 =====
--- TODO: 依 MOD 功能撰寫。範例形狀（來自 Cleaner 的實戰情境，見該 repo scripts/smoke_scanner.lua）：
---   情境一：主流程 happy path（建世界 → 觸發 → 跨 tick 推進 → 斷言結果）
---   情境二：安全邊界反面斷言（範圍外／受保護對象必須存活）
---   情境三：效能不變式（提早退出真的沒碰不該碰的東西——用計數器證明）
---
--- print("情境一：…")
--- check(condition, "描述")
--- nowMs = nowMs + 61000   -- 推進時間跨過掃描間隔／節流窗
--- runTicks(600)
-
-print("（骨架自檢）")
-check(type(javaList({}).size) == "function", "javaList 形狀正確")
-check(#logLines == 0 and #clientCommandHandlers >= 0, "假全域就緒")
-
-print()
-if failures > 0 then
-    print(failures .. " 項失敗")
-    os.exit(1)
+for _, path in ipairs(tests) do
+    io.write("== ", path, "\n")
+    local ok, err = pcall(dofile, path)
+    if not ok then H.failures = H.failures + 1; io.write("  FAIL  ", path, " crashed: ", tostring(err), "\n") end
 end
-print("全部通過（記得補上真正的情境）")
+
+io.write("\n")
+if #tests == 0 then io.write("no tests found under scripts/harness/\n"); os.exit(1) end
+if H.failures > 0 then io.write(H.failures, " failed\n"); os.exit(1) end
+io.write("all passed (", #tests, " files)\n")

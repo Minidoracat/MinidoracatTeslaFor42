@@ -1,0 +1,28 @@
+module Base
+{
+    /* Wall Connector: Electricity 3 (R2 section 6); format of MakeImprovisedFlashlight (recipes_electrical.txt:101-127) */
+    craftRecipe MinidoracatTesla_MakeWallConnector
+    {
+        timedAction = MakingElectrical,
+        time = 400,
+        NeedToBeLearn = true,
+        SkillRequired = Electricity:3,
+        Tags = AnySurfaceCraft,
+        category = Electrical,
+        AutoLearnAny = Electricity:3,
+        xpAward = Electricity:25,
+        inputs
+        {
+            item 1 tags[base:screwdriver] mode:keep flags[Prop1],
+            item 1 tags[base:pliers] mode:keep flags[MayDegradeVeryLight],
+            item 4 [Base.ElectricWire],
+            item 3 [Base.ElectronicsScrap],
+            item 2 [Base.SmallSheetMetal],
+            item 4 [Base.Screws],
+        }
+        outputs
+        {
+            item 1 Base.MinidoracatTesla_WallConnector,
+        }
+    }
+}

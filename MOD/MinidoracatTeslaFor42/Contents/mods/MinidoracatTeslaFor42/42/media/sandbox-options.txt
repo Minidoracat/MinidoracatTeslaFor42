@@ -1,0 +1,13 @@
+VERSION = 1,
+
+option MinidoracatTesla.RangeMultiplier
+{
+    type = double, min = 0.25, max = 4.0, default = 1.0,
+    page = MinidoracatTesla, translation = MinidoracatTesla_RangeMultiplier,
+}
+
+option MinidoracatTesla.ChargeSpeedMultiplier
+{
+    type = double, min = 0.1, max = 10.0, default = 1.0,
+    page = MinidoracatTesla, translation = MinidoracatTesla_ChargeSpeedMultiplier,
+}

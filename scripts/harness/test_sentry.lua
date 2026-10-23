@@ -1,0 +1,125 @@
+-- 哨兵：開啟條件、兩級觸發、閃燈 OnTick 會移除、事件時結算、離線收件匣。
+local F = dofile("scripts/harness/park_fakes.lua")
+local check = (H and H.check) or function(ok, label) print((ok and "  PASS  " or "  FAIL  ") .. label); if not ok then error(label) end end
+
+require "MinidoracatTesla/Core"
+require "MinidoracatTesla/ParkModes"
+require "MinidoracatTesla/Battery"
+require "MinidoracatTesla/Inbox"
+require "MinidoracatTesla/Sentry"
+local T = MinidoracatTesla
+local S = T.Sentry
+T.Packs["Base.MinidoracatTesla_TestPack"] = 75
+
+local cmds = T.ServerCommands
+local function md(v) return v:getPartById("GasTank"):getModData() end
+
+-- ---- arm: rules ----
+local v = F.track(F.vehicle({ pct = 80 }))
+local owner = F.player("owner", { keys = { [v.keyId] = true } })
+local thief = F.player("thief")
+F.online = { owner, thief }
+
+cmds.sentryArm(thief, { vid = v:getId() })
+check(md(v).sentry == nil and F.lastSent("deny").args.reason == "NOT_OWNER", "sentry: stranger cannot arm (NOT_OWNER)")
+v.locked = false
+cmds.sentryArm(owner, { vid = v:getId() })
+check(md(v).sentry == nil and F.lastSent("deny").args.reason == "UNLOCKED", "sentry: doors must be locked")
+v.locked, v.passengers = true, 1
+cmds.sentryArm(owner, { vid = v:getId() })
+check(md(v).sentry == nil and F.lastSent("deny").args.reason == "OCCUPIED", "sentry: car must be empty")
+v.passengers, v.running = 0, true
+cmds.sentryArm(owner, { vid = v:getId() })
+check(md(v).sentry == nil and F.lastSent("deny").args.reason == "ENGINE_ON", "sentry: engine must be off")
+v.running = false
+local low = F.track(F.vehicle({ pct = 19 }))
+cmds.sentryArm(F.player("owner", { keys = { [low.keyId] = true } }), { vid = low:getId() })
+check(md(low).sentry == nil and F.lastSent("deny").args.reason == "LOW_BATTERY", "sentry: needs >= 20%")
+cmds.sentryArm(owner, { vid = v:getId() })
+local s = md(v).sentry
+check(s ~= nil and s.by == "owner" and s.since == F.hours and v.alarmed == false, "sentry: owner arms; vanilla alarmed cleared")
+
+-- VehicleManager says UNCLAIMED / easy use: still not legit
+MinidoracatVehicleManagerAPI = { canUse = function() return true, "UNCLAIMED" end }
+check(T.legit(thief, v) == false, "legit: UNCLAIMED does not count")
+MinidoracatVehicleManagerAPI = { canUse = function() return true, "OWNER" end }
+check(T.legit(thief, v) == true, "legit: VehicleManager claimed PASSENGER counts")
+MinidoracatVehicleManagerAPI = nil
+
+-- ---- touch: stranger -> flash once + alert, OnTick removed afterwards ----
+local ticksBefore = F.handlers("OnTick")
+F.sent = {}
+ISUnlockVehicleDoor.complete({ vehicle = v, character = thief, part = v.parts.GasTank })
+ISOpenVehicleDoor.complete({ vehicle = v, character = thief, part = v.parts.GasTank })
+check(S.stats.flashes == 1, "touch: unlock+open within one flash = 1 flash")
+local alerts = 0
+for _, m in ipairs(F.sent) do if m.cmd == "alert" then alerts = alerts + 1 end end
+check(alerts == 1 and F.lastSent("alert").to == "owner" and F.lastSent("alert").args.kind == "touch",
+    "touch: owner gets exactly one alert")
+check(F.handlers("OnTick") == ticksBefore + 1, "flash: OnTick added while flashing")
+local n = F.runTicks(100, 100)
+check(F.handlers("OnTick") == ticksBefore and S.stats.tickAdds == S.stats.tickRemoves, "flash: OnTick removed after " .. n .. " ticks")
+check(v.toggles >= 6 and v.headlights == false and v.parts.HeadlightLeft.lightActive == false,
+    "flash: headlights toggled 3x on/off and restored off")
+check(md(v).sentry ~= nil, "touch: sentry stays armed")
+
+-- ---- break: stranger -> vanilla alarm, stays armed; owner working on the car -> nothing ----
+ISSmashVehicleWindow.complete({ vehicle = v, character = thief, part = v.parts.GasTank })
+check(v.alarmTriggered == 1 and md(v).sentry ~= nil, "break: alarm triggered, sentry re-armed")
+check(F.lastSent("alert").args.kind == "break" and F.lastSent("alert").args.what == "window", "break: owner alerted (window)")
+ISUninstallVehiclePart.complete({ vehicle = v, character = owner, part = v.parts.GasTank })
+check(v.alarmTriggered == 1, "break: legit user does not trigger alarm")
+
+-- ---- settle: drain by hours, 12V top-up, auto-off below 20% ----
+local k0 = T.Battery.kwh(v.parts.GasTank)
+v.parts.Battery.item.uses = 0.5
+F.hours = F.hours + 10
+S.settle(v)
+check(math.abs(T.Battery.kwh(v.parts.GasTank) - (k0 - 10 * S.KW) + 0.5 * T.V12_KWH) < 1e-6, "settle: 0.25 kW x 10 h + 12V refill charged")
+check(v.parts.Battery.item.uses >= 0.99 and md(v).sentry.at == F.hours, "settle: 12V topped up, at advanced")
+
+-- owner offline -> stored, pulled on login, 20 cap
+F.online = { thief }
+F.hours = F.hours + 1000
+ISOpenVehicleDoor.complete({ vehicle = v, character = thief, part = v.parts.GasTank })
+check(md(v).sentry == nil and math.abs(T.Battery.pct(v.parts.GasTank) - 20) < 1e-6, "settle: below 20% turns sentry off at the floor")
+local box = ModData.getOrCreate(T.Inbox.KEY).owner
+check(box ~= nil and box[#box].kind == "lowBattery", "inbox: offline owner gets lowBattery stored")
+for i = 1, 30 do T.Inbox.notify("owner", { kind = "touch", what = "door", i = i }) end
+check(#ModData.getOrCreate(T.Inbox.KEY).owner == 20 and ModData.getOrCreate(T.Inbox.KEY).owner[20].i == 30, "inbox: keeps newest 20")
+F.sent = {}
+cmds.inboxPull(owner, {})
+check(F.lastSent("inbox") ~= nil and #F.lastSent("inbox").args.list == 20 and ModData.getOrCreate(T.Inbox.KEY).owner == nil,
+    "inbox: pull delivers and clears")
+
+-- ---- owner disarms by opening with the key ----
+F.online = { owner, thief }
+T.Battery.set(v, v.parts.GasTank, 75 * 0.19)
+cmds.sentryArm(owner, { vid = v:getId() })
+check(F.lastSent("deny").args.reason == "LOW_BATTERY", "sentry: re-arm denied below 20%")
+T.Battery.set(v, v.parts.GasTank, 60)
+cmds.sentryArm(owner, { vid = v:getId() })
+ISOpenVehicleDoor.complete({ vehicle = v, character = owner, part = v.parts.GasTank })
+check(md(v).sentry == nil, "touch: key holder opening disarms")
+
+-- ---- client: inbox pull goes out on the first OnTick, not inside OnGameStart (family pitfalls.md
+-- "MP client 不可在 OnGameStart 直接送 sendClientCommand"; tesla-sentry-1023b lost the pull this way) ----
+if H and H.stub and H.clientSent then
+    H.stub("ISUI/ISPanel")
+    ISPanel = ISPanel or { derive = function(self) return setmetatable({}, { __index = self }) end }
+    UIFont = UIFont or { Medium = 1, Small = 0 }
+    local me = F.player("owner")
+    local oldGSP = getSpecificPlayer
+    getSpecificPlayer = function() return me end
+    require "MinidoracatTesla/ParkModesUI"
+    local n0 = #H.clientSent
+    H.fire("OnGameStart")
+    check(#H.clientSent == n0, "client: OnGameStart itself sends nothing")
+    H.fire("OnTick")
+    check(#H.clientSent == n0 + 1 and H.clientSent[#H.clientSent].command == "inboxPull", "client: first OnTick sends inboxPull")
+    H.fire("OnTick")
+    check(#H.clientSent == n0 + 1, "client: pull hook removed itself after one send")
+    getSpecificPlayer = oldGSP
+end
+
+F.done()

@@ -1,0 +1,231 @@
+module Base
+{
+    /* Shared EV base for every Tesla. Numbers, sounds and the part list; geometry lives in each car's own script. */
+    /* Based on template vehicle ModernCar (generated/vehicles/vehicle_car_modern_template.txt) without Muffler. */
+    template vehicle MinidoracatTeslaBase
+    {
+        mechanicType = 3,
+        engineRepairLevel = 6,
+        playerDamageProtection = 1.1,
+        engineRPMType = firebird,
+        sound
+        {
+            alarmLoop = VehicleAlarmA VehicleAlarmB VehicleAlarmC VehicleAlarmD VehicleAlarmE,
+            engine = VehicleEngineModernCar,
+            engineStart = VehicleEngineModernCar,
+            engineTurnOff = VehicleEngineModernCar,
+            horn = VehicleHornStandard,
+            ignitionFail = VehicleIgnitionFailModernCar,
+        }
+        mass = 800,
+        engineForce = 5000,
+        maxSpeed = 90.0,
+        /* no Muffler doubles loudness (BaseVehicle.java:9174-9175): effective 40, half of ModernCar */
+        engineLoudness = 20,
+        engineQuality = 100,
+        brakingForce = 90,
+        stoppingMovementForce = 4.0,
+        rollInfluence = 1.0,
+        steeringIncrement = 0.04,
+        steeringClamp = 0.3,
+        suspensionStiffness = 40.0,
+        suspensionCompression = 3.83,
+        suspensionDamping = 2.88,
+        maxSuspensionTravelCm = 10.0,
+        suspensionRestLength = 0.2,
+        wheelFriction = 1.4,
+        frontEndHealth = 150,
+        rearEndHealth = 150,
+        template = TrunkDoor,
+        template = Trunk/part/TruckBed,
+        template = Seat/part/SeatFrontLeft,
+        template = Seat/part/SeatFrontRight,
+        template = Seat/part/SeatRearLeft,
+        template = Seat/part/SeatRearRight,
+        template = GloveBox,
+        template = GasTank,
+        /* 12V battery: tryStartEngine dereferences it without a null check (BaseVehicle.java:7570-7612) */
+        template = Battery,
+        template = Engine,
+        template = EngineDoor,
+        template = Heater,
+        template = Windshield/part/Windshield,
+        template = Windshield/part/WindshieldRear,
+        template = Window/part/WindowFrontLeft,
+        template = Window/part/WindowFrontRight,
+        template = Window/part/WindowRearLeft,
+        template = Window/part/WindowRearRight,
+        template = Door/part/DoorFrontLeft,
+        template = Door/part/DoorFrontRight,
+        template = Door/part/DoorRearLeft,
+        template = Door/part/DoorRearRight,
+        template = Tire,
+        template = Brake,
+        template = Suspension,
+        template = Radio,
+        template = Headlight,
+        /* drive battery: GasTank part with its own content type, so vanilla refuel menus skip it (ISVehicleMenu.lua:1062) */
+        part GasTank
+        {
+            category = MinidoracatTeslaPack,
+            specificItem = false,
+            durability = 5,
+            container
+            {
+                test = Vehicles.ContainerAccess.GasTank,
+                contentType = Electricity,
+                conditionAffectsCapacity = false,
+            }
+            lua
+            {
+                create = MinidoracatTesla.Create.Battery,
+                update = MinidoracatTesla.Update.Battery,
+                checkEngine = MinidoracatTesla.CheckEngine.Battery,
+            }
+            table install
+            {
+                skills = Mechanics:7,
+                recipes = Advanced Mechanics,
+            }
+            table uninstall
+            {
+                skills = Mechanics:7,
+                recipes = Advanced Mechanics,
+            }
+        }
+        part Engine
+        {
+            lua
+            {
+                create = MinidoracatTesla.Create.Motor,
+                update = MinidoracatTesla.Update.Engine,
+                checkEngine = Vehicles.CheckEngine.Engine,
+            }
+        }
+        part TrunkDoor
+        {
+            table install
+            {
+                recipes = Advanced Mechanics,
+            }
+            table uninstall
+            {
+                recipes = Advanced Mechanics,
+            }
+        }
+        part Seat*
+        {
+            table install
+            {
+                recipes = Advanced Mechanics,
+            }
+            table uninstall
+            {
+                recipes = Advanced Mechanics,
+            }
+        }
+        part EngineDoor
+        {
+            table install
+            {
+                recipes = Advanced Mechanics,
+            }
+            table uninstall
+            {
+                recipes = Advanced Mechanics,
+            }
+        }
+        part Heater
+        {
+            category = engine,
+            lua
+            {
+                update = MinidoracatTesla.Update.Heater,
+            }
+        }
+        /* 12V: vanilla update plus top-up from the drive pack while camp or sentry is on (Camp.lua) */
+        part Battery
+        {
+            lua
+            {
+                create = Vehicles.Create.Battery,
+                update = MinidoracatTesla.Update.Battery12V,
+            }
+        }
+        part PassengerCompartment
+        {
+            category = nodisplay,
+            lua
+            {
+                update = Vehicles.Update.PassengerCompartment,
+            }
+        }
+        part Windshield*
+        {
+            table install
+            {
+                recipes = Advanced Mechanics,
+            }
+            table uninstall
+            {
+                recipes = Advanced Mechanics,
+            }
+        }
+        part Window*
+        {
+            anim Open
+            {
+                sound = VehicleWindowElectricOpen,
+            }
+            anim Close
+            {
+                sound = VehicleWindowElectricClose,
+            }
+            table install
+            {
+                recipes = Advanced Mechanics,
+            }
+            table uninstall
+            {
+                recipes = Advanced Mechanics,
+            }
+        }
+        part Door*
+        {
+            table install
+            {
+                recipes = Advanced Mechanics,
+            }
+            table uninstall
+            {
+                recipes = Advanced Mechanics,
+            }
+        }
+        part Brake*
+        {
+            table install
+            {
+                skills = Mechanics:7,
+                recipes = Advanced Mechanics,
+            }
+            table uninstall
+            {
+                skills = Mechanics:7,
+                recipes = Advanced Mechanics,
+            }
+        }
+        part Suspension*
+        {
+            table install
+            {
+                skills = Mechanics:7,
+                recipes = Advanced Mechanics,
+            }
+            table uninstall
+            {
+                skills = Mechanics:7,
+                recipes = Advanced Mechanics,
+            }
+        }
+    }
+}

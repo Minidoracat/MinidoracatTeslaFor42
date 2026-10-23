@@ -1,0 +1,116 @@
+-- Drive battery (GasTank part, kWh): writers and part lua hooks. Server / SP only.
+-- Part hooks run once per game minute on the server (VehicleParts.java:370-414); in SP the car may be a
+-- VirtualVehicle, so hooks only use VehiclePartOwner methods (VirtualVehicle.java:185-336).
+if isClient() then return end
+require "MinidoracatTesla/Core"
+
+local T = MinidoracatTesla
+local B = T.Battery
+
+T.MAX_ELAPSED = 10 -- cap per update: chunk reload hands in the whole unloaded time (GameTime.java:1374-1376)
+T.V12_KWH = 0.6    -- a 12V car battery, about 50 Ah
+
+-- Clamp, store, and transmit only when it moved >= 1% of capacity (or hit empty / full).
+function B.set(vehicle, part, kwh)
+    local cap = B.capacity(part)
+    if type(kwh) ~= "number" or kwh ~= kwh then kwh = 0 end
+    kwh = math.max(0, math.min(kwh, cap))
+    part:setContainerContentAmount(kwh) -- VehiclePart.java:387-408
+    local md = part:getModData()
+    local sent = md.sentKwh
+    if type(sent) ~= "number" or math.abs(kwh - sent) >= cap / 100
+        or (kwh == 0 and sent ~= 0) or (kwh == cap and sent ~= cap) then
+        md.sentKwh = kwh
+        vehicle:transmitPartModData(part) -- whole part modData, flag 16 (BaseVehicle.java:8225-8232)
+    end
+    return kwh
+end
+
+-- Add up to kwh without passing targetPct (0-100, default 100). Returns the kWh actually added.
+function B.add(vehicle, kwh, targetPct)
+    local part = B.part(vehicle)
+    if not part or not part:getInventoryItem() or kwh <= 0 then return 0 end
+    local cap = B.capacity(part)
+    local limit = cap * math.max(0, math.min(100, targetPct or 100)) / 100
+    local now = B.kwh(part)
+    if now >= limit then return 0 end
+    local after = B.set(vehicle, part, math.min(limit, now + kwh))
+    return after - now
+end
+
+-- Refill the 12V battery from the drive pack. Returns the kWh taken from the pack.
+function B.topUp12V(vehicle)
+    local bat = vehicle:getBattery() -- VehiclePartOwner.java:76
+    local item = bat and bat:getInventoryItem()
+    local part = B.part(vehicle)
+    if not item or not part then return 0 end
+    local charge = item:getCurrentUsesFloat() -- same accessor as Vehicles.Update.Battery (Vehicles.lua:507)
+    if charge >= 0.99 then return 0 end
+    local take = math.min((1 - charge) * T.V12_KWH, B.kwh(part))
+    if take <= 0 then return 0 end
+    B.set(vehicle, part, B.kwh(part) - take)
+    item:setUsedDelta(math.min(1, charge + take / T.V12_KWH)) -- Vehicles.lua:515
+    vehicle:transmitPartUsedDelta(bat)                      -- Vehicles.lua:517
+    return take
+end
+
+-- ---- part hooks ----
+
+-- GasTank create: pick SR or LR (VehicleUtils.createPartInventoryItem, Vehicles.lua:1153-1194), then a start charge.
+function T.Create.Battery(vehicle, part)
+    local item = VehicleUtils.createPartInventoryItem(part)
+    if not item then return end
+    local frac
+    if SandboxVars.VehicleEasyUse then
+        frac = 1
+    elseif vehicle:isGoodCar() then -- Vehicles.lua:225-227
+        frac = ZombRandFloat(0.6, 1)
+    else
+        frac = ZombRandFloat(0.05, 0.6)
+    end
+    B.set(vehicle, part, B.capacity(part) * frac)
+end
+
+-- Engine create (new cars only): quality 100 so it starts first try in the cold (VehicleEngine.java:317,326-340);
+-- loudness as vanilla Vehicles.Create.Engine (Vehicles.lua:279-287); a factory paint from the spec
+-- (setColorHSV + transmitColorHSV as vanilla Commands.setHSV, VehicleCommands.lua:440-447; parts are created after
+-- the script colour, BaseVehicle.java:868 vs :1575-1577, so it sticks).
+function T.Create.Motor(vehicle, part)
+    if not SandboxVars.VehicleEasyUse then part:setRandomCondition(nil) end
+    local script = vehicle:getScript()
+    local loud = (script:getEngineLoudness() or 100) * (SandboxVars.ZombieAttractionMultiplier or 1)
+    vehicle:setEngineFeature(100, loud, script:getEngineForce())
+    local s = T.spec(vehicle)
+    local colors = s and s.colors
+    if colors and #colors > 0 then
+        local c = colors[ZombRand(#colors) + 1]
+        vehicle:setColorHSV(c[1], c[2], c[3])
+        vehicle:transmitColorHSV()
+    end
+end
+
+-- GasTank update: drive draw minus brake regen, every game minute while the car's parts update; cable length check.
+function T.Update.Battery(vehicle, part, elapsedMinutes)
+    if not part:getInventoryItem() then return end
+    local chg = part:getModData().chg
+    if chg and T.Charge then T.Charge.checkCable(vehicle, part, chg) end
+    local m = math.min(elapsedMinutes or 0, T.MAX_ELAPSED)
+    if m <= 0 then return end
+    local s = T.spec(vehicle)
+    if not s then return end
+    local used = 0
+    if vehicle:isEngineRunning() then
+        local kmh = math.abs(vehicle:getCurrentSpeedKmHour())
+        used = (s.idleKw + s.kwPerKmh * kmh) * m / 60 / T.rangeMul()
+    end
+    local regen = T.Regen and T.Regen.take(vehicle, s, used) or 0
+    if used == 0 and regen == 0 then return end
+    B.set(vehicle, part, B.kwh(part) - used + regen)
+end
+
+-- Engine update: vanilla temperature and needPartsUpdate shut-off (Vehicles.lua:526-560), then camp mode.
+function T.Update.Engine(vehicle, part, elapsedMinutes)
+    Vehicles.Update.Engine(vehicle, part, elapsedMinutes)
+    local f = T.Camp and T.Camp.onEngineUpdate
+    if f then f(vehicle, part, elapsedMinutes) end
+end

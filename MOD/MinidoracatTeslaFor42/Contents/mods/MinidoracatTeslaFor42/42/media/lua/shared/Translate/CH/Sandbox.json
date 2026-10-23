@@ -1,0 +1,7 @@
+{
+    "Sandbox_MinidoracatTesla": "特斯拉電動車",
+    "Sandbox_MinidoracatTesla_RangeMultiplier": "續航倍率",
+    "Sandbox_MinidoracatTesla_RangeMultiplier_tooltip": "電池充滿能開多遠。\n1.0＝和原版同級車加滿一箱油一樣遠；2.0＝兩倍遠。",
+    "Sandbox_MinidoracatTesla_ChargeSpeedMultiplier": "充電速度倍率",
+    "Sandbox_MinidoracatTesla_ChargeSpeedMultiplier_tooltip": "1.0＝照官方功率充電（壁掛式充電座 11.5 kW）；2.0＝兩倍快。"
+}

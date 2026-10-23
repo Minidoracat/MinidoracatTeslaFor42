@@ -1,0 +1,39 @@
+module Base
+{
+    /* Wall Connector Gen 3: static IsoObject model for spriteModels (common/media/spriteModels.txt).
+       static + undoCoreScale like vanilla models_isoobject.txt; 1 mesh unit = 1 tile. */
+    model MinidoracatTesla_WallConnector
+    {
+        mesh = IsoObject/MinidoracatTesla_WallConnector,
+        texture = IsoObject/MinidoracatTesla_WallConnector,
+        static = true,
+        scale = 1.0,
+        undoCoreScale = true,
+    }
+
+    /* Charge cable segments: drawn only by client/MinidoracatTesla/Cable.lua with Render3DItem.
+       undoCoreScale cancels the item 1.5x (Core.java:2584), so 1 mesh unit = 1 tile. */
+    model MinidoracatTesla_CableHang
+    {
+        mesh = WorldItems/MinidoracatTesla_CableHang,
+        texture = WorldItems/MinidoracatTesla_Cable,
+        scale = 1.0,
+        undoCoreScale = true,
+    }
+
+    model MinidoracatTesla_CableFloor
+    {
+        mesh = WorldItems/MinidoracatTesla_CableFloor,
+        texture = WorldItems/MinidoracatTesla_Cable,
+        scale = 1.0,
+        undoCoreScale = true,
+    }
+
+    model MinidoracatTesla_CablePlug
+    {
+        mesh = WorldItems/MinidoracatTesla_CablePlug,
+        texture = WorldItems/MinidoracatTesla_Cable,
+        scale = 1.0,
+        undoCoreScale = true,
+    }
+}

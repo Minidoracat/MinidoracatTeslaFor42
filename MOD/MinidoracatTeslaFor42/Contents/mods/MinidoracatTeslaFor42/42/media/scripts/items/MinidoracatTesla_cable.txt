@@ -1,0 +1,31 @@
+module Base
+{
+    /* Render-only items: client/MinidoracatTesla/Cable.lua instances each once (instanceItem) and draws them with
+       Render3DItem between a charger and a car. They never enter the world, a container or a loot table. */
+    item MinidoracatTesla_CableHang
+    {
+        Weight = 0.1,
+        ItemType = base:normal,
+        DisplayCategory = Electronics,
+        Icon = MinidoracatTesla_Cable,
+        WorldStaticModel = Base.MinidoracatTesla_CableHang,
+    }
+
+    item MinidoracatTesla_CableFloor
+    {
+        Weight = 0.1,
+        ItemType = base:normal,
+        DisplayCategory = Electronics,
+        Icon = MinidoracatTesla_Cable,
+        WorldStaticModel = Base.MinidoracatTesla_CableFloor,
+    }
+
+    item MinidoracatTesla_CablePlug
+    {
+        Weight = 0.1,
+        ItemType = base:normal,
+        DisplayCategory = Electronics,
+        Icon = MinidoracatTesla_Cable,
+        WorldStaticModel = Base.MinidoracatTesla_CablePlug,
+    }
+}

@@ -1,0 +1,21 @@
+module Base
+{
+    /* Built by scripts/blender/modely/build.py. Meshes are in grid units: model scale 0.5495 = 1 / vehicle scale 1.82,
+       so vertex x model scale x vehicle scale = vertex (vanilla uses 0.008 with centimetre meshes). */
+    model MinidoracatTesla_ModelY
+    {
+        mesh = vehicles/MinidoracatTesla_ModelY,
+        shader = vehicle_multiuv,
+        static = true,
+        invertX = false,
+        scale = 0.5495,
+    }
+
+    model MinidoracatTesla_ModelY_Wheel
+    {
+        mesh = vehicles/MinidoracatTesla_ModelY_Wheel,
+        texture = Vehicles/MinidoracatTesla_ModelY_wheel,
+        shader = vehiclewheel,
+        scale = 0.5495,
+    }
+}

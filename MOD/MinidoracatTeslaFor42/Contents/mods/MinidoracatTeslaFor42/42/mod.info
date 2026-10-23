@@ -4,3 +4,5 @@ description=[B42]特斯拉電動車與充電設備：用電池行駛、在充電
 poster=poster.png
 modversion=42.21.0-0.1.0
 versionMin=42.21.0
+pack=MinidoracatTesla
+tiledef=MinidoracatTesla_tiles 7431

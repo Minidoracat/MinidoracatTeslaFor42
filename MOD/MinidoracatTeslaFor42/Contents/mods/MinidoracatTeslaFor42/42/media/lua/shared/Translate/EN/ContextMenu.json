@@ -1,0 +1,9 @@
+{
+    "ContextMenu_MinidoracatTesla_SentryOn": "Enable Sentry Mode",
+    "ContextMenu_MinidoracatTesla_SentryOff": "Disable Sentry Mode",
+    "ContextMenu_MinidoracatTesla_CampOn": "Enable Camp Mode",
+    "ContextMenu_MinidoracatTesla_Plug": "Plug in charge cable",
+    "ContextMenu_MinidoracatTesla_PlugInto": "Plug in charge cable: %1",
+    "ContextMenu_MinidoracatTesla_Unplug": "Unplug charge cable",
+    "ContextMenu_MinidoracatTesla_ChargeStatus": "Charging status"
+}
