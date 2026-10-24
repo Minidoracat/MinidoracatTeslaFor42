@@ -60,4 +60,69 @@ module Base
         static = false,
         scale = 0.5495,
     }
+
+    /* 3-D cabin and see-through glass (build.py stage cabin). GloveBox draws Cabin then Glass (same part's models in
+       script order, VehiclePart.java:175-181); the window parts come after GloveBox in the template.
+       Cabin: own palette texture, so a non-vehicle shader, which only gets the transform when static (Model.java:
+       591-597). Glass: the body's panes; MinidoracatTesla_glass samples TextureRust, so the engine binds the car's
+       skin / mask / damage / uninstall state (Shader.java:149,719-721): open or removed windows are cut away. */
+    model MinidoracatTesla_ModelY_Cabin
+    {
+        mesh = vehicles/MinidoracatTesla_ModelY_Cabin,
+        texture = Vehicles/MinidoracatTesla_ModelY_cabin,
+        shader = MinidoracatTesla_cabin,
+        static = true,
+        scale = 0.5495,
+    }
+
+    model MinidoracatTesla_ModelY_Glass
+    {
+        mesh = vehicles/MinidoracatTesla_ModelY_Glass,
+        shader = MinidoracatTesla_glass,
+        static = true,
+        invertX = false,
+        scale = 0.5495,
+    }
+
+    /* Door windows and rear glass: skinned meshes in the doors FBX on their door's bone, shown by the Window /
+       WindshieldRear part, the door's child, so they borrow the door's AnimationPlayer (BaseVehicle.java:11844-11850). */
+    model MinidoracatTesla_ModelY_WindowFrontLeft
+    {
+        mesh = vehicles/MinidoracatTesla_ModelY_Doors|WindowFrontLeft,
+        shader = MinidoracatTesla_glass,
+        static = false,
+        scale = 0.5495,
+    }
+
+    model MinidoracatTesla_ModelY_WindowFrontRight
+    {
+        mesh = vehicles/MinidoracatTesla_ModelY_Doors|WindowFrontRight,
+        shader = MinidoracatTesla_glass,
+        static = false,
+        scale = 0.5495,
+    }
+
+    model MinidoracatTesla_ModelY_WindowRearLeft
+    {
+        mesh = vehicles/MinidoracatTesla_ModelY_Doors|WindowRearLeft,
+        shader = MinidoracatTesla_glass,
+        static = false,
+        scale = 0.5495,
+    }
+
+    model MinidoracatTesla_ModelY_WindowRearRight
+    {
+        mesh = vehicles/MinidoracatTesla_ModelY_Doors|WindowRearRight,
+        shader = MinidoracatTesla_glass,
+        static = false,
+        scale = 0.5495,
+    }
+
+    model MinidoracatTesla_ModelY_WindshieldRear
+    {
+        mesh = vehicles/MinidoracatTesla_ModelY_Doors|WindshieldRear,
+        shader = MinidoracatTesla_glass,
+        static = false,
+        scale = 0.5495,
+    }
 }

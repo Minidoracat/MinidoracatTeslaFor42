@@ -180,6 +180,7 @@ Z = {  # mask zone colours (media/shaders/vehicle_common.frag.h colZone*)
     "GuardRH": (0, .75, .75), "GuardRT": (.75, .75, 0), "GuardLH": (.75, 0, .75), "GuardLT": (0, 0, .75), "Roof": (0, 0, 0),
     "LightRH": (.25, 0, 0), "LightLH": (.75, 0, 0), "LightRT": (0, .75, 0), "LightLT": (0, .25, 0),
     "StopR": (.5, .25, 0), "StopL": (.5, .75, 0), "Hood": (1, 0, .5), "Boot": (0, 1, .5),
+    "LightBarL": (.25, .25, .25),   # Tesla lights no LightBar: stage cabin re-zones the roof glass to it
 }
 
 
@@ -1413,6 +1414,7 @@ def stage_final(n):
     bpy.ops.wm.save_as_mainfile(filepath=os.path.join(TMP, "v2_final.blend"))
     previews(body, wl, zmid, info["wheel_r"])
     stage_doors()
+    stage_cabin()
     verify(n)
 
 # ---------------------------------------------------------------- doors
@@ -1435,6 +1437,8 @@ DOORS = {
     "TrunkDoor": (0, (1, 0, 0), -75, 3.6),
 }
 DOORS_FBX = NAME + "_Doors"
+DOOR_GLASS_ZONES = ("WinLH", "WinLT", "WinRH", "WinRT", "WinH")   # window zones a door / the tailgate carries
+DOOR_RATE = 0.5   # Open / Close rate: the window glass (the door's child) advances the door's player a second time a frame
 DOOR_T, JAMB_T = 0.06, 0.08       # grid: door slab thickness (inner panel offset), body jamb depth
 GATE_IN = (0.0, 0.894, -0.447)    # tailgate inward direction (forward and down: the glass leans, the panel stands)
 CLIP_FPS = 30
@@ -1719,10 +1723,13 @@ def stage_doors():
                   for i in range(3)}
     meshes, hinges = [], {}
     mir = mirror_head(cen)
+    # window panes: outer faces only (stage cabin moves them to see-through glass models); the slab's inner panel and
+    # edge strips close round the window hole instead of covering it
+    gl = np.isin(zone, list(DOOR_GLASS_ZONES)) & ~mir
     for k, (part, (sd, axis, ang, secs)) in enumerate(DOORS.items(), 1):
         sel = piece == k
         off = (np.array([-sd, 0, 0]) if sd else np.array(GATE_IN)) * DOOR_T
-        P, t, a, edges = slab(V, T, A, sel & ~mir, off, liner_attr, outer_extra=sel & mir)
+        P, t, a, edges = slab(V, T, A, sel & ~mir & ~gl, off, liner_attr, outer_extra=sel & (mir | gl))
         newv, jt, ja = jamb(bodyV, T, A, edges, body_edges, off / DOOR_T * JAMB_T, liner_attr)
         bodyV = np.concatenate([bodyV, newv])
         body_t.append(jt)
@@ -1786,6 +1793,14 @@ def stage_doors():
     for pb in arm.pose.bones:
         pb.rotation_quaternion = (1, 0, 0, 0)
     sc.frame_start, sc.frame_end = 1, end
+    export_doors(obs)
+    # cut body and doors (doors in FBX space, actions kept) for stage cabin, which splits the glass off both
+    bpy.ops.wm.save_as_mainfile(filepath=os.path.join(TMP, "v2_doors.blend"))
+    door_previews(cut_body, arm, obs[1:])
+
+
+def export_doors(obs):
+    """Doors FBX: the armature, its skinned meshes and every action as a take (stage doors, again in stage cabin)."""
     select_only(*obs)
     bpy.ops.export_scene.fbx(filepath=os.path.join(VEH_DIR, DOORS_FBX + ".fbx"), use_selection=True,
                              object_types={"ARMATURE", "MESH"}, apply_scale_options="FBX_SCALE_UNITS",
@@ -1795,7 +1810,6 @@ def stage_doors():
                              bake_anim_use_nla_strips=False, bake_anim_use_all_actions=True,
                              bake_anim_force_startend_keying=True, bake_anim_step=1.0, bake_anim_simplify_factor=0.0,
                              path_mode="STRIP")
-    door_previews(cut_body, arm, obs[1:])
 
 
 def door_previews(body, arm, doors):
@@ -1817,6 +1831,338 @@ def door_previews(body, arm, doors):
     bpy.context.view_layer.update()
     preview.render_views(os.path.join(PREV, "doors_open"), ortho=5.0, center=Vector((0, 0, 0)), res=(1600, 900), views=views)
 
+
+# ---------------------------------------------------------------- cabin and glass (research R9, models.md section 8)
+
+CABIN_FLOOR = -0.43       # mesh z (centred; ground -0.75): cabin floor
+CABIN_INSET = 0.05        # grid: the cabin shell sits this far inside the surface its ray hit
+CABIN_Y = (1.12, -1.35)   # mesh y of the front and rear walls of the cabin shell: the front is past the windscreen's
+#                           lower edge (y 1.089 on the centre line, WS_BASE), else the ground shows under the glass
+CABIN_ZC = -0.10          # mesh z of the cabin axis the shell rays start from
+CABIN_RES = (25, 29)      # shell: rings along y, rays per ring (200 -> -20 deg round the axis)
+SEAT_X, SEAT_Z = 0.33, -0.19  # passenger inside points (geometry(): side 0.33, seat_y 0.56 ground; y fz / rz below)
+SEAT_Y = ((DOOR_FRONT_Y + B_PILLAR_Y) / 2 - 0.12, (B_PILLAR_Y + DOOR_REAR_Y) / 2 - 0.08)
+# 64^2 palette, 4 x 4 cells of 16 px, sRGB; every face maps to one cell centre (no mip bleed). Black interior ($IPB15)
+# a step lighter than life so seats read against the floor through the glass (calibration knob). The cabin shader
+# shows texels brighter than 0.55 unlit (the screen): keep every other cell under it
+CABIN_RGB = {"floor": (22, 22, 24), "liner": (40, 40, 44), "seat": (88, 88, 94), "base": (30, 30, 32),
+             "dash": (46, 46, 50), "trim": (112, 106, 98), "console": (40, 40, 43), "wheel": (28, 28, 30),
+             "screen_back": (16, 16, 18), "screen": (170, 192, 214)}
+# body glass: the windscreen, the roof glass (Roof texels painted ROOF_GLASS, re-zoned to LightBar L: no Tesla light
+# uses it) and the fixed quarter glass; the door / tailgate windows go to their door's glass mesh
+GLASS_ZONES = ("WinT", "WinH", "WinLH", "WinLT", "WinRH", "WinRT", "LightBarL")
+# door glass mesh -> the vehicle part whose model shows it. The part is the door's child (template Window; the rear
+# glass's WindshieldRear gets parent = TrunkDoor), so the model borrows the door's AnimationPlayer (BaseVehicle.java:
+# 11844-11850) and swings with it, and hides with its own item (setModelVisible)
+GLASS_PART = {"DoorFrontLeft": "WindowFrontLeft", "DoorFrontRight": "WindowFrontRight",
+              "DoorRearLeft": "WindowRearLeft", "DoorRearRight": "WindowRearRight", "TrunkDoor": "WindshieldRear"}
+# glass UV1 boxes on the shared Veh_Damage1 / Veh_Damage2 / Veh_Blood_* 512 maps: vanilla ModernCar's UV1 of the same
+# mask zone (vanilla.py; its WinLH faces spread over half the map, so every side window takes the WinRH box). The body's
+# UV1 = UV0 x 0.56 put the windscreen where both damage maps are fully transparent (no cracks ever, 51c8459 too). The
+# roof glass has no part, so no damage: its UV1 stays
+DAMAGE_UV1 = {"WinT": ((0.245, 0.246), (0.570, 0.743)), "WinH": ((0.574, 0.425), (0.837, 0.539)),
+              **{z: ((0.311, 0.686), (0.505, 0.831)) for z in ("WinLH", "WinLT", "WinRH", "WinRT")}}
+
+
+def stage_cabin():
+    """v2_doors.blend -> glass split off the cut body (static glass FBX) and off every door (one skinned glass mesh per
+    door in the doors FBX, on the door's bone), body and doors FBX without it, cabin FBX + palette, mask with the roof
+    glass in LightBar L."""
+    from mathutils.bvhtree import BVHTree
+    import vanilla
+    bpy.ops.wm.open_mainfile(filepath=os.path.join(TMP, "v2_doors.blend"))
+    body, arm = bpy.data.objects[NAME], bpy.data.objects["VehicleSkeleton"]
+    doors = [bpy.data.objects[p] for p in DOORS]
+    conv = np.array(Matrix.Rotation(-math.pi / 2, 3, "X"))     # Blender -> FBX space; doors' raw co @ conv = Blender
+    mpath = os.path.join(TEX_DIR, NAME + "_mask.png")
+    mask = img_np(bpy.data.images.load(mpath))
+    skin = img_np(bpy.data.images.load(os.path.join(TEX_DIR, f"{NAME}_{PAINTS[0][0]}.png")))[..., :3]
+    h, w = mask.shape[:2]
+    sv = skin[((np.arange(h) + 0.5) * skin.shape[0] / h).astype(int)][:, ((np.arange(w) + 0.5) * skin.shape[1] / w).astype(int)]
+    roof = (np.abs(sv - np.array(ROOF_GLASS)).max(-1) < 0.03) & (mask[..., :3].max(-1) < 0.02)
+    mask[roof, :3] = np.round(np.array(Z["LightBarL"]) * 255) / 255
+    save_png(mask, mpath, "mask")
+    dmaps = [img_np(bpy.data.images.load(os.path.join(vanilla.PZ, "textures", "Vehicles", dn + ".png")))[..., 3]
+             for dn in ("Veh_Damage1", "Veh_Damage2")]
+
+    def zones(ob):
+        """Glass zone index per face (-1 = not glass) from the mask at its UV0 centre; mirror heads (|x| past MIRROR
+        root_x, x is the same in both spaces) sample a side-window texel and stay opaque."""
+        me = ob.data
+        uv = np.empty(len(me.loops) * 2)
+        me.uv_layers["UV0"].data.foreach_get("uv", uv)
+        ls, lt = (np.empty(len(me.polygons), np.int64) for _ in range(2))
+        me.polygons.foreach_get("loop_start", ls)
+        me.polygons.foreach_get("loop_total", lt)
+        fuv = np.add.reduceat(uv.reshape(-1, 2), ls) / lt[:, None]
+        px = mask[np.clip((fuv[:, 1] * h).astype(int), 0, h - 1), np.clip((fuv[:, 0] * w).astype(int), 0, w - 1), :3]
+        z = np.full(len(px), -1, np.int32)
+        for i, zn in enumerate(GLASS_ZONES):
+            z[np.abs(px - np.array(Z[zn])).max(1) < 0.02] = i
+        z[np.abs(face_centres(ob)[:, 0]) > MIRROR["root_x"] - 0.015] = -1
+        return z
+
+    def split(ob, name):
+        """Glass faces of ob -> new object `name` (same parent, armature, vertex groups); UV1 per pane into its vanilla
+        damage box (uniform scale, a quarter turn when the long sides disagree)."""
+        z = zones(ob)
+        g = dup(ob, name)
+        g.data.name = name
+        keep_faces(g, z >= 0)
+        keep_faces(ob, z < 0)
+        gz = z[z >= 0]
+        lf = np.repeat(gz, [p.loop_total for p in g.data.polygons])
+        u1 = np.empty(len(g.data.loops) * 2)
+        g.data.uv_layers["UV1"].data.foreach_get("uv", u1)
+        u1 = u1.reshape(-1, 2)
+        for zn, ((a0, b0), (a1, b1)) in DAMAGE_UV1.items():
+            sel = lf == GLASS_ZONES.index(zn)
+            if not sel.any():
+                continue
+            q = u1[sel]
+            lo, hi = q.min(0), q.max(0)
+            q = q - (lo + hi) / 2
+            size = hi - lo
+            if (size[0] > size[1]) != (a1 - a0 > b1 - b0):
+                q, size = np.stack([-q[:, 1], q[:, 0]], 1), size[::-1]
+            u1[sel] = q * min((a1 - a0) / size[0], (b1 - b0) / size[1]) + [(a0 + a1) / 2, (b0 + b1) / 2]
+            cov = [(dm[(u1[sel, 1] * dm.shape[0]).astype(int).clip(0, dm.shape[0] - 1),
+                       (u1[sel, 0] * dm.shape[1]).astype(int).clip(0, dm.shape[1] - 1)] > 0.1).mean() for dm in dmaps]
+            print(f"CHECK glass UV1 {name} {zn}: corners on Veh_Damage1 / 2 cracks %.3f / %.3f" % tuple(cov))
+        g.data.uv_layers["UV1"].data.foreach_set("uv", u1.ravel())
+        print(f"CABIN glass {name}:", {zn: int((gz == i).sum()) for i, zn in enumerate(GLASS_ZONES) if (gz == i).any()})
+        return g
+
+    glass = split(body, NAME + "_Glass")
+    door_glass = [split(d, GLASS_PART[d.name]) for d in doors]
+    for d, g in zip(doors, door_glass):
+        if not len(g.data.polygons):
+            raise SystemExit(f"{d.name}: no window faces (run doors first: it keeps them outer-only)")
+
+    tree = lambda items: BVHTree.FromPolygons(*_soup_lists(items, conv))
+    bvh = {"body": tree([(body, False)]), "glass": tree([(glass, False)] + [(g, True) for g in door_glass]),
+           "door": tree([(d, True) for d in doors])}
+    cabin = cabin_mesh(bvh)
+    export_fbx(body, os.path.join(VEH_DIR, NAME + ".fbx"))
+    export_fbx(glass, os.path.join(VEH_DIR, NAME + "_Glass.fbx"))
+    export_fbx(cabin, os.path.join(VEH_DIR, NAME + "_Cabin.fbx"))
+    export_doors([arm] + doors + door_glass)
+    pal = np.zeros((64, 64, 4), np.float32)
+    pal[..., 3] = 1
+    for i, rgb in enumerate(CABIN_RGB.values()):
+        r, c = divmod(i, 4)
+        pal[r * 16:(r + 1) * 16, c * 16:(c + 1) * 16, :3] = np.array(rgb) / 255
+    save_png(pal, os.path.join(TEX_DIR, NAME + "_cabin.png"), "cabin")
+    shell = BVHTree.FromPolygons(*_soup_lists([(body, False), (glass, False)] + [(o, True) for o in doors + door_glass], conv))
+    outside = [tuple(np.round(v.co, 3)) for v in cabin.data.vertices if not inside(shell, v.co)]
+    print("CABIN roof glass mask texels", int(roof.sum()), "tris: body", tris(body), "glass", tris(glass), "doors",
+          sum(tris(d) for d in doors), "door glass", {g.name: tris(g) for g in door_glass}, "cabin", tris(cabin),
+          "cabin verts outside the body", len(outside), outside[:8])
+    for nm in (NAME, NAME + "_Glass", NAME + "_Cabin"):    # read back: every static mesh needs UV0 + UV1 (the
+        o = import_fbx(os.path.join(VEH_DIR, nm + ".fbx"))         # skinned door attributes linger at 2 / 3)
+        uvs = [u.name for u in o.data.uv_layers]
+        print("CHECK", nm, "tris", tris(o), "uv", uvs)
+        if uvs[:2] != ["UV0", "UV1"]:
+            raise SystemExit(f"{nm}: UV layers {uvs}, want UV0, UV1")
+    bpy.ops.wm.read_factory_settings(use_empty=True)
+    bpy.ops.import_scene.fbx(filepath=os.path.join(VEH_DIR, DOORS_FBX + ".fbx"), automatic_bone_orientation=False)
+    got = sorted((o.name, tris(o), len(o.vertex_groups), [u.name for u in o.data.uv_layers])
+                 for o in bpy.data.objects if o.type == "MESH")
+    print("CHECK doors FBX", got, "actions", sorted(a.name for a in bpy.data.actions))
+    want = set(DOORS) | set(GLASS_PART.values())
+    if {n for n, *_ in got} != want or any(vg != 1 or uv[:2] != ["UV0", "UV1"] for _, _, vg, uv in got):
+        raise SystemExit(f"doors FBX meshes {got}, want {sorted(want)} each with one bone group and UV0 + UV1")
+
+
+def _soup_lists(items, conv):
+    """(object, in FBX space) pairs -> one vertex list (Blender axes) and polygon list for BVHTree.FromPolygons."""
+    V, F, n = [], [], 0
+    for ob, fbx in items:
+        co = mesh_co(ob) @ conv if fbx else mesh_co(ob)
+        V += co.tolist()
+        F += [tuple(i + n for i in p.vertices) for p in ob.data.polygons]
+        n += len(co)
+    return V, F
+
+
+def import_fbx(path):
+    """FBX -> mesh in Blender axes (identity transform), the inverse of export_fbx; fresh scene."""
+    bpy.ops.wm.read_factory_settings(use_empty=True)
+    bpy.ops.import_scene.fbx(filepath=path, axis_forward="-Z", axis_up="Y", bake_space_transform=True)
+    return [o for o in bpy.data.objects if o.type == "MESH"][0]
+
+
+def inside(bvh, p):
+    """Point enclosed by the car (body, doors, glass): rays to both sides and up all hit it. The parts together are not
+    one closed surface (door gaps, jambs), so a parity count is meaningless."""
+    return all(bvh.ray_cast(Vector(p), Vector(d))[0] is not None for d in ((1, 0, 0), (-1, 0, 0), (0, 0, 1)))
+
+
+def rbox(size, r, cuts=(0, 0, 0), seg=2):
+    """Rounded box on the origin: full size (x, y, z), edge radius r; `cuts` extra loops per axis give later bends
+    vertices to move. -> verts (N x 3), faces (index lists), outward."""
+    bm = bmesh.new()
+    bmesh.ops.create_cube(bm, size=1.0)
+    for ax, n in enumerate(cuts):
+        if n:
+            es = [e for e in bm.edges if abs(e.verts[0].co[ax] - e.verts[1].co[ax]) > 0.5]
+            bmesh.ops.subdivide_edges(bm, edges=es, cuts=n, use_grid_fill=True)
+    for v in bm.verts:
+        v.co = Vector([v.co[i] * size[i] for i in range(3)])
+    bm.normal_update()
+    rim = [e for e in bm.edges if e.is_manifold and e.calc_face_angle(0) > 0.5]
+    bmesh.ops.bevel(bm, geom=rim + list({v for e in rim for v in e.verts}), offset=r, segments=seg, profile=0.5,
+                    affect="EDGES", clamp_overlap=True)
+    bm.verts.index_update()
+    V = np.array([v.co[:] for v in bm.verts])
+    F = [[v.index for v in f.verts] for f in bm.faces]
+    bm.free()
+    return V, F
+
+
+def rot_x(deg):
+    c, s = math.cos(math.radians(deg)), math.sin(math.radians(deg))
+    return np.array([[1, 0, 0], [0, c, -s], [0, s, c]])
+
+
+def cabin_mesh(bvh):
+    """Cabin (mesh coords, centred), smooth-shaded rounded parts: a shell CABIN_INSET inside the body where the body is
+    opaque (floor, sills, pillars, roof rails, firewall, the wall behind the rear seats; none behind glass, so the far
+    windows stay see-through, none behind the doors, so an open door shows the seats), Model Y front buckets (cushion
+    and backrest side bolsters, curved backrest, integrated headrest), rear bench (three cushions and backs, three
+    headrests), dash with its trim strip, 15.4" centre screen (lit face to the seats), steering wheel, centre console.
+    `bvh`: "body" / "glass" / "door" surfaces in Blender axes."""
+    V, F, cell, flat, shell_n = [], [], [], [], 0
+
+    def add(v, f, c, smooth=True):
+        n = sum(len(x) for x in V)
+        V.append(np.asarray(v, float))
+        F.extend([[i + n for i in fc] for fc in f])
+        cell.extend([c] * len(f) if isinstance(c, str) else c)
+        flat.extend([not smooth] * len(f))
+
+    # shell: rings across y, rays from the axis; each ray keeps what it hit first (body / glass / door)
+    nr, na = CABIN_RES
+    pts, kind = np.zeros((nr, na + 2, 3)), np.zeros((nr, na + 2), object)
+    for i, y in enumerate(np.linspace(CABIN_Y[0], CABIN_Y[1], nr)):
+        o = Vector((0, y, CABIN_ZC))
+        for j, t in enumerate(np.radians(np.linspace(200, -20, na)), 1):
+            d = Vector((math.cos(t), 0, math.sin(t)))
+            hits = [(h[3], k, h[0]) for k, b in bvh.items() for h in (b.ray_cast(o, d),) if h[0] is not None]
+            dist, k, p = min(hits) if hits else (1.0, "none", o + d)
+            p = p - d * CABIN_INSET
+            pts[i, j] = (p.x, y, max(p.z, CABIN_FLOOR))
+            kind[i, j] = "floor" if p.z <= CABIN_FLOOR else k
+        pts[i, 0], pts[i, -1] = (pts[i, 1, 0], y, CABIN_FLOOR), (pts[i, -2, 0], y, CABIN_FLOOR)
+        kind[i, 0] = kind[i, -1] = "floor"
+    n = na + 2
+    keep = lambda ks: all(k in ("body", "floor") for k in ks)
+    sv, sf, sc = pts.reshape(-1, 3), [], []
+    for i in range(nr - 1):
+        for j in range(n):
+            q = [i * n + j, (i + 1) * n + j, (i + 1) * n + (j + 1) % n, i * n + (j + 1) % n]
+            ks = [kind.flat[x] for x in q]
+            if keep(ks):
+                sf.append(q)
+                sc.append("floor" if all(k == "floor" for k in ks) else "liner")
+    for i in (0, nr - 1):                               # firewall and rear wall: fans round the axis
+        c = len(sv)
+        sv = np.concatenate([sv, [[0, pts[i, 0, 1], CABIN_ZC]]])
+        for j in range(n):
+            if keep([kind[i, j], kind[i, (j + 1) % n]]):
+                sf.append([c, i * n + j, i * n + (j + 1) % n])
+                sc.append("liner")
+    for f in sf:                                        # every shell face looks at the axis
+        a, b, c = sv[f[0]], sv[f[1]], sv[f[2]]
+        cen = sv[f].mean(0)
+        tgt = np.array([0, min(max(cen[1], -1.0), 0.7), CABIN_ZC])
+        if np.dot(np.cross(b - a, c - a), tgt - cen) < 0:
+            f.reverse()
+    add(sv, sf, sc, smooth=False)
+    shell_n = len(sf)
+
+    def part(size, r, c, at, cuts=(0, 0, 0), sag=0.0, bend=0.0, taper=0.0, tilt=None, seg=2):
+        """rbox + shaping: `sag` dips the top's middle (x), `bend` brings the sides forward (+y), `taper` narrows the
+        top; `tilt` = (pivot y, pivot z, deg) reclines about a line along x (top to the rear)."""
+        v, f = rbox(size, r, cuts, seg)
+        x = 2 * v[:, 0] / size[0]
+        if sag:
+            v[:, 2] -= sag * np.clip(1 - x * x, 0, 1) * (v[:, 2] > 0)
+        v[:, 1] += bend * x * x
+        v[:, 0] *= 1 - taper * (v[:, 2] / size[2] + 0.5)
+        v += at
+        if tilt:
+            py, pz, deg = tilt
+            v = (v - [0, py, pz]) @ rot_x(deg).T + [0, py, pz]
+        add(v, f, c)
+        return v, f
+
+    z0 = SEAT_Z
+    for s in (-1, 1):                                   # front buckets
+        cx, fy = s * SEAT_X, SEAT_Y[0]
+        rec = (fy - 0.11, z0 - 0.03, 14)
+        part((0.30, 0.30, z0 - 0.10 - CABIN_FLOOR), 0.02, "base", (cx, fy + 0.05, (z0 - 0.10 + CABIN_FLOOR) / 2), seg=1)
+        part((0.42, 0.40, 0.09), 0.035, "seat", (cx, fy + 0.08, z0 - 0.06), cuts=(2, 0, 0), sag=0.025)
+        part((0.42, 0.11, 0.50), 0.04, "seat", (cx, fy - 0.17, z0 + 0.22), cuts=(2, 0, 0), bend=0.05, taper=0.12, tilt=rec)
+        part((0.25, 0.10, 0.17), 0.05, "seat", (cx, fy - 0.18, z0 + 0.54), taper=0.1, tilt=rec, seg=3)
+        for e in (-1, 1):
+            part((0.07, 0.34, 0.07), 0.03, "seat", (cx + e * 0.185, fy + 0.07, z0 - 0.01))
+            part((0.07, 0.13, 0.32), 0.03, "seat", (cx + e * 0.19, fy - 0.11, z0 + 0.15), tilt=rec)
+    ry = SEAT_Y[1]                                      # rear bench: three cushions, three backs, three headrests
+    rec = (ry - 0.11, z0 - 0.03, 18)
+    part((1.08, 0.36, z0 - 0.10 - CABIN_FLOOR), 0.02, "base", (0, ry + 0.06, (z0 - 0.10 + CABIN_FLOOR) / 2), seg=1)
+    for cx, wd in ((-0.365, 0.36), (0, 0.33), (0.365, 0.36)):
+        part((wd, 0.40, 0.09), 0.035, "seat", (cx, ry + 0.08, z0 - 0.06), cuts=(1, 0, 0), sag=0.015)
+        part((wd, 0.11, 0.44), 0.04, "seat", (cx, ry - 0.17, z0 + 0.19), cuts=(1, 0, 0), bend=0.02, tilt=rec)
+        part((0.20 if cx else 0.17, 0.09, 0.12), 0.045, "seat", (cx, ry - 0.18, z0 + 0.48), tilt=rec, seg=3)
+    part((0.20, 0.80, 0.22), 0.04, "console", (0, 0.12, -0.32))                  # centre console
+    part((1.24, 0.34, 0.16), 0.06, "dash", (0, 0.80, -0.02))                     # dash, trim strip on its face
+    part((1.16, 0.02, 0.035), 0.008, "trim", (0, 0.627, -0.01))
+    part((0.05, 0.04, 0.09), 0.012, "screen_back", (0, 0.64, 0.09))              # screen stand
+    v, f = rbox((0.30, 0.022, 0.19), 0.012)                                       # 15.4" landscape screen
+    v = v @ rot_x(-12).T + [0, 0.61, 0.17]
+    fn = np.array([np.cross(v[fc[1]] - v[fc[0]], v[fc[2]] - v[fc[0]]) for fc in f])
+    fn /= np.linalg.norm(fn, axis=1, keepdims=True)
+    add(v, f, ["screen" if k < -0.9 else "screen_back" for k in fn[:, 1]])
+    # steering wheel in front of the driver, tilted 70 deg back from horizontal: rim torus, hub, three spokes, column
+    wr = Matrix.Translation((-SEAT_X, 0.50, 0.04)) @ Matrix.Rotation(math.radians(70), 4, "X")
+    nu, nv = 20, 6
+    tv = [wr @ Vector(((0.15 + 0.024 * math.cos(b)) * math.cos(a), (0.15 + 0.024 * math.cos(b)) * math.sin(a),
+                       0.024 * math.sin(b)))
+          for a in np.linspace(0, 2 * math.pi, nu, endpoint=False) for b in np.linspace(0, 2 * math.pi, nv, endpoint=False)]
+    add([p[:] for p in tv], [[i * nv + j, i * nv + (j + 1) % nv, ((i + 1) % nu) * nv + (j + 1) % nv, ((i + 1) % nu) * nv + j]
+                             for i in range(nu) for j in range(nv)], "wheel")
+    for size, at in (((0.11, 0.09, 0.05), (0, 0, 0)), ((0.26, 0.03, 0.02), (0, -0.02, 0)), ((0.03, 0.13, 0.02), (0, -0.08, 0)),
+                     ((0.05, 0.05, 0.22), (0, 0, -0.12))):
+        v, f = rbox(size, min(size) * 0.45)
+        add([(wr @ Vector(p + np.array(at)))[:] for p in v], f, "wheel")
+    # mesh: tris, normals made consistent (outward) on the closed parts, shell faces kept looking at the axis
+    me = bpy.data.meshes.new(NAME + "_Cabin")
+    me.from_pydata(np.concatenate(V).tolist(), [], F)
+    names = list(CABIN_RGB)
+    bm = bmesh.new()
+    bm.from_mesh(me)
+    bm.faces.ensure_lookup_table()
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces[shell_n:])
+    for f, c, fl in zip(bm.faces, cell, flat):
+        f.material_index = names.index(c)
+        f.smooth = not fl
+    bmesh.ops.triangulate(bm, faces=bm.faces[:])
+    bm.to_mesh(me)
+    bm.free()
+    ci = np.empty(len(me.polygons), np.int64)
+    me.polygons.foreach_get("material_index", ci)
+    uv = np.stack([(ci % 4 + 0.5) / 4, (ci // 4 + 0.5) / 4], 1)
+    lc = np.repeat(uv, [p.loop_total for p in me.polygons], 0).ravel()
+    # UV1 = UV0 (every vehicle part model carries both: the doors' skinned attributes linger at locations 2 / 3)
+    for nm in ("UV0", "UV1"):
+        me.uv_layers.new(name=nm).data.foreach_set("uv", lc)
+    me.polygons.foreach_set("material_index", np.zeros(len(me.polygons), np.int64))
+    ob = bpy.data.objects.new(NAME + "_Cabin", me)
+    bpy.context.scene.collection.objects.link(ob)
+    ob.data.materials.append(bpy.data.materials.new(NAME + "_Cabin"))
+    print("CABIN shell faces", shell_n, "of", nr * n, "cells", {c: cell.count(c) for c in names})
+    return ob
 
 
 # ---------------------------------------------------------------- script numbers, previews, verify
@@ -1881,8 +2227,8 @@ def geometry(body, zmid, wl, r):
     fz, rz = (DOOR_FRONT_Y + B_PILLAR_Y) / 2 - 0.12, (B_PILLAR_Y + DOOR_REAR_Y) / 2 - 0.08
     seats = (("FrontLeft", 1, fz, (DOOR_FRONT_Y, B_PILLAR_Y)), ("FrontRight", -1, fz, (DOOR_FRONT_Y, B_PILLAR_Y)),
              ("RearLeft", 1, rz, (B_PILLAR_Y, DOOR_REAR_Y)), ("RearRight", -1, rz, (B_PILLAR_Y, DOOR_REAR_Y)))
-    for nm, side, z, door in seats:
-        out += [f"        passenger {nm}", "        {", "            position inside", "            {",
+    for nm, side, z, door in seats:        # showPassenger: the 3-D cabin shows whoever sits there through the glass
+        out += [f"        passenger {nm}", "        {", "            showPassenger = true,", "            position inside", "            {",
                 f"                offset = {f4(side * 0.33 / S, seat_y, z / S)},", "                rotate = 0.0 0.0 0.0,", "            }",
                 "            position outside", "            {",
                 f"                offset = {f4(side * (w_body / 2 + 0.30) / S, ground, z / S)},", "                rotate = 0.0 0.0 0.0,",
@@ -1904,7 +2250,9 @@ def geometry(body, zmid, wl, r):
             "        attachment chargeport", "        {", f"            offset = {f4(*port)},", "            rotate = 0.0 0.0 0.0,", "        }"]
     # animated doors (stage doors): the clip runs open -> closed, so Open plays it reversed, Closed holds its end
     # (reversed, not animated) and Opened its start (vanilla vehicle_car_sports_ez.txt layout); ISOpenVehicleDoor /
-    # ISCloseVehicleDoor play Open / Close, a new model instance holds Opened / Closed (BaseVehicle.java:3926-3930)
+    # ISCloseVehicleDoor play Open / Close, a new model instance holds Opened / Closed (BaseVehicle.java:3926-3930).
+    # DOOR_RATE: postupdate advances each model's AnimationPlayer (BaseVehicle.java:3777-3780) and the door's glass
+    # model borrows the door's, so a door with its window installed advances twice per frame
     for part in DOORS:
         clip = part + "_closing"
         out += [f"        part {part}", "        {", "            model Default", "            {",
@@ -1913,9 +2261,17 @@ def geometry(body, zmid, wl, r):
                                 ("Opened", False, False)):
             out += [f"            anim {anim}", "            {", f"                anim = {clip},"]
             out += ["                reverse = true,"] * rev
-            out += ["                rate = 1.0,"] if live else ["                animate = false,"]
+            out += [f"                rate = {DOOR_RATE},"] if live else ["                animate = false,"]
             out += ["            }"]
         out += ["        }"]
+    # 3-D cabin and glass (stage cabin): GloveBox draws the cabin then the body's panes; each door's window model sits
+    # on the door's child part (template Window: parent = Door*; the rear glass on WindshieldRear, made the tailgate's)
+    out += ["        part GloveBox", "        {", "            model Cabin", "            {", f"                file = {NAME}_Cabin,",
+            "            }", "            model Glass", "            {", f"                file = {NAME}_Glass,", "            }", "        }"]
+    for door, part in GLASS_PART.items():
+        out += [f"        part {part}", "        {"]
+        out += [f"            parent = {door},"] * (part == "WindshieldRear")
+        out += ["            model Default", "            {", f"                file = {NAME}_{part},", "            }", "        }"]
     block = "\n".join(out) + "\n"
     open(os.path.join(TMP, "geometry_block.txt"), "w", newline="\n").write(block)
     # splice into the vehicle script: everything after the geometry marker up to the vehicle's closing brace is ours
@@ -2034,8 +2390,12 @@ if __name__ == "__main__":
         stage_official()
     elif st == "final":
         stage_final(int(args[1]))
-    elif st == "doors":
+    elif st == "doors":                 # doors leaves the windows outer-only: cabin must follow
         stage_doors()
+        stage_cabin()
+        verify(0)
+    elif st == "cabin":
+        stage_cabin()
         verify(0)
     else:
         print(__doc__)
