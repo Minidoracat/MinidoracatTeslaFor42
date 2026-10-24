@@ -238,13 +238,13 @@ module Base
             anim Close
             {
                 anim = DoorFrontLeft_closing,
-                rate = 0.5,
+                rate = 1.0,
             }
             anim Open
             {
                 anim = DoorFrontLeft_closing,
                 reverse = true,
-                rate = 0.5,
+                rate = 1.0,
             }
             anim Closed
             {
@@ -267,13 +267,13 @@ module Base
             anim Close
             {
                 anim = DoorFrontRight_closing,
-                rate = 0.5,
+                rate = 1.0,
             }
             anim Open
             {
                 anim = DoorFrontRight_closing,
                 reverse = true,
-                rate = 0.5,
+                rate = 1.0,
             }
             anim Closed
             {
@@ -296,13 +296,13 @@ module Base
             anim Close
             {
                 anim = DoorRearLeft_closing,
-                rate = 0.5,
+                rate = 1.0,
             }
             anim Open
             {
                 anim = DoorRearLeft_closing,
                 reverse = true,
-                rate = 0.5,
+                rate = 1.0,
             }
             anim Closed
             {
@@ -325,13 +325,13 @@ module Base
             anim Close
             {
                 anim = DoorRearRight_closing,
-                rate = 0.5,
+                rate = 1.0,
             }
             anim Open
             {
                 anim = DoorRearRight_closing,
                 reverse = true,
-                rate = 0.5,
+                rate = 1.0,
             }
             anim Closed
             {
@@ -354,13 +354,13 @@ module Base
             anim Close
             {
                 anim = TrunkDoor_closing,
-                rate = 0.5,
+                rate = 1.0,
             }
             anim Open
             {
                 anim = TrunkDoor_closing,
                 reverse = true,
-                rate = 0.5,
+                rate = 1.0,
             }
             anim Closed
             {
@@ -401,53 +401,6 @@ module Base
             {
                 anim = EngineDoor_closing,
                 animate = false,
-            }
-        }
-        part GloveBox
-        {
-            model Cabin
-            {
-                file = MinidoracatTesla_ModelY_Cabin,
-            }
-            model Glass
-            {
-                file = MinidoracatTesla_ModelY_Glass,
-            }
-        }
-        part WindowFrontLeft
-        {
-            model Default
-            {
-                file = MinidoracatTesla_ModelY_WindowFrontLeft,
-            }
-        }
-        part WindowFrontRight
-        {
-            model Default
-            {
-                file = MinidoracatTesla_ModelY_WindowFrontRight,
-            }
-        }
-        part WindowRearLeft
-        {
-            model Default
-            {
-                file = MinidoracatTesla_ModelY_WindowRearLeft,
-            }
-        }
-        part WindowRearRight
-        {
-            model Default
-            {
-                file = MinidoracatTesla_ModelY_WindowRearRight,
-            }
-        }
-        part WindshieldRear
-        {
-            parent = TrunkDoor,
-            model Default
-            {
-                file = MinidoracatTesla_ModelY_WindshieldRear,
             }
         }
     }
