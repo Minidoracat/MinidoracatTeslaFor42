@@ -5,8 +5,8 @@
 stages (each reads the previous one's .blend in temp/modely/):
   prep            tripo_hi.glb -> axes, scale, body / front-left-wheel sources        -> v2_prep.blend, prev/prep_*.png
   tiers N,N,...   decimated bodies (+ liners, normals from the high-poly, UV0/UV1)     -> v2_tiers.blend, tiers/*.fbx
-  wheel           wheel from the high-poly (outer half mirrored), axle / radial normals, procedural 512 texture
-                  (disc + tread strip)                                                -> MOD wheel FBX + PNG
+  wheel           procedural 255/45R19 tire + recessed Photon aero cover (surface of revolution, closed), procedural
+                  64 texture (disc + tread strip), two UV layers                       -> MOD wheel FBX + PNG
   official        official design-studio renders of the 8 paints                       -> temp/modely/official/
   final N         bake N-tri body at 4096 (cached in bake_N.npz; delete it after a tiers rerun: new UV0), one 2048
                   skin per paint (colour from the official render; glass panes show Tripo's cabin through a tint, black
@@ -56,21 +56,24 @@ HEAD_LINE = ((0.00, 1.950, 0.649), (0.05, 1.949, 0.649), (0.10, 1.948, 0.649), (
              (0.60, 1.715, 0.679), (0.65, 1.665, 0.688), (0.70, 1.611, 0.704), (0.74, 1.568, 0.717))
 HEAD_BAND = 0.045                           # grid: bar 0.9 cm + ring 0.6 cm + 3 cm speckle repaint, with margin
 UV1_SCALE = 0.56                            # shared Veh_* 512 maps at ~vanilla density (R5: UV1 56-60 px/grid)
-WHEEL_TRIS, WHEEL_TEX = 1400, 512
-# wheel texture, all procedural (Tripo's wheel bake had smeared lug nuts and specks in the slots, sat 8.5 mm off the
-# axis, and its grey read as one lit wedge in game). Official 19" Photon aero wheel: matte charcoal face, 5 turbine
+WHEEL_TEX, WHEEL_SS = 64, 8                 # wheel texture size; drawn WHEEL_SS times larger, then box-averaged
+# wheel texture, all procedural (Tripo's wheel bake had smeared lug nuts and specks in the slots and sat 8.5 mm off the
+# axis). Official 19" Photon aero wheel: matte charcoal face, 5 turbine
 # slots with a lit blade edge (official/*_FRONT34.png). Slot edges theta(r) fitted on the Tripo bake: luminance 5-fold
 # median about its own centre, re-centred, per-radius dark run, quadratic rms 0.3 / 0.4 deg. r in wheel_r units,
 # theta in the old planar layout's image axes (x = -y / r, y = -z / r: x right, y down)
 WHEEL_SLOT = dict(p1=(-1.4223, 1.7184, 0.1445), p2=(0.5977, -0.2715, 1.1813), rc=0.20, rim=0.665)
 WHEEL_UV = dict(c=(0.5, 0.43), rho=0.40, tread=(0.865, 0.125))  # disc centre, UV radius of wheel_r; tread strip v0, h
-# sRGB grey levels. The rim face and sidewall normals run along the axle and get little more than ambient light in
-# vehiclewheel.frag, as vanilla's flat hub does (its texture hub is ~180, vehicle_wheel.png), and the wheel is small on
-# screen: the mips blend face, slots, lip and edges. Two runs: texture mean ~45 read ~12 (tesla-modely-wheel-1024a,
-# black wheel), ~115 read ~70 (tesla-modely-tex-1024a, grey), i.e. screen ~ texture^1.9; these levels aim at ~35 (tire
-# ~27, face ~39, the official charcoal). The tread faces up into the sun. Calibration knob
-WHEEL_RGB = dict(face=(85, 108), deep=24, wall=(27, 66), shadow=31, blade=176, cap=66, cap_ring=116, lip=120,
-                 tire=(43, 58), protector=54, tread=35, groove=12, sipe=22)
+# Game-screen sRGB grey levels (calibration knob, compare with game screenshots); wheel_texture turns each into the
+# texture value that renders it: the vehiclewheel output measured on ModernCar's vanilla wheel in the same scenario is
+# 0.143 * tex ** 1.395 (texture 37 / 105 / 169 / 189 -> 22 / ~115 / 193 / 214, tesla-modely-tex-1024e scale-S-zoomin).
+# Vehicle textures get no mipmaps (ModelManager.java:1320-1322, TextureID.java:427): a 512 wheel sampled at ~10 texels
+# per pixel aliased into specks and dotted rings, so it is drawn at 8x and box-averaged to 64 (the vanilla wheel's disc
+# is 36 texels across). Official Photon cover: dark charcoal blades (~40-70), black slots, black tire (~21). Measured in
+# tesla-wheel-1024c: face 58-72 renders ~75-86 (the curve reads the cover ~1.2x dark), tire ~17-32, slots 0-7
+WHEEL_RGB = dict(face=(58, 72), deep=6, wall=(18, 45), shadow=6, blade=125, cap=62, cap_ring=95, lip=80, gap=8,
+                 tire=(22, 28), tread=20)
+WHEEL_SEG = 30                              # segments round the axle: 12 deg, under 0.2 px off a circle at zoom 0.5
 # Model Y body lines (grid, ground z=0, centre y=0), checked on prev/mask_*.png against the panel gaps of the bake
 DOOR_FRONT_Y, B_PILLAR_Y, DOOR_REAR_Y, BELT_Z = 0.83, -0.14, -1.05, 0.92
 # glass panes (grid, same frame), read off the bake's top / side views: the windscreen / roof-glass seam is Tripo's seam
@@ -657,9 +660,9 @@ def wheel_slots(x, y, aa, widen=0.0):
 
 
 def wheel_texture(r_out):
-    """WHEEL_TEX^2 sRGB grey, rows top-down, in the WHEEL_UV layout: the disc (rim face and sidewall, planar) and the
-    tread strip (around x across). r_out = tire radius / wheel_r."""
-    n, g = WHEEL_TEX, {k: np.array(v, float) / 255 for k, v in WHEEL_RGB.items()}
+    """WHEEL_TEX^2 grey texture values (0..1), rows top-down, in the WHEEL_UV layout: the disc (rim face and sidewall,
+    planar) and the tread strip (around x across). r_out = tire radius / wheel_r."""
+    n, g = WHEEL_TEX * WHEEL_SS, {k: (np.array(v, float) / 0.143) ** (1 / 1.395) / 255 for k, v in WHEEL_RGB.items()}
     (cu, cv), rho, (v0, h) = WHEEL_UV["c"], WHEEL_UV["rho"], WHEEL_UV["tread"]
     U, V = np.meshgrid((np.arange(n) + 0.5) / n, 1 - (np.arange(n) + 0.5) / n)
     x, y = (U - cu) / rho, (cv - V) / rho
@@ -668,7 +671,7 @@ def wheel_texture(r_out):
     inside = lambda e: np.clip((e - r) / aa + 0.5, 0, 1)                 # coverage of r < e
     mix = lambda a, b, t: a + (b - a) * t
     cov, pos = wheel_slots(x, y, aa)
-    lit = np.clip(wheel_slots(x, y, aa, math.radians(2.2))[0] - cov, 0, 1)   # blade edge before the deep side
+    lit = np.clip(wheel_slots(x, y, aa, math.radians(5))[0] - cov, 0, 1)    # blade edge before the deep side
     slot = np.where(pos < 0.5, g["deep"], mix(g["wall"][0], g["wall"][1], smoothstep(0.5, 0.9, pos)))
     slot = mix(slot, g["shadow"], smoothstep(0.95, 1.0, pos))
     img = mix(mix(g["face"][0], g["face"][1], np.clip((r - 0.12) / 0.5, 0, 1)), slot, cov)
@@ -678,21 +681,29 @@ def wheel_texture(r_out):
     img = mix(img, g["cap_ring"], inside(0.088))
     img = mix(img, g["cap"], inside(0.075))
     t = np.clip((r - rim) / (r_out - rim), 0, 1)
-    side = mix(g["tire"][0], g["tire"][1], np.sin(np.pi * t) ** 2)     # sidewall bulge catches more light mid-way
-    side = mix(side, g["protector"], inside(rim + 0.035))
+    side = mix(g["tire"][0], g["tire"][1], np.sin(np.pi * t) ** 2)     # faint sheen mid-sidewall (round: it spins)
+    side = mix(side, g["gap"], inside(rim + 0.02))                     # dark joint between the cover and the bead
     img = mix(side, img, inside(rim))
     b = (V - v0) / h                                                    # tread: 0..1 across, U around
-    tr = np.full_like(b, g["tread"])
-    for c in (0.22, 0.41, 0.59, 0.78):                                  # circumferential grooves
-        tr = np.where(np.abs(b - c) < 0.025, g["groove"], tr)
-    blocks = 48
-    shoulder = (b < 0.195) | (b > 0.805)
-    tr = np.where(shoulder & (np.mod(U * blocks + (b - 0.5) * 0.6, 1) < 0.2), g["groove"], tr)
-    rib = (np.abs(b - 0.315) < 0.07) | (np.abs(b - 0.5) < 0.065) | (np.abs(b - 0.685) < 0.07)
-    tr = np.where(rib & (np.mod(U * blocks + (b - 0.5) * 1.2, 1) < 0.12), g["sipe"], tr)
-    tr *= 0.8 + 0.2 * smoothstep(0.0, 0.08, np.minimum(b, 1 - b))     # rounded shoulders
+    tr = g["tread"] * (0.8 + 0.2 * smoothstep(0.0, 0.08, np.minimum(b, 1 - b)))   # rounded shoulders
     img = np.where((b > -0.02) & (b < 1.02), tr, img)
-    return np.where((r > r_out + 0.02) & ((b < -0.02) | (b > 1.02)), g["tire"][0], img)
+    img = np.where((r > r_out + 0.02) & ((b < -0.02) | (b > 1.02)), g["tire"][0], img)
+    return img.reshape(WHEEL_TEX, WHEEL_SS, WHEEL_TEX, WHEEL_SS).mean((1, 3))
+
+
+def wheel_profile(R, rr, hw):
+    """Outer half (x >= 0) of the wheel's cross-section as (x, radius) strips from the tread centre to the hub: the
+    tire (tread, shoulder, bulging sidewall, bead, rim flange), the step from the flange down to the aero cover, and
+    the dished cover, recessed ~2 cm behind the sidewall bulge so a sliver of sidewall shows on the far side. Normals
+    are smooth along a strip and split between strips. Grid units: R tire radius, rr rim radius, hw half tire width."""
+    tire = [(0.0, R), (0.075, R - 0.0045)]
+    for a in (45, 90):                                   # shoulder, radius 0.03
+        t = math.radians(a)
+        tire.append((0.075 + 0.030 * math.sin(t), R - 0.0345 + 0.030 * math.cos(t)))
+    tire += [(hw + 0.0020, R - 0.052), (hw + 0.0022, R - 0.070), (hw - 0.0075, rr + 0.006), (hw - 0.0100, rr + 0.002)]
+    step = [tire[-1], (hw - 0.0150, rr - 0.004)]
+    cover = [step[-1], (hw - 0.0185, 0.55 * rr), (hw - 0.0200, 0.16 * rr), (hw - 0.0190, 0.0)]
+    return tire, step, cover
 
 
 def stage_wheel():
@@ -700,74 +711,74 @@ def stage_wheel():
     info = json.loads(bpy.context.scene["info"])
     for o in [o for o in bpy.data.objects if o.name.startswith((NAME + "_Wheel", "wheel_outer", "wheel_src"))]:
         bpy.data.objects.remove(o)                       # re-runnable: the tiers blend keeps the last wheel
-    src = dup(bpy.data.objects["hi_wheel"], "wheel_src")
-    cut = info["wheel_cut"]
-    yc = (cut["y"][0] + cut["y"][1]) / 2
-    zc = info["wheel_axle_z"]
-    r = info["wheel_r"]
-    xo = cut["x"][0]                                     # left wheel: outer face at min x
-    xm = xo + TIRE_W / 2
-    # centre on the axle, make it round (undo the body z squash), outer half only
-    co = mesh_co(src) - [xm, yc, zc]
-    co[:, 2] *= r / ((cut["z"][1] - cut["z"][0]) / 2)
-    set_co(src, co)
-    keep_faces(src, face_centres(src)[:, 0] <= 0.002)
-    low = dup(src, NAME + "_Wheel")
-    while low.data.uv_layers:                            # PZ reads the first UV layer: drop Tripo's
-        low.data.uv_layers.remove(low.data.uv_layers[0])
-    decimate(low, WHEEL_TRIS // 2)
-    bm = bmesh.new()
-    bm.from_mesh(low.data)
-    for v in bm.verts:                                   # snap the cut plane so the mirror welds
-        if v.co.x > -0.004:
-            v.co.x = 0.0
-    bmesh.ops.mirror(bm, geom=bm.verts[:] + bm.edges[:] + bm.faces[:], axis="X", merge_dist=0.003)
-    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
-    uv = bm.loops.layers.uv.new("UV0")
-    rt = max(math.hypot(v.co.y, v.co.z) for v in bm.verts)
-    hw = max(abs(v.co.x) for v in bm.verts)
+    # A surface of revolution, not the Tripo cut: the decimated, mirrored cut left the tread open (319 boundary edges,
+    # 101 on the mirror seam) and the road showed through as a white line along the tire's lower edge in game
+    r = info["wheel_r"]                                  # tire radius off the high-poly's sidewall (models.md 2)
+    rr = WHEEL_SLOT["rim"] * r                           # 19" rim: where the texture's cover ends
+    strips = wheel_profile(r, rr, TIRE_W / 2)
+    n = WHEEL_SEG
     (cu, cv), rho, (v0, h) = WHEEL_UV["c"], WHEEL_UV["rho"], WHEEL_UV["tread"]
-    for f in bm.faces:                                   # tread -> strip (around, across); the rest planar Y/Z
-        fc = f.calc_center_median()
-        if abs(f.normal.x) < 0.55 and math.hypot(fc.y, fc.z) > 0.86 * rt:
-            a = [math.atan2(lp.vert.co.z, lp.vert.co.y) for lp in f.loops]
-            if max(a) - min(a) > math.pi:                # face across the seam: u runs past 1 (texture wraps)
-                a = [t + 2 * math.pi if t < 0 else t for t in a]
-            for lp, t in zip(f.loops, a):
-                lp[uv].uv = (t / (2 * math.pi) + 0.5, v0 + (lp.vert.co.x / hw * 0.5 + 0.5) * h)
-        else:
-            for lp in f.loops:
-                lp[uv].uv = (cu - lp.vert.co.y / r * rho, cv + lp.vert.co.z / r * rho)
-    bm.to_mesh(low.data)
+    xw = strips[0][3][0]                                 # the tread strip spans the tread and both shoulders
+    ang = [2 * math.pi * j / n - math.pi for j in range(n + 1)]
+    bm = bmesh.new()
+    uv = bm.loops.layers.uv.new("UV0")
+    rings, loop_n, loop_v = {}, [], []
+
+    def ring(x, rad):
+        key = (round(x, 6), round(rad, 6))
+        if key not in rings:
+            rings[key] = [bm.verts.new((x, rad * math.cos(a), rad * math.sin(a))) for a in ang[:n]] if rad > 1e-9 \
+                else [bm.verts.new((x, 0.0, 0.0))] * n
+        return rings[key]
+
+    for side in (1, -1):
+        for si, pts in enumerate(strips):
+            p = np.array(pts, float)
+            t = np.gradient(p, axis=0)
+            nrm = np.stack([-t[:, 1], t[:, 0]], 1)       # outward (x, radius) normal of the profile walked hub-wards
+            nrm /= np.linalg.norm(nrm, axis=1, keepdims=True)
+            for i in range(len(pts) - 1):
+                ra, rb = ring(side * p[i, 0], p[i, 1]), ring(side * p[i + 1, 0], p[i + 1, 1])
+                tread = si == 0 and i < 3
+                for j in range(n):
+                    corners = [(ra, i, j), (ra, i, j + 1), (rb, i + 1, j + 1), (rb, i + 1, j)]
+                    if side < 0:
+                        corners.reverse()                # mirrored half: keep the winding outward
+                    corners = [c for k, c in enumerate(corners) if c[0][c[2] % n] not in
+                               [d[0][d[2] % n] for d in corners[:k]]]          # the hub ring is one vertex
+                    f = bm.faces.new([c[0][c[2] % n] for c in corners])
+                    for lp, (rg, pi, col) in zip(f.loops, corners):
+                        x, y, z = lp.vert.co
+                        lp[uv].uv = (col / n, v0 + (x / xw * 0.5 + 0.5) * h) if tread else \
+                            (cu - y / r * rho, cv + z / r * rho)
+                        nx, nr = nrm[pi]
+                        loop_n.append((side * nx, nr * math.cos(ang[col]), nr * math.sin(ang[col])))
+                        loop_v.append(lp.vert)
+    me = bpy.data.meshes.new(NAME + "_Wheel")
+    bm.verts.index_update()
+    loop_v = [v.index for v in loop_v]
+    bm.to_mesh(me)
     bm.free()
-    low.data.shade_smooth()
-    # normals: rim face and sidewall straight out along the axle, tread radial, blended over the shoulder. Tripo's
-    # turbine blades tilt every which way and the shader's 3-step light quantise (vehiclewheel.frag:35-53) lit one
-    # blade and left the rest black; the slots and their depth are in the texture
-    co = mesh_co(low)
-    rv = np.hypot(co[:, 1], co[:, 2])
-    rad = np.zeros_like(co)
-    rad[:, 1:] = co[:, 1:] / np.maximum(rv, 1e-9)[:, None]
-    vn = np.sign(co[:, 0])[:, None] * [1.0, 0, 0]
-    t = smoothstep(0.86, 0.985, rv / rt)[:, None]
-    vn = (1 - t) * vn + t * rad
-    ln = np.linalg.norm(vn, axis=1)
-    vn = np.where(ln[:, None] > 1e-6, vn / np.maximum(ln, 1e-9)[:, None], rad)   # cut-plane barrel verts: radial
-    me = low.data
+    low = bpy.data.objects.new(NAME + "_Wheel", me)
+    bpy.context.scene.collection.objects.link(low)
     lv = np.empty(len(me.loops), np.int64)
     me.loops.foreach_get("vertex_index", lv)
-    if "custom_normal" in me.attributes:
-        me.attributes.remove(me.attributes["custom_normal"])
+    assert lv.tolist() == loop_v, "bmesh -> mesh reordered the loops"
+    me.shade_smooth()
     me.attributes.new("custom_normal", "FLOAT_VECTOR", "CORNER").data.foreach_set(
-        "vector", vn[lv].astype(np.float32).ravel())
+        "vector", np.array(loop_n, np.float32).ravel())
     me.update()
-    grey = wheel_texture(rt / r)[::-1]                   # Blender pixel rows run bottom-up
+    # vehiclewheel_static.vert reads uv at location 3 (location 2 is the tangent of the vanilla wheels' .txt meshes), but
+    # an FBX static mesh is pos, normal, UV0, UV1, bound by element index (ImportedStaticMesh.java:29-35,
+    # VertexBufferObject.java:324-345). With one UV map the shader read attribute 3 left over from an earlier draw:
+    # garbage UVs. UV1 = UV0 puts the wheel's own UVs there
+    me.uv_layers.new(name="UV1")
+    grey = wheel_texture(strips[0][3][1] / r)[::-1]      # planar disc ends at the shoulder; rows run bottom-up
     save_png(np.dstack([grey, grey, grey, np.ones_like(grey)]), os.path.join(TEX_DIR, NAME + "_wheel.png"), "wheel")
     mat = bpy.data.materials.new(NAME + "_Wheel")
-    low.data.materials.clear()
-    low.data.materials.append(mat)
+    me.materials.append(mat)
     export_fbx(low, os.path.join(VEH_DIR, NAME + "_Wheel.fbx"))
-    print("WHEEL tris", tris(low), "radius", r, "tire", round(rt, 4), "width", TIRE_W)
+    print("WHEEL tris", tris(low), "radius", r, "rim", round(rr, 4), "width", TIRE_W)
     bpy.context.scene["info"] = json.dumps(info | {"wheel_tris": tris(low)})
     bpy.ops.wm.save_as_mainfile(filepath=os.path.join(TMP, "v2_tiers.blend"))
 
