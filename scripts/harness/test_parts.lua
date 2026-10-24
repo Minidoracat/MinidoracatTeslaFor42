@@ -103,3 +103,17 @@ check(p.label == "IGUI_MinidoracatTesla_OpenFrunk", "outside radial: Open Frunk 
 local mapped = 0
 for _ in pairs(T.PartNames) do mapped = mapped + 1 end
 check(mapped == 14, "14 vanilla keys mapped (5 parts, category, out of charge, 3 engine labels, 4 hood actions)")
+
+H.section("cargo capacities (vehicle template)")
+-- 2025+ owner's manual: trunk 835 L behind the 2nd row, frunk 114 L. Trunk anchored to vanilla SUV (NormalTrunk2 85).
+local tf = assert(io.open("MOD/MinidoracatTeslaFor42/Contents/mods/MinidoracatTeslaFor42/42/media/scripts/vehicles/MinidoracatTesla_template.txt", "r"))
+local tpl = tf:read("*a")
+tf:close()
+local function partCapacity(id)
+    local body = tpl:match("\n        part " .. id .. "\n        {(.-)\n        }")
+    return body and tonumber(body:match("capacity%s*=%s*(%d+)"))
+end
+local trunk, frunkCap = partCapacity("TruckBed"), partCapacity("Frunk")
+check(trunk == 85, "TruckBed capacity override 85 (vanilla SUV trunk), not the sedan NormalTrunk3 45 (" .. tostring(trunk) .. ")")
+check(frunkCap == 12, "Frunk capacity 12 (" .. tostring(frunkCap) .. ")")
+check(trunk and frunkCap and math.abs(frunkCap - trunk * 114 / 835) < 0.5, "frunk / trunk follows 114 L / 835 L")
