@@ -2074,10 +2074,12 @@ def door_previews(body, arm, doors):
 CABIN_FLOOR = -0.43       # mesh z (centred; ground -0.75): cabin floor
 CABIN_INSET = 0.05        # grid: the cabin shell sits this far inside the surface its ray hit
 LINING_TRIS, LINING_IN = 700, 0.015  # body lining above the belt (lining()): triangle budget, inset (grid)
-CABIN_Y = (1.12, -1.35)   # mesh y of the front and rear walls of the cabin shell: the front is past the windscreen's
-#                           lower edge (y 1.089 on the centre line, WS_BASE), else the ground shows under the glass
+CABIN_FRONT_Y = 1.12     # mesh y of the shell's front wall: past the windscreen's lower edge (y 1.089 on the centre
+#                           line, WS_BASE), else the ground shows under the glass
+TRUNK_Y = -0.95           # mesh y where the trunk floor starts, behind the rear backrests (their foot is at its height)
+TRUNK_DROP = 0.03         # grid: trunk floor below the tailgate opening's lower edge (GATE z); the sill plate fills it
 CABIN_ZC = -0.10          # mesh z of the cabin axis the shell rays start from
-CABIN_RES = (41, 49)      # shell: rings along y, rays per ring (200 -> -20 deg round the axis)
+CABIN_RES = (0.062, 49)   # shell: ring step along y (grid), rays per ring (200 -> -20 deg round the axis)
 SEAT_X, SEAT_Z = 0.33, -0.19  # passenger inside points (geometry(): side 0.33, seat_y 0.56 ground; y fz / rz below)
 SEAT_Y = ((DOOR_FRONT_Y + B_PILLAR_Y) / 2 - 0.12, (B_PILLAR_Y + DOOR_REAR_Y) / 2 - 0.08)
 # cabin palette cells, in MinidoracatTesla_vehicle.frag CABIN[] order (the colours live there): a cabin face carries
@@ -2161,8 +2163,14 @@ def stage_cabin():
     bvh = {"body": tree([(paint[NAME], False)]),
            "glass": tree([(g, n != NAME) for n, g in panes.items()]),
            "door": tree([(paint[d.name], True) for d in doors])}
-    belt = BELT_Z - json.loads(bpy.context.scene["info"])["zmid"]
-    cabin = cabin_mesh(bvh, belt, lining(paint[NAME], belt))
+    zmid = json.loads(bpy.context.scene["info"])["zmid"]
+    belt, trunk_floor = BELT_Z - zmid, GATE["z"] - zmid - TRUNK_DROP
+    # the shell's rear end: the tailgate's inner panel (or the bumper) straight back from the trunk floor
+    o = Vector((0, TRUNK_Y, trunk_floor + 0.1))
+    rear = min(h[3] for b in bvh.values() for h in (b.ray_cast(o, Vector((0, -1, 0))),) if h[0] is not None)
+    trunk_end = TRUNK_Y - rear + CABIN_INSET
+    print(f"CABIN trunk: floor z {trunk_floor:.3f}, rear wall y {trunk_end:.3f}")
+    cabin = cabin_mesh(bvh, belt, lining(paint[NAME], belt, trunk_end), trunk_floor, trunk_end)
     for o in list(paint.values()) + list(panes.values()):
         bpy.data.objects.remove(o)
     shell = BVHTree.FromPolygons(*_soup_lists([(body, False)] + [(d, True) for d in doors], conv))
@@ -2287,14 +2295,14 @@ def rot_x(deg):
     return np.array([[1, 0, 0], [0, c, -s], [0, s, c]])
 
 
-def lining(body, belt):
+def lining(body, belt, rear_y):
     """Inner side of the body above the belt inside the cabin (pillars, roof rails, the bars round the roof glass): its
     faces after the glass split, decimated to LINING_TRIS, turned to the cabin axis and pulled LINING_IN inside. From
     outside the near side faces away (culled); through the glass the far side shows a dark lining whose edges follow the
     glass's own (a ray-grid shell there left a staircase along every window, E2E TeslaCabin-cab-after-1024c)."""
     ob = dup(body, "lining")
     c = face_centres(ob)
-    keep_faces(ob, (c[:, 2] > belt) & (c[:, 1] < CABIN_Y[0]) & (c[:, 1] > CABIN_Y[1]))
+    keep_faces(ob, (c[:, 2] > belt) & (c[:, 1] < CABIN_FRONT_Y) & (c[:, 1] > rear_y))
     n0 = tris(ob)
     decimate(ob, LINING_TRIS)
     bm = bmesh.new()
@@ -2316,15 +2324,17 @@ def lining(body, belt):
     return V, F
 
 
-def cabin_mesh(bvh, belt, lining):
-    """Cabin (mesh coords, centred), smooth-shaded rounded parts: below the belt a shell CABIN_INSET inside the body
-    and the doors (floor, sills, firewall, door walls, the wall behind the rear seats; none behind glass, so the far
-    windows stay see-through), above it `lining`; Model Y front buckets (cushion and backrest side bolsters, curved
-    backrest, integrated headrest), rear bench (three cushions and backs, three headrests), dash with its trim strip,
-    15.4" centre screen (lit face to the seats), steering wheel, centre console. Every shell face looks at the axis:
-    from outside the near wall is a back face (culled, an open door shows the seats) and the far wall stands in for
-    the far door's inner panel (it sits inside it), which the near window, drawn first, would hide by depth.
-    `bvh`: "body" / "glass" / "door" surfaces in Blender axes; `belt`: mesh z of the belt line."""
+def cabin_mesh(bvh, belt, lining, trunk_floor, trunk_end):
+    """Cabin and trunk (mesh coords, centred), smooth-shaded rounded parts: below the belt a shell CABIN_INSET inside
+    the body and the doors (floor, sills, firewall, door walls, the trunk's sides and wheel-arch humps, its rear wall
+    behind the tailgate's inner panel at `trunk_end`; none behind glass, so the far windows stay see-through), the
+    floor at CABIN_FLOOR, behind the rear backrests (TRUNK_Y) at `trunk_floor`; above the belt `lining`; Model Y front
+    buckets (cushion and backrest side bolsters, curved backrest, integrated headrest), rear bench (three cushions and
+    backs, three headrests), dash with its trim strip, 15.4" centre screen (lit face to the seats), steering wheel,
+    centre console, the trunk's sill plate and its under-floor bin lid. Every shell face looks at the axis: from outside
+    the near wall is a back face (culled: an open door shows the seats, the open tailgate the trunk) and the far wall
+    stands in for the far door's inner panel (it sits inside it), which the near window, drawn first, would hide by
+    depth. `bvh`: "body" / "glass" / "door" surfaces in Blender axes; `belt`: mesh z of the belt line."""
     V, F, cell, flat, shell_n = [], [], [], [], 0
 
     def add(v, f, c, smooth=True):
@@ -2335,18 +2345,21 @@ def cabin_mesh(bvh, belt, lining):
         flat.extend([not smooth] * len(f))
 
     # shell: rings across y, rays from the axis; each ray keeps what it hit first (body / glass / door)
-    nr, na = CABIN_RES
+    step, na = CABIN_RES
+    ys = np.append(np.arange(CABIN_FRONT_Y, trunk_end + step / 2, -step), trunk_end)
+    nr = len(ys)
     pts, kind = np.zeros((nr, na + 2, 3)), np.zeros((nr, na + 2), object)
-    for i, y in enumerate(np.linspace(CABIN_Y[0], CABIN_Y[1], nr)):
+    for i, y in enumerate(ys):
+        floor = CABIN_FLOOR if y > TRUNK_Y else trunk_floor
         o = Vector((0, y, CABIN_ZC))
         for j, t in enumerate(np.radians(np.linspace(200, -20, na)), 1):
             d = Vector((math.cos(t), 0, math.sin(t)))
             hits = [(h[3], k, h[0]) for k, b in bvh.items() for h in (b.ray_cast(o, d),) if h[0] is not None]
             dist, k, p = min(hits) if hits else (1.0, "none", o + d)
             p = p - d * CABIN_INSET
-            pts[i, j] = (p.x, y, max(p.z, CABIN_FLOOR))
-            kind[i, j] = "floor" if p.z <= CABIN_FLOOR else k
-        pts[i, 0], pts[i, -1] = (pts[i, 1, 0], y, CABIN_FLOOR), (pts[i, -2, 0], y, CABIN_FLOOR)
+            pts[i, j] = (p.x, y, max(p.z, floor))
+            kind[i, j] = "floor" if p.z <= floor else k
+        pts[i, 0], pts[i, -1] = (pts[i, 1, 0], y, floor), (pts[i, -2, 0], y, floor)
         kind[i, 0] = kind[i, -1] = "floor"
     n = na + 2
     sv, sf, sc = pts.reshape(-1, 3), [], []
@@ -2358,7 +2371,7 @@ def cabin_mesh(bvh, belt, lining):
             if keep(q):
                 sf.append(q)
                 sc.append("floor" if all(k == "floor" for k in ks) else "liner")
-    for i in (0, nr - 1):                               # firewall and rear wall: fans round the axis
+    for i in (0, nr - 1):                               # firewall and the trunk's rear wall: fans round the axis
         c = len(sv)
         sv = np.concatenate([sv, [[0, pts[i, 0, 1], CABIN_ZC]]])
         for j in range(n):
@@ -2412,6 +2425,10 @@ def cabin_mesh(bvh, belt, lining):
     part((0.20, 0.80, 0.22), 0.04, "console", (0, 0.12, -0.32))                  # centre console
     part((1.24, 0.34, 0.16), 0.06, "dash", (0, 0.80, -0.02))                     # dash, trim strip on its face
     part((1.16, 0.02, 0.035), 0.008, "trim", (0, 0.627, -0.01))
+    # trunk: sill plate over the opening's lower edge (the floor ends TRUNK_DROP under it, CABIN_INSET short of the
+    # tailgate's inner panel) and the under-floor bin's lid
+    part((1.00, 0.12, TRUNK_DROP + 0.005), 0.01, "base", (0, trunk_end + 0.02, trunk_floor + TRUNK_DROP / 2), seg=1)
+    part((0.86, 0.40, 0.012), 0.004, "console", (0, (TRUNK_Y + trunk_end) / 2 - 0.04, trunk_floor + 0.006), seg=1)
     part((0.05, 0.04, 0.09), 0.012, "screen_back", (0, 0.64, 0.09))              # screen stand
     v, f = rbox((0.30, 0.022, 0.19), 0.012)                                       # 15.4" landscape screen
     v = v @ rot_x(-12).T + [0, 0.61, 0.17]
