@@ -1839,14 +1839,15 @@ CABIN_INSET = 0.05        # grid: the cabin shell sits this far inside the surfa
 CABIN_Y = (1.12, -1.35)   # mesh y of the front and rear walls of the cabin shell: the front is past the windscreen's
 #                           lower edge (y 1.089 on the centre line, WS_BASE), else the ground shows under the glass
 CABIN_ZC = -0.10          # mesh z of the cabin axis the shell rays start from
-CABIN_RES = (25, 29)      # shell: rings along y, rays per ring (200 -> -20 deg round the axis)
+CABIN_RES = (41, 49)      # shell: rings along y, rays per ring (200 -> -20 deg round the axis); its edge against the
+#                           glass is a staircase of this step, seen through the near windows (E2E TeslaCabin-cab-after-1024b)
 SEAT_X, SEAT_Z = 0.33, -0.19  # passenger inside points (geometry(): side 0.33, seat_y 0.56 ground; y fz / rz below)
 SEAT_Y = ((DOOR_FRONT_Y + B_PILLAR_Y) / 2 - 0.12, (B_PILLAR_Y + DOOR_REAR_Y) / 2 - 0.08)
 # 64^2 palette, 4 x 4 cells of 16 px, sRGB; every face maps to one cell centre (no mip bleed). Black interior ($IPB15)
 # a step lighter than life so seats read against the floor through the glass (calibration knob). The cabin shader
 # shows texels brighter than 0.55 unlit (the screen): keep every other cell under it
-CABIN_RGB = {"floor": (22, 22, 24), "liner": (40, 40, 44), "seat": (88, 88, 94), "base": (30, 30, 32),
-             "dash": (46, 46, 50), "trim": (112, 106, 98), "console": (40, 40, 43), "wheel": (28, 28, 30),
+CABIN_RGB = {"floor": (22, 22, 24), "liner": (40, 40, 44), "seat": (100, 100, 106), "base": (30, 30, 32),
+             "dash": (58, 58, 62), "trim": (112, 106, 98), "console": (46, 46, 50), "wheel": (28, 28, 30),
              "screen_back": (16, 16, 18), "screen": (170, 192, 214)}
 # body glass: the windscreen, the roof glass (Roof texels painted ROOF_GLASS, re-zoned to LightBar L: no Tesla light
 # uses it) and the fixed quarter glass; the door / tailgate windows go to their door's glass mesh
