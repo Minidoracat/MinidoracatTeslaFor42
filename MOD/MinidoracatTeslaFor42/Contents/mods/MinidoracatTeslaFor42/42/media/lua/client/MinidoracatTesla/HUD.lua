@@ -352,7 +352,9 @@ function HUD:setMessage()
             local d = self.doors[i]
             if math.floor(a1 / d.bit) % 2 == 1 then n = n + 1; first = first or d.name end
         end
-        title = n == 1 and getText("IGUI_MinidoracatTesla_HUD_DoorOpen", getText("IGUI_VehiclePart" .. first))
+        local pk = "IGUI_VehiclePart" .. tostring(first)
+        pk = (T.PartNames and T.PartNames[pk]) or pk -- Tesla part names (client/MinidoracatTesla/PartNames.lua): EngineDoor = frunk lid
+        title = n == 1 and getText("IGUI_MinidoracatTesla_HUD_DoorOpen", getText(pk))
             or getText("IGUI_MinidoracatTesla_HUD_DoorsOpen", tostring(n))
         sub, icon, color = getText("IGUI_MinidoracatTesla_HUD_DoorOpenSub"), "i_warn", C.warn
     elseif id == 2 then
