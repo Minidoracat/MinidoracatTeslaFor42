@@ -2081,9 +2081,9 @@ CABIN_RES = (41, 49)      # shell: rings along y, rays per ring (200 -> -20 deg 
 SEAT_X, SEAT_Z = 0.33, -0.19  # passenger inside points (geometry(): side 0.33, seat_y 0.56 ground; y fz / rz below)
 SEAT_Y = ((DOOR_FRONT_Y + B_PILLAR_Y) / 2 - 0.12, (B_PILLAR_Y + DOOR_REAR_Y) / 2 - 0.08)
 # cabin palette cells, in MinidoracatTesla_vehicle.frag CABIN[] order (the colours live there): a cabin face carries
-# UV1 = (CABIN_UV1_U, cell + 0.5)
+# UV1 = (CABIN_UV1_U - cell, 0) (the loader flips v, ImportedStaticMesh.java:59)
 CABIN_CELLS = ("floor", "liner", "seat", "base", "dash", "trim", "console", "wheel", "screen_back", "screen")
-CABIN_UV1_U = -2.0
+CABIN_UV1_U = -2.5
 GLASS_UV1_SHIFT = 2.0     # glass faces: UV1 u + this (the shader takes it back off for the damage maps)
 # glass zones: the windscreen, the roof glass (Roof texels painted ROOF_GLASS, re-zoned to LightBar L: no Tesla light
 # uses it), the fixed quarter glass in the body; the door / tailgate windows in their door's mesh
@@ -2092,7 +2092,7 @@ GLASS_ZONES = ("WinT", "WinH", "WinLH", "WinLT", "WinRH", "WinRT", "LightBarL")
 
 def stage_cabin():
     """v2_doors.blend -> one mesh per model, no extra models: the body FBX holds the cabin and the body's glass, each
-    door the window it carries. Glass faces get UV1 u + GLASS_UV1_SHIFT, cabin faces UV1 (CABIN_UV1_U, cell), and each
+    door the window it carries. Glass faces get UV1 u + GLASS_UV1_SHIFT, cabin faces UV1 u CABIN_UV1_U - cell, and each
     mesh draws paint, then cabin, then glass (order_faces; MinidoracatTesla_vehicle.frag). Mask: the roof glass in
     LightBar L."""
     from mathutils.bvhtree import BVHTree
@@ -2447,9 +2447,9 @@ def cabin_mesh(bvh, belt, lining):
     ci = np.empty(len(me.polygons), np.int64)
     me.polygons.foreach_get("material_index", ci)
     lt = [p.loop_total for p in me.polygons]
-    # UV0: any texel (the shader's cabin class reads no texture); UV1 = (CABIN_UV1_U, cell + 0.5)
+    # UV0: any texel (the shader's cabin class reads no texture); UV1 = (CABIN_UV1_U - cell, 0)
     me.uv_layers.new(name="UV0").data.foreach_set("uv", np.zeros(len(me.loops) * 2))
-    uv1 = np.stack([np.full(len(ci), CABIN_UV1_U), ci + 0.5], 1)
+    uv1 = np.stack([CABIN_UV1_U - ci, np.zeros(len(ci))], 1)
     me.uv_layers.new(name="UV1").data.foreach_set("uv", np.repeat(uv1, lt, 0).ravel())
     me.polygons.foreach_set("material_index", np.zeros(len(me.polygons), np.int64))
     me.update()

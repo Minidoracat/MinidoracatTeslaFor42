@@ -5,8 +5,8 @@
 //   UV1 u in [0, 1]  paint: vanilla vehicle_multiuv / _noreflect, unchanged
 //   UV1 u in [2, 3]  glass face: UV1 - (2, 0) is its damage UV; translucent per pane zone, a hole when the window is
 //                    removed, open or smashed (uninstall matrices), cracks and blood turn it opaque where marked
-//   UV1 u = -2       cabin: UV1 v = palette index (CABIN below); lit with a floor so seats keep an outline at night,
-//                    the screen glows
+//   UV1 u <= -2.5    cabin: palette cell = -2.5 - u (CABIN below; u, since the loader flips v, ImportedStaticMesh.java:
+//                    59); lit with a floor so seats keep an outline at night, the screen glows
 // Inside one mesh the triangles draw in index order: paint, cabin, glass (build.py sorts them), so the glass blends
 // over the cabin and the seated characters drawn before the car.
 // A mod shader name is never swapped for _noreflect (ModelManager.java:1298-1311): the vertex shader reports whether
@@ -138,7 +138,7 @@ void main()
 
 	if (texCoords1.x < -1.0)
 	{
-		int cell = int(texCoords1.y);
+		int cell = int(-texCoords1.x - 2.0);
 		vec3 c = CABIN[cell] / 255.0;
 		vec3 lit = c * clamp(lighting, NIGHT_FLOOR, 1.0) * TintColourNew;   // util/math's overloads hide the vec3 builtins
 		float glow = cell == CABIN_SCREEN ? 1.0 : 0.0;
