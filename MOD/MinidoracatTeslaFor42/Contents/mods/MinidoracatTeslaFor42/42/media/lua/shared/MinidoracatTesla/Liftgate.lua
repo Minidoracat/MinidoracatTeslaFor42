@@ -1,6 +1,8 @@
 -- Power liftgate, opened or closed by the driver from the dashboard key (like the touchscreen in the real car).
 -- Rule shared by the key (client pre-check) and the server command `liftgate` { vid }, which unlocks a locked
 -- liftgate first, toggles it, syncs the door and tells every client to animate it (architecture.md §7).
+-- Also syncs the part anim of vanilla door open/close on Teslas in MP: vanilla plays it only on the client that
+-- opened the door (ISOpenVehicleDoor.lua:28-31 "TODO: sync part animation"), so everyone else saw no motion.
 require "MinidoracatTesla/Core"
 
 local T = MinidoracatTesla
@@ -30,21 +32,31 @@ function L.toggle(player, vehicle)
 end
 
 -- every client that has the car loaded: part anim (no-op until the part has a model anim,
--- BaseVehicle.java:2012-2048) and the anim's sound from the vehicle script (template TrunkDoor:
+-- BaseVehicle.java:2012-2048) and, with `sound`, the anim's sound from the vehicle script (template TrunkDoor:
 -- VehicleTrunkOpenStandard / VehicleTrunkCloseStandard; BaseVehicle.java:2090-2097)
 if not isServer() then
     T.ClientCommands = T.ClientCommands or {}
-    T.ClientCommands.liftgate = function(args)
-        local v = getVehicleById(args.vid)
-        local part = v and v:getPartById(L.PART)
-        if not part then return end
+    T.ClientCommands.partAnim = function(args)
+        local v = type(args.part) == "string" and getVehicleById(args.vid)
+        local part = v and v:getPartById(args.part)
+        if not part or not part:getDoor() then return end
         local anim = args.open and "Open" or "Close"
         v:playPartAnim(part, anim)
-        v:playPartSound(part, getPlayer(), anim)
+        if args.sound then v:playPartSound(part, getPlayer(), anim) end
     end
 end
 
 if not isClient() then
+    -- to every online player but `except` (MP), or straight to the handler (SP)
+    local function broadcast(out, except)
+        if not isServer() then return T.ClientCommands.partAnim(out) end
+        local list = getOnlinePlayers()
+        for i = 0, list:size() - 1 do
+            local p = list:get(i)
+            if p ~= except then sendServerCommand(p, T.MODULE, "partAnim", out) end -- far clients ignore it
+        end
+    end
+
     T.ServerCommands = T.ServerCommands or {}
     T.ServerCommands.liftgate = function(player, args)
         local v = T.commandVehicle(player, args) -- server/MinidoracatTesla/Commands.lua
@@ -60,13 +72,28 @@ if not isClient() then
         local open = not door:isOpen()
         door:setOpen(open)
         v:transmitPartDoor(part) -- BaseVehicle.java:8247-8256
-        local out = { vid = vid, open = open }
-        if isServer() then
-            sendServerCommand(T.MODULE, "liftgate", out) -- all clients; those without the car ignore it
-        else
-            T.ClientCommands.liftgate(out) -- SP
-        end
+        broadcast({ vid = vid, part = L.PART, open = open, sound = true })
         T.log("liftgate " .. (open and "open" or "close") .. " vid=" .. tostring(vid) .. " by=" .. tostring(player:getUsername()))
+    end
+
+    -- MP server: vanilla door actions complete here (they call transmitPartDoor); the opener already played the
+    -- anim and sound in :start, a second Open would restart it, so everyone but the opener
+    if isServer() then
+        require "Vehicles/TimedActions/ISOpenVehicleDoor"
+        require "Vehicles/TimedActions/ISCloseVehicleDoor"
+        local function wrap(cls, open)
+            local orig = cls.complete
+            cls.complete = function(self)
+                local ok = orig(self)
+                local v, part = self.vehicle, self.part
+                if ok and v and part and T.isTesla(v) and part:getDoor() and part:getDoor():isOpen() == open then
+                    broadcast({ vid = v:getId(), part = part:getId(), open = open }, self.character)
+                end
+                return ok
+            end
+        end
+        wrap(ISOpenVehicleDoor, true)
+        wrap(ISCloseVehicleDoor, false)
     end
 end
 
