@@ -10,21 +10,25 @@ module Base
         engineRPMType = firebird,
         /* mechanics window car diagram (VehicleScript.java:278-279, ISVehicleMechanics.lua:914-918); it only draws parts the car has */
         carMechanicsOverlay = Base.ModernCar,
+        /* Tesla recordings (scripts/sounds/MinidoracatTesla_sounds.txt); the driver's motor whine and forward PWS are Lua (client/MinidoracatTesla/Sound.lua) */
         sound
         {
             alarmLoop = VehicleAlarmA VehicleAlarmB VehicleAlarmC VehicleAlarmD VehicleAlarmE,
-            engine = VehicleEngineModernCar,
-            engineStart = VehicleEngineModernCar,
-            engineTurnOff = VehicleEngineModernCar,
+            backSignal = MinidoracatTesla_PWSReverse,
+            engine = MinidoracatTesla_Hum,
+            engineStart = MinidoracatTesla_Contactors,
+            engineTurnOff = MinidoracatTesla_ParkBrake,
             horn = VehicleHornStandard,
-            ignitionFail = VehicleIgnitionFailModernCar,
+            ignitionFail = MinidoracatTesla_KeyAlert,
+            ignitionFailNoPower = MinidoracatTesla_NoPower,
         }
         mass = 800,
         /* default only: MinidoracatTesla.Create.Motor sets SR 3000 / LR 5000 by pack (Core.lua PackPower) */
         engineForce = 5000,
         maxSpeed = 90.0,
-        /* effective = script / 2 (BaseVehicle.java:9120), x2 with no Muffler (:9174-9175) = 20; ModernCar 80 with a new muffler = 32-40 */
-        engineLoudness = 20,
+        /* effective = script / 2 (BaseVehicle.java:9120), x2 with no Muffler (:9174-9175) = 10: every update stays at the 8-tile floor,
+           random peaks 12 (cruise) to 24 (full throttle) tiles; ModernCar 80 with a new muffler = 32-40 */
+        engineLoudness = 10,
         engineQuality = 100,
         stoppingMovementForce = 4.0,
         rollInfluence = 1.0,

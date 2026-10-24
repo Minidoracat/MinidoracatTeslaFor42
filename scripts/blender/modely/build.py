@@ -4,7 +4,7 @@
 
 stages (each reads the previous one's .blend in temp/modely/):
   prep            tripo_hi.glb -> axes, scale, body / front-left-wheel sources        -> v2_prep.blend, prev/prep_*.png
-  tiers N,N,...   decimated bodies (+ liners, normals from the high-poly, UV0/UV1)     -> v2_tiers.blend, tiers/*.fbx
+  tiers N,N,...   decimated bodies (+ liners, high-poly normals, UV0, UV1 = UV0)     -> v2_tiers.blend, tiers/*.fbx
   wheel           procedural 255/45R19 tire + recessed Photon aero cover (surface of revolution, closed), procedural
                   64 texture (disc + tread strip), two UV layers                       -> MOD wheel FBX + PNG
   official        official design-studio renders of the 8 paints                       -> temp/modely/official/
@@ -12,8 +12,9 @@ stages (each reads the previous one's .blend in temp/modely/):
                   skin per paint (colour from the official render; glass panes show Tripo's cabin through a tint, black
                   frit band, normals from a quadric per pane; head / rear light bars on smoothed centre lines; satin
                   black trims, rear diffuser and front lip by geometry, body-colour spoiler), 512 mask / lights,
-                  geometry block spliced into the vehicle script (copy in temp/modely/geometry_block.txt), whole body
-                  -> v2_final.blend, then runs doors, verify.txt, prev/*.png
+                  UV1 on the shared damage maps from vanilla ModernCar, geometry block spliced into the vehicle script
+                  (copy in temp/modely/geometry_block.txt), whole body -> v2_final.blend, then runs doors, verify.txt,
+                  prev/*.png
   doors           v2_final.blend -> body FBX with the four doors and the tailgate cut out (+ jambs), doors FBX (one
                   skinned mesh per door on VehicleSkeleton, "<Part>_closing" clips)  -> MOD FBX, prev/doors_*.png
 
@@ -30,6 +31,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.abspath(os.path.join(HERE, "..", "..", ".."))
 sys.path.insert(0, HERE)
 import preview  # noqa: E402
+import vanilla  # noqa: E402
 
 TMP = os.path.join(REPO, "temp", "modely")
 PREV = os.path.join(TMP, "prev")
@@ -57,7 +59,8 @@ HEAD_LINE = ((0.00, 1.950, 0.649), (0.05, 1.949, 0.649), (0.10, 1.948, 0.649), (
              (0.40, 1.882, 0.654), (0.45, 1.848, 0.659), (0.50, 1.811, 0.665), (0.55, 1.763, 0.673),
              (0.60, 1.715, 0.679), (0.65, 1.665, 0.688), (0.70, 1.611, 0.704), (0.74, 1.568, 0.717))
 HEAD_BAND = 0.045                           # grid: bar 0.9 cm + ring 0.6 cm + 3 cm speckle repaint, with margin
-UV1_SCALE = 0.56                            # shared Veh_* 512 maps at ~vanilla density (R5: UV1 56-60 px/grid)
+# UV1 (shared Veh_Damage1/2, Veh_Rust, Veh_Blood_* 512 maps): taken over from this vanilla car (damage_uv1)
+DAMAGE_REF, DAMAGE_REF_MASK = "Vehicles_ModernCar", "vehicle_carmodern_mask.png"
 WHEEL_TEX, WHEEL_SS = 64, 8                 # wheel texture size; drawn WHEEL_SS times larger, then box-averaged
 # wheel texture, all procedural (Tripo's wheel bake had smeared lug nuts and specks in the slots and sat 8.5 mm off the
 # axis). Official 19" Photon aero wheel: matte charcoal face, 5 turbine
@@ -591,13 +594,9 @@ def unwrap(ob):
     bpy.ops.uv.select_all(action="SELECT")
     bpy.ops.uv.pack_islands(margin=0.006, rotate=True, shape_method="CONCAVE")
     bpy.ops.object.mode_set(mode="OBJECT")
-    uv1 = me.uv_layers.new(name="UV1")
-    uv0 = me.uv_layers["UV0"]
-    a = np.empty(len(me.loops) * 2)
-    uv0.data.foreach_get("uv", a)
-    uv1.data.foreach_set("uv", a * UV1_SCALE)
-    me.uv_layers.active = uv0
-    uv0.active_render = True
+    me.uv_layers.new(name="UV1")      # placeholder copy of UV0 (vehicle shaders read two layers); final: damage_uv1
+    me.uv_layers.active = me.uv_layers["UV0"]
+    me.uv_layers["UV0"].active_render = True
     return n
 
 
@@ -1248,6 +1247,198 @@ def classify(pos, nrm, col, liner, iid, iidf):
     return zone, pane, black, cowl, glass, dict(head=head, tail=tail, stop=stop, ring=ring, soft=soft), covered
 
 
+# zones that take UV1 only from the same ModernCar zones (the maps draw cracks and broken-lamp holes there); everything
+# else takes the body panels. ModernCar has one UV1 triangle per lamp (its tail lamps are the Stop zones) and our head
+# bar is 1.5 grid wide: our lamps (along, z) tile round that triangle at DAMAGE_PX (DAMAGE_LAMPS; by nearest surface
+# the corner lamps landed off it on blank texels). ModernCar's boot is a long deck with a
+# short back while our tailgate is mostly upright: by nearest surface it took the dent blob on the boot's back
+# (Veh_Damage1 58% vs ModernCar 18%), so its bounding box is first fitted onto ModernCar's (DAMAGE_BOX)
+DAMAGE_GROUPS = (("WinT",), ("WinH",), ("WinLH",), ("WinLT",), ("WinRH",), ("WinRT",),
+                 ("LightLH",), ("LightRH",), ("LightLT", "StopL"), ("LightRT", "StopR"), ("Boot",))
+DAMAGE_LAMPS, DAMAGE_BOX = (7, 8, 9, 10), (11,)          # group numbers (index in DAMAGE_GROUPS + 1)
+DAMAGE_PX = 80                                           # lamp UV1 density, px of 512 per grid (vanilla panels 75-100)
+GROUP_OF = {z: i + 1 for i, zs in enumerate(DAMAGE_GROUPS) for z in zs}
+ZCODE = np.array([""] * 125, object)            # mask colour (channels in quarters) -> zone name
+for _k, _c in Z.items():
+    ZCODE[int(np.rint(np.array(_c) * 4) @ [25, 5, 1])] = _k
+
+
+def zone_codes(rgba):
+    """Zone code (index into ZCODE) per mask texel, -1 off the 27 colours (antialiased edges) or where alpha < 0.5."""
+    q = rgba[..., :3] * 4
+    c = np.rint(q).astype(np.int64) @ [25, 5, 1]
+    ok = (np.abs(q - np.rint(q)).max(-1) < 0.08) & (rgba[..., 3] > 0.5) & (ZCODE[c] != "")
+    return np.where(ok, c, -1)
+
+
+def face_zones(fid, mask, nf):
+    """Mask zone per polygon: majority over the bake texels it covers ("" for polygons under one texel)."""
+    c = zone_codes(mask)
+    ok = (fid >= 0) & (c >= 0)
+    cnt = np.bincount(fid[ok].astype(np.int64) * 125 + c[ok], minlength=nf * 125).reshape(nf, 125)
+    return np.where(cnt.max(1) > 0, ZCODE[cnt.argmax(1)], "")
+
+
+def fan_tris(me):
+    """Loop-index triples of every polygon's fan triangulation, and each triangle's polygon."""
+    ls, lt = (np.empty(len(me.polygons), np.int64) for _ in range(2))
+    me.polygons.foreach_get("loop_start", ls)
+    me.polygons.foreach_get("loop_total", lt)
+    t, p = [], []
+    for k in range(1, lt.max() - 1):
+        s = np.flatnonzero(lt > k + 1)
+        t.append(np.stack([ls[s], ls[s] + k, ls[s] + k + 1], 1))
+        p.append(s)
+    return np.concatenate(t), np.concatenate(p)
+
+
+def loop_data(me, uv_names):
+    lv = np.empty(len(me.loops), np.int64)
+    me.loops.foreach_get("vertex_index", lv)
+    uvs = []
+    for nm in uv_names:
+        a = np.empty(len(me.loops) * 2)
+        me.uv_layers[nm].data.foreach_get("uv", a)
+        uvs.append(a.reshape(-1, 2))
+    return lv, uvs
+
+
+def tri_dist(p, a, b, c):
+    """Squared distance from p to triangle abc and the barycentric weights (..., 3) of p projected on its plane, not
+    clamped to the triangle (broadcasts)."""
+    ab, ac, ap = b - a, c - a, p - a
+    d00, d01, d11 = (ab * ab).sum(-1), (ab * ac).sum(-1), (ac * ac).sum(-1)
+    d20, d21 = (ap * ab).sum(-1), (ap * ac).sum(-1)
+    den = np.maximum(d00 * d11 - d01 * d01, 1e-12)
+    v, w = (d11 * d20 - d01 * d21) / den, (d00 * d21 - d01 * d20) / den
+    plane = np.stack([1 - v - w, v, w], -1)
+    d = np.where((v >= 0) & (w >= 0) & (v + w <= 1), ((ap - v[..., None] * ab - w[..., None] * ac) ** 2).sum(-1), np.inf)
+    vs = (a, b, c)
+    for i, j in ((0, 1), (0, 2), (1, 2)):                 # outside: nearest point of an edge
+        e = vs[j] - vs[i]
+        t = np.clip(((p - vs[i]) * e).sum(-1) / np.maximum((e * e).sum(-1), 1e-12), 0, 1)
+        d = np.minimum(d, ((p - vs[i] - t[..., None] * e) ** 2).sum(-1))
+    return d, plane
+
+
+def nearest_tri(p, tri, chunk=256, normals=None, tn=None):
+    """Index of the triangle (M x 3 x 3) nearest to each point (N x 3) and the point's barycentric weights on its plane
+    (extrapolated past its edges: clamped to the edge, a third of the faces collapsed to a line where our surface
+    reaches past ModernCar's, e.g. our door bottoms 14 cm below its side strip; capping the extrapolation at 15 cm
+    collapsed more). With normals: only triangles within 73 deg (|cos| > 0.3) of the point's normal, all of them where
+    none is."""
+    idx, bary = np.empty(len(p), np.int64), np.empty((len(p), 3))
+    for s in range(0, len(p), chunk):
+        d, bc = tri_dist(p[s:s + chunk, None], tri[None, :, 0], tri[None, :, 1], tri[None, :, 2])
+        if normals is not None:
+            ok = np.abs(normals[s:s + chunk] @ tn.T) > 0.3
+            d = np.where(ok | ~ok.any(1, keepdims=True), d, np.inf)
+        k = d.argmin(1)
+        idx[s:s + chunk], bary[s:s + chunk] = k, bc[np.arange(len(k)), k]
+    return idx, bary
+
+
+def damage_uv1(body, fzone):
+    """UV1 of the body (the shared Veh_Damage1/2, Veh_Rust and Veh_Blood_* 512 maps) taken over from vanilla ModernCar:
+    its skin is stretched onto ours (length and height by bbox, width by the half width below the belt) and every face
+    takes ModernCar's UV1 nearby: DAMAGE_GROUPS zones only from the same ModernCar zones, the rest only from its body
+    panels. Each face picks one ModernCar UV1 island (nearest triangle within 73 deg of its normal) and each corner takes
+    the UV1 of that island's nearest triangle at its projection (nearest_tri), so the pattern runs on across a panel and
+    never stretches over an island seam. Both sides share ModernCar's side strip, as in vanilla. UV0 x 0.56 (before
+    2026-10-24) put the car in the maps' empty lower-left corner: windscreen and left windows never cracked.
+    fzone: mask zone per polygon (face_zones).
+    Must run before the doors are cut out of the body: the door meshes keep the body's UV0 / UV1."""
+    ref = vanilla.load(DAMAGE_REF)
+    rm = ref.data
+    rm.uv_layers.active = rm.uv_layers["UV1"]
+    pisl = np.empty(len(rm.polygons), np.int64)
+    for k, faces in enumerate(mesh_utils.mesh_linked_uv_islands(rm)):
+        pisl[faces] = k
+    rt, rp = fan_tris(rm)
+    lv, (u0, u1) = loop_data(rm, ("UV0", "UV1"))
+    rco, ru0, ru1, risl = mesh_co(ref)[lv][rt], u0[rt], u1[rt], pisl[rp]
+    bpy.data.objects.remove(ref)
+    # zone of each ModernCar triangle: majority of 64 samples on its mask. Skin = painted at most of them (its interior,
+    # underbody and wheel wells are not, and the nearest surface must be the outside) and a real UV1 triangle: 176 of
+    # its 406 skin triangles (4.2 of 18.4 grid^2: edges, jambs, part of the hood and boot) have UV1 collapsed to a point
+    # (under 20 px of the 512 maps per grid, vs 75-100 on the panels); our faces nearest to them got one texel
+    r = np.random.default_rng(0).random((64, 2))
+    r[r.sum(1) > 1] = 1 - r[r.sum(1) > 1]
+    uv = np.einsum("sk,tkc->tsc", np.stack([1 - r.sum(1), r[:, 0], r[:, 1]], 1), ru0)
+    msk = img_np(bpy.data.images.load(os.path.join(vanilla.PZ, "textures", "Vehicles", DAMAGE_REF_MASK)))
+    h, w = msk.shape[:2]
+    c = zone_codes(msk[np.clip((uv[..., 1] * h).astype(int), 0, h - 1), np.clip((uv[..., 0] * w).astype(int), 0, w - 1)])
+    e, f = ru1[:, 1] - ru1[:, 0], ru1[:, 2] - ru1[:, 0]
+    a3 = np.linalg.norm(np.cross(rco[:, 1] - rco[:, 0], rco[:, 2] - rco[:, 0]), axis=1)
+    skin = ((c >= 0).mean(1) > 0.5) & (np.abs(e[:, 0] * f[:, 1] - e[:, 1] * f[:, 0]) * 512 ** 2 > 20 ** 2 * a3)
+    cnt = np.stack([(c == k).sum(1) for k in range(125)], 1)
+    rzone = ZCODE[cnt.argmax(1)]
+    grp = lambda zn: np.array([GROUP_OF.get(z, 0) for z in zn])  # noqa: E731
+    rcls = np.where(skin, grp(rzone), -1)
+    # stretch ModernCar onto the body
+    co = mesh_co(body)
+
+    def frame(v):
+        lo, hi = v.min(0), v.max(0)
+        return lo, hi, np.abs(v[v[:, 2] < lo[2] + 0.55 * (hi[2] - lo[2]), 0]).max()   # below the belt: no mirrors
+    (blo, bhi, bw), (rlo, rhi, rw) = frame(co), frame(rco[skin].reshape(-1, 3))
+    s = np.array([bw / rw, *((bhi - blo) / (rhi - rlo))[1:]])
+    off = np.array([0, *(blo - rlo * s)[1:]])
+    rco = rco * s + off
+    rn = np.cross(rco[:, 1] - rco[:, 0], rco[:, 2] - rco[:, 0])
+    rn /= np.maximum(np.linalg.norm(rn, axis=1, keepdims=True), 1e-12)
+    me = body.data
+    fn = np.empty(len(me.polygons) * 3)
+    me.polygons.foreach_get("normal", fn)
+    fn, fc = fn.reshape(-1, 3), face_centres(body)
+    fcls = grp(fzone)
+    blv, _ = loop_data(me, ())
+    lt = np.empty(len(me.polygons), np.int64)
+    me.polygons.foreach_get("loop_total", lt)
+    lf = np.repeat(np.arange(len(lt)), lt)
+    box = {}                                        # group -> (our min, size, ModernCar min, size)
+    for g in DAMAGE_BOX:
+        p, q = co[blv[fcls[lf] == g]], rco[rcls == g].reshape(-1, 3)
+        if len(p) and len(q):
+            box[g] = (p.min(0), np.maximum(np.ptp(p, 0), 1e-6), q.min(0), np.ptp(q, 0))
+    put = lambda p, g: (p - box[g][0]) / box[g][1] * box[g][3] + box[g][2] if g in box else p  # noqa: E731
+    fgrp, fisl = fcls.copy(), np.empty(len(fc), np.int64)
+    for g in range(len(DAMAGE_GROUPS) + 1):
+        F = np.flatnonzero(fcls == g)
+        T = np.flatnonzero(rcls == g)
+        if not len(T):
+            T, fgrp[F] = np.flatnonzero(rcls == 0), 0
+        k, _ = nearest_tri(put(fc[F], g), rco[T], normals=fn[F], tn=rn[T])
+        fisl[F] = risl[T[k]]
+    # corners: the face's island (its triangles of the same group), UV1 of the nearest one's plane there
+    out = np.empty((len(blv), 2))
+    key = fisl[lf] * 16 + fgrp[lf]
+    for kk in np.unique(key):
+        L = np.flatnonzero(key == kk)
+        T = np.flatnonzero((risl == kk // 16) & (rcls == kk % 16))
+        vv, inv = np.unique(blv[L], return_inverse=True)
+        k, bc = nearest_tri(put(co[vv], kk % 16), rco[T])
+        out[L] = np.einsum("nk,nkc->nc", bc, ru1[T[k]])[inv]
+    for g in DAMAGE_LAMPS:      # lamps: tiled at panel density round ModernCar's lamp triangle, our corner lamp at its
+        L = np.flatnonzero(fgrp[lf] == g)      # centre (else the bar's middle): the box round it is half blank
+        if not len(L):
+            continue
+        p = co[blv[L]]
+        a = [int(np.argmax(np.ptp(p[:, :2], 0))), 2]         # along the lamp (x or y), across it (z)
+        q = ru1[rcls == g].reshape(-1, 2)
+        s = np.argsort(-np.ptp(q, 0))                       # the UV box's long, short side
+        size = np.ptp(q, 0)[s]
+        fl = lf[L]
+        stop = np.isin(fzone[fl], ("StopL", "StopR"))
+        o = p[stop].mean(0) if stop.any() else (p.min(0) + p.max(0)) / 2
+        t = (p[:, a] - o[a]) * DAMAGE_PX / 512
+        cen = np.stack([np.bincount(fl, t[:, i]) for i in range(2)], 1)[fl] / np.bincount(fl)[fl, None]
+        out[L[:, None], s] = q.mean(0)[s] + t - np.round(cen / size) * size    # whole faces per tile
+    me.uv_layers["UV1"].data.foreach_set("uv", out.ravel())
+    print("UV1 from", DAMAGE_REF, "islands", len(np.unique(fisl)), "faces per own-zone group",
+          {"/".join(zs): int((fgrp == i + 1).sum()) for i, zs in enumerate(DAMAGE_GROUPS)})
+
+
 def stage_final(n):
     bpy.ops.wm.open_mainfile(filepath=os.path.join(TMP, "v2_tiers.blend"))
     info = json.loads(bpy.context.scene["info"])
@@ -1409,6 +1600,7 @@ def stage_final(n):
     mat = bpy.data.materials.new(NAME)
     body.data.materials.clear()
     body.data.materials.append(mat)
+    damage_uv1(body, face_zones(fid, mask, len(body.data.polygons)))   # before stage doors cuts them out of the body
     g = geometry(body, zmid, wl, info["wheel_r"])
     g |= {"tris_body": tris(body), "tris_wheel": info["wheel_tris"], "skin": SKIN, "skins": [p for p, _ in PAINTS],
           "scale": {k: info[k] for k in ("uniform_scale", "x_factor", "z_factor", "final_size", "official")}}
