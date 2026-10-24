@@ -11,7 +11,8 @@ stages (each reads the previous one's .blend in temp/modely/):
   final N         bake N-tri body at 4096 (cached in bake_N.npz; delete it after a tiers rerun: new UV0), one 2048
                   skin per paint (colour from the official render; glass panes show Tripo's cabin through a tint, black
                   frit band, normals from a quadric per pane; head / rear light bars on smoothed centre lines; satin
-                  black trims), 512 mask / lights, body FBX, geometry block spliced into the vehicle script (copy in
+                  black trims, rear diffuser and front lip by geometry, body-colour spoiler), 512 mask / lights, body
+                  FBX, geometry block spliced into the vehicle script (copy in
                   temp/modely/geometry_block.txt), verify.txt, prev/*.png
 
 Axes (Blender): +Y front, +Z up, -X = car left (driver side), 1 unit = 1 grid; same as vanilla raw FBX coords
@@ -117,6 +118,22 @@ TRIM_RGB, TRIM_V = (0.085, 0.085, 0.09), 0.12   # black plastics; Tripo's trim V
 MIRROR = dict(base_x=0.745, root_x=0.705, root_z=0.95, y=(0.48, 0.70), z=(0.86, 1.02))
 CAMERA = (0.85, 1.00, 0.68, 0.76)           # side repeater box (y, y, z, z): Tripo's dark wedge y 0.93-0.99, z 0.69-0.74,
 #                                             its streaked tail back to the door gap
+# rear diffuser (grid): black plastic below the bumper crease (z 0.515-0.525 for |x| < 0.45) out to the outer edge of
+# its flange, which runs down and out from (0.54, 0.52) to (0.65, 0.30): |x| < x0 - k z. Tripo painted the whole
+# assembly darker than the bumper (V ~0.20 against 0.30-0.41) but above the trim cut, so its panel and flange came out
+# body colour; the official renders (official/*_REAR34.png) are black from the crease down, the corners body colour
+# down to the lower trim, whose top is an up-facing step at z 0.31-0.33 from the diffuser to the wheel arch (corner_*)
+DIFFUSER = dict(y=-1.75, z=0.52, x0=0.80, k=0.50, corner_y=-1.5, corner_x=0.45, corner_z=0.335)
+# spoiler (grid): the body-colour ducktail between the rear glass (z 1.045) and the lip over the light housing (z 0.935),
+# its top facing up, its back face back. Tripo shaded the back face dark (V 0.17-0.25): above BELT_Z that is "dark",
+# and off the glass islands dark is trim, so it came out as black blotches with a grey patch; official renders show
+# body colour down to the black light housing
+SPOILER = dict(y=-1.6, z=(0.935, 1.045), x=0.5)
+# front lip (grid): black below the bumper's body colour, which ends at z 0.360-0.365 for |x| < 0.40 and sweeps down
+# from there (0.345 at 0.43, 0.27 at 0.49: the corners stay; cutting to |x| 0.45 squared off the intake's corners);
+# Tripo left an isolated body-colour patch on the lip's lower edge (x -0.25..-0.15, z 0.22-0.25), a dark red blob
+# under the grille
+FRONT_LIP = dict(y=1.7, x=0.40, z=0.355)
 # official Model Y paints (decisions.md "車款外觀"): skin order = vehicle script skin index = Core.lua colors order;
 # saved games store the index (BaseVehicle.java:2635/2741), so after release only append
 PAINTS = [("StealthGrey", "PN01"), ("PearlWhite", "PPSW"), ("DiamondBlack", "PX02"), ("Quicksilver", "PN00"),
@@ -1249,6 +1266,19 @@ def stage_final(n):
     sd = free & (np.abs(nrm[..., 0]) > 0.4) & (y > CAMERA[0]) & (y < CAMERA[1]) & (z > CAMERA[2]) & (z < CAMERA[3])
     badge = hull_mask(sd & (v < 0.25), sd, pos)
     paint = (paint | cap) & ~(mglass | badge)
+    # lower black plastics: rear diffuser from the bumper crease down between the outer edges of its flange, the lower
+    # trim under both rear corners (DIFFUSER), and the front lip under the bumper (FRONT_LIP)
+    ax_ = np.abs(x)
+    dif = (y < DIFFUSER["y"]) & (z < DIFFUSER["z"]) & (ax_ < DIFFUSER["x0"] - DIFFUSER["k"] * z)
+    dif |= (y < DIFFUSER["corner_y"]) & (ax_ > DIFFUSER["corner_x"]) & (z < DIFFUSER["corner_z"])
+    dif |= (y > FRONT_LIP["y"]) & (ax_ < FRONT_LIP["x"]) & (z < FRONT_LIP["z"])
+    paint &= ~(dif & free)
+    # spoiler: all body colour; dark texels on its back face lifted to the tailgate's median, on its top to the top's
+    sp = free & ~black & (y < SPOILER["y"]) & (z > SPOILER["z"][0]) & (z < SPOILER["z"][1]) & (np.abs(x) < SPOILER["x"])
+    sp_back, sp_top = sp & (nrm[..., 1] < -0.5), sp & (nrm[..., 1] >= -0.5)
+    gate = paint & (y < DIFFUSER["y"]) & (z > 0.55) & (z < 0.8) & (np.abs(x) < SPOILER["x"])
+    lift_back, lift_top = np.median(v[gate]), np.median(v[sp_top & paint])
+    paint |= sp
     # Tripo's speckles along the head bar (lamp["soft"]) become paint at the brightness of the paint round them; the
     # mirror cap keeps its highlights, its darker half is lifted to the cap's median
     soft = lamp["soft"] & free
@@ -1259,6 +1289,7 @@ def stage_final(n):
     vk = np.where(soft, np.where(w > 0.02, near / np.maximum(w, 1e-3), far), v)
     if cap.any():
         vk = np.where(cap, np.maximum(v, np.median(v[cap])), vk)
+    vk = np.where(sp_back, np.maximum(v, lift_back), np.where(sp_top, np.maximum(v, lift_top), vk))
     paint |= soft
     vk = median3(vk, paint)          # Tripo's single-texel paint speckle; gap lines (>= 2 px) and highlights stay
     base = np.concatenate([col, np.ones(col.shape[:2] + (1,))], -1).astype(np.float32)
