@@ -61,6 +61,14 @@ module Base
         scale = 0.5495,
     }
 
+    model MinidoracatTesla_ModelY_EngineDoor
+    {
+        mesh = vehicles/MinidoracatTesla_ModelY_Doors|EngineDoor,
+        shader = vehicle_multiuv,
+        static = false,
+        scale = 0.5495,
+    }
+
     /* 3-D cabin and see-through glass (build.py stage cabin). GloveBox draws Cabin then Glass (same part's models in
        script order, VehiclePart.java:175-181); the window parts come after GloveBox in the template.
        Cabin: own palette texture, so a non-vehicle shader, which only gets the transform when static (Model.java:
