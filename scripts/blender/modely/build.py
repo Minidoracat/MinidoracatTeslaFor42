@@ -92,6 +92,12 @@ DOOR_SILL_Z, DOOR_TOP_Z = 0.20, 1.30
 DOOR_A_LINE = ((0.95, 0.83), (1.00, 0.67), (1.04, 0.625), (1.08, 0.585), (1.12, 0.52), (1.16, 0.39), (1.20, 0.32),
                (1.24, 0.245), (1.28, 0.17), (1.32, 0.09))
 GATE = dict(y=-1.40, z=0.55, x=0.60, top_z=0.95, top_x=0.51)
+# frunk lid (EngineDoor), read off the shut lines in a top view of the bake (Pearl White): the side lines run straight
+# from |x| 0.59 at the cowl corner (y 1.03) in to 0.417 at y 1.82 (|x| < a - k (y - y0)), the front edge arcs over the
+# light bar (y < f0 - f2 x^2: 1.885 at the centre, 1.82 at the side lines), the rear edge is the cowl strip's front
+# (windscreen base WS_BASE + COWL_W: the black cowl stays body). Mask Hood = this region (classify), so a removed lid
+# greys only the lid, not the fender tops. Tub: the opening drops FRUNK depth into a black liner box
+FRUNK = dict(side=(0.59, 0.219, 1.03), front=(1.885, 0.36), z=0.55, depth=0.22)
 # glass panes (grid, same frame), read off the bake's top / side views: the windscreen / roof-glass seam is Tripo's seam
 # line y = a + b x^2 (fit resid 1 cm), the roof-glass / rear-glass seam is straight; the black B-pillar trim between the
 # door windows runs from y -0.275 to its front edge -0.15 - 0.27 (z - 1); a thin black divider splits the rear door
@@ -1202,7 +1208,7 @@ def classify(pos, nrm, col, liner, iid, iidf):
     put((y < DOOR_REAR_Y) & (z < BELT_Z + 0.05), "GuardLT", "GuardRT")
     put(side & (y <= DOOR_FRONT_Y) & (y > B_PILLAR_Y) & (z > DOOR_SILL_Z) & (z < BELT_Z + 0.1), "DoorLH", "DoorRH")
     put(side & (y <= B_PILLAR_Y) & (y >= DOOR_REAR_Y) & (z > DOOR_SILL_Z) & (z < BELT_Z + 0.1), "DoorLT", "DoorRT")
-    put((y > 0.75) & (z > 0.58) & (z < BELT_Z + 0.02) & (nz > 0.35), "Hood", "Hood")
+    put(frunk_lid(x, y, z) & (nz > 0.0), "Hood", "Hood")
     put((y > 1.5) & (z <= 0.62) & ((ny > 0.3) | (y > 1.85)), "Head", "Head")
     put((y < -1.45) & (z > 0.55) & ((ny < -0.2) | (nz > 0.3)) & (np.abs(x) < np.where(z < GATE["top_z"], GATE["x"],
                                                                                        GATE["top_x"])), "Boot", "Boot")
@@ -1618,13 +1624,14 @@ def stage_final(n):
 # static = false and reflections are on, ModelManager.java:1298-1309). A part model draws with the parent car's skin,
 # mask, damage and uninstall uniforms (Model.java:534-585), so the doors keep the body's UV0 / UV1 and textures.
 # part: side (-1 = left, x < 0; 0 = tailgate), hinge axis, open angle (deg; sign swings the door out, the gate up),
-# clip seconds. Hinge points come from the cut (front edge on the outer skin; the gate's top edge). The clips run
-# open -> closed ("<Part>_closing", vanilla's naming; Open plays it reversed). updateAnimationPlayer advances the clip
-# 0.8 x real time x rate (BaseVehicle.java:3901-3904): doors ~1 s, the gate ~4.5 s like an electric tailgate
+# clip seconds. Hinge points come from the cut (front edge on the outer skin; the gate's top edge; the frunk lid's
+# rear edge at the cowl, front rising like the real lid). The clips run open -> closed ("<Part>_closing", vanilla's
+# naming; Open plays it reversed). updateAnimationPlayer advances the clip 0.8 x real time x rate
+# (BaseVehicle.java:3901-3904): doors ~1 s, the gate ~4.5 s like an electric tailgate, the lid ~1.25 s
 DOORS = {
     "DoorFrontLeft": (-1, (0, 0, 1), -65, 0.8), "DoorFrontRight": (1, (0, 0, 1), 65, 0.8),
     "DoorRearLeft": (-1, (0, 0, 1), -65, 0.8), "DoorRearRight": (1, (0, 0, 1), 65, 0.8),
-    "TrunkDoor": (0, (1, 0, 0), -75, 3.6),
+    "TrunkDoor": (0, (1, 0, 0), -75, 3.6), "EngineDoor": (0, (1, 0, 0), 55, 1.0),
 }
 DOORS_FBX = NAME + "_Doors"
 DOOR_T, JAMB_T = 0.06, 0.08       # grid: door slab thickness (inner panel offset), body jamb depth
@@ -1659,10 +1666,19 @@ def soup(ob, shift):
     return mesh_co(ob) + shift, lv[tl], attr[tl], lin[tf]
 
 
+def frunk_lid(x, y, z):
+    """Inside the frunk lid outline (FRUNK), pre-centre grid frame; the mask's Hood zone and the lid piece."""
+    a, k, y0 = FRUNK["side"]
+    f0, f2 = FRUNK["front"]
+    rear = WS_BASE[0] + WS_BASE[1] * x ** 2 + WS_BASE[2] * x ** 4 + COWL_W
+    return (y > rear) & (y < f0 - f2 * x ** 2) & (np.abs(x) < a - k * (y - y0)) & (z > FRUNK["z"])
+
+
 def cut(V, T, A, L, n, d, pred):
-    """Split the triangles whose centroid passes pred and that the plane n.p = d crosses, along the plane; neighbours
-    sharing a split edge are split too (one more triangle each), so no T-junction opens a crack."""
-    s = V @ np.asarray(n, float) - d
+    """Split the triangles whose centroid passes pred and that the plane n.p = d crosses (n may be a function of the
+    points giving the signed distance of a curved cut, d then 0), along the cut; neighbours sharing a split edge are
+    split too (one more triangle each), so no T-junction opens a crack."""
+    s = n(V) - d if callable(n) else V @ np.asarray(n, float) - d
     s[np.abs(s) < 1e-7] = 0
     sg = np.sign(s)
     st = sg[T]
@@ -1730,14 +1746,29 @@ def door_cuts():
             ((1, 0, 0), g["top_x"], lambda c: (c[:, 1] < RW_SEAM_Y + 0.05) & (c[:, 2] > g["top_z"] - 0.03)),
             ((1, 0, 0), -g["top_x"], lambda c: (c[:, 1] < RW_SEAM_Y + 0.05) & (c[:, 2] > g["top_z"] - 0.03)),
             ((0, 0, 1), g["top_z"], lambda c: (c[:, 1] < g["y"]) & (ax(c) > g["top_x"] - 0.03) & (ax(c) < g["x"] + 0.03)),
-            ((0, 1, 0), RW_SEAM_Y, lambda c: (c[:, 2] > 1.1) & (ax(c) < g["top_x"] + 0.03))]
+            ((0, 1, 0), RW_SEAM_Y, lambda c: (c[:, 2] > 1.1) & (ax(c) < g["top_x"] + 0.03)),
+            *frunk_cuts()]
+
+
+def frunk_cuts():
+    """The frunk lid's shut lines (FRUNK): two straight side lines, the arc over the light bar, the cowl edge."""
+    a, k, y0 = FRUNK["side"]
+    f0, f2 = FRUNK["front"]
+    n = np.array([1.0, k, 0.0]) / np.hypot(1.0, k)
+    near = lambda c: (c[:, 1] > 0.9) & (c[:, 2] > FRUNK["z"] - 0.05) & (np.abs(c[:, 0]) < a + 0.08)   # noqa: E731
+    return [(n, (a + k * y0) / np.hypot(1.0, k), lambda c: near(c) & (c[:, 0] > 0.3)),
+            (n * [-1, 1, 1], (a + k * y0) / np.hypot(1.0, k), lambda c: near(c) & (c[:, 0] < -0.3)),
+            (lambda P: P[:, 1] - (f0 - f2 * P[:, 0] ** 2), 0, lambda c: near(c) & (c[:, 1] > 1.7)),
+            (lambda P: P[:, 1] - (WS_BASE[0] + WS_BASE[1] * P[:, 0] ** 2 + WS_BASE[2] * P[:, 0] ** 4 + COWL_W), 0,
+             lambda c: near(c) & (c[:, 1] < 1.2))]
 
 
 def door_pieces(tp, fn, zone, liner):
     """Piece per triangle (tp: its 3 corner points): 0 body, k = k-th DOORS entry. Below the belt the door panel by
     geometry (a superset of the mask's Door zones, which also need a side-facing texel), the window by its mask zone,
     the black frame only within FRIT (+1.5 cm) of that window (else the roof rail went with the door), the mirror (door
-    mounted on the Model Y); the gate by its outline plus the Boot / rear glass / tail-bar zones."""
+    mounted on the Model Y); the gate by its outline plus the Boot / rear glass / tail-bar zones; the frunk lid by
+    its outline (frunk_lid, = mask Hood) facing up or forward."""
     cen = tp.mean(1)
     x, y, z = cen.T
     nx = fn[:, 0]
@@ -1767,10 +1798,12 @@ def door_pieces(tp, fn, zone, liner):
             for i in np.flatnonzero(fr):
                 fr[i] = ((wp - cen[i]) ** 2).sum(1).min() < (FRIT + 0.015) ** 2
             sel = (sel | fr) & out_side
-        else:
+        elif part == "TrunkDoor":
             geo = (z > g["z"]) & (np.abs(x) < gx) & (np.abs(nx) < 0.7)
             sel = (geo & ((y < g["y"]) | ((z > g["top_z"]) & (y < RW_SEAM_Y)))) | np.isin(zone, ["Boot", "WinH"])
             sel |= np.isin(zone, ["LightLT", "LightRT"]) & (y < g["y"])
+        else:                                            # EngineDoor
+            sel = (frunk_lid(x, y, z) & (fn[:, 2] > -0.2)) | (zone == "Hood")
         out[sel & ~liner & (out == 0)] = k
     return drop_specks(tp, out)
 
@@ -1913,18 +1946,31 @@ def stage_doors():
     mir = mirror_head(cen)
     for k, (part, (sd, axis, ang, secs)) in enumerate(DOORS.items(), 1):
         sel = piece == k
-        off = (np.array([-sd, 0, 0]) if sd else np.array(GATE_IN)) * DOOR_T
+        lid = part == "EngineDoor"
+        off = (np.array([-sd, 0, 0]) if sd else np.array((0, 0, -1) if lid else GATE_IN)) * DOOR_T
         P, t, a, edges = slab(V, T, A, sel & ~mir, off, liner_attr, outer_extra=sel & mir)
-        newv, jt, ja = jamb(bodyV, T, A, edges, body_edges, off / DOOR_T * JAMB_T, liner_attr)
+        newv, jt, ja = jamb(bodyV, T, A, edges, body_edges, off / DOOR_T * (FRUNK["depth"] if lid else JAMB_T),
+                            liner_attr)
         bodyV = np.concatenate([bodyV, newv])
         body_t.append(jt)
         body_a.append(ja)
+        if lid:     # frunk tub: black walls (the jamb) and a floor, the lid's shape FRUNK depth down, facing up
+            ja[..., :4] = liner_attr[:4]
+            used, inv = np.unique(T[sel].ravel(), return_inverse=True)
+            fa = np.repeat(liner_attr[None, None], sel.sum() * 3, 0).reshape(-1, 3, 7).copy()
+            fa[..., 4:] = (0, 0, 1)
+            body_t.append(inv.reshape(-1, 3) + len(bodyV))
+            body_a.append(fa)
+            bodyV = np.concatenate([bodyV, V[used] + (0, 0, -FRUNK["depth"])])
         dv = V[np.unique(T[sel])]
         if sd:      # front edge on the outer skin, below the belt
             low = dv[dv[:, 2] < BELT_Z]
             yh = low[:, 1].max()
             near = low[low[:, 1] > yh - 0.05]
             h = np.array([sd * (sd * near[:, 0]).max(), yh, 0.0])
+        elif lid:   # rear edge (the cowl) on the centre line
+            mid = dv[np.abs(dv[:, 0]) < 0.08]
+            h = np.array([0.0, *mid[np.argmin(mid[:, 1]), 1:]])
         else:       # top edge of the gate
             h = np.array([0.0, dv[:, 1].max(), dv[:, 2].max()])
         hinges[part] = h - shift

@@ -60,4 +60,12 @@ module Base
         static = false,
         scale = 0.5495,
     }
+
+    model MinidoracatTesla_ModelY_EngineDoor
+    {
+        mesh = vehicles/MinidoracatTesla_ModelY_Doors|EngineDoor,
+        shader = vehicle_multiuv,
+        static = false,
+        scale = 0.5495,
+    }
 }
