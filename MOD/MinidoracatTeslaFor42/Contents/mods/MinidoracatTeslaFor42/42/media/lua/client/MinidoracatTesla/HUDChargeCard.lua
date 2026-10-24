@@ -395,4 +395,13 @@ Events.OnResolutionChange.Add(function()
     end
 end)
 
+-- ---------------------------------------------------------------- public API for other mods (AutoDrive FSD card)
+-- Contract: references/hud.md "chargeCardRect". Same coordinates and cost rules as hudRect: where the card is drawn now.
+MinidoracatTeslaAPI = MinidoracatTeslaAPI or {}
+function MinidoracatTeslaAPI.chargeCardRect(playerNum)
+    local c = cards[playerNum or 0]
+    if not c or not c.vehicle or not c.inUI then return 0, 0, 0, 0, false end
+    return c.x, c.y, c.width, c.height, c:isVisible()
+end
+
 return Card
