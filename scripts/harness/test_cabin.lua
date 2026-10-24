@@ -89,6 +89,7 @@ check(rates == 10 and #bad == 0, "door Open / Close rate 0.5 (" .. rates .. " ra
 local frag = read("shaders/MinidoracatTesla_glass.frag") or ""
 check(frag:find("texture2D%(TextureRust") ~= nil, "glass shader samples TextureRust (vehicle path, Shader.java:719-721)")
 check(frag:find("discard") ~= nil and frag:find("TextureUninstall1") ~= nil, "glass shader discards removed / open panes")
+check(frag:find("noDamage = 1.0 - texen2[2][0]", 1, true) ~= nil, "roof glass (LightBar L) takes no damage shell")
 check(frag:find("TextureReflection") == nil, "glass shader never samples the reflection maps (unbound without reflections)")
 check(read("shaders/MinidoracatTesla_glass_static.vert") ~= nil, "static glass vertex shader exists (ShaderProgram.java:278-282)")
 local skinned = read("shaders/MinidoracatTesla_glass.vert") or ""

@@ -115,8 +115,11 @@ void main()
 	if (dommat4(texen1, TextureUninstall1) + dommat4(texen2, TextureUninstall2) > 0.5)
 		discard;
 
-	float t2en = step(0.5, dommat4(texen1, TextureDamage1Enables1) + dommat4(texen2, TextureDamage1Enables2));
-	float t3en = step(0.5, dommat4(texen1, TextureDamage2Enables1) + dommat4(texen2, TextureDamage2Enables2));
+	// the roof glass (LightBar L) has no part, so no damage; the debug "Damage1/2 everywhere" options would otherwise
+	// lay the untinted shell (its raw colour) over it (E2E TeslaCabin-modely-after-1024b Fwin-S-Damage2)
+	float noDamage = 1.0 - texen2[2][0];
+	float t2en = noDamage * step(0.5, dommat4(texen1, TextureDamage1Enables1) + dommat4(texen2, TextureDamage1Enables2));
+	float t3en = noDamage * step(0.5, dommat4(texen1, TextureDamage2Enables1) + dommat4(texen2, TextureDamage2Enables2));
 
 	float window = clamp(texen1[1][2] + texen1[1][3] + texen1[2][0] + texen1[2][1] + texen1[2][2] + texen1[2][3], 0.0, 1.0);
 	float glass = clamp(window + texen2[2][0], 0.0, 1.0);
