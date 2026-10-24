@@ -1,12 +1,14 @@
 #version 330
 
-// Model Y see-through glass: vanilla vehicle_multiuv_noreflect_static.vert (the glass model is static = true, so the
-// engine loads <name>_static.vert, ShaderProgram.java:278-282).
+// MinidoracatTesla_vehicle, static (the body with its cabin and glass): vanilla vehicle_multiuv_static.vert plus
+// reflectionsOn, see MinidoracatTesla_vehicle.vert.
 
 varying vec3 vertColour;
 varying vec3 vertNormal;
 varying vec2 texCoords;
 varying vec2 texCoords1;
+varying vec4 positionEye;
+varying float reflectionsOn;
 
 layout (location = 0) in vec4 vertex;
 layout (location = 1) in vec4 normal;
@@ -16,6 +18,7 @@ layout (location = 3) in vec2 uv2;
 uniform mat4 ModelViewProjection;
 uniform mat4 transform;
 uniform float targetDepth = 0.5;
+uniform sampler2D TextureReflectionA;
 
 void main()
 {
@@ -27,6 +30,14 @@ void main()
 
 	vertNormal = (transform * normal).xyz;
 	vertColour = vec3(1,1,1);
+
+#if __VERSION__ >= 130
+	reflectionsOn = textureSize(TextureReflectionA, 0).x > 1 ? 1.0 : 0.0;
+#else
+	reflectionsOn = 0.0;
+#endif
+
+	positionEye = (ModelViewProjection * transform * position) - vec4(-0.2, 0.2, 0.2, 0);
 
 	vec4 o = ModelViewProjection * transform * position;
 	float clip = ((o.z+1.0) / 2.0); // -1,+1 -> 0,2 -> 0,1

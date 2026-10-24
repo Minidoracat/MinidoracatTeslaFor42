@@ -1621,10 +1621,10 @@ def stage_final(n):
 # ImportedSkeleton.java:57-60 looks up), one bone "<Part>_bone" per door, one mesh per door weighted 1.0 to its bone
 # ("<file>|<mesh>", ProcessedAiScene.java:97-124), one clip per door; the take name is cut at its first '|'
 # (ImportedSkeleton.java:336-340), Blender writes "VehicleSkeleton|<action>". Skinned meshes carry pos, normal,
-# weights, indices, UV0, UV1 (ImportedSkinnedMesh.java:74-82) = vehicle_multiuv_noreflect.vert's locations; the MOD's
-# media/shaders/vehicle_multiuv.vert is the skinned twin vanilla lacks (ShaderProgram.java:278-281 asks for it when
-# static = false and reflections are on, ModelManager.java:1298-1309). A part model draws with the parent car's skin,
-# mask, damage and uninstall uniforms (Model.java:534-585), so the doors keep the body's UV0 / UV1 and textures.
+# weights, indices, UV0, UV1 (ImportedSkinnedMesh.java:74-82) = vehicle_multiuv_noreflect.vert's locations, read by
+# the MOD's media/shaders/MinidoracatTesla_vehicle.vert (static = false picks <name>.vert, ShaderProgram.java:278-286).
+# A part model draws with the parent car's skin, mask, damage and uninstall uniforms (Model.java:534-585), so the doors
+# keep the body's UV0 / UV1 and textures.
 # part: side (-1 = left, x < 0; 0 = tailgate), hinge axis, open angle (deg; sign swings the door out, the gate up),
 # clip seconds. Hinge points come from the cut (front edge on the outer skin; the gate's top edge; the frunk lid's
 # rear edge at the cowl, front rising like the real lid). The clips run open -> closed ("<Part>_closing", vanilla's
@@ -1637,7 +1637,6 @@ DOORS = {
 }
 DOORS_FBX = NAME + "_Doors"
 DOOR_GLASS_ZONES = ("WinLH", "WinLT", "WinRH", "WinRT", "WinH")   # window zones a door / the tailgate carries
-DOOR_RATE = 0.5   # Open / Close rate: the window glass (the door's child) advances the door's player a second time a frame
 DOOR_T, JAMB_T = 0.06, 0.08       # grid: door slab thickness (inner panel offset), body jamb depth
 GATE_IN = (0.0, 0.894, -0.447)    # tailgate inward direction (forward and down: the glass leans, the panel stands)
 CLIP_FPS = 30
@@ -1948,8 +1947,8 @@ def stage_doors():
                   for i in range(3)}
     meshes, hinges = [], {}
     mir = mirror_head(cen)
-    # window panes: outer faces only (stage cabin moves them to see-through glass models); the slab's inner panel and
-    # edge strips close round the window hole instead of covering it
+    # window panes: outer faces only (stage cabin flags them as see-through glass in the door's own mesh); the slab's
+    # inner panel and edge strips close round the window hole instead of covering it
     gl = np.isin(zone, list(DOOR_GLASS_ZONES)) & ~mir
     for k, (part, (sd, axis, ang, secs)) in enumerate(DOORS.items(), 1):
         sel = piece == k
@@ -2075,33 +2074,29 @@ def door_previews(body, arm, doors):
 CABIN_FLOOR = -0.43       # mesh z (centred; ground -0.75): cabin floor
 CABIN_INSET = 0.05        # grid: the cabin shell sits this far inside the surface its ray hit
 LINING_TRIS, LINING_IN = 700, 0.015  # body lining above the belt (lining()): triangle budget, inset (grid)
-CABIN_Y = (1.12, -1.35)   # mesh y of the front and rear walls of the cabin shell: the front is past the windscreen's
-#                           lower edge (y 1.089 on the centre line, WS_BASE), else the ground shows under the glass
+CABIN_FRONT_Y = 1.12     # mesh y of the shell's front wall: past the windscreen's lower edge (y 1.089 on the centre
+#                           line, WS_BASE), else the ground shows under the glass
+TRUNK_Y = -0.95           # mesh y where the trunk floor starts, behind the rear backrests (their foot is at its height)
+TRUNK_DROP = 0.03         # grid: trunk floor below the tailgate opening's lower edge (GATE z); the sill plate fills it
 CABIN_ZC = -0.10          # mesh z of the cabin axis the shell rays start from
-CABIN_RES = (41, 49)      # shell: rings along y, rays per ring (200 -> -20 deg round the axis); its edge against the
-#                           glass is a staircase of this step, seen through the near windows (E2E TeslaCabin-cab-after-1024b)
+CABIN_RES = (0.062, 49)   # shell: ring step along y (grid), rays per ring (200 -> -20 deg round the axis)
 SEAT_X, SEAT_Z = 0.33, -0.19  # passenger inside points (geometry(): side 0.33, seat_y 0.56 ground; y fz / rz below)
 SEAT_Y = ((DOOR_FRONT_Y + B_PILLAR_Y) / 2 - 0.12, (B_PILLAR_Y + DOOR_REAR_Y) / 2 - 0.08)
-# 64^2 palette, 4 x 4 cells of 16 px, sRGB; every face maps to one cell centre (no mip bleed). Black interior ($IPB15)
-# a step lighter than life so seats read against the floor through the glass (calibration knob). The cabin shader
-# shows texels brighter than 0.55 unlit (the screen): keep every other cell under it
-CABIN_RGB = {"floor": (22, 22, 24), "liner": (40, 40, 44), "seat": (100, 100, 106), "base": (30, 30, 32),
-             "dash": (58, 58, 62), "trim": (112, 106, 98), "console": (46, 46, 50), "wheel": (28, 28, 30),
-             "screen_back": (16, 16, 18), "screen": (170, 192, 214)}
-# body glass: the windscreen, the roof glass (Roof texels painted ROOF_GLASS, re-zoned to LightBar L: no Tesla light
-# uses it) and the fixed quarter glass; the door / tailgate windows go to their door's glass mesh
+# cabin palette cells, in MinidoracatTesla_vehicle.frag CABIN[] order (the colours live there): a cabin face carries
+# UV1 = (CABIN_UV1_U - cell, 0) (the loader flips v, ImportedStaticMesh.java:59)
+CABIN_CELLS = ("floor", "liner", "seat", "base", "dash", "trim", "console", "wheel", "screen_back", "screen")
+CABIN_UV1_U = -2.5
+GLASS_UV1_SHIFT = 2.0     # glass faces: UV1 u + this (the shader takes it back off for the damage maps)
+# glass zones: the windscreen, the roof glass (Roof texels painted ROOF_GLASS, re-zoned to LightBar L: no Tesla light
+# uses it), the fixed quarter glass in the body; the door / tailgate windows in their door's mesh
 GLASS_ZONES = ("WinT", "WinH", "WinLH", "WinLT", "WinRH", "WinRT", "LightBarL")
-# door glass mesh -> the vehicle part whose model shows it. The part is the door's child (template Window; the rear
-# glass's WindshieldRear gets parent = TrunkDoor), so the model borrows the door's AnimationPlayer (BaseVehicle.java:
-# 11844-11850) and swings with it, and hides with its own item (setModelVisible)
-GLASS_PART = {"DoorFrontLeft": "WindowFrontLeft", "DoorFrontRight": "WindowFrontRight",
-              "DoorRearLeft": "WindowRearLeft", "DoorRearRight": "WindowRearRight", "TrunkDoor": "WindshieldRear"}
 
 
 def stage_cabin():
-    """v2_doors.blend -> glass split off the cut body (static glass FBX) and off every door (one skinned glass mesh per
-    door in the doors FBX, on the door's bone), body and doors FBX without it, cabin FBX + palette, mask with the roof
-    glass in LightBar L."""
+    """v2_doors.blend -> one mesh per model, no extra models: the body FBX holds the cabin and the body's glass, each
+    door the window it carries. Glass faces get UV1 u + GLASS_UV1_SHIFT, cabin faces UV1 u CABIN_UV1_U - cell, and each
+    mesh draws paint, then cabin, then glass (order_faces; MinidoracatTesla_vehicle.frag). Mask: the roof glass in
+    LightBar L."""
     from mathutils.bvhtree import BVHTree
     import vanilla
     bpy.ops.wm.open_mainfile(filepath=os.path.join(TMP, "v2_doors.blend"))
@@ -2136,68 +2131,117 @@ def stage_cabin():
         z[np.abs(face_centres(ob)[:, 0]) > MIRROR["root_x"] - 0.015] = -1
         return z
 
-    def split(ob, name):
-        """Glass faces of ob -> new object `name` (same parent, armature, vertex groups). UV1 stays the body's / door's
-        (damage_uv1 put each pane on the same ModernCar pane); printed: share of its corners on crack texels."""
+    def glass_faces(ob):
+        """Glass faces of ob (bool per face). UV1 is the body's / door's (damage_uv1 put each pane on the same
+        ModernCar pane); printed: share of the corners on crack texels."""
         z = zones(ob)
-        g = dup(ob, name)
-        g.data.name = name
-        keep_faces(g, z >= 0)
-        keep_faces(ob, z < 0)
-        gz = z[z >= 0]
-        lf = np.repeat(gz, [p.loop_total for p in g.data.polygons])
-        u1 = np.empty(len(g.data.loops) * 2)
-        g.data.uv_layers["UV1"].data.foreach_get("uv", u1)
+        lf = np.repeat(z, [p.loop_total for p in ob.data.polygons])
+        u1 = np.empty(len(ob.data.loops) * 2)
+        ob.data.uv_layers["UV1"].data.foreach_get("uv", u1)
         u1 = u1.reshape(-1, 2)
         for i, zn in enumerate(GLASS_ZONES[:-1]):          # LightBar L (roof glass): no part, no damage
             q = u1[lf == i]
             if len(q):
                 cov = [(dm[(q[:, 1] * dm.shape[0]).astype(int).clip(0, dm.shape[0] - 1),
                            (q[:, 0] * dm.shape[1]).astype(int).clip(0, dm.shape[1] - 1)] > 0.1).mean() for dm in dmaps]
-                print(f"CHECK glass UV1 {name} {zn}: corners on Veh_Damage1 / 2 cracks %.3f / %.3f" % tuple(cov))
-        print(f"CABIN glass {name}:", {zn: int((gz == i).sum()) for i, zn in enumerate(GLASS_ZONES) if (gz == i).any()})
-        return g
+                print(f"CHECK glass UV1 {ob.name} {zn}: corners on Veh_Damage1 / 2 cracks %.3f / %.3f" % tuple(cov))
+        print(f"CABIN glass {ob.name}:", {zn: int((z == i).sum()) for i, zn in enumerate(GLASS_ZONES) if (z == i).any()})
+        return z >= 0
 
-    glass = split(body, NAME + "_Glass")
-    door_glass = [split(d, GLASS_PART[d.name]) for d in doors if d.name in GLASS_PART]   # the frunk lid has none
-    for g in door_glass:
-        if not len(g.data.polygons):
-            raise SystemExit(f"{g.name}: no window faces (run doors first: it keeps them outer-only)")
+    def subset(ob, keep):
+        s = dup(ob, ob.name + "_part")
+        keep_faces(s, keep)
+        return s
 
+    gmask = {o.name: glass_faces(o) for o in [body] + doors}
+    for d in doors:
+        if d.name != "EngineDoor" and not gmask[d.name].any():
+            raise SystemExit(f"{d.name}: no window faces (run doors first: it keeps them outer-only)")
+    paint = {o.name: subset(o, ~gmask[o.name]) for o in [body] + doors}
+    panes = {o.name: subset(o, gmask[o.name]) for o in [body] + doors if gmask[o.name].any()}
     tree = lambda items: BVHTree.FromPolygons(*_soup_lists(items, conv))
-    bvh = {"body": tree([(body, False)]), "glass": tree([(glass, False)] + [(g, True) for g in door_glass]),
-           "door": tree([(d, True) for d in doors])}
-    belt = BELT_Z - json.loads(bpy.context.scene["info"])["zmid"]
-    cabin = cabin_mesh(bvh, belt, lining(body, belt))
-    export_fbx(body, os.path.join(VEH_DIR, NAME + ".fbx"))
-    export_fbx(glass, os.path.join(VEH_DIR, NAME + "_Glass.fbx"))
-    export_fbx(cabin, os.path.join(VEH_DIR, NAME + "_Cabin.fbx"))
-    export_doors([arm] + doors + door_glass)
-    pal = np.zeros((64, 64, 4), np.float32)
-    pal[..., 3] = 1
-    for i, rgb in enumerate(CABIN_RGB.values()):
-        r, c = divmod(i, 4)
-        pal[r * 16:(r + 1) * 16, c * 16:(c + 1) * 16, :3] = np.array(rgb) / 255
-    save_png(pal, os.path.join(TEX_DIR, NAME + "_cabin.png"), "cabin")
-    shell = BVHTree.FromPolygons(*_soup_lists([(body, False), (glass, False)] + [(o, True) for o in doors + door_glass], conv))
+    bvh = {"body": tree([(paint[NAME], False)]),
+           "glass": tree([(g, n != NAME) for n, g in panes.items()]),
+           "door": tree([(paint[d.name], True) for d in doors])}
+    zmid = json.loads(bpy.context.scene["info"])["zmid"]
+    belt, trunk_floor = BELT_Z - zmid, GATE["z"] - zmid - TRUNK_DROP
+    # the shell's rear end: the tailgate's inner panel (or the bumper) straight back from the trunk floor
+    o = Vector((0, TRUNK_Y, trunk_floor + 0.1))
+    rear = min(h[3] for b in bvh.values() for h in (b.ray_cast(o, Vector((0, -1, 0))),) if h[0] is not None)
+    trunk_end = TRUNK_Y - rear + CABIN_INSET
+    print(f"CABIN trunk: floor z {trunk_floor:.3f}, rear wall y {trunk_end:.3f}")
+    cabin = cabin_mesh(bvh, belt, lining(paint[NAME], belt, trunk_end), trunk_floor, trunk_end)
+    for o in list(paint.values()) + list(panes.values()):
+        bpy.data.objects.remove(o)
+    shell = BVHTree.FromPolygons(*_soup_lists([(body, False)] + [(d, True) for d in doors], conv))
     outside = [tuple(np.round(v.co, 3)) for v in cabin.data.vertices if not inside(shell, v.co)]
-    print("CABIN roof glass mask texels", int(roof.sum()), "tris: body", tris(body), "glass", tris(glass), "doors",
-          sum(tris(d) for d in doors), "door glass", {g.name: tris(g) for g in door_glass}, "cabin", tris(cabin),
-          "cabin verts outside the body", len(outside), outside[:8])
-    for nm in (NAME, NAME + "_Glass", NAME + "_Cabin"):    # read back: every static mesh needs UV0 + UV1 (the
-        o = import_fbx(os.path.join(VEH_DIR, nm + ".fbx"))         # skinned door attributes linger at 2 / 3)
-        uvs = [u.name for u in o.data.uv_layers]
-        print("CHECK", nm, "tris", tris(o), "uv", uvs)
-        if uvs[:2] != ["UV0", "UV1"]:
-            raise SystemExit(f"{nm}: UV layers {uvs}, want UV0, UV1")
+    print("CABIN roof glass mask texels", int(roof.sum()), "tris: body", tris(body), "doors",
+          {d.name: tris(d) for d in doors}, "cabin", tris(cabin), "cabin verts outside the body", len(outside), outside[:8])
+    for o in [body] + doors:
+        shift_uv1(o, gmask[o.name])
+    select_only(body, cabin)
+    bpy.context.view_layer.objects.active = body
+    bpy.ops.object.join()
+    for o in [body] + doors:
+        order_faces(o)
+    export_fbx(body, os.path.join(VEH_DIR, NAME + ".fbx"))
+    export_doors([arm] + doors)
+    # read back: UV0 + UV1 on every mesh (the static body's UV1 at location 3; the skinned doors' attributes linger
+    # there), one bone group per door, triangles still paint -> cabin -> glass
+    o = import_fbx(os.path.join(VEH_DIR, NAME + ".fbx"))
+    got = [(o.name, tris(o), len(o.vertex_groups), [u.name for u in o.data.uv_layers], face_classes(o))]
     bpy.ops.wm.read_factory_settings(use_empty=True)
     bpy.ops.import_scene.fbx(filepath=os.path.join(VEH_DIR, DOORS_FBX + ".fbx"), automatic_bone_orientation=False)
-    got = sorted((o.name, tris(o), len(o.vertex_groups), [u.name for u in o.data.uv_layers])
-                 for o in bpy.data.objects if o.type == "MESH")
-    print("CHECK doors FBX", got, "actions", sorted(a.name for a in bpy.data.actions))
-    want = set(DOORS) | set(GLASS_PART.values())
-    if {n for n, *_ in got} != want or any(vg != 1 or uv[:2] != ["UV0", "UV1"] for _, _, vg, uv in got):
-        raise SystemExit(f"doors FBX meshes {got}, want {sorted(want)} each with one bone group and UV0 + UV1")
+    got += sorted((o.name, tris(o), len(o.vertex_groups), [u.name for u in o.data.uv_layers], face_classes(o))
+                  for o in bpy.data.objects if o.type == "MESH")
+    for n, t, vg, uv, cls in got:
+        print("CHECK FBX", n, "tris", t, "groups", vg, "uv", uv, "paint / cabin / glass",
+              [int((cls == k).sum()) for k in range(3)])
+        if uv[:2] != ["UV0", "UV1"] or (cls[1:] < cls[:-1]).any() or (vg != 1) != (n == NAME):
+            raise SystemExit(f"{n}: uv {uv}, groups {vg}, face classes out of order: {(cls[1:] < cls[:-1]).sum()}")
+    if sorted(n for n, *_ in got[1:]) != sorted(DOORS):
+        raise SystemExit(f"doors FBX meshes {[n for n, *_ in got[1:]]}, want {sorted(DOORS)}")
+
+
+def face_classes(ob):
+    """Per face: 0 paint, 1 cabin, 2 glass, from UV1 u at its first corner (MinidoracatTesla_vehicle.frag)."""
+    me = ob.data
+    u = np.empty(len(me.loops) * 2)
+    me.uv_layers["UV1"].data.foreach_get("uv", u)
+    ls = np.empty(len(me.polygons), np.int64)
+    me.polygons.foreach_get("loop_start", ls)
+    fu = u[0::2][ls]
+    return np.where(fu < CABIN_UV1_U / 2, 1, np.where(fu > GLASS_UV1_SHIFT * 0.75, 2, 0))
+
+
+def shift_uv1(ob, faces):
+    """UV1 u + GLASS_UV1_SHIFT on the given faces (bool per face): the shader's glass class."""
+    me = ob.data
+    u = np.empty(len(me.loops) * 2)
+    me.uv_layers["UV1"].data.foreach_get("uv", u)
+    lf = np.repeat(faces, [p.loop_total for p in me.polygons])
+    u[0::2][lf] += GLASS_UV1_SHIFT
+    me.uv_layers["UV1"].data.foreach_set("uv", u)
+
+
+def order_faces(ob):
+    """Faces sorted paint, cabin, glass (stable), one material: a mesh draws its triangles in index order (FBX polygon
+    order; the loader's post-process steps keep it, FileTask_LoadMesh.java:54-62), so the glass blends over the cabin
+    and over the characters seated in it, drawn before the car."""
+    cls = face_classes(ob)
+    bm = bmesh.new()
+    bm.from_mesh(ob.data)
+    bm.faces.ensure_lookup_table()
+    rank = {f: int(c) * len(cls) + i for i, (f, c) in enumerate(zip(bm.faces, cls))}
+    bm.faces.sort(key=lambda f: rank[f])
+    bm.faces.index_update()
+    bm.to_mesh(ob.data)
+    bm.free()
+    ob.data.polygons.foreach_set("material_index", np.zeros(len(ob.data.polygons), np.int64))
+    while len(ob.data.materials) > 1:
+        ob.data.materials.pop()
+    if (np.diff(face_classes(ob)) < 0).any():
+        raise SystemExit(f"{ob.name}: faces still out of paint / cabin / glass order")
 
 
 def _soup_lists(items, conv):
@@ -2251,14 +2295,14 @@ def rot_x(deg):
     return np.array([[1, 0, 0], [0, c, -s], [0, s, c]])
 
 
-def lining(body, belt):
+def lining(body, belt, rear_y):
     """Inner side of the body above the belt inside the cabin (pillars, roof rails, the bars round the roof glass): its
     faces after the glass split, decimated to LINING_TRIS, turned to the cabin axis and pulled LINING_IN inside. From
     outside the near side faces away (culled); through the glass the far side shows a dark lining whose edges follow the
     glass's own (a ray-grid shell there left a staircase along every window, E2E TeslaCabin-cab-after-1024c)."""
     ob = dup(body, "lining")
     c = face_centres(ob)
-    keep_faces(ob, (c[:, 2] > belt) & (c[:, 1] < CABIN_Y[0]) & (c[:, 1] > CABIN_Y[1]))
+    keep_faces(ob, (c[:, 2] > belt) & (c[:, 1] < CABIN_FRONT_Y) & (c[:, 1] > rear_y))
     n0 = tris(ob)
     decimate(ob, LINING_TRIS)
     bm = bmesh.new()
@@ -2280,13 +2324,17 @@ def lining(body, belt):
     return V, F
 
 
-def cabin_mesh(bvh, belt, lining):
-    """Cabin (mesh coords, centred), smooth-shaded rounded parts: below the belt a shell CABIN_INSET inside the body
-    where the body is opaque (floor, sills, firewall, the wall behind the rear seats; none behind glass, so the far
-    windows stay see-through, none behind the doors, so an open door shows the seats), above it `lining`; Model Y front
+def cabin_mesh(bvh, belt, lining, trunk_floor, trunk_end):
+    """Cabin and trunk (mesh coords, centred), smooth-shaded rounded parts: below the belt a shell CABIN_INSET inside
+    the body and the doors (floor, sills, firewall, door walls, the trunk's sides and wheel-arch humps, its rear wall
+    behind the tailgate's inner panel at `trunk_end`; none behind glass, so the far windows stay see-through), the
+    floor at CABIN_FLOOR, behind the rear backrests (TRUNK_Y) at `trunk_floor`; above the belt `lining`; Model Y front
     buckets (cushion and backrest side bolsters, curved backrest, integrated headrest), rear bench (three cushions and
     backs, three headrests), dash with its trim strip, 15.4" centre screen (lit face to the seats), steering wheel,
-    centre console. `bvh`: "body" / "glass" / "door" surfaces in Blender axes; `belt`: mesh z of the belt line."""
+    centre console, the trunk's sill plate and its under-floor bin lid. Every shell face looks at the axis: from outside
+    the near wall is a back face (culled: an open door shows the seats, the open tailgate the trunk) and the far wall
+    stands in for the far door's inner panel (it sits inside it), which the near window, drawn first, would hide by
+    depth. `bvh`: "body" / "glass" / "door" surfaces in Blender axes; `belt`: mesh z of the belt line."""
     V, F, cell, flat, shell_n = [], [], [], [], 0
 
     def add(v, f, c, smooth=True):
@@ -2297,22 +2345,25 @@ def cabin_mesh(bvh, belt, lining):
         flat.extend([not smooth] * len(f))
 
     # shell: rings across y, rays from the axis; each ray keeps what it hit first (body / glass / door)
-    nr, na = CABIN_RES
+    step, na = CABIN_RES
+    ys = np.append(np.arange(CABIN_FRONT_Y, trunk_end + step / 2, -step), trunk_end)
+    nr = len(ys)
     pts, kind = np.zeros((nr, na + 2, 3)), np.zeros((nr, na + 2), object)
-    for i, y in enumerate(np.linspace(CABIN_Y[0], CABIN_Y[1], nr)):
+    for i, y in enumerate(ys):
+        floor = CABIN_FLOOR if y > TRUNK_Y else trunk_floor
         o = Vector((0, y, CABIN_ZC))
         for j, t in enumerate(np.radians(np.linspace(200, -20, na)), 1):
             d = Vector((math.cos(t), 0, math.sin(t)))
             hits = [(h[3], k, h[0]) for k, b in bvh.items() for h in (b.ray_cast(o, d),) if h[0] is not None]
             dist, k, p = min(hits) if hits else (1.0, "none", o + d)
             p = p - d * CABIN_INSET
-            pts[i, j] = (p.x, y, max(p.z, CABIN_FLOOR))
-            kind[i, j] = "floor" if p.z <= CABIN_FLOOR else k
-        pts[i, 0], pts[i, -1] = (pts[i, 1, 0], y, CABIN_FLOOR), (pts[i, -2, 0], y, CABIN_FLOOR)
+            pts[i, j] = (p.x, y, max(p.z, floor))
+            kind[i, j] = "floor" if p.z <= floor else k
+        pts[i, 0], pts[i, -1] = (pts[i, 1, 0], y, floor), (pts[i, -2, 0], y, floor)
         kind[i, 0] = kind[i, -1] = "floor"
     n = na + 2
     sv, sf, sc = pts.reshape(-1, 3), [], []
-    keep = lambda q: all(kind.flat[x] in ("body", "floor") and sv[x][2] <= belt for x in q)
+    keep = lambda q: all(kind.flat[x] in ("body", "door", "floor") and sv[x][2] <= belt for x in q)
     for i in range(nr - 1):
         for j in range(n):
             q = [i * n + j, (i + 1) * n + j, (i + 1) * n + (j + 1) % n, i * n + (j + 1) % n]
@@ -2320,7 +2371,7 @@ def cabin_mesh(bvh, belt, lining):
             if keep(q):
                 sf.append(q)
                 sc.append("floor" if all(k == "floor" for k in ks) else "liner")
-    for i in (0, nr - 1):                               # firewall and rear wall: fans round the axis
+    for i in (0, nr - 1):                               # firewall and the trunk's rear wall: fans round the axis
         c = len(sv)
         sv = np.concatenate([sv, [[0, pts[i, 0, 1], CABIN_ZC]]])
         for j in range(n):
@@ -2374,6 +2425,10 @@ def cabin_mesh(bvh, belt, lining):
     part((0.20, 0.80, 0.22), 0.04, "console", (0, 0.12, -0.32))                  # centre console
     part((1.24, 0.34, 0.16), 0.06, "dash", (0, 0.80, -0.02))                     # dash, trim strip on its face
     part((1.16, 0.02, 0.035), 0.008, "trim", (0, 0.627, -0.01))
+    # trunk: sill plate over the opening's lower edge (the floor ends TRUNK_DROP under it, CABIN_INSET short of the
+    # tailgate's inner panel) and the under-floor bin's lid
+    part((1.00, 0.12, TRUNK_DROP + 0.005), 0.01, "base", (0, trunk_end + 0.02, trunk_floor + TRUNK_DROP / 2), seg=1)
+    part((0.86, 0.40, 0.012), 0.004, "console", (0, (TRUNK_Y + trunk_end) / 2 - 0.04, trunk_floor + 0.006), seg=1)
     part((0.05, 0.04, 0.09), 0.012, "screen_back", (0, 0.64, 0.09))              # screen stand
     v, f = rbox((0.30, 0.022, 0.19), 0.012)                                       # 15.4" landscape screen
     v = v @ rot_x(-12).T + [0, 0.61, 0.17]
@@ -2395,7 +2450,7 @@ def cabin_mesh(bvh, belt, lining):
     # mesh: tris, normals made consistent (outward) on the closed parts, shell faces kept looking at the axis
     me = bpy.data.meshes.new(NAME + "_Cabin")
     me.from_pydata(np.concatenate(V).tolist(), [], F)
-    names = list(CABIN_RGB)
+    names = list(CABIN_CELLS)
     bm = bmesh.new()
     bm.from_mesh(me)
     bm.faces.ensure_lookup_table()
@@ -2408,12 +2463,16 @@ def cabin_mesh(bvh, belt, lining):
     bm.free()
     ci = np.empty(len(me.polygons), np.int64)
     me.polygons.foreach_get("material_index", ci)
-    uv = np.stack([(ci % 4 + 0.5) / 4, (ci // 4 + 0.5) / 4], 1)
-    lc = np.repeat(uv, [p.loop_total for p in me.polygons], 0).ravel()
-    # UV1 = UV0 (every vehicle part model carries both: the doors' skinned attributes linger at locations 2 / 3)
-    for nm in ("UV0", "UV1"):
-        me.uv_layers.new(name=nm).data.foreach_set("uv", lc)
+    lt = [p.loop_total for p in me.polygons]
+    # UV0: any texel (the shader's cabin class reads no texture); UV1 = (CABIN_UV1_U - cell, 0)
+    me.uv_layers.new(name="UV0").data.foreach_set("uv", np.zeros(len(me.loops) * 2))
+    uv1 = np.stack([CABIN_UV1_U - ci, np.zeros(len(ci))], 1)
+    me.uv_layers.new(name="UV1").data.foreach_set("uv", np.repeat(uv1, lt, 0).ravel())
     me.polygons.foreach_set("material_index", np.zeros(len(me.polygons), np.int64))
+    me.update()
+    cn = np.empty(len(me.loops) * 3, np.float32)       # the body's free corner normals (joined into it): smooth / flat
+    me.corner_normals.foreach_get("vector", cn)
+    me.attributes.new("custom_normal", "FLOAT_VECTOR", "CORNER").data.foreach_set("vector", cn)
     ob = bpy.data.objects.new(NAME + "_Cabin", me)
     bpy.context.scene.collection.objects.link(ob)
     ob.data.materials.append(bpy.data.materials.new(NAME + "_Cabin"))
@@ -2507,9 +2566,8 @@ def geometry(body, zmid, wl, r):
     # animated doors (stage doors): the clip runs open -> closed, so Open plays it reversed, Closed holds its end
     # (reversed, not animated) and Opened its start (vanilla vehicle_car_sports_ez.txt layout); ISOpenVehicleDoor /
     # ISCloseVehicleDoor play Open / Close, a new model instance holds Opened / Closed (BaseVehicle.java:3926-3930).
-    # DOOR_RATE: postupdate advances each model's AnimationPlayer (BaseVehicle.java:3777-3780) and the door's glass
-    # model borrows the door's, so a door with its window installed advances twice per frame; the frunk lid has no
-    # glass child and keeps rate 1
+    # One model per door, its window in the door mesh: each door's AnimationPlayer advances once a frame (postupdate,
+    # BaseVehicle.java:3777-3780), so every clip runs at rate 1 with or without its window
     for part in DOORS:
         clip = part + "_closing"
         out += [f"        part {part}", "        {", "            model Default", "            {",
@@ -2518,18 +2576,9 @@ def geometry(body, zmid, wl, r):
                                 ("Opened", False, False)):
             out += [f"            anim {anim}", "            {", f"                anim = {clip},"]
             out += ["                reverse = true,"] * rev
-            rate = DOOR_RATE if part in GLASS_PART else 1.0
-            out += [f"                rate = {rate},"] if live else ["                animate = false,"]
+            out += ["                rate = 1.0,"] if live else ["                animate = false,"]
             out += ["            }"]
         out += ["        }"]
-    # 3-D cabin and glass (stage cabin): GloveBox draws the cabin then the body's panes; each door's window model sits
-    # on the door's child part (template Window: parent = Door*; the rear glass on WindshieldRear, made the tailgate's)
-    out += ["        part GloveBox", "        {", "            model Cabin", "            {", f"                file = {NAME}_Cabin,",
-            "            }", "            model Glass", "            {", f"                file = {NAME}_Glass,", "            }", "        }"]
-    for door, part in GLASS_PART.items():
-        out += [f"        part {part}", "        {"]
-        out += [f"            parent = {door},"] * (part == "WindshieldRear")
-        out += ["            model Default", "            {", f"                file = {NAME}_{part},", "            }", "        }"]
     block = "\n".join(out) + "\n"
     open(os.path.join(TMP, "geometry_block.txt"), "w", newline="\n").write(block)
     # splice into the vehicle script: everything after the geometry marker up to the vehicle's closing brace is ours

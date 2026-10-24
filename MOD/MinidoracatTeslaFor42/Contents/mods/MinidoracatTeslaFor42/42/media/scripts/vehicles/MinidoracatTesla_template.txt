@@ -48,25 +48,23 @@ module Base
         template = Seat/part/SeatFrontRight,
         template = Seat/part/SeatRearLeft,
         template = Seat/part/SeatRearRight,
+        template = GloveBox,
         template = GasTank,
         /* 12V battery: tryStartEngine dereferences it without a null check (BaseVehicle.java:7570-7612) */
         template = Battery,
         template = Engine,
         template = EngineDoor,
         template = Heater,
-        template = Door/part/DoorFrontLeft,
-        template = Door/part/DoorFrontRight,
-        template = Door/part/DoorRearLeft,
-        template = Door/part/DoorRearRight,
-        /* part models draw in part order (a new car's models list follows the script): doors and tailgate, then the */
-        /* GloveBox cabin, then glass that must be over both (the body's panes on GloveBox, windows, rear glass) */
-        template = GloveBox,
         template = Windshield/part/Windshield,
         template = Windshield/part/WindshieldRear,
         template = Window/part/WindowFrontLeft,
         template = Window/part/WindowFrontRight,
         template = Window/part/WindowRearLeft,
         template = Window/part/WindowRearRight,
+        template = Door/part/DoorFrontLeft,
+        template = Door/part/DoorFrontRight,
+        template = Door/part/DoorRearLeft,
+        template = Door/part/DoorRearRight,
         template = Tire,
         template = Brake,
         template = Suspension,
@@ -134,8 +132,7 @@ module Base
             {
                 recipes = Advanced Mechanics,
             }
-            /* the rear glass rides on the tailgate (its model borrows the gate's animation): glass off first, as */
-            /* vanilla doors with their windows */
+            /* the rear glass is part of the tailgate's mesh: glass off first, as vanilla doors with their windows */
             table uninstall
             {
                 recipes = Advanced Mechanics,
