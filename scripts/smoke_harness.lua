@@ -115,7 +115,7 @@ function H.vehicle(o)
         x = o.x or 100.5, y = o.y or 100.5, z = o.z or 0, good = o.good or false, keyId = 77, driver = nil, feature = nil }
     nextId = math.max(nextId, v.id) + 1
     local pack = o.pack or "Base.MinidoracatTesla_ModelYBatterySR"
-    local packCap = (pack == "Base.MinidoracatTesla_ModelYBatteryLR") and 83 or 63
+    local packCap = (pack == "Base.MinidoracatTesla_ModelYBatteryLR") and 79 or 63
     v.parts.GasTank = newPart("GasTank", { contentType = "Electricity", item = (o.noPack and nil) or newItem(pack, packCap) })
     v.parts.Battery = newPart("Battery", { item = newItem("Base.CarBattery3", 0) })
     v.parts.Engine = newPart("Engine", {})

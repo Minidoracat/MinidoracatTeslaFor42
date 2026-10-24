@@ -1,5 +1,5 @@
--- Camp Mode (server). Heater keeps running with the motor off, drawing from the main pack; 12V is kept
--- topped up from the main pack while camp or sentry is on. Rides the vanilla per-game-minute part update:
+-- Camp Mode (server). Heater keeps running with the motor off, drawing from the main pack; the 12V part
+-- update (DC-DC top-up) also lives here. Rides the vanilla per-game-minute part update:
 -- the Engine part update (TeslaLogic) calls Camp.onEngineUpdate, which keeps needPartsUpdate on while
 -- camping and turns camp off when the cabin is empty, the motor runs, or the pack drops below 20%.
 if isClient() then return end
@@ -121,15 +121,13 @@ function T.Update.Heater(vehicle, part, elapsedMinutes)
     end
 end
 
--- Battery (12V) part update: vanilla first, then keep it topped up from the main pack while parked in
--- camp or sentry (radio, lights and the alarm all need 12V > 0: VehiclePart.java:744-746, BaseVehicle.java:9398).
+-- Battery (12V) part update: vanilla first, then the DC-DC top-up from the main pack whenever it holds >= 5%
+-- (Battery.lua B.dcdc; radio, lights and the alarm all need 12V > 0: VehiclePart.java:744-746, BaseVehicle.java:9398).
+-- A parked car runs part updates once a driver sits down (BaseVehicle.java:1806-1808), so a long-parked Tesla
+-- with a charged pack starts; camp and sentry keep updates on while parked.
 function T.Update.Battery12V(vehicle, part, elapsedMinutes)
     Vehicles.Update.Battery(vehicle, part, elapsedMinutes)
-    local bp = vehicle:getPartById("GasTank")
-    local md = bp and bp:getModData()
-    if not md or not (md.camp or md.sentry) then return end
-    local item = part:getInventoryItem()
-    if item and item:getCurrentUsesFloat() < 0.95 then T.Battery.topUp12V(vehicle) end
+    T.Battery.dcdc(vehicle)
 end
 
 -- ------------------------------------------------------------------ commands

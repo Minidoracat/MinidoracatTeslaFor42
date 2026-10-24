@@ -8,7 +8,10 @@ local T = MinidoracatTesla
 local B = T.Battery
 
 T.MAX_ELAPSED = 10 -- cap per update: chunk reload hands in the whole unloaded time (GameTime.java:1374-1376)
-T.V12_KWH = 0.6    -- a 12V car battery, about 50 Ah
+T.V12_KWH = 15.5 * 6.9 / 1000 -- Model Y low voltage battery: lithium-ion 15.5 V, 6.9 Ah (owner's manual, R10)
+T.DCDC_MIN_PCT = 5   -- the drive pack keeps the 12V topped up while it holds at least this much
+T.BRAKE_WEAR = 0.5   -- regen does most of the braking (owner's manual, Maintenance Service Intervals)
+T.InstallComplete = T.InstallComplete or {}
 
 -- Clamp, store, and transmit only when it moved >= 1% of capacity (or hit empty / full).
 function B.set(vehicle, part, kwh)
@@ -54,6 +57,15 @@ function B.topUp12V(vehicle)
     return take
 end
 
+-- DC-DC converter: refill the 12V from the drive pack (>= DCDC_MIN_PCT) once it drops below 95%.
+-- Returns the kWh taken from the pack.
+function B.dcdc(vehicle)
+    local bat = vehicle:getBattery()
+    local item = bat and bat:getInventoryItem()
+    if not item or item:getCurrentUsesFloat() >= 0.95 or B.pct(B.part(vehicle)) < T.DCDC_MIN_PCT then return 0 end
+    return B.topUp12V(vehicle)
+end
+
 -- ---- part hooks ----
 
 -- GasTank create: pick SR or LR (VehicleUtils.createPartInventoryItem, Vehicles.lua:1153-1194), then a start charge.
@@ -69,6 +81,21 @@ function T.Create.Battery(vehicle, part)
         frac = ZombRandFloat(0.05, 0.6)
     end
     B.set(vehicle, part, B.capacity(part) * frac)
+    B.dcdc(vehicle) -- the 12V starts charged too (whichever of the two parts is created last does it)
+end
+
+-- Battery (12V) create: vanilla age-based charge (Vehicles.lua:120-130), then the DC-DC top-up.
+function T.Create.Battery12V(vehicle, part)
+    Vehicles.Create.Battery(vehicle, part)
+    B.dcdc(vehicle)
+end
+
+-- GasTank install complete (server, ISInstallVehiclePart:complete). The charge rides on the pack item: uninstall
+-- stores it (ISUninstallVehiclePart.lua:63) and install restores it (VehiclePart.java:184-193), clamped to the
+-- item's int MaxCapacity. Clamp to the exact kWh and send the part modData.
+function T.InstallComplete.Battery(vehicle, part)
+    part:getModData().sentKwh = nil
+    B.set(vehicle, part, B.kwh(part))
 end
 
 -- Engine create (new cars only): quality 100 so it starts first try in the cold (VehicleEngine.java:317,326-340);
@@ -77,11 +104,14 @@ end
 -- zone or story skins IsoChunk.java:1346-1348 and RandomizedWorldBase.java:167-168 before addToWorld, script colour
 -- :1575-1577; createParts :868), so this wins. Transmit as vanilla Commands.setHSV / setSkinIndex
 -- (VehicleCommands.lua:440-455): server-only flag 4096 sends both (BaseVehicle.java:9209-9219, VehicleProperties.java:71-74).
+-- (VehicleUtils.createPartInventoryItem returns the existing item, Vehicles.lua:1156,1193). Power by pack (Core PackPower).
 function T.Create.Motor(vehicle, part)
     if not SandboxVars.VehicleEasyUse then part:setRandomCondition(nil) end
     local script = vehicle:getScript()
     local loud = (script:getEngineLoudness() or 100) * (SandboxVars.ZombieAttractionMultiplier or 1)
-    vehicle:setEngineFeature(100, loud, script:getEngineForce())
+    local bp = vehicle:getPartById(T.BATTERY_PART)
+    local pack = bp and VehicleUtils.createPartInventoryItem(bp) -- the GasTank may not be created yet
+    vehicle:setEngineFeature(100, loud, pack and T.PackPower[pack:getFullType()] or script:getEngineForce())
     local s = T.spec(vehicle)
     local colors = s and s.colors
     if colors and #colors > 0 then
@@ -92,6 +122,17 @@ function T.Create.Motor(vehicle, part)
         vehicle:transmitSkinIndex()
         vehicle:transmitColorHSV()
     end
+end
+
+-- Brake update: vanilla wear (Vehicles.lua:709-718) run half the time.
+function T.Update.Brakes(vehicle, part, elapsedMinutes)
+    if ZombRandFloat(0, 1) < T.BRAKE_WEAR then Vehicles.Update.Brakes(vehicle, part, elapsedMinutes) end
+end
+
+-- Frunk create: an itemless part with no create gets a random condition (VehicleParts.java:240-248) that nothing
+-- can repair; it is just body space, so start at 100.
+function T.Create.Frunk(vehicle, part)
+    part:setCondition(100)
 end
 
 -- GasTank update: drive draw minus brake regen, every game minute while the car's parts update; cable length check.

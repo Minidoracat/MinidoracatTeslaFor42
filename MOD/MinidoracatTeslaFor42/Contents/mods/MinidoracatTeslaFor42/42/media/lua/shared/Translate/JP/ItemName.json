@@ -1,6 +1,6 @@
 {
-    "Base.MinidoracatTesla_ModelYBatterySR": "Model Y バッテリー - スタンダードレンジ（62.5 kWh）",
-    "Base.MinidoracatTesla_ModelYBatteryLR": "Model Y バッテリー - ロングレンジ（82.1 kWh）",
+    "Base.MinidoracatTesla_ModelYBatterySR": "Model Y 高電圧バッテリー - スタンダードレンジ（62.5 kWh）",
+    "Base.MinidoracatTesla_ModelYBatteryLR": "Model Y 高電圧バッテリー - ロングレンジ（78.1 kWh）",
     "Base.MinidoracatTesla_WallConnector": "Tesla 第3世代ウォールコネクター",
     "Base.MinidoracatTesla_CableHang": "充電ケーブル（壁から垂れる部分）",
     "Base.MinidoracatTesla_CableFloor": "充電ケーブル（床を這う部分）",
