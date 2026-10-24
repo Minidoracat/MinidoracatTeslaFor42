@@ -78,5 +78,22 @@
     "IGUI_MinidoracatTesla_Deny_PLUGGED": "已经插着充电线",
     "IGUI_MinidoracatTesla_Deny_NOT_PLUGGED": "没有插充电线",
     "IGUI_MinidoracatTesla_Deny_CABLE_SHORT": "充电线够不到车",
-    "IGUI_MinidoracatTesla_Unplugged_TooFar": "充电线被扯掉了：车离充电桩太远"
+    "IGUI_MinidoracatTesla_Unplugged_TooFar": "充电线被扯掉了：车离充电桩太远",
+    "IGUI_MinidoracatTesla_Tip_Headlight": "开关大灯",
+    "IGUI_MinidoracatTesla_Tip_Heater": "开关空调（耗电）",
+    "IGUI_MinidoracatTesla_Tip_Radio": "打开收音机",
+    "IGUI_MinidoracatTesla_Tip_Camp": "开启露营模式：停车时空调持续运行",
+    "IGUI_MinidoracatTesla_Tip_GateOpen": "打开电动尾门",
+    "IGUI_MinidoracatTesla_Tip_GateClose": "关闭电动尾门",
+    "IGUI_MinidoracatTesla_Tip_ChargeStatus": "电量、充电功率和充到目标的时间",
+    "IGUI_MinidoracatTesla_Tip_CardStop": "暂停充电，充电线保持插着",
+    "IGUI_MinidoracatTesla_Tip_CardStart": "继续充电到目标电量",
+    "IGUI_MinidoracatTesla_Tip_CardUnplug": "从车上拔下充电线",
+    "IGUI_MinidoracatTesla_Tip_CardMinus": "充电目标降低 10%%",
+    "IGUI_MinidoracatTesla_Tip_CardPlus": "充电目标提高 10%%",
+    "IGUI_MinidoracatTesla_Tip_CardClose": "关闭这张卡片",
+    "IGUI_MinidoracatTesla_Deny_NOT_DRIVER": "只有驾驶员可以操作",
+    "IGUI_MinidoracatTesla_Deny_NO_LIFTGATE": "没有安装尾门",
+    "IGUI_MinidoracatTesla_Deny_MOVING": "请先停车",
+    "IGUI_MinidoracatTesla_Deny_LIFTGATE_LOCKED": "尾门的锁坏了"
 }

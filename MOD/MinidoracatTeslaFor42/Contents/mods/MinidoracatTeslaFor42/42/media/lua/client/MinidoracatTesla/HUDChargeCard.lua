@@ -50,19 +50,20 @@ local function styleButton(b)
 end
 
 function Card:createChildren()
-    local function mk(title, fn)
+    local function mk(title, fn, tip)
         local b = ISButton:new(0, 0, 40, 40, title, self, fn)
         b:initialise()
         b:instantiate()
         styleButton(b)
+        b.tipKey = tip -- hover help (HUD.drawTip in render)
         self:addChild(b)
         return b
     end
-    self.btnToggle = mk("", Card.onToggle)
-    self.btnUnplug = mk(getText("IGUI_MinidoracatTesla_Card_Unplug"), Card.onUnplug)
-    self.btnMinus = mk("-", Card.onMinus)
-    self.btnPlus = mk("+", Card.onPlus)
-    self.btnClose = mk(getText("IGUI_MinidoracatTesla_Card_Close"), Card.close)
+    self.btnToggle = mk("", Card.onToggle, "IGUI_MinidoracatTesla_Tip_CardStart")
+    self.btnUnplug = mk(getText("IGUI_MinidoracatTesla_Card_Unplug"), Card.onUnplug, "IGUI_MinidoracatTesla_Tip_CardUnplug")
+    self.btnMinus = mk("-", Card.onMinus, "IGUI_MinidoracatTesla_Tip_CardMinus")
+    self.btnPlus = mk("+", Card.onPlus, "IGUI_MinidoracatTesla_Tip_CardPlus")
+    self.btnClose = mk(getText("IGUI_MinidoracatTesla_Card_Close"), Card.close, "IGUI_MinidoracatTesla_Tip_CardClose")
     self:insertNewLineOfButtons(self.btnToggle, self.btnUnplug, self.btnMinus, self.btnPlus, self.btnClose)
     self.buttons = { self.btnToggle, self.btnUnplug, self.btnMinus, self.btnPlus, self.btnClose }
 end
@@ -193,6 +194,7 @@ function Card:read()
         or (state == "none" and getText("IGUI_MinidoracatTesla_Card_NotPluggedHint")) or nil
     self.alertColor = state == "full" and C.ok or (state == "nopower" and C.warn or C.text2)
     self.btnToggle:setTitle(getText(state == "charging" and "IGUI_MinidoracatTesla_Card_Stop" or "IGUI_MinidoracatTesla_Card_Start"))
+    self.btnToggle.tipKey = state == "charging" and "IGUI_MinidoracatTesla_Tip_CardStop" or "IGUI_MinidoracatTesla_Tip_CardStart"
     self.btnToggle:setEnable(state == "charging" or state == "stopped" or state == "full")
     return was ~= state
 end
@@ -213,6 +215,7 @@ end
 -- ---------------------------------------------------------------- layout and drawing
 function Card:layout()
     local tm = getTextManager()
+    self.tipKey = nil -- re-measure the hover help at the new scale
     local S = tm:getFontHeight(UIFont.Small) / 19
     local pn = self.playerNum
     S = math.min(S, (getPlayerScreenWidth(pn) - 8) / W)
@@ -375,6 +378,15 @@ function Card:render()
         self:drawTextCentre(self.sTarget, self.xTarget + (self.btnPlus.x - self.xTarget) / 2, self.yButtons + (self.bh - self.FH) / 2, c[1], c[2], c[3], 1, UIFont.Small)
     end
     if self.ySrc then jo:DrawText(UIFont.Small, self.sSrc, pad, self.ySrc, c2[1], c2[2], c2[3], 1) end
+    -- hover help: the button under the mouse, or the joypad-focused one
+    local bs = self.buttons
+    for i = 1, #bs do
+        local b = bs[i]
+        if b:isVisible() and (b.joypadFocused or b:isMouseOver()) then
+            HUD.drawTip(self, b.tipKey, b.x, b.y, b.width, b.height)
+            break
+        end
+    end
 end
 
 Events.OnResolutionChange.Add(function()

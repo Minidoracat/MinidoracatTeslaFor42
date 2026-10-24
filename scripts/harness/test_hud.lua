@@ -36,6 +36,7 @@ function ISUIElement:instantiate()
         DrawSubTextureRGBA = function() drawCalls = drawCalls + 1 end,
         DrawText = function(_, font, text, x, y)
             drawCalls = drawCalls + 1
+            lastText = text
             if type(x) ~= "number" or type(y) ~= "number" then badText = (badText or 0) + 1 end -- Java NPEs on nil
         end,
     }
@@ -81,10 +82,11 @@ local HUD = T.HUD
 local function car(o)
     local v = H.vehicle(o)
     v.gear, v.throttle, v.lights, v.locked = 0, 0, false, false
-    for _, id in ipairs({ "DoorFrontLeft", "DoorFrontRight", "DoorRearLeft", "DoorRearRight" }) do
+    for _, id in ipairs({ "DoorFrontLeft", "DoorFrontRight", "DoorRearLeft", "DoorRearRight", "TrunkDoor" }) do
         local d = { open = false }
         function d:isOpen() return self.open end
-        v.parts[id] = { door = d, getDoor = function(self) return self.door end, getModData = function() return {} end }
+        v.parts[id] = { door = d, getDoor = function(self) return self.door end, getModData = function() return {} end,
+            getInventoryItem = function() return {} end }
     end
     function v:getTransmissionNumber() return self.gear end
     function v:getThrottle() return self.throttle end
@@ -198,6 +200,71 @@ local n0 = h.n
 h:update()
 check(h.n == n0, "no state change: list not rebuilt into a different size")
 
+-- ---------------------------------------------------------------- hover help (render)
+H.section("hover help")
+local mx, my
+local function hoverAt(el) -- the E2E trick: instance methods instead of the engine mouse
+    el.isMouseOver = function() return mx ~= nil end
+    el.getMouseX = function() return mx end
+    el.getMouseY = function() return my end
+    el.getAbsoluteX = function(self) return self.x end
+    el.getAbsoluteY = function(self) return self.y end
+end
+hoverAt(h)
+drawCalls = 0
+h:render()
+check(drawCalls == 0, "no hover: render draws nothing")
+local function tipOk(el, i)
+    local ax = el.keyX + (i - 1) * el.keyStep
+    mx, my = ax + el.keyS / 2, el.keyY + el.keyS / 2
+    el:render()
+    local r = el.tipRect
+    local over = r.x < ax + el.keyS and r.x + r.w > ax and r.y < el.keyY + el.keyS and r.y + r.h > el.keyY
+    return not over and el.x + r.x >= 0 and el.x + r.x + r.w <= SCREEN_W and el.y + r.y >= 0
+end
+local allOk = true
+for i = 1, 5 do allOk = allOk and tipOk(h, i) end
+check(allOk, "each of the 5 keys: tip on screen and not over the key")
+check(lastText == "IGUI_MinidoracatTesla_Tip_GateOpen", "liftgate closed: tip says open (" .. tostring(lastText) .. ")")
+tesla.parts.TrunkDoor.door.open = true
+h:update(); h:update(); h:update()
+tipOk(h, 5)
+check(h:keyOn(5) and lastText == "IGUI_MinidoracatTesla_Tip_GateClose", "liftgate open: key on, tip says close")
+tesla.parts.TrunkDoor.door.open = false
+h:update(); h:update(); h:update()
+mx, my = h.keyX - 5, h.keyY + 2
+drawCalls = 0
+h:render()
+check(drawCalls == 0, "mouse on the HUD but not on a key: no tip")
+tipOk(h, 4)
+collectgarbage("collect")
+collectgarbage("stop")
+h:render() -- the collect above frees Lua call frames; let the deeper render->drawTip->quad chain re-grow them first
+before = collectgarbage("count")
+for _ = 1, 1000 do h:render() end
+grew = collectgarbage("count") - before
+collectgarbage("restart")
+check(grew == 0, "hovered render x1000 allocates nothing (" .. grew .. " KB)")
+-- 640 px split view, big font: the last key sits near the right edge; the tip is pushed back inside
+SCREEN_W, fontH = 640, 33
+h:layout()
+check(tipOk(h, 5) and tipOk(h, 1), "640 px split view at font 4x: tips stay inside the screen")
+-- a translation wider than that view: two lines, still inside
+local realGetText = getText
+getText = function(key) return key:find("Tip_", 1, true) and string.rep("wide words ", 9) .. "end" or key end -- 102 chars, 816 px
+h:layout()
+local twoOk = tipOk(h, 1)
+getText = realGetText
+check(twoOk and h.tipText2 ~= nil and h.tipRect.w <= 640 - 8, "tip wider than the 640 px view: broken into two lines that fit")
+getText = function(key) return key:find("Tip_", 1, true) and string.rep("\233\155\187", 40) or key end -- 40 CJK chars, no spaces
+h:layout()
+twoOk = tipOk(h, 1)
+getText = realGetText
+check(twoOk and h.tipText2 ~= nil and #h.tipText % 3 == 0 and #h.tipText2 % 3 == 0, "no spaces: split on a character boundary")
+SCREEN_W, fontH = 1920, 19
+h:layout()
+mx = nil
+
 -- ---------------------------------------------------------------- radial menu
 H.section("radial menu")
 local p = H.player({ keys = { [tesla.keyId] = true } })
@@ -207,10 +274,10 @@ tesla.running = false
 ISVehicleMenu.showRadialMenu(p)
 local camp, status
 for _, s in ipairs(menu.slices) do
-    if s.text == "IGUI_MinidoracatTesla_Radial_CampOn" then camp = s end
-    if s.text == "IGUI_MinidoracatTesla_Radial_ChargeStatus" then status = s end
+    if s.text == "IGUI_MinidoracatTesla_Radial_CampOn\nIGUI_MinidoracatTesla_HUD_CampSub" then camp = s end
+    if s.text == "IGUI_MinidoracatTesla_Radial_ChargeStatus\nIGUI_MinidoracatTesla_Tip_ChargeStatus" then status = s end
 end
-check(camp ~= nil and camp.fn ~= nil and status ~= nil, "radial: camp (enabled) and charging status added")
+check(camp ~= nil and camp.fn ~= nil and status ~= nil, "radial: camp (enabled) and charging status, each with a what-it-does line")
 ISVehicleMenu.showRadialMenu(p)
 check(#menu.slices == 0, "radial: second press closes, nothing re-added")
 tesla.running = true

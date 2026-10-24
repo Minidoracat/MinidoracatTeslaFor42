@@ -78,5 +78,22 @@
     "IGUI_MinidoracatTesla_Deny_PLUGGED": "Zaten bir şarj kablosu takılı",
     "IGUI_MinidoracatTesla_Deny_NOT_PLUGGED": "Takılı şarj kablosu yok",
     "IGUI_MinidoracatTesla_Deny_CABLE_SHORT": "Kablo araca yetişmiyor",
-    "IGUI_MinidoracatTesla_Unplugged_TooFar": "Şarj kablosu çıktı: araç çok uzaklaştı"
+    "IGUI_MinidoracatTesla_Unplugged_TooFar": "Şarj kablosu çıktı: araç çok uzaklaştı",
+    "IGUI_MinidoracatTesla_Tip_Headlight": "Farları aç veya kapat",
+    "IGUI_MinidoracatTesla_Tip_Heater": "Klimayı aç veya kapat (batarya harcar)",
+    "IGUI_MinidoracatTesla_Tip_Radio": "Radyoyu aç",
+    "IGUI_MinidoracatTesla_Tip_Camp": "Kamp Modunu aç: park halindeyken klima açık kalır",
+    "IGUI_MinidoracatTesla_Tip_GateOpen": "Elektrikli bagaj kapağını aç",
+    "IGUI_MinidoracatTesla_Tip_GateClose": "Elektrikli bagaj kapağını kapat",
+    "IGUI_MinidoracatTesla_Tip_ChargeStatus": "Şarj seviyesi, güç ve hedefe kalan süre",
+    "IGUI_MinidoracatTesla_Tip_CardStop": "Şarjı duraklat; kablo takılı kalır",
+    "IGUI_MinidoracatTesla_Tip_CardStart": "Hedefe kadar şarja devam et",
+    "IGUI_MinidoracatTesla_Tip_CardUnplug": "Şarj kablosunu araçtan çıkar",
+    "IGUI_MinidoracatTesla_Tip_CardMinus": "Şarj hedefini %%10 düşür",
+    "IGUI_MinidoracatTesla_Tip_CardPlus": "Şarj hedefini %%10 artır",
+    "IGUI_MinidoracatTesla_Tip_CardClose": "Bu kartı kapat",
+    "IGUI_MinidoracatTesla_Deny_NOT_DRIVER": "Bunu yalnızca sürücü yapabilir",
+    "IGUI_MinidoracatTesla_Deny_NO_LIFTGATE": "Bagaj kapağı takılı değil",
+    "IGUI_MinidoracatTesla_Deny_MOVING": "Önce aracı durdur",
+    "IGUI_MinidoracatTesla_Deny_LIFTGATE_LOCKED": "Bagaj kapağının kilidi bozuk"
 }

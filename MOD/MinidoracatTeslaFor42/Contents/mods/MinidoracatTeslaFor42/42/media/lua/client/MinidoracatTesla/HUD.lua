@@ -2,10 +2,12 @@
 -- Design and sources: .claude/skills/tesla-dev/references/hud.md
 --   update()    10 Hz (UIManager.java:515-520): reads the car into self.st, rebuilds the quad list only on change.
 --   prerender() no game reads, no allocation: one atlas texture, one DrawSubTextureRGBA per quad, then <=2 texts.
+--   render()    only while the mouse is over a quick key: one hover-help line (HUD.drawTip).
 require "ISUI/ISUIElement"
 require "Vehicles/ISUI/ISVehicleDashboard"
 require "MinidoracatTesla/Core"
 require "MinidoracatTesla/HUDAtlas"
+require "MinidoracatTesla/Liftgate"
 
 local T = MinidoracatTesla
 local HUD = ISUIElement:derive("MinidoracatTeslaHUD")
@@ -17,7 +19,7 @@ local W, PADX, R_EDGE = 552, 16, 536
 local GEAR_X, GEAR_Y, SPD_Y = 33, 12, 36
 local PM_X, PM_W, PM_H = 18, 4, 62
 local CAR_X, CAR_Y = 172, 14
-local KEY = 40
+local KEY, KEY_GAP = 40, 6
 local KEYS_Y = 60
 local MSG_Y, MSG_H, MSG_MINW, MSG_MAXW = 108, 30, 312, 520
 local H_NOMSG = 112
@@ -44,7 +46,11 @@ for _, A in pairs(T.HUDAtlas) do
     end
 end
 local GEARS = { "P", "R", "N", "D" }
-local KEYS = { "headlight", "heater", "radio", "tent" }
+local KEYS = { "headlight", "heater", "radio", "tent", "liftgate" }
+local NKEYS = #KEYS
+local GATE_BIT = POW2[5] -- DOORS[5] = TrunkDoor
+-- hover help per quick key (translation keys); camp and liftgate depend on their state
+local TIPS = { "IGUI_MinidoracatTesla_Tip_Headlight", "IGUI_MinidoracatTesla_Tip_Heater", "IGUI_MinidoracatTesla_Tip_Radio" }
 
 -- ---------------------------------------------------------------- quad list helpers
 local function quad(self, sx, sy, sw, sh, x, y, w, h, c, a)
@@ -105,6 +111,59 @@ local function digitsWidth(self, set, value)
 end
 HUD.quad, HUD.spr, HUD.rect, HUD.rrect, HUD.pill = quad, spr, rect, rrect, pill
 
+-- ---------------------------------------------------------------- hover help (HUD keys, charge card buttons)
+-- One line in the dashboard style (UIFont.Small, scale S), centred above the anchor rect (element-local) and kept
+-- inside this player's screen; below the anchor when there is no room above, so it never covers the anchor.
+-- Wider than the player's screen (split view + big font): two lines, broken at the space nearest the middle.
+-- The string is fetched and measured only when the key changes (layout resets el.tipKey); drawing allocates nothing.
+-- `el` needs S, FH, A, f, tex, playerNum (the HUD and the card both have them).
+local tipQ = { L = {}, n = 0 }
+function HUD.drawTip(el, key, ax, ay, aw, ah)
+    local S, pn = el.S, el.playerNum
+    local padX, padY, gap = math.floor(10 * S), math.floor(5 * S), math.floor(6 * S)
+    if key ~= el.tipKey then
+        el.tipKey = key
+        local tm, s = getTextManager(), getText(key)
+        local tw = tm:MeasureStringX(UIFont.Small, s)
+        el.tipText, el.tipText2 = s, nil
+        if tw > getPlayerScreenWidth(pn) - 8 - 2 * padX then
+            local mid, cut = #s / 2, nil
+            local i = s:find(" ", 1, true)
+            while i do
+                if not cut or math.abs(i - mid) < math.abs(cut - mid) then cut = i end
+                i = s:find(" ", i + 1, true)
+            end
+            if cut then
+                el.tipText, el.tipText2 = s:sub(1, cut - 1), s:sub(cut + 1)
+            else -- no spaces (CJK): split in the middle (Kahlua indexes UTF-16 chars; the byte step is for plain Lua)
+                local j = math.max(2, math.floor(mid))
+                while j > 2 and s:byte(j) >= 128 and s:byte(j) < 192 do j = j - 1 end
+                el.tipText, el.tipText2 = s:sub(1, j - 1), s:sub(j)
+            end
+            tw = math.max(tm:MeasureStringX(UIFont.Small, el.tipText), tm:MeasureStringX(UIFont.Small, el.tipText2))
+        end
+        el.tipW = tw
+    end
+    local w, h = el.tipW + 2 * padX, (el.tipText2 and 2 or 1) * el.FH + 2 * padY
+    local left = getPlayerScreenLeft(pn) - el:getAbsoluteX()
+    local top = getPlayerScreenTop(pn) - el:getAbsoluteY()
+    local x = math.max(left + 4, math.min(math.floor(ax + (aw - w) / 2), left + getPlayerScreenWidth(pn) - 4 - w))
+    local y = ay - gap - h
+    if y < top + 4 then y = ay + ah + gap end
+    tipQ.A, tipQ.f, tipQ.n = el.A, el.f, 0
+    rrect(tipQ, x, y, w, h, 8 * S, C.track, 0.97)
+    local jo, tex, L = el.javaObject, el.tex, tipQ.L
+    for i = 1, tipQ.n, 12 do
+        jo:DrawSubTextureRGBA(tex, L[i], L[i + 1], L[i + 2], L[i + 3], L[i + 4], L[i + 5], L[i + 6], L[i + 7],
+            L[i + 8], L[i + 9], L[i + 10], L[i + 11])
+    end
+    local c = C.text
+    jo:DrawText(UIFont.Small, el.tipText, x + padX, y + padY, c[1], c[2], c[3], 1)
+    if el.tipText2 then jo:DrawText(UIFont.Small, el.tipText2, x + padX, y + padY + el.FH, c[1], c[2], c[3], 1) end
+    el.tipRect = el.tipRect or {}
+    el.tipRect.x, el.tipRect.y, el.tipRect.w, el.tipRect.h = x, y, w, h -- E2E and tests read where it went
+end
+
 -- ---------------------------------------------------------------- charge estimate (shared with the card)
 -- Client-side projection between server settlements: kw * (now - last), capped at the target (architecture §4).
 function HUD.chargeEstimate(part, chg, now)
@@ -141,6 +200,8 @@ function HUD:attach(vehicle)
     self.battery = T.Battery.part(vehicle)
     self.heaterPart = vehicle:getPartById("Heater")
     self.radioPart = vehicle:getPartById("Radio")
+    local gp = vehicle:getPartById(T.Liftgate.PART)
+    self.gate = gp ~= nil and gp:getInventoryItem() ~= nil and gp:getDoor() ~= nil
     self.doors = {}
     for i = 1, #DOORS do
         local p = vehicle:getPartById(DOORS[i])
@@ -291,7 +352,9 @@ function HUD:setMessage()
             local d = self.doors[i]
             if math.floor(a1 / d.bit) % 2 == 1 then n = n + 1; first = first or d.name end
         end
-        title = n == 1 and getText("IGUI_MinidoracatTesla_HUD_DoorOpen", getText("IGUI_VehiclePart" .. first))
+        local pk = "IGUI_VehiclePart" .. tostring(first)
+        pk = (T.PartNames and T.PartNames[pk]) or pk -- Tesla part names (client/MinidoracatTesla/PartNames.lua): EngineDoor = frunk lid
+        title = n == 1 and getText("IGUI_MinidoracatTesla_HUD_DoorOpen", getText(pk))
             or getText("IGUI_MinidoracatTesla_HUD_DoorsOpen", tostring(n))
         sub, icon, color = getText("IGUI_MinidoracatTesla_HUD_DoorOpenSub"), "i_warn", C.warn
     elseif id == 2 then
@@ -352,6 +415,7 @@ function HUD:scale()
     self.tex = getTexture(self.A.tex)
     self.f = S / k
     self:setWidth(math.floor(W * S))
+    self.tipKey = nil -- re-measure the hover help at the new scale
 end
 
 function HUD:layout()
@@ -451,17 +515,18 @@ function HUD:build()
     digits(self, A.sm, st.range, rx, SPD_Y * S, C.text2, 1)
     spr(self, A.km, R - kmW, SPD_Y * S, C.text2, 1)
 
-    -- quick keys: icon turns blue and gets an underline when on
+    -- quick keys: icon turns blue and gets an underline when on; liftgate dimmed when none is installed
     local ks = KEY * S
-    local kx = R - (4 * KEY + 3 * 8) * S
+    local kx = R - (NKEYS * KEY + (NKEYS - 1) * KEY_GAP) * S
     local ky = KEYS_Y * S
-    self.keyX, self.keyY, self.keyStep, self.keyS = kx, ky, (KEY + 8) * S, ks
-    for i = 1, 4 do
-        local on = (i == 1 and st.lights) or (i == 2 and st.heater) or (i == 3 and st.radio) or (i == 4 and st.camp)
+    self.keyX, self.keyY, self.keyStep, self.keyS = kx, ky, (KEY + KEY_GAP) * S, ks
+    for i = 1, NKEYS do
+        local on = self:keyOn(i)
+        local dim = i == 5 and not self.gate
         spr(self, A.keybg, kx, ky, C.surface, 1)
-        spr(self, A["i_" .. KEYS[i]], kx + 11 * S, ky + 10 * S, on and C.accent or C.text2, 1)
+        spr(self, A["i_" .. KEYS[i]], kx + 11 * S, ky + 10 * S, on and C.accent or (dim and C.text3 or C.text2), dim and 0.5 or 1)
         if on then rect(self, kx + 12 * S, ky + 33 * S, 16 * S, math.max(1, 2 * S), C.accent, 1) end
-        kx = kx + (KEY + 8) * S
+        kx = kx + (KEY + KEY_GAP) * S
     end
 
     -- alert pill
@@ -512,13 +577,31 @@ function HUD:prerender()
     end
 end
 
-function HUD:render() end
+-- hover help over a quick key (render runs every UI redraw; the hit test is a few comparisons)
+function HUD:render()
+    if not self.keyX or not self:isMouseOver() then return end
+    local i = self:keyAt(self:getMouseX(), self:getMouseY())
+    if not i then return end
+    local key = TIPS[i]
+    if i == 4 then key = self.st.camp and "IGUI_MinidoracatTesla_Radial_CampOff" or "IGUI_MinidoracatTesla_Tip_Camp"
+    elseif i == 5 then key = self:keyOn(5) and "IGUI_MinidoracatTesla_Tip_GateClose" or "IGUI_MinidoracatTesla_Tip_GateOpen" end
+    HUD.drawTip(self, key, self.keyX + (i - 1) * self.keyStep, self.keyY, self.keyS, self.keyS)
+end
+
+function HUD:keyOn(i)
+    local st = self.st
+    if i == 1 then return st.lights end
+    if i == 2 then return st.heater end
+    if i == 3 then return st.radio end
+    if i == 4 then return st.camp end
+    return math.floor(st.doors / GATE_BIT) % 2 == 1
+end
 
 -- quick keys are clickable like the vanilla dashboard icons; everything else lets clicks through
 function HUD:keyAt(x, y)
     if not self.keyX or y < self.keyY or y > self.keyY + self.keyS then return nil end
     local i = math.floor((x - self.keyX) / self.keyStep) + 1
-    if i < 1 or i > 4 or x > self.keyX + (i - 1) * self.keyStep + self.keyS then return nil end
+    if i < 1 or i > NKEYS or x > self.keyX + (i - 1) * self.keyStep + self.keyS then return nil end
     return i
 end
 
@@ -535,7 +618,8 @@ function HUD:onMouseUp(x, y)
     elseif i == 3 then
         local rp = self.radioPart
         if rp and rp:getDeviceData() and rp:getInventoryItem() then ISVehicleMenu.onSignalDevice(p, rp) end -- :151-157
-    else T.HUD.toggleCamp(p, v)
+    elseif i == 4 then T.HUD.toggleCamp(p, v)
+    else T.Liftgate.toggle(p, v)
     end
     return true
 end

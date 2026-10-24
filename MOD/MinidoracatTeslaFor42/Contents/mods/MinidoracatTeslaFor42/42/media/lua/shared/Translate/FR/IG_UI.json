@@ -78,5 +78,22 @@
     "IGUI_MinidoracatTesla_Deny_PLUGGED": "Un câble de recharge est déjà branché",
     "IGUI_MinidoracatTesla_Deny_NOT_PLUGGED": "Aucun câble de recharge branché",
     "IGUI_MinidoracatTesla_Deny_CABLE_SHORT": "Le câble n'atteint pas la voiture",
-    "IGUI_MinidoracatTesla_Unplugged_TooFar": "Câble de recharge arraché : la voiture s'est trop éloignée"
+    "IGUI_MinidoracatTesla_Unplugged_TooFar": "Câble de recharge arraché : la voiture s'est trop éloignée",
+    "IGUI_MinidoracatTesla_Tip_Headlight": "Allumer ou éteindre les phares",
+    "IGUI_MinidoracatTesla_Tip_Heater": "Allumer ou éteindre la climatisation (consomme la batterie)",
+    "IGUI_MinidoracatTesla_Tip_Radio": "Ouvrir la radio",
+    "IGUI_MinidoracatTesla_Tip_Camp": "Activer le mode Camping : climatisation maintenue à l'arrêt",
+    "IGUI_MinidoracatTesla_Tip_GateOpen": "Ouvrir le hayon électrique",
+    "IGUI_MinidoracatTesla_Tip_GateClose": "Fermer le hayon électrique",
+    "IGUI_MinidoracatTesla_Tip_ChargeStatus": "Charge, puissance et temps jusqu'à l'objectif",
+    "IGUI_MinidoracatTesla_Tip_CardStop": "Mettre la charge en pause ; le câble reste branché",
+    "IGUI_MinidoracatTesla_Tip_CardStart": "Reprendre la charge jusqu'à l'objectif",
+    "IGUI_MinidoracatTesla_Tip_CardUnplug": "Débrancher le câble de recharge de la voiture",
+    "IGUI_MinidoracatTesla_Tip_CardMinus": "Baisser l'objectif de charge de 10 %%",
+    "IGUI_MinidoracatTesla_Tip_CardPlus": "Monter l'objectif de charge de 10 %%",
+    "IGUI_MinidoracatTesla_Tip_CardClose": "Fermer cette carte",
+    "IGUI_MinidoracatTesla_Deny_NOT_DRIVER": "Seul le conducteur peut faire ça",
+    "IGUI_MinidoracatTesla_Deny_NO_LIFTGATE": "Aucun hayon installé",
+    "IGUI_MinidoracatTesla_Deny_MOVING": "Arrêtez d'abord la voiture",
+    "IGUI_MinidoracatTesla_Deny_LIFTGATE_LOCKED": "La serrure du hayon est cassée"
 }

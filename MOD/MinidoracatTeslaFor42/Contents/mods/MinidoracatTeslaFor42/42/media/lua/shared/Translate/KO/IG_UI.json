@@ -78,5 +78,22 @@
     "IGUI_MinidoracatTesla_Deny_PLUGGED": "충전 케이블이 이미 꽂혀 있습니다",
     "IGUI_MinidoracatTesla_Deny_NOT_PLUGGED": "꽂힌 충전 케이블이 없습니다",
     "IGUI_MinidoracatTesla_Deny_CABLE_SHORT": "케이블이 차까지 닿지 않습니다",
-    "IGUI_MinidoracatTesla_Unplugged_TooFar": "충전 케이블이 빠졌습니다: 차가 너무 멀리 이동했습니다"
+    "IGUI_MinidoracatTesla_Unplugged_TooFar": "충전 케이블이 빠졌습니다: 차가 너무 멀리 이동했습니다",
+    "IGUI_MinidoracatTesla_Tip_Headlight": "전조등 켜기/끄기",
+    "IGUI_MinidoracatTesla_Tip_Heater": "실내 온도 조절 켜기/끄기 (배터리 사용)",
+    "IGUI_MinidoracatTesla_Tip_Radio": "라디오 열기",
+    "IGUI_MinidoracatTesla_Tip_Camp": "캠핑 모드 켜기: 주차 중에도 실내 온도 유지",
+    "IGUI_MinidoracatTesla_Tip_GateOpen": "전동 리프트게이트 열기",
+    "IGUI_MinidoracatTesla_Tip_GateClose": "전동 리프트게이트 닫기",
+    "IGUI_MinidoracatTesla_Tip_ChargeStatus": "충전량, 충전 출력, 목표까지 남은 시간",
+    "IGUI_MinidoracatTesla_Tip_CardStop": "충전 일시 정지 (케이블은 꽂힌 채 유지)",
+    "IGUI_MinidoracatTesla_Tip_CardStart": "목표 충전량까지 충전 재개",
+    "IGUI_MinidoracatTesla_Tip_CardUnplug": "차량에서 충전 케이블 뽑기",
+    "IGUI_MinidoracatTesla_Tip_CardMinus": "충전 목표 10%% 낮추기",
+    "IGUI_MinidoracatTesla_Tip_CardPlus": "충전 목표 10%% 높이기",
+    "IGUI_MinidoracatTesla_Tip_CardClose": "이 카드 닫기",
+    "IGUI_MinidoracatTesla_Deny_NOT_DRIVER": "운전자만 조작할 수 있습니다",
+    "IGUI_MinidoracatTesla_Deny_NO_LIFTGATE": "리프트게이트가 장착되어 있지 않습니다",
+    "IGUI_MinidoracatTesla_Deny_MOVING": "먼저 차를 세우십시오",
+    "IGUI_MinidoracatTesla_Deny_LIFTGATE_LOCKED": "리프트게이트 잠금장치가 고장났습니다"
 }
