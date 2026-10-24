@@ -370,5 +370,34 @@ module Base
                 animate = false,
             }
         }
+        part EngineDoor
+        {
+            model Default
+            {
+                file = MinidoracatTesla_ModelY_EngineDoor,
+            }
+            anim Close
+            {
+                anim = EngineDoor_closing,
+                rate = 1.0,
+            }
+            anim Open
+            {
+                anim = EngineDoor_closing,
+                reverse = true,
+                rate = 1.0,
+            }
+            anim Closed
+            {
+                anim = EngineDoor_closing,
+                reverse = true,
+                animate = false,
+            }
+            anim Opened
+            {
+                anim = EngineDoor_closing,
+                animate = false,
+            }
+        }
     }
 }
