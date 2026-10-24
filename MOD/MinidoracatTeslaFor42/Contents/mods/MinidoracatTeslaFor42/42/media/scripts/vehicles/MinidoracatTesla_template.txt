@@ -105,15 +105,26 @@ module Base
                 requireEmpty = ,
             }
         }
-        /* frunk: 114 L, about 14% of the 835 L trunk (trunk NormalTrunk3 = 45). A container with no contentType gets an */
-        /* ItemContainer from the script capacity, item or not (VehicleParts.java:307-313) */
+        /* cargo by the 2025+ owner's manual (Dimensions): trunk 835 L behind the 2nd row, frunk 114 L. Anchor: Model Y */
+        /* is a midsize SUV like vanilla SUV, whose trunk is NormalTrunk2 = 85 (mechanicType 3 alone would give the */
+        /* ModernCar sedan's NormalTrunk3 = 45). A script capacity becomes the new trunk item's MaxCapacity */
+        /* (VehicleUtils.createPartInventoryItem, Vehicles.lua:1181-1183; saved per item, InventoryItem.java:1803,2129). */
+        part TruckBed
+        {
+            container
+            {
+                capacity = 85,
+            }
+        }
+        /* frunk 114 / 835 L x 85 = 11.6 -> 12. A container with no contentType gets an ItemContainer from the script */
+        /* capacity, item or not (VehicleParts.java:307-313); no item, so condition does not shrink it */
         part Frunk
         {
             area = Engine,
             category = bodywork,
             container
             {
-                capacity = 6,
+                capacity = 12,
                 test = MinidoracatTesla.ContainerAccess.Frunk,
                 soundMap = ContainerPut VehicleTrunkTransferItem,
                 soundMap = ContainerTake VehicleTrunkTransferItem,
