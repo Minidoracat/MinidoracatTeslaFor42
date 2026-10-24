@@ -1,0 +1,56 @@
+-- EV names for the part ids a Tesla reuses (GasTank = high voltage battery, Engine = drive unit, ...), Tesla only.
+-- Vanilla builds every part name as getText("IGUI_VehiclePart" .. id) (ISVehicleMechanics.lua:64, :1076) and the
+-- vehicle script has no per-car display name (VehicleScript.java:924-949), so while the methods below run for a
+-- Tesla, getText maps the vanilla keys to ours. Other cars and every other caller see vanilla getText.
+-- The new Frunk part needs no mapping: IGUI_VehiclePartFrunk is our own key (no vanilla part has that id).
+require "Vehicles/ISUI/ISVehicleMechanics"
+require "Vehicles/ISUI/ISVehicleMenu"
+require "MinidoracatTesla/Core"
+
+local T = MinidoracatTesla
+local unpack = unpack or table.unpack
+
+-- vanilla key -> Tesla key
+T.PartNames = {
+    IGUI_VehiclePartGasTank = "IGUI_MinidoracatTesla_Part_GasTank",
+    IGUI_VehiclePartEngine = "IGUI_MinidoracatTesla_Part_Engine",
+    IGUI_VehiclePartBattery = "IGUI_MinidoracatTesla_Part_Battery",
+    IGUI_VehiclePartHeater = "IGUI_MinidoracatTesla_Part_Heater",
+    IGUI_VehiclePartEngineDoor = "IGUI_MinidoracatTesla_Part_EngineDoor",
+    IGUI_VehiclePartCatengine = "IGUI_MinidoracatTesla_PartCat_engine", -- category header (ISVehicleMechanics.lua:59)
+    Tooltip_outoffuel = "IGUI_MinidoracatTesla_OutOfCharge",        -- empty GasTank (:1085, :1265)
+    IGUI_EnginePower = "IGUI_MinidoracatTesla_MotorPower",           -- header "Engine Power: N hp" (:1178)
+    IGUI_Vehicle_EngineLoudness = "IGUI_MinidoracatTesla_MotorLoudness", -- drive unit detail (:1325-1327)
+    IGUI_Vehicle_EngineQuality = "IGUI_MinidoracatTesla_MotorQuality",
+    IGUI_OpenHood = "IGUI_MinidoracatTesla_OpenFrunk",               -- outside radial menu (ISVehicleMenu.lua:318-337)
+    IGUI_CloseHood = "IGUI_MinidoracatTesla_CloseFrunk",
+    IGUI_LockHood = "IGUI_MinidoracatTesla_LockFrunk",
+    IGUI_UnlockHood = "IGUI_MinidoracatTesla_UnlockFrunk",
+}
+
+local vanillaGetText -- set only while a wrapped method runs for a Tesla
+local function teslaGetText(key, ...)
+    return vanillaGetText(T.PartNames[key] or key, ...)
+end
+
+-- Wrap owner[name]; vehicleOf(...) picks the car from the call's arguments.
+function T.withPartNames(owner, name, vehicleOf)
+    local orig = owner[name]
+    owner[name] = function(...)
+        if vanillaGetText or not T.isTesla(vehicleOf(...)) then return orig(...) end
+        vanillaGetText, getText = getText, teslaGetText
+        local r = { pcall(orig, ...) }
+        getText, vanillaGetText = vanillaGetText, nil -- restore even when orig errors
+        if not r[1] then error(r[2]) end
+        return unpack(r, 2)
+    end
+end
+
+local function windowVehicle(self) return self.vehicle end
+T.withPartNames(ISVehicleMechanics, "initParts", windowVehicle)
+-- render draws the car overlay tooltips and the selected part's detail (ISVehicleMechanics.lua:1142,1221): one wrap per frame
+T.withPartNames(ISVehicleMechanics, "render", windowVehicle)
+-- same vehicle pick as the menu itself (ISVehicleMenu.lua:278,294)
+T.withPartNames(ISVehicleMenu, "showRadialMenuOutside", function(playerObj)
+    return not playerObj:getVehicle() and ISVehicleMenu.getVehicleToInteractWith(playerObj) or nil
+end)

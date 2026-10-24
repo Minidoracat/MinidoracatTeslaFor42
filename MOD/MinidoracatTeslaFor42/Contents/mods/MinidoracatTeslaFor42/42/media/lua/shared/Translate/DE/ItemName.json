@@ -1,6 +1,6 @@
 {
-    "Base.MinidoracatTesla_ModelYBatterySR": "Model Y Batterie - Standardreichweite (62,5 kWh)",
-    "Base.MinidoracatTesla_ModelYBatteryLR": "Model Y Batterie - Maximale Reichweite (82,1 kWh)",
+    "Base.MinidoracatTesla_ModelYBatterySR": "Model Y Hochvoltbatterie - Standardreichweite (62,5 kWh)",
+    "Base.MinidoracatTesla_ModelYBatteryLR": "Model Y Hochvoltbatterie - Maximale Reichweite (78,1 kWh)",
     "Base.MinidoracatTesla_WallConnector": "Tesla Wall Connector (3. Gen.)",
     "Base.MinidoracatTesla_CableHang": "Ladekabel (Wandabschnitt)",
     "Base.MinidoracatTesla_CableFloor": "Ladekabel (Bodenabschnitt)",

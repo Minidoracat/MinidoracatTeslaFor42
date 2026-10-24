@@ -8,6 +8,8 @@ module Base
         engineRepairLevel = 6,
         playerDamageProtection = 1.1,
         engineRPMType = firebird,
+        /* mechanics window car diagram (VehicleScript.java:278-279, ISVehicleMechanics.lua:914-918); it only draws parts the car has */
+        carMechanicsOverlay = Base.ModernCar,
         sound
         {
             alarmLoop = VehicleAlarmA VehicleAlarmB VehicleAlarmC VehicleAlarmD VehicleAlarmE,
@@ -18,12 +20,12 @@ module Base
             ignitionFail = VehicleIgnitionFailModernCar,
         }
         mass = 800,
+        /* default only: MinidoracatTesla.Create.Motor sets SR 3000 / LR 5000 by pack (Core.lua PackPower) */
         engineForce = 5000,
         maxSpeed = 90.0,
         /* effective = script / 2 (BaseVehicle.java:9120), x2 with no Muffler (:9174-9175) = 20; ModernCar 80 with a new muffler = 32-40 */
         engineLoudness = 20,
         engineQuality = 100,
-        brakingForce = 90,
         stoppingMovementForce = 4.0,
         rollInfluence = 1.0,
         steeringIncrement = 0.04,
@@ -67,7 +69,7 @@ module Base
         /* drive battery: GasTank part with its own content type, so vanilla refuel menus skip it (ISVehicleMenu.lua:1062) */
         part GasTank
         {
-            category = MinidoracatTeslaPack,
+            category = engine,
             specificItem = false,
             durability = 5,
             container
@@ -86,11 +88,29 @@ module Base
             {
                 skills = Mechanics:7,
                 recipes = Advanced Mechanics,
+                complete = MinidoracatTesla.InstallComplete.Battery,
             }
+            /* an empty value deletes the key from the merged table (VehicleScript.java:1141-1145): no requireEmpty from */
+            /* template_gastank.txt, so the pack comes out charged and the charge rides on the item */
             table uninstall
             {
                 skills = Mechanics:7,
                 recipes = Advanced Mechanics,
+                requireEmpty = ,
+            }
+        }
+        /* frunk: 114 L, about 14% of the 835 L trunk (trunk NormalTrunk3 = 45). A container with no contentType gets an */
+        /* ItemContainer from the script capacity, item or not (VehicleParts.java:307-313) */
+        part Frunk
+        {
+            area = Engine,
+            category = bodywork,
+            container
+            {
+                capacity = 6,
+                test = MinidoracatTesla.ContainerAccess.Frunk,
+                soundMap = ContainerPut VehicleTrunkTransferItem,
+                soundMap = ContainerTake VehicleTrunkTransferItem,
             }
         }
         part Engine
@@ -143,12 +163,12 @@ module Base
                 update = MinidoracatTesla.Update.Heater,
             }
         }
-        /* 12V: vanilla update plus top-up from the drive pack while camp or sentry is on (Camp.lua) */
+        /* 12V: vanilla update plus the DC-DC top-up from the drive pack while it holds >= 5% (Battery.lua B.dcdc) */
         part Battery
         {
             lua
             {
-                create = Vehicles.Create.Battery,
+                create = MinidoracatTesla.Create.Battery12V,
                 update = MinidoracatTesla.Update.Battery12V,
             }
         }
@@ -201,30 +221,14 @@ module Base
                 recipes = Advanced Mechanics,
             }
         }
+        /* brakes and suspension: vanilla skills (Mechanics 3, Basic Mechanics). A lua block replaces the whole set */
+        /* (VehicleScript.java:965-966), so create is repeated; update halves the wear for regen (Battery.lua) */
         part Brake*
         {
-            table install
+            lua
             {
-                skills = Mechanics:7,
-                recipes = Advanced Mechanics,
-            }
-            table uninstall
-            {
-                skills = Mechanics:7,
-                recipes = Advanced Mechanics,
-            }
-        }
-        part Suspension*
-        {
-            table install
-            {
-                skills = Mechanics:7,
-                recipes = Advanced Mechanics,
-            }
-            table uninstall
-            {
-                skills = Mechanics:7,
-                recipes = Advanced Mechanics,
+                create = Vehicles.Create.Brake,
+                update = MinidoracatTesla.Update.Brakes,
             }
         }
     }

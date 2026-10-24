@@ -45,6 +45,9 @@
  16. client 物品名稱用 getItemName — getItemNameFromFullType 只回翻譯表的物品名；原版背包顯示車輛零件時再接上車型，
                           getItemName 照同一規則（LuaManager.java:8745-8763）。BigGasTank1／2／3 因此都顯示「油箱 (大型)」
                           （Economy、UIFor42 2026-10-18）。不拿來顯示或不會出現車輛零件的用法寫進 verify_ignore.txt 並註明查證依據
+ 17. vehiclewheel 模型兩層 UV — vehiclewheel_static.vert 從 location 3 讀 uv，FBX／GLB 靜態網格進引擎是 pos、normal、
+                          UV0、UV1（ImportedStaticMesh.java:29-35）；只有一層時讀到前一次 draw 留下的 attribute 3，
+                          車上零件拿到車身的 UV1，貼圖亂掉、沒有錯誤（Tesla 輪子 2026-10-24）。第二層放同一份 UV
 
 新增檢查時：同步把對應的坑記進 AGENTS.md 踩坑錄，並依「踩坑進化協議」回流到
 pz-mod-template（見 AGENTS.md）。
@@ -54,6 +57,7 @@ import os
 import re
 import shutil
 import subprocess
+import struct
 import sys
 import tempfile
 
@@ -833,6 +837,54 @@ for f in LUA_FILES:
             plain_names.append(f"getItemNameFromFullType in {lua_rel}:{lineno}")
 _t = "client 顯示物品名稱用 getItemName（getItemNameFromFullType 沒有車型）"
 fail(_t, plain_names) if plain_names else ok(_t)
+
+# ---- 17. vehiclewheel 模型的 FBX／GLB 要兩層 UV ----
+# vehiclewheel_static.vert 從 location 3 讀 uv（location 2 是原版 .txt 網格的 tangent）；FBX／GLB 靜態網格進引擎是
+# pos、normal、UV0、UV1，照元素序號綁 location（ImportedStaticMesh.java:29-35、VertexBufferObject.java:324-345）。
+# 只有一層時 shader 讀到前一次 draw 留下的 attribute 3（FinishDraw 不關 array，VertexBufferObject.java:368-375）：
+# 車上零件拿到車身同序號頂點的 UV1，貼圖亂掉、沒有任何錯誤（Tesla 輪子 2026-10-24：平灰圓片、整顆黑）。
+# 做法：網格加第二層 UV，內容同第一層。
+def mesh_uv_layers(path):
+    with open(path, "rb") as fh:
+        data = fh.read()
+    if path.lower().endswith(".glb"):
+        n = struct.unpack_from("<I", data, 12)[0]
+        prims = [p for mm in json.loads(data[20:20 + n]).get("meshes", []) for p in mm.get("primitives", [])]
+        return min((sum(k.startswith("TEXCOORD_") for k in p.get("attributes", {})) for p in prims), default=0)
+    if data.startswith(b"Kaydara FBX Binary"):
+        return data.count(b"\x0eLayerElementUV")  # 節點名：長度 14 緊接名稱（字串屬性值前是 4 位元組長度）
+    return len(re.findall(rb"(?m)^\s*LayerElementUV:\s*\d+", data))
+
+
+def model_blocks(body):
+    for mm in re.finditer(r"(?m)^\s*model\s+(\w+)\s*\{", body):
+        depth, i = 1, mm.end()
+        while depth and i < len(body):
+            depth += {"{": 1, "}": -1}.get(body[i], 0)
+            i += 1
+        inner = body[mm.end():i - 1]
+        while re.search(r"\{[^{}]*\}", inner):
+            inner = re.sub(r"\{[^{}]*\}", "", inner)
+        yield mm.group(1), {k.lower(): v.strip() for k, v in re.findall(r"(\w+)\s*=\s*([^,\n]*)", inner)}
+
+
+wheel_uv = []
+for m in MEDIA_DIRS:
+    sdir = os.path.join(m, "scripts")
+    if not os.path.isdir(sdir):
+        continue
+    for f in iter_files(sdir, {".txt"}):
+        with open(f, encoding="utf-8") as fh:
+            body = re.sub(r"/\*.*?\*/", "", fh.read(), flags=re.S)
+        for name, kv in model_blocks(body):
+            if kv.get("shader", "").lower() != "vehiclewheel" or kv.get("static", "true").lower() == "false":
+                continue
+            for ext in (".fbx", ".glb"):
+                mesh = os.path.join(m, "models_X", kv.get("mesh", "") + ext)
+                if os.path.isfile(mesh) and mesh_uv_layers(mesh) < 2:
+                    wheel_uv.append(f"model {name}: {_prel(mesh)} 只有 {mesh_uv_layers(mesh)} 層 UV")
+_t = "vehiclewheel 模型的 FBX／GLB 有兩層 UV（引擎從第二層讀）"
+fail(_t, wheel_uv) if wheel_uv else ok(_t)
 
 # ---- 總結 ----
 print()
