@@ -1,11 +1,14 @@
 module Base
 {
     /* Built by scripts/blender/modely/build.py. Meshes are in grid units: model scale 0.5495 = 1 / vehicle scale 1.82,
-       so vertex x model scale x vehicle scale = vertex (vanilla uses 0.008 with centimetre meshes). */
+       so vertex x model scale x vehicle scale = vertex (vanilla uses 0.008 with centimetre meshes).
+       MinidoracatTesla_vehicle = vanilla vehicle_multiuv (paint, mask, damage, rust, blood, reflection, lights, removed
+       parts) plus the see-through glass and the 3-D cabin, which ride in the same meshes (build.py stage cabin): the
+       body carries the cabin and the windscreen / roof / quarter glass, each door and the tailgate its own window. */
     model MinidoracatTesla_ModelY
     {
         mesh = vehicles/MinidoracatTesla_ModelY,
-        shader = vehicle_multiuv,
+        shader = MinidoracatTesla_vehicle,
         static = true,
         invertX = false,
         scale = 0.5495,
@@ -19,12 +22,12 @@ module Base
         scale = 0.5495,
     }
 
-    /* Animated doors and tailgate (build.py stage doors): skinned meshes on VehicleSkeleton in one FBX, same units
-       and UV0 / UV1 as the body; static = false picks the skinned media/shaders/vehicle_multiuv.vert. */
+    /* Animated doors, tailgate and frunk lid (build.py stage doors): skinned meshes on VehicleSkeleton in one FBX, same
+       units and UV0 / UV1 as the body; static = false picks the skinned media/shaders/MinidoracatTesla_vehicle.vert. */
     model MinidoracatTesla_ModelY_DoorFrontLeft
     {
         mesh = vehicles/MinidoracatTesla_ModelY_Doors|DoorFrontLeft,
-        shader = vehicle_multiuv,
+        shader = MinidoracatTesla_vehicle,
         static = false,
         scale = 0.5495,
     }
@@ -32,7 +35,7 @@ module Base
     model MinidoracatTesla_ModelY_DoorFrontRight
     {
         mesh = vehicles/MinidoracatTesla_ModelY_Doors|DoorFrontRight,
-        shader = vehicle_multiuv,
+        shader = MinidoracatTesla_vehicle,
         static = false,
         scale = 0.5495,
     }
@@ -40,7 +43,7 @@ module Base
     model MinidoracatTesla_ModelY_DoorRearLeft
     {
         mesh = vehicles/MinidoracatTesla_ModelY_Doors|DoorRearLeft,
-        shader = vehicle_multiuv,
+        shader = MinidoracatTesla_vehicle,
         static = false,
         scale = 0.5495,
     }
@@ -48,7 +51,7 @@ module Base
     model MinidoracatTesla_ModelY_DoorRearRight
     {
         mesh = vehicles/MinidoracatTesla_ModelY_Doors|DoorRearRight,
-        shader = vehicle_multiuv,
+        shader = MinidoracatTesla_vehicle,
         static = false,
         scale = 0.5495,
     }
@@ -56,7 +59,7 @@ module Base
     model MinidoracatTesla_ModelY_TrunkDoor
     {
         mesh = vehicles/MinidoracatTesla_ModelY_Doors|TrunkDoor,
-        shader = vehicle_multiuv,
+        shader = MinidoracatTesla_vehicle,
         static = false,
         scale = 0.5495,
     }
@@ -64,72 +67,7 @@ module Base
     model MinidoracatTesla_ModelY_EngineDoor
     {
         mesh = vehicles/MinidoracatTesla_ModelY_Doors|EngineDoor,
-        shader = vehicle_multiuv,
-        static = false,
-        scale = 0.5495,
-    }
-
-    /* 3-D cabin and see-through glass (build.py stage cabin). GloveBox draws Cabin then Glass (same part's models in
-       script order, VehiclePart.java:175-181); the window parts come after GloveBox in the template.
-       Cabin: own palette texture, so a non-vehicle shader, which only gets the transform when static (Model.java:
-       591-597). Glass: the body's panes; MinidoracatTesla_glass samples TextureRust, so the engine binds the car's
-       skin / mask / damage / uninstall state (Shader.java:149,719-721): open or removed windows are cut away. */
-    model MinidoracatTesla_ModelY_Cabin
-    {
-        mesh = vehicles/MinidoracatTesla_ModelY_Cabin,
-        texture = Vehicles/MinidoracatTesla_ModelY_cabin,
-        shader = MinidoracatTesla_cabin,
-        static = true,
-        scale = 0.5495,
-    }
-
-    model MinidoracatTesla_ModelY_Glass
-    {
-        mesh = vehicles/MinidoracatTesla_ModelY_Glass,
-        shader = MinidoracatTesla_glass,
-        static = true,
-        invertX = false,
-        scale = 0.5495,
-    }
-
-    /* Door windows and rear glass: skinned meshes in the doors FBX on their door's bone, shown by the Window /
-       WindshieldRear part, the door's child, so they borrow the door's AnimationPlayer (BaseVehicle.java:11844-11850). */
-    model MinidoracatTesla_ModelY_WindowFrontLeft
-    {
-        mesh = vehicles/MinidoracatTesla_ModelY_Doors|WindowFrontLeft,
-        shader = MinidoracatTesla_glass,
-        static = false,
-        scale = 0.5495,
-    }
-
-    model MinidoracatTesla_ModelY_WindowFrontRight
-    {
-        mesh = vehicles/MinidoracatTesla_ModelY_Doors|WindowFrontRight,
-        shader = MinidoracatTesla_glass,
-        static = false,
-        scale = 0.5495,
-    }
-
-    model MinidoracatTesla_ModelY_WindowRearLeft
-    {
-        mesh = vehicles/MinidoracatTesla_ModelY_Doors|WindowRearLeft,
-        shader = MinidoracatTesla_glass,
-        static = false,
-        scale = 0.5495,
-    }
-
-    model MinidoracatTesla_ModelY_WindowRearRight
-    {
-        mesh = vehicles/MinidoracatTesla_ModelY_Doors|WindowRearRight,
-        shader = MinidoracatTesla_glass,
-        static = false,
-        scale = 0.5495,
-    }
-
-    model MinidoracatTesla_ModelY_WindshieldRear
-    {
-        mesh = vehicles/MinidoracatTesla_ModelY_Doors|WindshieldRear,
-        shader = MinidoracatTesla_glass,
+        shader = MinidoracatTesla_vehicle,
         static = false,
         scale = 0.5495,
     }
