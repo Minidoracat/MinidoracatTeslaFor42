@@ -58,13 +58,24 @@ T.Update.Heater(idle, idle.parts.Heater, 5)
 check(kwh(idle) == i0 and (idle.parts.PassengerCompartment:getModData().temperature or 0) == 0,
     "heater: no camp and motor off -> no heat, no draw (vanilla behaviour)")
 
--- ---- 12V: topped up only in camp/sentry ----
+-- ---- 12V: DC-DC top-up whenever the pack holds >= 5% (camp or not) ----
 v.parts.Battery.item.uses = 0.5
 T.Update.Battery12V(v, v.parts.Battery, 1)
 check(v.parts.Battery.item.uses >= 0.99, "12V: topped up while camping")
+T.Battery.set(idle, idle.parts.GasTank, 75 * 0.0499)
 idle.parts.Battery.item.uses = 0.5
+local low0 = kwh(idle)
 T.Update.Battery12V(idle, idle.parts.Battery, 1)
-check(idle.parts.Battery.item.uses == 0.5, "12V: untouched when camp and sentry are off")
+check(idle.parts.Battery.item.uses == 0.5 and kwh(idle) == low0, "12V: no DC-DC top-up below 5% pack")
+T.Battery.set(idle, idle.parts.GasTank, 75 * 0.05)
+local five0 = kwh(idle)
+T.Update.Battery12V(idle, idle.parts.Battery, 1)
+check(idle.parts.Battery.item.uses >= 0.99 and math.abs((five0 - kwh(idle)) - 0.5 * T.V12_KWH) < 1e-9,
+    "12V: DC-DC at 5% pack, camp off: refilled, pack pays 0.5 x V12_KWH")
+idle.parts.Battery.item.uses = 0.96
+local hi0 = kwh(idle)
+T.Update.Battery12V(idle, idle.parts.Battery, 1)
+check(idle.parts.Battery.item.uses == 0.96 and kwh(idle) == hi0, "12V: no top-up at 95% or more")
 
 -- ---- engine hook keeps parts updating; reload resets the unsaved flag ----
 v.needParts = false

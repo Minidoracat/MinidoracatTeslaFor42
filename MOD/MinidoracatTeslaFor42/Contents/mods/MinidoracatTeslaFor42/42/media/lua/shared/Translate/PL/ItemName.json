@@ -1,6 +1,6 @@
 {
-    "Base.MinidoracatTesla_ModelYBatterySR": "Akumulator Model Y - standardowy zasięg (62,5 kWh)",
-    "Base.MinidoracatTesla_ModelYBatteryLR": "Akumulator Model Y - duży zasięg (82,1 kWh)",
+    "Base.MinidoracatTesla_ModelYBatterySR": "Akumulator wysokiego napięcia Model Y - standardowy zasięg (62,5 kWh)",
+    "Base.MinidoracatTesla_ModelYBatteryLR": "Akumulator wysokiego napięcia Model Y - duży zasięg (78,1 kWh)",
     "Base.MinidoracatTesla_WallConnector": "Tesla Wall Connector (3. gen.)",
     "Base.MinidoracatTesla_CableHang": "Kabel ładowania (odcinek ścienny)",
     "Base.MinidoracatTesla_CableFloor": "Kabel ładowania (odcinek podłogowy)",

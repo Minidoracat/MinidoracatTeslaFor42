@@ -14,6 +14,7 @@ T.Update = T.Update or {}
 T.Create = T.Create or {}
 T.CheckEngine = T.CheckEngine or {}
 T.Battery = T.Battery or {}
+T.ContainerAccess = T.ContainerAccess or {}
 
 -- Energy is in kWh of game time: a kW drawn for one game hour is one kWh.
 -- kwPerKmh, idleKw: a full standard pack (62.5 kWh) drives as far as a full vanilla CarNormal tank at 50 km/h
@@ -42,10 +43,16 @@ T.Specs = {
 }
 
 -- Pack items: exact kWh. Item MaxCapacity is an int (Item.java:2502-2503), so it is rounded up and
--- the exact value lives here.
+-- the exact value lives here. LR is the 2025 Juniper Long Range (78.1 kWh nominal, research R10).
 T.Packs = {
     ["Base.MinidoracatTesla_ModelYBatterySR"] = 62.5,
-    ["Base.MinidoracatTesla_ModelYBatteryLR"] = 82.1,
+    ["Base.MinidoracatTesla_ModelYBatteryLR"] = 78.1,
+}
+-- enginePower set by Create.Motor from the pack a new car spawns with (SR rear drive, LR dual motor); the
+-- mechanics window shows power / 10 hp (ISVehicleMechanics.lua:1178). Per car and saved (BaseVehicle.java:2666).
+T.PackPower = {
+    ["Base.MinidoracatTesla_ModelYBatterySR"] = 3000,
+    ["Base.MinidoracatTesla_ModelYBatteryLR"] = 5000,
 }
 
 local PREFIX = "[" .. T.MOD_ID .. "] "
@@ -113,6 +120,16 @@ end
 -- menu's start-engine slice ISVehicleMenu.lua:88-106). Empty pack or charge cable plugged in = cannot start.
 function T.CheckEngine.Battery(vehicle, part)
     return part:getInventoryItem() ~= nil and vehicle:hasEnoughGasToRun() and part:getModData().chg == nil
+end
+
+-- Frunk container test (both sides: inventory page on the client, transfers on the server). Same rule as
+-- vanilla Vehicles.ContainerAccess.TruckBed (Vehicles.lua:24-34) with the frunk lid (EngineDoor) as the door.
+function T.ContainerAccess.Frunk(vehicle, part, chr)
+    if chr:getVehicle() then return false end
+    if not vehicle:isInArea(part:getArea(), chr) then return false end
+    local lid = vehicle:getPartById("EngineDoor")
+    if lid and lid:getDoor() and lid:getInventoryItem() then return lid:getDoor():isOpen() end
+    return true
 end
 
 -- ---- authorization ----
