@@ -265,6 +265,66 @@ SCREEN_W, fontH = 1920, 19
 h:layout()
 mx = nil
 
+-- ---------------------------------------------------------------- chargeCardRect (AutoDrive stacks its FSD card on it)
+H.section("chargeCardRect")
+ISPanelJoypad = ISUIElement:derive("ISPanelJoypad")
+function ISPanelJoypad:instantiate() ISUIElement.instantiate(self); if self.createChildren then self:createChildren() end end
+function ISPanelJoypad:update() end
+function ISPanelJoypad:addChild() end
+function ISPanelJoypad:insertNewLineOfButtons() end
+function ISPanelJoypad:bringToTop() end
+ISButton = ISUIElement:derive("ISButton")
+function ISButton:new(x, y, w, hh, title)
+    local o = ISUIElement.new(self, x, y, w, hh)
+    o.title, o.enable = title, true
+    return o
+end
+function ISButton:setTitle(t) self.title = t end
+function ISButton:setEnable(e) self.enable = e end
+JoypadState = { players = {} }
+H.stub("ISUI/ISPanelJoypad")
+H.stub("ISUI/ISButton")
+require "MinidoracatTesla/HUDChargeCard"
+local cardPlayer = { isDead = function() return false end, getVehicle = function() return tesla end,
+    DistTo = function() return 0 end }
+local realGetSpecific = getSpecificPlayer
+getSpecificPlayer = function() return cardPlayer end
+dash:setVehicle(tesla)
+local _, _, _, _, cv0 = MinidoracatTeslaAPI.chargeCardRect(0)
+check(cv0 == false and select(3, MinidoracatTeslaAPI.chargeCardRect(0)) == 0, "card not open: 0, 0, 0, 0, false")
+local card = T.ChargeCard.open(0, tesla)
+local function cardAboveHud()
+    local cx, cy, cw, ch, cvis = MinidoracatTeslaAPI.chargeCardRect(0)
+    local _, hy = MinidoracatTeslaAPI.hudRect(0)
+    return cvis == true and cw > 0 and ch > 0 and cy + ch == hy - math.floor(8 * card.S)
+        and cx == math.floor((SCREEN_W - cw) / 2), cy + ch
+end
+local ok1, bottom1 = cardAboveHud()
+check(ok1, "card open: rect is the drawn card, centred, bottom 8*S above hudRect")
+tesla.parts.DoorFrontLeft.door.open = true -- door pill: the HUD grows upward
+h:update(); h:update(); h:update()
+card:update()
+local ok2, bottom2 = cardAboveHud()
+check(ok2 and bottom2 < bottom1, "HUD grew (pill): card and its rect moved up with it (" .. bottom1 .. " -> " .. bottom2 .. ")")
+tesla.parts.DoorFrontLeft.door.open = false
+h:update(); h:update(); h:update()
+card:update()
+check((cardAboveHud()), "pill gone: card back down, still 8*S above the HUD")
+card:setVisible(false) -- ESC / UI toggled off
+local _, _, cw3, _, cv3 = MinidoracatTeslaAPI.chargeCardRect(0)
+check(cw3 > 0 and cv3 == false, "UI hidden: rect kept, visible=false (like hudRect)")
+card:setVisible(true)
+collectgarbage("collect"); collectgarbage("stop")
+MinidoracatTeslaAPI.chargeCardRect(0)
+local kb = collectgarbage("count")
+for _ = 1, 1000 do MinidoracatTeslaAPI.chargeCardRect(0) end
+local cgrew = collectgarbage("count") - kb
+collectgarbage("restart")
+check(cgrew == 0, "chargeCardRect x1000 allocates nothing (" .. cgrew .. " KB)")
+card:close()
+check(select(5, MinidoracatTeslaAPI.chargeCardRect(0)) == false, "card closed: visible=false")
+getSpecificPlayer = realGetSpecific
+
 -- ---------------------------------------------------------------- radial menu
 H.section("radial menu")
 local p = H.player({ keys = { [tesla.keyId] = true } })
