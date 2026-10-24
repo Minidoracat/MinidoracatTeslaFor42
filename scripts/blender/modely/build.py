@@ -1993,10 +1993,14 @@ def stage_doors():
     bpy.context.scene.collection.objects.link(arm)
     select_only(arm)
     bpy.ops.object.mode_set(mode="EDIT")
-    for part, (_, axis, _, _) in DOORS.items():
-        eb = arm.data.edit_bones.new(part + "_bone")      # bone Y = hinge axis: open = rotation about local Y
-        eb.head = Vector(conv @ hinges[part])
-        eb.tail = Vector(conv @ (hinges[part] + np.array(axis) * 0.3))
+    # every bone rests at the origin, unrotated: its bind matrix is identity, so a door with no track at all (a shut
+    # door: the script has no Closed pose, models.md 9) draws its mesh as built, shut. AnimationPlayer starts with
+    # identity model transforms (AnimationPlayer.java:184-193) and skins with boneOffset x model transform
+    # (:1555-1580): a bone resting at the hinge drew the never-animated doors off by its rest offset (tesla-noclosed-
+    # doors-1025a). The swing about the hinge is in the keys instead: rotation q about the hinge axis, location h - q h.
+    for part in DOORS:
+        eb = arm.data.edit_bones.new(part + "_bone")
+        eb.head, eb.tail = Vector((0, 0, 0)), Vector((0, 0.3, 0))
     bpy.ops.object.mode_set(mode="OBJECT")
     obs = [arm]
     for part, P, t, a in meshes:
@@ -2014,6 +2018,13 @@ def stage_doors():
     ad = arm.animation_data_create()
     for pb in arm.pose.bones:
         pb.rotation_mode = "QUATERNION"
+
+    def hinge_pose(part, deg):
+        """(location, rotation) of a door's bone opened deg about its hinge (FBX space)."""
+        q = Quaternion(Vector(conv @ np.array(DOORS[part][1], float)), math.radians(deg))
+        h = Vector(conv @ hinges[part])
+        return h - q @ h, q
+
     end = 1
     for part, (_, _, ang, secs) in DOORS.items():
         act = bpy.data.actions.new(part + "_closing")
@@ -2021,19 +2032,23 @@ def stage_doors():
         ad.action = act
         last = 1 + round(secs * CLIP_FPS)
         end = max(end, last)
-        for fr, deg in ((1, ang), (last, 0)):        # every bone keyed: the other doors stay shut in this take
-            for pb in arm.pose.bones:
-                pb.rotation_quaternion = Quaternion((0, 1, 0), math.radians(deg if pb.name == part + "_bone" else 0))
+        for fr in range(1, last + 1):            # every frame keyed (eased): loc and rot together keep the hinge still
+            u = (fr - 1) / (last - 1)
+            deg = ang * (1 - u * u * (3 - 2 * u))
+            for pb in arm.pose.bones:         # every bone keyed: the other doors stay shut in this take
+                pb.location, pb.rotation_quaternion = hinge_pose(part, deg) if pb.name == part + "_bone" else \
+                    (Vector((0, 0, 0)), Quaternion())
+                pb.keyframe_insert("location", frame=fr)
                 pb.keyframe_insert("rotation_quaternion", frame=fr)
         act.frame_range = (1, last)
     ad.action = None
     for pb in arm.pose.bones:
-        pb.rotation_quaternion = (1, 0, 0, 0)
+        pb.location, pb.rotation_quaternion = (0, 0, 0), (1, 0, 0, 0)
     sc.frame_start, sc.frame_end = 1, end
     export_doors(obs)
     # cut body and doors (doors in FBX space, actions kept) for stage cabin, which splits the glass off both
     bpy.ops.wm.save_as_mainfile(filepath=os.path.join(TMP, "v2_doors.blend"))
-    door_previews(cut_body, arm, obs[1:])
+    door_previews(cut_body, arm, obs[1:], {part: hinge_pose(part, DOORS[part][2]) for part in DOORS})
 
 
 def export_doors(obs):
@@ -2049,9 +2064,9 @@ def export_doors(obs):
                              path_mode="STRIP")
 
 
-def door_previews(body, arm, doors):
-    """prev/doors_<pose>_<view>.png: Ultra Red skin on the cut body and the doors, shut and open (each door's clip at
-    its first frame). Doors are in FBX space: shown through the armature's inverse axis turn."""
+def door_previews(body, arm, doors, opened):
+    """prev/doors_<pose>_<view>.png: Ultra Red skin on the cut body and the doors, shut and open (opened: each bone's
+    pose at its clip's first frame). Doors are in FBX space: shown through the armature's inverse axis turn."""
     arm.matrix_world = Matrix.Rotation(math.pi / 2, 4, "X")
     mat = body.data.materials[0]
     mat.use_nodes = True
@@ -2063,8 +2078,7 @@ def door_previews(body, arm, doors):
     views = {"iso": Vector((-1, 1, 1.15)), "iso_rear": Vector((1, -1, 1.15)), "left": Vector((-1, 0, 0))}
     preview.render_views(os.path.join(PREV, "doors_shut"), ortho=5.0, center=Vector((0, 0, 0)), res=(1600, 900), views=views)
     for pb in arm.pose.bones:
-        part = pb.name[:-5]
-        pb.rotation_quaternion = Quaternion((0, 1, 0), math.radians(DOORS[part][2]))
+        pb.location, pb.rotation_quaternion = opened[pb.name[:-5]]
     bpy.context.view_layer.update()
     preview.render_views(os.path.join(PREV, "doors_open"), ortho=5.0, center=Vector((0, 0, 0)), res=(1600, 900), views=views)
 
@@ -2563,17 +2577,19 @@ def geometry(body, zmid, wl, r):
             "            rotate = 0.0 0.0 0.0,", "            zoffset = 1.0,", "        }",
             "        /* charge port: side end of the left tail light (real Model Y) */",
             "        attachment chargeport", "        {", f"            offset = {f4(*port)},", "            rotate = 0.0 0.0 0.0,", "        }"]
-    # animated doors (stage doors): the clip runs open -> closed, so Open plays it reversed, Closed holds its end
-    # (reversed, not animated) and Opened its start (vanilla vehicle_car_sports_ez.txt layout); ISOpenVehicleDoor /
-    # ISCloseVehicleDoor play Open / Close, a new model instance holds Opened / Closed (BaseVehicle.java:3926-3930).
+    # animated doors (stage doors): the clip runs open -> closed, so Open plays it reversed and Opened holds its start
+    # (not animated; vanilla vehicle_car_sports_ez.txt layout); ISOpenVehicleDoor / ISCloseVehicleDoor play Open /
+    # Close, a new model instance of an open door holds Opened (BaseVehicle.java:3926-3930). No Closed: a shut door
+    # then has no track, and AnimationPlayer skips the skeleton when it has none (AnimationPlayer.java:512-529), where a
+    # Closed pose track (animate = false, never finishes) made every loaded car compute 6 skeletons every frame
+    # (models.md 9). The pose of a shut door is the mesh's own (bind pose = shut) or Close's last frame.
     # One model per door, its window in the door mesh: each door's AnimationPlayer advances once a frame (postupdate,
     # BaseVehicle.java:3777-3780), so every clip runs at rate 1 with or without its window
     for part in DOORS:
         clip = part + "_closing"
         out += [f"        part {part}", "        {", "            model Default", "            {",
                 f"                file = {NAME}_{part},", "            }"]
-        for anim, rev, live in (("Close", False, True), ("Open", True, True), ("Closed", True, False),
-                                ("Opened", False, False)):
+        for anim, rev, live in (("Close", False, True), ("Open", True, True), ("Opened", False, False)):
             out += [f"            anim {anim}", "            {", f"                anim = {clip},"]
             out += ["                reverse = true,"] * rev
             out += ["                rate = 1.0,"] if live else ["                animate = false,"]
