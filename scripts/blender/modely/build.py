@@ -1241,11 +1241,15 @@ def classify(pos, nrm, col, liner, iid, iidf):
 
 
 # zones that take UV1 only from the same ModernCar zones (the maps draw cracks and broken-lamp holes there); everything
-# else takes the body panels. ModernCar has one triangle per lamp (its tail lamps are the Stop zones), so the lamp groups
-# (from DAMAGE_FIT on) first fit our lamps' bounding box onto that triangle's: the head bar is 1.5 grid wide
+# else takes the body panels. ModernCar has one UV1 triangle per lamp (its tail lamps are the Stop zones) and our head
+# bar is 1.5 grid wide: our lamps (along, z) tile the UV1 box of ModernCar's lamp at DAMAGE_PX (DAMAGE_LAMPS; by
+# nearest surface the corner lamps landed off its triangle on blank texels). ModernCar's boot is a long deck with a
+# short back while our tailgate is mostly upright: by nearest surface it took the dent blob on the boot's back
+# (Veh_Damage1 58% vs ModernCar 18%), so its bounding box is first fitted onto ModernCar's (DAMAGE_BOX)
 DAMAGE_GROUPS = (("WinT",), ("WinH",), ("WinLH",), ("WinLT",), ("WinRH",), ("WinRT",),
-                 ("LightLH",), ("LightRH",), ("LightLT", "StopL"), ("LightRT", "StopR"))
-DAMAGE_FIT = 7
+                 ("LightLH",), ("LightRH",), ("LightLT", "StopL"), ("LightRT", "StopR"), ("Boot",))
+DAMAGE_LAMPS, DAMAGE_BOX = (7, 8, 9, 10), (11,)          # group numbers (index in DAMAGE_GROUPS + 1)
+DAMAGE_PX = 80                                           # lamp UV1 density, px of 512 per grid (vanilla panels 75-100)
 GROUP_OF = {z: i + 1 for i, zs in enumerate(DAMAGE_GROUPS) for z in zs}
 ZCODE = np.array([""] * 125, object)            # mask colour (channels in quarters) -> zone name
 for _k, _c in Z.items():
@@ -1312,8 +1316,10 @@ def tri_dist(p, a, b, c):
 
 def nearest_tri(p, tri, chunk=256, normals=None, tn=None):
     """Index of the triangle (M x 3 x 3) nearest to each point (N x 3) and the point's barycentric weights on its plane
-    (extrapolated past its edges). With normals: only triangles within 73 deg (|cos| > 0.3) of the point's normal, all
-    of them where none is."""
+    (extrapolated past its edges: clamped to the edge, a third of the faces collapsed to a line where our surface
+    reaches past ModernCar's, e.g. our door bottoms 14 cm below its side strip; capping the extrapolation at 15 cm
+    collapsed more). With normals: only triangles within 73 deg (|cos| > 0.3) of the point's normal, all of them where
+    none is."""
     idx, bary = np.empty(len(p), np.int64), np.empty((len(p), 3))
     for s in range(0, len(p), chunk):
         d, bc = tri_dist(p[s:s + chunk, None], tri[None, :, 0], tri[None, :, 1], tri[None, :, 2])
@@ -1383,8 +1389,8 @@ def damage_uv1(body, fzone):
     lt = np.empty(len(me.polygons), np.int64)
     me.polygons.foreach_get("loop_total", lt)
     lf = np.repeat(np.arange(len(lt)), lt)
-    box = {}                                        # lamp group -> (our min, size, ModernCar min, size)
-    for g in range(DAMAGE_FIT, len(DAMAGE_GROUPS) + 1):
+    box = {}                                        # group -> (our min, size, ModernCar min, size)
+    for g in DAMAGE_BOX:
         p, q = co[blv[fcls[lf] == g]], rco[rcls == g].reshape(-1, 3)
         if len(p) and len(q):
             box[g] = (p.min(0), np.maximum(np.ptp(p, 0), 1e-6), q.min(0), np.ptp(q, 0))
@@ -1406,6 +1412,19 @@ def damage_uv1(body, fzone):
         vv, inv = np.unique(blv[L], return_inverse=True)
         k, bc = nearest_tri(put(co[vv], kk % 16), rco[T])
         out[L] = np.einsum("nk,nkc->nc", bc, ru1[T[k]])[inv]
+    for g in DAMAGE_LAMPS:                          # lamps: tiled over ModernCar's lamp box at panel density
+        L = np.flatnonzero(fgrp[lf] == g)
+        if not len(L):
+            continue
+        p = co[blv[L]]
+        a = [int(np.argmax(np.ptp(p[:, :2], 0))), 2]         # along the lamp (x or y), across it (z)
+        q = ru1[rcls == g].reshape(-1, 2)
+        s = np.argsort(-np.ptp(q, 0))                       # the UV box's long, short side
+        size = np.ptp(q, 0)[s]
+        t = (p[:, a] - p[:, a].min(0)) * DAMAGE_PX / 512
+        fl = lf[L]
+        cen = np.stack([np.bincount(fl, t[:, i]) for i in range(2)], 1)[fl] / np.bincount(fl)[fl, None]
+        out[L[:, None], s] = q.min(0)[s] + t - np.floor(cen / size) * size    # whole faces per tile
     me.uv_layers["UV1"].data.foreach_set("uv", out.ravel())
     print("UV1 from", DAMAGE_REF, "islands", len(np.unique(fisl)), "faces per own-zone group",
           {"/".join(zs): int((fgrp == i + 1).sum()) for i, zs in enumerate(DAMAGE_GROUPS)})
