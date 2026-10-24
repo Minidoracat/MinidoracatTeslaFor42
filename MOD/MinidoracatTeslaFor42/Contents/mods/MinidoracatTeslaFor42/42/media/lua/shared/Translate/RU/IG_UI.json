@@ -64,5 +64,22 @@
     "IGUI_MinidoracatTesla_Deny_PLUGGED": "Зарядный кабель уже подключен",
     "IGUI_MinidoracatTesla_Deny_NOT_PLUGGED": "Зарядный кабель не подключен",
     "IGUI_MinidoracatTesla_Deny_CABLE_SHORT": "Кабель не дотягивается до машины",
-    "IGUI_MinidoracatTesla_Unplugged_TooFar": "Зарядный кабель выдернут: машина отъехала слишком далеко"
+    "IGUI_MinidoracatTesla_Unplugged_TooFar": "Зарядный кабель выдернут: машина отъехала слишком далеко",
+    "IGUI_MinidoracatTesla_Tip_Headlight": "Включить или выключить фары",
+    "IGUI_MinidoracatTesla_Tip_Heater": "Включить или выключить климат (расходует заряд)",
+    "IGUI_MinidoracatTesla_Tip_Radio": "Открыть радио",
+    "IGUI_MinidoracatTesla_Tip_Camp": "Включить режим кемпинга: климат работает на стоянке",
+    "IGUI_MinidoracatTesla_Tip_GateOpen": "Открыть багажник (электропривод)",
+    "IGUI_MinidoracatTesla_Tip_GateClose": "Закрыть багажник (электропривод)",
+    "IGUI_MinidoracatTesla_Tip_ChargeStatus": "Заряд, мощность и время до цели",
+    "IGUI_MinidoracatTesla_Tip_CardStop": "Приостановить зарядку, кабель остаётся подключённым",
+    "IGUI_MinidoracatTesla_Tip_CardStart": "Продолжить зарядку до цели",
+    "IGUI_MinidoracatTesla_Tip_CardUnplug": "Отключить зарядный кабель от машины",
+    "IGUI_MinidoracatTesla_Tip_CardMinus": "Снизить цель зарядки на 10%%",
+    "IGUI_MinidoracatTesla_Tip_CardPlus": "Поднять цель зарядки на 10%%",
+    "IGUI_MinidoracatTesla_Tip_CardClose": "Закрыть эту карточку",
+    "IGUI_MinidoracatTesla_Deny_NOT_DRIVER": "Это может сделать только водитель",
+    "IGUI_MinidoracatTesla_Deny_NO_LIFTGATE": "Дверь багажника не установлена",
+    "IGUI_MinidoracatTesla_Deny_MOVING": "Сначала остановите машину",
+    "IGUI_MinidoracatTesla_Deny_LIFTGATE_LOCKED": "Замок двери багажника сломан"
 }

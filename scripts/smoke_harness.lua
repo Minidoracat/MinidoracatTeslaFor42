@@ -70,6 +70,9 @@ end
 function H.count(name) return #(handlers[name] or {}) end
 
 function sendServerCommand(player, module, command, args)
+    if args == nil and type(player) == "string" then -- broadcast form (module, command, args): player = nil
+        player, module, command, args = nil, player, module, command
+    end
     H.sent[#H.sent + 1] = { player = player, module = module, command = command, args = args }
 end
 function sendClientCommand(player, module, command, args)

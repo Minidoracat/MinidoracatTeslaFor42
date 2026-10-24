@@ -64,5 +64,22 @@
     "IGUI_MinidoracatTesla_Deny_PLUGGED": "Ya hay un cable de carga conectado",
     "IGUI_MinidoracatTesla_Deny_NOT_PLUGGED": "No hay ningún cable de carga conectado",
     "IGUI_MinidoracatTesla_Deny_CABLE_SHORT": "El cable no llega al coche",
-    "IGUI_MinidoracatTesla_Unplugged_TooFar": "Cable de carga arrancado: el coche se alejó demasiado"
+    "IGUI_MinidoracatTesla_Unplugged_TooFar": "Cable de carga arrancado: el coche se alejó demasiado",
+    "IGUI_MinidoracatTesla_Tip_Headlight": "Encender o apagar los faros",
+    "IGUI_MinidoracatTesla_Tip_Heater": "Encender o apagar la climatización (gasta batería)",
+    "IGUI_MinidoracatTesla_Tip_Radio": "Abrir la radio",
+    "IGUI_MinidoracatTesla_Tip_Camp": "Activar Modo acampada: climatización encendida al aparcar",
+    "IGUI_MinidoracatTesla_Tip_GateOpen": "Abrir el portón eléctrico",
+    "IGUI_MinidoracatTesla_Tip_GateClose": "Cerrar el portón eléctrico",
+    "IGUI_MinidoracatTesla_Tip_ChargeStatus": "Carga, potencia y tiempo hasta el objetivo",
+    "IGUI_MinidoracatTesla_Tip_CardStop": "Pausar la carga; el cable sigue conectado",
+    "IGUI_MinidoracatTesla_Tip_CardStart": "Reanudar la carga hasta el objetivo",
+    "IGUI_MinidoracatTesla_Tip_CardUnplug": "Desconectar el cable de carga del coche",
+    "IGUI_MinidoracatTesla_Tip_CardMinus": "Bajar el objetivo de carga un 10%%",
+    "IGUI_MinidoracatTesla_Tip_CardPlus": "Subir el objetivo de carga un 10%%",
+    "IGUI_MinidoracatTesla_Tip_CardClose": "Cerrar esta tarjeta",
+    "IGUI_MinidoracatTesla_Deny_NOT_DRIVER": "Solo el conductor puede hacerlo",
+    "IGUI_MinidoracatTesla_Deny_NO_LIFTGATE": "No hay portón trasero instalado",
+    "IGUI_MinidoracatTesla_Deny_MOVING": "Detén el coche primero",
+    "IGUI_MinidoracatTesla_Deny_LIFTGATE_LOCKED": "La cerradura del portón está rota"
 }

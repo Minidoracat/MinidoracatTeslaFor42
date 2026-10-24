@@ -64,5 +64,22 @@
     "IGUI_MinidoracatTesla_Deny_PLUGGED": "Já há um cabo de carregamento conectado",
     "IGUI_MinidoracatTesla_Deny_NOT_PLUGGED": "Nenhum cabo de carregamento conectado",
     "IGUI_MinidoracatTesla_Deny_CABLE_SHORT": "O cabo não alcança o carro",
-    "IGUI_MinidoracatTesla_Unplugged_TooFar": "Cabo de carregamento arrancado: o carro se afastou demais"
+    "IGUI_MinidoracatTesla_Unplugged_TooFar": "Cabo de carregamento arrancado: o carro se afastou demais",
+    "IGUI_MinidoracatTesla_Tip_Headlight": "Ligar ou desligar os faróis",
+    "IGUI_MinidoracatTesla_Tip_Heater": "Ligar ou desligar a climatização (gasta bateria)",
+    "IGUI_MinidoracatTesla_Tip_Radio": "Abrir o rádio",
+    "IGUI_MinidoracatTesla_Tip_Camp": "Ligar Modo Acampamento: climatização ligada com o carro parado",
+    "IGUI_MinidoracatTesla_Tip_GateOpen": "Abrir a tampa traseira elétrica",
+    "IGUI_MinidoracatTesla_Tip_GateClose": "Fechar a tampa traseira elétrica",
+    "IGUI_MinidoracatTesla_Tip_ChargeStatus": "Carga, potência e tempo até a meta",
+    "IGUI_MinidoracatTesla_Tip_CardStop": "Pausar a carga; o cabo continua conectado",
+    "IGUI_MinidoracatTesla_Tip_CardStart": "Retomar a carga até a meta",
+    "IGUI_MinidoracatTesla_Tip_CardUnplug": "Desconectar o cabo de carga do carro",
+    "IGUI_MinidoracatTesla_Tip_CardMinus": "Baixar a meta de carga em 10%%",
+    "IGUI_MinidoracatTesla_Tip_CardPlus": "Subir a meta de carga em 10%%",
+    "IGUI_MinidoracatTesla_Tip_CardClose": "Fechar este cartão",
+    "IGUI_MinidoracatTesla_Deny_NOT_DRIVER": "Só o motorista pode fazer isso",
+    "IGUI_MinidoracatTesla_Deny_NO_LIFTGATE": "Não há tampa traseira instalada",
+    "IGUI_MinidoracatTesla_Deny_MOVING": "Pare o carro primeiro",
+    "IGUI_MinidoracatTesla_Deny_LIFTGATE_LOCKED": "A trava da tampa traseira está quebrada"
 }

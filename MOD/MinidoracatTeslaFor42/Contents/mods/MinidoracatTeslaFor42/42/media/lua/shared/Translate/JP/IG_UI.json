@@ -64,5 +64,22 @@
     "IGUI_MinidoracatTesla_Deny_PLUGGED": "充電ケーブルはすでに差し込まれています",
     "IGUI_MinidoracatTesla_Deny_NOT_PLUGGED": "充電ケーブルが差し込まれていません",
     "IGUI_MinidoracatTesla_Deny_CABLE_SHORT": "ケーブルが車まで届きません",
-    "IGUI_MinidoracatTesla_Unplugged_TooFar": "充電ケーブルが抜けました：車が離れすぎました"
+    "IGUI_MinidoracatTesla_Unplugged_TooFar": "充電ケーブルが抜けました：車が離れすぎました",
+    "IGUI_MinidoracatTesla_Tip_Headlight": "ヘッドライトのオン/オフ",
+    "IGUI_MinidoracatTesla_Tip_Heater": "空調のオン/オフ（バッテリーを使います）",
+    "IGUI_MinidoracatTesla_Tip_Radio": "ラジオを開く",
+    "IGUI_MinidoracatTesla_Tip_Camp": "キャンプモードをオン：駐車中も空調を維持",
+    "IGUI_MinidoracatTesla_Tip_GateOpen": "パワーリフトゲートを開ける",
+    "IGUI_MinidoracatTesla_Tip_GateClose": "パワーリフトゲートを閉める",
+    "IGUI_MinidoracatTesla_Tip_ChargeStatus": "充電量、出力、目標までの時間",
+    "IGUI_MinidoracatTesla_Tip_CardStop": "充電を一時停止（ケーブルは差したまま）",
+    "IGUI_MinidoracatTesla_Tip_CardStart": "目標まで充電を再開",
+    "IGUI_MinidoracatTesla_Tip_CardUnplug": "車から充電ケーブルを抜く",
+    "IGUI_MinidoracatTesla_Tip_CardMinus": "充電目標を 10%% 下げる",
+    "IGUI_MinidoracatTesla_Tip_CardPlus": "充電目標を 10%% 上げる",
+    "IGUI_MinidoracatTesla_Tip_CardClose": "このカードを閉じる",
+    "IGUI_MinidoracatTesla_Deny_NOT_DRIVER": "運転席からのみ操作できます",
+    "IGUI_MinidoracatTesla_Deny_NO_LIFTGATE": "リフトゲートが付いていません",
+    "IGUI_MinidoracatTesla_Deny_MOVING": "先に車を止めてください",
+    "IGUI_MinidoracatTesla_Deny_LIFTGATE_LOCKED": "リフトゲートのロックが壊れています"
 }

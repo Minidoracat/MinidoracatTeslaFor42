@@ -56,7 +56,7 @@ def check_contrast():
         ("text", "surface", 4.5), ("text2", "surface", 4.5), ("warn", "surface", 4.5),
         ("ok", "surface", 4.5), ("danger", "surface", 4.5),
         ("accent", "bg", 3.0), ("accent", "surface", 3.0), ("ok", "bg", 3.0),
-        ("#FFFFFF", "accentFill", 4.5), ("text2", "track", 3.0),
+        ("#FFFFFF", "accentFill", 4.5), ("text2", "track", 3.0), ("text", "track", 4.5),  # last: hover help
     ]
     out = []
     for fg, bg, need in rules:
@@ -175,6 +175,14 @@ def ic_radio(c):
     c.stroke([("M", 4, 5), ("L", 11, 2)])
     c.stroke([("M", 5, 9), ("H", 8)])
     c.circle(11, 9, 1.1, fill="#FFFFFF")
+
+
+def ic_liftgate(c):  # SUV side view, nose right; the liftgate swung up from the roof hinge
+    c.stroke([("M", 5, 5.5), ("H", 9.5), ("L", 11.8, 8.2), ("L", 14, 8.8), ("Q", 14.8, 9, 14.8, 10), ("V", 12.2),
+              ("H", 1.8), ("V", 9.6), ("L", 3.4, 9)])
+    c.stroke([("M", 5, 5.5), ("L", 1.4, 2.8)], w=1.8)
+    for x in (4.9, 11.6):
+        c.circle(x, 12.4, 1.6, fill="#FFFFFF")
 
 
 def ic_warn(c):
@@ -308,7 +316,7 @@ def build_sprites(k):
     icons16 = {
         "lock": ic_lock, "unlock": ic_unlock, "tent": ic_tent, "headlight": ic_headlight,
         "heater": ic_heater, "radio": ic_radio, "warn": ic_warn, "bolt": ic_bolt, "check": ic_check,
-        "ring": ic_ring, "dot": ic_dot, "plug": ic_plug,
+        "ring": ic_ring, "dot": ic_dot, "plug": ic_plug, "liftgate": ic_liftgate,
     }
     for key, fn in icons16.items():
         c = Canvas(18 * k, 18 * k, 16)

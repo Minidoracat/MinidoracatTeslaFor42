@@ -26,15 +26,18 @@ local function addSlices(menu, player, vehicle)
     if Camp and Camp.canEnable then
         if on then ok, why = Camp.canDisable(player, vehicle) else ok, why = Camp.canEnable(player, vehicle) end
     end
+    -- the menu shows the hovered slice's text in its centre, one line per \n (RadialMenu.java:157-198):
+    -- second line = what turning it on does, or why it is greyed
     if ok then
-        menu:addSlice(label, getTexture(TEX .. "radial_camp.png"), onCamp, player, vehicle)
+        local desc = on and "" or ("\n" .. getText("IGUI_MinidoracatTesla_HUD_CampSub"))
+        menu:addSlice(label .. desc, getTexture(TEX .. "radial_camp.png"), onCamp, player, vehicle)
     else
-        -- greyed: no command, reason on a second line (RadialMenu.java:166-190 splits on \n)
+        -- greyed: no command
         local reason = why and ("\n" .. getText("IGUI_MinidoracatTesla_Deny_" .. why)) or ""
         menu:addSlice(label .. reason, getTexture(TEX .. "radial_camp_off.png"), nil)
     end
-    menu:addSlice(getText("IGUI_MinidoracatTesla_Radial_ChargeStatus"), getTexture(TEX .. "radial_charge.png"),
-        onChargeStatus, player, vehicle)
+    menu:addSlice(getText("IGUI_MinidoracatTesla_Radial_ChargeStatus") .. "\n" .. getText("IGUI_MinidoracatTesla_Tip_ChargeStatus"),
+        getTexture(TEX .. "radial_charge.png"), onChargeStatus, player, vehicle)
 end
 
 local orig = ISVehicleMenu.showRadialMenu
