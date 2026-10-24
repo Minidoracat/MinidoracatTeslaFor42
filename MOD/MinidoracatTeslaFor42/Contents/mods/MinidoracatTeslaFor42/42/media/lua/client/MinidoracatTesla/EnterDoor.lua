@@ -20,16 +20,17 @@ T.EnterDoor = E
 E.WAIT = 0.55
 local CLIMB = { ISEnterVehicle = true, ISExitVehicle = true }
 
-local open = ISOpenVehicleDoor.start
-function ISOpenVehicleDoor:start(...)
-    local r = open(self, ...)
+-- looked up when the open action ends, not when it starts: getting out queues the open action into an empty queue,
+-- which starts it at once (ISTimedActionQueue:addToQueue), before onExitAux has queued the climb
+local perform = ISOpenVehicleDoor.perform
+function ISOpenVehicleDoor:perform(...)
     if self.vehicle and T.isTesla(self.vehicle) then
         local queue = ISTimedActionQueue.getTimedActionQueue(self.character)
         local i = queue:indexOf(self)
         local nxt = i > 0 and queue.queue[i + 1]
         if nxt and CLIMB[nxt.Type] then nxt.teslaDoorWait = E.WAIT end
     end
-    return r
+    return perform(self, ...)
 end
 
 -- true while the door is still swinging; time as the part anims count it (BaseVehicle.java:3898-3903)
