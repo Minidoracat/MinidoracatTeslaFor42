@@ -20,7 +20,7 @@ module Base
         mass = 800,
         engineForce = 5000,
         maxSpeed = 90.0,
-        /* no Muffler doubles loudness (BaseVehicle.java:9174-9175): effective 40, half of ModernCar */
+        /* effective = script / 2 (BaseVehicle.java:9120), x2 with no Muffler (:9174-9175) = 20; ModernCar 80 with a new muffler = 32-40 */
         engineLoudness = 20,
         engineQuality = 100,
         brakingForce = 90,
