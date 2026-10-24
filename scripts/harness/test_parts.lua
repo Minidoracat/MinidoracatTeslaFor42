@@ -102,4 +102,4 @@ ISVehicleMenu.showRadialMenuOutside(p)
 check(p.label == "IGUI_MinidoracatTesla_OpenFrunk", "outside radial: Open Frunk on a Tesla")
 local mapped = 0
 for _ in pairs(T.PartNames) do mapped = mapped + 1 end
-check(mapped == 11, "11 vanilla keys mapped (5 parts, category, out of charge, 4 hood actions)")
+check(mapped == 14, "14 vanilla keys mapped (5 parts, category, out of charge, 3 engine labels, 4 hood actions)")
