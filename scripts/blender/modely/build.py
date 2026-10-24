@@ -11,9 +11,11 @@ stages (each reads the previous one's .blend in temp/modely/):
   final N         bake N-tri body at 4096 (cached in bake_N.npz; delete it after a tiers rerun: new UV0), one 2048
                   skin per paint (colour from the official render; glass panes show Tripo's cabin through a tint, black
                   frit band, normals from a quadric per pane; head / rear light bars on smoothed centre lines; satin
-                  black trims, rear diffuser and front lip by geometry, body-colour spoiler), 512 mask / lights, body
-                  FBX, geometry block spliced into the vehicle script (copy in
-                  temp/modely/geometry_block.txt), verify.txt, prev/*.png
+                  black trims, rear diffuser and front lip by geometry, body-colour spoiler), 512 mask / lights,
+                  geometry block spliced into the vehicle script (copy in temp/modely/geometry_block.txt), whole body
+                  -> v2_final.blend, then runs doors, verify.txt, prev/*.png
+  doors           v2_final.blend -> body FBX with the four doors and the tailgate cut out (+ jambs), doors FBX (one
+                  skinned mesh per door on VehicleSkeleton, "<Part>_closing" clips)  -> MOD FBX, prev/doors_*.png
 
 Axes (Blender): +Y front, +Z up, -X = car left (driver side), 1 unit = 1 grid; same as vanilla raw FBX coords
 (scripts/blender/modely/vanilla.py). Vehicle script: x = -mesh x, y = mesh z, z = mesh y, unscaled = grid / 1.82.
@@ -22,7 +24,7 @@ Numbers and sources: .claude/skills/tesla-dev/references/models.md.
 import bpy, bmesh, colorsys, json, math, os, sys
 import numpy as np
 from bpy_extras import mesh_utils
-from mathutils import Matrix, Vector
+from mathutils import Matrix, Quaternion, Vector
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.abspath(os.path.join(HERE, "..", "..", ".."))
@@ -73,6 +75,17 @@ WHEEL_RGB = dict(face=(85, 108), deep=24, wall=(27, 66), shadow=31, blade=176, c
                  tire=(43, 58), protector=54, tread=35, groove=12, sipe=22)
 # Model Y body lines (grid, ground z=0, centre y=0), checked on prev/mask_*.png against the panel gaps of the bake
 DOOR_FRONT_Y, B_PILLAR_Y, DOOR_REAR_Y, BELT_Z = 0.83, -0.14, -1.05, 0.92
+# animated doors (stage doors). Pre-centre grid frame (ground z = 0). Door skins go down to DOOR_SILL_Z (the rocker
+# under it stays body); above the belt a door takes its window and the frit round it up to DOOR_TOP_Z, forward to
+# DOOR_A_LINE (front edge of the front window + frit, (z, y) points), back to the B-pillar trim (B_PILLAR_WIN: the trim
+# stays body) and, on the rear door, to the quarter-glass divider (DIVIDER[0]). The tailgate is Boot + rear glass + the
+# tail bar: |x| < GATE x below top_z, < top_x (rear glass 0.48 + frit) above; the corner lamps stay body. Mask Door /
+# Boot zones match these cuts (classify), so no zone of a removable part is left on the body (a removed part paints
+# its zones 0.2 grey, vehicle_multiuv.frag:175)
+DOOR_SILL_Z, DOOR_TOP_Z = 0.20, 1.30
+DOOR_A_LINE = ((0.95, 0.83), (1.00, 0.67), (1.04, 0.625), (1.08, 0.585), (1.12, 0.52), (1.16, 0.39), (1.20, 0.32),
+               (1.24, 0.245), (1.28, 0.17), (1.32, 0.09))
+GATE = dict(y=-1.40, z=0.55, x=0.60, top_z=0.95, top_x=0.51)
 # glass panes (grid, same frame), read off the bake's top / side views: the windscreen / roof-glass seam is Tripo's seam
 # line y = a + b x^2 (fit resid 1 cm), the roof-glass / rear-glass seam is straight; the black B-pillar trim between the
 # door windows runs from y -0.275 to its front edge -0.15 - 0.27 (z - 1); a thin black divider splits the rear door
@@ -1177,11 +1190,12 @@ def classify(pos, nrm, col, liner, iid, iidf):
         zone[cond & ~left] = r
     put((y > DOOR_FRONT_Y) & (z < BELT_Z + 0.05), "GuardLH", "GuardRH")
     put((y < DOOR_REAR_Y) & (z < BELT_Z + 0.05), "GuardLT", "GuardRT")
-    put(side & (y <= DOOR_FRONT_Y) & (y > B_PILLAR_Y) & (z < BELT_Z + 0.1), "DoorLH", "DoorRH")
-    put(side & (y <= B_PILLAR_Y) & (y >= DOOR_REAR_Y) & (z < BELT_Z + 0.1), "DoorLT", "DoorRT")
+    put(side & (y <= DOOR_FRONT_Y) & (y > B_PILLAR_Y) & (z > DOOR_SILL_Z) & (z < BELT_Z + 0.1), "DoorLH", "DoorRH")
+    put(side & (y <= B_PILLAR_Y) & (y >= DOOR_REAR_Y) & (z > DOOR_SILL_Z) & (z < BELT_Z + 0.1), "DoorLT", "DoorRT")
     put((y > 0.75) & (z > 0.58) & (z < BELT_Z + 0.02) & (nz > 0.35), "Hood", "Hood")
     put((y > 1.5) & (z <= 0.62) & ((ny > 0.3) | (y > 1.85)), "Head", "Head")
-    put((y < -1.45) & (z > 0.55) & ((ny < -0.2) | (nz > 0.3)), "Boot", "Boot")
+    put((y < -1.45) & (z > 0.55) & ((ny < -0.2) | (nz > 0.3)) & (np.abs(x) < np.where(z < GATE["top_z"], GATE["x"],
+                                                                                       GATE["top_x"])), "Boot", "Boot")
     put((y < -1.45) & (z <= 0.55) & ((ny < -0.3) | (y < -1.85)), "Tail", "Tail")
     # dark (glass-like): V < 0.215; on the roof Tripo's glass carries sky reflections (V p95 0.40) while the body-colour
     # roof rails read V 0.43-0.64, so up there the test runs on blurred V < 0.4. Tripo also shows the cabin through the
@@ -1378,14 +1392,420 @@ def stage_final(n):
     mat = bpy.data.materials.new(NAME)
     body.data.materials.clear()
     body.data.materials.append(mat)
-    export_fbx(body, os.path.join(VEH_DIR, NAME + ".fbx"))
     g = geometry(body, zmid, wl, info["wheel_r"])
     g |= {"tris_body": tris(body), "tris_wheel": info["wheel_tris"], "skin": SKIN, "skins": [p for p, _ in PAINTS],
           "scale": {k: info[k] for k in ("uniform_scale", "x_factor", "z_factor", "final_size", "official")}}
     json.dump(g, open(os.path.join(TMP, "geometry.json"), "w"), indent=1)
     print("GEOMETRY", json.dumps(g))
+    # whole body (doors on) for stage doors, which exports the body FBX without them
+    bpy.context.scene["info"] = json.dumps(info | {"centre_y": float(c[1]), "zmid": zmid})
+    bpy.ops.wm.save_as_mainfile(filepath=os.path.join(TMP, "v2_final.blend"))
     previews(body, wl, zmid, info["wheel_r"])
+    stage_doors()
     verify(n)
+
+# ---------------------------------------------------------------- doors
+
+# Vanilla layout (SportsCarWithDoors.fbx, ModernCarWithDoors_ez.fbx): one FBX, armature "VehicleSkeleton" (the root
+# ImportedSkeleton.java:57-60 looks up), one bone "<Part>_bone" per door, one mesh per door weighted 1.0 to its bone
+# ("<file>|<mesh>", ProcessedAiScene.java:97-124), one clip per door; the take name is cut at its first '|'
+# (ImportedSkeleton.java:336-340), Blender writes "VehicleSkeleton|<action>". Skinned meshes carry pos, normal,
+# weights, indices, UV0, UV1 (ImportedSkinnedMesh.java:74-82) = vehicle_multiuv_noreflect.vert's locations; the MOD's
+# media/shaders/vehicle_multiuv.vert is the skinned twin vanilla lacks (ShaderProgram.java:278-281 asks for it when
+# static = false and reflections are on, ModelManager.java:1298-1309). A part model draws with the parent car's skin,
+# mask, damage and uninstall uniforms (Model.java:534-585), so the doors keep the body's UV0 / UV1 and textures.
+# part: side (-1 = left, x < 0; 0 = tailgate), hinge axis, open angle (deg; sign swings the door out, the gate up),
+# clip seconds. Hinge points come from the cut (front edge on the outer skin; the gate's top edge). The clips run
+# open -> closed ("<Part>_closing", vanilla's naming; Open plays it reversed). updateAnimationPlayer advances the clip
+# 0.8 x real time x rate (BaseVehicle.java:3901-3904): doors ~1 s, the gate ~4.5 s like an electric tailgate
+DOORS = {
+    "DoorFrontLeft": (-1, (0, 0, 1), -65, 0.8), "DoorFrontRight": (1, (0, 0, 1), 65, 0.8),
+    "DoorRearLeft": (-1, (0, 0, 1), -65, 0.8), "DoorRearRight": (1, (0, 0, 1), 65, 0.8),
+    "TrunkDoor": (0, (1, 0, 0), -75, 3.6),
+}
+DOORS_FBX = NAME + "_Doors"
+DOOR_T, JAMB_T = 0.06, 0.08       # grid: door slab thickness (inner panel offset), body jamb depth
+GATE_IN = (0.0, 0.894, -0.447)    # tailgate inward direction (forward and down: the glass leans, the panel stands)
+CLIP_FPS = 30
+
+
+def soup(ob, shift):
+    """Triangle soup of a mesh: positions (+shift), tris, per-corner UV0 / UV1 / normal (7 floats), liner flag."""
+    me = ob.data
+    nl = len(me.loops)
+    lv = np.empty(nl, np.int64)
+    me.loops.foreach_get("vertex_index", lv)
+    attr = []
+    for nm in ("UV0", "UV1"):
+        a = np.empty(nl * 2)
+        me.uv_layers[nm].data.foreach_get("uv", a)
+        attr.append(a.reshape(-1, 2))
+    cn = np.empty(nl * 3, np.float32)
+    me.corner_normals.foreach_get("vector", cn)
+    attr = np.concatenate(attr + [cn.reshape(-1, 3)], 1)
+    ls, lt = (np.empty(len(me.polygons), np.int64) for _ in range(2))
+    me.polygons.foreach_get("loop_start", ls)
+    me.polygons.foreach_get("loop_total", lt)
+    lin = np.array([d.value for d in me.attributes["liner"].data], bool)
+    tl, tf = [], []
+    for p, (s, n) in enumerate(zip(ls, lt)):            # fan (liners are quads)
+        for i in range(1, n - 1):
+            tl.append((s, s + i, s + i + 1))
+            tf.append(p)
+    tl = np.array(tl)
+    return mesh_co(ob) + shift, lv[tl], attr[tl], lin[tf]
+
+
+def cut(V, T, A, L, n, d, pred):
+    """Split the triangles whose centroid passes pred and that the plane n.p = d crosses, along the plane; neighbours
+    sharing a split edge are split too (one more triangle each), so no T-junction opens a crack."""
+    s = V @ np.asarray(n, float) - d
+    s[np.abs(s) < 1e-7] = 0
+    sg = np.sign(s)
+    st = sg[T]
+    todo = np.flatnonzero((st.max(1) > 0) & (st.min(1) < 0) & pred(V[T].mean(1)))
+    pts, newv = {}, []
+    for t in todo:
+        for i in range(3):
+            a, b = T[t, i], T[t, (i + 1) % 3]
+            key = (min(a, b), max(a, b))
+            if sg[a] * sg[b] < 0 and key not in pts:
+                pts[key] = len(V) + len(newv)
+                newv.append(V[a] + (V[b] - V[a]) * (s[a] / (s[a] - s[b])))
+    if not pts:
+        return V, T, A, L
+    V = np.concatenate([V, np.array(newv)])
+    keep, nt, na, nl = np.ones(len(T), bool), [], [], []
+    ends = np.unique(np.array(list(pts)))
+    for t in np.flatnonzero(np.isin(T, ends).sum(1) >= 2):
+        hit = [i for i in range(3) if (min(T[t, i], T[t, (i + 1) % 3]), max(T[t, i], T[t, (i + 1) % 3])) in pts]
+        if not hit:
+            continue
+        keep[t] = False
+        poly = []                                        # (vertex, attributes) round the triangle with edge points
+        for i in range(3):
+            a, b = T[t, i], T[t, (i + 1) % 3]
+            poly.append((a, A[t, i]))
+            if i in hit:
+                m = pts[(min(a, b), max(a, b))]
+                f = np.linalg.norm(V[m] - V[a]) / np.linalg.norm(V[b] - V[a])
+                poly.append((m, A[t, i] + (A[t, (i + 1) % 3] - A[t, i]) * f))
+        if len(hit) == 1:                                # fan from the edge point
+            j = next(k for k, (v, _) in enumerate(poly) if v not in T[t])
+            tri = [(j, (j + 1) % 4, (j + 2) % 4), (j, (j + 2) % 4, (j + 3) % 4)]
+        else:                                            # the lone corner (between both edge points) gets a triangle
+            j = next(k for k in range(5) if poly[k][0] in T[t] and poly[(k + 1) % 5][0] not in T[t]
+                     and poly[(k - 1) % 5][0] not in T[t])
+            tri = [((j - 1) % 5, j, (j + 1) % 5), ((j + 1) % 5, (j + 2) % 5, (j + 3) % 5),
+                   ((j + 1) % 5, (j + 3) % 5, (j - 1) % 5)]
+        for q in tri:
+            nt.append([poly[k][0] for k in q])
+            na.append([poly[k][1] for k in q])
+            nl.append(L[t])
+    return (V, np.concatenate([T[keep], np.array(nt)]), np.concatenate([A[keep], np.array(na)]),
+            np.concatenate([L[keep], np.array(nl, bool)]))
+
+
+def door_cuts():
+    """(plane normal, d, centroid predicate): the door / gate outlines that run across painted panels; the rest of the
+    outline (A-line, roof edge) follows face centroids through black frit, seamless while closed."""
+    ax = lambda c: np.abs(c[:, 0])                                   # noqa: E731
+    b = np.array([0, 1, -B_PILLAR_WIN[2]])
+    bn = np.linalg.norm(b)
+    side = lambda c, lo=-9, hi=9: (ax(c) > 0.4) & (c[:, 2] > lo) & (c[:, 2] < hi)   # noqa: E731
+    g = GATE
+    return [((0, 1, 0), DOOR_FRONT_Y, lambda c: side(c, hi=0.97)),
+            ((0, 1, 0), B_PILLAR_Y, lambda c: side(c, hi=BELT_Z + 0.03)),
+            ((0, 1, 0), DOOR_REAR_Y, lambda c: side(c, hi=BELT_Z + 0.12)),
+            (b / bn, (B_PILLAR_WIN[1] - B_PILLAR_WIN[2]) / bn, lambda c: side(c, lo=BELT_Z - 0.03)),
+            ((0, 1, 0), B_PILLAR_WIN[0], lambda c: side(c, lo=BELT_Z - 0.03)),
+            ((0, 1, 0), DIVIDER[0], lambda c: side(c, lo=BELT_Z - 0.03)),
+            ((0, 0, 1), DOOR_SILL_Z, lambda c: side(c) & (c[:, 1] > DOOR_REAR_Y - 0.05) & (c[:, 1] < DOOR_FRONT_Y + 0.05)),
+            ((0, 0, 1), g["z"], lambda c: c[:, 1] < g["y"]),
+            ((1, 0, 0), g["x"], lambda c: (c[:, 1] < g["y"]) & (c[:, 2] > g["z"] - 0.05) & (c[:, 2] < g["top_z"] + 0.03)),
+            ((1, 0, 0), -g["x"], lambda c: (c[:, 1] < g["y"]) & (c[:, 2] > g["z"] - 0.05) & (c[:, 2] < g["top_z"] + 0.03)),
+            ((1, 0, 0), g["top_x"], lambda c: (c[:, 1] < RW_SEAM_Y + 0.05) & (c[:, 2] > g["top_z"] - 0.03)),
+            ((1, 0, 0), -g["top_x"], lambda c: (c[:, 1] < RW_SEAM_Y + 0.05) & (c[:, 2] > g["top_z"] - 0.03)),
+            ((0, 0, 1), g["top_z"], lambda c: (c[:, 1] < g["y"]) & (ax(c) > g["top_x"] - 0.03) & (ax(c) < g["x"] + 0.03)),
+            ((0, 1, 0), RW_SEAM_Y, lambda c: (c[:, 2] > 1.1) & (ax(c) < g["top_x"] + 0.03))]
+
+
+def door_pieces(tp, fn, zone, liner):
+    """Piece per triangle (tp: its 3 corner points): 0 body, k = k-th DOORS entry. Below the belt the door panel by
+    geometry (a superset of the mask's Door zones, which also need a side-facing texel), the window by its mask zone,
+    the black frame only within FRIT (+1.5 cm) of that window (else the roof rail went with the door), the mirror (door
+    mounted on the Model Y); the gate by its outline plus the Boot / rear glass / tail-bar zones."""
+    cen = tp.mean(1)
+    x, y, z = cen.T
+    nx = fn[:, 0]
+    zs, ys = zip(*DOOR_A_LINE)
+    yfront = np.where(z < zs[0], DOOR_FRONT_Y, np.interp(z, zs, ys))
+    bfront = B_PILLAR_WIN[1] + B_PILLAR_WIN[2] * (z - 1.0)
+    frame = (zone == "Roof") & (z > BELT_Z - 0.03) & (z < DOOR_TOP_Z)
+    panel = (z > DOOR_SILL_Z) & (z < BELT_Z + 0.1)
+    g = GATE
+    gx = np.where(z < g["top_z"], g["x"], g["top_x"])
+    out = np.zeros(len(cen), np.int64)
+    for k, (part, (sd, _, _, _)) in enumerate(DOORS.items(), 1):
+        if sd:
+            lr, out_side = ("L" if sd < 0 else "R"), sd * x > 0.4
+            # door skin |x| >= 0.6 (the hood's rear corners and the cowl reach 0.55); above the belt only outward faces
+            panel_s = panel & (sd * x > 0.55) & ((z < BELT_Z) | (sd * nx > 0.3))
+            if part.startswith("DoorFront"):
+                win = (zone == f"Win{lr}H") & out_side
+                sel = win | (panel_s & (y <= DOOR_FRONT_Y) & (y > B_PILLAR_Y)) | mirror_head(cen)
+                fr = frame & (y < yfront) & (y > bfront)
+            else:
+                win = (zone == f"Win{lr}T") & (y > DIVIDER[0]) & out_side
+                sel = win | (panel_s & (y <= np.where(z < BELT_Z + 0.03, B_PILLAR_Y, B_PILLAR_WIN[0])) & (y >= DOOR_REAR_Y))
+                fr = frame & (y < B_PILLAR_WIN[0]) & (y > DIVIDER[0])
+            wp = tp[win].reshape(-1, 3)
+            fr &= out_side
+            for i in np.flatnonzero(fr):
+                fr[i] = ((wp - cen[i]) ** 2).sum(1).min() < (FRIT + 0.015) ** 2
+            sel = (sel | fr) & out_side
+        else:
+            geo = (z > g["z"]) & (np.abs(x) < gx) & (np.abs(nx) < 0.7)
+            sel = (geo & ((y < g["y"]) | ((z > g["top_z"]) & (y < RW_SEAM_Y)))) | np.isin(zone, ["Boot", "WinH"])
+            sel |= np.isin(zone, ["LightLT", "LightRT"]) & (y < g["y"])
+        out[sel & ~liner & (out == 0)] = k
+    return drop_specks(tp, out)
+
+
+def drop_specks(tp, piece, min_faces=25):
+    """Pieces keep only their edge-connected parts of at least min_faces triangles (frit-band and outline tests leave
+    loose triangles on the roof rail and the C pillars, which flew off with the door, E2E tesla-doors-1024a). The
+    mirror is its own part of the front door (100+ triangles) and stays."""
+    key = np.round(tp * 1e5).astype(np.int64)              # shared corners have identical coordinates
+    _, vid = np.unique(key.reshape(-1, 3), axis=0, return_inverse=True)
+    vid = vid.reshape(-1, 3)
+    for k in range(1, piece.max() + 1):
+        idx = np.flatnonzero(piece == k)
+        e = np.sort(np.concatenate([vid[idx][:, [0, 1]], vid[idx][:, [1, 2]], vid[idx][:, [2, 0]]]), 1)
+        f = np.tile(np.arange(len(idx)), 3)
+        o = np.lexsort((e[:, 1], e[:, 0]))
+        e, f = e[o], f[o]
+        par = np.arange(len(idx))
+
+        def root(a):
+            while par[a] != a:
+                par[a] = par[par[a]]
+                a = par[a]
+            return a
+        for a, b in zip(f[:-1][np.all(e[1:] == e[:-1], 1)], f[1:][np.all(e[1:] == e[:-1], 1)]):
+            par[root(a)] = root(b)
+        lab = np.array([root(a) for a in range(len(idx))])
+        _, inv, cnt = np.unique(lab, return_inverse=True, return_counts=True)
+        piece[idx[cnt[inv] < min_faces]] = 0
+    return piece
+
+
+def slab(V, T, A, sel, off, liner_attr, outer_extra=None):
+    """Door piece: its outer faces, an inner panel DOOR_T in along off (liner black, normals in) and edge strips that
+    close the slab (each takes the colour just inside its outer edge). outer_extra: faces with no inner panel (the
+    mirror). Returns points, tris, attributes and the boundary edges (directed as in the piece) for the body's jamb."""
+    tri, att = T[sel], A[sel]
+    ed = np.concatenate([tri[:, [0, 1]], tri[:, [1, 2]], tri[:, [2, 0]]])
+    ea = np.concatenate([att[:, [0, 1]], att[:, [1, 2]], att[:, [2, 0]]])
+    und = np.sort(ed, 1)
+    _, inv, cnt = np.unique(und, axis=0, return_inverse=True, return_counts=True)
+    bnd = cnt[inv.ravel()] == 1
+    base = len(V)
+    inner_v = V + off                                    # vertex i's inner twin is base + i
+    it = tri[:, [0, 2, 1]] + base
+    ia = np.repeat(liner_attr[None, None], len(tri) * 3, 0).reshape(len(tri), 3, -1).copy()
+    ia[..., 4:] = -att[:, [0, 2, 1], 4:]
+    a, b = ed[bnd, 0], ed[bnd, 1]
+    st = np.concatenate([np.stack([b, a, a + base], 1), np.stack([b, a + base, b + base], 1)])
+    fa = frame_black(pull_in(ea[bnd], att.mean(1)[np.tile(np.arange(len(tri)), 3)[bnd]]), V[a], V[b], liner_attr)
+    sa = np.concatenate([np.stack([fa[:, 1], fa[:, 0], fa[:, 0]], 1), np.stack([fa[:, 1], fa[:, 0], fa[:, 1]], 1)])
+    P = np.concatenate([V, inner_v])
+    nrm = np.cross(P[st[:, 1]] - P[st[:, 0]], P[st[:, 2]] - P[st[:, 0]])
+    sa[..., 4:] = (nrm / np.maximum(np.linalg.norm(nrm, axis=1, keepdims=True), 1e-12))[:, None]
+    parts_t, parts_a = [tri, it, st], [att, ia, sa]
+    if outer_extra is not None:
+        parts_t.insert(0, T[outer_extra])
+        parts_a.insert(0, A[outer_extra])
+    return P, np.concatenate(parts_t), np.concatenate(parts_a), np.stack([a, b], 1)
+
+
+def pull_in(corner_attr, centre_attr, f=0.3):
+    """Edge-strip UVs a little inside the face they continue: the mask is sampled bilinearly, and an edge UV on a
+    zone border would put a body jamb in the door's zone (painted 0.2 grey once the door is removed)."""
+    out = corner_attr.copy()
+    out[..., :4] += (centre_attr[:, None, :4] - corner_attr[..., :4]) * f
+    return out
+
+
+def frame_black(edge_attr, pa, pb, liner_attr):
+    """Strips along an edge above the belt are black (window frames and their seals): there the outline runs through
+    frit and roof-rail triangles, and their colours made a red-and-black comb along the door top (tesla-doors-1024a)."""
+    out = edge_attr.copy()
+    up = (pa[:, 2] > BELT_Z + 0.02) & (pb[:, 2] > BELT_Z + 0.02)
+    out[up, :, :4] = liner_attr[:4]
+    return out
+
+
+def jamb(V, T, A, edges, body_edges, off, liner_attr):
+    """Body side of a door opening: a strip from each boundary edge the body shares (piece direction a -> b; the body
+    face runs b -> a) JAMB_T in along off, facing into the opening, coloured like the body face at that edge."""
+    rows = [(k, *body_edges[(b, a)]) for k, (a, b) in enumerate(edges) if (b, a) in body_edges]
+    k, u, i = (np.array(c, np.int64) for c in zip(*rows))
+    a, b = edges[k, 0], edges[k, 1]
+    ea = frame_black(pull_in(np.stack([A[u, (i + 1) % 3], A[u, i]], 1), A[u].mean(1)), V[a], V[b], liner_attr)
+    base = len(V)
+    newv = np.concatenate([V[a] + off, V[b] + off])
+    ia, ib = base + np.arange(len(a)), base + len(a) + np.arange(len(a))
+    st = np.concatenate([np.stack([a, b, ib], 1), np.stack([a, ib, ia], 1)])
+    sa = np.concatenate([np.stack([ea[:, 0], ea[:, 1], ea[:, 1]], 1), np.stack([ea[:, 0], ea[:, 1], ea[:, 0]], 1)])
+    P = np.concatenate([V, newv])
+    nrm = np.cross(P[st[:, 1]] - P[st[:, 0]], P[st[:, 2]] - P[st[:, 0]])
+    sa[..., 4:] = (nrm / np.maximum(np.linalg.norm(nrm, axis=1, keepdims=True), 1e-12))[:, None]
+    return newv, st, sa
+
+
+def soup_object(name, V, T, A, mat):
+    """Mesh object from a triangle soup (unused vertices dropped), UV0 / UV1 and free corner normals."""
+    used, T = np.unique(T.ravel(), return_inverse=True)
+    T = T.reshape(-1, 3)
+    me = bpy.data.meshes.new(name)
+    me.from_pydata(V[used].tolist(), [], T.tolist())
+    for k, nm in ((0, "UV0"), (2, "UV1")):
+        me.uv_layers.new(name=nm).data.foreach_set("uv", np.ascontiguousarray(A[..., k:k + 2]).ravel())
+    me.attributes.new("custom_normal", "FLOAT_VECTOR", "CORNER").data.foreach_set(
+        "vector", np.ascontiguousarray(A[..., 4:7], np.float32).ravel())
+    me.materials.append(mat)
+    me.update()
+    ob = bpy.data.objects.new(name, me)
+    bpy.context.scene.collection.objects.link(ob)
+    return ob
+
+
+def stage_doors():
+    """v2_final.blend (whole body) -> body FBX without doors / tailgate (+ jambs), doors FBX (skinned, clips),
+    prev/doors_*.png. The cut planes follow the panel lines, so closed doors overlay the old surface exactly."""
+    bpy.ops.wm.open_mainfile(filepath=os.path.join(TMP, "v2_final.blend"))
+    info = json.loads(bpy.context.scene["info"])
+    shift = np.array([0, info["centre_y"], info["zmid"]])
+    body = bpy.data.objects[NAME]
+    mat = body.data.materials[0]
+    V, T, A, L = soup(body, shift)
+    for n, d, pred in door_cuts():
+        V, T, A, L = cut(V, T, A, L, n, d, pred)
+    m = img_np(bpy.data.images.load(os.path.join(TEX_DIR, NAME + "_mask.png")))       # rows from v = 0
+    names = {tuple(np.round(np.array(c) * 255).astype(int)): k for k, c in Z.items()}
+    uv = A[:, :, :2].mean(1)
+    px = m[np.clip((uv[:, 1] * 512).astype(int), 0, 511), np.clip((uv[:, 0] * 512).astype(int), 0, 511), :3]
+    zone = np.array([names.get(tuple(p), "Roof") for p in np.round(px * 255).astype(int)], dtype=object)
+    cen = V[T].mean(1)
+    fn = np.cross(V[T[:, 1]] - V[T[:, 0]], V[T[:, 2]] - V[T[:, 0]])
+    fn /= np.maximum(np.linalg.norm(fn, axis=1, keepdims=True), 1e-12)
+    piece = door_pieces(V[T], fn, zone, L)
+    liner_attr = A[L][0].mean(0) if L.any() else A[0, 0]       # one liner face: near black, mask Roof
+    conv = np.array(Matrix.Rotation(-math.pi / 2, 3, "X"))   # Blender Z-up -> FBX Y-up (what axis_forward -Z does)
+    body_t, body_a, bodyV = [T[piece == 0]], [A[piece == 0]], V
+    body_edges = {(tr[i], tr[(i + 1) % 3]): (u, i) for u in np.flatnonzero(piece == 0) for tr in (T[u],)
+                  for i in range(3)}
+    meshes, hinges = [], {}
+    mir = mirror_head(cen)
+    for k, (part, (sd, axis, ang, secs)) in enumerate(DOORS.items(), 1):
+        sel = piece == k
+        off = (np.array([-sd, 0, 0]) if sd else np.array(GATE_IN)) * DOOR_T
+        P, t, a, edges = slab(V, T, A, sel & ~mir, off, liner_attr, outer_extra=sel & mir)
+        newv, jt, ja = jamb(bodyV, T, A, edges, body_edges, off / DOOR_T * JAMB_T, liner_attr)
+        bodyV = np.concatenate([bodyV, newv])
+        body_t.append(jt)
+        body_a.append(ja)
+        dv = V[np.unique(T[sel])]
+        if sd:      # front edge on the outer skin, below the belt
+            low = dv[dv[:, 2] < BELT_Z]
+            yh = low[:, 1].max()
+            near = low[low[:, 1] > yh - 0.05]
+            h = np.array([sd * (sd * near[:, 0]).max(), yh, 0.0])
+        else:       # top edge of the gate
+            h = np.array([0.0, dv[:, 1].max(), dv[:, 2].max()])
+        hinges[part] = h - shift
+        meshes.append((part, P - shift, t, a))
+        print(f"DOOR {part}: {int(sel.sum())} outer tris, {len(t)} total, hinge {np.round(h, 3).tolist()}")
+    print(f"DOOR body {int((piece == 0).sum())} + jamb {sum(len(j) for j in body_t[1:])} tris (was {len(T)} after cuts)")
+    # body FBX (same export as the whole body had)
+    bpy.data.objects.remove(body)
+    cut_body = soup_object(NAME, bodyV - shift, np.concatenate(body_t), np.concatenate(body_a), mat)
+    export_fbx(cut_body, os.path.join(VEH_DIR, NAME + ".fbx"))
+    # doors: everything built in FBX space (Y up) and exported with identity axes; FBX's bake_space_transform is
+    # unsafe with armatures (Blender's own warning)
+    arm = bpy.data.objects.new("VehicleSkeleton", bpy.data.armatures.new("VehicleSkeleton"))
+    bpy.context.scene.collection.objects.link(arm)
+    select_only(arm)
+    bpy.ops.object.mode_set(mode="EDIT")
+    for part, (_, axis, _, _) in DOORS.items():
+        eb = arm.data.edit_bones.new(part + "_bone")      # bone Y = hinge axis: open = rotation about local Y
+        eb.head = Vector(conv @ hinges[part])
+        eb.tail = Vector(conv @ (hinges[part] + np.array(axis) * 0.3))
+    bpy.ops.object.mode_set(mode="OBJECT")
+    obs = [arm]
+    for part, P, t, a in meshes:
+        Pf = P @ conv.T
+        af = a.copy()
+        af[..., 4:] = a[..., 4:] @ conv.T
+        ob = soup_object(part, Pf, t, af, mat)
+        vg = ob.vertex_groups.new(name=part + "_bone")
+        vg.add(list(range(len(ob.data.vertices))), 1.0, "REPLACE")
+        ob.parent = arm
+        ob.modifiers.new("arm", "ARMATURE").object = arm
+        obs.append(ob)
+    sc = bpy.context.scene
+    sc.render.fps = CLIP_FPS
+    ad = arm.animation_data_create()
+    for pb in arm.pose.bones:
+        pb.rotation_mode = "QUATERNION"
+    end = 1
+    for part, (_, _, ang, secs) in DOORS.items():
+        act = bpy.data.actions.new(part + "_closing")
+        act.use_fake_user = True
+        ad.action = act
+        last = 1 + round(secs * CLIP_FPS)
+        end = max(end, last)
+        for fr, deg in ((1, ang), (last, 0)):        # every bone keyed: the other doors stay shut in this take
+            for pb in arm.pose.bones:
+                pb.rotation_quaternion = Quaternion((0, 1, 0), math.radians(deg if pb.name == part + "_bone" else 0))
+                pb.keyframe_insert("rotation_quaternion", frame=fr)
+        act.frame_range = (1, last)
+    ad.action = None
+    for pb in arm.pose.bones:
+        pb.rotation_quaternion = (1, 0, 0, 0)
+    sc.frame_start, sc.frame_end = 1, end
+    select_only(*obs)
+    bpy.ops.export_scene.fbx(filepath=os.path.join(VEH_DIR, DOORS_FBX + ".fbx"), use_selection=True,
+                             object_types={"ARMATURE", "MESH"}, apply_scale_options="FBX_SCALE_UNITS",
+                             bake_space_transform=False, axis_forward="Y", axis_up="Z", mesh_smooth_type="OFF",
+                             add_leaf_bones=False, primary_bone_axis="Y", secondary_bone_axis="X",
+                             armature_nodetype="NULL", bake_anim=True, bake_anim_use_all_bones=True,
+                             bake_anim_use_nla_strips=False, bake_anim_use_all_actions=True,
+                             bake_anim_force_startend_keying=True, bake_anim_step=1.0, bake_anim_simplify_factor=0.0,
+                             path_mode="STRIP")
+    door_previews(cut_body, arm, obs[1:])
+
+
+def door_previews(body, arm, doors):
+    """prev/doors_<pose>_<view>.png: Ultra Red skin on the cut body and the doors, shut and open (each door's clip at
+    its first frame). Doors are in FBX space: shown through the armature's inverse axis turn."""
+    arm.matrix_world = Matrix.Rotation(math.pi / 2, 4, "X")
+    mat = body.data.materials[0]
+    mat.use_nodes = True
+    node = mat.node_tree.nodes.new("ShaderNodeTexImage")
+    node.image = bpy.data.images.load(os.path.join(TEX_DIR, f"{NAME}_UltraRed.png"))
+    mat.node_tree.links.new(node.outputs[0], mat.node_tree.nodes["Principled BSDF"].inputs[0])
+    for o in bpy.data.objects:
+        o.hide_render = o.type != "MESH" or not (o is body or o in doors)
+    views = {"iso": Vector((-1, 1, 1.15)), "iso_rear": Vector((1, -1, 1.15)), "left": Vector((-1, 0, 0))}
+    preview.render_views(os.path.join(PREV, "doors_shut"), ortho=5.0, center=Vector((0, 0, 0)), res=(1600, 900), views=views)
+    for pb in arm.pose.bones:
+        part = pb.name[:-5]
+        pb.rotation_quaternion = Quaternion((0, 1, 0), math.radians(DOORS[part][2]))
+    bpy.context.view_layer.update()
+    preview.render_views(os.path.join(PREV, "doors_open"), ortho=5.0, center=Vector((0, 0, 0)), res=(1600, 900), views=views)
+
 
 
 # ---------------------------------------------------------------- script numbers, previews, verify
@@ -1471,6 +1891,20 @@ def geometry(body, zmid, wl, r):
             "            rotate = 0.0 0.0 0.0,", "            zoffset = 1.0,", "        }",
             "        /* charge port: side end of the left tail light (real Model Y) */",
             "        attachment chargeport", "        {", f"            offset = {f4(*port)},", "            rotate = 0.0 0.0 0.0,", "        }"]
+    # animated doors (stage doors): the clip runs open -> closed, so Open plays it reversed, Closed holds its end
+    # (reversed, not animated) and Opened its start (vanilla vehicle_car_sports_ez.txt layout); ISOpenVehicleDoor /
+    # ISCloseVehicleDoor play Open / Close, a new model instance holds Opened / Closed (BaseVehicle.java:3926-3930)
+    for part in DOORS:
+        clip = part + "_closing"
+        out += [f"        part {part}", "        {", "            model Default", "            {",
+                f"                file = {NAME}_{part},", "            }"]
+        for anim, rev, live in (("Close", False, True), ("Open", True, True), ("Closed", True, False),
+                                ("Opened", False, False)):
+            out += [f"            anim {anim}", "            {", f"                anim = {clip},"]
+            out += ["                reverse = true,"] * rev
+            out += ["                rate = 1.0,"] if live else ["                animate = false,"]
+            out += ["            }"]
+        out += ["        }"]
     block = "\n".join(out) + "\n"
     open(os.path.join(TMP, "geometry_block.txt"), "w", newline="\n").write(block)
     # splice into the vehicle script: everything after the geometry marker up to the vehicle's closing brace is ours
@@ -1547,10 +1981,14 @@ def previews(body, wl, zmid, r):
 
 def verify(n):
     lines = []
-    for p in (os.path.join(VEH_DIR, NAME + ".fbx"), os.path.join(VEH_DIR, NAME + "_Wheel.fbx")):
+    for p in (os.path.join(VEH_DIR, NAME + ".fbx"), os.path.join(VEH_DIR, NAME + "_Wheel.fbx"),
+              os.path.join(VEH_DIR, DOORS_FBX + ".fbx")):
         bpy.ops.wm.read_factory_settings(use_empty=True)
         bpy.ops.import_scene.fbx(filepath=p)
         for o in bpy.data.objects:
+            if o.type == "ARMATURE":
+                lines += [f"{os.path.basename(p)} bone {b.name}: head={np.round(b.head_local, 3).tolist()} "
+                          f"axis={np.round((b.tail_local - b.head_local).normalized(), 3).tolist()}" for b in o.data.bones]
             if o.type != "MESH":
                 continue
             me = o.data
@@ -1561,7 +1999,8 @@ def verify(n):
                 u.data.foreach_get("uv", a)
                 uvs.append(f"{u.name}[{a.min():.3f},{a.max():.3f}]")
             lines.append(f"{os.path.basename(p)} {o.name}: tris={tris(o)} verts={len(me.vertices)} uv={' '.join(uvs)} "
-                         f"size={np.round(np.ptp(co, 0), 3).tolist()}")
+                         f"size={np.round(np.ptp(co, 0), 3).tolist()} groups={[g.name for g in o.vertex_groups]}")
+        lines += [f"{os.path.basename(p)} take {a.name}: frames {tuple(a.frame_range)}" for a in bpy.data.actions]
     m = np.round(img_np(bpy.data.images.load(os.path.join(TEX_DIR, NAME + "_mask.png")))[..., :3] * 255)
     allowed = np.array([np.round(np.array(c) * 255) for c in Z.values()])
     flat = m.reshape(-1, 3)[::5]
@@ -1584,5 +2023,8 @@ if __name__ == "__main__":
         stage_official()
     elif st == "final":
         stage_final(int(args[1]))
+    elif st == "doors":
+        stage_doors()
+        verify(0)
     else:
         print(__doc__)

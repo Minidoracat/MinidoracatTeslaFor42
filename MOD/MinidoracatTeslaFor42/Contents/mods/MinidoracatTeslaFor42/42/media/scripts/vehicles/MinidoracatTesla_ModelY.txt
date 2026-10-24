@@ -225,5 +225,150 @@ module Base
             offset = 0.3552 0.0634 -0.9560,
             rotate = 0.0 0.0 0.0,
         }
+        part DoorFrontLeft
+        {
+            model Default
+            {
+                file = MinidoracatTesla_ModelY_DoorFrontLeft,
+            }
+            anim Close
+            {
+                anim = DoorFrontLeft_closing,
+                rate = 1.0,
+            }
+            anim Open
+            {
+                anim = DoorFrontLeft_closing,
+                reverse = true,
+                rate = 1.0,
+            }
+            anim Closed
+            {
+                anim = DoorFrontLeft_closing,
+                reverse = true,
+                animate = false,
+            }
+            anim Opened
+            {
+                anim = DoorFrontLeft_closing,
+                animate = false,
+            }
+        }
+        part DoorFrontRight
+        {
+            model Default
+            {
+                file = MinidoracatTesla_ModelY_DoorFrontRight,
+            }
+            anim Close
+            {
+                anim = DoorFrontRight_closing,
+                rate = 1.0,
+            }
+            anim Open
+            {
+                anim = DoorFrontRight_closing,
+                reverse = true,
+                rate = 1.0,
+            }
+            anim Closed
+            {
+                anim = DoorFrontRight_closing,
+                reverse = true,
+                animate = false,
+            }
+            anim Opened
+            {
+                anim = DoorFrontRight_closing,
+                animate = false,
+            }
+        }
+        part DoorRearLeft
+        {
+            model Default
+            {
+                file = MinidoracatTesla_ModelY_DoorRearLeft,
+            }
+            anim Close
+            {
+                anim = DoorRearLeft_closing,
+                rate = 1.0,
+            }
+            anim Open
+            {
+                anim = DoorRearLeft_closing,
+                reverse = true,
+                rate = 1.0,
+            }
+            anim Closed
+            {
+                anim = DoorRearLeft_closing,
+                reverse = true,
+                animate = false,
+            }
+            anim Opened
+            {
+                anim = DoorRearLeft_closing,
+                animate = false,
+            }
+        }
+        part DoorRearRight
+        {
+            model Default
+            {
+                file = MinidoracatTesla_ModelY_DoorRearRight,
+            }
+            anim Close
+            {
+                anim = DoorRearRight_closing,
+                rate = 1.0,
+            }
+            anim Open
+            {
+                anim = DoorRearRight_closing,
+                reverse = true,
+                rate = 1.0,
+            }
+            anim Closed
+            {
+                anim = DoorRearRight_closing,
+                reverse = true,
+                animate = false,
+            }
+            anim Opened
+            {
+                anim = DoorRearRight_closing,
+                animate = false,
+            }
+        }
+        part TrunkDoor
+        {
+            model Default
+            {
+                file = MinidoracatTesla_ModelY_TrunkDoor,
+            }
+            anim Close
+            {
+                anim = TrunkDoor_closing,
+                rate = 1.0,
+            }
+            anim Open
+            {
+                anim = TrunkDoor_closing,
+                reverse = true,
+                rate = 1.0,
+            }
+            anim Closed
+            {
+                anim = TrunkDoor_closing,
+                reverse = true,
+                animate = false,
+            }
+            anim Opened
+            {
+                anim = TrunkDoor_closing,
+                animate = false,
+            }
+        }
     }
 }

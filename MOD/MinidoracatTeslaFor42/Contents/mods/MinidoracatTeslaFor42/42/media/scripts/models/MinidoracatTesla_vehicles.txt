@@ -18,4 +18,46 @@ module Base
         shader = vehiclewheel,
         scale = 0.5495,
     }
+
+    /* Animated doors and tailgate (build.py stage doors): skinned meshes on VehicleSkeleton in one FBX, same units
+       and UV0 / UV1 as the body; static = false picks the skinned media/shaders/vehicle_multiuv.vert. */
+    model MinidoracatTesla_ModelY_DoorFrontLeft
+    {
+        mesh = vehicles/MinidoracatTesla_ModelY_Doors|DoorFrontLeft,
+        shader = vehicle_multiuv,
+        static = false,
+        scale = 0.5495,
+    }
+
+    model MinidoracatTesla_ModelY_DoorFrontRight
+    {
+        mesh = vehicles/MinidoracatTesla_ModelY_Doors|DoorFrontRight,
+        shader = vehicle_multiuv,
+        static = false,
+        scale = 0.5495,
+    }
+
+    model MinidoracatTesla_ModelY_DoorRearLeft
+    {
+        mesh = vehicles/MinidoracatTesla_ModelY_Doors|DoorRearLeft,
+        shader = vehicle_multiuv,
+        static = false,
+        scale = 0.5495,
+    }
+
+    model MinidoracatTesla_ModelY_DoorRearRight
+    {
+        mesh = vehicles/MinidoracatTesla_ModelY_Doors|DoorRearRight,
+        shader = vehicle_multiuv,
+        static = false,
+        scale = 0.5495,
+    }
+
+    model MinidoracatTesla_ModelY_TrunkDoor
+    {
+        mesh = vehicles/MinidoracatTesla_ModelY_Doors|TrunkDoor,
+        shader = vehicle_multiuv,
+        static = false,
+        scale = 0.5495,
+    }
 }
