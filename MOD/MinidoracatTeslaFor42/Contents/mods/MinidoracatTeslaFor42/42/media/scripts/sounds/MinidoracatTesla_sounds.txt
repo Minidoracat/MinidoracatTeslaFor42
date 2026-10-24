@@ -1,0 +1,116 @@
+module Base
+{
+    /* Tesla's own recordings, cut by scripts/sound/build_sounds.py (sources: .claude/skills/tesla-dev/references/sound.md). */
+    /* Clip keys: GameSoundScript.java:57-77. distanceMin/Max default to 10 (GameSoundClip.java:17-20). */
+    /* volume is the calibration knob against ModernCar (E2E sound-sp, references/sound.md); file sounds skip the volume sliders. */
+    /* Targets vs ModernCar in the same state: standing <= -24 dB, driving -15 to -8 dB, reversing about -15 dB. */
+
+    /* engine: coolant-pump hum, the only motor sound other players hear (EngineSound.java resets its volume to 1 each update) */
+    sound MinidoracatTesla_Hum
+    {
+        category = Vehicle,
+        master = VehicleEngine,
+        loop = true,
+        maxInstancesPerEmitter = 1,
+        clip
+        {
+            file = media/sound/MinidoracatTesla/Hum.ogg,
+            distanceMin = 2,
+            distanceMax = 15,
+            volume = 0.006,
+        }
+    }
+
+    /* driver-only layers (client/MinidoracatTesla/Sound.lua sets pitch and volume) */
+    sound MinidoracatTesla_Motor
+    {
+        category = Vehicle,
+        master = VehicleEngine,
+        loop = true,
+        is3D = false,
+        maxInstancesPerEmitter = 1,
+        clip
+        {
+            file = media/sound/MinidoracatTesla/Motor.ogg,
+            volume = 0.15,
+        }
+    }
+
+    sound MinidoracatTesla_PWSForward
+    {
+        category = Vehicle,
+        master = VehicleEngine,
+        loop = true,
+        is3D = false,
+        maxInstancesPerEmitter = 1,
+        clip
+        {
+            file = media/sound/MinidoracatTesla/PWSForward.ogg,
+            volume = 0.05,
+        }
+    }
+
+    /* backSignal: looped while reversing with throttle, synced in MP (BackupBeeperSound.java, CarController.java:848-851) */
+    sound MinidoracatTesla_PWSReverse
+    {
+        category = Vehicle,
+        loop = true,
+        maxInstancesPerEmitter = 1,
+        clip
+        {
+            file = media/sound/MinidoracatTesla/PWSReverse.ogg,
+            distanceMin = 3,
+            distanceMax = 20,
+            volume = 0.04,
+        }
+    }
+
+    /* one-shots on vehicle:getEmitter() (BaseVehicle.java:7487-7547) */
+    sound MinidoracatTesla_Contactors
+    {
+        category = Vehicle,
+        clip
+        {
+            file = media/sound/MinidoracatTesla/Contactors.ogg,
+            distanceMin = 2,
+            distanceMax = 12,
+            volume = 0.08,
+        }
+    }
+
+    sound MinidoracatTesla_ParkBrake
+    {
+        category = Vehicle,
+        clip
+        {
+            file = media/sound/MinidoracatTesla/ParkBrake.ogg,
+            distanceMin = 2,
+            distanceMax = 12,
+            volume = 0.06,
+        }
+    }
+
+    sound MinidoracatTesla_KeyAlert
+    {
+        category = Vehicle,
+        clip
+        {
+            file = media/sound/MinidoracatTesla/KeyAlert.ogg,
+            distanceMin = 2,
+            distanceMax = 10,
+            volume = 0.07,
+        }
+    }
+
+    sound MinidoracatTesla_NoPower
+    {
+        category = Vehicle,
+        clip
+        {
+            file = media/sound/MinidoracatTesla/NoPower.ogg,
+            distanceMin = 2,
+            distanceMax = 10,
+            volume = 0.07,
+        }
+    }
+}
