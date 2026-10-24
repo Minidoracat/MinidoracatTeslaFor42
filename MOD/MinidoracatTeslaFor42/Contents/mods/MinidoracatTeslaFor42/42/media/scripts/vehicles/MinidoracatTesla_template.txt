@@ -112,10 +112,6 @@ module Base
                 soundMap = ContainerPut VehicleTrunkTransferItem,
                 soundMap = ContainerTake VehicleTrunkTransferItem,
             }
-            lua
-            {
-                create = MinidoracatTesla.Create.Frunk,
-            }
         }
         part Engine
         {

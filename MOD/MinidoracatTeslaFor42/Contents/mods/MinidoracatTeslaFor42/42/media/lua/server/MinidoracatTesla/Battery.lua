@@ -129,12 +129,6 @@ function T.Update.Brakes(vehicle, part, elapsedMinutes)
     if ZombRandFloat(0, 1) < T.BRAKE_WEAR then Vehicles.Update.Brakes(vehicle, part, elapsedMinutes) end
 end
 
--- Frunk create: an itemless part with no create gets a random condition (VehicleParts.java:240-248) that nothing
--- can repair; it is just body space, so start at 100.
-function T.Create.Frunk(vehicle, part)
-    part:setCondition(100)
-end
-
 -- GasTank update: drive draw minus brake regen, every game minute while the car's parts update; cable length check.
 function T.Update.Battery(vehicle, part, elapsedMinutes)
     if not part:getInventoryItem() then return end
