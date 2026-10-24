@@ -2028,6 +2028,7 @@ def door_previews(body, arm, doors):
 
 CABIN_FLOOR = -0.43       # mesh z (centred; ground -0.75): cabin floor
 CABIN_INSET = 0.05        # grid: the cabin shell sits this far inside the surface its ray hit
+LINING_TRIS, LINING_IN = 700, 0.015  # body lining above the belt (lining()): triangle budget, inset (grid)
 CABIN_Y = (1.12, -1.35)   # mesh y of the front and rear walls of the cabin shell: the front is past the windscreen's
 #                           lower edge (y 1.089 on the centre line, WS_BASE), else the ground shows under the glass
 CABIN_ZC = -0.10          # mesh z of the cabin axis the shell rays start from
@@ -2120,7 +2121,8 @@ def stage_cabin():
     tree = lambda items: BVHTree.FromPolygons(*_soup_lists(items, conv))
     bvh = {"body": tree([(body, False)]), "glass": tree([(glass, False)] + [(g, True) for g in door_glass]),
            "door": tree([(d, True) for d in doors])}
-    cabin = cabin_mesh(bvh)
+    belt = BELT_Z - json.loads(bpy.context.scene["info"])["zmid"]
+    cabin = cabin_mesh(bvh, belt, lining(body, belt))
     export_fbx(body, os.path.join(VEH_DIR, NAME + ".fbx"))
     export_fbx(glass, os.path.join(VEH_DIR, NAME + "_Glass.fbx"))
     export_fbx(cabin, os.path.join(VEH_DIR, NAME + "_Cabin.fbx"))
@@ -2203,13 +2205,42 @@ def rot_x(deg):
     return np.array([[1, 0, 0], [0, c, -s], [0, s, c]])
 
 
-def cabin_mesh(bvh):
-    """Cabin (mesh coords, centred), smooth-shaded rounded parts: a shell CABIN_INSET inside the body where the body is
-    opaque (floor, sills, pillars, roof rails, firewall, the wall behind the rear seats; none behind glass, so the far
-    windows stay see-through, none behind the doors, so an open door shows the seats), Model Y front buckets (cushion
-    and backrest side bolsters, curved backrest, integrated headrest), rear bench (three cushions and backs, three
-    headrests), dash with its trim strip, 15.4" centre screen (lit face to the seats), steering wheel, centre console.
-    `bvh`: "body" / "glass" / "door" surfaces in Blender axes."""
+def lining(body, belt):
+    """Inner side of the body above the belt inside the cabin (pillars, roof rails, the bars round the roof glass): its
+    faces after the glass split, decimated to LINING_TRIS, turned to the cabin axis and pulled LINING_IN inside. From
+    outside the near side faces away (culled); through the glass the far side shows a dark lining whose edges follow the
+    glass's own (a ray-grid shell there left a staircase along every window, E2E TeslaCabin-cab-after-1024c)."""
+    ob = dup(body, "lining")
+    c = face_centres(ob)
+    keep_faces(ob, (c[:, 2] > belt) & (c[:, 1] < CABIN_Y[0]) & (c[:, 1] > CABIN_Y[1]))
+    n0 = tris(ob)
+    decimate(ob, LINING_TRIS)
+    bm = bmesh.new()
+    bm.from_mesh(ob.data)
+    bm.normal_update()
+    for f in bm.faces:                                  # face the axis (decimate's recalc picks either side)
+        cen = f.calc_center_median()
+        if f.normal.dot(Vector((0, min(max(cen.y, -1.0), 0.7), CABIN_ZC)) - cen) < 0:
+            f.normal_flip()
+    bm.normal_update()
+    for v in bm.verts:
+        v.co += v.normal * LINING_IN
+    print("CABIN lining tris", n0, "->", len(bm.faces))
+    bm.verts.index_update()
+    V = np.array([v.co[:] for v in bm.verts])
+    F = [[v.index for v in f.verts] for f in bm.faces]
+    bm.free()
+    bpy.data.objects.remove(ob)
+    return V, F
+
+
+def cabin_mesh(bvh, belt, lining):
+    """Cabin (mesh coords, centred), smooth-shaded rounded parts: below the belt a shell CABIN_INSET inside the body
+    where the body is opaque (floor, sills, firewall, the wall behind the rear seats; none behind glass, so the far
+    windows stay see-through, none behind the doors, so an open door shows the seats), above it `lining`; Model Y front
+    buckets (cushion and backrest side bolsters, curved backrest, integrated headrest), rear bench (three cushions and
+    backs, three headrests), dash with its trim strip, 15.4" centre screen (lit face to the seats), steering wheel,
+    centre console. `bvh`: "body" / "glass" / "door" surfaces in Blender axes; `belt`: mesh z of the belt line."""
     V, F, cell, flat, shell_n = [], [], [], [], 0
 
     def add(v, f, c, smooth=True):
@@ -2234,20 +2265,20 @@ def cabin_mesh(bvh):
         pts[i, 0], pts[i, -1] = (pts[i, 1, 0], y, CABIN_FLOOR), (pts[i, -2, 0], y, CABIN_FLOOR)
         kind[i, 0] = kind[i, -1] = "floor"
     n = na + 2
-    keep = lambda ks: all(k in ("body", "floor") for k in ks)
     sv, sf, sc = pts.reshape(-1, 3), [], []
+    keep = lambda q: all(kind.flat[x] in ("body", "floor") and sv[x][2] <= belt for x in q)
     for i in range(nr - 1):
         for j in range(n):
             q = [i * n + j, (i + 1) * n + j, (i + 1) * n + (j + 1) % n, i * n + (j + 1) % n]
             ks = [kind.flat[x] for x in q]
-            if keep(ks):
+            if keep(q):
                 sf.append(q)
                 sc.append("floor" if all(k == "floor" for k in ks) else "liner")
     for i in (0, nr - 1):                               # firewall and rear wall: fans round the axis
         c = len(sv)
         sv = np.concatenate([sv, [[0, pts[i, 0, 1], CABIN_ZC]]])
         for j in range(n):
-            if keep([kind[i, j], kind[i, (j + 1) % n]]):
+            if keep([i * n + j, i * n + (j + 1) % n]):
                 sf.append([c, i * n + j, i * n + (j + 1) % n])
                 sc.append("liner")
     for f in sf:                                        # every shell face looks at the axis
@@ -2257,7 +2288,8 @@ def cabin_mesh(bvh):
         if np.dot(np.cross(b - a, c - a), tgt - cen) < 0:
             f.reverse()
     add(sv, sf, sc, smooth=False)
-    shell_n = len(sf)
+    add(*lining, "liner", smooth=False)
+    shell_n = len(sf) + len(lining[1])
 
     def part(size, r, c, at, cuts=(0, 0, 0), sag=0.0, bend=0.0, taper=0.0, tilt=None, seg=2):
         """rbox + shaping: `sag` dips the top's middle (x), `bend` brings the sides forward (+y), `taper` narrows the
