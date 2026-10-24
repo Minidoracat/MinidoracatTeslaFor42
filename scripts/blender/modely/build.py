@@ -4,7 +4,7 @@
 
 stages (each reads the previous one's .blend in temp/modely/):
   prep            tripo_hi.glb -> axes, scale, body / front-left-wheel sources        -> v2_prep.blend, prev/prep_*.png
-  tiers N,N,...   decimated bodies (+ liners, normals from the high-poly, UV0/UV1)     -> v2_tiers.blend, tiers/*.fbx
+  tiers N,N,...   decimated bodies (+ liners, high-poly normals, UV0, UV1 = UV0)     -> v2_tiers.blend, tiers/*.fbx
   wheel           procedural 255/45R19 tire + recessed Photon aero cover (surface of revolution, closed), procedural
                   64 texture (disc + tread strip), two UV layers                       -> MOD wheel FBX + PNG
   official        official design-studio renders of the 8 paints                       -> temp/modely/official/
@@ -12,8 +12,9 @@ stages (each reads the previous one's .blend in temp/modely/):
                   skin per paint (colour from the official render; glass panes show Tripo's cabin through a tint, black
                   frit band, normals from a quadric per pane; head / rear light bars on smoothed centre lines; satin
                   black trims, rear diffuser and front lip by geometry, body-colour spoiler), 512 mask / lights,
-                  geometry block spliced into the vehicle script (copy in temp/modely/geometry_block.txt), whole body
-                  -> v2_final.blend, then runs doors, verify.txt, prev/*.png
+                  UV1 on the shared damage maps from vanilla ModernCar, geometry block spliced into the vehicle script
+                  (copy in temp/modely/geometry_block.txt), whole body -> v2_final.blend, then runs doors, verify.txt,
+                  prev/*.png
   doors           v2_final.blend -> body FBX with the four doors and the tailgate cut out (+ jambs), doors FBX (one
                   skinned mesh per door on VehicleSkeleton, "<Part>_closing" clips)  -> MOD FBX, prev/doors_*.png
 
@@ -1242,8 +1243,8 @@ def classify(pos, nrm, col, liner, iid, iidf):
 
 # zones that take UV1 only from the same ModernCar zones (the maps draw cracks and broken-lamp holes there); everything
 # else takes the body panels. ModernCar has one UV1 triangle per lamp (its tail lamps are the Stop zones) and our head
-# bar is 1.5 grid wide: our lamps (along, z) tile the UV1 box of ModernCar's lamp at DAMAGE_PX (DAMAGE_LAMPS; by
-# nearest surface the corner lamps landed off its triangle on blank texels). ModernCar's boot is a long deck with a
+# bar is 1.5 grid wide: our lamps (along, z) tile round that triangle at DAMAGE_PX (DAMAGE_LAMPS; by nearest surface
+# the corner lamps landed off it on blank texels). ModernCar's boot is a long deck with a
 # short back while our tailgate is mostly upright: by nearest surface it took the dent blob on the boot's back
 # (Veh_Damage1 58% vs ModernCar 18%), so its bounding box is first fitted onto ModernCar's (DAMAGE_BOX)
 DAMAGE_GROUPS = (("WinT",), ("WinH",), ("WinLH",), ("WinLT",), ("WinRH",), ("WinRT",),
@@ -1334,12 +1335,12 @@ def nearest_tri(p, tri, chunk=256, normals=None, tn=None):
 def damage_uv1(body, fzone):
     """UV1 of the body (the shared Veh_Damage1/2, Veh_Rust and Veh_Blood_* 512 maps) taken over from vanilla ModernCar:
     its skin is stretched onto ours (length and height by bbox, width by the half width below the belt) and every face
-    takes ModernCar's UV1 nearby. Windows only from the same window zone (the maps draw cracks there), the rest only from
-    the body panels. Each face picks one ModernCar UV1 island (nearest triangle within 73 deg of its normal) and each
-    corner takes the UV1 of that island's nearest triangle at its projection, extended past the triangle's edges where
-    our surface reaches beyond ModernCar's (clamping to the edge collapsed a third of the faces to a line), so the
-    pattern runs on across a panel and never stretches over an island seam. Both sides share ModernCar's side strip (as
-    in vanilla). fzone: mask zone per polygon (face_zones).
+    takes ModernCar's UV1 nearby: DAMAGE_GROUPS zones only from the same ModernCar zones, the rest only from its body
+    panels. Each face picks one ModernCar UV1 island (nearest triangle within 73 deg of its normal) and each corner takes
+    the UV1 of that island's nearest triangle at its projection (nearest_tri), so the pattern runs on across a panel and
+    never stretches over an island seam. Both sides share ModernCar's side strip, as in vanilla. UV0 x 0.56 (before
+    2026-10-24) put the car in the maps' empty lower-left corner: windscreen and left windows never cracked.
+    fzone: mask zone per polygon (face_zones).
     Must run before the doors are cut out of the body: the door meshes keep the body's UV0 / UV1."""
     ref = vanilla.load(DAMAGE_REF)
     rm = ref.data
@@ -1412,8 +1413,8 @@ def damage_uv1(body, fzone):
         vv, inv = np.unique(blv[L], return_inverse=True)
         k, bc = nearest_tri(put(co[vv], kk % 16), rco[T])
         out[L] = np.einsum("nk,nkc->nc", bc, ru1[T[k]])[inv]
-    for g in DAMAGE_LAMPS:                          # lamps: tiled over ModernCar's lamp box at panel density
-        L = np.flatnonzero(fgrp[lf] == g)
+    for g in DAMAGE_LAMPS:      # lamps: tiled at panel density round ModernCar's lamp triangle, our corner lamp at its
+        L = np.flatnonzero(fgrp[lf] == g)      # centre (else the bar's middle): the box round it is half blank
         if not len(L):
             continue
         p = co[blv[L]]
@@ -1421,10 +1422,12 @@ def damage_uv1(body, fzone):
         q = ru1[rcls == g].reshape(-1, 2)
         s = np.argsort(-np.ptp(q, 0))                       # the UV box's long, short side
         size = np.ptp(q, 0)[s]
-        t = (p[:, a] - p[:, a].min(0)) * DAMAGE_PX / 512
         fl = lf[L]
+        stop = np.isin(fzone[fl], ("StopL", "StopR"))
+        o = p[stop].mean(0) if stop.any() else (p.min(0) + p.max(0)) / 2
+        t = (p[:, a] - o[a]) * DAMAGE_PX / 512
         cen = np.stack([np.bincount(fl, t[:, i]) for i in range(2)], 1)[fl] / np.bincount(fl)[fl, None]
-        out[L[:, None], s] = q.min(0)[s] + t - np.floor(cen / size) * size    # whole faces per tile
+        out[L[:, None], s] = q.mean(0)[s] + t - np.round(cen / size) * size    # whole faces per tile
     me.uv_layers["UV1"].data.foreach_set("uv", out.ravel())
     print("UV1 from", DAMAGE_REF, "islands", len(np.unique(fisl)), "faces per own-zone group",
           {"/".join(zs): int((fgrp == i + 1).sum()) for i, zs in enumerate(DAMAGE_GROUPS)})
