@@ -25,4 +25,29 @@ module Base
             item 1 Base.MinidoracatTesla_WallConnector,
         }
     }
+
+    /* Drive Unit Parts: Electricity 4 (motor windings, inverter board); 2 parts a craft. Same format as above. */
+    craftRecipe MinidoracatTesla_MakeDriveUnitParts
+    {
+        timedAction = MakingElectrical,
+        time = 200,
+        NeedToBeLearn = true,
+        SkillRequired = Electricity:4,
+        Tags = AnySurfaceCraft,
+        category = Electrical,
+        AutoLearnAny = Electricity:4,
+        xpAward = Electricity:10,
+        inputs
+        {
+            item 1 tags[base:screwdriver] mode:keep flags[Prop1],
+            item 1 tags[base:pliers] mode:keep flags[MayDegradeVeryLight],
+            item 2 [Base.ElectronicsScrap],
+            item 2 [Base.ElectricWire],
+            item 1 [Base.CopperScrap],
+        }
+        outputs
+        {
+            item 2 Base.MinidoracatTesla_DriveUnitParts,
+        }
+    }
 }
