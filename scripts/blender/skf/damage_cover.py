@@ -1,10 +1,10 @@
 """Damage-map coverage per mask zone: the share of the surface (area-weighted samples) whose UV1 lands on an opaque texel
 (alpha > 0.1) of each shared Veh_* map, vanilla ModernCar next to our body (whole, doors on). Check after changing
-damage_uv1 or the zones (models.md 3, table there).
+damage_uv1 or the zones (models.md, coverage table).
 
-    blender -b --factory-startup --python scripts/blender/modely/damage_cover.py [-- <body.blend|.fbx> <mask.png>]
+    blender -b --factory-startup --python scripts/blender/skf/damage_cover.py [-- <body.blend|.fbx> <mask.png>]
 
-Defaults: temp/modely/v2_final.blend and the MOD mask. Columns per map: ModernCar / ModernCar on its triangles whose
+Defaults: temp/skf/skf_whole.blend (convert.py build) and the MOD mask. Columns per map: ModernCar / ModernCar on its triangles whose
 UV1 is not collapsed to a point (damage_uv1 skips those) / ours.
 """
 import os
@@ -13,8 +13,8 @@ import sys
 import bpy
 import numpy as np
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from build import NAME, TEX_DIR, TMP, Z, fan_tris, img_np, loop_data, mesh_co, vanilla  # noqa: E402
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "common"))
+from pzveh import NAME, TEX_DIR, TMP, Z, fan_tris, img_np, loop_data, mesh_co, vanilla  # noqa: E402
 
 VTEX = os.path.join(vanilla.PZ, "textures", "Vehicles")
 MAPS = ("Veh_Damage1", "Veh_Damage2", "Veh_Rust", "Veh_Blood_Mask")
@@ -51,7 +51,7 @@ def coverage(ob, mask, n=600000):
 
 if __name__ == "__main__":
     a = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
-    src = a[0] if a else os.path.join(TMP, "v2_final.blend")
+    src = a[0] if a else os.path.join(TMP, "skf_whole.blend")
     mpath = a[1] if len(a) > 1 else os.path.join(TEX_DIR, NAME + "_mask.png")
     bpy.ops.wm.read_factory_settings(use_empty=True)
     ref = coverage(vanilla.load("Vehicles_ModernCar"), img_np(bpy.data.images.load(os.path.join(VTEX, "vehicle_carmodern_mask.png"))))

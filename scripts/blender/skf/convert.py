@@ -1,31 +1,31 @@
-"""Model Y body from BloxBloger's "2026 Tesla Model Y Performance" (Sketchfab, CC BY-NC 4.0, CREDITS.md): source OBJ ->
-PZ body FBX (cabin and glass inside), doors FBX (VehicleSkeleton, "<Part>_closing" clips), 8 skins, mask, lights, and
-the geometry block of the vehicle script. Phase 1 of the base-model swap (2026-10-25); the Tripo line in
-scripts/blender/modely/ stays untouched, its helpers (soup, slab, damage UV1, export, geometry block) are reused as is.
+"""Model Y from BloxBloger's "2026 Tesla Model Y Performance" (Sketchfab, CC BY-NC 4.0, CREDITS.md): source OBJ ->
+PZ body FBX (the mod's cabin and the body glass inside), doors FBX (VehicleSkeleton, "<Part>_closing" clips), wheel
+FBX, 8 skins, mask, lights, and the geometry block of the vehicle script.
 
-    blender -b --factory-startup --python scripts/blender/skf/convert.py -- build
-    blender -b --factory-startup --python scripts/blender/skf/convert.py -- view <out_prefix> <N,NE,..> <shut|all|gate|frunk|fl|..>
+    B="C:/Program Files/Blender Foundation/Blender 5.2/blender.exe"
+    "$B" -b --factory-startup --python scripts/blender/skf/convert.py -- official   # design-studio renders (once)
+    "$B" -b --factory-startup --python scripts/blender/skf/convert.py -- build      # everything else, ~20 s
+    "$B" -b --factory-startup --python scripts/blender/skf/convert.py -- view <out_prefix> <N,NE,..> <shut|all|gate|frunk|fl|..>
 
 Source (gitignored): temp/skf/src/source/Tesla Model Y Performance 2026.obj (+ .mtl), the OBJ inside the Sketchfab
-download (temp/sketchfab-modely-perf in the main repo); temp/skf/official/ = temp/modely/official (paint renders).
-Its materials are flat colours, its panels separate components (door skins, hood, tailgate cut along the real panel
-lines), so parts and zones come from components and a few side-view lines, colours from materials; AO and normals are
-baked for the paint's light. The cabin and trunk are the mod's own (cabin.py), not the source's interior.
-Frame: as modely/build.py (+Y front, +Z up, -X car left, 1 unit = 1 grid), pre-centre ground z = 0.
+download. Its materials are flat colours, its panels separate components (door skins, hood, tailgate cut along the
+real panel lines), so parts and zones come from components and a few side-view lines, colours from materials; AO and
+normals are baked for the paint's light. The cabin and trunk are the mod's own (cabin.py), not the source's interior;
+shared code (door slab, skeleton export, damage UV1, wheel, script block) in scripts/blender/common/pzveh.py.
+Frame: +Y front, +Z up, -X car left, 1 unit = 1 grid (vanilla raw FBX coords), pre-centre ground z = 0.
 """
-import bpy, bmesh, json, math, os, sys
+import bpy, bmesh, colorsys, json, math, os, re, sys
 import numpy as np
 from mathutils import Matrix, Quaternion, Vector
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-REPO = os.path.abspath(os.path.join(HERE, "..", "..", ".."))
-sys.path.insert(0, os.path.join(HERE, "..", "modely"))
+sys.path.insert(0, os.path.join(HERE, "..", "common"))
 sys.path.insert(0, HERE)
-import build as mb  # noqa: E402  (modely/build.py: helpers and the export / script conventions)
-import cabin as cab  # noqa: E402  (the mod's own cabin, feat/edges-1025's cabin_mesh)
-TMP = os.path.join(REPO, "temp", "skf")
+import pzveh as pv  # noqa: E402
+import cabin as cab  # noqa: E402
+TMP = pv.TMP
 SRC = os.path.join(TMP, "src", "source", "Tesla Model Y Performance 2026.obj")
-K = mb.K                                   # grid per metre; the source is in metres, true to size (4.78 x 1.94 m)
+K = pv.K                                   # grid per metre; the source is in metres, true to size (4.78 x 1.94 m)
 # OBJ (Blender import, -Z forward, Y up: front -X, left -Y) -> pre-centre frame, centres of the source bbox
 SRC_C = (-1.0675, -1.787)                   # source X (length) and Y (width) centre, metres
 BELT_Z = 0.88                               # grid: side window bottom (glass z min 0.878)
@@ -51,14 +51,15 @@ GLASS_MATS = ("glass_base", "Material_#2125773440")  # glass_base on Plane.008 i
 # paint light (textures()): official-render paint quantile q = (base + up x upness(nz) + band x shoulder(nz) + lobe x
 # softbox(n . PAINT_LIGHT)) x AO term: (base, up, band strength, band nz centre, band width, lobe, lobe width).
 # Calibration knob. A texel-rank mapping put the large hood on the render's highlight quantiles (pink,
-# tesla-skf-after-1025b); without the lobe flat panels were one quantile (hood p25-p75 120-134 vs main's Tripo
-# skin 105-166, tesla-skf-after-1025c "沒甚麼反光")
+# tesla-skf-after-1025b); without the lobe flat panels were one quantile (hood p25-p75 120-134 against the previous
+# skin's 105-166, tesla-skf-after-1025c "沒甚麼反光")
 PAINT_Q = (0.12, 0.10, 0.55, 0.30, 0.20, 0.20, 0.05)
-# main b7949ae's Tripo UltraRed skin: paint texel R percentiles 10/25/50/75/90/97 = 73/84/117/175/216/229 (red
-# texels, R > 2.2 G + 8), i.e. these quantiles of the official ramp. Calibration knob
+# the previous Model Y skin (main b7949ae) UltraRed paint texel R percentiles 10/25/50/75/90/97 = 73/84/117/175/216/
+# 229 (red texels, R > 2.2 G + 8), i.e. these quantiles of the official ramp: the paint keeps its brightness and
+# contrast. Calibration knob
 PAINT_TARGET = ((10, 0.12), (25, 0.27), (50, 0.48), (75, 0.70), (90, 0.84), (97, 0.90))
 PAINT_LIGHT = (0.0, 0.45, 0.89)            # softbox above, ahead: x-symmetric so both sides match at every heading
-OFFICIAL = os.path.join(TMP, "official")    # design-studio renders (modely stage official; copied from temp/modely)
+OFFICIAL = pv.OFFICIAL                     # design-studio renders (stage official)
 LIGHT_RGB = {"head": (255, 250, 240), "tail": (255, 30, 30)}
 
 # ---- part lines, side view (y, z), pre-centre grid; read off the source's panel edges (build log OUTLINE) ----
@@ -70,6 +71,9 @@ LINES = {
     "R1": ((-0.956, 0.60), (-1.081, 0.90)),  # rear door rear edge above the wheel arch
 }
 FRONT_Y, SILL_Z, ARCH = 0.83, 0.235, (0.55, -0.79)   # front door front, door bottom, rear door above / ahead of arch
+# door openings for the cabin shell and the seats (pre-centre y): front door front, B pillar (middle of the seam S
+# between the cabin floor z 0.32 and the belt; the shell's B-pillar ring follows S itself), rear door rear
+DOOR_Y = (0.82, -0.181, -1.08)
 SEAL = (0.008, 0.02)                       # grid: dark strip behind every panel edge (depth, reach past the edge):
 #                                             the source's panel gaps are real gaps, the ground showed through them
 GATE_Z = 0.525                             # tailgate opening's lower edge (gate panel bottom), pre-centre
@@ -82,10 +86,10 @@ CUT_X = ("Plane.034", "Plane.044", "Plane.045", "Plane.036", "Plane.042", "Plane
 DOOR_OBJS = ("Plane.062", "Plane.005", "Plane.002", "Plane.046", "Plane.048", "Plane.050", "Plane.047")
 GATE_OBJS = CUT_X + ("Plane.022", "Plane.086", "Tesla_Model_3")
 GATE_COMPS = (("Plane.062", 248, -1), ("Plane.014", 102, -1))   # rear window and its frame (y sign of the centre)
-PARTS = ["Body"] + list(mb.DOORS)          # part index: 0 body, 1.. DOORS order (FL, FR, RL, RR, TrunkDoor, EngineDoor)
+PARTS = ["Body"] + list(pv.DOORS)          # part index: 0 body, 1.. DOORS order (FL, FR, RL, RR, TrunkDoor, EngineDoor)
 FRUNK_DEPTH = 0.22                         # grid: black tub under the frunk lid
-ZN = list(mb.Z)                            # zone index -> name
-CELL = {c: i for i, c in enumerate(mb.CABIN_CELLS)}
+ZN = list(pv.Z)                            # zone index -> name
+CELL = {c: i for i, c in enumerate(pv.CABIN_CELLS)}
 GLASS_ZONES = ("WinT", "WinH", "WinLH", "WinLT", "WinRH", "WinRT", "LightBarL")   # UV1 glass code order (the frag's
 #                                                                                  GLASS_ZONE[], feat/edges-1025)
 BACK_GLASS = ("WinH", "WinLH", "WinLT", "WinRH", "WinRT")   # panes seen from inside too (DrawVehicle culls back faces)
@@ -155,7 +159,7 @@ def load_source():
         bm.free()
         target = next((t for p, t in DECIMATE.items() if o.name.startswith(p)), None)
         if target:
-            mb.decimate(o, target)
+            pv.decimate(o, target)
         bm = bmesh.new()
         bm.from_mesh(me)
         bmesh.ops.triangulate(bm, faces=bm.faces[:])
@@ -181,14 +185,18 @@ def load_source():
         bm.free()
         names.append(o.name.split("_Mesh")[0] if "_Mesh" in o.name else o.name)
         obs.append(o)
-    mb.select_only(*obs)
+    pv.select_only(*obs)
     bpy.ops.object.join()
     car = bpy.context.view_layer.objects.active
-    car.name = mb.NAME
-    # wheels: (side, centre y, outer |x|) per tire, pre-centre frame
-    wl = sorted(((-1 if hi[0] + lo[0] < 0 else 1, float((lo[1] + hi[1]) / 2), float(max(-lo[0], hi[0])))
-                 for lo, hi in tires), key=lambda w: (-w[1], w[0]))         # FL, FR, RL, RR
-    return car, names, wl
+    car.name = pv.NAME
+    # wheels: (side, centre y, centre z, outer |x|) per tire, pre-centre frame, and the tire's radius and width (the
+    # procedural wheel is built to them: the arches were modelled round these tires)
+    wl = sorted(((-1 if hi[0] + lo[0] < 0 else 1, float((lo[1] + hi[1]) / 2), float((lo[2] + hi[2]) / 2),
+                  float(max(-lo[0], hi[0]))) for lo, hi in tires), key=lambda w: (-w[1], w[0]))   # FL, FR, RL, RR
+    size = np.array([(hi - lo) for lo, hi in tires])
+    tire = (float(size[:, 1:].mean() / 2), float(size[:, 0].mean()))
+    print("SOURCE tires: radius %.4f width %.4f centres" % tire, [np.round(w, 3).tolist() for w in wl])
+    return car, names, wl, tire
 
 
 def edit(car, names):
@@ -245,8 +253,8 @@ def classify(car, names, sizes):
     mname = [m.name for m in me.materials]
     mat = np.array([mname[i] for i in mi], object)
     obj = np.array(names, object)[src]
-    cen = mb.face_centres(car)
-    co = mb.mesh_co(car)
+    cen = pv.face_centres(car)
+    co = pv.mesh_co(car)
     fv = np.array([p.vertices[:] for p in me.polygons])
     key = src * 100000 + comp
     ukey, inv = np.unique(key, return_inverse=True)
@@ -335,12 +343,14 @@ def unwrap(car):
     for nm in [u.name for u in me.uv_layers]:
         me.uv_layers.remove(me.uv_layers[nm])
     me.uv_layers.new(name="UV0")
-    mb.select_only(car)
+    pv.select_only(car)
     bpy.ops.object.mode_set(mode="EDIT")
     bpy.ops.mesh.select_mode(type="FACE")
     bpy.ops.mesh.select_all(action="SELECT")
     bpy.ops.uv.smart_project(angle_limit=math.radians(60), island_margin=0.002, area_weight=0.0, scale_to_bounds=False)
-    bpy.ops.uv.pack_islands(rotate=True, margin=0.004)
+    # 4 mask texels (512) between islands: the bake's margin meets halfway, and the shader samples the mask
+    # bilinearly, so at 2 a zone's edge texels mixed in the neighbour island's zone colour
+    bpy.ops.uv.pack_islands(rotate=True, margin=0.008)
     bpy.ops.object.mode_set(mode="OBJECT")
     uv = np.empty(len(me.loops) * 2)
     me.uv_layers["UV0"].data.foreach_get("uv", uv)
@@ -377,7 +387,7 @@ def bake(car, layers, ao=True):
     me.materials.clear()
     me.materials.append(mat)
     me.polygons.foreach_set("material_index", np.zeros(len(mi), np.int64))
-    mb.select_only(car)
+    pv.select_only(car)
     res = {}
     jobs = [(k, "EMIT") for k in layers] + ([("ao", "AO"), ("nrm", "NORMAL")] if ao else [])
     for name, kind in jobs:
@@ -393,7 +403,7 @@ def bake(car, layers, ao=True):
             bpy.ops.object.bake(type=kind, normal_space="OBJECT", use_clear=True)
         else:
             bpy.ops.object.bake(type=kind, use_clear=True)
-        res[name] = mb.img_np(img)
+        res[name] = pv.img_np(img)
         bpy.data.images.remove(img)
         print("BAKE", name, "done")
     me.materials.clear()
@@ -403,8 +413,23 @@ def bake(car, layers, ao=True):
     return res
 
 
+def paint_hsv(hsvs):
+    """Splice the damage-tint HSV of each paint into Core.lua's colors table (MinidoracatTesla.Specs, one line per
+    paint in skin order; Create.Motor sets it with the skin)."""
+    path = os.path.join(pv.MEDIA, "lua", "shared", "MinidoracatTesla", "Core.lua")
+    text = open(path, encoding="utf-8").read()
+    for p, code in pv.PAINTS:
+        h, s, v = hsvs[p]
+        text, n = re.subn(r'\{ name = "%s", code = "%s", h = [0-9.]+, s = [0-9.]+, v = [0-9.]+ \}' % (p, code),
+                          f'{{ name = "{p}", code = "{code}", h = {h}, s = {s}, v = {v} }}', text)
+        if n != 1:
+            raise SystemExit(f"Core.lua: {n} colour lines for {p}")
+    open(path, "w", encoding="utf-8", newline="\n").write(text)
+    print("LUA colors", hsvs)
+
+
 def textures(car, c):
-    zone_rgb = np.array([mb.Z[z] for z in ZN], float)
+    zone_rgb = np.array([pv.Z[z] for z in ZN], float)
     aux = np.stack([c["paint"].astype(float), (c["lamp"] > 0).astype(float), (c["lamp"] == 2).astype(float)], 1)
     b = bake(car, {"col": c["rgb"], "zone": zone_rgb[c["zone"]], "aux": aux})
     col, zon, aux, ao = b["col"][..., :3], b["zone"][..., :3], b["aux"][..., :3], b["ao"][..., 0]
@@ -414,39 +439,43 @@ def textures(car, c):
     shade = 0.55 + 0.45 * ao
     # paint: the source is one flat colour, so its light comes from a matcap on the baked normal (sides low in the
     # official render's paint quantiles, hood and roof above the middle, a bright band on the shoulder) times AO; the
-    # quantile picks the official render's paint colour there (modely official_ramp / CAL / GAIN, as the Tripo skins
-    # did). Targets from main's Tripo skin (UltraRed R p50): doors q ~0.3, hood ~0.55
+    # quantile picks the official render's paint colour there (official_ramp), then CAL / GAIN
     q = (PAINT_Q[0] + PAINT_Q[1] * np.clip((nz + 0.3) / 1.2, 0, 1)
          + PAINT_Q[2] * np.exp(-((nz - PAINT_Q[3]) / PAINT_Q[4]) ** 2)
          + PAINT_Q[5] * np.exp(-(1 - nrm @ np.array(PAINT_LIGHT)) / PAINT_Q[6])) * (0.55 + 0.45 * ao)
     # AO samples are noisy and the ramp is steep in places: blurred inside the paint (about 6 px of 2048), else flat
     # panels came out speckled
     pm = paint.astype(np.float32)
-    q = mb.box_blur(mb.box_blur(q * pm, 3), 3) / np.maximum(mb.box_blur(mb.box_blur(pm, 3), 3), 1e-6)
-    # spread: a monotone remap of this q's percentiles onto those of main's Tripo skin (PAINT_TARGET), so the paint
-    # reads as bright and as contrasted as before; equal q stay equal (no texel-rank ties)
+    q = pv.box_blur(pv.box_blur(q * pm, 3), 3) / np.maximum(pv.box_blur(pv.box_blur(pm, 3), 3), 1e-6)
+    # spread: a monotone remap of this q's percentiles onto PAINT_TARGET, so the paint keeps the previous skin's
+    # brightness and contrast; equal q stay equal (no texel-rank ties)
     q = q[paint]
     pc, tg = zip(*PAINT_TARGET)
     q = np.interp(q, [q.min(), *np.percentile(q, pc), q.max()], [0.03, *tg, 0.97])
-    mb.OFFICIAL = OFFICIAL
-    for p, code in mb.PAINTS:
-        ramp = mb.official_ramp(code)
+    hsvs = {}
+    for p, code in pv.PAINTS:
+        ramp = pv.official_ramp(code)
         xp = (np.arange(len(ramp)) + 0.5) / len(ramp)
-        a_, b_ = (np.array(t, np.float32) for t in mb.CAL[p])
+        a_, b_ = (np.array(t, np.float32) for t in pv.CAL[p])
         s = col * shade[..., None]
-        s[paint] = np.clip(a_ * np.stack([np.interp(q, xp, ramp[:, i]) for i in range(3)], -1) / mb.GAIN + b_, 0, 1)
-        mb.save_png(np.concatenate([np.clip(s, 0, 1), np.ones(s.shape[:2] + (1,))], -1),
-                    os.path.join(mb.TEX_DIR, f"{mb.NAME}_{p}.png"), p)
+        s[paint] = np.clip(a_ * np.stack([np.interp(q, xp, ramp[:, i]) for i in range(3)], -1) / pv.GAIN + b_, 0, 1)
+        pv.save_png(np.concatenate([np.clip(s, 0, 1), np.ones(s.shape[:2] + (1,))], -1),
+                    os.path.join(pv.TEX_DIR, f"{pv.NAME}_{p}.png"), p)
+        # setColorHSV for the damage overlays: the shader gives Veh_Damage* texels the paint hue and S / V offsets
+        # (vehicle_common.frag.glsl:6-15); their median S 0.03, V 0.45 should land on this skin's median paint
+        h_, s_, v_ = colorsys.rgb_to_hsv(*map(float, np.median(s[paint], 0)))
+        hsvs[p] = (round(h_, 3), round(min(1.0, s_ + 0.47), 3), round(min(1.0, v_ + 0.05), 3))
+    paint_hsv(hsvs)
     f = SKIN // MASK
     zc = zon[f // 2::f, f // 2::f]
     near = np.argmin(((zc[:, :, None, :] - zone_rgb[None, None]) ** 2).sum(-1), -1)   # snap: exact zone colours
     m = np.concatenate([zone_rgb[near], np.ones(near.shape + (1,))], -1)
-    mb.save_png(m, os.path.join(mb.TEX_DIR, mb.NAME + "_mask.png"), "mask")
+    pv.save_png(m, os.path.join(pv.TEX_DIR, pv.NAME + "_mask.png"), "mask")
     lx = aux[f // 2::f, f // 2::f]
     lamp = lx[..., 1] > 0.5
     lrgb = np.where((lx[..., 2] > 0.5)[..., None], np.array(LIGHT_RGB["tail"]) / 255, np.array(LIGHT_RGB["head"]) / 255)
-    mb.save_png(np.concatenate([lrgb * lamp[..., None], lamp[..., None].astype(float)], -1),
-                os.path.join(mb.TEX_DIR, mb.NAME + "_lights.png"), "lights")
+    pv.save_png(np.concatenate([lrgb * lamp[..., None], lamp[..., None].astype(float)], -1),
+                os.path.join(pv.TEX_DIR, pv.NAME + "_lights.png"), "lights")
     print("TEX zones px", {ZN[k]: int((near == k).sum()) for k in np.unique(near)}, "AO median paint",
           float(np.median(ao[paint])))
 
@@ -455,46 +484,43 @@ def textures(car, c):
 
 def stage_build():
     os.makedirs(TMP, exist_ok=True)
-    car, names, tires = load_source()
+    car, names, wheels, tire = load_source()
     sizes = edit(car, names)
     c = classify(car, names, sizes)
     split_zone_edges(car, c["zone"])
     c = classify(car, names, sizes)         # same faces, new vertex split
-    # centre like modely (mesh centre == model offset): the bbox
-    co = mb.mesh_co(car)
+    # centre the bbox (mesh centre == model offset == centerOfMassOffset, vanilla convention)
+    co = pv.mesh_co(car)
     ctr = (co.min(0) + co.max(0)) / 2
     zmid = float(ctr[2])
     shift = np.array([0.0, ctr[1], zmid])
-    mb.set_co(car, co - shift)
+    pv.set_co(car, co - shift)
     unwrap(car)
     textures(car, c)
-    # UV1: vanilla ModernCar's damage layout (modely damage_uv1); glass faces + 2 + 2 x pane (the frag's glass class
-    # and GLASS_ZONE[], as feat/edges-1025)
+    # UV1: vanilla ModernCar's damage layout (damage_uv1); glass faces + 2 + 2 x pane (the frag's glass class and
+    # GLASS_ZONE[])
     me = car.data
-    me.attributes.new("liner", "BOOLEAN", "FACE")      # modely geometry() / soup() read it; nothing is liner here
-    mb.damage_uv1(car, np.array(ZN, object)[c["zone"]])
+    me.attributes.new("liner", "BOOLEAN", "FACE")      # geometry() / soup() read it; nothing is liner here
+    pv.damage_uv1(car, np.array(ZN, object)[c["zone"]])
     lt = np.array([p.loop_total for p in me.polygons])
     u1 = np.empty(len(me.loops) * 2)
     me.uv_layers["UV1"].data.foreach_get("uv", u1)
     u1 = u1.reshape(-1, 2)
     lp = np.repeat(c["pane"], lt)
-    u1[lp >= 0, 0] += mb.GLASS_UV1_SHIFT + 2 * lp[lp >= 0]
+    u1[lp >= 0, 0] += pv.GLASS_UV1_SHIFT + 2 * lp[lp >= 0]
     me.uv_layers["UV1"].data.foreach_set("uv", u1.ravel())
-    # vehicle script geometry block (modely geometry(), its Tripo constants swapped for this body's)
-    mb.BELT_Z, mb.TMP = BELT_Z, TMP
-    mb.DOOR_FRONT_Y, mb.B_PILLAR_Y, mb.DOOR_REAR_Y = 0.82 - ctr[1], -0.19 - ctr[1], -1.08 - ctr[1]
+    # vehicle script geometry block
     stop = np.flatnonzero((np.array(ZN)[c["zone"]] == "StopL"))
-    sc_ = mb.face_centres(car)[stop]
+    sc_ = pv.face_centres(car)[stop]
     o = sc_[np.argsort(sc_[:, 0])[: max(1, len(sc_) // 5)]].mean(0)      # outboard end of the left corner lamp
-    mb.PORT = (float(o[1]), float(o[2] + zmid))
-    r = 0.29971832036972046                      # the shipped procedural wheel (modely stage wheel) is unchanged
-    wl = [(sx, yc - ctr[1], r, xo) for sx, yc, xo in tires]
-    g = mb.geometry(car, zmid, wl, r)
-    g |= {"centre_y": float(ctr[1]), "zmid": zmid}
+    wl = [(sx, yc - ctr[1], zc, xo) for sx, yc, zc, xo in wheels]
+    g = pv.geometry(car, zmid, wl, tire[0], tire[1], BELT_Z, tuple(y - ctr[1] for y in DOOR_Y),
+                    (float(o[1]), float(o[2] + zmid)))
+    bpy.ops.wm.save_as_mainfile(filepath=os.path.join(TMP, "skf_whole.blend"))
+    g |= {"centre_y": float(ctr[1]), "zmid": zmid, "tris": pieces(car, c, shift)}
+    g["tris"]["Wheel"] = pv.stage_wheel(*tire)
     json.dump(g, open(os.path.join(TMP, "geometry.json"), "w"), indent=1)
     print("GEOMETRY", json.dumps(g))
-    bpy.ops.wm.save_as_mainfile(filepath=os.path.join(TMP, "skf_whole.blend"))
-    pieces(car, c, shift)
 
 
 def two_sided(P, attr_of):
@@ -534,9 +560,9 @@ def seals(V, T, sel, attr):
 
 
 def uv1_class(a):
-    """0 paint, 1 cabin, 2 glass per triangle (attributes N x 3 x 7) by UV1 u at its first corner (modely face_classes)."""
+    """0 paint, 1 cabin, 2 glass per triangle (attributes N x 3 x 7) by UV1 u at its first corner (pzveh face_classes)."""
     u = a[:, 0, 2]
-    return np.where(u < mb.CABIN_UV1_U / 2, 1, np.where(u > mb.GLASS_UV1_SHIFT * 0.75, 2, 0))
+    return np.where(u < pv.CABIN_UV1_U / 2, 1, np.where(u > pv.GLASS_UV1_SHIFT * 0.75, 2, 0))
 
 
 def bvh_of(parts):
@@ -551,9 +577,8 @@ def bvh_of(parts):
 
 
 def build_cabin(bodyV, Tb, Ab, meshes, shift):
-    """The mod's own cabin and trunk (cabin.py, modely build.py as on feat/edges-1025) inside this body: shell rays
-    against the closed car (centred), shell faces in a door opening coded for the shader. -> (points, tris, attrs)
-    centred, to join the body."""
+    """The mod's own cabin and trunk (cabin.py) inside this body: shell rays against the closed car (centred), shell
+    faces in a door opening coded for the shader. -> (points, tris, attrs) centred, to join the body."""
     cy, zmid = shift[1], shift[2]
     cls = uv1_class(Ab)
     doors = {p: (P, t[uv1_class(a) == 0]) for p, P, t, a in meshes}
@@ -565,7 +590,9 @@ def build_cabin(bodyV, Tb, Ab, meshes, shift):
     rear = min(h[3] for b in bvh.values() for h in (b.ray_cast(o, Vector((0, -1, 0))),) if h[0] is not None)
     trunk_end = cab.TRUNK_Y - rear + cab.CABIN_INSET
     arch = (REAR_ARCH[0] - cy, REAR_ARCH[1] - zmid, REAR_ARCH[2])
-    opening = dict(y=(0.82 - cy, -0.19 - cy, -1.08 - cy), sill=SILL_Z - zmid, gate=GATE_Z - zmid,
+    (y0, z0), (y1, z1) = LINES["S"]
+    opening = dict(y=tuple(y - cy for y in DOOR_Y), sill=SILL_Z - zmid, gate=GATE_Z - zmid,
+                   seam=lambda z: y0 + (y1 - y0) * (z + zmid - z0) / (z1 - z0) - cy,
                    each={p: bvh_of([d]) for p, d in doors.items()})
     used, inv = np.unique(Tb[cls == 0].ravel(), return_inverse=True)
     me = bpy.data.meshes.new("lining_src")
@@ -576,22 +603,21 @@ def build_cabin(bodyV, Tb, Ab, meshes, shift):
     ob = cab.cabin_mesh(bvh, belt, cab.lining(lob, belt, trunk_end), trunk_floor, trunk_end, arch, opening)
     bpy.data.objects.remove(lob)
     ob.data.attributes.new("liner", "BOOLEAN", "FACE")
-    V, T, A, _ = mb.soup(ob, np.zeros(3))
+    V, T, A, _ = pv.soup(ob, np.zeros(3))
     bpy.data.objects.remove(ob)
     return V, T, A
 
 
-
 def pieces(car, c, shift):
-    """Whole car -> body FBX and doors FBX (modely conventions: slab doors, VehicleSkeleton, hinge keys)."""
-    V, T, A, _ = mb.soup(car, shift)
+    """Whole car -> body FBX and doors FBX (slab doors, VehicleSkeleton, hinge keys). -> triangles per piece."""
+    V, T, A, _ = pv.soup(car, shift)
     me = car.data
     tf = np.repeat(np.arange(len(me.polygons)), [p.loop_total - 2 for p in me.polygons])
     part, glass, paint = c["part"][tf], c["glass"][tf], c["paint"][tf]
     zname = np.array(ZN, object)[c["zone"][tf]]
 
     def cab_attr(cell):
-        return np.array([0, 0, mb.CABIN_UV1_U - CELL[cell], 0, 0, 0, 1], float)
+        return np.array([0, 0, pv.CABIN_UV1_U - CELL[cell], 0, 0, 0, 1], float)
     back_glass = glass & np.isin(zname, BACK_GLASS)
     back_liner = ~glass & ((part == 0) & paint | (part > 0) & ~paint)
 
@@ -613,19 +639,19 @@ def pieces(car, c, shift):
         body_a.append(a)
     conv = np.array(Matrix.Rotation(-math.pi / 2, 3, "X"))
     meshes, hinges = [], {}
-    mat = bpy.data.materials.new(mb.NAME)
-    for k, (pname, (sd, axis, ang, secs)) in enumerate(mb.DOORS.items(), 1):
+    mat = bpy.data.materials.new(pv.NAME)
+    for k, (pname, (sd, axis, ang, secs)) in enumerate(pv.DOORS.items(), 1):
         sel = part == k
         lid = pname == "EngineDoor"
-        off = (np.array([-sd, 0, 0]) if sd else np.array((0, 0, -1) if lid else mb.GATE_IN)) * mb.DOOR_T
+        off = (np.array([-sd, 0, 0]) if sd else np.array((0, 0, -1) if lid else pv.GATE_IN)) * pv.DOOR_T
         skin = sel & paint
-        P, t, a, _ = mb.slab(V, T, A, skin, off, cab_attr("dash"), outer_extra=sel & ~skin)
+        P, t, a, _ = pv.slab(V, T, A, skin, off, cab_attr("dash"), BELT_Z - shift[2], outer_extra=sel & ~skin)
         for v, bt, ba in [backs(bsel, rec, 0) for bsel, rec in back_sets(sel)] + [seals(V, T, skin, cab_attr("base"))]:
             t = np.concatenate([t, bt + len(P)])
             P = np.concatenate([P, v])
             a = np.concatenate([a, ba])
         if lid:     # frunk tub in the body: the lid's outline FRUNK_DEPTH down, walls and floor facing in, black
-            Pt, tt, at_, _ = mb.slab(V, T, A, skin, np.array([0, 0, -FRUNK_DEPTH]), cab_attr("base"))
+            Pt, tt, at_, _ = pv.slab(V, T, A, skin, np.array([0, 0, -FRUNK_DEPTH]), cab_attr("base"), BELT_Z - shift[2])
             n_outer = int(skin.sum())
             tt, at_ = tt[n_outer:][:, [0, 2, 1]], at_[n_outer:][:, [0, 2, 1]].copy()
             at_[..., :4] = cab_attr("base")[:4]
@@ -652,12 +678,12 @@ def pieces(car, c, shift):
     body_t.append(ct + len(bodyV))
     bodyV = np.concatenate([bodyV, cv + shift])
     body_a.append(ca)
-    body = mb.soup_object(mb.NAME, bodyV - shift, np.concatenate(body_t), np.concatenate(body_a), mat)
+    body = pv.soup_object(pv.NAME, bodyV - shift, np.concatenate(body_t), np.concatenate(body_a), mat)
     arm = bpy.data.objects.new("VehicleSkeleton", bpy.data.armatures.new("VehicleSkeleton"))
     bpy.context.scene.collection.objects.link(arm)
-    mb.select_only(arm)
+    pv.select_only(arm)
     bpy.ops.object.mode_set(mode="EDIT")
-    for pname in mb.DOORS:          # bones at the origin, unrotated: bind = identity (modely stage_doors, models.md 9)
+    for pname in pv.DOORS:          # bones at the origin, unrotated: bind = identity (models.md 9)
         eb = arm.data.edit_bones.new(pname + "_bone")
         eb.head, eb.tail = Vector((0, 0, 0)), Vector((0, 0.3, 0))
     bpy.ops.object.mode_set(mode="OBJECT")
@@ -665,27 +691,27 @@ def pieces(car, c, shift):
     for pname, P, t, a in meshes:
         af = a.copy()
         af[..., 4:] = a[..., 4:] @ conv.T
-        ob = mb.soup_object(pname, P @ conv.T, t, af, mat)
+        ob = pv.soup_object(pname, P @ conv.T, t, af, mat)
         ob.vertex_groups.new(name=pname + "_bone").add(list(range(len(ob.data.vertices))), 1.0, "REPLACE")
         ob.parent = arm
         ob.modifiers.new("arm", "ARMATURE").object = arm
         obs.append(ob)
     sc = bpy.context.scene
-    sc.render.fps = mb.CLIP_FPS
+    sc.render.fps = pv.CLIP_FPS
     ad = arm.animation_data_create()
     for pb in arm.pose.bones:
         pb.rotation_mode = "QUATERNION"
 
     def hinge_pose(pname, deg):
-        q = Quaternion(Vector(conv @ np.array(mb.DOORS[pname][1], float)), math.radians(deg))
+        q = Quaternion(Vector(conv @ np.array(pv.DOORS[pname][1], float)), math.radians(deg))
         h = Vector(conv @ hinges[pname])
         return h - q @ h, q
     end = 1
-    for pname, (_, _, ang, secs) in mb.DOORS.items():
+    for pname, (_, _, ang, secs) in pv.DOORS.items():
         act = bpy.data.actions.new(pname + "_closing")
         act.use_fake_user = True
         ad.action = act
-        last = 1 + round(secs * mb.CLIP_FPS)
+        last = 1 + round(secs * pv.CLIP_FPS)
         end = max(end, last)
         for fr in range(1, last + 1):
             u = (fr - 1) / (last - 1)
@@ -701,12 +727,12 @@ def pieces(car, c, shift):
         pb.location, pb.rotation_quaternion = (0, 0, 0), (1, 0, 0, 0)
     sc.frame_start, sc.frame_end = 1, end
     for o in [body] + obs[1:]:
-        mb.order_faces(o)
-    mb.export_fbx(body, os.path.join(mb.VEH_DIR, mb.NAME + ".fbx"))
-    mb.export_doors(obs)
+        pv.order_faces(o)
+    pv.export_fbx(body, os.path.join(pv.VEH_DIR, pv.NAME + ".fbx"))
+    pv.export_doors(obs)
     bpy.ops.wm.save_as_mainfile(filepath=os.path.join(TMP, "skf_doors.blend"))
-    counts = {o.name: mb.tris(o) for o in [body] + obs[1:]}
-    cls = {o.name: [int((mb.face_classes(o) == k).sum()) for k in range(3)] for o in [body] + obs[1:]}
+    counts = {o.name: pv.tris(o) for o in [body] + obs[1:]}
+    cls = {o.name: [int((pv.face_classes(o) == k).sum()) for k in range(3)] for o in [body] + obs[1:]}
     print("TRIS", counts, "total", sum(counts.values()), "paint/cabin/glass", cls)
     # read back: two UV layers, one bone group per door, faces still paint -> cabin -> glass
     def zones(o):
@@ -716,23 +742,26 @@ def pieces(car, c, shift):
         ls = np.empty(len(o.data.polygons), np.int64)
         o.data.polygons.foreach_get("loop_start", ls)
         fu = u[0::2][ls]
-        return {GLASS_ZONES[int(k)] for k in np.floor((fu[fu > 1.5] - mb.GLASS_UV1_SHIFT) / 2)}
-    info = lambda o: (o.name, mb.tris(o), len(o.vertex_groups), [u.name for u in o.data.uv_layers],  # noqa: E731
-                      mb.face_classes(o), zones(o))
-    got = [info(mb.import_fbx(os.path.join(mb.VEH_DIR, mb.NAME + ".fbx")))]
+        return {GLASS_ZONES[int(k)] for k in np.floor((fu[fu > 1.5] - pv.GLASS_UV1_SHIFT) / 2)}
+    info = lambda o: (o.name, pv.tris(o), len(o.vertex_groups), [u.name for u in o.data.uv_layers],  # noqa: E731
+                      pv.face_classes(o), zones(o))
+    got = [info(pv.import_fbx(os.path.join(pv.VEH_DIR, pv.NAME + ".fbx")))]
     bpy.ops.wm.read_factory_settings(use_empty=True)
-    bpy.ops.import_scene.fbx(filepath=os.path.join(mb.VEH_DIR, mb.DOORS_FBX + ".fbx"), automatic_bone_orientation=False)
+    bpy.ops.import_scene.fbx(filepath=os.path.join(pv.VEH_DIR, pv.DOORS_FBX + ".fbx"), automatic_bone_orientation=False)
     got += sorted(info(o) for o in bpy.data.objects if o.type == "MESH")
-    want = {mb.NAME: {"WinT", "LightBarL", "WinLT", "WinRT"}, "DoorFrontLeft": {"WinLH"}, "DoorFrontRight": {"WinRH"},
+    want = {pv.NAME: {"WinT", "LightBarL", "WinLT", "WinRT"}, "DoorFrontLeft": {"WinLH"}, "DoorFrontRight": {"WinRH"},
             "DoorRearLeft": {"WinLT"}, "DoorRearRight": {"WinRT"}, "TrunkDoor": {"WinH"}, "EngineDoor": set()}
     for nm, t, vg, uv, cl, gz in got:
         print("CHECK FBX", nm, "tris", t, "groups", vg, "uv", uv, "glass", sorted(gz))
-        if uv[:2] != ["UV0", "UV1"] or (cl[1:] < cl[:-1]).any() or (vg != 1) != (nm == mb.NAME) or gz != want[nm]:
-            raise SystemExit(f"{nm}: uv {uv}, groups {vg}, classes out of order {(cl[1:] < cl[:-1]).sum()}, glass {gz}")
-    if sorted(nm for nm, *_ in got[1:]) != sorted(mb.DOORS):
-        raise SystemExit(f"doors FBX meshes {[nm for nm, *_ in got[1:]]}, want {sorted(mb.DOORS)}")
+        if (uv[:2] != ["UV0", "UV1"] or (cl[1:] < cl[:-1]).any() or (vg != 1) != (nm == pv.NAME) or gz != want[nm]
+                or t != counts[nm]):    # the importer drops a triangle on the same vertices as another
+            raise SystemExit(f"{nm}: uv {uv}, groups {vg}, classes out of order {(cl[1:] < cl[:-1]).sum()}, glass {gz}, "
+                             f"tris {t} of {counts[nm]}")
+    if sorted(nm for nm, *_ in got[1:]) != sorted(pv.DOORS):
+        raise SystemExit(f"doors FBX meshes {[nm for nm, *_ in got[1:]]}, want {sorted(pv.DOORS)}")
     json.dump({"tris": counts, "total": sum(counts.values()), "classes": cls},
               open(os.path.join(TMP, "tris.json"), "w"), indent=1)
+    return counts
 
 
 # ---------------------------------------------------------------- offline view (game camera, culled, magenta = hole)
@@ -740,10 +769,10 @@ def pieces(car, c, shift):
 def stage_view(out, heads, state, skin="UltraRed"):
     bpy.ops.wm.open_mainfile(filepath=os.path.join(TMP, "skf_doors.blend"))
     arm = bpy.data.objects["VehicleSkeleton"]
-    body = bpy.data.objects[mb.NAME]
-    doors = [bpy.data.objects[p] for p in mb.DOORS]
+    body = bpy.data.objects[pv.NAME]
+    doors = [bpy.data.objects[p] for p in pv.DOORS]
     arm.matrix_world = Matrix.Rotation(math.pi / 2, 4, "X")
-    openp = {"all": list(mb.DOORS)[:4], "gate": ["TrunkDoor"], "frunk": ["EngineDoor"], "shut": [],
+    openp = {"all": list(pv.DOORS)[:4], "gate": ["TrunkDoor"], "frunk": ["EngineDoor"], "shut": [],
              "fl": ["DoorFrontLeft"], "fr": ["DoorFrontRight"], "rl": ["DoorRearLeft"], "rr": ["DoorRearRight"]}[state]
     ad = arm.animation_data
     poses = {}
@@ -757,7 +786,7 @@ def stage_view(out, heads, state, skin="UltraRed"):
     for pb in arm.pose.bones:
         pb.location, pb.rotation_quaternion = poses.get(pb.name, (Vector(), (1, 0, 0, 0)))
     bpy.context.view_layer.update()
-    img = bpy.data.images.load(os.path.join(mb.TEX_DIR, f"{mb.NAME}_{skin}.png"))
+    img = bpy.data.images.load(os.path.join(pv.TEX_DIR, f"{pv.NAME}_{skin}.png"))
     CAB = [(22, 22, 24), (40, 40, 44), (100, 100, 106), (30, 30, 32), (58, 58, 62), (112, 106, 98), (46, 46, 50),
            (28, 28, 30), (16, 16, 18), (170, 192, 214)]
 
@@ -789,7 +818,7 @@ def stage_view(out, heads, state, skin="UltraRed"):
             o.data.materials.append(m)
         me.polygons.foreach_set("material_index", idx)
         if glass_mode == "hide":
-            mb.keep_faces(o, idx != 1)
+            pv.keep_faces(o, idx != 1)
     for o in bpy.data.objects:
         o.hide_render = o.type == "MESH" and not (o is body or o in doors)
     sc = bpy.context.scene
@@ -823,7 +852,9 @@ def stage_view(out, heads, state, skin="UltraRed"):
 
 if __name__ == "__main__":
     argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
-    if argv[0] == "build":
+    if argv[0] == "official":
+        pv.stage_official()
+    elif argv[0] == "build":
         stage_build()
     elif argv[0] == "view":
         stage_view(argv[1], argv[2].split(","), argv[3], *argv[4:])

@@ -1,20 +1,20 @@
 #version 120
 
 // Model Y body, doors, tailgate and frunk lid in one draw each: vanilla vehicle_multiuv.frag for the paint, plus the
-// see-through glass and the 3-D cabin, told apart by UV1 (build.py stage cabin):
+// see-through glass and the 3-D cabin, told apart by UV1 (scripts/blender/skf/convert.py pieces):
 //   UV1 u in [0, 1]  paint: vanilla vehicle_multiuv / _noreflect, unchanged
-//   UV1 u in [2+2k, 3+2k]  glass face of pane zone k (GLASS_ZONE below, build.py GLASS_ZONES): UV1 - (2+2k, 0) is its
+//   UV1 u in [2+2k, 3+2k]  glass face of pane zone k (GLASS_ZONE below, convert.py GLASS_ZONES): UV1 - (2+2k, 0) is its
 //                    damage UV; translucent per pane, a hole when the window is removed, open or smashed (uninstall
 //                    matrices), cracks and blood turn it opaque where marked. The zone rides in UV1, not the mask:
 //                    the mask is bilinear and only counts within 0.01 of a zone colour, so a glass edge read from it
 //                    is a staircase of its 512 texels
 //   UV1 u <= -2.5    cabin: palette cell = -2.5 - u (CABIN below; u, since the loader flips v, ImportedStaticMesh.java:
 //                    59); lit with a floor so seats keep an outline at night, the screen glows. The shell's faces in a
-//                    door opening carry door k + d = 1 - v (build.py SHELL_DOORS; d < 0 inside the opening, linear,
+//                    door opening carry door k + d = 1 - v (cabin.py SHELL_DOORS; d < 0 inside the opening, linear,
 //                    so the cut follows the sill / arch / tailgate edge per pixel) and are dropped there while that
 //                    door is open (bit k-1 of the paint hue's integer part, Liftgate.lua syncShell; every hue reader
 //                    takes it mod 1) or removed (its uninstall slot, BaseVehicle.doDoorDamage / doOtherBodyWorkDamage)
-// Inside one mesh the triangles draw in index order: paint, cabin, glass (build.py sorts them), so the glass blends
+// Inside one mesh the triangles draw in index order: paint, cabin, glass (pzveh.py order_faces), so the glass blends
 // over the cabin and the seated characters drawn before the car.
 // A mod shader name is never swapped for _noreflect (ModelManager.java:1298-1311): the vertex shader reports whether
 // the reflection maps are bound (reflections on and GL 3.3, Model.java:556-570) and the reflection terms scale by it,
@@ -83,10 +83,10 @@ const float A_ROOF = 0.50;         // LightBar L (colZone25): the roof glass, un
 const vec3 GLASS_TINT = vec3(0.06, 0.06, 0.07);
 const vec3 SKY = vec3(0.50, 0.60, 0.75);
 const float SKY_MIX = 0.30;        // vanilla windows mix 30 % reflection at refWindows 0.4 (vehicle_multiuv.frag:151)
-// glass zone k (build.py GLASS_ZONES): WinT, WinH, WinLH, WinLT, WinRH, WinRT, LightBar L (the roof glass)
+// glass zone k (convert.py GLASS_ZONES): WinT, WinH, WinLH, WinLT, WinRH, WinRT, LightBar L (the roof glass)
 const vec3 GLASS_ZONE[7] = vec3[7](colZone11, colZone12, colZone9, colZone10, colZone7, colZone8, colZone25);
 
-// cabin palette, sRGB 0-255, in build.py CABIN_CELLS order. Black interior a step lighter than life so the seats
+// cabin palette, sRGB 0-255, in pzveh.py CABIN_CELLS order. Black interior a step lighter than life so the seats
 // read against the floor through the glass (calibration knob)
 const vec3 CABIN[10] = vec3[10](
 	vec3(22.0, 22.0, 24.0),     // floor

@@ -1,57 +1,28 @@
-"""Cabin and trunk for the converted body (convert.py pieces): modely/build.py's cabin_mesh, lining and rbox as on
-branch feat/edges-1025 (40e6107: shell faces in a door opening carry the door in UV1 v, the shader drops them while that
-door is open or removed), the user-approved cabin of 2026-10-24 (seats, dash, wheel, screen, console, trunk), with
-this body's numbers. The Sketchfab model's own interior is not used (user 2026-10-25)."""
+"""The mod's own cabin and trunk, joined into the body mesh by convert.py pieces: below the belt a ray-cast shell
+(floor, sills, firewall, door walls, trunk), above it a lining of the body's inner side, Model Y front buckets, rear
+bench, dash, 15.4" screen, steering wheel, console, trunk sill plate and bin lid (user-approved 2026-10-24). Shell faces
+in a door opening carry the door in UV1 v: the shader drops them while that door is open or removed
+(MinidoracatTesla_vehicle.frag, Liftgate.syncShell). The Sketchfab model's own interior is not used (user
+2026-10-25). Mesh coords (centred; ground z -0.748)."""
 import math
 import bmesh, bpy
 import numpy as np
 from mathutils import Matrix, Vector
-import build as mb  # noqa: E402  (modely/build.py, on sys.path via convert.py)
-from build import dup, face_centres, keep_faces, select_only, tris  # noqa: F401
+import pzveh as pv
+from pzveh import decimate, dup, face_centres, keep_faces, tris
 
-NAME, CABIN_CELLS, CABIN_UV1_U = mb.NAME, mb.CABIN_CELLS, mb.CABIN_UV1_U
+NAME, CABIN_CELLS, CABIN_UV1_U = pv.NAME, pv.CABIN_CELLS, pv.CABIN_UV1_U
 SHELL_DOORS = ("DoorFrontLeft", "DoorFrontRight", "DoorRearLeft", "DoorRearRight", "TrunkDoor")
-# mesh coords (centred; this body: ground z -0.748). Values as modely unless noted
 CABIN_FLOOR = -0.43       # cabin floor
 CABIN_INSET = 0.05        # grid: the shell sits this far inside the surface its ray hit (door slab 0.06)
-LINING_TRIS, LINING_IN = 700, 0.015
-CABIN_FRONT_Y = 1.06      # shell front wall: past the windscreen's lower edge (this body: y 1.02 on the centre line)
-TRUNK_Y = -0.95           # trunk floor starts behind the rear backrests
-TRUNK_DROP = 0.03
+LINING_TRIS, LINING_IN = 700, 0.015  # body lining above the belt (lining()): triangle budget, inset (grid)
+CABIN_FRONT_Y = 1.06      # shell front wall: past the windscreen's lower edge (y 1.02 on the centre line)
+TRUNK_Y = -0.95           # trunk floor starts behind the rear backrests (their foot is at its height)
+TRUNK_DROP = 0.03         # grid: trunk floor below the tailgate opening's lower edge; the sill plate fills it
 CABIN_ZC = -0.10          # cabin axis the shell rays start from
-CABIN_RES = (0.062, 49)
-SEAT_X, SEAT_Z = 0.33, -0.19
-SEAT_Y = (0.195, -0.715)  # front / rear seat (modely: (door front + B pillar) / 2 - 0.12, (B pillar + door rear) / 2 - 0.08)
-
-
-def decimate_keep(ob, target):
-    """Collapse to target triangles (X symmetric), open-edge vertices kept (feat/edges-1025 decimate keep_boundary:
-    out of the modifier's vertex group at factor 1000, so the lining's outline stays on the glass edge)."""
-    select_only(ob)
-    for _ in range(3):
-        n = tris(ob)
-        if n <= target * 1.03:
-            break
-        m = ob.modifiers.new("dec", "DECIMATE")
-        m.decimate_type = "COLLAPSE"
-        m.ratio = target / n
-        m.use_symmetry, m.symmetry_axis = True, "X"
-        bm = bmesh.new()
-        bm.from_mesh(ob.data)
-        edge = {v.index for e in bm.edges if e.is_boundary for v in e.verts}
-        bm.free()
-        if "interior" in ob.vertex_groups:
-            ob.vertex_groups.remove(ob.vertex_groups["interior"])
-        ob.vertex_groups.new(name="interior").add([i for i in range(len(ob.data.vertices)) if i not in edge], 1.0, "REPLACE")
-        m.vertex_group, m.vertex_group_factor = "interior", 1000.0
-        bpy.ops.object.modifier_apply(modifier=m.name)
-    bm = bmesh.new()
-    bm.from_mesh(ob.data)
-    bmesh.ops.triangulate(bm, faces=bm.faces[:])
-    bmesh.ops.dissolve_degenerate(bm, edges=bm.edges, dist=0.0005)
-    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
-    bm.to_mesh(ob.data)
-    bm.free()
+CABIN_RES = (0.062, 49)   # shell: ring step along y (grid), rays per ring (200 -> -20 deg round the axis)
+SEAM_CLEAR = 0.065        # grid: no ring this close to the B-pillar cut (the seam leans +-0.043 about it)
+SEAT_X, SEAT_Z = 0.33, -0.19  # passenger inside points (pzveh.geometry: side 0.33, seat 0.56 over the ground)
 
 
 def rbox(size, r, cuts=(0, 0, 0), seg=2):
@@ -91,7 +62,7 @@ def lining(body, belt, rear_y):
     c = face_centres(ob)
     keep_faces(ob, (c[:, 2] > belt) & (c[:, 1] < CABIN_FRONT_Y) & (c[:, 1] > rear_y))
     n0 = tris(ob)
-    decimate_keep(ob, LINING_TRIS)
+    decimate(ob, LINING_TRIS, keep_boundary=True)
     bm = bmesh.new()
     bm.from_mesh(ob.data)
     bm.normal_update()
@@ -122,7 +93,7 @@ def cabin_mesh(bvh, belt, lining, trunk_floor, trunk_end, arch, opening):
     the near wall is a back face (culled: an open door shows the seats, the open tailgate the trunk) and the far wall
     stands in for the far door's inner panel (it sits inside it), which the near window, drawn first, would hide by
     depth. `bvh`: "body" / "glass" / "door" surfaces in Blender axes; `belt`: mesh z of the belt line; `opening`: the
-    door openings (stage cabin) for the shell faces the shader drops while a door is open (UV1 v, see below)."""
+    door openings (convert.py build_cabin) for the shell faces the shader drops while a door is open (UV1 v, see below)."""
     V, F, cell, flat, dk, shell_n = [], [], [], [], [], 0
 
     def add(v, f, c, smooth=True, door=0):
@@ -134,10 +105,14 @@ def cabin_mesh(bvh, belt, lining, trunk_floor, trunk_end, arch, opening):
         dk.extend([door] * len(f) if isinstance(door, int) else door)
 
     # shell: rings across y (one on each side door's y cut, so no face straddles two openings), rays from the axis;
-    # each ray keeps what it hit first (body / glass / door)
+    # each ray keeps what it hit first (body / glass / door). The B-pillar ring follows the slanted door seam
+    # (opening["seam"], y of z; 4 cm of lean): a flat cut left a 4 cm sliver of wall in one opening and a gap in the
+    # other, so its neighbours keep SEAM_CLEAR off it
     step, na = CABIN_RES
     ys = np.append(np.arange(CABIN_FRONT_Y, trunk_end + step / 2, -step), trunk_end)
-    ys = np.sort(np.concatenate([ys[np.abs(ys[:, None] - opening["y"]).min(1) > step / 3], opening["y"]]))[::-1]
+    clear = np.array([step / 3, SEAM_CLEAR, step / 3])
+    ys = np.sort(np.concatenate([ys[(np.abs(ys[:, None] - opening["y"]) > clear).all(1)], opening["y"]]))[::-1]
+    ring = {k: int(np.argmin(np.abs(ys - y))) for k, y in zip(("front", "bpil", "rear"), opening["y"])}
     nr = len(ys)
     pts, kind, who = np.zeros((nr, na + 2, 3)), np.zeros((nr, na + 2), object), np.zeros((nr, na + 2), int)
     for i, y in enumerate(ys):
@@ -156,6 +131,8 @@ def cabin_mesh(bvh, belt, lining, trunk_floor, trunk_end, arch, opening):
         pts[i, 0], pts[i, -1] = (pts[i, 1, 0], y, floor), (pts[i, -2, 0], y, floor)
         kind[i, 0] = kind[i, -1] = "floor"
     n = na + 2
+    side_v = np.abs(pts[ring["bpil"], :, 0]) > 0.3             # B-pillar ring onto the seam (side walls only)
+    pts[ring["bpil"], side_v, 1] = opening["seam"](pts[ring["bpil"], side_v, 2])
     # the top edge: a cell reaching up to 8 cm over the belt is pulled down onto it (dropping it left a staircase of
     # cells along the trunk's sides, black teeth through the open tailgate: user 2026-10-25); higher cells go
     near = (pts[..., 2] <= belt + 0.08) & np.isin(kind, ("body", "door"))
@@ -184,17 +161,18 @@ def cabin_mesh(bvh, belt, lining, trunk_floor, trunk_end, arch, opening):
         if np.dot(np.cross(b - a, c - a), tgt - cen) < 0:
             f.reverse()
             turned += 1
-    # the face's door: a side door's when it lies on that door's side (where the rays hit it) between its y cuts; the
+    # the face's door: a side door's when it lies on that door's side (where the rays hit it) between its rings; the
     # tailgate's when a rim corner hit it (the fans' axis corner hits nothing). The exact edge is per pixel: UV1 v
     # carries a distance to the opening's sill / arch / lower edge (below)
-    yf, yb, yr = opening["y"]
-    span = {1: (yb, yf), 2: (yb, yf), 3: (yr, yb), 4: (yr, yb)}
+    span = {1: (ring["front"], ring["bpil"]), 2: (ring["front"], ring["bpil"]), 3: (ring["bpil"], ring["rear"]),
+            4: (ring["bpil"], ring["rear"])}
     side = {k: np.sign(pts[..., 0][who == k].mean()) for k in span if (who == k).any()}
     door = []
     for f in sf:
         p = sv[f]
+        ri = [x // n for x in f if x < nr * n]
         k = next((k for k in side if abs(p[:, 0].mean()) > 0.3 and np.sign(p[:, 0].mean()) == side[k]
-                  and span[k][0] - 1e-6 <= p[:, 1].min() and p[:, 1].max() <= span[k][1] + 1e-6), 0)
+                  and len(ri) == 3 and span[k][0] <= min(ri) and max(ri) <= span[k][1]), 0)
         door.append(k or (5 if any(who.flat[x] == 5 for x in f if x < nr * n) else 0))
     hump = [i for i, (f, k) in enumerate(zip(sf, sc)) if k == "liner" for cen in (sv[f].mean(0),)
             if abs(cen[0]) > 0.3 and np.hypot(cen[1] - arch[0], cen[2] - arch[1]) < arch[2] + 0.15]
@@ -224,9 +202,12 @@ def cabin_mesh(bvh, belt, lining, trunk_floor, trunk_end, arch, opening):
         add(v, f, c)
         return v, f
 
+    # seats where pzveh.geometry puts the passengers: (door front + B pillar) / 2 - 0.12, (B pillar + door rear) / 2 - 0.08
+    yf, yb, yr = opening["y"]
+    seat_y = ((yf + yb) / 2 - 0.12, (yb + yr) / 2 - 0.08)
     z0 = SEAT_Z
     for s in (-1, 1):                                   # front buckets
-        cx, fy = s * SEAT_X, SEAT_Y[0]
+        cx, fy = s * SEAT_X, seat_y[0]
         rec = (fy - 0.11, z0 - 0.03, 14)
         part((0.30, 0.30, z0 - 0.10 - CABIN_FLOOR), 0.02, "base", (cx, fy + 0.05, (z0 - 0.10 + CABIN_FLOOR) / 2), seg=1)
         part((0.42, 0.40, 0.09), 0.035, "seat", (cx, fy + 0.08, z0 - 0.06), cuts=(2, 0, 0), sag=0.025)
@@ -235,7 +216,7 @@ def cabin_mesh(bvh, belt, lining, trunk_floor, trunk_end, arch, opening):
         for e in (-1, 1):
             part((0.07, 0.34, 0.07), 0.03, "seat", (cx + e * 0.185, fy + 0.07, z0 - 0.01))
             part((0.07, 0.13, 0.32), 0.03, "seat", (cx + e * 0.19, fy - 0.11, z0 + 0.15), tilt=rec)
-    ry = SEAT_Y[1]                                      # rear bench: three cushions, three backs, three headrests
+    ry = seat_y[1]                                      # rear bench: three cushions, three backs, three headrests
     rec = (ry - 0.11, z0 - 0.03, 18)
     part((1.08, 0.36, z0 - 0.10 - CABIN_FLOOR), 0.02, "base", (0, ry + 0.06, (z0 - 0.10 + CABIN_FLOOR) / 2), seg=1)
     for cx, wd in ((-0.365, 0.36), (0, 0.33), (0.365, 0.36)):

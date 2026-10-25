@@ -28,16 +28,17 @@ T.Specs = {
         regenEff = 0.6,
         -- official Model Y paints (TeslaModelY, references/models.md): entry i = vehicle script skin i-1, and saved
         -- games keep the skin index (BaseVehicle.java:2635/2741), so only append. h/s/v (setColorHSV) tint the
-        -- damage overlays to the paint (vehicle_common.frag.glsl:6-15); the skins themselves are full colour.
+        -- damage overlays to the paint (vehicle_common.frag.glsl:6-15), written by scripts/blender/skf/convert.py build
+        -- from each skin's median paint colour; the skins themselves are full colour.
         colors = {
-            { name = "StealthGrey", code = "PN01", h = 0.69, s = 0.58, v = 0.296 },
-            { name = "PearlWhite", code = "PPSW", h = 0.572, s = 0.49, v = 0.916 },
-            { name = "DiamondBlack", code = "PX02", h = 0.945, s = 0.492, v = 0.22 },
-            { name = "Quicksilver", code = "PN00", h = 0.752, s = 0.524, v = 0.47 },
-            { name = "UltraRed", code = "PR01", h = 0.984, s = 1.0, v = 0.536 },
-            { name = "GlacierBlue", code = "PB01", h = 0.603, s = 0.801, v = 0.479 },
-            { name = "MarineBlue", code = "PB02", h = 0.61, s = 0.879, v = 0.274 },
-            { name = "FrostBlue", code = "PB00", h = 0.603, s = 0.836, v = 0.548 },
+            { name = "StealthGrey", code = "PN01", h = 0.696, s = 0.572, v = 0.28 },
+            { name = "PearlWhite", code = "PPSW", h = 0.573, s = 0.491, v = 0.898 },
+            { name = "DiamondBlack", code = "PX02", h = 0.938, s = 0.503, v = 0.203 },
+            { name = "Quicksilver", code = "PN00", h = 0.74, s = 0.524, v = 0.438 },
+            { name = "UltraRed", code = "PR01", h = 0.984, s = 1.0, v = 0.503 },
+            { name = "GlacierBlue", code = "PB01", h = 0.602, s = 0.8, v = 0.45 },
+            { name = "MarineBlue", code = "PB02", h = 0.603, s = 0.872, v = 0.255 },
+            { name = "FrostBlue", code = "PB00", h = 0.605, s = 0.842, v = 0.53 },
         },
     },
 }

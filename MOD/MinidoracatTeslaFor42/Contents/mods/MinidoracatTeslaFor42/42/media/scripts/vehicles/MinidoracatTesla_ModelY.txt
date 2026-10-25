@@ -75,30 +75,30 @@ module Base
         wheel FrontLeft
         {
             front = true,
-            offset = 0.3578 -0.3066 0.6720,
-            radius = 0.1564,
-            width = 0.2106,
+            offset = 0.3489 -0.3040 0.6720,
+            radius = 0.1590,
+            width = 0.2432,
         }
         wheel FrontRight
         {
             front = true,
-            offset = -0.3581 -0.3066 0.6720,
-            radius = 0.1564,
-            width = 0.2106,
+            offset = -0.3492 -0.3040 0.6720,
+            radius = 0.1590,
+            width = 0.2432,
         }
         wheel RearLeft
         {
             front = false,
-            offset = 0.3578 -0.3066 -0.6456,
-            radius = 0.1564,
-            width = 0.2106,
+            offset = 0.3489 -0.3040 -0.6456,
+            radius = 0.1590,
+            width = 0.2432,
         }
         wheel RearRight
         {
             front = false,
-            offset = -0.3581 -0.3066 -0.6456,
-            radius = 0.1564,
-            width = 0.2106,
+            offset = -0.3492 -0.3040 -0.6456,
+            radius = 0.1590,
+            width = 0.2432,
         }
         part Tire*
         {
@@ -112,12 +112,12 @@ module Base
             showPassenger = true,
             position inside
             {
-                offset = 0.1813 -0.1031 0.1070,
+                offset = 0.1813 -0.1031 0.1094,
                 rotate = 0.0 0.0 0.0,
             }
             position outside
             {
-                offset = 0.6061 -0.4108 0.1070,
+                offset = 0.6061 -0.4108 0.1094,
                 rotate = 0.0 0.0 0.0,
                 area = SeatFrontLeft,
             }
@@ -127,12 +127,12 @@ module Base
             showPassenger = true,
             position inside
             {
-                offset = -0.1813 -0.1031 0.1070,
+                offset = -0.1813 -0.1031 0.1094,
                 rotate = 0.0 0.0 0.0,
             }
             position outside
             {
-                offset = -0.6061 -0.4108 0.1070,
+                offset = -0.6061 -0.4108 0.1094,
                 rotate = 0.0 0.0 0.0,
                 area = SeatFrontRight,
             }
@@ -142,12 +142,12 @@ module Base
             showPassenger = true,
             position inside
             {
-                offset = 0.1813 -0.1031 -0.3930,
+                offset = 0.1813 -0.1031 -0.3906,
                 rotate = 0.0 0.0 0.0,
             }
             position outside
             {
-                offset = 0.6061 -0.4108 -0.3930,
+                offset = 0.6061 -0.4108 -0.3906,
                 rotate = 0.0 0.0 0.0,
                 area = SeatRearLeft,
             }
@@ -157,12 +157,12 @@ module Base
             showPassenger = true,
             position inside
             {
-                offset = -0.1813 -0.1031 -0.3930,
+                offset = -0.1813 -0.1031 -0.3906,
                 rotate = 0.0 0.0 0.0,
             }
             position outside
             {
-                offset = -0.6061 -0.4108 -0.3930,
+                offset = -0.6061 -0.4108 -0.3906,
                 rotate = 0.0 0.0 0.0,
                 area = SeatRearRight,
             }
@@ -181,19 +181,19 @@ module Base
         }
         area SeatFrontLeft
         {
-            xywh = 0.6775 0.1729 0.4725 0.5549,
+            xywh = 0.6775 0.1754 0.4725 0.5500,
         }
         area SeatFrontRight
         {
-            xywh = -0.6775 0.1729 0.4725 0.5549,
+            xywh = -0.6775 0.1754 0.4725 0.5500,
         }
         area SeatRearLeft
         {
-            xywh = 0.6775 -0.3491 0.4725 0.4890,
+            xywh = 0.6775 -0.3466 0.4725 0.4940,
         }
         area SeatRearRight
         {
-            xywh = -0.6775 -0.3491 0.4725 0.4890,
+            xywh = -0.6775 -0.3466 0.4725 0.4940,
         }
         area TireFrontLeft
         {

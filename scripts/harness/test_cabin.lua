@@ -1,4 +1,4 @@
--- Model Y 3-D cabin and see-through glass (build.py stage cabin, models.md section 8): no extra models. The body mesh
+-- Model Y 3-D cabin and see-through glass (scripts/blender/skf/convert.py + cabin.py, models.md): no extra models. The body mesh
 -- carries the cabin and the body's glass, each door / the tailgate its window; MinidoracatTesla_vehicle draws paint,
 -- glass and cabin by UV1 class. Doors keep rate 1 (one AnimationPlayer update a frame), every seat shows its passenger.
 local check = H.check
@@ -62,7 +62,7 @@ check(frag:find("reflectionsOn*ref_en", 1, true) ~= nil and frag:find("reflectio
     "both reflection terms scale by reflectionsOn (0 = vehicle_multiuv_noreflect)")
 local cells = 0
 for _ in (frag:match("const vec3 CABIN%[%d+%] = vec3%[%d+%]%((.-)%);") or ""):gmatch("vec3%(") do cells = cells + 1 end
-check(cells == 10, "cabin palette has build.py's 10 CABIN_CELLS (" .. cells .. ")")
+check(cells == 10, "cabin palette has pzveh.py's 10 CABIN_CELLS (" .. cells .. ")")
 for _, v in ipairs({ "MinidoracatTesla_vehicle_static.vert", "MinidoracatTesla_vehicle.vert" }) do
     local src = read("shaders/" .. v) or ""
     check(src:find("textureSize(TextureReflectionA, 0).x > 1", 1, true) ~= nil and src:find("#if __VERSION__ >= 130", 1, true) ~= nil,
