@@ -31,14 +31,14 @@ T.Specs = {
         -- damage overlays to the paint (vehicle_common.frag.glsl:6-15), written by scripts/blender/skf/convert.py build
         -- from each skin's median paint colour; the skins themselves are full colour.
         colors = {
-            { name = "StealthGrey", code = "PN01", h = 0.726, s = 0.572, v = 0.214 },
-            { name = "PearlWhite", code = "PPSW", h = 0.642, s = 0.502, v = 0.824 },
-            { name = "DiamondBlack", code = "PX02", h = 0.736, s = 0.538, v = 0.151 },
-            { name = "Quicksilver", code = "PN00", h = 0.773, s = 0.534, v = 0.345 },
-            { name = "UltraRed", code = "PR01", h = 0.99, s = 1.0, v = 0.379 },
-            { name = "GlacierBlue", code = "PB01", h = 0.608, s = 0.797, v = 0.347 },
-            { name = "MarineBlue", code = "PB02", h = 0.579, s = 0.93, v = 0.194 },
-            { name = "FrostBlue", code = "PB00", h = 0.61, s = 0.849, v = 0.439 },
+            { name = "StealthGrey", code = "PN01", h = 0.794, s = 0.569, v = 0.236 },
+            { name = "PearlWhite", code = "PPSW", h = 0.592, s = 0.492, v = 0.864 },
+            { name = "DiamondBlack", code = "PX02", h = 0.937, s = 0.536, v = 0.181 },
+            { name = "Quicksilver", code = "PN00", h = 0.807, s = 0.516, v = 0.364 },
+            { name = "UltraRed", code = "PR01", h = 0.988, s = 1.0, v = 0.415 },
+            { name = "GlacierBlue", code = "PB01", h = 0.61, s = 0.789, v = 0.383 },
+            { name = "MarineBlue", code = "PB02", h = 0.608, s = 0.828, v = 0.223 },
+            { name = "FrostBlue", code = "PB00", h = 0.609, s = 0.839, v = 0.494 },
         },
     },
 }

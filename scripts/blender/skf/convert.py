@@ -49,15 +49,19 @@ MAT_RGB = {"Material_#2125780493": None, "black_base": (34, 34, 36), "Material_#
            "glass_base": (14, 14, 16), "Material_#2125773440": (14, 14, 16), "04_-_Default": (60, 60, 60)}
 GLASS_MATS = ("glass_base", "Material_#2125773440")  # glass_base on Plane.008 is the B-pillar cover: opaque black
 # paint light (textures()): official-render paint quantile q = (base + up x upness(nz) + band x shoulder(nz) + lobe x
-# softbox(n . PAINT_LIGHT)) x AO term: (base, up, band strength, band nz centre, band width, lobe, lobe width).
-# Calibration knob. A texel-rank mapping put the large hood on the render's highlight quantiles (pink,
-# tesla-skf-after-1025b); without the lobe flat panels were one quantile (hood p25-p75 120-134 against the previous
-# skin's 105-166, tesla-skf-after-1025c "沒甚麼反光")
-PAINT_Q = (0.12, 0.10, 0.55, 0.30, 0.20, 0.20, 0.05)
-# the previous Model Y skin (main b7949ae) UltraRed paint texel R percentiles 10/25/50/75/90/97 = 73/84/117/175/216/
-# 229 (red texels, R > 2.2 G + 8), i.e. these quantiles of the official ramp: the paint keeps its brightness and
-# contrast. Calibration knob
-PAINT_TARGET = ((10, 0.12), (25, 0.27), (50, 0.48), (75, 0.70), (90, 0.84), (97, 0.90))
+# softbox(n . PAINT_LIGHT) + height x h) x AO term: (base, up, band strength, band nz centre, band width, lobe, lobe
+# width, height); h = face centre height, 0 at the lowest face, 1 at the roof. Calibration knob. A texel-rank mapping
+# put the large hood on the render's highlight quantiles (pink, tesla-skf-after-1025b); without the lobe flat panels
+# were one quantile (tesla-skf-after-1025c "沒甚麼反光").
+# PAINT_Q, PAINT_TARGET and pv.CAL are fitted together (exp/paint-gloss-1026): the paint seen from the game camera
+# (heading S, closest zoom) should spread like the official FRONT34 render's paint, p25 / p50 / p75 within a few
+# levels. The previous set (0.12, 0.10, 0.55, 0.30, 0.20, 0.20, 0.05) / (.12 .27 .48 .70 .84 .90) left hood and sides
+# on one quantile band: in game p75 only 4-11 levels over p50 (official 20-56), p25-p75 0.47-0.60 x official
+# (tesla-gloss-skinA-1026a). A fit on the spread alone lit the lower doors and the bumper brightest (FRONT34 is a low
+# side view, the game camera looks down): the height term keeps the lower body below the waist
+PAINT_Q = (0.12, 0.168, 0.361, 0.265, 0.155, 0.101, 0.05, 0.3)
+# percentiles of all paint texels -> quantile of the official ramp (pv.official_ramp)
+PAINT_TARGET = ((10, 0.093), (25, 0.262), (50, 0.415), (75, 0.568), (90, 0.89), (97, 0.918))
 PAINT_LIGHT = (0.0, 0.45, 0.89)            # softbox above, ahead: x-symmetric so both sides match at every heading
 OFFICIAL = pv.OFFICIAL                     # design-studio renders (stage official)
 LIGHT_RGB = {"head": (255, 250, 240), "tail": (255, 30, 30)}
@@ -448,18 +452,22 @@ def paint_hsv(hsvs):
 def textures(car, c):
     zone_rgb = np.array([pv.Z[z] for z in ZN], float)
     aux = np.stack([c["paint"].astype(float), (c["lamp"] > 0).astype(float), (c["lamp"] == 2).astype(float)], 1)
-    b = bake(car, {"col": c["rgb"], "zone": zone_rgb[c["zone"]], "aux": aux})
+    fz = pv.face_centres(car)[:, 2]
+    hgt = np.repeat(((fz - fz.min()) / np.ptp(fz))[:, None], 3, 1)    # 0 at the lowest face, 1 at the roof
+    b = bake(car, {"col": c["rgb"], "zone": zone_rgb[c["zone"]], "aux": aux, "hgt": hgt})
     col, zon, aux, ao = b["col"][..., :3], b["zone"][..., :3], b["aux"][..., :3], b["ao"][..., 0]
     nrm = b["nrm"][..., :3] * 2 - 1
     nz = nrm[..., 2]
     paint = aux[..., 0] > 0.5
     shade = 0.55 + 0.45 * ao
     # paint: the source is one flat colour, so its light comes from a matcap on the baked normal (sides low in the
-    # official render's paint quantiles, hood and roof above the middle, a bright band on the shoulder) times AO; the
-    # quantile picks the official render's paint colour there (official_ramp), then CAL / GAIN
+    # official render's paint quantiles, hood and roof above the middle, a bright band on the shoulder) and the height
+    # (the lower body reflects the ground) times AO; the quantile picks the official render's paint colour there
+    # (official_ramp), then CAL / GAIN
     q = (PAINT_Q[0] + PAINT_Q[1] * np.clip((nz + 0.3) / 1.2, 0, 1)
          + PAINT_Q[2] * np.exp(-((nz - PAINT_Q[3]) / PAINT_Q[4]) ** 2)
-         + PAINT_Q[5] * np.exp(-(1 - nrm @ np.array(PAINT_LIGHT)) / PAINT_Q[6])) * (0.55 + 0.45 * ao)
+         + PAINT_Q[5] * np.exp(-(1 - nrm @ np.array(PAINT_LIGHT)) / PAINT_Q[6])
+         + PAINT_Q[7] * b["hgt"][..., 0]) * (0.55 + 0.45 * ao)
     # AO samples are noisy and the ramp is steep in places: blurred inside the paint (about 6 px of 2048), else flat
     # panels came out speckled
     pm = paint.astype(np.float32)

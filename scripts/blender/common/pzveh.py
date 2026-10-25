@@ -47,17 +47,22 @@ PAINTS = [("StealthGrey", "PN01"), ("PearlWhite", "PPSW"), ("DiamondBlack", "PX0
           ("UltraRed", "PR01"), ("GlacierBlue", "PB01"), ("MarineBlue", "PB02"), ("FrostBlue", "PB00")]
 GAIN = 0.88                                 # in-game day screen / texture sRGB (E2E tesla-modely-skin-1024c/d: red
 #                                             0.80-0.86, white 0.90-0.97), calibration knob
-# per-paint, per-channel sRGB tone fix of the paint texels, tex' = a * tex + b, after the official-render quantile
-# colour / GAIN: in-game screenshots of the car heading S (E2E modely-sp paint-*-fl-max, option 2, closest zoom)
-# against the official FRONT34 render of the same paint. The previous body's fit (slope from the p25-p75 spread,
-# offset on p50) times official / game p50 per channel of the converted body (tesla-skf2-modely-1025b: same texel
-# percentiles as the previous skin, game p50 1.1-1.6 x official); a slope fit with an offset would clip dark texels to
-# black. Calibration knob: refit with e2e/.../perf/paint_sheet.py after changing the paint light (skf/convert.py)
+# per-paint sRGB tone of the paint texels, tex = a * official-ramp colour / GAIN + b, one slope a for all three
+# channels (per-channel slopes turned the colour along the ramp: Ultra Red's G slope above R / B made its highlights
+# orange) and per-channel offsets b that put the in-game p50 on the official FRONT34 p50. a sets the p25-p75 spread
+# against FRONT34; Pearl White takes a = 0.8 (a = 1 burns 12% of its texels to 255). Fitted with skf/convert.py
+# PAINT_Q / PAINT_TARGET on in-game screenshots of the car heading S (modely-skin-sp, option 2, closest zoom;
+# tesla-gloss-skinA-1026a) and the game camera's visible texels (offline view). Calibration knob: refit after
+# changing the paint light; check with e2e/.../perf/paint_sheet.py
 CAL = {
-    "StealthGrey": ((0.56, 0.54, 0.54), (0.039, 0.035, 0.035)), "PearlWhite": ((0.83, 0.86, 0.85), (0.031, -0.004, 0.016)),
-    "DiamondBlack": ((0.59, 0.59, 0.59), (0.052, 0.051, 0.053)), "Quicksilver": ((0.62, 0.61, 0.64), (-0.031, -0.037, -0.053)),
-    "UltraRed": ((0.61, 0.81, 0.55), (0.022, 0.047, 0.048)), "GlacierBlue": ((0.49, 0.52, 0.57), (0.036, 0.018, -0.002)),
-    "MarineBlue": ((0.62, 0.52, 0.51), (0.048, 0.058, 0.043)), "FrostBlue": ((0.57, 0.58, 0.60), (0.077, 0.086, 0.109)),
+    "StealthGrey": ((0.88, 0.88, 0.88), (0.030, 0.016, 0.012)),
+    "PearlWhite": ((0.80, 0.80, 0.80), (0.134, 0.129, 0.129)),
+    "DiamondBlack": ((0.99, 0.99, 0.99), (0.073, 0.067, 0.063)),
+    "Quicksilver": ((0.93, 0.93, 0.93), (-0.105, -0.114, -0.126)),
+    "UltraRed": ((0.97, 0.97, 0.97), (-0.067, 0.078, 0.062)),
+    "GlacierBlue": ((0.80, 0.80, 0.80), (0.003, -0.017, -0.029)),
+    "MarineBlue": ((0.81, 0.81, 0.81), (0.084, 0.069, 0.039)),
+    "FrostBlue": ((0.79, 0.79, 0.79), (0.072, 0.077, 0.100)),
 }
 COMPOSITOR = ("https://static-assets.tesla.cn/configurator/compositor?context=design_studio_2&options={}&view={}"
               "&model=my&size=1920&bkba_opt=1&crop=0,0,0,0&overlay=0&")
