@@ -1,5 +1,7 @@
 {
     "Tooltip_MinidoracatTesla_Battery": "Batería %1%%",
     "Tooltip_MinidoracatTesla_SentryOnFor": "Activo desde hace %1 h",
-    "Tooltip_MinidoracatTesla_NoCarInReach": "No hay ningún Tesla al alcance del cable"
+    "Tooltip_MinidoracatTesla_NoCarInReach": "No hay ningún Tesla al alcance del cable",
+    "Tooltip_MinidoracatTesla_TakeDriveUnitPartsWarning": "Esto establecerá la condición de la unidad de tracción a 0.",
+    "Tooltip_MinidoracatTesla_DriveUnitCondition": "Estado de la unidad de tracción: %1"
 }

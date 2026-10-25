@@ -4,5 +4,6 @@
     "Base.MinidoracatTesla_WallConnector": "Tesla Wall Connector (3. Gen.)",
     "Base.MinidoracatTesla_CableHang": "Ladekabel (Wandabschnitt)",
     "Base.MinidoracatTesla_CableFloor": "Ladekabel (Bodenabschnitt)",
-    "Base.MinidoracatTesla_CablePlug": "Ladekabel (Stecker)"
+    "Base.MinidoracatTesla_CablePlug": "Ladekabel (Stecker)",
+    "Base.MinidoracatTesla_DriveUnitParts": "Antriebseinheit-Teile"
 }

@@ -4,5 +4,6 @@
     "Base.MinidoracatTesla_WallConnector": "Tesla Wall Connector (Gen 3)",
     "Base.MinidoracatTesla_CableHang": "Charge Cable (wall drop)",
     "Base.MinidoracatTesla_CableFloor": "Charge Cable (floor run)",
-    "Base.MinidoracatTesla_CablePlug": "Charge Cable (connector)"
+    "Base.MinidoracatTesla_CablePlug": "Charge Cable (connector)",
+    "Base.MinidoracatTesla_DriveUnitParts": "Drive Unit Parts"
 }

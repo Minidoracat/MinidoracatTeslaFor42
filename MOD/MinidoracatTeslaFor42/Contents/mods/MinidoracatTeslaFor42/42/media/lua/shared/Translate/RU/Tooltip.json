@@ -1,5 +1,7 @@
 {
     "Tooltip_MinidoracatTesla_Battery": "Батарея %1%%",
     "Tooltip_MinidoracatTesla_SentryOnFor": "Включен %1 ч",
-    "Tooltip_MinidoracatTesla_NoCarInReach": "В пределах длины кабеля нет Tesla"
+    "Tooltip_MinidoracatTesla_NoCarInReach": "В пределах длины кабеля нет Tesla",
+    "Tooltip_MinidoracatTesla_TakeDriveUnitPartsWarning": "Это установит состояние блока привода на 0.",
+    "Tooltip_MinidoracatTesla_DriveUnitCondition": "Состояние блока привода: %1"
 }

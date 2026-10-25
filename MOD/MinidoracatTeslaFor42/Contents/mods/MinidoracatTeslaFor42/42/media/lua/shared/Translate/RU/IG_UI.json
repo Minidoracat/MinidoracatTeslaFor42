@@ -96,5 +96,7 @@
     "IGUI_MinidoracatTesla_Deny_NOT_DRIVER": "Это может сделать только водитель",
     "IGUI_MinidoracatTesla_Deny_NO_LIFTGATE": "Дверь багажника не установлена",
     "IGUI_MinidoracatTesla_Deny_MOVING": "Сначала остановите машину",
-    "IGUI_MinidoracatTesla_Deny_LIFTGATE_LOCKED": "Замок двери багажника сломан"
+    "IGUI_MinidoracatTesla_Deny_LIFTGATE_LOCKED": "Замок двери багажника сломан",
+    "IGUI_MinidoracatTesla_RepairDriveUnit": "Отремонтировать блок привода",
+    "IGUI_MinidoracatTesla_TakeDriveUnitParts": "Взять детали блока привода"
 }

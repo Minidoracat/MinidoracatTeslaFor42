@@ -1,8 +1,9 @@
 {
-    "Base.MinidoracatTesla_ModelYBatterySR": "Model Y Yüksek Voltaj Bataryası - Standart Menzil (62,5 kWh)",
-    "Base.MinidoracatTesla_ModelYBatteryLR": "Model Y Yüksek Voltaj Bataryası - Uzun Menzil (78,1 kWh)",
+    "Base.MinidoracatTesla_ModelYBatterySR": "Model Y Yüksek Voltajlı Batarya - Standart Menzil (62,5 kWh)",
+    "Base.MinidoracatTesla_ModelYBatteryLR": "Model Y Yüksek Voltajlı Batarya - Uzun Menzil (78,1 kWh)",
     "Base.MinidoracatTesla_WallConnector": "Tesla Wall Connector (3. Nesil)",
     "Base.MinidoracatTesla_CableHang": "Şarj Kablosu (duvar kısmı)",
     "Base.MinidoracatTesla_CableFloor": "Şarj Kablosu (zemin kısmı)",
-    "Base.MinidoracatTesla_CablePlug": "Şarj Kablosu (konnektör)"
+    "Base.MinidoracatTesla_CablePlug": "Şarj Kablosu (konnektör)",
+    "Base.MinidoracatTesla_DriveUnitParts": "Tahrik Ünitesi Parçaları"
 }

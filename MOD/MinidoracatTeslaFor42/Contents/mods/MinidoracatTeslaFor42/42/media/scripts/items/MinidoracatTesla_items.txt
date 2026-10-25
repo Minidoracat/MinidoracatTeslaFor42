@@ -29,6 +29,19 @@ module Base
         WorldStaticModel = CarBattery,
     }
 
+    /* Drive Unit Parts: repairs a Tesla's drive unit (Engine part) in place of Base.EngineParts; values copied from */
+    /* vanilla EngineParts (generated/items/normal.txt:11818-11827), world model reused. Icon: drive_unit_icon.py. */
+    item MinidoracatTesla_DriveUnitParts
+    {
+        DisplayCategory = VehicleMaintenance,
+        Weight = 1.0,
+        ItemType = base:normal,
+        Icon = MinidoracatTesla_DriveUnitParts,
+        MetalValue = 30.0,
+        MechanicsItem = true,
+        WorldStaticModel = EngineParts,
+    }
+
     /* Wall Connector Gen 3: moveable (generated/items/moveable.txt:2334-2341); the tile's CustomItem gives this back */
     /* on pick-up (ISMoveableSpriteProps.lua:142,215-224). Tile and icon by TeslaChargerArt. */
     item MinidoracatTesla_WallConnector

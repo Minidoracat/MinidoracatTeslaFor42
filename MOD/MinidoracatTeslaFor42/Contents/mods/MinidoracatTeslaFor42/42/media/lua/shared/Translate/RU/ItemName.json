@@ -4,5 +4,6 @@
     "Base.MinidoracatTesla_WallConnector": "Tesla Wall Connector (3-е пок.)",
     "Base.MinidoracatTesla_CableHang": "Зарядный кабель (спуск со стены)",
     "Base.MinidoracatTesla_CableFloor": "Зарядный кабель (по полу)",
-    "Base.MinidoracatTesla_CablePlug": "Зарядный кабель (разъем)"
+    "Base.MinidoracatTesla_CablePlug": "Зарядный кабель (разъем)",
+    "Base.MinidoracatTesla_DriveUnitParts": "Детали блока привода"
 }

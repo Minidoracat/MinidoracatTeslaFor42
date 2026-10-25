@@ -1,5 +1,7 @@
 {
     "Tooltip_MinidoracatTesla_Battery": "Akumulator %1%%",
     "Tooltip_MinidoracatTesla_SentryOnFor": "Włączony od %1 h",
-    "Tooltip_MinidoracatTesla_NoCarInReach": "Brak Tesli w zasięgu kabla"
+    "Tooltip_MinidoracatTesla_NoCarInReach": "Brak Tesli w zasięgu kabla",
+    "Tooltip_MinidoracatTesla_TakeDriveUnitPartsWarning": "Przez tę czynność stan zespołu napędowego spadnie do 0.",
+    "Tooltip_MinidoracatTesla_DriveUnitCondition": "Stan zespołu napędowego: %1"
 }

@@ -4,5 +4,6 @@
     "Base.MinidoracatTesla_WallConnector": "Tesla Wall Connector (3e gén.)",
     "Base.MinidoracatTesla_CableHang": "Câble de recharge (descente murale)",
     "Base.MinidoracatTesla_CableFloor": "Câble de recharge (au sol)",
-    "Base.MinidoracatTesla_CablePlug": "Câble de recharge (connecteur)"
+    "Base.MinidoracatTesla_CablePlug": "Câble de recharge (connecteur)",
+    "Base.MinidoracatTesla_DriveUnitParts": "Pièces d'unité d'entraînement"
 }
