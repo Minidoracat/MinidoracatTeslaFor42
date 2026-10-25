@@ -1,10 +1,12 @@
 -- EV names for the part ids a Tesla reuses (GasTank = high voltage battery, Engine = drive unit, ...), Tesla only.
 -- Vanilla builds every part name as getText("IGUI_VehiclePart" .. id) (ISVehicleMechanics.lua:64, :1076) and the
 -- vehicle script has no per-car display name (VehicleScript.java:924-949), so while the methods below run for a
--- Tesla, getText maps the vanilla keys to ours. Other cars and every other caller see vanilla getText.
+-- Tesla, getText maps the vanilla keys to ours; the inventory window's container buttons are renamed at the end.
+-- Other cars and every other caller see vanilla getText.
 -- The new Frunk part needs no mapping: IGUI_VehiclePartFrunk is our own key (no vanilla part has that id).
 require "Vehicles/ISUI/ISVehicleMechanics"
 require "Vehicles/ISUI/ISVehicleMenu"
+require "ISUI/ISInventoryPage"
 require "MinidoracatTesla/Core"
 
 local T = MinidoracatTesla
@@ -17,6 +19,8 @@ T.PartNames = {
     IGUI_VehiclePartBattery = "IGUI_MinidoracatTesla_Part_Battery",
     IGUI_VehiclePartHeater = "IGUI_MinidoracatTesla_Part_Heater",
     IGUI_VehiclePartEngineDoor = "IGUI_MinidoracatTesla_Part_EngineDoor",
+    IGUI_VehiclePartTruckBed = "IGUI_MinidoracatTesla_Part_TruckBed",
+    IGUI_VehiclePartTrunkDoor = "IGUI_MinidoracatTesla_Part_TrunkDoor",
     IGUI_VehiclePartCatengine = "IGUI_MinidoracatTesla_PartCat_engine", -- category header (ISVehicleMechanics.lua:59)
     Tooltip_outoffuel = "IGUI_MinidoracatTesla_OutOfCharge",        -- empty GasTank (:1085, :1265)
     IGUI_EnginePower = "IGUI_MinidoracatTesla_MotorPower",           -- header "Engine Power: N hp" (:1178)
@@ -54,3 +58,13 @@ T.withPartNames(ISVehicleMechanics, "render", windowVehicle)
 T.withPartNames(ISVehicleMenu, "showRadialMenuOutside", function(playerObj)
     return not playerObj:getVehicle() and ISVehicleMenu.getVehicleToInteractWith(playerObj) or nil
 end)
+
+-- container buttons of the loot / inventory window: refreshBackpacks names them getText("IGUI_VehiclePart" .. type)
+-- before calling addContainerButton (ISInventoryPage.lua:1586,1610,1766), for whatever cars are in reach
+local addContainerButton = ISInventoryPage.addContainerButton
+function ISInventoryPage:addContainerButton(container, texture, name, tooltip)
+    local part = container and container:getVehiclePart() -- ItemContainer.java:3427
+    local key = part and T.PartNames["IGUI_VehiclePart" .. part:getId()]
+    if key and T.isTesla(part:getVehicle()) then name, tooltip = getText(key), getText(key) end
+    return addContainerButton(self, container, texture, name, tooltip)
+end

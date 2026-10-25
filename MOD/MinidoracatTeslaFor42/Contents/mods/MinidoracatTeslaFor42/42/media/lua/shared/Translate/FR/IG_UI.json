@@ -61,6 +61,8 @@
     "IGUI_MinidoracatTesla_Part_Battery": "Batterie basse tension",
     "IGUI_MinidoracatTesla_Part_Heater": "Pompe à chaleur",
     "IGUI_MinidoracatTesla_Part_EngineDoor": "Capot",
+    "IGUI_MinidoracatTesla_Part_TruckBed": "Coffre arrière",
+    "IGUI_MinidoracatTesla_Part_TrunkDoor": "Hayon",
     "IGUI_MinidoracatTesla_PartCat_engine": "Groupe motopropulseur",
     "IGUI_MinidoracatTesla_OutOfCharge": "Batterie vide",
     "IGUI_MinidoracatTesla_MotorPower": "Puissance du moteur électrique",

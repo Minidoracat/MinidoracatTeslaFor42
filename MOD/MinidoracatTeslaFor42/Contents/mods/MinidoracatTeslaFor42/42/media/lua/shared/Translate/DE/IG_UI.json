@@ -61,6 +61,8 @@
     "IGUI_MinidoracatTesla_Part_Battery": "Niederspannungsbatterie",
     "IGUI_MinidoracatTesla_Part_Heater": "Wärmepumpe",
     "IGUI_MinidoracatTesla_Part_EngineDoor": "Haube",
+    "IGUI_MinidoracatTesla_Part_TruckBed": "Hinterer Kofferraum",
+    "IGUI_MinidoracatTesla_Part_TrunkDoor": "Heckklappe",
     "IGUI_MinidoracatTesla_PartCat_engine": "Antriebsstrang",
     "IGUI_MinidoracatTesla_OutOfCharge": "Batterie leer",
     "IGUI_MinidoracatTesla_MotorPower": "Motorleistung",

@@ -61,6 +61,8 @@
     "IGUI_MinidoracatTesla_Part_Battery": "Düşük Voltajlı Batarya",
     "IGUI_MinidoracatTesla_Part_Heater": "Isı Pompası",
     "IGUI_MinidoracatTesla_Part_EngineDoor": "Kaput",
+    "IGUI_MinidoracatTesla_Part_TruckBed": "Arka Bagaj",
+    "IGUI_MinidoracatTesla_Part_TrunkDoor": "Bagaj Kapağı",
     "IGUI_MinidoracatTesla_PartCat_engine": "Aktarma Organı",
     "IGUI_MinidoracatTesla_OutOfCharge": "Şarj bitti",
     "IGUI_MinidoracatTesla_MotorPower": "Elektrik Motoru Gücü",

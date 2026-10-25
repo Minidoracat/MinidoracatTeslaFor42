@@ -61,6 +61,8 @@
     "IGUI_MinidoracatTesla_Part_Battery": "Batería de baja tensión",
     "IGUI_MinidoracatTesla_Part_Heater": "Bomba de calor",
     "IGUI_MinidoracatTesla_Part_EngineDoor": "Capó",
+    "IGUI_MinidoracatTesla_Part_TruckBed": "Maletero trasero",
+    "IGUI_MinidoracatTesla_Part_TrunkDoor": "Portón trasero",
     "IGUI_MinidoracatTesla_PartCat_engine": "Tren motriz",
     "IGUI_MinidoracatTesla_OutOfCharge": "Sin carga",
     "IGUI_MinidoracatTesla_MotorPower": "Potencia del motor eléctrico",
