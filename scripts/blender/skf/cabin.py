@@ -1,7 +1,7 @@
 """The mod's own cabin and trunk, joined into the body mesh by convert.py pieces: below the belt a ray-cast shell
-(floor, sills, firewall, door walls, trunk), above it a lining of the body's inner side, Model Y front buckets, rear
-bench, dash, 15.4" screen, steering wheel, console, trunk sill plate and bin lid (user-approved 2026-10-24). Shell faces
-in a door opening carry the door in UV1 v: the shader drops them while that door is open or removed
+(floor, sills, firewall, door walls, trunk; above the belt the body's reversed paint faces are the inside), Model Y
+front buckets, rear bench, dash, 15.4" screen, steering wheel, console, trunk sill plate and bin lid (user-approved
+2026-10-24). Shell faces in a door opening carry the door in UV1 v: the shader drops them while that door is open or removed
 (MinidoracatTesla_vehicle.frag, Liftgate.syncShell). The Sketchfab model's own interior is not used (user
 2026-10-25). Mesh coords (centred; ground z -0.748)."""
 import math
@@ -9,13 +9,11 @@ import bmesh, bpy
 import numpy as np
 from mathutils import Matrix, Vector
 import pzveh as pv
-from pzveh import decimate, dup, face_centres, keep_faces, tris
 
 NAME, CABIN_CELLS, CABIN_UV1_U = pv.NAME, pv.CABIN_CELLS, pv.CABIN_UV1_U
 SHELL_DOORS = ("DoorFrontLeft", "DoorFrontRight", "DoorRearLeft", "DoorRearRight", "TrunkDoor")
 CABIN_FLOOR = -0.43       # cabin floor
 CABIN_INSET = 0.05        # grid: the shell sits this far inside the surface its ray hit (door slab 0.06)
-LINING_TRIS, LINING_IN = 700, 0.015  # body lining above the belt (lining()): triangle budget, inset (grid)
 CABIN_FRONT_Y = 1.06      # shell front wall: past the windscreen's lower edge (y 1.02 on the centre line)
 TRUNK_Y = -0.95           # trunk floor starts behind the rear backrests (their foot is at its height)
 TRUNK_DROP = 0.03         # grid: trunk floor below the tailgate opening's lower edge; the sill plate fills it
@@ -52,41 +50,98 @@ def rot_x(deg):
     return np.array([[1, 0, 0], [0, c, -s], [0, s, c]])
 
 
-def lining(body, belt, rear_y):
-    """Inner side of the body above the belt inside the cabin (pillars, roof rails, the bars round the roof glass): its
-    outer paint faces after the glass split (not the jambs: turned inward they stood up as black teeth behind the
-    glass), decimated to LINING_TRIS with the outline kept, turned to the cabin axis and pulled LINING_IN inside. From
-    outside the near side faces away (culled); through the glass the far side shows a dark lining whose edges follow the
-    glass's own (a ray-grid shell there left a staircase along every window, E2E TeslaCabin-cab-after-1024c)."""
-    ob = dup(body, "lining")
-    c = face_centres(ob)
-    keep_faces(ob, (c[:, 2] > belt) & (c[:, 1] < CABIN_FRONT_Y) & (c[:, 1] > rear_y))
-    n0 = tris(ob)
-    decimate(ob, LINING_TRIS, keep_boundary=True)
+# door cards (Model Y, black interior; official interior photos): (part, y from the card's front / rear end, z over the
+# belt, size along y, size z, depth off the panel, cell, edge radius). Front door ys = (rear, front) = (B pillar, A
+# pillar); rear door (rear end, B pillar). "end" entries span the card minus (a, b) at its rear and front ends
+DOOR_CARD = {
+    "front": [
+        ("upper trim", "end", (0.05, 0.10), -0.050, None, 0.060, 0.030, "dash", 0.012),
+        ("ambient light", "end", (0.07, 0.16), -0.086, None, 0.007, 0.012, "screen", 0.002),
+        ("armrest", "rear", 0.07, -0.215, 0.44, 0.050, 0.085, "seat", 0.018),
+        ("pull handle", "rear", 0.13, -0.165, 0.26, 0.026, 0.050, "dash", 0.010),
+        ("window switches", "rear", 0.31, -0.188, 0.13, 0.012, 0.060, "screen_back", 0.004),
+        ("door button", "rear", 0.43, -0.186, 0.035, 0.012, 0.050, "trim", 0.004),
+        ("map pocket", "end", (0.10, 0.30), -0.545, None, 0.085, 0.045, "base", 0.015),
+        ("speaker grille", "front", 0.20, -0.400, 0.17, 0.150, 0.018, "console", 0.050),
+    ],
+    "rear": [
+        ("upper trim", "end", (0.05, 0.05), -0.050, None, 0.060, 0.030, "dash", 0.012),
+        ("ambient light", "end", (0.07, 0.07), -0.086, None, 0.007, 0.012, "screen", 0.002),
+        ("armrest", "front", 0.06, -0.215, 0.38, 0.050, 0.080, "seat", 0.018),
+        ("pull handle", "front", 0.10, -0.165, 0.22, 0.026, 0.050, "dash", 0.010),
+        ("window switches", "front", 0.32, -0.188, 0.09, 0.012, 0.055, "screen_back", 0.004),
+        ("map pocket", "end", (0.32, 0.05), -0.500, None, 0.080, 0.040, "base", 0.015),   # rear end: wheel arch
+        ("speaker grille", "front", 0.08, -0.370, 0.14, 0.120, 0.018, "console", 0.045),
+    ],
+}
+
+
+def door_card(bvh, side, ys, belt, kind):
+    """Door card details on a side door's inner panel (mesh coords, shut pose): one rounded box per DOOR_CARD entry,
+    bent along y to stay on the panel where rays from the cabin axis meet it every 4 cm (`bvh`: the door piece; the
+    door curves in plan). side: -1 left, +1 right; ys: (rear, front) y of the card. -> object (UV1 cabin cells, v 0)."""
+    rear, front = ys
+    V, F, cells, nv = [], [], [], 0
+    for name, at, pos, dz, ln, h, dep, cell, r in DOOR_CARD[kind]:
+        if at == "end":
+            y0, y1 = rear + pos[0], front - pos[1]
+        elif at == "rear":
+            y0, y1 = rear + pos, rear + pos + ln
+        else:
+            y0, y1 = front - pos - ln, front - pos
+        z = belt + dz
+        n = max(1, int(round((y1 - y0) / 0.04)))
+        sy = np.linspace(y0, y1, n + 1)
+        sx = []
+        for y in sy:
+            hit = bvh.ray_cast(Vector((0, y, z)), Vector((side, 0, 0)))[0]
+            if hit is None:
+                raise SystemExit(f"door card {kind} {name}: no inner panel at y {y:.3f} z {z:.3f}")
+            sx.append(hit.x)
+        v, f = rbox((dep, y1 - y0, h), min(r, dep / 2.2, h / 2.2, (y1 - y0) / 2.2), cuts=(0, n - 1, 0))
+        v += [0, (y0 + y1) / 2, z]
+        v[:, 0] += np.interp(v[:, 1], sy, sx) - side * (dep / 2 - 0.004)
+        F += [[k + nv for k in fc] for fc in f]
+        V.append(v)
+        nv += len(v)
+        cells += [cell] * len(f)
+    return cell_object(NAME + "_DoorCard", np.concatenate(V), F, cells)
+
+
+def cell_object(name, V, F, cells):
+    """Smooth-shaded triangle mesh object, UV0 zero, UV1 = (CABIN_UV1_U - cell, 0), free corner normals."""
+    me = bpy.data.meshes.new(name)
+    me.from_pydata(np.asarray(V).tolist(), [], F)
+    names = list(CABIN_CELLS)
+    me.polygons.foreach_set("material_index", np.array([names.index(c) for c in cells], np.int64))
     bm = bmesh.new()
-    bm.from_mesh(ob.data)
-    bm.normal_update()
-    for f in bm.faces:                                  # face the axis (decimate's recalc picks either side)
-        cen = f.calc_center_median()
-        if f.normal.dot(Vector((0, min(max(cen.y, -1.0), 0.7), CABIN_ZC)) - cen) < 0:
-            f.normal_flip()
-    bm.normal_update()
-    for v in bm.verts:
-        v.co += v.normal * LINING_IN
-    print("CABIN lining tris", n0, "->", len(bm.faces))
-    bm.verts.index_update()
-    V = np.array([v.co[:] for v in bm.verts])
-    F = [[v.index for v in f.verts] for f in bm.faces]
+    bm.from_mesh(me)
+    bmesh.ops.triangulate(bm, faces=bm.faces[:])
+    for f in bm.faces:
+        f.smooth = True
+    bm.to_mesh(me)
     bm.free()
-    bpy.data.objects.remove(ob)
-    return V, F
+    ci = np.empty(len(me.polygons), np.int64)
+    me.polygons.foreach_get("material_index", ci)
+    me.uv_layers.new(name="UV0").data.foreach_set("uv", np.zeros(len(me.loops) * 2))
+    uv1 = np.stack([CABIN_UV1_U - np.repeat(ci, 3), np.zeros(3 * len(ci))], 1)
+    me.uv_layers.new(name="UV1").data.foreach_set("uv", uv1.ravel())
+    me.polygons.foreach_set("material_index", np.zeros(len(me.polygons), np.int64))
+    me.update()
+    cn = np.empty(len(me.loops) * 3, np.float32)
+    me.corner_normals.foreach_get("vector", cn)
+    me.attributes.new("custom_normal", "FLOAT_VECTOR", "CORNER").data.foreach_set("vector", cn)
+    me.attributes.new("liner", "BOOLEAN", "FACE")
+    ob = bpy.data.objects.new(name, me)
+    bpy.context.scene.collection.objects.link(ob)
+    return ob
 
 
-def cabin_mesh(bvh, belt, lining, trunk_floor, trunk_end, arch, opening):
+def cabin_mesh(bvh, belt, trunk_floor, trunk_end, arch, opening):
     """Cabin and trunk (mesh coords, centred), smooth-shaded rounded parts: below the belt a shell CABIN_INSET inside
     the body and the doors (floor, sills, firewall, door walls, the trunk's sides and wheel-arch humps, its rear wall
     behind the tailgate's inner panel at `trunk_end`; none behind glass, so the far windows stay see-through), the
-    floor at CABIN_FLOOR, behind the rear backrests (TRUNK_Y) at `trunk_floor`; above the belt `lining`; Model Y front
+    floor at CABIN_FLOOR, behind the rear backrests (TRUNK_Y) at `trunk_floor`; Model Y front
     buckets (cushion and backrest side bolsters, curved backrest, integrated headrest), rear bench (three cushions and
     backs, three headrests), dash with its trim strip, 15.4" centre screen (lit face to the seats), steering wheel,
     centre console, the trunk's sill plate and its under-floor bin lid. Every shell face looks at the axis: from outside
@@ -183,8 +238,7 @@ def cabin_mesh(bvh, belt, lining, trunk_floor, trunk_end, arch, opening):
     # there, the back copy on its own vertices (the mesh drops a face on the same vertices as another)
     add(sv[np.ravel([sf[i] for i in hump])], [[3 * k + 2, 3 * k + 1, 3 * k] for k in range(len(hump))], "liner",
         smooth=False, door=[door[i] for i in hump])
-    add(*lining, "liner", smooth=False)
-    shell_n = len(sf) + len(hump) + len(lining[1])
+    shell_n = len(sf) + len(hump)
 
     def part(size, r, c, at, cuts=(0, 0, 0), sag=0.0, bend=0.0, taper=0.0, tilt=None, seg=2):
         """rbox + shaping: `sag` dips the top's middle (x), `bend` brings the sides forward (+y), `taper` narrows the
@@ -236,6 +290,15 @@ def cabin_mesh(bvh, belt, lining, trunk_floor, trunk_end, arch, opening):
     fn = np.array([np.cross(v[fc[1]] - v[fc[0]], v[fc[2]] - v[fc[0]]) for fc in f])
     fn /= np.linalg.norm(fn, axis=1, keepdims=True)
     add(v, f, ["screen" if k < -0.9 else "screen_back" for k in fn[:, 1]])
+    # its picture in blocks just in front of the lit face (one flat light panel before, user image 12): the dark dock
+    # along the bottom, the car view on the driver's third (dark ground, the car a lit block), a route line on the map
+    for size, at, c in (((0.296, 0.003, 0.026), (0, -0.0125, -0.080), "screen_back"),
+                        ((0.100, 0.003, 0.160), (-0.098, -0.0125, 0.012), "console"),
+                        ((0.034, 0.003, 0.070), (-0.098, -0.0140, 0.020), "seat"),
+                        ((0.120, 0.003, 0.006), (0.050, -0.0125, 0.020), "trim"),
+                        ((0.006, 0.003, 0.060), (0.110, -0.0125, 0.047), "trim")):
+        v, f = rbox(size, 0.001, seg=1)
+        add((v + at) @ rot_x(-12).T + [0, 0.61, 0.17], f, c)
     # steering wheel in front of the driver, tilted 70 deg back from horizontal: rim torus, hub, three spokes, column
     wr = Matrix.Translation((-SEAT_X, 0.50, 0.04)) @ Matrix.Rotation(math.radians(70), 4, "X")
     nu, nv = 20, 6

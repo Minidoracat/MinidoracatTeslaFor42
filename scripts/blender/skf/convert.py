@@ -92,7 +92,6 @@ ZN = list(pv.Z)                            # zone index -> name
 CELL = {c: i for i, c in enumerate(pv.CABIN_CELLS)}
 GLASS_ZONES = ("WinT", "WinH", "WinLH", "WinLT", "WinRH", "WinRT", "LightBarL")   # UV1 glass code order (the frag's
 #                                                                                  GLASS_ZONE[], feat/edges-1025)
-BACK_GLASS = ("WinH", "WinLH", "WinLT", "WinRH", "WinRT")   # panes seen from inside too (DrawVehicle culls back faces)
 
 
 def lin(name, z):
@@ -273,7 +272,10 @@ def classify(car, names, sizes):
     part[rd] = np.where(left, 3, 4)[rd]
     part[paint & (ax < 0.1) & (ay < -1.5) & (az > 0.5)] = 5
     part[paint & (ax < 0.1) & (ay > 0.9) & (az > 0.6)] = 6
-    # door hardware, frames and panes: whole components inside a door (2.5 cm slack), cut components face by face
+    # door hardware, frames and panes: whole components inside a door (2.5 cm slack), cut components face by face. A
+    # strip that runs past its one door's edge (the belt mouldings end under the B-pillar and quarter trim) goes face
+    # by face too: whole on the body it was a black bar across the far window, seen through the roof glass with the
+    # far door hidden behind that glass's depth (user 2026-10-25 images 10, 11, 13)
     cut = np.array([(o, s) in CUT for o, s in zip(obj, csize)])
     cand = np.isin(obj, DOOR_OBJS) & ~paint
     whole = cand & ~cut
@@ -282,8 +284,14 @@ def classify(car, names, sizes):
         d = in_door(co[np.unique(fv[f])], 0.025)
         if (d == d[0]).all() and d[0]:
             part[f] = d[0]
+        elif not glass[f[0]] and len(np.unique(d[d > 0])) == 1:
+            part[f] = in_door(cen[f])
     sel = cand & cut
     part[sel] = in_door(cen[sel])
+    # the mirror cap is body colour (official FRONT34; the source paints it black_refl), its base and glass stay;
+    # set after the door split, which takes door hardware by its non-paint material
+    mirror = (obj == "Plane.046") & (part > 0)
+    paint = paint | mirror
     gate = np.isin(obj, GATE_OBJS)
     for o, s, sy in GATE_COMPS:
         gate |= (obj == o) & (csize == s) & (np.sign(ay) == sy) & (ax < 0.1)
@@ -320,7 +328,7 @@ def classify(car, names, sizes):
     print("CLASSIFY parts", {PARTS[k]: int((part == k).sum()) for k in range(len(PARTS))}, "glass", int(glass.sum()),
           "lamps head/tail", int(head.sum()), int(tail.sum()))
     return dict(part=part, zone=zone, rgb=rgb, paint=paint, lamp=lamp, glass=glass, pane=pane, obj=obj, csize=csize,
-                mat=mat)
+                mat=mat, mirror=mirror)
 
 
 # ---------------------------------------------------------------- textures
@@ -538,10 +546,11 @@ def corners(attr, n):
     return a
 
 
-def seals(V, T, sel, attr):
+def seals(V, T, sel, attr, glass_bvh):
     """Dark strips SEAL[0] behind every open edge of the faces sel (open by position: the zone split doubled the
     vertices there), reaching SEAL[1] past the edge, both sides: the source's panel gaps are real gaps, the ground
-    showed through them."""
+    showed through them. Not along a pane (glass_bvh within 1.2 cm of the strip's far edge): the pane closes that
+    gap, and the strips lay on the glass as black spikes round the roof rails and A-pillars."""
     tri = T[sel]
     ed = np.concatenate([tri[:, [0, 1]], tri[:, [1, 2]], tri[:, [2, 0]]])
     owner = np.tile(np.arange(len(tri)), 3)
@@ -553,6 +562,9 @@ def seals(V, T, sel, attr):
     fn = (fn / np.maximum(np.linalg.norm(fn, axis=1, keepdims=True), 1e-12))[owner[b]]
     t = np.cross(b_ - a_, fn)                     # in the face's plane, away from it
     t /= np.maximum(np.linalg.norm(t, axis=1, keepdims=True), 1e-12)
+    far = (a_ + b_) / 2 + t * SEAL[1]
+    keep = np.array([glass_bvh.find_nearest(Vector(p), 0.012)[0] is None for p in far], bool)
+    a_, b_, fn, t = a_[keep], b_[keep], fn[keep], t[keep]
     p1, p2 = a_ - fn * SEAL[0], b_ - fn * SEAL[0]
     p3, p4 = p2 + t * SEAL[1], p1 + t * SEAL[1]
     P = np.concatenate([np.stack([p1, p3, p2], 1), np.stack([p1, p4, p3], 1)])
@@ -594,14 +606,8 @@ def build_cabin(bodyV, Tb, Ab, meshes, shift):
     opening = dict(y=tuple(y - cy for y in DOOR_Y), sill=SILL_Z - zmid, gate=GATE_Z - zmid,
                    seam=lambda z: y0 + (y1 - y0) * (z + zmid - z0) / (z1 - z0) - cy,
                    each={p: bvh_of([d]) for p, d in doors.items()})
-    used, inv = np.unique(Tb[cls == 0].ravel(), return_inverse=True)
-    me = bpy.data.meshes.new("lining_src")
-    me.from_pydata(bodyV[used].tolist(), [], inv.reshape(-1, 3).tolist())
-    lob = bpy.data.objects.new("lining_src", me)
-    bpy.context.scene.collection.objects.link(lob)
     print(f"CABIN trunk floor z {trunk_floor:.3f}, rear wall y {trunk_end:.3f}")
-    ob = cab.cabin_mesh(bvh, belt, cab.lining(lob, belt, trunk_end), trunk_floor, trunk_end, arch, opening)
-    bpy.data.objects.remove(lob)
+    ob = cab.cabin_mesh(bvh, belt, trunk_floor, trunk_end, arch, opening)
     ob.data.attributes.new("liner", "BOOLEAN", "FACE")
     V, T, A, _ = pv.soup(ob, np.zeros(3))
     bpy.data.objects.remove(ob)
@@ -613,12 +619,10 @@ def pieces(car, c, shift):
     V, T, A, _ = pv.soup(car, shift)
     me = car.data
     tf = np.repeat(np.arange(len(me.polygons)), [p.loop_total - 2 for p in me.polygons])
-    part, glass, paint = c["part"][tf], c["glass"][tf], c["paint"][tf]
-    zname = np.array(ZN, object)[c["zone"][tf]]
+    part, glass, paint, mirror = c["part"][tf], c["glass"][tf], c["paint"][tf], c["mirror"][tf]
 
     def cab_attr(cell):
         return np.array([0, 0, pv.CABIN_UV1_U - CELL[cell], 0, 0, 0, 1], float)
-    back_glass = glass & np.isin(zname, BACK_GLASS)
     back_liner = ~glass & ((part == 0) & paint | (part > 0) & ~paint)
 
     def backs(sel, recolour, base):
@@ -629,10 +633,14 @@ def pieces(car, c, shift):
         if recolour:
             a[..., :4] = cab_attr("liner")[:4]
         return V[T[sel][:, [0, 2, 1]]].reshape(-1, 3), base + np.arange(3 * n).reshape(-1, 3), a
-    back_sets = lambda sel: ((sel & back_liner, True), (sel & back_glass, False))  # noqa: E731
+    # no reversed glass: every source pane is a closed slab (outer and inner face 0.9 mm apart, the rim), so its inner
+    # face already shows the glass from inside; a reversed outer face on top put two layers there (darker, and the
+    # two crossed where their triangulations differ)
+    back_sets = lambda sel: ((sel & back_liner, True),)  # noqa: E731
     body_t, body_a, bodyV = [T[part == 0]], [A[part == 0]], V
     adds = [backs(sel, rec, 0) for sel, rec in back_sets(part == 0)]
-    adds += [seals(V, T, (part == 0) & paint, cab_attr("base"))]
+    gb = bvh_of([(V, T[glass])])
+    adds += [seals(V, T, (part == 0) & paint, cab_attr("base"), gb)]
     for v, t, a in adds:
         body_t.append(t + len(bodyV))
         bodyV = np.concatenate([bodyV, v])
@@ -644,9 +652,19 @@ def pieces(car, c, shift):
         sel = part == k
         lid = pname == "EngineDoor"
         off = (np.array([-sd, 0, 0]) if sd else np.array((0, 0, -1) if lid else pv.GATE_IN)) * pv.DOOR_T
-        skin = sel & paint
+        skin = sel & paint & ~mirror                     # the mirror cap: outer faces only (a closed shell)
         P, t, a, _ = pv.slab(V, T, A, skin, off, cab_attr("dash"), BELT_Z - shift[2], outer_extra=sel & ~skin)
-        for v, bt, ba in [backs(bsel, rec, 0) for bsel, rec in back_sets(sel)] + [seals(V, T, skin, cab_attr("base"))]:
+        extra = [backs(bsel, rec, 0) for bsel, rec in back_sets(sel)] + [seals(V, T, skin, cab_attr("base"), gb)]
+        for v, bt, ba in extra:
+            t = np.concatenate([t, bt + len(P)])
+            P = np.concatenate([P, v])
+            a = np.concatenate([a, ba])
+        if sd:      # door card details on the inner panel (the slab alone was one flat grey sheet: user image 12)
+            front = pname.startswith("DoorFront")
+            ys = (DOOR_Y[1], DOOR_Y[0]) if front else (DOOR_Y[2], DOOR_Y[1])
+            ob = cab.door_card(bvh_of([(P, t)]), sd, ys, BELT_Z, "front" if front else "rear")
+            v, bt, ba, _ = pv.soup(ob, np.zeros(3))
+            bpy.data.objects.remove(ob)
             t = np.concatenate([t, bt + len(P)])
             P = np.concatenate([P, v])
             a = np.concatenate([a, ba])
@@ -804,6 +822,10 @@ def stage_view(out, heads, state, skin="UltraRed"):
         return m
     M = [mat("paint", tex=True), mat("glass", (40, 230, 230))] + [mat(f"cab{i}", x) for i, x in enumerate(CAB)]
     glass_mode = os.environ.get("GLASS", "opaque")
+    # TINT=1: body shell and reversed paint (liner) green, every door piece's inside orange (where they cross, both show)
+    tint = os.environ.get("TINT") == "1"
+    MB = M[:3] + [mat("liner_tint", (40, 200, 60))] + M[4:] if tint else M
+    MD = M[:2] + [mat("door_tint", (240, 140, 30))] * len(CAB) if tint else M
     for o in [body] + doors:
         me = o.data
         me.uv_layers.active = me.uv_layers["UV0"]
@@ -814,13 +836,15 @@ def stage_view(out, heads, state, skin="UltraRed"):
         fu = u1[0::2][ls]
         idx = np.where(fu > 1.5, 1, np.where(fu < -1.0, 2 + np.clip((-fu - 2.0).astype(int), 0, 9), 0))
         o.data.materials.clear()
-        for m in M:
+        for m in (MB if o is body else MD):
             o.data.materials.append(m)
         me.polygons.foreach_set("material_index", idx)
         if glass_mode == "hide":
             pv.keep_faces(o, idx != 1)
+    # HIDE=DoorFrontRight,..: leave pieces out (in game a far door is hidden behind the near body glass's depth)
+    hide = set(filter(None, os.environ.get("HIDE", "").split(",")))
     for o in bpy.data.objects:
-        o.hide_render = o.type == "MESH" and not (o is body or o in doors)
+        o.hide_render = o.type == "MESH" and (not (o is body or o in doors) or o.name in hide)
     sc = bpy.context.scene
     sc.render.engine = "BLENDER_WORKBENCH"
     sc.view_settings.view_transform = "Standard"

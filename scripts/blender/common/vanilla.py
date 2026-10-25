@@ -67,7 +67,6 @@ if __name__ == "__main__":
         sel = [c for c in vs if c.z < mn.z + zband]
         print("z<", zband, "n", len(sel), "y-range", round(min(c.y for c in sel), 3), round(max(c.y for c in sel), 3))
     # side profile: lowest z at each y slice (arches show as raised bottoms)
-    import math
     for i in range(0, 44):
         y0 = mn.y + i * 0.1
         sl = [c for c in vs if y0 <= c.y < y0 + 0.1 and abs(c.x) > 0.6]
