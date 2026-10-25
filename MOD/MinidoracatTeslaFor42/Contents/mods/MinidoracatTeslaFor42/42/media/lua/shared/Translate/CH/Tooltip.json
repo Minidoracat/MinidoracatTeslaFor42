@@ -1,5 +1,7 @@
 {
     "Tooltip_MinidoracatTesla_Battery": "電量 %1%%",
     "Tooltip_MinidoracatTesla_SentryOnFor": "已開 %1 小時",
-    "Tooltip_MinidoracatTesla_NoCarInReach": "充電線拉得到的範圍內沒有特斯拉"
+    "Tooltip_MinidoracatTesla_NoCarInReach": "充電線拉得到的範圍內沒有特斯拉",
+    "Tooltip_MinidoracatTesla_TakeDriveUnitPartsWarning": "這會使驅動單元狀況變為 0。",
+    "Tooltip_MinidoracatTesla_DriveUnitCondition": "驅動單元狀況: %1"
 }

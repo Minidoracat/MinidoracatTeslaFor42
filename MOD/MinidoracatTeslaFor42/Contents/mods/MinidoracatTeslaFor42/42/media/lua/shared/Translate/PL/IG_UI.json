@@ -96,5 +96,7 @@
     "IGUI_MinidoracatTesla_Deny_NOT_DRIVER": "Tylko kierowca może to zrobić",
     "IGUI_MinidoracatTesla_Deny_NO_LIFTGATE": "Brak klapy bagażnika",
     "IGUI_MinidoracatTesla_Deny_MOVING": "Najpierw zatrzymaj samochód",
-    "IGUI_MinidoracatTesla_Deny_LIFTGATE_LOCKED": "Zamek klapy bagażnika jest zepsuty"
+    "IGUI_MinidoracatTesla_Deny_LIFTGATE_LOCKED": "Zamek klapy bagażnika jest zepsuty",
+    "IGUI_MinidoracatTesla_RepairDriveUnit": "Napraw zespół napędowy",
+    "IGUI_MinidoracatTesla_TakeDriveUnitParts": "Weź części zespołu napędowego"
 }

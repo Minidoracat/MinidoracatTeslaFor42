@@ -1,5 +1,7 @@
 {
     "Tooltip_MinidoracatTesla_Battery": "배터리 %1%%",
     "Tooltip_MinidoracatTesla_SentryOnFor": "%1시간째 켜짐",
-    "Tooltip_MinidoracatTesla_NoCarInReach": "케이블이 닿는 범위에 Tesla가 없습니다"
+    "Tooltip_MinidoracatTesla_NoCarInReach": "케이블이 닿는 범위에 Tesla가 없습니다",
+    "Tooltip_MinidoracatTesla_TakeDriveUnitPartsWarning": "부품을 분리하면 드라이브 유닛 상태가 0이 됩니다.",
+    "Tooltip_MinidoracatTesla_DriveUnitCondition": "드라이브 유닛 상태: %1"
 }

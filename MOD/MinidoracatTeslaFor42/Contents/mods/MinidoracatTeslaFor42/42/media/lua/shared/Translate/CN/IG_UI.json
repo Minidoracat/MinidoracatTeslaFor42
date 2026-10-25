@@ -96,5 +96,7 @@
     "IGUI_MinidoracatTesla_Deny_NOT_DRIVER": "只有驾驶员可以操作",
     "IGUI_MinidoracatTesla_Deny_NO_LIFTGATE": "没有安装尾门",
     "IGUI_MinidoracatTesla_Deny_MOVING": "请先停车",
-    "IGUI_MinidoracatTesla_Deny_LIFTGATE_LOCKED": "尾门的锁坏了"
+    "IGUI_MinidoracatTesla_Deny_LIFTGATE_LOCKED": "尾门的锁坏了",
+    "IGUI_MinidoracatTesla_RepairDriveUnit": "修理驱动单元",
+    "IGUI_MinidoracatTesla_TakeDriveUnitParts": "拆取驱动单元零件"
 }

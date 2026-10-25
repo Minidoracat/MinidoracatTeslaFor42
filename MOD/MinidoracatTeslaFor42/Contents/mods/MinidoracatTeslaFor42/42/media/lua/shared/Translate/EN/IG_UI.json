@@ -96,5 +96,7 @@
     "IGUI_MinidoracatTesla_Deny_NOT_DRIVER": "Only the driver can do this",
     "IGUI_MinidoracatTesla_Deny_NO_LIFTGATE": "No liftgate installed",
     "IGUI_MinidoracatTesla_Deny_MOVING": "Stop the car first",
-    "IGUI_MinidoracatTesla_Deny_LIFTGATE_LOCKED": "The liftgate lock is broken"
+    "IGUI_MinidoracatTesla_Deny_LIFTGATE_LOCKED": "The liftgate lock is broken",
+    "IGUI_MinidoracatTesla_RepairDriveUnit": "Repair Drive Unit",
+    "IGUI_MinidoracatTesla_TakeDriveUnitParts": "Take Drive Unit Parts"
 }

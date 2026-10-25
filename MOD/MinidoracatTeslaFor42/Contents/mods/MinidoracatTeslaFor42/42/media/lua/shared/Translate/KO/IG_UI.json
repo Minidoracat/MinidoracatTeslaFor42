@@ -96,5 +96,7 @@
     "IGUI_MinidoracatTesla_Deny_NOT_DRIVER": "운전자만 조작할 수 있습니다",
     "IGUI_MinidoracatTesla_Deny_NO_LIFTGATE": "리프트게이트가 장착되어 있지 않습니다",
     "IGUI_MinidoracatTesla_Deny_MOVING": "먼저 차를 세우십시오",
-    "IGUI_MinidoracatTesla_Deny_LIFTGATE_LOCKED": "리프트게이트 잠금장치가 고장났습니다"
+    "IGUI_MinidoracatTesla_Deny_LIFTGATE_LOCKED": "리프트게이트 잠금장치가 고장났습니다",
+    "IGUI_MinidoracatTesla_RepairDriveUnit": "드라이브 유닛 수리",
+    "IGUI_MinidoracatTesla_TakeDriveUnitParts": "드라이브 유닛 부품 분리"
 }

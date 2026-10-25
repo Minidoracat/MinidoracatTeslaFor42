@@ -96,5 +96,7 @@
     "IGUI_MinidoracatTesla_Deny_NOT_DRIVER": "Bunu yalnızca sürücü yapabilir",
     "IGUI_MinidoracatTesla_Deny_NO_LIFTGATE": "Bagaj kapağı takılı değil",
     "IGUI_MinidoracatTesla_Deny_MOVING": "Önce aracı durdur",
-    "IGUI_MinidoracatTesla_Deny_LIFTGATE_LOCKED": "Bagaj kapağının kilidi bozuk"
+    "IGUI_MinidoracatTesla_Deny_LIFTGATE_LOCKED": "Bagaj kapağının kilidi bozuk",
+    "IGUI_MinidoracatTesla_RepairDriveUnit": "Sürüş Ünitesini Tamir Et",
+    "IGUI_MinidoracatTesla_TakeDriveUnitParts": "Sürüş Ünitesi Parçalarını Al"
 }

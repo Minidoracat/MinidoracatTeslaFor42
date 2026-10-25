@@ -96,5 +96,7 @@
     "IGUI_MinidoracatTesla_Deny_NOT_DRIVER": "Seul le conducteur peut faire ça",
     "IGUI_MinidoracatTesla_Deny_NO_LIFTGATE": "Aucun hayon installé",
     "IGUI_MinidoracatTesla_Deny_MOVING": "Arrêtez d'abord la voiture",
-    "IGUI_MinidoracatTesla_Deny_LIFTGATE_LOCKED": "La serrure du hayon est cassée"
+    "IGUI_MinidoracatTesla_Deny_LIFTGATE_LOCKED": "La serrure du hayon est cassée",
+    "IGUI_MinidoracatTesla_RepairDriveUnit": "Réparer l'unité motrice",
+    "IGUI_MinidoracatTesla_TakeDriveUnitParts": "Récupérer les pièces de l'unité motrice"
 }

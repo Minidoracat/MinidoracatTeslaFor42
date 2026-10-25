@@ -1,5 +1,7 @@
 {
     "Tooltip_MinidoracatTesla_Battery": "バッテリー %1%%",
     "Tooltip_MinidoracatTesla_SentryOnFor": "%1 時間オン",
-    "Tooltip_MinidoracatTesla_NoCarInReach": "ケーブルが届く範囲に Tesla がありません"
+    "Tooltip_MinidoracatTesla_NoCarInReach": "ケーブルが届く範囲に Tesla がありません",
+    "Tooltip_MinidoracatTesla_TakeDriveUnitPartsWarning": "部品を外すとドライブユニットの状態が0になります。",
+    "Tooltip_MinidoracatTesla_DriveUnitCondition": "ドライブユニット状態:%1"
 }

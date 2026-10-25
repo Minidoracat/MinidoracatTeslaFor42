@@ -96,5 +96,7 @@
     "IGUI_MinidoracatTesla_Deny_NOT_DRIVER": "運転席からのみ操作できます",
     "IGUI_MinidoracatTesla_Deny_NO_LIFTGATE": "リフトゲートが付いていません",
     "IGUI_MinidoracatTesla_Deny_MOVING": "先に車を止めてください",
-    "IGUI_MinidoracatTesla_Deny_LIFTGATE_LOCKED": "リフトゲートのロックが壊れています"
+    "IGUI_MinidoracatTesla_Deny_LIFTGATE_LOCKED": "リフトゲートのロックが壊れています",
+    "IGUI_MinidoracatTesla_RepairDriveUnit": "ドライブユニット修理",
+    "IGUI_MinidoracatTesla_TakeDriveUnitParts": "ドライブユニット部品を外す"
 }

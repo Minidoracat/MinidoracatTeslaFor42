@@ -1,5 +1,7 @@
 {
     "Tooltip_MinidoracatTesla_Battery": "Battery %1%%",
     "Tooltip_MinidoracatTesla_SentryOnFor": "On for %1 h",
-    "Tooltip_MinidoracatTesla_NoCarInReach": "No Tesla within reach of the cable"
+    "Tooltip_MinidoracatTesla_NoCarInReach": "No Tesla within reach of the cable",
+    "Tooltip_MinidoracatTesla_TakeDriveUnitPartsWarning": "This will set drive unit condition to 0.",
+    "Tooltip_MinidoracatTesla_DriveUnitCondition": "Drive unit condition: %1"
 }

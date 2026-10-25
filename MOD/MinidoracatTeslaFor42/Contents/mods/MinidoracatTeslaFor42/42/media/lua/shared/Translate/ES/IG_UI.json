@@ -96,5 +96,7 @@
     "IGUI_MinidoracatTesla_Deny_NOT_DRIVER": "Solo el conductor puede hacerlo",
     "IGUI_MinidoracatTesla_Deny_NO_LIFTGATE": "No hay portón trasero instalado",
     "IGUI_MinidoracatTesla_Deny_MOVING": "Detén el coche primero",
-    "IGUI_MinidoracatTesla_Deny_LIFTGATE_LOCKED": "La cerradura del portón está rota"
+    "IGUI_MinidoracatTesla_Deny_LIFTGATE_LOCKED": "La cerradura del portón está rota",
+    "IGUI_MinidoracatTesla_RepairDriveUnit": "Reparar unidad motriz",
+    "IGUI_MinidoracatTesla_TakeDriveUnitParts": "Coger piezas de la unidad motriz"
 }
