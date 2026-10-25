@@ -2,6 +2,6 @@
     "Tooltip_MinidoracatTesla_Battery": "Batterie %1 %%",
     "Tooltip_MinidoracatTesla_SentryOnFor": "Actif depuis %1 h",
     "Tooltip_MinidoracatTesla_NoCarInReach": "Aucune Tesla à portée du câble",
-    "Tooltip_MinidoracatTesla_TakeDriveUnitPartsWarning": "Cela mettra l'état de l'unité motrice à 0.",
-    "Tooltip_MinidoracatTesla_DriveUnitCondition": "État de l'unité motrice : %1"
+    "Tooltip_MinidoracatTesla_TakeDriveUnitPartsWarning": "Cela mettra l'état de l'unité d'entraînement à 0.",
+    "Tooltip_MinidoracatTesla_DriveUnitCondition": "État de l'unité d'entraînement : %1"
 }

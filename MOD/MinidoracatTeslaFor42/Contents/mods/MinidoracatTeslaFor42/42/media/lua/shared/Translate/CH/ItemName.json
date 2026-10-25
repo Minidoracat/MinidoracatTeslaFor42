@@ -1,6 +1,6 @@
 {
-    "Base.MinidoracatTesla_ModelYBatterySR": "Model Y 高壓電池－標準續航（62.5 kWh）",
-    "Base.MinidoracatTesla_ModelYBatteryLR": "Model Y 高壓電池－長續航（78.1 kWh）",
+    "Base.MinidoracatTesla_ModelYBatterySR": "Model Y 高電壓電池－標準續航（62.5 kWh）",
+    "Base.MinidoracatTesla_ModelYBatteryLR": "Model Y 高電壓電池－長續航（78.1 kWh）",
     "Base.MinidoracatTesla_WallConnector": "特斯拉第 3 代壁掛式充電座",
     "Base.MinidoracatTesla_CableHang": "充電線（垂下段）",
     "Base.MinidoracatTesla_CableFloor": "充電線（地面段）",

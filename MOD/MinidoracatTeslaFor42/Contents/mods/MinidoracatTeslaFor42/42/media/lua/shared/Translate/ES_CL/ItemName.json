@@ -1,9 +1,9 @@
 {
-    "Base.MinidoracatTesla_ModelYBatterySR": "Batería de alto voltaje Model Y - Autonomía Estándar (62,5 kWh)",
-    "Base.MinidoracatTesla_ModelYBatteryLR": "Batería de alto voltaje Model Y - Gran Autonomía (78,1 kWh)",
+    "Base.MinidoracatTesla_ModelYBatterySR": "Batería de alta tensión Model Y - Autonomía Estándar (62,5 kWh)",
+    "Base.MinidoracatTesla_ModelYBatteryLR": "Batería de alta tensión Model Y - Gran Autonomía (78,1 kWh)",
     "Base.MinidoracatTesla_WallConnector": "Tesla Wall Connector (3.ª gen.)",
     "Base.MinidoracatTesla_CableHang": "Cable de carga (tramo de pared)",
     "Base.MinidoracatTesla_CableFloor": "Cable de carga (tramo de suelo)",
     "Base.MinidoracatTesla_CablePlug": "Cable de carga (conector)",
-    "Base.MinidoracatTesla_DriveUnitParts": "Piezas de unidad motriz"
+    "Base.MinidoracatTesla_DriveUnitParts": "Piezas de unidad de tracción"
 }
