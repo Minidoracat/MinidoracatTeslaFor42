@@ -33,7 +33,7 @@ EXIT_Z = WC_Z0
 # cable
 R_CABLE = 0.026
 HANG_REACH = 0.40
-PLUG_Z = 0.865                                # Model Y port: 0.865 units above the floor (TeslaModelYFinal, models.md 3)
+PLUG_Z = 0.909                                # Model Y port: 0.909 units above the floor (tesla-integ-1026a, models.md 0)
 PLUG_REACH = 0.36                             # handle tip reaches +x (into the car flank)
 XFORM = {"S": (0.0, 180.0, 0.0), "E": (0.0, -90.0, 0.0), "N": (0.0, 0.0, 0.0), "W": (0.0, 90.0, 0.0)}
 

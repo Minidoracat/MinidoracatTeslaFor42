@@ -15,7 +15,7 @@ T.Cable = C
 -- Mesh geometry (scripts/blender/props/props_blender.py): tiles; heights in levels (1 level = 2.44949 units).
 C.HANG_REACH = 0.40          -- hang segment: exit floor point -> where it lies on the floor, along the facing
 C.PLUG_REACH = 0.36          -- plug segment: its floor point -> handle tip at the port, horizontal
-C.PLUG_Z = 0.865 / 2.44949   -- handle height above the floor, levels (Model Y chargeport, references/models.md)
+C.PLUG_Z = 0.909 / 2.44949   -- handle height above the floor, levels (Model Y chargeport, references/models.md)
 C.DRAW_RANGE = 45            -- 3D: skip chargers farther than this from the local player (tiles)
 -- ponytail: floor runs longer than this are not drawn (car dragged away before the server unplugged it)
 C.MAX_FLOOR = 16
