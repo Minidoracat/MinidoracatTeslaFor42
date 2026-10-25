@@ -4,5 +4,6 @@
     "Base.MinidoracatTesla_WallConnector": "特斯拉第三代家庭充电桩",
     "Base.MinidoracatTesla_CableHang": "充电线（垂下段）",
     "Base.MinidoracatTesla_CableFloor": "充电线（地面段）",
-    "Base.MinidoracatTesla_CablePlug": "充电线（插头段）"
+    "Base.MinidoracatTesla_CablePlug": "充电线（插头段）",
+    "Base.MinidoracatTesla_DriveUnitParts": "驱动单元零件"
 }
