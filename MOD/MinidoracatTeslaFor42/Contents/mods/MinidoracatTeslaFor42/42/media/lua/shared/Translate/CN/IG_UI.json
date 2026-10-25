@@ -61,6 +61,8 @@
     "IGUI_MinidoracatTesla_Part_Battery": "低压电池",
     "IGUI_MinidoracatTesla_Part_Heater": "热泵",
     "IGUI_MinidoracatTesla_Part_EngineDoor": "前备箱盖",
+    "IGUI_MinidoracatTesla_Part_TruckBed": "后备箱",
+    "IGUI_MinidoracatTesla_Part_TrunkDoor": "掀背车门",
     "IGUI_MinidoracatTesla_PartCat_engine": "动力总成",
     "IGUI_MinidoracatTesla_OutOfCharge": "没电",
     "IGUI_MinidoracatTesla_MotorPower": "电机功率",

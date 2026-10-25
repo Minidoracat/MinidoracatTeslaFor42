@@ -61,6 +61,8 @@
     "IGUI_MinidoracatTesla_Part_Battery": "Bateria de baixa tensão",
     "IGUI_MinidoracatTesla_Part_Heater": "Bomba de calor",
     "IGUI_MinidoracatTesla_Part_EngineDoor": "Tampa do porta-malas dianteiro",
+    "IGUI_MinidoracatTesla_Part_TruckBed": "Porta-malas",
+    "IGUI_MinidoracatTesla_Part_TrunkDoor": "Tampa do Porta-malas",
     "IGUI_MinidoracatTesla_PartCat_engine": "Trem de força",
     "IGUI_MinidoracatTesla_OutOfCharge": "Sem carga",
     "IGUI_MinidoracatTesla_MotorPower": "Potência do motor elétrico",

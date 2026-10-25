@@ -61,6 +61,8 @@
     "IGUI_MinidoracatTesla_Part_Battery": "Akumulator niskiego napięcia",
     "IGUI_MinidoracatTesla_Part_Heater": "Pompa ciepła",
     "IGUI_MinidoracatTesla_Part_EngineDoor": "Pokrywa przedniego bagażnika",
+    "IGUI_MinidoracatTesla_Part_TruckBed": "Tylny bagażnik",
+    "IGUI_MinidoracatTesla_Part_TrunkDoor": "Klapa tylna",
     "IGUI_MinidoracatTesla_PartCat_engine": "Układ napędowy",
     "IGUI_MinidoracatTesla_OutOfCharge": "Rozładowany",
     "IGUI_MinidoracatTesla_MotorPower": "Moc silnika elektrycznego",

@@ -61,6 +61,8 @@
     "IGUI_MinidoracatTesla_Part_Battery": "Низковольтная батарея",
     "IGUI_MinidoracatTesla_Part_Heater": "Тепловой насос",
     "IGUI_MinidoracatTesla_Part_EngineDoor": "Крышка переднего багажника",
+    "IGUI_MinidoracatTesla_Part_TruckBed": "Багажник",
+    "IGUI_MinidoracatTesla_Part_TrunkDoor": "Крышка багажника",
     "IGUI_MinidoracatTesla_PartCat_engine": "Силовая установка",
     "IGUI_MinidoracatTesla_OutOfCharge": "Разряжена",
     "IGUI_MinidoracatTesla_MotorPower": "Мощность электродвигателя",

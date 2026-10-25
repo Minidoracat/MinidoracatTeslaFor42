@@ -61,6 +61,8 @@
     "IGUI_MinidoracatTesla_Part_Battery": "저전압 배터리",
     "IGUI_MinidoracatTesla_Part_Heater": "히트 펌프",
     "IGUI_MinidoracatTesla_Part_EngineDoor": "후드",
+    "IGUI_MinidoracatTesla_Part_TruckBed": "후면 트렁크",
+    "IGUI_MinidoracatTesla_Part_TrunkDoor": "리프트게이트",
     "IGUI_MinidoracatTesla_PartCat_engine": "파워트레인",
     "IGUI_MinidoracatTesla_OutOfCharge": "방전됨",
     "IGUI_MinidoracatTesla_MotorPower": "모터 출력",

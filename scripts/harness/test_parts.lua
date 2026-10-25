@@ -79,17 +79,19 @@ check(T.ContainerAccess.Frunk(fv, frunk, chr) == false, "sitting in a car: no ac
 H.section("mechanics window names")
 H.stub("Vehicles/ISUI/ISVehicleMechanics")
 H.stub("Vehicles/ISUI/ISVehicleMenu")
+H.stub("ISUI/ISInventoryPage")
 ISVehicleMechanics = {
-    initParts = function(self) self.names = { getText("IGUI_VehiclePartGasTank"), getText("IGUI_VehiclePartTruckBed") } end,
+    initParts = function(self) self.names = { getText("IGUI_VehiclePartGasTank"), getText("IGUI_VehiclePartGloveBox") } end,
     render = function(self) if self.boom then error("boom") end return getText("Tooltip_outoffuel") end,
 }
 ISVehicleMenu = { showRadialMenuOutside = function(p) p.label = getText("IGUI_OpenHood") end,
     getVehicleToInteractWith = function(p) return p.target end }
+ISInventoryPage = { addContainerButton = function(self, container, texture, name, tooltip) return { name = name, tooltip = tooltip } end }
 local vanillaGetText = getText
 require "MinidoracatTesla/PartNames"
 local tw = { vehicle = H.vehicle({}) }
 ISVehicleMechanics.initParts(tw)
-check(tw.names[1] == "IGUI_MinidoracatTesla_Part_GasTank" and tw.names[2] == "IGUI_VehiclePartTruckBed",
+check(tw.names[1] == "IGUI_MinidoracatTesla_Part_GasTank" and tw.names[2] == "IGUI_VehiclePartGloveBox",
     "Tesla: GasTank shows the EV name, unmapped parts keep vanilla keys")
 check(ISVehicleMechanics.render(tw) == "IGUI_MinidoracatTesla_OutOfCharge", "Tesla: empty pack says out of charge")
 local vw = { vehicle = H.vehicle({ script = "Base.CarNormal" }) }
@@ -100,9 +102,22 @@ check(not pcall(ISVehicleMechanics.render, tw) and getText == vanillaGetText, "e
 local p = { target = H.vehicle({}), getVehicle = function() return nil end }
 ISVehicleMenu.showRadialMenuOutside(p)
 check(p.label == "IGUI_MinidoracatTesla_OpenFrunk", "outside radial: Open Frunk on a Tesla")
+local function container(v, id)
+    local part = { getId = function() return id end, getVehicle = function() return v end }
+    return { getVehiclePart = function() return part end }
+end
+local function button(c, name) return ISInventoryPage.addContainerButton({}, c, nil, name, name) end
+local b = button(container(H.vehicle({}), "TruckBed"), "IGUI_VehiclePartTruckBed")
+check(b.name == "IGUI_MinidoracatTesla_Part_TruckBed" and b.tooltip == b.name, "inventory window: a Tesla's trunk button says Rear Trunk")
+b = button(container(H.vehicle({ script = "Base.CarNormal" }), "TruckBed"), "IGUI_VehiclePartTruckBed")
+check(b.name == "IGUI_VehiclePartTruckBed", "inventory window: a vanilla car's trunk keeps its name")
+b = button(container(H.vehicle({}), "SeatFrontLeft"), "IGUI_VehiclePartSeatFrontLeft")
+check(b.name == "IGUI_VehiclePartSeatFrontLeft", "inventory window: unmapped Tesla parts (seats) keep their name")
+b = button({ getVehiclePart = function() return nil end }, "bag")
+check(b.name == "bag", "inventory window: non-vehicle containers untouched")
 local mapped = 0
 for _ in pairs(T.PartNames) do mapped = mapped + 1 end
-check(mapped == 14, "14 vanilla keys mapped (5 parts, category, out of charge, 3 engine labels, 4 hood actions)")
+check(mapped == 16, "16 vanilla keys mapped (7 parts, category, out of charge, 3 engine labels, 4 hood actions)")
 
 H.section("cargo capacities (vehicle template)")
 -- 2025+ owner's manual: trunk 835 L behind the 2nd row, frunk 114 L. Trunk anchored to vanilla SUV (NormalTrunk2 85).
