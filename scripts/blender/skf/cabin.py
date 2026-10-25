@@ -280,6 +280,7 @@ def cabin_mesh(bvh, belt, trunk_floor, trunk_end, arch, opening):
     part((0.20, 0.80, 0.22), 0.04, "console", (0, 0.12, -0.32))                  # centre console
     part((1.24, 0.34, 0.16), 0.06, "dash", (0, 0.80, -0.02))                     # dash, trim strip on its face
     part((1.16, 0.02, 0.035), 0.008, "trim", (0, 0.627, -0.01))
+    part((1.10, 0.012, 0.006), 0.002, "screen", (0, 0.629, -0.033), seg=1)    # ambient light line under the trim
     # trunk: sill plate over the opening's lower edge (the floor ends TRUNK_DROP under it, CABIN_INSET short of the
     # tailgate's inner panel) and the under-floor bin's lid
     part((1.00, 0.12, TRUNK_DROP + 0.005), 0.01, "base", (0, trunk_end + 0.02, trunk_floor + TRUNK_DROP / 2), seg=1)

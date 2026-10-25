@@ -49,14 +49,15 @@ GAIN = 0.88                                 # in-game day screen / texture sRGB 
 #                                             0.80-0.86, white 0.90-0.97), calibration knob
 # per-paint, per-channel sRGB tone fix of the paint texels, tex' = a * tex + b, after the official-render quantile
 # colour / GAIN: in-game screenshots of the car heading S (E2E modely-sp paint-*-fl-max, option 2, closest zoom)
-# against the official FRONT34 render of the same paint; slope a = official / game p25-p75 spread (clamped 0.6-1.6),
-# offset b puts the game p50 on the official p50. Calibration knob: refit with e2e/.../perf/paint_sheet.py (prints
-# the fit to fold in) after changing the paint light (skf/convert.py textures)
+# against the official FRONT34 render of the same paint. The previous body's fit (slope from the p25-p75 spread,
+# offset on p50) times official / game p50 per channel of the converted body (tesla-skf2-modely-1025b: same texel
+# percentiles as the previous skin, game p50 1.1-1.6 x official); a slope fit with an offset would clip dark texels to
+# black. Calibration knob: refit with e2e/.../perf/paint_sheet.py after changing the paint light (skf/convert.py)
 CAL = {
-    "StealthGrey": ((0.77, 0.76, 0.76), (0.054, 0.049, 0.049)), "PearlWhite": ((0.92, 0.96, 0.93), (0.034, -0.005, 0.018)),
-    "DiamondBlack": ((0.93, 0.93, 0.87), (0.082, 0.080, 0.079)), "Quicksilver": ((0.81, 0.81, 0.84), (-0.041, -0.049, -0.069)),
-    "UltraRed": ((0.84, 1.0, 0.79), (0.030, 0.058, 0.069)), "GlacierBlue": ((0.66, 0.71, 0.77), (0.048, 0.025, -0.003)),
-    "MarineBlue": ((0.98, 0.72, 0.73), (0.076, 0.079, 0.061)), "FrostBlue": ((0.71, 0.73, 0.74), (0.096, 0.108, 0.134)),
+    "StealthGrey": ((0.56, 0.54, 0.54), (0.039, 0.035, 0.035)), "PearlWhite": ((0.83, 0.86, 0.85), (0.031, -0.004, 0.016)),
+    "DiamondBlack": ((0.59, 0.59, 0.59), (0.052, 0.051, 0.053)), "Quicksilver": ((0.62, 0.61, 0.64), (-0.031, -0.037, -0.053)),
+    "UltraRed": ((0.61, 0.81, 0.55), (0.022, 0.047, 0.048)), "GlacierBlue": ((0.49, 0.52, 0.57), (0.036, 0.018, -0.002)),
+    "MarineBlue": ((0.62, 0.52, 0.51), (0.048, 0.058, 0.043)), "FrostBlue": ((0.57, 0.58, 0.60), (0.077, 0.086, 0.109)),
 }
 COMPOSITOR = ("https://static-assets.tesla.cn/configurator/compositor?context=design_studio_2&options={}&view={}"
               "&model=my&size=1920&bkba_opt=1&crop=0,0,0,0&overlay=0&")

@@ -79,6 +79,7 @@ SEAL = (0.008, 0.02)                       # grid: dark strip behind every panel
 GATE_Z = 0.525                             # tailgate opening's lower edge (gate panel bottom), pre-centre
 REAR_ARCH = (-1.175, 0.30, 0.40)           # rear wheel arch (y, z, r), pre-centre: rear tire centre, arch radius
 GATE_X = 0.515                             # tailgate side edge through the light bar (gate panel half width)
+STOP_X = 0.645                             # corner lamps inboard of this |x| are the brake lights, outboard the tail
 # components cut along the lines (object, tris after welding): the window surround, the rear side glass (door pane
 # and quarter glass in one piece)
 CUT = {("Plane.005", 342): ("BF", "BR", "D"), ("Plane.062", 268): ("D",)}
@@ -297,9 +298,14 @@ def classify(car, names, sizes):
         gate |= (obj == o) & (csize == s) & (np.sign(ay) == sy) & (ax < 0.1)
     gsel = gate & ((obj == "Plane.062") | (obj == "Plane.014") | in_gate(cen))
     part[gsel] = 5
-    # lamps
+    # lamps. Tail: the red light bar (a 1 cm strip on the spoiler's lower lip, about a pixel in game), the corner
+    # lamps, and the rear face of the smoked light-bar cover across the tailgate (Plane.034, black_base), which glows
+    # red at night like the real light blade (night-N showed one corner patch only)
     head = mat == "front_white_light"
     tail = np.isin(mat, ("back_red_Light", "red_plastic111")) & (cen[:, 2] > 0.75) & (cen[:, 1] < -1.4)
+    fnorm = np.array([p.normal[:] for p in me.polygons])
+    blade = (obj == "Plane.034") & (fnorm[:, 1] < -0.5)
+    tail |= blade
     lamp = np.where(head, 1, np.where(tail, 2, 0))
     # zones
     zone = np.full(n, ZN.index("Roof"))
@@ -315,8 +321,11 @@ def classify(car, names, sizes):
     put(part == 5, "Boot", "Boot")
     put(part == 6, "Hood", "Hood")
     put(head, "LightLH", "LightRH")
-    put(tail & (part == 5), "LightLT", "LightRT")
-    put(tail & (part == 0), "StopL", "StopR")
+    # tail lights (lit with the headlights, HeadlightRear* parts: BaseVehicle.java:5858-5882) on the bar, the blade and
+    # the corner lamps' outboard ends; brake lights (Stop, :5883-5895) on their inboard part
+    stop = tail & (part == 0) & ~blade & (np.abs(cen[:, 0]) < STOP_X)
+    put(tail & ~stop, "LightLT", "LightRT")
+    put(stop, "StopL", "StopR")
     # glass zones: the mask zone and the UV1 pane code (GLASS_ZONES)
     gzn = np.where(obj == "Plane.023", "LightBarL",
                    np.where((ax < 0.1) & (ay > 0), "WinT", np.where(ax < 0.1, "WinH",
@@ -518,8 +527,9 @@ def stage_build():
     u1[lp >= 0, 0] += pv.GLASS_UV1_SHIFT + 2 * lp[lp >= 0]
     me.uv_layers["UV1"].data.foreach_set("uv", u1.ravel())
     # vehicle script geometry block
-    stop = np.flatnonzero((np.array(ZN)[c["zone"]] == "StopL"))
-    sc_ = pv.face_centres(car)[stop]
+    fc = pv.face_centres(car)
+    corner = (c["lamp"] == 2) & (c["part"] == 0) & (c["obj"] != "Plane.034") & (fc[:, 0] < 0)
+    sc_ = fc[corner]
     o = sc_[np.argsort(sc_[:, 0])[: max(1, len(sc_) // 5)]].mean(0)      # outboard end of the left corner lamp
     wl = [(sx, yc - ctr[1], zc, xo) for sx, yc, zc, xo in wheels]
     g = pv.geometry(car, zmid, wl, tire[0], tire[1], BELT_Z, tuple(y - ctr[1] for y in DOOR_Y),
