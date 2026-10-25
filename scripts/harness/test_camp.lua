@@ -31,6 +31,22 @@ local stranger = F.player("stranger", { vehicle = v })
 cmds.campOn(stranger, { vid = v:getId() })
 check(md(v).camp == nil and F.lastSent("deny").args.reason == "NOT_OWNER", "camp: stranger in the seat cannot enable")
 
+-- starting the motor moves the driver's key into the ignition (BaseVehicle.java:8647-8675): no key in hand
+local driven = F.track(F.vehicle({ pct = 50 }))
+driven.ignition, driven.running, driven.passengers = true, true, 1
+local driver = F.player("driver", { vehicle = driven })
+cmds.campOn(driver, { vid = driven:getId() })
+check(md(driven).camp == nil and F.lastSent("deny").args.reason == "ENGINE_ON",
+    "camp: key in the ignition, motor on -> ENGINE_ON, not NOT_OWNER")
+driven.running = false
+MinidoracatVehicleManagerAPI = { canUse = function() return false, "NO_RIGHTS" end }
+cmds.campOn(driver, { vid = driven:getId() })
+check(md(driven).camp == nil and F.lastSent("deny").args.reason == "NOT_OWNER",
+    "camp: VehicleManager refusal wins over a key in the ignition")
+MinidoracatVehicleManagerAPI = nil
+cmds.campOn(driver, { vid = driven:getId() })
+check(md(driven).camp ~= nil, "camp: key left in the ignition after shutdown -> the seated player enables")
+
 -- ---- exclusive with sentry ----
 md(v).sentry = { by = "owner", at = F.hours, kwh = kwh(v), since = F.hours }
 cmds.campOn(owner, { vid = v:getId() })

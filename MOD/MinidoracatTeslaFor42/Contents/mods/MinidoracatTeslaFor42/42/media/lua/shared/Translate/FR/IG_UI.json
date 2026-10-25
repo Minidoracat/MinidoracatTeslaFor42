@@ -6,6 +6,7 @@
     "IGUI_MinidoracatTesla_Deny_UNLOCKED": "Verrouillez d'abord toutes les portes",
     "IGUI_MinidoracatTesla_Deny_LOW_BATTERY": "La batterie doit être à 20 %% minimum",
     "IGUI_MinidoracatTesla_Deny_TOO_FAR": "Trop loin de la voiture",
+    "IGUI_MinidoracatTesla_Deny_KEY_IN_IGNITION": "La clé est encore sur le contact : retirez-la d'abord",
     "IGUI_MinidoracatTesla_Sentry_TouchDoor": "Sentinelle : quelqu'un a tiré une portière",
     "IGUI_MinidoracatTesla_Sentry_TouchUnlock": "Sentinelle : quelqu'un a tenté de déverrouiller",
     "IGUI_MinidoracatTesla_Sentry_BreakWindow": "Sentinelle : vitre brisée, alarme déclenchée",

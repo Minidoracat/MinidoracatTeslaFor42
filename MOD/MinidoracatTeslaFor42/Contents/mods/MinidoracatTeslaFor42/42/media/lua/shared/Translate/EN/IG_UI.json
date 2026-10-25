@@ -6,6 +6,7 @@
     "IGUI_MinidoracatTesla_Deny_UNLOCKED": "Lock all doors first",
     "IGUI_MinidoracatTesla_Deny_LOW_BATTERY": "Battery must be at least 20%%",
     "IGUI_MinidoracatTesla_Deny_TOO_FAR": "Too far from the car",
+    "IGUI_MinidoracatTesla_Deny_KEY_IN_IGNITION": "The key is still in the car: take it out first",
     "IGUI_MinidoracatTesla_Sentry_TouchDoor": "Sentry: someone pulled a door",
     "IGUI_MinidoracatTesla_Sentry_TouchUnlock": "Sentry: someone tried to unlock",
     "IGUI_MinidoracatTesla_Sentry_BreakWindow": "Sentry: window broken, alarm sounding",

@@ -6,6 +6,7 @@
     "IGUI_MinidoracatTesla_Deny_UNLOCKED": "先にすべてのドアをロックしてください",
     "IGUI_MinidoracatTesla_Deny_LOW_BATTERY": "バッテリー残量が20%%以上必要です",
     "IGUI_MinidoracatTesla_Deny_TOO_FAR": "車から離れすぎています",
+    "IGUI_MinidoracatTesla_Deny_KEY_IN_IGNITION": "キーが車に挿さったままです。先に抜いてください",
     "IGUI_MinidoracatTesla_Sentry_TouchDoor": "セントリー：誰かがドアを引きました",
     "IGUI_MinidoracatTesla_Sentry_TouchUnlock": "セントリー：誰かがロック解除を試みました",
     "IGUI_MinidoracatTesla_Sentry_BreakWindow": "セントリー：窓が割られ、アラームが鳴っています",

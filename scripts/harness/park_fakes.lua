@@ -134,7 +134,7 @@ function F.vehicle(o)
     function v:hasPassenger() return self.passengers > 0 end
     function v:areAllDoorsLocked() return self.locked end
     function v:getKeyId() return self.keyId end
-    function v:isKeysInIgnition() return false end
+    function v:isKeysInIgnition() return self.ignition == true end
     function v:getX() return self.x end
     function v:getY() return self.y end
     function v:setAlarmed(b) self.alarmed = b end

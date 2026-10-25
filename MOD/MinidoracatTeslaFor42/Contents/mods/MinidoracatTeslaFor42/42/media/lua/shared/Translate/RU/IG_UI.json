@@ -6,6 +6,7 @@
     "IGUI_MinidoracatTesla_Deny_UNLOCKED": "Сначала заприте все двери",
     "IGUI_MinidoracatTesla_Deny_LOW_BATTERY": "Заряд батареи должен быть не ниже 20%%",
     "IGUI_MinidoracatTesla_Deny_TOO_FAR": "Слишком далеко от машины",
+    "IGUI_MinidoracatTesla_Deny_KEY_IN_IGNITION": "Ключ всё ещё в замке зажигания: сначала выньте его",
     "IGUI_MinidoracatTesla_Sentry_TouchDoor": "Часовой: кто-то дернул дверь",
     "IGUI_MinidoracatTesla_Sentry_TouchUnlock": "Часовой: кто-то пытался открыть замок",
     "IGUI_MinidoracatTesla_Sentry_BreakWindow": "Часовой: окно разбито, сработала сигнализация",

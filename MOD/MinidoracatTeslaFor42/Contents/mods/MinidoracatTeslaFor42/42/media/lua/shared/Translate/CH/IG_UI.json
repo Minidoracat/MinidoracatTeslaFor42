@@ -6,6 +6,7 @@
     "IGUI_MinidoracatTesla_Deny_UNLOCKED": "請先鎖上所有車門",
     "IGUI_MinidoracatTesla_Deny_LOW_BATTERY": "電量要 20%% 以上",
     "IGUI_MinidoracatTesla_Deny_TOO_FAR": "離車太遠",
+    "IGUI_MinidoracatTesla_Deny_KEY_IN_IGNITION": "鑰匙還插在車上，先拔下來",
     "IGUI_MinidoracatTesla_Sentry_TouchDoor": "哨兵：有人拉了車門",
     "IGUI_MinidoracatTesla_Sentry_TouchUnlock": "哨兵：有人試著解鎖",
     "IGUI_MinidoracatTesla_Sentry_BreakWindow": "哨兵：車窗被打破，警報響起",

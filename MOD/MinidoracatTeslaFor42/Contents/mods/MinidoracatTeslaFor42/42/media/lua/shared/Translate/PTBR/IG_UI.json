@@ -6,6 +6,7 @@
     "IGUI_MinidoracatTesla_Deny_UNLOCKED": "Tranque todas as portas primeiro",
     "IGUI_MinidoracatTesla_Deny_LOW_BATTERY": "A bateria precisa estar em pelo menos 20%%",
     "IGUI_MinidoracatTesla_Deny_TOO_FAR": "Longe demais do carro",
+    "IGUI_MinidoracatTesla_Deny_KEY_IN_IGNITION": "A chave ainda está no carro: tire-a primeiro",
     "IGUI_MinidoracatTesla_Sentry_TouchDoor": "Sentinela: alguém puxou uma porta",
     "IGUI_MinidoracatTesla_Sentry_TouchUnlock": "Sentinela: alguém tentou destrancar",
     "IGUI_MinidoracatTesla_Sentry_BreakWindow": "Sentinela: janela quebrada, alarme tocando",

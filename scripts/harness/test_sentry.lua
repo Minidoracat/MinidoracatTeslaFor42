@@ -46,6 +46,13 @@ MinidoracatVehicleManagerAPI = { canUse = function() return true, "OWNER" end }
 check(T.legit(thief, v) == true, "legit: VehicleManager claimed PASSENGER counts")
 MinidoracatVehicleManagerAPI = nil
 
+-- the owner's key left in the ignition (vanilla moves it there on start): say so, not NOT_OWNER
+local parked = F.track(F.vehicle({ pct = 80 }))
+parked.ignition = true
+cmds.sentryArm(F.player("parker"), { vid = parked:getId() })
+check(md(parked).sentry == nil and F.lastSent("deny").args.reason == "KEY_IN_IGNITION",
+    "sentry: key left in the ignition -> KEY_IN_IGNITION")
+
 -- ---- touch: stranger -> flash once + alert, OnTick removed afterwards ----
 local ticksBefore = F.handlers("OnTick")
 F.sent = {}

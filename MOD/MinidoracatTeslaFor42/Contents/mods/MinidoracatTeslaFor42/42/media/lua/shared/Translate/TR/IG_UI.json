@@ -6,6 +6,7 @@
     "IGUI_MinidoracatTesla_Deny_UNLOCKED": "Önce tüm kapıları kilitle",
     "IGUI_MinidoracatTesla_Deny_LOW_BATTERY": "Batarya en az %%20 olmalı",
     "IGUI_MinidoracatTesla_Deny_TOO_FAR": "Araca çok uzaksın",
+    "IGUI_MinidoracatTesla_Deny_KEY_IN_IGNITION": "Anahtar hâlâ araçta takılı: önce çıkar",
     "IGUI_MinidoracatTesla_Sentry_TouchDoor": "Güvenlik: biri kapıyı çekti",
     "IGUI_MinidoracatTesla_Sentry_TouchUnlock": "Güvenlik: biri kilidi açmaya çalıştı",
     "IGUI_MinidoracatTesla_Sentry_BreakWindow": "Güvenlik: cam kırıldı, alarm çalıyor",

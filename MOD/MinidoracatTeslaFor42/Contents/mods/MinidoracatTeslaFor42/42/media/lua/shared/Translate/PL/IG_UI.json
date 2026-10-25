@@ -6,6 +6,7 @@
     "IGUI_MinidoracatTesla_Deny_UNLOCKED": "Najpierw zablokuj wszystkie drzwi",
     "IGUI_MinidoracatTesla_Deny_LOW_BATTERY": "Akumulator musi mieć co najmniej 20%%",
     "IGUI_MinidoracatTesla_Deny_TOO_FAR": "Za daleko od samochodu",
+    "IGUI_MinidoracatTesla_Deny_KEY_IN_IGNITION": "Kluczyk wciąż jest w stacyjce: najpierw go wyjmij",
     "IGUI_MinidoracatTesla_Sentry_TouchDoor": "Wartownik: ktoś szarpnął drzwi",
     "IGUI_MinidoracatTesla_Sentry_TouchUnlock": "Wartownik: ktoś próbował odblokować",
     "IGUI_MinidoracatTesla_Sentry_BreakWindow": "Wartownik: wybita szyba, włączony alarm",

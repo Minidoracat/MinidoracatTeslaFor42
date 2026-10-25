@@ -14,7 +14,7 @@ C.MIN_PCT = 20
 C.HEATER_KW = 1.5   -- heater draw from the main pack while it runs
 C.DEFAULT_TEMP = 15 -- heater knob value when the player never set one (ISVehicleACUI.lua:76-82 knob stops)
 
--- Legit user of this car: the account that armed sentry, a holder of this car's key, or a VehicleManager
+-- Legit user of this car (sentry): the account that armed sentry, a holder of this car's key, or a VehicleManager
 -- user with PASSENGER rights on a claimed car. T.authorized also says yes for UNCLAIMED (VehicleManager),
 -- EASY_USE (sandbox VehicleEasyUse) and keys left in the ignition ("KEY" without a key in hand); none of
 -- those count here, otherwise any stranger pulling the door handle would disarm sentry.
@@ -30,7 +30,9 @@ function S.canArm(player, vehicle)
     if not part then return false end
     if player:getVehicle() then return false, "OCCUPIED" end
     if player:DistTo(vehicle) > S.RANGE then return false, "TOO_FAR" end
-    if not T.legit(player, vehicle) then return false, "NOT_OWNER" end
+    -- a key left in the ignition is in nobody's hand: say so instead of NOT_OWNER (the owner's own key ends up there,
+    -- see C.canEnable)
+    if not T.legit(player, vehicle) then return false, vehicle:isKeysInIgnition() and "KEY_IN_IGNITION" or "NOT_OWNER" end
     if vehicle:isEngineRunning() then return false, "ENGINE_ON" end
     if vehicle:hasPassenger() then return false, "OCCUPIED" end
     if not vehicle:areAllDoorsLocked() then return false, "UNLOCKED" end
@@ -51,7 +53,11 @@ function C.canEnable(player, vehicle)
     local part = T.Battery.part(vehicle)
     if not part then return false end
     if player:getVehicle() ~= vehicle then return false, "NOT_INSIDE" end
-    if not T.legit(player, vehicle) then return false, "NOT_OWNER" end
+    -- seated: whoever may ride this car may run its climate. Not T.legit: starting the motor moves the driver's key from
+    -- the inventory into the ignition (BaseVehicle.java:7484,7503 -> setKeysInIgnition :8647-8675) and the "leave key
+    -- in ignition" option keeps it there after shutdown (:7556-7558), so the owner held no key and got NOT_OWNER, even
+    -- before ENGINE_ON (user 2026-10-25 playtest). VehicleManager's canUse still decides when it is installed.
+    if not T.authorized(player, vehicle, "PASSENGER") then return false, "NOT_OWNER" end
     if vehicle:isEngineRunning() then return false, "ENGINE_ON" end
     if T.Battery.pct(part) < C.MIN_PCT then return false, "LOW_BATTERY" end
     return true

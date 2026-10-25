@@ -6,6 +6,7 @@
     "IGUI_MinidoracatTesla_Deny_UNLOCKED": "Verriegle zuerst alle Türen",
     "IGUI_MinidoracatTesla_Deny_LOW_BATTERY": "Die Batterie muss mindestens 20 %% haben",
     "IGUI_MinidoracatTesla_Deny_TOO_FAR": "Zu weit vom Auto entfernt",
+    "IGUI_MinidoracatTesla_Deny_KEY_IN_IGNITION": "Der Schlüssel steckt noch im Auto: zieh ihn zuerst ab",
     "IGUI_MinidoracatTesla_Sentry_TouchDoor": "Wächter: Jemand hat an einer Tür gezogen",
     "IGUI_MinidoracatTesla_Sentry_TouchUnlock": "Wächter: Jemand wollte entriegeln",
     "IGUI_MinidoracatTesla_Sentry_BreakWindow": "Wächter: Scheibe eingeschlagen, Alarm ausgelöst",
