@@ -50,13 +50,14 @@ module Base
         }
     }
 
-    /* the same two layers as heard outside by other players, on a free emitter that follows the car (Sound.lua).
+    /* the same two layers as heard outside by other players (Sound.lua): a 3D copy on a free emitter that follows the
+       car while it is in front of the listener and in sight, a 2D copy at (0,0) otherwise (Sound.lua want3D).
        File sounds use FMOD's inverse rolloff: full volume to distanceMin, min/d beyond, flat past distanceMax
        (FMODSoundEmitter.java:1356); Sound.lua fades them out past distanceMax (Sound.EXT_MAX). Outside a real Tesla
-       the speaker's PWS is what you hear, the whine is faint. Volume vs ModernCar driving past B 4 tiles off the road
-       (E2E remote-sound-mp): user's pick 2026-10-25 was +6 dB over PWS -10 dB at 15 km/h / whine -17 dB at 50 km/h,
-       never above ModernCar. volume is a linear gain (GameSoundScript.java:69-70, GameSoundClip.java:68-70,
-       FMODSoundEmitter.java:1480,1559-1562 -> FMOD_Channel_SetVolume): x2 = +6 dB. */
+       the speaker's PWS is what you hear, the whine is faint. volume is a linear gain (GameSoundScript.java:69-70,
+       GameSoundClip.java:68-70, FMODSoundEmitter.java:1480,1559-1562 -> FMOD_Channel_SetVolume): 20 log10 of a ratio.
+       Set by the user listening to B's recordings in E2E remote-sound-mp (2026-10-25): whine 0.24 (0.12 x2, +6 dB),
+       PWS 0.3 (0.2 x2 = 0.4, then -2.5 dB once the car behind the listener stopped dropping out). */
     sound MinidoracatTesla_MotorExt
     {
         category = Vehicle,
@@ -83,7 +84,7 @@ module Base
             file = media/sound/MinidoracatTesla/PWSForward.ogg,
             distanceMin = 3,
             distanceMax = 30,
-            volume = 0.4,
+            volume = 0.3,
         }
     }
 
