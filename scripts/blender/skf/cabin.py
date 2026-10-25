@@ -78,8 +78,8 @@ DOOR_CARD = {
 
 def door_card(bvh, side, ys, belt, kind):
     """Door card details on a side door's inner panel (mesh coords, shut pose): one rounded box per DOOR_CARD entry,
-    bent along y to stay on the panel where rays from the cabin axis meet it every 4 cm (`bvh`: the door piece; the
-    door curves in plan). side: -1 left, +1 right; ys: (rear, front) y of the card. -> object (UV1 cabin cells, v 0)."""
+    bent along y to stay on the panel where rays from the cabin axis meet it every 8 cm (`bvh`: the door piece; the
+    door curves gently in plan), one bevel segment (about 100 triangles a strip). side: -1 left, +1 right; ys: (rear, front) y of the card. -> object (UV1 cabin cells, v 0)."""
     rear, front = ys
     V, F, cells, nv = [], [], [], 0
     for name, at, pos, dz, ln, h, dep, cell, r in DOOR_CARD[kind]:
@@ -90,7 +90,7 @@ def door_card(bvh, side, ys, belt, kind):
         else:
             y0, y1 = front - pos - ln, front - pos
         z = belt + dz
-        n = max(1, int(round((y1 - y0) / 0.04)))
+        n = max(1, int(round((y1 - y0) / 0.08)))
         sy = np.linspace(y0, y1, n + 1)
         sx = []
         for y in sy:
@@ -98,7 +98,7 @@ def door_card(bvh, side, ys, belt, kind):
             if hit is None:
                 raise SystemExit(f"door card {kind} {name}: no inner panel at y {y:.3f} z {z:.3f}")
             sx.append(hit.x)
-        v, f = rbox((dep, y1 - y0, h), min(r, dep / 2.2, h / 2.2, (y1 - y0) / 2.2), cuts=(0, n - 1, 0))
+        v, f = rbox((dep, y1 - y0, h), min(r, dep / 2.2, h / 2.2, (y1 - y0) / 2.2), cuts=(0, n - 1, 0), seg=1)
         v += [0, (y0 + y1) / 2, z]
         v[:, 0] += np.interp(v[:, 1], sy, sx) - side * (dep / 2 - 0.004)
         F += [[k + nv for k in fc] for fc in f]

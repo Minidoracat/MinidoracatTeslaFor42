@@ -16,9 +16,11 @@
 
 ### 變更
 
-- **Model Y 換上另一套車身模型（試作版）**：車身、車門、後尾門、前車廂蓋、車窗與車燈換成新的模型，車內仍是原本的座椅、儀表台、方向盤、中控螢幕與行李廂。隔著車窗或天窗看對面關著的車門，看到的是門內板，不再透出路面；打開遠側的車門時，隔著天窗看到的是打開的門洞。這一版先讓大家比較外觀：車漆的光澤還在調整，損壞、生鏽與拆下零件的顯示也還沒逐一對過。
+- **Model Y 換上新的車身模型**：車身、車門、後尾門、前車廂蓋、車窗與車燈換成新的模型，八種原廠色重新對照官方配色調過。後照鏡外殼改成車身色。夜裡尾燈是一整條橫跨尾門的燈條加上兩側的 C 形角燈，踩煞車時角燈內側亮起。輪胎照新車身的輪拱調整了大小。
+- **Model Y 車內**：仍是原本的座椅、儀表台、方向盤、中控螢幕與行李廂。四扇車門內側多了扶手、拉手、車窗開關、置物袋、喇叭網與氛圍燈條，中控螢幕不再是一塊空白，儀表台多一條氛圍燈線。隔著車窗或天窗看對面的車門，看到的是門內板，不再有黑色虛線橫過車窗；打開遠側的車門時，隔著天窗看到的是打開的門洞。
+- 已經在存檔裡的 Model Y 會直接換成新模型，車色不變。
 
-> 技術要點：Model Y 車身改作自 BloxBloger 的「2026 Tesla Model Y Performance」（Sketchfab，CC BY-NC 4.0，https://sketchfab.com/3d-models/2026-tesla-model-y-performance-8a0bc252f9da4015a02a7bd99efd4847 ，授權 http://creativecommons.org/licenses/by-nc/4.0/ ）。已修改：減面、拆件、重做貼圖；署名全文見 `CREDITS.md`。
+> 技術要點：Model Y 車身改作自 BloxBloger 的「2026 Tesla Model Y Performance」（Sketchfab，CC BY-NC 4.0，https://sketchfab.com/3d-models/2026-tesla-model-y-performance-8a0bc252f9da4015a02a7bd99efd4847 ，授權 http://creativecommons.org/licenses/by-nc/4.0/ ）。已修改：減面、拆件、重做貼圖、改用本 MOD 的車內與輪子；署名全文見 `CREDITS.md`。
 
 ## [42.21.0-0.1.0] - 2026-10-23
 
