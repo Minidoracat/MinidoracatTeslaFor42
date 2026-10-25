@@ -132,7 +132,19 @@ getOnlinePlayers = saved.getOnlinePlayers
 -- ---------------------------------------------------------------- listener: registry, emitters, the one OnTick
 H.section("remote sound: listener")
 H.side(true, false)
-local me = H.player({ name = "me", x = 300, y = 300 })
+local savedCell = getCell
+local hidden, unloaded = {}, {} -- "x,y" -> true: the listener cannot see that square / it is not loaded
+local squares = {}
+local function square(x, y)
+    local k = math.floor(x) .. "," .. math.floor(y)
+    if unloaded[k] then return nil end
+    squares[k] = squares[k] or { k = k, isCouldSee = function(self, i) return i == 0 and not hidden[self.k] end }
+    return squares[k]
+end
+function getCell() return { getGridSquare = function(_, x, y) return square(x, y) end } end
+local me = H.player({ name = "me", x = 320, y = 320 }) -- the cars start north-west of me: in front of the listener
+function me:getCurrentSquare() return square(self.x, self.y) end
+function me:getPlayerNum() return 0 end
 function getSpecificPlayer(i) return i == 0 and me or nil end
 local other = H.player({ name = "other" })
 local a = tesla({ x = 304.5, y = 300.5, running = true })
@@ -142,6 +154,12 @@ local base, st = H.count("OnTick"), S.stats
 local adds0, removes0 = st.tickAdds, st.tickRemoves
 local function frame(ms) H.advanceMs(ms or 20); H.fire("OnTick") end
 local function hz(n) for _ = 1, n do frame(100) end end
+local function dist(v) return math.sqrt((v.x - me.x) ^ 2 + (v.y - me.y) ^ 2) end
+-- what reaches the listener: the 3D copy through FMOD's inverse rolloff, plus the 2D copy as set
+local function heardPws(e, v)
+    local att = S.EXT_MIN / math.max(S.EXT_MIN, math.min(S.EXT_MAX, dist(v)))
+    return e.pws.vol * att + e.pws2.vol / S.FLAT_GAIN, e.lp * att -- the 2D copy in 3D-copy units
+end
 
 check(H.count("OnTick") == base and st.tickAdds == adds0, "nobody driving: no OnTick of ours")
 motor({ vid = a:getId(), on = true })
@@ -151,34 +169,106 @@ motor({ vid = a:getId(), on = true })
 check(H.count("OnTick") == base + 1 and st.tickAdds == adds0 + 1, "second beat: no second OnTick")
 local ne = #emitters
 frame(100)
-check(#emitters == ne + 2 and e.motor and e.pws and e.motor.e ~= e.pws.e, "car in earshot: two emitters, one per layer")
-check(e.motor.e.x == 304.5 and e.motor.e.y == 300.5 and e.pws.e.x == 304.5, "emitters on the car (3D, not (0,0))")
-check(e.motor.e:playing().name == "MinidoracatTesla_MotorExt" and e.pws.e:playing().name == "MinidoracatTesla_PWSForwardExt",
-    "outside: the *Ext sounds")
+check(#emitters == ne + 4 and e.motor.e ~= e.pws.e and e.motor2.e ~= e.pws2.e and e.motor.e ~= e.motor2.e,
+    "car in earshot: four emitters, a 3D and a 2D copy of each layer")
+check(e.motor.e.x == 304.5 and e.motor.e.y == 300.5 and e.pws.e.x == 304.5, "3D copies on the car")
+check(e.motor2.e.x == 0 and e.motor2.e.y == 0 and e.pws2.e.x == 0, "2D copies at (0,0)")
+check(e.motor.e:playing().name == "MinidoracatTesla_MotorExt" and e.pws.e:playing().name == "MinidoracatTesla_PWSForwardExt"
+    and e.motor2.e:playing().name == "MinidoracatTesla_MotorExt" and e.pws2.e:playing().name == "MinidoracatTesla_PWSForwardExt",
+    "outside: the *Ext sounds on all four")
 a.x = 310.5
 frame(10)
-check(e.motor.e.x == 310.5 and e.pws.e.x == 310.5, "every frame between 10 Hz updates: emitters follow the car")
+check(e.motor.e.x == 310.5 and e.pws.e.x == 310.5 and e.motor2.e.x == 0, "every frame: the 3D copies follow the car, the 2D ones stay")
 a.speed = 20
 hz(20)
 local p20, pws20 = e.motor.pitch, e.pws.vol
-check(pws20 > 0.3 and e.motor.vol > 0.2, "20 km/h forward: PWS and motor audible")
+check(pws20 > 0.3 and e.motor.vol > 0.2 and e.pws2.vol == 0 and e.motor2.vol == 0,
+    "in sight, 20 km/h: the 3D copies play PWS and motor, the 2D copies are silent")
+
+H.section("remote sound: out of sight")
+motor({ vid = a:getId(), on = true }) -- a beat keeps the entry from expiring (HEARD_MS) in these long stretches
+local k = math.floor(a.x) .. "," .. math.floor(a.y)
+hidden[k] = true
+local maxRatio, minRatio = 0, 9
+for _ = 1, 6 do
+    hz(1)
+    local got, want = heardPws(e, a)
+    maxRatio, minRatio = math.max(maxRatio, got / want), math.min(minRatio, got / want)
+end
+local att = S.FLAT_GAIN * S.EXT_MIN / dist(a)
+check(e.seen == 0 and e.pws.vol == 0 and e.motor.vol == 0, "car out of sight: the 3D copies down to 0")
+check(math.abs(e.pws2.vol - e.lp * att) < 1e-9 and math.abs(e.motor2.vol - e.lm * att) < 1e-9,
+    "the 2D copies take over at level x min/d (" .. string.format("%.3f", e.pws2.vol) .. ")")
+check(maxRatio <= 1 + 1e-9 and minRatio >= 1 - 1e-9, "crossfade: the two copies add up to one, never double ("
+    .. string.format("%.3f..%.3f", minRatio, maxRatio) .. ")")
+check(e.motor2.pitch == e.motor.pitch and e.motor2.pitch == p20, "the 2D motor copy gets the same pitch")
 a.speed = 45
 hz(20)
-check(e.motor.pitch > p20 and e.pws.vol == 0, "45 km/h: pitch up, PWS silent above 40")
+check(e.motor.pitch > p20 and e.motor2.pitch == e.motor.pitch and e.pws2.vol == 0, "45 km/h out of sight: pitch up on both, PWS silent")
+a.speed = 20
+hz(20)
+a.x = 316.5
+hidden[math.floor(a.x) .. "," .. math.floor(a.y)] = true
+hz(1)
+check(math.abs(e.pws2.vol - e.lp * S.FLAT_GAIN * S.EXT_MIN / dist(a)) < 1e-9, "the 2D copies follow the distance (" .. string.format("%.1f", dist(a)) .. " tiles)")
+a.x = 310.5
+hz(1)
+hidden[k] = nil
+maxRatio, minRatio = 0, 9
+for _ = 1, 6 do
+    hz(1)
+    local got, want = heardPws(e, a)
+    maxRatio, minRatio = math.max(maxRatio, got / want), math.min(minRatio, got / want)
+end
+check(e.seen == 1 and e.pws2.vol == 0 and e.pws.vol == e.lp and maxRatio <= 1 + 1e-9 and minRatio >= 1 - 1e-9,
+    "back in sight: the 3D copies take over again, no doubling")
+-- the listener faces world (-1,-1): a car south-east of me is behind it, even in plain sight
+a.x, a.y = 330.5, 330.5
+maxRatio, minRatio = 0, 9
+for _ = 1, 6 do
+    hz(1)
+    local got, want = heardPws(e, a)
+    maxRatio, minRatio = math.max(maxRatio, got / want), math.min(minRatio, got / want)
+end
+check(e.seen == 0 and e.pws.vol == 0 and math.abs(e.pws2.vol - e.lp * S.FLAT_GAIN * S.EXT_MIN / dist(a)) < 1e-9
+    and maxRatio <= 1 + 1e-9 and minRatio >= 1 - 1e-9, "in sight but behind the listener (south-east): the 2D copies, no doubling")
+a.x, a.y = 330.5, 309.5
+hz(6)
+check(e.seen == 0, "90 degrees off the listener's forward (north-east): 2D")
+a.x, a.y = 310.5, 300.5
+hz(6)
+check(e.seen == 1, "back north-west: 3D again")
+me.x, me.y = 310.2, 300.7
+hidden[math.floor(me.x) .. "," .. math.floor(me.y)] = true
+hz(6)
+check(e.seen == 1, "car on the listener's own square: counts as seen (the engine does not occlude it)")
+me.x, me.y = 320, 320
+hidden[k] = nil
+unloaded[k] = true
+hz(6)
+check(e.seen == 0 and e.pws2.vol > 0, "car's square not loaded: the 2D copies (the engine occludes it even more)")
+unloaded[k] = nil
+hz(6)
+motor({ vid = a:getId(), on = true })
 a.speed = -8
 hz(20)
-check(e.pws.vol == 0 and e.motor.vol > 0, "reversing (negative speed on remote clients): no forward PWS, motor on")
+check(e.pws.vol == 0 and e.pws2.vol == 0 and e.motor.vol > 0, "reversing (negative speed on remote clients): no forward PWS, motor on")
 a.speed = 20
 hz(20)
 a.x = 400.5 -- 100 tiles: past distanceMax, where FMOD's rolloff goes flat
+hidden[math.floor(a.x) .. "," .. math.floor(a.y)] = true
+check(e.motor ~= nil, "playing before the car leaves")
+local four = { e.motor.e, e.pws.e, e.motor2.e, e.pws2.e }
 hz(20)
-check(e.motor == nil and S.heard[a:getId()] ~= nil and H.count("OnTick") == base + 1, "out of earshot: faded out and stopped, still registered")
+check(e.motor == nil and four[1]:playing() == nil and four[2]:playing() == nil and four[3]:playing() == nil
+    and four[4]:playing() == nil and S.heard[a:getId()] ~= nil and H.count("OnTick") == base + 1,
+    "past 30 tiles (out of sight too): all four faded out and stopped, still registered")
 a.x = 310.5
 hz(2)
-check(e.motor ~= nil, "back in earshot: playing again")
+check(e.motor ~= nil and e.motor2 ~= nil, "back in earshot: playing again")
 a.running = false
 frame(100)
-check(e.motor == nil and S.heard[a:getId()] ~= nil, "motor off on the remote car: silent at once, entry waits for 'off'")
+check(e.motor == nil and e.motor2 == nil and S.heard[a:getId()] ~= nil, "motor off on the remote car: silent at once, entry waits for 'off'")
 a.running = true
 hz(2)
 motor({ vid = a:getId(), on = false })
@@ -202,14 +292,14 @@ motor({ vid = a:getId(), on = true })
 hz(1)
 e = S.heard[a:getId()]
 check(e.motor.e.x == 0 and e.motor.e.y == 0 and e.motor.e:playing().name == "MinidoracatTesla_Motor"
-    and e.pws.e:playing().name == "MinidoracatTesla_PWSForward", "passenger: the cabin layers in 2D")
+    and e.pws.e:playing().name == "MinidoracatTesla_PWSForward" and e.motor2 == nil, "passenger: the cabin layers in 2D, no copies")
 local pf = e.motor.e
 a.x = 320.5
 frame(10)
 check(pf.x == 0, "passenger: the 2D emitters stay at (0,0)")
 me.vehicle = nil
 hz(1)
-check(e.motor.e ~= pf and e.motor.e.x == 320.5, "passenger steps out: restarted outside in 3D")
+check(e.motor.e ~= pf and e.motor.e.x == 320.5 and e.motor2 ~= nil, "passenger steps out: restarted outside, 3D and 2D copies")
 a.driver = me
 hz(1)
 check(e.motor == nil, "I am the driver now: my own dashboard plays the cabin layers, nothing here")
@@ -229,5 +319,5 @@ check(H.count("OnTick") == base and st.playing == 0 and st.tickAdds - adds0 == s
 motor({ vid = "x", on = true })
 check(H.count("OnTick") == base, "malformed beat: ignored")
 
-getWorld, getSpecificPlayer = saved.getWorld, saved.getSpecificPlayer
+getWorld, getSpecificPlayer, getCell = saved.getWorld, saved.getSpecificPlayer, savedCell
 H.side(false, true)

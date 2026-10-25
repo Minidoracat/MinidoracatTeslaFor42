@@ -5,7 +5,9 @@
 -- dashboard goes away or the motor stops. In MP the driver also sends "motor on" when they start and every BEAT_MS,
 -- "motor off" when they stop; the server relays it to players nearby (server/MinidoracatTesla/SoundRelay.lua).
 -- Everyone else (passengers too): one OnTick, added while at least one car is registered and removed when the list
--- empties; it moves the emitters with the car every frame and sets volume and pitch at 10 Hz.
+-- empties; it moves the 3D emitters with the car every frame and sets volume and pitch at 10 Hz. Outside the car each
+-- layer has a 3D copy on the car and a 2D copy that takes over while the car is behind the listener or its square is
+-- out of sight (want3D).
 require "MinidoracatTesla/HUD"
 
 local T = MinidoracatTesla
@@ -18,7 +20,12 @@ local STEP = 0.08                   -- most a volume moves per update: throttle 
 local PITCH_STEP = 0.03             -- relative; setPitch writes a log line per call (pitfalls.md:257-261)
 Sound.BEAT_MS = 5000                -- driver: "motor on" again this often while the layers play
 Sound.HEARD_MS = 12000              -- listener: a car without a beat for this long goes quiet (two beats missed)
+Sound.EXT_MIN = 3                   -- = distanceMin of the *Ext sounds: full volume up to here
 Sound.EXT_MAX = 30                  -- = distanceMax of the *Ext sounds; FMOD's inverse rolloff stops falling there
+Sound.FLAT_GAIN = 0.7               -- 2D copy vs 3D copy at the same distance: the 3D pan near the centre is
+                                    -- constant-power, the 2D copy plays full on both channels (tesla-rsound-1025e:
+                                    -- 2D 3.1-3.9 dB louder than the 3D copy where the crossfade starts)
+local SEEN_STEP = 0.25              -- 3D <-> 2D crossfade: 0.4 s
 Sound.stats = { sent = 0, beats = 0, tickAdds = 0, tickRemoves = 0, playing = 0 }
 
 -- Targets 0..1 for speed (km/h), throttle (0..1) and gear D. The clip volumes in MinidoracatTesla_sounds.txt
@@ -117,21 +124,26 @@ function HUD:hide()
 end
 
 -- ---------------------------------------------------------------- everyone else (MP)
--- vid -> { vid, exp, v, inside, motor, pws }. A car stays registered while it is unloaded, out of earshot, parked
--- with the motor off or without a driver (a fast car crosses the relay radius between two beats; the "on" can
--- arrive before the engine state): only "off" or the expiry drop it.
+-- vid -> { vid, exp, v, inside, motor, pws, motor2, pws2, lm, lp, seen }. A car stays registered while it is
+-- unloaded, out of earshot, parked with the motor off or without a driver (a fast car crosses the relay radius
+-- between two beats; the "on" can arrive before the engine state): only "off" or the expiry drop it.
+-- motor/pws: outside the 3D layers on the car, inside the cabin layers (2D). motor2/pws2: outside only, the 2D copies.
+-- lm/lp: the layer levels (target x slider, moved by STEP); seen: 1 = the 3D copies play, 0 = the 2D copies.
 local heard, nHeard = {}, 0
 Sound.heard = heard
 local tick
 local drop = {}
 local nextAt = 0
-local EXT_MAX2 = Sound.EXT_MAX * Sound.EXT_MAX
 
 local function silence(e)
     if not e.motor then return end
     e.motor.e:stopSound(e.motor.h)
     e.pws.e:stopSound(e.pws.h)
-    e.motor, e.pws = nil, nil
+    if e.motor2 then
+        e.motor2.e:stopSound(e.motor2.h)
+        e.pws2.e:stopSound(e.pws2.h)
+    end
+    e.motor, e.pws, e.motor2, e.pws2 = nil, nil, nil, nil
     Sound.stats.playing = Sound.stats.playing - 1
 end
 
@@ -147,36 +159,82 @@ local function forget(vid)
     end
 end
 
+local function approach(cur, target, max) return cur + math.max(-max, math.min(max, target - cur)) end
+local function setVol(L, v)
+    if v ~= L.vol then
+        L.vol = v
+        L.e:setVolume(L.h, v)
+    end
+end
+
+-- How much of a layer the 3D copy carries (1) or the 2D copy (0). Two things take a 3D file sound far below what its
+-- distance gives, and the 2D copy (no position, no occlusion: FMODSoundEmitter.java:978-979, :1237) stands in:
+-- * the car in the back half of the listener. The listener's forward vector is fixed at world (-1,-1), north-west
+--   towards the camera (fmod/fmod/SoundListener.java:32-34,45-47), and FMOD drops a file sound behind it by 17 dB or
+--   more (E2E remote-sound-mp tesla-rsound-1025d: B's recording against the angle; same with B facing either way, the
+--   car's square visible all along). Vanilla engines are FMOD events and lose only 6-8 dB there. Full 3D from 60
+--   degrees off forward, full 2D from 90.
+-- * the car's square out of sight: 0.4 direct occlusion with the low-pass filter (FMODSoundEmitter.java:1438-1440,
+--   FMOD_INIT_CHANNEL_LOWPASS in FMODManager.java:139), more when the square is not loaded (:1441-1453). Same test
+--   as the engine, square by the emitter position.
+local SQRT2 = math.sqrt(2)
+local function want3D(me, v, dx, dy, d)
+    local sq = getCell():getGridSquare(v:getX(), v:getY(), v:getZ()) -- IsoCell.java:3120
+    if not sq or (sq ~= me:getCurrentSquare() and not sq:isCouldSee(me:getPlayerNum())) then -- IsoGridSquare.java:9122, IsoPlayer.java:979
+        return 0
+    end
+    if d < 1 then return 1 end
+    return math.max(0, math.min(1, -(dx + dy) / (SQRT2 * d) * 2)) -- cos to (-1,-1): 0 at 90 degrees, 0.5 at 60
+end
+
 -- 10 Hz per car. Remote clients get the signed speed from the position updates (VehicleManager.java:233) and the
 -- engine state (network/fields/vehicle/VehicleEngine.java:42-43); the throttle is applied on the server only
 -- (VehiclePhysicsPacket.java:146-171), so the curve gets 0 for it.
+-- Outside: 3D copy at level x seen, 2D copy at level x (1 - seen) x the distance gain FMOD gives the 3D copy
+-- (inverse rolloff: min / clamp(d, min, max), d with z x 3 like the emitter, FMODSoundEmitter.java:1253,1356)
+-- x FLAT_GAIN, so what the listener gets stays at level x gain through the crossfade instead of doubling.
 local function refresh(e, me)
     local v = getVehicleById(e.vid)
     local drv = v and v:getDriver()
     if not drv or drv == me or not v:isEngineRunning() then return silence(e) end
     local inside = me:getVehicle() == v
-    local dx, dy = v:getX() - me:getX(), v:getY() - me:getY()
-    local far = not inside and dx * dx + dy * dy > EXT_MAX2
+    local dx, dy, dz = v:getX() - me:getX(), v:getY() - me:getY(), (v:getZ() - me:getZ()) * 3
+    local d = math.sqrt(dx * dx + dy * dy + dz * dz)
+    local far = not inside and d > Sound.EXT_MAX
     if e.motor and e.inside ~= inside then silence(e) end
     if not e.motor then
         if far then return end
-        -- passengers hear the cabin layers in 2D like the driver; outside, the *Ext sounds sit on the car in 3D
+        -- passengers hear the cabin layers in 2D like the driver; outside, the *Ext sounds on the car plus 2D copies
         if inside then
             e.motor, e.pws = start("MinidoracatTesla_Motor", 0, 0, 0), start("MinidoracatTesla_PWSForward", 0, 0, 0)
         else
             local x, y, z = v:getX(), v:getY(), v:getZ()
             e.motor, e.pws = start("MinidoracatTesla_MotorExt", x, y, z), start("MinidoracatTesla_PWSForwardExt", x, y, z)
+            e.motor2, e.pws2 = start("MinidoracatTesla_MotorExt", 0, 0, 0), start("MinidoracatTesla_PWSForwardExt", 0, 0, 0)
+            e.seen = want3D(me, v, dx, dy, d)
         end
-        e.inside = inside
+        e.inside, e.lm, e.lp = inside, 0, 0
         Sound.stats.playing = Sound.stats.playing + 1
     end
     e.v = v
     local speed = v:getCurrentSpeedKmHour()
     local g = far and 0 or gain()
     local pitch, motor, pws = Sound.curve(math.abs(speed) * BaseVehicle.getFakeSpeedModifier(), 0, speed > 0)
-    toward(e.motor, motor * g)
-    toward(e.pws, pws * g)
-    if far and e.motor.vol == 0 and e.pws.vol == 0 then return silence(e) end
+    e.lm, e.lp = approach(e.lm, motor * g, STEP), approach(e.lp, pws * g, STEP)
+    if far and e.lm == 0 and e.lp == 0 then return silence(e) end
+    if inside then
+        setVol(e.motor, e.lm)
+        setVol(e.pws, e.lp)
+    else
+        local seen = approach(e.seen, want3D(me, v, dx, dy, d), SEEN_STEP)
+        local flat = (1 - seen) * Sound.FLAT_GAIN * Sound.EXT_MIN / math.max(Sound.EXT_MIN, math.min(Sound.EXT_MAX, d))
+        e.seen = seen
+        setVol(e.motor, e.lm * seen)
+        setVol(e.pws, e.lp * seen)
+        setVol(e.motor2, e.lm * flat)
+        setVol(e.pws2, e.lp * flat)
+        pitchTo(e.motor2, pitch)
+    end
     pitchTo(e.motor, pitch)
 end
 
