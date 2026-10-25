@@ -144,6 +144,9 @@ function H.vehicle(o)
     function v:isKeysInIgnition() return false end
     function v:setEngineFeature(q, l, f) self.feature = { q, l, f } end
     function v:setColorHSV(h, s, val) self.hsv = { h, s, val } end
+    function v:getColorHue() return (self.hsv or { 0.69 })[1] end
+    function v:getColorSaturation() return (self.hsv or { 0, 0.58 })[2] end
+    function v:getColorValue() return (self.hsv or { 0, 0, 0.296 })[3] end
     function v:transmitColorHSV() self.colorTx = (self.colorTx or 0) + 1 end
     function v:setSkinIndex(i) self.skin = i end
     function v:transmitSkinIndex() self.skinTx = (self.skinTx or 0) + 1 end

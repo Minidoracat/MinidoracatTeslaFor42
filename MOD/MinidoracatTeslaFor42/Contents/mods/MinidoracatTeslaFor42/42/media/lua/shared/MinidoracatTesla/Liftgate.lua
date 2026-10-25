@@ -20,6 +20,26 @@ function L.check(player, vehicle)
     return part
 end
 
+-- Open doors ride in the colour hue's integer part (bit k-1 for SHELL_DOORS[k]): the shader hides the cabin shell's
+-- wall behind an open door (else the far wall showed through the roof glass where the door opening is). Hue is the
+-- only per-car shader value Lua sets that vanilla leaves alone (BaseVehicle.updateLights -> painColor, every render,
+-- BaseVehicle.java:5817), it is saved (:2663) and synced with the skin (VehicleProperties.java:42); every reader
+-- drops the integer part (vehicle_common.frag.glsl:12 mod 1, the paint shader's mod 1, Color.HSBtoRGB).
+L.SHELL_DOORS = { "DoorFrontLeft", "DoorFrontRight", "DoorRearLeft", "DoorRearRight", "TrunkDoor" }
+function L.syncShell(vehicle)
+    local bits = 0
+    for k, id in ipairs(L.SHELL_DOORS) do
+        local part = vehicle:getPartById(id)
+        local door = part and part:getDoor()
+        if door and door:isOpen() then bits = bits + 2 ^ (k - 1) end
+    end
+    local h = vehicle:getColorHue()
+    local hue = h - math.floor(h) + bits
+    if hue == h then return end
+    vehicle:setColorHSV(hue, vehicle:getColorSaturation(), vehicle:getColorValue())
+    vehicle:transmitColorHSV() -- MP server: flag 4096, VehicleProperties to every client (BaseVehicle.java:9209-9212)
+end
+
 -- client: the dashboard key
 function L.toggle(player, vehicle)
     local part, why = L.check(player, vehicle)
@@ -72,29 +92,30 @@ if not isClient() then
         local open = not door:isOpen()
         door:setOpen(open)
         v:transmitPartDoor(part) -- BaseVehicle.java:8247-8256
+        L.syncShell(v)
         broadcast({ vid = vid, part = L.PART, open = open, sound = true })
         T.log("liftgate " .. (open and "open" or "close") .. " vid=" .. tostring(vid) .. " by=" .. tostring(player:getUsername()))
     end
 
-    -- MP server: vanilla door actions complete here (they call transmitPartDoor); the opener already played the
-    -- anim and sound in :start, a second Open would restart it, so everyone but the opener
-    if isServer() then
-        require "Vehicles/TimedActions/ISOpenVehicleDoor"
-        require "Vehicles/TimedActions/ISCloseVehicleDoor"
-        local function wrap(cls, open)
-            local orig = cls.complete
-            cls.complete = function(self)
-                local ok = orig(self)
-                local v, part = self.vehicle, self.part
-                if ok and v and part and T.isTesla(v) and part:getDoor() and part:getDoor():isOpen() == open then
-                    broadcast({ vid = v:getId(), part = part:getId(), open = open }, self.character)
-                end
-                return ok
+    -- vanilla door actions complete here, SP or MP server (LuaTimedActionNew.java:166-168, not on a client): the shell
+    -- bits; MP: the part anim to everyone but the opener (it played the anim and sound in :start, a second Open would
+    -- restart it)
+    require "Vehicles/TimedActions/ISOpenVehicleDoor"
+    require "Vehicles/TimedActions/ISCloseVehicleDoor"
+    local function wrap(cls, open)
+        local orig = cls.complete
+        cls.complete = function(self)
+            local ok = orig(self)
+            local v, part = self.vehicle, self.part
+            if ok and v and part and T.isTesla(v) and part:getDoor() and part:getDoor():isOpen() == open then
+                L.syncShell(v)
+                if isServer() then broadcast({ vid = v:getId(), part = part:getId(), open = open }, self.character) end
             end
+            return ok
         end
-        wrap(ISOpenVehicleDoor, true)
-        wrap(ISCloseVehicleDoor, false)
     end
+    wrap(ISOpenVehicleDoor, true)
+    wrap(ISCloseVehicleDoor, false)
 end
 
 return L

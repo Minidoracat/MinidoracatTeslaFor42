@@ -9,6 +9,11 @@ local SRC = "MOD/MinidoracatTeslaFor42/Contents/mods/MinidoracatTeslaFor42/42/me
 local saved = { getOnlinePlayers = getOnlinePlayers, ISOpenVehicleDoor = ISOpenVehicleDoor,
     ISCloseVehicleDoor = ISCloseVehicleDoor, HaloTextHelper = HaloTextHelper, getPlayer = getPlayer }
 H.side(false, false)
+-- vanilla door actions: complete() opens/closes and returns true (ISOpenVehicleDoor.lua:61-97); SP wraps them too
+ISOpenVehicleDoor = { complete = function(self) self.part:getDoor():setOpen(true); return true end }
+ISCloseVehicleDoor = { complete = function(self) self.part:getDoor():setOpen(false); return true end }
+H.stub("Vehicles/TimedActions/ISOpenVehicleDoor")
+H.stub("Vehicles/TimedActions/ISCloseVehicleDoor")
 dofile(SRC)
 local L = T.Liftgate
 local halo = {}
@@ -49,8 +54,16 @@ cmd(driver, { vid = v:getId() })
 local d = v.parts.TrunkDoor.door
 check(d.open and not d.locked and v.doorTx == 1, "driver, parked, locked: unlocked, opened, door synced")
 check(v.anims[1] == "TrunkDoor:Open" and v.sound == "Open", "SP: client handler played the Open anim and its sound")
+check(math.floor(v:getColorHue()) == 16 and H.near(v:getColorHue() - 16, 0.69, 1e-6) and v.colorTx == 1,
+    "shell bits: tailgate open = hue integer 16, the paint hue kept, transmitted")
 cmd(driver, { vid = v:getId() })
 check(not d.open and v.anims[2] == "TrunkDoor:Close", "second press closes")
+check(H.near(v:getColorHue(), 0.69, 1e-6), "shell bits cleared on close")
+local sp = car({})
+ISOpenVehicleDoor.complete({ vehicle = sp, part = sp.parts.DoorFrontLeft, character = driver })
+check(math.floor(sp:getColorHue()) == 1 and #sp.anims == 0, "SP door action: shell bit 1 for DoorFrontLeft, no anim broadcast")
+ISCloseVehicleDoor.complete({ vehicle = sp, part = sp.parts.DoorFrontLeft, character = driver })
+check(math.floor(sp:getColorHue()) == 0, "SP door closed: bit cleared")
 
 local passenger = H.player({ name = "bob" })
 passenger.vehicle = v

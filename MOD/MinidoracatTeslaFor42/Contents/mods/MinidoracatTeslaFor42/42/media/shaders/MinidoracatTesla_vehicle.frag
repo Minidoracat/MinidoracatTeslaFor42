@@ -3,10 +3,17 @@
 // Model Y body, doors, tailgate and frunk lid in one draw each: vanilla vehicle_multiuv.frag for the paint, plus the
 // see-through glass and the 3-D cabin, told apart by UV1 (build.py stage cabin):
 //   UV1 u in [0, 1]  paint: vanilla vehicle_multiuv / _noreflect, unchanged
-//   UV1 u in [2, 3]  glass face: UV1 - (2, 0) is its damage UV; translucent per pane zone, a hole when the window is
-//                    removed, open or smashed (uninstall matrices), cracks and blood turn it opaque where marked
+//   UV1 u in [2+2k, 3+2k]  glass face of pane zone k (GLASS_ZONE below, build.py GLASS_ZONES): UV1 - (2+2k, 0) is its
+//                    damage UV; translucent per pane, a hole when the window is removed, open or smashed (uninstall
+//                    matrices), cracks and blood turn it opaque where marked. The zone rides in UV1, not the mask:
+//                    the mask is bilinear and only counts within 0.01 of a zone colour, so a glass edge read from it
+//                    is a staircase of its 512 texels
 //   UV1 u <= -2.5    cabin: palette cell = -2.5 - u (CABIN below; u, since the loader flips v, ImportedStaticMesh.java:
-//                    59); lit with a floor so seats keep an outline at night, the screen glows
+//                    59); lit with a floor so seats keep an outline at night, the screen glows. The shell's faces in a
+//                    door opening carry door k + d = 1 - v (build.py SHELL_DOORS; d < 0 inside the opening, linear,
+//                    so the cut follows the sill / arch / tailgate edge per pixel) and are dropped there while that
+//                    door is open (bit k-1 of the paint hue's integer part, Liftgate.lua syncShell; every hue reader
+//                    takes it mod 1) or removed (its uninstall slot, BaseVehicle.doDoorDamage / doOtherBodyWorkDamage)
 // Inside one mesh the triangles draw in index order: paint, cabin, glass (build.py sorts them), so the glass blends
 // over the cabin and the seated characters drawn before the car.
 // A mod shader name is never swapped for _noreflect (ModelManager.java:1298-1311): the vertex shader reports whether
@@ -76,7 +83,8 @@ const float A_ROOF = 0.50;         // LightBar L (colZone25): the roof glass, un
 const vec3 GLASS_TINT = vec3(0.06, 0.06, 0.07);
 const vec3 SKY = vec3(0.50, 0.60, 0.75);
 const float SKY_MIX = 0.30;        // vanilla windows mix 30 % reflection at refWindows 0.4 (vehicle_multiuv.frag:151)
-const vec3 FRIT = vec3(0.03);      // glass-face texels in no glass zone: the black band round the pane
+// glass zone k (build.py GLASS_ZONES): WinT, WinH, WinLH, WinLT, WinRH, WinRT, LightBar L (the roof glass)
+const vec3 GLASS_ZONE[7] = vec3[7](colZone11, colZone12, colZone9, colZone10, colZone7, colZone8, colZone25);
 
 // cabin palette, sRGB 0-255, in build.py CABIN_CELLS order. Black interior a step lighter than life so the seats
 // read against the floor through the glass (calibration knob)
@@ -97,7 +105,8 @@ const float NIGHT_FLOOR = 0.12;    // cabin's lowest lighting (calibration knob)
 void main()
 {
 	float glassFace = step(1.5, texCoords1.x);
-	vec2 uv1 = texCoords1 - vec2(2.0 * glassFace, 0.0);
+	float glassZone = glassFace * floor((texCoords1.x - 2.0) * 0.5);
+	vec2 uv1 = texCoords1 - vec2(glassFace * (2.0 + 2.0 * glassZone), 0.0);
 
 	vec3 normal = normalize(vertNormal);
 	vec4 tex = texture2D(Texture0, texCoords);
@@ -106,6 +115,8 @@ void main()
 	float dotprod;
 
 	vec4 texColorMask = texture2D(TextureMask, texCoords);
+	if (glassFace > 0.5)
+		texColorMask.xyz = GLASS_ZONE[int(glassZone)];
 	vec4 texColorRust = texture2D(TextureRust, uv1);
 	vec4 texColorLights = texture2D(TextureLights, texCoords);
 	vec4 texColorDamage1Overlay = texture2D(TextureDamage1Overlay, uv1);
@@ -138,6 +149,17 @@ void main()
 
 	if (texCoords1.x < -1.0)
 	{
+		float kd = 1.0 - texCoords1.y;
+		int door = int(floor(kd + 0.5));
+		if (door > 0 && kd < float(door))
+		{
+			float open = mod(floor(floor(TexturePainColor.x) / exp2(float(door - 1))), 2.0);
+			// uninstall slot i at [i % 4][i / 4] (uploaded transposed, Shader.setMatrix): 1, 8, 5, 12 and 2nd 10
+			float gone = door == 1 ? TextureUninstall1[1][0] : door == 2 ? TextureUninstall1[0][2]
+				: door == 3 ? TextureUninstall1[1][1] : door == 4 ? TextureUninstall1[0][3] : TextureUninstall2[2][2];
+			if (open + gone > 0.5)
+				discard;
+		}
 		int cell = int(-texCoords1.x - 2.0);
 		vec3 c = CABIN[cell] / 255.0;
 		vec3 lit = c * clamp(lighting, NIGHT_FLOOR, 1.0) * TintColourNew;   // util/math's overloads hide the vec3 builtins
@@ -195,19 +217,17 @@ void main()
 		float g2en = noDamage * step(0.5, dommat4(texen1, TextureDamage1Enables1) + dommat4(texen2, TextureDamage1Enables2));
 		float g3en = noDamage * step(0.5, dommat4(texen1, TextureDamage2Enables1) + dommat4(texen2, TextureDamage2Enables2));
 
-		float glass = clamp(windowAlpha + texen2[2][0], 0.0, 1.0);
 		float alpha = A_WINDSCREEN * texen1[2][2] + A_FRONT_SIDE * (texen1[1][2] + texen1[2][0])
 			+ A_REAR * (texen1[1][3] + texen1[2][1] + texen1[2][3]) + A_ROOF * texen2[2][0];
-		alpha = mix(1.0, alpha, glass);
 
-		vec3 g = mix(FRIT, mix(GLASS_TINT, SKY, SKY_MIX), glass);
+		vec3 g = mix(GLASS_TINT, SKY, SKY_MIX);
 		g = mix(g, texColorRust.xyz, texColorRust.a * TextureRustA);
 
 		// blood under the cracks, as vanilla windows; cracked or bloody glass turns opaque where marked
 		float gIntensity = dommat4(texen1, MatBlood1Enables1) + dommat4(texen2, MatBlood1Enables2);
 		float gMaskAlpha = step(0.5, dommat4(texen1, MatBlood2Enables1) + dommat4(texen2, MatBlood2Enables2));
 		vec3 bloodless = g;
-		g = addBlood(texColorDamage2Overlay, texColorDamage1Overlay, gIntensity, gMaskAlpha * glass, lighting, TintColourNew, g);
+		g = addBlood(texColorDamage2Overlay, texColorDamage1Overlay, gIntensity, gMaskAlpha, lighting, TintColourNew, g);
 		float marked = clamp(length(g - bloodless) * 4.0, 0.0, 1.0);
 
 		g = mix(g, texColorDamage1Shell.xyz, texColorDamage1Shell.a * g2en);

@@ -12,6 +12,14 @@
 
 格式基於 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.1.0/)，版本號遵循 `{PZ版本}-{主版本}.{次版本}.{修訂}` 格式。
 
+## [Unreleased]
+
+### 變更
+
+- **Model Y 換上另一套車身模型（試作版）**：車身、車門、後尾門、前車廂蓋、車窗與車燈換成新的模型，車內仍是原本的座椅、儀表台、方向盤、中控螢幕與行李廂。隔著車窗或天窗看對面關著的車門，看到的是門內板，不再透出路面；打開遠側的車門時，隔著天窗看到的是打開的門洞。這一版先讓大家比較外觀：車漆的光澤還在調整，損壞、生鏽與拆下零件的顯示也還沒逐一對過。
+
+> 技術要點：Model Y 車身改作自 BloxBloger 的「2026 Tesla Model Y Performance」（Sketchfab，CC BY-NC 4.0，https://sketchfab.com/3d-models/2026-tesla-model-y-performance-8a0bc252f9da4015a02a7bd99efd4847 ，授權 http://creativecommons.org/licenses/by-nc/4.0/ ）。已修改：減面、拆件、重做貼圖；署名全文見 `CREDITS.md`。
+
 ## [42.21.0-0.1.0] - 2026-10-23
 
 ### 新增
