@@ -189,9 +189,12 @@ C.settle(lo2, H.hours())
 T.Sentry.settle = realSentry0
 check(sentryArgs and sentryArgs.t == 338 and sentryArgs.free == 338,
     "settle past the grid shut-off with a generator there: it took over, sentry standby free up to now")
-check(C.powerUntil({ power = "grid" }, 338) == 336 and C.powerUntil({ power = "grid" }, 335) == 335
+local dark, lit = { power = "grid", x = 900, y = 900, z = 0 }, { power = "grid", x = 300, y = 300, z = 0 } -- lit: elec
+check(C.powerUntil(dark, 338) == 336 and C.powerUntil(dark, 335) == 335 and C.powerUntil(lit, 338, false) == 336
     and C.powerUntil({ power = "generator" }, 338) == 338 and C.powerUntil({ power = nil }, 338) == nil
     and C.powerUntil(nil, 338) == nil, "powerUntil: grid to the 336 shut-off unless a generator took over, generator to now")
+check(C.powerUntil(lit, 338) == 338,
+    "powerUntil not told (sentry event between settles): the charger square still has power -> a generator, free to now")
 check(chg2.power == "generator", "after the shut-off: power = generator")
 local rate = WC.fuelPerHour * 0.1
 check(near(B.kwh(B.part(v2)), 3 * 11.5, 1e-6), "1 h grid + 2 h generator = 3 h of charge")

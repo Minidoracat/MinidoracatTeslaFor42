@@ -144,11 +144,10 @@ end
 -- vanilla tires have the same per-frame hook, Vehicles.CheckOperate.Tire). Plugged in = no driving: "Model Y does not
 -- shift out of Park while a charge cable is plugged in" (owner's manual, Shifting). MP driving physics run on the
 -- driver's client, so this is where it is stopped; the server still unplugs a car that got away (Charging checkCable).
--- Plugged in, the input is held back only while a pedal is down (T.onPluggedDrive, client ChargerMenu.lua, which also
--- says why): with no pedal the controls refresh, so a pedal held from before the plug clears on release and the
--- brake works. Cruise control presses the accelerator by itself (CarController.java:242-246): switched off.
--- ponytail: a pedal held without a break from before the plug until after it keeps its old value (CarController's
--- clientControls are not exposed to Lua); the cable check unplugs if that drives the car out of reach.
+-- Plugged in, T.onPluggedDrive (client ChargerMenu.lua) brakes the car while a pedal is down and says why; it holds
+-- the input back only on the frames it renews the brake, so the controls stay live (a pedal held since before the
+-- plug is braked too) and the brake key works. Cruise control presses the accelerator by itself
+-- (CarController.java:242-246): switched off.
 function T.CheckOperate.Battery(vehicle, part)
     if part:getModData().chg == nil then return true end
     if vehicle:isRegulator() then vehicle:setRegulator(false) end

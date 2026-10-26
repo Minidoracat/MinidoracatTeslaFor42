@@ -148,11 +148,18 @@ local function onFill(playerNum, context, worldObjects, test)
 end
 Events.OnFillWorldObjectContextMenu.Add(onFill)
 
--- Plugged-in car (Core.lua CheckOperate.Battery, every frame for the local driver while plugged in): true while the
--- driver holds the accelerator or reverse, read the way CarController.updateControls reads them (keyboard only for
--- player 0, the joypad triggers, CarController.java:936-971); then says why, at most every HINT_MS.
+-- Plugged-in car (Core.lua CheckOperate.Battery, every frame for the local driver while plugged in; true = hold this
+-- frame's input back). While the driver holds the accelerator or reverse, read the way CarController.updateControls
+-- reads them (keyboard only for player 0, the joypad triggers, CarController.java:936-971), the vanilla forced brake
+-- (BaseVehicle.setForceBrake, as ISStopVehicle.lua does) keeps the car still: in updateControls it sets brake for 1 s
+-- after the call (CarController.java:974-980), and brake beats the accelerator (:174-178). It does not count in the
+-- millisecond of the call, so it is renewed every BRAKE_MS and that frame's input is held back. The controls stay
+-- live otherwise, so a pedal held since before the plug is braked too and clears on release.
+-- Says why at most every HINT_MS.
 C.HINT_MS = 3000
+C.BRAKE_MS = 500
 local hintAt = 0
+local brakeAt = {} -- vehicle id -> ms of the last setForceBrake
 function T.onPluggedDrive(vehicle)
     local p = vehicle:getDriver()
     if not p or not p:isLocalPlayer() then return false end
@@ -160,10 +167,14 @@ function T.onPluggedDrive(vehicle)
     local pedal = (p:getPlayerNum() == 0 and (isKeyDown(KeybindId.FORWARD) or isKeyDown(KeybindId.BACKWARD)))
         or (pad ~= -1 and (isJoypadRTPressed(pad) or isJoypadLTPressed(pad)))
     if not pedal then return false end
-    local now = getTimestampMs()
+    local now = getTimestampMs() -- System.currentTimeMillis, the clock forceBrake uses (LuaManager.java:9295-9297)
     if now >= hintAt then
         hintAt = now + C.HINT_MS
         HaloTextHelper.addBadText(p, getText("IGUI_MinidoracatTesla_Deny_CABLE_PLUGGED"))
     end
+    local id = vehicle:getId()
+    if now - (brakeAt[id] or 0) < C.BRAKE_MS then return false end
+    brakeAt[id] = now
+    vehicle:setForceBrake()
     return true
 end

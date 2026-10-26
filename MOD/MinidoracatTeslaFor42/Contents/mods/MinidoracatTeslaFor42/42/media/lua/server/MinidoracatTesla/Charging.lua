@@ -120,12 +120,18 @@ end
 
 -- World hour the charger power recorded in chg (chg.power, Battery.onCharger) lasted until, as of `now`; nil = none.
 -- Grid: the shut-off hour, which an unloaded car can pass between two settles, unless a generator took over then
--- (`generator`: one is there now). Generator: up to now.
+-- (`generator`: C.settle found one; nil = not looked up, e.g. a sentry event between two settles: the charger
+-- square has power after the shut-off only from a generator, IsoGridSquare.haveElectricity). Generator: up to now.
 -- ponytail: a generator counts as running the whole stretch (its fuel is only metered for charging)
 function C.powerUntil(chg, now, generator)
     if not chg or not chg.power then return nil end
-    if chg.power == "grid" and not generator then return math.min(now, C.gridOffHour()) end
-    return now
+    local off = chg.power == "grid" and C.gridOffHour()
+    if not off or now <= off then return now end
+    if generator == nil then
+        local sq = getCell():getGridSquare(chg.x, chg.y, chg.z)
+        generator = sq ~= nil and sq:haveElectricity()
+    end
+    return generator and now or off
 end
 
 local function clearChg(vehicle, part)

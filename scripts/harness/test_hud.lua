@@ -414,26 +414,35 @@ drv.isLocalPlayer = function() return true end
 drv.getJoypadBind = function() return -1 end
 drv.getPlayerNum = function() return 0 end
 tesla.isRegulator = function() return false end
+local brakes, C = 0, T.Charge
+tesla.setForceBrake = function() brakes = brakes + 1 end
 local part = T.Battery.part(tesla)
 halo = nil
-check(T.CheckOperate.Battery(tesla, part) == true and halo == nil, "plugged in, no pedal: controls refresh, no hint")
+check(T.CheckOperate.Battery(tesla, part) == true and halo == nil and brakes == 0, "plugged in, no pedal: controls live, no brake, no hint")
 keys.fwd = true
-check(T.CheckOperate.Battery(tesla, part) == false and halo == "IGUI_MinidoracatTesla_Deny_CABLE_PLUGGED",
-    "plugged in, accelerator down: input held back, red 'unplug the charge cable first'")
+check(T.CheckOperate.Battery(tesla, part) == false and brakes == 1 and halo == "IGUI_MinidoracatTesla_Deny_CABLE_PLUGGED",
+    "plugged in, accelerator down: forced brake set (its own frame held back), red 'unplug the charge cable first'")
 halo = nil
-check(T.CheckOperate.Battery(tesla, part) == false and halo == nil, "still held next frame: held back, hint at most every 3 s")
+check(T.CheckOperate.Battery(tesla, part) == true and brakes == 1 and halo == nil,
+    "still held next frame: controls live (the forced brake beats the accelerator), hint at most every 3 s")
+H.advanceMs(C.BRAKE_MS)
+check(T.CheckOperate.Battery(tesla, part) == false and brakes == 2, "still held BRAKE_MS later: forced brake renewed (1 s window)")
 H.advanceMs(3001)
 T.CheckOperate.Battery(tesla, part)
 check(halo == "IGUI_MinidoracatTesla_Deny_CABLE_PLUGGED", "still on the pedal 3 s later: hint again")
 keys.fwd, keys.back = nil, true
-check(T.CheckOperate.Battery(tesla, part) == false, "reverse held: held back too")
+H.advanceMs(C.BRAKE_MS)
+check(T.CheckOperate.Battery(tesla, part) == false and brakes == 4, "reverse held: braked too")
 keys.back = nil
+check(T.CheckOperate.Battery(tesla, part) == true, "pedal released: controls live (a pedal held since before the plug clears)")
 drv.getPlayerNum = function() return 1 end -- split screen: player 0's keyboard is not this driver's pedal
 keys.fwd = true
-check(T.CheckOperate.Battery(tesla, part) == true, "split-screen driver 2: player 0's W key does not count")
+H.advanceMs(C.BRAKE_MS)
+local b0 = brakes
+check(T.CheckOperate.Battery(tesla, part) == true and brakes == b0, "split-screen driver 2: player 0's W key does not count")
 drv.getJoypadBind = function() return 2 end
 function isJoypadRTPressed(pad) return pad == 2 end
-check(T.CheckOperate.Battery(tesla, part) == false, "split-screen driver 2: their joypad trigger does")
+check(T.CheckOperate.Battery(tesla, part) == false and brakes == b0 + 1, "split-screen driver 2: their joypad trigger does")
 keys.fwd = nil
 T.Battery.part(tesla):getModData().chg = nil
 tesla.driver, tesla.running = nil, false

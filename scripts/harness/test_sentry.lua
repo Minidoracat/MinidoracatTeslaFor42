@@ -113,6 +113,19 @@ F.hours = F.hours + 5
 local k2 = T.Battery.kwh(v.parts.GasTank)
 S.settle(v)
 check(T.Battery.kwh(v.parts.GasTank) == k2, "on a generator: free up to now (past the grid shut-off)")
+-- a sentry event after the shut-off but before the charging settle updates chg.power (still "grid"), a generator
+-- powering the charger square, pack below 20%: standby stays free and sentry stays on
+md(v).chg.power = "grid"
+T.Battery.set(v, v.parts.GasTank, 75 * 0.1)
+local realGetCell = getCell
+getCell = function() return { getGridSquare = function(_, x, y, z)
+    return x == 1 and y == 1 and z == 0 and { haveElectricity = function() return true end } or nil end } end
+local k3 = T.Battery.kwh(v.parts.GasTank)
+F.hours = F.hours + 2
+S.settle(v)
+getCell = realGetCell
+check(md(v).sentry ~= nil and T.Battery.kwh(v.parts.GasTank) == k3,
+    "grid off, chg not yet updated, generator powering the charger: sentry at 10% stays on, nothing taken")
 Charge.gridOffHour = realOff
 T.Battery.set(v, v.parts.GasTank, 75 * 0.1)
 md(v).chg.power = nil
