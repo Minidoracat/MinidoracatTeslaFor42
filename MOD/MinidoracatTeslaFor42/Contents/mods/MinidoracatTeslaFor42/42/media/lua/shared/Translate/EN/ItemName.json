@@ -1,6 +1,5 @@
 {
-    "Base.MinidoracatTesla_ModelYBatterySR": "Model Y High Voltage Battery - Standard Range (62.5 kWh)",
-    "Base.MinidoracatTesla_ModelYBatteryLR": "Model Y High Voltage Battery - Long Range (78.1 kWh)",
+    "Base.MinidoracatTesla_ModelYBattery": "Model Y Performance High Voltage Battery (78.4 kWh)",
     "Base.MinidoracatTesla_WallConnector": "Tesla Wall Connector (Gen 3)",
     "Base.MinidoracatTesla_CableHang": "Charge Cable (wall drop)",
     "Base.MinidoracatTesla_CableFloor": "Charge Cable (floor run)",

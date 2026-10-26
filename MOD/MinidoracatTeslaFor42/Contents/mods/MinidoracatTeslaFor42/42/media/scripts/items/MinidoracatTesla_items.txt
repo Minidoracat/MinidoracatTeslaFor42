@@ -1,21 +1,7 @@
 module Base
 {
-    /* Drive batteries: GasTank part items. MaxCapacity is an int (Item.java:2502-2503); exact kWh is MinidoracatTesla.Packs. */
-    item MinidoracatTesla_ModelYBatterySR
-    {
-        DisplayCategory = VehicleMaintenance,
-        Weight = 40.0,
-        ItemType = base:normal,
-        Icon = CarBattery,
-        MaxCapacity = 63,
-        ConditionAffectsCapacity = false,
-        ConditionMax = 100,
-        ChanceToSpawnDamaged = 0,
-        MechanicsItem = true,
-        WorldStaticModel = CarBattery,
-    }
-
-    item MinidoracatTesla_ModelYBatteryLR
+    /* Drive battery: GasTank part item. MaxCapacity is an int (Item.java:2502-2503); exact kWh is MinidoracatTesla.Packs. */
+    item MinidoracatTesla_ModelYBattery
     {
         DisplayCategory = VehicleMaintenance,
         Weight = 45.0,

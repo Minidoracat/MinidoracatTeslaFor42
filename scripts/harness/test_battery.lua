@@ -4,24 +4,26 @@ local check, near = H.check, H.near
 H.side(false, true)
 
 H.section("readers")
-local v = H.vehicle({ kwh = 31.25 })
+local v = H.vehicle({ kwh = 39.2 })
 local part = B.part(v)
 check(T.isTesla(v) and part ~= nil, "Model Y is a Tesla with a battery part")
-check(B.capacity(part) == 62.5, "SR pack capacity is the exact 62.5 kWh, not the int MaxCapacity 63")
+check(B.capacity(part) == 78.4, "Performance pack capacity is the exact 78.4 kWh, not the int MaxCapacity 79")
 check(near(B.pct(part), 50), "pct = kwh / exact capacity")
-local lr = H.vehicle({ pack = "Base.MinidoracatTesla_ModelYBatteryLR", kwh = 78.1 })
-check(B.capacity(B.part(lr)) == 78.1 and near(B.pct(B.part(lr)), 100), "LR pack 78.1 kWh (2025 Juniper)")
--- vanilla repair() fills the tank to the item's int MaxCapacity (VehiclePart.java:989-992): 79 for the LR pack
-B.part(lr):setContainerContentAmount(79)
-check(B.kwh(B.part(lr)) == 78.1 and near(B.pct(B.part(lr)), 100), "after repair() (tank 79): reads the exact 78.1 kWh")
-lr.running, lr.speed = true, 0
-T.Update.Battery(lr, B.part(lr), 1)
-check(near(78.1 - B.kwh(B.part(lr)), T.spec(lr).idleKw / 60, 1e-6),
-    "after repair(): the first drain takes only its own use, not the 0.9 kWh above the pack size")
-lr.running = false
+check(math.ceil(T.Packs["Base.MinidoracatTesla_ModelYBattery"]) == H.scriptValue("items/MinidoracatTesla_items.txt",
+    "MaxCapacity", "item MinidoracatTesla_ModelYBattery"), "pack item MaxCapacity is the exact kWh rounded up")
+local full = H.vehicle({ kwh = 78.4 })
+-- vanilla repair() fills the tank to the item's int MaxCapacity (VehiclePart.java:989-992): 79 for the 78.4 kWh pack
+B.part(full):setContainerContentAmount(79)
+check(B.kwh(B.part(full)) == 78.4 and near(B.pct(B.part(full)), 100), "after repair() (tank 79): reads the exact 78.4 kWh")
+full.running, full.speed = true, 0
+T.Update.Battery(full, B.part(full), 1)
+check(near(78.4 - B.kwh(B.part(full)), T.spec(full).idleKw / 60, 1e-6),
+    "after repair(): the first drain takes only its own use, not the 0.6 kWh above the pack size")
+full.running = false
 local other = H.vehicle({ script = "Base.CarNormal" })
 check(not T.isTesla(other) and B.part(other) == nil, "vanilla car is not a Tesla")
-check(T.kmPerKwh(v) > 0 and near(T.rangeKm(v), 31.25 * T.kmPerKwh(v)), "range = kwh * km/kWh")
+check(T.kmPerKwh(v) > 0 and near(T.rangeKm(v), 39.2 * T.kmPerKwh(v)), "range = kwh * km/kWh")
+check(near(78.4 * T.kmPerKwh(v), 757, 1), "a full pack at 50 km/h = one vanilla CarNormal tank (757 km, 90-minute day)")
 SandboxVars.MinidoracatTesla.RangeMultiplier = 2
 local k2 = T.kmPerKwh(v)
 SandboxVars.MinidoracatTesla.RangeMultiplier = 1
@@ -61,7 +63,7 @@ H.section("regen")
 local R = T.Regen
 local rv = H.vehicle({ kwh = 30, running = true, speed = 60 })
 local rp = B.part(rv)
-check(near(R.kwh(s, 60, 0), 0.6 * 0.5 * 1980 * (60 / 3.6) ^ 2 / 3600000), "regen kWh = eff * 1/2 m (v1^2 - v2^2)")
+check(near(R.kwh(s, 60, 0), 0.6 * 0.5 * 2033 * (60 / 3.6) ^ 2 / 3600000), "regen kWh = eff * 1/2 m (v1^2 - v2^2)")
 check(R.kwh(s, 20, 40) == 0, "no regen when speeding up")
 -- MP: drive 5 minutes to build budget, then brake 60 -> 0
 for _ = 1, 5 do T.Update.Battery(rv, rp, 1) end
@@ -126,7 +128,7 @@ H.section("writers")
 local wv = H.vehicle({ kwh = 10 })
 local wp = B.part(wv)
 local added = B.add(wv, 100, 50)
-check(near(B.kwh(wp), 31.25) and near(added, 21.25), "add stops at the target percent and returns what was added")
+check(near(B.kwh(wp), 39.2) and near(added, 29.2), "add stops at the target percent and returns what was added")
 check(B.add(wv, 5, 50) == 0, "add at target adds nothing")
 wv:getBattery():getInventoryItem():setUsedDelta(0.5)
 local took = B.topUp12V(wv)
@@ -143,7 +145,8 @@ nv.good = true
 T.Create.Battery(nv, B.part(nv))
 check(near(B.pct(B.part(nv)), 80), "create: good car starts at 60-100%")
 T.Create.Motor(nv, nv:getPartById("Engine"))
-check(nv.feature and nv.feature[1] == 100 and nv.feature[2] == 20 and nv.feature[3] == 3000, "motor: quality 100, script loudness, SR 3000")
+check(nv.feature and nv.feature[1] == 100 and nv.feature[2] == 20 and nv.feature[3] == 6260,
+    "motor: quality 100, script loudness, script engineForce 6260 (626 hp, Performance)")
 local pal = T.spec(nv).colors[5] -- ZombRand(8) with rand 0.5 = 4 -> colors[5], skin 4
 check(nv.skin == 4 and nv.hsv and nv.hsv[1] == pal.h and nv.hsv[2] == pal.s and nv.hsv[3] == pal.v
     and nv.colorTx == 1 and nv.skinTx == 1, "new car gets a factory paint (skin + damage tint) and transmits it")
