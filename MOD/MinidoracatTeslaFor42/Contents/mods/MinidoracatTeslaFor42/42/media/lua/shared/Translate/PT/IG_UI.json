@@ -86,8 +86,8 @@
     "IGUI_MinidoracatTesla_Tip_Heater": "Ligar ou desligar a climatização (gasta bateria)",
     "IGUI_MinidoracatTesla_Tip_Radio": "Abrir o rádio",
     "IGUI_MinidoracatTesla_Tip_Camp": "Ligar Modo Acampamento: climatização ligada com o carro parado",
-    "IGUI_MinidoracatTesla_Tip_GateOpen": "Abrir a porta da bagageira elétrica",
-    "IGUI_MinidoracatTesla_Tip_GateClose": "Fechar a porta da bagageira elétrica",
+    "IGUI_MinidoracatTesla_Tip_DoorOpen": "Abrir: %1",
+    "IGUI_MinidoracatTesla_Tip_DoorClose": "Fechar: %1",
     "IGUI_MinidoracatTesla_Tip_ChargeStatus": "Carga, potência e tempo até a meta",
     "IGUI_MinidoracatTesla_Tip_CardStop": "Pausar a carga; o cabo continua conectado",
     "IGUI_MinidoracatTesla_Tip_CardStart": "Retomar a carga até a meta",
@@ -96,9 +96,9 @@
     "IGUI_MinidoracatTesla_Tip_CardPlus": "Subir a meta de carga em 10%%",
     "IGUI_MinidoracatTesla_Tip_CardClose": "Fechar este cartão",
     "IGUI_MinidoracatTesla_Deny_NOT_DRIVER": "Só o motorista pode fazer isso",
-    "IGUI_MinidoracatTesla_Deny_NO_LIFTGATE": "Não há porta da bagageira instalada",
+    "IGUI_MinidoracatTesla_Deny_NO_DOOR": "Essa peça não está instalada",
     "IGUI_MinidoracatTesla_Deny_MOVING": "Pare o carro primeiro",
-    "IGUI_MinidoracatTesla_Deny_LIFTGATE_LOCKED": "A fechadura da porta da bagageira está partida",
+    "IGUI_MinidoracatTesla_Deny_LOCK_BROKEN": "A fechadura está partida",
     "IGUI_MinidoracatTesla_RepairDriveUnit": "Reparar Unidade de Acionamento",
     "IGUI_MinidoracatTesla_TakeDriveUnitParts": "Remover Peças da Unidade de Acionamento"
 }

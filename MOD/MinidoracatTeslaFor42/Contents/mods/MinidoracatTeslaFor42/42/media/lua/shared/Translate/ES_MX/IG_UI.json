@@ -86,8 +86,8 @@
     "IGUI_MinidoracatTesla_Tip_Heater": "Encender o apagar la climatización (gasta batería)",
     "IGUI_MinidoracatTesla_Tip_Radio": "Abrir la radio",
     "IGUI_MinidoracatTesla_Tip_Camp": "Activar Modo acampada: climatización encendida al aparcar",
-    "IGUI_MinidoracatTesla_Tip_GateOpen": "Abrir el portón trasero eléctrico",
-    "IGUI_MinidoracatTesla_Tip_GateClose": "Cerrar el portón trasero eléctrico",
+    "IGUI_MinidoracatTesla_Tip_DoorOpen": "Abrir: %1",
+    "IGUI_MinidoracatTesla_Tip_DoorClose": "Cerrar: %1",
     "IGUI_MinidoracatTesla_Tip_ChargeStatus": "Carga, potencia y tiempo hasta el objetivo",
     "IGUI_MinidoracatTesla_Tip_CardStop": "Pausar la carga; el cable sigue conectado",
     "IGUI_MinidoracatTesla_Tip_CardStart": "Reanudar la carga hasta el objetivo",
@@ -96,9 +96,9 @@
     "IGUI_MinidoracatTesla_Tip_CardPlus": "Subir el objetivo de carga un 10%%",
     "IGUI_MinidoracatTesla_Tip_CardClose": "Cerrar esta tarjeta",
     "IGUI_MinidoracatTesla_Deny_NOT_DRIVER": "Solo el conductor puede hacerlo",
-    "IGUI_MinidoracatTesla_Deny_NO_LIFTGATE": "No hay portón trasero instalado",
+    "IGUI_MinidoracatTesla_Deny_NO_DOOR": "Esa pieza no está instalada",
     "IGUI_MinidoracatTesla_Deny_MOVING": "Detén el coche primero",
-    "IGUI_MinidoracatTesla_Deny_LIFTGATE_LOCKED": "La cerradura del portón trasero está rota",
+    "IGUI_MinidoracatTesla_Deny_LOCK_BROKEN": "La cerradura está rota",
     "IGUI_MinidoracatTesla_RepairDriveUnit": "Reparar unidad de tracción",
     "IGUI_MinidoracatTesla_TakeDriveUnitParts": "Sacar piezas de la unidad de tracción"
 }

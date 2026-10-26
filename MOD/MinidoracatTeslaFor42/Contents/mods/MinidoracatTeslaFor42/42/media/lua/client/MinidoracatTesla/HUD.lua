@@ -2,7 +2,7 @@
 -- Design and sources: .claude/skills/tesla-dev/references/hud.md
 --   update()    10 Hz (UIManager.java:515-520): reads the car into self.st, rebuilds the quad list only on change.
 --   prerender() no game reads, no allocation: one atlas texture, one DrawSubTextureRGBA per quad, then <=2 texts.
---   render()    only while the mouse is over a quick key: one hover-help line (HUD.drawTip).
+--   render()    only while the mouse is over a quick key or a door on the car picture: highlight + hover help.
 require "ISUI/ISUIElement"
 require "Vehicles/ISUI/ISVehicleDashboard"
 require "MinidoracatTesla/Core"
@@ -27,6 +27,15 @@ local LOW_PCT = 20
 local DOORS = { "DoorFrontLeft", "DoorFrontRight", "DoorRearLeft", "DoorRearRight", "TrunkDoor", "DoorRear", "EngineDoor" }
 local DOOR_SPR = { "door_FL", "door_FR", "door_RL", "door_RR", "door_TR", "door_TR", "door_HD" }
 local POW2 = { 1, 2, 4, 8, 16, 32, 64 }
+-- clickable car picture: { DOORS index, x0, y0, x1, y1 } in design units from the car sprite's top-left (150x85, nose
+-- right, left side up; build_atlas.py car_body at 150/170 px per viewBox unit). Rear doors end at the B-pillar seam
+-- (x 69), the front doors and the frunk lid split the windscreen; x 140 is where the quick keys start.
+local ZONES = {
+    { 5, 0, 0, 45, 85 }, { 3, 45, 0, 69, 42.5 }, { 4, 45, 42.5, 69, 85 },
+    { 1, 69, 0, 97, 42.5 }, { 2, 69, 42.5, 97, 85 }, { 7, 97, 0, 140, 85 },
+}
+local PART_KEY = {} -- vanilla part-name keys; the tip maps them through T.PartNames (Tesla names)
+for i = 1, #DOORS do PART_KEY[i] = "IGUI_VehiclePart" .. DOORS[i] end
 
 local function rgb(hex)
     return { tonumber(hex:sub(2, 3), 16) / 255, tonumber(hex:sub(4, 5), 16) / 255, tonumber(hex:sub(6, 7), 16) / 255 }
@@ -51,6 +60,7 @@ local NKEYS = #KEYS
 local GATE_BIT = POW2[5] -- DOORS[5] = TrunkDoor
 -- hover help per quick key (translation keys); camp and liftgate depend on their state
 local TIPS = { "IGUI_MinidoracatTesla_Tip_Headlight", "IGUI_MinidoracatTesla_Tip_Heater", "IGUI_MinidoracatTesla_Tip_Radio" }
+local TIP_OPEN, TIP_CLOSE = "IGUI_MinidoracatTesla_Tip_DoorOpen", "IGUI_MinidoracatTesla_Tip_DoorClose" -- %1 = part name
 
 -- ---------------------------------------------------------------- quad list helpers
 local function quad(self, sx, sy, sw, sh, x, y, w, h, c, a)
@@ -115,15 +125,23 @@ HUD.quad, HUD.spr, HUD.rect, HUD.rrect, HUD.pill = quad, spr, rect, rrect, pill
 -- One line in the dashboard style (UIFont.Small, scale S), centred above the anchor rect (element-local) and kept
 -- inside this player's screen; below the anchor when there is no room above, so it never covers the anchor.
 -- Wider than the player's screen (split view + big font): two lines, broken at the space nearest the middle.
--- The string is fetched and measured only when the key changes (layout resets el.tipKey); drawing allocates nothing.
+-- The string is fetched and measured only when the key (or `arg`, a translation key for %1) changes (layout resets
+-- el.tipKey); drawing allocates nothing.
 -- `el` needs S, FH, A, f, tex, playerNum (the HUD and the card both have them).
 local tipQ = { L = {}, n = 0 }
-function HUD.drawTip(el, key, ax, ay, aw, ah)
+local function drawQ(el, q)
+    local jo, tex, L = el.javaObject, el.tex, q.L
+    for i = 1, q.n, 12 do
+        jo:DrawSubTextureRGBA(tex, L[i], L[i + 1], L[i + 2], L[i + 3], L[i + 4], L[i + 5], L[i + 6], L[i + 7],
+            L[i + 8], L[i + 9], L[i + 10], L[i + 11])
+    end
+end
+function HUD.drawTip(el, key, ax, ay, aw, ah, arg)
     local S, pn = el.S, el.playerNum
     local padX, padY, gap = math.floor(10 * S), math.floor(5 * S), math.floor(6 * S)
-    if key ~= el.tipKey then
-        el.tipKey = key
-        local tm, s = getTextManager(), getText(key)
+    if key ~= el.tipKey or arg ~= el.tipArg then
+        el.tipKey, el.tipArg = key, arg
+        local tm, s = getTextManager(), arg and getText(key, getText(arg)) or getText(key)
         local tw = tm:MeasureStringX(UIFont.Small, s)
         el.tipText, el.tipText2 = s, nil
         if tw > getPlayerScreenWidth(pn) - 8 - 2 * padX then
@@ -152,11 +170,8 @@ function HUD.drawTip(el, key, ax, ay, aw, ah)
     if y < top + 4 then y = ay + ah + gap end
     tipQ.A, tipQ.f, tipQ.n = el.A, el.f, 0
     rrect(tipQ, x, y, w, h, 8 * S, C.track, 0.97)
-    local jo, tex, L = el.javaObject, el.tex, tipQ.L
-    for i = 1, tipQ.n, 12 do
-        jo:DrawSubTextureRGBA(tex, L[i], L[i + 1], L[i + 2], L[i + 3], L[i + 4], L[i + 5], L[i + 6], L[i + 7],
-            L[i + 8], L[i + 9], L[i + 10], L[i + 11])
-    end
+    drawQ(el, tipQ)
+    local jo = el.javaObject
     local c = C.text
     jo:DrawText(UIFont.Small, el.tipText, x + padX, y + padY, c[1], c[2], c[3], 1)
     if el.tipText2 then jo:DrawText(UIFont.Small, el.tipText2, x + padX, y + padY + el.FH, c[1], c[2], c[3], 1) end
@@ -200,8 +215,6 @@ function HUD:attach(vehicle)
     self.battery = T.Battery.part(vehicle)
     self.heaterPart = vehicle:getPartById("Heater")
     self.radioPart = vehicle:getPartById("Radio")
-    local gp = vehicle:getPartById(T.Liftgate.PART)
-    self.gate = gp ~= nil and gp:getInventoryItem() ~= nil and gp:getDoor() ~= nil
     self.doors = {}
     for i = 1, #DOORS do
         local p = vehicle:getPartById(DOORS[i])
@@ -291,11 +304,13 @@ function HUD:readSlow()
     st.pct = part and math.floor(T.Battery.pct(part) + 0.5) or 0
     st.range = math.floor(kwh * self.kmPerKwh + 0.5)
     st.locked = v:areAllDoorsLocked()
-    local bits = 0
+    local bits, avail = 0, 0 -- open doors; installed doors (car-picture zones and the liftgate key dim without one)
     for i = 1, #self.doors do
         local d = self.doors[i]
         if d.part:getDoor():isOpen() then bits = bits + d.bit end
+        if d.part:getInventoryItem() then avail = avail + d.bit end
     end
+    st.avail = avail
     st.doors = bits
     local hp = self.heaterPart
     st.heater = hp ~= nil and hp:getModData().active == true
@@ -474,6 +489,12 @@ function HUD:build()
         local d = self.doors[i]
         if math.floor(st.doors / d.bit) % 2 == 1 then spr(self, A[d.spr], cx, cy, C.warn, 1) end
     end
+    for i = 1, #ZONES do -- door removed: its zone darkened, not clickable
+        local z = ZONES[i]
+        if math.floor(st.avail / POW2[z[1]]) % 2 == 0 then
+            rect(self, cx + z[2] * S, cy + z[3] * S, (z[4] - z[2]) * S, (z[5] - z[3]) * S, C.bg, 0.6)
+        end
+    end
     if st.chg > 0 then
         local col = st.chg == 3 and C.accent or C.ok
         local idx = spr(self, A.i_bolt, cx + 2 * S, cy - 4 * S, col, 1)
@@ -522,7 +543,7 @@ function HUD:build()
     self.keyX, self.keyY, self.keyStep, self.keyS = kx, ky, (KEY + KEY_GAP) * S, ks
     for i = 1, NKEYS do
         local on = self:keyOn(i)
-        local dim = i == 5 and not self.gate
+        local dim = i == 5 and math.floor(st.avail / GATE_BIT) % 2 == 0
         spr(self, A.keybg, kx, ky, C.surface, 1)
         spr(self, A["i_" .. KEYS[i]], kx + 11 * S, ky + 10 * S, on and C.accent or (dim and C.text3 or C.text2), dim and 0.5 or 1)
         if on then rect(self, kx + 12 * S, ky + 33 * S, 16 * S, math.max(1, 2 * S), C.accent, 1) end
@@ -551,11 +572,12 @@ function HUD:update()
     local changed = kmh ~= st.kmh or gear ~= st.gear or use ~= st.use or regen ~= st.regen or lights ~= st.lights
     self.tick = self.tick + 1
     if self.tick % 3 == 0 then
-        local pct, range, locked, doors, heater, radio, camp, sentry, chg =
-            st.pct, st.range, st.locked, st.doors, st.heater, st.radio, st.camp, st.sentry, st.chg
+        local pct, range, locked, doors, avail, heater, radio, camp, sentry, chg =
+            st.pct, st.range, st.locked, st.doors, st.avail, st.heater, st.radio, st.camp, st.sentry, st.chg
         self:readSlow()
         changed = changed or pct ~= st.pct or range ~= st.range or locked ~= st.locked or doors ~= st.doors
-            or heater ~= st.heater or radio ~= st.radio or camp ~= st.camp or sentry ~= st.sentry or chg ~= st.chg
+            or avail ~= st.avail or heater ~= st.heater or radio ~= st.radio or camp ~= st.camp or sentry ~= st.sentry
+            or chg ~= st.chg
     end
     if changed or self.dirty then self:build() end
     if self.pulseIdx then -- charging: slow green pulse (owner's manual charge-port light), 10 Hz steps
@@ -577,15 +599,35 @@ function HUD:prerender()
     end
 end
 
--- hover help over a quick key (render runs every UI redraw; the hit test is a few comparisons)
+-- hover help over a quick key or a door zone of the car picture (render runs every UI redraw; the hit tests are a few
+-- comparisons); a door zone is also highlighted: tinted, its door drawn swung out in accent
 function HUD:render()
     if not self.keyX or not self:isMouseOver() then return end
-    local i = self:keyAt(self:getMouseX(), self:getMouseY())
-    if not i then return end
-    local key = TIPS[i]
-    if i == 4 then key = self.st.camp and "IGUI_MinidoracatTesla_Radial_CampOff" or "IGUI_MinidoracatTesla_Tip_Camp"
-    elseif i == 5 then key = self:keyOn(5) and "IGUI_MinidoracatTesla_Tip_GateClose" or "IGUI_MinidoracatTesla_Tip_GateOpen" end
-    HUD.drawTip(self, key, self.keyX + (i - 1) * self.keyStep, self.keyY, self.keyS, self.keyS)
+    local mx, my = self:getMouseX(), self:getMouseY()
+    local i = self:keyAt(mx, my)
+    if i == 5 then return self:doorTip(5, self.keyX + 4 * self.keyStep, self.keyY, self.keyS, self.keyS) end
+    if i then
+        local key = TIPS[i]
+        if i == 4 then key = self.st.camp and "IGUI_MinidoracatTesla_Radial_CampOff" or "IGUI_MinidoracatTesla_Tip_Camp" end
+        return HUD.drawTip(self, key, self.keyX + (i - 1) * self.keyStep, self.keyY, self.keyS, self.keyS)
+    end
+    local z = self:zoneAt(mx, my)
+    if not z then return end
+    local S = self.S
+    local cx, cy = CAR_X * S, CAR_Y * S
+    local zx, zy, zw, zh = cx + z[2] * S, cy + z[3] * S, (z[4] - z[2]) * S, (z[5] - z[3]) * S
+    tipQ.A, tipQ.f, tipQ.n = self.A, self.f, 0
+    rrect(tipQ, zx, zy, zw, zh, 6 * S, C.accent, 0.18)
+    spr(tipQ, self.A[DOOR_SPR[z[1]]], cx, cy, C.accent, 1)
+    drawQ(self, tipQ)
+    self:doorTip(z[1], zx, zy, zw, zh)
+end
+
+-- "Open / Close <Tesla part name>" for DOORS[k]
+function HUD:doorTip(k, ax, ay, aw, ah)
+    local open = math.floor(self.st.doors / POW2[k]) % 2 == 1
+    local name = PART_KEY[k]
+    HUD.drawTip(self, open and TIP_CLOSE or TIP_OPEN, ax, ay, aw, ah, T.PartNames and T.PartNames[name] or name)
 end
 
 function HUD:keyOn(i)
@@ -605,21 +647,40 @@ function HUD:keyAt(x, y)
     return i
 end
 
+-- car picture: the ZONES entry under (x, y), nil when that door is not installed (the click goes through)
+function HUD:zoneAt(x, y)
+    if not self.keyX then return nil end
+    local lx, ly = x / self.S - CAR_X, y / self.S - CAR_Y
+    for i = 1, #ZONES do
+        local z = ZONES[i]
+        if lx >= z[2] and lx < z[4] and ly >= z[3] and ly < z[5] then
+            return math.floor(self.st.avail / POW2[z[1]]) % 2 == 1 and z or nil
+        end
+    end
+    return nil
+end
+
 function HUD:onMouseDown(x, y)
-    return self:keyAt(x, y) ~= nil
+    return self:keyAt(x, y) ~= nil or self:zoneAt(x, y) ~= nil
 end
 
 function HUD:onMouseUp(x, y)
-    local i = self:keyAt(x, y)
     local p, v = self.character, self.vehicle
-    if not i or not p or not v then return false end
+    if not p or not v then return false end
+    local i = self:keyAt(x, y)
+    if not i then
+        local z = self:zoneAt(x, y)
+        if not z then return false end
+        T.Liftgate.toggle(p, v, DOORS[z[1]]) -- same rule and server command as the liftgate key
+        return true
+    end
     if i == 1 then ISVehicleMenu.onToggleHeadlights(p)          -- ISVehicleMenu.lua:1114
     elseif i == 2 then ISVehicleMenu.onToggleHeater(p)          -- ISVehicleMenu.lua:1133
     elseif i == 3 then
         local rp = self.radioPart
         if rp and rp:getDeviceData() and rp:getInventoryItem() then ISVehicleMenu.onSignalDevice(p, rp) end -- :151-157
     elseif i == 4 then T.HUD.toggleCamp(p, v)
-    else T.Liftgate.toggle(p, v)
+    else T.Liftgate.toggle(p, v, T.Liftgate.PART)
     end
     return true
 end

@@ -86,8 +86,8 @@
     "IGUI_MinidoracatTesla_Tip_Heater": "İklimlendirmeyi aç veya kapat (batarya harcar)",
     "IGUI_MinidoracatTesla_Tip_Radio": "Radyoyu aç",
     "IGUI_MinidoracatTesla_Tip_Camp": "Kamp Modunu aç: park halindeyken klima açık kalır",
-    "IGUI_MinidoracatTesla_Tip_GateOpen": "Elektrikli bagaj kapağını aç",
-    "IGUI_MinidoracatTesla_Tip_GateClose": "Elektrikli bagaj kapağını kapat",
+    "IGUI_MinidoracatTesla_Tip_DoorOpen": "Aç: %1",
+    "IGUI_MinidoracatTesla_Tip_DoorClose": "Kapat: %1",
     "IGUI_MinidoracatTesla_Tip_ChargeStatus": "Şarj seviyesi, güç ve hedefe kalan süre",
     "IGUI_MinidoracatTesla_Tip_CardStop": "Şarjı duraklat; kablo takılı kalır",
     "IGUI_MinidoracatTesla_Tip_CardStart": "Hedefe kadar şarja devam et",
@@ -96,9 +96,9 @@
     "IGUI_MinidoracatTesla_Tip_CardPlus": "Şarj hedefini %%10 artır",
     "IGUI_MinidoracatTesla_Tip_CardClose": "Bu kartı kapat",
     "IGUI_MinidoracatTesla_Deny_NOT_DRIVER": "Bunu yalnızca sürücü yapabilir",
-    "IGUI_MinidoracatTesla_Deny_NO_LIFTGATE": "Bagaj kapağı takılı değil",
+    "IGUI_MinidoracatTesla_Deny_NO_DOOR": "Bu parça takılı değil",
     "IGUI_MinidoracatTesla_Deny_MOVING": "Önce aracı durdur",
-    "IGUI_MinidoracatTesla_Deny_LIFTGATE_LOCKED": "Bagaj kapağının kilidi bozuk",
+    "IGUI_MinidoracatTesla_Deny_LOCK_BROKEN": "Kilit bozuk",
     "IGUI_MinidoracatTesla_RepairDriveUnit": "Tahrik Ünitesini Tamir Et",
     "IGUI_MinidoracatTesla_TakeDriveUnitParts": "Tahrik Ünitesi Parçalarını Al"
 }

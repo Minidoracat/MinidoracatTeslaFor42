@@ -225,11 +225,13 @@ end
 local allOk = true
 for i = 1, 5 do allOk = allOk and tipOk(h, i) end
 check(allOk, "each of the 5 keys: tip on screen and not over the key")
-check(lastText == "IGUI_MinidoracatTesla_Tip_GateOpen", "liftgate closed: tip says open (" .. tostring(lastText) .. ")")
+local function partName(id) local k = "IGUI_VehiclePart" .. id; return T.PartNames and T.PartNames[k] or k end
+check(lastText == "IGUI_MinidoracatTesla_Tip_DoorOpen" and h.tipArg == partName("TrunkDoor"),
+    "liftgate closed: tip says open + the liftgate's name (" .. tostring(lastText) .. ")")
 tesla.parts.TrunkDoor.door.open = true
 h:update(); h:update(); h:update()
 tipOk(h, 5)
-check(h:keyOn(5) and lastText == "IGUI_MinidoracatTesla_Tip_GateClose", "liftgate open: key on, tip says close")
+check(h:keyOn(5) and lastText == "IGUI_MinidoracatTesla_Tip_DoorClose", "liftgate open: key on, tip says close")
 tesla.parts.TrunkDoor.door.open = false
 h:update(); h:update(); h:update()
 mx, my = h.keyX - 5, h.keyY + 2
@@ -263,6 +265,85 @@ getText = realGetText
 check(twoOk and h.tipText2 ~= nil and #h.tipText % 3 == 0 and #h.tipText2 % 3 == 0, "no spaces: split on a character boundary")
 SCREEN_W, fontH = 1920, 19
 h:layout()
+mx = nil
+
+-- ---------------------------------------------------------------- car picture: click a door to open / close it
+H.section("car picture doors")
+local lid = { open = false }
+function lid:isOpen() return self.open end
+tesla.parts.EngineDoor = { door = lid, getDoor = function(self) return self.door end, getModData = function() return {} end,
+    getInventoryItem = function() return {} end }
+dash:setVehicle(tesla) -- re-attach: the frunk lid is a door now
+-- a point inside each zone, design units from the car sprite's top-left (HUD.lua ZONES), and the part it toggles
+local ZC = { { 22, 42, "TrunkDoor" }, { 57, 20, "DoorRearLeft" }, { 57, 64, "DoorRearRight" },
+    { 83, 20, "DoorFrontLeft" }, { 83, 64, "DoorFrontRight" }, { 118, 42, "EngineDoor" } }
+local toggled = {}
+local realToggle = T.Liftgate.toggle
+T.Liftgate.toggle = function(_, _, id) toggled[#toggled + 1] = id; return true end
+local function at(ux, uy) return (172 + ux) * h.S, (14 + uy) * h.S end
+local function clickAt(ux, uy)
+    local x, y = at(ux, uy)
+    local down = h:onMouseDown(x, y)
+    return down, h:onMouseUp(x, y)
+end
+local function allZones()
+    toggled = {}
+    local ok = true
+    for i, z in ipairs(ZC) do
+        local down, up = clickAt(z[1], z[2])
+        ok = ok and down == true and up == true and toggled[i] == z[3]
+    end
+    return ok and #toggled == #ZC
+end
+check(allZones(), "S=1: each of the 6 zones (liftgate, 4 doors, frunk lid) toggles its own part")
+toggled = {}
+check(h:onMouseDown(4, 4) == false and h:onMouseUp(4, 4) == false and select(1, clickAt(142, 30)) == false
+    and #toggled == 0, "off the car picture and the keys: the click passes through")
+toggled = {}
+h:onMouseUp(h.keyX + 4 * h.keyStep + h.keyS / 2, h.keyY + h.keyS / 2)
+check(toggled[1] == "TrunkDoor", "liftgate key: same toggle, TrunkDoor")
+fontH = 38
+h:layout()
+check(h.S == 2 and allZones(), "S=2: the zones scale with S")
+fontH = 19
+h:layout()
+-- hover: zone tinted + door drawn in accent, tip "Open / Close <name>" above the zone
+mx, my = at(83, 20)
+drawCalls = 0
+h:render()
+local r = h.tipRect
+check(drawCalls > 2 and lastText == "IGUI_MinidoracatTesla_Tip_DoorOpen" and h.tipArg == partName("DoorFrontLeft")
+    and r.y + r.h <= 14 * h.S, "hover front-left door: highlight, tip 'open' + its name above the picture")
+tesla.parts.DoorFrontLeft.door.open = true
+h:update(); h:update(); h:update()
+h:render()
+check(lastText == "IGUI_MinidoracatTesla_Tip_DoorClose", "front-left door open: tip says close")
+mx, my = at(118, 42)
+h:render()
+check(lastText == "IGUI_MinidoracatTesla_Tip_DoorOpen" and h.tipArg == partName("EngineDoor"), "hover frunk lid: open + its name")
+collectgarbage("collect")
+collectgarbage("stop")
+h:render()
+before = collectgarbage("count")
+for _ = 1, 1000 do h:render() end
+grew = collectgarbage("count") - before
+collectgarbage("restart")
+check(grew == 0, "hovered door render x1000 allocates nothing (" .. grew .. " KB)")
+-- a removed door: its zone darkened, no highlight or tip, the click passes through
+tesla.parts.DoorFrontLeft.door.open = false
+h:update(); h:update(); h:update()
+local n1 = h.n
+tesla.parts.DoorRearRight.getInventoryItem = function() return nil end
+h:update(); h:update(); h:update()
+check(h.n == n1 + 12, "rear right door removed: one dimming quad over its zone")
+toggled = {}
+mx, my = at(57, 64)
+drawCalls = 0
+h:render()
+check(select(1, clickAt(57, 64)) == false and #toggled == 0 and drawCalls == 0, "removed door: not clickable, no highlight")
+tesla.parts.DoorRearRight.getInventoryItem = function() return {} end
+h:update(); h:update(); h:update()
+T.Liftgate.toggle = realToggle
 mx = nil
 
 -- ---------------------------------------------------------------- chargeCardRect (AutoDrive stacks its FSD card on it)

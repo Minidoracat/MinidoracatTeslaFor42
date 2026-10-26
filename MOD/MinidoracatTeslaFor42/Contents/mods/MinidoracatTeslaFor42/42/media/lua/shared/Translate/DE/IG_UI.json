@@ -86,8 +86,8 @@
     "IGUI_MinidoracatTesla_Tip_Heater": "Klimaregelung ein- oder ausschalten (verbraucht Akku)",
     "IGUI_MinidoracatTesla_Tip_Radio": "Radio öffnen",
     "IGUI_MinidoracatTesla_Tip_Camp": "Camp-Modus ein: Klima bleibt beim Parken an",
-    "IGUI_MinidoracatTesla_Tip_GateOpen": "Elektrische Heckklappe öffnen",
-    "IGUI_MinidoracatTesla_Tip_GateClose": "Elektrische Heckklappe schließen",
+    "IGUI_MinidoracatTesla_Tip_DoorOpen": "%1 öffnen",
+    "IGUI_MinidoracatTesla_Tip_DoorClose": "%1 schließen",
     "IGUI_MinidoracatTesla_Tip_ChargeStatus": "Ladestand, Leistung und Zeit bis zum Ziel",
     "IGUI_MinidoracatTesla_Tip_CardStop": "Laden pausieren; das Kabel bleibt eingesteckt",
     "IGUI_MinidoracatTesla_Tip_CardStart": "Laden bis zum Ziel fortsetzen",
@@ -96,9 +96,9 @@
     "IGUI_MinidoracatTesla_Tip_CardPlus": "Ladeziel um 10 %% erhöhen",
     "IGUI_MinidoracatTesla_Tip_CardClose": "Diese Karte schließen",
     "IGUI_MinidoracatTesla_Deny_NOT_DRIVER": "Das kann nur der Fahrer",
-    "IGUI_MinidoracatTesla_Deny_NO_LIFTGATE": "Keine Heckklappe eingebaut",
+    "IGUI_MinidoracatTesla_Deny_NO_DOOR": "Dieses Teil ist nicht eingebaut",
     "IGUI_MinidoracatTesla_Deny_MOVING": "Halte das Auto zuerst an",
-    "IGUI_MinidoracatTesla_Deny_LIFTGATE_LOCKED": "Das Schloss der Heckklappe ist kaputt",
+    "IGUI_MinidoracatTesla_Deny_LOCK_BROKEN": "Das Schloss ist kaputt",
     "IGUI_MinidoracatTesla_RepairDriveUnit": "Antriebseinheit reparieren",
     "IGUI_MinidoracatTesla_TakeDriveUnitParts": "Antriebseinheit-Teile ausbauen"
 }

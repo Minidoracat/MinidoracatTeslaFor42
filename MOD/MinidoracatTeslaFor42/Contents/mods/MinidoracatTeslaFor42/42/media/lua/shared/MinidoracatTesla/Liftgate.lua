@@ -1,6 +1,7 @@
--- Power liftgate, opened or closed by the driver from the dashboard key (like the touchscreen in the real car).
--- Rule shared by the key (client pre-check) and the server command `liftgate` { vid }, which unlocks a locked
--- liftgate first, toggles it, syncs the door and tells every client to animate it (architecture.md §7).
+-- Power liftgate and the other doors, opened or closed by the driver from the dashboard (liftgate key, or a click
+-- on the car picture: like the touchscreen in the real car). Rule shared by the dashboard (client pre-check) and the
+-- server command `liftgate` { vid, part }, which unlocks a locked door first, toggles it, syncs it and tells every
+-- client to animate it (architecture.md §7).
 -- Also syncs the part anim of vanilla door open/close on Teslas in MP: vanilla plays it only on the client that
 -- opened the door (ISOpenVehicleDoor.lua:28-31 "TODO: sync part animation"), so everyone else saw no motion.
 require "MinidoracatTesla/Core"
@@ -8,14 +9,17 @@ require "MinidoracatTesla/Core"
 local T = MinidoracatTesla
 local L = {}
 T.Liftgate = L
-L.PART = "TrunkDoor"
+L.PART = "TrunkDoor" -- the liftgate key
+-- doors the driver may open or close from the dashboard (the HUD car picture; nothing else is accepted)
+L.PARTS = { DoorFrontLeft = true, DoorFrontRight = true, DoorRearLeft = true, DoorRearRight = true, TrunkDoor = true,
+    EngineDoor = true }
 L.MAX_KMH = 1 -- "parked"; the HUD shows N below 1 km/h too
 
--- Returns the installed liftgate part, or nil and an IGUI_MinidoracatTesla_Deny_<reason> suffix.
-function L.check(player, vehicle)
+-- Returns the installed door part `id` (one of L.PARTS), or nil and an IGUI_MinidoracatTesla_Deny_<reason> suffix.
+function L.check(player, vehicle, id)
     if not vehicle or not player or vehicle:getDriver() ~= player then return nil, "NOT_DRIVER" end
-    local part = vehicle:getPartById(L.PART)
-    if not part or not part:getInventoryItem() or not part:getDoor() then return nil, "NO_LIFTGATE" end
+    local part = type(id) == "string" and L.PARTS[id] and vehicle:getPartById(id)
+    if not part or not part:getInventoryItem() or not part:getDoor() then return nil, "NO_DOOR" end
     if math.abs(vehicle:getCurrentSpeedKmHour()) > L.MAX_KMH then return nil, "MOVING" end
     return part
 end
@@ -40,14 +44,14 @@ function L.syncShell(vehicle)
     vehicle:transmitColorHSV() -- MP server: flag 4096, VehicleProperties to every client (BaseVehicle.java:9209-9212)
 end
 
--- client: the dashboard key
-function L.toggle(player, vehicle)
-    local part, why = L.check(player, vehicle)
+-- client: the dashboard (liftgate key, car picture)
+function L.toggle(player, vehicle, id)
+    local part, why = L.check(player, vehicle, id)
     if not part then
         HaloTextHelper.addBadText(player, getText("IGUI_MinidoracatTesla_Deny_" .. why)) -- HaloTextHelper.lua
         return false
     end
-    T.request(player, "liftgate", { vid = vehicle:getId() })
+    T.request(player, "liftgate", { vid = vehicle:getId(), part = id })
     return true
 end
 
@@ -82,19 +86,20 @@ if not isClient() then
         local v = T.commandVehicle(player, args) -- server/MinidoracatTesla/Commands.lua
         if not v then return end
         local vid = v:getId()
-        local part, why = L.check(player, v)
+        local id = args.part
+        local part, why = L.check(player, v, id)
         if not part then return T.deny(player, why, vid) end
         local door = part:getDoor()
         if door:isLocked() then
             v:toggleLockedDoor(part, player, false) -- anyone seated may unlock (BaseVehicle.java:1275-1289)
-            if door:isLocked() then return T.deny(player, "LIFTGATE_LOCKED", vid) end -- lock broken
+            if door:isLocked() then return T.deny(player, "LOCK_BROKEN", vid) end
         end
         local open = not door:isOpen()
         door:setOpen(open)
         v:transmitPartDoor(part) -- BaseVehicle.java:8247-8256
         L.syncShell(v)
-        broadcast({ vid = vid, part = L.PART, open = open, sound = true })
-        T.log("liftgate " .. (open and "open" or "close") .. " vid=" .. tostring(vid) .. " by=" .. tostring(player:getUsername()))
+        broadcast({ vid = vid, part = id, open = open, sound = true })
+        T.log("liftgate " .. id .. " " .. (open and "open" or "close") .. " vid=" .. tostring(vid) .. " by=" .. tostring(player:getUsername()))
     end
 
     -- vanilla door actions complete here, SP or MP server (LuaTimedActionNew.java:166-168, not on a client): the shell
