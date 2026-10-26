@@ -91,6 +91,21 @@ end
 for _, n in ipairs({ "ISOpenVehicleDoor", "ISUnlockVehicleDoor", "ISSmashVehicleWindow", "ISHotwireVehicle",
     "ISUninstallVehiclePart" }) do action(n) end
 
+-- Vanilla timed action base (shared/TimedActions/ISBaseTimedAction.lua): Camp.lua loads CampPower.lua, whose charge
+-- action derives from it. Only what that action calls.
+if H and H.stub then H.stub("TimedActions/ISBaseTimedAction") end
+if ISBaseTimedAction == nil then
+    ISBaseTimedAction = {}
+    function ISBaseTimedAction:derive(name)
+        local cls = setmetatable({ Type = name }, { __index = self })
+        cls.__index = cls
+        return cls
+    end
+    function ISBaseTimedAction.new(cls, character) return setmetatable({ character = character }, cls) end
+    function ISBaseTimedAction.stop(self) self.stopped = true end
+    function ISBaseTimedAction.perform(self) self.performed = true end
+end
+
 -- ------------------------------------------------------------------ parts, vehicle, player
 local function part(id, opts)
     local p = { id = id, md = {}, amount = opts.amount or 0, cap = opts.cap or 0, ctype = opts.ctype,

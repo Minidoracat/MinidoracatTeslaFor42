@@ -197,6 +197,16 @@ module Base
                 update = Vehicles.Update.PassengerCompartment,
             }
         }
+        /* camp cabin light (CampPower.lua): the engine draws light parts like headlights. The id has no "Headlight", */
+        /* so the headlight switch leaves it alone (VehicleParts.java:373), and no "Rear" (IsoGameCharacter.java:17311) */
+        part CabinLight
+        {
+            category = nodisplay,
+            lua
+            {
+                init = MinidoracatTesla.Init.CabinLight,
+            }
+        }
         part Windshield*
         {
             table install

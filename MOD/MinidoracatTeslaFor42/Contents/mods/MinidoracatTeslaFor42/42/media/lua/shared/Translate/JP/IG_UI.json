@@ -101,5 +101,7 @@
     "IGUI_MinidoracatTesla_Deny_MOVING": "先に車を止めてください",
     "IGUI_MinidoracatTesla_Deny_LOCK_BROKEN": "ロックが壊れています",
     "IGUI_MinidoracatTesla_RepairDriveUnit": "ドライブユニット修理",
-    "IGUI_MinidoracatTesla_TakeDriveUnitParts": "ドライブユニット部品を外す"
+    "IGUI_MinidoracatTesla_TakeDriveUnitParts": "ドライブユニット部品を外す",
+    "IGUI_MinidoracatTesla_Deny_NOT_CAMPING": "先にキャンプモードをオンにしてください",
+    "IGUI_MinidoracatTesla_Deny_FULL": "すでに満充電です"
 }

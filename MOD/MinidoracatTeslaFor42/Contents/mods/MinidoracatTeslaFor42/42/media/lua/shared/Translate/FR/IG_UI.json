@@ -101,5 +101,7 @@
     "IGUI_MinidoracatTesla_Deny_MOVING": "Arrêtez d'abord la voiture",
     "IGUI_MinidoracatTesla_Deny_LOCK_BROKEN": "La serrure est cassée",
     "IGUI_MinidoracatTesla_RepairDriveUnit": "Réparer l'unité d'entraînement",
-    "IGUI_MinidoracatTesla_TakeDriveUnitParts": "Récupérer les pièces de l'unité d'entraînement"
+    "IGUI_MinidoracatTesla_TakeDriveUnitParts": "Récupérer les pièces de l'unité d'entraînement",
+    "IGUI_MinidoracatTesla_Deny_NOT_CAMPING": "Activez d'abord le Mode Camping",
+    "IGUI_MinidoracatTesla_Deny_FULL": "Déjà entièrement chargée"
 }

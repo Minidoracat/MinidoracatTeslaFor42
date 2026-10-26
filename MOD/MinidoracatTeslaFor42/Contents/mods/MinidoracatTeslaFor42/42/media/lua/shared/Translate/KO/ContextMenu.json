@@ -5,5 +5,6 @@
     "ContextMenu_MinidoracatTesla_Plug": "충전 케이블 꽂기",
     "ContextMenu_MinidoracatTesla_PlugInto": "충전 케이블 꽂기: %1",
     "ContextMenu_MinidoracatTesla_Unplug": "충전 케이블 뽑기",
-    "ContextMenu_MinidoracatTesla_ChargeStatus": "충전 상태 보기"
+    "ContextMenu_MinidoracatTesla_ChargeStatus": "충전 상태 보기",
+    "ContextMenu_MinidoracatTesla_ChargeItem": "차량 콘센트로 충전"
 }

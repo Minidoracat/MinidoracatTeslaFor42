@@ -101,5 +101,7 @@
     "IGUI_MinidoracatTesla_Deny_MOVING": "請先停車",
     "IGUI_MinidoracatTesla_Deny_LOCK_BROKEN": "鎖壞了，打不開",
     "IGUI_MinidoracatTesla_RepairDriveUnit": "修理驅動單元",
-    "IGUI_MinidoracatTesla_TakeDriveUnitParts": "拆取驅動單元零件"
+    "IGUI_MinidoracatTesla_TakeDriveUnitParts": "拆取驅動單元零件",
+    "IGUI_MinidoracatTesla_Deny_NOT_CAMPING": "請先開啟露營模式",
+    "IGUI_MinidoracatTesla_Deny_FULL": "已經充滿了"
 }

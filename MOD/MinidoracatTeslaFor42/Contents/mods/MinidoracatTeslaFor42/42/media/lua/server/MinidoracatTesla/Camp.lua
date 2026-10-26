@@ -6,6 +6,7 @@
 if isClient() then return end
 require "MinidoracatTesla/Core"
 require "MinidoracatTesla/ParkModes"
+require "MinidoracatTesla/CampPower"
 require "MinidoracatTesla/Inbox"
 
 local T = MinidoracatTesla
@@ -49,6 +50,7 @@ function C.start(player, vehicle)
         end
         vehicle:transmitPartModData(h)
     end
+    C.cabinLight(vehicle, true)
     vehicle:setNeedPartsUpdate(true)
     vehicle:transmitPartModData(part)
     T.log("camp on vid=" .. vehicle:getId() .. " by " .. player:getUsername())
@@ -61,6 +63,7 @@ function C.stop(vehicle, part, reason)
     if not c then return end
     part:getModData().camp = nil
     heaterOff(vehicle)
+    C.cabinLight(vehicle, false)
     vehicle:transmitPartModData(part)
     T.log("camp off vid=" .. vehicle:getId() .. " " .. tostring(reason))
     if reason == "lowBattery" then

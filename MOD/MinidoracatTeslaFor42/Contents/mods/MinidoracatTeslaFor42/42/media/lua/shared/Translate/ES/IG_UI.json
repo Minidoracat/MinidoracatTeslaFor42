@@ -101,5 +101,7 @@
     "IGUI_MinidoracatTesla_Deny_MOVING": "Detén el coche primero",
     "IGUI_MinidoracatTesla_Deny_LOCK_BROKEN": "La cerradura está rota",
     "IGUI_MinidoracatTesla_RepairDriveUnit": "Reparar unidad de tracción",
-    "IGUI_MinidoracatTesla_TakeDriveUnitParts": "Coger piezas de la unidad de tracción"
+    "IGUI_MinidoracatTesla_TakeDriveUnitParts": "Coger piezas de la unidad de tracción",
+    "IGUI_MinidoracatTesla_Deny_NOT_CAMPING": "Primero activa el Modo acampada",
+    "IGUI_MinidoracatTesla_Deny_FULL": "Ya está cargada por completo"
 }

@@ -101,5 +101,7 @@
     "IGUI_MinidoracatTesla_Deny_MOVING": "Najpierw zatrzymaj samochód",
     "IGUI_MinidoracatTesla_Deny_LOCK_BROKEN": "Zamek jest zepsuty",
     "IGUI_MinidoracatTesla_RepairDriveUnit": "Napraw zespół napędowy",
-    "IGUI_MinidoracatTesla_TakeDriveUnitParts": "Weź części zespołu napędowego"
+    "IGUI_MinidoracatTesla_TakeDriveUnitParts": "Weź części zespołu napędowego",
+    "IGUI_MinidoracatTesla_Deny_NOT_CAMPING": "Najpierw włącz tryb kempingowy",
+    "IGUI_MinidoracatTesla_Deny_FULL": "Już w pełni naładowana"
 }
