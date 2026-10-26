@@ -85,7 +85,7 @@
     "IGUI_MinidoracatTesla_Tip_Headlight": "Включить или выключить фары",
     "IGUI_MinidoracatTesla_Tip_Heater": "Включить или выключить климат (расходует заряд)",
     "IGUI_MinidoracatTesla_Tip_Radio": "Открыть радио",
-    "IGUI_MinidoracatTesla_Tip_Camp": "Включить режим кемпинга: климат работает на стоянке",
+    "IGUI_MinidoracatTesla_Tip_Camp": "Включить режим кемпинга: мотор выключится, климат продолжит работать",
     "IGUI_MinidoracatTesla_Tip_GateOpen": "Открыть багажник (электропривод)",
     "IGUI_MinidoracatTesla_Tip_GateClose": "Закрыть багажник (электропривод)",
     "IGUI_MinidoracatTesla_Tip_ChargeStatus": "Заряд, мощность и время до цели",

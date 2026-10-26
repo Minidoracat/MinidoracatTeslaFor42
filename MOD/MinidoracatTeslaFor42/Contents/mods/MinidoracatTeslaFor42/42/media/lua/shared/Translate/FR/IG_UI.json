@@ -85,7 +85,7 @@
     "IGUI_MinidoracatTesla_Tip_Headlight": "Allumer ou éteindre les phares",
     "IGUI_MinidoracatTesla_Tip_Heater": "Allumer ou éteindre la climatisation (consomme la batterie)",
     "IGUI_MinidoracatTesla_Tip_Radio": "Ouvrir la radio",
-    "IGUI_MinidoracatTesla_Tip_Camp": "Activer le mode Camping : climatisation maintenue à l'arrêt",
+    "IGUI_MinidoracatTesla_Tip_Camp": "Activer le mode Camping : le moteur s'arrête, la climatisation reste allumée",
     "IGUI_MinidoracatTesla_Tip_GateOpen": "Ouvrir le hayon électrique",
     "IGUI_MinidoracatTesla_Tip_GateClose": "Fermer le hayon électrique",
     "IGUI_MinidoracatTesla_Tip_ChargeStatus": "Charge, puissance et temps jusqu'à l'objectif",

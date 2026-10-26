@@ -85,7 +85,7 @@
     "IGUI_MinidoracatTesla_Tip_Headlight": "Farları aç veya kapat",
     "IGUI_MinidoracatTesla_Tip_Heater": "İklimlendirmeyi aç veya kapat (batarya harcar)",
     "IGUI_MinidoracatTesla_Tip_Radio": "Radyoyu aç",
-    "IGUI_MinidoracatTesla_Tip_Camp": "Kamp Modunu aç: park halindeyken klima açık kalır",
+    "IGUI_MinidoracatTesla_Tip_Camp": "Kamp Modunu aç: motor durur, klima açık kalır",
     "IGUI_MinidoracatTesla_Tip_GateOpen": "Elektrikli bagaj kapağını aç",
     "IGUI_MinidoracatTesla_Tip_GateClose": "Elektrikli bagaj kapağını kapat",
     "IGUI_MinidoracatTesla_Tip_ChargeStatus": "Şarj seviyesi, güç ve hedefe kalan süre",

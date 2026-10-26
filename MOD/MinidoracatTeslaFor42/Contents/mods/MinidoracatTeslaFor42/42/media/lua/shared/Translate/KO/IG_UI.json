@@ -85,7 +85,7 @@
     "IGUI_MinidoracatTesla_Tip_Headlight": "전조등 켜기/끄기",
     "IGUI_MinidoracatTesla_Tip_Heater": "실내 온도 조절 켜기/끄기 (배터리 사용)",
     "IGUI_MinidoracatTesla_Tip_Radio": "라디오 열기",
-    "IGUI_MinidoracatTesla_Tip_Camp": "캠핑 모드 켜기: 주차 중에도 실내 온도 유지",
+    "IGUI_MinidoracatTesla_Tip_Camp": "캠핑 모드 켜기: 모터가 꺼지고 실내 온도는 유지",
     "IGUI_MinidoracatTesla_Tip_GateOpen": "전동식 트렁크 리프트게이트 열기",
     "IGUI_MinidoracatTesla_Tip_GateClose": "전동식 트렁크 리프트게이트 닫기",
     "IGUI_MinidoracatTesla_Tip_ChargeStatus": "충전량, 충전 출력, 목표까지 남은 시간",

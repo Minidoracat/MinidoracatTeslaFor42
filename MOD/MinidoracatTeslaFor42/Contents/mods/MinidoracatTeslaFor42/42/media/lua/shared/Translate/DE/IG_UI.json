@@ -85,7 +85,7 @@
     "IGUI_MinidoracatTesla_Tip_Headlight": "Scheinwerfer ein- oder ausschalten",
     "IGUI_MinidoracatTesla_Tip_Heater": "Klimaregelung ein- oder ausschalten (verbraucht Akku)",
     "IGUI_MinidoracatTesla_Tip_Radio": "Radio öffnen",
-    "IGUI_MinidoracatTesla_Tip_Camp": "Camp-Modus ein: Klima bleibt beim Parken an",
+    "IGUI_MinidoracatTesla_Tip_Camp": "Camp-Modus ein: Motor geht aus, Klima bleibt an",
     "IGUI_MinidoracatTesla_Tip_GateOpen": "Elektrische Heckklappe öffnen",
     "IGUI_MinidoracatTesla_Tip_GateClose": "Elektrische Heckklappe schließen",
     "IGUI_MinidoracatTesla_Tip_ChargeStatus": "Ladestand, Leistung und Zeit bis zum Ziel",

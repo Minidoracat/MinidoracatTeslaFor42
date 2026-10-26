@@ -85,7 +85,7 @@
     "IGUI_MinidoracatTesla_Tip_Headlight": "ヘッドライトのオン/オフ",
     "IGUI_MinidoracatTesla_Tip_Heater": "空調のオン/オフ（バッテリーを使います）",
     "IGUI_MinidoracatTesla_Tip_Radio": "ラジオを開く",
-    "IGUI_MinidoracatTesla_Tip_Camp": "キャンプモードをオン：駐車中も空調を維持",
+    "IGUI_MinidoracatTesla_Tip_Camp": "キャンプモードをオン：モーターを止めて空調を維持",
     "IGUI_MinidoracatTesla_Tip_GateOpen": "電動トランク リフトゲートを開ける",
     "IGUI_MinidoracatTesla_Tip_GateClose": "電動トランク リフトゲートを閉める",
     "IGUI_MinidoracatTesla_Tip_ChargeStatus": "充電量、出力、目標までの時間",

@@ -131,6 +131,11 @@ function F.vehicle(o)
     function v:getPartById(id) return self.parts[id] end
     function v:getBattery() return self.parts.Battery end
     function v:isEngineRunning() return self.running end
+    function v:getCurrentSpeedKmHour() return self.kmh or 0 end
+    function v:shutOff() -- vanilla: ShuttingDown switches the heater off on the spot (BaseVehicle.java:7469-7473)
+        self.running, self.shutOffs = false, (self.shutOffs or 0) + 1
+        self.parts.Heater:getModData().active = false
+    end
     function v:hasPassenger() return self.passengers > 0 end
     function v:areAllDoorsLocked() return self.locked end
     function v:getKeyId() return self.keyId end

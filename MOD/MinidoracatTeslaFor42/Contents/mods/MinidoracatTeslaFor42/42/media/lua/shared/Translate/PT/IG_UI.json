@@ -85,7 +85,7 @@
     "IGUI_MinidoracatTesla_Tip_Headlight": "Ligar ou desligar os faróis",
     "IGUI_MinidoracatTesla_Tip_Heater": "Ligar ou desligar a climatização (gasta bateria)",
     "IGUI_MinidoracatTesla_Tip_Radio": "Abrir o rádio",
-    "IGUI_MinidoracatTesla_Tip_Camp": "Ligar Modo Acampamento: climatização ligada com o carro parado",
+    "IGUI_MinidoracatTesla_Tip_Camp": "Ligar Modo Acampamento: o motor desliga e a climatização continua ligada",
     "IGUI_MinidoracatTesla_Tip_GateOpen": "Abrir a porta da bagageira elétrica",
     "IGUI_MinidoracatTesla_Tip_GateClose": "Fechar a porta da bagageira elétrica",
     "IGUI_MinidoracatTesla_Tip_ChargeStatus": "Carga, potência e tempo até a meta",

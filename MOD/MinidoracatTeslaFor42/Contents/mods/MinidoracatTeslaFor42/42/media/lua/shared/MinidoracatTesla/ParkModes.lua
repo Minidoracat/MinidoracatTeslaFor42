@@ -11,6 +11,7 @@ S.MIN_PCT = 20      -- arm needs >= 20%; settle turns sentry off below it (Tesla
 S.KW = 0.25         -- standby draw, kW of game time
 S.RANGE = 10        -- arm/disarm from outside: tiles between player and car
 C.MIN_PCT = 20
+C.MAX_KMH = 1       -- "in Park": the HUD shows N below 1 km/h too (Liftgate.MAX_KMH)
 C.HEATER_KW = 1.5   -- heater draw from the main pack while it runs
 C.DEFAULT_TEMP = 15 -- heater knob value when the player never set one (ISVehicleACUI.lua:76-82 knob stops)
 
@@ -55,10 +56,12 @@ function C.canEnable(player, vehicle)
     if player:getVehicle() ~= vehicle then return false, "NOT_INSIDE" end
     -- seated: whoever may ride this car may run its climate. Not T.legit: starting the motor moves the driver's key from
     -- the inventory into the ignition (BaseVehicle.java:7484,7503 -> setKeysInIgnition :8647-8675) and the "leave key
-    -- in ignition" option keeps it there after shutdown (:7556-7558), so the owner held no key and got NOT_OWNER, even
-    -- before ENGINE_ON (user 2026-10-25 playtest). VehicleManager's canUse still decides when it is installed.
+    -- in ignition" option keeps it there after shutdown (:7556-7558), so the owner held no key and got NOT_OWNER
+    -- (user 2026-10-25 playtest). VehicleManager's canUse still decides when it is installed.
     if not T.authorized(player, vehicle, "PASSENGER") then return false, "NOT_OWNER" end
-    if vehicle:isEngineRunning() then return false, "ENGINE_ON" end
+    -- the real car offers Camp Mode only in Park (owner's manual, "Keep Climate On, Pet Mode, and Camp Mode"): a running
+    -- motor is fine (C.start shuts it off in the same tap), a moving car is not
+    if math.abs(vehicle:getCurrentSpeedKmHour()) > C.MAX_KMH then return false, "MOVING" end
     if T.Battery.pct(part) < C.MIN_PCT then return false, "LOW_BATTERY" end
     return true
 end

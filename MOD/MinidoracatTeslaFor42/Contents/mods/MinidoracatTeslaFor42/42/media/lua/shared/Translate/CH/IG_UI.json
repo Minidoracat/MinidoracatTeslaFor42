@@ -85,7 +85,7 @@
     "IGUI_MinidoracatTesla_Tip_Headlight": "開關大燈",
     "IGUI_MinidoracatTesla_Tip_Heater": "開關恆溫控制（耗電）",
     "IGUI_MinidoracatTesla_Tip_Radio": "打開收音機",
-    "IGUI_MinidoracatTesla_Tip_Camp": "開啟露營模式：停車時空調持續運作",
+    "IGUI_MinidoracatTesla_Tip_Camp": "開啟露營模式：馬達停下，空調持續運作",
     "IGUI_MinidoracatTesla_Tip_GateOpen": "打開上掀式升降尾門",
     "IGUI_MinidoracatTesla_Tip_GateClose": "關閉上掀式升降尾門",
     "IGUI_MinidoracatTesla_Tip_ChargeStatus": "電量、充電功率與充到目標的時間",

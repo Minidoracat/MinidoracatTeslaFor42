@@ -340,13 +340,13 @@ end
 check(camp ~= nil and camp.fn ~= nil and status ~= nil, "radial: camp (enabled) and charging status, each with a what-it-does line")
 ISVehicleMenu.showRadialMenu(p)
 check(#menu.slices == 0, "radial: second press closes, nothing re-added")
-tesla.running = true
+tesla.running, tesla.speed = true, 30
 ISVehicleMenu.showRadialMenu(p)
 local grey
 for _, s in ipairs(menu.slices) do
     if s.text:find("Radial_CampOn", 1, true) then grey = s end
 end
-check(grey ~= nil and grey.fn == nil and grey.text:find("\nIGUI_MinidoracatTesla_Deny_ENGINE_ON", 1, true) ~= nil,
-    "radial: camp greyed with the deny reason while the motor runs")
+check(grey ~= nil and grey.fn == nil and grey.text:find("\nIGUI_MinidoracatTesla_Deny_MOVING", 1, true) ~= nil,
+    "radial: camp greyed with the deny reason while driving")
 menu.open = false
 H.side(false, true)

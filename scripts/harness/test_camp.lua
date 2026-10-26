@@ -1,4 +1,4 @@
--- 露營：開啟條件、熄火加熱並扣主電池、12V 補電、下車／低電量／發動自動關閉、重載後重設 needPartsUpdate、與哨兵互斥。
+-- 露營：開啟條件（行駛中拒絕、馬達運轉中停著一次開好）、熄火加熱並扣主電池、12V 補電、下車／低電量／發動自動關閉、重載後重設 needPartsUpdate、與哨兵互斥。
 local F = dofile("scripts/harness/park_fakes.lua")
 local check = (H and H.check) or function(ok, label) print((ok and "  PASS  " or "  FAIL  ") .. label); if not ok then error(label) end end
 
@@ -23,10 +23,13 @@ F.online = { owner }
 -- ---- rules ----
 cmds.campOn(owner, { vid = v:getId() })
 check(md(v).camp == nil and F.lastSent("deny").args.reason == "NOT_INSIDE", "camp: must be seated inside")
-owner.vehicle, v.passengers, v.running = v, 1, true
+owner.vehicle, v.passengers, v.running, v.kmh = v, 1, true, 30
 cmds.campOn(owner, { vid = v:getId() })
-check(md(v).camp == nil and F.lastSent("deny").args.reason == "ENGINE_ON", "camp: motor must be off")
-v.running = false
+check(md(v).camp == nil and F.lastSent("deny").args.reason == "MOVING" and v.running and not v.shutOffs,
+    "camp: moving car -> MOVING, motor keeps running")
+v.kmh = C.MAX_KMH + 0.5
+check(select(2, C.canEnable(owner, v)) == "MOVING", "camp: rolling just above MAX_KMH is still moving")
+v.kmh, v.running = 0, false
 local stranger = F.player("stranger", { vehicle = v })
 cmds.campOn(stranger, { vid = v:getId() })
 check(md(v).camp == nil and F.lastSent("deny").args.reason == "NOT_OWNER", "camp: stranger in the seat cannot enable")
@@ -36,16 +39,19 @@ local driven = F.track(F.vehicle({ pct = 50 }))
 driven.ignition, driven.running, driven.passengers = true, true, 1
 local driver = F.player("driver", { vehicle = driven })
 cmds.campOn(driver, { vid = driven:getId() })
-check(md(driven).camp == nil and F.lastSent("deny").args.reason == "ENGINE_ON",
-    "camp: key in the ignition, motor on -> ENGINE_ON, not NOT_OWNER")
-driven.running = false
+check(md(driven).camp ~= nil and not driven.running and driven.shutOffs == 1,
+    "camp: motor on, parked, key in the ignition -> camp on and motor shut off in one tap (not NOT_OWNER)")
+check(driven.parts.Heater:getModData().active == true and driven.parts.Heater:getModData().temperature == C.DEFAULT_TEMP,
+    "camp: heater back on after the shut-off switched it off")
+md(driven).camp = nil
 MinidoracatVehicleManagerAPI = { canUse = function() return false, "NO_RIGHTS" end }
 cmds.campOn(driver, { vid = driven:getId() })
 check(md(driven).camp == nil and F.lastSent("deny").args.reason == "NOT_OWNER",
     "camp: VehicleManager refusal wins over a key in the ignition")
 MinidoracatVehicleManagerAPI = nil
 cmds.campOn(driver, { vid = driven:getId() })
-check(md(driven).camp ~= nil, "camp: key left in the ignition after shutdown -> the seated player enables")
+check(md(driven).camp ~= nil and driven.shutOffs == 1,
+    "camp: key left in the ignition after shutdown -> the seated player enables (no second shut-off)")
 
 -- ---- exclusive with sentry ----
 md(v).sentry = { by = "owner", at = F.hours, kwh = kwh(v), since = F.hours }

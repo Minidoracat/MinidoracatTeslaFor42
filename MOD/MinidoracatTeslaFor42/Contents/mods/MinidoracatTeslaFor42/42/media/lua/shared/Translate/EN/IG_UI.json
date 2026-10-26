@@ -85,7 +85,7 @@
     "IGUI_MinidoracatTesla_Tip_Headlight": "Turn the headlights on or off",
     "IGUI_MinidoracatTesla_Tip_Heater": "Turn the climate controls on or off (uses battery)",
     "IGUI_MinidoracatTesla_Tip_Radio": "Open the radio",
-    "IGUI_MinidoracatTesla_Tip_Camp": "Turn on Camp Mode: climate stays on while parked",
+    "IGUI_MinidoracatTesla_Tip_Camp": "Turn on Camp Mode: the motor stops, climate stays on",
     "IGUI_MinidoracatTesla_Tip_GateOpen": "Open the power liftgate",
     "IGUI_MinidoracatTesla_Tip_GateClose": "Close the power liftgate",
     "IGUI_MinidoracatTesla_Tip_ChargeStatus": "Charge level, power and time to target",

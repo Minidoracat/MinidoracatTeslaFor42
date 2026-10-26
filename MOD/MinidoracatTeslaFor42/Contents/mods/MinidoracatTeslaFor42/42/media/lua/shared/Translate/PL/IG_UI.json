@@ -85,7 +85,7 @@
     "IGUI_MinidoracatTesla_Tip_Headlight": "Włącz lub wyłącz reflektory",
     "IGUI_MinidoracatTesla_Tip_Heater": "Włącz lub wyłącz klimatyzację (zużywa baterię)",
     "IGUI_MinidoracatTesla_Tip_Radio": "Otwórz radio",
-    "IGUI_MinidoracatTesla_Tip_Camp": "Włącz tryb kempingowy: klimatyzacja działa na postoju",
+    "IGUI_MinidoracatTesla_Tip_Camp": "Włącz tryb kempingowy: silnik się wyłącza, klimatyzacja działa",
     "IGUI_MinidoracatTesla_Tip_GateOpen": "Otwórz elektryczną klapę bagażnika",
     "IGUI_MinidoracatTesla_Tip_GateClose": "Zamknij elektryczną klapę bagażnika",
     "IGUI_MinidoracatTesla_Tip_ChargeStatus": "Poziom naładowania, moc i czas do celu",
