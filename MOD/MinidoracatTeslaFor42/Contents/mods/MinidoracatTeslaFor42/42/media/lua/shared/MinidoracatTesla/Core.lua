@@ -17,14 +17,14 @@ T.Battery = T.Battery or {}
 T.ContainerAccess = T.ContainerAccess or {}
 
 -- Energy is in kWh of game time: a kW drawn for one game hour is one kWh.
--- kwPerKmh, idleKw: a full standard pack (62.5 kWh) drives as far as a full vanilla CarNormal tank at 50 km/h
--- (measured in MP: about 756 km per 49 L, references/vehicle-battery.md "續航校正"). massKg and regenEff size the regen.
+-- kwPerKmh, idleKw: a full pack (78.4 kWh) drives as far as a full vanilla CarNormal tank at 50 km/h (measured in MP:
+-- about 756 km per 49 L, references/vehicle-battery.md "續航校正"). massKg (Performance curb mass) and regenEff size the regen.
 T.Specs = {
     ["Base.MinidoracatTesla_ModelY"] = {
         model = "ModelY",
-        idleKw = 0.03,
-        kwPerKmh = 0.00456,
-        massKg = 1980,
+        idleKw = 0.0376,
+        kwPerKmh = 0.00572,
+        massKg = 2033,
         regenEff = 0.6,
         -- official Model Y paints (TeslaModelY, references/models.md): entry i = vehicle script skin i-1, and saved
         -- games keep the skin index (BaseVehicle.java:2635/2741), so only append. h/s/v (setColorHSV) tint the
@@ -43,17 +43,10 @@ T.Specs = {
     },
 }
 
--- Pack items: exact kWh. Item MaxCapacity is an int (Item.java:2502-2503), so it is rounded up and
--- the exact value lives here. LR is the 2025 Juniper Long Range (78.1 kWh nominal, research R10).
+-- Pack items: exact kWh. Item MaxCapacity is an int (Item.java:2502-2503), so it is rounded up and the exact value
+-- lives here. Model Y Performance: 78.4 kWh (China MIIT filing; Tesla publishes no kWh, references/vehicle-battery.md).
 T.Packs = {
-    ["Base.MinidoracatTesla_ModelYBatterySR"] = 62.5,
-    ["Base.MinidoracatTesla_ModelYBatteryLR"] = 78.1,
-}
--- enginePower set by Create.Motor from the pack a new car spawns with (SR rear drive, LR dual motor); the
--- mechanics window shows power / 10 hp (ISVehicleMechanics.lua:1178). Per car and saved (BaseVehicle.java:2666).
-T.PackPower = {
-    ["Base.MinidoracatTesla_ModelYBatterySR"] = 3000,
-    ["Base.MinidoracatTesla_ModelYBatteryLR"] = 5000,
+    ["Base.MinidoracatTesla_ModelYBattery"] = 78.4,
 }
 
 local PREFIX = "[" .. T.MOD_ID .. "] "

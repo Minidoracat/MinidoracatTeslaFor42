@@ -68,7 +68,7 @@ end
 
 -- ---- part hooks ----
 
--- GasTank create: pick SR or LR (VehicleUtils.createPartInventoryItem, Vehicles.lua:1153-1194), then a start charge.
+-- GasTank create: the pack item (VehicleUtils.createPartInventoryItem, Vehicles.lua:1153-1194), then a start charge.
 function T.Create.Battery(vehicle, part)
     local item = VehicleUtils.createPartInventoryItem(part)
     if not item then return end
@@ -98,20 +98,18 @@ function T.InstallComplete.Battery(vehicle, part)
     B.set(vehicle, part, B.kwh(part))
 end
 
--- Engine create (new cars only): quality 100 so it starts first try in the cold (VehicleEngine.java:317,326-340);
+-- Engine create (new cars only): quality 100 so it starts first try in the cold (VehicleEngine.java:317,326-340), the
+-- script engineForce (the one power each car has; vanilla repair() resets it to the same value, VehiclePart.java:999-1005);
 -- loudness as vanilla Vehicles.Create.Engine (Vehicles.lua:279-287); a factory paint from the spec: skin index plus
 -- the damage tint HSV. Parts are created after every engine skin / colour pick (random skin BaseVehicle.java:822-825,
 -- zone or story skins IsoChunk.java:1346-1348 and RandomizedWorldBase.java:167-168 before addToWorld, script colour
 -- :1575-1577; createParts :868), so this wins. Transmit as vanilla Commands.setHSV / setSkinIndex
 -- (VehicleCommands.lua:440-455): server-only flag 4096 sends both (BaseVehicle.java:9209-9219, VehicleProperties.java:71-74).
--- (VehicleUtils.createPartInventoryItem returns the existing item, Vehicles.lua:1156,1193). Power by pack (Core PackPower).
 function T.Create.Motor(vehicle, part)
     if not SandboxVars.VehicleEasyUse then part:setRandomCondition(nil) end
     local script = vehicle:getScript()
     local loud = (script:getEngineLoudness() or 100) * (SandboxVars.ZombieAttractionMultiplier or 1)
-    local bp = vehicle:getPartById(T.BATTERY_PART)
-    local pack = bp and VehicleUtils.createPartInventoryItem(bp) -- the GasTank may not be created yet
-    vehicle:setEngineFeature(100, loud, pack and T.PackPower[pack:getFullType()] or script:getEngineForce())
+    vehicle:setEngineFeature(100, loud, script:getEngineForce())
     local s = T.spec(vehicle)
     local colors = s and s.colors
     if colors and #colors > 0 then

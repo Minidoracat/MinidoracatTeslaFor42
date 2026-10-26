@@ -14,6 +14,17 @@ local MEDIA = "MOD/MinidoracatTeslaFor42/Contents/mods/MinidoracatTeslaFor42/42/
 
 H = { failures = 0, sent = {}, clientSent = {}, logLines = {} }
 
+-- a number from the real scripts (after = text that starts the block, e.g. "item MinidoracatTesla_ModelYBattery")
+function H.scriptValue(file, key, after)
+    local f = assert(io.open(MEDIA:gsub("/lua$", "/scripts/") .. file, "r"))
+    local s = f:read("*a")
+    f:close()
+    if after then s = s:sub((assert(s:find(after, 1, true), after))) end
+    return tonumber(s:match("\n%s*" .. key .. "%s*=%s*([%d%.]+)"))
+end
+local ENGINE_FORCE = H.scriptValue("vehicles/MinidoracatTesla_template.txt", "engineForce")
+local PACK_CAP = H.scriptValue("items/MinidoracatTesla_items.txt", "MaxCapacity", "item MinidoracatTesla_ModelYBattery")
+
 -- ---------------------------------------------------------------- side, time, sandbox
 local side = { client = false, server = true }
 function isClient() return side.client end
@@ -117,8 +128,8 @@ function H.vehicle(o)
         running = o.running or false, speed = o.speed or 0, brakeSpeed = 0, transmits = 0, usedDeltaTx = 0,
         x = o.x or 100.5, y = o.y or 100.5, z = o.z or 0, good = o.good or false, keyId = 77, driver = nil, feature = nil }
     nextId = math.max(nextId, v.id) + 1
-    local pack = o.pack or "Base.MinidoracatTesla_ModelYBatterySR"
-    local packCap = (pack == "Base.MinidoracatTesla_ModelYBatteryLR") and 79 or 63
+    local pack = o.pack or "Base.MinidoracatTesla_ModelYBattery"
+    local packCap = pack == "Base.MinidoracatTesla_ModelYBattery" and PACK_CAP or 63
     v.parts.GasTank = newPart("GasTank", { contentType = "Electricity", item = (o.noPack and nil) or newItem(pack, packCap) })
     v.parts.Battery = newPart("Battery", { item = newItem("Base.CarBattery3", 0) })
     v.parts.Engine = newPart("Engine", {})
@@ -150,7 +161,7 @@ function H.vehicle(o)
     function v:transmitColorHSV() self.colorTx = (self.colorTx or 0) + 1 end
     function v:setSkinIndex(i) self.skin = i end
     function v:transmitSkinIndex() self.skinTx = (self.skinTx or 0) + 1 end
-    function v:getScript() return { getEngineLoudness = function() return 20 end, getEngineForce = function() return 5000 end } end
+    function v:getScript() return { getEngineLoudness = function() return 20 end, getEngineForce = function() return ENGINE_FORCE end } end
     vehicles[v.id] = v
     return v
 end

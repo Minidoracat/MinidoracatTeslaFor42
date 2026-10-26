@@ -1,6 +1,5 @@
 {
-    "Base.MinidoracatTesla_ModelYBatterySR": "Bateria de alta tensão Model Y - Autonomia Padrão (62,5 kWh)",
-    "Base.MinidoracatTesla_ModelYBatteryLR": "Bateria de alta tensão Model Y - Grande Autonomia (78,1 kWh)",
+    "Base.MinidoracatTesla_ModelYBattery": "Bateria de alta tensão Model Y Performance (78,4 kWh)",
     "Base.MinidoracatTesla_WallConnector": "Tesla Wall Connector (3ª ger.)",
     "Base.MinidoracatTesla_CableHang": "Cabo de carregamento (trecho da parede)",
     "Base.MinidoracatTesla_CableFloor": "Cabo de carregamento (trecho no chão)",

@@ -1,20 +1,16 @@
--- EV parts: power by pack, DC-DC at spawn, charge kept across pack uninstall/install, brake wear, frunk access,
+-- EV parts: motor power, DC-DC at spawn, charge kept across pack uninstall/install, brake wear, frunk access,
 -- mechanics-window names. Engine-side behaviour (script merge, item capacity, real UI) is in E2E parts-sp.
 local T, B = MinidoracatTesla, MinidoracatTesla.Battery
 local check, near = H.check, H.near
 H.side(false, true)
-local SR, LR = "Base.MinidoracatTesla_ModelYBatterySR", "Base.MinidoracatTesla_ModelYBatteryLR"
 
-H.section("motor power by pack")
-local sr = H.vehicle({ kwh = 30 })
-T.Create.Motor(sr, sr:getPartById("Engine"))
-local lr = H.vehicle({ pack = LR, kwh = 30 })
-T.Create.Motor(lr, lr:getPartById("Engine"))
-check(sr.feature[3] == 3000 and lr.feature[3] == 5000, "SR 3000 (300 hp), LR 5000 (500 hp)")
+H.section("motor power")
+local mv = H.vehicle({ kwh = 30 })
+T.Create.Motor(mv, mv:getPartById("Engine"))
 local np = H.vehicle({})
 np.parts.GasTank.item = nil
 T.Create.Motor(np, np:getPartById("Engine"))
-check(np.feature[3] == 5000, "no pack item: script engineForce")
+check(mv.feature[3] == 6260 and np.feature[3] == 6260, "script engineForce 6260 (626 hp), with or without a pack item")
 
 H.section("DC-DC at spawn")
 Vehicles.Create = Vehicles.Create or {}
@@ -23,7 +19,7 @@ local sv = H.vehicle({ kwh = 30 })
 T.Create.Battery12V(sv, sv:getBattery())
 check(near(sv:getBattery():getInventoryItem():getCurrentUsesFloat(), 1) and near(B.kwh(B.part(sv)), 30 - 0.8 * T.V12_KWH),
     "12V created after the pack: topped up from the pack")
-local dead = H.vehicle({ kwh = 62.5 * 0.04 })
+local dead = H.vehicle({ kwh = 78.4 * 0.04 })
 T.Create.Battery12V(dead, dead:getBattery())
 check(near(dead:getBattery():getInventoryItem():getCurrentUsesFloat(), 0.2), "pack below 5%: 12V keeps its vanilla charge")
 local early = H.vehicle({ kwh = 0 })
@@ -34,7 +30,7 @@ check(near(early:getBattery():getInventoryItem():getCurrentUsesFloat(), 1), "12V
 check(near(T.V12_KWH, 0.10695), "12V is 15.5 V x 6.9 Ah = 0.107 kWh")
 
 H.section("pack uninstall / install keeps the charge")
-local rv = H.vehicle({ pack = LR, kwh = 78.1 * 0.5 })
+local rv = H.vehicle({ kwh = 78.4 * 0.5 })
 local rp = B.part(rv)
 local item = rp:getInventoryItem()
 local stored = B.kwh(rp)                       -- ISUninstallVehiclePart: item:setItemCapacity(content)
@@ -45,9 +41,9 @@ local tx = rv.transmits
 T.InstallComplete.Battery(rv, rp)
 check(near(B.pct(rp), 50) and rv.transmits == tx + 1, "install complete: still 50%, part modData sent")
 rp.item = nil; rp.md.contentAmount = 0
-rp.item = item; rp:setContainerContentAmount(82.1) -- an old 82.1 kWh LR item: engine clamps to int 79
+rp.item = item; rp:setContainerContentAmount(79) -- a full pack item: engine clamps to the int MaxCapacity 79
 T.InstallComplete.Battery(rv, rp)
-check(B.kwh(rp) == 78.1, "install complete clamps to the exact 78.1 kWh")
+check(B.kwh(rp) == 78.4, "install complete clamps to the exact 78.4 kWh")
 
 H.section("brake wear x0.5")
 local wear = 0

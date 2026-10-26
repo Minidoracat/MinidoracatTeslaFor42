@@ -110,7 +110,7 @@ dash.playerNum = 0
 local _, _, _, _, vis0 = MinidoracatTeslaAPI.hudRect(0)
 check(vis0 == false, "hudRect: no HUD yet -> visible=false")
 
-local tesla = car({ kwh = 31.25 })
+local tesla = car({ kwh = 39.2 }) -- 50% of the 78.4 kWh pack
 dash:setVehicle(tesla)
 local h = HUD.get(0)
 check(dash.inManager == true and dash.visible == false, "tesla: vanilla stays in UIManager but invisible")
@@ -176,13 +176,13 @@ H.section("charge projection")
 local part = T.Battery.part(tesla)
 local chg = { kw = 10, last = H.hours() - 0.5, added = 1, target = 60 }
 local kwh, added, hours = HUD.chargeEstimate(part, chg, H.hours())
-check(H.near(kwh, 36.25) and H.near(added, 6) and H.near(hours, (37.5 - 36.25) / 10), "kw * (now - last) added on top of the synced kWh")
+check(H.near(kwh, 44.2) and H.near(added, 6) and H.near(hours, (47.04 - 44.2) / 10), "kw * (now - last) added on top of the synced kWh")
 chg.last = H.hours() - 5
 kwh = HUD.chargeEstimate(part, chg, H.hours())
-check(H.near(kwh, 37.5), "projection capped at the target")
+check(H.near(kwh, 47.04), "projection capped at the target")
 chg.paused = "nopower"
 kwh = HUD.chargeEstimate(part, chg, H.hours())
-check(H.near(kwh, 31.25), "paused: no projection")
+check(H.near(kwh, 39.2), "paused: no projection")
 part:getModData().chg = { kw = 11.5, last = H.hours(), added = 0, target = 90 }
 h:update(); h:update(); h:update()
 check(h.st.chg == 1 and h.msgId == 4, "charging state and pill")

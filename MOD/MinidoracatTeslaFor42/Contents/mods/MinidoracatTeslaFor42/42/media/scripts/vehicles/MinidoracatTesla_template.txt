@@ -23,15 +23,21 @@ module Base
             ignitionFailNoPower = MinidoracatTesla_NoPower,
         }
         mass = 800,
-        /* default only: MinidoracatTesla.Create.Motor sets SR 3000 / LR 5000 by pack (Core.lua PackPower) */
-        engineForce = 5000,
-        maxSpeed = 90.0,
+        /* Model Y Performance: front 176 kW + rear 291 kW = 467 kW = 626 hp; the mechanics window shows power / 10 hp */
+        /* (ISVehicleMechanics.lua:1178). Create.Motor and vanilla repair() (VehiclePart.java:999-1005) both set this value. */
+        engineForce = 6260,
+        /* top speed 250 km/h, the class of vanilla's fastest road car (SportsCar 120); force fades out by maxSpeed + 20 */
+        /* (CarController.java:778-779) */
+        maxSpeed = 120.0,
         /* effective = script / 2 (BaseVehicle.java:9120), x2 with no Muffler (:9174-9175) = 10: every update stays at the 8-tile floor,
            random peaks 12 (cruise) to 24 (full throttle) tiles; ModernCar 80 with a new muffler = 32-40 */
         engineLoudness = 10,
         engineQuality = 100,
         stoppingMovementForce = 4.0,
-        rollInfluence = 1.0,
+        /* grip and roll as vanilla SportsCar (Performance: 255/275 21" tyres, lowered adaptive suspension). maxSpeed 120 keeps more */
+        /* steering rate and lock at 100 km/h (CarController.java:288, VehicleScript.java:1678-1686); with ModernCar's 1.4 / 1.0 */
+        /* a 100 km/h lane change spun out (feel-sp tesla-perf-feel-after-1026d), with these it stays like SportsCar (-1026g, -1026i) */
+        rollInfluence = 0.7,
         steeringIncrement = 0.04,
         steeringClamp = 0.3,
         suspensionStiffness = 40.0,
@@ -39,7 +45,7 @@ module Base
         suspensionDamping = 2.88,
         maxSuspensionTravelCm = 10.0,
         suspensionRestLength = 0.2,
-        wheelFriction = 1.4,
+        wheelFriction = 1.8,
         frontEndHealth = 150,
         rearEndHealth = 150,
         template = TrunkDoor,
