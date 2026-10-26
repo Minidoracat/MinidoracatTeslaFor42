@@ -112,17 +112,41 @@ T.Update.Battery(sv, sp, 1)
 check(B.kwh(sp) > k1, "SP: getBrakeSpeedBetweenUpdate drives regen")
 H.side(false, true)
 
-H.section("start check")
+H.section("start check and plugged-in driving")
 local cv = H.vehicle({ kwh = 10 })
+function cv:isRegulator() return self.cruise == true end
+function cv:setRegulator(on) self.cruise = on end
 local cp = B.part(cv)
 check(T.CheckEngine.Battery(cv, cp) == true, "can start with charge and no cable")
+cv.cruise = true
+check(T.CheckOperate.Battery(cv, cp) == true and cv.cruise == true, "no cable: the driver's input reaches the car, cruise untouched")
 cp:getModData().chg = { x = 1, y = 1, z = 0 }
-check(T.CheckEngine.Battery(cv, cp) == false, "cannot start while a charge cable is plugged in")
+check(T.CheckEngine.Battery(cv, cp) == true, "plugged in: the car still powers on (Park, owner's manual Shifting)")
+local pedal, asked = false, 0
+T.onPluggedDrive = function(veh) if veh == cv then asked = asked + 1 end return pedal end
+check(T.CheckOperate.Battery(cv, cp) == true and asked == 1 and cv.cruise == false,
+    "plugged in, no pedal: controls refresh (a held pedal clears on release), cruise control switched off")
+pedal = true
+check(T.CheckOperate.Battery(cv, cp) == false, "plugged in, accelerator down: the input is held back")
+T.onPluggedDrive = nil
+check(T.CheckOperate.Battery(cv, cp) == true, "dedicated server (no client hint): controls are not read there anyway")
 cp:getModData().chg = nil
 cp:setContainerContentAmount(0)
 check(T.CheckEngine.Battery(cv, cp) == false, "cannot start with an empty pack")
 local nopack = H.vehicle({ noPack = true })
 check(T.CheckEngine.Battery(nopack, B.part(nopack)) == false, "cannot start without a pack")
+local tf = assert(io.open("MOD/MinidoracatTeslaFor42/Contents/mods/MinidoracatTeslaFor42/42/media/scripts/vehicles/MinidoracatTesla_template.txt"))
+local tpl = tf:read("*a")
+tf:close()
+local gasTank = tpl:sub((tpl:find("part GasTank", 1, true)))
+gasTank = gasTank:sub(1, (gasTank:find("table install", 1, true)))
+check(gasTank:find("checkOperate = MinidoracatTesla.CheckOperate.Battery,", 1, true) ~= nil,
+    "vehicle template: GasTank lua block wires checkOperate")
+v.speed = 1
+check(T.stopped(v) == true, "1 km/h counts as stopped")
+v.speed = -1.5
+check(T.stopped(v) == false, "1.5 km/h in reverse is moving")
+v.speed = 0
 
 H.section("writers")
 local wv = H.vehicle({ kwh = 10 })
@@ -135,6 +159,34 @@ local took = B.topUp12V(wv)
 check(near(took, 0.5 * T.V12_KWH) and near(wv:getBattery():getInventoryItem():getCurrentUsesFloat(), 1), "topUp12V fills 12V from the pack")
 check(B.topUp12V(wv) == 0, "topUp12V on a full 12V does nothing")
 check(B.set(wv, wp, 0 / 0) == 0, "set turns NaN into 0")
+
+H.section("on a powered charger: the car's own loads skip the pack")
+local ov = H.vehicle({ kwh = 30, running = true, speed = 0 })
+local op = B.part(ov)
+op:getModData().chg = { x = 1, y = 1, z = 0, power = nil }
+check(B.onCharger(op) == false, "plugged in, charger without power: loads stay on the pack")
+local o0 = B.kwh(op)
+T.Update.Battery(ov, op, 10)
+check(near(o0 - B.kwh(op), T.spec(ov).idleKw * 10 / 60, 1e-6), "unpowered charger: running motor drains the pack as before")
+op:getModData().chg.power = "grid"
+check(B.onCharger(op) == true, "plugged in with grid: on the charger")
+o0 = B.kwh(op)
+T.Update.Battery(ov, op, 10)
+check(B.kwh(op) == o0, "powered charger: the running motor's standby takes nothing from the pack")
+check(B.draw(ov, op, 1.5) == 0 and B.kwh(op) == o0, "powered charger: B.draw takes nothing")
+ov:getBattery():getInventoryItem():setUsedDelta(0.2)
+check(B.topUp12V(ov) == 0 and near(ov:getBattery():getInventoryItem():getCurrentUsesFloat(), 1) and B.kwh(op) == o0,
+    "powered charger: the 12V is topped up without touching the pack")
+B.set(ov, op, B.capacity(op) * 0.02)
+ov:getBattery():getInventoryItem():setUsedDelta(0.5)
+B.dcdc(ov)
+check(near(ov:getBattery():getInventoryItem():getCurrentUsesFloat(), 1), "powered charger: DC-DC works below its 5% pack floor")
+op:getModData().chg.power = "generator"
+check(B.onCharger(op) == true, "generator power counts too")
+op:getModData().chg = nil
+o0 = B.kwh(op)
+check(near(B.draw(ov, op, 0.5), 0.5) and near(o0 - B.kwh(op), 0.5), "unplugged: B.draw takes from the pack")
+check(near(B.draw(ov, op, 99), o0 - 0.5) and B.kwh(op) == 0, "B.draw stops at empty and returns what it took")
 
 H.section("create")
 H.setRand(0.5)

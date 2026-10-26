@@ -62,6 +62,12 @@ check(C.canChargeItem(p, v, cell) == true, "outlet: camping, seated, pack above 
 check(select(2, C.canChargeItem(p, v, item("Base.Battery", 1))) == "FULL", "outlet: full item -> FULL")
 T.Battery.set(v, v.parts.GasTank, 75 * (C.minPct() - 0.5) / 100)
 check(select(2, C.canChargeItem(p, v, cell)) == "CAMP_LOW_BATTERY", "outlet: pack below the camp limit -> CAMP_LOW_BATTERY")
+v.parts.GasTank:getModData().chg = { x = 1, y = 1, z = 0, power = "grid" }
+check(C.canChargeItem(p, v, cell) == true, "outlet: pack below the limit but on a powered charger -> ok")
+local need, kc = C.itemNeed(cell), kwh(v)
+check(H.near(C.chargeItem(p, v, cell, nil), need, 1e-12) and kwh(v) == kc, "outlet on a powered charger: the item fills, the pack pays nothing")
+cell.uses = 0.4
+v.parts.GasTank:getModData().chg = nil
 T.Battery.set(v, v.parts.GasTank, 45)
 
 -- ---- kWh: capacity x missing fraction; duration from the charging power ----

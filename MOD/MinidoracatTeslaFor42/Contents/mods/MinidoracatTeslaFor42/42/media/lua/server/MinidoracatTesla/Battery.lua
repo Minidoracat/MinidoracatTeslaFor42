@@ -41,7 +41,15 @@ function B.add(vehicle, kwh, targetPct)
     return after - now
 end
 
--- Refill the 12V battery from the drive pack. Returns the kWh taken from the pack.
+-- The car's own loads (climate, camp outlets, 12V, sentry): from the charger while it has power (B.onCharger), else
+-- from the pack down to empty. Returns the kWh taken from the pack.
+function B.draw(vehicle, part, kwh)
+    if kwh <= 0 or B.onCharger(part) then return 0 end
+    local now = B.kwh(part)
+    return now - B.set(vehicle, part, now - kwh)
+end
+
+-- Refill the 12V battery from the drive pack (or the charger, B.draw). Returns the kWh taken from the pack.
 function B.topUp12V(vehicle)
     local bat = vehicle:getBattery() -- VehiclePartOwner.java:76
     local item = bat and bat:getInventoryItem()
@@ -49,20 +57,24 @@ function B.topUp12V(vehicle)
     if not item or not part then return 0 end
     local charge = item:getCurrentUsesFloat() -- same accessor as Vehicles.Update.Battery (Vehicles.lua:507)
     if charge >= 0.99 then return 0 end
-    local take = math.min((1 - charge) * T.V12_KWH, B.kwh(part))
+    local need = (1 - charge) * T.V12_KWH
+    local take = B.onCharger(part) and need or math.min(need, B.kwh(part))
     if take <= 0 then return 0 end
-    B.set(vehicle, part, B.kwh(part) - take)
+    local paid = B.draw(vehicle, part, take)
     item:setUsedDelta(math.min(1, charge + take / T.V12_KWH)) -- Vehicles.lua:515
     vehicle:transmitPartUsedDelta(bat)                      -- Vehicles.lua:517
-    return take
+    return paid
 end
 
--- DC-DC converter: refill the 12V from the drive pack (>= DCDC_MIN_PCT) once it drops below 95%.
+-- DC-DC converter: refill the 12V from the drive pack (>= DCDC_MIN_PCT, or any level on a powered charger) once it
+-- drops below 95%.
 -- Returns the kWh taken from the pack.
 function B.dcdc(vehicle)
     local bat = vehicle:getBattery()
     local item = bat and bat:getInventoryItem()
-    if not item or item:getCurrentUsesFloat() >= 0.95 or B.pct(B.part(vehicle)) < T.DCDC_MIN_PCT then return 0 end
+    if not item or item:getCurrentUsesFloat() >= 0.95 then return 0 end
+    local part = B.part(vehicle)
+    if B.pct(part) < T.DCDC_MIN_PCT and not B.onCharger(part) then return 0 end
     return B.topUp12V(vehicle)
 end
 
@@ -128,6 +140,7 @@ function T.Update.Brakes(vehicle, part, elapsedMinutes)
 end
 
 -- GasTank update: drive draw minus brake regen, every game minute while the car's parts update; cable length check.
+-- A plugged-in car stands still in Park, so its running motor is standby only, and that runs on a powered charger.
 function T.Update.Battery(vehicle, part, elapsedMinutes)
     if not part:getInventoryItem() then return end
     local chg = part:getModData().chg
@@ -137,7 +150,7 @@ function T.Update.Battery(vehicle, part, elapsedMinutes)
     local s = T.spec(vehicle)
     if not s then return end
     local used = 0
-    if vehicle:isEngineRunning() then
+    if vehicle:isEngineRunning() and not B.onCharger(part) then
         local kmh = math.abs(vehicle:getCurrentSpeedKmHour())
         used = (s.idleKw + s.kwPerKmh * kmh) * m / 60 / T.rangeMul()
     end

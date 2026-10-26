@@ -135,8 +135,8 @@ local function onFill(playerNum, context, worldObjects, test)
                 if why then opt.toolTip.description = opt.toolTip.description .. " (" .. tostring(why) .. ")" end
             elseif not part:getInventoryItem() then
                 disable(opt, "IGUI_MinidoracatTesla_Deny_NO_PACK")
-            elseif v:isEngineRunning() then
-                disable(opt, "IGUI_MinidoracatTesla_Deny_ENGINE_ON")
+            elseif not T.stopped(v) then
+                disable(opt, "IGUI_MinidoracatTesla_Deny_MOVING")
             elseif not T.cableReaches(info.kind, sq:getX(), sq:getY(), sq:getZ(), v) then
                 disable(opt, "IGUI_MinidoracatTesla_Deny_CABLE_SHORT")
             end
@@ -147,3 +147,34 @@ local function onFill(playerNum, context, worldObjects, test)
     end
 end
 Events.OnFillWorldObjectContextMenu.Add(onFill)
+
+-- Plugged-in car (Core.lua CheckOperate.Battery, every frame for the local driver while plugged in; true = hold this
+-- frame's input back). While the driver holds the accelerator or reverse, read the way CarController.updateControls
+-- reads them (keyboard only for player 0, the joypad triggers, CarController.java:936-971), the vanilla forced brake
+-- (BaseVehicle.setForceBrake, as ISStopVehicle.lua does) keeps the car still: in updateControls it sets brake for 1 s
+-- after the call (CarController.java:974-980), and brake beats the accelerator (:174-178). It does not count in the
+-- millisecond of the call, so it is renewed every BRAKE_MS and that frame's input is held back, never two calls in a
+-- row: the one after a renewal updates under that brake, so the controls refresh at least every other frame whatever
+-- the frame time (< 1 s), and a pedal held since before the plug is braked too and clears on release.
+-- Says why at most every HINT_MS.
+C.HINT_MS = 3000
+C.BRAKE_MS = 500
+local hintAt = 0
+local brakeAt, renewed = {}, {} -- vehicle -> ms of the last setForceBrake / the last call renewed it
+function T.onPluggedDrive(vehicle)
+    local p = vehicle:getDriver()
+    if not p or not p:isLocalPlayer() then return false end
+    local pad = p:getJoypadBind()
+    local pedal = (p:getPlayerNum() == 0 and (isKeyDown(KeybindId.FORWARD) or isKeyDown(KeybindId.BACKWARD)))
+        or (pad ~= -1 and (isJoypadRTPressed(pad) or isJoypadLTPressed(pad)))
+    if not pedal then renewed[vehicle] = nil; return false end
+    local now = getTimestampMs() -- System.currentTimeMillis, the clock forceBrake uses (LuaManager.java:9295-9297)
+    if now >= hintAt then
+        hintAt = now + C.HINT_MS
+        HaloTextHelper.addBadText(p, getText("IGUI_MinidoracatTesla_Deny_CABLE_PLUGGED"))
+    end
+    if renewed[vehicle] or now - (brakeAt[vehicle] or 0) < C.BRAKE_MS then renewed[vehicle] = nil; return false end
+    brakeAt[vehicle], renewed[vehicle] = now, true
+    vehicle:setForceBrake()
+    return true
+end
