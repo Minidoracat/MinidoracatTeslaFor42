@@ -37,19 +37,19 @@ DROP = ("Object005", "Cylinder", "Circle.", "Plane.027", "Plane.076", "Plane.088
         "Object_11", "Object_12",                    # licence plates
         "Plane.031", "Plane.051", "Plane.053", "Plane.040",   # clear lamp covers: opaque in PZ, they'd hide the lamps
         "Plane.067", "Hyundai_KONA",   # BloxBloger's interior (tub, seats, dash): the mod's own cabin (cabin.py) instead
-        "Tesla_Model_3",               # rear TESLA: 1.2 cm block letters (E a solid block) sunk 4 cm under the blade
-        "Plane.086")    # Performance badge (plain dark plate, tailgate lower right): the mod has no Performance version
+        "Tesla_Model_3")               # rear TESLA: 1.2 cm block letters (E a solid block) sunk 4 cm under the blade
 # collapse-decimated before anything else (target tris): detail PZ cannot show at 1-4 px per cm
 DECIMATE = {"Plane.045": 400,             # 29.5k-tri honeycomb under the tail light bar
             "Plane.034": 1200, "Plane.020": 1000, "Plane.016": 2600}
 # skin colour (sRGB 0-255) per material; paint comes from the official renders (textures())
-MAT_RGB = {"Material_#2125780493": None, "black_base": (34, 34, 36), "Material_#2125706098": (34, 34, 36),
+MAT_RGB = {"Material_#2125780493": None, "black_base": (34, 34, 36), "Material_#2125706098": (57, 61, 70),
            "Material_#2125774706": (26, 26, 28), "black_refl": (20, 20, 22), "Material_#2125780326": (22, 22, 24),
            "black": (20, 20, 22), "black.001": (20, 20, 22), "black.002": (20, 20, 22), "black222": (20, 20, 22),
            "Iron_Clean_Distorted": (60, 60, 64), "front_white_light": (226, 230, 236), "back_red_Light": (150, 12, 16),
            "red_plastic111": (120, 12, 16), "red_plastic": (120, 12, 16), "mirror": (58, 64, 72),
            "glass_base": (14, 14, 16), "Material_#2125773440": (14, 14, 16), "04_-_Default": (60, 60, 60),
-           "badge_chrome": (196, 200, 206), "badge_black": (8, 8, 10)}
+           "badge_chrome": (196, 200, 206), "badge_black": (8, 8, 10),
+           "caliper_red": (180, 20, 28)}             # Performance calipers (official RIMCLOSEUP, lit side)
 # chrome badges mirror the surroundings: bright on a dark paint, grey on a light one (median V >= 0.55: PearlWhite
 # read 196 on ~210 paint, gone)
 CHROME = ((200, 204, 210), (104, 108, 114))
@@ -95,7 +95,11 @@ STOP_X = 0.645                             # corner lamps inboard of this |x| ar
 CUT = {("Plane.005", 342): ("BF", "BR", "D"), ("Plane.062", 268): ("D",)}
 CUT_X = ("Plane.034", "Plane.044", "Plane.045", "Plane.036", "Plane.042", "Plane.043", "Plane.041")  # rear lamps
 DOOR_OBJS = ("Plane.062", "Plane.005", "Plane.002", "Plane.046", "Plane.048", "Plane.050", "Plane.047")
-GATE_OBJS = CUT_X + ("Plane.022",)
+GATE_OBJS = CUT_X + ("Plane.022", "Plane.086")
+# Plane.086 (its only face material Material_#2125706098): the Performance badge on the tailgate's lower right
+# (service manual "Badge - Performance"; the mod's Model Y is the Performance, AGENTS.md rule 7). The real one is a
+# navy starburst in a chrome rim, 11 x 5 cm, ~16 x 7 px at the closest zoom: a flat plate in its mean colour
+# (57, 61, 70; median 32, 36, 47, drive.com.au photo), the rim (~0.4 px) left out
 # badges (user 2026-10-26; Model Y 2025 service manual ch. 1205 "Badges and Films"), drawn in badges(): T on the frunk
 # lid (OEM 1494949-00-A, chrome, 7.8 x 8.2 cm), TESLA in black across the light blade (letters ~2 cm tall, 42 cm
 # span), MODEL Y in chrome on the tailgate's lower left (jig on its left and lower edges). Letters are scaled for the
@@ -103,7 +107,15 @@ GATE_OBJS = CUT_X + ("Plane.022",)
 BADGE_OFF = 0.003                          # grid off the surface (no depth fight)
 T_BADGE = (1.85, 0.0644, 0.0677)           # centre y on the frunk lid (stem tip ~3 cm off its front edge), width, height
 TESLA = (0.93, 0.03, 0.11, 0.045)          # blade strip centre z (pre-centre), cap height, letter pitch, lens height
-SWATCH = ("Badge_T", "Badge_TESLA", "Badge_MODELY")   # one flat-colour UV spot each (unwrap())
+SWATCH = ("Badge_T", "Badge_TESLA", "Badge_MODELY", "Caliper")   # one flat-colour UV spot each (unwrap())
+# brake calipers (calipers()): front / rear (angle behind the top, half span) in degrees, radii and x from the
+# wheel's middle plane outward, grid. The real ones sit at 3 o'clock. A body-fixed front one there would swing 0.11
+# grid out through the spokes at full lock, so the front pair keeps within ~0.08 grid of the steering axis in plan:
+# top or bottom of the wheel. From the game camera (30 deg down) a recess is seen through the gaps above it: at the
+# top the caliper hid behind the fender and the rim in 5 of 6 spin angles, at the bottom it showed in all 6 (offline
+# view S, Quicksilver, 85-573 red px)
+CALIPER = dict(front=(176, 18), rear=(80, 15), r=(0.100, 0.168), x=(0.010, 0.045))   # r: the front pair's
+#                                                             bottom stays above the body's lowest point (calipers())
 SWATCH_U = 0.03                            # UV0 strip kept for them at u > 1 - SWATCH_U
 LENS_X = 0.46                              # the blade's rear strip ends here (the corner lamps' lenses outboard)
 MODELY = (-0.46, 0.555, 0.033)            # left x, baseline z, cap height (true ~2.4 cm): under the crease at z 0.60,
@@ -186,11 +198,6 @@ def load_source():
         _label(o, len(names))
         names.append(o.name.split("_Mesh")[0] if "_Mesh" in o.name else o.name)
         obs.append(o)
-    badges(obs, names)
-    pv.select_only(*obs)
-    bpy.ops.object.join()
-    car = bpy.context.view_layer.objects.active
-    car.name = pv.NAME
     # wheels: (side, centre y, centre z, outer |x|) per tire, pre-centre frame, and the tire's radius and width (the
     # procedural wheel is built to them: the arches were modelled round these tires)
     wl = sorted(((-1 if hi[0] + lo[0] < 0 else 1, float((lo[1] + hi[1]) / 2), float((lo[2] + hi[2]) / 2),
@@ -198,6 +205,12 @@ def load_source():
     size = np.array([(hi - lo) for lo, hi in tires])
     tire = (float(size[:, 1:].mean() / 2), float(size[:, 0].mean()))
     print("SOURCE tires: radius %.4f width %.4f centres" % tire, [np.round(w, 3).tolist() for w in wl])
+    badges(obs, names)
+    calipers(obs, names, wl, tire)
+    pv.select_only(*obs)
+    bpy.ops.object.join()
+    car = bpy.context.view_layer.objects.active
+    car.name = pv.NAME
     return car, names, wl, tire
 
 
@@ -294,6 +307,76 @@ def stroke_text(text, font, w, gap=0.28, pitch=None):
     return letters, x - (pitch or gap) + (adv if pitch else 0)
 
 
+def _add(obs, names, name, pts, faces, want, mat):
+    """New source-like object from verts and faces, each face wound to face `want` (one vector or one per face), flat
+    normals, src / comp tagged (_label)."""
+    me = bpy.data.meshes.new(name)
+    me.from_pydata(pts, [], faces)
+    me.update()
+    for k, f in enumerate(me.polygons):
+        if f.normal.dot(want[k] if isinstance(want, list) else want) < 0:
+            f.flip()
+    ob = bpy.data.objects.new(name, me)
+    bpy.context.scene.collection.objects.link(ob)
+    _material(me, mat)
+    _flat_normals(me)
+    _label(ob, len(names))
+    names.append(name)
+    obs.append(ob)
+    print("ADDED", name, len(me.polygons), "faces")
+
+
+def calipers(obs, names, wl, tire):
+    """Red brake calipers (Performance), one per wheel, in the body: they stay put while the wheel spins and steers.
+    An annular sector between the wheel's middle disc and its spokes (CALIPER), centred `angle` behind the top. The
+    wheel model turns about the vertical through its centre, up to 0.9 rad standing still (VehicleScript.java:1678-1686,
+    BaseVehicle.java:4480-4490): a front caliper must stay behind the spokes' front faces and inside the barrel at every
+    angle, checked here (it may cut into the solid spokes and the disc: hidden there)."""
+    r, width = tire
+    rr, hw = pv.WHEEL_RIM * r, width / 2
+    rb = rr - 0.004
+    pts, faces, want = [], [], []
+    for side, yc, zc, xo in wl:
+        front = yc > 0
+        ang, span = CALIPER["front" if front else "rear"]
+        (r1, r2), (x1, x2) = CALIPER["r"], CALIPER["x"]
+        cx = side * (xo - width / 2 - pv.WHEEL_INSET)
+        psi = np.radians(np.linspace(ang - span, ang + span, 4))
+        k = len(pts)
+        for p in psi:
+            for rad in (r1, r2):
+                for xa in (x1, x2):
+                    pts.append((cx + side * xa, yc - rad * math.sin(p), zc + rad * math.cos(p)))
+        v = lambda i, j, q: k + 4 * i + 2 * j + q    # psi step, radius (0 in, 1 out), x (0 in, 1 out)  # noqa: E731
+        radial = lambda p: Vector((0, -math.sin(p), math.cos(p)))                                  # noqa: E731
+        for i in range(3):
+            pm = (psi[i] + psi[i + 1]) / 2
+            faces += [(v(i, 0, 1), v(i, 1, 1), v(i + 1, 1, 1), v(i + 1, 0, 1)),     # outboard face
+                      (v(i, 1, 0), v(i, 1, 1), v(i + 1, 1, 1), v(i + 1, 1, 0)),     # outer rim
+                      (v(i, 0, 0), v(i, 0, 1), v(i + 1, 0, 1), v(i + 1, 0, 0))]     # inner rim
+            want += [Vector((side, 0, 0)), radial(pm), -radial(pm)]
+        for i, sgn in ((0, -1), (3, 1)):                 # ends
+            faces.append((v(i, 0, 0), v(i, 1, 0), v(i, 1, 1), v(i, 0, 1)))
+            want.append(sgn * Vector((0, -math.cos(psi[i]), -math.sin(psi[i]))))
+        if front:                                        # clearance to the spokes at full lock, both ways
+            c = np.array(pts[k:]) - (cx, yc, zc)
+            c[:, 0] *= side                              # outboard positive
+            worst = 1.0
+            for th in np.linspace(-0.9, 0.9, 37):
+                xw = c[:, 0] * math.cos(th) + c[:, 1] * math.sin(th)
+                yw = -c[:, 0] * math.sin(th) + c[:, 1] * math.cos(th)
+                rad = np.hypot(yw, c[:, 2])
+                worst = min(worst, float((pv.spoke_x(rad, rr, hw) - 0.004 - xw).min()), float((rb - rad).min()))
+            print("CALIPER front clearance at full lock %.4f grid" % worst)
+            if worst < 0.003:
+                raise SystemExit(f"front caliper hits the spokes or the barrel when steering: clearance {worst:.4f}")
+    # the body's bbox sets the model centre and the script's extents and wheel offsets: the calipers stay inside it
+    floor = min(min(v.co.z for v in o.data.vertices) for o in obs)
+    if min(p[2] for p in pts) < floor:
+        raise SystemExit(f"calipers reach below the body ({min(p[2] for p in pts):.4f} < {floor:.4f}): smaller CALIPER r")
+    _add(obs, names, "Caliper", pts, faces, want, "caliper_red")
+
+
 def badges(obs, names):
     """T on the frunk lid, the blade lens with TESLA on it, MODEL Y on the tailgate (see BADGE_OFF): new objects, src
     and comp tagged like the source's."""
@@ -307,22 +390,6 @@ def badges(obs, names):
             verts += [v.co.copy() for v in o.data.vertices]
             polys += [[k + i for i in p.vertices] for p in o.data.polygons]
         return BVHTree.FromPolygons(verts, polys)
-
-    def add(name, pts, faces, n, mat):
-        me = bpy.data.meshes.new(name)
-        me.from_pydata(pts, [], faces)
-        me.update()
-        for f in me.polygons:               # face the badge normal
-            if f.normal.dot(n) < 0:
-                f.flip()
-        ob = bpy.data.objects.new(name, me)
-        bpy.context.scene.collection.objects.link(ob)
-        _material(me, mat)
-        _flat_normals(me)
-        _label(ob, len(names))
-        names.append(name)
-        obs.append(ob)
-        print("BADGE", name, len(me.polygons), "faces")
 
     def flat(name, groups, frame, mat, ray=None, planar=False):
         """Polygons (u, v) in frame (origin, u, v, badge normal) laid on what a ray (default -normal) meets, BADGE_OFF
@@ -350,7 +417,7 @@ def badges(obs, names):
             for poly in group:
                 tris += [[k + i for i in t] for t in tessellate_polygon([[Vector((u, v, 0)) for u, v in poly]])]
                 k += len(poly)
-        add(name, pts, tris, n, mat)
+        _add(obs, names, name, pts, tris, n, mat)
 
     bvh = tree()
     # T: read from ahead of the car (u = -x), its top toward the windshield, on the lid's slope; rays straight down
@@ -365,7 +432,7 @@ def badges(obs, names):
     zc, ch, pitch, lh = TESLA
     xs = np.linspace(-LENS_X, LENS_X, 21)
     ys = [bvh.ray_cast(Vector((x, -2.5, zc)), Vector((0, 1, 0)))[0].y - BADGE_OFF / 2 for x in xs]
-    add("Badge_BLADE", [Vector((x, y, zc + s * lh / 2)) for x, y in zip(xs, ys) for s in (-1, 1)],
+    _add(obs, names, "Badge_BLADE", [Vector((x, y, zc + s * lh / 2)) for x, y in zip(xs, ys) for s in (-1, 1)],
         [(2 * i, 2 * i + 2, 2 * i + 3, 2 * i + 1) for i in range(len(xs) - 1)], Vector((0, -1, 0)), "badge_black")
     bvh = tree()
     # rear lettering, read from behind (u = +x)
@@ -518,7 +585,7 @@ def classify(car, names, sizes):
     print("CLASSIFY parts", {PARTS[k]: int((part == k).sum()) for k in range(len(PARTS))}, "glass", int(glass.sum()),
           "lamps head/tail", int(head.sum()), int(tail.sum()))
     return dict(part=part, zone=zone, rgb=rgb, paint=paint, lamp=lamp, glass=glass, pane=pane, obj=obj, csize=csize,
-                badge=np.array([o.startswith("Badge_") for o in obj]),
+                badge=np.array([o.startswith(("Badge_", "Caliper")) for o in obj]),
                 mat=mat, mirror=mirror)
 
 
@@ -1057,6 +1124,30 @@ def stage_view(out, heads, state, skin="UltraRed"):
     hide = set(filter(None, os.environ.get("HIDE", "").split(",")))
     for o in bpy.data.objects:
         o.hide_render = o.type == "MESH" and (not (o is body or o in doors) or o.name in hide)
+    # WHEELS=1: the wheel FBX at the four script offsets (rendered centre = offset + WHEEL_LIFT), STEER=<rad> turns the
+    # front pair about the vertical (the game's m.rotationY, BaseVehicle.java:7440), SPIN=<rad> turns all about the axle
+    if os.environ.get("WHEELS") == "1":
+        bpy.ops.import_scene.fbx(filepath=os.path.join(pv.VEH_DIR, pv.NAME + "_Wheel.fbx"), axis_forward="-Z",
+                                 axis_up="Y")
+        wheel = bpy.context.selected_objects[0]
+        wm = bpy.data.materials.new("wheel")
+        wm.use_backface_culling = True
+        wm.use_nodes = True
+        tx = wm.node_tree.nodes.new("ShaderNodeTexImage")
+        tx.image = bpy.data.images.load(os.path.join(pv.TEX_DIR, pv.NAME + "_wheel.png"))
+        tx.interpolation = "Closest"
+        wm.node_tree.links.new(tx.outputs[0], wm.node_tree.nodes["Principled BSDF"].inputs[0])
+        wheel.data.materials.clear()
+        wheel.data.materials.append(wm)
+        block = open(os.path.join(TMP, "geometry_block.txt"), encoding="utf-8").read()
+        steer, spin = float(os.environ.get("STEER", 0)), float(os.environ.get("SPIN", 0))
+        for front, ox, oy, oz in re.findall(r"front = (\w+),\s+offset = (\S+) (\S+) (\S+),", block):
+            w = wheel.copy()
+            bpy.context.scene.collection.objects.link(w)
+            w.matrix_world = (Matrix.Translation((-float(ox) * pv.S, float(oz) * pv.S, float(oy) * pv.S + float(os.environ.get("WLIFT", pv.WHEEL_LIFT))))
+                              @ Matrix.Rotation(steer if front == "true" else 0.0, 4, "Z") @ Matrix.Rotation(spin, 4, "X"))
+            w.hide_render = False
+        wheel.hide_render = True
     sc = bpy.context.scene
     sc.render.engine = "BLENDER_WORKBENCH"
     sc.view_settings.view_transform = "Standard"

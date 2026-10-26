@@ -25,21 +25,31 @@ L, W, H = 4.790 * K, 1.920 * K, 1.624 * K   # official length, body width (no mi
 # UV1 (shared Veh_Damage1/2, Veh_Rust, Veh_Blood_* 512 maps): taken over from this vanilla car (damage_uv1)
 DAMAGE_REF, DAMAGE_REF_MASK = "Vehicles_ModernCar", "vehicle_carmodern_mask.png"
 WHEEL_TEX, WHEEL_SS = 64, 8                 # wheel texture size; drawn WHEEL_SS times larger, then box-averaged
-# wheel texture, all procedural. Official 19" Photon aero wheel: matte charcoal face, 5 turbine slots with a lit blade
-# edge (official/*_FRONT34.png). Slot edges theta(r): luminance 5-fold median of an earlier wheel bake about its own
-# centre, re-centred, per-radius dark run, quadratic rms 0.3 / 0.4 deg. r in wheel_r units, theta in the planar
-# layout's image axes (x = -y / r, y = -z / r: x right, y down)
-WHEEL_SLOT = dict(p1=(-1.4223, 1.7184, 0.1445), p2=(0.5977, -0.2715, 1.1813), rc=0.20, rim=0.665)
-WHEEL_UV = dict(c=(0.5, 0.43), rho=0.40, tread=(0.865, 0.125))  # disc centre, UV radius of wheel_r; tread strip v0, h
+# wheel: the Model Y Performance's 21" Arachnid 2.0 (design studio $MTY70,$WY21A, view RIMCLOSEUP): five Y spokes in
+# dark graphite, open between them onto the brake rotor; staggered 255/35 R21 front / 275/35 R21 rear (one size here,
+# the source tires'). Spokes and hub cap are geometry (the gaps really open: the vehiclewheel shader has no alpha
+# cutout), the tire, rim flange, barrel and the disc behind the spokes a surface of revolution (wheel_profile). The disc
+# closes the wheel at its middle (x = +-WHEEL_DISC_X): the brake rotor round the hub, dark between rotor and barrel; the
+# red calipers sit between it and the spokes but belong to the body (convert.py calipers), they must not spin
+WHEEL_RIM = 0.76                            # rim flange radius / tire radius: 21" (266.7 mm bead + ~17 mm) / 356 mm
+# Y spoke in rr units (rr = WHEEL_RIM x tire radius), half-widths tangential: main arm from the hub to the fork, then
+# two arms spreading to +-spread at the barrel; front face `inset` grid inside the tire's half width at the barrel,
+# `dish` deeper at the hub; side walls `depth` grid deep. cap: hub cap radius
+WHEEL_SPOKE = dict(n=5, hub=0.14, fork=0.50, spread=math.radians(17), main=(0.085, 0.065), arm=0.05, cap=0.17,
+                   inset=0.020, dish=0.015, depth=0.018)
+WHEEL_DISC = dict(rotor=0.636, hat=0.30)    # brake rotor (355 mm) and its hat, rr units
+WHEEL_DISC_X = 0.002                        # grid: the disc's two faces either side of the wheel's middle plane
+# disc centre and UV radius of the tire radius (planar: sidewall, flange, disc), tread strip v0 and height, and the
+# flat-colour spots (u, v) of the geometry that has no planar layout (spokes, hub cap, barrel)
+WHEEL_UV = dict(c=(0.5, 0.43), rho=0.40, tread=(0.865, 0.125),
+                swatch={"spoke": (0.05, 0.05), "cap": (0.95, 0.05), "barrel": (0.05, 0.80)})
 # Game-screen sRGB grey levels (calibration knob, compare with game screenshots); wheel_texture turns each into the
 # texture value that renders it: the vehiclewheel output measured on ModernCar's vanilla wheel in the same scenario is
 # 0.143 * tex ** 1.395 (texture 37 / 105 / 169 / 189 -> 22 / ~115 / 193 / 214, tesla-modely-tex-1024e scale-S-zoomin).
 # Vehicle textures get no mipmaps (ModelManager.java:1320-1322, TextureID.java:427): a 512 wheel sampled at ~10 texels
-# per pixel aliased into specks and dotted rings, so it is drawn at 8x and box-averaged to 64 (the vanilla wheel's disc
-# is 36 texels across). Official Photon cover: dark charcoal blades (~40-70), black slots, black tire (~21). Measured in
-# tesla-wheel-1024c: face 58-72 renders ~75-86 (the curve reads the cover ~1.2x dark), tire ~17-32, slots 0-7
-WHEEL_RGB = dict(face=(58, 72), deep=6, wall=(18, 45), shadow=6, blade=125, cap=62, cap_ring=95, lip=80, gap=8,
-                 tire=(22, 28), tread=20)
+# per pixel aliased into specks and dotted rings, so it is drawn at 8x and box-averaged to 64. Official RIMCLOSEUP:
+# spokes 105-170 (studio light), windows ~28, black tire; lighting comes from the spokes' own normals here
+WHEEL_RGB = dict(spoke=100, cap=40, barrel=28, lip=90, rotor=60, hat=35, dark=12, gap=8, tire=(22, 28), tread=20)
 WHEEL_SEG = 30                              # segments round the axle: 12 deg, under 0.2 px off a circle at zoom 0.5
 # official Model Y paints (decisions.md "車款外觀"): skin order = vehicle script skin index = Core.lua colors order;
 # saved games store the index (BaseVehicle.java:2635/2741), so after release only append
@@ -203,87 +213,83 @@ def smoothstep(e0, e1, x):
     return t * t * (3 - 2 * t)
 
 
-def wheel_slots(x, y, aa, widen=0.0):
-    """Coverage (antialiased over aa) of the 5 turbine slots and the position across the covering slot (0 at the
-    theta1 edge .. 1 at theta2); x / y in wheel_r units on WHEEL_SLOT axes, widen (rad) moves the theta1 edges out."""
-    p1, p2, rc, rim = np.array(WHEEL_SLOT["p1"]), np.array(WHEEL_SLOT["p2"]), WHEEL_SLOT["rc"], WHEEL_SLOT["rim"]
-    p1 = p1 - [0, 0, widen]
-    r = np.hypot(x, y)
-    th = np.arctan2(y, x)
-    rcl = np.clip(r, rc, rim)
-    cov = np.zeros_like(r)
-    pos = np.zeros_like(r)
-    for k in range(5):
-        base = k * 2 * np.pi / 5
-        t1, t2 = np.polyval(p1, rcl) + base, np.polyval(p2, rcl) + base
-        hw = (t2 - t1) / 2
-        d = np.angle(np.exp(1j * (th - (t1 + t2) / 2)))                 # signed angle to the slot centreline
-        band = (np.abs(d) - hw) * r                                      # > 0 outside, wheel_r units
-        tc = (np.polyval(p1, rc) + np.polyval(p2, rc)) / 2 + base        # rounded inner end
-        cap = np.hypot(x - rc * np.cos(tc), y - rc * np.sin(tc)) - (np.polyval(p2, rc) - np.polyval(p1, rc)) / 2 * rc
-        c = np.clip(0.5 - np.maximum(np.where(r >= rc, band, cap), r - rim) / aa, 0, 1)
-        up = c > cov
-        cov = np.where(up, c, cov)
-        pos = np.where(up, np.clip((d + hw) / (2 * hw), 0, 1), pos)
-    return cov, pos
-
-
-def wheel_texture(r_out):
-    """WHEEL_TEX^2 grey texture values (0..1), rows top-down, in the WHEEL_UV layout: the disc (rim face and sidewall,
-    planar) and the tread strip (around x across). r_out = tire radius / wheel_r."""
+def wheel_texture(r_out, rim):
+    """WHEEL_TEX^2 grey texture values (0..1), rows top-down, in the WHEEL_UV layout: the disc (sidewall, flange and the
+    rotor disc behind the spokes, planar), the tread strip (around x across) and the swatches. r_out = shoulder radius,
+    rim = flange radius, both / tire radius."""
     n, g = WHEEL_TEX * WHEEL_SS, {k: (np.array(v, float) / 0.143) ** (1 / 1.395) / 255 for k, v in WHEEL_RGB.items()}
     (cu, cv), rho, (v0, h) = WHEEL_UV["c"], WHEEL_UV["rho"], WHEEL_UV["tread"]
     U, V = np.meshgrid((np.arange(n) + 0.5) / n, 1 - (np.arange(n) + 0.5) / n)
     x, y = (U - cu) / rho, (cv - V) / rho
     r = np.hypot(x, y)
-    aa = 1.5 / (n * rho)                                                # 1.5 px in wheel_r units
-    inside = lambda e: np.clip((e - r) / aa + 0.5, 0, 1)                 # coverage of r < e
-    mix = lambda a, b, t: a + (b - a) * t
-    cov, pos = wheel_slots(x, y, aa)
-    lit = np.clip(wheel_slots(x, y, aa, math.radians(5))[0] - cov, 0, 1)    # blade edge before the deep side
-    slot = np.where(pos < 0.5, g["deep"], mix(g["wall"][0], g["wall"][1], smoothstep(0.5, 0.9, pos)))
-    slot = mix(slot, g["shadow"], smoothstep(0.95, 1.0, pos))
-    img = mix(mix(g["face"][0], g["face"][1], np.clip((r - 0.12) / 0.5, 0, 1)), slot, cov)
-    img = mix(img, g["blade"], 0.85 * lit)
-    rim = WHEEL_SLOT["rim"]
-    img = mix(img, g["lip"], 1 - inside(rim - 0.022))
-    img = mix(img, g["cap_ring"], inside(0.088))
-    img = mix(img, g["cap"], inside(0.075))
+    aa = 1.5 / (n * rho)                                                # 1.5 px in tire-radius units
+    inside = lambda e: np.clip((e - r) / aa + 0.5, 0, 1)                 # coverage of r < e  # noqa: E731
+    mix = lambda a, b, t: a + (b - a) * t                                # noqa: E731
+    img = mix(g["dark"], g["rotor"], inside(WHEEL_DISC["rotor"] * rim))   # behind the spokes: rotor, dark round it
+    img = mix(img, g["hat"], inside(WHEEL_DISC["hat"] * rim))
+    img = mix(img, g["lip"], 1 - inside(rim - 0.015))                  # flange face
     t = np.clip((r - rim) / (r_out - rim), 0, 1)
     side = mix(g["tire"][0], g["tire"][1], np.sin(np.pi * t) ** 2)     # faint sheen mid-sidewall (round: it spins)
-    side = mix(side, g["gap"], inside(rim + 0.02))                     # dark joint between the cover and the bead
+    side = mix(side, g["gap"], inside(rim + 0.02))                     # dark joint between the flange and the bead
     img = mix(side, img, inside(rim))
     b = (V - v0) / h                                                    # tread: 0..1 across, U around
     tr = g["tread"] * (0.8 + 0.2 * smoothstep(0.0, 0.08, np.minimum(b, 1 - b)))   # rounded shoulders
     img = np.where((b > -0.02) & (b < 1.02), tr, img)
     img = np.where((r > r_out + 0.02) & ((b < -0.02) | (b > 1.02)), g["tire"][0], img)
+    for k, (su, sv) in WHEEL_UV["swatch"].items():
+        img = np.where((np.abs(U - su) < 3 / WHEEL_TEX) & (np.abs(V - sv) < 3 / WHEEL_TEX), g[k], img)
     return img.reshape(WHEEL_TEX, WHEEL_SS, WHEEL_TEX, WHEEL_SS).mean((1, 3))
 
 
 def wheel_profile(R, rr, hw):
     """Outer half (x >= 0) of the wheel's cross-section as (x, radius) strips from the tread centre to the hub: the
-    tire (tread, shoulder, bulging sidewall, bead, rim flange), the step from the flange down to the aero cover, and
-    the dished cover, recessed ~2 cm behind the sidewall bulge so a sliver of sidewall shows on the far side. Normals
-    are smooth along a strip and split between strips. Grid units: R tire radius, rr rim radius, hw half tire width."""
+    low-profile tire (tread, shoulder, bulging sidewall, bead, rim flange), the step from the flange into the barrel,
+    the barrel (inside face, seen through the spokes) and the disc that closes the wheel at its middle (dark, the rotor,
+    its hat). Normals are smooth along a strip and split between strips. Grid units: R tire radius, rr rim flange
+    radius, hw half tire width."""
     tire = [(0.0, R), (0.075, R - 0.0045)]
     for a in (45, 90):                                   # shoulder, radius 0.03
         t = math.radians(a)
         tire.append((0.075 + 0.030 * math.sin(t), R - 0.0345 + 0.030 * math.cos(t)))
-    tire += [(hw + 0.0020, R - 0.052), (hw + 0.0022, R - 0.070), (hw - 0.0075, rr + 0.006), (hw - 0.0100, rr + 0.002)]
+    tire += [(hw + 0.0022, R - 0.052), (hw - 0.0075, rr + 0.006), (hw - 0.0100, rr + 0.002)]
     step = [tire[-1], (hw - 0.0150, rr - 0.004)]
-    cover = [step[-1], (hw - 0.0185, 0.55 * rr), (hw - 0.0200, 0.16 * rr), (hw - 0.0190, 0.0)]
-    return tire, step, cover
+    barrel = [step[-1], (WHEEL_DISC_X, rr - 0.004)]
+    disc = [barrel[-1], (WHEEL_DISC_X, WHEEL_DISC["rotor"] * rr), (WHEEL_DISC_X, WHEEL_DISC["hat"] * rr),
+            (WHEEL_DISC_X, 0.0)]
+    return tire, step, barrel, disc
+
+
+def spoke_x(r, rr, hw):
+    """Front face x of the spokes at radius r (grid): WHEEL_SPOKE inset at the barrel, dished toward the hub."""
+    sp = WHEEL_SPOKE
+    return hw - sp["inset"] - sp["dish"] * (1 - r / rr)
+
+
+def spoke_outline(rr, rb):
+    """One Y spoke's outline (radius, angle off its centreline), counter-clockwise seen from +x (y right, z up)."""
+    sp = WHEEL_SPOKE
+    h, f, a, w = sp["hub"] * rr, sp["fork"] * rr, sp["spread"], sp["arm"] * rr
+    centre = lambda r: r * a * max(0.0, r - f) / (rb - f)              # arm centreline, tangential  # noqa: E731
+    crotch = next(r for r in np.linspace(f, rb, 200) if centre(r) >= w)
+    left = [(h, -sp["main"][0] * rr), (f, -sp["main"][1] * rr)] + [(r, -centre(r) - w) for r in (f + 0.5 * (rb - f), rb)]
+    inner = [(rb, -centre(rb) + w), (f + 0.75 * (rb - f), -centre(f + 0.75 * (rb - f)) + w), (crotch, 0.0)]
+    half = left + inner                                  # hub, out along the left edge, back down the left arm's inside
+    pts = half + [(r, -t) for r, t in reversed(half[:-1])]
+    return [(r, t / r) for r, t in pts]
 
 
 def stage_wheel(r, width):
-    """Procedural wheel, a closed surface of revolution (axle along X, vanilla Vehicles_Wheel convention): tire radius r
-    and width in grid, 19" Photon aero cover; MOD wheel FBX (two equal UV layers) + 64^2 texture. -> triangle count.
+    """Procedural wheel (axle along X, vanilla Vehicles_Wheel convention), both faces alike: tire radius r and width in
+    grid, 21" Arachnid 2.0 (WHEEL_SPOKE); MOD wheel FBX (two equal UV layers) + 64^2 texture. -> triangle count.
     Fresh scene: the caller saves its own .blend first."""
+    from mathutils.geometry import tessellate_polygon
     bpy.ops.wm.read_factory_settings(use_empty=True)
-    rr = WHEEL_SLOT["rim"] * r                           # rim: where the texture's cover ends
+    rr = WHEEL_RIM * r
     strips = wheel_profile(r, rr, width / 2)
+    rb = strips[2][0][1]                                 # barrel radius: the spokes end on it
     n = WHEEL_SEG
     (cu, cv), rho, (v0, h) = WHEEL_UV["c"], WHEEL_UV["rho"], WHEEL_UV["tread"]
+    sw = WHEEL_UV["swatch"]
     xw = strips[0][3][0]                                 # the tread strip spans the tread and both shoulders
     ang = [2 * math.pi * j / n - math.pi for j in range(n + 1)]
     bm = bmesh.new()
@@ -304,10 +310,10 @@ def stage_wheel(r, width):
             nrm = np.stack([-t[:, 1], t[:, 0]], 1)       # outward (x, radius) normal of the profile walked hub-wards
             nrm /= np.linalg.norm(nrm, axis=1, keepdims=True)
             for i in range(len(pts) - 1):
-                ra, rb = ring(side * p[i, 0], p[i, 1]), ring(side * p[i + 1, 0], p[i + 1, 1])
+                ra, rb_ = ring(side * p[i, 0], p[i, 1]), ring(side * p[i + 1, 0], p[i + 1, 1])
                 tread = si == 0 and i < 3
                 for j in range(n):
-                    corners = [(ra, i, j), (ra, i, j + 1), (rb, i + 1, j + 1), (rb, i + 1, j)]
+                    corners = [(ra, i, j), (ra, i, j + 1), (rb_, i + 1, j + 1), (rb_, i + 1, j)]
                     if side < 0:
                         corners.reverse()                # mirrored half: keep the winding outward
                     corners = [c for k, c in enumerate(corners) if c[0][c[2] % n] not in
@@ -315,11 +321,50 @@ def stage_wheel(r, width):
                     f = bm.faces.new([c[0][c[2] % n] for c in corners])
                     for lp, (rg, pi, col) in zip(f.loops, corners):
                         x, y, z = lp.vert.co
-                        lp[uv].uv = (col / n, v0 + (x / xw * 0.5 + 0.5) * h) if tread else \
-                            (cu - y / r * rho, cv + z / r * rho)
+                        lp[uv].uv = (col / n, v0 + (x / xw * 0.5 + 0.5) * h) if tread else sw["barrel"] if si == 2 \
+                            else (cu - y / r * rho, cv + z / r * rho)
                         nx, nr = nrm[pi]
                         loop_n.append((side * nx, nr * math.cos(ang[col]), nr * math.sin(ang[col])))
                         loop_v.append(lp.vert)
+
+    def flat(vs, want, spot):
+        """Face on verts vs, wound to face `want`, flat normal, UV on a swatch."""
+        f = bm.faces.new(vs)
+        f.normal_update()
+        if f.normal.dot(want) < 0:
+            f.normal_flip()
+        for lp in f.loops:
+            lp[uv].uv = sw[spot]
+            loop_n.append(tuple(f.normal))
+            loop_v.append(lp.vert)
+
+    sp, outline = WHEEL_SPOKE, spoke_outline(rr, rb)
+    hw = width / 2
+    for side in (1, -1):
+        out = Vector((side, 0, 0))
+        for k in range(sp["n"]):
+            a0 = 2 * math.pi * k / sp["n"]
+            yz = [(rad * math.cos(a0 + da), rad * math.sin(a0 + da)) for rad, da in outline]
+            front = [bm.verts.new((side * spoke_x(rad, rr, hw), y, z)) for (rad, _), (y, z) in zip(outline, yz)]
+            back = [bm.verts.new((side * (spoke_x(rad, rr, hw) - sp["depth"]), y, z))
+                    for (rad, _), (y, z) in zip(outline, yz)]
+            for tri in tessellate_polygon([[Vector((y, z, 0)) for y, z in yz]]):
+                flat([front[i] for i in tri], out, "spoke")
+            m = len(outline)
+            for i in range(m):
+                j = (i + 1) % m
+                if {outline[i][0], outline[j][0]} == {rb} or {outline[i][0], outline[j][0]} == {outline[0][0]}:
+                    continue                             # ends on the barrel and under the hub cap: no wall
+                (y0, z0), (y1, z1) = yz[i], yz[j]
+                flat([front[i], front[j], back[j], back[i]], Vector((0, z1 - z0, -(y1 - y0))), "spoke")
+        rc, xc = sp["cap"] * rr, spoke_x(sp["cap"] * rr, rr, hw) + 0.004
+        cf = [bm.verts.new((side * xc, rc * math.cos(a), rc * math.sin(a))) for a in ang[:n]]
+        cb = [bm.verts.new((side * (xc - sp["depth"] - 0.006), rc * math.cos(a), rc * math.sin(a))) for a in ang[:n]]
+        hub = bm.verts.new((side * (xc + 0.003), 0.0, 0.0))
+        for j in range(n):
+            flat([hub, cf[j], cf[(j + 1) % n]], out, "cap")
+            flat([cf[j], cf[(j + 1) % n], cb[(j + 1) % n], cb[j]],
+                 Vector((0, math.cos(ang[j] + math.pi / n), math.sin(ang[j] + math.pi / n))), "cap")
     me = bpy.data.meshes.new(NAME + "_Wheel")
     bm.verts.index_update()
     loop_v = [v.index for v in loop_v]
@@ -339,12 +384,13 @@ def stage_wheel(r, width):
     # VertexBufferObject.java:324-345). With one UV map the shader read attribute 3 left over from an earlier draw:
     # garbage UVs. UV1 = UV0 puts the wheel's own UVs there
     me.uv_layers.new(name="UV1")
-    grey = wheel_texture(strips[0][3][1] / r)[::-1]      # planar disc ends at the shoulder; rows run bottom-up
+    grey = wheel_texture(strips[0][3][1] / r, WHEEL_RIM)[::-1]          # rows run bottom-up
     save_png(np.dstack([grey, grey, grey, np.ones_like(grey)]), os.path.join(TEX_DIR, NAME + "_wheel.png"), "wheel")
     mat = bpy.data.materials.new(NAME + "_Wheel")
     me.materials.append(mat)
     export_fbx(low, os.path.join(VEH_DIR, NAME + "_Wheel.fbx"))
-    print("WHEEL tris", tris(low), "radius", r, "rim", round(rr, 4), "width", width)
+    print("WHEEL tris", tris(low), "radius", r, "rim", round(rr, 4), "barrel", round(rb, 4), "width", width,
+          "spoke back x", round(spoke_x(rb, rr, width / 2) - WHEEL_SPOKE["depth"], 4))
     return tris(low)
 
 
@@ -847,8 +893,9 @@ def stage_official():
     import urllib.request
     os.makedirs(OFFICIAL, exist_ok=True)
     for _, code in PAINTS:
-        # $PB00 Frost Blue only exists on the Performance trim: with $MTY79 the compositor answers 412
-        opts = "$MTY70,$PB00,$WY21A,$IPB14" if code == "PB00" else f"$MTY79,${code},$WY19P,$IPB15"
+        # the Performance trim (AGENTS.md rule 7; $WY21A 21" Arachnid 2.0). Until 2026-10-26 the Long Range ($MTY79,
+        # $WY19P): its SIDE paint ramps differ from these by under 1 level, so CAL stayed
+        opts = f"$MTY70,${code},$WY21A,$IPB14"
         for view in ("SIDE", "FRONT34", "REAR34"):
             req = urllib.request.Request(COMPOSITOR.format(opts, view), headers={"User-Agent": "Mozilla/5.0"})
             with urllib.request.urlopen(req, timeout=60) as r, open(os.path.join(OFFICIAL, f"{code}_{view}.png"), "wb") as f:
