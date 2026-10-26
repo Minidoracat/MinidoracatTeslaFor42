@@ -1,4 +1,4 @@
--- 露營：開啟條件、熄火加熱並扣主電池、12V 補電、下車／低電量／發動自動關閉、重載後重設 needPartsUpdate、與哨兵互斥。
+-- 露營：開啟條件（行駛中拒絕、馬達運轉中停著一次開好）、熄火加熱並扣主電池、12V 補電、下車／低電量／發動自動關閉、重載後重設 needPartsUpdate、與哨兵互斥。
 local F = dofile("scripts/harness/park_fakes.lua")
 local check = (H and H.check) or function(ok, label) print((ok and "  PASS  " or "  FAIL  ") .. label); if not ok then error(label) end end
 
@@ -23,37 +23,47 @@ F.online = { owner }
 -- ---- rules ----
 cmds.campOn(owner, { vid = v:getId() })
 check(md(v).camp == nil and F.lastSent("deny").args.reason == "NOT_INSIDE", "camp: must be seated inside")
-owner.vehicle, v.passengers, v.running = v, 1, true
+owner.vehicle, v.passengers, v.running, v.kmh = v, 1, true, 30
 cmds.campOn(owner, { vid = v:getId() })
-check(md(v).camp == nil and F.lastSent("deny").args.reason == "ENGINE_ON", "camp: motor must be off")
-v.running = false
+check(md(v).camp == nil and F.lastSent("deny").args.reason == "MOVING" and v.running and not v.shutOffs,
+    "camp: moving car -> MOVING, motor keeps running")
+v.kmh = C.MAX_KMH + 0.5
+check(select(2, C.canEnable(owner, v)) == "MOVING", "camp: rolling just above MAX_KMH is still moving")
+v.kmh, v.running = 0, false
 local stranger = F.player("stranger", { vehicle = v })
 cmds.campOn(stranger, { vid = v:getId() })
 check(md(v).camp == nil and F.lastSent("deny").args.reason == "NOT_OWNER", "camp: stranger in the seat cannot enable")
 
 -- starting the motor moves the driver's key into the ignition (BaseVehicle.java:8647-8675): no key in hand
 local driven = F.track(F.vehicle({ pct = 50 }))
-driven.ignition, driven.running, driven.passengers = true, true, 1
+driven.ignition, driven.running, driven.passengers = true, true, 2
 local driver = F.player("driver", { vehicle = driven })
+driven.driver = driver
+cmds.campOn(F.player("rider", { vehicle = driven }), { vid = driven:getId() })
+check(md(driven).camp == nil and F.lastSent("deny").args.reason == "NOT_DRIVER" and driven.running,
+    "camp: a passenger cannot shut the driver's motor off (vanilla shut-off is driver-only)")
 cmds.campOn(driver, { vid = driven:getId() })
-check(md(driven).camp == nil and F.lastSent("deny").args.reason == "ENGINE_ON",
-    "camp: key in the ignition, motor on -> ENGINE_ON, not NOT_OWNER")
-driven.running = false
+check(md(driven).camp ~= nil and not driven.running and driven.shutOffs == 1,
+    "camp: motor on, parked, key in the ignition -> camp on and motor shut off in one tap (not NOT_OWNER)")
+check(driven.parts.Heater:getModData().active == true and driven.parts.Heater:getModData().temperature == 15,
+    "camp: heater back on after the shut-off switched it off (auto climate: 10 C outside -> +15)")
+md(driven).camp = nil
 MinidoracatVehicleManagerAPI = { canUse = function() return false, "NO_RIGHTS" end }
 cmds.campOn(driver, { vid = driven:getId() })
 check(md(driven).camp == nil and F.lastSent("deny").args.reason == "NOT_OWNER",
     "camp: VehicleManager refusal wins over a key in the ignition")
 MinidoracatVehicleManagerAPI = nil
 cmds.campOn(driver, { vid = driven:getId() })
-check(md(driven).camp ~= nil, "camp: key left in the ignition after shutdown -> the seated player enables")
+check(md(driven).camp ~= nil and driven.shutOffs == 1,
+    "camp: key left in the ignition after shutdown -> the seated player enables (no second shut-off)")
 
 -- ---- exclusive with sentry ----
 md(v).sentry = { by = "owner", at = F.hours, kwh = kwh(v), since = F.hours }
 cmds.campOn(owner, { vid = v:getId() })
 local heater = v.parts.Heater:getModData()
 check(md(v).camp ~= nil and md(v).sentry == nil, "camp: on, sentry cleared")
-check(heater.active == true and heater.temperature == C.DEFAULT_TEMP and v.needParts == true,
-    "camp: heater forced on at default knob value, parts update on")
+check(heater.active == true and heater.temperature == 15 and heater.auto == 15 and v.needParts == true,
+    "camp: heater on with auto climate (10 C outside -> knob stop +15), parts update on")
 
 -- ---- off: hook is a single field check ----
 local plain = F.track(F.vehicle({ pct = 50 }))
@@ -73,6 +83,74 @@ local i0 = kwh(idle)
 T.Update.Heater(idle, idle.parts.Heater, 5)
 check(kwh(idle) == i0 and (idle.parts.PassengerCompartment:getModData().temperature or 0) == 0,
     "heater: no camp and motor off -> no heat, no draw (vanilla behaviour)")
+
+-- ---- auto climate: cool in summer, follow the outside air, the player's knob wins ----
+local hot = F.track(F.vehicle({ pct = 60 }))
+local hp = F.player("hp", { keys = { [hot.keyId] = true }, vehicle = hot })
+hot.passengers, hot.seats[0], hot.driver = 1, hp, hp
+F.air = 35
+cmds.campOn(hp, { vid = hot:getId() })
+local hh, hpc = hot.parts.Heater:getModData(), hot.parts.PassengerCompartment:getModData()
+check(md(hot).camp ~= nil and hh.temperature == -15 and hh.auto == -15,
+    "auto climate: 35 C outside -> cool, knob stop -15 (cabin about 20 C, not +15 on top of 35)")
+local h0 = kwh(hot)
+for _ = 1, 5 do T.Update.Heater(hot, hot.parts.Heater, 1) end
+check(hpc.temperature == -5 and kwh(hot) < h0, "auto climate: cabin cools 1 per game minute, pack pays")
+F.air = 29
+local tx = hot.transmits
+T.Update.Heater(hot, hot.parts.Heater, 1)
+check(hh.temperature == -8 and hh.auto == -8 and hot.transmits > tx, "auto climate: evening 29 C -> -8, heater synced")
+hh.temperature = 8 -- the player turns the knob (vanilla toggleHeater, VehicleCommands.lua:91-99)
+F.air = 35
+T.Update.Heater(hot, hot.parts.Heater, 1)
+check(hh.temperature == 8 and hh.auto == nil, "auto climate: a knob turn is the player's, auto stops")
+cmds.campOff(hp, { vid = hot:getId() })
+cmds.campOn(hp, { vid = hot:getId() })
+check(hh.temperature == 8 and hh.auto == nil, "auto climate: next camp keeps the player's knob")
+cmds.campOff(hp, { vid = hot:getId() })
+hh.temperature, F.air = 0, 22
+cmds.campOn(hp, { vid = hot:getId() })
+local z0 = kwh(hot)
+T.Update.Heater(hot, hot.parts.Heater, 1)
+check(hh.temperature == 0 and hh.auto == 0 and kwh(hot) == z0, "auto climate: 22 C outside -> knob 0, no draw")
+F.air = 10
+
+-- ---- screen: boredom eases for everyone awake inside ----
+hp.boredom = 50
+local rider = F.player("rider2", { vehicle = hot, boredom = 50 })
+rider.asleep, hot.seats[1] = true, rider
+C.onEngineUpdate(hot, hot.parts.GasTank, 1)
+local per = C.BOREDOM_RATE * 48 * 90 * 60 / 1440 -- one game minute at 90 min/day = 180 multiplier units
+check(math.abs((50 - hp.boredom) - per) < 1e-9 and rider.boredom == 50,
+    "screen: awake occupant loses BOREDOM_RATE x 180 units per game minute, sleeper unchanged")
+
+-- ---- sleeping while camping: average bed on both ends ----
+check(C.bedType(hp, hot) == "averageBed", "bed: camping -> average bed")
+hot.seatTags = { [0] = { PILLOW = true } }
+check(C.bedType(hp, hot) == "averageBedPillow", "bed: pillow on the seat -> average bed with pillow")
+F.fire("OnClientCommand", "player", "onVehicleSleep", hp, { id = 1, isAsleep = true })
+check(hp.bedType == "averageBedPillow", "bed: server copy set on player/onVehicleSleep")
+cmds.campOff(hp, { vid = hot:getId() })
+check(C.bedType(hp, hot) == nil, "bed: no camp -> vanilla decides")
+F.fire("OnClientCommand", "player", "onVehicleSleep", hp, { id = 1, isAsleep = true })
+check(hp.bedType == "averageBed", "bed: car sleep without camp -> server default back")
+
+-- ---- sandbox low-battery limit (10-20 %) ----
+check(C.minPct() == 20, "limit: default 20")
+T.Battery.set(hot, hot.parts.GasTank, 75 * 0.15)
+check(select(2, C.canEnable(hp, hot)) == "CAMP_LOW_BATTERY", "limit: 15% < 20 -> CAMP_LOW_BATTERY")
+SandboxVars.MinidoracatTesla = { CampMinBattery = 10 }
+check(C.minPct() == 10 and C.canEnable(hp, hot) == true, "limit: sandbox 10 -> 15% may camp")
+SandboxVars.MinidoracatTesla.CampMinBattery = 5
+check(C.minPct() == 10, "limit: clamped to 10")
+SandboxVars.MinidoracatTesla.CampMinBattery = 10
+cmds.campOn(hp, { vid = hot:getId() })
+F.sent, F.online = {}, { owner, hp }
+T.Battery.set(hot, hot.parts.GasTank, 75 * 0.099)
+C.onEngineUpdate(hot, hot.parts.GasTank, 1)
+check(md(hot).camp == nil and F.lastSent("alert") and F.lastSent("alert").args.pct == 10,
+    "limit: below the sandbox 10% turns camp off, alert carries 10")
+SandboxVars.MinidoracatTesla = nil
 
 -- ---- 12V: DC-DC top-up whenever the pack holds >= 5% (camp or not) ----
 v.parts.Battery.item.uses = 0.5
@@ -106,8 +184,8 @@ F.sent = {}
 T.Battery.set(v, v.parts.GasTank, 75 * 0.199)
 C.onEngineUpdate(v, v.parts.GasTank, 1)
 check(md(v).camp == nil and heater.active == false, "camp: below 20% turns off, heater off")
-check(F.lastSent("alert") ~= nil and F.lastSent("alert").args.kind == "lowBattery" and F.lastSent("alert").args.what == "camp",
-    "camp: owner alerted on low battery")
+check(F.lastSent("alert") ~= nil and F.lastSent("alert").args.kind == "lowBattery" and F.lastSent("alert").args.what == "camp"
+    and F.lastSent("alert").args.pct == 20, "camp: owner alerted on low battery (pct 20 for the card)")
 
 T.Battery.set(v, v.parts.GasTank, 60)
 cmds.campOn(owner, { vid = v:getId() })

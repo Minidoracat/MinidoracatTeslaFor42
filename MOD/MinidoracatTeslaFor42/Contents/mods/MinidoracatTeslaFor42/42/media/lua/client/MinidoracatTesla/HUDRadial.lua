@@ -1,7 +1,9 @@
--- V key / D-pad up vehicle radial menu: adds "Camp Mode" and "Charging status" for Teslas.
+-- V key / D-pad up vehicle radial menu: adds "Camp Mode" and "Charging status" for Teslas, and the bed quality under
+-- vanilla "Sleep" (an average bed while camping, Camp.bedType).
 -- ISVehicleMenu.showRadialMenu is a toggle (ISVehicleMenu.lua:70-76); remember whether the menu was
 -- open BEFORE the vanilla call, because isReallyVisible() lies right after addToUIManager (pitfalls.md UI).
 require "Vehicles/ISUI/ISVehicleMenu"
+require "ISUI/ISWorldObjectContextMenu"
 require "MinidoracatTesla/Core"
 require "MinidoracatTesla/HUD"
 
@@ -33,11 +35,25 @@ local function addSlices(menu, player, vehicle)
         menu:addSlice(label .. desc, getTexture(TEX .. "radial_camp.png"), onCamp, player, vehicle)
     else
         -- greyed: no command
-        local reason = why and ("\n" .. getText("IGUI_MinidoracatTesla_Deny_" .. why)) or ""
+        local reason = why and ("\n" .. T.denyText(why)) or ""
         menu:addSlice(label .. reason, getTexture(TEX .. "radial_camp_off.png"), nil)
     end
     menu:addSlice(getText("IGUI_MinidoracatTesla_Radial_ChargeStatus") .. "\n" .. getText("IGUI_MinidoracatTesla_Tip_ChargeStatus"),
         getTexture(TEX .. "radial_charge.png"), onChargeStatus, player, vehicle)
+    -- vanilla's own "Sleep" slice (ISVehicleMenu.lua:225): second line = vanilla's bed tooltip (Tooltip_BedType)
+    for i, s in ipairs(menu.slices) do
+        if s.command[1] == ISVehicleMenu.onSleep then
+            local bed = ISWorldObjectContextMenu.getBedQuality(player, nil)
+            menu:setSliceText(i, s.text .. "\n" .. getText("Tooltip_BedType", getText("Tooltip_BedType_" .. bed))) -- ISRadialMenu.lua:55
+        end
+    end
+end
+
+-- Sleeping while camping counts as an average bed; the server copy gets the same value (server Camp.lua)
+local origBed = ISWorldObjectContextMenu.getBedQuality
+function ISWorldObjectContextMenu.getBedQuality(playerObj, bed)
+    local v = playerObj:getVehicle()
+    return (v and T.Camp.bedType and T.Camp.bedType(playerObj, v)) or origBed(playerObj, bed)
 end
 
 local orig = ISVehicleMenu.showRadialMenu

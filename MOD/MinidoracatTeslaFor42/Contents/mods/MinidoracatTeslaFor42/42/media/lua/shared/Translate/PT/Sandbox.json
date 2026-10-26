@@ -3,5 +3,7 @@
     "Sandbox_MinidoracatTesla_RangeMultiplier": "Multiplicador de autonomia",
     "Sandbox_MinidoracatTesla_RangeMultiplier_tooltip": "Quanto uma bateria cheia permite rodar.\n1.0 = o mesmo que um tanque cheio em um carro comum da mesma categoria; 2.0 = o dobro.",
     "Sandbox_MinidoracatTesla_ChargeSpeedMultiplier": "Multiplicador de velocidade de carregamento",
-    "Sandbox_MinidoracatTesla_ChargeSpeedMultiplier_tooltip": "1.0 = potência oficial do carregador (Wall Connector 11,5 kW); 2.0 = duas vezes mais rápido."
+    "Sandbox_MinidoracatTesla_ChargeSpeedMultiplier_tooltip": "1.0 = potência oficial do carregador (Wall Connector 11,5 kW); 2.0 = duas vezes mais rápido.",
+    "Sandbox_MinidoracatTesla_CampMinBattery": "Limite de bateria do Modo Acampamento",
+    "Sandbox_MinidoracatTesla_CampMinBattery_tooltip": "O Modo Acampamento não liga abaixo desta carga e desliga ao ficar abaixo dela.\nComo o Modo de baixo consumo do carro real: 10–20 %%, padrão 20."
 }

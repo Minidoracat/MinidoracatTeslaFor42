@@ -22,9 +22,7 @@ local function tip(option, text, blocked)
     if blocked then option.notAvailable = true end
 end
 
-local function denyText(why)
-    return getText("IGUI_MinidoracatTesla_Deny_" .. tostring(why))
-end
+local denyText = T.denyText
 
 function UI.fillMenu(playerNum, context, worldobjects, test)
     if test then return end
@@ -145,7 +143,7 @@ local TITLE = {
     lowBattery = { sentry = "IGUI_MinidoracatTesla_Sentry_LowBattery", camp = "IGUI_MinidoracatTesla_Camp_LowBattery" },
 }
 
--- Build a card from a server event record (Inbox.entry): { kind, what, part, by, car, hh, mm }.
+-- Build a card from a server event record (Inbox.entry): { kind, what, part, by, car, hh, mm, pct }.
 function UI.card(e)
     local tm = getTextManager()
     local keys = TITLE[e.kind]
@@ -162,7 +160,7 @@ function UI.card(e)
     if e.by then bits[#bits + 1] = getText("IGUI_MinidoracatTesla_Sentry_ByPlayer", (tostring(e.by):gsub("%%", ""))) end
     if e.kind == "touch" then bits[#bits + 1] = getText("IGUI_MinidoracatTesla_Sentry_Flashed") end
     local c = {
-        title = getText(key),
+        title = getText(key, tostring(e.pct or 20)), -- camp lowBattery: %1 = the sandbox limit (records before it: 20)
         detail = #bits > 0 and table.concat(bits, getText("IGUI_MinidoracatTesla_Sep")) or nil,
         time = tonumber(e.hh) and string.format("%02d:%02d", e.hh, tonumber(e.mm) or 0) or nil,
         icon = icon(e.what == "camp" and "toast_camp" or (e.kind == "touch" and "toast_sentry_touch" or "toast_sentry_break")),

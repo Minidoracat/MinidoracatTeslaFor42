@@ -9,7 +9,7 @@ T.ClientCommands = T.ClientCommands or {}
 T.ClientCommands.deny = T.ClientCommands.deny or function(args)
     local p = getSpecificPlayer(0)
     local reason = type(args) == "table" and tostring(args.reason) or "?"
-    if p then HaloTextHelper.addBadText(p, getText("IGUI_MinidoracatTesla_Deny_" .. reason)) end
+    if p then HaloTextHelper.addBadText(p, T.denyText(reason)) end
 end
 
 if not T.clientDispatch then

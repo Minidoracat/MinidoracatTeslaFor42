@@ -61,16 +61,22 @@ end
 H.stub("ISUI/ISUIElement")
 H.stub("Vehicles/ISUI/ISVehicleDashboard")
 
--- radial menu: vanilla toggles (ISVehicleMenu.lua:67-76)
+-- radial menu: vanilla toggles (ISVehicleMenu.lua:67-76) and adds its own "Sleep" slice (:225)
 local menu = { slices = {}, open = false }
 function menu:isReallyVisible() return self.open end
-function menu:addSlice(text, tex, fn, a1, a2) self.slices[#self.slices + 1] = { text = text, fn = fn, a1 = a1, a2 = a2 } end
+function menu:addSlice(text, tex, fn, a1, a2)
+    self.slices[#self.slices + 1] = { text = text, fn = fn, a1 = a1, a2 = a2, command = { fn, a1, a2 } }
+end
+function menu:setSliceText(i, text) self.slices[i].text = text end -- ISRadialMenu.lua:55
 function getPlayerRadialMenu() return menu end
-ISVehicleMenu = { showRadialMenu = function()
+ISVehicleMenu = { onSleep = function() end }
+ISVehicleMenu.showRadialMenu = function()
     if menu.open then menu.open = false; menu.slices = {}; return end
-    menu.slices = {}; menu:addSlice("vanilla"); menu.open = true
-end }
+    menu.slices = {}; menu:addSlice("vanilla"); menu:addSlice("Sleep", nil, ISVehicleMenu.onSleep); menu.open = true
+end
 H.stub("Vehicles/ISUI/ISVehicleMenu")
+ISWorldObjectContextMenu = { getBedQuality = function() return "badBed" end } -- vanilla: any car seat (ISWorldObjectContextMenu.lua:2923-2934)
+H.stub("ISUI/ISWorldObjectContextMenu")
 
 require "MinidoracatTesla/ParkModes"
 require "MinidoracatTesla/HUD"
@@ -419,15 +425,25 @@ for _, s in ipairs(menu.slices) do
     if s.text == "IGUI_MinidoracatTesla_Radial_ChargeStatus\nIGUI_MinidoracatTesla_Tip_ChargeStatus" then status = s end
 end
 check(camp ~= nil and camp.fn ~= nil and status ~= nil, "radial: camp (enabled) and charging status, each with a what-it-does line")
+local sleep = menu.slices[2]
+check(sleep.text == "Sleep\nTooltip_BedType" and sleep.fn == ISVehicleMenu.onSleep, "radial: vanilla Sleep slice gets the bed quality line")
+check(ISWorldObjectContextMenu.getBedQuality(p, nil) == "badBed", "bed: not camping -> vanilla bad bed")
+T.Battery.part(tesla):getModData().camp = { by = "x" }
+p.getPrimaryHandItem = function() return nil end
+p.getSecondaryHandItem = function() return nil end
+tesla.getSeat = function() return 0 end
+tesla.getPartForSeatContainer = function() return { getItemContainer = function() return { containsTag = function() return false end } end } end
+check(ISWorldObjectContextMenu.getBedQuality(p, nil) == "averageBed", "bed: camping -> average bed (wrapped getBedQuality)")
+T.Battery.part(tesla):getModData().camp = nil
 ISVehicleMenu.showRadialMenu(p)
 check(#menu.slices == 0, "radial: second press closes, nothing re-added")
-tesla.running = true
+tesla.running, tesla.speed = true, 30
 ISVehicleMenu.showRadialMenu(p)
 local grey
 for _, s in ipairs(menu.slices) do
     if s.text:find("Radial_CampOn", 1, true) then grey = s end
 end
-check(grey ~= nil and grey.fn == nil and grey.text:find("\nIGUI_MinidoracatTesla_Deny_ENGINE_ON", 1, true) ~= nil,
-    "radial: camp greyed with the deny reason while the motor runs")
+check(grey ~= nil and grey.fn == nil and grey.text:find("\nIGUI_MinidoracatTesla_Deny_MOVING", 1, true) ~= nil,
+    "radial: camp greyed with the deny reason while driving")
 menu.open = false
 H.side(false, true)
