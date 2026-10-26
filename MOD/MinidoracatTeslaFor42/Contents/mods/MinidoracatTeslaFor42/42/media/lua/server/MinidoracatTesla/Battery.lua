@@ -104,14 +104,19 @@ end
 -- zone or story skins IsoChunk.java:1346-1348 and RandomizedWorldBase.java:167-168 before addToWorld, script colour
 -- :1575-1577; createParts :868), so this wins. Transmit as vanilla Commands.setHSV / setSkinIndex
 -- (VehicleCommands.lua:440-455): server-only flag 4096 sends both (BaseVehicle.java:9209-9219, VehicleProperties.java:71-74).
--- (VehicleUtils.createPartInventoryItem returns the existing item, Vehicles.lua:1156,1193). Power by pack (Core PackPower).
+-- (VehicleUtils.createPartInventoryItem returns the existing item, Vehicles.lua:1156,1193). Power by pack (Core PackPower),
+-- kept in the Engine part modData `power` so Update.Engine can undo vanilla repair().
+local function loudness(script) return (script:getEngineLoudness() or 100) * (SandboxVars.ZombieAttractionMultiplier or 1) end
+
 function T.Create.Motor(vehicle, part)
     if not SandboxVars.VehicleEasyUse then part:setRandomCondition(nil) end
     local script = vehicle:getScript()
-    local loud = (script:getEngineLoudness() or 100) * (SandboxVars.ZombieAttractionMultiplier or 1)
+    local loud = loudness(script)
     local bp = vehicle:getPartById(T.BATTERY_PART)
     local pack = bp and VehicleUtils.createPartInventoryItem(bp) -- the GasTank may not be created yet
-    vehicle:setEngineFeature(100, loud, pack and T.PackPower[pack:getFullType()] or script:getEngineForce())
+    local power = pack and T.PackPower[pack:getFullType()]
+    part:getModData().power = power
+    vehicle:setEngineFeature(100, loud, power or script:getEngineForce())
     local s = T.spec(vehicle)
     local colors = s and s.colors
     if colors and #colors > 0 then
@@ -148,9 +153,25 @@ function T.Update.Battery(vehicle, part, elapsedMinutes)
     B.set(vehicle, part, B.kwh(part) - used + regen)
 end
 
--- Engine update: vanilla temperature and needPartsUpdate shut-off (Vehicles.lua:526-560), then camp mode.
+-- Engine update: vanilla temperature and needPartsUpdate shut-off (Vehicles.lua:526-560), then the motor's own power,
+-- then camp mode. Vanilla repair() (admin / debug "Repair vehicle") resets power to the script engineForce, the LR 5000
+-- (VehiclePart.java:999-1005, the only power write after create); put the create-time power back. Cars created before
+-- modData `power` get the installed pack's. Parts update only while the car needs it (engine on, mechanics window open,
+-- BaseVehicle.java:3507-3511), so a repaired car parked untouched keeps 5000 until then; it cannot drive meanwhile.
 function T.Update.Engine(vehicle, part, elapsedMinutes)
     Vehicles.Update.Engine(vehicle, part, elapsedMinutes)
+    local md = part:getModData()
+    if not md.power then
+        local pack = B.part(vehicle)
+        local item = pack and pack:getInventoryItem()
+        md.power = item and T.PackPower[item:getFullType()]
+    end
+    -- SP VirtualVehicle (far away) has no getEnginePower; getEngineLoudness is the stored x0.37 value
+    -- (VehicleEngine.java:85), so pass the script loudness as create and repair do.
+    if md.power and instanceof(vehicle, "BaseVehicle") and vehicle:getEnginePower() ~= md.power then
+        vehicle:setEngineFeature(vehicle:getEngineQuality(), loudness(vehicle:getScript()), md.power)
+        vehicle:transmitEngine()
+    end
     local f = T.Camp and T.Camp.onEngineUpdate
     if f then f(vehicle, part, elapsedMinutes) end
 end
