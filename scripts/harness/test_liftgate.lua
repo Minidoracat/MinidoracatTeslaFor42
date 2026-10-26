@@ -23,7 +23,7 @@ function getPlayer() return nil end
 local function car(o)
     local v = H.vehicle(o)
     v.anims, v.doorTx = {}, 0
-    for _, id in ipairs({ "TrunkDoor", "DoorFrontLeft" }) do
+    for _, id in ipairs({ "TrunkDoor", "DoorFrontLeft", "DoorRearLeft", "EngineDoor" }) do
         local door = { open = false, locked = id == "TrunkDoor", broken = false }
         function door:isOpen() return self.open end
         function door:setOpen(b) self.open = b end
@@ -50,13 +50,13 @@ local function denied(reason)
 end
 
 H.section("liftgate: server rules")
-cmd(driver, { vid = v:getId() })
+cmd(driver, { vid = v:getId(), part = "TrunkDoor" })
 local d = v.parts.TrunkDoor.door
 check(d.open and not d.locked and v.doorTx == 1, "driver, parked, locked: unlocked, opened, door synced")
 check(v.anims[1] == "TrunkDoor:Open" and v.sound == "Open", "SP: client handler played the Open anim and its sound")
-check(math.floor(v:getColorHue()) == 16 and H.near(v:getColorHue() - 16, 0.69, 1e-6) and v.colorTx == 1,
-    "shell bits: tailgate open = hue integer 16, the paint hue kept, transmitted")
-cmd(driver, { vid = v:getId() })
+check(math.floor(v:getColorHue()) == 16 and H.near(v:getColorHue() - 16, 0.69, 1e-6) and not v.colorTx,
+    "shell bits: tailgate open = hue integer 16, the paint hue kept, no transmitColorHSV")
+cmd(driver, { vid = v:getId(), part = "TrunkDoor" })
 check(not d.open and v.anims[2] == "TrunkDoor:Close", "second press closes")
 check(H.near(v:getColorHue(), 0.69, 1e-6), "shell bits cleared on close")
 local sp = car({})
@@ -70,26 +70,58 @@ passenger.vehicle = v
 local online = { driver, passenger }
 function getOnlinePlayers() return { size = function() return #online end, get = function(_, i) return online[i + 1] end } end
 H.side(false, true) -- MP server: deny goes out as a server command
-cmd(passenger, { vid = v:getId() })
+cmd(passenger, { vid = v:getId(), part = "TrunkDoor" })
 check(denied("NOT_DRIVER") and not d.open and v.doorTx == 2, "passenger: NOT_DRIVER, nothing changed")
 v.speed = 12
-cmd(driver, { vid = v:getId() })
+cmd(driver, { vid = v:getId(), part = "TrunkDoor" })
 check(denied("MOVING") and not d.open and v.doorTx == 2, "driving: MOVING, nothing changed")
 v.speed = 0.4
 d.locked, d.broken = true, true
-cmd(driver, { vid = v:getId() })
-check(denied("LIFTGATE_LOCKED") and d.locked and not d.open and v.doorTx == 2, "broken lock: LIFTGATE_LOCKED, still locked and shut")
+cmd(driver, { vid = v:getId(), part = "TrunkDoor" })
+check(denied("LOCK_BROKEN") and d.locked and not d.open and v.doorTx == 2, "broken lock: LOCK_BROKEN, still locked and shut")
 d.broken = false
 v.parts.TrunkDoor.item = nil
-cmd(driver, { vid = v:getId() })
-check(denied("NO_LIFTGATE") and not d.open, "liftgate part uninstalled: NO_LIFTGATE")
+cmd(driver, { vid = v:getId(), part = "TrunkDoor" })
+check(denied("NO_DOOR") and not d.open, "liftgate part uninstalled: NO_DOOR")
 v.parts.TrunkDoor.item = {}
 local n = #H.sent
-cmd(driver, { vid = v:getId() })
-local a, b = H.sent[n + 1], H.sent[n + 2]
-check(d.open and #H.sent == n + 2 and a.player == driver and b.player == passenger and a.command == "partAnim"
+cmd(driver, { vid = v:getId(), part = "TrunkDoor" })
+local s1, s2, a, b = H.sent[n + 1], H.sent[n + 2], H.sent[n + 3], H.sent[n + 4]
+check(d.open and #H.sent == n + 4 and s1.player == driver and s2.player == passenger and s1.command == "shell"
+    and s2.command == "shell" and s1.args.vid == v:getId() and s1.args.hue == v:getColorHue()
+    and math.floor(s1.args.hue) == 16 and not v.colorTx,
+    "MP: shell hue (16 + paint) to every online player as a command, no transmitColorHSV (VehicleProperties)")
+check(a.player == driver and b.player == passenger and a.command == "partAnim"
     and a.args.part == "TrunkDoor" and a.args.open == true and a.args.sound == true,
     "MP: opened, partAnim { TrunkDoor, open, sound } to every online player")
+
+H.section("dashboard doors: any door part (HUD car picture)")
+local rl, lid = v.parts.DoorRearLeft.door, v.parts.EngineDoor.door
+rl.locked = true
+n = #H.sent
+cmd(driver, { vid = v:getId(), part = "DoorRearLeft" })
+a = H.sent[n + 3] -- after the two `shell` commands (driver, passenger)
+check(rl.open and not rl.locked and a.command == "partAnim" and a.args.part == "DoorRearLeft" and a.args.sound == true,
+    "locked rear left door: unlocked, opened, partAnim { DoorRearLeft, sound }")
+check(math.floor(v:getColorHue()) == 16 + 4, "shell bits: liftgate (16) + rear left door (4)")
+cmd(driver, { vid = v:getId(), part = "EngineDoor" })
+check(lid.open and H.sent[#H.sent].args.part == "EngineDoor", "frunk lid: lifted, partAnim EngineDoor")
+local tx = v.doorTx
+for _, bad in ipairs({ "GasTank", "WindowFrontLeft", 7, false }) do
+    cmd(driver, { vid = v:getId(), part = bad })
+    check(denied("NO_DOOR") and v.doorTx == tx, "part id " .. tostring(bad) .. ": NO_DOOR, nothing changed")
+end
+cmd(driver, { vid = v:getId() })
+check(denied("NO_DOOR") and v.doorTx == tx, "no part id: NO_DOOR")
+cmd(passenger, { vid = v:getId(), part = "EngineDoor" })
+check(denied("NOT_DRIVER") and lid.open and v.doorTx == tx, "passenger, frunk lid: NOT_DRIVER, nothing changed")
+v.speed = 12
+cmd(driver, { vid = v:getId(), part = "DoorRearLeft" })
+check(denied("MOVING") and rl.open and v.doorTx == tx, "driving, rear door: MOVING, stays open")
+v.speed = 0
+cmd(driver, { vid = v:getId(), part = "EngineDoor" })
+cmd(driver, { vid = v:getId(), part = "DoorRearLeft" })
+check(not lid.open and not rl.open and math.floor(v:getColorHue()) == 16, "second clicks close the lid and the door")
 
 H.section("door anim sync (MP server)")
 -- vanilla door actions: complete() opens/closes and returns true (ISOpenVehicleDoor.lua:61-97)
@@ -101,12 +133,14 @@ dofile(SRC) -- MP server load: wraps the two actions
 local fl = v.parts.DoorFrontLeft
 n = #H.sent
 check(ISOpenVehicleDoor.complete({ vehicle = v, part = fl, character = driver }) == true, "wrapped complete keeps the vanilla result")
-b = H.sent[n + 1]
-check(#H.sent == n + 1 and b.player == passenger and b.args.part == "DoorFrontLeft" and b.args.open == true and not b.args.sound,
-    "door opened by the driver: anim to the others only (the opener played it in :start)")
+b = H.sent[n + 3]
+check(#H.sent == n + 3 and H.sent[n + 1].command == "shell" and math.floor(H.sent[n + 1].args.hue) == 17
+    and b.player == passenger and b.args.part == "DoorFrontLeft" and b.args.open == true and not b.args.sound,
+    "door opened by the driver: shell hue to everyone, anim to the others only (the opener played it in :start)")
 n = #H.sent
 ISCloseVehicleDoor.complete({ vehicle = v, part = fl, character = passenger })
-check(#H.sent == n + 1 and H.sent[n + 1].player == driver and H.sent[n + 1].args.open == false, "closed by the passenger: anim to the driver")
+check(#H.sent == n + 3 and H.sent[n + 3].player == driver and H.sent[n + 3].args.open == false
+    and math.floor(H.sent[n + 1].args.hue) == 16, "closed by the passenger: shell bit cleared, anim to the driver")
 local gas = car({ script = "Base.CarNormal" })
 n = #H.sent
 ISOpenVehicleDoor.complete({ vehicle = gas, part = gas.parts.DoorFrontLeft, character = driver })
@@ -116,14 +150,25 @@ H.section("liftgate: client")
 H.side(true, false)
 v.speed = 30
 H.clientSent = {}
-check(L.toggle(driver, v) == false and #H.clientSent == 0 and halo[#halo] == "IGUI_MinidoracatTesla_Deny_MOVING",
+check(L.toggle(driver, v, L.PART) == false and #H.clientSent == 0 and halo[#halo] == "IGUI_MinidoracatTesla_Deny_MOVING",
     "key while driving: refused on the client with a halo, nothing sent")
 v.speed = 0
-check(L.toggle(driver, v) and H.clientSent[1].command == "liftgate", "key while parked: liftgate sent")
+check(L.toggle(driver, v, L.PART) and H.clientSent[1].command == "liftgate" and H.clientSent[1].args.part == "TrunkDoor",
+    "key while parked: liftgate { part = TrunkDoor } sent")
+check(L.toggle(driver, v, "EngineDoor") and H.clientSent[2].args.part == "EngineDoor", "car picture: frunk lid sent")
+check(L.toggle(driver, v, "Muffler") == false and #H.clientSent == 2 and halo[#halo] == "IGUI_MinidoracatTesla_Deny_NO_DOOR",
+    "not a dashboard door: refused on the client, nothing sent")
+check(L.toggle(passenger, v, "DoorFrontLeft") == false and #H.clientSent == 2, "passenger: refused on the client")
 local na = #v.anims
 T.ClientCommands.partAnim({ vid = 424242, part = "TrunkDoor", open = true })
 T.ClientCommands.partAnim({ vid = v:getId(), part = 7, open = true })
 check(#v.anims == na, "client without the car, or a bad part id: ignored")
+local hb = v:getColorHue()
+T.ClientCommands.shell({ vid = v:getId(), hue = 1.69 })
+check(H.near(v:getColorHue(), 1.69, 1e-6), "client: shell sets the server's hue on the loaded car")
+T.ClientCommands.shell({ vid = 424242, hue = 3 })
+check(H.near(v:getColorHue(), 1.69, 1e-6), "client: shell for a car not loaded is ignored")
+v:setColorHSV(hb, v:getColorSaturation(), v:getColorValue())
 getOnlinePlayers, ISOpenVehicleDoor, ISCloseVehicleDoor = saved.getOnlinePlayers, saved.ISOpenVehicleDoor, saved.ISCloseVehicleDoor
 HaloTextHelper, getPlayer = saved.HaloTextHelper, saved.getPlayer
 H.side(false, true)

@@ -8,5 +8,6 @@
     "ContextMenu_MinidoracatTesla_ChargeStatus": "Ladestatus anzeigen",
     "ContextMenu_MinidoracatTesla_TapUnlock": "Schlüsselkarte auflegen: Entriegeln",
     "ContextMenu_MinidoracatTesla_TapLock": "Schlüsselkarte auflegen: Verriegeln",
-    "ContextMenu_MinidoracatTesla_PairPhone": "Als Telefonschlüssel einrichten"
+    "ContextMenu_MinidoracatTesla_PairPhone": "Als Telefonschlüssel einrichten",
+    "ContextMenu_MinidoracatTesla_ChargeItem": "An der Fahrzeugsteckdose laden"
 }

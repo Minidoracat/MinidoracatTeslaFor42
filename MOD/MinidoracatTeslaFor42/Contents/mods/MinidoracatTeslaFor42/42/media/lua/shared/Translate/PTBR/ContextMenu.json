@@ -8,5 +8,6 @@
     "ContextMenu_MinidoracatTesla_ChargeStatus": "Ver status do carregamento",
     "ContextMenu_MinidoracatTesla_TapUnlock": "Aproximar cartão-chave: destrancar",
     "ContextMenu_MinidoracatTesla_TapLock": "Aproximar cartão-chave: trancar",
-    "ContextMenu_MinidoracatTesla_PairPhone": "Configurar como chave de telefone"
+    "ContextMenu_MinidoracatTesla_PairPhone": "Configurar como chave de telefone",
+    "ContextMenu_MinidoracatTesla_ChargeItem": "Carregar na tomada do carro"
 }

@@ -8,5 +8,6 @@
     "ContextMenu_MinidoracatTesla_ChargeStatus": "充電状況を見る",
     "ContextMenu_MinidoracatTesla_TapUnlock": "キーカードをタッチ：解錠",
     "ContextMenu_MinidoracatTesla_TapLock": "キーカードをタッチ：施錠",
-    "ContextMenu_MinidoracatTesla_PairPhone": "電話キーとして設定"
+    "ContextMenu_MinidoracatTesla_PairPhone": "電話キーとして設定",
+    "ContextMenu_MinidoracatTesla_ChargeItem": "車のコンセントで充電"
 }

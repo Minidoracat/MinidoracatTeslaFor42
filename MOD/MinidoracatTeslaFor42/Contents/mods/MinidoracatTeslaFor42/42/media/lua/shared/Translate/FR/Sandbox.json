@@ -3,5 +3,7 @@
     "Sandbox_MinidoracatTesla_RangeMultiplier": "Multiplicateur d'autonomie",
     "Sandbox_MinidoracatTesla_RangeMultiplier_tooltip": "Distance parcourue avec une batterie pleine.\n1.0 = autant qu'un plein dans une voiture normale de même catégorie ; 2.0 = deux fois plus loin.",
     "Sandbox_MinidoracatTesla_ChargeSpeedMultiplier": "Multiplicateur de vitesse de recharge",
-    "Sandbox_MinidoracatTesla_ChargeSpeedMultiplier_tooltip": "1.0 = puissance officielle du chargeur (Wall Connector 11,5 kW) ; 2.0 = deux fois plus rapide."
+    "Sandbox_MinidoracatTesla_ChargeSpeedMultiplier_tooltip": "1.0 = puissance officielle du chargeur (Wall Connector 11,5 kW) ; 2.0 = deux fois plus rapide.",
+    "Sandbox_MinidoracatTesla_CampMinBattery": "Seuil de batterie du mode Camping",
+    "Sandbox_MinidoracatTesla_CampMinBattery_tooltip": "Le mode Camping ne s'active pas sous ce niveau de charge et s'arrête quand la batterie passe en dessous.\nComme le mode basse consommation de la vraie voiture : 10–20 %%, 20 par défaut."
 }

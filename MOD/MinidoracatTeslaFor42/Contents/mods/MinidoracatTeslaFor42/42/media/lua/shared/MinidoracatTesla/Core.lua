@@ -73,6 +73,9 @@ local function sandbox(name, default)
 end
 function T.rangeMul() return math.max(0.25, math.min(4, sandbox("RangeMultiplier", 1))) end
 function T.chargeMul() return math.max(0.1, math.min(10, sandbox("ChargeSpeedMultiplier", 1))) end
+T.Camp = T.Camp or {}
+-- Camp Mode low-battery limit (sandbox CampMinBattery, 10-20 %; Tesla's Low Power Mode setting has the same range)
+function T.Camp.minPct() return math.max(10, math.min(20, sandbox("CampMinBattery", 20))) end
 
 function T.spec(vehicle)
     return vehicle and T.Specs[vehicle:getScriptName()] or nil -- BaseVehicle.java:1621 (full name, :1540)
@@ -165,6 +168,12 @@ function T.send(player, cmd, args)
 end
 function T.deny(player, reason, vid)
     T.send(player, "deny", { reason = reason, vid = vid })
+end
+-- Text of IGUI_MinidoracatTesla_Deny_<reason>; CAMP_LOW_BATTERY carries the sandbox limit as %1
+function T.denyText(reason)
+    local key = "IGUI_MinidoracatTesla_Deny_" .. tostring(reason)
+    if reason == "CAMP_LOW_BATTERY" then return getText(key, tostring(T.Camp.minPct())) end
+    return getText(key)
 end
 
 -- ---- client -> server ----

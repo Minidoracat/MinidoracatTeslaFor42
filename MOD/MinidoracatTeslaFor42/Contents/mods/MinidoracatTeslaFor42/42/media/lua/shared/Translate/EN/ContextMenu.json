@@ -8,5 +8,6 @@
     "ContextMenu_MinidoracatTesla_ChargeStatus": "Charging status",
     "ContextMenu_MinidoracatTesla_TapUnlock": "Tap Key Card: Unlock",
     "ContextMenu_MinidoracatTesla_TapLock": "Tap Key Card: Lock",
-    "ContextMenu_MinidoracatTesla_PairPhone": "Set Up as Phone Key"
+    "ContextMenu_MinidoracatTesla_PairPhone": "Set Up as Phone Key",
+    "ContextMenu_MinidoracatTesla_ChargeItem": "Charge from car outlet"
 }

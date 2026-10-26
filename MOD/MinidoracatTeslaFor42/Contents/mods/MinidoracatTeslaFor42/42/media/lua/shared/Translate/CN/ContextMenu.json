@@ -8,5 +8,6 @@
     "ContextMenu_MinidoracatTesla_ChargeStatus": "查看充电状态",
     "ContextMenu_MinidoracatTesla_TapUnlock": "感应卡片钥匙：解锁",
     "ContextMenu_MinidoracatTesla_TapLock": "感应卡片钥匙：上锁",
-    "ContextMenu_MinidoracatTesla_PairPhone": "设为手机钥匙"
+    "ContextMenu_MinidoracatTesla_PairPhone": "设为手机钥匙",
+    "ContextMenu_MinidoracatTesla_ChargeItem": "用车上插座充电"
 }

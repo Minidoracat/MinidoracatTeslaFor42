@@ -46,8 +46,16 @@ local gt = {
     getWorldAgeHours = function() return F.hours end,
     getHour = function() return 18 end,
     getMinutes = function() return 42 end,
+    getMinutesPerDay = function() return 90 end,
 }
 set("getGameTime", function() return gt end) -- tests drive the clock
+-- outside air the car sits in (ClimateManager.getAirTemperatureForSquare with the car: base + cabin offset)
+F.air = 10
+set("getClimateManager", function()
+    return { getAirTemperatureForSquare = function(_, sq, v) return F.air + v:getInsideTemperature() end }
+end)
+ensure("CharacterStat", { BOREDOM = "BOREDOM" })
+ensure("ItemTag", { PILLOW = "PILLOW" })
 
 local moddata = {}
 ModData = ModData or {}
@@ -82,6 +90,21 @@ local function action(name)
 end
 for _, n in ipairs({ "ISOpenVehicleDoor", "ISUnlockVehicleDoor", "ISSmashVehicleWindow", "ISHotwireVehicle",
     "ISUninstallVehiclePart" }) do action(n) end
+
+-- Vanilla timed action base (shared/TimedActions/ISBaseTimedAction.lua): Camp.lua loads CampPower.lua, whose charge
+-- action derives from it. Only what that action calls.
+if H and H.stub then H.stub("TimedActions/ISBaseTimedAction") end
+if ISBaseTimedAction == nil then
+    ISBaseTimedAction = {}
+    function ISBaseTimedAction:derive(name)
+        local cls = setmetatable({ Type = name }, { __index = self })
+        cls.__index = cls
+        return cls
+    end
+    function ISBaseTimedAction.new(cls, character) return setmetatable({ character = character }, cls) end
+    function ISBaseTimedAction.stop(self) self.stopped = true end
+    function ISBaseTimedAction.perform(self) self.performed = true end
+end
 
 -- ------------------------------------------------------------------ parts, vehicle, player
 local function part(id, opts)
@@ -131,6 +154,22 @@ function F.vehicle(o)
     function v:getPartById(id) return self.parts[id] end
     function v:getBattery() return self.parts.Battery end
     function v:isEngineRunning() return self.running end
+    function v:getCurrentSpeedKmHour() return self.kmh or 0 end
+    function v:getDriver() return self.driver end
+    v.seats = {} -- seat index -> fake player
+    function v:getSquare() return { isInARoom = function() return v.inRoom == true end } end
+    function v:getInsideTemperature() return tonumber(self.parts.PassengerCompartment:getModData().temperature) or 0 end
+    function v:getMaxPassengers() return 4 end
+    function v:getCharacter(i) return self.seats[i] end
+    function v:getSeat(p) for i, c in pairs(self.seats) do if c == p then return i end end return -1 end
+    function v:getPartForSeatContainer(i)
+        local tags = self.seatTags and self.seatTags[i] or {}
+        return { getItemContainer = function() return { containsTag = function(_, t) return tags[t] == true end } end }
+    end
+    function v:shutOff() -- vanilla: ShuttingDown switches the heater off on the spot (BaseVehicle.java:7469-7473)
+        self.running, self.shutOffs = false, (self.shutOffs or 0) + 1
+        self.parts.Heater:getModData().active = false
+    end
     function v:hasPassenger() return self.passengers > 0 end
     function v:areAllDoorsLocked() return self.locked end
     function v:getKeyId() return self.keyId end
@@ -158,7 +197,17 @@ end
 
 function F.player(name, o)
     o = o or {}
-    local p = { name = name, vehicle = o.vehicle, keys = o.keys or {}, dist = o.dist or 2 }
+    local p = { name = name, vehicle = o.vehicle, keys = o.keys or {}, dist = o.dist or 2, boredom = o.boredom or 0,
+        asleep = false, bedType = "averageBed", hand = o.hand }
+    function p:getStats()
+        local me = self
+        return { get = function(_, s) return me.boredom end,
+            remove = function(_, s, n) me.boredom = math.max(0, me.boredom - n) end }
+    end
+    function p:isAsleep() return self.asleep end
+    function p:getPrimaryHandItem() return self.hand end
+    function p:getSecondaryHandItem() return nil end
+    function p:setBedType(b) self.bedType = b end
     function p:getUsername() return self.name end
     function p:getVehicle() return self.vehicle end
     function p:DistTo() return self.dist end
