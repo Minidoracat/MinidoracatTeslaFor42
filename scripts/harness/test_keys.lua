@@ -129,6 +129,9 @@ local function player(name, inv, x, y)
     return p
 end
 
+H.stub("Vehicles/TimedActions/ISUnlockVehicleDoor") -- park_fakes made the class; Keys.lua wraps start() and complete()
+ISUnlockVehicleDoor.start = ISUnlockVehicleDoor.start or function() return true end
+local unlockBefore = { start = ISUnlockVehicleDoor.start, complete = ISUnlockVehicleDoor.complete } -- restored at the end
 require "MinidoracatTesla/Keys"
 require "MinidoracatTesla/KeyActions"
 local K = T.Keys
@@ -271,6 +274,47 @@ F.runTicks(50, 450)
 F.sent = {}
 cmds.autoLock(owner, { vid = v:getId() })
 check(F.lastSent("autoLocked") == nil and F.lastSent("autoLockSkip").args.reason == nil, "autoLock again: already locked, silent skip")
+
+-- ------------------------------------------------------------------ pulling the handle with the phone key in a bag
+ownerInv:Remove(pk)
+local backpack = bag("Base.Bag_Schoolbag", pk)
+ownerInv:AddItem(backpack)
+check(ownerInv:haveThisKeyId(v.keyId) == nil and K.phoneKey(owner, v) == pk, "handle: phone key in a bag, vanilla key lookup misses it")
+owner.x = v.x - 1
+v.parts.GasTank:getModData().sentry = { by = "someoneElse", at = F.hours, kwh = 50, since = F.hours }
+local tx, fl = v.doorTx, S.stats.flashes
+local unlock = { vehicle = v, part = v.doors[1], character = owner }
+ISUnlockVehicleDoor.complete(unlock)
+check(not v.doors[1].d.locked and v.doors[2].d.locked and v.doorTx == tx + 1, "handle (server complete): that door unlocked and synced, the others stay locked")
+check(v.parts.GasTank:getModData().sentry == nil and S.stats.flashes == fl, "handle: phone key in a bag counts as the owner -> sentry disarmed, no flash")
+v.doors[1].d.locked = true
+local stranger = player("stranger", container(), v.x - 1, v.y)
+ISUnlockVehicleDoor.complete({ vehicle = v, part = v.doors[1], character = stranger })
+check(v.doors[1].d.locked, "handle: no key -> stays locked")
+check(T.authorized(owner, v, "PASSENGER") == true and T.authorized(stranger, v, "PASSENGER") == false,
+    "authorized (camp, charging): phone key in a bag counts, no key does not")
+local walletOnly = player("walletonly", container(bag("Base.Wallet", item(K.CARD, v.keyId))), v.x - 1, v.y)
+ISUnlockVehicleDoor.complete({ vehicle = v, part = v.doors[1], character = walletOnly })
+check(v.doors[1].d.locked, "handle: key card in the wallet -> stays locked (tap the reader)")
+v.doors[1].d.broken = true
+ISUnlockVehicleDoor.complete(unlock)
+check(v.doors[1].d.locked, "handle: broken lock -> stays locked")
+v.doors[1].d.broken = false
+local srv = isServer
+isServer = function() return false end
+ISUnlockVehicleDoor.complete(unlock)
+check(v.doors[1].d.locked, "handle: complete() off the server (SP runs it in start) -> no unlock there")
+ISUnlockVehicleDoor.start(unlock)
+check(not v.doors[1].d.locked, "handle (SP start): phone key in a bag unlocks before the vanilla lock check")
+isServer = srv
+v.doors[1].d.locked = true
+local cli = isClient
+isClient = function() return true end
+isServer = function() return false end
+ISUnlockVehicleDoor.start(unlock)
+check(v.doors[1].d.locked, "handle (MP client start): never unlocks locally")
+isClient, isServer = cli, srv
+ISUnlockVehicleDoor.start, ISUnlockVehicleDoor.complete = unlockBefore.start, unlockBefore.complete -- other tests' fake parts have no getDoor
 
 -- ------------------------------------------------------------------ phone loot
 ProceduralDistributions = { list = { ElectronicStorePhones = { items = { "CordlessPhone", 50 } } } }

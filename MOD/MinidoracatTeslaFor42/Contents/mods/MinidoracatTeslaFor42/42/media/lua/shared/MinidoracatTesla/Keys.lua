@@ -87,4 +87,29 @@ function K.canAutoLock(player, vehicle)
     return true
 end
 
+-- Phone key in a bag or belt bag: pulling a locked door's handle unlocks it, as the real car does with the phone in a
+-- pocket or bag. Vanilla canUnlockDoor only sees loose keys and keyrings (BaseVehicle.java:1274-1301 ->
+-- ItemContainer.java:3242-3256), so the vanilla unlock action (queued by ISVehicleMenu.onOpenDoor / onEnter) would fail.
+-- Runs right before that action toggles the lock: in start() in SP (ISUnlockVehicleDoor.lua:22-36), in complete() on
+-- the server (:55-76); never on an MP client. The key card keeps vanilla rules (loose: auto; in the wallet: tap the reader).
+function K.phoneUnlock(vehicle, part, chr)
+    local door = part and part:getDoor()
+    if not door or not door:isLocked() or door:isLockBroken() or not chr or not T.isTesla(vehicle) then return false end
+    if chr:getInventory():haveThisKeyId(vehicle:getKeyId()) or not K.phoneKey(chr, vehicle) then return false end
+    door:setLocked(false)
+    vehicle:transmitPartDoor(part) -- no-op off the server
+    return true
+end
+
+require "Vehicles/TimedActions/ISUnlockVehicleDoor"
+local unlockStart, unlockComplete = ISUnlockVehicleDoor.start, ISUnlockVehicleDoor.complete
+function ISUnlockVehicleDoor:start(...)
+    if not isClient() and not isServer() then K.phoneUnlock(self.vehicle, self.part, self.character) end
+    return unlockStart(self, ...)
+end
+function ISUnlockVehicleDoor:complete(...)
+    if isServer() then K.phoneUnlock(self.vehicle, self.part, self.character) end
+    return unlockComplete(self, ...)
+end
+
 return K

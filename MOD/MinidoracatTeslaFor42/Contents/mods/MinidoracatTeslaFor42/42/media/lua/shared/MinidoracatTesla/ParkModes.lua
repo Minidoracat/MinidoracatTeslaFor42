@@ -21,6 +21,8 @@ C.DEFAULT_TEMP = 15 -- heater knob value when the player never set one (ISVehicl
 function T.legit(player, vehicle, by)
     if by and player:getUsername() == by then return true end
     if player:getInventory():haveThisKeyId(vehicle:getKeyId()) then return true end -- ISOpenVehicleDoor.lua:86
+    -- key card or phone key in a wallet or bag (Keys.lua): the owner, e.g. opening with the phone key in a bag
+    if T.Keys and T.Keys.card and (T.Keys.card(player, vehicle) or T.Keys.phoneKey(player, vehicle)) then return true end
     local ok, why = T.authorized(player, vehicle, "PASSENGER")
     return ok == true and why ~= "UNCLAIMED" and why ~= "EASY_USE" and why ~= "KEY"
 end
