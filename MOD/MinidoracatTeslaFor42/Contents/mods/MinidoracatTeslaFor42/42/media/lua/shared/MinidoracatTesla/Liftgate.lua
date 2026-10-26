@@ -23,8 +23,9 @@ end
 -- Open doors ride in the colour hue's integer part (bit k-1 for SHELL_DOORS[k]): the shader hides the cabin shell's
 -- wall behind an open door (else the far wall showed through the roof glass where the door opening is). Hue is the
 -- only per-car shader value Lua sets that vanilla leaves alone (BaseVehicle.updateLights -> painColor, every render,
--- BaseVehicle.java:5817), it is saved (:2663) and synced with the skin (VehicleProperties.java:42); every reader
--- drops the integer part (vehicle_common.frag.glsl:12 mod 1, the paint shader's mod 1, Color.HSBtoRGB).
+-- BaseVehicle.java:5817), it is saved (:2663) and goes out with the car (VehicleFullUpdatePacket.java:126) and every
+-- VehicleProperties (VehicleProperties.java:42); every reader drops the integer part (vehicle_common.frag.glsl:12
+-- mod 1, the paint shader's mod 1, Color.HSBtoRGB).
 L.SHELL_DOORS = { "DoorFrontLeft", "DoorFrontRight", "DoorRearLeft", "DoorRearRight", "TrunkDoor" }
 function L.syncShell(vehicle)
     local bits = 0
@@ -37,7 +38,15 @@ function L.syncShell(vehicle)
     local hue = h - math.floor(h) + bits
     if hue == h then return end
     vehicle:setColorHSV(hue, vehicle:getColorSaturation(), vehicle:getColorValue())
-    vehicle:transmitColorHSV() -- MP server: flag 4096, VehicleProperties to every client (BaseVehicle.java:9209-9212)
+    if not isServer() then return end
+    -- MP: a command to every client, not transmitColorHSV: each VehicleProperties re-adds a key that is in the ignition
+    -- on every client, which logs "ItemContainer.AddItem > Error, container already has id" (VehicleProperties.java:27-33).
+    -- ponytail: no sequence number; a resent command overtaking a newer one (RELIABLE, unordered: PacketTypes.java:510)
+    -- leaves the older hue until the next door change or VehicleProperties. Add a per-car counter if it shows up.
+    local list = getOnlinePlayers()
+    for i = 0, list:size() - 1 do
+        sendServerCommand(list:get(i), T.MODULE, "shell", { vid = vehicle:getId(), hue = hue })
+    end
 end
 
 -- client: the dashboard key
@@ -63,6 +72,10 @@ if not isServer() then
         local anim = args.open and "Open" or "Close"
         v:playPartAnim(part, anim)
         if args.sound then v:playPartSound(part, getPlayer(), anim) end
+    end
+    T.ClientCommands.shell = function(args) -- L.syncShell's hue from the server
+        local v = getVehicleById(args.vid)
+        if v and args.hue then v:setColorHSV(args.hue, v:getColorSaturation(), v:getColorValue()) end
     end
 end
 
