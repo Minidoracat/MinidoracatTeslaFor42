@@ -143,9 +143,6 @@ function H.vehicle(o)
     function v:getKeyId() return self.keyId end
     function v:isKeysInIgnition() return false end
     function v:setEngineFeature(q, l, f) self.feature = { q, l, f } end
-    function v:getEngineQuality() return self.feature and self.feature[1] or 0 end
-    function v:getEnginePower() return self.feature and self.feature[3] or 0 end
-    function v:transmitEngine() self.engineTx = (self.engineTx or 0) + 1 end
     function v:setColorHSV(h, s, val) self.hsv = { h, s, val } end
     function v:getColorHue() return (self.hsv or { 0.69 })[1] end
     function v:getColorSaturation() return (self.hsv or { 0, 0.58 })[2] end

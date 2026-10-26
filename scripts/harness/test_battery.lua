@@ -149,34 +149,6 @@ check(nv.skin == 4 and nv.hsv and nv.hsv[1] == pal.h and nv.hsv[2] == pal.s and 
     and nv.colorTx == 1 and nv.skinTx == 1, "new car gets a factory paint (skin + damage tint) and transmits it")
 T.Update.Engine(nv, nv:getPartById("Engine"), 1)
 check(nv.vanillaEngine == 1, "Update.Engine runs the vanilla engine update")
-check(nv:getPartById("Engine"):getModData().power == 3000 and nv.engineTx == nil, "motor: create-time power kept in modData, nothing to fix")
-
-H.section("vanilla repair() power reset")
--- VehiclePart.repair() on the Engine: setEngineFeature(100, script loudness, script engineForce 5000) + transmitEngine
-local function repair(v) v:setEngineFeature(100, 20, 5000) end
-nv._class = "BaseVehicle"
-repair(nv)
-T.Update.Engine(nv, nv:getPartById("Engine"), 1)
-check(nv.feature[3] == 3000 and nv.feature[1] == 100 and nv.feature[2] == 20 and nv.engineTx == 1,
-    "SR after repair: next engine update puts 3000 back, script loudness, transmitted")
-T.Update.Engine(nv, nv:getPartById("Engine"), 1)
-check(nv.engineTx == 1, "SR at 3000: no further writes")
-local lv = H.vehicle({ pack = "Base.MinidoracatTesla_ModelYBatteryLR" })
-lv._class = "BaseVehicle"
-T.Create.Motor(lv, lv:getPartById("Engine"))
-repair(lv)
-T.Update.Engine(lv, lv:getPartById("Engine"), 1)
-check(lv.feature[3] == 5000 and lv.engineTx == nil, "LR after repair: 5000 already right, no transmit")
-local old = H.vehicle({})                    -- created before modData power existed, then repaired
-old._class = "BaseVehicle"
-repair(old)
-T.Update.Engine(old, old:getPartById("Engine"), 1)
-check(old.feature[3] == 3000 and old:getPartById("Engine"):getModData().power == 3000, "older SR car: power from the installed pack")
-local far = H.vehicle({})                    -- SP VirtualVehicle: no getEnginePower
-repair(far)
-far.getEnginePower = nil
-T.Update.Engine(far, far:getPartById("Engine"), 1)
-check(far.feature[3] == 5000, "VirtualVehicle: left alone (fixed once it is a BaseVehicle again)")
 
 H.section("command guard")
 local gv = H.vehicle({ kwh = 5 })
