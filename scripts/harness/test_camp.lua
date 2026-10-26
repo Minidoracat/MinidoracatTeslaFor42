@@ -36,8 +36,12 @@ check(md(v).camp == nil and F.lastSent("deny").args.reason == "NOT_OWNER", "camp
 
 -- starting the motor moves the driver's key into the ignition (BaseVehicle.java:8647-8675): no key in hand
 local driven = F.track(F.vehicle({ pct = 50 }))
-driven.ignition, driven.running, driven.passengers = true, true, 1
+driven.ignition, driven.running, driven.passengers = true, true, 2
 local driver = F.player("driver", { vehicle = driven })
+driven.driver = driver
+cmds.campOn(F.player("rider", { vehicle = driven }), { vid = driven:getId() })
+check(md(driven).camp == nil and F.lastSent("deny").args.reason == "NOT_DRIVER" and driven.running,
+    "camp: a passenger cannot shut the driver's motor off (vanilla shut-off is driver-only)")
 cmds.campOn(driver, { vid = driven:getId() })
 check(md(driven).camp ~= nil and not driven.running and driven.shutOffs == 1,
     "camp: motor on, parked, key in the ignition -> camp on and motor shut off in one tap (not NOT_OWNER)")

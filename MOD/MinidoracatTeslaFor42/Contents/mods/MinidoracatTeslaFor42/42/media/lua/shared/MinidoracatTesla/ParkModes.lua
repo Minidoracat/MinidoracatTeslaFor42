@@ -62,6 +62,8 @@ function C.canEnable(player, vehicle)
     -- the real car offers Camp Mode only in Park (owner's manual, "Keep Climate On, Pet Mode, and Camp Mode"): a running
     -- motor is fine (C.start shuts it off in the same tap), a moving car is not
     if math.abs(vehicle:getCurrentSpeedKmHour()) > C.MAX_KMH then return false, "MOVING" end
+    -- shutting the motor off stays the driver's call, like the vanilla shut-off (ISShutOffVehicleEngine.lua:5-8)
+    if vehicle:isEngineRunning() and vehicle:getDriver() ~= player then return false, "NOT_DRIVER" end
     if T.Battery.pct(part) < C.MIN_PCT then return false, "LOW_BATTERY" end
     return true
 end
