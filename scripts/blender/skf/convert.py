@@ -69,6 +69,12 @@ PAINT_Q = (0.12, 0.168, 0.361, 0.265, 0.155, 0.101, 0.05, 0.3)
 # percentiles of all paint texels -> quantile of the official ramp (pv.official_ramp)
 PAINT_TARGET = ((10, 0.093), (25, 0.262), (50, 0.415), (75, 0.568), (90, 0.89), (97, 0.918))
 PAINT_LIGHT = (0.0, 0.45, 0.89)            # softbox above, ahead: x-symmetric so both sides match at every heading
+# rear haunch (user 2026-10-27 「每台車這裡白白有點突兀」, white on Diamond Black): the band's nz range also covers the
+# whole rear fender above the arch and the tailgate's lower half, broad panels that landed on the ramp's highlight
+# quantiles (Diamond Black p90 151 against 64 on the rear door). Behind y [0] -> [1] and below z [2] -> [3] (centred
+# frame; the belt is z 0.13) the band keeps 1 - [4] of itself: the haunch median sits on the rear door's (official
+# REAR34: haunch and tailgate in the doors' tone), the shoulder crease above it keeps its line. Calibration knob
+HAUNCH = (-0.80, -0.95, 0.12, 0.20, 0.55)
 OFFICIAL = pv.OFFICIAL                     # design-studio renders (stage official)
 LIGHT_RGB = {"head": (255, 250, 240), "tail": (255, 30, 30)}
 
@@ -123,7 +129,14 @@ MODELY = (-0.46, 0.555, 0.033)            # left x, baseline z, cap height (true
 SMOKE_RGB = (62, 58, 60)                   # the light blade by day: smoked lens, so the black letters read
 GATE_COMPS = (("Plane.062", 248, -1), ("Plane.014", 102, -1))   # rear window and its frame (y sign of the centre)
 PARTS = ["Body"] + list(pv.DOORS)          # part index: 0 body, 1.. DOORS order (FL, FR, RL, RR, TrunkDoor, EngineDoor)
-FRUNK_DEPTH = 0.22                         # grid: black tub under the frunk lid
+# frunk under the lid (frunk_tub(); user 2026-10-27 「前面是不是沒做置物箱的位置」): 2025 Model Y front trunk 117 L, a
+# tapered bin about 70 cm wide at the windshield end, 91 cm on its longest line, 35-43 cm deep (basenor.com
+# model-y-juniper-frunk-dimensions: owner measurements), framed by black trim panels over the cowl and shock towers.
+# Grid, pre-centre: the opening's jamb `ledge` down, a trim shelf in to the bin's `rim` (flange, `rim` wide), the
+# bin's top outline (rear / front y and half widths: a rounded trapezoid, corner radius `corner`), walls `taper` in to
+# a floor `depth` under the rim (a plane through the rear and front middles: the lid falls to the nose); `n` rays
+# round the plan centre resample the opening outline. build prints the volume (FRUNK ... L)
+FRUNK_TUB = dict(ledge=0.08, rim=0.025, y=(1.07, 1.80), half=(0.29, 0.18), corner=0.07, taper=0.11, depth=0.29, n=128)
 ZN = list(pv.Z)                            # zone index -> name
 CELL = {c: i for i, c in enumerate(pv.CABIN_CELLS)}
 GLASS_ZONES = ("WinT", "WinH", "WinLH", "WinLT", "WinRH", "WinRT", "LightBarL")   # UV1 glass code order (the frag's
@@ -709,9 +722,9 @@ def paint_hsv(hsvs):
 def textures(car, c):
     zone_rgb = np.array([pv.Z[z] for z in ZN], float)
     aux = np.stack([c["paint"].astype(float), (c["lamp"] > 0).astype(float), (c["lamp"] == 2).astype(float)], 1)
-    fz = pv.face_centres(car)[:, 2]
-    hgt = np.repeat(((fz - fz.min()) / np.ptp(fz))[:, None], 3, 1)    # 0 at the lowest face, 1 at the roof
-    b = bake(car, {"col": c["rgb"], "zone": zone_rgb[c["zone"]], "aux": aux, "hgt": hgt,
+    fz = pv.face_centres(car)
+    hgt = np.repeat(((fz[:, 2] - fz[:, 2].min()) / np.ptp(fz[:, 2]))[:, None], 3, 1)    # 0 at the lowest face, 1 at the roof
+    b = bake(car, {"col": c["rgb"], "zone": zone_rgb[c["zone"]], "aux": aux, "hgt": hgt, "pos": fz,
                    "badge": np.repeat(np.where(c["mat"] == "badge_chrome", 1.0, 0.5 * c["badge"])[:, None], 3, 1)})
     col, zon, aux, ao = b["col"][..., :3], b["zone"][..., :3], b["aux"][..., :3], b["ao"][..., 0]
     nrm = b["nrm"][..., :3] * 2 - 1
@@ -724,19 +737,24 @@ def textures(car, c):
     # official render's paint quantiles, hood and roof above the middle, a bright band on the shoulder) and the height
     # (the lower body reflects the ground) times AO; the quantile picks the official render's paint colour there
     # (official_ramp), then CAL / GAIN
-    q = (PAINT_Q[0] + PAINT_Q[1] * np.clip((nz + 0.3) / 1.2, 0, 1)
-         + PAINT_Q[2] * np.exp(-((nz - PAINT_Q[3]) / PAINT_Q[4]) ** 2)
+    lit = 0.55 + 0.45 * ao
+    band = PAINT_Q[2] * np.exp(-((nz - PAINT_Q[3]) / PAINT_Q[4]) ** 2)
+    q = (PAINT_Q[0] + PAINT_Q[1] * np.clip((nz + 0.3) / 1.2, 0, 1) + band
          + PAINT_Q[5] * np.exp(-(1 - nrm @ np.array(PAINT_LIGHT)) / PAINT_Q[6])
-         + PAINT_Q[7] * b["hgt"][..., 0]) * (0.55 + 0.45 * ao)
+         + PAINT_Q[7] * b["hgt"][..., 0]) * lit
+    fade = HAUNCH[4] * (1 - pv.smoothstep(HAUNCH[1], HAUNCH[0], b["pos"][..., 1])) \
+        * (1 - pv.smoothstep(HAUNCH[2], HAUNCH[3], b["pos"][..., 2]))
     # AO samples are noisy and the ramp is steep in places: blurred inside the paint (about 6 px of 2048), else flat
     # panels came out speckled
     pm = paint.astype(np.float32)
-    q = pv.box_blur(pv.box_blur(q * pm, 3), 3) / np.maximum(pv.box_blur(pv.box_blur(pm, 3), 3), 1e-6)
-    # spread: a monotone remap of this q's percentiles onto PAINT_TARGET, so the paint keeps the previous skin's
-    # brightness and contrast; equal q stay equal (no texel-rank ties)
-    q = q[paint]
+    den = np.maximum(pv.box_blur(pv.box_blur(pm, 3), 3), 1e-6)
+    blur = lambda a: (pv.box_blur(pv.box_blur(a * pm, 3), 3) / den)[paint]  # noqa: E731
+    # spread: a monotone remap of the full q's percentiles onto PAINT_TARGET, so the paint keeps the previous skin's
+    # brightness and contrast; equal q stay equal (no texel-rank ties). The haunch fade goes through the same anchors:
+    # every texel outside it keeps its colour
+    q0, q = blur(q), blur(q - band * fade * lit)
     pc, tg = zip(*PAINT_TARGET)
-    q = np.interp(q, [q.min(), *np.percentile(q, pc), q.max()], [0.03, *tg, 0.97])
+    q = np.interp(q, [q0.min(), *np.percentile(q0, pc), q0.max()], [0.03, *tg, 0.97])
     hsvs = {}
     for p, code in pv.PAINTS:
         ramp = pv.official_ramp(code)
@@ -867,6 +885,104 @@ def bvh_of(parts):
     return BVHTree.FromPolygons(V, F)
 
 
+def rounded(pts, r, k=8):
+    """Convex CCW polygon (M x 2) with its corners rounded to radius r: outline points, k per corner."""
+    out = []
+    for i in range(len(pts)):
+        p0, p1, p2 = pts[i - 1], pts[i], pts[(i + 1) % len(pts)]
+        n1, n2 = ((np.array([e[1], -e[0]]) / np.linalg.norm(e)) for e in (p1 - p0, p2 - p1))   # outward normals
+        c = p1 - r * (n1 + n2) / (1 + n1 @ n2)                   # r inside both edges
+        a1, a2 = math.atan2(n1[1], n1[0]), math.atan2(n2[1], n2[0])
+        a2 += 2 * math.pi * (a2 < a1)
+        out += [c + r * np.array([math.cos(a), math.sin(a)]) for a in np.linspace(a1, a2, k)]
+    return np.array(out)
+
+
+def frunk_tub(V, T, lid, body_tris, attr):
+    """The front trunk under the lid (FRUNK_TUB), in the body: jamb, black trim shelf, the bin's rim, tapered walls and
+    floor, every face towards the opening (back-face culled from outside). Rings are sampled on rays from the bin's
+    plan centre (the opening and the bin are star-shaped about it). attr(cell) -> 7 attributes. -> (points, tris,
+    attributes) pre-centre, a soup. Fails when the bin leaves the opening or crosses the body's outer skin."""
+    f = FRUNK_TUB
+    tri = T[lid]
+    pid = np.unique(np.round(V / 1e-5).astype(np.int64), axis=0, return_inverse=True)[1].ravel()
+    ed = np.concatenate([tri[:, [0, 1]], tri[:, [1, 2]], tri[:, [2, 0]]])
+    _, inv, cnt = np.unique(np.sort(pid[ed], 1), axis=0, return_inverse=True, return_counts=True)
+    ed = ed[cnt[inv.ravel()] == 1]                       # the opening's edge (by position: zone splits double vertices)
+    C = np.array([0.0, sum(f["y"]) / 2])
+    th = np.linspace(0, 2 * math.pi, f["n"], endpoint=False)
+    d = np.stack([np.cos(th), np.sin(th)], 1)
+    cross = lambda a, b: a[..., 0] * b[..., 1] - a[..., 1] * b[..., 0]  # noqa: E731
+
+    def ring(P, Q, zP, zQ):
+        """Nearest crossing of each ray with segments P -> Q (plan): radius and interpolated z."""
+        e, w = (Q - P)[None], (P - C)[None]
+        den = cross(d[:, None], e)
+        with np.errstate(divide="ignore", invalid="ignore"):
+            t, s = cross(w, e) / den, cross(w, d[:, None]) / den
+        t = np.where((s >= 0) & (s <= 1) & (t > 1e-6), t, np.inf)
+        k = np.argmin(t, 1)
+        r, s = t[np.arange(len(th)), k], s[np.arange(len(th)), k]
+        if not np.isfinite(r).all():
+            raise SystemExit("frunk: a ray misses an outline")
+        return r, zP[k] + s * (zQ[k] - zP[k])
+
+    def outline(y0, y1, hr, hf, cr):
+        p = rounded(np.array([[-hr, y0], [hr, y0], [hf, y1], [-hf, y1]]), cr)
+        return ring(p, np.roll(p, -1, 0), np.zeros(len(p)), np.zeros(len(p)))[0]
+    r_o, z_o = ring(V[ed[:, 0], :2], V[ed[:, 1], :2], V[ed[:, 0], 2], V[ed[:, 1], 2])
+    (y0, y1), (hr, hf), tp = f["y"], f["half"], f["taper"]
+    r_t = outline(y0, y1, hr, hf, f["corner"])
+    r_f = outline(y0 + tp, y1 - tp, hr - tp, hf - tp, max(f["corner"] - tp, 0.02))
+    if (r_t + f["rim"] > r_o - 0.01).any():
+        raise SystemExit(f"frunk: the bin's rim reaches the opening (margin {(r_o - r_t - f['rim']).min():.3f})")
+    z_s = z_o - f["ledge"]                               # trim shelf and the bin's rim
+    pt = lambda r, z: np.column_stack([C + d * r[:, None], np.broadcast_to(z, r.shape)])  # noqa: E731
+    rim = pt(r_t, z_s)
+    # the floor: a plane `depth` under the rim's rear and front middles (the lid falls 0.3 grid to the nose; a level
+    # floor left the front 3 cm deep)
+    (yr, zr), (yf, zf) = ((rim[i, 1], z_s[i] - f["depth"]) for i in np.argmin(np.abs(th[:, None] - [1.5 * math.pi,
+                                                                                                   0.5 * math.pi]), 0))
+    plane = lambda p: np.column_stack([p[:, :2], zr + (p[:, 1] - yr) * (zf - zr) / (yf - yr)])  # noqa: E731
+    rings = [pt(r_o, z_o), pt(r_o, z_s), pt(r_t + f["rim"], z_s), rim, plane(pt(r_f, 0.0))]
+    # (cell, faces up): jamb, shelf, rim, wall; the floor "dash", up
+    bands = [("base", False), ("base", True), ("console", True), ("dash", False)]
+    tris, cl, up = [], [], []
+    for (a, b), (c, u) in zip(zip(rings, rings[1:]), bands):
+        b1, a1 = np.roll(b, -1, 0), np.roll(a, -1, 0)
+        tris += [np.stack([a, a1, b1], 1), np.stack([a, b1, b], 1)]
+        cl += [c] * 2 * len(th)
+        up += [u] * 2 * len(th)
+    fl = rings[-1]
+    tris.append(np.stack([np.broadcast_to(plane(np.array([[*C, 0.0]]))[0], fl.shape), fl, np.roll(fl, -1, 0)], 1))
+    cl += ["dash"] * len(th)
+    up = np.array(up + [True] * len(th))
+    P = np.concatenate(tris)
+    n = np.cross(P[:, 1] - P[:, 0], P[:, 2] - P[:, 0])
+    n /= np.maximum(np.linalg.norm(n, axis=1, keepdims=True), 1e-12)
+    want = np.where(up[:, None], [[0, 0, 1.0]], np.column_stack([C - P.mean(1)[:, :2], np.zeros(len(P))]))
+    flip = (n * want).sum(1) < 0
+    P[flip] = P[flip][:, [0, 2, 1]]
+    n[flip] *= -1
+    # the shelf and rim twist between rays (z follows the opening edge): their two triangles per quad tilt opposite
+    # ways and lit as stripes; they shade straight up (the floor is one plane)
+    n[:-len(th)][up[:-len(th)]] = (0, 0, 1)
+    # poke-through: from inside the bin (floor centre, 2 cm up) to every bin vertex nothing of the body's skin is crossed
+    tree, o = bvh_of([(V, body_tris)]), Vector(plane(np.array([[*C, 0.0]]))[0] + [0, 0, 0.02])
+    for p in np.concatenate(rings[2:]):
+        v = Vector(p) - o
+        hit = tree.ray_cast(o, v.normalized(), v.length - 1e-4)
+        if hit[0] is not None:
+            raise SystemExit(f"frunk: the bin crosses the body at {np.round(hit[0], 3).tolist()}")
+    area = lambda r: 0.5 * (r * np.roll(r, -1)).sum() * math.sin(2 * math.pi / len(th))  # noqa: E731  (fan of rays)
+    top, bot, dep = area(r_t), area(r_f), z_s.mean() - fl[:, 2].mean()
+    vol = (top + bot + math.sqrt(top * bot)) / 3 * dep / K ** 3 * 1000
+    print(f"FRUNK opening y {C[1] + (d[:, 1] * r_o).min():.3f}..{C[1] + (d[:, 1] * r_o).max():.3f} z {z_o.min():.3f}.."
+          f"{z_o.max():.3f}, floor z {zr:.3f} (rear)..{zf:.3f} (front), bin {top / K ** 2:.2f} m2 top, "
+          f"{f['depth'] / K * 100:.0f} cm deep, ~{vol:.0f} L, {len(P)} tris")
+    return P.reshape(-1, 3), np.arange(3 * len(P)).reshape(-1, 3), corners(np.array([attr(c) for c in cl]), n)
+
+
 def build_cabin(bodyV, Tb, Ab, meshes, shift):
     """The mod's own cabin and trunk (cabin.py) inside this body: shell rays against the closed car (centred), shell
     faces in a door opening coded for the shader. -> (points, tris, attrs) centred, to join the body."""
@@ -947,14 +1063,10 @@ def pieces(car, c, shift):
             t = np.concatenate([t, bt + len(P)])
             P = np.concatenate([P, v])
             a = np.concatenate([a, ba])
-        if lid:     # frunk tub in the body: the lid's outline FRUNK_DEPTH down, walls and floor facing in, black
-            Pt, tt, at_, _ = pv.slab(V, T, A, skin, np.array([0, 0, -FRUNK_DEPTH]), cab_attr("base"), BELT_Z - shift[2])
-            n_outer = int(skin.sum())
-            tt, at_ = tt[n_outer:][:, [0, 2, 1]], at_[n_outer:][:, [0, 2, 1]].copy()
-            at_[..., :4] = cab_attr("base")[:4]
-            at_[..., 4:] *= -1
-            body_t.append(np.where(tt >= len(V), tt - len(V) + len(bodyV), tt))
-            bodyV = np.concatenate([bodyV, Pt[len(V):]])
+        if lid:     # the front trunk in the body, under the lid's outline
+            Pt, tt, at_ = frunk_tub(V, T, skin, T[part == 0], cab_attr)
+            body_t.append(tt + len(bodyV))
+            bodyV = np.concatenate([bodyV, Pt])
             body_a.append(at_)
         dv = V[np.unique(T[sel])]
         if sd:
