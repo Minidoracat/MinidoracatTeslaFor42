@@ -427,10 +427,12 @@ check(T.CheckOperate.Battery(tesla, part) == true and brakes == 1 and halo == ni
     "still held next frame: controls live (the forced brake beats the accelerator), hint at most every 3 s")
 H.advanceMs(C.BRAKE_MS)
 check(T.CheckOperate.Battery(tesla, part) == false and brakes == 2, "still held BRAKE_MS later: forced brake renewed (1 s window)")
+check(T.CheckOperate.Battery(tesla, part) == true and brakes == 2, "never two held-back calls in a row: the next one updates")
 H.advanceMs(3001)
 T.CheckOperate.Battery(tesla, part)
 check(halo == "IGUI_MinidoracatTesla_Deny_CABLE_PLUGGED", "still on the pedal 3 s later: hint again")
 keys.fwd, keys.back = nil, true
+T.CheckOperate.Battery(tesla, part)
 H.advanceMs(C.BRAKE_MS)
 check(T.CheckOperate.Battery(tesla, part) == false and brakes == 4, "reverse held: braked too")
 keys.back = nil
@@ -444,6 +446,37 @@ drv.getJoypadBind = function() return 2 end
 function isJoypadRTPressed(pad) return pad == 2 end
 check(T.CheckOperate.Battery(tesla, part) == false and brakes == b0 + 1, "split-screen driver 2: their joypad trigger does")
 keys.fwd = nil
+-- updateControls as the engine runs it (CarController.java:936-980, brake beats gas :174-178), the accelerator held
+-- since before the plug (forward already true, no forced brake yet), at 60 fps and at 600 ms frames: never gas while
+-- held past the first frame, clears on release
+local fbAt = 0
+tesla.setForceBrake = function() fbAt = getTimestampMs() end
+drv.getPlayerNum, drv.getJoypadBind = function() return 0 end, function() return -1 end
+local function drive(frameMs, frames)
+    local ctl, gas = { forward = true, brake = false }, 0
+    keys.fwd = nil
+    T.CheckOperate.Battery(tesla, part) -- no pedal: nothing pending
+    H.advanceMs(1000)
+    keys.fwd = true
+    for _ = 1, frames do
+        H.advanceMs(frameMs)
+        if T.CheckOperate.Battery(tesla, part) then -- isOperational -> updateControls
+            ctl.forward = keys.fwd == true
+            local dt = getTimestampMs() - fbAt
+            ctl.brake = dt > 0 and dt < 1000
+        end
+        if ctl.forward and not ctl.brake then gas = gas + 1 end
+    end
+    keys.fwd = nil
+    H.advanceMs(frameMs)
+    if T.CheckOperate.Battery(tesla, part) then ctl.forward = keys.fwd == true end
+    return gas, ctl.forward
+end
+for _, ms in ipairs({ 16, 600 }) do
+    local gas, fwd = drive(ms, 60)
+    check(gas <= 1 and fwd == false, ms .. " ms frames, accelerator held since before the plug: at most the first frame on gas ("
+        .. gas .. "), released -> forward clears")
+end
 T.Battery.part(tesla):getModData().chg = nil
 tesla.driver, tesla.running = nil, false
 h:update(); h:update(); h:update()

@@ -153,28 +153,29 @@ Events.OnFillWorldObjectContextMenu.Add(onFill)
 -- reads them (keyboard only for player 0, the joypad triggers, CarController.java:936-971), the vanilla forced brake
 -- (BaseVehicle.setForceBrake, as ISStopVehicle.lua does) keeps the car still: in updateControls it sets brake for 1 s
 -- after the call (CarController.java:974-980), and brake beats the accelerator (:174-178). It does not count in the
--- millisecond of the call, so it is renewed every BRAKE_MS and that frame's input is held back. The controls stay
--- live otherwise, so a pedal held since before the plug is braked too and clears on release.
+-- millisecond of the call, so it is renewed every BRAKE_MS and that frame's input is held back, never two calls in a
+-- row: the one after a renewal updates under that brake, so the controls refresh at least every other frame whatever
+-- the frame time (< 1 s), and a pedal held since before the plug is braked too and clears on release.
 -- Says why at most every HINT_MS.
 C.HINT_MS = 3000
 C.BRAKE_MS = 500
 local hintAt = 0
-local brakeAt = {} -- vehicle id -> ms of the last setForceBrake
+local brakeAt, renewed = {}, {} -- vehicle id -> ms of the last setForceBrake / the last call renewed it
 function T.onPluggedDrive(vehicle)
     local p = vehicle:getDriver()
     if not p or not p:isLocalPlayer() then return false end
+    local id = vehicle:getId()
     local pad = p:getJoypadBind()
     local pedal = (p:getPlayerNum() == 0 and (isKeyDown(KeybindId.FORWARD) or isKeyDown(KeybindId.BACKWARD)))
         or (pad ~= -1 and (isJoypadRTPressed(pad) or isJoypadLTPressed(pad)))
-    if not pedal then return false end
+    if not pedal then renewed[id] = nil; return false end
     local now = getTimestampMs() -- System.currentTimeMillis, the clock forceBrake uses (LuaManager.java:9295-9297)
     if now >= hintAt then
         hintAt = now + C.HINT_MS
         HaloTextHelper.addBadText(p, getText("IGUI_MinidoracatTesla_Deny_CABLE_PLUGGED"))
     end
-    local id = vehicle:getId()
-    if now - (brakeAt[id] or 0) < C.BRAKE_MS then return false end
-    brakeAt[id] = now
+    if renewed[id] or now - (brakeAt[id] or 0) < C.BRAKE_MS then renewed[id] = nil; return false end
+    brakeAt[id], renewed[id] = now, true
     vehicle:setForceBrake()
     return true
 end

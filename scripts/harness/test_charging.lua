@@ -294,9 +294,15 @@ H.fire("OnSpawnVehicleEnd", reg)
 check(lo5.vid == 9001 and C.activeCount() >= 1, "vehicle load relinks the charger to the new id")
 check(B.kwh(B.part(reg)) > before and sentrySettled == 1, "relink settles the offline hour and calls Sentry.settle")
 local gone = car(5, 700.5, 700.5)
-B.part(gone):getModData().chg = { x = 700, y = 700, z = 0, kind = "WallConnector", last = 1, target = 90 }
+square(700, 700, 0, { elec = true }) -- a generator powers the square, but the charger is gone
+B.part(gone):getModData().chg = { x = 700, y = 700, z = 0, kind = "WallConnector", last = 1, target = 90, power = "grid" }
+local goneFree, h0 = nil, H.hours()
+T.Sentry.settle = function(_, _, freeUntil) goneFree = freeUntil end
+H.setHours(400) -- loaded again after the 336 grid shut-off
 H.fire("OnSpawnVehicleEnd", gone)
+H.setHours(h0)
 check(B.part(gone):getModData().chg == nil, "charger gone while offline: the link is cleared on load")
+check(goneFree == 336, "charger gone, square still powered: sentry standby free only to the grid shut-off (no generator takeover)")
 T.Sentry.settle = realSentry
 
 H.section("charger removed")

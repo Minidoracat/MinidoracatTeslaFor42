@@ -111,8 +111,7 @@ function C.unlink(o)
 end
 
 -- Sentry standby is booked on events (Sentry.settle) with the power state it ran under (Battery.onCharger), so settle
--- it before that state changes: every charging settle, and before the link goes (clearChg: Sentry.settle asks
--- C.powerUntil itself).
+-- it before that state changes: every charging settle, and before the link goes.
 local function settleSentry(vehicle, now, freeUntil)
     local f = T.Sentry and T.Sentry.settle
     if f then f(vehicle, now, freeUntil) end
@@ -134,8 +133,12 @@ function C.powerUntil(chg, now, generator)
     return generator and now or off
 end
 
+-- The link goes: the stretch since the last settle is booked without a generator taking over after the grid shut-off
+-- (C.powerUntil with generator = false): on load with the charger gone or taken (relink) a powered square no longer
+-- says this car had a charger. ponytail: a car pulled out of reach after the shut-off pays that bit itself.
 local function clearChg(vehicle, part)
-    settleSentry(vehicle, T.hours())
+    local now = T.hours()
+    settleSentry(vehicle, now, C.powerUntil(part:getModData().chg, now, false))
     part:getModData().chg = nil
     vehicle:transmitPartModData(part)
     touchVM(vehicle)
