@@ -101,5 +101,7 @@
     "IGUI_MinidoracatTesla_Deny_MOVING": "Pare o carro primeiro",
     "IGUI_MinidoracatTesla_Deny_LIFTGATE_LOCKED": "A trava da tampa traseira está quebrada",
     "IGUI_MinidoracatTesla_RepairDriveUnit": "Reparar Unidade Motriz",
-    "IGUI_MinidoracatTesla_TakeDriveUnitParts": "Retirar Peças da Unidade Motriz"
+    "IGUI_MinidoracatTesla_TakeDriveUnitParts": "Retirar Peças da Unidade Motriz",
+    "IGUI_MinidoracatTesla_Deny_NOT_CAMPING": "Ative primeiro o Modo Acampamento",
+    "IGUI_MinidoracatTesla_Deny_FULL": "Já está totalmente carregada"
 }

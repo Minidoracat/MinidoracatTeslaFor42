@@ -101,5 +101,7 @@
     "IGUI_MinidoracatTesla_Deny_MOVING": "Önce aracı durdur",
     "IGUI_MinidoracatTesla_Deny_LIFTGATE_LOCKED": "Bagaj kapağının kilidi bozuk",
     "IGUI_MinidoracatTesla_RepairDriveUnit": "Tahrik Ünitesini Tamir Et",
-    "IGUI_MinidoracatTesla_TakeDriveUnitParts": "Tahrik Ünitesi Parçalarını Al"
+    "IGUI_MinidoracatTesla_TakeDriveUnitParts": "Tahrik Ünitesi Parçalarını Al",
+    "IGUI_MinidoracatTesla_Deny_NOT_CAMPING": "Önce Kamp Modu'nu açın",
+    "IGUI_MinidoracatTesla_Deny_FULL": "Zaten tamamen dolu"
 }

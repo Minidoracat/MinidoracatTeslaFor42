@@ -83,7 +83,8 @@ local function setLights(v, on)
     v:setHeadlightsOn(on)
     for i = 0, v:getLightCount() - 1 do
         local lp = v:getLightByIndex(i)
-        if lp then lp:setLightActive(on) end
+        -- headlights only, like the engine's own switch (VehicleParts.java:373): the camp cabin light stays as it is
+        if lp and lp:getId():find("Headlight") then lp:setLightActive(on) end
     end
 end
 

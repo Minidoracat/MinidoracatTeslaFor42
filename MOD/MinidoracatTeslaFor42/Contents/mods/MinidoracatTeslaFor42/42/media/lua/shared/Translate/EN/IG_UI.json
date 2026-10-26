@@ -101,5 +101,7 @@
     "IGUI_MinidoracatTesla_Deny_MOVING": "Stop the car first",
     "IGUI_MinidoracatTesla_Deny_LIFTGATE_LOCKED": "The liftgate lock is broken",
     "IGUI_MinidoracatTesla_RepairDriveUnit": "Repair Drive Unit",
-    "IGUI_MinidoracatTesla_TakeDriveUnitParts": "Take Drive Unit Parts"
+    "IGUI_MinidoracatTesla_TakeDriveUnitParts": "Take Drive Unit Parts",
+    "IGUI_MinidoracatTesla_Deny_NOT_CAMPING": "Turn on Camp Mode first",
+    "IGUI_MinidoracatTesla_Deny_FULL": "Already fully charged"
 }

@@ -101,5 +101,7 @@
     "IGUI_MinidoracatTesla_Deny_MOVING": "Halte das Auto zuerst an",
     "IGUI_MinidoracatTesla_Deny_LIFTGATE_LOCKED": "Das Schloss der Heckklappe ist kaputt",
     "IGUI_MinidoracatTesla_RepairDriveUnit": "Antriebseinheit reparieren",
-    "IGUI_MinidoracatTesla_TakeDriveUnitParts": "Antriebseinheit-Teile ausbauen"
+    "IGUI_MinidoracatTesla_TakeDriveUnitParts": "Antriebseinheit-Teile ausbauen",
+    "IGUI_MinidoracatTesla_Deny_NOT_CAMPING": "Zuerst den Camp-Modus einschalten",
+    "IGUI_MinidoracatTesla_Deny_FULL": "Bereits voll geladen"
 }

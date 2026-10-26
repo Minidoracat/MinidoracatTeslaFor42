@@ -101,5 +101,7 @@
     "IGUI_MinidoracatTesla_Deny_MOVING": "먼저 차를 세우십시오",
     "IGUI_MinidoracatTesla_Deny_LIFTGATE_LOCKED": "리프트게이트 잠금장치가 고장났습니다",
     "IGUI_MinidoracatTesla_RepairDriveUnit": "구동 장치 수리",
-    "IGUI_MinidoracatTesla_TakeDriveUnitParts": "구동 장치 부품 분리"
+    "IGUI_MinidoracatTesla_TakeDriveUnitParts": "구동 장치 부품 분리",
+    "IGUI_MinidoracatTesla_Deny_NOT_CAMPING": "먼저 캠핑 모드를 켜세요",
+    "IGUI_MinidoracatTesla_Deny_FULL": "이미 완전히 충전되었습니다"
 }
