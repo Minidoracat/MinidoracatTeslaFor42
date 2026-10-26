@@ -84,6 +84,38 @@ F.hours = F.hours + 10
 S.settle(v)
 check(math.abs(T.Battery.kwh(v.parts.GasTank) - (k0 - 10 * S.KW) + 0.5 * T.V12_KWH) < 1e-6, "settle: 0.25 kW x 10 h + 12V refill charged")
 check(v.parts.Battery.item.uses >= 0.99 and md(v).sentry.at == F.hours, "settle: 12V topped up, at advanced")
+-- plugged into a powered charger: standby runs on the charger (Battery.onCharger), no low-battery cut-off either
+md(v).chg = { x = 1, y = 1, z = 0, power = "grid" }
+local kc = T.Battery.kwh(v.parts.GasTank)
+F.hours = F.hours + 10
+S.settle(v)
+check(T.Battery.kwh(v.parts.GasTank) == kc and md(v).sentry.at == F.hours, "settle on a powered charger: 10 h of standby take nothing")
+T.Battery.set(v, v.parts.GasTank, 75 * 0.1)
+F.hours = F.hours + 1
+S.settle(v)
+check(md(v).sentry ~= nil, "settle on a powered charger: a pack below 20% keeps sentry on")
+-- the grid ended inside the stretch (an unloaded car past the shut-off hour): free only up to it
+local at1 = md(v).sentry.at
+T.Battery.set(v, v.parts.GasTank, 60)
+local k1 = T.Battery.kwh(v.parts.GasTank)
+F.hours = at1 + 10
+S.settle(v, F.hours, at1 + 4)
+check(math.abs(T.Battery.kwh(v.parts.GasTank) - (k1 - 6 * S.KW)) < 1e-6, "grid ended 4 h into 10 h: the last 6 h come from the pack")
+T.Battery.set(v, v.parts.GasTank, 75 * 0.1)
+md(v).chg.power = nil
+F.hours = F.hours + 1
+S.settle(v)
+check(md(v).sentry == nil, "charger without power: the pack pays again and the 20% cut-off applies")
+-- arming below 20% on a powered charger: allowed (the pack does not drain); without power: LOW_BATTERY
+cmds.sentryArm(owner, { vid = v:getId() })
+check(md(v).sentry == nil and F.lastSent("deny").args.reason == "LOW_BATTERY", "arm at 10% on an unpowered charger: LOW_BATTERY")
+md(v).chg.power = "grid"
+cmds.sentryArm(owner, { vid = v:getId() })
+check(md(v).sentry ~= nil, "arm at 10% on a powered charger: armed")
+md(v).chg = nil
+T.Battery.set(v, v.parts.GasTank, kc)
+cmds.sentryArm(owner, { vid = v:getId() })
+check(md(v).sentry ~= nil, "re-armed for the next cases")
 
 -- owner offline -> stored, pulled on login, 20 cap
 F.online = { thief }

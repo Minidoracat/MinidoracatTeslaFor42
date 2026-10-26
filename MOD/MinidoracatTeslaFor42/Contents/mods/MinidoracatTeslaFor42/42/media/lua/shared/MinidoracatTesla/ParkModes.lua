@@ -10,7 +10,6 @@ local S, C = T.Sentry, T.Camp
 S.MIN_PCT = 20      -- arm needs >= 20%; settle turns sentry off below it (Tesla owner's manual)
 S.KW = 0.25         -- standby draw, kW of game time
 S.RANGE = 10        -- arm/disarm from outside: tiles between player and car
-C.MAX_KMH = 1       -- "in Park": the HUD shows N below 1 km/h too (Liftgate.MAX_KMH)
 C.HEATER_KW = 1.5   -- heater draw from the main pack while it heats or cools
 C.COMFORT = 22      -- auto climate aims the cabin here (ClimateManager.java:716-744 pivots on 22 C too)
 -- Heater "temperature" is the cabin's offset from outside; the vanilla knob only has these stops (ISVehicleACUI.lua:76-82)
@@ -75,7 +74,7 @@ function S.canArm(player, vehicle)
     if vehicle:isEngineRunning() then return false, "ENGINE_ON" end
     if vehicle:hasPassenger() then return false, "OCCUPIED" end
     if not vehicle:areAllDoorsLocked() then return false, "UNLOCKED" end
-    if T.Battery.pct(part) < S.MIN_PCT then return false, "LOW_BATTERY" end
+    if T.Battery.pct(part) < S.MIN_PCT and not T.Battery.onCharger(part) then return false, "LOW_BATTERY" end
     return true
 end
 
@@ -99,10 +98,10 @@ function C.canEnable(player, vehicle)
     if not T.authorized(player, vehicle, "PASSENGER") then return false, "NOT_OWNER" end
     -- the real car offers Camp Mode only in Park (owner's manual, "Keep Climate On, Pet Mode, and Camp Mode"): a running
     -- motor is fine (C.start shuts it off in the same tap), a moving car is not
-    if math.abs(vehicle:getCurrentSpeedKmHour()) > C.MAX_KMH then return false, "MOVING" end
+    if not T.stopped(vehicle) then return false, "MOVING" end
     -- shutting the motor off stays the driver's call, like the vanilla shut-off (ISShutOffVehicleEngine.lua:5-8)
     if vehicle:isEngineRunning() and vehicle:getDriver() ~= player then return false, "NOT_DRIVER" end
-    if T.Battery.pct(part) < C.minPct() then return false, "CAMP_LOW_BATTERY" end
+    if T.Battery.pct(part) < C.minPct() and not T.Battery.onCharger(part) then return false, "CAMP_LOW_BATTERY" end
     return true
 end
 

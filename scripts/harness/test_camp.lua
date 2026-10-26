@@ -27,8 +27,8 @@ owner.vehicle, v.passengers, v.running, v.kmh = v, 1, true, 30
 cmds.campOn(owner, { vid = v:getId() })
 check(md(v).camp == nil and F.lastSent("deny").args.reason == "MOVING" and v.running and not v.shutOffs,
     "camp: moving car -> MOVING, motor keeps running")
-v.kmh = C.MAX_KMH + 0.5
-check(select(2, C.canEnable(owner, v)) == "MOVING", "camp: rolling just above MAX_KMH is still moving")
+v.kmh = T.STOP_KMH + 0.5
+check(select(2, C.canEnable(owner, v)) == "MOVING", "camp: rolling just above STOP_KMH is still moving")
 v.kmh, v.running = 0, false
 local stranger = F.player("stranger", { vehicle = v })
 cmds.campOn(stranger, { vid = v:getId() })
@@ -83,6 +83,15 @@ local i0 = kwh(idle)
 T.Update.Heater(idle, idle.parts.Heater, 5)
 check(kwh(idle) == i0 and (idle.parts.PassengerCompartment:getModData().temperature or 0) == 0,
     "heater: no camp and motor off -> no heat, no draw (vanilla behaviour)")
+-- plugged into a powered charger (Battery.onCharger): the heater runs on the charger
+md(v).chg = { x = 1, y = 1, z = 0, power = "grid" }
+local c0, t0 = kwh(v), pc.temperature
+for _ = 1, 5 do T.Update.Heater(v, v.parts.Heater, 1) end
+check(kwh(v) == c0 and pc.temperature == t0 + 5, "heater on a powered charger: still heats, takes nothing from the pack")
+md(v).chg.power = nil
+T.Update.Heater(v, v.parts.Heater, 1)
+check(math.abs((c0 - kwh(v)) - C.HEATER_KW / 60) < 1e-6, "heater on an unpowered charger: the pack pays")
+md(v).chg = nil
 
 -- ---- auto climate: cool in summer, follow the outside air, the player's knob wins ----
 local hot = F.track(F.vehicle({ pct = 60 }))
@@ -150,6 +159,17 @@ T.Battery.set(hot, hot.parts.GasTank, 75 * 0.099)
 C.onEngineUpdate(hot, hot.parts.GasTank, 1)
 check(md(hot).camp == nil and F.lastSent("alert") and F.lastSent("alert").args.pct == 10,
     "limit: below the sandbox 10% turns camp off, alert carries 10")
+-- on a powered charger the pack does not drain: camp may start and stays on below the limit
+T.Battery.set(hot, hot.parts.GasTank, 75 * 0.05)
+md(hot).chg = { x = 1, y = 1, z = 0, power = "generator" }
+check(C.canEnable(hp, hot) == true, "limit: 5% pack on a powered charger may camp")
+cmds.campOn(hp, { vid = hot:getId() })
+C.onEngineUpdate(hot, hot.parts.GasTank, 1)
+check(md(hot).camp ~= nil, "limit: 5% pack on a powered charger keeps camping")
+md(hot).chg.power = nil
+C.onEngineUpdate(hot, hot.parts.GasTank, 1)
+check(md(hot).camp == nil, "limit: charger loses power -> the camp limit applies again")
+md(hot).chg = nil
 SandboxVars.MinidoracatTesla = nil
 
 -- ---- 12V: DC-DC top-up whenever the pack holds >= 5% (camp or not) ----

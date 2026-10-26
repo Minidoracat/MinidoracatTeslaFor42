@@ -206,6 +206,13 @@ def ic_plug(c):
     c.stroke([("M", 8, 11), ("V", 14)])
 
 
+def ic_power(c):  # IEC 60417-5009 standby symbol: a ring open at the top and a bar through the gap
+    r, cx, cy = 5.6, 8, 8.8
+    pts = [(cx + r * math.sin(math.radians(a)), cy - r * math.cos(math.radians(a))) for a in range(40, 321, 10)]
+    c.stroke([("M", *pts[0])] + [("L", *p) for p in pts[1:]])
+    c.stroke([("M", 8, 1.8), ("V", 8)])
+
+
 def ic_cell(c):  # 24x12 battery outline (viewBox 24x12)
     c.rrect(0.9, 0.9, 20.2, 10.2, 2.5, outline="#FFFFFF", ow=1.4)
     c.rrect(21.8, 3.8, 1.8, 4.4, 0.8, fill="#FFFFFF")
@@ -308,7 +315,7 @@ def build_sprites(k):
     icons16 = {
         "lock": ic_lock, "unlock": ic_unlock, "tent": ic_tent, "headlight": ic_headlight,
         "heater": ic_heater, "radio": ic_radio, "warn": ic_warn, "bolt": ic_bolt, "check": ic_check,
-        "ring": ic_ring, "dot": ic_dot, "plug": ic_plug,
+        "ring": ic_ring, "dot": ic_dot, "plug": ic_plug, "power": ic_power,
     }
     for key, fn in icons16.items():
         c = Canvas(18 * k, 18 * k, 16)

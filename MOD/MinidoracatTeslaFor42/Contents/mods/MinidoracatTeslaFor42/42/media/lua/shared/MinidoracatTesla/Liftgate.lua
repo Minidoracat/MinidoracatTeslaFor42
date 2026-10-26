@@ -12,14 +12,13 @@ T.Liftgate = L
 -- doors the driver may open or close from the dashboard (the HUD car picture; nothing else is accepted)
 L.PARTS = { DoorFrontLeft = true, DoorFrontRight = true, DoorRearLeft = true, DoorRearRight = true, TrunkDoor = true,
     EngineDoor = true }
-L.MAX_KMH = 1 -- "parked"; the HUD shows N below 1 km/h too
 
 -- Returns the installed door part `id` (one of L.PARTS), or nil and an IGUI_MinidoracatTesla_Deny_<reason> suffix.
 function L.check(player, vehicle, id)
     if not vehicle or not player or vehicle:getDriver() ~= player then return nil, "NOT_DRIVER" end
     local part = type(id) == "string" and L.PARTS[id] and vehicle:getPartById(id)
     if not part or not part:getInventoryItem() or not part:getDoor() then return nil, "NO_DOOR" end
-    if math.abs(vehicle:getCurrentSpeedKmHour()) > L.MAX_KMH then return nil, "MOVING" end
+    if not T.stopped(vehicle) then return nil, "MOVING" end
     return part
 end
 

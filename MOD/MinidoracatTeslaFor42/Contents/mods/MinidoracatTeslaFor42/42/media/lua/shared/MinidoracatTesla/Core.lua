@@ -13,6 +13,7 @@ T.ClientCommands = T.ClientCommands or {}
 T.Update = T.Update or {}
 T.Create = T.Create or {}
 T.CheckEngine = T.CheckEngine or {}
+T.CheckOperate = T.CheckOperate or {}
 T.Battery = T.Battery or {}
 T.ContainerAccess = T.ContainerAccess or {}
 
@@ -97,6 +98,14 @@ function B.pct(part)
     if cap <= 0 then return 0 end
     return math.max(0, math.min(100, B.kwh(part) * 100 / cap))
 end
+-- Plugged in and the charger has power (grid or a running generator, chg.power from the last settle, also while full
+-- or stopped): the car's own loads (motor standby, climate, camp, 12V, sentry) run on the charger, not the pack. Model Y
+-- owner's manual, Charging Instructions: "when Model Y is parked and plugged in ... it uses energy from the charging
+-- equipment instead of the battery". Writers: server Battery.lua B.draw.
+function B.onCharger(part)
+    local chg = part and part:getModData().chg
+    return chg ~= nil and chg.power ~= nil
+end
 
 -- km per kWh at the reference speed. Consumption is per game minute (like vanilla Vehicles.Update.GasTank),
 -- so distance per game minute depends on DayLength: real seconds per game minute = minutesPerDay*60/1440
@@ -116,10 +125,35 @@ function T.rangeKm(vehicle)
     return B.kwh(part) * T.kmPerKwh(vehicle)
 end
 
+-- "Stopped" for Park-only actions (plug in, power off, liftgate, camp): |speed| <= 1 km/h; the HUD shows N below
+-- 1 km/h too. A remote driver's speed on the server is the client-reported jniSpeed (BaseVehicle.java:4312-4316).
+T.STOP_KMH = 1
+function T.stopped(vehicle)
+    return math.abs(vehicle:getCurrentSpeedKmHour()) <= T.STOP_KMH
+end
+
 -- GasTank checkEngine (shared: isEngineWorking runs on clients too, VehicleParts.java:167-177, e.g. the radial
--- menu's start-engine slice ISVehicleMenu.lua:88-106). Empty pack or charge cable plugged in = cannot start.
+-- menu's start-engine slice ISVehicleMenu.lua:88-106). Empty pack = cannot start. A plugged-in car may start (powers
+-- on in Park, owner's manual "Shifting"); CheckOperate keeps it from driving off.
 function T.CheckEngine.Battery(vehicle, part)
-    return part:getInventoryItem() ~= nil and vehicle:hasEnoughGasToRun() and part:getModData().chg == nil
+    return part:getInventoryItem() ~= nil and vehicle:hasEnoughGasToRun()
+end
+
+-- GasTank checkOperate: the local driver's input reaches the car only while this is true (BaseVehicle.java:4616-4625
+-- isOperational -> CarController.updateControls, called each frame for the local driver from IsoPlayer.java:4386-4387;
+-- vanilla tires have the same per-frame hook, Vehicles.CheckOperate.Tire). Plugged in = no driving: "Model Y does not
+-- shift out of Park while a charge cable is plugged in" (owner's manual, Shifting). MP driving physics run on the
+-- driver's client, so this is where it is stopped; the server still unplugs a car that got away (Charging checkCable).
+-- Plugged in, the input is held back only while a pedal is down (T.onPluggedDrive, client ChargerMenu.lua, which also
+-- says why): with no pedal the controls refresh, so a pedal held from before the plug clears on release and the
+-- brake works. Cruise control presses the accelerator by itself (CarController.java:242-246): switched off.
+-- ponytail: a pedal held without a break from before the plug until after it keeps its old value (CarController's
+-- clientControls are not exposed to Lua); the cable check unplugs if that drives the car out of reach.
+function T.CheckOperate.Battery(vehicle, part)
+    if part:getModData().chg == nil then return true end
+    if vehicle:isRegulator() then vehicle:setRegulator(false) end
+    local f = T.onPluggedDrive
+    return not (f and f(vehicle))
 end
 
 -- Frunk container test (both sides: inventory page on the client, transfers on the server). Same rule as

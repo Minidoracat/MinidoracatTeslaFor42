@@ -2,7 +2,7 @@
 -- Design and sources: .claude/skills/tesla-dev/references/hud.md
 --   update()    10 Hz (UIManager.java:515-520): reads the car into self.st, rebuilds the quad list only on change.
 --   prerender() no game reads, no allocation: one atlas texture, one DrawSubTextureRGBA per quad, then <=2 texts.
---   render()    only while the mouse is over a quick key or a door on the car picture: highlight + hover help.
+--   render()    only while the mouse is over a quick key, the power key or a door on the car picture: highlight + help.
 require "ISUI/ISUIElement"
 require "Vehicles/ISUI/ISVehicleDashboard"
 require "MinidoracatTesla/Core"
@@ -21,6 +21,9 @@ local W, PADX, R_EDGE = 506, 16, 490
 local GEAR_X, GEAR_Y, SPD_Y = 33, 12, 36
 local PM_X, PM_W, PM_H = 18, 4, 62
 local CAR_X, CAR_Y = 172, 14
+-- power key (2026-10-27): after the gear row, 8 left of the car picture, centred on the gear row; above the speed
+-- digits (y >= 36), so the strip keeps its 506 width (AutoDrive's FSD card lines up with it)
+local PWR_X, PWR_Y, PWR = 136, 5, 28
 local KEY, KEY_GAP = 40, 6
 local KEYS_Y = 60
 local MSG_Y, MSG_H, MSG_MINW, MSG_MAXW = 108, 30, 312, 474
@@ -62,6 +65,7 @@ local NKEYS = #KEYS
 -- hover help per quick key (translation keys); camp depends on its state
 local TIPS = { "IGUI_MinidoracatTesla_Tip_Headlight", "IGUI_MinidoracatTesla_Tip_Heater", "IGUI_MinidoracatTesla_Tip_Radio" }
 local TIP_OPEN, TIP_CLOSE = "IGUI_MinidoracatTesla_Tip_DoorOpen", "IGUI_MinidoracatTesla_Tip_DoorClose" -- %1 = part name
+local TIP_ON, TIP_OFF = "IGUI_MinidoracatTesla_Tip_PowerOn", "IGUI_MinidoracatTesla_Tip_PowerOff"
 
 -- ---------------------------------------------------------------- quad list helpers
 local function quad(self, sx, sy, sw, sh, x, y, w, h, c, a)
@@ -268,10 +272,11 @@ end
 function HUD:readFast()
     local v, st = self.vehicle, self.st
     local running = v:isEngineRunning()
+    st.on = running
     local raw = math.abs(v:getCurrentSpeedKmHour()) * self.fake
     st.kmh = math.floor(raw + 0.5)
     local gear = 1
-    if running then
+    if running and (st.chg or 0) == 0 then -- plugged in = Park (owner's manual, Shifting)
         -- -1 R, 0 N, >=1 D (TransmissionNumber.java). PZ drops to N while coasting; a Tesla stays in D.
         local t = v:getTransmissionNumber()
         gear = t < 0 and 2 or ((t == 0 and raw < 1) and 3 or 4)
@@ -537,6 +542,14 @@ function HUD:build()
     digits(self, A.sm, st.range, rx, SPD_Y * S, C.text2, 1)
     spr(self, A.km, R - kmW, SPD_Y * S, C.text2, 1)
 
+    -- power key: same look as the quick keys, smaller (icon blue + underline while on)
+    local ps = PWR * S
+    local pwx, pwy = PWR_X * S, PWR_Y * S
+    self.pwrX, self.pwrY, self.pwrS = pwx, pwy, ps
+    rrect(self, pwx, pwy, ps, ps, 7 * S, C.surface, 1)
+    spr(self, A.i_power, pwx + 5 * S, pwy + 4 * S, st.on and C.accent or C.text2, 1)
+    if st.on then rect(self, pwx + 8 * S, pwy + 24 * S, 12 * S, math.max(1, 2 * S), C.accent, 1) end
+
     -- quick keys: icon turns blue and gets an underline when on
     local ks = KEY * S
     local kx = R - (NKEYS * KEY + (NKEYS - 1) * KEY_GAP) * S
@@ -567,9 +580,10 @@ function HUD:update()
     local v = self.vehicle
     if not v then return end
     local st = self.st
-    local kmh, gear, use, regen, lights = st.kmh, st.gear, st.use, st.regen, st.lights
+    local kmh, gear, use, regen, lights, on = st.kmh, st.gear, st.use, st.regen, st.lights, st.on
     self:readFast()
     local changed = kmh ~= st.kmh or gear ~= st.gear or use ~= st.use or regen ~= st.regen or lights ~= st.lights
+        or on ~= st.on
     self.tick = self.tick + 1
     if self.tick % 3 == 0 then
         local pct, range, locked, doors, avail, heater, radio, camp, sentry, chg =
@@ -609,6 +623,9 @@ function HUD:render()
         local key = TIPS[i]
         if i == 4 then key = self.st.camp and "IGUI_MinidoracatTesla_Radial_CampOff" or "IGUI_MinidoracatTesla_Tip_Camp" end
         return HUD.drawTip(self, key, self.keyX + (i - 1) * self.keyStep, self.keyY, self.keyS, self.keyS)
+    end
+    if self:powerAt(mx, my) then
+        return HUD.drawTip(self, self.st.on and TIP_OFF or TIP_ON, self.pwrX, self.pwrY, self.pwrS, self.pwrS)
     end
     local z = self:zoneAt(mx, my)
     if not z then return end
@@ -658,8 +675,12 @@ function HUD:zoneAt(x, y)
     return nil
 end
 
+function HUD:powerAt(x, y)
+    return self.pwrX ~= nil and x >= self.pwrX and x <= self.pwrX + self.pwrS and y >= self.pwrY and y <= self.pwrY + self.pwrS
+end
+
 function HUD:onMouseDown(x, y)
-    return self:keyAt(x, y) ~= nil or self:zoneAt(x, y) ~= nil
+    return self:keyAt(x, y) ~= nil or self:powerAt(x, y) or self:zoneAt(x, y) ~= nil
 end
 
 function HUD:onMouseUp(x, y)
@@ -667,6 +688,10 @@ function HUD:onMouseUp(x, y)
     if not p or not v then return false end
     local i = self:keyAt(x, y)
     if not i then
+        if self:powerAt(x, y) then
+            HUD.togglePower(p, v)
+            return true
+        end
         local z = self:zoneAt(x, y)
         if not z then return false end
         T.Liftgate.toggle(p, v, DOORS[z[1]])
@@ -698,6 +723,20 @@ function HUD.toggleCamp(player, vehicle)
         return
     end
     T.request(player, on and "campOff" or "campOn", { vid = vehicle:getId() })
+end
+
+-- power key (user 2026-10-27: the dashboard needs an on/off switch, else only Camp Mode turns the motor off).
+-- On: the vanilla start action, same as the start-engine key (ISVehicleMenu.lua:1660-1664), so the key card, a bag
+-- phone key (Keys.lua), the ignition key and hotwiring all work as before. Off: only stopped, like the real car
+-- powering off in Park (owner's manual, Controls > Safety > Power Off); then the vanilla shut-off action.
+function HUD.togglePower(player, vehicle)
+    if not vehicle:isDriver(player) then return end
+    if not vehicle:isEngineRunning() then return ISVehicleMenu.onStartEngine(player) end -- ISVehicleMenu.lua:1164
+    if not T.stopped(vehicle) then
+        HaloTextHelper.addBadText(player, T.denyText("MOVING"))
+        return
+    end
+    ISVehicleMenu.onShutOff(player) -- ISVehicleMenu.lua:1176
 end
 
 -- ---------------------------------------------------------------- vanilla dashboard hooks

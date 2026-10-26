@@ -39,12 +39,13 @@ function C.canChargeItem(player, vehicle, item)
     if not part then return false end
     if player:getVehicle() ~= vehicle then return false, "NOT_INSIDE" end
     if not part:getModData().camp then return false, "NOT_CAMPING" end
-    if T.Battery.pct(part) < C.minPct() then return false, "CAMP_LOW_BATTERY" end
+    if T.Battery.pct(part) < C.minPct() and not T.Battery.onCharger(part) then return false, "CAMP_LOW_BATTERY" end
     if C.itemNeed(item) <= 0 then return false, "FULL" end
     return true
 end
 
--- Server / SP: move up to `hours` of charging (nil: all it needs) from the drive pack into the item. Returns kWh.
+-- Server / SP: move up to `hours` of charging (nil: all it needs) from the drive pack (or a powered charger,
+-- Battery.draw) into the item. Returns kWh.
 -- The item keeps whole uses (setCurrentUsesFloat rounds to UseDelta, DrainableComboItem.java:83-87; a dry cell is
 -- 0.007 per use), so the pack pays for what the item actually gained.
 function C.chargeItem(player, vehicle, item, hours)
@@ -53,13 +54,13 @@ function C.chargeItem(player, vehicle, item, hours)
     if not part or not s then return 0 end
     local kwh = C.itemNeed(item)
     if hours then kwh = math.min(kwh, s.kw * hours) end
-    kwh = math.min(kwh, T.Battery.kwh(part))
+    if not T.Battery.onCharger(part) then kwh = math.min(kwh, T.Battery.kwh(part)) end
     if kwh <= 0 then return 0 end
     local before = item:getCurrentUsesFloat()
     item:setUsedDelta(math.min(1, before + kwh / s.kwh)) -- Vehicles.lua:515
     kwh = math.max(0, item:getCurrentUsesFloat() - before) * s.kwh
     if kwh <= 0 then return 0 end
-    T.Battery.set(vehicle, part, T.Battery.kwh(part) - kwh)
+    T.Battery.draw(vehicle, part, kwh)
     syncItemFields(player, item) -- ISGetCompost.lua:48-49
     T.log(string.format("camp outlet vid=%d %s +%.6f kWh -> %.4f", vehicle:getId(), item:getFullType(), kwh,
         item:getCurrentUsesFloat()))

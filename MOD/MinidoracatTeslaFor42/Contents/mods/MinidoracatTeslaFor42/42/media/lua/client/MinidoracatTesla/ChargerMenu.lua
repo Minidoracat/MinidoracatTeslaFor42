@@ -135,8 +135,8 @@ local function onFill(playerNum, context, worldObjects, test)
                 if why then opt.toolTip.description = opt.toolTip.description .. " (" .. tostring(why) .. ")" end
             elseif not part:getInventoryItem() then
                 disable(opt, "IGUI_MinidoracatTesla_Deny_NO_PACK")
-            elseif v:isEngineRunning() then
-                disable(opt, "IGUI_MinidoracatTesla_Deny_ENGINE_ON")
+            elseif not T.stopped(v) then
+                disable(opt, "IGUI_MinidoracatTesla_Deny_MOVING")
             elseif not T.cableReaches(info.kind, sq:getX(), sq:getY(), sq:getZ(), v) then
                 disable(opt, "IGUI_MinidoracatTesla_Deny_CABLE_SHORT")
             end
@@ -147,3 +147,23 @@ local function onFill(playerNum, context, worldObjects, test)
     end
 end
 Events.OnFillWorldObjectContextMenu.Add(onFill)
+
+-- Plugged-in car (Core.lua CheckOperate.Battery, every frame for the local driver while plugged in): true while the
+-- driver holds the accelerator or reverse, read the way CarController.updateControls reads them (keyboard only for
+-- player 0, the joypad triggers, CarController.java:936-971); then says why, at most every HINT_MS.
+C.HINT_MS = 3000
+local hintAt = 0
+function T.onPluggedDrive(vehicle)
+    local p = vehicle:getDriver()
+    if not p or not p:isLocalPlayer() then return false end
+    local pad = p:getJoypadBind()
+    local pedal = (p:getPlayerNum() == 0 and (isKeyDown(KeybindId.FORWARD) or isKeyDown(KeybindId.BACKWARD)))
+        or (pad ~= -1 and (isJoypadRTPressed(pad) or isJoypadLTPressed(pad)))
+    if not pedal then return false end
+    local now = getTimestampMs()
+    if now >= hintAt then
+        hintAt = now + C.HINT_MS
+        HaloTextHelper.addBadText(p, getText("IGUI_MinidoracatTesla_Deny_CABLE_PLUGGED"))
+    end
+    return true
+end

@@ -347,6 +347,99 @@ h:update(); h:update(); h:update()
 T.Liftgate.toggle = realToggle
 mx = nil
 
+-- ---------------------------------------------------------------- power key (user 2026-10-27)
+H.section("power key")
+local started, shut, halo = 0, 0, nil
+ISVehicleMenu.onStartEngine = function() started = started + 1 end
+ISVehicleMenu.onShutOff = function() shut = shut + 1 end
+local realBad = HaloTextHelper.addBadText
+HaloTextHelper.addBadText = function(_, t) halo = t end
+local drv = H.player({ name = "drv" })
+drv.playSound = function() end
+tesla.driver, tesla.running, tesla.speed = drv, false, 0
+dash:setVehicle(tesla)
+h.character = drv
+local px, py = h.pwrX + h.pwrS / 2, h.pwrY + h.pwrS / 2
+check(h.pwrX == 136 and h.pwrS == 28 and h.pwrY + h.pwrS < 36 and h.pwrX + h.pwrS + 8 <= 172 and h.pwrX > 110,
+    "power key: after the gear row, left of the car picture, above the speed digits")
+check(select(3, MinidoracatTeslaAPI.hudRect(0)) == 506, "power key fits: the strip stays 506 wide (AutoDrive FSD card)")
+check(h:onMouseDown(px, py) == true and h:onMouseUp(px, py) == true and started == 1 and shut == 0,
+    "motor off: click starts the car the vanilla way (ISVehicleMenu.onStartEngine)")
+tesla.running, tesla.speed = true, 30
+h:update()
+h:onMouseUp(px, py)
+check(shut == 0 and halo == "IGUI_MinidoracatTesla_Deny_MOVING", "driving at 30 km/h: no power off, red 'stop the car first'")
+tesla.speed = -1
+h:update()
+h:onMouseUp(px, py)
+check(shut == 1, "stopped (1 km/h): click powers off (ISVehicleMenu.onShutOff)")
+h.character = H.player({ name = "pax" })
+h:onMouseUp(px, py)
+check(shut == 1 and started == 1, "not the driver: the power key does nothing")
+h.character = drv
+check(h:onMouseDown(h.pwrX - 3, py) == false and h:onMouseDown(px, h.pwrY + h.pwrS + 3) == false,
+    "just outside the power key: the click passes through")
+mx, my = px, py
+h:render()
+local pr = h.tipRect
+check(lastText == "IGUI_MinidoracatTesla_Tip_PowerOff" and (pr.y + pr.h <= h.pwrY or pr.y >= h.pwrY + h.pwrS),
+    "hover, motor on: 'power off' help, not covering the key")
+tesla.running = false
+h:update()
+h:render()
+check(lastText == "IGUI_MinidoracatTesla_Tip_PowerOn", "hover, motor off: 'start' help")
+local nOff = h.n
+tesla.running = true
+h:update()
+check(h.n == nOff + 12, "motor on: the power key gets its blue underline (one more quad)")
+mx = nil
+-- plugged in: Park, whatever the transmission says (owner's manual, Shifting)
+tesla.speed, tesla.gear = 0, 0
+T.Battery.part(tesla):getModData().chg = { kw = 11.5, last = H.hours(), added = 0, target = 90 }
+h:update(); h:update(); h:update(); h:update()
+check(h.st.gear == 1 and h.st.on == true, "plugged in with the motor on: gear shows P")
+-- the pedal hint (ChargerMenu.lua T.onPluggedDrive, run from CheckOperate while plugged in)
+for _, m in ipairs({ "Map/CGlobalObjectSystem", "Map/CGlobalObject", "TimedActions/ISBaseTimedAction" }) do H.stub(m) end
+local function derive(base, name) local c = setmetatable({ Type = name }, { __index = base }); c.__index = c; return c end
+CGlobalObject = CGlobalObject or { derive = derive }
+CGlobalObjectSystem = CGlobalObjectSystem or { derive = derive, RegisterSystemClass = function() end }
+ISBaseTimedAction = ISBaseTimedAction or { derive = derive }
+require "MinidoracatTesla/ChargerMenu"
+local keys = {}
+KeybindId = { FORWARD = "fwd", BACKWARD = "back" }
+function isKeyDown(k) return keys[k] == true end
+function isJoypadRTPressed() return false end
+function isJoypadLTPressed() return false end
+drv.isLocalPlayer = function() return true end
+drv.getJoypadBind = function() return -1 end
+drv.getPlayerNum = function() return 0 end
+tesla.isRegulator = function() return false end
+local part = T.Battery.part(tesla)
+halo = nil
+check(T.CheckOperate.Battery(tesla, part) == true and halo == nil, "plugged in, no pedal: controls refresh, no hint")
+keys.fwd = true
+check(T.CheckOperate.Battery(tesla, part) == false and halo == "IGUI_MinidoracatTesla_Deny_CABLE_PLUGGED",
+    "plugged in, accelerator down: input held back, red 'unplug the charge cable first'")
+halo = nil
+check(T.CheckOperate.Battery(tesla, part) == false and halo == nil, "still held next frame: held back, hint at most every 3 s")
+H.advanceMs(3001)
+T.CheckOperate.Battery(tesla, part)
+check(halo == "IGUI_MinidoracatTesla_Deny_CABLE_PLUGGED", "still on the pedal 3 s later: hint again")
+keys.fwd, keys.back = nil, true
+check(T.CheckOperate.Battery(tesla, part) == false, "reverse held: held back too")
+keys.back = nil
+drv.getPlayerNum = function() return 1 end -- split screen: player 0's keyboard is not this driver's pedal
+keys.fwd = true
+check(T.CheckOperate.Battery(tesla, part) == true, "split-screen driver 2: player 0's W key does not count")
+drv.getJoypadBind = function() return 2 end
+function isJoypadRTPressed(pad) return pad == 2 end
+check(T.CheckOperate.Battery(tesla, part) == false, "split-screen driver 2: their joypad trigger does")
+keys.fwd = nil
+T.Battery.part(tesla):getModData().chg = nil
+tesla.driver, tesla.running = nil, false
+h:update(); h:update(); h:update()
+HaloTextHelper.addBadText = realBad
+
 -- ---------------------------------------------------------------- chargeCardRect (AutoDrive stacks its FSD card on it)
 H.section("chargeCardRect")
 ISPanelJoypad = ISUIElement:derive("ISPanelJoypad")

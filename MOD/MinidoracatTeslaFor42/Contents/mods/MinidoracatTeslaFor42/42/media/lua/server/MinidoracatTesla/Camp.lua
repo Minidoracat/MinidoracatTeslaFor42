@@ -82,7 +82,7 @@ function C.onEngineUpdate(vehicle, part, minutes)
     -- no exit event on the server (VehicleExitPacket.java:68-73; OnExitVehicle is client-only).
     -- SP may hand in a VirtualVehicle (unloaded car, VirtualVehicle.java) that has no hasPassenger: nobody inside.
     if not vehicle.hasPassenger or not vehicle:hasPassenger() then return C.stop(vehicle, bp, "left") end
-    if T.Battery.pct(bp) < C.minPct() then return C.stop(vehicle, bp, "lowBattery") end
+    if T.Battery.pct(bp) < C.minPct() and not T.Battery.onCharger(bp) then return C.stop(vehicle, bp, "lowBattery") end
     vehicle:setNeedPartsUpdate(true)
     -- the screen: boredom eases for everyone awake inside (asleep: no TV either, ISRadioInteractions.lua:189). Stats are
     -- the server's in MP (IsoPlayer.java:3046-3050) and reach the client with the periodic PlayerStats packet
@@ -103,15 +103,9 @@ Events.OnSpawnVehicleEnd.Add(function(vehicle) -- BaseVehicle.java:904
     if bp and bp:getModData().camp then vehicle:setNeedPartsUpdate(true) end
 end)
 
-local function drawMain(vehicle, kwh)
-    local p = T.Battery.part(vehicle)
-    if not p or kwh <= 0 then return end
-    local left = T.Battery.kwh(p) - kwh
-    T.Battery.set(vehicle, p, left > 0 and left or 0)
-end
-
 -- Heater part update: vanilla Vehicles.Update.Heater (Vehicles.lua:577-623) with an EV heat pump:
--- powered when the motor runs or camp is on, no engine-temperature gate, draws the main pack not the 12V.
+-- powered when the motor runs or camp is on, no engine-temperature gate, draws the main pack (or a powered charger,
+-- Battery.draw) not the 12V.
 local heaterMinutes = {} -- per vehicle id, vanilla's sync throttle (Vehicles.elaspedMinutesForHeater)
 function T.Update.Heater(vehicle, part, elapsedMinutes)
     local pc = vehicle:getPartById("PassengerCompartment")
@@ -148,7 +142,7 @@ function T.Update.Heater(vehicle, part, elapsedMinutes)
             pcData.temperature = math.min(pcData.temperature + 0.1 * elapsedMinutes, 0)
         end
     end
-    if running and target ~= 0 then drawMain(vehicle, C.HEATER_KW * elapsedMinutes / 60) end
+    if running and target ~= 0 and bp then T.Battery.draw(vehicle, bp, C.HEATER_KW * elapsedMinutes / 60) end
     -- same sync throttle as vanilla: rounded value moved and more than 2 minutes since the last send
     local id = vehicle:getId()
     local acc = (heaterMinutes[id] or 0) + elapsedMinutes

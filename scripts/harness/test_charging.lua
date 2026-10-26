@@ -160,6 +160,17 @@ check(T.CheckEngine.Battery(v, B.part(v)) == true, "unplugged car can start agai
 
 H.section("grid shut-off and generator")
 -- grid ends at world hour (14 - 0) * 24 = 336 with TimeSinceApo 1
+-- stopped (or full) on the grid: still settles at the shut-off hour, the grid runs the car's own loads until then
+local loF, isoF = charger(320, 300, { room = {}, elec = true })
+local vF = car(5, 322.5, 303.5)
+local pF = H.player({ name = "own", keys = { [77] = true }, x = 321, y = 302 })
+H.setHours(335.5)
+C.plug(pF, vF, isoF)
+B.part(vF):getModData().chg.paused = "stopped"
+C.settle(loF, H.hours())
+check(B.part(vF):getModData().chg.power == "grid" and near(C.nextDue(), 336, 1e-9),
+    "stopped on the grid at 335.5: next settle at the 336 shut-off, not an hour later")
+C.unplug(pF, vF)
 local lo2, iso2, sq2 = charger(300, 300, { room = {}, elec = true })
 local genSq = square(305, 300, 0)
 genSq.gen = generator(10, true)
@@ -170,7 +181,15 @@ local chg2 = B.part(v2):getModData().chg
 check(chg2 and chg2.src == "grid", "grid while it lasts")
 check(C.nextDue() <= 336 + 1e-9, "next settle at the grid shut-off hour")
 H.setHours(338)
+T.Sentry = T.Sentry or {}
+local realSentry0, sentryArgs = T.Sentry.settle, nil
+T.Sentry.settle = function(_, t, freeUntil) sentryArgs = { t = t, free = freeUntil } end
+check(chg2.power == "grid", "plugged on the grid: power = grid")
 C.settle(lo2, H.hours())
+T.Sentry.settle = realSentry0
+check(sentryArgs and sentryArgs.t == 338 and near(sentryArgs.free, 336, 1e-9),
+    "settle past the grid shut-off: sentry standby is free only until 336 (then the pack pays)")
+check(chg2.power == "generator", "after the shut-off: power = generator")
 local rate = WC.fuelPerHour * 0.1
 check(near(B.kwh(B.part(v2)), 3 * 11.5, 1e-6), "1 h grid + 2 h generator = 3 h of charge")
 check(near(genSq.gen.fuel, 10 - 2 * rate, 1e-6), "generator burned 0.13 x GeneratorFuelConsumption per hour for 2 h")
@@ -204,9 +223,14 @@ check(B.part(v3):getModData().chg == nil and lo3.vid == false, "towed beyond 6 t
 local lo4, iso4 = charger(500, 500, { room = {} })
 local v4 = car(5, 500.5, 500.5)
 C.plug(H.player({ name = "own", keys = { [77] = true }, x = 501, y = 501 }), v4, iso4)
+T.Sentry = T.Sentry or {}
+local realSentry1, sentryPower = T.Sentry.settle, nil
+T.Sentry.settle = function(veh) local c = B.part(veh):getModData().chg; sentryPower = c and c.power or "unplugged" end
 v4.x = 500.5 + 6.5
 T.Update.Battery(v4, B.part(v4), 1)
+T.Sentry.settle = realSentry1
 check(B.part(v4):getModData().chg == nil, "battery part update also unplugs when the cable no longer reaches")
+check(sentryPower == "grid", "auto-unplug books sentry standby first, while the charger still powers it")
 
 H.section("plug guards")
 local lo5, iso5 = charger(600, 600, { room = {} })
@@ -216,10 +240,20 @@ H.sent = {}
 C.plug(p5, v5, iso5)
 check(H.sent[#H.sent].args.reason == "CABLE_SHORT" and B.part(v5):getModData().chg == nil, "too far for the cable: refused")
 v5.x = 602.5
-v5.running = true
+v5.running, v5.speed = true, 5
 C.plug(p5, v5, iso5)
-check(H.sent[#H.sent].args.reason == "ENGINE_ON", "motor running: refused")
-v5.running = false
+check(H.sent[#H.sent].args.reason == "MOVING" and B.part(v5):getModData().chg == nil, "rolling at 5 km/h: refused MOVING")
+v5.speed = 0.5
+C.plug(p5, v5, iso5)
+local chg5 = B.part(v5):getModData().chg
+check(chg5 ~= nil and chg5.src == "grid" and chg5.power == "grid", "stopped with the motor running: plugged in and charging (owner's manual, Shifting)")
+check(T.CheckEngine.Battery(v5, B.part(v5)) == true, "plugged in: the car can still be started")
+local k5 = B.kwh(B.part(v5))
+T.Update.Battery(v5, B.part(v5), 10)
+check(B.kwh(B.part(v5)) == k5, "plugged into a powered charger: the running motor's standby leaves the pack alone")
+C.unplug(p5, v5)
+v5.running, v5.speed = false, 0
+H.sent = {}
 C.plug(H.player({ name = "mal", x = 601, y = 601 }), v5, iso5)
 check(H.sent[#H.sent].args.reason == "NOT_OWNER", "no key, no VehicleManager right: refused")
 C.plug(p5, v5, iso5)

@@ -110,7 +110,15 @@ function C.unlink(o)
     end
 end
 
+-- Sentry standby is booked on events (Sentry.settle) with the power state it ran under (Battery.onCharger), so settle
+-- it before that state changes: every charging settle, and before the link goes. freeUntil: when that power ended.
+local function settleSentry(vehicle, now, freeUntil)
+    local f = T.Sentry and T.Sentry.settle
+    if f then f(vehicle, now, freeUntil) end
+end
+
 local function clearChg(vehicle, part)
+    settleSentry(vehicle, T.hours())
     part:getModData().chg = nil
     vehicle:transmitPartModData(part)
     touchVM(vehicle)
@@ -153,7 +161,13 @@ function C.settle(o, now, here)
     end
     if hours > 0 then chg.added = (chg.added or 0) + B.add(v, kw * hours, chg.target) end
     chg.kw, chg.last = kw, now
-    -- state from now on
+    -- grid power ends at the shut-off hour, which an unloaded car can pass between two settles.
+    -- ponytail: a generator counts as running the whole stretch (its fuel is only metered for charging)
+    settleSentry(v, now, (chg.power == "grid" and gUntil) or (chg.power and now) or nil)
+    -- state from now on. power: the charger has a source, whether or not it charges (full / stopped); the car's own
+    -- loads run on it meanwhile (Battery.onCharger).
+    -- ponytail: those loads burn no generator fuel and do not slow charging; meter them if a generator lasting longer
+    -- than its charging hours shows up in play.
     local src, gen = nil, nil
     if now < gUntil then
         src = "grid"
@@ -161,6 +175,7 @@ function C.settle(o, now, here)
         gen = C.findGenerator(o, sq)
         if gen then src = "generator" end
     end
+    chg.power = src
     local left = math.max(0, limit - B.kwh(part))
     if chg.paused == "stopped" then
         src = nil
@@ -176,15 +191,14 @@ function C.settle(o, now, here)
     v:transmitPartModData(part)
     local step = C.MAX_STEP_H
     if src then step = math.min(step, left / kw) end
-    if src == "grid" then step = math.min(step, gUntil - now) end
+    -- grid power ends at the shut-off hour, charging or not (full / stopped still power the car's loads)
+    if chg.power == "grid" then step = math.min(step, gUntil - now) end
     if gen and rate > 0 then step = math.min(step, gen:getFuel() / rate) end
     C.schedule(o, now + math.max(step, 1 / 60))
 end
 
 function C.start(o, v)
     local now = T.hours()
-    local f = T.Sentry and T.Sentry.settle
-    if f then f(v, now) end
     local part = B.part(v)
     part:getModData().chg = { x = o.x, y = o.y, z = o.z, kind = o.kind, kw = T.Chargers[o.kind].kw * T.chargeMul(),
         last = now, added = 0, src = nil, target = C.DEFAULT_TARGET, paused = nil }
@@ -226,7 +240,7 @@ function C.plug(player, v, iso)
     if not part:getInventoryItem() then return T.deny(player, "NO_PACK", vid) end
     if part:getModData().chg then return T.deny(player, "PLUGGED", vid) end
     if o.vid and getVehicleById(o.vid) then return T.deny(player, "CHARGER_BUSY", vid) end
-    if v:isEngineRunning() then return T.deny(player, "ENGINE_ON", vid) end
+    if not T.stopped(v) then return T.deny(player, "MOVING", vid) end -- the motor may run: plugging in shifts to Park (owner's manual, Shifting)
     if player:DistTo(v) > T.NEAR then return T.deny(player, "TOO_FAR", vid) end
     if not T.cableReaches(o.kind, o.x, o.y, o.z, v) then return T.deny(player, "CABLE_SHORT", vid) end
     local ok, why = T.authorized(player, v, "FUEL")
@@ -274,10 +288,7 @@ function C.relink(v)
     end
     o.vid = v:getId()
     o:updateOnClient()
-    local now = T.hours()
-    local f = T.Sentry and T.Sentry.settle
-    if f then f(v, now) end
-    C.settle(o, now)
+    C.settle(o, T.hours())
     T.log("relinked " .. tostring(v:getId()) .. " to " .. o.kind .. " at " .. o.x .. "," .. o.y .. "," .. o.z)
 end
 
