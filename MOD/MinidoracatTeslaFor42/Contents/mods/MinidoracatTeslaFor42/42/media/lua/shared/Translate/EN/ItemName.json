@@ -5,5 +5,8 @@
     "Base.MinidoracatTesla_CableHang": "Charge Cable (wall drop)",
     "Base.MinidoracatTesla_CableFloor": "Charge Cable (floor run)",
     "Base.MinidoracatTesla_CablePlug": "Charge Cable (connector)",
-    "Base.MinidoracatTesla_DriveUnitParts": "Drive Unit Parts"
+    "Base.MinidoracatTesla_DriveUnitParts": "Drive Unit Parts",
+    "Base.MinidoracatTesla_KeyCard": "Key Card",
+    "Base.MinidoracatTesla_Phone": "Smartphone",
+    "Base.MinidoracatTesla_PhoneKey": "Phone Key"
 }

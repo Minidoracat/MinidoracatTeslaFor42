@@ -102,6 +102,15 @@
     "IGUI_MinidoracatTesla_Deny_LOCK_BROKEN": "잠금장치가 고장났습니다",
     "IGUI_MinidoracatTesla_RepairDriveUnit": "구동 장치 수리",
     "IGUI_MinidoracatTesla_TakeDriveUnitParts": "구동 장치 부품 분리",
+    "IGUI_MinidoracatTesla_Deny_NOT_OUTSIDE": "먼저 차에서 내리세요",
+    "IGUI_MinidoracatTesla_Deny_NO_KEY_CARD": "이 차의 키 카드가 필요합니다",
+    "IGUI_MinidoracatTesla_Deny_NO_PHONE": "스마트폰을 찾을 수 없습니다",
+    "IGUI_MinidoracatTesla_Deny_ALREADY_PAIRED": "이 스마트폰은 이미 이 차의 핸드폰 키입니다",
+    "IGUI_MinidoracatTesla_Deny_AUTOLOCK_CAMP": "잠기지 않음: 캠핑 모드가 켜져 있습니다",
+    "IGUI_MinidoracatTesla_Deny_AUTOLOCK_OCCUPIED": "잠기지 않음: 아직 차 안에 사람이 있습니다",
+    "IGUI_MinidoracatTesla_Deny_AUTOLOCK_DOOR_OPEN": "잠기지 않음: 문이나 트렁크가 열려 있습니다",
+    "IGUI_MinidoracatTesla_AutoLocked": "%1 잠김 (자동 잠금)",
+    "IGUI_MinidoracatTesla_PhonePaired": "%1의 핸드폰 키를 설정했습니다",
     "IGUI_MinidoracatTesla_Deny_NOT_CAMPING": "먼저 캠핑 모드를 켜세요",
     "IGUI_MinidoracatTesla_Deny_FULL": "이미 완전히 충전되었습니다"
 }

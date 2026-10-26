@@ -5,5 +5,8 @@
     "Base.MinidoracatTesla_CableHang": "Зарядный кабель (спуск со стены)",
     "Base.MinidoracatTesla_CableFloor": "Зарядный кабель (по полу)",
     "Base.MinidoracatTesla_CablePlug": "Зарядный кабель (разъем)",
-    "Base.MinidoracatTesla_DriveUnitParts": "Детали блока привода"
+    "Base.MinidoracatTesla_DriveUnitParts": "Детали блока привода",
+    "Base.MinidoracatTesla_KeyCard": "Ключ-карта",
+    "Base.MinidoracatTesla_Phone": "Смартфон",
+    "Base.MinidoracatTesla_PhoneKey": "Телефон-ключ"
 }

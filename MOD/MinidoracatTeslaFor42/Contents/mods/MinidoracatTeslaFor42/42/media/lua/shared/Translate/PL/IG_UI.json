@@ -102,6 +102,15 @@
     "IGUI_MinidoracatTesla_Deny_LOCK_BROKEN": "Zamek jest zepsuty",
     "IGUI_MinidoracatTesla_RepairDriveUnit": "Napraw zespół napędowy",
     "IGUI_MinidoracatTesla_TakeDriveUnitParts": "Weź części zespołu napędowego",
+    "IGUI_MinidoracatTesla_Deny_NOT_OUTSIDE": "Najpierw wysiądź z auta",
+    "IGUI_MinidoracatTesla_Deny_NO_KEY_CARD": "Potrzebujesz karty-klucza tego auta",
+    "IGUI_MinidoracatTesla_Deny_NO_PHONE": "Nie znaleziono telefonu",
+    "IGUI_MinidoracatTesla_Deny_ALREADY_PAIRED": "Ten telefon jest już kluczem tego auta",
+    "IGUI_MinidoracatTesla_Deny_AUTOLOCK_CAMP": "Nie zablokowano: tryb kempingowy jest włączony",
+    "IGUI_MinidoracatTesla_Deny_AUTOLOCK_OCCUPIED": "Nie zablokowano: ktoś jest jeszcze w środku",
+    "IGUI_MinidoracatTesla_Deny_AUTOLOCK_DOOR_OPEN": "Nie zablokowano: drzwi lub bagażnik są otwarte",
+    "IGUI_MinidoracatTesla_AutoLocked": "%1 zablokowano (blokada po odejściu)",
+    "IGUI_MinidoracatTesla_PhonePaired": "Klucz w telefonie ustawiony dla %1",
     "IGUI_MinidoracatTesla_Deny_NOT_CAMPING": "Najpierw włącz tryb kempingowy",
     "IGUI_MinidoracatTesla_Deny_FULL": "Już w pełni naładowana"
 }

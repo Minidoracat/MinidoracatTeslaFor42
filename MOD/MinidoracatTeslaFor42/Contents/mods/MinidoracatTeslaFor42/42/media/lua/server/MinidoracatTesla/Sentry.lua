@@ -77,7 +77,7 @@ end
 S.FLASH_STEP_MS = 400
 S.FLASH_TOGGLES = 6 -- on/off x3
 S.stats = { flashes = 0, tickAdds = 0, tickRemoves = 0 }
-local flashing = {} -- array of { v, id, n, nextAt, was }
+local flashing = {} -- array of { v, id, n, nextAt, was, toggles }
 
 local function setLights(v, on)
     v:setHeadlightsOn(on)
@@ -94,7 +94,7 @@ local function flashTick()
         local f = flashing[i]
         if t >= f.nextAt then
             f.n = f.n + 1
-            if f.n > S.FLASH_TOGGLES then
+            if f.n > f.toggles then
                 setLights(f.v, f.was)
                 table.remove(flashing, i)
                 T.log("sentry flash done vid=" .. f.id)
@@ -119,9 +119,11 @@ function S.isFlashing(vehicle)
     return false
 end
 
-function S.flash(vehicle)
+-- toggles: on/off switches, default 3 flashes (key card / walk-away lock pass 2 or 4: KeyActions.lua)
+function S.flash(vehicle, toggles)
     if S.isFlashing(vehicle) then return end
-    flashing[#flashing + 1] = { v = vehicle, id = vehicle:getId(), n = 0, nextAt = 0, was = vehicle:getHeadlightsOn() }
+    flashing[#flashing + 1] = { v = vehicle, id = vehicle:getId(), n = 0, nextAt = 0, was = vehicle:getHeadlightsOn(),
+        toggles = toggles or S.FLASH_TOGGLES }
     S.stats.flashes = S.stats.flashes + 1
     if #flashing == 1 then
         Events.OnTick.Add(flashTick)

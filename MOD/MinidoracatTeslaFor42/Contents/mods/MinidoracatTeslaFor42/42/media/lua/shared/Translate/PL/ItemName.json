@@ -5,5 +5,8 @@
     "Base.MinidoracatTesla_CableHang": "Kabel ładowania (odcinek ścienny)",
     "Base.MinidoracatTesla_CableFloor": "Kabel ładowania (odcinek podłogowy)",
     "Base.MinidoracatTesla_CablePlug": "Kabel ładowania (złącze)",
-    "Base.MinidoracatTesla_DriveUnitParts": "Części zespołu napędowego"
+    "Base.MinidoracatTesla_DriveUnitParts": "Części zespołu napędowego",
+    "Base.MinidoracatTesla_KeyCard": "Karta-klucz",
+    "Base.MinidoracatTesla_Phone": "Smartfon",
+    "Base.MinidoracatTesla_PhoneKey": "Klucz w telefonie"
 }

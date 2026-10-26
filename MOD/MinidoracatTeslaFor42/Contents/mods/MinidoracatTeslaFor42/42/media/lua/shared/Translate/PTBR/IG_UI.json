@@ -102,6 +102,15 @@
     "IGUI_MinidoracatTesla_Deny_LOCK_BROKEN": "A trava está quebrada",
     "IGUI_MinidoracatTesla_RepairDriveUnit": "Reparar Unidade Motriz",
     "IGUI_MinidoracatTesla_TakeDriveUnitParts": "Retirar Peças da Unidade Motriz",
+    "IGUI_MinidoracatTesla_Deny_NOT_OUTSIDE": "Saia do carro primeiro",
+    "IGUI_MinidoracatTesla_Deny_NO_KEY_CARD": "Você precisa do cartão-chave deste carro",
+    "IGUI_MinidoracatTesla_Deny_NO_PHONE": "Telefone não encontrado",
+    "IGUI_MinidoracatTesla_Deny_ALREADY_PAIRED": "Este telefone já é a chave deste carro",
+    "IGUI_MinidoracatTesla_Deny_AUTOLOCK_CAMP": "Não trancou: o Modo Acampamento está ligado",
+    "IGUI_MinidoracatTesla_Deny_AUTOLOCK_OCCUPIED": "Não trancou: ainda há alguém dentro",
+    "IGUI_MinidoracatTesla_Deny_AUTOLOCK_DOOR_OPEN": "Não trancou: há uma porta ou porta-malas aberto",
+    "IGUI_MinidoracatTesla_AutoLocked": "%1 trancado (trancamento ao se afastar)",
+    "IGUI_MinidoracatTesla_PhonePaired": "Chave de telefone configurada para %1",
     "IGUI_MinidoracatTesla_Deny_NOT_CAMPING": "Ative primeiro o Modo Acampamento",
     "IGUI_MinidoracatTesla_Deny_FULL": "Já está totalmente carregada"
 }

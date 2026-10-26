@@ -102,6 +102,15 @@
     "IGUI_MinidoracatTesla_Deny_LOCK_BROKEN": "ロックが壊れています",
     "IGUI_MinidoracatTesla_RepairDriveUnit": "ドライブユニット修理",
     "IGUI_MinidoracatTesla_TakeDriveUnitParts": "ドライブユニット部品を外す",
+    "IGUI_MinidoracatTesla_Deny_NOT_OUTSIDE": "先に降車してください",
+    "IGUI_MinidoracatTesla_Deny_NO_KEY_CARD": "この車のキーカードが必要です",
+    "IGUI_MinidoracatTesla_Deny_NO_PHONE": "スマートフォンが見つかりません",
+    "IGUI_MinidoracatTesla_Deny_ALREADY_PAIRED": "このスマートフォンはすでにこの車の電話キーです",
+    "IGUI_MinidoracatTesla_Deny_AUTOLOCK_CAMP": "施錠されません：キャンプモードがオンです",
+    "IGUI_MinidoracatTesla_Deny_AUTOLOCK_OCCUPIED": "施錠されません：車内にまだ人がいます",
+    "IGUI_MinidoracatTesla_Deny_AUTOLOCK_DOOR_OPEN": "施錠されません：ドアかトランクが開いています",
+    "IGUI_MinidoracatTesla_AutoLocked": "%1 を施錠しました（降車後オートロック）",
+    "IGUI_MinidoracatTesla_PhonePaired": "%1 の電話キーを設定しました",
     "IGUI_MinidoracatTesla_Deny_NOT_CAMPING": "先にキャンプモードをオンにしてください",
     "IGUI_MinidoracatTesla_Deny_FULL": "すでに満充電です"
 }

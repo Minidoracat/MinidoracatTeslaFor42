@@ -3,5 +3,10 @@
     "Tooltip_MinidoracatTesla_SentryOnFor": "已开 %1 小时",
     "Tooltip_MinidoracatTesla_NoCarInReach": "充电线够得到的范围内没有特斯拉",
     "Tooltip_MinidoracatTesla_TakeDriveUnitPartsWarning": "这会将驱动电机状态变为 0。",
-    "Tooltip_MinidoracatTesla_DriveUnitCondition": "驱动电机状态: %1"
+    "Tooltip_MinidoracatTesla_DriveUnitCondition": "驱动电机状态: %1",
+    "Tooltip_MinidoracatTesla_KeyCard": "在驾驶座侧门柱的读卡区感应即可上锁或解锁。要启动时，卡片要直接带在身上或挂在钥匙圈（放在钱包里无法启动）。",
+    "Tooltip_MinidoracatTesla_Phone": "坐在特斯拉车上、身上带着这辆车的卡片钥匙时，右键这部手机即可设为手机钥匙。",
+    "Tooltip_MinidoracatTesla_PhoneKey": "拉动车门把手即可解锁。下车后带着手机走远，车门会自动上锁。",
+    "Tooltip_MinidoracatTesla_TapCard": "走到驾驶座车门，用卡片钥匙感应读卡区",
+    "Tooltip_MinidoracatTesla_PairPhone": "用这辆车的卡片钥匙授权这部手机"
 }

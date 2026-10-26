@@ -3,5 +3,10 @@
     "Tooltip_MinidoracatTesla_SentryOnFor": "Seit %1 Std. an",
     "Tooltip_MinidoracatTesla_NoCarInReach": "Kein Tesla in Reichweite des Kabels",
     "Tooltip_MinidoracatTesla_TakeDriveUnitPartsWarning": "Hiermit wird der Zustand der Antriebseinheit auf 0 gesetzt.",
-    "Tooltip_MinidoracatTesla_DriveUnitCondition": "Zustand der Antriebseinheit: %1"
+    "Tooltip_MinidoracatTesla_DriveUnitCondition": "Zustand der Antriebseinheit: %1",
+    "Tooltip_MinidoracatTesla_KeyCard": "An das Lesegerät an der Fahrertürsäule halten, um zu ver- oder entriegeln. Zum Fahren lose oder am Schlüsselring tragen (aus dem Portemonnaie startet das Auto nicht).",
+    "Tooltip_MinidoracatTesla_Phone": "Setz dich mit seiner Schlüsselkarte in einen Tesla und klick dieses Telefon rechts an, um es als Telefonschlüssel einzurichten.",
+    "Tooltip_MinidoracatTesla_PhoneKey": "Entriegelt, wenn du am Türgriff ziehst. Steigst du aus und gehst damit weg, verriegeln die Türen von selbst.",
+    "Tooltip_MinidoracatTesla_TapCard": "Zur Fahrertür gehen und die Schlüsselkarte an das Lesegerät halten",
+    "Tooltip_MinidoracatTesla_PairPhone": "Dieses Telefon mit der Schlüsselkarte dieses Autos autorisieren"
 }

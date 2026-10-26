@@ -237,4 +237,18 @@ function F.runTicks(maxTicks, stepMs)
     return n
 end
 
+-- Keys.lua (TeslaKeys): T.legit also looks for a key card / phone key in bags; these fake players carry none.
+-- Kept as its own block at the end (CampMode's branch edits F.player above).
+local basePlayer = F.player
+function F.player(name, o)
+    local p = basePlayer(name, o)
+    local inv = p.getInventory
+    function p:getInventory()
+        local t = inv(self)
+        t.getFirstTypeEvalArgRecurse = function() return nil end
+        return t
+    end
+    return p
+end
+
 return F

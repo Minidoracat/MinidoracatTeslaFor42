@@ -5,5 +5,8 @@
     "Base.MinidoracatTesla_CableHang": "Ladekabel (Wandabschnitt)",
     "Base.MinidoracatTesla_CableFloor": "Ladekabel (Bodenabschnitt)",
     "Base.MinidoracatTesla_CablePlug": "Ladekabel (Stecker)",
-    "Base.MinidoracatTesla_DriveUnitParts": "Antriebseinheit-Teile"
+    "Base.MinidoracatTesla_DriveUnitParts": "Antriebseinheit-Teile",
+    "Base.MinidoracatTesla_KeyCard": "Schlüsselkarte",
+    "Base.MinidoracatTesla_Phone": "Smartphone",
+    "Base.MinidoracatTesla_PhoneKey": "Telefonschlüssel"
 }

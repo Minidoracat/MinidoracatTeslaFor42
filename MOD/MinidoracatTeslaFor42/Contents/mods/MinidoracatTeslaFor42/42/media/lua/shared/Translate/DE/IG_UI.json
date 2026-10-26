@@ -102,6 +102,15 @@
     "IGUI_MinidoracatTesla_Deny_LOCK_BROKEN": "Das Schloss ist kaputt",
     "IGUI_MinidoracatTesla_RepairDriveUnit": "Antriebseinheit reparieren",
     "IGUI_MinidoracatTesla_TakeDriveUnitParts": "Antriebseinheit-Teile ausbauen",
+    "IGUI_MinidoracatTesla_Deny_NOT_OUTSIDE": "Steig zuerst aus",
+    "IGUI_MinidoracatTesla_Deny_NO_KEY_CARD": "Du brauchst die Schlüsselkarte dieses Autos",
+    "IGUI_MinidoracatTesla_Deny_NO_PHONE": "Telefon nicht gefunden",
+    "IGUI_MinidoracatTesla_Deny_ALREADY_PAIRED": "Dieses Telefon ist schon der Telefonschlüssel dieses Autos",
+    "IGUI_MinidoracatTesla_Deny_AUTOLOCK_CAMP": "Nicht verriegelt: Camp-Modus ist an",
+    "IGUI_MinidoracatTesla_Deny_AUTOLOCK_OCCUPIED": "Nicht verriegelt: Es sitzt noch jemand im Auto",
+    "IGUI_MinidoracatTesla_Deny_AUTOLOCK_DOOR_OPEN": "Nicht verriegelt: Eine Tür oder Klappe ist offen",
+    "IGUI_MinidoracatTesla_AutoLocked": "%1 verriegelt (Walk-Away-Verriegelung)",
+    "IGUI_MinidoracatTesla_PhonePaired": "Telefonschlüssel für %1 eingerichtet",
     "IGUI_MinidoracatTesla_Deny_NOT_CAMPING": "Zuerst den Camp-Modus einschalten",
     "IGUI_MinidoracatTesla_Deny_FULL": "Bereits voll geladen"
 }

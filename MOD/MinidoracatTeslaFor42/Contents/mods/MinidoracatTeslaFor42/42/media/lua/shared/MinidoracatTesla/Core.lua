@@ -138,13 +138,15 @@ end
 
 -- ---- authorization ----
 -- VehicleManager present: its canUse (server authoritative, client projection; MinidoracatVehicleManager_API.lua:141).
--- Otherwise: holds this car's key or the key is in the ignition (ISVehicleMenu.lua:96).
+-- Otherwise: holds this car's key or the key is in the ignition (ISVehicleMenu.lua:96); the key card / phone key also
+-- counts from a wallet or bag (Keys.lua; vanilla haveThisKeyId only sees loose keys and keyrings).
 function T.authorized(player, vehicle, perm)
     if not player or not vehicle then return false, "NO_TARGET" end
     local api = MinidoracatVehicleManagerAPI
     if api and api.canUse then return api.canUse(player, vehicle, perm or "DRIVE", { mod = T.MODULE }) end
     if SandboxVars and SandboxVars.VehicleEasyUse then return true, "EASY_USE" end
     if vehicle:isKeysInIgnition() or player:getInventory():haveThisKeyId(vehicle:getKeyId()) then return true, "KEY" end
+    if T.Keys and T.Keys.card and (T.Keys.card(player, vehicle) or T.Keys.phoneKey(player, vehicle)) then return true, "KEY" end
     return false, "NO_KEY"
 end
 
