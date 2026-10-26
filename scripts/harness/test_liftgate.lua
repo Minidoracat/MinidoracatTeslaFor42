@@ -150,11 +150,11 @@ H.section("liftgate: client")
 H.side(true, false)
 v.speed = 30
 H.clientSent = {}
-check(L.toggle(driver, v, L.PART) == false and #H.clientSent == 0 and halo[#halo] == "IGUI_MinidoracatTesla_Deny_MOVING",
-    "key while driving: refused on the client with a halo, nothing sent")
+check(L.toggle(driver, v, "TrunkDoor") == false and #H.clientSent == 0 and halo[#halo] == "IGUI_MinidoracatTesla_Deny_MOVING",
+    "car picture while driving: refused on the client with a halo, nothing sent")
 v.speed = 0
-check(L.toggle(driver, v, L.PART) and H.clientSent[1].command == "liftgate" and H.clientSent[1].args.part == "TrunkDoor",
-    "key while parked: liftgate { part = TrunkDoor } sent")
+check(L.toggle(driver, v, "TrunkDoor") and H.clientSent[1].command == "liftgate" and H.clientSent[1].args.part == "TrunkDoor",
+    "car picture tail, parked: liftgate { part = TrunkDoor } sent")
 check(L.toggle(driver, v, "EngineDoor") and H.clientSent[2].args.part == "EngineDoor", "car picture: frunk lid sent")
 check(L.toggle(driver, v, "Muffler") == false and #H.clientSent == 2 and halo[#halo] == "IGUI_MinidoracatTesla_Deny_NO_DOOR",
     "not a dashboard door: refused on the client, nothing sent")

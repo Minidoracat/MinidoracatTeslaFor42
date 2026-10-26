@@ -14,14 +14,16 @@ local HUD = ISUIElement:derive("MinidoracatTeslaHUD")
 T.HUD = HUD
 local huds = {} -- [playerNum] = HUD
 
--- design units at S = 1 (font size 1x: Small = 19 px)
-local W, PADX, R_EDGE = 552, 16, 536
+-- design units at S = 1 (font size 1x: Small = 19 px). Four quick keys right-aligned at R_EDGE; their left edge (312)
+-- is where the car picture's clickable zones end, so the strip is exactly as wide as that needs (2026-10-26: the
+-- liftgate key went, the car picture's tail opens the liftgate; 552 -> 506).
+local W, PADX, R_EDGE = 506, 16, 490
 local GEAR_X, GEAR_Y, SPD_Y = 33, 12, 36
 local PM_X, PM_W, PM_H = 18, 4, 62
 local CAR_X, CAR_Y = 172, 14
 local KEY, KEY_GAP = 40, 6
 local KEYS_Y = 60
-local MSG_Y, MSG_H, MSG_MINW, MSG_MAXW = 108, 30, 312, 520
+local MSG_Y, MSG_H, MSG_MINW, MSG_MAXW = 108, 30, 312, 474
 local H_NOMSG = 112
 local LOW_PCT = 20
 local DOORS = { "DoorFrontLeft", "DoorFrontRight", "DoorRearLeft", "DoorRearRight", "TrunkDoor", "DoorRear", "EngineDoor" }
@@ -55,10 +57,9 @@ for _, A in pairs(T.HUDAtlas) do
     end
 end
 local GEARS = { "P", "R", "N", "D" }
-local KEYS = { "headlight", "heater", "radio", "tent", "liftgate" }
+local KEYS = { "headlight", "heater", "radio", "tent" }
 local NKEYS = #KEYS
-local GATE_BIT = POW2[5] -- DOORS[5] = TrunkDoor
--- hover help per quick key (translation keys); camp and liftgate depend on their state
+-- hover help per quick key (translation keys); camp depends on its state
 local TIPS = { "IGUI_MinidoracatTesla_Tip_Headlight", "IGUI_MinidoracatTesla_Tip_Heater", "IGUI_MinidoracatTesla_Tip_Radio" }
 local TIP_OPEN, TIP_CLOSE = "IGUI_MinidoracatTesla_Tip_DoorOpen", "IGUI_MinidoracatTesla_Tip_DoorClose" -- %1 = part name
 
@@ -304,7 +305,7 @@ function HUD:readSlow()
     st.pct = part and math.floor(T.Battery.pct(part) + 0.5) or 0
     st.range = math.floor(kwh * self.kmPerKwh + 0.5)
     st.locked = v:areAllDoorsLocked()
-    local bits, avail = 0, 0 -- open doors; installed doors (car-picture zones and the liftgate key dim without one)
+    local bits, avail = 0, 0 -- open doors; installed doors (a car-picture zone dims without one)
     for i = 1, #self.doors do
         local d = self.doors[i]
         if d.part:getDoor():isOpen() then bits = bits + d.bit end
@@ -536,16 +537,15 @@ function HUD:build()
     digits(self, A.sm, st.range, rx, SPD_Y * S, C.text2, 1)
     spr(self, A.km, R - kmW, SPD_Y * S, C.text2, 1)
 
-    -- quick keys: icon turns blue and gets an underline when on; liftgate dimmed when none is installed
+    -- quick keys: icon turns blue and gets an underline when on
     local ks = KEY * S
     local kx = R - (NKEYS * KEY + (NKEYS - 1) * KEY_GAP) * S
     local ky = KEYS_Y * S
     self.keyX, self.keyY, self.keyStep, self.keyS = kx, ky, (KEY + KEY_GAP) * S, ks
     for i = 1, NKEYS do
         local on = self:keyOn(i)
-        local dim = i == 5 and math.floor(st.avail / GATE_BIT) % 2 == 0
         spr(self, A.keybg, kx, ky, C.surface, 1)
-        spr(self, A["i_" .. KEYS[i]], kx + 11 * S, ky + 10 * S, on and C.accent or (dim and C.text3 or C.text2), dim and 0.5 or 1)
+        spr(self, A["i_" .. KEYS[i]], kx + 11 * S, ky + 10 * S, on and C.accent or C.text2, 1)
         if on then rect(self, kx + 12 * S, ky + 33 * S, 16 * S, math.max(1, 2 * S), C.accent, 1) end
         kx = kx + (KEY + KEY_GAP) * S
     end
@@ -605,7 +605,6 @@ function HUD:render()
     if not self.keyX or not self:isMouseOver() then return end
     local mx, my = self:getMouseX(), self:getMouseY()
     local i = self:keyAt(mx, my)
-    if i == 5 then return self:doorTip(5, self.keyX + 4 * self.keyStep, self.keyY, self.keyS, self.keyS) end
     if i then
         local key = TIPS[i]
         if i == 4 then key = self.st.camp and "IGUI_MinidoracatTesla_Radial_CampOff" or "IGUI_MinidoracatTesla_Tip_Camp" end
@@ -635,8 +634,7 @@ function HUD:keyOn(i)
     if i == 1 then return st.lights end
     if i == 2 then return st.heater end
     if i == 3 then return st.radio end
-    if i == 4 then return st.camp end
-    return math.floor(st.doors / GATE_BIT) % 2 == 1
+    return st.camp
 end
 
 -- quick keys are clickable like the vanilla dashboard icons; everything else lets clicks through
@@ -671,7 +669,7 @@ function HUD:onMouseUp(x, y)
     if not i then
         local z = self:zoneAt(x, y)
         if not z then return false end
-        T.Liftgate.toggle(p, v, DOORS[z[1]]) -- same rule and server command as the liftgate key
+        T.Liftgate.toggle(p, v, DOORS[z[1]])
         return true
     end
     if i == 1 then ISVehicleMenu.onToggleHeadlights(p)          -- ISVehicleMenu.lua:1114
@@ -679,8 +677,7 @@ function HUD:onMouseUp(x, y)
     elseif i == 3 then
         local rp = self.radioPart
         if rp and rp:getDeviceData() and rp:getInventoryItem() then ISVehicleMenu.onSignalDevice(p, rp) end -- :151-157
-    elseif i == 4 then T.HUD.toggleCamp(p, v)
-    else T.Liftgate.toggle(p, v, T.Liftgate.PART)
+    else T.HUD.toggleCamp(p, v)
     end
     return true
 end

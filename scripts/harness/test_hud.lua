@@ -116,8 +116,8 @@ local h = HUD.get(0)
 check(dash.inManager == true and dash.visible == false, "tesla: vanilla stays in UIManager but invisible")
 check(h.inManager == true and h.vehicle == tesla, "tesla: HUD shown and attached")
 local x, y, w, hh, vis = MinidoracatTeslaAPI.hudRect(0)
-check(vis == true and w == 552 and y + hh == SCREEN_H and x == (SCREEN_W - 552) / 2,
-    "hudRect: 552 wide at S=1, bottom-centre of the player screen")
+check(vis == true and w == 506 and y + hh == SCREEN_H and x == (SCREEN_W - 506) / 2,
+    "hudRect: 506 wide at S=1 (four quick keys), bottom-centre of the player screen")
 
 dash:removeFromUIManager() -- joypad inventory opens (ISInventoryPage.lua:774)
 check(h.inManager == false and select(5, MinidoracatTeslaAPI.hudRect(0)) == false, "joypad inventory: HUD hidden, hudRect not visible")
@@ -229,17 +229,14 @@ local function tipOk(el, i)
     return not over and el.x + r.x >= 0 and el.x + r.x + r.w <= SCREEN_W and el.y + r.y >= 0
 end
 local allOk = true
-for i = 1, 5 do allOk = allOk and tipOk(h, i) end
-check(allOk, "each of the 5 keys: tip on screen and not over the key")
+for i = 1, 4 do allOk = allOk and tipOk(h, i) end
+check(allOk, "each of the 4 keys: tip on screen and not over the key")
 local function partName(id) local k = "IGUI_VehiclePart" .. id; return T.PartNames and T.PartNames[k] or k end
-check(lastText == "IGUI_MinidoracatTesla_Tip_DoorOpen" and h.tipArg == partName("TrunkDoor"),
-    "liftgate closed: tip says open + the liftgate's name (" .. tostring(lastText) .. ")")
-tesla.parts.TrunkDoor.door.open = true
-h:update(); h:update(); h:update()
-tipOk(h, 5)
-check(h:keyOn(5) and lastText == "IGUI_MinidoracatTesla_Tip_DoorClose", "liftgate open: key on, tip says close")
-tesla.parts.TrunkDoor.door.open = false
-h:update(); h:update(); h:update()
+mx, my = h.keyX + 3 * h.keyStep + h.keyS + 4, h.keyY + h.keyS / 2 -- right of the camp key: no fifth key any more
+drawCalls = 0
+h:render()
+check(h:keyAt(mx, my) == nil and drawCalls == 0 and h.keyX + 4 * h.keyStep - 6 >= 506 - 16,
+    "four keys only: nothing right of the camp key, the camp key ends at the right edge")
 mx, my = h.keyX - 5, h.keyY + 2
 drawCalls = 0
 h:render()
@@ -256,7 +253,7 @@ check(grew == 0, "hovered render x1000 allocates nothing (" .. grew .. " KB)")
 -- 640 px split view, big font: the last key sits near the right edge; the tip is pushed back inside
 SCREEN_W, fontH = 640, 33
 h:layout()
-check(tipOk(h, 5) and tipOk(h, 1), "640 px split view at font 4x: tips stay inside the screen")
+check(tipOk(h, 4) and tipOk(h, 1), "640 px split view at font 4x: tips stay inside the screen")
 -- a translation wider than that view: two lines, still inside
 local realGetText = getText
 getText = function(key) return key:find("Tip_", 1, true) and string.rep("wide words ", 9) .. "end" or key end -- 102 chars, 816 px
@@ -305,9 +302,7 @@ check(allZones(), "S=1: each of the 6 zones (liftgate, 4 doors, frunk lid) toggl
 toggled = {}
 check(h:onMouseDown(4, 4) == false and h:onMouseUp(4, 4) == false and select(1, clickAt(142, 30)) == false
     and #toggled == 0, "off the car picture and the keys: the click passes through")
-toggled = {}
-h:onMouseUp(h.keyX + 4 * h.keyStep + h.keyS / 2, h.keyY + h.keyS / 2)
-check(toggled[1] == "TrunkDoor", "liftgate key: same toggle, TrunkDoor")
+check(h.keyX == (172 + 140) * h.S, "the quick keys start where the car picture's zones end (x 312)")
 fontH = 38
 h:layout()
 check(h.S == 2 and allZones(), "S=2: the zones scale with S")
