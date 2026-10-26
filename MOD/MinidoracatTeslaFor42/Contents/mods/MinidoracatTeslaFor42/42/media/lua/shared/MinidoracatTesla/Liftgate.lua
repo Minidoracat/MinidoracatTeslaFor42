@@ -1,5 +1,5 @@
--- Power liftgate and the other doors, opened or closed by the driver from the dashboard (liftgate key, or a click
--- on the car picture: like the touchscreen in the real car). Rule shared by the dashboard (client pre-check) and the
+-- Power liftgate and the other doors, opened or closed by the driver with a click on the dashboard's car picture
+-- (like the touchscreen in the real car). Rule shared by the dashboard (client pre-check) and the
 -- server command `liftgate` { vid, part }, which unlocks a locked door first, toggles it, syncs it and tells every
 -- client to animate it (architecture.md §7).
 -- Also syncs the part anim of vanilla door open/close on Teslas in MP: vanilla plays it only on the client that
@@ -9,7 +9,6 @@ require "MinidoracatTesla/Core"
 local T = MinidoracatTesla
 local L = {}
 T.Liftgate = L
-L.PART = "TrunkDoor" -- the liftgate key
 -- doors the driver may open or close from the dashboard (the HUD car picture; nothing else is accepted)
 L.PARTS = { DoorFrontLeft = true, DoorFrontRight = true, DoorRearLeft = true, DoorRearRight = true, TrunkDoor = true,
     EngineDoor = true }
@@ -53,7 +52,7 @@ function L.syncShell(vehicle)
     end
 end
 
--- client: the dashboard (liftgate key, car picture)
+-- client: the dashboard's car picture
 function L.toggle(player, vehicle, id)
     local part, why = L.check(player, vehicle, id)
     if not part then
