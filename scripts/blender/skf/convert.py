@@ -37,13 +37,12 @@ DROP = ("Object005", "Cylinder", "Circle.", "Plane.027", "Plane.076", "Plane.088
         "Object_11", "Object_12",                    # licence plates
         "Plane.031", "Plane.051", "Plane.053", "Plane.040",   # clear lamp covers: opaque in PZ, they'd hide the lamps
         "Plane.067", "Hyundai_KONA",   # BloxBloger's interior (tub, seats, dash): the mod's own cabin (cabin.py) instead
-        "Tesla_Model_3",               # rear TESLA: 1.2 cm block letters (E a solid block) sunk 4 cm under the blade
-        "Plane.086")    # Performance badge (plain dark plate, tailgate lower right): the mod has no Performance version
+        "Tesla_Model_3")               # rear TESLA: 1.2 cm block letters (E a solid block) sunk 4 cm under the blade
 # collapse-decimated before anything else (target tris): detail PZ cannot show at 1-4 px per cm
 DECIMATE = {"Plane.045": 400,             # 29.5k-tri honeycomb under the tail light bar
             "Plane.034": 1200, "Plane.020": 1000, "Plane.016": 2600}
 # skin colour (sRGB 0-255) per material; paint comes from the official renders (textures())
-MAT_RGB = {"Material_#2125780493": None, "black_base": (34, 34, 36), "Material_#2125706098": (34, 34, 36),
+MAT_RGB = {"Material_#2125780493": None, "black_base": (34, 34, 36), "Material_#2125706098": (57, 61, 70),
            "Material_#2125774706": (26, 26, 28), "black_refl": (20, 20, 22), "Material_#2125780326": (22, 22, 24),
            "black": (20, 20, 22), "black.001": (20, 20, 22), "black.002": (20, 20, 22), "black222": (20, 20, 22),
            "Iron_Clean_Distorted": (60, 60, 64), "front_white_light": (226, 230, 236), "back_red_Light": (150, 12, 16),
@@ -95,7 +94,11 @@ STOP_X = 0.645                             # corner lamps inboard of this |x| ar
 CUT = {("Plane.005", 342): ("BF", "BR", "D"), ("Plane.062", 268): ("D",)}
 CUT_X = ("Plane.034", "Plane.044", "Plane.045", "Plane.036", "Plane.042", "Plane.043", "Plane.041")  # rear lamps
 DOOR_OBJS = ("Plane.062", "Plane.005", "Plane.002", "Plane.046", "Plane.048", "Plane.050", "Plane.047")
-GATE_OBJS = CUT_X + ("Plane.022",)
+GATE_OBJS = CUT_X + ("Plane.022", "Plane.086")
+# Plane.086 (its only face material Material_#2125706098): the Performance badge on the tailgate's lower right
+# (service manual "Badge - Performance"; the mod's Model Y is the Performance, AGENTS.md rule 7). The real one is a
+# navy starburst in a chrome rim, 11 x 5 cm, ~16 x 7 px at the closest zoom: a flat plate in its mean colour
+# (57, 61, 70; median 32, 36, 47, drive.com.au photo), the rim (~0.4 px) left out
 # badges (user 2026-10-26; Model Y 2025 service manual ch. 1205 "Badges and Films"), drawn in badges(): T on the frunk
 # lid (OEM 1494949-00-A, chrome, 7.8 x 8.2 cm), TESLA in black across the light blade (letters ~2 cm tall, 42 cm
 # span), MODEL Y in chrome on the tailgate's lower left (jig on its left and lower edges). Letters are scaled for the
