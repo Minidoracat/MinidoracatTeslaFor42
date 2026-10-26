@@ -21,6 +21,12 @@ end
 local function addSlices(menu, player, vehicle)
     local part = T.Battery.part(vehicle)
     if not part then return end
+    -- phone key in a bag (Keys.lua): vanilla offers "Start Engine" only when haveThisKeyId finds a key (ISVehicleMenu.lua:93-101)
+    if vehicle:isDriver(player) and vehicle:isEngineWorking() and not vehicle:isEngineStarted() and not vehicle:isEngineRunning()
+        and not SandboxVars.VehicleEasyUse and T.Keys and T.Keys.bagPhoneStarts(player, vehicle) then
+        menu:addSlice(getText("ContextMenu_VehicleStartEngine"), getTexture("media/ui/vehicles/vehicle_ignitionON.png"),
+            ISVehicleMenu.onStartEngine, player)
+    end
     local on = part:getModData().camp ~= nil
     local label = getText(on and "IGUI_MinidoracatTesla_Radial_CampOff" or "IGUI_MinidoracatTesla_Radial_CampOn")
     local ok, why = true, nil

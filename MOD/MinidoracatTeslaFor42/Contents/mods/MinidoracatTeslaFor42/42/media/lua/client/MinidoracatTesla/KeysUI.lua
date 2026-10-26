@@ -18,7 +18,7 @@ local K = T.Keys
 T.ClientCommands = T.ClientCommands or {}
 local UI = {}
 T.KeysUI = UI
-UI.stats = { sweeps = 0, watchAdds = 0, watchRemoves = 0 }
+UI.stats = { sweeps = 0, watchAdds = 0, watchRemoves = 0, chirps = 0, chirpStops = 0 }
 
 local function denyText(why) return getText("IGUI_MinidoracatTesla_Deny_" .. tostring(why)) end
 local function tip(option, text, blocked)
@@ -224,3 +224,31 @@ local function good(key, args)
 end
 T.ClientCommands.autoLocked = function(args) good("IGUI_MinidoracatTesla_AutoLocked", args) end
 T.ClientCommands.phonePaired = function(args) good("IGUI_MinidoracatTesla_PhonePaired", args) end
+
+-- Lock confirmation chirp (Keys.lua K.CHIRP): the vanilla horn event on the car's emitter (FMODSoundEmitter, no
+-- WorldSoundManager: zombies do not hear it), stopped after K.CHIRP_MS by a one-shot OnTick removed when empty.
+local chirps = {}
+local function chirpTick()
+    local now = getTimestampMs()
+    for i = #chirps, 1, -1 do
+        local c = chirps[i]
+        if now - c.at >= K.CHIRP_MS then
+            c.emitter:stopSound(c.id)
+            table.remove(chirps, i)
+            UI.stats.chirpStops = UI.stats.chirpStops + 1
+        end
+    end
+    if #chirps == 0 then Events.OnTick.Remove(chirpTick) end
+end
+T.ClientCommands.keyChirp = function(args)
+    local v = args and args.vid and getVehicleById(args.vid)
+    if not v then return end
+    local emitter = v:getEmitter()
+    local id = emitter:playSound(K.CHIRP)
+    if not id or id == 0 then return end
+    if #chirps == 0 then Events.OnTick.Add(chirpTick) end
+    chirps[#chirps + 1] = { emitter = emitter, id = id, at = getTimestampMs() }
+    UI.stats.chirps = UI.stats.chirps + 1
+    T.log("key chirp vid=" .. v:getId())
+end
+function UI.chirpCount() return #chirps end

@@ -15,8 +15,8 @@ local K = T.Keys
 local S = T.Sentry
 T.ServerCommands = T.ServerCommands or {}
 
-K.SOUND = "MinidoracatTesla_KeyAlert" -- 0.4 s chime (sound.md); one beep for lock and unlock
-K.stats = { swaps = 0, taps = 0, pairs = 0, autoLocks = 0 }
+K.SOUND = "MinidoracatTesla_KeyAlert" -- 0.4 s chime (sound.md): the unlock beep; lock = the horn chirp (K.CHIRP)
+K.stats = { swaps = 0, taps = 0, pairs = 0, autoLocks = 0, chirps = 0 }
 
 -- ------------------------------------------------------------------ Tesla keyId registry
 local function registry() return ModData.getOrCreate(K.REG) end
@@ -84,10 +84,29 @@ function K.setLocked(vehicle, locked)
     vehicle:setTrunkLocked(locked)
 end
 
--- one flash to lock, two to unlock (Sentry's flash: headlights + light parts, synced to every client)
+-- one flash to lock, two to unlock (Sentry's flash: headlights + light parts, synced to every client).
+-- Lock: horn chirp, each client within CHIRP_TILES plays and stops it itself (KeysUI keyChirp); playServerSound cannot
+-- stop a sound. Neither path adds a world sound (zombies). Unlock: the KeyAlert beep.
 function K.signal(vehicle, locked)
     S.flash(vehicle, locked and 2 or 4)
-    if isServer() then
+    if locked then
+        local out = { vid = vehicle:getId() }
+        if not isServer() then
+            local fn = T.ClientCommands and T.ClientCommands.keyChirp -- SP: the client handler directly
+            if fn then fn(out); K.stats.chirps = K.stats.chirps + 1 end
+            return
+        end
+        local x, y, r2 = vehicle:getX(), vehicle:getY(), K.CHIRP_TILES * K.CHIRP_TILES
+        local list = getOnlinePlayers() -- LuaManager.java:4457
+        for i = 0, list:size() - 1 do
+            local p = list:get(i)
+            local dx, dy = p:getX() - x, p:getY() - y
+            if dx * dx + dy * dy <= r2 then
+                sendServerCommand(p, T.MODULE, "keyChirp", out)
+                K.stats.chirps = K.stats.chirps + 1
+            end
+        end
+    elseif isServer() then
         playServerSound(K.SOUND, vehicle:getSquare()) -- players within 10 tiles (GameServer.java:2136-2156)
     else
         vehicle:getEmitter():playSound(K.SOUND)

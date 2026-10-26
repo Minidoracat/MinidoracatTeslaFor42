@@ -132,6 +132,13 @@ end
 H.stub("Vehicles/TimedActions/ISUnlockVehicleDoor") -- park_fakes made the class; Keys.lua wraps start() and complete()
 ISUnlockVehicleDoor.start = ISUnlockVehicleDoor.start or function() return true end
 local unlockBefore = { start = ISUnlockVehicleDoor.start, complete = ISUnlockVehicleDoor.complete } -- restored at the end
+-- vanilla ISStartVehicleEngine:complete (ISStartVehicleEngine.lua:26-44): haveKey from haveThisKeyId only
+H.stub("Vehicles/TimedActions/ISStartVehicleEngine")
+ISStartVehicleEngine = { complete = function(self)
+    local veh = self.character:getVehicle()
+    veh:tryStartEngine(self.character:getInventory():haveThisKeyId(veh:getKeyId()) ~= nil)
+    return true
+end }
 require "MinidoracatTesla/Keys"
 require "MinidoracatTesla/KeyActions"
 local K = T.Keys
@@ -192,10 +199,19 @@ check(lastDeny() == "NO_VEHICLE", "keyTap: fractional vid -> NO_VEHICLE")
 
 -- owner taps: lock all four doors and the trunk, one flash (2 toggles), beep; tap again: unlock, two flashes
 v.doors[3].d.broken = true
+local onlineBefore = F.online
+local farAway = player("faraway", container(), v.x + K.CHIRP_TILES + 1, v.y)
+F.online = { owner, farAway }
+F.sent = {}
+local beeps0 = #sounds
 cmds.keyTap(owner, { vid = v:getId() })
 local lockedAll = v.doors[1].d.locked and v.doors[2].d.locked and v.doors[4].d.locked and v.trunk.d.locked
 check(lockedAll and not v.doors[3].d.locked, "keyTap: locks every door and the trunk, skips a broken lock")
-check(S.stats.flashes == flashes0 + 1 and sounds[#sounds] == K.SOUND, "keyTap: flash + beep (playServerSound on the server)")
+local chirp = F.lastSent("keyChirp")
+local chirpsTo = 0
+for _, m in ipairs(F.sent) do if m.cmd == "keyChirp" then chirpsTo = chirpsTo + 1 end end
+check(S.stats.flashes == flashes0 + 1 and chirp and chirp.to == "owner" and chirp.args.vid == v:getId() and chirpsTo == 1
+    and #sounds == beeps0, "keyTap lock: flash + horn chirp sent to players within CHIRP_TILES only, no playServerSound")
 v.headlights = false
 v.toggles = 0
 F.runTicks(50, 450)
@@ -205,6 +221,8 @@ v.doors[3].d.locked = true
 v.parts.GasTank:getModData().sentry = { by = "owner", at = F.hours, kwh = 50, since = F.hours }
 cmds.keyTap(owner, { vid = v:getId() })
 check(not v.doors[1].d.locked and not v.trunk.d.locked, "keyTap again: unlocks")
+check(sounds[#sounds] == K.SOUND and #sounds == beeps0 + 1, "keyTap unlock: KeyAlert beep (playServerSound), no chirp")
+F.online = onlineBefore
 v.toggles = 0
 F.runTicks(50, 450)
 check(v.toggles == 4, "keyTap unlock: two flashes (4 toggles)")
@@ -243,7 +261,10 @@ check(not ok and why == nil, "auto-lock: 3 tiles away -> not yet, nothing said")
 owner.x = v.x - K.LOCK_DIST
 local function autoLockReason() local a, b = K.canAutoLock(owner, v); return a, b end
 v.parts.GasTank:getModData().camp = { by = "owner", at = F.hours }
-check(select(2, autoLockReason()) == "AUTOLOCK_CAMP", "auto-lock: camp on -> AUTOLOCK_CAMP")
+v.passengers = 1
+check(select(2, autoLockReason()) == "AUTOLOCK_CAMP", "auto-lock: camp on, someone inside -> AUTOLOCK_CAMP")
+v.passengers = 0
+check(autoLockReason() == true, "auto-lock: camp on but nobody inside -> lock (camp stops itself, Camp.lua 'left')")
 v.parts.GasTank:getModData().camp = nil
 v.passengers = 1
 check(select(2, autoLockReason()) == "AUTOLOCK_OCCUPIED", "auto-lock: someone inside -> AUTOLOCK_OCCUPIED")
@@ -256,11 +277,12 @@ check(K.canAutoLock(player("cardonly", container(item(K.CARD, v.keyId)), owner.x
     "auto-lock: a key card alone never auto-locks (manual: key card has no walk-away lock)")
 F.sent = {}
 v.parts.GasTank:getModData().camp = { by = "owner", at = F.hours }
+v.passengers = 1
 cmds.autoLock(owner, { vid = v:getId() })
 local skip = F.lastSent("autoLockSkip")
 check(skip and skip.args.reason == "AUTOLOCK_CAMP" and F.lastSent("deny") == nil and not v:areAllDoorsLocked(),
-    "autoLock command, camp on: autoLockSkip with the reason (client says it, stops asking), nothing locked")
-v.parts.GasTank:getModData().camp = nil
+    "autoLock command, camp on with someone inside: autoLockSkip with the reason (client says it, stops asking), nothing locked")
+v.parts.GasTank:getModData().camp, v.passengers = nil, 0
 owner.x = v.x - 4
 F.sent = {}
 cmds.autoLock(owner, { vid = v:getId() })
@@ -316,6 +338,23 @@ check(v.doors[1].d.locked, "handle (MP client start): never unlocks locally")
 isClient, isServer = cli, srv
 ISUnlockVehicleDoor.start, ISUnlockVehicleDoor.complete = unlockBefore.start, unlockBefore.complete -- other tests' fake parts have no getDoor
 
+-- ------------------------------------------------------------------ starting with the phone key in a bag
+local starts = {}
+function v:tryStartEngine(haveKey) starts[#starts + 1] = haveKey end
+function v:isDriver(p) return p.vehicle == self end
+function v:isHotwired() return self.hotwired == true end
+local function start(p) starts = {}; ISStartVehicleEngine.complete({ character = p }); return starts[1] end
+owner.vehicle, walletOnly.vehicle, stranger.vehicle = v, v, v
+check(start(owner) == true, "start: phone key in a bag -> tryStartEngine(true) (vanilla would pass false)")
+check(start(walletOnly) == false, "start: key card only in the wallet -> vanilla haveKey false (tap = put it on the reader)")
+check(start(stranger) == false, "start: no key -> vanilla haveKey false")
+local cardLoose = player("cardloose", container(key(K.CARD, v.keyId)), v.x, v.y)
+cardLoose.vehicle = v
+check(start(cardLoose) == true and K.bagPhoneStarts(cardLoose, v) == false, "start: loose key card -> vanilla path (goes into the ignition)")
+v.hotwired = true
+check(K.bagPhoneStarts(owner, v) == false, "start: hotwired -> vanilla path")
+v.hotwired, owner.vehicle, walletOnly.vehicle, stranger.vehicle = nil, nil, nil, nil
+
 -- ------------------------------------------------------------------ phone loot
 ProceduralDistributions = { list = { ElectronicStorePhones = { items = { "CordlessPhone", 50 } } } }
 F.fire("OnPostDistributionMerge")
@@ -325,4 +364,5 @@ check(#items == 4 and items[3] == K.PHONE and items[4] == K.LOOT.ElectronicStore
 
 for k, n in pairs(statsBefore) do S.stats[k] = n end -- test_sentry counts flashes from zero
 instanceItem, playServerSound, sendAddItemToContainer, sendRemoveItemFromContainer, ProceduralDistributions, getItemNameFromFullType = nil, nil, nil, nil, nil, nil
+ISStartVehicleEngine = nil
 F.done()

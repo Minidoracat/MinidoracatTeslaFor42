@@ -19,6 +19,11 @@ K.LOCK_DIST = 6
 K.LOCK_SLACK = 1    -- the server sees the player up to a step behind the client that asked
 K.WATCH_MS = 500    -- client distance check while a phone key holder walks away
 K.LOCK_TRIES = 6    -- client asks at most this many times (once per WATCH_MS) once it is LOCK_DIST away
+-- Lock confirmation (user 2026-10-26: candidate A): the vanilla standard horn on the car's own emitter, stopped after
+-- CHIRP_MS, played by each client within CHIRP_TILES. Emitter only, no world sound: zombies do not hear it.
+K.CHIRP = "VehicleHornStandard" -- sounds_vehicle_standard.txt (event Vehicle/Standard/Horn)
+K.CHIRP_MS = 150
+K.CHIRP_TILES = 40
 
 local function sameKey(item, keyId) return item:getKeyId() == keyId end
 
@@ -74,15 +79,18 @@ end
 
 -- Walk-Away Door Lock. Real car: no lock while a key is inside, a door or trunk is open, or Camp Mode is on
 -- (manual: Doors > Walk-Away Door Lock; Climate Controls > Camp Mode "Walk-Away Door Lock is inactive").
+-- Camp only counts with someone inside: an empty car's camp stops at the next engine update (Camp.lua "left"), so
+-- blocking on it would race that stop and leave the car unlocked (tesla-keys-1026w).
 -- false without a reason = nothing to say (no phone key, not away yet, already locked).
 function K.canAutoLock(player, vehicle)
     if not vehicle or not T.isTesla(vehicle) or player:getVehicle() then return false end
     if not K.phoneKey(player, vehicle) then return false end
     if player:DistTo(vehicle) < K.LOCK_DIST - K.LOCK_SLACK then return false end
     if vehicle:areAllDoorsLocked() then return false end
-    local part = T.Battery.part(vehicle)
-    if part and part:getModData().camp then return false, "AUTOLOCK_CAMP" end
-    if vehicle:hasPassenger() then return false, "AUTOLOCK_OCCUPIED" end
+    if vehicle:hasPassenger() then
+        local part = T.Battery.part(vehicle)
+        return false, (part and part:getModData().camp) and "AUTOLOCK_CAMP" or "AUTOLOCK_OCCUPIED"
+    end
     if anyDoorOpen(vehicle) then return false, "AUTOLOCK_DOOR_OPEN" end
     return true
 end
@@ -110,6 +118,27 @@ end
 function ISUnlockVehicleDoor:complete(...)
     if isServer() then K.phoneUnlock(self.vehicle, self.part, self.character) end
     return unlockComplete(self, ...)
+end
+
+-- Phone key in a bag also starts the car (the real one drives with the phone in a pocket or bag). Vanilla complete()
+-- passes haveKey from haveThisKeyId only (ISStartVehicleEngine.lua:29); here tryStartEngine(true) instead. complete()
+-- runs on the server in MP, locally in SP. No key goes into the ignition: the Starting state's setKeysInIgnition looks
+-- with haveThisKeyId too (BaseVehicle.java:7484,7503 -> :8647-8675), finds nothing and sends no putKeyInIgnition, so
+-- no extra "container already has id" (pitfalls.md). Key card: vanilla (loose -> onto the reader; wallet -> refused).
+function K.bagPhoneStarts(chr, vehicle)
+    return T.isTesla(vehicle) and not vehicle:isKeysInIgnition() and not vehicle:isHotwired()
+        and not chr:getInventory():haveThisKeyId(vehicle:getKeyId()) and K.phoneKey(chr, vehicle) ~= nil
+end
+
+require "Vehicles/TimedActions/ISStartVehicleEngine"
+local startComplete = ISStartVehicleEngine.complete
+function ISStartVehicleEngine:complete(...)
+    local vehicle = self.character:getVehicle()
+    if vehicle and vehicle:isDriver(self.character) and K.bagPhoneStarts(self.character, vehicle) then
+        vehicle:tryStartEngine(true)
+        return true
+    end
+    return startComplete(self, ...)
 end
 
 return K
