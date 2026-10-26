@@ -34,7 +34,10 @@ module Base
         engineLoudness = 10,
         engineQuality = 100,
         stoppingMovementForce = 4.0,
-        rollInfluence = 1.0,
+        /* grip and roll as vanilla SportsCar (Performance: 255/275 21" tyres, lowered adaptive suspension). maxSpeed 120 keeps more */
+        /* steering rate and lock at 100 km/h (CarController.java:288, VehicleScript.java:1678-1686); with ModernCar's 1.4 / 1.0 */
+        /* a 100 km/h lane change spun out (feel-sp tesla-perf-feel-after-1026d), with these it stays like SportsCar (-1026g, -1026i) */
+        rollInfluence = 0.7,
         steeringIncrement = 0.04,
         steeringClamp = 0.3,
         suspensionStiffness = 40.0,
@@ -42,7 +45,7 @@ module Base
         suspensionDamping = 2.88,
         maxSuspensionTravelCm = 10.0,
         suspensionRestLength = 0.2,
-        wheelFriction = 1.4,
+        wheelFriction = 1.8,
         frontEndHealth = 150,
         rearEndHealth = 150,
         template = TrunkDoor,
