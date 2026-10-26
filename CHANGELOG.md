@@ -31,6 +31,10 @@
 
 > 技術要點：Model Y 車身改作自 BloxBloger 的「2026 Tesla Model Y Performance」（Sketchfab，CC BY-NC 4.0，https://sketchfab.com/3d-models/2026-tesla-model-y-performance-8a0bc252f9da4015a02a7bd99efd4847 ，授權 http://creativecommons.org/licenses/by-nc/4.0/ ）。已修改：減面、拆件、重做貼圖、改用本 MOD 的車內與輪子；署名全文見 `CREDITS.md`。
 
+### 修正
+
+- **多人：開關 Model Y 車門時主控台多出的錯誤**：點火孔插著鑰匙時（引擎發動中，或開了「熄火後鑰匙留在點火孔」），每開關一次 Model Y 的車門或上掀式升降尾門，附近每位玩家的主控台都多一行 `container already has id` 錯誤，現在不會了。發動時駕駛自己主控台的那一行是遊戲本身的問題，一般車一樣會有，還會出現；兩者都只是記錄，鑰匙不會變多或不見。
+
 ## [42.21.0-0.1.0] - 2026-10-23
 
 ### 新增
