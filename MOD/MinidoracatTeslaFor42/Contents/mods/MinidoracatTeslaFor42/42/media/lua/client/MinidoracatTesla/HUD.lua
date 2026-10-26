@@ -636,7 +636,7 @@ function HUD.toggleCamp(player, vehicle)
         ok = true
     end
     if not ok then
-        if why then HaloTextHelper.addBadText(player, getText("IGUI_MinidoracatTesla_Deny_" .. why)) end -- HaloTextHelper.lua
+        if why then HaloTextHelper.addBadText(player, T.denyText(why)) end -- HaloTextHelper.lua
         return
     end
     T.request(player, on and "campOff" or "campOn", { vid = vehicle:getId() })

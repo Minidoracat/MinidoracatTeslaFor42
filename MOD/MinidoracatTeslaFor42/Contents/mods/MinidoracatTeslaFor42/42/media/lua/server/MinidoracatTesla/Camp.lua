@@ -1,7 +1,8 @@
--- Camp Mode (server). Heater keeps running with the motor off, drawing from the main pack; the 12V part
--- update (DC-DC top-up) also lives here. Rides the vanilla per-game-minute part update:
--- the Engine part update (TeslaLogic) calls Camp.onEngineUpdate, which keeps needPartsUpdate on while
--- camping and turns camp off when the cabin is empty, the motor runs, or the pack drops below 20%.
+-- Camp Mode (server). Heater keeps running with the motor off, drawing from the main pack, with auto climate
+-- (heat or cool toward C.COMFORT unless the player set the knob); the 12V part update (DC-DC top-up) also lives here.
+-- Rides the vanilla per-game-minute part update: the Engine part update (TeslaLogic) calls Camp.onEngineUpdate, which
+-- keeps needPartsUpdate on while camping, eases the boredom of everyone awake inside (the screen), and turns camp off
+-- when the cabin is empty, the motor runs, or the pack drops below the sandbox limit (C.minPct).
 if isClient() then return end
 require "MinidoracatTesla/Core"
 require "MinidoracatTesla/ParkModes"
@@ -39,7 +40,13 @@ function C.start(player, vehicle)
     if h then
         local hd = h:getModData()
         hd.active = true
-        if not tonumber(hd.temperature) or hd.temperature == 0 then hd.temperature = C.DEFAULT_TEMP end
+        -- auto climate unless the player set the knob: nothing set yet, or still the stop auto climate picked last time
+        if not tonumber(hd.temperature) or hd.temperature == 0 or hd.temperature == hd.auto then
+            hd.temperature = C.autoTemp(vehicle)
+            hd.auto = hd.temperature
+        else
+            hd.auto = nil
+        end
         vehicle:transmitPartModData(h)
     end
     vehicle:setNeedPartsUpdate(true)
@@ -57,7 +64,9 @@ function C.stop(vehicle, part, reason)
     vehicle:transmitPartModData(part)
     T.log("camp off vid=" .. vehicle:getId() .. " " .. tostring(reason))
     if reason == "lowBattery" then
-        T.Inbox.notify(c.by, T.Inbox.entry(vehicle, "lowBattery", "camp"))
+        local e = T.Inbox.entry(vehicle, "lowBattery", "camp")
+        e.pct = C.minPct() -- the card title's %1
+        T.Inbox.notify(c.by, e)
     end
 end
 
@@ -70,8 +79,18 @@ function C.onEngineUpdate(vehicle, part, minutes)
     -- no exit event on the server (VehicleExitPacket.java:68-73; OnExitVehicle is client-only).
     -- SP may hand in a VirtualVehicle (unloaded car, VirtualVehicle.java) that has no hasPassenger: nobody inside.
     if not vehicle.hasPassenger or not vehicle:hasPassenger() then return C.stop(vehicle, bp, "left") end
-    if T.Battery.pct(bp) < C.MIN_PCT then return C.stop(vehicle, bp, "lowBattery") end
+    if T.Battery.pct(bp) < C.minPct() then return C.stop(vehicle, bp, "lowBattery") end
     vehicle:setNeedPartsUpdate(true)
+    -- the screen: boredom eases for everyone awake inside (asleep: no TV either, ISRadioInteractions.lua:189). Stats are
+    -- the server's in MP (IsoPlayer.java:3046-3050) and reach the client with the periodic PlayerStats packet
+    -- (NetworkPlayerManager.java:34-35). C.BOREDOM_RATE is per GameTime multiplier unit, which sums to 48 per real
+    -- second (0.8 x fpsMultiplier 60/fps per frame: GameTime.java:986, FPSTracking.java:39); a game minute lasts
+    -- minutesPerDay x 60 / 1440 real seconds.
+    local units = 48 * minutes * getGameTime():getMinutesPerDay() * 60 / 1440
+    for i = 0, vehicle:getMaxPassengers() - 1 do
+        local chr = vehicle:getCharacter(i)
+        if chr and not chr:isAsleep() then chr:getStats():remove(CharacterStat.BOREDOM, C.BOREDOM_RATE * units) end
+    end
 end
 
 -- Vehicle (re)load after restart or chunk reload: needPartsUpdate starts false (BaseVehicle.java:380),
@@ -98,9 +117,21 @@ function T.Update.Heater(vehicle, part, elapsedMinutes)
     if not tonumber(pcData.temperature) then pcData.temperature = 0.0 end
     local hd = part:getModData()
     if not tonumber(hd.temperature) then hd.temperature = 0 end
-    local target = hd.temperature
     local bp = vehicle:getPartById("GasTank")
-    local powered = vehicle:isEngineRunning() or (bp ~= nil and bp:getModData().camp ~= nil)
+    local camp = bp ~= nil and bp:getModData().camp ~= nil
+    if camp and hd.auto ~= nil then
+        if hd.temperature ~= hd.auto then
+            hd.auto = nil -- the player turned the knob (vanilla toggleHeater, VehicleCommands.lua:91-99): theirs from now on
+        else
+            local t = C.autoTemp(vehicle) -- day and night: follow the outside air
+            if t ~= hd.auto then
+                hd.temperature, hd.auto = t, t
+                vehicle:transmitPartModData(part)
+            end
+        end
+    end
+    local target = hd.temperature
+    local powered = vehicle:isEngineRunning() or camp
     local previous = pcData.temperature
     local running = hd.active and powered -- the Heater part has no item (template_heater.txt), like vanilla
     if running and target > 0 and pcData.temperature < target then
@@ -114,7 +145,7 @@ function T.Update.Heater(vehicle, part, elapsedMinutes)
             pcData.temperature = math.min(pcData.temperature + 0.1 * elapsedMinutes, 0)
         end
     end
-    if running then drawMain(vehicle, C.HEATER_KW * elapsedMinutes / 60) end
+    if running and target ~= 0 then drawMain(vehicle, C.HEATER_KW * elapsedMinutes / 60) end
     -- same sync throttle as vanilla: rounded value moved and more than 2 minutes since the last send
     local id = vehicle:getId()
     local acc = (heaterMinutes[id] or 0) + elapsedMinutes
@@ -155,3 +186,14 @@ T.ServerCommands.campOff = function(player, args)
     end
     C.stop(v)
 end
+
+-- MP sleep in a car: the client picks the bed quality (ISWorldObjectContextMenu.lua:1058,1085; our client wraps
+-- getBedQuality) and only tells the server "asleep" (player/onVehicleSleep, server/ClientCommands.lua:636-639), but the
+-- sleep itself is the server's: fatigue recovery reads the server copy's bed type (IsoPlayer.java:3046-3050,3080-3097)
+-- and the stats sync back. Vanilla never sets that copy (IsoGameCharacter.java:628 default "averageBed"), so put the
+-- client's camping value there too, and the default back when sleeping in a car without camp.
+Events.OnClientCommand.Add(function(module, command, player, args)
+    if module ~= "player" or command ~= "onVehicleSleep" or not (args and args.isAsleep) or not player then return end
+    local v = player:getVehicle()
+    player:setBedType(C.bedType(player, v) or "averageBed")
+end)

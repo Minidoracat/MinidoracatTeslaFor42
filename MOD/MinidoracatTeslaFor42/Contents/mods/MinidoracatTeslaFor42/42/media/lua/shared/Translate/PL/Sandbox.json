@@ -3,5 +3,7 @@
     "Sandbox_MinidoracatTesla_RangeMultiplier": "Mnożnik zasięgu",
     "Sandbox_MinidoracatTesla_RangeMultiplier_tooltip": "Jak daleko zajedziesz na pełnym akumulatorze.\n1.0 = tyle, co pełny bak w zwykłym samochodzie tej samej klasy; 2.0 = dwa razy dalej.",
     "Sandbox_MinidoracatTesla_ChargeSpeedMultiplier": "Mnożnik prędkości ładowania",
-    "Sandbox_MinidoracatTesla_ChargeSpeedMultiplier_tooltip": "1.0 = oficjalna moc ładowarki (Wall Connector 11,5 kW); 2.0 = dwa razy szybciej."
+    "Sandbox_MinidoracatTesla_ChargeSpeedMultiplier_tooltip": "1.0 = oficjalna moc ładowarki (Wall Connector 11,5 kW); 2.0 = dwa razy szybciej.",
+    "Sandbox_MinidoracatTesla_CampMinBattery": "Próg akumulatora w trybie kempingowym",
+    "Sandbox_MinidoracatTesla_CampMinBattery_tooltip": "Poniżej tego poziomu naładowania trybu kempingowego nie da się włączyć, a gdy akumulator spadnie niżej, tryb się wyłącza.\nJak tryb niskiego zużycia energii w prawdziwym aucie: 10–20%%, domyślnie 20."
 }

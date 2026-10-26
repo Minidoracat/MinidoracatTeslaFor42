@@ -3,5 +3,7 @@
     "Sandbox_MinidoracatTesla_RangeMultiplier": "Множитель запаса хода",
     "Sandbox_MinidoracatTesla_RangeMultiplier_tooltip": "Сколько можно проехать на полной батарее.\n1.0 = столько же, сколько обычная машина того же класса на полном баке; 2.0 = вдвое дальше.",
     "Sandbox_MinidoracatTesla_ChargeSpeedMultiplier": "Множитель скорости зарядки",
-    "Sandbox_MinidoracatTesla_ChargeSpeedMultiplier_tooltip": "1.0 = официальная мощность зарядки (Wall Connector 11,5 кВт); 2.0 = вдвое быстрее."
+    "Sandbox_MinidoracatTesla_ChargeSpeedMultiplier_tooltip": "1.0 = официальная мощность зарядки (Wall Connector 11,5 кВт); 2.0 = вдвое быстрее.",
+    "Sandbox_MinidoracatTesla_CampMinBattery": "Порог заряда для режима кемпинга",
+    "Sandbox_MinidoracatTesla_CampMinBattery_tooltip": "Ниже этого заряда режим кемпинга не включается, а при падении заряда ниже него выключается.\nКак режим энергосбережения в настоящем автомобиле: 10–20%%, по умолчанию 20."
 }
