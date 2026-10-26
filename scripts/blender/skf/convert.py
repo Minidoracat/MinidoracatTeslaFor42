@@ -36,7 +36,8 @@ DROP = ("Object005", "Cylinder", "Circle.", "Plane.027", "Plane.076", "Plane.088
         "Plane.075", "Plane.087", "Plane.089",       # tires, rims, calipers, discs: the mod's procedural wheel stays
         "Object_11", "Object_12",                    # licence plates
         "Plane.031", "Plane.051", "Plane.053", "Plane.040",   # clear lamp covers: opaque in PZ, they'd hide the lamps
-        "Plane.067", "Hyundai_KONA")   # BloxBloger's interior (tub, seats, dash): the mod's own cabin (cabin.py) instead
+        "Plane.067", "Hyundai_KONA",   # BloxBloger's interior (tub, seats, dash): the mod's own cabin (cabin.py) instead
+        "Tesla_Model_3")               # rear TESLA: 1.2 cm block letters (E a solid block) sunk 4 cm under the blade
 # collapse-decimated before anything else (target tris): detail PZ cannot show at 1-4 px per cm
 DECIMATE = {"Plane.045": 400,             # 29.5k-tri honeycomb under the tail light bar
             "Plane.034": 1200, "Plane.020": 1000, "Plane.016": 2600}
@@ -46,7 +47,11 @@ MAT_RGB = {"Material_#2125780493": None, "black_base": (34, 34, 36), "Material_#
            "black": (20, 20, 22), "black.001": (20, 20, 22), "black.002": (20, 20, 22), "black222": (20, 20, 22),
            "Iron_Clean_Distorted": (60, 60, 64), "front_white_light": (226, 230, 236), "back_red_Light": (150, 12, 16),
            "red_plastic111": (120, 12, 16), "red_plastic": (120, 12, 16), "mirror": (58, 64, 72),
-           "glass_base": (14, 14, 16), "Material_#2125773440": (14, 14, 16), "04_-_Default": (60, 60, 60)}
+           "glass_base": (14, 14, 16), "Material_#2125773440": (14, 14, 16), "04_-_Default": (60, 60, 60),
+           "badge_chrome": (196, 200, 206), "badge_black": (8, 8, 10)}
+# chrome badges mirror the surroundings: bright on a dark paint, grey on a light one (median V >= 0.55: PearlWhite
+# read 196 on ~210 paint, gone)
+CHROME = ((200, 204, 210), (104, 108, 114))
 GLASS_MATS = ("glass_base", "Material_#2125773440")  # glass_base on Plane.008 is the B-pillar cover: opaque black
 # paint light (textures()): official-render paint quantile q = (base + up x upness(nz) + band x shoulder(nz) + lobe x
 # softbox(n . PAINT_LIGHT) + height x h) x AO term: (base, up, band strength, band nz centre, band width, lobe, lobe
@@ -89,7 +94,20 @@ STOP_X = 0.645                             # corner lamps inboard of this |x| ar
 CUT = {("Plane.005", 342): ("BF", "BR", "D"), ("Plane.062", 268): ("D",)}
 CUT_X = ("Plane.034", "Plane.044", "Plane.045", "Plane.036", "Plane.042", "Plane.043", "Plane.041")  # rear lamps
 DOOR_OBJS = ("Plane.062", "Plane.005", "Plane.002", "Plane.046", "Plane.048", "Plane.050", "Plane.047")
-GATE_OBJS = CUT_X + ("Plane.022", "Plane.086", "Tesla_Model_3")
+GATE_OBJS = CUT_X + ("Plane.022", "Plane.086")
+# badges (user 2026-10-26; Model Y 2025 service manual ch. 1205 "Badges and Films"), drawn in badges(): T on the frunk
+# lid (OEM 1494949-00-A, chrome, 7.8 x 8.2 cm), TESLA in black across the light blade (letters ~2 cm tall, 42 cm
+# span), MODEL Y in chrome on the tailgate's lower left (jig on its left and lower edges). Letters are scaled for the
+# closest zoom, where 1 cm is about 1.5 px: true-size letters would be one or two pixels tall
+BADGE_OFF = 0.003                          # grid off the surface (no depth fight)
+T_BADGE = (1.85, 0.0644, 0.0677)           # centre y on the frunk lid (stem tip ~3 cm off its front edge), width, height
+TESLA = (0.93, 0.03, 0.11, 0.045)          # blade strip centre z (pre-centre), cap height, letter pitch, lens height
+SWATCH = ("Badge_T", "Badge_TESLA", "Badge_MODELY")   # one flat-colour UV spot each (unwrap())
+SWATCH_U = 0.03                            # UV0 strip kept for them at u > 1 - SWATCH_U
+LENS_X = 0.46                              # the blade's rear strip ends here (the corner lamps' lenses outboard)
+MODELY = (-0.46, 0.555, 0.033)            # left x, baseline z, cap height (true ~2.4 cm): under the crease at z 0.60,
+#                                            inside the tailgate (|x| < 0.50 at this height)
+SMOKE_RGB = (62, 58, 60)                   # the light blade by day: smoked lens, so the black letters read
 GATE_COMPS = (("Plane.062", 248, -1), ("Plane.014", 102, -1))   # rear window and its frame (y sign of the centre)
 PARTS = ["Body"] + list(pv.DOORS)          # part index: 0 body, 1.. DOORS order (FL, FR, RL, RR, TrunkDoor, EngineDoor)
 FRUNK_DEPTH = 0.22                         # grid: black tub under the frunk lid
@@ -164,31 +182,10 @@ def load_source():
         target = next((t for p, t in DECIMATE.items() if o.name.startswith(p)), None)
         if target:
             pv.decimate(o, target)
-        bm = bmesh.new()
-        bm.from_mesh(me)
-        bmesh.ops.triangulate(bm, faces=bm.faces[:])
-        si, ci = bm.faces.layers.int.new("src"), bm.faces.layers.int.new("comp")
-        bm.faces.ensure_lookup_table()
-        seen, k = np.full(len(bm.faces), -1), 0
-        for f in bm.faces:
-            if seen[f.index] >= 0:
-                continue
-            st = [f]
-            seen[f.index] = k
-            while st:
-                g = st.pop()
-                for e in g.edges:
-                    for h in e.link_faces:
-                        if seen[h.index] < 0:
-                            seen[h.index] = k
-                            st.append(h)
-            k += 1
-        for f in bm.faces:
-            f[si], f[ci] = len(names), int(seen[f.index])
-        bm.to_mesh(me)
-        bm.free()
+        _label(o, len(names))
         names.append(o.name.split("_Mesh")[0] if "_Mesh" in o.name else o.name)
         obs.append(o)
+    badges(obs, names)
     pv.select_only(*obs)
     bpy.ops.object.join()
     car = bpy.context.view_layer.objects.active
@@ -201,6 +198,183 @@ def load_source():
     tire = (float(size[:, 1:].mean() / 2), float(size[:, 0].mean()))
     print("SOURCE tires: radius %.4f width %.4f centres" % tire, [np.round(w, 3).tolist() for w in wl])
     return car, names, wl, tire
+
+
+def _label(o, src):
+    """Triangulate o and tag its faces: src (object index) and comp (connected component within the object)."""
+    bm = bmesh.new()
+    bm.from_mesh(o.data)
+    bmesh.ops.triangulate(bm, faces=bm.faces[:])
+    si, ci = bm.faces.layers.int.new("src"), bm.faces.layers.int.new("comp")
+    bm.faces.ensure_lookup_table()
+    seen, k = np.full(len(bm.faces), -1), 0
+    for f in bm.faces:
+        if seen[f.index] >= 0:
+            continue
+        st = [f]
+        seen[f.index] = k
+        while st:
+            g = st.pop()
+            for e in g.edges:
+                for h in e.link_faces:
+                    if seen[h.index] < 0:
+                        seen[h.index] = k
+                        st.append(h)
+        k += 1
+    for f in bm.faces:
+        f[si], f[ci] = src, int(seen[f.index])
+    bm.to_mesh(o.data)
+    bm.free()
+
+
+def _flat_normals(me):
+    """custom_normal = face normal on every corner (the badges are flat)."""
+    me.update()
+    lt = [p.loop_total for p in me.polygons]
+    fn = np.array([p.normal[:] for p in me.polygons], np.float32)
+    if "custom_normal" in me.attributes:
+        me.attributes.remove(me.attributes["custom_normal"])
+    me.attributes.new("custom_normal", "FLOAT_VECTOR", "CORNER").data.foreach_set("vector", np.repeat(fn, lt, 0).ravel())
+
+
+def _material(me, name):
+    m = bpy.data.materials.get(name) or bpy.data.materials.new(name)
+    me.materials.clear()
+    me.materials.append(m)
+    me.polygons.foreach_set("material_index", np.zeros(len(me.polygons), np.int64))
+
+
+def t_logo():
+    """The Tesla T as one outline (u right, v up; 1 wide, crossbar top at v 0.42, stem tip at -0.52): a crossbar arched
+    up, its ends hooked down, a tapered stem."""
+    top = [(u, 0.36 + 0.06 * (1 - (2 * u) ** 2)) for u in np.linspace(-0.5, 0.5, 9)]
+    under = lambda a, b: [(u, 0.27 + 0.03 * (0.46 - abs(u)) / 0.37) for u in np.linspace(a, b, 5)]  # noqa: E731
+    return [top + [(0.5, 0.30)] + under(0.46, 0.09) + [(0.05, -0.52), (-0.05, -0.52)] + under(-0.09, -0.46)
+            + [(-0.5, 0.30)]]
+
+
+def _ring(cx, cy, r, a0, a1, n):
+    return [(cx + r * math.cos(a), cy + r * math.sin(a)) for a in np.linspace(a0, a1, n)]
+
+
+# stroke fonts, cap height 1: char -> (advance, polylines). SANS: a thin geometric sans for MODEL Y. WORDMARK: Tesla's
+# rear lettering, wide and squared (E three bars, S three bars joined left-top and right-bottom, A a squared arch)
+SANS = {"M": (1.0, [[(0, 0), (0, 1), (0.5, 0.3), (1, 1), (1, 0)]]),
+        "O": (1.0, [_ring(0.5, 0.5, 0.5, 0, 2 * math.pi, 21)]),
+        "D": (0.9, [[(0, 0), (0, 1), (0.4, 1)] + _ring(0.4, 0.5, 0.5, math.pi / 2, -math.pi / 2, 9) + [(0, 0)]]),
+        "E": (0.75, [[(0.75, 1), (0, 1), (0, 0), (0.75, 0)], [(0, 0.5), (0.65, 0.5)]]),
+        "L": (0.7, [[(0, 1), (0, 0), (0.7, 0)]]),
+        "Y": (0.9, [[(0, 1), (0.45, 0.5), (0.9, 1)], [(0.45, 0.5), (0.45, 0)]]),
+        " ": (0.5, [])}
+WORDMARK = {"T": (1.3, [[(0, 1), (1.3, 1)], [(0.65, 1), (0.65, 0)]]),
+            "E": (1.3, [[(0, 1), (1.3, 1)], [(0, 0.5), (1.3, 0.5)], [(0, 0), (1.3, 0)]]),
+            "S": (1.3, [[(1.3, 1), (0, 1), (0, 0.5), (1.3, 0.5), (1.3, 0), (0, 0)]]),
+            "L": (1.3, [[(0, 1), (0, 0), (1.3, 0)]]),
+            "A": (1.3, [[(0, 0), (0, 1), (1.3, 1), (1.3, 0)], [(0, 0.5), (1.3, 0.5)]])}
+
+
+def stroke_text(text, font, w, gap=0.28, pitch=None):
+    """Strokes as square-capped quads, one list per letter (u right, v up, baseline 0); -> (letters, width)."""
+    letters, x = [], 0.0
+    for ch in text:
+        adv, lines = font[ch]
+        quads = []
+        for line in lines:
+            for a, b in zip(line, line[1:]):
+                a, b = np.array(a) + (x, 0), np.array(b) + (x, 0)
+                if np.allclose(a, b):
+                    continue
+                d = (b - a) / np.linalg.norm(b - a) * w / 2
+                nrm = np.array((-d[1], d[0]))
+                a, b = a - d, b + d
+                quads.append([tuple(a - nrm), tuple(b - nrm), tuple(b + nrm), tuple(a + nrm)])
+        letters.append(quads)
+        x += pitch or adv + gap
+    return letters, x - (pitch or gap) + (adv if pitch else 0)
+
+
+def badges(obs, names):
+    """T on the frunk lid, the blade lens with TESLA on it, MODEL Y on the tailgate (see BADGE_OFF): new objects, src
+    and comp tagged like the source's."""
+    from mathutils.bvhtree import BVHTree
+    from mathutils.geometry import tessellate_polygon
+
+    def tree():
+        verts, polys = [], []
+        for o in obs:
+            k = len(verts)
+            verts += [v.co.copy() for v in o.data.vertices]
+            polys += [[k + i for i in p.vertices] for p in o.data.polygons]
+        return BVHTree.FromPolygons(verts, polys)
+
+    def add(name, pts, faces, n, mat):
+        me = bpy.data.meshes.new(name)
+        me.from_pydata(pts, [], faces)
+        me.update()
+        for f in me.polygons:               # face the badge normal
+            if f.normal.dot(n) < 0:
+                f.flip()
+        ob = bpy.data.objects.new(name, me)
+        bpy.context.scene.collection.objects.link(ob)
+        _material(me, mat)
+        _flat_normals(me)
+        _label(ob, len(names))
+        names.append(name)
+        obs.append(ob)
+        print("BADGE", name, len(me.polygons), "faces")
+
+    def flat(name, groups, frame, mat, ray=None, planar=False):
+        """Polygons (u, v) in frame (origin, u, v, badge normal) laid on what a ray (default -normal) meets, BADGE_OFF
+        out: vertex by vertex, or with planar each group flat, on its mean hit normal through its outermost hit (a
+        stroke laid by its ends would sink into a curve or crease mid-stroke)."""
+        p0, eu, ev, n = (Vector(a).normalized() if i else Vector(a) for i, a in enumerate(frame))
+        r = Vector(ray) if ray else -n
+        pts, tris = [], []
+        for group in filter(None, groups):         # (a space is an empty group)
+            qs = [p0 + float(u) * eu + float(v) * ev for poly in group for u, v in poly]
+            hits = []
+            for q in qs:
+                hit, hn, _, _ = bvh.ray_cast(q - 0.3 * r, r)
+                if hit is None:
+                    raise SystemExit(f"badge {name}: no surface under {np.round(q[:], 3).tolist()}")
+                hits.append((hit, hn if hn.dot(n) > 0 else -hn))
+            if planar:
+                nl = sum((hn for _, hn in hits), Vector()).normalized()
+                d = max(hit.dot(nl) for hit, _ in hits) + BADGE_OFF
+                lay = [q + (d - q.dot(nl)) / r.dot(nl) * r for q in qs]   # along the ray: the outline stays put
+            else:
+                lay = [hit + BADGE_OFF * hn for hit, hn in hits]
+            k = len(pts)
+            pts += lay
+            for poly in group:
+                tris += [[k + i for i in t] for t in tessellate_polygon([[Vector((u, v, 0)) for u, v in poly]])]
+                k += len(poly)
+        add(name, pts, tris, n, mat)
+
+    bvh = tree()
+    # T: read from ahead of the car (u = -x), its top toward the windshield, on the lid's slope; rays straight down
+    # (along the lid normal, the stem tip's ray would pass the lid's front edge onto the light bar)
+    y, tw, th = T_BADGE
+    n = Vector((0, 0.34, 0.94)).normalized()
+    flat("Badge_T", [[[(u * tw, (v + 0.05) * th / 0.94) for u, v in t_logo()[0]]]],
+         ((0, y, 0.62), (-1, 0, 0), (0, -n.z, n.y), n), "badge_chrome", ray=(0, 0, -1))
+    # the blade lens: the source's blade faces back on a 1.5 cm strip (z 0.922-0.937; the underside and a sloped
+    # housing below it), the real blade is ~4.5 cm with the letters inside. A plate over the strip across the
+    # tailgate, upright, following the bar's curve in plan; it is the blade (smoked, glows as a tail light)
+    zc, ch, pitch, lh = TESLA
+    xs = np.linspace(-LENS_X, LENS_X, 21)
+    ys = [bvh.ray_cast(Vector((x, -2.5, zc)), Vector((0, 1, 0)))[0].y - BADGE_OFF / 2 for x in xs]
+    add("Badge_BLADE", [Vector((x, y, zc + s * lh / 2)) for x, y in zip(xs, ys) for s in (-1, 1)],
+        [(2 * i, 2 * i + 2, 2 * i + 3, 2 * i + 1) for i in range(len(xs) - 1)], Vector((0, -1, 0)), "badge_black")
+    bvh = tree()
+    # rear lettering, read from behind (u = +x)
+    letters, wid = stroke_text("TESLA", WORDMARK, 0.22, pitch=pitch / ch)
+    flat("Badge_TESLA", [[[(u * ch, v * ch) for u, v in q] for q in g] for g in letters],
+         ((-wid * ch / 2, -1.7, zc - ch / 2), (1, 0, 0), (0, 0, 1), (0, -1, 0)), "badge_black", planar=True)
+    x0, z0, ch = MODELY
+    letters, _ = stroke_text("MODEL Y", SANS, 0.16)
+    flat("Badge_MODELY", [[[(u * ch, v * ch) for u, v in q] for q in g] for g in letters],
+         ((x0, -1.7, z0), (1, 0, 0), (0, 0, 1), (0, -1, 0)), "badge_chrome", planar=True)
 
 
 def edit(car, names):
@@ -301,14 +475,15 @@ def classify(car, names, sizes):
     for o, s, sy in GATE_COMPS:
         gate |= (obj == o) & (csize == s) & (np.sign(ay) == sy) & (ax < 0.1)
     gsel = gate & ((obj == "Plane.062") | (obj == "Plane.014") | in_gate(cen))
-    part[gsel] = 5
+    part[gsel | np.isin(obj, ("Badge_BLADE", "Badge_TESLA", "Badge_MODELY"))] = 5
+    part[obj == "Badge_T"] = 6
     # lamps. Tail: the red light bar (a 1 cm strip on the spoiler's lower lip, about a pixel in game), the corner
     # lamps, and the rear face of the smoked light-bar cover across the tailgate (Plane.034, black_base), which glows
     # red at night like the real light blade (night-N showed one corner patch only)
     head = mat == "front_white_light"
     tail = np.isin(mat, ("back_red_Light", "red_plastic111")) & (cen[:, 2] > 0.75) & (cen[:, 1] < -1.4)
     fnorm = np.array([p.normal[:] for p in me.polygons])
-    blade = (obj == "Plane.034") & (fnorm[:, 1] < -0.5)
+    blade = (obj == "Plane.034") & (fnorm[:, 1] < -0.5) | (obj == "Badge_BLADE")
     tail |= blade
     lamp = np.where(head, 1, np.where(tail, 2, 0))
     # zones
@@ -338,9 +513,11 @@ def classify(car, names, sizes):
     pane = np.full(n, -1)
     pane[glass] = [GLASS_ZONES.index(z) for z in gzn[glass]]
     rgb = np.array([MAT_RGB.get(m) or (0, 0, 0) for m in mat], float) / 255
+    rgb[blade] = np.array(SMOKE_RGB) / 255
     print("CLASSIFY parts", {PARTS[k]: int((part == k).sum()) for k in range(len(PARTS))}, "glass", int(glass.sum()),
           "lamps head/tail", int(head.sum()), int(tail.sum()))
     return dict(part=part, zone=zone, rgb=rgb, paint=paint, lamp=lamp, glass=glass, pane=pane, obj=obj, csize=csize,
+                badge=np.array([o.startswith("Badge_") for o in obj]),
                 mat=mat, mirror=mirror)
 
 
@@ -358,8 +535,10 @@ def split_zone_edges(car, zone):
     bm.free()
 
 
-def unwrap(car):
-    """UV0: smart projection of every face, packed; UV1 starts as a copy (damage_uv1 rewrites it)."""
+def unwrap(car, obj):
+    """UV0: smart projection of every face, packed; UV1 starts as a copy (damage_uv1 rewrites it). Badge faces (obj
+    in SWATCH) all map onto one small triangle per badge in a strip kept free at the right edge: their strokes are
+    narrower than a texel (5 mm; ~1 cm at 2048, 4 cm at 512), so on own islands they took the neighbours' colours."""
     me = car.data
     for nm in [u.name for u in me.uv_layers]:
         me.uv_layers.remove(me.uv_layers[nm])
@@ -375,6 +554,16 @@ def unwrap(car):
     bpy.ops.object.mode_set(mode="OBJECT")
     uv = np.empty(len(me.loops) * 2)
     me.uv_layers["UV0"].data.foreach_get("uv", uv)
+    uv = uv.reshape(-1, 2)
+    uv[:, 0] *= 1 - SWATCH_U
+    ls = np.empty(len(me.polygons), np.int64)
+    me.polygons.foreach_get("loop_start", ls)
+    for k, name in enumerate(SWATCH):       # 4 texels (2048) a side: the bake's margin fills the rest of the strip
+        cu, cv, h = 1 - SWATCH_U / 2, (k + 0.5) / len(SWATCH), 2 / SKIN
+        for i, d in enumerate(((-h, -h), (h, -h), (0, h))):
+            uv[ls[obj == name] + i] = (cu + d[0], cv + d[1])
+    uv = uv.ravel()
+    me.uv_layers["UV0"].data.foreach_set("uv", uv)
     me.uv_layers.new(name="UV1").data.foreach_set("uv", uv)
 
 
@@ -454,12 +643,15 @@ def textures(car, c):
     aux = np.stack([c["paint"].astype(float), (c["lamp"] > 0).astype(float), (c["lamp"] == 2).astype(float)], 1)
     fz = pv.face_centres(car)[:, 2]
     hgt = np.repeat(((fz - fz.min()) / np.ptp(fz))[:, None], 3, 1)    # 0 at the lowest face, 1 at the roof
-    b = bake(car, {"col": c["rgb"], "zone": zone_rgb[c["zone"]], "aux": aux, "hgt": hgt})
+    b = bake(car, {"col": c["rgb"], "zone": zone_rgb[c["zone"]], "aux": aux, "hgt": hgt,
+                   "badge": np.repeat(np.where(c["mat"] == "badge_chrome", 1.0, 0.5 * c["badge"])[:, None], 3, 1)})
     col, zon, aux, ao = b["col"][..., :3], b["zone"][..., :3], b["aux"][..., :3], b["ao"][..., 0]
     nrm = b["nrm"][..., :3] * 2 - 1
     nz = nrm[..., 2]
     paint = aux[..., 0] > 0.5
-    shade = 0.55 + 0.45 * ao
+    # badges flat: their strokes overlap at the joints, coplanar faces whose AO rays start on each other (dark specks)
+    shade = np.where(b["badge"][..., 0] > 0.25, 1.0, 0.55 + 0.45 * ao)
+    chrome = b["badge"][..., 0] > 0.75
     # paint: the source is one flat colour, so its light comes from a matcap on the baked normal (sides low in the
     # official render's paint quantiles, hood and roof above the middle, a bright band on the shoulder) and the height
     # (the lower body reflects the ground) times AO; the quantile picks the official render's paint colour there
@@ -484,6 +676,7 @@ def textures(car, c):
         a_, b_ = (np.array(t, np.float32) for t in pv.CAL[p])
         s = col * shade[..., None]
         s[paint] = np.clip(a_ * np.stack([np.interp(q, xp, ramp[:, i]) for i in range(3)], -1) / pv.GAIN + b_, 0, 1)
+        s[chrome] = np.array(CHROME[int(np.median(s[paint].max(-1)) >= 0.55)]) / 255
         pv.save_png(np.concatenate([np.clip(s, 0, 1), np.ones(s.shape[:2] + (1,))], -1),
                     os.path.join(pv.TEX_DIR, f"{pv.NAME}_{p}.png"), p)
         # setColorHSV for the damage overlays: the shader gives Veh_Damage* texels the paint hue and S / V offsets
@@ -520,7 +713,7 @@ def stage_build():
     zmid = float(ctr[2])
     shift = np.array([0.0, ctr[1], zmid])
     pv.set_co(car, co - shift)
-    unwrap(car)
+    unwrap(car, c["obj"])
     textures(car, c)
     # UV1: vanilla ModernCar's damage layout (damage_uv1); glass faces + 2 + 2 x pane (the frag's glass class and
     # GLASS_ZONE[])
