@@ -113,8 +113,9 @@ SWATCH = ("Badge_T", "Badge_TESLA", "Badge_MODELY", "Caliper")   # one flat-colo
 # grid out through the spokes at full lock, so the front pair keeps within ~0.08 grid of the steering axis in plan:
 # top or bottom of the wheel. From the game camera (30 deg down) a recess is seen through the gaps above it: at the
 # top the caliper hid behind the fender and the rim in 5 of 6 spin angles, at the bottom it showed in all 6 (offline
-# view S, Quicksilver, 106-666 red px)
-CALIPER = dict(front=(176, 18), rear=(80, 15), r=(0.115, 0.185), x=(0.010, 0.045))
+# view S, Quicksilver, 85-573 red px)
+CALIPER = dict(front=(176, 18), rear=(80, 15), r=(0.100, 0.168), x=(0.010, 0.045))   # r: the front pair's
+#                                                             bottom stays above the body's lowest point (calipers())
 SWATCH_U = 0.03                            # UV0 strip kept for them at u > 1 - SWATCH_U
 LENS_X = 0.46                              # the blade's rear strip ends here (the corner lamps' lenses outboard)
 MODELY = (-0.46, 0.555, 0.033)            # left x, baseline z, cap height (true ~2.4 cm): under the crease at z 0.60,
@@ -369,6 +370,10 @@ def calipers(obs, names, wl, tire):
             print("CALIPER front clearance at full lock %.4f grid" % worst)
             if worst < 0.003:
                 raise SystemExit(f"front caliper hits the spokes or the barrel when steering: clearance {worst:.4f}")
+    # the body's bbox sets the model centre and the script's extents and wheel offsets: the calipers stay inside it
+    floor = min(min(v.co.z for v in o.data.vertices) for o in obs)
+    if min(p[2] for p in pts) < floor:
+        raise SystemExit(f"calipers reach below the body ({min(p[2] for p in pts):.4f} < {floor:.4f}): smaller CALIPER r")
     _add(obs, names, "Caliper", pts, faces, want, "caliper_red")
 
 

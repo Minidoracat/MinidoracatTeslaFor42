@@ -56,8 +56,8 @@ module Base
         textureDamage2Shell = Vehicles/Veh_Damage2,
         textureRust = Vehicles/Veh_Rust,
         template = PassengerSeat4,
-        extents = 0.8825 0.6825 2.1707,
-        physicsChassisShape = 0.8825 0.6825 2.1707,
+        extents = 0.8825 0.6746 2.1707,
+        physicsChassisShape = 0.8825 0.6746 2.1707,
         centerOfMassOffset = 0.0000 0.1978 0.0000,
         shadowExtents = 0.8825 2.1707,
         shadowOffset = 0.0 0.0,
@@ -65,38 +65,38 @@ module Base
         physics box
         {
             offset = 0.0000 0.0655 0.0000,
-            extents = 0.8660 0.4179 2.1377,
+            extents = 0.8660 0.4100 2.1377,
         }
         physics box
         {
-            offset = 0.0000 0.4067 -0.3159,
+            offset = 0.0000 0.4028 -0.3159,
             extents = 0.7143 0.2646 1.1264,
         }
         wheel FrontLeft
         {
             front = true,
-            offset = 0.3489 -0.3001 0.6720,
+            offset = 0.3489 -0.3040 0.6720,
             radius = 0.1590,
             width = 0.2432,
         }
         wheel FrontRight
         {
             front = true,
-            offset = -0.3492 -0.3001 0.6720,
+            offset = -0.3492 -0.3040 0.6720,
             radius = 0.1590,
             width = 0.2432,
         }
         wheel RearLeft
         {
             front = false,
-            offset = 0.3489 -0.3001 -0.6456,
+            offset = 0.3489 -0.3040 -0.6456,
             radius = 0.1590,
             width = 0.2432,
         }
         wheel RearRight
         {
             front = false,
-            offset = -0.3492 -0.3001 -0.6456,
+            offset = -0.3492 -0.3040 -0.6456,
             radius = 0.1590,
             width = 0.2432,
         }
@@ -112,12 +112,12 @@ module Base
             showPassenger = true,
             position inside
             {
-                offset = 0.1813 -0.0992 0.1094,
+                offset = 0.1813 -0.1031 0.1094,
                 rotate = 0.0 0.0 0.0,
             }
             position outside
             {
-                offset = 0.6061 -0.4069 0.1094,
+                offset = 0.6061 -0.4108 0.1094,
                 rotate = 0.0 0.0 0.0,
                 area = SeatFrontLeft,
             }
@@ -127,12 +127,12 @@ module Base
             showPassenger = true,
             position inside
             {
-                offset = -0.1813 -0.0992 0.1094,
+                offset = -0.1813 -0.1031 0.1094,
                 rotate = 0.0 0.0 0.0,
             }
             position outside
             {
-                offset = -0.6061 -0.4069 0.1094,
+                offset = -0.6061 -0.4108 0.1094,
                 rotate = 0.0 0.0 0.0,
                 area = SeatFrontRight,
             }
@@ -142,12 +142,12 @@ module Base
             showPassenger = true,
             position inside
             {
-                offset = 0.1813 -0.0992 -0.3906,
+                offset = 0.1813 -0.1031 -0.3906,
                 rotate = 0.0 0.0 0.0,
             }
             position outside
             {
-                offset = 0.6061 -0.4069 -0.3906,
+                offset = 0.6061 -0.4108 -0.3906,
                 rotate = 0.0 0.0 0.0,
                 area = SeatRearLeft,
             }
@@ -157,12 +157,12 @@ module Base
             showPassenger = true,
             position inside
             {
-                offset = -0.1813 -0.0992 -0.3906,
+                offset = -0.1813 -0.1031 -0.3906,
                 rotate = 0.0 0.0 0.0,
             }
             position outside
             {
-                offset = -0.6061 -0.4069 -0.3906,
+                offset = -0.6061 -0.4108 -0.3906,
                 rotate = 0.0 0.0 0.0,
                 area = SeatRearRight,
             }
@@ -213,20 +213,20 @@ module Base
         }
         attachment trailer
         {
-            offset = 0.0000 -0.2973 -1.1018,
+            offset = 0.0000 -0.2934 -1.1018,
             rotate = 0.0 0.0 0.0,
             zoffset = -1.0,
         }
         attachment trailerfront
         {
-            offset = 0.0000 -0.2973 1.1018,
+            offset = 0.0000 -0.2934 1.1018,
             rotate = 0.0 0.0 0.0,
             zoffset = 1.0,
         }
         /* charge port: side end of the left tail light (real Model Y) */
         attachment chargeport
         {
-            offset = 0.3677 0.0755 -0.8867,
+            offset = 0.3677 0.0715 -0.8867,
             rotate = 0.0 0.0 0.0,
         }
         part DoorFrontLeft
