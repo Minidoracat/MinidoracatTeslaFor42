@@ -67,9 +67,10 @@ function C.chargeItem(player, vehicle, item, hours)
 end
 
 -- CabinLight part init (both sides, every load: VehicleLight saves only active/offset/intensity/dist,
--- VehicleLight.java:85-102). Car centre, dot -1 = all round, 3000 K warm white (255,180,107).
-C.LIGHT_DIST = 4
-C.LIGHT_INTENSITY = 0.35
+-- VehicleLight.java:85-102). Car centre, dot -1 = all round, 3000 K warm white (255,180,107). Radius 6 / 0.5
+-- (user 2026-10-26 「亮一點」): ground next to the car ~1.5x the old 4 / 0.35 and lit 2 tiles further.
+C.LIGHT_DIST = 6
+C.LIGHT_INTENSITY = 0.5
 function T.Init.CabinLight(vehicle, part)
     part:createSpotLightColor(0, 0, C.LIGHT_DIST, C.LIGHT_INTENSITY, -1, 0, 1.0, 0.706, 0.42)
 end
