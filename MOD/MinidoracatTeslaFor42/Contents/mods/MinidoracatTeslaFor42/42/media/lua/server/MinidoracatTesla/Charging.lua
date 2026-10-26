@@ -111,10 +111,21 @@ function C.unlink(o)
 end
 
 -- Sentry standby is booked on events (Sentry.settle) with the power state it ran under (Battery.onCharger), so settle
--- it before that state changes: every charging settle, and before the link goes. freeUntil: when that power ended.
+-- it before that state changes: every charging settle, and before the link goes (clearChg: Sentry.settle asks
+-- C.powerUntil itself).
 local function settleSentry(vehicle, now, freeUntil)
     local f = T.Sentry and T.Sentry.settle
     if f then f(vehicle, now, freeUntil) end
+end
+
+-- World hour the charger power recorded in chg (chg.power, Battery.onCharger) lasted until, as of `now`; nil = none.
+-- Grid: the shut-off hour, which an unloaded car can pass between two settles, unless a generator took over then
+-- (`generator`: one is there now). Generator: up to now.
+-- ponytail: a generator counts as running the whole stretch (its fuel is only metered for charging)
+function C.powerUntil(chg, now, generator)
+    if not chg or not chg.power then return nil end
+    if chg.power == "grid" and not generator then return math.min(now, C.gridOffHour()) end
+    return now
 end
 
 local function clearChg(vehicle, part)
@@ -161,9 +172,6 @@ function C.settle(o, now, here)
     end
     if hours > 0 then chg.added = (chg.added or 0) + B.add(v, kw * hours, chg.target) end
     chg.kw, chg.last = kw, now
-    -- grid power ends at the shut-off hour, which an unloaded car can pass between two settles.
-    -- ponytail: a generator counts as running the whole stretch (its fuel is only metered for charging)
-    settleSentry(v, now, (chg.power == "grid" and gUntil) or (chg.power and now) or nil)
     -- state from now on. power: the charger has a source, whether or not it charges (full / stopped); the car's own
     -- loads run on it meanwhile (Battery.onCharger).
     -- ponytail: those loads burn no generator fuel and do not slow charging; meter them if a generator lasting longer
@@ -175,6 +183,7 @@ function C.settle(o, now, here)
         gen = C.findGenerator(o, sq)
         if gen then src = "generator" end
     end
+    settleSentry(v, now, C.powerUntil(chg, now, gen ~= nil)) -- with the power it ran on until now
     chg.power = src
     local left = math.max(0, limit - B.kwh(part))
     if chg.paused == "stopped" then
