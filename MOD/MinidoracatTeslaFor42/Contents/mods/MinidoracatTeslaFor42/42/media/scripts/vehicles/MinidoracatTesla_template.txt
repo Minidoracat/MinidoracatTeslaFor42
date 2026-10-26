@@ -34,7 +34,7 @@ module Base
         engineLoudness = 10,
         engineQuality = 100,
         stoppingMovementForce = 4.0,
-        /* grip and roll as vanilla SportsCar (Performance: 255/275 21" tyres, lowered adaptive suspension). maxSpeed 120 keeps more */
+        /* grip (wheelFriction below) and roll from vanilla SportsCar (Performance: 255/275 21" tyres, lowered adaptive suspension). maxSpeed 120 keeps more */
         /* steering rate and lock at 100 km/h (CarController.java:288, VehicleScript.java:1678-1686); with ModernCar's 1.4 / 1.0 */
         /* a 100 km/h lane change spun out (feel-sp tesla-perf-feel-after-1026d), with these it stays like SportsCar (-1026g, -1026i) */
         rollInfluence = 0.7,
@@ -45,7 +45,12 @@ module Base
         suspensionDamping = 2.88,
         maxSuspensionTravelCm = 10.0,
         suspensionRestLength = 0.2,
-        wheelFriction = 1.8,
+        /* braking: only the rear wheels brake (libPZBullet PZVehicle::control; the front ones get stoppingMovementForce */
+        /* only) and each skids at its suspension load x wheelFriction (btRaycastVehicle::updateFriction), so how much load */
+        /* braking moves forward sets the stop. With the CoM 0.09 lower (Model Y script, pzveh.py OY) and 2.0 a full brake */
+        /* from 122 km/h takes 40 tiles like SportsCar (feel-sp tesla-brake-feel-c2-1026a; 51 before, -base-1026b); */
+        /* the lower CoM alone at 1.8 stopped as short but spun 2 of 8 times (-c1-1026a) */
+        wheelFriction = 2.0,
         frontEndHealth = 150,
         rearEndHealth = 150,
         template = TrunkDoor,

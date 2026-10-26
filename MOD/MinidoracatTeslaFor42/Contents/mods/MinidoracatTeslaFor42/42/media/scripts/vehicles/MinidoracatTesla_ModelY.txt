@@ -14,7 +14,7 @@ module Base
         {
             file = MinidoracatTesla_ModelY,
             scale = 1.82,
-            offset = 0.0000 0.1978 0.0000,
+            offset = 0.0000 0.2878 0.0000,
         }
         skin
         {
@@ -58,18 +58,18 @@ module Base
         template = PassengerSeat4,
         extents = 0.8825 0.6746 2.1707,
         physicsChassisShape = 0.8825 0.6746 2.1707,
-        centerOfMassOffset = 0.0000 0.1978 0.0000,
+        centerOfMassOffset = 0.0000 0.2878 0.0000,
         shadowExtents = 0.8825 2.1707,
         shadowOffset = 0.0 0.0,
         useChassisPhysicsCollision = false,
         physics box
         {
-            offset = 0.0000 0.0655 0.0000,
+            offset = 0.0000 0.1555 0.0000,
             extents = 0.8660 0.4100 2.1377,
         }
         physics box
         {
-            offset = 0.0000 0.4028 -0.3159,
+            offset = 0.0000 0.4928 -0.3159,
             extents = 0.7143 0.2646 1.1264,
         }
         wheel FrontLeft

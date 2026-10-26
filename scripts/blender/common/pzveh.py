@@ -758,7 +758,10 @@ def inside(bvh, p):
 
 
 S = 1.82              # vehicle scale (R5 3), model script scale = 1/S
-OY = 0.1978           # model offset == centerOfMassOffset (unscaled), ModernCar convention
+OY = 0.2878           # model offset == centerOfMassOffset (unscaled) = height of the mesh centre above the physics CoM. Not
+#                       ModernCar's 0.1978: the body, wheels, seats and attachments all hang off the model offset
+#                       (VehicleScript.toBullet :586-588, BaseVehicle.getPassengerLocalPos / getAttachmentLocalPos), so this
+#                       only lowers the CoM; 0.09 lower brakes like SportsCar (MinidoracatTesla_template.txt wheelFriction)
 WHEEL_LIFT = 0.11     # rendered wheel sits this much (grid) above its script offset at rest: vanilla arch centres
 #                       minus wheel offsets, ModernCar +0.10/+0.16, SUV +0.12/+0.10 (arch circle fit); calibration knob
 WHEEL_INSET = 0.03    # tire outer face this far inside the body's own tire (flush tires looked proud of the arch)
