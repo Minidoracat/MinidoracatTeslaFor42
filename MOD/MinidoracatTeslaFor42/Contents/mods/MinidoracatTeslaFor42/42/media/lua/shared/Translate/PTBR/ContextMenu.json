@@ -5,5 +5,8 @@
     "ContextMenu_MinidoracatTesla_Plug": "Conectar cabo de carregamento",
     "ContextMenu_MinidoracatTesla_PlugInto": "Conectar cabo de carregamento: %1",
     "ContextMenu_MinidoracatTesla_Unplug": "Desconectar cabo de carregamento",
-    "ContextMenu_MinidoracatTesla_ChargeStatus": "Ver status do carregamento"
+    "ContextMenu_MinidoracatTesla_ChargeStatus": "Ver status do carregamento",
+    "ContextMenu_MinidoracatTesla_TapUnlock": "Aproximar cartão-chave: destrancar",
+    "ContextMenu_MinidoracatTesla_TapLock": "Aproximar cartão-chave: trancar",
+    "ContextMenu_MinidoracatTesla_PairPhone": "Configurar como chave de telefone"
 }

@@ -100,5 +100,14 @@
     "IGUI_MinidoracatTesla_Deny_MOVING": "请先停车",
     "IGUI_MinidoracatTesla_Deny_LIFTGATE_LOCKED": "掀背车门的锁坏了",
     "IGUI_MinidoracatTesla_RepairDriveUnit": "修理驱动电机",
-    "IGUI_MinidoracatTesla_TakeDriveUnitParts": "拆取驱动电机零件"
+    "IGUI_MinidoracatTesla_TakeDriveUnitParts": "拆取驱动电机零件",
+    "IGUI_MinidoracatTesla_Deny_NOT_OUTSIDE": "请先下车",
+    "IGUI_MinidoracatTesla_Deny_NO_KEY_CARD": "需要这辆车的卡片钥匙",
+    "IGUI_MinidoracatTesla_Deny_NO_PHONE": "找不到手机",
+    "IGUI_MinidoracatTesla_Deny_ALREADY_PAIRED": "这部手机已经是这辆车的手机钥匙",
+    "IGUI_MinidoracatTesla_Deny_AUTOLOCK_CAMP": "未上锁：露营模式开启中",
+    "IGUI_MinidoracatTesla_Deny_AUTOLOCK_OCCUPIED": "未上锁：车上还有人",
+    "IGUI_MinidoracatTesla_Deny_AUTOLOCK_DOOR_OPEN": "未上锁：有车门或后备箱没关",
+    "IGUI_MinidoracatTesla_AutoLocked": "%1 已上锁（离车后自动上锁）",
+    "IGUI_MinidoracatTesla_PhonePaired": "已设为 %1 的手机钥匙"
 }

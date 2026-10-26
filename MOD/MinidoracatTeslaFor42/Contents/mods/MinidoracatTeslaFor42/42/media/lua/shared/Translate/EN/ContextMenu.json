@@ -5,5 +5,8 @@
     "ContextMenu_MinidoracatTesla_Plug": "Plug in charge cable",
     "ContextMenu_MinidoracatTesla_PlugInto": "Plug in charge cable: %1",
     "ContextMenu_MinidoracatTesla_Unplug": "Unplug charge cable",
-    "ContextMenu_MinidoracatTesla_ChargeStatus": "Charging status"
+    "ContextMenu_MinidoracatTesla_ChargeStatus": "Charging status",
+    "ContextMenu_MinidoracatTesla_TapUnlock": "Tap Key Card: Unlock",
+    "ContextMenu_MinidoracatTesla_TapLock": "Tap Key Card: Lock",
+    "ContextMenu_MinidoracatTesla_PairPhone": "Set Up as Phone Key"
 }

@@ -1,0 +1,176 @@
+-- Key card and phone key, server side (rules: shared/MinidoracatTesla/Keys.lua).
+--   * A Tesla's vanilla CarKey becomes a key card when a player has it (createVehicleKey hard-codes CarKey,
+--     BaseVehicle.java:1145-1157, from ~20 call sites, so the swap happens on the player, not at creation).
+--     Which keys are Tesla keys: a keyId registry filled when a Tesla loads, not the translated item name.
+--   * keyTap: lock / unlock every door with the card, flash + beep. autoLock: walk-away lock for phone keys.
+--   * phonePair: a phone becomes this car's phone key (a Key with its keyId).
+--   * Phone loot.
+if isClient() then return end
+require "MinidoracatTesla/Core"
+require "MinidoracatTesla/Keys"
+require "MinidoracatTesla/Sentry"
+
+local T = MinidoracatTesla
+local K = T.Keys
+local S = T.Sentry
+T.ServerCommands = T.ServerCommands or {}
+
+K.SOUND = "MinidoracatTesla_KeyAlert" -- 0.4 s chime (sound.md); one beep for lock and unlock
+K.stats = { swaps = 0, taps = 0, pairs = 0, autoLocks = 0 }
+
+-- ------------------------------------------------------------------ Tesla keyId registry
+local function registry() return ModData.getOrCreate(K.REG) end
+
+-- same name vanilla gives the CarKey (keyNamerVehicle, BaseVehicle.java:10739-10753)
+local function carName(vehicle)
+    local s = vehicle:getScript()
+    return s:getCarModelName() or s:getName()
+end
+
+-- OnSpawnVehicleEnd fires on every load, new or from the save (BaseVehicle.java:904, 7952-7964)
+function K.register(vehicle)
+    if not T.isTesla(vehicle) then return end
+    local reg, id = registry(), tostring(vehicle:getKeyId())
+    if not reg[id] then reg[id] = carName(vehicle) end
+end
+Events.OnSpawnVehicleEnd.Add(K.register)
+
+-- Same container, new item: server Remove/AddItem first, then the packets (pitfalls.md: send only sends).
+local function replace(old, fullType, keyId, car)
+    local cont = old:getContainer()
+    if not cont then return nil end
+    local item = instanceItem(fullType)
+    item:setKeyId(keyId)
+    -- not item:getDisplayName(): on a dedicated server that is the script's full type (tesla-keys-1026e)
+    item:setName(getItemNameFromFullType(fullType) .. " - " .. getText("IGUI_VehicleName" .. car))
+    cont:Remove(old)
+    sendRemoveItemFromContainer(cont, old)
+    cont:AddItem(item)
+    sendAddItemToContainer(cont, item)
+    return item
+end
+
+-- Every Tesla CarKey on the player becomes a key card. Not while seated: the key may be on its way into or out of the
+-- ignition, and the client's copy would keep the old item id (IgnitionDup 2026-10-26: VehicleProperties.java:27-33).
+function K.sweep(player)
+    if not player or player:getVehicle() then return 0 end
+    local inv = player:getInventory()
+    if not inv:containsTypeRecurse("Base.CarKey") then return 0 end
+    local reg, n = registry(), 0
+    local list = inv:getAllTypeRecurse("Base.CarKey")
+    for i = 0, list:size() - 1 do
+        local key = list:get(i)
+        local car = reg[tostring(key:getKeyId())]
+        if car and replace(key, K.CARD, key:getKeyId(), car) then n = n + 1 end
+    end
+    if n > 0 then
+        K.stats.swaps = K.stats.swaps + n
+        T.log("key card: swapped " .. n .. " car key(s) for " .. player:getUsername())
+    end
+    return n
+end
+
+-- ------------------------------------------------------------------ lock, flash, beep
+-- every passenger door like vanilla ISLockDoors:complete (ISLockDoors.lua), then the trunk (BaseVehicle.java:9533-9545)
+function K.setLocked(vehicle, locked)
+    for seat = 0, vehicle:getMaxPassengers() - 1 do
+        local part = vehicle:getPassengerDoor(seat)
+        local door = part and part:getDoor()
+        if door and not door:isLockBroken() then
+            door:setLocked(locked)
+            vehicle:transmitPartDoor(part)
+        end
+    end
+    vehicle:setTrunkLocked(locked)
+end
+
+-- one flash to lock, two to unlock (Sentry's flash: headlights + light parts, synced to every client)
+function K.signal(vehicle, locked)
+    S.flash(vehicle, locked and 2 or 4)
+    if isServer() then
+        playServerSound(K.SOUND, vehicle:getSquare()) -- players within 10 tiles (GameServer.java:2136-2156)
+    else
+        vehicle:getEmitter():playSound(K.SOUND)
+    end
+end
+
+-- ------------------------------------------------------------------ commands
+T.ServerCommands.keySweep = function(player)
+    K.sweep(player)
+end
+
+T.ServerCommands.keyTap = function(player, args)
+    local v = T.commandVehicle(player, args)
+    if not v then return end
+    local ok, why = K.canTap(player, v)
+    if not ok then return T.deny(player, why, v:getId()) end
+    local lock = not v:areAllDoorsLocked()
+    K.setLocked(v, lock)
+    K.signal(v, lock)
+    -- an authenticated unlock is the owner coming back, not a stranger at the door
+    local part = not lock and T.Battery.part(v)
+    if part and part:getModData().sentry then S.disarm(v, player:getUsername()) end
+    K.stats.taps = K.stats.taps + 1
+    T.log("key card " .. (lock and "lock" or "unlock") .. " vid=" .. v:getId() .. " by " .. player:getUsername())
+end
+
+T.ServerCommands.phonePair = function(player, args)
+    local v = T.commandVehicle(player, args)
+    if not v then return end
+    local id = tonumber(args.id)
+    local phone = id and player:getInventory():getItemWithIDRecursiv(id) or nil
+    local ok, why = K.canPair(player, v, phone)
+    if not ok then return T.deny(player, why, v:getId()) end
+    if not replace(phone, K.PHONE_KEY, v:getKeyId(), carName(v)) then return end
+    K.stats.pairs = K.stats.pairs + 1
+    T.log("phone key paired vid=" .. v:getId() .. " by " .. player:getUsername())
+    T.send(player, "phonePaired", { vid = v:getId(), car = carName(v) })
+end
+
+T.ServerCommands.autoLock = function(player, args)
+    local v = T.commandVehicle(player, args, K.LOCK_DIST * 5)
+    if not v then return end
+    local ok, why = K.canAutoLock(player, v)
+    if not ok then
+        T.log("walk-away lock skipped vid=" .. v:getId() .. " " .. tostring(why))
+        -- with a reason the client says why and stops asking; without one (not away yet as the server sees it,
+        -- already locked) it may ask again (KeysUI watchTick)
+        T.send(player, "autoLockSkip", { vid = v:getId(), reason = why })
+        return
+    end
+    K.setLocked(v, true)
+    K.signal(v, true)
+    K.stats.autoLocks = K.stats.autoLocks + 1
+    T.log("walk-away lock vid=" .. v:getId() .. " by " .. player:getUsername())
+    T.send(player, "autoLocked", { vid = v:getId(), car = carName(v) })
+end
+
+-- ------------------------------------------------------------------ phone loot
+-- A smartphone is rare in 1993 Kentucky: phone shops carry it, homes and offices seldom. Weights sit below the
+-- cordless handset's in the same lists (ProceduralDistributions.lua: ElectronicStorePhones 50/20/20/10,
+-- StoreShelfElectronics 8, GigamartHouseElectronics 20/10, OfficeDeskHome 8, BedroomSidetableClassy 10).
+-- Same pattern as AutoDrive's MDAD_Distributions.lua: remove our pairs first so a reload does not stack them.
+K.LOOT = {
+    ElectronicStorePhones = 10,
+    StoreShelfElectronics = 2,
+    GigamartHouseElectronics = 4,
+    OfficeDeskHome = 1,
+    OfficeDeskHomeClassy = 2,
+    BedroomSidetableClassy = 1,
+    BedroomSidetable = 0.3,
+}
+local function injectLoot()
+    local lists = ProceduralDistributions and ProceduralDistributions.list
+    if not lists then return end
+    for name, weight in pairs(K.LOOT) do
+        local items = lists[name] and lists[name].items
+        if items then
+            for i = #items - 1, 1, -2 do
+                if items[i] == K.PHONE then table.remove(items, i + 1); table.remove(items, i) end
+            end
+            table.insert(items, K.PHONE)
+            table.insert(items, weight)
+        end
+    end
+end
+Events.OnPostDistributionMerge.Add(injectLoot)

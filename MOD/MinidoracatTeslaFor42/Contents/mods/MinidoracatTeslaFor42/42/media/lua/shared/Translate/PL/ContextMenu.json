@@ -5,5 +5,8 @@
     "ContextMenu_MinidoracatTesla_Plug": "Podłącz kabel ładowania",
     "ContextMenu_MinidoracatTesla_PlugInto": "Podłącz kabel ładowania: %1",
     "ContextMenu_MinidoracatTesla_Unplug": "Odłącz kabel ładowania",
-    "ContextMenu_MinidoracatTesla_ChargeStatus": "Pokaż stan ładowania"
+    "ContextMenu_MinidoracatTesla_ChargeStatus": "Pokaż stan ładowania",
+    "ContextMenu_MinidoracatTesla_TapUnlock": "Przyłóż kartę-klucz: odblokuj",
+    "ContextMenu_MinidoracatTesla_TapLock": "Przyłóż kartę-klucz: zablokuj",
+    "ContextMenu_MinidoracatTesla_PairPhone": "Ustaw jako klucz w telefonie"
 }

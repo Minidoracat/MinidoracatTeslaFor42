@@ -5,5 +5,8 @@
     "Base.MinidoracatTesla_CableHang": "Şarj Kablosu (duvar kısmı)",
     "Base.MinidoracatTesla_CableFloor": "Şarj Kablosu (zemin kısmı)",
     "Base.MinidoracatTesla_CablePlug": "Şarj Kablosu (konnektör)",
-    "Base.MinidoracatTesla_DriveUnitParts": "Tahrik Ünitesi Parçaları"
+    "Base.MinidoracatTesla_DriveUnitParts": "Tahrik Ünitesi Parçaları",
+    "Base.MinidoracatTesla_KeyCard": "Anahtar kart",
+    "Base.MinidoracatTesla_Phone": "Akıllı telefon",
+    "Base.MinidoracatTesla_PhoneKey": "Telefon anahtarı"
 }

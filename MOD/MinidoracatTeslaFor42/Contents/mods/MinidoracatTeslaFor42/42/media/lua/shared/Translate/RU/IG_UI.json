@@ -100,5 +100,14 @@
     "IGUI_MinidoracatTesla_Deny_MOVING": "Сначала остановите машину",
     "IGUI_MinidoracatTesla_Deny_LIFTGATE_LOCKED": "Замок двери багажника сломан",
     "IGUI_MinidoracatTesla_RepairDriveUnit": "Отремонтировать блок привода",
-    "IGUI_MinidoracatTesla_TakeDriveUnitParts": "Взять детали блока привода"
+    "IGUI_MinidoracatTesla_TakeDriveUnitParts": "Взять детали блока привода",
+    "IGUI_MinidoracatTesla_Deny_NOT_OUTSIDE": "Сначала выйдите из машины",
+    "IGUI_MinidoracatTesla_Deny_NO_KEY_CARD": "Нужна ключ-карта этой машины",
+    "IGUI_MinidoracatTesla_Deny_NO_PHONE": "Телефон не найден",
+    "IGUI_MinidoracatTesla_Deny_ALREADY_PAIRED": "Этот телефон уже ключ этой машины",
+    "IGUI_MinidoracatTesla_Deny_AUTOLOCK_CAMP": "Не закрыто: включён режим кемпинга",
+    "IGUI_MinidoracatTesla_Deny_AUTOLOCK_OCCUPIED": "Не закрыто: в машине ещё кто-то есть",
+    "IGUI_MinidoracatTesla_Deny_AUTOLOCK_DOOR_OPEN": "Не закрыто: открыта дверь или багажник",
+    "IGUI_MinidoracatTesla_AutoLocked": "%1 закрыта (автоблокировка при уходе)",
+    "IGUI_MinidoracatTesla_PhonePaired": "Телефон-ключ настроен для %1"
 }

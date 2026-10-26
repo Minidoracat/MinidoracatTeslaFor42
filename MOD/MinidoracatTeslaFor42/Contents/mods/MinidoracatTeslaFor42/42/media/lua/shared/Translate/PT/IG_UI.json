@@ -100,5 +100,14 @@
     "IGUI_MinidoracatTesla_Deny_MOVING": "Pare o carro primeiro",
     "IGUI_MinidoracatTesla_Deny_LIFTGATE_LOCKED": "A fechadura da porta da bagageira está partida",
     "IGUI_MinidoracatTesla_RepairDriveUnit": "Reparar Unidade de Acionamento",
-    "IGUI_MinidoracatTesla_TakeDriveUnitParts": "Remover Peças da Unidade de Acionamento"
+    "IGUI_MinidoracatTesla_TakeDriveUnitParts": "Remover Peças da Unidade de Acionamento",
+    "IGUI_MinidoracatTesla_Deny_NOT_OUTSIDE": "Saia do carro primeiro",
+    "IGUI_MinidoracatTesla_Deny_NO_KEY_CARD": "Você precisa do cartão-chave deste carro",
+    "IGUI_MinidoracatTesla_Deny_NO_PHONE": "Telefone não encontrado",
+    "IGUI_MinidoracatTesla_Deny_ALREADY_PAIRED": "Este telefone já é a chave deste carro",
+    "IGUI_MinidoracatTesla_Deny_AUTOLOCK_CAMP": "Não trancou: o Modo Acampamento está ligado",
+    "IGUI_MinidoracatTesla_Deny_AUTOLOCK_OCCUPIED": "Não trancou: ainda há alguém dentro",
+    "IGUI_MinidoracatTesla_Deny_AUTOLOCK_DOOR_OPEN": "Não trancou: há uma porta ou porta-malas aberto",
+    "IGUI_MinidoracatTesla_AutoLocked": "%1 trancado (trancamento ao se afastar)",
+    "IGUI_MinidoracatTesla_PhonePaired": "Chave de telefone configurada para %1"
 }

@@ -5,5 +5,8 @@
     "ContextMenu_MinidoracatTesla_Plug": "Brancher le câble de recharge",
     "ContextMenu_MinidoracatTesla_PlugInto": "Brancher le câble de recharge : %1",
     "ContextMenu_MinidoracatTesla_Unplug": "Débrancher le câble de recharge",
-    "ContextMenu_MinidoracatTesla_ChargeStatus": "Voir l'état de la recharge"
+    "ContextMenu_MinidoracatTesla_ChargeStatus": "Voir l'état de la recharge",
+    "ContextMenu_MinidoracatTesla_TapUnlock": "Présenter la carte-clé : déverrouiller",
+    "ContextMenu_MinidoracatTesla_TapLock": "Présenter la carte-clé : verrouiller",
+    "ContextMenu_MinidoracatTesla_PairPhone": "Configurer comme clé sur téléphone"
 }

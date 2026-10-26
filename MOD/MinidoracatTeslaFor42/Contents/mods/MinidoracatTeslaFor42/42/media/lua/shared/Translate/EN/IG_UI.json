@@ -100,5 +100,14 @@
     "IGUI_MinidoracatTesla_Deny_MOVING": "Stop the car first",
     "IGUI_MinidoracatTesla_Deny_LIFTGATE_LOCKED": "The liftgate lock is broken",
     "IGUI_MinidoracatTesla_RepairDriveUnit": "Repair Drive Unit",
-    "IGUI_MinidoracatTesla_TakeDriveUnitParts": "Take Drive Unit Parts"
+    "IGUI_MinidoracatTesla_TakeDriveUnitParts": "Take Drive Unit Parts",
+    "IGUI_MinidoracatTesla_Deny_NOT_OUTSIDE": "Get out of the car first",
+    "IGUI_MinidoracatTesla_Deny_NO_KEY_CARD": "You need this car's key card",
+    "IGUI_MinidoracatTesla_Deny_NO_PHONE": "Phone not found",
+    "IGUI_MinidoracatTesla_Deny_ALREADY_PAIRED": "This phone is already this car's phone key",
+    "IGUI_MinidoracatTesla_Deny_AUTOLOCK_CAMP": "Not locked: Camp Mode is on",
+    "IGUI_MinidoracatTesla_Deny_AUTOLOCK_OCCUPIED": "Not locked: someone is still inside",
+    "IGUI_MinidoracatTesla_Deny_AUTOLOCK_DOOR_OPEN": "Not locked: a door or trunk is open",
+    "IGUI_MinidoracatTesla_AutoLocked": "%1 locked (Walk-Away Door Lock)",
+    "IGUI_MinidoracatTesla_PhonePaired": "Phone key set up for %1"
 }

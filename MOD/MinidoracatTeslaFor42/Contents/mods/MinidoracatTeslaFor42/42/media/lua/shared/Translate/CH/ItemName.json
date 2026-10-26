@@ -5,5 +5,8 @@
     "Base.MinidoracatTesla_CableHang": "充電線（垂下段）",
     "Base.MinidoracatTesla_CableFloor": "充電線（地面段）",
     "Base.MinidoracatTesla_CablePlug": "充電線（插頭段）",
-    "Base.MinidoracatTesla_DriveUnitParts": "驅動單元零件"
+    "Base.MinidoracatTesla_DriveUnitParts": "驅動單元零件",
+    "Base.MinidoracatTesla_KeyCard": "卡片鑰匙",
+    "Base.MinidoracatTesla_Phone": "智慧型手機",
+    "Base.MinidoracatTesla_PhoneKey": "手機鑰匙"
 }

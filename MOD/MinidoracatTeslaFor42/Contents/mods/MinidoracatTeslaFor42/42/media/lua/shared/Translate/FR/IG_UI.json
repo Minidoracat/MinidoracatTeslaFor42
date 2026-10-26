@@ -100,5 +100,14 @@
     "IGUI_MinidoracatTesla_Deny_MOVING": "Arrêtez d'abord la voiture",
     "IGUI_MinidoracatTesla_Deny_LIFTGATE_LOCKED": "La serrure du hayon est cassée",
     "IGUI_MinidoracatTesla_RepairDriveUnit": "Réparer l'unité d'entraînement",
-    "IGUI_MinidoracatTesla_TakeDriveUnitParts": "Récupérer les pièces de l'unité d'entraînement"
+    "IGUI_MinidoracatTesla_TakeDriveUnitParts": "Récupérer les pièces de l'unité d'entraînement",
+    "IGUI_MinidoracatTesla_Deny_NOT_OUTSIDE": "Descendez d'abord de la voiture",
+    "IGUI_MinidoracatTesla_Deny_NO_KEY_CARD": "Il faut la carte-clé de cette voiture",
+    "IGUI_MinidoracatTesla_Deny_NO_PHONE": "Téléphone introuvable",
+    "IGUI_MinidoracatTesla_Deny_ALREADY_PAIRED": "Ce téléphone est déjà la clé de cette voiture",
+    "IGUI_MinidoracatTesla_Deny_AUTOLOCK_CAMP": "Non verrouillée : le mode Camping est activé",
+    "IGUI_MinidoracatTesla_Deny_AUTOLOCK_OCCUPIED": "Non verrouillée : quelqu'un est encore à bord",
+    "IGUI_MinidoracatTesla_Deny_AUTOLOCK_DOOR_OPEN": "Non verrouillée : une porte ou un coffre est ouvert",
+    "IGUI_MinidoracatTesla_AutoLocked": "%1 verrouillée (verrouillage en s'éloignant)",
+    "IGUI_MinidoracatTesla_PhonePaired": "Clé sur téléphone configurée pour %1"
 }

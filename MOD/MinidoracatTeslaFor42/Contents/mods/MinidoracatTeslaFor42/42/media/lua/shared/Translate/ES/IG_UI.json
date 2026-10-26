@@ -100,5 +100,14 @@
     "IGUI_MinidoracatTesla_Deny_MOVING": "Detén el coche primero",
     "IGUI_MinidoracatTesla_Deny_LIFTGATE_LOCKED": "La cerradura del portón trasero está rota",
     "IGUI_MinidoracatTesla_RepairDriveUnit": "Reparar unidad de tracción",
-    "IGUI_MinidoracatTesla_TakeDriveUnitParts": "Coger piezas de la unidad de tracción"
+    "IGUI_MinidoracatTesla_TakeDriveUnitParts": "Coger piezas de la unidad de tracción",
+    "IGUI_MinidoracatTesla_Deny_NOT_OUTSIDE": "Primero baja del coche",
+    "IGUI_MinidoracatTesla_Deny_NO_KEY_CARD": "Necesitas la tarjeta llave de este coche",
+    "IGUI_MinidoracatTesla_Deny_NO_PHONE": "No se encontró el teléfono",
+    "IGUI_MinidoracatTesla_Deny_ALREADY_PAIRED": "Este teléfono ya es la llave de este coche",
+    "IGUI_MinidoracatTesla_Deny_AUTOLOCK_CAMP": "No se bloqueó: el modo acampada está activado",
+    "IGUI_MinidoracatTesla_Deny_AUTOLOCK_OCCUPIED": "No se bloqueó: aún hay alguien dentro",
+    "IGUI_MinidoracatTesla_Deny_AUTOLOCK_DOOR_OPEN": "No se bloqueó: hay una puerta o maletero abierto",
+    "IGUI_MinidoracatTesla_AutoLocked": "%1 bloqueado (bloqueo al alejarse)",
+    "IGUI_MinidoracatTesla_PhonePaired": "Llave de teléfono configurada para %1"
 }

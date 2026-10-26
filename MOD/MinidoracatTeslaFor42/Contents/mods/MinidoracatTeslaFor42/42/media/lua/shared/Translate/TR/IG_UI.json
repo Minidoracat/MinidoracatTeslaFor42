@@ -100,5 +100,14 @@
     "IGUI_MinidoracatTesla_Deny_MOVING": "Önce aracı durdur",
     "IGUI_MinidoracatTesla_Deny_LIFTGATE_LOCKED": "Bagaj kapağının kilidi bozuk",
     "IGUI_MinidoracatTesla_RepairDriveUnit": "Tahrik Ünitesini Tamir Et",
-    "IGUI_MinidoracatTesla_TakeDriveUnitParts": "Tahrik Ünitesi Parçalarını Al"
+    "IGUI_MinidoracatTesla_TakeDriveUnitParts": "Tahrik Ünitesi Parçalarını Al",
+    "IGUI_MinidoracatTesla_Deny_NOT_OUTSIDE": "Önce araçtan in",
+    "IGUI_MinidoracatTesla_Deny_NO_KEY_CARD": "Bu aracın anahtar kartı gerekli",
+    "IGUI_MinidoracatTesla_Deny_NO_PHONE": "Telefon bulunamadı",
+    "IGUI_MinidoracatTesla_Deny_ALREADY_PAIRED": "Bu telefon zaten bu aracın telefon anahtarı",
+    "IGUI_MinidoracatTesla_Deny_AUTOLOCK_CAMP": "Kilitlenmedi: Kamp Modu açık",
+    "IGUI_MinidoracatTesla_Deny_AUTOLOCK_OCCUPIED": "Kilitlenmedi: araçta hâlâ biri var",
+    "IGUI_MinidoracatTesla_Deny_AUTOLOCK_DOOR_OPEN": "Kilitlenmedi: bir kapı ya da bagaj açık",
+    "IGUI_MinidoracatTesla_AutoLocked": "%1 kilitlendi (uzaklaşınca kilitleme)",
+    "IGUI_MinidoracatTesla_PhonePaired": "%1 için telefon anahtarı ayarlandı"
 }

@@ -5,5 +5,8 @@
     "Base.MinidoracatTesla_CableHang": "充電ケーブル（壁から垂れる部分）",
     "Base.MinidoracatTesla_CableFloor": "充電ケーブル（床を這う部分）",
     "Base.MinidoracatTesla_CablePlug": "充電ケーブル（コネクター）",
-    "Base.MinidoracatTesla_DriveUnitParts": "ドライブユニット部品"
+    "Base.MinidoracatTesla_DriveUnitParts": "ドライブユニット部品",
+    "Base.MinidoracatTesla_KeyCard": "キーカード",
+    "Base.MinidoracatTesla_Phone": "スマートフォン",
+    "Base.MinidoracatTesla_PhoneKey": "電話キー"
 }
