@@ -160,22 +160,21 @@ Events.OnFillWorldObjectContextMenu.Add(onFill)
 C.HINT_MS = 3000
 C.BRAKE_MS = 500
 local hintAt = 0
-local brakeAt, renewed = {}, {} -- vehicle id -> ms of the last setForceBrake / the last call renewed it
+local brakeAt, renewed = {}, {} -- vehicle -> ms of the last setForceBrake / the last call renewed it
 function T.onPluggedDrive(vehicle)
     local p = vehicle:getDriver()
     if not p or not p:isLocalPlayer() then return false end
-    local id = vehicle:getId()
     local pad = p:getJoypadBind()
     local pedal = (p:getPlayerNum() == 0 and (isKeyDown(KeybindId.FORWARD) or isKeyDown(KeybindId.BACKWARD)))
         or (pad ~= -1 and (isJoypadRTPressed(pad) or isJoypadLTPressed(pad)))
-    if not pedal then renewed[id] = nil; return false end
+    if not pedal then renewed[vehicle] = nil; return false end
     local now = getTimestampMs() -- System.currentTimeMillis, the clock forceBrake uses (LuaManager.java:9295-9297)
     if now >= hintAt then
         hintAt = now + C.HINT_MS
         HaloTextHelper.addBadText(p, getText("IGUI_MinidoracatTesla_Deny_CABLE_PLUGGED"))
     end
-    if renewed[id] or now - (brakeAt[id] or 0) < C.BRAKE_MS then renewed[id] = nil; return false end
-    brakeAt[id], renewed[id] = now, true
+    if renewed[vehicle] or now - (brakeAt[vehicle] or 0) < C.BRAKE_MS then renewed[vehicle] = nil; return false end
+    brakeAt[vehicle], renewed[vehicle] = now, true
     vehicle:setForceBrake()
     return true
 end
