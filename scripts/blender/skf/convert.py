@@ -68,6 +68,7 @@ PAINT_Q = (0.12, 0.25, 0.25)
 # (CAL's offsets stay valid), p10-p97 0.22-0.65 against B's 0.09-0.92
 PAINT_TARGET = ((10, 0.22), (25, 0.31), (50, 0.415), (75, 0.51), (90, 0.59), (97, 0.65))
 PAINT_ENDS = (0.03, 0.72)
+PAINT_ALPHA = 254 / 255                    # skin alpha of the paint texels (textures(): the shader's paint flag)
 OFFICIAL = pv.OFFICIAL                     # design-studio renders (stage official)
 LIGHT_RGB = {"head": (255, 250, 240), "tail": (255, 30, 30)}
 
@@ -739,6 +740,9 @@ def textures(car, c):
     # spread: a monotone remap of q's percentiles onto PAINT_TARGET; equal q stay equal (no texel-rank ties)
     pc, tg = zip(*PAINT_TARGET)
     q = np.interp(q, [q.min(), *np.percentile(q, pc), q.max()], [PAINT_ENDS[0], *tg, PAINT_ENDS[1]])
+    # skin alpha 254 marks the paint for the shader's sheen (MinidoracatTesla_vehicle.frag): vanilla reads alpha only
+    # as "1 - a of the paint tint" (vehicle_multiuv.frag:144), so the paint takes 1/255 of the tint, under a level
+    alpha = np.where(paint & (b["badge"][..., 0] <= 0.25), PAINT_ALPHA, 1.0)[..., None]
     hsvs = {}
     for p, code in pv.PAINTS:
         ramp = pv.official_ramp(code)
@@ -747,7 +751,7 @@ def textures(car, c):
         s = col * shade[..., None]
         s[paint] = np.clip(a_ * np.stack([np.interp(q, xp, ramp[:, i]) for i in range(3)], -1) / pv.GAIN + b_, 0, 1)
         s[chrome] = np.array(CHROME[int(np.median(s[paint].max(-1)) >= 0.55)]) / 255
-        pv.save_png(np.concatenate([np.clip(s, 0, 1), np.ones(s.shape[:2] + (1,))], -1),
+        pv.save_png(np.concatenate([np.clip(s, 0, 1), alpha], -1),
                     os.path.join(pv.TEX_DIR, f"{pv.NAME}_{p}.png"), p)
         # setColorHSV for the damage overlays: the shader gives Veh_Damage* texels the paint hue and S / V offsets
         # (vehicle_common.frag.glsl:6-15); their median S 0.03, V 0.45 should land on this skin's median paint

@@ -10,6 +10,7 @@ varying vec2 texCoords;
 varying vec2 texCoords1;
 varying vec4 positionEye;
 varying float reflectionsOn;
+varying vec3 viewModel;
 
 layout (location = 0) in vec4 vertex;
 layout (location = 1) in vec4 normal;
@@ -35,6 +36,13 @@ void main()
 	texCoords = uv.st;
 	texCoords1 = uv2.st;
 	vertNormal = (skin * vec4(normal.xyz, 0.0)).xyz;
+	// the direction to the camera in model space (the paint sheen): the game camera is orthographic, so it is the one
+	// direction ModelViewProjection maps to no screen x / y (cross of its first two rows), signed toward a smaller
+	// depth (GL_LESS, Model.java:500). The same for every vertex of the draw
+	mat4 m = ModelViewProjection;
+	vec3 r2 = vec3(m[0][2], m[1][2], m[2][2]);
+	viewModel = normalize(cross(vec3(m[0][0], m[1][0], m[2][0]), vec3(m[0][1], m[1][1], m[2][1])));
+	viewModel *= -sign(dot(viewModel, r2));
 	vertColour = vec3(1.0, 1.0, 1.0);
 
 	// the reflection map (the 512 x 512 sky, SkyBox.java:207) is bound only with reflections on in GL 3.3 (Model.java:
