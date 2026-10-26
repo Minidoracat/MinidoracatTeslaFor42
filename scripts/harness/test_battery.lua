@@ -11,6 +11,14 @@ check(B.capacity(part) == 62.5, "SR pack capacity is the exact 62.5 kWh, not the
 check(near(B.pct(part), 50), "pct = kwh / exact capacity")
 local lr = H.vehicle({ pack = "Base.MinidoracatTesla_ModelYBatteryLR", kwh = 78.1 })
 check(B.capacity(B.part(lr)) == 78.1 and near(B.pct(B.part(lr)), 100), "LR pack 78.1 kWh (2025 Juniper)")
+-- vanilla repair() fills the tank to the item's int MaxCapacity (VehiclePart.java:989-992): 79 for the LR pack
+B.part(lr):setContainerContentAmount(79)
+check(B.kwh(B.part(lr)) == 78.1 and near(B.pct(B.part(lr)), 100), "after repair() (tank 79): reads the exact 78.1 kWh")
+lr.running, lr.speed = true, 0
+T.Update.Battery(lr, B.part(lr), 1)
+check(near(78.1 - B.kwh(B.part(lr)), T.spec(lr).idleKw / 60, 1e-6),
+    "after repair(): the first drain takes only its own use, not the 0.9 kWh above the pack size")
+lr.running = false
 local other = H.vehicle({ script = "Base.CarNormal" })
 check(not T.isTesla(other) and B.part(other) == nil, "vanilla car is not a Tesla")
 check(T.kmPerKwh(v) > 0 and near(T.rangeKm(v), 31.25 * T.kmPerKwh(v)), "range = kwh * km/kWh")

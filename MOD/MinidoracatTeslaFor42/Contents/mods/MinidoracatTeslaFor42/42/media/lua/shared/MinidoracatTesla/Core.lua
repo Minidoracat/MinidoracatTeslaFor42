@@ -90,7 +90,10 @@ function B.part(vehicle)
     if part and part:getContainerContentType() == T.CONTENT_TYPE then return part end
     return nil
 end
-function B.kwh(part) return part and part:getContainerContentAmount() or 0 end -- VehiclePart.java:375
+-- capped at the exact pack size: vanilla repair() (admin / debug "repair", E2E probe spawns) fills the tank to the
+-- item's whole-number MaxCapacity (VehiclePart.java:989-992), 79 for a 78.1 kWh pack, and nothing writes it back
+-- until the next Battery.set; uncapped, that first write looked like 0.9 kWh spent on whatever it was for
+function B.kwh(part) return part and math.min(part:getContainerContentAmount(), B.capacity(part)) or 0 end -- VehiclePart.java:375
 function B.capacity(part)
     local item = part and part:getInventoryItem()
     if not item then return 0 end
