@@ -67,6 +67,7 @@ function R.remember(v, create)
     local chg = md.chg
     local script = v:getScript()
     r.car = script and (script:getCarModelName() or script:getName()) or ""
+    r.script = v:getScriptName() -- full type (BaseVehicle.java:1621): R.mayTrack asks VehicleManager about this model only
     r.skin = v:getSkinIndex() -- the app draws the car in its paint (Core.lua colors[skin + 1]); older records lack it
     r.x, r.y, r.z = math.floor(v:getX()), math.floor(v:getY()), math.floor(v:getZ())
     local kwh, cap = part and T.Battery.kwh(part) or 0, part and T.Battery.capacity(part) or 1
@@ -141,15 +142,22 @@ function R.vmAllows(player, v, codes)
     return false, VM_REASONS[why] and why or "NOT_OWNER"
 end
 -- where the car is and its alerts: with VehicleManager the TRACK right. A loaded car is asked through canUse; an unloaded
--- one through VehicleManager's keyId check on its own records (canTrackKeyId: same rules, no audit line, fine for the
--- 2 s poll), so a revoked share stays revoked while the car is away. An older VehicleManager without it: nothing is
--- shown rather than the record (UNVERIFIED, fail closed). The client's VehicleManager list never counts here.
+-- one through VehicleManager's keyId check on its own records (canTrackKeyId: same rules, no ADMIN_BYPASS line, fine for
+-- the 2 s poll; denials still go into its per-minute DENY summary), so a revoked share stays revoked while the car is
+-- away. The record's script narrows it to this model: an Autotsar trailer that once carried the car keeps its keyId.
+-- An older VehicleManager without it: nothing is shown rather than the record (UNVERIFIED, fail closed). The client's
+-- VehicleManager list never counts here.
 function R.mayTrack(player, v, key)
     local api = MinidoracatVehicleManagerAPI
     if not (api and api.canUse) then return true end
     if v then return R.vmAllows(player, v, TRACK) end
     if type(api.canTrackKeyId) ~= "function" then return false, "UNVERIFIED" end
-    local ok, why = api.canTrackKeyId(player, key)
+    local r = R.record(key)
+    -- no r.script (records from before it, or no record yet: alerts need none): the model name from the record or the
+    -- Tesla keyId registry (KeyActions K.register, same format), as a script only when it is one (PhoneApp.lua App.paint)
+    local car = (r and r.car ~= "" and r.car) or store("keyIds")[tostring(key)]
+    local script = r and r.script or (car and T.Specs["Base." .. car] and "Base." .. car) or nil
+    local ok, why = api.canTrackKeyId(player, key, script)
     if ok then return true end
     return false, VM_REASONS[why] and why or "NOT_OWNER"
 end

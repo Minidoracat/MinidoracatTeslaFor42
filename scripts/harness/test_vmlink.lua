@@ -11,7 +11,7 @@ local T = MinidoracatTesla
 local K, R, cmds = T.Keys, T.Remote, T.ServerCommands
 
 local KEY = 9301 -- never loaded here: R.loadedCar(KEY) is nil
-T.Store.get("seen")[tostring(KEY)] = { car = "MinidoracatTesla_ModelY", x = 120, y = 340, z = 0, pct = 61, h = 1 }
+T.Store.get("seen")[tostring(KEY)] = { car = "MinidoracatTesla_ModelY", script = "Base.MinidoracatTesla_ModelY", x = 120, y = 340, z = 0, pct = 61, h = 1 }
 local function phoneKey(keyId) return { ft = K.PHONE_KEY, keyId = keyId, getKeyId = function(self) return self.keyId end } end
 local function inv(...)
     local items = { ... }
@@ -44,14 +44,15 @@ st = R.state(holder, KEY)
 check(st.deny == "UNVERIFIED" and st.x == nil and st.pct == nil and canUses == 0,
     "older VehicleManager without canTrackKeyId: UNVERIFIED, no record (as v1)")
 
-MinidoracatVehicleManagerAPI.canTrackKeyId = function(p, keyId)
-    asked[#asked + 1] = { p = p, keyId = keyId }
+MinidoracatVehicleManagerAPI.canTrackKeyId = function(p, keyId, script)
+    asked[#asked + 1] = { p = p, keyId = keyId, script = script }
     return answer.ok, answer.why
 end
 answer.ok, answer.why = true, "OWNER"
 st = R.state(holder, KEY)
-check(st.deny == nil and st.x == 120 and st.pct == 61 and asked[#asked].keyId == KEY and asked[#asked].p == holder and canUses == 0,
-    "own car (VehicleManager OWNER by keyId): last record shown; asked by keyId, not canUse")
+check(st.deny == nil and st.x == 120 and st.pct == 61 and asked[#asked].keyId == KEY and asked[#asked].p == holder and canUses == 0
+    and asked[#asked].script == "Base.MinidoracatTesla_ModelY",
+    "own car (VehicleManager OWNER by keyId): last record shown; asked by keyId and the record's model, not canUse")
 answer.ok, answer.why = true, "MEMBER"
 check(R.state(holder, KEY).x == 120, "shared with TRACK (MEMBER): last record shown")
 answer.ok, answer.why = false, "NOT_AUTHORIZED"
@@ -72,6 +73,24 @@ answer.ok, answer.why = false, "NOT_AUTHORIZED"
 F.sent = {}
 cmds.appStatus(holder, { key = KEY })
 check(last("appState") and last("appState").deny == "NOT_OWNER", "appStatus (the 2 s poll) goes the same way")
+local rec = T.Store.get("seen")[tostring(KEY)]
+rec.script = nil -- a record from before r.script: the model from r.car (the app's paint lookup), never a guess
+R.state(holder, KEY)
+local fromCar = asked[#asked].script
+rec.car = "SomethingElse"
+R.state(holder, KEY)
+check(fromCar == "Base.MinidoracatTesla_ModelY" and asked[#asked].script == nil,
+    "older record without script: the model from car when it is a Tesla script, else no model (keyId only)")
+local reg = T.Store.get("keyIds")
+T.Store.get("seen")[tostring(KEY)] = nil -- no record yet (alerts don't need one): the Tesla keyId registry names the model
+reg[tostring(KEY)] = "MinidoracatTesla_ModelY"
+cmds.appAlerts(holder, { key = KEY })
+local fromReg = asked[#asked].script
+reg[tostring(KEY)] = nil
+cmds.appAlerts(holder, { key = KEY })
+check(fromReg == "Base.MinidoracatTesla_ModelY" and asked[#asked].script == nil, "no record: the model from the keyId registry, else keyId only")
+T.Store.get("seen")[tostring(KEY)] = rec
+rec.car, rec.script = "MinidoracatTesla_ModelY", "Base.MinidoracatTesla_ModelY"
 
 H.section("VehicleManager link: client (VMLink)")
 local V = require "MinidoracatTesla/VMLink" and T.VMLink
