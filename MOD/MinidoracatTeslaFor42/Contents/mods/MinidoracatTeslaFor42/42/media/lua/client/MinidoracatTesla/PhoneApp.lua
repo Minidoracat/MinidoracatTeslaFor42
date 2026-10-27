@@ -149,6 +149,11 @@ function App.open(playerNum, keyId, page)
         a:initialise()
         a:instantiate()
         apps[playerNum] = a
+        -- every paint's picture now: textures load in the background (TextureAssetManager, Texture.java:547-552) and a
+        -- picture asked for only when the paint shows was still the old one in the shot (tesla-restyle-1027e PearlWhite)
+        for _, spec in pairs(T.Specs) do
+            for _, c in ipairs(spec.colors or {}) do carTexture(c.name) end
+        end
     end
     if a.key ~= keyId then a.st, a.alerts, a.alertsWhy = nil, nil, nil end -- another car: forget the old one's state
     a.key, a.player, a.page, a.toast, a.nextPoll, a.scroll = keyId, p, page or "home", nil, 0, 0
