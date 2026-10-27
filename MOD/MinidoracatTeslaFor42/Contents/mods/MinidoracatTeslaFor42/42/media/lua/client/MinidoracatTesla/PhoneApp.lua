@@ -35,11 +35,10 @@ local DIRS = { "N", "NE", "E", "SE", "S", "SW", "W", "NW" }
 local function rgb(hex)
     return { tonumber(hex:sub(2, 3), 16) / 255, tonumber(hex:sub(4, 5), 16) / 255, tonumber(hex:sub(6, 7), 16) / 255 }
 end
--- the real Tesla app's colours (decisions.md; build_atlas.py asserts their contrast): blue only for main actions,
--- no card fills, a 1 px frame on the control tiles
+-- the real Tesla app's colours (decisions.md): blue only for main actions, no card fills, a 1 px frame on the control
+-- tiles. build_atlas.py PAL app* holds the same hex values and asserts their contrast: change both.
 local C = { bg = rgb("#161718"), text = rgb("#F3F3F3"), text2 = rgb("#8A8B8B"), weak = rgb("#454546"),
     line = rgb("#2E2F30"), blue = rgb("#3268FE"), ok = HUD.C.ok, warn = HUD.C.warn, white = HUD.C.white }
-App.C = C
 
 -- hit areas: id -> { page, server action }; the list rows open the page of their own name
 local BTN = {
@@ -58,7 +57,6 @@ local NAV = {
     security = { { "back" }, { "sentry" } },
     charging = { { "back" }, { "charge" } },
 }
-App.NAV = NAV
 local QUICK = { "lock", "qcharge", "qfrunk", "qtrunk" }
 local LIST = { "controls", "location", "security", "charging" }
 local LIST_ICON = { controls = "i_carfront", location = "i_nav", security = "i_shield", charging = "i_bolt" }
@@ -190,20 +188,13 @@ function App:setPage(page)
 end
 
 -- ---------------------------------------------------------------- joypad: own rows (NAV), not ISPanelJoypad's grid
-function App:focused() return self.focusB end
+-- the focused control stays in view (layout scrolls to it) until the player scrolls the page by hand
 function App:setFocus(b)
     if self.focusB then self.focusB.joypadFocused = false end
-    self.focusB = b
+    self.focusB, self.freeScroll = b, false
     if not b then return end
     b.joypadFocused = true
-    -- scroll a body button into view
-    if b.cy >= self.yBody and self.scrollMax > 0 then
-        local top, bottom = b.cy - self.scroll, b.cy - self.scroll + b.ch
-        local s = self.scroll
-        if top < self.yBody then s = s - (self.yBody - top) end
-        if bottom > self.yBodyEnd then s = s + (bottom - self.yBodyEnd) end
-        if s ~= self.scroll then self.scroll = s; self:layout() end
-    end
+    if b.cy >= self.yBody and self.scrollMax > 0 then self:layout() end
 end
 function App:focusAt(row, col)
     self.fRow, self.fCol = row, col
@@ -223,7 +214,8 @@ function App:focusFirst(id)
         end
     end
 end
--- up / down: the nearest shown button (by centre x) on the next row that has one; left / right: along the row
+-- up / down: the nearest shown button (by centre x) on the next row that has one; past the last one the page scrolls
+-- (the Security page's alerts have no buttons). Left / right: along the row.
 function App:move(dr, dc)
     local rows, r, c = NAV[self.page], self.fRow or 1, self.fCol or 1
     if not self.focusB then return self:focusFirst() end
@@ -240,6 +232,7 @@ function App:move(dr, dc)
             if best then return self:focusAt(i, best) end
             i = i + dr
         end
+        if self.scrollMax > 0 then self:onMouseWheel(dr) end
         return
     end
     local row, j = rows[r], c + dc
@@ -272,6 +265,7 @@ end
 function App:onMouseWheel(del)
     if self.scrollMax <= 0 then return false end
     self.scroll = self.scroll + del * math.floor(40 * self.S)
+    self.freeScroll = true
     self:layout()
     return true
 end
@@ -365,6 +359,7 @@ T.ClientCommands.appAlerts = function(args)
         a.alerts = rows
         a.alertsWhy = args.deny and T.denyText(args.deny) -- VehicleManager said no: say why instead of "no alerts"
         a.sig = nil
+        if a.S then a:read(); a:layout() end -- render reads each row's place: lay them out before the next frame
     end)
 end
 
@@ -402,7 +397,8 @@ function App:read()
         self.arrowAngle = ang
         local dk = math.floor(d + 0.5) * 8 + ci
         if dk ~= self.distKey then
-            self.distKey, self.sig = dk, nil
+            self.distKey = dk
+            if self.page == "home" or self.page == "location" then self.sig = nil end -- the pages that show it
             self.sDist = distText(d)
             self.sDir = d < 3 and txt("Here") or txt("Dir_" .. DIRS[ci])
             self.sDirDist = d < 3 and self.sDir or txt("DirDist", self.sDir, self.sDist)
@@ -415,7 +411,6 @@ function App:read()
     self.sig = sig
     self.sTime = string.format("%02d:%02d", hh, mm)
     local link = st and st.link
-    self.link = link
     -- status bar: the phone's network (grid up), else Bluetooth while it reaches the car, else no service
     self.grid = st ~= nil and st.grid == true
     self.sNet = self.grid and txt("Net") or (link == "bt" and txt("Bt") or txt("NoService"))
@@ -468,7 +463,7 @@ function App:read()
     local locked = rec and st.locked == true
     enable(b.lock, live, locked, locked and "i_lockfill" or "i_unlock", TIP .. (locked and "Unlock" or "Lock"))
     local plugged = chg == "charging" or chg == "stopped"
-    local chgTip = plugged and (TIP .. (chg == "charging" and "ChargeStop" or "ChargeStart")) or (P .. "NotPlugged")
+    local chgTip = chg == "charging" and (TIP .. "ChargeStop") or chg and (TIP .. "ChargeStart") or (P .. "NotPlugged")
     enable(b.qcharge, live and plugged, chg == "charging", "i_bolt", chgTip)
     enable(b.charge, live, chg == "charging", nil, chgTip)
     self.sChargeBtn = chg == "charging" and txt("ChargeStop") or txt("ChargeStart")
@@ -569,11 +564,10 @@ function App:layout()
         for i, id in ipairs(QUICK) do place(id, pad + (i - 0.5) * slot - qw / 2, y, qw, qh) end
         y = y + qh + u(10)
         local rh = math.max(FHM + u(2) + FH, u(36)) + u(20)
-        self.rowH = rh
         local rx = pad + u(40)
         local rw = w - rx - pad - u(22)
         for _, id in ipairs(LIST) do
-            local b = place(id, 0, y, w, rh)
+            local b = place(id, pad / 2, y, w - pad, rh) -- inset: the focus ring stays inside the phone
             b.sTitle = fitText(txt(TITLE[id]), rw, UIFont.Medium)
             local e = self.rowEm[id]
             b.sEm = e and fitText(e, rw) or nil
@@ -627,7 +621,7 @@ function App:layout()
         end
     elseif page == "security" then
         local rh = math.max(FHM + u(2) + FH, u(36)) + u(20)
-        local b = place("sentry", 0, y, w, rh)
+        local b = place("sentry", pad / 2, y, w - pad, rh)
         local rw = tw - u(52)
         b.sTitle = fitText(txt("SentryMode"), rw, UIFont.Medium)
         b.sSub = fitText(self.rec and txt(self.b.sentry.on and "Done_sentry_on" or "Done_sentry_off") or self.sSub, rw)
@@ -636,7 +630,6 @@ function App:layout()
         y = y + FH + u(10)
         local rows = self.alerts
         local ah = 2 * FH + u(14)
-        self.alertH = ah
         if rows and #rows > 0 then
             local ax = u(28)
             for _, r in ipairs(rows) do
@@ -676,6 +669,11 @@ function App:layout()
     self.yBodyEnd = h - toastH - bottom
     self.yToast = self.toast and (self.yBodyEnd + u(8)) or nil
     self.scrollMax = math.max(0, y - self.yBodyEnd)
+    local fb = self.focusB -- the focused control in view (a toast shortens the body, a page grows)
+    if fb and fb.shown and fb.cy >= self.yBody and not self.freeScroll then
+        if fb.cy - self.scroll < self.yBody then self.scroll = fb.cy - self.yBody end
+        if fb.cy + fb.ch - self.scroll > self.yBodyEnd then self.scroll = fb.cy + fb.ch - self.yBodyEnd end
+    end
     self.scroll = math.max(0, math.min(self.scroll, self.scrollMax))
     self.dy = self.scroll
     for _, b in ipairs(self.buttons) do
@@ -683,9 +681,8 @@ function App:layout()
         if show then
             local by = b.cy >= self.yBody and b.cy - self.dy or b.cy
             b:setX(b.cx); b:setY(by); b:setWidth(b.cw); b:setHeight(b.ch)
-            -- hidden while scrolled out (it would catch clicks over the header or the toast)
-            local mid = by + b.ch / 2
-            show = b.cy < self.yBody or (mid >= self.yBody and mid <= self.yBodyEnd)
+            -- only when wholly inside the visible body: the stencil clips drawing, not clicks (UIElement.java:1875-1889)
+            show = b.cy < self.yBody or (by >= self.yBody and by + b.ch <= self.yBodyEnd)
         end
         b:setVisible(show)
     end

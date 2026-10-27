@@ -512,6 +512,9 @@ cmd, args = sentLast()
 check(args.act == "charge" and args.on == false, "quick bolt while charging -> stop charging")
 state()
 check(not a.b.qcharge.enable and a.b.qcharge.tipKey == "IGUI_MinidoracatTesla_App_NotPlugged", "not plugged: bolt greyed, its tip says why")
+state({ chg = "full", target = 90 })
+check(not a.b.qcharge.enable and a.b.qcharge.tipKey == "IGUI_MinidoracatTesla_Tip_AppChargeStart", "charged full: bolt greyed, tip is its function (still plugged in)")
+state()
 -- joypad: rows per page, A presses, B back / close
 local jd = {}
 a:onGainJoypadFocus(jd)
@@ -556,10 +559,46 @@ check(ok, "split screen: text inside the phone (" .. why .. ")")
 a:onMouseWheel(-100)
 check(a.scroll == 0 and a.b.lock:isVisible() and not a.b.charging:isVisible(),
     "mouse wheel up: back to the top; the Charging row below the fold is hidden (no clicks over the toast)")
+-- Security page with 10 alerts on the half screen: an alerts reply draws at once, joypad down past Sentry Mode
+-- scrolls the list, a control only half inside the visible part takes no clicks
+check(not a.b.security:isVisible(), "the Security row half below the fold takes no clicks until scrolled in")
+a:onMouseWheel(5)
+a.b.security:forceClick()
+local list, realParkUI = {}, T.ParkUI
+for i = 1, 10 do list[i] = { i = i } end
+T.ParkUI = { card = function(e) return { title = "alert " .. e.i, detail = "detail", time = "14:0" .. (e.i % 10) } end }
+T.ClientCommands.appAlerts({ key = 9001, list = list })
+ok, why = pcall(function() a:prerender(); a:render() end)
+check(ok and #a.alerts == 10, "alerts arriving between updates: drawn at once (" .. tostring(why) .. ")")
+check(a.scrollMax > 0 and a.b.sentry.joypadFocused, "split screen, 10 alerts: the Security page scrolls; joypad on Sentry Mode")
+a:onJoypadDirDown(); a:onJoypadDirDown()
+check(a.b.sentry.joypadFocused and a.scroll > 0, "joypad down past Sentry Mode scrolls the alerts (" .. a.scroll .. ")")
+a:onJoypadDirUp()
+check(a.b.back.joypadFocused, "joypad up from the list: back")
+a:onJoypadDirDown()
+check(a.b.sentry.joypadFocused and a.scroll == 0 and a.b.sentry:isVisible(), "joypad down again: Sentry Mode scrolled back in view")
+a:onMouseWheel(1)
+local partial = false
+for _, b in ipairs(a.buttons) do
+    if b:isVisible() and b.cy >= a.yBody and (b.y < a.yBody or b.y + b.height > a.yBodyEnd) then partial = true end
+end
+check(a.scroll > 0 and not a.b.sentry:isVisible() and not partial, "scrolled: a control not wholly in view takes no clicks")
+ok, why = textInside()
+check(ok, "Security page with 10 alerts: text inside the phone (" .. why .. ")")
+T.ParkUI = realParkUI
+a:onJoypadDown(Joypad.BButton)
+a:onJoypadDirDown(); a:onJoypadDirDown(); a:onJoypadDirDown() -- Security row -> Charging, the last one
 a:showToast(string.rep("word ", 40), false)
 a:layout()
 ok, why = textInside()
 check(ok and a.yToast and a.yToast + 2 * 19 <= a.height, "a long toast: two lines at the bottom, inside (" .. why .. ")")
+check(a.b.charging.joypadFocused and a.b.charging:isVisible(), "the toast shortens the page: the focused Charging row scrolls back in view")
+-- "Show on map" from the Location page: the app steps aside, closing the map brings it back on Location
+a.b.location:forceClick()
+a.b.map:forceClick()
+check(not a.inUI and App.mapCar ~= nil, "map: the app closes, the marker is set")
+ISWorldMap.close({})
+check(a.inUI and a.page == "location" and App.mapCar == nil, "map closed: the app back on the Location page, marker gone")
 -- redraw allocates nothing
 recording = false
 collectgarbage("collect"); collectgarbage("stop")
