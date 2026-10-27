@@ -16,7 +16,7 @@
 
 ### 新增
 
-- **新車：Model 3 Performance**：第二台特斯拉，現行 Model 3（2024 年改款）的 Performance 版，會出現在停車格和高級住宅區（機率和 Model Y 一樣）。外觀照官方設計工作室：8 種原廠車色（低調夜幕灰、珍珠白多層塗料、曜石黑、Quicksilver 閃電銀、烈焰紅、深藍、海軍藍、Frost Blue），20 吋 Warp 輪圈配紅色卡鉗，碳纖維尾翼、前下巴與後擴散器，前蓋的 T、行李箱蓋上的 TESLA 字樣與右下角的 Performance 徽章。四扇門、行李箱蓋和前車廂蓋都會照實車的方向打開，行李箱蓋打開看得到後車廂，前車廂蓋下有置物槽；透過車窗看得到車內的座椅、儀表台和後置物板。後擋玻璃固定在車身上，拆行李箱蓋不用先拆後擋。電池、續航、充電、哨兵與露營模式和 Model Y 相同的規則；儀表與手機 App 目前仍顯示 Model Y 的圖，之後的版本會補上。
+- **新車：Model 3 Performance**：第二台特斯拉，現行 Model 3（2024 年改款）的 Performance 版，會出現在停車格和高級住宅區（機率和 Model Y 一樣）。外觀照官方設計工作室：8 種原廠車色（低調夜幕灰、珍珠白多層塗料、曜石黑、Quicksilver 閃電銀、烈焰紅、深藍、海軍藍、Frost Blue），20 吋 Warp 輪圈配紅色卡鉗，碳纖維尾翼與黑色後擴散器，前蓋的 T、行李箱蓋上的 TESLA 字樣與右下角的 Performance 徽章。四扇門、行李箱蓋和前車廂蓋都會照實車的方向打開，行李箱蓋打開看得到後車廂，前車廂蓋下有置物槽；透過車窗看得到車內的座椅、儀表台和後置物板。後擋玻璃固定在車身上，拆行李箱蓋不用先拆後擋。電池、續航、充電、哨兵與露營模式和 Model Y 相同的規則；儀表與手機 App 目前仍顯示 Model Y 的圖，之後的版本會補上。
 
 > 技術要點：Model 3 車身改作自 RBLXSupercars 的「2024 Tesla Model 3」（Sketchfab，取自 brandonleong28 轉載的「Tesla model 3 2024」，CC BY 4.0，https://sketchfab.com/3d-models/2024-tesla-model-3-fd22be415215453693d67e33aa7812d0 、https://sketchfab.com/3d-models/tesla-model-3-2024-36c52f3f89f6439c90310f14e8ff33f2 ，授權 http://creativecommons.org/licenses/by/4.0/ ）。已修改：減面、拆件（從車身切出行李箱蓋）、重做貼圖、改用本 MOD 的車內與輪子、加上輪拱內襯、重畫標誌、加上紅色煞車卡鉗、後置物板與前車廂置物槽；署名全文見 `CREDITS.md`。車輛 ID `Base.MinidoracatTesla_Model3`、電池 `Base.MinidoracatTesla_Model3Battery`。
 
