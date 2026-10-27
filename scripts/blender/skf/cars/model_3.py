@@ -37,15 +37,16 @@ CAR = dict(
     OFFICIAL_OPTS="$APFA,$MDL3,$W30P,$MT371,$CPF2,$SC04,$T30S,${},$IPB4",
     # official_ramp: the SIDE render's paint rows / columns (car bbox fractions) and the wheel arches cut out
     RAMP=dict(t=(0.40, 0.76), u=(0.04, 0.96), wheels=(0.175, 0.795), wt=0.80, wr=0.14),
-    # ---- pzveh: wheel, 20" Warp (official RIMCLOSEUP): five wide swept matte-black aero blades (each edged by thin
-    # lighter spokes, too fine to draw) with a narrow slit between them onto the red caliper; a Y spoke this wide is a
-    # blade with a shallow V at the barrel. 235/35 R20 front, 275/30 R20 rear (both ~336 mm radius; the source's
-    # tires, 345 mm, set the size: the arches were modelled round them)
+    # ---- pzveh: wheel, 20" Warp (official RIMCLOSEUP): a dark wheel read by its ten thin grey spokes, in five swept V
+    # pairs from the hub (a Y spoke with thin arms: model_y.py WHEEL_SPOKE), round matte-black aero faces and the red
+    # caliper. Five wide grey blades (spoke 44 over a 60 rotor) read in game as a flat grey disc with red dots (user
+    # 2026-10-28). 235/35 R20 front, 275/30 R20 rear (both ~336 mm radius; the source's tires, 345 mm, set the size:
+    # the arches were modelled round them)
     WHEEL_RIM=0.80,                        # rim flange radius / tire radius: 20" (254 mm bead + ~17 mm) / 336 mm
-    WHEEL_SPOKE=dict(n=5, hub=0.12, fork=0.45, spread=0.24, main=(0.10, 0.17), arm=0.21, cap=0.14,
+    WHEEL_SPOKE=dict(n=5, hub=0.12, fork=0.22, spread=math.radians(18), main=(0.07, 0.08), arm=0.045, cap=0.14,
                      inset=0.018, dish=0.020, depth=0.018, sweep=math.radians(32)),
     WHEEL_DISC=dict(rotor=0.655, hat=0.30),   # 355 mm rotor (US owner's manual p.215) / 271 mm flange
-    WHEEL_RGB=dict(spoke=44, cap=36, barrel=26, lip=70, rotor=60, hat=35, dark=12, gap=8, tire=(22, 28), tread=20),
+    WHEEL_RGB=dict(spoke=95, cap=30, barrel=22, lip=70, rotor=36, hat=28, dark=12, gap=8, tire=(22, 28), tread=20),
     # ---- pzveh: vehicle script
     OY=0.1978,                             # CoM = mesh centre - OY; brake knob (model_y.py). The sedan's lower body and
     #                                        higher wheel mounts put Model Y's 0.2878 ~0.09 nearer the ground: braking
@@ -83,7 +84,11 @@ CAR = dict(
                 (("Object_13",), (0.25, -1.90, 0.54), (0.42, -1.82, 0.57)),
                 (("Object_12", "Object_13"), (-0.05, 1.77, 0.45), (0.05, 1.87, 0.56)),
                 # fins behind the lower intake (z 0.36-0.40, y 1.42-1.70): the frunk bin's floor passes through them
-                (("Object_13",), (-0.30, 1.40, 0.35), (0.30, 1.72, 0.41))),
+                (("Object_13",), (-0.30, 1.40, 0.35), (0.30, 1.72, 0.41)),
+                # the source rims' leftovers on each axle (hub, brake disc, a 45 cm black ring in the rim's outer
+                # plane): in front of the mod's wheel they hid its hub and lip (a black disc in game)
+                *((("Object_13",), (x - 0.09, y - 0.05, 0.25), (x + 0.09, y + 0.05, 0.32))
+                  for x in (-0.71, 0.71) for y in (1.225, -1.15))),
     # the source has no wheel-arch liners (its wheel houses were the interior tub, dropped above)
     ARCH_LINER=dict(gap=0.05, inner=0.05, arc=(-20, 200), n=17),
     # black plates (polygons) behind the front intakes where nothing closes them (the fins dropped above; the slot over the lip
@@ -94,6 +99,15 @@ CAR = dict(
              (0, 1, 0), "arch_liner"),
             ("SlotFloor", ((-0.46, 1.50, 0.15), (0.46, 1.50, 0.15), (0.46, 1.73, 0.15), (0.30, 1.84, 0.15),
                            (0.0, 1.87, 0.15), (-0.30, 1.84, 0.15), (-0.46, 1.73, 0.15)), (0, 0, 1), "arch_liner")),
+    # the paint is a thin shell folded round every panel edge (outer face, hem, inner face a few mm behind), so the
+    # inner face's open edge got a seal strip "behind" it, out through the outer face: 1-2 px black dashes along the
+    # door seams in game. Seal strips that pass through any surface are dropped
+    SEAL_CLIP=True,
+    # the roof is glass, so the paint up there is the roof rails (from the A- and C-pillar tops): facing up at the top
+    # of the car they took the brightest paint tone (convert.textures: up + height terms) and the game lights up-facing
+    # faces more, a bright white band over the side windows where the official SIDE has a thin body-colour line. Paint
+    # centred above z (pre-centre) takes the paint's median tone, blended in from z0 (no step along the pillars)
+    RAIL=(0.92, 1.02),
     # collapse-decimated after DROP_COMPS (target tris): underbody, arches, lamp housings and mirror housings at
     # 26k tris after the interior is gone; the build prints their components' new sizes (COMPS)
     DECIMATE={"Object_11": 13000, "Object_13": 6000, "Object_6": 2500},
@@ -129,12 +143,14 @@ CAR = dict(
     GUARDS=dict(front=(0.75, 0.80, 0.4), rear=(-0.95, 0.85, 0.45)),
     # the body shell (rear quarters, roof, rear face and the trunk lid in one) is cut along the lid's seams; the
     # window frame trim spans both doors and the C pillar
-    CUT={("Object_11", 5889): ("X+", "X-", "GZ"), ("Object_6", 241): ("BF", "BR", "D"),
+    CUT={("Object_11", 5889): ("X+", "X-", "GZ", "CZ"), ("Object_6", 241): ("BF", "BR", "D"),
          ("Object_11", 1590): ("FZ", "FX+", "FX-")},   # the front bumper
     # name: (point, normal, cut faces centred behind this y); GZ: the trunk lid's lower edge; FZ / FX+-: the edges of
-    # the black lower front intake (CARBON), so its border runs straight instead of along big triangles
+    # the black lower front intake, CZ: the spoiler band's lower edge on the lid's rear face (CARBON), so their
+    # borders run straight instead of along big triangles
     PLANES={"GZ": ((0, 0, 0.525), (0, 0, 1), -1.30), "FZ": ((0, 0, 0.28), (0, 0, 1), 9.0),
-            "FX+": ((0.60, 0, 0), (1, 0, 0), 9.0), "FX-": ((-0.60, 0, 0), (1, 0, 0), 9.0)},
+            "FX+": ((0.60, 0, 0), (1, 0, 0), 9.0), "FX-": ((-0.60, 0, 0), (1, 0, 0), 9.0),
+            "CZ": ((0, 0, 0.805), (0, 0, 1), -1.70)},
     CUT_X=("Object_12", "Object_13", "Object_14", "Object_16", "Object_17"),   # cut along +-GATE_X
     CUT_X_Y=-1.35,
     DOOR_OBJS=("Object_6", "Object_7", "Object_9", "Object_12", "Object_13", "Object_14", "Object_17", "Object_18"),

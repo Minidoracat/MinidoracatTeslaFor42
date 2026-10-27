@@ -79,47 +79,47 @@ module Base
         textureDamage2Shell = Vehicles/Veh_Damage2,
         textureRust = Vehicles/Veh_Rust,
         template = PassengerSeat4,
-        extents = 0.8494 0.6080 2.1440,
-        physicsChassisShape = 0.8494 0.6080 2.1440,
+        extents = 0.8405 0.5976 2.1440,
+        physicsChassisShape = 0.8405 0.5976 2.1440,
         centerOfMassOffset = 0.0000 0.1978 0.0000,
-        shadowExtents = 0.8494 2.1440,
+        shadowExtents = 0.8405 2.1440,
         shadowOffset = 0.0 0.0,
         useChassisPhysicsCollision = false,
         physics box
         {
             offset = 0.0000 0.0943 0.0000,
-            extents = 0.8329 0.4010 2.1110,
+            extents = 0.8240 0.3906 2.1110,
         }
         physics box
         {
-            offset = 0.0000 0.3983 -0.2473,
+            offset = 0.0000 0.3931 -0.2473,
             extents = 0.6868 0.2070 0.9341,
         }
         wheel FrontLeft
         {
             front = true,
-            offset = 0.3460 -0.2407 0.6732,
+            offset = 0.3460 -0.2459 0.6732,
             radius = 0.1485,
             width = 0.2032,
         }
         wheel FrontRight
         {
             front = true,
-            offset = -0.3464 -0.2407 0.6732,
+            offset = -0.3464 -0.2459 0.6732,
             radius = 0.1485,
             width = 0.2032,
         }
         wheel RearLeft
         {
             front = false,
-            offset = 0.3499 -0.2407 -0.6320,
+            offset = 0.3499 -0.2459 -0.6320,
             radius = 0.1485,
             width = 0.2032,
         }
         wheel RearRight
         {
             front = false,
-            offset = -0.3496 -0.2407 -0.6320,
+            offset = -0.3496 -0.2459 -0.6320,
             radius = 0.1485,
             width = 0.2032,
         }
@@ -135,12 +135,12 @@ module Base
             showPassenger = true,
             position inside
             {
-                offset = 0.1813 -0.0788 0.1058,
+                offset = 0.1813 -0.0840 0.1058,
                 rotate = 0.0 0.0 0.0,
             }
             position outside
             {
-                offset = 0.5895 -0.3371 0.1058,
+                offset = 0.5851 -0.3423 0.1058,
                 rotate = 0.0 0.0 0.0,
                 area = SeatFrontLeft,
             }
@@ -150,12 +150,12 @@ module Base
             showPassenger = true,
             position inside
             {
-                offset = -0.1813 -0.0788 0.1058,
+                offset = -0.1813 -0.0840 0.1058,
                 rotate = 0.0 0.0 0.0,
             }
             position outside
             {
-                offset = -0.5895 -0.3371 0.1058,
+                offset = -0.5851 -0.3423 0.1058,
                 rotate = 0.0 0.0 0.0,
                 area = SeatFrontRight,
             }
@@ -165,12 +165,12 @@ module Base
             showPassenger = true,
             position inside
             {
-                offset = 0.1813 -0.0788 -0.3640,
+                offset = 0.1813 -0.0840 -0.3640,
                 rotate = 0.0 0.0 0.0,
             }
             position outside
             {
-                offset = 0.5895 -0.3371 -0.3640,
+                offset = 0.5851 -0.3423 -0.3640,
                 rotate = 0.0 0.0 0.0,
                 area = SeatRearLeft,
             }
@@ -180,76 +180,76 @@ module Base
             showPassenger = true,
             position inside
             {
-                offset = -0.1813 -0.0788 -0.3640,
+                offset = -0.1813 -0.0840 -0.3640,
                 rotate = 0.0 0.0 0.0,
             }
             position outside
             {
-                offset = -0.5895 -0.3371 -0.3640,
+                offset = -0.5851 -0.3423 -0.3640,
                 rotate = 0.0 0.0 0.0,
                 area = SeatRearRight,
             }
         }
         area Engine
         {
-            xywh = 0.0000 1.3082 0.8494 0.4725,
+            xywh = 0.0000 1.3082 0.8405 0.4725,
         }
         area TruckBed
         {
-            xywh = 0.0000 -1.3082 0.8494 0.4725,
+            xywh = 0.0000 -1.3082 0.8405 0.4725,
         }
         area GasTank
         {
-            xywh = 0.6609 -0.8922 0.4725 0.4725,
+            xywh = 0.6565 -0.8922 0.4725 0.4725,
         }
         area SeatFrontLeft
         {
-            xywh = 0.6609 0.1717 0.4725 0.5247,
+            xywh = 0.6565 0.1717 0.4725 0.5247,
         }
         area SeatFrontRight
         {
-            xywh = -0.6609 0.1717 0.4725 0.5247,
+            xywh = -0.6565 0.1717 0.4725 0.5247,
         }
         area SeatRearLeft
         {
-            xywh = 0.6609 -0.3200 0.4725 0.4588,
+            xywh = 0.6565 -0.3200 0.4725 0.4588,
         }
         area SeatRearRight
         {
-            xywh = -0.6609 -0.3200 0.4725 0.4588,
+            xywh = -0.6565 -0.3200 0.4725 0.4588,
         }
         area TireFrontLeft
         {
-            xywh = 0.6609 0.6732 0.4725 0.4725,
+            xywh = 0.6565 0.6732 0.4725 0.4725,
         }
         area TireFrontRight
         {
-            xywh = -0.6609 0.6732 0.4725 0.4725,
+            xywh = -0.6565 0.6732 0.4725 0.4725,
         }
         area TireRearLeft
         {
-            xywh = 0.6609 -0.6320 0.4725 0.4725,
+            xywh = 0.6565 -0.6320 0.4725 0.4725,
         }
         area TireRearRight
         {
-            xywh = -0.6609 -0.6320 0.4725 0.4725,
+            xywh = -0.6565 -0.6320 0.4725 0.4725,
         }
         attachment trailer
         {
-            offset = 0.0000 -0.2601 -1.0885,
+            offset = 0.0000 -0.2549 -1.0885,
             rotate = 0.0 0.0 0.0,
             zoffset = -1.0,
         }
         attachment trailerfront
         {
-            offset = 0.0000 -0.2601 1.0885,
+            offset = 0.0000 -0.2549 1.0885,
             rotate = 0.0 0.0 0.0,
             zoffset = 1.0,
         }
         /* charge port: side end of the left tail light (real Model Y) */
         attachment chargeport
         {
-            offset = 0.3551 0.0556 -0.8922,
+            offset = 0.3551 0.0504 -0.8922,
             rotate = 0.0 0.0 0.0,
         }
         part DoorFrontLeft

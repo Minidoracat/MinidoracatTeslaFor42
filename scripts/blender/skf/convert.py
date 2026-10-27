@@ -39,8 +39,8 @@ SKIN, MASK = 2048, 512
 # ---- what each source object is (names from the OBJ; sizes in the build log or inspect) ----
 DROP, DECIMATE, PAINT_MAT, GLASS_MATS, GLASS_OPAQUE, ROOF_PANE, MIRROR_CAP, LAMPS = (C[k] for k in (
     "DROP", "DECIMATE", "PAINT_MAT", "GLASS_MATS", "GLASS_OPAQUE", "ROOF_PANE", "MIRROR_CAP", "LAMPS"))
-DROP_COMPS, CARBON, ARCH_LINER, PLATES, GLASS_BACKS = (C[k] for k in (
-    "DROP_COMPS", "CARBON", "ARCH_LINER", "PLATES", "GLASS_BACKS"))
+DROP_COMPS, CARBON, ARCH_LINER, PLATES, GLASS_BACKS, SEAL_CLIP, RAIL = (C[k] for k in (
+    "DROP_COMPS", "CARBON", "ARCH_LINER", "PLATES", "GLASS_BACKS", "SEAL_CLIP", "RAIL"))
 # skin colour (sRGB 0-255) per material: the source's (the car's MAT_RGB) and the mod's own; paint comes from the
 # official renders (textures())
 MAT_RGB = {**C["MAT_RGB"], "badge_chrome": (196, 200, 206), "badge_black": (8, 8, 10),
@@ -118,6 +118,22 @@ def in_gate(p, t=0.0):
     x, y, z = p[:, 0], p[:, 1], p[:, 2]
     g = IN_GATE
     return (y < g["y"] + t) & (z > g["z"] - t) & (np.abs(x) < np.where(z > g["up"], g["x_up"], GATE_X) + t)
+
+
+CARBON_EDGE = {}                           # CARBON zone index -> its band's inner border (x, coordinate), edit()
+
+
+def lower_hull(p, depth):
+    """Lower convex hull (monotone chain) of points p (N x 2: x, coordinate), moved depth up the coordinate: the
+    border of a CARBON edge band along a convex outline (the trunk lid's trailing edge seen from above)."""
+    h = []
+    for q in p[np.lexsort((p[:, 1], p[:, 0]))]:
+        while len(h) > 1 and (h[-1][0] - h[-2][0]) * (q[1] - h[-2][1]) <= (h[-1][1] - h[-2][1]) * (q[0] - h[-2][0]):
+            h.pop()
+        if not h or q[0] > h[-1][0]:
+            h.append(q)
+    h = np.array(h)
+    return h[:, 0], h[:, 1] + depth
 
 
 def src_frame():
@@ -605,6 +621,25 @@ def edit(car, names):
                   and (ymax is None or f.calc_center_median().y < ymax)]
             geom = list({*fs, *[e for f in fs for e in f.edges], *[v for f in fs for v in f.verts]})
             bmesh.ops.bisect_plane(bm, geom=geom, dist=1e-6, plane_co=co, plane_no=no)
+    # CARBON zones with `edge`: cut the paint along the band's inner border, so the band runs along it instead of
+    # along big triangles (their sawtooth showed on the trunk lid)
+    pm = [m.name for m in car.data.materials].index(PAINT_MAT)
+    for i, zn in enumerate(CARBON["zones"] if CARBON else ()):
+        if "edge" not in zn:
+            continue
+        k, depth = zn["edge"]
+        lo, hi = np.array(zn["lo"]), np.array(zn["hi"])
+        fs = {f for f in bm.faces if f.material_index == pm and (lo < np.array(f.calc_center_median())).all()
+              and (np.array(f.calc_center_median()) < hi).all()}
+        bx, by = CARBON_EDGE[i] = lower_hull(np.array([(v.co.x, v.co[k]) for f in fs for v in f.verts]), depth)
+        for x0, x1, y0, y1 in zip(bx[:-1], bx[1:], by[:-1], by[1:]):
+            co, no = np.zeros(3), np.zeros(3)
+            co[0], co[k], no[0], no[k] = x0, y0, y0 - y1, x1 - x0
+            cut = [f for f in fs if f.is_valid and min(v.co.x for v in f.verts) < x1
+                   and max(v.co.x for v in f.verts) > x0]
+            geom = list({*cut, *[e for f in cut for e in f.edges], *[v for f in cut for v in f.verts]})
+            res = bmesh.ops.bisect_plane(bm, geom=geom, dist=1e-6, plane_co=co, plane_no=no)
+            fs |= {g for g in res["geom"] if isinstance(g, bmesh.types.BMFace)}
     bmesh.ops.triangulate(bm, faces=bm.faces[:])
     sizes = {k: len(v) for k, v in groups.items()}
     bm.to_mesh(car.data)
@@ -658,20 +693,15 @@ def classify(car, names, sizes):
     ccen = cc[inv]
     paint = mat == PAINT_MAT
     # CARBON: paint the real car has in black (Model 3 Performance's carbon spoiler $SLR1, its black lower front
-    # intake): paint faces in each zone's box (lo, hi); with `edge` (axis, depth) only those within depth of the box's
-    # lowest coordinate on that axis, per 2 cm of x (the lid's trailing edge curves forward towards the sides: a plain
-    # box caught it in patches)
+    # intake): paint faces in each zone's box (lo, hi); with `edge` (axis, depth) only those within depth of the
+    # outline's lowest coordinate on that axis (CARBON_EDGE: the lid's trailing edge curves forward towards the sides,
+    # and edit() cut the faces along that border)
     carbon = np.zeros(n, bool)
-    xb = np.floor(cen[:, 0] / 0.02).astype(np.int64)
-    for zn in (CARBON["zones"] if CARBON else ()):
+    for i, zn in enumerate(CARBON["zones"] if CARBON else ()):
         box = paint & (cen > zn["lo"]).all(1) & (cen < zn["hi"]).all(1)
         if "edge" in zn:
-            k, depth = zn["edge"]
-            for b in np.unique(xb[box]):
-                m = box & (xb == b)
-                carbon |= m & (cen[:, k] < cen[m, k].min() + depth)
-        else:
-            carbon |= box
+            box &= cen[:, zn["edge"][0]] < np.interp(cen[:, 0], *CARBON_EDGE[i])
+        carbon |= box
     paint &= ~carbon
     glass = np.isin(mat, GLASS_MATS) & ~np.isin(obj, GLASS_OPAQUE)
     part = np.zeros(n, np.int64)
@@ -757,9 +787,11 @@ def classify(car, names, sizes):
         rgb[carbon] = np.array(CARBON["rgb"]) / 255
     print("CLASSIFY parts", {PARTS[k]: int((part == k).sum()) for k in range(len(PARTS))}, "glass", int(glass.sum()),
           "lamps head/tail", int(head.sum()), int(tail.sum()))
+    # RAIL: 0..1 weight of the median paint tone (textures()), body panels only
+    rail = paint * (part == 0) * pv.smoothstep(*RAIL, cen[:, 2]) if RAIL else np.zeros(n)
     return dict(part=part, zone=zone, rgb=rgb, paint=paint, lamp=lamp, glass=glass, pane=pane, obj=obj, csize=csize,
                 badge=np.array([o.startswith(("Badge_", "Caliper")) for o in obj]),
-                mat=mat, mirror=mirror, carbon=carbon)
+                mat=mat, mirror=mirror, carbon=carbon, rail=rail)
 
 
 # ---------------------------------------------------------------- textures
@@ -891,8 +923,11 @@ def textures(car, c):
     aux = np.stack([c["paint"].astype(float), (c["lamp"] > 0).astype(float), (c["lamp"] == 2).astype(float)], 1)
     fz = pv.face_centres(car)
     hgt = np.repeat(((fz[:, 2] - fz[:, 2].min()) / np.ptp(fz[:, 2]))[:, None], 3, 1)    # 0 at the lowest face, 1 at the roof
-    b = bake(car, {"col": c["rgb"], "zone": zone_rgb[c["zone"]], "aux": aux, "hgt": hgt,
-                   "badge": np.repeat(np.where(c["mat"] == "badge_chrome", 1.0, 0.5 * c["badge"])[:, None], 3, 1)})
+    layers = {"col": c["rgb"], "zone": zone_rgb[c["zone"]], "aux": aux, "hgt": hgt,
+              "badge": np.repeat(np.where(c["mat"] == "badge_chrome", 1.0, 0.5 * c["badge"])[:, None], 3, 1)}
+    if c["rail"].any():
+        layers["rail"] = np.repeat(c["rail"][:, None], 3, 1)
+    b = bake(car, layers)
     col, zon, aux, ao = b["col"][..., :3], b["zone"][..., :3], b["aux"][..., :3], b["ao"][..., 0]
     nrm = b["nrm"][..., :3] * 2 - 1
     nz = nrm[..., 2]
@@ -913,6 +948,8 @@ def textures(car, c):
     # spread: a monotone remap of q's percentiles onto PAINT_TARGET; equal q stay equal (no texel-rank ties)
     pc, tg = zip(*PAINT_TARGET)
     q = np.interp(q, [q.min(), *np.percentile(q, pc), q.max()], [PAINT_ENDS[0], *tg, PAINT_ENDS[1]])
+    if "rail" in b:                        # RAIL: the median tone
+        q += (dict(PAINT_TARGET)[50] - q) * b["rail"][..., 0][paint]
     # skin alpha 254 marks the paint for the shader's sheen (MinidoracatTesla_vehicle.frag): vanilla reads alpha only
     # as "1 - a of the paint tint" (vehicle_multiuv.frag:144), so the paint takes 1/255 of the tint, under a level
     alpha = np.where(paint & (b["badge"][..., 0] <= 0.25), PAINT_ALPHA, 1.0)[..., None]
@@ -952,7 +989,7 @@ def stage_build():
     car, names, wheels, tire = load_source()
     sizes = edit(car, names)
     c = classify(car, names, sizes)
-    split_zone_edges(car, c["zone"])
+    split_zone_edges(car, c["zone"] * 2 + c["carbon"])   # and the CARBON border: crisp, not texel steps
     c = classify(car, names, sizes)         # same faces, new vertex split
     # centre the bbox (mesh centre == model offset == centerOfMassOffset, vanilla convention)
     co = pv.mesh_co(car)
@@ -1004,11 +1041,12 @@ def corners(attr, n):
     return a
 
 
-def seals(V, T, sel, attr, glass_bvh):
+def seals(V, T, sel, attr, glass_bvh, solid=None):
     """Dark strips SEAL[0] behind every open edge of the faces sel (open by position: the zone split doubled the
     vertices there), reaching SEAL[1] past the edge, both sides: the source's panel gaps are real gaps, the ground
     showed through them. Not along a pane (glass_bvh within 1.2 cm of the strip's far edge): the pane closes that
-    gap, and the strips lay on the glass as black spikes round the roof rails and A-pillars."""
+    gap, and the strips lay on the glass as black spikes round the roof rails and A-pillars. solid (SEAL_CLIP: BVH
+    of the whole car): not where the strip passes through a surface (it showed on the far side)."""
     tri = T[sel]
     ed = np.concatenate([tri[:, [0, 1]], tri[:, [1, 2]], tri[:, [2, 0]]])
     owner = np.tile(np.arange(len(tri)), 3)
@@ -1022,6 +1060,14 @@ def seals(V, T, sel, attr, glass_bvh):
     t /= np.maximum(np.linalg.norm(t, axis=1, keepdims=True), 1e-12)
     far = (a_ + b_) / 2 + t * SEAL[1]
     keep = np.array([glass_bvh.find_nearest(Vector(p), 0.012)[0] is None for p in far], bool)
+    if solid is not None:
+        def through(p, q):
+            d = Vector(q - p)
+            return solid.ray_cast(Vector(p), d.normalized(), d.length)[0] is not None
+        m = (a_ + b_) / 2 - t * 0.001 - fn * 1e-4           # just inside the edge, behind its face
+        back = m - fn * SEAL[0]
+        keep &= ~np.array([through(*s) for s in zip(m, back)], bool)
+        keep &= ~np.array([through(*s) for s in zip(back, back + t * SEAL[1])], bool)
     a_, b_, fn, t = a_[keep], b_[keep], fn[keep], t[keep]
     p1, p2 = a_ - fn * SEAL[0], b_ - fn * SEAL[0]
     p3, p4 = p2 + t * SEAL[1], p1 + t * SEAL[1]
@@ -1202,7 +1248,8 @@ def pieces(car, c, shift):
     body_t, body_a, bodyV = [T[part == 0]], [A[part == 0]], V
     adds = [backs(sel, rec, 0) for sel, rec in back_sets(part == 0)]
     gb = bvh_of([(V, T[glass])])
-    adds += [seals(V, T, (part == 0) & panel, cab_attr("base"), gb)]
+    solid = bvh_of([(V, T)]) if SEAL_CLIP else None
+    adds += [seals(V, T, (part == 0) & panel, cab_attr("base"), gb, solid)]
     for v, t, a in adds:
         body_t.append(t + len(bodyV))
         bodyV = np.concatenate([bodyV, v])
@@ -1216,7 +1263,8 @@ def pieces(car, c, shift):
         off = (np.array([-sd, 0, 0]) if sd else np.array((0, 0, -1) if lid else pv.GATE_IN)) * pv.DOOR_T
         skin = sel & panel & ~mirror                     # the mirror cap: outer faces only (a closed shell)
         P, t, a, _ = pv.slab(V, T, A, skin, off, cab_attr("dash"), BELT_Z - shift[2], outer_extra=sel & ~skin)
-        extra = [backs(bsel, rec, 0) for bsel, rec in back_sets(sel)] + [seals(V, T, skin, cab_attr("base"), gb)]
+        extra = [backs(bsel, rec, 0) for bsel, rec in back_sets(sel)] + [
+            seals(V, T, skin, cab_attr("base"), gb, solid)]
         for v, bt, ba in extra:
             t = np.concatenate([t, bt + len(P)])
             P = np.concatenate([P, v])
