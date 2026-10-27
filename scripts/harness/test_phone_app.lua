@@ -191,6 +191,13 @@ check(d.why == nil and v.parts.TrunkDoor.d.open and not v.parts.TrunkDoor.d.lock
 check(last("partAnim") and last("partAnim").part == "TrunkDoor" and last("partAnim").sound == true, "liftgate: partAnim with sound to clients")
 d = act(owner, "trunk", false)
 check(d.on == false and not v.parts.TrunkDoor.d.open and v.parts.TrunkDoor.d.locked, "liftgate closed on a locked car: locked again")
+v.parts.TrunkDoor.d.locked, v.parts.TrunkDoor.d.broken = false, true -- unlocked with a broken lock (vanilla spawns these)
+act(owner, "trunk", true)
+d = act(owner, "trunk", false)
+check(d.on == false and not v.parts.TrunkDoor.d.locked, "broken lock: closing doesn't lock it (it could never open again)")
+check(act(owner, "trunk", true).why == nil, "broken lock: opens again from the app")
+act(owner, "trunk", false)
+v.parts.TrunkDoor.d.broken = false
 v.kmh = 20
 d = act(owner, "frunk", true)
 check(d.why == "MOVING" and not v.parts.EngineDoor.d.open, "frunk while moving -> MOVING")

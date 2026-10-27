@@ -206,7 +206,7 @@ local function swing(id)
         if open and door:isLocked() then
             if door:isLockBroken() then return "LOCK_BROKEN" end
             door:setLocked(false)
-        elseif not open and v:areAllDoorsLocked() then
+        elseif not open and v:areAllDoorsLocked() and not door:isLockBroken() then -- a broken lock stays as it is
             door:setLocked(true)
         end
         T.Liftgate.swing(v, part, open, player:getUsername())
