@@ -537,16 +537,21 @@ summon(owner, true, { mode = "target", x = 1012.5, y = 1990.5 })
 c1 = AD.calls[1]
 check(c1 and c1.opts.mode == "target" and c1.opts.x == 1012.5 and c1.opts.y == 1990.5, "target: x, y handed over as sent")
 AD.info[v] = nil
+local batt, realStart, realEnd = {}, T.Battery.summonStart, T.Battery.summonEnd -- the drain's start and last leg
+T.Battery.summonStart = function(car) batt.start = car end
+T.Battery.summonEnd = function(car) batt.ended = car end
 summon(owner, true, { mode = "dumb", dir = -1 })
 check(AD.calls[2].opts.mode == "dumb" and AD.calls[2].opts.dir == -1 and AD.calls[2].opts.x == nil, "dumb: dir handed over")
+check(batt.start == v and batt.ended == nil, "started: the battery marks where the summon starts")
 F.sent = {}
 local touched = 0
 MinidoracatVehicleManager = { Parked = { touch = function(car) if car == v then touched = touched + 1 end end } }
 R.summonEnded(v, "ARRIVED", owner)
 MinidoracatVehicleManager = nil
+T.Battery.summonStart, T.Battery.summonEnd = realStart, realEnd
 d = last("appDone")
-check(d and d.act == "summonEnd" and d.why == "ARRIVED" and d.key == 9001 and touched == 1,
-    "onEnd: the summoner hears the stop code; VehicleManager's parked guard touched")
+check(d and d.act == "summonEnd" and d.why == "ARRIVED" and d.key == 9001 and touched == 1 and batt.ended == v,
+    "onEnd: the summoner hears the stop code; VehicleManager's parked guard touched; the battery charges the last leg")
 F.sent = {}
 R.summonEnded(v, "LEFT", nil)
 check(#F.sent == 0, "onEnd with the summoner gone: nothing sent, no error")

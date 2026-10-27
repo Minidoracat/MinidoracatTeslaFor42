@@ -232,6 +232,7 @@ local function coord(n) return type(n) == "number" and n == n and n >= 0 and n <
 function R.summonEnded(v, code, player, key)
     key = key or v and v:getKeyId()
     if v then
+        T.Battery.summonEnd(v) -- the drive since the pack's last update (Battery.lua)
         local mvm = MinidoracatVehicleManager -- the car moved (ParkedGuard.lua:258-261)
         if mvm and mvm.Parked and mvm.Parked.touch then mvm.Parked.touch(v) end
     end
@@ -282,6 +283,8 @@ local function summon(player, v, on, args)
     if not v:isEngineRunning() and not v:isEngineWorking() then return "CANT_START" end -- empty pack, broken motor
     local ok, why = api.startSummon(player, v, opts)
     if not ok then return type(why) == "string" and why or "CANT_START" end
+    local info = api.summonInfo(v)
+    T.Battery.summonStart(v, info and info.startedMs) -- the drain counts the path from here (Battery.lua)
     if part and part:getModData().sentry then S.disarm(v, player:getUsername()) end
     -- nobody drives, so no beats: the server starts the motor whine and PWS for everyone near (SoundRelay.lua)
     local sr = T.SoundRelay

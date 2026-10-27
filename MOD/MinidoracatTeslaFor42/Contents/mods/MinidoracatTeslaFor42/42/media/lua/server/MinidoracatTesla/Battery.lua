@@ -144,10 +144,20 @@ end
 -- minutes kmh = km / (m * secPerGameMin / 3600), so kwPerKmh * kmh * m / 60 = kwPerKmh * km * 60 / secPerGameMin: the
 -- same energy for the same path, whatever speed the server reads. Returns km, or nil when the car is not summoned.
 -- The start position belongs to one summon (AutoDrive's startedMs) of one car (keyId: vehicle ids are reused), so a
--- new summon never measures from an old one's end.
--- ponytail: each summon's first update counts 0 km (no earlier position), at most one game minute of a 10 km/h
--- summon; record the start in Remote.lua's ACT.summon if that ever matters.
-local summonAt = {} -- vehicle id -> { x, y, s = startedMs, k = keyId } at its last update while summoned
+-- new summon never measures from an old one's end. Remote.lua records it at the start (B.summonStart) and charges the
+-- leg after the last update at the end (B.summonEnd): a short summon is over before its car's first part update.
+local summonAt = {} -- vehicle id -> { x, y, s = startedMs, k = keyId } at the start or the last update while summoned
+function B.summonStart(vehicle, startedMs)
+    summonAt[vehicle:getId()] = { vehicle:getX(), vehicle:getY(), s = startedMs, k = vehicle:getKeyId() }
+end
+-- km since the start or the last update (which becomes the new mark); nil when nothing of this car's summon is kept
+local function summonLeg(id, x, y, k)
+    local last = summonAt[id]
+    if not last or last.k ~= k then return nil end
+    local dx, dy = x - last[1], y - last[2]
+    last[1], last[2] = x, y
+    return math.sqrt(dx * dx + dy * dy) / 1000 -- 1 km = 1000 tiles (Core.lua T.kmPerKwh)
+end
 function B.summonKm(vehicle)
     if not instanceof(vehicle, "BaseVehicle") then return nil end -- a VirtualVehicle is never summoned
     local api = T.Remote and T.Remote.summonApi and T.Remote.summonApi()
@@ -161,12 +171,19 @@ function B.summonKm(vehicle)
     local x, y, k = vehicle:getX(), vehicle:getY(), vehicle:getKeyId()
     local last = summonAt[id]
     if not last or last.s ~= info.startedMs or last.k ~= k then
-        summonAt[id] = { x, y, s = info.startedMs, k = k }
+        summonAt[id] = { x, y, s = info.startedMs, k = k } -- not seen starting (a reload): from here
         return 0
     end
-    local dx, dy = x - last[1], y - last[2]
-    last[1], last[2] = x, y
-    return math.sqrt(dx * dx + dy * dy) / 1000 -- 1 km = 1000 tiles (Core.lua T.kmPerKwh)
+    return summonLeg(id, x, y, k)
+end
+-- the summon ended (Remote.lua R.summonEnded): the drive term of the leg since the last update, then forget the car
+function B.summonEnd(vehicle)
+    local id = vehicle:getId()
+    local km = summonLeg(id, vehicle:getX(), vehicle:getY(), vehicle:getKeyId())
+    summonAt[id] = nil
+    local s, part = T.spec(vehicle), B.part(vehicle)
+    if not (km and km > 0 and s and part and part:getInventoryItem()) then return end
+    B.draw(vehicle, part, s.kwPerKmh * km * 60 / T.secPerGameMin() / T.rangeMul())
 end
 
 -- GasTank update: drive draw minus brake regen, every game minute while the car's parts update; cable length check.

@@ -92,6 +92,28 @@ summoned[sv] = { by = "own", phase = "driving", startedMs = 2000 } -- ended and 
 check(near(step(500, 0), s.idleKw / 60, 1e-12), "back to back, no update between: the second summon starts fresh too")
 check(near(step(50, 0), got, 1e-9), "...then counts its own path")
 summoned[sv] = nil
+step(0, 0)
+-- recorded at the start (Remote.lua ACT.summon), charged at the end (R.summonEnded): a summon shorter than one
+-- game minute (most of them) is over before the pack's first update
+local drive = got - s.idleKw / 60 -- 50 tiles' drive term
+B.summonStart(sv, 3000)
+summoned[sv] = { by = "own", phase = "driving", startedMs = 3000 }
+sv.x = sv.x + 50
+summoned[sv] = nil
+local before = B.kwh(spart)
+B.summonEnd(sv)
+check(near(before - B.kwh(spart), drive, 1e-9), "start and end with no update between: the whole path charged at the end")
+B.summonStart(sv, 4000)
+summoned[sv] = { by = "own", phase = "driving", startedMs = 4000 }
+check(near(step(50, 0), got, 1e-9), "an update during it: the path from the start (not 0)")
+sv.x = sv.x + 50
+summoned[sv] = nil
+before = B.kwh(spart)
+B.summonEnd(sv)
+check(near(before - B.kwh(spart), drive, 1e-9), "...and the end charges only the leg after that update")
+before = B.kwh(spart)
+B.summonEnd(sv)
+check(B.kwh(spart) == before, "an end with nothing kept: no charge")
 T.Remote = realRemote
 
 H.section("regen")
