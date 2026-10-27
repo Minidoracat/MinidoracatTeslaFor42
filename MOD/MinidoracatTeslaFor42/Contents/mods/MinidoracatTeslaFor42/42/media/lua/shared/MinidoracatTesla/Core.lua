@@ -21,9 +21,14 @@ T.ContainerAccess = T.ContainerAccess or {}
 -- kwPerKmh, idleKw: a full pack drives as far as a full vanilla CarNormal tank at 50 km/h (measured in MP: about 756 km
 -- per 49 L, references/vehicle-battery.md "續航校正"), so both scale with the pack (x kWh / 62.5 from the 62.5 kWh
 -- calibration: 0.03, 0.00456). massKg (Performance curb mass) and regenEff size the regen.
+-- model: the atlas sprite suffix (top view car_<model> on the HUD and the app's maps, wordmark wm_<model>,
+-- trim_<model>) and the HUD door zones (HUD.lua). appCar: the app's car picture file prefix
+-- (scripts/blender/skf/convert.py appcar, + the paint name). v12Kwh: the low voltage battery (Battery.lua topUp12V).
 T.Specs = {
     ["Base.MinidoracatTesla_ModelY"] = {
         model = "ModelY",
+        appCar = "app_car_",
+        v12Kwh = 15.5 * 6.9 / 1000, -- lithium-ion 15.5 V, 6.9 Ah (Model Y owner's manual, R10)
         idleKw = 0.0376,
         kwPerKmh = 0.00572,
         massKg = 2033,
@@ -45,6 +50,8 @@ T.Specs = {
     },
     ["Base.MinidoracatTesla_Model3"] = {
         model = "Model3",
+        appCar = "app_car_model3_",
+        v12Kwh = 15.5 * 6.9 / 1000, -- 15.5 V, 6.9 Ah (tesla.cn Model 3 owner's manual 2026, Battery - Low Voltage, p.179)
         idleKw = 0.0376,
         kwPerKmh = 0.00572,
         massKg = 1851, -- curb mass, China owner's manual / MIIT filing TSL7000BEVBA5
