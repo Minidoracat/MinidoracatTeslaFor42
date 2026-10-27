@@ -110,6 +110,9 @@ local function tesla(o)
         return true
     end
     function v:transmitPartDoor() self.doorTx = self.doorTx + 1 end
+    function v:canUnlockDoor(part, chr) -- BaseVehicle.java:1275-1301 (seat and child window left out)
+        return part.d.locked and not part.d.broken and chr:getInventory():haveThisKeyId(self.keyId) ~= nil
+    end
     function v:getColorHue() return 0.6 end -- Liftgate's shell bits: no door open in these checks
     function v:getAreaCenter(area)
         if area ~= "SeatFrontLeft" then return nil end
@@ -358,6 +361,19 @@ v.doors[1].d.locked = true
 local stranger = player("stranger", container(), v.x - 1, v.y)
 ISUnlockVehicleDoor.complete({ vehicle = v, part = v.doors[1], character = stranger })
 check(v.doors[1].d.locked, "handle: no key -> stays locked")
+-- the frunk lid locks with the car; vanilla's hood entries (Use.EngineDoor, the Mechanics radial) queue no unlock for
+-- a key holder, so opening it has to unlock it for whoever may (Keys.lua K.lidUnlock)
+check(v:areAllDoorsLocked() and v.frunk.d.locked, "frunk: locked with the car (walk-away lock above)")
+ISOpenVehicleDoor.complete({ vehicle = v, part = v.frunk, character = stranger })
+check(v.frunk.d.locked and not v.frunk.d.open, "frunk: a stranger's open leaves it shut and locked")
+ISOpenVehicleDoor.complete({ vehicle = v, part = v.frunk, character = owner })
+check(not v.frunk.d.locked and v.frunk.d.open, "frunk: the owner (phone key in a bag) opens it straight away, no unlock step")
+ISCloseVehicleDoor.complete({ vehicle = v, part = v.frunk, character = owner })
+check(not v.frunk.d.open and v.frunk.d.locked, "frunk: shut again on the locked car -> locked")
+local loose = player("loosekey", container(key("Base.CarKey", v.keyId)), v.x - 1, v.y)
+ISOpenVehicleDoor.complete({ vehicle = v, part = v.frunk, character = loose })
+check(v.frunk.d.open, "frunk: a key in hand opens it too (vanilla canUnlockDoor)")
+ISCloseVehicleDoor.complete({ vehicle = v, part = v.frunk, character = owner })
 check(T.authorized(owner, v, "PASSENGER") == true and T.authorized(stranger, v, "PASSENGER") == false,
     "authorized (camp, charging): phone key in a bag counts, no key does not")
 local walletOnly = player("walletonly", container(bag("Base.Wallet", item(K.CARD, v.keyId))), v.x - 1, v.y)

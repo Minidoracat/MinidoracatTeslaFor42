@@ -175,6 +175,24 @@ check(F.lastSent("alert") == nil and #inbox.owner == 20 and inbox.owner[20].i ==
 cmds.inboxPull(guest, {})
 check(F.lastSent("inbox") == nil and #inbox.owner == 20, "split-screen guest: inboxPull gets nothing, the inbox stays")
 check(T.legit(guest, v, "owner") == false, "split-screen guest: the sentry owner's name does not make it legit")
+-- a guest with the key arms sentry: nobody's account to tell, but the car's alert list (the app's) still gets events
+local logged, savedRemote = {}, T.Remote
+T.Remote = { logAlert = function(e) logged[#logged + 1] = e end }
+local gcar = F.track(F.vehicle({ pct = 80 }))
+gcar.locked = true
+local keyGuest = F.player("guest2", { num = 1, keys = { [gcar.keyId] = true } })
+cmds.sentryArm(keyGuest, { vid = gcar:getId() })
+check(md(gcar).sentry ~= nil and md(gcar).sentry.by == nil, "split-screen guest with the key arms sentry: armed, no owner account")
+local boxes0 = 0
+for _ in pairs(inbox) do boxes0 = boxes0 + 1 end
+F.sent = {}
+ISOpenVehicleDoor.complete({ vehicle = gcar, character = thief, part = gcar.parts.GasTank })
+local boxes1 = 0
+for _ in pairs(inbox) do boxes1 = boxes1 + 1 end
+check(#logged == 1 and logged[1].kind == "touch" and F.lastSent("alert") == nil and boxes1 == boxes0,
+    "...a stranger's touch: in the car's alert list, nobody notified, no inbox")
+T.Remote = savedRemote
+F.runTicks(50, 450)
 F.online = { thief }
 F.sent = {}
 cmds.inboxPull(owner, {})

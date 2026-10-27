@@ -13,12 +13,16 @@ St.SYSTEM = "MinidoracatTeslaApp" -- named after its first user, the phone app; 
 St.KEYS = { "seen", "alerts", "inbox", "keyIds" }
 -- Global ModData tables of older saves: moved in once, then removed so they are neither saved nor served again
 St.LEGACY = { inbox = "MinidoracatTesla_Inbox", keyIds = "MinidoracatTesla_KeyIds" }
+-- ponytail: the whole system is serialized into SliceY's fixed 10 MiB buffer (SliceY.java:10,
+-- SGlobalObjectSystem.java:273-295; an overflow is logged and that save of the file is lost). An offline inbox is at
+-- most 20 alerts of ~0.3 KB, so that is ~1700 accounts each holding a full inbox; prune inboxes of long-gone accounts or
+-- split the keys into systems if a server ever gets near it.
 
 local db
 function St.get(name)
     if not db then
         local sys = SGlobalObjects.registerSystem(St.SYSTEM) -- loads the file the first time (SGlobalObjects.java:31-39)
-        sys:setModDataKeys(St.KEYS) -- only listed keys are saved (SGlobalObjectSystem.java:210-230)
+        sys:setModDataKeys({ "seen", "alerts", "inbox", "keyIds", "moved" }) -- only these are saved (:210-230)
         sys:setObjectModDataKeys({})
         sys:setObjectSyncKeys({})
         db = sys:getModData()
@@ -30,11 +34,12 @@ function St.get(name)
         for _, key in ipairs(St.KEYS) do
             if type(db[key]) ~= "table" then db[key] = {} end
         end
-        -- the GOS file is saved before global_mod_data.bin (ServerMap.java:391,409; GameWindow.java:1073,1080): a crash
-        -- in between keeps both copies, never neither
+        -- The GOS file is saved before global_mod_data.bin (ServerMap.java:391,409; GameWindow.java:1073,1080). A crash
+        -- in between keeps the old tables on disk next to a store that already has them (`moved`, saved with it): they
+        -- are then only removed, so an inbox pulled since is not delivered twice. Never neither.
         for key, legacy in pairs(St.LEGACY) do
             local old = ModData.remove(legacy) -- GlobalModData.java:104-106
-            if old then
+            if old and not db.moved then
                 local n = 0
                 for k, val in pairs(old) do
                     if db[key][k] == nil then db[key][k] = val end
@@ -43,6 +48,7 @@ function St.get(name)
                 T.log("moved Global ModData " .. legacy .. " (" .. n .. ") into " .. St.SYSTEM .. "." .. key)
             end
         end
+        db.moved = true
     end
     return db[name]
 end

@@ -53,10 +53,12 @@ function I.store(username, e)
     while #list > I.MAX do table.remove(list, 1) end
 end
 
+-- username nil (sentry armed by a split-screen guest, T.account): nobody to tell, but the car's own alert list
+-- (the phone app's, Remote.logAlert) still gets it
 function I.notify(username, e)
-    if not username then return end
     local log = T.Remote and T.Remote.logAlert
     if log then log(e) end
+    if not username then return end
     local p = I.online(username)
     if p then
         T.send(p, "alert", e)

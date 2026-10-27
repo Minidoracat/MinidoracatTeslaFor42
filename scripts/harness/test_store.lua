@@ -11,6 +11,7 @@ H.moddata.MinidoracatTesla_Inbox = { ghost = { entry } }
 H.moddata.MinidoracatTesla_KeyIds = { ["424242"] = "MinidoracatTesla_ModelY", ["77"] = "old name" }
 local sys = H.gos[T.Store.SYSTEM]
 sys.md.keyIds["77"] = "MinidoracatTesla_ModelY" -- already in the store: kept
+sys.md.moved = nil -- a store saved by the version before (the app's records only)
 local logs0 = #H.logLines
 dofile(SRC) -- a fresh server start: the store is opened again
 H.fire("OnInitGlobalModData", false) -- IsoWorld.init -> GlobalModData.init, before any chunk or client
@@ -27,3 +28,12 @@ check(sys.md.getInitialStateForClient() == nil, "the GOS system sends clients no
 dofile(SRC) -- next start: nothing left to move
 H.fire("OnInitGlobalModData", false)
 check(T.Store.get("inbox").ghost[1] == entry and H.moddata.MinidoracatTesla_Inbox == nil, "second start: data kept, nothing recreated")
+check(sys.md.moved == true and sys.keys[5] == "moved", "the store remembers it has moved them (saved with it)")
+-- crash after the store was saved but before global_mod_data.bin: the old tables are on disk again, while the inbox
+-- was pulled (and that saved) since
+T.Store.get("inbox").ghost = nil
+H.moddata.MinidoracatTesla_Inbox = { ghost = { entry } }
+dofile(SRC)
+H.fire("OnInitGlobalModData", false)
+check(T.Store.get("inbox").ghost == nil and H.moddata.MinidoracatTesla_Inbox == nil,
+    "old table left by a crash between the two saves: removed, a pulled inbox is not delivered again")

@@ -149,6 +149,29 @@ function ISUnlockVehicleDoor:complete(...)
     return unlockComplete(self, ...)
 end
 
+-- The frunk lid locks with the car (Liftgate.lockLids). Vanilla's other hood entries queue the unlock only when the
+-- key is NOT found (the interact key's Vehicles.Use.EngineDoor, Vehicles.lua:849-852; the Mechanics radial,
+-- ISVehicleMenu.lua:990-993; DriveUnitMenu.lua), so the owner's open would fail on the lock (ISOpenVehicleDoor.lua:61-64).
+-- Whoever may unlock it (vanilla canUnlockDoor: seated, or the key in hand, BaseVehicle.java:1275-1301; or the phone
+-- key in a bag, as at a door handle) has it unlocked right before vanilla complete() looks; a stranger finds it locked.
+-- complete() runs on the server in MP and locally in SP.
+function K.lidUnlock(vehicle, part, chr)
+    if not part or part:getId() ~= "EngineDoor" or not chr or not T.isTesla(vehicle) then return false end
+    local door = part:getDoor()
+    if not door or not door:isLocked() or door:isLockBroken() then return false end
+    if not vehicle:canUnlockDoor(part, chr) and not K.phoneKey(chr, vehicle) then return false end
+    door:setLocked(false)
+    vehicle:transmitPartDoor(part) -- no-op off the server
+    return true
+end
+
+require "Vehicles/TimedActions/ISOpenVehicleDoor"
+local openComplete = ISOpenVehicleDoor.complete
+function ISOpenVehicleDoor:complete(...)
+    if not isClient() then K.lidUnlock(self.vehicle, self.part, self.character) end
+    return openComplete(self, ...)
+end
+
 -- Phone key in a bag also starts the car (the real one drives with the phone in a pocket or bag). Vanilla complete()
 -- passes haveKey from haveThisKeyId only (ISStartVehicleEngine.lua:29); here tryStartEngine(true) instead. complete()
 -- runs on the server in MP, locally in SP. No key goes into the ignition: the Starting state's setKeysInIgnition looks
