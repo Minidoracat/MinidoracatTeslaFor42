@@ -37,14 +37,15 @@ CAR = dict(
     OFFICIAL_OPTS="$APFA,$MDL3,$W30P,$MT371,$CPF2,$SC04,$T30S,${},$IPB4",
     # official_ramp: the SIDE render's paint rows / columns (car bbox fractions) and the wheel arches cut out
     RAMP=dict(t=(0.40, 0.76), u=(0.04, 0.96), wheels=(0.175, 0.795), wt=0.80, wr=0.14),
-    # ---- pzveh: wheel, 20" Warp (official RIMCLOSEUP): five pairs of thin swept spokes in dark grey, open onto the
-    # red caliper and the rotor; 235/35 R20 front, 275/30 R20 rear (both ~336 mm radius; the source's tires, 345 mm,
-    # set the size: the arches were modelled round them)
+    # ---- pzveh: wheel, 20" Warp (official RIMCLOSEUP): five wide swept matte-black aero blades (each edged by thin
+    # lighter spokes, too fine to draw) with a narrow slit between them onto the red caliper; a Y spoke this wide is a
+    # blade with a shallow V at the barrel. 235/35 R20 front, 275/30 R20 rear (both ~336 mm radius; the source's
+    # tires, 345 mm, set the size: the arches were modelled round them)
     WHEEL_RIM=0.80,                        # rim flange radius / tire radius: 20" (254 mm bead + ~17 mm) / 336 mm
-    WHEEL_SPOKE=dict(n=5, hub=0.12, fork=0.22, spread=math.radians(13), main=(0.065, 0.05), arm=0.045, cap=0.14,
+    WHEEL_SPOKE=dict(n=5, hub=0.12, fork=0.45, spread=0.24, main=(0.10, 0.17), arm=0.21, cap=0.14,
                      inset=0.018, dish=0.020, depth=0.018, sweep=math.radians(32)),
     WHEEL_DISC=dict(rotor=0.655, hat=0.30),   # 355 mm rotor (US owner's manual p.215) / 271 mm flange
-    WHEEL_RGB=dict(spoke=82, cap=36, barrel=26, lip=70, rotor=60, hat=35, dark=12, gap=8, tire=(22, 28), tread=20),
+    WHEEL_RGB=dict(spoke=44, cap=36, barrel=26, lip=70, rotor=60, hat=35, dark=12, gap=8, tire=(22, 28), tread=20),
     # ---- pzveh: vehicle script
     OY=0.2878,                             # as Model Y (model_y.py)
     WHEEL_LIFT=0.11,                       # calibration knob (model_y.py)
@@ -126,15 +127,23 @@ CAR = dict(
     GUARDS=dict(front=(0.75, 0.80, 0.4), rear=(-0.95, 0.85, 0.45)),
     # the body shell (rear quarters, roof, rear face and the trunk lid in one) is cut along the lid's seams; the
     # window frame trim spans both doors and the C pillar
-    CUT={("Object_11", 5889): ("X+", "X-", "GZ"), ("Object_6", 241): ("BF", "BR", "D")},
-    PLANES={"GZ": ((0, 0, 0.525), (0, 0, 1), -1.30)},   # name: (point, normal, cut faces behind this y)
+    CUT={("Object_11", 5889): ("X+", "X-", "GZ"), ("Object_6", 241): ("BF", "BR", "D"),
+         ("Object_11", 1590): ("FZ", "FX+", "FX-")},   # the front bumper
+    # name: (point, normal, cut faces centred behind this y); GZ: the trunk lid's lower edge; FZ / FX+-: the edges of
+    # the black lower front intake (CARBON), so its border runs straight instead of along big triangles
+    PLANES={"GZ": ((0, 0, 0.525), (0, 0, 1), -1.30), "FZ": ((0, 0, 0.28), (0, 0, 1), 9.0),
+            "FX+": ((0.60, 0, 0), (1, 0, 0), 9.0), "FX-": ((-0.60, 0, 0), (1, 0, 0), 9.0)},
     CUT_X=("Object_12", "Object_13", "Object_14", "Object_16", "Object_17"),   # cut along +-GATE_X
     CUT_X_Y=-1.35,
     DOOR_OBJS=("Object_6", "Object_7", "Object_9", "Object_12", "Object_13", "Object_14", "Object_17", "Object_18"),
     GATE_OBJS=("Object_12", "Object_13", "Object_14", "Object_16", "Object_17"),
     GATE_COMPS=(),
     GATE_CUT_COMPS=(("Object_11", 5889),),
-    CARBON=dict(x=0.62, y=-1.70, z=(0.805, 0.95), depth=0.035, rgb=(30, 30, 32)),   # Performance spoiler ($SLR1)
+    # black paint zones (convert.classify): the carbon spoiler ($SLR1) as a band 3.5 cm deep along the trunk lid's
+    # trailing edge; the Performance front's black lower intake across the bumper below z 0.28 (official FRONT34;
+    # the corners stay body colour)
+    CARBON=dict(rgb=(30, 30, 32), zones=(dict(lo=(-0.62, -9.0, 0.805), hi=(0.62, -1.70, 0.95), edge=(1, 0.035)),
+                                        dict(lo=(-0.60, 1.60, 0.0), hi=(0.60, 9.0, 0.28)))),
     PANES={"Body": {"WinT", "LightBarL", "WinH"}, "DoorFrontLeft": {"WinLH"}, "DoorFrontRight": {"WinRH"},
            "DoorRearLeft": {"WinLT"}, "DoorRearRight": {"WinRT"}, "TrunkDoor": set(), "EngineDoor": set()},
     # badges: T on the nose (where the source has it), TESLA across the trunk lid between the tail lamps, the

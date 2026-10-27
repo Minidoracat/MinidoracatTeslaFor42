@@ -648,17 +648,21 @@ def classify(car, names, sizes):
     cc = np.stack([np.bincount(inv, cen[:, i]) for i in range(3)], 1) / np.bincount(inv)[:, None]
     ccen = cc[inv]
     paint = mat == PAINT_MAT
-    # CARBON: the paint the real car has in carbon fibre (Model 3 Performance's spoiler, $SLR1): a band `depth` deep
-    # along the lid's trailing edge, found per 2 cm of x (the edge curves forward towards the sides: a box caught it
-    # in patches)
+    # CARBON: paint the real car has in black (Model 3 Performance's carbon spoiler $SLR1, its black lower front
+    # intake): paint faces in each zone's box (lo, hi); with `edge` (axis, depth) only those within depth of the box's
+    # lowest coordinate on that axis, per 2 cm of x (the lid's trailing edge curves forward towards the sides: a plain
+    # box caught it in patches)
     carbon = np.zeros(n, bool)
-    if CARBON:
-        band = (paint & (np.abs(cen[:, 0]) < CARBON["x"]) & (cen[:, 1] < CARBON["y"]) & (cen[:, 2] > CARBON["z"][0])
-                & (cen[:, 2] < CARBON["z"][1]))
-        xb = np.floor(cen[:, 0] / 0.02).astype(np.int64)
-        for b in np.unique(xb[band]):
-            m = band & (xb == b)
-            carbon |= m & (cen[:, 1] < cen[m, 1].min() + CARBON["depth"])
+    xb = np.floor(cen[:, 0] / 0.02).astype(np.int64)
+    for zn in (CARBON["zones"] if CARBON else ()):
+        box = paint & (cen > zn["lo"]).all(1) & (cen < zn["hi"]).all(1)
+        if "edge" in zn:
+            k, depth = zn["edge"]
+            for b in np.unique(xb[box]):
+                m = box & (xb == b)
+                carbon |= m & (cen[:, k] < cen[m, k].min() + depth)
+        else:
+            carbon |= box
     paint &= ~carbon
     glass = np.isin(mat, GLASS_MATS) & ~np.isin(obj, GLASS_OPAQUE)
     part = np.zeros(n, np.int64)
@@ -744,7 +748,7 @@ def classify(car, names, sizes):
           "lamps head/tail", int(head.sum()), int(tail.sum()))
     return dict(part=part, zone=zone, rgb=rgb, paint=paint, lamp=lamp, glass=glass, pane=pane, obj=obj, csize=csize,
                 badge=np.array([o.startswith(("Badge_", "Caliper")) for o in obj]),
-                mat=mat, mirror=mirror)
+                mat=mat, mirror=mirror, carbon=carbon)
 
 
 # ---------------------------------------------------------------- textures
@@ -1161,11 +1165,12 @@ def pieces(car, c, shift):
     V, T, A, _ = pv.soup(car, shift)
     me = car.data
     tf = np.repeat(np.arange(len(me.polygons)), [p.loop_total - 2 for p in me.polygons])
-    part, glass, paint, mirror = c["part"][tf], c["glass"][tf], c["paint"][tf], c["mirror"][tf]
+    part, glass, mirror = c["part"][tf], c["glass"][tf], c["mirror"][tf]
+    panel = (c["paint"] | c["carbon"])[tf]                # body panels, whatever their colour (CARBON's are black)
 
     def cab_attr(cell):
         return np.array([0, 0, pv.CABIN_UV1_U - CELL[cell], 0, 0, 0, 1], float)
-    back_liner = ~glass & ((part == 0) & paint | (part > 0) & ~paint)
+    back_liner = ~glass & ((part == 0) & panel | (part > 0) & ~panel)
 
     def backs(sel, recolour, base):
         """Reversed copies on their own vertices (the FBX import keeps one of two faces on the same vertices)."""
@@ -1186,7 +1191,7 @@ def pieces(car, c, shift):
     body_t, body_a, bodyV = [T[part == 0]], [A[part == 0]], V
     adds = [backs(sel, rec, 0) for sel, rec in back_sets(part == 0)]
     gb = bvh_of([(V, T[glass])])
-    adds += [seals(V, T, (part == 0) & paint, cab_attr("base"), gb)]
+    adds += [seals(V, T, (part == 0) & panel, cab_attr("base"), gb)]
     for v, t, a in adds:
         body_t.append(t + len(bodyV))
         bodyV = np.concatenate([bodyV, v])
@@ -1198,7 +1203,7 @@ def pieces(car, c, shift):
         sel = part == k
         lid = pname == "EngineDoor"
         off = (np.array([-sd, 0, 0]) if sd else np.array((0, 0, -1) if lid else pv.GATE_IN)) * pv.DOOR_T
-        skin = sel & paint & ~mirror                     # the mirror cap: outer faces only (a closed shell)
+        skin = sel & panel & ~mirror                     # the mirror cap: outer faces only (a closed shell)
         P, t, a, _ = pv.slab(V, T, A, skin, off, cab_attr("dash"), BELT_Z - shift[2], outer_extra=sel & ~skin)
         extra = [backs(bsel, rec, 0) for bsel, rec in back_sets(sel)] + [seals(V, T, skin, cab_attr("base"), gb)]
         for v, bt, ba in extra:

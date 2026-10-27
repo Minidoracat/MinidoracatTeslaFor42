@@ -57,7 +57,7 @@ T.Specs = {
             { name = "Quicksilver", code = "PN00", h = 0.808, s = 0.484, v = 0.458 },
             { name = "UltraRed", code = "PR01", h = 0.997, s = 1.0, v = 0.471 },
             { name = "DeepBlue", code = "PPSB", h = 0.602, s = 1.0, v = 0.398 },
-            { name = "MarineBlue", code = "PB02", h = 0.585, s = 0.765, v = 0.285 },
+            { name = "MarineBlue", code = "PB02", h = 0.584, s = 0.766, v = 0.285 },
             { name = "FrostBlue", code = "PB00", h = 0.599, s = 0.77, v = 0.483 },
         },
     },

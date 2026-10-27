@@ -107,7 +107,7 @@ CAR = dict(
           "Plane.067", "Hyundai_KONA",   # BloxBloger's interior (tub, seats, dash): the mod's own cabin (cabin.py)
           "Tesla_Model_3"),              # rear TESLA: 1.2 cm block letters (E a solid block) sunk 4 cm under the blade
     DROP_COMPS=(),                         # (objects, lo, hi): drop their components centred in the box
-    CARBON=None,                           # dict(lo, hi, rgb): paint faces in the box are carbon fibre
+    CARBON=None,                           # dict(rgb, zones): black paint zones (model_3.py); none on the Model Y
     ARCH_LINER=None,                       # dict(gap, inner, arc, n): procedural arch liners (the source has its own)
     PLATES=(),                             # (name, corners, facing, material): flat backing polygons
     # collapse-decimated before anything else (target tris): detail PZ cannot show at 1-4 px per cm
