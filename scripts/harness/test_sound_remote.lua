@@ -319,5 +319,44 @@ check(H.count("OnTick") == base and st.playing == 0 and st.tickAdds - adds0 == s
 motor({ vid = "x", on = true })
 check(H.count("OnTick") == base, "malformed beat: ignored")
 
+H.section("remote sound: a summoned car (nobody drives)")
+local sc = tesla({ x = 306.5, y = 306.5, running = true, speed = 10 }) -- no driver: AutoDrive's summon pushes it
+motor({ vid = sc:getId(), on = true }) -- a driver's beat would not do: nobody in the seat
+local se = S.heard[sc:getId()]
+hz(3)
+check(se.motor == nil, "an ordinary beat for a car without a driver: silent (the old rule)")
+motor({ vid = sc:getId(), on = true, sum = true }) -- the server at the summon's start (SoundRelay R.summon)
+hz(10)
+check(se.motor ~= nil and se.motor.vol > 0.1 and se.pws.vol > 0.2 and se.motor.e:playing().name == "MinidoracatTesla_MotorExt",
+    "summon 'on': the whine and the forward PWS play with nobody in the seat")
+H.advanceMs(S.HEARD_MS + 1000)
+hz(1)
+check(S.heard[sc:getId()] ~= nil and se.motor ~= nil, "no beats during a summon: still playing past HEARD_MS")
+sc.running = false
+hz(1)
+check(se.motor == nil and S.heard[sc:getId()] ~= nil, "motor off (summon ended, engine shut off): silent")
+motor({ vid = sc:getId(), on = false, sum = true })
+check(S.heard[sc:getId()] == nil and H.count("OnTick") == base, "summon 'off': forgotten, OnTick removed")
+motor({ vid = sc:getId(), on = true, sum = true })
+H.removeVehicle(sc)
+hz(1)
+check(S.heard[sc:getId()] ~= nil and S.heard[sc:getId()].motor == nil, "summoned car unloaded: silent, no error")
+H.advanceMs(S.SUMMON_MS + 1)
+hz(1)
+check(S.heard[sc:getId()] == nil and H.count("OnTick") == base, "a summon 'off' never came: dropped after SUMMON_MS")
+
 getWorld, getSpecificPlayer, getCell = saved.getWorld, saved.getSpecificPlayer, savedCell
 H.side(false, true)
+
+-- server: the summon's start and end go to everyone near the car, the summoner included (no driver to send beats)
+H.section("remote sound: server tells a summon")
+online = { driver, passenger, near, far }
+function getOnlinePlayers() return { size = function() return #online end, get = function(_, i) return online[i + 1] end } end
+v.driver, driver.vehicle, passenger.vehicle = nil, nil, nil
+n = #H.sent
+check(R.summon(v, true) == 3, "summon start: told the 3 players within 120 tiles (the summoner too)")
+got = relayed(n)
+check(got.drv and got.drv.sum == true and got.drv.on == true and got.near and not got.far, "{ vid, on, sum = true }")
+n = #H.sent
+check(R.summon(v, false) == 3 and relayed(n).pax.on == false, "summon end: 'off' to the same players")
+getOnlinePlayers = saved.getOnlinePlayers

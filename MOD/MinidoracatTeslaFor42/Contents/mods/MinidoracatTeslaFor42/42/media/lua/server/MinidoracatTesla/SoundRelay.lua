@@ -3,6 +3,8 @@
 -- every 5 s and listeners forget a car on their own.
 -- Accepted from the car's driver only; "off" also when the seat is already empty (the exit packet can beat it here,
 -- and with no driver there is nothing left to silence). Anything else is dropped without a reply.
+-- A summoned car (Remote.lua, AutoDrive drives it empty) has no driver to send beats: the server itself tells everyone
+-- near the car, the summoner too, when the summon starts and ends (R.summon; { vid, on, sum = true }).
 if isClient() then return end
 require "MinidoracatTesla/Commands"
 
@@ -13,6 +15,33 @@ T.SoundRelay = R
 local function isInt(n) return type(n) == "number" and n == n and math.floor(n) == n end
 
 T.ServerCommands = T.ServerCommands or {}
+
+-- every online player within RELAY_TILES of car v but `except`: `motor` msg. Returns how many.
+local function relay(v, msg, except)
+    local n = 0
+    local x, y, r2 = v:getX(), v:getY(), R.RELAY_TILES * R.RELAY_TILES
+    local list = getOnlinePlayers() -- LuaManager.java:4457
+    for i = 0, list:size() - 1 do
+        local p = list:get(i)
+        local dx, dy = p:getX() - x, p:getY() - y
+        if p ~= except and dx * dx + dy * dy <= r2 then
+            sendServerCommand(p, T.MODULE, "motor", msg) -- LuaManager.java:8966-8970
+            n = n + 1
+        end
+    end
+    R.stats.relayed = R.stats.relayed + n
+    return n
+end
+
+-- the summon's motor layers on (start) or off (end) for everyone near; SP: the one player (T.send runs the handler)
+-- ponytail: players who walk into range after the start hear nothing until the next summon; beats from the
+-- summoner's game if that ever matters.
+function R.summon(v, on)
+    local msg = { vid = v:getId(), on = on, sum = true }
+    if not isServer() then return T.send(nil, "motor", msg) end
+    return relay(v, msg, nil)
+end
+
 -- returns how many players it told (the E2E counts it; the dispatcher ignores it)
 T.ServerCommands.motor = function(player, args)
     local v = isInt(args.vid) and getVehicleById(args.vid) or nil
@@ -23,19 +52,7 @@ T.ServerCommands.motor = function(player, args)
         return 0
     end
     if not isServer() then return 0 end -- SP: no one else (the driver does not send there anyway)
-    local out, n = { vid = v:getId(), on = on }, 0
-    local x, y, r2 = v:getX(), v:getY(), R.RELAY_TILES * R.RELAY_TILES
-    local list = getOnlinePlayers() -- LuaManager.java:4457
-    for i = 0, list:size() - 1 do
-        local p = list:get(i)
-        local dx, dy = p:getX() - x, p:getY() - y
-        if p ~= player and dx * dx + dy * dy <= r2 then
-            sendServerCommand(p, T.MODULE, "motor", out) -- LuaManager.java:8966-8970
-            n = n + 1
-        end
-    end
-    R.stats.relayed = R.stats.relayed + n
-    return n
+    return relay(v, { vid = v:getId(), on = on }, player)
 end
 
 return R

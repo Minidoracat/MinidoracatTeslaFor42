@@ -234,6 +234,8 @@ function R.summonEnded(v, code, player)
     if mvm and mvm.Parked and mvm.Parked.touch then mvm.Parked.touch(v) end
     T.log("summon end " .. tostring(code) .. " vid=" .. v:getId() .. " by " .. (player and player:getUsername() or "-"))
     if player then T.send(player, "appDone", { key = v:getKeyId(), act = "summonEnd", why = tostring(code) }) end
+    local sr = T.SoundRelay -- the motor layers stop for everyone near (they started with the summon)
+    if sr then sr.summon(v, false) end
 end
 
 -- on: start (a running summon: nothing, startSummon is called once) or stop it, whoever started it. Tesla's own rules
@@ -273,6 +275,9 @@ local function summon(player, v, on, args)
     local ok, why = api.startSummon(player, v, opts)
     if not ok then return type(why) == "string" and why or "CANT_START" end
     if part and part:getModData().sentry then S.disarm(v, player:getUsername()) end
+    -- nobody drives, so no beats: the server starts the motor whine and PWS for everyone near (SoundRelay.lua)
+    local sr = T.SoundRelay
+    if sr then sr.summon(v, true) end
     return nil, true
 end
 
