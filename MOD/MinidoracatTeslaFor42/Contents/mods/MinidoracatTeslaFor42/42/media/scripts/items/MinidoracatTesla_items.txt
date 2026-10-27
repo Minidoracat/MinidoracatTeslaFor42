@@ -15,6 +15,20 @@ module Base
         WorldStaticModel = CarBattery,
     }
 
+    item MinidoracatTesla_Model3Battery
+    {
+        DisplayCategory = VehicleMaintenance,
+        Weight = 45.0,
+        ItemType = base:normal,
+        Icon = CarBattery,
+        MaxCapacity = 79,
+        ConditionAffectsCapacity = false,
+        ConditionMax = 100,
+        ChanceToSpawnDamaged = 0,
+        MechanicsItem = true,
+        WorldStaticModel = CarBattery,
+    }
+
     /* Drive Unit Parts: repairs a Tesla's drive unit (Engine part) in place of Base.EngineParts; values copied from */
     /* vanilla EngineParts (generated/items/normal.txt:11818-11827), world model reused. Icon: drive_unit_icon.py. */
     item MinidoracatTesla_DriveUnitParts

@@ -14,39 +14,52 @@ end
 
 H.section("cabin and glass")
 local veh = read("scripts/vehicles/MinidoracatTesla_ModelY.txt")
+local geo = veh:sub((veh:find("---- geometry", 1, true))) -- the generated part (convert.py)
 local tpl = read("scripts/vehicles/MinidoracatTesla_template.txt")
 local models = read("scripts/models/MinidoracatTesla_vehicles.txt")
 
 -- every Tesla model but the wheel on the merged shader; no cabin / glass / window models left
-local shaders, names = {}, {}
-for name, block in models:gmatch("model (MinidoracatTesla_ModelY[%w_]*)%s*(%b{})") do
-    names[#names + 1] = name
-    if name ~= "MinidoracatTesla_ModelY_Wheel" then
-        shaders[#shaders + 1] = name .. "=" .. tostring(block:match("shader = ([%w_]+),"))
+for _, car in ipairs({ "MinidoracatTesla_ModelY", "MinidoracatTesla_Model3" }) do
+    local shaders, names = {}, {}
+    for name, block in models:gmatch("model (" .. car .. "[%w_]*)%s*(%b{})") do
+        names[#names + 1] = name
+        if name ~= car .. "_Wheel" then
+            shaders[#shaders + 1] = name .. "=" .. tostring(block:match("shader = ([%w_]+),"))
+        end
     end
+    local wrong = {}
+    for _, s in ipairs(shaders) do
+        if not s:find("=MinidoracatTesla_vehicle$") then wrong[#wrong + 1] = s end
+    end
+    check(#shaders == 7 and #wrong == 0, car .. ": body, 4 doors, rear lid, frunk lid on MinidoracatTesla_vehicle (off: "
+        .. table.concat(wrong, ",") .. ")")
+    check(#names == 8, car .. ": 8 models, no cabin / glass / window models (" .. table.concat(names, ",") .. ")")
+    check(read("models_X/vehicles/" .. car .. "_Cabin.fbx") == nil and read("models_X/vehicles/" .. car .. "_Glass.fbx") == nil
+        and read("textures/Vehicles/" .. car .. "_cabin.png") == nil, car .. ": no cabin / glass FBX or cabin palette left")
 end
-local wrong = {}
-for _, s in ipairs(shaders) do
-    if not s:find("=MinidoracatTesla_vehicle$") then wrong[#wrong + 1] = s end
+check(geo:find("part GloveBox", 1, true) == nil and geo:find("part Window", 1, true) == nil
+    and geo:find("part WindshieldRear", 1, true) == nil, "no models on GloveBox, Window* or WindshieldRear")
+
+-- rear lid rules: the hatchback's rear glass rides in its liftgate, the sedan's in the body. Per car script (TeslaLogic,
+-- above the geometry mark); part tables merge with the template's (VehicleScript.java:973-981).
+local function rules(text, part)
+    local s = ""
+    for block in text:sub(1, (text:find("---- geometry", 1, true))):gmatch("part " .. part .. "%s*(%b{})") do s = s .. block end
+    return s
 end
-check(#shaders == 7 and #wrong == 0, "body, 4 doors, tailgate, frunk lid on MinidoracatTesla_vehicle (off: "
-    .. table.concat(wrong, ",") .. ")")
-check(#names == 8, "8 Model Y models, no cabin / glass / window models (" .. table.concat(names, ",") .. ")")
-check(read("models_X/vehicles/MinidoracatTesla_ModelY_Cabin.fbx") == nil
-    and read("models_X/vehicles/MinidoracatTesla_ModelY_Glass.fbx") == nil
-    and read("textures/Vehicles/MinidoracatTesla_ModelY_cabin.png") == nil, "no cabin / glass FBX or cabin palette left")
-check(veh:find("part GloveBox", 1, true) == nil and veh:find("part Window", 1, true) == nil
-    and veh:find("part WindshieldRear", 1, true) == nil, "no models on GloveBox, Window* or WindshieldRear")
-check((tpl:match("part TrunkDoor%s*(%b{})") or ""):find("requireUninstalled = WindshieldRear,", 1, true) ~= nil,
-    "tailgate comes off only without its rear glass (in the tailgate's mesh)")
-check((tpl:match("part WindshieldRear%s*(%b{})") or ""):find("requireInstalled = TrunkDoor,", 1, true) ~= nil,
-    "rear glass goes on only with the tailgate")
+local m3 = read("scripts/vehicles/MinidoracatTesla_Model3.txt")
+check(rules(veh, "TrunkDoor"):find("requireUninstalled = WindshieldRear,", 1, true) ~= nil,
+    "Model Y: liftgate comes off only without its rear glass (in the liftgate's mesh)")
+check(rules(veh, "WindshieldRear"):find("requireInstalled = TrunkDoor,", 1, true) ~= nil,
+    "Model Y: rear glass goes on only with the liftgate")
+check(not (tpl .. m3):find("requireUninstalled = WindshieldRear", 1, true) and not (tpl .. m3):find("requireInstalled = TrunkDoor", 1, true),
+    "Model 3 (and the shared template): trunk lid and rear glass come off and go on independently (glass in the body)")
 
 -- door anim rate: one model per door, one player update a frame
 local rates, bad = 0, {}
 for door in pairs({ DoorFrontLeft = 1, DoorFrontRight = 1, DoorRearLeft = 1, DoorRearRight = 1, TrunkDoor = 1,
     EngineDoor = 1 }) do
-    local p = veh:match("part " .. door .. "%s*(%b{})") or ""
+    local p = geo:match("part " .. door .. "%s*(%b{})") or ""
     for r in p:gmatch("rate = ([%d%.]+),") do
         rates = rates + 1
         if r ~= "1.0" then bad[#bad + 1] = door .. "=" .. r end
@@ -72,7 +85,7 @@ check((read("shaders/MinidoracatTesla_vehicle.vert") or ""):find("MatrixPalette"
 check(read("shaders/vehicle_multiuv.vert") == nil, "no vehicle_multiuv.vert override left")
 
 local shown, seats = {}, 0
-for id, block in veh:gmatch("passenger (%w+)%s*(%b{})") do
+for id, block in geo:gmatch("passenger (%w+)%s*(%b{})") do
     seats = seats + 1
     if block:find("showPassenger = true", 1, true) then shown[#shown + 1] = id end
 end

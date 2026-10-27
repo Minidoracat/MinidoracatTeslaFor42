@@ -1,5 +1,6 @@
 {
     "Base.MinidoracatTesla_ModelYBattery": "Model Y Performance 고전압 배터리 (78.4 kWh)",
+    "Base.MinidoracatTesla_Model3Battery": "Model 3 Performance 고전압 배터리 (78.4 kWh)",
     "Base.MinidoracatTesla_WallConnector": "Tesla 월 커넥터 (3세대)",
     "Base.MinidoracatTesla_CableHang": "충전 케이블 (벽에서 내려오는 부분)",
     "Base.MinidoracatTesla_CableFloor": "충전 케이블 (바닥 부분)",

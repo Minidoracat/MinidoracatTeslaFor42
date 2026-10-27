@@ -72,4 +72,71 @@ module Base
         static = false,
         scale = 0.5495,
     }
+
+    /* Model 3 Performance: same build, units and shaders as the Model Y above (CAR=model_3; body adapted from */
+    /* RBLXSupercars' "2024 Tesla Model 3", CC BY 4.0, CREDITS.md). The trunk lid is the TrunkDoor piece. */
+    model MinidoracatTesla_Model3
+    {
+        mesh = vehicles/MinidoracatTesla_Model3,
+        shader = MinidoracatTesla_vehicle,
+        static = true,
+        invertX = false,
+        scale = 0.5495,
+    }
+
+    model MinidoracatTesla_Model3_Wheel
+    {
+        mesh = vehicles/MinidoracatTesla_Model3_Wheel,
+        texture = Vehicles/MinidoracatTesla_Model3_wheel,
+        shader = vehiclewheel,
+        scale = 0.5495,
+    }
+
+    model MinidoracatTesla_Model3_DoorFrontLeft
+    {
+        mesh = vehicles/MinidoracatTesla_Model3_Doors|DoorFrontLeft,
+        shader = MinidoracatTesla_vehicle,
+        static = false,
+        scale = 0.5495,
+    }
+
+    model MinidoracatTesla_Model3_DoorFrontRight
+    {
+        mesh = vehicles/MinidoracatTesla_Model3_Doors|DoorFrontRight,
+        shader = MinidoracatTesla_vehicle,
+        static = false,
+        scale = 0.5495,
+    }
+
+    model MinidoracatTesla_Model3_DoorRearLeft
+    {
+        mesh = vehicles/MinidoracatTesla_Model3_Doors|DoorRearLeft,
+        shader = MinidoracatTesla_vehicle,
+        static = false,
+        scale = 0.5495,
+    }
+
+    model MinidoracatTesla_Model3_DoorRearRight
+    {
+        mesh = vehicles/MinidoracatTesla_Model3_Doors|DoorRearRight,
+        shader = MinidoracatTesla_vehicle,
+        static = false,
+        scale = 0.5495,
+    }
+
+    model MinidoracatTesla_Model3_TrunkDoor
+    {
+        mesh = vehicles/MinidoracatTesla_Model3_Doors|TrunkDoor,
+        shader = MinidoracatTesla_vehicle,
+        static = false,
+        scale = 0.5495,
+    }
+
+    model MinidoracatTesla_Model3_EngineDoor
+    {
+        mesh = vehicles/MinidoracatTesla_Model3_Doors|EngineDoor,
+        shader = MinidoracatTesla_vehicle,
+        static = false,
+        scale = 0.5495,
+    }
 }

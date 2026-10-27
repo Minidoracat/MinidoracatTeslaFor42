@@ -31,17 +31,30 @@ T.PartNames = {
     IGUI_LockHood = "IGUI_MinidoracatTesla_LockFrunk",
     IGUI_UnlockHood = "IGUI_MinidoracatTesla_UnlockFrunk",
 }
+-- per car, on top of T.PartNames (vehicle script full name -> vanilla key -> Tesla key)
+T.CarPartNames = {
+    -- a sedan's trunk lid, not a liftgate (Model 3 owner's manuals; the Model Y keeps Liftgate)
+    ["Base.MinidoracatTesla_Model3"] = { IGUI_VehiclePartTrunkDoor = "IGUI_MinidoracatTesla_Part_TrunkLid" },
+}
+-- the Tesla key for a vanilla key on this car (script full name), or nil
+function T.partNameKey(script, key)
+    local car = T.CarPartNames[script]
+    return car and car[key] or T.PartNames[key]
+end
 
 local vanillaGetText -- set only while a wrapped method runs for a Tesla
+local script -- that Tesla's script name
 local function teslaGetText(key, ...)
-    return vanillaGetText(T.PartNames[key] or key, ...)
+    return vanillaGetText(T.partNameKey(script, key) or key, ...)
 end
 
 -- Wrap owner[name]; vehicleOf(...) picks the car from the call's arguments.
 function T.withPartNames(owner, name, vehicleOf)
     local orig = owner[name]
     owner[name] = function(...)
-        if vanillaGetText or not T.isTesla(vehicleOf(...)) then return orig(...) end
+        local v = vehicleOf(...)
+        if vanillaGetText or not T.isTesla(v) then return orig(...) end
+        script = v:getScriptName()
         vanillaGetText, getText = getText, teslaGetText
         local r = { pcall(orig, ...) }
         getText, vanillaGetText = vanillaGetText, nil -- restore even when orig errors
@@ -64,7 +77,8 @@ end)
 local addContainerButton = ISInventoryPage.addContainerButton
 function ISInventoryPage:addContainerButton(container, texture, name, tooltip)
     local part = container and container:getVehiclePart() -- ItemContainer.java:3427
-    local key = part and T.PartNames["IGUI_VehiclePart" .. part:getId()]
-    if key and T.isTesla(part:getVehicle()) then name, tooltip = getText(key), getText(key) end
+    local v = part and part:getVehicle()
+    local key = v and T.isTesla(v) and T.partNameKey(v:getScriptName(), "IGUI_VehiclePart" .. part:getId())
+    if key then name, tooltip = getText(key), getText(key) end
     return addContainerButton(self, container, texture, name, tooltip)
 end

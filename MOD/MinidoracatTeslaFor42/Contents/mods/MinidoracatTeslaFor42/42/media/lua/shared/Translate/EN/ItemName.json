@@ -1,5 +1,6 @@
 {
     "Base.MinidoracatTesla_ModelYBattery": "Model Y Performance High Voltage Battery (78.4 kWh)",
+    "Base.MinidoracatTesla_Model3Battery": "Model 3 Performance High Voltage Battery (78.4 kWh)",
     "Base.MinidoracatTesla_WallConnector": "Tesla Wall Connector (Gen 3)",
     "Base.MinidoracatTesla_CableHang": "Charge Cable (wall drop)",
     "Base.MinidoracatTesla_CableFloor": "Charge Cable (floor run)",

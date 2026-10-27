@@ -11,6 +11,14 @@ check(B.capacity(part) == 78.4, "Performance pack capacity is the exact 78.4 kWh
 check(near(B.pct(part), 50), "pct = kwh / exact capacity")
 check(math.ceil(T.Packs["Base.MinidoracatTesla_ModelYBattery"]) == H.scriptValue("items/MinidoracatTesla_items.txt",
     "MaxCapacity", "item MinidoracatTesla_ModelYBattery"), "pack item MaxCapacity is the exact kWh rounded up")
+check(math.ceil(T.Packs["Base.MinidoracatTesla_Model3Battery"]) == H.scriptValue("items/MinidoracatTesla_items.txt",
+    "MaxCapacity", "item MinidoracatTesla_Model3Battery"), "Model 3 pack item MaxCapacity is the exact kWh rounded up")
+local m3 = H.vehicle({ script = "Base.MinidoracatTesla_Model3", kwh = 39.2 })
+check(T.isTesla(m3) and B.part(m3):getInventoryItem():getFullType() == "Base.MinidoracatTesla_Model3Battery"
+    and B.capacity(B.part(m3)) == 78.4, "Model 3 is a Tesla with its own pack, exact 78.4 kWh (MIIT TSL7000BEVBA5)")
+check(near(78.4 * T.kmPerKwh(m3), 757, 1), "Model 3: a full pack at 50 km/h = one vanilla CarNormal tank too (757 km)")
+check(T.spec(m3).massKg == 1851, "Model 3 regen mass = Performance curb mass 1851 kg")
+H.removeVehicle(m3)
 local full = H.vehicle({ kwh = 78.4 })
 -- vanilla repair() fills the tank to the item's int MaxCapacity (VehiclePart.java:989-992): 79 for the 78.4 kWh pack
 B.part(full):setContainerContentAmount(79)
@@ -199,6 +207,11 @@ check(near(B.pct(B.part(nv)), 80), "create: good car starts at 60-100%")
 T.Create.Motor(nv, nv:getPartById("Engine"))
 check(nv.feature and nv.feature[1] == 100 and nv.feature[2] == 20 and nv.feature[3] == 6260,
     "motor: quality 100, script loudness, script engineForce 6260 (626 hp, Performance)")
+local nm3 = H.vehicle({ script = "Base.MinidoracatTesla_Model3" })
+T.Create.Motor(nm3, nm3:getPartById("Engine"))
+check(nm3.feature and nm3.feature[3] == 6180, "Model 3 motor: its own script engineForce 6180 (461 kW = 618 hp)")
+H.removeVehicle(nm3)
+H.setRand(0.5)
 local pal = T.spec(nv).colors[5] -- ZombRand(8) with rand 0.5 = 4 -> colors[5], skin 4
 check(nv.skin == 4 and nv.hsv and nv.hsv[1] == pal.h and nv.hsv[2] == pal.s and nv.hsv[3] == pal.v
     and nv.colorTx == 1 and nv.skinTx == 1, "new car gets a factory paint (skin + damage tint) and transmits it")
@@ -229,8 +242,10 @@ MinidoracatVehicleManagerAPI = { canUse = function(p, veh, perm) return p == che
 check(T.authorized(cheat, gv, "FUEL") == true and T.authorized(owner, gv, "FUEL") == false, "VehicleManager present: canUse decides")
 MinidoracatVehicleManagerAPI = nil
 local Z = VehicleZoneDistribution
-check(Z.parkingstall.vehicles["Base.MinidoracatTesla_ModelY"].spawnChance == 3
-    and Z.good.vehicles["Base.MinidoracatTesla_ModelY"].spawnChance == 4, "spawn table: parkingstall 3, good 4")
+for _, car in ipairs({ "Base.MinidoracatTesla_ModelY", "Base.MinidoracatTesla_Model3" }) do
+    check(Z.parkingstall.vehicles[car].spawnChance == 3 and Z.good.vehicles[car].spawnChance == 4,
+        "spawn table " .. car .. ": parkingstall 3, good 4")
+end
 
 H.section("dispatch")
 local hits = 0

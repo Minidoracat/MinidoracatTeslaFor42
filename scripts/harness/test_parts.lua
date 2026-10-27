@@ -77,7 +77,8 @@ H.stub("Vehicles/ISUI/ISVehicleMechanics")
 H.stub("Vehicles/ISUI/ISVehicleMenu")
 H.stub("ISUI/ISInventoryPage")
 ISVehicleMechanics = {
-    initParts = function(self) self.names = { getText("IGUI_VehiclePartGasTank"), getText("IGUI_VehiclePartGloveBox") } end,
+    initParts = function(self) self.names = { getText("IGUI_VehiclePartGasTank"), getText("IGUI_VehiclePartGloveBox"),
+        getText("IGUI_VehiclePartTrunkDoor") } end,
     render = function(self) if self.boom then error("boom") end return getText("Tooltip_outoffuel") end,
 }
 ISVehicleMenu = { showRadialMenuOutside = function(p) p.label = getText("IGUI_OpenHood") end,
@@ -89,6 +90,11 @@ local tw = { vehicle = H.vehicle({}) }
 ISVehicleMechanics.initParts(tw)
 check(tw.names[1] == "IGUI_MinidoracatTesla_Part_GasTank" and tw.names[2] == "IGUI_VehiclePartGloveBox",
     "Tesla: GasTank shows the EV name, unmapped parts keep vanilla keys")
+check(tw.names[3] == "IGUI_MinidoracatTesla_Part_TrunkDoor", "Model Y: TrunkDoor shows the liftgate")
+local m3w = { vehicle = H.vehicle({ script = "Base.MinidoracatTesla_Model3" }) }
+ISVehicleMechanics.initParts(m3w)
+check(m3w.names[1] == "IGUI_MinidoracatTesla_Part_GasTank" and m3w.names[3] == "IGUI_MinidoracatTesla_Part_TrunkLid",
+    "Model 3: the shared EV names, and TrunkDoor shows the trunk lid (T.CarPartNames)")
 check(ISVehicleMechanics.render(tw) == "IGUI_MinidoracatTesla_OutOfCharge", "Tesla: empty pack says out of charge")
 local vw = { vehicle = H.vehicle({ script = "Base.CarNormal" }) }
 ISVehicleMechanics.initParts(vw)
@@ -115,16 +121,19 @@ local mapped = 0
 for _ in pairs(T.PartNames) do mapped = mapped + 1 end
 check(mapped == 16, "16 vanilla keys mapped (7 parts, category, out of charge, 3 engine labels, 4 hood actions)")
 
-H.section("cargo capacities (vehicle template)")
--- 2025+ owner's manual: trunk 835 L behind the 2nd row, frunk 114 L. Trunk anchored to vanilla SUV (NormalTrunk2 85).
-local tf = assert(io.open("MOD/MinidoracatTeslaFor42/Contents/mods/MinidoracatTeslaFor42/42/media/scripts/vehicles/MinidoracatTesla_template.txt", "r"))
-local tpl = tf:read("*a")
-tf:close()
-local function partCapacity(id)
-    local body = tpl:match("\n        part " .. id .. "\n        {(.-)\n        }")
-    return body and tonumber(body:match("capacity%s*=%s*(%d+)"))
+H.section("cargo capacities (each car script)")
+-- trunk anchored to the vanilla class (Model Y: SUV NormalTrunk2 85; Model 3: sedan NormalTrunk3 45), frunk by the
+-- owner's manual ratio (Model Y 114 / 835 L, Model 3 88 / 594 L)
+for _, c in ipairs({ { "ModelY", 85, 12, 114 / 835 }, { "Model3", 45, 7, 88 / 594 } }) do
+    local f = assert(io.open("MOD/MinidoracatTeslaFor42/Contents/mods/MinidoracatTeslaFor42/42/media/scripts/vehicles/MinidoracatTesla_"
+        .. c[1] .. ".txt", "r"))
+    local script = f:read("*a")
+    f:close()
+    local function partCapacity(id)
+        local body = script:match("\n        part " .. id .. "\n        {(.-)\n        }")
+        return body and tonumber(body:match("capacity%s*=%s*(%d+)"))
+    end
+    local trunk, frunkCap = partCapacity("TruckBed"), partCapacity("Frunk")
+    check(trunk == c[2] and frunkCap == c[3], c[1] .. ": TruckBed " .. tostring(trunk) .. ", Frunk " .. tostring(frunkCap))
+    check(trunk and frunkCap and math.abs(frunkCap - trunk * c[4]) < 0.5, c[1] .. ": frunk / trunk follows the manual's litres")
 end
-local trunk, frunkCap = partCapacity("TruckBed"), partCapacity("Frunk")
-check(trunk == 85, "TruckBed capacity override 85 (vanilla SUV trunk), not the sedan NormalTrunk3 45 (" .. tostring(trunk) .. ")")
-check(frunkCap == 12, "Frunk capacity 12 (" .. tostring(frunkCap) .. ")")
-check(trunk and frunkCap and math.abs(frunkCap - trunk * 114 / 835) < 0.5, "frunk / trunk follows 114 L / 835 L")

@@ -1,5 +1,6 @@
 {
     "Base.MinidoracatTesla_ModelYBattery": "Model Y Performance 高電壓電池（78.4 kWh）",
+    "Base.MinidoracatTesla_Model3Battery": "Model 3 Performance 高電壓電池（78.4 kWh）",
     "Base.MinidoracatTesla_WallConnector": "特斯拉第 3 代壁掛式充電座",
     "Base.MinidoracatTesla_CableHang": "充電線（垂下段）",
     "Base.MinidoracatTesla_CableFloor": "充電線（地面段）",

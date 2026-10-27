@@ -1,5 +1,6 @@
 {
     "Base.MinidoracatTesla_ModelYBattery": "Akumulator wysokiego napięcia Model Y Performance (78,4 kWh)",
+    "Base.MinidoracatTesla_Model3Battery": "Akumulator wysokiego napięcia Model 3 Performance (78,4 kWh)",
     "Base.MinidoracatTesla_WallConnector": "Tesla Wall Connector (3. gen.)",
     "Base.MinidoracatTesla_CableHang": "Kabel ładowania (odcinek ścienny)",
     "Base.MinidoracatTesla_CableFloor": "Kabel ładowania (odcinek podłogowy)",
