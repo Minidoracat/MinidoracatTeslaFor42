@@ -227,15 +227,21 @@ local SUMMON_MODES = { come = true, target = true, dumb = true }
 -- a world square coordinate: a number, not NaN, on the map (no math.huge: Kahlua need not have it)
 local function coord(n) return type(n) == "number" and n == n and n >= 0 and n < 1000000 end
 
--- every end (arrived, stopped, refused on the way): AutoDrive calls this once; the summoner (nil when gone) hears why
-function R.summonEnded(v, code, player)
-    if not v then return end
-    local mvm = MinidoracatVehicleManager -- the car moved (ParkedGuard.lua:258-261)
-    if mvm and mvm.Parked and mvm.Parked.touch then mvm.Parked.touch(v) end
-    T.log("summon end " .. tostring(code) .. " vid=" .. v:getId() .. " by " .. (player and player:getUsername() or "-"))
-    if player then T.send(player, "appDone", { key = v:getKeyId(), act = "summonEnd", why = tostring(code) }) end
-    local sr = T.SoundRelay -- the motor layers stop for everyone near (they started with the summon)
-    if sr then sr.summon(v, false) end
+-- every end (arrived, stopped, refused on the way): AutoDrive calls this once; the summoner (nil when gone) hears why.
+-- v is nil when the car is gone (GONE): key = its keyId from the start, so the app still hears the end.
+function R.summonEnded(v, code, player, key)
+    key = key or v and v:getKeyId()
+    if v then
+        local mvm = MinidoracatVehicleManager -- the car moved (ParkedGuard.lua:258-261)
+        if mvm and mvm.Parked and mvm.Parked.touch then mvm.Parked.touch(v) end
+    end
+    T.log("summon end " .. tostring(code) .. " vid=" .. tostring(v and v:getId()) .. " key=" .. tostring(key) .. " by "
+        .. (player and player:getUsername() or "-"))
+    if player and key then T.send(player, "appDone", { key = key, act = "summonEnd", why = tostring(code) }) end
+    -- the motor layers stop for everyone near (they started with the summon); a gone car: each listener's game goes
+    -- quiet itself (no car loaded) and drops it after Sound.SUMMON_MS
+    local sr = T.SoundRelay
+    if sr and v then sr.summon(v, false) end
 end
 
 -- on: start (a running summon: nothing, startSummon is called once) or stop it, whoever started it. Tesla's own rules
@@ -256,7 +262,9 @@ local function summon(player, v, on, args)
     end
     local mode = args.mode or "come"
     if not SUMMON_MODES[mode] then return "NO_TARGET" end
-    local opts = { mode = mode, startEngine = true, onEnd = R.summonEnded } -- the phone key holder has the key
+    local key = v:getKeyId()
+    local opts = { mode = mode, startEngine = true, -- the phone key holder has the key
+        onEnd = function(car, code, p) R.summonEnded(car, code, p, key) end }
     if mode == "target" then
         if not (coord(args.x) and coord(args.y)) then return "NO_TARGET" end
         opts.x, opts.y = args.x, args.y

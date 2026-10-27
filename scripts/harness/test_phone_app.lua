@@ -499,7 +499,7 @@ v.parts.GasTank:getModData().sentry = { by = "owner", at = F.hours, kwh = 50, si
 d = summon(owner, true)
 local c1 = AD.calls[1]
 check(d.why == nil and d.on == true and #AD.calls == 1 and c1.p == owner and c1.car == v and c1.opts.mode == "come"
-    and c1.opts.startEngine == true and c1.opts.onEnd == R.summonEnded, "come: startSummon once (mode come, startEngine, onEnd)")
+    and c1.opts.startEngine == true and type(c1.opts.onEnd) == "function", "come: startSummon once (mode come, startEngine, onEnd)")
 check(v.parts.GasTank:getModData().sentry == nil, "sentry switched off once the car is on its way")
 F.runTicks(50, 450)
 d = summon(owner, true)
@@ -550,6 +550,10 @@ check(d and d.act == "summonEnd" and d.why == "ARRIVED" and d.key == 9001 and to
 F.sent = {}
 R.summonEnded(v, "LEFT", nil)
 check(#F.sent == 0, "onEnd with the summoner gone: nothing sent, no error")
+F.sent = {}
+AD.calls[2].opts.onEnd(nil, "GONE", owner) -- the car itself gone: AutoDrive has no vehicle to hand back
+d = last("appDone")
+check(d and d.act == "summonEnd" and d.why == "GONE" and d.key == 9001, "onEnd GONE (no vehicle): the summoner still hears it")
 AD.info[v] = nil
 owner.x = v.x + 500
 grid = true
