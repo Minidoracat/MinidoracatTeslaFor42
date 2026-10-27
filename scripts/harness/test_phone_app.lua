@@ -727,6 +727,35 @@ check(a.paintName == colors[1].name and a.sSub2 ~= nil and not a.b.lock.enable,
     "a record from before the paint field: first paint; offline: 'can't reach' line, lock greyed")
 state({ skin = 99 })
 check(a.paintName == colors[1].name, "unknown skin index -> first paint")
+-- each car its own picture files, paints, wordmark, map glyph and lid words (Specs appCar / colors / model,
+-- T.CarPartNames): the Model 3 shares six paint names with the Model Y, so a shared file name would show the other car
+check(a.model == "ModelY" and a.b.trunk.tipKey == "IGUI_MinidoracatTesla_Tip_AppTrunk"
+    and a.rowSub.controls == "IGUI_MinidoracatTesla_App_ControlsSub", "Model Y: wordmark ModelY, the liftgate's tip and words")
+T.ClientCommands.appDone({ key = 9001, act = "trunk", on = true })
+check(a.toast.text == "IGUI_MinidoracatTesla_App_Done_trunk_on", "Model Y: 'liftgate opened'")
+state({ car = "MinidoracatTesla_Model3", skin = 5 })
+local c3 = T.Specs["Base.MinidoracatTesla_Model3"].colors
+check(a.carTex.path == "media/textures/MinidoracatTesla/HUD/app_car_model3_DeepBlue.png" and a.paintName == c3[6].name
+    and a.model == "Model3" and T.HUDAtlas[2].wm_Model3 ~= nil and T.HUDAtlas[2].car_Model3 ~= nil,
+    "Model 3 skin 5 -> app_car_model3_DeepBlue (its own paint table), MODEL 3 wordmark, its own top view")
+missing = {}
+for _, c in ipairs(c3) do
+    local f = io.open("MOD/MinidoracatTeslaFor42/Contents/mods/MinidoracatTeslaFor42/42/media/textures/MinidoracatTesla/HUD/app_car_model3_" .. c.name .. ".png", "rb")
+    if f then f:close() else missing[#missing + 1] = c.name end
+end
+check(#missing == 0, "Model 3: a car picture for each of its 8 paints (" .. table.concat(missing, ",") .. ")")
+check(a.b.trunk.tipKey == "IGUI_MinidoracatTesla_Tip_AppTrunkLid" and a.b.qtrunk.tipKey == "IGUI_MinidoracatTesla_Tip_AppTrunkLid"
+    and a.b.lock.tipKey == "IGUI_MinidoracatTesla_Tip_AppUnlockLid"
+    and a.rowSub.controls == "IGUI_MinidoracatTesla_App_ControlsSubLid", "Model 3: tips and the controls line say trunk (lid)")
+T.ClientCommands.appDone({ key = 9001, act = "trunk", on = false })
+check(a.toast.text == "IGUI_MinidoracatTesla_App_Done_trunkLid_off", "Model 3: 'trunk closed', not 'liftgate closed'")
+a:onMap()
+check(App.mapCar and App.mapCar.model == "Model3", "Model 3: the world map marker draws the Model 3 top view")
+App.mapCar = nil
+a = App.open(0, { keyId = 9001 })
+state({ car = "SomethingElse" })
+check(a.carTex == nil and a.model == nil and a.paintName == nil and a.b.trunk.tipKey == "IGUI_MinidoracatTesla_Tip_AppTrunk",
+    "a car that is no Tesla script: no picture, no wordmark, no other car's paint")
 state()
 check(a.height <= SH - 8 and a.scrollMax == 0, "1920x1009, S=1: the home page fits (" .. a.height .. " px), no scrolling")
 local ok, why = textInside()

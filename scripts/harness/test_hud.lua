@@ -231,7 +231,7 @@ end
 local allOk = true
 for i = 1, 4 do allOk = allOk and tipOk(h, i) end
 check(allOk, "each of the 4 keys: tip on screen and not over the key")
-local function partName(id) local k = "IGUI_VehiclePart" .. id; return T.PartNames and T.PartNames[k] or k end
+local function partName(id) local k = "IGUI_VehiclePart" .. id; return T.partNameKey(tesla:getScriptName(), k) or k end
 mx, my = h.keyX + 3 * h.keyStep + h.keyS + 4, h.keyY + h.keyS / 2 -- right of the camp key: no fifth key any more
 drawCalls = 0
 h:render()
@@ -344,6 +344,25 @@ h:render()
 check(select(1, clickAt(57, 64)) == false and #toggled == 0 and drawCalls == 0, "removed door: not clickable, no highlight")
 tesla.parts.DoorRearRight.getInventoryItem = function() return {} end
 h:update(); h:update(); h:update()
+-- each car its own top view and zones (HUD.ZONES[Specs model]): the Model Y's liftgate carries the rear glass, the
+-- Model 3's trunk lid ends at its seam (x 37) so the rear glass (x 37-45) opens nothing; the tail is named per car
+toggled = {}
+mx, my = at(22, 42)
+h:render()
+check(h.carSpr == "car_ModelY" and h.zones == HUD.ZONES.ModelY and h.tipArg == "IGUI_MinidoracatTesla_Part_TrunkDoor"
+    and select(1, clickAt(41, 42)) == true and toggled[1] == "TrunkDoor",
+    "Model Y: car_ModelY and its zones; x 41 (the liftgate's glass) opens the liftgate, named liftgate")
+local m3 = car({ script = "Base.MinidoracatTesla_Model3", kwh = 39.2 })
+m3.parts.EngineDoor = tesla.parts.EngineDoor
+dash:setVehicle(m3)
+check(h.carSpr == "car_Model3" and h.zones == HUD.ZONES.Model3 and T.HUDAtlas[1].car_Model3 ~= nil
+    and T.HUDAtlas[2].car_Model3 ~= nil and allZones(), "Model 3: car_Model3 (both scales), its zones, all 6 toggle their part")
+toggled = {}
+check(select(1, clickAt(41, 42)) == false and #toggled == 0, "Model 3: x 41 is the rear glass, not the trunk lid: passes through")
+mx, my = at(22, 42)
+h:render()
+check(h.tipArg == "IGUI_MinidoracatTesla_Part_TrunkLid", "Model 3: hovering the tail names the trunk lid")
+dash:setVehicle(tesla)
 T.Liftgate.toggle = realToggle
 mx = nil
 
