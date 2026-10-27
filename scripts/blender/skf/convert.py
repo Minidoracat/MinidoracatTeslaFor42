@@ -737,6 +737,8 @@ def classify(car, names, sizes):
     paint = paint | mirror
     gate = np.isin(obj, GATE_OBJS)
     for o, s, sy in GATE_COMPS:
+        if not ((obj == o) & (csize == s)).any():
+            raise SystemExit(f"GATE_COMPS {(o, s)} matches no component (sizes: the build's COMPS lines)")
         gate |= (obj == o) & (csize == s) & (np.sign(ay) == sy) & (ax < 0.1)
     gsel = gate & (np.isin(obj, [o for o, _, _ in GATE_COMPS]) | in_gate(cen))
     for o, s in GATE_CUT_COMPS:            # a lid cut out of a bigger panel (edit(): PLANES, X+-), by face centre

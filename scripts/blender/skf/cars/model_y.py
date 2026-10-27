@@ -157,8 +157,7 @@ CAR = dict(
     PANELS=dict(x=0.6, z=0.7, front=(-0.2, 0.6), rear=(-1.0, -0.2), gate=(-1.5, 0.5), lid=(0.9, 0.6)),
     # fenders (mask zones Guard*): front (ahead of y, below z, |x| > x), rear (behind y, below z, |x| > x)
     GUARDS=dict(front=(0.75, 0.95, 0.4), rear=(-1.0, 1.13, 0.45)),
-    # components cut along the lines (object, tris after welding): the window surround, the rear side glass (door
-    # pane and quarter glass in one piece)
+    # components cut along the lines (object, tris after welding): the window surround
     CUT={("Plane.005", 342): ("BF", "BR", "D")},
     PLANES={},                             # more cut planes for CUT: name -> (point, normal, cut faces behind y)
     CUT_X=_CUT_X,                          # cut along +-GATE_X

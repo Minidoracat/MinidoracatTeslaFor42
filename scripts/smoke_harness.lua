@@ -125,7 +125,7 @@ local function newPart(id, opts)
     return p
 end
 
--- H.vehicle{ script=, kwh=, pack=(full type), running=, speed=, id=, x=, y=, z= }
+-- H.vehicle{ script=, kwh=, pack=(full type), noPack=(true: no battery item in GasTank), running=, speed=, id=, x=, y=, z= }
 local nextId = 1
 function H.vehicle(o)
     o = o or {}
