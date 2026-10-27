@@ -24,9 +24,7 @@ end
 
 function V.openApp(playerNum, keyId)
     local App = T.PhoneApp
-    if not App then return end
-    -- ponytail: v1 App.open(pn, keyId) answers nil to the opts form; drop the second call once App.open(pn, opts) is on main
-    if App.open(playerNum, { keyId = keyId }) == nil then App.open(playerNum, keyId) end
+    if App then App.open(playerNum, { keyId = keyId }) end
 end
 
 -- hook(player, sub, vehicle, row): VehicleManager's Client.lua, after its own rows in the "Vehicle management" submenu

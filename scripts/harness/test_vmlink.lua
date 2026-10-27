@@ -126,16 +126,6 @@ V.menuHook(holder, sub, car("Base.CarNormal", KEY))
 V.menuHook(player("nokey"), sub, car("Base.MinidoracatTesla_ModelY", KEY))
 check(#sub.rows == 0, "not shown: a Tesla this phone isn't paired with, not a Tesla, no phone key")
 
-local savedApp, opened = T.PhoneApp, {}
-T.PhoneApp = { open = function(pn, arg) opened[#opened + 1] = arg; if type(arg) == "table" then return nil end return {} end }
-V.openApp(0, KEY)
-check(#opened == 2 and opened[1].keyId == KEY and opened[2] == KEY, "v1 App.open (nil for the opts form): falls back to open(pn, keyId)")
-opened = {}
-T.PhoneApp.open = function(pn, arg) opened[#opened + 1] = arg; return {} end
-V.openApp(0, KEY)
-check(#opened == 1 and opened[1].keyId == KEY, "v2 App.open(pn, { keyId }): opened once")
-T.PhoneApp = savedApp
-
 MinidoracatVehicleManager = nil
 V.install()
 check(not V.installed, "no VehicleManager: no menu hook")
