@@ -11,7 +11,6 @@ local K = T.Keys
 K.CARD = "Base.MinidoracatTesla_KeyCard"
 K.PHONE = "Base.MinidoracatTesla_Phone"         -- not paired: a plain item
 K.PHONE_KEY = "Base.MinidoracatTesla_PhoneKey"  -- paired: a Key with the car's keyId
-K.REG = "MinidoracatTesla_KeyIds"               -- server Global ModData: tostring(keyId) -> car model name
 K.TAP_RANGE = 1.5   -- key card reader (driver-side B-pillar): tiles from the driver door's area centre
 -- Walk-away lock: tiles from the car centre. The car is ~4 tiles long, so walking round to the trunk (~2.5) never
 -- locks it; 6 tiles (1 tile = 1 m, Core.lua) is a few metres past the body, like leaving Bluetooth range.

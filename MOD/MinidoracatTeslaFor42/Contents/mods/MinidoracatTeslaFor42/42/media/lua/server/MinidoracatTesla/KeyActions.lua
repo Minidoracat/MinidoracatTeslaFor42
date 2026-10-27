@@ -9,6 +9,8 @@ if isClient() then return end
 require "MinidoracatTesla/Core"
 require "MinidoracatTesla/Keys"
 require "MinidoracatTesla/Sentry"
+require "MinidoracatTesla/Store"
+require "MinidoracatTesla/Liftgate"
 
 local T = MinidoracatTesla
 local K = T.Keys
@@ -19,7 +21,8 @@ K.SOUND = "MinidoracatTesla_KeyAlert" -- 0.4 s chime (sound.md): the unlock beep
 K.stats = { swaps = 0, taps = 0, pairs = 0, autoLocks = 0, chirps = 0 }
 
 -- ------------------------------------------------------------------ Tesla keyId registry
-local function registry() return ModData.getOrCreate(K.REG) end
+-- server-only (Store.lua): which keyIds are Teslas is nobody else's business
+local function registry() return T.Store.get("keyIds") end
 
 -- same name vanilla gives the CarKey (keyNamerVehicle, BaseVehicle.java:10739-10753)
 local function carName(vehicle)
@@ -71,7 +74,8 @@ function K.sweep(player)
 end
 
 -- ------------------------------------------------------------------ lock, flash, beep
--- every passenger door like vanilla ISLockDoors:complete (ISLockDoors.lua), then the trunk (BaseVehicle.java:9533-9545)
+-- every passenger door like vanilla ISLockDoors:complete (ISLockDoors.lua), then the liftgate and the frunk lid
+-- (Liftgate.lockLids): a Tesla locks as a whole
 function K.setLocked(vehicle, locked)
     for seat = 0, vehicle:getMaxPassengers() - 1 do
         local part = vehicle:getPassengerDoor(seat)
@@ -81,7 +85,7 @@ function K.setLocked(vehicle, locked)
             vehicle:transmitPartDoor(part)
         end
     end
-    vehicle:setTrunkLocked(locked)
+    T.Liftgate.lockLids(vehicle, locked)
     local remember = T.Remote and T.Remote.remember -- the phone app's last record (Remote.lua)
     if remember then remember(vehicle) end
 end

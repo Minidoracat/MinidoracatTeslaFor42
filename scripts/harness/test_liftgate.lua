@@ -71,7 +71,7 @@ check(not d.open and d.locked, "locked car: liftgate shut from the dashboard -> 
 local lidE = v.parts.EngineDoor.door
 cmd(driver, { vid = v:getId(), part = "EngineDoor" })
 cmd(driver, { vid = v:getId(), part = "EngineDoor" })
-check(not lidE.open and not lidE.locked, "frunk lid shut on a locked car: not locked (not part of the car lock)")
+check(not lidE.open and lidE.locked, "frunk lid shut on a locked car: locked again, like the liftgate (the car locks as a whole)")
 d.locked, d.broken = false, true
 cmd(driver, { vid = v:getId(), part = "TrunkDoor" })
 cmd(driver, { vid = v:getId(), part = "TrunkDoor" })

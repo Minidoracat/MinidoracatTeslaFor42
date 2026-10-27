@@ -82,10 +82,12 @@ local function door(id)
     function p:getId() return self.id end
     function p:getArea() return self.area end
     function p:getDoor() return self.doorObj end
+    function p:getInventoryItem() return {} end
     local d = p.d
     p.doorObj = {
         isLocked = function() return d.locked end, setLocked = function(_, b) d.locked = b end,
-        isOpen = function() return d.open end, isLockBroken = function() return d.broken end,
+        isOpen = function() return d.open end, setOpen = function(_, b) d.open = b end,
+        isLockBroken = function() return d.broken end,
     }
     return p
 end
@@ -93,12 +95,12 @@ local function tesla(o)
     local v = F.track(F.vehicle(o))
     v.doors = { door("DoorFrontLeft"), door("DoorFrontRight"), door("DoorRearLeft"), door("DoorRearRight") }
     v.doors[1].area = "SeatFrontLeft"
-    v.trunk = door("TrunkDoor")
+    v.trunk, v.frunk = door("TrunkDoor"), door("EngineDoor")
+    v.parts.TrunkDoor, v.parts.EngineDoor = v.trunk, v.frunk
     v.doorTx = 0
     local all = {}
     for _, p in pairs(v.parts) do all[#all + 1] = p end
     for _, d in ipairs(v.doors) do all[#all + 1] = d end
-    all[#all + 1] = v.trunk
     function v:getPassengerDoor(seat) return self.doors[seat + 1] end
     function v:getMaxPassengers() return 4 end
     function v:getPartCount() return #all end
@@ -107,8 +109,8 @@ local function tesla(o)
         for _, d in ipairs(self.doors) do if not d.d.locked then return false end end
         return true
     end
-    function v:setTrunkLocked(b) self.trunk.d.locked = b end
     function v:transmitPartDoor() self.doorTx = self.doorTx + 1 end
+    function v:getColorHue() return 0.6 end -- Liftgate's shell bits: no door open in these checks
     function v:getAreaCenter(area)
         if area ~= "SeatFrontLeft" then return nil end
         return { getX = function() return self.x - 1 end, getY = function() return self.y end }
@@ -118,9 +120,10 @@ local function tesla(o)
     return v
 end
 
-local function player(name, inv, x, y)
-    local p = { name = name, inv = inv, x = x, y = y }
+local function player(name, inv, x, y, num)
+    local p = { name = name, inv = inv, x = x, y = y, num = num or 0 }
     function p:getUsername() return self.name end
+    function p:getPlayerNum() return self.num end
     function p:getVehicle() return self.vehicle end
     function p:getInventory() return self.inv end
     function p:getX() return self.x end
@@ -140,6 +143,12 @@ ISStartVehicleEngine = { complete = function(self)
     return true
 end }
 require "MinidoracatTesla/Keys"
+-- server side of Liftgate.lua (lockLids, relock, the vanilla lock wraps): an earlier test may have loaded it as a client.
+-- It wraps the harness's vanilla actions; the plain ones go back at the end for the tests after this one.
+local ACTIONS = { "ISOpenVehicleDoor", "ISCloseVehicleDoor", "ISLockDoors", "ISLockVehicleDoor" }
+local plain = {}
+for _, n in ipairs(ACTIONS) do plain[n] = _G[n].complete end
+dofile("MOD/MinidoracatTeslaFor42/Contents/mods/MinidoracatTeslaFor42/42/media/lua/shared/MinidoracatTesla/Liftgate.lua")
 require "MinidoracatTesla/KeyActions"
 local K = T.Keys
 local cmds = T.ServerCommands
@@ -151,9 +160,11 @@ local other = F.track(F.vehicle({}))
 function other:getScriptName() return "Base.CarNormal" end
 F.fire("OnSpawnVehicleEnd", v)
 F.fire("OnSpawnVehicleEnd", other)
-local reg = ModData.getOrCreate(K.REG)
+local reg = T.Store.get("keyIds")
 check(reg[tostring(v.keyId)] == "MinidoracatTesla_ModelY", "registry: a loaded Tesla's keyId is recorded with its model name")
 check(reg[tostring(other.keyId)] == nil, "registry: other cars are not recorded")
+check(H.moddata.MinidoracatTesla_KeyIds == nil and H.gos[T.Store.SYSTEM].md.keyIds == reg,
+    "registry: in the server-only store, no Global ModData table a client could request")
 
 local teslaKey, plainKey = key("Base.CarKey", v.keyId), key("Base.CarKey", other.keyId)
 local wallet = bag("Base.Wallet", teslaKey)
@@ -207,6 +218,7 @@ local beeps0 = #sounds
 cmds.keyTap(owner, { vid = v:getId() })
 local lockedAll = v.doors[1].d.locked and v.doors[2].d.locked and v.doors[4].d.locked and v.trunk.d.locked
 check(lockedAll and not v.doors[3].d.locked, "keyTap: locks every door and the trunk, skips a broken lock")
+check(v.frunk.d.locked, "keyTap: the frunk lid locks with the car (a stranger's vanilla Open Hood stays shut)")
 local chirp = F.lastSent("keyChirp")
 local chirpsTo = 0
 for _, m in ipairs(F.sent) do if m.cmd == "keyChirp" then chirpsTo = chirpsTo + 1 end end
@@ -220,13 +232,46 @@ v.doors[3].d.broken = false
 v.doors[3].d.locked = true
 v.parts.GasTank:getModData().sentry = { by = "owner", at = F.hours, kwh = 50, since = F.hours }
 cmds.keyTap(owner, { vid = v:getId() })
-check(not v.doors[1].d.locked and not v.trunk.d.locked, "keyTap again: unlocks")
+check(not v.doors[1].d.locked and not v.trunk.d.locked and not v.frunk.d.locked, "keyTap again: unlocks, the frunk lid too")
 check(sounds[#sounds] == K.SOUND and #sounds == beeps0 + 1, "keyTap unlock: KeyAlert beep (playServerSound), no chirp")
 F.online = onlineBefore
 v.toggles = 0
 F.runTicks(50, 450)
 check(v.toggles == 4, "keyTap unlock: two flashes (4 toggles)")
 check(v.parts.GasTank:getModData().sentry == nil, "keyTap unlock: the owner's card disarms sentry")
+
+-- ------------------------------------------------------------------ the lids lock with the car, every way it locks
+H.section("frunk lid and liftgate follow the car lock")
+local function allDoors(b) for _, d in ipairs(v.doors) do d.d.locked = b end end
+v.frunk.d.broken = true
+K.setLocked(v, true)
+check(not v.frunk.d.locked and v.trunk.d.locked, "a broken frunk lock is left as it is")
+v.frunk.d.broken = false
+K.setLocked(v, false)
+ISLockDoors.complete({ vehicle = v, locked = true, character = owner }) -- inside: vanilla "Lock Doors"
+check(v:areAllDoorsLocked() and v.frunk.d.locked and v.trunk.d.locked, "vanilla Lock Doors inside: the lids lock too")
+ISLockDoors.complete({ vehicle = v, locked = false, character = owner })
+check(not v.frunk.d.locked and not v.trunk.d.locked, "vanilla Unlock Doors inside: the lids unlock too")
+allDoors(true)
+v.doors[2].d.locked = false
+ISLockVehicleDoor.complete({ vehicle = v, part = v.doors[1], character = owner })
+check(not v.frunk.d.locked, "one door locked with the key, another still open: lids stay unlocked")
+ISLockVehicleDoor.complete({ vehicle = v, part = v.doors[2], character = owner })
+check(v.frunk.d.locked and v.trunk.d.locked, "the last door locked with the key: the car is locked, lids too")
+K.setLocked(v, false)
+allDoors(true) -- an older save or a world spawn: cabin locked, lids not (vanilla never locks the hood)
+local tx0 = v.doorTx
+F.fire("OnSpawnVehicleEnd", v)
+check(v.frunk.d.locked and v.trunk.d.locked and v.doorTx == tx0 + 2, "loaded locked: the shut lids lock and sync")
+allDoors(false)
+v.frunk.d.locked, v.trunk.d.locked = false, false
+v.frunk.d.open = true
+allDoors(true)
+F.fire("OnSpawnVehicleEnd", v)
+check(not v.frunk.d.locked, "loaded locked with the lid up: left open and unlocked (locks when it shuts)")
+ISCloseVehicleDoor.complete({ vehicle = v, part = v.frunk, character = owner })
+check(not v.frunk.d.open and v.frunk.d.locked, "lid shut by hand on a locked car: locked again")
+K.setLocked(v, false)
 
 -- ------------------------------------------------------------------ phone pairing
 local phone = item(K.PHONE)
@@ -365,4 +410,5 @@ check(#items == 4 and items[3] == K.PHONE and items[4] == K.LOOT.ElectronicStore
 for k, n in pairs(statsBefore) do S.stats[k] = n end -- test_sentry counts flashes from zero
 instanceItem, playServerSound, sendAddItemToContainer, sendRemoveItemFromContainer, ProceduralDistributions, getItemNameFromFullType = nil, nil, nil, nil, nil, nil
 ISStartVehicleEngine = nil
+for _, n in ipairs(ACTIONS) do _G[n].complete = plain[n] end
 F.done()

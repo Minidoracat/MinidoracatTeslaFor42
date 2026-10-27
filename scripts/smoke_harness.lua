@@ -171,8 +171,9 @@ function H.removeVehicle(v) vehicles[v.id] = nil end
 function H.player(o)
     o = o or {}
     local p = { name = o.name or "alice", _admin = o.admin or false, x = o.x or 100, y = o.y or 100, z = o.z or 0,
-        keys = o.keys or {}, vehicle = nil, _class = "IsoPlayer" }
+        keys = o.keys or {}, vehicle = nil, num = o.num or 0, _class = "IsoPlayer" }
     function p:getUsername() return self.name end
+    function p:getPlayerNum() return self.num end -- split-screen slot (IsoPlayer.java:979)
     function p:getVehicle() return self.vehicle end
     function p:getX() return self.x end
     function p:getY() return self.y end
@@ -190,6 +191,38 @@ Vehicles = { Update = { Engine = function(v) v.vanillaEngine = (v.vanillaEngine 
 VehicleUtils = { createPartInventoryItem = function(part) return part:getInventoryItem() end }
 VehicleZoneDistribution = { parkingstall = { vehicles = {} }, good = { vehicles = {} } }
 
+-- Global ModData (ModData.java) and the server's GOS systems (SGlobalObjects.java:31-39): one in-memory copy for the
+-- whole run, H.moddata[tag] / H.gos[name] = { md, keys, registers } for the tests to look into
+H.moddata, H.gos = {}, {}
+ModData = {
+    getOrCreate = function(k) H.moddata[k] = H.moddata[k] or {}; return H.moddata[k] end,
+    exists = function(k) return H.moddata[k] ~= nil end,
+    remove = function(k) local t = H.moddata[k]; H.moddata[k] = nil; return t end,
+}
+SGlobalObjects = { registerSystem = function(name)
+    local sys = H.gos[name] or { md = {}, registers = 0 }
+    H.gos[name] = sys
+    sys.registers = sys.registers + 1
+    return { setModDataKeys = function(_, keys) sys.keys = keys end, setObjectModDataKeys = function() end,
+        setObjectSyncKeys = function() end, getModData = function() return sys.md end }
+end }
+-- vanilla door and lock actions the MOD wraps at load (Liftgate.lua, Sentry.lua): complete() like vanilla's
+-- (shared/Vehicles/TimedActions/*.lua); tests may replace them before loading the module that wraps them
+local function doorOf(a) return a.part and a.part.getDoor and a.part:getDoor() end
+ISOpenVehicleDoor = { complete = function(self) local d = doorOf(self); if d and not d:isLocked() then d:setOpen(true) end return true end }
+ISCloseVehicleDoor = { complete = function(self) local d = doorOf(self); if d then d:setOpen(false) end return true end }
+ISLockDoors = { complete = function(self) -- every cabin door that is not broken (ISLockDoors.lua:34-63)
+    for seat = 0, self.vehicle:getMaxPassengers() - 1 do
+        local door = self.vehicle:getPassengerDoor(seat):getDoor()
+        if not door:isLockBroken() then door:setLocked(self.locked) end
+    end
+    return true
+end }
+ISLockVehicleDoor = { complete = function(self) -- ISLockVehicleDoor.lua:28-46
+    if not self.part:getDoor():isLockBroken() then self.part:getDoor():setLocked(true) end
+    return true
+end }
+
 -- ---------------------------------------------------------------- loader
 local loaded = {}
 function require(name)
@@ -204,6 +237,9 @@ end
 H.require = require
 -- vanilla modules a test fakes itself (e.g. "Map/SGlobalObjectSystem"): mark as loaded so require skips them
 function H.stub(name) loaded[name] = true end
+for _, m in ipairs({ "ISOpenVehicleDoor", "ISCloseVehicleDoor", "ISLockDoors", "ISLockVehicleDoor" }) do
+    H.stub("Vehicles/TimedActions/" .. m)
+end
 
 -- ---------------------------------------------------------------- checks
 function H.check(ok, label)

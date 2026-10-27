@@ -92,15 +92,28 @@ if not isClient() then
         end
     end
 
-    -- open or close an installed door part, sync it and animate it with sound on every client (the dashboard's car
-    -- picture and the phone app, server/MinidoracatTesla/Remote.lua)
-    -- A locked car locks its liftgate again when it shuts, however it was shut (the app, the dashboard, by hand):
-    -- Keys.setLocked locks it with the doors, but areAllDoorsLocked only sees the cabin doors (BaseVehicle.java:
-    -- 9332-9335), so a liftgate opened on a locked car would otherwise stay unlocked behind "locked". A broken lock
-    -- stays as it is (it could never open again). The frunk lid isn't part of the car lock, so it is left alone.
+    -- A Tesla locks as a whole: the liftgate and the frunk lid lock and unlock with the car. Vanilla never locks the
+    -- hood (Vehicles.Create.Default; ISLockDoors only the cabin doors), and an unlocked lid opens for anyone
+    -- (ISOpenVehicleDoor.lua:61-64) while the frunk only asks whether the lid is open (Core.lua ContainerAccess.Frunk).
+    -- A broken lock stays as it is (it could never open again).
+    L.LIDS = { TrunkDoor = true, EngineDoor = true }
+    function L.lockLids(v, locked)
+        for id in pairs(L.LIDS) do
+            local part = v:getPartById(id)
+            local door = part and part:getInventoryItem() and part:getDoor()
+            if door and not door:isLockBroken() and door:isLocked() ~= locked then
+                door:setLocked(locked)
+                v:transmitPartDoor(part) -- BaseVehicle.java:8247-8256
+            end
+        end
+    end
+
+    -- A lid that shuts on a locked car locks again, however it was opened or shut (the app, the dashboard, by hand,
+    -- the owner's "unlock hood"): areAllDoorsLocked only sees the cabin doors (BaseVehicle.java:9332-9335), so it
+    -- would otherwise stay unlocked behind "locked".
     function L.relock(v, part)
         local door = part:getDoor()
-        if part:getId() ~= "TrunkDoor" or door:isOpen() or door:isLocked() or door:isLockBroken() then return false end
+        if not L.LIDS[part:getId()] or door:isOpen() or door:isLocked() or door:isLockBroken() then return false end
         if not v:areAllDoorsLocked() then return false end
         door:setLocked(true)
         return true
@@ -150,6 +163,35 @@ if not isClient() then
     end
     wrap(ISOpenVehicleDoor, true)
     wrap(ISCloseVehicleDoor, false)
+
+    -- vanilla locks (same place): "Lock / Unlock Doors" inside the car (ISLockDoors) takes the lids along; a single
+    -- door locked with the key (ISLockVehicleDoor) that leaves every cabin door locked locks the lids too. A single
+    -- door unlocked (the handle, ISUnlockVehicleDoor) leaves them, as it leaves the other doors.
+    require "Vehicles/TimedActions/ISLockDoors"
+    require "Vehicles/TimedActions/ISLockVehicleDoor"
+    local lockDoors = ISLockDoors.complete
+    ISLockDoors.complete = function(self)
+        local ok = lockDoors(self)
+        if ok and self.vehicle and T.isTesla(self.vehicle) then L.lockLids(self.vehicle, self.locked == true) end
+        return ok
+    end
+    local lockDoor = ISLockVehicleDoor.complete
+    ISLockVehicleDoor.complete = function(self)
+        local ok = lockDoor(self)
+        local v = self.vehicle
+        if ok and v and T.isTesla(v) and v:areAllDoorsLocked() then L.lockLids(v, true) end
+        return ok
+    end
+
+    -- every load (BaseVehicle.java:904): a locked car from an older save or the world spawn (cabin doors locked by
+    -- Vehicles.Create.Door, the hood never) gets its shut lids locked
+    Events.OnSpawnVehicleEnd.Add(function(v)
+        if not T.isTesla(v) then return end
+        for id in pairs(L.LIDS) do
+            local part = v:getPartById(id)
+            if part and part:getInventoryItem() and part:getDoor() and L.relock(v, part) then v:transmitPartDoor(part) end
+        end
+    end)
 end
 
 return L

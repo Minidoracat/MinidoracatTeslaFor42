@@ -209,6 +209,7 @@ function F.player(name, o)
     function p:getSecondaryHandItem() return nil end
     function p:setBedType(b) self.bedType = b end
     function p:getUsername() return self.name end
+    function p:getPlayerNum() return o.num or 0 end -- split-screen slot (IsoPlayer.java:979)
     function p:getVehicle() return self.vehicle end
     function p:DistTo() return self.dist end
     function p:getInventory()
