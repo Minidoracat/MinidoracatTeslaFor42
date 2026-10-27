@@ -123,6 +123,12 @@ n = #H.sent
 check(cmd(driver, { vid = v:getId(), on = false }) == 2 and relayed(n).near.on == false,
     "'off' after the exit already emptied the seat: still relayed")
 check(cmd(driver, { vid = v:getId(), on = true }) == 0, "'on' with nobody in the seat: dropped")
+local realRemote = T.Remote
+T.Remote = { summonApi = function() return { summonInfo = function(car) return car == v and { by = "x" } or nil end } end }
+n, refused = #H.sent, R.stats.refused
+check(cmd(near, { vid = v:getId(), on = false }) == 0 and #H.sent == n and R.stats.refused == refused + 1,
+    "a summoned car (nobody in the seat): anyone's 'off' dropped, the server's summon sound stays")
+T.Remote = realRemote
 H.side(false, false)
 v.driver = driver
 n = #H.sent
@@ -337,6 +343,20 @@ hz(1)
 check(se.motor == nil and S.heard[sc:getId()] ~= nil, "motor off (summon ended, engine shut off): silent")
 motor({ vid = sc:getId(), on = false, sum = true })
 check(S.heard[sc:getId()] == nil and H.count("OnTick") == base, "summon 'off': forgotten, OnTick removed")
+-- another player's game reads 0 km/h for a car nobody drives (BaseVehicle.java:4312-4316): the speed from its moves
+sc.running, sc.speed = true, 0
+motor({ vid = sc:getId(), on = true, sum = true })
+se = S.heard[sc:getId()]
+for _ = 1, 15 do sc.x = sc.x + 1; hz(1) end -- 1 tile per 100 ms: 36 km/h
+check(se.motor ~= nil and se.motor.vol > 0.1 and se.pws.vol > 0.2,
+    "this game reads 0 km/h, the car moves: the whine and the forward PWS from its moves")
+motor({ vid = sc:getId(), on = false, sum = true })
+motor({ vid = sc:getId(), on = true, sum = true, back = true })
+se = S.heard[sc:getId()]
+for _ = 1, 15 do sc.x = sc.x - 1; hz(1) end
+check(se.motor ~= nil and se.motor.vol > 0.1 and se.pws.vol < 0.05, "a reverse summon (back): the whine, no forward PWS")
+motor({ vid = sc:getId(), on = false, sum = true })
+sc.x = 306.5
 motor({ vid = sc:getId(), on = true, sum = true })
 H.removeVehicle(sc)
 hz(1)

@@ -220,6 +220,17 @@ local function refresh(e, me)
     end
     e.v = v
     local speed = v:getCurrentSpeedKmHour()
+    if e.sum and not drv then
+        -- a car nobody drives reads 0 here unless this game runs its physics (BaseVehicle.java:4312-4316: other
+        -- players' games): its speed from how far it moved since the last 10 Hz refresh, 1 tile = 1 m
+        local now, x, y = getTimestampMs(), v:getX(), v:getY()
+        if e.pt and now > e.pt then
+            local mx, my = x - e.px, y - e.py
+            local moved = math.sqrt(mx * mx + my * my) * 3600 / (now - e.pt)
+            if math.abs(speed) < moved then speed = e.back and -moved or moved end
+        end
+        e.px, e.py, e.pt = x, y, now
+    end
     local g = far and 0 or gain()
     local pitch, motor, pws = Sound.curve(math.abs(speed) * BaseVehicle.getFakeSpeedModifier(), 0, speed > 0)
     e.lm, e.lp = approach(e.lm, motor * g, STEP), approach(e.lp, pws * g, STEP)
@@ -280,7 +291,7 @@ T.ClientCommands.motor = function(args)
             Sound.stats.tickAdds = Sound.stats.tickAdds + 1
         end
     end
-    e.sum = args.sum == true -- summoned: plays with nobody in the seat
+    e.sum, e.back = args.sum == true, args.back == true -- summoned: plays with nobody in the seat; back: reversing
     e.exp = getTimestampMs() + (e.sum and Sound.SUMMON_MS or Sound.HEARD_MS)
 end
 

@@ -86,8 +86,11 @@ check(near(step(50, 60), got, 1e-12), "the same path with the server reading 60 
 check(near(step(0, 30), s.idleKw / 60, 1e-12), "summoned but standing: idle only, whatever the speed read")
 summoned[sv] = nil
 check(near(step(50, 60), (s.idleKw + s.kwPerKmh * 60) / 60, 1e-9), "summon over: back to the speed read")
-summoned[sv] = { by = "own", phase = "driving" }
+summoned[sv] = { by = "own", phase = "driving", startedMs = 1000 }
 check(near(step(500, 0), s.idleKw / 60, 1e-12), "a new summon starts from where the car is (not from the last one's end)")
+summoned[sv] = { by = "own", phase = "driving", startedMs = 2000 } -- ended and summoned again between two updates
+check(near(step(500, 0), s.idleKw / 60, 1e-12), "back to back, no update between: the second summon starts fresh too")
+check(near(step(50, 0), got, 1e-9), "...then counts its own path")
 summoned[sv] = nil
 T.Remote = realRemote
 

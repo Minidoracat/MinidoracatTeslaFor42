@@ -143,21 +143,25 @@ end
 -- (BaseVehicle.java:4312-4316), so the drive term uses the distance moved since the last update instead. Over m game
 -- minutes kmh = km / (m * secPerGameMin / 3600), so kwPerKmh * kmh * m / 60 = kwPerKmh * km * 60 / secPerGameMin: the
 -- same energy for the same path, whatever speed the server reads. Returns km, or nil when the car is not summoned.
--- ponytail: a summon's first update counts 0 km (no earlier position); summons last well under a game hour.
-local summonAt = {} -- vehicle id -> { x, y } at its last update while summoned
+-- The start position belongs to one summon (AutoDrive's startedMs) of one car (keyId: vehicle ids are reused), so a
+-- new summon never measures from an old one's end.
+-- ponytail: each summon's first update counts 0 km (no earlier position), at most one game minute of a 10 km/h
+-- summon; record the start in Remote.lua's ACT.summon if that ever matters.
+local summonAt = {} -- vehicle id -> { x, y, s = startedMs, k = keyId } at its last update while summoned
 function B.summonKm(vehicle)
     if not instanceof(vehicle, "BaseVehicle") then return nil end -- a VirtualVehicle is never summoned
     local api = T.Remote and T.Remote.summonApi and T.Remote.summonApi()
     if not api then return nil end -- no AutoDrive summon: nothing was ever kept
     local id = vehicle:getId()
-    local last = summonAt[id]
-    if not api.summonInfo(vehicle) then
+    local info = api.summonInfo(vehicle)
+    if not info then
         summonAt[id] = nil
         return nil
     end
-    local x, y = vehicle:getX(), vehicle:getY()
-    if not last then
-        summonAt[id] = { x, y }
+    local x, y, k = vehicle:getX(), vehicle:getY(), vehicle:getKeyId()
+    local last = summonAt[id]
+    if not last or last.s ~= info.startedMs or last.k ~= k then
+        summonAt[id] = { x, y, s = info.startedMs, k = k }
         return 0
     end
     local dx, dy = x - last[1], y - last[2]

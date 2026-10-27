@@ -270,6 +270,7 @@ function App:select(e)
         self.stAt = getTimestampMs()
         self.alerts, self.alertsWhy, self.distKey = nil, nil, nil
         self.sum, self.pin = nil, nil -- the summon view and the picked spot belong to the old car
+        self.stLive = false -- the state above is the client's last copy, not the server's word since this select
     end
     self.nextPoll, self.sig = 0, nil
     if self.key then self:send("appAlerts", {}) end -- the home list's alert count; the security page asks again
@@ -505,6 +506,7 @@ T.ClientCommands.appState = function(args)
         App.stats.states = App.stats.states + 1
         a.st = args
         a.stAt = getTimestampMs()
+        a.stLive, a.stSeq = true, (a.stSeq or 0) + 1 -- the summon view trusts only these (App:summonRead)
     end)
 end
 
@@ -628,13 +630,16 @@ function App:onSummon(id)
         self:summonSend(false)
     elseif id == "pick" then
         return self:setPage("pick")
-    elseif id == "again" then
+    elseif id == "again" then -- an adopted summon (sum.adopted) has no button for this: its x, y or dir are unknown
         self:summonSend(true, sum)
     else
         self:summonSend(true, SUM_START[id])
     end
     self.sumNext, self.sig = 0, nil
 end
+-- the last summon this game asked for, by keyId: an app opened while it runs takes its x, y and dir from here (the
+-- server's state says only the mode). ponytail: one table for all split-screen players, like App.seen.
+App.sumReq = {}
 function App:summonSend(on, m)
     App.stats.sent = App.stats.sent + 1
     if not on then
@@ -643,19 +648,24 @@ function App:summonSend(on, m)
     end
     self:send("appAction", { act = "summon", on = true, mode = m.mode, x = m.x, y = m.y, dir = m.dir })
     self.sum = { phase = "starting", mode = m.mode, x = m.x, y = m.y, dir = m.dir }
+    App.sumReq[self.key] = { mode = m.mode, x = m.x, y = m.y, dir = m.dir }
 end
--- the server's answer to a press (appDone act = "summon"): refused, or stopped (on = false)
+-- the server's answer to a press (appDone act = "summon"): on its way (the states after this one show it), refused,
+-- or stopped (on = false). A refused stop leaves the summon as it is, unless the server no longer has the car.
 function App:summonDone(args)
     local sum = self.sum
     if args.why then
-        if sum and sum.stopAsked then sum.stopAsked = nil -- the stop was refused (the toast says why)
+        if sum and sum.stopAsked and args.why ~= "NOT_LOADED" then
+            sum.stopAsked = nil -- the toast says why
         else
             sum = sum or {}
-            sum.phase, sum.why, sum.code = "stopped", args.why, nil
+            sum.phase, sum.why, sum.code, sum.stopAsked = "stopped", args.why, nil, nil
             self.sum, self.sumEndAt = sum, getTimestampMs()
         end
     elseif args.on == false then
         self.sum, self.sumEndAt = nil, getTimestampMs()
+    elseif sum and running(sum) then
+        sum.seq = self.stSeq or 0 -- the server took it: a later state without the summon means it ended unheard
     end
     self.sumNext, self.sig = 0, nil
 end
@@ -693,17 +703,25 @@ end
 function App:summonRead(api)
     local p, st, pn, sep = self.player, self.st, self.playerNum, getText("IGUI_MinidoracatTesla_Sep")
     local v = self:summonCar()
-    local srv = st and st.link and st.summon
-    if srv and srv.mine and not self.sum and (self.stAt or 0) > (self.sumEndAt or 0) then
-        self.sum = { phase = "starting", mode = srv.mode, dir = 1 }
-    end
+    -- only a state the server sent since the app opened (stLive): App.seen's copy can be a summon long over
+    local srv = self.stLive and st.link and st.summon or nil
     local sum = self.sum
+    if srv and srv.mine and not sum and (self.stAt or 0) > (self.sumEndAt or 0) then
+        -- running when the app opened: x, y, dir from this game's last request for the car, else none (no retry)
+        local req = App.sumReq[self.key]
+        sum = { phase = "starting", mode = srv.mode, seq = self.stSeq }
+        if req and req.mode == srv.mode then sum.x, sum.y, sum.dir = req.x, req.y, req.dir else sum.adopted = true end
+        self.sum = sum
+    elseif sum and running(sum) and sum.seq and self.stLive and st.link and not st.summon and self.stSeq > sum.seq then
+        sum = nil -- ended while nobody heard it (the app was closed, or the summonEnd was lost): ready
+        self.sum, self.sumEndAt = nil, getTimestampMs()
+    end
     local vid = st and st.link and st.vid
     local ss = api.summonState(pn)
     if ss and sum and vid and ss.vid == vid then
         if sum.phase == "starting" and (ss.phase == "driving" or ss.phase == "stopping") then
             sum.phase = "driving"
-        elseif sum.phase == "driving" and ss.phase == "ended" and ss.code then
+        elseif running(sum) and ss.phase == "ended" and ss.code and sum.phase == "driving" then
             self:summonEnded(ss.code)
             sum = self.sum
         end
@@ -725,6 +743,10 @@ function App:summonRead(api)
             why = self.sSub2 or self.sSub -- can't reach the car / not on this phone / no record yet
         elseif srv and not srv.mine then
             why = getText("UI_MinidoracatAutoDrive_SummonBusy") -- someone else's summon of this car
+        elseif not v then
+            -- the server has it, this game has not: past what this game keeps loaded, so past summonReach (AutoDrive's
+            -- canSummon skips the car checks without a car)
+            why = getText("UI_MinidoracatAutoDrive_SummonTooFar")
         else
             local ok, w = api.canSummon(pn, v, self.optCome)
             self.sumCome = ok == true
@@ -740,18 +762,17 @@ function App:summonRead(api)
                 local pd, pci = K.bearing(p:getX(), p:getY(), pin.x, pin.y)
                 self.sPickNote = self.pinOk and txt("SummonSpotAt", txt("DirDist", txt("Dir_" .. DIRS[pci]), distText(pd)))
                     or (w and getText(w)) or ""
-            elseif not self.sumCome then
-                self.sPickNote = why or ""
             end
         end
-        s1 = where and txt("SummonCarAt", where) or self.sSub
+        if not self.sumCome then self.sPickNote = why or "" end -- the pick page says why too
+        s1 = where and txt("SummonCarAt", where) or self.sSub or ""
         s2 = R > 0 and txt("SummonRange", tostring(R)) or ""
         note = why or note
     elseif phase == "starting" then
         s1, s2 = txt("SummonStarting"), txt("SummonChecking")
     elseif phase == "driving" then
-        s1 = txt(sum.mode == "target" and "SummonToSpot" or sum.mode == "dumb" and (sum.dir == -1 and "SummonRevNow"
-            or "SummonFwdNow") or "SummonComing")
+        s1 = sum.mode == "target" and txt("SummonToSpot") or sum.mode ~= "dumb" and txt("SummonComing")
+            or sum.dir == -1 and txt("SummonRevNow") or sum.dir == 1 and txt("SummonFwdNow") or txt("Driving")
         local dist = ss and ss.vid == vid and tonumber(ss.dist) or d
         local kmh = v and math.floor(math.abs(v:getCurrentSpeedKmHour()) + 0.5) or 0
         s2 = distText(dist) .. sep .. txt("SummonKmh", tostring(kmh))
@@ -821,24 +842,11 @@ function App:read()
             self.sDirDist = d < 3 and self.sDir or txt("DirDist", self.sDir, self.sDist)
         end
     end
-    -- summon: its view every App.SUMMON_MS on the pages that show it, the radar's dots every update
-    local api = App.summonApi()
-    self.sumApi = api ~= nil
-    local pg = self.page
-    if api and (pg == "home" or pg == "summon" or pg == "pick") then
-        if now >= (self.sumNext or 0) then
-            self.sumNext = now + App.SUMMON_MS
-            local ss = self:summonRead(api)
-            if ss ~= self.sumSig then self.sumSig, self.sig = ss, nil end
-        end
-        if pg == "summon" then self:radarPlace() end
-    end
     local alertsN = self.alerts and #self.alerts or -1
     local sig = self.page .. hh .. ":" .. mm .. "/" .. tostring(self.toast and self.toast.text) .. "/" .. alertsN .. "/"
         .. tostring(self.stAt) .. "/" .. tostring(self.alertsWhy) .. (self.page == "cars" and ("/" .. App.seenRev) or "")
-    if sig == self.sig then return false end
+    if sig == self.sig then return self:summonTick(now, false) end
     self.sig = sig
-    self.sumNext = 0 -- the summon view reads what this pass sets (record, link, why the controls are grey) next update
     self.sTime = string.format("%02d:%02d", hh, mm)
     local link = st and st.link
     -- status bar: the phone's network (grid up), else Bluetooth while it reaches the car, else no service
@@ -930,7 +938,26 @@ function App:read()
             b[id].hint = true
         end
     end
+    self:summonTick(now, true) -- after this pass: the summon view reads its record, link and reasons
     return true
+end
+
+-- the summon view on the pages that show it: AutoDrive is read every App.SUMMON_MS, or right after a full read; the
+-- radar's dots every update. True when what it shows changed (a layout, not another full read).
+function App:summonTick(now, force)
+    local api = App.summonApi()
+    self.sumApi = api ~= nil
+    local pg = self.page
+    if not (api and (pg == "home" or pg == "summon" or pg == "pick")) then return false end
+    local changed = false
+    if force or now >= (self.sumNext or 0) then
+        self.sumNext = now + App.SUMMON_MS
+        local ss = self:summonRead(api)
+        changed = ss ~= self.sumSig
+        self.sumSig = ss
+    end
+    if pg == "summon" then self:radarPlace() end
+    return changed
 end
 
 -- every POLL_MS while open: the selected car only. A paired car asks the server; VehicleManager's car re-reads its
@@ -1186,9 +1213,14 @@ function App:layout()
                 sbtn("finish", pad, y, tw, txt("SummonDone"), "main", true, nil)
                 y = y + bh + gap
             elseif phase == "stopped" then
-                sbtn("again", pad, y, tw, txt("SummonAgain"), "main", true, TIP .. "SummonCome")
-                y = y + bh + gap
-                sbtn("finish", pad, y, tw, txt("SummonDone"), "frame", true, nil)
+                local sum = self.sum
+                if not sum.adopted then -- try again: the same summon (an adopted one lacks its x, y or dir)
+                    local tip = sum.mode == "target" and "SummonPick" or sum.mode == "dumb"
+                        and (sum.dir == -1 and "SummonRev" or "SummonFwd") or "SummonCome"
+                    sbtn("again", pad, y, tw, txt("SummonAgain"), "main", true, TIP .. tip)
+                    y = y + bh + gap
+                end
+                sbtn("finish", pad, y, tw, txt("SummonDone"), sum.adopted and "main" or "frame", true, nil)
                 y = y + bh + gap
             else
                 sbtn("come", pad, y, tw, txt("SummonCome"), "main", self.sumCome, TIP .. "SummonCome")
@@ -1270,6 +1302,8 @@ function App:layout()
     -- right half of this player's screen, centred vertically, like a phone held up
     self:setX(getPlayerScreenLeft(pn) + math.max(4, sw - w - u(40)))
     self:setY(getPlayerScreenTop(pn) + math.max(4, math.floor((sh - h) / 2)))
+    -- the joypad's control went away (a summon ended: its Stop is gone): the page's first control instead
+    if self.joyfocus and self.focusB and not self.focusB.shown then self:focusFirst() end
 end
 
 Events.OnResolutionChange.Add(function()
@@ -1595,6 +1629,9 @@ function PickMap:instantiate()
     api:setBoolean("Symbols", false)
     api:setBoolean("MiniMapSymbols", false)
     api:setBoolean("ImagePyramid", false)
+    -- top-down (the renderer's default is isometric, WorldMapRenderer.java:145, 185-193): the range is then a circle
+    -- and the D-pad moves the pin along the world's axes, like the radar (vanilla ISMap.lua:39 does the same)
+    api:setBoolean("Isometric", false)
     MapUtils.initDefaultStyleV1(self)
 end
 -- the player in the middle, 2.3 x the range top to bottom. The zoom for a height of 2m tiles is log2(EARTH_M / 2m)

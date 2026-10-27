@@ -277,7 +277,7 @@ local function summon(player, v, on, args)
     if part and part:getModData().sentry then S.disarm(v, player:getUsername()) end
     -- nobody drives, so no beats: the server starts the motor whine and PWS for everyone near (SoundRelay.lua)
     local sr = T.SoundRelay
-    if sr then sr.summon(v, true) end
+    if sr then sr.summon(v, true, opts.dir == -1) end
     return nil, true
 end
 
@@ -375,11 +375,18 @@ T.ServerCommands.appAction = function(player, args)
     if not key then return done("NO_PHONE_KEY") end
     local v = R.loadedCar(key)
     if not v then return done("NOT_LOADED") end -- the server doesn't have the car: nobody can act on it
-    if not K.appReach(player, v) then return done("NO_LINK") end
-    local codes = VM_CODES[act]
-    if codes then
-        local ok, why = R.vmAllows(player, v, codes)
-        if not ok then return done(why) end
+    -- the summoner stopping their own summon: always (the car may have driven past Bluetooth's 30 tiles with the grid
+    -- down, or a share been taken back; "one tap starts, one tap stops" needs the stop to work)
+    local api = act == "summon" and args.on ~= true and R.summonApi()
+    local info = api and api.summonInfo(v)
+    local ownStop = type(info) == "table" and info.by == player:getUsername()
+    if not ownStop then
+        if not K.appReach(player, v) then return done("NO_LINK") end
+        local codes = VM_CODES[act]
+        if codes then
+            local ok, why = R.vmAllows(player, v, codes)
+            if not ok then return done(why) end
+        end
     end
     local why, result, noop = fn(player, v, args.on == true, args)
     if why then return done(why) end

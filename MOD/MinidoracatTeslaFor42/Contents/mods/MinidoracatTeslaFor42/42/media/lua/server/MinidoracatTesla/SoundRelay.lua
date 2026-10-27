@@ -33,13 +33,20 @@ local function relay(v, msg, except)
     return n
 end
 
--- the summon's motor layers on (start) or off (end) for everyone near; SP: the one player (T.send runs the handler)
+-- the summon's motor layers on (start) or off (end) for everyone near; SP: the one player (T.send runs the handler).
+-- back: a straight reverse (no forward PWS: listeners far away read no speed sign, Sound.lua estimates it from moves)
 -- ponytail: players who walk into range after the start hear nothing until the next summon; beats from the
 -- summoner's game if that ever matters.
-function R.summon(v, on)
-    local msg = { vid = v:getId(), on = on, sum = true }
+function R.summon(v, on, back)
+    local msg = { vid = v:getId(), on = on, sum = true, back = back == true or nil }
     if not isServer() then return T.send(nil, "motor", msg) end
     return relay(v, msg, nil)
+end
+
+-- a car AutoDrive is summoning (Remote.lua): its sound belongs to the server's R.summon, nobody's "off" ends it
+local function summoned(v)
+    local api = T.Remote and T.Remote.summonApi and T.Remote.summonApi()
+    return api ~= nil and api.summonInfo(v) ~= nil
 end
 
 -- returns how many players it told (the E2E counts it; the dispatcher ignores it)
@@ -47,7 +54,7 @@ T.ServerCommands.motor = function(player, args)
     local v = isInt(args.vid) and getVehicleById(args.vid) or nil
     local on = args.on == true
     local drv = v and v:getDriver()
-    if not v or not T.isTesla(v) or (drv ~= player and (on or drv ~= nil)) then
+    if not v or not T.isTesla(v) or (drv ~= player and (on or drv ~= nil or summoned(v))) then
         R.stats.refused = R.stats.refused + 1
         return 0
     end

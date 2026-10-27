@@ -515,8 +515,21 @@ check(summon(two2, true).why == "UI_MinidoracatAutoDrive_SummonBusy", "another h
 F.sent = {}
 cmds.appStatus(two2, { key = 9001 })
 check(last("appState").summon.mine == false, "the other holder sees someone else's summon")
+grid = false
+owner.x, two2.x = v.x + 45, v.x + 45
+d = summon(two2, false)
+check(d.why == "NO_LINK" and #AD.stops == 0, "grid down, 45 tiles: another holder's stop is refused (NO_LINK)")
+asked = {}
+answer.ok, answer.why = false, "NOT_AUTHORIZED"
+MinidoracatVehicleManagerAPI = { canUse = function(p, car, code) asked[#asked + 1] = code; return false, "NOT_AUTHORIZED" end }
 d = summon(owner, false)
-check(d.why == nil and d.on == false and #AD.stops == 1 and AD.stops[1].code == "CANCELLED", "stop: stopSummon(v, CANCELLED)")
+local askedDrive = false
+for _, c in ipairs(asked) do if c == "DRIVE" then askedDrive = true end end
+check(d.why == nil and d.on == false and #AD.stops == 1 and AD.stops[1].code == "CANCELLED" and not askedDrive,
+    "grid down, 45 tiles, share taken back: the summoner's own stop still works (no reach, no DRIVE asked)")
+MinidoracatVehicleManagerAPI = nil
+grid = true
+owner.x, two2.x = v.x + 500, v.x + 3
 d = summon(owner, false)
 check(d.why == nil and d.on == false and #AD.stops == 1, "stop when none runs: done, nothing called")
 AD.calls = {}
@@ -527,9 +540,13 @@ AD.info[v] = nil
 summon(owner, true, { mode = "dumb", dir = -1 })
 check(AD.calls[2].opts.mode == "dumb" and AD.calls[2].opts.dir == -1 and AD.calls[2].opts.x == nil, "dumb: dir handed over")
 F.sent = {}
+local touched = 0
+MinidoracatVehicleManager = { Parked = { touch = function(car) if car == v then touched = touched + 1 end end } }
 R.summonEnded(v, "ARRIVED", owner)
+MinidoracatVehicleManager = nil
 d = last("appDone")
-check(d and d.act == "summonEnd" and d.why == "ARRIVED" and d.key == 9001, "onEnd: the summoner hears the stop code")
+check(d and d.act == "summonEnd" and d.why == "ARRIVED" and d.key == 9001 and touched == 1,
+    "onEnd: the summoner hears the stop code; VehicleManager's parked guard touched")
 F.sent = {}
 R.summonEnded(v, "LEFT", nil)
 check(#F.sent == 0, "onEnd with the summoner gone: nothing sent, no error")
@@ -947,6 +964,8 @@ H.section("phone app: summon (client)")
 local P = "IGUI_MinidoracatTesla_App_"
 local VID = v:getId() -- v is loaded (getVehicleById), 10 tiles south of the player
 local function sread() a.sumNext = 0; a:read(); a:layout() end
+local halos, realHalo = {}, HaloTextHelper -- an app closed when its summon ends: the words over the player's head
+HaloTextHelper = { addGoodText = function(_, t) halos[#halos + 1] = t end, addBadText = function(_, t) halos[#halos + 1] = t end }
 a:setPage("home")
 state({ vid = VID })
 check(not a.b.summon.shown and #a:navRows() == 7, "no AutoDrive summon API: no Summon row")
@@ -1058,12 +1077,67 @@ check(a.sumPhase == "starting" and a.sum.mode == "target" and bs.pick.style == "
 a.sum = nil
 state({ vid = VID })
 sread()
+-- reopened: the client's copy of a state with a summon is not trusted; an ended summon goes back to ready
+state({ vid = VID, summon = { phase = "driving", mode = "dumb", mine = true } })
+sread()
+check(a.sumPhase == "starting" and a.sum.dir == -1 and not a.sum.adopted and bs.rev.style == "stop",
+    "running when the app opens: its dir from this game's last request (Back), that button the Stop")
+a:close()
+T.ClientCommands.appDone({ key = 9001, act = "summonEnd", why = "ARRIVED" }) -- the app is closed: over the head
+check(halos[#halos] == "R_ARRIVED", "summonEnd with the app closed: AutoDrive's words over the player's head")
+App.open(0, { keyId = 9001 })
+a:setPage("summon")
+sread()
+check(a.sumPhase == "ready" and a.sum == nil, "reopened after it ended unheard: ready (the cached state's summon ignored)")
+state({ vid = VID })
+sread()
+check(a.sumPhase == "ready", "...and the server's state without a summon keeps it so")
+App.sumReq[9001] = nil
+state({ vid = VID, summon = { phase = "driving", mode = "dumb", mine = true } })
+CL.st = { vid = VID, phase = "driving", dist = 6, mode = "dumb" }
+sread()
+check(a.sum.adopted and a.sSumState == P .. "Driving", "running, no request of ours for it: no guessed direction")
+T.ClientCommands.appDone({ key = 9001, act = "summonEnd", why = "BLOCKED" })
+sread()
+check(a.sumPhase == "stopped" and not bs.again.shown and bs.finish.shown and bs.finish.style == "main",
+    "it stopped: no Try again (its dir unknown), Done")
+bs.finish:forceClick()
+CL.st = nil
+state({ vid = VID, summon = { phase = "driving", mode = "come", mine = true } })
+sread()
+state({ vid = VID }) -- the summon ended and its summonEnd was lost: the next state says no summon
+sread()
+check(a.sumPhase == "ready", "running, then a server state without it: ended unheard, ready")
+state({ vid = 98765 }) -- the server has the car, this game has not loaded it
+sread()
+check(not bs.come.enable and not bs.fwd.enable and a.sSumNote == "UI_MinidoracatAutoDrive_SummonTooFar",
+    "car not loaded in this game: too far (not 'within range'), all grey")
+state({ vid = VID })
+sread()
+a:onGainJoypadFocus(jd)
+a:focusFirst("come")
+bs.come:forceClick()
+sread()
+check(bs.come.joypadFocused and bs.come.style == "stop", "joypad on the running summon's Stop")
+T.ClientCommands.appDone({ key = 9001, act = "summonEnd", why = "ARRIVED" })
+sread()
+check(bs.finish.joypadFocused, "it arrived, its Stop gone: the joypad moves to Done")
+bs.finish:forceClick()
+sread()
+-- the first time this game opens the app (a new app, nothing seen yet) with AutoDrive already there
+local seenKeep = App.seen
+App.seen = {}
+local okOpen, a2 = pcall(App.open, 1, { keyId = 9001 })
+check(okOpen and a2 and a2.inUI and a2.sumApi, "first open with the summon API installed: opens (" .. tostring(a2) .. ")")
+if okOpen and a2 then a2:close() end
+App.seen = seenKeep
 -- pick a spot
 bs.pick:forceClick()
 sread()
 local map = bs.spot
 check(a.page == "pick" and map and map.shown and map:isVisible() and mapCalls.data == 1 and mapCalls.style == 1
-    and mapCalls.HideUnvisited == true, "Pick a spot: the map (vanilla data and style, only what the player has seen)")
+    and mapCalls.HideUnvisited == true and mapCalls.Isometric == false,
+    "Pick a spot: the map (vanilla data and style, only what the player has seen, top-down)")
 check(map.joypadFocused and not bs.go.enable and a.sPickNote == P .. "SummonPickHint", "no pin yet: Go here grey, the hint")
 map:prerender()
 check(map.mapAPI.cx == 1000 and map.mapAPI.cy == 1990 and mapCalls.zoom > 17 and mapCalls.zoom < 19,
@@ -1120,6 +1194,8 @@ a.sum, a.pin = nil, nil
 a:setPage("home")
 state()
 check(not a.b.summon.shown, "API gone: the Summon row gone")
+HaloTextHelper = realHalo
+a:onLoseJoypadFocus(jd) -- the redraw check below measures the page without a focused control's help text
 a:setPage("location")
 
 -- ---------------------------------------------------------------- MiniMap markers (MiniMapBridge.lua)
