@@ -1,10 +1,11 @@
-"""Shared Model Y build code (scripts/blender/skf/convert.py, cabin.py, damage_cover.py): paths, mesh helpers, the
+"""Shared car build code (scripts/blender/skf/convert.py, cabin.py, damage_cover.py): paths, mesh helpers, the
 door slab and skeleton export, damage-map UV1 from vanilla ModernCar, paint ramps from the official design-studio
 renders, the procedural wheel, the vehicle-script geometry block. Axes (Blender): +Y front, +Z up, -X = car left
 (driver side), 1 unit = 1 grid; same as vanilla raw FBX coords (vanilla.py). Vehicle script: x = -mesh x, y = mesh z,
 z = mesh y, unscaled = grid / 1.82. Numbers and sources: .claude/skills/tesla-dev/references/models.md.
+The car is scripts/blender/skf/cars/<CAR>.py (environment CAR, default model_y), applied at import (use).
 """
-import bpy, bmesh, math, os, sys
+import bpy, bmesh, math, os, runpy, sys
 import numpy as np
 from bpy_extras import mesh_utils
 from mathutils import Vector
@@ -14,68 +15,65 @@ REPO = os.path.abspath(os.path.join(HERE, "..", "..", ".."))
 sys.path.insert(0, HERE)
 import vanilla  # noqa: E402
 
-TMP = os.path.join(REPO, "temp", "skf")
-OFFICIAL = os.path.join(TMP, "official")    # design-studio renders (stage_official)
+CARS = os.path.join(REPO, "scripts", "blender", "skf", "cars")   # one config per car: <car>.py with a dict CAR
 MEDIA = os.path.join(REPO, "MOD/MinidoracatTeslaFor42/Contents/mods/MinidoracatTeslaFor42/42/media")
 VEH_DIR = os.path.join(MEDIA, "models_X", "vehicles")
 TEX_DIR = os.path.join(MEDIA, "textures", "Vehicles")
-NAME = "MinidoracatTesla_ModelY"
 K = 0.826                                   # grid per metre (R5 3), calibration knob
-L, W, H = 4.790 * K, 1.920 * K, 1.624 * K   # official length, body width (no mirrors), height
+
+
+def load(car):
+    """The CAR dict of scripts/blender/skf/cars/<car>.py."""
+    path = os.path.join(CARS, car + ".py")
+    if not os.path.isfile(path):
+        known = sorted(f[:-3] for f in os.listdir(CARS) if f.endswith(".py"))
+        raise SystemExit(f"CAR={car}: no {path} (cars: {', '.join(known)})")
+    return runpy.run_path(path)["CAR"]
+
+
+def use(cfg):
+    """Build the car `cfg` (a cars/<car>.py CAR): this module's car values from it; convert.py and cabin.py read
+    theirs from CAR."""
+    global CAR, TMP, OFFICIAL, NAME, DOORS_FBX, L, W, H, WHEEL_RIM, WHEEL_SPOKE, WHEEL_DISC, WHEEL_RGB, PAINTS, CAL
+    global COMPOSITOR_MODEL, OFFICIAL_OPTS, DOORS, GATE_IN, OY, WHEEL_LIFT, WHEEL_INSET, CAB_BOX, SEAT, SCRIPT_MARK
+    CAR = cfg
+    TMP = os.path.join(REPO, "temp", cfg["TMP"])
+    OFFICIAL = os.path.join(TMP, "official")    # design-studio renders (stage_official)
+    NAME = cfg["NAME"]
+    DOORS_FBX = NAME + "_Doors"
+    L, W, H = (m * K for m in cfg["DIMS"])      # official length, body width (no mirrors), height
+    WHEEL_RIM, WHEEL_SPOKE, WHEEL_DISC, WHEEL_RGB = (cfg[k] for k in ("WHEEL_RIM", "WHEEL_SPOKE", "WHEEL_DISC",
+                                                                      "WHEEL_RGB"))
+    PAINTS, CAL, COMPOSITOR_MODEL, OFFICIAL_OPTS = (cfg[k] for k in ("PAINTS", "CAL", "COMPOSITOR_MODEL",
+                                                                     "OFFICIAL_OPTS"))
+    DOORS, GATE_IN, OY, WHEEL_LIFT, WHEEL_INSET = (cfg[k] for k in ("DOORS", "GATE_IN", "OY", "WHEEL_LIFT",
+                                                                    "WHEEL_INSET"))
+    CAB_BOX, SEAT, SCRIPT_MARK = cfg["CAB_BOX"], cfg["SEAT"], cfg["SCRIPT_MARK"]
+
+
+use(load(os.environ.get("CAR", "model_y")))
+
 # UV1 (shared Veh_Damage1/2, Veh_Rust, Veh_Blood_* 512 maps): taken over from this vanilla car (damage_uv1)
 DAMAGE_REF, DAMAGE_REF_MASK = "Vehicles_ModernCar", "vehicle_carmodern_mask.png"
 WHEEL_TEX, WHEEL_SS = 64, 8                 # wheel texture size; drawn WHEEL_SS times larger, then box-averaged
-# wheel: the Model Y Performance's 21" Arachnid 2.0 (design studio $MTY70,$WY21A, view RIMCLOSEUP): five Y spokes in
-# dark graphite, open between them onto the brake rotor; staggered 255/35 R21 front / 275/35 R21 rear (one size here,
-# the source tires'). Spokes and hub cap are geometry (the gaps really open: the vehiclewheel shader has no alpha
-# cutout), the tire, rim flange, barrel and the disc behind the spokes a surface of revolution (wheel_profile). The disc
-# closes the wheel at its middle (x = +-WHEEL_DISC_X): the brake rotor round the hub, dark between rotor and barrel; the
-# red calipers sit between it and the spokes but belong to the body (convert.py calipers), they must not spin
-WHEEL_RIM = 0.76                            # rim flange radius / tire radius: 21" (266.7 mm bead + ~17 mm) / 356 mm
-# Y spoke in rr units (rr = WHEEL_RIM x tire radius), half-widths tangential: main arm from the hub to the fork, then
-# two arms spreading to +-spread at the barrel; front face `inset` grid inside the tire's half width at the barrel,
-# `dish` deeper at the hub; side walls `depth` grid deep. cap: hub cap radius
-WHEEL_SPOKE = dict(n=5, hub=0.14, fork=0.50, spread=math.radians(17), main=(0.085, 0.065), arm=0.05, cap=0.17,
-                   inset=0.020, dish=0.015, depth=0.018)
-WHEEL_DISC = dict(rotor=0.636, hat=0.30)    # brake rotor (355 mm) and its hat, rr units
+# wheel (stage_wheel): the car's rim design is WHEEL_RIM / WHEEL_SPOKE / WHEEL_DISC / WHEEL_RGB (cars/<car>.py);
+# a surface of revolution (wheel_profile) closed at its middle by a disc (x = +-WHEEL_DISC_X), spokes as geometry
 WHEEL_DISC_X = 0.002                        # grid: the disc's two faces either side of the wheel's middle plane
 # disc centre and UV radius of the tire radius (planar: sidewall, flange, disc), tread strip v0 and height, and the
 # flat-colour spots (u, v) of the geometry that has no planar layout (spokes, hub cap, barrel)
 WHEEL_UV = dict(c=(0.5, 0.43), rho=0.40, tread=(0.865, 0.125),
                 swatch={"spoke": (0.05, 0.05), "cap": (0.95, 0.05), "barrel": (0.05, 0.80)})
-# Game-screen sRGB grey levels (calibration knob, compare with game screenshots); wheel_texture turns each into the
-# texture value that renders it: the vehiclewheel output measured on ModernCar's vanilla wheel in the same scenario is
-# 0.143 * tex ** 1.395 (texture 37 / 105 / 169 / 189 -> 22 / ~115 / 193 / 214, tesla-modely-tex-1024e scale-S-zoomin).
-# Vehicle textures get no mipmaps (ModelManager.java:1320-1322, TextureID.java:427): a 512 wheel sampled at ~10 texels
-# per pixel aliased into specks and dotted rings, so it is drawn at 8x and box-averaged to 64. Official RIMCLOSEUP:
-# spokes 105-170 (studio light), windows ~28, black tire; lighting comes from the spokes' own normals here
-WHEEL_RGB = dict(spoke=100, cap=40, barrel=28, lip=90, rotor=60, hat=35, dark=12, gap=8, tire=(22, 28), tread=20)
+# WHEEL_RGB: game-screen sRGB grey levels; wheel_texture turns each into the texture value that renders it: the
+# vehiclewheel output measured on ModernCar's vanilla wheel in the same scenario is 0.143 * tex ** 1.395 (texture
+# 37 / 105 / 169 / 189 -> 22 / ~115 / 193 / 214, tesla-modely-tex-1024e scale-S-zoomin). Vehicle textures get no
+# mipmaps (ModelManager.java:1320-1322, TextureID.java:427): a 512 wheel sampled at ~10 texels per pixel aliased into
+# specks and dotted rings, so it is drawn at 8x and box-averaged to 64
 WHEEL_SEG = 30                              # segments round the axle: 12 deg, under 0.2 px off a circle at zoom 0.5
-# official Model Y paints (decisions.md "車款外觀"): skin order = vehicle script skin index = Core.lua colors order;
-# saved games store the index (BaseVehicle.java:2635/2741), so after release only append
-PAINTS = [("StealthGrey", "PN01"), ("PearlWhite", "PPSW"), ("DiamondBlack", "PX02"), ("Quicksilver", "PN00"),
-          ("UltraRed", "PR01"), ("GlacierBlue", "PB01"), ("MarineBlue", "PB02"), ("FrostBlue", "PB00")]
 GAIN = 0.88                                 # in-game day screen / texture sRGB (E2E tesla-modely-skin-1024c/d: red
 #                                             0.80-0.86, white 0.90-0.97), calibration knob
-# per-paint sRGB tone of the paint texels, tex = a * official-ramp colour / GAIN + b, one slope a for all three
-# channels (per-channel slopes turned the colour along the ramp: Ultra Red's G slope above R / B made its highlights
-# orange) and per-channel offsets b that put the in-game p50 on the official FRONT34 p50. a sets the p25-p75 spread
-# against FRONT34; Pearl White takes a = 0.8 (a = 1 burns 12% of its texels to 255). Fitted with skf/convert.py
-# PAINT_Q / PAINT_TARGET on in-game screenshots of the car heading S (modely-skin-sp, option 2, closest zoom;
-# tesla-gloss-skinA-1026a) and the game camera's visible texels (offline view). Calibration knob: refit after
-# changing the paint light; check with e2e/.../perf/paint_sheet.py
-CAL = {
-    "StealthGrey": ((0.88, 0.88, 0.88), (0.030, 0.016, 0.012)),
-    "PearlWhite": ((0.80, 0.80, 0.80), (0.134, 0.129, 0.129)),
-    "DiamondBlack": ((0.99, 0.99, 0.99), (0.073, 0.067, 0.063)),
-    "Quicksilver": ((0.93, 0.93, 0.93), (-0.105, -0.114, -0.126)),
-    "UltraRed": ((0.97, 0.97, 0.97), (-0.067, 0.078, 0.062)),
-    "GlacierBlue": ((0.80, 0.80, 0.80), (0.003, -0.017, -0.029)),
-    "MarineBlue": ((0.81, 0.81, 0.81), (0.084, 0.069, 0.039)),
-    "FrostBlue": ((0.79, 0.79, 0.79), (0.072, 0.077, 0.100)),
-}
+# paint (convert.py textures): PAINTS (skin order) and their CAL tone are the car's (cars/<car>.py)
 COMPOSITOR = ("https://static-assets.tesla.cn/configurator/compositor?context=design_studio_2&options={}&view={}"
-              "&model=my&size=1920&bkba_opt=1&crop=0,0,0,0&overlay=0&")
+              "&model={}&size=1920&bkba_opt=1&crop=0,0,0,0&overlay=0&")
 Z = {  # mask zone colours (media/shaders/vehicle_common.frag.h colZone*)
     "Head": (1, 0, 0), "Tail": (0, 1, 0), "DoorRH": (0, 1, 1), "DoorRT": (1, 1, 0), "DoorLH": (1, 0, 1), "DoorLT": (0, 0, 1),
     "WinRH": (0, .5, .5), "WinRT": (.5, .5, 0), "WinLH": (.5, 0, .5), "WinLT": (0, 0, .5), "WinT": (.5, 0, 0), "WinH": (0, .5, 0),
@@ -586,19 +584,9 @@ def damage_uv1(body, fzone):
 # the MOD's media/shaders/MinidoracatTesla_vehicle.vert (static = false picks <name>.vert, ShaderProgram.java:278-286).
 # A part model draws with the parent car's skin, mask, damage and uninstall uniforms (Model.java:534-585), so the doors
 # keep the body's UV0 / UV1 and textures.
-# part: side (-1 = left, x < 0; 0 = tailgate), hinge axis, open angle (deg; sign swings the door out, the gate up),
-# clip seconds. Hinge points come from the cut (front edge on the outer skin; the gate's top edge; the frunk lid's
-# rear edge at the cowl, front rising like the real lid). The clips run open -> closed ("<Part>_closing", vanilla's
-# naming; Open plays it reversed). updateAnimationPlayer advances the clip 0.8 x real time x rate
-# (BaseVehicle.java:3901-3904): doors ~1 s, the gate ~4.5 s like an electric tailgate, the lid ~1.25 s
-DOORS = {
-    "DoorFrontLeft": (-1, (0, 0, 1), -65, 0.8), "DoorFrontRight": (1, (0, 0, 1), 65, 0.8),
-    "DoorRearLeft": (-1, (0, 0, 1), -65, 0.8), "DoorRearRight": (1, (0, 0, 1), 65, 0.8),
-    "TrunkDoor": (0, (1, 0, 0), -75, 3.6), "EngineDoor": (0, (1, 0, 0), 55, 1.0),
-}
-DOORS_FBX = NAME + "_Doors"
 DOOR_T, JAMB_T = 0.06, 0.08       # grid: door slab thickness (inner panel offset), body jamb depth
-GATE_IN = (0.0, 0.894, -0.447)    # tailgate inward direction (forward and down: the glass leans, the panel stands)
+# DOORS (cars/<car>.py): part -> side (-1 = left, x < 0; 0 = tailgate), hinge axis, open angle (deg), clip seconds;
+# GATE_IN: the tailgate's inward direction (its inner panel's offset)
 CLIP_FPS = 30
 
 
@@ -758,13 +746,6 @@ def inside(bvh, p):
 
 
 S = 1.82              # vehicle scale (R5 3), model script scale = 1/S
-OY = 0.2878           # model offset == centerOfMassOffset (unscaled) = height of the mesh centre above the physics CoM. Not
-#                       ModernCar's 0.1978: the body, wheels, seats and attachments all hang off the model offset
-#                       (VehicleScript.toBullet :586-588, BaseVehicle.getPassengerLocalPos / getAttachmentLocalPos), so this
-#                       only lowers the CoM; 0.09 lower brakes like SportsCar (MinidoracatTesla_template.txt wheelFriction)
-WHEEL_LIFT = 0.11     # rendered wheel sits this much (grid) above its script offset at rest: vanilla arch centres
-#                       minus wheel offsets, ModernCar +0.10/+0.16, SUV +0.12/+0.10 (arch circle fit); calibration knob
-WHEEL_INSET = 0.03    # tire outer face this far inside the body's own tire (flush tires looked proud of the arch)
 
 
 def f4(*v):
@@ -790,7 +771,7 @@ def geometry(body, zmid, wl, r, tire_w, belt_z, doors_y, port_yz):
     belt = belt_z - zmid
     front_y, bpil_y, rear_y = doors_y
     lo = (bc[:, 2].min() + belt) / 2
-    cab = ((belt + bc[:, 2].max()) / 2, 1.30, 0.45, -1.60)
+    cab = ((belt + bc[:, 2].max()) / 2, *CAB_BOX)
     aw, ah = 0.4725, 0.4725
     sx = ext[0] / 2 + aw / 2
     out = [
@@ -818,13 +799,13 @@ def geometry(body, zmid, wl, r, tire_w, belt_z, doors_y, port_yz):
                 f"            radius = {(r - 0.015) / S:.4f},", f"            width = {tire_w:.4f},", "        }"]
     out += ["        part Tire*", "        {", "            model InflatedTirePlusWheel", "            {",
             f"                file = {NAME}_Wheel,", "            }", "        }"]
-    seat_y, ground = (0.56 - zmid) / S, -zmid / S
-    fz, rz = (front_y + bpil_y) / 2 - 0.12, (bpil_y + rear_y) / 2 - 0.08
+    seat_y, ground = (SEAT["h"] - zmid) / S, -zmid / S
+    fz, rz = (front_y + bpil_y) / 2 - SEAT["back"][0], (bpil_y + rear_y) / 2 - SEAT["back"][1]
     seats = (("FrontLeft", 1, fz, (front_y, bpil_y)), ("FrontRight", -1, fz, (front_y, bpil_y)),
              ("RearLeft", 1, rz, (bpil_y, rear_y)), ("RearRight", -1, rz, (bpil_y, rear_y)))
     for nm, side, z, door in seats:        # showPassenger: the 3-D cabin shows whoever sits there through the glass
         out += [f"        passenger {nm}", "        {", "            showPassenger = true,", "            position inside", "            {",
-                f"                offset = {f4(side * 0.33 / S, seat_y, z / S)},", "                rotate = 0.0 0.0 0.0,", "            }",
+                f"                offset = {f4(side * SEAT['x'] / S, seat_y, z / S)},", "                rotate = 0.0 0.0 0.0,", "            }",
                 "            position outside", "            {",
                 f"                offset = {f4(side * (w_body / 2 + 0.30) / S, ground, z / S)},", "                rotate = 0.0 0.0 0.0,",
                 f"                area = Seat{nm},", "            }", "        }"]
@@ -866,7 +847,7 @@ def geometry(body, zmid, wl, r, tire_w, belt_z, doors_y, port_yz):
     # splice into the vehicle script: everything after the geometry marker up to the vehicle's closing brace is ours
     path = os.path.join(MEDIA, "scripts", "vehicles", NAME + ".txt")
     text = open(path, encoding="utf-8").read()
-    head = text.index("\n", text.index("---- geometry (TeslaModelY)")) + 1
+    head = text.index("\n", text.index(SCRIPT_MARK)) + 1
     tail = text.rindex("    }\n}")
     open(path, "w", encoding="utf-8", newline="\n").write(text[:head] + block + text[tail:])
     return {"zmid_ground": zmid, "body_width": w_body, "body_height": hgt, "length": ln,
@@ -896,10 +877,8 @@ def stage_official():
     import urllib.request
     os.makedirs(OFFICIAL, exist_ok=True)
     for _, code in PAINTS:
-        # the Performance trim (AGENTS.md rule 7; $WY21A 21" Arachnid 2.0). Until 2026-10-26 the Long Range ($MTY79,
-        # $WY19P): its SIDE paint ramps differ from these by under 1 level, so CAL stayed
-        opts = f"$MTY70,${code},$WY21A,$IPB14"
+        opts = OFFICIAL_OPTS.format(code)
         for view in ("SIDE", "FRONT34", "REAR34"):
-            req = urllib.request.Request(COMPOSITOR.format(opts, view), headers={"User-Agent": "Mozilla/5.0"})
+            req = urllib.request.Request(COMPOSITOR.format(opts, view, COMPOSITOR_MODEL), headers={"User-Agent": "Mozilla/5.0"})
             with urllib.request.urlopen(req, timeout=60) as r, open(os.path.join(OFFICIAL, f"{code}_{view}.png"), "wb") as f:
                 f.write(r.read())

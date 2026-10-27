@@ -1,18 +1,22 @@
-"""Model Y from BloxBloger's "2026 Tesla Model Y Performance" (Sketchfab, CC BY-NC 4.0, CREDITS.md): source OBJ ->
-PZ body FBX (the mod's cabin and the body glass inside), doors FBX (VehicleSkeleton, "<Part>_closing" clips), wheel
-FBX, 8 skins, mask, lights, and the geometry block of the vehicle script.
+"""A car's body from its Sketchfab source (scripts/blender/skf/cars/<CAR>.py, default model_y: BloxBloger's "2026
+Tesla Model Y Performance", CC BY-NC 4.0, CREDITS.md): source OBJ -> PZ body FBX (the mod's cabin and the body glass
+inside), doors FBX (VehicleSkeleton, "<Part>_closing" clips), wheel FBX, 8 skins, mask, lights, and the geometry block
+of the vehicle script.
 
     B="C:/Program Files/Blender Foundation/Blender 5.2/blender.exe"
     "$B" -b --factory-startup --python scripts/blender/skf/convert.py -- official   # design-studio renders (once)
     "$B" -b --factory-startup --python scripts/blender/skf/convert.py -- build      # everything else, ~20 s
     "$B" -b --factory-startup --python scripts/blender/skf/convert.py -- view <out_prefix> <N,NE,..> <shut|all|gate|frunk|fl|..>
     "$B" -b --factory-startup --python scripts/blender/skf/convert.py -- appcar   # phone App car images, 8 paints
+    "$B" -b --factory-startup --python scripts/blender/skf/convert.py -- inspect  # source objects -> TMP/inspect.json
+    CAR=<car> "$B" ...                                                            # another cars/<car>.py
 
-Source (gitignored): temp/skf/src/source/Tesla Model Y Performance 2026.obj (+ .mtl), the OBJ inside the Sketchfab
-download. Its materials are flat colours, its panels separate components (door skins, hood, tailgate cut along the
-real panel lines), so parts and zones come from components and a few side-view lines, colours from materials; AO and
-normals are baked for the paint's light. The cabin and trunk are the mod's own (cabin.py), not the source's interior;
-shared code (door slab, skeleton export, damage UV1, wheel, script block) in scripts/blender/common/pzveh.py.
+Source (gitignored): TMP/<the car's SRC>; Model Y: temp/skf/src/source/Tesla Model Y Performance 2026.obj (+ .mtl),
+the OBJ inside the Sketchfab download. Its materials are flat colours, its panels separate components (door skins,
+hood, tailgate cut along the real panel lines), so parts and zones come from components and a few side-view lines,
+colours from materials; AO and normals are baked for the paint's light. The cabin and trunk are the mod's own
+(cabin.py), not the source's interior; shared code (door slab, skeleton export, damage UV1, wheel, script block) in
+scripts/blender/common/pzveh.py.
 Frame: +Y front, +Z up, -X car left, 1 unit = 1 grid (vanilla raw FBX coords), pre-centre ground z = 0.
 """
 import bpy, bmesh, colorsys, json, math, os, re, sys
@@ -25,36 +29,22 @@ sys.path.insert(0, HERE)
 import pzveh as pv  # noqa: E402
 import cabin as cab  # noqa: E402
 TMP = pv.TMP
-SRC = os.path.join(TMP, "src", "source", "Tesla Model Y Performance 2026.obj")
-K = pv.K                                   # grid per metre; the source is in metres, true to size (4.78 x 1.94 m)
-# OBJ (Blender import, -Z forward, Y up: front -X, left -Y) -> pre-centre frame, centres of the source bbox
-SRC_C = (-1.0675, -1.787)                   # source X (length) and Y (width) centre, metres
-BELT_Z = 0.88                               # grid: side window bottom (glass z min 0.878)
+C = pv.CAR                                 # this car's values (cars/<car>.py; keys = the constants below)
+SRC = os.path.join(TMP, *C["SRC"])
+K = pv.K                                   # grid per metre; the source is in metres
+SRC_C, BELT_Z, TIRE_OBJ = C["SRC_C"], C["BELT_Z"], C["TIRE_OBJ"]
 SKIN, MASK = 2048, 512
 
-# ---- what each source object is (names from the OBJ; sizes in the build log) ----
-DROP = ("Object005", "Cylinder", "Circle.", "Plane.027", "Plane.076", "Plane.088", "Plane.090", "Plane.026",
-        "Plane.075", "Plane.087", "Plane.089",       # tires, rims, calipers, discs: the mod's procedural wheel stays
-        "Object_11", "Object_12",                    # licence plates
-        "Plane.031", "Plane.051", "Plane.053", "Plane.040",   # clear lamp covers: opaque in PZ, they'd hide the lamps
-        "Plane.067", "Hyundai_KONA",   # BloxBloger's interior (tub, seats, dash): the mod's own cabin (cabin.py) instead
-        "Tesla_Model_3")               # rear TESLA: 1.2 cm block letters (E a solid block) sunk 4 cm under the blade
-# collapse-decimated before anything else (target tris): detail PZ cannot show at 1-4 px per cm
-DECIMATE = {"Plane.045": 400,             # 29.5k-tri honeycomb under the tail light bar
-            "Plane.034": 1200, "Plane.020": 1000, "Plane.016": 2600}
-# skin colour (sRGB 0-255) per material; paint comes from the official renders (textures())
-MAT_RGB = {"Material_#2125780493": None, "black_base": (34, 34, 36), "Material_#2125706098": (57, 61, 70),
-           "Material_#2125774706": (26, 26, 28), "black_refl": (20, 20, 22), "Material_#2125780326": (22, 22, 24),
-           "black": (20, 20, 22), "black.001": (20, 20, 22), "black.002": (20, 20, 22), "black222": (20, 20, 22),
-           "Iron_Clean_Distorted": (60, 60, 64), "front_white_light": (226, 230, 236), "back_red_Light": (150, 12, 16),
-           "red_plastic111": (120, 12, 16), "red_plastic": (120, 12, 16), "mirror": (58, 64, 72),
-           "glass_base": (14, 14, 16), "Material_#2125773440": (14, 14, 16), "04_-_Default": (60, 60, 60),
-           "badge_chrome": (196, 200, 206), "badge_black": (8, 8, 10),
+# ---- what each source object is (names from the OBJ; sizes in the build log or inspect) ----
+DROP, DECIMATE, PAINT_MAT, GLASS_MATS, GLASS_OPAQUE, ROOF_PANE, MIRROR_CAP, LAMPS = (C[k] for k in (
+    "DROP", "DECIMATE", "PAINT_MAT", "GLASS_MATS", "GLASS_OPAQUE", "ROOF_PANE", "MIRROR_CAP", "LAMPS"))
+# skin colour (sRGB 0-255) per material: the source's (the car's MAT_RGB) and the mod's own; paint comes from the
+# official renders (textures())
+MAT_RGB = {**C["MAT_RGB"], "badge_chrome": (196, 200, 206), "badge_black": (8, 8, 10),
            "caliper_red": (180, 20, 28)}             # Performance calipers (official RIMCLOSEUP, lit side)
 # chrome badges mirror the surroundings: bright on a dark paint, grey on a light one (median V >= 0.55: PearlWhite
 # read 196 on ~210 paint, gone)
 CHROME = ((200, 204, 210), (104, 108, 114))
-GLASS_MATS = ("glass_base", "Material_#2125773440")  # glass_base on Plane.008 is the B-pillar cover: opaque black
 # paint light (textures()): official-render paint quantile q = (base + up x upness(nz) + height x h) x AO term:
 # (base, up, height); h = face centre height, 0 at the lowest face, 1 at the roof. Calibration knob. Only soft volume:
 # the game lights a car by ambient alone in daylight (vehicle_multiuv.frag:72-96, no sun direction), so the skin keeps
@@ -70,68 +60,23 @@ PAINT_Q = (0.12, 0.25, 0.25)
 PAINT_TARGET = ((10, 0.22), (25, 0.31), (50, 0.415), (75, 0.51), (90, 0.59), (97, 0.65))
 PAINT_ENDS = (0.03, 0.72)
 PAINT_ALPHA = 254 / 255                    # skin alpha of the paint texels (textures(): the shader's paint flag)
-OFFICIAL = pv.OFFICIAL                     # design-studio renders (stage official)
 LIGHT_RGB = {"head": (255, 250, 240), "tail": (255, 30, 30)}
 
-# ---- part lines, side view (y, z), pre-centre grid; read off the source's panel edges (build log OUTLINE) ----
-LINES = {
-    "S": ((-0.150, 0.40), (-0.227, 0.90)),   # front / rear door seam below the belt
-    "BF": ((-0.171, 0.90), (-0.266, 1.25)),  # B-pillar trim front edge (front door frame ends)
-    "BR": ((-0.306, 0.90), (-0.360, 1.25)),  # B-pillar trim rear edge (rear door frame starts)
-    "D": ((-0.955, 0.95), (-1.000, 1.20)),   # rear door glass / fixed quarter glass divider
-    "R1": ((-0.956, 0.60), (-1.081, 0.90)),  # rear door rear edge above the wheel arch
-}
-FRONT_Y, SILL_Z, ARCH = 0.83, 0.235, (0.55, -0.79)   # front door front, door bottom, rear door above / ahead of arch
-# door openings for the cabin shell and the seats (pre-centre y): front door front, B pillar (middle of the seam S
-# between the cabin floor z 0.32 and the belt; the shell's B-pillar ring follows S itself), rear door rear
-DOOR_Y = (0.82, -0.181, -1.08)
+# ---- part lines and panels, pre-centre grid (the car's; read off the source's panel edges, build log OUTLINE) ----
+LINES, FRONT_Y, SILL_Z, ARCH, DOOR_Y, GATE_Z, REAR_ARCH, GATE_X, STOP_X = (C[k] for k in (
+    "LINES", "FRONT_Y", "SILL_Z", "ARCH", "DOOR_Y", "GATE_Z", "REAR_ARCH", "GATE_X", "STOP_X"))
+IN_DOOR, IN_GATE, PANELS, GUARDS, PANES = (C[k] for k in ("IN_DOOR", "IN_GATE", "PANELS", "GUARDS", "PANES"))
 SEAL = (0.008, 0.02)                       # grid: dark strip behind every panel edge (depth, reach past the edge):
 #                                             the source's panel gaps are real gaps, the ground showed through them
-GATE_Z = 0.525                             # tailgate opening's lower edge (gate panel bottom), pre-centre
-REAR_ARCH = (-1.175, 0.30, 0.40)           # rear wheel arch (y, z, r), pre-centre: rear tire centre, arch radius
-GATE_X = 0.515                             # tailgate side edge through the light bar (gate panel half width)
-STOP_X = 0.645                             # corner lamps inboard of this |x| are the brake lights, outboard the tail
-# components cut along the lines (object, tris after welding): the window surround, the rear side glass (door pane
-# and quarter glass in one piece)
-CUT = {("Plane.005", 342): ("BF", "BR", "D"), ("Plane.062", 268): ("D",)}
-CUT_X = ("Plane.034", "Plane.044", "Plane.045", "Plane.036", "Plane.042", "Plane.043", "Plane.041")  # rear lamps
-DOOR_OBJS = ("Plane.062", "Plane.005", "Plane.002", "Plane.046", "Plane.048", "Plane.050", "Plane.047")
-GATE_OBJS = CUT_X + ("Plane.022", "Plane.086")
-# Plane.086 (its only face material Material_#2125706098): the Performance badge on the tailgate's lower right
-# (service manual "Badge - Performance"; the mod's Model Y is the Performance, AGENTS.md rule 7). The real one is a
-# navy starburst in a chrome rim, 11 x 5 cm, ~16 x 7 px at the closest zoom: a flat plate in its mean colour
-# (57, 61, 70; median 32, 36, 47, drive.com.au photo), the rim (~0.4 px) left out
-# badges (user 2026-10-26; Model Y 2025 service manual ch. 1205 "Badges and Films"), drawn in badges(): T on the frunk
-# lid (OEM 1494949-00-A, chrome, 7.8 x 8.2 cm), TESLA in black across the light blade (letters ~2 cm tall, 42 cm
-# span), MODEL Y in chrome on the tailgate's lower left (jig on its left and lower edges). Letters are scaled for the
-# closest zoom, where 1 cm is about 1.5 px: true-size letters would be one or two pixels tall
+CUT, CUT_X, DOOR_OBJS, GATE_OBJS, GATE_COMPS = (C[k] for k in ("CUT", "CUT_X", "DOOR_OBJS", "GATE_OBJS", "GATE_COMPS"))
+# badges (badges(); the car's places): T on the frunk lid, TESLA on the light blade, MODEL Y on the tailgate
 BADGE_OFF = 0.003                          # grid off the surface (no depth fight)
-T_BADGE = (1.85, 0.0644, 0.0677)           # centre y on the frunk lid (stem tip ~3 cm off its front edge), width, height
-TESLA = (0.93, 0.03, 0.11, 0.045)          # blade strip centre z (pre-centre), cap height, letter pitch, lens height
+T_BADGE, TESLA, LENS_X, MODELY, CALIPER = (C[k] for k in ("T_BADGE", "TESLA", "LENS_X", "MODELY", "CALIPER"))
 SWATCH = ("Badge_T", "Badge_TESLA", "Badge_MODELY", "Caliper")   # one flat-colour UV spot each (unwrap())
-# brake calipers (calipers()): front / rear (angle behind the top, half span) in degrees, radii and x from the
-# wheel's middle plane outward, grid. The real ones sit at 3 o'clock. A body-fixed front one there would swing 0.11
-# grid out through the spokes at full lock, so the front pair keeps within ~0.08 grid of the steering axis in plan:
-# top or bottom of the wheel. From the game camera (30 deg down) a recess is seen through the gaps above it: at the
-# top the caliper hid behind the fender and the rim in 5 of 6 spin angles, at the bottom it showed in all 6 (offline
-# view S, Quicksilver, 85-573 red px)
-CALIPER = dict(front=(176, 18), rear=(80, 15), r=(0.100, 0.168), x=(0.010, 0.045))   # r: the front pair's
-#                                                             bottom stays above the body's lowest point (calipers())
 SWATCH_U = 0.03                            # UV0 strip kept for them at u > 1 - SWATCH_U
-LENS_X = 0.46                              # the blade's rear strip ends here (the corner lamps' lenses outboard)
-MODELY = (-0.46, 0.555, 0.033)            # left x, baseline z, cap height (true ~2.4 cm): under the crease at z 0.60,
-#                                            inside the tailgate (|x| < 0.50 at this height)
 SMOKE_RGB = (62, 58, 60)                   # the light blade by day: smoked lens, so the black letters read
-GATE_COMPS = (("Plane.062", 248, -1), ("Plane.014", 102, -1))   # rear window and its frame (y sign of the centre)
 PARTS = ["Body"] + list(pv.DOORS)          # part index: 0 body, 1.. DOORS order (FL, FR, RL, RR, TrunkDoor, EngineDoor)
-# frunk under the lid (frunk_tub(); user 2026-10-27 「前面是不是沒做置物箱的位置」): 2025 Model Y front trunk 117 L, a
-# tapered bin about 70 cm wide at the windshield end, 91 cm on its longest line, 35-43 cm deep (basenor.com
-# model-y-juniper-frunk-dimensions: owner measurements), framed by black trim panels over the cowl and shock towers.
-# Grid, pre-centre: the opening's jamb `ledge` down, a trim shelf in to the bin's `rim` (flange, `rim` wide), the
-# bin's top outline (rear / front y and half widths: a rounded trapezoid, corner radius `corner`), walls `taper` in to
-# a floor `depth` under the rim (a plane through the rear and front middles: the lid falls to the nose); `n` rays
-# round the plan centre resample the opening outline. build prints the volume (FRUNK ... L)
-FRUNK_TUB = dict(ledge=0.08, rim=0.025, y=(1.07, 1.80), half=(0.29, 0.18), corner=0.07, taper=0.11, depth=0.29, n=128)
+FRUNK_TUB = C["FRUNK_TUB"]                 # the bin under the frunk lid (frunk_tub())
 ZN = list(pv.Z)                            # zone index -> name
 CELL = {c: i for i, c in enumerate(pv.CABIN_CELLS)}
 GLASS_ZONES = ("WinT", "WinH", "WinLH", "WinLT", "WinRH", "WinRT", "LightBarL")   # UV1 glass code order (the frag's
@@ -153,18 +98,24 @@ def plane(name):
 def in_door(p, t=0.0):
     """Door index 1-4 (DOORS order) of points p (N x 3) by the side-view lines, 0 outside; t widens every bound."""
     x, y, z = p[:, 0], p[:, 1], p[:, 2]
-    up = z > 0.9
+    up = z > IN_DOOR["up"]
     fd = (y < FRONT_Y + t) & (z > SILL_Z - t) & (y > np.where(up, lin("BF", z), lin("S", z)) - t)
     rd = (z > SILL_Z - t) & np.where(up, (y < lin("BR", z) + t) & (y > lin("D", z) - t),
                                      (y < lin("S", z) + t) & (y > lin("R1", z) - t) & ((z > ARCH[0] - t) | (y > ARCH[1] - t)))
-    side = np.abs(x) > 0.42
+    side = np.abs(x) > IN_DOOR["x"]
     left = x < 0
     return np.where(side & fd, np.where(left, 1, 2), np.where(side & rd, np.where(left, 3, 4), 0))
 
 
 def in_gate(p, t=0.0):
     x, y, z = p[:, 0], p[:, 1], p[:, 2]
-    return (y < -1.45 + t) & (z > 0.52 - t) & (np.abs(x) < np.where(z > 0.93, 0.62, GATE_X) + t)
+    g = IN_GATE
+    return (y < g["y"] + t) & (z > g["z"] - t) & (np.abs(x) < np.where(z > g["up"], g["x_up"], GATE_X) + t)
+
+
+def src_frame():
+    """Source OBJ as imported (-Z forward, Y up: front -X, left -Y; metres) -> pre-centre grid frame, SRC_C centred."""
+    return Matrix(((0, K, 0, K * -SRC_C[1]), (-K, 0, 0, K * SRC_C[0]), (0, 0, K, 0), (0, 0, 0, 1)))
 
 
 # ---------------------------------------------------------------- source
@@ -174,12 +125,12 @@ def load_source():
     (welded connected component within the object). Returns the object names (src index -> name)."""
     bpy.ops.wm.read_factory_settings(use_empty=True)
     bpy.ops.wm.obj_import(filepath=SRC, forward_axis="NEGATIVE_Z", up_axis="Y")
-    P = Matrix(((0, K, 0, K * -SRC_C[1]), (-K, 0, 0, K * SRC_C[0]), (0, 0, K, 0), (0, 0, 0, 1)))
+    P = src_frame()
     tires = []
     names, obs = [], []
     for o in sorted((o for o in bpy.data.objects if o.type == "MESH"), key=lambda o: o.name):
         me = o.data
-        if o.name.startswith("Object005"):         # tires: wheel centres and outer faces for the script
+        if o.name.startswith(TIRE_OBJ):            # tires: wheel centres and outer faces for the script
             co = np.array([(P @ o.matrix_world @ v.co)[:] for v in me.vertices])
             tires.append((co.min(0), co.max(0)))
         if o.name.startswith(DROP):
@@ -220,6 +171,41 @@ def load_source():
     car = bpy.context.view_layer.objects.active
     car.name = pv.NAME
     return car, names, wl, tire
+
+
+def stage_inspect():
+    """Every source object as the build sees it, to fill a car's config: name (the short name CUT / DOOR_OBJS /
+    GATE_OBJS use; DROP / DECIMATE / TIRE_OBJ match name prefixes), faces, triangles, materials, bbox in the
+    pre-centre grid frame (with this config's SRC_C). Also the source's bbox centre in metres (SRC_C). Table on stdout,
+    TMP/inspect.json."""
+    bpy.ops.wm.read_factory_settings(use_empty=True)
+    bpy.ops.wm.obj_import(filepath=SRC, forward_axis="NEGATIVE_Z", up_axis="Y")
+    P = np.array(src_frame())
+    rows, raw = [], []
+    for o in sorted((o for o in bpy.data.objects if o.type == "MESH"), key=lambda o: o.name):
+        me = o.data
+        co = np.empty(len(me.vertices) * 3)
+        me.vertices.foreach_get("co", co)
+        M = np.array(o.matrix_world)
+        w = co.reshape(-1, 3) @ M[:3, :3].T + M[:3, 3]           # as imported, metres
+        g = w @ P[:3, :3].T + P[:3, 3]
+        raw.append((w.min(0), w.max(0)))
+        mi = np.empty(len(me.polygons), np.int64)
+        me.polygons.foreach_get("material_index", mi)
+        mats = sorted({(me.materials[i].name if i < len(me.materials) and me.materials[i] else "-") for i in np.unique(mi)})
+        rows.append(dict(name=o.name.split("_Mesh")[0], faces=len(me.polygons), tris=sum(p.loop_total - 2 for p in me.polygons),
+                         materials=mats, min=np.round(g.min(0), 4).tolist(), max=np.round(g.max(0), 4).tolist()))
+    lo, hi = np.min([r[0] for r in raw], 0), np.max([r[1] for r in raw], 0)
+    src_c = np.round((lo[:2] + hi[:2]) / 2, 4).tolist()
+    print(f"{'object':<34}{'faces':>8}{'tris':>8}  {'min x y z':<26}{'max x y z':<26}materials")
+    for r in rows:
+        print(f"{r['name']:<34}{r['faces']:>8}{r['tris']:>8}  {' '.join('%.3f' % v for v in r['min']):<26}"
+              f"{' '.join('%.3f' % v for v in r['max']):<26}{', '.join(r['materials'])}")
+    total = dict(objects=len(rows), faces=sum(r["faces"] for r in rows), tris=sum(r["tris"] for r in rows),
+                 size_m=np.round(hi - lo, 4).tolist(), src_c=src_c)
+    print("INSPECT", SRC, json.dumps(total), "(SRC_C in config:", list(SRC_C), ")")
+    os.makedirs(TMP, exist_ok=True)
+    json.dump(dict(src=SRC, total=total, objects=rows), open(os.path.join(TMP, "inspect.json"), "w"), indent=1)
 
 
 def _label(o, src):
@@ -430,10 +416,10 @@ def badges(obs, names):
     bvh = tree()
     # T: read from ahead of the car (u = -x), its top toward the windshield, on the lid's slope; rays straight down
     # (along the lid normal, the stem tip's ray would pass the lid's front edge onto the light bar)
-    y, tw, th = T_BADGE
-    n = Vector((0, 0.34, 0.94)).normalized()
-    flat("Badge_T", [[[(u * tw, (v + 0.05) * th / 0.94) for u, v in t_logo()[0]]]],
-         ((0, y, 0.62), (-1, 0, 0), (0, -n.z, n.y), n), "badge_chrome", ray=(0, 0, -1))
+    y, tw, th, z0, nrm = T_BADGE
+    n = Vector(nrm).normalized()
+    flat("Badge_T", [[[(u * tw, (v + 0.05) * th / nrm[2]) for u, v in t_logo()[0]]]],
+         ((0, y, z0), (-1, 0, 0), (0, -n.z, n.y), n), "badge_chrome", ray=(0, 0, -1))
     # the blade lens: the source's blade faces back on a 1.5 cm strip (z 0.922-0.937; the underside and a sloped
     # housing below it), the real blade is ~4.5 cm with the letters inside. A plate over the strip across the
     # tailgate, upright, following the bar's curve in plan; it is the blade (smoked, glows as a tail light)
@@ -515,18 +501,19 @@ def classify(car, names, sizes):
     csize = np.array([sizes[(int(k // 100000), int(k % 100000))] for k in ukey])[inv]   # comp size before cuts
     cc = np.stack([np.bincount(inv, cen[:, i]) for i in range(3)], 1) / np.bincount(inv)[:, None]
     ccen = cc[inv]
-    paint = mat == "Material_#2125780493"
-    glass = np.isin(mat, GLASS_MATS) & (obj != "Plane.008")
+    paint = mat == PAINT_MAT
+    glass = np.isin(mat, GLASS_MATS) & ~np.isin(obj, GLASS_OPAQUE)
     part = np.zeros(n, np.int64)
     ax, ay, az = np.abs(ccen[:, 0]), ccen[:, 1], ccen[:, 2]
     left = ccen[:, 0] < 0
-    # body panels by component
-    fd = paint & (ax > 0.6) & (ay > -0.2) & (ay < 0.6) & (az < 0.7)
+    # body panels by component (PANELS)
+    pn = PANELS
+    fd = paint & (ax > pn["x"]) & (ay > pn["front"][0]) & (ay < pn["front"][1]) & (az < pn["z"])
     part[fd] = np.where(left, 1, 2)[fd]
-    rd = paint & (ax > 0.6) & (ay > -1.0) & (ay <= -0.2) & (az < 0.7)
+    rd = paint & (ax > pn["x"]) & (ay > pn["rear"][0]) & (ay <= pn["rear"][1]) & (az < pn["z"])
     part[rd] = np.where(left, 3, 4)[rd]
-    part[paint & (ax < 0.1) & (ay < -1.5) & (az > 0.5)] = 5
-    part[paint & (ax < 0.1) & (ay > 0.9) & (az > 0.6)] = 6
+    part[paint & (ax < 0.1) & (ay < pn["gate"][0]) & (az > pn["gate"][1])] = 5
+    part[paint & (ax < 0.1) & (ay > pn["lid"][0]) & (az > pn["lid"][1])] = 6
     # door hardware, frames and panes: whole components inside a door (2.5 cm slack), cut components face by face. A
     # strip that runs past its one door's edge (the belt mouldings end under the B-pillar and quarter trim) goes face
     # by face too: whole on the body it was a black bar across the far window, seen through the roof glass with the
@@ -545,21 +532,21 @@ def classify(car, names, sizes):
     part[sel] = in_door(cen[sel])
     # the mirror cap is body colour (official FRONT34; the source paints it black_refl), its base and glass stay;
     # set after the door split, which takes door hardware by its non-paint material
-    mirror = (obj == "Plane.046") & (part > 0)
+    mirror = (obj == MIRROR_CAP) & (part > 0)
     paint = paint | mirror
     gate = np.isin(obj, GATE_OBJS)
     for o, s, sy in GATE_COMPS:
         gate |= (obj == o) & (csize == s) & (np.sign(ay) == sy) & (ax < 0.1)
-    gsel = gate & ((obj == "Plane.062") | (obj == "Plane.014") | in_gate(cen))
+    gsel = gate & (np.isin(obj, [o for o, _, _ in GATE_COMPS]) | in_gate(cen))
     part[gsel | np.isin(obj, ("Badge_BLADE", "Badge_TESLA", "Badge_MODELY"))] = 5
     part[obj == "Badge_T"] = 6
     # lamps. Tail: the red light bar (a 1 cm strip on the spoiler's lower lip, about a pixel in game), the corner
-    # lamps, and the rear face of the smoked light-bar cover across the tailgate (Plane.034, black_base), which glows
-    # red at night like the real light blade (night-N showed one corner patch only)
-    head = mat == "front_white_light"
-    tail = np.isin(mat, ("back_red_Light", "red_plastic111")) & (cen[:, 2] > 0.75) & (cen[:, 1] < -1.4)
+    # lamps, and the rear face of the smoked light-bar cover across the tailgate (LAMPS blade), which glows red at
+    # night like the real light blade (night-N showed one corner patch only)
+    head = np.isin(mat, LAMPS["head"])
+    tail = np.isin(mat, LAMPS["tail"]) & (cen[:, 2] > LAMPS["tail_z"]) & (cen[:, 1] < LAMPS["tail_y"])
     fnorm = np.array([p.normal[:] for p in me.polygons])
-    blade = (obj == "Plane.034") & (fnorm[:, 1] < -0.5) | (obj == "Badge_BLADE")
+    blade = (obj == LAMPS["blade"]) & (fnorm[:, 1] < -0.5) | (obj == "Badge_BLADE")
     tail |= blade
     lamp = np.where(head, 1, np.where(tail, 2, 0))
     # zones
@@ -568,8 +555,9 @@ def classify(car, names, sizes):
     def put(m, l, r):
         zone[m & L] = ZN.index(l)
         zone[m & ~L] = ZN.index(r)
-    put(paint & (part == 0) & (cen[:, 1] > 0.75) & (cen[:, 2] < 0.95) & (np.abs(cen[:, 0]) > 0.4), "GuardLH", "GuardRH")
-    put(paint & (part == 0) & (cen[:, 1] < -1.0) & (cen[:, 2] < 1.13) & (np.abs(cen[:, 0]) > 0.45), "GuardLT", "GuardRT")
+    (gy, gz, gx), (ry, rz, rx) = GUARDS["front"], GUARDS["rear"]
+    put(paint & (part == 0) & (cen[:, 1] > gy) & (cen[:, 2] < gz) & (np.abs(cen[:, 0]) > gx), "GuardLH", "GuardRH")
+    put(paint & (part == 0) & (cen[:, 1] < ry) & (cen[:, 2] < rz) & (np.abs(cen[:, 0]) > rx), "GuardLT", "GuardRT")
     for k, (l, r) in {1: ("DoorLH", "DoorLH"), 2: ("DoorRH", "DoorRH"), 3: ("DoorLT", "DoorLT"),
                       4: ("DoorRT", "DoorRT")}.items():
         put(part == k, l, r)
@@ -582,7 +570,7 @@ def classify(car, names, sizes):
     put(tail & ~stop, "LightLT", "LightRT")
     put(stop, "StopL", "StopR")
     # glass zones: the mask zone and the UV1 pane code (GLASS_ZONES)
-    gzn = np.where(obj == "Plane.023", "LightBarL",
+    gzn = np.where(obj == ROOF_PANE, "LightBarL",
                    np.where((ax < 0.1) & (ay > 0), "WinT", np.where(ax < 0.1, "WinH",
                    np.where(np.isin(part, (1, 2)), np.where(L, "WinLH", "WinRH"), np.where(L, "WinLT", "WinRT")))))
     zone[glass] = [ZN.index(z) for z in gzn[glass]]
@@ -701,16 +689,23 @@ def bake(car, layers, ao=True):
 
 def paint_hsv(hsvs):
     """Splice the damage-tint HSV of each paint into Core.lua's colors table (MinidoracatTesla.Specs, one line per
-    paint in skin order; Create.Motor sets it with the skin)."""
+    paint in skin order; Create.Motor sets it with the skin). Only inside this car's Specs entry: another car's
+    colors may carry the same paint lines."""
     path = os.path.join(pv.MEDIA, "lua", "shared", "MinidoracatTesla", "Core.lua")
     text = open(path, encoding="utf-8").read()
+    key = '["Base.%s"] = {' % pv.NAME
+    start = text.find(key)
+    if start < 0:
+        raise SystemExit(f"Core.lua: no Specs entry {key}")
+    end = text.index("\n    },", start)               # the entry's closing brace
+    block = text[start:end]
     for p, code in pv.PAINTS:
         h, s, v = hsvs[p]
-        text, n = re.subn(r'\{ name = "%s", code = "%s", h = [0-9.]+, s = [0-9.]+, v = [0-9.]+ \}' % (p, code),
-                          f'{{ name = "{p}", code = "{code}", h = {h}, s = {s}, v = {v} }}', text)
+        block, n = re.subn(r'\{ name = "%s", code = "%s", h = [0-9.]+, s = [0-9.]+, v = [0-9.]+ \}' % (p, code),
+                           f'{{ name = "{p}", code = "{code}", h = {h}, s = {s}, v = {v} }}', block)
         if n != 1:
-            raise SystemExit(f"Core.lua: {n} colour lines for {p}")
-    open(path, "w", encoding="utf-8", newline="\n").write(text)
+            raise SystemExit(f"Core.lua {key}: {n} colour lines for {p}")
+    open(path, "w", encoding="utf-8", newline="\n").write(text[:start] + block + text[end:])
     print("LUA colors", hsvs)
 
 
@@ -804,7 +799,7 @@ def stage_build():
     me.uv_layers["UV1"].data.foreach_set("uv", u1.ravel())
     # vehicle script geometry block
     fc = pv.face_centres(car)
-    corner = (c["lamp"] == 2) & (c["part"] == 0) & (c["obj"] != "Plane.034") & (fc[:, 0] < 0)
+    corner = (c["lamp"] == 2) & (c["part"] == 0) & (c["obj"] != LAMPS["blade"]) & (fc[:, 0] < 0)
     sc_ = fc[corner]
     o = sc_[np.argsort(sc_[:, 0])[: max(1, len(sc_) // 5)]].mean(0)      # outboard end of the left corner lamp
     wl = [(sx, yc - ctr[1], zc, xo) for sx, yc, zc, xo in wheels]
@@ -1147,8 +1142,7 @@ def pieces(car, c, shift):
     bpy.ops.wm.read_factory_settings(use_empty=True)
     bpy.ops.import_scene.fbx(filepath=os.path.join(pv.VEH_DIR, pv.DOORS_FBX + ".fbx"), automatic_bone_orientation=False)
     got += sorted(info(o) for o in bpy.data.objects if o.type == "MESH")
-    want = {pv.NAME: {"WinT", "LightBarL", "WinLT", "WinRT"}, "DoorFrontLeft": {"WinLH"}, "DoorFrontRight": {"WinRH"},
-            "DoorRearLeft": {"WinLT"}, "DoorRearRight": {"WinRT"}, "TrunkDoor": {"WinH"}, "EngineDoor": set()}
+    want = {pv.NAME if k == "Body" else k: v for k, v in PANES.items()}
     for nm, t, vg, uv, cl, gz in got:
         print("CHECK FBX", nm, "tris", t, "groups", vg, "uv", uv, "glass", sorted(gz))
         if (uv[:2] != ["UV0", "UV1"] or (cl[1:] < cl[:-1]).any() or (vg != 1) != (nm == pv.NAME) or gz != want[nm]
@@ -1321,7 +1315,7 @@ def app_frame(cam):
 
 def stage_appcar(outdir=APP_DIR):
     for name, _ in pv.PAINTS:
-        stage_view(os.path.join(outdir, f"app_car_{name}.png"), ["S"], "shut", name, app=True)
+        stage_view(os.path.join(outdir, C["APP_CAR"].format(name)), ["S"], "shut", name, app=True)
 
 
 if __name__ == "__main__":
@@ -1334,3 +1328,5 @@ if __name__ == "__main__":
         stage_view(argv[1], argv[2].split(","), argv[3], *argv[4:])
     elif argv[0] == "appcar":
         stage_appcar(*argv[1:])
+    elif argv[0] == "inspect":
+        stage_inspect()
