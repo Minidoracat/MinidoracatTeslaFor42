@@ -67,6 +67,7 @@ function R.remember(v, create)
     local chg = md.chg
     local script = v:getScript()
     r.car = script and (script:getCarModelName() or script:getName()) or ""
+    r.script = v:getScriptName() -- full type (BaseVehicle.java:1621): R.mayTrack asks VehicleManager about this model only
     r.skin = v:getSkinIndex() -- the app draws the car in its paint (Core.lua colors[skin + 1]); older records lack it
     r.x, r.y, r.z = math.floor(v:getX()), math.floor(v:getY()), math.floor(v:getZ())
     local kwh, cap = part and T.Battery.kwh(part) or 0, part and T.Battery.capacity(part) or 1
@@ -140,13 +141,25 @@ function R.vmAllows(player, v, codes)
     end
     return false, VM_REASONS[why] and why or "NOT_OWNER"
 end
--- where the car is and its alerts: with VehicleManager the TRACK right, which needs the car itself. An unloaded car can't
--- be asked, so nothing is shown rather than the record (fail closed; a revoked share stays revoked).
-function R.mayTrack(player, v)
+-- where the car is and its alerts: with VehicleManager the TRACK right. A loaded car is asked through canUse; an unloaded
+-- one through VehicleManager's keyId check on its own records (canTrackKeyId: same rules, no ADMIN_BYPASS line, fine for
+-- the 2 s poll; denials still go into its per-minute DENY summary), so a revoked share stays revoked while the car is
+-- away. The record's script narrows it to this model: an Autotsar trailer that once carried the car keeps its keyId.
+-- An older VehicleManager without it: nothing is shown rather than the record (UNVERIFIED, fail closed). The client's
+-- VehicleManager list never counts here.
+function R.mayTrack(player, v, key)
     local api = MinidoracatVehicleManagerAPI
     if not (api and api.canUse) then return true end
-    if not v then return false, "UNVERIFIED" end
-    return R.vmAllows(player, v, TRACK)
+    if v then return R.vmAllows(player, v, TRACK) end
+    if type(api.canTrackKeyId) ~= "function" then return false, "UNVERIFIED" end
+    local r = R.record(key)
+    -- no r.script (records from before it, or no record yet: alerts need none): the model name from the record or the
+    -- Tesla keyId registry (KeyActions K.register, same format), as a script only when it is one (PhoneApp.lua App.paint)
+    local car = (r and r.car ~= "" and r.car) or store("keyIds")[tostring(key)]
+    local script = r and r.script or (car and T.Specs["Base." .. car] and "Base." .. car) or nil
+    local ok, why = api.canTrackKeyId(player, key, script)
+    if ok then return true end
+    return false, VM_REASONS[why] and why or "NOT_OWNER"
 end
 -- act -> the VehicleManager codes for the same thing in person. Sentry: T.legit (ParkModes.lua) counts an old phone
 -- key, so a car since claimed by someone else also needs PASSENGER here, like a remote lock.
@@ -233,7 +246,7 @@ local ACT = {
 -- what the app shows: the record (refreshed first over a live link) plus how the phone reaches the car now
 function R.state(player, key)
     local v = R.loadedCar(key)
-    local ok, why = R.mayTrack(player, v)
+    local ok, why = R.mayTrack(player, v, key)
     if not ok then return { key = key, deny = why } end
     local link = K.appReach(player, v)
     local r = link and R.remember(v, true) or R.record(key)
@@ -291,7 +304,7 @@ end
 T.ServerCommands.appAlerts = function(player, args)
     local key = holder(player, args)
     if not key then return end
-    local ok, why = R.mayTrack(player, R.loadedCar(key))
+    local ok, why = R.mayTrack(player, R.loadedCar(key), key)
     if not ok then return T.send(player, "appAlerts", { key = key, deny = why }) end -- the holder hears why
     T.send(player, "appAlerts", { key = key, list = store("alerts")[tostring(key)] or {} })
 end
