@@ -210,5 +210,21 @@
     "IGUI_MinidoracatTesla_App_Kw": "%1 kW",
     "IGUI_MinidoracatTesla_Deny_UNVERIFIED": "Can't check your vehicle-sharing rights while the car is out of the loaded area",
     "IGUI_MinidoracatTesla_Deny_NO_12V": "The car's 12 V battery is flat",
-    "IGUI_MinidoracatTesla_Deny_NOT_LOADED": "The car is out of the loaded area; get closer to use it"
+    "IGUI_MinidoracatTesla_Deny_NOT_LOADED": "The car is out of the loaded area; get closer to use it",
+    "IGUI_MinidoracatTesla_PhoneCars": "%1 Teslas",
+    "IGUI_MinidoracatTesla_PhoneAdded": "%1 added to the phone key (%2 cars)",
+    "IGUI_MinidoracatTesla_PhoneRemoved": "%1 removed from the phone",
+    "IGUI_MinidoracatTesla_App_Cars": "My Cars",
+    "IGUI_MinidoracatTesla_App_VmTag": "Vehicle Manager",
+    "IGUI_MinidoracatTesla_App_NotPaired": "This phone isn't added to this car yet",
+    "IGUI_MinidoracatTesla_App_JoinHint": "Add it first: sit in it with its key card, right-click the phone > Add This Car",
+    "IGUI_MinidoracatTesla_App_AddCarHint": "Add a car: sit in it, right-click the phone and choose \"Add This Car\".",
+    "IGUI_MinidoracatTesla_App_NavCar": "Navigate to Car",
+    "IGUI_MinidoracatTesla_App_NavSet": "MiniMap destination set to your %1",
+    "IGUI_MinidoracatTesla_App_NavPrompted": "Confirm on the MiniMap to replace your current trip",
+    "IGUI_MinidoracatTesla_App_NavNearby": "The car is right here",
+    "IGUI_MinidoracatTesla_App_NavStopFirst": "Stop the car first so the MiniMap can change its destination",
+    "IGUI_MinidoracatTesla_App_NavFailed": "The MiniMap can't set a destination right now",
+    "IGUI_MinidoracatTesla_Tip_AppNavCar": "Route the MiniMap to where the car was last seen",
+    "IGUI_MinidoracatTesla_Tip_AppCars": "Switch cars"
 }

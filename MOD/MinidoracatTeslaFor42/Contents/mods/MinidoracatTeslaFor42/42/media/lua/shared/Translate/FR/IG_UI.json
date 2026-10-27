@@ -210,5 +210,21 @@
     "IGUI_MinidoracatTesla_App_Kw": "%1 kW",
     "IGUI_MinidoracatTesla_Deny_UNVERIFIED": "Impossible de vérifier les droits sur le véhicule tant qu'il n'est pas chargé",
     "IGUI_MinidoracatTesla_Deny_NO_12V": "La batterie 12 V de la voiture est à plat",
-    "IGUI_MinidoracatTesla_Deny_NOT_LOADED": "La voiture est hors de la zone chargée ; rapproche-toi pour l'utiliser"
+    "IGUI_MinidoracatTesla_Deny_NOT_LOADED": "La voiture est hors de la zone chargée ; rapproche-toi pour l'utiliser",
+    "IGUI_MinidoracatTesla_PhoneCars": "%1 Tesla",
+    "IGUI_MinidoracatTesla_PhoneAdded": "%1 ajoutée à la clé sur téléphone (%2 voitures)",
+    "IGUI_MinidoracatTesla_PhoneRemoved": "%1 retirée du téléphone",
+    "IGUI_MinidoracatTesla_App_Cars": "Mes voitures",
+    "IGUI_MinidoracatTesla_App_VmTag": "Gestionnaire de véhicules",
+    "IGUI_MinidoracatTesla_App_NotPaired": "Ce téléphone n'est pas encore ajouté à cette voiture",
+    "IGUI_MinidoracatTesla_App_JoinHint": "Ajoutez-la : à bord avec sa carte-clé, clic droit sur le téléphone > « Ajouter »",
+    "IGUI_MinidoracatTesla_App_AddCarHint": "Ajouter une voiture : asseyez-vous dedans, clic droit sur le téléphone, « Ajouter cette voiture ».",
+    "IGUI_MinidoracatTesla_App_NavCar": "Naviguer vers la voiture",
+    "IGUI_MinidoracatTesla_App_NavSet": "Destination de la mini-carte : votre %1",
+    "IGUI_MinidoracatTesla_App_NavPrompted": "Confirmez sur la mini-carte pour remplacer le trajet en cours",
+    "IGUI_MinidoracatTesla_App_NavNearby": "La voiture est juste là",
+    "IGUI_MinidoracatTesla_App_NavStopFirst": "Arrêtez la voiture d'abord pour que la mini-carte change de destination",
+    "IGUI_MinidoracatTesla_App_NavFailed": "La mini-carte ne peut pas définir de destination pour l'instant",
+    "IGUI_MinidoracatTesla_Tip_AppNavCar": "Itinéraire de la mini-carte vers la dernière position de la voiture",
+    "IGUI_MinidoracatTesla_Tip_AppCars": "Changer de voiture"
 }

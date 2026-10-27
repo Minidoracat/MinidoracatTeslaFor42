@@ -25,6 +25,8 @@ local function item(ft, keyId)
     function it:getDisplayName() return self.ft end -- what a dedicated server returns (tesla-keys-1026e)
     function it:setName(n) self.name = n end
     function it:getContainer() return self.cont end
+    function it:hasModData() return self.md ~= nil end
+    function it:getModData() self.md = self.md or {}; return self.md end
     return it
 end
 local function typeIs(it, t) return it.ft == t or it:getType() == t end
@@ -453,6 +455,145 @@ check(start(cardLoose) == true and K.bagPhoneStarts(cardLoose, v) == false, "sta
 v.hotwired = true
 check(K.bagPhoneStarts(owner, v) == false, "start: hotwired -> vanilla path")
 v.hotwired, owner.vehicle, walletOnly.vehicle, stranger.vehicle = nil, nil, nil, nil
+
+-- ------------------------------------------------------------------ one phone key, several cars (app v2)
+H.section("one phone key, several cars")
+local carA, carB = tesla({ pct = 70 }), tesla({ pct = 60 })
+carB.x, carB.y = carA.x + 40, carA.y
+F.fire("OnSpawnVehicleEnd", carA)
+F.fire("OnSpawnVehicleEnd", carB)
+local phones = T.Store.get("phones")
+local mInv = container(key(K.CARD, carA.keyId), key(K.CARD, carB.keyId), item(K.PHONE))
+local multi = player("multi", mInv, carA.x, carA.y)
+local function phoneOf(inv) return inv:getFirstTypeEvalArgRecurse(K.PHONE_KEY, function() return true end) end
+multi.vehicle = carA
+cmds.phonePair(multi, { vid = carA:getId(), id = mInv.items[3]:getID() })
+local ph = phoneOf(mInv)
+local r1 = phones[tostring(ph.id)]
+check(ph and ph.keyId == carA.keyId and r1 and #r1 == 1 and r1[1] == carA.keyId and ph.md[K.PAIRED][1] == carA.keyId,
+    "first pairing: keyId = car A, recorded { A } (every phone key: no two share an item id), modData mirror { A }")
+-- an unrelated plain phone on the same item id (ids are random) pairs: that phone key's record stays
+local stray = item(K.PHONE)
+stray.id = ph.id
+local strayInv = container(key(K.CARD, carB.keyId), stray)
+local strayP = player("stray", strayInv, carB.x, carB.y)
+strayP.vehicle = carB
+cmds.phonePair(strayP, { vid = carB:getId(), id = stray.id })
+local strayKey = phoneOf(strayInv)
+check(strayKey and strayKey.id ~= ph.id and phones[tostring(ph.id)] == r1 and not K.pairedWith(ph, carB.keyId),
+    "a plain phone sharing the item id pairs elsewhere: a new id, the first phone's record untouched")
+phones[tostring(strayKey.id)] = nil
+check(ph.name == "ItemName_" .. K.PHONE_KEY .. " - IGUI_VehicleNameMinidoracatTesla_ModelY", "one car: named like before (item - car)")
+multi.vehicle = carB
+check(K.canPair(multi, carB, ph) == true, "a phone key for A, seated in B with B's card: may add B")
+local oldId = ph.id
+F.sent = {}
+cmds.phonePair(multi, { vid = carB:getId(), id = ph.id })
+ph = phoneOf(mInv)
+local rec = phones[tostring(ph.id)]
+check(ph.keyId == carB.keyId and rec and rec[1] == carA.keyId and rec[2] == carB.keyId and phones[tostring(oldId)] == nil,
+    "add B: the item's keyId = B (paired last), the server record { A, B } follows the new item id")
+check(ph.name == "ItemName_" .. K.PHONE_KEY .. " - IGUI_MinidoracatTesla_PhoneCars", "two cars: 'Phone Key - N Teslas'")
+check(F.lastSent("phonePaired").args.n == 2, "client told: now 2 cars")
+cmds.phonePair(multi, { vid = carB:getId(), id = ph.id })
+check(lastDeny() == "ALREADY_PAIRED", "B again -> ALREADY_PAIRED")
+multi.vehicle = carA
+check(select(2, K.canPair(multi, carA, ph)) == "ALREADY_PAIRED", "A (paired first, not the item's keyId) -> ALREADY_PAIRED too")
+-- car A, the one vanilla no longer knows (the item carries B's keyId): handle, start, walk-away lock, T.authorized
+mInv:Remove(mInv.items[1]); mInv:Remove(mInv.items[1]) -- the cards go: only the phone key counts from here
+multi.vehicle = nil
+multi.x = carA.x - 1
+check(mInv:haveThisKeyId(carA.keyId) == nil and K.phoneKey(multi, carA) == ph and K.phoneKey(multi, carB) == ph,
+    "loose phone key: vanilla lookup misses A, Keys.phoneKey finds it for A and B")
+carA.doors[1].d.locked = true
+check(K.phoneUnlock(carA, carA.doors[1], multi) and not carA.doors[1].d.locked, "handle on A with the loose two-car phone: unlocked")
+carB.doors[1].d.locked = true
+check(not K.phoneUnlock(carB, carB.doors[1], multi) and carB.doors[1].d.locked,
+    "handle on B: vanilla's own (the item's keyId is B), Tesla's does not double up")
+carB.doors[1].d.locked = false
+local startsA = {}
+function carA:tryStartEngine(h) startsA[#startsA + 1] = h end
+function carA:isDriver(p) return p.vehicle == self end
+function carA:isHotwired() return false end
+multi.vehicle = carA
+ISStartVehicleEngine.complete({ character = multi })
+check(startsA[1] == true, "start A with the loose phone key carrying B's keyId: tryStartEngine(true)")
+multi.vehicle = nil
+multi.x = carA.x - K.LOCK_DIST
+check(K.canAutoLock(multi, carA) == true, "walk away from A: auto-lock")
+check(T.authorized(multi, carA, "PASSENGER") == true and T.legit(multi, carA) == true, "A: authorized and legit (sentry)")
+-- a phone paired with A only does nothing at B
+local onlyA = player("onlyA", container(key(K.PHONE_KEY, carA.keyId)), carB.x - 1, carB.y)
+carB.doors[1].d.locked = true
+check(K.phoneKey(onlyA, carB) == nil and not K.phoneUnlock(carB, carB.doors[1], onlyA) and carB.doors[1].d.locked,
+    "a phone key for A only: B's handle stays locked")
+function carB:tryStartEngine(h) self.startArg = h end
+function carB:isDriver(p) return p.vehicle == self end
+function carB:isHotwired() return false end
+onlyA.vehicle = carB
+ISStartVehicleEngine.complete({ character = onlyA })
+check(carB.startArg == false and not K.bagPhoneStarts(onlyA, carB), "a phone key for A only: B does not start")
+onlyA.vehicle, onlyA.x = nil, carB.x - K.LOCK_DIST
+check(K.canAutoLock(onlyA, carB) == false and T.authorized(onlyA, carB, "PASSENGER") == false and not T.legit(onlyA, carB),
+    "a phone key for A only: no walk-away lock, not authorized, not legit at B")
+-- a client cannot pair itself by writing the modData mirror (SyncItemModDataPacket): the server reads its own record
+local forged = onlyA.inv.items[1]
+forged:getModData()[K.PAIRED] = { carB.keyId, carA.keyId } -- (the item's keyId last, as a real mirror)
+check(not K.pairedWith(forged, carB.keyId) and K.phoneKey(onlyA, carB) == nil, "forged modData list: the server still says no for B")
+local cliSide, srvSide = isClient, isServer
+isClient, isServer = function() return true end, function() return false end
+check(K.pairedWith(forged, carB.keyId) == true, "(an MP client reads the mirror: menus only, the server checks again)")
+isClient, isServer = cliSide, srvSide
+-- item ids are random, not unique (InventoryItemFactory.java:139): another phone key on a recorded id inherits nothing
+local twin = key(K.PHONE_KEY, carA.keyId)
+twin.id = ph.id -- ph: { A, B } on the server, keyId B
+check(phones[tostring(ph.id)] ~= nil and not K.pairedWith(twin, carB.keyId) and K.pairedWith(ph, carA.keyId),
+    "a phone key on the same item id with another keyId: not paired with B (the record is only its own phone's)")
+-- handed over (trade, dropped and picked up): the same item, the same id, so its cars go with it, like a vanilla key
+local taker = player("taker", container(), carA.x - 1, carA.y)
+mInv:Remove(ph); taker.inv:AddItem(ph)
+check(K.phoneKey(taker, carA) == ph and K.phoneKey(taker, carB) == ph and K.phoneKey(multi, carA) == nil
+    and K.phoneKey(multi, carB) == nil, "the phone key handed over: the new holder opens A and B, the old one neither")
+taker.inv:Remove(ph); mInv:AddItem(ph)
+-- remove from phone
+F.sent = {}
+multi.vehicle = carA
+cmds.phoneUnpair(multi, { id = ph.id, key = carB.keyId })
+check(lastDeny() == "NOT_OUTSIDE" and phoneOf(mInv) == ph, "remove from phone while in a car: NOT_OUTSIDE (no swap near the ignition)")
+multi.vehicle = nil
+cmds.phoneUnpair(onlyA, { id = ph.id, key = carA.keyId })
+check(lastDeny() == "NO_PHONE_KEY" and phoneOf(mInv) == ph, "unpair someone else's phone: NO_PHONE_KEY, unchanged")
+cmds.phoneUnpair(multi, { id = ph.id, key = carB.keyId })
+ph = phoneOf(mInv)
+local r2 = phones[tostring(ph.id)]
+check(ph.keyId == carA.keyId and r2 and #r2 == 1 and ph.name:find("VehicleName", 1, true)
+    and F.lastSent("phoneUnpaired").args.n == 1, "remove B (the item's keyId): keyId back to A, record { A }, car name again")
+check(K.phoneKey(multi, carB) == nil, "removed: B no longer opens")
+multi.vehicle = carB
+cmds.phonePair(multi, { vid = carB:getId(), id = ph.id })
+check(lastDeny() == "NO_KEY_CARD" and phoneOf(mInv).keyId == carA.keyId, "adding B again needs B's card: NO_KEY_CARD, still one car")
+multi.vehicle = nil -- (removing is done outside a car)
+cmds.phoneUnpair(multi, { id = ph.id, key = carA.keyId })
+local plainPhone = mInv.items[#mInv.items]
+check(phoneOf(mInv) == nil and plainPhone.ft == K.PHONE and plainPhone.keyId == -1 and not plainPhone.md,
+    "remove the last car: a plain phone again (no keyId, no mirror)")
+-- removing a car that is not the item's keyId leaves the keyId alone
+mInv:AddItem(key(K.CARD, carA.keyId)); mInv:AddItem(key(K.CARD, carB.keyId))
+multi.vehicle = carA
+cmds.phonePair(multi, { vid = carA:getId(), id = plainPhone.id })
+multi.vehicle = carB
+local planted, plantedId = { 4242, 4343 }, tostring(nextItem) -- another phone's record already on the next item id
+phones[plantedId] = planted
+cmds.phonePair(multi, { vid = carB:getId(), id = phoneOf(mInv).id })
+check(tostring(phoneOf(mInv).id) ~= plantedId and phones[plantedId] == planted and #K.pairedIds(phoneOf(mInv)) == 2,
+    "pairing never takes an item id another phone's record has (new instance), that record untouched")
+phones[plantedId] = nil
+multi.vehicle = nil
+cmds.phoneUnpair(multi, { id = phoneOf(mInv).id, key = carA.keyId })
+ph = phoneOf(mInv)
+check(ph.keyId == carB.keyId and not K.pairedWith(ph, carA.keyId) and #K.pairedIds(ph) == 1,
+    "remove A (paired first): keyId stays B, one car left")
+multi.vehicle = nil
 
 -- ------------------------------------------------------------------ phone loot
 ProceduralDistributions = { list = { ElectronicStorePhones = { items = { "CordlessPhone", 50 } } } }

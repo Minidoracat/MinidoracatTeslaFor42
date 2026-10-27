@@ -10,5 +10,7 @@
     "ContextMenu_MinidoracatTesla_TapLock": "キーカードをタッチ：施錠",
     "ContextMenu_MinidoracatTesla_PairPhone": "電話キーとして設定",
     "ContextMenu_MinidoracatTesla_ChargeItem": "車のコンセントで充電",
-    "ContextMenu_MinidoracatTesla_OpenApp": "Tesla アプリを開く"
+    "ContextMenu_MinidoracatTesla_OpenApp": "Tesla アプリを開く",
+    "ContextMenu_MinidoracatTesla_AddCar": "この車を追加（%1 台登録済み）",
+    "ContextMenu_MinidoracatTesla_Unpair": "電話から削除"
 }

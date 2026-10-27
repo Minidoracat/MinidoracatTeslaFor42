@@ -30,13 +30,47 @@ K.BT_RANGE = 30
 
 local function sameKey(item, keyId) return item:getKeyId() == keyId end
 
+-- One phone key, several cars (user 2026-10-27, decisions.md "手機 App 第二版"). The item's vanilla keyId is the car
+-- paired last, so vanilla unlock / start / ignition know that one. The others live in a list, in pairing order (the
+-- last entry = the item's keyId), read by everything of Tesla's own (this file, T.authorized, T.legit, the app).
+-- Item modData is no proof: any client can overwrite a server item's modData (SyncItemModDataPacket.parse loads the
+-- client's table straight into it; SyncItemFieldsPacket.processServer wipes and copies it). So the server and SP read
+-- the server-only record T.Store "phones" (item id -> keyIds, every phone key paired since app v2; KeyActions.lua);
+-- an MP client reads the modData mirror, for menus and the app only. The item's keyId itself is not client-writable.
+K.PAIRED, K.PAIRED_CARS = "teslaKeyIds", "teslaCars" -- modData mirror: keyIds, and their car models (menu labels)
+local function extraIds(item)
+    local ids
+    if not isClient() then -- server / SP: the server-only record, never the client-writable mirror
+        ids = T.Store and T.Store.get("phones")[tostring(item:getID())]
+    else ids = item:hasModData() and item:getModData()[K.PAIRED] or nil end
+    -- only this phone's own list: item ids are random, not unique (InventoryItemFactory.java:139), and the last car
+    -- paired is always the item's keyId (KeyActions.lua replace); another item on the same id never inherits it
+    if type(ids) ~= "table" or ids[#ids] ~= item:getKeyId() then return nil end
+    return ids
+end
+function K.pairedWith(item, keyId)
+    if item:getKeyId() == keyId then return true end
+    local ids = extraIds(item)
+    if type(ids) ~= "table" then return false end
+    for i = 1, #ids do if ids[i] == keyId then return true end end
+    return false
+end
+-- every car this phone key opens, in pairing order (a new table: menus and pairing only, never per frame)
+function K.pairedIds(item)
+    local out, ids = {}, extraIds(item)
+    if type(ids) == "table" then for i = 1, #ids do out[i] = ids[i] end end
+    if #out == 0 and item:getKeyId() ~= -1 then out[1] = item:getKeyId() end
+    return out
+end
+
 -- This car's card / phone key anywhere on the player: wallet, keyring, bags (ItemContainer.java:1576).
 function K.card(player, vehicle)
     return player:getInventory():getFirstTypeEvalArgRecurse(K.CARD, sameKey, vehicle:getKeyId())
 end
--- the phone key for car `keyId` anywhere on the player (the app names its car by keyId: server/MinidoracatTesla/Remote.lua)
+-- the phone key for car `keyId` anywhere on the player, paired first or last (the app names its car by keyId:
+-- server/MinidoracatTesla/Remote.lua)
 function K.phoneKeyFor(player, keyId)
-    return player:getInventory():getFirstTypeEvalArgRecurse(K.PHONE_KEY, sameKey, keyId)
+    return player:getInventory():getFirstTypeEvalArgRecurse(K.PHONE_KEY, K.pairedWith, keyId)
 end
 function K.phoneKey(player, vehicle) return K.phoneKeyFor(player, vehicle:getKeyId()) end
 
@@ -88,13 +122,14 @@ function K.canTap(player, vehicle)
     return true
 end
 
--- Make a phone this car's phone key: seated in the car with its card handy (on you or on the console reader).
+-- Make a phone this car's phone key, or add this car to a phone key (K.pairedWith): seated in the car with its card
+-- handy (on you or on the console reader).
 function K.canPair(player, vehicle, phone)
     local ft = phone and phone:getFullType()
     if ft ~= K.PHONE and ft ~= K.PHONE_KEY then return false, "NO_PHONE" end
     if not vehicle or not T.isTesla(vehicle) or player:getVehicle() ~= vehicle then return false, "NOT_INSIDE" end
     if not K.card(player, vehicle) and not cardInIgnition(vehicle) then return false, "NO_KEY_CARD" end
-    if ft == K.PHONE_KEY and phone:getKeyId() == vehicle:getKeyId() then return false, "ALREADY_PAIRED" end
+    if ft == K.PHONE_KEY and K.pairedWith(phone, vehicle:getKeyId()) then return false, "ALREADY_PAIRED" end
     return true
 end
 
@@ -124,8 +159,9 @@ function K.canAutoLock(player, vehicle)
     return true
 end
 
--- Phone key in a bag or belt bag: pulling a locked door's handle unlocks it, as the real car does with the phone in a
--- pocket or bag. Vanilla canUnlockDoor only sees loose keys and keyrings (BaseVehicle.java:1274-1301 ->
+-- Phone key in a bag or belt bag, or one whose item keyId is another car (a phone paired with several, K.pairedWith):
+-- pulling a locked door's handle unlocks it, as the real car does with the phone in a pocket or bag. Vanilla
+-- canUnlockDoor only sees loose keys and keyrings with this keyId (BaseVehicle.java:1274-1301 ->
 -- ItemContainer.java:3242-3256), so the vanilla unlock action (queued by ISVehicleMenu.onOpenDoor / onEnter) would fail.
 -- Runs right before that action toggles the lock: in start() in SP (ISUnlockVehicleDoor.lua:22-36), in complete() on
 -- the server (:55-76); never on an MP client. The key card keeps vanilla rules (loose: auto; in the wallet: tap the reader).
@@ -190,7 +226,8 @@ function ISOpenVehicleDoor:complete(...)
     return openComplete(self, ...)
 end
 
--- Phone key in a bag also starts the car (the real one drives with the phone in a pocket or bag). Vanilla complete()
+-- Phone key in a bag, or paired with this car but carrying another car's keyId (K.pairedWith), also starts the car
+-- (the real one drives with the phone in a pocket or bag). Vanilla complete()
 -- passes haveKey from haveThisKeyId only (ISStartVehicleEngine.lua:29); here tryStartEngine(true) instead. complete()
 -- runs on the server in MP, locally in SP. No key goes into the ignition: the Starting state's setKeysInIgnition looks
 -- with haveThisKeyId too (BaseVehicle.java:7484,7503 -> :8647-8675), finds nothing and sends no putKeyInIgnition, so

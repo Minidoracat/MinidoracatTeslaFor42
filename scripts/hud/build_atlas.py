@@ -10,6 +10,7 @@ Outputs (overwritten):
   media/textures/MinidoracatTesla/HUD/atlas1x.png, atlas2x.png
   media/textures/MinidoracatTesla/HUD/radial_camp.png, radial_camp_off.png, radial_charge.png
   media/textures/MinidoracatTesla/HUD/app_arrow1x.png, app_arrow2x.png (phone app location page arrow, drawn rotated)
+  media/textures/MinidoracatTesla/HUD/map_car.png, map_round.png (MiniMap car marker and its disc)
   media/lua/client/MinidoracatTesla/HUDAtlas.lua
 
 Digits are rendered from Inter (SIL OFL 1.1, scripts/hud/fonts/OFL.txt). Font files never
@@ -272,6 +273,10 @@ def ic_chev(c):  # list row ">"
     c.stroke([("M", 6, 3), ("L", 11, 8), ("L", 6, 13)], w=1.4)
 
 
+def ic_chevdown(c):  # app home: the car name's "v" (opens the car list)
+    c.stroke([("M", 3.5, 6), ("L", 8, 10.5), ("L", 12.5, 6)], w=1.6)
+
+
 def ic_back(c):  # sub page "<"
     c.stroke([("M", 10.5, 3), ("L", 5.5, 8), ("L", 10.5, 13)], w=1.6)
 
@@ -279,6 +284,15 @@ def ic_back(c):  # sub page "<"
 def ic_close(c):
     c.stroke([("M", 3.5, 3.5), ("L", 12.5, 12.5)], w=1.4)
     c.stroke([("M", 12.5, 3.5), ("L", 3.5, 12.5)], w=1.4)
+
+
+def map_icons():  # MiniMap marker provider (MiniMapBridge.lua): whole textures, white, tinted when drawn
+    out = {}
+    for key, fn in (("map_car", ic_carfront), ("map_round", ic_round)):
+        c = Canvas(32, 32, 16)
+        fn(c)
+        out[key] = c.out()
+    return out
 
 
 def app_arrow(k):  # 48 px at 1x, pointing up (the mock's "M8 1.5L13 14L8 11L3 14Z"), white: tinted when drawn
@@ -395,7 +409,7 @@ def build_sprites(k):
         "heater": ic_heater, "radio": ic_radio, "warn": ic_warn, "bolt": ic_bolt, "check": ic_check,
         "ring": ic_ring, "dot": ic_dot, "plug": ic_plug, "power": ic_power,
         "horn": ic_horn, "frunk": ic_frunk, "trunk": ic_trunk, "lockfill": ic_lockfill, "carfront": ic_carfront,
-        "nav": ic_nav, "shield": ic_shield, "chev": ic_chev, "back": ic_back, "close": ic_close,
+        "nav": ic_nav, "shield": ic_shield, "chev": ic_chev, "chevdown": ic_chevdown, "back": ic_back, "close": ic_close,
     }
     for key, fn in icons16.items():
         c = Canvas(18 * k, 18 * k, 16)
@@ -489,6 +503,8 @@ def main():
         print(f"atlas{k}x: {atlas.size[0]}x{atlas.size[1]}, {len(sp)} sprites")
     lua.append("}")
     for key, im in radial_icons().items():
+        im.save(os.path.join(TEX_DIR, key + ".png"), optimize=True)
+    for key, im in map_icons().items():
         im.save(os.path.join(TEX_DIR, key + ".png"), optimize=True)
     for k in (1, 2):
         app_arrow(k).save(os.path.join(TEX_DIR, f"app_arrow{k}x.png"), optimize=True)

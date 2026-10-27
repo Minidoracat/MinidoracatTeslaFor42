@@ -10,5 +10,7 @@
     "ContextMenu_MinidoracatTesla_TapLock": "키 카드 태그: 잠금",
     "ContextMenu_MinidoracatTesla_PairPhone": "핸드폰 키로 설정",
     "ContextMenu_MinidoracatTesla_ChargeItem": "차량 콘센트로 충전",
-    "ContextMenu_MinidoracatTesla_OpenApp": "Tesla 앱 열기"
+    "ContextMenu_MinidoracatTesla_OpenApp": "Tesla 앱 열기",
+    "ContextMenu_MinidoracatTesla_AddCar": "이 차 추가 (%1대 등록됨)",
+    "ContextMenu_MinidoracatTesla_Unpair": "핸드폰에서 제거"
 }

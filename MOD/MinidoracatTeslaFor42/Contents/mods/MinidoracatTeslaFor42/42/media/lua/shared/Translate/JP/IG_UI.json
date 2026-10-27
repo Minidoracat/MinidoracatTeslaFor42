@@ -210,5 +210,21 @@
     "IGUI_MinidoracatTesla_App_Kw": "%1 kW",
     "IGUI_MinidoracatTesla_Deny_UNVERIFIED": "車が読み込まれていないため、車両の権限を確認できません",
     "IGUI_MinidoracatTesla_Deny_NO_12V": "車の12Vバッテリーが上がっています",
-    "IGUI_MinidoracatTesla_Deny_NOT_LOADED": "車が読み込まれた範囲の外にあります。近づいてから操作してください"
+    "IGUI_MinidoracatTesla_Deny_NOT_LOADED": "車が読み込まれた範囲の外にあります。近づいてから操作してください",
+    "IGUI_MinidoracatTesla_PhoneCars": "Tesla %1 台",
+    "IGUI_MinidoracatTesla_PhoneAdded": "%1 を電話キーに追加しました（全 %2 台）",
+    "IGUI_MinidoracatTesla_PhoneRemoved": "%1 を電話から削除しました",
+    "IGUI_MinidoracatTesla_App_Cars": "マイカー",
+    "IGUI_MinidoracatTesla_App_VmTag": "車両管理",
+    "IGUI_MinidoracatTesla_App_NotPaired": "この電話はまだこの車に追加されていません",
+    "IGUI_MinidoracatTesla_App_JoinHint": "先に追加：キーカードを持って乗り、電話を右クリック >「この車を追加」",
+    "IGUI_MinidoracatTesla_App_AddCarHint": "車を追加：その車に座り、電話を右クリックして「この車を追加」を選ぶ",
+    "IGUI_MinidoracatTesla_App_NavCar": "車までナビ",
+    "IGUI_MinidoracatTesla_App_NavSet": "ミニマップの目的地をあなたの%1に設定しました",
+    "IGUI_MinidoracatTesla_App_NavPrompted": "今の行程を置き換えるか、ミニマップで確認してください",
+    "IGUI_MinidoracatTesla_App_NavNearby": "車はすぐそばです",
+    "IGUI_MinidoracatTesla_App_NavStopFirst": "先に停車してください（ミニマップが目的地を変えられません）",
+    "IGUI_MinidoracatTesla_App_NavFailed": "ミニマップは今、目的地を設定できません",
+    "IGUI_MinidoracatTesla_Tip_AppNavCar": "ミニマップで車の最終位置までナビします",
+    "IGUI_MinidoracatTesla_Tip_AppCars": "車を切り替え"
 }

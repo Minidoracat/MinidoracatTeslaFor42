@@ -10,5 +10,7 @@
     "ContextMenu_MinidoracatTesla_TapLock": "Schlüsselkarte auflegen: Verriegeln",
     "ContextMenu_MinidoracatTesla_PairPhone": "Als Telefonschlüssel einrichten",
     "ContextMenu_MinidoracatTesla_ChargeItem": "An der Fahrzeugsteckdose laden",
-    "ContextMenu_MinidoracatTesla_OpenApp": "Tesla-App öffnen"
+    "ContextMenu_MinidoracatTesla_OpenApp": "Tesla-App öffnen",
+    "ContextMenu_MinidoracatTesla_AddCar": "Dieses Auto hinzufügen (%1 gekoppelt)",
+    "ContextMenu_MinidoracatTesla_Unpair": "Vom Telefon entfernen"
 }

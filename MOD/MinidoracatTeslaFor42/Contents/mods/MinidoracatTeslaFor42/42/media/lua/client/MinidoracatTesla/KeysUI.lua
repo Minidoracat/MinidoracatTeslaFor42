@@ -1,6 +1,7 @@
 -- Key card and phone key, client side (rules: shared/MinidoracatTesla/Keys.lua; writes: server KeyActions.lua).
 --   * Right-click a Tesla outside with its card on you: "Tap key card: unlock/lock" (walk to the driver door, tap).
---   * Right-click a phone while seated with the card: "Set as phone key".
+--   * Right-click a phone while seated with the card: "Set as phone key" (a phone key in another Tesla: "Add this
+--     car"); "Remove from phone >" lists its cars.
 --   * Getting a Tesla CarKey (transfer, grab, getting out, login) asks the server to swap it for a key card.
 --   * Getting out with a phone key starts a 2 Hz distance check that ends once the car locks or you get back in;
 --     players without one never run it. Pulling a locked door's handle with the key on you is vanilla already
@@ -190,24 +191,53 @@ function UI.fillMenu(playerNum, context, worldobjects, test)
 end
 Events.OnFillWorldObjectContextMenu.Add(UI.fillMenu)
 
--- ------------------------------------------------------------------ phone pairing
+-- ------------------------------------------------------------------ phone pairing (one phone key, several cars)
 local function onPair(player, vehicle, phone)
     T.request(player, "phonePair", { vid = vehicle:getId(), id = phone:getID() })
 end
 
+-- first pairing: "Set as phone key"; a phone key seated in a Tesla it does not open yet: "Add this car (N paired)"
 function UI.phoneOption(player, context, phone)
     local v = player:getVehicle()
-    local opt = context:addOption(getText("ContextMenu_MinidoracatTesla_PairPhone"), player, onPair, v, phone)
+    local label = getText("ContextMenu_MinidoracatTesla_PairPhone")
+    if phone:getFullType() == K.PHONE_KEY and v and T.isTesla(v) and not K.pairedWith(phone, v:getKeyId()) then
+        label = getText("ContextMenu_MinidoracatTesla_AddCar", tostring(#K.pairedIds(phone)))
+    end
+    local opt = context:addOption(label, player, onPair, v, phone)
     local ok, why = K.canPair(player, v, phone)
     tip(opt, ok and getText("Tooltip_MinidoracatTesla_PairPhone") or denyText(why), not ok)
     return opt
+end
+
+local function onUnpair(player, phone, keyId)
+    T.request(player, "phoneUnpair", { id = phone:getID(), key = keyId })
+end
+-- "Remove from phone >": one entry per car, in pairing order (the car names come from the item's mirror; the paint
+-- from the app's last view of it, PhoneApp.carLabel). Greyed in a car: the server refuses there (KeyActions phoneUnpair)
+function UI.unpairOption(player, context, phone)
+    local ids = K.pairedIds(phone)
+    local cars = phone:getModData()[K.PAIRED_CARS]
+    local opt = context:addOption(getText("ContextMenu_MinidoracatTesla_Unpair"))
+    if player:getVehicle() then
+        tip(opt, denyText("NOT_OUTSIDE"), true)
+        return opt
+    end
+    local sub = ISContextMenu:getNew(context)
+    context:addSubMenu(opt, sub)
+    local App = T.PhoneApp
+    for i, keyId in ipairs(ids) do
+        local car = type(cars) == "table" and cars[i] or nil
+        local label = App and App.carLabel(keyId, car) or getText("IGUI_VehicleName" .. tostring(car))
+        sub:addOption(label, player, onUnpair, phone, keyId)
+    end
+    return opt, sub
 end
 
 -- "Open Tesla App" right after "Set up as phone key" (plan-phone-app-1027): a paired phone key opens the app on its
 -- car (client/MinidoracatTesla/PhoneApp.lua); an unpaired phone shows it greyed with how to pair.
 local function onApp(playerNum, phone)
     local App = T.PhoneApp
-    if App then App.open(playerNum, phone:getKeyId()) end
+    if App then App.open(playerNum, { keyId = phone:getKeyId() }) end
 end
 function UI.appOption(playerNum, context, phone)
     local opt = context:addOption(getText("ContextMenu_MinidoracatTesla_OpenApp"), playerNum, onApp, phone)
@@ -221,8 +251,10 @@ Events.OnFillInventoryObjectContextMenu.Add(function(playerNum, context, items)
         if type(entry) == "table" then item = entry.items and entry.items[1] end
         local ft = item and item:getFullType()
         if ft == K.PHONE or ft == K.PHONE_KEY then
-            UI.phoneOption(getSpecificPlayer(playerNum), context, item)
+            local player = getSpecificPlayer(playerNum)
+            UI.phoneOption(player, context, item)
             UI.appOption(playerNum, context, item)
+            if ft == K.PHONE_KEY then UI.unpairOption(player, context, item) end
             return
         end
     end
@@ -231,12 +263,19 @@ end)
 -- ------------------------------------------------------------------ server -> client
 local function good(key, args)
     local p = getSpecificPlayer(0)
-    local text = getText(key, getText("IGUI_VehicleName" .. tostring(args.car)))
+    local text = getText(key, getText("IGUI_VehicleName" .. tostring(args.car)), tostring(args.n))
     T.log("halo " .. key .. " vid=" .. tostring(args.vid))
     if p then HaloTextHelper.addGoodText(p, text) end
 end
 T.ClientCommands.autoLocked = function(args) good("IGUI_MinidoracatTesla_AutoLocked", args) end
-T.ClientCommands.phonePaired = function(args) good("IGUI_MinidoracatTesla_PhonePaired", args) end
+T.ClientCommands.phonePaired = function(args)
+    good((args.n or 1) > 1 and "IGUI_MinidoracatTesla_PhoneAdded" or "IGUI_MinidoracatTesla_PhonePaired", args)
+end
+T.ClientCommands.phoneUnpaired = function(args)
+    good("IGUI_MinidoracatTesla_PhoneRemoved", args)
+    local App = T.PhoneApp -- the MiniMap drops the removed car's marker now, not at its next 10 s check
+    if App then App.seenRev = App.seenRev + 1 end
+end
 
 -- Lock confirmation chirp (Keys.lua K.CHIRP): the vanilla horn event on the car's emitter (FMODSoundEmitter, no
 -- WorldSoundManager: zombies do not hear it), stopped after K.CHIRP_MS by a one-shot OnTick removed when empty.

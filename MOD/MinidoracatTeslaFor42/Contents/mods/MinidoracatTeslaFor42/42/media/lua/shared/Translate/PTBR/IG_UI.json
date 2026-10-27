@@ -210,5 +210,21 @@
     "IGUI_MinidoracatTesla_App_Kw": "%1 kW",
     "IGUI_MinidoracatTesla_Deny_UNVERIFIED": "Não é possível verificar as permissões do veículo enquanto o carro não estiver carregado",
     "IGUI_MinidoracatTesla_Deny_NO_12V": "A bateria de 12 V do carro está descarregada",
-    "IGUI_MinidoracatTesla_Deny_NOT_LOADED": "O carro está fora da área carregada; aproxime-se para usá-lo"
+    "IGUI_MinidoracatTesla_Deny_NOT_LOADED": "O carro está fora da área carregada; aproxime-se para usá-lo",
+    "IGUI_MinidoracatTesla_PhoneCars": "%1 Teslas",
+    "IGUI_MinidoracatTesla_PhoneAdded": "%1 adicionado à chave de telefone (%2 carros)",
+    "IGUI_MinidoracatTesla_PhoneRemoved": "%1 removido do telefone",
+    "IGUI_MinidoracatTesla_App_Cars": "Meus carros",
+    "IGUI_MinidoracatTesla_App_VmTag": "Gerenciador de veículos",
+    "IGUI_MinidoracatTesla_App_NotPaired": "Este telefone ainda não foi adicionado a este carro",
+    "IGUI_MinidoracatTesla_App_JoinHint": "Adicione antes: dentro dele com o cartão-chave, clique direito no telefone > \"Adicionar\"",
+    "IGUI_MinidoracatTesla_App_AddCarHint": "Adicionar um carro: sente-se nele, clique direito no telefone e escolha \"Adicionar este carro\".",
+    "IGUI_MinidoracatTesla_App_NavCar": "Navegar até o carro",
+    "IGUI_MinidoracatTesla_App_NavSet": "Destino do minimapa: seu %1",
+    "IGUI_MinidoracatTesla_App_NavPrompted": "Confirme no minimapa para substituir a viagem atual",
+    "IGUI_MinidoracatTesla_App_NavNearby": "O carro está bem aqui",
+    "IGUI_MinidoracatTesla_App_NavStopFirst": "Pare o carro primeiro para o minimapa trocar o destino",
+    "IGUI_MinidoracatTesla_App_NavFailed": "O minimapa não pode definir um destino agora",
+    "IGUI_MinidoracatTesla_Tip_AppNavCar": "Rota do minimapa até a última posição do carro",
+    "IGUI_MinidoracatTesla_Tip_AppCars": "Trocar de carro"
 }

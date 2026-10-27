@@ -210,5 +210,21 @@
     "IGUI_MinidoracatTesla_App_Kw": "%1 kW",
     "IGUI_MinidoracatTesla_Deny_UNVERIFIED": "车辆不在已加载区域，无法确认绑车权限",
     "IGUI_MinidoracatTesla_Deny_NO_12V": "车辆的 12V 电瓶没电",
-    "IGUI_MinidoracatTesla_Deny_NOT_LOADED": "车辆不在已加载区域，靠近一点才能操作"
+    "IGUI_MinidoracatTesla_Deny_NOT_LOADED": "车辆不在已加载区域，靠近一点才能操作",
+    "IGUI_MinidoracatTesla_PhoneCars": "%1 辆 Tesla",
+    "IGUI_MinidoracatTesla_PhoneAdded": "已把 %1 添加到手机钥匙（共 %2 辆）",
+    "IGUI_MinidoracatTesla_PhoneRemoved": "已从手机移除 %1",
+    "IGUI_MinidoracatTesla_App_Cars": "我的车辆",
+    "IGUI_MinidoracatTesla_App_VmTag": "车辆管理",
+    "IGUI_MinidoracatTesla_App_NotPaired": "这部手机还没添加这辆车",
+    "IGUI_MinidoracatTesla_App_JoinHint": "先添加这辆车：带着卡片钥匙坐进车里，右键手机选「添加这辆车」",
+    "IGUI_MinidoracatTesla_App_AddCarHint": "添加新车：坐进那辆车，右键手机选择「添加这辆车」",
+    "IGUI_MinidoracatTesla_App_NavCar": "导航到车",
+    "IGUI_MinidoracatTesla_App_NavSet": "小地图已把目的地设为你的%1",
+    "IGUI_MinidoracatTesla_App_NavPrompted": "请在小地图确认是否替换当前行程",
+    "IGUI_MinidoracatTesla_App_NavNearby": "车就在你旁边",
+    "IGUI_MinidoracatTesla_App_NavStopFirst": "先停车，小地图才能更换目的地",
+    "IGUI_MinidoracatTesla_App_NavFailed": "小地图现在无法设置目的地",
+    "IGUI_MinidoracatTesla_Tip_AppNavCar": "用小地图导航到车辆最后的位置",
+    "IGUI_MinidoracatTesla_Tip_AppCars": "切换车辆"
 }

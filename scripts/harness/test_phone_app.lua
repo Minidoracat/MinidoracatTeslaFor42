@@ -76,11 +76,33 @@ local function container(...)
     function c:getFirstTypeEvalArgRecurse(t, fn, arg)
         for _, it in ipairs(self.items) do if it.ft == t and fn(it, arg) then return it end end
     end
+    function c:getAllTypeRecurse(t)
+        local out = {}
+        for _, it in ipairs(self.items) do if it.ft == t then out[#out + 1] = it end end
+        return { size = function() return #out end, get = function(_, i) return out[i + 1] end }
+    end
+    function c:containsTypeRecurse(t) return self:getAllTypeRecurse(t):size() > 0 end
     function c:haveThisKeyId() return nil end
     return c
 end
+local nextPhone = 70000
 local function phoneKey(keyId)
-    return { ft = K.PHONE_KEY, keyId = keyId, getKeyId = function(self) return self.keyId end }
+    nextPhone = nextPhone + 1
+    local it = { ft = K.PHONE_KEY, keyId = keyId, id = nextPhone }
+    function it:getKeyId() return self.keyId end
+    function it:getID() return self.id end
+    function it:hasModData() return self.md ~= nil end
+    function it:getModData() self.md = self.md or {}; return self.md end
+    return it
+end
+-- a phone key paired with several cars, as KeyActions.phonePair leaves it (server record + client mirror)
+local function multiPhone(ids)
+    local it = phoneKey(ids[#ids])
+    T.Store.get("phones")[tostring(it.id)] = ids
+    local cars = {}
+    for i = 1, #ids do cars[i] = "MinidoracatTesla_ModelY" end
+    it:getModData()[K.PAIRED], it.md[K.PAIRED_CARS] = ids, cars
+    return it
 end
 local function player(name, inv, x, y)
     local p = { name = name, inv = inv, x = x, y = y }
@@ -319,9 +341,9 @@ F.vehicles[v:getId()] = nil -- unloaded: VM can't be asked, so no record and no 
 F.sent = {}
 cmds.appStatus(owner, { key = 9001 })
 st = last("appState")
-check(st and st.deny == "UNVERIFIED" and st.x == nil and st.pct == nil, "VM present, car unloaded: status refused (UNVERIFIED), no record")
+check(st and st.deny == "UNVERIFIED" and st.x == nil and st.pct == nil, "older VehicleManager (no canTrackKeyId), car unloaded: status refused (UNVERIFIED), no record")
 cmds.appAlerts(owner, { key = 9001 })
-check(last("appAlerts") and last("appAlerts").deny == "UNVERIFIED" and last("appAlerts").list == nil, "VM present, car unloaded: no alerts, told why")
+check(last("appAlerts") and last("appAlerts").deny == "UNVERIFIED" and last("appAlerts").list == nil, "older VehicleManager, car unloaded: no alerts, told why")
 F.vehicles[v:getId()] = v
 answer.ok, answer.why = true, "UNCLAIMED"
 d = act(owner, "unlock")
@@ -363,6 +385,43 @@ check(al and #al.list == R.MAX_ALERTS and al.list[R.MAX_ALERTS].i == 12, "alerts
 F.sent = {}
 cmds.appAlerts(stranger, { key = 9001 })
 check(last("appAlerts") == nil, "alerts: nothing for a player without the phone key")
+
+-- ------------------------------------------------------------------ one phone key, several cars
+H.section("phone app: one phone, several cars")
+local v2 = tesla(9002)
+v2.skinIndex = 1 -- PearlWhite
+F.fire("OnSpawnVehicleEnd", v2)
+local two = player("two", container(multiPhone({ 9001, 9002 })), v.x + 500, v.y)
+F.sent = {}
+cmds.appAction(two, { key = 9001, act = "flash" })
+check(last("appDone") and last("appDone").why == nil, "two-car phone (item keyId 9002): flash the car paired first")
+F.runTicks(50, 450)
+F.sent = {}
+cmds.appStatusAll(two, { keys = { 9001, 9002, 4242, 9001.5 } })
+local all = last("appStates")
+check(all and #all.list == 2 and all.list[1].key == 9001 and all.list[2].key == 9002 and all.list[2].skin == 1,
+    "batch (the car list): one state per car the phone holds, the rest left out")
+F.sent = {}
+cmds.appStatusAll(owner, { keys = { 9001, 9002 } })
+all = last("appStates")
+check(#all.list == 1 and all.list[1].key == 9001, "batch from a phone for 9001 only: nothing about 9002")
+F.sent = {}
+cmds.appAction(owner, { key = 9002, act = "unlock" })
+check(last("appDone").why == "NO_PHONE_KEY", "a phone for 9001 only: 9002's unlock -> NO_PHONE_KEY")
+local big = {}
+for i = 1, 100 do big[i] = 9001 end
+F.sent = {}
+local status0 = R.stats.status
+cmds.appStatusAll(two, { keys = big })
+check(#last("appStates").list == 1 and R.stats.status == status0 + 1, "batch: a repeated key answered once")
+for i = 1, 100 do big[i] = i % 2 == 0 and 9001 or 9002 end
+big[17] = 1 -- (past MAX_BATCH: never looked at)
+F.sent = {}
+cmds.appStatusAll(two, { keys = big })
+check(#last("appStates").list == 2, "batch: at most MAX_BATCH keys read, each car once")
+F.sent = {}
+cmds.appStatusAll(two, { keys = "9001" })
+check(#F.sent == 0, "batch: keys not a list -> ignored")
 
 -- ------------------------------------------------------------------ client bearing (pure math in PhoneApp.lua)
 H.section("phone app: bearing")
@@ -450,11 +509,13 @@ H.stub("ISUI/ISButton")
 H.stub("ISUI/Maps/ISWorldMap")
 require "MinidoracatTesla/PhoneApp"
 local App = T.PhoneApp
-local me = { getX = function() return 1000 end, getY = function() return 1990 end, isDead = function() return false end }
+local myInv = container(multiPhone({ 9001, 9002 }))
+local me = { getX = function() return 1000 end, getY = function() return 1990 end, isDead = function() return false end,
+    getInventory = function() return myInv end }
 local realSpecific = getSpecificPlayer
 getSpecificPlayer = function() return me end
 local function sentLast() local m = H.clientSent[#H.clientSent]; return m and m.command, m and m.args end
-local a = App.open(0, 9001)
+local a = App.open(0, { keyId = 9001 })
 local function state(t)
     local s = { key = 9001, link = "net", grid = true, car = "MinidoracatTesla_ModelY", x = 1000, y = 2000, pct = 80, km = 600,
         locked = true, skin = 4, h = H.hours() }
@@ -527,7 +588,9 @@ check(a.b.lock.joypadFocused, "joypad: first control (lock) focused")
 a:onJoypadDirRight()
 check(a.b.qcharge.joypadFocused and not a.b.lock.joypadFocused, "joypad: right -> charge icon")
 a:onJoypadDirUp()
-check(a.b.close.joypadFocused, "joypad: up -> close")
+check(a.b.cars.joypadFocused, "joypad: up -> the car name (car list)")
+a:onJoypadDirRight()
+check(a.b.close.joypadFocused, "joypad: right -> close")
 a:onJoypadDirDown(); a:onJoypadDirDown()
 check(a.b.controls.joypadFocused, "joypad: down twice -> Controls row")
 a:onJoypadDown(Joypad.AButton)
@@ -551,7 +614,7 @@ a:onJoypadDown(Joypad.BButton)
 check(not a.inUI and a.key == nil, "joypad: B on home closes the app")
 -- split screen: half the height, the page scrolls and the joypad focus scrolls itself into view
 SW, SH = 960, 504
-a = App.open(0, 9001)
+a = App.open(0, { keyId = 9001 })
 state()
 check(a.height <= SH - 8 and a.scrollMax > 0, "split screen (960x504): no taller than the screen (" .. a.height .. "), the page scrolls")
 a:onGainJoypadFocus(jd)
@@ -604,6 +667,208 @@ a.b.map:forceClick()
 check(not a.inUI and App.mapCar ~= nil, "map: the app closes, the marker is set")
 ISWorldMap.close({})
 check(a.inUI and a.page == "location" and App.mapCar == nil, "map closed: the app back on the Location page, marker gone")
+-- ---------------------------------------------------------------- the car list (one phone key, several cars)
+H.section("phone app: car list")
+SW, SH = 1920, 1009
+a:setPage("home")
+state()
+local function rowsShown()
+    local n = 0
+    while a.b["pick" .. (n + 1)] and a.b["pick" .. (n + 1)].shown do n = n + 1 end
+    return n
+end
+local sent0 = #H.clientSent
+a.b.cars:forceClick()
+cmd, args = sentLast()
+check(a.page == "cars" and cmd == "appStatusAll" and #args.keys == 1 and args.keys[1] == 9002,
+    "car name -> the list; one batch for the other paired car (the selected one is polled anyway)")
+check(rowsShown() == 2 and a.b.pick1.cur and not a.b.pick2.cur and a.b.pick2.sSub == "IGUI_MinidoracatTesla_App_Loading",
+    "two rows in pairing order, the current car marked, the other loading")
+T.ClientCommands.appStates({ list = { { key = 9002, link = nil, grid = true, car = "MinidoracatTesla_ModelY", x = 1200,
+    y = 1990, pct = 41, km = 300, skin = 1, h = H.hours() - 2 } } })
+check(a:read() and a:layout() == nil, "batch answer: the open list redraws")
+local line2 = a:carLine(a.b.pick2.pick) -- (the drawn row is cut to fit: getText returns the long keys here)
+check(line2:find("41%", 1, true) == 1 and line2:find("LastSeen", 1, true) and App.carLabel(9002):find("Pearl White", 1, true),
+    "batch answer: the other car's line (41% · last seen) and paint")
+check(#H.clientSent == sent0 + 1, "the list asked once (no batch per redraw)")
+ok, why = textInside()
+check(ok, "car list: text inside the phone (" .. why .. ")")
+-- joypad: D-pad picks, A selects, B closes the list
+a:onGainJoypadFocus(jd)
+check(a.b.pick1.joypadFocused, "joypad on the list: the current car focused")
+a:onJoypadDirDown()
+check(a.b.pick2.joypadFocused, "joypad: down -> the next car")
+a:onJoypadDown(Joypad.AButton)
+cmd, args = sentLast()
+check(a.page == "home" and a.key == 9002 and a.paintName == "PearlWhite" and cmd == "appAlerts" and args.key == 9002,
+    "A: switched to the other car (its paint at once from the last view), its alerts asked")
+H.advanceMs(App.POLL_MS + 1)
+a:update()
+cmd, args = sentLast()
+check(cmd == "appStatus" and args.key == 9002, "only the selected car is polled")
+a:setPage("cars")
+a:onJoypadDown(Joypad.BButton)
+check(a.page == "home" and a.key == 9002, "B on the list: back home, same car")
+-- a refusal in the batch keeps its reason (no place), the row says why instead of loading forever (review 2026-10-27)
+T.ClientCommands.appStates({ list = { { key = 9002, deny = "NOT_OWNER" } } })
+check(App.seen[9002].deny == "NOT_OWNER" and App.seen[9002].x == nil and a:carLine({ key = 9002 }) == T.denyText("NOT_OWNER"),
+    "refused in the batch: the row shows why, no place kept")
+state()
+-- more paired cars than the server answers per request: the list asks in chunks of App.BATCH
+local savedPhones = myInv
+local many = {}
+for i = 1, 18 do many[i] = 7000 + i end
+myInv = container(multiPhone(many))
+App.open(0, { keyId = 7018 })
+local sentM = #H.clientSent
+a.b.cars:forceClick()
+local asked, reqs = {}, 0
+for i = sentM + 1, #H.clientSent do
+    local s = H.clientSent[i]
+    if s.command == "appStatusAll" then
+        reqs = reqs + 1
+        check(#s.args.keys <= R.MAX_BATCH, "chunk " .. reqs .. ": at most the server's MAX_BATCH")
+        for _, k in ipairs(s.args.keys) do asked[k] = true end
+    end
+end
+local all17 = true
+for i = 1, 17 do if not asked[7000 + i] then all17 = false end end
+check(reqs == 2 and all17 and App.BATCH == R.MAX_BATCH, "18 cars: two requests cover all 17 others")
+-- the list's joypad rows are this app's own (split screen: another app's list keeps its length)
+local other = setmetatable({ page = "cars", navCars = { { "back" }, { "pick1" } } }, { __index = App })
+check(#a:navRows() == 19 and #other:navRows() == 2, "car list joypad rows per app, not shared")
+myInv = savedPhones
+App.open(0, { keyId = 9002 })
+T.ClientCommands.appStates({ list = { { key = 9002, link = nil, grid = true, car = "MinidoracatTesla_ModelY", x = 1200,
+    y = 1990, pct = 41, km = 300, skin = 1, h = H.hours() - 2 } } }) -- back to its last view before the refusal
+state()
+-- VehicleManager's cars (MinidoracatTesla.VMLink): a paired one merges into its row, an unpaired one gets its own
+T.VMLink = { cars = function() return {
+    { oid = "o-1", keyId = 9001, script = "Base.MinidoracatTesla_ModelY", x = 1000, y = 2000, ageMs = 1000 },
+    { oid = "o-2", keyId = 5555, script = "Base.MinidoracatTesla_ModelY", x = 1003, y = 1990, ageMs = 300000 } } end }
+a:setPage("cars")
+check(rowsShown() == 3 and a.b.pick3.pick.oid == "o-2" and a.b.pick1.pick.oid == "o-1"
+    and a:carLine(a.b.pick3.pick):find("App_VmTag", 1, true) and a:carLine(a.b.pick3.pick):find("DirDist", 1, true)
+    and a:carLine(a.b.pick3.pick):find("MinsAgo", 1, true), "VehicleManager: paired car merged, the unpaired one listed (tag, place, age)")
+a.b.pick3:forceClick()
+check(a.key == nil and a.oid == "o-2" and a.vmOnly and a.hasPos and a.sSub2 == "IGUI_MinidoracatTesla_App_NotPaired",
+    "unpaired VehicleManager car selected: its last position, why the buttons are dim")
+check(a.b.lock.enable and not a.b.lock.lit and a.b.lock.hint, "remote buttons dim but pressable")
+local n0 = #H.clientSent
+a.b.lock:forceClick()
+check(#H.clientSent == n0 and a.toast and a.toast.text == "IGUI_MinidoracatTesla_App_JoinHint",
+    "pressing one sends nothing, says how to add the car")
+H.advanceMs(App.POLL_MS + 1)
+a:update()
+check(#H.clientSent == n0, "an unpaired car is never polled from the server")
+a.b.location:forceClick()
+check(a.b.map.shown and a.b.map.enable and not a.b.navcar.shown, "location: map yes; navigate hidden without the MiniMap")
+-- Navigate to car: only with MiniMap navApiVersion >= 12 (setNavTarget)
+local navArgs
+MinidoracatMiniMapAPI = { navApiVersion = 11, setNavTarget = function(...) navArgs = { ... }; return true, "ok" end }
+a:setPage("location")
+check(not a.b.navcar.shown, "MiniMap navApiVersion 11: no navigate button")
+MinidoracatMiniMapAPI.navApiVersion = 12
+a:setPage("location")
+check(a.b.navcar.shown and a.b.navcar.enable, "MiniMap navApiVersion 12: navigate button")
+ok, why = textInside()
+check(ok, "location with both buttons: text inside (" .. why .. ")")
+a.b.navcar:forceClick()
+check(navArgs and navArgs[1] == 0 and navArgs[2] == 1003.5 and navArgs[3] == 1990.5 and navArgs[4] == a.sName
+    and a.toast.text == "IGUI_MinidoracatTesla_App_NavSet", "navigate: setNavTarget(player, the car's square centre, name), toast")
+MinidoracatMiniMapAPI.setNavTarget = function() return true, "prompted" end
+a.b.navcar:forceClick()
+check(a.toast.text == "IGUI_MinidoracatTesla_App_NavPrompted", "MiniMap asks first (prompted): told to confirm there")
+MinidoracatMiniMapAPI.setNavTarget = function() return false, "nearby" end
+a.b.navcar:forceClick()
+check(a.toast.text == "IGUI_MinidoracatTesla_App_NavNearby" and not a.toast.ok, "nearby: says so")
+MinidoracatMiniMapAPI.setNavTarget = function() return false, "busy" end
+a.b.navcar:forceClick()
+check(a.toast.text == "IGUI_MinidoracatTesla_App_NavFailed", "other refusals: can't set now")
+MinidoracatMiniMapAPI = nil
+-- opening on a given car (VehicleManager's menu: opts.keyId / opts.oid)
+check(App.open(0, { oid = "o-1" }).key == 9001, "open { oid }: the paired car it maps to")
+check(App.open(0, { keyId = 5555 }).oid == "o-2", "open { keyId } of an unpaired VehicleManager car: that car")
+check(App.open(0, 9001) ~= nil and a.key == 9001, "open with a non-table: the first car, no error")
+local savedInv = myInv
+myInv = container()
+check(App.open(0, { keyId = 9001 }) == nil, "no phone key on the player: the app does not open")
+myInv = savedInv
+App.open(0, { keyId = 9001 })
+state()
+a:setPage("location")
+
+-- ---------------------------------------------------------------- MiniMap markers (MiniMapBridge.lua)
+H.section("phone app: MiniMap markers")
+local provider
+MinidoracatMiniMapAPI = { markerApiVersion = 3, registerMarkerProvider = function(owner, fn) provider = { owner, fn } end }
+require "MinidoracatTesla/MiniMapBridge"
+local B = T.MiniMapBridge
+check(not B.registered and provider == nil, "not registered before OnGameStart")
+B.register()
+check(B.registered and provider[1] == T.MOD_ID, "OnGameStart with the MiniMap: provider registered")
+local mk = provider[2](0, "mini")
+local ids = {}
+for _, m in ipairs(mk.markers) do ids[m.id] = m end
+check(ids["tesla:9001"] and ids["tesla:9002"] and not ids["tesla:5555"] and ids["tesla:9001"].state == "live"
+    and ids["tesla:9001"].badge and ids["tesla:9001"].x == 1000.5, "markers: the app's cars, live, with the badge")
+check(provider[2](0, "world") == mk and provider[2](1, "mini") == nil, "same table every frame; split-screen guests none")
+local rev = mk.revision
+state() -- the 2 s poll: same place
+check(provider[2](0, "mini") == mk, "a poll that changes nothing: same table")
+MinidoracatVehicleManager = { MiniMapBridge = { registered = true } }
+H.advanceMs(B.CHECK_MS + 1)
+mk = provider[2](0, "mini")
+ids = {}
+for _, m in ipairs(mk.markers) do ids[m.id] = m end
+check(mk.revision == rev + 1 and not ids["tesla:9001"] and ids["tesla:9002"], "a car VehicleManager's bridge draws: not twice")
+MinidoracatVehicleManager = nil
+H.advanceMs(App.FRESH_MS + 1)
+mk = provider[2](0, "mini")
+local faded = true
+for _, m in ipairs(mk.markers) do if m.state == "live" then faded = false end end
+check(#mk.markers == 2 and faded, "10 minutes without a look: faded")
+state()
+mk = provider[2](0, "mini")
+ids = {}
+for _, m in ipairs(mk.markers) do ids[m.id] = m end
+check(ids["tesla:9001"].state == "live" and ids["tesla:9002"].state ~= "live", "a fresh look: that car live again")
+-- a car no longer on the phone (removed, or the phone handed over): its marker goes, though App.seen still has it
+local keptInv = myInv
+myInv = container(phoneKey(9001))
+App.seenRev = App.seenRev + 1 -- (KeysUI's phoneUnpaired does this)
+mk = provider[2](0, "mini")
+ids = {}
+for _, m in ipairs(mk.markers) do ids[m.id] = m end
+check(ids["tesla:9001"] and not ids["tesla:9002"] and App.seen[9002] ~= nil, "removed from the phone: no marker for it")
+-- the phone for 9001 handed over, one for 9002 picked up: as many markers, other cars (no seenRev move: the 10 s check)
+myInv = container(phoneKey(9002))
+H.advanceMs(B.CHECK_MS + 1)
+mk = provider[2](0, "mini")
+ids = {}
+for _, m in ipairs(mk.markers) do ids[m.id] = m end
+check(ids["tesla:9002"] and not ids["tesla:9001"] and B.drawsWorld(0, 9002) == false,
+    "a phone swapped for another one: its cars' markers, not the old ones (same count)")
+myInv = keptInv
+App.seenRev = App.seenRev + 1
+provider[2](0, "mini")
+App.mapCar = { x = 1, y = 1, pn = 0, key = 9001 }
+local realDraw, draws = App.drawMapCar, 0
+App.drawMapCar = function() draws = draws + 1 end -- (the real one needs the world map's mapAPI)
+provider[2](0, "world") -- the MiniMap draws our markers on the world map this frame
+ISWorldMap:render()
+check(draws == 0, "with the MiniMap's world map marker: the app's temporary marker is not drawn too")
+H.advanceMs(2000) -- its world map layers off (WMLayers): it stops asking for "world"
+ISWorldMap:render()
+check(draws == 1, "MiniMap world layers off: the app's temporary marker again")
+App.mapCar.pn = 1
+provider[2](0, "world")
+ISWorldMap:render()
+check(draws == 2, "split-screen player 1 (no MiniMap markers for it): the temporary marker")
+App.drawMapCar, App.mapCar = realDraw, nil
+B.registered = false
+MinidoracatMiniMapAPI, T.VMLink = nil, nil
+
 -- redraw allocates nothing
 recording = false
 collectgarbage("collect"); collectgarbage("stop")

@@ -10,5 +10,7 @@
     "ContextMenu_MinidoracatTesla_TapLock": "Приложить ключ-карту: закрыть",
     "ContextMenu_MinidoracatTesla_PairPhone": "Настроить как телефон-ключ",
     "ContextMenu_MinidoracatTesla_ChargeItem": "Зарядить от розетки автомобиля",
-    "ContextMenu_MinidoracatTesla_OpenApp": "Открыть приложение Tesla"
+    "ContextMenu_MinidoracatTesla_OpenApp": "Открыть приложение Tesla",
+    "ContextMenu_MinidoracatTesla_AddCar": "Добавить эту машину (привязано: %1)",
+    "ContextMenu_MinidoracatTesla_Unpair": "Удалить из телефона"
 }
