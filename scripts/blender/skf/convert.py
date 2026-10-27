@@ -54,27 +54,21 @@ MAT_RGB = {"Material_#2125780493": None, "black_base": (34, 34, 36), "Material_#
 # read 196 on ~210 paint, gone)
 CHROME = ((200, 204, 210), (104, 108, 114))
 GLASS_MATS = ("glass_base", "Material_#2125773440")  # glass_base on Plane.008 is the B-pillar cover: opaque black
-# paint light (textures()): official-render paint quantile q = (base + up x upness(nz) + band x shoulder(nz) + lobe x
-# softbox(n . PAINT_LIGHT) + height x h) x AO term: (base, up, band strength, band nz centre, band width, lobe, lobe
-# width, height); h = face centre height, 0 at the lowest face, 1 at the roof. Calibration knob. A texel-rank mapping
-# put the large hood on the render's highlight quantiles (pink, tesla-skf-after-1025b); without the lobe flat panels
-# were one quantile (tesla-skf-after-1025c "沒甚麼反光").
-# PAINT_Q, PAINT_TARGET and pv.CAL are fitted together (exp/paint-gloss-1026): the paint seen from the game camera
-# (heading S, closest zoom) should spread like the official FRONT34 render's paint, p25 / p50 / p75 within a few
-# levels. The previous set (0.12, 0.10, 0.55, 0.30, 0.20, 0.20, 0.05) / (.12 .27 .48 .70 .84 .90) left hood and sides
-# on one quantile band: in game p75 only 4-11 levels over p50 (official 20-56), p25-p75 0.47-0.60 x official
-# (tesla-gloss-skinA-1026a). A fit on the spread alone lit the lower doors and the bumper brightest (FRONT34 is a low
-# side view, the game camera looks down): the height term keeps the lower body below the waist
-PAINT_Q = (0.12, 0.168, 0.361, 0.265, 0.155, 0.101, 0.05, 0.3)
-# percentiles of all paint texels -> quantile of the official ramp (pv.official_ramp)
-PAINT_TARGET = ((10, 0.093), (25, 0.262), (50, 0.415), (75, 0.568), (90, 0.89), (97, 0.918))
-PAINT_LIGHT = (0.0, 0.45, 0.89)            # softbox above, ahead: x-symmetric so both sides match at every heading
-# rear haunch (user 2026-10-27 「每台車這裡白白有點突兀」, white on Diamond Black): the band's nz range also covers the
-# whole rear fender above the arch and the tailgate's lower half, broad panels that landed on the ramp's highlight
-# quantiles (Diamond Black p90 151 against 64 on the rear door). Behind y [0] -> [1] and below z [2] -> [3] (centred
-# frame; the belt is z 0.13) the band keeps 1 - [4] of itself: the haunch median sits on the rear door's (official
-# REAR34: haunch and tailgate in the doors' tone), the shoulder crease above it keeps its line. Calibration knob
-HAUNCH = (-0.80, -0.95, 0.12, 0.20, 0.55)
+# paint light (textures()): official-render paint quantile q = (base + up x upness(nz) + height x h) x AO term:
+# (base, up, height); h = face centre height, 0 at the lowest face, 1 at the roof. Calibration knob. Only soft volume:
+# the game lights a car by ambient alone in daylight (vehicle_multiuv.frag:72-96, no sun direction), so the skin keeps
+# the shape (roof / hood over the sides, lower body darker where it reflects the ground, AO in the seams).
+# The baked highlights that were here (B, b6f85cb: a shoulder band, a softbox lobe) sat on the same panels at every
+# heading; on the rear haunch the band put the whole fender on the render's highlight quantiles (user 2026-10-27
+# 「每台車這裡白白有點突兀」「反光效果不太自然」). A narrower set (0.12, 0.06, 0.3) / p10-p97 0.30-0.56 read as a flat
+# sticker (tesla-sheen-1027e); a curvature term from the decimated mesh came out blotchy, smoothed it added nothing
+PAINT_Q = (0.12, 0.25, 0.25)
+# percentiles of all paint texels -> quantile of the official ramp (pv.official_ramp), plus the darkest / brightest
+# texel's. Kept under the ramp's highlight end (Diamond Black's top 20 % of quantiles 47-192 sRGB): p50 where B had it
+# (CAL's offsets stay valid), p10-p97 0.22-0.65 against B's 0.09-0.92
+PAINT_TARGET = ((10, 0.22), (25, 0.31), (50, 0.415), (75, 0.51), (90, 0.59), (97, 0.65))
+PAINT_ENDS = (0.03, 0.72)
+PAINT_ALPHA = 254 / 255                    # skin alpha of the paint texels (textures(): the shader's paint flag)
 OFFICIAL = pv.OFFICIAL                     # design-studio renders (stage official)
 LIGHT_RGB = {"head": (255, 250, 240), "tail": (255, 30, 30)}
 
@@ -724,7 +718,7 @@ def textures(car, c):
     aux = np.stack([c["paint"].astype(float), (c["lamp"] > 0).astype(float), (c["lamp"] == 2).astype(float)], 1)
     fz = pv.face_centres(car)
     hgt = np.repeat(((fz[:, 2] - fz[:, 2].min()) / np.ptp(fz[:, 2]))[:, None], 3, 1)    # 0 at the lowest face, 1 at the roof
-    b = bake(car, {"col": c["rgb"], "zone": zone_rgb[c["zone"]], "aux": aux, "hgt": hgt, "pos": fz,
+    b = bake(car, {"col": c["rgb"], "zone": zone_rgb[c["zone"]], "aux": aux, "hgt": hgt,
                    "badge": np.repeat(np.where(c["mat"] == "badge_chrome", 1.0, 0.5 * c["badge"])[:, None], 3, 1)})
     col, zon, aux, ao = b["col"][..., :3], b["zone"][..., :3], b["aux"][..., :3], b["ao"][..., 0]
     nrm = b["nrm"][..., :3] * 2 - 1
@@ -733,28 +727,22 @@ def textures(car, c):
     # badges flat: their strokes overlap at the joints, coplanar faces whose AO rays start on each other (dark specks)
     shade = np.where(b["badge"][..., 0] > 0.25, 1.0, 0.55 + 0.45 * ao)
     chrome = b["badge"][..., 0] > 0.75
-    # paint: the source is one flat colour, so its light comes from a matcap on the baked normal (sides low in the
-    # official render's paint quantiles, hood and roof above the middle, a bright band on the shoulder) and the height
-    # (the lower body reflects the ground) times AO; the quantile picks the official render's paint colour there
-    # (official_ramp), then CAL / GAIN
+    # paint: the source is one flat colour, so its shape comes from the baked normal (up-facing a little brighter)
+    # and the height (the lower body reflects the ground) times AO (the seams); the quantile picks the official
+    # render's paint colour there (official_ramp), then CAL / GAIN
     lit = 0.55 + 0.45 * ao
-    band = PAINT_Q[2] * np.exp(-((nz - PAINT_Q[3]) / PAINT_Q[4]) ** 2)
-    q = (PAINT_Q[0] + PAINT_Q[1] * np.clip((nz + 0.3) / 1.2, 0, 1) + band
-         + PAINT_Q[5] * np.exp(-(1 - nrm @ np.array(PAINT_LIGHT)) / PAINT_Q[6])
-         + PAINT_Q[7] * b["hgt"][..., 0]) * lit
-    fade = HAUNCH[4] * (1 - pv.smoothstep(HAUNCH[1], HAUNCH[0], b["pos"][..., 1])) \
-        * (1 - pv.smoothstep(HAUNCH[2], HAUNCH[3], b["pos"][..., 2]))
+    q = (PAINT_Q[0] + PAINT_Q[1] * np.clip((nz + 0.3) / 1.2, 0, 1) + PAINT_Q[2] * b["hgt"][..., 0]) * lit
     # AO samples are noisy and the ramp is steep in places: blurred inside the paint (about 6 px of 2048), else flat
     # panels came out speckled
     pm = paint.astype(np.float32)
     den = np.maximum(pv.box_blur(pv.box_blur(pm, 3), 3), 1e-6)
-    blur = lambda a: (pv.box_blur(pv.box_blur(a * pm, 3), 3) / den)[paint]  # noqa: E731
-    # spread: a monotone remap of the full q's percentiles onto PAINT_TARGET, so the paint keeps the previous skin's
-    # brightness and contrast; equal q stay equal (no texel-rank ties). The haunch fade goes through the same anchors:
-    # every texel outside it keeps its colour
-    q0, q = blur(q), blur(q - band * fade * lit)
+    q = (pv.box_blur(pv.box_blur(q * pm, 3), 3) / den)[paint]
+    # spread: a monotone remap of q's percentiles onto PAINT_TARGET; equal q stay equal (no texel-rank ties)
     pc, tg = zip(*PAINT_TARGET)
-    q = np.interp(q, [q0.min(), *np.percentile(q0, pc), q0.max()], [0.03, *tg, 0.97])
+    q = np.interp(q, [q.min(), *np.percentile(q, pc), q.max()], [PAINT_ENDS[0], *tg, PAINT_ENDS[1]])
+    # skin alpha 254 marks the paint for the shader's sheen (MinidoracatTesla_vehicle.frag): vanilla reads alpha only
+    # as "1 - a of the paint tint" (vehicle_multiuv.frag:144), so the paint takes 1/255 of the tint, under a level
+    alpha = np.where(paint & (b["badge"][..., 0] <= 0.25), PAINT_ALPHA, 1.0)[..., None]
     hsvs = {}
     for p, code in pv.PAINTS:
         ramp = pv.official_ramp(code)
@@ -763,7 +751,7 @@ def textures(car, c):
         s = col * shade[..., None]
         s[paint] = np.clip(a_ * np.stack([np.interp(q, xp, ramp[:, i]) for i in range(3)], -1) / pv.GAIN + b_, 0, 1)
         s[chrome] = np.array(CHROME[int(np.median(s[paint].max(-1)) >= 0.55)]) / 255
-        pv.save_png(np.concatenate([np.clip(s, 0, 1), np.ones(s.shape[:2] + (1,))], -1),
+        pv.save_png(np.concatenate([np.clip(s, 0, 1), alpha], -1),
                     os.path.join(pv.TEX_DIR, f"{pv.NAME}_{p}.png"), p)
         # setColorHSV for the damage overlays: the shader gives Veh_Damage* texels the paint hue and S / V offsets
         # (vehicle_common.frag.glsl:6-15); their median S 0.03, V 0.45 should land on this skin's median paint

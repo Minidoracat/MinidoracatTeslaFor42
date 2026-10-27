@@ -2,7 +2,7 @@
 
 // Model Y body, doors, tailgate and frunk lid in one draw each: vanilla vehicle_multiuv.frag for the paint, plus the
 // see-through glass and the 3-D cabin, told apart by UV1 (scripts/blender/skf/convert.py pieces):
-//   UV1 u in [0, 1]  paint: vanilla vehicle_multiuv / _noreflect, unchanged
+//   UV1 u in [0, 1]  paint: vanilla vehicle_multiuv / _noreflect plus the paint sheen (SHEEN_* below)
 //   UV1 u in [2+2k, 3+2k]  glass face of pane zone k (GLASS_ZONE below, convert.py GLASS_ZONES): UV1 - (2+2k, 0) is its
 //                    damage UV; translucent per pane, a hole when the window is removed, open or smashed (uninstall
 //                    matrices), cracks and blood turn it opaque where marked. The zone rides in UV1, not the mask:
@@ -26,6 +26,7 @@ varying vec2 texCoords;
 varying vec2 texCoords1;
 varying vec4 positionEye;
 varying float reflectionsOn;
+varying vec3 viewModel;
 
 uniform sampler2D Texture0;
 uniform vec4 TexturePainColor;
@@ -85,6 +86,30 @@ const vec3 SKY = vec3(0.50, 0.60, 0.75);
 const float SKY_MIX = 0.30;        // vanilla windows mix 30 % reflection at refWindows 0.4 (vehicle_multiuv.frag:151)
 // glass zone k (convert.py GLASS_ZONES): WinT, WinH, WinLH, WinLT, WinRH, WinRT, LightBar L (the roof glass)
 const vec3 GLASS_ZONE[7] = vec3[7](colZone11, colZone12, colZone9, colZone10, colZone7, colZone8, colZone25);
+
+// paint sheen (calibration knobs): the skin carries no highlight, so the gloss that moves as the car turns is drawn
+// here, on paint texels only (skin alpha 254, convert.py PAINT_ALPHA). Blinn-Phong from the sky and from the nearby
+// lights Light0-4, times refBody (ReflectionParam.z: 0.3, 0.1 on a rusty car, BaseVehicle.java:5987-5992) over its
+// usual 0.3; Fresnel raises the sky reflection's share toward grazing angles.
+// Model space (decoded in game, tesla-sheen-1027f): +X the car's right, +Y up, +Z forward, mirrored, so cross(up, x)
+// turns the other way than in the world. The sky's direction is fixed in the world, built from the camera, which never
+// turns: SHEEN_SUN = (camera left, up, toward the camera); scaled by AmbientColour, it fades with the daylight
+const vec3 SHEEN_SUN = vec3(0.45, 0.85, -0.25);
+const float SHEEN_POW = 16.0;      // lobe: half height about 17 degrees off the mirror direction
+const float SHEEN_SKY = 0.22;      // peak added at full daylight
+const float SHEEN_LAMP = 0.45;     // peak added per unit of a nearby light's colour
+const float SHEEN_LAMP_UP = 0.5;   // a nearby light's direction gets this much up (its height is lost, below)
+const float SHEEN_FRESNEL = 1.5;   // sky reflection share x (1 + SHEEN_FRESNEL x (1 - n.v)^5)
+
+// a nearby light as the vehicle shader gets it: (right, forward, height) of the direction to it, the height taken
+// at the ground (BaseVehicle.getLocalPos sets y 0, ModelSlotRenderData.java:256-262; Shader.setLight swaps y / z,
+// :530-554; a lamp behind-left decoded (-0.82, -0.55, -0.07), tesla-sheen-1027f), so vanilla's diffuse lights the
+// roof for a lamp ahead. Swapped back to (right, up, forward) here
+vec3 lampSheen(vec3 dir, vec3 colour, vec3 n, vec3 v)
+{
+	vec3 l = normalize(vec3(dir.x, max(dir.z, 0.0) + SHEEN_LAMP_UP, dir.y));
+	return colour * SHEEN_LAMP * pow(max(dot(n, normalize(l + v)), 0.0), SHEEN_POW);
+}
 
 // cabin palette, sRGB 0-255, in pzveh.py CABIN_CELLS order. Black interior a step lighter than life so the seats
 // read against the floor through the glass (calibration knob)
@@ -263,7 +288,11 @@ void main()
 	vec3 texRef = mix(texRefB, texRefA, ReflectionParam.x);
 
 	col = mix(col, texRef, reflectionsOn*ref_en*(0.1+ReflectionParam.y*0.5)); // 0.6 max 0.1 min
-	col = mix(col, texRef/4.0, reflectionsOn*(1.0-ref_en)*(0.05 + ReflectionParam.z*0.3)); // 0.2 max
+	float paint = clamp((1.0 - tex.a) * 255.0, 0.0, 1.0);
+	vec3 V = normalize(viewModel);
+	float fresnel = pow(1.0 - max(dot(normal, V), 0.0), 5.0);
+	col = mix(col, texRef/4.0, reflectionsOn*(1.0-ref_en)*(0.05 + ReflectionParam.z*0.3)
+		* (1.0 + SHEEN_FRESNEL * paint * fresnel)); // 0.2 max (vanilla, before Fresnel)
 
 	col = mix(col, texColorRust.xyz, texColorRust.a*TextureRustA);
 
@@ -281,11 +310,25 @@ void main()
 	col = mix(col, texColorDamage2Shell.xyz, texColorDamage2Shell.a*t3en*noTintAlpha);
 
 	// Blood above damage on vehicle body, ignore windows.
+	vec3 bloodless = col;
 	col = addBlood(texColorDamage2Overlay, texColorDamage1Overlay, intensity, maskAlpha * (1.0 - windowAlpha), lighting, TintColourNew, col);
+	float marked = clamp(length(col - bloodless) * 4.0, 0.0, 1.0);
 
 	col = mix(col, vec3(0.2), t4en);
 
 	col *= lighting * TintColourNew;
+
+	// sheen: bare paint only (not lamps, removed parts, rust, damage shells, blood)
+	paint *= (1.0 - noTintAlpha) * (1.0 - t4en) * (1.0 - texColorRust.a * TextureRustA) * (1.0 - marked)
+		* (1.0 - texColorDamage1Shell.a * t2en) * (1.0 - texColorDamage2Shell.a * t3en);
+	vec3 up = vec3(0.0, 1.0, 0.0);
+	vec3 toCam = normalize(V - up * dot(V, up));
+	vec3 sun = normalize(SHEEN_SUN.x * cross(up, toCam) + SHEEN_SUN.y * up + SHEEN_SUN.z * toCam);
+	vec3 sheen = AmbientColour * SHEEN_SKY * pow(max(dot(normal, normalize(sun + V)), 0.0), SHEEN_POW)
+		+ lampSheen(Light0Direction, Light0Colour, normal, V) + lampSheen(Light1Direction, Light1Colour, normal, V)
+		+ lampSheen(Light2Direction, Light2Colour, normal, V) + lampSheen(Light3Direction, Light3Colour, normal, V)
+		+ lampSheen(Light4Direction, Light4Colour, normal, V);
+	col += sheen * TintColourNew * paint * ReflectionParam.z / 0.3;
 
 	// Do this after ambient lighting so active headlights and taillights aren't dimmed.
 	col = mix(col, texColorLights.xyz, texColorLights.a*t1en);

@@ -1,7 +1,7 @@
 #version 330
 
 // MinidoracatTesla_vehicle, static (the body with its cabin and glass): vanilla vehicle_multiuv_static.vert plus
-// reflectionsOn, see MinidoracatTesla_vehicle.vert.
+// reflectionsOn and viewModel, see MinidoracatTesla_vehicle.vert.
 
 varying vec3 vertColour;
 varying vec3 vertNormal;
@@ -9,6 +9,7 @@ varying vec2 texCoords;
 varying vec2 texCoords1;
 varying vec4 positionEye;
 varying float reflectionsOn;
+varying vec3 viewModel;
 
 layout (location = 0) in vec4 vertex;
 layout (location = 1) in vec4 normal;
@@ -29,6 +30,10 @@ void main()
 	texCoords1 = uv2.st;
 
 	vertNormal = (transform * normal).xyz;
+	mat4 m = ModelViewProjection;   // vertNormal is already in transform's output space
+	vec3 r2 = vec3(m[0][2], m[1][2], m[2][2]);
+	viewModel = normalize(cross(vec3(m[0][0], m[1][0], m[2][0]), vec3(m[0][1], m[1][1], m[2][1])));
+	viewModel *= -sign(dot(viewModel, r2));
 	vertColour = vec3(1,1,1);
 
 #if __VERSION__ >= 130
