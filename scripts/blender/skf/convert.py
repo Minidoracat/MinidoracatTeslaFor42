@@ -33,15 +33,20 @@ C = pv.CAR                                 # this car's values (cars/<car>.py; k
 SRC = os.path.join(TMP, *C["SRC"])
 K = pv.K                                   # grid per metre; the source is in metres
 SRC_C, BELT_Z, TIRE_OBJ = C["SRC_C"], C["BELT_Z"], C["TIRE_OBJ"]
+SRC_SCALE, SRC_FLIP = C["SRC_SCALE"], C["SRC_FLIP"]
 SKIN, MASK = 2048, 512
 
 # ---- what each source object is (names from the OBJ; sizes in the build log or inspect) ----
 DROP, DECIMATE, PAINT_MAT, GLASS_MATS, GLASS_OPAQUE, ROOF_PANE, MIRROR_CAP, LAMPS = (C[k] for k in (
     "DROP", "DECIMATE", "PAINT_MAT", "GLASS_MATS", "GLASS_OPAQUE", "ROOF_PANE", "MIRROR_CAP", "LAMPS"))
+DROP_COMPS, CARBON, ARCH_LINER, PLATES, GLASS_BACKS = (C[k] for k in (
+    "DROP_COMPS", "CARBON", "ARCH_LINER", "PLATES", "GLASS_BACKS"))
 # skin colour (sRGB 0-255) per material: the source's (the car's MAT_RGB) and the mod's own; paint comes from the
 # official renders (textures())
 MAT_RGB = {**C["MAT_RGB"], "badge_chrome": (196, 200, 206), "badge_black": (8, 8, 10),
-           "caliper_red": (180, 20, 28)}             # Performance calipers (official RIMCLOSEUP, lit side)
+           "caliper_red": (180, 20, 28),             # Performance calipers (official RIMCLOSEUP, lit side)
+           "badge_perf": (57, 61, 70),               # Performance badge plate (navy starburst, mean colour; models.md)
+           "arch_liner": (16, 16, 18)}               # arch_liners()
 # chrome badges mirror the surroundings: bright on a dark paint, grey on a light one (median V >= 0.55: PearlWhite
 # read 196 on ~210 paint, gone)
 CHROME = ((200, 204, 210), (104, 108, 114))
@@ -69,9 +74,11 @@ IN_DOOR, IN_GATE, PANELS, GUARDS, PANES = (C[k] for k in ("IN_DOOR", "IN_GATE", 
 SEAL = (0.008, 0.02)                       # grid: dark strip behind every panel edge (depth, reach past the edge):
 #                                             the source's panel gaps are real gaps, the ground showed through them
 CUT, CUT_X, DOOR_OBJS, GATE_OBJS, GATE_COMPS = (C[k] for k in ("CUT", "CUT_X", "DOOR_OBJS", "GATE_OBJS", "GATE_COMPS"))
+PLANES, CUT_X_Y, GATE_CUT_COMPS, GATE_HINGE = (C[k] for k in ("PLANES", "CUT_X_Y", "GATE_CUT_COMPS", "GATE_HINGE"))
 # badges (badges(); the car's places): T on the frunk lid, TESLA on the light blade, MODEL Y on the tailgate
 BADGE_OFF = 0.003                          # grid off the surface (no depth fight)
 T_BADGE, TESLA, LENS_X, MODELY, CALIPER = (C[k] for k in ("T_BADGE", "TESLA", "LENS_X", "MODELY", "CALIPER"))
+BADGE_Y, BLADE, PERF_BADGE = C["BADGE_Y"], C["BLADE"], C["PERF_BADGE"]
 SWATCH = ("Badge_T", "Badge_TESLA", "Badge_MODELY", "Caliper")   # one flat-colour UV spot each (unwrap())
 SWATCH_U = 0.03                            # UV0 strip kept for them at u > 1 - SWATCH_U
 SMOKE_RGB = (62, 58, 60)                   # the light blade by day: smoked lens, so the black letters read
@@ -114,17 +121,70 @@ def in_gate(p, t=0.0):
 
 
 def src_frame():
-    """Source OBJ as imported (-Z forward, Y up: front -X, left -Y; metres) -> pre-centre grid frame, SRC_C centred."""
-    return Matrix(((0, K, 0, K * -SRC_C[1]), (-K, 0, 0, K * SRC_C[0]), (0, 0, K, 0), (0, 0, 0, 1)))
+    """Source as imported (import_source) -> pre-centre grid frame, SRC_C centred. OBJ (-Z forward, Y up): front -X,
+    left -Y; SRC_FLIP: front +X, left +Y (the glTF importer's Z up). SRC_SCALE: metres per source unit."""
+    s = K * SRC_SCALE * (-1 if SRC_FLIP else 1)
+    return Matrix(((0, s, 0, -s * SRC_C[1]), (-s, 0, 0, s * SRC_C[0]), (0, 0, K * SRC_SCALE, 0), (0, 0, 0, 1)))
+
+
+def import_source():
+    """The source into an empty scene, OBJ or glTF; glTF nests its meshes under empties: unparented in place."""
+    bpy.ops.wm.read_factory_settings(use_empty=True)
+    if SRC.lower().endswith((".glb", ".gltf")):
+        bpy.ops.import_scene.gltf(filepath=SRC)
+        for o in [o for o in bpy.data.objects if o.type == "MESH"]:
+            mw = o.matrix_world.copy()
+            o.parent = None
+            o.matrix_world = mw
+    else:
+        bpy.ops.wm.obj_import(filepath=SRC, forward_axis="NEGATIVE_Z", up_axis="Y")
+
+
+def tire_groups(co):
+    """The tires in one tire object's points: a glTF source merges all four into one object (by material), so split
+    at the centre line and at gaps over 0.3 along y."""
+    for c in (co[co[:, 0] < 0], co[co[:, 0] >= 0]):
+        if not len(c):
+            continue
+        ys = np.sort(c[:, 1])
+        gap = np.argmax(np.diff(ys)) if len(ys) > 1 else 0
+        if len(ys) > 1 and ys[gap + 1] - ys[gap] > 0.3:
+            yield from (c[c[:, 1] <= ys[gap]], c[c[:, 1] > ys[gap]])
+        else:
+            yield c
+
+
+def drop_comps(o, name):
+    """Delete the components of o whose bbox centre lies in a DROP_COMPS box naming it: a glTF source merges objects
+    by material, so its interior and lamp lenses share objects with exterior parts."""
+    boxes = [(np.array(lo), np.array(hi)) for objs, lo, hi in DROP_COMPS if name in objs]
+    if not boxes:
+        return
+    me = o.data
+    comp = np.empty(len(me.polygons), np.int64)
+    me.attributes["comp"].data.foreach_get("value", comp)
+    lv = np.empty(len(me.loops), np.int64)
+    me.loops.foreach_get("vertex_index", lv)
+    lc = np.repeat(comp, [p.loop_total for p in me.polygons])
+    co = pv.mesh_co(o)[lv]
+    lo, hi = np.full((comp.max() + 1, 3), np.inf), np.full((comp.max() + 1, 3), -np.inf)
+    np.minimum.at(lo, lc, co)
+    np.maximum.at(hi, lc, co)
+    c = (lo + hi) / 2
+    gone = np.zeros(len(c), bool)
+    for blo, bhi in boxes:
+        gone |= ((c > blo) & (c < bhi)).all(1)
+    if gone[comp].any():
+        pv.keep_faces(o, ~gone[comp])
+        print("DROP_COMPS", name, int(gone[np.unique(comp)].sum()), "components", int(gone[comp].sum()), "faces")
 
 
 # ---------------------------------------------------------------- source
 
 def load_source():
-    """OBJ -> one mesh 'car' in the pre-centre frame, free corner normals, face attributes src (object index) and comp
-    (welded connected component within the object). Returns the object names (src index -> name)."""
-    bpy.ops.wm.read_factory_settings(use_empty=True)
-    bpy.ops.wm.obj_import(filepath=SRC, forward_axis="NEGATIVE_Z", up_axis="Y")
+    """Source -> one mesh 'car' in the pre-centre frame, free corner normals, face attributes src (object index) and
+    comp (welded connected component within the object). Returns the object names (src index -> name)."""
+    import_source()
     P = src_frame()
     tires = []
     names, obs = [], []
@@ -132,7 +192,7 @@ def load_source():
         me = o.data
         if o.name.startswith(TIRE_OBJ):            # tires: wheel centres and outer faces for the script
             co = np.array([(P @ o.matrix_world @ v.co)[:] for v in me.vertices])
-            tires.append((co.min(0), co.max(0)))
+            tires += [(c.min(0), c.max(0)) for c in tire_groups(co)]
         if o.name.startswith(DROP):
             bpy.data.objects.remove(o)
             continue
@@ -149,13 +209,34 @@ def load_source():
         bm = bmesh.new()
         bm.from_mesh(me)
         bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=1e-6)
+        # coincident copies (the glTF's tail lamp lens layers) weld onto the same vertices; the FBX importer keeps one
+        # of two faces on the same vertices (build's read-back)
+        bm.verts.index_update()
+        seen, twins = set(), []
+        for f in bm.faces:
+            k = frozenset(v.index for v in f.verts)
+            if k in seen:
+                twins.append(f)
+            seen.add(k)
+        if twins:
+            bmesh.ops.delete(bm, geom=twins, context="FACES_ONLY")
+            print("TWINS", o.name, len(twins), "faces")
         bm.to_mesh(me)
         bm.free()
+        name = o.name.split("_Mesh")[0] if "_Mesh" in o.name else o.name
         target = next((t for p, t in DECIMATE.items() if o.name.startswith(p)), None)
+        if any(name in objs for objs, _, _ in DROP_COMPS):   # drop first, decimate what is left
+            _label(o, len(names))
+            drop_comps(o, name)
         if target:
             pv.decimate(o, target)
         _label(o, len(names))
-        names.append(o.name.split("_Mesh")[0] if "_Mesh" in o.name else o.name)
+        names.append(name)
+        if target:          # the components' triangles now: CUT / GATE_CUT_COMPS / ROOF_PANE / MIRROR_CAP keys
+            comp = np.array([d.value for d in me.attributes["comp"].data])
+            fc, cnt = pv.face_centres(o), np.bincount(comp)
+            big = [(int(cnt[k]), np.round(fc[comp == k].mean(0), 2).tolist()) for k in np.argsort(-cnt)[:12]]
+            print("COMPS", name, "(tris, mean face centre)", big)
         obs.append(o)
     # wheels: (side, centre y, centre z, outer |x|) per tire, pre-centre frame, and the tire's radius and width (the
     # procedural wheel is built to them: the arches were modelled round these tires)
@@ -166,6 +247,10 @@ def load_source():
     print("SOURCE tires: radius %.4f width %.4f centres" % tire, [np.round(w, 3).tolist() for w in wl])
     badges(obs, names)
     calipers(obs, names, wl, tire)
+    if ARCH_LINER:
+        arch_liners(obs, names, wl, tire)
+    for name, poly, want, mat in PLATES:   # flat backing polygons where a dropped part left a see-through gap
+        _add(obs, names, name, poly, [tuple(range(len(poly)))], Vector(want), mat)
     pv.select_only(*obs)
     bpy.ops.object.join()
     car = bpy.context.view_layer.objects.active
@@ -176,10 +261,11 @@ def load_source():
 def stage_inspect():
     """Every source object as the build sees it, to fill a car's config: name (the short name CUT / DOOR_OBJS /
     GATE_OBJS use; DROP / DECIMATE / TIRE_OBJ match name prefixes), faces, triangles, materials, bbox in the
-    pre-centre grid frame (with this config's SRC_C). Also the source's bbox centre in metres (SRC_C). Table on stdout,
-    TMP/inspect.json."""
-    bpy.ops.wm.read_factory_settings(use_empty=True)
-    bpy.ops.wm.obj_import(filepath=SRC, forward_axis="NEGATIVE_Z", up_axis="Y")
+    pre-centre grid frame (with this config's SRC_C, SRC_SCALE, SRC_FLIP). Also the source's bbox centre in source
+    units (SRC_C). Table on stdout, TMP/inspect.json with each object's welded components of 20+ triangles (tris =
+    the CUT / GATE_COMPS key, bbox; a glTF source merges objects by material, so its parts are components). Size it
+    first: size_m is in source units, SRC_SCALE = official length / size along the length."""
+    import_source()
     P = np.array(src_frame())
     rows, raw = [], []
     for o in sorted((o for o in bpy.data.objects if o.type == "MESH"), key=lambda o: o.name):
@@ -193,8 +279,27 @@ def stage_inspect():
         mi = np.empty(len(me.polygons), np.int64)
         me.polygons.foreach_get("material_index", mi)
         mats = sorted({(me.materials[i].name if i < len(me.materials) and me.materials[i] else "-") for i in np.unique(mi)})
+        ob = o.copy()
+        ob.data = me.copy()
+        ob.data.transform(src_frame() @ o.matrix_world)
+        bm = bmesh.new()
+        bm.from_mesh(ob.data)
+        bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=1e-6)
+        bm.to_mesh(ob.data)
+        bm.free()
+        _label(ob, 0)
+        comp = np.array([d.value for d in ob.data.attributes["comp"].data])
+        cc = pv.mesh_co(ob)
+        fv = [p.vertices[:] for p in ob.data.polygons]
+        comps = []
+        for k in np.unique(comp):
+            f = np.flatnonzero(comp == k)
+            if len(f) >= 20:
+                v = cc[np.unique(np.concatenate([fv[i] for i in f]))]
+                comps.append(dict(tris=len(f), min=np.round(v.min(0), 3).tolist(), max=np.round(v.max(0), 3).tolist()))
         rows.append(dict(name=o.name.split("_Mesh")[0], faces=len(me.polygons), tris=sum(p.loop_total - 2 for p in me.polygons),
-                         materials=mats, min=np.round(g.min(0), 4).tolist(), max=np.round(g.max(0), 4).tolist()))
+                         materials=mats, min=np.round(g.min(0), 4).tolist(), max=np.round(g.max(0), 4).tolist(),
+                         comps=sorted(comps, key=lambda r: -r["tris"])))
     lo, hi = np.min([r[0] for r in raw], 0), np.max([r[1] for r in raw], 0)
     src_c = np.round((lo[:2] + hi[:2]) / 2, 4).tolist()
     print(f"{'object':<34}{'faces':>8}{'tris':>8}  {'min x y z':<26}{'max x y z':<26}materials")
@@ -371,6 +476,29 @@ def calipers(obs, names, wl, tire):
     _add(obs, names, "Caliper", pts, faces, want, "caliper_red")
 
 
+def arch_liners(obs, names, wl, tire):
+    """Black wheel-arch liners (ARCH_LINER, for a source without them): per wheel an arc `gap` outside the tire from
+    `arc` deg (0 = ahead of the axle, 90 = over it) round to behind it, across from the tire's outer face to `inner`
+    inboard of its inner face, and a wall closing the arc inboard; all of it faces the wheel. Without them the cabin
+    shell's rays left through the arches onto the wheel parts (black wedges over the wheels) and the arches showed
+    the ground."""
+    g = ARCH_LINER
+    r, width = tire
+    R = r + g["gap"]
+    th = np.radians(np.linspace(*g["arc"], g["n"]))
+    pts, faces, want = [], [], []
+    for side, yc, zc, xo in wl:
+        xa, xb = side * (xo - pv.WHEEL_INSET), side * (xo - pv.WHEEL_INSET - width - g["inner"])   # outer, inner
+        k = len(pts)
+        pts += [(x, yc + R * math.cos(t), zc + R * math.sin(t)) for t in th for x in (xa, xb)]
+        pts.append((xb, yc, zc))                     # the wall's centre (the axle)
+        for i in range(len(th) - 1):
+            a, b, tm = k + 2 * i, k + 2 * i + 2, (th[i] + th[i + 1]) / 2
+            faces += [(a, b, b + 1, a + 1), (a + 1, b + 1, len(pts) - 1)]
+            want += [Vector((0, -math.cos(tm), -math.sin(tm))), Vector((side, 0, 0))]
+    _add(obs, names, "ArchLiner", pts, faces, want, "arch_liner")
+
+
 def badges(obs, names):
     """T on the frunk lid, the blade lens with TESLA on it, MODEL Y on the tailgate (see BADGE_OFF): new objects, src
     and comp tagged like the source's."""
@@ -414,29 +542,37 @@ def badges(obs, names):
         _add(obs, names, name, pts, tris, n, mat)
 
     bvh = tree()
-    # T: read from ahead of the car (u = -x), its top toward the windshield, on the lid's slope; rays straight down
-    # (along the lid normal, the stem tip's ray would pass the lid's front edge onto the light bar)
-    y, tw, th, z0, nrm = T_BADGE
+    # T: read from ahead of the car (u = -x), its top up the surface. Model Y: on the lid's slope, rays straight down
+    # (along the lid normal, the stem tip's ray would pass the lid's front edge onto the light bar), so the outline is
+    # stretched by 1 / normal z; ray None: along -normal
+    y, tw, th, z0, nrm, ray = T_BADGE
     n = Vector(nrm).normalized()
-    flat("Badge_T", [[[(u * tw, (v + 0.05) * th / nrm[2]) for u, v in t_logo()[0]]]],
-         ((0, y, z0), (-1, 0, 0), (0, -n.z, n.y), n), "badge_chrome", ray=(0, 0, -1))
-    # the blade lens: the source's blade faces back on a 1.5 cm strip (z 0.922-0.937; the underside and a sloped
-    # housing below it), the real blade is ~4.5 cm with the letters inside. A plate over the strip across the
-    # tailgate, upright, following the bar's curve in plan; it is the blade (smoked, glows as a tail light)
+    flat("Badge_T", [[[(u * tw, (v + 0.05) * th / (nrm[2] if ray else 1)) for u, v in t_logo()[0]]]],
+         ((0, y, z0), (-1, 0, 0), (0, -n.z, n.y), n), "badge_chrome", ray=ray)
+    # the blade lens (BLADE, Model Y): the source's blade faces back on a 1.5 cm strip (z 0.922-0.937; the underside
+    # and a sloped housing below it), the real blade is ~4.5 cm with the letters inside. A plate over the strip across
+    # the tailgate, upright, following the bar's curve in plan; it is the blade (smoked, glows as a tail light)
     zc, ch, pitch, lh = TESLA
-    xs = np.linspace(-LENS_X, LENS_X, 21)
-    ys = [bvh.ray_cast(Vector((x, -2.5, zc)), Vector((0, 1, 0)))[0].y - BADGE_OFF / 2 for x in xs]
-    _add(obs, names, "Badge_BLADE", [Vector((x, y, zc + s * lh / 2)) for x, y in zip(xs, ys) for s in (-1, 1)],
-        [(2 * i, 2 * i + 2, 2 * i + 3, 2 * i + 1) for i in range(len(xs) - 1)], Vector((0, -1, 0)), "badge_black")
-    bvh = tree()
+    ray_y, face_y = BADGE_Y                # rear badges: ray start y (behind the car), letter frame y
+    if BLADE:
+        xs = np.linspace(-LENS_X, LENS_X, 21)
+        ys = [bvh.ray_cast(Vector((x, ray_y, zc)), Vector((0, 1, 0)))[0].y - BADGE_OFF / 2 for x in xs]
+        _add(obs, names, "Badge_BLADE", [Vector((x, y, zc + s * lh / 2)) for x, y in zip(xs, ys) for s in (-1, 1)],
+             [(2 * i, 2 * i + 2, 2 * i + 3, 2 * i + 1) for i in range(len(xs) - 1)], Vector((0, -1, 0)), "badge_black")
+        bvh = tree()
     # rear lettering, read from behind (u = +x)
     letters, wid = stroke_text("TESLA", WORDMARK, 0.22, pitch=pitch / ch)
     flat("Badge_TESLA", [[[(u * ch, v * ch) for u, v in q] for q in g] for g in letters],
-         ((-wid * ch / 2, -1.7, zc - ch / 2), (1, 0, 0), (0, 0, 1), (0, -1, 0)), "badge_black", planar=True)
-    x0, z0, ch = MODELY
-    letters, _ = stroke_text("MODEL Y", SANS, 0.16)
-    flat("Badge_MODELY", [[[(u * ch, v * ch) for u, v in q] for q in g] for g in letters],
-         ((x0, -1.7, z0), (1, 0, 0), (0, 0, 1), (0, -1, 0)), "badge_chrome", planar=True)
+         ((-wid * ch / 2, face_y, zc - ch / 2), (1, 0, 0), (0, 0, 1), (0, -1, 0)), "badge_black", planar=True)
+    if MODELY:                             # (text, left x, baseline z, cap height)
+        text, x0, z0, ch = MODELY
+        letters, _ = stroke_text(text, SANS, 0.16)
+        flat("Badge_MODELY", [[[(u * ch, v * ch) for u, v in q] for q in g] for g in letters],
+             ((x0, face_y, z0), (1, 0, 0), (0, 0, 1), (0, -1, 0)), "badge_chrome", planar=True)
+    if PERF_BADGE:                         # the Performance badge plate (centre x, z, width, height)
+        x, z, w, h = PERF_BADGE
+        flat("Badge_PERF", [[[(0, 0), (w, 0), (w, h), (0, h)]]],
+             ((x - w / 2, face_y, z - h / 2), (1, 0, 0), (0, 0, 1), (0, -1, 0)), "badge_perf", planar=True)
 
 
 def edit(car, names):
@@ -454,11 +590,15 @@ def edit(car, names):
         if names[s].startswith(CUT_X):
             cuts = ("X+", "X-")
         for cname in cuts:
+            ymax = None                    # PLANES and X+- (CUT_X_Y): only the faces centred behind this y
             if cname in ("X+", "X-"):
-                co, no = (GATE_X if cname == "X+" else -GATE_X, 0, 0), (1, 0, 0)
+                co, no, ymax = (GATE_X if cname == "X+" else -GATE_X, 0, 0), (1, 0, 0), CUT_X_Y
+            elif cname in PLANES:
+                co, no, ymax = PLANES[cname]
             else:
                 co, no = plane(cname)
-            fs = [f for f in bm.faces if f.is_valid and f[si] == s and f[ci] == c]
+            fs = [f for f in bm.faces if f.is_valid and f[si] == s and f[ci] == c
+                  and (ymax is None or f.calc_center_median().y < ymax)]
             geom = list({*fs, *[e for f in fs for e in f.edges], *[v for f in fs for v in f.verts]})
             bmesh.ops.bisect_plane(bm, geom=geom, dist=1e-6, plane_co=co, plane_no=no)
     bmesh.ops.triangulate(bm, faces=bm.faces[:])
@@ -479,6 +619,12 @@ def edit(car, names):
         me.attributes["custom_normal"].data.foreach_set("vector", cn.ravel())
     print("EDIT corners with lost normals", int(bad.sum()))
     return sizes
+
+
+def match(spec, obj, csize):
+    """Faces of a source object (spec = name) or of its components of some sizes (spec = (name, triangles or a tuple
+    of them; a decimated pair of mirror parts can differ by one)): a glTF source merges parts by material."""
+    return obj == spec if isinstance(spec, str) else (obj == spec[0]) & np.isin(csize, spec[1])
 
 
 def classify(car, names, sizes):
@@ -502,6 +648,9 @@ def classify(car, names, sizes):
     cc = np.stack([np.bincount(inv, cen[:, i]) for i in range(3)], 1) / np.bincount(inv)[:, None]
     ccen = cc[inv]
     paint = mat == PAINT_MAT
+    # CARBON: paint faces in a box that the real car has in carbon fibre (Model 3 Performance's spoiler, $SLR1)
+    carbon = paint & (cen > CARBON["lo"]).all(1) & (cen < CARBON["hi"]).all(1) if CARBON else np.zeros(n, bool)
+    paint &= ~carbon
     glass = np.isin(mat, GLASS_MATS) & ~np.isin(obj, GLASS_OPAQUE)
     part = np.zeros(n, np.int64)
     ax, ay, az = np.abs(ccen[:, 0]), ccen[:, 1], ccen[:, 2]
@@ -519,7 +668,7 @@ def classify(car, names, sizes):
     # by face too: whole on the body it was a black bar across the far window, seen through the roof glass with the
     # far door hidden behind that glass's depth (user 2026-10-25 images 10, 11, 13)
     cut = np.array([(o, s) in CUT for o, s in zip(obj, csize)])
-    cand = np.isin(obj, DOOR_OBJS) & ~paint
+    cand = np.isin(obj, DOOR_OBJS) & ~paint | match(MIRROR_CAP, obj, csize)   # (a paint mirror cap: on its door)
     whole = cand & ~cut
     for k in np.unique(key[whole]):
         f = np.flatnonzero(key == k)
@@ -532,13 +681,15 @@ def classify(car, names, sizes):
     part[sel] = in_door(cen[sel])
     # the mirror cap is body colour (official FRONT34; the source paints it black_refl), its base and glass stay;
     # set after the door split, which takes door hardware by its non-paint material
-    mirror = (obj == MIRROR_CAP) & (part > 0)
+    mirror = match(MIRROR_CAP, obj, csize) & (part > 0)
     paint = paint | mirror
     gate = np.isin(obj, GATE_OBJS)
     for o, s, sy in GATE_COMPS:
         gate |= (obj == o) & (csize == s) & (np.sign(ay) == sy) & (ax < 0.1)
     gsel = gate & (np.isin(obj, [o for o, _, _ in GATE_COMPS]) | in_gate(cen))
-    part[gsel | np.isin(obj, ("Badge_BLADE", "Badge_TESLA", "Badge_MODELY"))] = 5
+    for o, s in GATE_CUT_COMPS:            # a lid cut out of a bigger panel (edit(): PLANES, X+-), by face centre
+        gsel |= (obj == o) & (csize == s) & in_gate(cen)
+    part[gsel | np.isin(obj, ("Badge_BLADE", "Badge_TESLA", "Badge_MODELY", "Badge_PERF"))] = 5
     part[obj == "Badge_T"] = 6
     # lamps. Tail: the red light bar (a 1 cm strip on the spoiler's lower lip, about a pixel in game), the corner
     # lamps, and the rear face of the smoked light-bar cover across the tailgate (LAMPS blade), which glows red at
@@ -570,7 +721,7 @@ def classify(car, names, sizes):
     put(tail & ~stop, "LightLT", "LightRT")
     put(stop, "StopL", "StopR")
     # glass zones: the mask zone and the UV1 pane code (GLASS_ZONES)
-    gzn = np.where(obj == ROOF_PANE, "LightBarL",
+    gzn = np.where(match(ROOF_PANE, obj, csize), "LightBarL",
                    np.where((ax < 0.1) & (ay > 0), "WinT", np.where(ax < 0.1, "WinH",
                    np.where(np.isin(part, (1, 2)), np.where(L, "WinLH", "WinRH"), np.where(L, "WinLT", "WinRT")))))
     zone[glass] = [ZN.index(z) for z in gzn[glass]]
@@ -578,6 +729,8 @@ def classify(car, names, sizes):
     pane[glass] = [GLASS_ZONES.index(z) for z in gzn[glass]]
     rgb = np.array([MAT_RGB.get(m) or (0, 0, 0) for m in mat], float) / 255
     rgb[blade] = np.array(SMOKE_RGB) / 255
+    if CARBON:
+        rgb[carbon] = np.array(CARBON["rgb"]) / 255
     print("CLASSIFY parts", {PARTS[k]: int((part == k).sum()) for k in range(len(PARTS))}, "glass", int(glass.sum()),
           "lamps head/tail", int(head.sum()), int(tail.sum()))
     return dict(part=part, zone=zone, rgb=rgb, paint=paint, lamp=lamp, glass=glass, pane=pane, obj=obj, csize=csize,
@@ -924,9 +1077,10 @@ def frunk_tub(V, T, lid, body_tris, attr):
     pt = lambda r, z: np.column_stack([C + d * r[:, None], np.broadcast_to(z, r.shape)])  # noqa: E731
     rim = pt(r_t, z_s)
     # the floor: a plane `depth` under the rim's rear and front middles (the lid falls 0.3 grid to the nose; a level
-    # floor left the front 3 cm deep)
-    (yr, zr), (yf, zf) = ((rim[i, 1], z_s[i] - f["depth"]) for i in np.argmin(np.abs(th[:, None] - [1.5 * math.pi,
-                                                                                                   0.5 * math.pi]), 0))
+    # floor left the front 3 cm deep); depth (rear, front): a floor rising to the nose (something under it there)
+    deps = f["depth"] if isinstance(f["depth"], tuple) else (f["depth"],) * 2
+    (yr, zr), (yf, zf) = ((rim[i, 1], z_s[i] - dp) for i, dp in zip(np.argmin(np.abs(th[:, None] - [1.5 * math.pi,
+                                                                                                    0.5 * math.pi]), 0), deps))
     plane = lambda p: np.column_stack([p[:, :2], zr + (p[:, 1] - yr) * (zf - zr) / (yf - yr)])  # noqa: E731
     rings = [pt(r_o, z_o), pt(r_o, z_s), pt(r_t + f["rim"], z_s), rim, plane(pt(r_f, 0.0))]
     # (cell, faces up): jamb, shelf, rim, wall; the floor "dash", up
@@ -963,7 +1117,7 @@ def frunk_tub(V, T, lid, body_tris, attr):
     vol = (top + bot + math.sqrt(top * bot)) / 3 * dep / K ** 3 * 1000
     print(f"FRUNK opening y {C[1] + (d[:, 1] * r_o).min():.3f}..{C[1] + (d[:, 1] * r_o).max():.3f} z {z_o.min():.3f}.."
           f"{z_o.max():.3f}, floor z {zr:.3f} (rear)..{zf:.3f} (front), bin {top / K ** 2:.2f} m2 top, "
-          f"{f['depth'] / K * 100:.0f} cm deep, ~{vol:.0f} L, {len(P)} tris")
+          f"{deps[0] / K * 100:.0f}-{deps[1] / K * 100:.0f} cm deep, ~{vol:.0f} L, {len(P)} tris")
     return P.reshape(-1, 3), np.arange(3 * len(P)).reshape(-1, 3), corners(np.array([attr(c) for c in cl]), n)
 
 
@@ -1012,10 +1166,14 @@ def pieces(car, c, shift):
         if recolour:
             a[..., :4] = cab_attr("liner")[:4]
         return V[T[sel][:, [0, 2, 1]]].reshape(-1, 3), base + np.arange(3 * n).reshape(-1, 3), a
-    # no reversed glass: every source pane is a closed slab (outer and inner face 0.9 mm apart, the rim), so its inner
-    # face already shows the glass from inside; a reversed outer face on top put two layers there (darker, and the
-    # two crossed where their triangulations differ)
-    back_sets = lambda sel: ((sel & back_liner, True),)  # noqa: E731
+    # no reversed glass on Model Y: every source pane is a closed slab (outer and inner face 0.9 mm apart, the rim), so
+    # its inner face already shows the glass from inside; a reversed outer face on top put two layers there (darker,
+    # and the two crossed where their triangulations differ). A source with one-sided panes (GLASS_BACKS) gets reversed
+    # copies of those panes, drawn after the outer ones: else an open door's window and the far side's windows, seen
+    # from inside or through the near glass, had no glass (feat/edges-1025 back_glass). Not the windscreen or roof:
+    # the camera never sees their inside
+    gback = glass & np.isin(c["pane"][tf], [GLASS_ZONES.index(z) for z in GLASS_BACKS])
+    back_sets = lambda sel: ((sel & back_liner, True),) + (((sel & gback, False),) if gback.any() else ())  # noqa: E731
     body_t, body_a, bodyV = [T[part == 0]], [A[part == 0]], V
     adds = [backs(sel, rec, 0) for sel, rec in back_sets(part == 0)]
     gb = bvh_of([(V, T[glass])])
@@ -1061,7 +1219,10 @@ def pieces(car, c, shift):
         elif lid:
             mid = dv[np.abs(dv[:, 0]) < 0.08]
             h = np.array([0.0, *mid[np.argmin(mid[:, 1]), 1:]])
-        else:
+        elif GATE_HINGE == "front":         # sedan trunk lid: hinged under the rear window's foot, its front edge
+            mid = dv[np.abs(dv[:, 0]) < 0.08]
+            h = np.array([0.0, *mid[np.argmax(mid[:, 1]), 1:]])
+        else:                               # hatch: the tailgate's top edge
             h = np.array([0.0, dv[:, 1].max(), dv[:, 2].max()])
         hinges[pname] = h - shift
         meshes.append((pname, P - shift, t, a))
