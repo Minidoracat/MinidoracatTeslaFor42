@@ -130,11 +130,12 @@ local function drainable(full, uses)
 end
 
 local nextId = 1
--- o: { pct=, cap=, running=, passengers=, locked=, keyId= }
+-- o: { pct=, cap=, running=, passengers=, locked=, keyId=, script= (full name, default the Model Y) }
 function F.vehicle(o)
     o = o or {}
     local cap = o.cap or 75
     local v = { id = nextId, keyId = o.keyId or (500 + nextId), running = o.running or false,
+        script = o.script or "Base.MinidoracatTesla_ModelY",
         passengers = o.passengers or 0, locked = o.locked ~= false, headlights = false, alarmed = true,
         alarmTriggered = 0, needParts = false, transmits = 0, x = 1000, y = 2000 }
     nextId = nextId + 1
@@ -149,8 +150,11 @@ function F.vehicle(o)
     }
     v.lights = { v.parts.HeadlightLeft, v.parts.HeadlightRight }
     function v:getId() return self.id end
-    function v:getScriptName() return "Base.MinidoracatTesla_ModelY" end
-    function v:getScript() return { getCarModelName = function() return nil end, getName = function() return "MinidoracatTesla_ModelY" end } end
+    function v:getScriptName() return self.script end
+    function v:getScript()
+        local name = self.script:gsub("^Base%.", "")
+        return { getCarModelName = function() return nil end, getName = function() return name end }
+    end
     function v:getPartById(id) return self.parts[id] end
     function v:getBattery() return self.parts.Battery end
     function v:isEngineRunning() return self.running end
