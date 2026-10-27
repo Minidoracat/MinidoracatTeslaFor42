@@ -449,7 +449,7 @@ function App:read()
     self.chg = chg
     local state = chg == "charging" and txt("ChargingNow") or chg == "full" and txt("ChargeFull", tostring(st.target or 90))
         or chg == "nopower" and txt("ChargeNoPower") or chg == "stopped" and txt("ChargeStopped") or (rec and txt("NotPlugged"))
-    self.sKw = chg and st.kw and txt("Kw", tostring(st.kw)) or nil
+    self.sKw = chg == "charging" and st.kw and txt("Kw", tostring(st.kw)) or nil -- stopped / full: no power flows
     self.sEta = chg == "charging" and st.mins and txt("ToTarget", tostring(st.target or 90), tostring(st.mins)) or nil
     self.sChgState = state or self.sSub
     if chg == "charging" then
