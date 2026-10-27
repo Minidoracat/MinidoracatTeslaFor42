@@ -111,11 +111,11 @@ end
 -- so distance per game minute depends on DayLength: real seconds per game minute = minutesPerDay*60/1440
 -- (GameTime.java:946). 1 km = 1000 tiles (getCurrentSpeedKmHour is tiles per real second * 3.6).
 T.REF_KMH = 50 -- the calibration speed
+function T.secPerGameMin() return getGameTime():getMinutesPerDay() * 60 / 1440 end
 function T.kmPerKwh(vehicle)
     local s = T.spec(vehicle)
     if not s then return 0 end
-    local secPerMin = getGameTime():getMinutesPerDay() * 60 / 1440
-    local kmPerMin = T.REF_KMH / 3600 * secPerMin
+    local kmPerMin = T.REF_KMH / 3600 * T.secPerGameMin()
     local kwhPerMin = (s.idleKw + s.kwPerKmh * T.REF_KMH) / 60
     return kmPerMin / kwhPerMin * T.rangeMul()
 end
@@ -223,8 +223,13 @@ end
 function T.deny(player, reason, vid)
     T.send(player, "deny", { reason = reason, vid = vid })
 end
--- Text of IGUI_MinidoracatTesla_Deny_<reason>; CAMP_LOW_BATTERY carries the sandbox limit as %1
+-- Text of IGUI_MinidoracatTesla_Deny_<reason>; CAMP_LOW_BATTERY carries the sandbox limit as %1. A summon refused by
+-- AutoDrive (Remote.lua ACT.summon) carries a whole translation key instead: AutoDrive's "UI_MinidoracatAutoDrive_...",
+-- or VehicleManager's "IGUI_MVM_..." from its wrapper around startSummon. Tesla's own reasons are bare CODES.
 function T.denyText(reason)
+    if type(reason) == "string" and (reason:find("UI_", 1, true) == 1 or reason:find("IGUI_", 1, true) == 1) then
+        return getText(reason)
+    end
     local key = "IGUI_MinidoracatTesla_Deny_" .. tostring(reason)
     if reason == "CAMP_LOW_BATTERY" then return getText(key, tostring(T.Camp.minPct())) end
     return getText(key)

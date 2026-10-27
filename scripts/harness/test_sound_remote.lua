@@ -123,6 +123,12 @@ n = #H.sent
 check(cmd(driver, { vid = v:getId(), on = false }) == 2 and relayed(n).near.on == false,
     "'off' after the exit already emptied the seat: still relayed")
 check(cmd(driver, { vid = v:getId(), on = true }) == 0, "'on' with nobody in the seat: dropped")
+local realRemote = T.Remote
+T.Remote = { summonApi = function() return { summonInfo = function(car) return car == v and { by = "x" } or nil end } end }
+n, refused = #H.sent, R.stats.refused
+check(cmd(near, { vid = v:getId(), on = false }) == 0 and #H.sent == n and R.stats.refused == refused + 1,
+    "a summoned car (nobody in the seat): anyone's 'off' dropped, the server's summon sound stays")
+T.Remote = realRemote
 H.side(false, false)
 v.driver = driver
 n = #H.sent
@@ -319,5 +325,64 @@ check(H.count("OnTick") == base and st.playing == 0 and st.tickAdds - adds0 == s
 motor({ vid = "x", on = true })
 check(H.count("OnTick") == base, "malformed beat: ignored")
 
+H.section("remote sound: a summoned car (nobody drives)")
+local sc = tesla({ x = 306.5, y = 306.5, running = true, speed = 10 }) -- no driver: AutoDrive's summon pushes it
+motor({ vid = sc:getId(), on = true }) -- a driver's beat would not do: nobody in the seat
+local se = S.heard[sc:getId()]
+hz(3)
+check(se.motor == nil, "an ordinary beat for a car without a driver: silent (the old rule)")
+motor({ vid = sc:getId(), on = true, sum = true }) -- the server at the summon's start (SoundRelay R.summon)
+hz(10)
+check(se.motor ~= nil and se.motor.vol > 0.1 and se.pws.vol > 0.2 and se.motor.e:playing().name == "MinidoracatTesla_MotorExt",
+    "summon 'on': the whine and the forward PWS play with nobody in the seat")
+H.advanceMs(S.HEARD_MS + 1000)
+hz(1)
+check(S.heard[sc:getId()] ~= nil and se.motor ~= nil, "no beats during a summon: still playing past HEARD_MS")
+sc.running = false
+hz(1)
+check(se.motor == nil and S.heard[sc:getId()] ~= nil, "motor off (summon ended, engine shut off): silent")
+motor({ vid = sc:getId(), on = false, sum = true })
+check(S.heard[sc:getId()] == nil and H.count("OnTick") == base, "summon 'off': forgotten, OnTick removed")
+-- another player's game reads 0 km/h for a car nobody drives (BaseVehicle.java:4312-4316): the speed from its moves
+sc.running, sc.speed = true, 0
+motor({ vid = sc:getId(), on = true, sum = true })
+se = S.heard[sc:getId()]
+for _ = 1, 15 do sc.x = sc.x + 1; hz(1) end -- 1 tile per 100 ms: 36 km/h
+check(se.motor ~= nil and se.motor.vol > 0.1 and se.pws.vol > 0.2,
+    "this game reads 0 km/h, the car moves: the whine and the forward PWS from its moves")
+motor({ vid = sc:getId(), on = false, sum = true })
+motor({ vid = sc:getId(), on = true, sum = true, back = true })
+se = S.heard[sc:getId()]
+for _ = 1, 15 do sc.x = sc.x - 1; hz(1) end
+check(se.motor ~= nil and se.motor.vol > 0.1 and se.pws.vol < 0.05, "a reverse summon (back): the whine, no forward PWS")
+motor({ vid = sc:getId(), on = false, sum = true })
+motor({ vid = sc:getId(), on = true, sum = true }) -- come / target backing out of a dead end: no back flag
+se = S.heard[sc:getId()]
+sc.speed = -3 -- this game runs the physics (the summoner's): a reverse reading, slower than the 100 ms moves
+for _ = 1, 15 do sc.x = sc.x - 1; hz(1) end
+check(se.motor ~= nil and se.motor.vol > 0.1 and se.pws.vol < 0.05, "the game's own reverse reading keeps its sign: no forward PWS")
+motor({ vid = sc:getId(), on = false, sum = true })
+sc.x, sc.speed = 306.5, 10
+motor({ vid = sc:getId(), on = true, sum = true })
+H.removeVehicle(sc)
+hz(1)
+check(S.heard[sc:getId()] ~= nil and S.heard[sc:getId()].motor == nil, "summoned car unloaded: silent, no error")
+H.advanceMs(S.SUMMON_MS + 1)
+hz(1)
+check(S.heard[sc:getId()] == nil and H.count("OnTick") == base, "a summon 'off' never came: dropped after SUMMON_MS")
+
 getWorld, getSpecificPlayer, getCell = saved.getWorld, saved.getSpecificPlayer, savedCell
 H.side(false, true)
+
+-- server: the summon's start and end go to everyone near the car, the summoner included (no driver to send beats)
+H.section("remote sound: server tells a summon")
+online = { driver, passenger, near, far }
+function getOnlinePlayers() return { size = function() return #online end, get = function(_, i) return online[i + 1] end } end
+v.driver, driver.vehicle, passenger.vehicle = nil, nil, nil
+n = #H.sent
+check(R.summon(v, true) == 3, "summon start: told the 3 players within 120 tiles (the summoner too)")
+got = relayed(n)
+check(got.drv and got.drv.sum == true and got.drv.on == true and got.near and not got.far, "{ vid, on, sum = true }")
+n = #H.sent
+check(R.summon(v, false) == 3 and relayed(n).pax.on == false, "summon end: 'off' to the same players")
+getOnlinePlayers = saved.getOnlinePlayers

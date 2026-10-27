@@ -59,6 +59,63 @@ local empty = H.vehicle({ kwh = 0.01, running = true, speed = 80 })
 T.Update.Battery(empty, B.part(empty), 10)
 check(B.kwh(B.part(empty)) == 0 and empty.transmits == 1, "drain clamps at 0 and transmits the empty state")
 
+H.section("summon: drain by distance")
+-- AutoDrive's summon (Remote.lua ACT.summon): the server reads 0 km/h for an unmanned car, so the drive term comes from
+-- the distance moved. Same energy as the speed formula for the same path, whatever speed the server reads.
+local sv = H.vehicle({ kwh = 50, running = true, speed = 0 })
+sv._class = "BaseVehicle"
+local spart = B.part(sv)
+local summoned = {}
+local realRemote = T.Remote
+T.Remote = { summonApi = function() return { summonInfo = function(car) return summoned[car] end } end }
+summoned[sv] = { by = "own", phase = "driving" }
+local k0 = B.kwh(spart)
+T.Update.Battery(sv, spart, 1) -- the summon's first update: where it starts, idle only
+check(near(k0 - B.kwh(spart), s.idleKw / 60, 1e-9), "summon, first update: idle only (no earlier position)")
+local secPerMin = T.secPerGameMin()
+local function step(dx, readKmh)
+    sv.x, sv.speed = sv.x + dx, readKmh
+    local before = B.kwh(spart)
+    T.Update.Battery(sv, spart, 1)
+    return before - B.kwh(spart)
+end
+local got = step(50, 0) -- 50 tiles in one game minute (3.75 s): 48 km/h
+local kmh = 0.05 / (secPerMin / 3600)
+check(near(got, (s.idleKw + s.kwPerKmh * kmh) / 60, 1e-9), "50 tiles in a game minute, server reads 0 km/h: = the speed formula at 48 km/h")
+check(near(step(50, 60), got, 1e-12), "the same path with the server reading 60 km/h: the same energy")
+check(near(step(0, 30), s.idleKw / 60, 1e-12), "summoned but standing: idle only, whatever the speed read")
+summoned[sv] = nil
+check(near(step(50, 60), (s.idleKw + s.kwPerKmh * 60) / 60, 1e-9), "summon over: back to the speed read")
+summoned[sv] = { by = "own", phase = "driving", startedMs = 1000 }
+check(near(step(500, 0), s.idleKw / 60, 1e-12), "a new summon starts from where the car is (not from the last one's end)")
+summoned[sv] = { by = "own", phase = "driving", startedMs = 2000 } -- ended and summoned again between two updates
+check(near(step(500, 0), s.idleKw / 60, 1e-12), "back to back, no update between: the second summon starts fresh too")
+check(near(step(50, 0), got, 1e-9), "...then counts its own path")
+summoned[sv] = nil
+step(0, 0)
+-- recorded at the start (Remote.lua ACT.summon), charged at the end (R.summonEnded): a summon shorter than one
+-- game minute (most of them) is over before the pack's first update
+local drive = got - s.idleKw / 60 -- 50 tiles' drive term
+B.summonStart(sv, 3000)
+summoned[sv] = { by = "own", phase = "driving", startedMs = 3000 }
+sv.x = sv.x + 50
+summoned[sv] = nil
+local before = B.kwh(spart)
+B.summonEnd(sv)
+check(near(before - B.kwh(spart), drive, 1e-9), "start and end with no update between: the whole path charged at the end")
+B.summonStart(sv, 4000)
+summoned[sv] = { by = "own", phase = "driving", startedMs = 4000 }
+check(near(step(50, 0), got, 1e-9), "an update during it: the path from the start (not 0)")
+sv.x = sv.x + 50
+summoned[sv] = nil
+before = B.kwh(spart)
+B.summonEnd(sv)
+check(near(before - B.kwh(spart), drive, 1e-9), "...and the end charges only the leg after that update")
+before = B.kwh(spart)
+B.summonEnd(sv)
+check(B.kwh(spart) == before, "an end with nothing kept: no charge")
+T.Remote = realRemote
+
 H.section("regen")
 local R = T.Regen
 local rv = H.vehicle({ kwh = 30, running = true, speed = 60 })

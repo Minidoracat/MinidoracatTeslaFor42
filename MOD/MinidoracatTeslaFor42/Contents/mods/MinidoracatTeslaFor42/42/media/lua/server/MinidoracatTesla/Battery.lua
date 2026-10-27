@@ -139,6 +139,53 @@ function T.Update.Brakes(vehicle, part, elapsedMinutes)
     if ZombRandFloat(0, 1) < T.BRAKE_WEAR then Vehicles.Update.Brakes(vehicle, part, elapsedMinutes) end
 end
 
+-- Summon (AutoDrive's unmanned mode, Remote.lua): nobody drives, and in MP the server reads 0 km/h for such a car
+-- (BaseVehicle.java:4312-4316), so the drive term uses the distance moved since the last update instead. Over m game
+-- minutes kmh = km / (m * secPerGameMin / 3600), so kwPerKmh * kmh * m / 60 = kwPerKmh * km * 60 / secPerGameMin: the
+-- same energy for the same path, whatever speed the server reads. Returns km, or nil when the car is not summoned.
+-- The start position belongs to one summon (AutoDrive's startedMs) of one car (keyId: vehicle ids are reused), so a
+-- new summon never measures from an old one's end. Remote.lua records it at the start (B.summonStart) and charges the
+-- leg after the last update at the end (B.summonEnd): a short summon is over before its car's first part update.
+local summonAt = {} -- vehicle id -> { x, y, s = startedMs, k = keyId } at the start or the last update while summoned
+function B.summonStart(vehicle, startedMs)
+    summonAt[vehicle:getId()] = { vehicle:getX(), vehicle:getY(), s = startedMs, k = vehicle:getKeyId() }
+end
+-- km since the start or the last update (which becomes the new mark); nil when nothing of this car's summon is kept
+local function summonLeg(id, x, y, k)
+    local last = summonAt[id]
+    if not last or last.k ~= k then return nil end
+    local dx, dy = x - last[1], y - last[2]
+    last[1], last[2] = x, y
+    return math.sqrt(dx * dx + dy * dy) / 1000 -- 1 km = 1000 tiles (Core.lua T.kmPerKwh)
+end
+function B.summonKm(vehicle)
+    if not instanceof(vehicle, "BaseVehicle") then return nil end -- a VirtualVehicle is never summoned
+    local api = T.Remote and T.Remote.summonApi and T.Remote.summonApi()
+    if not api then return nil end -- no AutoDrive summon: nothing was ever kept
+    local id = vehicle:getId()
+    local info = api.summonInfo(vehicle)
+    if not info then
+        summonAt[id] = nil
+        return nil
+    end
+    local x, y, k = vehicle:getX(), vehicle:getY(), vehicle:getKeyId()
+    local last = summonAt[id]
+    if not last or last.s ~= info.startedMs or last.k ~= k then
+        summonAt[id] = { x, y, s = info.startedMs, k = k } -- not seen starting (a reload): from here
+        return 0
+    end
+    return summonLeg(id, x, y, k)
+end
+-- the summon ended (Remote.lua R.summonEnded): the drive term of the leg since the last update, then forget the car
+function B.summonEnd(vehicle)
+    local id = vehicle:getId()
+    local km = summonLeg(id, vehicle:getX(), vehicle:getY(), vehicle:getKeyId())
+    summonAt[id] = nil
+    local s, part = T.spec(vehicle), B.part(vehicle)
+    if not (km and km > 0 and s and part and part:getInventoryItem()) then return end
+    B.draw(vehicle, part, s.kwPerKmh * km * 60 / T.secPerGameMin() / T.rangeMul())
+end
+
 -- GasTank update: drive draw minus brake regen, every game minute while the car's parts update; cable length check.
 -- A plugged-in car stands still in Park, so its running motor is standby only, and that runs on a powered charger.
 -- Parts update while the car drives or charges: the phone app's last record (Remote.lua) follows the car then.
@@ -148,14 +195,19 @@ function T.Update.Battery(vehicle, part, elapsedMinutes)
     if remember and instanceof(vehicle, "BaseVehicle") then remember(vehicle) end -- not a VirtualVehicle
     local chg = part:getModData().chg
     if chg and T.Charge then T.Charge.checkCable(vehicle, part, chg) end
+    local km = B.summonKm(vehicle) -- every update: a summon's start position is taken here
     local m = math.min(elapsedMinutes or 0, T.MAX_ELAPSED)
     if m <= 0 then return end
     local s = T.spec(vehicle)
     if not s then return end
     local used = 0
     if vehicle:isEngineRunning() and not B.onCharger(part) then
-        local kmh = math.abs(vehicle:getCurrentSpeedKmHour())
-        used = (s.idleKw + s.kwPerKmh * kmh) * m / 60 / T.rangeMul()
+        if km then
+            used = (s.idleKw * m / 60 + s.kwPerKmh * km * 60 / T.secPerGameMin()) / T.rangeMul()
+        else
+            local kmh = math.abs(vehicle:getCurrentSpeedKmHour())
+            used = (s.idleKw + s.kwPerKmh * kmh) * m / 60 / T.rangeMul()
+        end
     end
     local regen = T.Regen and T.Regen.take(vehicle, s, used) or 0
     if used == 0 and regen == 0 then return end

@@ -7,7 +7,8 @@
 -- Everyone else (passengers too): one OnTick, added while at least one car is registered and removed when the list
 -- empties; it moves the 3D emitters with the car every frame and sets volume and pitch at 10 Hz. Outside the car each
 -- layer has a 3D copy on the car and a 2D copy that takes over while the car is behind the listener or its square is
--- out of sight (want3D).
+-- out of sight (want3D). A summoned car (AutoDrive drives it empty, server/MinidoracatTesla/Remote.lua) has no
+-- driver: the server says when its summon starts and ends ({ sum = true }; SP too, the summoner is the listener).
 require "MinidoracatTesla/HUD"
 
 local T = MinidoracatTesla
@@ -20,6 +21,7 @@ local STEP = 0.08                   -- most a volume moves per update: throttle 
 local PITCH_STEP = 0.03             -- relative; setPitch writes a log line per call (pitfalls.md:257-261)
 Sound.BEAT_MS = 5000                -- driver: "motor on" again this often while the layers play
 Sound.HEARD_MS = 12000              -- listener: a car without a beat for this long goes quiet (two beats missed)
+Sound.SUMMON_MS = 300000            -- listener: a summon's "on" has no beats; its "off" ends it, this is the backstop
 Sound.EXT_MIN = 3                   -- = distanceMin of the *Ext sounds: full volume up to here
 Sound.EXT_MAX = 30                  -- = distanceMax of the *Ext sounds; FMOD's inverse rolloff stops falling there
 Sound.FLAT_GAIN = 0.7               -- 2D copy vs 3D copy at the same distance: the 3D pan near the centre is
@@ -124,7 +126,7 @@ function HUD:hide()
 end
 
 -- ---------------------------------------------------------------- everyone else (MP)
--- vid -> { vid, exp, v, inside, motor, pws, motor2, pws2, lm, lp, seen }. A car stays registered while it is
+-- vid -> { vid, exp, sum, v, inside, motor, pws, motor2, pws2, lm, lp, seen }. A car stays registered while it is
 -- unloaded, out of earshot, parked with the motor off or without a driver (a fast car crosses the relay radius
 -- between two beats; the "on" can arrive before the engine state): only "off" or the expiry drop it.
 -- motor/pws: outside the 3D layers on the car, inside the cabin layers (2D). motor2/pws2: outside only, the 2D copies.
@@ -196,7 +198,7 @@ end
 local function refresh(e, me)
     local v = getVehicleById(e.vid)
     local drv = v and v:getDriver()
-    if not drv or drv == me or not v:isEngineRunning() then return silence(e) end
+    if not v or (not drv and not e.sum) or drv == me or not v:isEngineRunning() then return silence(e) end
     local inside = me:getVehicle() == v
     local dx, dy, dz = v:getX() - me:getX(), v:getY() - me:getY(), (v:getZ() - me:getZ()) * 3
     local d = math.sqrt(dx * dx + dy * dy + dz * dz)
@@ -218,6 +220,18 @@ local function refresh(e, me)
     end
     e.v = v
     local speed = v:getCurrentSpeedKmHour()
+    if e.sum and not drv then
+        -- a car nobody drives reads 0 here unless this game runs its physics (BaseVehicle.java:4312-4316: other
+        -- players' games): its speed from how far it moved since the last 10 Hz refresh, 1 tile = 1 m
+        local now, x, y = getTimestampMs(), v:getX(), v:getY()
+        if e.pt and now > e.pt then
+            local mx, my = x - e.px, y - e.py
+            local moved = math.sqrt(mx * mx + my * my) * 3600 / (now - e.pt)
+            -- the sign: this game's own reading if it has one (the summoner's game runs the physics), else back
+            if math.abs(speed) < moved then speed = (speed < 0 or (speed == 0 and e.back)) and -moved or moved end
+        end
+        e.px, e.py, e.pt = x, y, now
+    end
     local g = far and 0 or gain()
     local pitch, motor, pws = Sound.curve(math.abs(speed) * BaseVehicle.getFakeSpeedModifier(), 0, speed > 0)
     e.lm, e.lp = approach(e.lm, motor * g, STEP), approach(e.lp, pws * g, STEP)
@@ -278,7 +292,8 @@ T.ClientCommands.motor = function(args)
             Sound.stats.tickAdds = Sound.stats.tickAdds + 1
         end
     end
-    e.exp = getTimestampMs() + Sound.HEARD_MS
+    e.sum, e.back = args.sum == true, args.back == true -- summoned: plays with nobody in the seat; back: reversing
+    e.exp = getTimestampMs() + (e.sum and Sound.SUMMON_MS or Sound.HEARD_MS)
 end
 
 return Sound
