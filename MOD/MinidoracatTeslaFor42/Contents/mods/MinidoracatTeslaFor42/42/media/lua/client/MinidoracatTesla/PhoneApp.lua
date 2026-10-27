@@ -3,10 +3,16 @@
 -- (KeysUI.lua). While open it asks the server for its car every POLL_MS; the server (server/MinidoracatTesla/Remote.lua)
 -- answers holders of that phone key only and checks every command again. Players without the app open cost nothing.
 -- The car is named by keyId (self.key) in every request.
+-- One phone key, several cars (decisions.md "手機 App 第二版"): the car name on the home page opens the car list
+-- ("cars" page): every car the phone keys on the player are paired with, then the Teslas VehicleManager lists for this
+-- player that no phone here is paired with (MinidoracatTesla.VMLink.cars: last position only; remote buttons dimmed,
+-- pressing one says how to add the car). Only the selected car is polled; the list's grey lines come from App.seen,
+-- refreshed by one appStatusAll when the list opens.
 -- Pages: "home" (name, battery, the car in its paint, four quick icons, a list into the sub pages), "controls" (flash,
--- horn, frunk, liftgate), "location" (arrow, distance, "Show on map"), "security" (Sentry Mode, alerts), "charging".
+-- horn, frunk, liftgate), "location" (arrow, distance, "Show on map", "Navigate to car" with the MiniMap's
+-- setNavTarget), "security" (Sentry Mode, alerts), "charging", "cars".
 -- "Show on map" opens the world map on the car and draws a marker after vanilla's map: never saved, gone when the map
--- closes (the app comes back on the location page).
+-- closes (the app comes back on the location page). With the MiniMap, its marker (MiniMapBridge.lua) is the marker.
 -- Drawing: the dashboard atlas (2x; HUD.spr / HUD.rrect), S scale, HUD.drawTip. Buttons are bare hit areas; the app
 -- draws everything. Joypad: the D-pad moves along the page's rows (NAV), A presses, B goes back (home: closes).
 -- A page taller than this player's screen scrolls below its header (mouse wheel; joypad focus scrolls itself in).
@@ -25,10 +31,15 @@ T.PhoneApp = App
 T.ClientCommands = T.ClientCommands or {}
 App.POLL_MS = 2000
 App.TOAST_MS = 4000
-App.stats = { polls = 0, states = 0, sent = 0 }
+App.stats = { polls = 0, states = 0, sent = 0, batches = 0 }
 local apps = {} -- [playerNum]
 
 local W, PAD = 340, 20
+App.NAV_API = 12 -- MinidoracatMiniMapAPI.navApiVersion with setNavTarget (MiniMap docs/addon-api.md)
+-- the client's last view of each car, by keyId: what the car list's grey lines and the MiniMap marker show.
+-- ponytail: one table for all split-screen players (only player 0 gets MiniMap markers); key it by playerNum if
+-- split-screen phone keys ever matter.
+App.seen, App.seenRev = {}, 0
 local P = "IGUI_MinidoracatTesla_App_"
 local TIP = "IGUI_MinidoracatTesla_Tip_App"
 local DIRS = { "N", "NE", "E", "SE", "S", "SW", "W", "NW" }
@@ -40,27 +51,33 @@ end
 local C = { bg = rgb("#161718"), text = rgb("#F3F3F3"), text2 = rgb("#8A8B8B"), weak = rgb("#454546"),
     line = rgb("#2E2F30"), blue = rgb("#3268FE"), ok = HUD.C.ok, warn = HUD.C.warn, white = HUD.C.white }
 
--- hit areas: id -> { page, server action }; the list rows open the page of their own name
+-- hit areas: id -> { page, server action }; the list rows open the page of their own name. The car list's rows are
+-- made on demand (App:pickButton, ids pick1, pick2, ...).
 local BTN = {
-    close = { "home" }, lock = { "home", "lock" }, qcharge = { "home", "charge" }, qfrunk = { "home", "frunk" },
-    qtrunk = { "home", "trunk" }, controls = { "home" }, location = { "home" }, security = { "home" }, charging = { "home" },
+    close = { "home" }, cars = { "home" }, lock = { "home", "lock" }, qcharge = { "home", "charge" },
+    qfrunk = { "home", "frunk" }, qtrunk = { "home", "trunk" }, controls = { "home" }, location = { "home" },
+    security = { "home" }, charging = { "home" },
     back = {}, flash = { "controls", "flash" }, horn = { "controls", "horn" }, frunk = { "controls", "frunk" },
-    trunk = { "controls", "trunk" }, map = { "location" }, sentry = { "security", "sentry" }, charge = { "charging", "charge" },
+    trunk = { "controls", "trunk" }, map = { "location" }, navcar = { "location" }, sentry = { "security", "sentry" },
+    charge = { "charging", "charge" },
 }
-local BTN_ORDER = { "close", "lock", "qcharge", "qfrunk", "qtrunk", "controls", "location", "security", "charging", "back",
-    "flash", "horn", "frunk", "trunk", "map", "sentry", "charge" }
--- the joypad's rows per page, top to bottom (buttons not shown are skipped)
+local BTN_ORDER = { "close", "cars", "lock", "qcharge", "qfrunk", "qtrunk", "controls", "location", "security", "charging",
+    "back", "flash", "horn", "frunk", "trunk", "map", "navcar", "sentry", "charge" }
+-- the joypad's rows per page, top to bottom (buttons not shown are skipped); "cars" is built with its rows
 local NAV = {
-    home = { { "close" }, { "lock", "qcharge", "qfrunk", "qtrunk" }, { "controls" }, { "location" }, { "security" }, { "charging" } },
+    home = { { "cars", "close" }, { "lock", "qcharge", "qfrunk", "qtrunk" }, { "controls" }, { "location" }, { "security" }, { "charging" } },
     controls = { { "back" }, { "flash", "horn" }, { "frunk", "trunk" } },
-    location = { { "back" }, { "map" } },
+    location = { { "back" }, { "map" }, { "navcar" } },
     security = { { "back" }, { "sentry" } },
     charging = { { "back" }, { "charge" } },
+    cars = { { "back" } },
 }
+-- the server actions: dimmed but pressable for a car this phone is not paired with (they say how to add it)
+local REMOTE = { "lock", "qcharge", "qfrunk", "qtrunk", "flash", "horn", "frunk", "trunk", "sentry", "charge" }
 local QUICK = { "lock", "qcharge", "qfrunk", "qtrunk" }
 local LIST = { "controls", "location", "security", "charging" }
 local LIST_ICON = { controls = "i_carfront", location = "i_nav", security = "i_shield", charging = "i_bolt" }
-local TITLE = { controls = "Controls", location = "Location", security = "Security", charging = "ChargingTitle" }
+local TITLE = { controls = "Controls", location = "Location", security = "Security", charging = "ChargingTitle", cars = "Cars" }
 local GRID = { "flash", "horn", "frunk", "trunk" }
 local GRID_ICON = { flash = "i_headlight", horn = "i_horn", frunk = "i_frunk", trunk = "i_trunk" }
 local LIDS = { "frunk", "trunk" }
@@ -108,6 +125,49 @@ function App.paint(car, skin)
     local colors = spec.colors
     return (type(skin) == "number" and colors[skin + 1]) or colors[1], spec.model
 end
+-- the official paint names stay as Tesla writes them ("Stealth Grey"), in every language
+local function paintLabel(paint) return (paint.name:gsub("(%l)(%u)", "%1 %2")) end
+-- "Model Y · Pearl White": the car model (the phone key's mirror, else the app's last view) and, once the app has
+-- seen the car, its paint. KeysUI's "Remove from phone" entries use it too.
+function App.carLabel(keyId, car)
+    local st = keyId and App.seen[keyId]
+    car = car or (st and st.car)
+    local name = car and getText("IGUI_VehicleName" .. car) or txt("Title")
+    if not (st and st.skin) then return name end
+    return name .. getText("IGUI_MinidoracatTesla_Sep") .. paintLabel(App.paint(car, st.skin))
+end
+
+-- The cars this player's app can show, in order: every car of the phone keys on the player (pairing order), then
+-- VehicleManager's Teslas for this player no phone here opens (MinidoracatTesla.VMLink.cars: { oid, keyId, name,
+-- script, x, y, z, ageMs }). Entries: { key = keyId, car, oid } or { oid, vm = row, car }. Built on demand only.
+function App.cars(playerNum, p)
+    local out, byKey = {}, {}
+    local list = p:getInventory():getAllTypeRecurse(K.PHONE_KEY)
+    for i = 0, list:size() - 1 do
+        local item = list:get(i)
+        local models = item:hasModData() and item:getModData()[K.PAIRED_CARS]
+        for j, id in ipairs(K.pairedIds(item)) do
+            if not byKey[id] then
+                local e = { key = id, car = type(models) == "table" and models[j] or nil }
+                out[#out + 1], byKey[id] = e, e
+            end
+        end
+    end
+    local VML = T.VMLink
+    local rows = VML and VML.cars and VML.cars(playerNum) or {}
+    for _, r in ipairs(rows) do
+        local e = r.keyId and byKey[r.keyId]
+        if e then e.oid = e.oid or r.oid
+        elseif r.oid then out[#out + 1] = { oid = r.oid, vm = r, car = (tostring(r.script):gsub("^Base%.", "")) } end
+    end
+    return out
+end
+-- a VehicleManager-only car as the app shows it: its last position, no battery (the server says nothing about it)
+local function vmState(e)
+    local r = e.vm
+    return { car = e.car, vm = true, x = r.x and math.floor(r.x), y = r.y and math.floor(r.y),
+        ageH = (r.ageMs or 0) / 3600000 }
+end
 
 function App:new(playerNum)
     local o = ISPanelJoypad.new(self, 0, 0, W, 400)
@@ -121,28 +181,44 @@ function App:new(playerNum)
     return o
 end
 
+local function makeButton(self, id, act)
+    local b = ISButton:new(0, 0, 40, 40, "", self, App.onButton)
+    b:initialise()
+    b:instantiate()
+    -- a bare hit area: the app draws every button (ISButton's own disabled look is an opaque box, ISButton.lua:416-438)
+    b.displayBackground = false
+    b.backgroundColor = { r = 0, g = 0, b = 0, a = 0 }
+    b.backgroundColorMouseOver = { r = 1, g = 1, b = 1, a = 0 }
+    b.borderColor = { r = 1, g = 1, b = 1, a = 0 }
+    b.id, b.act, b.enable, b.lit = id, act, true, true
+    self:addChild(b)
+    self.b[id] = b
+    self.buttons[#self.buttons + 1] = b
+    return b
+end
 function App:createChildren()
     self.b, self.buttons = {}, {}
-    for _, id in ipairs(BTN_ORDER) do
-        local b = ISButton:new(0, 0, 40, 40, "", self, App.onButton)
-        b:initialise()
-        b:instantiate()
-        -- a bare hit area: the app draws every button (ISButton's own disabled look is an opaque box, ISButton.lua:416-438)
-        b.displayBackground = false
-        b.backgroundColor = { r = 0, g = 0, b = 0, a = 0 }
-        b.backgroundColorMouseOver = { r = 1, g = 1, b = 1, a = 0 }
-        b.borderColor = { r = 1, g = 1, b = 1, a = 0 }
-        b.id, b.act, b.enable = id, BTN[id][2], true
-        self:addChild(b)
-        self.b[id] = b
-        self.buttons[#self.buttons + 1] = b
-    end
+    for _, id in ipairs(BTN_ORDER) do makeButton(self, id, BTN[id][2]) end
+end
+-- the car list's i-th row (made the first time a list has that many cars)
+function App:pickButton(i)
+    return self.b["pick" .. i] or makeButton(self, "pick" .. i, nil)
 end
 
 -- ---------------------------------------------------------------- open / close
-function App.open(playerNum, keyId, page)
+-- opts.keyId / opts.oid: the car to show (VehicleManager's menu passes either); none or unknown: the first car.
+-- Needs a phone key on the player. Returns the app, or nil.
+function App.open(playerNum, opts)
     local p = getSpecificPlayer(playerNum)
-    if not p or type(keyId) ~= "number" then return nil end
+    if not p or not p:getInventory():containsTypeRecurse(K.PHONE_KEY) then return nil end
+    opts = type(opts) == "table" and opts or {}
+    local cars = App.cars(playerNum, p)
+    local pick = cars[1]
+    for _, e in ipairs(cars) do
+        local kid = e.key or (e.vm and e.vm.keyId)
+        if (opts.keyId ~= nil and kid == opts.keyId) or (opts.oid ~= nil and e.oid == opts.oid) then pick = e; break end
+    end
+    if not pick then return nil end
     local a = apps[playerNum]
     if not a then
         a = App:new(playerNum)
@@ -150,20 +226,32 @@ function App.open(playerNum, keyId, page)
         a:instantiate()
         apps[playerNum] = a
     end
-    if a.key ~= keyId then a.st, a.alerts, a.alertsWhy = nil, nil, nil end -- another car: forget the old one's state
-    a.key, a.player, a.page, a.toast, a.nextPoll, a.scroll = keyId, p, page or "home", nil, 0, 0
-    a.sig = nil
-    a:send("appAlerts", {}) -- the home list's alert count; the security page asks again
+    a.player, a.active, a.toast, a.scroll = p, true, nil, 0
+    a:select(pick)
+    a.page = opts.page or "home"
     a:read()
     a:layout()
     if not a.inUI then a:addToUIManager(); a.inUI = true end
     a:setVisible(true)
     a:bringToTop()
     if JoypadState.players[playerNum + 1] then setJoypadFocus(playerNum, a) end -- JoyPadSetup.lua:546
-    T.log("app open key=" .. tostring(keyId))
+    T.log("app open key=" .. tostring(a.key) .. " oid=" .. tostring(a.oid))
     return a
 end
 function App.get(playerNum) return apps[playerNum or 0] end
+
+-- show car `e` (an App.cars entry): its last view at once, then the server's (keyed cars are polled right away)
+function App:select(e)
+    local same = e.key ~= nil and e.key == self.key
+    self.key, self.oid, self.vmEntry = e.key, e.oid, e.vm and e or nil
+    if not same then -- another car: forget the old one's state
+        self.st = e.key and App.seen[e.key] or (e.vm and vmState(e)) or nil
+        self.stAt = getTimestampMs()
+        self.alerts, self.alertsWhy, self.distKey = nil, nil, nil
+    end
+    self.nextPoll, self.sig = 0, nil
+    if self.key then self:send("appAlerts", {}) end -- the home list's alert count; the security page asks again
+end
 
 function App:close()
     local jf = self.joyfocus
@@ -174,17 +262,33 @@ function App:close()
     self.joyfocus = nil
     self:setFocus(nil)
     if self.inUI then self:removeFromUIManager(); self.inUI = false end
-    self.key = nil
+    self.key, self.oid, self.vmEntry, self.active = nil, nil, nil, false
 end
 
 function App:setPage(page)
     local from = self.page
     self.page, self.scroll, self.sig = page, 0, nil
-    if page == "security" then self:send("appAlerts", {}) end
+    if page == "security" and self.key then self:send("appAlerts", {}) end
+    if page == "cars" then self:openList() end
     self:read()
     self:layout()
-    -- joypad: back home lands on the row it came from, a sub page starts on its first control
-    if self.joyfocus then self:focusFirst(page == "home" and from or nil) end
+    -- joypad: back home lands on the row it came from, a sub page starts on its first control (the list: this car)
+    if self.joyfocus then self:focusFirst(page == "home" and from or (page == "cars" and self.curPick) or nil) end
+end
+
+-- the car list: built when it opens; one appStatusAll for the other paired cars (their grey lines; the selected car is
+-- polled anyway)
+function App:openList()
+    local cars = App.cars(self.playerNum, self.player)
+    self.carList = cars
+    local keys = {}
+    for _, e in ipairs(cars) do
+        if e.key and e.key ~= self.key then keys[#keys + 1] = e.key end
+    end
+    if #keys > 0 then
+        App.stats.batches = App.stats.batches + 1
+        T.request(self.player, "appStatusAll", { keys = keys })
+    end
 end
 
 -- ---------------------------------------------------------------- joypad: own rows (NAV), not ISPanelJoypad's grid
@@ -282,6 +386,12 @@ function App:onButton(b)
     if id == "back" then return self:setPage("home") end
     if TITLE[id] then return self:setPage(id) end
     if id == "map" then return self:onMap() end
+    if id == "navcar" then return self:onNavCar() end
+    if b.pick then -- a car list row: show that car
+        self:select(b.pick)
+        return self:setPage("home")
+    end
+    if b.hint then return self:showToast(txt("JoinHint"), false) end -- not paired with this phone: how to add it
     local st, act, on = self.st or {}, b.act, nil
     if act == "lock" then act = st.locked and "unlock" or "lock"
     elseif act == "sentry" then on = not st.sentry
@@ -295,9 +405,29 @@ end
 function App:onMap()
     local st = self.st
     if not (st and st.x) or not ISWorldMap.IsAllowed() then return end
-    App.mapCar = { x = st.x + 0.5, y = st.y + 0.5, name = self.sName, dist = self.sDist, pn = self.playerNum, key = self.key }
+    App.mapCar = { x = st.x + 0.5, y = st.y + 0.5, name = self.sName, dist = self.sDist, pn = self.playerNum,
+        key = self.key, oid = self.oid }
     self:close()
     ISWorldMap.ShowWorldMap(App.mapCar.pn, App.mapCar.x, App.mapCar.y, 18)
+end
+
+-- "Navigate to car": the MiniMap's route to the car's last known square (setNavTarget, navApiVersion 12). It answers
+-- true, "ok" (navigating), true, "prompted" (it asks first: the player has a trip with stops), or false, reason.
+function App.navApi()
+    local api = MinidoracatMiniMapAPI
+    if api and type(api.navApiVersion) == "number" and api.navApiVersion >= App.NAV_API
+        and type(api.setNavTarget) == "function" then return api end
+    return nil
+end
+function App:onNavCar()
+    local api, st = App.navApi(), self.st
+    if not (api and st and st.x) then return end
+    local ok, why = api.setNavTarget(self.playerNum, st.x + 0.5, st.y + 0.5, self.sName)
+    T.log("app navigate to key=" .. tostring(self.key) .. " " .. tostring(ok) .. " " .. tostring(why))
+    if ok and why == "prompted" then return self:showToast(txt("NavPrompted"), true) end
+    if ok then return self:showToast(txt("NavSet", self.sName), true) end
+    local NAV_WHY = { nearby = "NavNearby", notstopped = "NavStopFirst" }
+    self:showToast(txt(NAV_WHY[why] or "NavFailed"), false)
 end
 
 function App:showToast(text, ok)
@@ -316,12 +446,42 @@ local function each(key, fn)
     return hit
 end
 
+-- the app's last view of a car (the list's grey lines, the MiniMap marker): seenRev moves only when the place, the
+-- car or its paint changes, so the marker table is not rebuilt every 2 s poll
+local function remember(st)
+    local key = st.key
+    if type(key) ~= "number" then return end
+    local old = App.seen[key]
+    if st.deny then -- refused (VehicleManager): forget the place too
+        if old then App.seen[key], App.seenRev = nil, App.seenRev + 1 end
+        return
+    end
+    st.seenAt = getTimestampMs()
+    if not (old and old.x == st.x and old.y == st.y and old.car == st.car and old.skin == st.skin) then
+        App.seenRev = App.seenRev + 1
+    elseif old.seenAt and st.seenAt - old.seenAt > App.FRESH_MS then
+        App.seenRev = App.seenRev + 1 -- faded marker comes back
+    end
+    App.seen[key] = st
+end
+App.FRESH_MS = 10 * 60 * 1000 -- the MiniMap marker fades when the app's last look is older (user 2026-10-27)
+
 T.ClientCommands.appState = function(args)
+    remember(args)
     each(args.key, function(a)
         App.stats.states = App.stats.states + 1
         a.st = args
         a.stAt = getTimestampMs()
     end)
+end
+
+-- the car list's batch (appStatusAll): the other paired cars' last view; an open list redraws its grey lines
+T.ClientCommands.appStates = function(args)
+    local list = type(args.list) == "table" and args.list or {}
+    for _, st in ipairs(list) do remember(st) end
+    for _, a in pairs(apps) do
+        if a.active and a.page == "cars" then a.sig = nil end
+    end
 end
 
 T.ClientCommands.appDone = function(args)
@@ -378,10 +538,11 @@ local function distText(d)
     return txt("Km", tostring(math.floor(t / 10)) .. "." .. tostring(t % 10))
 end
 
+-- lit: drawn as usable. A car this phone is not paired with keeps its remote buttons pressable but dim (hint).
 local function enable(b, on, isOn, icon, tip)
     b:setEnable(on == true)
     b.borderColor.a = 0
-    b.on, b.icon, b.tipKey = isOn == true, icon, tip
+    b.on, b.icon, b.tipKey, b.lit, b.hint = isOn == true, icon, tip, on == true, nil
 end
 
 -- strings and button states only when something shown changes (10 Hz update; no allocation otherwise)
@@ -406,7 +567,7 @@ function App:read()
     end
     local alertsN = self.alerts and #self.alerts or -1
     local sig = self.page .. hh .. ":" .. mm .. "/" .. tostring(self.toast and self.toast.text) .. "/" .. alertsN .. "/"
-        .. tostring(self.stAt) .. "/" .. tostring(self.alertsWhy)
+        .. tostring(self.stAt) .. "/" .. tostring(self.alertsWhy) .. (self.page == "cars" and ("/" .. App.seenRev) or "")
     if sig == self.sig then return false end
     self.sig = sig
     self.sTime = string.format("%02d:%02d", hh, mm)
@@ -416,6 +577,11 @@ function App:read()
     self.sNet = self.grid and txt("Net") or (link == "bt" and txt("Bt") or txt("NoService"))
     local rec = st and st.pct ~= nil and not st.deny
     self.rec = rec
+    local vmOnly = st ~= nil and st.vm == true -- VehicleManager's car, not on this phone: its last position only
+    self.vmOnly = vmOnly
+    local hasPos = st ~= nil and st.x ~= nil and not st.deny
+    self.hasPos = hasPos
+    local ageH = st and (st.ageH or (T.hours() - (st.h or 0))) or 0
     self.sName = st and st.car and getText("IGUI_VehicleName" .. st.car) or txt("Title")
     local paint, model = App.paint(st and st.car, st and st.skin)
     self.paintName, self.model = paint.name, model
@@ -425,26 +591,29 @@ function App:read()
         self.sSub = txt("Connecting")
     elseif st.deny then
         self.sSub = T.denyText(st.deny)
+    elseif vmOnly then
+        self.sSub = txt("LastSeen", ageText(ageH)) -- VehicleManager's position; the line below says why no controls
     elseif not rec then
         self.sSub = txt("NoRecord")
     elseif link then
         self.sSub = (st.drive and txt("Driving") or txt("Parked")) .. sep .. (st.locked and txt("Locked") or txt("Unlocked"))
     else
-        self.sSub = txt("LastSeen", ageText(T.hours() - (st.h or 0)))
+        self.sSub = txt("LastSeen", ageText(ageH))
     end
-    self.sSub2 = rec and not link and txt("FootOff") or nil -- why the controls are grey
+    -- why the controls are grey
+    self.sSub2 = vmOnly and txt("NotPaired") or (rec and not link and txt("FootOff")) or nil
     self.sBat = rec and (txt("Km", tostring(st.km)) .. sep .. tostring(st.pct) .. "%") or ""
     self.pct = rec and st.pct or 0
-    self.sWhen = rec and (link and txt("JustNow") or ageText(T.hours() - (st.h or 0))) or ""
+    self.sWhen = hasPos and (link and txt("JustNow") or ageText(ageH)) or ""
     self.sTitle = TITLE[self.page] and txt(TITLE[self.page]) or ""
     -- the home list: a grey line under each title, the state that is on in white first (the mock's <em>)
     local em, sub = self.rowEm, self.rowSub
     sub.controls = txt("ControlsSub")
-    em.location, sub.location = nil, rec and self.sDirDist and (self.sDirDist .. sep .. self.sWhen) or ""
+    em.location, sub.location = nil, hasPos and self.sDirDist and (self.sDirDist .. sep .. self.sWhen) or ""
     local alerts = self.alertsWhy or (self.alerts and (#self.alerts > 0 and txt("AlertCount", tostring(#self.alerts)) or txt("NoAlerts")))
     if rec and st.sentry then em.security, sub.security = txt("Done_sentry_on"), alerts and (sep .. alerts) or ""
     elseif rec then em.security, sub.security = nil, txt("Done_sentry_off") .. (alerts and (sep .. alerts) or "")
-    else em.security, sub.security = nil, alerts or "" end
+    else em.security, sub.security = nil, vmOnly and txt("NotPaired") or alerts or "" end
     local chg = rec and st.chg
     self.chg = chg
     local state = chg == "charging" and txt("ChargingNow") or chg == "full" and txt("ChargeFull", tostring(st.target or 90))
@@ -480,26 +649,72 @@ function App:read()
     b.horn.sub = txt("HornSub")
     local sentry = rec and st.sentry == true
     enable(b.sentry, live, sentry, nil, TIP .. (sentry and "SentryOff" or "SentryOn"))
-    enable(b.map, rec, false, nil, TIP .. "Map")
+    enable(b.map, hasPos, false, nil, TIP .. "Map")
+    enable(b.navcar, hasPos, false, nil, TIP .. "NavCar")
     enable(b.close, true, false, "i_close", TIP .. "Close")
     enable(b.back, true, false, "i_back", TIP .. "Back")
+    enable(b.cars, true, false, "i_chevdown", TIP .. "Cars")
     for _, id in ipairs(LIST) do enable(b[id], true, false, LIST_ICON[id], nil) end
+    if vmOnly then -- dim, but a press says how to add this car to the phone
+        for _, id in ipairs(REMOTE) do
+            b[id]:setEnable(true)
+            b[id].hint = true
+        end
+    end
     return true
 end
 
+-- every POLL_MS while open: the selected car only. A paired car asks the server; VehicleManager's car re-reads its
+-- last position from VMLink (gone from its list, e.g. a share taken back: the app moves to the first car left).
 function App:update()
     ISPanelJoypad.update(self)
-    if not self.key then return end
+    if not self.active then return end
     local p = self.player
     local now = getTimestampMs()
     if now >= self.nextPoll then
         self.nextPoll = now + App.POLL_MS
         -- the phone left the inventory, or the player is gone: close (nothing to poll for)
-        if not p or p:isDead() or not K.phoneKeyFor(p, self.key) then return self:close() end
+        if not p or p:isDead() or (self.key and not K.phoneKeyFor(p, self.key))
+            or not p:getInventory():containsTypeRecurse(K.PHONE_KEY) then return self:close() end
         App.stats.polls = App.stats.polls + 1
-        self:send("appStatus", {})
+        if self.key then
+            self:send("appStatus", {})
+        elseif self.vmEntry then
+            local cars = App.cars(self.playerNum, p)
+            local found = cars[1] -- gone from the list: the first car left
+            for _, e in ipairs(cars) do
+                if e.oid == self.oid then found = e; break end
+            end
+            if not found then return self:close() end
+            if found.vm and found.oid == self.oid then
+                self.vmEntry, self.st, self.stAt = found, vmState(found), now
+            else
+                self:select(found) -- now paired with a phone here, or another car
+            end
+        end
     end
     if self:read() then self:layout() end
+end
+
+-- a car list row's grey line: "78% · north 320 m" over a live link, "41% · last seen 2 hours ago" from the record,
+-- "VehicleManager · north 320 m · 5 min ago" for its car (App.seen; layout only)
+function App:carLine(e)
+    local sep, p = getText("IGUI_MinidoracatTesla_Sep"), self.player
+    local function where(x, y)
+        if not (x and p) then return nil end
+        local d, ci = K.bearing(p:getX(), p:getY(), x + 0.5, y + 0.5)
+        return d < 3 and txt("Here") or txt("DirDist", txt("Dir_" .. DIRS[ci]), distText(d))
+    end
+    if e.vm then
+        local w = where(e.vm.x and math.floor(e.vm.x), e.vm.y and math.floor(e.vm.y))
+        return txt("VmTag") .. (w and (sep .. w) or "") .. sep .. ageText((e.vm.ageMs or 0) / 3600000)
+    end
+    local st = App.seen[e.key]
+    if not st then return txt("Loading") end
+    if st.deny then return T.denyText(st.deny) end
+    if st.pct == nil then return txt("NoRecord") end
+    local w = st.link and where(st.x, st.y)
+    return tostring(st.pct) .. "%" .. sep .. (w or txt("LastSeen", ageText(T.hours() - (st.h or 0))))
 end
 
 -- ---------------------------------------------------------------- layout (design units x S; y below the header
@@ -535,7 +750,12 @@ function App:layout()
         local cs = u(28)
         self.yName = y
         place("close", w - pad - cs + u(6), y + math.floor((FHL - cs) / 2), cs, cs)
-        self.sHead = fitText(self.sName, w - 2 * pad - cs, UIFont.Large)
+        -- the car name + a down chevron: the car list (the real app's vehicle switcher)
+        local chev = u(22)
+        self.sHead = fitText(self.sName, w - 2 * pad - cs - chev, UIFont.Large)
+        local nw = tm:MeasureStringX(UIFont.Large, self.sHead)
+        self.xChev = pad + nw + u(4)
+        place("cars", pad - u(4), y - u(2), nw + u(8) + chev, FHL + u(4))
         y = y + FHL + u(4)
     else
         local bs = u(32)
@@ -600,7 +820,7 @@ function App:layout()
         end
         y = y + 2 * cellH + gap + u(16)
     elseif page == "location" then
-        if self.rec and self.sDist then
+        if self.hasPos and self.sDist then
             self.yArrow = y + u(28)
             y = y + u(56) + u(14)
             self.yDist, self.sDistFit = y, fitText(self.sDist, tw, UIFont.Large)
@@ -617,6 +837,11 @@ function App:layout()
         if ISWorldMap.IsAllowed() then
             local b = place("map", pad, y, tw, u(40))
             b.sTitle = fitText(txt("Map"), tw - u(16))
+            y = y + u(40) + u(14)
+        end
+        if App.navApi() then -- only with a MiniMap that has setNavTarget
+            local b = place("navcar", pad, y, tw, u(40))
+            b.sTitle = fitText(txt("NavCar"), tw - u(16))
             y = y + u(40) + u(14)
         end
     elseif page == "security" then
@@ -641,7 +866,8 @@ function App:layout()
             end
         else
             self.yAlertsMsg = y
-            self.sAlertsMsg = fitText(self.alertsWhy or (rows and txt("NoAlerts") or txt("Loading")), tw)
+            local msg = self.alertsWhy or (self.vmOnly and txt("NotPaired")) or (rows and txt("NoAlerts")) or txt("Loading")
+            self.sAlertsMsg = fitText(msg, tw)
             y = y + FH + u(10)
         end
         y = y + u(6)
@@ -660,6 +886,28 @@ function App:layout()
             b.sTitle = fitText(self.sChargeBtn, tw - u(16))
             y = y + u(40) + u(14)
         end
+    elseif page == "cars" then
+        -- one row per car (App.cars order); the joypad's rows follow them
+        local rows = NAV.cars
+        for i = #rows, 2, -1 do rows[i] = nil end
+        local rh = math.max(FHM + u(2) + FH, u(36)) + u(20)
+        local rw = tw - u(30) -- room for the current car's check mark
+        self.curPick = nil
+        for i, e in ipairs(self.carList or {}) do
+            local b = self:pickButton(i)
+            place(b.id, pad / 2, y, w - pad, rh)
+            b.pick = e
+            b.cur = (e.key ~= nil and e.key == self.key) or (e.key == nil and e.oid == self.oid)
+            if b.cur then self.curPick = b.id end
+            b.sTitle = fitText(App.carLabel(e.key, e.car), rw, UIFont.Medium)
+            b.sSub = fitText(self:carLine(e), rw)
+            rows[#rows + 1] = { b.id }
+            y = y + rh
+        end
+        y = y + u(10)
+        self.yHint = y
+        self.sHint1, self.sHint2 = wrap2(txt("AddCarHint"), tw)
+        y = y + FH * (self.sHint2 and 2 or 1) + u(12)
     end
     if cw then self.carX, self.carW, self.carH = math.floor((w - cw) / 2), cw, math.floor(cw / 2) end
     -- the toast sits at the bottom, outside the scrolled part
@@ -695,7 +943,7 @@ end
 
 Events.OnResolutionChange.Add(function()
     for _, a in pairs(apps) do
-        if a.key then a:layout() end
+        if a.active then a:layout() end
     end
 end)
 
@@ -752,6 +1000,11 @@ function App:prerender()
             icon(self, b.icon, b.x + b.width / 2, b.y + b.height / 2, 20, id == "close" and C.text2 or C.text, 1)
         end
     end
+    local nb = self.b.cars -- the home header: car name + down chevron (the car list)
+    if nb:isVisible() then
+        if nb.joypadFocused then focusRing(self, nb) end
+        icon(self, "i_chevdown", self.xChev + 9 * S, self.yName + self.FHL / 2, 18, C.text2, 1)
+    end
     flush(self)
     local clip = self.scrollMax > 0
     if clip then self:setStencilRect(0, self.yBody, w, self.yBodyEnd - self.yBody) end
@@ -763,7 +1016,7 @@ function App:prerender()
         if self.rec then batteryBar(self, pad, self.yBat - o) end
         for _, id in ipairs(QUICK) do
             local b = self.b[id]
-            local c = not b.enable and C.weak or (b.on and C.text or C.text2)
+            local c = not b.lit and C.weak or (b.on and C.text or C.text2)
             icon(self, b.icon, b.x + b.width / 2, b.y + b.height / 2, 24, c, 1)
         end
         for _, id in ipairs(LIST) do
@@ -780,19 +1033,30 @@ function App:prerender()
         for _, id in ipairs(GRID) do
             local b = self.b[id]
             local by = b.cy - o
-            frame(self, b.cx, by, b.cw, b.ch, 6 * S, 1, b.on and b.enable and C.text or C.line, 1)
-            icon(self, b.icon, b.cx + 14 * S + 11 * S, by + 14 * S + 11 * S, 22, b.enable and C.text or C.weak, 1)
+            frame(self, b.cx, by, b.cw, b.ch, 6 * S, 1, b.on and b.lit and C.text or C.line, 1)
+            icon(self, b.icon, b.cx + 14 * S + 11 * S, by + 14 * S + 11 * S, 22, b.lit and C.text or C.weak, 1)
         end
     elseif page == "security" then
         local b = self.b.sentry
         local tw, th = math.floor(40 * S), math.floor(22 * S)
         local tx, ty = w - pad - tw, b.cy - o + math.floor((b.ch - th) / 2)
-        local a = b.enable and 1 or 0.4
+        local a = b.lit and 1 or 0.4
         HUD.rrect(self, tx, ty, tw, th, th / 2, b.on and C.blue or C.weak, a)
         local k = th - math.floor(4 * S)
         HUD.rrect(self, b.on and (tx + tw - k - 2 * S) or (tx + 2 * S), ty + 2 * S, k, k, k / 2, b.on and C.white or C.text2, a)
     elseif page == "charging" then
         if self.rec then batteryBar(self, pad, self.yBat - o) end
+    elseif page == "location" then
+        local b = self.b.navcar -- the second action: a frame, not blue
+        if b.shown then frame(self, b.cx, b.cy - o, b.cw, b.ch, 6 * S, 1, b.lit and C.text2 or C.line, 1) end
+    elseif page == "cars" then
+        local i = 1
+        local b = self.b.pick1
+        while b and b.shown do
+            if b.cur then icon(self, "i_check", w - pad - 10 * S, b.cy - o + b.ch / 2, 18, C.text, 1) end
+            i = i + 1
+            b = self.b["pick" .. i]
+        end
     end
     for _, id in ipairs(MAIN) do -- the main actions: blue
         local b = self.b[id]
@@ -800,7 +1064,7 @@ function App:prerender()
     end
     flush(self)
     if self.carW and (page == "home" or page == "controls") and self.carTex then
-        self.javaObject:DrawTextureScaled(self.carTex, self.carX, self.yCar - o, self.carW, self.carH, self.rec and 1 or 0.5)
+        self.javaObject:DrawTextureScaled(self.carTex, self.carX, self.yCar - o, self.carW, self.carH, (self.rec or self.vmOnly) and 1 or 0.5)
     end
     if clip then self:clearStencilRect() end
     if self.yToast then
@@ -842,9 +1106,9 @@ function App:render()
         for _, id in ipairs(GRID) do
             local b = self.b[id]
             local tx, ty = b.cx + math.floor(14 * S), b.cy - o + math.floor(44 * S)
-            local tc = b.enable and c or cw
+            local tc = b.lit and c or cw
             jo:DrawText(Sm, b.sTitle, tx, ty, tc[1], tc[2], tc[3], 1)
-            local sc = b.enable and c2 or cw
+            local sc = b.lit and c2 or cw
             jo:DrawText(Sm, b.sSubFit, tx, ty + self.FH + math.floor(2 * S), sc[1], sc[2], sc[3], 1)
         end
     elseif page == "location" then
@@ -855,6 +1119,10 @@ function App:render()
             self:drawTextCentre(self.sWhenFit, w / 2, self.yWhen - o, c2[1], c2[2], c2[3], 1, Sm)
         else
             self:drawTextCentre(self.sMsg, w / 2, self.yMsg - o, c2[1], c2[2], c2[3], 1, Sm)
+        end
+        local b = self.b.navcar
+        if b.shown then
+            self:drawTextCentre(b.sTitle, b.cx + b.cw / 2, b.cy - o + (b.ch - self.FH) / 2, c[1], c[2], c[3], b.lit and 1 or 0.5, Sm)
         end
     elseif page == "security" then
         local b = self.b.sentry
@@ -880,6 +1148,18 @@ function App:render()
         jo:DrawText(Sm, self.sBatFit, pad + math.floor(30 * S), self.yBat - o, c2[1], c2[2], c2[3], 1)
         if self.sKwFit then jo:DrawText(Sm, self.sKwFit, pad, self.yKw - o, c[1], c[2], c[3], 1) end
         if self.sEtaFit then jo:DrawText(Sm, self.sEtaFit, pad, self.yEta - o, c2[1], c2[2], c2[3], 1) end
+    elseif page == "cars" then
+        local i, rx = 1, pad
+        local b = self.b.pick1
+        while b and b.shown do
+            local ty = b.cy - o + math.floor((b.ch - self.FHM - math.floor(2 * S) - self.FH) / 2)
+            jo:DrawText(UIFont.Medium, b.sTitle, rx, ty, c[1], c[2], c[3], 1)
+            jo:DrawText(Sm, b.sSub, rx, ty + self.FHM + math.floor(2 * S), c2[1], c2[2], c2[3], 1)
+            i = i + 1
+            b = self.b["pick" .. i]
+        end
+        jo:DrawText(Sm, self.sHint1, pad, self.yHint - o, c2[1], c2[2], c2[3], 1)
+        if self.sHint2 then jo:DrawText(Sm, self.sHint2, pad, self.yHint - o + self.FH, c2[1], c2[2], c2[3], 1) end
     end
     for _, id in ipairs(MAIN) do
         local b = self.b[id]
@@ -906,7 +1186,8 @@ end
 
 -- ---------------------------------------------------------------- world map marker (temporary, never saved)
 -- Drawn after vanilla's map (ISWorldMap.lua:384) with the dashboard atlas; worldToUIX/Y as vanilla's print media
--- markers (:478-479). Cleared when the map closes; the app comes back then.
+-- markers (:478-479). Cleared when the map closes; the app comes back then. With the MiniMap's marker provider
+-- (MiniMapBridge.lua; it draws on this map too) that marker is the car's: no second one here.
 function App.drawMapCar(map, m)
     local api = map.mapAPI
     if not api then return end
@@ -933,14 +1214,15 @@ local mapRender, mapClose = ISWorldMap.render, ISWorldMap.close
 function ISWorldMap:render(...)
     local r = mapRender(self, ...)
     local m = App.mapCar
-    if m then App.drawMapCar(self, m) end
+    local bridge = T.MiniMapBridge
+    if m and not (bridge and bridge.registered) then App.drawMapCar(self, m) end
     return r
 end
 function ISWorldMap:close(...)
     local m = App.mapCar
     App.mapCar = nil
     local r = mapClose(self, ...)
-    if m then App.open(m.pn, m.key, "location") end -- back to the page that opened the map
+    if m then App.open(m.pn, { keyId = m.key, oid = m.oid, page = "location" }) end -- back to the page that opened the map
     return r
 end
 

@@ -10,5 +10,7 @@
     "ContextMenu_MinidoracatTesla_TapLock": "Tap Key Card: Lock",
     "ContextMenu_MinidoracatTesla_PairPhone": "Set Up as Phone Key",
     "ContextMenu_MinidoracatTesla_ChargeItem": "Charge from car outlet",
-    "ContextMenu_MinidoracatTesla_OpenApp": "Open Tesla App"
+    "ContextMenu_MinidoracatTesla_OpenApp": "Open Tesla App",
+    "ContextMenu_MinidoracatTesla_AddCar": "Add This Car (%1 Paired)",
+    "ContextMenu_MinidoracatTesla_Unpair": "Remove from Phone"
 }

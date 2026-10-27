@@ -10,5 +10,7 @@
     "ContextMenu_MinidoracatTesla_TapLock": "Aproximar cartão-chave: trancar",
     "ContextMenu_MinidoracatTesla_PairPhone": "Configurar como chave de telefone",
     "ContextMenu_MinidoracatTesla_ChargeItem": "Carregar na tomada do carro",
-    "ContextMenu_MinidoracatTesla_OpenApp": "Abrir o app Tesla"
+    "ContextMenu_MinidoracatTesla_OpenApp": "Abrir o app Tesla",
+    "ContextMenu_MinidoracatTesla_AddCar": "Adicionar este carro (%1 pareados)",
+    "ContextMenu_MinidoracatTesla_Unpair": "Remover do telefone"
 }

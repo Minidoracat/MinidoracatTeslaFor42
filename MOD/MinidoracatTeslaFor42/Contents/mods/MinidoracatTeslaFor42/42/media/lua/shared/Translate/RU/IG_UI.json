@@ -210,5 +210,21 @@
     "IGUI_MinidoracatTesla_App_Kw": "%1 кВт",
     "IGUI_MinidoracatTesla_Deny_UNVERIFIED": "Нельзя проверить права на машину, пока она не загружена",
     "IGUI_MinidoracatTesla_Deny_NO_12V": "Аккумулятор 12 В машины разряжен",
-    "IGUI_MinidoracatTesla_Deny_NOT_LOADED": "Машина вне загруженной области; подойдите ближе"
+    "IGUI_MinidoracatTesla_Deny_NOT_LOADED": "Машина вне загруженной области; подойдите ближе",
+    "IGUI_MinidoracatTesla_PhoneCars": "Tesla: %1",
+    "IGUI_MinidoracatTesla_PhoneAdded": "%1 добавлена в телефон-ключ (всего %2)",
+    "IGUI_MinidoracatTesla_PhoneRemoved": "%1 удалена из телефона",
+    "IGUI_MinidoracatTesla_App_Cars": "Мои машины",
+    "IGUI_MinidoracatTesla_App_VmTag": "Управление транспортом",
+    "IGUI_MinidoracatTesla_App_NotPaired": "Этот телефон ещё не добавлен к этой машине",
+    "IGUI_MinidoracatTesla_App_JoinHint": "Сначала добавьте: сядьте с ключ-картой, ПКМ по телефону > «Добавить эту машину»",
+    "IGUI_MinidoracatTesla_App_AddCarHint": "Добавить машину: сядьте в неё, ПКМ по телефону, «Добавить эту машину».",
+    "IGUI_MinidoracatTesla_App_NavCar": "Маршрут к машине",
+    "IGUI_MinidoracatTesla_App_NavSet": "Цель миникарты: ваша %1",
+    "IGUI_MinidoracatTesla_App_NavPrompted": "Подтвердите на миникарте замену текущего маршрута",
+    "IGUI_MinidoracatTesla_App_NavNearby": "Машина прямо здесь",
+    "IGUI_MinidoracatTesla_App_NavStopFirst": "Сначала остановитесь, чтобы миникарта сменила цель",
+    "IGUI_MinidoracatTesla_App_NavFailed": "Миникарта сейчас не может задать цель",
+    "IGUI_MinidoracatTesla_Tip_AppNavCar": "Маршрут миникарты к последнему месту машины",
+    "IGUI_MinidoracatTesla_Tip_AppCars": "Сменить машину"
 }

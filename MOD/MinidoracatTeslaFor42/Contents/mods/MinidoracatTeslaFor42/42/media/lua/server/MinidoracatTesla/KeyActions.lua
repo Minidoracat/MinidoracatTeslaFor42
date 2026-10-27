@@ -3,7 +3,8 @@
 --     BaseVehicle.java:1145-1157, from ~20 call sites, so the swap happens on the player, not at creation).
 --     Which keys are Tesla keys: a keyId registry filled when a Tesla loads, not the translated item name.
 --   * keyTap: lock / unlock every door with the card, flash + beep. autoLock: walk-away lock for phone keys.
---   * phonePair: a phone becomes this car's phone key (a Key with its keyId).
+--   * phonePair: a phone becomes this car's phone key, or a phone key adds this car (one phone, several cars).
+--     phoneUnpair: a car leaves the phone key (the last one out: a plain phone again).
 --   * Phone loot.
 if isClient() then return end
 require "MinidoracatTesla/Core"
@@ -38,21 +39,48 @@ function K.register(vehicle)
 end
 Events.OnSpawnVehicleEnd.Add(K.register)
 
--- Same container, new item: server Remove/AddItem first, then the packets (pitfalls.md: send only sends).
-local function replace(old, fullType, keyId, car)
+-- Same container, new item: server Remove/AddItem first, then the packets (pitfalls.md: send only sends). `ids` (phone
+-- keys): every paired car in pairing order, written to the server-only record (the authority, Keys.pairedWith) and to
+-- the modData mirror the client reads; the new item has a new id, so the old id's record goes.
+local function replace(old, fullType, keyId, name, ids, cars)
     local cont = old:getContainer()
     if not cont then return nil end
     local item = instanceItem(fullType)
     item:setKeyId(keyId)
-    -- not item:getDisplayName(): on a dedicated server that is the script's full type (tesla-keys-1026e)
-    item:setName(getItemNameFromFullType(fullType) .. " - " .. getText("IGUI_VehicleName" .. car))
+    item:setName(name)
+    if ids then -- a phone (key): its record follows the new item id
+        local phones = T.Store.get("phones")
+        phones[tostring(old:getID())] = nil
+        if #ids > 1 then -- its own copy: a client's SyncItemModData replaces the item's modData, never the store's
+            local copy = {}
+            for i = 1, #ids do copy[i] = ids[i] end
+            phones[tostring(item:getID())] = copy
+        end
+        if #ids > 0 then
+            local md = item:getModData()
+            md[K.PAIRED], md[K.PAIRED_CARS] = ids, cars
+        end
+    end
     cont:Remove(old)
     sendRemoveItemFromContainer(cont, old)
     cont:AddItem(item)
     sendAddItemToContainer(cont, item)
     return item
 end
+-- not item:getDisplayName(): on a dedicated server that is the script's full type (tesla-keys-1026e)
+local function keyName(fullType, car) return getItemNameFromFullType(fullType) .. " - " .. getText("IGUI_VehicleName" .. car) end
 
+-- a phone key's name: "Phone Key - Model Y" for one car, "Phone Key - 2 Teslas" for more
+local function phoneName(ids, cars)
+    if #ids == 1 then return keyName(K.PHONE_KEY, cars[1]) end
+    return getItemNameFromFullType(K.PHONE_KEY) .. " - " .. getText("IGUI_MinidoracatTesla_PhoneCars", tostring(#ids))
+end
+-- the car models of `ids` (menu labels on the client), from the registry every loaded Tesla is in
+local function carsOf(ids)
+    local reg, out = registry(), {}
+    for i, id in ipairs(ids) do out[i] = reg[tostring(id)] or "MinidoracatTesla_ModelY" end
+    return out
+end
 -- Every Tesla CarKey on the player becomes a key card. Not while seated: the key may be on its way into or out of the
 -- ignition, and the client's copy would keep the old item id (IgnitionDup 2026-10-26: VehicleProperties.java:27-33).
 function K.sweep(player)
@@ -64,7 +92,7 @@ function K.sweep(player)
     for i = 0, list:size() - 1 do
         local key = list:get(i)
         local car = reg[tostring(key:getKeyId())]
-        if car and replace(key, K.CARD, key:getKeyId(), car) then n = n + 1 end
+        if car and replace(key, K.CARD, key:getKeyId(), keyName(K.CARD, car)) then n = n + 1 end
     end
     if n > 0 then
         K.stats.swaps = K.stats.swaps + n
@@ -146,10 +174,38 @@ T.ServerCommands.phonePair = function(player, args)
     local phone = id and player:getInventory():getItemWithIDRecursiv(id) or nil
     local ok, why = K.canPair(player, v, phone)
     if not ok then return T.deny(player, why, v:getId()) end
-    if not replace(phone, K.PHONE_KEY, v:getKeyId(), carName(v)) then return end
+    -- a phone key keeps its cars and adds this one last: the item's keyId (vanilla's) becomes this car
+    local ids = phone:getFullType() == K.PHONE_KEY and K.pairedIds(phone) or {}
+    ids[#ids + 1] = v:getKeyId()
+    local cars = carsOf(ids)
+    if not replace(phone, K.PHONE_KEY, v:getKeyId(), phoneName(ids, cars), ids, cars) then return end
     K.stats.pairs = K.stats.pairs + 1
-    T.log("phone key paired vid=" .. v:getId() .. " by " .. player:getUsername())
-    T.send(player, "phonePaired", { vid = v:getId(), car = carName(v) })
+    T.log("phone key paired vid=" .. v:getId() .. " cars=" .. #ids .. " by " .. player:getUsername())
+    T.send(player, "phonePaired", { vid = v:getId(), car = carName(v), n = #ids })
+end
+
+-- "Remove from phone > car": anywhere, the phone key on you. The item's keyId moves to the car paired last of those
+-- left; the last car out leaves a plain phone (no keyId, no record).
+T.ServerCommands.phoneUnpair = function(player, args)
+    local id, key = args.id, args.key
+    if not player or type(id) ~= "number" or type(key) ~= "number" then return end
+    local phone = player:getInventory():getItemWithIDRecursiv(id)
+    if not phone or phone:getFullType() ~= K.PHONE_KEY or not K.pairedWith(phone, key) then
+        return T.deny(player, "NO_PHONE_KEY")
+    end
+    local ids, left = K.pairedIds(phone), {}
+    for _, k in ipairs(ids) do if k ~= key then left[#left + 1] = k end end
+    local car = registry()[tostring(key)] or "MinidoracatTesla_ModelY"
+    local done
+    if #left == 0 then
+        done = replace(phone, K.PHONE, -1, getItemNameFromFullType(K.PHONE), left)
+    else
+        local cars = carsOf(left)
+        done = replace(phone, K.PHONE_KEY, left[#left], phoneName(left, cars), left, cars)
+    end
+    if not done then return end
+    T.log("phone key unpaired key=" .. tostring(key) .. " left=" .. #left .. " by " .. player:getUsername())
+    T.send(player, "phoneUnpaired", { car = car, n = #left })
 end
 
 T.ServerCommands.autoLock = function(player, args)

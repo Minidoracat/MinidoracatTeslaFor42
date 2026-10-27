@@ -3,6 +3,7 @@
 -- GlobalModData.java:171; family conventions.md). T.Store.get(name):
 --   seen: tostring(keyId) -> the app's last record; alerts: tostring(keyId) -> alerts, oldest first (Remote.lua)
 --   inbox: account -> offline alerts (Inbox.lua); keyIds: tostring(keyId) -> car model (KeyActions.lua)
+--   phones: tostring(phone key item id) -> keyIds in pairing order, phones with 2+ cars only (Keys.pairedWith)
 if isClient() then return end
 require "MinidoracatTesla/Core"
 
@@ -10,7 +11,7 @@ local T = MinidoracatTesla
 local St = {}
 T.Store = St
 St.SYSTEM = "MinidoracatTeslaApp" -- named after its first user, the phone app; the file name is in saves now
-St.KEYS = { "seen", "alerts", "inbox", "keyIds" }
+St.KEYS = { "seen", "alerts", "inbox", "keyIds", "phones" }
 -- Global ModData tables of older saves: moved in once, then removed so they are neither saved nor served again
 St.LEGACY = { inbox = "MinidoracatTesla_Inbox", keyIds = "MinidoracatTesla_KeyIds" }
 -- ponytail: the whole system is serialized into SliceY's fixed 10 MiB buffer (SliceY.java:10). save() truncates the

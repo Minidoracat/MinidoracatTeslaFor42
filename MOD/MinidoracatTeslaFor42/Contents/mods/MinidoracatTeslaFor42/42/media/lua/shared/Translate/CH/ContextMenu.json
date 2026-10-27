@@ -10,5 +10,7 @@
     "ContextMenu_MinidoracatTesla_TapLock": "感應卡片鑰匙：上鎖",
     "ContextMenu_MinidoracatTesla_PairPhone": "設為手機鑰匙",
     "ContextMenu_MinidoracatTesla_ChargeItem": "用車上插座充電",
-    "ContextMenu_MinidoracatTesla_OpenApp": "打開 Tesla App"
+    "ContextMenu_MinidoracatTesla_OpenApp": "打開 Tesla App",
+    "ContextMenu_MinidoracatTesla_AddCar": "加入這台車（已配對 %1 台）",
+    "ContextMenu_MinidoracatTesla_Unpair": "從手機移除"
 }

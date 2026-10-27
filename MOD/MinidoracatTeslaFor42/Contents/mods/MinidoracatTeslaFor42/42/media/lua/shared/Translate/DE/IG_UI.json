@@ -210,5 +210,21 @@
     "IGUI_MinidoracatTesla_App_Kw": "%1 kW",
     "IGUI_MinidoracatTesla_Deny_UNVERIFIED": "Fahrzeugfreigabe kann nicht geprüft werden, solange das Auto nicht geladen ist",
     "IGUI_MinidoracatTesla_Deny_NO_12V": "Die 12-V-Batterie des Autos ist leer",
-    "IGUI_MinidoracatTesla_Deny_NOT_LOADED": "Das Auto ist außerhalb des geladenen Bereichs; geh näher heran"
+    "IGUI_MinidoracatTesla_Deny_NOT_LOADED": "Das Auto ist außerhalb des geladenen Bereichs; geh näher heran",
+    "IGUI_MinidoracatTesla_PhoneCars": "%1 Teslas",
+    "IGUI_MinidoracatTesla_PhoneAdded": "%1 zum Telefonschlüssel hinzugefügt (%2 Autos)",
+    "IGUI_MinidoracatTesla_PhoneRemoved": "%1 vom Telefon entfernt",
+    "IGUI_MinidoracatTesla_App_Cars": "Meine Autos",
+    "IGUI_MinidoracatTesla_App_VmTag": "Fahrzeugverwaltung",
+    "IGUI_MinidoracatTesla_App_NotPaired": "Dieses Telefon ist diesem Auto noch nicht hinzugefügt",
+    "IGUI_MinidoracatTesla_App_JoinHint": "Erst hinzufügen: mit Schlüsselkarte einsteigen, Telefon rechtsklicken > „Hinzufügen“",
+    "IGUI_MinidoracatTesla_App_AddCarHint": "Auto hinzufügen: einsteigen, Telefon rechtsklicken, „Dieses Auto hinzufügen“ wählen.",
+    "IGUI_MinidoracatTesla_App_NavCar": "Zum Auto navigieren",
+    "IGUI_MinidoracatTesla_App_NavSet": "MiniMap-Ziel auf deinen %1 gesetzt",
+    "IGUI_MinidoracatTesla_App_NavPrompted": "Auf der MiniMap bestätigen, um die aktuelle Route zu ersetzen",
+    "IGUI_MinidoracatTesla_App_NavNearby": "Das Auto steht direkt hier",
+    "IGUI_MinidoracatTesla_App_NavStopFirst": "Erst anhalten, dann kann die MiniMap das Ziel ändern",
+    "IGUI_MinidoracatTesla_App_NavFailed": "Die MiniMap kann gerade kein Ziel setzen",
+    "IGUI_MinidoracatTesla_Tip_AppNavCar": "MiniMap-Route zur letzten Position des Autos",
+    "IGUI_MinidoracatTesla_Tip_AppCars": "Auto wechseln"
 }

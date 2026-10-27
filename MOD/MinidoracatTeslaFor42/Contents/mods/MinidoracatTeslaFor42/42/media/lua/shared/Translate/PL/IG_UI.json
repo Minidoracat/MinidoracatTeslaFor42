@@ -210,5 +210,21 @@
     "IGUI_MinidoracatTesla_App_Kw": "%1 kW",
     "IGUI_MinidoracatTesla_Deny_UNVERIFIED": "Nie można sprawdzić uprawnień do pojazdu, dopóki auto nie jest wczytane",
     "IGUI_MinidoracatTesla_Deny_NO_12V": "Akumulator 12 V auta jest rozładowany",
-    "IGUI_MinidoracatTesla_Deny_NOT_LOADED": "Auto jest poza wczytanym obszarem; podejdź bliżej"
+    "IGUI_MinidoracatTesla_Deny_NOT_LOADED": "Auto jest poza wczytanym obszarem; podejdź bliżej",
+    "IGUI_MinidoracatTesla_PhoneCars": "Tesla: %1",
+    "IGUI_MinidoracatTesla_PhoneAdded": "Dodano %1 do klucza w telefonie (razem %2)",
+    "IGUI_MinidoracatTesla_PhoneRemoved": "Usunięto %1 z telefonu",
+    "IGUI_MinidoracatTesla_App_Cars": "Moje samochody",
+    "IGUI_MinidoracatTesla_App_VmTag": "Menedżer pojazdów",
+    "IGUI_MinidoracatTesla_App_NotPaired": "Ten telefon nie jest jeszcze dodany do tego samochodu",
+    "IGUI_MinidoracatTesla_App_JoinHint": "Najpierw dodaj: wsiądź z kartą-kluczem, PPM na telefonie > „Dodaj ten samochód”",
+    "IGUI_MinidoracatTesla_App_AddCarHint": "Dodaj samochód: usiądź w nim, kliknij telefon PPM i wybierz „Dodaj ten samochód”.",
+    "IGUI_MinidoracatTesla_App_NavCar": "Nawiguj do samochodu",
+    "IGUI_MinidoracatTesla_App_NavSet": "Cel minimapy: twój %1",
+    "IGUI_MinidoracatTesla_App_NavPrompted": "Potwierdź na minimapie zastąpienie bieżącej trasy",
+    "IGUI_MinidoracatTesla_App_NavNearby": "Samochód jest tuż obok",
+    "IGUI_MinidoracatTesla_App_NavStopFirst": "Najpierw się zatrzymaj, by minimapa zmieniła cel",
+    "IGUI_MinidoracatTesla_App_NavFailed": "Minimapa nie może teraz ustawić celu",
+    "IGUI_MinidoracatTesla_Tip_AppNavCar": "Trasa minimapy do ostatniej pozycji samochodu",
+    "IGUI_MinidoracatTesla_Tip_AppCars": "Zmień samochód"
 }

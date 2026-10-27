@@ -4,8 +4,9 @@
 --   * appAction { key, act, on }: lock, unlock, flash, horn, sentry, charge, frunk, trunk. Holder, reach, the
 --     VehicleManager right for doing the same thing in person, and the action's own rules are checked every time.
 --   * appAlerts { key }: the car's last sentry / camp alerts.
--- Only players carrying the phone key for `key` get an answer about that car. Every command names its car by keyId;
--- nothing here assumes one phone = one car.
+--   * appStatusAll { keys }: the app's car list (one phone, several cars), once when it opens; appStatus for each.
+-- Only players carrying the phone key for `key` get an answer about that car. Every command names its car by keyId
+-- (Keys.pairedWith: any car the phone key is paired with).
 if isClient() then return end
 require "MinidoracatTesla/Core"
 require "MinidoracatTesla/Keys"
@@ -241,6 +242,21 @@ function R.state(player, key)
     local out = { key = key, link = link, grid = getWorld():isHydroPowerOn() }
     if r then for k, val in pairs(r) do out[k] = val end end
     return out
+end
+
+-- the app's car list (PhoneApp.lua): once when the list opens, every car in `keys` the player holds a phone key for,
+-- each answered like appStatus (the same checks per car); others are left out, nothing said about them
+R.MAX_BATCH = 16
+T.ServerCommands.appStatusAll = function(player, args)
+    local keys = args.keys
+    if not player or type(keys) ~= "table" then return end
+    local list = {}
+    for i = 1, math.min(#keys, R.MAX_BATCH) do
+        local key = holder(player, { key = keys[i] })
+        if key then list[#list + 1] = R.state(player, key) end
+    end
+    R.stats.status = R.stats.status + #list
+    T.send(player, "appStates", { list = list })
 end
 
 T.ServerCommands.appStatus = function(player, args)
