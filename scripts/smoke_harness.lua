@@ -167,11 +167,14 @@ function H.vehicle(o)
 end
 function H.removeVehicle(v) vehicles[v.id] = nil end
 
--- H.player{ name=, admin=, x=, y=, z=, keys={id=true} }
+-- H.player{ name=, admin=, x=, y=, z=, keys={id=true} }; each gets its own online id (GameServer.java:2835-2839)
+local onlineIds = 0
 function H.player(o)
     o = o or {}
+    onlineIds = onlineIds + 1
     local p = { name = o.name or "alice", _admin = o.admin or false, x = o.x or 100, y = o.y or 100, z = o.z or 0,
-        keys = o.keys or {}, vehicle = nil, num = o.num or 0, _class = "IsoPlayer" }
+        keys = o.keys or {}, vehicle = nil, num = o.num or 0, oid = onlineIds, _class = "IsoPlayer" }
+    function p:getOnlineID() return self.oid end
     function p:getUsername() return self.name end
     function p:getPlayerNum() return self.num end -- split-screen slot (IsoPlayer.java:979)
     function p:getVehicle() return self.vehicle end
