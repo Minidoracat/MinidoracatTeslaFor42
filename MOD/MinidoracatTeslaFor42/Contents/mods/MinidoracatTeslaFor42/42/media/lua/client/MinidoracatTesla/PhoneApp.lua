@@ -31,6 +31,29 @@ local DIRS = { "N", "NE", "E", "SE", "S", "SW", "W", "NW" }
 local ACTS = { "lock", "flash", "horn", "sentry", "frunk", "trunk", "alerts" }
 
 local function txt(key, ...) return getText(P .. key, ...) end
+
+-- the longest head of `s` that fits `maxW` in UIFont.Small, with "..." when cut (alert rows, deny reasons). Kahlua
+-- strings index UTF-16 units, so sub never splits a CJK character in game.
+local function fitText(s, maxW)
+    local tm = getTextManager()
+    if tm:MeasureStringX(UIFont.Small, s) <= maxW then return s end
+    local n = #s
+    while n > 1 and tm:MeasureStringX(UIFont.Small, s:sub(1, n) .. "...") > maxW do n = n - 1 end
+    return s:sub(1, n) .. "..."
+end
+-- the room for one line of text inside the phone
+local function lineW(app) return app.width - 2 * math.floor(PAD * (app.S or 1)) end
+-- a toast's text in up to two lines: cut at the last space that fits (CJK: at the last character that fits)
+local function wrap2(s, maxW)
+    local tm = getTextManager()
+    if tm:MeasureStringX(UIFont.Small, s) <= maxW then return s, nil end
+    local n = #s
+    while n > 1 and tm:MeasureStringX(UIFont.Small, s:sub(1, n)) > maxW do n = n - 1 end
+    local sp = n
+    while sp > n / 2 and s:sub(sp, sp) ~= " " do sp = sp - 1 end
+    if s:sub(sp, sp) == " " then n = sp end
+    return s:sub(1, n), fitText(s:sub(n + 1):gsub("^%s+", ""), maxW)
+end
 local function enable(b, on)
     b:setEnable(on == true)
     b.borderColor.a = 0
@@ -185,7 +208,8 @@ function App:onMap()
 end
 
 function App:showToast(text, ok)
-    self.toast = { text = text, ok = ok, untilMs = getTimestampMs() + App.TOAST_MS }
+    local l1, l2 = wrap2(text, lineW(self) - math.floor(40 * (self.S or 1)))
+    self.toast = { text = text, l1 = l1, l2 = l2, ok = ok, untilMs = getTimestampMs() + App.TOAST_MS }
     self.sig = nil
 end
 
@@ -239,7 +263,7 @@ T.ClientCommands.appAlerts = function(args)
             if c then rows[#rows + 1] = { title = c.title, detail = c.detail or "", time = c.time or "", icon = c.icon } end
         end
         a.alerts = rows
-        a.alertsWhy = args.deny and T.denyText(args.deny) -- VehicleManager said no: say why instead of "no alerts"
+        a.alertsWhy = args.deny and fitText(T.denyText(args.deny), lineW(a)) -- VehicleManager said no: say why instead of "no alerts"
         a.sig = nil
     end)
 end
@@ -251,16 +275,6 @@ local function ageText(hours)
     if mins < 60 then return txt("MinsAgo", tostring(mins)) end
     if mins < 48 * 60 then return txt("HoursAgo", tostring(math.floor(mins / 60))) end
     return txt("DaysAgo", tostring(math.floor(mins / 1440)))
-end
-
--- the longest head of `s` that fits `maxW` in UIFont.Small, with "..." when cut (an alert's detail line: car, part,
--- player, flashes). Kahlua strings index UTF-16 units, so sub never splits a CJK character in game.
-local function fitText(s, maxW)
-    local tm = getTextManager()
-    if tm:MeasureStringX(UIFont.Small, s) <= maxW then return s end
-    local n = #s
-    while n > 1 and tm:MeasureStringX(UIFont.Small, s:sub(1, n) .. "...") > maxW do n = n - 1 end
-    return s:sub(1, n) .. "..."
 end
 
 local function distText(d)
@@ -305,7 +319,7 @@ function App:read()
     if not st then
         self.sSub = txt("Connecting")
     elseif st.deny then
-        self.sSub = T.denyText(st.deny)
+        self.sSub = fitText(T.denyText(st.deny), lineW(self))
     elseif not rec then
         self.sSub = txt("NoRecord")
     elseif link then
@@ -463,7 +477,8 @@ function App:layout()
     self.yToast = nil
     if self.toast then
         self.yToast = y
-        y = y + self.FH + math.floor(16 * S) + gap
+        self.hToast = self.FH * (self.toast.l2 and 2 or 1) + math.floor(16 * S)
+        y = y + self.hToast + gap
     end
     self.yFoot = y
     y = y + self.FH + pad
@@ -548,8 +563,8 @@ function App:prerender()
     end
     if self.btnClose.joypadFocused then focusRing(self, self.btnClose, S) end
     if self.yToast then
-        HUD.rrect(self, pad, self.yToast, w - 2 * pad, self.FH + 16 * S, 10 * S, C.track, 1)
-        HUD.spr(self, self.toast.ok and A.i_check or A.i_warn, pad + 8 * S, self.yToast + (self.FH + 16 * S - 18 * S) / 2,
+        HUD.rrect(self, pad, self.yToast, w - 2 * pad, self.hToast, 10 * S, C.track, 1)
+        HUD.spr(self, self.toast.ok and A.i_check or A.i_warn, pad + 8 * S, self.yToast + (self.hToast - 18 * S) / 2,
             self.toast.ok and C.ok or C.warn, 1)
     end
     flush(self)
@@ -606,7 +621,10 @@ function App:render()
     end
     if self.yToast then
         local tc = self.toast.ok and c or C.warn
-        jo:DrawText(UIFont.Small, self.toast.text, pad + math.floor(32 * S), self.yToast + math.floor(8 * S), tc[1], tc[2], tc[3], 1)
+        jo:DrawText(UIFont.Small, self.toast.l1, pad + math.floor(32 * S), self.yToast + math.floor(8 * S), tc[1], tc[2], tc[3], 1)
+        if self.toast.l2 then
+            jo:DrawText(UIFont.Small, self.toast.l2, pad + math.floor(32 * S), self.yToast + math.floor(8 * S) + self.FH, tc[1], tc[2], tc[3], 1)
+        end
     end
     self:drawTextCentre(self.sFoot, w / 2, self.yFoot, c3[1], c3[2], c3[3], 1, UIFont.Small)
     -- hover help: the button under the mouse, or the joypad-focused one

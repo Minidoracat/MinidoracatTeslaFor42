@@ -28,6 +28,8 @@ local function car(o)
         function door:isOpen() return self.open end
         function door:setOpen(b) self.open = b end
         function door:isLocked() return self.locked end
+        function door:setLocked(b) self.locked = b end
+        function door:isLockBroken() return self.broken end
         v.parts[id] = { id = id, door = door, item = {}, getId = function(self) return self.id end,
             getDoor = function(self) return self.door end, getInventoryItem = function(self) return self.item end }
     end
@@ -35,6 +37,8 @@ local function car(o)
         if not locked and not part.door.broken and part.door.locked then part.door.locked = false end
     end
     function v:transmitPartDoor() self.doorTx = self.doorTx + 1 end
+    v.cabinLocked = false -- areAllDoorsLocked: the cabin doors only (BaseVehicle.java:9332-9335)
+    function v:areAllDoorsLocked() return self.cabinLocked end
     function v:playPartAnim(part, anim) self.anims[#self.anims + 1] = part.id .. ":" .. anim end
     function v:playPartSound(part, p, anim) self.sound = anim end
     return v
@@ -59,6 +63,20 @@ check(math.floor(v:getColorHue()) == 16 and H.near(v:getColorHue() - 16, 0.69, 1
 cmd(driver, { vid = v:getId(), part = "TrunkDoor" })
 check(not d.open and v.anims[2] == "TrunkDoor:Close", "second press closes")
 check(H.near(v:getColorHue(), 0.69, 1e-6), "shell bits cleared on close")
+check(not d.locked, "car unlocked: the closed liftgate stays unlocked")
+v.cabinLocked = true -- locked car: the liftgate locks again when it shuts
+cmd(driver, { vid = v:getId(), part = "TrunkDoor" })
+cmd(driver, { vid = v:getId(), part = "TrunkDoor" })
+check(not d.open and d.locked, "locked car: liftgate shut from the dashboard -> locked again")
+local lidE = v.parts.EngineDoor.door
+cmd(driver, { vid = v:getId(), part = "EngineDoor" })
+cmd(driver, { vid = v:getId(), part = "EngineDoor" })
+check(not lidE.open and not lidE.locked, "frunk lid shut on a locked car: not locked (not part of the car lock)")
+d.locked, d.broken = false, true
+cmd(driver, { vid = v:getId(), part = "TrunkDoor" })
+cmd(driver, { vid = v:getId(), part = "TrunkDoor" })
+check(not d.locked, "broken lock: shut but not locked (it could never open again)")
+d.broken, v.cabinLocked = false, false
 local sp = car({})
 ISOpenVehicleDoor.complete({ vehicle = sp, part = sp.parts.DoorFrontLeft, character = driver })
 check(math.floor(sp:getColorHue()) == 1 and #sp.anims == 0, "SP door action: shell bit 1 for DoorFrontLeft, no anim broadcast")
@@ -70,15 +88,16 @@ passenger.vehicle = v
 local online = { driver, passenger }
 function getOnlinePlayers() return { size = function() return #online end, get = function(_, i) return online[i + 1] end } end
 H.side(false, true) -- MP server: deny goes out as a server command
+local tx0 = v.doorTx
 cmd(passenger, { vid = v:getId(), part = "TrunkDoor" })
-check(denied("NOT_DRIVER") and not d.open and v.doorTx == 2, "passenger: NOT_DRIVER, nothing changed")
+check(denied("NOT_DRIVER") and not d.open and v.doorTx == tx0, "passenger: NOT_DRIVER, nothing changed")
 v.speed = 12
 cmd(driver, { vid = v:getId(), part = "TrunkDoor" })
-check(denied("MOVING") and not d.open and v.doorTx == 2, "driving: MOVING, nothing changed")
+check(denied("MOVING") and not d.open and v.doorTx == tx0, "driving: MOVING, nothing changed")
 v.speed = 0.4
 d.locked, d.broken = true, true
 cmd(driver, { vid = v:getId(), part = "TrunkDoor" })
-check(denied("LOCK_BROKEN") and d.locked and not d.open and v.doorTx == 2, "broken lock: LOCK_BROKEN, still locked and shut")
+check(denied("LOCK_BROKEN") and d.locked and not d.open and v.doorTx == tx0, "broken lock: LOCK_BROKEN, still locked and shut")
 d.broken = false
 v.parts.TrunkDoor.item = nil
 cmd(driver, { vid = v:getId(), part = "TrunkDoor" })
@@ -141,6 +160,12 @@ n = #H.sent
 ISCloseVehicleDoor.complete({ vehicle = v, part = fl, character = passenger })
 check(#H.sent == n + 3 and H.sent[n + 3].player == driver and H.sent[n + 3].args.open == false
     and math.floor(H.sent[n + 1].args.hue) == 16, "closed by the passenger: shell bit cleared, anim to the driver")
+local tg = v.parts.TrunkDoor
+tg.door.open, tg.door.locked, v.cabinLocked = true, false, true -- opened on a locked car (the app, the dashboard)
+local tx2 = v.doorTx
+ISCloseVehicleDoor.complete({ vehicle = v, part = tg, character = passenger })
+check(tg.door.locked and v.doorTx == tx2 + 1, "locked car: liftgate shut by hand (vanilla close) -> locked again and synced")
+v.cabinLocked = false
 local gas = car({ script = "Base.CarNormal" })
 n = #H.sent
 ISOpenVehicleDoor.complete({ vehicle = gas, part = gas.parts.DoorFrontLeft, character = driver })

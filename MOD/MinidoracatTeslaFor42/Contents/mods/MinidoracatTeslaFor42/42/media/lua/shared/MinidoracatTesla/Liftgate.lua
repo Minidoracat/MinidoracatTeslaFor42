@@ -94,8 +94,21 @@ if not isClient() then
 
     -- open or close an installed door part, sync it and animate it with sound on every client (the dashboard's car
     -- picture and the phone app, server/MinidoracatTesla/Remote.lua)
+    -- A locked car locks its liftgate again when it shuts, however it was shut (the app, the dashboard, by hand):
+    -- Keys.setLocked locks it with the doors, but areAllDoorsLocked only sees the cabin doors (BaseVehicle.java:
+    -- 9332-9335), so a liftgate opened on a locked car would otherwise stay unlocked behind "locked". A broken lock
+    -- stays as it is (it could never open again). The frunk lid isn't part of the car lock, so it is left alone.
+    function L.relock(v, part)
+        local door = part:getDoor()
+        if part:getId() ~= "TrunkDoor" or door:isOpen() or door:isLocked() or door:isLockBroken() then return false end
+        if not v:areAllDoorsLocked() then return false end
+        door:setLocked(true)
+        return true
+    end
+
     function L.swing(v, part, open, who)
         part:getDoor():setOpen(open)
+        if not open then L.relock(v, part) end
         v:transmitPartDoor(part) -- BaseVehicle.java:8247-8256
         L.syncShell(v)
         broadcast({ vid = v:getId(), part = part:getId(), open = open, sound = true })
@@ -128,6 +141,7 @@ if not isClient() then
             local ok = orig(self)
             local v, part = self.vehicle, self.part
             if ok and v and part and T.isTesla(v) and part:getDoor() and part:getDoor():isOpen() == open then
+                if not open and L.relock(v, part) then v:transmitPartDoor(part) end
                 L.syncShell(v)
                 if isServer() then broadcast({ vid = v:getId(), part = part:getId(), open = open }, self.character) end
             end

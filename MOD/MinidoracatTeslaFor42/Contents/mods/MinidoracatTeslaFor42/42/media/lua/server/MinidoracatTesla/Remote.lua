@@ -89,7 +89,10 @@ function R.remember(v, create)
     r.x, r.y, r.z = math.floor(v:getX()), math.floor(v:getY()), math.floor(v:getZ())
     local kwh, cap = part and T.Battery.kwh(part) or 0, part and T.Battery.capacity(part) or 1
     local left = 0
-    if chg then kwh, _, left, cap = T.Battery.chargeEstimate(part, chg, T.hours()) end -- same as the HUD between settlements
+    if chg then
+        local added -- unused here
+        kwh, added, left, cap = T.Battery.chargeEstimate(part, chg, T.hours())
+    end -- same as the HUD between settlements
     r.pct = math.floor(math.min(100, kwh * 100 / math.max(1, cap)) + 0.5)
     r.km = math.floor(kwh * T.kmPerKwh(v) + 0.5)
     r.locked = v:areAllDoorsLocked()
@@ -193,21 +196,18 @@ end
 function R.hornCount() return #horns end
 
 -- ------------------------------------------------------------------ actions: nil = done (lids: nil, open), else a deny reason
--- `on` is the state asked for: already so = done, nothing moves (the app's view can be 2 s old, or a double press).
--- Closing on a locked car locks the lid again, like the real car; areAllDoorsLocked only sees the cabin doors
--- (BaseVehicle.java:9332-9335), so an unlocked lid would hide behind "locked".
+-- `on` is the state asked for: already so = done, nothing moves (the app's view can be 2 s old, or a double press);
+-- the third value says so, and nothing is logged. Closing relocks the liftgate on a locked car (Liftgate.relock).
 local function swing(id)
     return function(player, v, open)
         if not T.stopped(v) then return "MOVING" end
         local part = v:getPartById(id)
         local door = part and part:getInventoryItem() and part:getDoor()
         if not door then return "NO_DOOR" end
-        if door:isOpen() == open then return nil, open end
+        if door:isOpen() == open then return nil, open, true end
         if open and door:isLocked() then
             if door:isLockBroken() then return "LOCK_BROKEN" end
             door:setLocked(false)
-        elseif not open and v:areAllDoorsLocked() and not door:isLockBroken() then -- a broken lock stays as it is
-            door:setLocked(true)
         end
         T.Liftgate.swing(v, part, open, player:getUsername())
         return nil, open
@@ -243,7 +243,6 @@ local ACT = {
     frunk = swing("EngineDoor"),
     trunk = swing("TrunkDoor"),
 }
-R.ACTIONS = ACT
 
 -- ------------------------------------------------------------------ commands
 -- what the app shows: the record (refreshed first over a live link) plus how the phone reaches the car now
@@ -288,8 +287,12 @@ T.ServerCommands.appAction = function(player, args)
         local ok, why = R.vmAllows(player, v, codes)
         if not ok then return done(why) end
     end
-    local why, result = fn(player, v, args.on == true)
+    local why, result, noop = fn(player, v, args.on == true)
     if why then return done(why) end
+    if noop then -- already as asked: nothing changed, nothing to log or touch
+        done(nil, result)
+        return T.send(player, "appState", R.state(player, key))
+    end
     R.stats.actions = R.stats.actions + 1
     local mvm = MinidoracatVehicleManager -- AGENTS.md: touch after changing the car (ParkedGuard.lua:258-261)
     if mvm and mvm.Parked and mvm.Parked.touch then mvm.Parked.touch(v) end
