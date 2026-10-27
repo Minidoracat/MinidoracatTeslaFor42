@@ -140,13 +140,18 @@ function R.vmAllows(player, v, codes)
     end
     return false, VM_REASONS[why] and why or "NOT_OWNER"
 end
--- where the car is and its alerts: with VehicleManager the TRACK right, which needs the car itself. An unloaded car can't
--- be asked, so nothing is shown rather than the record (fail closed; a revoked share stays revoked).
-function R.mayTrack(player, v)
+-- where the car is and its alerts: with VehicleManager the TRACK right. A loaded car is asked through canUse; an unloaded
+-- one through VehicleManager's keyId check on its own records (canTrackKeyId: same rules, no audit line, fine for the
+-- 2 s poll), so a revoked share stays revoked while the car is away. An older VehicleManager without it: nothing is
+-- shown rather than the record (UNVERIFIED, fail closed). The client's VehicleManager list never counts here.
+function R.mayTrack(player, v, key)
     local api = MinidoracatVehicleManagerAPI
     if not (api and api.canUse) then return true end
-    if not v then return false, "UNVERIFIED" end
-    return R.vmAllows(player, v, TRACK)
+    if v then return R.vmAllows(player, v, TRACK) end
+    if type(api.canTrackKeyId) ~= "function" then return false, "UNVERIFIED" end
+    local ok, why = api.canTrackKeyId(player, key)
+    if ok then return true end
+    return false, VM_REASONS[why] and why or "NOT_OWNER"
 end
 -- act -> the VehicleManager codes for the same thing in person. Sentry: T.legit (ParkModes.lua) counts an old phone
 -- key, so a car since claimed by someone else also needs PASSENGER here, like a remote lock.
@@ -233,7 +238,7 @@ local ACT = {
 -- what the app shows: the record (refreshed first over a live link) plus how the phone reaches the car now
 function R.state(player, key)
     local v = R.loadedCar(key)
-    local ok, why = R.mayTrack(player, v)
+    local ok, why = R.mayTrack(player, v, key)
     if not ok then return { key = key, deny = why } end
     local link = K.appReach(player, v)
     local r = link and R.remember(v, true) or R.record(key)
@@ -291,7 +296,7 @@ end
 T.ServerCommands.appAlerts = function(player, args)
     local key = holder(player, args)
     if not key then return end
-    local ok, why = R.mayTrack(player, R.loadedCar(key))
+    local ok, why = R.mayTrack(player, R.loadedCar(key), key)
     if not ok then return T.send(player, "appAlerts", { key = key, deny = why }) end -- the holder hears why
     T.send(player, "appAlerts", { key = key, list = store("alerts")[tostring(key)] or {} })
 end
