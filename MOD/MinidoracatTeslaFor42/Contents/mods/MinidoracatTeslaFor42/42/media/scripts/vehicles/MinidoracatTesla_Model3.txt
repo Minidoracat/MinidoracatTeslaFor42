@@ -246,7 +246,7 @@ module Base
             rotate = 0.0 0.0 0.0,
             zoffset = 1.0,
         }
-        /* charge port: side end of the left tail light (real Model Y) */
+        /* charge port: side end of the left tail light (real Model 3, owner's manual "Charging Instructions") */
         attachment chargeport
         {
             offset = 0.3551 0.0504 -0.8922,

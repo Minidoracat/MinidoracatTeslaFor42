@@ -16,8 +16,9 @@ T.Init = T.Init or {}
 
 -- kwh: full charge, kw: charging power.
 -- Dry cell: AA NiMH 1.2 V x 2.5 Ah = 3 Wh, charged at 0.5 C from USB: 2 h from empty.
--- Car battery: 12 V x 60 Ah = 0.72 kWh, from the 12V socket's "12A continuous draw" (Model Y owner's manual, Interior
--- Electronics, GUID-A1DF67DE): 0.144 kW, 5 h from empty (vanilla's car battery charger: 6 h, IsoCarBatteryCharger.java:39).
+-- Car battery: 12 V x 60 Ah = 0.72 kWh, from the 12V socket's "12A continuous draw" (the same on both cars: Model Y
+-- owner's manual, Interior Electronics, GUID-A1DF67DE; tesla.cn Model 3 owner's manual 2026 p.14, 12A continuous /
+-- 16A peak): 0.144 kW, 5 h from empty (vanilla's car battery charger: 6 h, IsoCarBatteryCharger.java:39).
 local CELL = { kwh = 0.003, kw = 0.0015 }
 local CAR = { kwh = 0.72, kw = 0.144 }
 C.Chargeable = {
