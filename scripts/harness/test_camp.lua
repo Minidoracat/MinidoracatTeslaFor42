@@ -56,6 +56,14 @@ MinidoracatVehicleManagerAPI = nil
 cmds.campOn(driver, { vid = driven:getId() })
 check(md(driven).camp ~= nil and driven.shutOffs == 1,
     "camp: key left in the ignition after shutdown -> the seated player enables (no second shut-off)")
+check(md(driven).camp.by == "driver", "camp: the account that turned it on is kept (notifications)")
+md(driven).camp = nil
+local guest = F.player("owner", { vehicle = driven, num = 1 }) -- split-screen guest named like an account
+driven.driver = guest
+cmds.campOn(guest, { vid = driven:getId() })
+check(md(driven).camp ~= nil and md(driven).camp.by == nil,
+    "camp by a split-screen guest: on, but no account to notify (its name is the client's own pick)")
+md(driven).camp, driven.driver = nil, driver
 
 -- ---- exclusive with sentry ----
 md(v).sentry = { by = "owner", at = F.hours, kwh = kwh(v), since = F.hours }

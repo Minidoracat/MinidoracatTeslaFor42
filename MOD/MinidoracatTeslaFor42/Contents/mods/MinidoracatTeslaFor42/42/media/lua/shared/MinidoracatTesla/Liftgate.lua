@@ -95,13 +95,14 @@ if not isClient() then
     -- A Tesla locks as a whole: the liftgate and the frunk lid lock and unlock with the car. Vanilla never locks the
     -- hood (Vehicles.Create.Default; ISLockDoors only the cabin doors), and an unlocked lid opens for anyone
     -- (ISOpenVehicleDoor.lua:61-64) while the frunk only asks whether the lid is open (Core.lua ContainerAccess.Frunk).
-    -- A broken lock stays as it is (it could never open again).
+    -- A broken lock is never locked (it could never open again), but a lid jammed locked does unlock with the car (the
+    -- liftgate always did, through setTrunkLocked, BaseVehicle.java:9533-9545).
     L.LIDS = { TrunkDoor = true, EngineDoor = true }
     function L.lockLids(v, locked)
         for id in pairs(L.LIDS) do
             local part = v:getPartById(id)
             local door = part and part:getInventoryItem() and part:getDoor()
-            if door and not door:isLockBroken() and door:isLocked() ~= locked then
+            if door and door:isLocked() ~= locked and not (locked and door:isLockBroken()) then
                 door:setLocked(locked)
                 v:transmitPartDoor(part) -- BaseVehicle.java:8247-8256
             end

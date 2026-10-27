@@ -211,6 +211,8 @@ local ACT = {
         R.horn(v)
     end,
     sentry = function(player, v, on)
+        local part = T.Battery.part(v)
+        if on and part and part:getModData().sentry then return nil, true, true end -- already on: S.arm would keep it
         local ok, why
         if on then ok, why = S.canArm(player, v, true) else ok, why = S.canDisarm(player, v, true) end
         if not ok then return why or (on and "NO_PACK" or "SENTRY_OFF") end

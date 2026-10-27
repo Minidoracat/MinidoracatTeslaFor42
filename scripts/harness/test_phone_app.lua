@@ -168,6 +168,10 @@ act(owner, "lock")
 F.runTicks(50, 450)
 d = act(owner, "sentry", true)
 check(d.why == nil and v.parts.GasTank:getModData().sentry ~= nil, "sentry on from 500 tiles (app reach instead of 10 tiles)")
+local s0, a0 = v.parts.GasTank:getModData().sentry, R.stats.actions
+d = act(owner, "sentry", true)
+check(d.why == nil and d.on == true and v.parts.GasTank:getModData().sentry == s0 and R.stats.actions == a0,
+    "sentry on again (a 2 s old view, a double tap): nothing changes, not counted as an action")
 d = act(owner, "sentry", false)
 check(d.why == nil and v.parts.GasTank:getModData().sentry == nil, "sentry off remotely")
 d = act(owner, "sentry", false)

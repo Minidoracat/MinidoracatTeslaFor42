@@ -248,9 +248,13 @@ H.section("frunk lid and liftgate follow the car lock")
 local function allDoors(b) for _, d in ipairs(v.doors) do d.d.locked = b end end
 v.frunk.d.broken = true
 K.setLocked(v, true)
-check(not v.frunk.d.locked and v.trunk.d.locked, "a broken frunk lock is left as it is")
+check(not v.frunk.d.locked and v.trunk.d.locked, "a broken frunk lock is never locked (it could not open again)")
 v.frunk.d.broken = false
 K.setLocked(v, false)
+v.trunk.d.locked, v.trunk.d.broken = true, true -- a world-spawn liftgate jammed locked (Vehicles.Create.TrunkDoor)
+K.setLocked(v, false)
+check(not v.trunk.d.locked, "a liftgate jammed locked still unlocks with the car (as setTrunkLocked did)")
+v.trunk.d.broken = false
 ISLockDoors.complete({ vehicle = v, locked = true, character = owner }) -- inside: vanilla "Lock Doors"
 check(v:areAllDoorsLocked() and v.frunk.d.locked and v.trunk.d.locked, "vanilla Lock Doors inside: the lids lock too")
 ISLockDoors.complete({ vehicle = v, locked = false, character = owner })
@@ -379,6 +383,16 @@ check(T.authorized(owner, v, "PASSENGER") == true and T.authorized(stranger, v, 
 local walletOnly = player("walletonly", container(bag("Base.Wallet", item(K.CARD, v.keyId))), v.x - 1, v.y)
 ISUnlockVehicleDoor.complete({ vehicle = v, part = v.doors[1], character = walletOnly })
 check(v.doors[1].d.locked, "handle: key card in the wallet -> stays locked (tap the reader)")
+ISOpenVehicleDoor.complete({ vehicle = v, part = v.frunk, character = walletOnly })
+check(v.frunk.d.locked and not v.frunk.d.open, "frunk: the key card in a wallet does not open it (tap the reader)")
+MinidoracatVehicleManagerAPI = { canUse = function(p, _, code) return code == "PASSENGER" and p == stranger, "SHARED" end }
+ISOpenVehicleDoor.complete({ vehicle = v, part = v.frunk, character = stranger })
+check(v.frunk.d.open, "frunk: a VehicleManager rider (virtual key, no item) opens it")
+ISCloseVehicleDoor.complete({ vehicle = v, part = v.frunk, character = stranger })
+MinidoracatVehicleManagerAPI = { canUse = function() return true, "UNCLAIMED" end }
+ISOpenVehicleDoor.complete({ vehicle = v, part = v.frunk, character = stranger })
+check(v.frunk.d.locked and not v.frunk.d.open, "frunk: VehicleManager UNCLAIMED is nobody's key")
+MinidoracatVehicleManagerAPI = nil
 v.doors[1].d.broken = true
 ISUnlockVehicleDoor.complete(unlock)
 check(v.doors[1].d.locked, "handle: broken lock -> stays locked")

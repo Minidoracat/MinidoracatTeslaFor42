@@ -15,6 +15,8 @@ sys.md.moved = nil -- a store saved by the version before (the app's records onl
 local logs0 = #H.logLines
 dofile(SRC) -- a fresh server start: the store is opened again
 H.fire("OnInitGlobalModData", false) -- IsoWorld.init -> GlobalModData.init, before any chunk or client
+check(H.moddata.MinidoracatTesla_Inbox == nil and H.moddata.MinidoracatTesla_KeyIds == nil,
+    "the global data load itself moves them, before anything asks the store")
 local St = T.Store
 check(St.get("inbox").ghost and St.get("inbox").ghost[1] == entry, "offline inbox moved into the store")
 check(St.get("keyIds")["424242"] == "MinidoracatTesla_ModelY", "keyId registry moved into the store")

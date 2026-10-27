@@ -31,7 +31,7 @@ function C.start(player, vehicle)
     local part = T.Battery.part(vehicle)
     local md = part:getModData()
     if md.sentry then T.Sentry.disarm(vehicle, "camp") end -- the two modes are exclusive (Tesla manual)
-    md.camp = { by = player:getUsername(), at = getGameTime():getWorldAgeHours() }
+    md.camp = { by = T.account(player), at = getGameTime():getWorldAgeHours() } -- by nil: a split-screen guest (Core.lua)
     -- one tap from a running car, like shifting into Park: the vanilla shut-off (ISShutOffVehicleEngine.lua:30). Its
     -- ShuttingDown switches the heater off on the spot (BaseVehicle.java:7469-7473, SP :7560-7563), so it goes first;
     -- MP clients parse the engine state before part modData in one update packet (VehicleUpdatePacket.java:104,124)
