@@ -203,5 +203,7 @@
     "IGUI_MinidoracatTesla_Tip_AppChargeStop": "Şarjı duraklat, kablo takılı kalır",
     "IGUI_MinidoracatTesla_Tip_AppChargeStart": "Hedefe kadar şarja devam et",
     "IGUI_MinidoracatTesla_App_AgeNow": "az önce",
-    "IGUI_MinidoracatTesla_Deny_UNVERIFIED": "Araç yüklenmediği için araç izinleri doğrulanamıyor"
+    "IGUI_MinidoracatTesla_Deny_UNVERIFIED": "Araç yüklenmediği için araç izinleri doğrulanamıyor",
+    "IGUI_MinidoracatTesla_Deny_NO_12V": "Aracın 12 V aküsü boş",
+    "IGUI_MinidoracatTesla_Deny_NOT_LOADED": "Araç yüklü alanın dışında; kullanmak için yaklaşın"
 }

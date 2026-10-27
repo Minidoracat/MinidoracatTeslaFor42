@@ -69,6 +69,8 @@ local function tesla(keyId)
     function v:setTrunkLocked(b) self.parts.TrunkDoor.d.locked = b end
     function v:transmitPartDoor() self.doorTx = (self.doorTx or 0) + 1 end
     function v:getColorHue() return self.hue end
+    v.charge12 = 1
+    function v:getBatteryCharge() return self.charge12 end
     function v:getColorSaturation() return 0.5 end
     function v:getColorValue() return 0.5 end
     function v:setColorHSV(h) self.hue = h end
@@ -157,6 +159,10 @@ F.runTicks(50, 450)
 
 -- horn: vanilla onHornStart, stopped by a one-shot OnTick after a second
 local ticks = F.handlers("OnTick")
+v.charge12 = 0
+d = act(owner, "horn")
+check(d.why == "NO_12V" and not v.horn and F.handlers("OnTick") == ticks, "horn with a flat 12 V battery -> NO_12V, no OnTick (vanilla needs power)")
+v.charge12 = 1
 d = act(owner, "horn")
 check(d.why == nil and v.horn == true and F.handlers("OnTick") == ticks + 1, "horn: vanilla horn on, one OnTick")
 act(owner, "horn")
@@ -178,23 +184,27 @@ check(d.why == nil and v.parts.GasTank:getModData().sentry == nil, "sentry off r
 d = act(owner, "sentry", false)
 check(d.why == "SENTRY_OFF", "sentry off when already off -> SENTRY_OFF")
 
--- frunk / liftgate: unlock first, open, animate
-d = act(owner, "trunk")
+-- frunk / liftgate: unlock first, open, animate; closing on a locked car locks the lid again
+check(v:areAllDoorsLocked(), "car locked before the liftgate")
+d = act(owner, "trunk", true)
 check(d.why == nil and v.parts.TrunkDoor.d.open and not v.parts.TrunkDoor.d.locked, "liftgate: was locked -> unlocked and opened")
 check(last("partAnim") and last("partAnim").part == "TrunkDoor" and last("partAnim").sound == true, "liftgate: partAnim with sound to clients")
-act(owner, "trunk")
-check(not v.parts.TrunkDoor.d.open, "liftgate again: closed")
+d = act(owner, "trunk", false)
+check(d.on == false and not v.parts.TrunkDoor.d.open and v.parts.TrunkDoor.d.locked, "liftgate closed on a locked car: locked again")
 v.kmh = 20
-d = act(owner, "frunk")
+d = act(owner, "frunk", true)
 check(d.why == "MOVING" and not v.parts.EngineDoor.d.open, "frunk while moving -> MOVING")
 v.kmh = 0
-d = act(owner, "frunk")
+d = act(owner, "frunk", true)
 check(d.why == nil and v.parts.EngineDoor.d.open and d.on == true, "frunk opens (appDone on = true)")
-d = act(owner, "frunk")
+d = act(owner, "frunk", false)
 check(d.why == nil and not v.parts.EngineDoor.d.open and d.on == false, "frunk closes (appDone on = false)")
 v.parts.TrunkDoor.d.open = true -- someone opened the liftgate by hand since the app's last poll
+local tx = v.doorTx or 0
 d = act(owner, "trunk", true)
-check(d.why == nil and not v.parts.TrunkDoor.d.open and d.on == false, "liftgate: the server toggles what is there; appDone says closed")
+check(d.why == nil and v.parts.TrunkDoor.d.open and d.on == true and (v.doorTx or 0) == tx, "liftgate already open, app asks open: nothing moves")
+d = act(owner, "trunk", false)
+check(d.why == nil and not v.parts.TrunkDoor.d.open and d.on == false, "liftgate: app asks closed -> closed")
 
 -- charging: no cable -> NOT_PLUGGED; with a cable the call goes to Charge.setStopped
 d = act(owner, "charge", false)
@@ -242,8 +252,13 @@ local db = gos[R.SYSTEM]
 check(db and db.registers == 1 and db.md.seen["9001"] ~= nil and db.keys[1] == "seen" and db.keys[2] == "alerts",
     "records in the server-only GOS system (saved keys seen, alerts; registered once)")
 check(db.md.getInitialStateForClient() == nil, "GOS system sends nothing to clients")
+local wild = tesla(7777) -- a Tesla the world spawned, never seen by an app
+R.onLoad(wild)
+R.remember(wild)
+check(db.md.seen["7777"] == nil, "a loaded car the app never asked about gets no record")
+F.vehicles[wild:getId()] = nil
 d = act(owner, "unlock")
-check(d.why == "NO_LINK", "unloaded: actions refused (NO_LINK) even with the grid up")
+check(d.why == "NOT_LOADED", "unloaded: actions refused (NOT_LOADED) even with the grid up")
 local other = tesla(4242) -- the id is reused by another car: never mistaken for ours
 other.id = v:getId()
 F.vehicles[other.id] = other
@@ -260,7 +275,8 @@ MinidoracatVehicleManagerAPI = { canUse = function(p, car, code, ctx)
 end }
 d = act(owner, "unlock")
 check(d.why == "NOT_OWNER" and v:areAllDoorsLocked(), "car bound to someone else: phone key holder refused (NOT_OWNER), still locked")
-check(asked[#asked].code == "PASSENGER" and asked[#asked].silent == true and asked[#asked].mod == T.MODULE, "VM asked PASSENGER, silent")
+check(asked[#asked].code == "PASSENGER" and asked[#asked].silent == false and asked[#asked].mod == T.MODULE,
+    "VM asked PASSENGER, not silent (an admin's remote unlock is audited like in person)")
 answer.why = "RENT_LOCKED"
 d = act(owner, "flash")
 check(d.why == "RENT_LOCKED", "VM rental lock -> RENT_LOCKED")
@@ -288,7 +304,7 @@ cmds.appStatus(owner, { key = 9001 })
 st = last("appState")
 check(st and st.deny == "UNVERIFIED" and st.x == nil and st.pct == nil, "VM present, car unloaded: status refused (UNVERIFIED), no record")
 cmds.appAlerts(owner, { key = 9001 })
-check(last("appAlerts") == nil, "VM present, car unloaded: no alerts")
+check(last("appAlerts") and last("appAlerts").deny == "UNVERIFIED" and last("appAlerts").list == nil, "VM present, car unloaded: no alerts, told why")
 F.vehicles[v:getId()] = v
 answer.ok, answer.why = true, "UNCLAIMED"
 d = act(owner, "unlock")

@@ -203,5 +203,7 @@
     "IGUI_MinidoracatTesla_Tip_AppChargeStop": "Приостановить зарядку, кабель остаётся подключённым",
     "IGUI_MinidoracatTesla_Tip_AppChargeStart": "Продолжить зарядку до цели",
     "IGUI_MinidoracatTesla_App_AgeNow": "только что",
-    "IGUI_MinidoracatTesla_Deny_UNVERIFIED": "Нельзя проверить права на машину, пока она не загружена"
+    "IGUI_MinidoracatTesla_Deny_UNVERIFIED": "Нельзя проверить права на машину, пока она не загружена",
+    "IGUI_MinidoracatTesla_Deny_NO_12V": "Аккумулятор 12 В машины разряжен",
+    "IGUI_MinidoracatTesla_Deny_NOT_LOADED": "Машина вне загруженной области; подойдите ближе"
 }

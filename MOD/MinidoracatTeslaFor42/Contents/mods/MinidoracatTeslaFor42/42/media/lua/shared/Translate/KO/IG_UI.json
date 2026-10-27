@@ -203,5 +203,7 @@
     "IGUI_MinidoracatTesla_Tip_AppChargeStop": "충전 일시 중지 (케이블은 꽂힌 채로)",
     "IGUI_MinidoracatTesla_Tip_AppChargeStart": "목표까지 충전 다시 시작",
     "IGUI_MinidoracatTesla_App_AgeNow": "방금",
-    "IGUI_MinidoracatTesla_Deny_UNVERIFIED": "차량이 로드되지 않아 차량 권한을 확인할 수 없습니다"
+    "IGUI_MinidoracatTesla_Deny_UNVERIFIED": "차량이 로드되지 않아 차량 권한을 확인할 수 없습니다",
+    "IGUI_MinidoracatTesla_Deny_NO_12V": "차량의 12V 배터리가 방전되었습니다",
+    "IGUI_MinidoracatTesla_Deny_NOT_LOADED": "차량이 로드된 구역 밖에 있습니다. 가까이 가야 조작할 수 있습니다"
 }

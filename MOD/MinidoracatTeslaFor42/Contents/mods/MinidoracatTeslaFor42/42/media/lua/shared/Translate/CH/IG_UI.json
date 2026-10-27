@@ -203,5 +203,7 @@
     "IGUI_MinidoracatTesla_Tip_AppChargeStop": "暫停充電，充電線保持插著",
     "IGUI_MinidoracatTesla_Tip_AppChargeStart": "繼續充電到目標電量",
     "IGUI_MinidoracatTesla_App_AgeNow": "剛剛",
-    "IGUI_MinidoracatTesla_Deny_UNVERIFIED": "車子不在已載入的區域，無法確認綁車權限"
+    "IGUI_MinidoracatTesla_Deny_UNVERIFIED": "車子不在已載入的區域，無法確認綁車權限",
+    "IGUI_MinidoracatTesla_Deny_NO_12V": "車子的 12V 電瓶沒電",
+    "IGUI_MinidoracatTesla_Deny_NOT_LOADED": "車子不在已載入的區域，靠近一點才能操作"
 }

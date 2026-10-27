@@ -203,5 +203,7 @@
     "IGUI_MinidoracatTesla_Tip_AppChargeStop": "Pause charging, the cable stays plugged in",
     "IGUI_MinidoracatTesla_Tip_AppChargeStart": "Resume charging to the target",
     "IGUI_MinidoracatTesla_App_AgeNow": "just now",
-    "IGUI_MinidoracatTesla_Deny_UNVERIFIED": "Can't check your vehicle-sharing rights while the car is out of the loaded area"
+    "IGUI_MinidoracatTesla_Deny_UNVERIFIED": "Can't check your vehicle-sharing rights while the car is out of the loaded area",
+    "IGUI_MinidoracatTesla_Deny_NO_12V": "The car's 12 V battery is flat",
+    "IGUI_MinidoracatTesla_Deny_NOT_LOADED": "The car is out of the loaded area; get closer to use it"
 }

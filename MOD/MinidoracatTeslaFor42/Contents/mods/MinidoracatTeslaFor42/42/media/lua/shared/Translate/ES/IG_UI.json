@@ -203,5 +203,7 @@
     "IGUI_MinidoracatTesla_Tip_AppChargeStop": "Pausar la carga, el cable sigue enchufado",
     "IGUI_MinidoracatTesla_Tip_AppChargeStart": "Seguir cargando hasta el objetivo",
     "IGUI_MinidoracatTesla_App_AgeNow": "ahora mismo",
-    "IGUI_MinidoracatTesla_Deny_UNVERIFIED": "No se pueden comprobar los permisos del vehículo mientras el coche no esté cargado"
+    "IGUI_MinidoracatTesla_Deny_UNVERIFIED": "No se pueden comprobar los permisos del vehículo mientras el coche no esté cargado",
+    "IGUI_MinidoracatTesla_Deny_NO_12V": "La batería de 12 V del coche está descargada",
+    "IGUI_MinidoracatTesla_Deny_NOT_LOADED": "El coche está fuera de la zona cargada; acércate para usarlo"
 }

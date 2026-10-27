@@ -203,5 +203,7 @@
     "IGUI_MinidoracatTesla_Tip_AppChargeStop": "Laden pausieren, das Kabel bleibt eingesteckt",
     "IGUI_MinidoracatTesla_Tip_AppChargeStart": "Bis zum Ziel weiterladen",
     "IGUI_MinidoracatTesla_App_AgeNow": "gerade eben",
-    "IGUI_MinidoracatTesla_Deny_UNVERIFIED": "Fahrzeugfreigabe kann nicht geprüft werden, solange das Auto nicht geladen ist"
+    "IGUI_MinidoracatTesla_Deny_UNVERIFIED": "Fahrzeugfreigabe kann nicht geprüft werden, solange das Auto nicht geladen ist",
+    "IGUI_MinidoracatTesla_Deny_NO_12V": "Die 12-V-Batterie des Autos ist leer",
+    "IGUI_MinidoracatTesla_Deny_NOT_LOADED": "Das Auto ist außerhalb des geladenen Bereichs; geh näher heran"
 }

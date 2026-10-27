@@ -239,6 +239,7 @@ T.ClientCommands.appAlerts = function(args)
             if c then rows[#rows + 1] = { title = c.title, detail = c.detail or "", time = c.time or "", icon = c.icon } end
         end
         a.alerts = rows
+        a.alertsWhy = args.deny and T.denyText(args.deny) -- VehicleManager said no: say why instead of "no alerts"
         a.sig = nil
     end)
 end
@@ -592,7 +593,7 @@ function App:render()
         if not rows then
             jo:DrawText(UIFont.Small, txt("Loading"), pad + math.floor(10 * S), self.yRows + (rh - self.FH) / 2, c2[1], c2[2], c2[3], 1)
         elseif #rows == 0 then
-            jo:DrawText(UIFont.Small, txt("NoAlerts"), pad + math.floor(10 * S), self.yRows + (rh - self.FH) / 2, c2[1], c2[2], c2[3], 1)
+            jo:DrawText(UIFont.Small, self.alertsWhy or txt("NoAlerts"), pad + math.floor(10 * S), self.yRows + (rh - self.FH) / 2, c2[1], c2[2], c2[3], 1)
         else
             for i, r in ipairs(rows) do
                 local ry = self.yRows + (i - 1) * (rh + 6 * S) + math.floor(7 * S)

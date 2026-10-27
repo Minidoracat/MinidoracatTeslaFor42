@@ -70,12 +70,17 @@ local function doorOpen(v, id)
 end
 
 -- The car as it is now, written over its record. Called on load, from the battery part update (driving, charging),
--- on lock changes (Keys K.setLocked), after every app command and on each status asked over a live link.
-function R.remember(v)
+-- on lock changes (Keys K.setLocked), after every app command and on each status asked over a live link. Only the
+-- last two (`create`) start a record: parked Teslas the world spawns (Spawns.lua) never get one.
+function R.remember(v, create)
     local key = tostring(v:getKeyId())
     local all = store("seen")
-    local r = all[key] or {}
-    all[key] = r
+    local r = all[key]
+    if not r then
+        if not create then return nil end
+        r = {}
+        all[key] = r
+    end
     local part = T.Battery.part(v)
     local md = part and part:getModData() or {}
     local chg = md.chg
@@ -101,6 +106,8 @@ function R.remember(v)
     r.h = T.hours()
     return r
 end
+
+function R.record(keyId) return store("seen")[tostring(keyId)] end
 
 -- OnSpawnVehicleEnd fires on every load, new or from the save (BaseVehicle.java:904, 7952-7964)
 function R.onLoad(v)
@@ -132,20 +139,22 @@ end
 -- VehicleManager present: also its right for doing the same thing in person (MinidoracatVehicleManager_Actions.lua:
 -- 20-53); unclaimed cars answer true, "UNCLAIMED" (OwnershipSystem.lua:875-877), so only the phone key counts then.
 -- T.authorized is not enough: with VehicleManager it asks only VehicleManager, and an unclaimed car passes anyone.
--- silent: the 2 s poll must not write an ADMIN_BYPASS audit line every time (OwnershipSystem.lua:899-903).
+-- silent only for TRACK: the 2 s poll must not write an ADMIN_BYPASS audit line every time
+-- (OwnershipSystem.lua:899-903); an admin's remote unlock or liftgate is audited like in person.
 local VM_REASONS = { RENT_LOCKED = true, FACTION_PAUSED = true, QUARANTINED = true }
+local TRACK = { "TRACK" }
 function R.vmAllows(player, v, codes)
     local api = MinidoracatVehicleManagerAPI
     if not (api and api.canUse) then return true end
     local why
+    local ctx = { mod = T.MODULE, silent = codes == TRACK }
     for i = 1, #codes do
-        local ok, r = api.canUse(player, v, codes[i], { mod = T.MODULE, silent = true })
+        local ok, r = api.canUse(player, v, codes[i], ctx)
         if ok then return true end
         why = why or r
     end
     return false, VM_REASONS[why] and why or "NOT_OWNER"
 end
-local TRACK = { "TRACK" }
 -- where the car is and its alerts: with VehicleManager the TRACK right, which needs the car itself. An unloaded car can't
 -- be asked, so nothing is shown rather than the record (fail closed; a revoked share stays revoked).
 function R.mayTrack(player, v)
@@ -184,19 +193,24 @@ end
 function R.hornCount() return #horns end
 
 -- ------------------------------------------------------------------ actions: nil = done (lids: nil, open), else a deny reason
+-- `on` is the state asked for: already so = done, nothing moves (the app's view can be 2 s old, or a double press).
+-- Closing on a locked car locks the lid again, like the real car; areAllDoorsLocked only sees the cabin doors
+-- (BaseVehicle.java:9332-9335), so an unlocked lid would hide behind "locked".
 local function swing(id)
-    return function(player, v)
+    return function(player, v, open)
         if not T.stopped(v) then return "MOVING" end
         local part = v:getPartById(id)
         local door = part and part:getInventoryItem() and part:getDoor()
         if not door then return "NO_DOOR" end
-        local open = not door:isOpen()
+        if door:isOpen() == open then return nil, open end
         if open and door:isLocked() then
             if door:isLockBroken() then return "LOCK_BROKEN" end
             door:setLocked(false)
+        elseif not open and v:areAllDoorsLocked() then
+            door:setLocked(true)
         end
         T.Liftgate.swing(v, part, open, player:getUsername())
-        return nil, open -- the server toggles what is there now; the app says this, not what it guessed
+        return nil, open
     end
 end
 
@@ -210,7 +224,10 @@ local ACT = {
         if part and part:getModData().sentry then S.disarm(v, player:getUsername()) end
     end,
     flash = function(_, v) S.flash(v) end,
-    horn = function(_, v) R.horn(v) end,
+    horn = function(_, v) -- the vanilla horn needs 12 V too (ISVehicleMenu.lua:143, 1703-1706)
+        if v:getBatteryCharge() <= 0 then return "NO_12V" end
+        R.horn(v)
+    end,
     sentry = function(player, v, on)
         local ok, why
         if on then ok, why = S.canArm(player, v, true) else ok, why = S.canDisarm(player, v, true) end
@@ -235,7 +252,7 @@ function R.state(player, key)
     local ok, why = R.mayTrack(player, v)
     if not ok then return { key = key, deny = why } end
     local link = K.appReach(player, v)
-    local r = link and R.remember(v) or store("seen")[tostring(key)]
+    local r = link and R.remember(v, true) or R.record(key)
     -- grid: the phone's own network (status bar), apart from whether it reaches this car
     local out = { key = key, link = link, grid = getWorld():isHydroPowerOn() }
     if r then for k, val in pairs(r) do out[k] = val end end
@@ -257,12 +274,14 @@ T.ServerCommands.appAction = function(player, args)
     local function done(why, on)
         if why then
             R.stats.denied = R.stats.denied + 1
-            T.log("app " .. act .. " denied " .. why .. " key=" .. tostring(key) .. " by " .. player:getUsername())
+            -- not a holder: counted, not logged (anyone can send these; a log line each would flood the console)
+            if why ~= "NO_PHONE_KEY" then T.log("app " .. act .. " denied " .. why .. " key=" .. tostring(key) .. " by " .. player:getUsername()) end
         end
         T.send(player, "appDone", { key = key, act = act, why = why, on = on })
     end
     if not key then return done("NO_PHONE_KEY") end
     local v = R.loadedCar(key)
+    if not v then return done("NOT_LOADED") end -- the server doesn't have the car: nobody can act on it
     if not K.appReach(player, v) then return done("NO_LINK") end
     local codes = VM_CODES[act]
     if codes then
@@ -278,13 +297,14 @@ T.ServerCommands.appAction = function(player, args)
     T.log("app " .. act .. onOff .. " vid=" .. v:getId() .. " by " .. player:getUsername())
     if result == nil and (act == "sentry" or act == "charge") then result = args.on == true end
     done(nil, result)
-    T.send(player, "appState", R.state(player, key))
+    T.send(player, "appState", R.state(player, key)) -- creates the record over the live link
 end
 
 T.ServerCommands.appAlerts = function(player, args)
     local key = holder(player, args)
     if not key then return end
-    if not R.mayTrack(player, R.loadedCar(key)) then return end
+    local ok, why = R.mayTrack(player, R.loadedCar(key))
+    if not ok then return T.send(player, "appAlerts", { key = key, deny = why }) end -- the holder hears why
     T.send(player, "appAlerts", { key = key, list = store("alerts")[tostring(key)] or {} })
 end
 

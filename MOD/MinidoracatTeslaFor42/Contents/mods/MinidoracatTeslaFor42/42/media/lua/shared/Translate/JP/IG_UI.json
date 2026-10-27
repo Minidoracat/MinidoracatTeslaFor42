@@ -203,5 +203,7 @@
     "IGUI_MinidoracatTesla_Tip_AppChargeStop": "充電を一時停止（ケーブルは差したまま）",
     "IGUI_MinidoracatTesla_Tip_AppChargeStart": "目標まで充電を再開",
     "IGUI_MinidoracatTesla_App_AgeNow": "たった今",
-    "IGUI_MinidoracatTesla_Deny_UNVERIFIED": "車が読み込まれていないため、車両の権限を確認できません"
+    "IGUI_MinidoracatTesla_Deny_UNVERIFIED": "車が読み込まれていないため、車両の権限を確認できません",
+    "IGUI_MinidoracatTesla_Deny_NO_12V": "車の12Vバッテリーが上がっています",
+    "IGUI_MinidoracatTesla_Deny_NOT_LOADED": "車が読み込まれた範囲の外にあります。近づいてから操作してください"
 }
