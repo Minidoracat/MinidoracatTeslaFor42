@@ -86,6 +86,7 @@ function R.remember(v, create)
     local chg = md.chg
     local script = v:getScript()
     r.car = script and (script:getCarModelName() or script:getName()) or ""
+    r.skin = v:getSkinIndex() -- the app draws the car in its paint (Core.lua colors[skin + 1]); older records lack it
     r.x, r.y, r.z = math.floor(v:getX()), math.floor(v:getY()), math.floor(v:getZ())
     local kwh, cap = part and T.Battery.kwh(part) or 0, part and T.Battery.capacity(part) or 1
     local left = 0
