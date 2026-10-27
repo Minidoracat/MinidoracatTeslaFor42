@@ -304,24 +304,24 @@ end
 -- the car list: built when it opens; appStatusAll for the other paired cars (their grey lines; the selected car is
 -- polled anyway), App.BATCH keys a request and one request per LIST_MS (App:update sends the rest of the round), so
 -- any number of paired cars, however often the list opens, stays inside the server's appStatusAll budget
--- (Commands.lua CommandRate). Opening it again while a round is still going out starts no second one.
+-- (Commands.lua CommandRate). Opening it again while a round is still going out starts no second one: it only adds
+-- the cars that round does not have yet (another phone picked up, a car added).
 function App:openList()
     local cars = App.cars(self.playerNum, self.player)
     self.carList = cars
-    if not self.listQ then
-        local q = {}
-        for _, e in ipairs(cars) do
-            if e.key and e.key ~= self.key then q[#q + 1] = e.key end
-        end
-        if #q > 0 then self.listQ, self.listI = q, 1 end
+    if not self.listQ then self.listQ, self.listI, self.listHas = {}, 1, {} end
+    local q, has = self.listQ, self.listHas
+    for _, e in ipairs(cars) do
+        if e.key and e.key ~= self.key and not has[e.key] then q[#q + 1], has[e.key] = e.key, true end
     end
+    if self.listI > #q then self.listQ = nil end -- nothing (left) to ask
     self:sendList()
 end
 App.BATCH = 16 -- = Remote.lua R.MAX_BATCH (the server answers that many per request)
 App.LIST_MS = 1000
 function App:sendList()
-    local q, now = self.listQ, getTimestampMs()
-    if not q or now < (self.listAt or 0) + App.LIST_MS then return end
+    local q, now, at = self.listQ, getTimestampMs(), self.listAt or 0
+    if not q or (now >= at and now < at + App.LIST_MS) then return end -- now < at: the clock was set back, go on
     local i, keys = self.listI, {}
     for k = i, math.min(#q, i + App.BATCH - 1) do keys[#keys + 1] = q[k] end
     self.listI, self.listAt = i + #keys, now

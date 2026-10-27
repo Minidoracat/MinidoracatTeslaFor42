@@ -50,16 +50,17 @@ CR.LIMITS = {
 }
 T.CommandRate = CR
 
--- online id -> { who = the IsoPlayer, [bucket] = { start, n } }. The id, not the username: a split-screen guest names
--- itself (Core.lua T.account). Ids are per connected player and get reused, so the table stays as small as the
--- server; the IsoPlayer kept beside it (one per id, so no weak table needed: Kahlua has none, family pitfalls.md)
--- tells a new occupant of the id, who starts with fresh windows. A respawn is a new IsoPlayer too: fresh windows.
+-- online id -> { who = username, [bucket] = { start, n } }. Keyed by the id, not the username: a split-screen guest
+-- names itself (Core.lua T.account). Ids are per connected player and get reused (GameServer.java:2669-2676), so the
+-- table stays as small as the server; the username beside it tells a new occupant of the id, who starts with fresh
+-- windows (a guest's chosen name only touches its own id). Not the IsoPlayer: a kept reference would hold a player
+-- who left until the id is used again (no IsoPlayer in tables, family pitfalls.md).
 local windows = {}
 function CR.limited(player, command)
     local b = CR.LIMITS[command] and command or "default"
     local lim, id, t = CR.LIMITS[b], player:getOnlineID(), getTimestampMs() -- IsoPlayer.java:6490 (GameServer.java:2835-2839)
-    local mine = windows[id]
-    if not mine or mine.who ~= player then mine = { who = player }; windows[id] = mine end
+    local who, mine = player:getUsername(), windows[id]
+    if not mine or mine.who ~= who then mine = { who = who }; windows[id] = mine end
     local w = mine[b]
     if not w then w = {}; mine[b] = w end
     -- t < start: the wall clock was set back (getTimestampMs = System.currentTimeMillis); start over, do not stretch it
@@ -69,7 +70,7 @@ function CR.limited(player, command)
     CR.dropped[b] = (CR.dropped[b] or 0) + 1
     if w.n == lim.max + 1 then
         T.log("rate limit: " .. b .. " over " .. lim.max .. " per " .. lim.ms .. " ms, dropping " .. tostring(command)
-            .. " from " .. tostring(player:getUsername()) .. " oid=" .. tostring(id))
+            .. " from " .. tostring(who) .. " oid=" .. tostring(id))
     end
     return true
 end

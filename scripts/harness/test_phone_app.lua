@@ -916,6 +916,10 @@ a:update()
 a.b.back:forceClick()
 a.b.cars:forceClick() -- opened again within the second: no second round on top
 check(listReqs({}) == 1, "18 cars: the first 16 at once, the rest not in the same second (reopening adds none)")
+myInv = container(myInv.items[1], multiPhone({ 8001, 8002 })) -- a second phone picked up while the round goes out
+a.b.back:forceClick()
+a.b.cars:forceClick()
+check(listReqs({}) == 1, "a second phone mid-round: still nothing more this second")
 H.advanceMs(App.LIST_MS)
 a:update()
 H.advanceMs(App.LIST_MS)
@@ -923,7 +927,15 @@ a:update()
 local all17 = true
 local reqs = listReqs(asked)
 for i = 1, 17 do if not asked[7000 + i] then all17 = false end end
-check(reqs == 2 and all17 and App.BATCH == R.MAX_BATCH, "a second later the update sends the rest: two requests cover all 17 others")
+check(reqs == 2 and all17 and asked[8001] and asked[8002] and App.BATCH == R.MAX_BATCH,
+    "a second later the update sends the rest, the new phone's cars with it: two requests cover all 19 others")
+myInv = container(multiPhone(many))
+a:setPage("cars") -- a new round of 17, held back: the last request went out this same second
+sentM = #H.clientSent
+H.advanceMs(-60000) -- the player's wall clock jumps back a minute
+a:update()
+check(listReqs({}) == 1, "client clock set back mid-round: the round goes on, not stuck until the clock catches up")
+H.advanceMs(60000)
 -- 50 paired cars (4 requests a round), the list opened and closed twice a second for 10 s: through the server's
 -- dispatch (Commands.lua CommandRate) every request gets through, at most one a second
 for i = 19, 50 do many[i] = 7000 + i end

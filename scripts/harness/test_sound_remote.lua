@@ -181,12 +181,7 @@ for i = 1, 600 do
     done = #b
     H.advanceMs(100)
 end
-local busiest = 0
-for j = 1, #times do
-    local k = j
-    while times[k + 1] and times[k + 1] - times[j] < M.ms / 100 do k = k + 1 end
-    busiest = math.max(busiest, k - j + 1)
-end
+local busiest = H.busiest(times, M.ms / 100) -- times are 100 ms ticks
 check(busiest == M.max and told == 2 * done and dropped() == limited,
     "the driver's real rhythm (" .. done .. " in a minute, " .. busiest .. " in the busiest 5 s): every one relayed")
 H.side(true, false)
