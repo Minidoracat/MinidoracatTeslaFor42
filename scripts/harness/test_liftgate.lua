@@ -31,7 +31,8 @@ local function car(o)
         function door:setLocked(b) self.locked = b end
         function door:isLockBroken() return self.broken end
         v.parts[id] = { id = id, door = door, item = {}, getId = function(self) return self.id end,
-            getDoor = function(self) return self.door end, getInventoryItem = function(self) return self.item end }
+            getDoor = function(self) return self.door end, getInventoryItem = function(self) return self.item end,
+            getVehicle = function() return v end }
     end
     function v:toggleLockedDoor(part, chr, locked) -- BaseVehicle.java:1230-1244 (seated player may unlock)
         if not locked and not part.door.broken and part.door.locked then part.door.locked = false end

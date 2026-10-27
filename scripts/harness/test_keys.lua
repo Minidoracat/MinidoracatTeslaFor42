@@ -393,6 +393,10 @@ MinidoracatVehicleManagerAPI = { canUse = function(p, _, code) return code == "R
 ISOpenVehicleDoor.complete({ vehicle = v, part = v.frunk, character = stranger })
 check(v.frunk.d.open, "frunk: a VehicleManager mechanic (REPAIR shared, virtual key, no item) opens it")
 ISCloseVehicleDoor.complete({ vehicle = v, part = v.frunk, character = stranger })
+MinidoracatVehicleManagerAPI = { canUse = function(p, _, code) return code == "SALVAGE" and p == stranger, "SHARED" end }
+ISOpenVehicleDoor.complete({ vehicle = v, part = v.frunk, character = stranger })
+check(v.frunk.d.open, "frunk: a VehicleManager salvager (SALVAGE shared) opens it too (VM's own hood rule)")
+ISCloseVehicleDoor.complete({ vehicle = v, part = v.frunk, character = stranger })
 SandboxVars.MinidoracatVehicleManager = { VirtualKey = false } -- its "Off keeps the vanilla key rules"
 ISOpenVehicleDoor.complete({ vehicle = v, part = v.frunk, character = stranger })
 check(v.frunk.d.locked and not v.frunk.d.open, "frunk: VehicleManager VirtualKey off -> a rider without a key stays out")
@@ -409,6 +413,10 @@ otherDoor.getVehicle = otherLid.getVehicle
 ISOpenVehicleDoor.complete({ vehicle = v, part = otherLid, character = loose })
 check(otherLid.d.locked and not otherLid.d.open, "frunk: a key for car A does not unlock car B's lid (vehicle/part mismatch)")
 check(not K.phoneUnlock(v, otherDoor, owner) and otherDoor.d.locked, "handle: phone key for car A leaves car B's door locked")
+otherLid.d.locked, otherLid.d.open = false, true -- car B's lid, unlocked and open
+ISCloseVehicleDoor.complete({ vehicle = v, part = otherLid, character = loose })
+check(v:areAllDoorsLocked() and not otherLid.d.open and not otherLid.d.locked,
+    "frunk: shutting car B's lid in an action naming locked car A does not lock B's lid")
 v.doors[1].d.broken = true
 ISUnlockVehicleDoor.complete(unlock)
 check(v.doors[1].d.locked, "handle: broken lock -> stays locked")

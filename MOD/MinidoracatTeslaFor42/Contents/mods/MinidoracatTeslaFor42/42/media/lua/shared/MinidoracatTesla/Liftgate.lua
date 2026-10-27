@@ -153,8 +153,9 @@ if not isClient() then
         local orig = cls.complete
         cls.complete = function(self)
             local ok = orig(self)
-            local v, part = self.vehicle, self.part
-            if ok and v and part and T.isTesla(v) and part:getDoor() and part:getDoor():isOpen() == open then
+            local v, part = self.vehicle, self.part -- two arguments: only a part of this car (Keys.lua K.lidUnlock)
+            if ok and v and part and T.isTesla(v) and part:getDoor() and part:getVehicle() == v
+                and part:getDoor():isOpen() == open then
                 if not open and L.relock(v, part) then v:transmitPartDoor(part) end
                 L.syncShell(v)
                 if isServer() then broadcast({ vid = v:getId(), part = part:getId(), open = open }, self.character) end

@@ -157,7 +157,6 @@ end
 -- in a bag, as at a door handle; a VehicleManager user it lets work on the hood, whose virtual key is no item) has it
 -- unlocked right before vanilla complete() looks; a stranger finds it locked. The key card in a wallet does not count
 -- (tap the reader, as for the doors). complete() runs on the server in MP and locally in SP.
-local NOT_RIDER = { UNCLAIMED = true, EASY_USE = true, KEY = true } -- as T.legit (ParkModes.lua)
 local function vmMechanic(chr, vehicle)
     local api = MinidoracatVehicleManagerAPI
     if not (api and api.canUse) then return false end
@@ -167,7 +166,7 @@ local function vmMechanic(chr, vehicle)
     -- the codes VehicleManager itself puts on opening the hood (its Actions.lua EngineDoor; the app's frunk, Remote.lua)
     for _, code in ipairs({ "REPAIR", "SALVAGE" }) do
         local ok, why = api.canUse(chr, vehicle, code, { mod = T.MODULE })
-        if ok == true and not NOT_RIDER[why] then return true end
+        if ok == true and why ~= "UNCLAIMED" then return true end -- an unclaimed car is anyone's: no key from it
     end
     return false
 end
