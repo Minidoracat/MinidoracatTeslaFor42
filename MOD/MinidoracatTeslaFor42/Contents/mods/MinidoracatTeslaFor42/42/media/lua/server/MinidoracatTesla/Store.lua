@@ -3,7 +3,7 @@
 -- GlobalModData.java:171; family conventions.md). T.Store.get(name):
 --   seen: tostring(keyId) -> the app's last record; alerts: tostring(keyId) -> alerts, oldest first (Remote.lua)
 --   inbox: account -> offline alerts (Inbox.lua); keyIds: tostring(keyId) -> car model (KeyActions.lua)
---   phones: tostring(phone key item id) -> keyIds in pairing order, phones with 2+ cars only (Keys.pairedWith)
+--   phones: tostring(phone key item id) -> keyIds in pairing order, every phone key paired since app v2 (Keys.pairedWith)
 if isClient() then return end
 require "MinidoracatTesla/Core"
 
@@ -18,7 +18,7 @@ St.LEGACY = { inbox = "MinidoracatTesla_Inbox", keyIds = "MinidoracatTesla_KeyId
 -- file before it serializes and only logs the overflow (SGlobalObjectSystem.java:279-295), so a save past 10 MiB empties
 -- the file and the next start finds the whole store gone. Every list is capped (20 inbox alerts an account, 10 app
 -- alerts a car), so it grows only with accounts and cars: ~1600 owners each with a full inbox and a car full of alerts
--- (review verify 2026-10-27). `phones` (one short list per phone key with 2+ cars) is not capped and keeps the entry of
+-- (review verify 2026-10-27). `phones` (one short list per phone key) is not capped and keeps the entry of
 -- a phone key destroyed in the world (nothing tells the server): a few dozen bytes each, far below the buffer.
 -- Prune inboxes of long-gone accounts or split the keys into systems (one buffer each,
 -- SGlobalObjects.java:151-156) if a server ever gets near it.

@@ -7,7 +7,7 @@
 -- ("cars" page): every car the phone keys on the player are paired with, then the Teslas VehicleManager lists for this
 -- player that no phone here is paired with (MinidoracatTesla.VMLink.cars: last position only; remote buttons dimmed,
 -- pressing one says how to add the car). Only the selected car is polled; the list's grey lines come from App.seen,
--- refreshed by one appStatusAll when the list opens.
+-- refreshed when the list opens (one appStatusAll per App.BATCH cars).
 -- Pages: "home" (name, battery, the car in its paint, four quick icons, a list into the sub pages), "controls" (flash,
 -- horn, frunk, liftgate), "location" (arrow, distance, "Show on map", "Navigate to car" with the MiniMap's
 -- setNavTarget), "security" (Sentry Mode, alerts), "charging", "cars".

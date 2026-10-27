@@ -4,7 +4,7 @@
 --   * appAction { key, act, on }: lock, unlock, flash, horn, sentry, charge, frunk, trunk. Holder, reach, the
 --     VehicleManager right for doing the same thing in person, and the action's own rules are checked every time.
 --   * appAlerts { key }: the car's last sentry / camp alerts.
---   * appStatusAll { keys }: the app's car list (one phone, several cars), once when it opens; appStatus for each.
+--   * appStatusAll { keys }: the app's car list (one phone, several cars) when it opens, up to MAX_BATCH cars a request.
 -- Only players carrying the phone key for `key` get an answer about that car. Every command names its car by keyId
 -- (Keys.pairedWith: any car the phone key is paired with).
 if isClient() then return end
@@ -244,7 +244,7 @@ function R.state(player, key)
     return out
 end
 
--- the app's car list (PhoneApp.lua): once when the list opens, every car in `keys` the player holds a phone key for,
+-- the app's car list (PhoneApp.lua): when the list opens (App.BATCH cars a request), every car in `keys` the player holds a phone key for,
 -- each answered like appStatus (the same checks per car); others are left out, nothing said about them
 R.MAX_BATCH = 16
 T.ServerCommands.appStatusAll = function(player, args)

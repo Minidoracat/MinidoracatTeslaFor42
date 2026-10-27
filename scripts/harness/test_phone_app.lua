@@ -841,6 +841,14 @@ mk = provider[2](0, "mini")
 ids = {}
 for _, m in ipairs(mk.markers) do ids[m.id] = m end
 check(ids["tesla:9001"] and not ids["tesla:9002"] and App.seen[9002] ~= nil, "removed from the phone: no marker for it")
+-- the phone for 9001 handed over, one for 9002 picked up: as many markers, other cars (no seenRev move: the 10 s check)
+myInv = container(phoneKey(9002))
+H.advanceMs(B.CHECK_MS + 1)
+mk = provider[2](0, "mini")
+ids = {}
+for _, m in ipairs(mk.markers) do ids[m.id] = m end
+check(ids["tesla:9002"] and not ids["tesla:9001"] and B.drawsWorld(0, 9002) == false,
+    "a phone swapped for another one: its cars' markers, not the old ones (same count)")
 myInv = keptInv
 App.seenRev = App.seenRev + 1
 provider[2](0, "mini")

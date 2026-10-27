@@ -469,8 +469,20 @@ local function phoneOf(inv) return inv:getFirstTypeEvalArgRecurse(K.PHONE_KEY, f
 multi.vehicle = carA
 cmds.phonePair(multi, { vid = carA:getId(), id = mInv.items[3]:getID() })
 local ph = phoneOf(mInv)
-check(ph and ph.keyId == carA.keyId and phones[tostring(ph.id)] == nil and ph.md[K.PAIRED][1] == carA.keyId,
-    "first pairing: keyId = car A, one car = no server record, modData mirror { A }")
+local r1 = phones[tostring(ph.id)]
+check(ph and ph.keyId == carA.keyId and r1 and #r1 == 1 and r1[1] == carA.keyId and ph.md[K.PAIRED][1] == carA.keyId,
+    "first pairing: keyId = car A, recorded { A } (every phone key: no two share an item id), modData mirror { A }")
+-- an unrelated plain phone on the same item id (ids are random) pairs: that phone key's record stays
+local stray = item(K.PHONE)
+stray.id = ph.id
+local strayInv = container(key(K.CARD, carB.keyId), stray)
+local strayP = player("stray", strayInv, carB.x, carB.y)
+strayP.vehicle = carB
+cmds.phonePair(strayP, { vid = carB:getId(), id = stray.id })
+local strayKey = phoneOf(strayInv)
+check(strayKey and strayKey.id ~= ph.id and phones[tostring(ph.id)] == r1 and not K.pairedWith(ph, carB.keyId),
+    "a plain phone sharing the item id pairs elsewhere: a new id, the first phone's record untouched")
+phones[tostring(strayKey.id)] = nil
 check(ph.name == "ItemName_" .. K.PHONE_KEY .. " - IGUI_VehicleNameMinidoracatTesla_ModelY", "one car: named like before (item - car)")
 multi.vehicle = carB
 check(K.canPair(multi, carB, ph) == true, "a phone key for A, seated in B with B's card: may add B")
@@ -553,8 +565,9 @@ cmds.phoneUnpair(onlyA, { id = ph.id, key = carA.keyId })
 check(lastDeny() == "NO_PHONE_KEY" and phoneOf(mInv) == ph, "unpair someone else's phone: NO_PHONE_KEY, unchanged")
 cmds.phoneUnpair(multi, { id = ph.id, key = carB.keyId })
 ph = phoneOf(mInv)
-check(ph.keyId == carA.keyId and phones[tostring(ph.id)] == nil and ph.name:find("VehicleName", 1, true)
-    and F.lastSent("phoneUnpaired").args.n == 1, "remove B (the item's keyId): keyId back to A, one car, no record, car name again")
+local r2 = phones[tostring(ph.id)]
+check(ph.keyId == carA.keyId and r2 and #r2 == 1 and ph.name:find("VehicleName", 1, true)
+    and F.lastSent("phoneUnpaired").args.n == 1, "remove B (the item's keyId): keyId back to A, record { A }, car name again")
 check(K.phoneKey(multi, carB) == nil, "removed: B no longer opens")
 multi.vehicle = carB
 cmds.phonePair(multi, { vid = carB:getId(), id = ph.id })

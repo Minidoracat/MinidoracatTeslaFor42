@@ -35,7 +35,7 @@ local function sameKey(item, keyId) return item:getKeyId() == keyId end
 -- last entry = the item's keyId), read by everything of Tesla's own (this file, T.authorized, T.legit, the app).
 -- Item modData is no proof: any client can overwrite a server item's modData (SyncItemModDataPacket.parse loads the
 -- client's table straight into it; SyncItemFieldsPacket.processServer wipes and copies it). So the server and SP read
--- the server-only record T.Store "phones" (item id -> keyIds, only for phones with 2+ cars; KeyActions.lua writes it);
+-- the server-only record T.Store "phones" (item id -> keyIds, every phone key paired since app v2; KeyActions.lua);
 -- an MP client reads the modData mirror, for menus and the app only. The item's keyId itself is not client-writable.
 K.PAIRED, K.PAIRED_CARS = "teslaKeyIds", "teslaCars" -- modData mirror: keyIds, and their car models (menu labels)
 local function extraIds(item)

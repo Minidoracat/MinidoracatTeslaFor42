@@ -213,11 +213,15 @@ local function onUnpair(player, phone, keyId)
     T.request(player, "phoneUnpair", { id = phone:getID(), key = keyId })
 end
 -- "Remove from phone >": one entry per car, in pairing order (the car names come from the item's mirror; the paint
--- from the app's last view of it, PhoneApp.carLabel)
+-- from the app's last view of it, PhoneApp.carLabel). Greyed in a car: the server refuses there (KeyActions phoneUnpair)
 function UI.unpairOption(player, context, phone)
     local ids = K.pairedIds(phone)
     local cars = phone:getModData()[K.PAIRED_CARS]
     local opt = context:addOption(getText("ContextMenu_MinidoracatTesla_Unpair"))
+    if player:getVehicle() then
+        tip(opt, denyText("NOT_OUTSIDE"), true)
+        return opt
+    end
     local sub = ISContextMenu:getNew(context)
     context:addSubMenu(opt, sub)
     local App = T.PhoneApp

@@ -42,27 +42,33 @@ Events.OnSpawnVehicleEnd.Add(K.register)
 -- Same container, new item: server Remove/AddItem first, then the packets (pitfalls.md: send only sends). `ids` (phone
 -- keys): every paired car in pairing order, written to the server-only record (the authority, Keys.pairedWith) and to
 -- the modData mirror the client reads; the new item has a new id, so the old id's record goes.
+-- Item ids are random ints, not unique (InventoryItemFactory.java:139), so every phone key made here is recorded (one
+-- car too) and a new one never takes a recorded id: two phone keys never share one (review 2026-10-27, round 1 and 2:
+-- a twin would inherit the other's cars). ponytail: phone keys paired before app v2 are not recorded, so a new one can
+-- still land on such an id (chance: their count / 2^31 per pairing); they get recorded at their next pairing.
 local function replace(old, fullType, keyId, name, ids, cars)
     local cont = old:getContainer()
     if not cont then return nil end
     local item = instanceItem(fullType)
     local phones = ids and T.Store.get("phones")
-    -- item ids are random ints, not unique (InventoryItemFactory.java:139): a phone never takes an id another phone's
-    -- record already has (review 2026-10-27: it would inherit that phone's cars)
-    for _ = 1, 8 do
-        if not (phones and phones[tostring(item:getID())]) then break end
-        item = instanceItem(fullType)
+    if phones then
+        local tries = 1
+        while phones[tostring(item:getID())] do
+            if tries == 8 then return nil end -- (never in practice: nothing changes rather than a shared id)
+            tries = tries + 1
+            item = instanceItem(fullType)
+        end
     end
     item:setKeyId(keyId)
     item:setName(name)
     if ids then -- a phone (key): its record follows the new item id
-        phones[tostring(old:getID())] = nil
-        if #ids > 1 then -- its own copy: a client's SyncItemModData replaces the item's modData, never the store's
+        local oldId = tostring(old:getID())
+        local r = phones[oldId]
+        if r and old:getFullType() == K.PHONE_KEY and r[#r] == old:getKeyId() then phones[oldId] = nil end -- its own only
+        if #ids > 0 then -- its own copy: a client's SyncItemModData replaces the item's modData, never the store's
             local copy = {}
             for i = 1, #ids do copy[i] = ids[i] end
             phones[tostring(item:getID())] = copy
-        end
-        if #ids > 0 then
             local md = item:getModData()
             md[K.PAIRED], md[K.PAIRED_CARS] = ids, cars
         end

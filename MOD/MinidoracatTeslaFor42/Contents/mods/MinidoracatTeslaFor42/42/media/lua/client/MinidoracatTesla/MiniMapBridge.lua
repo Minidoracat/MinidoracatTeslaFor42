@@ -51,7 +51,6 @@ function B.build(now)
     local v2 = api and type(api.markerApiVersion) == "number" and api.markerApiVersion >= 2
     local skip, mine = vmDrawn() or {}, onPhone()
     local markers, stale, keys = {}, 0, {}
-    B.vmSkip = skip -- (for drawsWorld, every world map frame: no list built there)
     for key, st in pairs(App.seen) do
         if st.x and st.y and not st.deny and not skip[key] and mine[key] then
             local fresh = st.seenAt and now - st.seenAt <= App.FRESH_MS
@@ -68,38 +67,39 @@ function B.build(now)
             keys[key] = true
         end
     end
-    B.drawnKeys = keys
-    return markers, stale
+    return markers, stale, keys
 end
 
 -- per frame, per surface: the cached table; rebuilt when App.seen moved, or every CHECK_MS a marker may have faded
--- (or VehicleManager's bridge took one over): a new table only when something shown changed
-local cache = { out = { revision = 0, markers = {} } }
+-- (or the phones on the player, or VehicleManager's bridge, changed which cars): a new table only when what is shown
+-- changed (the same set of cars counts, not only how many: a phone swapped for another one)
+local cache = { out = { revision = 0, markers = {} }, keys = {} }
+local function sameKeys(a, b)
+    for k in pairs(a) do if not b[k] then return false end end
+    for k in pairs(b) do if not a[k] then return false end end
+    return true
+end
 function B.provider(playerNum, surface)
     if playerNum ~= 0 then return nil end -- ponytail: App.seen is one table (PhoneApp.lua); split-screen guests get none
     local now = getTimestampMs()
     if surface == "world" then B.worldAt = now end -- the MiniMap is drawing our markers on the world map right now
     if cache.rev == App.seenRev and now < (cache.checkAt or 0) then return cache.out end
     cache.checkAt = now + B.CHECK_MS
-    local markers, stale = B.build(now)
-    if cache.rev ~= App.seenRev or stale ~= cache.stale or #markers ~= #cache.out.markers then
-        cache.rev, cache.stale = App.seenRev, stale
+    local markers, stale, keys = B.build(now)
+    if cache.rev ~= App.seenRev or stale ~= cache.stale or not sameKeys(keys, cache.keys) then
+        cache.rev, cache.stale, cache.keys = App.seenRev, stale, keys
         cache.out = { revision = cache.out.revision + 1, markers = markers }
     end
     return cache.out
 end
 
 -- the app's temporary world map marker steps aside only while the MiniMap really draws that car there: player 0 only,
--- not when its world map layers (WMLayers) are off (then it never asks this provider for "world"), and only for a car
--- one of the two bridges has a marker for (ours from the last build, or VehicleManager's: its fleet, VM-only cars too)
+-- its world map layers (WMLayers) on (else it never asks this provider for "world"), and the car one of our published
+-- markers (no layer: the MiniMap draws every one it gets, MinidoracatMiniMap_Markers.lua:267-270). VehicleManager's
+-- markers sit on its own layers, which the player may hide: for its cars the temporary marker stays.
 function B.drawsWorld(playerNum, key)
-    if not (B.registered == true and playerNum == 0 and B.worldAt ~= nil and getTimestampMs() - B.worldAt < 1000) then
-        return false
-    end
-    if key ~= nil and B.drawnKeys and B.drawnKeys[key] then return true end
-    local mvm = MinidoracatVehicleManager
-    local vmOn = mvm and mvm.MiniMapBridge and mvm.MiniMapBridge.registered
-    return vmOn and (key == nil or (B.vmSkip ~= nil and B.vmSkip[key] == true)) or false
+    return B.registered == true and playerNum == 0 and key ~= nil and cache.keys[key] == true and B.worldAt ~= nil
+        and getTimestampMs() - B.worldAt < 1000
 end
 
 function B.register()
