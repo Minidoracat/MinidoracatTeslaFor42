@@ -428,7 +428,7 @@ H.section("phone app: summon (server)")
 local AD = { summonApiVersion = 1, calls = {}, stops = {}, info = {}, answer = { true } }
 function AD.startSummon(p, car, opts)
     AD.calls[#AD.calls + 1] = { p = p, car = car, opts = opts }
-    if AD.answer[1] then AD.info[car] = { by = p:getUsername(), phase = "starting", mode = opts.mode } end
+    if AD.answer[1] then AD.info[car] = { by = p:getUsername(), phase = "starting", mode = opts.mode, startedMs = 5000 + #AD.calls } end
     return AD.answer[1], AD.answer[2]
 end
 function AD.stopSummon(car, code) AD.stops[#AD.stops + 1] = { car = car, code = code }; AD.info[car] = nil; return true end
@@ -538,20 +538,26 @@ c1 = AD.calls[1]
 check(c1 and c1.opts.mode == "target" and c1.opts.x == 1012.5 and c1.opts.y == 1990.5, "target: x, y handed over as sent")
 AD.info[v] = nil
 local batt, realStart, realEnd = {}, T.Battery.summonStart, T.Battery.summonEnd -- the drain's start and last leg
-T.Battery.summonStart = function(car) batt.start = car end
+T.Battery.summonStart = function(car, ms) batt.start, batt.ms = car, ms end
 T.Battery.summonEnd = function(car) batt.ended = car end
 summon(owner, true, { mode = "dumb", dir = -1 })
 check(AD.calls[2].opts.mode == "dumb" and AD.calls[2].opts.dir == -1 and AD.calls[2].opts.x == nil, "dumb: dir handed over")
-check(batt.start == v and batt.ended == nil, "started: the battery marks where the summon starts")
+check(batt.start == v and batt.ms == AD.info[v].startedMs and batt.ended == nil,
+    "started: the battery marks where this summon (AutoDrive's startedMs) starts")
 F.sent = {}
 local touched = 0
 MinidoracatVehicleManager = { Parked = { touch = function(car) if car == v then touched = touched + 1 end end } }
-R.summonEnded(v, "ARRIVED", owner)
+AD.calls[2].opts.onEnd(v, "ARRIVED", owner) -- AutoDrive's call, through the closure ACT.summon gave it
 MinidoracatVehicleManager = nil
-T.Battery.summonStart, T.Battery.summonEnd = realStart, realEnd
 d = last("appDone")
 check(d and d.act == "summonEnd" and d.why == "ARRIVED" and d.key == 9001 and touched == 1 and batt.ended == v,
     "onEnd: the summoner hears the stop code; VehicleManager's parked guard touched; the battery charges the last leg")
+F.sent = {}
+T.Battery.summonEnd = function() error("a removed car") end
+local okEnd = pcall(AD.calls[2].opts.onEnd, v, "GONE", owner) -- AutoDrive calls onEnd in a pcall
+d = last("appDone")
+check(not okEnd and d and d.why == "GONE", "an error after it (swallowed by AutoDrive): the summoner heard the end first")
+T.Battery.summonStart, T.Battery.summonEnd = realStart, realEnd
 F.sent = {}
 R.summonEnded(v, "LEFT", nil)
 check(#F.sent == 0, "onEnd with the summoner gone: nothing sent, no error")
@@ -1195,6 +1201,16 @@ T.ClientCommands.appDone({ key = 9001, act = "summon", why = "NO_LINK" })
 state({ link = false })
 sread()
 check(a.sumPhase == "stopped" and not bs.again.shown and bs.finish.shown, "a refusal this app knew nothing of: Done only")
+bs.finish:forceClick()
+-- a refused start with AutoDrive's old result for this car still there: no live place (the start never ran)
+a:close()
+App.open(0, { keyId = 9001 })
+a:setPage("summon")
+state({ link = false, deny = "NOT_AUTHORIZED", x = false, y = false, pct = false })
+CL.st = { vid = VID, phase = "ended", code = "ARRIVED", mode = "come" }
+T.ClientCommands.appDone({ key = 9001, act = "summon", why = "NOT_AUTHORIZED" })
+sread()
+check(a.sumPhase == "stopped" and a.sumCarX == nil, "a refused start, AutoDrive's old result: no live place of the car")
 bs.finish:forceClick()
 CL.st = nil
 -- reopened, and the end comes before any state: shown, but no Try again (nothing known of it)

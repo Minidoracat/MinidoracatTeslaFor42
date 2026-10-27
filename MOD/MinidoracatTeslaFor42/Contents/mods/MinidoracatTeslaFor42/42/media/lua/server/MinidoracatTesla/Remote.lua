@@ -231,14 +231,15 @@ local function coord(n) return type(n) == "number" and n == n and n >= 0 and n <
 -- v is nil when the car is gone (GONE): key = its keyId from the start, so the app still hears the end.
 function R.summonEnded(v, code, player, key)
     key = key or v and v:getKeyId()
+    -- the app first: an error below is swallowed by AutoDrive's pcall and must not leave the app on "driving"
+    if player and key then T.send(player, "appDone", { key = key, act = "summonEnd", why = tostring(code) }) end
+    T.log("summon end " .. tostring(code) .. " vid=" .. tostring(v and v:getId()) .. " key=" .. tostring(key) .. " by "
+        .. (player and player:getUsername() or "-"))
     if v then
         T.Battery.summonEnd(v) -- the drive since the pack's last update (Battery.lua)
         local mvm = MinidoracatVehicleManager -- the car moved (ParkedGuard.lua:258-261)
         if mvm and mvm.Parked and mvm.Parked.touch then mvm.Parked.touch(v) end
     end
-    T.log("summon end " .. tostring(code) .. " vid=" .. tostring(v and v:getId()) .. " key=" .. tostring(key) .. " by "
-        .. (player and player:getUsername() or "-"))
-    if player and key then T.send(player, "appDone", { key = key, act = "summonEnd", why = tostring(code) }) end
     -- the motor layers stop for everyone near (they started with the summon); a gone car: each listener's game goes
     -- quiet itself (no car loaded) and drops it after Sound.SUMMON_MS
     local sr = T.SoundRelay
