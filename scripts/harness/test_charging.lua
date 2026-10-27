@@ -148,6 +148,13 @@ local stranger = H.player({ name = "mal", x = 201, y = 202 })
 H.sent = {}
 H.fire("OnClientCommand", "MinidoracatTesla", "chargeTarget", stranger, { vid = v:getId(), pct = 50 })
 check(chg.target == 100 and H.sent[1] and H.sent[1].args.reason == "NOT_OWNER", "strangers cannot change the target")
+-- phone app (Remote.lua): no distance here, the caller checked reach and rights
+check(C.setStopped(v, false) == true and chg.paused == nil and chg.src == "grid", "setStopped(false): the app resumes a stopped charge")
+check(C.setStopped(v, true) == true and chg.paused == "stopped", "setStopped(true): the app stops it")
+C.setStopped(v, false)
+local plainCar = H.vehicle({ x = 300, y = 300 })
+local ok2, why2 = C.setStopped(plainCar, true)
+check(ok2 == false and why2 == "NOT_PLUGGED", "setStopped on a car without a cable: NOT_PLUGGED")
 
 H.section("unplug")
 H.fire("OnClientCommand", "MinidoracatTesla", "chargeTarget", owner, { vid = v:getId(), pct = 100 })

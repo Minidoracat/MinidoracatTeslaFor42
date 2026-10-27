@@ -203,6 +203,18 @@ function UI.phoneOption(player, context, phone)
     return opt
 end
 
+-- "Open Tesla App" right after "Set up as phone key" (plan-phone-app-1027): a paired phone key opens the app on its
+-- car (client/MinidoracatTesla/PhoneApp.lua); an unpaired phone shows it greyed with how to pair.
+local function onApp(playerNum, phone)
+    local App = T.PhoneApp
+    if App then App.open(playerNum, phone:getKeyId()) end
+end
+function UI.appOption(playerNum, context, phone)
+    local opt = context:addOption(getText("ContextMenu_MinidoracatTesla_OpenApp"), playerNum, onApp, phone)
+    if phone:getFullType() ~= K.PHONE_KEY then tip(opt, getText("Tooltip_MinidoracatTesla_AppNotPaired"), true) end
+    return opt
+end
+
 Events.OnFillInventoryObjectContextMenu.Add(function(playerNum, context, items)
     for _, entry in ipairs(items) do
         local item = entry
@@ -210,6 +222,7 @@ Events.OnFillInventoryObjectContextMenu.Add(function(playerNum, context, items)
         local ft = item and item:getFullType()
         if ft == K.PHONE or ft == K.PHONE_KEY then
             UI.phoneOption(getSpecificPlayer(playerNum), context, item)
+            UI.appOption(playerNum, context, item)
             return
         end
     end

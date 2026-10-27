@@ -8,5 +8,6 @@
     "Tooltip_MinidoracatTesla_Phone": "テスラ車内でその車のキーカードを持った状態で、このスマートフォンを右クリックすると電話キーとして設定できます。",
     "Tooltip_MinidoracatTesla_PhoneKey": "ドアハンドルを引くと解錠されます。降車後に持ったまま離れるとドアが自動で施錠されます。",
     "Tooltip_MinidoracatTesla_TapCard": "運転席ドアまで歩いてキーカードをリーダーにタッチします",
-    "Tooltip_MinidoracatTesla_PairPhone": "この車のキーカードでこのスマートフォンを認証します"
+    "Tooltip_MinidoracatTesla_PairPhone": "この車のキーカードでこのスマートフォンを認証します",
+    "Tooltip_MinidoracatTesla_AppNotPaired": "先にペアリングしてください：キーカードを持って Tesla に乗り、スマートフォンを右クリックして「電話キーとして設定」を選びます。"
 }

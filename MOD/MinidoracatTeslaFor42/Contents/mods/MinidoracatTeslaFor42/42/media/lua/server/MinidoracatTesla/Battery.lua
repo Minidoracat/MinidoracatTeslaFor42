@@ -141,8 +141,11 @@ end
 
 -- GasTank update: drive draw minus brake regen, every game minute while the car's parts update; cable length check.
 -- A plugged-in car stands still in Park, so its running motor is standby only, and that runs on a powered charger.
+-- Parts update while the car drives or charges: the phone app's last record (Remote.lua) follows the car then.
 function T.Update.Battery(vehicle, part, elapsedMinutes)
     if not part:getInventoryItem() then return end
+    local remember = T.Remote and T.Remote.remember
+    if remember and instanceof(vehicle, "BaseVehicle") then remember(vehicle) end -- not a VirtualVehicle
     local chg = part:getModData().chg
     if chg and T.Charge then T.Charge.checkCable(vehicle, part, chg) end
     local m = math.min(elapsedMinutes or 0, T.MAX_ELAPSED)

@@ -9,5 +9,6 @@
     "ContextMenu_MinidoracatTesla_TapUnlock": "Przyłóż kartę-klucz: odblokuj",
     "ContextMenu_MinidoracatTesla_TapLock": "Przyłóż kartę-klucz: zablokuj",
     "ContextMenu_MinidoracatTesla_PairPhone": "Ustaw jako klucz w telefonie",
-    "ContextMenu_MinidoracatTesla_ChargeItem": "Naładuj z gniazda w samochodzie"
+    "ContextMenu_MinidoracatTesla_ChargeItem": "Naładuj z gniazda w samochodzie",
+    "ContextMenu_MinidoracatTesla_OpenApp": "Otwórz aplikację Tesla"
 }

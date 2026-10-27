@@ -24,6 +24,10 @@ K.LOCK_TRIES = 6    -- client asks at most this many times (once per WATCH_MS) o
 K.CHIRP = "VehicleHornStandard" -- sounds_vehicle_standard.txt (event Vehicle/Standard/Horn)
 K.CHIRP_MS = 150
 K.CHIRP_TILES = 40
+-- Tesla app on the phone key (user 2026-10-27: like the real car). Owner's manual, Mobile App: phone and car talk over
+-- the cellular network, or over Bluetooth when the phone key is close. Grid up = phone network up: any distance, as
+-- long as the server has the car loaded. Grid down: Bluetooth only, BT_RANGE tiles (1 tile = 1 m).
+K.BT_RANGE = 30
 
 local function sameKey(item, keyId) return item:getKeyId() == keyId end
 
@@ -31,8 +35,34 @@ local function sameKey(item, keyId) return item:getKeyId() == keyId end
 function K.card(player, vehicle)
     return player:getInventory():getFirstTypeEvalArgRecurse(K.CARD, sameKey, vehicle:getKeyId())
 end
-function K.phoneKey(player, vehicle)
-    return player:getInventory():getFirstTypeEvalArgRecurse(K.PHONE_KEY, sameKey, vehicle:getKeyId())
+-- the phone key for car `keyId` anywhere on the player (the app names its car by keyId: server/MinidoracatTesla/Remote.lua)
+function K.phoneKeyFor(player, keyId)
+    return player:getInventory():getFirstTypeEvalArgRecurse(K.PHONE_KEY, sameKey, keyId)
+end
+function K.phoneKey(player, vehicle) return K.phoneKeyFor(player, vehicle:getKeyId()) end
+
+-- How the app reaches a loaded car right now: "net", "bt", or nil (no link: the app shows the last record only).
+-- The server asks again before every command; the grid state is IsoWorld.hydroPowerOn (IsoWorld.java:3314), which
+-- AmbientSoundManager switches off at the sandbox shut-off (AmbientSoundManager.java:228-243).
+function K.appReach(player, vehicle)
+    if not vehicle then return nil end
+    if getWorld():isHydroPowerOn() then return "net" end
+    if player:DistTo(vehicle) <= K.BT_RANGE then return "bt" end
+    return nil
+end
+
+-- The phone app (PhoneApp.lua): where the car is from the player: compass words (north = -y) and the screen angle of the arrow. The iso screen
+-- shows a world step (dx, dy) as (dx - dy, (dx + dy) / 2), so north points up-right as the player sees it.
+-- Returns distance, compass index 1..8, clockwise degrees from screen-up (DrawTextureAngle, UIElement.java:243-262).
+-- Kahlua's % keeps the dividend's sign (-119 % 360 = -119 in game, tesla-app-1027a), so wrap with floor instead.
+local function wrap360(d) return d - math.floor(d / 360) * 360 end
+function K.bearing(px, py, cx, cy)
+    local dx, dy = cx - px, cy - py
+    local dist = math.sqrt(dx * dx + dy * dy)
+    local compass = wrap360(math.deg(math.atan2(dx, -dy)))
+    local sx, sy = dx - dy, (dx + dy) / 2
+    local ci = math.floor((compass + 22.5) / 45)
+    return dist, ci - math.floor(ci / 8) * 8 + 1, wrap360(math.deg(math.atan2(sx, -sy)))
 end
 
 -- the card lying on the console reader = this car's card in the ignition (BaseVehicle.java:9673)

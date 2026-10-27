@@ -184,22 +184,6 @@ function HUD.drawTip(el, key, ax, ay, aw, ah, arg)
     el.tipRect.x, el.tipRect.y, el.tipRect.w, el.tipRect.h = x, y, w, h -- E2E and tests read where it went
 end
 
--- ---------------------------------------------------------------- charge estimate (shared with the card)
--- Client-side projection between server settlements: kw * (now - last), capped at the target (architecture §4).
-function HUD.chargeEstimate(part, chg, now)
-    local cap = T.Battery.capacity(part)
-    local kwh = T.Battery.kwh(part)
-    local target = (chg.target or 100) * cap / 100
-    local added = chg.added or 0
-    if not chg.paused and chg.kw and chg.last and now > chg.last then
-        local gain = math.min(chg.kw * (now - chg.last), math.max(0, target - kwh))
-        kwh = kwh + gain
-        added = added + gain
-    end
-    local hoursLeft = (chg.kw and chg.kw > 0) and math.max(0, target - kwh) / chg.kw or 0
-    return kwh, added, hoursLeft, cap
-end
-
 -- ---------------------------------------------------------------- life cycle
 function HUD:new(playerNum)
     local o = ISUIElement:new(0, 0, W, H_NOMSG)
@@ -333,7 +317,7 @@ function HUD:readSlow()
         elseif chg.paused then cs = 3
         else
             cs = 1
-            local k2, add, hrs = HUD.chargeEstimate(part, chg, T.hours())
+            local k2, add, hrs = T.Battery.chargeEstimate(part, chg, T.hours())
             st.pct = math.min(100, math.floor(T.Battery.pct(part) + (k2 - kwh) * 100 / math.max(1, T.Battery.capacity(part)) + 0.5))
             st.range = math.floor(k2 * self.kmPerKwh + 0.5)
             added = math.floor(add * self.kmPerKwh + 0.5)

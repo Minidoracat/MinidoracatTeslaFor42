@@ -8,5 +8,6 @@
     "Tooltip_MinidoracatTesla_Phone": "坐在特斯拉車上、身上帶著這台車的卡片鑰匙時，右鍵這支手機即可設為手機鑰匙。",
     "Tooltip_MinidoracatTesla_PhoneKey": "拉動車門把手即可解鎖。下車後帶著手機走遠，車門會自動上鎖。",
     "Tooltip_MinidoracatTesla_TapCard": "走到駕駛座車門，用卡片鑰匙感應讀卡區",
-    "Tooltip_MinidoracatTesla_PairPhone": "用這台車的卡片鑰匙授權這支手機"
+    "Tooltip_MinidoracatTesla_PairPhone": "用這台車的卡片鑰匙授權這支手機",
+    "Tooltip_MinidoracatTesla_AppNotPaired": "先把手機設為手機鑰匙：帶著卡片鑰匙坐上特斯拉，右鍵手機選「設為手機鑰匙」。"
 }

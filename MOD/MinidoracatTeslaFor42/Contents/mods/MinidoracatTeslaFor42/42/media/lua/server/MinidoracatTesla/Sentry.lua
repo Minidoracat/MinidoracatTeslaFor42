@@ -48,8 +48,8 @@ function S.settle(vehicle, t, freeUntil)
     vehicle:transmitPartModData(part)
 end
 
-function S.arm(player, vehicle)
-    local ok, why = S.canArm(player, vehicle)
+function S.arm(player, vehicle, remote)
+    local ok, why = S.canArm(player, vehicle, remote)
     if not ok then
         if why then T.deny(player, why, vehicle:getId()) end
         return

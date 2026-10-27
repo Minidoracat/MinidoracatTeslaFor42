@@ -63,11 +63,13 @@ function T.legit(player, vehicle, by)
     return ok == true and why ~= "UNCLAIMED" and why ~= "EASY_USE" and why ~= "KEY"
 end
 
-function S.canArm(player, vehicle)
+-- remote: from the phone app (server/MinidoracatTesla/Remote.lua already checked the app's reach, Keys.appReach), so
+-- the 10-tile range and "be outside" do not apply; every other condition does.
+function S.canArm(player, vehicle, remote)
     local part = T.Battery.part(vehicle)
     if not part then return false end
-    if player:getVehicle() then return false, "OCCUPIED" end
-    if player:DistTo(vehicle) > S.RANGE then return false, "TOO_FAR" end
+    if not remote and player:getVehicle() then return false, "OCCUPIED" end
+    if not remote and player:DistTo(vehicle) > S.RANGE then return false, "TOO_FAR" end
     -- a key left in the ignition is in nobody's hand: say so instead of NOT_OWNER (the owner's own key ends up there,
     -- see C.canEnable)
     if not T.legit(player, vehicle) then return false, vehicle:isKeysInIgnition() and "KEY_IN_IGNITION" or "NOT_OWNER" end
@@ -78,11 +80,11 @@ function S.canArm(player, vehicle)
     return true
 end
 
-function S.canDisarm(player, vehicle)
+function S.canDisarm(player, vehicle, remote)
     local part = T.Battery.part(vehicle)
     local s = part and part:getModData().sentry
     if not s then return false end
-    if player:getVehicle() ~= vehicle and player:DistTo(vehicle) > S.RANGE then return false, "TOO_FAR" end
+    if not remote and player:getVehicle() ~= vehicle and player:DistTo(vehicle) > S.RANGE then return false, "TOO_FAR" end
     if not T.legit(player, vehicle, s.by) then return false, "NOT_OWNER" end
     return true
 end

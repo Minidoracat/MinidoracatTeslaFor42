@@ -9,5 +9,6 @@
     "ContextMenu_MinidoracatTesla_TapUnlock": "Présenter la carte-clé : déverrouiller",
     "ContextMenu_MinidoracatTesla_TapLock": "Présenter la carte-clé : verrouiller",
     "ContextMenu_MinidoracatTesla_PairPhone": "Configurer comme clé sur téléphone",
-    "ContextMenu_MinidoracatTesla_ChargeItem": "Recharger sur la prise du véhicule"
+    "ContextMenu_MinidoracatTesla_ChargeItem": "Recharger sur la prise du véhicule",
+    "ContextMenu_MinidoracatTesla_OpenApp": "Ouvrir l'application Tesla"
 }

@@ -119,6 +119,22 @@ function T.kmPerKwh(vehicle)
     local kwhPerMin = (s.idleKw + s.kwPerKmh * T.REF_KMH) / 60
     return kmPerMin / kwhPerMin * T.rangeMul()
 end
+-- Charge projection between server settlements: kw * (now - last), capped at the target (architecture §4). The HUD,
+-- the charge card and the phone app's record (Remote.lua) all show this, so they agree.
+function B.chargeEstimate(part, chg, now)
+    local cap = B.capacity(part)
+    local kwh = B.kwh(part)
+    local target = (chg.target or 100) * cap / 100
+    local added = chg.added or 0
+    if not chg.paused and chg.kw and chg.last and now > chg.last then
+        local gain = math.min(chg.kw * (now - chg.last), math.max(0, target - kwh))
+        kwh = kwh + gain
+        added = added + gain
+    end
+    local hoursLeft = (chg.kw and chg.kw > 0) and math.max(0, target - kwh) / chg.kw or 0
+    return kwh, added, hoursLeft, cap
+end
+
 function T.rangeKm(vehicle)
     local part = B.part(vehicle)
     if not part then return 0 end

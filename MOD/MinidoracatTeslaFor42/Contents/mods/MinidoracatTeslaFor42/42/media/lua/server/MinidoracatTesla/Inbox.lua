@@ -27,7 +27,8 @@ function I.online(username)
     return nil
 end
 
--- One event record; plain strings and numbers only (sent as-is, stored as-is).
+-- One event record; plain strings and numbers only (sent as-is, stored as-is). `key` = the car's keyId: the phone
+-- app's alert list (Remote.lua) is per car.
 function I.entry(vehicle, kind, what, actor, partId)
     local gt = getGameTime()
     local script = vehicle:getScript()
@@ -36,7 +37,7 @@ function I.entry(vehicle, kind, what, actor, partId)
         car = script and (script:getCarModelName() or script:getName()) or "",
         kind = kind, what = what, part = partId,
         by = actor and actor:getUsername() or nil,
-        x = math.floor(vehicle:getX()), y = math.floor(vehicle:getY()),
+        x = math.floor(vehicle:getX()), y = math.floor(vehicle:getY()), key = vehicle:getKeyId(),
     }
 end
 
@@ -53,6 +54,8 @@ end
 
 function I.notify(username, e)
     if not username then return end
+    local log = T.Remote and T.Remote.logAlert
+    if log then log(e) end
     local p = I.online(username)
     if p then
         T.send(p, "alert", e)

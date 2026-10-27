@@ -335,20 +335,35 @@ end)
 -- ---- commands ----
 T.ServerCommands = T.ServerCommands or {}
 
+-- the battery part, its link and the charger it is plugged into; nil and a deny reason when there is none
+local function chargerOf(v)
+    local part = B.part(v)
+    local chg = part and part:getModData().chg
+    if not chg then return nil, "NOT_PLUGGED" end
+    local s = sys()
+    local o = s and s:getLuaObjectAt(chg.x, chg.y, chg.z)
+    if not o then clearChg(v, part); return nil, "NO_CHARGER" end
+    return part, chg, o
+end
+
 local function linked(player, args, perm)
     local v = T.commandVehicle and T.commandVehicle(player, args, 30)
     if not v then return nil end
-    local part = B.part(v)
-    local chg = part and part:getModData().chg
-    if not chg then T.deny(player, "NOT_PLUGGED", v:getId()); return nil end
-    if perm then
-        local ok = T.authorized(player, v, perm)
-        if not ok then T.deny(player, "NOT_OWNER", v:getId()); return nil end
-    end
-    local s = sys()
-    local o = s and s:getLuaObjectAt(chg.x, chg.y, chg.z)
-    if not o then clearChg(v, part); T.deny(player, "NO_CHARGER", v:getId()); return nil end
+    local part, chg, o = chargerOf(v)
+    if not part then T.deny(player, chg, v:getId()); return nil end
+    if perm and not T.authorized(player, v, perm) then T.deny(player, "NOT_OWNER", v:getId()); return nil end
     return v, part, chg, o
+end
+
+-- Stop or resume (stopped -> charging) from the phone app (Remote.lua, which checked reach and rights). Same as the
+-- card's chargeStop / chargeTarget without the distance. Returns true, or false and a deny reason.
+function C.setStopped(v, stop)
+    local part, chg, o = chargerOf(v)
+    if not part then return false, chg end
+    C.settle(o, T.hours())
+    if stop then chg.paused = "stopped" elseif chg.paused == "stopped" then chg.paused = nil end
+    C.settle(o, T.hours())
+    return true
 end
 
 -- settle now and sync (the client card estimates from kw and last in between)

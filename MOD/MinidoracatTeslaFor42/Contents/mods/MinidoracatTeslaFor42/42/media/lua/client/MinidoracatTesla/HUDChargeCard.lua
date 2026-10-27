@@ -153,7 +153,7 @@ function Card:read()
     local state, pct, kw, addKm, addKwh, mins, target, src = "none", 0, 0, 0, 0, 0, 90, ""
     if part then pct = math.floor(T.Battery.pct(part) + 0.5) end
     if chg then
-        local kwh, added, hours, cap = HUD.chargeEstimate(part, chg, T.hours())
+        local kwh, added, hours, cap = T.Battery.chargeEstimate(part, chg, T.hours())
         pct = math.min(100, math.floor(kwh * 100 / math.max(1, cap) + 0.5)) -- int container cap can exceed the pack's kWh
         local kmk = T.kmPerKwh(v)
         addKm = math.floor(added * kmk + 0.5)

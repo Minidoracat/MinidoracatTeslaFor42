@@ -82,6 +82,8 @@ function K.setLocked(vehicle, locked)
         end
     end
     vehicle:setTrunkLocked(locked)
+    local remember = T.Remote and T.Remote.remember -- the phone app's last record (Remote.lua)
+    if remember then remember(vehicle) end
 end
 
 -- one flash to lock, two to unlock (Sentry's flash: headlights + light parts, synced to every client).
