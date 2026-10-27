@@ -6,6 +6,7 @@ FBX, 8 skins, mask, lights, and the geometry block of the vehicle script.
     "$B" -b --factory-startup --python scripts/blender/skf/convert.py -- official   # design-studio renders (once)
     "$B" -b --factory-startup --python scripts/blender/skf/convert.py -- build      # everything else, ~20 s
     "$B" -b --factory-startup --python scripts/blender/skf/convert.py -- view <out_prefix> <N,NE,..> <shut|all|gate|frunk|fl|..>
+    "$B" -b --factory-startup --python scripts/blender/skf/convert.py -- appcar   # phone App car images, 8 paints
 
 Source (gitignored): temp/skf/src/source/Tesla Model Y Performance 2026.obj (+ .mtl), the OBJ inside the Sketchfab
 download. Its materials are flat colours, its panels separate components (door skins, hood, tailgate cut along the
@@ -1163,7 +1164,16 @@ def pieces(car, c, shift):
 
 # ---------------------------------------------------------------- offline view (game camera, culled, magenta = hole)
 
-def stage_view(out, heads, state, skin="UltraRed"):
+APP_SIZE, APP_MARGIN, APP_ELEV = (480, 240), 6, 12   # PhoneApp.lua's car image: px, margin left / right / bottom, deg
+APP_GLASS = (32, 36, 43)                            # material sRGB; renders about 29-42 (blue-grey) under APP_LIGHT
+APP_LIGHT, APP_EXPOSURE = "paint.sl", 0.5           # Workbench studio light: glossy studio look, brighter than the
+#                                                    game view; PearlWhite's 95th percentile stays under 255
+APP_DIR = os.path.join(pv.MEDIA, "textures", "MinidoracatTesla", "HUD")
+
+
+def stage_view(out, heads, state, skin="UltraRed", app=False):
+    """Game camera offline view; app=True: the phone App's car image at out (transparent, wheels, dark glass, low
+    camera, framed by the projected mesh so every paint gets the same frame)."""
     bpy.ops.wm.open_mainfile(filepath=os.path.join(TMP, "skf_doors.blend"))
     arm = bpy.data.objects["VehicleSkeleton"]
     body = bpy.data.objects[pv.NAME]
@@ -1199,7 +1209,7 @@ def stage_view(out, heads, state, skin="UltraRed"):
         else:
             m.diffuse_color = (*[(x / 255) ** 2.2 for x in rgb], 1)
         return m
-    M = [mat("paint", tex=True), mat("glass", (40, 230, 230))] + [mat(f"cab{i}", x) for i, x in enumerate(CAB)]
+    M = [mat("paint", tex=True), mat("glass", APP_GLASS if app else (40, 230, 230))] + [mat(f"cab{i}", x) for i, x in enumerate(CAB)]
     glass_mode = os.environ.get("GLASS", "opaque")
     # TINT=1: body shell and reversed paint (liner) green, every door piece's inside orange (where they cross, both show)
     tint = os.environ.get("TINT") == "1"
@@ -1226,7 +1236,7 @@ def stage_view(out, heads, state, skin="UltraRed"):
         o.hide_render = o.type == "MESH" and (not (o is body or o in doors) or o.name in hide)
     # WHEELS=1: the wheel FBX at the four script offsets (rendered centre = offset + WHEEL_LIFT), STEER=<rad> turns the
     # front pair about the vertical (the game's m.rotationY, BaseVehicle.java:7440), SPIN=<rad> turns all about the axle
-    if os.environ.get("WHEELS") == "1":
+    if app or os.environ.get("WHEELS") == "1":
         bpy.ops.import_scene.fbx(filepath=os.path.join(pv.VEH_DIR, pv.NAME + "_Wheel.fbx"), axis_forward="-Z",
                                  axis_up="Y")
         wheel = bpy.context.selected_objects[0]
@@ -1251,13 +1261,20 @@ def stage_view(out, heads, state, skin="UltraRed"):
     sc = bpy.context.scene
     sc.render.engine = "BLENDER_WORKBENCH"
     sc.view_settings.view_transform = "Standard"
+    sc.view_settings.exposure = APP_EXPOSURE if app else 0.0
     sh = sc.display.shading
     sh.light = os.environ.get("LIGHT", "STUDIO")
     sh.color_type = "TEXTURE"
     sh.show_backface_culling = True
     sh.background_type = "VIEWPORT"
     sh.background_color = (1, 0, 1)
-    sc.render.resolution_x, sc.render.resolution_y = int(os.environ.get("RX", 1600)), int(os.environ.get("RY", 1000))
+    sc.render.film_transparent = app
+    if app:
+        sh.studio_light = APP_LIGHT
+        sc.render.image_settings.color_mode = "RGBA"
+        sc.display.render_aa = "32"
+    sc.render.resolution_x, sc.render.resolution_y = APP_SIZE if app else (int(os.environ.get("RX", 1600)),
+                                                                           int(os.environ.get("RY", 1000)))
     cam = bpy.data.objects.new("cam", bpy.data.cameras.new("cam"))
     sc.collection.objects.link(cam)
     cam.data.type = "ORTHO"
@@ -1269,12 +1286,42 @@ def stage_view(out, heads, state, skin="UltraRed"):
         f /= np.linalg.norm(f)
         right = np.array([-f[1], f[0]])
         cxy = np.array([1, 1]) / math.sqrt(2)
-        d = Vector((cxy @ right * math.cos(math.radians(30)), cxy @ f * math.cos(math.radians(30)),
-                    math.sin(math.radians(30))))
+        el = math.radians(APP_ELEV if app else 30)
+        d = Vector((cxy @ right * math.cos(el), cxy @ f * math.cos(el), math.sin(el)))
         cam.location = Vector([float(v) for v in os.environ.get("CENTRE", "0,0,0").split(",")]) + d * 30
         cam.rotation_euler = (-d).to_track_quat("-Z", "Y").to_euler()
-        sc.render.filepath = f"{out}_{h}_{state}.png"
+        sc.render.filepath = out if app else f"{out}_{h}_{state}.png"
+        if app:
+            app_frame(cam)
         bpy.ops.render.render(write_still=True)
+
+
+def app_frame(cam):
+    """Ortho scale and camera offset so the visible meshes' projection sits APP_MARGIN px off the left, right and
+    bottom edges (or top, if height-limited), centred left-right."""
+    bpy.context.view_layer.update()
+    dg = bpy.context.evaluated_depsgraph_get()
+    inv = np.array(cam.matrix_world.inverted())
+    pts = []
+    for o in bpy.context.scene.objects:
+        if o.type != "MESH" or o.hide_render:
+            continue
+        me = o.evaluated_get(dg).data
+        co = np.empty(len(me.vertices) * 3)
+        me.vertices.foreach_get("co", co)
+        m = inv @ np.array(o.matrix_world)
+        pts.append(co.reshape(-1, 3) @ m[:3, :3].T + m[:3, 3])
+    p = np.concatenate(pts)
+    lo, hi = p[:, :2].min(0), p[:, :2].max(0)
+    (w, h), g = APP_SIZE, APP_MARGIN
+    s = min((w - 2 * g) / (hi[0] - lo[0]), (h - 2 * g) / (hi[1] - lo[1]))   # px per unit
+    cam.data.ortho_scale = w / s
+    cam.location = cam.matrix_world @ Vector(((lo[0] + hi[0]) / 2, lo[1] + (h / 2 - g) / s, 0))
+
+
+def stage_appcar(outdir=APP_DIR):
+    for name, _ in pv.PAINTS:
+        stage_view(os.path.join(outdir, f"app_car_{name}.png"), ["S"], "shut", name, app=True)
 
 
 if __name__ == "__main__":
@@ -1285,3 +1332,5 @@ if __name__ == "__main__":
         stage_build()
     elif argv[0] == "view":
         stage_view(argv[1], argv[2].split(","), argv[3], *argv[4:])
+    elif argv[0] == "appcar":
+        stage_appcar(*argv[1:])
