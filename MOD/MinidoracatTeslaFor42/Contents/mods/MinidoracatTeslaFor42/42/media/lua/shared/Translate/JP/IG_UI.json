@@ -220,7 +220,7 @@
     "IGUI_MinidoracatTesla_App_JoinHint": "先に追加：キーカードを持って乗り、電話を右クリック >「この車を追加」",
     "IGUI_MinidoracatTesla_App_AddCarHint": "車を追加：その車に座り、電話を右クリックして「この車を追加」を選びます。",
     "IGUI_MinidoracatTesla_App_NavCar": "車までナビ",
-    "IGUI_MinidoracatTesla_App_NavSet": "ミニマップの目的地をあなたの %1 に設定しました",
+    "IGUI_MinidoracatTesla_App_NavSet": "ミニマップの目的地をあなたの%1に設定しました",
     "IGUI_MinidoracatTesla_App_NavPrompted": "今の行程を置き換えるか、ミニマップで確認してください",
     "IGUI_MinidoracatTesla_App_NavNearby": "車はすぐそばです",
     "IGUI_MinidoracatTesla_App_NavStopFirst": "先に停車してください（ミニマップが目的地を変えられません）",

@@ -220,7 +220,7 @@
     "IGUI_MinidoracatTesla_App_JoinHint": "先添加这辆车：带着卡片钥匙坐进车里，右键手机选「添加这辆车」",
     "IGUI_MinidoracatTesla_App_AddCarHint": "添加新车：坐进那辆车，右键手机选择「添加这辆车」。",
     "IGUI_MinidoracatTesla_App_NavCar": "导航到车",
-    "IGUI_MinidoracatTesla_App_NavSet": "小地图已把目的地设为你的 %1",
+    "IGUI_MinidoracatTesla_App_NavSet": "小地图已把目的地设为你的%1",
     "IGUI_MinidoracatTesla_App_NavPrompted": "请在小地图确认是否替换当前行程",
     "IGUI_MinidoracatTesla_App_NavNearby": "车就在你旁边",
     "IGUI_MinidoracatTesla_App_NavStopFirst": "先停车，小地图才能更换目的地",
