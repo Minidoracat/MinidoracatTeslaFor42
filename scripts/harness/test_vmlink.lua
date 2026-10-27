@@ -12,7 +12,13 @@ local K, R, cmds = T.Keys, T.Remote, T.ServerCommands
 
 local KEY = 9301 -- never loaded here: R.loadedCar(KEY) is nil
 T.Store.get("seen")[tostring(KEY)] = { car = "MinidoracatTesla_ModelY", script = "Base.MinidoracatTesla_ModelY", x = 120, y = 340, z = 0, pct = 61, h = 1 }
-local function phoneKey(keyId) return { ft = K.PHONE_KEY, keyId = keyId, getKeyId = function(self) return self.keyId end } end
+-- getID / hasModData: AppMultiCar's v2 K.pairedWith reads the item's pairings by id (server) or modData (MP client)
+local nextId = 93000
+local function phoneKey(keyId)
+    nextId = nextId + 1
+    return { ft = K.PHONE_KEY, keyId = keyId, id = nextId, getKeyId = function(self) return self.keyId end,
+        getID = function(self) return self.id end, hasModData = function() return false end }
+end
 local function inv(...)
     local items = { ... }
     return { getFirstTypeEvalArgRecurse = function(_, t, fn, arg)
