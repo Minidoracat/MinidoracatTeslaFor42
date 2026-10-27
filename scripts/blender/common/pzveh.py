@@ -282,7 +282,7 @@ def spoke_outline(rr, rb):
 
 def stage_wheel(r, width):
     """Procedural wheel (axle along X, vanilla Vehicles_Wheel convention), both faces alike: tire radius r and width in
-    grid, 21" Arachnid 2.0 (WHEEL_SPOKE); MOD wheel FBX (two equal UV layers) + 64^2 texture. -> triangle count.
+    grid, spokes per the car's WHEEL_SPOKE (Model Y 21" Arachnid 2.0, Model 3 20" Warp); MOD wheel FBX (two equal UV layers) + 64^2 texture. -> triangle count.
     Fresh scene: the caller saves its own .blend first."""
     from mathutils.geometry import tessellate_polygon
     bpy.ops.wm.read_factory_settings(use_empty=True)

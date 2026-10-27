@@ -37,8 +37,12 @@ for _, car in ipairs({ "MinidoracatTesla_ModelY", "MinidoracatTesla_Model3" }) d
     check(read("models_X/vehicles/" .. car .. "_Cabin.fbx") == nil and read("models_X/vehicles/" .. car .. "_Glass.fbx") == nil
         and read("textures/Vehicles/" .. car .. "_cabin.png") == nil, car .. ": no cabin / glass FBX or cabin palette left")
 end
-check(geo:find("part GloveBox", 1, true) == nil and geo:find("part Window", 1, true) == nil
-    and geo:find("part WindshieldRear", 1, true) == nil, "no models on GloveBox, Window* or WindshieldRear")
+local m3 = read("scripts/vehicles/MinidoracatTesla_Model3.txt")
+local geos = { ModelY = geo, Model3 = m3:sub((m3:find("---- geometry", 1, true))) }
+for car, g in pairs(geos) do
+    check(g:find("part GloveBox", 1, true) == nil and g:find("part Window", 1, true) == nil
+        and g:find("part WindshieldRear", 1, true) == nil, car .. ": no models on GloveBox, Window* or WindshieldRear")
+end
 
 -- rear lid rules: the hatchback's rear glass rides in its liftgate, the sedan's in the body. Per car script (TeslaLogic,
 -- above the geometry mark); part tables merge with the template's (VehicleScript.java:973-981).
@@ -47,7 +51,6 @@ local function rules(text, part)
     for block in text:sub(1, (text:find("---- geometry", 1, true))):gmatch("part " .. part .. "%s*(%b{})") do s = s .. block end
     return s
 end
-local m3 = read("scripts/vehicles/MinidoracatTesla_Model3.txt")
 check(rules(veh, "TrunkDoor"):find("requireUninstalled = WindshieldRear,", 1, true) ~= nil,
     "Model Y: liftgate comes off only without its rear glass (in the liftgate's mesh)")
 check(rules(veh, "WindshieldRear"):find("requireInstalled = TrunkDoor,", 1, true) ~= nil,
@@ -56,16 +59,19 @@ check(not (tpl .. m3):find("requireUninstalled = WindshieldRear", 1, true) and n
     "Model 3 (and the shared template): trunk lid and rear glass come off and go on independently (glass in the body)")
 
 -- door anim rate: one model per door, one player update a frame
-local rates, bad = 0, {}
-for door in pairs({ DoorFrontLeft = 1, DoorFrontRight = 1, DoorRearLeft = 1, DoorRearRight = 1, TrunkDoor = 1,
-    EngineDoor = 1 }) do
-    local p = geo:match("part " .. door .. "%s*(%b{})") or ""
-    for r in p:gmatch("rate = ([%d%.]+),") do
-        rates = rates + 1
-        if r ~= "1.0" then bad[#bad + 1] = door .. "=" .. r end
+for car, g in pairs(geos) do
+    local rates, bad = 0, {}
+    for door in pairs({ DoorFrontLeft = 1, DoorFrontRight = 1, DoorRearLeft = 1, DoorRearRight = 1, TrunkDoor = 1,
+        EngineDoor = 1 }) do
+        local p = g:match("part " .. door .. "%s*(%b{})") or ""
+        for r in p:gmatch("rate = ([%d%.]+),") do
+            rates = rates + 1
+            if r ~= "1.0" then bad[#bad + 1] = door .. "=" .. r end
+        end
     end
+    check(rates == 12 and #bad == 0, car .. ": door Open / Close rate 1.0 (" .. rates .. " rates, off: "
+        .. table.concat(bad, ",") .. ")")
 end
-check(rates == 12 and #bad == 0, "door Open / Close rate 1.0 (" .. rates .. " rates, off: " .. table.concat(bad, ",") .. ")")
 
 local frag = read("shaders/MinidoracatTesla_vehicle.frag") or ""
 check(frag:find("texture2D%(TextureRust") ~= nil, "shader samples TextureRust (vehicle path, Shader.java:719-721)")
