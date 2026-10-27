@@ -9,5 +9,6 @@
     "ContextMenu_MinidoracatTesla_TapUnlock": "Anahtar kartı okut: kilidi aç",
     "ContextMenu_MinidoracatTesla_TapLock": "Anahtar kartı okut: kilitle",
     "ContextMenu_MinidoracatTesla_PairPhone": "Telefon anahtarı olarak ayarla",
-    "ContextMenu_MinidoracatTesla_ChargeItem": "Araç prizinden şarj et"
+    "ContextMenu_MinidoracatTesla_ChargeItem": "Araç prizinden şarj et",
+    "ContextMenu_MinidoracatTesla_OpenApp": "Tesla uygulamasını aç"
 }

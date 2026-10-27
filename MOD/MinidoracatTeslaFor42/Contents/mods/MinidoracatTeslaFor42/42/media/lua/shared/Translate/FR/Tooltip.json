@@ -8,5 +8,6 @@
     "Tooltip_MinidoracatTesla_Phone": "Asseyez-vous dans une Tesla avec sa carte-clé et faites un clic droit sur ce téléphone pour le configurer comme clé sur téléphone.",
     "Tooltip_MinidoracatTesla_PhoneKey": "Se déverrouille quand vous tirez la poignée. Les portes se verrouillent seules quand vous descendez et vous éloignez avec.",
     "Tooltip_MinidoracatTesla_TapCard": "Aller à la porte conducteur et présenter la carte-clé au lecteur",
-    "Tooltip_MinidoracatTesla_PairPhone": "Autoriser ce téléphone avec la carte-clé de cette voiture"
+    "Tooltip_MinidoracatTesla_PairPhone": "Autoriser ce téléphone avec la carte-clé de cette voiture",
+    "Tooltip_MinidoracatTesla_AppNotPaired": "Associez d'abord ce téléphone : asseyez-vous dans la Tesla avec sa carte-clé, clic droit sur le téléphone, puis « Configurer comme clé sur téléphone »."
 }

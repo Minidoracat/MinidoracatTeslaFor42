@@ -9,5 +9,6 @@
     "ContextMenu_MinidoracatTesla_TapUnlock": "Acercar tarjeta llave: desbloquear",
     "ContextMenu_MinidoracatTesla_TapLock": "Acercar tarjeta llave: bloquear",
     "ContextMenu_MinidoracatTesla_PairPhone": "Configurar como llave de teléfono",
-    "ContextMenu_MinidoracatTesla_ChargeItem": "Cargar en la toma del coche"
+    "ContextMenu_MinidoracatTesla_ChargeItem": "Cargar en la toma del coche",
+    "ContextMenu_MinidoracatTesla_OpenApp": "Abrir la app de Tesla"
 }

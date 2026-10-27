@@ -9,6 +9,7 @@
 Outputs (overwritten):
   media/textures/MinidoracatTesla/HUD/atlas1x.png, atlas2x.png
   media/textures/MinidoracatTesla/HUD/radial_camp.png, radial_camp_off.png, radial_charge.png
+  media/textures/MinidoracatTesla/HUD/app_arrow1x.png, app_arrow2x.png (phone app direction arrow, drawn rotated)
   media/lua/client/MinidoracatTesla/HUDAtlas.lua
 
 Digits are rendered from Inter (SIL OFL 1.1, scripts/hud/fonts/OFL.txt). Font files never
@@ -226,6 +227,41 @@ def ic_keybg(c):  # 40x40 rounded square, r=10
     c.rrect(0, 0, 16, 16, 4, fill="#FFFFFF")
 
 
+# phone app (plan-phone-app-1027 mock)
+def ic_horn(c):
+    c.stroke([("M", 2, 6.5), ("H", 5), ("L", 10, 3), ("V", 13), ("L", 5, 9.5), ("H", 2), ("Z",)])
+    c.stroke([("M", 12, 6), ("Q", 13.6, 8, 12, 10)])
+
+
+def _car_side(c):  # side view, nose right, without the lid that opens
+    c.circle(4.5, 12, 1.5, fill="#FFFFFF")
+    c.circle(11.5, 12, 1.5, fill="#FFFFFF")
+    c.stroke([("M", 1.5, 9), ("V", 11.5), ("H", 14.5), ("V", 9.5)])
+
+
+def ic_frunk(c):  # front lid raised from the windscreen
+    _car_side(c)
+    c.stroke([("M", 1.5, 9), ("L", 4.5, 6), ("H", 10), ("L", 12, 8.5), ("L", 15, 5)])
+
+
+def ic_trunk(c):  # liftgate raised from the roof
+    _car_side(c)
+    c.stroke([("M", 0.8, 3.8), ("L", 4.5, 6), ("H", 10), ("L", 12, 8.5), ("L", 14.5, 9.5)])
+
+
+def ic_list(c):
+    for y in (4, 8, 12):
+        c.circle(3, y, 1.1, fill="#FFFFFF")
+        c.stroke([("M", 6, y), ("H", 13.5)])
+
+
+def app_arrow(k):  # 24 px at 1x, pointing up (the mock's "M8 1.5L13 14L8 11L3 14Z"), accent fill
+    c = Canvas(24 * k, 24 * k, 16)
+    c.fill([("M", 8, 1.5), ("L", 13, 14), ("L", 8, 11), ("L", 3, 14), ("Z",)], PAL["accent"])
+    return c.out()
+
+
+
 # ---- car (top view, nose to the right; left side of the car = top edge) ------------
 CAR_VB = (170, 96)
 CAR_PX = (150, 85)
@@ -316,6 +352,7 @@ def build_sprites(k):
         "lock": ic_lock, "unlock": ic_unlock, "tent": ic_tent, "headlight": ic_headlight,
         "heater": ic_heater, "radio": ic_radio, "warn": ic_warn, "bolt": ic_bolt, "check": ic_check,
         "ring": ic_ring, "dot": ic_dot, "plug": ic_plug, "power": ic_power,
+        "horn": ic_horn, "frunk": ic_frunk, "trunk": ic_trunk, "list": ic_list,
     }
     for key, fn in icons16.items():
         c = Canvas(18 * k, 18 * k, 16)
@@ -410,6 +447,8 @@ def main():
     lua.append("}")
     for key, im in radial_icons().items():
         im.save(os.path.join(TEX_DIR, key + ".png"), optimize=True)
+    for k in (1, 2):
+        app_arrow(k).save(os.path.join(TEX_DIR, f"app_arrow{k}x.png"), optimize=True)
     with open(LUA_OUT, "w", encoding="utf-8", newline="\n") as f:
         f.write("\n".join(lua) + "\n")
     print("contrast:", ", ".join(f"{a}/{b}={r}" for a, b, r in contrasts))

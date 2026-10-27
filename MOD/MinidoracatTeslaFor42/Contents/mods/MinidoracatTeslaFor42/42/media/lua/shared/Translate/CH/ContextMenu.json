@@ -9,5 +9,6 @@
     "ContextMenu_MinidoracatTesla_TapUnlock": "感應卡片鑰匙：解鎖",
     "ContextMenu_MinidoracatTesla_TapLock": "感應卡片鑰匙：上鎖",
     "ContextMenu_MinidoracatTesla_PairPhone": "設為手機鑰匙",
-    "ContextMenu_MinidoracatTesla_ChargeItem": "用車上插座充電"
+    "ContextMenu_MinidoracatTesla_ChargeItem": "用車上插座充電",
+    "ContextMenu_MinidoracatTesla_OpenApp": "打開 Tesla App"
 }

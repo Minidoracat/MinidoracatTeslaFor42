@@ -9,5 +9,6 @@
     "ContextMenu_MinidoracatTesla_TapUnlock": "キーカードをタッチ：解錠",
     "ContextMenu_MinidoracatTesla_TapLock": "キーカードをタッチ：施錠",
     "ContextMenu_MinidoracatTesla_PairPhone": "電話キーとして設定",
-    "ContextMenu_MinidoracatTesla_ChargeItem": "車のコンセントで充電"
+    "ContextMenu_MinidoracatTesla_ChargeItem": "車のコンセントで充電",
+    "ContextMenu_MinidoracatTesla_OpenApp": "Tesla アプリを開く"
 }

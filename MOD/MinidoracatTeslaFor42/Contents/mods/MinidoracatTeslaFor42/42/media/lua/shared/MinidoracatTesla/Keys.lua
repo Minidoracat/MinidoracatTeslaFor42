@@ -24,6 +24,10 @@ K.LOCK_TRIES = 6    -- client asks at most this many times (once per WATCH_MS) o
 K.CHIRP = "VehicleHornStandard" -- sounds_vehicle_standard.txt (event Vehicle/Standard/Horn)
 K.CHIRP_MS = 150
 K.CHIRP_TILES = 40
+-- Tesla app on the phone key (user 2026-10-27: like the real car). Owner's manual, Mobile App: phone and car talk over
+-- the cellular network, or over Bluetooth when the phone key is close. Grid up = phone network up: any distance, as
+-- long as the server has the car loaded. Grid down: Bluetooth only, BT_RANGE tiles (1 tile = 1 m).
+K.BT_RANGE = 30
 
 local function sameKey(item, keyId) return item:getKeyId() == keyId end
 
@@ -31,8 +35,20 @@ local function sameKey(item, keyId) return item:getKeyId() == keyId end
 function K.card(player, vehicle)
     return player:getInventory():getFirstTypeEvalArgRecurse(K.CARD, sameKey, vehicle:getKeyId())
 end
-function K.phoneKey(player, vehicle)
-    return player:getInventory():getFirstTypeEvalArgRecurse(K.PHONE_KEY, sameKey, vehicle:getKeyId())
+-- the phone key for car `keyId` anywhere on the player (the app names its car by keyId: server/MinidoracatTesla/Remote.lua)
+function K.phoneKeyFor(player, keyId)
+    return player:getInventory():getFirstTypeEvalArgRecurse(K.PHONE_KEY, sameKey, keyId)
+end
+function K.phoneKey(player, vehicle) return K.phoneKeyFor(player, vehicle:getKeyId()) end
+
+-- How the app reaches a loaded car right now: "net", "bt", or nil (no link: the app shows the last record only).
+-- The server asks again before every command; the grid state is IsoWorld.hydroPowerOn (IsoWorld.java:3314), which
+-- AmbientSoundManager switches off at the sandbox shut-off (AmbientSoundManager.java:228-243).
+function K.appReach(player, vehicle)
+    if not vehicle then return nil end
+    if getWorld():isHydroPowerOn() then return "net" end
+    if player:DistTo(vehicle) <= K.BT_RANGE then return "bt" end
+    return nil
 end
 
 -- the card lying on the console reader = this car's card in the ignition (BaseVehicle.java:9673)

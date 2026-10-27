@@ -92,25 +92,29 @@ if not isClient() then
         end
     end
 
+    -- open or close an installed door part, sync it and animate it with sound on every client (the dashboard's car
+    -- picture and the phone app, server/MinidoracatTesla/Remote.lua)
+    function L.swing(v, part, open, who)
+        part:getDoor():setOpen(open)
+        v:transmitPartDoor(part) -- BaseVehicle.java:8247-8256
+        L.syncShell(v)
+        broadcast({ vid = v:getId(), part = part:getId(), open = open, sound = true })
+        T.log("liftgate " .. part:getId() .. " " .. (open and "open" or "close") .. " vid=" .. tostring(v:getId()) .. " by=" .. tostring(who))
+    end
+
     T.ServerCommands = T.ServerCommands or {}
     T.ServerCommands.liftgate = function(player, args)
         local v = T.commandVehicle(player, args) -- server/MinidoracatTesla/Commands.lua
         if not v then return end
         local vid = v:getId()
-        local id = args.part
-        local part, why = L.check(player, v, id)
+        local part, why = L.check(player, v, args.part)
         if not part then return T.deny(player, why, vid) end
         local door = part:getDoor()
         if door:isLocked() then
             v:toggleLockedDoor(part, player, false) -- anyone seated may unlock (BaseVehicle.java:1275-1289)
             if door:isLocked() then return T.deny(player, "LOCK_BROKEN", vid) end
         end
-        local open = not door:isOpen()
-        door:setOpen(open)
-        v:transmitPartDoor(part) -- BaseVehicle.java:8247-8256
-        L.syncShell(v)
-        broadcast({ vid = vid, part = id, open = open, sound = true })
-        T.log("liftgate " .. id .. " " .. (open and "open" or "close") .. " vid=" .. tostring(vid) .. " by=" .. tostring(player:getUsername()))
+        L.swing(v, part, not door:isOpen(), player:getUsername())
     end
 
     -- vanilla door actions complete here, SP or MP server (LuaTimedActionNew.java:166-168, not on a client): the shell
