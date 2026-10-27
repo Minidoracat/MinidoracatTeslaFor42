@@ -201,5 +201,6 @@
     "IGUI_MinidoracatTesla_Tip_AppTrunk": "Open or close the liftgate: anyone can take things from an open trunk",
     "IGUI_MinidoracatTesla_Tip_AppAlerts": "Sentry and camp alerts for this car",
     "IGUI_MinidoracatTesla_Tip_AppChargeStop": "Pause charging, the cable stays plugged in",
-    "IGUI_MinidoracatTesla_Tip_AppChargeStart": "Resume charging to the target"
+    "IGUI_MinidoracatTesla_Tip_AppChargeStart": "Resume charging to the target",
+    "IGUI_MinidoracatTesla_App_AgeNow": "just now"
 }

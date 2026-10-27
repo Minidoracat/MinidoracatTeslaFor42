@@ -201,5 +201,6 @@
     "IGUI_MinidoracatTesla_Tip_AppTrunk": "リフトゲートを開閉：開いている間は誰でも荷室の物を取れます",
     "IGUI_MinidoracatTesla_Tip_AppAlerts": "この車のセントリーとキャンプのアラート",
     "IGUI_MinidoracatTesla_Tip_AppChargeStop": "充電を一時停止（ケーブルは差したまま）",
-    "IGUI_MinidoracatTesla_Tip_AppChargeStart": "目標まで充電を再開"
+    "IGUI_MinidoracatTesla_Tip_AppChargeStart": "目標まで充電を再開",
+    "IGUI_MinidoracatTesla_App_AgeNow": "たった今"
 }

@@ -201,5 +201,6 @@
     "IGUI_MinidoracatTesla_Tip_AppTrunk": "Ouvrir ou fermer le hayon : n'importe qui peut se servir dans un coffre ouvert",
     "IGUI_MinidoracatTesla_Tip_AppAlerts": "Alertes Sentinelle et camping de cette voiture",
     "IGUI_MinidoracatTesla_Tip_AppChargeStop": "Mettre la charge en pause, le câble reste branché",
-    "IGUI_MinidoracatTesla_Tip_AppChargeStart": "Reprendre la charge jusqu'à l'objectif"
+    "IGUI_MinidoracatTesla_Tip_AppChargeStart": "Reprendre la charge jusqu'à l'objectif",
+    "IGUI_MinidoracatTesla_App_AgeNow": "à l'instant"
 }

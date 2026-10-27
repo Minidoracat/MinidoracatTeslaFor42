@@ -201,5 +201,6 @@
     "IGUI_MinidoracatTesla_Tip_AppTrunk": "Открыть или закрыть багажник: из открытого любой может что-то взять",
     "IGUI_MinidoracatTesla_Tip_AppAlerts": "Тревоги часового и кемпинга этой машины",
     "IGUI_MinidoracatTesla_Tip_AppChargeStop": "Приостановить зарядку, кабель остаётся подключённым",
-    "IGUI_MinidoracatTesla_Tip_AppChargeStart": "Продолжить зарядку до цели"
+    "IGUI_MinidoracatTesla_Tip_AppChargeStart": "Продолжить зарядку до цели",
+    "IGUI_MinidoracatTesla_App_AgeNow": "только что"
 }

@@ -31,6 +31,10 @@ local DIRS = { "N", "NE", "E", "SE", "S", "SW", "W", "NW" }
 local ACTS = { "lock", "flash", "horn", "sentry", "frunk", "trunk", "alerts" }
 
 local function txt(key, ...) return getText(P .. key, ...) end
+local function enable(b, on)
+    b:setEnable(on == true)
+    b.borderColor.a = 0
+end
 
 function App:new(playerNum)
     local o = ISPanelJoypad.new(self, 0, 0, W, 400)
@@ -42,7 +46,10 @@ function App:new(playerNum)
     return o
 end
 
+-- the app draws every button background itself (prerender); ISButton's own disabled look is an opaque black box
+-- with a red border (ISButton.lua:416-438), so it never draws a background and its border stays transparent
 local function styleButton(b, text)
+    b.displayBackground = false
     b.backgroundColor = { r = 0, g = 0, b = 0, a = 0 }
     b.backgroundColorMouseOver = { r = 1, g = 1, b = 1, a = 0 }
     b.borderColor = { r = 1, g = 1, b = 1, a = 0 }
@@ -106,7 +113,11 @@ end
 function App.get(playerNum) return apps[playerNum or 0] end
 
 function App:close()
-    if self.joyfocus and JoypadState.players[self.playerNum + 1] then setJoypadFocus(self.playerNum, nil) end
+    local jf = self.joyfocus
+    if jf then
+        if JoypadState.players[self.playerNum + 1] then setJoypadFocus(self.playerNum, nil) end
+        if self.joyfocus then self:onLoseJoypadFocus(jf) end -- B glyph and focus off even without a pad in the slot
+    end
     self.joyfocus = nil
     if self.inUI then self:removeFromUIManager(); self.inUI = false end
     self.key = nil
@@ -237,10 +248,20 @@ end
 -- ---------------------------------------------------------------- reading
 local function ageText(hours)
     local mins = math.floor(math.max(0, hours) * 60)
-    if mins < 2 then return txt("JustNow") end
+    if mins < 2 then return txt("AgeNow") end
     if mins < 60 then return txt("MinsAgo", tostring(mins)) end
     if mins < 48 * 60 then return txt("HoursAgo", tostring(math.floor(mins / 60))) end
     return txt("DaysAgo", tostring(math.floor(mins / 1440)))
+end
+
+-- the longest head of `s` that fits `maxW` in UIFont.Small, with "..." when cut (an alert's detail line: car, part,
+-- player, flashes). Kahlua strings index UTF-16 units, so sub never splits a CJK character in game.
+local function fitText(s, maxW)
+    local tm = getTextManager()
+    if tm:MeasureStringX(UIFont.Small, s) <= maxW then return s end
+    local n = #s
+    while n > 1 and tm:MeasureStringX(UIFont.Small, s:sub(1, n) .. "...") > maxW do n = n - 1 end
+    return s:sub(1, n) .. "..."
 end
 
 local function distText(d)
@@ -331,7 +352,7 @@ function App:read()
         elseif id == "frunk" or id == "trunk" then on = rec and st[id] == true
         elseif id == "alerts" then icon = "i_list" end
         b.icon, b.label, b.tipKey, b.on = icon, label, tip, on
-        b:setEnable((id == "alerts" and not (st and st.deny)) or live == true)
+        enable(b, (id == "alerts" and not (st and st.deny)) or live == true)
     end
     -- charging card
     local chg = rec and st.chg
@@ -344,9 +365,9 @@ function App:read()
         self.sChgDetail = (chg == "charging" and st.mins) and txt("ToTarget", tostring(st.target or 90), tostring(st.mins)) or ""
         self.btnCharge:setTitle(chg == "charging" and txt("ChargeStop") or txt("ChargeStart"))
         self.btnCharge.tipKey = chg == "charging" and "IGUI_MinidoracatTesla_Tip_AppChargeStop" or "IGUI_MinidoracatTesla_Tip_AppChargeStart"
-        self.btnCharge:setEnable(live)
+        enable(self.btnCharge, live)
     end
-    self.btnMap:setEnable(rec == true)
+    enable(self.btnMap, rec)
     return true
 end
 
@@ -442,6 +463,12 @@ function App:layout()
         local rh = 2 * self.FH + math.floor(14 * S)
         self.rowH = rh
         local n = self.alerts and #self.alerts or 0
+        local tw = w - 2 * pad - math.floor(46 * S)
+        for i = 1, n do
+            local r = self.alerts[i]
+            r.sTitle = fitText(r.title, tw - getTextManager():MeasureStringX(UIFont.Small, r.time) - math.floor(8 * S))
+            r.sDetail = fitText(r.detail, tw)
+        end
         y = y + math.max(1, n) * (rh + math.floor(6 * S))
         local bh = math.max(self.FH + math.floor(10 * S), math.floor(32 * S))
         self.btnBack:setVisible(true)
@@ -586,9 +613,9 @@ function App:render()
             for i, r in ipairs(rows) do
                 local ry = self.yRows + (i - 1) * (rh + 6 * S) + math.floor(7 * S)
                 if r.icon then self:drawTextureScaled(r.icon, pad + 10 * S, ry, 18 * S, 18 * S, 1, 1, 1, 1) end
-                jo:DrawText(UIFont.Small, r.title, pad + math.floor(36 * S), ry, c[1], c[2], c[3], 1)
+                jo:DrawText(UIFont.Small, r.sTitle, pad + math.floor(36 * S), ry, c[1], c[2], c[3], 1)
                 self:drawTextRight(r.time, w - pad - math.floor(10 * S), ry, c3[1], c3[2], c3[3], 1, UIFont.Small)
-                jo:DrawText(UIFont.Small, r.detail, pad + math.floor(36 * S), ry + self.FH, c3[1], c3[2], c3[3], 1)
+                jo:DrawText(UIFont.Small, r.sDetail, pad + math.floor(36 * S), ry + self.FH, c3[1], c3[2], c3[3], 1)
             end
         end
     end

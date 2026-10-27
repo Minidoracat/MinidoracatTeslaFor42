@@ -201,5 +201,6 @@
     "IGUI_MinidoracatTesla_Tip_AppTrunk": "打开或关上尾门：打开后谁都能拿后备箱里的东西",
     "IGUI_MinidoracatTesla_Tip_AppAlerts": "这辆车的哨兵与露营警报",
     "IGUI_MinidoracatTesla_Tip_AppChargeStop": "暂停充电，充电线保持插着",
-    "IGUI_MinidoracatTesla_Tip_AppChargeStart": "继续充电到目标电量"
+    "IGUI_MinidoracatTesla_Tip_AppChargeStart": "继续充电到目标电量",
+    "IGUI_MinidoracatTesla_App_AgeNow": "刚刚"
 }

@@ -201,5 +201,6 @@
     "IGUI_MinidoracatTesla_Tip_AppTrunk": "Otwórz lub zamknij klapę: z otwartego bagażnika każdy może coś wziąć",
     "IGUI_MinidoracatTesla_Tip_AppAlerts": "Alerty wartownika i kempingu dla tego samochodu",
     "IGUI_MinidoracatTesla_Tip_AppChargeStop": "Wstrzymaj ładowanie, kabel zostaje podłączony",
-    "IGUI_MinidoracatTesla_Tip_AppChargeStart": "Wznów ładowanie do celu"
+    "IGUI_MinidoracatTesla_Tip_AppChargeStart": "Wznów ładowanie do celu",
+    "IGUI_MinidoracatTesla_App_AgeNow": "przed chwilą"
 }

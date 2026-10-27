@@ -201,5 +201,6 @@
     "IGUI_MinidoracatTesla_Tip_AppTrunk": "리프트게이트 열기/닫기: 열려 있으면 누구나 트렁크의 물건을 가져갈 수 있습니다",
     "IGUI_MinidoracatTesla_Tip_AppAlerts": "이 차의 감시 모드와 캠프 모드 알림",
     "IGUI_MinidoracatTesla_Tip_AppChargeStop": "충전 일시 중지 (케이블은 꽂힌 채로)",
-    "IGUI_MinidoracatTesla_Tip_AppChargeStart": "목표까지 충전 다시 시작"
+    "IGUI_MinidoracatTesla_Tip_AppChargeStart": "목표까지 충전 다시 시작",
+    "IGUI_MinidoracatTesla_App_AgeNow": "방금"
 }

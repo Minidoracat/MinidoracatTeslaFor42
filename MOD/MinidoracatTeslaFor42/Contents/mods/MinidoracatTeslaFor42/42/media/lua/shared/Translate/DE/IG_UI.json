@@ -201,5 +201,6 @@
     "IGUI_MinidoracatTesla_Tip_AppTrunk": "Heckklappe öffnen oder schließen: aus einem offenen Kofferraum kann jeder etwas nehmen",
     "IGUI_MinidoracatTesla_Tip_AppAlerts": "Wächter- und Camp-Warnungen dieses Autos",
     "IGUI_MinidoracatTesla_Tip_AppChargeStop": "Laden pausieren, das Kabel bleibt eingesteckt",
-    "IGUI_MinidoracatTesla_Tip_AppChargeStart": "Bis zum Ziel weiterladen"
+    "IGUI_MinidoracatTesla_Tip_AppChargeStart": "Bis zum Ziel weiterladen",
+    "IGUI_MinidoracatTesla_App_AgeNow": "gerade eben"
 }

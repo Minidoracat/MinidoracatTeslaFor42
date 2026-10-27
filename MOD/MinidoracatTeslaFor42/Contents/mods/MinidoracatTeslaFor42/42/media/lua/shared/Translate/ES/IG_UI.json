@@ -201,5 +201,6 @@
     "IGUI_MinidoracatTesla_Tip_AppTrunk": "Abrir o cerrar el portón: cualquiera puede coger cosas del maletero abierto",
     "IGUI_MinidoracatTesla_Tip_AppAlerts": "Alertas de centinela y acampada de este coche",
     "IGUI_MinidoracatTesla_Tip_AppChargeStop": "Pausar la carga, el cable sigue enchufado",
-    "IGUI_MinidoracatTesla_Tip_AppChargeStart": "Seguir cargando hasta el objetivo"
+    "IGUI_MinidoracatTesla_Tip_AppChargeStart": "Seguir cargando hasta el objetivo",
+    "IGUI_MinidoracatTesla_App_AgeNow": "ahora mismo"
 }

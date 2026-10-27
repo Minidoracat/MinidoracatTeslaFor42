@@ -201,5 +201,6 @@
     "IGUI_MinidoracatTesla_Tip_AppTrunk": "Abrir ou fechar a tampa traseira: qualquer um pode pegar coisas do porta-malas aberto",
     "IGUI_MinidoracatTesla_Tip_AppAlerts": "Alertas de Sentinela e acampamento deste carro",
     "IGUI_MinidoracatTesla_Tip_AppChargeStop": "Pausar a carga, o cabo continua conectado",
-    "IGUI_MinidoracatTesla_Tip_AppChargeStart": "Retomar a carga até a meta"
+    "IGUI_MinidoracatTesla_Tip_AppChargeStart": "Retomar a carga até a meta",
+    "IGUI_MinidoracatTesla_App_AgeNow": "agora mesmo"
 }

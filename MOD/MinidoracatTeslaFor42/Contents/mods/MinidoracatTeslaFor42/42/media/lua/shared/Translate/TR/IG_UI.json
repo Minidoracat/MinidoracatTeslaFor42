@@ -201,5 +201,6 @@
     "IGUI_MinidoracatTesla_Tip_AppTrunk": "Bagaj kapağını aç veya kapat: açıkken herkes bagajdan eşya alabilir",
     "IGUI_MinidoracatTesla_Tip_AppAlerts": "Bu aracın güvenlik ve kamp uyarıları",
     "IGUI_MinidoracatTesla_Tip_AppChargeStop": "Şarjı duraklat, kablo takılı kalır",
-    "IGUI_MinidoracatTesla_Tip_AppChargeStart": "Hedefe kadar şarja devam et"
+    "IGUI_MinidoracatTesla_Tip_AppChargeStart": "Hedefe kadar şarja devam et",
+    "IGUI_MinidoracatTesla_App_AgeNow": "az önce"
 }
