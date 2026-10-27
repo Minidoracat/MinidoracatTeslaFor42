@@ -32,14 +32,28 @@ local function vmDrawn()
     return out
 end
 
+-- the cars player 0's phone keys open now: App.seen keeps cars removed from the phone or handed over with it
+-- (review 2026-10-27); read only when the table is rebuilt (App.seen moved, or every CHECK_MS)
+local function onPhone()
+    local p = getSpecificPlayer(0)
+    local out = {}
+    if not p then return out end
+    local list = p:getInventory():getAllTypeRecurse(T.Keys.PHONE_KEY)
+    for i = 0, list:size() - 1 do
+        for _, k in ipairs(T.Keys.pairedIds(list:get(i))) do out[k] = true end
+    end
+    return out
+end
+
 function B.build(now)
     B.stats.builds = B.stats.builds + 1
     local api = MinidoracatMiniMapAPI
     local v2 = api and type(api.markerApiVersion) == "number" and api.markerApiVersion >= 2
-    local skip = vmDrawn() or {}
-    local markers, stale = {}, 0
+    local skip, mine = vmDrawn() or {}, onPhone()
+    local markers, stale, keys = {}, 0, {}
+    B.vmSkip = skip -- (for drawsWorld, every world map frame: no list built there)
     for key, st in pairs(App.seen) do
-        if st.x and st.y and not st.deny and not skip[key] then
+        if st.x and st.y and not st.deny and not skip[key] and mine[key] then
             local fresh = st.seenAt and now - st.seenAt <= App.FRESH_MS
             if not fresh then stale = stale + 1 end
             local m = { id = "tesla:" .. tostring(key), x = st.x + 0.5, y = st.y + 0.5, texture = B.tex.car,
@@ -51,17 +65,20 @@ function B.build(now)
                 m.ring = { r = 1, g = 1, b = 1, a = 1 }
             end
             markers[#markers + 1] = m
+            keys[key] = true
         end
     end
+    B.drawnKeys = keys
     return markers, stale
 end
 
 -- per frame, per surface: the cached table; rebuilt when App.seen moved, or every CHECK_MS a marker may have faded
 -- (or VehicleManager's bridge took one over): a new table only when something shown changed
 local cache = { out = { revision = 0, markers = {} } }
-function B.provider(playerNum)
+function B.provider(playerNum, surface)
     if playerNum ~= 0 then return nil end -- ponytail: App.seen is one table (PhoneApp.lua); split-screen guests get none
     local now = getTimestampMs()
+    if surface == "world" then B.worldAt = now end -- the MiniMap is drawing our markers on the world map right now
     if cache.rev == App.seenRev and now < (cache.checkAt or 0) then return cache.out end
     cache.checkAt = now + B.CHECK_MS
     local markers, stale = B.build(now)
@@ -70,6 +87,19 @@ function B.provider(playerNum)
         cache.out = { revision = cache.out.revision + 1, markers = markers }
     end
     return cache.out
+end
+
+-- the app's temporary world map marker steps aside only while the MiniMap really draws that car there: player 0 only,
+-- not when its world map layers (WMLayers) are off (then it never asks this provider for "world"), and only for a car
+-- one of the two bridges has a marker for (ours from the last build, or VehicleManager's: its fleet, VM-only cars too)
+function B.drawsWorld(playerNum, key)
+    if not (B.registered == true and playerNum == 0 and B.worldAt ~= nil and getTimestampMs() - B.worldAt < 1000) then
+        return false
+    end
+    if key ~= nil and B.drawnKeys and B.drawnKeys[key] then return true end
+    local mvm = MinidoracatVehicleManager
+    local vmOn = mvm and mvm.MiniMapBridge and mvm.MiniMapBridge.registered
+    return vmOn and (key == nil or (B.vmSkip ~= nil and B.vmSkip[key] == true)) or false
 end
 
 function B.register()

@@ -18,7 +18,9 @@ St.LEGACY = { inbox = "MinidoracatTesla_Inbox", keyIds = "MinidoracatTesla_KeyId
 -- file before it serializes and only logs the overflow (SGlobalObjectSystem.java:279-295), so a save past 10 MiB empties
 -- the file and the next start finds the whole store gone. Every list is capped (20 inbox alerts an account, 10 app
 -- alerts a car), so it grows only with accounts and cars: ~1600 owners each with a full inbox and a car full of alerts
--- (review verify 2026-10-27). Prune inboxes of long-gone accounts or split the keys into systems (one buffer each,
+-- (review verify 2026-10-27). `phones` (one short list per phone key with 2+ cars) is not capped and keeps the entry of
+-- a phone key destroyed in the world (nothing tells the server): a few dozen bytes each, far below the buffer.
+-- Prune inboxes of long-gone accounts or split the keys into systems (one buffer each,
 -- SGlobalObjects.java:151-156) if a server ever gets near it.
 
 local db

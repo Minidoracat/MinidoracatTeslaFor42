@@ -39,10 +39,14 @@ local function sameKey(item, keyId) return item:getKeyId() == keyId end
 -- an MP client reads the modData mirror, for menus and the app only. The item's keyId itself is not client-writable.
 K.PAIRED, K.PAIRED_CARS = "teslaKeyIds", "teslaCars" -- modData mirror: keyIds, and their car models (menu labels)
 local function extraIds(item)
-    local St = not isClient() and T.Store
-    if St then return St.get("phones")[tostring(item:getID())] end
-    local md = item:hasModData() and item:getModData()
-    return md and md[K.PAIRED] or nil
+    local ids
+    if not isClient() then -- server / SP: the server-only record, never the client-writable mirror
+        ids = T.Store and T.Store.get("phones")[tostring(item:getID())]
+    else ids = item:hasModData() and item:getModData()[K.PAIRED] or nil end
+    -- only this phone's own list: item ids are random, not unique (InventoryItemFactory.java:139), and the last car
+    -- paired is always the item's keyId (KeyActions.lua replace); another item on the same id never inherits it
+    if type(ids) ~= "table" or ids[#ids] ~= item:getKeyId() then return nil end
+    return ids
 end
 function K.pairedWith(item, keyId)
     if item:getKeyId() == keyId then return true end

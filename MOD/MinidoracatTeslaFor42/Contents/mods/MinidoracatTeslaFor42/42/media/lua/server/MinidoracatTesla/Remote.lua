@@ -250,10 +250,13 @@ R.MAX_BATCH = 16
 T.ServerCommands.appStatusAll = function(player, args)
     local keys = args.keys
     if not player or type(keys) ~= "table" then return end
-    local list = {}
+    local list, done = {}, {}
     for i = 1, math.min(#keys, R.MAX_BATCH) do
         local key = holder(player, { key = keys[i] })
-        if key then list[#list + 1] = R.state(player, key) end
+        if key and not done[key] then -- each car once (a repeated key would cost a full state each)
+            done[key] = true
+            list[#list + 1] = R.state(player, key)
+        end
     end
     R.stats.status = R.stats.status + #list
     T.send(player, "appStates", { list = list })

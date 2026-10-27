@@ -411,8 +411,14 @@ check(last("appDone").why == "NO_PHONE_KEY", "a phone for 9001 only: 9002's unlo
 local big = {}
 for i = 1, 100 do big[i] = 9001 end
 F.sent = {}
+local status0 = R.stats.status
 cmds.appStatusAll(two, { keys = big })
-check(#last("appStates").list == R.MAX_BATCH, "batch: at most MAX_BATCH cars a request")
+check(#last("appStates").list == 1 and R.stats.status == status0 + 1, "batch: a repeated key answered once")
+for i = 1, 100 do big[i] = i % 2 == 0 and 9001 or 9002 end
+big[17] = 1 -- (past MAX_BATCH: never looked at)
+F.sent = {}
+cmds.appStatusAll(two, { keys = big })
+check(#last("appStates").list == 2, "batch: at most MAX_BATCH keys read, each car once")
 F.sent = {}
 cmds.appStatusAll(two, { keys = "9001" })
 check(#F.sent == 0, "batch: keys not a list -> ignored")
@@ -703,6 +709,39 @@ check(cmd == "appStatus" and args.key == 9002, "only the selected car is polled"
 a:setPage("cars")
 a:onJoypadDown(Joypad.BButton)
 check(a.page == "home" and a.key == 9002, "B on the list: back home, same car")
+-- a refusal in the batch keeps its reason (no place), the row says why instead of loading forever (review 2026-10-27)
+T.ClientCommands.appStates({ list = { { key = 9002, deny = "NOT_OWNER" } } })
+check(App.seen[9002].deny == "NOT_OWNER" and App.seen[9002].x == nil and a:carLine({ key = 9002 }) == T.denyText("NOT_OWNER"),
+    "refused in the batch: the row shows why, no place kept")
+state()
+-- more paired cars than the server answers per request: the list asks in chunks of App.BATCH
+local savedPhones = myInv
+local many = {}
+for i = 1, 18 do many[i] = 7000 + i end
+myInv = container(multiPhone(many))
+App.open(0, { keyId = 7018 })
+local sentM = #H.clientSent
+a.b.cars:forceClick()
+local asked, reqs = {}, 0
+for i = sentM + 1, #H.clientSent do
+    local s = H.clientSent[i]
+    if s.command == "appStatusAll" then
+        reqs = reqs + 1
+        check(#s.args.keys <= R.MAX_BATCH, "chunk " .. reqs .. ": at most the server's MAX_BATCH")
+        for _, k in ipairs(s.args.keys) do asked[k] = true end
+    end
+end
+local all17 = true
+for i = 1, 17 do if not asked[7000 + i] then all17 = false end end
+check(reqs == 2 and all17 and App.BATCH == R.MAX_BATCH, "18 cars: two requests cover all 17 others")
+-- the list's joypad rows are this app's own (split screen: another app's list keeps its length)
+local other = setmetatable({ page = "cars", navCars = { { "back" }, { "pick1" } } }, { __index = App })
+check(#a:navRows() == 19 and #other:navRows() == 2, "car list joypad rows per app, not shared")
+myInv = savedPhones
+App.open(0, { keyId = 9002 })
+T.ClientCommands.appStates({ list = { { key = 9002, link = nil, grid = true, car = "MinidoracatTesla_ModelY", x = 1200,
+    y = 1990, pct = 41, km = 300, skin = 1, h = H.hours() - 2 } } }) -- back to its last view before the refusal
+state()
 -- VehicleManager's cars (MinidoracatTesla.VMLink): a paired one merges into its row, an unpaired one gets its own
 T.VMLink = { cars = function() return {
     { oid = "o-1", keyId = 9001, script = "Base.MinidoracatTesla_ModelY", x = 1000, y = 2000, ageMs = 1000 },
@@ -794,11 +833,31 @@ mk = provider[2](0, "mini")
 ids = {}
 for _, m in ipairs(mk.markers) do ids[m.id] = m end
 check(ids["tesla:9001"].state == "live" and ids["tesla:9002"].state ~= "live", "a fresh look: that car live again")
+-- a car no longer on the phone (removed, or the phone handed over): its marker goes, though App.seen still has it
+local keptInv = myInv
+myInv = container(phoneKey(9001))
+App.seenRev = App.seenRev + 1 -- (KeysUI's phoneUnpaired does this)
+mk = provider[2](0, "mini")
+ids = {}
+for _, m in ipairs(mk.markers) do ids[m.id] = m end
+check(ids["tesla:9001"] and not ids["tesla:9002"] and App.seen[9002] ~= nil, "removed from the phone: no marker for it")
+myInv = keptInv
+App.seenRev = App.seenRev + 1
+provider[2](0, "mini")
 App.mapCar = { x = 1, y = 1, pn = 0, key = 9001 }
-local drawn0 = App.mapDrawn or 0
+local realDraw, draws = App.drawMapCar, 0
+App.drawMapCar = function() draws = draws + 1 end -- (the real one needs the world map's mapAPI)
+provider[2](0, "world") -- the MiniMap draws our markers on the world map this frame
 ISWorldMap:render()
-check((App.mapDrawn or 0) == drawn0, "with the MiniMap's marker: the app's temporary map marker is not drawn too")
-App.mapCar = nil
+check(draws == 0, "with the MiniMap's world map marker: the app's temporary marker is not drawn too")
+H.advanceMs(2000) -- its world map layers off (WMLayers): it stops asking for "world"
+ISWorldMap:render()
+check(draws == 1, "MiniMap world layers off: the app's temporary marker again")
+App.mapCar.pn = 1
+provider[2](0, "world")
+ISWorldMap:render()
+check(draws == 2, "split-screen player 1 (no MiniMap markers for it): the temporary marker")
+App.drawMapCar, App.mapCar = realDraw, nil
 B.registered = false
 MinidoracatMiniMapAPI, T.VMLink = nil, nil
 

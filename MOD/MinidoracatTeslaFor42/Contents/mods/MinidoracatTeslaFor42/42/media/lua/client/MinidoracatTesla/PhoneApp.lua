@@ -12,7 +12,8 @@
 -- horn, frunk, liftgate), "location" (arrow, distance, "Show on map", "Navigate to car" with the MiniMap's
 -- setNavTarget), "security" (Sentry Mode, alerts), "charging", "cars".
 -- "Show on map" opens the world map on the car and draws a marker after vanilla's map: never saved, gone when the map
--- closes (the app comes back on the location page). With the MiniMap, its marker (MiniMapBridge.lua) is the marker.
+-- closes (the app comes back on the location page). While the MiniMap draws that car there itself, its marker
+-- (MiniMapBridge.lua) is the marker.
 -- Drawing: the dashboard atlas (2x; HUD.spr / HUD.rrect), S scale, HUD.drawTip. Buttons are bare hit areas; the app
 -- draws everything. Joypad: the D-pad moves along the page's rows (NAV), A presses, B goes back (home: closes).
 -- A page taller than this player's screen scrolls below its header (mouse wheel; joypad focus scrolls itself in).
@@ -276,20 +277,26 @@ function App:setPage(page)
     if self.joyfocus then self:focusFirst(page == "home" and from or (page == "cars" and self.curPick) or nil) end
 end
 
--- the car list: built when it opens; one appStatusAll for the other paired cars (their grey lines; the selected car is
--- polled anyway)
+-- the car list: built when it opens; appStatusAll for the other paired cars, App.BATCH keys per request (their grey
+-- lines; the selected car is polled anyway)
 function App:openList()
     local cars = App.cars(self.playerNum, self.player)
     self.carList = cars
     local keys = {}
     for _, e in ipairs(cars) do
         if e.key and e.key ~= self.key then keys[#keys + 1] = e.key end
+        if #keys == App.BATCH then self:askStates(keys); keys = {} end
     end
-    if #keys > 0 then
-        App.stats.batches = App.stats.batches + 1
-        T.request(self.player, "appStatusAll", { keys = keys })
-    end
+    if #keys > 0 then self:askStates(keys) end
 end
+App.BATCH = 16 -- = Remote.lua R.MAX_BATCH (the server answers that many per request)
+function App:askStates(keys)
+    App.stats.batches = App.stats.batches + 1
+    T.request(self.player, "appStatusAll", { keys = keys })
+end
+
+-- this page's joypad rows: NAV, except the car list's (built per app by layout)
+function App:navRows() return self.page == "cars" and self.navCars or NAV[self.page] end
 
 -- ---------------------------------------------------------------- joypad: own rows (NAV), not ISPanelJoypad's grid
 -- the focused control stays in view (layout scrolls to it) until the player scrolls the page by hand
@@ -302,10 +309,10 @@ function App:setFocus(b)
 end
 function App:focusAt(row, col)
     self.fRow, self.fCol = row, col
-    self:setFocus(self.b[NAV[self.page][row][col]])
+    self:setFocus(self.b[self:navRows()[row][col]])
 end
 function App:focusFirst(id)
-    local rows = NAV[self.page]
+    local rows = self:navRows()
     for r, row in ipairs(rows) do
         for c, bid in ipairs(row) do
             if bid == id and self.b[bid].shown then return self:focusAt(r, c) end
@@ -321,7 +328,7 @@ end
 -- up / down: the nearest shown button (by centre x) on the next row that has one; past the last one the page scrolls
 -- (the Security page's alerts have no buttons). Left / right: along the row.
 function App:move(dr, dc)
-    local rows, r, c = NAV[self.page], self.fRow or 1, self.fCol or 1
+    local rows, r, c = self:navRows(), self.fRow or 1, self.fCol or 1
     if not self.focusB then return self:focusFirst() end
     if dr ~= 0 then
         local cx = self.focusB.cx + self.focusB.cw / 2
@@ -452,8 +459,9 @@ local function remember(st)
     local key = st.key
     if type(key) ~= "number" then return end
     local old = App.seen[key]
-    if st.deny then -- refused (VehicleManager): forget the place too
-        if old then App.seen[key], App.seenRev = nil, App.seenRev + 1 end
+    if st.deny then -- refused (VehicleManager): keep why, forget the place (the list shows the reason, no marker)
+        if not (old and old.deny) then App.seenRev = App.seenRev + 1 end
+        App.seen[key] = { key = key, deny = st.deny, seenAt = getTimestampMs() }
         return
     end
     st.seenAt = getTimestampMs()
@@ -888,8 +896,8 @@ function App:layout()
         end
     elseif page == "cars" then
         -- one row per car (App.cars order); the joypad's rows follow them
-        local rows = NAV.cars
-        for i = #rows, 2, -1 do rows[i] = nil end
+        local rows = { { "back" } } -- this app's own rows (split screen: each player's list is its own length)
+        self.navCars = rows
         local rh = math.max(FHM + u(2) + FH, u(36)) + u(20)
         local rw = tw - u(30) -- room for the current car's check mark
         self.curPick = nil
@@ -1186,8 +1194,8 @@ end
 
 -- ---------------------------------------------------------------- world map marker (temporary, never saved)
 -- Drawn after vanilla's map (ISWorldMap.lua:384) with the dashboard atlas; worldToUIX/Y as vanilla's print media
--- markers (:478-479). Cleared when the map closes; the app comes back then. With the MiniMap's marker provider
--- (MiniMapBridge.lua; it draws on this map too) that marker is the car's: no second one here.
+-- markers (:478-479). Cleared when the map closes; the app comes back then. Left out only while the MiniMap draws
+-- this car on this map itself (MiniMapBridge.drawsWorld: player 0, its world map layers on, a marker for this car).
 function App.drawMapCar(map, m)
     local api = map.mapAPI
     if not api then return end
@@ -1215,7 +1223,7 @@ function ISWorldMap:render(...)
     local r = mapRender(self, ...)
     local m = App.mapCar
     local bridge = T.MiniMapBridge
-    if m and not (bridge and bridge.registered) then App.drawMapCar(self, m) end
+    if m and not (bridge and bridge.drawsWorld(m.pn, m.key)) then App.drawMapCar(self, m) end
     return r
 end
 function ISWorldMap:close(...)

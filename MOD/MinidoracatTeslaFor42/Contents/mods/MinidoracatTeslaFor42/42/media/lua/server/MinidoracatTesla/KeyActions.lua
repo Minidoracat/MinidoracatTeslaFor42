@@ -46,10 +46,16 @@ local function replace(old, fullType, keyId, name, ids, cars)
     local cont = old:getContainer()
     if not cont then return nil end
     local item = instanceItem(fullType)
+    local phones = ids and T.Store.get("phones")
+    -- item ids are random ints, not unique (InventoryItemFactory.java:139): a phone never takes an id another phone's
+    -- record already has (review 2026-10-27: it would inherit that phone's cars)
+    for _ = 1, 8 do
+        if not (phones and phones[tostring(item:getID())]) then break end
+        item = instanceItem(fullType)
+    end
     item:setKeyId(keyId)
     item:setName(name)
     if ids then -- a phone (key): its record follows the new item id
-        local phones = T.Store.get("phones")
         phones[tostring(old:getID())] = nil
         if #ids > 1 then -- its own copy: a client's SyncItemModData replaces the item's modData, never the store's
             local copy = {}
@@ -184,11 +190,13 @@ T.ServerCommands.phonePair = function(player, args)
     T.send(player, "phonePaired", { vid = v:getId(), car = carName(v), n = #ids })
 end
 
--- "Remove from phone > car": anywhere, the phone key on you. The item's keyId moves to the car paired last of those
--- left; the last car out leaves a plain phone (no keyId, no record).
+-- "Remove from phone > car": anywhere outside a car, the phone key on you. The item's keyId moves to the car paired
+-- last of those left; the last car out leaves a plain phone (no keyId, no record). Not in a car: the phone key may be
+-- on its way into the ignition, and swapping such a key doubles it there (keys.md "IgnitionDup", as K.sweep).
 T.ServerCommands.phoneUnpair = function(player, args)
     local id, key = args.id, args.key
     if not player or type(id) ~= "number" or type(key) ~= "number" then return end
+    if player:getVehicle() then return T.deny(player, "NOT_OUTSIDE") end
     local phone = player:getInventory():getItemWithIDRecursiv(id)
     if not phone or phone:getFullType() ~= K.PHONE_KEY or not K.pairedWith(phone, key) then
         return T.deny(player, "NO_PHONE_KEY")

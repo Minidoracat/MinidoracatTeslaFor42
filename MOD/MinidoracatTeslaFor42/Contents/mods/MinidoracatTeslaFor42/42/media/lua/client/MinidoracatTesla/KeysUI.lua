@@ -267,7 +267,11 @@ T.ClientCommands.autoLocked = function(args) good("IGUI_MinidoracatTesla_AutoLoc
 T.ClientCommands.phonePaired = function(args)
     good((args.n or 1) > 1 and "IGUI_MinidoracatTesla_PhoneAdded" or "IGUI_MinidoracatTesla_PhonePaired", args)
 end
-T.ClientCommands.phoneUnpaired = function(args) good("IGUI_MinidoracatTesla_PhoneRemoved", args) end
+T.ClientCommands.phoneUnpaired = function(args)
+    good("IGUI_MinidoracatTesla_PhoneRemoved", args)
+    local App = T.PhoneApp -- the MiniMap drops the removed car's marker now, not at its next 10 s check
+    if App then App.seenRev = App.seenRev + 1 end
+end
 
 -- Lock confirmation chirp (Keys.lua K.CHIRP): the vanilla horn event on the car's emitter (FMODSoundEmitter, no
 -- WorldSoundManager: zombies do not hear it), stopped after K.CHIRP_MS by a one-shot OnTick removed when empty.
