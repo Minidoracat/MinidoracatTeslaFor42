@@ -11,7 +11,6 @@ local K = T.Keys
 K.CARD = "Base.MinidoracatTesla_KeyCard"
 K.PHONE = "Base.MinidoracatTesla_Phone"         -- not paired: a plain item
 K.PHONE_KEY = "Base.MinidoracatTesla_PhoneKey"  -- paired: a Key with the car's keyId
-K.REG = "MinidoracatTesla_KeyIds"               -- server Global ModData: tostring(keyId) -> car model name
 K.TAP_RANGE = 1.5   -- key card reader (driver-side B-pillar): tiles from the driver door's area centre
 -- Walk-away lock: tiles from the car centre. The car is ~4 tiles long, so walking round to the trunk (~2.5) never
 -- locks it; 6 tiles (1 tile = 1 m, Core.lua) is a few metres past the body, like leaving Bluetooth range.
@@ -133,6 +132,7 @@ end
 function K.phoneUnlock(vehicle, part, chr)
     local door = part and part:getDoor()
     if not door or not door:isLocked() or door:isLockBroken() or not chr or not T.isTesla(vehicle) then return false end
+    if part:getVehicle() ~= vehicle then return false end -- vehicle and part travel apart (see K.lidUnlock)
     if chr:getInventory():haveThisKeyId(vehicle:getKeyId()) or not K.phoneKey(chr, vehicle) then return false end
     door:setLocked(false)
     vehicle:transmitPartDoor(part) -- no-op off the server
@@ -148,6 +148,46 @@ end
 function ISUnlockVehicleDoor:complete(...)
     if isServer() then K.phoneUnlock(self.vehicle, self.part, self.character) end
     return unlockComplete(self, ...)
+end
+
+-- The frunk lid locks with the car (Liftgate.lockLids). Vanilla's other hood entries queue the unlock only when the
+-- key is NOT found (the interact key's Vehicles.Use.EngineDoor, Vehicles.lua:849-852; the Mechanics radial,
+-- ISVehicleMenu.lua:990-993; DriveUnitMenu.lua), so the owner's open would fail on the lock (ISOpenVehicleDoor.lua:61-64).
+-- Whoever may unlock it (vanilla canUnlockDoor: seated, or the key in hand, BaseVehicle.java:1275-1301; the phone key
+-- in a bag, as at a door handle; a VehicleManager user it lets work on the hood, whose virtual key is no item) has it
+-- unlocked right before vanilla complete() looks; a stranger finds it locked. The key card in a wallet does not count
+-- (tap the reader, as for the doors). complete() runs on the server in MP and locally in SP.
+local function vmMechanic(chr, vehicle)
+    local api = MinidoracatVehicleManagerAPI
+    if not (api and api.canUse) then return false end
+    -- its VirtualKey sandbox option off = vanilla key rules (VehicleManager ActionGuards.lua virtualKey, default on)
+    local page = SandboxVars and SandboxVars.MinidoracatVehicleManager
+    if page and page.VirtualKey == false then return false end
+    -- the codes VehicleManager itself puts on opening the hood (its Actions.lua EngineDoor; the app's frunk, Remote.lua)
+    for _, code in ipairs({ "REPAIR", "SALVAGE" }) do
+        local ok, why = api.canUse(chr, vehicle, code, { mod = T.MODULE })
+        if ok == true and why ~= "UNCLAIMED" then return true end -- an unclaimed car is anyone's: no key from it
+    end
+    return false
+end
+function K.lidUnlock(vehicle, part, chr)
+    -- the action carries vehicle and part as separate arguments (ISOpenVehicleDoor.lua:142-145): the key must be this car's
+    if not part or part:getId() ~= "EngineDoor" or not chr or part:getVehicle() ~= vehicle or not T.isTesla(vehicle) then
+        return false
+    end
+    local door = part:getDoor()
+    if not door or not door:isLocked() or door:isLockBroken() then return false end
+    if not (vehicle:canUnlockDoor(part, chr) or K.phoneKey(chr, vehicle) or vmMechanic(chr, vehicle)) then return false end
+    door:setLocked(false)
+    vehicle:transmitPartDoor(part) -- no-op off the server
+    return true
+end
+
+require "Vehicles/TimedActions/ISOpenVehicleDoor"
+local openComplete = ISOpenVehicleDoor.complete
+function ISOpenVehicleDoor:complete(...)
+    if not isClient() then K.lidUnlock(self.vehicle, self.part, self.character) end
+    return openComplete(self, ...)
 end
 
 -- Phone key in a bag also starts the car (the real one drives with the phone in a pocket or bag). Vanilla complete()

@@ -1,15 +1,16 @@
--- Owner notifications for sentry and camp. Online owner: immediate "alert". Offline owner: kept in the
--- server-only Global ModData "MinidoracatTesla_Inbox" (never transmitted), at most MAX entries per account,
--- delivered and cleared when the client sends "inboxPull" after login (first OnTick after OnGameStart).
+-- Owner notifications for sentry and camp. Online owner: immediate "alert". Offline owner: kept in the server-only
+-- store (Store.lua "inbox"; never Global ModData, which any client can fetch), at most MAX entries per
+-- account, delivered and cleared when the client sends "inboxPull" after login (first OnTick after OnGameStart).
+-- Accounts are T.account names: a split-screen guest has none, so it neither gets nor pulls anyone's alerts.
 if isClient() then return end
 require "MinidoracatTesla/Core"
+require "MinidoracatTesla/Store"
 
 local T = MinidoracatTesla
 T.Inbox = T.Inbox or {}
 T.ServerCommands = T.ServerCommands or {}
 local I = T.Inbox
 
-I.KEY = "MinidoracatTesla_Inbox"
 I.MAX = 20
 
 -- Online player by account name. getOnlinePlayers is empty in SP (LuaManager.java:4457-4463).
@@ -18,7 +19,7 @@ function I.online(username)
     local list = getOnlinePlayers()
     for i = 0, list:size() - 1 do
         local p = list:get(i)
-        if p:getUsername() == username then return p end
+        if T.account(p) == username then return p end
     end
     if not isServer() then
         local p = getSpecificPlayer(0)
@@ -42,7 +43,7 @@ function I.entry(vehicle, kind, what, actor, partId)
 end
 
 function I.store(username, e)
-    local data = ModData.getOrCreate(I.KEY)
+    local data = T.Store.get("inbox")
     local list = data[username]
     if not list then
         list = {}
@@ -52,10 +53,12 @@ function I.store(username, e)
     while #list > I.MAX do table.remove(list, 1) end
 end
 
+-- username nil (sentry armed by a split-screen guest, T.account): nobody to tell, but the car's own alert list
+-- (the phone app's, Remote.logAlert) still gets it
 function I.notify(username, e)
-    if not username then return end
     local log = T.Remote and T.Remote.logAlert
     if log then log(e) end
+    if not username then return end
     local p = I.online(username)
     if p then
         T.send(p, "alert", e)
@@ -67,9 +70,9 @@ function I.notify(username, e)
 end
 
 T.ServerCommands.inboxPull = function(player, args)
-    if not player then return end
-    local name = player:getUsername()
-    local data = ModData.getOrCreate(I.KEY)
+    local name = T.account(player)
+    if not name then return end
+    local data = T.Store.get("inbox")
     local list = data[name]
     if not list or #list == 0 then return end
     data[name] = nil

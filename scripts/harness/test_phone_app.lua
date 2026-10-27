@@ -24,19 +24,8 @@ local savedWorld = getWorld
 getWorld = function() return { isHydroPowerOn = function() return grid end } end
 local savedSound = playServerSound
 playServerSound = function() end
--- server-only GOS system (never Global ModData, which any client may fetch by name)
-local gos = {}
-local savedGOS = SGlobalObjects
-SGlobalObjects = { registerSystem = function(name)
-    local sys = gos[name] or { md = {}, registers = 0 }
-    gos[name] = sys
-    sys.registers = sys.registers + 1
-    return {
-        setModDataKeys = function(_, keys) sys.keys = keys end,
-        setObjectModDataKeys = function() end, setObjectSyncKeys = function() end,
-        getModData = function() return sys.md end,
-    }
-end }
+-- the server-only GOS store (smoke_harness.lua H.gos; never Global ModData, which any client may fetch by name)
+local gos = H.gos
 require "MinidoracatTesla/Remote"
 local R = T.Remote
 local cmds = T.ServerCommands
@@ -68,7 +57,6 @@ local function tesla(keyId)
         for _, d in ipairs(self.doors) do if not d.d.locked then return false end end
         return true
     end
-    function v:setTrunkLocked(b) self.parts.TrunkDoor.d.locked = b end
     function v:transmitPartDoor() self.doorTx = (self.doorTx or 0) + 1 end
     function v:getColorHue() return self.hue end
     v.charge12 = 1
@@ -97,6 +85,7 @@ end
 local function player(name, inv, x, y)
     local p = { name = name, inv = inv, x = x, y = y }
     function p:getUsername() return self.name end
+    function p:getPlayerNum() return 0 end
     function p:getVehicle() return self.vehicle end
     function p:getInventory() return self.inv end
     function p:getX() return self.x end
@@ -183,6 +172,10 @@ act(owner, "lock")
 F.runTicks(50, 450)
 d = act(owner, "sentry", true)
 check(d.why == nil and v.parts.GasTank:getModData().sentry ~= nil, "sentry on from 500 tiles (app reach instead of 10 tiles)")
+local s0, a0 = v.parts.GasTank:getModData().sentry, R.stats.actions
+d = act(owner, "sentry", true)
+check(d.why == nil and d.on == true and v.parts.GasTank:getModData().sentry == s0 and R.stats.actions == a0,
+    "sentry on again (a 2 s old view, a double tap): nothing changes, not counted as an action")
 d = act(owner, "sentry", false)
 check(d.why == nil and v.parts.GasTank:getModData().sentry == nil, "sentry off remotely")
 d = act(owner, "sentry", false)
@@ -210,6 +203,7 @@ d = act(owner, "frunk", true)
 check(d.why == nil and v.parts.EngineDoor.d.open and d.on == true, "frunk opens (appDone on = true)")
 d = act(owner, "frunk", false)
 check(d.why == nil and not v.parts.EngineDoor.d.open and d.on == false, "frunk closes (appDone on = false)")
+check(v.parts.EngineDoor.d.locked, "frunk lid closed on a locked car: locked again, same rule as the liftgate")
 v.parts.TrunkDoor.d.open = true -- someone opened the liftgate by hand since the app's last poll
 local tx = v.doorTx or 0
 d = act(owner, "trunk", true)
@@ -260,9 +254,11 @@ check(st and st.link == nil and st.x == math.floor(v.x) and st.locked == true an
     "unloaded: the server's last record (position, locked, battery)")
 check(st and st.h ~= nil, "last record carries its game hour")
 check(st and st.skin == 4, "last record carries the paint (skin index) for the app's car picture")
-local db = gos[R.SYSTEM]
-check(db and db.registers == 1 and db.md.seen["9001"] ~= nil and db.keys[1] == "seen" and db.keys[2] == "alerts",
-    "records in the server-only GOS system (saved keys seen, alerts; registered once)")
+local db = gos[T.Store.SYSTEM]
+local saved = {}
+for _, k in ipairs(db.keys) do saved[k] = true end
+check(db and db.registers == 1 and db.md.seen["9001"] ~= nil and saved.seen and saved.alerts and saved.inbox and saved.keyIds,
+    "records in the server-only GOS store (saved keys seen, alerts, inbox, keyIds; registered once)")
 check(db.md.getInitialStateForClient() == nil, "GOS system sends nothing to clients")
 local wild = tesla(7777) -- a Tesla the world spawned, never seen by an app
 R.onLoad(wild)
@@ -304,6 +300,15 @@ asked = {}
 act(owner, "charge", true)
 check(asked[1].code == "FUEL", "charging: VM FUEL")
 answer.why = "NOT_AUTHORIZED"
+asked = {}
+v.parts.GasTank:getModData().sentry = nil
+d = act(owner, "sentry", true)
+check(d.why == "NOT_OWNER" and asked[1].code == "PASSENGER" and v.parts.GasTank:getModData().sentry == nil,
+    "sentry: VM PASSENGER like a remote lock; car bound to someone else -> an old phone key can't arm it")
+v.parts.GasTank:getModData().sentry = { by = "owner", at = F.hours, kwh = 50, since = F.hours }
+d = act(owner, "sentry", false)
+check(d.why == "NOT_OWNER" and v.parts.GasTank:getModData().sentry ~= nil, "...nor turn it off from afar")
+v.parts.GasTank:getModData().sentry = nil
 F.sent = {}
 asked = {}
 cmds.appStatus(owner, { key = 9001 })
@@ -615,6 +620,6 @@ H.side(false, true)
 -- ------------------------------------------------------------------ restore (later tests use their own fakes)
 Events.OnSpawnVehicleEnd.Remove(R.onLoad)
 T.Remote = nil
-getWorld, playServerSound, SGlobalObjects = savedWorld, savedSound, savedGOS
+getWorld, playServerSound = savedWorld, savedSound
 for k, n in pairs(statsBefore) do S.stats[k] = n end
 F.done()

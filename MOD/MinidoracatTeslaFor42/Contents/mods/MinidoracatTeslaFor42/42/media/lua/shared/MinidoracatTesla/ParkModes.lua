@@ -55,7 +55,7 @@ end
 -- EASY_USE (sandbox VehicleEasyUse) and keys left in the ignition ("KEY" without a key in hand); none of
 -- those count here, otherwise any stranger pulling the door handle would disarm sentry.
 function T.legit(player, vehicle, by)
-    if by and player:getUsername() == by then return true end
+    if by and T.account(player) == by then return true end -- a split-screen guest's name proves nothing (Core.lua)
     if player:getInventory():haveThisKeyId(vehicle:getKeyId()) then return true end -- ISOpenVehicleDoor.lua:86
     -- key card or phone key in a wallet or bag (Keys.lua): the owner, e.g. opening with the phone key in a bag
     if T.Keys and T.Keys.card and (T.Keys.card(player, vehicle) or T.Keys.phoneKey(player, vehicle)) then return true end

@@ -38,6 +38,16 @@ check(md(low).sentry == nil and F.lastSent("deny").args.reason == "LOW_BATTERY",
 cmds.sentryArm(owner, { vid = v:getId() })
 local s = md(v).sentry
 check(s ~= nil and s.by == "owner" and s.since == F.hours and v.alarmed == false, "sentry: owner arms; vanilla alarmed cleared")
+-- armed again (another key holder, the app, a double click): stays as it is, the standby since `at` still gets paid
+local friend = F.player("friend", { keys = { [v.keyId] = true } })
+local k0 = T.Battery.kwh(v.parts.GasTank)
+F.hours = F.hours + 2
+cmds.sentryArm(friend, { vid = v:getId() })
+check(md(v).sentry == s and s.by == "owner" and s.at == F.hours - 2 and T.Battery.kwh(v.parts.GasTank) == k0,
+    "sentry armed again by another key holder: same record, owner and clock kept, nothing settled")
+T.Sentry.settle(v)
+check(H.near(k0 - T.Battery.kwh(v.parts.GasTank), 2 * T.Sentry.KW, 1e-9) and s.at == F.hours,
+    "the next settle charges the whole 2 h standby")
 
 -- VehicleManager says UNCLAIMED / easy use: still not legit
 MinidoracatVehicleManagerAPI = { canUse = function() return true, "UNCLAIMED" end }
@@ -148,13 +158,45 @@ F.online = { thief }
 F.hours = F.hours + 1000
 ISOpenVehicleDoor.complete({ vehicle = v, character = thief, part = v.parts.GasTank })
 check(md(v).sentry == nil and math.abs(T.Battery.pct(v.parts.GasTank) - 20) < 1e-6, "settle: below 20% turns sentry off at the floor")
-local box = ModData.getOrCreate(T.Inbox.KEY).owner
+local inbox = T.Store.get("inbox")
+local box = inbox.owner
 check(box ~= nil and box[#box].kind == "lowBattery", "inbox: offline owner gets lowBattery stored")
+check(H.moddata.MinidoracatTesla_Inbox == nil and H.gos[T.Store.SYSTEM].md.inbox == inbox,
+    "inbox: in the server-only store, no Global ModData table a client could request")
 for i = 1, 30 do T.Inbox.notify("owner", { kind = "touch", what = "door", i = i }) end
-check(#ModData.getOrCreate(T.Inbox.KEY).owner == 20 and ModData.getOrCreate(T.Inbox.KEY).owner[20].i == 30, "inbox: keeps newest 20")
+check(#inbox.owner == 20 and inbox.owner[20].i == 30, "inbox: keeps newest 20")
+-- a split-screen guest picks its name on its own client (ConnectCoopPacket.java): it is nobody's account
+local guest = F.player("owner", { num = 1 })
+F.online = { thief, guest }
+F.sent = {}
+T.Inbox.notify("owner", { kind = "touch", what = "door", i = 31 })
+check(F.lastSent("alert") == nil and #inbox.owner == 20 and inbox.owner[20].i == 31,
+    "split-screen guest named like the offline owner: no live alert, the event is stored for the owner")
+cmds.inboxPull(guest, {})
+check(F.lastSent("inbox") == nil and #inbox.owner == 20, "split-screen guest: inboxPull gets nothing, the inbox stays")
+check(T.legit(guest, v, "owner") == false, "split-screen guest: the sentry owner's name does not make it legit")
+-- a guest with the key arms sentry: nobody's account to tell, but the car's alert list (the app's) still gets events
+local logged, savedRemote = {}, T.Remote
+T.Remote = { logAlert = function(e) logged[#logged + 1] = e end }
+local gcar = F.track(F.vehicle({ pct = 80 }))
+gcar.locked = true
+local keyGuest = F.player("guest2", { num = 1, keys = { [gcar.keyId] = true } })
+cmds.sentryArm(keyGuest, { vid = gcar:getId() })
+check(md(gcar).sentry ~= nil and md(gcar).sentry.by == nil, "split-screen guest with the key arms sentry: armed, no owner account")
+local boxes0 = 0
+for _ in pairs(inbox) do boxes0 = boxes0 + 1 end
+F.sent = {}
+ISOpenVehicleDoor.complete({ vehicle = gcar, character = thief, part = gcar.parts.GasTank })
+local boxes1 = 0
+for _ in pairs(inbox) do boxes1 = boxes1 + 1 end
+check(#logged == 1 and logged[1].kind == "touch" and F.lastSent("alert") == nil and boxes1 == boxes0,
+    "...a stranger's touch: in the car's alert list, nobody notified, no inbox")
+T.Remote = savedRemote
+F.runTicks(50, 450)
+F.online = { thief }
 F.sent = {}
 cmds.inboxPull(owner, {})
-check(F.lastSent("inbox") ~= nil and #F.lastSent("inbox").args.list == 20 and ModData.getOrCreate(T.Inbox.KEY).owner == nil,
+check(F.lastSent("inbox") ~= nil and #F.lastSent("inbox").args.list == 20 and inbox.owner == nil,
     "inbox: pull delivers and clears")
 
 -- ---- owner disarms by opening with the key ----

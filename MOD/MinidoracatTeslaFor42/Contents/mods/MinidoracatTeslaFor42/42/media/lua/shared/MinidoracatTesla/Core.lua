@@ -201,6 +201,15 @@ function T.isAdmin(player)
     return checkPermissions(player, Capability.ManipulateVehicle) == true
 end
 
+-- The account a player speaks for (sentry owner, notifications, the offline inbox), or nil. On a dedicated server a
+-- split-screen guest's name comes from its client unchecked (ConnectCoopPacket.java parse: only names connected right
+-- now are refused) and could be any offline owner's, so only a connection's first player has one (family
+-- VehicleManager OwnershipSystem.lua O.principal). SP and the client: the username.
+function T.account(player)
+    if not player or (isServer() and player:getPlayerNum() ~= 0) then return nil end
+    return player:getUsername()
+end
+
 -- ---- server -> client ----
 -- SP: sendServerCommand is a no-op off the server (LuaManager.java:8956-8960), so call the handler directly.
 function T.send(player, cmd, args)
