@@ -51,14 +51,14 @@ T.Specs = {
         regenEff = 0.6,
         -- official Model 3 Performance paints (US, DE, TW design studios; references/models.md): same rules as above
         colors = {
-            { name = "StealthGrey", code = "PN01", h = 0.756, s = 0.553, v = 0.29 },
-            { name = "PearlWhite", code = "PPSW", h = 0.612, s = 0.488, v = 0.9 },
-            { name = "DiamondBlack", code = "PX02", h = 0.866, s = 0.502, v = 0.238 },
-            { name = "Quicksilver", code = "PN00", h = 0.837, s = 0.509, v = 0.389 },
-            { name = "UltraRed", code = "PR01", h = 0.983, s = 1.0, v = 0.437 },
-            { name = "DeepBlue", code = "PPSB", h = 0.614, s = 1.0, v = 0.332 },
-            { name = "MarineBlue", code = "PB02", h = 0.599, s = 0.71, v = 0.256 },
-            { name = "FrostBlue", code = "PB00", h = 0.611, s = 0.795, v = 0.553 },
+            { name = "StealthGrey", code = "PN01", h = 0.696, s = 0.541, v = 0.307 },
+            { name = "PearlWhite", code = "PPSW", h = 0.543, s = 0.493, v = 0.819 },
+            { name = "DiamondBlack", code = "PX02", h = 0.923, s = 0.555, v = 0.214 },
+            { name = "Quicksilver", code = "PN00", h = 0.808, s = 0.484, v = 0.458 },
+            { name = "UltraRed", code = "PR01", h = 0.997, s = 1.0, v = 0.471 },
+            { name = "DeepBlue", code = "PPSB", h = 0.602, s = 1.0, v = 0.398 },
+            { name = "MarineBlue", code = "PB02", h = 0.585, s = 0.765, v = 0.285 },
+            { name = "FrostBlue", code = "PB00", h = 0.599, s = 0.77, v = 0.483 },
         },
     },
 }

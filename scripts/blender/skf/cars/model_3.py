@@ -22,14 +22,14 @@ CAR = dict(
             ("UltraRed", "PR01"), ("DeepBlue", "PPSB"), ("MarineBlue", "PB02"), ("FrostBlue", "PB00")],
     # paint tone (model_y.py CAL): fitted on Model 3 game screenshots (modely-skin-sp --define car=..., option 2)
     CAL={
-        "StealthGrey": ((0.88, 0.88, 0.88), (0.030, 0.016, 0.012)),
-        "PearlWhite": ((0.80, 0.80, 0.80), (0.134, 0.129, 0.129)),
-        "DiamondBlack": ((0.99, 0.99, 0.99), (0.073, 0.067, 0.063)),
-        "Quicksilver": ((0.93, 0.93, 0.93), (-0.105, -0.114, -0.126)),
-        "UltraRed": ((0.97, 0.97, 0.97), (-0.067, 0.078, 0.062)),
-        "DeepBlue": ((0.80, 0.80, 0.80), (0.003, -0.017, -0.029)),
-        "MarineBlue": ((0.81, 0.81, 0.81), (0.084, 0.069, 0.039)),
-        "FrostBlue": ((0.79, 0.79, 0.79), (0.072, 0.077, 0.100)),
+        "StealthGrey": ((1.01, 1.01, 1.01), (0.012, 0.005, -0.004)),
+        "PearlWhite": ((0.92, 0.92, 0.92), (-0.055, -0.053, -0.060)),
+        "DiamondBlack": ((0.84, 0.84, 0.84), (0.067, 0.053, 0.052)),
+        "Quicksilver": ((1.07, 1.07, 1.07), (-0.104, -0.104, -0.127)),
+        "UltraRed": ((1.04, 1.04, 1.04), (-0.066, 0.115, 0.072)),
+        "DeepBlue": ((0.92, 0.92, 0.92), (0.110, 0.075, -0.009)),
+        "MarineBlue": ((0.92, 0.92, 0.92), (0.083, 0.077, 0.045)),
+        "FrostBlue": ((0.91, 0.91, 0.91), (-0.005, -0.010, -0.031)),
     },
     # design studio: Performance ($MT371), 20" Warp ($W30P), summer tires ($T30S), black interior ($IPB4); all 8
     # paints return 200 (research 2026-10-28)
@@ -134,7 +134,7 @@ CAR = dict(
     GATE_OBJS=("Object_12", "Object_13", "Object_14", "Object_16", "Object_17"),
     GATE_COMPS=(),
     GATE_CUT_COMPS=(("Object_11", 5889),),
-    CARBON=dict(lo=(-0.62, -2.0, 0.83), hi=(0.62, -1.875, 0.95), rgb=(30, 30, 32)),   # Performance spoiler ($SLR1)
+    CARBON=dict(x=0.62, y=-1.70, z=(0.805, 0.95), depth=0.035, rgb=(30, 30, 32)),   # Performance spoiler ($SLR1)
     PANES={"Body": {"WinT", "LightBarL", "WinH"}, "DoorFrontLeft": {"WinLH"}, "DoorFrontRight": {"WinRH"},
            "DoorRearLeft": {"WinLT"}, "DoorRearRight": {"WinRT"}, "TrunkDoor": set(), "EngineDoor": set()},
     # badges: T on the nose (where the source has it), TESLA across the trunk lid between the tail lamps, the

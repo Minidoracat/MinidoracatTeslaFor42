@@ -648,8 +648,17 @@ def classify(car, names, sizes):
     cc = np.stack([np.bincount(inv, cen[:, i]) for i in range(3)], 1) / np.bincount(inv)[:, None]
     ccen = cc[inv]
     paint = mat == PAINT_MAT
-    # CARBON: paint faces in a box that the real car has in carbon fibre (Model 3 Performance's spoiler, $SLR1)
-    carbon = paint & (cen > CARBON["lo"]).all(1) & (cen < CARBON["hi"]).all(1) if CARBON else np.zeros(n, bool)
+    # CARBON: the paint the real car has in carbon fibre (Model 3 Performance's spoiler, $SLR1): a band `depth` deep
+    # along the lid's trailing edge, found per 2 cm of x (the edge curves forward towards the sides: a box caught it
+    # in patches)
+    carbon = np.zeros(n, bool)
+    if CARBON:
+        band = (paint & (np.abs(cen[:, 0]) < CARBON["x"]) & (cen[:, 1] < CARBON["y"]) & (cen[:, 2] > CARBON["z"][0])
+                & (cen[:, 2] < CARBON["z"][1]))
+        xb = np.floor(cen[:, 0] / 0.02).astype(np.int64)
+        for b in np.unique(xb[band]):
+            m = band & (xb == b)
+            carbon |= m & (cen[:, 1] < cen[m, 1].min() + CARBON["depth"])
     paint &= ~carbon
     glass = np.isin(mat, GLASS_MATS) & ~np.isin(obj, GLASS_OPAQUE)
     part = np.zeros(n, np.int64)
