@@ -584,6 +584,10 @@ def edit(car, names):
     groups = {}
     for f in bm.faces:
         groups.setdefault((f[si], f[ci]), []).append(f)
+    # (object, triangles) keys follow the decimation: a key that no longer matches would silently skip its cuts
+    missing = set(CUT) - {(names[s], len(fs)) for (s, _), fs in groups.items()}
+    if missing:
+        raise SystemExit(f"CUT keys match no component (sizes: the build's COMPS lines): {sorted(missing)}")
     for (s, c), fs in groups.items():
         key = (names[s], len(fs))
         cuts = CUT.get(key, ())
@@ -624,7 +628,12 @@ def edit(car, names):
 def match(spec, obj, csize):
     """Faces of a source object (spec = name) or of its components of some sizes (spec = (name, triangles or a tuple
     of them; a decimated pair of mirror parts can differ by one)): a glTF source merges parts by material."""
-    return obj == spec if isinstance(spec, str) else (obj == spec[0]) & np.isin(csize, spec[1])
+    if isinstance(spec, str):
+        return obj == spec
+    m = (obj == spec[0]) & np.isin(csize, spec[1])
+    if not m.any():                        # sizes follow the decimation: say so instead of matching nothing
+        raise SystemExit(f"{spec} matches no component (sizes: the build's COMPS lines)")
+    return m
 
 
 def classify(car, names, sizes):
@@ -701,6 +710,8 @@ def classify(car, names, sizes):
         gate |= (obj == o) & (csize == s) & (np.sign(ay) == sy) & (ax < 0.1)
     gsel = gate & (np.isin(obj, [o for o, _, _ in GATE_COMPS]) | in_gate(cen))
     for o, s in GATE_CUT_COMPS:            # a lid cut out of a bigger panel (edit(): PLANES, X+-), by face centre
+        if not ((obj == o) & (csize == s)).any():
+            raise SystemExit(f"GATE_CUT_COMPS {(o, s)} matches no component (sizes: the build's COMPS lines)")
         gsel |= (obj == o) & (csize == s) & in_gate(cen)
     part[gsel | np.isin(obj, ("Badge_BLADE", "Badge_TESLA", "Badge_MODELY", "Badge_PERF"))] = 5
     part[obj == "Badge_T"] = 6

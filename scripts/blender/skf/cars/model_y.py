@@ -157,7 +157,7 @@ CAR = dict(
     GUARDS=dict(front=(0.75, 0.95, 0.4), rear=(-1.0, 1.13, 0.45)),
     # components cut along the lines (object, tris after welding): the window surround, the rear side glass (door
     # pane and quarter glass in one piece)
-    CUT={("Plane.005", 342): ("BF", "BR", "D"), ("Plane.062", 268): ("D",)},
+    CUT={("Plane.005", 342): ("BF", "BR", "D")},
     PLANES={},                             # more cut planes for CUT: name -> (point, normal, cut faces behind y)
     CUT_X=_CUT_X,                          # cut along +-GATE_X
     CUT_X_Y=None,                          # ... only faces behind this y (None: all)
