@@ -159,7 +159,7 @@ function App.carLabel(keyId, car)
     if not paint then return name end
     return name .. getText("IGUI_MinidoracatTesla_Sep") .. paintLabel(paint)
 end
--- this car's version of a text key: the Model 3's trunk lid is not a liftgate (PartNames.lua T.CarPartNames)
+-- this car's version of a text key: the Model 3's trunk lid is not a liftgate (Core.lua T.CarPartNames)
 local function carKey(script, key) return script and T.partNameKey(script, key) or key end
 
 -- The cars this player's app can show, in order: every car of the phone keys on the player (pairing order), then
@@ -271,6 +271,7 @@ function App.get(playerNum) return apps[playerNum or 0] end
 function App:select(e)
     local same = e.key ~= nil and e.key == self.key
     self.key, self.oid, self.vmEntry = e.key, e.oid, e.vm and e or nil
+    self.carHint = e.car -- the phone key's mirror (or VehicleManager's script): the model before the server's record
     if not same then -- another car: forget the old one's state
         self.st = e.key and App.seen[e.key] or (e.vm and vmState(e)) or nil
         self.stAt = getTimestampMs()
@@ -445,7 +446,7 @@ function App:onMap()
     local st = self.st
     if not (st and st.x) or not ISWorldMap.IsAllowed() then return end
     App.mapCar = { x = st.x + 0.5, y = st.y + 0.5, name = self.sName, dist = self.sDist, pn = self.playerNum,
-        key = self.key, oid = self.oid, model = self.model }
+        key = self.key, oid = self.oid, spr = self.carSpr }
     self:close()
     ISWorldMap.ShowWorldMap(App.mapCar.pn, App.mapCar.x, App.mapCar.y, 18)
 end
@@ -881,10 +882,12 @@ function App:read()
     local hasPos = st ~= nil and st.x ~= nil and not st.deny
     self.hasPos = hasPos
     local ageH = st and (st.ageH or (T.hours() - (st.h or 0))) or 0
-    self.sName = st and st.car and getText("IGUI_VehicleName" .. st.car) or txt("Title")
-    local paint, spec = App.paint(st and st.car, st and st.skin)
-    self.script = spec and "Base." .. st.car
+    local car = st and st.car or self.carHint -- no record yet (never seen live, or denied): the mirror's model
+    self.sName = car and getText("IGUI_VehicleName" .. car) or txt("Title")
+    local paint, spec = App.paint(car, st and st.skin)
+    self.script = spec and "Base." .. car
     self.paintName, self.model = paint and paint.name, spec and spec.model
+    self.carSpr = spec and "car_" .. spec.model -- top view glyph on the summon radar and the maps
     self.carTex = paint and carTexture(spec.appCar .. paint.name)
     local sep = getText("IGUI_MinidoracatTesla_Sep")
     if not st then
@@ -1461,7 +1464,7 @@ function App:prerender()
                 local dim = self.sumPhase == "ready" and not self.sumCome
                 HUD.rrect(self, x - 12 * S, y - 12 * S, 24 * S, 24 * S, 12 * S, C.text, 1)
                 HUD.rrect(self, x - 10 * S, y - 10 * S, 20 * S, 20 * S, 10 * S, dim and C.weak or C.blue, 1)
-                local car, k = self.model and A["car_" .. self.model], 0.1 -- 300 x 170 at 2x: 15 x 8.5 units
+                local car, k = self.carSpr and A[self.carSpr], 0.1 -- 300 x 170 at 2x: 15 x 8.5 units
                 if car then HUD.spr(self, car, x - car[3] * self.f * k / 2, y - car[4] * self.f * k / 2, C.white, 1, k) end
             end
             HUD.rrect(self, cx - 7 * S, cy - 7 * S, 14 * S, 14 * S, 7 * S, C.text, 1) -- the player
@@ -1691,7 +1694,7 @@ function PickMap:render()
         if x >= 0 and y >= 0 and x <= self.width and y <= self.height then
             disc(jo, tex, e, x, y, 22 * S, C.white)
             disc(jo, tex, e, x, y, 18 * S, C.blue)
-            local car = app.model and A["car_" .. app.model]
+            local car = app.carSpr and A[app.carSpr]
             if car then
                 jo:DrawSubTextureRGBA(tex, car[1], car[2], car[3], car[4], x - 7 * S, y - 4 * S, 14 * S, 8 * S, 1, 1, 1, 1)
             end
@@ -1746,7 +1749,7 @@ function App.drawMapCar(map, m)
     jo:DrawSubTextureRGBA(tex, e[1], e[2], e[3], e[4], x - 15, y - 15, 30, 30, 1, 1, 1, 1)
     local b = C.blue
     jo:DrawSubTextureRGBA(tex, e[1], e[2], e[3], e[4], x - 13, y - 13, 26, 26, b[1], b[2], b[3], 1)
-    local car = m.model and A["car_" .. m.model] -- the dashboard's top view of this car, small, as the car glyph
+    local car = m.spr and A[m.spr] -- the dashboard's top view of this car, small, as the car glyph
     if car then jo:DrawSubTextureRGBA(tex, car[1], car[2], car[3], car[4], x - 10, y - 6, 20, 11, 1, 1, 1, 1) end
     local tm = getTextManager()
     local tw = math.max(tm:MeasureStringX(UIFont.Medium, m.name or ""), tm:MeasureStringX(UIFont.Small, m.dist or ""))

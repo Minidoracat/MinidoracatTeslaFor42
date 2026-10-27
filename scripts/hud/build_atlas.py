@@ -358,15 +358,15 @@ def car_modely(c):  # Model Y: the glass roof runs into the liftgate glass (x 34
 
 def car_model3(c):
     """Model 3 (4,724 x 1,848 mm against the Model Y's 4,790 x 1,921: 98.6% as long, 96% as wide; same wheelbase
-    class, so the same wheels): a sedan, the rear glass (x 43-62) ends at the trunk lid's front seam (x 40), and the
-    lid (x 23-40) is body colour."""
+    class, so the same wheels): a sedan, the rear glass (x 43-56, up to where the rear doors' outline starts) behind
+    the trunk lid's front seam (x 40), the lid (x 23-40) body colour. HUD.lua ZONES.Model3 follows these edges."""
     car_wheels(c)
     body = [("M", 36, 23), ("H", 121), ("Q", 141, 23, 145, 37), ("V", 59), ("Q", 141, 73, 121, 73),
             ("H", 36), ("Q", 23, 73, 23, 62), ("V", 34), ("Q", 23, 23, 36, 23), ("Z",)]
     c.fill(body, "#2A3037")
     c.stroke(body, w=1.3, color="#AEB6BF")
     c.fill([("M", 101, 30), ("Q", 116, 30, 119, 38), ("V", 58), ("Q", 116, 66, 101, 66), ("Z",)], "#15191E")
-    c.fill([("M", 47, 31), ("H", 62), ("V", 65), ("H", 47), ("Q", 43, 65, 43, 60), ("V", 36), ("Q", 43, 31, 47, 31), ("Z",)], "#15191E")
+    c.fill([("M", 47, 31), ("H", 56), ("V", 65), ("H", 47), ("Q", 43, 65, 43, 60), ("V", 36), ("Q", 43, 31, 47, 31), ("Z",)], "#15191E")
     c.stroke([("M", 40, 29), ("Q", 38.5, 48, 40, 67)], w=1.0, color="#4A525B")  # trunk lid seam
     b_pillar(c, 23, 73)
 

@@ -747,10 +747,46 @@ check(#missing == 0, "Model 3: a car picture for each of its 8 paints (" .. tabl
 check(a.b.trunk.tipKey == "IGUI_MinidoracatTesla_Tip_AppTrunkLid" and a.b.qtrunk.tipKey == "IGUI_MinidoracatTesla_Tip_AppTrunkLid"
     and a.b.lock.tipKey == "IGUI_MinidoracatTesla_Tip_AppUnlockLid"
     and a.rowSub.controls == "IGUI_MinidoracatTesla_App_ControlsSubLid", "Model 3: tips and the controls line say trunk (lid)")
+local realGT = getText -- the cell is narrow: short words so fitText keeps them whole
+getText = function(k, ...)
+    if k == "IGUI_MinidoracatTesla_App_TrunkLid" then return "LID" elseif k == "IGUI_MinidoracatTesla_App_Trunk" then return "GATE" end
+    return realGT(k, ...)
+end
+a.b.controls:forceClick()
+local lidTitle = a.b.trunk.sTitle
+a.b.back:forceClick()
+getText = realGT
+check(lidTitle == "LID", "Model 3: the controls page's lid button is titled with the trunk lid key (" .. tostring(lidTitle) .. ")")
 T.ClientCommands.appDone({ key = 9001, act = "trunk", on = false })
 check(a.toast.text == "IGUI_MinidoracatTesla_App_Done_trunkLid_off", "Model 3: 'trunk closed', not 'liftgate closed'")
 a:onMap()
-check(App.mapCar and App.mapCar.model == "Model3", "Model 3: the world map marker draws the Model 3 top view")
+check(App.mapCar and App.mapCar.spr == "car_Model3", "Model 3: the world map marker draws the Model 3 top view")
+-- no server record with a model yet (paired, never seen live, or VehicleManager said no): the phone key's mirror
+-- names the car, so the Model 3 still gets its picture and its lid words, not the Model Y's
+a = App.open(0, { keyId = 9001 })
+a.carHint = "MinidoracatTesla_Model3"
+state({ car = false })
+check(a.model == "Model3" and a.carSpr == "car_Model3" and a.b.trunk.tipKey == "IGUI_MinidoracatTesla_Tip_AppTrunkLid"
+    and a.carTex.path:find("app_car_model3_", 1, true) ~= nil, "no model in the record: the phone key's mirror says Model 3")
+a.carHint = nil
+-- every car in T.Specs has what the HUD and the app draw for it: zones, top view and wordmark at both scales, a
+-- picture per paint, a plug item (a third car added to Specs without them fails here, not in game)
+local gaps = {}
+for script, s in pairs(T.Specs) do
+    local function need(ok, what) if not ok then gaps[#gaps + 1] = script .. " " .. what end end
+    need(T.HUD.ZONES[s.model], "HUD.ZONES")
+    for k = 1, 2 do
+        for _, pre in ipairs({ "car_", "wm_", "trim_" }) do need(T.HUDAtlas[k][pre .. s.model], pre .. s.model .. "@" .. k) end
+    end
+    for _, c in ipairs(s.colors) do
+        local f = io.open("MOD/MinidoracatTeslaFor42/Contents/mods/MinidoracatTeslaFor42/42/media/textures/MinidoracatTesla/HUD/"
+            .. s.appCar .. c.name .. ".png", "rb")
+        need(f, s.appCar .. c.name)
+        if f then f:close() end
+    end
+    need(s.plug and s.plug.item and s.plug.z, "plug")
+end
+check(#gaps == 0, "every Specs car has its zones, atlas sprites, app pictures and plug (" .. table.concat(gaps, ", ") .. ")")
 App.mapCar = nil
 a = App.open(0, { keyId = 9001 })
 state({ car = "SomethingElse" })

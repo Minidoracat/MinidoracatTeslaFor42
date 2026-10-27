@@ -36,19 +36,19 @@ local POW2 = { 1, 2, 4, 8, 16, 32, 64 }
 -- { DOORS index, x0, y0, x1, y1 } in design units from the car sprite's top-left (150x85, nose right, left side up;
 -- build_atlas.py draws at 150/170 px per viewBox unit). Rear doors end at the B-pillar seam (x 69), the front doors
 -- and the frunk lid split the windscreen; x 140 is where the quick keys start. The Model Y's liftgate carries the rear
--- glass (x 0-45); the Model 3's trunk lid ends at its front seam (x 37) and the rear glass between (x 37-45) is the
--- body's, so it opens nothing.
+-- glass (x 0-45). The Model 3's trunk lid ends at its seam (viewBox 40 = x 35), its rear doors start where their
+-- outline is drawn (viewBox 56 = x 49), and the rear glass between (viewBox 43-56, fixed in the body) opens nothing.
 local ZONES = {
     ModelY = {
         { 5, 0, 0, 45, 85 }, { 3, 45, 0, 69, 42.5 }, { 4, 45, 42.5, 69, 85 },
         { 1, 69, 0, 97, 42.5 }, { 2, 69, 42.5, 97, 85 }, { 7, 97, 0, 140, 85 },
     },
     Model3 = {
-        { 5, 0, 0, 37, 85 }, { 3, 45, 0, 69, 42.5 }, { 4, 45, 42.5, 69, 85 },
+        { 5, 0, 0, 35, 85 }, { 3, 49, 0, 69, 42.5 }, { 4, 49, 42.5, 69, 85 },
         { 1, 69, 0, 97, 42.5 }, { 2, 69, 42.5, 97, 85 }, { 7, 97, 0, 140, 85 },
     },
 }
-HUD.ZONES, HUD.DOORS = ZONES, DOORS
+HUD.ZONES = ZONES
 local PART_KEY = {} -- vanilla part-name keys; the tip maps them through T.partNameKey (this car's Tesla names)
 for i = 1, #DOORS do PART_KEY[i] = "IGUI_VehiclePart" .. DOORS[i] end
 
@@ -223,6 +223,7 @@ function HUD:attach(vehicle)
     self.kmPerKwh = T.kmPerKwh(vehicle)
     local model = T.spec(vehicle).model -- this car's top view and door zones (attach runs for Teslas only)
     self.script, self.carSpr, self.zones = vehicle:getScriptName(), "car_" .. model, ZONES[model]
+    self.msgId = nil -- the message names this car's doors: rebuild it even when the door bits match the last car's
     local st = self.st
     for k in pairs(st) do st[k] = nil end
     self.tick = 0
@@ -370,7 +371,7 @@ function HUD:setMessage()
             if math.floor(a1 / d.bit) % 2 == 1 then n = n + 1; first = first or d.name end
         end
         local pk = "IGUI_VehiclePart" .. tostring(first)
-        pk = T.partNameKey(self.script, pk) or pk -- this car's Tesla part names (PartNames.lua): EngineDoor = frunk lid
+        pk = T.partNameKey(self.script, pk) or pk -- this car's Tesla part names (Core.lua): EngineDoor = frunk lid
         title = n == 1 and getText("IGUI_MinidoracatTesla_HUD_DoorOpen", getText(pk))
             or getText("IGUI_MinidoracatTesla_HUD_DoorsOpen", tostring(n))
         sub, icon, color = getText("IGUI_MinidoracatTesla_HUD_DoorOpenSub"), "i_warn", C.warn

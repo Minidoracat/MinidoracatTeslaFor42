@@ -118,14 +118,8 @@ local function draw3D(cell, e)
             end
         end
     end
-    if g.bsq then
-        local item = plugItems[g.plug.item]
-        if not item then
-            item = instanceItem(g.plug.item)
-            plugItems[g.plug.item] = item
-        end
-        Render3DItem(item, g.bsq, g.bx, g.by, g.bz, g.plugAngle)
-    end
+    local plug = g.bsq and plugItems[g.plug.item]
+    if plug then Render3DItem(plug, g.bsq, g.bx, g.by, g.bz, g.plugAngle) end
 end
 
 local function render3D(playerIndex)
@@ -164,6 +158,7 @@ local function sync()
         if not hangItem then                                  -- once per client, reused every frame
             hangItem = instanceItem("Base.MinidoracatTesla_CableHang")
             floorItem = instanceItem("Base.MinidoracatTesla_CableFloor")
+            for _, s in pairs(T.Specs) do plugItems[s.plug.item] = instanceItem(s.plug.item) end -- one per car
             vLocal, vWorld = Vector3f.new(), Vector3f.new()
         end
         Events.RenderOpaqueObjectsInWorld.Add(render3D)

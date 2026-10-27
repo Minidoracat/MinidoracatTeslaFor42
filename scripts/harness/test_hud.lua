@@ -345,7 +345,8 @@ check(select(1, clickAt(57, 64)) == false and #toggled == 0 and drawCalls == 0, 
 tesla.parts.DoorRearRight.getInventoryItem = function() return {} end
 h:update(); h:update(); h:update()
 -- each car its own top view and zones (HUD.ZONES[Specs model]): the Model Y's liftgate carries the rear glass, the
--- Model 3's trunk lid ends at its seam (x 37) so the rear glass (x 37-45) opens nothing; the tail is named per car
+-- Model 3's trunk lid ends at its seam (x 35) and its rear doors start at their outline (x 49), so the rear glass
+-- between opens nothing; the tail is named per car
 toggled = {}
 mx, my = at(22, 42)
 h:render()
@@ -358,10 +359,24 @@ dash:setVehicle(m3)
 check(h.carSpr == "car_Model3" and h.zones == HUD.ZONES.Model3 and T.HUDAtlas[1].car_Model3 ~= nil
     and T.HUDAtlas[2].car_Model3 ~= nil and allZones(), "Model 3: car_Model3 (both scales), its zones, all 6 toggle their part")
 toggled = {}
-check(select(1, clickAt(41, 42)) == false and #toggled == 0, "Model 3: x 41 is the rear glass, not the trunk lid: passes through")
+check(select(1, clickAt(41, 42)) == false and select(1, clickAt(47, 20)) == false and select(1, clickAt(47, 64)) == false
+    and #toggled == 0, "Model 3: x 41 and 47 are the rear glass, neither the trunk lid nor a rear door: passes through")
 mx, my = at(22, 42)
 h:render()
 check(h.tipArg == "IGUI_MinidoracatTesla_Part_TrunkLid", "Model 3: hovering the tail names the trunk lid")
+-- the open-door message names this car's lid, also when the last car had the same door bits open (message cache)
+local realGT = getText
+getText = function(k, a) return a and (k .. "|" .. a) or k end
+tesla.parts.TrunkDoor.door.open, m3.parts.TrunkDoor.door.open = true, true
+dash:setVehicle(tesla)
+local yTitle = h.msgTitle
+dash:setVehicle(m3)
+local m3Title = h.msgTitle
+getText = realGT
+tesla.parts.TrunkDoor.door.open, m3.parts.TrunkDoor.door.open = false, false
+check(yTitle == "IGUI_MinidoracatTesla_HUD_DoorOpen|IGUI_MinidoracatTesla_Part_TrunkDoor"
+    and m3Title == "IGUI_MinidoracatTesla_HUD_DoorOpen|IGUI_MinidoracatTesla_Part_TrunkLid",
+    "open-door message: Model Y 'liftgate open', then the Model 3 with the same bits 'trunk lid open' (" .. tostring(m3Title) .. ")")
 dash:setVehicle(tesla)
 T.Liftgate.toggle = realToggle
 mx = nil
