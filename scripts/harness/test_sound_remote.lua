@@ -133,6 +133,60 @@ H.side(false, false)
 v.driver = driver
 n = #H.sent
 check(cmd(driver, { vid = v:getId(), on = true }) == 0 and #H.sent == n, "SP: accepted but nobody to tell")
+
+H.section("remote sound: server rate limit")
+H.side(false, true)
+v.driver, driver.vehicle = driver, v
+local function burst(p, count, on)
+    local told = 0
+    for _ = 1, count do told = told + cmd(p, { vid = v:getId(), on = on }) end
+    return told
+end
+H.advanceMs(R.RATE_WINDOW_MS) -- a fresh window for the driver
+local limited = R.stats.limited
+n = #H.sent
+check(burst(driver, 50, true) == 2 * R.RATE_MAX and #H.sent == n + 2 * R.RATE_MAX and R.stats.limited == limited + 50 - R.RATE_MAX,
+    "50 'on' at once: only the first " .. R.RATE_MAX .. " relayed (to 2 players each), the rest dropped")
+n = #H.sent
+check(burst(driver, 1, false) == 0 and #H.sent == n, "over the limit even an 'off' is dropped (the listener's HEARD_MS ends it)")
+v.driver, driver.vehicle, near.vehicle = near, nil, v
+check(burst(near, 1, true) == 2, "another player's budget is their own")
+v.driver, driver.vehicle, near.vehicle = driver, v, nil
+H.advanceMs(R.RATE_WINDOW_MS)
+check(burst(driver, 1, true) == 2, "next window: relayed again")
+-- the real driver (Sound.update in the dashboard's 10 Hz update) for a minute, each "motor" it sends fed to the
+-- server: beats every 5 s, and from 10 s to 20 s the motor stopped and started every 0.5 s (the power key, hammered)
+H.advanceMs(R.RATE_WINDOW_MS)
+limited = R.stats.limited
+H.side(true, false)
+car.running = true
+dash:setVehicle(car)
+H.clientSent = {}
+local told, done, times = 0, 0, {}
+for i = 1, 600 do
+    if i >= 100 and i <= 200 and i % 5 == 0 then car.running = not car.running end
+    H.side(true, false)
+    h:update()
+    H.side(false, true)
+    local b = beats()
+    for j = done + 1, #b do
+        told = told + cmd(driver, { vid = v:getId(), on = b[j].on })
+        times[#times + 1] = i
+    end
+    done = #b
+    H.advanceMs(100)
+end
+local busiest = 0
+for j = 1, #times do
+    local k = j
+    while times[k + 1] and times[k + 1] - times[j] < R.RATE_WINDOW_MS / 100 do k = k + 1 end
+    busiest = math.max(busiest, k - j + 1)
+end
+check(busiest == R.RATE_MAX and told == 2 * done and R.stats.limited == limited,
+    "the driver's real rhythm (" .. done .. " in a minute, " .. busiest .. " in the busiest 5 s): every one relayed")
+H.side(true, false)
+dash:setVehicle(nil)
+H.side(false, false)
 getOnlinePlayers = saved.getOnlinePlayers
 
 -- ---------------------------------------------------------------- listener: registry, emitters, the one OnTick
