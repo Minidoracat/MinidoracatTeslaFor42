@@ -101,6 +101,7 @@ local function tesla(o)
     local all = {}
     for _, p in pairs(v.parts) do all[#all + 1] = p end
     for _, d in ipairs(v.doors) do all[#all + 1] = d end
+    for _, p in ipairs(all) do p.getVehicle = p.getVehicle or function() return v end end
     function v:getPassengerDoor(seat) return self.doors[seat + 1] end
     function v:getMaxPassengers() return 4 end
     function v:getPartCount() return #all end
@@ -389,10 +390,22 @@ MinidoracatVehicleManagerAPI = { canUse = function(p, _, code) return code == "P
 ISOpenVehicleDoor.complete({ vehicle = v, part = v.frunk, character = stranger })
 check(v.frunk.d.open, "frunk: a VehicleManager rider (virtual key, no item) opens it")
 ISCloseVehicleDoor.complete({ vehicle = v, part = v.frunk, character = stranger })
+SandboxVars.MinidoracatVehicleManager = { VirtualKey = false } -- its "Off keeps the vanilla key rules"
+ISOpenVehicleDoor.complete({ vehicle = v, part = v.frunk, character = stranger })
+check(v.frunk.d.locked and not v.frunk.d.open, "frunk: VehicleManager VirtualKey off -> a rider without a key stays out")
+SandboxVars.MinidoracatVehicleManager = nil
 MinidoracatVehicleManagerAPI = { canUse = function() return true, "UNCLAIMED" end }
 ISOpenVehicleDoor.complete({ vehicle = v, part = v.frunk, character = stranger })
 check(v.frunk.d.locked and not v.frunk.d.open, "frunk: VehicleManager UNCLAIMED is nobody's key")
 MinidoracatVehicleManagerAPI = nil
+-- the action's vehicle and part are separate arguments: this car's key must not unlock another car's lid or door
+local otherLid, otherDoor = door("EngineDoor"), door("DoorFrontLeft")
+otherLid.d.locked, otherDoor.d.locked = true, true
+otherLid.getVehicle = function() return {} end
+otherDoor.getVehicle = otherLid.getVehicle
+ISOpenVehicleDoor.complete({ vehicle = v, part = otherLid, character = loose })
+check(otherLid.d.locked and not otherLid.d.open, "frunk: a key for car A does not unlock car B's lid (vehicle/part mismatch)")
+check(not K.phoneUnlock(v, otherDoor, owner) and otherDoor.d.locked, "handle: phone key for car A leaves car B's door locked")
 v.doors[1].d.broken = true
 ISUnlockVehicleDoor.complete(unlock)
 check(v.doors[1].d.locked, "handle: broken lock -> stays locked")

@@ -132,6 +132,7 @@ end
 function K.phoneUnlock(vehicle, part, chr)
     local door = part and part:getDoor()
     if not door or not door:isLocked() or door:isLockBroken() or not chr or not T.isTesla(vehicle) then return false end
+    if part:getVehicle() ~= vehicle then return false end -- vehicle and part travel apart (see K.lidUnlock)
     if chr:getInventory():haveThisKeyId(vehicle:getKeyId()) or not K.phoneKey(chr, vehicle) then return false end
     door:setLocked(false)
     vehicle:transmitPartDoor(part) -- no-op off the server
@@ -160,11 +161,17 @@ local NOT_RIDER = { UNCLAIMED = true, EASY_USE = true, KEY = true } -- as T.legi
 local function vmRider(chr, vehicle)
     local api = MinidoracatVehicleManagerAPI
     if not (api and api.canUse) then return false end
+    -- its VirtualKey sandbox option off = vanilla key rules (VehicleManager ActionGuards.lua virtualKey, default on)
+    local page = SandboxVars and SandboxVars.MinidoracatVehicleManager
+    if page and page.VirtualKey == false then return false end
     local ok, why = api.canUse(chr, vehicle, "PASSENGER", { mod = T.MODULE })
     return ok == true and not NOT_RIDER[why]
 end
 function K.lidUnlock(vehicle, part, chr)
-    if not part or part:getId() ~= "EngineDoor" or not chr or not T.isTesla(vehicle) then return false end
+    -- the action carries vehicle and part as separate arguments (ISOpenVehicleDoor.lua:142-145): the key must be this car's
+    if not part or part:getId() ~= "EngineDoor" or not chr or part:getVehicle() ~= vehicle or not T.isTesla(vehicle) then
+        return false
+    end
     local door = part:getDoor()
     if not door or not door:isLocked() or door:isLockBroken() then return false end
     if not (vehicle:canUnlockDoor(part, chr) or K.phoneKey(chr, vehicle) or vmRider(chr, vehicle)) then return false end
