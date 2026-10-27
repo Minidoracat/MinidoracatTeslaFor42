@@ -1146,6 +1146,20 @@ check(cmd == "appAction" and args.act == "summon" and args.on == false, "...and 
 T.ClientCommands.appDone({ key = 9001, act = "summon", on = false })
 sread() -- AutoDrive's state still says driving for a moment
 check(a.sumPhase == "ready" and a.sum == nil, "stopped: ready (AutoDrive's lagging 'driving' does not bring it back)")
+-- no link, the summon arrives: where it stopped is the car's live place until Done (the record is from the last link)
+a:close()
+App.open(0, { keyId = 9001 })
+a:setPage("summon")
+App.sumReq[9001] = { mode = "target", x = 1012.5, y = 1990.5 }
+state({ link = false })
+CL.st = { vid = VID, phase = "driving", dist = 40, mode = "target" }
+sread()
+T.ClientCommands.appDone({ key = 9001, act = "summonEnd", why = "ARRIVED" })
+CL.st = { vid = VID, phase = "ended", code = "ARRIVED", mode = "target" }
+sread()
+check(a.sumPhase == "arrived" and a.sumCarX == v:getX(), "no link, arrived: the car's live place, not the last record")
+bs.finish:forceClick()
+sread()
 -- AutoDrive keeps its last result all session: an ended one gives no live place (the share taken back: no position)
 CL.st = { vid = VID, phase = "ended", code = "ARRIVED", mode = "target" }
 a:close()
