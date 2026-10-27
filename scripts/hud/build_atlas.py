@@ -9,7 +9,7 @@
 Outputs (overwritten):
   media/textures/MinidoracatTesla/HUD/atlas1x.png, atlas2x.png
   media/textures/MinidoracatTesla/HUD/radial_camp.png, radial_camp_off.png, radial_charge.png
-  media/textures/MinidoracatTesla/HUD/app_arrow1x.png, app_arrow2x.png (phone app direction arrow, drawn rotated)
+  media/textures/MinidoracatTesla/HUD/app_arrow1x.png, app_arrow2x.png (phone app location page arrow, drawn rotated)
   media/lua/client/MinidoracatTesla/HUDAtlas.lua
 
 Digits are rendered from Inter (SIL OFL 1.1, scripts/hud/fonts/OFL.txt). Font files never
@@ -36,6 +36,9 @@ PAL = {
     "text": "#F3F5F7", "text2": "#AEB6BF", "text3": "#8E98A3",
     "accent": "#5B8CFF", "accentFill": "#3E6AE1",
     "ok": "#3DD68C", "warn": "#F5B544", "danger": "#FF6B6B", "red": "#EC1C24",
+    # phone app: the real Tesla app (decisions.md "手機 App 第一版"); PhoneApp.lua keeps the same hex values
+    "appBg": "#161718", "appText": "#F3F3F3", "appText2": "#8A8B8B", "appWeak": "#454546", "appLine": "#2E2F30",
+    "appBlue": "#3268FE",
 }
 
 
@@ -58,6 +61,7 @@ def check_contrast():
         ("ok", "surface", 4.5), ("danger", "surface", 4.5),
         ("accent", "bg", 3.0), ("accent", "surface", 3.0), ("ok", "bg", 3.0),
         ("#FFFFFF", "accentFill", 4.5), ("text2", "track", 3.0), ("text", "track", 4.5),  # last: hover help
+        ("appText", "appBg", 4.5), ("appText2", "appBg", 4.5), ("#FFFFFF", "appBlue", 4.5),  # phone app
     ]
     out = []
     for fg, bg, need in rules:
@@ -233,31 +237,53 @@ def ic_horn(c):
     c.stroke([("M", 12, 6), ("Q", 13.6, 8, 12, 10)])
 
 
-def _car_side(c):  # side view, nose right, without the lid that opens
-    c.circle(4.5, 12, 1.5, fill="#FFFFFF")
-    c.circle(11.5, 12, 1.5, fill="#FFFFFF")
-    c.stroke([("M", 1.5, 9), ("V", 11.5), ("H", 14.5), ("V", 9.5)])
+# phone app, the restyle mock (temp/app-style/restyle.html): 1.3-unit strokes like the real Tesla app's line icons
+def ic_frunk(c):  # front trunk: the lid's trapezoid over the body
+    c.stroke([("M", 2, 10), ("L", 4, 6), ("H", 12), ("L", 14, 10), ("V", 12), ("H", 2), ("Z",)], w=1.3)
+    c.stroke([("M", 4, 6), ("L", 6, 3), ("H", 10), ("L", 12, 6)], w=1.3)
 
 
-def ic_frunk(c):  # front lid raised from the windscreen
-    _car_side(c)
-    c.stroke([("M", 1.5, 9), ("L", 4.5, 6), ("H", 10), ("L", 12, 8.5), ("L", 15, 5)])
+def ic_trunk(c):  # liftgate raised
+    c.stroke([("M", 2, 12), ("V", 8), ("L", 5, 5), ("H", 11), ("L", 14, 8), ("V", 12), ("Z",)], w=1.3)
+    c.stroke([("M", 11, 5), ("L", 13, 2)], w=1.3)
 
 
-def ic_trunk(c):  # liftgate raised from the roof
-    _car_side(c)
-    c.stroke([("M", 0.8, 3.8), ("L", 4.5, 6), ("H", 10), ("L", 12, 8.5), ("L", 14.5, 9.5)])
+def ic_lockfill(c):  # locked: solid body
+    c.rrect(3.5, 7, 9, 7, 1.5, fill="#FFFFFF")
+    c.stroke([("M", 5.5, 7), ("V", 5), ("Q", 5.5, 2.3, 8, 2.3), ("Q", 10.5, 2.3, 10.5, 5), ("V", 7)], w=1.4)
 
 
-def ic_list(c):
-    for y in (4, 8, 12):
-        c.circle(3, y, 1.1, fill="#FFFFFF")
-        c.stroke([("M", 6, y), ("H", 13.5)])
+def ic_carfront(c):  # "Controls" row
+    c.stroke([("M", 2, 11), ("L", 3.5, 7), ("H", 12.5), ("L", 14, 11), ("V", 13), ("H", 2), ("Z",)], w=1.3)
+    c.circle(5, 11, 0.8, fill="#FFFFFF")
+    c.circle(11, 11, 0.8, fill="#FFFFFF")
 
 
-def app_arrow(k):  # 24 px at 1x, pointing up (the mock's "M8 1.5L13 14L8 11L3 14Z"), accent fill
-    c = Canvas(24 * k, 24 * k, 16)
-    c.fill([("M", 8, 1.5), ("L", 13, 14), ("L", 8, 11), ("L", 3, 14), ("Z",)], PAL["accent"])
+def ic_nav(c):  # "Location" row
+    c.fill([("M", 8, 1.5), ("L", 13, 14), ("L", 8, 11), ("L", 3, 14), ("Z",)])
+
+
+def ic_shield(c):  # "Security" row
+    c.stroke([("M", 8, 1.5), ("L", 13.5, 3.5), ("V", 8), ("Q", 13.5, 12.5, 8, 14.5), ("Q", 2.5, 12.5, 2.5, 8),
+              ("V", 3.5), ("Z",)], w=1.3)
+
+
+def ic_chev(c):  # list row ">"
+    c.stroke([("M", 6, 3), ("L", 11, 8), ("L", 6, 13)], w=1.4)
+
+
+def ic_back(c):  # sub page "<"
+    c.stroke([("M", 10.5, 3), ("L", 5.5, 8), ("L", 10.5, 13)], w=1.6)
+
+
+def ic_close(c):
+    c.stroke([("M", 3.5, 3.5), ("L", 12.5, 12.5)], w=1.4)
+    c.stroke([("M", 12.5, 3.5), ("L", 3.5, 12.5)], w=1.4)
+
+
+def app_arrow(k):  # 48 px at 1x, pointing up (the mock's "M8 1.5L13 14L8 11L3 14Z"), white: tinted when drawn
+    c = Canvas(48 * k, 48 * k, 16)
+    ic_nav(c)
     return c.out()
 
 
@@ -318,19 +344,35 @@ GLYPH_SETS = [
     ("sm", "Inter-Regular.ttf", 17, "0123456789PRND", True),
     ("smb", "Inter-SemiBold.ttf", 17, "PRND", False),
 ]
-WORDS = [("kmh", "Inter-Regular.ttf", 14, "km/h"), ("km", "Inter-Regular.ttf", 17, "km")]
+# key, font, size (1x), text, letter spacing (px at 1x); the phone app's footer wordmark and trim (restyle mock)
+WORDS = [("kmh", "Inter-Regular.ttf", 14, "km/h", 0), ("km", "Inter-Regular.ttf", 17, "km", 0),
+         ("wm_ModelY", "Inter-Light.ttf", 15, "MODEL Y", 5), ("trim_ModelY", "Inter-Regular.ttf", 13, "Performance", 0)]
 
 
-def render_text(fontfile, size, s):
+def render_text(fontfile, size, s, track=0):
     f = ImageFont.truetype(os.path.join(FONTS, fontfile), size)
-    l, t, r, b = f.getbbox(s, anchor="ls")
     cap = f.getbbox("H", anchor="ls")[1]
+    if track:  # letter-spaced: each character at its own pen x, `track` added after every one
+        xs, x = [], 0.0
+        for ch in s:
+            xs.append(x)
+            x += f.getlength(ch) + track
+        adv = x - track
+        boxes = [f.getbbox(ch, anchor="ls") for ch in s if ch != " "]
+        l, t, b = min(bb[0] for bb in boxes), min(bb[1] for bb in boxes), max(bb[3] for bb in boxes)
+        r = math.ceil(xs[-1] + f.getbbox(s[-1], anchor="ls")[2])
+        runs = list(zip(s, xs))
+    else:
+        l, t, r, b = f.getbbox(s, anchor="ls")
+        adv, runs = f.getlength(s), [(s, 0)]
     w, h = max(1, r - l), max(1, b - t)
     im = Image.new("RGBA", (w + 2, h + 2), (255, 255, 255, 0))
     mask = Image.new("L", (w + 2, h + 2), 0)
-    ImageDraw.Draw(mask).text((1 - l, 1 - t), s, font=f, fill=255, anchor="ls")
+    d = ImageDraw.Draw(mask)
+    for text, px in runs:
+        d.text((1 - l + px, 1 - t), text, font=f, fill=255, anchor="ls")
     im.putalpha(mask)
-    return im, l - 1, t - 1 - cap, f.getlength(s)
+    return im, l - 1, t - 1 - cap, adv
 
 
 def build_sprites(k):
@@ -345,14 +387,15 @@ def build_sprites(k):
                 ox += (adv - a) / 2
                 a = adv
             sp[key] = (im, ox, oy, a)
-    for key, ff, size, s in WORDS:
-        sp[key] = render_text(ff, size * k, s)
+    for key, ff, size, s, track in WORDS:
+        sp[key] = render_text(ff, size * k, s, track * k)
 
     icons16 = {
         "lock": ic_lock, "unlock": ic_unlock, "tent": ic_tent, "headlight": ic_headlight,
         "heater": ic_heater, "radio": ic_radio, "warn": ic_warn, "bolt": ic_bolt, "check": ic_check,
         "ring": ic_ring, "dot": ic_dot, "plug": ic_plug, "power": ic_power,
-        "horn": ic_horn, "frunk": ic_frunk, "trunk": ic_trunk, "list": ic_list,
+        "horn": ic_horn, "frunk": ic_frunk, "trunk": ic_trunk, "lockfill": ic_lockfill, "carfront": ic_carfront,
+        "nav": ic_nav, "shield": ic_shield, "chev": ic_chev, "back": ic_back, "close": ic_close,
     }
     for key, fn in icons16.items():
         c = Canvas(18 * k, 18 * k, 16)

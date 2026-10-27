@@ -1,7 +1,9 @@
--- Phone app server side (server/MinidoracatTesla/Remote.lua): reach (grid up: any distance; grid down: Bluetooth 30),
--- only phone key holders get answers or may act, VehicleManager rights on top of the key, the last record for an
--- unloaded car, the horn's one-shot OnTick, alerts per car, and the bearing the client draws (Keys.bearing).
--- Runs after test_keys / test_liftgate / test_charging (name order): Keys, Liftgate and Charging are loaded by then.
+-- Phone app (server/MinidoracatTesla/Remote.lua): reach (grid up: any distance; grid down: Bluetooth 30), only phone
+-- key holders get answers or may act, VehicleManager rights on top of the key, the last record for an unloaded car
+-- (with the paint), the horn's one-shot OnTick, alerts per car, the bearing the client draws (Keys.bearing); the
+-- client (client/MinidoracatTesla/PhoneApp.lua): pages, back, joypad rows, paint picture, scrolling, text fit.
+-- Runs after test_hud / test_keys / test_liftgate / test_charging (name order): HUD, Keys, Liftgate and Charging are
+-- loaded by then.
 local F = dofile("scripts/harness/park_fakes.lua")
 local check = (H and H.check) or function(ok, label) print((ok and "  PASS  " or "  FAIL  ") .. label); if not ok then error(label) end end
 
@@ -64,6 +66,8 @@ local function tesla(keyId)
     function v:setColorHSV(h) self.hue = h end
     function v:onHornStart() self.horn = true; self.hornStarts = (self.hornStarts or 0) + 1 end
     function v:onHornStop() self.horn = false end
+    v.skinIndex = 4 -- UltraRed (Core.lua colors[5])
+    function v:getSkinIndex() return self.skinIndex end
     return v
 end
 
@@ -249,6 +253,7 @@ st = last("appState")
 check(st and st.link == nil and st.x == math.floor(v.x) and st.locked == true and st.pct == 80 and st.car == "MinidoracatTesla_ModelY",
     "unloaded: the server's last record (position, locked, battery)")
 check(st and st.h ~= nil, "last record carries its game hour")
+check(st and st.skin == 4, "last record carries the paint (skin index) for the app's car picture")
 local db = gos[T.Store.SYSTEM]
 local saved = {}
 for _, k in ipairs(db.keys) do saved[k] = true end
@@ -373,6 +378,244 @@ ci, ang = bearing(0, 0, 0, 100)
 check(ci == 5 and ang > 180 and ang < 270, "car due south: compass S, arrow down-left (no negative angle)")
 ci, ang = bearing(0, 0, -100, 0)
 check(ci == 7 and ang > 270 and ang < 360, "car due west: compass W (index from a negative atan2), arrow up-left")
+
+-- ------------------------------------------------------------------ client: pages, joypad, paint, fit (PhoneApp.lua)
+-- UI fakes of its own (only what PhoneApp / HUD.drawTip touch); DrawText calls are kept to check nothing is drawn
+-- outside the phone. getText returns the key, so every string is long: the fitting is exercised everywhere.
+H.section("phone app: client")
+H.side(true, false)
+local SW, SH = 1920, 1009
+function getPlayerScreenLeft() return 0 end
+function getPlayerScreenTop() return 0 end
+function getPlayerScreenWidth() return SW end
+function getPlayerScreenHeight() return SH end
+UIFont = { Small = "Small", Medium = "Medium", Large = "Large" }
+local FONT_H, CHAR_W = { Small = 19, Medium = 22, Large = 30 }, { Small = 8, Medium = 10, Large = 13 }
+local tmFake = { getFontHeight = function(_, f) return FONT_H[f] end, MeasureStringX = function(_, f, s) return #s * CHAR_W[f] end }
+function getTextManager() return tmFake end
+function getTexture(path) return { path = path } end
+local gtime = getGameTime()
+gtime.getHour, gtime.getMinutes = function() return 14 end, function() return 32 end
+local drawn, recording = {}, true
+local UI = {}
+UI.__index = UI
+function UI:derive(name) local t = { Type = name }; setmetatable(t, { __index = self }); t.__index = t; return t end
+function UI:new(x, y, w, h) local o = { x = x, y = y, width = w, height = h, visible = true }; setmetatable(o, self); return o end
+function UI:initialise() end
+function UI:instantiate()
+    local me = self
+    self.javaObject = {
+        DrawSubTextureRGBA = function() end, DrawTextureAngle = function() end, DrawTextureScaled = function() end,
+        DrawText = function(_, font, s, x, y) if recording then drawn[#drawn + 1] = { font = font, s = s, x = x, y = y, el = me } end end,
+    }
+    if self.createChildren then self:createChildren() end
+end
+function UI:setX(x) self.x = x end
+function UI:setY(y) self.y = y end
+function UI:setWidth(w) self.width = w end
+function UI:setHeight(h) self.height = h end
+function UI:setVisible(v) self.visible = v end
+function UI:isVisible() return self.visible end
+function UI:getIsVisible() return self.visible end
+function UI:addToUIManager() end
+function UI:removeFromUIManager() end
+function UI:bringToTop() end
+function UI:addChild() end
+function UI:update() end
+function UI:getAbsoluteX() return self.x end
+function UI:getAbsoluteY() return self.y end
+function UI:setStencilRect() end
+function UI:clearStencilRect() end
+function UI:drawTextureScaled() end
+function UI:drawTextRight(s, x, y, r, g, b, a, font) self.javaObject:DrawText(font, s, x - #s * CHAR_W[font], y) end
+function UI:drawTextCentre(s, x, y, r, g, b, a, font) self.javaObject:DrawText(font, s, x - #s * CHAR_W[font] / 2, y) end
+function UI:onGainJoypadFocus(jd) self.joyfocus = jd end
+function UI:onLoseJoypadFocus() self.joyfocus = nil end
+ISPanelJoypad = UI:derive("ISPanelJoypad")
+ISButton = UI:derive("ISButton")
+function ISButton:new(x, y, w, h, title, target, onclick)
+    local o = UI.new(self, x, y, w, h)
+    o.title, o.target, o.onclick, o.enable, o.borderColor = title, target, onclick, true, { a = 1 }
+    return o
+end
+function ISButton:setEnable(e) self.enable = e; self.borderColor = { a = 1 } end
+function ISButton:isMouseOver() return self.mouseOver == true end
+function ISButton:forceClick() if self.visible and self.enable then self.onclick(self.target, self) end end -- ISButton.lua
+Joypad = { AButton = 0, BButton = 1 }
+JoypadState = { players = {} }
+function setJoypadFocus() end
+ISWorldMap = { IsAllowed = function() return true end, ShowWorldMap = function() end, render = function() end, close = function() end }
+H.stub("ISUI/ISPanelJoypad")
+H.stub("ISUI/ISButton")
+H.stub("ISUI/Maps/ISWorldMap")
+require "MinidoracatTesla/PhoneApp"
+local App = T.PhoneApp
+local me = { getX = function() return 1000 end, getY = function() return 1990 end, isDead = function() return false end }
+local realSpecific = getSpecificPlayer
+getSpecificPlayer = function() return me end
+local function sentLast() local m = H.clientSent[#H.clientSent]; return m and m.command, m and m.args end
+local a = App.open(0, 9001)
+local function state(t)
+    local s = { key = 9001, link = "net", grid = true, car = "MinidoracatTesla_ModelY", x = 1000, y = 2000, pct = 80, km = 600,
+        locked = true, skin = 4, h = H.hours() }
+    for k, val in pairs(t or {}) do s[k] = val end
+    for k, val in pairs(t or {}) do if val == false and k ~= "locked" then s[k] = nil end end -- false = not sent
+    H.advanceMs(1) -- a new state time: the app's change signature
+    T.ClientCommands.appState(s)
+    if a:read() then a:layout() end
+end
+-- every string drawn by a full redraw of the current page sits inside the phone
+local function textInside()
+    drawn = {}
+    a:prerender()
+    a:render()
+    for _, d in ipairs(drawn) do
+        local wid = #d.s * CHAR_W[d.font]
+        if d.x < 0 or d.x + wid > a.width + 0.5 then return false, d.s .. " at " .. d.x .. "+" .. wid .. " > " .. a.width end
+    end
+    return #drawn > 0, #drawn .. " strings"
+end
+check(a and a.inUI and a.page == "home" and sentLast() == "appAlerts", "open: home page, asks for the alerts once (the list's count)")
+state()
+local colors = T.Specs["Base.MinidoracatTesla_ModelY"].colors
+check(a.carTex.path == "media/textures/MinidoracatTesla/HUD/app_car_UltraRed.png", "skin 4 -> the UltraRed picture")
+local missing = {}
+for _, c in ipairs(colors) do
+    local f = io.open("MOD/MinidoracatTeslaFor42/Contents/mods/MinidoracatTeslaFor42/42/media/textures/MinidoracatTesla/HUD/app_car_" .. c.name .. ".png", "rb")
+    if f then f:close() else missing[#missing + 1] = c.name end
+end
+check(#missing == 0, "a car picture for each of the 8 paints (" .. table.concat(missing, ",") .. ")")
+state({ link = false, skin = false })
+check(a.paintName == colors[1].name and a.sSub2 ~= nil and not a.b.lock.enable,
+    "a record from before the paint field: first paint; offline: 'can't reach' line, lock greyed")
+state({ skin = 99 })
+check(a.paintName == colors[1].name, "unknown skin index -> first paint")
+state()
+check(a.height <= SH - 8 and a.scrollMax == 0, "1920x1009, S=1: the home page fits (" .. a.height .. " px), no scrolling")
+local ok, why = textInside()
+check(ok, "home: no text outside the phone (" .. why .. ")")
+-- pages: list rows open them, back returns
+for _, page in ipairs({ "controls", "location", "security", "charging" }) do
+    a.b[page]:forceClick()
+    local fine = a.page == page and a.b.back:isVisible() and not a.b.close:isVisible()
+    ok, why = textInside()
+    check(fine and ok and a.height <= SH - 8, page .. ": opened from its row, back shown, text inside (" .. why .. ")")
+    a.b.back:forceClick()
+    check(a.page == "home" and a.b.controls:isVisible(), page .. ": back -> home")
+end
+a.b.security:forceClick()
+check(sentLast() == "appAlerts", "security page asks for the alerts again")
+a.b.back:forceClick()
+-- remote actions: lock (locked -> unlock), a lid asks the opposite of what is shown
+a.b.lock:forceClick()
+local cmd, args = sentLast()
+check(cmd == "appAction" and args.act == "unlock" and args.key == 9001, "home lock icon on a locked car -> unlock")
+state({ chg = "charging", kw = 11.5, target = 90, mins = 50 })
+check(a.b.qcharge.enable and a.b.qcharge.on and a.rowEm.charging ~= nil, "charging: quick bolt lit, list row leads with the state")
+a.b.qcharge:forceClick()
+cmd, args = sentLast()
+check(args.act == "charge" and args.on == false, "quick bolt while charging -> stop charging")
+state()
+check(not a.b.qcharge.enable and a.b.qcharge.tipKey == "IGUI_MinidoracatTesla_App_NotPlugged", "not plugged: bolt greyed, its tip says why")
+state({ chg = "full", target = 90 })
+check(not a.b.qcharge.enable and a.b.qcharge.tipKey == "IGUI_MinidoracatTesla_Tip_AppChargeStart", "charged full: bolt greyed, tip is its function (still plugged in)")
+state()
+-- joypad: rows per page, A presses, B back / close
+local jd = {}
+a:onGainJoypadFocus(jd)
+check(a.b.lock.joypadFocused, "joypad: first control (lock) focused")
+a:onJoypadDirRight()
+check(a.b.qcharge.joypadFocused and not a.b.lock.joypadFocused, "joypad: right -> charge icon")
+a:onJoypadDirUp()
+check(a.b.close.joypadFocused, "joypad: up -> close")
+a:onJoypadDirDown(); a:onJoypadDirDown()
+check(a.b.controls.joypadFocused, "joypad: down twice -> Controls row")
+a:onJoypadDown(Joypad.AButton)
+check(a.page == "controls" and a.b.flash.joypadFocused, "joypad: A opens Controls, focus on Flash")
+a:onJoypadDirRight(); a:onJoypadDirDown()
+check(a.b.trunk.joypadFocused, "joypad: right, down -> Liftgate")
+a:onJoypadDown(Joypad.AButton)
+cmd, args = sentLast()
+check(args.act == "trunk" and args.on == true, "joypad: A on Liftgate -> open it")
+a:onJoypadDown(Joypad.BButton)
+check(a.page == "home" and a.b.controls.joypadFocused, "joypad: B on a sub page -> home, focus back on its row")
+state({ link = false })
+a:onJoypadDirUp() -- Controls row -> the quick icon nearest its centre, then left to the end of the row
+for _ = 1, 4 do a:onJoypadDirLeft() end
+check(a.b.lock.joypadFocused and not a.b.lock.enable, "offline: lock focused but greyed")
+local n = #H.clientSent
+a:onJoypadDown(Joypad.AButton)
+check(#H.clientSent == n, "joypad: A on a greyed control sends nothing")
+state()
+a:onJoypadDown(Joypad.BButton)
+check(not a.inUI and a.key == nil, "joypad: B on home closes the app")
+-- split screen: half the height, the page scrolls and the joypad focus scrolls itself into view
+SW, SH = 960, 504
+a = App.open(0, 9001)
+state()
+check(a.height <= SH - 8 and a.scrollMax > 0, "split screen (960x504): no taller than the screen (" .. a.height .. "), the page scrolls")
+a:onGainJoypadFocus(jd)
+for _ = 1, 5 do a:onJoypadDirDown() end
+local row = a.b.charging
+check(row.joypadFocused and row:isVisible() and a.scroll > 0 and row.y >= a.yBody and row.y + row.height <= a.yBodyEnd,
+    "split screen: down to Charging scrolls it into view (scroll " .. a.scroll .. ")")
+ok, why = textInside()
+check(ok, "split screen: text inside the phone (" .. why .. ")")
+a:onMouseWheel(-100)
+check(a.scroll == 0 and a.b.lock:isVisible() and not a.b.charging:isVisible(),
+    "mouse wheel up: back to the top; the Charging row below the fold is hidden (no clicks over the toast)")
+-- Security page with 10 alerts on the half screen: an alerts reply draws at once, joypad down past Sentry Mode
+-- scrolls the list, a control only half inside the visible part takes no clicks
+check(not a.b.security:isVisible(), "the Security row half below the fold takes no clicks until scrolled in")
+a:onMouseWheel(5)
+a.b.security:forceClick()
+local list, realParkUI = {}, T.ParkUI
+for i = 1, 10 do list[i] = { i = i } end
+T.ParkUI = { card = function(e) return { title = "alert " .. e.i, detail = "detail", time = "14:0" .. (e.i % 10) } end }
+T.ClientCommands.appAlerts({ key = 9001, list = list })
+ok, why = pcall(function() a:prerender(); a:render() end)
+check(ok and #a.alerts == 10, "alerts arriving between updates: drawn at once (" .. tostring(why) .. ")")
+check(a.scrollMax > 0 and a.b.sentry.joypadFocused, "split screen, 10 alerts: the Security page scrolls; joypad on Sentry Mode")
+a:onJoypadDirDown(); a:onJoypadDirDown()
+check(a.b.sentry.joypadFocused and a.scroll > 0, "joypad down past Sentry Mode scrolls the alerts (" .. a.scroll .. ")")
+a:onJoypadDirUp()
+check(a.b.back.joypadFocused, "joypad up from the list: back")
+a:onJoypadDirDown()
+check(a.b.sentry.joypadFocused and a.scroll == 0 and a.b.sentry:isVisible(), "joypad down again: Sentry Mode scrolled back in view")
+a:onMouseWheel(1)
+local partial = false
+for _, b in ipairs(a.buttons) do
+    if b:isVisible() and b.cy >= a.yBody and (b.y < a.yBody or b.y + b.height > a.yBodyEnd) then partial = true end
+end
+check(a.scroll > 0 and not a.b.sentry:isVisible() and not partial, "scrolled: a control not wholly in view takes no clicks")
+ok, why = textInside()
+check(ok, "Security page with 10 alerts: text inside the phone (" .. why .. ")")
+T.ParkUI = realParkUI
+a:onJoypadDown(Joypad.BButton)
+a:onJoypadDirDown(); a:onJoypadDirDown(); a:onJoypadDirDown() -- Security row -> Charging, the last one
+a:showToast(string.rep("word ", 40), false)
+a:layout()
+ok, why = textInside()
+check(ok and a.yToast and a.yToast + 2 * 19 <= a.height, "a long toast: two lines at the bottom, inside (" .. why .. ")")
+check(a.b.charging.joypadFocused and a.b.charging:isVisible(), "the toast shortens the page: the focused Charging row scrolls back in view")
+-- "Show on map" from the Location page: the app steps aside, closing the map brings it back on Location
+a.b.location:forceClick()
+a.b.map:forceClick()
+check(not a.inUI and App.mapCar ~= nil, "map: the app closes, the marker is set")
+ISWorldMap.close({})
+check(a.inUI and a.page == "location" and App.mapCar == nil, "map closed: the app back on the Location page, marker gone")
+-- redraw allocates nothing
+recording = false
+collectgarbage("collect"); collectgarbage("stop")
+a:prerender(); a:render()
+local kb = collectgarbage("count")
+for _ = 1, 200 do a:prerender(); a:render() end
+local grew = collectgarbage("count") - kb
+collectgarbage("restart")
+check(grew < 1, "200 redraws allocate nothing (" .. string.format("%.2f", grew) .. " KB)")
+a:close()
+getSpecificPlayer = realSpecific
+H.side(false, true)
 
 -- ------------------------------------------------------------------ restore (later tests use their own fakes)
 Events.OnSpawnVehicleEnd.Remove(R.onLoad)
