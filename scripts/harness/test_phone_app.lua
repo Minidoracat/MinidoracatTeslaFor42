@@ -283,18 +283,27 @@ check(last("appAlerts") == nil, "alerts: nothing for a player without the phone 
 
 -- ------------------------------------------------------------------ client bearing (pure math in PhoneApp.lua)
 H.section("phone app: bearing")
+-- same lines as PhoneApp.bearing (the client file needs the UI to load); Kahlua's % keeps the dividend's sign, so the
+-- client wraps with floor, and this copy does too
+local function wrap360(d) return d - math.floor(d / 360) * 360 end
 local function bearing(px, py, cx, cy)
     local dx, dy = cx - px, cy - py
-    local compass = math.deg(math.atan2(dx, -dy)) % 360
+    local compass = wrap360(math.deg(math.atan2(dx, -dy)))
     local sx, sy = dx - dy, (dx + dy) / 2
-    return math.floor((compass + 22.5) / 45) % 8 + 1, math.deg(math.atan2(sx, -sy)) % 360
+    local ci = math.floor((compass + 22.5) / 45)
+    return ci - math.floor(ci / 8) * 8 + 1, wrap360(math.deg(math.atan2(sx, -sy)))
 end
 local ci, ang = bearing(0, 0, 0, -100)
 check(ci == 1 and ang > 0 and ang < 90, "car due north (-y): compass N, arrow up-right on the iso screen")
 ci, ang = bearing(0, 0, 100, 100)
 check(ci == 4 and math.abs(ang - 180) < 1e-6, "car south-east (+x+y): compass SE, arrow straight down")
+ci, ang = bearing(0, 0, 0, 100)
+check(ci == 5 and ang > 180 and ang < 270, "car due south: compass S, arrow down-left (no negative angle)")
+ci, ang = bearing(0, 0, -100, 0)
+check(ci == 7 and ang > 270 and ang < 360, "car due west: compass W (index from a negative atan2), arrow up-left")
 local src = io.open("MOD/MinidoracatTeslaFor42/Contents/mods/MinidoracatTeslaFor42/42/media/lua/client/MinidoracatTesla/PhoneApp.lua"):read("*a")
-check(src:find("local sx, sy = dx %- dy, %(dx %+ dy%) / 2", 1) ~= nil, "PhoneApp.bearing uses the same iso projection")
+check(src:find("local sx, sy = dx %- dy, %(dx %+ dy%) / 2", 1) ~= nil and src:find("ci %- math.floor%(ci / 8%) %* 8 %+ 1", 1) ~= nil,
+    "PhoneApp.bearing uses the same projection and wrap")
 
 -- ------------------------------------------------------------------ restore (later tests use their own fakes)
 Events.OnSpawnVehicleEnd.Remove(R.onLoad)

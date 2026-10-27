@@ -208,7 +208,8 @@ function R.state(player, key)
     end
     local link = K.appReach(player, v)
     local r = link and R.remember(v) or store(R.RECORDS)[tostring(key)]
-    local out = { key = key, link = link }
+    -- grid: the phone's own network (status bar), apart from whether it reaches this car
+    local out = { key = key, link = link, grid = getWorld():isHydroPowerOn() }
     if r then for k, val in pairs(r) do out[k] = val end end
     return out
 end
@@ -243,6 +244,8 @@ T.ServerCommands.appAction = function(player, args)
     local why = fn(player, v, args.on == true)
     if why then return done(why) end
     R.stats.actions = R.stats.actions + 1
+    local mvm = MinidoracatVehicleManager -- AGENTS.md: touch after changing the car (ParkedGuard.lua:258-261)
+    if mvm and mvm.Parked and mvm.Parked.touch then mvm.Parked.touch(v) end
     local onOff = (act == "sentry" or act == "charge") and (args.on == true and " on" or " off") or ""
     T.log("app " .. act .. onOff .. " vid=" .. v:getId() .. " by " .. player:getUsername())
     done(nil)

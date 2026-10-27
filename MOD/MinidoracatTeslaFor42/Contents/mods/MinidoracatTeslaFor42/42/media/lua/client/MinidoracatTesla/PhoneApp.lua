@@ -252,12 +252,15 @@ end
 -- Where the car is from the player: compass words (north = -y) and the screen angle of the arrow. The iso screen
 -- shows a world step (dx, dy) as (dx - dy, (dx + dy) / 2), so north points up-right as the player sees it.
 -- Returns distance, compass index 1..8, clockwise degrees from screen-up (DrawTextureAngle, UIElement.java:243-262).
+-- Kahlua's % keeps the dividend's sign (-119 % 360 = -119 in game, tesla-app-1027a), so wrap with floor instead.
+local function wrap360(d) return d - math.floor(d / 360) * 360 end
 function App.bearing(px, py, cx, cy)
     local dx, dy = cx - px, cy - py
     local dist = math.sqrt(dx * dx + dy * dy)
-    local compass = math.deg(math.atan2(dx, -dy)) % 360
+    local compass = wrap360(math.deg(math.atan2(dx, -dy)))
     local sx, sy = dx - dy, (dx + dy) / 2
-    return dist, math.floor((compass + 22.5) / 45) % 8 + 1, math.deg(math.atan2(sx, -sy)) % 360
+    local ci = math.floor((compass + 22.5) / 45)
+    return dist, ci - math.floor(ci / 8) * 8 + 1, wrap360(math.deg(math.atan2(sx, -sy)))
 end
 
 -- strings and button states only when something shown changes (10 Hz update; no allocation otherwise)
@@ -286,7 +289,9 @@ function App:read()
     self.sTime = string.format("%02d:%02d", hh, mm)
     local link = st and st.link
     self.link = link
-    self.sNet = link == "net" and txt("Net") or (link == "bt" and txt("Bt") or txt("NoService"))
+    -- status bar: the phone's network (grid up), else Bluetooth while it reaches the car, else no service
+    self.grid = st ~= nil and st.grid == true
+    self.sNet = self.grid and txt("Net") or (link == "bt" and txt("Bt") or txt("NoService"))
     local rec = st and st.pct ~= nil and not st.deny
     self.rec = rec
     self.sName = st and st.car and getText("IGUI_VehicleName" .. st.car) or txt("Title")
@@ -486,7 +491,7 @@ function App:prerender()
     local pad = math.floor(PAD * S)
     HUD.rrect(self, 0, 0, w, self.height, 24 * S, C.bg, 0.97)
     -- signal bars (grid up)
-    if self.link == "net" then
+    if self.grid then
         local bx = w - pad - math.floor(16 * S)
         local by = self.yBar + (self.FH - 12 * S) / 2
         for i = 0, 3 do
@@ -545,7 +550,7 @@ function App:render()
     local jo, c, c2, c3 = self.javaObject, C.text, C.text2, C.text3
     jo:DrawText(UIFont.Small, self.sTime, pad, self.yBar, c2[1], c2[2], c2[3], 1)
     local netC = self.link == "bt" and C.accent or c2
-    self:drawTextRight(self.sNet, w - pad - (self.link == "net" and math.floor(22 * S) or 0), self.yBar, netC[1], netC[2], netC[3], 1, UIFont.Small)
+    self:drawTextRight(self.sNet, w - pad - (self.grid and math.floor(22 * S) or 0), self.yBar, netC[1], netC[2], netC[3], 1, UIFont.Small)
     jo:DrawText(UIFont.Medium, self.sHead, pad, self.yName, c[1], c[2], c[3], 1)
     jo:DrawText(UIFont.Small, self.sHeadSub, pad, self.ySub, c2[1], c2[2], c2[3], 1)
     if self.page == "home" then
