@@ -192,8 +192,8 @@ check(idle.parts.Battery.item.uses == 0.5 and kwh(idle) == low0, "12V: no DC-DC 
 T.Battery.set(idle, idle.parts.GasTank, 75 * 0.05)
 local five0 = kwh(idle)
 T.Update.Battery12V(idle, idle.parts.Battery, 1)
-check(idle.parts.Battery.item.uses >= 0.99 and math.abs((five0 - kwh(idle)) - 0.5 * T.V12_KWH) < 1e-9,
-    "12V: DC-DC at 5% pack, camp off: refilled, pack pays 0.5 x V12_KWH")
+check(idle.parts.Battery.item.uses >= 0.99 and math.abs((five0 - kwh(idle)) - 0.5 * T.Specs["Base.MinidoracatTesla_ModelY"].v12Kwh) < 1e-9,
+    "12V: DC-DC at 5% pack, camp off: refilled, pack pays 0.5 x the 12V kWh")
 idle.parts.Battery.item.uses = 0.96
 local hi0 = kwh(idle)
 T.Update.Battery12V(idle, idle.parts.Battery, 1)

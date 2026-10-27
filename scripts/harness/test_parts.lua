@@ -15,9 +15,10 @@ check(mv.feature[3] == 6260 and np.feature[3] == 6260, "script engineForce 6260 
 H.section("DC-DC at spawn")
 Vehicles.Create = Vehicles.Create or {}
 Vehicles.Create.Battery = function(v, part) part:getInventoryItem():setUsedDelta(0.2) end -- an old, drained 12V
+local V12Y, V12M3 = T.Specs["Base.MinidoracatTesla_ModelY"], T.Specs["Base.MinidoracatTesla_Model3"]
 local sv = H.vehicle({ kwh = 30 })
 T.Create.Battery12V(sv, sv:getBattery())
-check(near(sv:getBattery():getInventoryItem():getCurrentUsesFloat(), 1) and near(B.kwh(B.part(sv)), 30 - 0.8 * T.V12_KWH),
+check(near(sv:getBattery():getInventoryItem():getCurrentUsesFloat(), 1) and near(B.kwh(B.part(sv)), 30 - 0.8 * V12Y.v12Kwh),
     "12V created after the pack: topped up from the pack")
 local dead = H.vehicle({ kwh = 78.4 * 0.04 })
 T.Create.Battery12V(dead, dead:getBattery())
@@ -27,7 +28,16 @@ early:getBattery():getInventoryItem():setUsedDelta(0.3)
 H.setRand(0.5)
 T.Create.Battery(early, B.part(early))
 check(near(early:getBattery():getInventoryItem():getCurrentUsesFloat(), 1), "12V created before the pack: pack create tops it up")
-check(near(T.V12_KWH, 0.10695), "12V is 15.5 V x 6.9 Ah = 0.107 kWh")
+check(near(V12Y.v12Kwh, 0.10695) and near(V12M3.v12Kwh, 0.10695),
+    "12V is 15.5 V x 6.9 Ah = 0.107 kWh on both cars (Model Y and Model 3 owner's manuals)")
+-- each car tops up its own 12V: a Model 3 given another size pays for that size (the same 0.107 both, so plant one)
+local keep = V12M3.v12Kwh
+V12M3.v12Kwh = 0.2
+local m3 = H.vehicle({ script = "Base.MinidoracatTesla_Model3", kwh = 30 })
+m3:getBattery():getInventoryItem():setUsedDelta(0.5)
+local m3took = B.topUp12V(m3)
+V12M3.v12Kwh = keep
+check(near(m3took, 0.1), "topUp12V reads the car's own Specs v12Kwh (Model 3 planted 0.2 kWh: pays 0.1 for half)")
 
 H.section("pack uninstall / install keeps the charge")
 local rv = H.vehicle({ kwh = 78.4 * 0.5 })
