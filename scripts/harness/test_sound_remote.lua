@@ -133,6 +133,7 @@ H.side(false, false)
 v.driver = driver
 n = #H.sent
 check(cmd(driver, { vid = v:getId(), on = true }) == 0 and #H.sent == n, "SP: accepted but nobody to tell")
+check(R.stats.limited == 0, "none of the checks above was cut by the rate limit (their 0s are the driver check's)")
 
 H.section("remote sound: server rate limit")
 H.side(false, true)
@@ -154,8 +155,13 @@ check(burst(near, 1, true) == 2, "another player's budget is their own")
 v.driver, driver.vehicle, near.vehicle = driver, v, nil
 H.advanceMs(R.RATE_WINDOW_MS)
 check(burst(driver, 1, true) == 2, "next window: relayed again")
+burst(driver, R.RATE_MAX, true)
+H.advanceMs(-60000) -- the server's wall clock jumps back (getTimestampMs is System.currentTimeMillis)
+check(burst(driver, 1, true) == 2, "clock set back a minute: a fresh window, not one stretched by the jump")
+H.advanceMs(60000)
 -- the real driver (Sound.update in the dashboard's 10 Hz update) for a minute, each "motor" it sends fed to the
--- server: beats every 5 s, and from 10 s to 20 s the motor stopped and started every 0.5 s (the power key, hammered)
+-- server: beats every 5 s; from 10 s to 20 s the motor stopped and started every 0.5 s (faster than the power key
+-- can: a start takes 1.5 s, VehicleEngine.java:210-211), then running again with its beats
 H.advanceMs(R.RATE_WINDOW_MS)
 limited = R.stats.limited
 H.side(true, false)
@@ -164,7 +170,7 @@ dash:setVehicle(car)
 H.clientSent = {}
 local told, done, times = 0, 0, {}
 for i = 1, 600 do
-    if i >= 100 and i <= 200 and i % 5 == 0 then car.running = not car.running end
+    if i >= 100 and i < 200 and i % 5 == 0 then car.running = not car.running end
     H.side(true, false)
     h:update()
     H.side(false, true)
