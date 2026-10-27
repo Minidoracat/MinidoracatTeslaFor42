@@ -154,18 +154,22 @@ end
 -- key is NOT found (the interact key's Vehicles.Use.EngineDoor, Vehicles.lua:849-852; the Mechanics radial,
 -- ISVehicleMenu.lua:990-993; DriveUnitMenu.lua), so the owner's open would fail on the lock (ISOpenVehicleDoor.lua:61-64).
 -- Whoever may unlock it (vanilla canUnlockDoor: seated, or the key in hand, BaseVehicle.java:1275-1301; the phone key
--- in a bag, as at a door handle; a VehicleManager user it lets ride this claimed car, whose virtual key is no item) has
--- it unlocked right before vanilla complete() looks; a stranger finds it locked. The key card in a wallet does not
--- count (tap the reader, as for the doors). complete() runs on the server in MP and locally in SP.
+-- in a bag, as at a door handle; a VehicleManager user it lets work on the hood, whose virtual key is no item) has it
+-- unlocked right before vanilla complete() looks; a stranger finds it locked. The key card in a wallet does not count
+-- (tap the reader, as for the doors). complete() runs on the server in MP and locally in SP.
 local NOT_RIDER = { UNCLAIMED = true, EASY_USE = true, KEY = true } -- as T.legit (ParkModes.lua)
-local function vmRider(chr, vehicle)
+local function vmMechanic(chr, vehicle)
     local api = MinidoracatVehicleManagerAPI
     if not (api and api.canUse) then return false end
     -- its VirtualKey sandbox option off = vanilla key rules (VehicleManager ActionGuards.lua virtualKey, default on)
     local page = SandboxVars and SandboxVars.MinidoracatVehicleManager
     if page and page.VirtualKey == false then return false end
-    local ok, why = api.canUse(chr, vehicle, "PASSENGER", { mod = T.MODULE })
-    return ok == true and not NOT_RIDER[why]
+    -- the codes VehicleManager itself puts on opening the hood (its Actions.lua EngineDoor; the app's frunk, Remote.lua)
+    for _, code in ipairs({ "REPAIR", "SALVAGE" }) do
+        local ok, why = api.canUse(chr, vehicle, code, { mod = T.MODULE })
+        if ok == true and not NOT_RIDER[why] then return true end
+    end
+    return false
 end
 function K.lidUnlock(vehicle, part, chr)
     -- the action carries vehicle and part as separate arguments (ISOpenVehicleDoor.lua:142-145): the key must be this car's
@@ -174,7 +178,7 @@ function K.lidUnlock(vehicle, part, chr)
     end
     local door = part:getDoor()
     if not door or not door:isLocked() or door:isLockBroken() then return false end
-    if not (vehicle:canUnlockDoor(part, chr) or K.phoneKey(chr, vehicle) or vmRider(chr, vehicle)) then return false end
+    if not (vehicle:canUnlockDoor(part, chr) or K.phoneKey(chr, vehicle) or vmMechanic(chr, vehicle)) then return false end
     door:setLocked(false)
     vehicle:transmitPartDoor(part) -- no-op off the server
     return true

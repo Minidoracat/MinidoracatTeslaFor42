@@ -388,7 +388,10 @@ ISOpenVehicleDoor.complete({ vehicle = v, part = v.frunk, character = walletOnly
 check(v.frunk.d.locked and not v.frunk.d.open, "frunk: the key card in a wallet does not open it (tap the reader)")
 MinidoracatVehicleManagerAPI = { canUse = function(p, _, code) return code == "PASSENGER" and p == stranger, "SHARED" end }
 ISOpenVehicleDoor.complete({ vehicle = v, part = v.frunk, character = stranger })
-check(v.frunk.d.open, "frunk: a VehicleManager rider (virtual key, no item) opens it")
+check(v.frunk.d.locked and not v.frunk.d.open, "frunk: a VehicleManager rider only (PASSENGER) is not the hood's right")
+MinidoracatVehicleManagerAPI = { canUse = function(p, _, code) return code == "REPAIR" and p == stranger, "SHARED" end }
+ISOpenVehicleDoor.complete({ vehicle = v, part = v.frunk, character = stranger })
+check(v.frunk.d.open, "frunk: a VehicleManager mechanic (REPAIR shared, virtual key, no item) opens it")
 ISCloseVehicleDoor.complete({ vehicle = v, part = v.frunk, character = stranger })
 SandboxVars.MinidoracatVehicleManager = { VirtualKey = false } -- its "Off keeps the vanilla key rules"
 ISOpenVehicleDoor.complete({ vehicle = v, part = v.frunk, character = stranger })

@@ -13,16 +13,20 @@ St.SYSTEM = "MinidoracatTeslaApp" -- named after its first user, the phone app; 
 St.KEYS = { "seen", "alerts", "inbox", "keyIds" }
 -- Global ModData tables of older saves: moved in once, then removed so they are neither saved nor served again
 St.LEGACY = { inbox = "MinidoracatTesla_Inbox", keyIds = "MinidoracatTesla_KeyIds" }
--- ponytail: the whole system is serialized into SliceY's fixed 10 MiB buffer (SliceY.java:10,
--- SGlobalObjectSystem.java:273-295; an overflow is logged and that save of the file is lost). An offline inbox is at
--- most 20 alerts of ~0.3 KB, so that is ~1700 accounts each holding a full inbox; prune inboxes of long-gone accounts or
--- split the keys into systems if a server ever gets near it.
+-- ponytail: the whole system is serialized into SliceY's fixed 10 MiB buffer (SliceY.java:10). save() truncates the
+-- file before it serializes and only logs the overflow (SGlobalObjectSystem.java:279-295), so a save past 10 MiB empties
+-- the file and the next start finds the whole store gone. Every list is capped (20 inbox alerts an account, 10 app
+-- alerts a car), so it grows only with accounts and cars: ~1600 owners each with a full inbox and a car full of alerts
+-- (review verify 2026-10-27). Prune inboxes of long-gone accounts or split the keys into systems (one buffer each,
+-- SGlobalObjects.java:151-156) if a server ever gets near it.
 
 local db
 function St.get(name)
     if not db then
         local sys = SGlobalObjects.registerSystem(St.SYSTEM) -- loads the file the first time (SGlobalObjects.java:31-39)
-        sys:setModDataKeys({ "seen", "alerts", "inbox", "keyIds", "moved" }) -- only these are saved (:210-230)
+        local saved = { "moved" } -- only these are saved (:210-230)
+        for _, key in ipairs(St.KEYS) do saved[#saved + 1] = key end
+        sys:setModDataKeys(saved)
         sys:setObjectModDataKeys({})
         sys:setObjectSyncKeys({})
         db = sys:getModData()

@@ -30,7 +30,10 @@ check(sys.md.getInitialStateForClient() == nil, "the GOS system sends clients no
 dofile(SRC) -- next start: nothing left to move
 H.fire("OnInitGlobalModData", false)
 check(T.Store.get("inbox").ghost[1] == entry and H.moddata.MinidoracatTesla_Inbox == nil, "second start: data kept, nothing recreated")
-check(sys.md.moved == true and sys.keys[5] == "moved", "the store remembers it has moved them (saved with it)")
+local savedKeys = {}
+for _, k in ipairs(sys.keys) do savedKeys[k] = true end
+check(sys.md.moved == true and savedKeys.moved and savedKeys.inbox and savedKeys.keyIds and savedKeys.seen
+    and savedKeys.alerts, "the store remembers it has moved them, and saves every key (setModDataKeys)")
 -- crash after the store was saved but before global_mod_data.bin: the old tables are on disk again, while the inbox
 -- was pulled (and that saved) since
 T.Store.get("inbox").ghost = nil
