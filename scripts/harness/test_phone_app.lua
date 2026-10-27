@@ -972,7 +972,72 @@ check(App.open(0, { keyId = 9001 }) == nil, "no phone key on the player: the app
 myInv = savedInv
 App.open(0, { keyId = 9001 })
 state()
-a:setPage("location")
+a:setPage("home")
+
+-- ---------------------------------------------------------------- a busy minute against the server's budget
+-- The real app for a minute (update every 100 ms: its 2 s polls) under a player clicking twice a second without a
+-- break: a tour (car list and picks, security page and Sentry, controls, quick buttons, closing and reopening), then
+-- 10 s each of mashing the horn, flipping between the cars (each pick: appAlerts and a poll at once) and in and out of
+-- the security page, then the tour again. Every request goes through the server's dispatch (Commands.lua
+-- CommandRate): none may be dropped, and each command's busiest 10 s keeps half its budget again to spare.
+H.section("phone app: a busy minute within the server's budget")
+local CR = T.CommandRate
+me.getOnlineID, me.getUsername = function() return 9100 end, function() return "me" end
+local tour = { "cars", "pick2", "cars", "pick1", "security", "sentry", "back", "controls", "flash", "horn", "frunk",
+    "trunk", "back", "lock", "qtrunk", "qfrunk", "cars", "pick2", "close", "open" }
+local script = {}
+local function add(ids, n) for i = 1, n do script[#script + 1] = ids[(i - 1) % #ids + 1] end end
+add(tour, 20)
+add({ "controls" }, 1); add({ "horn" }, 19)
+add({ "back" }, 1); add({ "cars", "pick2", "cars", "pick1" }, 19)
+add({ "pick1" }, 1); add({ "security", "back" }, 18); add({ "open" }, 1)
+add(tour, 40)
+local dropped0, from, sentN, gotN, clicks, missed = {}, #H.clientSent, {}, {}, 0, {}
+for k, n in pairs(CR.dropped) do dropped0[k] = n end
+local perWin, times = {}, {} -- command -> send times (ms), to report the busiest 10 s
+for tick = 0, 599 do
+    H.side(true, false)
+    if tick % 5 == 0 then -- a click every 0.5 s
+        clicks = clicks + 1
+        local id = script[clicks]
+        if id == "open" then App.open(0, { keyId = 9001 })
+        elseif a.b[id] and a.b[id].shown and a.b[id].enable then a.b[id]:forceClick()
+        else missed[#missed + 1] = id .. "@" .. a.page end
+    end
+    a:update()
+    for i = from + 1, #H.clientSent do
+        local c = H.clientSent[i].command
+        sentN[c] = (sentN[c] or 0) + 1
+        times[c] = times[c] or {}
+        times[c][#times[c] + 1] = tick * 100
+    end
+    local got
+    got, from = H.serve(from)
+    for c, n in pairs(got) do gotN[c] = (gotN[c] or 0) + n end
+    H.advanceMs(100)
+end
+local same, line = true, {}
+for c, n in pairs(sentN) do
+    if gotN[c] ~= n then same = false end
+    local busiest, t = 0, times[c]
+    for j = 1, #t do
+        local k = j
+        while t[k + 1] and t[k + 1] - t[j] < 10000 do k = k + 1 end
+        busiest = math.max(busiest, k - j + 1)
+    end
+    perWin[c] = busiest
+    line[#line + 1] = c .. " " .. n .. " (busiest 10 s " .. busiest .. ")"
+end
+table.sort(line)
+local none = true
+for k, n in pairs(CR.dropped) do if n ~= (dropped0[k] or 0) then none = false end end
+check(#missed == 0, "the click script followed the pages (" .. (#missed == 0 and clicks .. " clicks" or table.concat(missed, ", ")) .. ")")
+check(same and none and (sentN.appStatus or 0) >= 30 and (sentN.appAlerts or 0) >= 10 and (sentN.appAction or 0) >= 30
+    and (sentN.appStatusAll or 0) >= 6, "every request reached its handler: " .. table.concat(line, ", "))
+for c, n in pairs(perWin) do
+    local lim = CR.LIMITS[c] or CR.LIMITS.default
+    check(n * 1.5 <= lim.max, c .. ": busiest 10 s (" .. n .. ") has half its budget again to spare (" .. lim.max .. ")")
+end
 
 -- ---------------------------------------------------------------- summon pages (a fake client MinidoracatAutoDriveAPI)
 H.section("phone app: summon (client)")

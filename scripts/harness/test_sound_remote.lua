@@ -133,37 +133,36 @@ H.side(false, false)
 v.driver = driver
 n = #H.sent
 check(cmd(driver, { vid = v:getId(), on = true }) == 0 and #H.sent == n, "SP: accepted but nobody to tell")
-check(R.stats.limited == 0, "none of the checks above was cut by the rate limit (their 0s are the driver check's)")
 
-H.section("remote sound: server rate limit")
+H.section("remote sound: server rate limit (the dispatcher's motor budget, Commands.lua CommandRate)")
 H.side(false, true)
 v.driver, driver.vehicle = driver, v
-local function burst(p, count, on)
-    local told = 0
-    for _ = 1, count do told = told + cmd(p, { vid = v:getId(), on = on }) end
-    return told
+local M = T.CommandRate.LIMITS.motor
+local function dropped() return T.CommandRate.dropped.motor or 0 end
+local function burst(p, count, on) -- through the server's dispatch; returns how many players were told
+    n = #H.sent
+    for _ = 1, count do H.fire("OnClientCommand", T.MODULE, "motor", p, { vid = v:getId(), on = on }) end
+    return #H.sent - n
 end
-H.advanceMs(R.RATE_WINDOW_MS) -- a fresh window for the driver
-local limited = R.stats.limited
-n = #H.sent
-check(burst(driver, 50, true) == 2 * R.RATE_MAX and #H.sent == n + 2 * R.RATE_MAX and R.stats.limited == limited + 50 - R.RATE_MAX,
-    "50 'on' at once: only the first " .. R.RATE_MAX .. " relayed (to 2 players each), the rest dropped")
-n = #H.sent
-check(burst(driver, 1, false) == 0 and #H.sent == n, "over the limit even an 'off' is dropped (the listener's HEARD_MS ends it)")
+H.advanceMs(M.ms) -- a fresh window for the driver
+local limited = dropped()
+check(burst(driver, 50, true) == 2 * M.max and dropped() == limited + 50 - M.max,
+    "50 'on' at once: only the first " .. M.max .. " relayed (to 2 players each), the rest dropped")
+check(burst(driver, 1, false) == 0, "over the limit even an 'off' is dropped (the listener's HEARD_MS ends it)")
 v.driver, driver.vehicle, near.vehicle = near, nil, v
 check(burst(near, 1, true) == 2, "another player's budget is their own")
 v.driver, driver.vehicle, near.vehicle = driver, v, nil
-H.advanceMs(R.RATE_WINDOW_MS)
+H.advanceMs(M.ms)
 check(burst(driver, 1, true) == 2, "next window: relayed again")
-burst(driver, R.RATE_MAX, true)
+burst(driver, M.max, true)
 H.advanceMs(-60000) -- the server's wall clock jumps back (getTimestampMs is System.currentTimeMillis)
 check(burst(driver, 1, true) == 2, "clock set back a minute: a fresh window, not one stretched by the jump")
 H.advanceMs(60000)
 -- the real driver (Sound.update in the dashboard's 10 Hz update) for a minute, each "motor" it sends fed to the
 -- server: beats every 5 s; from 10 s to 20 s the motor stopped and started every 0.5 s (faster than the power key
 -- can: a start takes 1.5 s, VehicleEngine.java:210-211), then running again with its beats
-H.advanceMs(R.RATE_WINDOW_MS)
-limited = R.stats.limited
+H.advanceMs(M.ms)
+limited = dropped()
 H.side(true, false)
 car.running = true
 dash:setVehicle(car)
@@ -176,7 +175,7 @@ for i = 1, 600 do
     H.side(false, true)
     local b = beats()
     for j = done + 1, #b do
-        told = told + cmd(driver, { vid = v:getId(), on = b[j].on })
+        told = told + burst(driver, 1, b[j].on)
         times[#times + 1] = i
     end
     done = #b
@@ -185,10 +184,10 @@ end
 local busiest = 0
 for j = 1, #times do
     local k = j
-    while times[k + 1] and times[k + 1] - times[j] < R.RATE_WINDOW_MS / 100 do k = k + 1 end
+    while times[k + 1] and times[k + 1] - times[j] < M.ms / 100 do k = k + 1 end
     busiest = math.max(busiest, k - j + 1)
 end
-check(busiest == R.RATE_MAX and told == 2 * done and R.stats.limited == limited,
+check(busiest == M.max and told == 2 * done and dropped() == limited,
     "the driver's real rhythm (" .. done .. " in a minute, " .. busiest .. " in the busiest 5 s): every one relayed")
 H.side(true, false)
 dash:setVehicle(nil)

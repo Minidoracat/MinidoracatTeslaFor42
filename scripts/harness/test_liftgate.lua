@@ -195,6 +195,22 @@ check(H.near(v:getColorHue(), 1.69, 1e-6), "client: shell sets the server's hue 
 T.ClientCommands.shell({ vid = 424242, hue = 3 })
 check(H.near(v:getColorHue(), 1.69, 1e-6), "client: shell for a car not loaded is ignored")
 v:setColorHSV(hb, v:getColorSaturation(), v:getColorValue())
+-- the driver clicking the car picture twice a second for a minute (the fake's four doors, round and round), each
+-- request through the server's dispatch (Commands.lua CommandRate): none dropped, the busiest 10 s keeps half its
+-- budget again to spare
+local CR, ids = T.CommandRate, { "DoorFrontLeft", "DoorRearLeft", "TrunkDoor", "EngineDoor" }
+local dropped, from, reached = CR.dropped.liftgate or 0, #H.clientSent, 0
+for i = 0, 119 do
+    H.side(true, false)
+    L.toggle(driver, v, ids[i % #ids + 1])
+    local got
+    got, from = H.serve(from)
+    reached = reached + (got.liftgate or 0)
+    H.advanceMs(500)
+end
+check(reached == 120 and (CR.dropped.liftgate or 0) == dropped and 20 * 1.5 <= CR.LIMITS.liftgate.max,
+    "a minute of clicks on the car picture, 2 a second (20 in any 10 s): all " .. reached .. " reach the server's handler")
+H.side(true, false)
 getOnlinePlayers, ISOpenVehicleDoor, ISCloseVehicleDoor = saved.getOnlinePlayers, saved.ISOpenVehicleDoor, saved.ISCloseVehicleDoor
 HaloTextHelper, getPlayer = saved.HaloTextHelper, saved.getPlayer
 H.side(false, true)

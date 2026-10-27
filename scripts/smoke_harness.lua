@@ -89,6 +89,24 @@ end
 function sendClientCommand(player, module, command, args)
     H.clientSent[#H.clientSent + 1] = { player = player, module = module, command = command, args = args }
 end
+-- The MP server receiving what the client sent: H.clientSent after index `from` goes through the real dispatch
+-- (Commands.lua, with its per-player budget) one by one, now (getTimestampMs); handlers are swapped for counters so a
+-- client test needs no server fakes. Returns { [command] = how many reached the handler }, #H.clientSent.
+function H.serve(from)
+    local T, got = MinidoracatTesla, {}
+    local real, c, s = T.ServerCommands, isClient(), isServer()
+    T.ServerCommands = setmetatable({}, { __index = function(_, cmd)
+        return real[cmd] and function() got[cmd] = (got[cmd] or 0) + 1 end
+    end })
+    H.side(false, true)
+    for i = from + 1, #H.clientSent do
+        local m = H.clientSent[i]
+        H.fire("OnClientCommand", m.module, m.command, m.player, m.args)
+    end
+    H.side(c, s)
+    T.ServerCommands = real
+    return got, #H.clientSent
+end
 
 -- ---------------------------------------------------------------- vehicles
 local vehicles = {}
