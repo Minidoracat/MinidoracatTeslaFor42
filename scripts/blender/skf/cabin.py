@@ -12,15 +12,15 @@ import pzveh as pv
 
 NAME, CABIN_CELLS, CABIN_UV1_U = pv.NAME, pv.CABIN_CELLS, pv.CABIN_UV1_U
 SHELL_DOORS = ("DoorFrontLeft", "DoorFrontRight", "DoorRearLeft", "DoorRearRight", "TrunkDoor")
-CABIN_FLOOR = -0.43       # cabin floor
 CABIN_INSET = 0.05        # grid: the shell sits this far inside the surface its ray hit (door slab 0.06)
-CABIN_FRONT_Y = 1.06      # shell front wall: past the windscreen's lower edge (y 1.02 on the centre line)
-TRUNK_Y = -0.95           # trunk floor starts behind the rear backrests (their foot is at its height)
 TRUNK_DROP = 0.03         # grid: trunk floor below the tailgate opening's lower edge; the sill plate fills it
-CABIN_ZC = -0.10          # cabin axis the shell rays start from
 CABIN_RES = (0.062, 49)   # shell: ring step along y (grid), rays per ring (200 -> -20 deg round the axis)
-SEAM_CLEAR = 0.065        # grid: no ring this close to the B-pillar cut (the seam leans +-0.043 about it)
-SEAT_X, SEAT_Z = 0.33, -0.19  # passenger inside points (pzveh.geometry: side 0.33, seat 0.56 over the ground)
+# the car's cabin layout (cars/<car>.py): floor, shell front wall, trunk floor start, shell ray axis, B-pillar ring
+# clearance, seats (pzveh.geometry's passengers), dash / screen / steering wheel, door cards
+CABIN_FLOOR, CABIN_FRONT_Y, TRUNK_Y, CABIN_ZC, SEAM_CLEAR = (pv.CAR[k] for k in (
+    "CABIN_FLOOR", "CABIN_FRONT_Y", "TRUNK_Y", "CABIN_ZC", "SEAM_CLEAR"))
+SEAT, DASH, DOOR_CARD = pv.SEAT, pv.CAR["DASH"], pv.CAR["DOOR_CARD"]
+SEAT_X, SEAT_Z = SEAT["x"], SEAT["z"]
 
 
 def rbox(size, r, cuts=(0, 0, 0), seg=2):
@@ -48,32 +48,6 @@ def rbox(size, r, cuts=(0, 0, 0), seg=2):
 def rot_x(deg):
     c, s = math.cos(math.radians(deg)), math.sin(math.radians(deg))
     return np.array([[1, 0, 0], [0, c, -s], [0, s, c]])
-
-
-# door cards (Model Y, black interior; official interior photos): (part, y from the card's front / rear end, z over the
-# belt, size along y, size z, depth off the panel, cell, edge radius). Front door ys = (rear, front) = (B pillar, A
-# pillar); rear door (rear end, B pillar). "end" entries span the card minus (a, b) at its rear and front ends
-DOOR_CARD = {
-    "front": [
-        ("upper trim", "end", (0.05, 0.10), -0.050, None, 0.060, 0.030, "dash", 0.012),
-        ("ambient light", "end", (0.07, 0.16), -0.086, None, 0.007, 0.012, "screen", 0.002),
-        ("armrest", "rear", 0.07, -0.215, 0.44, 0.050, 0.085, "seat", 0.018),
-        ("pull handle", "rear", 0.13, -0.165, 0.26, 0.026, 0.050, "dash", 0.010),
-        ("window switches", "rear", 0.31, -0.188, 0.13, 0.012, 0.060, "screen_back", 0.004),
-        ("door button", "rear", 0.43, -0.186, 0.035, 0.012, 0.050, "trim", 0.004),
-        ("map pocket", "end", (0.10, 0.30), -0.545, None, 0.085, 0.045, "base", 0.015),
-        ("speaker grille", "front", 0.20, -0.400, 0.17, 0.150, 0.018, "console", 0.050),
-    ],
-    "rear": [
-        ("upper trim", "end", (0.05, 0.05), -0.050, None, 0.060, 0.030, "dash", 0.012),
-        ("ambient light", "end", (0.07, 0.07), -0.086, None, 0.007, 0.012, "screen", 0.002),
-        ("armrest", "front", 0.06, -0.215, 0.38, 0.050, 0.080, "seat", 0.018),
-        ("pull handle", "front", 0.10, -0.165, 0.22, 0.026, 0.050, "dash", 0.010),
-        ("window switches", "front", 0.32, -0.188, 0.09, 0.012, 0.055, "screen_back", 0.004),
-        ("map pocket", "end", (0.32, 0.05), -0.500, None, 0.080, 0.040, "base", 0.015),   # rear end: wheel arch
-        ("speaker grille", "front", 0.08, -0.370, 0.14, 0.120, 0.018, "console", 0.045),
-    ],
-}
 
 
 def door_card(bvh, side, ys, belt, kind):
@@ -256,9 +230,9 @@ def cabin_mesh(bvh, belt, trunk_floor, trunk_end, arch, opening):
         add(v, f, c)
         return v, f
 
-    # seats where pzveh.geometry puts the passengers: (door front + B pillar) / 2 - 0.12, (B pillar + door rear) / 2 - 0.08
+    # seats where pzveh.geometry puts the passengers: middle of the door opening minus SEAT["back"]
     yf, yb, yr = opening["y"]
-    seat_y = ((yf + yb) / 2 - 0.12, (yb + yr) / 2 - 0.08)
+    seat_y = ((yf + yb) / 2 - SEAT["back"][0], (yb + yr) / 2 - SEAT["back"][1])
     z0 = SEAT_Z
     for s in (-1, 1):                                   # front buckets
         cx, fy = s * SEAT_X, seat_y[0]
@@ -277,17 +251,17 @@ def cabin_mesh(bvh, belt, trunk_floor, trunk_end, arch, opening):
         part((wd, 0.40, 0.09), 0.035, "seat", (cx, ry + 0.08, z0 - 0.06), cuts=(1, 0, 0), sag=0.015)
         part((wd, 0.11, 0.44), 0.04, "seat", (cx, ry - 0.17, z0 + 0.19), cuts=(1, 0, 0), bend=0.02, tilt=rec)
         part((0.20 if cx else 0.17, 0.09, 0.12), 0.045, "seat", (cx, ry - 0.18, z0 + 0.48), tilt=rec, seg=3)
-    part((0.20, 0.80, 0.22), 0.04, "console", (0, 0.12, -0.32))                  # centre console
-    part((1.24, 0.34, 0.16), 0.06, "dash", (0, 0.80, -0.02))                     # dash, trim strip on its face
-    part((1.16, 0.02, 0.035), 0.008, "trim", (0, 0.627, -0.01))
-    part((1.10, 0.012, 0.006), 0.002, "screen", (0, 0.629, -0.033), seg=1)    # ambient light line under the trim
+    part((0.20, 0.80, 0.22), 0.04, "console", DASH["console"])                  # centre console
+    part((1.24, 0.34, 0.16), 0.06, "dash", DASH["dash"])                        # dash, trim strip on its face
+    part((1.16, 0.02, 0.035), 0.008, "trim", DASH["trim"])
+    part((1.10, 0.012, 0.006), 0.002, "screen", DASH["light"], seg=1)          # ambient light line under the trim
     # trunk: sill plate over the opening's lower edge (the floor ends TRUNK_DROP under it, CABIN_INSET short of the
     # tailgate's inner panel) and the under-floor bin's lid
     part((1.00, 0.12, TRUNK_DROP + 0.005), 0.01, "base", (0, trunk_end + 0.02, trunk_floor + TRUNK_DROP / 2), seg=1)
     part((0.86, 0.40, 0.012), 0.004, "console", (0, (TRUNK_Y + trunk_end) / 2 - 0.04, trunk_floor + 0.006), seg=1)
-    part((0.05, 0.04, 0.09), 0.012, "screen_back", (0, 0.64, 0.09))              # screen stand
+    part((0.05, 0.04, 0.09), 0.012, "screen_back", DASH["stand"])               # screen stand
     v, f = rbox((0.30, 0.022, 0.19), 0.012)                                       # 15.4" landscape screen
-    v = v @ rot_x(-12).T + [0, 0.61, 0.17]
+    v = v @ rot_x(-12).T + DASH["screen"]
     fn = np.array([np.cross(v[fc[1]] - v[fc[0]], v[fc[2]] - v[fc[0]]) for fc in f])
     fn /= np.linalg.norm(fn, axis=1, keepdims=True)
     add(v, f, ["screen" if k < -0.9 else "screen_back" for k in fn[:, 1]])
@@ -299,9 +273,9 @@ def cabin_mesh(bvh, belt, trunk_floor, trunk_end, arch, opening):
                         ((0.120, 0.003, 0.006), (0.050, -0.0125, 0.020), "trim"),
                         ((0.006, 0.003, 0.060), (0.110, -0.0125, 0.047), "trim")):
         v, f = rbox(size, 0.001, seg=1)
-        add((v + at) @ rot_x(-12).T + [0, 0.61, 0.17], f, c)
+        add((v + at) @ rot_x(-12).T + DASH["screen"], f, c)
     # steering wheel in front of the driver, tilted 70 deg back from horizontal: rim torus, hub, three spokes, column
-    wr = Matrix.Translation((-SEAT_X, 0.50, 0.04)) @ Matrix.Rotation(math.radians(70), 4, "X")
+    wr = Matrix.Translation((-SEAT_X, *DASH["wheel"])) @ Matrix.Rotation(math.radians(70), 4, "X")
     nu, nv = 20, 6
     tv = [wr @ Vector(((0.15 + 0.024 * math.cos(b)) * math.cos(a), (0.15 + 0.024 * math.cos(b)) * math.sin(a),
                        0.024 * math.sin(b)))
