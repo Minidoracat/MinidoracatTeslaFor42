@@ -11,6 +11,7 @@ require "MinidoracatTesla/Core"
 require "MinidoracatTesla/Keys"
 require "MinidoracatTesla/ParkModes"
 require "MinidoracatTesla/Liftgate"
+require "MinidoracatTesla/Store"
 
 local T = MinidoracatTesla
 local K, S = T.Keys, T.Sentry
@@ -18,33 +19,13 @@ local R = {}
 T.Remote = R
 T.ServerCommands = T.ServerCommands or {}
 
--- Records and alerts live in a server-only GOS system (gos_MinidoracatTeslaApp.bin), not Global ModData: any logged-in
--- client can fetch a whole Global ModData table by name (GlobalModDataRequestPacket.java:15,32 -> GlobalModData.java:171;
--- family conventions.md). seen: tostring(keyId) -> last record; alerts: tostring(keyId) -> alerts, oldest first.
-R.SYSTEM = "MinidoracatTeslaApp"
+-- records ("seen") and alerts live in the server-only store (Store.lua), never Global ModData
 R.MAX_ALERTS = 10
 R.HORN_MS = 1000 -- vanilla horn for one second
 R.stats = { status = 0, actions = 0, denied = 0, horns = 0 }
 
 local function isInt(n) return type(n) == "number" and n == n and math.floor(n) == n end
-local db
-local function store(name)
-    if not db then
-        local sys = SGlobalObjects.registerSystem(R.SYSTEM) -- loads the file the first time (SGlobalObjects.java:31-39)
-        sys:setModDataKeys({ "seen", "alerts" }) -- only listed keys are saved
-        sys:setObjectModDataKeys({})
-        sys:setObjectSyncKeys({})
-        db = sys:getModData()
-        -- GOS calls these by rawget on this table (SGlobalObjectSystem.java:95-162): nothing goes to clients
-        db.getInitialStateForClient = function() return nil end
-        db.OnClientCommand = function() end
-        db.isValidIsoObject = function() return false end
-        db.OnChunkLoaded = function() end
-        if type(db.seen) ~= "table" then db.seen = {} end
-        if type(db.alerts) ~= "table" then db.alerts = {} end
-    end
-    return db[name]
-end
+local store = T.Store.get
 
 -- ------------------------------------------------------------------ loaded cars and their last record
 -- tostring(keyId) -> vehicle id while loaded. Ids are reused after an unload, so the keyId is checked on every use.
@@ -166,10 +147,11 @@ function R.mayTrack(player, v)
     if not v then return false, "UNVERIFIED" end
     return R.vmAllows(player, v, TRACK)
 end
--- act -> the VehicleManager codes for the same thing in person; sentry keeps its own rule (T.legit, ParkModes.lua)
+-- act -> the VehicleManager codes for the same thing in person. Sentry: T.legit (ParkModes.lua) counts an old phone
+-- key, so a car since claimed by someone else also needs PASSENGER here, like a remote lock.
 local VM_CODES = {
     lock = { "PASSENGER" }, unlock = { "PASSENGER" }, flash = { "PASSENGER" }, horn = { "PASSENGER" },
-    trunk = { "CARGO" }, frunk = { "REPAIR", "SALVAGE" }, charge = { "FUEL" },
+    sentry = { "PASSENGER" }, trunk = { "CARGO" }, frunk = { "REPAIR", "SALVAGE" }, charge = { "FUEL" },
 }
 
 -- ------------------------------------------------------------------ horn: vanilla, one second
@@ -197,7 +179,7 @@ function R.hornCount() return #horns end
 
 -- ------------------------------------------------------------------ actions: nil = done (lids: nil, open), else a deny reason
 -- `on` is the state asked for: already so = done, nothing moves (the app's view can be 2 s old, or a double press);
--- the third value says so, and nothing is logged. Closing relocks the liftgate on a locked car (Liftgate.relock).
+-- the third value says so, and nothing is logged. Closing relocks the lid on a locked car (Liftgate.relock).
 local function swing(id)
     return function(player, v, open)
         if not T.stopped(v) then return "MOVING" end
@@ -229,6 +211,8 @@ local ACT = {
         R.horn(v)
     end,
     sentry = function(player, v, on)
+        local part = T.Battery.part(v)
+        if on and part and part:getModData().sentry then return nil, true, true end -- already on: S.arm would keep it
         local ok, why
         if on then ok, why = S.canArm(player, v, true) else ok, why = S.canDisarm(player, v, true) end
         if not ok then return why or (on and "NO_PACK" or "SENTRY_OFF") end

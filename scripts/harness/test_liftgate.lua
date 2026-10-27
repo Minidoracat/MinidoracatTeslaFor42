@@ -31,7 +31,8 @@ local function car(o)
         function door:setLocked(b) self.locked = b end
         function door:isLockBroken() return self.broken end
         v.parts[id] = { id = id, door = door, item = {}, getId = function(self) return self.id end,
-            getDoor = function(self) return self.door end, getInventoryItem = function(self) return self.item end }
+            getDoor = function(self) return self.door end, getInventoryItem = function(self) return self.item end,
+            getVehicle = function() return v end }
     end
     function v:toggleLockedDoor(part, chr, locked) -- BaseVehicle.java:1230-1244 (seated player may unlock)
         if not locked and not part.door.broken and part.door.locked then part.door.locked = false end
@@ -71,7 +72,7 @@ check(not d.open and d.locked, "locked car: liftgate shut from the dashboard -> 
 local lidE = v.parts.EngineDoor.door
 cmd(driver, { vid = v:getId(), part = "EngineDoor" })
 cmd(driver, { vid = v:getId(), part = "EngineDoor" })
-check(not lidE.open and not lidE.locked, "frunk lid shut on a locked car: not locked (not part of the car lock)")
+check(not lidE.open and lidE.locked, "frunk lid shut on a locked car: locked again, like the liftgate (the car locks as a whole)")
 d.locked, d.broken = false, true
 cmd(driver, { vid = v:getId(), part = "TrunkDoor" })
 cmd(driver, { vid = v:getId(), part = "TrunkDoor" })

@@ -48,13 +48,16 @@ function S.settle(vehicle, t, freeUntil)
     vehicle:transmitPartModData(part)
 end
 
+-- Already on: stays as it is. A fresh record would drop the standby drain since the last settle (`at`) and hand
+-- the alerts to whoever pressed it again.
 function S.arm(player, vehicle, remote)
+    local part = T.Battery.part(vehicle)
+    if part and part:getModData().sentry then return end
     local ok, why = S.canArm(player, vehicle, remote)
     if not ok then
         if why then T.deny(player, why, vehicle:getId()) end
         return
     end
-    local part = T.Battery.part(vehicle)
     local md = part:getModData()
     if md.camp and T.Camp.stop then T.Camp.stop(vehicle, part) end
     -- Vanilla alarmed flag would turn a door pull into a full alarm (ISOpenVehicleDoor.lua:83-93);
@@ -62,7 +65,7 @@ function S.arm(player, vehicle, remote)
     vehicle:setAlarmed(false)
     vehicle:transmitAlarmed()
     local t = now()
-    md.sentry = { by = player:getUsername(), at = t, kwh = T.Battery.kwh(part), since = t }
+    md.sentry = { by = T.account(player), at = t, kwh = T.Battery.kwh(part), since = t } -- by nil: nobody to tell
     T.Battery.topUp12V(vehicle)
     vehicle:transmitPartModData(part)
     T.log("sentry armed vid=" .. vehicle:getId() .. " by " .. player:getUsername())
