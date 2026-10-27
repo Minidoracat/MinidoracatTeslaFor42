@@ -145,7 +145,7 @@ end
 function T.Update.Battery(vehicle, part, elapsedMinutes)
     if not part:getInventoryItem() then return end
     local remember = T.Remote and T.Remote.remember
-    if remember then remember(vehicle) end
+    if remember and instanceof(vehicle, "BaseVehicle") then remember(vehicle) end -- not a VirtualVehicle
     local chg = part:getModData().chg
     if chg and T.Charge then T.Charge.checkCable(vehicle, part, chg) end
     local m = math.min(elapsedMinutes or 0, T.MAX_ELAPSED)

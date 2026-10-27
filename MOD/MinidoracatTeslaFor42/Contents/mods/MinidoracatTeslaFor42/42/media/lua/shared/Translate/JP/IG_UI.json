@@ -202,5 +202,6 @@
     "IGUI_MinidoracatTesla_Tip_AppAlerts": "この車のセントリーとキャンプのアラート",
     "IGUI_MinidoracatTesla_Tip_AppChargeStop": "充電を一時停止（ケーブルは差したまま）",
     "IGUI_MinidoracatTesla_Tip_AppChargeStart": "目標まで充電を再開",
-    "IGUI_MinidoracatTesla_App_AgeNow": "たった今"
+    "IGUI_MinidoracatTesla_App_AgeNow": "たった今",
+    "IGUI_MinidoracatTesla_Deny_UNVERIFIED": "車が読み込まれていないため、車両の権限を確認できません"
 }

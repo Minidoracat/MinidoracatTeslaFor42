@@ -51,6 +51,20 @@ function K.appReach(player, vehicle)
     return nil
 end
 
+-- The phone app (PhoneApp.lua): where the car is from the player: compass words (north = -y) and the screen angle of the arrow. The iso screen
+-- shows a world step (dx, dy) as (dx - dy, (dx + dy) / 2), so north points up-right as the player sees it.
+-- Returns distance, compass index 1..8, clockwise degrees from screen-up (DrawTextureAngle, UIElement.java:243-262).
+-- Kahlua's % keeps the dividend's sign (-119 % 360 = -119 in game, tesla-app-1027a), so wrap with floor instead.
+local function wrap360(d) return d - math.floor(d / 360) * 360 end
+function K.bearing(px, py, cx, cy)
+    local dx, dy = cx - px, cy - py
+    local dist = math.sqrt(dx * dx + dy * dy)
+    local compass = wrap360(math.deg(math.atan2(dx, -dy)))
+    local sx, sy = dx - dy, (dx + dy) / 2
+    local ci = math.floor((compass + 22.5) / 45)
+    return dist, ci - math.floor(ci / 8) * 8 + 1, wrap360(math.deg(math.atan2(sx, -sy)))
+end
+
 -- the card lying on the console reader = this car's card in the ignition (BaseVehicle.java:9673)
 local function cardInIgnition(vehicle)
     local k = vehicle:getCurrentKey()

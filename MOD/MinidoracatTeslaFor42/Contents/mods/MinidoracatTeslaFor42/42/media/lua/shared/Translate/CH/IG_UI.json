@@ -202,5 +202,6 @@
     "IGUI_MinidoracatTesla_Tip_AppAlerts": "這台車的哨兵與露營警報",
     "IGUI_MinidoracatTesla_Tip_AppChargeStop": "暫停充電，充電線保持插著",
     "IGUI_MinidoracatTesla_Tip_AppChargeStart": "繼續充電到目標電量",
-    "IGUI_MinidoracatTesla_App_AgeNow": "剛剛"
+    "IGUI_MinidoracatTesla_App_AgeNow": "剛剛",
+    "IGUI_MinidoracatTesla_Deny_UNVERIFIED": "車子不在已載入的區域，無法確認綁車權限"
 }

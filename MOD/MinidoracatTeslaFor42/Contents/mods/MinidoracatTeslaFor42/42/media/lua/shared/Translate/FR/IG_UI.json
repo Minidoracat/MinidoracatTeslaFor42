@@ -202,5 +202,6 @@
     "IGUI_MinidoracatTesla_Tip_AppAlerts": "Alertes Sentinelle et camping de cette voiture",
     "IGUI_MinidoracatTesla_Tip_AppChargeStop": "Mettre la charge en pause, le câble reste branché",
     "IGUI_MinidoracatTesla_Tip_AppChargeStart": "Reprendre la charge jusqu'à l'objectif",
-    "IGUI_MinidoracatTesla_App_AgeNow": "à l'instant"
+    "IGUI_MinidoracatTesla_App_AgeNow": "à l'instant",
+    "IGUI_MinidoracatTesla_Deny_UNVERIFIED": "Impossible de vérifier les droits sur le véhicule tant qu'il n'est pas chargé"
 }

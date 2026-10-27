@@ -202,5 +202,6 @@
     "IGUI_MinidoracatTesla_Tip_AppAlerts": "이 차의 감시 모드와 캠프 모드 알림",
     "IGUI_MinidoracatTesla_Tip_AppChargeStop": "충전 일시 중지 (케이블은 꽂힌 채로)",
     "IGUI_MinidoracatTesla_Tip_AppChargeStart": "목표까지 충전 다시 시작",
-    "IGUI_MinidoracatTesla_App_AgeNow": "방금"
+    "IGUI_MinidoracatTesla_App_AgeNow": "방금",
+    "IGUI_MinidoracatTesla_Deny_UNVERIFIED": "차량이 로드되지 않아 차량 권한을 확인할 수 없습니다"
 }

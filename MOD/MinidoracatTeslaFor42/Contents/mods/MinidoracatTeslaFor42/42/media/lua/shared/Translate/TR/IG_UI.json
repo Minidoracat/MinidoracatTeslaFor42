@@ -202,5 +202,6 @@
     "IGUI_MinidoracatTesla_Tip_AppAlerts": "Bu aracın güvenlik ve kamp uyarıları",
     "IGUI_MinidoracatTesla_Tip_AppChargeStop": "Şarjı duraklat, kablo takılı kalır",
     "IGUI_MinidoracatTesla_Tip_AppChargeStart": "Hedefe kadar şarja devam et",
-    "IGUI_MinidoracatTesla_App_AgeNow": "az önce"
+    "IGUI_MinidoracatTesla_App_AgeNow": "az önce",
+    "IGUI_MinidoracatTesla_Deny_UNVERIFIED": "Araç yüklenmediği için araç izinleri doğrulanamıyor"
 }

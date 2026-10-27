@@ -163,14 +163,12 @@ function App:onAct(b)
     elseif id == "sentry" then on = not st.sentry
     elseif id == "frunk" then on = not st.frunk
     elseif id == "trunk" then on = not st.trunk end
-    self.sent = { act = act, on = on }
     App.stats.sent = App.stats.sent + 1
     self:send("appAction", { act = act, on = on })
 end
 
 function App:onCharge()
     local on = (self.st and self.st.chg) == "stopped"
-    self.sent = { act = "charge", on = on }
     App.stats.sent = App.stats.sent + 1
     self:send("appAction", { act = "charge", on = on })
 end
@@ -216,8 +214,8 @@ T.ClientCommands.appDone = function(args)
         text = getText("IGUI_MinidoracatTesla_App_Done_" .. tostring(args.act))
     end
     local shown = args.key ~= nil and each(args.key, function(a)
-        if not args.why and a.sent and a.sent.act == args.act and a.sent.on ~= nil then
-            text = getText("IGUI_MinidoracatTesla_App_Done_" .. args.act .. (a.sent.on and "_on" or "_off"))
+        if not args.why and args.on ~= nil then -- what the server did (a lid toggles what is there now)
+            text = getText("IGUI_MinidoracatTesla_App_Done_" .. args.act .. (args.on and "_on" or "_off"))
         end
         a:showToast(text, args.why == nil)
     end)
@@ -270,20 +268,6 @@ local function distText(d)
     return txt("Km", tostring(math.floor(t / 10)) .. "." .. tostring(t % 10))
 end
 
--- Where the car is from the player: compass words (north = -y) and the screen angle of the arrow. The iso screen
--- shows a world step (dx, dy) as (dx - dy, (dx + dy) / 2), so north points up-right as the player sees it.
--- Returns distance, compass index 1..8, clockwise degrees from screen-up (DrawTextureAngle, UIElement.java:243-262).
--- Kahlua's % keeps the dividend's sign (-119 % 360 = -119 in game, tesla-app-1027a), so wrap with floor instead.
-local function wrap360(d) return d - math.floor(d / 360) * 360 end
-function App.bearing(px, py, cx, cy)
-    local dx, dy = cx - px, cy - py
-    local dist = math.sqrt(dx * dx + dy * dy)
-    local compass = wrap360(math.deg(math.atan2(dx, -dy)))
-    local sx, sy = dx - dy, (dx + dy) / 2
-    local ci = math.floor((compass + 22.5) / 45)
-    return dist, ci - math.floor(ci / 8) * 8 + 1, wrap360(math.deg(math.atan2(sx, -sy)))
-end
-
 -- strings and button states only when something shown changes (10 Hz update; no allocation otherwise)
 function App:read()
     local st, p = self.st, self.player
@@ -293,7 +277,7 @@ function App:read()
     if self.toast and now >= self.toast.untilMs then self.toast, self.sig = nil, nil end
     -- position: every update (the player walks), no relayout
     if st and st.x and p then
-        local d, ci, ang = App.bearing(p:getX(), p:getY(), st.x + 0.5, st.y + 0.5)
+        local d, ci, ang = T.Keys.bearing(p:getX(), p:getY(), st.x + 0.5, st.y + 0.5)
         self.arrowAngle = ang
         local dk = math.floor(d + 0.5) .. ci
         if dk ~= self.distKey then

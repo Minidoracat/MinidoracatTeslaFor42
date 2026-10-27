@@ -175,13 +175,13 @@ tesla.parts.DoorFrontLeft.door.open = false
 H.section("charge projection")
 local part = T.Battery.part(tesla)
 local chg = { kw = 10, last = H.hours() - 0.5, added = 1, target = 60 }
-local kwh, added, hours = HUD.chargeEstimate(part, chg, H.hours())
+local kwh, added, hours = T.Battery.chargeEstimate(part, chg, H.hours())
 check(H.near(kwh, 44.2) and H.near(added, 6) and H.near(hours, (47.04 - 44.2) / 10), "kw * (now - last) added on top of the synced kWh")
 chg.last = H.hours() - 5
-kwh = HUD.chargeEstimate(part, chg, H.hours())
+kwh = T.Battery.chargeEstimate(part, chg, H.hours())
 check(H.near(kwh, 47.04), "projection capped at the target")
 chg.paused = "nopower"
-kwh = HUD.chargeEstimate(part, chg, H.hours())
+kwh = T.Battery.chargeEstimate(part, chg, H.hours())
 check(H.near(kwh, 39.2), "paused: no projection")
 part:getModData().chg = { kw = 11.5, last = H.hours(), added = 0, target = 90 }
 h:update(); h:update(); h:update()

@@ -1,6 +1,6 @@
 -- Phone app server side (server/MinidoracatTesla/Remote.lua): reach (grid up: any distance; grid down: Bluetooth 30),
 -- only phone key holders get answers or may act, VehicleManager rights on top of the key, the last record for an
--- unloaded car, the horn's one-shot OnTick, alerts per car, and the bearing the client draws (PhoneApp.bearing).
+-- unloaded car, the horn's one-shot OnTick, alerts per car, and the bearing the client draws (Keys.bearing).
 -- Runs after test_keys / test_liftgate / test_charging (name order): Keys, Liftgate and Charging are loaded by then.
 local F = dofile("scripts/harness/park_fakes.lua")
 local check = (H and H.check) or function(ok, label) print((ok and "  PASS  " or "  FAIL  ") .. label); if not ok then error(label) end end
@@ -22,6 +22,19 @@ local savedWorld = getWorld
 getWorld = function() return { isHydroPowerOn = function() return grid end } end
 local savedSound = playServerSound
 playServerSound = function() end
+-- server-only GOS system (never Global ModData, which any client may fetch by name)
+local gos = {}
+local savedGOS = SGlobalObjects
+SGlobalObjects = { registerSystem = function(name)
+    local sys = gos[name] or { md = {}, registers = 0 }
+    gos[name] = sys
+    sys.registers = sys.registers + 1
+    return {
+        setModDataKeys = function(_, keys) sys.keys = keys end,
+        setObjectModDataKeys = function() end, setObjectSyncKeys = function() end,
+        getModData = function() return sys.md end,
+    }
+end }
 require "MinidoracatTesla/Remote"
 local R = T.Remote
 local cmds = T.ServerCommands
@@ -176,8 +189,12 @@ d = act(owner, "frunk")
 check(d.why == "MOVING" and not v.parts.EngineDoor.d.open, "frunk while moving -> MOVING")
 v.kmh = 0
 d = act(owner, "frunk")
-check(d.why == nil and v.parts.EngineDoor.d.open, "frunk opens")
-act(owner, "frunk")
+check(d.why == nil and v.parts.EngineDoor.d.open and d.on == true, "frunk opens (appDone on = true)")
+d = act(owner, "frunk")
+check(d.why == nil and not v.parts.EngineDoor.d.open and d.on == false, "frunk closes (appDone on = false)")
+v.parts.TrunkDoor.d.open = true -- someone opened the liftgate by hand since the app's last poll
+d = act(owner, "trunk", true)
+check(d.why == nil and not v.parts.TrunkDoor.d.open and d.on == false, "liftgate: the server toggles what is there; appDone says closed")
 
 -- charging: no cable -> NOT_PLUGGED; with a cable the call goes to Charge.setStopped
 d = act(owner, "charge", false)
@@ -221,6 +238,10 @@ st = last("appState")
 check(st and st.link == nil and st.x == math.floor(v.x) and st.locked == true and st.pct == 80 and st.car == "MinidoracatTesla_ModelY",
     "unloaded: the server's last record (position, locked, battery)")
 check(st and st.h ~= nil, "last record carries its game hour")
+local db = gos[R.SYSTEM]
+check(db and db.registers == 1 and db.md.seen["9001"] ~= nil and db.keys[1] == "seen" and db.keys[2] == "alerts",
+    "records in the server-only GOS system (saved keys seen, alerts; registered once)")
+check(db.md.getInitialStateForClient() == nil, "GOS system sends nothing to clients")
 d = act(owner, "unlock")
 check(d.why == "NO_LINK", "unloaded: actions refused (NO_LINK) even with the grid up")
 local other = tesla(4242) -- the id is reused by another car: never mistaken for ours
@@ -261,6 +282,14 @@ cmds.appStatus(owner, { key = 9001 })
 st = last("appState")
 check(st and st.deny == "NOT_OWNER" and st.x == nil and asked[1].code == "TRACK" and asked[1].silent == true,
     "status: VM TRACK (silent), refused -> no position")
+F.vehicles[v:getId()] = nil -- unloaded: VM can't be asked, so no record and no alerts (a revoked share stays revoked)
+F.sent = {}
+cmds.appStatus(owner, { key = 9001 })
+st = last("appState")
+check(st and st.deny == "UNVERIFIED" and st.x == nil and st.pct == nil, "VM present, car unloaded: status refused (UNVERIFIED), no record")
+cmds.appAlerts(owner, { key = 9001 })
+check(last("appAlerts") == nil, "VM present, car unloaded: no alerts")
+F.vehicles[v:getId()] = v
 answer.ok, answer.why = true, "UNCLAIMED"
 d = act(owner, "unlock")
 check(d.why == nil and not v:areAllDoorsLocked(), "unclaimed car (VM UNCLAIMED): the phone key is enough")
@@ -268,6 +297,27 @@ F.runTicks(50, 450)
 d = act(stranger, "unlock")
 check(d.why == "NO_PHONE_KEY", "unclaimed car: no phone key still refused (VM UNCLAIMED is not enough)")
 MinidoracatVehicleManagerAPI = nil
+
+-- ------------------------------------------------------------------ record while charging: the HUD's projection
+H.section("phone app: charging record")
+local gas = v.parts.GasTank
+gas:getModData().chg = { kw = 10, last = F.hours - 0.5, added = 0, target = 90 }
+local before = T.Battery.kwh(gas)
+local r = R.remember(v)
+local want = T.Battery.chargeEstimate(gas, gas:getModData().chg, F.hours)
+check(want > before and r.pct == math.floor(want * 100 / T.Battery.capacity(gas) + 0.5) and r.chg == "charging",
+    "charging: record pct = the HUD projection since the last settlement")
+check(r.mins and r.mins > 0, "charging: minutes left from the projection")
+gas:getModData().chg = nil
+-- the battery update also runs for VirtualVehicle (no getKeyId): no record, the drain goes on
+local realRemember, remembered = R.remember, 0
+R.remember = function() remembered = remembered + 1 end
+local fakePart = { getInventoryItem = function() return {} end, getModData = function() return {} end }
+T.Update.Battery({ _class = "VirtualVehicle" }, fakePart, 0)
+check(remembered == 0, "battery update with a VirtualVehicle (no getKeyId): no record")
+T.Update.Battery({ _class = "BaseVehicle" }, fakePart, 0)
+check(remembered == 1, "battery update with a BaseVehicle: record")
+R.remember = realRemember
 
 -- ------------------------------------------------------------------ alerts per car
 H.section("phone app: alerts")
@@ -283,15 +333,9 @@ check(last("appAlerts") == nil, "alerts: nothing for a player without the phone 
 
 -- ------------------------------------------------------------------ client bearing (pure math in PhoneApp.lua)
 H.section("phone app: bearing")
--- same lines as PhoneApp.bearing (the client file needs the UI to load); Kahlua's % keeps the dividend's sign, so the
--- client wraps with floor, and this copy does too
-local function wrap360(d) return d - math.floor(d / 360) * 360 end
-local function bearing(px, py, cx, cy)
-    local dx, dy = cx - px, cy - py
-    local compass = wrap360(math.deg(math.atan2(dx, -dy)))
-    local sx, sy = dx - dy, (dx + dy) / 2
-    local ci = math.floor((compass + 22.5) / 45)
-    return ci - math.floor(ci / 8) * 8 + 1, wrap360(math.deg(math.atan2(sx, -sy)))
+local function bearing(...)
+    local _, ci, ang = K.bearing(...)
+    return ci, ang
 end
 local ci, ang = bearing(0, 0, 0, -100)
 check(ci == 1 and ang > 0 and ang < 90, "car due north (-y): compass N, arrow up-right on the iso screen")
@@ -301,13 +345,10 @@ ci, ang = bearing(0, 0, 0, 100)
 check(ci == 5 and ang > 180 and ang < 270, "car due south: compass S, arrow down-left (no negative angle)")
 ci, ang = bearing(0, 0, -100, 0)
 check(ci == 7 and ang > 270 and ang < 360, "car due west: compass W (index from a negative atan2), arrow up-left")
-local src = io.open("MOD/MinidoracatTeslaFor42/Contents/mods/MinidoracatTeslaFor42/42/media/lua/client/MinidoracatTesla/PhoneApp.lua"):read("*a")
-check(src:find("local sx, sy = dx %- dy, %(dx %+ dy%) / 2", 1) ~= nil and src:find("ci %- math.floor%(ci / 8%) %* 8 %+ 1", 1) ~= nil,
-    "PhoneApp.bearing uses the same projection and wrap")
 
 -- ------------------------------------------------------------------ restore (later tests use their own fakes)
 Events.OnSpawnVehicleEnd.Remove(R.onLoad)
 T.Remote = nil
-getWorld, playServerSound = savedWorld, savedSound
+getWorld, playServerSound, SGlobalObjects = savedWorld, savedSound, savedGOS
 for k, n in pairs(statsBefore) do S.stats[k] = n end
 F.done()

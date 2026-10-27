@@ -202,5 +202,6 @@
     "IGUI_MinidoracatTesla_Tip_AppAlerts": "Sentry and camp alerts for this car",
     "IGUI_MinidoracatTesla_Tip_AppChargeStop": "Pause charging, the cable stays plugged in",
     "IGUI_MinidoracatTesla_Tip_AppChargeStart": "Resume charging to the target",
-    "IGUI_MinidoracatTesla_App_AgeNow": "just now"
+    "IGUI_MinidoracatTesla_App_AgeNow": "just now",
+    "IGUI_MinidoracatTesla_Deny_UNVERIFIED": "Can't check your vehicle-sharing rights while the car is out of the loaded area"
 }

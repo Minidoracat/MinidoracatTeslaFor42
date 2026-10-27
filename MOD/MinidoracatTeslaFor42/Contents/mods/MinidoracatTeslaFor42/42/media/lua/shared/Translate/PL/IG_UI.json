@@ -202,5 +202,6 @@
     "IGUI_MinidoracatTesla_Tip_AppAlerts": "Alerty wartownika i kempingu dla tego samochodu",
     "IGUI_MinidoracatTesla_Tip_AppChargeStop": "Wstrzymaj ładowanie, kabel zostaje podłączony",
     "IGUI_MinidoracatTesla_Tip_AppChargeStart": "Wznów ładowanie do celu",
-    "IGUI_MinidoracatTesla_App_AgeNow": "przed chwilą"
+    "IGUI_MinidoracatTesla_App_AgeNow": "przed chwilą",
+    "IGUI_MinidoracatTesla_Deny_UNVERIFIED": "Nie można sprawdzić uprawnień do pojazdu, dopóki auto nie jest wczytane"
 }
