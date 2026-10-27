@@ -218,7 +218,7 @@
     "IGUI_MinidoracatTesla_App_VmTag": "车辆管理",
     "IGUI_MinidoracatTesla_App_NotPaired": "这部手机还没添加这辆车",
     "IGUI_MinidoracatTesla_App_JoinHint": "先添加这辆车：带着卡片钥匙坐进车里，右键手机选「添加这辆车」",
-    "IGUI_MinidoracatTesla_App_AddCarHint": "添加新车：坐进那辆车，右键手机选择「添加这辆车」。",
+    "IGUI_MinidoracatTesla_App_AddCarHint": "添加新车：坐进那辆车，右键手机选择「添加这辆车」",
     "IGUI_MinidoracatTesla_App_NavCar": "导航到车",
     "IGUI_MinidoracatTesla_App_NavSet": "小地图已把目的地设为你的%1",
     "IGUI_MinidoracatTesla_App_NavPrompted": "请在小地图确认是否替换当前行程",
