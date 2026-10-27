@@ -10,16 +10,21 @@
 -- refreshed when the list opens (one appStatusAll per App.BATCH cars).
 -- Pages: "home" (name, battery, the car in its paint, four quick icons, a list into the sub pages), "controls" (flash,
 -- horn, frunk, liftgate), "location" (arrow, distance, "Show on map", "Navigate to car" with the MiniMap's
--- setNavTarget), "security" (Sentry Mode, alerts), "charging", "cars".
+-- setNavTarget), "summon", "pick", "security" (Sentry Mode, alerts), "charging", "cars".
+-- "summon" (only with AutoDrive's summon API, App.summonApi; design temp/plan-summon-1027): AutoDrive drives the empty
+-- car to the player ("come"), to a point picked on the "pick" page's map ("target"), or straight ahead / back
+-- ("dumb"). One tap starts, another stops; the server (Remote.lua ACT.summon) and AutoDrive check everything again.
 -- "Show on map" opens the world map on the car and draws a marker after vanilla's map: never saved, gone when the map
 -- closes (the app comes back on the location page). While the MiniMap draws that car there itself, its marker
 -- (MiniMapBridge.lua) is the marker.
 -- Drawing: the dashboard atlas (2x; HUD.spr / HUD.rrect), S scale, HUD.drawTip. Buttons are bare hit areas; the app
 -- draws everything. Joypad: the D-pad moves along the page's rows (NAV), A presses, B goes back (home: closes).
 -- A page taller than this player's screen scrolls below its header (mouse wheel; joypad focus scrolls itself in).
+require "ISUI/ISUIElement"
 require "ISUI/ISPanelJoypad"
 require "ISUI/ISButton"
 require "ISUI/Maps/ISWorldMap"
+require "ISUI/Maps/ISMapDefinitions"
 require "MinidoracatTesla/Core"
 require "MinidoracatTesla/Keys"
 require "MinidoracatTesla/HUD"
@@ -37,6 +42,8 @@ local apps = {} -- [playerNum]
 
 local W, PAD = 340, 20
 App.NAV_API = 12 -- MinidoracatMiniMapAPI.navApiVersion with setNavTarget (MiniMap docs/addon-api.md)
+App.SUMMON_API = 1 -- MinidoracatAutoDriveAPI.summonApiVersion: summon with its three modes
+App.SUMMON_MS = 500 -- the summon view (AutoDrive's canSummon / summonState) is read at most this often
 -- the client's last view of each car, by keyId: what the car list's grey lines and the MiniMap marker show.
 -- ponytail: one table for all split-screen players (only player 0 gets MiniMap markers); key it by playerNum if
 -- split-screen phone keys ever matter.
@@ -50,35 +57,46 @@ end
 -- the real Tesla app's colours (decisions.md): blue only for main actions, no card fills, a 1 px frame on the control
 -- tiles. build_atlas.py PAL app* holds the same hex values and asserts their contrast: change both.
 local C = { bg = rgb("#161718"), text = rgb("#F3F3F3"), text2 = rgb("#8A8B8B"), weak = rgb("#454546"),
-    line = rgb("#2E2F30"), blue = rgb("#3268FE"), ok = HUD.C.ok, warn = HUD.C.warn, white = HUD.C.white }
+    line = rgb("#2E2F30"), blue = rgb("#3268FE"), ok = HUD.C.ok, warn = HUD.C.warn, white = HUD.C.white,
+    pin = rgb("#E0463B") } -- the summon mock's map pin
 
 -- hit areas: id -> { page, server action }; the list rows open the page of their own name. The car list's rows are
 -- made on demand (App:pickButton, ids pick1, pick2, ...).
 local BTN = {
     close = { "home" }, cars = { "home" }, lock = { "home", "lock" }, qcharge = { "home", "charge" },
     qfrunk = { "home", "frunk" }, qtrunk = { "home", "trunk" }, controls = { "home" }, location = { "home" },
-    security = { "home" }, charging = { "home" },
+    security = { "home" }, charging = { "home" }, summon = { "home" },
     back = {}, flash = { "controls", "flash" }, horn = { "controls", "horn" }, frunk = { "controls", "frunk" },
     trunk = { "controls", "trunk" }, map = { "location" }, navcar = { "location" }, sentry = { "security", "sentry" },
     charge = { "charging", "charge" },
+    come = { "summon" }, pick = { "summon" }, fwd = { "summon" }, rev = { "summon" }, again = { "summon" },
+    finish = { "summon" }, cancel = { "pick" }, go = { "pick" },
 }
-local BTN_ORDER = { "close", "cars", "lock", "qcharge", "qfrunk", "qtrunk", "controls", "location", "security", "charging",
-    "back", "flash", "horn", "frunk", "trunk", "map", "navcar", "sentry", "charge" }
+local BTN_ORDER = { "close", "cars", "lock", "qcharge", "qfrunk", "qtrunk", "controls", "location", "summon", "security",
+    "charging", "back", "flash", "horn", "frunk", "trunk", "map", "navcar", "sentry", "charge", "come", "pick", "fwd",
+    "rev", "again", "finish", "cancel", "go" }
 -- the joypad's rows per page, top to bottom (buttons not shown are skipped); "cars" is built with its rows
 local NAV = {
-    home = { { "cars", "close" }, { "lock", "qcharge", "qfrunk", "qtrunk" }, { "controls" }, { "location" }, { "security" }, { "charging" } },
+    home = { { "cars", "close" }, { "lock", "qcharge", "qfrunk", "qtrunk" }, { "controls" }, { "location" }, { "summon" },
+        { "security" }, { "charging" } },
     controls = { { "back" }, { "flash", "horn" }, { "frunk", "trunk" } },
     location = { { "back" }, { "map" }, { "navcar" } },
     security = { { "back" }, { "sentry" } },
     charging = { { "back" }, { "charge" } },
     cars = { { "back" } },
+    summon = { { "back" }, { "come" }, { "pick" }, { "fwd", "rev" }, { "again" }, { "finish" } },
+    pick = { { "back" }, { "spot" }, { "cancel", "go" } }, -- spot: the map (D-pad moves the pin)
 }
 -- the server actions: dimmed but pressable for a car this phone is not paired with (they say how to add it)
 local REMOTE = { "lock", "qcharge", "qfrunk", "qtrunk", "flash", "horn", "frunk", "trunk", "sentry", "charge" }
 local QUICK = { "lock", "qcharge", "qfrunk", "qtrunk" }
-local LIST = { "controls", "location", "security", "charging" }
-local LIST_ICON = { controls = "i_carfront", location = "i_nav", security = "i_shield", charging = "i_bolt" }
-local TITLE = { controls = "Controls", location = "Location", security = "Security", charging = "ChargingTitle", cars = "Cars" }
+local LIST = { "controls", "location", "summon", "security", "charging" }
+local LIST_ICON = { controls = "i_carfront", location = "i_nav", summon = "i_wheel", security = "i_shield", charging = "i_bolt" }
+local TITLE = { controls = "Controls", location = "Location", security = "Security", charging = "ChargingTitle", cars = "Cars",
+    summon = "Summon", pick = "SummonPick" }
+-- the summon pages' buttons (drawn as the mock's buttons: blue main, white stop, 1 px frame) and the summon each starts
+local SUM_BTNS = { "come", "pick", "fwd", "rev", "again", "finish", "cancel", "go" }
+local SUM_ID = { come = "come", target = "pick" } -- a running summon's button (dumb: fwd / rev by dir)
 local GRID = { "flash", "horn", "frunk", "trunk" }
 local GRID_ICON = { flash = "i_headlight", horn = "i_horn", frunk = "i_frunk", trunk = "i_trunk" }
 local LIDS = { "frunk", "trunk" }
@@ -179,6 +197,8 @@ function App:new(playerNum)
     o.scroll, o.scrollMax, o.dy = 0, 0, 0
     o.L, o.n = {}, 0
     o.rowEm, o.rowSub = {}, {}
+    -- AutoDrive's canSummon options, reused every read (build-1027 §3: mode, and the picked spot's x, y)
+    o.optCome, o.optDumb, o.optPin = { mode = "come" }, { mode = "dumb", dir = 1 }, { mode = "target" }
     return o
 end
 
@@ -249,6 +269,7 @@ function App:select(e)
         self.st = e.key and App.seen[e.key] or (e.vm and vmState(e)) or nil
         self.stAt = getTimestampMs()
         self.alerts, self.alertsWhy, self.distKey = nil, nil, nil
+        self.sum, self.pin = nil, nil -- the summon view and the picked spot belong to the old car
     end
     self.nextPoll, self.sig = 0, nil
     if self.key then self:send("appAlerts", {}) end -- the home list's alert count; the security page asks again
@@ -274,7 +295,9 @@ function App:setPage(page)
     self:read()
     self:layout()
     -- joypad: back home lands on the row it came from, a sub page starts on its first control (the list: this car)
-    if self.joyfocus then self:focusFirst(page == "home" and from or (page == "cars" and self.curPick) or nil) end
+    if self.joyfocus then
+        self:focusFirst(((page == "home" or page == "summon") and from) or (page == "cars" and self.curPick) or nil)
+    end
 end
 
 -- the car list: built when it opens; appStatusAll for the other paired cars, App.BATCH keys per request (their grey
@@ -330,6 +353,7 @@ end
 function App:move(dr, dc)
     local rows, r, c = self:navRows(), self.fRow or 1, self.fCol or 1
     if not self.focusB then return self:focusFirst() end
+    if self.focusB == self.b.spot then return self:nudgePin(dc, dr) end -- the map: the D-pad moves the pin
     if dr ~= 0 then
         local cx = self.focusB.cx + self.focusB.cw / 2
         local i = r + dr
@@ -369,7 +393,7 @@ function App:onJoypadDown(button)
         local b = self.focusB
         if b and b.shown then b:forceClick() end -- the click sound; nothing when disabled (ISButton.lua forceClick)
     elseif button == Joypad.BButton then
-        if self.page == "home" then self:close() else self:setPage("home") end
+        if self.page == "home" then self:close() else self:setPage(self:upPage()) end
     end
 end
 
@@ -390,7 +414,8 @@ end
 function App:onButton(b)
     local id = b.id
     if id == "close" then return self:close() end
-    if id == "back" then return self:setPage("home") end
+    if id == "back" then return self:setPage(self:upPage()) end
+    if BTN[id] and (BTN[id][1] == "summon" or BTN[id][1] == "pick") then return self:onSummon(id) end
     if TITLE[id] then return self:setPage(id) end
     if id == "map" then return self:onMap() end
     if id == "navcar" then return self:onNavCar() end
@@ -492,25 +517,31 @@ T.ClientCommands.appStates = function(args)
     end
 end
 
+-- act "summonEnd" (Remote.lua R.summonEnded): why is AutoDrive's stop code, ARRIVED the good one
 T.ClientCommands.appDone = function(args)
-    local text
-    if args.why then
-        text = T.denyText(args.why)
+    local text, ok
+    local ended = args.act == "summonEnd"
+    if ended then
+        text, ok = App.summonText(args.why), args.why == "ARRIVED"
+    elseif args.why then
+        text, ok = T.denyText(args.why), false
     else
-        text = getText("IGUI_MinidoracatTesla_App_Done_" .. tostring(args.act))
+        text, ok = getText("IGUI_MinidoracatTesla_App_Done_" .. tostring(args.act)), true
     end
     local shown = args.key ~= nil and each(args.key, function(a)
+        if ended then a:summonEnded(args.why)
+        elseif args.act == "summon" then a:summonDone(args) end
         if not args.why and args.on ~= nil then -- what the server did (a lid toggles what is there now)
             text = getText("IGUI_MinidoracatTesla_App_Done_" .. args.act .. (args.on and "_on" or "_off"))
         end
-        a:showToast(text, args.why == nil)
+        a:showToast(text, ok)
     end)
     App.lastDone = args
     T.log("app done " .. tostring(args.act) .. " " .. tostring(args.why or "ok"))
     if not shown then -- no app open (or not a holder): say it over the player's head
         local p = getSpecificPlayer(0)
         if p then
-            if args.why then HaloTextHelper.addBadText(p, text) else HaloTextHelper.addGoodText(p, text) end
+            if ok then HaloTextHelper.addGoodText(p, text) else HaloTextHelper.addBadText(p, text) end
         end
     end
 end
@@ -553,6 +584,223 @@ local function enable(b, on, isOn, icon, tip)
     b.on, b.icon, b.tipKey, b.lit, b.hint = isOn == true, icon, tip, on == true, nil
 end
 
+-- ---------------------------------------------------------------- summon (AutoDrive's unmanned mode)
+-- AutoDrive's summon API in this game (build-1027 §3), or nil: no Summon row, no summon pages
+function App.summonApi()
+    local api = MinidoracatAutoDriveAPI
+    if type(api) == "table" and (tonumber(api.summonApiVersion) or 0) >= App.SUMMON_API
+        and type(api.canSummon) == "function" and type(api.summonState) == "function"
+        and type(api.summonReach) == "function" then return api end
+    return nil
+end
+-- a stop code's words: AutoDrive's summonReasonText, else the code
+function App.summonText(code)
+    local api = App.summonApi()
+    local f = api and api.summonReasonText
+    local s = type(f) == "function" and f(code) or nil
+    return type(s) == "string" and s or tostring(code)
+end
+-- B / back: the pick page goes back to the summon page, every other page home
+function App:upPage() return self.page == "pick" and "summon" or "home" end
+
+-- this car in the player's game (the server sends its vehicle id over a live link), or nil while not loaded here
+function App:summonCar()
+    local id = self.st and self.st.link and self.st.vid
+    local v = id and getVehicleById(id)
+    if v and v:getKeyId() == self.key then return v end
+    return nil
+end
+
+-- self.sum: this app's summon of its car { phase = "starting" | "driving" | "arrived" | "stopped", mode, x, y, dir,
+-- code (AutoDrive's stop code) or why (refused before it started: a Tesla code or a translation key) }; nil = ready
+local SUM_START = { come = { mode = "come" }, fwd = { mode = "dumb", dir = 1 }, rev = { mode = "dumb", dir = -1 } }
+local function running(sum) return sum ~= nil and (sum.phase == "starting" or sum.phase == "driving") end
+function App:onSummon(id)
+    local sum = self.sum
+    if id == "cancel" then return self:setPage("summon") end
+    if id == "finish" then
+        self.sum = nil
+    elseif id == "go" then
+        if running(sum) or not self.pin then return end
+        self:summonSend(true, { mode = "target", x = self.pin.x, y = self.pin.y })
+        return self:setPage("summon")
+    elseif running(sum) then -- the running summon's button reads "Stop" (the others are hidden)
+        self:summonSend(false)
+    elseif id == "pick" then
+        return self:setPage("pick")
+    elseif id == "again" then
+        self:summonSend(true, sum)
+    else
+        self:summonSend(true, SUM_START[id])
+    end
+    self.sumNext, self.sig = 0, nil
+end
+function App:summonSend(on, m)
+    App.stats.sent = App.stats.sent + 1
+    if not on then
+        self.sum.stopAsked = true -- a refusal of the stop leaves the summon as it is
+        return self:send("appAction", { act = "summon", on = false })
+    end
+    self:send("appAction", { act = "summon", on = true, mode = m.mode, x = m.x, y = m.y, dir = m.dir })
+    self.sum = { phase = "starting", mode = m.mode, x = m.x, y = m.y, dir = m.dir }
+end
+-- the server's answer to a press (appDone act = "summon"): refused, or stopped (on = false)
+function App:summonDone(args)
+    local sum = self.sum
+    if args.why then
+        if sum and sum.stopAsked then sum.stopAsked = nil -- the stop was refused (the toast says why)
+        else
+            sum = sum or {}
+            sum.phase, sum.why, sum.code = "stopped", args.why, nil
+            self.sum, self.sumEndAt = sum, getTimestampMs()
+        end
+    elseif args.on == false then
+        self.sum, self.sumEndAt = nil, getTimestampMs()
+    end
+    self.sumNext, self.sig = 0, nil
+end
+-- the summon ended (appDone act = "summonEnd", or AutoDrive's summonState "ended" if that came first): a pressed stop
+-- goes back to ready, anything else is shown with its code until "Done" / "Try again"
+function App:summonEnded(code)
+    self.sumEndAt = getTimestampMs()
+    if code == "CANCELLED" then
+        self.sum = nil
+    else
+        local sum = self.sum or {}
+        sum.phase, sum.code, sum.why, sum.stopAsked = code == "ARRIVED" and "arrived" or "stopped", code, nil, nil
+        self.sum = sum
+    end
+    self.sumNext, self.sig = 0, nil
+end
+
+-- the picked spot: the middle of a ground square (AutoDrive's target is at z = 0)
+function App:setPin(x, y)
+    self.pin = self.pin or {}
+    self.pin.x, self.pin.y = math.floor(x) + 0.5, math.floor(y) + 0.5
+    self.sumNext, self.sig = 0, nil
+end
+-- joypad on the map: the D-pad moves the pin 2 tiles (the first press starts at the player)
+function App:nudgePin(dx, dy)
+    local pin = self.pin
+    local x, y = pin and pin.x or self.player:getX(), pin and pin.y or self.player:getY()
+    self:setPin(x + 2 * dx, y + 2 * dy)
+end
+
+-- The summon view, every App.SUMMON_MS while the home, summon or pick page shows (sooner after a press or an answer):
+-- the phase, the texts, which buttons work. Phases come from this app's presses and the server's answers; AutoDrive's
+-- summonState says when the car is on its way (its "starting" is server-side only) and how far it is; the server's
+-- state (st.summon) shows a summon this app did not see start (reopened) or someone else's.
+function App:summonRead(api)
+    local p, st, pn, sep = self.player, self.st, self.playerNum, getText("IGUI_MinidoracatTesla_Sep")
+    local v = self:summonCar()
+    local srv = st and st.link and st.summon
+    if srv and srv.mine and not self.sum and (self.stAt or 0) > (self.sumEndAt or 0) then
+        self.sum = { phase = "starting", mode = srv.mode, dir = 1 }
+    end
+    local sum = self.sum
+    local vid = st and st.link and st.vid
+    local ss = api.summonState(pn)
+    if ss and sum and vid and ss.vid == vid then
+        if sum.phase == "starting" and (ss.phase == "driving" or ss.phase == "stopping") then
+            sum.phase = "driving"
+        elseif sum.phase == "driving" and ss.phase == "ended" and ss.code then
+            self:summonEnded(ss.code)
+            sum = self.sum
+        end
+    end
+    local cx, cy
+    if v then cx, cy = v:getX(), v:getY()
+    elseif self.hasPos and not self.vmOnly then cx, cy = st.x + 0.5, st.y + 0.5 end
+    self.sumCarX, self.sumCarY = cx, cy
+    local R = tonumber(api.summonReach(pn)) or 0
+    self.sumR = R
+    local d, ci = 0, 1
+    if cx then d, ci = K.bearing(p:getX(), p:getY(), cx, cy) end
+    local where = cx and (d < 3 and txt("Here") or txt("DirDist", txt("Dir_" .. DIRS[ci]), distText(d))) or nil
+    local phase = sum and sum.phase or "ready"
+    local s1, s2, note, why = nil, "", txt("SummonNote"), nil
+    self.sumCome, self.sumDumb, self.pinOk, self.sPickNote = false, false, false, txt("SummonPickHint")
+    if phase == "ready" then
+        if not (self.rec and st.link and not self.vmOnly) then
+            why = self.sSub2 or self.sSub -- can't reach the car / not on this phone / no record yet
+        elseif srv and not srv.mine then
+            why = getText("UI_MinidoracatAutoDrive_SummonBusy") -- someone else's summon of this car
+        else
+            local ok, w = api.canSummon(pn, v, self.optCome)
+            self.sumCome = ok == true
+            why = not self.sumCome and w and getText(w) or nil
+            ok, w = api.canSummon(pn, v, self.optDumb)
+            self.sumDumb = ok == true
+            why = why or (not self.sumDumb and w and getText(w)) or nil
+            local pin = self.pin
+            if pin and self.sumCome then
+                self.optPin.x, self.optPin.y = pin.x, pin.y
+                ok, w = api.canSummon(pn, v, self.optPin)
+                self.pinOk = ok == true
+                local pd, pci = K.bearing(p:getX(), p:getY(), pin.x, pin.y)
+                self.sPickNote = self.pinOk and txt("SummonSpotAt", txt("DirDist", txt("Dir_" .. DIRS[pci]), distText(pd)))
+                    or (w and getText(w)) or ""
+            elseif not self.sumCome then
+                self.sPickNote = why or ""
+            end
+        end
+        s1 = where and txt("SummonCarAt", where) or self.sSub
+        s2 = R > 0 and txt("SummonRange", tostring(R)) or ""
+        note = why or note
+    elseif phase == "starting" then
+        s1, s2 = txt("SummonStarting"), txt("SummonChecking")
+    elseif phase == "driving" then
+        s1 = txt(sum.mode == "target" and "SummonToSpot" or sum.mode == "dumb" and (sum.dir == -1 and "SummonRevNow"
+            or "SummonFwdNow") or "SummonComing")
+        local dist = ss and ss.vid == vid and tonumber(ss.dist) or d
+        local kmh = v and math.floor(math.abs(v:getCurrentSpeedKmHour()) + 0.5) or 0
+        s2 = distText(dist) .. sep .. txt("SummonKmh", tostring(kmh))
+    elseif phase == "arrived" then
+        s1 = txt("SummonArrived")
+        s2 = where and (d < 3 and where or txt("SummonParkedAt", where)) or ""
+        if v and not v:isEngineRunning() then s2 = s2 .. sep .. txt("SummonEngineOff") end
+        note = nil
+    elseif sum.why then -- refused before it started: the reason in full under the buttons
+        s1, s2, note = txt("SummonRefused"), where and txt("SummonCarAt", where) or "", T.denyText(sum.why)
+    else
+        s1, s2, note = txt("SummonStopped", App.summonText(sum.code)), where and txt("SummonCarAt", where) or "", nil
+    end
+    self.sumPhase, self.sSumState, self.sSumSub, self.sSumNote, self.sumWhy = phase, s1, s2, note, why
+    -- the running summon's button (it reads "Stop")
+    self.sumRun = running(sum) and (sum.mode == "dumb" and (sum.dir == -1 and "rev" or "fwd") or SUM_ID[sum.mode] or "come") or nil
+    -- the home list's row: what the car is doing, else whether it can come (and how far it is)
+    if phase ~= "ready" then
+        self.rowEm.summon, self.rowSub.summon = s1, ""
+    else
+        self.rowEm.summon = nil
+        self.rowSub.summon = why or (txt("SummonReady") .. (where and (sep .. where) or ""))
+    end
+    return phase .. "/" .. s1 .. "/" .. s2 .. "/" .. tostring(note) .. "/" .. tostring(self.sumCome) .. tostring(self.sumDumb)
+        .. tostring(self.pinOk) .. "/" .. self.sPickNote
+end
+
+-- the radar's dots (summon page): the car from the player, north up like the world map, inside the circle. Every
+-- update while the page shows (numbers only).
+function App:radarPlace()
+    local p, r, R = self.player, self.radR, self.sumR or 0
+    local cx, cy = self.sumCarX, self.sumCarY
+    local v = self:summonCar()
+    if v then cx, cy = v:getX(), v:getY() end
+    if not (r and cx and p) then self.radCarX = nil; return end
+    local dx, dy = cx - p:getX(), cy - p:getY()
+    local k = R > 0 and r / R or 0
+    local px, py = dx * k, dy * k
+    local len = math.sqrt(px * px + py * py)
+    if len > r then px, py = px * r / len, py * r / len end -- outside the range: on its edge
+    self.radCarX, self.radCarY = self.radCX + px, self.radCY + py
+    local pin = self.sum and self.sum.mode == "target" and self.sum.x and self.sum or nil
+    if pin then
+        self.radPinX, self.radPinY = self.radCX + (pin.x - p:getX()) * k, self.radCY + (pin.y - p:getY()) * k
+    else
+        self.radPinX = nil
+    end
+end
+
 -- strings and button states only when something shown changes (10 Hz update; no allocation otherwise)
 function App:read()
     local st, p = self.st, self.player
@@ -573,11 +821,24 @@ function App:read()
             self.sDirDist = d < 3 and self.sDir or txt("DirDist", self.sDir, self.sDist)
         end
     end
+    -- summon: its view every App.SUMMON_MS on the pages that show it, the radar's dots every update
+    local api = App.summonApi()
+    self.sumApi = api ~= nil
+    local pg = self.page
+    if api and (pg == "home" or pg == "summon" or pg == "pick") then
+        if now >= (self.sumNext or 0) then
+            self.sumNext = now + App.SUMMON_MS
+            local ss = self:summonRead(api)
+            if ss ~= self.sumSig then self.sumSig, self.sig = ss, nil end
+        end
+        if pg == "summon" then self:radarPlace() end
+    end
     local alertsN = self.alerts and #self.alerts or -1
     local sig = self.page .. hh .. ":" .. mm .. "/" .. tostring(self.toast and self.toast.text) .. "/" .. alertsN .. "/"
         .. tostring(self.stAt) .. "/" .. tostring(self.alertsWhy) .. (self.page == "cars" and ("/" .. App.seenRev) or "")
     if sig == self.sig then return false end
     self.sig = sig
+    self.sumNext = 0 -- the summon view reads what this pass sets (record, link, why the controls are grey) next update
     self.sTime = string.format("%02d:%02d", hh, mm)
     local link = st and st.link
     -- status bar: the phone's network (grid up), else Bluetooth while it reaches the car, else no service
@@ -739,6 +1000,7 @@ function App:layout()
     self.tex = getTexture(self.A.tex)
     self.f = S / 2
     self.arrowTex = getTexture("media/textures/MinidoracatTesla/HUD/app_arrow" .. (S >= 1.5 and 2 or 1) .. "x.png")
+    self.ringTex = getTexture("media/textures/MinidoracatTesla/HUD/app_ring.png") -- the summon range (build_atlas.py)
     local function u(n) return math.floor(n * S + 0.5) end
     local sw, sh = getPlayerScreenWidth(pn), getPlayerScreenHeight(pn)
     local w = math.min(math.floor(W * S), sw - 8)
@@ -795,13 +1057,15 @@ function App:layout()
         local rx = pad + u(40)
         local rw = w - rx - pad - u(22)
         for _, id in ipairs(LIST) do
-            local b = place(id, pad / 2, y, w - pad, rh) -- inset: the focus ring stays inside the phone
-            b.sTitle = fitText(txt(TITLE[id]), rw, UIFont.Medium)
-            local e = self.rowEm[id]
-            b.sEm = e and fitText(e, rw) or nil
-            b.emW = b.sEm and tm:MeasureStringX(UIFont.Small, b.sEm) or 0
-            b.sSub = fitText(self.rowSub[id] or "", rw - b.emW)
-            y = y + rh
+            if id ~= "summon" or self.sumApi then -- no AutoDrive summon API: no Summon row
+                local b = place(id, pad / 2, y, w - pad, rh) -- inset: the focus ring stays inside the phone
+                b.sTitle = fitText(txt(TITLE[id]), rw, UIFont.Medium)
+                local e = self.rowEm[id]
+                b.sEm = e and fitText(e, rw) or nil
+                b.emW = b.sEm and tm:MeasureStringX(UIFont.Small, b.sEm) or 0
+                b.sSub = fitText(self.rowSub[id] or "", rw - b.emW)
+                y = y + rh
+            end
         end
         y = y + u(8)
         self.yLine = y
@@ -893,6 +1157,65 @@ function App:layout()
             local b = place("charge", pad, y, tw, u(40))
             b.sTitle = fitText(self.sChargeBtn, tw - u(16))
             y = y + u(40) + u(14)
+        end
+    elseif page == "summon" or page == "pick" then
+        -- the mock's buttons: style "main" (blue), "stop" (white), "frame" (1 px line); lit = usable
+        local bh, gap = u(40), u(8)
+        local function sbtn(id, x, by, bw, label, style, on, tip)
+            local b = place(id, x, by, bw, bh)
+            b.sTitle, b.style, b.lit, b.tipKey = fitText(label, bw - u(16)), style, on == true, tip
+            b:setEnable(on == true)
+            b.borderColor.a = 0
+        end
+        local half = math.floor((tw - gap) / 2)
+        local run, phase = self.sumRun, self.sumPhase or "ready"
+        if page == "summon" then
+            local D = math.min(tw, u(180))
+            self.radR = math.floor(D / 2)
+            self.radCX, self.radCY = math.floor(w / 2), y + u(4) + self.radR
+            y = y + u(4) + D + u(12)
+            self.ySumState, self.sSumStateFit = y, fitText(self.sSumState or "", tw, UIFont.Medium)
+            y = y + FHM + u(2)
+            self.ySumSub, self.sSumSubFit = y, fitText(self.sSumSub or "", tw)
+            y = y + FH + u(8)
+            local stop = txt("SummonStop")
+            if run then -- one button: the running summon's, as "Stop"
+                sbtn(run, pad, y, tw, stop, "stop", true, TIP .. "SummonStop")
+                y = y + bh + gap
+            elseif phase == "arrived" then
+                sbtn("finish", pad, y, tw, txt("SummonDone"), "main", true, nil)
+                y = y + bh + gap
+            elseif phase == "stopped" then
+                sbtn("again", pad, y, tw, txt("SummonAgain"), "main", true, TIP .. "SummonCome")
+                y = y + bh + gap
+                sbtn("finish", pad, y, tw, txt("SummonDone"), "frame", true, nil)
+                y = y + bh + gap
+            else
+                sbtn("come", pad, y, tw, txt("SummonCome"), "main", self.sumCome, TIP .. "SummonCome")
+                y = y + bh + gap
+                if ISWorldMap.IsAllowed() then -- same rule as "Show on map" (sandbox Map.AllowWorldMap)
+                    sbtn("pick", pad, y, tw, txt("SummonPick"), "frame", self.sumCome, TIP .. "SummonPick")
+                    y = y + bh + gap
+                end
+                sbtn("fwd", pad, y, half, txt("SummonFwd"), "frame", self.sumDumb, TIP .. "SummonFwd")
+                sbtn("rev", pad + half + gap, y, half, txt("SummonRev"), "frame", self.sumDumb, TIP .. "SummonRev")
+                y = y + bh + gap
+            end
+            self.ySumNote = y + u(2)
+            self.sSumNote1, self.sSumNote2 = nil, nil
+            if self.sSumNote then self.sSumNote1, self.sSumNote2 = wrap2(self.sSumNote, tw) end
+            y = y + u(2) + (self.sSumNote1 and FH * (self.sSumNote2 and 2 or 1) or 0) + u(8)
+        else
+            local mh = math.floor(tw * 0.8)
+            self:pickMap()
+            place("spot", pad, y, tw, mh)
+            y = y + mh + u(8)
+            self.yPickNote = y
+            self.sPickNote1, self.sPickNote2 = wrap2(self.sPickNote or "", tw)
+            y = y + 2 * FH + u(8)
+            sbtn("cancel", pad, y, half, txt("SummonCancel"), "frame", true, nil)
+            sbtn("go", pad + half + gap, y, half, txt("SummonGo"), "main", self.pinOk and not run, TIP .. "SummonGo")
+            y = y + bh + u(8)
         end
     elseif page == "cars" then
         -- one row per car (App.cars order); the joypad's rows follow them
@@ -1029,9 +1352,11 @@ function App:prerender()
         end
         for _, id in ipairs(LIST) do
             local b = self.b[id]
-            local cy = b.cy - o + b.ch / 2
-            icon(self, b.icon, pad + 10 * S, cy, 20, C.text2, 1)
-            icon(self, "i_chev", w - pad - 8 * S, cy, 16, C.weak, 1)
+            if b.shown then
+                local cy = b.cy - o + b.ch / 2
+                icon(self, b.icon, pad + 10 * S, cy, 20, C.text2, 1)
+                icon(self, "i_chev", w - pad - 8 * S, cy, 16, C.weak, 1)
+            end
         end
         HUD.rect(self, pad, self.yLine - o, w - 2 * pad, 1, C.line, 1)
         local wm, trim = A["wm_" .. self.model], A["trim_" .. self.model]
@@ -1057,6 +1382,33 @@ function App:prerender()
     elseif page == "location" then
         local b = self.b.navcar -- the second action: a frame, not blue
         if b.shown then frame(self, b.cx, b.cy - o, b.cw, b.ch, 6 * S, 1, b.lit and C.text2 or C.line, 1) end
+    elseif page == "summon" or page == "pick" then
+        for _, id in ipairs(SUM_BTNS) do
+            local b = self.b[id]
+            if b.shown and BTN[id][1] == page then
+                if b.style == "main" then HUD.rrect(self, b.cx, b.cy - o, b.cw, b.ch, 6 * S, C.blue, b.lit and 1 or 0.4)
+                elseif b.style == "stop" then HUD.rrect(self, b.cx, b.cy - o, b.cw, b.ch, 6 * S, C.text, 1)
+                else frame(self, b.cx, b.cy - o, b.cw, b.ch, 6 * S, 1, C.line, 1) end
+            end
+        end
+        if page == "summon" and self.radR then
+            -- the range: the ring texture (over the background, so the batch so far goes first), then the dots
+            flush(self)
+            local r, cx, cy = self.radR, self.radCX, self.radCY - o
+            local rc = (self.sumR or 0) > 0 and C.blue or C.weak
+            self:drawTextureScaled(self.ringTex, cx - r, cy - r, 2 * r, 2 * r, 1, rc[1], rc[2], rc[3])
+            if self.radPinX then icon(self, "i_pin", self.radPinX, self.radPinY - o - 8 * S, 18, C.pin, 1) end
+            if self.radCarX then -- the car: a disc with the dashboard's top view (the pick map's car marker)
+                local x, y = self.radCarX, self.radCarY - o
+                local dim = self.sumPhase == "ready" and not self.sumCome
+                HUD.rrect(self, x - 12 * S, y - 12 * S, 24 * S, 24 * S, 12 * S, C.text, 1)
+                HUD.rrect(self, x - 10 * S, y - 10 * S, 20 * S, 20 * S, 10 * S, dim and C.weak or C.blue, 1)
+                local car, k = A.car, 0.1 -- 300 x 170 at 2x: 15 x 8.5 units
+                HUD.spr(self, car, x - car[3] * self.f * k / 2, y - car[4] * self.f * k / 2, C.white, 1, k)
+            end
+            HUD.rrect(self, cx - 7 * S, cy - 7 * S, 14 * S, 14 * S, 7 * S, C.text, 1) -- the player
+            HUD.rrect(self, cx - 5 * S, cy - 5 * S, 10 * S, 10 * S, 5 * S, C.blue, 1)
+        end
     elseif page == "cars" then
         local i = 1
         local b = self.b.pick1
@@ -1104,11 +1456,13 @@ function App:render()
         local rx = pad + math.floor(40 * S)
         for _, id in ipairs(LIST) do
             local b = self.b[id]
-            local ty = b.cy - o + math.floor((b.ch - self.FHM - math.floor(2 * S) - self.FH) / 2)
-            jo:DrawText(UIFont.Medium, b.sTitle, rx, ty, c[1], c[2], c[3], 1)
-            local sy = ty + self.FHM + math.floor(2 * S)
-            if b.sEm then jo:DrawText(Sm, b.sEm, rx, sy, c[1], c[2], c[3], 1) end
-            jo:DrawText(Sm, b.sSub, rx + b.emW, sy, c2[1], c2[2], c2[3], 1)
+            if b.shown then
+                local ty = b.cy - o + math.floor((b.ch - self.FHM - math.floor(2 * S) - self.FH) / 2)
+                jo:DrawText(UIFont.Medium, b.sTitle, rx, ty, c[1], c[2], c[3], 1)
+                local sy = ty + self.FHM + math.floor(2 * S)
+                if b.sEm then jo:DrawText(Sm, b.sEm, rx, sy, c[1], c[2], c[3], 1) end
+                jo:DrawText(Sm, b.sSub, rx + b.emW, sy, c2[1], c2[2], c2[3], 1)
+            end
         end
     elseif page == "controls" then
         for _, id in ipairs(GRID) do
@@ -1156,6 +1510,25 @@ function App:render()
         jo:DrawText(Sm, self.sBatFit, pad + math.floor(30 * S), self.yBat - o, c2[1], c2[2], c2[3], 1)
         if self.sKwFit then jo:DrawText(Sm, self.sKwFit, pad, self.yKw - o, c[1], c[2], c[3], 1) end
         if self.sEtaFit then jo:DrawText(Sm, self.sEtaFit, pad, self.yEta - o, c2[1], c2[2], c2[3], 1) end
+    elseif page == "summon" or page == "pick" then
+        local n1, n2, ny
+        if page == "summon" then
+            self:drawTextCentre(self.sSumStateFit, w / 2, self.ySumState - o, c[1], c[2], c[3], 1, UIFont.Medium)
+            self:drawTextCentre(self.sSumSubFit, w / 2, self.ySumSub - o, c2[1], c2[2], c2[3], 1, Sm)
+            n1, n2, ny = self.sSumNote1, self.sSumNote2, self.ySumNote
+        else
+            n1, n2, ny = self.sPickNote1, self.sPickNote2, self.yPickNote
+        end
+        if n1 then jo:DrawText(Sm, n1, pad, ny - o, c2[1], c2[2], c2[3], 1) end
+        if n2 then jo:DrawText(Sm, n2, pad, ny - o + self.FH, c2[1], c2[2], c2[3], 1) end
+        for _, id in ipairs(SUM_BTNS) do
+            local b = self.b[id]
+            if b.shown and BTN[id][1] == page then
+                local tc = b.style == "main" and C.white or b.style == "stop" and C.bg or (b.lit and c or cw)
+                local a = (b.style == "main" and not b.lit) and 0.5 or 1
+                self:drawTextCentre(b.sTitle, b.cx + b.cw / 2, b.cy - o + (b.ch - self.FH) / 2, tc[1], tc[2], tc[3], a, Sm)
+            end
+        end
     elseif page == "cars" then
         local i, rx = 1, pad
         local b = self.b.pick1
@@ -1190,6 +1563,109 @@ function App:render()
             break
         end
     end
+end
+
+-- ---------------------------------------------------------------- the pick page's map
+-- A vanilla UIWorldMap built like the mini map's (ISMiniMap.lua ISMiniMapInner:instantiate, InitPlayer: the same
+-- worldmap.xml data, default style, what the player has seen), held on the player with the summon range filling its
+-- height. It is the "spot" control: a click drops the pin; joypad: the D-pad moves it (App:move), A goes on to "Go".
+-- Over it: the range ring (AutoDrive's summonReach), the car, the pin and the player. Made the first time the page opens.
+local PickMap = ISUIElement:derive("MinidoracatTeslaPickMap")
+App.PickMap = PickMap
+local EARTH_M = 40075016.68557849 -- MapProjection.zoomAtMetersPerPixel (zoom = log2(EARTH_M / (metres per pixel * px)))
+function PickMap:instantiate()
+    local jo = UIWorldMap.new(self)
+    self.javaObject = jo
+    local api = jo:getAPIv3()
+    self.mapAPI = api
+    api:setMapItem(MapItem.getSingleton())
+    api:setMaxZoom(21)
+    jo:setX(self.x); jo:setY(self.y); jo:setWidth(self.width); jo:setHeight(self.height)
+    jo:setAnchorLeft(true); jo:setAnchorTop(true)
+    local dirs = getLotDirectories()
+    for i = 1, dirs:size() do
+        local dir = "media/maps/" .. dirs:get(i - 1)
+        if fileExists(dir .. "/worldmap.xml") then api:addData(dir .. "/worldmap.xml") end
+        api:endDirectoryData()
+        api:addImages(dir)
+    end
+    api:setBoundsFromWorld()
+    api:setBoolean("HideUnvisited", true)
+    api:setBoolean("Players", false) -- the app draws the player
+    api:setBoolean("Symbols", false)
+    api:setBoolean("MiniMapSymbols", false)
+    api:setBoolean("ImagePyramid", false)
+    MapUtils.initDefaultStyleV1(self)
+end
+-- the player in the middle, 2.3 x the range top to bottom. The zoom for a height of 2m tiles is log2(EARTH_M / 2m)
+-- whatever the pixel height (UIWorldMapV3.setDisplayedArea), so it holds before the first frame sizes the map.
+function PickMap:prerender()
+    local app = self.app
+    local p = app.player
+    if not p then return end
+    local m = math.max(16, app.sumR or 0) * 1.15
+    self.mapAPI:centerOn(p:getX(), p:getY())
+    self.mapAPI:setZoom(math.log(EARTH_M / (2 * m)) / math.log(2))
+end
+local function disc(jo, tex, e, x, y, d, c)
+    jo:DrawSubTextureRGBA(tex, e[1], e[2], e[3], e[4], x - d / 2, y - d / 2, d, d, c[1], c[2], c[3], 1)
+end
+function PickMap:render()
+    local app = self.app
+    local api, p, A, tex = self.mapAPI, app.player, app.A, app.tex
+    if not (p and A) then return end
+    local jo, S = self.javaObject, app.S
+    local px, py = p:getX(), p:getY()
+    local ux, uy = api:worldToUIX(px, py), api:worldToUIY(px, py)
+    local R = app.sumR or 0
+    if R > 0 then
+        local r = math.abs(api:worldToUIX(px + R, py) - ux)
+        local b = C.blue
+        self:drawTextureScaled(app.ringTex, ux - r, uy - r, 2 * r, 2 * r, 1, b[1], b[2], b[3])
+    end
+    local e = A.round
+    local cx, cy = app.sumCarX, app.sumCarY
+    if cx then -- the car: a blue disc with the dashboard's top view, as the "Show on map" marker
+        local x, y = api:worldToUIX(cx, cy), api:worldToUIY(cx, cy)
+        if x >= 0 and y >= 0 and x <= self.width and y <= self.height then
+            disc(jo, tex, e, x, y, 22 * S, C.white)
+            disc(jo, tex, e, x, y, 18 * S, C.blue)
+            local car = A.car
+            jo:DrawSubTextureRGBA(tex, car[1], car[2], car[3], car[4], x - 7 * S, y - 4 * S, 14 * S, 8 * S, 1, 1, 1, 1)
+        end
+    end
+    local pin = app.pin
+    if pin then
+        local x, y = api:worldToUIX(pin.x, pin.y), api:worldToUIY(pin.x, pin.y)
+        local i = A.i_pin
+        local c = app.pinOk and C.pin or C.text2
+        jo:DrawSubTextureRGBA(tex, i[1], i[2], i[3], i[4], x - 11 * S, y - 22 * S, 22 * S, 22 * S, c[1], c[2], c[3], 1)
+    end
+    disc(jo, tex, e, ux, uy, 14 * S, C.white) -- the player
+    disc(jo, tex, e, ux, uy, 10 * S, C.blue)
+end
+function PickMap:onMouseDown() return true end
+function PickMap:onMouseUp(x, y)
+    self.app:setPin(self.mapAPI:uiToWorldX(x, y), self.mapAPI:uiToWorldY(x, y))
+    return true
+end
+function PickMap:onMouseWheel() return false end -- the page scrolls (the zoom follows the range)
+function PickMap:forceClick() -- joypad A on the map: on to "Go here"
+    local app = self.app
+    if app.b.go.shown then app:focusAt(3, 2) end
+end
+function App:pickMap()
+    local m = self.b.spot
+    if m then return m end
+    m = PickMap:new(0, 0, 100, 100)
+    m.app, m.id = self, "spot"
+    m:initialise()
+    m:instantiate()
+    self:addChild(m)
+    m:setVisible(false)
+    self.b.spot = m
+    self.buttons[#self.buttons + 1] = m
+    return m
 end
 
 -- ---------------------------------------------------------------- world map marker (temporary, never saved)

@@ -10,6 +10,7 @@ Outputs (overwritten):
   media/textures/MinidoracatTesla/HUD/atlas1x.png, atlas2x.png
   media/textures/MinidoracatTesla/HUD/radial_camp.png, radial_camp_off.png, radial_charge.png
   media/textures/MinidoracatTesla/HUD/app_arrow1x.png, app_arrow2x.png (phone app location page arrow, drawn rotated)
+  media/textures/MinidoracatTesla/HUD/app_ring.png (phone app summon range: radar and pick map, tinted when drawn)
   media/textures/MinidoracatTesla/HUD/map_car.png, map_round.png (MiniMap car marker and its disc)
   media/lua/client/MinidoracatTesla/HUDAtlas.lua
 
@@ -286,6 +287,31 @@ def ic_close(c):
     c.stroke([("M", 12.5, 3.5), ("L", 3.5, 12.5)], w=1.4)
 
 
+def ic_wheel(c):  # "Summon" row: a steering wheel (the summon mock's icon)
+    c.circle(8, 8, 6, outline="#FFFFFF", ow=1.3)
+    c.circle(8, 8, 1.6, outline="#FFFFFF", ow=1.3)
+    c.stroke([("M", 2.3, 7), ("H", 6.5)], w=1.3)
+    c.stroke([("M", 9.5, 7), ("H", 13.7)], w=1.3)
+    c.stroke([("M", 8, 9.6), ("V", 14)], w=1.3)
+
+
+def ic_pin(c):  # summon target: a map pin with a hole (the mock's teardrop), tip at the bottom centre
+    c.circle(8, 6.2, 4.6, fill="#FFFFFF")
+    c.fill([("M", 4.2, 8.8), ("L", 8, 15), ("L", 11.8, 8.8), ("Z",)])
+    c.circle(8, 6.2, 1.8, fill=(0, 0, 0, 0))
+
+
+def app_ring():  # the summon range on the app's radar and its pick map: 10% disc, full ring; white, tinted when drawn
+    n = 256
+    big = Image.new("RGBA", (n * SS // 2, n * SS // 2), (0, 0, 0, 0))
+    d = ImageDraw.Draw(big)
+    s = SS // 2
+    w = 3 * s
+    d.ellipse((w / 2, w / 2, n * s - w / 2, n * s - w / 2), fill=(255, 255, 255, 26))
+    d.ellipse((w / 2, w / 2, n * s - w / 2, n * s - w / 2), outline=(255, 255, 255, 255), width=w)
+    return big.resize((n, n), Image.LANCZOS)
+
+
 def map_icons():  # MiniMap marker provider (MiniMapBridge.lua): whole textures, white, tinted when drawn
     out = {}
     for key, fn in (("map_car", ic_carfront), ("map_round", ic_round)):
@@ -410,6 +436,7 @@ def build_sprites(k):
         "ring": ic_ring, "dot": ic_dot, "plug": ic_plug, "power": ic_power,
         "horn": ic_horn, "frunk": ic_frunk, "trunk": ic_trunk, "lockfill": ic_lockfill, "carfront": ic_carfront,
         "nav": ic_nav, "shield": ic_shield, "chev": ic_chev, "chevdown": ic_chevdown, "back": ic_back, "close": ic_close,
+        "wheel": ic_wheel, "pin": ic_pin,
     }
     for key, fn in icons16.items():
         c = Canvas(18 * k, 18 * k, 16)
@@ -508,6 +535,7 @@ def main():
         im.save(os.path.join(TEX_DIR, key + ".png"), optimize=True)
     for k in (1, 2):
         app_arrow(k).save(os.path.join(TEX_DIR, f"app_arrow{k}x.png"), optimize=True)
+    app_ring().save(os.path.join(TEX_DIR, "app_ring.png"), optimize=True)
     with open(LUA_OUT, "w", encoding="utf-8", newline="\n") as f:
         f.write("\n".join(lua) + "\n")
     print("contrast:", ", ".join(f"{a}/{b}={r}" for a, b, r in contrasts))

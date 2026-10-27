@@ -1,8 +1,9 @@
 -- Tesla app on the phone key, server side (client: client/MinidoracatTesla/PhoneApp.lua; reach: Keys.appReach).
 --   * appStatus { key }: every 2 s while a holder has the app open. The car as it is when the server has it loaded and
 --     the phone reaches it (grid up: any distance; grid down: Bluetooth Keys.BT_RANGE); else its last record.
---   * appAction { key, act, on }: lock, unlock, flash, horn, sentry, charge, frunk, trunk. Holder, reach, the
---     VehicleManager right for doing the same thing in person, and the action's own rules are checked every time.
+--   * appAction { key, act, on }: lock, unlock, flash, horn, sentry, charge, frunk, trunk, summon (+ mode, x, y, dir).
+--     Holder, reach, the VehicleManager right for doing the same thing in person, and the action's own rules are
+--     checked every time.
 --   * appAlerts { key }: the car's last sentry / camp alerts.
 --   * appStatusAll { keys }: the app's car list (one phone, several cars) when it opens, up to MAX_BATCH cars a request.
 -- Only players carrying the phone key for `key` get an answer about that car. Every command names its car by keyId
@@ -167,6 +168,7 @@ end
 local VM_CODES = {
     lock = { "PASSENGER" }, unlock = { "PASSENGER" }, flash = { "PASSENGER" }, horn = { "PASSENGER" },
     sentry = { "PASSENGER" }, trunk = { "CARGO" }, frunk = { "REPAIR", "SALVAGE" }, charge = { "FUEL" },
+    summon = { "DRIVE" }, -- the car moves: the right to drive it (VehicleManager also wraps startSummon itself)
 }
 
 -- ------------------------------------------------------------------ horn: vanilla, one second
@@ -211,6 +213,69 @@ local function swing(id)
     end
 end
 
+-- ------------------------------------------------------------------ summon: AutoDrive drives the empty car
+-- MinidoracatAutoDriveAPI (AutoDrive server/MDAD_Summon.lua, design temp/plan-summon-1027): startSummon checks again,
+-- starts the motor, hands the car's physics to the summoner's game and ends every session through onEnd. Modes: "come"
+-- (to the summoner, following them), "target" (a fixed ground point x, y), "dumb" (straight ahead dir = 1, or back -1).
+function R.summonApi()
+    local api = MinidoracatAutoDriveAPI
+    if type(api) == "table" and (tonumber(api.summonApiVersion) or 0) >= 1 and type(api.startSummon) == "function"
+        and type(api.stopSummon) == "function" and type(api.summonInfo) == "function" then return api end
+    return nil
+end
+local SUMMON_MODES = { come = true, target = true, dumb = true }
+-- a world square coordinate: a number, not NaN, on the map (no math.huge: Kahlua need not have it)
+local function coord(n) return type(n) == "number" and n == n and n >= 0 and n < 1000000 end
+
+-- every end (arrived, stopped, refused on the way): AutoDrive calls this once; the summoner (nil when gone) hears why
+function R.summonEnded(v, code, player)
+    if not v then return end
+    local mvm = MinidoracatVehicleManager -- the car moved (ParkedGuard.lua:258-261)
+    if mvm and mvm.Parked and mvm.Parked.touch then mvm.Parked.touch(v) end
+    T.log("summon end " .. tostring(code) .. " vid=" .. v:getId() .. " by " .. (player and player:getUsername() or "-"))
+    if player then T.send(player, "appDone", { key = v:getKeyId(), act = "summonEnd", why = tostring(code) }) end
+end
+
+-- on: start (a running summon: nothing, startSummon is called once) or stop it, whoever started it. Tesla's own rules
+-- first, then AutoDrive's; refused by AutoDrive = its translation key (T.denyText shows it). Sentry is switched off
+-- once the car is on its way, like the owner's unlock.
+local function summon(player, v, on, args)
+    local api = R.summonApi()
+    if not api then return "NO_AUTODRIVE" end
+    local info = api.summonInfo(v)
+    if not on then
+        if not info then return nil, false, true end
+        api.stopSummon(v, "CANCELLED")
+        return nil, false
+    end
+    if info then -- already on its way: once per summoner, someone else's is theirs
+        if info.by ~= player:getUsername() then return "UI_MinidoracatAutoDrive_SummonBusy" end
+        return nil, true, true
+    end
+    local mode = args.mode or "come"
+    if not SUMMON_MODES[mode] then return "NO_TARGET" end
+    local opts = { mode = mode, startEngine = true, onEnd = R.summonEnded } -- the phone key holder has the key
+    if mode == "target" then
+        if not (coord(args.x) and coord(args.y)) then return "NO_TARGET" end
+        opts.x, opts.y = args.x, args.y
+    elseif mode == "dumb" then
+        if args.dir ~= 1 and args.dir ~= -1 then return "NO_TARGET" end
+        opts.dir = args.dir
+    end
+    if player:getVehicle() then return "NOT_OUTSIDE" end
+    if v:hasPassenger() then return "OCCUPIED" end -- any seat, the driver's too (BaseVehicle.java:1836-1845)
+    local part = T.Battery.part(v)
+    -- plugged in: the unmanned push would drag the cable (Charging.checkCable unplugs it)
+    if part and part:getModData().chg then return "CABLE_PLUGGED" end
+    if v:getVehicleTowing() or v:getVehicleTowedBy() then return "TOWED" end
+    if v:getBatteryCharge() <= 0 then return "NO_12V" end
+    if not v:isEngineRunning() and not v:isEngineWorking() then return "CANT_START" end -- empty pack, broken motor
+    local ok, why = api.startSummon(player, v, opts)
+    if not ok then return type(why) == "string" and why or "CANT_START" end
+    if part and part:getModData().sentry then S.disarm(v, player:getUsername()) end
+    return nil, true
+end
+
 local ACT = {
     -- same as the key card tap (KeyActions.lua keyTap): flash, chirp / beep; an unlock by the owner disarms sentry
     lock = function(_, v) K.setLocked(v, true); K.signal(v, true) end,
@@ -241,6 +306,7 @@ local ACT = {
     end,
     frunk = swing("EngineDoor"),
     trunk = swing("TrunkDoor"),
+    summon = summon,
 }
 
 -- ------------------------------------------------------------------ commands
@@ -254,6 +320,12 @@ function R.state(player, key)
     -- grid: the phone's own network (status bar), apart from whether it reaches this car
     local out = { key = key, link = link, grid = getWorld():isHydroPowerOn() }
     if r then for k, val in pairs(r) do out[k] = val end end
+    if link then
+        out.vid = v:getId() -- the app finds the car its game has loaded (summon page)
+        local api = R.summonApi()
+        local info = api and api.summonInfo(v)
+        if info then out.summon = { phase = info.phase, mode = info.mode, mine = info.by == player:getUsername() } end
+    end
     return out
 end
 
@@ -304,7 +376,7 @@ T.ServerCommands.appAction = function(player, args)
         local ok, why = R.vmAllows(player, v, codes)
         if not ok then return done(why) end
     end
-    local why, result, noop = fn(player, v, args.on == true)
+    local why, result, noop = fn(player, v, args.on == true, args)
     if why then return done(why) end
     if noop then -- already as asked: nothing changed, nothing to log or touch
         done(nil, result)
@@ -313,7 +385,8 @@ T.ServerCommands.appAction = function(player, args)
     R.stats.actions = R.stats.actions + 1
     local mvm = MinidoracatVehicleManager -- AGENTS.md: touch after changing the car (ParkedGuard.lua:258-261)
     if mvm and mvm.Parked and mvm.Parked.touch then mvm.Parked.touch(v) end
-    local onOff = (act == "sentry" or act == "charge") and (args.on == true and " on" or " off") or ""
+    local onOff = (act == "sentry" or act == "charge" or act == "summon") and (args.on == true and " on" or " off") or ""
+    if act == "summon" and args.on == true then onOff = onOff .. " " .. tostring(args.mode or "come") end
     T.log("app " .. act .. onOff .. " vid=" .. v:getId() .. " by " .. player:getUsername())
     if result == nil and (act == "sentry" or act == "charge") then result = args.on == true end
     done(nil, result)

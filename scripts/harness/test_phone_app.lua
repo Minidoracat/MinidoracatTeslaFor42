@@ -423,6 +423,121 @@ F.sent = {}
 cmds.appStatusAll(two, { keys = "9001" })
 check(#F.sent == 0, "batch: keys not a list -> ignored")
 
+-- ------------------------------------------------------------------ summon (ACT.summon, a fake MinidoracatAutoDriveAPI)
+H.section("phone app: summon (server)")
+local AD = { summonApiVersion = 1, calls = {}, stops = {}, info = {}, answer = { true } }
+function AD.startSummon(p, car, opts)
+    AD.calls[#AD.calls + 1] = { p = p, car = car, opts = opts }
+    if AD.answer[1] then AD.info[car] = { by = p:getUsername(), phase = "starting", mode = opts.mode } end
+    return AD.answer[1], AD.answer[2]
+end
+function AD.stopSummon(car, code) AD.stops[#AD.stops + 1] = { car = car, code = code }; AD.info[car] = nil; return true end
+function AD.summonInfo(car) return AD.info[car] end
+function v:getVehicleTowing() return self.towing end
+function v:getVehicleTowedBy() return nil end
+function v:isEngineWorking() return self.working ~= false end
+local function summon(p, on, extra)
+    F.sent = {}
+    local args = { key = p.key, act = "summon", on = on }
+    for k, val in pairs(extra or {}) do args[k] = val end
+    cmds.appAction(p, args)
+    return last("appDone")
+end
+v.running = false
+d = summon(owner, true)
+check(d.why == "NO_AUTODRIVE" and #AD.calls == 0 and not v.running, "no AutoDrive summon API: NO_AUTODRIVE, nothing started")
+MinidoracatAutoDriveAPI = { summonApiVersion = 0, startSummon = AD.startSummon, stopSummon = AD.stopSummon, summonInfo = AD.summonInfo }
+check(summon(owner, true).why == "NO_AUTODRIVE", "summonApiVersion 0: NO_AUTODRIVE")
+MinidoracatAutoDriveAPI = AD
+F.vehicles[v:getId()] = nil
+check(summon(owner, true).why == "NOT_LOADED" and #AD.calls == 0, "car not loaded on the server: NOT_LOADED")
+F.vehicles[v:getId()] = v
+MinidoracatAutoDriveAPI = AD
+check(summon(stranger, true).why == "NO_PHONE_KEY" and #AD.calls == 0, "no phone key: NO_PHONE_KEY")
+grid = false
+owner.x = v.x + 31
+check(summon(owner, true).why == "NO_LINK" and #AD.calls == 0, "grid down, 31 tiles: NO_LINK")
+owner.x = v.x + 20
+asked = {}
+answer.ok, answer.why = false, "NOT_AUTHORIZED"
+MinidoracatVehicleManagerAPI = { canUse = function(p, car, code, ctx)
+    asked[#asked + 1] = { code = code, silent = ctx and ctx.silent }
+    return answer.ok, answer.why
+end }
+d = summon(owner, true)
+check(d.why == "NOT_OWNER" and asked[1].code == "DRIVE" and not asked[1].silent and #AD.calls == 0,
+    "VehicleManager asked DRIVE (not silent); only TRACK shared -> NOT_OWNER, AutoDrive never called")
+MinidoracatVehicleManagerAPI = nil
+owner.vehicle = v
+check(summon(owner, true).why == "NOT_OUTSIDE", "summoner in a car: NOT_OUTSIDE")
+owner.vehicle = nil
+v.passengers = 1
+check(summon(owner, true).why == "OCCUPIED", "someone in the car: OCCUPIED")
+v.passengers = 0
+v.parts.GasTank:getModData().chg = { kw = 7 }
+check(summon(owner, true).why == "CABLE_PLUGGED", "plugged in: CABLE_PLUGGED")
+v.parts.GasTank:getModData().chg = nil
+v.towing = {}
+check(summon(owner, true).why == "TOWED", "towing: TOWED")
+v.towing = nil
+v.charge12 = 0
+check(summon(owner, true).why == "NO_12V", "flat 12 V: NO_12V")
+v.charge12 = 1
+v.working = false
+check(summon(owner, true).why == "CANT_START" and #AD.calls == 0, "motor can't run (empty pack): CANT_START")
+v.working = nil
+check(summon(owner, true, { mode = "fly" }).why == "NO_TARGET", "unknown mode: NO_TARGET")
+check(summon(owner, true, { mode = "target", x = 0 / 0, y = 5 }).why == "NO_TARGET", "target with NaN: NO_TARGET")
+check(summon(owner, true, { mode = "dumb", dir = 2 }).why == "NO_TARGET" and #AD.calls == 0, "dumb with dir 2: NO_TARGET")
+AD.answer = { false, "UI_MinidoracatAutoDrive_NeedModule" }
+d = summon(owner, true)
+check(d.why == "UI_MinidoracatAutoDrive_NeedModule" and #AD.calls == 1, "AutoDrive refuses: its translation key goes to the app")
+check(T.denyText(d.why) == "UI_MinidoracatAutoDrive_NeedModule" and T.denyText("IGUI_MVM_Protected") == "IGUI_MVM_Protected"
+    and T.denyText("TOWED") == "IGUI_MinidoracatTesla_Deny_TOWED", "denyText: whole keys as they are, Tesla codes as Deny_<code>")
+AD.answer, AD.calls = { true }, {}
+v.parts.GasTank:getModData().sentry = { by = "owner", at = F.hours, kwh = 50, since = F.hours }
+d = summon(owner, true)
+local c1 = AD.calls[1]
+check(d.why == nil and d.on == true and #AD.calls == 1 and c1.p == owner and c1.car == v and c1.opts.mode == "come"
+    and c1.opts.startEngine == true and c1.opts.onEnd == R.summonEnded, "come: startSummon once (mode come, startEngine, onEnd)")
+check(v.parts.GasTank:getModData().sentry == nil, "sentry switched off once the car is on its way")
+F.runTicks(50, 450)
+d = summon(owner, true)
+check(d.why == nil and d.on == true and #AD.calls == 1, "start again while it runs: done, startSummon not called twice")
+F.sent = {}
+cmds.appStatus(owner, { key = 9001 })
+st = last("appState")
+check(st.vid == v:getId() and st.summon and st.summon.mine == true and st.summon.phase == "starting" and st.summon.mode == "come",
+    "status over a live link: the vehicle id and the summon (mine, phase, mode)")
+local two2 = player("other", container(phoneKey(9001)), v.x + 3, v.y)
+two2.key = 9001
+check(summon(two2, true).why == "UI_MinidoracatAutoDrive_SummonBusy", "another holder starts while it runs: SummonBusy")
+F.sent = {}
+cmds.appStatus(two2, { key = 9001 })
+check(last("appState").summon.mine == false, "the other holder sees someone else's summon")
+d = summon(owner, false)
+check(d.why == nil and d.on == false and #AD.stops == 1 and AD.stops[1].code == "CANCELLED", "stop: stopSummon(v, CANCELLED)")
+d = summon(owner, false)
+check(d.why == nil and d.on == false and #AD.stops == 1, "stop when none runs: done, nothing called")
+AD.calls = {}
+summon(owner, true, { mode = "target", x = 1012.5, y = 1990.5 })
+c1 = AD.calls[1]
+check(c1 and c1.opts.mode == "target" and c1.opts.x == 1012.5 and c1.opts.y == 1990.5, "target: x, y handed over as sent")
+AD.info[v] = nil
+summon(owner, true, { mode = "dumb", dir = -1 })
+check(AD.calls[2].opts.mode == "dumb" and AD.calls[2].opts.dir == -1 and AD.calls[2].opts.x == nil, "dumb: dir handed over")
+F.sent = {}
+R.summonEnded(v, "ARRIVED", owner)
+d = last("appDone")
+check(d and d.act == "summonEnd" and d.why == "ARRIVED" and d.key == 9001, "onEnd: the summoner hears the stop code")
+F.sent = {}
+R.summonEnded(v, "LEFT", nil)
+check(#F.sent == 0, "onEnd with the summoner gone: nothing sent, no error")
+AD.info[v] = nil
+owner.x = v.x + 500
+grid = true
+MinidoracatAutoDriveAPI = nil
+
 -- ------------------------------------------------------------------ client bearing (pure math in PhoneApp.lua)
 H.section("phone app: bearing")
 local function bearing(...)
@@ -491,6 +606,33 @@ function UI:drawTextCentre(s, x, y, r, g, b, a, font) self.javaObject:DrawText(f
 function UI:onGainJoypadFocus(jd) self.joyfocus = jd end
 function UI:onLoseJoypadFocus() self.joyfocus = nil end
 ISPanelJoypad = UI:derive("ISPanelJoypad")
+ISUIElement = UI:derive("ISUIElement")
+-- the pick page's UIWorldMap (PickMap): 2 px a tile around the centre it is given
+local mapCalls = { data = 0, style = 0, zoom = nil }
+UIWorldMap = { new = function(el)
+    local api = { el = el, cx = 0, cy = 0, k = 2 }
+    function api:setMapItem() end
+    function api:setMaxZoom() end
+    function api:addData() mapCalls.data = mapCalls.data + 1 end
+    function api:endDirectoryData() end
+    function api:addImages() end
+    function api:setBoundsFromWorld() end
+    function api:setBoolean(n, b) mapCalls[n] = b end
+    function api:centerOn(x, y) self.cx, self.cy = x, y end
+    function api:setZoom(z) mapCalls.zoom = z end
+    function api:worldToUIX(x) return (x - self.cx) * self.k + self.el.width / 2 end
+    function api:worldToUIY(_, y) return (y - self.cy) * self.k + self.el.height / 2 end
+    function api:uiToWorldX(x) return self.cx + (x - self.el.width / 2) / self.k end
+    function api:uiToWorldY(_, y) return self.cy + (y - self.el.height / 2) / self.k end
+    local jo = { DrawSubTextureRGBA = function() end, DrawText = function() end }
+    function jo:getAPIv3() return api end
+    for _, m in ipairs({ "setX", "setY", "setWidth", "setHeight", "setAnchorLeft", "setAnchorTop" }) do jo[m] = function() end end
+    return jo
+end }
+MapItem = { getSingleton = function() return {} end }
+function getLotDirectories() return { size = function() return 1 end, get = function() return "Muldraugh, KY" end } end
+function fileExists() return true end
+MapUtils = { initDefaultStyleV1 = function() mapCalls.style = mapCalls.style + 1 end }
 ISButton = UI:derive("ISButton")
 function ISButton:new(x, y, w, h, title, target, onclick)
     local o = UI.new(self, x, y, w, h)
@@ -507,6 +649,8 @@ ISWorldMap = { IsAllowed = function() return true end, ShowWorldMap = function()
 H.stub("ISUI/ISPanelJoypad")
 H.stub("ISUI/ISButton")
 H.stub("ISUI/Maps/ISWorldMap")
+H.stub("ISUI/Maps/ISMapDefinitions")
+H.stub("ISUI/ISUIElement")
 require "MinidoracatTesla/PhoneApp"
 local App = T.PhoneApp
 local myInv = container(multiPhone({ 9001, 9002 }))
@@ -796,6 +940,186 @@ check(App.open(0, { keyId = 9001 }) == nil, "no phone key on the player: the app
 myInv = savedInv
 App.open(0, { keyId = 9001 })
 state()
+a:setPage("location")
+
+-- ---------------------------------------------------------------- summon pages (a fake client MinidoracatAutoDriveAPI)
+H.section("phone app: summon (client)")
+local P = "IGUI_MinidoracatTesla_App_"
+local VID = v:getId() -- v is loaded (getVehicleById), 10 tiles south of the player
+local function sread() a.sumNext = 0; a:read(); a:layout() end
+a:setPage("home")
+state({ vid = VID })
+check(not a.b.summon.shown and #a:navRows() == 7, "no AutoDrive summon API: no Summon row")
+local CL = { summonApiVersion = 1, reach = 64, can = { come = { true }, dumb = { true }, target = { true } }, asked = {} }
+function CL.canSummon(pn, car, opts)
+    CL.asked[#CL.asked + 1] = { car = car, mode = opts.mode, x = opts.x, y = opts.y, dir = opts.dir }
+    local r = CL.can[opts.mode]
+    return r[1], r[2]
+end
+function CL.summonState() return CL.st end
+function CL.summonReach() return CL.reach end
+function CL.summonReasonText(code) return "R_" .. code end
+MinidoracatAutoDriveAPI = CL
+state({ vid = VID })
+sread()
+local bs = a.b
+check(bs.summon.shown and bs.summon.cy > bs.location.cy and bs.summon.cy < bs.security.cy,
+    "with the API: the Summon row between Location and Security")
+check(a.rowSub.summon:find(P .. "SummonReady", 1, true) == 1, "Summon row: within range (and how far the car is)")
+ok, why = textInside()
+check(ok and a.height <= SH - 8, "home with the Summon row: text inside, fits (" .. a.height .. " px)")
+a:onGainJoypadFocus(jd)
+a:focusFirst("location")
+a:onJoypadDirDown()
+check(bs.summon.joypadFocused, "joypad: Location row, down -> Summon row")
+a:onJoypadDown(Joypad.AButton)
+sread()
+check(a.page == "summon" and bs.come.shown and bs.come.enable and bs.pick.shown and bs.fwd.enable and bs.rev.enable
+    and bs.come.joypadFocused, "A: the summon page, come / pick / forward / back usable, focus on Come to me")
+local sawCar, sawDumb = false, false
+for _, q in ipairs(CL.asked) do
+    if q.car == v and q.mode == "come" then sawCar = true end
+    if q.mode == "dumb" then sawDumb = true end
+end
+check(sawCar and sawDumb, "canSummon asked with the car this game has loaded, for come and for dumb")
+check(a.sSumState == P .. "SummonCarAt" and a.sSumSub == P .. "SummonRange" and a.radCarX ~= nil
+    and a.radCarY > a.radCY, "ready: where the car is, the range, the car's dot south of the player")
+ok, why = textInside()
+check(ok, "summon page: text inside (" .. why .. ")")
+-- come: starting -> driving -> stop pressed -> CANCELLED
+bs.come:forceClick()
+cmd, args = sentLast()
+check(cmd == "appAction" and args.act == "summon" and args.on == true and args.mode == "come" and args.key == 9001,
+    "Come to me -> appAction summon on, mode come")
+sread()
+check(a.sumPhase == "starting" and bs.come.shown and bs.come.style == "stop" and not bs.fwd.shown and not bs.pick.shown,
+    "starting: one button, Come to me now Stop")
+T.ClientCommands.appDone({ key = 9001, act = "summon", on = true })
+check(a.toast.text == P .. "Done_summon_on" and a.sumPhase == "starting", "server ok: toast, still starting")
+CL.st = { vid = VID, phase = "driving", dist = 12, mode = "come" }
+sread()
+check(a.sumPhase == "driving" and a.sSumState == P .. "SummonComing" and a.rowEm.summon == a.sSumState,
+    "AutoDrive driving: the car is coming (the home row says so too)")
+bs.come:forceClick()
+cmd, args = sentLast()
+check(args.act == "summon" and args.on == false and a.sum.stopAsked, "Stop -> appAction summon off")
+T.ClientCommands.appDone({ key = 9001, act = "summon", why = "NO_LINK" })
+check(a.sumPhase == "driving" or a.sum.phase == "driving", "the stop refused (NO_LINK): still driving")
+T.ClientCommands.appDone({ key = 9001, act = "summonEnd", why = "ARRIVED" })
+sread()
+check(a.sumPhase == "arrived" and a.toast.text == "R_ARRIVED" and a.toast.ok and bs.finish.shown and not bs.come.shown,
+    "summonEnd ARRIVED: arrived, AutoDrive's words, Done")
+CL.st = { vid = VID, phase = "ended", code = "ARRIVED", dist = 4 }
+bs.finish:forceClick()
+sread()
+check(a.sum == nil and a.sumPhase == "ready" and bs.come.shown, "Done: ready again (an old ended state does not end anything)")
+-- refused at the start, then try again; a stop code
+bs.rev:forceClick()
+cmd, args = sentLast()
+check(args.mode == "dumb" and args.dir == -1 and args.x == nil, "Back -> dumb, dir -1")
+sread()
+check(bs.rev.style == "stop" and not bs.come.shown, "back running: its button is the Stop")
+T.ClientCommands.appDone({ key = 9001, act = "summon", why = "TOWED" })
+sread()
+check(a.sumPhase == "stopped" and a.sSumState == P .. "SummonRefused" and a.sSumNote == "IGUI_MinidoracatTesla_Deny_TOWED"
+    and bs.again.shown and bs.finish.shown, "refused (TOWED): why in full, Try again / Done")
+bs.again:forceClick()
+cmd, args = sentLast()
+check(args.mode == "dumb" and args.dir == -1 and a.sumPhase ~= nil, "Try again: the same summon (dumb back)")
+CL.st = { vid = VID, phase = "driving", dist = 5, mode = "dumb" }
+sread()
+CL.st = { vid = VID, phase = "ended", code = "ZOMBIES", dist = 5 }
+sread()
+check(a.sumPhase == "stopped" and a.sum.code == "ZOMBIES" and a.sSumState == P .. "SummonStopped",
+    "AutoDrive ended (ZOMBIES) before the server's word: stopped with its code")
+T.ClientCommands.appDone({ key = 9001, act = "summonEnd", why = "CANCELLED" })
+sread()
+check(a.sum == nil and a.sumPhase == "ready", "summonEnd CANCELLED: back to ready")
+CL.st = nil
+-- greyed with AutoDrive's reason
+CL.can.come = { false, "UI_MinidoracatAutoDrive_NeedModule" }
+sread()
+check(not bs.come.enable and not bs.pick.enable and bs.fwd.enable and a.sSumNote == "UI_MinidoracatAutoDrive_NeedModule",
+    "canSummon come refused: come / pick grey, forward still usable, the reason under the buttons")
+local n1 = #H.clientSent
+bs.come:forceClick()
+check(#H.clientSent == n1, "a grey Come to me sends nothing")
+ok, why = textInside()
+check(ok, "greyed summon page: text inside (" .. why .. ")")
+CL.can.come = { true }
+state({ vid = VID, summon = { phase = "driving", mode = "come", mine = false } })
+sread()
+check(not bs.come.enable and not bs.fwd.enable and a.sSumNote == "UI_MinidoracatAutoDrive_SummonBusy",
+    "someone else's summon of this car: everything grey, says so")
+state({ vid = VID, summon = { phase = "driving", mode = "target", mine = true } })
+sread()
+check(a.sumPhase == "starting" and a.sum.mode == "target" and bs.pick.style == "stop",
+    "my summon running when the app opens: shown as running, its button the Stop")
+a.sum = nil
+state({ vid = VID })
+sread()
+-- pick a spot
+bs.pick:forceClick()
+sread()
+local map = bs.spot
+check(a.page == "pick" and map and map.shown and map:isVisible() and mapCalls.data == 1 and mapCalls.style == 1
+    and mapCalls.HideUnvisited == true, "Pick a spot: the map (vanilla data and style, only what the player has seen)")
+check(map.joypadFocused and not bs.go.enable and a.sPickNote == P .. "SummonPickHint", "no pin yet: Go here grey, the hint")
+map:prerender()
+check(map.mapAPI.cx == 1000 and map.mapAPI.cy == 1990 and mapCalls.zoom > 17 and mapCalls.zoom < 19,
+    "the map on the player, zoomed to the range (" .. tostring(mapCalls.zoom) .. ")")
+map:onMouseUp(map.width / 2 + 20, map.height / 2 - 30) -- 10 tiles east, 15 north
+sread()
+local lastPin = CL.asked[#CL.asked]
+check(a.pin.x == 1010.5 and a.pin.y == 1975.5 and lastPin.mode == "target" and lastPin.x == 1010.5 and bs.go.enable
+    and a.sPickNote == P .. "SummonSpotAt", "a click drops the pin on that square; canSummon asked for it; Go here usable")
+local okDraw = pcall(function() a:prerender(); a:render(); map:render() end)
+check(okDraw, "pick page draws (map overlay too)")
+ok, why = textInside()
+check(ok, "pick page: text inside (" .. why .. ")")
+CL.can.target = { false, "UI_MinidoracatAutoDrive_SummonTooFar" }
+sread()
+check(not bs.go.enable and a.sPickNote == "UI_MinidoracatAutoDrive_SummonTooFar", "pin out of range: Go here grey, why")
+CL.can.target = { true }
+a:onJoypadDirRight()
+sread()
+check(a.pin.x == 1012.5 and map.joypadFocused, "joypad on the map: right moves the pin 2 tiles")
+a:onJoypadDown(Joypad.AButton)
+check(bs.go.joypadFocused, "A on the map: on to Go here")
+a:onJoypadDown(Joypad.AButton)
+cmd, args = sentLast()
+check(args.act == "summon" and args.mode == "target" and args.x == 1012.5 and args.y == 1975.5 and a.page == "summon",
+    "Go here -> appAction target with the pin, back on the summon page")
+sread()
+check(a.sumPhase == "starting" and bs.pick.style == "stop" and a.radPinX ~= nil, "target running: Pick a spot is the Stop, the pin on the radar")
+T.ClientCommands.appDone({ key = 9001, act = "summonEnd", why = "CANCELLED" })
+sread()
+bs.pick:forceClick()
+a:onJoypadDown(Joypad.BButton)
+check(a.page == "summon", "B on the pick page: back to the summon page")
+a:onJoypadDown(Joypad.BButton)
+check(a.page == "home" and bs.summon.joypadFocused, "B on the summon page: home, on the Summon row")
+a:setPage("summon")
+ISWorldMap.IsAllowed = function() return false end
+sread()
+check(not bs.pick.shown and bs.come.shown, "world map off on the server: no Pick a spot")
+ISWorldMap.IsAllowed = function() return true end
+sread()
+-- a summonEnd with the app closed: over the player's head
+recording = false
+collectgarbage("collect"); collectgarbage("stop")
+a:prerender(); a:render()
+local kb0 = collectgarbage("count")
+for _ = 1, 200 do a:prerender(); a:render() end
+local grew0 = collectgarbage("count") - kb0
+collectgarbage("restart")
+recording = true
+check(grew0 < 1, "summon page: 200 redraws allocate nothing (" .. string.format("%.2f", grew0) .. " KB)")
+MinidoracatAutoDriveAPI = nil
+a.sum, a.pin = nil, nil
+a:setPage("home")
+state()
+check(not a.b.summon.shown, "API gone: the Summon row gone")
 a:setPage("location")
 
 -- ---------------------------------------------------------------- MiniMap markers (MiniMapBridge.lua)
