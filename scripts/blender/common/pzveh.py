@@ -36,6 +36,7 @@ def use(cfg):
     theirs from CAR."""
     global CAR, TMP, OFFICIAL, NAME, DOORS_FBX, L, W, H, WHEEL_RIM, WHEEL_SPOKE, WHEEL_DISC, WHEEL_RGB, PAINTS, CAL
     global COMPOSITOR_MODEL, OFFICIAL_OPTS, DOORS, GATE_IN, OY, WHEEL_LIFT, WHEEL_INSET, CAB_BOX, SEAT, SCRIPT_MARK
+    global RAMP, BODY_W_Z
     CAR = cfg
     TMP = os.path.join(REPO, "temp", cfg["TMP"])
     OFFICIAL = os.path.join(TMP, "official")    # design-studio renders (stage_official)
@@ -49,6 +50,7 @@ def use(cfg):
     DOORS, GATE_IN, OY, WHEEL_LIFT, WHEEL_INSET = (cfg[k] for k in ("DOORS", "GATE_IN", "OY", "WHEEL_LIFT",
                                                                     "WHEEL_INSET"))
     CAB_BOX, SEAT, SCRIPT_MARK = cfg["CAB_BOX"], cfg["SEAT"], cfg["SCRIPT_MARK"]
+    RAMP, BODY_W_Z = cfg["RAMP"], cfg["BODY_W_Z"]
 
 
 use(load(os.environ.get("CAR", "model_y")))
@@ -264,7 +266,8 @@ def spoke_x(r, rr, hw):
 
 
 def spoke_outline(rr, rb):
-    """One Y spoke's outline (radius, angle off its centreline), counter-clockwise seen from +x (y right, z up)."""
+    """One Y spoke's outline (radius, angle off its centreline), counter-clockwise seen from +x (y right, z up); the
+    whole spoke turned `sweep` rad more at the barrel than at the hub (a swept, turbine-like spoke)."""
     sp = WHEEL_SPOKE
     h, f, a, w = sp["hub"] * rr, sp["fork"] * rr, sp["spread"], sp["arm"] * rr
     centre = lambda r: r * a * max(0.0, r - f) / (rb - f)              # arm centreline, tangential  # noqa: E731
@@ -273,12 +276,13 @@ def spoke_outline(rr, rb):
     inner = [(rb, -centre(rb) + w), (f + 0.75 * (rb - f), -centre(f + 0.75 * (rb - f)) + w), (crotch, 0.0)]
     half = left + inner                                  # hub, out along the left edge, back down the left arm's inside
     pts = half + [(r, -t) for r, t in reversed(half[:-1])]
-    return [(r, t / r) for r, t in pts]
+    out = [(r, t / r) for r, t in pts]
+    return [(r, ang + sp["sweep"] * (r - h) / (rb - h)) for r, ang in out] if sp["sweep"] else out
 
 
 def stage_wheel(r, width):
     """Procedural wheel (axle along X, vanilla Vehicles_Wheel convention), both faces alike: tire radius r and width in
-    grid, 21" Arachnid 2.0 (WHEEL_SPOKE); MOD wheel FBX (two equal UV layers) + 64^2 texture. -> triangle count.
+    grid, spokes per the car's WHEEL_SPOKE (Model Y 21" Arachnid 2.0, Model 3 20" Warp); MOD wheel FBX (two equal UV layers) + 64^2 texture. -> triangle count.
     Fresh scene: the caller saves its own .blend first."""
     from mathutils.geometry import tessellate_polygon
     bpy.ops.wm.read_factory_settings(use_empty=True)
@@ -665,7 +669,13 @@ def frame_black(edge_attr, pa, pb, liner_attr, belt):
 
 
 def soup_object(name, V, T, A, mat):
-    """Mesh object from a triangle soup (unused vertices dropped), UV0 / UV1 and free corner normals."""
+    """Mesh object from a triangle soup (unused vertices dropped), UV0 / UV1 and free corner normals. A triangle on
+    the same three vertices as an earlier one is dropped: the FBX importer keeps only one (the build's read-back)."""
+    _, first = np.unique(np.sort(T, 1), axis=0, return_index=True)
+    if len(first) < len(T):
+        keep = np.sort(first)
+        print("SOUP", name, len(T) - len(keep), "duplicate triangles dropped")
+        T, A = T[keep], A[keep]
     used, T = np.unique(T.ravel(), return_inverse=True)
     T = T.reshape(-1, 3)
     me = bpy.data.meshes.new(name)
@@ -762,7 +772,7 @@ def geometry(body, zmid, wl, r, tire_w, belt_z, doors_y, port_yz):
     me = body.data
     liner = np.array([d.value for d in me.attributes["liner"].data], bool)
     bc = co[sorted({i for k, p in enumerate(me.polygons) if not liner[k] for i in p.vertices})]
-    w_body = 2 * np.abs(bc[bc[:, 2] < 0.55 * H - zmid][:, 0]).max()
+    w_body = 2 * np.abs(bc[bc[:, 2] < BODY_W_Z * H - zmid][:, 0]).max()   # below the mirrors
     hgt, ln = bc[:, 2].max() - bc[:, 2].min(), np.ptp(bc[:, 1])
     ext = (w_body / S, hgt / S, ln / S)
     bvh = BVHTree.FromObject(body, bpy.context.evaluated_depsgraph_get())
@@ -807,7 +817,7 @@ def geometry(body, zmid, wl, r, tire_w, belt_z, doors_y, port_yz):
         out += [f"        passenger {nm}", "        {", "            showPassenger = true,", "            position inside", "            {",
                 f"                offset = {f4(side * SEAT['x'] / S, seat_y, z / S)},", "                rotate = 0.0 0.0 0.0,", "            }",
                 "            position outside", "            {",
-                f"                offset = {f4(side * (w_body / 2 + 0.30) / S, ground, z / S)},", "                rotate = 0.0 0.0 0.0,",
+                f"                offset = {f4(side * (w_body / 2 + SEAT['out']) / S, ground, z / S)},", "                rotate = 0.0 0.0 0.0,",
                 f"                area = Seat{nm},", "            }", "        }"]
     areas = [("Engine", 0, ext[2] / 2 + ah / 2, ext[0], ah), ("TruckBed", 0, -(ext[2] / 2 + ah / 2), ext[0], ah),
              ("GasTank", sx, port[2], aw, ah)]
@@ -856,16 +866,17 @@ def geometry(body, zmid, wl, r, tire_w, belt_z, doors_y, port_yz):
 
 def official_ramp(code, n=32):
     """sRGB paint colour per V quantile (n bins) of the official design-studio SIDE render of `code` (stage official):
-    body side below the belt (car bbox rows 36-74%, columns 4-96%), wheel arches and rocker cut out, nose left."""
+    body side below the belt inside the car's bbox (RAMP: rows t, columns u), the wheel arches (circles round the
+    wheel centres u at row wt, radius wr of the width) cut out, nose left."""
     a = img_np(bpy.data.images.load(os.path.join(OFFICIAL, f"{code}_SIDE.png")))[::-1].astype(np.float64)  # rows top-down
     m = a[..., 3] > 0.9
     ys, xs = np.nonzero(m)
     x0, y0, w, h = xs.min(), ys.min(), np.ptp(xs), np.ptp(ys)
     yy, xx = np.mgrid[0:a.shape[0], 0:a.shape[1]]
     u, t = (xx - x0) / w, (yy - y0) / h
-    keep = m & (t > 0.36) & (t < 0.74) & (u > 0.04) & (u < 0.96)
-    for cu in (0.165, 0.80):                                             # wheels + arches
-        keep &= ((u - cu) * w) ** 2 + ((t - 0.80) * h) ** 2 > (0.135 * w) ** 2
+    keep = m & (t > RAMP["t"][0]) & (t < RAMP["t"][1]) & (u > RAMP["u"][0]) & (u < RAMP["u"][1])
+    for cu in RAMP["wheels"]:                                            # wheels + arches
+        keep &= ((u - cu) * w) ** 2 + ((t - RAMP["wt"]) * h) ** 2 > (RAMP["wr"] * w) ** 2
     px = a[..., :3][keep]
     px = px[np.argsort(px.max(1), kind="stable")]
     e = np.linspace(0, len(px), n + 1).astype(int)

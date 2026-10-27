@@ -41,6 +41,9 @@ CAR = dict(
     # from these by under 1 level, so CAL stayed
     COMPOSITOR_MODEL="my",
     OFFICIAL_OPTS="$MTY70,${},$WY21A,$IPB14",
+    # official_ramp: the SIDE render's paint rows t / columns u (car bbox fractions), wheel arches cut out (circles
+    # round u wheels at row wt, radius wr of the width)
+    RAMP=dict(t=(0.36, 0.74), u=(0.04, 0.96), wheels=(0.165, 0.80), wt=0.80, wr=0.135),
     # ---- pzveh: wheel, the Model Y Performance's 21" Arachnid 2.0 (design studio $MTY70,$WY21A, view RIMCLOSEUP):
     # five Y spokes in dark graphite, open between them onto the brake rotor; staggered 255/35 R21 front / 275/35 R21
     # rear (one size here, the source tires'). Spokes and hub cap are geometry (the gaps really open: the vehiclewheel
@@ -51,9 +54,10 @@ CAR = dict(
     WHEEL_RIM=0.76,                        # rim flange radius / tire radius: 21" (266.7 mm bead + ~17 mm) / 356 mm
     # Y spoke in rr units (rr = WHEEL_RIM x tire radius), half-widths tangential: main arm from the hub to the fork,
     # then two arms spreading to +-spread at the barrel; front face `inset` grid inside the tire's half width at the
-    # barrel, `dish` deeper at the hub; side walls `depth` grid deep. cap: hub cap radius
+    # barrel, `dish` deeper at the hub; side walls `depth` grid deep. cap: hub cap radius; sweep: the spoke turned this
+    # much more (rad) at the barrel than at the hub
     WHEEL_SPOKE=dict(n=5, hub=0.14, fork=0.50, spread=math.radians(17), main=(0.085, 0.065), arm=0.05, cap=0.17,
-                     inset=0.020, dish=0.015, depth=0.018),
+                     inset=0.020, dish=0.015, depth=0.018, sweep=0),
     WHEEL_DISC=dict(rotor=0.636, hat=0.30),   # brake rotor (355 mm) and its hat, rr units
     # Game-screen sRGB grey levels (calibration knob, compare with game screenshots); pzveh.wheel_texture turns each
     # into the texture value that renders it. Official RIMCLOSEUP: spokes 105-170 (studio light), windows ~28, black
@@ -70,8 +74,9 @@ CAR = dict(
     WHEEL_INSET=0.03,     # tire outer face this far inside the body's own tire (flush tires looked proud of the arch)
     CAB_BOX=(1.30, 0.45, -1.60),   # the cabin physics box: width, front y, rear y (mesh, grid)
     # passengers and seats (pzveh.geometry, cabin.py): side x, seat height over the ground (script) and its mesh z
-    # (centred), seat y = middle of the door opening minus `back` (front, rear row)
-    SEAT=dict(x=0.33, h=0.56, z=-0.19, back=(0.12, 0.08)),
+    # (centred), seat y = middle of the door opening minus `back` (front, rear row), getting out this far off the body
+    SEAT=dict(x=0.33, h=0.56, z=-0.19, back=(0.12, 0.08), out=0.30),
+    BODY_W_Z=0.55,                         # body width (script extents) measured below this fraction of DIMS height
     # part: side (-1 = left, x < 0; 0 = tailgate), hinge axis, open angle (deg; sign swings the door out, the gate up),
     # clip seconds. Hinge points come from the cut (front edge on the outer skin; the gate's top edge; the frunk lid's
     # rear edge at the cowl, front rising like the real lid). The clips run open -> closed ("<Part>_closing", vanilla's
@@ -83,12 +88,15 @@ CAR = dict(
         "TrunkDoor": (0, (1, 0, 0), -75, 3.6), "EngineDoor": (0, (1, 0, 0), 55, 1.0),
     },
     GATE_IN=(0.0, 0.894, -0.447),   # tailgate inward direction (forward and down: the glass leans, the panel stands)
+    GATE_HINGE="top",               # the tailgate hinges at its top edge (a sedan's lid: "front")
 
     # ---- convert.py: the source (gitignored): the OBJ inside the Sketchfab download, under TMP
     SRC=("src", "source", "Tesla Model Y Performance 2026.obj"),
     # OBJ (Blender import, -Z forward, Y up: front -X, left -Y) -> pre-centre frame, centres of the source bbox
     # (inspect prints them)
     SRC_C=(-1.0675, -1.787),               # source X (length) and Y (width) centre, metres; true to size (4.78 x 1.94 m)
+    SRC_SCALE=1.0,                         # metres per source unit
+    SRC_FLIP=False,                        # source front +X (glTF) instead of -X
     BELT_Z=0.88,                           # side window bottom (glass z min 0.878)
     TIRE_OBJ="Object005",                  # tires: wheel centres, radius and width (load_source)
     # what each source object is (names from the OBJ; sizes in the build log, or inspect)
@@ -98,6 +106,12 @@ CAR = dict(
           "Plane.031", "Plane.051", "Plane.053", "Plane.040",   # clear lamp covers: opaque in PZ, they'd hide the lamps
           "Plane.067", "Hyundai_KONA",   # BloxBloger's interior (tub, seats, dash): the mod's own cabin (cabin.py)
           "Tesla_Model_3"),              # rear TESLA: 1.2 cm block letters (E a solid block) sunk 4 cm under the blade
+    DROP_COMPS=(),                         # (objects, lo, hi): drop their components centred in the box
+    CARBON=None,                           # dict(rgb, zones): black paint zones (model_3.py); none on the Model Y
+    ARCH_LINER=None,                       # dict(gap, inner, arc, n): procedural arch liners (the source has its own)
+    PLATES=(),                             # (name, corners, facing, material): flat backing polygons
+    SEAL_CLIP=False,                       # drop seal strips that pass through a surface (model_3.py); kept as built
+    RAIL=None,                             # (z0, z1): paint up there in the median tone (model_3.py roof rails)
     # collapse-decimated before anything else (target tris): detail PZ cannot show at 1-4 px per cm
     DECIMATE={"Plane.045": 400,             # 29.5k-tri honeycomb under the tail light bar
               "Plane.034": 1200, "Plane.020": 1000, "Plane.016": 2600},
@@ -112,6 +126,7 @@ CAR = dict(
              "04_-_Default": (60, 60, 60)},
     GLASS_MATS=("glass_base", "Material_#2125773440"),
     GLASS_OPAQUE=("Plane.008",),           # glass_base on the B-pillar cover: opaque black
+    GLASS_BACKS=(),                        # panes that get a reversed copy (one-sided in the source; these are slabs)
     ROOF_PANE="Plane.023",                 # the roof glass: zone LightBarL
     MIRROR_CAP="Plane.046",                # body colour (official FRONT34; the source paints it black_refl)
     # lamps: headlight materials; tail: the red light bar and the corner lamps (materials, faces above z / behind y),
@@ -142,10 +157,11 @@ CAR = dict(
     PANELS=dict(x=0.6, z=0.7, front=(-0.2, 0.6), rear=(-1.0, -0.2), gate=(-1.5, 0.5), lid=(0.9, 0.6)),
     # fenders (mask zones Guard*): front (ahead of y, below z, |x| > x), rear (behind y, below z, |x| > x)
     GUARDS=dict(front=(0.75, 0.95, 0.4), rear=(-1.0, 1.13, 0.45)),
-    # components cut along the lines (object, tris after welding): the window surround, the rear side glass (door
-    # pane and quarter glass in one piece)
-    CUT={("Plane.005", 342): ("BF", "BR", "D"), ("Plane.062", 268): ("D",)},
+    # components cut along the lines (object, tris after welding): the window surround
+    CUT={("Plane.005", 342): ("BF", "BR", "D")},
+    PLANES={},                             # more cut planes for CUT: name -> (point, normal, cut faces behind y)
     CUT_X=_CUT_X,                          # cut along +-GATE_X
+    CUT_X_Y=None,                          # ... only faces behind this y (None: all)
     DOOR_OBJS=("Plane.062", "Plane.005", "Plane.002", "Plane.046", "Plane.048", "Plane.050", "Plane.047"),
     # Plane.086 (its only face material Material_#2125706098): the Performance badge on the tailgate's lower right
     # (service manual "Badge - Performance"; the mod's Model Y is the Performance, AGENTS.md rule 7). The real one is a
@@ -153,6 +169,7 @@ CAR = dict(
     # (57, 61, 70; median 32, 36, 47, drive.com.au photo), the rim (~0.4 px) left out
     GATE_OBJS=_CUT_X + ("Plane.022", "Plane.086"),
     GATE_COMPS=(("Plane.062", 248, -1), ("Plane.014", 102, -1)),   # rear window and its frame (y sign of the centre)
+    GATE_CUT_COMPS=(),                     # (object, tris): components whose faces in_gate are the gate's
     # glass panes each FBX mesh must carry (build's read-back; "Body" is the body mesh)
     PANES={"Body": {"WinT", "LightBarL", "WinLT", "WinRT"}, "DoorFrontLeft": {"WinLH"}, "DoorFrontRight": {"WinRH"},
            "DoorRearLeft": {"WinLT"}, "DoorRearRight": {"WinRT"}, "TrunkDoor": {"WinH"}, "EngineDoor": set()},
@@ -160,12 +177,16 @@ CAR = dict(
     # frunk lid (OEM 1494949-00-A, chrome, 7.8 x 8.2 cm), TESLA in black across the light blade (letters ~2 cm tall,
     # 42 cm span), MODEL Y in chrome on the tailgate's lower left (jig on its left and lower edges). Letters are scaled
     # for the closest zoom, where 1 cm is about 1.5 px: true-size letters would be one or two pixels tall
-    T_BADGE=(1.85, 0.0644, 0.0677, 0.62, (0, 0.34, 0.94)),   # centre y on the frunk lid (stem tip ~3 cm off its
-    #                                       front edge), width, height, ray start z, the lid's normal there
+    T_BADGE=(1.85, 0.0644, 0.0677, 0.62, (0, 0.34, 0.94), (0, 0, -1)),   # centre y on the frunk lid (stem tip ~3 cm
+    #                                       off its front edge), width, height, ray start z, the lid's normal there,
+    #                                       ray (straight down; None: along -normal)
     TESLA=(0.93, 0.03, 0.11, 0.045),       # blade strip centre z, cap height, letter pitch, lens height
     LENS_X=0.46,                           # the blade's rear strip ends here (the corner lamps' lenses outboard)
-    MODELY=(-0.46, 0.555, 0.033),          # left x, baseline z, cap height (true ~2.4 cm): under the crease at z
-    #                                        0.60, inside the tailgate (|x| < 0.50 at this height)
+    BADGE_Y=(-2.5, -1.7),                  # rear badges: blade ray start y, letter frame y (rays from 0.3 behind it)
+    BLADE=True,                            # the light blade lens across the tailgate (Badge_BLADE)
+    MODELY=("MODEL Y", -0.46, 0.555, 0.033),   # text, left x, baseline z, cap height (true ~2.4 cm): under the crease
+    #                                        at z 0.60, inside the tailgate (|x| < 0.50 at this height)
+    PERF_BADGE=None,                       # (x, z, w, h): a drawn Performance plate (here the source's Plane.086)
     # brake calipers (calipers()): front / rear (angle behind the top, half span) in degrees, radii and x from the
     # wheel's middle plane outward, grid. The real ones sit at 3 o'clock. A body-fixed front one there would swing
     # 0.11 grid out through the spokes at full lock, so the front pair keeps within ~0.08 grid of the steering axis in
@@ -190,6 +211,12 @@ CAR = dict(
     TRUNK_Y=-0.95,             # trunk floor starts behind the rear backrests (their foot is at its height)
     CABIN_ZC=-0.10,            # cabin axis the shell rays start from
     SEAM_CLEAR=0.065,          # grid: no ring this close to the B-pillar cut (the seam leans +-0.043 about it)
+    # seats (front buckets: cushion / backrest width, backrest height, recline deg; rear bench: base width, cushions
+    # (centre x, width), backrest height, recline), trunk sill plate and under-floor bin lid (width, depth)
+    SEATS=dict(front=dict(w=0.42, back=0.50, recline=14),
+               rear=dict(base=1.08, cushions=((-0.365, 0.36), (0, 0.33), (0.365, 0.36)), back=0.44, recline=18),
+               sill=(1.00, 0.12), bin=(0.86, 0.40)),
+    PARCEL=None,               # a sedan's parcel shelf (cabin.parcel_shelf); the hatch has none
     # dash, screen and steering wheel: centres (x, y, z); wheel = (y, z) of its hub, x = the driver's seat
     DASH=dict(console=(0, 0.12, -0.32), dash=(0, 0.80, -0.02), trim=(0, 0.627, -0.01), light=(0, 0.629, -0.033),
               stand=(0, 0.64, 0.09), screen=(0, 0.61, 0.17), wheel=(0.50, 0.04)),

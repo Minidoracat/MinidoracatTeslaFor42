@@ -1,9 +1,9 @@
 """The mod's own cabin and trunk, joined into the body mesh by convert.py pieces: below the belt a ray-cast shell
-(floor, sills, firewall, door walls, trunk; above the belt the body's reversed paint faces are the inside), Model Y
-front buckets, rear bench, dash, 15.4" screen, steering wheel, console, trunk sill plate and bin lid (user-approved
-2026-10-24). Shell faces in a door opening carry the door in UV1 v: the shader drops them while that door is open or removed
-(MinidoracatTesla_vehicle.frag, Liftgate.syncShell). The Sketchfab model's own interior is not used (user
-2026-10-25). Mesh coords (centred; ground z -0.748)."""
+(floor, sills, firewall, door walls, trunk; above the belt the body's reversed paint faces are the inside), front
+buckets, rear bench, dash, 15.4" screen, steering wheel, console, trunk sill plate and bin lid (user-approved
+2026-10-24), a sedan's parcel shelf (PARCEL). Shell faces in a door opening carry the door in UV1 v: the shader drops
+them while that door is open or removed (MinidoracatTesla_vehicle.frag, Liftgate.syncShell). The Sketchfab model's own
+interior is not used (user 2026-10-25). Mesh coords (centred; Model Y ground z -0.748)."""
 import math
 import bmesh, bpy
 import numpy as np
@@ -19,7 +19,7 @@ CABIN_RES = (0.062, 49)   # shell: ring step along y (grid), rays per ring (200 
 # clearance, seats (pzveh.geometry's passengers), dash / screen / steering wheel, door cards
 CABIN_FLOOR, CABIN_FRONT_Y, TRUNK_Y, CABIN_ZC, SEAM_CLEAR = (pv.CAR[k] for k in (
     "CABIN_FLOOR", "CABIN_FRONT_Y", "TRUNK_Y", "CABIN_ZC", "SEAM_CLEAR"))
-SEAT, DASH, DOOR_CARD = pv.SEAT, pv.CAR["DASH"], pv.CAR["DOOR_CARD"]
+SEAT, DASH, DOOR_CARD, SEATS, PARCEL = pv.SEAT, pv.CAR["DASH"], pv.CAR["DOOR_CARD"], pv.CAR["SEATS"], pv.CAR["PARCEL"]
 SEAT_X, SEAT_Z = SEAT["x"], SEAT["z"]
 
 
@@ -109,6 +109,30 @@ def cell_object(name, V, F, cells):
     ob = bpy.data.objects.new(name, me)
     bpy.context.scene.collection.objects.link(ob)
     return ob
+
+
+def parcel_shelf(add, bvh):
+    """A sedan's parcel shelf (PARCEL) between the cabin and the trunk: a slab `t` thick with its top at `z`, from the
+    rear backrests' top (y[0]) back to the rear window's foot (y[1]), out to the body's sides less `inset` (a ray each
+    side at n stations: the C pillars close in). The ray shell cannot give it: its faces look at the ray axis, so a
+    shell clamped to a ceiling faces down and is culled from above, through the rear window (prototype
+    prototype/model3-parcel-1028, scripts/blender/skf/proto_parcel.py)."""
+    p = PARCEL
+    zt, zb = p["z"], p["z"] - p["t"]
+    V, F = [], []
+    for i, y in enumerate(np.linspace(*p["y"], p["n"])):
+        o = Vector((0, y, (zt + zb) / 2))
+        d = [h[3] for b in (bvh["body"], bvh["door"]) for s in (-1, 1) for h in (b.ray_cast(o, Vector((s, 0, 0))),)
+             if h[0] is not None]
+        if not d:
+            raise SystemExit(f"parcel shelf: no body beside y {y:.3f}")
+        h = min(d) - p["inset"]
+        V += [(-h, y, zt), (h, y, zt), (-h, y, zb), (h, y, zb)]
+        if i:
+            a, b = 4 * (i - 1), 4 * i
+            F += [[a, a + 1, b + 1, b], [a + 2, b + 2, b + 3, a + 3], [a, b, b + 2, a + 2], [a + 1, a + 3, b + 3, b + 1]]
+    F += [[0, 2, 3, 1], [len(V) - 4, len(V) - 3, len(V) - 1, len(V) - 2]]   # ends
+    add(V, F, "dash", smooth=False)
 
 
 def cabin_mesh(bvh, belt, trunk_floor, trunk_end, arch, opening):
@@ -234,31 +258,36 @@ def cabin_mesh(bvh, belt, trunk_floor, trunk_end, arch, opening):
     yf, yb, yr = opening["y"]
     seat_y = ((yf + yb) / 2 - SEAT["back"][0], (yb + yr) / 2 - SEAT["back"][1])
     z0 = SEAT_Z
+    fs, rs = SEATS["front"], SEATS["rear"]              # widths, backrest heights, recline (deg)
     for s in (-1, 1):                                   # front buckets
         cx, fy = s * SEAT_X, seat_y[0]
-        rec = (fy - 0.11, z0 - 0.03, 14)
+        rec = (fy - 0.11, z0 - 0.03, fs["recline"])
         part((0.30, 0.30, z0 - 0.10 - CABIN_FLOOR), 0.02, "base", (cx, fy + 0.05, (z0 - 0.10 + CABIN_FLOOR) / 2), seg=1)
-        part((0.42, 0.40, 0.09), 0.035, "seat", (cx, fy + 0.08, z0 - 0.06), cuts=(2, 0, 0), sag=0.025)
-        part((0.42, 0.11, 0.50), 0.04, "seat", (cx, fy - 0.17, z0 + 0.22), cuts=(2, 0, 0), bend=0.05, taper=0.12, tilt=rec)
+        part((fs["w"], 0.40, 0.09), 0.035, "seat", (cx, fy + 0.08, z0 - 0.06), cuts=(2, 0, 0), sag=0.025)
+        part((fs["w"], 0.11, fs["back"]), 0.04, "seat", (cx, fy - 0.17, z0 + 0.22), cuts=(2, 0, 0), bend=0.05, taper=0.12,
+             tilt=rec)
         part((0.25, 0.10, 0.17), 0.05, "seat", (cx, fy - 0.18, z0 + 0.54), taper=0.1, tilt=rec, seg=3)
         for e in (-1, 1):
             part((0.07, 0.34, 0.07), 0.03, "seat", (cx + e * 0.185, fy + 0.07, z0 - 0.01))
             part((0.07, 0.13, 0.32), 0.03, "seat", (cx + e * 0.19, fy - 0.11, z0 + 0.15), tilt=rec)
     ry = seat_y[1]                                      # rear bench: three cushions, three backs, three headrests
-    rec = (ry - 0.11, z0 - 0.03, 18)
-    part((1.08, 0.36, z0 - 0.10 - CABIN_FLOOR), 0.02, "base", (0, ry + 0.06, (z0 - 0.10 + CABIN_FLOOR) / 2), seg=1)
-    for cx, wd in ((-0.365, 0.36), (0, 0.33), (0.365, 0.36)):
+    rec = (ry - 0.11, z0 - 0.03, rs["recline"])
+    part((rs["base"], 0.36, z0 - 0.10 - CABIN_FLOOR), 0.02, "base", (0, ry + 0.06, (z0 - 0.10 + CABIN_FLOOR) / 2), seg=1)
+    for cx, wd in rs["cushions"]:                       # (centre x, width)
         part((wd, 0.40, 0.09), 0.035, "seat", (cx, ry + 0.08, z0 - 0.06), cuts=(1, 0, 0), sag=0.015)
-        part((wd, 0.11, 0.44), 0.04, "seat", (cx, ry - 0.17, z0 + 0.19), cuts=(1, 0, 0), bend=0.02, tilt=rec)
+        part((wd, 0.11, rs["back"]), 0.04, "seat", (cx, ry - 0.17, z0 + 0.19), cuts=(1, 0, 0), bend=0.02, tilt=rec)
         part((0.20 if cx else 0.17, 0.09, 0.12), 0.045, "seat", (cx, ry - 0.18, z0 + 0.48), tilt=rec, seg=3)
     part((0.20, 0.80, 0.22), 0.04, "console", DASH["console"])                  # centre console
     part((1.24, 0.34, 0.16), 0.06, "dash", DASH["dash"])                        # dash, trim strip on its face
     part((1.16, 0.02, 0.035), 0.008, "trim", DASH["trim"])
     part((1.10, 0.012, 0.006), 0.002, "screen", DASH["light"], seg=1)          # ambient light line under the trim
     # trunk: sill plate over the opening's lower edge (the floor ends TRUNK_DROP under it, CABIN_INSET short of the
-    # tailgate's inner panel) and the under-floor bin's lid
-    part((1.00, 0.12, TRUNK_DROP + 0.005), 0.01, "base", (0, trunk_end + 0.02, trunk_floor + TRUNK_DROP / 2), seg=1)
-    part((0.86, 0.40, 0.012), 0.004, "console", (0, (TRUNK_Y + trunk_end) / 2 - 0.04, trunk_floor + 0.006), seg=1)
+    # tailgate's inner panel) and the under-floor bin's lid (SEATS sill / bin: width, depth)
+    (sw, sd), (bw, bd) = SEATS["sill"], SEATS["bin"]
+    part((sw, sd, TRUNK_DROP + 0.005), 0.01, "base", (0, trunk_end + 0.02, trunk_floor + TRUNK_DROP / 2), seg=1)
+    part((bw, bd, 0.012), 0.004, "console", (0, (TRUNK_Y + trunk_end) / 2 - 0.04, trunk_floor + 0.006), seg=1)
+    if PARCEL:
+        parcel_shelf(add, bvh)
     part((0.05, 0.04, 0.09), 0.012, "screen_back", DASH["stand"])               # screen stand
     v, f = rbox((0.30, 0.022, 0.19), 0.012)                                       # 15.4" landscape screen
     v = v @ rot_x(-12).T + DASH["screen"]

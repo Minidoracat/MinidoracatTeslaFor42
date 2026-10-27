@@ -1,5 +1,6 @@
 {
     "Base.MinidoracatTesla_ModelYBattery": "Высоковольтная батарея Model Y Performance (78,4 кВт·ч)",
+    "Base.MinidoracatTesla_Model3Battery": "Высоковольтная батарея Model 3 Performance (78,4 кВт·ч)",
     "Base.MinidoracatTesla_WallConnector": "Tesla Wall Connector (3-е пок.)",
     "Base.MinidoracatTesla_CableHang": "Зарядный кабель (спуск со стены)",
     "Base.MinidoracatTesla_CableFloor": "Зарядный кабель (по полу)",

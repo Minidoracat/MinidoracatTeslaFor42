@@ -18,8 +18,9 @@ T.Battery = T.Battery or {}
 T.ContainerAccess = T.ContainerAccess or {}
 
 -- Energy is in kWh of game time: a kW drawn for one game hour is one kWh.
--- kwPerKmh, idleKw: a full pack (78.4 kWh) drives as far as a full vanilla CarNormal tank at 50 km/h (measured in MP:
--- about 756 km per 49 L, references/vehicle-battery.md "續航校正"). massKg (Performance curb mass) and regenEff size the regen.
+-- kwPerKmh, idleKw: a full pack drives as far as a full vanilla CarNormal tank at 50 km/h (measured in MP: about 756 km
+-- per 49 L, references/vehicle-battery.md "續航校正"), so both scale with the pack (x kWh / 62.5 from the 62.5 kWh
+-- calibration: 0.03, 0.00456). massKg (Performance curb mass) and regenEff size the regen.
 T.Specs = {
     ["Base.MinidoracatTesla_ModelY"] = {
         model = "ModelY",
@@ -42,12 +43,32 @@ T.Specs = {
             { name = "FrostBlue", code = "PB00", h = 0.609, s = 0.839, v = 0.494 },
         },
     },
+    ["Base.MinidoracatTesla_Model3"] = {
+        model = "Model3",
+        idleKw = 0.0376,
+        kwPerKmh = 0.00572,
+        massKg = 1851, -- curb mass, China owner's manual / MIIT filing TSL7000BEVBA5
+        regenEff = 0.6,
+        -- official Model 3 Performance paints (US, DE, TW design studios; references/models.md): same rules as above
+        colors = {
+            { name = "StealthGrey", code = "PN01", h = 0.696, s = 0.541, v = 0.307 },
+            { name = "PearlWhite", code = "PPSW", h = 0.543, s = 0.493, v = 0.819 },
+            { name = "DiamondBlack", code = "PX02", h = 0.923, s = 0.555, v = 0.214 },
+            { name = "Quicksilver", code = "PN00", h = 0.808, s = 0.484, v = 0.458 },
+            { name = "UltraRed", code = "PR01", h = 0.997, s = 1.0, v = 0.471 },
+            { name = "DeepBlue", code = "PPSB", h = 0.603, s = 1.0, v = 0.398 },
+            { name = "MarineBlue", code = "PB02", h = 0.586, s = 0.764, v = 0.285 },
+            { name = "FrostBlue", code = "PB00", h = 0.599, s = 0.77, v = 0.483 },
+        },
+    },
 }
 
 -- Pack items: exact kWh. Item MaxCapacity is an int (Item.java:2502-2503), so it is rounded up and the exact value
--- lives here. Model Y Performance: 78.4 kWh (China MIIT filing; Tesla publishes no kWh, references/vehicle-battery.md).
+-- lives here. Both are China MIIT filings (Tesla publishes no kWh, references/vehicle-battery.md): Model Y Performance
+-- 78.4 kWh; Model 3 Performance (TSL7000BEVBA5) 78.4 kWh, MIIT purchase-tax exemption catalogue batch 6 (2024 No. 11).
 T.Packs = {
     ["Base.MinidoracatTesla_ModelYBattery"] = 78.4,
+    ["Base.MinidoracatTesla_Model3Battery"] = 78.4,
 }
 
 local PREFIX = "[" .. T.MOD_ID .. "] "

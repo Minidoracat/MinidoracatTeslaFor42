@@ -22,8 +22,13 @@ function H.scriptValue(file, key, after)
     if after then s = s:sub((assert(s:find(after, 1, true), after))) end
     return tonumber(s:match("\n%s*" .. key .. "%s*=%s*([%d%.]+)"))
 end
-local ENGINE_FORCE = H.scriptValue("vehicles/MinidoracatTesla_template.txt", "engineForce")
-local PACK_CAP = H.scriptValue("items/MinidoracatTesla_items.txt", "MaxCapacity", "item MinidoracatTesla_ModelYBattery")
+-- per Tesla: its script's engineForce and its pack item's int MaxCapacity (H.vehicle; other packs get 63)
+local ENGINE_FORCE, PACK_CAP = {}, {}
+for _, car in ipairs({ "ModelY", "Model3" }) do
+    ENGINE_FORCE["Base.MinidoracatTesla_" .. car] = H.scriptValue("vehicles/MinidoracatTesla_" .. car .. ".txt", "engineForce")
+    PACK_CAP["Base.MinidoracatTesla_" .. car .. "Battery"] = H.scriptValue("items/MinidoracatTesla_items.txt", "MaxCapacity",
+        "item MinidoracatTesla_" .. car .. "Battery")
+end
 
 -- ---------------------------------------------------------------- side, time, sandbox
 local side = { client = false, server = true }
@@ -120,7 +125,7 @@ local function newPart(id, opts)
     return p
 end
 
--- H.vehicle{ script=, kwh=, pack=(full type), running=, speed=, id=, x=, y=, z= }
+-- H.vehicle{ script=, kwh=, pack=(full type), noPack=(true: no battery item in GasTank), running=, speed=, id=, x=, y=, z= }
 local nextId = 1
 function H.vehicle(o)
     o = o or {}
@@ -128,9 +133,10 @@ function H.vehicle(o)
         running = o.running or false, speed = o.speed or 0, brakeSpeed = 0, transmits = 0, usedDeltaTx = 0,
         x = o.x or 100.5, y = o.y or 100.5, z = o.z or 0, good = o.good or false, keyId = 77, driver = nil, feature = nil }
     nextId = math.max(nextId, v.id) + 1
-    local pack = o.pack or "Base.MinidoracatTesla_ModelYBattery"
-    local packCap = pack == "Base.MinidoracatTesla_ModelYBattery" and PACK_CAP or 63
-    v.parts.GasTank = newPart("GasTank", { contentType = "Electricity", item = (o.noPack and nil) or newItem(pack, packCap) })
+    -- the car's own pack (Model 3 script -> Model 3 pack); any other script keeps the Model Y pack
+    local pack = o.pack or (PACK_CAP[v.script .. "Battery"] and v.script .. "Battery") or "Base.MinidoracatTesla_ModelYBattery"
+    local packCap = PACK_CAP[pack] or 63
+    v.parts.GasTank = newPart("GasTank", { contentType = "Electricity", item = not o.noPack and newItem(pack, packCap) or nil })
     v.parts.Battery = newPart("Battery", { item = newItem("Base.CarBattery3", 0) })
     v.parts.Engine = newPart("Engine", {})
     v.parts.Heater = newPart("Heater", {})
@@ -161,7 +167,7 @@ function H.vehicle(o)
     function v:transmitColorHSV() self.colorTx = (self.colorTx or 0) + 1 end
     function v:setSkinIndex(i) self.skin = i end
     function v:transmitSkinIndex() self.skinTx = (self.skinTx or 0) + 1 end
-    function v:getScript() return { getEngineLoudness = function() return 20 end, getEngineForce = function() return ENGINE_FORCE end } end
+    function v:getScript() return { getEngineLoudness = function() return 20 end, getEngineForce = function() return ENGINE_FORCE[self.script] end } end
     vehicles[v.id] = v
     return v
 end
