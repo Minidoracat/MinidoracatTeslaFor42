@@ -704,14 +704,15 @@ end
 function App:summonRead(api)
     local p, st, pn, sep = self.player, self.st, self.playerNum, getText("IGUI_MinidoracatTesla_Sep")
     local v = self:summonCar()
-    local vid = st and st.link and st.vid or nil
     local ss = api.summonState(pn) -- this player's own summon, whatever car
-    if ss and ss.vid and not vid then
-        -- no link (past Bluetooth with the grid down, or TRACK taken back): AutoDrive's word that this player is
-        -- summoning this car (a loaded car with this key) still shows the summon and its Stop (the server takes it)
+    if not v and ss and ss.vid and (ss.phase ~= "ended" or running(self.sum)) then
+        -- AutoDrive's word that this player is summoning a loaded car with this key: shows the summon and its Stop
+        -- with no link (past Bluetooth with the grid down, TRACK taken back; the server takes the stop). Only for a
+        -- summon on its way (its result stays all session): a car's live place is for a link or this summon only.
         local car = getVehicleById(ss.vid)
-        if car and car:getKeyId() == self.key then vid, v = ss.vid, v or car end
+        if car and car:getKeyId() == self.key then v = car end
     end
+    local vid = v and v:getId() or nil -- only a car with this key (vehicle ids are reused)
     local mine = ss and vid and ss.vid == vid
     -- only a state the server sent since the app opened (stLive): App.seen's copy can be a summon long over
     local srv = self.stLive and st.link and st.summon or nil

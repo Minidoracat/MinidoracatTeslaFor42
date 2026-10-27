@@ -1146,6 +1146,33 @@ check(cmd == "appAction" and args.act == "summon" and args.on == false, "...and 
 T.ClientCommands.appDone({ key = 9001, act = "summon", on = false })
 sread() -- AutoDrive's state still says driving for a moment
 check(a.sumPhase == "ready" and a.sum == nil, "stopped: ready (AutoDrive's lagging 'driving' does not bring it back)")
+-- AutoDrive keeps its last result all session: an ended one gives no live place (the share taken back: no position)
+CL.st = { vid = VID, phase = "ended", code = "ARRIVED", mode = "target" }
+a:close()
+App.open(0, { keyId = 9001 })
+a:setPage("summon")
+state({ link = false, deny = "NOT_AUTHORIZED", x = false, y = false, pct = false })
+sread()
+check(a.sum == nil and a.sumPhase == "ready" and a.sumCarX == nil, "no link, AutoDrive's summon over: no live place of the car")
+-- no link, this player summons another car (another key): not this one's
+v.keyId = 9002
+CL.st = { vid = VID, phase = "driving", dist = 9, mode = "come" }
+a:close()
+App.open(0, { keyId = 9001 })
+a:setPage("summon")
+state({ link = false })
+sread()
+check(a.sum == nil and a.sumPhase == "ready", "no link, AutoDrive drives a car with another key: not taken for this one")
+v.keyId, CL.st = 9001, nil
+-- reopened, and a refusal comes before any state: shown, no Try again
+a:close()
+App.open(0, { keyId = 9001 })
+a:setPage("summon")
+T.ClientCommands.appDone({ key = 9001, act = "summon", why = "NO_LINK" })
+state({ link = false })
+sread()
+check(a.sumPhase == "stopped" and not bs.again.shown and bs.finish.shown, "a refusal this app knew nothing of: Done only")
+bs.finish:forceClick()
 CL.st = nil
 -- reopened, and the end comes before any state: shown, but no Try again (nothing known of it)
 a:close()
@@ -1156,6 +1183,15 @@ state({ vid = VID })
 sread()
 check(a.sumPhase == "stopped" and not bs.again.shown and bs.finish.shown, "an end this app knew nothing of: Done only")
 bs.finish:forceClick()
+-- reopened on the cached state (link, vid) while this player summons another car that now has that vid (ids reused)
+a:close()
+v.keyId = 9002
+CL.st = { vid = VID, phase = "driving", dist = 9, mode = "come" }
+App.open(0, { keyId = 9001 })
+a:setPage("summon")
+sread()
+check(a.sum == nil and a.sumPhase == "ready", "AutoDrive's summon of another car with the cached vid: not taken for this one")
+v.keyId, CL.st = 9001, nil
 state({ vid = 98765 }) -- the server has the car, this game has not loaded it
 sread()
 check(not bs.come.enable and not bs.fwd.enable and a.sSumNote == "UI_MinidoracatAutoDrive_SummonTooFar",
