@@ -1108,6 +1108,54 @@ sread()
 state({ vid = VID }) -- the summon ended and its summonEnd was lost: the next state says no summon
 sread()
 check(a.sumPhase == "ready", "running, then a server state without it: ended unheard, ready")
+-- this app's own summon: the server took it (appDone on), then a state without it: ended unheard, ready
+bs.come:forceClick()
+T.ClientCommands.appDone({ key = 9001, act = "summon", on = true })
+state({ vid = VID, summon = { phase = "starting", mode = "come", mine = true } })
+sread()
+check(a.sumPhase == "starting", "own summon: running while the server's states show it")
+state({ vid = VID })
+sread()
+check(a.sumPhase == "ready" and a.sum == nil, "own summon, then a state without it: ready")
+-- the stop refused because the server lost the car (NOT_LOADED): not stuck on a summon nobody runs
+bs.come:forceClick()
+T.ClientCommands.appDone({ key = 9001, act = "summon", on = true })
+state({ vid = VID, summon = { phase = "starting", mode = "come", mine = true } })
+sread()
+bs.come:forceClick()
+T.ClientCommands.appDone({ key = 9001, act = "summon", why = "NOT_LOADED" })
+sread()
+check(a.sumPhase == "stopped" and a.sSumNote == "IGUI_MinidoracatTesla_Deny_NOT_LOADED" and bs.finish.shown,
+    "the stop refused NOT_LOADED: stopped with the reason, Done")
+bs.finish:forceClick()
+state({ vid = VID })
+sread()
+-- reopened with no link (grid down, the car past Bluetooth): AutoDrive's own summonState still gives the Stop
+App.sumReq[9001] = { mode = "target", x = 1012.5, y = 1990.5 }
+a:close()
+App.open(0, { keyId = 9001 })
+a:setPage("summon")
+state({ link = false })
+CL.st = { vid = VID, phase = "driving", dist = 40, mode = "target" }
+sread()
+check(a.sum and a.sum.mode == "target" and a.sum.x == 1012.5 and a.sumPhase == "driving" and bs.pick.style == "stop",
+    "no link, AutoDrive says this player's summon of this car drives: shown running, its Stop")
+bs.pick:forceClick()
+cmd, args = sentLast()
+check(cmd == "appAction" and args.act == "summon" and args.on == false, "...and the Stop goes to the server")
+T.ClientCommands.appDone({ key = 9001, act = "summon", on = false })
+sread() -- AutoDrive's state still says driving for a moment
+check(a.sumPhase == "ready" and a.sum == nil, "stopped: ready (AutoDrive's lagging 'driving' does not bring it back)")
+CL.st = nil
+-- reopened, and the end comes before any state: shown, but no Try again (nothing known of it)
+a:close()
+App.open(0, { keyId = 9001 })
+a:setPage("summon")
+T.ClientCommands.appDone({ key = 9001, act = "summonEnd", why = "BLOCKED" })
+state({ vid = VID })
+sread()
+check(a.sumPhase == "stopped" and not bs.again.shown and bs.finish.shown, "an end this app knew nothing of: Done only")
+bs.finish:forceClick()
 state({ vid = 98765 }) -- the server has the car, this game has not loaded it
 sread()
 check(not bs.come.enable and not bs.fwd.enable and a.sSumNote == "UI_MinidoracatAutoDrive_SummonTooFar",

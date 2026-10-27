@@ -43,7 +43,7 @@ local apps = {} -- [playerNum]
 local W, PAD = 340, 20
 App.NAV_API = 12 -- MinidoracatMiniMapAPI.navApiVersion with setNavTarget (MiniMap docs/addon-api.md)
 App.SUMMON_API = 1 -- MinidoracatAutoDriveAPI.summonApiVersion: summon with its three modes
-App.SUMMON_MS = 500 -- the summon view (AutoDrive's canSummon / summonState) is read at most this often
+App.SUMMON_MS = 500 -- the summon view (AutoDrive's canSummon / summonState) is read this often, and after each change
 -- the client's last view of each car, by keyId: what the car list's grey lines and the MiniMap marker show.
 -- ponytail: one table for all split-screen players (only player 0 gets MiniMap markers); key it by playerNum if
 -- split-screen phone keys ever matter.
@@ -270,7 +270,7 @@ function App:select(e)
         self.stAt = getTimestampMs()
         self.alerts, self.alertsWhy, self.distKey = nil, nil, nil
         self.sum, self.pin = nil, nil -- the summon view and the picked spot belong to the old car
-        self.stLive = false -- the state above is the client's last copy, not the server's word since this select
+        self.stLive, self.sumEndAt = false, nil -- the state above is the client's last copy, not the server's word
     end
     self.nextPoll, self.sig = 0, nil
     if self.key then self:send("appAlerts", {}) end -- the home list's alert count; the security page asks again
@@ -658,7 +658,7 @@ function App:summonDone(args)
         if sum and sum.stopAsked and args.why ~= "NOT_LOADED" then
             sum.stopAsked = nil -- the toast says why
         else
-            sum = sum or {}
+            sum = sum or { adopted = true } -- (a refusal for a start this app no longer knows: no Try again)
             sum.phase, sum.why, sum.code, sum.stopAsked = "stopped", args.why, nil, nil
             self.sum, self.sumEndAt = sum, getTimestampMs()
         end
@@ -670,13 +670,14 @@ function App:summonDone(args)
     self.sumNext, self.sig = 0, nil
 end
 -- the summon ended (appDone act = "summonEnd", or AutoDrive's summonState "ended" if that came first): a pressed stop
--- goes back to ready, anything else is shown with its code until "Done" / "Try again"
+-- goes back to ready, anything else is shown with its code until "Done" / "Try again" (not for a summon this app knows
+-- nothing of: reopened, the end came before any state)
 function App:summonEnded(code)
     self.sumEndAt = getTimestampMs()
     if code == "CANCELLED" then
         self.sum = nil
     else
-        local sum = self.sum or {}
+        local sum = self.sum or { adopted = true }
         sum.phase, sum.code, sum.why, sum.stopAsked = code == "ARRIVED" and "arrived" or "stopped", code, nil, nil
         self.sum = sum
     end
@@ -703,25 +704,35 @@ end
 function App:summonRead(api)
     local p, st, pn, sep = self.player, self.st, self.playerNum, getText("IGUI_MinidoracatTesla_Sep")
     local v = self:summonCar()
+    local vid = st and st.link and st.vid or nil
+    local ss = api.summonState(pn) -- this player's own summon, whatever car
+    if ss and ss.vid and not vid then
+        -- no link (past Bluetooth with the grid down, or TRACK taken back): AutoDrive's word that this player is
+        -- summoning this car (a loaded car with this key) still shows the summon and its Stop (the server takes it)
+        local car = getVehicleById(ss.vid)
+        if car and car:getKeyId() == self.key then vid, v = ss.vid, v or car end
+    end
+    local mine = ss and vid and ss.vid == vid
     -- only a state the server sent since the app opened (stLive): App.seen's copy can be a summon long over
     local srv = self.stLive and st.link and st.summon or nil
     local sum = self.sum
-    if srv and srv.mine and not sum and (self.stAt or 0) > (self.sumEndAt or 0) then
+    -- (AutoDrive's word only before this app saw any summon end: its "driving" lags a stop just pressed)
+    if not sum and ((srv and srv.mine and (self.stAt or 0) > (self.sumEndAt or 0))
+        or (mine and ss.phase == "driving" and not self.sumEndAt)) then
         -- running when the app opened: x, y, dir from this game's last request for the car, else none (no retry)
-        local req = App.sumReq[self.key]
-        sum = { phase = "starting", mode = srv.mode, seq = self.stSeq }
-        if req and req.mode == srv.mode then sum.x, sum.y, sum.dir = req.x, req.y, req.dir else sum.adopted = true end
+        local mode, req = srv and srv.mode or ss and ss.mode, App.sumReq[self.key]
+        sum = { phase = "starting", mode = mode, seq = self.stSeq }
+        if req and req.mode == mode then sum.x, sum.y, sum.dir = req.x, req.y, req.dir else sum.adopted = true end
         self.sum = sum
-    elseif sum and running(sum) and sum.seq and self.stLive and st.link and not st.summon and self.stSeq > sum.seq then
+    elseif sum and running(sum) and sum.seq and self.stLive and st.link and not (st.summon and st.summon.mine)
+        and self.stSeq > sum.seq then
         sum = nil -- ended while nobody heard it (the app was closed, or the summonEnd was lost): ready
         self.sum, self.sumEndAt = nil, getTimestampMs()
     end
-    local vid = st and st.link and st.vid
-    local ss = api.summonState(pn)
-    if ss and sum and vid and ss.vid == vid then
+    if mine and sum then
         if sum.phase == "starting" and (ss.phase == "driving" or ss.phase == "stopping") then
             sum.phase = "driving"
-        elseif running(sum) and ss.phase == "ended" and ss.code and sum.phase == "driving" then
+        elseif sum.phase == "driving" and ss.phase == "ended" and ss.code then
             self:summonEnded(ss.code)
             sum = self.sum
         end
@@ -1213,9 +1224,9 @@ function App:layout()
                 sbtn("finish", pad, y, tw, txt("SummonDone"), "main", true, nil)
                 y = y + bh + gap
             elseif phase == "stopped" then
-                local sum = self.sum
+                local sum = self.sum or { adopted = true } -- (layout between a clear and the next read)
                 if not sum.adopted then -- try again: the same summon (an adopted one lacks its x, y or dir)
-                    local tip = sum.mode == "target" and "SummonPick" or sum.mode == "dumb"
+                    local tip = sum.mode == "target" and "SummonGo" or sum.mode == "dumb"
                         and (sum.dir == -1 and "SummonRev" or "SummonFwd") or "SummonCome"
                     sbtn("again", pad, y, tw, txt("SummonAgain"), "main", true, TIP .. tip)
                     y = y + bh + gap

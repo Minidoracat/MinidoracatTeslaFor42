@@ -227,7 +227,8 @@ local function refresh(e, me)
         if e.pt and now > e.pt then
             local mx, my = x - e.px, y - e.py
             local moved = math.sqrt(mx * mx + my * my) * 3600 / (now - e.pt)
-            if math.abs(speed) < moved then speed = e.back and -moved or moved end
+            -- the sign: this game's own reading if it has one (the summoner's game runs the physics), else back
+            if math.abs(speed) < moved then speed = (speed < 0 or (speed == 0 and e.back)) and -moved or moved end
         end
         e.px, e.py, e.pt = x, y, now
     end

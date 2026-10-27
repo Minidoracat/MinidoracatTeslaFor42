@@ -3,7 +3,7 @@
 --     the phone reaches it (grid up: any distance; grid down: Bluetooth Keys.BT_RANGE); else its last record.
 --   * appAction { key, act, on }: lock, unlock, flash, horn, sentry, charge, frunk, trunk, summon (+ mode, x, y, dir).
 --     Holder, reach, the VehicleManager right for doing the same thing in person, and the action's own rules are
---     checked every time.
+--     checked every time, but a summoner stopping their own summon skips reach and the VehicleManager.
 --   * appAlerts { key }: the car's last sentry / camp alerts.
 --   * appStatusAll { keys }: the app's car list (one phone, several cars) when it opens, up to MAX_BATCH cars a request.
 -- Only players carrying the phone key for `key` get an answer about that car. Every command names its car by keyId

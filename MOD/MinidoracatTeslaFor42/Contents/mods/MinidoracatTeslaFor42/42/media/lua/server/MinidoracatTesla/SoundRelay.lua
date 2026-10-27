@@ -35,8 +35,8 @@ end
 
 -- the summon's motor layers on (start) or off (end) for everyone near; SP: the one player (T.send runs the handler).
 -- back: a straight reverse (no forward PWS: listeners far away read no speed sign, Sound.lua estimates it from moves)
--- ponytail: players who walk into range after the start hear nothing until the next summon; beats from the
--- summoner's game if that ever matters.
+-- ponytail: players who walk into range after the start hear nothing until the next summon, and far listeners hear
+-- the forward PWS while a come / target summon backs out of a dead end; beats from the summoner's game if that matters.
 function R.summon(v, on, back)
     local msg = { vid = v:getId(), on = on, sum = true, back = back == true or nil }
     if not isServer() then return T.send(nil, "motor", msg) end

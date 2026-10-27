@@ -356,7 +356,13 @@ se = S.heard[sc:getId()]
 for _ = 1, 15 do sc.x = sc.x - 1; hz(1) end
 check(se.motor ~= nil and se.motor.vol > 0.1 and se.pws.vol < 0.05, "a reverse summon (back): the whine, no forward PWS")
 motor({ vid = sc:getId(), on = false, sum = true })
-sc.x = 306.5
+motor({ vid = sc:getId(), on = true, sum = true }) -- come / target backing out of a dead end: no back flag
+se = S.heard[sc:getId()]
+sc.speed = -3 -- this game runs the physics (the summoner's): a reverse reading, slower than the 100 ms moves
+for _ = 1, 15 do sc.x = sc.x - 1; hz(1) end
+check(se.motor ~= nil and se.motor.vol > 0.1 and se.pws.vol < 0.05, "the game's own reverse reading keeps its sign: no forward PWS")
+motor({ vid = sc:getId(), on = false, sum = true })
+sc.x, sc.speed = 306.5, 10
 motor({ vid = sc:getId(), on = true, sum = true })
 H.removeVehicle(sc)
 hz(1)
