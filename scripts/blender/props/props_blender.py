@@ -1,4 +1,4 @@
-"""Blender 5.2 headless: Wall Connector Gen 3 mesh + three cable segments -> glb/fbx, 2D tile cells, icons, previews.
+"""Blender 5.2 headless: Wall Connector Gen 3 mesh + cable segments -> glb/fbx, 2D tile cells, icons, previews.
 
 blender -b --factory-startup --python props_blender.py -- <temp dir>   (build.py runs this; textures come from build.py)
 
@@ -11,8 +11,10 @@ Cable segments (WorldItems, fbx, Render3DItem): model +X = the direction passed 
   script has undoCoreScale so 1 mesh unit = 1 tile (ModelScript.java:106-108).
   Hang:  origin = floor point under the charger's cable exit; exit at (0,0,EXIT_Z); reaches the floor at +X HANG_REACH.
   Floor: straight, x -0.5..0.5 (origin = segment midpoint).
-  Plug:  origin = floor point; rises and ends in the handle tip at (PLUG_REACH, 0, PLUG_Z) pointing +X (into the car).
-Keep EXIT_Z/HANG_REACH/PLUG_REACH/PLUG_Z in sync with Cable.lua and Chargers.lua cableExit (build.py --check).
+  Plug:  one per car (PLUGS: mesh name -> handle height); origin = floor point; rises and ends in the handle tip at
+         (PLUG_REACH, 0, z) pointing +X (into the car).
+Keep EXIT_Z/HANG_REACH/PLUG_REACH in sync with Cable.lua and Chargers.lua cableExit, PLUGS with Core.lua T.Specs plug
+(build.py --check).
 """
 import math
 import sys
@@ -33,7 +35,9 @@ EXIT_Z = WC_Z0
 # cable
 R_CABLE = 0.026
 HANG_REACH = 0.40
-PLUG_Z = 0.909                                # Model Y port: 0.909 units above the floor (tesla-integ-1026a, models.md 0)
+# Plug handle height per car = its chargeport above the floor, units (E2E integration-mp `port`; Core.lua T.Specs plug)
+PLUGS = {"MinidoracatTesla_CablePlug": 0.909,                 # Model Y (tesla-integ-1026a, models.md 0)
+         "MinidoracatTesla_CablePlugModel3": 0.74}            # Model 3
 PLUG_REACH = 0.36                             # handle tip reaches +x (into the car flank)
 XFORM = {"S": (0.0, 180.0, 0.0), "E": (0.0, -90.0, 0.0), "N": (0.0, 0.0, 0.0), "W": (0.0, 90.0, 0.0)}
 
@@ -210,19 +214,19 @@ def cable_floor(image):
     return mb.build("MinidoracatTesla_CableFloor", image)
 
 
-def cable_plug(image):
+def cable_plug(image, name, plug_z):
     mb = MB()
     r = R_CABLE
     h0 = PLUG_REACH - 0.17                               # handle starts here
-    path = catmull([(0, 0, r), (0.07, 0, r), (0.15, 0, 0.10), (0.17, 0, PLUG_Z * 0.55), (0.15, 0, PLUG_Z - 0.07),
-                    (h0, 0, PLUG_Z)])
+    path = catmull([(0, 0, r), (0.07, 0, r), (0.15, 0, 0.10), (0.17, 0, plug_z * 0.55), (0.15, 0, plug_z - 0.07),
+                    (h0, 0, plug_z)])
     tube(mb, path, r, swatch("rubber", CSW, 32, CTEX))
     # NACS handle: thick grip tapering to the nose, slightly bent down like the official handle
-    grip = [Vector((h0 - 0.01 + 0.17 * k / 6, 0, PLUG_Z + 0.012 * math.sin(math.pi * k / 6))) for k in range(7)]
+    grip = [Vector((h0 - 0.01 + 0.17 * k / 6, 0, plug_z + 0.012 * math.sin(math.pi * k / 6))) for k in range(7)]
     tube(mb, grip, 0, swatch("handle", CSW, 32, CTEX), sides=10,
          radii=[0.030, 0.040, 0.044, 0.044, 0.042, 0.036, 0.030])
     tube(mb, [grip[-1], grip[-1] + Vector((0.012, 0, 0))], 0.026, swatch("ring", CSW, 32, CTEX), sides=10)
-    return mb.build("MinidoracatTesla_CablePlug", image)
+    return mb.build(name, image)
 
 
 # ---------------------------------------------------------------- scene, export, render
@@ -387,8 +391,7 @@ def main():
     wc = wall_connector(wc_img)
     report.append(f"WallConnector bbox {bbox(wc)} verts {len(wc.data.vertices)}")
     export_glb(wc, EXP / "MinidoracatTesla_WallConnector.glb")
-    for fn in (cable_hang, cable_floor, cable_plug):
-        ob = fn(cb_img)
+    for ob in [cable_hang(cb_img), cable_floor(cb_img)] + [cable_plug(cb_img, n, z) for n, z in PLUGS.items()]:
         report.append(f"{ob.name} bbox {bbox(ob)} verts {len(ob.data.vertices)}")
         export_fbx(ob, EXP / f"{ob.name}.fbx")
     # icons from the freshly built meshes (Facing S: front toward -Y)

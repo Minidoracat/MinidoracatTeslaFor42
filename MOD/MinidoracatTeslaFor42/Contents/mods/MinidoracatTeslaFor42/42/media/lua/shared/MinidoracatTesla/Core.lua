@@ -24,10 +24,14 @@ T.ContainerAccess = T.ContainerAccess or {}
 -- model: the atlas sprite suffix (top view car_<model> on the HUD and the app's maps, wordmark wm_<model>,
 -- trim_<model>) and the HUD door zones (HUD.lua). appCar: the app's car picture file prefix
 -- (scripts/blender/skf/convert.py appcar, + the paint name). v12Kwh: the low voltage battery (Battery.lua topUp12V).
+-- plug: the charge cable's plug segment (client/MinidoracatTesla/Cable.lua): render-only item and its handle height
+-- above the floor in units (1 level = 2.44949), measured at the car's chargeport (E2E integration-mp `port`);
+-- scripts/blender/props/props_blender.py PLUGS builds one mesh per entry (build.py --check compares the two).
 T.Specs = {
     ["Base.MinidoracatTesla_ModelY"] = {
         model = "ModelY",
         appCar = "app_car_",
+        plug = { item = "Base.MinidoracatTesla_CablePlug", z = 0.909 }, -- tesla-integ-1026a
         v12Kwh = 15.5 * 6.9 / 1000, -- lithium-ion 15.5 V, 6.9 Ah (Model Y owner's manual, R10)
         idleKw = 0.0376,
         kwPerKmh = 0.00572,
@@ -51,6 +55,7 @@ T.Specs = {
     ["Base.MinidoracatTesla_Model3"] = {
         model = "Model3",
         appCar = "app_car_model3_",
+        plug = { item = "Base.MinidoracatTesla_CablePlugModel3", z = 0.74 },
         v12Kwh = 15.5 * 6.9 / 1000, -- 15.5 V, 6.9 Ah (tesla.cn Model 3 owner's manual 2026, Battery - Low Voltage, p.179)
         idleKw = 0.0376,
         kwPerKmh = 0.00572,
