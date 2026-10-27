@@ -14,9 +14,12 @@ sys.md.keyIds["77"] = "MinidoracatTesla_ModelY" -- already in the store: kept
 sys.md.moved = nil -- a store saved by the version before (the app's records only)
 local logs0 = #H.logLines
 dofile(SRC) -- a fresh server start: the store is opened again
-H.fire("OnInitGlobalModData", false) -- IsoWorld.init -> GlobalModData.init, before any chunk or client
+H.fire("OnInitGlobalModData", false) -- IsoWorld.java:2009: GlobalObjectLookup is not set up yet (:2179)
+check(H.moddata.MinidoracatTesla_Inbox ~= nil,
+    "nothing opens the GOS system at the global data load (a system registered then breaks every chunk load)")
+H.fire("OnSGlobalObjectSystemInit") -- SGlobalObjects.initSystems: before any client connects or the world saves
 check(H.moddata.MinidoracatTesla_Inbox == nil and H.moddata.MinidoracatTesla_KeyIds == nil,
-    "the global data load itself moves them, before anything asks the store")
+    "the systems' start moves them, before anything else asks the store")
 local St = T.Store
 check(St.get("inbox").ghost and St.get("inbox").ghost[1] == entry, "offline inbox moved into the store")
 check(St.get("keyIds")["424242"] == "MinidoracatTesla_ModelY", "keyId registry moved into the store")
@@ -28,7 +31,7 @@ for i = logs0 + 1, #H.logLines do if H.logLines[i]:find("moved Global ModData", 
 check(moved == 2, "one log line per moved table")
 check(sys.md.getInitialStateForClient() == nil, "the GOS system sends clients nothing")
 dofile(SRC) -- next start: nothing left to move
-H.fire("OnInitGlobalModData", false)
+H.fire("OnSGlobalObjectSystemInit")
 check(T.Store.get("inbox").ghost[1] == entry and H.moddata.MinidoracatTesla_Inbox == nil, "second start: data kept, nothing recreated")
 local savedKeys = {}
 for _, k in ipairs(sys.keys) do savedKeys[k] = true end
@@ -39,6 +42,6 @@ check(sys.md.moved == true and savedKeys.moved and savedKeys.inbox and savedKeys
 T.Store.get("inbox").ghost = nil
 H.moddata.MinidoracatTesla_Inbox = { ghost = { entry } }
 dofile(SRC)
-H.fire("OnInitGlobalModData", false)
+H.fire("OnSGlobalObjectSystemInit")
 check(T.Store.get("inbox").ghost == nil and H.moddata.MinidoracatTesla_Inbox == nil,
     "old table left by a crash between the two saves: removed, a pulled inbox is not delivered again")

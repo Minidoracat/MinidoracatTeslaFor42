@@ -57,6 +57,10 @@ function St.get(name)
     return db[name]
 end
 
--- right after global_mod_data.bin loads (IsoWorld.java:2009, before any chunk or client): the old tables are gone
--- before anyone can ask for them, even if no Tesla loads and no inbox is touched this session
-Events.OnInitGlobalModData.Add(function() St.get("inbox") end)
+-- where vanilla opens its systems (SGlobalObjects.initSystems: GameServer.java:816, SP GameLoadingState.java:313), before
+-- any client connects or the world is saved: the old tables are gone before anyone can ask for them, even if no Tesla
+-- loads and no inbox is touched this session. NOT at OnInitGlobalModData: that fires (IsoWorld.java:2009) before
+-- GlobalObjectLookup.init (:2179), and a system registered then keeps a null cell table -> every chunk load throws in
+-- SGlobalObjectSystem.chunkLoaded and no client gets past "loading map" (tesla-fix-1027m/o). A Tesla's chunk loading
+-- first (SP) opens it earlier through St.get, after the lookup is set up, as the app always did.
+Events.OnSGlobalObjectSystemInit.Add(function() St.get("inbox") end)
