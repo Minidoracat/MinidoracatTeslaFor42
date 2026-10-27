@@ -7,7 +7,7 @@
 -- ("cars" page): every car the phone keys on the player are paired with, then the Teslas VehicleManager lists for this
 -- player that no phone here is paired with (MinidoracatTesla.VMLink.cars: last position only; remote buttons dimmed,
 -- pressing one says how to add the car). Only the selected car is polled; the list's grey lines come from App.seen,
--- refreshed when the list opens (one appStatusAll per App.BATCH cars).
+-- refreshed when the list opens (one appStatusAll per App.BATCH cars, one a LIST_MS).
 -- Pages: "home" (name, battery, the car in its paint, four quick icons, a list into the sub pages), "controls" (flash,
 -- horn, frunk, liftgate), "location" (arrow, distance, "Show on map", "Navigate to car" with the MiniMap's
 -- setNavTarget), "summon", "pick", "security" (Sentry Mode, alerts), "charging", "cars".
@@ -247,7 +247,7 @@ function App.open(playerNum, opts)
         a:instantiate()
         apps[playerNum] = a
     end
-    a.player, a.active, a.toast, a.scroll = p, true, nil, 0
+    a.player, a.active, a.toast, a.scroll, a.listQ = p, true, nil, 0, nil
     a:select(pick)
     a.page = opts.page or "home"
     a:read()
@@ -285,7 +285,7 @@ function App:close()
     self.joyfocus = nil
     self:setFocus(nil)
     if self.inUI then self:removeFromUIManager(); self.inUI = false end
-    self.key, self.oid, self.vmEntry, self.active = nil, nil, nil, false
+    self.key, self.oid, self.vmEntry, self.active, self.listQ = nil, nil, nil, false, nil
 end
 
 function App:setPage(page)
@@ -301,20 +301,31 @@ function App:setPage(page)
     end
 end
 
--- the car list: built when it opens; appStatusAll for the other paired cars, App.BATCH keys per request (their grey
--- lines; the selected car is polled anyway)
+-- the car list: built when it opens; appStatusAll for the other paired cars (their grey lines; the selected car is
+-- polled anyway), App.BATCH keys a request and one request per LIST_MS (App:update sends the rest of the round), so
+-- any number of paired cars, however often the list opens, stays inside the server's appStatusAll budget
+-- (Commands.lua CommandRate). Opening it again while a round is still going out starts no second one.
 function App:openList()
     local cars = App.cars(self.playerNum, self.player)
     self.carList = cars
-    local keys = {}
-    for _, e in ipairs(cars) do
-        if e.key and e.key ~= self.key then keys[#keys + 1] = e.key end
-        if #keys == App.BATCH then self:askStates(keys); keys = {} end
+    if not self.listQ then
+        local q = {}
+        for _, e in ipairs(cars) do
+            if e.key and e.key ~= self.key then q[#q + 1] = e.key end
+        end
+        if #q > 0 then self.listQ, self.listI = q, 1 end
     end
-    if #keys > 0 then self:askStates(keys) end
+    self:sendList()
 end
 App.BATCH = 16 -- = Remote.lua R.MAX_BATCH (the server answers that many per request)
-function App:askStates(keys)
+App.LIST_MS = 1000
+function App:sendList()
+    local q, now = self.listQ, getTimestampMs()
+    if not q or now < (self.listAt or 0) + App.LIST_MS then return end
+    local i, keys = self.listI, {}
+    for k = i, math.min(#q, i + App.BATCH - 1) do keys[#keys + 1] = q[k] end
+    self.listI, self.listAt = i + #keys, now
+    if self.listI > #q then self.listQ = nil end
     App.stats.batches = App.stats.batches + 1
     T.request(self.player, "appStatusAll", { keys = keys })
 end
@@ -1003,6 +1014,7 @@ function App:update()
             end
         end
     end
+    if self.listQ then self:sendList() end
     if self:read() then self:layout() end
 end
 

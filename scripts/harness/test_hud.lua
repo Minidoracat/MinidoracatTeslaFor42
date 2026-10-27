@@ -540,24 +540,26 @@ collectgarbage("restart")
 check(cgrew == 0, "chargeCardRect x1000 allocates nothing (" .. cgrew .. " KB)")
 -- the driver on the charge card's buttons twice a second for a minute (+, +, -, start/stop), each request through the
 -- server's dispatch (Commands.lua CommandRate, the `default` budget the camp key and the rest share): none dropped,
--- and the busiest 10 s (20) keeps half its budget again to spare
+-- and the busiest 10 s keeps half its budget again to spare
 cardPlayer.getOnlineID, cardPlayer.getUsername = function() return 9300 end, function() return "driver" end
 local CR = T.CommandRate
 local press = { function() card:onPlus() end, function() card:onPlus() end, function() card:onMinus() end,
     function() card:onToggle() end }
-local dropped0, from, sentN, reached = CR.dropped.default or 0, #H.clientSent, 0, 0
+local dropped0, from, reached, times = CR.dropped.default or 0, #H.clientSent, 0, {}
 for i = 0, 119 do
     H.side(true, false)
     press[i % #press + 1]()
-    sentN = sentN + #H.clientSent - from
+    for _ = from + 1, #H.clientSent do times[#times + 1] = i * 500 end
     local got
     got, from = H.serve(from)
     for _, n in pairs(got) do reached = reached + n end
     H.advanceMs(500)
 end
 H.side(true, false)
-check(sentN == 120 and reached == 120 and (CR.dropped.default or 0) == dropped0 and 20 * 1.5 <= CR.LIMITS.default.max,
-    "a minute on the charge card, 2 clicks a second: all " .. reached .. " of " .. sentN .. " reach the server's handler")
+local busiest = H.busiest(times, CR.LIMITS.default.ms)
+check(#times == 120 and reached == 120 and (CR.dropped.default or 0) == dropped0 and busiest * 1.5 <= CR.LIMITS.default.max,
+    "a minute on the charge card, 2 clicks a second (" .. busiest .. " in the busiest 10 s): all " .. reached .. " of "
+    .. #times .. " reach the server's handler")
 card:close()
 check(select(5, MinidoracatTeslaAPI.chargeCardRect(0)) == false, "card closed: visible=false")
 getSpecificPlayer = realGetSpecific

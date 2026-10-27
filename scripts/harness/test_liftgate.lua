@@ -199,17 +199,20 @@ v:setColorHSV(hb, v:getColorSaturation(), v:getColorValue())
 -- request through the server's dispatch (Commands.lua CommandRate): none dropped, the busiest 10 s keeps half its
 -- budget again to spare
 local CR, ids = T.CommandRate, { "DoorFrontLeft", "DoorRearLeft", "TrunkDoor", "EngineDoor" }
-local dropped, from, reached = CR.dropped.liftgate or 0, #H.clientSent, 0
+local dropped, from, reached, times = CR.dropped.liftgate or 0, #H.clientSent, 0, {}
 for i = 0, 119 do
     H.side(true, false)
     L.toggle(driver, v, ids[i % #ids + 1])
+    for _ = from + 1, #H.clientSent do times[#times + 1] = i * 500 end
     local got
     got, from = H.serve(from)
     reached = reached + (got.liftgate or 0)
     H.advanceMs(500)
 end
-check(reached == 120 and (CR.dropped.liftgate or 0) == dropped and 20 * 1.5 <= CR.LIMITS.liftgate.max,
-    "a minute of clicks on the car picture, 2 a second (20 in any 10 s): all " .. reached .. " reach the server's handler")
+local busiest = H.busiest(times, CR.LIMITS.liftgate.ms)
+check(reached == 120 and #times == 120 and (CR.dropped.liftgate or 0) == dropped and busiest * 1.5 <= CR.LIMITS.liftgate.max,
+    "a minute of clicks on the car picture, 2 a second (" .. busiest .. " in the busiest 10 s): all " .. reached
+    .. " reach the server's handler")
 H.side(true, false)
 getOnlinePlayers, ISOpenVehicleDoor, ISCloseVehicleDoor = saved.getOnlinePlayers, saved.ISOpenVehicleDoor, saved.ISCloseVehicleDoor
 HaloTextHelper, getPlayer = saved.HaloTextHelper, saved.getPlayer

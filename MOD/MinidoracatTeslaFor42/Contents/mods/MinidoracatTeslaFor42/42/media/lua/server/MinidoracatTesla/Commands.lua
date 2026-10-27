@@ -28,33 +28,38 @@ end
 -- ---- per-player budget (a modified client can send any command, as often as it likes) ----
 -- MP: every command passes a fixed window per player and bucket before its handler (VehicleManager's rateLimited,
 -- MinidoracatVehicleManager_Server.lua:535-541): at most `max` per `ms`, the rest dropped and counted in
--- CR.dropped[bucket]; the first drop of a window logs one line. No reply: every budget sits well above the real
--- client's busiest window (the harness plays a minute of each), so only a modified client is cut, and a reply per
--- drop would grow with the flood. Commands without a row share `default`. SP: no other client, no budget.
--- legit = the real client's busiest window; a person clicks at most about twice a second.
+-- CR.dropped[bucket]; the first drop of a window logs one line. Commands without a row share `default`. SP: no other
+-- client, no budget. "legit" below = the real client's busiest window, assuming a person clicks at most twice a
+-- second; the harness plays that minute through this dispatch (test_cmd_rate.lua lists where) and every row is at
+-- least 1.5 times it, motor exactly it. No reply: past these only a modified client gets, and a reply per drop would
+-- grow with the flood. Not played there, one per click or per login, inside `default`: camp, sentry, chargeInfo,
+-- phoneUnpair, inboxPull.
 local CR = { dropped = {} }
 CR.LIMITS = {
-    default = { max = 40, ms = 10000 },      -- legit ~20: one per click (charge card, camp, sentry, pairing, key tap),
-                                             -- autoLock 2 a second for 3 s, keySweep at most 1 a second
+    default = { max = 40, ms = 10000 },      -- legit 20: one per click (charge card, camp, sentry, pairing), autoLock 2 a
+                                             -- second for 3 s, keySweep 1 a second; keyTap / autoLock chirp like the
+                                             -- app's lock but are walk-paced (a timed action, 6 tries per exit)
     motor = { max = 10, ms = 5000 },         -- legit 10: a beat per 5 s, +2 per motor stop and start (SoundRelay.lua)
-    appStatus = { max = 20, ms = 10000 },    -- legit ~15: a poll per 2 s and one per car picked (App:select); each
+    appStatus = { max = 20, ms = 10000 },    -- legit ~10: a poll per 2 s, one per car picked (App:select) instead; each
                                              -- builds the car's state, VehicleManager's whole ledger with it
-    appStatusAll = { max = 15, ms = 10000 }, -- legit 10: one per car list opened (per 16 other cars); each = 16 appStatus
-    appAlerts = { max = 20, ms = 10000 },    -- legit 10: one per car picked or security page opened
+    appStatusAll = { max = 15, ms = 10000 }, -- legit 10: the car list sends one a second (PhoneApp LIST_MS) however
+                                             -- many cars or opens; each = 16 appStatus
+    appAlerts = { max = 20, ms = 10000 },    -- legit ~10: one per car picked or security page opened (2 clicks each)
     appAction = { max = 30, ms = 10000 },    -- legit 20: one per button press (lock and unlock chirp to everyone near)
     liftgate = { max = 30, ms = 10000 },     -- legit 20: one per click on the car picture; each tells every online player
 }
 T.CommandRate = CR
 
--- online id -> bucket -> { start, n }. The id, not the username: a split-screen guest names itself (Core.lua
--- T.account), and no IsoPlayer keys (Kahlua has no weak tables, family pitfalls.md). Ids are per connected player and
--- get reused, so the table stays as small as the server; a reused id inherits windows at most 10 s old.
+-- online id -> { who = the IsoPlayer, [bucket] = { start, n } }. The id, not the username: a split-screen guest names
+-- itself (Core.lua T.account). Ids are per connected player and get reused, so the table stays as small as the
+-- server; the IsoPlayer kept beside it (one per id, so no weak table needed: Kahlua has none, family pitfalls.md)
+-- tells a new occupant of the id, who starts with fresh windows. A respawn is a new IsoPlayer too: fresh windows.
 local windows = {}
 function CR.limited(player, command)
     local b = CR.LIMITS[command] and command or "default"
-    local lim, who, t = CR.LIMITS[b], player:getOnlineID(), getTimestampMs() -- IsoPlayer.java:6490 (GameServer.java:2835-2839)
-    local mine = windows[who]
-    if not mine then mine = {}; windows[who] = mine end
+    local lim, id, t = CR.LIMITS[b], player:getOnlineID(), getTimestampMs() -- IsoPlayer.java:6490 (GameServer.java:2835-2839)
+    local mine = windows[id]
+    if not mine or mine.who ~= player then mine = { who = player }; windows[id] = mine end
     local w = mine[b]
     if not w then w = {}; mine[b] = w end
     -- t < start: the wall clock was set back (getTimestampMs = System.currentTimeMillis); start over, do not stretch it
@@ -64,7 +69,7 @@ function CR.limited(player, command)
     CR.dropped[b] = (CR.dropped[b] or 0) + 1
     if w.n == lim.max + 1 then
         T.log("rate limit: " .. b .. " over " .. lim.max .. " per " .. lim.ms .. " ms, dropping " .. tostring(command)
-            .. " from " .. tostring(player:getUsername()) .. " oid=" .. tostring(who))
+            .. " from " .. tostring(player:getUsername()) .. " oid=" .. tostring(id))
     end
     return true
 end

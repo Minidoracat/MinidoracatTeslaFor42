@@ -107,6 +107,15 @@ function H.serve(from)
     T.ServerCommands = real
     return got, #H.clientSent
 end
+-- the most of `times` (ascending ms) inside any `ms` long stretch: a client rhythm's busiest window
+function H.busiest(times, ms)
+    local most, k = 0, 1
+    for j = 1, #times do
+        while times[j] - times[k] >= ms do k = k + 1 end
+        most = math.max(most, j - k + 1)
+    end
+    return most
+end
 
 -- ---------------------------------------------------------------- vehicles
 local vehicles = {}

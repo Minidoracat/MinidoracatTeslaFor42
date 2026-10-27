@@ -28,6 +28,23 @@ end
 local D, G = CR.LIMITS.default, CR.LIMITS.liftgate
 check(D.max >= 2 * 20 and G.max < D.max and CR.LIMITS.motor.max == 10 and CR.LIMITS.motor.ms == 5000,
     "budgets: default twice the busiest client (20 a window), liftgate tighter, motor unchanged (10 per 5 s)")
+-- every row names a real command (a typo would quietly fall back to `default`): its handler is assigned somewhere
+local MEDIA_LUA = "MOD/MinidoracatTeslaFor42/Contents/mods/MinidoracatTeslaFor42/42/media/lua"
+local handlers, lister = {}, io.popen('ls -R "' .. MEDIA_LUA .. '" 2>/dev/null')
+local dir
+for line in lister:lines() do
+    if line:sub(-1) == ":" then dir = line:sub(1, -2)
+    elseif line:sub(-4) == ".lua" then
+        local f = io.open(dir .. "/" .. line, "r")
+        for name in f:read("a"):gmatch("ServerCommands%.([%w_]+)%s*=%s*function") do handlers[name] = true end
+        f:close()
+    end
+end
+lister:close()
+local typos = {}
+for name in pairs(CR.LIMITS) do if name ~= "default" and not handlers[name] then typos[#typos + 1] = name end end
+check(handlers.motor and handlers.liftgate and #typos == 0,
+    "every budget row is a command with a handler in the MOD (" .. (#typos == 0 and "all" or table.concat(typos, ", ")) .. ")")
 
 local p1, p2 = H.player({ name = "p1" }), H.player({ name = "p2" })
 local d0, l0, s0 = CR.dropped.default or 0, logs(), #H.sent
@@ -41,6 +58,12 @@ check(#H.sent == s0, "no reply to the client (a reply per drop would grow with t
 check(send(p1, "liftgate", G.max) == G.max and send(p1, "liftgate", 3) == 0 and (CR.dropped.liftgate or 0) == 3,
     "a command with a row has its own budget (" .. G.max .. "), apart from the spent default")
 check(send(p2, "rateA", D.max) == D.max, "another player's budget is their own")
+-- the online id goes to someone else (a connection slot reused, GameServer.java:2835-2839) while p2's window runs
+check(send(p2, "rateA") == 0, "p2 past its budget: cut")
+local p3 = H.player({ name = "p3" })
+p3.oid = p2.oid
+check(send(p3, "rateA", D.max) == D.max, "a new player on a reused online id starts with a fresh budget")
+check(send(p3, "rateA") == 0, "and is cut past it like anyone")
 local l1 = logs()
 H.advanceMs(D.ms - 1)
 check(send(p1, "rateA") == 0 and logs() == l1, "1 ms before the window ends: still dropped (logged once already)")

@@ -644,7 +644,7 @@ local menu = { addOption = function(self, _, target, fn, a1, a2)
     self.last = { target = target, fn = fn, a1 = a1, a2 = a2 }
     return self.last
 end }
-local dropped0, from, sentN, gotN = T.CommandRate.dropped.default or 0, #H.clientSent, {}, {}
+local dropped0, from, sentN, gotN, times = T.CommandRate.dropped.default or 0, #H.clientSent, {}, {}, {}
 for tick = 0, 599 do
     H.side(true, false)
     local s = tick % 100 -- 100 ms ticks, a 10 s cycle
@@ -665,6 +665,7 @@ for tick = 0, 599 do
     for i = from + 1, #H.clientSent do
         local c = H.clientSent[i].command
         sentN[c] = (sentN[c] or 0) + 1
+        times[#times + 1] = tick * 100 -- all four share `default`
     end
     local got
     got, from = H.serve(from)
@@ -680,9 +681,10 @@ for c, n in pairs(sentN) do
     line[#line + 1] = c .. " " .. n
 end
 table.sort(line)
+local busiest = H.busiest(times, T.CommandRate.LIMITS.default.ms)
 check(same and sentN.autoLock == 36 and sentN.keySweep == 6 and sentN.keyTap == 12 and sentN.phonePair == 6
-    and (T.CommandRate.dropped.default or 0) == dropped0 and 10 * 1.5 <= T.CommandRate.LIMITS.default.max,
-    "every request reached its handler (10 in each 10 s): " .. table.concat(line, ", "))
+    and (T.CommandRate.dropped.default or 0) == dropped0 and busiest * 1.5 <= T.CommandRate.LIMITS.default.max,
+    "every request reached its handler (" .. busiest .. " in the busiest 10 s): " .. table.concat(line, ", "))
 
 for k, n in pairs(statsBefore) do S.stats[k] = n end -- test_sentry counts flashes from zero
 instanceItem, playServerSound, sendAddItemToContainer, sendRemoveItemFromContainer, ProceduralDistributions, getItemNameFromFullType = nil, nil, nil, nil, nil, nil
