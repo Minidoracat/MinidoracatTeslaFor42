@@ -47,7 +47,9 @@ CAR = dict(
     WHEEL_DISC=dict(rotor=0.655, hat=0.30),   # 355 mm rotor (US owner's manual p.215) / 271 mm flange
     WHEEL_RGB=dict(spoke=44, cap=36, barrel=26, lip=70, rotor=60, hat=35, dark=12, gap=8, tire=(22, 28), tread=20),
     # ---- pzveh: vehicle script
-    OY=0.2878,                             # as Model Y (model_y.py)
+    OY=0.1978,                             # CoM = mesh centre - OY; brake knob (model_y.py). The sedan's lower body and
+    #                                        higher wheel mounts put Model Y's 0.2878 ~0.09 nearer the ground: braking
+    #                                        unloads the rear wheels less and it stopped 17% shorter than SportsCar
     WHEEL_LIFT=0.11,                       # calibration knob (model_y.py)
     WHEEL_INSET=0.03,
     CAB_BOX=(1.25, 0.40, -1.30),

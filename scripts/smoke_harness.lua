@@ -136,7 +136,7 @@ function H.vehicle(o)
     -- the car's own pack (Model 3 script -> Model 3 pack); any other script keeps the Model Y pack
     local pack = o.pack or (PACK_CAP[v.script .. "Battery"] and v.script .. "Battery") or "Base.MinidoracatTesla_ModelYBattery"
     local packCap = PACK_CAP[pack] or 63
-    v.parts.GasTank = newPart("GasTank", { contentType = "Electricity", item = (o.noPack and nil) or newItem(pack, packCap) })
+    v.parts.GasTank = newPart("GasTank", { contentType = "Electricity", item = not o.noPack and newItem(pack, packCap) or nil })
     v.parts.Battery = newPart("Battery", { item = newItem("Base.CarBattery3", 0) })
     v.parts.Engine = newPart("Engine", {})
     v.parts.Heater = newPart("Heater", {})

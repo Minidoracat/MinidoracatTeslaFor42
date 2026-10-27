@@ -142,7 +142,11 @@ cp:getModData().chg = nil
 cp:setContainerContentAmount(0)
 check(T.CheckEngine.Battery(cv, cp) == false, "cannot start with an empty pack")
 local nopack = H.vehicle({ noPack = true })
-check(T.CheckEngine.Battery(nopack, B.part(nopack)) == false, "cannot start without a pack")
+check(B.part(nopack):getInventoryItem() == nil, "noPack fixture: the GasTank slot is empty")
+-- charge left in the part's mod data still reads back with no item (VehiclePart.java:375-381), so only the
+-- missing pack can refuse the start here
+B.part(nopack):getModData().contentAmount = 50
+check(nopack:hasEnoughGasToRun() and T.CheckEngine.Battery(nopack, B.part(nopack)) == false, "cannot start without a pack")
 local tf = assert(io.open("MOD/MinidoracatTeslaFor42/Contents/mods/MinidoracatTeslaFor42/42/media/scripts/vehicles/MinidoracatTesla_template.txt"))
 local tpl = tf:read("*a")
 tf:close()
@@ -242,10 +246,10 @@ MinidoracatVehicleManagerAPI = { canUse = function(p, veh, perm) return p == che
 check(T.authorized(cheat, gv, "FUEL") == true and T.authorized(owner, gv, "FUEL") == false, "VehicleManager present: canUse decides")
 MinidoracatVehicleManagerAPI = nil
 local Z = VehicleZoneDistribution
-for _, car in ipairs({ "Base.MinidoracatTesla_ModelY", "Base.MinidoracatTesla_Model3" }) do
-    check(Z.parkingstall.vehicles[car].spawnChance == 3 and Z.good.vehicles[car].spawnChance == 4,
-        "spawn table " .. car .. ": parkingstall 3, good 4")
-end
+check(Z.parkingstall.vehicles["Base.MinidoracatTesla_ModelY"].spawnChance == 3
+    and Z.good.vehicles["Base.MinidoracatTesla_ModelY"].spawnChance == 4, "spawn table Model Y: parkingstall 3, good 4")
+check(Z.parkingstall.vehicles["Base.MinidoracatTesla_Model3"].spawnChance == 3
+    and Z.good.vehicles["Base.MinidoracatTesla_Model3"] == nil, "spawn table Model 3: parkingstall 3, not in good")
 
 H.section("dispatch")
 local hits = 0
