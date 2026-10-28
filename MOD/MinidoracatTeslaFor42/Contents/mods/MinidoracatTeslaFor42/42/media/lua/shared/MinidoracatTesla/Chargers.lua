@@ -97,7 +97,9 @@ function T.directGenerator(kind, x, y, z)
     return nil
 end
 
--- has the charger power right now (the menu's hint; the server books it by the hour in Charging.lua C.settle)
+-- has the charger power right now (the menu's hint; the server books it by the hour in Charging.lua C.settle).
+-- hasGridPower = not isNoPower and doesPowerGridExist (IsoGridSquare.java:11799-11801, SandboxOptions.java:1290-1292):
+-- the same shut-off hour as the server's C.gridOffHour.
 function T.chargerPowered(kind, sq)
     return (sq:hasGridPower() and T.gridReaches(kind, sq)) or T.wiredPower(kind, sq)
         or T.directGenerator(kind, sq:getX(), sq:getY(), sq:getZ()) ~= nil

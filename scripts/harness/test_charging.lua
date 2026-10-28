@@ -438,11 +438,43 @@ H.setHours(212)
 C.settle(mo5, H.hours())
 check(mchg5.src == "generator" and near(B.kwh(B.part(mv5)), 5 + 2 * 7.6, 1e-6) and near(g5.gen.fuel, 10 - 2 * MRATE, 1e-9),
     "indoors with generator power (no room, roof overhead): the generator 10 tiles away powers it, its fuel burns")
+-- the roof comes off (outdoors now): the cached generator 10 tiles away no longer counts, its fuel stays
+local sq5 = getCell():getGridSquare(1200, 1000, 0)
+sq5.outside = true
+local f5 = g5.gen.fuel
+H.setHours(213)
+C.settle(mo5, H.hours())
+check(mchg5.paused == "nopower" and mchg5.power == nil and g5.gen.fuel == f5,
+    "roof gone: the cached generator 10 tiles away no longer powers it, its fuel stays")
+-- roofed without a room, grid up, no generator: no grid (vanilla's fridge rule needs a room; a player-built room is a
+-- NoPower square, IsoGridSquare.java:11617-11633)
+sq5.outside, sq5.elec = false, false
+check(not T.gridReaches("MobileConnector", sq5) and not T.chargerPowered("MobileConnector", sq5),
+    "roofed, no room, no generator: no grid and no power, as for a vanilla fridge")
 -- just outside a house (fridge rule: a neighbour in a room): grid for the Wall Connector, not for the Mobile Connector
 local edge = square(1300, 1000, 0)
 square(1300, 999, 0, { room = {} })
 check(T.gridReaches("WallConnector", edge) and not T.gridReaches("MobileConnector", edge),
     "outdoor square next to a room: the grid reaches a Wall Connector there, a Mobile Connector has to be inside")
+-- on the wiring the fuel comes from a generator inside vanilla's circular range (IsoGenerator.isPoweringSquare), not
+-- from one in the scan box's corner
+local mo7, _, _, mchg7 = mplug(1500, 1000, { outside = false, elec = true }, 220)
+local corner = square(1480, 980, 0) -- 20, 20: inside the 41 x 41 box, 28 tiles away
+corner.gen = generator(10, true)
+local g7 = square(1505, 1000, 0)
+g7.gen = generator(10, true)
+H.setHours(221)
+C.settle(mo7, H.hours())
+check(mchg7.src == "generator" and corner.gen.fuel == 10 and near(g7.gen.fuel, 10 - MRATE, 1e-9),
+    "wired: the generator 5 tiles away pays, not the one in the box corner 28 tiles away")
+-- indoors on the grid with a generator 2 tiles away: the grid first, the generator's fuel untouched
+local mo8, mv8, _, mchg8 = mplug(1600, 1000, { room = {}, elec = true }, 230)
+local g8 = square(1602, 1000, 0)
+g8.gen = generator(10, true)
+H.setHours(232)
+C.settle(mo8, H.hours())
+check(mchg8.src == "grid" and near(B.kwh(B.part(mv8)), 5 + 2 * 7.6, 1e-6) and g8.gen.fuel == 10,
+    "indoors on the grid with a generator next to it: 2 h on the grid, no fuel burned")
 -- indoors on the grid when the shut-off falls between two settles: grid to 336, then the wired generator
 local mo6, mv6, _, mchg6 = mplug(1400, 1000, { room = {}, elec = true }, 335)
 local g6 = square(1410, 1000, 0)

@@ -20,7 +20,9 @@ CMinidoracatTeslaChargerSystem.instance = { system = { getObjectAt = function(_,
 end } }
 local function charger(x, sprite, vid)
     synced[x .. ",5,0"] = { x = x, y = 5, z = 0, vid = vid }
-    local sq = { getX = function() return x end, getY = function() return 5 end, getZ = function() return 0 end }
+    local sq = { getX = function() return x end, getY = function() return 5 end, getZ = function() return 0 end,
+        isOutside = function() return false end, isNoPower = function() return false end, -- indoors on the grid
+        hasGridPower = function() return true end, getRoom = function() return {} end }
     return { getSquare = function() return sq end, getSprite = function() return { getName = function() return sprite end } end }
 end
 local function menu(playerObj, iso)
@@ -63,7 +65,7 @@ local function fakeSq(x, y, f)
         getAdjacentSquare = function() return nil end, isOutside = function() return f.room == nil end,
         haveElectricity = function() return f.elec == true end, getGenerator = function() return f.gen end }
 end
-local function hintRow(f, genNext, sprite)
+local function hintRow(f, genNext, sprite, vid)
     local here = fakeSq(40, 5, f)
     local running = { isActivated = function() return true end, getFuel = function() return 5 end }
     local gsq = genNext and fakeSq(41, 6, { gen = running })
@@ -72,7 +74,7 @@ local function hintRow(f, genNext, sprite)
         if x == 40 and y == 5 then return here elseif gsq and x == 41 and y == 6 then return gsq end
     end } end
     getSpecificPlayer = function() return H.player({ name = "own" }) end
-    synced["40,5,0"] = { x = 40, y = 5, z = 0, vid = false }
+    synced["40,5,0"] = { x = 40, y = 5, z = 0, vid = vid or false }
     local iso = { getSquare = function() return here end,
         getSprite = function() return { getName = function() return sprite or "minidoracat_tesla_01_8" end } end }
     local rows = {}
@@ -89,5 +91,6 @@ check(hintRow({ elec = true }, true) == nil, "running generator next to it: no h
 check(hintRow({ room = {}, grid = true }) == nil, "indoors on the grid: no hint")
 check(hintRow({ room = {}, elec = true }) == nil, "indoors on a generator's power: no hint")
 check(hintRow({}, false, "minidoracat_tesla_01_0") == nil, "Wall Connector: no such row")
+check(hintRow({ elec = true }, false, nil, v:getId()) ~= nil, "plugged in with no power: the row is there too (the card says nopower)")
 ISWorldObjectContextMenu = savedMenu
 H.side(false, true)

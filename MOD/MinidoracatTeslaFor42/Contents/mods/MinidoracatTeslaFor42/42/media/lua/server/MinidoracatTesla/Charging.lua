@@ -59,8 +59,10 @@ local function gridUntil(kind, sq)
 end
 
 -- The generator the charger runs on, cached square first. On the wiring with generator power (T.wiredPower) one scan
--- of the generator range; otherwise only one a Mobile Connector is plugged straight into (T.directGenerator,
--- decisions.md 2026-10-28). A cached generator outside genTiles only counts while the square is on wired power.
+-- of the generator range, the circle vanilla powers (IsoGenerator.isPoweringSquare, IsoGenerator.java:713-719), so the
+-- fuel comes from a generator that can be powering it; otherwise only one a Mobile Connector is plugged straight into
+-- (T.directGenerator, decisions.md 2026-10-28). A cached generator outside genTiles only counts while the square is on
+-- wired power.
 -- ponytail: square scan (41x41x7 at defaults) only when the cache misses; keep a generator index if it shows up in profiles
 function C.findGenerator(o, sq)
     local wired = T.wiredPower(o.kind, sq)
@@ -77,7 +79,8 @@ function C.findGenerator(o, sq)
         for z = o.z - vr, o.z + vr do
             for x = o.x - r, o.x + r do
                 for y = o.y - r, o.y + r do
-                    local g = T.generatorAt(x, y, z)
+                    local dx, dy = x - o.x, y - o.y
+                    local g = dx * dx + dy * dy <= r * r and T.generatorAt(x, y, z)
                     if g then o.gx, o.gy, o.gz = x, y, z; return g end
                 end
             end

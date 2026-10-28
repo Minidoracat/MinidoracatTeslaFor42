@@ -123,12 +123,16 @@ local function onFill(playerNum, context, worldObjects, test)
     local sq = charger:getSquare()
     local o = C.chargerAt(sq:getX(), sq:getY(), sq:getZ())
     local plugged = o and o.vid and getVehicleById(o.vid)
+    local c = T.Chargers[info.kind]
+    -- a Mobile Connector without power still takes the cable and charges once power comes; plugged or not, say where it works
+    if c.genTiles and not T.chargerPowered(info.kind, sq) then
+        context:addOption(getText("ContextMenu_MinidoracatTesla_MobileNoPower"), nil, nil).notAvailable = true
+    end
     if plugged then
         notOwner(context:addOption(getText("ContextMenu_MinidoracatTesla_Unplug"), player, C.queueUnplug, plugged), player, plugged)
         context:addOption(getText("ContextMenu_MinidoracatTesla_ChargeStatus"), player, C.showStatus, plugged)
         return
     end
-    local c = T.Chargers[info.kind]
     local cars = teslasNear(sq, math.ceil(c.cableTiles) + 2)
     local any = false
     for _, v in ipairs(cars) do
@@ -150,10 +154,6 @@ local function onFill(playerNum, context, worldObjects, test)
     end
     if not any then
         disable(context:addOption(getText("ContextMenu_MinidoracatTesla_Plug"), nil, nil), "Tooltip_MinidoracatTesla_NoCarInReach")
-    end
-    -- a Mobile Connector without power still takes the cable (it charges once power comes): say where it works
-    if c.genTiles and not T.chargerPowered(info.kind, sq) then
-        context:addOption(getText("ContextMenu_MinidoracatTesla_MobileNoPower"), nil, nil).notAvailable = true
     end
 end
 Events.OnFillWorldObjectContextMenu.Add(onFill)
