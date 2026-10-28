@@ -191,6 +191,11 @@ local boxes1 = 0
 for _ in pairs(inbox) do boxes1 = boxes1 + 1 end
 check(#logged == 1 and logged[1].kind == "touch" and F.lastSent("alert") == nil and boxes1 == boxes0,
     "...a stranger's touch: in the car's alert list, nobody notified, no inbox")
+check(logged[1].by == "thief", "...naming the stranger by its account (Sentry onTouch -> Inbox.entry)")
+F.runTicks(50, 450)
+ISOpenVehicleDoor.complete({ vehicle = gcar, character = F.player("thief", { num = 1 }), part = gcar.parts.GasTank })
+check(#logged == 2 and logged[2].by == false,
+    "...a split-screen guest calling itself thief touches it: the alert says unverified, not thief's name")
 T.Remote = savedRemote
 F.runTicks(50, 450)
 F.online = { thief }

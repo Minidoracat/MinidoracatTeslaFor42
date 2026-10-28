@@ -29,25 +29,12 @@ end
 -- client keeps a car only inside its chunk map, at most 19 chunks wide (IsoChunkMap.java:114-119). Whoever comes nearer
 -- later loads the car with its doors and hue (VehicleFullUpdatePacket.java:122-126 = BaseVehicle.save) and the engine
 -- poses a door from isOpen whenever no anim plays (BaseVehicle.java:3926-3930), so nothing is lost by not telling them.
--- Once per client: sendServerCommand(player, ...) goes to the player's connection (GameServer.java:3562-3569) and the
--- client runs OnServerCommand once per packet, with no player in it (GameClient.java:1055-1071), so split-screen
--- players sharing a client would each make it replay the anim. A client is its online ids' slot: id = slot * 4 +
--- split-screen index (GameServer.java:2686, ConnectCoopPacket.java:125); `except`'s guests share its client, which
--- already played the anim.
+-- Once per client, none to `except`'s (it played the anim in :start; its split-screen players share it): T.sendClients
+-- (server/MinidoracatTesla/Commands.lua).
 L.NEAR_TILES = 96
 local function sendNear(v, cmd, args, except)
     local x, y, r = v:getX(), v:getY(), L.NEAR_TILES
-    local done = {}
-    if except then done[math.floor(except:getOnlineID() / 4)] = true end
-    local list = getOnlinePlayers()
-    for i = 0, list:size() - 1 do
-        local p = list:get(i)
-        local c = math.floor(p:getOnlineID() / 4)
-        if not done[c] and math.abs(p:getX() - x) <= r and math.abs(p:getY() - y) <= r then
-            done[c] = true
-            sendServerCommand(p, T.MODULE, cmd, args)
-        end
-    end
+    T.sendClients(function(p) return math.abs(p:getX() - x) <= r and math.abs(p:getY() - y) <= r end, cmd, args, except)
 end
 
 -- Open doors ride in the colour hue's integer part (bit k-1 for SHELL_DOORS[k]): the shader hides the cabin shell's

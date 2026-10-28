@@ -12,6 +12,7 @@ require "MinidoracatTesla/Keys"
 require "MinidoracatTesla/Sentry"
 require "MinidoracatTesla/Store"
 require "MinidoracatTesla/Liftgate"
+require "MinidoracatTesla/Remote"
 
 local T = MinidoracatTesla
 local K = T.Keys
@@ -131,8 +132,9 @@ function K.setLocked(vehicle, locked)
 end
 
 -- one flash to lock, two to unlock (Sentry's flash: headlights + light parts, synced to every client).
--- Lock: horn chirp, each client within CHIRP_TILES plays and stops it itself (KeysUI keyChirp); playServerSound cannot
--- stop a sound. Neither path adds a world sound (zombies). Unlock: the KeyAlert beep.
+-- Lock: horn chirp, each client within CHIRP_TILES plays and stops it itself (KeysUI keyChirp; once per client,
+-- T.sendClients); playServerSound cannot stop a sound. Neither path adds a world sound (zombies). Unlock: the KeyAlert
+-- beep.
 function K.signal(vehicle, locked)
     S.flash(vehicle, locked and 2 or 4)
     if locked then
@@ -143,15 +145,10 @@ function K.signal(vehicle, locked)
             return
         end
         local x, y, r2 = vehicle:getX(), vehicle:getY(), K.CHIRP_TILES * K.CHIRP_TILES
-        local list = getOnlinePlayers() -- LuaManager.java:4457
-        for i = 0, list:size() - 1 do
-            local p = list:get(i)
+        K.stats.chirps = K.stats.chirps + T.sendClients(function(p)
             local dx, dy = p:getX() - x, p:getY() - y
-            if dx * dx + dy * dy <= r2 then
-                sendServerCommand(p, T.MODULE, "keyChirp", out)
-                K.stats.chirps = K.stats.chirps + 1
-            end
-        end
+            return dx * dx + dy * dy <= r2
+        end, "keyChirp", out)
     elseif isServer() then
         playServerSound(K.SOUND, vehicle:getSquare()) -- players within 10 tiles (GameServer.java:2136-2156)
     else
@@ -168,6 +165,10 @@ T.ServerCommands.keyTap = function(player, args)
     local v = T.commandVehicle(player, args)
     if not v then return end
     local ok, why = K.canTap(player, v)
+    -- VehicleManager present: its PASSENGER right too, as the app's lock / unlock (Remote.lua VM_CODES); the card
+    -- alone is anyone's who picked it up, and the tap unlocks the whole car and disarms sentry without the vanilla
+    -- actions VehicleManager guards. Unclaimed cars and no VehicleManager: the card is enough.
+    if ok then ok, why = T.Remote.vmAllows(player, v, { "PASSENGER" }) end
     if not ok then return T.deny(player, why, v:getId()) end
     local lock = not v:areAllDoorsLocked()
     K.setLocked(v, lock)
