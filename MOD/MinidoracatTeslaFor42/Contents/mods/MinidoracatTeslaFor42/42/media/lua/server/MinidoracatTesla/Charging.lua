@@ -241,7 +241,10 @@ function C.stop(o, v, reason)
             local ok, err = pcall(C.settle, o, T.hours(), true) -- book the energy up to now
             if not ok then T.log("settle before unplug failed: " .. tostring(err)) end
         end
-        if part:getModData().chg then clearChg(v, part) end -- that settle may have unplugged it already (no pack)
+        if part:getModData().chg then -- that settle may have unplugged it already (no pack)
+            local ok, err = pcall(clearChg, v, part) -- the charger is told below whatever this does
+            if not ok then T.log("clearing the cable record failed: " .. tostring(err)) end
+        end
     end
     if o then C.unlink(o) end
     T.log("unplugged " .. tostring(v and v:getId()) .. " (" .. tostring(reason) .. ")")

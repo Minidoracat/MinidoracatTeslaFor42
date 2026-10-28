@@ -813,6 +813,14 @@ T.Sentry = sentryBefore
 B.part(pv).item = e.taken
 C.plug(pp, pv, piso)
 check(pchg() ~= nil and plo.vid == pv:getId(), "(plugged in again)")
+local tx = pv.transmitPartModData
+pv.transmitPartModData = function() error("transmit boom") end -- the part sync throws after the record is cleared
+local f = pull()
+pv.transmitPartModData = tx
+check(f.taken ~= nil and pchg() == nil and plo.vid == false, "the part sync throws: the record is gone and the charger is still told")
+B.part(pv).item = f.taken
+C.plug(pp, pv, piso)
+check(pchg() ~= nil and plo.vid == pv:getId(), "(plugged in again)")
 B.part(pv).item = nil -- gone some other way (another mod, debug): the next settle unplugs it
 C.settle(plo, H.hours())
 check(pchg() == nil and plo.vid == false, "settle with the pack gone: the car's record cleared, the charger forgets it")
