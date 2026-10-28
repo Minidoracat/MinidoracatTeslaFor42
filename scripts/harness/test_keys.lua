@@ -643,6 +643,30 @@ ph = phoneOf(mInv)
 check(ph.keyId == carB.keyId and not K.pairedWith(ph, carA.keyId) and #K.pairedIds(ph) == 1,
     "remove A (paired first): keyId stays B, one car left")
 multi.vehicle = nil
+-- a Model 3 joins a phone whose car B dropped out of the keyId registry (a store from before it): every car keeps its
+-- own model or none, never the Model Y's (KeyActions carsOf; the menus and the halo name an unknown one "Tesla")
+local carC = tesla({ pct = 50, script = "Base.MinidoracatTesla_Model3" })
+carC.x, carC.y = carB.x, carB.y
+local reg = T.Store.get("keyIds")
+reg[tostring(carB.keyId)] = nil
+mInv:AddItem(key(K.CARD, carC.keyId))
+multi.vehicle = carC
+cmds.phonePair(multi, { vid = carC:getId(), id = ph.id })
+ph = phoneOf(mInv)
+local cars = ph.md[K.PAIRED_CARS]
+check(reg[tostring(carC.keyId)] == "MinidoracatTesla_Model3" and cars[1] == nil and cars[2] == "MinidoracatTesla_Model3",
+    "Model 3 added: registered on pairing, its model in the mirror; the unregistered car stays nil, not the Model Y")
+multi.vehicle = nil
+F.sent = {}
+cmds.phoneUnpair(multi, { id = ph.id, key = carB.keyId })
+ph = phoneOf(mInv)
+check(F.lastSent("phoneUnpaired").args.car == nil
+    and ph.name == "ItemName_" .. K.PHONE_KEY .. " - IGUI_VehicleNameMinidoracatTesla_Model3",
+    "removing the unregistered car: told with no model (client says 'Tesla'); the Model 3 left names the phone key")
+reg[tostring(carB.keyId)] = "MinidoracatTesla_ModelY"
+cmds.phoneUnpair(multi, { id = ph.id, key = carC.keyId })
+ph = mInv.items[#mInv.items]
+check(ph.ft == K.PHONE, "remove the Model 3: a plain phone again")
 
 -- ------------------------------------------------------------------ phone loot
 ProceduralDistributions = { list = { ElectronicStorePhones = { items = { "CordlessPhone", 50 } } } }

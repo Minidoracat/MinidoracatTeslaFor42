@@ -50,7 +50,7 @@ FACINGS = ("S", "E", "N", "W")     # sprite index 0..3
 # W (0,90,0) +X = south, +Y = east. The mesh's back sits at Blender +Y, so it lands on the wall each facing needs.
 XFORM = {"S": (0.0, 180.0, 0.0), "E": (0.0, -90.0, 0.0), "N": (0.0, 0.0, 0.0), "W": (0.0, 90.0, 0.0)}
 WC_MODEL = "MinidoracatTesla_WallConnector"
-CABLE_MODELS = ("MinidoracatTesla_CableHang", "MinidoracatTesla_CableFloor", "MinidoracatTesla_CablePlug")
+CABLE_MODELS = ("MinidoracatTesla_CableHang", "MinidoracatTesla_CableFloor")   # + one plug per car: cable_models()
 ITEM_ICONS = {"MinidoracatTesla_WallConnector": "wc_icon.png", "MinidoracatTesla_Cable": "cable_icon.png"}
 
 
@@ -148,7 +148,7 @@ def assets() -> list[tuple[Path, Path]]:
     exp = TEMP / "export"
     out = [(exp / f"{WC_MODEL}.glb", MEDIA / "models_X" / "IsoObject" / f"{WC_MODEL}.glb"),
            (exp / f"{WC_MODEL}.png", MEDIA / "textures" / "IsoObject" / f"{WC_MODEL}.png")]
-    out += [(exp / f"{m}.fbx", MEDIA / "models_X" / "WorldItems" / f"{m}.fbx") for m in CABLE_MODELS]
+    out += [(exp / f"{m}.fbx", MEDIA / "models_X" / "WorldItems" / f"{m}.fbx") for m in cable_models()]
     out.append((exp / "MinidoracatTesla_Cable.png", MEDIA / "textures" / "WorldItems" / "MinidoracatTesla_Cable.png"))
     return out
 
@@ -226,8 +226,13 @@ def blender_consts() -> dict:
     return out
 
 
+def cable_models() -> tuple[str, ...]:
+    return (*CABLE_MODELS, *blender_consts()["PLUGS"])
+
+
 def check_geometry() -> None:
-    """One set of numbers: props_blender.py meshes = build.py atlas/spriteModels = Cable.lua = Chargers.lua cableExit."""
+    """One set of numbers: props_blender.py meshes = build.py atlas/spriteModels = Cable.lua = Chargers.lua cableExit
+    = Core.lua T.Specs plug."""
     b = blender_consts()
     assert b["XFORM"] == XFORM and b["PANEL"] == PANEL, "props_blender.py XFORM/PANEL differ from build.py"
     assert b["SW"] == {k: xy for k, (xy, _) in SW.items()} and b["CSW"] == {k: xy for k, (xy, _) in CSW.items()}, "atlas"
@@ -235,7 +240,15 @@ def check_geometry() -> None:
     lua = (MEDIA / "lua" / "client" / "MinidoracatTesla" / "Cable.lua").read_text(encoding="utf-8")
     lv = {k: float(v) for k, v in re.findall(r"^C\.(\w+) = ([0-9.]+)", lua, re.M)}
     assert lv["HANG_REACH"] == b["HANG_REACH"] and lv["PLUG_REACH"] == b["PLUG_REACH"], (lv, b)
-    assert f"C.PLUG_Z = {b['PLUG_Z']} / 2.44949" in lua, "Cable.lua PLUG_Z"
+    # one plug per car: props_blender.py PLUGS (mesh -> handle height) = Core.lua T.Specs plug { item, z }, and each
+    # plug item draws its own model
+    core = (MEDIA / "lua" / "shared" / "MinidoracatTesla" / "Core.lua").read_text(encoding="utf-8")
+    specs = {m: float(z) for m, z in re.findall(r'plug = \{ item = "Base\.(\w+)", z = ([0-9.]+) \}', core)}
+    assert specs == b["PLUGS"], f"Core.lua T.Specs plug {specs} != props_blender.py PLUGS {b['PLUGS']}"
+    assert len(specs) == core.count("plug = {"), "Core.lua: a plug entry not in the { item = ..., z = ... } form"
+    items = (MEDIA / "scripts" / "items" / "MinidoracatTesla_cable.txt").read_text(encoding="ascii")
+    for m in specs:
+        assert re.search(rf"item {m}\n\s*\{{[^}}]*WorldStaticModel = Base\.{m},[^}}]*Hidden = true,", items), f"item {m}"
     want = (0.0, -b["EXIT_Y"], round(b["EXIT_Z"] / 2.44949, 3))
     ch = MEDIA / "lua" / "shared" / "MinidoracatTesla" / "Chargers.lua"
     if ch.exists():
@@ -264,7 +277,7 @@ def check() -> None:
     rot = dict(re.findall(r"xy = (\d) 0,\s*modelScript = Base\.\w+,\s*translate = [^,]+,\s*rotate = ([^,]+),", sm))
     assert rot == {str(i): fmt3(XFORM[f]) for i, f in enumerate(FACINGS)}, rot
     models = (MEDIA / "scripts" / "models" / "MinidoracatTesla_props.txt").read_text(encoding="ascii")
-    for m in (WC_MODEL, *CABLE_MODELS):
+    for m in (WC_MODEL, *cable_models()):
         assert f"model {m}\n" in models, m
     for _, dst in assets():
         assert dst.exists() and dst.stat().st_size > 0, dst

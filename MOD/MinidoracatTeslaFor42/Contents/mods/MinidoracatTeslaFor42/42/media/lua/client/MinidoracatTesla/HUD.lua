@@ -32,14 +32,24 @@ local LOW_PCT = 20
 local DOORS = { "DoorFrontLeft", "DoorFrontRight", "DoorRearLeft", "DoorRearRight", "TrunkDoor", "DoorRear", "EngineDoor" }
 local DOOR_SPR = { "door_FL", "door_FR", "door_RL", "door_RR", "door_TR", "door_TR", "door_HD" }
 local POW2 = { 1, 2, 4, 8, 16, 32, 64 }
--- clickable car picture: { DOORS index, x0, y0, x1, y1 } in design units from the car sprite's top-left (150x85, nose
--- right, left side up; build_atlas.py car_body at 150/170 px per viewBox unit). Rear doors end at the B-pillar seam
--- (x 69), the front doors and the frunk lid split the windscreen; x 140 is where the quick keys start.
+-- clickable car picture, per car model (Core.lua Specs model; sprite car_<model>, scripts/hud/build_atlas.py):
+-- { DOORS index, x0, y0, x1, y1 } in design units from the car sprite's top-left (150x85, nose right, left side up;
+-- build_atlas.py draws at 150/170 px per viewBox unit). Rear doors end at the B-pillar seam (x 69), the front doors
+-- and the frunk lid split the windscreen; x 140 is where the quick keys start. The Model Y's liftgate carries the rear
+-- glass (x 0-45). The Model 3's trunk lid ends at its seam (viewBox 40 = x 35), its rear doors start where their
+-- outline is drawn (viewBox 56 = x 49), and the rear glass between (viewBox 43-56, fixed in the body) opens nothing.
 local ZONES = {
-    { 5, 0, 0, 45, 85 }, { 3, 45, 0, 69, 42.5 }, { 4, 45, 42.5, 69, 85 },
-    { 1, 69, 0, 97, 42.5 }, { 2, 69, 42.5, 97, 85 }, { 7, 97, 0, 140, 85 },
+    ModelY = {
+        { 5, 0, 0, 45, 85 }, { 3, 45, 0, 69, 42.5 }, { 4, 45, 42.5, 69, 85 },
+        { 1, 69, 0, 97, 42.5 }, { 2, 69, 42.5, 97, 85 }, { 7, 97, 0, 140, 85 },
+    },
+    Model3 = {
+        { 5, 0, 0, 35, 85 }, { 3, 49, 0, 69, 42.5 }, { 4, 49, 42.5, 69, 85 },
+        { 1, 69, 0, 97, 42.5 }, { 2, 69, 42.5, 97, 85 }, { 7, 97, 0, 140, 85 },
+    },
 }
-local PART_KEY = {} -- vanilla part-name keys; the tip maps them through T.PartNames (Tesla names)
+HUD.ZONES = ZONES
+local PART_KEY = {} -- vanilla part-name keys; the tip maps them through T.partNameKey (this car's Tesla names)
 for i = 1, #DOORS do PART_KEY[i] = "IGUI_VehiclePart" .. DOORS[i] end
 
 local function rgb(hex)
@@ -211,6 +221,9 @@ function HUD:attach(vehicle)
     end
     self.fake = BaseVehicle.getFakeSpeedModifier() -- BaseVehicle.java:666; vanilla :256 multiplies the gauge too
     self.kmPerKwh = T.kmPerKwh(vehicle)
+    local model = T.spec(vehicle).model -- this car's top view and door zones (attach runs for Teslas only)
+    self.script, self.carSpr, self.zones = vehicle:getScriptName(), "car_" .. model, ZONES[model]
+    self.msgId = nil -- the message names this car's doors: rebuild it even when the door bits match the last car's
     local st = self.st
     for k in pairs(st) do st[k] = nil end
     self.tick = 0
@@ -358,7 +371,7 @@ function HUD:setMessage()
             if math.floor(a1 / d.bit) % 2 == 1 then n = n + 1; first = first or d.name end
         end
         local pk = "IGUI_VehiclePart" .. tostring(first)
-        pk = (T.PartNames and T.PartNames[pk]) or pk -- Tesla part names (client/MinidoracatTesla/PartNames.lua): EngineDoor = frunk lid
+        pk = T.partNameKey(self.script, pk) or pk -- this car's Tesla part names (Core.lua): EngineDoor = frunk lid
         title = n == 1 and getText("IGUI_MinidoracatTesla_HUD_DoorOpen", getText(pk))
             or getText("IGUI_MinidoracatTesla_HUD_DoorsOpen", tostring(n))
         sub, icon, color = getText("IGUI_MinidoracatTesla_HUD_DoorOpenSub"), "i_warn", C.warn
@@ -474,13 +487,14 @@ function HUD:build()
 
     -- car, open doors, charge indicator
     local cx, cy = CAR_X * S, CAR_Y * S
-    spr(self, A.car, cx, cy, C.white, 1)
+    spr(self, A[self.carSpr], cx, cy, C.white, 1)
     for i = 1, #self.doors do
         local d = self.doors[i]
         if math.floor(st.doors / d.bit) % 2 == 1 then spr(self, A[d.spr], cx, cy, C.warn, 1) end
     end
-    for i = 1, #ZONES do -- door removed: its zone darkened, not clickable
-        local z = ZONES[i]
+    local zones = self.zones
+    for i = 1, #zones do -- door removed: its zone darkened, not clickable
+        local z = zones[i]
         if math.floor(st.avail / POW2[z[1]]) % 2 == 0 then
             rect(self, cx + z[2] * S, cy + z[3] * S, (z[4] - z[2]) * S, (z[5] - z[3]) * S, C.bg, 0.6)
         end
@@ -627,7 +641,7 @@ end
 function HUD:doorTip(k, ax, ay, aw, ah)
     local open = math.floor(self.st.doors / POW2[k]) % 2 == 1
     local name = PART_KEY[k]
-    HUD.drawTip(self, open and TIP_CLOSE or TIP_OPEN, ax, ay, aw, ah, T.PartNames and T.PartNames[name] or name)
+    HUD.drawTip(self, open and TIP_CLOSE or TIP_OPEN, ax, ay, aw, ah, T.partNameKey(self.script, name) or name)
 end
 
 function HUD:keyOn(i)
@@ -646,12 +660,13 @@ function HUD:keyAt(x, y)
     return i
 end
 
--- car picture: the ZONES entry under (x, y), nil when that door is not installed (the click goes through)
+-- car picture: this car's zone under (x, y), nil when that door is not installed (the click goes through)
 function HUD:zoneAt(x, y)
     if not self.keyX then return nil end
     local lx, ly = x / self.S - CAR_X, y / self.S - CAR_Y
-    for i = 1, #ZONES do
-        local z = ZONES[i]
+    local zones = self.zones
+    for i = 1, #zones do
+        local z = zones[i]
         if lx >= z[2] and lx < z[4] and ly >= z[3] and ly < z[5] then
             return math.floor(self.st.avail / POW2[z[1]]) % 2 == 1 and z or nil
         end
