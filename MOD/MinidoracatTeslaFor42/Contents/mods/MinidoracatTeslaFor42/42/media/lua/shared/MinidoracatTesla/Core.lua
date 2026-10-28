@@ -222,13 +222,23 @@ function T.isAdmin(player)
     return checkPermissions(player, Capability.ManipulateVehicle) == true
 end
 
--- The account a player speaks for (sentry owner, notifications, the offline inbox), or nil. On a dedicated server a
--- split-screen guest's name comes from its client unchecked (ConnectCoopPacket.java parse: only names connected right
--- now are refused) and could be any offline owner's, so only a connection's first player has one (family
--- VehicleManager OwnershipSystem.lua O.principal). SP and the client: the username.
+-- The account a player speaks for (sentry owner, notifications, the offline inbox), or nil; family conventions.md,
+-- player identity. The server's getUsername() is the client's word: a respawn or a split-screen join names itself in
+-- ConnectCoopPacket (only names connected right now are refused, ConnectCoopPacket.java:65-97; a dead slot 0 may be
+-- replaced too, :69-109) and the server takes it as the player's name (GameServer.java:2838,2848); no Lua API reads
+-- the connection's login name. So on a server: a split-screen guest (slot 1-3, its host's SteamID) has none; on a
+-- Steam server the name must be bound to this SteamID (Store.lua T.Store.verify); a no-steam server has nothing to
+-- check it against and takes the name. SP and the client: the username.
+T.steamMode = function() return getSteamModeActive() == true end -- both overridable: E2E (conventions.md item 6)
+T.sidOf = function(player) return player:getSteamID() end -- a long rounded to a double in Lua: compare, never print
 function T.account(player)
-    if not player or (isServer() and player:getPlayerNum() ~= 0) then return nil end
-    return player:getUsername()
+    if not player then return nil end
+    if not isServer() then return player:getUsername() end
+    if player:getPlayerNum() ~= 0 then return nil end
+    local name = player:getUsername()
+    if type(name) ~= "string" or name == "" then return nil end
+    if not T.steamMode() then return name end
+    return T.Store.verify(player, name) and name or nil
 end
 
 -- ---- server -> client ----

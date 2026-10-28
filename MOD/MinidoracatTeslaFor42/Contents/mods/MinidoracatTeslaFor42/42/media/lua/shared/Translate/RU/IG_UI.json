@@ -1,5 +1,6 @@
 {
     "IGUI_MinidoracatTesla_Deny_NOT_OWNER": "У вас нет доступа к этой машине",
+    "IGUI_MinidoracatTesla_Deny_IDENTITY_UNVERIFIED": "Не удалось подтвердить вашу учётную запись: уведомления Tesla не будут приходить. Обратитесь к администратору",
     "IGUI_MinidoracatTesla_Deny_ENGINE_ON": "Сначала выключите машину",
     "IGUI_MinidoracatTesla_Deny_NOT_INSIDE": "Нужно сидеть в машине",
     "IGUI_MinidoracatTesla_Deny_OCCUPIED": "В машине никого не должно быть",

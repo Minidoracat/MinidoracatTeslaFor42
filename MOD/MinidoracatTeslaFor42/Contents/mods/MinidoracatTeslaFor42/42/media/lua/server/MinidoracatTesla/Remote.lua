@@ -246,6 +246,24 @@ function R.summonEnded(v, code, player, key)
     if sr and v then sr.summon(v, false) end
 end
 
+-- Is `player` the one running summon `info` (AutoDrive summonInfo, by = the summoner's username)? The session ends once
+-- its summoner leaves or dies (MDAD_Summon.lua:223-225), so the name is someone online. A dedicated server keeps
+-- online names unique (LoginPacket.java:140-150, ConnectCoopPacket.java:79-88): the name is enough. A Steam co-op host
+-- checks only the SteamID at login (LoginPacket.java:78-90), so the name may be online twice: then only a main player
+-- whose account (T.account, SteamID) is that name counts.
+function R.isSummoner(player, info)
+    if type(info) ~= "table" or info.by ~= player:getUsername() then return false end
+    if not isServer() then return true end
+    local list = getOnlinePlayers()
+    for i = 0, list:size() - 1 do
+        local q = list:get(i)
+        if q ~= player and q:getUsername() == info.by then
+            return T.account(player) == info.by -- nil for a split-screen guest
+        end
+    end
+    return true
+end
+
 -- on: start (a running summon: nothing, startSummon is called once) or stop it, whoever started it. Tesla's own rules
 -- first, then AutoDrive's; refused by AutoDrive = its translation key (T.denyText shows it). Sentry is switched off
 -- once the car is on its way, like the owner's unlock.
@@ -259,7 +277,7 @@ local function summon(player, v, on, args)
         return nil, false
     end
     if info then -- already on its way: once per summoner, someone else's is theirs
-        if info.by ~= player:getUsername() then return "UI_MinidoracatAutoDrive_SummonBusy" end
+        if not R.isSummoner(player, info) then return "UI_MinidoracatAutoDrive_SummonBusy" end
         return nil, true, true
     end
     local mode = args.mode or "come"
@@ -341,7 +359,7 @@ function R.state(player, key)
         out.vid = v:getId() -- the app finds the car its game has loaded (summon page)
         local api = R.summonApi()
         local info = api and api.summonInfo(v)
-        if info then out.summon = { phase = info.phase, mode = info.mode, mine = info.by == player:getUsername() } end
+        if info then out.summon = { phase = info.phase, mode = info.mode, mine = R.isSummoner(player, info) } end
     end
     return out
 end
@@ -390,8 +408,7 @@ T.ServerCommands.appAction = function(player, args)
     -- the summoner stopping their own summon: always (the car may have driven past Bluetooth's 30 tiles with the grid
     -- down, or a share been taken back; "one tap starts, one tap stops" needs the stop to work)
     local api = act == "summon" and args.on ~= true and R.summonApi()
-    local info = api and api.summonInfo(v)
-    local ownStop = type(info) == "table" and info.by == player:getUsername()
+    local ownStop = api and R.isSummoner(player, api.summonInfo(v))
     if not ownStop then
         if not K.appReach(player, v) then return done("NO_LINK") end
         local codes = VM_CODES[act]

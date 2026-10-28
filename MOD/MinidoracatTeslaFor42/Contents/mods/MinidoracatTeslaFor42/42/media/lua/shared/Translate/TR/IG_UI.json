@@ -1,5 +1,6 @@
 {
     "IGUI_MinidoracatTesla_Deny_NOT_OWNER": "Bu aracı kullanma yetkin yok",
+    "IGUI_MinidoracatTesla_Deny_IDENTITY_UNVERIFIED": "Hesabın doğrulanamadı: Tesla bildirimleri sana ulaşmayacak. Bir yöneticiye başvur",
     "IGUI_MinidoracatTesla_Deny_ENGINE_ON": "Önce aracı kapat",
     "IGUI_MinidoracatTesla_Deny_NOT_INSIDE": "Araçta oturuyor olmalısın",
     "IGUI_MinidoracatTesla_Deny_OCCUPIED": "Araçta kimse kalmamalı",

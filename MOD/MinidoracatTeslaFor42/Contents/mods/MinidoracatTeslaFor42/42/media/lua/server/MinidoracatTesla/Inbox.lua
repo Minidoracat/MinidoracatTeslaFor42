@@ -1,7 +1,8 @@
 -- Owner notifications for sentry and camp. Online owner: immediate "alert". Offline owner: kept in the server-only
 -- store (Store.lua "inbox"; never Global ModData, which any client can fetch), at most MAX entries per
 -- account, delivered and cleared when the client sends "inboxPull" after login (first OnTick after OnGameStart).
--- Accounts are T.account names: a split-screen guest has none, so it neither gets nor pulls anyone's alerts.
+-- Accounts are T.account names: a split-screen guest has none, so it neither gets nor pulls anyone's alerts; nor does
+-- a slot-0 player whose name is not this SteamID's on a Steam server (a respawn renamed to an offline owner).
 if isClient() then return end
 require "MinidoracatTesla/Core"
 require "MinidoracatTesla/Store"
@@ -69,9 +70,27 @@ function I.notify(username, e)
         .. (p and " online" or " stored"))
 end
 
+-- onlineID -> { who, at, n }: "not verified" log lines, one an hour per slot and name with the count since (a modified
+-- client may send inboxPull as often as the dispatcher's budget allows; conventions.md, player identity: aggregate them)
+local refused = {}
 T.ServerCommands.inboxPull = function(player, args)
     local name = T.account(player)
-    if not name then return end
+    if not name then
+        -- sent at login: the main player learns why no alert will reach it (conventions.md, player identity item 5)
+        if isServer() and player:getPlayerNum() == 0 then
+            local id, who, t = player:getOnlineID(), tostring(player:getUsername()), getTimestampMs()
+            local r = refused[id]
+            if r and r.who ~= who then r = nil end
+            if not r or t - r.at >= 3600000 or t < r.at then
+                T.log("inbox refused: account " .. who .. " not verified (IDENTITY_UNVERIFIED x" .. (r and r.n + 1 or 1) .. ")")
+                refused[id] = { who = who, at = t, n = 0 }
+            else
+                r.n = r.n + 1
+            end
+            T.deny(player, "IDENTITY_UNVERIFIED")
+        end
+        return
+    end
     local data = T.Store.get("inbox")
     local list = data[name]
     if not list or #list == 0 then return end

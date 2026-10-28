@@ -110,10 +110,41 @@ local s1, s2, a, b = H.sent[n + 1], H.sent[n + 2], H.sent[n + 3], H.sent[n + 4]
 check(d.open and #H.sent == n + 4 and s1.player == driver and s2.player == passenger and s1.command == "shell"
     and s2.command == "shell" and s1.args.vid == v:getId() and s1.args.hue == v:getColorHue()
     and math.floor(s1.args.hue) == 16 and not v.colorTx,
-    "MP: shell hue (16 + paint) to every online player as a command, no transmitColorHSV (VehicleProperties)")
+    "MP: shell hue (16 + paint) to every player near as a command, no transmitColorHSV (VehicleProperties)")
 check(a.player == driver and b.player == passenger and a.command == "partAnim"
     and a.args.part == "TrunkDoor" and a.args.open == true and a.args.sound == true,
-    "MP: opened, partAnim { TrunkDoor, open, sound } to every online player")
+    "MP: opened, partAnim { TrunkDoor, open, sound } to every player near")
+
+H.section("liftgate: only the players who can have the car loaded (Liftgate.NEAR_TILES)")
+-- the server sends a car to a connection within relevantRange * 8 tiles on both axes, at most 96
+-- (UdpConnection.java:224-226, GameServer.java:2808-2809): a square, not a circle. The engine's number, not the MOD's.
+local REACH = 96
+check(L.NEAR_TILES == REACH, "NEAR_TILES is the engine's farthest vehicle relevance (96 tiles)")
+local far = H.player({ name = "far", x = v.x + REACH + 0.5, y = v.y })
+local corner = H.player({ name = "corner", x = v.x - REACH, y = v.y + REACH })
+online = { driver, passenger, far, corner }
+local function got(p, from, command)
+    local c = 0
+    for i = from + 1, #H.sent do
+        if H.sent[i].player == p and (command == nil or H.sent[i].command == command) then c = c + 1 end
+    end
+    return c
+end
+n = #H.sent
+cmd(driver, { vid = v:getId(), part = "TrunkDoor" })
+check(not d.open and got(far, n) == 0, "dashboard close: nothing to a player 96.5 tiles away on one axis")
+check(got(corner, n, "shell") == 1 and got(corner, n, "partAnim") == 1 and got(driver, n) == 2 and got(passenger, n) == 2,
+    "...shell and partAnim once each to the driver, the passenger and a player 96 tiles away on both axes")
+n = #H.sent
+ISOpenVehicleDoor.complete({ vehicle = v, part = v.parts.DoorFrontLeft, character = passenger })
+check(got(far, n) == 0 and got(corner, n, "partAnim") == 1 and got(driver, n, "partAnim") == 1 and got(passenger, n, "partAnim") == 0,
+    "vanilla door action: anim to the players near but the opener, none far")
+ISCloseVehicleDoor.complete({ vehicle = v, part = v.parts.DoorFrontLeft, character = passenger })
+far.x = v.x + 10 -- walked up: the car (doors, hue) comes with the engine's full update; later changes reach it
+n = #H.sent
+cmd(driver, { vid = v:getId(), part = "TrunkDoor" })
+check(d.open and got(far, n, "shell") == 1 and got(far, n, "partAnim") == 1, "the far player walked up: the next open reaches it")
+online = { driver, passenger }
 
 H.section("dashboard doors: any door part (HUD car picture)")
 local rl, lid = v.parts.DoorRearLeft.door, v.parts.EngineDoor.door

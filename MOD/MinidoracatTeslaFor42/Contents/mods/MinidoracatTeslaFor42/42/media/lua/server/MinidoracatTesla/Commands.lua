@@ -46,7 +46,7 @@ CR.LIMITS = {
                                              -- many cars or opens; each = 16 appStatus
     appAlerts = { max = 20, ms = 10000 },    -- legit ~10: one per car picked or security page opened (2 clicks each)
     appAction = { max = 30, ms = 10000 },    -- legit 20: one per button press (lock and unlock chirp to everyone near)
-    liftgate = { max = 30, ms = 10000 },     -- legit 20: one per click on the car picture; each tells every online player
+    liftgate = { max = 30, ms = 10000 },     -- legit 20: one per click on the car picture; each tells the players near
 }
 T.CommandRate = CR
 

@@ -1,5 +1,6 @@
 {
     "IGUI_MinidoracatTesla_Deny_NOT_OWNER": "You are not authorized to use this car",
+    "IGUI_MinidoracatTesla_Deny_IDENTITY_UNVERIFIED": "Your account could not be verified: Tesla alerts will not reach you. Ask an admin",
     "IGUI_MinidoracatTesla_Deny_ENGINE_ON": "Turn the car off first",
     "IGUI_MinidoracatTesla_Deny_NOT_INSIDE": "Must be seated inside",
     "IGUI_MinidoracatTesla_Deny_OCCUPIED": "Everyone must be out of the car",
