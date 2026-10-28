@@ -6,7 +6,19 @@ Project Zomboid Build 42 MOD。
 
 ## 功能
 
--
+- **兩台車**：Model Y Performance 與 Model 3 Performance，各 8 種原廠車色；停車格都會出現，高級住宅區只有 Model Y。車門、尾門（Model 3 是行李廂蓋）與前蓋照實車打開，車窗透明看得到車內，用特斯拉原廠錄音的馬達聲。
+- **電池與續航**：高電壓電池的電量取代汽油，開車耗電、煞車回收；充滿電和原版同級車加滿一箱油跑得一樣遠（沙盒「續航倍率」可調）。
+- **壁掛式充電座與充電線**：電工 3 級學會配方，裝上有市電的牆（停電後吃附近發電機的油），右鍵插上充電線；11.5 kW，從沒電充到 90% 約 6 小時（沙盒「充電速度倍率」可調）。插著線開不走，車被拖走會自動拔線。充電卡顯示功率、已充多少與剩餘時間，可調目標電量。
+- **特斯拉風格儀表**：取代原版儀表，顯示檔位、車速、電量、續航與即時耗電；電源鍵、點車子俯視圖開關車門、提醒膠囊、每個按鈕的停留說明；V 鍵圓盤選單多了露營模式與查看充電狀態。
+- **卡片鑰匙與手機鑰匙**：特斯拉的車鑰匙變成卡片鑰匙，車外感應上鎖解鎖；新物品「智慧型手機」設為手機鑰匙後，走近拉門就解鎖、放袋子裡也能發動、走遠自動上鎖；一支手機可以配對多台特斯拉。
+- **手機 Tesla App**：首頁車況與照車漆的車圖、上鎖解鎖、閃燈、鳴喇叭、開關前行李廂與尾門、找車與世界地圖、哨兵開關與警報紀錄、充電狀態、切換車輛；有電網不限距離，停電後只剩藍牙 30 公尺，連不到時顯示最後紀錄。
+- **召喚**（要裝 AutoDrive 與自動駕駛模組）：App 叫空車「到我這裡」、開到地圖上選的地點，或直直前進／後退。
+- **哨兵模式**：鎖車後開啟；有人碰車閃燈並通知車主，砸窗、短接、拆零件響原版警報；車主離線時下次上線補送。
+- **露營模式**：停車時空調照常運作並自動冷暖，在車上睡覺算一般床，車上插座幫電池充電，車內燈亮起；電量低於下限（沙盒「露營模式電量下限」，預設 20%）自動關閉。
+- **驅動單元零件**：特斯拉的驅動單元改用專用零件修理，可以從別台特斯拉拆或用電工 4 級的配方做。
+- **和家族 MOD 連動**（都是選裝，執行期偵測）：Vehicle Manager（綁定的車照它的權限、車輛管理選單可以打開 App、車主沒卡片也能設新手機）、MiniMap（小地圖畫出你的特斯拉、App 導航到車）、AutoDrive（召喚；它的卡片擺在特斯拉儀表上方）。
+
+完整說明與常見問題見 Steam 指南稿 [STEAM_GUIDE.md](STEAM_GUIDE.md)（英文 [STEAM_GUIDE_EN.md](STEAM_GUIDE_EN.md)）。
 
 ## 多人身分的限制
 
@@ -21,7 +33,7 @@ Project Zomboid Build 42 MOD。
 ## 安裝
 
 - Steam Workshop：（首次上傳後補上連結）
-- 手動安裝：把 `MOD/MinidoracatTeslaFor42/Contents/mods/MinidoracatTeslaFor42` 複製到 `%USERPROFILE%\Zomboid\mods\` 並將資料夾改名為 `MinidoracatTeslaFor42`
+- 手動安裝：把 `MOD/MinidoracatTeslaFor42/Contents/mods/MinidoracatTeslaFor42` 整個資料夾複製到 `%USERPROFILE%\Zomboid\mods\`
 
 ## 開發
 
@@ -32,6 +44,10 @@ Project Zomboid Build 42 MOD。
 ## 版本
 
 版本號格式：`{PZ 版本}-{mod 版本}`（例 `42.21.0-0.1.0`），詳見 [CHANGELOG.md](CHANGELOG.md)。
+
+## 授權與素材出處
+
+程式碼是 MIT（[LICENSE](LICENSE)）；美術素材另有條款（[LICENSE-ASSETS.md](LICENSE-ASSETS.md)）。Model Y 與 Model 3 的車身改作自 Sketchfab 上的 CC BY-NC 4.0 與 CC BY 4.0 模型，署名見 [CREDITS.md](CREDITS.md)。
 
 ## 作者
 
