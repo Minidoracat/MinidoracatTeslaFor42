@@ -5,10 +5,10 @@
     "Tooltip_MinidoracatTesla_TakeDriveUnitPartsWarning": "Bu, tahrik ünitesi durumunu sıfıra düşürür.",
     "Tooltip_MinidoracatTesla_DriveUnitCondition": "Tahrik Ünitesi Durumu: %1",
     "Tooltip_MinidoracatTesla_KeyCard": "Kilitlemek veya açmak için sürücü kapısı direğindeki okuyucuya okut. Sürmek için üzerinde ya da anahtarlıkta taşı (cüzdandayken araç çalışmaz).",
-    "Tooltip_MinidoracatTesla_Phone": "Bir Tesla'da onun anahtar kartıyla otur ve bu telefona sağ tıklayıp telefon anahtarı olarak ayarla.",
+    "Tooltip_MinidoracatTesla_Phone": "Bir Tesla'da onun anahtar kartıyla otur ve bu telefona sağ tıklayıp telefon anahtarı olarak ayarla. Araç Yöneticisi varsa aracın sahibinin anahtar kartına ihtiyacı yok.",
     "Tooltip_MinidoracatTesla_PhoneKey": "Kapı kolunu çekince kilit açılır. İnip yanında taşıyarak uzaklaşınca kapılar kendiliğinden kilitlenir.",
     "Tooltip_MinidoracatTesla_TapCard": "Sürücü kapısına yürü ve anahtar kartı okuyucuya okut",
     "Tooltip_MinidoracatTesla_PairPhone": "Bu telefonu bu aracın anahtar kartıyla yetkilendir",
     "Tooltip_MinidoracatTesla_PairPhoneOwner": "Bu telefonu anahtar kartı olmadan yetkilendir: bu aracı Araç Yöneticisi'nde yönetiyorsun",
-    "Tooltip_MinidoracatTesla_AppNotPaired": "Önce telefonu eşleştir: anahtar kartla Tesla'ya bin, telefona sağ tıkla ve \"Telefon anahtarı olarak ayarla\"yı seç."
+    "Tooltip_MinidoracatTesla_AppNotPaired": "Önce telefonu eşleştir: anahtar kartla Tesla'ya bin, telefona sağ tıkla ve \"Telefon anahtarı olarak ayarla\"yı seç. Araç Yöneticisi varsa aracın sahibinin anahtar kartına ihtiyacı yok."
 }

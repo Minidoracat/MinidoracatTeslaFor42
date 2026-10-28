@@ -220,7 +220,7 @@
     "IGUI_MinidoracatTesla_App_Cars": "Arabalarım",
     "IGUI_MinidoracatTesla_App_VmTag": "Araç Yöneticisi",
     "IGUI_MinidoracatTesla_App_NotPaired": "Bu telefon bu arabaya henüz eklenmedi",
-    "IGUI_MinidoracatTesla_App_JoinHint": "Önce ekle: anahtar kartıyla bin, telefona sağ tıkla > \"Bu arabayı ekle\"",
+    "IGUI_MinidoracatTesla_App_JoinHint": "Önce ekle: arabaya bin, telefona sağ tıkla > \"Bu arabayı ekle\"",
     "IGUI_MinidoracatTesla_App_AddCarHint": "Araba ekle: içine otur, telefona sağ tıkla ve \"Bu arabayı ekle\"yi seç.",
     "IGUI_MinidoracatTesla_App_NavCar": "Arabaya git",
     "IGUI_MinidoracatTesla_App_NavSet": "Mini harita hedefi: %1 aracın",

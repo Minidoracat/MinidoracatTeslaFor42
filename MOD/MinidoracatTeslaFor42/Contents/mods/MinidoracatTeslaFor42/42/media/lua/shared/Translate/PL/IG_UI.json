@@ -220,7 +220,7 @@
     "IGUI_MinidoracatTesla_App_Cars": "Moje samochody",
     "IGUI_MinidoracatTesla_App_VmTag": "Menedżer pojazdów",
     "IGUI_MinidoracatTesla_App_NotPaired": "Ten telefon nie jest jeszcze dodany do tego samochodu",
-    "IGUI_MinidoracatTesla_App_JoinHint": "Najpierw dodaj: wsiądź z kartą-kluczem, PPM na telefonie > „Dodaj ten samochód”",
+    "IGUI_MinidoracatTesla_App_JoinHint": "Najpierw dodaj: wsiądź, PPM na telefonie > „Dodaj ten samochód”",
     "IGUI_MinidoracatTesla_App_AddCarHint": "Dodaj samochód: usiądź w nim, kliknij telefon PPM i wybierz „Dodaj ten samochód”.",
     "IGUI_MinidoracatTesla_App_NavCar": "Nawiguj do samochodu",
     "IGUI_MinidoracatTesla_App_NavSet": "Cel minimapy: twój %1",

@@ -220,7 +220,7 @@
     "IGUI_MinidoracatTesla_App_Cars": "내 차량",
     "IGUI_MinidoracatTesla_App_VmTag": "차량 관리",
     "IGUI_MinidoracatTesla_App_NotPaired": "이 핸드폰은 아직 이 차에 추가되지 않았습니다",
-    "IGUI_MinidoracatTesla_App_JoinHint": "먼저 추가: 키 카드를 들고 타서 핸드폰 우클릭 > \"이 차 추가\"",
+    "IGUI_MinidoracatTesla_App_JoinHint": "먼저 추가: 차에 타서 핸드폰 우클릭 > \"이 차 추가\"",
     "IGUI_MinidoracatTesla_App_AddCarHint": "차 추가: 그 차에 앉아 핸드폰을 우클릭하고 \"이 차 추가\"를 고르세요.",
     "IGUI_MinidoracatTesla_App_NavCar": "차로 길 안내",
     "IGUI_MinidoracatTesla_App_NavSet": "미니맵 목적지를 내 %1(으)로 설정했습니다",

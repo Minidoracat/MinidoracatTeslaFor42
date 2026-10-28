@@ -315,7 +315,7 @@ vmOwner.vehicle, vmDriver.vehicle = v, v
 local vmAsked = {}
 local function fakeVM(adminFor)
     return { canUse = function(p, car, code, ctx)
-        vmAsked[#vmAsked + 1] = { code = code, mod = ctx and ctx.mod }
+        vmAsked[#vmAsked + 1] = { code = code, mod = ctx and ctx.mod, silent = ctx and ctx.silent }
         if car ~= v then return false, "NOT_AUTHORIZED" end
         if p == vmOwner then return true, "OWNER" end
         if p == vmDriver and (code == "DRIVE" or code == "PASSENGER") then return true, "MEMBER" end
@@ -326,13 +326,17 @@ end
 MinidoracatVehicleManagerAPI = fakeVM()
 ok, why = K.canPair(vmOwner, v, vmOwner.inv.items[1])
 check(ok == true and why == "VM", "pair: VehicleManager owner without the card -> allowed (tooltip says why)")
-check(vmAsked[#vmAsked].code == "MANAGE" and vmAsked[#vmAsked].mod == T.MODULE, "pair: asks VehicleManager MANAGE, as Tesla")
+check(vmAsked[#vmAsked].code == "MANAGE" and vmAsked[#vmAsked].mod == T.MODULE and vmAsked[#vmAsked].silent == nil,
+    "pair: asks VehicleManager MANAGE, as Tesla, not silent (an admin's override is audited)")
+local asked0 = #vmAsked
+check(K.canPair(owner, v, item(K.PHONE)) == true and #vmAsked == asked0, "pair: the card on you -> VehicleManager not asked")
 ok, why = K.canPair(vmDriver, v, vmDriver.inv.items[1])
 check(not ok and why == "NO_KEY_CARD", "pair: a DRIVE share without the card -> NO_KEY_CARD")
 ok, why = K.canPair(noCard, v, noCard.inv.items[1])
 check(not ok and why == "NO_KEY_CARD", "pair: VehicleManager says no -> NO_KEY_CARD")
 MinidoracatVehicleManagerAPI = fakeVM(noCard)
-check(K.canPair(noCard, v, noCard.inv.items[1]) == true, "pair: an admin with VehicleManager's override on -> allowed (VM audits it)")
+ok, why = K.canPair(noCard, v, noCard.inv.items[1])
+check(ok == true and why == "VM", "pair: an admin with VehicleManager's override on -> allowed (VM audits it)")
 MinidoracatVehicleManagerAPI = { canUse = function() return true, "UNCLAIMED" end }
 ok, why = K.canPair(noCard, v, noCard.inv.items[1])
 check(not ok and why == "NO_KEY_CARD", "pair: an unclaimed car is nobody's -> NO_KEY_CARD")
@@ -341,6 +345,7 @@ SandboxVars.MinidoracatVehicleManager = { VirtualKey = false } -- the server wan
 ok, why = K.canPair(vmOwner, v, vmOwner.inv.items[1])
 check(not ok and why == "NO_KEY_CARD", "pair: VehicleManager VirtualKey off -> the owner needs the card too")
 SandboxVars.MinidoracatVehicleManager = nil
+F.sent = {}
 cmds.phonePair(vmDriver, { vid = v:getId(), id = vmDriver.inv.items[1]:getID() })
 check(lastDeny() == "NO_KEY_CARD" and vmDriver.inv.items[1].ft == K.PHONE, "phonePair: a DRIVE share without the card -> denied")
 F.sent = {}
@@ -678,6 +683,17 @@ Events = sink
 H.side(true, false)
 require "MinidoracatTesla/KeysUI"
 local UI = T.KeysUI
+do -- the pairing menu tells a VehicleManager owner without the card why it is allowed (KeysUI.phoneOption)
+    local tipMenu = { addOption = function() return {} end }
+    local lost = player("lostcard", container(item(K.PHONE)), v.x, v.y)
+    lost.vehicle = v
+    MinidoracatVehicleManagerAPI = { canUse = function(p) return p == lost, p == lost and "OWNER" or "NOT_AUTHORIZED" end }
+    local opt = UI.phoneOption(lost, tipMenu, lost.inv.items[1])
+    check(not opt.notAvailable and opt.toolTip.description == "Tooltip_MinidoracatTesla_PairPhoneOwner",
+        "pair menu: VehicleManager owner without the card -> enabled, owner tooltip")
+    lost.vehicle = nil
+    MinidoracatVehicleManagerAPI = nil
+end
 local car = tesla({ pct = 80 })
 local wInv = container(key(K.CARD, car.keyId), key(K.PHONE_KEY, car.keyId), item(K.PHONE))
 local walker = player("walker", wInv, car.x - 1, car.y)

@@ -220,7 +220,7 @@
     "IGUI_MinidoracatTesla_App_Cars": "Mes voitures",
     "IGUI_MinidoracatTesla_App_VmTag": "Gestionnaire de véhicules",
     "IGUI_MinidoracatTesla_App_NotPaired": "Ce téléphone n'est pas encore ajouté à cette voiture",
-    "IGUI_MinidoracatTesla_App_JoinHint": "Ajoutez-la : à bord avec sa carte-clé, clic droit sur le téléphone > « Ajouter »",
+    "IGUI_MinidoracatTesla_App_JoinHint": "Ajoutez-la : à bord, clic droit sur le téléphone > « Ajouter »",
     "IGUI_MinidoracatTesla_App_AddCarHint": "Ajouter une voiture : asseyez-vous dedans, clic droit sur le téléphone, « Ajouter cette voiture ».",
     "IGUI_MinidoracatTesla_App_NavCar": "Naviguer vers la voiture",
     "IGUI_MinidoracatTesla_App_NavSet": "Destination de la mini-carte : votre %1",

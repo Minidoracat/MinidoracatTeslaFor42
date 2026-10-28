@@ -192,7 +192,8 @@ T.ServerCommands.phonePair = function(player, args)
     local cars = carsOf(ids)
     if not replace(phone, K.PHONE_KEY, v:getKeyId(), phoneName(ids, cars), ids, cars) then return end
     K.stats.pairs = K.stats.pairs + 1
-    T.log("phone key paired vid=" .. v:getId() .. " cars=" .. #ids .. " by " .. player:getUsername())
+    T.log("phone key paired vid=" .. v:getId() .. " cars=" .. #ids .. " by " .. player:getUsername()
+        .. (why == "VM" and " (no card: VehicleManager)" or ""))
     T.send(player, "phonePaired", { vid = v:getId(), car = carName(v), n = #ids })
 end
 

@@ -220,7 +220,7 @@
     "IGUI_MinidoracatTesla_App_Cars": "Meus carros",
     "IGUI_MinidoracatTesla_App_VmTag": "Gerenciador de veículos",
     "IGUI_MinidoracatTesla_App_NotPaired": "Este telefone ainda não foi adicionado a este carro",
-    "IGUI_MinidoracatTesla_App_JoinHint": "Adicione antes: dentro dele com o cartão-chave, clique direito no telefone > \"Adicionar\"",
+    "IGUI_MinidoracatTesla_App_JoinHint": "Adicione antes: dentro dele, clique direito no telefone > \"Adicionar\"",
     "IGUI_MinidoracatTesla_App_AddCarHint": "Adicionar um carro: sente-se nele, clique direito no telefone e escolha \"Adicionar este carro\".",
     "IGUI_MinidoracatTesla_App_NavCar": "Navegar até o carro",
     "IGUI_MinidoracatTesla_App_NavSet": "Destino do minimapa: seu %1",

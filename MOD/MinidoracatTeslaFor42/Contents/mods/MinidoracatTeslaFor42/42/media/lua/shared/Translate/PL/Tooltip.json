@@ -5,10 +5,10 @@
     "Tooltip_MinidoracatTesla_TakeDriveUnitPartsWarning": "Przez tę czynność stan zespołu napędowego spadnie do 0.",
     "Tooltip_MinidoracatTesla_DriveUnitCondition": "Stan zespołu napędowego: %1",
     "Tooltip_MinidoracatTesla_KeyCard": "Przyłóż do czytnika na słupku drzwi kierowcy, aby zablokować lub odblokować. Do jazdy noś ją luzem lub na kółku na klucze (z portfela auto nie odpali).",
-    "Tooltip_MinidoracatTesla_Phone": "Usiądź w Tesli z jej kartą-kluczem i kliknij prawym ten telefon, aby ustawić go jako klucz w telefonie.",
+    "Tooltip_MinidoracatTesla_Phone": "Usiądź w Tesli z jej kartą-kluczem i kliknij prawym ten telefon, aby ustawić go jako klucz w telefonie. Z Menedżerem pojazdów właściciel auta nie potrzebuje karty-klucza.",
     "Tooltip_MinidoracatTesla_PhoneKey": "Odblokowuje po pociągnięciu klamki. Gdy wysiądziesz i odejdziesz z nim, drzwi zablokują się same.",
     "Tooltip_MinidoracatTesla_TapCard": "Podejdź do drzwi kierowcy i przyłóż kartę-klucz do czytnika",
     "Tooltip_MinidoracatTesla_PairPhone": "Autoryzuj ten telefon kartą-kluczem tego auta",
     "Tooltip_MinidoracatTesla_PairPhoneOwner": "Autoryzuj ten telefon bez karty-klucza: zarządzasz tym autem w Menedżerze pojazdów",
-    "Tooltip_MinidoracatTesla_AppNotPaired": "Najpierw sparuj telefon: usiądź w Tesli z kartą-kluczem, kliknij telefon prawym przyciskiem i wybierz „Ustaw jako klucz w telefonie”."
+    "Tooltip_MinidoracatTesla_AppNotPaired": "Najpierw sparuj telefon: usiądź w Tesli z kartą-kluczem, kliknij telefon prawym przyciskiem i wybierz „Ustaw jako klucz w telefonie”. Z Menedżerem pojazdów właściciel auta nie potrzebuje karty-klucza."
 }

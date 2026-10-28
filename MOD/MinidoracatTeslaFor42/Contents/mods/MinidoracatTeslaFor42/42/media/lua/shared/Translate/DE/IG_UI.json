@@ -220,7 +220,7 @@
     "IGUI_MinidoracatTesla_App_Cars": "Meine Autos",
     "IGUI_MinidoracatTesla_App_VmTag": "Fahrzeugverwaltung",
     "IGUI_MinidoracatTesla_App_NotPaired": "Dieses Telefon ist diesem Auto noch nicht hinzugefügt",
-    "IGUI_MinidoracatTesla_App_JoinHint": "Erst hinzufügen: mit Schlüsselkarte einsteigen, Telefon rechtsklicken > „Hinzufügen“",
+    "IGUI_MinidoracatTesla_App_JoinHint": "Erst hinzufügen: einsteigen, Telefon rechtsklicken > „Hinzufügen“",
     "IGUI_MinidoracatTesla_App_AddCarHint": "Auto hinzufügen: einsteigen, Telefon rechtsklicken, „Dieses Auto hinzufügen“ wählen.",
     "IGUI_MinidoracatTesla_App_NavCar": "Zum Auto navigieren",
     "IGUI_MinidoracatTesla_App_NavSet": "MiniMap-Ziel auf deinen %1 gesetzt",
