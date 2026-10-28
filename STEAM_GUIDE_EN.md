@@ -322,7 +322,6 @@ Without Vehicle Manager:
 [*] [b]Who owns a charger[/b]: whoever placed it, and the owner and members of the safehouse it stands in.
 [*] [b]The owner can[/b]: unplug the cable, press Stop on the charge card, and pick up or rotate the charger, whether that car is locked or not, with or without Vehicle Manager.
 [*] [b]The owner cannot[/b]: plug in a car they have no right to, or change that car's target or resume its charging.
-[*] [b]Older chargers[/b]: chargers placed before this feature have no owner on record and follow the normal rules; pick one up and place it again to record you (if you can pick it up).
 [/list]
 [h3]What does Summon need?[/h3]
 [list]
