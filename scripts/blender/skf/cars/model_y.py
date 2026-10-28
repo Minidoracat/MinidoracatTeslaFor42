@@ -15,6 +15,7 @@ CAR = dict(
     SCRIPT_MARK="---- geometry (TeslaModelY)",   # the vehicle script's line after which the geometry block is ours
     APP_CAR="app_car_{}.png",              # phone App car image per paint (PhoneApp.lua)
     DIMS=(4.790, 1.920, 1.624),            # official length, body width (no mirrors), height, metres
+    PORT_NOTE="real Model Y",              # source of the charge port spot, written into the vehicle script's comment
     # official Model Y paints (decisions.md "車款外觀"): skin order = vehicle script skin index = Core.lua colors order;
     # saved games store the index (BaseVehicle.java:2635/2741), so after release only append
     PAINTS=[("StealthGrey", "PN01"), ("PearlWhite", "PPSW"), ("DiamondBlack", "PX02"), ("Quicksilver", "PN00"),

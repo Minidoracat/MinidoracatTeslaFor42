@@ -16,6 +16,7 @@ CAR = dict(
     SCRIPT_MARK="---- geometry (TeslaModel3)",
     APP_CAR="app_car_model3_{}.png",       # not app_car_<paint> (Model Y's): six paints share names
     DIMS=(4.724, 1.848, 1.430),            # China owner's manual p.172 (Performance): length, width w/o mirrors, height
+    PORT_NOTE='real Model 3, owner\'s manual "Charging Instructions"',
     # Performance paints offered in the US, DE and TW design studios (research 2026-10-28); Model Y's order, Deep
     # Blue in Glacier Blue's slot. Skin index is saved: only append after release
     PAINTS=[("StealthGrey", "PN01"), ("PearlWhite", "PPSW"), ("DiamondBlack", "PX02"), ("Quicksilver", "PN00"),
