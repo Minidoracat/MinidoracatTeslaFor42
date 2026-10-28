@@ -11,7 +11,7 @@
 [*] [b]選裝：[/b][url=https://steamcommunity.com/sharedfiles/filedetails/?id=3813972279]Minidoracat Vehicle Manager[/url]（綁車保護，手機 App 與鑰匙照它的權限）
 [*] [b]選裝：[/b][url=https://steamcommunity.com/sharedfiles/filedetails/?id=3792675881]Minidoracat MiniMap - AutoDrive[/url]（手機 App 的召喚）
 [*] [b]選裝：[/b][url=https://steamcommunity.com/sharedfiles/filedetails/?id=3763913359]Minidoracat MiniMap[/url]（小地圖畫出你的特斯拉、導航到車）
-[*] [b]中途加入／移除：[/b]可加入；移除前請先看完整說明，特斯拉、鑰匙與充電座都會消失或失效
+[*] [b]中途加入／移除：[/b]可加入；移除前請先看完整說明：特斯拉會隨機變成別的車，鑰匙與充電座物品會消失，放好的充電座會變成空物件
 [*] [b]介面語言：[/b]繁體中文、简体中文、English、日本語、한국어、Русский、Español、Português、Türkçe、Français、Polski、Deutsch（翻譯有問題請回報）
 [/list]
 

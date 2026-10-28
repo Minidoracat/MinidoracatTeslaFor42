@@ -11,7 +11,7 @@ Drive a Tesla Model Y or Model 3 through the apocalypse: run on battery power, c
 [*] [b]Optional:[/b] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3813972279]Minidoracat Vehicle Manager[/url] (vehicle claims; the phone app and the keys follow its permissions)
 [*] [b]Optional:[/b] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3792675881]Minidoracat MiniMap - AutoDrive[/url] (Summon in the phone app)
 [*] [b]Optional:[/b] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3763913359]Minidoracat MiniMap[/url] (your Teslas on the minimap, navigate to your car)
-[*] [b]Add/remove mid-save:[/b] can be added; read the full guide before removing it: the Teslas, their keys and the chargers disappear or stop working
+[*] [b]Add/remove mid-save:[/b] can be added; read the full guide before removing it: each Tesla turns into a random other vehicle, keys and charger items vanish, and placed chargers become blank objects
 [*] [b]Languages:[/b] 繁體中文, 简体中文, English, 日本語, 한국어, Русский, Español, Português, Türkçe, Français, Polski, Deutsch (please report translation issues)
 [/list]
 

@@ -11,7 +11,7 @@
 [*] [b]任意：[/b][url=https://steamcommunity.com/sharedfiles/filedetails/?id=3813972279]Minidoracat Vehicle Manager[/url]（車両の登録と保護。アプリとキーはその権限に従います）
 [*] [b]任意：[/b][url=https://steamcommunity.com/sharedfiles/filedetails/?id=3792675881]Minidoracat MiniMap - AutoDrive[/url]（アプリのサモン）
 [*] [b]任意：[/b][url=https://steamcommunity.com/sharedfiles/filedetails/?id=3763913359]Minidoracat MiniMap[/url]（ミニマップにテスラを表示、車までナビ）
-[*] [b]途中追加・削除：[/b]追加は可能です。削除する前に詳しい説明を読んでください。テスラ、キー、充電器が消えるか使えなくなります
+[*] [b]途中追加・削除：[/b]追加は可能です。削除する前に詳しい説明を読んでください。テスラはランダムな別の車に変わり、キーと充電器のアイテムは消え、設置した充電器は中身のないオブジェクトになります
 [*] [b]対応言語：[/b]繁體中文、简体中文、English、日本語、한국어、Русский、Español、Português、Türkçe、Français、Polski、Deutsch（翻訳の問題はお知らせください）
 [/list]
 
