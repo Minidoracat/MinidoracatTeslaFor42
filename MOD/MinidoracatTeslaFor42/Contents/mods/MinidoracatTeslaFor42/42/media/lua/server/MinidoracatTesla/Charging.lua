@@ -135,7 +135,9 @@ end
 -- says this car had a charger. ponytail: a car pulled out of reach after the shut-off pays that bit itself.
 local function clearChg(vehicle, part)
     local now = T.hours()
-    settleSentry(vehicle, now, C.powerUntil(part:getModData().chg, now, false))
+    -- the record goes whatever the sentry booking does: a stale record holds the car in Park (CheckOperate.Battery)
+    local ok, err = pcall(function() settleSentry(vehicle, now, C.powerUntil(part:getModData().chg, now, false)) end)
+    if not ok then T.log("sentry settle before unplug failed: " .. tostring(err)) end
     part:getModData().chg = nil
     vehicle:transmitPartModData(part)
     touchVM(vehicle)

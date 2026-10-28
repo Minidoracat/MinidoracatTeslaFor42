@@ -805,6 +805,14 @@ B.part(pv).item = q.taken
 B.part(qv):getModData().chg = nil
 C.plug(pp, pv, piso)
 check(pchg() ~= nil and plo.vid == pv:getId(), "(plugged in again)")
+local sentryBefore = T.Sentry
+T.Sentry = { settle = function() error("sentry boom") end } -- the sentry booking throws while unplugging
+local e = pull()
+check(e.taken ~= nil and pchg() == nil and plo.vid == false, "the sentry booking throws: the record and the charger's vid still go")
+T.Sentry = sentryBefore
+B.part(pv).item = e.taken
+C.plug(pp, pv, piso)
+check(pchg() ~= nil and plo.vid == pv:getId(), "(plugged in again)")
 B.part(pv).item = nil -- gone some other way (another mod, debug): the next settle unplugs it
 C.settle(plo, H.hours())
 check(pchg() == nil and plo.vid == false, "settle with the pack gone: the car's record cleared, the charger forgets it")
