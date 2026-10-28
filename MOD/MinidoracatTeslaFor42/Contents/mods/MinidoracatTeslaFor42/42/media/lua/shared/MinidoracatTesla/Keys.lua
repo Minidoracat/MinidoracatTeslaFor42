@@ -126,13 +126,14 @@ end
 -- sandbox option off (vanilla key rules, VehicleManager ActionGuards.lua virtualKey, default on), or an unclaimed car
 -- (anyone's: no key from it) -> false. VehicleManager's admin override ("ADMIN") counts: opt-in in its fleet window, and
 -- it writes ADMIN_BYPASS with our mod name (its OwnershipSystem.lua O.allowsRecord). MP client: its projection, UX only.
+-- Fails closed, unlike Remote.vmAllows (no VehicleManager or UNCLAIMED = yes there): here only a VehicleManager grant counts.
 local function vmGrants(chr, vehicle, codes)
     local api = MinidoracatVehicleManagerAPI
     if not (api and api.canUse) then return false end
     local page = SandboxVars and SandboxVars.MinidoracatVehicleManager
     if page and page.VirtualKey == false then return false end
     for _, code in ipairs(codes) do
-        local ok, why = api.canUse(chr, vehicle, code, { mod = T.MODULE })
+        local ok, why = T.authorized(chr, vehicle, code) -- VehicleManager's canUse, as Tesla (Core.lua)
         if ok == true and why ~= "UNCLAIMED" then return true end
     end
     return false
@@ -141,8 +142,8 @@ end
 -- Make a phone this car's phone key, or add this car to a phone key (K.pairedWith): seated in the car with its card
 -- handy (on you or on the console reader). Lost card (user 2026-10-28): VehicleManager's owner of the car (MANAGE, never
 -- shareable) pairs without it; returns true, "VM" then (the menu's tooltip). A rent-locked owner (and an admin once the
--- override is off) keeps the phone key, but doors, start and the app ask VehicleManager again (its ActionGuards,
--- Remote.lua R.vmAllows); sentry and camp-off (ParkModes T.legit) take any key, like a card.
+-- override is off) keeps the phone key, but every use on a claimed car asks VehicleManager again: doors and start (its
+-- ActionGuards), the app (Remote.lua R.vmAllows), sentry and camp (ParkModes T.legit).
 function K.canPair(player, vehicle, phone)
     local ft = phone and phone:getFullType()
     if ft ~= K.PHONE and ft ~= K.PHONE_KEY then return false, "NO_PHONE" end
