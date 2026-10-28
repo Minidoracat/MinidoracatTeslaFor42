@@ -123,6 +123,8 @@
     "IGUI_MinidoracatTesla_Deny_NO_PHONE_KEY": "이 차의 핸드폰 키를 가지고 있지 않습니다",
     "IGUI_MinidoracatTesla_Deny_NO_LINK": "차에 연결할 수 없습니다 (정전 중에는 블루투스 30m 이내만)",
     "IGUI_MinidoracatTesla_Deny_RENT_LOCKED": "이 차는 대여 기간이 끝나 잠겨 있습니다",
+    "IGUI_MinidoracatTesla_Deny_CAR_LOCKED": "차가 잠겨 있습니다. 이 차의 키가 필요합니다",
+    "IGUI_MinidoracatTesla_Deny_NO_KEY_CARD_HOTWIRE": "이 차의 키 카드가 필요합니다 (또는 먼저 배선을 따서 시동을 거세요)",
     "IGUI_MinidoracatTesla_Deny_FACTION_PAUSED": "이 차의 세력 공유가 일시 중지되었습니다",
     "IGUI_MinidoracatTesla_Deny_QUARANTINED": "이 차의 소유권을 확인 중입니다",
     "IGUI_MinidoracatTesla_Deny_SENTRY_OFF": "감시 모드가 이미 꺼져 있습니다",

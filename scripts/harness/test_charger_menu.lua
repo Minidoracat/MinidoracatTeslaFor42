@@ -42,11 +42,15 @@ end
 local v = H.vehicle({ kwh = 20 })
 for _, k in ipairs({ { "WallConnector", "minidoracat_tesla_01_0", 10 }, { "MobileConnector", "minidoracat_tesla_01_8", 20 } }) do
     local iso = charger(k[3], k[2], v:getId())
+    v.locked = true
     local own = menu(H.player({ name = "own", keys = { [77] = true } }), iso)
-    check(own ~= nil and not own.notAvailable, k[1] .. ": the key holder's Unplug row is live")
+    check(own ~= nil and not own.notAvailable, k[1] .. ": the key holder's Unplug row is live (car locked)")
     local mal = menu(H.player({ name = "mal" }), iso)
-    check(mal ~= nil and mal.notAvailable == true and mal.toolTip.description:find("IGUI_MinidoracatTesla_Deny_NOT_OWNER", 1, true) == 1,
-        k[1] .. ": no key -> Unplug greyed with the server's NOT_OWNER reason")
+    check(mal ~= nil and mal.notAvailable == true and mal.toolTip.description == "IGUI_MinidoracatTesla_Deny_CAR_LOCKED",
+        k[1] .. ": no key, car locked -> Unplug greyed with the server's CAR_LOCKED reason, no code appended")
+    v.locked = false
+    mal = menu(H.player({ name = "mal" }), iso)
+    check(mal ~= nil and not mal.notAvailable, k[1] .. ": no key, car unlocked -> Unplug live")
 end
 local calls = 0
 local rule = T.mayUseCable

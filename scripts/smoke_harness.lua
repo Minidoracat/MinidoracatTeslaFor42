@@ -190,6 +190,8 @@ function H.vehicle(o)
     function v:getZ() return self.z end
     function v:getKeyId() return self.keyId end
     function v:isKeysInIgnition() return false end
+    function v:isHotwired() return self.hotwired == true end -- H.vehicle(...).hotwired = true
+    function v:isAnyDoorLocked() return self.locked == true end -- H.vehicle(...).locked = true (BaseVehicle.java:9343)
     function v:setEngineFeature(q, l, f) self.feature = { q, l, f } end
     function v:setColorHSV(h, s, val) self.hsv = { h, s, val } end
     function v:getColorHue() return (self.hsv or { 0.69 })[1] end
@@ -268,8 +270,14 @@ ISLockVehicleDoor = { complete = function(self) -- ISLockVehicleDoor.lua:28-46
     return true
 end }
 -- vanilla floor / wall placement check (ISMoveableSpriteProps.lua:1736); Chargers.lua wraps it. `free` stands in for
--- everything vanilla checks.
-ISMoveableSpriteProps = { canPlaceMoveableInternal = function(self) return self.free ~= false end }
+-- everything vanilla checks. The cursor panel text (:577) and vanilla's red line helper (:519-527) for the move guard.
+ISMoveableSpriteProps = { canPlaceMoveableInternal = function(self) return self.free ~= false end,
+    getInfoPanelDescription = function() return {} end,
+    addLineToInfoTable = function(t, txt, r, g, b) t[#t + 1] = { { txt = txt, r = r, g = g, b = b } }; return t end,
+    bhc = { getR = function() return 1 end, getG = function() return 0 end, getB = function() return 0 end } }
+-- vanilla pick up / place / rotate action (ISMoveablesAction.lua:236-255); Chargers.lua wraps complete(). `done`
+-- counts what vanilla would have moved.
+ISMoveablesAction = { complete = function(self) self.done = (self.done or 0) + 1; return true end }
 
 -- ---------------------------------------------------------------- loader
 local loaded = {}
@@ -289,6 +297,7 @@ for _, m in ipairs({ "ISOpenVehicleDoor", "ISCloseVehicleDoor", "ISLockDoors", "
     H.stub("Vehicles/TimedActions/" .. m)
 end
 H.stub("Moveables/ISMoveableSpriteProps")
+H.stub("Moveables/ISMoveablesAction")
 
 -- ---------------------------------------------------------------- checks
 function H.check(ok, label)

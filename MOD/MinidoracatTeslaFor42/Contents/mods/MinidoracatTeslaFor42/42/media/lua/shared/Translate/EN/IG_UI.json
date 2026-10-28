@@ -123,6 +123,8 @@
     "IGUI_MinidoracatTesla_Deny_NO_PHONE_KEY": "You don't carry this car's phone key",
     "IGUI_MinidoracatTesla_Deny_NO_LINK": "Can't reach the car (with the power out, only Bluetooth within 30 m)",
     "IGUI_MinidoracatTesla_Deny_RENT_LOCKED": "This car is locked: its rental slot ran out",
+    "IGUI_MinidoracatTesla_Deny_CAR_LOCKED": "The car is locked: you need this car's key",
+    "IGUI_MinidoracatTesla_Deny_NO_KEY_CARD_HOTWIRE": "You need this car's key card, or hotwire the car first",
     "IGUI_MinidoracatTesla_Deny_FACTION_PAUSED": "Faction sharing for this car is paused",
     "IGUI_MinidoracatTesla_Deny_QUARANTINED": "This car's ownership is under review",
     "IGUI_MinidoracatTesla_Deny_SENTRY_OFF": "Sentry Mode is already off",

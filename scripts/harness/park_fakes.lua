@@ -178,6 +178,8 @@ function F.vehicle(o)
     function v:areAllDoorsLocked() return self.locked end
     function v:getKeyId() return self.keyId end
     function v:isKeysInIgnition() return self.ignition == true end
+    function v:isHotwired() return self.hotwired == true end
+    function v:isAnyDoorLocked() return self.locked == true end
     function v:getX() return self.x end
     function v:getY() return self.y end
     function v:setAlarmed(b) self.alarmed = b end

@@ -594,6 +594,42 @@ local busiest = H.busiest(times, CR.LIMITS.default.ms)
 check(#times == 120 and reached == 120 and (CR.dropped.default or 0) == dropped0 and busiest * 1.5 <= CR.LIMITS.default.max,
     "a minute on the charge card, 2 clicks a second (" .. busiest .. " in the busiest 10 s): all " .. reached .. " of "
     .. #times .. " reach the server's handler")
+-- the cable rule on the card (Chargers.lua T.mayUseCable, as the server's chargeTarget / chargeStop / unplug): no key
+-- and a locked car = target %, stop and unplug greyed, the hover help says why; unlocked or with the key they work
+local realItemName = getItemName
+getItemName = function(t) return t end -- LuaManager.java:8745-8763 (the charger's name on the card)
+local cmd = T.Battery.part(tesla):getModData()
+cmd.chg = { kind = "WallConnector", x = 0, y = 0, z = 0, kw = 11.5, target = 90, last = T.hours(), paused = nil }
+cardPlayer.getInventory = function()
+    return { haveThisKeyId = function(_, id) return cardPlayer.key == id and {} or nil end,
+        getFirstTypeEvalArgRecurse = function() return nil end }
+end
+local cardBtns = { card.btnToggle, card.btnUnplug, card.btnMinus, card.btnPlus }
+local function cardState()
+    card.key = ""
+    card:read()
+    local on, tips = 0, {}
+    for _, b in ipairs(cardBtns) do
+        if b.enable then on = on + 1 end
+        tips[b.tipKey] = true
+    end
+    return on, tips
+end
+tesla.locked = true
+local on, tips = cardState()
+check(on == 0 and tips["IGUI_MinidoracatTesla_Deny_CAR_LOCKED"] and next(tips, next(tips)) == nil,
+    "card, no key, car locked: all four charging buttons greyed, the help says CAR_LOCKED")
+tesla.locked = false
+on, tips = cardState()
+check(on == 4 and tips["IGUI_MinidoracatTesla_Tip_CardStop"] and tips["IGUI_MinidoracatTesla_Tip_CardUnplug"],
+    "card, no key, car unlocked: the buttons work, their own help")
+tesla.locked, cardPlayer.key = true, tesla.keyId
+on = cardState()
+check(on == 4, "card, the key on you, car locked: the buttons work")
+tesla.locked, cardPlayer.key, cardPlayer.getInventory, cmd.chg = false, nil, nil, nil
+card.key = ""
+card:read()
+getItemName = realItemName
 card:close()
 check(select(5, MinidoracatTeslaAPI.chargeCardRect(0)) == false, "card closed: visible=false")
 getSpecificPlayer = realGetSpecific

@@ -10,6 +10,7 @@
     "Tooltip_MinidoracatTesla_TapCard": "走到驾驶座车门，用卡片钥匙感应读卡区",
     "Tooltip_MinidoracatTesla_PairPhone": "用这辆车的卡片钥匙授权这部手机",
     "Tooltip_MinidoracatTesla_PairPhoneOwner": "无需卡片钥匙即可授权：你在车辆管理中拥有这辆车的管理权",
+    "Tooltip_MinidoracatTesla_PairPhoneHotwired": "无需卡片钥匙即可授权：这辆车已经短接启动过",
     "Tooltip_MinidoracatTesla_AppNotPaired": "先把手机设为手机钥匙：带着卡片钥匙坐上特斯拉，右键手机选「设为手机钥匙」。装了车辆管理时，车主不用卡片钥匙。",
     "Tooltip_MinidoracatTesla_WallConnector": "装上墙（电工 3 级、螺丝刀）后右键，就能插上 6 格内的特斯拉，以 11.5 kW 充电。<br>室内有市电时用市电，也能接范围内运转中的发电机。<br>接发电机充电会耗油，充满一辆约用一桶（按沙盒「发电机油耗」等比例增减）。",
     "Tooltip_MinidoracatTesla_MobileConnector": "放在地上后右键，就能插上 5 格内的特斯拉，以 7.6 kW 充电。<br>室内有市电时用市电，也能接范围内运转中的发电机。<br>接发电机充电会耗油，充满一辆约用一桶（按沙盒「发电机油耗」等比例增减）。"

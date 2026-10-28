@@ -10,6 +10,7 @@
     "Tooltip_MinidoracatTesla_TapCard": "Sürücü kapısına yürü ve anahtar kartı okuyucuya okut",
     "Tooltip_MinidoracatTesla_PairPhone": "Bu telefonu bu aracın anahtar kartıyla yetkilendir",
     "Tooltip_MinidoracatTesla_PairPhoneOwner": "Bu telefonu anahtar kartı olmadan yetkilendir: bu aracı Araç Yöneticisi'nde yönetiyorsun",
+    "Tooltip_MinidoracatTesla_PairPhoneHotwired": "Bu telefonu anahtar kartı olmadan yetkilendir: bu araca düz kontak yapılmış",
     "Tooltip_MinidoracatTesla_AppNotPaired": "Önce telefonu eşleştir: anahtar kartla Tesla'ya bin, telefona sağ tıkla ve \"Telefon anahtarı olarak ayarla\"yı seç. Araç Yöneticisi varsa aracın sahibinin anahtar kartına ihtiyacı yok.",
     "Tooltip_MinidoracatTesla_WallConnector": "Duvara takıp (Elektrik 3, tornavida) sağ tıklayarak 6 kare içindeki bir Tesla'yı takın.<br>11,5 kW ile şarj eder.<br>İç mekânda şebeke elektriğiyle ya da menzildeki çalışan bir jeneratörle çalışır.<br>Jeneratörle şarj yakıt harcar:<br>tam şarj için yaklaşık bir depo (“Jeneratörlerin Yakıt Tüketimi” ile orantılı).",
     "Tooltip_MinidoracatTesla_MobileConnector": "Yere koyup sağ tıklayarak 5 kare içindeki bir Tesla'yı takın. 7,6 kW ile şarj eder.<br>İç mekânda şebeke elektriğiyle ya da menzildeki çalışan bir jeneratörle çalışır.<br>Jeneratörle şarj yakıt harcar:<br>tam şarj için yaklaşık bir depo (“Jeneratörlerin Yakıt Tüketimi” ile orantılı)."

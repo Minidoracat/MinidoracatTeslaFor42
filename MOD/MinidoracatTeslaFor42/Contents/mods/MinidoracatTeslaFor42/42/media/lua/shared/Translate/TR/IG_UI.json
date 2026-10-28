@@ -123,6 +123,8 @@
     "IGUI_MinidoracatTesla_Deny_NO_PHONE_KEY": "Bu aracın telefon anahtarı sende değil",
     "IGUI_MinidoracatTesla_Deny_NO_LINK": "Araca bağlanılamıyor (elektrik yokken yalnızca 30 m içinde Bluetooth)",
     "IGUI_MinidoracatTesla_Deny_RENT_LOCKED": "Bu araç kilitli: kiralama hakkı doldu",
+    "IGUI_MinidoracatTesla_Deny_CAR_LOCKED": "Araç kilitli: bu aracın anahtarı gerekli",
+    "IGUI_MinidoracatTesla_Deny_NO_KEY_CARD_HOTWIRE": "Bu aracın anahtar kartı gerekli ya da önce düz kontak yapmalısın",
     "IGUI_MinidoracatTesla_Deny_FACTION_PAUSED": "Bu aracın grup paylaşımı duraklatıldı",
     "IGUI_MinidoracatTesla_Deny_QUARANTINED": "Bu aracın sahipliği inceleniyor",
     "IGUI_MinidoracatTesla_Deny_SENTRY_OFF": "Güvenlik Modu zaten kapalı",

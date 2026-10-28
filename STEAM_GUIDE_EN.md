@@ -82,6 +82,7 @@ A charger that works on the floor, no wall needed; slower than the Wall Connecto
 [h3]Plug in and charge[/h3]
 [list]
 [*] [b]Plug in[/b]: stand at the charger, right-click it and choose Plug in charge cable: <car>; every Tesla the cable reaches is listed (cable length: about 6 tiles for the Wall Connector, 5 for the Mobile Connector).
+[*] [b]Who can plug in or unplug[/b]: anyone with this car's key, anyone once the car is hotwired, or anyone while the car is unlocked; locked and no key, the rows are grey (see the FAQ What can I do without the key?).
 [*] [b]Motor on is fine[/b]: the car only has to stand still; you can also start it while plugged in.
 [*] [b]No driving off plugged in[/b]: throttle or reverse says Unplug the charge cable first and the dashboard shows P; unplug and drive away.
 [*] [b]Auto unplug[/b]: towed or pushed past the cable's reach, the car is unplugged and you are told.
@@ -95,7 +96,7 @@ A charger that works on the floor, no wall needed; slower than the Wall Connecto
 [*] [b]Open it[/b]: in the car press V and choose Charging Status, or right-click the charger and choose the same.
 [*] [b]Shows[/b]: power, what this session added (km, kWh), time to the target, and whether the grid or a generator powers it.
 [*] [b]Target[/b]: − / + move it 10% at a time, 50–100%; Daily is 50–90%, Trip 90–100%.
-[*] [b]Buttons[/b]: stop / start charging, unplug, close; a controller works too.
+[*] [b]Buttons[/b]: stop / start charging, unplug, close; a controller works too. Without the right (car locked, no key) the target and these buttons are grey and the hover help says why.
 [/list]
 === 🧰 The Tesla-style dashboard
 {{img:05-radial-en.jpg}}
@@ -123,7 +124,7 @@ A charger that works on the floor, no wall needed; slower than the Wall Connecto
 [h3]Phone Key[/h3]
 [list]
 [*] [b]Where phones come from[/b]: the Smartphone is a new item, most common in phone shops; sometimes in mall electronics, office desks and bedside tables.
-[*] [b]Set it up[/b]: sit in the Tesla with its key card on you (or in the ignition), right-click the phone and choose Set Up as Phone Key.
+[*] [b]Set it up[/b]: sit in the Tesla with its key card on you (or in the ignition), right-click the phone and choose Set Up as Phone Key. Without Vehicle Manager, sitting in a hotwired car works too, no card needed.
 [*] [b]Walk up and it unlocks[/b]: pull a door handle with the phone key on you and the door unlocks and opens; a backpack or fanny pack is fine.
 [*] [b]Starting[/b]: sit in the driver's seat and start; the phone can stay in a bag.
 [*] [b]Walk-away lock[/b]: get out and walk about 6 tiles away with the phone; the doors lock, the lights flash once and the horn chirps.
@@ -236,7 +237,7 @@ A charger that works on the floor, no wall needed; slower than the Wall Connecto
 [tr][td]Key card tap, app lock / unlock, flash, honk, Sentry on / off[/td][td]Ride[/td][/tr]
 [tr][td]App liftgate / trunk[/td][td]Trunk[/td][/tr]
 [tr][td]App frunk[/td][td]Repair or Salvage[/td][/tr]
-[tr][td]Plugging in, app stop / start charging[/td][td]Fuel[/td][/tr]
+[tr][td]Plugging in or unplugging, the charge card, picking up or rotating a charger with the car plugged in, app stop / start charging[/td][td]Fuel[/td][/tr]
 [tr][td]App location and status[/td][td]Location[/td][/tr]
 [tr][td]App Summon[/td][td]Drive[/td][/tr]
 [tr][td]Setting up a new phone key without the key card[/td][td]Owner (cannot be shared)[/td][/tr]
@@ -298,11 +299,20 @@ Options elsewhere that also affect Teslas:
 [list]
 [*] [b]You have a phone key[/b]: it is your spare key: door handles, starting from a bag and the app all still work.
 [*] [b]The car is claimed in Vehicle Manager[/b]: the owner can sit in it and set up a new phone as the phone key (the server needs Vehicle Manager's Virtual key for owners on; shared players still need the card); the owner and anyone allowed to drive can also unlock and start it with Vehicle Manager's virtual key.
-[*] [b]Neither[/b]: hotwire it like a vanilla car; admins can get a key from the mechanics window's cheat options. An unclaimed car with both the card and the phone lost cannot pair a new phone, so the app and Summon are out.
+[*] [b]Neither[/b]: hotwire it like a vanilla car; without Vehicle Manager, sit in the hotwired car and set up a new phone as the phone key, and the app and Summon work again. Admins can get a key from the mechanics window's cheat options. With Vehicle Manager installed, an unclaimed car with both the card and the phone lost cannot pair a new phone.
 [/list]
 [h3]Does the key card protect my car?[/h3]
 [list]
 [*] No: key cards and phone keys work like vanilla keys; an unclaimed car opens for whoever holds them. To protect it, claim it with Vehicle Manager.
+[/list]
+[h3]What can I do without the key?[/h3]
+Without Vehicle Manager:
+[list]
+[*] [b]Car unlocked[/b]: plug in or unplug the charge cable, set the target or stop charging on the charge card, and pick up or rotate a charger the car is plugged into.
+[*] [b]Car locked[/b]: all of that needs this car's key; the menu is grey and says The car is locked: you need this car's key, and the server refuses too.
+[*] [b]After hotwiring[/b]: it counts as the key in the ignition: plug in, unplug and use the charge card whether it is locked or not; sitting in it you can turn on Camp Mode and set up a phone as its phone key.
+[*] [b]Not for Sentry[/b]: hotwiring does not make you the owner; a stranger's hotwire still sounds the alarm and cannot turn Sentry off.
+[*] With Vehicle Manager: its rights decide, locked or not, hotwired or not.
 [/list]
 [h3]What does Summon need?[/h3]
 [list]

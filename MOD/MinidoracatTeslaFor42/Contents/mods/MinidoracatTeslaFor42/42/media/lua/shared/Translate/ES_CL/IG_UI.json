@@ -123,6 +123,8 @@
     "IGUI_MinidoracatTesla_Deny_NO_PHONE_KEY": "No llevas el teléfono-llave de este auto",
     "IGUI_MinidoracatTesla_Deny_NO_LINK": "No se puede conectar con el auto (sin luz, solo Bluetooth a 30 m)",
     "IGUI_MinidoracatTesla_Deny_RENT_LOCKED": "Este auto está bloqueado: venció su plaza de alquiler",
+    "IGUI_MinidoracatTesla_Deny_CAR_LOCKED": "El auto está cerrado: necesitas la llave de este auto",
+    "IGUI_MinidoracatTesla_Deny_NO_KEY_CARD_HOTWIRE": "Necesitas la tarjeta llave de este auto, o hacerle un puente primero",
     "IGUI_MinidoracatTesla_Deny_FACTION_PAUSED": "El uso compartido de facción de este auto está en pausa",
     "IGUI_MinidoracatTesla_Deny_QUARANTINED": "La propiedad de este auto está en revisión",
     "IGUI_MinidoracatTesla_Deny_SENTRY_OFF": "El modo centinela ya está desactivado",

@@ -123,6 +123,8 @@
     "IGUI_MinidoracatTesla_Deny_NO_PHONE_KEY": "Vous n'avez pas la clé sur téléphone de cette voiture",
     "IGUI_MinidoracatTesla_Deny_NO_LINK": "Voiture injoignable (sans courant, Bluetooth seulement à 30 m)",
     "IGUI_MinidoracatTesla_Deny_RENT_LOCKED": "Cette voiture est verrouillée : sa place de location a expiré",
+    "IGUI_MinidoracatTesla_Deny_CAR_LOCKED": "La voiture est verrouillée : il faut la clé de cette voiture",
+    "IGUI_MinidoracatTesla_Deny_NO_KEY_CARD_HOTWIRE": "Il faut la carte-clé de cette voiture, ou la démarrer d'abord aux fils",
     "IGUI_MinidoracatTesla_Deny_FACTION_PAUSED": "Le partage de faction de cette voiture est en pause",
     "IGUI_MinidoracatTesla_Deny_QUARANTINED": "La propriété de cette voiture est en cours de vérification",
     "IGUI_MinidoracatTesla_Deny_SENTRY_OFF": "Le mode Sentinelle est déjà désactivé",

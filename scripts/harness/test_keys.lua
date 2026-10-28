@@ -328,7 +328,7 @@ owner.vehicle = v
 local noCard = player("nocard", container(item(K.PHONE)), v.x, v.y)
 noCard.vehicle = v
 ok, why = K.canPair(noCard, v, noCard.inv.items[1])
-check(not ok and why == "NO_KEY_CARD", "pair: seated without the card -> NO_KEY_CARD")
+check(not ok and why == "NO_KEY_CARD_HOTWIRE", "pair: seated without the card, no VehicleManager -> NO_KEY_CARD_HOTWIRE (says hotwiring works)")
 v.ignitionKey = item(K.CARD, v.keyId)
 ok = K.canPair(noCard, v, noCard.inv.items[1])
 check(ok == true, "pair: the card on the console reader (in the ignition) counts")
@@ -342,7 +342,7 @@ check(F.lastSent("phonePaired") ~= nil, "pair: client told (halo)")
 cmds.phonePair(owner, { vid = v:getId(), id = pk:getID() })
 check(lastDeny() == "ALREADY_PAIRED", "pair: same car again -> ALREADY_PAIRED")
 cmds.phonePair(noCard, { vid = v:getId(), id = noCard.inv.items[1]:getID() })
-check(lastDeny() == "NO_KEY_CARD" and noCard.inv.items[1].ft == K.PHONE, "phonePair raw command without the card: denied, phone unchanged")
+check(lastDeny() == "NO_KEY_CARD_HOTWIRE" and noCard.inv.items[1].ft == K.PHONE, "phonePair raw command without the card: denied, phone unchanged")
 -- Lost card (user 2026-10-28): VehicleManager's owner of this car (MANAGE, never shareable) pairs without it. Fake VM:
 -- the owner gets every code (VM O.allowsRecord "OWNER"), a DRIVE share gets DRIVE/PASSENGER only.
 local vmOwner = player("vmowner", container(item(K.PHONE)), v.x, v.y)
@@ -391,11 +391,25 @@ check(ownerPk.ft == K.PHONE_KEY and ownerPk.keyId == v.keyId and F.lastSent("pho
     "phonePair: the VehicleManager owner without the card -> a phone key for this car")
 MinidoracatVehicleManagerAPI = nil
 ok, why = K.canPair(vmOwner, v, item(K.PHONE))
-check(not ok and why == "NO_KEY_CARD", "pair: no VehicleManager -> the card is the only way")
+check(not ok and why == "NO_KEY_CARD_HOTWIRE", "pair: no VehicleManager, not hotwired -> the card")
 SandboxVars.VehicleEasyUse = true -- T.authorized says yes to everyone then; vmGrants must still need VehicleManager
 ok, why = K.canPair(vmOwner, v, item(K.PHONE))
-check(not ok and why == "NO_KEY_CARD", "pair: no VehicleManager, VehicleEasyUse on -> still the card")
+check(not ok and why == "NO_KEY_CARD_HOTWIRE", "pair: no VehicleManager, VehicleEasyUse on -> still the card")
 SandboxVars.VehicleEasyUse = nil
+-- hotwired (user 2026-10-28, decisions.md keyless rules): without VehicleManager, seated in a hotwired car pairs
+v.hotwired = true
+ok, why = K.canPair(noCard, v, noCard.inv.items[1])
+check(ok == true and why == "HOTWIRED", "pair: no VehicleManager, seated in a hotwired car -> allowed (HOTWIRED, tooltip says why)")
+MinidoracatVehicleManagerAPI = fakeVM()
+ok, why = K.canPair(noCard, v, noCard.inv.items[1])
+check(not ok and why == "NO_KEY_CARD", "pair: VehicleManager installed, hotwired car -> still the card or its MANAGE")
+MinidoracatVehicleManagerAPI = nil
+F.sent = {}
+cmds.phonePair(noCard, { vid = v:getId(), id = noCard.inv.items[1]:getID() })
+local hotPk = noCard.inv.items[#noCard.inv.items]
+check(hotPk.ft == K.PHONE_KEY and hotPk.keyId == v.keyId and F.lastSent("phonePaired") ~= nil,
+    "phonePair in a hotwired car without the card -> a phone key for it")
+v.hotwired = nil
 
 -- ------------------------------------------------------------------ walk-away lock
 owner.vehicle = nil
@@ -660,7 +674,7 @@ check(ph.keyId == carA.keyId and r2 and #r2 == 1 and ph.name:find("VehicleName",
 check(K.phoneKey(multi, carB) == nil, "removed: B no longer opens")
 multi.vehicle = carB
 cmds.phonePair(multi, { vid = carB:getId(), id = ph.id })
-check(lastDeny() == "NO_KEY_CARD" and phoneOf(mInv).keyId == carA.keyId, "adding B again needs B's card: NO_KEY_CARD, still one car")
+check(lastDeny() == "NO_KEY_CARD_HOTWIRE" and phoneOf(mInv).keyId == carA.keyId, "adding B again needs B's card: NO_KEY_CARD_HOTWIRE, still one car")
 multi.vehicle = nil -- (removing is done outside a car)
 cmds.phoneUnpair(multi, { id = ph.id, key = carA.keyId })
 local plainPhone = mInv.items[#mInv.items]
