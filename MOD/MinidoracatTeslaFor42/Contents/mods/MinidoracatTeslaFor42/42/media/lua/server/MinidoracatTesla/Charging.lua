@@ -261,7 +261,7 @@ function C.plug(player, v, iso)
     if not T.stopped(v) then return T.deny(player, "MOVING", vid) end -- the motor may run: plugging in shifts to Park (owner's manual, Shifting)
     if player:DistTo(v) > T.NEAR then return T.deny(player, "TOO_FAR", vid) end
     if not T.cableReaches(o.kind, o.x, o.y, o.z, v) then return T.deny(player, "CABLE_SHORT", vid) end
-    local ok, why = T.authorized(player, v, "FUEL")
+    local ok, why = T.mayUseCable(player, v)
     if not ok then
         T.log("plug refused for " .. tostring(player:getUsername()) .. ": " .. tostring(why))
         return T.deny(player, "NOT_OWNER", vid)
@@ -274,7 +274,7 @@ function C.unplug(player, v)
     local chg = part and part:getModData().chg
     local vid = v and v:getId()
     if not chg then return T.deny(player, "NOT_PLUGGED", vid) end
-    local ok, why = T.authorized(player, v, "FUEL")
+    local ok, why = T.mayUseCable(player, v)
     if not ok then
         T.log("unplug refused for " .. tostring(player:getUsername()) .. ": " .. tostring(why))
         return T.deny(player, "NOT_OWNER", vid)

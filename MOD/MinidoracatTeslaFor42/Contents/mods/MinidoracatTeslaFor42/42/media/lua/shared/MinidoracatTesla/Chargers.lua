@@ -90,4 +90,11 @@ function T.cableReaches(kind, cx, cy, cz, vehicle)
     return dx * dx + dy * dy <= c.cableTiles * c.cableTiles
 end
 
+-- Who may plug a charge cable into this car or pull it out: the one rule the server (Charging.lua plug / unplug) and
+-- the charger menu's pre-checks share, so a menu row is grey exactly when the server would refuse NOT_OWNER.
+-- Returns ok, why (T.authorized: the key, or VehicleManager's FUEL right).
+function T.mayUseCable(player, vehicle)
+    return T.authorized(player, vehicle, "FUEL")
+end
+
 return T
