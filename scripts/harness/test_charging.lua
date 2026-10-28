@@ -718,6 +718,9 @@ C.unplug(far, kv)
 check(kchg() ~= nil and lastDeny() == "TOO_FAR", "unplug far from both the car and the charger: TOO_FAR")
 local kx = kv.x
 kv.x = 912 -- the car's centre past T.NEAR (Manhattan) from someone standing at the charger
+H.sent = {}
+C.unplug(H.player({ name = "upstairs", keys = { [77] = true }, x = 899, y = 899, z = 1 }), kv)
+check(kchg() ~= nil and lastDeny() == "TOO_FAR", "unplug from the floor above the charger, the car past T.NEAR: TOO_FAR")
 C.unplug(H.player({ name = "side", keys = { [77] = true }, x = 899, y = 899 }), kv)
 check(kchg() == nil, "unplug standing at the charger, the car's centre past T.NEAR: allowed")
 kv.x = kx
