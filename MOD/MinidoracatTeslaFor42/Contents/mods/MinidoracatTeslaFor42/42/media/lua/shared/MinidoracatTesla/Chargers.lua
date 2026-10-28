@@ -175,10 +175,9 @@ function T.mayUseCable(player, vehicle)
     return false, "CAR_LOCKED"
 end
 
--- The car plugged into the charger on this square: the car; nil when none; nil, "NOT_LOADED" when the charger names a
--- car that is not loaded here, or whose cable is not on this square (vehicle ids are per session and reused). Server
--- and SP: the charger system's own object (ChargerSystem.lua; `vid` = the car's getId() this session, kept while the car
--- is unloaded and set again by Charging.lua relink); MP client: its synced mirror (ChargerMenu.lua C.chargerAt).
+-- The car plugged into the charger on this square, as T.chargerCar answers. Server and SP: the charger system's own
+-- object (ChargerSystem.lua; `vid` = the car's getId() this session, kept while the car is unloaded and set again by
+-- Charging.lua relink); MP client: its synced mirror (ChargerMenu.lua C.chargerAt).
 function T.pluggedCarOn(sq)
     if not sq then return nil end
     local x, y, z = sq:getX(), sq:getY(), sq:getZ()
@@ -190,6 +189,14 @@ function T.pluggedCarOn(sq)
         local s = SMinidoracatTeslaChargerSystem and SMinidoracatTeslaChargerSystem.instance
         o = s and s:getLuaObjectAt(x, y, z)
     end
+    return T.chargerCar(o, x, y, z)
+end
+
+-- The car on the cable of charger object o at x, y, z: its `vid` names a loaded car whose own record (battery part chg)
+-- is this square. nil when nothing is plugged in (vid nil / false); nil, "NOT_LOADED" when vid names no such car:
+-- unloaded, or the id now belongs to another car (ids are handed out again, VehicleIDMap.java:49-62,91-95).
+-- Charging.lua plug (busy) and relink (taken) ask the same, so a reused id neither blocks the charger nor unplugs.
+function T.chargerCar(o, x, y, z)
     if not (o and o.vid) then return nil end
     local v = getVehicleById(o.vid)
     local part = v and T.Battery.part(v)

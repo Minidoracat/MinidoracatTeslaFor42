@@ -103,7 +103,7 @@ local function disable(option, textKey)
     option.toolTip = tip
 end
 -- grey a plug / unplug row the way the server would refuse it, with its reason: the shared cable rule (T.mayUseCable,
--- Chargers.lua; CAR_LOCKED or NOT_OWNER)
+-- Chargers.lua, which lists the reasons)
 local function notOwner(option, player, vehicle)
     local ok, deny = T.mayUseCable(player, vehicle)
     if ok then return false end

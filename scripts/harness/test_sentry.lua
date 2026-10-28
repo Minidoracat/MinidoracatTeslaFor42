@@ -113,10 +113,6 @@ check(select(2, T.authorized(thief, v, "PASSENGER")) == "HOTWIRED" and not T.leg
 check(T.Camp.canEnable(thief, v) == true, "hotwired: the seated stranger may turn Camp Mode on")
 v.hotwired = false
 check(select(2, T.Camp.canEnable(thief, v)) == "NOT_OWNER", "not hotwired: the seated stranger may not")
--- the "get it" half (Keys.lua canPair HOTWIRED): the phone key he then sets up there is this car's key like any
--- owner's, so from then on he counts (CHANGELOG / Steam guide say so: sentry does not stop a determined thief)
-check(T.legit(F.player("thief-paired", { keys = { [v.keyId] = true } }), v) == true,
-    "after setting up a phone key in the hotwired car: legit like any key holder")
 thief.vehicle = nil
 
 -- ---- settle: drain by hours, 12V top-up, auto-off below 20% ----

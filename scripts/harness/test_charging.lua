@@ -567,7 +567,7 @@ H.section("keyless rules (user 2026-10-28): plug, unplug, charge card, pick up a
 -- No VehicleManager: a key, a hotwired car (both on a locked car) or an unlocked car -> allowed; a locked car without a
 -- key -> CAR_LOCKED everywhere. VehicleManager present: only its FUEL right, locked or not.
 local MCS = "minidoracat_tesla_01_8"
-local _, kiso, ksq = charger(900, 900, { room = {} }, MCS)
+local klo, kiso, ksq = charger(900, 900, { room = {} }, MCS)
 local kv = car(20, 900.5 + 2, 900.5)
 local kOwner = H.player({ name = "own", keys = { [77] = true }, x = 901, y = 901 })
 local mal = H.player({ name = "mal", x = 901, y = 901 })
@@ -621,6 +621,24 @@ matrix("no VehicleManager, no key, car locked", false, "CAR_LOCKED")
 check(move("pickup", "some_other_tile") == true, "a locked car's charger square: other moveables are not this rule's business")
 C.unplug(kOwner, kv)
 check(move("pickup", MCS) == true, "nothing plugged in: anyone picks the Mobile Connector up (vanilla)")
+-- the charger names a car that is not here (unloaded, or its id handed to another car): the server refuses the move
+-- (NOT_LOADED); a reused id neither counts as the charger taken (relink) nor busy (plug)
+C.plug(kOwner, kv, kiso)
+local kvid = klo.vid
+klo.vid = 424242 -- the plugged car unloaded: settle keeps vid until relink
+H.sent = {}
+check(move("pickup", MCS) == false and lastDeny() == "NOT_LOADED", "plugged car not loaded: pick up refused on the server (NOT_LOADED)")
+local reuse = car(20, 950.5, 950.5)
+klo.vid = reuse:getId()
+H.sent = {}
+check(move("rotate", MCS) == false and lastDeny() == "NOT_LOADED", "the id now names another car (no cable here): still refused")
+C.relink(kv)
+check(klo.vid == kvid and kchg() ~= nil, "the real car loads again: relinked, the car holding the old id does not count as taken")
+C.unplug(kOwner, kv)
+klo.vid = reuse:getId()
+C.plug(kOwner, kv, kiso)
+check(kchg() ~= nil and klo.vid == kvid, "a reused id on the charger: not busy, plugging in takes it over")
+C.unplug(kOwner, kv)
 MinidoracatVehicleManagerAPI = { canUse = function(p, veh, perm) return perm == "FUEL" and p == kOwner, p == kOwner and "OWNER" or "NOT_AUTHORIZED" end }
 for _, locked in ipairs({ true, false }) do
     kv.locked, mal.keys[77], kv.hotwired = locked, true, true

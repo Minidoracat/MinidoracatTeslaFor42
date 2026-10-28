@@ -245,8 +245,8 @@ end
 
 -- ---- player actions (timed action complete(), server / SP) ----
 
--- the cable rule (Chargers.lua T.mayUseCable) for plug, unplug and the charge card; refused: log, deny with its reason
--- (CAR_LOCKED, or NOT_OWNER from VehicleManager), false
+-- the cable rule (Chargers.lua T.mayUseCable) for plug, unplug and the charge card; refused: log, deny with the reason
+-- T.mayUseCable gives, false
 local function mayCable(player, v, what)
     local ok, deny, why = T.mayUseCable(player, v)
     if ok then return true end
@@ -264,7 +264,7 @@ function C.plug(player, v, iso)
     if not part then return T.deny(player, "NO_VEHICLE", vid) end
     if not part:getInventoryItem() then return T.deny(player, "NO_PACK", vid) end
     if part:getModData().chg then return T.deny(player, "PLUGGED", vid) end
-    if o.vid and getVehicleById(o.vid) then return T.deny(player, "CHARGER_BUSY", vid) end
+    if T.chargerCar(o, o.x, o.y, o.z) then return T.deny(player, "CHARGER_BUSY", vid) end -- a reused id is no car here
     if not T.stopped(v) then return T.deny(player, "MOVING", vid) end -- the motor may run: plugging in shifts to Park (owner's manual, Shifting)
     if player:DistTo(v) > T.NEAR then return T.deny(player, "TOO_FAR", vid) end
     if not T.cableReaches(o.kind, o.x, o.y, o.z, v) then return T.deny(player, "CABLE_SHORT", vid) end
@@ -297,7 +297,7 @@ function C.relink(v)
     if not chg then return end
     local s = sys()
     local o = s and s:getLuaObjectAt(chg.x, chg.y, chg.z)
-    local other = o and o.vid and o.vid ~= v:getId() and getVehicleById(o.vid)
+    local other = o and o.vid and o.vid ~= v:getId() and T.chargerCar(o, o.x, o.y, o.z) -- not a car that took the id
     if not o or other then
         clearChg(v, part)
         T.log("relink: charger gone or taken, cable cleared on " .. tostring(v:getId()))

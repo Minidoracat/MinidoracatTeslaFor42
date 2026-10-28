@@ -1,5 +1,5 @@
 -- Charger right-click menu (client/MinidoracatTesla/ChargerMenu.lua): plug and unplug rows are greyed with the
--- server's reason (CAR_LOCKED, NOT_OWNER) exactly when the shared cable rule (Chargers.lua T.mayUseCable) refuses, both charger kinds.
+-- server's reason (T.mayUseCable's) exactly when the shared cable rule (Chargers.lua) refuses, both charger kinds.
 local check = H.check
 H.side(true, false)
 for _, m in ipairs({ "Map/CGlobalObjectSystem", "Map/CGlobalObject", "TimedActions/ISBaseTimedAction" }) do H.stub(m) end
