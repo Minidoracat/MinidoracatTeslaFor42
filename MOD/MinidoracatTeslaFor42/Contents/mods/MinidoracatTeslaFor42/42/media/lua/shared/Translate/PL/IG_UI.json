@@ -123,6 +123,8 @@
     "IGUI_MinidoracatTesla_Deny_NO_PHONE_KEY": "Nie masz klucza telefonicznego do tego samochodu",
     "IGUI_MinidoracatTesla_Deny_NO_LINK": "Brak połączenia z samochodem (bez prądu tylko Bluetooth do 30 m)",
     "IGUI_MinidoracatTesla_Deny_RENT_LOCKED": "Ten samochód jest zablokowany: wygasło jego miejsce najmu",
+    "IGUI_MinidoracatTesla_Deny_CAR_LOCKED": "Samochód jest zamknięty: potrzebujesz klucza do tego auta",
+    "IGUI_MinidoracatTesla_Deny_NO_KEY_CARD_HOTWIRE": "Potrzebujesz karty klucza tego auta albo najpierw odpal je na krótko",
     "IGUI_MinidoracatTesla_Deny_FACTION_PAUSED": "Udostępnianie frakcji dla tego samochodu jest wstrzymane",
     "IGUI_MinidoracatTesla_Deny_QUARANTINED": "Własność tego samochodu jest weryfikowana",
     "IGUI_MinidoracatTesla_Deny_SENTRY_OFF": "Tryb Sentry jest już wyłączony",

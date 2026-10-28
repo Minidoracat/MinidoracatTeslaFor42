@@ -10,7 +10,8 @@
     "Tooltip_MinidoracatTesla_TapCard": "Ve a la puerta del conductor y acerca la tarjeta llave al lector",
     "Tooltip_MinidoracatTesla_PairPhone": "Autoriza este teléfono con la tarjeta llave de este coche",
     "Tooltip_MinidoracatTesla_PairPhoneOwner": "Autoriza este teléfono sin la tarjeta llave: administras este coche en el Gestor de vehículos",
-    "Tooltip_MinidoracatTesla_AppNotPaired": "Primero vincula el teléfono: siéntate en el Tesla con su tarjeta llave, haz clic derecho en el teléfono y elige «Configurar como teléfono-llave». Con el Gestor de vehículos, el dueño del coche no necesita la tarjeta llave.",
+    "Tooltip_MinidoracatTesla_PairPhoneHotwired": "Autoriza este teléfono sin la tarjeta llave: a este coche ya le hicieron un puente",
+    "Tooltip_MinidoracatTesla_AppNotPaired": "Primero vincula el teléfono: siéntate en el Tesla con su tarjeta llave, haz clic derecho en el teléfono y elige «Configurar como teléfono-llave». Con el Gestor de vehículos, el dueño del coche no necesita la tarjeta llave. Sin el Gestor de vehículos, también sirve sentarse en un coche al que le hicieron un puente.",
     "Tooltip_MinidoracatTesla_WallConnector": "Móntalo en una pared (Electricidad 3, destornillador) y haz clic derecho para enchufar un Tesla a 6 casillas o menos.<br>Carga a 11,5 kW.<br>Funciona con la red eléctrica en interiores o con un generador en marcha dentro del alcance.<br>Con un generador, cargar gasta combustible:<br>un tanque por carga completa (según «Consumo de combustible del generador»).",
     "Tooltip_MinidoracatTesla_MobileConnector": "Colócalo en el suelo y haz clic derecho para enchufar un Tesla a 5 casillas o menos. Carga a 7,6 kW.<br>Funciona en interiores con electricidad (red o generador);<br>en otro lugar debe estar a 2 casillas o menos de un generador en marcha.<br>Con un generador, cargar gasta combustible:<br>un tanque por carga completa (según «Consumo de combustible del generador»)."
 }

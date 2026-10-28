@@ -123,6 +123,8 @@
     "IGUI_MinidoracatTesla_Deny_NO_PHONE_KEY": "Du hast den Handyschlüssel dieses Autos nicht dabei",
     "IGUI_MinidoracatTesla_Deny_NO_LINK": "Auto nicht erreichbar (ohne Strom nur Bluetooth bis 30 m)",
     "IGUI_MinidoracatTesla_Deny_RENT_LOCKED": "Dieses Auto ist gesperrt: Der Mietplatz ist abgelaufen",
+    "IGUI_MinidoracatTesla_Deny_CAR_LOCKED": "Das Auto ist abgeschlossen: Du brauchst den Schlüssel dieses Autos",
+    "IGUI_MinidoracatTesla_Deny_NO_KEY_CARD_HOTWIRE": "Du brauchst die Schlüsselkarte dieses Autos oder musst es erst kurzschließen",
     "IGUI_MinidoracatTesla_Deny_FACTION_PAUSED": "Die Fraktionsfreigabe dieses Autos ist pausiert",
     "IGUI_MinidoracatTesla_Deny_QUARANTINED": "Die Eigentümerschaft dieses Autos wird geprüft",
     "IGUI_MinidoracatTesla_Deny_SENTRY_OFF": "Der Wächter-Modus ist bereits aus",

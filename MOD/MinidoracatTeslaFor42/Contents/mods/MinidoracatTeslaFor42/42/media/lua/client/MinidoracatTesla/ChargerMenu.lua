@@ -102,12 +102,12 @@ local function disable(option, textKey)
     tip.description = getText(textKey)
     option.toolTip = tip
 end
--- grey a plug / unplug row the way the server would refuse it: the shared cable rule (T.mayUseCable, Chargers.lua)
+-- grey a plug / unplug row the way the server would refuse it, with its reason: the shared cable rule (T.mayUseCable,
+-- Chargers.lua, which lists the reasons)
 local function notOwner(option, player, vehicle)
-    local ok, why = T.mayUseCable(player, vehicle)
+    local ok, deny = T.mayUseCable(player, vehicle)
     if ok then return false end
-    disable(option, "IGUI_MinidoracatTesla_Deny_NOT_OWNER")
-    if why then option.toolTip.description = option.toolTip.description .. " (" .. tostring(why) .. ")" end
+    disable(option, "IGUI_MinidoracatTesla_Deny_" .. deny)
     return true
 end
 
@@ -121,8 +121,7 @@ local function onFill(playerNum, context, worldObjects, test)
     if not charger then return end
     local player = getSpecificPlayer(playerNum)
     local sq = charger:getSquare()
-    local o = C.chargerAt(sq:getX(), sq:getY(), sq:getZ())
-    local plugged = o and o.vid and getVehicleById(o.vid)
+    local plugged = T.pluggedCarOn(sq) -- a reused id is no car here: the plug rows show, plugging in takes the charger over
     local c = T.Chargers[info.kind]
     -- a Mobile Connector without power still takes the cable and charges once power comes; plugged or not, say where it works
     if c.genTiles and not T.chargerPowered(info.kind, sq) then
@@ -157,6 +156,39 @@ local function onFill(playerNum, context, worldObjects, test)
     end
 end
 Events.OnFillWorldObjectContextMenu.Add(onFill)
+
+-- Move cursor: picking up or rotating a charger with a car plugged in is refused the way the server's
+-- ISMoveablesAction:complete refuses it (Chargers.lua T.mayMoveCharger), the reason in the cursor panel (Chargers.lua,
+-- getInfoPanelDescription). Wrapped here, not in ISMoveableSpriteProps: its canRotateMoveable gets no character
+-- (ISMoveableCursor.lua:628,640). ISMoveableCursor is a server/ file (server/BuildingObjects/), loaded after client/,
+-- so the wrap waits for OnGameStart. Pick up keeps vanilla's normal tint when refused (:539), rotate turns red (:629).
+function C.guardMoveCursor()
+    local Cur = ISMoveableCursor
+    if not (Cur and Cur.isValid) then return T.log("charger move guard: ISMoveableCursor.isValid missing") end
+    if Cur.teslaGuard then return end
+    Cur.teslaGuard = true
+    local isValid = Cur.isValid
+    function Cur:isValid(square)
+        local r = isValid(self, square)
+        local mode = ISMoveableCursor.mode[self.player]
+        local refused = (self.canCreate and (mode == "pickup" or mode == "rotate") and self.origMoveProps
+            and not T.mayMoveCharger(self.character, square, self.origMoveProps.spriteName)) == true
+        local was = self.teslaRefused == true
+        self.teslaRefused = refused
+        if refused then
+            self.canCreate = false
+            if mode == "rotate" then self.colorMod = ISMoveableCursor.invalidColor end
+        end
+        if refused or was then
+            -- the panel's text is cached per square and object (:270): redo it when the answer changes under a still
+            -- cursor (the car locked or unlocked meanwhile); the picture as refused or not (:275)
+            if refused ~= was then self.cacheSquare = nil end
+            self:setInfoPanel(square, self.cacheObject, self.currentMoveProps)
+        end
+        return r
+    end
+end
+Events.OnGameStart.Add(C.guardMoveCursor)
 
 -- Plugged-in car (Core.lua CheckOperate.Battery, every frame for the local driver while plugged in; true = hold this
 -- frame's input back). While the driver holds the accelerator or reverse, read the way CarController.updateControls

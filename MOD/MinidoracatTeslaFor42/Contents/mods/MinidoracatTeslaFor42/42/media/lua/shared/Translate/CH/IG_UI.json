@@ -123,6 +123,8 @@
     "IGUI_MinidoracatTesla_Deny_NO_PHONE_KEY": "你身上沒有這台車的手機鑰匙",
     "IGUI_MinidoracatTesla_Deny_NO_LINK": "連不到車（停電後只能用藍牙，30 公尺內）",
     "IGUI_MinidoracatTesla_Deny_RENT_LOCKED": "這台車的租用名額到期，已鎖定",
+    "IGUI_MinidoracatTesla_Deny_CAR_LOCKED": "車鎖著，要有這台車的鑰匙",
+    "IGUI_MinidoracatTesla_Deny_NO_KEY_CARD_HOTWIRE": "需要這台車的卡片鑰匙，或先把車短接發動",
     "IGUI_MinidoracatTesla_Deny_FACTION_PAUSED": "這台車的陣營分享暫停中",
     "IGUI_MinidoracatTesla_Deny_QUARANTINED": "這台車的所有權待確認",
     "IGUI_MinidoracatTesla_Deny_SENTRY_OFF": "哨兵模式已經是關的",

@@ -151,8 +151,10 @@ C.settle(lo, H.hours())
 check(B.kwh(B.part(v)) == k, "no energy while stopped")
 local stranger = H.player({ name = "mal", x = 201, y = 202 })
 H.sent = {}
+v.locked = true
 H.fire("OnClientCommand", "MinidoracatTesla", "chargeTarget", stranger, { vid = v:getId(), pct = 50 })
-check(chg.target == 100 and H.sent[1] and H.sent[1].args.reason == "NOT_OWNER", "strangers cannot change the target")
+check(chg.target == 100 and H.sent[1] and H.sent[1].args.reason == "CAR_LOCKED", "strangers cannot change a locked car's target (CAR_LOCKED)")
+v.locked = false
 -- phone app (Remote.lua): no distance here, the caller checked reach and rights
 check(C.setStopped(v, false) == true and chg.paused == nil and chg.src == "grid", "setStopped(false): the app resumes a stopped charge")
 check(C.setStopped(v, true) == true and chg.paused == "stopped", "setStopped(true): the app stops it")
@@ -273,8 +275,10 @@ check(B.kwh(B.part(v5)) == k5, "plugged into a powered charger: the running moto
 C.unplug(p5, v5)
 v5.running, v5.speed = false, 0
 H.sent = {}
+v5.locked = true
 C.plug(H.player({ name = "mal", x = 601, y = 601 }), v5, iso5)
-check(H.sent[#H.sent].args.reason == "NOT_OWNER", "no key, no VehicleManager right: refused")
+check(H.sent[#H.sent].args.reason == "CAR_LOCKED", "no key, car locked, no VehicleManager: refused CAR_LOCKED")
+v5.locked = false
 C.plug(p5, v5, iso5)
 local v6 = car(5, 601.5, 602.5)
 C.plug(p5, v6, iso5)
@@ -339,8 +343,10 @@ C.plug(mp, mv, miso)
 check(H.sent[#H.sent].args.reason == "CABLE_SHORT" and B.part(mv):getModData().chg == nil, "5.2 tiles: beyond the 5-tile cable, refused")
 mv.x = 800.5 + 4.8
 H.sent = {}
+mv.locked = true
 C.plug(H.player({ name = "mal", x = 801, y = 801 }), mv, miso)
-check(H.sent[#H.sent].args.reason == "NOT_OWNER" and B.part(mv):getModData().chg == nil, "in reach but no key: refused NOT_OWNER, nothing changes")
+check(H.sent[#H.sent].args.reason == "CAR_LOCKED" and B.part(mv):getModData().chg == nil, "in reach, no key, car locked: refused CAR_LOCKED, nothing changes")
+mv.locked = false
 H.setHours(150)
 C.plug(mp, mv, miso)
 local mchg = B.part(mv):getModData().chg
@@ -556,3 +562,94 @@ for _, script in ipairs({ "Base.MinidoracatTesla_ModelY", "Base.MinidoracatTesla
     check(#box0.items == 0, script .. ": at 0 %: an empty trunk")
 end
 T.MOBILE_IN_TRUNK_PCT = pct0
+
+H.section("keyless rules (user 2026-10-28): plug, unplug, charge card, pick up and rotate the charger")
+-- No VehicleManager: a key, a hotwired car (both on a locked car) or an unlocked car -> allowed; a locked car without a
+-- key -> CAR_LOCKED everywhere. VehicleManager present: only its FUEL right, locked or not.
+local MCS = "minidoracat_tesla_01_8"
+local klo, kiso, ksq = charger(900, 900, { room = {} }, MCS)
+local kv = car(20, 900.5 + 2, 900.5)
+local kOwner = H.player({ name = "own", keys = { [77] = true }, x = 901, y = 901 })
+local mal = H.player({ name = "mal", x = 901, y = 901 })
+local function kchg() return B.part(kv):getModData().chg end
+local function lastDeny() for i = #H.sent, 1, -1 do if H.sent[i].command == "deny" then return H.sent[i].args.reason end end end
+-- vanilla's ISMoveablesAction on the charger square through Chargers.lua's wrap; done = vanilla moved it
+local function move(mode, sprite)
+    local a = setmetatable({ mode = mode, character = mal, square = ksq, origSpriteName = sprite,
+        moveProps = { spriteName = sprite } }, { __index = ISMoveablesAction })
+    return a:complete(), a.done == 1
+end
+local function matrix(label, allowed, deny)
+    if not kchg() then C.plug(kOwner, kv, kiso) end
+    H.sent = {}
+    H.fire("OnClientCommand", "MinidoracatTesla", "chargeTarget", mal, { vid = kv:getId(), pct = 60 })
+    check((kchg().target == 60) == allowed and (allowed or lastDeny() == deny), label .. ": charge card target %")
+    kchg().target = 90
+    H.sent = {}
+    H.fire("OnClientCommand", "MinidoracatTesla", "chargeStop", mal, { vid = kv:getId() })
+    check((kchg().paused == "stopped") == allowed and (allowed or lastDeny() == deny), label .. ": charge card stop")
+    kchg().paused = nil
+    for _, mode in ipairs({ "pickup", "rotate" }) do
+        H.sent = {}
+        local r, done = move(mode, MCS)
+        check(r == allowed and done == allowed and (allowed or lastDeny() == deny), label .. ": " .. mode .. " the plugged Mobile Connector")
+    end
+    H.sent = {}
+    C.unplug(mal, kv)
+    check((kchg() == nil) == allowed and (allowed or lastDeny() == deny), label .. ": unplug")
+    if not kchg() then
+        C.plug(mal, kv, kiso)
+        check(kchg() ~= nil, label .. ": plug back in")
+    else
+        C.unplug(kOwner, kv)
+        H.sent = {}
+        C.plug(mal, kv, kiso)
+        check(kchg() == nil and lastDeny() == deny, label .. ": plug")
+    end
+end
+kv.locked = true
+mal.keys[77] = true
+matrix("no VehicleManager, the key, car locked", true)
+mal.keys[77] = nil
+kv.hotwired = true
+check(select(2, T.mayUseCable(mal, kv)) == "HOTWIRED", "no VehicleManager: a hotwired car counts as the key in the ignition (HOTWIRED)")
+matrix("no VehicleManager, hotwired, car locked", true)
+kv.hotwired, kv.locked = false, false
+matrix("no VehicleManager, no key, car unlocked", true)
+kv.locked = true
+matrix("no VehicleManager, no key, car locked", false, "CAR_LOCKED")
+check(move("pickup", "some_other_tile") == true, "a locked car's charger square: other moveables are not this rule's business")
+C.unplug(kOwner, kv)
+check(move("pickup", MCS) == true, "nothing plugged in: anyone picks the Mobile Connector up (vanilla)")
+-- the charger names a car that is not here (unloaded, or its id handed to another car): the server refuses the move
+-- (NOT_LOADED); a reused id neither counts as the charger taken (relink) nor busy (plug)
+C.plug(kOwner, kv, kiso)
+local kvid = klo.vid
+klo.vid = 424242 -- the plugged car unloaded: settle keeps vid until relink
+H.sent = {}
+check(move("pickup", MCS) == false and lastDeny() == "NOT_LOADED", "plugged car not loaded: pick up refused on the server (NOT_LOADED)")
+local reuse = car(20, 950.5, 950.5)
+klo.vid = reuse:getId()
+H.sent = {}
+check(move("rotate", MCS) == false and lastDeny() == "NOT_LOADED", "the id now names another car (no cable here): still refused")
+C.relink(kv)
+check(klo.vid == kvid and kchg() ~= nil, "the real car loads again: relinked, the car holding the old id does not count as taken")
+C.unplug(kOwner, kv)
+klo.vid = reuse:getId()
+C.plug(kOwner, kv, kiso)
+check(kchg() ~= nil and klo.vid == kvid, "a reused id on the charger: not busy, plugging in takes it over")
+C.unplug(kOwner, kv)
+MinidoracatVehicleManagerAPI = { canUse = function(p, veh, perm) return perm == "FUEL" and p == kOwner, p == kOwner and "OWNER" or "NOT_AUTHORIZED" end }
+for _, locked in ipairs({ true, false }) do
+    kv.locked, mal.keys[77], kv.hotwired = locked, true, true
+    matrix("VehicleManager says no (key and hotwired too), car " .. (locked and "locked" or "unlocked"), false, "NOT_OWNER")
+end
+for _, r in ipairs({ "RENT_LOCKED", "FACTION_PAUSED", "QUARANTINED" }) do
+    MinidoracatVehicleManagerAPI.canUse = function() return false, r end
+    check(select(2, T.mayUseCable(kOwner, kv)) == r, "VehicleManager's " .. r .. " keeps its own reason (T.VM_REASONS)")
+end
+MinidoracatVehicleManagerAPI.canUse = function(p, veh, perm) return perm == "FUEL" and p == kOwner, p == kOwner and "OWNER" or "NOT_AUTHORIZED" end
+mal.keys[77], kv.hotwired, kv.locked = nil, false, false
+C.unplug(kOwner, kv)
+check(kchg() == nil, "VehicleManager: the car's FUEL holder unplugs")
+MinidoracatVehicleManagerAPI = nil

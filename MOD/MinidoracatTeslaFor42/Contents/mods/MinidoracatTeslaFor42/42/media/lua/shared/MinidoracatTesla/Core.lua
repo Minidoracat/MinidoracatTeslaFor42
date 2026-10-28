@@ -259,7 +259,10 @@ end
 -- ---- authorization ----
 -- VehicleManager present: its canUse (server authoritative, client projection; MinidoracatVehicleManager_API.lua:141).
 -- Otherwise: holds this car's key or the key is in the ignition (ISVehicleMenu.lua:96); the key card / phone key also
--- counts from a wallet or bag (Keys.lua; vanilla haveThisKeyId only sees loose keys and keyrings).
+-- counts from a wallet or bag (Keys.lua; vanilla haveThisKeyId only sees loose keys and keyrings). A hotwired car counts
+-- like a key in the ignition ("HOTWIRED", user 2026-10-28, decisions.md keyless rules): vanilla starts it without a key
+-- (ISVehicleMenu.lua:100-101), so whoever sits in it already drives it. The flag is saved and synced to clients
+-- (BaseVehicle.java:2659,2767,8594; network/fields/vehicle/VehicleProperties.java:19,54).
 function T.authorized(player, vehicle, perm)
     if not player or not vehicle then return false, "NO_TARGET" end
     local api = MinidoracatVehicleManagerAPI
@@ -267,8 +270,11 @@ function T.authorized(player, vehicle, perm)
     if SandboxVars and SandboxVars.VehicleEasyUse then return true, "EASY_USE" end
     if vehicle:isKeysInIgnition() or player:getInventory():haveThisKeyId(vehicle:getKeyId()) then return true, "KEY" end
     if T.Keys and T.Keys.card and (T.Keys.card(player, vehicle) or T.Keys.phoneKey(player, vehicle)) then return true, "KEY" end
+    if vehicle:isHotwired() then return true, "HOTWIRED" end
     return false, "NO_KEY"
 end
+-- VehicleManager refusals that keep their own reason text (IGUI_MinidoracatTesla_Deny_<reason>); any other is NOT_OWNER
+T.VM_REASONS = { RENT_LOCKED = true, FACTION_PAUSED = true, QUARANTINED = true }
 
 -- Admin: same capability VehicleManager uses (MinidoracatVehicleManager_OwnershipSystem.lua:192-195).
 function T.isAdmin(player)

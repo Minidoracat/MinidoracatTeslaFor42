@@ -245,6 +245,16 @@ end
 
 -- ---- player actions (timed action complete(), server / SP) ----
 
+-- the cable rule (Chargers.lua T.mayUseCable) for plug, unplug and the charge card; refused: log, deny with the reason
+-- T.mayUseCable gives, false
+local function mayCable(player, v, what)
+    local ok, deny, why = T.mayUseCable(player, v)
+    if ok then return true end
+    T.log(what .. " refused for " .. tostring(player:getUsername()) .. ": " .. tostring(why or deny))
+    T.deny(player, deny, v:getId())
+    return false
+end
+
 function C.plug(player, v, iso)
     local s = sys()
     local o = s and iso and iso:getSquare() and s:getLuaObjectOnSquare(iso:getSquare())
@@ -254,15 +264,11 @@ function C.plug(player, v, iso)
     if not part then return T.deny(player, "NO_VEHICLE", vid) end
     if not part:getInventoryItem() then return T.deny(player, "NO_PACK", vid) end
     if part:getModData().chg then return T.deny(player, "PLUGGED", vid) end
-    if o.vid and getVehicleById(o.vid) then return T.deny(player, "CHARGER_BUSY", vid) end
+    if T.chargerCar(o, o.x, o.y, o.z) then return T.deny(player, "CHARGER_BUSY", vid) end -- a reused id is no car here
     if not T.stopped(v) then return T.deny(player, "MOVING", vid) end -- the motor may run: plugging in shifts to Park (owner's manual, Shifting)
     if player:DistTo(v) > T.NEAR then return T.deny(player, "TOO_FAR", vid) end
     if not T.cableReaches(o.kind, o.x, o.y, o.z, v) then return T.deny(player, "CABLE_SHORT", vid) end
-    local ok, why = T.mayUseCable(player, v)
-    if not ok then
-        T.log("plug refused for " .. tostring(player:getUsername()) .. ": " .. tostring(why))
-        return T.deny(player, "NOT_OWNER", vid)
-    end
+    if not mayCable(player, v, "plug") then return end
     C.start(o, v)
 end
 
@@ -271,11 +277,7 @@ function C.unplug(player, v)
     local chg = part and part:getModData().chg
     local vid = v and v:getId()
     if not chg then return T.deny(player, "NOT_PLUGGED", vid) end
-    local ok, why = T.mayUseCable(player, v)
-    if not ok then
-        T.log("unplug refused for " .. tostring(player:getUsername()) .. ": " .. tostring(why))
-        return T.deny(player, "NOT_OWNER", vid)
-    end
+    if not mayCable(player, v, "unplug") then return end
     local s = sys()
     C.stop(s and s:getLuaObjectAt(chg.x, chg.y, chg.z), v, "unplug")
 end
@@ -295,7 +297,7 @@ function C.relink(v)
     if not chg then return end
     local s = sys()
     local o = s and s:getLuaObjectAt(chg.x, chg.y, chg.z)
-    local other = o and o.vid and o.vid ~= v:getId() and getVehicleById(o.vid)
+    local other = o and o.vid and o.vid ~= v:getId() and T.chargerCar(o, o.x, o.y, o.z) -- not a car that took the id
     if not o or other then
         clearChg(v, part)
         T.log("relink: charger gone or taken, cable cleared on " .. tostring(v:getId()))
@@ -343,12 +345,13 @@ local function chargerOf(v)
     return part, chg, o
 end
 
-local function linked(player, args, perm)
+-- cable: the charge card's buttons take the cable rule, like plug / unplug and the card's own pre-check (HUDChargeCard.lua)
+local function linked(player, args, cable)
     local v = T.commandVehicle and T.commandVehicle(player, args, 30)
     if not v then return nil end
     local part, chg, o = chargerOf(v)
     if not part then T.deny(player, chg, v:getId()); return nil end
-    if perm and not T.authorized(player, v, perm) then T.deny(player, "NOT_OWNER", v:getId()); return nil end
+    if cable and not mayCable(player, v, "charge card") then return nil end
     return v, part, chg, o
 end
 
@@ -365,12 +368,12 @@ end
 
 -- settle now and sync (the client card estimates from kw and last in between)
 T.ServerCommands.chargeInfo = function(player, args)
-    local v, _, _, o = linked(player, args, nil)
+    local v, _, _, o = linked(player, args, false)
     if v then C.settle(o, T.hours()) end
 end
 
 T.ServerCommands.chargeTarget = function(player, args)
-    local v, _, chg, o = linked(player, args, "FUEL")
+    local v, _, chg, o = linked(player, args, true)
     if not v then return end
     local pct = tonumber(args.pct)
     if not pct then return end
@@ -381,7 +384,7 @@ T.ServerCommands.chargeTarget = function(player, args)
 end
 
 T.ServerCommands.chargeStop = function(player, args)
-    local v, part, chg, o = linked(player, args, "FUEL")
+    local v, part, chg, o = linked(player, args, true)
     if not v then return end
     C.settle(o, T.hours())
     chg.paused = "stopped"

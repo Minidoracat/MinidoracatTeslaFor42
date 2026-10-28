@@ -127,6 +127,7 @@ end
 -- (anyone's: no key from it) -> false. VehicleManager's admin override ("ADMIN") counts: opt-in in its fleet window, and
 -- it writes ADMIN_BYPASS with our mod name (its OwnershipSystem.lua O.allowsRecord). MP client: its projection, UX only.
 -- Fails closed, unlike Remote.vmAllows (no VehicleManager or UNCLAIMED = yes there): here only a VehicleManager grant counts.
+-- (T.authorized's HOTWIRED, like KEY and EASY_USE, only comes without VehicleManager, which already returned false.)
 local function vmGrants(chr, vehicle, codes)
     local api = MinidoracatVehicleManagerAPI
     if not (api and api.canUse) then return false end
@@ -145,12 +146,20 @@ end
 -- override is off) keeps the phone key, but on a claimed car the key itself gets past nothing VehicleManager refuses:
 -- doors and start (its ActionGuards), the app (Remote.lua R.vmAllows), sentry and camp (ParkModes T.legit) ask it.
 -- Only the walk-away lock (K.canAutoLock) takes the phone key alone; it can only lock.
+-- No VehicleManager (user 2026-10-28, decisions.md keyless rules): seated in a hotwired car pairs too, true, "HOTWIRED"
+-- (a hotwired car is anyone's who sits in it, T.authorized), so losing both the card and the phone is not the end;
+-- refused, the reason says so (NO_KEY_CARD_HOTWIRE). With VehicleManager the card or its MANAGE, as above.
 function K.canPair(player, vehicle, phone)
     local ft = phone and phone:getFullType()
     if ft ~= K.PHONE and ft ~= K.PHONE_KEY then return false, "NO_PHONE" end
     if not vehicle or not T.isTesla(vehicle) or player:getVehicle() ~= vehicle then return false, "NOT_INSIDE" end
     if ft == K.PHONE_KEY and K.pairedWith(phone, vehicle:getKeyId()) then return false, "ALREADY_PAIRED" end
     if K.card(player, vehicle) or cardInIgnition(vehicle) then return true end
+    local api = MinidoracatVehicleManagerAPI
+    if not (api and api.canUse) then
+        if vehicle:isHotwired() then return true, "HOTWIRED" end
+        return false, "NO_KEY_CARD_HOTWIRE"
+    end
     if vmGrants(player, vehicle, { "MANAGE" }) then return true, "VM" end
     return false, "NO_KEY_CARD"
 end

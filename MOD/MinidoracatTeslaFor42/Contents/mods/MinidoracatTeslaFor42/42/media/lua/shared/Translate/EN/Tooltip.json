@@ -10,7 +10,8 @@
     "Tooltip_MinidoracatTesla_TapCard": "Walk to the driver's door and tap the key card on the reader",
     "Tooltip_MinidoracatTesla_PairPhone": "Authorize this phone with this car's key card",
     "Tooltip_MinidoracatTesla_PairPhoneOwner": "Authorize this phone without the key card: you manage this car in Vehicle Manager",
-    "Tooltip_MinidoracatTesla_AppNotPaired": "Pair this phone first: sit in the Tesla with its key card, right-click the phone and choose Set Up as Phone Key. With Vehicle Manager, the car's owner needs no key card.",
+    "Tooltip_MinidoracatTesla_PairPhoneHotwired": "Authorize this phone without the key card: this car has been hotwired",
+    "Tooltip_MinidoracatTesla_AppNotPaired": "Pair this phone first: sit in the Tesla with its key card, right-click the phone and choose Set Up as Phone Key. With Vehicle Manager, the car's owner needs no key card. Without Vehicle Manager, sitting in a hotwired car works too.",
     "Tooltip_MinidoracatTesla_WallConnector": "Mount it on a wall (Electrical 3, screwdriver), then right-click it to plug in a Tesla up to 6 tiles away.<br>Charges at 11.5 kW.<br>Runs on grid power indoors, or on a running generator in range.<br>On a generator, charging burns fuel:<br>about one tank for a full charge (scaled by the sandbox option Generator Fuel Consumption).",
     "Tooltip_MinidoracatTesla_MobileConnector": "Put it on the floor and right-click it to plug in a Tesla up to 5 tiles away. Charges at 7.6 kW.<br>Works indoors where there is power (grid or a generator);<br>anywhere else it must sit within 2 tiles of a running generator.<br>On a generator, charging burns fuel:<br>about one tank for a full charge (scaled by the sandbox option Generator Fuel Consumption)."
 }

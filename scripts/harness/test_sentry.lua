@@ -55,6 +55,10 @@ check(T.legit(thief, v) == false, "legit: UNCLAIMED does not count")
 MinidoracatVehicleManagerAPI = { canUse = function() return true, "OWNER" end }
 check(T.legit(thief, v) == true, "legit: VehicleManager claimed PASSENGER counts")
 MinidoracatVehicleManagerAPI = nil
+local easy = SandboxVars.VehicleEasyUse
+SandboxVars.VehicleEasyUse = true
+check(T.legit(thief, v) == false, "legit: sandbox VehicleEasyUse without VehicleManager does not count")
+SandboxVars.VehicleEasyUse = easy
 -- VehicleManager decides a claimed car: this car's key, card or phone key is anyone's who picked it up (the found card
 -- must not disarm sentry from the right-click menu either, like the card tap: KeyActions keyTap)
 local finder = F.player("finder", { keys = { [v.keyId] = true } })
@@ -98,6 +102,18 @@ check(v.alarmTriggered == 1 and md(v).sentry ~= nil, "break: alarm triggered, se
 check(F.lastSent("alert").args.kind == "break" and F.lastSent("alert").args.what == "window", "break: owner alerted (window)")
 ISUninstallVehiclePart.complete({ vehicle = v, character = owner, part = v.parts.GasTank })
 check(v.alarmTriggered == 1, "break: legit user does not trigger alarm")
+-- hotwired by a stranger (user 2026-10-28): a hotwired car is "the key in the ignition" for T.authorized, never for
+-- T.legit, so the hotwire still rings and the thief cannot disarm sentry; Camp Mode is his once he sits in it
+thief.vehicle = v -- the driver's seat (ISHotwireVehicle hooks the actor's car)
+v.hotwired = true -- vanilla ISHotwireVehicle:complete has just hotwired it
+ISHotwireVehicle.complete({ character = thief })
+check(v.alarmTriggered == 2 and md(v).sentry ~= nil, "hotwire by a stranger: alarm rings, sentry stays armed")
+check(select(2, T.authorized(thief, v, "PASSENGER")) == "HOTWIRED" and not T.legit(thief, v) and not S.canDisarm(thief, v),
+    "hotwired: authorized (HOTWIRED: camp, charging) but not legit, the thief cannot disarm sentry")
+check(T.Camp.canEnable(thief, v) == true, "hotwired: the seated stranger may turn Camp Mode on")
+v.hotwired = false
+check(select(2, T.Camp.canEnable(thief, v)) == "NOT_OWNER", "not hotwired: the seated stranger may not")
+thief.vehicle = nil
 
 -- ---- settle: drain by hours, 12V top-up, auto-off below 20% ----
 local k0 = T.Battery.kwh(v.parts.GasTank)

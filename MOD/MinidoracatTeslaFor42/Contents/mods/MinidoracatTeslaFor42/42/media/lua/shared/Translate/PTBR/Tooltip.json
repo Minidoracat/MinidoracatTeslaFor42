@@ -10,7 +10,8 @@
     "Tooltip_MinidoracatTesla_TapCard": "Vá até a porta do motorista e encoste o cartão-chave no leitor",
     "Tooltip_MinidoracatTesla_PairPhone": "Autorize este telefone com o cartão-chave deste carro",
     "Tooltip_MinidoracatTesla_PairPhoneOwner": "Autorize este telefone sem o cartão-chave: você gerencia este carro no Gerenciador de veículos",
-    "Tooltip_MinidoracatTesla_AppNotPaired": "Primeiro pareie o telefone: sente no Tesla com o cartão-chave, clique com o botão direito no telefone e escolha \"Configurar como chave de telefone\". Com o Gerenciador de veículos, o dono do carro não precisa do cartão-chave.",
+    "Tooltip_MinidoracatTesla_PairPhoneHotwired": "Autorize este telefone sem o cartão-chave: este carro está com ligação direta",
+    "Tooltip_MinidoracatTesla_AppNotPaired": "Primeiro pareie o telefone: sente no Tesla com o cartão-chave, clique com o botão direito no telefone e escolha \"Configurar como chave de telefone\". Com o Gerenciador de veículos, o dono do carro não precisa do cartão-chave. Sem o Gerenciador de veículos, também funciona sentado em um carro com ligação direta.",
     "Tooltip_MinidoracatTesla_WallConnector": "Monte na parede (Elétrica 3, chave de fenda) e clique com o botão direito para ligar um Tesla a até 6 quadrados.<br>Carrega a 11,5 kW.<br>Funciona com a rede elétrica em ambientes internos ou com um gerador ligado ao alcance.<br>No gerador, carregar gasta combustível:<br>cerca de um tanque por carga completa (conforme “Consumo de Combustível dos Geradores”).",
     "Tooltip_MinidoracatTesla_MobileConnector": "Coloque no chão e clique com o botão direito para ligar um Tesla a até 5 quadrados. Carrega a 7,6 kW.<br>Funciona em ambientes internos com energia (rede ou gerador);<br>em outro lugar precisa ficar a até 2 quadrados de um gerador ligado.<br>No gerador, carregar gasta combustível:<br>cerca de um tanque por carga completa (conforme “Consumo de Combustível dos Geradores”)."
 }

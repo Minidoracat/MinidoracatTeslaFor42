@@ -129,7 +129,7 @@ end
 -- T.authorized is not enough: with VehicleManager it asks only VehicleManager, and an unclaimed car passes anyone.
 -- silent only for TRACK: the 2 s poll must not write an ADMIN_BYPASS audit line every time
 -- (OwnershipSystem.lua:899-903); an admin's remote unlock or liftgate is audited like in person.
-local VM_REASONS = { RENT_LOCKED = true, FACTION_PAUSED = true, QUARANTINED = true }
+local VM_REASONS = T.VM_REASONS
 local TRACK = { "TRACK" }
 function R.vmAllows(player, v, codes)
     local api = MinidoracatVehicleManagerAPI
