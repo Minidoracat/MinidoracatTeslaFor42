@@ -890,26 +890,81 @@ T.ClientCommands.appStates({ list = { { key = 9002, deny = "NOT_OWNER" } } })
 check(App.seen[9002].deny == "NOT_OWNER" and App.seen[9002].x == nil and a:carLine({ key = 9002 }) == T.denyText("NOT_OWNER"),
     "refused in the batch: the row shows why, no place kept")
 state()
--- more paired cars than the server answers per request: the list asks in chunks of App.BATCH
+-- more paired cars than the server answers per request: the list asks in chunks of App.BATCH, one a LIST_MS
 local savedPhones = myInv
 local many = {}
 for i = 1, 18 do many[i] = 7000 + i end
 myInv = container(multiPhone(many))
 App.open(0, { keyId = 7018 })
+H.advanceMs(App.LIST_MS)
 local sentM = #H.clientSent
-a.b.cars:forceClick()
-local asked, reqs = {}, 0
-for i = sentM + 1, #H.clientSent do
-    local s = H.clientSent[i]
-    if s.command == "appStatusAll" then
-        reqs = reqs + 1
-        check(#s.args.keys <= R.MAX_BATCH, "chunk " .. reqs .. ": at most the server's MAX_BATCH")
-        for _, k in ipairs(s.args.keys) do asked[k] = true end
+local function listReqs(asked)
+    local reqs = 0
+    for i = sentM + 1, #H.clientSent do
+        local s = H.clientSent[i]
+        if s.command == "appStatusAll" then
+            reqs = reqs + 1
+            check(#s.args.keys <= R.MAX_BATCH, "chunk " .. reqs .. ": at most the server's MAX_BATCH")
+            for _, k in ipairs(s.args.keys) do asked[k] = true end
+        end
     end
+    return reqs
 end
+local asked = {}
+a.b.cars:forceClick()
+a:update()
+a.b.back:forceClick()
+a.b.cars:forceClick() -- opened again within the second: no second round on top
+check(listReqs({}) == 1, "18 cars: the first 16 at once, the rest not in the same second (reopening adds none)")
+myInv = container(myInv.items[1], multiPhone({ 8001, 8002 })) -- a second phone picked up while the round goes out
+a.b.back:forceClick()
+a.b.cars:forceClick()
+check(listReqs({}) == 1, "a second phone mid-round: still nothing more this second")
+H.advanceMs(App.LIST_MS)
+a:update()
+H.advanceMs(App.LIST_MS)
+a:update()
 local all17 = true
+local reqs = listReqs(asked)
 for i = 1, 17 do if not asked[7000 + i] then all17 = false end end
-check(reqs == 2 and all17 and App.BATCH == R.MAX_BATCH, "18 cars: two requests cover all 17 others")
+check(reqs == 2 and all17 and asked[8001] and asked[8002] and App.BATCH == R.MAX_BATCH,
+    "a second later the update sends the rest, the new phone's cars with it: two requests cover all 19 others")
+myInv = container(multiPhone(many))
+a:setPage("cars") -- a new round of 17, held back: the last request went out this same second
+sentM = #H.clientSent
+H.advanceMs(-60000) -- the player's wall clock jumps back a minute
+a:update()
+check(listReqs({}) == 1, "client clock set back mid-round: the round goes on, not stuck until the clock catches up")
+H.advanceMs(60000)
+-- 50 paired cars (4 requests a round), the list opened and closed twice a second for 10 s: through the server's
+-- dispatch (Commands.lua CommandRate) every request gets through, at most one a second
+for i = 19, 50 do many[i] = 7000 + i end
+myInv = container(multiPhone(many))
+App.open(0, { keyId = 7050 })
+me.getOnlineID, me.getUsername = function() return 9101 end, function() return "me" end
+H.advanceMs(App.LIST_MS)
+local fromL, times, gotL, dropL = #H.clientSent, {}, 0, T.CommandRate.dropped.appStatusAll or 0
+for tick = 0, 99 do
+    H.side(true, false)
+    if tick % 5 == 0 then (a.page == "cars" and a.b.back or a.b.cars):forceClick() end
+    a:update()
+    for i = fromL + 1, #H.clientSent do
+        if H.clientSent[i].command == "appStatusAll" then times[#times + 1] = tick * 100 end
+    end
+    local got
+    got, fromL = H.serve(fromL)
+    gotL = gotL + (got.appStatusAll or 0)
+    H.advanceMs(100)
+end
+check(#times == 10 and gotL == 10 and H.busiest(times, 10000) * 1.5 <= T.CommandRate.LIMITS.appStatusAll.max
+    and (T.CommandRate.dropped.appStatusAll or 0) == dropL,
+    "50 cars, list opened 10 times in 10 s: " .. #times .. " requests (one a second), all reach the server's handler")
+local eighteen = {}
+for i = 1, 18 do eighteen[i] = 7000 + i end
+myInv = container(multiPhone(eighteen))
+App.open(0, { keyId = 7018 })
+a:setPage("cars")
+H.advanceMs(App.LIST_MS) -- (the next list opens below send at once)
 -- the list's joypad rows are this app's own (split screen: another app's list keeps its length)
 local other = setmetatable({ page = "cars", navCars = { { "back" }, { "pick1" } } }, { __index = App })
 check(#a:navRows() == 19 and #other:navRows() == 2, "car list joypad rows per app, not shared")
@@ -972,7 +1027,67 @@ check(App.open(0, { keyId = 9001 }) == nil, "no phone key on the player: the app
 myInv = savedInv
 App.open(0, { keyId = 9001 })
 state()
-a:setPage("location")
+a:setPage("home")
+
+-- ---------------------------------------------------------------- a busy minute against the server's budget
+-- The real app for a minute (update every 100 ms: its 2 s polls) under a player clicking twice a second without a
+-- break: a tour (car list and picks, security page and Sentry, controls, quick buttons, closing and reopening), then
+-- 10 s each of mashing the horn, flipping between the cars (each pick: appAlerts and a poll at once) and in and out of
+-- the security page, then the tour again. Every request goes through the server's dispatch (Commands.lua
+-- CommandRate): none may be dropped, and each command's busiest 10 s keeps half its budget again to spare.
+H.section("phone app: a busy minute within the server's budget")
+local CR = T.CommandRate
+me.getOnlineID, me.getUsername = function() return 9100 end, function() return "me" end
+local tour = { "cars", "pick2", "cars", "pick1", "security", "sentry", "back", "controls", "flash", "horn", "frunk",
+    "trunk", "back", "lock", "qtrunk", "qfrunk", "cars", "pick2", "close", "open" }
+local script = {}
+local function add(ids, n) for i = 1, n do script[#script + 1] = ids[(i - 1) % #ids + 1] end end
+add(tour, 20)
+add({ "controls" }, 1); add({ "horn" }, 19)
+add({ "back" }, 1); add({ "cars", "pick2", "cars", "pick1" }, 19)
+add({ "pick1" }, 1); add({ "security", "back" }, 18); add({ "open" }, 1)
+add(tour, 40)
+local dropped0, from, sentN, gotN, clicks, missed = {}, #H.clientSent, {}, {}, 0, {}
+for k, n in pairs(CR.dropped) do dropped0[k] = n end
+local perWin, times = {}, {} -- command -> send times (ms), to report the busiest 10 s
+for tick = 0, 599 do
+    H.side(true, false)
+    if tick % 5 == 0 then -- a click every 0.5 s
+        clicks = clicks + 1
+        local id = script[clicks]
+        if id == "open" then App.open(0, { keyId = 9001 })
+        elseif a.b[id] and a.b[id].shown and a.b[id].enable then a.b[id]:forceClick()
+        else missed[#missed + 1] = id .. "@" .. a.page end
+    end
+    a:update()
+    for i = from + 1, #H.clientSent do
+        local c = H.clientSent[i].command
+        sentN[c] = (sentN[c] or 0) + 1
+        times[c] = times[c] or {}
+        times[c][#times[c] + 1] = tick * 100
+    end
+    local got
+    got, from = H.serve(from)
+    for c, n in pairs(got) do gotN[c] = (gotN[c] or 0) + n end
+    H.advanceMs(100)
+end
+local same, line = true, {}
+for c, n in pairs(sentN) do
+    if gotN[c] ~= n then same = false end
+    local busiest = H.busiest(times[c], 10000)
+    perWin[c] = busiest
+    line[#line + 1] = c .. " " .. n .. " (busiest 10 s " .. busiest .. ")"
+end
+table.sort(line)
+local none = true
+for k, n in pairs(CR.dropped) do if n ~= (dropped0[k] or 0) then none = false end end
+check(#missed == 0, "the click script followed the pages (" .. (#missed == 0 and clicks .. " clicks" or table.concat(missed, ", ")) .. ")")
+check(same and none and (sentN.appStatus or 0) >= 30 and (sentN.appAlerts or 0) >= 10 and (sentN.appAction or 0) >= 30
+    and (sentN.appStatusAll or 0) >= 6, "every request reached its handler: " .. table.concat(line, ", "))
+for c, n in pairs(perWin) do
+    local lim = CR.LIMITS[c] or CR.LIMITS.default
+    check(n * 1.5 <= lim.max, c .. ": busiest 10 s (" .. n .. ") has half its budget again to spare (" .. lim.max .. ")")
+end
 
 -- ---------------------------------------------------------------- summon pages (a fake client MinidoracatAutoDriveAPI)
 H.section("phone app: summon (client)")

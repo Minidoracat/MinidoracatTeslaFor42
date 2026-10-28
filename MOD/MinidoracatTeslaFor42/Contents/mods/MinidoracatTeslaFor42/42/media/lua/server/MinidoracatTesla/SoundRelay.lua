@@ -3,35 +3,20 @@
 -- every 5 s and listeners forget a car on their own.
 -- Accepted from the car's driver only; "off" also when the seat is already empty (the exit packet can beat it here,
 -- and with no driver there is nothing left to silence). Anything else is dropped without a reply.
--- At most RATE_MAX commands per player per RATE_WINDOW_MS (the fixed window of VehicleManager's rateLimited,
--- MinidoracatVehicleManager_Server.lua:535-541); the rest are dropped. A driver sends one beat per 5 s plus an "off"
--- and an "on" each time the motor stops and starts (power key, seat, charge cable, a joypad player's inventory hiding
--- the dashboard, ISInventoryPage.lua:739-775); a dropped "on" comes again with the next beat, a dropped "off" ends on
--- the listener's HEARD_MS expiry (and the listener already mutes a car with no driver or a stopped motor).
+-- Its budget (10 per player per 5 s) is the dispatcher's (Commands.lua CommandRate): a driver sends one beat per 5 s
+-- plus an "off" and an "on" each time the motor stops and starts (power key, seat, charge cable, a joypad player's
+-- inventory hiding the dashboard, ISInventoryPage.lua:739-775); a dropped "on" comes again with the next beat, a dropped
+-- "off" ends on the listener's HEARD_MS expiry (and the listener already mutes a car with no driver or a stopped motor).
 -- A summoned car (Remote.lua, AutoDrive drives it empty) has no driver to send beats: the server itself tells everyone
 -- near the car, the summoner too, when the summon starts and ends (R.summon; { vid, on, sum = true }).
 if isClient() then return end
 require "MinidoracatTesla/Commands"
 
 local T = MinidoracatTesla
-local R = { RELAY_TILES = 120, stats = { relayed = 0, refused = 0, limited = 0 } } -- 120: a car on its way is known before it is heard
-R.RATE_WINDOW_MS, R.RATE_MAX = 5000, 10 -- driving: 1 per 5 s; each stop and start of the motor: +2
+local R = { RELAY_TILES = 120, stats = { relayed = 0, refused = 0 } } -- 120: a car on its way is known before it is heard
 T.SoundRelay = R
 
 local function isInt(n) return type(n) == "number" and n == n and math.floor(n) == n end
-
--- online id -> { start, n }. The id, not the username: a split-screen guest names itself (Core.lua T.account), and
--- no IsoPlayer keys (Kahlua has no weak tables, family pitfalls.md). Ids are per connected player and get reused, so
--- the table stays as small as the server; a reused id inherits a window at most RATE_WINDOW_MS old.
-local windows = {}
-local function rateLimited(player)
-    local t, who = getTimestampMs(), player:getOnlineID() -- IsoPlayer.java:6490, set at login GameServer.java:2835-2839
-    local w = windows[who]
-    -- t < start: the wall clock was set back (getTimestampMs = System.currentTimeMillis); start over, do not stretch it
-    if not w or t < w.start or t - w.start >= R.RATE_WINDOW_MS then w = { start = t, n = 0 }; windows[who] = w end
-    w.n = w.n + 1
-    return w.n > R.RATE_MAX
-end
 
 T.ServerCommands = T.ServerCommands or {}
 
@@ -70,10 +55,6 @@ end
 
 -- returns how many players it told (the E2E counts it; the dispatcher ignores it)
 T.ServerCommands.motor = function(player, args)
-    if rateLimited(player) then
-        R.stats.limited = R.stats.limited + 1
-        return 0
-    end
     local v = isInt(args.vid) and getVehicleById(args.vid) or nil
     local on = args.on == true
     local drv = v and v:getDriver()

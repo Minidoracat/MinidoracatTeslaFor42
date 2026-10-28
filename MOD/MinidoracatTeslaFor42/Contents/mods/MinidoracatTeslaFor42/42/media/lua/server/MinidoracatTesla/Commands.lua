@@ -25,12 +25,62 @@ function T.commandVehicle(player, args, maxDist)
     return v
 end
 
+-- ---- per-player budget (a modified client can send any command, as often as it likes) ----
+-- MP: every command passes a fixed window per player and bucket before its handler (VehicleManager's rateLimited,
+-- MinidoracatVehicleManager_Server.lua:535-541): at most `max` per `ms`, the rest dropped and counted in
+-- CR.dropped[bucket]; the first drop of a window logs one line. Commands without a row share `default`. SP: no other
+-- client, no budget. "legit" below = the real client's busiest window, assuming a person clicks at most twice a
+-- second; the harness plays that minute through this dispatch (test_cmd_rate.lua lists where) and every row is at
+-- least 1.5 times it, motor exactly it. No reply: past these only a modified client gets, and a reply per drop would
+-- grow with the flood. Not played there, one per click or per login, inside `default`: camp, sentry, chargeInfo,
+-- phoneUnpair, inboxPull.
+local CR = { dropped = {} }
+CR.LIMITS = {
+    default = { max = 40, ms = 10000 },      -- legit 20: one per click (charge card, camp, sentry, pairing), autoLock 2 a
+                                             -- second for 3 s, keySweep 1 a second; keyTap / autoLock chirp like the
+                                             -- app's lock but are walk-paced (a timed action, 6 tries per exit)
+    motor = { max = 10, ms = 5000 },         -- legit 10: a beat per 5 s, +2 per motor stop and start (SoundRelay.lua)
+    appStatus = { max = 20, ms = 10000 },    -- legit ~10: a poll per 2 s, one per car picked (App:select) instead; each
+                                             -- builds the car's state, VehicleManager's whole ledger with it
+    appStatusAll = { max = 15, ms = 10000 }, -- legit 10: the car list sends one a second (PhoneApp LIST_MS) however
+                                             -- many cars or opens; each = 16 appStatus
+    appAlerts = { max = 20, ms = 10000 },    -- legit ~10: one per car picked or security page opened (2 clicks each)
+    appAction = { max = 30, ms = 10000 },    -- legit 20: one per button press (lock and unlock chirp to everyone near)
+    liftgate = { max = 30, ms = 10000 },     -- legit 20: one per click on the car picture; each tells every online player
+}
+T.CommandRate = CR
+
+-- online id -> { who = username, [bucket] = { start, n } }. Keyed by the id, not the username: a split-screen guest
+-- names itself (Core.lua T.account). Ids are per connected player and get reused (GameServer.java:2669-2676), so the
+-- table stays as small as the server; the username beside it tells a new occupant of the id, who starts with fresh
+-- windows (a guest's chosen name only touches its own id). Not the IsoPlayer: a kept reference would hold a player
+-- who left until the id is used again (no IsoPlayer in tables, family pitfalls.md).
+local windows = {}
+function CR.limited(player, command)
+    local b = CR.LIMITS[command] and command or "default"
+    local lim, id, t = CR.LIMITS[b], player:getOnlineID(), getTimestampMs() -- IsoPlayer.java:6490 (GameServer.java:2835-2839)
+    local who, mine = player:getUsername(), windows[id]
+    if not mine or mine.who ~= who then mine = { who = who }; windows[id] = mine end
+    local w = mine[b]
+    if not w then w = {}; mine[b] = w end
+    -- t < start: the wall clock was set back (getTimestampMs = System.currentTimeMillis); start over, do not stretch it
+    if not w.start or t < w.start or t - w.start >= lim.ms then w.start, w.n = t, 0 end
+    w.n = w.n + 1
+    if w.n <= lim.max then return false end
+    CR.dropped[b] = (CR.dropped[b] or 0) + 1
+    if w.n == lim.max + 1 then
+        T.log("rate limit: " .. b .. " over " .. lim.max .. " per " .. lim.ms .. " ms, dropping " .. tostring(command)
+            .. " from " .. tostring(who) .. " oid=" .. tostring(id))
+    end
+    return true
+end
+
 if not T.serverDispatch then
     T.serverDispatch = true
     Events.OnClientCommand.Add(function(module, command, player, args)
         if module ~= T.MODULE then return end
         local fn = T.ServerCommands[command]
-        if not fn then return end
+        if not fn or (isServer() and CR.limited(player, command)) then return end
         local ok, err = pcall(fn, player, type(args) == "table" and args or {})
         if not ok then T.log("command " .. tostring(command) .. " failed: " .. tostring(err)) end
     end)
