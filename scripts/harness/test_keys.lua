@@ -626,6 +626,90 @@ F.fire("OnPostDistributionMerge")
 local items = ProceduralDistributions.list.ElectronicStorePhones.items
 check(#items == 4 and items[3] == K.PHONE and items[4] == K.LOOT.ElectronicStorePhones, "loot: phone added once even when the merge runs twice")
 
+-- ------------------------------------------------------------------ a busy minute against the server's budget
+-- The real client (KeysUI.lua) for a minute, a cycle every 10 s (as fast as getting out, walking off and back can go):
+-- out of the car with a phone key (the walk-away lock asks 6 times, 2 a second) and a CarKey back from the ignition
+-- (keySweep a second later), two key card taps, "Add this car" on the phone, back in. Every request through the
+-- server's dispatch (Commands.lua CommandRate, the `default` budget): none dropped.
+H.section("keys: a busy minute within the server's budget")
+local ticks = {}
+local sink = setmetatable({}, { __index = function(t, name) -- KeysUI's events stay out of later tests
+    local e = { Add = function(fn) if name == "OnTick" then ticks[fn] = true end end,
+        Remove = function(fn) if name == "OnTick" then ticks[fn] = nil end end }
+    rawset(t, name, e)
+    return e
+end })
+local realEvents = Events
+local stubs = { "TimedActions/ISBaseTimedAction", "TimedActions/ISTimedActionQueue", "TimedActions/ISInventoryTransferAction",
+    "TimedActions/ISGrabItemAction", "Vehicles/TimedActions/ISExitVehicle" }
+for _, m in ipairs(stubs) do H.stub(m) end
+local GLOBALS = { "ISBaseTimedAction", "ISTimedActionQueue", "ISInventoryTransferAction", "ISGrabItemAction", "ISExitVehicle",
+    "ISWorldObjectContextMenu", "ISMinidoracatTeslaKeyTap" }
+local before = {}
+for _, g in ipairs(GLOBALS) do before[g] = _G[g] end
+ISBaseTimedAction = { perform = function() end }
+function ISBaseTimedAction:derive(name) local c = setmetatable({ Type = name }, { __index = self }); c.__index = c; return c end
+function ISBaseTimedAction:new(ch) return setmetatable({ character = ch }, self) end
+ISTimedActionQueue = { add = function() end }
+ISInventoryTransferAction, ISGrabItemAction = { perform = function() end }, { perform = function() end }
+ISExitVehicle = { perform = function(self) self.character.vehicle = nil end }
+ISWorldObjectContextMenu = { addToolTip = function() return {} end }
+Events = sink
+H.side(true, false)
+require "MinidoracatTesla/KeysUI"
+local UI = T.KeysUI
+local car = tesla({ pct = 80 })
+local wInv = container(key(K.CARD, car.keyId), key(K.PHONE_KEY, car.keyId), item(K.PHONE))
+local walker = player("walker", wInv, car.x - 1, car.y)
+function walker:getOnlineID() return 9200 end
+function walker:isDead() return false end
+function walker:isTimedActionInstant() return false end
+local menu = { addOption = function(self, _, target, fn, a1, a2)
+    self.last = { target = target, fn = fn, a1 = a1, a2 = a2 }
+    return self.last
+end }
+local dropped0, from, sentN, gotN, times = T.CommandRate.dropped.default or 0, #H.clientSent, {}, {}, {}
+for tick = 0, 599 do
+    H.side(true, false)
+    local s = tick % 100 -- 100 ms ticks, a 10 s cycle
+    if s == 0 then
+        walker.vehicle = car
+        wInv:AddItem(key("Base.CarKey", car.keyId)) -- the spawn-time key, back from the ignition
+        ISExitVehicle.perform(setmetatable({ character = walker }, { __index = ISExitVehicle }))
+        walker.x = car.x - (K.LOCK_DIST + 2)
+    elseif s == 40 or s == 50 then
+        walker.x = car.x - 1
+        ISMinidoracatTeslaKeyTap:new(walker, car):perform()
+    elseif s == 70 then
+        walker.vehicle = car
+        UI.phoneOption(walker, menu, wInv.items[3])
+        menu.last.fn(menu.last.target, menu.last.a1, menu.last.a2)
+    end
+    for fn in pairs(ticks) do fn() end
+    for i = from + 1, #H.clientSent do
+        local c = H.clientSent[i].command
+        sentN[c] = (sentN[c] or 0) + 1
+        times[#times + 1] = tick * 100 -- all four share `default`
+    end
+    local got
+    got, from = H.serve(from)
+    for c, n in pairs(got) do gotN[c] = (gotN[c] or 0) + n end
+    H.advanceMs(100)
+end
+Events = realEvents
+H.side(false, true)
+for _, g in ipairs(GLOBALS) do _G[g] = before[g] end
+local same, line = true, {}
+for c, n in pairs(sentN) do
+    if gotN[c] ~= n then same = false end
+    line[#line + 1] = c .. " " .. n
+end
+table.sort(line)
+local busiest = H.busiest(times, T.CommandRate.LIMITS.default.ms)
+check(same and sentN.autoLock == 36 and sentN.keySweep == 6 and sentN.keyTap == 12 and sentN.phonePair == 6
+    and (T.CommandRate.dropped.default or 0) == dropped0 and busiest * 1.5 <= T.CommandRate.LIMITS.default.max,
+    "every request reached its handler (" .. busiest .. " in the busiest 10 s): " .. table.concat(line, ", "))
+
 for k, n in pairs(statsBefore) do S.stats[k] = n end -- test_sentry counts flashes from zero
 instanceItem, playServerSound, sendAddItemToContainer, sendRemoveItemFromContainer, ProceduralDistributions, getItemNameFromFullType = nil, nil, nil, nil, nil, nil
 ISStartVehicleEngine = nil
