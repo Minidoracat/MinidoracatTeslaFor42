@@ -247,13 +247,21 @@ function R.summonEnded(v, code, player, key)
 end
 
 -- Is `player` the one running summon `info` (AutoDrive summonInfo, by = the summoner's username)? The session ends once
--- its summoner leaves or dies (MDAD_Summon.lua:223-225), so the name belongs to someone online. A split-screen guest
--- cannot take a name online right now (ConnectCoopPacket.java:79-88) and summons too, so its username is enough.
--- Slot 0 also passes T.account: a Steam co-op host lets two logins share a name, it only refuses a second
--- connection of the same SteamID (LoginPacket.java:78-90), and the account check tells them apart by SteamID.
+-- its summoner leaves or dies (MDAD_Summon.lua:223-225), so the name is someone online. A dedicated server keeps
+-- online names unique (LoginPacket.java:140-150, ConnectCoopPacket.java:79-88): the name is enough. A Steam co-op host
+-- checks only the SteamID at login (LoginPacket.java:78-90), so the name may be online twice: then only a main player
+-- whose account (T.account, SteamID) is that name counts.
 function R.isSummoner(player, info)
     if type(info) ~= "table" or info.by ~= player:getUsername() then return false end
-    return player:getPlayerNum() ~= 0 or T.account(player) == info.by
+    if not isServer() then return true end
+    local list = getOnlinePlayers()
+    for i = 0, list:size() - 1 do
+        local q = list:get(i)
+        if q ~= player and q:getUsername() == info.by then
+            return player:getPlayerNum() == 0 and T.account(player) == info.by
+        end
+    end
+    return true
 end
 
 -- on: start (a running summon: nothing, startSummon is called once) or stop it, whoever started it. Tesla's own rules

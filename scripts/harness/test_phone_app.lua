@@ -515,18 +515,23 @@ check(summon(two2, true).why == "UI_MinidoracatAutoDrive_SummonBusy", "another h
 F.sent = {}
 cmds.appStatus(two2, { key = 9001 })
 check(last("appState").summon.mine == false, "the other holder sees someone else's summon")
--- who counts as the summoner (Remote.isSummoner): the session's username; slot 0 also through T.account, since a
--- Steam co-op host lets two logins share a name (LoginPacket.java:78-90)
+-- who counts as the summoner (Remote.isSummoner): the session's username while that name is online once (a dedicated
+-- server keeps names unique); online twice (a Steam co-op host checks only the SteamID, LoginPacket.java:78-90): only
+-- the main player whose account (SteamID) is that name
 local info = AD.info[v]
-check(T.Remote.isSummoner(H.player({ name = "owner", num = 1 }), info), "a split-screen guest with the summoner's name: its own summon")
 H.steam = true
 local SID_A, SID_B = 76561198000000112, 76561198000000128
-local realIds = T.Store.get("ids").owner
+local realIds, realOnline = T.Store.get("ids").owner, F.online
+T.Store.get("ids").owner = { sid = SID_B, src = "E2E", at = 0 } -- the name is bound to someone else: owner unverified
+F.online = { owner, two2 }
+check(T.Remote.isSummoner(owner, info), "Steam, the name online once: the summoner even with no verified account")
 T.Store.get("ids").owner = { sid = SID_A, src = "E2E", at = 0 }
-check(T.Remote.isSummoner(H.player({ name = "owner", sid = SID_A }), info), "Steam: the summoner, its SteamID bound to the name")
-check(not T.Remote.isSummoner(H.player({ name = "owner", sid = SID_B }), info),
-    "Steam co-op host, a second login with the summoner's name and another SteamID: not the summoner (no stop without reach)")
-T.Store.get("ids").owner, H.steam = realIds, false
+local pA, pB, pG = H.player({ name = "owner", sid = SID_A }), H.player({ name = "owner", sid = SID_B }), H.player({ name = "owner", num = 1 })
+F.online = { pA, pB, pG }
+check(T.Remote.isSummoner(pA, info), "co-op host, the name online three times: the main player with the bound SteamID is the summoner")
+check(not T.Remote.isSummoner(pB, info) and not T.Remote.isSummoner(pG, info),
+    "...the other login (another SteamID) and a split-screen guest with that name are not")
+F.online, T.Store.get("ids").owner, H.steam = realOnline, realIds, false
 check(not T.Remote.isSummoner(owner, nil) and not T.Remote.isSummoner(two2, info), "no summon, or another name: no")
 grid = false
 owner.x, two2.x = v.x + 45, v.x + 45
