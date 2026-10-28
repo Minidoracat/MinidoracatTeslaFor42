@@ -11,7 +11,7 @@
     "Tooltip_MinidoracatTesla_PairPhone": "Autoryzuj ten telefon kartą klucza tego auta",
     "Tooltip_MinidoracatTesla_PairPhoneOwner": "Autoryzuj ten telefon bez karty klucza: zarządzasz tym autem w Menedżerze pojazdów",
     "Tooltip_MinidoracatTesla_PairPhoneHotwired": "Autoryzuj ten telefon bez karty klucza: to auto zostało odpalone na krótko",
-    "Tooltip_MinidoracatTesla_AppNotPaired": "Najpierw sparuj telefon: usiądź w Tesli z kartą klucza, kliknij telefon prawym przyciskiem i wybierz „Ustaw jako klucz telefoniczny”. Z Menedżerem pojazdów właściciel auta nie potrzebuje karty klucza.",
+    "Tooltip_MinidoracatTesla_AppNotPaired": "Najpierw sparuj telefon: usiądź w Tesli z kartą klucza, kliknij telefon prawym przyciskiem i wybierz „Ustaw jako klucz telefoniczny”. Z Menedżerem pojazdów właściciel auta nie potrzebuje karty klucza. Bez Menedżera pojazdów wystarczy też usiąść w aucie odpalonym na krótko.",
     "Tooltip_MinidoracatTesla_WallConnector": "Zamontuj na ścianie (Elektryka 3, śrubokręt) i kliknij prawym przyciskiem, aby podłączyć Teslę w promieniu 6 pól.<br>Ładuje z mocą 11,5 kW.<br>Działa na prądzie z sieci w budynku albo z działającego agregatu w zasięgu.<br>Na agregacie ładowanie zużywa paliwo:<br>około jednego zbiornika na pełne ładowanie (zależnie od „Zużycie paliwa przez agregat”).",
     "Tooltip_MinidoracatTesla_MobileConnector": "Postaw na podłodze i kliknij prawym przyciskiem, aby podłączyć Teslę w promieniu 5 pól. Ładuje z mocą 7,6 kW.<br>Działa w budynku z prądem (z sieci lub z agregatu);<br>gdzie indziej musi stać najwyżej 2 pola od działającego agregatu.<br>Na agregacie ładowanie zużywa paliwo:<br>około jednego zbiornika na pełne ładowanie (zależnie od „Zużycie paliwa przez agregat”)."
 }

@@ -11,7 +11,7 @@
     "Tooltip_MinidoracatTesla_PairPhone": "用這台車的卡片鑰匙授權這支手機",
     "Tooltip_MinidoracatTesla_PairPhoneOwner": "不用卡片鑰匙也能授權：你在車輛管理有這台車的管理權",
     "Tooltip_MinidoracatTesla_PairPhoneHotwired": "不用卡片鑰匙也能授權：這台車已經短接發動過",
-    "Tooltip_MinidoracatTesla_AppNotPaired": "先把手機設為手機鑰匙：帶著卡片鑰匙坐上特斯拉，右鍵手機選「設為手機鑰匙」。裝了車輛管理時，車主不用卡片鑰匙。",
+    "Tooltip_MinidoracatTesla_AppNotPaired": "先把手機設為手機鑰匙：帶著卡片鑰匙坐上特斯拉，右鍵手機選「設為手機鑰匙」。裝了車輛管理時，車主不用卡片鑰匙。沒裝車輛管理時，坐在短接發動過的車上也可以。",
     "Tooltip_MinidoracatTesla_WallConnector": "裝上牆（電工 3 級、螺絲起子）後右鍵，就能插上 6 格內的特斯拉，以 11.5 kW 充電。<br>室內有市電時用市電，也能接範圍內運轉中的發電機。<br>接發電機充電會耗油，充滿一台約用一桶（依沙盒「發電機油耗」等比例增減）。",
     "Tooltip_MinidoracatTesla_MobileConnector": "放在地上後右鍵，就能插上 5 格內的特斯拉，以 7.6 kW 充電。<br>放在有電的室內（市電或發電機供電）就能用；其他地方要放在運轉中的發電機旁（2 格內）。<br>接發電機充電會耗油，充滿一台約用一桶（依沙盒「發電機油耗」等比例增減）。"
 }
