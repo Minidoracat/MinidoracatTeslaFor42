@@ -142,6 +142,7 @@ A charger that works on the floor, no wall needed; slower than the Wall Connecto
 {{img:09-app-home-en.jpg}}
 [list]
 [*] [b]Open it[/b]: right-click the phone key and choose Open Tesla App; the phone appears on the right of the screen. An unpaired phone lists the option in red, with hover help on how to pair it.
+[*] [b]Move it[/b]: hold any spot of the phone that is not a button and drag it elsewhere on the screen; it stays there and opens there next time (remembered on this computer, for each split-screen player).
 [*] [b]Home[/b]: car name, battery and range, a status such as Parked · Locked, and a picture of the car in its paint.
 [*] [b]Four quick icons[/b]: lock / unlock, stop / start charging, open / close the frunk, open / close the liftgate (the trunk on the Model 3); white when on, dim when not available.
 [*] [b]Controller[/b]: D-pad moves, A presses, B goes back home from a page and closes the app from home.

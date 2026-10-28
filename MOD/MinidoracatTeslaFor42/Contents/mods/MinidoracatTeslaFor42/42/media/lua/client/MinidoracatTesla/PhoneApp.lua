@@ -199,6 +199,7 @@ function App:new(playerNum)
     o.playerNum = playerNum
     o.background = false
     o.anchorLeft, o.anchorTop = false, false
+    o.moveWithMouse = true -- drag it by any spot off its buttons and map (ISPanelJoypad.lua:786-816; App:onMouseUp)
     o.page = "home"
     o.scroll, o.scrollMax, o.dy = 0, 0, 0
     o.L, o.n = {}, 0
@@ -232,6 +233,25 @@ function App:pickButton(i)
     return self.b["pick" .. i] or makeButton(self, "pick" .. i, nil)
 end
 
+-- where this player last dropped the phone, relative to their part of the screen: a client file per split-screen
+-- player (Zomboid/Lua), kept across games and characters. Not the character's modData: in MP the server saves its
+-- own copy of the player (GameServer.java:3040, NetworkPlayerManager.java:27), which a client-side write never reaches.
+local function posFile(pn) return "MinidoracatTesla_phone" .. tostring(pn) .. ".txt" end
+local function readPos(pn)
+    local r = getFileReader(posFile(pn), false)
+    if not r then return nil end
+    local line = r:readLine()
+    r:close()
+    local x, y = tostring(line or ""):match("^(%-?%d+) (%-?%d+)")
+    return x and { x = tonumber(x), y = tonumber(y) } or nil
+end
+local function writePos(pn, pos)
+    local w = getFileWriter(posFile(pn), true, false)
+    if not w then return end
+    w:write(pos.x .. " " .. pos.y)
+    w:close()
+end
+
 -- ---------------------------------------------------------------- open / close
 -- opts.keyId / opts.oid: the car to show (VehicleManager's menu passes either); none or unknown: the first car.
 -- Needs a phone key on the player. Returns the app, or nil.
@@ -252,6 +272,7 @@ function App.open(playerNum, opts)
         a:initialise()
         a:instantiate()
         apps[playerNum] = a
+        a.pos = readPos(playerNum)
     end
     a.player, a.active, a.toast, a.scroll, a.listQ = p, true, nil, 0, nil
     a:select(pick)
@@ -293,6 +314,30 @@ function App:close()
     self:setFocus(nil)
     if self.inUI then self:removeFromUIManager(); self.inUI = false end
     self.key, self.oid, self.vmEntry, self.active, self.listQ = nil, nil, nil, false, nil
+    self.moving, self.dragFrom = false, nil -- closed mid-drag (the phone left the inventory): no mouse-up comes
+end
+
+function App:onMouseDown(x, y)
+    self.dragFrom = { self.x, self.y }
+    return ISPanelJoypad.onMouseDown(self, x, y)
+end
+-- the drop: remembered only when it moved (a click on the background is not a drag), kept on screen by layout
+local function dropped(self)
+    local from = self.dragFrom
+    self.dragFrom = nil
+    if not from or (from[1] == self.x and from[2] == self.y) then return end
+    local pn = self.playerNum
+    self.pos = { x = math.floor(self.x - getPlayerScreenLeft(pn)), y = math.floor(self.y - getPlayerScreenTop(pn)) }
+    writePos(pn, self.pos)
+    self:layout()
+end
+function App:onMouseUp(x, y)
+    ISPanelJoypad.onMouseUp(self, x, y)
+    dropped(self)
+end
+function App:onMouseUpOutside(x, y)
+    ISPanelJoypad.onMouseUpOutside(self, x, y)
+    dropped(self)
 end
 
 function App:setPage(page)
@@ -1338,9 +1383,15 @@ function App:layout()
     end
     self:setWidth(w)
     self:setHeight(h)
-    -- right half of this player's screen, centred vertically, like a phone held up
-    self:setX(getPlayerScreenLeft(pn) + math.max(4, sw - w - u(40)))
-    self:setY(getPlayerScreenTop(pn) + math.max(4, math.floor((sh - h) / 2)))
+    -- where the player dropped it (App:onMouseUp), else the right half of this player's screen, centred vertically
+    -- like a phone held up; either way inside their screen (resolution or split screen changed, a taller page).
+    -- Not while being dragged: a poll's layout would snap it back.
+    if not self.moving then
+        local p = self.pos
+        local x, y = p and p.x or (sw - w - u(40)), p and p.y or math.floor((sh - h) / 2)
+        self:setX(getPlayerScreenLeft(pn) + math.max(4, math.min(sw - w - 4, x)))
+        self:setY(getPlayerScreenTop(pn) + math.max(4, math.min(sh - h - 4, y)))
+    end
     -- the joypad's control went away (a summon ended: its Stop is gone): the page's first control instead
     if self.joyfocus and self.focusB and not self.focusB.shown then self:focusFirst() end
 end

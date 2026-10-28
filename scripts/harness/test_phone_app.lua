@@ -707,6 +707,20 @@ Joypad = { AButton = 0, BButton = 1 }
 JoypadState = { players = {} }
 function setJoypadFocus() end
 ISWorldMap = { IsAllowed = function() return true end, ShowWorldMap = function() end, render = function() end, close = function() end }
+-- the phone's dropped spot (PhoneApp posFile): a file store; vanilla ISPanelJoypad's drag (moveWithMouse) sets moving
+local files = {}
+function getFileReader(name)
+    local s = files[name]
+    if not s then return nil end
+    return { readLine = function() local l = s; s = nil; return l end, close = function() end }
+end
+function getFileWriter(name)
+    local buf = {}
+    return { write = function(_, s) buf[#buf + 1] = s end, close = function() files[name] = table.concat(buf) end }
+end
+function ISPanelJoypad:onMouseDown() self.moving = true end
+function ISPanelJoypad:onMouseUp() self.moving = false end
+function ISPanelJoypad:onMouseUpOutside() self.moving = false end
 H.stub("ISUI/ISPanelJoypad")
 H.stub("ISUI/ISButton")
 H.stub("ISUI/Maps/ISWorldMap")
@@ -1124,6 +1138,40 @@ myInv = savedInv
 App.open(0, { keyId = 9001 })
 state()
 a:setPage("home")
+
+-- ---------------------------------------------------------------- dragging the phone (moveWithMouse, its file)
+H.section("phone app: drag")
+check(not a.pos and a.x == SW - a.width - 40, "never dragged: the right half of the screen")
+a:onMouseDown(5, 5)
+a.x, a.y = 300, 200 -- ISPanelJoypad:onMouseMove while the button is held
+a:layout() -- a poll's layout mid-drag
+check(a.x == 300 and a.y == 200, "a layout during the drag does not snap the phone back")
+a:onMouseUp(5, 5)
+check(files["MinidoracatTesla_phone0.txt"] == "300 200" and a.x == 300 and a.y == 200 and not a.moving,
+    "dropped: it stays there, the spot written to this player's file")
+files["MinidoracatTesla_phone0.txt"] = nil
+a:onMouseDown(5, 5)
+a:onMouseUp(5, 5)
+check(files["MinidoracatTesla_phone0.txt"] == nil and a.x == 300, "a click on the background is not a drag: nothing written")
+a:setPage("security")
+check(a.x == 300 and a.y == math.min(200, SH - a.height - 4), "another page: same spot (moved up only if it would not fit)")
+a:setPage("home")
+a:onMouseDown(5, 5)
+a.x, a.y = 1900, -30
+a:onMouseUpOutside(5, 5) -- let go off the game window
+check(a.x == SW - a.width - 4 and a.y == 4 and files["MinidoracatTesla_phone0.txt"] == "1900 -30",
+    "dropped half off the screen: pulled back inside (the drop is kept as it was)")
+a.pos = { x = 300, y = 200 }
+a:onMouseDown(5, 5)
+a:close() -- closed mid-drag: no mouse-up will come
+App.open(0, { keyId = 9001 })
+check(not a.moving and a.x == 300, "closed mid-drag: reopened at its spot, not stuck moving")
+files["MinidoracatTesla_phone1.txt"] = "120 80"
+local b2 = App.open(1, { keyId = 9001 })
+check(b2 ~= a and b2.pos and b2.x == 120 and b2.y == 80, "another split-screen player: their own file, read when their app is made")
+b2:close()
+a.pos = nil
+a:layout()
 
 -- ---------------------------------------------------------------- a busy minute against the server's budget
 -- The real app for a minute (update every 100 ms: its 2 s polls) under a player clicking twice a second without a
