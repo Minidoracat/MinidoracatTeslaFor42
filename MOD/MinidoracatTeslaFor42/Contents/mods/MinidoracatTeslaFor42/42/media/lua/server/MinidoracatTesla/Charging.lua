@@ -15,7 +15,6 @@ C.DEFAULT_TARGET = 90
 C.MAX_STEP_H = 1      -- re-settle at least hourly: generator switched off, car towed away, power back
 C.RETRY_H = 1 / 6     -- charger square not loaded yet: try again next EveryTenMinutes
 local HUGE = 1e30
-local DIRS = { "N", "S", "W", "E" }
 
 local active, activeCount, nextDueHour = {}, 0, HUGE -- active[luaObject] = due world hour
 
@@ -53,46 +52,43 @@ function C.gridOffHour()
     return (shut - (getSandboxOptions():getTimeSinceApo() - 1) * 30) * 24
 end
 
--- fridge rule (ItemContainer.java:2307-2330): grid reaches this square if it is not a no-power zone and it or a
--- neighbour is inside a room. Returns the world hour the grid lasts until (-HUGE = never had it).
-local function gridUntil(sq)
-    if sq:isNoPower() then return -HUGE end -- IsoGridSquare.java:11617
-    local room = sq:getRoom() ~= nil
-    for i = 1, #DIRS do
-        if room then break end
-        local a = sq:getAdjacentSquare(IsoDirections[DIRS[i]])
-        room = a ~= nil and a:getRoom() ~= nil
-    end
-    return room and C.gridOffHour() or -HUGE
+-- world hour the grid powers this charger until (-HUGE = never had it): T.gridReaches (Chargers.lua: the fridge rule,
+-- and a Mobile Connector only indoors)
+local function gridUntil(kind, sq)
+    return T.gridReaches(kind, sq) and C.gridOffHour() or -HUGE
 end
 
-local function genAt(x, y, z)
-    local sq = getCell():getGridSquare(x, y, z)
-    local g = sq and sq:getGenerator() -- IsoGridSquare.java:9713
-    if g and g:isActivated() and g:getFuel() > 0 then return g end
-    return nil
-end
-
--- a running generator powering the charger square: cached square first, else one scan of the generator range.
+-- The generator the charger runs on, cached square first. On the wiring with generator power (T.wiredPower) one scan
+-- of the generator range, the circle vanilla powers (IsoGenerator.isPoweringSquare, IsoGenerator.java:713-719), so the
+-- fuel comes from a generator that can be powering it; otherwise only one a Mobile Connector is plugged straight into
+-- (T.directGenerator, decisions.md 2026-10-28). A cached generator outside genTiles only counts while the square is on
+-- wired power.
 -- ponytail: square scan (41x41x7 at defaults) only when the cache misses; keep a generator index if it shows up in profiles
 function C.findGenerator(o, sq)
-    if not sq:haveElectricity() then return nil end -- IsoGridSquare.java:9696-9700
+    local wired = T.wiredPower(o.kind, sq)
     if o.gx then
-        local g = genAt(o.gx, o.gy, o.gz)
+        local r = T.Chargers[o.kind].genTiles
+        local direct = r and o.gz == o.z and math.abs(o.gx - o.x) <= r and math.abs(o.gy - o.y) <= r
+        local g = (wired or direct) and T.generatorAt(o.gx, o.gy, o.gz)
         if g then return g end
         o.gx, o.gy, o.gz = nil, nil, nil
     end
-    local r = SandboxVars.GeneratorTileRange or 20
-    local vr = SandboxVars.GeneratorVerticalPowerRange or 3
-    for z = o.z - vr, o.z + vr do
-        for x = o.x - r, o.x + r do
-            for y = o.y - r, o.y + r do
-                local g = genAt(x, y, z)
-                if g then o.gx, o.gy, o.gz = x, y, z; return g end
+    if wired then
+        local r = SandboxVars.GeneratorTileRange or 20
+        local vr = SandboxVars.GeneratorVerticalPowerRange or 3
+        for z = o.z - vr, o.z + vr do
+            for x = o.x - r, o.x + r do
+                for y = o.y - r, o.y + r do
+                    local dx, dy = x - o.x, y - o.y
+                    local g = dx * dx + dy * dy <= r * r and T.generatorAt(x, y, z)
+                    if g then o.gx, o.gy, o.gz = x, y, z; return g end
+                end
             end
         end
     end
-    return nil
+    local g, x, y = T.directGenerator(o.kind, o.x, o.y, o.z)
+    if g then o.gx, o.gy, o.gz = x, y, o.z end
+    return g
 end
 
 local function touchVM(vehicle)
@@ -119,8 +115,9 @@ end
 
 -- World hour the charger power recorded in chg (chg.power, Battery.onCharger) lasted until, as of `now`; nil = none.
 -- Grid: the shut-off hour, which an unloaded car can pass between two settles, unless a generator took over then
--- (`generator`: C.settle found one; nil = not looked up, e.g. a sentry event between two settles: the charger
--- square has power after the shut-off only from a generator, IsoGridSquare.haveElectricity). Generator: up to now.
+-- (`generator`: C.settle found one; nil = not looked up, e.g. a sentry event between two settles: after the shut-off
+-- the charger has power only from a generator, through the wiring or plugged straight in, Chargers.lua). Generator:
+-- up to now.
 -- ponytail: a generator counts as running the whole stretch (its fuel is only metered for charging)
 function C.powerUntil(chg, now, generator)
     if not chg or not chg.power then return nil end
@@ -128,7 +125,7 @@ function C.powerUntil(chg, now, generator)
     if not off or now <= off then return now end
     if generator == nil then
         local sq = getCell():getGridSquare(chg.x, chg.y, chg.z)
-        generator = sq ~= nil and sq:haveElectricity()
+        generator = sq ~= nil and (T.wiredPower(chg.kind, sq) or T.directGenerator(chg.kind, chg.x, chg.y, chg.z) ~= nil)
     end
     return generator and now or off
 end
@@ -163,7 +160,7 @@ function C.settle(o, now, here)
     local cap = B.capacity(part)
     local limit = cap * chg.target / 100
     local needH = math.max(0, limit - B.kwh(part)) / kw
-    local gUntil = gridUntil(sq)
+    local gUntil = gridUntil(o.kind, sq)
     local rate = c.fuelPerHour * (SandboxVars.GeneratorFuelConsumption or 0.1)
     local hours = 0
     if chg.paused ~= "stopped" and needH > 0 and now > t0 then
