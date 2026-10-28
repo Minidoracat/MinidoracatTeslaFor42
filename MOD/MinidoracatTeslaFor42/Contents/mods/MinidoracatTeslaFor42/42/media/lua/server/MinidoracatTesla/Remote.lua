@@ -82,7 +82,7 @@ function R.remember(v, create)
     r.km = math.floor(kwh * T.kmPerKwh(v) + 0.5)
     r.locked = v:areAllDoorsLocked()
     r.sentry = md.sentry ~= nil
-    r.drive = v:isEngineRunning()
+    r.drive = v:isEngineRunning() and not chg -- plugged in = Park, as the HUD gear (HUD.lua:276)
     r.frunk, r.trunk = doorOpen(v, "EngineDoor"), doorOpen(v, "TrunkDoor")
     r.chg = chargeState(chg)
     r.kw, r.target, r.mins = nil, nil, nil

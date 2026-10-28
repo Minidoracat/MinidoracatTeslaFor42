@@ -367,7 +367,12 @@ local want = T.Battery.chargeEstimate(gas, gas:getModData().chg, F.hours)
 check(want > before and r.pct == math.floor(want * 100 / T.Battery.capacity(gas) + 0.5) and r.chg == "charging",
     "charging: record pct = the HUD projection since the last settlement")
 check(r.mins and r.mins > 0, "charging: minutes left from the projection")
+local wasRunning = v.running
+v.running = true
+check(R.remember(v).drive == false, "motor on while plugged in: the app says Parked, like the HUD's P")
 gas:getModData().chg = nil
+check(R.remember(v).drive == true, "motor on, unplugged: Driving")
+v.running = wasRunning
 -- the battery update also runs for VirtualVehicle (no getKeyId): no record, the drain goes on
 local realRemember, remembered = R.remember, 0
 R.remember = function() remembered = remembered + 1 end

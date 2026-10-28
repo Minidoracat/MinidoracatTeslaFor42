@@ -69,6 +69,7 @@ You learn the recipe automatically at Electrical 3; craft it next to a work surf
 [/list]
 [h3]Mobile Connector[/h3]
 A charger that works on the floor, no wall needed; slower than the Wall Connector.
+{{img:15-mobile-gen-en.jpg}}
 [table]
 [tr][th]Recipe[/th][th]Tools (kept)[/th][th]Materials[/th][th]Result[/th][/tr]
 [tr][td]Make Tesla Mobile Connector[/td][td]Screwdriver[/td][td]Car Battery Charger 1, Electrical Wire 3, Scrap Electronics 1[/td][td]Tesla Mobile Connector (Gen 3) 1[/td][/tr]
@@ -296,6 +297,7 @@ Options elsewhere that also affect Teslas:
 [*] There is no recipe and you do not spawn with one; the vanilla cordless phone cannot be paired.
 [/list]
 [h3]I lost my key card. What now?[/h3]
+{{img:18-hotwire-pair-en.jpg}}
 [list]
 [*] [b]You have a phone key[/b]: it is your spare key: door handles, starting from a bag and the app all still work.
 [*] [b]The car is claimed in Vehicle Manager[/b]: the owner can sit in it and set up a new phone as the phone key (the server needs Vehicle Manager's Virtual key for owners on; shared players still need the card); the owner and anyone allowed to drive can also unlock and start it with Vehicle Manager's virtual key.
@@ -306,6 +308,7 @@ Options elsewhere that also affect Teslas:
 [*] No: key cards and phone keys work like vanilla keys; an unclaimed car opens for whoever holds them. To protect it, claim it with Vehicle Manager.
 [/list]
 [h3]What can I do without the key?[/h3]
+{{img:17-locked-menu-en.jpg}}
 Without Vehicle Manager:
 [list]
 [*] [b]Car unlocked[/b]: plug in or unplug the charge cable, set the target or stop charging on the charge card, and pick up or rotate a charger the car is plugged into.
@@ -319,7 +322,6 @@ Without Vehicle Manager:
 [*] [b]Who owns a charger[/b]: whoever placed it, and the owner and members of the safehouse it stands in.
 [*] [b]The owner can[/b]: unplug the cable, press Stop on the charge card, and pick up or rotate the charger, whether that car is locked or not, with or without Vehicle Manager.
 [*] [b]The owner cannot[/b]: plug in a car they have no right to, or change that car's target or resume its charging.
-[*] [b]Older chargers[/b]: chargers placed before this feature have no owner on record and follow the normal rules; pick one up and place it again to record you (if you can pick it up).
 [/list]
 [h3]What does Summon need?[/h3]
 [list]
@@ -334,6 +336,7 @@ Without Vehicle Manager:
 [*] Exception: the walk-away lock with the phone key only ever locks, and does not ask Vehicle Manager.
 [/list]
 [h3]Why does the charger have no power?[/h3]
+{{img:16-mobile-nopower-en.jpg}}
 [list]
 [*] Wall Connector on the grid: its square or one next to it must be inside a house, and the grid still up.
 [*] Wall Connector after the power cut: a running, fuelled generator nearby (the vanilla generator range).
