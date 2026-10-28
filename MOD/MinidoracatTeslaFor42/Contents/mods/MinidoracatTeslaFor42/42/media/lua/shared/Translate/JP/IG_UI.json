@@ -1,5 +1,6 @@
 {
     "IGUI_MinidoracatTesla_Deny_NOT_OWNER": "この車を使う権限がありません",
+    "IGUI_MinidoracatTesla_Deny_IDENTITY_UNVERIFIED": "アカウントを確認できません。Teslaの通知は届きません。管理者に連絡してください",
     "IGUI_MinidoracatTesla_Deny_ENGINE_ON": "先に車の電源を切ってください",
     "IGUI_MinidoracatTesla_Deny_NOT_INSIDE": "車内に座っている必要があります",
     "IGUI_MinidoracatTesla_Deny_OCCUPIED": "全員が車から降りている必要があります",

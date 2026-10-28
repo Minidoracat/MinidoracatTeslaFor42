@@ -1,5 +1,6 @@
 {
     "IGUI_MinidoracatTesla_Deny_NOT_OWNER": "Nie masz uprawnień do korzystania z tego samochodu",
+    "IGUI_MinidoracatTesla_Deny_IDENTITY_UNVERIFIED": "Nie udało się zweryfikować twojego konta: powiadomienia Tesli nie będą do ciebie docierać. Skontaktuj się z administratorem",
     "IGUI_MinidoracatTesla_Deny_ENGINE_ON": "Najpierw wyłącz samochód",
     "IGUI_MinidoracatTesla_Deny_NOT_INSIDE": "Musisz siedzieć w środku",
     "IGUI_MinidoracatTesla_Deny_OCCUPIED": "W samochodzie nie może nikogo być",

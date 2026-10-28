@@ -1,5 +1,6 @@
 {
     "IGUI_MinidoracatTesla_Deny_NOT_OWNER": "你没有这辆车的使用权",
+    "IGUI_MinidoracatTesla_Deny_IDENTITY_UNVERIFIED": "无法确认你的账号身份：特斯拉通知不会发给你，请联系管理员",
     "IGUI_MinidoracatTesla_Deny_ENGINE_ON": "请先熄火",
     "IGUI_MinidoracatTesla_Deny_NOT_INSIDE": "要坐在车上",
     "IGUI_MinidoracatTesla_Deny_OCCUPIED": "车上不能有人",
