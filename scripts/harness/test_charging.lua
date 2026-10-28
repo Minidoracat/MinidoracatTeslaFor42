@@ -711,7 +711,16 @@ MinidoracatVehicleManagerAPI = { canUse = function() return false, "NOT_AUTHORIZ
 check(select(2, T.mayUnplug(mal, kv)) == "CHARGER_OWNER", "VehicleManager says no: the charger's owner still unplugs")
 MinidoracatVehicleManagerAPI = nil
 klo.owner = nil
-C.unplug(kOwner, kv)
+-- unplug is not a remote: near the car or near the charger (queueUnplug walks to the charger); DistTo is Manhattan
+local far = H.player({ name = "far", keys = { [77] = true }, x = 930, y = 930 })
+H.sent = {}
+C.unplug(far, kv)
+check(kchg() ~= nil and lastDeny() == "TOO_FAR", "unplug far from both the car and the charger: TOO_FAR")
+local kx = kv.x
+kv.x = 912 -- the car's centre past T.NEAR (Manhattan) from someone standing at the charger
+C.unplug(H.player({ name = "side", keys = { [77] = true }, x = 899, y = 899 }), kv)
+check(kchg() == nil, "unplug standing at the charger, the car's centre past T.NEAR: allowed")
+kv.x = kx
 MinidoracatVehicleManagerAPI = { canUse = function(p, veh, perm) return perm == "FUEL" and p == kOwner, p == kOwner and "OWNER" or "NOT_AUTHORIZED" end }
 for _, locked in ipairs({ true, false }) do
     kv.locked, mal.keys[77], kv.hotwired = locked, true, true

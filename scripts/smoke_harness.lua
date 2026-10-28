@@ -223,7 +223,11 @@ function H.player(o)
     function p:getX() return self.x end
     function p:getY() return self.y end
     function p:getZ() return self.z end
-    function p:DistTo(o2) local dx, dy = self.x - o2:getX(), self.y - o2:getY(); return math.sqrt(dx * dx + dy * dy) end
+    function p:DistTo(a, b) -- the engine's: Manhattan, an object or x, y (IsoMovingObject.java:601-607, IsoUtils.java:44-46)
+        local x, y = a, b
+        if type(a) == "table" then x, y = a:getX(), a:getY() end
+        return math.abs(self.x - x) + math.abs(self.y - y)
+    end
     function p:getSteamID() return self.sid or 0 end -- H.player{ sid = } (IsoPlayer.java:6412; 0 off Steam)
     function p:isDead() return self.dead == true end
     function p:getInventory()
