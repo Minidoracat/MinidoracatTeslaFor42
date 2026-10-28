@@ -102,6 +102,14 @@ local function disable(option, textKey)
     tip.description = getText(textKey)
     option.toolTip = tip
 end
+-- grey a plug / unplug row the way the server would refuse it: the shared cable rule (T.mayUseCable, Chargers.lua)
+local function notOwner(option, player, vehicle)
+    local ok, why = T.mayUseCable(player, vehicle)
+    if ok then return false end
+    disable(option, "IGUI_MinidoracatTesla_Deny_NOT_OWNER")
+    if why then option.toolTip.description = option.toolTip.description .. " (" .. tostring(why) .. ")" end
+    return true
+end
 
 local function onFill(playerNum, context, worldObjects, test)
     if test then return end
@@ -116,7 +124,7 @@ local function onFill(playerNum, context, worldObjects, test)
     local o = C.chargerAt(sq:getX(), sq:getY(), sq:getZ())
     local plugged = o and o.vid and getVehicleById(o.vid)
     if plugged then
-        context:addOption(getText("ContextMenu_MinidoracatTesla_Unplug"), player, C.queueUnplug, plugged)
+        notOwner(context:addOption(getText("ContextMenu_MinidoracatTesla_Unplug"), player, C.queueUnplug, plugged), player, plugged)
         context:addOption(getText("ContextMenu_MinidoracatTesla_ChargeStatus"), player, C.showStatus, plugged)
         return
     end
@@ -129,16 +137,14 @@ local function onFill(playerNum, context, worldObjects, test)
             any = true
             local name = getText("IGUI_VehicleName" .. v:getScript():getName())
             local opt = context:addOption(getText("ContextMenu_MinidoracatTesla_PlugInto", name), player, C.queuePlug, v, charger)
-            local ok, why = T.authorized(player, v, "FUEL")
-            if not ok then
-                disable(opt, "IGUI_MinidoracatTesla_Deny_NOT_OWNER")
-                if why then opt.toolTip.description = opt.toolTip.description .. " (" .. tostring(why) .. ")" end
-            elseif not part:getInventoryItem() then
-                disable(opt, "IGUI_MinidoracatTesla_Deny_NO_PACK")
-            elseif not T.stopped(v) then
-                disable(opt, "IGUI_MinidoracatTesla_Deny_MOVING")
-            elseif not T.cableReaches(info.kind, sq:getX(), sq:getY(), sq:getZ(), v) then
-                disable(opt, "IGUI_MinidoracatTesla_Deny_CABLE_SHORT")
+            if not notOwner(opt, player, v) then
+                if not part:getInventoryItem() then
+                    disable(opt, "IGUI_MinidoracatTesla_Deny_NO_PACK")
+                elseif not T.stopped(v) then
+                    disable(opt, "IGUI_MinidoracatTesla_Deny_MOVING")
+                elseif not T.cableReaches(info.kind, sq:getX(), sq:getY(), sq:getZ(), v) then
+                    disable(opt, "IGUI_MinidoracatTesla_Deny_CABLE_SHORT")
+                end
             end
         end
     end

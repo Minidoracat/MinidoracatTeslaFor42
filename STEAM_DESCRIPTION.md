@@ -3,7 +3,7 @@
 
 [hr][/hr]
 
-把特斯拉 Model Y 與 Model 3 開進末日：用電池行駛、在壁掛式充電座充電，還能用手機 App 遠端控制。
+把特斯拉 Model Y 與 Model 3 開進末日：用電池行駛、在壁掛式充電座或行動充電器充電，還能用手機 App 遠端控制。
 
 [h2]📦 需要安裝[/h2]
 [list]
@@ -19,14 +19,14 @@
 [olist]
 [*] 在停車場找到特斯拉，拿到它的車鑰匙就會變成卡片鑰匙
 [*] 坐上駕駛座，點儀表左上角的電源鍵發動
-[*] 電工 3 級做一座壁掛式充電座裝上有電的牆，右鍵充電座插上充電線
+[*] 電工 3 級做一座壁掛式充電座裝上有電的牆，或把行動充電器放在地上，右鍵它插上充電線
 [*] 帶著卡片坐在車上，右鍵智慧型手機選「設為手機鑰匙」，就能用 Tesla App
 [/olist]
 
 [h2]✨ 主要功能[/h2]
 [list]
 [*] [b]兩台頂規特斯拉[/b]：Model Y、Model 3 Performance，各 8 色
-[*] [b]電池與充電[/b]：開車耗電、煞車回收電力，在壁掛式充電座充電
+[*] [b]電池與充電[/b]：開車耗電、煞車回收電力，在壁掛式充電座或放在地上的行動充電器充電
 [*] [b]特斯拉風格儀表[/b]：車速、電量與續航，點車子圖就能開關車門
 [*] [b]卡片與手機鑰匙[/b]：帶著手機走近就解鎖，走遠自動上鎖
 [*] [b]Tesla App[/b]：遠端上鎖、找車、看充電，一支手機管多台車
@@ -52,7 +52,7 @@ MOD 永遠免費。喜歡的話可以請我喝杯咖啡，贊助會用在伺服�
 
 車身模型改作自 Sketchfab，已修改，原作者沒有認可本 MOD：Model Y 是 BloxBloger 的 [url=https://sketchfab.com/3d-models/2026-tesla-model-y-performance-8a0bc252f9da4015a02a7bd99efd4847]2026 Tesla Model Y Performance[/url]（[url=http://creativecommons.org/licenses/by-nc/4.0/]CC BY-NC 4.0[/url]）；Model 3 是 RBLXSupercars 的 [url=https://sketchfab.com/3d-models/2024-tesla-model-3-fd22be415215453693d67e33aa7812d0]2024 Tesla Model 3[/url]（brandonleong28 [url=https://sketchfab.com/3d-models/tesla-model-3-2024-36c52f3f89f6439c90310f14e8ff33f2]轉載[/url]，[url=http://creativecommons.org/licenses/by/4.0/]CC BY 4.0[/url]）。
 
-Tesla、Tesla 標誌、Model Y、Model 3、Wall Connector、Sentry Mode、Camp Mode 是 Tesla, Inc. 的商標。本 MOD 是免費的非官方愛好者作品，和 Tesla, Inc. 沒有關係，也沒有得到 Tesla, Inc. 的認可。
+Tesla、Tesla 標誌、Model Y、Model 3、Wall Connector、Mobile Connector、Sentry Mode、Camp Mode 是 Tesla, Inc. 的商標。本 MOD 是免費的非官方愛好者作品，和 Tesla, Inc. 沒有關係，也沒有得到 Tesla, Inc. 的認可。
 
 [b]#Minidoracat[/b]
 

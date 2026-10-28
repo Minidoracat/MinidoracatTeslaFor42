@@ -267,6 +267,9 @@ ISLockVehicleDoor = { complete = function(self) -- ISLockVehicleDoor.lua:28-46
     if not self.part:getDoor():isLockBroken() then self.part:getDoor():setLocked(true) end
     return true
 end }
+-- vanilla floor / wall placement check (ISMoveableSpriteProps.lua:1736); Chargers.lua wraps it. `free` stands in for
+-- everything vanilla checks.
+ISMoveableSpriteProps = { canPlaceMoveableInternal = function(self) return self.free ~= false end }
 
 -- ---------------------------------------------------------------- loader
 local loaded = {}
@@ -285,6 +288,7 @@ function H.stub(name) loaded[name] = true end
 for _, m in ipairs({ "ISOpenVehicleDoor", "ISCloseVehicleDoor", "ISLockDoors", "ISLockVehicleDoor" }) do
     H.stub("Vehicles/TimedActions/" .. m)
 end
+H.stub("Moveables/ISMoveableSpriteProps")
 
 -- ---------------------------------------------------------------- checks
 function H.check(ok, label)

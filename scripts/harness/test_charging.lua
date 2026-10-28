@@ -78,12 +78,12 @@ local T, B, C = MinidoracatTesla, MinidoracatTesla.Battery, MinidoracatTesla.Cha
 local SYS = SMinidoracatTeslaChargerSystem.instance
 check(SYS ~= nil and SYS.systemName == "MinidoracatTeslaCharger", "charger system registered under its contract name")
 check(SYS.saved[1] == "kind" and SYS.synced[3] == "vid", "saves kind/facing, syncs kind/facing/vid")
-check(#H.onLoadSprites == 4, "chunk load hook covers the 4 Wall Connector sprites")
+check(#H.onLoadSprites == 8, "chunk load hook covers the 4 Wall Connector + 4 Mobile Connector sprites")
 
 -- a placed charger at (200,200,0) facing S, inside a room
-local function charger(x, y, o)
+local function charger(x, y, o, sprite)
     local sq = square(x, y, 0, o)
-    local iso = { sq = sq, sprite = "minidoracat_tesla_01_0" }
+    local iso = { sq = sq, sprite = sprite or "minidoracat_tesla_01_0" }
     function iso:getSquare() return self.sq end
     function iso:getSprite() local n = self.sprite; return { getName = function() return n end } end
     local lo = SMinidoracatTeslaCharger:new(SYS, { gx_ = x, gy_ = y, gz_ = 0 })
@@ -205,7 +205,8 @@ check(C.powerUntil(lit, 338) == 338,
 check(chg2.power == "generator", "after the shut-off: power = generator")
 local rate = WC.fuelPerHour * 0.1
 check(near(B.kwh(B.part(v2)), 3 * 11.5, 1e-6), "1 h grid + 2 h generator = 3 h of charge")
-check(near(genSq.gen.fuel, 10 - 2 * rate, 1e-6), "generator burned 0.13 x GeneratorFuelConsumption per hour for 2 h")
+check(near(genSq.gen.fuel, 10 - 2 * rate, 1e-6) and near(rate, 11.5 * 100 / 78.4 * 0.1, 1e-9),
+    "generator burned 11.5 kW x GEN_FUEL_PER_KWH x GeneratorFuelConsumption per hour for 2 h")
 check(chg2.src == "generator" and chg2.paused == nil, "source switched to generator")
 genSq.gen.fuel = rate * 0.5 -- half an hour of fuel left
 local k2 = B.kwh(B.part(v2))
@@ -315,3 +316,123 @@ T.Sentry.settle = realSentry
 H.section("charger removed")
 lo5:aboutToRemoveFromSystem()
 check(B.part(reg):getModData().chg == nil and not lo5.vid, "picking up the charger unplugs the car")
+
+H.section("mobile connector")
+local MC = T.Chargers.MobileConnector
+check(MC.kw == 7.6 and MC.cableTiles == 5 and MC.item == "Base.MinidoracatTesla_MobileConnector",
+    "Mobile Connector: 7.6 kW, 5-tile cable (official 32 A / 240 V, 6 m)")
+check(near(WC.fuelPerHour, 11.5 * 100 / 78.4, 1e-12) and near(MC.fuelPerHour, 7.6 * 100 / 78.4, 1e-12)
+    and near(MC.fuelPerHour / MC.kw, T.GEN_FUEL_PER_KWH, 1e-15), "fuel per hour = kW x the one GEN_FUEL_PER_KWH constant")
+check(near(T.GEN_FUEL_PER_KWH * 78.4 * 0.1, 10, 1e-9),
+    "user 2026-10-28: at the default GeneratorFuelConsumption 0.1, a Model Y 0 -> 100 % (78.4 kWh) burns one 10 L tank")
+local mo, miso = charger(800, 800, { room = {} }, "minidoracat_tesla_01_10")
+check(mo.kind == "MobileConnector" and mo.facing == "N", "sprite 10 is a north-facing Mobile Connector")
+local mp = H.player({ name = "own", keys = { [77] = true }, x = 801, y = 801 })
+local mv = car(10, 800.5 + 5.2, 800.5)
+H.sent = {}
+C.plug(mp, mv, miso)
+check(H.sent[#H.sent].args.reason == "CABLE_SHORT" and B.part(mv):getModData().chg == nil, "5.2 tiles: beyond the 5-tile cable, refused")
+mv.x = 800.5 + 4.8
+H.sent = {}
+C.plug(H.player({ name = "mal", x = 801, y = 801 }), mv, miso)
+check(H.sent[#H.sent].args.reason == "NOT_OWNER" and B.part(mv):getModData().chg == nil, "in reach but no key: refused NOT_OWNER, nothing changes")
+H.setHours(150)
+C.plug(mp, mv, miso)
+local mchg = B.part(mv):getModData().chg
+check(mchg ~= nil and mchg.kind == "MobileConnector" and near(mchg.kw, 7.6, 1e-9) and mchg.src == "grid",
+    "4.8 tiles indoors on the grid: plugged, chg.kw 7.6 (the card and the app read it)")
+H.setHours(152)
+C.settle(mo, H.hours())
+check(near(B.kwh(B.part(mv)), 10 + 2 * 7.6, 1e-6), "2 h on the grid adds 15.2 kWh")
+C.unplug(mp, mv)
+-- outdoors, no generator: no power, no charge
+local mo2, miso2 = charger(820, 800, {}, "minidoracat_tesla_01_8")
+local mv2 = car(5, 822.5, 800.5)
+H.setHours(160)
+C.plug(H.player({ name = "own", keys = { [77] = true }, x = 821, y = 801 }), mv2, miso2)
+H.setHours(165)
+C.settle(mo2, H.hours())
+local mchg2 = B.part(mv2):getModData().chg
+check(mchg2.paused == "nopower" and mchg2.power == nil and B.kwh(B.part(mv2)) == 5, "outdoors without a generator: paused=nopower, no energy")
+-- outdoors next to a running generator: charges and burns kW x GEN_FUEL_PER_KWH x GeneratorFuelConsumption per hour
+local mo3, miso3 = charger(840, 800, { elec = true }, "minidoracat_tesla_01_9")
+local mgen = square(845, 800, 0)
+mgen.gen = generator(10, true)
+local mv3 = car(5, 842.5, 800.5)
+H.setHours(170)
+C.plug(H.player({ name = "own", keys = { [77] = true }, x = 841, y = 801 }), mv3, miso3)
+H.setHours(173)
+C.settle(mo3, H.hours())
+check(B.part(mv3):getModData().chg.src == "generator" and near(B.kwh(B.part(mv3)), 5 + 3 * 7.6, 1e-6), "generator: 3 h at 7.6 kW")
+check(near(mgen.gen.fuel, 10 - 3 * 7.6 * T.GEN_FUEL_PER_KWH * 0.1, 1e-9), "generator burned 7.6 x GEN_FUEL_PER_KWH x 0.1 per hour")
+mgen.gen.on = false
+local k3 = B.kwh(B.part(mv3))
+H.setHours(175)
+C.settle(mo3, H.hours())
+check(B.kwh(B.part(mv3)) == k3 and B.part(mv3):getModData().chg.paused == "nopower", "generator switched off: no charge, paused=nopower")
+
+H.section("one charger a square")
+local function placeSq(...)
+    local list = {}
+    for _, n in ipairs({ ... }) do
+        list[#list + 1] = { getSprite = function() return { getName = function() return n end } end }
+    end
+    return { getObjects = function() return { size = function() return #list end, get = function(_, i) return list[i + 1] end } end }
+end
+local function props(sprite, free) return setmetatable({ spriteName = sprite, free = free }, { __index = ISMoveableSpriteProps }) end
+local mcS, wcS = "minidoracat_tesla_01_8", "minidoracat_tesla_01_0"
+check(props(mcS):canPlaceMoveableInternal(nil, placeSq("floors_01_0")) == true, "Mobile Connector on a free floor: vanilla decides (true)")
+check(props(mcS, false):canPlaceMoveableInternal(nil, placeSq()) == false, "vanilla says no: still no")
+check(props(mcS):canPlaceMoveableInternal(nil, placeSq("floors_01_0", mcS)) == false, "second Mobile Connector on the same square: refused")
+check(props(mcS):canPlaceMoveableInternal(nil, placeSq(wcS)) == false
+    and props(wcS):canPlaceMoveableInternal(nil, placeSq("minidoracat_tesla_01_11")) == false,
+    "Wall Connector and Mobile Connector never share a square, either order")
+check(props("furniture_seating_01_0"):canPlaceMoveableInternal(nil, placeSq(mcS)) == true, "other furniture next to a charger: untouched")
+
+H.section("mobile connector loot")
+ProceduralDistributions = { list = {
+    CarSupplyBatteries = { items = { "CarBattery3", 6, "CarBatteryCharger", 10 } },
+    GasStoreEmergency = { items = { "CarBatteryCharger", 6 }, junk = { items = { "CarBatteryCharger", 1 } } },
+    KitchenCutlery = { items = { "Fork", 10 } },
+} }
+H.fire("OnPostDistributionMerge")
+H.fire("OnPostDistributionMerge") -- a reload must not stack our pairs
+local L = ProceduralDistributions.list
+local function weightOf(items)
+    local n, w = 0, nil
+    for i = 1, #items - 1, 2 do if items[i] == MC.item then n, w = n + 1, items[i + 1] end end
+    return n, w
+end
+local n1, w1 = weightOf(L.CarSupplyBatteries.items)
+local n2, w2 = weightOf(L.GasStoreEmergency.items)
+local n3, w3 = weightOf(L.GasStoreEmergency.junk.items)
+check(n1 == 1 and w1 == 5 and n2 == 1 and w2 == 3 and n3 == 1 and w3 == 0.5,
+    "every list with the car battery charger gets one Mobile Connector at half its weight, also after a reload")
+check(weightOf(L.KitchenCutlery.items) == 0, "lists without the car battery charger stay as they are")
+ProceduralDistributions = nil
+
+H.section("mobile connector in a new car's trunk")
+local function withTrunk(v)
+    local box = { items = {} }
+    function box:AddItem(t) self.items[#self.items + 1] = t end
+    v.parts.TruckBed = { getItemContainer = function() return box end }
+    return box
+end
+local pct0 = T.MOBILE_IN_TRUNK_PCT
+check(pct0 == 25, "default chance: 25 % of new cars")
+for _, script in ipairs({ "Base.MinidoracatTesla_ModelY", "Base.MinidoracatTesla_Model3" }) do
+    T.MOBILE_IN_TRUNK_PCT = 100
+    local nv = H.vehicle({ script = script })
+    local box = withTrunk(nv)
+    T.Create.Motor(nv, nv:getPartById("Engine"))
+    check(#box.items == 1 and box.items[1] == MC.item, script .. ": new car at 100 %: one Mobile Connector in the trunk")
+    nv._class = "BaseVehicle"
+    H.fire("OnSpawnVehicleEnd", nv) -- every later load fires this, never the part create
+    check(#box.items == 1, script .. ": loading the car again adds nothing")
+    T.MOBILE_IN_TRUNK_PCT = 0
+    local nv0 = H.vehicle({ script = script })
+    local box0 = withTrunk(nv0)
+    T.Create.Motor(nv0, nv0:getPartById("Engine"))
+    check(#box0.items == 0, script .. ": at 0 %: an empty trunk")
+end
+T.MOBILE_IN_TRUNK_PCT = pct0

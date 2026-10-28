@@ -3,7 +3,7 @@
     "Sandbox_MinidoracatTesla_RangeMultiplier": "Range multiplier",
     "Sandbox_MinidoracatTesla_RangeMultiplier_tooltip": "How far a full battery drives.\n1.0 = as far as a full tank in a vanilla car of the same class; 2.0 = twice as far.",
     "Sandbox_MinidoracatTesla_ChargeSpeedMultiplier": "Charging speed multiplier",
-    "Sandbox_MinidoracatTesla_ChargeSpeedMultiplier_tooltip": "1.0 = official charger power (Wall Connector 11.5 kW); 2.0 = twice as fast.",
+    "Sandbox_MinidoracatTesla_ChargeSpeedMultiplier_tooltip": "1.0 = official charger power (Wall Connector 11.5 kW, Mobile Connector 7.6 kW)\n2.0 = twice as fast.",
     "Sandbox_MinidoracatTesla_CampMinBattery": "Camp Mode battery limit",
     "Sandbox_MinidoracatTesla_CampMinBattery_tooltip": "Camp Mode cannot be turned on below this charge and turns off when the battery drops under it.\nLike the real car's Low Power Mode: 10–20%%, default 20."
 }

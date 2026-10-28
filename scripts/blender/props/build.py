@@ -2,7 +2,8 @@
 # requires-python = ">=3.11"
 # dependencies = ["pillow>=10"]
 # ///
-"""Tesla Gen 3 Wall Connector + charge cable: Blender renders -> .pack + .tiles + spriteModels + meshes + icons.
+"""Tesla Gen 3 Wall Connector + Mobile Connector + charge cable: Blender renders -> .pack + .tiles + spriteModels +
+meshes + icons.
 
 usage (repo root):
   uv run scripts/blender/props/build.py            # textures -> Blender (model, export, cells, icons) -> MOD files
@@ -10,15 +11,19 @@ usage (repo root):
 
 Contract (knowledge base references/charger-art.md; Lua: shared/MinidoracatTesla/Chargers.lua cableExit,
 client/MinidoracatTesla/Cable.lua):
-  tileset minidoracat_tesla_01, tiledef MinidoracatTesla_tiles 7431, pack MinidoracatTesla; index 0..3 = Facing S E N W.
-  Moveables WallObject, no wall flags (ISMoveableSpriteProps.lua:132-147,1782-1855); the engine links the 4 faces by
-  GroupName + CustomName (IsoWorld.java:1064-1160).
-  spriteModels (common/media only, SpriteModelManager.java:30-41): model origin = tile centre on the floor; the mesh is
-  built for Facing S (back on the tile's north edge, front toward PZ south) with rotate (0,180,0); E/N/W turn it.
+  tileset minidoracat_tesla_01, tiledef MinidoracatTesla_tiles 7431, pack MinidoracatTesla. Sprite names are published:
+  index 0..3 = Wall Connector, 8..11 = Mobile Connector (Facing S E N W each); 16..19 reserved (Supercharger).
+  Wall Connector: Moveables WallObject, no wall flags (ISMoveableSpriteProps.lua:132-147,1782-1855). Mobile Connector:
+  default MoveType Object (on the floor, ISMoveableSpriteProps.lua:143,1747-1772), no tools. The engine links the 4
+  faces of each by GroupName + CustomName (IsoWorld.java:1064-1160).
+  spriteModels (common/media only, SpriteModelManager.java:30-41): model origin = tile centre on the floor; meshes are
+  built for Facing S (Wall Connector back on the tile's north edge, front toward PZ south) with rotate (0,180,0);
+  E/N/W turn it.
 """
 from __future__ import annotations
 
 import argparse
+import math
 import re
 import shutil
 import subprocess
@@ -44,31 +49,56 @@ FILE_NUMBER = 7431                 # family registry pz-family-docs/repos.md (74
 TILESET = "minidoracat_tesla_01"
 TILESET_NUMBER = 1
 CELL_W, CELL_H = 128, 256
-FACINGS = ("S", "E", "N", "W")     # sprite index 0..3
+FACINGS = ("S", "E", "N", "W")     # sprite index base + 0..3
 # spriteModels rotate per facing (engine transform: tiles-and-sprite-models.md section 5; props_blender.pz_matrix):
 # S (0,180,0) Blender +X = PZ east, +Y = north; E (0,-90,0) +X = north, +Y = west; N (0,0,0) +X = west, +Y = south;
 # W (0,90,0) +X = south, +Y = east. The mesh's back sits at Blender +Y, so it lands on the wall each facing needs.
 XFORM = {"S": (0.0, 180.0, 0.0), "E": (0.0, -90.0, 0.0), "N": (0.0, 0.0, 0.0), "W": (0.0, 90.0, 0.0)}
 WC_MODEL = "MinidoracatTesla_WallConnector"
+MC_MODEL = "MinidoracatTesla_MobileConnector"
 CABLE_MODELS = ("MinidoracatTesla_CableHang", "MinidoracatTesla_CableFloor")   # + one plug per car: cable_models()
-ITEM_ICONS = {"MinidoracatTesla_WallConnector": "wc_icon.png", "MinidoracatTesla_Cable": "cable_icon.png"}
+ITEM_ICONS = {WC_MODEL: "wc_icon.png", "MinidoracatTesla_Cable": "cable_icon.png", MC_MODEL: "mc_icon.png"}
 
 
-def tile_props(facing: str) -> dict[str, str]:
+def wc_props(facing: str) -> dict[str, str]:
     # Moveables: IsMoveAble/CustomName/GroupName/Facing/MoveType/CustomItem/Pick*/PlaceTool
     # (ISMoveableSpriteProps.lua:132-147); Electrician = screwdriver + Electricity level (ISMoveableDefinitions.lua:313,
     # ISMoveableSpriteProps.lua:485-492; PickUpLevel gates pick up and place). No WallN/WallW: placed as a plain
     # IsoObject (ISMoveableSpriteProps.lua:2330-2346). No CanScrap: the crafted charger cannot be scrapped for parts.
     return {"IsMoveAble": "", "CustomName": "Wall Connector", "GroupName": "Tesla", "Facing": facing,
-            "MoveType": "WallObject", "CustomItem": "Base.MinidoracatTesla_WallConnector",
+            "MoveType": "WallObject", "CustomItem": f"Base.{WC_MODEL}",
             "PickUpTool": "Electrician", "PlaceTool": "Electrician", "PickUpLevel": "3"}
 
-# atlas rects shared with props_blender.py (PANEL, SW, CSW): 256 px Wall Connector, 64 px cable. Model textures load
-# at 256 by default (items-and-icons.md section 5), so the Wall Connector ships at 256.
+
+def mc_props(facing: str) -> dict[str, str]:
+    # No MoveType: default Object, placed on the floor (ISMoveableSpriteProps.lua:143,1747-1772); no tools or level:
+    # picked up and placed by hand.
+    return {"IsMoveAble": "", "CustomName": "Mobile Connector", "GroupName": "Tesla", "Facing": facing,
+            "CustomItem": f"Base.{MC_MODEL}"}
+
+
+DEVICES = {0: ("wc", WC_MODEL, wc_props), 8: ("mc", MC_MODEL, mc_props)}   # first sprite index -> cell, model, props
+SPRITES = [(base + k, cell, model, props(f), f) for base, (cell, model, props) in DEVICES.items()
+           for k, f in enumerate(FACINGS)]                                  # (index, temp cell, model, tile props, facing)
+
+
+def tile_list() -> list[dict[str, str]]:
+    """One props dict per index 0..last; the unused indexes in between are empty tiles, as in vanilla tilesets."""
+    tiles = [{} for _ in range(SPRITES[-1][0] + 1)]
+    for i, _, _, props, _ in SPRITES:
+        tiles[i] = props
+    return tiles
+
+
+# atlas rects shared with props_blender.py (PANEL, SW, CSW, MTOP, MSW): 256 px Wall Connector and Mobile Connector,
+# 64 px cable. Model textures load at 256 by default (items-and-icons.md section 5), so the chargers ship at 256.
 PANEL = (8, 2, 120, 254)
 SW = {"white": ((136, 8), (240, 242, 244)), "black": ((196, 8), (32, 33, 36)), "rubber": ((136, 68), (40, 41, 44)),
       "handle": ((196, 68), (26, 26, 28)), "holster": ((136, 128), (14, 14, 16))}
 CSW = {"rubber": ((0, 0), (40, 41, 44)), "handle": ((32, 0), (24, 24, 26)), "ring": ((0, 32), (92, 96, 100))}
+MTOP = (8, 8, 120, 248)            # Mobile Connector 256 px atlas: box top
+MSW = {"black": ((136, 8), (30, 31, 34)), "rubber": ((136, 68), (36, 37, 40)), "metal": ((196, 8), (176, 178, 182)),
+       "adapter": ((196, 68), (26, 26, 28))}
 
 
 def wordmark(d, x0: float, y0: float, w: float, h: float, fill) -> None:
@@ -124,7 +154,25 @@ def textures() -> None:
     for (x, y), rgb in CSW.values():
         cd.rectangle((x, y, x + 31, y + 31), fill=rgb)
     c.save(exp / "MinidoracatTesla_Cable.png", optimize=True)
-
+    m = Image.new("RGB", (256 * k, 256 * k), (30, 31, 34))
+    d = ImageDraw.Draw(m)
+    for (x, y), rgb in MSW.values():
+        d.rectangle((x * k, y * k, (x + 56) * k, (y + 56) * k), fill=rgb)
+    x0, y0, x1, y1 = (v * k for v in MTOP)
+    cx, cy, pw, ph = (x0 + x1) / 2, (y0 + y1) / 2, x1 - x0, y1 - y0
+    for py in range(y0, y1, k):                    # matte black top, a soft sheen toward the middle
+        for px in range(x0, x1, k):
+            g = round(52 - 20 * min(1.0, math.hypot((px - cx) / pw * 2, (py - cy) / ph * 2)))
+            d.rectangle((px, py, px + k - 1, py + k - 1), fill=(g, g + 1, g + 4))
+    lw, ly, grey = pw * 0.40, y0 + ph * 0.16, (150, 154, 160)   # T logo (north half): arched bar + tapering stem
+    d.polygon([(cx - lw / 2, ly + lw * 0.12), (cx, ly), (cx + lw / 2, ly + lw * 0.12), (cx + lw / 2, ly + lw * 0.22),
+               (cx, ly + lw * 0.12), (cx - lw / 2, ly + lw * 0.22)], fill=grey)
+    d.polygon([(cx - lw * 0.10, ly + lw * 0.20), (cx + lw * 0.10, ly + lw * 0.20), (cx + lw * 0.035, ly + lw * 1.1),
+               (cx - lw * 0.035, ly + lw * 1.1)], fill=grey)
+    for i in range(5):                             # status lights: a row of 5 green LEDs down the middle (south half)
+        sy = y0 + ph * (0.54 + 0.065 * i)
+        d.rounded_rectangle((cx - 5 * k, sy, cx + 5 * k, sy + ph * 0.052), radius=2 * k, fill=(80, 235, 110))
+    m.resize((256, 256), Image.LANCZOS).save(exp / f"{MC_MODEL}.png", optimize=True)
 
 
 def fmt3(v) -> str:
@@ -135,19 +183,19 @@ def sprite_models() -> str:
     tiles = "".join(
         "        tile\n        {\n"
         f"            xy = {i % 8} {i // 8},\n"
-        f"            modelScript = Base.{WC_MODEL},\n"
+        f"            modelScript = Base.{model},\n"
         "            translate = 0.0000 0.0000 0.0000,\n"
         f"            rotate = {fmt3(XFORM[f])},\n"
         "            scale = 1.0000,\n"
-        "        }\n" for i, f in enumerate(FACINGS))
+        "        }\n" for i, _, model, _, f in SPRITES)
     return ("spriteModel\n{\n    VERSION = 1,\n\n    tileset\n    {\n"
             f"        name = {TILESET},\n\n" + tiles + "    }\n}\n")
 
 
 def assets() -> list[tuple[Path, Path]]:
     exp = TEMP / "export"
-    out = [(exp / f"{WC_MODEL}.glb", MEDIA / "models_X" / "IsoObject" / f"{WC_MODEL}.glb"),
-           (exp / f"{WC_MODEL}.png", MEDIA / "textures" / "IsoObject" / f"{WC_MODEL}.png")]
+    out = [(exp / f"{m}{ext}", MEDIA / sub / "IsoObject" / f"{m}{ext}")
+           for m in (WC_MODEL, MC_MODEL) for sub, ext in (("models_X", ".glb"), ("textures", ".png"))]
     out += [(exp / f"{m}.fbx", MEDIA / "models_X" / "WorldItems" / f"{m}.fbx") for m in cable_models()]
     out.append((exp / "MinidoracatTesla_Cable.png", MEDIA / "textures" / "WorldItems" / "MinidoracatTesla_Cable.png"))
     return out
@@ -181,19 +229,20 @@ def build(skip_blender: bool) -> None:
     if not skip_blender:
         textures()
         run_blender()
-    cells = [Image.open(TEMP / "cells" / f"wc_{f}.png").convert("RGBA") for f in FACINGS]
-    for c in cells:
+    cells = [(i, Image.open(TEMP / "cells" / f"{cell}_{f}.png").convert("RGBA")) for i, cell, _, _, f in SPRITES]
+    for _, c in cells:
         assert c.size == (CELL_W, CELL_H), c.size
-    sheet = Image.new("RGBA", (CELL_W * 8, CELL_H), (0, 0, 0, 0))
+    sheet = Image.new("RGBA", (CELL_W * 8, CELL_H * (SPRITES[-1][0] // 8 + 1)), (0, 0, 0, 0))
     entries = []
-    for i, c in enumerate(cells):
-        sheet.paste(c, (i * CELL_W, 0))
+    for i, c in cells:
+        cx, cy = i % 8 * CELL_W, i // 8 * CELL_H
+        sheet.paste(c, (cx, cy))
         x0, y0, x1, y1 = c.getbbox() or (0, 0, 1, 1)
-        entries.append((f"{TILESET}_{i}", i * CELL_W + x0, y0, x1 - x0, y1 - y0, x0, y0, CELL_W, CELL_H))
+        entries.append((f"{TILESET}_{i}", cx + x0, cy + y0, x1 - x0, y1 - y0, x0, y0, CELL_W, CELL_H))
     (MEDIA / "texturepacks").mkdir(parents=True, exist_ok=True)
     (MEDIA / "texturepacks" / f"{PACK}.pack").write_bytes(pzfmt.write_pack([(f"{PACK}0", sheet, entries)]))
-    ts = {"name": TILESET, "image": f"{TILESET}.png", "w": 8, "h": 1, "number": TILESET_NUMBER,
-          "tiles": [tile_props(f) for f in FACINGS]}
+    ts = {"name": TILESET, "image": f"{TILESET}.png", "w": 8, "h": sheet.height // CELL_H, "number": TILESET_NUMBER,
+          "tiles": tile_list()}
     (MEDIA / f"{TILEDEF}.tiles").write_bytes(pzfmt.write_tiles([ts]))
     if skip_blender:
         print(f"wrote {PACK}.pack + {TILEDEF}.tiles only (--skip-blender)")
@@ -231,10 +280,11 @@ def cable_models() -> tuple[str, ...]:
 
 
 def check_geometry() -> None:
-    """One set of numbers: props_blender.py meshes = build.py atlas/spriteModels = Cable.lua = Chargers.lua cableExit
-    = Core.lua T.Specs plug."""
+    """One set of numbers: props_blender.py meshes = build.py atlas/spriteModels = Cable.lua = Chargers.lua sprites and
+    cableExit = Core.lua T.Specs plug."""
     b = blender_consts()
-    assert b["XFORM"] == XFORM and b["PANEL"] == PANEL, "props_blender.py XFORM/PANEL differ from build.py"
+    assert b["XFORM"] == XFORM and b["PANEL"] == PANEL and b["MTOP"] == MTOP, "props_blender.py XFORM/PANEL/MTOP differ"
+    assert b["MSW"] == {k: xy for k, (xy, _) in MSW.items()}, "Mobile Connector atlas"
     assert b["SW"] == {k: xy for k, (xy, _) in SW.items()} and b["CSW"] == {k: xy for k, (xy, _) in CSW.items()}, "atlas"
     b["EXIT_Z"] = b["WC_Z0"]
     lua = (MEDIA / "lua" / "client" / "MinidoracatTesla" / "Cable.lua").read_text(encoding="utf-8")
@@ -249,24 +299,39 @@ def check_geometry() -> None:
     items = (MEDIA / "scripts" / "items" / "MinidoracatTesla_cable.txt").read_text(encoding="ascii")
     for m in specs:
         assert re.search(rf"item {m}\n\s*\{{[^}}]*WorldStaticModel = Base\.{m},[^}}]*Hidden = true,", items), f"item {m}"
-    want = (0.0, -b["EXIT_Y"], round(b["EXIT_Z"] / 2.44949, 3))
-    ch = MEDIA / "lua" / "shared" / "MinidoracatTesla" / "Chargers.lua"
-    if ch.exists():
-        m = re.search(r"cableExit\s*=\s*\{\s*([-0-9.]+)\s*,\s*([-0-9.]+)\s*,\s*([-0-9.]+)\s*\}", ch.read_text(encoding="utf-8"))
-        assert m and tuple(float(x) for x in m.groups()) == want, f"Chargers.lua cableExit {m and m.groups()} != {want}"
-    else:
-        print(f"  note: Chargers.lua not written yet; cableExit must be {{ {want[0]:g}, {want[1]:g}, {want[2]:g} }}")
+    # Chargers.lua: each kind's sprites = our tile names per facing, cableExit = the mesh's exit point
+    ch = (MEDIA / "lua" / "shared" / "MinidoracatTesla" / "Chargers.lua").read_text(encoding="utf-8")
+    blocks = dict(re.findall(r'kind = "(\w+)",(.*?)\n    \},', ch, re.S))
+    kinds = {model.removeprefix("MinidoracatTesla_"): model for _, model, _ in DEVICES.values()}
+    assert blocks.keys() == kinds.keys() and ch.count("cableExit =") == len(kinds), (blocks.keys(), kinds)
+    want_exit = {"WallConnector": (0.0, -b["EXIT_Y"], round(b["EXIT_Z"] / 2.44949, 3)),
+                 "MobileConnector": (0.0, -b["MC_EXIT_Y"], 0.0)}
+    for kind, body in blocks.items():
+        want = {f: f"{TILESET}_{i}" for i, _, model, _, f in SPRITES if model == kinds[kind]}
+        got = dict(re.findall(r'(\w) = "(\w+)"', re.search(r"sprites = \{([^}]*)\}", body).group(1)))
+        assert got == want, f"Chargers.lua {kind} sprites {got} != {want}"
+        m = re.search(r"cableExit\s*=\s*\{\s*([-0-9.]+)\s*,\s*([-0-9.]+)\s*,\s*([-0-9.]+)\s*\}", body)
+        got = m and tuple(float(x) for x in m.groups())
+        assert got == want_exit[kind], f"Chargers.lua {kind} cableExit {got} != {want_exit[kind]}"
+        # the item placed from the inventory: Chargers.lua item = tile CustomItem, and the item script's WorldObjectSprite
+        # is this device's Facing S sprite (ISMoveablesAction finds the item by it; a wrong one places the wrong tile, or nothing)
+        assert re.search(rf'item = "Base\.{kinds[kind]}"', body), f"Chargers.lua {kind} item"
+        moveables = (MEDIA / "scripts" / "items" / "MinidoracatTesla_items.txt").read_text(encoding="ascii")
+        block = re.search(rf"item {kinds[kind]}\n\s*\{{([^}}]*)\}}", moveables)
+        assert block and f"WorldObjectSprite = {want['S']}," in block.group(1) and "ItemType = base:moveable," in block.group(1), \
+            f"items.txt {kinds[kind]}: moveable with WorldObjectSprite = {want['S']}"
 
 
 def check() -> None:
     tiles = pzfmt.read_tiles((MEDIA / f"{TILEDEF}.tiles").read_bytes())
     assert [t["name"] for t in tiles] == [TILESET] and tiles[0]["number"] == TILESET_NUMBER, tiles
-    assert tiles[0]["tiles"] == [tile_props(f) for f in FACINGS], tiles[0]["tiles"]
+    assert tiles[0]["tiles"] == tile_list(), tiles[0]["tiles"]
+    assert [i for i, *_ in SPRITES] == [0, 1, 2, 3, 8, 9, 10, 11], "published sprite indexes changed"
     for t in tiles[0]["tiles"]:
         assert not {"WallN", "WallW", "solid", "solidtrans", "BlocksPlacement", "CanScrap"} & t.keys(), t
     pages = pzfmt.read_pack((MEDIA / "texturepacks" / f"{PACK}.pack").read_bytes())
     names = [e[0] for p in pages for e in p["entries"]]
-    assert names == [f"{TILESET}_{i}" for i in range(len(FACINGS))], names
+    assert names == [f"{TILESET}_{i}" for i, *_ in SPRITES], names
     for p in pages:
         for e in p["entries"]:
             assert e[7:] == (CELL_W, CELL_H) and e[3] > 8 and e[4] > 8, e     # not an empty cell
@@ -274,10 +339,13 @@ def check() -> None:
     assert f"pack={PACK}\n" in info and f"tiledef={TILEDEF} {FILE_NUMBER}\n" in info, "mod.info pack=/tiledef="
     sm = (COMMON / "spriteModels.txt").read_text(encoding="ascii")
     assert sm == sprite_models(), "spriteModels.txt is stale: rebuild"
-    rot = dict(re.findall(r"xy = (\d) 0,\s*modelScript = Base\.\w+,\s*translate = [^,]+,\s*rotate = ([^,]+),", sm))
-    assert rot == {str(i): fmt3(XFORM[f]) for i, f in enumerate(FACINGS)}, rot
+    xyz = re.findall(r"xy = (\d) (\d),\s*modelScript = Base\.(\w+),\s*translate = [^,]+,\s*rotate = ([^,]+),", sm)
+    assert xyz == [(str(i % 8), str(i // 8), m, fmt3(XFORM[f])) for i, _, m, _, f in SPRITES], xyz
     models = (MEDIA / "scripts" / "models" / "MinidoracatTesla_props.txt").read_text(encoding="ascii")
-    for m in (WC_MODEL, *cable_models()):
+    for m in (WC_MODEL, MC_MODEL):                 # static IsoObject models for spriteModels
+        assert re.search(rf"model {m}\n\s*\{{\s*mesh = IsoObject/{m},\s*texture = IsoObject/{m},\s*static = true,"
+                         rf"\s*scale = 1\.0,\s*undoCoreScale = true,\s*\}}", models), m
+    for m in cable_models():
         assert f"model {m}\n" in models, m
     for _, dst in assets():
         assert dst.exists() and dst.stat().st_size > 0, dst

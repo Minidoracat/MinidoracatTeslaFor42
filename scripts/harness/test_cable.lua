@@ -184,6 +184,31 @@ check(#lines2d == 6 and H.near(z3, T.Specs["Base.MinidoracatTesla_Model3"].plug.
 opt3d = true
 T.onChargerChanged(o3, true)
 
+-- ---- Mobile Connector: cable leaves at floor level (cableExit h = 0), no hang segment ----
+local mm = car(51.2, 24.0, 0.3)
+local om = { x = 50, y = 20, z = 0, kind = "MobileConnector", facing = "S", vid = mm:getId() }
+T.onChargerChanged(om)
+frame()
+local mine, hangs = {}, 0
+for _, d in ipairs(draws) do
+    if d.x > 49 then
+        mine[#mine + 1] = d
+        if d.item.type == "Base.MinidoracatTesla_CableHang" then hangs = hangs + 1 end
+    end
+end
+local g = C.solve(om)
+check(hangs == 0 and #mine >= 2 and mine[1].item.type == "Base.MinidoracatTesla_CableFloor"
+    and H.near(g.ax, 50.5) and H.near(g.ay, 20.7) and H.near(g.ax, g.ex) and H.near(g.ay, g.ey),
+    "cable: Mobile Connector draws no hang; the floor run starts at its exit (50.5, 20.7)")
+opt3d = false
+frame()
+local m2d = {}
+for _, l in ipairs(lines2d) do if l[1] > 49 then m2d[#m2d + 1] = l end end
+check(#m2d == 2 and H.near(m2d[1][1], 50.5) and H.near(m2d[1][2], 20.7) and H.near(m2d[1][3], 0),
+    "cable: 2D Mobile Connector: 2 lines (floor, plug), starting on the floor at the exit")
+opt3d = true
+T.onChargerChanged(om, true)
+
 -- ---- car not loaded on this client / dragged too far ----
 H.removeVehicle(v)
 frame()

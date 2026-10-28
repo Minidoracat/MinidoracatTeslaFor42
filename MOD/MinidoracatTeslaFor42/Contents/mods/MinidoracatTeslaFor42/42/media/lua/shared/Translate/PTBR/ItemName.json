@@ -2,6 +2,7 @@
     "Base.MinidoracatTesla_ModelYBattery": "Bateria de alta tensão Model Y Performance (78,4 kWh)",
     "Base.MinidoracatTesla_Model3Battery": "Bateria de alta tensão Model 3 Performance (78,4 kWh)",
     "Base.MinidoracatTesla_WallConnector": "Tesla Wall Connector (3ª ger.)",
+    "Base.MinidoracatTesla_MobileConnector": "Tesla Mobile Connector (3ª ger.)",
     "Base.MinidoracatTesla_CableHang": "Cabo de carregamento (trecho da parede)",
     "Base.MinidoracatTesla_CableFloor": "Cabo de carregamento (trecho no chão)",
     "Base.MinidoracatTesla_CablePlug": "Cabo de carregamento (conector)",

@@ -51,6 +51,22 @@ module Base
         Icon = MinidoracatTesla_WallConnector,
         Weight = 4.0,
         WorldObjectSprite = minidoracat_tesla_01_0,
+        Tooltip = Tooltip_MinidoracatTesla_WallConnector,
+    }
+
+    /* Gen 3 Mobile Connector: same moveable setup, placed on the floor with bare hands (the tile has no tool or skill). */
+    /* 2.4 kg control box plus cable and bag (official.md 1.2). Loot: Charging.lua, half the car battery charger's weight; */
+    /* MechanicsItem puts it in the same Mechanics loot type as that charger (ItemPickerJava.java:1563). New-car trunk: */
+    /* Battery.lua Create.Motor. */
+    item MinidoracatTesla_MobileConnector
+    {
+        DisplayCategory = Electronics,
+        ItemType = base:moveable,
+        Icon = MinidoracatTesla_MobileConnector,
+        Weight = 3.0,
+        MechanicsItem = true,
+        WorldObjectSprite = minidoracat_tesla_01_8,
+        Tooltip = Tooltip_MinidoracatTesla_MobileConnector,
     }
 
     /* Key card: a Tesla's CarKey becomes this when a player has it (server/MinidoracatTesla/KeyActions.lua); same keyId, */

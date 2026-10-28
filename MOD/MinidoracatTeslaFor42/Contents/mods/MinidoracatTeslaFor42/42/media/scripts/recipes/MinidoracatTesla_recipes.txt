@@ -26,6 +26,31 @@ module Base
         }
     }
 
+    /* Mobile Connector: rework vanilla's car battery charger, Electricity 2 (decisions.md 2026-10-28): its */
+    /* transformer and case, wire for the 6 m cable, scrap for the control board. Same format as above. */
+    craftRecipe MinidoracatTesla_MakeMobileConnector
+    {
+        timedAction = MakingElectrical,
+        time = 300,
+        NeedToBeLearn = true,
+        SkillRequired = Electricity:2,
+        Tags = AnySurfaceCraft,
+        category = Electrical,
+        AutoLearnAny = Electricity:2,
+        xpAward = Electricity:15,
+        inputs
+        {
+            item 1 tags[base:screwdriver] mode:keep flags[Prop1],
+            item 1 [Base.CarBatteryCharger],
+            item 3 [Base.ElectricWire],
+            item 1 [Base.ElectronicsScrap],
+        }
+        outputs
+        {
+            item 1 Base.MinidoracatTesla_MobileConnector,
+        }
+    }
+
     /* Drive Unit Parts: Electricity 4 (motor windings, inverter board); 2 parts a craft. Same format as above. */
     craftRecipe MinidoracatTesla_MakeDriveUnitParts
     {

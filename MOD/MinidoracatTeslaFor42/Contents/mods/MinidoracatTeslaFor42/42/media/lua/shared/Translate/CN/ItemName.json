@@ -2,6 +2,7 @@
     "Base.MinidoracatTesla_ModelYBattery": "Model Y Performance 高压电池（78.4 kWh）",
     "Base.MinidoracatTesla_Model3Battery": "Model 3 Performance 高压电池（78.4 kWh）",
     "Base.MinidoracatTesla_WallConnector": "特斯拉第三代家庭充电桩",
+    "Base.MinidoracatTesla_MobileConnector": "特斯拉第三代移动充电连接器",
     "Base.MinidoracatTesla_CableHang": "充电线（垂下段）",
     "Base.MinidoracatTesla_CableFloor": "充电线（地面段）",
     "Base.MinidoracatTesla_CablePlug": "充电线（插头段）",

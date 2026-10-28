@@ -1,6 +1,6 @@
 <!-- Steam guide source (English). The full description lives in this guide; the Workshop page only has a summary. Format and sync: pz-family-docs/release.md "完整說明：Steam 指南" -->
 <!-- 標題：📖 Minidoracat Tesla Collection Mod Guide: Cars, Charging, Keys and the App -->
-<!-- 摘要：A picture guide to Minidoracat Tesla Collection: the Model Y and Model 3 Performance, the battery and the Wall Connector, the Tesla-style dashboard, key cards and phone keys, the Tesla app and Summon, Sentry and Camp Mode, drive unit parts, and how it works with Vehicle Manager, the MiniMap and AutoDrive, plus the sandbox options. -->
+<!-- 摘要：A picture guide to Minidoracat Tesla Collection: the Model Y and Model 3 Performance, the battery, the Wall Connector and the Mobile Connector, the Tesla-style dashboard, key cards and phone keys, the Tesla app and Summon, Sentry and Camp Mode, drive unit parts, and how it works with Vehicle Manager, the MiniMap and AutoDrive, plus the sandbox options. -->
 <!-- Screenshots: docs/screenshots/steam/en/, shot by guide-shots-sp in the family repo's e2e/MinidoracatTeslaFor42 (Summon shots: phone-summon-sp) -->
 === 🚀 Quick start
 [b]中文版：[/b] [url=XXXX]Minidoracat Tesla Collection 完整說明[/url]
@@ -11,7 +11,7 @@ https://steamcommunity.com/sharedfiles/filedetails/?id=XXXX
 [*] [b]Find a car[/b]: Teslas park in parking lots; the Model Y also turns up in upscale neighbourhoods.
 [*] [b]Get the key[/b]: a Tesla's car key turns into that car's Key Card when you pick it up.
 [*] [b]Start it[/b]: sit in the driver's seat and click the power button at the top left of the dashboard (or start it the vanilla way).
-[*] [b]Charge it[/b]: with Electrical 3, make a Tesla Wall Connector (Gen 3), mount it on a powered wall and right-click it to plug in the charge cable.
+[*] [b]Charge it[/b]: with Electrical 3, make a Tesla Wall Connector (Gen 3) and mount it on a powered wall, or set a Tesla Mobile Connector (Gen 3) on the floor; right-click it to plug in the charge cable.
 [*] [b]Phone key[/b]: sit in the car with the key card, right-click a Smartphone and choose Set Up as Phone Key; then right-click the phone key and choose Open Tesla App.
 [/olist]
 [list]
@@ -54,7 +54,7 @@ https://steamcommunity.com/sharedfiles/filedetails/?id=XXXX
 [*] [b]Power in the car[/b]: climate, Camp Mode and Sentry Mode use the main battery too; plugged into a powered charger, the charger supplies them instead.
 [*] [b]Multiplayer speed limit[/b]: the server setting SpeedLimit defaults to 70 km/h; neither vanilla cars nor Teslas go faster.
 [/list]
-=== 🧰 Charging: the Wall Connector and the cable
+=== 🧰 Charging: the Wall Connector, the Mobile Connector and the cable
 {{img:02-cable-en.jpg}}
 [h3]Make a charger[/h3]
 You learn the recipe automatically at Electrical 3; craft it next to a work surface such as a table.
@@ -63,20 +63,31 @@ You learn the recipe automatically at Electrical 3; craft it next to a work surf
 [tr][td]Make Tesla Wall Connector[/td][td]Screwdriver, Pliers[/td][td]Electrical Wire 4, Scrap Electronics 3, Steel Sheet - Small 2, Screws 4[/td][td]Tesla Wall Connector (Gen 3) 1[/td][/tr]
 [/table]
 [list]
-[*] [b]Mount it[/b]: place it like vanilla furniture, with Electrical 3 and a screwdriver in hand; picking it up needs the same.
+[*] [b]Mount it[/b]: place it like vanilla furniture, with Electrical 3 and a screwdriver in hand; picking it up needs the same. One charger a square (Wall Connector or Mobile Connector).
 [*] [b]Grid power[/b]: the charger uses the grid when its square or a square next to it is inside a house (the same rule as a vanilla fridge); houses players build do not count.
-[*] [b]Generator[/b]: after the power goes out it burns the fuel of a running generator nearby (the vanilla generator range), at the sandbox Generator Fuel Consumption rate.
+[*] [b]Generator[/b]: after the power goes out it burns the fuel of a running generator nearby (the vanilla generator range). Charging burns that generator's fuel: about one tank for a full charge, scaled by the sandbox option Generator Fuel Consumption.
+[/list]
+[h3]Mobile Connector[/h3]
+A charger that works on the floor, no wall needed; slower than the Wall Connector.
+[table]
+[tr][th]Recipe[/th][th]Tools (kept)[/th][th]Materials[/th][th]Result[/th][/tr]
+[tr][td]Make Tesla Mobile Connector[/td][td]Screwdriver[/td][td]Car Battery Charger 1, Electrical Wire 3, Scrap Electronics 1[/td][td]Tesla Mobile Connector (Gen 3) 1[/td][/tr]
+[/table]
+[list]
+[*] [b]Getting one[/b]: Electrical 2 learns the recipe (made next to a work surface); it also turns up on the shelves that stock car battery chargers (car supply stores, garages, gas stations and so on; not in other vehicles' trunks) at about half their chance (both are Mechanics loot); a newly spawned Tesla has a one-in-four chance of one in its Rear Trunk.
+[*] [b]On the floor[/b]: place it like vanilla furniture; you place and pick it up with bare hands, no tool or skill needed.
+[*] [b]Power[/b]: the same rules as the Wall Connector: grid power inside a house; after the power cut or outdoors it needs a running generator nearby. On a generator a full charge also takes about one tank of fuel; it charges slower, so per hour it burns about 2/3 of what the Wall Connector does.
 [/list]
 {{img:03-charger-menu-en.jpg}}
 [h3]Plug in and charge[/h3]
 [list]
-[*] [b]Plug in[/b]: stand at the charger, right-click it and choose Plug in charge cable: <car>; every Tesla the cable reaches is listed (about 6 tiles).
+[*] [b]Plug in[/b]: stand at the charger, right-click it and choose Plug in charge cable: <car>; every Tesla the cable reaches is listed (cable length: about 6 tiles for the Wall Connector, 5 for the Mobile Connector).
 [*] [b]Motor on is fine[/b]: the car only has to stand still; you can also start it while plugged in.
 [*] [b]No driving off plugged in[/b]: throttle or reverse says Unplug the charge cable first and the dashboard shows P; unplug and drive away.
 [*] [b]Auto unplug[/b]: towed or pushed past the cable's reach, the car is unplugged and you are told.
-[*] [b]Charging speed[/b]: 11.5 kW; empty to 90% takes about 6 in-game hours; the sandbox option Charging speed multiplier changes it.
+[*] [b]Charging speed[/b]: 11.5 kW at the Wall Connector, 7.6 kW at the Mobile Connector; empty to 90% takes about 6 and 9 in-game hours; the sandbox option Charging speed multiplier changes it.
 [*] [b]Time skips count[/b]: charge is settled by the hours that passed, so sleeping or fast-forwarding loses nothing.
-[*] [b]Other players see the cable[/b]: it hangs from the charger to the ground and runs to the car's charge port.
+[*] [b]Other players see the cable[/b]: it hangs from the Wall Connector to the ground (it leaves the Mobile Connector right on the ground) and runs to the car's charge port.
 [/list]
 {{img:04-charging-en.jpg}}
 [h3]The charge card[/h3]
@@ -246,7 +257,7 @@ On the Tesla Collection page of the sandbox settings.
 [table]
 [tr][th]Option[/th][th]Default[/th][th]Range[/th][th]What it does[/th][/tr]
 [tr][td]Range multiplier[/td][td]1.0[/td][td]0.25–4.0[/td][td]How far a full battery drives; 1.0 = as far as a full tank in a vanilla car of the same class[/td][/tr]
-[tr][td]Charging speed multiplier[/td][td]1.0[/td][td]0.1–10.0[/td][td]1.0 = official charger power (Wall Connector 11.5 kW)[/td][/tr]
+[tr][td]Charging speed multiplier[/td][td]1.0[/td][td]0.1–10.0[/td][td]1.0 = official charger power (Wall Connector 11.5 kW, Mobile Connector 7.6 kW)[/td][/tr]
 [tr][td]Camp Mode battery limit[/td][td]20[/td][td]10–20 (%)[/td][td]Below this charge Camp Mode cannot turn on, and while camping it turns off[/td][/tr]
 [/table]
 Options elsewhere that also affect Teslas:
@@ -326,7 +337,7 @@ Options elsewhere that also affect Teslas:
 [h3]What should I do before removing this mod?[/h3]
 [list]
 [*] [b]What disappears[/b]: key cards, phones and phone keys, drive unit parts and charger items vanish on the next load; the Teslas in the save lose their car type, the game turns them into other vehicles, and Front Trunk contents are lost.
-[*] [b]Chargers on walls[/b]: they turn into invisible objects that cannot be picked up and stay on that square.
+[*] [b]Placed chargers[/b]: Wall Connectors and Mobile Connectors turn into invisible objects that cannot be picked up and stay on that square.
 [*] [b]Steps[/b]: unplug the cables and pick up every charger; take everything out of the Teslas' Front and Rear Trunks; then remove the mod.
 [*] [b]Leftover data is harmless[/b]: the server's Tesla save (app records, offline notices) stays but nothing reads it.
 [/list]

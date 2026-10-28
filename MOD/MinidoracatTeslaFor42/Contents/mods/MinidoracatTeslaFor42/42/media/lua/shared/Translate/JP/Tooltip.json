@@ -10,5 +10,7 @@
     "Tooltip_MinidoracatTesla_TapCard": "運転席ドアまで歩いてキーカードをリーダーにタッチします",
     "Tooltip_MinidoracatTesla_PairPhone": "この車のキーカードでこのスマートフォンを認証します",
     "Tooltip_MinidoracatTesla_PairPhoneOwner": "キーカードなしで認証できます：車両管理でこの車の管理権があります",
-    "Tooltip_MinidoracatTesla_AppNotPaired": "先にペアリングしてください：キーカードを持って Tesla に乗り、スマートフォンを右クリックして「電話キーとして設定」を選びます。車両管理が入っていれば、車の持ち主はキーカード不要です。"
+    "Tooltip_MinidoracatTesla_AppNotPaired": "先にペアリングしてください：キーカードを持って Tesla に乗り、スマートフォンを右クリックして「電話キーとして設定」を選びます。車両管理が入っていれば、車の持ち主はキーカード不要です。",
+    "Tooltip_MinidoracatTesla_WallConnector": "壁に付けて（電気工学 3、スクリュードライバー）右クリックすると、6 マス以内の Tesla を 11.5 kW で充電できます。<br>屋内なら送電網の電気で、範囲内で動いている発電機からも給電できます。<br>発電機で充電すると燃料を使い、満充電で約 1 タンク（サンドボックスの「発電機の燃料消費」に比例）。",
+    "Tooltip_MinidoracatTesla_MobileConnector": "床に置いて右クリックすると、5 マス以内の Tesla を 7.6 kW で充電できます。<br>屋内なら送電網の電気で、範囲内で動いている発電機からも給電できます。<br>発電機で充電すると燃料を使い、満充電で約 1 タンク（サンドボックスの「発電機の燃料消費」に比例）。"
 }

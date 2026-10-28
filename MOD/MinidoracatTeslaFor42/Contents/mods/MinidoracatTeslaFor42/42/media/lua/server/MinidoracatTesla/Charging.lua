@@ -261,7 +261,7 @@ function C.plug(player, v, iso)
     if not T.stopped(v) then return T.deny(player, "MOVING", vid) end -- the motor may run: plugging in shifts to Park (owner's manual, Shifting)
     if player:DistTo(v) > T.NEAR then return T.deny(player, "TOO_FAR", vid) end
     if not T.cableReaches(o.kind, o.x, o.y, o.z, v) then return T.deny(player, "CABLE_SHORT", vid) end
-    local ok, why = T.authorized(player, v, "FUEL")
+    local ok, why = T.mayUseCable(player, v)
     if not ok then
         T.log("plug refused for " .. tostring(player:getUsername()) .. ": " .. tostring(why))
         return T.deny(player, "NOT_OWNER", vid)
@@ -274,7 +274,7 @@ function C.unplug(player, v)
     local chg = part and part:getModData().chg
     local vid = v and v:getId()
     if not chg then return T.deny(player, "NOT_PLUGGED", vid) end
-    local ok, why = T.authorized(player, v, "FUEL")
+    local ok, why = T.mayUseCable(player, v)
     if not ok then
         T.log("unplug refused for " .. tostring(player:getUsername()) .. ": " .. tostring(why))
         return T.deny(player, "NOT_OWNER", vid)
@@ -390,3 +390,33 @@ T.ServerCommands.chargeStop = function(player, args)
     chg.paused = "stopped"
     C.settle(o, T.hours())
 end
+
+-- ---- loot: the Mobile Connector sits in every procedural list that has vanilla's car battery charger, at half its
+-- weight (decisions.md 2026-10-28; ProceduralDistributions.lua: CarSupplyBatteries 10, GasStoreEmergency 6, ...).
+-- Our pairs go first so a reload does not stack them (KeyActions.lua phone loot).
+C.LOOT_ITEM = "Base.MinidoracatTesla_MobileConnector"
+C.LOOT_SHARE = 0.5
+local function addLoot(items)
+    for i = #items - 1, 1, -2 do
+        if items[i] == C.LOOT_ITEM then table.remove(items, i + 1); table.remove(items, i) end
+    end
+    local w = 0
+    for i = 1, #items - 1, 2 do
+        if items[i] == "CarBatteryCharger" or items[i] == "Base.CarBatteryCharger" then w = w + (tonumber(items[i + 1]) or 0) end
+    end
+    if w > 0 then
+        table.insert(items, C.LOOT_ITEM)
+        table.insert(items, w * C.LOOT_SHARE)
+    end
+end
+function C.injectLoot()
+    local lists = ProceduralDistributions and ProceduralDistributions.list
+    if not lists then return end
+    for _, l in pairs(lists) do
+        if type(l) == "table" then
+            if type(l.items) == "table" then addLoot(l.items) end
+            if type(l.junk) == "table" and type(l.junk.items) == "table" then addLoot(l.junk.items) end
+        end
+    end
+end
+Events.OnPostDistributionMerge.Add(C.injectLoot)
