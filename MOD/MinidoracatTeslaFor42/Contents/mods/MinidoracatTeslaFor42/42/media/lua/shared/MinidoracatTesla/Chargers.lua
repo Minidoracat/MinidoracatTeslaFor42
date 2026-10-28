@@ -195,7 +195,8 @@ end
 -- The car on the cable of charger object o at x, y, z: its `vid` names a loaded car whose own record (battery part chg)
 -- is this square. nil when nothing is plugged in (vid nil / false); nil, "NOT_LOADED" when vid names no such car:
 -- unloaded, or the id now belongs to another car (ids are handed out again, VehicleIDMap.java:49-62,91-95).
--- Charging.lua plug (busy) and relink (taken) ask the same, so a reused id neither blocks the charger nor unplugs.
+-- Charging.lua plug (busy) and relink (taken) and the charger's menu ask the same: a reused id neither blocks plugging
+-- in nor unplugs the car coming back. (Charging.lua settle / onChargerRemoved still read vid alone.)
 function T.chargerCar(o, x, y, z)
     if not (o and o.vid) then return nil end
     local v = getVehicleById(o.vid)

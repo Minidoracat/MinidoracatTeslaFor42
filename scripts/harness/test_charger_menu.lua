@@ -44,6 +44,7 @@ end
 local v = H.vehicle({ kwh = 20 })
 for _, k in ipairs({ { "WallConnector", "minidoracat_tesla_01_0", 10 }, { "MobileConnector", "minidoracat_tesla_01_8", 20 } }) do
     local iso = charger(k[3], k[2], v:getId())
+    T.Battery.part(v):getModData().chg = { x = k[3], y = 5, z = 0 } -- the car's side of the cable (T.chargerCar)
     v.locked = true
     local own = menu(H.player({ name = "own", keys = { [77] = true } }), iso)
     check(own ~= nil and not own.notAvailable, k[1] .. ": the key holder's Unplug row is live (car locked)")
@@ -57,6 +58,7 @@ end
 local calls = 0
 local rule = T.mayUseCable
 T.mayUseCable = function(...) calls = calls + 1; return rule(...) end
+T.Battery.part(v):getModData().chg = { x = 30, y = 5, z = 0 }
 menu(H.player({ name = "mal" }), charger(30, "minidoracat_tesla_01_9", v:getId()))
 T.mayUseCable = rule
 check(calls == 1, "the menu asks the shared cable rule (T.mayUseCable), not a copy of it")
@@ -95,6 +97,13 @@ check(hintRow({ elec = true }, true) == nil, "running generator next to it: no h
 check(hintRow({ room = {}, grid = true }) == nil, "indoors on the grid: no hint")
 check(hintRow({ room = {}, elec = true }) == nil, "indoors on a generator's power: no hint")
 check(hintRow({}, false, "minidoracat_tesla_01_0") == nil, "Wall Connector: no such row")
+T.Battery.part(v):getModData().chg = { x = 40, y = 5, z = 0 }
 check(hintRow({ elec = true }, false, nil, v:getId()) ~= nil, "plugged in with no power: the row is there too (the card says nopower)")
+T.Battery.part(v):getModData().chg = { x = 50, y = 5, z = 0 } -- the id now names a car plugged in elsewhere
+local savedCell = getCell
+getCell = function() return { getGridSquare = function() return nil end } end -- no Tesla near: just the plug placeholder
+local reused = menu(H.player({ name = "own", keys = { [77] = true } }), charger(51, "minidoracat_tesla_01_8", v:getId()))
+getCell = savedCell
+check(reused == nil, "the charger's id names a car whose cable is elsewhere (reused id): no Unplug row for that car")
 ISWorldObjectContextMenu = savedMenu
 H.side(false, true)

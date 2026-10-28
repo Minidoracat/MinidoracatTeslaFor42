@@ -121,8 +121,7 @@ local function onFill(playerNum, context, worldObjects, test)
     if not charger then return end
     local player = getSpecificPlayer(playerNum)
     local sq = charger:getSquare()
-    local o = C.chargerAt(sq:getX(), sq:getY(), sq:getZ())
-    local plugged = o and o.vid and getVehicleById(o.vid)
+    local plugged = T.pluggedCarOn(sq) -- a reused id is no car here: the plug rows show, plugging in takes the charger over
     local c = T.Chargers[info.kind]
     -- a Mobile Connector without power still takes the cable and charges once power comes; plugged or not, say where it works
     if c.genTiles and not T.chargerPowered(info.kind, sq) then
