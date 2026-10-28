@@ -9,5 +9,6 @@
     "Tooltip_MinidoracatTesla_PhoneKey": "Odblokowuje po pociągnięciu klamki. Gdy wysiądziesz i odejdziesz z nim, drzwi zablokują się same.",
     "Tooltip_MinidoracatTesla_TapCard": "Podejdź do drzwi kierowcy i przyłóż kartę-klucz do czytnika",
     "Tooltip_MinidoracatTesla_PairPhone": "Autoryzuj ten telefon kartą-kluczem tego auta",
+    "Tooltip_MinidoracatTesla_PairPhoneOwner": "Autoryzuj ten telefon bez karty-klucza: zarządzasz tym autem w Menedżerze pojazdów",
     "Tooltip_MinidoracatTesla_AppNotPaired": "Najpierw sparuj telefon: usiądź w Tesli z kartą-kluczem, kliknij telefon prawym przyciskiem i wybierz „Ustaw jako klucz w telefonie”."
 }

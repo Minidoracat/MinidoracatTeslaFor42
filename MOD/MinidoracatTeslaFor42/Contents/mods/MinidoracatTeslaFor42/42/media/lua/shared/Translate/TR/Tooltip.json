@@ -9,5 +9,6 @@
     "Tooltip_MinidoracatTesla_PhoneKey": "Kapı kolunu çekince kilit açılır. İnip yanında taşıyarak uzaklaşınca kapılar kendiliğinden kilitlenir.",
     "Tooltip_MinidoracatTesla_TapCard": "Sürücü kapısına yürü ve anahtar kartı okuyucuya okut",
     "Tooltip_MinidoracatTesla_PairPhone": "Bu telefonu bu aracın anahtar kartıyla yetkilendir",
+    "Tooltip_MinidoracatTesla_PairPhoneOwner": "Bu telefonu anahtar kartı olmadan yetkilendir: bu aracı Araç Yöneticisi'nde yönetiyorsun",
     "Tooltip_MinidoracatTesla_AppNotPaired": "Önce telefonu eşleştir: anahtar kartla Tesla'ya bin, telefona sağ tıkla ve \"Telefon anahtarı olarak ayarla\"yı seç."
 }

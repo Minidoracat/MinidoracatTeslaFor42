@@ -122,15 +122,34 @@ function K.canTap(player, vehicle)
     return true
 end
 
+-- VehicleManager grants one of `codes` on this car to chr, as a virtual key (no item). Not installed, its VirtualKey
+-- sandbox option off (vanilla key rules, VehicleManager ActionGuards.lua virtualKey, default on), or an unclaimed car
+-- (anyone's: no key from it) -> false. VehicleManager's admin override ("ADMIN") counts: opt-in in its fleet window, and
+-- it writes ADMIN_BYPASS with our mod name (its OwnershipSystem.lua O.allowsRecord). MP client: its projection, UX only.
+local function vmGrants(chr, vehicle, codes)
+    local api = MinidoracatVehicleManagerAPI
+    if not (api and api.canUse) then return false end
+    local page = SandboxVars and SandboxVars.MinidoracatVehicleManager
+    if page and page.VirtualKey == false then return false end
+    for _, code in ipairs(codes) do
+        local ok, why = api.canUse(chr, vehicle, code, { mod = T.MODULE })
+        if ok == true and why ~= "UNCLAIMED" then return true end
+    end
+    return false
+end
+
 -- Make a phone this car's phone key, or add this car to a phone key (K.pairedWith): seated in the car with its card
--- handy (on you or on the console reader).
+-- handy (on you or on the console reader). Lost card (user 2026-10-28): VehicleManager's owner of the car (MANAGE, never
+-- shareable) pairs without it; returns true, "VM" then (the menu's tooltip). A rent-locked owner still has MANAGE, but
+-- the phone key opens nothing VehicleManager refuses: every use asks it again (its ActionGuards, Remote.lua).
 function K.canPair(player, vehicle, phone)
     local ft = phone and phone:getFullType()
     if ft ~= K.PHONE and ft ~= K.PHONE_KEY then return false, "NO_PHONE" end
     if not vehicle or not T.isTesla(vehicle) or player:getVehicle() ~= vehicle then return false, "NOT_INSIDE" end
-    if not K.card(player, vehicle) and not cardInIgnition(vehicle) then return false, "NO_KEY_CARD" end
     if ft == K.PHONE_KEY and K.pairedWith(phone, vehicle:getKeyId()) then return false, "ALREADY_PAIRED" end
-    return true
+    if K.card(player, vehicle) or cardInIgnition(vehicle) then return true end
+    if vmGrants(player, vehicle, { "MANAGE" }) then return true, "VM" end
+    return false, "NO_KEY_CARD"
 end
 
 local function anyDoorOpen(vehicle)
@@ -193,19 +212,6 @@ end
 -- in a bag, as at a door handle; a VehicleManager user it lets work on the hood, whose virtual key is no item) has it
 -- unlocked right before vanilla complete() looks; a stranger finds it locked. The key card in a wallet does not count
 -- (tap the reader, as for the doors). complete() runs on the server in MP and locally in SP.
-local function vmMechanic(chr, vehicle)
-    local api = MinidoracatVehicleManagerAPI
-    if not (api and api.canUse) then return false end
-    -- its VirtualKey sandbox option off = vanilla key rules (VehicleManager ActionGuards.lua virtualKey, default on)
-    local page = SandboxVars and SandboxVars.MinidoracatVehicleManager
-    if page and page.VirtualKey == false then return false end
-    -- the codes VehicleManager itself puts on opening the hood (its Actions.lua EngineDoor; the app's frunk, Remote.lua)
-    for _, code in ipairs({ "REPAIR", "SALVAGE" }) do
-        local ok, why = api.canUse(chr, vehicle, code, { mod = T.MODULE })
-        if ok == true and why ~= "UNCLAIMED" then return true end -- an unclaimed car is anyone's: no key from it
-    end
-    return false
-end
 function K.lidUnlock(vehicle, part, chr)
     -- the action carries vehicle and part as separate arguments (ISOpenVehicleDoor.lua:142-145): the key must be this car's
     if not part or part:getId() ~= "EngineDoor" or not chr or part:getVehicle() ~= vehicle or not T.isTesla(vehicle) then
@@ -213,7 +219,10 @@ function K.lidUnlock(vehicle, part, chr)
     end
     local door = part:getDoor()
     if not door or not door:isLocked() or door:isLockBroken() then return false end
-    if not (vehicle:canUnlockDoor(part, chr) or K.phoneKey(chr, vehicle) or vmMechanic(chr, vehicle)) then return false end
+    -- VehicleManager's own codes for opening the hood (its Actions.lua EngineDoor; the app's frunk, Remote.lua)
+    if not (vehicle:canUnlockDoor(part, chr) or K.phoneKey(chr, vehicle) or vmGrants(chr, vehicle, { "REPAIR", "SALVAGE" })) then
+        return false
+    end
     door:setLocked(false)
     vehicle:transmitPartDoor(part) -- no-op off the server
     return true

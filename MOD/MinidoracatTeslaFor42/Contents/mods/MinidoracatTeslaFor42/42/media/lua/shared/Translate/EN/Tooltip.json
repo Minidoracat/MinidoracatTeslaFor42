@@ -9,5 +9,6 @@
     "Tooltip_MinidoracatTesla_PhoneKey": "Unlocks when you pull a door handle. Doors lock by themselves when you get out and walk away with it.",
     "Tooltip_MinidoracatTesla_TapCard": "Walk to the driver's door and tap the key card on the reader",
     "Tooltip_MinidoracatTesla_PairPhone": "Authorize this phone with this car's key card",
+    "Tooltip_MinidoracatTesla_PairPhoneOwner": "Authorize this phone without the key card: you manage this car in Vehicle Manager",
     "Tooltip_MinidoracatTesla_AppNotPaired": "Pair this phone first: sit in the Tesla with its key card, right-click the phone and choose Set Up as Phone Key."
 }

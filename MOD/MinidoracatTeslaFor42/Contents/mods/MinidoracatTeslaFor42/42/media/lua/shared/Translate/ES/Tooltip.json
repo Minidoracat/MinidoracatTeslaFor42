@@ -9,5 +9,6 @@
     "Tooltip_MinidoracatTesla_PhoneKey": "Se desbloquea al tirar de la manija. Al bajar y alejarte con el teléfono, las puertas se bloquean solas.",
     "Tooltip_MinidoracatTesla_TapCard": "Ve a la puerta del conductor y acerca la tarjeta llave al lector",
     "Tooltip_MinidoracatTesla_PairPhone": "Autoriza este teléfono con la tarjeta llave de este coche",
+    "Tooltip_MinidoracatTesla_PairPhoneOwner": "Autoriza este teléfono sin la tarjeta llave: administras este coche en el Gestor de vehículos",
     "Tooltip_MinidoracatTesla_AppNotPaired": "Primero vincula el teléfono: siéntate en el Tesla con su tarjeta llave, haz clic derecho en el teléfono y elige «Configurar como llave de teléfono»."
 }
