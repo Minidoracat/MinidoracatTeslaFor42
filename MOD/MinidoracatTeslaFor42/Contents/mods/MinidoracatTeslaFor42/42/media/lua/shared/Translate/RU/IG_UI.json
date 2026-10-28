@@ -17,6 +17,7 @@
     "IGUI_MinidoracatTesla_Sentry_LowBattery": "Режим часового выключен: заряд ниже 20%%",
     "IGUI_MinidoracatTesla_Camp_LowBattery": "Режим кемпинга выключен: заряд ниже %1%%",
     "IGUI_MinidoracatTesla_Sentry_ByPlayer": "игрок %1",
+    "IGUI_MinidoracatTesla_Sentry_ByUnverified": "неподтверждённый игрок",
     "IGUI_MinidoracatTesla_Sentry_Flashed": "фары мигнули 3 раза",
     "IGUI_MinidoracatTesla_Sep": " · ",
     "IGUI_MinidoracatTesla_Inbox_Title": "Часовой: событий, пока вас не было: %1",

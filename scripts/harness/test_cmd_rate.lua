@@ -63,14 +63,24 @@ check(#H.sent == s0, "no reply to the client (a reply per drop would grow with t
 check(send(p1, "liftgate", G.max) == G.max and send(p1, "liftgate", 3) == 0 and (CR.dropped.liftgate or 0) == 3,
     "a command with a row has its own budget (" .. G.max .. "), apart from the spent default")
 check(send(p2, "rateA", D.max) == D.max, "another player's budget is their own")
--- the online id goes to someone else (a connection slot reused, GameServer.java:2669-2676) while p2's window runs
+-- the online id stays with the connection slot (a respawn keeps it, ConnectCoopPacket.java:93,100) or goes to the
+-- next connection on that slot (GameServer.java:2669-2676) while p2's window runs
 check(send(p2, "rateA") == 0, "p2 past its budget: cut")
 local again = H.player({ name = "p2" }) -- p2 respawned or back on the same slot: a new IsoPlayer, the same account
 again.oid = p2.oid
 check(send(again, "rateA") == 0, "the same account on a new character (respawn, reconnect) does not start over")
-local p3 = H.player({ name = "p3" })
-p3.oid = p2.oid
-check(send(p3, "rateA", D.max) == D.max, "a new player on a reused online id starts with a fresh budget")
+local renamed = H.player({ name = "p2-renamed" }) -- a respawn names itself (ConnectCoopPacket.java:73-97)
+renamed.oid = p2.oid
+check(send(renamed, "rateA") == 0, "no-steam: a respawn under another name does not start over (the name is the client's word)")
+local SID_A, SID_B = 76561198000000016, 76561198000000032
+local s1 = H.player({ name = "s1", sid = SID_A })
+check(send(s1, "rateA", D.max) == D.max and send(s1, "rateA") == 0, "Steam: s1 spends its budget")
+local s1r = H.player({ name = "someone-else", sid = SID_A })
+s1r.oid = s1.oid
+check(send(s1r, "rateA") == 0, "Steam: s1 respawned under another name (its SteamID): still cut")
+local p3 = H.player({ name = "p3", sid = SID_B })
+p3.oid = s1.oid
+check(send(p3, "rateA", D.max) == D.max, "Steam: another Steam account on the reused online id starts with a fresh budget")
 check(send(p3, "rateA") == 0, "and is cut past it like anyone")
 local l1 = logs()
 H.advanceMs(D.ms - 1)

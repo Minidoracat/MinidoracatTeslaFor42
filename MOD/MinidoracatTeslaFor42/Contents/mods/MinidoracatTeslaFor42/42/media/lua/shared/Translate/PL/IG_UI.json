@@ -17,6 +17,7 @@
     "IGUI_MinidoracatTesla_Sentry_LowBattery": "Tryb wartownika wyłączony: akumulator poniżej 20%%",
     "IGUI_MinidoracatTesla_Camp_LowBattery": "Tryb kempingowy wyłączony: akumulator poniżej %1%%",
     "IGUI_MinidoracatTesla_Sentry_ByPlayer": "gracz %1",
+    "IGUI_MinidoracatTesla_Sentry_ByUnverified": "niezweryfikowany gracz",
     "IGUI_MinidoracatTesla_Sentry_Flashed": "światła mignęły 3 razy",
     "IGUI_MinidoracatTesla_Sep": " · ",
     "IGUI_MinidoracatTesla_Inbox_Title": "Wartownik: zdarzenia podczas twojej nieobecności: %1",

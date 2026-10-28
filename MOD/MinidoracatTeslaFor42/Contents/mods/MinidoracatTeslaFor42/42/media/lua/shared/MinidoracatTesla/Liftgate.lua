@@ -22,23 +22,19 @@ function L.check(player, vehicle, id)
     return part
 end
 
--- MP: the clients that can have car v loaded, i.e. every online player within NEAR_TILES of it on both axes, but
--- `except`: `cmd` with `args`. The server sends a car's updates to a connection with a player within relevantRange * 8
--- tiles on both axes (VehicleManager.java:164, UdpConnection.java:224-226), relevantRange = clamp(the client's chunk
--- grid, 12, 20) / 2 + 2 <= 12 chunks (GameServer.java:2808-2809), and a client keeps a car only inside its chunk map,
--- at most 19 chunks wide (IsoChunkMap.java:114-119). Whoever comes nearer later loads the car with its doors and hue
--- (VehicleFullUpdatePacket.java:122-126 = BaseVehicle.save) and the engine poses a door from isOpen whenever no anim
--- plays (BaseVehicle.java:3926-3930), so nothing is lost by not telling them.
+-- MP: the clients that can have car v loaded, i.e. every client with an online player within NEAR_TILES of it on both
+-- axes, but `except`'s: `cmd` with `args`, once per client. The server sends a car's updates to a connection with a
+-- player within relevantRange * 8 tiles on both axes (VehicleManager.java:164, UdpConnection.java:224-226),
+-- relevantRange = clamp(the client's chunk grid, 12, 20) / 2 + 2 <= 12 chunks (GameServer.java:2808-2809), and a
+-- client keeps a car only inside its chunk map, at most 19 chunks wide (IsoChunkMap.java:114-119). Whoever comes nearer
+-- later loads the car with its doors and hue (VehicleFullUpdatePacket.java:122-126 = BaseVehicle.save) and the engine
+-- poses a door from isOpen whenever no anim plays (BaseVehicle.java:3926-3930), so nothing is lost by not telling them.
+-- Once per client, none to `except`'s (it played the anim in :start; its split-screen players share it): T.sendClients
+-- (server/MinidoracatTesla/Commands.lua).
 L.NEAR_TILES = 96
 local function sendNear(v, cmd, args, except)
     local x, y, r = v:getX(), v:getY(), L.NEAR_TILES
-    local list = getOnlinePlayers()
-    for i = 0, list:size() - 1 do
-        local p = list:get(i)
-        if p ~= except and math.abs(p:getX() - x) <= r and math.abs(p:getY() - y) <= r then
-            sendServerCommand(p, T.MODULE, cmd, args)
-        end
-    end
+    T.sendClients(function(p) return math.abs(p:getX() - x) <= r and math.abs(p:getY() - y) <= r end, cmd, args, except)
 end
 
 -- Open doors ride in the colour hue's integer part (bit k-1 for SHELL_DOORS[k]): the shader hides the cabin shell's

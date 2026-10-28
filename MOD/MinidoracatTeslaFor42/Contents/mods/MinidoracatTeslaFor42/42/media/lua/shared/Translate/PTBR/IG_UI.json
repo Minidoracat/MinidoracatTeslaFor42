@@ -17,6 +17,7 @@
     "IGUI_MinidoracatTesla_Sentry_LowBattery": "Modo Sentinela desligado: bateria abaixo de 20%%",
     "IGUI_MinidoracatTesla_Camp_LowBattery": "Modo Acampamento desligado: bateria abaixo de %1%%",
     "IGUI_MinidoracatTesla_Sentry_ByPlayer": "jogador %1",
+    "IGUI_MinidoracatTesla_Sentry_ByUnverified": "jogador não verificado",
     "IGUI_MinidoracatTesla_Sentry_Flashed": "faróis piscaram 3 vezes",
     "IGUI_MinidoracatTesla_Sep": " · ",
     "IGUI_MinidoracatTesla_Inbox_Title": "Sentinela: %1 eventos enquanto você estava fora",
