@@ -17,6 +17,7 @@
     "IGUI_MinidoracatTesla_Sentry_LowBattery": "감시 모드가 꺼졌습니다: 배터리 20%% 미만",
     "IGUI_MinidoracatTesla_Camp_LowBattery": "캠핑 모드가 꺼졌습니다: 배터리 %1%% 미만",
     "IGUI_MinidoracatTesla_Sentry_ByPlayer": "플레이어 %1",
+    "IGUI_MinidoracatTesla_Sentry_ByUnverified": "확인되지 않은 플레이어",
     "IGUI_MinidoracatTesla_Sentry_Flashed": "전조등 3회 점멸",
     "IGUI_MinidoracatTesla_Sep": " · ",
     "IGUI_MinidoracatTesla_Inbox_Title": "감시 모드: 자리를 비운 동안 이벤트 %1건",

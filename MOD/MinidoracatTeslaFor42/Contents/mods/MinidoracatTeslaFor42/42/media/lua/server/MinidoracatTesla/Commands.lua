@@ -25,6 +25,27 @@ function T.commandVehicle(player, args, maxDist)
     return v
 end
 
+-- MP server -> the clients with an online player for which near(player) is true: `cmd` once per client, none to
+-- `except`'s client. sendServerCommand(player, ...) goes to the player's connection (GameServer.java:3562-3569) and
+-- the client runs OnServerCommand once per packet with no player in it (GameClient.java:1055-1071), so one per player
+-- near would replay the anim or sound on a split-screen client for each of its players. A client is its online ids'
+-- slot: id = slot * 4 + split-screen index (GameServer.java:2686, ConnectCoopPacket.java:125). Returns how many.
+function T.sendClients(near, cmd, args, except)
+    local done, n = {}, 0
+    if except then done[math.floor(except:getOnlineID() / 4)] = true end
+    local list = getOnlinePlayers()
+    for i = 0, list:size() - 1 do
+        local p = list:get(i)
+        local c = math.floor(p:getOnlineID() / 4)
+        if not done[c] and near(p) then
+            done[c] = true
+            sendServerCommand(p, T.MODULE, cmd, args)
+            n = n + 1
+        end
+    end
+    return n
+end
+
 -- ---- per-player budget (a modified client can send any command, as often as it likes) ----
 -- MP: every command passes a fixed window per player and bucket before its handler (VehicleManager's rateLimited,
 -- MinidoracatVehicleManager_Server.lua:535-541): at most `max` per `ms`, the rest dropped and counted in
@@ -50,17 +71,24 @@ CR.LIMITS = {
 }
 T.CommandRate = CR
 
--- online id -> { who = username, [bucket] = { start, n } }. Keyed by the id, not the username: a split-screen guest
--- names itself (Core.lua T.account). Ids are per connected player and get reused (GameServer.java:2669-2676), so the
--- table stays as small as the server; the username beside it tells a new occupant of the id, who starts with fresh
--- windows (a guest's chosen name only touches its own id). Not the IsoPlayer: a kept reference would hold a player
--- who left until the id is used again (no IsoPlayer in tables, family pitfalls.md).
+-- online id -> { sid = SteamID, [bucket] = { start, n } }. Keyed by the id (slot * 4 + split-screen index,
+-- GameServer.java:2686, ConnectCoopPacket.java:125), not the username: a respawn or a split-screen guest names itself
+-- (Core.lua T.account), so a name change must not open a fresh budget. A respawn keeps the id (ConnectCoopPacket.java:
+-- 93,100); a new connection may get a freed one (GameServer.java:2669-2676), so the table stays as small as the
+-- server. The SteamID beside it (the connection's, IsoPlayer.setSteamID in GameServer.java:2843-2845; guests share
+-- it) tells a new occupant on a Steam server, who starts with fresh windows. A no-steam server has none (0 for all):
+-- there a newcomer on a freed id inherits what is left of the last occupant's windows (each ends at most 10 s after
+-- it started), and a login inboxPull dropped then waits for the next login (the inbox stays).
+-- ponytail: no engine floor, but the id is given at connect and the newcomer then loads the world before its first
+-- command (E2E tesla-harden2-1028-*: "game loading took" 24-36 s); key by a per-connection counter if a no-steam
+-- server ever logs a rate-limit line right after a join.
+-- Not the IsoPlayer: a kept reference would hold a player who left until the id is used again (family pitfalls.md).
 local windows = {}
 function CR.limited(player, command)
     local b = CR.LIMITS[command] and command or "default"
     local lim, id, t = CR.LIMITS[b], player:getOnlineID(), getTimestampMs() -- IsoPlayer.java:6490 (GameServer.java:2835-2839)
-    local who, mine = player:getUsername(), windows[id]
-    if not mine or mine.who ~= who then mine = { who = who }; windows[id] = mine end
+    local sid, mine = T.sidOf(player), windows[id] -- Core.lua: a double, compared only
+    if not mine or mine.sid ~= sid then mine = { sid = sid }; windows[id] = mine end
     local w = mine[b]
     if not w then w = {}; mine[b] = w end
     -- t < start: the wall clock was set back (getTimestampMs = System.currentTimeMillis); start over, do not stretch it
@@ -70,7 +98,7 @@ function CR.limited(player, command)
     CR.dropped[b] = (CR.dropped[b] or 0) + 1
     if w.n == lim.max + 1 then
         T.log("rate limit: " .. b .. " over " .. lim.max .. " per " .. lim.ms .. " ms, dropping " .. tostring(command)
-            .. " from " .. tostring(who) .. " oid=" .. tostring(id))
+            .. " from " .. tostring(player:getUsername()) .. " oid=" .. tostring(id))
     end
     return true
 end

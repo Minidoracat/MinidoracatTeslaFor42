@@ -55,6 +55,18 @@ check(T.legit(thief, v) == false, "legit: UNCLAIMED does not count")
 MinidoracatVehicleManagerAPI = { canUse = function() return true, "OWNER" end }
 check(T.legit(thief, v) == true, "legit: VehicleManager claimed PASSENGER counts")
 MinidoracatVehicleManagerAPI = nil
+-- VehicleManager decides a claimed car: this car's key, card or phone key is anyone's who picked it up (the found card
+-- must not disarm sentry from the right-click menu either, like the card tap: KeyActions keyTap)
+local finder = F.player("finder", { keys = { [v.keyId] = true } })
+MinidoracatVehicleManagerAPI = { canUse = function() return false, "NOT_SHARED" end }
+check(T.legit(finder, v) == false, "legit: this car's key on a car claimed by someone else (VehicleManager says no) does not count")
+F.sent = {}
+cmds.sentryDisarm(finder, { vid = v:getId() })
+check(md(v).sentry ~= nil and F.lastSent("deny") and F.lastSent("deny").args.reason == "NOT_OWNER",
+    "sentryDisarm with a found key on a claimed car: NOT_OWNER, sentry stays armed")
+MinidoracatVehicleManagerAPI = { canUse = function() return true, "UNCLAIMED" end }
+check(T.legit(finder, v) == true, "legit: on an unclaimed car the key counts")
+MinidoracatVehicleManagerAPI = nil
 
 -- the owner's key left in the ignition (vanilla moves it there on start): say so, not NOT_OWNER
 local parked = F.track(F.vehicle({ pct = 80 }))
@@ -191,6 +203,11 @@ local boxes1 = 0
 for _ in pairs(inbox) do boxes1 = boxes1 + 1 end
 check(#logged == 1 and logged[1].kind == "touch" and F.lastSent("alert") == nil and boxes1 == boxes0,
     "...a stranger's touch: in the car's alert list, nobody notified, no inbox")
+check(logged[1].by == "thief", "...naming the stranger by its account (Sentry onTouch -> Inbox.entry)")
+F.runTicks(50, 450)
+ISOpenVehicleDoor.complete({ vehicle = gcar, character = F.player("thief", { num = 1 }), part = gcar.parts.GasTank })
+check(#logged == 2 and logged[2].by == false,
+    "...a split-screen guest calling itself thief touches it: the alert says unverified, not thief's name")
 T.Remote = savedRemote
 F.runTicks(50, 450)
 F.online = { thief }
@@ -226,6 +243,17 @@ if H and H.stub and H.clientSent then
     check(#H.clientSent == n0 + 1 and H.clientSent[#H.clientSent].command == "inboxPull", "client: first OnTick sends inboxPull")
     H.fire("OnTick")
     check(#H.clientSent == n0 + 1, "client: pull hook removed itself after one send")
+    -- the intruder line of a card: the account the server named (Inbox.entry `by`), or "unverified" for false
+    local oldTM, oldTex = getTextManager, getTexture
+    getTextManager = function() return { getFontHeight = function() return 18 end, MeasureStringX = function(_, _, s) return #s end } end
+    getTexture = function() return nil end
+    local named = T.ParkUI.card({ kind = "touch", what = "door", by = "thief" }).detail
+    local anon = T.ParkUI.card({ kind = "touch", what = "door", by = false }).detail
+    local nobody = T.ParkUI.card({ kind = "lowBattery", what = "sentry" }).detail
+    check(named:find("Sentry_ByPlayer", 1, true) and anon:find("Sentry_ByUnverified", 1, true)
+        and not anon:find("Sentry_ByPlayer", 1, true) and nobody == nil,
+        "client card: the intruder's account, \"unverified\" when the server had none, no line without an intruder")
+    getTextManager, getTexture = oldTM, oldTex
     getSpecificPlayer = oldGSP
 end
 

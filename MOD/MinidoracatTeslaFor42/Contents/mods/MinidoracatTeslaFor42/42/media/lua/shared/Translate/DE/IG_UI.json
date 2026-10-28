@@ -17,6 +17,7 @@
     "IGUI_MinidoracatTesla_Sentry_LowBattery": "Wächter-Modus aus: Batterie unter 20 %%",
     "IGUI_MinidoracatTesla_Camp_LowBattery": "Camp-Modus aus: Batterie unter %1 %%",
     "IGUI_MinidoracatTesla_Sentry_ByPlayer": "Spieler %1",
+    "IGUI_MinidoracatTesla_Sentry_ByUnverified": "nicht bestätigter Spieler",
     "IGUI_MinidoracatTesla_Sentry_Flashed": "Scheinwerfer 3-mal aufgeblinkt",
     "IGUI_MinidoracatTesla_Sep": " · ",
     "IGUI_MinidoracatTesla_Inbox_Title": "Wächter: %1 Ereignisse während deiner Abwesenheit",

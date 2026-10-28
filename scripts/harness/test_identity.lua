@@ -29,12 +29,19 @@ local function logged(from, text)
     for i = from + 1, #H.logLines do if H.logLines[i]:find(text, 1, true) then n = n + 1 end end
     return n
 end
+-- a car for Inbox.entry: the intruder an alert names (`by`) is its account, false when it has none, never the name
+-- its client sent
+local scene = { getScript = function() return nil end, getX = function() return 1 end, getY = function() return 2 end,
+    getKeyId = function() return 7 end }
 
 H.section("identity: no-steam server, split-screen guests")
 H.steam = false
 local owner = H.player({ name = "owner" })
 check(T.account(owner) == "owner" and next(ids) == nil, "no-steam: the name; nothing bound (no SteamID to check it against)")
-check(T.account(H.player({ name = "owner", num = 1 })) == nil, "split-screen guest (slot 1): no account")
+local guest = H.player({ name = "owner", num = 1 })
+check(T.account(guest) == nil, "split-screen guest (slot 1): no account")
+check(T.Inbox.entry(scene, "touch", "door", owner).by == "owner" and T.Inbox.entry(scene, "touch", "door", guest).by == false,
+    "no-steam: an alert names the intruder's name; a guest named like the owner: unverified")
 H.side(false, false)
 check(T.account(H.player({ name = "Bob Smith", num = 1 })) == "Bob Smith", "SP: the username")
 H.side(false, true)
@@ -78,10 +85,14 @@ n = #H.sent
 T.Inbox.notify("owner", { kind = "touch", what = "door" })
 check(sentSince(n, "alert") == nil and #inbox.owner == 3, "...a live alert for the owner goes to the inbox, not to it")
 check(T.legit(renamed, H.vehicle({}), "owner") == false, "...the sentry owner's name does not make it legit")
+check(T.Inbox.entry(scene, "touch", "door", renamed).by == false,
+    "...an alert it sets off names it unverified, not the owner it calls itself")
+check(T.Inbox.entry(scene, "lowBattery", "sentry").by == nil, "an alert with no intruder names nobody")
 local back = respawn(renamed, "thief")
 n = #H.sent
 T.ServerCommands.inboxPull(back, {})
 check(T.account(back) == "thief" and sentSince(n, "deny") == nil, "respawned under its own login name again: its account")
+check(T.Inbox.entry(scene, "touch", "door", back).by == "thief", "...and an alert it sets off names it")
 
 H.section("identity: first seen (a name never bound)")
 -- OnNewGame alone: a new connection (no slot on record) whose SteamID just made another character name

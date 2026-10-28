@@ -17,6 +17,7 @@
     "IGUI_MinidoracatTesla_Sentry_LowBattery": "Sentry Mode off: battery below 20%%",
     "IGUI_MinidoracatTesla_Camp_LowBattery": "Camp Mode off: battery below %1%%",
     "IGUI_MinidoracatTesla_Sentry_ByPlayer": "player %1",
+    "IGUI_MinidoracatTesla_Sentry_ByUnverified": "unverified player",
     "IGUI_MinidoracatTesla_Sentry_Flashed": "headlights flashed 3 times",
     "IGUI_MinidoracatTesla_Sep": " · ",
     "IGUI_MinidoracatTesla_Inbox_Title": "Sentry: %1 events while you were away",

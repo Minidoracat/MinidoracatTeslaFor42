@@ -17,6 +17,7 @@
     "IGUI_MinidoracatTesla_Sentry_LowBattery": "哨兵模式已關閉：電量低於 20%%",
     "IGUI_MinidoracatTesla_Camp_LowBattery": "露營模式已關閉：電量低於 %1%%",
     "IGUI_MinidoracatTesla_Sentry_ByPlayer": "玩家 %1",
+    "IGUI_MinidoracatTesla_Sentry_ByUnverified": "身分未確認的玩家",
     "IGUI_MinidoracatTesla_Sentry_Flashed": "大燈閃了 3 次",
     "IGUI_MinidoracatTesla_Sep": " · ",
     "IGUI_MinidoracatTesla_Inbox_Title": "哨兵：你離線期間有 %1 筆事件",

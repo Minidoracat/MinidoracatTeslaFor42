@@ -45,6 +45,7 @@ function H.advanceMs(ms) nowMs = nowMs + ms end
 local gameTime = {
     getWorldAgeHours = function() return worldHours end,
     getMinutesPerDay = function() return 90 end, -- DayLength default: 1 game minute = 3.75 s
+    getHour = function() return 9 end, getMinutes = function() return 30 end,
 }
 function getGameTime() return gameTime end
 
@@ -203,13 +204,16 @@ function H.vehicle(o)
 end
 function H.removeVehicle(v) vehicles[v.id] = nil end
 
--- H.player{ name=, admin=, x=, y=, z=, keys={id=true} }; each gets its own online id (GameServer.java:2835-2839)
+-- H.player{ name=, admin=, x=, y=, z=, keys={id=true}, num=, sid= }; each its own connection slot, online id =
+-- slot * 4 + split-screen index like the engine's (GameServer.java:2686, ConnectCoopPacket.java:125): a guest of
+-- player p is H.player{ num = 1 } with oid = p.oid + 1
 local onlineIds = 0
 function H.player(o)
     o = o or {}
     onlineIds = onlineIds + 1
     local p = { name = o.name or "alice", _admin = o.admin or false, x = o.x or 100, y = o.y or 100, z = o.z or 0,
-        keys = o.keys or {}, vehicle = nil, num = o.num or 0, oid = onlineIds, sid = o.sid, _class = "IsoPlayer" }
+        keys = o.keys or {}, vehicle = nil, num = o.num or 0, oid = onlineIds * 4 + (o.num or 0), sid = o.sid,
+        _class = "IsoPlayer" }
     function p:getOnlineID() return self.oid end
     function p:getUsername() return self.name end
     function p:getPlayerNum() return self.num end -- split-screen slot (IsoPlayer.java:979)

@@ -126,8 +126,12 @@ local function tesla(o)
     return v
 end
 
+local oids = 0
 local function player(name, inv, x, y, num)
-    local p = { name = name, inv = inv, x = x, y = y, num = num or 0 }
+    oids = oids + 1
+    local p = { name = name, inv = inv, x = x, y = y, num = num or 0, oid = oids * 4 + (num or 0) }
+    function p:getOnlineID() return self.oid end -- slot * 4 + split-screen index, like H.player
+    function p:getSteamID() return 0 end
     function p:getUsername() return self.name end
     function p:getPlayerNum() return self.num end
     function p:getVehicle() return self.vehicle end
@@ -218,7 +222,10 @@ check(lastDeny() == "NO_VEHICLE", "keyTap: fractional vid -> NO_VEHICLE")
 v.doors[3].d.broken = true
 local onlineBefore = F.online
 local farAway = player("faraway", container(), v.x + K.CHIRP_TILES + 1, v.y)
-F.online = { owner, farAway }
+-- the owner's split-screen guest beside it: the same client (online id slot * 4 + 1), which plays a chirp per packet
+local guest = player("guest", container(), v.x - 1, v.y + 1, 1)
+guest.oid = owner.oid + 1
+F.online = { owner, guest, farAway }
 F.sent = {}
 local beeps0 = #sounds
 cmds.keyTap(owner, { vid = v:getId() })
@@ -229,7 +236,8 @@ local chirp = F.lastSent("keyChirp")
 local chirpsTo = 0
 for _, m in ipairs(F.sent) do if m.cmd == "keyChirp" then chirpsTo = chirpsTo + 1 end end
 check(S.stats.flashes == flashes0 + 1 and chirp and chirp.to == "owner" and chirp.args.vid == v:getId() and chirpsTo == 1
-    and #sounds == beeps0, "keyTap lock: flash + horn chirp sent to players within CHIRP_TILES only, no playServerSound")
+    and #sounds == beeps0, "keyTap lock: flash + horn chirp once per client within CHIRP_TILES (not again for the "
+    .. "split-screen guest on the owner's client), no playServerSound")
 v.headlights = false
 v.toggles = 0
 F.runTicks(50, 450)
@@ -245,6 +253,34 @@ v.toggles = 0
 F.runTicks(50, 450)
 check(v.toggles == 4, "keyTap unlock: two flashes (4 toggles)")
 check(v.parts.GasTank:getModData().sentry == nil, "keyTap unlock: the owner's card disarms sentry")
+
+-- VehicleManager present: the tap also needs its PASSENGER right, like the app's lock / unlock (Remote.lua VM_CODES):
+-- a card picked up off the floor does not open a car claimed by someone else, nor disarm its sentry
+local asked = {}
+MinidoracatVehicleManagerAPI = { canUse = function(p, _, code, ctx)
+    asked[#asked + 1] = code .. "/" .. tostring(ctx and ctx.mod)
+    if p == owner and code == "PASSENGER" then return true, "OWNER" end
+    return false, "NOT_SHARED"
+end }
+cmds.keyTap(owner, { vid = v:getId() }) -- lock it again, the owner's right
+check(v.doors[1].d.locked and asked[1] == "PASSENGER/" .. T.MODULE, "VehicleManager: the owner's tap asks PASSENGER and locks")
+v.parts.GasTank:getModData().sentry = { by = "owner", at = F.hours, kwh = 50, since = F.hours }
+local finder = player("finder", container(item(K.CARD, v.keyId)), v.x - 1, v.y)
+local f0 = S.stats.flashes
+F.sent = {}
+cmds.keyTap(finder, { vid = v:getId() })
+check(lastDeny() == "NOT_OWNER" and v.doors[1].d.locked and v.trunk.d.locked and v.frunk.d.locked
+    and S.stats.flashes == f0 and v.parts.GasTank:getModData().sentry ~= nil,
+    "VehicleManager: a found card on a car claimed by someone else -> NOT_OWNER, still locked, no flash, sentry kept")
+MinidoracatVehicleManagerAPI.canUse = function() return false, "RENT_LOCKED" end
+cmds.keyTap(finder, { vid = v:getId() })
+check(lastDeny() == "RENT_LOCKED" and v.doors[1].d.locked, "VehicleManager: its own reason (rent locked) passes through")
+MinidoracatVehicleManagerAPI.canUse = function() return true, "UNCLAIMED" end
+cmds.keyTap(finder, { vid = v:getId() })
+check(not v.doors[1].d.locked, "VehicleManager: an unclaimed car -> the card is enough, as without VehicleManager")
+MinidoracatVehicleManagerAPI = nil
+v.parts.GasTank:getModData().sentry = nil
+F.runTicks(50, 450)
 
 -- ------------------------------------------------------------------ the lids lock with the car, every way it locks
 H.section("frunk lid and liftgate follow the car lock")

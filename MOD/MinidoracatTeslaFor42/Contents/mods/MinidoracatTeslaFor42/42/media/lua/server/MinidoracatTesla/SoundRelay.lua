@@ -20,19 +20,15 @@ local function isInt(n) return type(n) == "number" and n == n and math.floor(n) 
 
 T.ServerCommands = T.ServerCommands or {}
 
--- every online player within RELAY_TILES of car v but `except`: `motor` msg. Returns how many.
+-- every client with an online player within RELAY_TILES of car v but `except`'s: `motor` msg, once per client
+-- (T.sendClients, Commands.lua; Sound.lua knows only its player 0, so a split-screen driver's own client would play
+-- its car as someone else's too). Returns how many.
 local function relay(v, msg, except)
-    local n = 0
     local x, y, r2 = v:getX(), v:getY(), R.RELAY_TILES * R.RELAY_TILES
-    local list = getOnlinePlayers() -- LuaManager.java:4457
-    for i = 0, list:size() - 1 do
-        local p = list:get(i)
+    local n = T.sendClients(function(p)
         local dx, dy = p:getX() - x, p:getY() - y
-        if p ~= except and dx * dx + dy * dy <= r2 then
-            sendServerCommand(p, T.MODULE, "motor", msg) -- LuaManager.java:8966-8970
-            n = n + 1
-        end
-    end
+        return dx * dx + dy * dy <= r2
+    end, "motor", msg, except)
     R.stats.relayed = R.stats.relayed + n
     return n
 end
