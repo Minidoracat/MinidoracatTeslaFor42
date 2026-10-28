@@ -103,9 +103,9 @@ local function disable(option, textKey)
     option.toolTip = tip
 end
 -- grey a plug / unplug row the way the server would refuse it, with its reason: the shared cable rule (T.mayUseCable,
--- Chargers.lua, which lists the reasons)
-local function notOwner(option, player, vehicle)
-    local ok, deny = T.mayUseCable(player, vehicle)
+-- Chargers.lua, which lists the reasons; unplug: T.mayUnplug, the charger's owner too)
+local function notOwner(option, player, vehicle, rule)
+    local ok, deny = (rule or T.mayUseCable)(player, vehicle)
     if ok then return false end
     disable(option, "IGUI_MinidoracatTesla_Deny_" .. deny)
     return true
@@ -128,7 +128,7 @@ local function onFill(playerNum, context, worldObjects, test)
         context:addOption(getText("ContextMenu_MinidoracatTesla_MobileNoPower"), nil, nil).notAvailable = true
     end
     if plugged then
-        notOwner(context:addOption(getText("ContextMenu_MinidoracatTesla_Unplug"), player, C.queueUnplug, plugged), player, plugged)
+        notOwner(context:addOption(getText("ContextMenu_MinidoracatTesla_Unplug"), player, C.queueUnplug, plugged), player, plugged, T.mayUnplug)
         context:addOption(getText("ContextMenu_MinidoracatTesla_ChargeStatus"), player, C.showStatus, plugged)
         return
     end

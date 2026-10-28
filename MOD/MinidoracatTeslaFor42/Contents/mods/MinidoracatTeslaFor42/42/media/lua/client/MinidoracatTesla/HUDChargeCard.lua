@@ -173,13 +173,14 @@ function Card:read()
     self.pct = pct
     -- the four charging buttons take the cable rule (Chargers.lua T.mayUseCable), as the server's chargeTarget /
     -- chargeStop and unplug do (Charging.lua): refused = greyed (setEnable, like the toggle with nothing to resume),
-    -- the hover help says why
-    local deny = nil
+    -- the hover help says why. The charger's owner may still stop and unplug (T.mayUnplug), not change the target.
+    local deny, own = nil, false
     if chg and self.player then
         local ok, why = T.mayUseCable(self.player, v)
-        if not ok then deny = why end
+        if not ok then deny, own = why, T.chargerOwner(self.player, chg.x, chg.y, chg.z) end
     end
-    local key = state .. pct .. "/" .. kw .. "/" .. addKm .. "/" .. addKwh .. "/" .. mins .. "/" .. self:target() .. src .. (deny or "")
+    local key = state .. pct .. "/" .. kw .. "/" .. addKm .. "/" .. addKwh .. "/" .. mins .. "/" .. self:target() .. src
+        .. (deny or "") .. (own and "o" or "")
     if key == self.key then return false end
     self.key = key
     local was = self.state
@@ -204,10 +205,13 @@ function Card:read()
     self.alertColor = state == "full" and C.ok or (state == "nopower" and C.warn or C.text2)
     self.btnToggle:setTitle(getText(state == "charging" and "IGUI_MinidoracatTesla_Card_Stop" or "IGUI_MinidoracatTesla_Card_Start"))
     self.btnToggle.tip = state == "charging" and "IGUI_MinidoracatTesla_Tip_CardStop" or "IGUI_MinidoracatTesla_Tip_CardStart"
-    self.btnToggle:setEnable(not deny and (state == "charging" or state == "stopped" or state == "full"))
-    for _, b in ipairs({ self.btnUnplug, self.btnMinus, self.btnPlus }) do b:setEnable(not deny) end
+    local stopOnly = own and state == "charging" -- the owner's stop; resuming is the target, the cable rule
+    self.btnToggle:setEnable((not deny or stopOnly) and (state == "charging" or state == "stopped" or state == "full"))
+    self.btnUnplug:setEnable(not deny or own)
+    for _, b in ipairs({ self.btnMinus, self.btnPlus }) do b:setEnable(not deny) end
     for _, b in ipairs({ self.btnToggle, self.btnUnplug, self.btnMinus, self.btnPlus }) do
-        b.tipKey = deny and ("IGUI_MinidoracatTesla_Deny_" .. deny) or b.tip
+        local free = not deny or (b == self.btnUnplug and own) or (b == self.btnToggle and stopOnly)
+        b.tipKey = free and b.tip or ("IGUI_MinidoracatTesla_Deny_" .. deny)
     end
     return was ~= state
 end

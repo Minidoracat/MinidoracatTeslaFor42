@@ -82,7 +82,8 @@ require "MinidoracatTesla/Charging"
 local T, B, C = MinidoracatTesla, MinidoracatTesla.Battery, MinidoracatTesla.Charge
 local SYS = SMinidoracatTeslaChargerSystem.instance
 check(SYS ~= nil and SYS.systemName == "MinidoracatTeslaCharger", "charger system registered under its contract name")
-check(SYS.saved[1] == "kind" and SYS.synced[3] == "vid", "saves kind/facing, syncs kind/facing/vid")
+check(SYS.saved[1] == "kind" and SYS.saved[3] == "owner" and SYS.synced[3] == "owner" and SYS.synced[4] == "vid",
+    "saves kind/facing/owner, syncs kind/facing/owner/vid")
 check(#H.onLoadSprites == 8, "chunk load hook covers the 4 Wall Connector + 4 Mobile Connector sprites")
 
 -- a placed charger at (200,200,0) facing S, inside a room
@@ -638,6 +639,65 @@ C.unplug(kOwner, kv)
 klo.vid = reuse:getId()
 C.plug(kOwner, kv, kiso)
 check(kchg() ~= nil and klo.vid == kvid, "a reused id on the charger: not busy, plugging in takes it over")
+C.unplug(kOwner, kv)
+-- settle and charger removal with the id handed to a Tesla plugged in elsewhere: that car is left alone
+local ylo = charger(950, 950, { room = {} }, MCS)
+C.start(ylo, reuse)
+local function rchg() return B.part(reuse):getModData().chg end
+klo.vid = reuse:getId() -- our car unloaded, its id now the other Tesla's
+C.settle(klo, T.hours())
+check(rchg() ~= nil and rchg().x == 950 and not klo.vid, "settle: the id names a car plugged in elsewhere -> forgotten, that car stays plugged")
+klo.vid = reuse:getId()
+C.onChargerRemoved(klo)
+check(rchg() ~= nil and rchg().x == 950, "charger removed: the car holding its old id (plugged in elsewhere) stays plugged")
+klo.vid = false
+C.stop(ylo, reuse, "unplug")
+-- the charger's owner (main agent 2026-10-28): its placer, or the owner / a member of the safehouse its square is in,
+-- may unplug, stop on the card, pick up and rotate whatever is plugged in, locked or not; not plug in, not the target
+local function act(mode, who, onDone)
+    local a = setmetatable({ mode = mode, character = who, square = ksq, origSpriteName = MCS,
+        moveProps = { spriteName = MCS }, onComplete = onDone }, { __index = ISMoveablesAction })
+    return a:complete()
+end
+SYS.objs[key(900, 900, 0)] = nil
+act("place", mal, function() SYS.objs[key(900, 900, 0)] = klo end) -- vanilla's place: OnObjectAdded makes the object
+check(klo.owner == "mal", "placing a charger records its placer (T.account)")
+kv.locked = true
+C.plug(kOwner, kv, kiso)
+check(not T.mayUseCable(mal, kv) and select(2, T.mayUnplug(mal, kv)) == "CHARGER_OWNER",
+    "the charger's owner, someone else's locked car: not the cable rule, but T.mayUnplug says CHARGER_OWNER")
+H.sent = {}
+H.fire("OnClientCommand", "MinidoracatTesla", "chargeTarget", mal, { vid = kv:getId(), pct = 60 })
+check(kchg().target ~= 60 and lastDeny() == "CAR_LOCKED", "the charger's owner: the target % stays the cable rule (CAR_LOCKED)")
+H.fire("OnClientCommand", "MinidoracatTesla", "chargeStop", mal, { vid = kv:getId() })
+check(kchg().paused == "stopped", "the charger's owner stops someone else's locked car on the card")
+check(move("pickup", MCS) == true and move("rotate", MCS) == true, "the charger's owner may pick up and rotate it with that car plugged in")
+local fresh
+act("rotate", mal, function()
+    fresh = SMinidoracatTeslaCharger:new(SYS, { gx_ = 900, gy_ = 900, gz_ = 0 })
+    fresh:stateFromIsoObject(kiso)
+    SYS.objs[key(900, 900, 0)] = fresh
+end)
+check(fresh and fresh.owner == "mal", "rotating (pick up + place: a new charger object) keeps the owner")
+SYS.objs[key(900, 900, 0)] = klo
+C.unplug(mal, kv)
+check(kchg() == nil, "the charger's owner unplugs someone else's locked car")
+H.sent = {}
+C.plug(mal, kv, kiso)
+check(kchg() == nil and lastDeny() == "CAR_LOCKED", "the charger's owner may not plug in a car he has no right to")
+C.plug(kOwner, kv, kiso)
+local guest = H.player({ name = "guest", x = 901, y = 901 })
+SafeHouse = { getSafeHouse = function(sq) return sq == ksq and { playerAllowed = function(_, n) return n == "guest" end } or nil end }
+check(select(2, T.mayUnplug(guest, kv)) == "CHARGER_OWNER", "a member of the safehouse the charger stands in counts as its owner")
+SafeHouse = nil
+check(T.mayUnplug(guest, kv) == false, "no safehouse there: a stranger does not")
+klo.owner = nil
+check(T.mayUnplug(mal, kv) == false and move("pickup", MCS) == false, "a charger placed before the owner record: the cable rule alone")
+klo.owner = "mal"
+MinidoracatVehicleManagerAPI = { canUse = function() return false, "NOT_AUTHORIZED" end }
+check(select(2, T.mayUnplug(mal, kv)) == "CHARGER_OWNER", "VehicleManager says no: the charger's owner still unplugs")
+MinidoracatVehicleManagerAPI = nil
+klo.owner = nil
 C.unplug(kOwner, kv)
 MinidoracatVehicleManagerAPI = { canUse = function(p, veh, perm) return perm == "FUEL" and p == kOwner, p == kOwner and "OWNER" or "NOT_AUTHORIZED" end }
 for _, locked in ipairs({ true, false }) do

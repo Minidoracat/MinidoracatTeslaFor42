@@ -276,8 +276,12 @@ ISMoveableSpriteProps = { canPlaceMoveableInternal = function(self) return self.
     addLineToInfoTable = function(t, txt, r, g, b) t[#t + 1] = { { txt = txt, r = r, g = g, b = b } }; return t end,
     bhc = { getR = function() return 1 end, getG = function() return 0 end, getB = function() return 0 end } }
 -- vanilla pick up / place / rotate action (ISMoveablesAction.lua:236-255); Chargers.lua wraps complete(). `done`
--- counts what vanilla would have moved.
-ISMoveablesAction = { complete = function(self) self.done = (self.done or 0) + 1; return true end }
+-- counts what vanilla would have moved; `onComplete` stands in for what vanilla did to the world (a placed object).
+ISMoveablesAction = { complete = function(self)
+    self.done = (self.done or 0) + 1
+    if self.onComplete then self.onComplete(self) end
+    return true
+end }
 
 -- ---------------------------------------------------------------- loader
 local loaded = {}

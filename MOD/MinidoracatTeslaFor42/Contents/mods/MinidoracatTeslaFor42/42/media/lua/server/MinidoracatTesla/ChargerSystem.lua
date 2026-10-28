@@ -2,8 +2,9 @@
 -- Found without scanning: moveable placement fires OnObjectAdded on the server (ISMoveableSpriteProps.lua:2541),
 -- chunk load goes through MapObjects.OnLoadWithSprite (MapObjects.java:184-221), pick-up / destroy fire
 -- OnObjectAboutToBeRemoved; RegisterSystemClass hooks all three (SGlobalObjectSystem.lua RegisterSystemClass).
--- Saved: kind, facing. Synced to clients: kind, facing, vid (charging car's getId(); session-scoped, cleared on load,
--- set again by relink in Charging.lua).
+-- Saved: kind, facing, owner (T.account of who placed it, Chargers.lua move guard; nil on chargers placed before it).
+-- Synced to clients: kind, facing, owner, vid (charging car's getId(); session-scoped, cleared on load, set again by
+-- relink in Charging.lua).
 if isClient() then return end
 require "Map/SGlobalObjectSystem"
 require "Map/SGlobalObject"
@@ -51,8 +52,8 @@ end
 function SMinidoracatTeslaChargerSystem:initSystem()
     SGlobalObjectSystem.initSystem(self)
     self.system:setModDataKeys({})
-    self.system:setObjectModDataKeys({ "kind", "facing" })           -- SFeedingTroughSystem.lua:15-22
-    self.system:setObjectSyncKeys({ "kind", "facing", "vid" })
+    self.system:setObjectModDataKeys({ "kind", "facing", "owner" })  -- SFeedingTroughSystem.lua:15-22
+    self.system:setObjectSyncKeys({ "kind", "facing", "owner", "vid" })
 end
 
 function SMinidoracatTeslaChargerSystem:initLuaObjects()

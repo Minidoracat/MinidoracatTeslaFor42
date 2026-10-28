@@ -641,6 +641,21 @@ check(on == 4 and tips["IGUI_MinidoracatTesla_Tip_CardStop"] and tips["IGUI_Mini
 tesla.locked, cardPlayer.key = true, tesla.keyId
 on = cardState()
 check(on == 4, "card, the key on you, car locked: the buttons work")
+-- the charger's owner (T.chargerOwner, the synced `owner`): no key, car locked -> stop (while charging) and unplug,
+-- not the target nor resuming
+T.Charge = T.Charge or {}
+local realChargerAt = T.Charge.chargerAt
+T.Charge.chargerAt = function(x, y, z) return x == 0 and y == 0 and z == 0 and { owner = cardPlayer:getUsername() } or nil end
+cardPlayer.key = nil
+cardState()
+check(card.btnToggle.enable and card.btnUnplug.enable and not card.btnMinus.enable and not card.btnPlus.enable
+    and card.btnMinus.tipKey == "IGUI_MinidoracatTesla_Deny_CAR_LOCKED" and card.btnUnplug.tipKey == "IGUI_MinidoracatTesla_Tip_CardUnplug",
+    "card, the charger's owner, car locked, charging: stop and unplug work, the target % is greyed (CAR_LOCKED)")
+cmd.chg.paused = "stopped"
+cardState()
+check(not card.btnToggle.enable and card.btnUnplug.enable, "card, the charger's owner, stopped: resuming is the target's rule, greyed; unplug works")
+cmd.chg.paused = nil
+T.Charge.chargerAt = realChargerAt
 tesla.locked, cardPlayer.key, cardPlayer.getInventory, cmd.chg = false, nil, nil, nil
 card.key = ""
 card:read()
