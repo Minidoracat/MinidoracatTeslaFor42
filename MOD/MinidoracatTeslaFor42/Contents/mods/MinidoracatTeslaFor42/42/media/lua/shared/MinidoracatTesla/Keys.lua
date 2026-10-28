@@ -142,8 +142,9 @@ end
 -- Make a phone this car's phone key, or add this car to a phone key (K.pairedWith): seated in the car with its card
 -- handy (on you or on the console reader). Lost card (user 2026-10-28): VehicleManager's owner of the car (MANAGE, never
 -- shareable) pairs without it; returns true, "VM" then (the menu's tooltip). A rent-locked owner (and an admin once the
--- override is off) keeps the phone key, but every use on a claimed car asks VehicleManager again: doors and start (its
--- ActionGuards), the app (Remote.lua R.vmAllows), sentry and camp (ParkModes T.legit).
+-- override is off) keeps the phone key, but on a claimed car the key itself gets past nothing VehicleManager refuses:
+-- doors and start (its ActionGuards), the app (Remote.lua R.vmAllows), sentry and camp (ParkModes T.legit) ask it.
+-- Only the walk-away lock (K.canAutoLock) takes the phone key alone; it can only lock.
 function K.canPair(player, vehicle, phone)
     local ft = phone and phone:getFullType()
     if ft ~= K.PHONE and ft ~= K.PHONE_KEY then return false, "NO_PHONE" end

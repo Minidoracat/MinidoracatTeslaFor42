@@ -392,6 +392,10 @@ check(ownerPk.ft == K.PHONE_KEY and ownerPk.keyId == v.keyId and F.lastSent("pho
 MinidoracatVehicleManagerAPI = nil
 ok, why = K.canPair(vmOwner, v, item(K.PHONE))
 check(not ok and why == "NO_KEY_CARD", "pair: no VehicleManager -> the card is the only way")
+SandboxVars.VehicleEasyUse = true -- T.authorized says yes to everyone then; vmGrants must still need VehicleManager
+ok, why = K.canPair(vmOwner, v, item(K.PHONE))
+check(not ok and why == "NO_KEY_CARD", "pair: no VehicleManager, VehicleEasyUse on -> still the card")
+SandboxVars.VehicleEasyUse = nil
 
 -- ------------------------------------------------------------------ walk-away lock
 owner.vehicle = nil
