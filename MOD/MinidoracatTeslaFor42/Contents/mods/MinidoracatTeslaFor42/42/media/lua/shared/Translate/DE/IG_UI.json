@@ -1,5 +1,6 @@
 {
     "IGUI_MinidoracatTesla_Deny_NOT_OWNER": "Du darfst dieses Auto nicht benutzen",
+    "IGUI_MinidoracatTesla_Deny_IDENTITY_UNVERIFIED": "Dein Konto konnte nicht bestätigt werden: Tesla-Meldungen erreichen dich nicht. Wende dich an einen Admin",
     "IGUI_MinidoracatTesla_Deny_ENGINE_ON": "Schalte das Auto zuerst aus",
     "IGUI_MinidoracatTesla_Deny_NOT_INSIDE": "Du musst im Auto sitzen",
     "IGUI_MinidoracatTesla_Deny_OCCUPIED": "Alle müssen aus dem Auto aussteigen",

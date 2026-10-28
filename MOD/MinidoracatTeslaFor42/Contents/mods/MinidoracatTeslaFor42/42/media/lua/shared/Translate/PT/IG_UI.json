@@ -1,5 +1,6 @@
 {
     "IGUI_MinidoracatTesla_Deny_NOT_OWNER": "Você não tem permissão para usar este carro",
+    "IGUI_MinidoracatTesla_Deny_IDENTITY_UNVERIFIED": "Não foi possível verificar a sua conta: os alertas da Tesla não lhe chegarão. Contacte um administrador",
     "IGUI_MinidoracatTesla_Deny_ENGINE_ON": "Desligue o carro primeiro",
     "IGUI_MinidoracatTesla_Deny_NOT_INSIDE": "É preciso estar sentado dentro",
     "IGUI_MinidoracatTesla_Deny_OCCUPIED": "Todos precisam sair do carro",

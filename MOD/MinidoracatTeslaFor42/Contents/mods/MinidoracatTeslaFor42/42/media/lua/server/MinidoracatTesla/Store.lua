@@ -4,6 +4,7 @@
 --   seen: tostring(keyId) -> the app's last record; alerts: tostring(keyId) -> alerts, oldest first (Remote.lua)
 --   inbox: account -> offline alerts (Inbox.lua); keyIds: tostring(keyId) -> car model (KeyActions.lua)
 --   phones: tostring(phone key item id) -> keyIds in pairing order, every phone key paired since app v2 (Keys.pairedWith)
+--   ids: account name -> { sid, src, at }: the SteamID a name is bound to on a Steam server (St.verify, Core T.account)
 if isClient() then return end
 require "MinidoracatTesla/Core"
 
@@ -11,7 +12,7 @@ local T = MinidoracatTesla
 local St = {}
 T.Store = St
 St.SYSTEM = "MinidoracatTeslaApp" -- named after its first user, the phone app; the file name is in saves now
-St.KEYS = { "seen", "alerts", "inbox", "keyIds", "phones" }
+St.KEYS = { "seen", "alerts", "inbox", "keyIds", "phones", "ids" }
 -- Global ModData tables of older saves: moved in once, then removed so they are neither saved nor served again
 St.LEGACY = { inbox = "MinidoracatTesla_Inbox", keyIds = "MinidoracatTesla_KeyIds" }
 -- ponytail: the whole system is serialized into SliceY's fixed 10 MiB buffer (SliceY.java:10). save() truncates the
@@ -67,3 +68,49 @@ end
 -- SGlobalObjectSystem.chunkLoaded and no client gets past "loading map" (tesla-fix-1027m/o). A Tesla's chunk loading
 -- first (SP) opens it earlier through St.get, after the lookup is set up, as the app always did.
 Events.OnSGlobalObjectSystemInit.Add(function() St.get("inbox") end)
+
+-- ---------------------------------------------------------------- account names on a Steam server
+-- Family conventions.md, player identity: names stay the account key, the SteamID only proves them. The binding is
+-- written once and never moved here (no admin import in this MOD). Two sources:
+-- * OnNewGame: on the server only CreatePlayerPacket fires it (first join, respawn, split-screen join), right after
+--   setting the connection's login name and SteamID (CreatePlayerPacket.java:296-301): trusted.
+-- * first seen by T.account (inboxPull at every login, so before any Tesla record of the name): alive, and no sign
+--   of a respawn under another name, i.e. OnNewGame did not just make another name for this SteamID (AddCoopPlayer
+--   sends CreatePlayer right before ConnectCoop, AddCoopPlayer.java:46-151).
+-- ponytail: a hacked client that respawns without CreatePlayer (the last saved live character loads) can still be
+-- first to bind a name never seen here. Since this version every Tesla record of a name (sentry / camp `by`, the
+-- inbox) goes through T.account, which binds it first, so such a name has nothing to take, only its owner is locked
+-- out of notifications; a world from before keeps its records under names that bind at their owners' next login.
+-- Add an admin rebind (VehicleManager O.importIdentities) if it ever happens.
+St.RENAME_MS = 120000
+local newGame = {} -- SteamID -> { name, at }: the login name OnNewGame last saw for it (memory only)
+
+local function bind(ids, name, sid, src)
+    ids[name] = { sid = sid, src = src, at = getTimestampMs() }
+    T.log("account " .. name .. " bound to its SteamID (" .. src .. ")")
+end
+
+function St.onNewGame(player)
+    if not isServer() or not player or not T.steamMode() then return end
+    local name, sid = player:getUsername(), T.sidOf(player)
+    if type(name) ~= "string" or name == "" or type(sid) ~= "number" or sid <= 0 then return end
+    newGame[sid] = { name = name, at = getTimestampMs() }
+    local ids = St.get("ids")
+    local b = ids[name]
+    if not b then bind(ids, name, sid, "NEWGAME")
+    elseif b.sid ~= sid then T.log("account " .. name .. ": BIND_CONFLICT, a new character with another SteamID; kept") end
+end
+Events.OnNewGame.Add(St.onNewGame)
+
+-- Core T.account on a Steam server, for slot 0 with a non-empty name
+function St.verify(player, name)
+    local sid = T.sidOf(player)
+    if type(sid) ~= "number" or sid <= 0 then return false end
+    local ids = St.get("ids")
+    local b = ids[name]
+    if b then return b.sid == sid end
+    local ng = newGame[sid]
+    if player:isDead() or (ng and ng.name ~= name and getTimestampMs() - ng.at < St.RENAME_MS) then return false end
+    bind(ids, name, sid, "LOGIN")
+    return true
+end

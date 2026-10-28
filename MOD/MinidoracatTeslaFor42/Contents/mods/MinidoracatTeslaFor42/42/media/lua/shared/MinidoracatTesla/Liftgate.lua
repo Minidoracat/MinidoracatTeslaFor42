@@ -1,7 +1,7 @@
 -- Power liftgate and the other doors, opened or closed by the driver with a click on the dashboard's car picture
 -- (like the touchscreen in the real car). Rule shared by the dashboard (client pre-check) and the
--- server command `liftgate` { vid, part }, which unlocks a locked door first, toggles it, syncs it and tells every
--- client to animate it (architecture.md §7).
+-- server command `liftgate` { vid, part }, which unlocks a locked door first, toggles it, syncs it and tells the
+-- clients near the car to animate it (architecture.md §7).
 -- Also syncs the part anim of vanilla door open/close on Teslas in MP: vanilla plays it only on the client that
 -- opened the door (ISOpenVehicleDoor.lua:28-31 "TODO: sync part animation"), so everyone else saw no motion.
 require "MinidoracatTesla/Core"
@@ -20,6 +20,25 @@ function L.check(player, vehicle, id)
     if not part or not part:getInventoryItem() or not part:getDoor() then return nil, "NO_DOOR" end
     if not T.stopped(vehicle) then return nil, "MOVING" end
     return part
+end
+
+-- MP: the clients that can have car v loaded, i.e. every online player within NEAR_TILES of it on both axes, but
+-- `except`: `cmd` with `args`. The server sends a car's updates to a connection with a player within relevantRange * 8
+-- tiles on both axes (VehicleManager.java:164, UdpConnection.java:224-226), relevantRange = clamp(the client's chunk
+-- grid, 12, 20) / 2 + 2 <= 12 chunks (GameServer.java:2808-2809), and a client keeps a car only inside its chunk map,
+-- at most 19 chunks wide (IsoChunkMap.java:114-119). Whoever comes nearer later loads the car with its doors and hue
+-- (VehicleFullUpdatePacket.java:122-126 = BaseVehicle.save) and the engine poses a door from isOpen whenever no anim
+-- plays (BaseVehicle.java:3926-3930), so nothing is lost by not telling them.
+L.NEAR_TILES = 96
+local function sendNear(v, cmd, args, except)
+    local x, y, r = v:getX(), v:getY(), L.NEAR_TILES
+    local list = getOnlinePlayers()
+    for i = 0, list:size() - 1 do
+        local p = list:get(i)
+        if p ~= except and math.abs(p:getX() - x) <= r and math.abs(p:getY() - y) <= r then
+            sendServerCommand(p, T.MODULE, cmd, args)
+        end
+    end
 end
 
 -- Open doors ride in the colour hue's integer part (bit k-1 for SHELL_DOORS[k]): the shader hides the cabin shell's
@@ -41,14 +60,12 @@ function L.syncShell(vehicle)
     if hue == h then return end
     vehicle:setColorHSV(hue, vehicle:getColorSaturation(), vehicle:getColorValue())
     if not isServer() then return end
-    -- MP: a command to every client, not transmitColorHSV: each VehicleProperties re-adds a key that is in the ignition
-    -- on every client, which logs "ItemContainer.AddItem > Error, container already has id" (VehicleProperties.java:27-33).
+    -- MP: a command to the clients near, not transmitColorHSV: each VehicleProperties re-adds a key that is in the
+    -- ignition on every client, which logs "ItemContainer.AddItem > Error, container already has id"
+    -- (VehicleProperties.java:27-33).
     -- ponytail: no sequence number; a resent command overtaking a newer one (RELIABLE, unordered: PacketTypes.java:510)
     -- leaves the older hue until the next door change or VehicleProperties. Add a per-car counter if it shows up.
-    local list = getOnlinePlayers()
-    for i = 0, list:size() - 1 do
-        sendServerCommand(list:get(i), T.MODULE, "shell", { vid = vehicle:getId(), hue = hue })
-    end
+    sendNear(vehicle, "shell", { vid = vehicle:getId(), hue = hue })
 end
 
 -- client: the dashboard's car picture
@@ -82,14 +99,10 @@ if not isServer() then
 end
 
 if not isClient() then
-    -- to every online player but `except` (MP), or straight to the handler (SP)
-    local function broadcast(out, except)
+    -- to the clients near but `except` (MP), or straight to the handler (SP)
+    local function broadcast(v, out, except)
         if not isServer() then return T.ClientCommands.partAnim(out) end
-        local list = getOnlinePlayers()
-        for i = 0, list:size() - 1 do
-            local p = list:get(i)
-            if p ~= except then sendServerCommand(p, T.MODULE, "partAnim", out) end -- far clients ignore it
-        end
+        sendNear(v, "partAnim", out, except)
     end
 
     -- A Tesla locks as a whole: the liftgate and the frunk lid lock and unlock with the car. Vanilla never locks the
@@ -125,7 +138,7 @@ if not isClient() then
         if not open then L.relock(v, part) end
         v:transmitPartDoor(part) -- BaseVehicle.java:8247-8256
         L.syncShell(v)
-        broadcast({ vid = v:getId(), part = part:getId(), open = open, sound = true })
+        broadcast(v, { vid = v:getId(), part = part:getId(), open = open, sound = true })
         T.log("liftgate " .. part:getId() .. " " .. (open and "open" or "close") .. " vid=" .. tostring(v:getId()) .. " by=" .. tostring(who))
     end
 
@@ -158,7 +171,7 @@ if not isClient() then
                 and part:getDoor():isOpen() == open then
                 if not open and L.relock(v, part) then v:transmitPartDoor(part) end
                 L.syncShell(v)
-                if isServer() then broadcast({ vid = v:getId(), part = part:getId(), open = open }, self.character) end
+                if isServer() then broadcast(v, { vid = v:getId(), part = part:getId(), open = open }, self.character) end
             end
             return ok
         end

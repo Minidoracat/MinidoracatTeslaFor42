@@ -63,6 +63,8 @@ function print(...) local t = {} for i = 1, select("#", ...) do t[#t + 1] = tost
 
 Capability = { ManipulateVehicle = "ManipulateVehicle" }
 function checkPermissions(player, cap) return player and player._admin == true end
+-- the local test servers are no-steam (LuaManager getSteamModeActive); test_identity.lua switches it on
+function getSteamModeActive() return H.steam == true end
 
 function instanceof(o, cls) return type(o) == "table" and o._class == cls end
 
@@ -206,7 +208,7 @@ function H.player(o)
     o = o or {}
     onlineIds = onlineIds + 1
     local p = { name = o.name or "alice", _admin = o.admin or false, x = o.x or 100, y = o.y or 100, z = o.z or 0,
-        keys = o.keys or {}, vehicle = nil, num = o.num or 0, oid = onlineIds, _class = "IsoPlayer" }
+        keys = o.keys or {}, vehicle = nil, num = o.num or 0, oid = onlineIds, sid = o.sid, _class = "IsoPlayer" }
     function p:getOnlineID() return self.oid end
     function p:getUsername() return self.name end
     function p:getPlayerNum() return self.num end -- split-screen slot (IsoPlayer.java:979)
@@ -215,6 +217,8 @@ function H.player(o)
     function p:getY() return self.y end
     function p:getZ() return self.z end
     function p:DistTo(o2) local dx, dy = self.x - o2:getX(), self.y - o2:getY(); return math.sqrt(dx * dx + dy * dy) end
+    function p:getSteamID() return self.sid or 0 end -- H.player{ sid = } (IsoPlayer.java:6412; 0 off Steam)
+    function p:isDead() return self.dead == true end
     function p:getInventory()
         local keys = self.keys
         return { haveThisKeyId = function(_, id) return keys[id] and {} or nil end }

@@ -258,8 +258,8 @@ local function summon(player, v, on, args)
         api.stopSummon(v, "CANCELLED")
         return nil, false
     end
-    if info then -- already on its way: once per summoner, someone else's is theirs
-        if info.by ~= player:getUsername() then return "UI_MinidoracatAutoDrive_SummonBusy" end
+    if info then -- already on its way: once per summoner (AutoDrive's by = its username), someone else's is theirs
+        if info.by ~= T.account(player) then return "UI_MinidoracatAutoDrive_SummonBusy" end
         return nil, true, true
     end
     local mode = args.mode or "come"
@@ -341,7 +341,7 @@ function R.state(player, key)
         out.vid = v:getId() -- the app finds the car its game has loaded (summon page)
         local api = R.summonApi()
         local info = api and api.summonInfo(v)
-        if info then out.summon = { phase = info.phase, mode = info.mode, mine = info.by == player:getUsername() } end
+        if info then out.summon = { phase = info.phase, mode = info.mode, mine = info.by == T.account(player) } end
     end
     return out
 end
@@ -391,7 +391,7 @@ T.ServerCommands.appAction = function(player, args)
     -- down, or a share been taken back; "one tap starts, one tap stops" needs the stop to work)
     local api = act == "summon" and args.on ~= true and R.summonApi()
     local info = api and api.summonInfo(v)
-    local ownStop = type(info) == "table" and info.by == player:getUsername()
+    local ownStop = type(info) == "table" and info.by == T.account(player) -- a renamed respawn is not the summoner
     if not ownStop then
         if not K.appReach(player, v) then return done("NO_LINK") end
         local codes = VM_CODES[act]

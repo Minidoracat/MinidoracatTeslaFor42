@@ -1,7 +1,8 @@
 -- Owner notifications for sentry and camp. Online owner: immediate "alert". Offline owner: kept in the server-only
 -- store (Store.lua "inbox"; never Global ModData, which any client can fetch), at most MAX entries per
 -- account, delivered and cleared when the client sends "inboxPull" after login (first OnTick after OnGameStart).
--- Accounts are T.account names: a split-screen guest has none, so it neither gets nor pulls anyone's alerts.
+-- Accounts are T.account names: a split-screen guest has none, so it neither gets nor pulls anyone's alerts; nor does
+-- a slot-0 player whose name is not this SteamID's on a Steam server (a respawn renamed to an offline owner).
 if isClient() then return end
 require "MinidoracatTesla/Core"
 require "MinidoracatTesla/Store"
@@ -71,7 +72,14 @@ end
 
 T.ServerCommands.inboxPull = function(player, args)
     local name = T.account(player)
-    if not name then return end
+    if not name then
+        -- sent at login: the main player learns why no alert will reach it (conventions.md, player identity item 5)
+        if isServer() and player:getPlayerNum() == 0 then
+            T.log("inbox refused: account " .. tostring(player:getUsername()) .. " not verified")
+            T.deny(player, "IDENTITY_UNVERIFIED")
+        end
+        return
+    end
     local data = T.Store.get("inbox")
     local list = data[name]
     if not list or #list == 0 then return end
