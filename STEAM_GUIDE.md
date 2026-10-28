@@ -69,6 +69,7 @@ https://steamcommunity.com/sharedfiles/filedetails/?id=XXXX
 [/list]
 [h3]行動充電器[/h3]
 放在地上就能用的充電器，不必裝上牆；功率比壁掛式低。
+{{img:15-mobile-gen-zh.jpg}}
 [table]
 [tr][th]配方[/th][th]工具（不消耗）[/th][th]材料[/th][th]產出[/th][/tr]
 [tr][td]製作特斯拉行動充電器[/td][td]螺絲起子[/td][td]車電池充電器 1、電線 3、電子零件 1[/td][td]特斯拉第三代行動充電器 1[/td][/tr]
@@ -296,6 +297,7 @@ https://steamcommunity.com/sharedfiles/filedetails/?id=XXXX
 [*] 沒有配方，出生時不會帶；原版的無線電話不能配對。
 [/list]
 [h3]卡片鑰匙弄丟了怎麼辦？[/h3]
+{{img:18-hotwire-pair-zh.jpg}}
 [list]
 [*] [b]有手機鑰匙[/b]：它就是備用鑰匙，拉門解鎖、放背包發動、App 都照用。
 [*] [b]車用綁車 MOD 綁定了[/b]：車主坐上車，就能用新手機「設為手機鑰匙」（伺服器要開綁車 MOD 的「車主虛擬鑰匙」；被分享的人仍要卡片）；車主與被允許駕駛的人也能用綁車 MOD 的虛擬鑰匙解鎖、發動。
@@ -306,6 +308,7 @@ https://steamcommunity.com/sharedfiles/filedetails/?id=XXXX
 [*] 不算：卡片、手機鑰匙和原版鑰匙一樣，車沒綁定就是誰拿到誰能開。要防盜請用 Vehicle Manager 綁車。
 [/list]
 [h3]沒有鑰匙時能做什麼？[/h3]
+{{img:17-locked-menu-zh.jpg}}
 沒裝綁車 MOD 時：
 [list]
 [*] [b]車沒上鎖[/b]：能插上、拔下充電線，用充電卡調目標、停止充電，也能撿起或轉向插著這台車的充電座。
@@ -334,6 +337,7 @@ https://steamcommunity.com/sharedfiles/filedetails/?id=XXXX
 [*] 例外：帶著手機鑰匙走開自動上鎖只會上鎖，不問綁車 MOD。
 [/list]
 [h3]充電座為什麼沒有電？[/h3]
+{{img:16-mobile-nopower-zh.jpg}}
 [list]
 [*] 壁掛式的市電：充電座那一格或旁邊一格要在房屋室內，而且還沒停電。
 [*] 壁掛式停電之後：附近要有運轉中、有油的發電機（照原版發電機的供電範圍）。
