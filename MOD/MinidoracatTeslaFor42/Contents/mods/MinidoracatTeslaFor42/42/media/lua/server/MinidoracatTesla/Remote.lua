@@ -246,6 +246,16 @@ function R.summonEnded(v, code, player, key)
     if sr and v then sr.summon(v, false) end
 end
 
+-- Is `player` the one running summon `info` (AutoDrive summonInfo, by = the summoner's username)? The session ends once
+-- its summoner leaves or dies (MDAD_Summon.lua:223-225), so the name belongs to someone online. A split-screen guest
+-- cannot take a name online right now (ConnectCoopPacket.java:79-88) and summons too, so its username is enough.
+-- Slot 0 also passes T.account: a Steam co-op host lets two logins share a name, it only refuses a second
+-- connection of the same SteamID (LoginPacket.java:78-90), and the account check tells them apart by SteamID.
+function R.isSummoner(player, info)
+    if type(info) ~= "table" or info.by ~= player:getUsername() then return false end
+    return player:getPlayerNum() ~= 0 or T.account(player) == info.by
+end
+
 -- on: start (a running summon: nothing, startSummon is called once) or stop it, whoever started it. Tesla's own rules
 -- first, then AutoDrive's; refused by AutoDrive = its translation key (T.denyText shows it). Sentry is switched off
 -- once the car is on its way, like the owner's unlock.
@@ -259,7 +269,7 @@ local function summon(player, v, on, args)
         return nil, false
     end
     if info then -- already on its way: once per summoner, someone else's is theirs
-        if info.by ~= player:getUsername() then return "UI_MinidoracatAutoDrive_SummonBusy" end
+        if not R.isSummoner(player, info) then return "UI_MinidoracatAutoDrive_SummonBusy" end
         return nil, true, true
     end
     local mode = args.mode or "come"
@@ -341,7 +351,7 @@ function R.state(player, key)
         out.vid = v:getId() -- the app finds the car its game has loaded (summon page)
         local api = R.summonApi()
         local info = api and api.summonInfo(v)
-        if info then out.summon = { phase = info.phase, mode = info.mode, mine = info.by == player:getUsername() } end
+        if info then out.summon = { phase = info.phase, mode = info.mode, mine = R.isSummoner(player, info) } end
     end
     return out
 end
@@ -388,13 +398,9 @@ T.ServerCommands.appAction = function(player, args)
     local v = R.loadedCar(key)
     if not v then return done("NOT_LOADED") end -- the server doesn't have the car: nobody can act on it
     -- the summoner stopping their own summon: always (the car may have driven past Bluetooth's 30 tiles with the grid
-    -- down, or a share been taken back; "one tap starts, one tap stops" needs the stop to work). The summoner is the
-    -- session's username, not T.account: a split-screen guest summons too, and the session ends once its summoner
-    -- leaves or dies (AutoDrive MDAD_Summon.lua:223-225, found by onlineID + username :56-65), so the name belongs to
-    -- someone online, which no one else can take (ConnectCoopPacket.java:79-88).
+    -- down, or a share been taken back; "one tap starts, one tap stops" needs the stop to work)
     local api = act == "summon" and args.on ~= true and R.summonApi()
-    local info = api and api.summonInfo(v)
-    local ownStop = type(info) == "table" and info.by == player:getUsername()
+    local ownStop = api and R.isSummoner(player, api.summonInfo(v))
     if not ownStop then
         if not K.appReach(player, v) then return done("NO_LINK") end
         local codes = VM_CODES[act]

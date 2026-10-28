@@ -69,6 +69,10 @@ check(logged(logs, "not verified") == 0, "...more pulls within the hour: denied,
 H.advanceMs(3600000)
 T.ServerCommands.inboxPull(renamed, {})
 check(logged(logs, "IDENTITY_UNVERIFIED x6") == 1, "...an hour later one line with the count")
+local other = H.player({ name = "someone", sid = SID_THIEF })
+other.oid, ids.someone = renamed.oid, { sid = SID_OWNER, src = "E2E", at = 0 } -- bound to another Steam account
+T.ServerCommands.inboxPull(other, {})
+check(logged(logs, "account someone not verified") == 1, "...another name on that slot within the hour: its own line")
 online = { renamed }
 n = #H.sent
 T.Inbox.notify("owner", { kind = "touch", what = "door" })
@@ -114,6 +118,9 @@ n = #H.sent
 T.ServerCommands.inboxPull(legacy, {})
 check(ids.legacy and ids.legacy.src == "NEWGAME" and sentSince(n, "inbox") and inbox.legacy == nil,
     "...its new character binds it (OnNewGame) and the inbox is delivered")
+inbox.emptied = {}
+check(T.account(H.player({ name = "emptied", sid = SID_NEW + 16 })) == "emptied" and ids.emptied.src == "LOGIN",
+    "an empty older inbox table does not block the binding")
 online = { H.player({ name = "guest", sid = SID_NEW, num = 1 }) }
 St.scan()
 check(ids.guest == nil, "the scan leaves split-screen guests alone")

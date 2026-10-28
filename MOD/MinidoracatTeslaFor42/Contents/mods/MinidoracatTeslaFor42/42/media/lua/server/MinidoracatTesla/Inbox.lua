@@ -70,20 +70,20 @@ function I.notify(username, e)
         .. (p and " online" or " stored"))
 end
 
--- onlineID -> { at, n }: "not verified" log lines, one an hour per slot with the count since (a modified client may send
--- inboxPull as often as the dispatcher's budget allows; conventions.md, player identity: aggregate them)
+-- onlineID -> { who, at, n }: "not verified" log lines, one an hour per slot and name with the count since (a modified
+-- client may send inboxPull as often as the dispatcher's budget allows; conventions.md, player identity: aggregate them)
 local refused = {}
 T.ServerCommands.inboxPull = function(player, args)
     local name = T.account(player)
     if not name then
         -- sent at login: the main player learns why no alert will reach it (conventions.md, player identity item 5)
         if isServer() and player:getPlayerNum() == 0 then
-            local id, t = player:getOnlineID(), getTimestampMs()
+            local id, who, t = player:getOnlineID(), tostring(player:getUsername()), getTimestampMs()
             local r = refused[id]
+            if r and r.who ~= who then r = nil end
             if not r or t - r.at >= 3600000 or t < r.at then
-                T.log("inbox refused: account " .. tostring(player:getUsername()) .. " not verified (IDENTITY_UNVERIFIED x"
-                    .. (r and r.n + 1 or 1) .. ")")
-                refused[id] = { at = t, n = 0 }
+                T.log("inbox refused: account " .. who .. " not verified (IDENTITY_UNVERIFIED x" .. (r and r.n + 1 or 1) .. ")")
+                refused[id] = { who = who, at = t, n = 0 }
             else
                 r.n = r.n + 1
             end

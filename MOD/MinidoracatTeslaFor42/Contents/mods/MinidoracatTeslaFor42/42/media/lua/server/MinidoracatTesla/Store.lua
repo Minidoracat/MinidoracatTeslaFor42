@@ -73,14 +73,17 @@ Events.OnSGlobalObjectSystemInit.Add(function() St.get("inbox") end)
 -- Family conventions.md, player identity: names stay the account key, the SteamID only proves them. The binding is
 -- written once and never moved here (no admin import in this MOD). Two sources:
 -- * OnNewGame: on the server only CreatePlayerPacket fires it (first join, respawn, split-screen join), right after
---   setting the connection's login name and SteamID (CreatePlayerPacket.java:296-301): trusted.
+--   setting the connection's login name and SteamID (CreatePlayerPacket.java:296-301): trusted on a dedicated server
+--   (password login). A Steam co-op host takes the login name as sent, unchecked (LoginPacket.java:78-90): there the
+--   first to join under a name binds it.
 -- * first seen by T.account (St.scan below within a game minute of login; inboxPull at login), when nothing says it is
 --   a respawn renamed by its client: alive; no OnNewGame made another name for this SteamID in the last 2 minutes
 --   (AddCoopPlayer sends CreatePlayer right before ConnectCoop, AddCoopPlayer.java:46-151); the slot's login name
---   (St.seat) is this name; no inbox kept under the name from before any binding.
+--   (St.seat) is this name; no alerts stored under the name from before any binding (they wait for OnNewGame, and
+--   until then that owner gets no Tesla alerts: a world first run -nosteam, or saved before this check).
 -- ponytail: a hacked client can still be first to bind a name never bound, if it renames slot 0 before the first
 -- scan of its connection (ConnectCoop on an empty slot 0, or dying and respawning within a game minute of login).
--- Such a name has no Tesla records (every one goes through T.account, which binds first; an older inbox blocks it),
+-- Such a name has no Tesla records (every one goes through T.account, which binds first; older alerts block it),
 -- so it only locks its owner out of notifications. Add an admin rebind (VehicleManager O.importIdentities) if needed.
 St.RENAME_MS = 120000
 local newGame = {} -- SteamID -> { name, at }: the login name OnNewGame last saw for it (memory only)
@@ -107,7 +110,7 @@ Events.OnNewGame.Add(St.onNewGame)
 -- object after a dead one with the same SteamID is a respawn and inherits the login name; otherwise a new connection.
 -- ponytail: one dead IsoPlayer kept per onlineID until the id is used again (bounded by the server's slots); a player
 -- who dies, quits and comes back on the same slot under another login of the same Steam account counts as renamed
--- until the next login (family conventions.md lists the same false positive).
+-- (no time limit, unlike conventions.md's 2-minute OnNewGame evidence) until another connection takes that onlineID.
 local seats = {}
 function St.seat(player, sid, name)
     local id = player:getOnlineID()
@@ -129,7 +132,7 @@ function St.verify(player, name)
     local b = ids[name]
     if b then return b.sid == sid end
     local ng = newGame[sid]
-    if player:isDead() or login ~= name or #name > getMaxUsernameLength() or St.get("inbox")[name] ~= nil
+    if player:isDead() or login ~= name or #name > getMaxUsernameLength() or #(St.get("inbox")[name] or {}) > 0
         or (ng and ng.name ~= name and getTimestampMs() - ng.at < St.RENAME_MS) then return false end
     bind(ids, name, sid, "LOGIN")
     return true

@@ -515,6 +515,19 @@ check(summon(two2, true).why == "UI_MinidoracatAutoDrive_SummonBusy", "another h
 F.sent = {}
 cmds.appStatus(two2, { key = 9001 })
 check(last("appState").summon.mine == false, "the other holder sees someone else's summon")
+-- who counts as the summoner (Remote.isSummoner): the session's username; slot 0 also through T.account, since a
+-- Steam co-op host lets two logins share a name (LoginPacket.java:78-90)
+local info = AD.info[v]
+check(T.Remote.isSummoner(H.player({ name = "owner", num = 1 }), info), "a split-screen guest with the summoner's name: its own summon")
+H.steam = true
+local SID_A, SID_B = 76561198000000112, 76561198000000128
+local realIds = T.Store.get("ids").owner
+T.Store.get("ids").owner = { sid = SID_A, src = "E2E", at = 0 }
+check(T.Remote.isSummoner(H.player({ name = "owner", sid = SID_A }), info), "Steam: the summoner, its SteamID bound to the name")
+check(not T.Remote.isSummoner(H.player({ name = "owner", sid = SID_B }), info),
+    "Steam co-op host, a second login with the summoner's name and another SteamID: not the summoner (no stop without reach)")
+T.Store.get("ids").owner, H.steam = realIds, false
+check(not T.Remote.isSummoner(owner, nil) and not T.Remote.isSummoner(two2, info), "no summon, or another name: no")
 grid = false
 owner.x, two2.x = v.x + 45, v.x + 45
 d = summon(two2, false)
