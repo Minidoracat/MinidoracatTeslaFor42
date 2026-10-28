@@ -17,6 +17,7 @@
     "IGUI_MinidoracatTesla_Sentry_LowBattery": "Mode Sentinelle désactivé : batterie sous 20 %%",
     "IGUI_MinidoracatTesla_Camp_LowBattery": "Mode Camping désactivé : batterie sous %1 %%",
     "IGUI_MinidoracatTesla_Sentry_ByPlayer": "joueur %1",
+    "IGUI_MinidoracatTesla_Sentry_ByUnverified": "joueur non vérifié",
     "IGUI_MinidoracatTesla_Sentry_Flashed": "les phares ont clignoté 3 fois",
     "IGUI_MinidoracatTesla_Sep": " · ",
     "IGUI_MinidoracatTesla_Inbox_Title": "Sentinelle : %1 événements pendant votre absence",

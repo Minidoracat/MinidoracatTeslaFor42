@@ -104,8 +104,12 @@ local function multiPhone(ids)
     it:getModData()[K.PAIRED], it.md[K.PAIRED_CARS] = ids, cars
     return it
 end
+local oids = 0
 local function player(name, inv, x, y)
-    local p = { name = name, inv = inv, x = x, y = y }
+    oids = oids + 1
+    local p = { name = name, inv = inv, x = x, y = y, oid = oids * 4 }
+    function p:getOnlineID() return self.oid end -- slot * 4, like H.player
+    function p:getSteamID() return 0 end
     function p:getUsername() return self.name end
     function p:getPlayerNum() return 0 end
     function p:getVehicle() return self.vehicle end
@@ -707,7 +711,7 @@ require "MinidoracatTesla/PhoneApp"
 local App = T.PhoneApp
 local myInv = container(multiPhone({ 9001, 9002 }))
 local me = { getX = function() return 1000 end, getY = function() return 1990 end, isDead = function() return false end,
-    getInventory = function() return myInv end }
+    getInventory = function() return myInv end, getSteamID = function() return 0 end }
 local realSpecific = getSpecificPlayer
 getSpecificPlayer = function() return me end
 local function sentLast() local m = H.clientSent[#H.clientSent]; return m and m.command, m and m.args end

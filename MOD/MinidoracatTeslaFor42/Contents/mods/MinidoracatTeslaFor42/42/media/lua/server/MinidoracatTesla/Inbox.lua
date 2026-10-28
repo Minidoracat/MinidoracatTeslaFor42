@@ -29,8 +29,10 @@ function I.online(username)
     return nil
 end
 
--- One event record; plain strings and numbers only (sent as-is, stored as-is). `key` = the car's keyId: the phone
--- app's alert list (Remote.lua) is per car.
+-- One event record; plain strings, numbers and booleans only (sent as-is, stored as-is; TableNetworkUtils.java:159).
+-- `key` = the car's keyId: the phone app's alert list (Remote.lua) is per car. `by` = the intruder's account
+-- (T.account), false when it has none (a split-screen guest, a respawn renamed on a Steam server): the name it goes by
+-- is its client's word, and an alert naming it would frame whoever it chose to be called.
 function I.entry(vehicle, kind, what, actor, partId)
     local gt = getGameTime()
     local script = vehicle:getScript()
@@ -38,7 +40,7 @@ function I.entry(vehicle, kind, what, actor, partId)
         at = gt:getWorldAgeHours(), hh = gt:getHour(), mm = gt:getMinutes(),
         car = script and (script:getCarModelName() or script:getName()) or "",
         kind = kind, what = what, part = partId,
-        by = actor and actor:getUsername() or nil,
+        by = actor and (T.account(actor) or false), -- nil without an actor (low battery)
         x = math.floor(vehicle:getX()), y = math.floor(vehicle:getY()), key = vehicle:getKeyId(),
     }
 end

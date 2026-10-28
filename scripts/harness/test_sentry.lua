@@ -226,6 +226,17 @@ if H and H.stub and H.clientSent then
     check(#H.clientSent == n0 + 1 and H.clientSent[#H.clientSent].command == "inboxPull", "client: first OnTick sends inboxPull")
     H.fire("OnTick")
     check(#H.clientSent == n0 + 1, "client: pull hook removed itself after one send")
+    -- the intruder line of a card: the account the server named (Inbox.entry `by`), or "unverified" for false
+    local oldTM, oldTex = getTextManager, getTexture
+    getTextManager = function() return { getFontHeight = function() return 18 end, MeasureStringX = function(_, _, s) return #s end } end
+    getTexture = function() return nil end
+    local named = T.ParkUI.card({ kind = "touch", what = "door", by = "thief" }).detail
+    local anon = T.ParkUI.card({ kind = "touch", what = "door", by = false }).detail
+    local nobody = T.ParkUI.card({ kind = "lowBattery", what = "sentry" }).detail
+    check(named:find("Sentry_ByPlayer", 1, true) and anon:find("Sentry_ByUnverified", 1, true)
+        and not anon:find("Sentry_ByPlayer", 1, true) and nobody == nil,
+        "client card: the intruder's account, \"unverified\" when the server had none, no line without an intruder")
+    getTextManager, getTexture = oldTM, oldTex
     getSpecificPlayer = oldGSP
 end
 

@@ -126,8 +126,12 @@ local function tesla(o)
     return v
 end
 
+local oids = 0
 local function player(name, inv, x, y, num)
-    local p = { name = name, inv = inv, x = x, y = y, num = num or 0 }
+    oids = oids + 1
+    local p = { name = name, inv = inv, x = x, y = y, num = num or 0, oid = oids * 4 + (num or 0) }
+    function p:getOnlineID() return self.oid end -- slot * 4 + split-screen index, like H.player
+    function p:getSteamID() return 0 end
     function p:getUsername() return self.name end
     function p:getPlayerNum() return self.num end
     function p:getVehicle() return self.vehicle end

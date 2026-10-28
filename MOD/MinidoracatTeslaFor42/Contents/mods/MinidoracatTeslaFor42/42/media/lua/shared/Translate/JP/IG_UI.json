@@ -17,6 +17,7 @@
     "IGUI_MinidoracatTesla_Sentry_LowBattery": "セントリーモードをオフにしました：バッテリー残量20%%未満",
     "IGUI_MinidoracatTesla_Camp_LowBattery": "キャンプモードをオフにしました：バッテリー残量%1%%未満",
     "IGUI_MinidoracatTesla_Sentry_ByPlayer": "プレイヤー %1",
+    "IGUI_MinidoracatTesla_Sentry_ByUnverified": "身元未確認のプレイヤー",
     "IGUI_MinidoracatTesla_Sentry_Flashed": "ヘッドライトが3回点滅",
     "IGUI_MinidoracatTesla_Sep": " · ",
     "IGUI_MinidoracatTesla_Inbox_Title": "セントリー：不在中のイベント %1 件",

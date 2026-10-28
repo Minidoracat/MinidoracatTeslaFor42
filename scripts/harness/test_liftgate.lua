@@ -144,6 +144,39 @@ far.x = v.x + 10 -- walked up: the car (doors, hue) comes with the engine's full
 n = #H.sent
 cmd(driver, { vid = v:getId(), part = "TrunkDoor" })
 check(d.open and got(far, n, "shell") == 1 and got(far, n, "partAnim") == 1, "the far player walked up: the next open reaches it")
+
+H.section("liftgate: once per client connection (split-screen)")
+-- sendServerCommand(player, ...) goes to the player's connection (GameServer.java:3562-3569) and the client fires
+-- OnServerCommand once per packet, no player in it (GameClient.java:1055-1071): two players of one client near the car
+-- must not get two partAnim (the anim restarts, the sound plays twice). Online id = slot * 4 + split-screen index.
+local guest = H.player({ name = "guest", num = 1, x = v.x + 3, y = v.y })
+guest.oid = driver.oid + 1
+local away = H.player({ name = "away", x = v.x + REACH + 50, y = v.y })
+local awayGuest = H.player({ name = "awayGuest", num = 1, x = v.x + 5, y = v.y })
+awayGuest.oid = away.oid + 1
+online = { driver, guest, passenger, away, awayGuest }
+local function conn(p, from, command) -- commands sent to p's connection
+    local c = 0
+    for i = from + 1, #H.sent do
+        local s = H.sent[i]
+        if s.player and s.command == command and math.floor(s.player:getOnlineID() / 4) == math.floor(p:getOnlineID() / 4) then
+            c = c + 1
+        end
+    end
+    return c
+end
+n = #H.sent
+cmd(driver, { vid = v:getId(), part = "TrunkDoor" })
+check(not d.open and conn(driver, n, "shell") == 1 and conn(driver, n, "partAnim") == 1 and conn(passenger, n, "partAnim") == 1,
+    "the driver and its split-screen guest share one client: one shell, one partAnim to it")
+check(conn(away, n, "shell") == 1 and conn(away, n, "partAnim") == 1, "...a client with only its guest near: one each")
+n = #H.sent
+ISOpenVehicleDoor.complete({ vehicle = v, part = v.parts.DoorFrontLeft, character = guest })
+check(conn(driver, n, "partAnim") == 0 and conn(passenger, n, "partAnim") == 1 and conn(away, n, "partAnim") == 1,
+    "vanilla door opened by the guest: no anim back to its own client (it played it in :start), one to every other")
+ISCloseVehicleDoor.complete({ vehicle = v, part = v.parts.DoorFrontLeft, character = guest })
+cmd(driver, { vid = v:getId(), part = "TrunkDoor" })
+check(d.open, "liftgate open again for the next section")
 online = { driver, passenger }
 
 H.section("dashboard doors: any door part (HUD car picture)")

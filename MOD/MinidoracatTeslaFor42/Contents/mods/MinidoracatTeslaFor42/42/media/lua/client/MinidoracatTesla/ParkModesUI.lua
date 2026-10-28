@@ -157,8 +157,10 @@ function UI.card(e)
         local pn = getTextOrNull(T.partNameKey and T.partNameKey("Base." .. tostring(e.car), pk) or pk)
         if pn then bits[#bits + 1] = pn end
     end
-    -- a bare % in a getText argument crashes formatted() (verify_mod check 4); names are player-chosen
-    if e.by then bits[#bits + 1] = getText("IGUI_MinidoracatTesla_Sentry_ByPlayer", (tostring(e.by):gsub("%%", ""))) end
+    -- a bare % in a getText argument crashes formatted() (verify_mod check 4); names are player-chosen. by = false: an
+    -- intruder with no verified account (Inbox.entry), so no name to trust
+    if e.by then bits[#bits + 1] = getText("IGUI_MinidoracatTesla_Sentry_ByPlayer", (tostring(e.by):gsub("%%", "")))
+    elseif e.by == false then bits[#bits + 1] = getText("IGUI_MinidoracatTesla_Sentry_ByUnverified") end
     if e.kind == "touch" then bits[#bits + 1] = getText("IGUI_MinidoracatTesla_Sentry_Flashed") end
     local c = {
         title = getText(key, tostring(e.pct or 20)), -- camp lowBattery: %1 = the sandbox limit (records before it: 20)

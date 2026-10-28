@@ -195,10 +195,14 @@ function F.vehicle(o)
     return v
 end
 
+local oids = 0
 function F.player(name, o)
     o = o or {}
+    oids = oids + 1
     local p = { name = name, vehicle = o.vehicle, keys = o.keys or {}, dist = o.dist or 2, boredom = o.boredom or 0,
-        asleep = false, bedType = "averageBed", hand = o.hand }
+        asleep = false, bedType = "averageBed", hand = o.hand, oid = oids * 4 + (o.num or 0) }
+    function p:getOnlineID() return self.oid end -- slot * 4 + split-screen index, like H.player
+    function p:getSteamID() return 0 end -- no-steam
     function p:getStats()
         local me = self
         return { get = function(_, s) return me.boredom end,
