@@ -58,6 +58,9 @@ WC_MODEL = "MinidoracatTesla_WallConnector"
 MC_MODEL = "MinidoracatTesla_MobileConnector"
 CABLE_MODELS = ("MinidoracatTesla_CableHang", "MinidoracatTesla_CableFloor")   # + one plug per car: cable_models()
 ITEM_ICONS = {WC_MODEL: "wc_icon.png", "MinidoracatTesla_Cable": "cable_icon.png", MC_MODEL: "mc_icon.png"}
+# per-icon tone (gamma, lift) applied after fit_icon: the black Mobile Connector all but vanished on the crafting
+# window's dark panel (mean RGB 28); user 2026-10-28 picked "B" from icon-compare.png (mean ~76, the Wall Connector's)
+ICON_TONE = {MC_MODEL: (0.62, 0.06)}
 
 
 def wc_props(facing: str) -> dict[str, str]:
@@ -225,6 +228,13 @@ def fit_icon(img: Image.Image, size: int = 32) -> Image.Image:
     return out
 
 
+def tone(img: Image.Image, gamma: float, lift: float) -> Image.Image:
+    """Lift dark RGB: c' = lift + (1 - lift) * c ** gamma (0..1); alpha untouched."""
+    lut = [round(255 * (lift + (1 - lift) * (v / 255) ** gamma)) for v in range(256)]
+    r, g, b, a = img.split()
+    return Image.merge("RGBA", (r.point(lut), g.point(lut), b.point(lut), a))
+
+
 def build(skip_blender: bool) -> None:
     if not skip_blender:
         textures()
@@ -253,7 +263,10 @@ def build(skip_blender: bool) -> None:
         dst.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(src, dst)
     for item, src in ITEM_ICONS.items():
-        fit_icon(Image.open(TEMP / "icons" / src)).save(MEDIA / "textures" / f"Item_{item}.png", optimize=True)
+        icon = fit_icon(Image.open(TEMP / "icons" / src))
+        if item in ICON_TONE:
+            icon = tone(icon, *ICON_TONE[item])
+        icon.save(MEDIA / "textures" / f"Item_{item}.png", optimize=True)
     print(f"wrote {len(cells)} sprites, {PACK}.pack, {TILEDEF}.tiles, spriteModels.txt, {len(assets())} assets, "
           f"{len(ITEM_ICONS)} icons")
 
