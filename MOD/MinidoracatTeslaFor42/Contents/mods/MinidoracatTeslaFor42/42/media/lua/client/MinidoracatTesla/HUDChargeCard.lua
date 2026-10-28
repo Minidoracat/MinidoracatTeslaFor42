@@ -198,7 +198,8 @@ function Card:read()
     self.sSrc = src == "grid" and getText("IGUI_MinidoracatTesla_Card_SrcGrid")
         or (src == "generator" and getText("IGUI_MinidoracatTesla_Card_SrcGenerator") or nil)
     self.sAlert = (state == "full" and getText("IGUI_MinidoracatTesla_Card_FullHint"))
-        or (state == "nopower" and getText("IGUI_MinidoracatTesla_Card_NoPowerHint"))
+        or (state == "nopower" and getText(T.Chargers[self.kind] and T.Chargers[self.kind].genTiles -- where a Mobile Connector works
+            and "ContextMenu_MinidoracatTesla_MobileNoPower" or "IGUI_MinidoracatTesla_Card_NoPowerHint"))
         or (state == "none" and getText("IGUI_MinidoracatTesla_Card_NotPluggedHint")) or nil
     self.alertColor = state == "full" and C.ok or (state == "nopower" and C.warn or C.text2)
     self.btnToggle:setTitle(getText(state == "charging" and "IGUI_MinidoracatTesla_Card_Stop" or "IGUI_MinidoracatTesla_Card_Start"))

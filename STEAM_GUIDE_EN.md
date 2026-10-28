@@ -76,7 +76,7 @@ A charger that works on the floor, no wall needed; slower than the Wall Connecto
 [list]
 [*] [b]Getting one[/b]: Electrical 2 learns the recipe (made next to a work surface); it also turns up on the shelves that stock car battery chargers (car supply stores, garages, gas stations and so on; not in other vehicles' trunks) at about half their chance (both are Mechanics loot); a newly spawned Tesla has a one-in-four chance of one in its Rear Trunk.
 [*] [b]On the floor[/b]: place it like vanilla furniture; you place and pick it up with bare hands, no tool or skill needed.
-[*] [b]Power[/b]: the same rules as the Wall Connector: grid power inside a house; after the power cut or outdoors it needs a running generator nearby. On a generator a full charge also takes about one tank of fuel; it charges slower, so per hour it burns about 2/3 of what the Wall Connector does.
+[*] [b]Power[/b]: indoors where there is power (the grid, or a building in a generator's range; a roofed player-built base counts as indoors, though player-built houses get no grid) it works like the Wall Connector: grid first, then after the power cut the fuel of the generator powering it. Anywhere else it must sit within 2 tiles of a running, fuelled generator (same floor, diagonals count): it is plugged straight into that generator and burns its fuel, even when the server turns off the sandbox option Generator Working in Exterior. Outdoors in a generator's range with no generator next to it there is no power: the cable still plugs in but nothing charges, and right-clicking the charger shows a grey line saying so. On a generator a full charge also takes about one tank of fuel; it charges slower, so per hour it burns about 2/3 of what the Wall Connector does.
 [/list]
 {{img:03-charger-menu-en.jpg}}
 [h3]Plug in and charge[/h3]
@@ -328,8 +328,10 @@ Without Vehicle Manager:
 [/list]
 [h3]Why does the charger have no power?[/h3]
 [list]
-[*] Grid: its square or one next to it must be inside a house, and the grid still up.
-[*] After the power cut: a running, fuelled generator nearby. The charge card shows the current source.
+[*] Wall Connector on the grid: its square or one next to it must be inside a house, and the grid still up.
+[*] Wall Connector after the power cut: a running, fuelled generator nearby (the vanilla generator range).
+[*] Mobile Connector: indoors where there is power; anywhere else within 2 tiles of a running, fuelled generator, also when the server turns off Generator Working in Exterior. Outdoors in a generator's range with no generator next to it there is no power, and right-clicking it shows a grey line saying so.
+[*] The charge card shows the current source.
 [/list]
 [h3]Why won't it drive while plugged in?[/h3]
 [list]

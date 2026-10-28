@@ -6,6 +6,7 @@
     "ContextMenu_MinidoracatTesla_PlugInto": "Подключить зарядный кабель: %1",
     "ContextMenu_MinidoracatTesla_Unplug": "Отключить зарядный кабель",
     "ContextMenu_MinidoracatTesla_ChargeStatus": "Состояние зарядки",
+    "ContextMenu_MinidoracatTesla_MobileNoPower": "Здесь нет электричества: поставьте в помещении с электричеством или не дальше 2 клеток от работающего генератора",
     "ContextMenu_MinidoracatTesla_TapUnlock": "Приложить ключ-карту: отпереть",
     "ContextMenu_MinidoracatTesla_TapLock": "Приложить ключ-карту: запереть",
     "ContextMenu_MinidoracatTesla_PairPhone": "Настроить как телефон-ключ",

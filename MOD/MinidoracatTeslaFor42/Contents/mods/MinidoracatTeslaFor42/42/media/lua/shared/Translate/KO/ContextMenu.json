@@ -6,6 +6,7 @@
     "ContextMenu_MinidoracatTesla_PlugInto": "충전 케이블 꽂기: %1",
     "ContextMenu_MinidoracatTesla_Unplug": "충전 케이블 뽑기",
     "ContextMenu_MinidoracatTesla_ChargeStatus": "충전 상태 보기",
+    "ContextMenu_MinidoracatTesla_MobileNoPower": "여기는 전기가 없습니다: 전기가 들어오는 실내나 작동 중인 발전기 2칸 안에 두세요",
     "ContextMenu_MinidoracatTesla_TapUnlock": "키 카드 태그: 잠금 해제",
     "ContextMenu_MinidoracatTesla_TapLock": "키 카드 태그: 잠금",
     "ContextMenu_MinidoracatTesla_PairPhone": "핸드폰 키로 설정",

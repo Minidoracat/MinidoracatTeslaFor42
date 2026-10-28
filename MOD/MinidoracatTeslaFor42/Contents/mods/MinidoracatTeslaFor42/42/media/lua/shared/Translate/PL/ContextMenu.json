@@ -6,6 +6,7 @@
     "ContextMenu_MinidoracatTesla_PlugInto": "Podłącz kabel ładowania: %1",
     "ContextMenu_MinidoracatTesla_Unplug": "Odłącz kabel ładowania",
     "ContextMenu_MinidoracatTesla_ChargeStatus": "Pokaż stan ładowania",
+    "ContextMenu_MinidoracatTesla_MobileNoPower": "Tu nie ma prądu: postaw w budynku z prądem albo najwyżej 2 pola od działającego agregatu",
     "ContextMenu_MinidoracatTesla_TapUnlock": "Przyłóż kartę klucza: odblokuj",
     "ContextMenu_MinidoracatTesla_TapLock": "Przyłóż kartę klucza: zablokuj",
     "ContextMenu_MinidoracatTesla_PairPhone": "Ustaw jako klucz telefoniczny",

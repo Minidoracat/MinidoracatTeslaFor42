@@ -572,6 +572,20 @@ for _ = 1, 1000 do MinidoracatTeslaAPI.chargeCardRect(0) end
 local cgrew = collectgarbage("count") - kb
 collectgarbage("restart")
 check(cgrew == 0, "chargeCardRect x1000 allocates nothing (" .. cgrew .. " KB)")
+-- nopower line by charger kind: a Mobile Connector says where it works (it may sit 5 tiles from a running generator)
+local tmd = T.Battery.part(tesla):getModData()
+local savedChg, savedItemName = tmd.chg, getItemName
+getItemName = savedItemName or function(t) return t end -- the card names the charger kind (LuaManager.java:8745-8763)
+for _, e in ipairs({ { "MobileConnector", "ContextMenu_MinidoracatTesla_MobileNoPower" },
+    { "WallConnector", "IGUI_MinidoracatTesla_Card_NoPowerHint" } }) do
+    tmd.chg = { kind = e[1], paused = "nopower", kw = T.Chargers[e[1]].kw, last = T.hours(), target = 90, added = 0 }
+    card.key = ""
+    card:read()
+    check(card.state == "nopower" and card.sAlert == e[2], "card nopower line for the " .. e[1] .. ": " .. tostring(card.sAlert))
+end
+tmd.chg, card.kind, card.key = savedChg, nil, ""
+card:read()
+getItemName = savedItemName
 -- the driver on the charge card's buttons twice a second for a minute (+, +, -, start/stop), each request through the
 -- server's dispatch (Commands.lua CommandRate, the `default` budget the camp key and the rest share): none dropped,
 -- and the busiest 10 s keeps half its budget again to spare
