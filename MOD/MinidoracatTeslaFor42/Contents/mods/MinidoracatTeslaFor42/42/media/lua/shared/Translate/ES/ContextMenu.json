@@ -8,7 +8,7 @@
     "ContextMenu_MinidoracatTesla_ChargeStatus": "Ver estado de carga",
     "ContextMenu_MinidoracatTesla_TapUnlock": "Acercar tarjeta llave: desbloquear",
     "ContextMenu_MinidoracatTesla_TapLock": "Acercar tarjeta llave: bloquear",
-    "ContextMenu_MinidoracatTesla_PairPhone": "Configurar como llave de teléfono",
+    "ContextMenu_MinidoracatTesla_PairPhone": "Configurar como teléfono-llave",
     "ContextMenu_MinidoracatTesla_ChargeItem": "Cargar en la toma del coche",
     "ContextMenu_MinidoracatTesla_OpenApp": "Abrir la app de Tesla",
     "ContextMenu_MinidoracatTesla_AddCar": "Añadir este coche (%1 vinculados)",

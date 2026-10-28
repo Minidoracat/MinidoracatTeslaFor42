@@ -4,11 +4,11 @@
     "Tooltip_MinidoracatTesla_NoCarInReach": "No hay ningún Tesla al alcance del cable",
     "Tooltip_MinidoracatTesla_TakeDriveUnitPartsWarning": "Esto colocará la condición de la unidad de tracción en 0.",
     "Tooltip_MinidoracatTesla_DriveUnitCondition": "Condición de la unidad de tracción: %1",
-    "Tooltip_MinidoracatTesla_KeyCard": "Acércala al lector del pilar de la puerta del conductor para bloquear o desbloquear. Para conducir, llévala suelta o en un llavero (en la cartera no arranca).",
-    "Tooltip_MinidoracatTesla_Phone": "Siéntate en un Tesla con su tarjeta llave y haz clic derecho en este teléfono para configurarlo como llave de teléfono.<br>Con el Gestor de vehículos, el dueño del coche no necesita la tarjeta llave.",
-    "Tooltip_MinidoracatTesla_PhoneKey": "Se desbloquea al tirar de la manija. Al bajar y alejarte con el teléfono, las puertas se bloquean solas.",
+    "Tooltip_MinidoracatTesla_KeyCard": "Acércala al lector del pilar de la puerta del conductor para bloquear o desbloquear.<br>Para conducir, llévala suelta o en un llavero (en la billetera no arranca).",
+    "Tooltip_MinidoracatTesla_Phone": "Siéntate en un Tesla con su tarjeta llave<br>y haz clic derecho en este teléfono para configurarlo como teléfono-llave.<br>Con el Gestor de vehículos, el dueño del auto no necesita la tarjeta llave.",
+    "Tooltip_MinidoracatTesla_PhoneKey": "Se desbloquea al tirar de la manija.<br>Al bajar y alejarte con el teléfono, las puertas se bloquean solas.",
     "Tooltip_MinidoracatTesla_TapCard": "Ve a la puerta del conductor y acerca la tarjeta llave al lector",
-    "Tooltip_MinidoracatTesla_PairPhone": "Autoriza este teléfono con la tarjeta llave de este coche",
-    "Tooltip_MinidoracatTesla_PairPhoneOwner": "Autoriza este teléfono sin la tarjeta llave: administras este coche en el Gestor de vehículos",
-    "Tooltip_MinidoracatTesla_AppNotPaired": "Primero vincula el teléfono: siéntate en el Tesla con su tarjeta llave, haz clic derecho en el teléfono y elige «Configurar como llave de teléfono». Con el Gestor de vehículos, el dueño del coche no necesita la tarjeta llave."
+    "Tooltip_MinidoracatTesla_PairPhone": "Autoriza este teléfono con la tarjeta llave de este auto",
+    "Tooltip_MinidoracatTesla_PairPhoneOwner": "Autoriza este teléfono sin la tarjeta llave: administras este auto en el Gestor de vehículos",
+    "Tooltip_MinidoracatTesla_AppNotPaired": "Primero vincula el teléfono: siéntate en el Tesla con su tarjeta llave, haz clic derecho en el teléfono y elige «Configurar como teléfono-llave». Con el Gestor de vehículos, el dueño del auto no necesita la tarjeta llave."
 }

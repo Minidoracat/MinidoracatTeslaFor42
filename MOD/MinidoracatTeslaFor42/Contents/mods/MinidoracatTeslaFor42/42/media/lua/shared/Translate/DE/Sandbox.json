@@ -4,6 +4,6 @@
     "Sandbox_MinidoracatTesla_RangeMultiplier_tooltip": "Wie weit eine volle Batterie reicht.\n1.0 = so weit wie ein voller Tank in einem normalen Auto derselben Klasse; 2.0 = doppelt so weit.",
     "Sandbox_MinidoracatTesla_ChargeSpeedMultiplier": "Ladegeschwindigkeits-Multiplikator",
     "Sandbox_MinidoracatTesla_ChargeSpeedMultiplier_tooltip": "1.0 = offizielle Ladeleistung (Wall Connector 11,5 kW); 2.0 = doppelt so schnell.",
-    "Sandbox_MinidoracatTesla_CampMinBattery": "Akkugrenze im Camp-Modus",
-    "Sandbox_MinidoracatTesla_CampMinBattery_tooltip": "Unter diesem Ladestand lässt sich der Camp-Modus nicht einschalten und schaltet sich ab, sobald der Akku darunter fällt.\nWie der Energiesparmodus im echten Auto: 10–20 %%, Standard 20."
+    "Sandbox_MinidoracatTesla_CampMinBattery": "Batteriegrenze im Camp-Modus",
+    "Sandbox_MinidoracatTesla_CampMinBattery_tooltip": "Unter diesem Ladestand lässt sich der Camp-Modus nicht einschalten und schaltet sich ab, sobald die Batterie darunter fällt.\nWie der Energiesparmodus im echten Auto: 10–20 %%, Standard 20."
 }
