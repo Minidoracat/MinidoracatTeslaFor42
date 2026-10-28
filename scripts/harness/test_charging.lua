@@ -77,6 +77,15 @@ function SGlobalObjectSystem:getLuaObjectOnSquare(sq) return sq and self:getLuaO
 function SGlobalObjectSystem:loadIsoObject(iso) end
 function SGlobalObjectSystem.RegisterSystemClass(cls) cls.instance = cls:new() end
 MapObjects = { OnLoadWithSprite = function(list, fn) H.onLoadSprites = list end }
+-- vanilla ISUninstallVehiclePart:complete on success (ISUninstallVehiclePart.lua:62-69): the pack takes the part's
+-- content, the part's item goes; fail = nothing happens
+local uninstallBefore = ISUninstallVehiclePart -- other files' (park_fakes.lua): restored at the end
+ISUninstallVehiclePart = { complete = function(self)
+    if self.fail then return true end
+    self.taken, self.content = self.part:getInventoryItem(), self.part:getContainerContentAmount() -- :63 setItemCapacity
+    self.part.item = nil
+    return true
+end }
 
 require "MinidoracatTesla/Charging"
 local T, B, C = MinidoracatTesla, MinidoracatTesla.Battery, MinidoracatTesla.Charge
@@ -723,7 +732,20 @@ C.unplug(H.player({ name = "upstairs", keys = { [77] = true }, x = 899, y = 899,
 check(kchg() ~= nil and lastDeny() == "TOO_FAR", "unplug from the floor above the charger, the car past T.NEAR: TOO_FAR")
 C.unplug(H.player({ name = "side", keys = { [77] = true }, x = 899, y = 899 }), kv)
 check(kchg() == nil, "unplug standing at the charger, the car's centre past T.NEAR: allowed")
-kv.x = kx
+-- plug the same way (queuePlug walks to the charger): the car aslant at the cable's end, the player on the far side
+local ky = kv.y
+kv.x, kv.y = 904, 904 -- port 4.95 from the charger's centre (cable 5), 16 (Manhattan) from the player below
+check(T.cableReaches(klo.kind, 900, 900, 0, kv), "(the aslant car is in the cable's reach)")
+H.sent = {}
+C.plug(H.player({ name = "far", keys = { [77] = true }, x = 930, y = 930 }), kv, kiso)
+check(kchg() == nil and lastDeny() == "TOO_FAR", "plug far from both the car and the charger: TOO_FAR")
+H.sent = {}
+C.plug(H.player({ name = "upstairs", keys = { [77] = true }, x = 896, y = 896, z = 1 }), kv, kiso)
+check(kchg() == nil and lastDeny() == "TOO_FAR", "plug from the floor above the charger, the car past T.NEAR: TOO_FAR")
+C.plug(H.player({ name = "side", keys = { [77] = true }, x = 896, y = 896 }), kv, kiso)
+check(kchg() ~= nil, "plug standing at the charger's far side, the aslant car's centre past T.NEAR: allowed")
+C.unplug(kOwner, kv)
+kv.x, kv.y = kx, ky
 MinidoracatVehicleManagerAPI = { canUse = function(p, veh, perm) return perm == "FUEL" and p == kOwner, p == kOwner and "OWNER" or "NOT_AUTHORIZED" end }
 for _, locked in ipairs({ true, false }) do
     kv.locked, mal.keys[77], kv.hotwired = locked, true, true
@@ -738,3 +760,69 @@ mal.keys[77], kv.hotwired, kv.locked = nil, false, false
 C.unplug(kOwner, kv)
 check(kchg() == nil, "VehicleManager: the car's FUEL holder unplugs")
 MinidoracatVehicleManagerAPI = nil
+
+H.section("taking the pack out while plugged in")
+local plo, piso = charger(960, 960, { room = {} })
+local pv = car(20, 960.5 + 2, 960.5)
+local pp = H.player({ name = "mech", keys = { [77] = true }, x = 961, y = 961 })
+local function pchg() return B.part(pv):getModData().chg end
+local function pull(fail)
+    local a = { vehicle = pv, part = B.part(pv), character = pp, fail = fail }
+    ISUninstallVehiclePart.complete(a)
+    return a
+end
+H.setHours(100) -- grid power (the first section's clock)
+C.plug(pp, pv, piso)
+check(pchg() ~= nil and plo.vid == pv:getId(), "(plugged in)")
+H.setHours(H.hours() + 1)
+pull(true)
+check(pchg() ~= nil and plo.vid == pv:getId(), "the pack stays in (failed uninstall): still plugged in")
+local c0 = B.kwh(B.part(pv))
+H.setHours(H.hours() + 1)
+local a = pull()
+check(a.taken ~= nil and pchg() == nil and plo.vid == false, "the pack out: the car's cable record cleared, the charger told (vid false)")
+check(near(a.content, c0 + 11.5, 1e-6), "the hour up to then (11.5 kWh) is booked before the pack takes the part's content")
+B.part(pv).item = a.taken -- installed again
+-- (the Park hold, Core.lua CheckOperate.Battery, is `chg ~= nil`: cleared above. Its client half T.onPluggedDrive is
+-- not loaded here, so it is not asked)
+C.plug(pp, pv, piso)
+check(pchg() ~= nil and plo.vid == pv:getId(), "the pack back in: it plugs into the same charger again")
+local other = { item = {}, md = {} } -- another part of the same car (a door, the 12V)
+function other:getInventoryItem() return self.item end
+function other:getContainerContentAmount() return 0 end
+function other:getModData() return self.md end
+ISUninstallVehiclePart.complete({ vehicle = pv, part = other, character = pp })
+check(other.item == nil and pchg() ~= nil and plo.vid == pv:getId(), "another part taken off: the cable stays as it was")
+-- pv's record is stale: its id went to qv, really plugged into plo (VehicleIDMap reuse); taking pv's pack out must not
+-- touch qv or plo
+local qv = car(30, 960.5 + 2, 960.5)
+B.part(qv):getModData().chg = { x = 960, y = 960, z = 0, kind = plo.kind, last = H.hours(), added = 0, target = 90 }
+plo.vid = qv:getId()
+local q = pull()
+check(q.taken ~= nil and pchg() == nil and plo.vid == qv:getId() and B.part(qv):getModData().chg ~= nil,
+    "the pack out of a car whose charger now holds another car: only its own record cleared, the other car stays plugged")
+B.part(pv).item = q.taken
+B.part(qv):getModData().chg = nil
+C.plug(pp, pv, piso)
+check(pchg() ~= nil and plo.vid == pv:getId(), "(plugged in again)")
+local sentryBefore = T.Sentry
+T.Sentry = { settle = function() error("sentry boom") end } -- the sentry booking throws while unplugging
+local e = pull()
+check(e.taken ~= nil and pchg() == nil and plo.vid == false, "the sentry booking throws: the record and the charger's vid still go")
+T.Sentry = sentryBefore
+B.part(pv).item = e.taken
+C.plug(pp, pv, piso)
+check(pchg() ~= nil and plo.vid == pv:getId(), "(plugged in again)")
+local tx = pv.transmitPartModData
+pv.transmitPartModData = function() error("transmit boom") end -- the part sync throws after the record is cleared
+local f = pull()
+pv.transmitPartModData = tx
+check(f.taken ~= nil and pchg() == nil and plo.vid == false, "the part sync throws: the record is gone and the charger is still told")
+B.part(pv).item = f.taken
+C.plug(pp, pv, piso)
+check(pchg() ~= nil and plo.vid == pv:getId(), "(plugged in again)")
+B.part(pv).item = nil -- gone some other way (another mod, debug): the next settle unplugs it
+C.settle(plo, H.hours())
+check(pchg() == nil and plo.vid == false, "settle with the pack gone: the car's record cleared, the charger forgets it")
+B.part(pv).item = a.taken
+ISUninstallVehiclePart = uninstallBefore

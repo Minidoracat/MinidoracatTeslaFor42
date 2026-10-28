@@ -135,7 +135,9 @@ end
 -- says this car had a charger. ponytail: a car pulled out of reach after the shut-off pays that bit itself.
 local function clearChg(vehicle, part)
     local now = T.hours()
-    settleSentry(vehicle, now, C.powerUntil(part:getModData().chg, now, false))
+    -- the record goes whatever the sentry booking does: a stale record holds the car in Park (CheckOperate.Battery)
+    local ok, err = pcall(function() settleSentry(vehicle, now, C.powerUntil(part:getModData().chg, now, false)) end)
+    if not ok then T.log("sentry settle before unplug failed: " .. tostring(err)) end
     part:getModData().chg = nil
     vehicle:transmitPartModData(part)
     touchVM(vehicle)
@@ -155,7 +157,7 @@ function C.settle(o, now, here)
     local part = B.part(v)
     local md = part:getModData()
     local chg = md.chg
-    if not part:getInventoryItem() then return C.unlink(o) end
+    if not part:getInventoryItem() then return C.stop(o, v, "pack") end -- the pack gone some other way than below
     local iso = o:getIsoObject()
     if not iso then return C.schedule(o, now + C.RETRY_H) end
     if not here and not T.cableReaches(o.kind, o.x, o.y, o.z, v) then return C.stop(o, v, "tooFar") end
@@ -230,15 +232,19 @@ function C.start(o, v)
     T.log("plugged " .. tostring(v:getId()) .. " into " .. o.kind .. " at " .. o.x .. "," .. o.y .. "," .. o.z)
 end
 
--- reason: "unplug" | "tooFar" | "removed"
+-- reason: "unplug" | "tooFar" | "removed" | "pack"
 function C.stop(o, v, reason)
     local part = v and B.part(v)
     if part and part:getModData().chg then
-        if reason ~= "tooFar" and o and o:getIsoObject() then
+        -- tooFar: the car left the cable; pack: no pack to book into (settle would come back here)
+        if reason ~= "tooFar" and reason ~= "pack" and o and o:getIsoObject() then
             local ok, err = pcall(C.settle, o, T.hours(), true) -- book the energy up to now
             if not ok then T.log("settle before unplug failed: " .. tostring(err)) end
         end
-        clearChg(v, part)
+        if part:getModData().chg then -- that settle may have unplugged it already (no pack)
+            local ok, err = pcall(clearChg, v, part) -- the charger is told below whatever this does
+            if not ok then T.log("clearing the cable record failed: " .. tostring(err)) end
+        end
     end
     if o then C.unlink(o) end
     T.log("unplugged " .. tostring(v and v:getId()) .. " (" .. tostring(reason) .. ")")
@@ -248,6 +254,37 @@ end
 function C.onChargerRemoved(o)
     local v = T.chargerCar(o, o.x, o.y, o.z)
     if v then C.stop(o, v, "removed") else C.unschedule(o) end
+end
+
+-- Taking the pack out while plugged in (vanilla ISUninstallVehiclePart:complete, server / SP): book the energy into
+-- the part first (the pack item takes the part's content, ISUninstallVehiclePart.lua:63-64), then unplug once it is
+-- out. Left alone, the next settle only made the charger forget the car: the car kept its cable record (held in Park
+-- while the pedal was down, Core.lua CheckOperate.Battery) and the charger showed no Unplug row for it.
+-- A hook error must never break the vanilla action (Sentry.lua hook): both halves under pcall.
+local function packLink(v, part) -- a plugged-in Tesla's pack: its cable record, and its charger if still its own
+    local chg = v and part and part == B.part(v) and part:getModData().chg
+    if not chg then return nil end
+    local s = sys()
+    local o = s and s:getLuaObjectAt(chg.x, chg.y, chg.z)
+    return chg, o and T.chargerCar(o, o.x, o.y, o.z) == v and o or nil -- another car's charger now: leave it be
+end
+local uninstall = ISUninstallVehiclePart and ISUninstallVehiclePart.complete
+if uninstall then
+    function ISUninstallVehiclePart:complete()
+        local v, part = self.vehicle, self.part
+        local ok, chg, o = pcall(packLink, v, part)
+        if not ok then T.log("pack uninstall hook failed: " .. tostring(chg)); chg, o = nil, nil end
+        if o and o:getIsoObject() then
+            local fine, err = pcall(C.settle, o, T.hours(), true)
+            if not fine then T.log("settle before the pack came out failed: " .. tostring(err)) end
+        end
+        local r = uninstall(self)
+        if chg and not part:getInventoryItem() then
+            local fine, err = pcall(C.stop, o, v, "pack")
+            if not fine then T.log("unplug after the pack came out failed: " .. tostring(err)) end
+        end
+        return r
+    end
 end
 
 -- ---- player actions (timed action complete(), server / SP) ----
@@ -262,6 +299,14 @@ local function mayCable(player, v, what, rule)
     return false
 end
 
+-- plug / unplug are not remotes: near the car, or near the charger on its floor (queuePlug / queueUnplug walk to the
+-- charger, ChargerMenu.lua; DistTo is the Manhattan distance, IsoMovingObject.java:601-607, and DistTo(x, y) has no
+-- floor, so a car parked aslant at the cable's end can be > T.NEAR from someone at the charger)
+local function near(player, v, x, y, z)
+    if player:DistTo(v) <= T.NEAR then return true end
+    return math.floor(player:getZ()) == z and player:DistTo(x, y) <= T.NEAR
+end
+
 function C.plug(player, v, iso)
     local s = sys()
     local o = s and iso and iso:getSquare() and s:getLuaObjectOnSquare(iso:getSquare())
@@ -273,7 +318,7 @@ function C.plug(player, v, iso)
     if part:getModData().chg then return T.deny(player, "PLUGGED", vid) end
     if T.chargerCar(o, o.x, o.y, o.z) then return T.deny(player, "CHARGER_BUSY", vid) end -- a reused id is no car here
     if not T.stopped(v) then return T.deny(player, "MOVING", vid) end -- the motor may run: plugging in shifts to Park (owner's manual, Shifting)
-    if player:DistTo(v) > T.NEAR then return T.deny(player, "TOO_FAR", vid) end
+    if not near(player, v, o.x, o.y, o.z) then return T.deny(player, "TOO_FAR", vid) end
     if not T.cableReaches(o.kind, o.x, o.y, o.z, v) then return T.deny(player, "CABLE_SHORT", vid) end
     if not mayCable(player, v, "plug") then return end
     C.start(o, v)
@@ -284,10 +329,7 @@ function C.unplug(player, v)
     local chg = part and part:getModData().chg
     local vid = v and v:getId()
     if not chg then return T.deny(player, "NOT_PLUGGED", vid) end
-    -- not a remote: near the car or near the charger (queueUnplug walks to the charger, ChargerMenu.lua; DistTo is the
-    -- Manhattan distance, IsoMovingObject.java:601-607, so a car parked aslant at the cable's end can be > T.NEAR away)
-    local atCharger = math.floor(player:getZ()) == chg.z and player:DistTo(chg.x, chg.y) <= T.NEAR -- DistTo(x, y) has no floor
-    if player:DistTo(v) > T.NEAR and not atCharger then return T.deny(player, "TOO_FAR", vid) end
+    if not near(player, v, chg.x, chg.y, chg.z) then return T.deny(player, "TOO_FAR", vid) end
     if not mayCable(player, v, "unplug", T.mayUnplug) then return end
     local s = sys()
     C.stop(s and s:getLuaObjectAt(chg.x, chg.y, chg.z), v, "unplug")
