@@ -258,7 +258,7 @@ function R.isSummoner(player, info)
     for i = 0, list:size() - 1 do
         local q = list:get(i)
         if q ~= player and q:getUsername() == info.by then
-            return player:getPlayerNum() == 0 and T.account(player) == info.by
+            return T.account(player) == info.by -- nil for a split-screen guest
         end
     end
     return true

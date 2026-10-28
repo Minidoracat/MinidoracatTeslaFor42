@@ -527,6 +527,8 @@ F.online = { owner, two2 }
 check(T.Remote.isSummoner(owner, info), "Steam, the name online once: the summoner even with no verified account")
 T.Store.get("ids").owner = { sid = SID_A, src = "E2E", at = 0 }
 local pA, pB, pG = H.player({ name = "owner", sid = SID_A }), H.player({ name = "owner", sid = SID_B }), H.player({ name = "owner", num = 1 })
+F.online = { pG, two2 }
+check(T.Remote.isSummoner(pG, info), "a split-screen guest, the name online once: its own summon")
 F.online = { pA, pB, pG }
 check(T.Remote.isSummoner(pA, info), "co-op host, the name online three times: the main player with the bound SteamID is the summoner")
 check(not T.Remote.isSummoner(pB, info) and not T.Remote.isSummoner(pG, info),
