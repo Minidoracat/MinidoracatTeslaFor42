@@ -715,6 +715,10 @@ do -- the pairing menu tells a VehicleManager owner without the card why it is a
     local opt = UI.phoneOption(lost, tipMenu, lost.inv.items[1])
     check(not opt.notAvailable and opt.toolTip.description == "Tooltip_MinidoracatTesla_PairPhoneOwner",
         "pair menu: VehicleManager owner without the card -> enabled, owner tooltip")
+    lost.inv:AddItem(item(K.CARD, v.keyId))
+    opt = UI.phoneOption(lost, tipMenu, lost.inv.items[1])
+    check(not opt.notAvailable and opt.toolTip.description == "Tooltip_MinidoracatTesla_PairPhone",
+        "pair menu: the same owner with the card -> the card tooltip")
     lost.vehicle = nil
     MinidoracatVehicleManagerAPI = nil
 end

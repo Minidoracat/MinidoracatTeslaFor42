@@ -5,7 +5,7 @@
     "Tooltip_MinidoracatTesla_TakeDriveUnitPartsWarning": "부품을 분리하면 구동 장치 상태가 0이 됩니다.",
     "Tooltip_MinidoracatTesla_DriveUnitCondition": "구동 장치 상태: %1",
     "Tooltip_MinidoracatTesla_KeyCard": "운전석 쪽 도어 필러의 리더에 태그하면 잠그거나 잠금 해제합니다. 운전하려면 그냥 지니거나 키링에 달아 두세요(지갑 안에서는 시동이 걸리지 않습니다).",
-    "Tooltip_MinidoracatTesla_Phone": "테슬라에 앉아 그 차의 키 카드를 지닌 채 이 스마트폰을 우클릭하면 핸드폰 키로 설정할 수 있습니다. 차량 관리가 있으면 차주는 키 카드가 필요 없습니다.",
+    "Tooltip_MinidoracatTesla_Phone": "테슬라에 앉아 그 차의 키 카드를 지닌 채 이 스마트폰을 우클릭하면 핸드폰 키로 설정할 수 있습니다.<br>차량 관리가 있으면 차주는 키 카드가 필요 없습니다.",
     "Tooltip_MinidoracatTesla_PhoneKey": "도어 핸들을 당기면 잠금 해제됩니다. 내린 뒤 지닌 채 멀어지면 문이 자동으로 잠깁니다.",
     "Tooltip_MinidoracatTesla_TapCard": "운전석 문으로 걸어가 키 카드를 리더에 태그합니다",
     "Tooltip_MinidoracatTesla_PairPhone": "이 차의 키 카드로 이 스마트폰을 인증합니다",

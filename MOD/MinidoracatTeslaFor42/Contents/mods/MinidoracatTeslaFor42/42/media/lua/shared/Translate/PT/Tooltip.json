@@ -5,7 +5,7 @@
     "Tooltip_MinidoracatTesla_TakeDriveUnitPartsWarning": "Isto estabelecerá a condição da unidade de acionamento a 0.",
     "Tooltip_MinidoracatTesla_DriveUnitCondition": "Condição da unidade de acionamento: %1",
     "Tooltip_MinidoracatTesla_KeyCard": "Encoste no leitor da coluna da porta do motorista para trancar ou destrancar. Para dirigir, leve-o solto ou num chaveiro (na carteira não dá partida).",
-    "Tooltip_MinidoracatTesla_Phone": "Sente-se num Tesla com o cartão-chave dele e clique com o botão direito neste telefone para configurá-lo como chave de telefone. Com o Gerenciador de veículos, o dono do carro não precisa do cartão-chave.",
+    "Tooltip_MinidoracatTesla_Phone": "Sente-se num Tesla com o cartão-chave dele e clique com o botão direito neste telefone para configurá-lo como chave de telefone.<br>Com o Gerenciador de veículos, o dono do carro não precisa do cartão-chave.",
     "Tooltip_MinidoracatTesla_PhoneKey": "Destranca ao puxar a maçaneta. Ao sair e se afastar com o telefone, as portas trancam sozinhas.",
     "Tooltip_MinidoracatTesla_TapCard": "Vá até a porta do motorista e encoste o cartão-chave no leitor",
     "Tooltip_MinidoracatTesla_PairPhone": "Autorize este telefone com o cartão-chave deste carro",
