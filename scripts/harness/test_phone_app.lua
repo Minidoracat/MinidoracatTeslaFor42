@@ -763,12 +763,14 @@ a:onMap()
 check(App.mapCar and App.mapCar.spr == "car_Model3", "Model 3: the world map marker draws the Model 3 top view")
 -- no server record with a model yet (paired, never seen live, or VehicleManager said no): the phone key's mirror
 -- names the car, so the Model 3 still gets its picture and its lid words, not the Model Y's
+local mirror = myInv.items[1].md[K.PAIRED_CARS]
+mirror[1] = "MinidoracatTesla_Model3"
 a = App.open(0, { keyId = 9001 })
-a.carHint = "MinidoracatTesla_Model3"
 state({ car = false })
-check(a.model == "Model3" and a.carSpr == "car_Model3" and a.b.trunk.tipKey == "IGUI_MinidoracatTesla_Tip_AppTrunkLid"
+check(a.carHint == "MinidoracatTesla_Model3" and a.model == "Model3" and a.carSpr == "car_Model3"
+    and a.b.trunk.tipKey == "IGUI_MinidoracatTesla_Tip_AppTrunkLid"
     and a.carTex.path:find("app_car_model3_", 1, true) ~= nil, "no model in the record: the phone key's mirror says Model 3")
-a.carHint = nil
+mirror[1] = "MinidoracatTesla_ModelY"
 -- every car in T.Specs has what the HUD and the app draw for it: zones, top view and wordmark at both scales, a
 -- picture per paint, a plug item (a third car added to Specs without them fails here, not in game)
 local gaps = {}
