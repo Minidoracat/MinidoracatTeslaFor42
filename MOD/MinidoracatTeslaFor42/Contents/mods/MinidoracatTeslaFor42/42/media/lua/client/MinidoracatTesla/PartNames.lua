@@ -1,7 +1,8 @@
 -- EV names for the part ids a Tesla reuses (GasTank = high voltage battery, Engine = drive unit, ...), Tesla only.
 -- Vanilla builds every part name as getText("IGUI_VehiclePart" .. id) (ISVehicleMechanics.lua:64, :1076) and the
 -- vehicle script has no per-car display name (VehicleScript.java:924-949), so while the methods below run for a
--- Tesla, getText maps the vanilla keys to ours; the inventory window's container buttons are renamed at the end.
+-- Tesla, getText maps the vanilla keys to ours (T.partNameKey, the tables in shared Core.lua); the inventory window's
+-- container buttons are renamed at the end.
 -- Other cars and every other caller see vanilla getText.
 -- The new Frunk part needs no mapping: IGUI_VehiclePartFrunk is our own key (no vanilla part has that id).
 require "Vehicles/ISUI/ISVehicleMechanics"
@@ -11,36 +12,6 @@ require "MinidoracatTesla/Core"
 
 local T = MinidoracatTesla
 local unpack = unpack or table.unpack
-
--- vanilla key -> Tesla key
-T.PartNames = {
-    IGUI_VehiclePartGasTank = "IGUI_MinidoracatTesla_Part_GasTank",
-    IGUI_VehiclePartEngine = "IGUI_MinidoracatTesla_Part_Engine",
-    IGUI_VehiclePartBattery = "IGUI_MinidoracatTesla_Part_Battery",
-    IGUI_VehiclePartHeater = "IGUI_MinidoracatTesla_Part_Heater",
-    IGUI_VehiclePartEngineDoor = "IGUI_MinidoracatTesla_Part_EngineDoor",
-    IGUI_VehiclePartTruckBed = "IGUI_MinidoracatTesla_Part_TruckBed",
-    IGUI_VehiclePartTrunkDoor = "IGUI_MinidoracatTesla_Part_TrunkDoor",
-    IGUI_VehiclePartCatengine = "IGUI_MinidoracatTesla_PartCat_engine", -- category header (ISVehicleMechanics.lua:59)
-    Tooltip_outoffuel = "IGUI_MinidoracatTesla_OutOfCharge",        -- empty GasTank (:1085, :1265)
-    IGUI_EnginePower = "IGUI_MinidoracatTesla_MotorPower",           -- header "Engine Power: N hp" (:1178)
-    IGUI_Vehicle_EngineLoudness = "IGUI_MinidoracatTesla_MotorLoudness", -- drive unit detail (:1325-1327)
-    IGUI_Vehicle_EngineQuality = "IGUI_MinidoracatTesla_MotorQuality",
-    IGUI_OpenHood = "IGUI_MinidoracatTesla_OpenFrunk",               -- outside radial menu (ISVehicleMenu.lua:318-337)
-    IGUI_CloseHood = "IGUI_MinidoracatTesla_CloseFrunk",
-    IGUI_LockHood = "IGUI_MinidoracatTesla_LockFrunk",
-    IGUI_UnlockHood = "IGUI_MinidoracatTesla_UnlockFrunk",
-}
--- per car, on top of T.PartNames (vehicle script full name -> vanilla key -> Tesla key)
-T.CarPartNames = {
-    -- a sedan's trunk lid, not a liftgate (Model 3 owner's manuals; the Model Y keeps Liftgate)
-    ["Base.MinidoracatTesla_Model3"] = { IGUI_VehiclePartTrunkDoor = "IGUI_MinidoracatTesla_Part_TrunkLid" },
-}
--- the Tesla key for a vanilla key on this car (script full name), or nil
-function T.partNameKey(script, key)
-    local car = T.CarPartNames[script]
-    return car and car[key] or T.PartNames[key]
-end
 
 local vanillaGetText -- set only while a wrapped method runs for a Tesla
 local script -- that Tesla's script name

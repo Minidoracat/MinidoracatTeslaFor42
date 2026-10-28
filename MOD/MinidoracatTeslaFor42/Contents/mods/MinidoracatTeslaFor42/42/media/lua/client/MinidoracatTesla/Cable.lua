@@ -1,7 +1,7 @@
 -- Charge cable between a charger and the car's charge port (client only; nothing is synced or saved here).
 -- Data: the CMinidoracatTeslaChargerSystem lua objects; TeslaLogic calls MinidoracatTesla.onChargerChanged(o, removed)
 -- after initLuaObjects, on every OnLuaObjectUpdated and before removeLuaObjectAt. o.vid = plugged car id or nil.
--- 3D: three render-only items (scripts/items/MinidoracatTesla_cable.txt) drawn with Render3DItem in
+-- 3D: render-only items (scripts/items/MinidoracatTesla_cable.txt: hang, floor, one plug per car) drawn with Render3DItem in
 -- RenderOpaqueObjectsInWorld, like vanilla Fishing/Bobber.lua:32-38 (LuaManager.java:11932-11963; the event fires per
 -- local player per frame, FBORenderCell.java:1126,3634-3656). With 3D ground items off (Core.java:4477) Render3DItem
 -- would draw item icons, so a 2D polyline is drawn in OnPostRender instead (renderIsoLine, LuaManager.java:10173-10186).
@@ -13,9 +13,9 @@ local C = {}
 T.Cable = C
 
 -- Mesh geometry (scripts/blender/props/props_blender.py): tiles; heights in levels (1 level = 2.44949 units).
+-- The plug segment (item and handle height) is per car: T.Specs[script].plug (Core.lua).
 C.HANG_REACH = 0.40          -- hang segment: exit floor point -> where it lies on the floor, along the facing
 C.PLUG_REACH = 0.36          -- plug segment: its floor point -> handle tip at the port, horizontal
-C.PLUG_Z = 0.909 / 2.44949   -- handle height above the floor, levels (Model Y chargeport, references/models.md)
 C.DRAW_RANGE = 45            -- 3D: skip chargers farther than this from the local player (tiles)
 -- ponytail: floor runs longer than this are not drawn (car dragged away before the server unplugged it)
 C.MAX_FLOOR = 16
@@ -26,7 +26,8 @@ local FACE = { S = { 0, 1, 90 }, E = { 1, 0, 0 }, N = { 0, -1, 270 }, W = { -1, 
 
 local lines, byKey, count = {}, {}, 0
 local hooked = false
-local hangItem, floorItem, plugItem, vLocal, vWorld
+local hangItem, floorItem, vLocal, vWorld
+local plugItems = {}         -- plug item type -> its render instance, one per car model, reused every frame
 local g = {}                 -- one solve result, reused every line and frame
 
 local function angle(dx, dy)
@@ -46,11 +47,15 @@ end
 -- Endpoints of one plugged cable into g (returned; the same table every call, read it before the next solve).
 -- false when the car or the charger definition is not available here.
 -- g.ex,ey: floor point under the charger's exit (hang origin); g.ax,ay: where the hang lies on the floor;
--- g.bx,by,bz: plug segment origin on the floor; g.px,py: charge port; g.len: floor run a -> b.
+-- g.bx,by,bz: plug segment origin on the floor; g.px,py: charge port; g.len: floor run a -> b;
+-- g.plug: the car's T.Specs plug ({ item, z }).
 function C.solve(e)
     local vehicle = getVehicleById(e.vid)                    -- LuaManager.java:10276-10281
     local def = vehicle and T.Chargers and T.Chargers[e.kind]
-    local exit = def and def.cableExit
+    local spec = def and T.spec(vehicle)
+    g.plug = spec and spec.plug
+    if not g.plug then return false end
+    local exit = def.cableExit
     if not exit then return false end
     local lp = vehicle:getAttachmentLocalPos("chargeport", vLocal)   -- BaseVehicle.java:9940-9952
     if not lp then return false end
@@ -72,7 +77,7 @@ function C.solve(e)
     w = vehicle:getWorldPos(lx + side, ly, lz, vWorld)
     g.bx, g.by = w:x(), w:y()
     -- ground under the plug: the car's floor level (BaseVehicle.java:3371-3377) plus the ramp height there
-    -- (IsoGridSquare.getApparentZ, :10177-10196; vanilla ramps_01 tiles); the handle height is built into the mesh
+    -- (IsoGridSquare.getApparentZ, :10177-10196; vanilla ramps_01 tiles); the handle height is built into each car's mesh
     g.bsq = squareAt(getCell(), g.bx, g.by, vehicle:getZ())
     g.bz = g.bsq and groundZ(g.bsq, g.bx, g.by) or vehicle:getZ()
     g.plugAngle = angle(g.px - g.bx, g.py - g.by)
@@ -113,7 +118,8 @@ local function draw3D(cell, e)
             end
         end
     end
-    if g.bsq then Render3DItem(plugItem, g.bsq, g.bx, g.by, g.bz, g.plugAngle) end
+    local plug = g.bsq and plugItems[g.plug.item]
+    if plug then Render3DItem(plug, g.bsq, g.bx, g.by, g.bz, g.plugAngle) end
 end
 
 local function render3D(playerIndex)
@@ -139,7 +145,7 @@ local function render2D()
             local z = e.z
             renderIsoLine(g.ex, g.ey, z + g.eh, g.ax, g.ay, z, wdt, 0.1, 0.1, 0.11, 1)
             renderIsoLine(g.ax, g.ay, z, g.bx, g.by, g.bz, wdt, 0.1, 0.1, 0.11, 1)
-            renderIsoLine(g.bx, g.by, g.bz, g.px, g.py, g.bz + C.PLUG_Z, wdt, 0.1, 0.1, 0.11, 1)
+            renderIsoLine(g.bx, g.by, g.bz, g.px, g.py, g.bz + g.plug.z / 2.44949, wdt, 0.1, 0.1, 0.11, 1)
         end
     end
 end
@@ -152,7 +158,7 @@ local function sync()
         if not hangItem then                                  -- once per client, reused every frame
             hangItem = instanceItem("Base.MinidoracatTesla_CableHang")
             floorItem = instanceItem("Base.MinidoracatTesla_CableFloor")
-            plugItem = instanceItem("Base.MinidoracatTesla_CablePlug")
+            for _, s in pairs(T.Specs) do plugItems[s.plug.item] = instanceItem(s.plug.item) end -- one per car
             vLocal, vWorld = Vector3f.new(), Vector3f.new()
         end
         Events.RenderOpaqueObjectsInWorld.Add(render3D)

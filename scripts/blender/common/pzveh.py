@@ -802,6 +802,10 @@ def geometry(body, zmid, wl, r, tire_w, belt_z, doors_y, port_yz):
         f"            extents = {f4(cab[1] / S, (bc[:, 2].max() - belt) / S, (cab[2] - cab[3]) / S)},", "        }",
     ]
     names = {(-1, 1): "FrontLeft", (1, 1): "FrontRight", (-1, -1): "RearLeft", (1, -1): "RearRight"}
+    # mirror each axle: the source tires sit up to 1 mm apart side to side, and with only the rear wheels braking
+    # (PZVehicle::control) that asymmetry seeds a yaw that grows through every full stop, always the same way: Model 3
+    # 0.3460/-0.3464 front, 0.3499/-0.3496 rear spun 9-29 deg from 122 km/h, mirrored 0-7 (feel-sp tesla-m3m-1028-brake-a, -m)
+    wl = [(sxn, *np.mean([w[1:] for w in wl if (w[1] > 0) == (yc > 0)], 0)) for sxn, yc, zc, xo in wl]
     for sxn, yc, zc, xo in wl:
         nm = names[(sxn, 1 if yc > 0 else -1)]
         out += [f"        wheel {nm}", "        {", f"            front = {'true' if yc > 0 else 'false'},",

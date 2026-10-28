@@ -104,7 +104,7 @@ local k0 = T.Battery.kwh(v.parts.GasTank)
 v.parts.Battery.item.uses = 0.5
 F.hours = F.hours + 10
 S.settle(v)
-check(math.abs(T.Battery.kwh(v.parts.GasTank) - (k0 - 10 * S.KW) + 0.5 * T.V12_KWH) < 1e-6, "settle: 0.25 kW x 10 h + 12V refill charged")
+check(math.abs(T.Battery.kwh(v.parts.GasTank) - (k0 - 10 * S.KW) + 0.5 * T.Specs["Base.MinidoracatTesla_ModelY"].v12Kwh) < 1e-6, "settle: 0.25 kW x 10 h + 12V refill charged")
 check(v.parts.Battery.item.uses >= 0.99 and md(v).sentry.at == F.hours, "settle: 12V topped up, at advanced")
 -- plugged into a powered charger: standby runs on the charger (Battery.onCharger), no low-battery cut-off either.
 -- Sentry asks the real Charge.powerUntil when the power ended; the grid shut-off hour is pinned here.

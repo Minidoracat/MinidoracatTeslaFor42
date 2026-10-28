@@ -225,7 +225,7 @@ check(near(B.kwh(wp), 39.2) and near(added, 29.2), "add stops at the target perc
 check(B.add(wv, 5, 50) == 0, "add at target adds nothing")
 wv:getBattery():getInventoryItem():setUsedDelta(0.5)
 local took = B.topUp12V(wv)
-check(near(took, 0.5 * T.V12_KWH) and near(wv:getBattery():getInventoryItem():getCurrentUsesFloat(), 1), "topUp12V fills 12V from the pack")
+check(near(took, 0.5 * T.Specs["Base.MinidoracatTesla_ModelY"].v12Kwh) and near(wv:getBattery():getInventoryItem():getCurrentUsesFloat(), 1), "topUp12V fills 12V from the pack")
 check(B.topUp12V(wv) == 0, "topUp12V on a full 12V does nothing")
 check(B.set(wv, wp, 0 / 0) == 0, "set turns NaN into 0")
 

@@ -263,7 +263,8 @@ end)
 -- ------------------------------------------------------------------ server -> client
 local function good(key, args)
     local p = getSpecificPlayer(0)
-    local text = getText(key, getText("IGUI_VehicleName" .. tostring(args.car)), tostring(args.n))
+    local car = args.car and getText("IGUI_VehicleName" .. args.car) or getText("IGUI_MinidoracatTesla_App_Title")
+    local text = getText(key, car, tostring(args.n))
     T.log("halo " .. key .. " vid=" .. tostring(args.vid))
     if p then HaloTextHelper.addGoodText(p, text) end
 end

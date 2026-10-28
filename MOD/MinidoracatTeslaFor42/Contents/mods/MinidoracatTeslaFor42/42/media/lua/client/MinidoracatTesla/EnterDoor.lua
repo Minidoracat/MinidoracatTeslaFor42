@@ -2,8 +2,9 @@
 -- Vanilla queues walk to the seat -> ISOpenVehicleDoor -> ISEnterVehicle -> ISCloseVehicleDoor (getting out:
 -- ISOpenVehicleDoor -> ISExitVehicle -> ISCloseVehicleDoor; ISVehicleMenu.lua:1454-1481,1591-1606). The open action
 -- starts the door's Open anim and ends about 5 ticks later (setTime(5), ISOpenVehicleDoor.lua:28-42), so the climb
--- starts right away. Vanilla doors open in about 0.3 s (SportsCar: rate 2.0); the Model Y door swings for about 1 s
--- (models.md 9), so the character went through a door barely ajar (E2E enter-sp).
+-- starts right away. Vanilla doors open in about 0.3 s (SportsCar: rate 2.0); a Tesla door swings for about 1 s
+-- (models.md 9; every car's side doors are 0.8 s clips, scripts/blender/skf/cars/<car>.py DOORS), so the character
+-- went through a door barely ajar (E2E enter-sp).
 -- Here: when the open action is followed by the climb, the climb waits (its waitToStart, vanilla's own hook, called only
 -- while that action waits in the queue) until the door is most of the way open. The rest of the queue is unchanged.
 require "TimedActions/ISTimedActionQueue"

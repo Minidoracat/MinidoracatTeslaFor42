@@ -153,8 +153,8 @@ function UI.card(e)
     if e.car and e.car ~= "" then bits[#bits + 1] = getText("IGUI_VehicleName" .. e.car) end
     if e.part then
         local pk = "IGUI_VehiclePart" .. e.part
-        -- events are always a Tesla's (PartNames.lua; e.car = the script name without "Base.")
-        local pn = getTextOrNull(T.partNameKey and T.partNameKey("Base." .. tostring(e.car), pk) or pk)
+        -- events are always a Tesla's (Core.lua T.partNameKey; e.car = the script name without "Base.")
+        local pn = getTextOrNull(T.partNameKey("Base." .. tostring(e.car), pk) or pk)
         if pn then bits[#bits + 1] = pn end
     end
     -- a bare % in a getText argument crashes formatted() (verify_mod check 4); names are player-chosen. by = false: an

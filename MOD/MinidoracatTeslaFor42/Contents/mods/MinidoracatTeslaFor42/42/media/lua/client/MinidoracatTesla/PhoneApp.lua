@@ -127,22 +127,25 @@ local function wrap2(s, maxW)
     return s:sub(1, n), fitText(s:sub(n + 1):gsub("^%s+", ""), maxW)
 end
 
--- the car picture in its paint: scripts/blender/skf/convert.py appcar (480x240, references/models.md)
+-- the car picture in its paint: scripts/blender/skf/convert.py appcar (480x240, references/models.md), file
+-- <spec.appCar><paint name>.png (the Model 3 shares six paint names with the Model Y, so its files carry the model)
 local carTex = {}
-local function carTexture(name)
-    local t = carTex[name]
+local function carTexture(file)
+    local t = carTex[file]
     if not t then
-        t = getTexture("media/textures/MinidoracatTesla/HUD/app_car_" .. name .. ".png")
-        carTex[name] = t
+        t = getTexture("media/textures/MinidoracatTesla/HUD/" .. file .. ".png")
+        carTex[file] = t
     end
     return t
 end
--- colors[skin + 1] of the car's spec (Core.lua: entry i = script skin i-1); no skin yet (a record from before the
--- field) or an unknown index: the first paint
+-- colors[skin + 1] of the car's spec (Core.lua: entry i = script skin i-1) and the spec; no skin yet (a record from
+-- before the field) or an unknown index: the first paint. A car that is not a Tesla script (nil, a removed model): nil,
+-- never another car's paint.
 function App.paint(car, skin)
-    local spec = car and T.Specs["Base." .. car] or T.Specs["Base.MinidoracatTesla_ModelY"]
+    local spec = car and T.Specs["Base." .. car]
+    if not spec then return nil end
     local colors = spec.colors
-    return (type(skin) == "number" and colors[skin + 1]) or colors[1], spec.model
+    return (type(skin) == "number" and colors[skin + 1]) or colors[1], spec
 end
 -- the official paint names stay as Tesla writes them ("Stealth Grey"), in every language
 local function paintLabel(paint) return (paint.name:gsub("(%l)(%u)", "%1 %2")) end
@@ -152,9 +155,12 @@ function App.carLabel(keyId, car)
     local st = keyId and App.seen[keyId]
     car = car or (st and st.car)
     local name = car and getText("IGUI_VehicleName" .. car) or txt("Title")
-    if not (st and st.skin) then return name end
-    return name .. getText("IGUI_MinidoracatTesla_Sep") .. paintLabel(App.paint(car, st.skin))
+    local paint = st and st.skin and App.paint(car, st.skin)
+    if not paint then return name end
+    return name .. getText("IGUI_MinidoracatTesla_Sep") .. paintLabel(paint)
 end
+-- this car's version of a text key: the Model 3's trunk lid is not a liftgate (Core.lua T.CarPartNames)
+local function carKey(script, key) return script and T.partNameKey(script, key) or key end
 
 -- The cars this player's app can show, in order: every car of the phone keys on the player (pairing order), then
 -- VehicleManager's Teslas for this player no phone here opens (MinidoracatTesla.VMLink.cars: { oid, keyId, name,
@@ -265,6 +271,7 @@ function App.get(playerNum) return apps[playerNum or 0] end
 function App:select(e)
     local same = e.key ~= nil and e.key == self.key
     self.key, self.oid, self.vmEntry = e.key, e.oid, e.vm and e or nil
+    self.carHint = e.car -- the phone key's mirror (or VehicleManager's script): the model before the server's record
     if not same then -- another car: forget the old one's state
         self.st = e.key and App.seen[e.key] or (e.vm and vmState(e)) or nil
         self.stAt = getTimestampMs()
@@ -450,7 +457,7 @@ function App:onMap()
     local st = self.st
     if not (st and st.x) or not ISWorldMap.IsAllowed() then return end
     App.mapCar = { x = st.x + 0.5, y = st.y + 0.5, name = self.sName, dist = self.sDist, pn = self.playerNum,
-        key = self.key, oid = self.oid }
+        key = self.key, oid = self.oid, spr = self.carSpr }
     self:close()
     ISWorldMap.ShowWorldMap(App.mapCar.pn, App.mapCar.x, App.mapCar.y, 18)
 end
@@ -534,18 +541,20 @@ end
 T.ClientCommands.appDone = function(args)
     local text, ok
     local ended = args.act == "summonEnd"
+    local seen = args.key ~= nil and App.seen[args.key]
+    local script = seen and seen.car and "Base." .. seen.car -- lid texts name this car's lid (carKey)
     if ended then
         text, ok = App.summonText(args.why), args.why == "ARRIVED"
     elseif args.why then
         text, ok = T.denyText(args.why), false
     else
-        text, ok = getText("IGUI_MinidoracatTesla_App_Done_" .. tostring(args.act)), true
+        text, ok = getText(carKey(script, "IGUI_MinidoracatTesla_App_Done_" .. tostring(args.act))), true
     end
     local shown = args.key ~= nil and each(args.key, function(a)
         if ended then a:summonEnded(args.why)
         elseif args.act == "summon" then a:summonDone(args) end
         if not args.why and args.on ~= nil then -- what the server did (a lid toggles what is there now)
-            text = getText("IGUI_MinidoracatTesla_App_Done_" .. args.act .. (args.on and "_on" or "_off"))
+            text = getText(carKey(script, "IGUI_MinidoracatTesla_App_Done_" .. args.act .. (args.on and "_on" or "_off")))
         end
         a:showToast(text, ok)
     end)
@@ -884,10 +893,13 @@ function App:read()
     local hasPos = st ~= nil and st.x ~= nil and not st.deny
     self.hasPos = hasPos
     local ageH = st and (st.ageH or (T.hours() - (st.h or 0))) or 0
-    self.sName = st and st.car and getText("IGUI_VehicleName" .. st.car) or txt("Title")
-    local paint, model = App.paint(st and st.car, st and st.skin)
-    self.paintName, self.model = paint.name, model
-    self.carTex = carTexture(paint.name)
+    local car = st and st.car or self.carHint -- no record yet (never seen live, or denied): the mirror's model
+    self.sName = car and getText("IGUI_VehicleName" .. car) or txt("Title")
+    local paint, spec = App.paint(car, st and st.skin)
+    self.script = spec and "Base." .. car
+    self.paintName, self.model = paint and paint.name, spec and spec.model
+    self.carSpr = spec and "car_" .. spec.model -- top view glyph on the summon radar and the maps
+    self.carTex = paint and carTexture(spec.appCar .. paint.name)
     local sep = getText("IGUI_MinidoracatTesla_Sep")
     if not st then
         self.sSub = txt("Connecting")
@@ -910,7 +922,7 @@ function App:read()
     self.sTitle = TITLE[self.page] and txt(TITLE[self.page]) or ""
     -- the home list: a grey line under each title, the state that is on in white first (the mock's <em>)
     local em, sub = self.rowEm, self.rowSub
-    sub.controls = txt("ControlsSub")
+    sub.controls = getText(carKey(self.script, P .. "ControlsSub"))
     em.location, sub.location = nil, hasPos and self.sDirDist and (self.sDirDist .. sep .. self.sWhen) or ""
     local alerts = self.alertsWhy or (self.alerts and (#self.alerts > 0 and txt("AlertCount", tostring(#self.alerts)) or txt("NoAlerts")))
     if rec and st.sentry then em.security, sub.security = txt("Done_sentry_on"), alerts and (sep .. alerts) or ""
@@ -932,7 +944,8 @@ function App:read()
     local b = self.b
     local live = rec and link ~= nil
     local locked = rec and st.locked == true
-    enable(b.lock, live, locked, locked and "i_lockfill" or "i_unlock", TIP .. (locked and "Unlock" or "Lock"))
+    enable(b.lock, live, locked, locked and "i_lockfill" or "i_unlock",
+        carKey(self.script, TIP .. (locked and "Unlock" or "Lock")))
     local plugged = chg == "charging" or chg == "stopped"
     local chgTip = chg == "charging" and (TIP .. "ChargeStop") or chg and (TIP .. "ChargeStart") or (P .. "NotPlugged")
     enable(b.qcharge, live and plugged, chg == "charging", "i_bolt", chgTip)
@@ -940,7 +953,7 @@ function App:read()
     self.sChargeBtn = chg == "charging" and txt("ChargeStop") or txt("ChargeStart")
     for _, id in ipairs(LIDS) do
         local open = rec and st[id] == true
-        local tip = TIP .. id:sub(1, 1):upper() .. id:sub(2)
+        local tip = carKey(self.script, TIP .. id:sub(1, 1):upper() .. id:sub(2))
         enable(b["q" .. id], live, open, GRID_ICON[id], tip)
         enable(b[id], live, open, GRID_ICON[id], tip)
         b[id].sub = open and txt("Opened") or txt("TapOpen")
@@ -1124,7 +1137,7 @@ function App:layout()
         self.yLine = y
         y = y + 1 + u(16)
         local A = self.A
-        local wm, trim = A["wm_" .. self.model], A["trim_" .. self.model]
+        local wm, trim = self.model and A["wm_" .. self.model], self.model and A["trim_" .. self.model]
         self.yWm = y
         y = y + (wm and math.floor(wm[4] * self.f) or 0) + u(8)
         self.yTrim = y
@@ -1140,7 +1153,7 @@ function App:layout()
         for i, id in ipairs(GRID) do
             local col, row = (i - 1) % 2, math.floor((i - 1) / 2)
             local b = place(id, pad + col * (cellW + gap), y + row * (cellH + gap), cellW, cellH)
-            b.sTitle = fitText(txt(id:sub(1, 1):upper() .. id:sub(2)), cellW - u(28))
+            b.sTitle = fitText(getText(carKey(self.script, P .. id:sub(1, 1):upper() .. id:sub(2))), cellW - u(28))
             b.sSubFit = fitText(b.sub, cellW - u(28))
         end
         y = y + 2 * cellH + gap + u(16)
@@ -1419,7 +1432,7 @@ function App:prerender()
             end
         end
         HUD.rect(self, pad, self.yLine - o, w - 2 * pad, 1, C.line, 1)
-        local wm, trim = A["wm_" .. self.model], A["trim_" .. self.model]
+        local wm, trim = self.model and A["wm_" .. self.model], self.model and A["trim_" .. self.model]
         if wm then HUD.spr(self, wm, pad, self.yWm - o, C.text, 1) end
         if trim then HUD.spr(self, trim, pad, self.yTrim - o, C.text2, 1) end
     elseif page == "controls" then
@@ -1463,8 +1476,8 @@ function App:prerender()
                 local dim = self.sumPhase == "ready" and not self.sumCome
                 HUD.rrect(self, x - 12 * S, y - 12 * S, 24 * S, 24 * S, 12 * S, C.text, 1)
                 HUD.rrect(self, x - 10 * S, y - 10 * S, 20 * S, 20 * S, 10 * S, dim and C.weak or C.blue, 1)
-                local car, k = A.car, 0.1 -- 300 x 170 at 2x: 15 x 8.5 units
-                HUD.spr(self, car, x - car[3] * self.f * k / 2, y - car[4] * self.f * k / 2, C.white, 1, k)
+                local car, k = self.carSpr and A[self.carSpr], 0.1 -- 300 x 170 at 2x: 15 x 8.5 units
+                if car then HUD.spr(self, car, x - car[3] * self.f * k / 2, y - car[4] * self.f * k / 2, C.white, 1, k) end
             end
             HUD.rrect(self, cx - 7 * S, cy - 7 * S, 14 * S, 14 * S, 7 * S, C.text, 1) -- the player
             HUD.rrect(self, cx - 5 * S, cy - 5 * S, 10 * S, 10 * S, 5 * S, C.blue, 1)
@@ -1693,8 +1706,10 @@ function PickMap:render()
         if x >= 0 and y >= 0 and x <= self.width and y <= self.height then
             disc(jo, tex, e, x, y, 22 * S, C.white)
             disc(jo, tex, e, x, y, 18 * S, C.blue)
-            local car = A.car
-            jo:DrawSubTextureRGBA(tex, car[1], car[2], car[3], car[4], x - 7 * S, y - 4 * S, 14 * S, 8 * S, 1, 1, 1, 1)
+            local car = app.carSpr and A[app.carSpr]
+            if car then
+                jo:DrawSubTextureRGBA(tex, car[1], car[2], car[3], car[4], x - 7 * S, y - 4 * S, 14 * S, 8 * S, 1, 1, 1, 1)
+            end
         end
     end
     local pin = app.pin
@@ -1746,8 +1761,8 @@ function App.drawMapCar(map, m)
     jo:DrawSubTextureRGBA(tex, e[1], e[2], e[3], e[4], x - 15, y - 15, 30, 30, 1, 1, 1, 1)
     local b = C.blue
     jo:DrawSubTextureRGBA(tex, e[1], e[2], e[3], e[4], x - 13, y - 13, 26, 26, b[1], b[2], b[3], 1)
-    local car = A.car -- the dashboard's top view, small, as the car glyph
-    jo:DrawSubTextureRGBA(tex, car[1], car[2], car[3], car[4], x - 10, y - 6, 20, 11, 1, 1, 1, 1)
+    local car = m.spr and A[m.spr] -- the dashboard's top view of this car, small, as the car glyph
+    if car then jo:DrawSubTextureRGBA(tex, car[1], car[2], car[3], car[4], x - 10, y - 6, 20, 11, 1, 1, 1, 1) end
     local tm = getTextManager()
     local tw = math.max(tm:MeasureStringX(UIFont.Medium, m.name or ""), tm:MeasureStringX(UIFont.Small, m.dist or ""))
     local fm, fs = tm:getFontHeight(UIFont.Medium), tm:getFontHeight(UIFont.Small)
