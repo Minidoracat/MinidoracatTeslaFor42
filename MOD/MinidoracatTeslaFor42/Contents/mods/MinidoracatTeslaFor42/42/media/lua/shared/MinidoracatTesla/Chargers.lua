@@ -99,21 +99,23 @@ end
 -- a hotwired car or sandbox VehicleEasyUse (T.authorized); else an unlocked car; a locked one refuses CAR_LOCKED.
 -- Locked = vanilla's own lock / unlock toggle test, any cabin door locked (isAnyDoorLocked, BaseVehicle.java:9343-9352;
 -- ISVehicleMenu.lua:173, ISVehicleDashboard.lua:522).
--- Returns true, why; or false, the reason to show (IGUI_MinidoracatTesla_Deny_<reason>) and VehicleManager's own
--- reason for the log.
+-- Returns true, why; or false, the reason to show (IGUI_MinidoracatTesla_Deny_<reason>: VehicleManager's rent /
+-- faction / quarantine locks keep theirs, any other of its refusals is NOT_OWNER) and VehicleManager's own reason for
+-- the log.
 function T.mayUseCable(player, vehicle)
     if not (player and vehicle) then return false, "NO_VEHICLE" end
     local ok, why = T.authorized(player, vehicle, "FUEL")
     if ok then return true, why end
     local api = MinidoracatVehicleManagerAPI
-    if api and api.canUse then return false, "NOT_OWNER", why end
+    if api and api.canUse then return false, T.VM_REASONS[why] and why or "NOT_OWNER", why end
     if not vehicle:isAnyDoorLocked() then return true, "UNLOCKED" end
     return false, "CAR_LOCKED"
 end
 
--- The car plugged into the charger on this square, nil when none (or not loaded). Server and SP: the charger system's
--- own object (ChargerSystem.lua; `vid` = the car's getId() this session, kept by Charging.lua relink); MP client: its
--- synced mirror (ChargerMenu.lua C.chargerAt), the same field.
+-- The car plugged into the charger on this square: the car; nil when none; nil, "NOT_LOADED" when the charger names a
+-- car that is not loaded here, or whose cable is not on this square (vehicle ids are per session and reused). Server
+-- and SP: the charger system's own object (ChargerSystem.lua; `vid` = the car's getId() this session, kept while the car
+-- is unloaded and set again by Charging.lua relink); MP client: its synced mirror (ChargerMenu.lua C.chargerAt).
 function T.pluggedCarOn(sq)
     if not sq then return nil end
     local x, y, z = sq:getX(), sq:getY(), sq:getZ()
@@ -125,17 +127,24 @@ function T.pluggedCarOn(sq)
         local s = SMinidoracatTeslaChargerSystem and SMinidoracatTeslaChargerSystem.instance
         o = s and s:getLuaObjectAt(x, y, z)
     end
-    return o and o.vid and getVehicleById(o.vid) or nil
+    if not (o and o.vid) then return nil end
+    local v = getVehicleById(o.vid)
+    local part = v and T.Battery.part(v)
+    local chg = part and part:getModData().chg
+    if chg and chg.x == x and chg.y == y and chg.z == z then return v end
+    return nil, "NOT_LOADED"
 end
 
 -- Picking up or rotating a charger a car is plugged into pulls its cable out: both take the IsoObject off the square
 -- (pick up: ISMoveablesAction.lua:239-240 -> ISMoveableSpriteProps.lua:1265-1269; rotate = pick up + place,
 -- :2881-2900) and removal unplugs (ChargerSystem.lua OnObjectAboutToBeRemoved -> Charging.lua C.onChargerRemoved).
 -- Before 2026-10-28 anyone could carry off a locked car's Mobile Connector, i.e. unplug it without the cable rule.
--- spriteName = the sprite the move takes off the square. Returns like T.mayUseCable, the car third.
+-- spriteName = the sprite the move takes off the square. Returns like T.mayUseCable, the car third. A plugged car that
+-- is not loaded refuses (NOT_LOADED) rather than let the charger go without the rule (review 2026-10-28).
 function T.mayMoveCharger(player, sq, spriteName)
     if not T.ChargerSprites[spriteName] then return true end
-    local car = T.pluggedCarOn(sq)
+    local car, missing = T.pluggedCarOn(sq)
+    if missing then return false, missing end
     if not car then return true end
     local ok, deny = T.mayUseCable(player, car)
     return ok, deny, car
@@ -154,7 +163,7 @@ if complete then
             local ok, deny, car = T.mayMoveCharger(self.character, self.square, name)
             if not ok then
                 T.log("charger " .. self.mode .. " refused for " .. tostring(self.character:getUsername()) .. ": " .. tostring(deny))
-                T.deny(self.character, deny, car:getId())
+                T.deny(self.character, deny, car and car:getId())
                 return false
             end
         end

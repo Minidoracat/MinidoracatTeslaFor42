@@ -55,7 +55,8 @@ end
 -- or phone key is anyone's who picked it up (as the card tap, KeyActions keyTap, and the app, Remote.lua VM_CODES).
 -- Otherwise (no VehicleManager, or a car it has not claimed) only a key in hand counts, not the rest of T.authorized:
 -- UNCLAIMED, EASY_USE (sandbox VehicleEasyUse), a key left in the ignition and a hotwired car (HOTWIRED) would let any
--- stranger pulling the door handle disarm sentry, and make the thief who hotwired it the owner.
+-- stranger pulling the door handle disarm sentry. Hotwiring alone never disarms it; whoever then sets up a phone key
+-- in the hotwired car (Keys.lua canPair, user 2026-10-28 "得到") holds a key like any owner and counts from then on.
 function T.legit(player, vehicle, by)
     if by and T.account(player) == by then return true end -- a split-screen guest's name proves nothing (Core.lua)
     local api = MinidoracatVehicleManagerAPI

@@ -506,6 +506,9 @@ for _, locked in ipairs({ true, false }) do
     kv.locked, mal.keys[77], kv.hotwired = locked, true, true
     matrix("VehicleManager says no (key and hotwired too), car " .. (locked and "locked" or "unlocked"), false, "NOT_OWNER")
 end
+MinidoracatVehicleManagerAPI.canUse = function(p, veh, perm) return false, "RENT_LOCKED" end
+check(select(2, T.mayUseCable(kOwner, kv)) == "RENT_LOCKED", "VehicleManager's rent lock keeps its own reason (T.VM_REASONS)")
+MinidoracatVehicleManagerAPI.canUse = function(p, veh, perm) return perm == "FUEL" and p == kOwner, p == kOwner and "OWNER" or "NOT_AUTHORIZED" end
 mal.keys[77], kv.hotwired, kv.locked = nil, false, false
 C.unplug(kOwner, kv)
 check(kchg() == nil, "VehicleManager: the car's FUEL holder unplugs")

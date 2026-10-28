@@ -161,17 +161,26 @@ Events.OnFillWorldObjectContextMenu.Add(onFill)
 -- so the wrap waits for OnGameStart. Pick up keeps vanilla's normal tint when refused (:539), rotate turns red (:629).
 function C.guardMoveCursor()
     local Cur = ISMoveableCursor
-    if not (Cur and Cur.isValid) or Cur.teslaGuard then return end
+    if not (Cur and Cur.isValid) then return T.log("charger move guard: ISMoveableCursor.isValid missing") end
+    if Cur.teslaGuard then return end
     Cur.teslaGuard = true
     local isValid = Cur.isValid
     function Cur:isValid(square)
         local r = isValid(self, square)
         local mode = ISMoveableCursor.mode[self.player]
-        if self.canCreate and (mode == "pickup" or mode == "rotate") and self.origMoveProps
-            and not T.mayMoveCharger(self.character, square, self.origMoveProps.spriteName) then
+        local refused = (self.canCreate and (mode == "pickup" or mode == "rotate") and self.origMoveProps
+            and not T.mayMoveCharger(self.character, square, self.origMoveProps.spriteName)) == true
+        local was = self.teslaRefused == true
+        self.teslaRefused = refused
+        if refused then
             self.canCreate = false
             if mode == "rotate" then self.colorMod = ISMoveableCursor.invalidColor end
-            self:setInfoPanel(square, self.cacheObject, self.currentMoveProps) -- the panel's picture as refused (:275)
+        end
+        if refused or was then
+            -- the panel's text is cached per square and object (:270): redo it when the answer changes under a still
+            -- cursor (the car locked or unlocked meanwhile); the picture as refused or not (:275)
+            if refused ~= was then self.cacheSquare = nil end
+            self:setInfoPanel(square, self.cacheObject, self.currentMoveProps)
         end
         return r
     end

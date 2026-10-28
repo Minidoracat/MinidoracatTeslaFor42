@@ -273,6 +273,8 @@ function T.authorized(player, vehicle, perm)
     if vehicle:isHotwired() then return true, "HOTWIRED" end
     return false, "NO_KEY"
 end
+-- VehicleManager refusals that keep their own reason text (IGUI_MinidoracatTesla_Deny_<reason>); any other is NOT_OWNER
+T.VM_REASONS = { RENT_LOCKED = true, FACTION_PAUSED = true, QUARANTINED = true }
 
 -- Admin: same capability VehicleManager uses (MinidoracatVehicleManager_OwnershipSystem.lua:192-195).
 function T.isAdmin(player)

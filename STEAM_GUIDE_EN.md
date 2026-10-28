@@ -311,7 +311,7 @@ Without Vehicle Manager:
 [*] [b]Car unlocked[/b]: plug in or unplug the charge cable, set the target or stop charging on the charge card, and pick up or rotate a charger the car is plugged into.
 [*] [b]Car locked[/b]: all of that needs this car's key; the menu is grey and says The car is locked: you need this car's key, and the server refuses too.
 [*] [b]After hotwiring[/b]: it counts as the key in the ignition: plug in, unplug and use the charge card whether it is locked or not; sitting in it you can turn on Camp Mode and set up a phone as its phone key.
-[*] [b]Not for Sentry[/b]: hotwiring does not make you the owner; a stranger's hotwire still sounds the alarm and cannot turn Sentry off.
+[*] [b]Not for Sentry[/b]: hotwiring alone does not make you the owner; a stranger's hotwire still sounds the alarm, tells the owner and cannot turn Sentry off. Setting up a phone key in the hotwired car, though, is like carrying its key and does turn Sentry off; for real theft protection use Vehicle Manager.
 [*] With Vehicle Manager: its rights decide, locked or not, hotwired or not.
 [/list]
 [h3]What does Summon need?[/h3]
