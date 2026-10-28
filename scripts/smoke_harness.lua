@@ -65,6 +65,7 @@ Capability = { ManipulateVehicle = "ManipulateVehicle" }
 function checkPermissions(player, cap) return player and player._admin == true end
 -- the local test servers are no-steam (LuaManager getSteamModeActive); test_identity.lua switches it on
 function getSteamModeActive() return H.steam == true end
+function getMaxUsernameLength() return 32 end -- LuaManager.java:12259-12265
 
 function instanceof(o, cls) return type(o) == "table" and o._class == cls end
 
