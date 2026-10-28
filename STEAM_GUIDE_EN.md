@@ -237,7 +237,7 @@ A charger that works on the floor, no wall needed; slower than the Wall Connecto
 [tr][td]Key card tap, app lock / unlock, flash, honk, Sentry on / off[/td][td]Ride[/td][/tr]
 [tr][td]App liftgate / trunk[/td][td]Trunk[/td][/tr]
 [tr][td]App frunk[/td][td]Repair or Salvage[/td][/tr]
-[tr][td]Plugging in or unplugging, the charge card, picking up or rotating a charger with the car plugged in, app stop / start charging[/td][td]Fuel[/td][/tr]
+[tr][td]Plugging in or unplugging, the charge card, picking up or rotating a charger with the car plugged in, app stop / start charging[/td][td]Fuel (except the charger owner's unplug, stop and pick-up, see the FAQ)[/td][/tr]
 [tr][td]App location and status[/td][td]Location[/td][/tr]
 [tr][td]App Summon[/td][td]Drive[/td][/tr]
 [tr][td]Setting up a new phone key without the key card[/td][td]Owner (cannot be shared)[/td][/tr]
@@ -313,6 +313,13 @@ Without Vehicle Manager:
 [*] [b]After hotwiring[/b]: it counts as the key in the ignition: plug in, unplug and use the charge card whether it is locked or not; sitting in it you can turn on Camp Mode and set up a phone as its phone key.
 [*] [b]Not for Sentry[/b]: hotwiring alone does not make you the owner; a stranger's hotwire still sounds the alarm, tells the owner and cannot turn Sentry off. Setting up a phone key in the hotwired car, though, is like carrying its key, so that player can turn Sentry off; for real theft protection use Vehicle Manager.
 [*] With Vehicle Manager: its rights decide, locked or not, hotwired or not.
+[/list]
+[h3]Someone else's car is plugged into my charger. What now?[/h3]
+[list]
+[*] [b]Who owns a charger[/b]: whoever placed it, and the owner and members of the safehouse it stands in.
+[*] [b]The owner can[/b]: unplug the cable, press Stop on the charge card, and pick up or rotate the charger, whether that car is locked or not, with or without Vehicle Manager.
+[*] [b]The owner cannot[/b]: plug in a car they have no right to, or change that car's target or resume its charging.
+[*] [b]Older chargers[/b]: chargers placed before this feature have no owner on record and follow the normal rules; pick one up and place it again to record you (if you can pick it up).
 [/list]
 [h3]What does Summon need?[/h3]
 [list]
