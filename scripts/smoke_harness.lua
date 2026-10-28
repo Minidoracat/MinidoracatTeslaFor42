@@ -223,7 +223,11 @@ function H.player(o)
     function p:getX() return self.x end
     function p:getY() return self.y end
     function p:getZ() return self.z end
-    function p:DistTo(o2) local dx, dy = self.x - o2:getX(), self.y - o2:getY(); return math.sqrt(dx * dx + dy * dy) end
+    function p:DistTo(a, b) -- the engine's: Manhattan, an object or x, y (IsoMovingObject.java:601-607, IsoUtils.java:44-46)
+        local x, y = a, b
+        if type(a) == "table" then x, y = a:getX(), a:getY() end
+        return math.abs(self.x - x) + math.abs(self.y - y)
+    end
     function p:getSteamID() return self.sid or 0 end -- H.player{ sid = } (IsoPlayer.java:6412; 0 off Steam)
     function p:isDead() return self.dead == true end
     function p:getInventory()
@@ -276,8 +280,12 @@ ISMoveableSpriteProps = { canPlaceMoveableInternal = function(self) return self.
     addLineToInfoTable = function(t, txt, r, g, b) t[#t + 1] = { { txt = txt, r = r, g = g, b = b } }; return t end,
     bhc = { getR = function() return 1 end, getG = function() return 0 end, getB = function() return 0 end } }
 -- vanilla pick up / place / rotate action (ISMoveablesAction.lua:236-255); Chargers.lua wraps complete(). `done`
--- counts what vanilla would have moved.
-ISMoveablesAction = { complete = function(self) self.done = (self.done or 0) + 1; return true end }
+-- counts what vanilla would have moved; `onComplete` stands in for what vanilla did to the world (a placed object).
+ISMoveablesAction = { complete = function(self)
+    self.done = (self.done or 0) + 1
+    if self.onComplete then self.onComplete(self) end
+    return true
+end }
 
 -- ---------------------------------------------------------------- loader
 local loaded = {}

@@ -155,9 +155,11 @@ function T.cableReaches(kind, cx, cy, cz, vehicle)
 end
 
 -- Who may plug a charge cable into this car, pull it out, work its charge card (target %, stop) or move the charger it
--- is plugged into: the one rule the server (Charging.lua plug / unplug / chargeTarget / chargeStop, the move guard
+-- is plugged into: the cable rule the server (Charging.lua plug / unplug / chargeTarget / chargeStop, the move guard
 -- below) and the client's pre-checks (ChargerMenu.lua, HUDChargeCard.lua) share, so a button is grey exactly when the
--- server would refuse. VehicleManager present: its FUEL right decides (T.authorized). Without it (user 2026-10-28,
+-- server would refuse. Plugging in and the target % ask it alone; unplug, stop and moving the charger go through
+-- T.mayUnplug / T.mayMoveCharger, which also let the charger's owner. VehicleManager present: its FUEL right decides
+-- (T.authorized). Without it (user 2026-10-28,
 -- decisions.md keyless rules; the real car's charge port opens while it is unlocked): a key, the key in the ignition,
 -- a hotwired car or sandbox VehicleEasyUse (T.authorized); else an unlocked car; a locked one refuses CAR_LOCKED.
 -- Locked = vanilla's own lock / unlock toggle test, any cabin door locked (isAnyDoorLocked, BaseVehicle.java:9343-9352;
@@ -175,28 +177,58 @@ function T.mayUseCable(player, vehicle)
     return false, "CAR_LOCKED"
 end
 
--- The car plugged into the charger on this square, as T.chargerCar answers. Server and SP: the charger system's own
--- object (ChargerSystem.lua; `vid` = the car's getId() this session, kept while the car is unloaded and set again by
--- Charging.lua relink); MP client: its synced mirror (ChargerMenu.lua C.chargerAt).
+-- The charger object on a square. Server and SP: the charger system's own object (ChargerSystem.lua; `vid` = the car's
+-- getId() this session, kept while the car is unloaded and set again by Charging.lua relink; `owner` = who placed it);
+-- MP client: its synced mirror (ChargerMenu.lua C.chargerAt), the same fields.
+local function chargerObjectAt(x, y, z)
+    if isClient() then
+        local C = T.Charge
+        return C and C.chargerAt and C.chargerAt(x, y, z)
+    end
+    local s = SMinidoracatTeslaChargerSystem and SMinidoracatTeslaChargerSystem.instance
+    return s and s:getLuaObjectAt(x, y, z)
+end
+
+-- The car plugged into the charger on this square, as T.chargerCar answers.
 function T.pluggedCarOn(sq)
     if not sq then return nil end
     local x, y, z = sq:getX(), sq:getY(), sq:getZ()
-    local o
-    if isClient() then
-        local C = T.Charge
-        o = C and C.chargerAt and C.chargerAt(x, y, z)
-    else
-        local s = SMinidoracatTeslaChargerSystem and SMinidoracatTeslaChargerSystem.instance
-        o = s and s:getLuaObjectAt(x, y, z)
-    end
-    return T.chargerCar(o, x, y, z)
+    return T.chargerCar(chargerObjectAt(x, y, z), x, y, z)
+end
+
+-- The charger's owner (main agent 2026-10-28, closing the hole the move guard opened: someone else's locked car must
+-- not hold your charger): whoever placed it (`owner` = T.account at placement, the move guard below) or the owner / a
+-- member of the safehouse its square is in (SafeHouse.getSafeHouse -> findSafeHouse, SafeHouse.java:157,201-219;
+-- playerAllowed(name) = member or owner, :288-290). A charger placed before the record has no owner: the cable rule
+-- alone. A player without an account (a split-screen guest, an unbound name on a Steam server, Core.lua) owns nothing.
+function T.chargerOwner(player, x, y, z)
+    local o = chargerObjectAt(x, y, z)
+    local owner = o and o.owner
+    local me = owner and player and T.account(player)
+    if not me then return false end
+    if me == owner then return true end
+    local sq = getCell():getGridSquare(x, y, z)
+    local safe = sq and SafeHouse and SafeHouse.getSafeHouse(sq)
+    return safe ~= nil and safe:playerAllowed(me) == true
+end
+
+-- Unplug, the charge card's stop, picking up or rotating the charger: the cable rule, or the charger's owner, locked
+-- car or not, VehicleManager or not. Plugging in and the target % (resume included) stay the cable rule alone.
+-- Returns like T.mayUseCable ("CHARGER_OWNER" when only ownership lets it).
+function T.mayUnplug(player, vehicle)
+    local ok, deny, why = T.mayUseCable(player, vehicle)
+    if ok then return true, deny end
+    local part = T.Battery.part(vehicle)
+    local chg = part and part:getModData().chg
+    if chg and T.chargerOwner(player, chg.x, chg.y, chg.z) then return true, "CHARGER_OWNER" end
+    return false, deny, why
 end
 
 -- The car on the cable of charger object o at x, y, z: its `vid` names a loaded car whose own record (battery part chg)
 -- is this square. nil when nothing is plugged in (vid nil / false); nil, "NOT_LOADED" when vid names no such car:
 -- unloaded, or the id now belongs to another car (ids are handed out again, VehicleIDMap.java:49-62,91-95).
--- Charging.lua plug (busy) and relink (taken) and the charger's menu ask the same: a reused id neither blocks plugging
--- in nor unplugs the car coming back. (Charging.lua settle / onChargerRemoved still read vid alone.)
+-- Charging.lua plug (busy), relink (taken), settle and charger removal, and the charger's menu all ask this: a reused
+-- id neither blocks plugging in, nor unplugs the car coming back, nor stops the car that now holds the id.
 function T.chargerCar(o, x, y, z)
     if not (o and o.vid) then return nil end
     local v = getVehicleById(o.vid)
@@ -210,13 +242,15 @@ end
 -- (pick up: ISMoveablesAction.lua:239-240 -> ISMoveableSpriteProps.lua:1265-1269; rotate = pick up + place,
 -- :2881-2900) and removal unplugs (ChargerSystem.lua OnObjectAboutToBeRemoved -> Charging.lua C.onChargerRemoved).
 -- Before 2026-10-28 anyone could carry off a locked car's Mobile Connector, i.e. unplug it without the cable rule.
--- spriteName = the sprite the move takes off the square. Returns like T.mayUseCable, the car third. A plugged car that
--- is not loaded refuses (NOT_LOADED) rather than let the charger go without the rule (review 2026-10-28).
+-- spriteName = the sprite the move takes off the square. Returns like T.mayUnplug, the car third. A plugged car that
+-- is not loaded refuses (NOT_LOADED) rather than let the charger go without the rule (review 2026-10-28); its owner
+-- may move it anyway.
 function T.mayMoveCharger(player, sq, spriteName)
     if not T.ChargerSprites[spriteName] then return true end
     local car, missing = T.pluggedCarOn(sq)
+    if not (car or missing) then return true end
+    if T.chargerOwner(player, sq:getX(), sq:getY(), sq:getZ()) then return true, "CHARGER_OWNER", car end
     if missing then return false, missing end
-    if not car then return true end
     local ok, deny = T.mayUseCable(player, car)
     return ok, deny, car
 end
@@ -225,6 +259,11 @@ end
 -- rejects the action, ActionManager.java:69,87-95; SP: locally). What leaves the square: pick up takes
 -- moveProps.spriteName (findOnSquare, ISMoveableSpriteProps.lua:1267), rotate takes origSpriteName (:2883,2889,2899). The
 -- move cursor greys the same (ChargerMenu.lua C.guardMoveCursor); the cursor panel's reason line is below.
+-- The same wrap records the owner: placing makes the placer the owner; rotating (pick up + place: a new charger
+-- object) keeps the old one, whoever turns it.
+local function chargerObjectOn(square)
+    return square and chargerObjectAt(square:getX(), square:getY(), square:getZ())
+end
 local complete = ISMoveablesAction and ISMoveablesAction.complete
 if complete then
     function ISMoveablesAction:complete()
@@ -238,7 +277,15 @@ if complete then
                 return false
             end
         end
-        return complete(self)
+        local before = (self.mode == "place" or self.mode == "rotate") and chargerObjectOn(self.square)
+        local keep = self.mode == "rotate" and before and before.owner
+        local r = complete(self)
+        local o = (self.mode == "place" or self.mode == "rotate") and chargerObjectOn(self.square)
+        if o and o ~= before then
+            o.owner = keep or (self.mode == "place" and T.account(self.character)) or nil
+            if o.owner then o:updateOnClient() end
+        end
+        return r
     end
 else
     T.log("charger move guard: ISMoveablesAction.complete missing")

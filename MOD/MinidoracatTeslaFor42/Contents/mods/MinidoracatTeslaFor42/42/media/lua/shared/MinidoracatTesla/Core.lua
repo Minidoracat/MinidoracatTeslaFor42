@@ -288,12 +288,16 @@ end
 -- replaced too, :69-109) and the server takes it as the player's name (GameServer.java:2838,2848); no Lua API reads
 -- the connection's login name. So on a server: a split-screen guest (slot 1-3, its host's SteamID) has none; on a
 -- Steam server the name must be bound to this SteamID (Store.lua T.Store.verify); a no-steam server has nothing to
--- check it against and takes the name. SP and the client: the username.
+-- check it against and takes the name. SP: the username; an MP client: slot 0's username, none for a split-screen
+-- guest (no Steam binding check there: UI hints only, the server decides).
 T.steamMode = function() return getSteamModeActive() == true end -- both overridable: E2E (conventions.md item 6)
 T.sidOf = function(player) return player:getSteamID() end -- a long rounded to a double in Lua: compare, never print
 function T.account(player)
     if not player then return nil end
-    if not isServer() then return player:getUsername() end
+    if not isServer() then -- SP by name; an MP client none for a split-screen guest, like its server (hints only)
+        if isClient() and player:getPlayerNum() ~= 0 then return nil end
+        return player:getUsername()
+    end
     if player:getPlayerNum() ~= 0 then return nil end
     local name = player:getUsername()
     if type(name) ~= "string" or name == "" then return nil end

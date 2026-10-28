@@ -44,6 +44,9 @@ check(T.Inbox.entry(scene, "touch", "door", owner).by == "owner" and T.Inbox.ent
     "no-steam: an alert names the intruder's name; a guest named like the owner: unverified")
 H.side(false, false)
 check(T.account(H.player({ name = "Bob Smith", num = 1 })) == "Bob Smith", "SP: the username")
+H.side(true, false)
+check(T.account(H.player({ name = "owner" })) == "owner" and T.account(H.player({ name = "owner", num = 1 })) == nil,
+    "MP client: slot 0 its username, a split-screen guest none (as the server answers; UI hints only)")
 H.side(false, true)
 
 H.section("identity: Steam server")

@@ -10,10 +10,10 @@ local MCS = "minidoracat_tesla_01_8"
 
 local v = H.vehicle({ kwh = 20 })
 T.Battery.part(v):getModData().chg = { x = 5, y = 5, z = 0 } -- the car's side of the cable (Charging.lua C.plug)
-local vid = v:getId()
+local vid, owner = v:getId(), nil
 local savedSys = CMinidoracatTeslaChargerSystem.instance
 CMinidoracatTeslaChargerSystem.instance = { system = { getObjectAt = function(_, x, y, z)
-    return x == 5 and y == 5 and z == 0 and { getModData = function() return { vid = vid } end } or nil
+    return x == 5 and y == 5 and z == 0 and { getModData = function() return { vid = vid, owner = owner } end } or nil
 end } }
 local sq = { getX = function() return 5 end, getY = function() return 5 end, getZ = function() return 0 end }
 local empty = { getX = function() return 6 end, getY = function() return 5 end, getZ = function() return 0 end }
@@ -81,6 +81,12 @@ T.Battery.part(v):getModData().chg = { x = 5, y = 5, z = 0 }
 v.hotwired, v.locked = true, true
 check(cursor("rotate").canCreate == true, "locked but hotwired: allowed (the key in the ignition)")
 v.hotwired = false
+owner = "mal" -- mal placed this charger: his to move whatever is plugged in (Chargers.lua T.chargerOwner)
+v.locked = true
+check(cursor("pickup").canCreate == true and cursor("rotate").canCreate == true, "the charger's owner, locked car plugged in: pick up and rotate allowed")
+vid = 98765
+check(cursor("pickup").canCreate == true, "the charger's owner, plugged car not loaded: allowed too")
+vid, owner = v:getId(), nil
 MinidoracatVehicleManagerAPI = { canUse = function() return false, "NOT_AUTHORIZED" end }
 v.locked = false
 c = cursor("pickup")

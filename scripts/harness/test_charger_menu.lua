@@ -51,6 +51,10 @@ for _, k in ipairs({ { "WallConnector", "minidoracat_tesla_01_0", 10 }, { "Mobil
     local mal = menu(H.player({ name = "mal" }), iso)
     check(mal ~= nil and mal.notAvailable == true and mal.toolTip.description == "IGUI_MinidoracatTesla_Deny_CAR_LOCKED",
         k[1] .. ": no key, car locked -> Unplug greyed with the server's CAR_LOCKED reason, no code appended")
+    synced[k[3] .. ",5,0"].owner = "mal" -- mal placed this charger (synced from the server, ChargerSystem.lua)
+    mal = menu(H.player({ name = "mal" }), iso)
+    check(mal ~= nil and not mal.notAvailable, k[1] .. ": the charger's owner, no key, car locked -> Unplug live (T.mayUnplug)")
+    synced[k[3] .. ",5,0"].owner = nil
     v.locked = false
     mal = menu(H.player({ name = "mal" }), iso)
     check(mal ~= nil and not mal.notAvailable, k[1] .. ": no key, car unlocked -> Unplug live")
