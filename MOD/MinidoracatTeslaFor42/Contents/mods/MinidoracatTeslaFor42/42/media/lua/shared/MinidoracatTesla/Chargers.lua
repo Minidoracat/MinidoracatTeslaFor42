@@ -25,6 +25,8 @@ T.Chargers = {
     },
     -- Tesla Gen 3 Mobile Connector (North America): 32 A at 240 V (NEMA 14-50), 7.6 kW; 6 m (20 ft) cable -> 5 tiles
     -- (official.md 1.2). Sits on the floor (the tile's default MoveType Object).
+    -- Power (decisions.md 2026-10-28): indoors it plugs into the building's sockets like the Wall Connector; anywhere
+    -- else only straight into a running generator up to genTiles away (same floor, Chebyshev; T.directGenerator).
     MobileConnector = {
         kind = "MobileConnector",
         kw = 7.6,
@@ -32,6 +34,7 @@ T.Chargers = {
         item = "Base.MinidoracatTesla_MobileConnector",
         sprites = { S = "minidoracat_tesla_01_8", E = "minidoracat_tesla_01_9", N = "minidoracat_tesla_01_10", W = "minidoracat_tesla_01_11" },
         cableExit = { 0, 0.20, 0 },
+        genTiles = 2,
     },
 }
 
@@ -40,6 +43,64 @@ T.ChargerSprites = {}
 for kind, c in pairs(T.Chargers) do
     c.fuelPerHour = c.kw * T.GEN_FUEL_PER_KWH
     for facing, sprite in pairs(c.sprites) do T.ChargerSprites[sprite] = { kind = kind, facing = facing } end
+end
+
+-- ---- power at a charger square: Charging.lua's settle and the charger menu's no-power hint share these ----
+
+-- a running generator with fuel on that square, else nil
+function T.generatorAt(x, y, z)
+    local sq = getCell():getGridSquare(x, y, z)
+    local g = sq and sq:getGenerator() -- IsoGridSquare.java:9713
+    if g and g:isActivated() and g:getFuel() > 0 then return g end -- IsoGenerator.java:497-520
+    return nil
+end
+
+-- The charger is on the building wiring. A Wall Connector always is (it hangs on a wall); a charger with genTiles
+-- (Mobile Connector) only indoors, vanilla's exterior flag off (IsoGridSquare.isOutside, :9431): a room or a roof
+-- overhead (:7306-7317; IsoChunk.java:2428-2440 on load, IsoCell.java:4393-4405 when one is built), so a roofed
+-- player-built base counts. The same flag the sandbox AllowExteriorGenerator reads in haveElectricity (:9697).
+function T.onWiring(kind, sq)
+    local c = T.Chargers[kind]
+    return not (c and c.genTiles and sq:isOutside())
+end
+
+-- the grid reaches the charger while the grid is up: on the wiring, and the fridge rule (ItemContainer.java:2307-2330):
+-- not a no-power zone, and the square or a neighbour is inside a room
+local DIRS = { "N", "S", "W", "E" }
+function T.gridReaches(kind, sq)
+    if not T.onWiring(kind, sq) or sq:isNoPower() then return false end -- IsoGridSquare.java:11617
+    if sq:getRoom() ~= nil then return true end
+    for i = 1, #DIRS do
+        local a = sq:getAdjacentSquare(IsoDirections[DIRS[i]])
+        if a ~= nil and a:getRoom() ~= nil then return true end
+    end
+    return false
+end
+
+-- a generator powers the charger through the wiring: in a generator's range (haveElectricity, IsoGridSquare.java:9696-9700)
+function T.wiredPower(kind, sq)
+    return T.onWiring(kind, sq) and sq:haveElectricity()
+end
+
+-- plugged straight into a running generator up to genTiles from (x, y), same floor: generator, gx, gy. No sandbox
+-- AllowExteriorGenerator limit (decisions.md 2026-10-28).
+function T.directGenerator(kind, x, y, z)
+    local c = T.Chargers[kind]
+    local r = c and c.genTiles
+    if not r then return nil end
+    for gx = x - r, x + r do
+        for gy = y - r, y + r do
+            local g = T.generatorAt(gx, gy, z)
+            if g then return g, gx, gy end
+        end
+    end
+    return nil
+end
+
+-- has the charger power right now (the menu's hint; the server books it by the hour in Charging.lua C.settle)
+function T.chargerPowered(kind, sq)
+    return (sq:hasGridPower() and T.gridReaches(kind, sq)) or T.wiredPower(kind, sq)
+        or T.directGenerator(kind, sq:getX(), sq:getY(), sq:getZ()) ~= nil
 end
 
 function T.chargerInfo(isoObject)

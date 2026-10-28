@@ -6,6 +6,7 @@
     "ContextMenu_MinidoracatTesla_PlugInto": "Ladekabel einstecken: %1",
     "ContextMenu_MinidoracatTesla_Unplug": "Ladekabel abziehen",
     "ContextMenu_MinidoracatTesla_ChargeStatus": "Ladestatus anzeigen",
+    "ContextMenu_MinidoracatTesla_MobileNoPower": "Hier kein Strom: drinnen mit Strom aufstellen oder höchstens 2 Felder neben einem laufenden Generator",
     "ContextMenu_MinidoracatTesla_TapUnlock": "Schlüsselkarte auflegen: Entriegeln",
     "ContextMenu_MinidoracatTesla_TapLock": "Schlüsselkarte auflegen: Verriegeln",
     "ContextMenu_MinidoracatTesla_PairPhone": "Als Handyschlüssel einrichten",

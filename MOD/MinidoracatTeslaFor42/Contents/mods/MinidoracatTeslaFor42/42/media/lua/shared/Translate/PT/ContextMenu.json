@@ -6,6 +6,7 @@
     "ContextMenu_MinidoracatTesla_PlugInto": "Conectar cabo de carregamento: %1",
     "ContextMenu_MinidoracatTesla_Unplug": "Desconectar cabo de carregamento",
     "ContextMenu_MinidoracatTesla_ChargeStatus": "Ver estado do carregamento",
+    "ContextMenu_MinidoracatTesla_MobileNoPower": "Sem eletricidade aqui: coloque num interior com eletricidade ou a até 2 quadrados de um gerador ligado",
     "ContextMenu_MinidoracatTesla_TapUnlock": "Aproximar cartão-chave: destrancar",
     "ContextMenu_MinidoracatTesla_TapLock": "Aproximar cartão-chave: trancar",
     "ContextMenu_MinidoracatTesla_PairPhone": "Configurar como chave de telefone",

@@ -151,6 +151,10 @@ local function onFill(playerNum, context, worldObjects, test)
     if not any then
         disable(context:addOption(getText("ContextMenu_MinidoracatTesla_Plug"), nil, nil), "Tooltip_MinidoracatTesla_NoCarInReach")
     end
+    -- a Mobile Connector without power still takes the cable (it charges once power comes): say where it works
+    if c.genTiles and not T.chargerPowered(info.kind, sq) then
+        context:addOption(getText("ContextMenu_MinidoracatTesla_MobileNoPower"), nil, nil).notAvailable = true
+    end
 end
 Events.OnFillWorldObjectContextMenu.Add(onFill)
 

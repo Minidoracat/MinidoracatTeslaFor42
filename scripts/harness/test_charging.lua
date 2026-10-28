@@ -8,13 +8,18 @@ local squares = {}
 local function key(x, y, z) return x .. "," .. y .. "," .. z end
 local function square(x, y, z, o)
     o = o or {}
-    local sq = { x = x, y = y, z = z, room = o.room, noPower = o.noPower or false, elec = o.elec or false, gen = nil, special = {} }
+    local outside = o.outside
+    if outside == nil then outside = o.room == nil end -- the fake's default: a room is indoors, anything else outdoors
+    local sq = { x = x, y = y, z = z, room = o.room, noPower = o.noPower or false, elec = o.elec or false, gen = nil,
+        special = {}, outside = outside }
     function sq:getX() return self.x end
     function sq:getY() return self.y end
     function sq:getZ() return self.z end
     function sq:getRoom() return self.room end
     function sq:isNoPower() return self.noPower end
     function sq:haveElectricity() return self.elec end
+    function sq:isOutside() return self.outside end
+    function sq:hasGridPower() return not self.noPower end
     function sq:getGenerator() return self.gen end
     function sq:getVehicleContainer() return self.vehicle end
     function sq:getAdjacentSquare(d)
@@ -354,22 +359,105 @@ H.setHours(165)
 C.settle(mo2, H.hours())
 local mchg2 = B.part(mv2):getModData().chg
 check(mchg2.paused == "nopower" and mchg2.power == nil and B.kwh(B.part(mv2)) == 5, "outdoors without a generator: paused=nopower, no energy")
--- outdoors next to a running generator: charges and burns kW x GEN_FUEL_PER_KWH x GeneratorFuelConsumption per hour
-local mo3, miso3 = charger(840, 800, { elec = true }, "minidoracat_tesla_01_9")
+-- Mobile Connector power (decisions.md 2026-10-28): indoors on the building wiring like the Wall Connector; anywhere
+-- else only a running generator up to genTiles (2, same floor, Chebyshev) away, plugged straight in
+check(MC.genTiles == 2 and WC.genTiles == nil, "Mobile Connector plugs straight into a generator up to 2 tiles away; the Wall Connector never does")
+local MRATE = MC.fuelPerHour * 0.1
+local function mplug(x, y, o, h)
+    local lo_, iso_, sq_ = charger(x, y, o, "minidoracat_tesla_01_9")
+    local v_ = car(5, x + 2.5, y + 0.5)
+    H.setHours(h)
+    C.plug(H.player({ name = "own", keys = { [77] = true }, x = x + 1, y = y + 1 }), v_, iso_)
+    return lo_, v_, sq_, B.part(v_):getModData().chg
+end
+-- outdoors inside a generator's power range (the square has electricity), generator 5 tiles away: no power
+local mo3, mv3, msq3, mchg3 = mplug(840, 800, { elec = true }, 170)
 local mgen = square(845, 800, 0)
 mgen.gen = generator(10, true)
-local mv3 = car(5, 842.5, 800.5)
-H.setHours(170)
-C.plug(H.player({ name = "own", keys = { [77] = true }, x = 841, y = 801 }), mv3, miso3)
 H.setHours(173)
 C.settle(mo3, H.hours())
-check(B.part(mv3):getModData().chg.src == "generator" and near(B.kwh(B.part(mv3)), 5 + 3 * 7.6, 1e-6), "generator: 3 h at 7.6 kW")
-check(near(mgen.gen.fuel, 10 - 3 * 7.6 * T.GEN_FUEL_PER_KWH * 0.1, 1e-9), "generator burned 7.6 x GEN_FUEL_PER_KWH x 0.1 per hour")
-mgen.gen.on = false
+check(mchg3.paused == "nopower" and mchg3.power == nil and B.kwh(B.part(mv3)) == 5 and mgen.gen.fuel == 10,
+    "outdoors in a generator's range but 5 tiles from it: no power, no charge, its fuel untouched")
+check(not T.chargerPowered("MobileConnector", msq3) and T.chargerPowered("WallConnector", msq3),
+    "the menu's power check agrees; a Wall Connector on that square would take the generator's range")
+-- the generator moves next to it (Chebyshev 2, diagonal): plugged straight in, burns that generator's fuel
+mgen.gen = nil
+local mgen2 = square(842, 802, 0)
+mgen2.gen = generator(10, true)
+H.setHours(174)
+C.settle(mo3, H.hours())
+check(mchg3.src == "generator" and mchg3.power == "generator" and near(B.kwh(B.part(mv3)), 5 + 7.6, 1e-6),
+    "generator 2 tiles away (diagonal): 1 h at 7.6 kW")
+check(near(mgen2.gen.fuel, 10 - MRATE, 1e-9) and near(MRATE, 7.6 * T.GEN_FUEL_PER_KWH * 0.1, 1e-12),
+    "that generator burned 7.6 x GEN_FUEL_PER_KWH x GeneratorFuelConsumption for the hour")
+check(T.chargerPowered("MobileConnector", msq3), "the menu's power check sees the generator next to it")
+mgen2.gen.on = false
 local k3 = B.kwh(B.part(mv3))
 H.setHours(175)
 C.settle(mo3, H.hours())
-check(B.kwh(B.part(mv3)) == k3 and B.part(mv3):getModData().chg.paused == "nopower", "generator switched off: no charge, paused=nopower")
+check(B.kwh(B.part(mv3)) == k3 and mchg3.paused == "nopower" and mchg3.power == nil, "generator switched off: no charge, paused=nopower")
+mgen2.gen.on, mgen2.gen.fuel = true, 0
+H.setHours(176)
+C.settle(mo3, H.hours())
+check(B.kwh(B.part(mv3)) == k3 and mchg3.paused == "nopower", "generator out of fuel: no charge, paused=nopower")
+mgen2.gen.fuel = 10
+H.setHours(177)
+C.settle(mo3, H.hours())
+check(mchg3.src == "generator" and near(B.kwh(B.part(mv3)) - k3, 7.6, 1e-6), "refuelled: charges again on the next settle")
+-- car unloaded for 4 h (nothing settles), loaded again: relink books the whole stretch on that generator
+C.unschedule(mo3)
+local f3, k3b = mgen2.gen.fuel, B.kwh(B.part(mv3))
+H.setHours(181)
+H.fire("OnSpawnVehicleEnd", mv3)
+check(near(B.kwh(B.part(mv3)) - k3b, 4 * 7.6, 1e-6) and near(f3 - mgen2.gen.fuel, 4 * MRATE, 1e-9),
+    "car loaded again after 4 h: 4 h of charge and 4 h of that generator's fuel")
+-- 3 tiles away or another floor: not plugged in; the scan is a 5x5 on the charger's floor
+local g3 = square(1003, 1000, 0)
+g3.gen = generator(10, true)
+local gUp = square(1001, 1000, 1)
+gUp.gen = generator(10, true)
+check(T.directGenerator("MobileConnector", 1000, 1000, 0) == nil, "3 tiles away or one floor up: not plugged in")
+check(T.directGenerator("MobileConnector", 1001, 1000, 0) == g3.gen and T.directGenerator("WallConnector", 1001, 1000, 0) == nil,
+    "2 tiles away: plugged in (Mobile Connector only)")
+-- sandbox AllowExteriorGenerator off: vanilla's haveElectricity is false outdoors (IsoGridSquare.java:9697); a generator
+-- right next to it still powers it
+SandboxVars.AllowExteriorGenerator = false
+local mo4, mv4, _, mchg4 = mplug(1100, 1000, { elec = false }, 200)
+local g4 = square(1101, 1001, 0)
+g4.gen = generator(10, true)
+H.setHours(202)
+C.settle(mo4, H.hours())
+check(mchg4.src == "generator" and near(B.kwh(B.part(mv4)), 5 + 2 * 7.6, 1e-6) and near(g4.gen.fuel, 10 - 2 * MRATE, 1e-9),
+    "AllowExteriorGenerator off, generator next to it outdoors: plugged straight in, charges and burns its fuel")
+SandboxVars.AllowExteriorGenerator = nil
+-- indoors without a room (a roofed player-built base): a generator's range powers it through the wiring, 10 tiles away
+local mo5, mv5, _, mchg5 = mplug(1200, 1000, { outside = false, elec = true }, 210)
+local g5 = square(1210, 1000, 0)
+g5.gen = generator(10, true)
+H.setHours(212)
+C.settle(mo5, H.hours())
+check(mchg5.src == "generator" and near(B.kwh(B.part(mv5)), 5 + 2 * 7.6, 1e-6) and near(g5.gen.fuel, 10 - 2 * MRATE, 1e-9),
+    "indoors with generator power (no room, roof overhead): the generator 10 tiles away powers it, its fuel burns")
+-- just outside a house (fridge rule: a neighbour in a room): grid for the Wall Connector, not for the Mobile Connector
+local edge = square(1300, 1000, 0)
+square(1300, 999, 0, { room = {} })
+check(T.gridReaches("WallConnector", edge) and not T.gridReaches("MobileConnector", edge),
+    "outdoor square next to a room: the grid reaches a Wall Connector there, a Mobile Connector has to be inside")
+-- indoors on the grid when the shut-off falls between two settles: grid to 336, then the wired generator
+local mo6, mv6, _, mchg6 = mplug(1400, 1000, { room = {}, elec = true }, 335)
+local g6 = square(1410, 1000, 0)
+g6.gen = generator(10, true)
+check(mchg6.src == "grid", "indoors on the grid before the shut-off")
+H.setHours(338)
+C.settle(mo6, H.hours())
+check(near(B.kwh(B.part(mv6)), 5 + 3 * 7.6, 1e-6) and near(g6.gen.fuel, 10 - 2 * MRATE, 1e-9) and mchg6.power == "generator",
+    "shut-off between settles: 1 h on the grid + 2 h on the wired generator, which pays only its 2 h")
+-- sentry event between settles (powerUntil not told): after the shut-off only a generator it can use counts
+local outGrid = { power = "grid", kind = "MobileConnector", x = 840, y = 800, z = 0 } -- outdoors, in range, generator 2 away
+mgen2.gen.fuel = 10
+check(C.powerUntil(outGrid, 338) == 338, "powerUntil, Mobile Connector with a generator 2 tiles away: free to now")
+mgen2.gen.on = false
+check(C.powerUntil(outGrid, 338) == 336, "powerUntil, Mobile Connector outdoors in a generator's range only: free to the 336 shut-off")
 
 H.section("one charger a square")
 local function placeSq(...)

@@ -6,6 +6,7 @@
     "ContextMenu_MinidoracatTesla_PlugInto": "插上充電線：%1",
     "ContextMenu_MinidoracatTesla_Unplug": "拔下充電線",
     "ContextMenu_MinidoracatTesla_ChargeStatus": "查看充電狀態",
+    "ContextMenu_MinidoracatTesla_MobileNoPower": "這裡沒電：放在有電的室內，或運轉中的發電機旁（2 格內）",
     "ContextMenu_MinidoracatTesla_TapUnlock": "感應卡片鑰匙：解鎖",
     "ContextMenu_MinidoracatTesla_TapLock": "感應卡片鑰匙：上鎖",
     "ContextMenu_MinidoracatTesla_PairPhone": "設為手機鑰匙",
