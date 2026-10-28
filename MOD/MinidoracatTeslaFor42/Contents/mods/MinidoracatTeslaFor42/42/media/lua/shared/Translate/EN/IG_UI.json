@@ -229,7 +229,7 @@
     "IGUI_MinidoracatTesla_App_Cars": "My Cars",
     "IGUI_MinidoracatTesla_App_VmTag": "Vehicle Manager",
     "IGUI_MinidoracatTesla_App_NotPaired": "This phone isn't added to this car yet",
-    "IGUI_MinidoracatTesla_App_JoinHint": "Add it first: sit in it with its key card, right-click the phone > Add This Car",
+    "IGUI_MinidoracatTesla_App_JoinHint": "Add it first: sit in it, right-click the phone > Add This Car",
     "IGUI_MinidoracatTesla_App_AddCarHint": "Add a car: sit in it, right-click the phone and choose \"Add This Car\".",
     "IGUI_MinidoracatTesla_App_NavCar": "Navigate to Car",
     "IGUI_MinidoracatTesla_App_NavSet": "MiniMap destination set to your %1",

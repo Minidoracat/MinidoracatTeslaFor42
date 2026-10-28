@@ -229,7 +229,7 @@
     "IGUI_MinidoracatTesla_App_Cars": "マイカー",
     "IGUI_MinidoracatTesla_App_VmTag": "車両管理",
     "IGUI_MinidoracatTesla_App_NotPaired": "この電話はまだこの車に追加されていません",
-    "IGUI_MinidoracatTesla_App_JoinHint": "先に追加：キーカードを持って乗り、電話を右クリック >「この車を追加」",
+    "IGUI_MinidoracatTesla_App_JoinHint": "先に追加：車に乗り、電話を右クリック >「この車を追加」",
     "IGUI_MinidoracatTesla_App_AddCarHint": "車を追加：その車に座り、電話を右クリックして「この車を追加」を選ぶ",
     "IGUI_MinidoracatTesla_App_NavCar": "車までナビ",
     "IGUI_MinidoracatTesla_App_NavSet": "ミニマップの目的地をあなたの%1に設定しました",

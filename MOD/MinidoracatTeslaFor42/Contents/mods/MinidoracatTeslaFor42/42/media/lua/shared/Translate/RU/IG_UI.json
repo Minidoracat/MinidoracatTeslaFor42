@@ -229,7 +229,7 @@
     "IGUI_MinidoracatTesla_App_Cars": "Мои машины",
     "IGUI_MinidoracatTesla_App_VmTag": "Управление транспортом",
     "IGUI_MinidoracatTesla_App_NotPaired": "Этот телефон ещё не добавлен к этой машине",
-    "IGUI_MinidoracatTesla_App_JoinHint": "Сначала добавьте: сядьте с ключ-картой, ПКМ по телефону > «Добавить эту машину»",
+    "IGUI_MinidoracatTesla_App_JoinHint": "Сначала добавьте: сядьте в машину, ПКМ по телефону > «Добавить эту машину»",
     "IGUI_MinidoracatTesla_App_AddCarHint": "Добавить машину: сядьте в неё, ПКМ по телефону, «Добавить эту машину».",
     "IGUI_MinidoracatTesla_App_NavCar": "Маршрут к машине",
     "IGUI_MinidoracatTesla_App_NavSet": "Цель миникарты: ваша %1",

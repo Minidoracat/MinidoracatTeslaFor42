@@ -5,9 +5,10 @@
     "Tooltip_MinidoracatTesla_TakeDriveUnitPartsWarning": "部品を外すとドライブユニットの状態が0になります。",
     "Tooltip_MinidoracatTesla_DriveUnitCondition": "ドライブユニット状態:%1",
     "Tooltip_MinidoracatTesla_KeyCard": "運転席側ドアピラーのリーダーにタッチして施錠・解錠します。運転するときは裸のままかキーリングに付けて持ってください（財布の中では始動できません）。",
-    "Tooltip_MinidoracatTesla_Phone": "テスラ車内でその車のキーカードを持った状態で、このスマートフォンを右クリックすると電話キーとして設定できます。",
+    "Tooltip_MinidoracatTesla_Phone": "テスラ車内でその車のキーカードを持った状態で、このスマートフォンを右クリックすると電話キーとして設定できます。<br>車両管理が入っていれば、車の持ち主はキーカード不要です。",
     "Tooltip_MinidoracatTesla_PhoneKey": "ドアハンドルを引くと解錠されます。降車後に持ったまま離れるとドアが自動で施錠されます。",
     "Tooltip_MinidoracatTesla_TapCard": "運転席ドアまで歩いてキーカードをリーダーにタッチします",
     "Tooltip_MinidoracatTesla_PairPhone": "この車のキーカードでこのスマートフォンを認証します",
-    "Tooltip_MinidoracatTesla_AppNotPaired": "先にペアリングしてください：キーカードを持って Tesla に乗り、スマートフォンを右クリックして「電話キーとして設定」を選びます。"
+    "Tooltip_MinidoracatTesla_PairPhoneOwner": "キーカードなしで認証できます：車両管理でこの車の管理権があります",
+    "Tooltip_MinidoracatTesla_AppNotPaired": "先にペアリングしてください：キーカードを持って Tesla に乗り、スマートフォンを右クリックして「電話キーとして設定」を選びます。車両管理が入っていれば、車の持ち主はキーカード不要です。"
 }

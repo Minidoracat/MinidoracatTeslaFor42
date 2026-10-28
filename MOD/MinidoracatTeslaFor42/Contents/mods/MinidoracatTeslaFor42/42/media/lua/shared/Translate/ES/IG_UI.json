@@ -229,7 +229,7 @@
     "IGUI_MinidoracatTesla_App_Cars": "Mis coches",
     "IGUI_MinidoracatTesla_App_VmTag": "Gestor de vehículos",
     "IGUI_MinidoracatTesla_App_NotPaired": "Este teléfono aún no está añadido a este coche",
-    "IGUI_MinidoracatTesla_App_JoinHint": "Añádelo: dentro con su tarjeta llave, clic derecho en el teléfono > «Añadir este coche»",
+    "IGUI_MinidoracatTesla_App_JoinHint": "Añádelo: súbete, clic derecho al teléfono > «Añadir este coche»",
     "IGUI_MinidoracatTesla_App_AddCarHint": "Añadir un coche: siéntate en él, clic derecho en el teléfono y elige «Añadir este coche».",
     "IGUI_MinidoracatTesla_App_NavCar": "Navegar al coche",
     "IGUI_MinidoracatTesla_App_NavSet": "Destino del minimapa: tu %1",

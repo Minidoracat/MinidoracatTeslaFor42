@@ -204,8 +204,10 @@ function UI.phoneOption(player, context, phone)
         label = getText("ContextMenu_MinidoracatTesla_AddCar", tostring(#K.pairedIds(phone)))
     end
     local opt = context:addOption(label, player, onPair, v, phone)
+    -- MP client: VehicleManager's fleet projection says who owns the car (UX only; the server asks it again)
     local ok, why = K.canPair(player, v, phone)
-    tip(opt, ok and getText("Tooltip_MinidoracatTesla_PairPhone") or denyText(why), not ok)
+    local okTip = why == "VM" and "Tooltip_MinidoracatTesla_PairPhoneOwner" or "Tooltip_MinidoracatTesla_PairPhone"
+    tip(opt, ok and getText(okTip) or denyText(why), not ok)
     return opt
 end
 

@@ -229,7 +229,7 @@
     "IGUI_MinidoracatTesla_App_Cars": "我的車輛",
     "IGUI_MinidoracatTesla_App_VmTag": "車輛管理",
     "IGUI_MinidoracatTesla_App_NotPaired": "這支手機還沒加入這台車",
-    "IGUI_MinidoracatTesla_App_JoinHint": "先加入這台車：帶著卡片鑰匙坐進車裡，右鍵手機選「加入這台車」",
+    "IGUI_MinidoracatTesla_App_JoinHint": "先加入這台車：坐進車裡，右鍵手機選「加入這台車」",
     "IGUI_MinidoracatTesla_App_AddCarHint": "加入新車：坐進那台車，右鍵手機選「加入這台車」",
     "IGUI_MinidoracatTesla_App_NavCar": "導航到車",
     "IGUI_MinidoracatTesla_App_NavSet": "小地圖已把目的地設成你的%1",
