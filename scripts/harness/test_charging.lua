@@ -723,7 +723,20 @@ C.unplug(H.player({ name = "upstairs", keys = { [77] = true }, x = 899, y = 899,
 check(kchg() ~= nil and lastDeny() == "TOO_FAR", "unplug from the floor above the charger, the car past T.NEAR: TOO_FAR")
 C.unplug(H.player({ name = "side", keys = { [77] = true }, x = 899, y = 899 }), kv)
 check(kchg() == nil, "unplug standing at the charger, the car's centre past T.NEAR: allowed")
-kv.x = kx
+-- plug the same way (queuePlug walks to the charger): the car aslant at the cable's end, the player on the far side
+local ky = kv.y
+kv.x, kv.y = 904, 904 -- port 4.95 from the charger's centre (cable 5), 16 (Manhattan) from the player below
+check(T.cableReaches(klo.kind, 900, 900, 0, kv), "(the aslant car is in the cable's reach)")
+H.sent = {}
+C.plug(H.player({ name = "far", keys = { [77] = true }, x = 930, y = 930 }), kv, kiso)
+check(kchg() == nil and lastDeny() == "TOO_FAR", "plug far from both the car and the charger: TOO_FAR")
+H.sent = {}
+C.plug(H.player({ name = "upstairs", keys = { [77] = true }, x = 896, y = 896, z = 1 }), kv, kiso)
+check(kchg() == nil and lastDeny() == "TOO_FAR", "plug from the floor above the charger, the car past T.NEAR: TOO_FAR")
+C.plug(H.player({ name = "side", keys = { [77] = true }, x = 896, y = 896 }), kv, kiso)
+check(kchg() ~= nil, "plug standing at the charger's far side, the aslant car's centre past T.NEAR: allowed")
+C.unplug(kOwner, kv)
+kv.x, kv.y = kx, ky
 MinidoracatVehicleManagerAPI = { canUse = function(p, veh, perm) return perm == "FUEL" and p == kOwner, p == kOwner and "OWNER" or "NOT_AUTHORIZED" end }
 for _, locked in ipairs({ true, false }) do
     kv.locked, mal.keys[77], kv.hotwired = locked, true, true

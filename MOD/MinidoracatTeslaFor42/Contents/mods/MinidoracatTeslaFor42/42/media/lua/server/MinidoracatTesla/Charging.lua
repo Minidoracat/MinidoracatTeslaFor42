@@ -262,6 +262,14 @@ local function mayCable(player, v, what, rule)
     return false
 end
 
+-- plug / unplug are not remotes: near the car, or near the charger on its floor (queuePlug / queueUnplug walk to the
+-- charger, ChargerMenu.lua; DistTo is the Manhattan distance, IsoMovingObject.java:601-607, and DistTo(x, y) has no
+-- floor, so a car parked aslant at the cable's end can be > T.NEAR from someone at the charger)
+local function near(player, v, x, y, z)
+    if player:DistTo(v) <= T.NEAR then return true end
+    return math.floor(player:getZ()) == z and player:DistTo(x, y) <= T.NEAR
+end
+
 function C.plug(player, v, iso)
     local s = sys()
     local o = s and iso and iso:getSquare() and s:getLuaObjectOnSquare(iso:getSquare())
@@ -273,7 +281,7 @@ function C.plug(player, v, iso)
     if part:getModData().chg then return T.deny(player, "PLUGGED", vid) end
     if T.chargerCar(o, o.x, o.y, o.z) then return T.deny(player, "CHARGER_BUSY", vid) end -- a reused id is no car here
     if not T.stopped(v) then return T.deny(player, "MOVING", vid) end -- the motor may run: plugging in shifts to Park (owner's manual, Shifting)
-    if player:DistTo(v) > T.NEAR then return T.deny(player, "TOO_FAR", vid) end
+    if not near(player, v, o.x, o.y, o.z) then return T.deny(player, "TOO_FAR", vid) end
     if not T.cableReaches(o.kind, o.x, o.y, o.z, v) then return T.deny(player, "CABLE_SHORT", vid) end
     if not mayCable(player, v, "plug") then return end
     C.start(o, v)
@@ -284,10 +292,7 @@ function C.unplug(player, v)
     local chg = part and part:getModData().chg
     local vid = v and v:getId()
     if not chg then return T.deny(player, "NOT_PLUGGED", vid) end
-    -- not a remote: near the car or near the charger (queueUnplug walks to the charger, ChargerMenu.lua; DistTo is the
-    -- Manhattan distance, IsoMovingObject.java:601-607, so a car parked aslant at the cable's end can be > T.NEAR away)
-    local atCharger = math.floor(player:getZ()) == chg.z and player:DistTo(chg.x, chg.y) <= T.NEAR -- DistTo(x, y) has no floor
-    if player:DistTo(v) > T.NEAR and not atCharger then return T.deny(player, "TOO_FAR", vid) end
+    if not near(player, v, chg.x, chg.y, chg.z) then return T.deny(player, "TOO_FAR", vid) end
     if not mayCable(player, v, "unplug", T.mayUnplug) then return end
     local s = sys()
     C.stop(s and s:getLuaObjectAt(chg.x, chg.y, chg.z), v, "unplug")

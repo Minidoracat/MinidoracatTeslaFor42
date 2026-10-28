@@ -116,7 +116,7 @@ local function player(name, inv, x, y)
     function p:getInventory() return self.inv end
     function p:getX() return self.x end
     function p:getY() return self.y end
-    function p:DistTo(v) local dx, dy = self.x - v:getX(), self.y - v:getY(); return math.sqrt(dx * dx + dy * dy) end
+    function p:DistTo(v) return math.abs(self.x - v:getX()) + math.abs(self.y - v:getY()) end -- the engine's: Manhattan (IsoMovingObject.java:605-607)
     return p
 end
 local function last(cmd) local m = F.lastSent(cmd); return m and m.args end
