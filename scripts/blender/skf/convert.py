@@ -73,6 +73,8 @@ LINES, FRONT_Y, SILL_Z, ARCH, DOOR_Y, GATE_Z, REAR_ARCH, GATE_X, STOP_X = (C[k] 
 IN_DOOR, IN_GATE, PANELS, GUARDS, PANES = (C[k] for k in ("IN_DOOR", "IN_GATE", "PANELS", "GUARDS", "PANES"))
 SEAL = (0.008, 0.02)                       # grid: dark strip behind every panel edge (depth, reach past the edge):
 #                                             the source's panel gaps are real gaps, the ground showed through them
+DOOR_REACH = 0.10                          # grid: a whole component goes to a door within this of its paint skin
+#                                             (classify; the slab is pv.DOOR_T 0.06 deep, the farthest door part 0.08)
 CUT, CUT_X, DOOR_OBJS, GATE_OBJS, GATE_COMPS = (C[k] for k in ("CUT", "CUT_X", "DOOR_OBJS", "GATE_OBJS", "GATE_COMPS"))
 PLANES, CUT_X_Y, GATE_CUT_COMPS, GATE_HINGE = (C[k] for k in ("PLANES", "CUT_X_Y", "GATE_CUT_COMPS", "GATE_HINGE"))
 # badges (badges(); the car's places): T on the frunk lid, TESLA on the light blade, MODEL Y on the tailgate
@@ -718,16 +720,24 @@ def classify(car, names, sizes):
     # door hardware, frames and panes: whole components inside a door (2.5 cm slack), cut components face by face. A
     # strip that runs past its one door's edge (the belt mouldings end under the B-pillar and quarter trim) goes face
     # by face too: whole on the body it was a black bar across the far window, seen through the roof glass with the
-    # far door hidden behind that glass's depth (user 2026-10-25 images 10, 11, 13)
+    # far door hidden behind that glass's depth (user 2026-10-25 images 10, 11, 13). A whole component also has to lie
+    # within DOOR_REACH of that door's paint skin: the side-view window and |x| > IN_DOOR x also take cabin bits off an
+    # object that mixes interior and trim (Model 3's Object_13: an underbody block at the B-pillar foot, 15 cm inboard
+    # of the front door, swung out with it and floated under the open door)
     cut = np.array([(o, s) in CUT for o, s in zip(obj, csize)])
     cand = np.isin(obj, DOOR_OBJS) & ~paint | match(MIRROR_CAP, obj, csize)   # (a paint mirror cap: on its door)
     whole = cand & ~cut
+    skin = {k: bvh_of([(co, fv[paint & (part == k)])]) for k in range(1, 5)}
     for k in np.unique(key[whole]):
         f = np.flatnonzero(key == k)
-        d = in_door(co[np.unique(fv[f])], 0.025)
-        if (d == d[0]).all() and d[0]:
+        vs = co[np.unique(fv[f])]
+        d = in_door(vs, 0.025)
+        door = np.unique(d[d > 0])
+        if len(door) != 1 or all(skin[door[0]].find_nearest(v, DOOR_REACH)[0] is None for v in vs):
+            continue
+        if (d == d[0]).all():
             part[f] = d[0]
-        elif not glass[f[0]] and len(np.unique(d[d > 0])) == 1:
+        elif not glass[f[0]]:
             part[f] = in_door(cen[f])
     sel = cand & cut
     part[sel] = in_door(cen[sel])
