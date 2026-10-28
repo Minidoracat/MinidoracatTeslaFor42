@@ -173,7 +173,9 @@ function S.onBreak(vehicle, actor, what, partId)
     vehicle:setAlarmed(true)
     vehicle:triggerAlarm()
     vehicle:transmitAlarmed()
-    T.log("sentry alarm vid=" .. vehicle:getId() .. " " .. what .. " by " .. actor:getUsername())
+    -- the name is the client's own (respawn can pick any offline name); the account is what the owner's card shows
+    T.log("sentry alarm vid=" .. vehicle:getId() .. " " .. what .. " by " .. actor:getUsername()
+        .. " account=" .. tostring(T.account(actor) or "unverified"))
     T.Inbox.notify(s.by, T.Inbox.entry(vehicle, "break", what, actor, partId))
 end
 
