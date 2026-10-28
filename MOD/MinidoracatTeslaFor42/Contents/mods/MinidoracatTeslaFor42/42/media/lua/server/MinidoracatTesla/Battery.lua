@@ -10,6 +10,9 @@ local B = T.Battery
 T.MAX_ELAPSED = 10 -- cap per update: chunk reload hands in the whole unloaded time (GameTime.java:1374-1376)
 T.DCDC_MIN_PCT = 5   -- the drive pack keeps the 12V topped up while it holds at least this much
 T.BRAKE_WEAR = 0.5   -- regen does most of the braking (owner's manual, Maintenance Service Intervals)
+-- new cars carry a Mobile Connector in the trunk this often (%): Tesla shipped one with every car until 2022 and the
+-- manual says to keep it in the trunk for long trips; 1 in 4 keeps it a find next to loot and the recipe.
+T.MOBILE_IN_TRUNK_PCT = 25
 T.InstallComplete = T.InstallComplete or {}
 
 -- Clamp, store, and transmit only when it moved >= 1% of capacity (or hit empty / full).
@@ -131,6 +134,16 @@ function T.Create.Motor(vehicle, part)
         vehicle:setColorHSV(c.h, c.s, c.v)
         vehicle:transmitSkinIndex()
         vehicle:transmitColorHSV()
+    end
+    -- Engine create runs once per car: the part has no item, so createParts never re-creates it (VehicleParts.java:229-
+    -- 247, `created` is saved, VehiclePart.java:543,609; OnSpawnVehicleEnd fires on every load instead). Part containers
+    -- exist before any create (VehicleParts.java:309), and with no VehicleDistributions entry for our cars
+    -- randomizeContainers never clears the trunk (BaseVehicle.java:8797-8815).
+    local bed = vehicle:getPartById("TruckBed")
+    local box = bed and bed:getItemContainer()
+    if box and ZombRand(100) < T.MOBILE_IN_TRUNK_PCT then
+        box:AddItem("Base.MinidoracatTesla_MobileConnector")
+        T.log("new car " .. tostring(vehicle:getScriptName()) .. ": Mobile Connector in the trunk")
     end
 end
 

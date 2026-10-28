@@ -38,5 +38,37 @@ spriteModel
             rotate = 0.0000 90.0000 0.0000,
             scale = 1.0000,
         }
+        tile
+        {
+            xy = 0 1,
+            modelScript = Base.MinidoracatTesla_MobileConnector,
+            translate = 0.0000 0.0000 0.0000,
+            rotate = 0.0000 180.0000 0.0000,
+            scale = 1.0000,
+        }
+        tile
+        {
+            xy = 1 1,
+            modelScript = Base.MinidoracatTesla_MobileConnector,
+            translate = 0.0000 0.0000 0.0000,
+            rotate = 0.0000 -90.0000 0.0000,
+            scale = 1.0000,
+        }
+        tile
+        {
+            xy = 2 1,
+            modelScript = Base.MinidoracatTesla_MobileConnector,
+            translate = 0.0000 0.0000 0.0000,
+            rotate = 0.0000 0.0000 0.0000,
+            scale = 1.0000,
+        }
+        tile
+        {
+            xy = 3 1,
+            modelScript = Base.MinidoracatTesla_MobileConnector,
+            translate = 0.0000 0.0000 0.0000,
+            rotate = 0.0000 90.0000 0.0000,
+            scale = 1.0000,
+        }
     }
 }

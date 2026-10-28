@@ -10,5 +10,7 @@
     "Tooltip_MinidoracatTesla_TapCard": "운전석 문으로 걸어가 키 카드를 리더에 태그합니다",
     "Tooltip_MinidoracatTesla_PairPhone": "이 차의 키 카드로 이 스마트폰을 인증합니다",
     "Tooltip_MinidoracatTesla_PairPhoneOwner": "키 카드 없이 인증할 수 있습니다: 차량 관리에서 이 차의 관리 권한이 있습니다",
-    "Tooltip_MinidoracatTesla_AppNotPaired": "먼저 연결하세요: 키 카드를 가지고 Tesla에 타서 스마트폰을 우클릭하고 '핸드폰 키로 설정'을 고르세요. 차량 관리가 있으면 차주는 키 카드가 필요 없습니다."
+    "Tooltip_MinidoracatTesla_AppNotPaired": "먼저 연결하세요: 키 카드를 가지고 Tesla에 타서 스마트폰을 우클릭하고 '핸드폰 키로 설정'을 고르세요. 차량 관리가 있으면 차주는 키 카드가 필요 없습니다.",
+    "Tooltip_MinidoracatTesla_WallConnector": "벽에 달고(전기 3, 드라이버) 우클릭하면 6칸 안의 Tesla를 11.5 kW로 충전합니다.<br>실내에서는 전력망 전기로, 범위 안에서 작동 중인 발전기로도 작동합니다.<br>발전기로 충전하면 연료를 쓰며, 완충에 약 한 통(샌드박스 「발전기 연료 소비량」에 비례).",
+    "Tooltip_MinidoracatTesla_MobileConnector": "바닥에 놓고 우클릭하면 5칸 안의 Tesla를 7.6 kW로 충전합니다.<br>실내에서는 전력망 전기로, 범위 안에서 작동 중인 발전기로도 작동합니다.<br>발전기로 충전하면 연료를 쓰며, 완충에 약 한 통(샌드박스 「발전기 연료 소비량」에 비례)."
 }

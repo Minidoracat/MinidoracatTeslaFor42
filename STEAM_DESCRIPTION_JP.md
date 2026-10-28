@@ -3,7 +3,7 @@
 
 [hr][/hr]
 
-テスラ Model Y と Model 3 で終末世界を走ろう。バッテリーで走り、ウォールコネクターで充電し、スマホの Tesla アプリで遠隔操作できます。
+テスラ Model Y と Model 3 で終末世界を走ろう。バッテリーで走り、ウォールコネクターやモバイルコネクターで充電し、スマホの Tesla アプリで遠隔操作できます。
 
 [h2]📦 導入[/h2]
 [list]
@@ -19,14 +19,14 @@
 [olist]
 [*] 駐車場でテスラを見つけ、その車のキーを手に入れるとキーカードに変わります
 [*] 運転席に座り、ダッシュボード左上の電源ボタンをクリックして起動します
-[*] 電気工学 3 でウォールコネクターを作って電気の来ている壁に付け、右クリックで充電ケーブルを差し込みます
+[*] 電気工学 3 でウォールコネクターを作って電気の来ている壁に付けるか、モバイルコネクターを床に置き、右クリックで充電ケーブルを差し込みます
 [*] キーカードを持って車に座り、スマートフォンを右クリックして「電話キーとして設定」を選ぶと Tesla アプリが使えます
 [/olist]
 
 [h2]✨ 主な機能[/h2]
 [list]
 [*] [b]2 台の Performance[/b]：Model Y と Model 3、純正カラー各 8 色
-[*] [b]バッテリーと充電[/b]：走ると電力を使い、ブレーキで一部を回生、ウォールコネクターで充電
+[*] [b]バッテリーと充電[/b]：走ると電力を使い、ブレーキで一部を回生、ウォールコネクターや床に置いたモバイルコネクターで充電
 [*] [b]テスラ風ダッシュボード[/b]：速度・残量・航続距離。車の図をクリックしてドアを開閉
 [*] [b]キーカードと電話キー[/b]：スマホを持って近づくと解錠、離れると自動で施錠
 [*] [b]Tesla アプリ[/b]：遠隔で施錠、車を探す、充電を確認。1 台のスマホで複数の車を管理
@@ -52,7 +52,7 @@ MOD はずっと無料です。気に入ったらコーヒー一杯分の支援�
 
 車体モデルは Sketchfab のモデルを改変したものです（改変済み。原作者はこの MOD を承認していません）。Model Y は BloxBloger の [url=https://sketchfab.com/3d-models/2026-tesla-model-y-performance-8a0bc252f9da4015a02a7bd99efd4847]2026 Tesla Model Y Performance[/url]（[url=http://creativecommons.org/licenses/by-nc/4.0/]CC BY-NC 4.0[/url]）、Model 3 は RBLXSupercars の [url=https://sketchfab.com/3d-models/2024-tesla-model-3-fd22be415215453693d67e33aa7812d0]2024 Tesla Model 3[/url]（brandonleong28 による[url=https://sketchfab.com/3d-models/tesla-model-3-2024-36c52f3f89f6439c90310f14e8ff33f2]転載[/url]、[url=http://creativecommons.org/licenses/by/4.0/]CC BY 4.0[/url]）です。
 
-Tesla、Tesla ロゴ、Model Y、Model 3、Wall Connector、Sentry Mode、Camp Mode は Tesla, Inc. の商標です。本 MOD は無料の非公式ファンメイドで、Tesla, Inc. とは関係がなく、承認も受けていません。
+Tesla、Tesla ロゴ、Model Y、Model 3、Wall Connector、Mobile Connector、Sentry Mode、Camp Mode は Tesla, Inc. の商標です。本 MOD は無料の非公式ファンメイドで、Tesla, Inc. とは関係がなく、承認も受けていません。
 
 [b]#Minidoracat[/b]
 

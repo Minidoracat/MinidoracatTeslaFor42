@@ -390,3 +390,33 @@ T.ServerCommands.chargeStop = function(player, args)
     chg.paused = "stopped"
     C.settle(o, T.hours())
 end
+
+-- ---- loot: the Mobile Connector sits in every procedural list that has vanilla's car battery charger, at half its
+-- weight (decisions.md 2026-10-28; ProceduralDistributions.lua: CarSupplyBatteries 10, GasStoreEmergency 6, ...).
+-- Our pairs go first so a reload does not stack them (KeyActions.lua phone loot).
+C.LOOT_ITEM = "Base.MinidoracatTesla_MobileConnector"
+C.LOOT_SHARE = 0.5
+local function addLoot(items)
+    for i = #items - 1, 1, -2 do
+        if items[i] == C.LOOT_ITEM then table.remove(items, i + 1); table.remove(items, i) end
+    end
+    local w = 0
+    for i = 1, #items - 1, 2 do
+        if items[i] == "CarBatteryCharger" or items[i] == "Base.CarBatteryCharger" then w = w + (tonumber(items[i + 1]) or 0) end
+    end
+    if w > 0 then
+        table.insert(items, C.LOOT_ITEM)
+        table.insert(items, w * C.LOOT_SHARE)
+    end
+end
+function C.injectLoot()
+    local lists = ProceduralDistributions and ProceduralDistributions.list
+    if not lists then return end
+    for _, l in pairs(lists) do
+        if type(l) == "table" then
+            if type(l.items) == "table" then addLoot(l.items) end
+            if type(l.junk) == "table" and type(l.junk.items) == "table" then addLoot(l.junk.items) end
+        end
+    end
+end
+Events.OnPostDistributionMerge.Add(C.injectLoot)

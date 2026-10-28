@@ -3,7 +3,7 @@
     "Sandbox_MinidoracatTesla_RangeMultiplier": "Menzil çarpanı",
     "Sandbox_MinidoracatTesla_RangeMultiplier_tooltip": "Dolu bir bataryayla ne kadar gidilebileceği.\n1.0 = aynı sınıftaki normal bir aracın dolu depoyla gittiği kadar; 2.0 = iki katı.",
     "Sandbox_MinidoracatTesla_ChargeSpeedMultiplier": "Şarj hızı çarpanı",
-    "Sandbox_MinidoracatTesla_ChargeSpeedMultiplier_tooltip": "1.0 = resmi şarj gücü (Wall Connector 11,5 kW); 2.0 = iki kat hızlı.",
+    "Sandbox_MinidoracatTesla_ChargeSpeedMultiplier_tooltip": "1.0 = resmi şarj gücü (Wall Connector 11,5 kW, Mobile Connector 7,6 kW)\n2.0 = iki kat hızlı.",
     "Sandbox_MinidoracatTesla_CampMinBattery": "Kamp Modu batarya sınırı",
     "Sandbox_MinidoracatTesla_CampMinBattery_tooltip": "Şarj bu değerin altındayken Kamp Modu açılamaz; batarya altına düşünce kapanır.\nGerçek araçtaki Düşük Güç Modu gibi: %%10–20, varsayılan 20."
 }

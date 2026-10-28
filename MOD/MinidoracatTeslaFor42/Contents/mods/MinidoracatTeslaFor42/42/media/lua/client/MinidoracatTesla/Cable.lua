@@ -67,8 +67,10 @@ function C.solve(e)
     g.ey = e.y + 0.5 - ox * fx + oy * fy
     g.eh = exit[3]
     g.hangAngle = f[3]
-    g.ax = g.ex + fx * C.HANG_REACH
-    g.ay = g.ey + fy * C.HANG_REACH
+    -- a floor charger (h = 0, the Mobile Connector) has no hang: the floor run starts at the exit
+    local reach = g.eh > 0 and C.HANG_REACH or 0
+    g.ax = g.ex + fx * reach
+    g.ay = g.ey + fy * reach
     -- plug sits outside the car flank the port is on: local x pushed outward by PLUG_REACH
     local lx, ly, lz = lp:x(), lp:y(), lp:z()
     local side = lx >= 0 and C.PLUG_REACH or -C.PLUG_REACH
@@ -95,7 +97,7 @@ local function draw3D(cell, e)
     local z = e.z
     local sq = squareAt(cell, g.ex, g.ey, z)
     if not sq then return end
-    Render3DItem(hangItem, sq, g.ex, g.ey, z, g.hangAngle)
+    if g.eh > 0 then Render3DItem(hangItem, sq, g.ex, g.ey, z, g.hangAngle) end
     local len = g.len
     if len > C.MAX_FLOOR then return end
     if len > 0.05 then
@@ -143,7 +145,7 @@ local function render2D()
         local e = lines[i]
         if C.solve(e) and g.len <= C.MAX_FLOOR then
             local z = e.z
-            renderIsoLine(g.ex, g.ey, z + g.eh, g.ax, g.ay, z, wdt, 0.1, 0.1, 0.11, 1)
+            if g.eh > 0 then renderIsoLine(g.ex, g.ey, z + g.eh, g.ax, g.ay, z, wdt, 0.1, 0.1, 0.11, 1) end
             renderIsoLine(g.ax, g.ay, z, g.bx, g.by, g.bz, wdt, 0.1, 0.1, 0.11, 1)
             renderIsoLine(g.bx, g.by, g.bz, g.px, g.py, g.bz + g.plug.z / 2.44949, wdt, 0.1, 0.1, 0.11, 1)
         end

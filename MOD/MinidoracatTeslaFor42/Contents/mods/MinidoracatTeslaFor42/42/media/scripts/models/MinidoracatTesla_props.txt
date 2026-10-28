@@ -11,6 +11,16 @@ module Base
         undoCoreScale = true,
     }
 
+    /* Mobile Connector Gen 3 on the floor: same as above (spriteModels tiles 8..11). */
+    model MinidoracatTesla_MobileConnector
+    {
+        mesh = IsoObject/MinidoracatTesla_MobileConnector,
+        texture = IsoObject/MinidoracatTesla_MobileConnector,
+        static = true,
+        scale = 1.0,
+        undoCoreScale = true,
+    }
+
     /* Charge cable segments: drawn only by client/MinidoracatTesla/Cable.lua with Render3DItem.
        undoCoreScale cancels the item 1.5x (Core.java:2584), so 1 mesh unit = 1 tile. */
     model MinidoracatTesla_CableHang
