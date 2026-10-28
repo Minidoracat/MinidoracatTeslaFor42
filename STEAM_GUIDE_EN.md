@@ -348,10 +348,20 @@ Without Vehicle Manager:
 [/list]
 [h3]What should I do before removing this mod?[/h3]
 [list]
-[*] [b]What disappears[/b]: key cards, phones and phone keys, drive unit parts and charger items vanish on the next load; the Teslas in the save lose their car type, the game turns them into other vehicles, and Front Trunk contents are lost.
-[*] [b]Placed chargers[/b]: Wall Connectors and Mobile Connectors turn into invisible objects that cannot be picked up and stay on that square.
-[*] [b]Steps[/b]: unplug the cables and pick up every charger; take everything out of the Teslas' Front and Rear Trunks; then remove the mod.
-[*] [b]Leftover data is harmless[/b]: the server's Tesla save (app records, offline notices) stays but nothing reads it.
+[*] [b]Back up the save first[/b]: once the save is loaded without this mod and saved, the changes below stay in it, and adding the mod back does not undo them.
+[*] [b]Items vanish[/b]: key cards, phones, phone keys, drive unit parts and chargers not yet placed vanish on the next load, in inventories, containers and cars alike; they do not turn into other items, and vanilla items stay. An offline player loses them the next time they log in.
+[*] [b]Teslas become other vehicles[/b]: each car stays on its spot facing the same way, but its type is picked at random from every vehicle with wheels, vanilla, wrecked or from other mods (tests turned them into vans, a wrecked pickup and sedan, and another mod's utility truck). The new car's gas tank slot is empty, with no tank and no fuel, and its keys are gone too: treat it like a car whose key was lost.
+[*] [b]Things in the car[/b]: whatever is in the Front Trunk is always lost (vanilla cars have no such slot). Rear Trunk, seats and glove box: one that somebody opened keeps its contents if the new type has the same slot; one nobody ever opened is emptied and refilled with the new type's random loot. If the new type lacks the slot, its contents are lost too.
+[*] [b]Placed chargers[/b]: Wall Connectors and Mobile Connectors turn into invisible objects that cannot be picked up and stay on that square without blocking it; a plugged cable disappears too.
+[*] [b]The server's Tesla data[/b]: app records, offline notices and phone pairings are in gos_MinidoracatTeslaApp.bin in the save folder, the charger list in gos_MinidoracatTeslaCharger.bin. Without the mod the game neither reads nor changes them; leaving them there is harmless.
+[*] [b]Steps for server admins[/b]:
+[olist]
+[*] Tell players to unplug the cables, pick up their chargers (the picked-up chargers vanish later too, but no blank object is left on the square), and move anything they want to keep out of the Teslas' Front and Rear Trunks, seats and glove boxes.
+[*] Shut the server down and back up the whole save folder Zomboid/Saves/Multiplayer/<server name>/.
+[*] In the server settings file Zomboid/Server/<server name>.ini, remove MinidoracatTeslaFor42 from Mods= and this mod's Workshop ID from WorkshopItems=.
+[*] Start the server. Players join as usual; the server console shows extra lines such as cannot create item and item == null, skipped bytes for the dropped Tesla items, which are not errors.
+[/olist]
+[*] [b]Single player[/b]: back up the save, remove this mod from that save's mod list, then load it.
 [/list]
 === 💬 Reporting issues
 [list]
