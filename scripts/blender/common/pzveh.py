@@ -836,7 +836,7 @@ def geometry(body, zmid, wl, r, tire_w, belt_z, doors_y, port_yz):
             "            rotate = 0.0 0.0 0.0,", "            zoffset = -1.0,", "        }",
             "        attachment trailerfront", "        {", f"            offset = {f4(0, tow, (ln / 2 + 0.03) / S)},",
             "            rotate = 0.0 0.0 0.0,", "            zoffset = 1.0,", "        }",
-            "        /* charge port: side end of the left tail light (real Model Y) */",
+            f"        /* charge port: side end of the left tail light ({CAR['PORT_NOTE']}) */",
             "        attachment chargeport", "        {", f"            offset = {f4(*port)},", "            rotate = 0.0 0.0 0.0,", "        }"]
     # animated doors (convert.py pieces): the clip runs open -> closed, so Open plays it reversed and Opened holds its start
     # (not animated; vanilla vehicle_car_sports_ez.txt layout); ISOpenVehicleDoor / ISCloseVehicleDoor play Open /
