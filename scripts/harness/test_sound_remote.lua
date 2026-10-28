@@ -108,6 +108,17 @@ check(cmd(driver, { vid = v:getId(), on = true }) == 2, "driver's 'on': told 2 p
 local got = relayed(n)
 check(got.pax and got.near and not got.drv and not got.far and got.pax.on == true and got.pax.vid == v:getId(),
     "to the passenger and the player 117 tiles away; not back to the driver, not to the one 140 away")
+-- split-screen: the driver's own client (a guest beside it, online id slot * 4 + 1) gets nothing, it plays the cabin
+-- layers itself (Sound.lua compares the driver with its player 0 only); another client with two players near: once
+local drvGuest = H.player({ name = "drvGuest", num = 1, x = 500, y = 501 })
+drvGuest.oid = driver.oid + 1
+local nearGuest = H.player({ name = "nearGuest", num = 1, x = 600, y = 561 })
+nearGuest.oid = near.oid + 1
+online = { driver, drvGuest, passenger, near, nearGuest, far }
+n = #H.sent
+check(cmd(driver, { vid = v:getId(), on = true }) == 2 and not relayed(n).drvGuest and not relayed(n).nearGuest,
+    "split-screen: nothing to the driver's own client, one per other client (not again for its guest)")
+online = { driver, passenger, near, far }
 n = #H.sent
 local refused = R.stats.refused
 check(cmd(passenger, { vid = v:getId(), on = true }) == 0 and cmd(near, { vid = v:getId(), on = false }) == 0

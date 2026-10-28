@@ -127,8 +127,7 @@ function K.setLocked(vehicle, locked)
         end
     end
     T.Liftgate.lockLids(vehicle, locked)
-    local remember = T.Remote and T.Remote.remember -- the phone app's last record (Remote.lua)
-    if remember then remember(vehicle) end
+    T.Remote.remember(vehicle) -- the phone app's last record (Remote.lua)
 end
 
 -- one flash to lock, two to unlock (Sentry's flash: headlights + light parts, synced to every client).

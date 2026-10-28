@@ -163,8 +163,8 @@ function R.mayTrack(player, v, key)
     if ok then return true end
     return false, VM_REASONS[why] and why or "NOT_OWNER"
 end
--- act -> the VehicleManager codes for the same thing in person. Sentry: T.legit (ParkModes.lua) counts an old phone
--- key, so a car since claimed by someone else also needs PASSENGER here, like a remote lock.
+-- act -> the VehicleManager codes for the same thing in person. Sentry: PASSENGER, the code T.legit (ParkModes.lua)
+-- asks in person on a claimed car (the card tap, KeyActions keyTap, too).
 local VM_CODES = {
     lock = { "PASSENGER" }, unlock = { "PASSENGER" }, flash = { "PASSENGER" }, horn = { "PASSENGER" },
     sentry = { "PASSENGER" }, trunk = { "CARGO" }, frunk = { "REPAIR", "SALVAGE" }, charge = { "FUEL" },

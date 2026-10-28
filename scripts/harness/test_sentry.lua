@@ -55,6 +55,18 @@ check(T.legit(thief, v) == false, "legit: UNCLAIMED does not count")
 MinidoracatVehicleManagerAPI = { canUse = function() return true, "OWNER" end }
 check(T.legit(thief, v) == true, "legit: VehicleManager claimed PASSENGER counts")
 MinidoracatVehicleManagerAPI = nil
+-- VehicleManager decides a claimed car: this car's key, card or phone key is anyone's who picked it up (the found card
+-- must not disarm sentry from the right-click menu either, like the card tap: KeyActions keyTap)
+local finder = F.player("finder", { keys = { [v.keyId] = true } })
+MinidoracatVehicleManagerAPI = { canUse = function() return false, "NOT_SHARED" end }
+check(T.legit(finder, v) == false, "legit: this car's key on a car claimed by someone else (VehicleManager says no) does not count")
+F.sent = {}
+cmds.sentryDisarm(finder, { vid = v:getId() })
+check(md(v).sentry ~= nil and F.lastSent("deny") and F.lastSent("deny").args.reason == "NOT_OWNER",
+    "sentryDisarm with a found key on a claimed car: NOT_OWNER, sentry stays armed")
+MinidoracatVehicleManagerAPI = { canUse = function() return true, "UNCLAIMED" end }
+check(T.legit(finder, v) == true, "legit: on an unclaimed car the key counts")
+MinidoracatVehicleManagerAPI = nil
 
 -- the owner's key left in the ignition (vanilla moves it there on start): say so, not NOT_OWNER
 local parked = F.track(F.vehicle({ pct = 80 }))

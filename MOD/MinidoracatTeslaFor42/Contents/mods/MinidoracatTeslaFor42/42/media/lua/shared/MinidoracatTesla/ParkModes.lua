@@ -51,15 +51,19 @@ function C.bedType(player, vehicle)
 end
 
 -- Legit user of this car (sentry): the account that armed sentry, a holder of this car's key, or a VehicleManager
--- user with PASSENGER rights on a claimed car. T.authorized also says yes for UNCLAIMED (VehicleManager),
--- EASY_USE (sandbox VehicleEasyUse) and keys left in the ignition ("KEY" without a key in hand); none of
--- those count here, otherwise any stranger pulling the door handle would disarm sentry.
+-- user with PASSENGER rights on a claimed car. On a car VehicleManager has claimed only its answer counts: a key, card
+-- or phone key is anyone's who picked it up (as the card tap, KeyActions keyTap, and the app, Remote.lua VM_CODES).
+-- T.authorized also says yes for UNCLAIMED (VehicleManager), EASY_USE (sandbox VehicleEasyUse) and keys left in the
+-- ignition ("KEY" without a key in hand); none of those count here, otherwise any stranger pulling the door handle
+-- would disarm sentry.
 function T.legit(player, vehicle, by)
     if by and T.account(player) == by then return true end -- a split-screen guest's name proves nothing (Core.lua)
+    local ok, why = T.authorized(player, vehicle, "PASSENGER")
+    local api = MinidoracatVehicleManagerAPI
+    if api and api.canUse and why ~= "UNCLAIMED" then return ok == true end
     if player:getInventory():haveThisKeyId(vehicle:getKeyId()) then return true end -- ISOpenVehicleDoor.lua:86
     -- key card or phone key in a wallet or bag (Keys.lua): the owner, e.g. opening with the phone key in a bag
     if T.Keys and T.Keys.card and (T.Keys.card(player, vehicle) or T.Keys.phoneKey(player, vehicle)) then return true end
-    local ok, why = T.authorized(player, vehicle, "PASSENGER")
     return ok == true and why ~= "UNCLAIMED" and why ~= "EASY_USE" and why ~= "KEY"
 end
 
