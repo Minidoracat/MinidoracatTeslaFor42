@@ -286,7 +286,8 @@ function C.unplug(player, v)
     if not chg then return T.deny(player, "NOT_PLUGGED", vid) end
     -- not a remote: near the car or near the charger (queueUnplug walks to the charger, ChargerMenu.lua; DistTo is the
     -- Manhattan distance, IsoMovingObject.java:601-607, so a car parked aslant at the cable's end can be > T.NEAR away)
-    if player:DistTo(v) > T.NEAR and player:DistTo(chg.x, chg.y) > T.NEAR then return T.deny(player, "TOO_FAR", vid) end
+    local atCharger = math.floor(player:getZ()) == chg.z and player:DistTo(chg.x, chg.y) <= T.NEAR -- DistTo(x, y) has no floor
+    if player:DistTo(v) > T.NEAR and not atCharger then return T.deny(player, "TOO_FAR", vid) end
     if not mayCable(player, v, "unplug", T.mayUnplug) then return end
     local s = sys()
     C.stop(s and s:getLuaObjectAt(chg.x, chg.y, chg.z), v, "unplug")
