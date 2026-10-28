@@ -237,7 +237,7 @@ A charger that works on the floor, no wall needed; slower than the Wall Connecto
 [tr][td]Key card tap, app lock / unlock, flash, honk, Sentry on / off[/td][td]Ride[/td][/tr]
 [tr][td]App liftgate / trunk[/td][td]Trunk[/td][/tr]
 [tr][td]App frunk[/td][td]Repair or Salvage[/td][/tr]
-[tr][td]Plugging in or unplugging, the charge card, picking up or rotating a charger with the car plugged in, app stop / start charging[/td][td]Fuel (except the charger owner's unplug, stop and pick-up, see the FAQ)[/td][/tr]
+[tr][td]Plugging in or unplugging, the charge card, picking up or rotating a charger with the car plugged in, app stop / start charging[/td][td]Fuel (except the charger owner's unplug, charge card Stop, pick-up and rotate, see the FAQ; not the app)[/td][/tr]
 [tr][td]App location and status[/td][td]Location[/td][/tr]
 [tr][td]App Summon[/td][td]Drive[/td][/tr]
 [tr][td]Setting up a new phone key without the key card[/td][td]Owner (cannot be shared)[/td][/tr]

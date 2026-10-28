@@ -284,6 +284,7 @@ function C.unplug(player, v)
     local chg = part and part:getModData().chg
     local vid = v and v:getId()
     if not chg then return T.deny(player, "NOT_PLUGGED", vid) end
+    if player:DistTo(v) > T.NEAR then return T.deny(player, "TOO_FAR", vid) end -- as plug: the action is not a remote
     if not mayCable(player, v, "unplug", T.mayUnplug) then return end
     local s = sys()
     C.stop(s and s:getLuaObjectAt(chg.x, chg.y, chg.z), v, "unplug")

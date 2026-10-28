@@ -537,7 +537,7 @@ H.stub("ISUI/ISPanelJoypad")
 H.stub("ISUI/ISButton")
 require "MinidoracatTesla/HUDChargeCard"
 local cardPlayer = { isDead = function() return false end, getVehicle = function() return tesla end,
-    DistTo = function() return 0 end, getSteamID = function() return 0 end }
+    DistTo = function() return 0 end, getSteamID = function() return 0 end, getPlayerNum = function() return 0 end }
 local realGetSpecific = getSpecificPlayer
 getSpecificPlayer = function() return cardPlayer end
 dash:setVehicle(tesla)

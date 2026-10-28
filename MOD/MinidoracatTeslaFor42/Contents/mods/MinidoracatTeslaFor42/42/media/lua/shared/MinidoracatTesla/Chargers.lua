@@ -155,9 +155,11 @@ function T.cableReaches(kind, cx, cy, cz, vehicle)
 end
 
 -- Who may plug a charge cable into this car, pull it out, work its charge card (target %, stop) or move the charger it
--- is plugged into: the one rule the server (Charging.lua plug / unplug / chargeTarget / chargeStop, the move guard
+-- is plugged into: the cable rule the server (Charging.lua plug / unplug / chargeTarget / chargeStop, the move guard
 -- below) and the client's pre-checks (ChargerMenu.lua, HUDChargeCard.lua) share, so a button is grey exactly when the
--- server would refuse. VehicleManager present: its FUEL right decides (T.authorized). Without it (user 2026-10-28,
+-- server would refuse. Plugging in and the target % ask it alone; unplug, stop and moving the charger go through
+-- T.mayUnplug / T.mayMoveCharger, which also let the charger's owner. VehicleManager present: its FUEL right decides
+-- (T.authorized). Without it (user 2026-10-28,
 -- decisions.md keyless rules; the real car's charge port opens while it is unlocked): a key, the key in the ignition,
 -- a hotwired car or sandbox VehicleEasyUse (T.authorized); else an unlocked car; a locked one refuses CAR_LOCKED.
 -- Locked = vanilla's own lock / unlock toggle test, any cabin door locked (isAnyDoorLocked, BaseVehicle.java:9343-9352;
@@ -258,10 +260,9 @@ end
 -- moveProps.spriteName (findOnSquare, ISMoveableSpriteProps.lua:1267), rotate takes origSpriteName (:2883,2889,2899). The
 -- move cursor greys the same (ChargerMenu.lua C.guardMoveCursor); the cursor panel's reason line is below.
 -- The same wrap records the owner: placing makes the placer the owner; rotating (pick up + place: a new charger
--- object) keeps the old one.
+-- object) keeps the old one, whoever turns it.
 local function chargerObjectOn(square)
-    local s = not isClient() and SMinidoracatTeslaChargerSystem and SMinidoracatTeslaChargerSystem.instance
-    return s and square and s:getLuaObjectOnSquare(square)
+    return square and chargerObjectAt(square:getX(), square:getY(), square:getZ())
 end
 local complete = ISMoveablesAction and ISMoveablesAction.complete
 if complete then

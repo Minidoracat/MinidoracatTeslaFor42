@@ -293,7 +293,10 @@ T.steamMode = function() return getSteamModeActive() == true end -- both overrid
 T.sidOf = function(player) return player:getSteamID() end -- a long rounded to a double in Lua: compare, never print
 function T.account(player)
     if not player then return nil end
-    if not isServer() then return player:getUsername() end
+    if not isServer() then -- an MP client answers as its server will (a split-screen guest: none), SP by name
+        if isClient() and player:getPlayerNum() ~= 0 then return nil end
+        return player:getUsername()
+    end
     if player:getPlayerNum() ~= 0 then return nil end
     local name = player:getUsername()
     if type(name) ~= "string" or name == "" then return nil end

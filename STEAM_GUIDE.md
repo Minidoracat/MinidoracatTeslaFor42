@@ -237,7 +237,7 @@ https://steamcommunity.com/sharedfiles/filedetails/?id=XXXX
 [tr][td]刷卡上鎖／解鎖、App 上鎖解鎖、閃燈、喇叭、哨兵開關[/td][td]搭乘[/td][/tr]
 [tr][td]App 開關尾門[/td][td]後車廂[/td][/tr]
 [tr][td]App 開關前行李廂[/td][td]安裝修理或拆零件[/td][/tr]
-[tr][td]插拔線、充電卡、撿起或轉向插著車的充電座、App 停止／開始充電[/td][td]加油（充電座主人的拔線、停止、撿起除外，見常見問題）[/td][/tr]
+[tr][td]插拔線、充電卡、撿起或轉向插著車的充電座、App 停止／開始充電[/td][td]加油（充電座主人的拔線、充電卡停止、撿起與轉向除外，見常見問題；App 不算）[/td][/tr]
 [tr][td]App 看位置與車況[/td][td]查看位置[/td][/tr]
 [tr][td]App 召喚[/td][td]駕駛[/td][/tr]
 [tr][td]沒有卡片時設新的手機鑰匙[/td][td]車主（不能分享）[/td][/tr]

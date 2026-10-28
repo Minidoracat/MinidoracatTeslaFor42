@@ -680,6 +680,19 @@ act("rotate", mal, function()
 end)
 check(fresh and fresh.owner == "mal", "rotating (pick up + place: a new charger object) keeps the owner")
 SYS.objs[key(900, 900, 0)] = klo
+local function rotateBy(who)
+    local n = SMinidoracatTeslaCharger:new(SYS, { gx_ = 900, gy_ = 900, gz_ = 0 })
+    n:stateFromIsoObject(kiso)
+    act("rotate", who, function() SYS.objs[key(900, 900, 0)] = n end)
+    SYS.objs[key(900, 900, 0)] = klo
+    return n
+end
+check(rotateBy(kOwner).owner == "mal", "someone else turning the charger (the car's key holder): the owner stays mal, not him")
+klo.owner = nil
+check(rotateBy(kOwner).owner == nil, "turning a charger with no owner on record does not make the turner its owner")
+klo.owner = "mal"
+act("place", kOwner, function() end) -- vanilla placed nothing new on this square (the one-charger-a-square guard)
+check(klo.owner == "mal", "a place on a square whose charger object stays the same leaves its owner alone")
 C.unplug(mal, kv)
 check(kchg() == nil, "the charger's owner unplugs someone else's locked car")
 H.sent = {}
