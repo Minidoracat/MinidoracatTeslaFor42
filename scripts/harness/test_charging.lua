@@ -77,6 +77,15 @@ function SGlobalObjectSystem:getLuaObjectOnSquare(sq) return sq and self:getLuaO
 function SGlobalObjectSystem:loadIsoObject(iso) end
 function SGlobalObjectSystem.RegisterSystemClass(cls) cls.instance = cls:new() end
 MapObjects = { OnLoadWithSprite = function(list, fn) H.onLoadSprites = list end }
+-- vanilla ISUninstallVehiclePart:complete on success (ISUninstallVehiclePart.lua:62-69): the pack takes the part's
+-- content, the part's item goes; fail = nothing happens
+local uninstallBefore = ISUninstallVehiclePart -- other files' (park_fakes.lua): restored at the end
+ISUninstallVehiclePart = { complete = function(self)
+    if self.fail then return true end
+    self.taken, self.content = self.part:getInventoryItem(), self.part:getContainerContentAmount() -- :63 setItemCapacity
+    self.part.item = nil
+    return true
+end }
 
 require "MinidoracatTesla/Charging"
 local T, B, C = MinidoracatTesla, MinidoracatTesla.Battery, MinidoracatTesla.Charge
@@ -751,3 +760,35 @@ mal.keys[77], kv.hotwired, kv.locked = nil, false, false
 C.unplug(kOwner, kv)
 check(kchg() == nil, "VehicleManager: the car's FUEL holder unplugs")
 MinidoracatVehicleManagerAPI = nil
+
+H.section("taking the pack out while plugged in")
+local plo, piso = charger(960, 960, { room = {} })
+local pv = car(20, 960.5 + 2, 960.5)
+local pp = H.player({ name = "mech", keys = { [77] = true }, x = 961, y = 961 })
+local function pchg() return B.part(pv):getModData().chg end
+local function pull(fail)
+    local a = { vehicle = pv, part = B.part(pv), character = pp, fail = fail }
+    ISUninstallVehiclePart.complete(a)
+    return a
+end
+H.setHours(100) -- grid power (the first section's clock)
+C.plug(pp, pv, piso)
+check(pchg() ~= nil and plo.vid == pv:getId(), "(plugged in)")
+H.setHours(H.hours() + 1)
+pull(true)
+check(pchg() ~= nil and plo.vid == pv:getId(), "the pack stays in (failed uninstall): still plugged in")
+local c0 = B.kwh(B.part(pv))
+H.setHours(H.hours() + 1)
+local a = pull()
+check(a.taken ~= nil and pchg() == nil and plo.vid == false, "the pack out: the car's cable record cleared, the charger told (vid false)")
+check(near(a.content, c0 + 11.5, 1e-6), "the hour up to then (11.5 kWh) is booked before the pack takes the part's content")
+B.part(pv).item = a.taken -- installed again
+-- (the Park hold, Core.lua CheckOperate.Battery, is `chg ~= nil`: cleared above. Its client half T.onPluggedDrive is
+-- not loaded here, so it is not asked)
+C.plug(pp, pv, piso)
+check(pchg() ~= nil and plo.vid == pv:getId(), "the pack back in: it plugs into the same charger again")
+B.part(pv).item = nil -- gone some other way (another mod, debug): the next settle unplugs it
+C.settle(plo, H.hours())
+check(pchg() == nil and plo.vid == false, "settle with the pack gone: the car's record cleared, the charger forgets it")
+B.part(pv).item = a.taken
+ISUninstallVehiclePart = uninstallBefore

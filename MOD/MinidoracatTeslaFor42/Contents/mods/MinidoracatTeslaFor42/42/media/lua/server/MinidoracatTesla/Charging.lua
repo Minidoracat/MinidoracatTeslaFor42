@@ -155,7 +155,7 @@ function C.settle(o, now, here)
     local part = B.part(v)
     local md = part:getModData()
     local chg = md.chg
-    if not part:getInventoryItem() then return C.unlink(o) end
+    if not part:getInventoryItem() then return C.stop(o, v, "pack") end -- the pack gone some other way than below
     local iso = o:getIsoObject()
     if not iso then return C.schedule(o, now + C.RETRY_H) end
     if not here and not T.cableReaches(o.kind, o.x, o.y, o.z, v) then return C.stop(o, v, "tooFar") end
@@ -234,7 +234,8 @@ end
 function C.stop(o, v, reason)
     local part = v and B.part(v)
     if part and part:getModData().chg then
-        if reason ~= "tooFar" and o and o:getIsoObject() then
+        -- tooFar: the car left the cable; pack: no pack to book into (settle would come back here)
+        if reason ~= "tooFar" and reason ~= "pack" and o and o:getIsoObject() then
             local ok, err = pcall(C.settle, o, T.hours(), true) -- book the energy up to now
             if not ok then T.log("settle before unplug failed: " .. tostring(err)) end
         end
@@ -248,6 +249,29 @@ end
 function C.onChargerRemoved(o)
     local v = T.chargerCar(o, o.x, o.y, o.z)
     if v then C.stop(o, v, "removed") else C.unschedule(o) end
+end
+
+-- Taking the pack out while plugged in (vanilla ISUninstallVehiclePart:complete, server / SP): book the energy into
+-- the part first (the pack item takes the part's content, ISUninstallVehiclePart.lua:63-64), then unplug once it is
+-- out. Left alone, the next settle only made the charger forget the car: the car kept its cable record (held in Park
+-- while the pedal was down, Core.lua CheckOperate.Battery) and the charger showed no Unplug row for it.
+local uninstall = ISUninstallVehiclePart and ISUninstallVehiclePart.complete
+if uninstall then
+    function ISUninstallVehiclePart:complete()
+        local v, part = self.vehicle, self.part
+        local chg = v and part and part == B.part(v) and part:getModData().chg
+        local s = chg and sys()
+        local o = s and s:getLuaObjectAt(chg.x, chg.y, chg.z)
+        if o and o:getIsoObject() and T.chargerCar(o, o.x, o.y, o.z) == v then
+            local ok, err = pcall(C.settle, o, T.hours(), true)
+            if not ok then T.log("settle before the pack came out failed: " .. tostring(err)) end
+        end
+        local r = uninstall(self)
+        if chg and not part:getInventoryItem() then
+            C.stop(o and T.chargerCar(o, o.x, o.y, o.z) == v and o or nil, v, "pack")
+        end
+        return r
+    end
 end
 
 -- ---- player actions (timed action complete(), server / SP) ----
