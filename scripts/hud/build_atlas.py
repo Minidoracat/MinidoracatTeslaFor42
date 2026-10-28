@@ -329,23 +329,49 @@ def app_arrow(k):  # 48 px at 1x, pointing up (the mock's "M8 1.5L13 14L8 11L3 1
 
 
 # ---- car (top view, nose to the right; left side of the car = top edge) ------------
+# One sprite per car, car_<Specs model> (HUD.lua and the app's maps pick it by the car's model); the door overlays and
+# the clickable zones (HUD.lua ZONES) line up with both. Units: viewBox 170x96 drawn at 150x85 px.
 CAR_VB = (170, 96)
 CAR_PX = (150, 85)
 
 
-def car_body(c):
+def car_wheels(c):
     for x, y in ((40, 16), (110, 16), (40, 72), (110, 72)):
         c.rrect(x, y, 19, 8, 2, fill="#0B0D0F", outline="#8E98A3", ow=1.1)
+
+
+def b_pillar(c, y0, y1):  # B-pillar seam lines (door split) — subtle
+    c.stroke([("M", 78, y0 + 0.6), ("V", y0 + 3)], w=1.0, color="#4A525B")
+    c.stroke([("M", 78, y1 - 3), ("V", y1 - 0.6)], w=1.0, color="#4A525B")
+
+
+def car_modely(c):  # Model Y: the glass roof runs into the liftgate glass (x 34-51)
+    car_wheels(c)
     body = [("M", 34, 22), ("H", 122), ("Q", 142, 22, 146, 36), ("V", 60), ("Q", 142, 74, 122, 74),
             ("H", 34), ("Q", 22, 74, 22, 62), ("V", 34), ("Q", 22, 22, 34, 22), ("Z",)]
     c.fill(body, "#2A3037")
     c.stroke(body, w=1.3, color="#AEB6BF")
     c.fill([("M", 102, 29), ("Q", 117, 29, 120, 38), ("V", 58), ("Q", 117, 67, 102, 67), ("Z",)], "#15191E")
     c.fill([("M", 39, 31), ("H", 51), ("V", 65), ("H", 39), ("Q", 34, 65, 34, 60), ("V", 36), ("Q", 34, 31, 39, 31), ("Z",)], "#15191E")
-    # B-pillar seam lines (door split) — subtle
-    for x in (78,):
-        c.stroke([("M", x, 22.6), ("V", 25)], w=1.0, color="#4A525B")
-        c.stroke([("M", x, 71), ("V", 73.4)], w=1.0, color="#4A525B")
+    b_pillar(c, 22, 74)
+
+
+def car_model3(c):
+    """Model 3 (4,724 x 1,848 mm against the Model Y's 4,790 x 1,921: 98.6% as long, 96% as wide; same wheelbase
+    class, so the same wheels): a sedan, the rear glass (x 43-56, up to where the rear doors' outline starts) behind
+    the trunk lid's front seam (x 40), the lid (x 23-40) body colour. HUD.lua ZONES.Model3 follows these edges."""
+    car_wheels(c)
+    body = [("M", 36, 23), ("H", 121), ("Q", 141, 23, 145, 37), ("V", 59), ("Q", 141, 73, 121, 73),
+            ("H", 36), ("Q", 23, 73, 23, 62), ("V", 34), ("Q", 23, 23, 36, 23), ("Z",)]
+    c.fill(body, "#2A3037")
+    c.stroke(body, w=1.3, color="#AEB6BF")
+    c.fill([("M", 101, 30), ("Q", 116, 30, 119, 38), ("V", 58), ("Q", 116, 66, 101, 66), ("Z",)], "#15191E")
+    c.fill([("M", 47, 31), ("H", 56), ("V", 65), ("H", 47), ("Q", 43, 65, 43, 60), ("V", 36), ("Q", 43, 31, 47, 31), ("Z",)], "#15191E")
+    c.stroke([("M", 40, 29), ("Q", 38.5, 48, 40, 67)], w=1.0, color="#4A525B")  # trunk lid seam
+    b_pillar(c, 23, 73)
+
+
+CARS = {"ModelY": car_modely, "Model3": car_model3}
 
 
 def dashed(c, x0, y0, x1, y1, w=1.8, dash=3.0, gap=2.0):
@@ -386,7 +412,8 @@ GLYPH_SETS = [
 ]
 # key, font, size (1x), text, letter spacing (px at 1x); the phone app's footer wordmark and trim (restyle mock)
 WORDS = [("kmh", "Inter-Regular.ttf", 14, "km/h", 0), ("km", "Inter-Regular.ttf", 17, "km", 0),
-         ("wm_ModelY", "Inter-Light.ttf", 15, "MODEL Y", 5), ("trim_ModelY", "Inter-Regular.ttf", 13, "Performance", 0)]
+         ("wm_ModelY", "Inter-Light.ttf", 15, "MODEL Y", 5), ("trim_ModelY", "Inter-Regular.ttf", 13, "Performance", 0),
+         ("wm_Model3", "Inter-Light.ttf", 15, "MODEL 3", 5), ("trim_Model3", "Inter-Regular.ttf", 13, "Performance", 0)]
 
 
 def render_text(fontfile, size, s, track=0):
@@ -454,9 +481,10 @@ def build_sprites(k):
     sp["solid"] = (Image.new("RGBA", (4 * k, 4 * k), (255, 255, 255, 255)), 0, 0, 0)
 
     cw, ch = CAR_PX[0] * k, CAR_PX[1] * k
-    c = Canvas(cw, ch, CAR_VB[0], CAR_VB[1])
-    car_body(c)
-    sp["car"] = (c.out(), 0, 0, 0)
+    for model, draw in CARS.items():
+        c = Canvas(cw, ch, CAR_VB[0], CAR_VB[1])
+        draw(c)
+        sp["car_" + model] = (c.out(), 0, 0, 0)
     for kind in ("FL", "FR", "RL", "RR", "TR", "HD"):
         c = Canvas(cw, ch, CAR_VB[0], CAR_VB[1])
         door_overlay(kind)(c)

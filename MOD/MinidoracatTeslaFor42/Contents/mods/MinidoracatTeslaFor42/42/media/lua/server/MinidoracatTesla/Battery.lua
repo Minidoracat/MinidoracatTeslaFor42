@@ -8,7 +8,6 @@ local T = MinidoracatTesla
 local B = T.Battery
 
 T.MAX_ELAPSED = 10 -- cap per update: chunk reload hands in the whole unloaded time (GameTime.java:1374-1376)
-T.V12_KWH = 15.5 * 6.9 / 1000 -- Model Y low voltage battery: lithium-ion 15.5 V, 6.9 Ah (owner's manual, R10)
 T.DCDC_MIN_PCT = 5   -- the drive pack keeps the 12V topped up while it holds at least this much
 T.BRAKE_WEAR = 0.5   -- regen does most of the braking (owner's manual, Maintenance Service Intervals)
 T.InstallComplete = T.InstallComplete or {}
@@ -57,11 +56,12 @@ function B.topUp12V(vehicle)
     if not item or not part then return 0 end
     local charge = item:getCurrentUsesFloat() -- same accessor as Vehicles.Update.Battery (Vehicles.lua:507)
     if charge >= 0.99 then return 0 end
-    local need = (1 - charge) * T.V12_KWH
+    local cap = T.spec(vehicle).v12Kwh -- the car's low voltage battery (Core.lua Specs)
+    local need = (1 - charge) * cap
     local take = B.onCharger(part) and need or math.min(need, B.kwh(part))
     if take <= 0 then return 0 end
     local paid = B.draw(vehicle, part, take)
-    item:setUsedDelta(math.min(1, charge + take / T.V12_KWH)) -- Vehicles.lua:515
+    item:setUsedDelta(math.min(1, charge + take / cap)) -- Vehicles.lua:515
     vehicle:transmitPartUsedDelta(bat)                      -- Vehicles.lua:517
     return paid
 end

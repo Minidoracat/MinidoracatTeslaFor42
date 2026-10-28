@@ -41,14 +41,37 @@ end
 H.require("MinidoracatTesla/Cable")
 local C = T.Cable
 
--- car: yaw only; local x = right flank (+x), local z = forward. chargeport local (0.4615, 0, -0.6264) like Model Y
-local function car(x, y, yaw)
-    local v = H.vehicle({ x = x, y = y })
+-- chargeport local position the way the engine has it: (attachment offset + model offset) x model scale
+-- (VehicleScript.java:456-460 scales both at load; BaseVehicle.java:9940-9952 adds them), read from each car's script
+local function scriptPort(script)
+    local f = assert(io.open("MOD/MinidoracatTeslaFor42/Contents/mods/MinidoracatTeslaFor42/42/media/scripts/vehicles/"
+        .. script:gsub("^Base%.", "") .. ".txt", "r"))
+    local txt = f:read("*a")
+    f:close()
+    local model = txt:match("\n        model\n        {(.-)\n        }")
+    local k = tonumber(model:match("scale = ([-%d.]+)"))
+    local mx, my, mz = model:match("offset = ([-%d.]+) ([-%d.]+) ([-%d.]+)")
+    local ax, ay, az = txt:match("\n        attachment chargeport\n        {%s*offset = ([-%d.]+) ([-%d.]+) ([-%d.]+)")
+    return { (ax + mx) * k, (ay + my) * k, (az + mz) * k }
+end
+local PORTS = { ["Base.MinidoracatTesla_ModelY"] = scriptPort("Base.MinidoracatTesla_ModelY"),
+    ["Base.MinidoracatTesla_Model3"] = scriptPort("Base.MinidoracatTesla_Model3") }
+
+-- car: yaw only; local x = right flank (+x), local z = forward; its own script's chargeport (default Model Y)
+local function car(x, y, yaw, script)
+    local v = H.vehicle({ x = x, y = y, script = script })
     local c, s = math.cos(yaw), math.sin(yaw)
-    function v:getAttachmentLocalPos(name, out) if name ~= "chargeport" then return nil end return out:set(0.4615, 0.0, -0.6264) end
+    v.port = PORTS[v.script]
+    function v:getAttachmentLocalPos(name, out)
+        if name ~= "chargeport" then return nil end
+        return out:set(self.port[1], self.port[2], self.port[3])
+    end
     function v:getWorldPos(lx, ly, lz, out) return out:set(self.x + lx * c - lz * s, self.y + lx * s + lz * c, self.z + ly) end
     return v
 end
+check(PORTS["Base.MinidoracatTesla_ModelY"][1] > 0 and PORTS["Base.MinidoracatTesla_Model3"][1] > 0
+    and PORTS["Base.MinidoracatTesla_ModelY"][3] ~= PORTS["Base.MinidoracatTesla_Model3"][3],
+    "cable: both cars' chargeport read from their scripts (left flank, +x), different positions")
 
 local function frame()
     draws, lines2d = {}, {}
@@ -64,7 +87,7 @@ T.onChargerChanged(o)
 frame()
 check(C.count() == 0 and #draws == 0 and H.count("RenderOpaqueObjectsInWorld") == 0, "cable: charger without vid stays unhooked")
 
--- ---- plugged: Facing S charger at (10,20), car parked south of it ----
+-- ---- plugged: Facing S charger at (10,20), Model Y parked south of it ----
 local v = car(11.2, 24.0, 0.3)
 o.vid = v:getId()
 T.onChargerChanged(o)
@@ -76,12 +99,13 @@ local hang, plug = draws[1], draws[#draws]
 check(hang.item.type == "Base.MinidoracatTesla_CableHang" and H.near(hang.x, 10.5) and H.near(hang.y, 20.1) and hang.a == 90,
     "cable: hang origin under the exit (10.5, 20.1), angle 90 (facing S = +y)")
 -- port and plug tip
-local lp = Vector3f.new():set(0.4615, 0, -0.6264)
-local port = v:getWorldPos(lp:x(), lp:y(), lp:z(), Vector3f.new())
-local tipx = plug.x + C.PLUG_REACH * math.cos(math.rad(plug.a))
-local tipy = plug.y + C.PLUG_REACH * math.sin(math.rad(plug.a))
-check(plug.item.type == "Base.MinidoracatTesla_CablePlug" and H.near(tipx, port:x(), 1e-4) and H.near(tipy, port:y(), 1e-4),
-    "cable: plug tip (origin + PLUG_REACH along its angle) lands on the charge port")
+local function tipOn(d, car_)
+    local p = car_:getWorldPos(car_.port[1], car_.port[2], car_.port[3], Vector3f.new())
+    return H.near(d.x + C.PLUG_REACH * math.cos(math.rad(d.a)), p:x(), 1e-4)
+        and H.near(d.y + C.PLUG_REACH * math.sin(math.rad(d.a)), p:y(), 1e-4)
+end
+check(plug.item.type == "Base.MinidoracatTesla_CablePlug" and tipOn(plug, v),
+    "cable: Model Y plug tip (origin + PLUG_REACH along its angle) lands on its charge port")
 local ax, ay = 10.5, 20.5
 local len = math.sqrt((plug.x - ax) ^ 2 + (plug.y - ay) ^ 2)
 check(#draws == 2 + math.ceil(len), "cable: draws = 1 hang + ceil(floor run) + 1 plug (" .. #draws .. ")")
@@ -103,8 +127,7 @@ ramp = {}
 v.x, v.y = 13.0, 25.5
 frame()
 local plug2 = draws[#draws]
-check(not H.near(plug2.x, plug.x) and H.near(plug2.x + C.PLUG_REACH * math.cos(math.rad(plug2.a)),
-    v:getWorldPos(0.4615, 0, -0.6264, Vector3f.new()):x(), 1e-4), "cable: plug follows the car")
+check(not H.near(plug2.x, plug.x) and tipOn(plug2, v), "cable: plug follows the car")
 
 -- ---- player far away: culled ----
 player.x = 10 + C.DRAW_RANGE + 5
@@ -137,7 +160,29 @@ opt3d = false
 frame()
 check(#draws == 0 and #lines2d == 3, "cable: 3D ground items off -> 0 Render3DItem, 3 iso lines")
 check(H.near(lines2d[1][3], 0.327) and H.near(lines2d[1][1], 10.9), "cable: 2D line starts at the exit height")
+check(H.near(lines2d[3][6] - lines2d[3][3], T.Specs["Base.MinidoracatTesla_ModelY"].plug.z / 2.44949),
+    "cable: 2D line ends at the Model Y handle height (T.Specs plug.z, units -> levels)")
 opt3d = true
+
+-- ---- each car its own plug: a Model 3 on a second charger ----
+local m3 = car(51.2, 24.0, 0.3, "Base.MinidoracatTesla_Model3")
+local o3 = { x = 50, y = 20, z = 0, kind = "WallConnector", facing = "S", vid = m3:getId() }
+T.onChargerChanged(o3)
+frame()
+local plugs = {}
+for _, d in ipairs(draws) do
+    if d.item.type:find("CablePlug", 1, true) then plugs[#plugs + 1] = d end
+end
+check(#plugs == 2 and plugs[1].item.type == "Base.MinidoracatTesla_CablePlug" and tipOn(plugs[1], v)
+    and plugs[2].item.type == "Base.MinidoracatTesla_CablePlugModel3" and tipOn(plugs[2], m3),
+    "cable: Model Y and Model 3 each draw their own plug item, tip on their own charge port")
+opt3d = false
+frame()
+local zY, z3 = lines2d[3][6] - lines2d[3][3], lines2d[6][6] - lines2d[6][3]
+check(#lines2d == 6 and H.near(z3, T.Specs["Base.MinidoracatTesla_Model3"].plug.z / 2.44949) and z3 < zY - 0.02,
+    "cable: 2D Model 3 handle at its own, lower port height (" .. string.format("%.3f < %.3f levels", z3, zY) .. ")")
+opt3d = true
+T.onChargerChanged(o3, true)
 
 -- ---- car not loaded on this client / dragged too far ----
 H.removeVehicle(v)
