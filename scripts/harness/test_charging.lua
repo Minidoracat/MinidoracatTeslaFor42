@@ -787,6 +787,24 @@ B.part(pv).item = a.taken -- installed again
 -- not loaded here, so it is not asked)
 C.plug(pp, pv, piso)
 check(pchg() ~= nil and plo.vid == pv:getId(), "the pack back in: it plugs into the same charger again")
+local other = { item = {}, md = {} } -- another part of the same car (a door, the 12V)
+function other:getInventoryItem() return self.item end
+function other:getContainerContentAmount() return 0 end
+function other:getModData() return self.md end
+ISUninstallVehiclePart.complete({ vehicle = pv, part = other, character = pp })
+check(other.item == nil and pchg() ~= nil and plo.vid == pv:getId(), "another part taken off: the cable stays as it was")
+-- pv's record is stale: its id went to qv, really plugged into plo (VehicleIDMap reuse); taking pv's pack out must not
+-- touch qv or plo
+local qv = car(30, 960.5 + 2, 960.5)
+B.part(qv):getModData().chg = { x = 960, y = 960, z = 0, kind = plo.kind, last = H.hours(), added = 0, target = 90 }
+plo.vid = qv:getId()
+local q = pull()
+check(q.taken ~= nil and pchg() == nil and plo.vid == qv:getId() and B.part(qv):getModData().chg ~= nil,
+    "the pack out of a car whose charger now holds another car: only its own record cleared, the other car stays plugged")
+B.part(pv).item = q.taken
+B.part(qv):getModData().chg = nil
+C.plug(pp, pv, piso)
+check(pchg() ~= nil and plo.vid == pv:getId(), "(plugged in again)")
 B.part(pv).item = nil -- gone some other way (another mod, debug): the next settle unplugs it
 C.settle(plo, H.hours())
 check(pchg() == nil and plo.vid == false, "settle with the pack gone: the car's record cleared, the charger forgets it")

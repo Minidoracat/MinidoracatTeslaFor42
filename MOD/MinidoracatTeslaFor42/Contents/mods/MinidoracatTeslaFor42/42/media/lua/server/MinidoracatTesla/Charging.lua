@@ -230,7 +230,7 @@ function C.start(o, v)
     T.log("plugged " .. tostring(v:getId()) .. " into " .. o.kind .. " at " .. o.x .. "," .. o.y .. "," .. o.z)
 end
 
--- reason: "unplug" | "tooFar" | "removed"
+-- reason: "unplug" | "tooFar" | "removed" | "pack"
 function C.stop(o, v, reason)
     local part = v and B.part(v)
     if part and part:getModData().chg then
@@ -239,7 +239,7 @@ function C.stop(o, v, reason)
             local ok, err = pcall(C.settle, o, T.hours(), true) -- book the energy up to now
             if not ok then T.log("settle before unplug failed: " .. tostring(err)) end
         end
-        clearChg(v, part)
+        if part:getModData().chg then clearChg(v, part) end -- that settle may have unplugged it already (no pack)
     end
     if o then C.unlink(o) end
     T.log("unplugged " .. tostring(v and v:getId()) .. " (" .. tostring(reason) .. ")")
@@ -255,20 +255,28 @@ end
 -- the part first (the pack item takes the part's content, ISUninstallVehiclePart.lua:63-64), then unplug once it is
 -- out. Left alone, the next settle only made the charger forget the car: the car kept its cable record (held in Park
 -- while the pedal was down, Core.lua CheckOperate.Battery) and the charger showed no Unplug row for it.
+-- A hook error must never break the vanilla action (Sentry.lua hook): both halves under pcall.
+local function packLink(v, part) -- a plugged-in Tesla's pack: its cable record, and its charger if still its own
+    local chg = v and part and part == B.part(v) and part:getModData().chg
+    if not chg then return nil end
+    local s = sys()
+    local o = s and s:getLuaObjectAt(chg.x, chg.y, chg.z)
+    return chg, o and T.chargerCar(o, o.x, o.y, o.z) == v and o or nil -- another car's charger now: leave it be
+end
 local uninstall = ISUninstallVehiclePart and ISUninstallVehiclePart.complete
 if uninstall then
     function ISUninstallVehiclePart:complete()
         local v, part = self.vehicle, self.part
-        local chg = v and part and part == B.part(v) and part:getModData().chg
-        local s = chg and sys()
-        local o = s and s:getLuaObjectAt(chg.x, chg.y, chg.z)
-        if o and o:getIsoObject() and T.chargerCar(o, o.x, o.y, o.z) == v then
-            local ok, err = pcall(C.settle, o, T.hours(), true)
-            if not ok then T.log("settle before the pack came out failed: " .. tostring(err)) end
+        local ok, chg, o = pcall(packLink, v, part)
+        if not ok then T.log("pack uninstall hook failed: " .. tostring(chg)); chg, o = nil, nil end
+        if o and o:getIsoObject() then
+            local fine, err = pcall(C.settle, o, T.hours(), true)
+            if not fine then T.log("settle before the pack came out failed: " .. tostring(err)) end
         end
         local r = uninstall(self)
         if chg and not part:getInventoryItem() then
-            C.stop(o and T.chargerCar(o, o.x, o.y, o.z) == v and o or nil, v, "pack")
+            local fine, err = pcall(C.stop, o, v, "pack")
+            if not fine then T.log("unplug after the pack came out failed: " .. tostring(err)) end
         end
         return r
     end
