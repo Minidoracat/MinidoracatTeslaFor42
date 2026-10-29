@@ -2,7 +2,7 @@
 <!-- Steam 指南稿源（繁中）：MOD 的完整說明以本指南為準，簡介只放摘要。格式、版面與同步方式見 pz-family-docs/release.md「完整說明：Steam 指南」 -->
 <!-- 標題：📖 Minidoracat Tesla Collection MOD 完整說明：車、充電、鑰匙與 App -->
 <!-- 摘要：Minidoracat Tesla Collection 的圖文說明：Model Y 與 Model 3 Performance、電池、壁掛式充電座與行動充電器、特斯拉風格儀表、卡片鑰匙與手機鑰匙、手機 Tesla App 與召喚、哨兵與露營模式、驅動單元零件，以及和 Vehicle Manager、小地圖、AutoDrive 一起用的規則與沙盒選項。 -->
-<!-- 截圖：docs/screenshots/steam/zh/，拍法見家族庫 e2e/MinidoracatTeslaFor42 的 guide-shots-sp（召喚圖用 phone-summon-sp） -->
+<!-- 截圖：docs/screenshots/steam/zh/，拍法見家族庫 e2e/MinidoracatTeslaFor42 的 guide-shots-sp（召喚圖用 phone-summon-sp、FSD 圖用 fsd-shot-sp、「和其他 MOD 一起用」用 guide-mods-sp） -->
 === 🚀 快速上手
 [b]English version:[/b] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3829449879]Minidoracat Tesla Collection Mod Guide[/url]
 
@@ -229,12 +229,15 @@ https://steamcommunity.com/sharedfiles/filedetails/?id=3829501237
 [/table]
 === 🧰 和其他 MOD 一起用
 [h3]Vehicle Manager（綁車 MOD）[/h3]
+{{img:19-vm-menu-zh.jpg}}
 [list]
 [*] [b]車已綁定[/b]：只照綁車 MOD 的權限判斷；身上有這台車的鑰匙、卡片或手機鑰匙不再自動算數。
 [*] [b]車沒綁定[/b]：照本 MOD 的規則，帶著鑰匙就能用。
 [*] [b]車輛管理選單[/b]：右鍵特斯拉的「車輛管理」多了「打開 Tesla App」（身上有配對的手機鑰匙時才出現）。
 [*] [b]沒載入的車[/b]：自己綁的車、分享給你而且有「查看位置」權限的車，App 會顯示最後紀錄。
+[*] [b]App 車輛清單[/b]：你綁的或分享給你的特斯拉，還沒加進這支手機也會列出（標「車輛管理」），看得到位置，遠端按鈕是暗的。
 [/list]
+{{img:20-vm-app-zh.jpg}}
 [table]
 [tr][th]動作[/th][th]需要的綁車權限[/th][/tr]
 [tr][td]刷卡上鎖／解鎖、App 上鎖解鎖、閃燈、喇叭、哨兵開關[/td][td]搭乘[/td][/tr]
@@ -246,14 +249,19 @@ https://steamcommunity.com/sharedfiles/filedetails/?id=3829501237
 [tr][td]沒有卡片時設新的手機鑰匙[/td][td]車主（不能分享）[/td][/tr]
 [/table]
 [h3]Minidoracat MiniMap（小地圖）[/h3]
+{{img:21-minimap-nav-zh.jpg}}
 [list]
 [*] [b]車標[/b]：小地圖和它的世界地圖畫出手機裡每台特斯拉的位置（App 最後查到的地方），超過 10 分鐘沒用 App 看過就變淡。
 [*] [b]導航到車[/b]：App 地點頁的「導航到車」把小地圖的目的地設成你的車。
 [*] [b]不會畫兩顆[/b]：綁車 MOD 已經畫出來的車不會多畫一顆。
 [/list]
 [h3]Minidoracat MiniMap - AutoDrive[/h3]
+{{img:22-summon-zh.jpg}}
 [list]
-[*] [b]召喚[/b]：App 的召喚交給 AutoDrive 開車，見「召喚」。
+[*] [b]召喚[/b]：App 的召喚交給 AutoDrive 開車，車自己開到你身邊，見「召喚」。
+[/list]
+{{img:01b-fsd-zh.jpg}}
+[list]
 [*] [b]儀表位置[/b]：AutoDrive 的卡片自動擺在特斯拉儀表上方。
 [/list]
 === ⚙️ 沙盒選項與預設值

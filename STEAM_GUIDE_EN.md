@@ -2,7 +2,7 @@
 <!-- Steam guide source (English). The full description lives in this guide; the Workshop page only has a summary. Format and sync: pz-family-docs/release.md "完整說明：Steam 指南" -->
 <!-- 標題：📖 Minidoracat Tesla Collection Mod Guide: Cars, Charging, Keys and the App -->
 <!-- 摘要：A picture guide to Minidoracat Tesla Collection: the Model Y and Model 3 Performance, the battery, the Wall Connector and the Mobile Connector, the Tesla-style dashboard, key cards and phone keys, the Tesla app and Summon, Sentry and Camp Mode, drive unit parts, and how it works with Vehicle Manager, the MiniMap and AutoDrive, plus the sandbox options. -->
-<!-- Screenshots: docs/screenshots/steam/en/, shot by guide-shots-sp in the family repo's e2e/MinidoracatTeslaFor42 (Summon shots: phone-summon-sp) -->
+<!-- Screenshots: docs/screenshots/steam/en/, shot by guide-shots-sp in the family repo's e2e/MinidoracatTeslaFor42 (Summon shots: phone-summon-sp; FSD: fsd-shot-sp; With other mods: guide-mods-sp) -->
 === 🚀 Quick start
 [b]中文版：[/b] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3829449828]Minidoracat Tesla Collection 完整說明[/url]
 
@@ -229,12 +229,15 @@ A charger that works on the floor, no wall needed; slower than the Wall Connecto
 [/table]
 === 🧰 With other mods
 [h3]Vehicle Manager[/h3]
+{{img:19-vm-menu-en.jpg}}
 [list]
 [*] [b]Claimed car[/b]: only Vehicle Manager's permissions count; carrying this car's key, key card or phone key no longer counts by itself.
 [*] [b]Unclaimed car[/b]: this mod's rules apply; carry the key and you can use it.
 [*] [b]Vehicle Manager menu[/b]: right-clicking a Tesla's Vehicle Manager menu adds Open Tesla App (only while you carry a phone key paired with it).
 [*] [b]Cars not loaded[/b]: cars you claimed, and cars shared with you with the Location permission, show their last record in the app.
+[*] [b]App car list[/b]: Teslas you claimed or that are shared with you are listed even before they are added to this phone (tagged Vehicle Manager), with their position; their remote buttons are dimmed.
 [/list]
+{{img:20-vm-app-en.jpg}}
 [table]
 [tr][th]Action[/th][th]Vehicle Manager permission[/th][/tr]
 [tr][td]Key card tap, app lock / unlock, flash, honk, Sentry on / off[/td][td]Ride[/td][/tr]
@@ -246,14 +249,19 @@ A charger that works on the floor, no wall needed; slower than the Wall Connecto
 [tr][td]Setting up a new phone key without the key card[/td][td]Owner (cannot be shared)[/td][/tr]
 [/table]
 [h3]Minidoracat MiniMap[/h3]
+{{img:21-minimap-nav-en.jpg}}
 [list]
 [*] [b]Car markers[/b]: the minimap and its world map show every Tesla on your phone (where the app last saw it); a marker fades after 10 minutes without a look in the app.
 [*] [b]Navigate to Car[/b]: on the app's Location page, sets the minimap's destination to your car.
 [*] [b]No double markers[/b]: a car Vehicle Manager already draws is not drawn again.
 [/list]
 [h3]Minidoracat MiniMap - AutoDrive[/h3]
+{{img:22-summon-en.jpg}}
 [list]
-[*] [b]Summon[/b]: the app hands the driving to AutoDrive; see Summon.
+[*] [b]Summon[/b]: the app hands the driving to AutoDrive and the car drives itself to you; see Summon.
+[/list]
+{{img:01b-fsd-en.jpg}}
+[list]
 [*] [b]Dashboard spot[/b]: AutoDrive's cards sit above the Tesla dashboard by themselves.
 [/list]
 === ⚙️ Sandbox options and defaults
