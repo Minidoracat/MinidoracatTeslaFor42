@@ -7,5 +7,7 @@
     "Sandbox_MinidoracatTesla_ChargeFuelMultiplier": "Multiplicador de bencina al cargar",
     "Sandbox_MinidoracatTesla_ChargeFuelMultiplier_tooltip": "Cuánta bencina de generador gasta un Tesla: la carga y, mientras está enchufado, la climatización y el Modo acampada. La red es gratis.\n1.0 = cerca de un tanque para cargar un Model Y de vacío a lleno con el «Consumo de Bencina del Generador» por defecto; 0.5 = la mitad; 0 = nada.\nTambién escala con «Consumo de Bencina del Generador».",
     "Sandbox_MinidoracatTesla_CampMinBattery": "Límite de batería del Modo acampada",
-    "Sandbox_MinidoracatTesla_CampMinBattery_tooltip": "El Modo acampada no se puede activar por debajo de esta carga y se apaga al bajar de ella.\nIgual que el Modo de bajo consumo del auto real: 10–20 %%, 20 por defecto."
+    "Sandbox_MinidoracatTesla_CampMinBattery_tooltip": "El Modo acampada no se puede activar por debajo de esta carga y se apaga al bajar de ella.\nIgual que el Modo de bajo consumo del auto real: 10–20 %%, 20 por defecto.",
+    "Sandbox_MinidoracatTesla_BluetoothRange": "Alcance Bluetooth de la app sin luz (casillas)",
+    "Sandbox_MinidoracatTesla_BluetoothRange_tooltip": "Mientras haya red eléctrica, la app del teléfono conecta con el auto a cualquier distancia. Tras el corte de luz solo queda Bluetooth: conecta dentro de estas casillas alrededor del auto (1 casilla = 1 m). 0 = sin conexión tras el corte.\nLlamar al auto también está limitado por «Alcance de llamada (casillas)» de AutoDrive y por la física de vehículos del juego (unas 64 casillas); se aplica el menor.\nPor defecto 50."
 }

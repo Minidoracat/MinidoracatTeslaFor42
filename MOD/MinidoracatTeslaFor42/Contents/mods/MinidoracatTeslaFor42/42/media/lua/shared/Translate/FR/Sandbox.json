@@ -7,5 +7,7 @@
     "Sandbox_MinidoracatTesla_ChargeFuelMultiplier": "Multiplicateur de carburant à la recharge",
     "Sandbox_MinidoracatTesla_ChargeFuelMultiplier_tooltip": "Carburant de groupe électrogène consommé par une Tesla : la recharge et, voiture branchée, sa climatisation et son mode Camping. Le réseau est gratuit.\n1.0 = environ un réservoir pour recharger une Model Y de vide à plein avec la « Consommation d'essence des groupes électrogènes » par défaut ; 0.5 = la moitié ; 0 = rien.\nVarie aussi avec « Consommation d'essence des groupes électrogènes ».",
     "Sandbox_MinidoracatTesla_CampMinBattery": "Seuil de batterie du mode Camping",
-    "Sandbox_MinidoracatTesla_CampMinBattery_tooltip": "Le mode Camping ne s'active pas sous ce niveau de charge et s'arrête quand la batterie passe en dessous.\nComme le mode basse consommation de la vraie voiture : 10–20 %%, 20 par défaut."
+    "Sandbox_MinidoracatTesla_CampMinBattery_tooltip": "Le mode Camping ne s'active pas sous ce niveau de charge et s'arrête quand la batterie passe en dessous.\nComme le mode basse consommation de la vraie voiture : 10–20 %%, 20 par défaut.",
+    "Sandbox_MinidoracatTesla_BluetoothRange": "Portée Bluetooth de l'appli sans courant (cases)",
+    "Sandbox_MinidoracatTesla_BluetoothRange_tooltip": "Tant que le réseau électrique fonctionne, l'appli du téléphone joint la voiture à toute distance. Après la coupure de courant, Bluetooth seulement : dans ce nombre de cases autour de la voiture (1 case = 1 m). 0 = aucune connexion après la coupure.\nL'appel est aussi limité par « Portée d'appel (cases) » d'AutoDrive et par la physique des véhicules du jeu (environ 64 cases) ; la plus petite valeur s'applique.\n50 par défaut."
 }

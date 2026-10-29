@@ -344,7 +344,8 @@ end
 function T.deny(player, reason, vid)
     T.send(player, "deny", { reason = reason, vid = vid })
 end
--- Text of IGUI_MinidoracatTesla_Deny_<reason>; CAMP_LOW_BATTERY carries the sandbox limit as %1. A summon refused by
+-- Text of IGUI_MinidoracatTesla_Deny_<reason>; CAMP_LOW_BATTERY carries the sandbox limit as %1, NO_LINK the Bluetooth
+-- range (Keys.btRange, this side's SandboxVars: the server sends the code only). A summon refused by
 -- AutoDrive (Remote.lua ACT.summon) carries a whole translation key instead: AutoDrive's "UI_MinidoracatAutoDrive_...",
 -- or VehicleManager's "IGUI_MVM_..." from its wrapper around startSummon. Tesla's own reasons are bare CODES.
 function T.denyText(reason)
@@ -353,6 +354,7 @@ function T.denyText(reason)
     end
     local key = "IGUI_MinidoracatTesla_Deny_" .. tostring(reason)
     if reason == "CAMP_LOW_BATTERY" then return getText(key, tostring(T.Camp.minPct())) end
+    if reason == "NO_LINK" then return getText(key, tostring(T.Keys.btRange())) end
     return getText(key)
 end
 

@@ -1,4 +1,5 @@
--- Phone app (server/MinidoracatTesla/Remote.lua): reach (grid up: any distance; grid down: Bluetooth 30), only phone
+-- Phone app (server/MinidoracatTesla/Remote.lua): reach (grid up: any distance; grid down: Bluetooth, sandbox
+-- BluetoothRange, default 50), only phone
 -- key holders get answers or may act, VehicleManager rights on top of the key, the last record for an unloaded car
 -- (with the paint), the horn's one-shot OnTick, alerts per car, the bearing the client draws (Keys.bearing); the
 -- client (client/MinidoracatTesla/PhoneApp.lua): pages, back, joypad rows, paint picture, scrolling, text fit.
@@ -132,14 +133,46 @@ F.online = { owner, stranger }
 
 -- ------------------------------------------------------------------ reach
 H.section("phone app: reach")
+SandboxVars.MinidoracatTesla = SandboxVars.MinidoracatTesla or {}
+local TSB = SandboxVars.MinidoracatTesla
+TSB.BluetoothRange = nil
+check(K.btRange() == 50, "Bluetooth range: sandbox unset -> 50")
 check(K.appReach(owner, v) == "net", "grid up: 500 tiles away -> net (any distance while the server has the car)")
+TSB.BluetoothRange = 0
+check(K.appReach(owner, v) == "net", "grid up, Bluetooth range 0: still net (the range is for a power cut only)")
+TSB.BluetoothRange = nil
 grid = false
 check(K.appReach(owner, v) == nil, "grid down: 500 tiles -> no link")
-owner.x = v.x + 30
-check(K.appReach(owner, v) == "bt", "grid down: 30 tiles -> Bluetooth")
-owner.x = v.x + 30.5
-check(K.appReach(owner, v) == nil, "grid down: 30.5 tiles -> no link")
+owner.x = v.x + 50
+check(K.appReach(owner, v) == "bt", "grid down, default range: 50 tiles -> Bluetooth")
+owner.x = v.x + 50.5
+check(K.appReach(owner, v) == nil, "grid down, default range: 50.5 tiles -> no link")
 check(K.appReach(owner, nil) == nil, "car not loaded -> no link")
+TSB.BluetoothRange = 0
+owner.x = v.x
+check(K.btRange() == 0 and K.appReach(owner, v) == nil, "grid down, range 0: no link even beside the car")
+TSB.BluetoothRange = 100
+owner.x = v.x + 64
+check(K.btRange() == 64 and K.appReach(owner, v) == "bt", "range 100: clamped to 64 (64 tiles -> Bluetooth)")
+owner.x = v.x + 64.5
+check(K.appReach(owner, v) == nil, "...64.5 tiles -> no link")
+TSB.BluetoothRange = -5
+check(K.btRange() == 0, "range -5: clamped to 0")
+TSB.BluetoothRange = "x"
+check(K.btRange() == 50, "range unreadable (a string): 50")
+TSB.BluetoothRange = 0 / 0
+check(K.btRange() == 50, "range NaN: 50")
+TSB.BluetoothRange = 12
+owner.x = v.x + 12
+check(K.appReach(owner, v) == "bt", "range 12: 12 tiles -> Bluetooth")
+owner.x = v.x + 13
+check(K.appReach(owner, v) == nil, "range 12: 13 tiles -> no link")
+local gtNL = getText
+getText = function(k, a) return a and (k .. "|" .. a) or k end
+check(T.denyText("NO_LINK") == "IGUI_MinidoracatTesla_Deny_NO_LINK|12", "NO_LINK text carries the range set (12)")
+TSB.BluetoothRange = nil
+check(T.denyText("NO_LINK") == "IGUI_MinidoracatTesla_Deny_NO_LINK|50", "...and the default when unset (50)")
+getText = gtNL
 grid = true
 owner.x = v.x + 500
 
@@ -253,18 +286,18 @@ T.Charge.setStopped = realStop
 -- ------------------------------------------------------------------ power out: Bluetooth only
 H.section("phone app: power out")
 grid = false
-owner.x = v.x + 31
+owner.x = v.x + 51
 d = act(owner, "unlock")
-check(d.why == "NO_LINK" and v:areAllDoorsLocked(), "grid down, 31 tiles: NO_LINK, still locked")
-owner.x = v.x + 29
+check(d.why == "NO_LINK" and v:areAllDoorsLocked(), "grid down, 51 tiles: NO_LINK, still locked")
+owner.x = v.x + 49
 d = act(owner, "unlock")
-check(d.why == nil and not v:areAllDoorsLocked(), "grid down, 29 tiles: Bluetooth, unlocked")
+check(d.why == nil and not v:areAllDoorsLocked(), "grid down, 49 tiles: Bluetooth, unlocked")
 F.runTicks(50, 450)
 F.sent = {}
-owner.x = v.x + 31
+owner.x = v.x + 51
 cmds.appStatus(owner, { key = 9001 })
 local st = last("appState")
-check(st and st.link == nil and st.pct ~= nil and st.locked == false, "grid down, 31 tiles: status = last record, no link")
+check(st and st.link == nil and st.pct ~= nil and st.locked == false, "grid down, 51 tiles: status = last record, no link")
 grid = true
 
 -- ------------------------------------------------------------------ last record for an unloaded car
@@ -473,8 +506,12 @@ F.vehicles[v:getId()] = v
 MinidoracatAutoDriveAPI = AD
 check(summon(stranger, true).why == "NO_PHONE_KEY" and #AD.calls == 0, "no phone key: NO_PHONE_KEY")
 grid = false
-owner.x = v.x + 31
-check(summon(owner, true).why == "NO_LINK" and #AD.calls == 0, "grid down, 31 tiles: NO_LINK")
+owner.x = v.x + 51
+check(summon(owner, true).why == "NO_LINK" and #AD.calls == 0, "grid down, 51 tiles: NO_LINK")
+SandboxVars.MinidoracatTesla.BluetoothRange = 10
+owner.x = v.x + 20
+check(summon(owner, true).why == "NO_LINK" and #AD.calls == 0, "grid down, Bluetooth range 10, 20 tiles: NO_LINK")
+SandboxVars.MinidoracatTesla.BluetoothRange = nil
 owner.x = v.x + 20
 asked = {}
 answer.ok, answer.why = false, "NOT_AUTHORIZED"
@@ -554,9 +591,9 @@ check(not T.Remote.isSummoner(pB, info) and not T.Remote.isSummoner(pG, info),
 F.online, T.Store.get("ids").owner, H.steam = realOnline, realIds, false
 check(not T.Remote.isSummoner(owner, nil) and not T.Remote.isSummoner(two2, info), "no summon, or another name: no")
 grid = false
-owner.x, two2.x = v.x + 45, v.x + 45
+owner.x, two2.x = v.x + 55, v.x + 55
 d = summon(two2, false)
-check(d.why == "NO_LINK" and #AD.stops == 0, "grid down, 45 tiles: another holder's stop is refused (NO_LINK)")
+check(d.why == "NO_LINK" and #AD.stops == 0, "grid down, 55 tiles: another holder's stop is refused (NO_LINK)")
 asked = {}
 answer.ok, answer.why = false, "NOT_AUTHORIZED"
 MinidoracatVehicleManagerAPI = { canUse = function(p, car, code) asked[#asked + 1] = code; return false, "NOT_AUTHORIZED" end }
@@ -564,12 +601,24 @@ d = summon(owner, false)
 local askedDrive = false
 for _, c in ipairs(asked) do if c == "DRIVE" then askedDrive = true end end
 check(d.why == nil and d.on == false and #AD.stops == 1 and AD.stops[1].code == "CANCELLED" and not askedDrive,
-    "grid down, 45 tiles, share taken back: the summoner's own stop still works (no reach, no DRIVE asked)")
+    "grid down, 55 tiles, share taken back: the summoner's own stop still works (no reach, no DRIVE asked)")
 MinidoracatVehicleManagerAPI = nil
 grid = true
 owner.x, two2.x = v.x + 500, v.x + 3
 d = summon(owner, false)
 check(d.why == nil and d.on == false and #AD.stops == 1, "stop when none runs: done, nothing called")
+-- grid down: the picked spot within Bluetooth from the player too (the app's ring), checked again on the server
+grid = false
+owner.x = v.x + 20
+AD.calls = {}
+d = summon(owner, true, { mode = "target", x = owner.x + 51, y = owner.y })
+check(d.why == "UI_MinidoracatAutoDrive_SummonTooFar" and #AD.calls == 0,
+    "grid down: a spot 51 tiles from the player (past Bluetooth 50) -> too far, nothing started")
+d = summon(owner, true, { mode = "target", x = owner.x + 50, y = owner.y })
+check(d.why == nil and #AD.calls == 1, "grid down: a spot 50 tiles away -> AutoDrive asked")
+AD.info[v] = nil
+grid = true
+owner.x = v.x + 500
 AD.calls = {}
 summon(owner, true, { mode = "target", x = 1012.5, y = 1990.5 })
 c1 = AD.calls[1]
@@ -1552,6 +1601,18 @@ CL.can.target = { false, "UI_MinidoracatAutoDrive_SummonTooFar" }
 sread()
 check(not bs.go.enable and a.sPickNote == "UI_MinidoracatAutoDrive_SummonTooFar", "pin out of range: Go here grey, why")
 CL.can.target = { true }
+-- grid down: the ring and the spot no further than Bluetooth (Keys.btRange); AutoDrive's own reach (64) is above it
+SandboxVars.MinidoracatTesla.BluetoothRange = 12
+state({ vid = VID, grid = false, link = "bt" })
+sread()
+check(a.sumR == 12 and not bs.go.enable and a.sPickNote == "UI_MinidoracatAutoDrive_SummonTooFar",
+    "grid down, Bluetooth 12: the ring 12, the pin 18 tiles away out of reach (" .. tostring(a.sumR) .. ")")
+SandboxVars.MinidoracatTesla.BluetoothRange = nil
+sread()
+check(a.sumR == 50 and bs.go.enable, "grid down, Bluetooth unset: the ring 50, the pin inside it")
+state({ vid = VID })
+sread()
+check(a.sumR == 64 and bs.go.enable, "grid up: the ring is AutoDrive's reach (64)")
 a:onJoypadDirRight()
 sread()
 check(a.pin.x == 1012.5 and map.joypadFocused, "joypad on the map: right moves the pin 2 tiles")

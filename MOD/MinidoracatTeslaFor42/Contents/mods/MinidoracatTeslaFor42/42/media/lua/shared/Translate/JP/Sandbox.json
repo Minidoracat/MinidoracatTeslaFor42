@@ -7,5 +7,7 @@
     "Sandbox_MinidoracatTesla_ChargeFuelMultiplier": "充電の燃料消費倍率",
     "Sandbox_MinidoracatTesla_ChargeFuelMultiplier_tooltip": "Tesla が発電機の電気で使う燃料：充電と、プラグを差している間の車のエアコンやキャンプモード。送電網の電気は無料。\n1.0 = 初期設定の「発電機の燃料消費」で Model Y を空から満充電まで約 1 タンク、0.5 = 半分、0 = 燃料を使わない。\n「発電機の燃料消費」にも比例します。",
     "Sandbox_MinidoracatTesla_CampMinBattery": "キャンプモードのバッテリー下限",
-    "Sandbox_MinidoracatTesla_CampMinBattery_tooltip": "この残量未満ではキャンプモードをオンにできず、キャンプ中に下回ると自動でオフになります。\n実車の低電力モードと同じく 10～20%%、初期値 20。"
+    "Sandbox_MinidoracatTesla_CampMinBattery_tooltip": "この残量未満ではキャンプモードをオンにできず、キャンプ中に下回ると自動でオフになります。\n実車の低電力モードと同じく 10～20%%、初期値 20。",
+    "Sandbox_MinidoracatTesla_BluetoothRange": "停電時のアプリ Bluetooth 距離（マス）",
+    "Sandbox_MinidoracatTesla_BluetoothRange_tooltip": "電力網があるうちは、スマホアプリは距離に関係なく車に接続できます。停電後は Bluetooth のみで、車からこのマス数以内でだけ接続できます（1 マス＝1 m）。0 = 停電後は接続できません。\n呼び出しは AutoDrive の「呼び出し距離（マス）」と、ゲームの車両物理範囲（約 64 マス）にも制限され、最も小さい値が適用されます。\n初期値 50。"
 }

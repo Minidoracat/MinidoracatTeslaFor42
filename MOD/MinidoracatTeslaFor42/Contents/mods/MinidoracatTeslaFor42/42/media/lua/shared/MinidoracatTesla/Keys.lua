@@ -29,8 +29,15 @@ K.CHIRP_MS = 150
 K.CHIRP_TILES = 40
 -- Tesla app on the phone key (user 2026-10-27: like the real car). Owner's manual, Mobile App: phone and car talk over
 -- the cellular network, or over Bluetooth when the phone key is close. Grid up = phone network up: any distance, as
--- long as the server has the car loaded. Grid down: Bluetooth only, BT_RANGE tiles (1 tile = 1 m).
-K.BT_RANGE = 30
+-- long as the server has the car loaded. Grid down: Bluetooth only, within K.btRange() tiles (1 tile = 1 m).
+-- Bluetooth range: sandbox BluetoothRange (0-64, default 50, user 2026-10-30); 0 = no link at all once the grid is down.
+-- Both sides read it (the server's reach, the client's NO_LINK text and summon ring); unreadable: 50.
+function K.btRange()
+    local s = SandboxVars and SandboxVars.MinidoracatTesla
+    local v = s and s.BluetoothRange
+    if type(v) ~= "number" or v ~= v then return 50 end
+    return math.max(0, math.min(64, v))
+end
 
 local function sameKey(item, keyId) return item:getKeyId() == keyId end
 
@@ -84,7 +91,8 @@ function K.phoneKey(player, vehicle) return K.phoneKeyFor(player, vehicle:getKey
 function K.appReach(player, vehicle)
     if not vehicle then return nil end
     if getWorld():isHydroPowerOn() then return "net" end
-    if player:DistTo(vehicle) <= K.BT_RANGE then return "bt" end
+    local r = K.btRange()
+    if r > 0 and player:DistTo(vehicle) <= r then return "bt" end
     return nil
 end
 

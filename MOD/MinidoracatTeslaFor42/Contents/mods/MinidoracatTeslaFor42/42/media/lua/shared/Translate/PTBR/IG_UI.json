@@ -121,7 +121,7 @@
     "IGUI_MinidoracatTesla_Deny_NOT_CAMPING": "Ative primeiro o Modo Acampamento",
     "IGUI_MinidoracatTesla_Deny_FULL": "Já está totalmente carregada",
     "IGUI_MinidoracatTesla_Deny_NO_PHONE_KEY": "Você não está com a chave de telefone deste carro",
-    "IGUI_MinidoracatTesla_Deny_NO_LINK": "Sem conexão com o carro (sem energia, só Bluetooth a até 30 m)",
+    "IGUI_MinidoracatTesla_Deny_NO_LINK": "Sem conexão com o carro (sem energia, só Bluetooth a até %1 m)",
     "IGUI_MinidoracatTesla_Deny_RENT_LOCKED": "Este carro está bloqueado: a vaga de aluguel expirou",
     "IGUI_MinidoracatTesla_Deny_CAR_LOCKED": "O carro está trancado: você precisa da chave deste carro",
     "IGUI_MinidoracatTesla_Deny_NO_KEY_CARD_HOTWIRE": "Você precisa do cartão-chave deste carro ou de fazer uma ligação direta antes",

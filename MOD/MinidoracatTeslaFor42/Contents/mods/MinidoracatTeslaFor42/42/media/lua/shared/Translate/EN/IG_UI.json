@@ -121,7 +121,7 @@
     "IGUI_MinidoracatTesla_Deny_NOT_CAMPING": "Turn on Camp Mode first",
     "IGUI_MinidoracatTesla_Deny_FULL": "Already fully charged",
     "IGUI_MinidoracatTesla_Deny_NO_PHONE_KEY": "You don't carry this car's phone key",
-    "IGUI_MinidoracatTesla_Deny_NO_LINK": "Can't reach the car (with the power out, only Bluetooth within 30 m)",
+    "IGUI_MinidoracatTesla_Deny_NO_LINK": "Can't reach the car (with the power out, only Bluetooth within %1 m)",
     "IGUI_MinidoracatTesla_Deny_RENT_LOCKED": "This car is locked: its rental slot ran out",
     "IGUI_MinidoracatTesla_Deny_CAR_LOCKED": "The car is locked: you need this car's key",
     "IGUI_MinidoracatTesla_Deny_NO_KEY_CARD_HOTWIRE": "You need this car's key card, or hotwire the car first",

@@ -121,7 +121,7 @@
     "IGUI_MinidoracatTesla_Deny_NOT_CAMPING": "Zuerst den Camp-Modus einschalten",
     "IGUI_MinidoracatTesla_Deny_FULL": "Bereits voll geladen",
     "IGUI_MinidoracatTesla_Deny_NO_PHONE_KEY": "Du hast den Handyschlüssel dieses Autos nicht dabei",
-    "IGUI_MinidoracatTesla_Deny_NO_LINK": "Auto nicht erreichbar (ohne Strom nur Bluetooth bis 30 m)",
+    "IGUI_MinidoracatTesla_Deny_NO_LINK": "Auto nicht erreichbar (ohne Strom nur Bluetooth bis %1 m)",
     "IGUI_MinidoracatTesla_Deny_RENT_LOCKED": "Dieses Auto ist gesperrt: Der Mietplatz ist abgelaufen",
     "IGUI_MinidoracatTesla_Deny_CAR_LOCKED": "Das Auto ist abgeschlossen: Du brauchst den Schlüssel dieses Autos",
     "IGUI_MinidoracatTesla_Deny_NO_KEY_CARD_HOTWIRE": "Du brauchst die Schlüsselkarte dieses Autos oder musst es erst kurzschließen",

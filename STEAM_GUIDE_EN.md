@@ -160,7 +160,7 @@ A charger that works on the floor, no wall needed; slower than the Wall Connecto
 [h3]Connection[/h3]
 [list]
 [*] [b]While the grid is up[/b]: works at any distance.
-[*] [b]After the power goes out[/b]: Bluetooth only, within 30 m of the car.
+[*] [b]After the power goes out[/b]: Bluetooth only, within 50 m of the car (sandbox App Bluetooth range after power cut (tiles); 1 tile = 1 m).
 [*] [b]When it cannot reach the car[/b]: it shows the last recorded location, charge and status, with the buttons grey; recording starts once you have looked at the car in the app.
 [*] [b]Cars the game has not loaded[/b]: remote actions need the car in a loaded area (in singleplayer about 50 tiles around you); further away you see the last record only.
 [*] [b]Multiplayer[/b]: only someone carrying this car's phone key sees where it is and controls it; the server checks every command again.
@@ -187,7 +187,7 @@ A charger that works on the floor, no wall needed; slower than the Wall Connecto
 [/list]
 [*] [b]Start and stop[/b]: tap once to start, tap the same button again to stop.
 [*] [b]Screen[/b]: a small radar shows the car; below it, what the car is doing, how far it is and its speed; it says Arrived at the end, or why it stopped.
-[*] [b]Range[/b]: 64 m by default (AutoDrive sandbox Summon range (tiles), 0 turns it off); below 1920×1080 the game computes car physics over a shorter distance, and the smaller of the two applies.
+[*] [b]Range[/b]: 64 m by default (AutoDrive sandbox Summon range (tiles), 0 turns it off); below 1920×1080 the game computes car physics over a shorter distance, and the smaller of the two applies. After a power cut it is no further than the Bluetooth range (50 m by default), and the blue circle shrinks to match.
 [*] [b]When you cannot summon[/b]: you are in the car, someone is in it, it is plugged in, towing or towed, its Low Voltage Battery is flat, it will not start, someone else is summoning it, it is out of range, or it has no Autopilot Module; the button turns grey with the reason.
 [*] [b]While summoning[/b]: Sentry Mode turns off, the drive uses charge, and nearby players hear the motor and the pedestrian warning.
 [*] [b]Closing the app is fine[/b]: reopen it and a running summon is still there and can be stopped; after a power cut you can still stop your own summon after the car leaves Bluetooth range.
@@ -264,6 +264,7 @@ On the Tesla Collection page of the sandbox settings.
 [tr][td]Charging speed multiplier[/td][td]1.0[/td][td]0.1–10.0[/td][td]1.0 = official charger power (Wall Connector 11.5 kW, Mobile Connector 7.6 kW)[/td][/tr]
 [tr][td]Charging fuel multiplier[/td][td]1.0[/td][td]0–10.0[/td][td]Generator fuel a Tesla burns, charging and the car's own loads while plugged in; 1.0 = about one tank for a full charge at the default Generator Fuel Consumption, 0 = no fuel[/td][/tr]
 [tr][td]Camp Mode battery limit[/td][td]20[/td][td]10–20 (%)[/td][td]Below this charge Camp Mode cannot turn on, and while camping it turns off[/td][/tr]
+[tr][td]App Bluetooth range after power cut (tiles)[/td][td]50[/td][td]0–64[/td][td]After the power goes out the app reaches the car within this many tiles only (1 tile = 1 m), Summon included; no limit while the grid is up; 0 = no link after the power cut[/td][/tr]
 [/table]
 Options elsewhere that also affect Teslas:
 [table]
@@ -272,7 +273,7 @@ Options elsewhere that also affect Teslas:
 [tr][td]Virtual key for owners, default on[/td][td]Vehicle Manager sandbox[/td][td]Off: an owner without the key card cannot set up a new phone key[/td][/tr]
 [tr][td]Gas Consumption[/td][td]Vanilla sandbox[/td][td]Multiplies the charge driving and Summon use (Range multiplier divides it): 2 = half the range, 0 = driving uses no charge; climate, Camp Mode and Sentry use the same as before[/td][/tr]
 [tr][td]Generator Fuel Consumption[/td][td]Vanilla sandbox[/td][td]Multiplies with Charging fuel multiplier: how much generator fuel charging and the car's own loads burn[/td][/tr]
-[tr][td]Electricity Shutoff[/td][td]Vanilla sandbox[/td][td]Once the grid is down, the app works over Bluetooth within 30 m only[/td][/tr]
+[tr][td]Electricity Shutoff[/td][td]Vanilla sandbox[/td][td]Once the grid is down, the app works over Bluetooth only (App Bluetooth range after power cut, 50 m by default)[/td][/tr]
 [tr][td]SpeedLimit, default 70[/td][td]Multiplayer server settings[/td][td]Teslas, like vanilla cars, cannot go faster[/td][/tr]
 [/table]
 === ⚠️ Known limitations
@@ -353,7 +354,7 @@ Without Vehicle Manager:
 [/list]
 [h3]The app buttons are grey, or it only shows the last record?[/h3]
 [list]
-[*] After the power cut it is Bluetooth only, within 30 m; a car outside the loaded area also shows its last record only.
+[*] After the power cut it is Bluetooth only, within 50 m (servers can change it in the sandbox: App Bluetooth range after power cut); a car outside the loaded area also shows its last record only.
 [*] With Vehicle Manager, buttons you have no permission for do not work.
 [/list]
 [h3]I added the mod mid-save and see no Teslas or phones?[/h3]

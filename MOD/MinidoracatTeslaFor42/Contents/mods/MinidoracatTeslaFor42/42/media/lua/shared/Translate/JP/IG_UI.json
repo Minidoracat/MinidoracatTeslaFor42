@@ -121,7 +121,7 @@
     "IGUI_MinidoracatTesla_Deny_NOT_CAMPING": "先にキャンプモードをオンにしてください",
     "IGUI_MinidoracatTesla_Deny_FULL": "すでに満充電です",
     "IGUI_MinidoracatTesla_Deny_NO_PHONE_KEY": "この車の電話キーを持っていません",
-    "IGUI_MinidoracatTesla_Deny_NO_LINK": "車に接続できません（停電中は Bluetooth で 30 m 以内のみ）",
+    "IGUI_MinidoracatTesla_Deny_NO_LINK": "車に接続できません（停電中は Bluetooth で %1 m 以内のみ）",
     "IGUI_MinidoracatTesla_Deny_RENT_LOCKED": "この車はレンタル枠の期限切れでロックされています",
     "IGUI_MinidoracatTesla_Deny_CAR_LOCKED": "車がロックされています。この車のキーが必要です",
     "IGUI_MinidoracatTesla_Deny_NO_KEY_CARD_HOTWIRE": "この車のキーカードが必要です（または先に直結してください）",

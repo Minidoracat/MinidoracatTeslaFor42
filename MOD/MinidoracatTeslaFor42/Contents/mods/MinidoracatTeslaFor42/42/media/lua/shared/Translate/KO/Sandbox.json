@@ -7,5 +7,7 @@
     "Sandbox_MinidoracatTesla_ChargeFuelMultiplier": "충전 연료 소비 배율",
     "Sandbox_MinidoracatTesla_ChargeFuelMultiplier_tooltip": "Tesla가 발전기 전기로 쓰는 연료: 충전과, 플러그를 꽂은 동안 차의 에어컨과 캠핑 모드. 전력망 전기는 무료입니다.\n1.0 = 기본 「발전기 연료 소비량」에서 Model Y를 빈 상태에서 완충까지 약 한 통, 0.5 = 절반, 0 = 연료를 쓰지 않음.\n「발전기 연료 소비량」에도 비례합니다.",
     "Sandbox_MinidoracatTesla_CampMinBattery": "캠핑 모드 배터리 하한",
-    "Sandbox_MinidoracatTesla_CampMinBattery_tooltip": "배터리가 이 값보다 낮으면 캠핑 모드를 켤 수 없고, 캠핑 중 이 아래로 떨어지면 자동으로 꺼집니다.\n실제 차량의 저전력 모드처럼 10~20%%, 기본값 20."
+    "Sandbox_MinidoracatTesla_CampMinBattery_tooltip": "배터리가 이 값보다 낮으면 캠핑 모드를 켤 수 없고, 캠핑 중 이 아래로 떨어지면 자동으로 꺼집니다.\n실제 차량의 저전력 모드처럼 10~20%%, 기본값 20.",
+    "Sandbox_MinidoracatTesla_BluetoothRange": "정전 시 앱 블루투스 거리(칸)",
+    "Sandbox_MinidoracatTesla_BluetoothRange_tooltip": "전력망이 있을 때는 핸드폰 앱이 거리와 상관없이 차에 연결됩니다. 정전 후에는 블루투스만 되며, 차에서 이 칸 수 이내에서만 연결됩니다(1칸 = 1m). 0 = 정전 후에는 연결할 수 없습니다.\n호출은 AutoDrive의 「호출 거리(칸)」와 게임의 차량 물리 범위(약 64칸)에도 제한되며, 가장 작은 값이 적용됩니다.\n기본값 50."
 }

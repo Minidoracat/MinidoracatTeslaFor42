@@ -121,7 +121,7 @@
     "IGUI_MinidoracatTesla_Deny_NOT_CAMPING": "Najpierw włącz tryb kempingowy",
     "IGUI_MinidoracatTesla_Deny_FULL": "Już w pełni naładowany",
     "IGUI_MinidoracatTesla_Deny_NO_PHONE_KEY": "Nie masz klucza telefonicznego do tego samochodu",
-    "IGUI_MinidoracatTesla_Deny_NO_LINK": "Brak połączenia z samochodem (bez prądu tylko Bluetooth do 30 m)",
+    "IGUI_MinidoracatTesla_Deny_NO_LINK": "Brak połączenia z samochodem (bez prądu tylko Bluetooth do %1 m)",
     "IGUI_MinidoracatTesla_Deny_RENT_LOCKED": "Ten samochód jest zablokowany: wygasło jego miejsce najmu",
     "IGUI_MinidoracatTesla_Deny_CAR_LOCKED": "Samochód jest zamknięty: potrzebujesz klucza do tego auta",
     "IGUI_MinidoracatTesla_Deny_NO_KEY_CARD_HOTWIRE": "Potrzebujesz karty klucza tego auta albo najpierw odpal je na krótko",

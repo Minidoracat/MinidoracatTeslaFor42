@@ -7,5 +7,7 @@
     "Sandbox_MinidoracatTesla_ChargeFuelMultiplier": "充電耗油倍率",
     "Sandbox_MinidoracatTesla_ChargeFuelMultiplier_tooltip": "特斯拉用發電機的電時耗多少油：充電，以及插著線時車上的空調、露營模式用電。市電不耗油。\n1.0＝原版預設「發電機油耗」下，Model Y 從沒電充到滿約用一桶；0.5＝一半；0＝不耗油。\n也會跟著「發電機油耗」等比例增減。",
     "Sandbox_MinidoracatTesla_CampMinBattery": "露營模式電量下限",
-    "Sandbox_MinidoracatTesla_CampMinBattery_tooltip": "電量低於這個百分比時開不了露營模式，露營中降到這以下會自動關閉。\n和實車的低電量模式一樣可設 10～20%%，預設 20。"
+    "Sandbox_MinidoracatTesla_CampMinBattery_tooltip": "電量低於這個百分比時開不了露營模式，露營中降到這以下會自動關閉。\n和實車的低電量模式一樣可設 10～20%%，預設 20。",
+    "Sandbox_MinidoracatTesla_BluetoothRange": "停電時 App 藍牙距離（格）",
+    "Sandbox_MinidoracatTesla_BluetoothRange_tooltip": "有電網時手機 App 不限距離；停電後只剩藍牙，只在車子這麼多格內連得到（1 格＝1 公尺）。0＝停電後連不到車。\n召喚另受 AutoDrive「召喚距離（格）」與遊戲約 64 格的車輛物理範圍限制，取最小的那個。\n預設 50。"
 }

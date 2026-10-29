@@ -7,5 +7,7 @@
     "Sandbox_MinidoracatTesla_ChargeFuelMultiplier": "Treibstoff-Multiplikator beim Laden",
     "Sandbox_MinidoracatTesla_ChargeFuelMultiplier_tooltip": "Wie viel Generator-Treibstoff ein Tesla verbraucht: das Laden und, solange eingesteckt, Klimaanlage und Camp-Modus des Autos. Netzstrom ist gratis.\n1.0 = etwa ein Tank, um ein Model Y von leer bis voll zu laden, beim Standardwert von „Generator-Krafstoffverbrauch“; 0.5 = die Hälfte; 0 = kein Treibstoff.\nSkaliert auch mit „Generator-Krafstoffverbrauch“.",
     "Sandbox_MinidoracatTesla_CampMinBattery": "Batteriegrenze im Camp-Modus",
-    "Sandbox_MinidoracatTesla_CampMinBattery_tooltip": "Unter diesem Ladestand lässt sich der Camp-Modus nicht einschalten und schaltet sich ab, sobald die Batterie darunter fällt.\nWie der Energiesparmodus im echten Auto: 10–20 %%, Standard 20."
+    "Sandbox_MinidoracatTesla_CampMinBattery_tooltip": "Unter diesem Ladestand lässt sich der Camp-Modus nicht einschalten und schaltet sich ab, sobald die Batterie darunter fällt.\nWie der Energiesparmodus im echten Auto: 10–20 %%, Standard 20.",
+    "Sandbox_MinidoracatTesla_BluetoothRange": "App-Bluetooth-Reichweite bei Stromausfall (Felder)",
+    "Sandbox_MinidoracatTesla_BluetoothRange_tooltip": "Solange das Stromnetz läuft, erreicht die Handy-App das Auto auf jede Entfernung. Nach dem Stromausfall nur noch per Bluetooth: innerhalb so vieler Felder vom Auto (1 Feld = 1 m). 0 = nach dem Stromausfall keine Verbindung.\nHerbeirufen ist außerdem durch die AutoDrive-Einstellung „Herbeiruf-Reichweite (Felder)“ und die Fahrzeugphysik des Spiels (etwa 64 Felder) begrenzt; es gilt der kleinste Wert.\nStandard 50."
 }

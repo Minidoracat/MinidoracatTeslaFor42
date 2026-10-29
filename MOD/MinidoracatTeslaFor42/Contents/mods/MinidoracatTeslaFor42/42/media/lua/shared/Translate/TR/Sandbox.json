@@ -7,5 +7,7 @@
     "Sandbox_MinidoracatTesla_ChargeFuelMultiplier": "Şarj yakıt tüketimi çarpanı",
     "Sandbox_MinidoracatTesla_ChargeFuelMultiplier_tooltip": "Bir Tesla'nın harcadığı jeneratör yakıtı: şarj ve araç takılıyken klima ile Kamp Modu. Şebeke elektriği ücretsizdir.\n1.0 = varsayılan “Jeneratörlerin Yakıt Tüketimi” ile bir Model Y'yi boştan doluya şarj etmek için yaklaşık bir depo; 0.5 = yarısı; 0 = yakıt yok.\n“Jeneratörlerin Yakıt Tüketimi” ile de orantılıdır.",
     "Sandbox_MinidoracatTesla_CampMinBattery": "Kamp Modu batarya sınırı",
-    "Sandbox_MinidoracatTesla_CampMinBattery_tooltip": "Şarj bu değerin altındayken Kamp Modu açılamaz; batarya altına düşünce kapanır.\nGerçek araçtaki Düşük Güç Modu gibi: %%10–20, varsayılan 20."
+    "Sandbox_MinidoracatTesla_CampMinBattery_tooltip": "Şarj bu değerin altındayken Kamp Modu açılamaz; batarya altına düşünce kapanır.\nGerçek araçtaki Düşük Güç Modu gibi: %%10–20, varsayılan 20.",
+    "Sandbox_MinidoracatTesla_BluetoothRange": "Elektrik yokken uygulama Bluetooth menzili (kare)",
+    "Sandbox_MinidoracatTesla_BluetoothRange_tooltip": "Şebeke elektriği varken telefon uygulaması araca her mesafeden bağlanır. Elektrik kesildikten sonra yalnızca Bluetooth kalır: araçtan bu kadar kare içinde bağlanır (1 kare = 1 m). 0 = elektrik kesildikten sonra bağlantı yok.\nÇağırma ayrıca AutoDrive'ın \"Çağırma menzili (kare)\" ayarı ve oyunun yaklaşık 64 karelik araç fiziği menziliyle sınırlıdır; en küçüğü geçerlidir.\nVarsayılan 50."
 }

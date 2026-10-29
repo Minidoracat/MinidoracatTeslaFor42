@@ -810,6 +810,8 @@ function App:summonRead(api)
     elseif self.hasPos and not self.vmOnly then cx, cy = st.x + 0.5, st.y + 0.5 end
     self.sumCarX, self.sumCarY = cx, cy
     local R = tonumber(api.summonReach(pn)) or 0
+    -- grid down: the phone talks to the car over Bluetooth only, so the ring and the spot stay within it too
+    if not self.grid then R = math.min(R, K.btRange()) end
     self.sumR = R
     local d, ci = 0, 1
     if cx then d, ci = K.bearing(p:getX(), p:getY(), cx, cy) end
@@ -837,8 +839,9 @@ function App:summonRead(api)
             if pin and self.sumCome then
                 self.optPin.x, self.optPin.y = pin.x, pin.y
                 ok, w = api.canSummon(pn, v, self.optPin)
-                self.pinOk = ok == true
                 local pd, pci = K.bearing(p:getX(), p:getY(), pin.x, pin.y)
+                if ok == true and pd > R then ok, w = false, "UI_MinidoracatAutoDrive_SummonTooFar" end -- past Bluetooth
+                self.pinOk = ok == true
                 self.sPickNote = self.pinOk and txt("SummonSpotAt", txt("DirDist", txt("Dir_" .. DIRS[pci]), distText(pd)))
                     or (w and getText(w)) or ""
             end
@@ -1694,7 +1697,8 @@ end
 -- A vanilla UIWorldMap built like the mini map's (ISMiniMap.lua ISMiniMapInner:instantiate, InitPlayer: the same
 -- worldmap.xml data, default style, what the player has seen), held on the player with the summon range filling its
 -- height. It is the "spot" control: a click drops the pin; joypad: the D-pad moves it (App:move), A goes on to "Go".
--- Over it: the range ring (AutoDrive's summonReach), the car, the pin and the player. Made the first time the page opens.
+-- Over it: the range ring (AutoDrive's summonReach; grid down, no more than Bluetooth's Keys.btRange), the car, the pin
+-- and the player. Made the first time the page opens.
 local PickMap = ISUIElement:derive("MinidoracatTeslaPickMap")
 App.PickMap = PickMap
 local EARTH_M = 40075016.68557849 -- MapProjection.zoomAtMetersPerPixel (zoom = log2(EARTH_M / (metres per pixel * px)))

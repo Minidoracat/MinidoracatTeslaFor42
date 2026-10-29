@@ -1,6 +1,6 @@
 -- Tesla app on the phone key, server side (client: client/MinidoracatTesla/PhoneApp.lua; reach: Keys.appReach).
 --   * appStatus { key }: every 2 s while a holder has the app open. The car as it is when the server has it loaded and
---     the phone reaches it (grid up: any distance; grid down: Bluetooth Keys.BT_RANGE); else its last record.
+--     the phone reaches it (grid up: any distance; grid down: Bluetooth, Keys.btRange()); else its last record.
 --   * appAction { key, act, on }: lock, unlock, flash, horn, sentry, charge, frunk, trunk, summon (+ mode, x, y, dir).
 --     Holder, reach, the VehicleManager right for doing the same thing in person, and the action's own rules are
 --     checked every time, but a summoner stopping their own summon skips reach and the VehicleManager.
@@ -288,6 +288,12 @@ local function summon(player, v, on, args)
         onEnd = function(car, code, p) R.summonEnded(car, code, p, key) end }
     if mode == "target" then
         if not (coord(args.x) and coord(args.y)) then return "NO_TARGET" end
+        -- grid down: the spot within Bluetooth too, like the app's ring (PhoneApp.lua summonRead); AutoDrive's
+        -- startSummon checks its own summon range
+        if not getWorld():isHydroPowerOn() then
+            local dx, dy, r = args.x - player:getX(), args.y - player:getY(), K.btRange()
+            if dx * dx + dy * dy > r * r then return "UI_MinidoracatAutoDrive_SummonTooFar" end
+        end
         opts.x, opts.y = args.x, args.y
     elseif mode == "dumb" then
         if args.dir ~= 1 and args.dir ~= -1 then return "NO_TARGET" end
@@ -406,7 +412,7 @@ T.ServerCommands.appAction = function(player, args)
     if not key then return done("NO_PHONE_KEY") end
     local v = R.loadedCar(key)
     if not v then return done("NOT_LOADED") end -- the server doesn't have the car: nobody can act on it
-    -- the summoner stopping their own summon: always (the car may have driven past Bluetooth's 30 tiles with the grid
+    -- the summoner stopping their own summon: always (the car may have driven past Bluetooth range with the grid
     -- down, or a share been taken back; "one tap starts, one tap stops" needs the stop to work)
     local api = act == "summon" and args.on ~= true and R.summonApi()
     local ownStop = api and R.isSummoner(player, api.summonInfo(v))

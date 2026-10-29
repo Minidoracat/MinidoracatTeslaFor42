@@ -121,7 +121,7 @@
     "IGUI_MinidoracatTesla_Deny_NOT_CAMPING": "请先开启露营模式",
     "IGUI_MinidoracatTesla_Deny_FULL": "已经充满了",
     "IGUI_MinidoracatTesla_Deny_NO_PHONE_KEY": "你身上没有这辆车的手机钥匙",
-    "IGUI_MinidoracatTesla_Deny_NO_LINK": "连不上车辆（停电后只能用蓝牙，30 米内）",
+    "IGUI_MinidoracatTesla_Deny_NO_LINK": "连不上车辆（停电后只能用蓝牙，%1 米内）",
     "IGUI_MinidoracatTesla_Deny_RENT_LOCKED": "这辆车的租用名额到期，已锁定",
     "IGUI_MinidoracatTesla_Deny_CAR_LOCKED": "车锁着，需要这辆车的钥匙",
     "IGUI_MinidoracatTesla_Deny_NO_KEY_CARD_HOTWIRE": "需要这辆车的卡片钥匙，或先把车短接启动",

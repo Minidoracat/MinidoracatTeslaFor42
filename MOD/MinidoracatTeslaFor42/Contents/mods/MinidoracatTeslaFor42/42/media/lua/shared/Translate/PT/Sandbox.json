@@ -7,5 +7,7 @@
     "Sandbox_MinidoracatTesla_ChargeFuelMultiplier": "Multiplicador de combustível no carregamento",
     "Sandbox_MinidoracatTesla_ChargeFuelMultiplier_tooltip": "Quanto combustível de gerador um Tesla gasta: o carregamento e, com o carro ligado ao carregador, a climatização e o Modo Acampamento. A rede é gratuita.\n1.0 = cerca de um tanque para carregar um Model Y de vazio a cheio com o «Consumo de Combustível do Gerador» predefinido; 0.5 = metade; 0 = nada.\nTambém varia com «Consumo de Combustível do Gerador».",
     "Sandbox_MinidoracatTesla_CampMinBattery": "Limite de bateria do Modo Acampamento",
-    "Sandbox_MinidoracatTesla_CampMinBattery_tooltip": "O Modo Acampamento não liga abaixo desta carga e desliga ao ficar abaixo dela.\nComo o Modo de baixo consumo do carro real: 10–20 %%, padrão 20."
+    "Sandbox_MinidoracatTesla_CampMinBattery_tooltip": "O Modo Acampamento não liga abaixo desta carga e desliga ao ficar abaixo dela.\nComo o Modo de baixo consumo do carro real: 10–20 %%, padrão 20.",
+    "Sandbox_MinidoracatTesla_BluetoothRange": "Alcance Bluetooth do app sem energia (quadrados)",
+    "Sandbox_MinidoracatTesla_BluetoothRange_tooltip": "Com a rede elétrica ligada, o app do telefone alcança o carro a qualquer distância. Depois do corte de energia, só Bluetooth: dentro desta quantidade de quadrados do carro (1 quadrado = 1 m). 0 = sem conexão depois do corte.\nChamar o carro também é limitado por “Alcance de chamada (quadrados)” do AutoDrive e pela física de veículos do jogo (cerca de 64 quadrados); vale o menor.\nPadrão 50."
 }

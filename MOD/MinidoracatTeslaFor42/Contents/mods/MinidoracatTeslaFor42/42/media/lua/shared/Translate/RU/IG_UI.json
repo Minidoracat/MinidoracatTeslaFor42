@@ -121,7 +121,7 @@
     "IGUI_MinidoracatTesla_Deny_NOT_CAMPING": "Сначала включите режим кемпинга",
     "IGUI_MinidoracatTesla_Deny_FULL": "Уже полностью заряжено",
     "IGUI_MinidoracatTesla_Deny_NO_PHONE_KEY": "У вас нет телефона-ключа от этой машины",
-    "IGUI_MinidoracatTesla_Deny_NO_LINK": "Нет связи с машиной (без электричества только Bluetooth до 30 м)",
+    "IGUI_MinidoracatTesla_Deny_NO_LINK": "Нет связи с машиной (без электричества только Bluetooth до %1 м)",
     "IGUI_MinidoracatTesla_Deny_RENT_LOCKED": "Машина заблокирована: истёк срок аренды места",
     "IGUI_MinidoracatTesla_Deny_CAR_LOCKED": "Машина заперта: нужен ключ от этой машины",
     "IGUI_MinidoracatTesla_Deny_NO_KEY_CARD_HOTWIRE": "Нужна ключ-карта этой машины или сначала заведите её напрямую",

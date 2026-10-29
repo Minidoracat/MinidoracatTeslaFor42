@@ -7,5 +7,7 @@
     "Sandbox_MinidoracatTesla_ChargeFuelMultiplier": "Charging fuel multiplier",
     "Sandbox_MinidoracatTesla_ChargeFuelMultiplier_tooltip": "Generator fuel a Tesla burns: the charge, and the car's climate and Camp Mode while plugged in. Grid power is free.\n1.0 = about one tank to charge a Model Y from empty to full at the default Generator Fuel Consumption; 0.5 = half; 0 = no fuel.\nGenerator Fuel Consumption scales it too.",
     "Sandbox_MinidoracatTesla_CampMinBattery": "Camp Mode battery limit",
-    "Sandbox_MinidoracatTesla_CampMinBattery_tooltip": "Camp Mode cannot be turned on below this charge and turns off when the battery drops under it.\nLike the real car's Low Power Mode: 10–20%%, default 20."
+    "Sandbox_MinidoracatTesla_CampMinBattery_tooltip": "Camp Mode cannot be turned on below this charge and turns off when the battery drops under it.\nLike the real car's Low Power Mode: 10–20%%, default 20.",
+    "Sandbox_MinidoracatTesla_BluetoothRange": "App Bluetooth range after power cut (tiles)",
+    "Sandbox_MinidoracatTesla_BluetoothRange_tooltip": "While the grid is up, the phone app reaches the car at any distance. After the power goes out it is Bluetooth only: the app reaches the car within this many tiles (1 tile = 1 m). 0 = no link once the power is out.\nSummon is also limited by AutoDrive's Summon range (tiles) and the game's vehicle physics range of about 64 tiles; the smallest applies.\nDefault 50."
 }

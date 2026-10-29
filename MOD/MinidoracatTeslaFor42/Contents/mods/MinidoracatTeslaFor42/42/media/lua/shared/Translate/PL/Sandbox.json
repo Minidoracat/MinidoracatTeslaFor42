@@ -7,5 +7,7 @@
     "Sandbox_MinidoracatTesla_ChargeFuelMultiplier": "Mnożnik zużycia paliwa przy ładowaniu",
     "Sandbox_MinidoracatTesla_ChargeFuelMultiplier_tooltip": "Ile paliwa z agregatu zużywa Tesla: ładowanie oraz, gdy auto jest podłączone, jego klimatyzacja i tryb kempingowy. Prąd z sieci jest darmowy.\n1.0 = około jednego zbiornika na naładowanie Model Y od zera do pełna przy domyślnym „Zużycie paliwa przez agregat”; 0.5 = połowa; 0 = bez paliwa.\nSkaluje się też z „Zużycie paliwa przez agregat”.",
     "Sandbox_MinidoracatTesla_CampMinBattery": "Próg akumulatora w trybie kempingowym",
-    "Sandbox_MinidoracatTesla_CampMinBattery_tooltip": "Poniżej tego poziomu naładowania trybu kempingowego nie da się włączyć, a gdy akumulator spadnie niżej, tryb się wyłącza.\nJak tryb niskiego zużycia energii w prawdziwym aucie: 10–20%%, domyślnie 20."
+    "Sandbox_MinidoracatTesla_CampMinBattery_tooltip": "Poniżej tego poziomu naładowania trybu kempingowego nie da się włączyć, a gdy akumulator spadnie niżej, tryb się wyłącza.\nJak tryb niskiego zużycia energii w prawdziwym aucie: 10–20%%, domyślnie 20.",
+    "Sandbox_MinidoracatTesla_BluetoothRange": "Zasięg Bluetooth aplikacji bez prądu (pola)",
+    "Sandbox_MinidoracatTesla_BluetoothRange_tooltip": "Gdy działa sieć energetyczna, aplikacja w telefonie łączy się z samochodem z dowolnej odległości. Po odcięciu prądu zostaje tylko Bluetooth: w tylu polach od samochodu (1 pole = 1 m). 0 = po odcięciu prądu brak połączenia.\nPrzywoływanie ogranicza też „Zasięg przywoływania (pola)” z AutoDrive i fizyka pojazdów w grze (około 64 pól); obowiązuje najmniejsza wartość.\nDomyślnie 50."
 }

@@ -121,7 +121,7 @@
     "IGUI_MinidoracatTesla_Deny_NOT_CAMPING": "Activez d'abord le mode Camping",
     "IGUI_MinidoracatTesla_Deny_FULL": "Déjà entièrement chargée",
     "IGUI_MinidoracatTesla_Deny_NO_PHONE_KEY": "Vous n'avez pas la clé sur téléphone de cette voiture",
-    "IGUI_MinidoracatTesla_Deny_NO_LINK": "Voiture injoignable (sans courant, Bluetooth seulement à 30 m)",
+    "IGUI_MinidoracatTesla_Deny_NO_LINK": "Voiture injoignable (sans courant, Bluetooth seulement à %1 m)",
     "IGUI_MinidoracatTesla_Deny_RENT_LOCKED": "Cette voiture est verrouillée : sa place de location a expiré",
     "IGUI_MinidoracatTesla_Deny_CAR_LOCKED": "La voiture est verrouillée : il faut la clé de cette voiture",
     "IGUI_MinidoracatTesla_Deny_NO_KEY_CARD_HOTWIRE": "Il faut la carte-clé de cette voiture, ou la démarrer d'abord aux fils",
