@@ -15,15 +15,16 @@ require "Entity/TimedActions/ISHandcraftAction"
 require "MinidoracatTesla/Core"
 
 local T = MinidoracatTesla
-local PREFIX = "MinidoracatTesla_"
 local RECIPES = { "MinidoracatTesla_MakeWallConnector", "MinidoracatTesla_MakeMobileConnector", "MinidoracatTesla_MakeDriveUnitParts" }
+local OURS = {} -- exactly these three: a name prefix would also take another MOD's recipe named alike
+for _, name in ipairs(RECIPES) do OURS[name] = true end
 
 -- the server half of a craft (NetTimedAction.java:95-104 -> ISHandcraftAction.lua:67-83), before vanilla rebuilds the
 -- logic: learn this recipe if the level already gives it. A level too low learns nothing and complete() still refuses.
 local serverStart = ISHandcraftAction.serverStart
 function ISHandcraftAction:serverStart()
     local r = self.craftRecipe
-    if r and r:getName():sub(1, #PREFIX) == PREFIX and not self.character:isRecipeActuallyKnown(r) then
+    if r and OURS[r:getName()] and not self.character:isRecipeActuallyKnown(r) then
         r:checkAutoLearnAnySkills(self.character)
         if self.character:isRecipeActuallyKnown(r) then T.log("craft " .. r:getName() .. ": learned on the server at use") end
     end
