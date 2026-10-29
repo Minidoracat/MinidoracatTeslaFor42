@@ -12,6 +12,12 @@ option MinidoracatTesla.ChargeSpeedMultiplier
     page = MinidoracatTesla, translation = MinidoracatTesla_ChargeSpeedMultiplier,
 }
 
+option MinidoracatTesla.ChargeFuelMultiplier
+{
+    type = double, min = 0.0, max = 10.0, default = 1.0,
+    page = MinidoracatTesla, translation = MinidoracatTesla_ChargeFuelMultiplier,
+}
+
 option MinidoracatTesla.CampMinBattery
 {
     type = integer, min = 10, max = 20, default = 20,

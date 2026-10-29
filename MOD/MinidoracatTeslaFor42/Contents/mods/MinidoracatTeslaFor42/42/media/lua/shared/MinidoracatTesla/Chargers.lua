@@ -6,10 +6,16 @@ require "Moveables/ISMoveablesAction"
 
 local T = MinidoracatTesla
 
--- Generator fuel (litres, IsoGenerator's 10 L tank) per kWh charged, x GeneratorFuelConsumption (Charging.lua settle);
--- every charger burns kw x this per hour. The one number to tune. User 2026-10-28: at the vanilla default
--- GeneratorFuelConsumption 0.1 (SandboxOptions.java:146) a Model Y from 0 to 100 % (78.4 kWh) takes about one full tank.
+-- Generator fuel (litres, IsoGenerator's 10 L tank, IsoGenerator.java:505-507) per kWh a generator gives a Tesla: the
+-- charge and the car's own loads it runs while plugged in (Charging.lua settle, Battery.lua B.draw). User 2026-10-28:
+-- at the vanilla default GeneratorFuelConsumption 0.1 (SandboxOptions.java:146) a Model Y from 0 to 100 % (78.4 kWh)
+-- takes about one full tank. User 2026-10-29: any generator power costs it, through the wiring or plugged straight
+-- in (only the grid is free), scaled by the sandbox ChargeFuelMultiplier. Per kWh, so the charging speed sandbox does
+-- not change what a full charge costs.
 T.GEN_FUEL_PER_KWH = 100 / 78.4
+function T.fuelPerKwh()
+    return T.GEN_FUEL_PER_KWH * (SandboxVars.GeneratorFuelConsumption or 0.1) * T.chargeFuelMul()
+end
 
 -- Cable tiles: official metres x 6 / 7.3 (the Wall Connector's 7.3 m plays as 6 tiles), rounded.
 T.Chargers = {
@@ -39,10 +45,9 @@ T.Chargers = {
     },
 }
 
--- sprite name -> { kind, facing }; fuelPerHour = kw x GEN_FUEL_PER_KWH
+-- sprite name -> { kind, facing }
 T.ChargerSprites = {}
 for kind, c in pairs(T.Chargers) do
-    c.fuelPerHour = c.kw * T.GEN_FUEL_PER_KWH
     for facing, sprite in pairs(c.sprites) do T.ChargerSprites[sprite] = { kind = kind, facing = facing } end
 end
 

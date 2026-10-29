@@ -4,6 +4,8 @@
     "Sandbox_MinidoracatTesla_RangeMultiplier_tooltip": "Wie weit eine volle Batterie reicht.\n1.0 = so weit wie ein voller Tank in einem normalen Auto derselben Klasse; 2.0 = doppelt so weit.",
     "Sandbox_MinidoracatTesla_ChargeSpeedMultiplier": "Ladegeschwindigkeits-Multiplikator",
     "Sandbox_MinidoracatTesla_ChargeSpeedMultiplier_tooltip": "1.0 = offizielle Ladeleistung (Wall Connector 11,5 kW, Mobile Connector 7,6 kW)\n2.0 = doppelt so schnell.",
+    "Sandbox_MinidoracatTesla_ChargeFuelMultiplier": "Treibstoff-Multiplikator beim Laden",
+    "Sandbox_MinidoracatTesla_ChargeFuelMultiplier_tooltip": "Wie viel Generator-Treibstoff ein Tesla verbraucht: das Laden und, solange eingesteckt, Klimaanlage und Camp-Modus des Autos. Netzstrom ist gratis.\n1.0 = etwa ein Tank, um ein Model Y von leer bis voll zu laden, beim Standardwert von „Generator-Krafstoffverbrauch“; 0.5 = die Hälfte; 0 = kein Treibstoff.\nSkaliert auch mit „Generator-Krafstoffverbrauch“.",
     "Sandbox_MinidoracatTesla_CampMinBattery": "Batteriegrenze im Camp-Modus",
     "Sandbox_MinidoracatTesla_CampMinBattery_tooltip": "Unter diesem Ladestand lässt sich der Camp-Modus nicht einschalten und schaltet sich ab, sobald die Batterie darunter fällt.\nWie der Energiesparmodus im echten Auto: 10–20 %%, Standard 20."
 }

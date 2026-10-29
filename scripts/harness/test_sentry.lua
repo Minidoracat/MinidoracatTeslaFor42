@@ -132,7 +132,8 @@ md(v).chg = { x = 1, y = 1, z = 0, power = "grid" }
 local kc = T.Battery.kwh(v.parts.GasTank)
 F.hours = F.hours + 10
 S.settle(v)
-check(T.Battery.kwh(v.parts.GasTank) == kc and md(v).sentry.at == F.hours, "settle on a powered charger: 10 h of standby take nothing")
+check(T.Battery.kwh(v.parts.GasTank) == kc and md(v).sentry.at == F.hours and md(v).chg.fed == nil,
+    "settle on a powered charger: 10 h of standby take nothing (grid power: no fuel to bill either)")
 T.Battery.set(v, v.parts.GasTank, 75 * 0.1)
 F.hours = F.hours + 1
 S.settle(v)
@@ -150,7 +151,9 @@ md(v).chg.power = "generator"
 F.hours = F.hours + 5
 local k2 = T.Battery.kwh(v.parts.GasTank)
 S.settle(v)
-check(T.Battery.kwh(v.parts.GasTank) == k2, "on a generator: free up to now (past the grid shut-off)")
+check(T.Battery.kwh(v.parts.GasTank) == k2 and math.abs((md(v).chg.fed or 0) - 5 * S.KW) < 1e-9,
+    "on a generator: free to the pack up to now (past the grid shut-off); its 5 h wait in chg.fed for the generator's fuel")
+md(v).chg.fed = nil
 -- a sentry event after the shut-off but before the charging settle updates chg.power (still "grid"), a generator
 -- powering the charger square, pack below 20%: standby stays free and sentry stays on
 md(v).chg.power = "grid"

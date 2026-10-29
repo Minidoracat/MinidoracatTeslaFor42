@@ -220,7 +220,7 @@ check(C.powerUntil(dark, 338) == 336 and C.powerUntil(dark, 335) == 335 and C.po
 check(C.powerUntil(lit, 338) == 338,
     "powerUntil not told (sentry event between settles): the charger square still has power -> a generator, free to now")
 check(chg2.power == "generator", "after the shut-off: power = generator")
-local rate = WC.fuelPerHour * 0.1
+local rate = 11.5 * T.fuelPerKwh()
 check(near(B.kwh(B.part(v2)), 3 * 11.5, 1e-6), "1 h grid + 2 h generator = 3 h of charge")
 check(near(genSq.gen.fuel, 10 - 2 * rate, 1e-6) and near(rate, 11.5 * 100 / 78.4 * 0.1, 1e-9),
     "generator burned 11.5 kW x GEN_FUEL_PER_KWH x GeneratorFuelConsumption per hour for 2 h")
@@ -340,9 +340,7 @@ H.section("mobile connector")
 local MC = T.Chargers.MobileConnector
 check(MC.kw == 7.6 and MC.cableTiles == 5 and MC.item == "Base.MinidoracatTesla_MobileConnector",
     "Mobile Connector: 7.6 kW, 5-tile cable (official 32 A / 240 V, 6 m)")
-check(near(WC.fuelPerHour, 11.5 * 100 / 78.4, 1e-12) and near(MC.fuelPerHour, 7.6 * 100 / 78.4, 1e-12)
-    and near(MC.fuelPerHour / MC.kw, T.GEN_FUEL_PER_KWH, 1e-15), "fuel per hour = kW x the one GEN_FUEL_PER_KWH constant")
-check(near(T.GEN_FUEL_PER_KWH * 78.4 * 0.1, 10, 1e-9),
+check(near(T.fuelPerKwh(), T.GEN_FUEL_PER_KWH * 0.1, 1e-15) and near(T.GEN_FUEL_PER_KWH * 78.4 * 0.1, 10, 1e-9),
     "user 2026-10-28: at the default GeneratorFuelConsumption 0.1, a Model Y 0 -> 100 % (78.4 kWh) burns one 10 L tank")
 local mo, miso = charger(800, 800, { room = {} }, "minidoracat_tesla_01_10")
 check(mo.kind == "MobileConnector" and mo.facing == "N", "sprite 10 is a north-facing Mobile Connector")
@@ -378,7 +376,7 @@ check(mchg2.paused == "nopower" and mchg2.power == nil and B.kwh(B.part(mv2)) ==
 -- Mobile Connector power (decisions.md 2026-10-28): indoors on the building wiring like the Wall Connector; anywhere
 -- else only a running generator up to genTiles (2, same floor, Chebyshev) away, plugged straight in
 check(MC.genTiles == 2 and WC.genTiles == nil, "Mobile Connector plugs straight into a generator up to 2 tiles away; the Wall Connector never does")
-local MRATE = MC.fuelPerHour * 0.1
+local MRATE = 7.6 * T.fuelPerKwh()
 local function mplug(x, y, o, h)
     local lo_, iso_, sq_ = charger(x, y, o, "minidoracat_tesla_01_9")
     local v_ = car(5, x + 2.5, y + 0.5)
@@ -506,6 +504,70 @@ mgen2.gen.fuel = 10
 check(C.powerUntil(outGrid, 338) == 338, "powerUntil, Mobile Connector with a generator 2 tiles away: free to now")
 mgen2.gen.on = false
 check(C.powerUntil(outGrid, 338) == 336, "powerUntil, Mobile Connector outdoors in a generator's range only: free to the 336 shut-off")
+
+H.section("generator fuel (user 2026-10-29): sandbox multiplier, charging speed, the car's own loads")
+-- every kWh a generator gives a Tesla burns GEN_FUEL_PER_KWH x GeneratorFuelConsumption x ChargeFuelMultiplier
+SandboxVars.MinidoracatTesla = SandboxVars.MinidoracatTesla or {}
+local TS = SandboxVars.MinidoracatTesla
+local savedFuelMul, savedSpeedMul = TS.ChargeFuelMultiplier, TS.ChargeSpeedMultiplier
+TS.ChargeFuelMultiplier = nil
+check(T.chargeFuelMul() == 1 and near(T.fuelPerKwh() * 78.4, 10, 1e-9), "multiplier unset: 1, a full Model Y burns one 10 L tank")
+TS.ChargeFuelMultiplier = 0.5
+check(near(T.fuelPerKwh() * 78.4, 5, 1e-9), "ChargeFuelMultiplier 0.5: half a tank")
+TS.ChargeFuelMultiplier = -1
+local mulLow = T.chargeFuelMul()
+TS.ChargeFuelMultiplier = 99
+check(mulLow == 0 and T.chargeFuelMul() == 10, "the multiplier stays within the sandbox range 0-10")
+-- twice as fast at half the fuel: the fuel follows the kWh, not the hours
+TS.ChargeFuelMultiplier, TS.ChargeSpeedMultiplier = 0.5, 2
+local fo, fv, _, fchg = mplug(1700, 1000, {}, 240)
+local fg = square(1701, 1000, 0)
+fg.gen = generator(10, true)
+H.setHours(241)
+C.settle(fo, H.hours())
+local fk = B.kwh(B.part(fv)) - 5
+check(fchg.src == "generator" and near(fk, 15.2, 1e-6) and near(10 - fg.gen.fuel, fk * T.GEN_FUEL_PER_KWH * 0.1 * 0.5, 1e-9),
+    "speed x2, fuel x0.5: 1 h adds 15.2 kWh and burns 15.2 x GEN_FUEL_PER_KWH x GeneratorFuelConsumption x 0.5")
+-- stopped (full is the same): no charge, but the car's own loads still run on the generator and cost its fuel
+fchg.paused = "stopped"
+local fpart = B.part(fv)
+local fk0, ff0 = B.kwh(fpart), fg.gen.fuel
+check(B.draw(fv, fpart, 1.5) == 0 and near(fchg.fed, 1.5, 1e-12) and B.kwh(fpart) == fk0,
+    "a load on the generator-powered charger: nothing from the pack, 1.5 kWh waits in chg.fed")
+fv.running = true
+T.Update.Battery(fv, fpart, 10)
+fv.running = false
+local idle = T.spec(fv).idleKw * 10 / 60 / T.rangeMul()
+check(B.kwh(fpart) == fk0 and near(fchg.fed, 1.5 + idle, 1e-12), "motor standby in Park adds to chg.fed, not to the pack")
+H.setHours(242)
+C.settle(fo, H.hours())
+check(B.kwh(fpart) == fk0 and fchg.fed == nil and near(ff0 - fg.gen.fuel, (1.5 + idle) * T.fuelPerKwh(), 1e-12),
+    "next settle: no charge (stopped); the loads burn their kWh x fuel per kWh and chg.fed is cleared")
+-- the generator gone by the next settle: the loads it ran are not billed to anyone
+fg.gen.on = false
+B.draw(fv, fpart, 1.5)
+local ff1 = fg.gen.fuel
+H.setHours(242.5)
+C.settle(fo, H.hours())
+check(fchg.fed == nil and fg.gen.fuel == ff1 and fchg.power == nil and B.kwh(fpart) == fk0,
+    "generator off by the next settle: its loads go unbilled, chg.fed cleared, the charger has no power now")
+fg.gen.on = true
+-- on the grid the same loads are free
+local _, gv, _, gchg = mplug(1720, 1000, { room = {} }, 243)
+B.draw(gv, B.part(gv), 1.5)
+check(gchg.power == "grid" and gchg.fed == nil, "a load on grid power: nothing to bill")
+-- multiplier 0: the generator charges and runs the loads without burning fuel
+TS.ChargeFuelMultiplier = 0
+fchg.paused = nil
+H.setHours(243)
+C.settle(fo, H.hours()) -- the generator is back on: power again
+local fk2, ff2 = B.kwh(fpart), fg.gen.fuel
+B.draw(fv, fpart, 1.5)
+H.setHours(244)
+C.settle(fo, H.hours())
+check(near(B.kwh(fpart) - fk2, 15.2, 1e-6) and fg.gen.fuel == ff2 and fchg.fed == nil,
+    "ChargeFuelMultiplier 0: 1 h of charge and a load, the generator's fuel untouched")
+TS.ChargeFuelMultiplier, TS.ChargeSpeedMultiplier = savedFuelMul, savedSpeedMul
 
 H.section("one charger a square")
 local function placeSq(...)

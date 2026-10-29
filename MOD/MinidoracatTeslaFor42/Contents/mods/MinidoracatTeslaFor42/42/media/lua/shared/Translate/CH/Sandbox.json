@@ -4,6 +4,8 @@
     "Sandbox_MinidoracatTesla_RangeMultiplier_tooltip": "電池充滿能開多遠。\n1.0＝和原版同級車加滿一箱油一樣遠；2.0＝兩倍遠。",
     "Sandbox_MinidoracatTesla_ChargeSpeedMultiplier": "充電速度倍率",
     "Sandbox_MinidoracatTesla_ChargeSpeedMultiplier_tooltip": "1.0＝照官方功率充電（壁掛式充電座 11.5 kW、行動充電器 7.6 kW）\n2.0＝兩倍快。",
+    "Sandbox_MinidoracatTesla_ChargeFuelMultiplier": "充電耗油倍率",
+    "Sandbox_MinidoracatTesla_ChargeFuelMultiplier_tooltip": "特斯拉用發電機的電時耗多少油：充電，以及插著線時車上的空調、露營模式用電。市電不耗油。\n1.0＝原版預設「發電機油耗」下，Model Y 從沒電充到滿約用一桶；0.5＝一半；0＝不耗油。\n也會跟著「發電機油耗」等比例增減。",
     "Sandbox_MinidoracatTesla_CampMinBattery": "露營模式電量下限",
     "Sandbox_MinidoracatTesla_CampMinBattery_tooltip": "電量低於這個百分比時開不了露營模式，露營中降到這以下會自動關閉。\n和實車的低電量模式一樣可設 10～20%%，預設 20。"
 }
