@@ -2,7 +2,8 @@
 --   * Right-click a Tesla outside with its card on you: "Tap key card: unlock/lock" (walk to the driver door, tap).
 --   * Right-click a phone while seated with the card: "Set as phone key" (a phone key in another Tesla: "Add this
 --     car"); "Remove from phone >" lists its cars.
---   * Getting a Tesla CarKey (transfer, grab, getting out, login) asks the server to swap it for a key card.
+--   * Getting a Tesla CarKey (transfer, grab, getting in or out, its key back from the ignition, login) asks the server
+--     to swap it for a key card, seated too; a start waits for that swap (UI.swapPending). Admin Get Key: the server.
 --   * Getting out with a phone key starts a 2 Hz distance check that ends once the car locks or you get back in;
 --     players without one never run it. Pulling a locked door's handle with the key on you is vanilla already
 --     (ISVehicleMenu.onOpenDoor queues unlock + open; canUnlockDoor accepts any Key with the keyId, BaseVehicle.java:1274).
@@ -13,6 +14,7 @@ require "TimedActions/ISTimedActionQueue"
 require "TimedActions/ISInventoryTransferAction"
 require "TimedActions/ISGrabItemAction"
 require "Vehicles/TimedActions/ISExitVehicle"
+require "Vehicles/TimedActions/ISStartVehicleEngine"
 
 local T = MinidoracatTesla
 local K = T.Keys
@@ -30,36 +32,70 @@ local function tip(option, text, blocked)
 end
 
 -- ------------------------------------------------------------------ CarKey -> key card
--- Ask once per CarKey item; the server knows which keyIds are Tesla keys.
-local asked = {}
-function UI.checkKeys(player)
-    if not player or player:getVehicle() then return end -- swapped after getting out (KeyActions.lua K.sweep)
+-- Ask once per CarKey item (force: any CarKey, asked or not); the server knows which keyIds are Tesla keys and swaps
+-- what is in the inventory, seated too, never the ignition's key (KeyActions.lua K.sweep).
+local asked, sentAt, startAt = {}, nil, nil
+-- Driving, a start just went out: its Starting state may still move this car's key into the ignition, and a swap
+-- meanwhile leaves the client a ghost card (K.sweep). Until when to wait before asking; nil: ask now.
+local function startSettles(player)
+    local v = player and player:getVehicle()
+    if v and v:getDriver() == player and startAt and getTimestampMs() - startAt < K.START_MS then
+        return startAt + K.START_MS
+    end
+end
+function UI.checkKeys(player, force)
+    if not player then return end
     local inv = player:getInventory()
     if not inv:containsTypeRecurse("Base.CarKey") then return end
-    local list, fresh = inv:getAllTypeRecurse("Base.CarKey"), false
+    if startSettles(player) then return UI.checkSoon(player, force) end
+    local list, fresh = inv:getAllTypeRecurse("Base.CarKey"), force
     for i = 0, list:size() - 1 do
         local id = list:get(i):getID()
         if not asked[id] then asked[id], fresh = true, true end
     end
     if fresh then
         UI.stats.sweeps = UI.stats.sweeps + 1
+        sentAt = getTimestampMs()
         T.request(player, "keySweep")
     end
 end
 
+-- A start waits while a sweep sent in the last SWAP_WAIT_MS may still swap this Tesla's CarKey: the start would put
+-- the client's old CarKey into the ignition and the server, swapped first, takes out the card instead (K.sweep).
+-- Done once the swap has removed the CarKey here; no swap in time (dropped, a slow server): the start goes.
+-- ponytail: a swap later than SWAP_WAIT_MS still loses to the start; the server then removes the card left here
+-- (KeyActions.lua ghost guard) and the CarKey swaps once it is back from the ignition.
+function UI.swapPending(player, vehicle)
+    if not sentAt or getTimestampMs() - sentAt >= K.SWAP_WAIT_MS or not T.isTesla(vehicle) then return false end
+    local kid, list = vehicle:getKeyId(), player:getInventory():getAllTypeRecurse("Base.CarKey")
+    for i = 0, list:size() - 1 do
+        if list:get(i):getKeyId() == kid then return true end
+    end
+    return false
+end
+local startWait = ISStartVehicleEngine.waitToStart
+function ISStartVehicleEngine:waitToStart()
+    local v = self.character:getVehicle()
+    if v and UI.swapPending(self.character, v) then return true end
+    startAt = getTimestampMs()
+    return startWait(self)
+end
+
 -- Ask a second later, through a one-shot tick: in MP the client puts a transferred item into the inventory when the
--- server's ItemTransactionPacket arrives (ISInventoryTransferAction.lua:854), not inside perform, and after getting out
--- the server must have the player out of the seat too (K.sweep refuses seated players).
-local laterP, laterAt
+-- server's ItemTransactionPacket arrives (ISInventoryTransferAction.lua:854), not inside perform.
+local laterP, laterAt, laterForce
 local function laterTick()
     if getTimestampMs() < laterAt then return end
+    local settles = startSettles(laterP) -- wait here: no Remove / Add of this hook inside its own dispatch
+    if settles then laterAt = settles; return end
     Events.OnTick.Remove(laterTick)
-    laterAt = nil
-    UI.checkKeys(laterP)
+    local force = laterForce
+    laterAt, laterForce = nil, nil
+    UI.checkKeys(laterP, force)
 end
-function UI.checkSoon(player)
+function UI.checkSoon(player, force)
     if not laterAt then Events.OnTick.Add(laterTick) end
-    laterP, laterAt = player, getTimestampMs() + 1000
+    laterP, laterAt, laterForce = player, getTimestampMs() + 1000, laterForce or force
 end
 
 local function after(cls, name, fn)
@@ -75,6 +111,8 @@ after(ISInventoryTransferAction, "perform", function(a)
     if a.destContainer and a.destContainer:isInCharacterInventory(a.character) then UI.checkSoon(a.character) end
 end)
 after(ISGrabItemAction, "perform", function(a) UI.checkSoon(a.character) end)
+-- force: a CarKey asked outside may have been dropped (rate limit); ISEnterVehicle:perform, and in MP the engine too
+Events.OnEnterVehicle.Add(function(p) UI.checkSoon(p, true) end)
 
 -- first tick after login (not OnGameStart itself: ParkModesUI.lua pullInbox)
 local function loginCheck()
@@ -136,8 +174,8 @@ function ISExitVehicle:perform(...)
     local p, v = self.character, self.character:getVehicle()
     local r = exitPerform(self, ...)
     if v and T.isTesla(v) then
-        -- a spawn-time CarKey comes back from the ignition on shutdown
-        if p:getInventory():containsTypeRecurse("Base.CarKey") then UI.checkSoon(p) end
+        -- a CarKey asked while seated may have been refused (rate limit) or not swapped yet: ask again for any
+        if p:getInventory():containsTypeRecurse("Base.CarKey") then UI.checkSoon(p, true) end
         if K.phoneKey(p, v) then UI.watch(p, v) end
     end
     return r

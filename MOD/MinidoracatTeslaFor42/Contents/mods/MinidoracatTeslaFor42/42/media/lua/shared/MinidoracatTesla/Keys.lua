@@ -18,6 +18,10 @@ K.LOCK_DIST = 6
 K.LOCK_SLACK = 1    -- the server sees the player up to a step behind the client that asked
 K.WATCH_MS = 500    -- client distance check while a phone key holder walks away
 K.LOCK_TRIES = 6    -- client asks at most this many times (once per WATCH_MS) once it is LOCK_DIST away
+-- CarKey -> key card while seated (KeysUI.lua): a start waits at most SWAP_WAIT_MS for a sweep it may race; a sweep
+-- waits START_MS after a start, until the Starting state (and with it the key into the ignition) has reached the client
+K.SWAP_WAIT_MS = 3000
+K.START_MS = 2000
 -- Lock confirmation (user 2026-10-26: candidate A): the vanilla standard horn on the car's own emitter, stopped after
 -- CHIRP_MS, played by each client within CHIRP_TILES. Emitter only, no world sound: zombies do not hear it.
 K.CHIRP = "VehicleHornStandard" -- sounds_vehicle_standard.txt (event Vehicle/Standard/Horn)

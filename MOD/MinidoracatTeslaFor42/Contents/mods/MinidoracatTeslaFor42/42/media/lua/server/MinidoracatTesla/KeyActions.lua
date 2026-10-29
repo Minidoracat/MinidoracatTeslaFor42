@@ -20,7 +20,7 @@ local S = T.Sentry
 T.ServerCommands = T.ServerCommands or {}
 
 K.SOUND = "MinidoracatTesla_KeyAlert" -- 0.4 s chime (sound.md): the unlock beep; lock = the horn chirp (K.CHIRP)
-K.stats = { swaps = 0, taps = 0, pairs = 0, autoLocks = 0, chirps = 0 }
+K.stats = { swaps = 0, taps = 0, pairs = 0, autoLocks = 0, chirps = 0, holds = 0, ghosts = 0 }
 
 -- ------------------------------------------------------------------ Tesla keyId registry
 -- server-only (Store.lua): which keyIds are Teslas is nobody else's business
@@ -99,25 +99,130 @@ local function carsOf(ids)
     for i, id in ipairs(ids) do out[i] = reg[tostring(id)] end
     return out
 end
--- Every Tesla CarKey on the player becomes a key card. Not while seated: the key may be on its way into or out of the
--- ignition, and the client's copy would keep the old item id (IgnitionDup 2026-10-26: VehicleProperties.java:27-33).
+-- Every Tesla CarKey in the player's inventory becomes a key card, seated too. The ignition is not the inventory: its
+-- key never changes (a swapped ignition key doubles on the client, IgnitionDup 2026-10-26, VehicleProperties.java:
+-- 27-36). Racing a start (keys.md "坐著換卡碰上發動"): the client moves its own copy of the key in when the Starting
+-- state reaches it and sends that item (BaseVehicle.java:7484,7503 -> :8647-8675); the server then takes out whichever
+-- key has that keyId (:8726): the card a swap just made, or another key of the car before it (the card goes last), and
+-- the client keeps that key as a ghost. So the car's own key waits while its driver's motor is starting with the
+-- ignition empty; the client's start waits for a sweep it sent (KeysUI.lua UI.swapPending); a ghost that still happens
+-- is removed on the client (ghost guard below).
+local GHOST_MS = 60000 -- a swap is remembered this long for the ghost guard (a race lasts seconds)
+-- "username:old CarKey item id" -> { keys = { { item, container }, ... }, at }: every key of that car haveThisKeyId could
+-- take right after the swap (the new card, other cards, CarKeys, phone keys, any Key with that keyId). The username,
+-- not the IsoPlayer (family pitfalls).
+local swapped = {}
+local function prune(now)
+    local stale = {}
+    for k, r in pairs(swapped) do
+        if now - r.at > GHOST_MS then stale[#stale + 1] = k end
+    end
+    for _, k in ipairs(stale) do swapped[k] = nil end
+end
+-- keyId -> its keys where haveThisKeyId looks (ItemContainer.java:3242-3256): loose in the inventory, or in a key ring
+-- (nested rings too); not in bags or wallets, so the scan stays at the inventory's top level, for the keyIds in `olds`
+local function keysOf(inv, olds)
+    local out = {}
+    for kid in pairs(olds) do out[kid] = {} end
+    local function scan(c)
+        local items = c:getItems()
+        for i = 0, items:size() - 1 do
+            local it = items:get(i)
+            local b = out[it:getKeyId()]
+            if b then
+                b[#b + 1] = { it, c }
+            elseif it:getType() == "KeyRing" or it:hasTag(ItemTag.KEY_RING) then
+                scan(it:getInventory())
+            end
+        end
+    end
+    scan(inv)
+    return out
+end
+
 function K.sweep(player)
-    if not player or player:getVehicle() then return 0 end
+    if not player then return 0 end
+    local now = getTimestampMs()
+    prune(now)
     local inv = player:getInventory()
     if not inv:containsTypeRecurse("Base.CarKey") then return 0 end
-    local reg, n = registry(), 0
+    local v = player:getVehicle()
+    local hold = v and v:getDriver() == player and v:isEngineStarted() and not v:isKeysInIgnition()
+        and not v:isHotwired() and v:getKeyId() or nil
+    local reg, n, olds = registry(), 0, {}
     local list = inv:getAllTypeRecurse("Base.CarKey")
     for i = 0, list:size() - 1 do
         local key = list:get(i)
-        local car = reg[tostring(key:getKeyId())]
-        if car and replace(key, K.CARD, key:getKeyId(), keyName(K.CARD, car)) then n = n + 1 end
+        local kid = key:getKeyId()
+        local car = reg[tostring(kid)]
+        if car and kid == hold then
+            K.stats.holds = K.stats.holds + 1
+            T.log("key card: the motor is starting, " .. player:getUsername() .. "'s key waits for the ignition")
+        elseif car then
+            local oldId = key:getID()
+            if replace(key, K.CARD, kid, keyName(K.CARD, car)) then
+                n = n + 1
+                olds[kid] = olds[kid] or {}
+                table.insert(olds[kid], oldId)
+            end
+        end
     end
-    if n > 0 then
-        K.stats.swaps = K.stats.swaps + n
-        T.log("key card: swapped " .. n .. " car key(s) for " .. player:getUsername())
+    if n == 0 then return 0 end
+    local name, keys = player:getUsername(), keysOf(inv, olds)
+    for kid, ids in pairs(olds) do
+        for _, id in ipairs(ids) do swapped[name .. ":" .. id] = { keys = keys[kid], at = now } end
     end
+    K.stats.swaps = K.stats.swaps + n
+    T.log("key card: swapped " .. n .. " car key(s) for " .. name)
     return n
 end
+
+-- Vanilla "vehicle" commands, looked at one tick later (after vanilla's handler, whichever of us registered first;
+-- VehicleCommands.lua:470-482). putKeyInIgnition from the player we swapped this CarKey for: the client's start beat
+-- the swap, vanilla took a key with that keyId out of the inventory (BaseVehicle.java:8726; our card, or another key
+-- of the car first in the server's order) and the client still holds it. Every key of the car that was on the player
+-- after the swap and is no longer in its container on the server is removed there on the client too (a no-op where the
+-- client moved it as well); both ends keep the CarKey in the ignition, swapped once it comes back. Item ids travel as
+-- the client sent them, hence the username in the record. getKey (admin "Get Key" in the vehicle spawner and the
+-- mechanics menu, VehicleCommands.lua:317-327): no client action asks for the swap, so sweep here.
+local later = {}
+local function laterTick()
+    Events.OnTick.Remove(laterTick)
+    local jobs = later
+    later = {}
+    for _, fn in ipairs(jobs) do fn() end
+end
+local function nextTick(fn)
+    if #later == 0 then Events.OnTick.Add(laterTick) end
+    later[#later + 1] = fn
+end
+Events.OnClientCommand.Add(function(module, command, player, args)
+    if module ~= "vehicle" or not player then return end
+    if command == "getKey" then -- vanilla's own check (VehicleCommands.lua:319): no free sweeps past the command budget
+        if checkPermissions(player, Capability.UseMechanicsCheat) then nextTick(function() K.sweep(player) end) end
+        return
+    end
+    local key = command == "putKeyInIgnition" and type(args) == "table" and args.key
+    if not key or not instanceof(key, "Key") then return end
+    prune(getTimestampMs())
+    local k = player:getUsername() .. ":" .. key:getID()
+    local rec = swapped[k]
+    if not rec then return end
+    swapped[k] = nil
+    nextTick(function()
+        local n = 0
+        for _, e in ipairs(rec.keys) do
+            local item, cont = e[1], e[2]
+            if cont and not cont:getItemWithID(item:getID()) then
+                sendRemoveItemFromContainer(cont, item)
+                n = n + 1
+            end
+        end
+        if n == 0 then return end
+        K.stats.ghosts = K.stats.ghosts + n
+        T.log("key card: a start beat the swap, removed " .. n .. " key(s) on " .. player:getUsername() .. "'s client")
+    end)
+end)
 
 -- ------------------------------------------------------------------ lock, flash, beep
 -- every passenger door like vanilla ISLockDoors:complete (ISLockDoors.lua), then the liftgate and the frunk lid
@@ -205,7 +310,7 @@ end
 
 -- "Remove from phone > car": anywhere outside a car, the phone key on you. The item's keyId moves to the car paired
 -- last of those left; the last car out leaves a plain phone (no keyId, no record). Not in a car: the phone key may be
--- on its way into the ignition, and swapping such a key doubles it there (keys.md "IgnitionDup", as K.sweep).
+-- on its way into the ignition, and swapping such a key doubles it there (keys.md "IgnitionDup").
 T.ServerCommands.phoneUnpair = function(player, args)
     local id, key = args.id, args.key
     if not player or type(id) ~= "number" or type(key) ~= "number" then return end
