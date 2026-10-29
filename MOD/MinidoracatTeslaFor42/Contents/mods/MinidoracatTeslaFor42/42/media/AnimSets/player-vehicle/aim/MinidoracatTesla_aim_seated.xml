@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Aiming from a Tesla seat: keep the seated idle (idle/default.xml's clip and speed). Vanilla's aim nodes in this
+     state play standing clips (aim_default.xml: Bob_IdleAim1Hand, no bone mask), which lifts the character through
+     the roof. m_ConditionPriority 1 ranks this node above every vanilla aim variant (weapon, aim at floor; all 0), so
+     the first match stops the search (AnimNode.java:358-370, AnimState.java:40-53). No torso twist to add: in a car
+     the engine zeroes the twist every frame and draws the body at the car's angle (IsoPlayer.java:4424-4427,
+     AnimationPlayer.java:731-736, ModelSlotRenderData.java:315-316). The variable is set by
+     client/MinidoracatTesla/SeatAim.lua. Written out in full, no x_extends (family pitfalls.md, Linux servers). -->
+<animNode>
+	<m_Name>MinidoracatTesla_aim_seated</m_Name>
+	<m_Priority>4</m_Priority>
+	<m_ConditionPriority>1</m_ConditionPriority>
+	<m_AnimName>Bob_IdleDriving</m_AnimName>
+	<m_BlendTime>0.30</m_BlendTime>
+	<m_SpeedScale>0.80</m_SpeedScale>
+	<m_SyncTrackingEnabled>false</m_SyncTrackingEnabled>
+	<m_Conditions>
+		<m_Name>MinidoracatTeslaSeated</m_Name>
+		<m_Type>BOOL</m_Type>
+		<m_Value>true</m_Value>
+	</m_Conditions>
+</animNode>
