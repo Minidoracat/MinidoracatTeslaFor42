@@ -262,6 +262,7 @@ https://steamcommunity.com/sharedfiles/filedetails/?id=3829501237
 [/list]
 {{img:01b-fsd-zh.jpg}}
 [list]
+[*] [b]FSD 畫面[/b]：自駕時，卡片畫出要走的路線，以及周圍的車輛與殭屍；自己開車時也會畫出前方的障礙。
 [*] [b]儀表位置[/b]：AutoDrive 的卡片自動擺在特斯拉儀表上方。
 [/list]
 === ⚙️ 沙盒選項與預設值

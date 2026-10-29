@@ -262,6 +262,7 @@ A charger that works on the floor, no wall needed; slower than the Wall Connecto
 [/list]
 {{img:01b-fsd-en.jpg}}
 [list]
+[*] [b]FSD view[/b]: while the car drives itself, the card draws its route and the cars and zombies around it; when you drive, it still shows what is ahead.
 [*] [b]Dashboard spot[/b]: AutoDrive's cards sit above the Tesla dashboard by themselves.
 [/list]
 === ⚙️ Sandbox options and defaults
