@@ -34,12 +34,20 @@ end
 -- an Electricity level-up (IsoGameCharacter.java:4810-4833): learn ours here too (not relying on vanilla's handler
 -- running first) and send the list to that player (LuaManager.java:4273; the client adds what it lacks,
 -- SyncPlayerFieldsPacket.java:86-93). Electricity levels only: a few packets per character, ever.
+-- A recipe script not loaded (renamed in MinidoracatTesla_recipes.txt, replaced by another MOD) is an install problem:
+-- logged once per name, not at every level-up.
+local warned = {}
 Events.LevelPerk.Add(function(owner, perk)
     if perk ~= Perks.Electricity then return end
     local sm = getScriptManager()
     for _, name in ipairs(RECIPES) do
         local r = sm:getCraftRecipe(name)
-        if r then r:checkAutoLearnAnySkills(owner) end
+        if r then
+            r:checkAutoLearnAnySkills(owner)
+        elseif not warned[name] then
+            warned[name] = true
+            T.log("recipes: craftRecipe not found: " .. name)
+        end
     end
     sendSyncPlayerFields(owner, 1)
 end)
