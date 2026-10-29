@@ -22,8 +22,9 @@ local function item(ft, keyId)
     function it:getKeyId() return self.keyId end
     function it:setKeyId(k) self.keyId = k end
     function it:getID() return self.id end
-    function it:getDisplayName() return self.ft end -- what a dedicated server returns (tesla-keys-1026e)
+    function it:getDisplayName() return self.name or self.ft end -- unnamed on a dedicated server: the full type (tesla-keys-1026e)
     function it:setName(n) self.name = n end
+    function it:isCustomName() return self.custom == true end
     function it:getContainer() return self.cont end
     function it:hasModData() return self.md ~= nil end
     function it:getModData() self.md = self.md or {}; return self.md end
@@ -182,6 +183,7 @@ check(reg[tostring(other.keyId)] == nil, "registry: other cars are not recorded"
 check(H.moddata.MinidoracatTesla_KeyIds == nil and H.gos[T.Store.SYSTEM].md.keyIds == reg,
     "registry: in the server-only store, no Global ModData table a client could request")
 
+local served = {} -- items the server made, named by the client further down (KeysUI UI.nameOf)
 local teslaKey, plainKey = key("Base.CarKey", v.keyId), key("Base.CarKey", other.keyId)
 local wallet = bag("Base.Wallet", teslaKey)
 local ownerInv = container(wallet, plainKey)
@@ -196,7 +198,9 @@ cmds.keySweep(owner, {})
 local card = wallet.inv.items[1]
 check(card and card.ft == K.CARD and card.keyId == v.keyId, "sweep: seated, motor off: the Tesla key became a key card with the same keyId")
 check(card and card.cont == wallet.inv and teslaKey.cont == nil, "sweep: swapped in place (still in the wallet)")
-check(card and card.name == "ItemName_" .. K.CARD .. " - IGUI_VehicleNameMinidoracatTesla_ModelY", "sweep: named like the vanilla key (item - car)")
+check(card and card.name == nil and card.md[K.PAIRED_CARS][1] == "MinidoracatTesla_ModelY",
+    "sweep: left unnamed (the client names it in its language), the car model in teslaCars")
+served.card = card
 check(plainKey.cont == ownerInv and plainKey.ft == "Base.CarKey", "sweep: other cars' keys untouched")
 check(sentPackets.add == 1 and sentPackets.remove == 1, "sweep: one remove and one add packet")
 cmds.keySweep(owner, {})
@@ -708,7 +712,8 @@ local strayKey = phoneOf(strayInv)
 check(strayKey and strayKey.id ~= ph.id and phones[tostring(ph.id)] == r1 and not K.pairedWith(ph, carB.keyId),
     "a plain phone sharing the item id pairs elsewhere: a new id, the first phone's record untouched")
 phones[tostring(strayKey.id)] = nil
-check(ph.name == "ItemName_" .. K.PHONE_KEY .. " - IGUI_VehicleNameMinidoracatTesla_ModelY", "one car: named like before (item - car)")
+check(ph.name == nil and ph.md[K.PAIRED_CARS][1] == "MinidoracatTesla_ModelY", "one car: unnamed, its model in the mirror")
+served.one = ph
 multi.vehicle = carB
 check(K.canPair(multi, carB, ph) == true, "a phone key for A, seated in B with B's card: may add B")
 local oldId = ph.id
@@ -718,7 +723,8 @@ ph = phoneOf(mInv)
 local rec = phones[tostring(ph.id)]
 check(ph.keyId == carB.keyId and rec and rec[1] == carA.keyId and rec[2] == carB.keyId and phones[tostring(oldId)] == nil,
     "add B: the item's keyId = B (paired last), the server record { A, B } follows the new item id")
-check(ph.name == "ItemName_" .. K.PHONE_KEY .. " - IGUI_MinidoracatTesla_PhoneCars", "two cars: 'Phone Key - N Teslas'")
+check(ph.name == nil and #ph.md[K.PAIRED_CARS] == 2, "two cars: unnamed, both models in the mirror")
+served.two = ph
 check(F.lastSent("phonePaired").args.n == 2, "client told: now 2 cars")
 cmds.phonePair(multi, { vid = carB:getId(), id = ph.id })
 check(lastDeny() == "ALREADY_PAIRED", "B again -> ALREADY_PAIRED")
@@ -791,8 +797,9 @@ check(lastDeny() == "NO_PHONE_KEY" and phoneOf(mInv) == ph, "unpair someone else
 cmds.phoneUnpair(multi, { id = ph.id, key = carB.keyId })
 ph = phoneOf(mInv)
 local r2 = phones[tostring(ph.id)]
-check(ph.keyId == carA.keyId and r2 and #r2 == 1 and ph.name:find("VehicleName", 1, true)
-    and F.lastSent("phoneUnpaired").args.n == 1, "remove B (the item's keyId): keyId back to A, record { A }, car name again")
+check(ph.keyId == carA.keyId and r2 and #r2 == 1 and ph.name == nil and ph.md[K.PAIRED_CARS][1] == "MinidoracatTesla_ModelY"
+    and F.lastSent("phoneUnpaired").args.n == 1, "remove B (the item's keyId): keyId back to A, record { A }, A's model again")
+served.back = ph
 check(K.phoneKey(multi, carB) == nil, "removed: B no longer opens")
 multi.vehicle = carB
 cmds.phonePair(multi, { vid = carB:getId(), id = ph.id })
@@ -800,8 +807,9 @@ check(lastDeny() == "NO_KEY_CARD_HOTWIRE" and phoneOf(mInv).keyId == carA.keyId,
 multi.vehicle = nil -- (removing is done outside a car)
 cmds.phoneUnpair(multi, { id = ph.id, key = carA.keyId })
 local plainPhone = mInv.items[#mInv.items]
-check(phoneOf(mInv) == nil and plainPhone.ft == K.PHONE and plainPhone.keyId == -1 and not plainPhone.md,
-    "remove the last car: a plain phone again (no keyId, no mirror)")
+check(phoneOf(mInv) == nil and plainPhone.ft == K.PHONE and plainPhone.keyId == -1 and not plainPhone.md
+    and plainPhone.name == nil, "remove the last car: a plain phone again (no keyId, no mirror, unnamed)")
+served.plain = plainPhone
 -- removing a car that is not the item's keyId leaves the keyId alone
 mInv:AddItem(key(K.CARD, carA.keyId)); mInv:AddItem(key(K.CARD, carB.keyId))
 multi.vehicle = carA
@@ -836,9 +844,10 @@ multi.vehicle = nil
 F.sent = {}
 cmds.phoneUnpair(multi, { id = ph.id, key = carB.keyId })
 ph = phoneOf(mInv)
-check(F.lastSent("phoneUnpaired").args.car == nil
-    and ph.name == "ItemName_" .. K.PHONE_KEY .. " - IGUI_VehicleNameMinidoracatTesla_Model3",
-    "removing the unregistered car: told with no model (client says 'Tesla'); the Model 3 left names the phone key")
+check(F.lastSent("phoneUnpaired").args.car == nil and ph.name == nil and #ph.md[K.PAIRED_CARS] == 1
+    and ph.md[K.PAIRED_CARS][1] == "MinidoracatTesla_Model3",
+    "removing the unregistered car: told with no model (client says 'Tesla'); the Model 3 left is the mirror's one car")
+served.m3 = ph
 reg[tostring(carB.keyId)] = "MinidoracatTesla_ModelY"
 cmds.phoneUnpair(multi, { id = ph.id, key = carC.keyId })
 ph = mInv.items[#mInv.items]
@@ -868,10 +877,10 @@ local sink = setmetatable({}, { __index = function(t, name) -- KeysUI's events s
 end })
 local realEvents = Events
 local stubs = { "TimedActions/ISBaseTimedAction", "TimedActions/ISTimedActionQueue", "TimedActions/ISInventoryTransferAction",
-    "TimedActions/ISGrabItemAction", "Vehicles/TimedActions/ISExitVehicle" }
+    "TimedActions/ISGrabItemAction", "Vehicles/TimedActions/ISExitVehicle", "ISUI/ISInventoryPane" }
 for _, m in ipairs(stubs) do H.stub(m) end
 local GLOBALS = { "ISBaseTimedAction", "ISTimedActionQueue", "ISInventoryTransferAction", "ISGrabItemAction", "ISExitVehicle",
-    "ISWorldObjectContextMenu", "ISMinidoracatTeslaKeyTap" }
+    "ISWorldObjectContextMenu", "ISMinidoracatTeslaKeyTap", "ISInventoryPane", "getSpecificPlayer" }
 local before = {}
 for _, g in ipairs(GLOBALS) do before[g] = _G[g] end
 ISBaseTimedAction = { perform = function() end }
@@ -882,6 +891,10 @@ ISInventoryTransferAction = { perform = function() end }
 ISGrabItemAction = { start = function() end, perform = function(self) table.remove(self.queueList, 1) end }
 ISExitVehicle = { perform = function(self) self.character.vehicle = nil end }
 ISWorldObjectContextMenu = { addToolTip = function() return {} end }
+ISInventoryPane = { refreshContainer = function(self) self.refreshed = (self.refreshed or 0) + 1 end } -- vanilla lists
+local function pane(inv, onCharacter) -- an inventory window's list: the player's own, or loot (floor, glove box)
+    return setmetatable({ inventory = inv, player = 0, parent = { onCharacter = onCharacter } }, { __index = ISInventoryPane })
+end
 Events = sink
 H.side(true, false)
 require "MinidoracatTesla/KeysUI"
@@ -900,6 +913,61 @@ do -- the pairing menu tells a VehicleManager owner without the card why it is a
         "pair menu: the same owner with the card -> the card tooltip")
     lost.vehicle = nil
     MinidoracatVehicleManagerAPI = nil
+end
+
+-- Names in the player's language (KeysUI UI.nameOf / nameAll): the server leaves these items unnamed (KeyActions
+-- replace); the client adds the car from teslaCars, reads it back from a name fixed in the server's language before,
+-- and keeps a name the player gave.
+H.section("keys: item names in the player's language (client)")
+do
+    local realGT, realGTN, realName, realCli = getText, getTextOrNull, getItemName, isClient
+    isClient = function() return true end -- an MP client: phone keys read the modData mirror (Keys.lua extraIds)
+    local function speak(items, cars, many) -- this client's language
+        getItemName = function(ft) return items[ft] or ft end
+        getTextOrNull = function(k) return cars[k] end
+        getText = function(k, a) if k == "IGUI_MinidoracatTesla_PhoneCars" then return many(a) end return cars[k] or k end
+    end
+    speak({ [K.CARD] = "卡片鑰匙", [K.PHONE] = "智慧型手機", [K.PHONE_KEY] = "手機鑰匙" },
+        { IGUI_VehicleNameMinidoracatTesla_ModelY = "特斯拉 Model Y", IGUI_VehicleNameMinidoracatTesla_Model3 = "特斯拉 Model 3" },
+        function(n) return n .. " 台特斯拉" end)
+    check(UI.nameOf(served.card) == "卡片鑰匙 - 特斯拉 Model Y", "name: the swapped key card, in the client's language")
+    check(UI.nameOf(served.one) == "手機鑰匙 - 特斯拉 Model Y", "name: a phone key for one car")
+    check(UI.nameOf(served.two) == "手機鑰匙 - 2 台特斯拉", "name: a phone key for two cars")
+    check(UI.nameOf(served.back) == "手機鑰匙 - 特斯拉 Model Y", "name: back to one car after removing the other")
+    check(UI.nameOf(served.m3) == "手機鑰匙 - 特斯拉 Model 3", "name: the Model 3 left on the phone")
+    check(UI.nameOf(served.plain) == "智慧型手機", "name: unpaired, a plain smartphone")
+    local function fixed(ft, name) local it = key(ft); it.name = name; return it end -- named by the server before
+    local oldCard, oldM3 = fixed(K.CARD, "Key Card - Tesla Model Y"), fixed(K.CARD, "Key Card - Tesla Model3")
+    local oldPk, oldPhone = fixed(K.PHONE_KEY, "Phone Key - Tesla ModelY"), fixed(K.PHONE, "Smartphone")
+    local custom = fixed(K.CARD, "Bob's car")
+    custom.custom = true -- vanilla rename (ISInventoryPaneContextMenu: setName + setCustomName(true))
+    local bogus = key(K.CARD)
+    bogus.md = { [K.PAIRED_CARS] = { "Bogus" } } -- a mirror the client rewrote: no such car
+    local carKey = key("Base.CarKey", 77)
+    carKey.name = "Vehicle Key - Dash Elite"
+    local inv = container(oldCard, bag("Base.Bag_Schoolbag", oldPk, oldPhone), oldM3, custom, bogus, carKey)
+    UI.nameAll(inv)
+    check(oldCard.name == "卡片鑰匙 - 特斯拉 Model Y" and oldM3.name == "卡片鑰匙 - 特斯拉 Model 3",
+        "old names fixed in the server's language: the model read back ('Model Y', 'Model3')")
+    check(oldPk.name == "手機鑰匙 - 特斯拉 Model Y" and oldPhone.name == "智慧型手機",
+        "old names inside a bag: the phone key, and the unpaired 'Smartphone' too")
+    check(custom.name == "Bob's car", "a name the player gave stays")
+    check(bogus.name == "卡片鑰匙", "an unknown model in the mirror: the plain item name, never a raw key")
+    check(carKey.name == "Vehicle Key - Dash Elite", "other items untouched (vanilla CarKey)")
+    local n = UI.stats.names
+    UI.nameAll(inv)
+    check(UI.stats.names == n, "a second pass renames nothing")
+    local loot = pane(container(fixed(K.CARD, "Key Card - Tesla Model Y")), false)
+    loot:refreshContainer()
+    check(loot.inventory.items[1].name == "卡片鑰匙 - 特斯拉 Model Y" and loot.refreshed == 1,
+        "a loot list refresh (floor, glove box) names what it lists, then vanilla's refresh runs")
+    speak({ [K.CARD] = "Key Card", [K.PHONE] = "Smartphone", [K.PHONE_KEY] = "Phone Key" },
+        { IGUI_VehicleNameMinidoracatTesla_ModelY = "Tesla Model Y", IGUI_VehicleNameMinidoracatTesla_Model3 = "Tesla Model 3" },
+        function(n) return n .. " Teslas" end)
+    UI.nameAll(inv)
+    check(UI.nameOf(served.two) == "Phone Key - 2 Teslas" and oldCard.name == "Key Card - Tesla Model Y"
+        and oldPhone.name == "Smartphone", "an English client: the same items in English")
+    getText, getTextOrNull, getItemName, isClient = realGT, realGTN, realName, realCli
 end
 local car = tesla({ pct = 80 })
 local wInv = container(key(K.CARD, car.keyId), key(K.PHONE_KEY, car.keyId), item(K.PHONE))
@@ -985,9 +1053,10 @@ do
     sc.driver = nil
 end
 
--- MP grab: perform runs on the server's Done, before the grabbed item reaches the inventory, and a loaded client
--- takes seconds more (KeysUI.lua checkSoon wait; tesla-recal-1029-m3 keys-mp-m3)
-H.section("keys: a grabbed CarKey that reaches the inventory late (client)")
+-- A CarKey later than the grab's perform (a busy MP client: seconds; keys-mp latekey) or with no client action at all
+-- (/additem, other mods): the inventory list refresh that shows it asks, or with the window closed the next game minute.
+-- No polling in between (KeysUI.lua refreshContainer, EveryOneMinute).
+H.section("keys: a CarKey that shows up late or on its own (client)")
 do
     local function tickFor(ms)
         for _ = 1, ms / 100 do
@@ -1003,41 +1072,29 @@ do
     local function nTicks() local n = 0; for _ in pairs(ticks) do n = n + 1 end; return n end
     local gInv = container()
     local gp = player("grabber", gInv, car.x + 3, car.y)
-    local function grab(ft, who)
-        local a = setmetatable({ character = who or gp, queueList = { { type = ft, items = {} } } }, { __index = ISGrabItemAction })
-        a:start()
-        return a
-    end
+    getSpecificPlayer = function(n) return n == 0 and gp or nil end
+    local mine = pane(gInv, true)
     local base, from = nTicks(), #H.clientSent
-    local a = grab("Base.CarKey")
+    local a = setmetatable({ character = gp, queueList = { { type = "Base.CarKey", items = {} } } }, { __index = ISGrabItemAction })
+    a:start()
     tickFor(1000)
     a:perform() -- the server's Done: no CarKey here yet
-    tickFor(2500)
-    check(sweeps(from) == 0, "late grab: nothing to ask while the CarKey is not here")
-    gInv:AddItem(key("Base.CarKey", car.keyId)) -- 3.5 s after the grab began
-    tickFor(1000)
-    check(sweeps(from) == 1, "late grab: the CarKey reaching the inventory 2.5 s after perform is still asked about")
-    check(nTicks() == base, "... and the look hook is gone")
-    from = #H.clientSent
-    grab("Base.CarKey") -- no perform (the grab stopped once the world item left the square)
-    tickFor(3000)
-    gInv:AddItem(key("Base.CarKey", car.keyId))
-    tickFor(1000)
-    check(sweeps(from) == 1, "late grab without a perform: asked from the grab's start")
-    from = #H.clientSent
-    grab("Base.CarKey")
     tickFor(12000)
-    check(sweeps(from) == 0 and nTicks() == base, "a grabbed CarKey that never comes: looks 10 times, then the hook goes")
+    check(sweeps(from) == 0 and nTicks() == base, "late grab: nothing asked while the CarKey is not here, no tick hook left")
+    gInv:AddItem(key("Base.CarKey", car.keyId)) -- 13 s after the grab began (the old retry gave up after 10)
+    mine:refreshContainer() -- drawDirty after the item packet
+    check(sweeps(from) == 1, "a CarKey 13 s late: the inventory list refresh that shows it asks at once")
+    mine:refreshContainer()
+    check(sweeps(from) == 1 and mine.refreshed == 2, "... once: refreshes with only asked CarKeys send nothing")
     from = #H.clientSent
-    local nInv = container()
-    a = grab("Base.Nails", player("nails", nInv, car.x + 3, car.y))
-    tickFor(1000)
-    a:perform()
-    tickFor(1100)
-    check(nTicks() == base, "a grab of something else: one look a second after perform, no more")
-    nInv:AddItem(key("Base.CarKey", car.keyId))
-    tickFor(2000)
-    check(sweeps(from) == 0, "... so a CarKey arriving later is not looked for")
+    gInv:AddItem(key("Base.CarKey", car.keyId)) -- the server added it (/additem), the window is closed: no refresh
+    for _, fn in ipairs(hooks.EveryOneMinute or {}) do fn() end
+    check(sweeps(from) == 1, "a CarKey with no client action and no list drawn: asked at the next game minute")
+    for _, fn in ipairs(hooks.EveryOneMinute or {}) do fn() end
+    check(sweeps(from) == 1, "... and not again the minute after")
+    from = #H.clientSent
+    pane(container(key("Base.CarKey", car.keyId)), false):refreshContainer()
+    check(sweeps(from) == 0, "a CarKey in a loot list (floor, glove box) is not asked about")
 end
 Events = realEvents
 H.side(false, true)

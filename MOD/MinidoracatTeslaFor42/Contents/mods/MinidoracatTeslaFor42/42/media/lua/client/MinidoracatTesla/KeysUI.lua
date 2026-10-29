@@ -2,8 +2,10 @@
 --   * Right-click a Tesla outside with its card on you: "Tap key card: unlock/lock" (walk to the driver door, tap).
 --   * Right-click a phone while seated with the card: "Set as phone key" (a phone key in another Tesla: "Add this
 --     car"); "Remove from phone >" lists its cars.
---   * Getting a Tesla CarKey (transfer, grab, getting in or out, its key back from the ignition, login) asks the server
---     to swap it for a key card, seated too; a start waits for that swap (UI.swapPending). Admin Get Key: the server.
+--   * Getting a Tesla CarKey (transfer, grab, a CarKey showing up on you however it came, getting in or out, its key
+--     back from the ignition, login) asks the server to swap it for a key card, seated too; a start waits for that swap
+--     (UI.swapPending). Admin Get Key: the server.
+--   * Key card, phone and phone key names: built here in the player's language, local only (UI.nameOf).
 --   * Getting out with a phone key starts a 2 Hz distance check that ends once the car locks or you get back in;
 --     players without one never run it. Pulling a locked door's handle with the key on you is vanilla already
 --     (ISVehicleMenu.onOpenDoor queues unlock + open; canUnlockDoor accepts any Key with the keyId, BaseVehicle.java:1274).
@@ -15,13 +17,14 @@ require "TimedActions/ISInventoryTransferAction"
 require "TimedActions/ISGrabItemAction"
 require "Vehicles/TimedActions/ISExitVehicle"
 require "Vehicles/TimedActions/ISStartVehicleEngine"
+require "ISUI/ISInventoryPane"
 
 local T = MinidoracatTesla
 local K = T.Keys
 T.ClientCommands = T.ClientCommands or {}
 local UI = {}
 T.KeysUI = UI
-UI.stats = { sweeps = 0, watchAdds = 0, watchRemoves = 0, chirps = 0, chirpStops = 0 }
+UI.stats = { sweeps = 0, watchAdds = 0, watchRemoves = 0, chirps = 0, chirpStops = 0, names = 0 }
 
 local function denyText(why) return getText("IGUI_MinidoracatTesla_Deny_" .. tostring(why)) end
 local function tip(option, text, blocked)
@@ -81,37 +84,24 @@ function ISStartVehicleEngine:waitToStart()
     return startWait(self)
 end
 
--- Ask a second later, through a one-shot tick. In MP a grab's perform runs on the server's Done (ItemTransactionPacket,
+-- Ask a second later, through a one-shot tick: in MP a grab's perform runs on the server's Done (ItemTransactionPacket,
 -- ISGrabItemAction.lua:34-35), before the grabbed item reaches the inventory (tesla-keygrab-1029-diag4..6: no CarKey at
--- perform, there a second later); some grabs never perform yet the CarKey arrives 3.3 s in (tesla-recal-1029-m3
--- keys-mp-m3, tesla-keygrab-1029-late-main: no keySweep ever). So a grab of a CarKey asks from its start, and
--- (wait) while no CarKey we have not asked about is here, looks again once a second, LOOKS times.
-local LOOKS = 10
-local laterP, laterAt, laterForce, laterLooks
-local function unasked(player)
-    local list = player:getInventory():getAllTypeRecurse("Base.CarKey")
-    for i = 0, list:size() - 1 do
-        if not asked[list:get(i):getID()] then return true end
-    end
-    return false
-end
+-- perform, there a second later). A CarKey later still (a busy client: 3.3 s in, tesla-recal-1029-m3 keys-mp-m3) or
+-- with no client action at all (/additem, other mods) is asked about when it shows up (UI.nameAll's list refresh,
+-- EveryOneMinute below).
+local laterP, laterAt, laterForce
 local function laterTick()
     if getTimestampMs() < laterAt then return end
     local settles = startSettles(laterP) -- wait here: no Remove / Add of this hook inside its own dispatch
     if settles then laterAt = settles; return end
-    if laterLooks > 1 and not unasked(laterP) then
-        laterLooks, laterAt = laterLooks - 1, getTimestampMs() + 1000
-        return
-    end
     Events.OnTick.Remove(laterTick)
     local force = laterForce
     laterAt, laterForce = nil, nil
     UI.checkKeys(laterP, force)
 end
-function UI.checkSoon(player, force, wait)
-    if not laterAt then Events.OnTick.Add(laterTick); laterLooks = 1 end
+function UI.checkSoon(player, force)
+    if not laterAt then Events.OnTick.Add(laterTick) end
     laterP, laterAt, laterForce = player, getTimestampMs() + 1000, laterForce or force
-    if wait then laterLooks = LOOKS end
 end
 
 local function after(cls, name, fn)
@@ -126,19 +116,7 @@ end
 after(ISInventoryTransferAction, "perform", function(a)
     if a.destContainer and a.destContainer:isInCharacterInventory(a.character) then UI.checkSoon(a.character) end
 end)
--- the grab's current batch (ISGrabItemAction:checkQueueList: one item type per batch)
-local function grabsKey(a)
-    local q = a.queueList and a.queueList[1]
-    return q ~= nil and q.type == "Base.CarKey"
-end
-after(ISGrabItemAction, "start", function(a) if grabsKey(a) then UI.checkSoon(a.character, false, true) end end)
-local grabPerform = ISGrabItemAction.perform
-function ISGrabItemAction:perform(...)
-    local key = grabsKey(self) -- perform takes this batch off the queue
-    local r = grabPerform(self, ...)
-    UI.checkSoon(self.character, false, key or grabsKey(self))
-    return r
-end
+after(ISGrabItemAction, "perform", function(a) UI.checkSoon(a.character) end)
 -- force: a CarKey asked outside may have been dropped (rate limit); ISEnterVehicle:perform, and in MP the engine too
 Events.OnEnterVehicle.Add(function(p) UI.checkSoon(p, true) end)
 
@@ -148,6 +126,62 @@ local function loginCheck()
     UI.checkKeys(getSpecificPlayer(0))
 end
 Events.OnGameStart.Add(function() Events.OnTick.Add(loginCheck) end)
+
+-- ------------------------------------------------------------------ item names in the player's language
+-- The server leaves the key card, the phone and the phone key unnamed (KeyActions.lua replace), so the client builds
+-- them from its own scripts, in its own language; the car comes from the item's teslaCars (K.PAIRED_CARS). Items from
+-- before carry a name fixed in the server's language (saved and sent as it is, InventoryItem.java:1711-1714): the car
+-- model is read back from it (every language's IGUI_VehicleName has "Model Y" / "Model 3"). A name the player gave
+-- (vanilla rename: setCustomName) stays. setName here is local only, never synced: what the server sends is named
+-- again at the next list refresh.
+local NAMED = { K.CARD, K.PHONE, K.PHONE_KEY }
+local MODELS = { ["Model Y"] = "MinidoracatTesla_ModelY", ModelY = "MinidoracatTesla_ModelY",
+    ["Model 3"] = "MinidoracatTesla_Model3", Model3 = "MinidoracatTesla_Model3" }
+local function carText(car) return type(car) == "string" and getTextOrNull("IGUI_VehicleName" .. car) or nil end
+local function modelIn(name)
+    for s, car in pairs(MODELS) do
+        if name:find(s, 1, true) then return car end
+    end
+end
+-- "Key Card - Tesla Model Y", "Phone Key - 2 Teslas", "Smartphone" in this client's language
+function UI.nameOf(item)
+    local ft = item:getFullType()
+    local name = getItemName(ft) -- LuaManager.java:8745-8763: the script's DisplayName in this client's language
+    if ft == K.PHONE then return name end
+    local n = ft == K.PHONE_KEY and #K.pairedIds(item) or 1
+    if n > 1 then return name .. " - " .. getText("IGUI_MinidoracatTesla_PhoneCars", tostring(n)) end
+    local cars = item:hasModData() and item:getModData()[K.PAIRED_CARS]
+    local car = carText(type(cars) == "table" and cars[1]) or carText(modelIn(item:getDisplayName() or ""))
+    return car and name .. " - " .. car or name
+end
+-- every key card, phone and phone key in container c, bags inside too
+function UI.nameAll(c)
+    if not c then return end
+    for _, ft in ipairs(NAMED) do
+        local list = c:getAllTypeRecurse(ft)
+        for i = 0, list:size() - 1 do
+            local it = list:get(i)
+            if not it:isCustomName() then
+                local name = UI.nameOf(it)
+                if name ~= it:getDisplayName() then it:setName(name); UI.stats.names = UI.stats.names + 1 end
+            end
+        end
+    end
+end
+-- No event fires when an item packet adds to a container on the client (AddInventoryItemToContainerPacket.processClient
+-- only sets drawDirty). Each inventory or loot list refresh (a container picked, the container list rebuilt, drawDirty:
+-- ISInventoryPage.lua:1125,1891, ISInventoryPane.lua:2211) names what it is about to list, and on the player's own
+-- window asks about a CarKey that has just shown up.
+local refresh = ISInventoryPane.refreshContainer
+function ISInventoryPane:refreshContainer(...)
+    UI.nameAll(self.inventory)
+    if self.parent and self.parent.onCharacter then UI.checkKeys(getSpecificPlayer(self.player)) end
+    return refresh(self, ...)
+end
+-- no list is drawn with the inventory window closed: a CarKey that came meanwhile is asked about within a game minute
+Events.EveryOneMinute.Add(function()
+    for pn = 0, 3 do UI.checkKeys(getSpecificPlayer(pn)) end
+end)
 
 -- ------------------------------------------------------------------ walk-away lock
 -- Asks again every WATCH_MS until the car shows locked, at most LOCK_TRIES times: the server may still place the

@@ -42,12 +42,17 @@ Events.OnSpawnVehicleEnd.Add(K.register)
 
 -- Same container, new item: server Remove/AddItem first, then the packets (pitfalls.md: send only sends). `ids` (phone
 -- keys): every paired car in pairing order, written to the server-only record (the authority, Keys.pairedWith) and to
--- the modData mirror the client reads; the new item has a new id, so the old id's record goes.
+-- the modData mirror the client reads; the new item has a new id, so the old id's record goes. `cars`: the car models
+-- (teslaCars: the card's one car, the phone key's cars in pairing order), for the client's item name and menu labels.
+-- No setName: a name other than the item's original one is saved and sent to clients as it is (InventoryItem.java:
+-- 1711-1714, read back :2038), so a name made here stays in the server's language on every client (production
+-- players.db 2026-10-29: an unpaired phone saved as "Smartphone"). Unnamed, the client builds the item from its own
+-- script (its language) and KeysUI.lua UI.nameOf adds the car.
 -- Item ids are random ints, not unique (InventoryItemFactory.java:139), so every phone key made here is recorded (one
 -- car too) and a new one never takes a recorded id: two phone keys never share one (review 2026-10-27, round 1 and 2:
 -- a twin would inherit the other's cars). ponytail: phone keys paired before app v2 are not recorded, so a new one can
 -- still land on such an id (chance: their count / 2^31 per pairing); they get recorded at their next pairing.
-local function replace(old, fullType, keyId, name, ids, cars)
+local function replace(old, fullType, keyId, ids, cars)
     local cont = old:getContainer()
     if not cont then return nil end
     local item = instanceItem(fullType)
@@ -61,7 +66,7 @@ local function replace(old, fullType, keyId, name, ids, cars)
         end
     end
     item:setKeyId(keyId)
-    item:setName(name)
+    if cars then item:getModData()[K.PAIRED_CARS] = cars end
     if ids then -- a phone (key): its record follows the new item id
         local oldId = tostring(old:getID())
         local r = phones[oldId]
@@ -70,8 +75,7 @@ local function replace(old, fullType, keyId, name, ids, cars)
             local copy = {}
             for i = 1, #ids do copy[i] = ids[i] end
             phones[tostring(item:getID())] = copy
-            local md = item:getModData()
-            md[K.PAIRED], md[K.PAIRED_CARS] = ids, cars
+            item:getModData()[K.PAIRED] = ids
         end
     end
     cont:Remove(old)
@@ -80,20 +84,8 @@ local function replace(old, fullType, keyId, name, ids, cars)
     sendAddItemToContainer(cont, item)
     return item
 end
--- not item:getDisplayName(): on a dedicated server that is the script's full type (tesla-keys-1026e). car nil (a keyId
--- missing from the registry): the plain item name
-local function keyName(fullType, car)
-    local name = getItemNameFromFullType(fullType)
-    return car and name .. " - " .. getText("IGUI_VehicleName" .. car) or name
-end
-
--- a phone key's name: "Phone Key - Model Y" for one car, "Phone Key - 2 Teslas" for more
-local function phoneName(ids, cars)
-    if #ids == 1 then return keyName(K.PHONE_KEY, cars[1]) end
-    return getItemNameFromFullType(K.PHONE_KEY) .. " - " .. getText("IGUI_MinidoracatTesla_PhoneCars", tostring(#ids))
-end
--- the car models of `ids` (menu labels on the client), from the registry every loaded Tesla is in; an id it lacks (a
--- store from before the registry) stays nil, never another car's model
+-- the car models of `ids` (item name and menu labels on the client), from the registry every loaded Tesla is in; an id
+-- it lacks (a store from before the registry) stays nil, never another car's model
 local function carsOf(ids)
     local reg, out = registry(), {}
     for i, id in ipairs(ids) do out[i] = reg[tostring(id)] end
@@ -160,7 +152,7 @@ function K.sweep(player)
             T.log("key card: the motor is starting, " .. player:getUsername() .. "'s key waits for the ignition")
         elseif car then
             local oldId = key:getID()
-            if replace(key, K.CARD, kid, keyName(K.CARD, car)) then
+            if replace(key, K.CARD, kid, nil, { car }) then
                 n = n + 1
                 olds[kid] = olds[kid] or {}
                 table.insert(olds[kid], oldId)
@@ -299,9 +291,9 @@ T.ServerCommands.phonePair = function(player, args)
     -- a phone key keeps its cars and adds this one last: the item's keyId (vanilla's) becomes this car
     local ids = phone:getFullType() == K.PHONE_KEY and K.pairedIds(phone) or {}
     ids[#ids + 1] = v:getKeyId()
-    K.register(v) -- this car is in the registry before its name is read
+    K.register(v) -- this car is in the registry before its model is read
     local cars = carsOf(ids)
-    if not replace(phone, K.PHONE_KEY, v:getKeyId(), phoneName(ids, cars), ids, cars) then return end
+    if not replace(phone, K.PHONE_KEY, v:getKeyId(), ids, cars) then return end
     K.stats.pairs = K.stats.pairs + 1
     T.log("phone key paired vid=" .. v:getId() .. " cars=" .. #ids .. " by " .. player:getUsername()
         .. (why and " (no card: " .. why .. ")" or ""))
@@ -324,10 +316,9 @@ T.ServerCommands.phoneUnpair = function(player, args)
     local car = registry()[tostring(key)] -- nil: the client names it "Tesla"
     local done
     if #left == 0 then
-        done = replace(phone, K.PHONE, -1, getItemNameFromFullType(K.PHONE), left)
+        done = replace(phone, K.PHONE, -1, left)
     else
-        local cars = carsOf(left)
-        done = replace(phone, K.PHONE_KEY, left[#left], phoneName(left, cars), left, cars)
+        done = replace(phone, K.PHONE_KEY, left[#left], left, carsOf(left))
     end
     if not done then return end
     T.log("phone key unpaired key=" .. tostring(key) .. " left=" .. #left .. " by " .. player:getUsername())
