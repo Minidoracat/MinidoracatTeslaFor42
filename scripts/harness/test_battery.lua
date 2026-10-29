@@ -36,6 +36,17 @@ SandboxVars.MinidoracatTesla.RangeMultiplier = 2
 local k2 = T.kmPerKwh(v)
 SandboxVars.MinidoracatTesla.RangeMultiplier = 1
 check(near(k2, 2 * T.kmPerKwh(v)), "RangeMultiplier 2 doubles km/kWh")
+-- vanilla sandbox Gas Consumption (CarGasConsumption, 0-100) scales the drive draw like petrol (user 2026-10-29)
+local k1 = T.kmPerKwh(v)
+SandboxVars.CarGasConsumption = 1
+check(T.kmPerKwh(v) == k1, "Gas Consumption 1 (vanilla default) = unset: the calibration km/kWh")
+SandboxVars.CarGasConsumption = 2
+check(near(T.kmPerKwh(v), k1 / 2), "Gas Consumption 2 halves km/kWh")
+SandboxVars.CarGasConsumption = 0
+check(T.kmPerKwh(v) == nil and T.rangeKm(v) == math.huge, "Gas Consumption 0: no range limit (km/kWh nil, range math.huge)")
+SandboxVars.CarGasConsumption = "x"
+check(T.kmPerKwh(v) == k1, "Gas Consumption unreadable: 1")
+SandboxVars.CarGasConsumption = nil
 
 H.section("drain")
 local s = T.spec(v)
@@ -63,6 +74,26 @@ k0 = B.kwh(part)
 T.Update.Battery(v, part, 1)
 check(near(k0 - B.kwh(part), used / 2, 1e-5), "RangeMultiplier 2 halves the drain")
 SandboxVars.MinidoracatTesla.RangeMultiplier = 1
+SandboxVars.CarGasConsumption = 2
+k0 = B.kwh(part)
+T.Update.Battery(v, part, 1)
+check(near(k0 - B.kwh(part), used * 2, 1e-5), "Gas Consumption 2 doubles the drain (idle included)")
+SandboxVars.CarGasConsumption = 0
+k0 = B.kwh(part)
+T.Update.Battery(v, part, 1)
+check(B.kwh(part) == k0, "Gas Consumption 0: driving takes no charge")
+SandboxVars.CarGasConsumption = 1
+k0 = B.kwh(part)
+T.Update.Battery(v, part, 1)
+check(near(k0 - B.kwh(part), used, 1e-5), "Gas Consumption 1: the calibration drain")
+-- the car's own loads (climate, camp socket, 12V, sentry: B.draw) keep their kWh whatever the Gas Consumption
+local drew = {}
+for _, g in ipairs({ 0, 2 }) do
+    SandboxVars.CarGasConsumption = g
+    drew[#drew + 1] = B.draw(v, part, 0.5)
+end
+check(drew[1] == 0.5 and drew[2] == 0.5, "Gas Consumption 0 and 2: B.draw (climate, camp, sentry) takes the same 0.5 kWh")
+SandboxVars.CarGasConsumption = nil
 local empty = H.vehicle({ kwh = 0.01, running = true, speed = 80 })
 T.Update.Battery(empty, B.part(empty), 10)
 check(B.kwh(B.part(empty)) == 0 and empty.transmits == 1, "drain clamps at 0 and transmits the empty state")
@@ -122,6 +153,23 @@ check(near(before - B.kwh(spart), drive, 1e-9), "...and the end charges only the
 before = B.kwh(spart)
 B.summonEnd(sv)
 check(B.kwh(spart) == before, "an end with nothing kept: no charge")
+SandboxVars.CarGasConsumption = 2
+B.summonStart(sv, 5000)
+summoned[sv] = { by = "own", phase = "driving", startedMs = 5000 }
+sv.x = sv.x + 50
+summoned[sv] = nil
+before = B.kwh(spart)
+B.summonEnd(sv)
+check(near(before - B.kwh(spart), 2 * drive, 1e-9), "Gas Consumption 2: a summon's path takes twice the charge")
+SandboxVars.CarGasConsumption = 0
+B.summonStart(sv, 6000)
+summoned[sv] = { by = "own", phase = "driving", startedMs = 6000 }
+sv.x = sv.x + 50
+summoned[sv] = nil
+before = B.kwh(spart)
+B.summonEnd(sv)
+check(B.kwh(spart) == before, "Gas Consumption 0: a summon takes no charge")
+SandboxVars.CarGasConsumption = nil
 T.Remote = realRemote
 
 H.section("regen")

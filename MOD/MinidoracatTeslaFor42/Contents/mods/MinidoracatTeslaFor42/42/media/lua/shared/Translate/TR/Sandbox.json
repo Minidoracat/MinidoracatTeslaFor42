@@ -1,7 +1,7 @@
 {
     "Sandbox_MinidoracatTesla": "Tesla Collection",
     "Sandbox_MinidoracatTesla_RangeMultiplier": "Menzil çarpanı",
-    "Sandbox_MinidoracatTesla_RangeMultiplier_tooltip": "Dolu bir bataryayla ne kadar gidilebileceği.\n1.0 = aynı sınıftaki normal bir aracın dolu depoyla gittiği kadar; 2.0 = iki katı.",
+    "Sandbox_MinidoracatTesla_RangeMultiplier_tooltip": "Dolu bir bataryayla ne kadar gidilebileceği.\n1.0 = aynı sınıftaki normal bir aracın dolu depoyla gittiği kadar; 2.0 = iki katı.\nOyunun “Yakıt Tüktetimi” ayarıyla da değişir: 2 = yarısı kadar; 0 = sürüş şarj harcamaz.",
     "Sandbox_MinidoracatTesla_ChargeSpeedMultiplier": "Şarj hızı çarpanı",
     "Sandbox_MinidoracatTesla_ChargeSpeedMultiplier_tooltip": "1.0 = resmi şarj gücü (Wall Connector 11,5 kW, Mobile Connector 7,6 kW)\n2.0 = iki kat hızlı.",
     "Sandbox_MinidoracatTesla_ChargeFuelMultiplier": "Şarj yakıt tüketimi çarpanı",

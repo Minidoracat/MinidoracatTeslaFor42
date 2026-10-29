@@ -79,7 +79,8 @@ function R.remember(v, create)
         kwh, added, left, cap = T.Battery.chargeEstimate(part, chg, T.hours())
     end -- same as the HUD between settlements
     r.pct = math.floor(math.min(100, kwh * 100 / math.max(1, cap)) + 0.5)
-    r.km = math.floor(kwh * T.kmPerKwh(v) + 0.5)
+    local kmk = T.kmPerKwh(v) -- nil: no range limit (Gas Consumption 0), the app shows "--"; an empty pack is 0
+    r.km = kmk and math.floor(kwh * kmk + 0.5) or (kwh <= 0 and 0 or nil)
     r.locked = v:areAllDoorsLocked()
     r.sentry = md.sentry ~= nil
     r.drive = v:isEngineRunning() and not chg -- plugged in = Park, as the HUD gear (HUD.lua:276)

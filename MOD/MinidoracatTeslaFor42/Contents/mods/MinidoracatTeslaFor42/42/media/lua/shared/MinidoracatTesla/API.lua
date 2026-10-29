@@ -16,6 +16,7 @@ function API.battery(vehicle)
     return T.Battery.pct(part), T.Battery.kwh(part), T.Battery.capacity(part)
 end
 
+-- km at 50 km/h; math.huge when vanilla Gas Consumption is 0 (driving takes no charge) and the pack has charge, 0 empty
 function API.rangeKm(vehicle) return T.rangeKm(vehicle) end
 
 -- true while a charge cable is plugged in (charging, paused or full)

@@ -1,7 +1,7 @@
 {
     "Sandbox_MinidoracatTesla": "Tesla Collection",
     "Sandbox_MinidoracatTesla_RangeMultiplier": "Multiplicateur d'autonomie",
-    "Sandbox_MinidoracatTesla_RangeMultiplier_tooltip": "Distance parcourue avec une batterie pleine.\n1.0 = autant qu'un plein dans une voiture normale de même catégorie ; 2.0 = deux fois plus loin.",
+    "Sandbox_MinidoracatTesla_RangeMultiplier_tooltip": "Distance parcourue avec une batterie pleine.\n1.0 = autant qu'un plein dans une voiture normale de même catégorie ; 2.0 = deux fois plus loin.\nVarie aussi avec « Consommation de carburant » du jeu de base : 2 = moitié moins loin ; 0 = rouler ne consomme pas la batterie.",
     "Sandbox_MinidoracatTesla_ChargeSpeedMultiplier": "Multiplicateur de vitesse de recharge",
     "Sandbox_MinidoracatTesla_ChargeSpeedMultiplier_tooltip": "1.0 = puissance officielle du chargeur (Wall Connector 11,5 kW, Mobile Connector 7,6 kW)\n2.0 = deux fois plus rapide.",
     "Sandbox_MinidoracatTesla_ChargeFuelMultiplier": "Multiplicateur de carburant à la recharge",

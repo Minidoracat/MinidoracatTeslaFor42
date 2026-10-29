@@ -961,7 +961,8 @@ function App:read()
     end
     -- why the controls are grey
     self.sSub2 = vmOnly and txt("NotPaired") or (rec and not link and txt("FootOff")) or nil
-    self.sBat = rec and (txt("Km", tostring(st.km)) .. sep .. tostring(st.pct) .. "%") or ""
+    -- no km: no range limit (Gas Consumption 0, Remote.lua record); the game fonts have no ∞
+    self.sBat = rec and (txt("Km", st.km and tostring(st.km) or "--") .. sep .. tostring(st.pct) .. "%") or ""
     self.pct = rec and st.pct or 0
     self.sWhen = hasPos and (link and txt("JustNow") or ageText(ageH)) or ""
     self.sTitle = TITLE[self.page] and txt(TITLE[self.page]) or ""
