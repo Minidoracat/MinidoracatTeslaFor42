@@ -1095,6 +1095,16 @@ do
     from = #H.clientSent
     pane(container(key("Base.CarKey", car.keyId)), false):refreshContainer()
     check(sweeps(from) == 0, "a CarKey in a loot list (floor, glove box) is not asked about")
+    -- Login: the window's first refresh (OnCreatePlayer) runs before GameClient.ingame, so its keySweep never reaches
+    -- the server (LuaManager.java:8940-8947); the first tick after OnGameStart asks again for the same CarKey.
+    gInv = container(key("Base.CarKey", car.keyId)) -- a CarKey never swapped (0.1.0's late pickup), there at login
+    gp = player("relogin", gInv, car.x + 3, car.y)
+    mine = pane(gInv, true)
+    from = #H.clientSent
+    mine:refreshContainer() -- OnCreatePlayer: asked, and lost
+    for _, fn in ipairs(hooks.OnGameStart or {}) do fn() end
+    tickFor(100)
+    check(sweeps(from) == 2, "login: the first tick asks again for a CarKey the pre-ingame list refresh already asked about")
 end
 Events = realEvents
 H.side(false, true)

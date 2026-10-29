@@ -66,7 +66,8 @@ function K.pairedWith(item, keyId)
     for i = 1, #ids do if ids[i] == keyId then return true end end
     return false
 end
--- every car this phone key opens, in pairing order (a new table: menus and pairing only, never per frame)
+-- every car this phone key opens, in pairing order (a new table: menus, pairing and the inventory list's names
+-- (KeysUI.lua UI.nameOf), never per frame)
 function K.pairedIds(item)
     local out, ids = {}, extraIds(item)
     if type(ids) == "table" then for i = 1, #ids do out[i] = ids[i] end end

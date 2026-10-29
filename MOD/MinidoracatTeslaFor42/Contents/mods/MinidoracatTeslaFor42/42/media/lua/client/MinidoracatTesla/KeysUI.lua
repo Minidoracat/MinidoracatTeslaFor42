@@ -87,7 +87,7 @@ end
 -- Ask a second later, through a one-shot tick: in MP a grab's perform runs on the server's Done (ItemTransactionPacket,
 -- ISGrabItemAction.lua:34-35), before the grabbed item reaches the inventory (tesla-keygrab-1029-diag4..6: no CarKey at
 -- perform, there a second later). A CarKey later still (a busy client: 3.3 s in, tesla-recal-1029-m3 keys-mp-m3) or
--- with no client action at all (/additem, other mods) is asked about when it shows up (UI.nameAll's list refresh,
+-- with no client action at all (/additem, other mods) is asked about when it shows up (the list refresh wrapper and
 -- EveryOneMinute below).
 local laterP, laterAt, laterForce
 local function laterTick()
@@ -120,10 +120,12 @@ after(ISGrabItemAction, "perform", function(a) UI.checkSoon(a.character) end)
 -- force: a CarKey asked outside may have been dropped (rate limit); ISEnterVehicle:perform, and in MP the engine too
 Events.OnEnterVehicle.Add(function(p) UI.checkSoon(p, true) end)
 
--- first tick after login (not OnGameStart itself: ParkModesUI.lua pullInbox)
+-- First tick after login (not OnGameStart itself: ParkModesUI.lua pullInbox), forced: the inventory window's first list
+-- refresh (OnCreatePlayer, GameLoadingState.java:428-429) already asked about every CarKey here, before
+-- GameClient.ingame, so that keySweep went to the local SinglePlayerClient, never the server (LuaManager.java:8940-8947).
 local function loginCheck()
     Events.OnTick.Remove(loginCheck)
-    UI.checkKeys(getSpecificPlayer(0))
+    UI.checkKeys(getSpecificPlayer(0), true)
 end
 Events.OnGameStart.Add(function() Events.OnTick.Add(loginCheck) end)
 

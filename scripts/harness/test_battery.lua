@@ -197,6 +197,7 @@ T.Remote = realRemote
 H.section("regen")
 local R = T.Regen
 local rv = H.vehicle({ kwh = 30, running = true, speed = 60 })
+rv._class = "BaseVehicle" -- loaded: a VirtualVehicle gets no regen (Regen.lua slot)
 local rp = B.part(rv)
 local ke60 = 0.6 * 0.5 * 2033 * (60 / 3.6) ^ 2 / 3600000 -- the physical kinetic energy, kWh
 check(near(R.kwh(s, 60, 0), ke60 * T.DRIVE_SCALE), "regen kWh = eff * 1/2 m (v1^2 - v2^2) x DRIVE_SCALE (the drive draw's calibration)")
@@ -214,6 +215,7 @@ H.side(false, false)
 local function regenShare(gas)
     SandboxVars.CarGasConsumption = gas
     local car = H.vehicle({ kwh = 50, running = true, speed = 60 })
+    car._class = "BaseVehicle"
     local cp = B.part(car)
     local k0 = B.kwh(cp)
     for _ = 1, 5 do T.Update.Battery(car, cp, 1) end
@@ -231,6 +233,7 @@ check(sh1 > 0.1 and sh1 < R.SHARE and near(sh01, sh1, 1e-9) and near(sh2, sh1, 1
 -- the unspent budget's cap scales too (R.BUDGET_MAX x R.scale(), 5 kWh at Gas Consumption 1): an hour at 60 km/h
 -- banks 6 x 0.3 x (0.376 + 0.0572 x 60) x 10/60 = 1.142 kWh, and a stop from 120 km/h (1.88 kWh) takes all of it
 local bc = H.vehicle({ kwh = 50, running = true, speed = 60 })
+bc._class = "BaseVehicle"
 local bp = B.part(bc)
 for _ = 1, 6 do T.Update.Battery(bc, bp, 10) end
 bc.running, bc.speed, bc.brakeSpeed = false, 0, 120
@@ -316,9 +319,20 @@ id0 = B.kwh(idp)
 T.Update.Battery(idd, idp, 1)
 check(B.kwh(idp) > id0, "...and once it has driven, its own budget pays its regen")
 H.removeVehicle(idd)
+-- SP: an unloaded car (VirtualVehicle) keeps the id its car had, already another car's: it leaves that car's regen be
+local ide, iep, ide2 = idCar(902, 505)
+for _ = 1, 5 do T.Update.Battery(ide, iep, 1) end -- budget
+brake(ide, ide2) -- pending
+local gone = { _class = "VirtualVehicle", getId = function() return 902 end }
+check(R.take(gone, s, 1) == 0, "a VirtualVehicle on a loaded car's id: no regen of its own")
+local ie0 = B.kwh(iep)
+T.Update.Battery(ide, iep, 1)
+check(B.kwh(iep) > ie0, "... and the loaded car still gets its own pending regen and budget")
+H.removeVehicle(ide)
 -- SP: engine-recorded brake start speed
 H.side(false, false)
 local sv = H.vehicle({ kwh = 30, running = true, speed = 60 })
+sv._class = "BaseVehicle"
 local sp = B.part(sv)
 for _ = 1, 5 do T.Update.Battery(sv, sp, 1) end
 sv.running, sv.speed, sv.brakeSpeed = false, 0, 60

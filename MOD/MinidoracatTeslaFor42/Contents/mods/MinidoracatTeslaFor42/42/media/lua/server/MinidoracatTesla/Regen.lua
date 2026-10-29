@@ -19,10 +19,11 @@ local pressKmh, pending, budget, keyOf = {}, {}, {}, {}
 
 -- Vehicle ids are handed to other cars (BaseVehicle.java:793-801, VehicleIDMap.java:49-62): an id's entries belong to
 -- the keyId noted with them, and another car under that id starts empty. A VirtualVehicle (SP, out of the loaded area,
--- VirtualVehicle.java) has no keyId: nil, so the car starts over once it is back (nobody brakes it meanwhile).
+-- VirtualVehicle.java) has no keyId and keeps the id its car had, which may be another car's by now (IsoChunk.java
+-- 3232-3238 frees it on unload): no slot, so it neither clears nor takes that car's entries; nobody brakes it.
 local function slot(vehicle)
-    local id = vehicle:getId()
-    local k = instanceof(vehicle, "BaseVehicle") and vehicle:getKeyId() or nil
+    if not instanceof(vehicle, "BaseVehicle") then return nil end
+    local id, k = vehicle:getId(), vehicle:getKeyId()
     if keyOf[id] ~= k then pressKmh[id], pending[id], budget[id], keyOf[id] = nil, nil, nil, k end
     return id
 end
@@ -44,6 +45,7 @@ function R.note(vehicle, on)
     local s = T.spec(vehicle)
     if not s then return end
     local id = slot(vehicle)
+    if not id then return end
     local kmh = math.abs(vehicle:getCurrentSpeedKmHour())
     if on then
         pressKmh[id] = kmh
@@ -57,6 +59,7 @@ end
 -- called by Update.Battery: returns the kWh to credit now
 function R.take(vehicle, spec, used)
     local id = slot(vehicle)
+    if not id then return 0 end
     local p = pending[id] or 0
     pending[id] = nil
     if not isServer() then
