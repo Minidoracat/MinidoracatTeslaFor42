@@ -878,7 +878,8 @@ ISBaseTimedAction = { perform = function() end }
 function ISBaseTimedAction:derive(name) local c = setmetatable({ Type = name }, { __index = self }); c.__index = c; return c end
 function ISBaseTimedAction:new(ch) return setmetatable({ character = ch }, self) end
 ISTimedActionQueue = { add = function() end }
-ISInventoryTransferAction, ISGrabItemAction = { perform = function() end }, { perform = function() end }
+ISInventoryTransferAction = { perform = function() end }
+ISGrabItemAction = { start = function() end, perform = function(self) table.remove(self.queueList, 1) end }
 ISExitVehicle = { perform = function(self) self.character.vehicle = nil end }
 ISWorldObjectContextMenu = { addToolTip = function() return {} end }
 Events = sink
@@ -982,6 +983,61 @@ do
     tickFor(1000)
     check(sweeps(from) == 1, "getting out asks again for a CarKey asked before (the seated ask may have been refused)")
     sc.driver = nil
+end
+
+-- MP grab: perform runs on the server's Done, before the grabbed item reaches the inventory, and a loaded client
+-- takes seconds more (KeysUI.lua checkSoon wait; tesla-recal-1029-m3 keys-mp-m3)
+H.section("keys: a grabbed CarKey that reaches the inventory late (client)")
+do
+    local function tickFor(ms)
+        for _ = 1, ms / 100 do
+            for fn in pairs(ticks) do fn() end
+            H.advanceMs(100)
+        end
+    end
+    local function sweeps(from)
+        local n = 0
+        for i = from + 1, #H.clientSent do if H.clientSent[i].command == "keySweep" then n = n + 1 end end
+        return n
+    end
+    local function nTicks() local n = 0; for _ in pairs(ticks) do n = n + 1 end; return n end
+    local gInv = container()
+    local gp = player("grabber", gInv, car.x + 3, car.y)
+    local function grab(ft, who)
+        local a = setmetatable({ character = who or gp, queueList = { { type = ft, items = {} } } }, { __index = ISGrabItemAction })
+        a:start()
+        return a
+    end
+    local base, from = nTicks(), #H.clientSent
+    local a = grab("Base.CarKey")
+    tickFor(1000)
+    a:perform() -- the server's Done: no CarKey here yet
+    tickFor(2500)
+    check(sweeps(from) == 0, "late grab: nothing to ask while the CarKey is not here")
+    gInv:AddItem(key("Base.CarKey", car.keyId)) -- 3.5 s after the grab began
+    tickFor(1000)
+    check(sweeps(from) == 1, "late grab: the CarKey reaching the inventory 2.5 s after perform is still asked about")
+    check(nTicks() == base, "... and the look hook is gone")
+    from = #H.clientSent
+    grab("Base.CarKey") -- no perform (the grab stopped once the world item left the square)
+    tickFor(3000)
+    gInv:AddItem(key("Base.CarKey", car.keyId))
+    tickFor(1000)
+    check(sweeps(from) == 1, "late grab without a perform: asked from the grab's start")
+    from = #H.clientSent
+    grab("Base.CarKey")
+    tickFor(12000)
+    check(sweeps(from) == 0 and nTicks() == base, "a grabbed CarKey that never comes: looks 10 times, then the hook goes")
+    from = #H.clientSent
+    local nInv = container()
+    a = grab("Base.Nails", player("nails", nInv, car.x + 3, car.y))
+    tickFor(1000)
+    a:perform()
+    tickFor(1100)
+    check(nTicks() == base, "a grab of something else: one look a second after perform, no more")
+    nInv:AddItem(key("Base.CarKey", car.keyId))
+    tickFor(2000)
+    check(sweeps(from) == 0, "... so a CarKey arriving later is not looked for")
 end
 Events = realEvents
 H.side(false, true)
