@@ -3,7 +3,7 @@
 
 [hr][/hr]
 
-Drive a Tesla Model Y or Model 3 through the apocalypse: run on battery power, charge at a Wall Connector or a Mobile Connector, and control the car from the Tesla app on your phone.
+Drive a Tesla Model Y or Model 3 through the apocalypse: run on battery power, charge at a Wall Connector or a Mobile Connector, and control the car from the Tesla app on your phone. These two models come first; the rest of the Tesla lineup and more charging equipment will be added over time.
 
 [h2]📦 Requirements[/h2]
 [list]
