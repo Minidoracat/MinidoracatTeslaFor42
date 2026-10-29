@@ -51,10 +51,6 @@
 MOD 永远免费。喜欢的话可以请我喝杯咖啡，赞助会用在服务器与 MOD 开发上；源代码公开在 GitHub。
 [url=https://ko-fi.com/minidoracat][img]https://raw.githubusercontent.com/Minidoracat/workshop-resources/refs/heads/main/badges/badge_kofi.png[/img][/url] [url=https://github.com/Minidoracat/MinidoracatTeslaFor42][img]https://raw.githubusercontent.com/Minidoracat/workshop-resources/refs/heads/main/badges/badge_github.png[/img][/url]
 
-车身模型改编自 Sketchfab，已修改，原作者没有认可本 MOD：Model Y 是 BloxBloger 的 [url=https://sketchfab.com/3d-models/2026-tesla-model-y-performance-8a0bc252f9da4015a02a7bd99efd4847]2026 Tesla Model Y Performance[/url]（[url=http://creativecommons.org/licenses/by-nc/4.0/]CC BY-NC 4.0[/url]）；Model 3 是 RBLXSupercars 的 [url=https://sketchfab.com/3d-models/2024-tesla-model-3-fd22be415215453693d67e33aa7812d0]2024 Tesla Model 3[/url]（brandonleong28 [url=https://sketchfab.com/3d-models/tesla-model-3-2024-36c52f3f89f6439c90310f14e8ff33f2]转载[/url]，[url=http://creativecommons.org/licenses/by/4.0/]CC BY 4.0[/url]）。
-
-Tesla、Tesla 标志、Model Y、Model 3、Wall Connector、Mobile Connector、Sentry Mode、Camp Mode 是 Tesla, Inc. 的商标。本 MOD 是免费的非官方爱好者作品，与 Tesla, Inc. 没有关系，也没有得到 Tesla, Inc. 的认可。
-
 [b]#Minidoracat[/b]
 
 Workshop ID: 3829501237

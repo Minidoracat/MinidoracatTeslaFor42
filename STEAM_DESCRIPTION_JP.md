@@ -50,10 +50,6 @@
 MOD はずっと無料です。気に入ったらコーヒー一杯分の支援をいただけると、サーバーと MOD 開発に使わせていただきます。ソースコードは GitHub で公開しています。
 [url=https://ko-fi.com/minidoracat][img]https://raw.githubusercontent.com/Minidoracat/workshop-resources/refs/heads/main/badges/badge_kofi.png[/img][/url] [url=https://github.com/Minidoracat/MinidoracatTeslaFor42][img]https://raw.githubusercontent.com/Minidoracat/workshop-resources/refs/heads/main/badges/badge_github.png[/img][/url]
 
-車体モデルは Sketchfab のモデルを改変したものです（改変済み。原作者はこの MOD を承認していません）。Model Y は BloxBloger の [url=https://sketchfab.com/3d-models/2026-tesla-model-y-performance-8a0bc252f9da4015a02a7bd99efd4847]2026 Tesla Model Y Performance[/url]（[url=http://creativecommons.org/licenses/by-nc/4.0/]CC BY-NC 4.0[/url]）、Model 3 は RBLXSupercars の [url=https://sketchfab.com/3d-models/2024-tesla-model-3-fd22be415215453693d67e33aa7812d0]2024 Tesla Model 3[/url]（brandonleong28 による[url=https://sketchfab.com/3d-models/tesla-model-3-2024-36c52f3f89f6439c90310f14e8ff33f2]転載[/url]、[url=http://creativecommons.org/licenses/by/4.0/]CC BY 4.0[/url]）です。
-
-Tesla、Tesla ロゴ、Model Y、Model 3、Wall Connector、Mobile Connector、Sentry Mode、Camp Mode は Tesla, Inc. の商標です。本 MOD は無料の非公式ファンメイドで、Tesla, Inc. とは関係がなく、承認も受けていません。
-
 [b]#Minidoracat[/b]
 
 Workshop ID: 3829501237
