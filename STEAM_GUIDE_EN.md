@@ -259,7 +259,7 @@ A charger that works on the floor, no wall needed; slower than the Wall Connecto
 On the Tesla Collection page of the sandbox settings.
 [table]
 [tr][th]Option[/th][th]Default[/th][th]Range[/th][th]What it does[/th][/tr]
-[tr][td]Range multiplier[/td][td]1.0[/td][td]0.25–4.0[/td][td]How far a full battery drives; 1.0 = as far as a full tank in a vanilla car of the same class; vanilla Gas Consumption scales it too[/td][/tr]
+[tr][td]Range multiplier[/td][td]1.0[/td][td]0.25–10.0[/td][td]How far a full battery drives; 1.0 = as far as a full tank in a vanilla car of the same class; vanilla Gas Consumption scales it too[/td][/tr]
 [tr][td]Charging speed multiplier[/td][td]1.0[/td][td]0.1–10.0[/td][td]1.0 = official charger power (Wall Connector 11.5 kW, Mobile Connector 7.6 kW)[/td][/tr]
 [tr][td]Charging fuel multiplier[/td][td]1.0[/td][td]0–10.0[/td][td]Generator fuel a Tesla burns, charging and the car's own loads while plugged in; 1.0 = about one tank for a full charge at the default Generator Fuel Consumption, 0 = no fuel[/td][/tr]
 [tr][td]Camp Mode battery limit[/td][td]20[/td][td]10–20 (%)[/td][td]Below this charge Camp Mode cannot turn on, and while camping it turns off[/td][/tr]

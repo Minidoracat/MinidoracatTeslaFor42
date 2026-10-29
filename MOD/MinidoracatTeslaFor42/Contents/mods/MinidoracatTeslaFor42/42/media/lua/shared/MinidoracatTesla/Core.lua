@@ -18,9 +18,15 @@ T.Battery = T.Battery or {}
 T.ContainerAccess = T.ContainerAccess or {}
 
 -- Energy is in kWh of game time: a kW drawn for one game hour is one kWh.
--- kwPerKmh, idleKw: a full pack drives as far as a full vanilla CarNormal tank at 50 km/h (measured in MP: about 756 km
--- per 49 L, references/vehicle-battery.md "續航校正"), so both scale with the pack (x kWh / 62.5 from the 62.5 kWh
--- calibration: 0.03, 0.00456). massKg (Performance curb mass) and regenEff size the regen.
+-- kwPerKmh, idleKw: at vanilla's default Gas Consumption (1) a full pack drives as far as a full vanilla CarNormal
+-- tank at 50 km/h, about 75.7 km (references/vehicle-battery.md "續航校正"). MP measurements on the same road:
+-- tesla-rangegas-1029-calib-g1 (Gas Consumption 1) 288.7 tiles took 0.1891 L of the 49 L tank; the 2026-10-23
+-- calibration tesla-calib-normal-1023a (0.0189 L for 290.9 tiles, the 757 km the coefficients were first fitted to)
+-- ran at the E2E server template's Gas Consumption 0.1. Hence DRIVE_SCALE: the 10-23 coefficients (62.5 kWh pack
+-- 0.03, 0.00456, x 78.4 / 62.5 for the Performance pack: 0.0376, 0.00572) times 10; at Gas Consumption 0.1 the car
+-- drives the 757 km again. The drive and summon draw also follow T.driveMul (sandbox). massKg (Performance curb mass)
+-- and regenEff size the regen (Regen.lua scales it by DRIVE_SCALE too, so it keeps its share of the drive draw).
+T.DRIVE_SCALE = 10
 -- model: the atlas sprite suffix (top view car_<model> on the HUD and the app's maps, wordmark wm_<model>,
 -- trim_<model>) and the HUD door zones (HUD.lua). appCar: the app's car picture file prefix
 -- (scripts/blender/skf/convert.py appcar, + the paint name). v12Kwh: the low voltage battery (Battery.lua topUp12V).
@@ -33,8 +39,8 @@ T.Specs = {
         appCar = "app_car_",
         plug = { item = "Base.MinidoracatTesla_CablePlug", z = 0.909 }, -- tesla-integ-1026a
         v12Kwh = 15.5 * 6.9 / 1000, -- lithium-ion 15.5 V, 6.9 Ah (Model Y owner's manual, R10)
-        idleKw = 0.0376,
-        kwPerKmh = 0.00572,
+        idleKw = 0.0376 * T.DRIVE_SCALE,
+        kwPerKmh = 0.00572 * T.DRIVE_SCALE,
         massKg = 2033,
         regenEff = 0.6,
         -- official Model Y paints (TeslaModelY, references/models.md): entry i = vehicle script skin i-1, and saved
@@ -57,8 +63,8 @@ T.Specs = {
         appCar = "app_car_model3_",
         plug = { item = "Base.MinidoracatTesla_CablePlugModel3", z = 0.74 },
         v12Kwh = 15.5 * 6.9 / 1000, -- 15.5 V, 6.9 Ah (tesla.cn Model 3 owner's manual 2026, Battery - Low Voltage, p.179)
-        idleKw = 0.0376,
-        kwPerKmh = 0.00572,
+        idleKw = 0.0376 * T.DRIVE_SCALE,
+        kwPerKmh = 0.00572 * T.DRIVE_SCALE,
         massKg = 1851, -- curb mass, China owner's manual / MIIT filing TSL7000BEVBA5
         regenEff = 0.6,
         -- official Model 3 Performance paints (US, DE, TW design studios; references/models.md): same rules as above
@@ -140,7 +146,7 @@ local function sandbox(name, default)
     if type(v) ~= "number" then return default end
     return v
 end
-function T.rangeMul() return math.max(0.25, math.min(4, sandbox("RangeMultiplier", 1))) end
+function T.rangeMul() return math.max(0.25, math.min(10, sandbox("RangeMultiplier", 1))) end
 -- vanilla sandbox Gas Consumption (CarGasConsumption 0-100, default 1; SandboxOptions.java:184) multiplies the petrol a
 -- running engine burns, idling too (Vehicles.lua:485); the drive and summon draw follow it the same way (user
 -- 2026-10-29). Unreadable: 1.
