@@ -19,10 +19,11 @@ T.ContainerAccess = T.ContainerAccess or {}
 
 -- Energy is in kWh of game time: a kW drawn for one game hour is one kWh.
 -- kwPerKmh, idleKw: at vanilla's default Gas Consumption (1) a full pack drives as far as a full vanilla CarNormal
--- tank at 50 km/h, about 75.7 km (references/vehicle-battery.md "續航校正"). MP measurements on the same road:
--- tesla-rangegas-1029-calib-g1 (Gas Consumption 1) 288.7 tiles took 0.1891 L of the 49 L tank; the 2026-10-23
--- calibration tesla-calib-normal-1023a (0.0189 L for 290.9 tiles, the 757 km the coefficients were first fitted to)
--- ran at the E2E server template's Gas Consumption 0.1. Hence DRIVE_SCALE: the 10-23 coefficients (62.5 kWh pack
+-- tank at 50 km/h: 75.7 km here (references/vehicle-battery.md "續航校正"). MP measurements on the same road:
+-- tesla-rangegas-1029-calib-g1 (Gas Consumption 1) 288.7 tiles took 0.1891 L of the 49 L tank (74.8 km a tank);
+-- the 2026-10-23 calibration tesla-calib-normal-1023a (0.0189 L for 290.9 tiles, 756 km, which the coefficients were
+-- fitted to: 757 km) ran at the E2E server template's Gas Consumption 0.1, and vanilla's burn is proportional to it
+-- (Vehicles.lua:485; measured ratio 10.08). Hence DRIVE_SCALE: the 10-23 coefficients (62.5 kWh pack
 -- 0.03, 0.00456, x 78.4 / 62.5 for the Performance pack: 0.0376, 0.00572) times 10; at Gas Consumption 0.1 the car
 -- drives the 757 km again. The drive and summon draw also follow T.driveMul (sandbox). massKg (Performance curb mass)
 -- and regenEff size the regen (Regen.lua scales it by DRIVE_SCALE too, so it keeps its share of the drive draw).

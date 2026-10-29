@@ -228,6 +228,18 @@ end
 local sh1, sh01, sh2 = regenShare(1), regenShare(0.1), regenShare(2)
 check(sh1 > 0.1 and sh1 < R.SHARE and near(sh01, sh1, 1e-9) and near(sh2, sh1, 1e-9),
     string.format("regen share of the drive draw: %.4f at Gas Consumption 1, the same at 0.1 and 2", sh1))
+-- the unspent budget's cap scales too (R.BUDGET_MAX x R.scale(), 5 kWh at Gas Consumption 1): an hour at 60 km/h
+-- banks 6 x 0.3 x (0.376 + 0.0572 x 60) x 10/60 = 1.142 kWh, and a stop from 120 km/h (1.88 kWh) takes all of it
+local bc = H.vehicle({ kwh = 50, running = true, speed = 60 })
+local bp = B.part(bc)
+for _ = 1, 6 do T.Update.Battery(bc, bp, 10) end
+bc.running, bc.speed, bc.brakeSpeed = false, 0, 120
+local bk = B.kwh(bp)
+T.Update.Battery(bc, bp, 1)
+local banked = 6 * R.SHARE * (s.idleKw + s.kwPerKmh * 60) * 10 / 60
+check(near(B.kwh(bp) - bk, banked, 1e-9) and banked > 1.1,
+    string.format("budget cap scales with the drive draw: an hour's budget %.3f kWh is credited, not capped at 0.5", banked))
+H.removeVehicle(bc)
 H.side(false, true)
 -- MP: drive 5 minutes to build budget, then brake 60 -> 0
 for _ = 1, 5 do T.Update.Battery(rv, rp, 1) end
