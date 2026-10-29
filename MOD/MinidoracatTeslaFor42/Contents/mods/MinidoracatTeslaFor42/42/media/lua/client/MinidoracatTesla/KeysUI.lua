@@ -81,21 +81,37 @@ function ISStartVehicleEngine:waitToStart()
     return startWait(self)
 end
 
--- Ask a second later, through a one-shot tick: in MP the client puts a transferred item into the inventory when the
--- server's ItemTransactionPacket arrives (ISInventoryTransferAction.lua:854), not inside perform.
-local laterP, laterAt, laterForce
+-- Ask a second later, through a one-shot tick. In MP a grab's perform runs on the server's Done (ItemTransactionPacket,
+-- ISGrabItemAction.lua:34-35), before the grabbed item reaches the inventory (tesla-keygrab-1029-diag4..6: no CarKey at
+-- perform, there a second later); some grabs never perform yet the CarKey arrives 3.3 s in (tesla-recal-1029-m3
+-- keys-mp-m3, tesla-keygrab-1029-late-main: no keySweep ever). So a grab of a CarKey asks from its start, and
+-- (wait) while no CarKey we have not asked about is here, looks again once a second, LOOKS times.
+local LOOKS = 10
+local laterP, laterAt, laterForce, laterLooks
+local function unasked(player)
+    local list = player:getInventory():getAllTypeRecurse("Base.CarKey")
+    for i = 0, list:size() - 1 do
+        if not asked[list:get(i):getID()] then return true end
+    end
+    return false
+end
 local function laterTick()
     if getTimestampMs() < laterAt then return end
     local settles = startSettles(laterP) -- wait here: no Remove / Add of this hook inside its own dispatch
     if settles then laterAt = settles; return end
+    if laterLooks > 1 and not unasked(laterP) then
+        laterLooks, laterAt = laterLooks - 1, getTimestampMs() + 1000
+        return
+    end
     Events.OnTick.Remove(laterTick)
     local force = laterForce
     laterAt, laterForce = nil, nil
     UI.checkKeys(laterP, force)
 end
-function UI.checkSoon(player, force)
-    if not laterAt then Events.OnTick.Add(laterTick) end
+function UI.checkSoon(player, force, wait)
+    if not laterAt then Events.OnTick.Add(laterTick); laterLooks = 1 end
     laterP, laterAt, laterForce = player, getTimestampMs() + 1000, laterForce or force
+    if wait then laterLooks = LOOKS end
 end
 
 local function after(cls, name, fn)
@@ -110,7 +126,19 @@ end
 after(ISInventoryTransferAction, "perform", function(a)
     if a.destContainer and a.destContainer:isInCharacterInventory(a.character) then UI.checkSoon(a.character) end
 end)
-after(ISGrabItemAction, "perform", function(a) UI.checkSoon(a.character) end)
+-- the grab's current batch (ISGrabItemAction:checkQueueList: one item type per batch)
+local function grabsKey(a)
+    local q = a.queueList and a.queueList[1]
+    return q ~= nil and q.type == "Base.CarKey"
+end
+after(ISGrabItemAction, "start", function(a) if grabsKey(a) then UI.checkSoon(a.character, false, true) end end)
+local grabPerform = ISGrabItemAction.perform
+function ISGrabItemAction:perform(...)
+    local key = grabsKey(self) -- perform takes this batch off the queue
+    local r = grabPerform(self, ...)
+    UI.checkSoon(self.character, false, key or grabsKey(self))
+    return r
+end
 -- force: a CarKey asked outside may have been dropped (rate limit); ISEnterVehicle:perform, and in MP the engine too
 Events.OnEnterVehicle.Add(function(p) UI.checkSoon(p, true) end)
 
