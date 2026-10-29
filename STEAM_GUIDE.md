@@ -1,9 +1,10 @@
+<!-- 指南網址：https://steamcommunity.com/sharedfiles/filedetails/?id=3829449828 -->
 <!-- Steam 指南稿源（繁中）：MOD 的完整說明以本指南為準，簡介只放摘要。格式、版面與同步方式見 pz-family-docs/release.md「完整說明：Steam 指南」 -->
 <!-- 標題：📖 Minidoracat Tesla Collection MOD 完整說明：車、充電、鑰匙與 App -->
 <!-- 摘要：Minidoracat Tesla Collection 的圖文說明：Model Y 與 Model 3 Performance、電池、壁掛式充電座與行動充電器、特斯拉風格儀表、卡片鑰匙與手機鑰匙、手機 Tesla App 與召喚、哨兵與露營模式、驅動單元零件，以及和 Vehicle Manager、小地圖、AutoDrive 一起用的規則與沙盒選項。 -->
 <!-- 截圖：docs/screenshots/steam/zh/，拍法見家族庫 e2e/MinidoracatTeslaFor42 的 guide-shots-sp（召喚圖用 phone-summon-sp） -->
 === 🚀 快速上手
-[b]English version:[/b] [url=XXXX]Minidoracat Tesla Collection Mod Guide[/url]
+[b]English version:[/b] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3829449879]Minidoracat Tesla Collection Mod Guide[/url]
 
 MOD 本體（Steam Workshop）：
 https://steamcommunity.com/sharedfiles/filedetails/?id=XXXX

@@ -34,7 +34,7 @@ Drive a Tesla Model Y or Model 3 through the apocalypse: run on battery power, c
 [*] [b]Summon[/b]: with AutoDrive and its autopilot module, call the empty car to you from the app
 [*] [b]Vehicle Manager and minimap[/b]: its permissions apply, and the minimap shows your cars
 [/list]
-📖 [b]Full guide and FAQ:[/b] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=XXXX]Minidoracat Tesla Collection Mod Guide[/url]
+📖 [b]Full guide and FAQ:[/b] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3829449879]Minidoracat Tesla Collection Mod Guide[/url]
 
 [h2]🔗 Minidoracat collection[/h2]
 All my other mods are in the [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3809297109]Minidoracat Mods for B42[/url] collection; subscribe to the ones you need.

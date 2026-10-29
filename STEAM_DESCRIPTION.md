@@ -34,7 +34,7 @@
 [*] [b]召喚[/b]：裝了 AutoDrive 與自動駕駛模組，用 App 叫空車過來
 [*] [b]家族 MOD 連動[/b]：綁車權限、小地圖車標與導航到車
 [/list]
-📖 [b]完整說明與常見問題：[/b][url=https://steamcommunity.com/sharedfiles/filedetails/?id=XXXX]Minidoracat Tesla Collection 完整說明[/url]
+📖 [b]完整說明與常見問題：[/b][url=https://steamcommunity.com/sharedfiles/filedetails/?id=3829449828]Minidoracat Tesla Collection 完整說明[/url]
 
 [h2]🔗 Minidoracat 全系列[/h2]
 其他作品都在[url=https://steamcommunity.com/sharedfiles/filedetails/?id=3809297109]Minidoracat 全系列收藏[/url]，依需求自選訂閱。

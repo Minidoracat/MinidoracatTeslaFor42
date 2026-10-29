@@ -1,9 +1,10 @@
+<!-- 指南網址：https://steamcommunity.com/sharedfiles/filedetails/?id=3829449879 -->
 <!-- Steam guide source (English). The full description lives in this guide; the Workshop page only has a summary. Format and sync: pz-family-docs/release.md "完整說明：Steam 指南" -->
 <!-- 標題：📖 Minidoracat Tesla Collection Mod Guide: Cars, Charging, Keys and the App -->
 <!-- 摘要：A picture guide to Minidoracat Tesla Collection: the Model Y and Model 3 Performance, the battery, the Wall Connector and the Mobile Connector, the Tesla-style dashboard, key cards and phone keys, the Tesla app and Summon, Sentry and Camp Mode, drive unit parts, and how it works with Vehicle Manager, the MiniMap and AutoDrive, plus the sandbox options. -->
 <!-- Screenshots: docs/screenshots/steam/en/, shot by guide-shots-sp in the family repo's e2e/MinidoracatTeslaFor42 (Summon shots: phone-summon-sp) -->
 === 🚀 Quick start
-[b]中文版：[/b] [url=XXXX]Minidoracat Tesla Collection 完整說明[/url]
+[b]中文版：[/b] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3829449828]Minidoracat Tesla Collection 完整說明[/url]
 
 Mod page (Steam Workshop):
 https://steamcommunity.com/sharedfiles/filedetails/?id=XXXX

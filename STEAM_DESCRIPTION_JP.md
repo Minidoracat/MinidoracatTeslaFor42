@@ -34,7 +34,7 @@
 [*] [b]サモン[/b]：AutoDrive と自動運転モジュールがあれば、アプリで無人の車を呼び寄せます
 [*] [b]Vehicle Manager とミニマップ連携[/b]：その権限に従い、ミニマップに自分の車を表示
 [/list]
-📖 [b]詳しい説明とよくある質問：[/b][url=https://steamcommunity.com/sharedfiles/filedetails/?id=XXXX]Minidoracat Tesla Collection Mod Guide[/url]（英語）
+📖 [b]詳しい説明とよくある質問：[/b][url=https://steamcommunity.com/sharedfiles/filedetails/?id=3829449879]Minidoracat Tesla Collection Mod Guide[/url]（英語）
 
 [h2]🔗 Minidoracat シリーズ[/h2]
 すべての MOD を[url=https://steamcommunity.com/sharedfiles/filedetails/?id=3809297109]Minidoracat 全シリーズ コレクション[/url]にまとめています。必要なものを選んでサブスクライブしてください。

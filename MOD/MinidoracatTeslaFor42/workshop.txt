@@ -36,7 +36,7 @@ description=[*] [b]Sentry and Camp Mode[/b]: get told when someone touches the c
 description=[*] [b]Summon[/b]: with AutoDrive and its autopilot module, call the empty car to you from the app
 description=[*] [b]Vehicle Manager and minimap[/b]: its permissions apply, and the minimap shows your cars
 description=[/list]
-description=📖 [b]Full guide and FAQ:[/b] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=XXXX]Minidoracat Tesla Collection Mod Guide[/url]
+description=📖 [b]Full guide and FAQ:[/b] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3829449879]Minidoracat Tesla Collection Mod Guide[/url]
 description=
 description=[h2]🔗 Minidoracat collection[/h2]
 description=All my other mods are in the [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3809297109]Minidoracat Mods for B42[/url] collection; subscribe to the ones you need.
