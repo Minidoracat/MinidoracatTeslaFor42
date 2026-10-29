@@ -51,7 +51,7 @@ https://steamcommunity.com/sharedfiles/filedetails/?id=XXXX
 [*] [b]Range[/b]: a full battery goes as far as a full tank in a vanilla car of the same class; the sandbox option Range multiplier changes it.
 [*] [b]Out of charge[/b]: the motor stops and will not start until you charge.
 [*] [b]Low Voltage Battery[/b]: the main battery tops it up while it holds 5% or more, so a car parked for a long time still starts.
-[*] [b]Power in the car[/b]: climate, Camp Mode and Sentry Mode use the main battery too; plugged into a powered charger, the charger supplies them instead.
+[*] [b]Power in the car[/b]: climate, Camp Mode and Sentry Mode use the main battery too; plugged into a powered charger, the charger supplies them instead, and on generator power that burns the generator's fuel.
 [*] [b]Multiplayer speed limit[/b]: the server setting SpeedLimit defaults to 70 km/h; neither vanilla cars nor Teslas go faster.
 [/list]
 === 🧰 Charging: the Wall Connector, the Mobile Connector and the cable
@@ -65,7 +65,7 @@ You learn the recipe automatically at Electrical 3; craft it next to a work surf
 [list]
 [*] [b]Mount it[/b]: place it like vanilla furniture, with Electrical 3 and a screwdriver in hand; picking it up needs the same. One charger a square (Wall Connector or Mobile Connector).
 [*] [b]Grid power[/b]: the charger uses the grid when its square or a square next to it is inside a house (the same rule as a vanilla fridge); houses players build do not count.
-[*] [b]Generator[/b]: after the power goes out it burns the fuel of a running generator nearby (the vanilla generator range). Charging burns that generator's fuel: about one tank for a full charge, scaled by the sandbox option Generator Fuel Consumption.
+[*] [b]Generator[/b]: after the power goes out it runs on a running generator nearby (the vanilla generator range). Generator power always burns that generator's fuel, the car's climate and Camp Mode while plugged in included: by default about one tank for a full charge, scaled by the sandbox options Charging fuel multiplier and Generator Fuel Consumption. Grid power is free.
 [/list]
 [h3]Mobile Connector[/h3]
 A charger that works on the floor, no wall needed; slower than the Wall Connector.
@@ -77,7 +77,7 @@ A charger that works on the floor, no wall needed; slower than the Wall Connecto
 [list]
 [*] [b]Getting one[/b]: Electrical 2 learns the recipe (made next to a work surface); it also turns up on the shelves that stock car battery chargers (car supply stores, garages, gas stations and so on; not in other vehicles' trunks) at about half their chance (both are Mechanics loot); a newly spawned Tesla has a one-in-four chance of one in its Rear Trunk.
 [*] [b]On the floor[/b]: place it like vanilla furniture; you place and pick it up with bare hands, no tool or skill needed.
-[*] [b]Power[/b]: indoors where there is power (the grid, or a building in a generator's range; a roofed player-built base counts as indoors, though player-built houses get no grid) it works like the Wall Connector: grid first, then after the power cut the fuel of the generator powering it. Anywhere else it must sit within 2 tiles of a running, fuelled generator (same floor, diagonals count): it is plugged straight into that generator and burns its fuel, even when the server turns off the sandbox option Generator Working in Exterior. Outdoors in a generator's range with no generator next to it there is no power: the cable still plugs in but nothing charges, and right-clicking the charger shows a grey line saying so. On a generator a full charge also takes about one tank of fuel; it charges slower, so per hour it burns about 2/3 of what the Wall Connector does.
+[*] [b]Power[/b]: indoors where there is power (the grid, or a building in a generator's range; a roofed player-built base counts as indoors, though player-built houses get no grid) it works like the Wall Connector: grid first, then after the power cut the fuel of the generator powering it. Anywhere else it must sit within 2 tiles of a running, fuelled generator (same floor, diagonals count): it is plugged straight into that generator and burns its fuel, even when the server turns off the sandbox option Generator Working in Exterior. Outdoors in a generator's range with no generator next to it there is no power: the cable still plugs in but nothing charges, and right-clicking the charger shows a grey line saying so. Generator power burns fuel the same way indoors or plugged straight in: a full charge takes about one tank; it charges slower, so per hour it burns about 2/3 of what the Wall Connector does.
 [/list]
 {{img:03-charger-menu-en.jpg}}
 [h3]Plug in and charge[/h3]
@@ -261,6 +261,7 @@ On the Tesla Collection page of the sandbox settings.
 [tr][th]Option[/th][th]Default[/th][th]Range[/th][th]What it does[/th][/tr]
 [tr][td]Range multiplier[/td][td]1.0[/td][td]0.25–4.0[/td][td]How far a full battery drives; 1.0 = as far as a full tank in a vanilla car of the same class[/td][/tr]
 [tr][td]Charging speed multiplier[/td][td]1.0[/td][td]0.1–10.0[/td][td]1.0 = official charger power (Wall Connector 11.5 kW, Mobile Connector 7.6 kW)[/td][/tr]
+[tr][td]Charging fuel multiplier[/td][td]1.0[/td][td]0–10.0[/td][td]Generator fuel a Tesla burns, charging and the car's own loads while plugged in; 1.0 = about one tank for a full charge at the default Generator Fuel Consumption, 0 = no fuel[/td][/tr]
 [tr][td]Camp Mode battery limit[/td][td]20[/td][td]10–20 (%)[/td][td]Below this charge Camp Mode cannot turn on, and while camping it turns off[/td][/tr]
 [/table]
 Options elsewhere that also affect Teslas:
@@ -268,7 +269,7 @@ Options elsewhere that also affect Teslas:
 [tr][th]Option[/th][th]Where[/th][th]Effect[/th][/tr]
 [tr][td]Summon range (tiles), default 64[/td][td]AutoDrive sandbox[/td][td]How far the app's Summon reaches; 0 turns Summon off[/td][/tr]
 [tr][td]Virtual key for owners, default on[/td][td]Vehicle Manager sandbox[/td][td]Off: an owner without the key card cannot set up a new phone key[/td][/tr]
-[tr][td]Generator Fuel Consumption[/td][td]Vanilla sandbox[/td][td]How fast a charger burns generator fuel after the power goes out[/td][/tr]
+[tr][td]Generator Fuel Consumption[/td][td]Vanilla sandbox[/td][td]Multiplies with Charging fuel multiplier: how much generator fuel charging and the car's own loads burn[/td][/tr]
 [tr][td]Electricity Shutoff[/td][td]Vanilla sandbox[/td][td]Once the grid is down, the app works over Bluetooth within 30 m only[/td][/tr]
 [tr][td]SpeedLimit, default 70[/td][td]Multiplayer server settings[/td][td]Teslas, like vanilla cars, cannot go faster[/td][/tr]
 [/table]

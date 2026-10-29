@@ -16,7 +16,8 @@ local function now() return getGameTime():getWorldAgeHours() end
 
 -- Charge standby draw since the last settle; below MIN_PCT turn sentry off and tell the owner. A powered charger runs
 -- standby (Battery.onCharger): free until `freeUntil` (world hour), by default until its power ended
--- (Charge.powerUntil: the grid shut-off, which an unloaded car can pass; without that module, while plugged in).
+-- (Charge.powerUntil: the grid shut-off, which an unloaded car can pass; without that module, while plugged in). On a
+-- generator that standby costs its fuel (chg.fed, as Battery.draw).
 function S.settle(vehicle, t, freeUntil)
     local part = T.Battery.part(vehicle)
     if not part then return end
@@ -30,7 +31,9 @@ function S.settle(vehicle, t, freeUntil)
         local f = T.Charge and T.Charge.powerUntil
         if f then freeUntil = f(md.chg, t) elseif T.Battery.onCharger(part) then freeUntil = t end
     end
-    local paid = dt - math.max(0, math.min(dt, (freeUntil or at) - at))
+    local free = math.max(0, math.min(dt, (freeUntil or at) - at))
+    local paid = dt - free
+    if free > 0 and md.chg and md.chg.power == "generator" then md.chg.fed = (md.chg.fed or 0) + free * S.KW end
     local cur = T.Battery.kwh(part)
     local kwh = cur - paid * S.KW
     local floor = T.Battery.capacity(part) * S.MIN_PCT / 100

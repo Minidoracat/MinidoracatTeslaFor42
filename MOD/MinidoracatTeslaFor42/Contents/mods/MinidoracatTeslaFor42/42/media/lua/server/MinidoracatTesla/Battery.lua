@@ -43,10 +43,16 @@ function B.add(vehicle, kwh, targetPct)
     return after - now
 end
 
--- The car's own loads (climate, camp outlets, 12V, sentry): from the charger while it has power (B.onCharger), else
--- from the pack down to empty. Returns the kWh taken from the pack.
+-- The car's own loads (climate, camp outlets, 12V, sentry, motor standby): from the charger while it has power
+-- (B.onCharger), else from the pack down to empty. A generator's power costs its fuel (user 2026-10-29): the kWh add
+-- up in chg.fed until the next charge settle burns them (Charging.lua). Returns the kWh taken from the pack.
 function B.draw(vehicle, part, kwh)
-    if kwh <= 0 or B.onCharger(part) then return 0 end
+    if kwh <= 0 then return 0 end
+    if B.onCharger(part) then
+        local chg = part:getModData().chg
+        if chg.power == "generator" then chg.fed = (chg.fed or 0) + kwh end
+        return 0
+    end
     local now = B.kwh(part)
     return now - B.set(vehicle, part, now - kwh)
 end
@@ -200,7 +206,7 @@ function B.summonEnd(vehicle)
 end
 
 -- GasTank update: drive draw minus brake regen, every game minute while the car's parts update; cable length check.
--- A plugged-in car stands still in Park, so its running motor is standby only, and that runs on a powered charger.
+-- A plugged-in car stands still in Park, so its running motor is standby only, and that runs on a powered charger (B.draw).
 -- Parts update while the car drives or charges: the phone app's last record (Remote.lua) follows the car then.
 function T.Update.Battery(vehicle, part, elapsedMinutes)
     if not part:getInventoryItem() then return end
@@ -214,12 +220,16 @@ function T.Update.Battery(vehicle, part, elapsedMinutes)
     local s = T.spec(vehicle)
     if not s then return end
     local used = 0
-    if vehicle:isEngineRunning() and not B.onCharger(part) then
+    if vehicle:isEngineRunning() then
         if km then
             used = (s.idleKw * m / 60 + s.kwPerKmh * km * 60 / T.secPerGameMin()) / T.rangeMul()
         else
             local kmh = math.abs(vehicle:getCurrentSpeedKmHour())
             used = (s.idleKw + s.kwPerKmh * kmh) * m / 60 / T.rangeMul()
+        end
+        if B.onCharger(part) then
+            B.draw(vehicle, part, used)
+            used = 0
         end
     end
     local regen = T.Regen and T.Regen.take(vehicle, s, used) or 0

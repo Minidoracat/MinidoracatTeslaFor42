@@ -118,7 +118,7 @@ end
 -- (`generator`: C.settle found one; nil = not looked up, e.g. a sentry event between two settles: after the shut-off
 -- the charger has power only from a generator, through the wiring or plugged straight in, Chargers.lua). Generator:
 -- up to now.
--- ponytail: a generator counts as running the whole stretch (its fuel is only metered for charging)
+-- ponytail: a generator counts as running the whole stretch (its fuel is billed at each settle, C.settle)
 function C.powerUntil(chg, now, generator)
     if not chg or not chg.power then return nil end
     local off = chg.power == "grid" and C.gridOffHour()
@@ -169,7 +169,8 @@ function C.settle(o, now, here)
     local limit = cap * chg.target / 100
     local needH = math.max(0, limit - B.kwh(part)) / kw
     local gUntil = gridUntil(o.kind, sq)
-    local rate = c.fuelPerHour * (SandboxVars.GeneratorFuelConsumption or 0.1)
+    local fuel = T.fuelPerKwh()
+    local rate = kw * fuel -- litres per hour of charging (per kWh: a full charge costs the same at any charging speed)
     local hours = 0
     if chg.paused ~= "stopped" and needH > 0 and now > t0 then
         local gridH = math.min(math.max(0, math.min(now, gUntil) - t0), needH)
@@ -187,9 +188,8 @@ function C.settle(o, now, here)
     if hours > 0 then chg.added = (chg.added or 0) + B.add(v, kw * hours, chg.target) end
     chg.kw, chg.last = kw, now
     -- state from now on. power: the charger has a source, whether or not it charges (full / stopped); the car's own
-    -- loads run on it meanwhile (Battery.onCharger).
-    -- ponytail: those loads burn no generator fuel and do not slow charging; meter them if a generator lasting longer
-    -- than its charging hours shows up in play.
+    -- loads run on it meanwhile (Battery.onCharger), and on a generator they cost its fuel (chg.fed, below).
+    -- ponytail: they do not slow charging.
     local src, gen = nil, nil
     if now < gUntil then
         src = "grid"
@@ -198,6 +198,12 @@ function C.settle(o, now, here)
         if gen then src = "generator" end
     end
     settleSentry(v, now, C.powerUntil(chg, now, gen ~= nil)) -- with the power it ran on until now
+    -- the car's own loads on generator power since the last settle (Battery.lua B.draw, Sentry.lua settle add them up).
+    -- ponytail: a generator gone by now (dry, switched off, taken away) is not billed for them.
+    if chg.fed then
+        if gen and fuel > 0 then gen:setFuel(gen:getFuel() - chg.fed * fuel) end
+        chg.fed = nil
+    end
     chg.power = src
     local left = math.max(0, limit - B.kwh(part))
     if chg.paused == "stopped" then

@@ -4,6 +4,8 @@
     "Sandbox_MinidoracatTesla_RangeMultiplier_tooltip": "배터리를 가득 채웠을 때 달릴 수 있는 거리입니다.\n1.0 = 같은 등급의 기본 차량이 연료를 가득 채웠을 때와 같은 거리, 2.0 = 그 두 배.",
     "Sandbox_MinidoracatTesla_ChargeSpeedMultiplier": "충전 속도 배율",
     "Sandbox_MinidoracatTesla_ChargeSpeedMultiplier_tooltip": "1.0 = 공식 충전 출력(월 커넥터 11.5 kW, 모바일 커넥터 7.6 kW)\n2.0 = 두 배 빠름.",
+    "Sandbox_MinidoracatTesla_ChargeFuelMultiplier": "충전 연료 소비 배율",
+    "Sandbox_MinidoracatTesla_ChargeFuelMultiplier_tooltip": "Tesla가 발전기 전기로 쓰는 연료: 충전과, 플러그를 꽂은 동안 차의 에어컨과 캠핑 모드. 전력망 전기는 무료입니다.\n1.0 = 기본 「발전기 연료 소비량」에서 Model Y를 빈 상태에서 완충까지 약 한 통, 0.5 = 절반, 0 = 연료를 쓰지 않음.\n「발전기 연료 소비량」에도 비례합니다.",
     "Sandbox_MinidoracatTesla_CampMinBattery": "캠핑 모드 배터리 하한",
     "Sandbox_MinidoracatTesla_CampMinBattery_tooltip": "배터리가 이 값보다 낮으면 캠핑 모드를 켤 수 없고, 캠핑 중 이 아래로 떨어지면 자동으로 꺼집니다.\n실제 차량의 저전력 모드처럼 10~20%%, 기본값 20."
 }
