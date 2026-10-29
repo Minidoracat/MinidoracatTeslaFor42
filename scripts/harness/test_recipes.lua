@@ -2,8 +2,9 @@
 -- 只認三條配方名稱、等級不夠不學、其他技能升級不送、單機與客戶端不包。
 local check = H.check
 local SRC = "MOD/MinidoracatTeslaFor42/Contents/mods/MinidoracatTeslaFor42/42/media/lua/server/MinidoracatTesla/Recipes.lua"
-local saved = { Events = Events, ISHandcraftAction = ISHandcraftAction, Perks = Perks,
-    getScriptManager = getScriptManager, sendSyncPlayerFields = sendSyncPlayerFields }
+local GLOBALS = { "Events", "ISHandcraftAction", "Perks", "getScriptManager", "sendSyncPlayerFields" }
+local saved = {}
+for _, g in ipairs(GLOBALS) do saved[g] = _G[g] end -- nil ones too: set back to nil at the end
 local hooks = {} -- this file's events only: nothing it adds reaches later tests
 Events = setmetatable({}, { __index = function(t, name)
     local e = { Add = function(fn) hooks[name] = hooks[name] or {}; table.insert(hooks[name], fn) end, Remove = function() end }
@@ -83,4 +84,4 @@ for _, s in ipairs({ { false, false }, { true, false } }) do
 end
 
 H.side(false, true)
-for k, v in pairs(saved) do _G[k] = v end
+for _, g in ipairs(GLOBALS) do _G[g] = saved[g] end
