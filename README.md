@@ -4,6 +4,8 @@
 
 Project Zomboid Build 42 MOD。
 
+2026-10-29 首發到 Steam Workshop：[Minidoracat Tesla Collection](https://steamcommunity.com/sharedfiles/filedetails/?id=3829501237)（ID 3829501237）。
+
 ## 功能
 
 - **兩台車**：Model Y Performance 與 Model 3 Performance，各 8 種原廠車色；停車格都會出現，高級住宅區只有 Model Y。車門、尾門（Model 3 是行李廂蓋）與前蓋照實車打開，車窗透明看得到車內，用特斯拉原廠錄音的馬達聲。
@@ -34,7 +36,7 @@ Project Zomboid Build 42 MOD。
 
 ## 安裝
 
-- Steam Workshop：（首次上傳後補上連結）
+- Steam Workshop：[Minidoracat Tesla Collection](https://steamcommunity.com/sharedfiles/filedetails/?id=3829501237)（ID 3829501237）
 - 手動安裝：把 `MOD/MinidoracatTeslaFor42/Contents/mods/MinidoracatTeslaFor42` 整個資料夾複製到 `%USERPROFILE%\Zomboid\mods\`
 
 ## 開發

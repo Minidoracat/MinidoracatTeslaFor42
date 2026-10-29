@@ -1,4 +1,5 @@
 version=1
+id=3829501237
 title=[B42] Tesla Collection by Minidoracat
 description=[h1]⚡ Minidoracat Tesla Collection[/h1]
 description=[h3]By Minidoracat[/h3]
@@ -58,7 +59,7 @@ description=Tesla, the Tesla logo, Model Y, Model 3, Wall Connector, Mobile Conn
 description=
 description=[b]#Minidoracat[/b]
 description=
-description=Workshop ID: XXXX
+description=Workshop ID: 3829501237
 description=Mod ID: MinidoracatTeslaFor42
-tags=Build 42;Vehicles;Items;Multiplayer
+tags=Build 42;Items;Multiplayer;Vehicles
 visibility=public

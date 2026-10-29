@@ -7,7 +7,7 @@
 [b]中文版：[/b] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3829449828]Minidoracat Tesla Collection 完整說明[/url]
 
 Mod page (Steam Workshop):
-https://steamcommunity.com/sharedfiles/filedetails/?id=XXXX
+https://steamcommunity.com/sharedfiles/filedetails/?id=3829501237
 [olist]
 [*] [b]Find a car[/b]: Teslas park in parking lots; the Model Y also turns up in upscale neighbourhoods.
 [*] [b]Get the key[/b]: a Tesla's car key turns into that car's Key Card when you pick it up.

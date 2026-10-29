@@ -7,7 +7,7 @@
 [b]English version:[/b] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3829449879]Minidoracat Tesla Collection Mod Guide[/url]
 
 MOD 本體（Steam Workshop）：
-https://steamcommunity.com/sharedfiles/filedetails/?id=XXXX
+https://steamcommunity.com/sharedfiles/filedetails/?id=3829501237
 [olist]
 [*] [b]找車[/b]：特斯拉會出現在停車場的停車格，Model Y 也會出現在高級住宅區。
 [*] [b]拿鑰匙[/b]：拿到特斯拉的車鑰匙，它會自動變成這台車的「卡片鑰匙」。

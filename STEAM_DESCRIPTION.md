@@ -56,5 +56,5 @@ Tesla、Tesla 標誌、Model Y、Model 3、Wall Connector、Mobile Connector、S
 
 [b]#Minidoracat[/b]
 
-Workshop ID: XXXX
+Workshop ID: 3829501237
 Mod ID: MinidoracatTeslaFor42

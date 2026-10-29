@@ -56,5 +56,5 @@ Tesla, the Tesla logo, Model Y, Model 3, Wall Connector, Mobile Connector, Sentr
 
 [b]#Minidoracat[/b]
 
-Workshop ID: XXXX
+Workshop ID: 3829501237
 Mod ID: MinidoracatTeslaFor42
