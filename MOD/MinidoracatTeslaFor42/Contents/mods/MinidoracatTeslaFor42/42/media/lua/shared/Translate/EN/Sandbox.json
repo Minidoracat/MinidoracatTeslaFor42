@@ -1,7 +1,7 @@
 {
     "Sandbox_MinidoracatTesla": "Tesla Collection",
     "Sandbox_MinidoracatTesla_RangeMultiplier": "Range multiplier",
-    "Sandbox_MinidoracatTesla_RangeMultiplier_tooltip": "How far a full battery drives.\n1.0 = as far as a full tank in a vanilla car of the same class; 2.0 = twice as far.",
+    "Sandbox_MinidoracatTesla_RangeMultiplier_tooltip": "How far a full battery drives.\n1.0 = as far as a full tank in a vanilla car of the same class; 2.0 = twice as far.\nVanilla Gas Consumption scales it too: 2 = half as far; 0 = driving uses no charge.",
     "Sandbox_MinidoracatTesla_ChargeSpeedMultiplier": "Charging speed multiplier",
     "Sandbox_MinidoracatTesla_ChargeSpeedMultiplier_tooltip": "1.0 = official charger power (Wall Connector 11.5 kW, Mobile Connector 7.6 kW)\n2.0 = twice as fast.",
     "Sandbox_MinidoracatTesla_ChargeFuelMultiplier": "Charging fuel multiplier",

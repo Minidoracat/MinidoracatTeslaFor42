@@ -308,7 +308,9 @@ function HUD:readSlow()
     local v, st, part = self.vehicle, self.st, self.battery
     local kwh = part and T.Battery.kwh(part) or 0
     st.pct = part and math.floor(T.Battery.pct(part) + 0.5) or 0
-    st.range = math.floor(kwh * self.kmPerKwh + 0.5)
+    -- nil: no range limit (Gas Consumption 0, Core.lua T.kmPerKwh) = "∞ km"; an empty pack is still 0 (T.rangeKm)
+    local kpk = self.kmPerKwh
+    st.range = kpk and math.floor(kwh * kpk + 0.5) or (kwh <= 0 and 0 or nil)
     st.locked = v:areAllDoorsLocked()
     local bits, avail = 0, 0 -- open doors; installed doors (a car-picture zone dims without one)
     for i = 1, #self.doors do
@@ -335,8 +337,8 @@ function HUD:readSlow()
             cs = 1
             local k2, add, hrs = T.Battery.chargeEstimate(part, chg, T.hours())
             st.pct = math.min(100, math.floor(T.Battery.pct(part) + (k2 - kwh) * 100 / math.max(1, T.Battery.capacity(part)) + 0.5))
-            st.range = math.floor(k2 * self.kmPerKwh + 0.5)
-            added = math.floor(add * self.kmPerKwh + 0.5)
+            st.range = kpk and math.floor(k2 * kpk + 0.5) or (k2 <= 0 and 0 or nil)
+            added = kpk and math.floor(add * kpk + 0.5)
             mins = math.floor(hrs * 60 + 0.5)
         end
         st.target = chg.target or 100
@@ -382,10 +384,10 @@ function HUD:setMessage()
         title, sub, icon, color = getText("IGUI_MinidoracatTesla_HUD_NoPower"), getText("IGUI_MinidoracatTesla_HUD_NoPowerSub"), "i_warn", C.warn
     elseif id == 3 then
         title, sub, icon, color = getText("IGUI_MinidoracatTesla_HUD_LowBattery"),
-            getText("IGUI_MinidoracatTesla_HUD_LowBatterySub", tostring(a1)), "i_warn", C.warn
+            getText("IGUI_MinidoracatTesla_HUD_LowBatterySub", a1 and tostring(a1) or "--"), "i_warn", C.warn
     elseif id == 4 then
         title, sub, icon, color = getText("IGUI_MinidoracatTesla_HUD_Charging"),
-            getText("IGUI_MinidoracatTesla_HUD_ChargingSub", tostring(a1), hmm(a2), tostring(self.st.target or 100)), "i_bolt", C.ok
+            getText("IGUI_MinidoracatTesla_HUD_ChargingSub", a1 and tostring(a1) or "--", hmm(a2), tostring(self.st.target or 100)), "i_bolt", C.ok
     elseif id == 5 then
         title, sub, icon, color = getText("IGUI_MinidoracatTesla_HUD_Charged", tostring(a1)),
             getText("IGUI_MinidoracatTesla_HUD_ChargedSub"), "i_check", C.ok
@@ -539,8 +541,12 @@ function HUD:build()
 
     -- range
     local kmW = A.km[3] * self.f
-    local rx = R - kmW - digitsWidth(self, A.sm, st.range) - 4 * S
-    digits(self, A.sm, st.range, rx, SPD_Y * S, C.text2, 1)
+    if st.range then
+        local rx = R - kmW - digitsWidth(self, A.sm, st.range) - 4 * S
+        digits(self, A.sm, st.range, rx, SPD_Y * S, C.text2, 1)
+    else -- no range limit: the atlas "∞" (Inter; the game fonts have none)
+        spr(self, A.inf, R - kmW - A.inf[7] * self.f - 4 * S, SPD_Y * S, C.text2, 1)
+    end
     spr(self, A.km, R - kmW, SPD_Y * S, C.text2, 1)
 
     -- power key: same look as the quick keys, smaller (icon blue + underline while on)

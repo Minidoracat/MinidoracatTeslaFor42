@@ -587,6 +587,49 @@ end
 tmd.chg, card.kind, card.key, card.player = savedChg, nil, "", savedPlayer
 card:read()
 getItemName = savedItemName
+-- vanilla Gas Consumption (CarGasConsumption): 2 halves the range; 0 = driving takes no charge, no range limit
+-- (Core.lua T.kmPerKwh nil). The dashboard's Inter atlas draws "∞ km"; the game's UIFont.Small has no ∞
+-- (media/fonts/*.fnt), so the texts say "--"
+local realGT0, savedChg0, savedPlayer0 = getText, tmd.chg, card.player
+getItemName = function(t) return t end -- LuaManager.java:8745-8763 (the charger's name on the card)
+getText = function(k, a) return a and (k .. "|" .. a) or k end
+dash:setVehicle(nil); dash:setVehicle(tesla) -- attach reads km/kWh
+local range1 = h.st.range
+SandboxVars.CarGasConsumption = 2
+dash:setVehicle(nil); dash:setVehicle(tesla)
+check(math.abs(h.st.range - range1 / 2) <= 1, "Gas Consumption 2: the dashboard range halves (" .. range1 .. " -> " .. h.st.range .. ")")
+SandboxVars.CarGasConsumption = 0
+dash:setVehicle(nil); dash:setVehicle(tesla)
+local inf = T.HUDAtlas[1].inf
+local function drawsInf()
+    if not inf then return false end
+    for i = 1, h.n, 12 do
+        if h.L[i] == inf[1] and h.L[i + 1] == inf[2] and h.L[i + 2] == inf[3] then return true end
+    end
+    return false
+end
+check(h.st.range == nil and drawsInf(), "Gas Consumption 0: the dashboard range is the atlas ∞ before km")
+tmd.chg = { kind = "WallConnector", x = 0, y = 0, z = 0, kw = 11.5, target = 90, last = T.hours() - 0.5, added = 0 }
+h:update(); h:update(); h:update()
+card.player, card.key = nil, ""
+card:read()
+check(h.msgId == 4 and h.msgSub == "IGUI_MinidoracatTesla_HUD_ChargingSub|--" and card.sAddKm == "+-- km",
+    "Gas Consumption 0, charging: the pill and the card say +-- km (" .. tostring(h.msgSub) .. ", " .. tostring(card.sAddKm) .. ")")
+tmd.chg = nil
+local tpart = T.Battery.part(tesla)
+tpart:setContainerContentAmount(7.84) -- 10 %
+h:update(); h:update(); h:update()
+check(h.msgId == 3 and h.msgSub == "IGUI_MinidoracatTesla_HUD_LowBatterySub|--", "Gas Consumption 0, low battery: -- km left (" .. tostring(h.msgSub) .. ")")
+tpart:setContainerContentAmount(0)
+h:update(); h:update(); h:update()
+check(h.st.range == 0 and not drawsInf(), "Gas Consumption 0, empty pack: 0 km (it cannot start), not ∞")
+tpart:setContainerContentAmount(39.2)
+SandboxVars.CarGasConsumption = nil
+getText, tmd.chg, card.player, card.key = realGT0, savedChg0, savedPlayer0, ""
+dash:setVehicle(nil); dash:setVehicle(tesla)
+check(h.st.range == range1, "Gas Consumption unset: the range as before (" .. tostring(h.st.range) .. ")")
+card:read()
+getItemName = savedItemName
 -- the driver on the charge card's buttons twice a second for a minute (+, +, -, start/stop), each request through the
 -- server's dispatch (Commands.lua CommandRate, the `default` budget the camp key and the rest share): none dropped,
 -- and the busiest 10 s keeps half its budget again to spare

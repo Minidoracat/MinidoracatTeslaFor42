@@ -537,11 +537,24 @@ check(B.draw(fv, fpart, 1.5) == 0 and near(fchg.fed, 1.5, 1e-12) and B.kwh(fpart
 fv.running = true
 T.Update.Battery(fv, fpart, 10)
 fv.running = false
-local idle = T.spec(fv).idleKw * 10 / 60 / T.rangeMul()
+local idle = T.spec(fv).idleKw * 10 / 60 * T.driveMul()
 check(B.kwh(fpart) == fk0 and near(fchg.fed, 1.5 + idle, 1e-12), "motor standby in Park adds to chg.fed, not to the pack")
+-- the standby is drive draw: it follows vanilla Gas Consumption (Core.lua T.driveMul), the loads above do not
+local idle1, fed0 = T.spec(fv).idleKw * 10 / 60 / T.rangeMul(), fchg.fed
+fv.running = true
+SandboxVars.CarGasConsumption = 2
+T.Update.Battery(fv, fpart, 10)
+local fed2 = fchg.fed
+SandboxVars.CarGasConsumption = 0
+T.Update.Battery(fv, fpart, 10)
+SandboxVars.CarGasConsumption = nil
+fv.running = false
+check(B.kwh(fpart) == fk0 and near(fed2 - fed0, 2 * idle1, 1e-12) and fchg.fed == fed2,
+    "motor standby on the charger: x2 at Gas Consumption 2, nothing at 0")
+local billed = fchg.fed
 H.setHours(242)
 C.settle(fo, H.hours())
-check(B.kwh(fpart) == fk0 and fchg.fed == nil and near(ff0 - fg.gen.fuel, (1.5 + idle) * T.fuelPerKwh(), 1e-12),
+check(B.kwh(fpart) == fk0 and fchg.fed == nil and near(ff0 - fg.gen.fuel, billed * T.fuelPerKwh(), 1e-12),
     "next settle: no charge (stopped); the loads burn their kWh x fuel per kWh and chg.fed is cleared")
 -- the generator gone by the next settle: the loads it ran are not billed to anyone
 fg.gen.on = false

@@ -202,7 +202,7 @@ function B.summonEnd(vehicle)
     summonAt[id] = nil
     local s, part = T.spec(vehicle), B.part(vehicle)
     if not (km and km > 0 and s and part and part:getInventoryItem()) then return end
-    B.draw(vehicle, part, s.kwPerKmh * km * 60 / T.secPerGameMin() / T.rangeMul())
+    B.draw(vehicle, part, s.kwPerKmh * km * 60 / T.secPerGameMin() * T.driveMul())
 end
 
 -- GasTank update: drive draw minus brake regen, every game minute while the car's parts update; cable length check.
@@ -222,10 +222,10 @@ function T.Update.Battery(vehicle, part, elapsedMinutes)
     local used = 0
     if vehicle:isEngineRunning() then
         if km then
-            used = (s.idleKw * m / 60 + s.kwPerKmh * km * 60 / T.secPerGameMin()) / T.rangeMul()
+            used = (s.idleKw * m / 60 + s.kwPerKmh * km * 60 / T.secPerGameMin()) * T.driveMul()
         else
             local kmh = math.abs(vehicle:getCurrentSpeedKmHour())
-            used = (s.idleKw + s.kwPerKmh * kmh) * m / 60 / T.rangeMul()
+            used = (s.idleKw + s.kwPerKmh * kmh) * m / 60 * T.driveMul() -- Core.lua T.driveMul: gas consumption / range
         end
         if B.onCharger(part) then
             B.draw(vehicle, part, used)

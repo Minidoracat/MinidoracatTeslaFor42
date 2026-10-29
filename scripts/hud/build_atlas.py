@@ -410,8 +410,10 @@ GLYPH_SETS = [
     ("sm", "Inter-Regular.ttf", 17, "0123456789PRND", True),
     ("smb", "Inter-SemiBold.ttf", 17, "PRND", False),
 ]
-# key, font, size (1x), text, letter spacing (px at 1x); the phone app's footer wordmark and trim (restyle mock)
+# key, font, size (1x), text, letter spacing (px at 1x); the phone app's footer wordmark and trim (restyle mock);
+# inf: the dashboard range with no limit (vanilla Gas Consumption 0, HUD.lua; the game's own fonts have no U+221E)
 WORDS = [("kmh", "Inter-Regular.ttf", 14, "km/h", 0), ("km", "Inter-Regular.ttf", 17, "km", 0),
+         ("inf", "Inter-Regular.ttf", 17, "\u221e", 0),
          ("wm_ModelY", "Inter-Light.ttf", 15, "MODEL Y", 5), ("trim_ModelY", "Inter-Regular.ttf", 13, "Performance", 0),
          ("wm_Model3", "Inter-Light.ttf", 15, "MODEL 3", 5), ("trim_Model3", "Inter-Regular.ttf", 13, "Performance", 0)]
 

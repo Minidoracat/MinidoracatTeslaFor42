@@ -372,6 +372,15 @@ v.running = true
 check(R.remember(v).drive == false, "motor on while plugged in: the app says Parked, like the HUD's P")
 gas:getModData().chg = nil
 check(R.remember(v).drive == true, "motor on, unplugged: Driving")
+SandboxVars.CarGasConsumption = 0 -- vanilla Gas Consumption 0: driving takes no charge (Core.lua T.kmPerKwh nil)
+local rz = R.remember(v)
+check(rz.km == nil and rz.pct ~= nil, "Gas Consumption 0: the record has no km (no range limit), pct as usual")
+local gasKwh = T.Battery.kwh(gas)
+gas:setContainerContentAmount(0)
+check(R.remember(v).km == 0, "Gas Consumption 0, empty pack: the record says 0 km")
+gas:setContainerContentAmount(gasKwh)
+SandboxVars.CarGasConsumption = nil
+check(R.remember(v).km ~= nil, "...a number again once driving takes charge")
 v.running = wasRunning
 -- the battery update also runs for VirtualVehicle (no getKeyId): no record, the drain goes on
 local realRemember, remembered = R.remember, 0
@@ -770,6 +779,12 @@ check(a.paintName == colors[1].name and a.sSub2 ~= nil and not a.b.lock.enable,
     "a record from before the paint field: first paint; offline: 'can't reach' line, lock greyed")
 state({ skin = 99 })
 check(a.paintName == colors[1].name, "unknown skin index -> first paint")
+local realGTkm = getText
+getText = function(k, a) return a and (k .. "|" .. a) or k end
+state({ km = false }) -- vanilla Gas Consumption 0: the record has no km (Remote.lua)
+check(a.sBat:find("_App_Km|--", 1, true) ~= nil, "no km in the record (Gas Consumption 0): the battery line says -- (" .. a.sBat .. ")")
+getText = realGTkm
+state()
 -- each car its own picture files, paints, wordmark, map glyph and lid words (Specs appCar / colors / model,
 -- T.CarPartNames): the Model 3 shares six paint names with the Model Y, so a shared file name would show the other car
 check(a.model == "ModelY" and a.b.trunk.tipKey == "IGUI_MinidoracatTesla_Tip_AppTrunk"

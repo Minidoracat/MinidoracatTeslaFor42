@@ -155,8 +155,8 @@ function Card:read()
     if chg then
         local kwh, added, hours, cap = T.Battery.chargeEstimate(part, chg, T.hours())
         pct = math.min(100, math.floor(kwh * 100 / math.max(1, cap) + 0.5)) -- int container cap can exceed the pack's kWh
-        local kmk = T.kmPerKwh(v)
-        addKm = math.floor(added * kmk + 0.5)
+        local kmk = T.kmPerKwh(v) -- nil: no range limit (Gas Consumption 0): "+-- km", the game fonts have no ∞
+        addKm = kmk and math.floor(added * kmk + 0.5) or "--"
         addKwh = math.floor(added * 10 + 0.5)
         mins = math.floor(hours * 60 + 0.5)
         kw = math.floor((chg.kw or 0) * 10 + 0.5)

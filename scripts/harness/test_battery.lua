@@ -16,7 +16,7 @@ check(math.ceil(T.Packs["Base.MinidoracatTesla_Model3Battery"]) == H.scriptValue
 local m3 = H.vehicle({ script = "Base.MinidoracatTesla_Model3", kwh = 39.2 })
 check(T.isTesla(m3) and B.part(m3):getInventoryItem():getFullType() == "Base.MinidoracatTesla_Model3Battery"
     and B.capacity(B.part(m3)) == 78.4, "Model 3 is a Tesla with its own pack, exact 78.4 kWh (MIIT TSL7000BEVBA5)")
-check(near(78.4 * T.kmPerKwh(m3), 757, 1), "Model 3: a full pack at 50 km/h = one vanilla CarNormal tank too (757 km)")
+check(near(78.4 * T.kmPerKwh(m3), 75.7, 0.1), "Model 3: a full pack at 50 km/h = one vanilla CarNormal tank too (75.7 km, Gas Consumption 1)")
 check(T.spec(m3).massKg == 1851, "Model 3 regen mass = Performance curb mass 1851 kg")
 H.removeVehicle(m3)
 local full = H.vehicle({ kwh = 78.4 })
@@ -31,11 +31,44 @@ full.running = false
 local other = H.vehicle({ script = "Base.CarNormal" })
 check(not T.isTesla(other) and B.part(other) == nil, "vanilla car is not a Tesla")
 check(T.kmPerKwh(v) > 0 and near(T.rangeKm(v), 39.2 * T.kmPerKwh(v)), "range = kwh * km/kWh")
-check(near(78.4 * T.kmPerKwh(v), 757, 1), "a full pack at 50 km/h = one vanilla CarNormal tank (757 km, 90-minute day)")
+-- 2026-10-29 recalibration (Core.lua DRIVE_SCALE): vanilla CarNormal's 49 L at 50 km/h is about 75.7 km at the default
+-- Gas Consumption 1 (tesla-rangegas-1029-calib-g1) and 757 km at the E2E server template's 0.1 (tesla-calib-normal-1023a)
+check(T.DRIVE_SCALE == 10 and near(T.spec(v).idleKw, 0.376, 1e-12) and near(T.spec(v).kwPerKmh, 0.0572, 1e-12),
+    "coefficients: 10 x the 10-23 fit (idleKw 0.376, kwPerKmh 0.0572)")
+check(near(78.4 * T.kmPerKwh(v), 75.7, 0.1), "a full pack at 50 km/h = one vanilla CarNormal tank (75.7 km at Gas Consumption 1, 90-minute day)")
+SandboxVars.CarGasConsumption = 0.1
+check(near(78.4 * T.kmPerKwh(v), 757, 1), "Gas Consumption 0.1 (E2E MP template): the 757 km of the 10-23 calibration")
+SandboxVars.CarGasConsumption = nil
 SandboxVars.MinidoracatTesla.RangeMultiplier = 2
 local k2 = T.kmPerKwh(v)
+SandboxVars.MinidoracatTesla.RangeMultiplier = 10
+local k10 = T.kmPerKwh(v)
+SandboxVars.MinidoracatTesla.RangeMultiplier = 11
+local k11 = T.kmPerKwh(v)
+SandboxVars.MinidoracatTesla.RangeMultiplier = 0.1
+local kLow = T.kmPerKwh(v)
 SandboxVars.MinidoracatTesla.RangeMultiplier = 1
 check(near(k2, 2 * T.kmPerKwh(v)), "RangeMultiplier 2 doubles km/kWh")
+check(near(k10, 10 * T.kmPerKwh(v)) and k11 == k10 and near(78.4 * k10, 757, 1),
+    "RangeMultiplier 10 (the sandbox max): 10 x, 757 km at Gas Consumption 1; 11 is clamped to 10")
+check(near(kLow, 0.25 * T.kmPerKwh(v)), "RangeMultiplier below 0.25 is clamped to 0.25")
+local sbf = assert(io.open("MOD/MinidoracatTeslaFor42/Contents/mods/MinidoracatTeslaFor42/42/media/sandbox-options.txt", "r"))
+local sbText = sbf:read("*a")
+sbf:close()
+local rangeOpt = sbText:sub((assert(sbText:find("option MinidoracatTesla.RangeMultiplier", 1, true))))
+check(tonumber(rangeOpt:match("min%s*=%s*([%d%.]+)")) == 0.25 and tonumber(rangeOpt:match("max%s*=%s*([%d%.]+)")) == 10,
+    "sandbox-options.txt RangeMultiplier 0.25-10 (= T.rangeMul's clamp)")
+-- vanilla sandbox Gas Consumption (CarGasConsumption, 0-100) scales the drive draw like petrol (user 2026-10-29)
+local k1 = T.kmPerKwh(v)
+SandboxVars.CarGasConsumption = 1
+check(T.kmPerKwh(v) == k1, "Gas Consumption 1 (vanilla default) = unset: the calibration km/kWh")
+SandboxVars.CarGasConsumption = 2
+check(near(T.kmPerKwh(v), k1 / 2), "Gas Consumption 2 halves km/kWh")
+SandboxVars.CarGasConsumption = 0
+check(T.kmPerKwh(v) == nil and T.rangeKm(v) == math.huge, "Gas Consumption 0: no range limit (km/kWh nil, range math.huge)")
+SandboxVars.CarGasConsumption = "x"
+check(T.kmPerKwh(v) == k1, "Gas Consumption unreadable: 1")
+SandboxVars.CarGasConsumption = nil
 
 H.section("drain")
 local s = T.spec(v)
@@ -63,6 +96,26 @@ k0 = B.kwh(part)
 T.Update.Battery(v, part, 1)
 check(near(k0 - B.kwh(part), used / 2, 1e-5), "RangeMultiplier 2 halves the drain")
 SandboxVars.MinidoracatTesla.RangeMultiplier = 1
+SandboxVars.CarGasConsumption = 2
+k0 = B.kwh(part)
+T.Update.Battery(v, part, 1)
+check(near(k0 - B.kwh(part), used * 2, 1e-5), "Gas Consumption 2 doubles the drain (idle included)")
+SandboxVars.CarGasConsumption = 0
+k0 = B.kwh(part)
+T.Update.Battery(v, part, 1)
+check(B.kwh(part) == k0, "Gas Consumption 0: driving takes no charge")
+SandboxVars.CarGasConsumption = 1
+k0 = B.kwh(part)
+T.Update.Battery(v, part, 1)
+check(near(k0 - B.kwh(part), used, 1e-5), "Gas Consumption 1: the calibration drain")
+-- the car's own loads (climate, camp socket, 12V, sentry: B.draw) keep their kWh whatever the Gas Consumption
+local drew = {}
+for _, g in ipairs({ 0, 2 }) do
+    SandboxVars.CarGasConsumption = g
+    drew[#drew + 1] = B.draw(v, part, 0.5)
+end
+check(drew[1] == 0.5 and drew[2] == 0.5, "Gas Consumption 0 and 2: B.draw (climate, camp, sentry) takes the same 0.5 kWh")
+SandboxVars.CarGasConsumption = nil
 local empty = H.vehicle({ kwh = 0.01, running = true, speed = 80 })
 T.Update.Battery(empty, B.part(empty), 10)
 check(B.kwh(B.part(empty)) == 0 and empty.transmits == 1, "drain clamps at 0 and transmits the empty state")
@@ -122,14 +175,72 @@ check(near(before - B.kwh(spart), drive, 1e-9), "...and the end charges only the
 before = B.kwh(spart)
 B.summonEnd(sv)
 check(B.kwh(spart) == before, "an end with nothing kept: no charge")
+SandboxVars.CarGasConsumption = 2
+B.summonStart(sv, 5000)
+summoned[sv] = { by = "own", phase = "driving", startedMs = 5000 }
+sv.x = sv.x + 50
+summoned[sv] = nil
+before = B.kwh(spart)
+B.summonEnd(sv)
+check(near(before - B.kwh(spart), 2 * drive, 1e-9), "Gas Consumption 2: a summon's path takes twice the charge")
+SandboxVars.CarGasConsumption = 0
+B.summonStart(sv, 6000)
+summoned[sv] = { by = "own", phase = "driving", startedMs = 6000 }
+sv.x = sv.x + 50
+summoned[sv] = nil
+before = B.kwh(spart)
+B.summonEnd(sv)
+check(B.kwh(spart) == before, "Gas Consumption 0: a summon takes no charge")
+SandboxVars.CarGasConsumption = nil
 T.Remote = realRemote
 
 H.section("regen")
 local R = T.Regen
 local rv = H.vehicle({ kwh = 30, running = true, speed = 60 })
 local rp = B.part(rv)
-check(near(R.kwh(s, 60, 0), 0.6 * 0.5 * 2033 * (60 / 3.6) ^ 2 / 3600000), "regen kWh = eff * 1/2 m (v1^2 - v2^2)")
+local ke60 = 0.6 * 0.5 * 2033 * (60 / 3.6) ^ 2 / 3600000 -- the physical kinetic energy, kWh
+check(near(R.kwh(s, 60, 0), ke60 * T.DRIVE_SCALE), "regen kWh = eff * 1/2 m (v1^2 - v2^2) x DRIVE_SCALE (the drive draw's calibration)")
 check(R.kwh(s, 20, 40) == 0, "no regen when speeding up")
+SandboxVars.CarGasConsumption = 2
+local ke2 = R.kwh(s, 60, 0)
+SandboxVars.CarGasConsumption = 0.1
+local ke01 = R.kwh(s, 60, 0)
+SandboxVars.CarGasConsumption = nil
+check(near(ke2, 2 * ke60 * T.DRIVE_SCALE) and near(ke01, ke60), "regen follows T.driveMul: x2 at Gas Consumption 2; at 0.1 the 10-23 value")
+-- the share of the drive draw braking gives back is the same at any Gas Consumption (2026-10-29 recalibration: the
+-- drive draw went x10; unscaled, regen would have fallen to a tenth of its share). SP path, 5 min at 60 then 20 -> 0
+-- (small enough to stay under the 30% budget).
+H.side(false, false)
+local function regenShare(gas)
+    SandboxVars.CarGasConsumption = gas
+    local car = H.vehicle({ kwh = 50, running = true, speed = 60 })
+    local cp = B.part(car)
+    local k0 = B.kwh(cp)
+    for _ = 1, 5 do T.Update.Battery(car, cp, 1) end
+    local used = k0 - B.kwh(cp)
+    car.running, car.speed, car.brakeSpeed = false, 0, 20
+    local k1 = B.kwh(cp)
+    T.Update.Battery(car, cp, 1)
+    SandboxVars.CarGasConsumption = nil
+    H.removeVehicle(car)
+    return (B.kwh(cp) - k1) / used
+end
+local sh1, sh01, sh2 = regenShare(1), regenShare(0.1), regenShare(2)
+check(sh1 > 0.1 and sh1 < R.SHARE and near(sh01, sh1, 1e-9) and near(sh2, sh1, 1e-9),
+    string.format("regen share of the drive draw: %.4f at Gas Consumption 1, the same at 0.1 and 2", sh1))
+-- the unspent budget's cap scales too (R.BUDGET_MAX x R.scale(), 5 kWh at Gas Consumption 1): an hour at 60 km/h
+-- banks 6 x 0.3 x (0.376 + 0.0572 x 60) x 10/60 = 1.142 kWh, and a stop from 120 km/h (1.88 kWh) takes all of it
+local bc = H.vehicle({ kwh = 50, running = true, speed = 60 })
+local bp = B.part(bc)
+for _ = 1, 6 do T.Update.Battery(bc, bp, 10) end
+bc.running, bc.speed, bc.brakeSpeed = false, 0, 120
+local bk = B.kwh(bp)
+T.Update.Battery(bc, bp, 1)
+local banked = 6 * R.SHARE * (s.idleKw + s.kwPerKmh * 60) * 10 / 60
+check(near(B.kwh(bp) - bk, banked, 1e-9) and banked > 1.1,
+    string.format("budget cap scales with the drive draw: an hour's budget %.3f kWh is credited, not capped at 0.5", banked))
+H.removeVehicle(bc)
+H.side(false, true)
 -- MP: drive 5 minutes to build budget, then brake 60 -> 0
 for _ = 1, 5 do T.Update.Battery(rv, rp, 1) end
 local driver = H.player({ name = "drv" })
@@ -142,7 +253,7 @@ local k1 = B.kwh(rp)
 T.Update.Battery(rv, rp, 1)
 local gained = B.kwh(rp) - k1
 check(gained > 0, "MP brake edge credits regen at the next battery update")
-check(gained <= math.min(R.kwh(s, 60, 0), R.BUDGET_MAX) + 1e-9, "credit never exceeds the kinetic energy or the budget")
+check(gained <= math.min(R.kwh(s, 60, 0), R.BUDGET_MAX * R.scale()) + 1e-9, "credit never exceeds the kinetic energy or the budget")
 -- accelerate/brake loop: net energy must still go down
 rv.running = true
 local loopStart = B.kwh(rp)

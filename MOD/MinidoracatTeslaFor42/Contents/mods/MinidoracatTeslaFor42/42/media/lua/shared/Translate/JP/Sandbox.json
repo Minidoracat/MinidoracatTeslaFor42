@@ -1,7 +1,7 @@
 {
     "Sandbox_MinidoracatTesla": "Tesla Collection",
     "Sandbox_MinidoracatTesla_RangeMultiplier": "航続距離の倍率",
-    "Sandbox_MinidoracatTesla_RangeMultiplier_tooltip": "満充電のバッテリーで走れる距離。\n1.0 = 同クラスのバニラ車が満タンで走れる距離と同じ、2.0 = その2倍。",
+    "Sandbox_MinidoracatTesla_RangeMultiplier_tooltip": "満充電のバッテリーで走れる距離。\n1.0 = 同クラスのバニラ車が満タンで走れる距離と同じ、2.0 = その2倍。\nバニラの「車両の燃料消費量」にも連動します：2 = 半分の距離、0 = 走行で電気を使いません。",
     "Sandbox_MinidoracatTesla_ChargeSpeedMultiplier": "充電速度の倍率",
     "Sandbox_MinidoracatTesla_ChargeSpeedMultiplier_tooltip": "1.0 = 公式の充電出力（ウォールコネクター 11.5 kW、モバイルコネクター 7.6 kW）\n2.0 = 2倍の速さ。",
     "Sandbox_MinidoracatTesla_ChargeFuelMultiplier": "充電の燃料消費倍率",

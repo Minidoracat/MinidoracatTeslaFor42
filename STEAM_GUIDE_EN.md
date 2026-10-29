@@ -48,7 +48,7 @@ https://steamcommunity.com/sharedfiles/filedetails/?id=XXXX
 === 🧰 Battery and range
 [list]
 [*] [b]Charge is fuel[/b]: the High Voltage Battery replaces petrol; driving uses charge and braking wins some back.
-[*] [b]Range[/b]: a full battery goes as far as a full tank in a vanilla car of the same class; the sandbox option Range multiplier changes it.
+[*] [b]Range[/b]: a full battery goes as far as a full tank in a vanilla car of the same class; the sandbox option Range multiplier changes it, and it follows the vanilla sandbox option Gas Consumption too (2 = half as far, 0 = driving uses no charge and the dashboard shows ∞ range).
 [*] [b]Out of charge[/b]: the motor stops and will not start until you charge.
 [*] [b]Low Voltage Battery[/b]: the main battery tops it up while it holds 5% or more, so a car parked for a long time still starts.
 [*] [b]Power in the car[/b]: climate, Camp Mode and Sentry Mode use the main battery too; plugged into a powered charger, the charger supplies them instead, and on generator power that burns the generator's fuel.
@@ -259,7 +259,7 @@ A charger that works on the floor, no wall needed; slower than the Wall Connecto
 On the Tesla Collection page of the sandbox settings.
 [table]
 [tr][th]Option[/th][th]Default[/th][th]Range[/th][th]What it does[/th][/tr]
-[tr][td]Range multiplier[/td][td]1.0[/td][td]0.25–4.0[/td][td]How far a full battery drives; 1.0 = as far as a full tank in a vanilla car of the same class[/td][/tr]
+[tr][td]Range multiplier[/td][td]1.0[/td][td]0.25–10.0[/td][td]How far a full battery drives; 1.0 = as far as a full tank in a vanilla car of the same class; vanilla Gas Consumption scales it too[/td][/tr]
 [tr][td]Charging speed multiplier[/td][td]1.0[/td][td]0.1–10.0[/td][td]1.0 = official charger power (Wall Connector 11.5 kW, Mobile Connector 7.6 kW)[/td][/tr]
 [tr][td]Charging fuel multiplier[/td][td]1.0[/td][td]0–10.0[/td][td]Generator fuel a Tesla burns, charging and the car's own loads while plugged in; 1.0 = about one tank for a full charge at the default Generator Fuel Consumption, 0 = no fuel[/td][/tr]
 [tr][td]Camp Mode battery limit[/td][td]20[/td][td]10–20 (%)[/td][td]Below this charge Camp Mode cannot turn on, and while camping it turns off[/td][/tr]
@@ -269,6 +269,7 @@ Options elsewhere that also affect Teslas:
 [tr][th]Option[/th][th]Where[/th][th]Effect[/th][/tr]
 [tr][td]Summon range (tiles), default 64[/td][td]AutoDrive sandbox[/td][td]How far the app's Summon reaches; 0 turns Summon off[/td][/tr]
 [tr][td]Virtual key for owners, default on[/td][td]Vehicle Manager sandbox[/td][td]Off: an owner without the key card cannot set up a new phone key[/td][/tr]
+[tr][td]Gas Consumption[/td][td]Vanilla sandbox[/td][td]Multiplies the charge driving and Summon use (Range multiplier divides it): 2 = half the range, 0 = driving uses no charge; climate, Camp Mode and Sentry use the same as before[/td][/tr]
 [tr][td]Generator Fuel Consumption[/td][td]Vanilla sandbox[/td][td]Multiplies with Charging fuel multiplier: how much generator fuel charging and the car's own loads burn[/td][/tr]
 [tr][td]Electricity Shutoff[/td][td]Vanilla sandbox[/td][td]Once the grid is down, the app works over Bluetooth within 30 m only[/td][/tr]
 [tr][td]SpeedLimit, default 70[/td][td]Multiplayer server settings[/td][td]Teslas, like vanilla cars, cannot go faster[/td][/tr]

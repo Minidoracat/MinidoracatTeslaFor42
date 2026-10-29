@@ -1,7 +1,7 @@
 {
     "Sandbox_MinidoracatTesla": "Tesla Collection",
     "Sandbox_MinidoracatTesla_RangeMultiplier": "Reichweiten-Multiplikator",
-    "Sandbox_MinidoracatTesla_RangeMultiplier_tooltip": "Wie weit eine volle Batterie reicht.\n1.0 = so weit wie ein voller Tank in einem normalen Auto derselben Klasse; 2.0 = doppelt so weit.",
+    "Sandbox_MinidoracatTesla_RangeMultiplier_tooltip": "Wie weit eine volle Batterie reicht.\n1.0 = so weit wie ein voller Tank in einem normalen Auto derselben Klasse; 2.0 = doppelt so weit.\nSkaliert auch mit dem Vanilla-„Benzinverbrauch“: 2 = halb so weit; 0 = Fahren verbraucht keinen Strom.",
     "Sandbox_MinidoracatTesla_ChargeSpeedMultiplier": "Ladegeschwindigkeits-Multiplikator",
     "Sandbox_MinidoracatTesla_ChargeSpeedMultiplier_tooltip": "1.0 = offizielle Ladeleistung (Wall Connector 11,5 kW, Mobile Connector 7,6 kW)\n2.0 = doppelt so schnell.",
     "Sandbox_MinidoracatTesla_ChargeFuelMultiplier": "Treibstoff-Multiplikator beim Laden",

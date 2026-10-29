@@ -1,7 +1,7 @@
 {
     "Sandbox_MinidoracatTesla": "Tesla Collection",
     "Sandbox_MinidoracatTesla_RangeMultiplier": "Множитель запаса хода",
-    "Sandbox_MinidoracatTesla_RangeMultiplier_tooltip": "Сколько можно проехать на полной батарее.\n1.0 = столько же, сколько обычная машина того же класса на полном баке; 2.0 = вдвое дальше.",
+    "Sandbox_MinidoracatTesla_RangeMultiplier_tooltip": "Сколько можно проехать на полной батарее.\n1.0 = столько же, сколько обычная машина того же класса на полном баке; 2.0 = вдвое дальше.\nТакже зависит от «Потребление бензина» в основной игре: 2 = вдвое ближе; 0 = езда не расходует заряд.",
     "Sandbox_MinidoracatTesla_ChargeSpeedMultiplier": "Множитель скорости зарядки",
     "Sandbox_MinidoracatTesla_ChargeSpeedMultiplier_tooltip": "1.0 = официальная мощность зарядки (Wall Connector 11,5 кВт, Mobile Connector 7,6 кВт)\n2.0 = вдвое быстрее.",
     "Sandbox_MinidoracatTesla_ChargeFuelMultiplier": "Множитель расхода топлива при зарядке",

@@ -13,15 +13,20 @@ local R = {}
 T.Regen = R
 
 R.SHARE = 0.3      -- at most 30% of the energy used comes back
-R.BUDGET_MAX = 0.5 -- kWh of unspent budget a car may hold
+R.BUDGET_MAX = 0.5 -- kWh of unspent budget a car may hold, at the unit scale (x R.scale(), like the kinetic energy)
 
 local pressKmh, pending, budget = {}, {}, {}
+
+-- The drive draw is the calibrated coefficients (Core.lua DRIVE_SCALE, 10 x the 10-23 fit) times T.driveMul (vanilla
+-- Gas Consumption / RangeMultiplier); the energy recovered gets the same factors, so braking gives back the same share
+-- of the drive draw at any setting (2026-10-29 recalibration: unscaled it would have dropped to a tenth of that share).
+function R.scale() return T.DRIVE_SCALE * T.driveMul() end
 
 -- kWh recovered braking from v1 to v2 km/h
 function R.kwh(spec, v1, v2)
     if not spec or v1 <= v2 then return 0 end
     local a, b = v1 / 3.6, v2 / 3.6
-    return spec.regenEff * 0.5 * spec.massKg * (a * a - b * b) / 3600000
+    return spec.regenEff * 0.5 * spec.massKg * (a * a - b * b) / 3600000 * R.scale()
 end
 
 -- brake pedal edge (MP)
@@ -48,7 +53,7 @@ function R.take(vehicle, spec, used)
         local v1 = vehicle:getBrakeSpeedBetweenUpdate()
         if v1 > 0 then p = p + R.kwh(spec, v1, math.abs(vehicle:getCurrentSpeedKmHour())) end
     end
-    local b = math.min(R.BUDGET_MAX, (budget[id] or 0) + used * R.SHARE)
+    local b = math.min(R.BUDGET_MAX * R.scale(), (budget[id] or 0) + used * R.SHARE)
     local credit = math.min(p, b)
     budget[id] = b - credit
     return credit
