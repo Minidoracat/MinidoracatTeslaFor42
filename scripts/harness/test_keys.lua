@@ -27,6 +27,8 @@ local function item(ft, keyId)
     function it:getContainer() return self.cont end
     function it:hasModData() return self.md ~= nil end
     function it:getModData() self.md = self.md or {}; return self.md end
+    function it:hasTag() return false end
+    function it:getInventory() return self.inv end
     return it
 end
 local function typeIs(it, t) return it.ft == t or it:getType() == t end
@@ -53,6 +55,8 @@ container = function(...)
         return jlist(out)
     end
     function c:getItemWithIDRecursiv(id) return walk(self, function(it) return it.id == id end) end
+    function c:getItemWithID(id) for _, it in ipairs(self.items) do if it.id == id then return it end end end
+    function c:getItems() return jlist(self.items) end
     -- ItemContainer.java:3242-3256: loose keys and keyrings only, not wallets or bags
     function c:haveThisKeyId(id)
         for _, it in ipairs(self.items) do
@@ -70,11 +74,12 @@ local function bag(ft, ...)
 end
 local function key(ft, keyId) local k = item(ft, keyId); k.isKey = true; return k end
 
+ItemTag = ItemTag or { KEY_RING = "KeyRing" }
 local sentPackets = { add = 0, remove = 0 }
 getItemNameFromFullType = function(ft) return "ItemName_" .. ft end
 instanceItem = function(ft) return key(ft) end
 sendAddItemToContainer = function() sentPackets.add = sentPackets.add + 1 end
-sendRemoveItemFromContainer = function() sentPackets.remove = sentPackets.remove + 1 end
+sendRemoveItemFromContainer = function(c, it) sentPackets.remove = sentPackets.remove + 1; sentPackets.lastRemove = { c, it } end
 local sounds = {}
 playServerSound = function(name) sounds[#sounds + 1] = name end
 
@@ -122,6 +127,7 @@ local function tesla(o)
         return { getX = function() return self.x - 1 end, getY = function() return self.y end }
     end
     function v:getCurrentKey() return self.ignitionKey end
+    function v:isEngineStarted() return self.starting == true end -- Starting..StartingSuccess (VehicleEngine.java:365-370)
     function v:getSquare() return {} end
     return v
 end
@@ -147,7 +153,7 @@ ISUnlockVehicleDoor.start = ISUnlockVehicleDoor.start or function() return true 
 local unlockBefore = { start = ISUnlockVehicleDoor.start, complete = ISUnlockVehicleDoor.complete } -- restored at the end
 -- vanilla ISStartVehicleEngine:complete (ISStartVehicleEngine.lua:26-44): haveKey from haveThisKeyId only
 H.stub("Vehicles/TimedActions/ISStartVehicleEngine")
-ISStartVehicleEngine = { complete = function(self)
+ISStartVehicleEngine = { waitToStart = function() return false end, complete = function(self) -- (ISBaseTimedAction's)
     local veh = self.character:getVehicle()
     veh:tryStartEngine(self.character:getInventory():haveThisKeyId(veh:getKeyId()) ~= nil)
     return true
@@ -180,19 +186,135 @@ local teslaKey, plainKey = key("Base.CarKey", v.keyId), key("Base.CarKey", other
 local wallet = bag("Base.Wallet", teslaKey)
 local ownerInv = container(wallet, plainKey)
 local owner = player("owner", ownerInv, v.x - 1, v.y)
-owner.vehicle = v
+-- seated, driving: the inventory's key swaps, except this car's while its motor starts with the ignition empty (the
+-- client moves its own copy in when the Starting state arrives, KeyActions K.sweep)
+owner.vehicle, v.driver, v.starting = v, owner, true
 cmds.keySweep(owner, {})
-check(teslaKey.cont == wallet.inv, "sweep: refused while seated (key may be going in or out of the ignition)")
-owner.vehicle = nil
+check(teslaKey.cont == wallet.inv, "sweep: the driver's key waits while the motor starts with the ignition empty")
+v.starting = false
 cmds.keySweep(owner, {})
 local card = wallet.inv.items[1]
-check(card and card.ft == K.CARD and card.keyId == v.keyId, "sweep: the Tesla key became a key card with the same keyId")
+check(card and card.ft == K.CARD and card.keyId == v.keyId, "sweep: seated, motor off: the Tesla key became a key card with the same keyId")
 check(card and card.cont == wallet.inv and teslaKey.cont == nil, "sweep: swapped in place (still in the wallet)")
 check(card and card.name == "ItemName_" .. K.CARD .. " - IGUI_VehicleNameMinidoracatTesla_ModelY", "sweep: named like the vanilla key (item - car)")
 check(plainKey.cont == ownerInv and plainKey.ft == "Base.CarKey", "sweep: other cars' keys untouched")
 check(sentPackets.add == 1 and sentPackets.remove == 1, "sweep: one remove and one add packet")
 cmds.keySweep(owner, {})
 check(sentPackets.add == 1, "sweep: nothing left to swap the second time")
+owner.vehicle, v.driver = nil, nil
+-- what the wait leaves alone: another Tesla's key, and this car's once its key cannot go in
+do
+    local v2 = tesla({ pct = 50 })
+    F.fire("OnSpawnVehicleEnd", v2)
+    local theirs = key("Base.CarKey", v2.keyId)
+    local inv = container(theirs)
+    local p = player("driver2", inv, v.x, v.y)
+    p.vehicle, v.driver, v.starting = v, p, true
+    local mine = inv:AddItem(key("Base.CarKey", v.keyId))
+    cmds.keySweep(p, {})
+    check(mine.cont == inv and theirs.cont == nil, "sweep wait: only this car's key waits, another Tesla's becomes a card")
+    inv:Remove(mine)
+    local cases = {
+        { "the ignition already holds a key", function() v.ignition = true end },
+        { "a hotwired car (no key goes in)", function() v.hotwired = true end },
+        { "a passenger", function() v.driver = nil end },
+        { "the motor running", function() v.starting, v.running = false, true end },
+    }
+    for _, c in ipairs(cases) do
+        v.driver, v.starting, v.ignition, v.hotwired, v.running = p, true, false, false, false
+        c[2]()
+        local k = inv:AddItem(key("Base.CarKey", v.keyId))
+        cmds.keySweep(p, {})
+        check(k.cont == nil, "sweep wait: " .. c[1] .. " -> swapped")
+    end
+    v.driver, v.starting, v.ignition, v.hotwired, v.running = nil, false, false, false, false
+end
+
+-- vanilla "vehicle" commands, looked at a tick later (after vanilla's own handler)
+do
+    local inv = container()
+    local p = player("admin", inv, v.x, v.y)
+    inv:AddItem(key("Base.CarKey", v.keyId)) -- what vanilla getKey adds (VehicleCommands.lua:317-327)
+    H.fire("OnClientCommand", "vehicle", "getKey", p, { vehicle = v:getId() })
+    H.fire("OnTick")
+    check(inv.items[1].ft == "Base.CarKey", "admin Get Key without the cheat right: no sweep (vanilla gave nothing)")
+    p._admin = true
+    H.fire("OnClientCommand", "vehicle", "getKey", p, { vehicle = v:getId() })
+    check(inv.items[1].ft == "Base.CarKey", "admin Get Key: nothing inside vanilla's dispatch")
+    H.fire("OnTick")
+    check(inv.items[1].ft == K.CARD, "admin Get Key: swapped a tick later (no client action asks)")
+    -- ghost guard: the client's start beat the swap; vanilla putKeyInIgnition took the first key with the keyId out
+    -- of the inventory (haveThisKeyId: loose keys, then key rings) and put the client's old CarKey in
+    -- (BaseVehicle.java:8726-8727); the client still holds the key vanilla took
+    local function vanillaPut(sender, old)
+        local taken = sender:getInventory():haveThisKeyId(old.keyId)
+        taken.cont:Remove(taken)
+        H.fire("OnClientCommand", "vehicle", "putKeyInIgnition", sender, { key = old, container = -1 })
+        H.fire("OnTick")
+        return taken
+    end
+    local getKeyCard = inv.items[1]
+    inv:Remove(getKeyCard) -- (one key of the car first: vanilla takes our new card)
+    local old = inv:AddItem(key("Base.CarKey", v.keyId))
+    old._class = "Key"
+    cmds.keySweep(p, {})
+    local card = inv.items[#inv.items]
+    local removes, ghosts = sentPackets.remove, K.stats.ghosts
+    local other = player("other", container(), v.x, v.y)
+    H.fire("OnClientCommand", "vehicle", "putKeyInIgnition", other, { key = old, container = -1 })
+    H.fire("OnTick")
+    check(sentPackets.remove == removes, "ghost guard: another player naming my old key's id -> nothing")
+    local taken = vanillaPut(p, old)
+    local last = sentPackets.lastRemove
+    check(taken == card and sentPackets.remove == removes + 1 and K.stats.ghosts == ghosts + 1 and last[1] == inv
+        and last[2] == card, "ghost guard: the card vanilla took out is removed on the client too (that card, its container)")
+    H.fire("OnClientCommand", "vehicle", "putKeyInIgnition", p, { key = old, container = -1 })
+    H.fire("OnTick")
+    check(sentPackets.remove == removes + 1, "ghost guard: once per swap")
+    -- two keys of the car (order: card, CarKey): the new card goes last, vanilla takes the other one
+    inv:AddItem(getKeyCard)
+    local old2 = inv:AddItem(key("Base.CarKey", v.keyId))
+    old2._class = "Key"
+    cmds.keySweep(p, {})
+    local card2 = inv.items[#inv.items]
+    removes = sentPackets.remove
+    taken = vanillaPut(p, old2)
+    last = sentPackets.lastRemove
+    check(taken == getKeyCard and sentPackets.remove == removes + 1 and last[2] == getKeyCard and card2.cont == inv,
+        "ghost guard: vanilla took the car's other card -> that one is removed on the client, the new card stays")
+    -- in a key ring: vanilla takes it from the ring, the remove names the ring
+    inv:Remove(card2)
+    local ring = bag("Base.KeyRing", key("Base.CarKey", v.keyId))
+    local old3 = ring.inv.items[1]
+    old3._class = "Key"
+    inv:AddItem(ring)
+    cmds.keySweep(p, {})
+    local card3 = ring.inv.items[1]
+    removes = sentPackets.remove
+    taken = vanillaPut(p, old3)
+    last = sentPackets.lastRemove
+    check(taken == card3 and sentPackets.remove == removes + 1 and last[1] == ring.inv and last[2] == card3,
+        "ghost guard: a card in a key ring -> removed from that ring on the client")
+    -- any Key with the keyId (a vanilla Base.Key1 here), first in the order: vanilla takes it
+    ring.inv:Remove(card3)
+    inv:Remove(ring)
+    local house = key("Base.Key1", v.keyId)
+    inv:AddItem(house)
+    local old4 = inv:AddItem(key("Base.CarKey", v.keyId))
+    old4._class = "Key"
+    cmds.keySweep(p, {})
+    removes = sentPackets.remove
+    taken = vanillaPut(p, old4)
+    last = sentPackets.lastRemove
+    check(taken == house and sentPackets.remove == removes + 1 and last[2] == house,
+        "ghost guard: vanilla took another Key type with the keyId -> removed on the client too")
+    local plain = key("Base.CarKey", v.keyId)
+    plain._class = "Key"
+    removes = sentPackets.remove
+    H.fire("OnClientCommand", "vehicle", "putKeyInIgnition", p, { key = plain, container = -1 })
+    H.fire("OnTick")
+    check(sentPackets.remove == removes, "ghost guard: a key we never swapped -> nothing")
+end
 
 -- ------------------------------------------------------------------ tap rules (card in the wallet counts)
 local ok, why = K.canTap(owner, v)
@@ -735,9 +857,11 @@ check(#items == 4 and items[3] == K.PHONE and items[4] == K.LOOT.ElectronicStore
 -- (keySweep a second later), two key card taps, "Add this car" on the phone, back in. Every request through the
 -- server's dispatch (Commands.lua CommandRate, the `default` budget): none dropped.
 H.section("keys: a busy minute within the server's budget")
-local ticks = {}
+local ticks, hooks = {}, {}
 local sink = setmetatable({}, { __index = function(t, name) -- KeysUI's events stay out of later tests
-    local e = { Add = function(fn) if name == "OnTick" then ticks[fn] = true end end,
+    local e = { Add = function(fn)
+            if name == "OnTick" then ticks[fn] = true else hooks[name] = hooks[name] or {}; table.insert(hooks[name], fn) end
+        end,
         Remove = function(fn) if name == "OnTick" then ticks[fn] = nil end end }
     rawset(t, name, e)
     return e
@@ -814,9 +938,55 @@ for tick = 0, 599 do
     for c, n in pairs(got) do gotN[c] = (gotN[c] or 0) + n end
     H.advanceMs(100)
 end
+
+-- Seated in a Tesla: CarKeys on the player swap too; a start waits for a sweep that may still swap this car's key, and
+-- a sweep waits for a start whose Starting state may still move the key into the ignition (KeysUI.lua, K.sweep).
+H.section("keys: CarKey -> key card while seated (client)")
+do
+    local function tickFor(ms)
+        for _ = 0, ms / 100 do
+            for fn in pairs(ticks) do fn() end
+            H.advanceMs(100)
+        end
+    end
+    local function sweeps(from)
+        local n = 0
+        for i = from + 1, #H.clientSent do if H.clientSent[i].command == "keySweep" then n = n + 1 end end
+        return n
+    end
+    local sc = tesla({ pct = 60 })
+    local sInv = container()
+    local sp = player("seated", sInv, sc.x, sc.y)
+    sp.vehicle, sc.driver = sc, sp
+    local k1 = sInv:AddItem(key("Base.CarKey", sc.keyId))
+    local from = #H.clientSent
+    for _, fn in ipairs(hooks.OnEnterVehicle or {}) do fn(sp) end
+    tickFor(1000)
+    check(sweeps(from) == 1, "seated: getting in with a CarKey asks for the swap a second later, still in the seat")
+    local start = setmetatable({ character = sp }, { __index = ISStartVehicleEngine })
+    check(start:waitToStart() == true, "start waits while the sweep may still swap this car's key")
+    sInv:Remove(k1)
+    sInv:AddItem(key(K.CARD, sc.keyId)) -- the swap arrives
+    check(start:waitToStart() == false, "start goes once this car's CarKey is gone")
+    from = #H.clientSent
+    sInv:AddItem(key("Base.CarKey", sc.keyId))
+    UI.checkKeys(sp)
+    check(sweeps(from) == 0, "a CarKey right after a start: not asked yet (the Starting state may still move it in)")
+    tickFor(K.START_MS + 1000)
+    check(sweeps(from) == 1, "... asked once the start has settled")
+    check(start:waitToStart() == true, "start waits for that sweep too")
+    H.advanceMs(K.SWAP_WAIT_MS)
+    check(start:waitToStart() == false, "no swap within SWAP_WAIT_MS (dropped, lost): the start goes with the CarKey")
+    from = #H.clientSent
+    ISExitVehicle.perform(setmetatable({ character = sp }, { __index = ISExitVehicle }))
+    tickFor(1000)
+    check(sweeps(from) == 1, "getting out asks again for a CarKey asked before (the seated ask may have been refused)")
+    sc.driver = nil
+end
 Events = realEvents
 H.side(false, true)
 for _, g in ipairs(GLOBALS) do _G[g] = before[g] end
+T.KeysUI = nil -- its hooks went to the sink; the HUD's key-out call (HUD.lua readFast) must not reach it in later tests
 local same, line = true, {}
 for c, n in pairs(sentN) do
     if gotN[c] ~= n then same = false end

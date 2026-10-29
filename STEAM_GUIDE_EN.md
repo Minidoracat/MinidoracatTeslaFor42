@@ -115,7 +115,7 @@ A charger that works on the floor, no wall needed; slower than the Wall Connecto
 {{img:06-car-menu-en.jpg}}
 [h3]Key Card[/h3]
 [list]
-[*] [b]How you get one[/b]: a Tesla's car key becomes that car's Key Card, named after the car.
+[*] [b]How you get one[/b]: a Tesla's car key becomes that car's Key Card, named after the car, even while you sit in it. A key in the ignition changes once you switch the car off and it comes back to you.
 [*] [b]Tap to lock or unlock[/b]: outside the car, right-click the Tesla and choose Tap Key Card: Lock / Unlock; your character walks to the driver's door and taps it, and every door, the liftgate and the hood lock or unlock together.
 [*] [b]Lights and sound[/b]: locking flashes once with a short horn chirp (zombies ignore it); unlocking flashes twice.
 [*] [b]Wallet is fine[/b]: the card taps from a wallet too; to start the car, carry it loose or on a key ring.

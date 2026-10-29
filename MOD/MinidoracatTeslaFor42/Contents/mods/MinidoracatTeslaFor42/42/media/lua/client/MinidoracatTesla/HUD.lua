@@ -298,6 +298,9 @@ function HUD:readFast()
     if keyOn ~= (self.wasKey or false) then
         self.wasKey = keyOn
         if self.character then self.character:playSound(keyOn and "VehicleInsertIgnitionKey" or "VehicleRemoveIgnitionKey") end
+        -- the key is back in the inventory (any shut-off: the action, camp, a flat battery): ask now, seated, for any
+        -- CarKey (one asked while driving may have waited for the ignition, K.sweep)
+        if not keyOn and T.KeysUI then T.KeysUI.checkSoon(self.character, true) end
     end
 end
 
