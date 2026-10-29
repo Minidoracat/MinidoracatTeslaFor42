@@ -277,6 +277,45 @@ rv.running = false
 k1 = B.kwh(rp)
 T.Update.Battery(rv, rp, 1)
 check(B.kwh(rp) == k1, "stoplight edges from a non-driver are ignored")
+-- vehicle ids go to other cars (BaseVehicle.java:793-801): a car that gets a gone car's id gets none of its regen
+local function idCar(id, keyId)
+    local c = H.vehicle({ id = id, kwh = 30, running = true, speed = 60 })
+    c._class, c.keyId = "BaseVehicle", keyId
+    local d = H.player({ name = "drv" .. keyId })
+    d.vehicle, c.driver = c, d
+    return c, B.part(c), d
+end
+local function brake(c, d)
+    H.fire("OnClientCommand", "vehicle", "setStoplightsOn", d, { on = true })
+    c.speed = 0
+    H.fire("OnClientCommand", "vehicle", "setStoplightsOn", d, { on = false })
+    c.running = false
+end
+local ida, iap, iad = idCar(900, 501)
+for _ = 1, 5 do T.Update.Battery(ida, iap, 1) end -- budget
+brake(ida, iad) -- pending, not yet credited
+H.removeVehicle(ida)
+local idb, ibp = idCar(900, 502)
+idb.running, idb.speed = false, 0
+local ib0 = B.kwh(ibp)
+T.Update.Battery(idb, ibp, 1)
+check(B.kwh(ibp) == ib0, "id reused by another car (keyId differs): the gone car's pending regen and budget are not credited")
+H.removeVehicle(idb)
+local idc, icp = idCar(901, 503)
+for _ = 1, 5 do T.Update.Battery(idc, icp, 1) end -- budget only
+H.removeVehicle(idc)
+local idd, idp, idd2 = idCar(901, 504)
+brake(idd, idd2) -- its own brake from 60, no budget of its own
+local id0 = B.kwh(idp)
+T.Update.Battery(idd, idp, 1)
+check(B.kwh(idp) == id0, "id reused: the new car's own brake gets no budget from the gone car")
+idd.running, idd.speed = true, 60
+for _ = 1, 5 do T.Update.Battery(idd, idp, 1) end
+brake(idd, idd2)
+id0 = B.kwh(idp)
+T.Update.Battery(idd, idp, 1)
+check(B.kwh(idp) > id0, "...and once it has driven, its own budget pays its regen")
+H.removeVehicle(idd)
 -- SP: engine-recorded brake start speed
 H.side(false, false)
 local sv = H.vehicle({ kwh = 30, running = true, speed = 60 })

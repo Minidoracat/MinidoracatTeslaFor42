@@ -593,10 +593,17 @@ getItemName = savedItemName
 local realGT0, savedChg0, savedPlayer0 = getText, tmd.chg, card.player
 getItemName = function(t) return t end -- LuaManager.java:8745-8763 (the charger's name on the card)
 getText = function(k, a) return a and (k .. "|" .. a) or k end
-dash:setVehicle(nil); dash:setVehicle(tesla) -- attach reads km/kWh
-local range1 = h.st.range
-SandboxVars.CarGasConsumption = 2
 dash:setVehicle(nil); dash:setVehicle(tesla)
+local range1 = h.st.range
+-- no re-attach below: an admin's sandbox window changes these mid-drive (drive-range-ui-mp saw the range stay put)
+SandboxVars.MinidoracatTesla = SandboxVars.MinidoracatTesla or {}
+local savedRange = SandboxVars.MinidoracatTesla.RangeMultiplier
+SandboxVars.MinidoracatTesla.RangeMultiplier = 10
+h:update(); h:update(); h:update()
+check(math.abs(h.st.range - range1 * 10) <= 10, "RangeMultiplier 10 set while seated: the dashboard range x 10 (" .. range1 .. " -> " .. h.st.range .. ")")
+SandboxVars.MinidoracatTesla.RangeMultiplier = savedRange
+SandboxVars.CarGasConsumption = 2
+h:update(); h:update(); h:update()
 check(math.abs(h.st.range - range1 / 2) <= 1, "Gas Consumption 2: the dashboard range halves (" .. range1 .. " -> " .. h.st.range .. ")")
 SandboxVars.CarGasConsumption = 0
 dash:setVehicle(nil); dash:setVehicle(tesla)

@@ -556,6 +556,19 @@ H.setHours(242)
 C.settle(fo, H.hours())
 check(B.kwh(fpart) == fk0 and fchg.fed == nil and near(ff0 - fg.gen.fuel, billed * T.fuelPerKwh(), 1e-12),
     "next settle: no charge (stopped); the loads burn their kWh x fuel per kWh and chg.fed is cleared")
+-- motor standby at the defaults (Gas Consumption 1, ChargeFuelMultiplier 1, GeneratorFuelConsumption 0.1): an hour of
+-- the recalibrated idleKw (0.376 kW, Core.lua DRIVE_SCALE) burns 0.048 L, a heater 0.19, Wall Connector charging 1.47
+-- (charging.md "插著線時")
+TS.ChargeFuelMultiplier = nil
+local sf0 = fg.gen.fuel
+fv.running = true
+for _ = 1, 6 do T.Update.Battery(fv, fpart, 10) end
+fv.running = false
+H.setHours(242.25)
+C.settle(fo, H.hours())
+check(B.kwh(fpart) == fk0 and near(sf0 - fg.gen.fuel, 0.376 * T.GEN_FUEL_PER_KWH * 0.1, 1e-9)
+    and near(sf0 - fg.gen.fuel, 0.048, 0.0005), string.format("an hour of motor standby on a generator: %.4f L at the defaults", sf0 - fg.gen.fuel))
+TS.ChargeFuelMultiplier = 0.5
 -- the generator gone by the next settle: the loads it ran are not billed to anyone
 fg.gen.on = false
 B.draw(fv, fpart, 1.5)

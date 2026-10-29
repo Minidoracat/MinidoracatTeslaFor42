@@ -15,7 +15,17 @@ T.Regen = R
 R.SHARE = 0.3      -- at most 30% of the energy used comes back
 R.BUDGET_MAX = 0.5 -- kWh of unspent budget a car may hold, at the unit scale (x R.scale(), like the kinetic energy)
 
-local pressKmh, pending, budget = {}, {}, {}
+local pressKmh, pending, budget, keyOf = {}, {}, {}, {}
+
+-- Vehicle ids are handed to other cars (BaseVehicle.java:793-801, VehicleIDMap.java:49-62): an id's entries belong to
+-- the keyId noted with them, and another car under that id starts empty. A VirtualVehicle (SP, out of the loaded area,
+-- VirtualVehicle.java) has no keyId: nil, so the car starts over once it is back (nobody brakes it meanwhile).
+local function slot(vehicle)
+    local id = vehicle:getId()
+    local k = instanceof(vehicle, "BaseVehicle") and vehicle:getKeyId() or nil
+    if keyOf[id] ~= k then pressKmh[id], pending[id], budget[id], keyOf[id] = nil, nil, nil, k end
+    return id
+end
 
 -- The drive draw is the calibrated coefficients (Core.lua DRIVE_SCALE, 10 x the 10-23 fit) times T.driveMul (vanilla
 -- Gas Consumption / RangeMultiplier); the energy recovered gets the same factors, so braking gives back the same share
@@ -33,7 +43,7 @@ end
 function R.note(vehicle, on)
     local s = T.spec(vehicle)
     if not s then return end
-    local id = vehicle:getId()
+    local id = slot(vehicle)
     local kmh = math.abs(vehicle:getCurrentSpeedKmHour())
     if on then
         pressKmh[id] = kmh
@@ -46,7 +56,7 @@ end
 
 -- called by Update.Battery: returns the kWh to credit now
 function R.take(vehicle, spec, used)
-    local id = vehicle:getId()
+    local id = slot(vehicle)
     local p = pending[id] or 0
     pending[id] = nil
     if not isServer() then

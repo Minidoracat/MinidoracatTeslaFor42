@@ -220,7 +220,6 @@ function HUD:attach(vehicle)
         if p and p:getDoor() then self.doors[#self.doors + 1] = { part = p, bit = POW2[i], spr = DOOR_SPR[i], name = DOORS[i] } end
     end
     self.fake = BaseVehicle.getFakeSpeedModifier() -- BaseVehicle.java:666; vanilla :256 multiplies the gauge too
-    self.kmPerKwh = T.kmPerKwh(vehicle)
     local model = T.spec(vehicle).model -- this car's top view and door zones (attach runs for Teslas only)
     self.script, self.carSpr, self.zones = vehicle:getScriptName(), "car_" .. model, ZONES[model]
     self.msgId = nil -- the message names this car's doors: rebuild it even when the door bits match the last car's
@@ -308,8 +307,9 @@ function HUD:readSlow()
     local v, st, part = self.vehicle, self.st, self.battery
     local kwh = part and T.Battery.kwh(part) or 0
     st.pct = part and math.floor(T.Battery.pct(part) + 0.5) or 0
-    -- nil: no range limit (Gas Consumption 0, Core.lua T.kmPerKwh) = "∞ km"; an empty pack is still 0 (T.rangeKm)
-    local kpk = self.kmPerKwh
+    -- nil: no range limit (Gas Consumption 0, Core.lua T.kmPerKwh) = "∞ km"; an empty pack is still 0 (T.rangeKm).
+    -- Read every time, not once per car: an admin's sandbox window changes it mid-drive (drive-range-ui-mp).
+    local kpk = T.kmPerKwh(v)
     st.range = kpk and math.floor(kwh * kpk + 0.5) or (kwh <= 0 and 0 or nil)
     st.locked = v:areAllDoorsLocked()
     local bits, avail = 0, 0 -- open doors; installed doors (a car-picture zone dims without one)
