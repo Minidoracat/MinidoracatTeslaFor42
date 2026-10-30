@@ -111,8 +111,10 @@ end
 -- to that item for its SoundRadius and ConditionLowerChanceOneIn (getGeneratorItemType, IsoGenerator.java:133-156,170-199).
 T.PS_SPRITE = "minidoracat_tesla_01_12"
 T.PS_ITEM = "Base.MinidoracatTesla_Powershare"
-T.PS_KW = 11.5     -- Powershare at most, every car it charges together (owner's manual p.204)
-T.OUTLET_KW = 9.6  -- the bed's 240 V outlet, 40 A (p.199-201; tesla.com "up to 9.6 kW")
+-- the most the cars a Cybertruck charges get together (owner's manual p.204, p.199-201; tesla.com "up to 9.6 kW");
+-- the house's load and a plugged car's own draw are not counted against it (small: a home ~0.3 kW, powershare.md)
+T.PS_KW = 11.5     -- Powershare
+T.OUTLET_KW = 9.6  -- the bed's 240 V outlet, 40 A
 T.PS_FLOOR, T.PS_FLOOR_MIN, T.PS_FLOOR_MAX = 20, 5, 90 -- discharge limit %: Low Power Mode's default (p.199); app 5-90
 function T.isPowershare(g)
     local s = g and g:getSprite()

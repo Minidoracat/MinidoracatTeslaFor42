@@ -278,12 +278,16 @@ function C.settle(o, now, here, fresh)
     local wasCar = fromCar(chg.power)
     local wasKw = (draws[o] and draws[o].kw) or chg.kw or kw
     local src, gen, kwS = pick()
-    if fresh and wasCar and not fromCar(src) and now > t0 then
-        -- the car loaded before the truck that fed it (both load with their cells): keep chg as it was, try once more
-        -- once the truck may be back; the retry is not fresh, so a truck still away books nothing
-        T.log("relink: " .. tostring(v:getId()) .. " ran on a Cybertruck not loaded yet, settling again shortly")
+    if wasCar and not fromCar(src) and now > t0 and (fresh or not chg.hold) then
+        -- the truck that fed it is not there now: cells load and unload one after the other, so it may only be not
+        -- loaded (the car loaded first, relink; or the truck unloaded first while the player walks off). Keep chg as
+        -- it was and settle again shortly: the truck back by then books the whole stretch. One wait (chg.hold), a
+        -- fresh load grants another; a truck still away then books nothing (and its free loads, Battery.onCharger, end).
+        chg.hold = true
+        T.log("charger " .. o.x .. "," .. o.y .. ": " .. tostring(v:getId()) .. " ran on a Cybertruck not here now, settling again shortly")
         return C.schedule(o, now + C.RETRY_H)
     end
+    chg.hold = nil
     local needK = math.max(0, limit - B.kwh(part))
     local gotK = 0
     if chg.paused ~= "stopped" and needK > 0 and now > t0 then

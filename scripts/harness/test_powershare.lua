@@ -415,6 +415,17 @@ H.setHours(347 + 1 / 6)
 C.settle(bedMc2, H.hours())
 check(near(B.kwh(B.part(y3)), y3K, 1e-9) and md(y3).chg.paused == "nopower", "the truck still away on the retry: nothing, as usual")
 T.OutletCars[ct:getId()] = listed
+C.settle(bedMc2, H.hours()) -- on the outlet again
+y3K, last0 = B.kwh(B.part(y3)), md(y3).chg.last
+T.OutletCars[ct:getId()] = nil -- the player walks off: the truck's cell unloads first
+H.setHours(348)
+C.settle(bedMc2, H.hours())
+check(near(B.kwh(B.part(y3)), y3K, 1e-9) and md(y3).chg.last == last0 and md(y3).chg.power == "outlet",
+    "the truck unloaded first, the car's own settle meanwhile: it waits too (nothing booked, record kept)")
+T.OutletCars[ct:getId()] = listed
+H.setHours(350)
+C.relink(y3)
+check(near(B.kwh(B.part(y3)) - y3K, 7.6 * (350 - last0), 1e-6), "both back: the whole stretch away booked")
 unplug(y3)
 
 H.section("Powershare: nowhere to put the generator -> stopped (spot), the owner told, retried each settle")
