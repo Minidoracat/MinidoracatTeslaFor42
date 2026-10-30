@@ -461,8 +461,12 @@ check(ok == true, "pair: the card on the console reader (in the ignition) counts
 v.ignitionKey = nil
 check(K.canPair(owner, v, item("Base.Pager")) == false, "pair: not a phone -> refused")
 local gloved = container(item(K.PHONE)) -- a new car's glove box phone, not taken yet (Battery.lua)
-ok, why = K.canPair(owner, v, gloved.items[1])
-check(not ok and why == "NO_PHONE", "pair: a phone still in the glove box -> NO_PHONE (greyed: take it first)")
+ok = K.canPair(owner, v, gloved.items[1])
+check(ok == true, "pair: a phone in the glove box -> the menu is live (one click carries it first, KeysUI onPair)")
+F.sent = {}
+cmds.phonePair(owner, { vid = v:getId(), id = gloved.items[1]:getID() })
+check(lastDeny() == "NO_PHONE" and gloved.items[1].ft == K.PHONE and F.lastSent("phonePaired") == nil,
+    "phonePair for a phone not on the player (still in the glove box): denied NO_PHONE, phone unchanged")
 F.sent = {}
 cmds.phonePair(owner, { vid = v:getId(), id = phone:getID() })
 local pk = ownerInv.items[#ownerInv.items]
@@ -470,9 +474,9 @@ check(pk.ft == K.PHONE_KEY and pk.keyId == v.keyId and phone.cont == nil, "pair:
 check(F.lastSent("phonePaired") ~= nil, "pair: client told (halo)")
 cmds.phonePair(owner, { vid = v:getId(), id = pk:getID() })
 check(lastDeny() == "ALREADY_PAIRED", "pair: same car again -> ALREADY_PAIRED")
-ownerInv:Remove(pk); gloved:AddItem(pk) -- this car's phone key left in the glove box: the real reason, not "take it"
+ownerInv:Remove(pk); gloved:AddItem(pk) -- this car's phone key left in the glove box: the menu still says why
 ok, why = K.canPair(owner, v, pk)
-check(not ok and why == "ALREADY_PAIRED", "pair: this car's phone key in the glove box -> ALREADY_PAIRED, not NO_PHONE")
+check(not ok and why == "ALREADY_PAIRED", "pair: this car's phone key in the glove box -> ALREADY_PAIRED")
 gloved:Remove(pk); ownerInv:AddItem(pk)
 cmds.phonePair(noCard, { vid = v:getId(), id = noCard.inv.items[1]:getID() })
 check(lastDeny() == "NO_KEY_CARD_HOTWIRE" and noCard.inv.items[1].ft == K.PHONE, "phonePair raw command without the card: denied, phone unchanged")
@@ -897,7 +901,8 @@ local stubs = { "TimedActions/ISBaseTimedAction", "TimedActions/ISTimedActionQue
     "TimedActions/ISGrabItemAction", "Vehicles/TimedActions/ISExitVehicle", "ISUI/ISInventoryPane" }
 for _, m in ipairs(stubs) do H.stub(m) end
 local GLOBALS = { "ISBaseTimedAction", "ISTimedActionQueue", "ISInventoryTransferAction", "ISGrabItemAction", "ISExitVehicle",
-    "ISWorldObjectContextMenu", "ISMinidoracatTeslaKeyTap", "ISInventoryPane", "getSpecificPlayer" }
+    "ISWorldObjectContextMenu", "ISMinidoracatTeslaKeyTap", "ISMinidoracatTeslaPairPhone", "ISInventoryPane",
+    "ISInventoryPaneContextMenu", "getSpecificPlayer" }
 local before = {}
 for _, g in ipairs(GLOBALS) do before[g] = _G[g] end
 ISBaseTimedAction = { perform = function() end }
@@ -930,6 +935,42 @@ do -- the pairing menu tells a VehicleManager owner without the card why it is a
         "pair menu: the same owner with the card -> the card tooltip")
     lost.vehicle = nil
     MinidoracatVehicleManagerAPI = nil
+end
+do -- one click on a phone that is not on the player (KeysUI onPair, user 2026-10-31): vanilla carries it first and the
+   -- request waits behind the transfer; a phone on the player, a bag too, goes at once and stays where it is
+    local queued, carried = {}, {}
+    ISTimedActionQueue.add = function(a) queued[#queued + 1] = a end
+    ISInventoryPaneContextMenu = { transferIfNeeded = function(_, it) carried[#carried + 1] = it; queued[#queued + 1] = "transfer" end }
+    local pick = { addOption = function(self, _, target, fn, a1, a2)
+        self.last = { target = target, fn = fn, a1 = a1, a2 = a2 }
+        return {}
+    end }
+    local bagged, gloved2 = item(K.PHONE), item(K.PHONE)
+    local seat = player("seated", container(item(K.CARD, v.keyId), bag("Base.Bag_Schoolbag", bagged)), v.x, v.y)
+    local box = container(gloved2)
+    seat.vehicle = v
+    local from = #H.clientSent
+    UI.phoneOption(seat, pick, bagged)
+    pick.last.fn(pick.last.target, pick.last.a1, pick.last.a2)
+    local m = H.clientSent[#H.clientSent]
+    check(#H.clientSent == from + 1 and m.command == "phonePair" and m.args.id == bagged:getID() and #queued == 0,
+        "pair menu: a phone in a bag on the player -> the request goes at once, nothing carried")
+    from = #H.clientSent
+    UI.phoneOption(seat, pick, gloved2)
+    pick.last.fn(pick.last.target, pick.last.a1, pick.last.a2)
+    local pair = queued[2]
+    check(#H.clientSent == from and queued[1] == "transfer" and carried[1] == gloved2
+        and pair and pair.Type == "ISMinidoracatTeslaPairPhone",
+        "pair menu: a phone in the glove box -> carried first (vanilla transfer), the request queued behind it, nothing sent yet")
+    box:Remove(gloved2); seat.inv:AddItem(gloved2) -- the transfer done
+    check(pair:isValid(), "pair menu: still seated when the transfer is done -> the queued request runs")
+    pair:perform()
+    m = H.clientSent[#H.clientSent]
+    check(#H.clientSent == from + 1 and m.command == "phonePair" and m.args.id == gloved2:getID(),
+        "pair menu: after the transfer the queued action sends phonePair for that phone")
+    seat.vehicle = nil
+    check(not pair:isValid(), "pair menu: out of the car before it runs -> the queued request is dropped")
+    ISTimedActionQueue.add = function() end
 end
 
 -- Names in the player's language (KeysUI UI.nameOf / nameAll): the server leaves these items unnamed (KeyActions
