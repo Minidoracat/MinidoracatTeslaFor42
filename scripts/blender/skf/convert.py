@@ -642,6 +642,13 @@ def badges(obs, names):
                  for r, row in enumerate(rows) for i, j in _runs(row)]
         flat("Badge_CERB", [quads], ((cb["x"] - cb["w"] / 2, face_y, cb["z"] - len(rows) * px / 2), (1, 0, 0),
                                      (0, 0, 1), (0, -1, 0)), "badge_etch", planar=True)
+    if C.get("HEADBAR"):                   # (z, height, half width): the front light bar (Cybertruck). The source's bar
+        zc, lh, hx = C["HEADBAR"]          # is a strip under the hood's edge, lit only at its two ends from the game's
+        xs = np.linspace(-hx, hx, 21)      # camera (tesla-ctbody-1030c night-S): an upright plate across the nose
+        ys = [bvh.ray_cast(Vector((x, 4.0, zc)), Vector((0, -1, 0)))[0].y + BADGE_OFF / 2 for x in xs]
+        _add(obs, names, "Badge_HEADBAR", [Vector((x, y, zc + s * lh / 2)) for x, y in zip(xs, ys) for s in (-1, 1)],
+             [(2 * i, 2 * i + 2, 2 * i + 3, 2 * i + 1) for i in range(len(xs) - 1)], Vector((0, 1, 0)),
+             LAMPS["head"][0])
 
 
 def _runs(row):

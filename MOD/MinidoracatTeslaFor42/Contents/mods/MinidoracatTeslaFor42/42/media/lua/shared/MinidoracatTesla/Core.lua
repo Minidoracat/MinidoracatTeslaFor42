@@ -84,7 +84,7 @@ T.Specs = {
         model = "Cybertruck",
         appCar = "app_car_cybertruck_",
         -- z: placeholder (the Model 3's) until TeslaCybertruck measures the handle height at this car's charge port
-        plug = { item = "Base.MinidoracatTesla_CablePlugCybertruck", z = 0.91 },
+        plug = { item = "Base.MinidoracatTesla_CablePlugCybertruck", z = 0.90 },
         v12Kwh = 48 * 4 / 1000, -- 48 V, 4 Ah (Cybertruck owner's manual p.251)
         -- the Model Y coefficients x 123 / 78.4: a full pack still drives one vanilla tank's distance
         idleKw = 0.0590 * T.DRIVE_SCALE,
@@ -100,10 +100,10 @@ T.Specs = {
             { name = "Stainless", code = "PDD", weight = 11, h = 0.631, s = 0.536, v = 0.393 },
             { name = "SatinStealthBlack", weight = 1, h = 0.611, s = 0.62, v = 0.139 },
             { name = "SatinCeramicWhite", weight = 1, h = 0.65, s = 0.526, v = 0.843 },
-            { name = "SatinRoseGold", weight = 1, h = 0.07, s = 0.633, v = 0.387 },
+            { name = "SatinRoseGold", weight = 1, h = 0.071, s = 0.634, v = 0.387 },
             { name = "SatinTacticalGreen", weight = 1, h = 0.475, s = 0.517, v = 0.271 },
             { name = "SatinDarkGrey", weight = 1, h = 0.625, s = 0.554, v = 0.262 },
-            { name = "SatinForestGreen", weight = 1, h = 0.451, s = 0.633, v = 0.273 },
+            { name = "SatinForestGreen", weight = 1, h = 0.451, s = 0.634, v = 0.273 },
             { name = "SatinAbyssBlue", weight = 1, h = 0.57, s = 1.0, v = 0.285 },
             { name = "CopperTintedClear", weight = 1, h = 0.063, s = 0.779, v = 0.353 },
             { name = "SatinCrimsonRed", weight = 1, h = 0.972, s = 1.0, v = 0.179 },

@@ -119,6 +119,9 @@ CAR = dict(
     ROOF_PANE=("Body.008", 16),
     MIRROR_CAP="-",                        # black mirror housings (official FRONT34): no body-colour cap
     LAMPS=dict(head=("White headlights",), tail=("Car Reflection White",), tail_z=0.3, tail_y=-1.5, blade=None),
+    # the front light bar: a plate across the top of the nose face, under the hood's edge (z 0.84) (z, height, half
+    # width). The source's bar is lit only at its ends from the game's camera (tesla-ctbody-1030c night-S)
+    HEADBAR=(0.815, 0.035, 0.72),
     # part lines, side view (y, z): the source's 4 mm panel gaps. A line of 3+ points is a polyline (z ascending)
     LINES={
         "S": ((0.185, 0.30), (0.185, 1.00)),     # front / rear door seam (vertical); above the belt the B-pillar split
