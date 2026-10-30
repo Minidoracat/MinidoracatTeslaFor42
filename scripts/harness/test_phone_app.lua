@@ -892,6 +892,23 @@ check(a.b.lock.tipKey == "IGUI_MinidoracatTesla_Tip_AppUnlockCybertruck"
 a.b.tonneau:forceClick()
 local tcmd, targs = sentLast()
 check(tcmd == "appAction" and targs.act == "tonneau" and targs.on == false, "tonneau cell on an open cover -> appAction tonneau, on = false")
+-- the bed outlet's how-to sentence runs long (EN 79 characters, DE 99, JP 44): up to three lines, nothing cut. The
+-- fake font is 8 px a character (the game's zomboidSmall averages less: every language fits three lines at 1x)
+local longWhy = string.rep("Wort ", 15) .. "Wort" -- 79 characters, 16 words
+getText = function(k, ...)
+    if k == "IGUI_MinidoracatTesla_App_OutletWhy_Gate" then return longWhy end
+    return realGT(k, ...)
+end
+state({ car = "MinidoracatTesla_Cybertruck", skin = 0, tonneau = true, ps = "armed", outlet = true, outletWhy = "Gate" })
+a:setPage("powershare")
+local subs, words = a.b.outlet.sSubs, 0
+for _, l in ipairs(subs) do for _ in l:gmatch("Wort") do words = words + 1 end end
+check(#subs == 3 and words == 16 and not table.concat(subs):find("...", 1, true) and a.b.outlet.ch >= 3 * 19,
+    "a 79-character outlet sentence on a 31-character row: three lines, all of it, the row tall enough (" .. table.concat(subs, "|") .. ")")
+ok, why = textInside()
+check(ok, "Powershare page with the three-line sentence: text inside (" .. why .. ")")
+getText = realGT
+a:setPage("controls")
 a.b.back:forceClick()
 T.ClientCommands.appDone({ key = 9001, act = "trunk", on = true })
 check(a.toast.text == "IGUI_MinidoracatTesla_App_Done_tailgate_on", "Cybertruck: 'tailgate opened'")

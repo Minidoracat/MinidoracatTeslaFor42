@@ -13,7 +13,7 @@ T.Charge = C
 
 C.DEFAULT_TARGET = 90
 C.MAX_STEP_H = 1      -- re-settle at least hourly: generator switched off, car towed away, power back
-C.RETRY_H = 1 / 6     -- charger square not loaded yet: try again next EveryTenMinutes
+C.RETRY_H = 1 / 6     -- charger square not loaded yet, or the Cybertruck it ran on (C.settle chg.hold): try again then
 local HUGE = 1e30
 
 local active, activeCount, nextDueHour = {}, 0, HUGE -- active[luaObject] = due world hour
@@ -318,6 +318,9 @@ function C.settle(o, now, here, fresh)
         local rest = now - t0 - gridH -- > 0 with need left only past the shut-off, where src was looked up
         if rest > 0 and gotK < needK then
             if wasCar then
+                -- ponytail: that truck no longer feeds this charger (driven off with its outlet on, the car unloaded
+                -- before a settle saw it go): at most one more hour is booked, the error of an hourly settle anyway
+                if not (fromCar(src) and gen:getKeyId() == supKey) then rest = math.min(rest, C.MAX_STEP_H) end
                 if prevSup and wasKw > 0 then gotK = gotK + C.takeFrom(prevSup, wasSrc, math.min(rest * wasKw, needK - gotK)) end
             elseif src == "generator" then
                 local h = math.min(rest, (needK - gotK) / kw)

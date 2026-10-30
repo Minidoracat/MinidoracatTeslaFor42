@@ -12,7 +12,7 @@
 -- Other Teslas charging from it, or from the bed outlet, take their kWh straight off this pack (Charging.lua C.takeFrom).
 -- No polling: everything runs from the truck's own charger settles (plugging in, the shut-off hour, at least hourly while
 -- plugged in), unplugging, the switches, and the tailgate.
--- State: battery part modData `ps` = { on, floor, by, gx, gy, gz, fuelSet, t, stop, kw } and `outlet` = true
+-- State: battery part modData `ps` = { on, floor, by, gx, gy, gz, fuelSet, t, stop, house } and `outlet` = true
 -- (architecture.md section 4).
 if isClient() then return end
 require "MinidoracatTesla/Chargers"
@@ -310,7 +310,9 @@ function PS.set(player, v, what, on, pct)
     end
     -- decide now: plugged in, its charger's settle does (C.settle -> PS.update); else nothing is on the cable
     if not C.settleCar(v) then PS.update(v, part, nil, false) end
-    if md.outlet then PS.outletChanged(v) end
+    -- then the chargers by its outlet and its generator take the new state now (a lower limit: the ones that stopped
+    -- at the old one charge again), not at their next hourly settle
+    PS.settleFed(v)
     return nil
 end
 

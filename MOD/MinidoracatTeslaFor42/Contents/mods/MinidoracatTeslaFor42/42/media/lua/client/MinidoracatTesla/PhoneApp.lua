@@ -126,16 +126,26 @@ local function fitText(s, maxW, font)
     while n > 1 and tm:MeasureStringX(font, s:sub(1, n) .. "...") > maxW do n = n - 1 end
     return s:sub(1, n) .. "..."
 end
--- a toast's text in up to two lines: cut at the last space that fits (CJK: at the last character that fits)
+-- `s` in up to n lines of `maxW`: each cut at the last space that fits (CJK: at the last character that fits), the
+-- last line ends in "..." if still too long. Returns the lines (layout time only, never per frame).
+local function wrapN(s, maxW, n)
+    local tm, lines = getTextManager(), {}
+    while #lines < n - 1 and tm:MeasureStringX(UIFont.Small, s) > maxW do
+        local k = #s
+        while k > 1 and tm:MeasureStringX(UIFont.Small, s:sub(1, k)) > maxW do k = k - 1 end
+        local sp = k
+        while sp > k / 2 and s:sub(sp, sp) ~= " " do sp = sp - 1 end
+        if s:sub(sp, sp) == " " then k = sp end
+        lines[#lines + 1] = s:sub(1, k)
+        s = s:sub(k + 1):gsub("^%s+", "")
+    end
+    lines[#lines + 1] = fitText(s, maxW)
+    return lines
+end
+-- a toast's text in up to two lines
 local function wrap2(s, maxW)
-    local tm = getTextManager()
-    if tm:MeasureStringX(UIFont.Small, s) <= maxW then return s, nil end
-    local n = #s
-    while n > 1 and tm:MeasureStringX(UIFont.Small, s:sub(1, n)) > maxW do n = n - 1 end
-    local sp = n
-    while sp > n / 2 and s:sub(sp, sp) ~= " " do sp = sp - 1 end
-    if s:sub(sp, sp) == " " then n = sp end
-    return s:sub(1, n), fitText(s:sub(n + 1):gsub("^%s+", ""), maxW)
+    local l = wrapN(s, maxW, 2)
+    return l[1], l[2]
 end
 
 -- the car picture in its paint: scripts/blender/skf/convert.py appcar (480x240, references/models.md), file
@@ -1334,8 +1344,8 @@ function App:layout()
         self.yPsState, self.sPsStateFit = y, fitText(self.sPsState, tw, UIFont.Large)
         y = y + FHL + u(4)
         self.yPsSub = y
-        self.sPsSub1, self.sPsSub2 = wrap2(self.sPsSub, tw)
-        y = y + FH * (self.sPsSub2 and 2 or 1) + u(14)
+        self.sPsSubs = wrapN(self.sPsSub, tw, 3) -- the why (stopped: the limit, no spot) runs long in some languages
+        y = y + FH * #self.sPsSubs + u(14)
         self.yPsBar = y
         y = y + u(8) + u(8)
         self.yPsLbl = y
@@ -1351,11 +1361,11 @@ function App:layout()
         y = y + u(40) + u(16)
         if self.hasOutlet then
             local rw = tw - u(52)
-            local s1, s2 = wrap2(self.sOutletSub, rw) -- the how-to sentence is long: two lines, like the state's
-            local rh = math.max(FHM + u(2) + FH * (s2 and 2 or 1), u(36)) + u(20)
+            local subs = wrapN(self.sOutletSub, rw, 3) -- the how-to sentence: 44 characters in Japanese, 99 in German
+            local rh = math.max(FHM + u(2) + FH * #subs, u(36)) + u(20)
             local ob = place("outlet", pad / 2, y, w - pad, rh)
             ob.sTitle = fitText(txt("Outlet"), rw, UIFont.Medium)
-            ob.sSub, ob.sSub2 = s1, s2
+            ob.sSubs = subs
             y = y + rh + u(10)
         end
     elseif page == "summon" or page == "pick" then
@@ -1741,8 +1751,9 @@ function App:render()
         local ps = self.ps
         local tc = (ps == "armed" or ps == "backup") and C.ok or (ps == "stopped" and C.warn or c)
         jo:DrawText(UIFont.Large, self.sPsStateFit, pad, self.yPsState - o, tc[1], tc[2], tc[3], 1)
-        jo:DrawText(Sm, self.sPsSub1, pad, self.yPsSub - o, c2[1], c2[2], c2[3], 1)
-        if self.sPsSub2 then jo:DrawText(Sm, self.sPsSub2, pad, self.yPsSub + self.FH - o, c2[1], c2[2], c2[3], 1) end
+        for i = 1, #self.sPsSubs do
+            jo:DrawText(Sm, self.sPsSubs[i], pad, self.yPsSub + (i - 1) * self.FH - o, c2[1], c2[2], c2[3], 1)
+        end
         jo:DrawText(Sm, self.sPsFloorFit, pad, self.yPsLbl - o, c2[1], c2[2], c2[3], 1)
         self:drawTextRight(self.sPsPctFit, w - pad, self.yPsLbl - o, c2[1], c2[2], c2[3], 1, Sm)
         self:drawTextCentre(self.sPsAdj, w / 2, self.yPsAdj - o, c2[1], c2[2], c2[3], 1, Sm)
@@ -1759,12 +1770,11 @@ function App:render()
             tb.lit and 1 or 0.5, Sm)
         local ob = self.b.outlet
         if ob.shown then
-            local subH = self.FH * (ob.sSub2 and 2 or 1)
-            local ty = ob.cy - o + math.floor((ob.ch - self.FHM - math.floor(2 * S) - subH) / 2)
+            local subs = ob.sSubs
+            local ty = ob.cy - o + math.floor((ob.ch - self.FHM - math.floor(2 * S) - self.FH * #subs) / 2)
             jo:DrawText(UIFont.Medium, ob.sTitle, pad, ty, c[1], c[2], c[3], 1)
             local sy = ty + self.FHM + math.floor(2 * S)
-            jo:DrawText(Sm, ob.sSub, pad, sy, c2[1], c2[2], c2[3], 1)
-            if ob.sSub2 then jo:DrawText(Sm, ob.sSub2, pad, sy + self.FH, c2[1], c2[2], c2[3], 1) end
+            for i = 1, #subs do jo:DrawText(Sm, subs[i], pad, sy + (i - 1) * self.FH, c2[1], c2[2], c2[3], 1) end
         end
     elseif page == "charging" then
         jo:DrawText(UIFont.Large, self.sStateFit, pad, self.yState - o, c[1], c[2], c[3], 1)
