@@ -67,7 +67,9 @@ CAR = dict(
     WHEEL_LIFT=0.11,
     WHEEL_INSET=0.03,
     CAB_BOX=(1.40, 0.95, -0.95),
-    SEAT=dict(x=0.36, h=0.60, z=-0.215, back=(0.12, 0.08), out=0.30),
+    # passengers / seats (cabin.py) behind the door openings' middle by back (front, rear): the rear bench sits 1 cm
+    # ahead of its door's middle so its backs and headrests clear the cabin's rear wall (CABIN_REAR_Y)
+    SEAT=dict(x=0.36, h=0.60, z=-0.215, back=(0.12, -0.01), out=0.30),
     BODY_W_Z=0.55,
     # the tailgate hinges at its lower edge and folds down and back (owner's manual p.60-61: the struts lower it);
     # the tonneau rolls into its canister at the bed's front: ROLL_N strips slide forward and stack (tonneau_strips)
@@ -183,12 +185,14 @@ CAR = dict(
     # frunk 200 L (owner's manual p.249) under the lid (Body.012)
     FRUNK_TUB=dict(ledge=0.05, rim=0.025, y=(1.82, 2.20), half=(0.42, 0.36), corner=0.08, taper=0.12, depth=(0.26, 0.17),
                    n=128),
-    # the cargo bed (vault; owner's manual p.246, p.249: floor 1,824.6 x 1,295.4 mm between the wheel humps, 1,589 L);
-    # here the source's length between the cabin and the tailgate. y front .. rear (the tailgate's inner panel), floor
-    # z (the tailgate's lower edge), the rails' inner edge x and the walls' top z along y (polylines (y, value), y
-    # ascending: where the dropped cover met the rails, stepped like it), wheel humps ((front y, rear y), half width
-    # inside = the floor's 1,295 mm, top z), lining (cabin palette cell)
-    BED_TUB=dict(y=(-0.99, -2.18), z=0.625, rail_x=((-2.26, 0.63), (-0.99, 0.57)),
+    # the cargo bed (vault; owner's manual p.246, p.249: floor 1,824.6 x 1,295.4 mm between the wheel humps, 1,589 L):
+    # floor 1.507 grid from the tailgate's inner panel, so the front wall stands at the rear doors' rear edge like the
+    # official side render; its front 0.3 grid lies under the roof's stainless end behind the glass (the tonneau's
+    # canister), so the tonneau (the source's cover) keeps its length. y front .. rear (the tailgate's inner panel),
+    # floor z (the tailgate's lower edge), the rails' inner edge x and the walls' top z along y (polylines (y, value), y
+    # ascending: where the dropped cover met the rails, stepped like it; flat ahead of -0.99), wheel humps ((front y,
+    # rear y), half width inside = the floor's 1,295 mm, top z), lining (cabin palette cell)
+    BED_TUB=dict(y=(-0.673, -2.18), z=0.625, rail_x=((-2.26, 0.63), (-0.99, 0.57)),
                  top=((-2.26, 1.105), (-1.675, 1.105), (-1.668, 1.19), (-1.17, 1.19), (-1.164, 1.235), (-0.99, 1.25)),
                  hump=((-1.08, -1.78), 0.535, 0.86), cell="dash"),
     # the off-road light bar (official accessory, every Cybertruck here) on the roof's front edge over the windscreen:
@@ -204,11 +208,11 @@ CAR = dict(
     CABIN_FLOOR=-0.43,
     CABIN_FRONT_Y=1.45,
     TRUNK_Y=-1.50,                         # (no trunk: the cabin floor runs to its rear wall)
-    CABIN_REAR_Y=-0.94,                    # the cabin's rear wall: 5 cm inside the bed's front wall
+    CABIN_REAR_Y=-0.623,                   # the cabin's rear wall: 5 cm inside the bed's front wall
     CABIN_ZC=-0.08,
     SEAM_CLEAR=0.065,
     SEATS=dict(front=dict(w=0.44, back=0.52, recline=14),
-               rear=dict(base=1.20, cushions=((-0.40, 0.38), (0, 0.36), (0.40, 0.38)), back=0.46, recline=18),
+               rear=dict(base=1.20, cushions=((-0.40, 0.38), (0, 0.36), (0.40, 0.38)), back=0.46, recline=12),
                sill=None, bin=None),
     PARCEL=None,
     DASH=dict(console=(0, 0.45, -0.32), dash=(0, 1.15, -0.02), trim=(0, 0.975, -0.01), light=(0, 0.977, -0.04),

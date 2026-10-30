@@ -1378,7 +1378,8 @@ def bed_tub(V, Tb, attr):
     for s in (-1, 1):                                  # the humps' front and rear faces
         for yh, d in ((hy0, -1), (hy1, 1)):
             quad([(s * hx, yh, z), (s * xr(yh), yh, z), (s * xr(yh), yh, hz), (s * hx, yh, hz)], (0, d, 0))
-    quad([(-xr(y0), y0, z), (xr(y0), y0, z), (xr(y0), y0, top(y0)), (-xr(y0), y0, top(y0))], (0, -1, 0))   # front wall
+    quad([(-xr(y0), y0, z), (xr(y0), y0, z), (xr(y0), y0, top(y0)), (-xr(y0), y0, top(y0))], (0, -1, 0),
+         True)   # front wall, two-sided: it stands at the rear doors' rear edge, seen from the cabin through their glass
     vol = sum((2 * xr((ya + yb) / 2)) * (yb - ya) * (top((ya + yb) / 2) - z) for ya, yb in zip(ys[:-1], ys[1:]))
     print(f"BED y {y1:.3f}..{y0:.3f}, floor z {z:.3f}, {len(Q)} quads, ~{vol / K ** 3 * 1000:.0f} L to the rails")
     return quads_soup(Q, cell, np.array(inward, float), attr, two)
@@ -1754,6 +1755,7 @@ def stage_view(out, heads, state, skin="UltraRed", app=False):
     sc.collection.objects.link(cam)
     cam.data.type = "ORTHO"
     cam.data.ortho_scale = float(os.environ.get("ORTHO", 5.2))
+    cam.data.clip_start = float(os.environ.get("CLIP", 0.1))   # CLIP=30: a section through CENTRE (camera 30 away)
     sc.camera = cam
     F = {"N": (0, -1), "NE": (1, -1), "E": (1, 0), "SE": (1, 1), "S": (0, 1), "SW": (-1, 1), "W": (-1, 0), "NW": (-1, -1)}
     for h in heads:
@@ -1761,7 +1763,7 @@ def stage_view(out, heads, state, skin="UltraRed", app=False):
         f /= np.linalg.norm(f)
         right = np.array([-f[1], f[0]])
         cxy = np.array([1, 1]) / math.sqrt(2)
-        el = math.radians(APP_ELEV if app else 30)
+        el = math.radians(APP_ELEV if app else float(os.environ.get("ELEV", 30)))   # ELEV=0 / 89.5: side / top
         d = Vector((cxy @ right * math.cos(el), cxy @ f * math.cos(el), math.sin(el)))
         cam.location = Vector([float(v) for v in os.environ.get("CENTRE", "0,0,0").split(",")]) + d * 30
         cam.rotation_euler = (-d).to_track_quat("-Z", "Y").to_euler()

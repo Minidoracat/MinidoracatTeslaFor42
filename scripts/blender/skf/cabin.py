@@ -165,6 +165,7 @@ def cabin_mesh(bvh, belt, trunk_floor, trunk_end, arch, opening):
     ys = np.append(np.arange(CABIN_FRONT_Y, trunk_end + step / 2, -step), trunk_end)
     clear = np.array([step / 3, SEAM_CLEAR, step / 3])
     ys = np.sort(np.concatenate([ys[(np.abs(ys[:, None] - opening["y"]) > clear).all(1)], opening["y"]]))[::-1]
+    ys = ys[ys >= trunk_end]        # a pickup's cabin ends ahead of its rear doors' rear edge (the bed's front wall)
     ring = {k: int(np.argmin(np.abs(ys - y))) for k, y in zip(("front", "bpil", "rear"), opening["y"])}
     nr = len(ys)
     pts, kind, who = np.zeros((nr, na + 2, 3)), np.zeros((nr, na + 2), object), np.zeros((nr, na + 2), int)
@@ -233,9 +234,11 @@ def cabin_mesh(bvh, belt, trunk_floor, trunk_end, arch, opening):
           "in door openings", {nm: door.count(k + 1) for k, nm in enumerate(SHELL_DOORS)})
     add(sv, sf, sc, smooth=False, door=door)
     # the humps over the rear arches fold on the coarse ray grid (holes through the open tailgate): both sides drawn
-    # there, the back copy on its own vertices (the mesh drops a face on the same vertices as another)
-    add(sv[np.ravel([sf[i] for i in hump])], [[3 * k + 2, 3 * k + 1, 3 * k] for k in range(len(hump))], "liner",
-        smooth=False, door=[door[i] for i in hump])
+    # there, the back copy on its own vertices (the mesh drops a face on the same vertices as another); a pickup's
+    # cabin ends ahead of them
+    if hump:
+        add(sv[np.ravel([sf[i] for i in hump])], [[3 * k + 2, 3 * k + 1, 3 * k] for k in range(len(hump))], "liner",
+            smooth=False, door=[door[i] for i in hump])
     shell_n = len(sf) + len(hump)
 
     def part(size, r, c, at, cuts=(0, 0, 0), sag=0.0, bend=0.0, taper=0.0, tilt=None, seg=2):
@@ -277,6 +280,8 @@ def cabin_mesh(bvh, belt, trunk_floor, trunk_end, arch, opening):
         part((wd, 0.40, 0.09), 0.035, "seat", (cx, ry + 0.08, z0 - 0.06), cuts=(1, 0, 0), sag=0.015)
         part((wd, 0.11, rs["back"]), 0.04, "seat", (cx, ry - 0.17, z0 + 0.19), cuts=(1, 0, 0), bend=0.02, tilt=rec)
         part((0.20 if cx else 0.17, 0.09, 0.12), 0.045, "seat", (cx, ry - 0.18, z0 + 0.48), tilt=rec, seg=3)
+    if min(v[:, 1].min() for v in V[-3 * len(rs["cushions"]):]) < trunk_end:
+        raise SystemExit(f"cabin: the rear seats cross the rear wall (y {trunk_end:.3f}): SEAT back / SEATS recline")
     part((0.20, 0.80, 0.22), 0.04, "console", DASH["console"])                  # centre console
     part((1.24, 0.34, 0.16), 0.06, "dash", DASH["dash"])                        # dash, trim strip on its face
     part((1.16, 0.02, 0.035), 0.008, "trim", DASH["trim"])
