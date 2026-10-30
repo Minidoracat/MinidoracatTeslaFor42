@@ -157,6 +157,9 @@ CAR = dict(
     GATE_COMPS=(),
     GATE_CUT_COMPS=(),
     CARBON=None,
+    # the fixed quarter glass ahead of the front door: no window part (the real one is fixed), so the roof glass's
+    # zone; as WinLT / WinRT (the default for body glass) it went with the rear window
+    FIXED_GLASS_Y=1.0995,
     PANES={"Body": {"WinT", "LightBarL", "WinLT", "WinRT"}, "DoorFrontLeft": {"WinLH"}, "DoorFrontRight": {"WinRH"},
            "DoorRearLeft": {"WinLT"}, "DoorRearRight": {"WinRT"}, "TrunkDoor": set(), "EngineDoor": set(),
            "TrunkTonneau": set()},

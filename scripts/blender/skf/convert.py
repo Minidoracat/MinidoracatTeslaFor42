@@ -864,7 +864,9 @@ def classify(car, names, sizes):
     put(tail & ~stop, "LightLT", "LightRT")
     put(stop, "StopL", "StopR")
     # glass zones: the mask zone and the UV1 pane code (GLASS_ZONES)
-    gzn = np.where(match(ROOF_PANE, obj, csize), "LightBarL",
+    # (FIXED_GLASS_Y, a car's: body side glass ahead of it is fixed glass, the roof glass's zone: no part, no damage)
+    fixed = match(ROOF_PANE, obj, csize) | (part == 0) & (ax >= 0.1) & (cen[:, 1] > C.get("FIXED_GLASS_Y", np.inf))
+    gzn = np.where(fixed, "LightBarL",
                    np.where((ax < 0.1) & (ay > 0), "WinT", np.where(ax < 0.1, "WinH",
                    np.where(np.isin(part, (1, 2)), np.where(L, "WinLH", "WinRH"), np.where(L, "WinLT", "WinRT")))))
     zone[glass] = [ZN.index(z) for z in gzn[glass]]
