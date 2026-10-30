@@ -307,7 +307,7 @@
     "IGUI_MinidoracatTesla_HUD_PowershareSub": "停電時に家へ給電",
     "IGUI_MinidoracatTesla_Radial_OutletOn": "荷台コンセントをオン",
     "IGUI_MinidoracatTesla_Radial_OutletOff": "荷台コンセントをオフ",
-    "IGUI_MinidoracatTesla_HUD_OutletSub": "テールゲートを下げて荷台に給電",
+    "IGUI_MinidoracatTesla_HUD_OutletSub": "ゲートを下ろすと荷台に給電",
     "IGUI_MinidoracatTesla_Card_SrcPowershare": "電源：Powershare",
     "IGUI_MinidoracatTesla_Card_SrcOutlet": "電源：Cybertruck 荷台コンセント",
     "IGUI_MinidoracatTesla_Powershare_LowBattery": "Powershare 停止：放電下限 %1%% に達しました",

@@ -307,7 +307,7 @@
     "IGUI_MinidoracatTesla_HUD_PowershareSub": "Alimente la maison en coupure",
     "IGUI_MinidoracatTesla_Radial_OutletOn": "Activer les prises de la benne",
     "IGUI_MinidoracatTesla_Radial_OutletOff": "Désactiver les prises de la benne",
-    "IGUI_MinidoracatTesla_HUD_OutletSub": "Hayon baissé : benne alimentée",
+    "IGUI_MinidoracatTesla_HUD_OutletSub": "Hayon baissé : prise active",
     "IGUI_MinidoracatTesla_Card_SrcPowershare": "Alimentation : Powershare",
     "IGUI_MinidoracatTesla_Card_SrcOutlet": "Alimentation : prise de benne du Cybertruck",
     "IGUI_MinidoracatTesla_Powershare_LowBattery": "Powershare arrêté : charge à la limite de décharge de %1%%",

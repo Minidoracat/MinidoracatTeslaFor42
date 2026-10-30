@@ -304,7 +304,7 @@
     "IGUI_MinidoracatTesla_Deny_NO_TARGET": "Cel jest nieprawidłowy",
     "IGUI_MinidoracatTesla_Radial_PowershareOn": "Włącz Powershare",
     "IGUI_MinidoracatTesla_Radial_PowershareOff": "Wyłącz Powershare",
-    "IGUI_MinidoracatTesla_HUD_PowershareSub": "Zasila dom podczas awarii prądu",
+    "IGUI_MinidoracatTesla_HUD_PowershareSub": "Zasila dom przy awarii prądu",
     "IGUI_MinidoracatTesla_Radial_OutletOn": "Włącz gniazda na pace",
     "IGUI_MinidoracatTesla_Radial_OutletOff": "Wyłącz gniazda na pace",
     "IGUI_MinidoracatTesla_HUD_OutletSub": "Klapa w dół: prąd przy pace",
