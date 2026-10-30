@@ -3,7 +3,7 @@
 
 [hr][/hr]
 
-把特斯拉 Model Y 与 Model 3 开进末日：用电池行驶、在家庭充电桩或移动充电连接器充电，还能用手机 App 远程控制。目前先推出这两款车，之后会陆续加入特斯拉全系列车型与更多充电设备。
+把特斯拉 Model Y、Model 3 与 Cybertruck 开进末日：用电池行驶、在家庭充电桩或移动充电连接器充电，还能用手机 App 远程控制。目前推出这三款车，之后会陆续加入特斯拉全系列车型与更多充电设备。
 
 [h2]📦 需要安装[/h2]
 [list]
@@ -11,13 +11,13 @@
 [*] [b]选装：[/b][url=https://steamcommunity.com/sharedfiles/filedetails/?id=3813972279]Minidoracat Vehicle Manager[/url]（绑车保护，手机 App 与钥匙按它的权限）
 [*] [b]选装：[/b][url=https://steamcommunity.com/sharedfiles/filedetails/?id=3792675881]Minidoracat MiniMap - AutoDrive[/url]（手机 App 的召唤）
 [*] [b]选装：[/b][url=https://steamcommunity.com/sharedfiles/filedetails/?id=3763913359]Minidoracat MiniMap[/url]（小地图画出你的特斯拉、导航到车）
-[*] [b]中途加入／移除：[/b]可加入；移除前请先看完整说明：特斯拉会随机变成别的车，钥匙与充电桩物品会消失，放好的充电桩会变成空物件
+[*] [b]中途加入／移除：[/b]可加入；移除前请先看完整说明：特斯拉会随机变成别的车，钥匙与充电桩物品会消失，放好的充电桩会变成空物件；Cybertruck 请先关掉 Powershare
 [*] [b]界面语言：[/b]繁體中文、简体中文、English、日本語、한국어、Русский、Español、Português、Türkçe、Français、Polski、Deutsch（翻译有问题请反馈）
 [/list]
 
 [h2]🚀 快速上手[/h2]
 [olist]
-[*] 在停车场找到特斯拉，拿到它的车钥匙就会变成卡片钥匙
+[*] 在停车场找到特斯拉（Cybertruck 在高级住宅区），拿到它的车钥匙就会变成卡片钥匙
 [*] 坐上驾驶座，点仪表左上角的电源键启动
 [*] 电工 3 级做一座家庭充电桩装上有电的墙，或把移动充电连接器放在地上，右键它插上充电线
 [*] 带着卡片坐在车上，右键智能手机选「设为手机钥匙」，就能用 Tesla App
@@ -25,7 +25,8 @@
 
 [h2]✨ 主要功能[/h2]
 [list]
-[*] [b]两台顶配特斯拉[/b]：Model Y、Model 3 Performance，各 8 色
+[*] [b]三台顶配特斯拉[/b]：Model Y、Model 3 Performance 各 8 色，Cybertruck Cyberbeast 12 色
+[*] [b]Cybertruck[/b]：车斗与电动车斗盖、装甲玻璃、车顶灯条；停电时用 Powershare 给家里供电，车斗插座帮别的特斯拉充电
 [*] [b]电池与充电[/b]：开车耗电、刹车回收电力，在家庭充电桩或放在地上的移动充电连接器充电
 [*] [b]特斯拉风格仪表[/b]：车速、电量与续航，点车辆图就能开关车门
 [*] [b]卡片与手机钥匙[/b]：带着手机走近就解锁，走远自动上锁

@@ -3,7 +3,7 @@
 
 [hr][/hr]
 
-Drive a Tesla Model Y or Model 3 through the apocalypse: run on battery power, charge at a Wall Connector or a Mobile Connector, and control the car from the Tesla app on your phone. These two models come first; the rest of the Tesla lineup and more charging equipment will be added over time.
+Drive a Tesla Model Y, Model 3 or Cybertruck through the apocalypse: run on battery power, charge at a Wall Connector or a Mobile Connector, and control the car from the Tesla app on your phone. These three models are here now; the rest of the Tesla lineup and more charging equipment will be added over time.
 
 [h2]📦 Requirements[/h2]
 [list]
@@ -11,13 +11,13 @@ Drive a Tesla Model Y or Model 3 through the apocalypse: run on battery power, c
 [*] [b]Optional:[/b] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3813972279]Minidoracat Vehicle Manager[/url] (vehicle claims; the phone app and the keys follow its permissions)
 [*] [b]Optional:[/b] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3792675881]Minidoracat MiniMap - AutoDrive[/url] (Summon in the phone app)
 [*] [b]Optional:[/b] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3763913359]Minidoracat MiniMap[/url] (your Teslas on the minimap, navigate to your car)
-[*] [b]Add/remove mid-save:[/b] can be added; read the full guide before removing it: each Tesla turns into a random other vehicle, keys and charger items vanish, and placed chargers become blank objects
+[*] [b]Add/remove mid-save:[/b] can be added; read the full guide before removing it: each Tesla turns into a random other vehicle, keys and charger items vanish, and placed chargers become blank objects; turn off a Cybertruck's Powershare first
 [*] [b]Languages:[/b] 繁體中文, 简体中文, English, 日本語, 한국어, Русский, Español, Português, Türkçe, Français, Polski, Deutsch (please report translation issues)
 [/list]
 
 [h2]🚀 Quick start[/h2]
 [olist]
-[*] Find a Tesla in a parking lot; its car key turns into a key card when you pick it up
+[*] Find a Tesla in a parking lot (the Cybertruck in upscale neighbourhoods); its car key turns into a key card when you pick it up
 [*] Sit in the driver's seat and click the power button at the top left of the dashboard
 [*] With Electrical 3, make a Wall Connector and mount it on a powered wall, or set a Mobile Connector on the floor; right-click it to plug in the charge cable
 [*] Sit in the car with the key card, right-click a smartphone and choose Set Up as Phone Key to use the Tesla app
@@ -25,7 +25,8 @@ Drive a Tesla Model Y or Model 3 through the apocalypse: run on battery power, c
 
 [h2]✨ Features[/h2]
 [list]
-[*] [b]Two Performance cars[/b]: Model Y and Model 3, 8 factory paints each
+[*] [b]Three top-trim Teslas[/b]: Model Y and Model 3 Performance with 8 factory paints each, Cybertruck Cyberbeast with 12
+[*] [b]Cybertruck[/b]: cargo bed with a powered tonneau cover, Armor Glass, roof light bar; Powershare runs your home in a blackout, and the bed outlets charge another Tesla
 [*] [b]Battery and charging[/b]: driving uses charge, braking wins some back, charge at a Wall Connector or a Mobile Connector on the floor
 [*] [b]Tesla-style dashboard[/b]: speed, charge and range; click the car picture to open its doors
 [*] [b]Key card and phone key[/b]: unlocks as you walk up with your phone, locks as you walk away

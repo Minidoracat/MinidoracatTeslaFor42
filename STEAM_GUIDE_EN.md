@@ -1,7 +1,7 @@
 <!-- 指南網址：https://steamcommunity.com/sharedfiles/filedetails/?id=3829449879 -->
 <!-- Steam guide source (English). The full description lives in this guide; the Workshop page only has a summary. Format and sync: pz-family-docs/release.md "完整說明：Steam 指南" -->
 <!-- 標題：📖 Minidoracat Tesla Collection Mod Guide: Cars, Charging, Keys and the App -->
-<!-- 摘要：A picture guide to Minidoracat Tesla Collection: the Model Y and Model 3 Performance, the battery, the Wall Connector and the Mobile Connector, the Tesla-style dashboard, key cards and phone keys, the Tesla app and Summon, Sentry and Camp Mode, drive unit parts, and how it works with Vehicle Manager, the MiniMap and AutoDrive, plus the sandbox options. -->
+<!-- 摘要：A picture guide to Minidoracat Tesla Collection: the Model Y and Model 3 Performance, the Cybertruck Cyberbeast (cargo bed, Powershare home backup and the bed outlets), the battery, the Wall Connector and the Mobile Connector, the Tesla-style dashboard, key cards and phone keys, the Tesla app and Summon, Sentry and Camp Mode, drive unit parts, and how it works with Vehicle Manager, the MiniMap and AutoDrive, plus the sandbox options. -->
 <!-- Screenshots: docs/screenshots/steam/en/, shot by guide-shots-sp in the family repo's e2e/MinidoracatTeslaFor42 (Summon shots: phone-summon-sp; FSD: fsd-shot-sp; With other mods: guide-mods-sp) -->
 === 🚀 Quick start
 [b]中文版：[/b] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3829449828]Minidoracat Tesla Collection 完整說明[/url]
@@ -9,7 +9,7 @@
 Mod page (Steam Workshop):
 https://steamcommunity.com/sharedfiles/filedetails/?id=3829501237
 [olist]
-[*] [b]Find a car[/b]: Teslas park in parking lots; the Model Y also turns up in upscale neighbourhoods.
+[*] [b]Find a car[/b]: Teslas park in parking lots; the Model Y also turns up in upscale neighbourhoods, and the Cybertruck only there.
 [*] [b]Get the key[/b]: a Tesla's car key turns into that car's Key Card when you pick it up.
 [*] [b]Start it[/b]: sit in the driver's seat and click the power button at the top left of the dashboard (or start it the vanilla way).
 [*] [b]Charge it[/b]: with Electrical 3, make a Tesla Wall Connector (Gen 3) and mount it on a powered wall, or set a Tesla Mobile Connector (Gen 3) on the floor; right-click it to plug in the charge cable.
@@ -45,6 +45,42 @@ https://steamcommunity.com/sharedfiles/filedetails/?id=3829501237
 [*] [b]Front Trunk[/b]: open the hood first to reach what is inside.
 [*] [b]High Voltage Battery[/b]: comes out without draining it first; the charge stays in the battery.
 [*] [b]Brakes[/b]: regenerative braking halves brake wear compared with a normal car.
+[/list]
+=== 🧰 Cybertruck (Cyberbeast)
+<!-- Shot to take: 23-cybertruck-en.jpg (stainless and a few wraps side by side, one with the tonneau open and the tailgate down; guide-shots-sp needs a Cybertruck part) -->
+[list]
+[*] [b]Where it spawns[/b]: upscale neighbourhoods only, at half the Model Y's chance there; never in parking lots.
+[*] [b]Top trim Cyberbeast[/b]: the mechanics window shows 845 hp, and it pulls harder than the Model Y and Model 3; top speed, grip and braking match the two cars.
+[*] [b]Off road[/b]: on grass, dirt and other off-road ground it has more thrust and wears its tyres and suspension less, like the vanilla off-road vehicles.
+[*] [b]Battery[/b]: a 123 kWh High Voltage Battery; a full charge still goes as far as a full tank in a vanilla car of the same class. Empty to 90% takes about 10 hours on a Wall Connector and about 15 on a Mobile Connector (game time); filling it on generator power burns about 1.6 times the Model Y's fuel.
+[*] [b]Seats[/b]: 4 (the real truck has 5; like every Tesla here, one per door).
+[*] [b]Charge port[/b]: above the left rear wheel; the charge cable runs there.
+[*] [b]Paints[/b]: half spawn in factory stainless, the other half evenly in 11 wraps Tesla once sold; stainless and the satin wraps each have their own sheen, and the app's picture follows the paint.
+[/list]
+[table]
+[tr][th]Car[/th][th]Paints[/th][th]Front Trunk[/th][th]Cargo Bed[/th][/tr]
+[tr][td]Cybertruck Cyberbeast[/td][td]Stainless, Satin Stealth Black, Satin Ceramic White, Satin Rose Gold, Satin Tactical Green, Satin Dark Grey, Satin Forest Green, Satin Abyss Blue, Copper Tinted Clear, Satin Crimson Red, Satin Iridescent Purple, Slip Grey[/td][td]14[/td][td]110[/td][/tr]
+[/table]
+[h3]Cargo bed, tailgate and tonneau cover[/h3]
+<!-- Shot to take: 24-ct-bed-en.jpg (at night, tonneau open, tailgate down, bed lights on; framed like cybertruck-body-sp's tonneau-tailgate) -->
+[list]
+[*] [b]Capacity[/b]: Cargo Bed 110 (same as the vanilla pickup), Front Trunk 14.
+[*] [b]Tailgate[/b]: folds down; use the interact key at the rear, click the rear of the car on the dashboard, or the tailgate icon on the app's home page.
+[*] [b]Tonneau Cover[/b]: a powered roll-up cover, about 4 seconds to open or close; click the bed on the dashboard's car picture, or Tonneau Cover on the app's Controls page.
+[*] [b]Reaching the bed[/b]: from the rear the tailgate or the tonneau must be open, from the sides the tonneau; not from inside the truck. A removed tailgate or tonneau counts as open.
+[*] [b]Locking[/b]: locking the truck locks the tailgate and the tonneau too; a tonneau left open stays open when locked (like the real truck).
+[*] [b]Part names[/b]: the mechanics window uses the owner's manual names Tailgate, Cargo Bed and Tonneau Cover.
+[/list]
+[h3]Bed lights and roof light bar[/h3]
+[list]
+[*] [b]Bed lights[/b]: on by themselves while the tailgate or the tonneau is open, off when both are shut.
+[*] [b]Roof light bar[/b]: every Cybertruck has one; the driver picks Turn on Light Bar in the V radial menu. It lights the ground ahead, farther than the headlights.
+[/list]
+[h3]Armor Glass and the stainless body[/h3]
+[list]
+[*] [b]Windows[/b]: smashing a window from outside (Smash … in the V radial menu, or Smash Window in the mechanics window) takes 3 hits, with a heavy two-handed swing; a new window starts over, and bare hands still cut.
+[*] [b]Sentry[/b]: with Sentry on, every hit sounds the alarm and tells the owner; see Sentry Mode.
+[*] [b]Body[/b]: player weapons do less to the doors, hood, tailgate, tonneau and windshields than on a normal car; crashes and zombies do the usual damage.
 [/list]
 === 🧰 Battery and range
 [list]
@@ -96,20 +132,58 @@ A charger that works on the floor, no wall needed; slower than the Wall Connecto
 [h3]The charge card[/h3]
 [list]
 [*] [b]Open it[/b]: in the car press V and choose Charging Status, or right-click the charger and choose the same.
-[*] [b]Shows[/b]: power, what this session added (km, kWh), time to the target, and whether the grid or a generator powers it.
+[*] [b]Shows[/b]: power, what this session added (km, kWh), time to the target, and what powers it: the grid, a generator, Powershare or a Cybertruck bed outlet.
 [*] [b]Target[/b]: − / + move it 10% at a time, 50–100%; Daily is 50–90%, Trip 90–100%.
 [*] [b]Buttons[/b]: stop / start charging, unplug, close; a controller works too. Without the right (car locked, no key) the target and these buttons are grey and the hover help says why.
+[/list]
+=== 🧰 Powershare and the bed outlets (Cybertruck)
+<!-- Shot to take: 25-ct-powershare-en.jpg (lights on in the house after the blackout + the app's Powershare page "Powering the home · N kW"; framed like powershare-sp's ps-* shots) -->
+[h3]Powershare home backup[/h3]
+[list]
+[*] [b]What it is[/b]: in a blackout the Cybertruck powers your home, like the real Powershare home backup.
+[*] [b]Turn it on[/b]: sitting in the truck, Turn on Powershare in the V radial menu, or the Powershare cell on the app's Controls page, then turn it on there. The same people who may plug in the charge cable may switch it (see the FAQ "What can I do without the key?").
+[*] [b]When it powers the home[/b]: with Powershare on and the truck plugged into a Wall Connector, once the power there is out and no other generator feeds it, it starts by itself; it reaches as far as a vanilla generator. When the grid or another generator takes over it goes back to standing by and charges as usual.
+[*] [b]Wall Connector only[/b]: on a Mobile Connector or with no cable it does not power the home, and the app reminds you to plug into a Wall Connector.
+[*] [b]What the house uses, the truck pays[/b]: the house's use comes out of the Cybertruck's battery; the app shows the kW it gives now and how long it can keep going. It burns no fuel and makes no generator noise.
+[*] [b]Discharge limit[/b]: 20% by default; − / + on the app's Powershare page move it 5% at a time (5–90%). At the limit it stops and tells whoever turned it on.
+[*] [b]Other Teslas charge too[/b]: in a blackout, Teslas plugged into chargers in the house charge from the Cybertruck's battery (the charge card says Power: Powershare). What they get, the Cybertruck loses, kWh for kWh; together at most 11.5 kW, and once one is full or stopped the others can take all of it.
+[*] [b]The Cybertruck itself[/b]: while powering the home its own charge card shows no power; it never charges itself.
+[*] [b]Parked indoors[/b]: works too; deep inside a large indoor garage, with no outdoor spot within 8 tiles, Powershare shows Stopped with the reason, tells whoever turned it on, and tries again later.
+[/list]
+[table]
+[tr][th]The app shows[/th][th]Meaning[/th][/tr]
+[tr][td]Off[/td][td]Powershare is off[/td][/tr]
+[tr][td]Standing by[/td][td]On; there is still power here, charging as usual[/td][/tr]
+[tr][td]Powering the home[/td][td]Blackout; it is powering the home[/td][/tr]
+[tr][td]Stopped[/td][td]The charge reached the discharge limit, or there is nowhere to supply from; the app says which[/td][/tr]
+[/table]
+[h3]Bed outlets: charge another Tesla[/h3]
+<!-- Shot to take: 26-ct-outlet-en.jpg (tailgate down, a Model Y plugged into a Mobile Connector by the bed, charge card "Power: Cybertruck bed outlet"; framed like powershare-sp's bed outlet part) -->
+[olist]
+[*] Turn on bed outlets in the V radial menu, or on the app's Powershare page.
+[*] Lower the tailgate (a removed one counts).
+[*] Set a Mobile Connector within 2 tiles of the bed, on the same floor.
+[*] Plug another Tesla into that Mobile Connector; its charge card says Power: Cybertruck bed outlet.
+[/olist]
+[list]
+[*] [b]Power[/b]: each car at the Mobile Connector's 7.6 kW, together at most 9.6 kW; once one is full or stopped the others can take all of it.
+[*] [b]kWh[/b]: what the other car gets, the Cybertruck loses, down to the discharge limit (the same one as Powershare).
+[*] [b]When it gives nothing[/b]: the tailgate is up, the Cybertruck has its own charge cable in, it is powering the home with Powershare, or the charge is at the limit; the app says why.
+[/list]
+[h3]Before removing this mod[/h3]
+[list]
+[*] [b]Turn Powershare off first[/b]: a Cybertruck powering the home when the game is saved leaves a vanilla generator behind after the mod is removed; it makes the vanilla noise, draws zombies, and only stops when its fuel runs out (30 days at most).
 [/list]
 === 🧰 The Tesla-style dashboard
 {{img:05-radial-en.jpg}}
 [list]
 [*] [b]Replaces the vanilla dashboard[/b]: in a Tesla you get the gear, speed, charge, range and live use / regen.
 [*] [b]Power button[/b]: top left; click to start, click again to power off; powering off needs the car stopped.
-[*] [b]Click the car to open doors[/b]: click the top view of the car on the dashboard to open or close that door, the liftgate or the hood; a locked door unlocks first, and nothing opens while driving.
+[*] [b]Click the car to open doors[/b]: click the top view of the car on the dashboard to open or close that door, the liftgate or the hood (on the Cybertruck the bed is the tonneau cover); a locked door unlocks first, and nothing opens while driving.
 [*] [b]Quick keys[/b]: headlights, climate controls, radio, Camp Mode; a key that is on turns blue with an underline.
 [*] [b]Reminders[/b]: a door open, charging, charged, no power at the charger, low battery, Camp or Sentry on show as one line below.
 [*] [b]Hover help[/b]: every button and every area of the car picture says what it does when the mouse is over it.
-[*] [b]V radial menu[/b]: adds Turn on Camp Mode and Charging Status; when one is not available its icon is grey and the second line says why.
+[*] [b]V radial menu[/b]: adds Turn on Camp Mode and Charging Status; the Cybertruck also has Powershare, the bed outlets and the light bar (the light bar for the driver only). When one is not available its icon is grey and the second line says why.
 [*] [b]With AutoDrive[/b]: AutoDrive's autopilot card sits above the Tesla dashboard, and above the charge card while that is open.
 [/list]
 === 🧰 Key card and phone key
@@ -150,7 +224,7 @@ A charger that works on the floor, no wall needed; slower than the Wall Connecto
 [/list]
 [table]
 [tr][th]Page[/th][th]What it does[/th][/tr]
-[tr][td]Controls[/td][td]Flash the lights to find the car, honk for a second (like the car's horn: nearby zombies hear it), open / close the frunk and the liftgate[/td][/tr]
+[tr][td]Controls[/td][td]Flash the lights to find the car, honk for a second (like the car's horn: nearby zombies hear it), open / close the frunk and the liftgate; the Cybertruck adds the tonneau cover and Powershare (see Powershare and the bed outlets)[/td][/tr]
 [tr][td]Location[/td][td]Arrow, distance, compass direction; Show on Map opens the world map; Navigate to Car with the MiniMap[/td][/tr]
 [tr][td]Summon[/td][td]Only with AutoDrive; see Summon[/td][/tr]
 [tr][td]Security[/td][td]Turn Sentry Mode on / off, see this car's Sentry Alerts[/td][/tr]
@@ -198,7 +272,7 @@ A charger that works on the floor, no wall needed; slower than the Wall Connecto
 [*] [b]Turn it on[/b]: all doors locked, motor off, nobody inside; within 10 tiles outside, right-click the Tesla and choose Enable Sentry Mode, or use the app's Security page.
 [*] [b]Charge[/b]: needs 20% or more; it uses about 0.25 kWh an hour and turns off below 20% with a notice (plugged into a powered charger it neither drains nor turns off).
 [*] [b]Touch[/b]: someone pulls a door handle or tries to unlock: the headlights flash 3 times and the owner is told.
-[*] [b]Damage[/b]: a smashed window, hotwiring or removed parts sound the vanilla alarm and the owner is told.
+[*] [b]Damage[/b]: a smashed window, hotwiring or removed parts sound the vanilla alarm and the owner is told. A Cybertruck window takes 3 hits to break, and every hit sounds the alarm and tells the owner (the first two say the window was struck).
 [*] [b]Who counts as the owner[/b]: whoever turned it on, and anyone carrying this car's key, key card or phone key; with Vehicle Manager and a claimed car, only its Ride permission counts.
 [*] [b]Offline owners[/b]: events wait until the owner logs in next.
 [*] [b]Turning it off[/b]: unlocking with the key card, the phone key or the app turns Sentry off too.
@@ -270,7 +344,7 @@ On the Tesla Collection page of the sandbox settings.
 [table]
 [tr][th]Option[/th][th]Default[/th][th]Range[/th][th]What it does[/th][/tr]
 [tr][td]Range multiplier[/td][td]1.0[/td][td]0.25–10.0[/td][td]How far a full battery drives; 1.0 = as far as a full tank in a vanilla car of the same class; vanilla Gas Consumption scales it too[/td][/tr]
-[tr][td]Charging speed multiplier[/td][td]1.0[/td][td]0.1–10.0[/td][td]1.0 = official charger power (Wall Connector 11.5 kW, Mobile Connector 7.6 kW)[/td][/tr]
+[tr][td]Charging speed multiplier[/td][td]1.0[/td][td]0.1–10.0[/td][td]1.0 = official charger power (Wall Connector 11.5 kW, Mobile Connector 7.6 kW); the Cybertruck's Powershare 11.5 kW and bed outlet 9.6 kW limits scale with it too[/td][/tr]
 [tr][td]Charging fuel multiplier[/td][td]1.0[/td][td]0–10.0[/td][td]Generator fuel a Tesla burns, charging and the car's own loads while plugged in; 1.0 = about one tank for a full charge at the default Generator Fuel Consumption, 0 = no fuel[/td][/tr]
 [tr][td]Camp Mode battery limit[/td][td]20[/td][td]10–20 (%)[/td][td]Below this charge Camp Mode cannot turn on, and while camping it turns off[/td][/tr]
 [tr][td]App Bluetooth range after power cut (tiles)[/td][td]50[/td][td]0–64[/td][td]After the power goes out the app reaches the car within this many tiles only (1 tile = 1 m), Summon included; no limit while the grid is up; 0 = no link after the power cut[/td][/tr]
@@ -289,6 +363,8 @@ Options elsewhere that also affect Teslas:
 [list]
 [*] [b]No grid in player-built houses[/b]: they do not count as rooms, so a charger there needs a generator.
 [*] [b]Sentry ignores zombies[/b]: it only reacts to players touching or damaging the car.
+[*] [b]The Cybertruck's roof light bar[/b]: the bar itself does not glow; what lights up is the ground ahead.
+[*] [b]Powershare's reach[/b]: it follows the vanilla generator sandbox settings and cannot be set apart for the Cybertruck.
 [*] [b]Double notices[/b]: with Vehicle Manager, one event may bring both its parking guard notice and a Sentry notice.
 [*] [b]Summon[/b]:
 [list]
@@ -377,10 +453,11 @@ Without Vehicle Manager:
 [*] [b]Teslas become other vehicles[/b]: each car stays on its spot facing the same way, but its type is picked at random from every vehicle with wheels, vanilla, wrecked or from other mods (tests turned them into vans, a wrecked pickup and sedan, and another mod's utility truck). The new car's gas tank slot is empty, with no tank and no fuel, and its keys are gone too: treat it like a car whose key was lost.
 [*] [b]Things in the car[/b]: whatever is in the Front Trunk is always lost (vanilla cars have no such slot). Rear Trunk, seats and glove box: one that somebody opened keeps its contents if the new type has the same slot; one nobody ever opened is emptied and refilled with the new type's random loot. If the new type lacks the slot, its contents are lost too.
 [*] [b]Placed chargers[/b]: Wall Connectors and Mobile Connectors turn into invisible objects that cannot be picked up and stay on that square without blocking it; a plugged cable disappears too.
+[*] [b]A Cybertruck's Powershare[/b]: turn it off first; one powering the home at save time stays as a vanilla generator (vanilla noise, draws zombies) until its fuel runs out, 30 days at most.
 [*] [b]The server's Tesla data[/b]: app records, offline notices and phone pairings are in gos_MinidoracatTeslaApp.bin in the save folder, the charger list in gos_MinidoracatTeslaCharger.bin. Without the mod the game neither reads nor changes them; leaving them there is harmless.
 [*] [b]Steps for server admins[/b]:
 [olist]
-[*] Tell players to unplug the cables, pick up their chargers (the picked-up chargers vanish later too, but no blank object is left on the square), and move anything they want to keep out of the Teslas' Front and Rear Trunks, seats and glove boxes.
+[*] Tell players to unplug the cables, pick up their chargers (the picked-up chargers vanish later too, but no blank object is left on the square), turn off their Cybertrucks' Powershare, and move anything they want to keep out of the Teslas' Front and Rear Trunks, Cargo Beds, seats and glove boxes.
 [*] Shut the server down and back up the whole save folder Zomboid/Saves/Multiplayer/<server name>/.
 [*] In the server settings file Zomboid/Server/<server name>.ini, remove MinidoracatTeslaFor42 from Mods= and this mod's Workshop ID from WorkshopItems=.
 [*] Start the server. Players join as usual; the server console shows extra lines such as cannot create item and item == null, skipped bytes for the dropped Tesla items, which are not errors.
