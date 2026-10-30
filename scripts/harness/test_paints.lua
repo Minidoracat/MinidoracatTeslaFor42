@@ -56,3 +56,52 @@ for _, car in ipairs({ "MinidoracatTesla_ModelY", "MinidoracatTesla_Model3" }) d
     check(n == 8, "the 16 draws reach all 8 skins (" .. n .. ")")
     H.setRand(0.5)
 end
+
+-- Cybertruck: stainless ($PDD, the only factory finish) and Tesla's 11 Color Paint Film wraps (shop 2024-06), drawn
+-- by weight so stainless takes half the spawns (T.pickColor)
+local CT = "MinidoracatTesla_Cybertruck"
+local FILMS = { "Stainless", "SatinStealthBlack", "SatinCeramicWhite", "SatinRoseGold", "SatinTacticalGreen", "SatinDarkGrey",
+    "SatinForestGreen", "SatinAbyssBlue", "CopperTintedClear", "SatinCrimsonRed", "SatinIridescentPurple", "SlipGrey" }
+local colors = T.Specs["Base." .. CT].colors
+H.section("paint table " .. CT)
+local bad, total = {}, 0
+for i, c in ipairs(colors) do
+    if c.name ~= FILMS[i] then bad[#bad + 1] = i .. ":" .. tostring(c.name) end
+    if (i == 1) ~= (c.code == "PDD") then bad[#bad + 1] = c.name .. ".code" end
+    for _, k in ipairs({ "h", "s", "v" }) do
+        if type(c[k]) ~= "number" or c[k] < 0 or c[k] > 1 then bad[#bad + 1] = c.name .. "." .. k end
+    end
+    total = total + (c.weight or 1)
+end
+check(#colors == 12 and #bad == 0, "12 finishes in the published order, $PDD on stainless only (" .. table.concat(bad, ",") .. ")")
+check(colors[1].weight * 2 == total, "stainless weighs half of all (" .. tostring(colors[1].weight) .. " of " .. total .. ")")
+local f = assert(io.open(media .. "scripts/vehicles/" .. CT .. ".txt", "r"))
+local text = f:read("*a")
+f:close()
+local skins = {}
+for tex in text:gmatch("skin%s*{%s*texture%s*=%s*([%w_/]+)") do skins[#skins + 1] = tex end
+-- the Model 3 geometry stands in until TeslaCybertruck's build: then every skin is this car's own, in table order
+local own = text:find("file = " .. CT .. ",", 1, true) ~= nil
+local order = #skins == 12
+for i, c in ipairs(colors) do order = order and (not own or skins[i] == "Vehicles/" .. CT .. "_" .. c.name) end
+check(order, "12 skins" .. (own and ", matching the table one to one" or " (placeholder geometry)") .. " (" .. #skins .. ")")
+
+H.section("paint pick " .. CT .. " (weighted)")
+local hits = {}
+for k = 0, total - 1 do -- one draw per weight unit: each finish lands exactly its weight times
+    H.setRand((k + 0.5) / total)
+    local v = H.vehicle({ script = "Base." .. CT })
+    T.Create.Motor(v, v:getPartById("Engine"))
+    local c = v.skin and colors[v.skin + 1]
+    if c and v.hsv[1] == c.h and v.hsv[3] == c.v then hits[v.skin + 1] = (hits[v.skin + 1] or 0) + 1 end
+    H.removeVehicle(v)
+end
+local ok = true
+for i, c in ipairs(colors) do ok = ok and hits[i] == (c.weight or 1) end
+check(ok, "draws follow the weights: stainless " .. tostring(hits[1]) .. " of " .. total .. ", each film once")
+-- no weight = 1: an unweighted table stays even; a planted weight shifts the draw
+H.setRand(0.4)
+check(T.pickColor({ {}, {} }) == 1 and T.pickColor({ { weight = 3 }, {} }) == 1, "rand 0.4: { 1, 1 } -> 1, { 3, 1 } -> 1")
+H.setRand(0.6)
+check(T.pickColor({ {}, {} }) == 2 and T.pickColor({ { weight = 3 }, {} }) == 1, "rand 0.6: { 1, 1 } -> 2, { 3, 1 } -> 1 (weight counts)")
+H.setRand(0.5)

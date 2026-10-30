@@ -24,7 +24,7 @@ function H.scriptValue(file, key, after)
 end
 -- per Tesla: its script's engineForce and its pack item's int MaxCapacity (H.vehicle; other packs get 63)
 local ENGINE_FORCE, PACK_CAP = {}, {}
-for _, car in ipairs({ "ModelY", "Model3" }) do
+for _, car in ipairs({ "ModelY", "Model3", "Cybertruck" }) do
     ENGINE_FORCE["Base.MinidoracatTesla_" .. car] = H.scriptValue("vehicles/MinidoracatTesla_" .. car .. ".txt", "engineForce")
     PACK_CAP["Base.MinidoracatTesla_" .. car .. "Battery"] = H.scriptValue("items/MinidoracatTesla_items.txt", "MaxCapacity",
         "item MinidoracatTesla_" .. car .. "Battery")

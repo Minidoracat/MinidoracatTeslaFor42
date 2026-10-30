@@ -1,6 +1,7 @@
 {
     "Base.MinidoracatTesla_ModelYBattery": "Batería de alta tensión Model Y Performance (78,4 kWh)",
     "Base.MinidoracatTesla_Model3Battery": "Batería de alta tensión Model 3 Performance (78,4 kWh)",
+    "Base.MinidoracatTesla_CybertruckBattery": "Batería de alta tensión Cybertruck Cyberbeast (123 kWh)",
     "Base.MinidoracatTesla_WallConnector": "Tesla Wall Connector (3.ª gen.)",
     "Base.MinidoracatTesla_MobileConnector": "Tesla Mobile Connector (3.ª gen.)",
     "Base.MinidoracatTesla_CableHang": "Cable de carga (tramo de pared)",

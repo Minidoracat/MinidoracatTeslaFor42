@@ -133,12 +133,13 @@ Events.OnGameStart.Add(function() Events.OnTick.Add(loginCheck) end)
 -- The server leaves the key card, the phone and the phone key unnamed (KeyActions.lua replace), so the client builds
 -- them from its own scripts, in its own language; the car comes from the item's teslaCars (K.PAIRED_CARS). Items from
 -- before carry a name fixed in the server's language (saved and sent as it is, InventoryItem.java:1711-1714): the car
--- model is read back from it (every language's IGUI_VehicleName has "Model Y" / "Model 3"). A name the player gave
--- (vanilla rename: setCustomName) stays. setName here is local only, never synced: what the server sends is named
--- again at the next list refresh.
+-- model is read back from it (every language's IGUI_VehicleName has "Model Y" / "Model 3" / "Cybertruck"). A name the
+-- player gave (vanilla rename: setCustomName) stays. setName here is local only, never synced: what the server sends
+-- is named again at the next list refresh.
 local NAMED = { K.CARD, K.PHONE, K.PHONE_KEY }
 local MODELS = { ["Model Y"] = "MinidoracatTesla_ModelY", ModelY = "MinidoracatTesla_ModelY",
-    ["Model 3"] = "MinidoracatTesla_Model3", Model3 = "MinidoracatTesla_Model3" }
+    ["Model 3"] = "MinidoracatTesla_Model3", Model3 = "MinidoracatTesla_Model3",
+    Cybertruck = "MinidoracatTesla_Cybertruck" }
 local function carText(car) return type(car) == "string" and getTextOrNull("IGUI_VehicleName" .. car) or nil end
 local function modelIn(name)
     for s, car in pairs(MODELS) do
