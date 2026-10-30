@@ -1,6 +1,7 @@
 {
     "Base.MinidoracatTesla_ModelYBattery": "Model Y Performance Yüksek Voltajlı Batarya (78,4 kWh)",
     "Base.MinidoracatTesla_Model3Battery": "Model 3 Performance Yüksek Voltajlı Batarya (78,4 kWh)",
+    "Base.MinidoracatTesla_CybertruckBattery": "Cybertruck Cyberbeast Yüksek Voltajlı Batarya (123 kWh)",
     "Base.MinidoracatTesla_WallConnector": "Tesla Wall Connector (3. Nesil)",
     "Base.MinidoracatTesla_MobileConnector": "Tesla Mobile Connector (3. Nesil)",
     "Base.MinidoracatTesla_CableHang": "Şarj Kablosu (duvar kısmı)",

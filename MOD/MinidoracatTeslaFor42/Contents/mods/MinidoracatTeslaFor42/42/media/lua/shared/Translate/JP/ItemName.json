@@ -1,6 +1,7 @@
 {
     "Base.MinidoracatTesla_ModelYBattery": "Model Y Performance 高電圧バッテリー（78.4 kWh）",
     "Base.MinidoracatTesla_Model3Battery": "Model 3 Performance 高電圧バッテリー（78.4 kWh）",
+    "Base.MinidoracatTesla_CybertruckBattery": "Cybertruck Cyberbeast 高電圧バッテリー（123 kWh）",
     "Base.MinidoracatTesla_WallConnector": "Tesla 第3世代ウォールコネクター",
     "Base.MinidoracatTesla_MobileConnector": "Tesla 第3世代モバイルコネクター",
     "Base.MinidoracatTesla_CableHang": "充電ケーブル（壁から垂れる部分）",

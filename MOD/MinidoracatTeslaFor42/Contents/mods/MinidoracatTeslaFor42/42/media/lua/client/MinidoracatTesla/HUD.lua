@@ -29,15 +29,20 @@ local KEYS_Y = 60
 local MSG_Y, MSG_H, MSG_MINW, MSG_MAXW = 108, 30, 312, 474
 local H_NOMSG = 112
 local LOW_PCT = 20
-local DOORS = { "DoorFrontLeft", "DoorFrontRight", "DoorRearLeft", "DoorRearRight", "TrunkDoor", "DoorRear", "EngineDoor" }
-local DOOR_SPR = { "door_FL", "door_FR", "door_RL", "door_RR", "door_TR", "door_TR", "door_HD" }
-local POW2 = { 1, 2, 4, 8, 16, 32, 64 }
+local DOORS = { "DoorFrontLeft", "DoorFrontRight", "DoorRearLeft", "DoorRearRight", "TrunkDoor", "DoorRear", "EngineDoor",
+    "TrunkTonneau" }
+-- door overlay sprites; a car whose doors sit elsewhere has its own, door_<kind>_<model> (build_atlas.py DOOR_GEOM)
+local DOOR_SPR = { "door_FL", "door_FR", "door_RL", "door_RR", "door_TR", "door_TR", "door_HD", "door_TN" }
+local POW2 = { 1, 2, 4, 8, 16, 32, 64, 128 }
 -- clickable car picture, per car model (Core.lua Specs model; sprite car_<model>, scripts/hud/build_atlas.py):
 -- { DOORS index, x0, y0, x1, y1 } in design units from the car sprite's top-left (150x85, nose right, left side up;
 -- build_atlas.py draws at 150/170 px per viewBox unit). Rear doors end at the B-pillar seam (x 69), the front doors
 -- and the frunk lid split the windscreen; x 140 is where the quick keys start. The Model Y's liftgate carries the rear
 -- glass (x 0-45). The Model 3's trunk lid ends at its seam (viewBox 40 = x 35), its rear doors start where their
 -- outline is drawn (viewBox 56 = x 49), and the rear glass between (viewBox 43-56, fixed in the body) opens nothing.
+-- The Cybertruck: the tailgate behind the bed (x 0-14), the tonneau over the bed (to its front wall, viewBox 56.4 =
+-- x 51), the rear glass (x 51-55) opens nothing, the doors split at viewBox 87 (x 77), the front doors end at the
+-- frunk lid (viewBox 118 = x 104).
 local ZONES = {
     ModelY = {
         { 5, 0, 0, 45, 85 }, { 3, 45, 0, 69, 42.5 }, { 4, 45, 42.5, 69, 85 },
@@ -46,6 +51,10 @@ local ZONES = {
     Model3 = {
         { 5, 0, 0, 35, 85 }, { 3, 49, 0, 69, 42.5 }, { 4, 49, 42.5, 69, 85 },
         { 1, 69, 0, 97, 42.5 }, { 2, 69, 42.5, 97, 85 }, { 7, 97, 0, 140, 85 },
+    },
+    Cybertruck = {
+        { 5, 0, 0, 14, 85 }, { 8, 14, 0, 51, 85 }, { 3, 55, 0, 77, 42.5 }, { 4, 55, 42.5, 77, 85 },
+        { 1, 77, 0, 104, 42.5 }, { 2, 77, 42.5, 104, 85 }, { 7, 104, 0, 140, 85 },
     },
 }
 HUD.ZONES = ZONES
@@ -214,13 +223,15 @@ function HUD:attach(vehicle)
     self.battery = T.Battery.part(vehicle)
     self.heaterPart = vehicle:getPartById("Heater")
     self.radioPart = vehicle:getPartById("Radio")
-    self.doors = {}
+    local model = T.spec(vehicle).model -- this car's top view and door zones (attach runs for Teslas only)
+    self.doors, self.doorSpr = {}, {}
     for i = 1, #DOORS do
+        local own = DOOR_SPR[i] .. "_" .. model
+        self.doorSpr[i] = T.HUDAtlas[1][own] and own or DOOR_SPR[i]
         local p = vehicle:getPartById(DOORS[i])
-        if p and p:getDoor() then self.doors[#self.doors + 1] = { part = p, bit = POW2[i], spr = DOOR_SPR[i], name = DOORS[i] } end
+        if p and p:getDoor() then self.doors[#self.doors + 1] = { part = p, bit = POW2[i], spr = self.doorSpr[i], name = DOORS[i] } end
     end
     self.fake = BaseVehicle.getFakeSpeedModifier() -- BaseVehicle.java:666; vanilla :256 multiplies the gauge too
-    local model = T.spec(vehicle).model -- this car's top view and door zones (attach runs for Teslas only)
     self.script, self.carSpr, self.zones = vehicle:getScriptName(), "car_" .. model, ZONES[model]
     self.msgId = nil -- the message names this car's doors: rebuild it even when the door bits match the last car's
     local st = self.st
@@ -641,7 +652,7 @@ function HUD:render()
     local zx, zy, zw, zh = cx + z[2] * S, cy + z[3] * S, (z[4] - z[2]) * S, (z[5] - z[3]) * S
     tipQ.A, tipQ.f, tipQ.n = self.A, self.f, 0
     rrect(tipQ, zx, zy, zw, zh, 6 * S, C.accent, 0.18)
-    spr(tipQ, self.A[DOOR_SPR[z[1]]], cx, cy, C.accent, 1)
+    spr(tipQ, self.A[self.doorSpr[z[1]]], cx, cy, C.accent, 1)
     drawQ(self, tipQ)
     self:doorTip(z[1], zx, zy, zw, zh)
 end
