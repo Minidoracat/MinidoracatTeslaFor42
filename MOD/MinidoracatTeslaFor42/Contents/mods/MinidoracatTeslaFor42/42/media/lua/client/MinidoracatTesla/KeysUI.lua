@@ -295,8 +295,33 @@ end
 Events.OnFillWorldObjectContextMenu.Add(UI.fillMenu)
 
 -- ------------------------------------------------------------------ phone pairing (one phone key, several cars)
+-- The server pairs only a phone on the player (KeyActions phonePair). One in the glove box (Battery.lua gives new cars
+-- one) or another container is carried first, the vanilla right-click way (ISInventoryPaneContextMenu.transferIfNeeded),
+-- and the request waits behind it in the queue: a client-only action like the key tap (no complete()). In MP the
+-- transfer normally ends once the server's item transaction is done (ISInventoryTransferAction:update), so the phone
+-- is on the server's player by then; if vanilla gives up on the transaction first, the server refuses with NO_PHONE
+-- ("take the phone first"). A cancelled or refused transfer clears the queue, request included (no message: vanilla).
+ISMinidoracatTeslaPairPhone = ISBaseTimedAction:derive("ISMinidoracatTeslaPairPhone")
+
+function ISMinidoracatTeslaPairPhone:isValid()
+    return self.character:getVehicle() == self.vehicle
+end
+function ISMinidoracatTeslaPairPhone:perform()
+    T.request(self.character, "phonePair", { vid = self.vehicle:getId(), id = self.phone:getID() })
+    ISBaseTimedAction.perform(self)
+end
+function ISMinidoracatTeslaPairPhone:new(character, vehicle, phone)
+    local o = ISBaseTimedAction.new(self, character)
+    o.vehicle, o.phone, o.maxTime = vehicle, phone, 1
+    return o
+end
+
 local function onPair(player, vehicle, phone)
-    T.request(player, "phonePair", { vid = vehicle:getId(), id = phone:getID() })
+    if player:getInventory():getItemWithIDRecursiv(phone:getID()) then -- on the player, bags too: as before
+        return T.request(player, "phonePair", { vid = vehicle:getId(), id = phone:getID() })
+    end
+    ISInventoryPaneContextMenu.transferIfNeeded(player, phone)
+    ISTimedActionQueue.add(ISMinidoracatTeslaPairPhone:new(player, vehicle, phone))
 end
 
 -- first pairing: "Set as phone key"; a phone key seated in a Tesla it does not open yet: "Add this car (N paired)"

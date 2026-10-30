@@ -200,7 +200,7 @@ A charger that works on the floor, no wall needed; slower than the Wall Connecto
 [h3]Phone Key[/h3]
 [list]
 [*] [b]Where phones come from[/b]: the Smartphone is a new item, most common in electronics stores; sometimes in mall electronics, office desks and bedside tables. A newly spawned Tesla has a one-in-four chance of an unpaired one in its glove box.
-[*] [b]Set it up[/b]: sit in the Tesla with its key card on you (or in the ignition), right-click the phone and choose Set Up as Phone Key; the phone must be on you too, so take it out of the glove box first. Without Vehicle Manager, sitting in a hotwired car works too, no card needed.
+[*] [b]Set it up[/b]: sit in the Tesla with its key card on you (or in the ignition), right-click the phone and choose Set Up as Phone Key; a phone in the glove box works too, it is taken out first. Without Vehicle Manager, sitting in a hotwired car works too, no card needed.
 [*] [b]Walk up and it unlocks[/b]: pull a door handle with the phone key on you and the door unlocks and opens; a backpack or fanny pack is fine.
 [*] [b]Starting[/b]: sit in the driver's seat and start; the phone can stay in a bag.
 [*] [b]Walk-away lock[/b]: get out and walk about 6 tiles away with the phone; the doors lock, the lights flash once and the horn chirps.

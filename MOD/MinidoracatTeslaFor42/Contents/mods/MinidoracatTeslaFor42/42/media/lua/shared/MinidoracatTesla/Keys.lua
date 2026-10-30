@@ -162,14 +162,13 @@ end
 -- No VehicleManager (user 2026-10-28, decisions.md keyless rules): seated in a hotwired car pairs too, true, "HOTWIRED"
 -- (a hotwired car is anyone's who sits in it, T.authorized), so losing both the card and the phone is not the end;
 -- refused, the reason says so (NO_KEY_CARD_HOTWIRE). With VehicleManager the card or its MANAGE, as above.
+-- Where the phone is, is not checked here: the server takes only one on the player (KeyActions phonePair finds it
+-- there), and the menu carries one from the glove box or another container first (KeysUI onPair).
 function K.canPair(player, vehicle, phone)
     local ft = phone and phone:getFullType()
     if ft ~= K.PHONE and ft ~= K.PHONE_KEY then return false, "NO_PHONE" end
     if not vehicle or not T.isTesla(vehicle) or player:getVehicle() ~= vehicle then return false, "NOT_INSIDE" end
     if ft == K.PHONE_KEY and K.pairedWith(phone, vehicle:getKeyId()) then return false, "ALREADY_PAIRED" end
-    -- on the player (bags too), where the server looks it up (KeyActions phonePair): a phone still in the glove box
-    -- (Battery.lua gives new cars one) or another container is greyed with the reason, not refused after the click
-    if not player:getInventory():getItemWithIDRecursiv(phone:getID()) then return false, "NO_PHONE" end
     if K.card(player, vehicle) or cardInIgnition(vehicle) then return true end
     local api = MinidoracatVehicleManagerAPI
     if not (api and api.canUse) then
