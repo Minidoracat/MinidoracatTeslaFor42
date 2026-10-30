@@ -4,7 +4,7 @@
     "Tooltip_MinidoracatTesla_NoCarInReach": "Kein Tesla in Reichweite des Kabels",
     "Tooltip_MinidoracatTesla_TakeDriveUnitPartsWarning": "Hiermit wird der Zustand der Antriebseinheit auf 0 gesetzt.",
     "Tooltip_MinidoracatTesla_DriveUnitCondition": "Zustand der Antriebseinheit: %1",
-    "Tooltip_MinidoracatTesla_KeyCard": "An das Lesegerät an der Fahrertürsäule halten, um zu ver- oder entriegeln.<br>Zum Fahren lose oder am Schlüsselring tragen<br>(aus dem Portemonnaie startet das Auto nicht).",
+    "Tooltip_MinidoracatTesla_KeyCard": "An das Lesegerät an der Fahrertürsäule halten, um zu ver- oder entriegeln.<br>Startet das Auto auch aus der Geldbörse oder einer Tasche.",
     "Tooltip_MinidoracatTesla_Phone": "Setz dich mit seiner Schlüsselkarte in einen Tesla<br>und klick dieses Telefon rechts an, um es als Handyschlüssel einzurichten.<br>Mit der Fahrzeugverwaltung braucht der Besitzer des Autos keine Schlüsselkarte.",
     "Tooltip_MinidoracatTesla_PhoneKey": "Entriegelt, wenn du am Türgriff ziehst.<br>Steigst du aus und gehst damit weg, verriegeln die Türen von selbst.",
     "Tooltip_MinidoracatTesla_TapCard": "Zur Fahrertür gehen und die Schlüsselkarte an das Lesegerät halten",

@@ -61,18 +61,22 @@ end
 H.stub("ISUI/ISUIElement")
 H.stub("Vehicles/ISUI/ISVehicleDashboard")
 
--- radial menu: vanilla toggles (ISVehicleMenu.lua:67-76) and adds its own "Sleep" slice (:225)
-local menu = { slices = {}, open = false }
+-- radial menu: vanilla toggles (ISVehicleMenu.lua:67-76) and adds its own "Sleep" slice (:225); `hotwireSlice` set =
+-- vanilla's hotwire slice for a keyless driver (:109-121) before Sleep
+local menu, hotwireSlice = { slices = {}, open = false }, nil
 function menu:isReallyVisible() return self.open end
 function menu:addSlice(text, tex, fn, a1, a2)
-    self.slices[#self.slices + 1] = { text = text, fn = fn, a1 = a1, a2 = a2, command = { fn, a1, a2 } }
+    self.slices[#self.slices + 1] = { text = text, tex = tex, fn = fn, a1 = a1, a2 = a2, command = { fn, a1, a2 } }
 end
 function menu:setSliceText(i, text) self.slices[i].text = text end -- ISRadialMenu.lua:55
+function menu:setSliceTexture(i, tex) self.slices[i].tex = tex end
 function getPlayerRadialMenu() return menu end
-ISVehicleMenu = { onSleep = function() end }
+ISVehicleMenu = { onSleep = function() end, onHotwire = function() end, onStartEngine = function() end }
 ISVehicleMenu.showRadialMenu = function()
     if menu.open then menu.open = false; menu.slices = {}; return end
-    menu.slices = {}; menu:addSlice("vanilla"); menu:addSlice("Sleep", nil, ISVehicleMenu.onSleep); menu.open = true
+    menu.slices = {}; menu:addSlice("vanilla")
+    if hotwireSlice then menu:addSlice(hotwireSlice.text, nil, hotwireSlice.fn) end
+    menu:addSlice("Sleep", nil, ISVehicleMenu.onSleep); menu.open = true
 end
 H.stub("Vehicles/ISUI/ISVehicleMenu")
 ISWorldObjectContextMenu = { getBedQuality = function() return "badBed" end } -- vanilla: any car seat (ISWorldObjectContextMenu.lua:2923-2934)
@@ -747,5 +751,39 @@ for _, s in ipairs(menu.slices) do
 end
 check(grey ~= nil and grey.fn == nil and grey.text:find("\nIGUI_MinidoracatTesla_Deny_MOVING", 1, true) ~= nil,
     "radial: camp greyed with the deny reason while driving")
+
+-- key in a bag (Keys.lua bagKeyStarts): vanilla's hotwire slice, either kind, becomes Start Engine in place
+local realKeys, bagKey = T.Keys, true
+T.Keys = { bagKeyStarts = function(pl, v) return bagKey and pl == p and v == tesla end }
+tesla.driver, tesla.running, tesla.speed = p, false, 0
+function tesla:isEngineWorking() return true end
+function tesla:isEngineStarted() return false end
+local function startSlices()
+    local starts, hotwire, at = 0, false, nil
+    for i, s in ipairs(menu.slices) do
+        if s.command[1] == ISVehicleMenu.onStartEngine then starts, at = starts + 1, i end
+        if s.command[1] == ISVehicleMenu.onHotwire or s.text == "ContextMenu_VehicleHotwireSkill" then hotwire = true end
+    end
+    return starts, hotwire, at
+end
+for _, c in ipairs({
+    { name = "can hotwire", slice = { text = "ContextMenu_VehicleHotwire", fn = ISVehicleMenu.onHotwire } },
+    { name = "greyed hotwire (no skill)", slice = { text = "ContextMenu_VehicleHotwireSkill" } },
+    { name = "no hotwire slice" },
+}) do
+    hotwireSlice, menu.open = c.slice, false
+    ISVehicleMenu.showRadialMenu(p)
+    local starts, hotwire, at = startSlices()
+    local s = menu.slices[at or 0]
+    check(starts == 1 and not hotwire and s.text == "ContextMenu_VehicleStartEngine" and s.command[2] == p
+        and (s.tex or {}).path == "media/ui/vehicles/vehicle_ignitionON.png" and at == (c.slice and 2 or 3),
+        "radial, key in a bag, " .. c.name .. ": one Start Engine " .. (c.slice and "in that slot" or "added") .. ", no hotwiring")
+end
+bagKey, hotwireSlice, menu.open = false, { text = "ContextMenu_VehicleHotwire", fn = ISVehicleMenu.onHotwire }, false
+ISVehicleMenu.showRadialMenu(p)
+local starts, hotwire = startSlices()
+check(starts == 0 and hotwire and menu.slices[2].command[1] == ISVehicleMenu.onHotwire,
+    "radial, no key: vanilla hotwiring stays, no Start Engine")
+T.Keys, hotwireSlice, tesla.driver, tesla.isEngineWorking, tesla.isEngineStarted = realKeys, nil, nil, nil, nil
 menu.open = false
 H.side(false, true)

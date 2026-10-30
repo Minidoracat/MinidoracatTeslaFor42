@@ -238,7 +238,7 @@ function H.player(o)
 end
 
 -- vanilla tables the MOD calls into
-Vehicles = { Update = { Engine = function(v) v.vanillaEngine = (v.vanillaEngine or 0) + 1 end } }
+Vehicles = { Update = { Engine = function(v) v.vanillaEngine = (v.vanillaEngine or 0) + 1 end }, Use = { EngineDoor = function() end } }
 VehicleUtils = { createPartInventoryItem = function(part) return part:getInventoryItem() end }
 VehicleZoneDistribution = { parkingstall = { vehicles = {} }, good = { vehicles = {} } }
 

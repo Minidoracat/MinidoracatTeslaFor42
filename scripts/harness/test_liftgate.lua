@@ -277,6 +277,75 @@ local busiest = H.busiest(times, CR.LIMITS.liftgate.ms)
 check(reached == 120 and #times == 120 and (CR.dropped.liftgate or 0) == dropped and busiest * 1.5 <= CR.LIMITS.liftgate.max,
     "a minute of clicks on the car picture, 2 a second (" .. busiest .. " in the busiest 10 s): all " .. reached
     .. " reach the server's handler")
+
+H.section("hood: E at an open Tesla hood shuts it (Vehicles.Use.EngineDoor)")
+-- vanilla E at the hood (Vehicles.lua:829-857) and the mechanics window (ISVehicleMechanics), faked; the module's
+-- OnGameStart handler called straight
+local vanillaUse, queued, pending, cleared, win = 0, {}, {}, 0, { shown = false }
+local before = { use = Vehicles.Use, mech = getPlayerMechanicsUI, queue = ISTimedActionQueue, new = ISCloseVehicleDoor.new }
+local function vanillaE() vanillaUse = vanillaUse + 1 end
+Vehicles.Use = { EngineDoor = vanillaE }
+function win:isReallyVisible() return self.shown end
+function win:close() self.shown = false end
+getPlayerMechanicsUI = function() return win end
+-- the player's queue (ISTimedActionQueue.lua): `pending` is what it holds, the running action first; `queued` what the
+-- wrapper adds; clear() stops the running action and empties it (:236-243)
+local playerQ = { queue = pending }
+function playerQ:removeFromQueue(a)
+    for i, x in ipairs(self.queue) do if x == a then table.remove(self.queue, i); return end end
+end
+ISTimedActionQueue = { add = function(a) queued[#queued + 1] = a end, getTimedActionQueue = function() return playerQ end,
+    clear = function() cleared = cleared + 1; for i = #pending, 1, -1 do pending[i] = nil end end }
+ISCloseVehicleDoor.new = function(_, chr, veh, part) return { shut = part.id, vehicle = veh, chr = chr } end
+L.wrapHoodUse()
+local wrapped = Vehicles.Use.EngineDoor
+L.wrapHoodUse()
+check(wrapped ~= vanillaE and Vehicles.Use.EngineDoor == wrapped and L.hoodUse == vanillaE, "a second game start does not wrap again")
+local hood = v.parts.EngineDoor
+local function e(car)
+    vanillaUse, queued = 0, {}
+    Vehicles.Use.EngineDoor(car, car.parts.EngineDoor, driver)
+end
+hood.door.open = true
+e(v)
+check(#queued == 1 and queued[1].shut == "EngineDoor" and queued[1].vehicle == v and queued[1].chr == driver and vanillaUse == 0,
+    "open hood, no mechanics window (it closed itself 6 tiles away): E shuts the hood, vanilla not asked")
+win.shown, win.usedHood = true, hood
+e(v)
+check(#queued == 0 and vanillaUse == 1, "open hood with its own mechanics window: vanilla (closing that window shuts the hood)")
+win.shown, win.usedHood = true, nil
+e(v)
+check(not win.shown and #queued == 1 and queued[1].shut == "EngineDoor" and vanillaUse == 0,
+    "open hood, a window not from this hood (an admin's): the window closes and the hood shuts")
+local function examine(car) -- ISOpenMechanicsUIAction:new keeps the car (ISOpenMechanicsUIAction.lua:39-45)
+    return { Type = "ISOpenMechanicsUIAction", vehicle = car, forceCancel = function(self) self.cancelled = true end }
+end
+pending[1] = examine(v)
+e(v)
+check(cleared == 1 and #pending == 0 and #queued == 1 and queued[1].shut == "EngineDoor" and vanillaUse == 0,
+    "open hood, this car's window still on the way (E again while examining): the examining stops, the hood shuts")
+local walkTo, later = { Type = "ISPathFindAction" }, examine(v)
+pending[1], pending[2], cleared = walkTo, later, 0
+e(v)
+check(cleared == 0 and later.cancelled and #pending == 1 and pending[1] == walkTo and #queued == 1 and vanillaUse == 0,
+    "this car's window queued behind another action: only that one is dropped, the hood shuts")
+local elsewhere = examine({})
+pending[1] = elsewhere
+e(v)
+check(cleared == 0 and not elsewhere.cancelled and pending[1] == elsewhere and #queued == 1 and queued[1].shut == "EngineDoor",
+    "another car's mechanics window on the way: left alone, this hood shuts")
+pending[1] = nil
+hood.item = nil
+e(v)
+check(#queued == 0 and vanillaUse == 1, "no hood fitted: vanilla (the mechanics window)")
+hood.item, hood.door.open = {}, false
+e(v)
+check(#queued == 0 and vanillaUse == 1, "closed hood: vanilla (open it and the mechanics window)")
+local other = car({ script = "Base.CarNormal" })
+other.parts.EngineDoor.door.open = true
+e(other)
+check(#queued == 0 and vanillaUse == 1, "another make's open hood: vanilla")
+Vehicles.Use, getPlayerMechanicsUI, ISTimedActionQueue, ISCloseVehicleDoor.new = before.use, before.mech, before.queue, before.new
 H.side(true, false)
 getOnlinePlayers, ISOpenVehicleDoor, ISCloseVehicleDoor = saved.getOnlinePlayers, saved.ISOpenVehicleDoor, saved.ISCloseVehicleDoor
 HaloTextHelper, getPlayer = saved.HaloTextHelper, saved.getPlayer

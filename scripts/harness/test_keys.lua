@@ -668,22 +668,26 @@ check(v.doors[1].d.locked, "handle (MP client start): never unlocks locally")
 isClient, isServer = cli, srv
 ISUnlockVehicleDoor.start, ISUnlockVehicleDoor.complete = unlockBefore.start, unlockBefore.complete -- other tests' fake parts have no getDoor
 
--- ------------------------------------------------------------------ starting with the phone key in a bag
+-- ------------------------------------------------------------------ starting with the phone key or key card in a bag
 local starts = {}
 function v:tryStartEngine(haveKey) starts[#starts + 1] = haveKey end
 function v:isDriver(p) return p.vehicle == self end
 function v:isHotwired() return self.hotwired == true end
 local function start(p) starts = {}; ISStartVehicleEngine.complete({ character = p }); return starts[1] end
-owner.vehicle, walletOnly.vehicle, stranger.vehicle = v, v, v
-check(start(owner) == true, "start: phone key in a bag -> tryStartEngine(true) (vanilla would pass false)")
-check(start(walletOnly) == false, "start: key card only in the wallet -> vanilla haveKey false (tap = put it on the reader)")
+local otherCard = player("othercard", container(bag("Base.Wallet", item(K.CARD, v.keyId + 1))), v.x, v.y)
+-- each start with one key only (the owner carries both: the card in the wallet would hide a broken phone-key branch)
+local phoneOnly = player("phoneonly", container(bag("Base.Bag_Schoolbag", key(K.PHONE_KEY, v.keyId))), v.x, v.y)
+walletOnly.vehicle, stranger.vehicle, otherCard.vehicle, phoneOnly.vehicle = v, v, v, v
+check(start(phoneOnly) == true, "start: phone key in a bag (no card) -> tryStartEngine(true) (vanilla would pass false)")
+check(start(walletOnly) == true, "start: key card in the wallet -> tryStartEngine(true) (vanilla would pass false)")
 check(start(stranger) == false, "start: no key -> vanilla haveKey false")
+check(start(otherCard) == false, "start: another car's key card in the wallet -> vanilla haveKey false")
 local cardLoose = player("cardloose", container(key(K.CARD, v.keyId)), v.x, v.y)
 cardLoose.vehicle = v
-check(start(cardLoose) == true and K.bagPhoneStarts(cardLoose, v) == false, "start: loose key card -> vanilla path (goes into the ignition)")
+check(start(cardLoose) == true and K.bagKeyStarts(cardLoose, v) == false, "start: loose key card -> vanilla path (goes into the ignition)")
 v.hotwired = true
-check(K.bagPhoneStarts(owner, v) == false, "start: hotwired -> vanilla path")
-v.hotwired, owner.vehicle, walletOnly.vehicle, stranger.vehicle = nil, nil, nil, nil
+check(K.bagKeyStarts(phoneOnly, v) == false and K.bagKeyStarts(walletOnly, v) == false, "start: hotwired -> vanilla path")
+v.hotwired, walletOnly.vehicle, stranger.vehicle, otherCard.vehicle, phoneOnly.vehicle = nil, nil, nil, nil, nil
 
 -- ------------------------------------------------------------------ one phone key, several cars (app v2)
 H.section("one phone key, several cars")
@@ -763,7 +767,7 @@ function carB:isDriver(p) return p.vehicle == self end
 function carB:isHotwired() return false end
 onlyA.vehicle = carB
 ISStartVehicleEngine.complete({ character = onlyA })
-check(carB.startArg == false and not K.bagPhoneStarts(onlyA, carB), "a phone key for A only: B does not start")
+check(carB.startArg == false and not K.bagKeyStarts(onlyA, carB), "a phone key for A only: B does not start")
 onlyA.vehicle, onlyA.x = nil, carB.x - K.LOCK_DIST
 check(K.canAutoLock(onlyA, carB) == false and T.authorized(onlyA, carB, "PASSENGER") == false and not T.legit(onlyA, carB),
     "a phone key for A only: no walk-away lock, not authorized, not legit at B")
