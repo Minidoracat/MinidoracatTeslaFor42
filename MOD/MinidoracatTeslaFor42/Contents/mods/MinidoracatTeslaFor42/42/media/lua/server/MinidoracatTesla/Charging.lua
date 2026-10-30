@@ -213,14 +213,45 @@ local function settleSentry(vehicle, now, freeUntil)
     if f then f(vehicle, now, freeUntil) end
 end
 
+-- A Cybertruck that fed chg (chg.sup) and whether its supply may have ended unseen since the last settle: not loaded,
+-- its Powershare generator's square not loaded, driven since (movedAt, C.noteMove), or not where it stood then (more
+-- than 0.5 tile: pushed, towed, teleported). Returns the truck (or nil) and ended.
+function C.supplyEnded(chg)
+    local sup = chg.sup and C.carByKey(chg.sup)
+    if not sup then return nil, true end
+    if chg.power == "powershare" and T.Powershare.genAway(sup) then return sup, true end
+    local moved = B.part(sup) and B.part(sup):getModData().movedAt
+    if moved and moved > (chg.last or 0) then return sup, true end
+    if chg.supX and (math.abs(sup:getX() - chg.supX) > 0.5 or math.abs(sup:getY() - chg.supY) > 0.5) then return sup, true end
+    return sup, false
+end
+
+-- A supplier truck's parts update (Battery.lua, every game minute while it drives or charges): it moved (rolling, or
+-- not where the last update saw it) -> md.movedAt. Catches driving off and back to the same spot between two settles.
+local lastPos = {} -- vehicle id -> { x, y } at its last update (this session; ids are handed out again on load)
+function C.noteMove(v, part)
+    local id, x, y = v:getId(), v:getX(), v:getY()
+    local p = lastPos[id]
+    if math.abs(v:getCurrentSpeedKmHour()) > 0.5 or (p and (math.abs(p[1] - x) > 0.1 or math.abs(p[2] - y) > 0.1)) then
+        part:getModData().movedAt = T.hours()
+    end
+    if p then p[1], p[2] = x, y else lastPos[id] = { x, y } end
+end
+
 -- World hour the charger power recorded in chg (chg.power, Battery.onCharger) lasted until, as of `now`; nil = none.
 -- Grid: the shut-off hour, which an unloaded car can pass between two settles, unless a generator took over then
 -- (`generator`: C.settle found one; nil = not looked up, e.g. a sentry event between two settles: after the shut-off
 -- the charger has power only from a generator, through the wiring or plugged straight in, Chargers.lua). Generator:
--- up to now.
+-- up to now. A Cybertruck (powershare / outlet): up to now, or if its supply may have ended unseen (C.supplyEnded)
+-- at most C.MAX_STEP_H past the last settle. Every Sentry booking (settles, events, unplugging) goes through here.
 -- ponytail: a generator counts as running the whole stretch (its fuel is billed at each settle, C.settle)
 function C.powerUntil(chg, now, generator)
     if not chg or not chg.power then return nil end
+    if fromCar(chg.power) then
+        local _, ended = C.supplyEnded(chg)
+        local last = math.min(chg.last or now, now)
+        return ended and math.min(now, last + C.MAX_STEP_H) or now
+    end
     local off = chg.power == "grid" and C.gridOffHour()
     if not off or now <= off then return now end
     if generator == nil then
@@ -282,20 +313,23 @@ function C.settle(o, now, here, fresh)
     -- more than its supply has left now); never retroactively for a stretch with no power, the grid or a generator.
     -- That truck not all there (not loaded, or its Powershare generator's square not loaded): cells load and unload
     -- one after the other (the car first on load, the truck first as the player walks off), so wait until chg.hold (a
-    -- world hour, set once, again on a fresh load) leaving chg and draws as they are; past it, a truck still away books
-    -- nothing. A truck there books, even at 0 (its outlet off, at its limit, its share gone); but if this settle finds
-    -- it no longer feeding this charger, or it moved since (chg.supX / supY: driven off and back, towed, teleported),
-    -- its supply ended at some hour nobody saw: at most C.MAX_STEP_H is booked (below).
+    -- world hour, set once, again on a fresh load) leaving chg and draws as they are; past it, a truck still away pays
+    -- nothing and the car pays its own loads. A truck there books, even at 0 (its outlet off, at its limit, its share
+    -- gone); but if its supply may have ended unseen (C.supplyEnded: driven, moved) or this settle finds it no longer
+    -- feeding this charger: at most C.MAX_STEP_H is booked (below).
     local PS = T.Powershare
     local wasCar = fromCar(chg.power)
     local wasSrc, supKey = chg.power, wasCar and chg.sup or nil
-    local prevSup = supKey and C.carByKey(supKey)
-    if prevSup and wasSrc == "powershare" and PS.genAway(prevSup) then prevSup = nil end
+    local prevSup, ended
+    if wasCar then prevSup, ended = C.supplyEnded(chg) end
+    local away = wasCar and (not prevSup and "the Cybertruck it ran on is not loaded"
+        or wasSrc == "powershare" and PS.genAway(prevSup) and "its Powershare generator's square is not loaded")
+    if away then prevSup = nil end
     if type(chg.hold) ~= "number" then chg.hold = nil end
-    if wasCar and not prevSup and now > t0 then
+    if away and now > t0 then
         if fresh or not chg.hold then chg.hold = now + C.RETRY_H end
         if now < chg.hold then
-            T.log("charger " .. o.x .. "," .. o.y .. ": " .. tostring(v:getId()) .. " ran on a Cybertruck not loaded, settling again at "
+            T.log("charger " .. o.x .. "," .. o.y .. ": " .. tostring(v:getId()) .. " " .. away .. ", settling again at "
                 .. string.format("%.3f", chg.hold))
             return C.schedule(o, chg.hold)
         end
@@ -314,10 +348,10 @@ function C.settle(o, now, here, fresh)
         return s, g, k
     end
     local src, gen, kwS = pick()
-    -- ponytail: the truck's supply ended unseen (it no longer feeds this charger, or it moved): at most one more hour,
-    -- the error of an hourly settle anyway, for the charge, and for Sentry's standby (from then on the car's own pack)
-    local capped = prevSup ~= nil and (not (fromCar(src) and gen:getKeyId() == supKey)
-        or math.abs(prevSup:getX() - (chg.supX or prevSup:getX())) > 0.5 or math.abs(prevSup:getY() - (chg.supY or prevSup:getY())) > 0.5)
+    -- ponytail: the truck's supply may have ended unseen (driven, moved: C.supplyEnded) or it no longer feeds this
+    -- charger: at most one more hour, the error of an hourly settle anyway, for the charge, and for Sentry's standby
+    -- (C.powerUntil, from then on the car's own pack)
+    local capped = prevSup ~= nil and (ended or not (fromCar(src) and gen:getKeyId() == supKey))
     local needK = math.max(0, limit - B.kwh(part))
     local gotK = 0
     if chg.paused ~= "stopped" and needK > 0 and now > t0 then
@@ -348,15 +382,21 @@ function C.settle(o, now, here, fresh)
     -- ponytail: they do not slow charging.
     local power = now < gUntil and "grid" or src
     chg.last = now
-    local freeUntil = C.powerUntil(chg, now, src ~= nil) -- with the power it ran on until now
-    if capped and freeUntil then freeUntil = math.min(freeUntil, t0 + C.MAX_STEP_H) end
+    -- Sentry's standby until now was free while the power lasted: a truck still away past the wait gave none (t0)
+    local freeUntil
+    if wasCar then
+        freeUntil = not prevSup and t0 or capped and math.min(now, t0 + C.MAX_STEP_H) or now
+    else
+        freeUntil = C.powerUntil(chg, now, src ~= nil)
+    end
     settleSentry(v, now, freeUntil)
     -- the car's own loads off the grid since the last settle (Battery.lua B.draw, Sentry.lua settle add them up): the
-    -- generator's fuel, or the Cybertruck that ran it (chg.sup). ponytail: a generator gone by now (dry, switched off,
-    -- taken away), or a truck still away past the wait, is not billed for them.
+    -- generator's fuel, or the Cybertruck that ran it (chg.sup); a truck still away past the wait: the car's own pack
+    -- (they ran, nobody else can pay). ponytail: a generator gone by now (dry, switched off, taken away) is not billed.
     if chg.fed then
         if wasCar then
-            if prevSup then C.takeFrom(prevSup, wasSrc, chg.fed) end
+            if prevSup then C.takeFrom(prevSup, wasSrc, chg.fed)
+            else B.set(v, part, math.max(0, B.kwh(part) - chg.fed)) end
         elseif src == "generator" then
             if fuel > 0 then gen:setFuel(gen:getFuel() - chg.fed * fuel) end
         end

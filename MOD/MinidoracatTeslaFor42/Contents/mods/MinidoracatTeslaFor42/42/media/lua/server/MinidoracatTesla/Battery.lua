@@ -219,6 +219,8 @@ function T.Update.Battery(vehicle, part, elapsedMinutes)
     if m <= 0 then return end
     local s = T.spec(vehicle)
     if not s then return end
+    -- a truck that feeds other cars (Powershare, the bed outlet): when it last moved (Charging.lua C.supplyEnded)
+    if (s.powershare or s.bedOutlet) and T.Charge and T.Charge.noteMove then T.Charge.noteMove(vehicle, part) end
     local used = 0
     if vehicle:isEngineRunning() then
         if km then
