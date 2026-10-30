@@ -66,6 +66,13 @@ local function genOf(ps)
     end
     return nil, true
 end
+-- Cybertruck v's supply to the cars it fed may have stopped now (its outlet off, the tailgate up, Powershare gone, an
+-- AC cable in, after their settle, PS.settleFed): a car not loaded now books at most an hour more (C.supplyEnded).
+-- Driving sets it too (C.noteMove).
+function PS.broke(v)
+    local part = B.part(v)
+    if part then part:getModData().brokeAt = T.hours() end
+end
 -- truck v powers a house from a generator whose square is not loaded now (the cars it fed wait for it, C.settle)
 function PS.genAway(v)
     local part = B.part(v)
@@ -180,6 +187,7 @@ end
 -- (they book up to now with it) and after (they see it gone).
 local function unsupply(v, ps, g)
     PS.settleFed(v)
+    PS.broke(v)
     if g then
         g:setActivated(false)
         g:getSquare():transmitRemoveItemFromSquare(g)
@@ -296,6 +304,7 @@ function PS.set(player, v, what, on, pct)
     if what == "outlet" then
         if (md.outlet == true) == on then return nil end
         PS.settleFed(v)
+        if not on then PS.broke(v) end
         md.outlet = on or nil
         if on then register(v) else T.OutletCars[v:getId()] = nil end
         v:transmitPartModData(part)
@@ -342,12 +351,14 @@ T.ServerCommands.outletOff = command("outlet", false)
 -- before it moves the chargers the outlet feeds book with it as it was; after, the ones near take the new state
 local function aroundTailgate(v, part, fn)
     local watch = v and part and part:getId() == "TrunkDoor" and T.OutletCars[v:getId()] ~= nil
+    local wasOpen = watch and T.lidOpen(v, "TrunkDoor")
     if watch then
         local ok, err = pcall(PS.settleFed, v)
         if not ok then T.log("bed outlet before the tailgate failed: " .. tostring(err)) end
     end
     local r = fn()
     if watch then
+        if wasOpen and not T.lidOpen(v, "TrunkDoor") then PS.broke(v) end -- closed: the outlet stopped
         local ok, err = pcall(PS.outletChanged, v)
         if not ok then T.log("bed outlet after the tailgate failed: " .. tostring(err)) end
     end

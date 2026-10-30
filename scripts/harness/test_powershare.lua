@@ -529,59 +529,156 @@ check(near(got, 7.6, 1e-6) and near(lost, 7.6, 1e-6) and md(y3).chg.src == "outl
     "moved a tile, still in reach: one hour booked; it feeds again from where it stands")
 local t0d
 _, t0d, got, lost = away(8, function()
-    H.setHours(H.hours() + 1) -- driven off: its parts update while it rolls (Battery.lua -> C.noteMove)
+    T.Update.Battery(ctB, B.part(ctB), 1) -- someone gets in: its parts update, C.noteMove sees it standing
+    H.setHours(H.hours() + 1) -- and drives off
     ctB.speed = 30
     T.Update.Battery(ctB, B.part(ctB), 1)
     ctB.speed = 0
-    ctB.y = 401.6 -- and parked back on its spot (0.1 tile off)
+    ctB.y = 401.6 -- parked back on its spot (0.1 tile off)
 end)
-check(near(got, 7.6, 1e-6) and near(lost, 7.6, 1e-6) and B.part(ctB):getModData().movedAt == t0d + 1,
-    "driven off and parked back on the same spot (0.1 tile off): movedAt says it left, one hour booked")
+check(near(got, 7.6, 1e-6) and near(lost, 7.6, 1e-6) and B.part(ctB):getModData().brokeAt == t0d + 1,
+    "driven off and parked back on the same spot (0.1 tile off): brokeAt says it left, one hour booked")
 _, _, got, lost = away(8, function() ctB.y = ctB.y + 0.3 end) -- physics settling on load, never rolled
-check(near(got, 7.6 * 8, 1e-6) and near(lost, 7.6 * 8, 1e-6), "a 0.3 tile settle on load, no movedAt: the whole stretch")
+check(near(got, 7.6 * 8, 1e-6) and near(lost, 7.6 * 8, 1e-6), "a 0.3 tile settle on load, no brokeAt: the whole stretch")
+_, _, got, lost = away(8, function() PS.set(owner, ctB, "outlet", false) end) -- switched off where it stands
+check(near(got, 7.6, 1e-6) and near(lost, 7.6, 1e-6) and md(y3).chg.paused == "nopower",
+    "its outlet switched off while the car was away (it never moved): brokeAt, one hour booked")
+PS.set(owner, ctB, "outlet", true)
 
-H.section("bed outlet + Sentry (the real Sentry.settle): the car pays its standby past the hour the truck surely fed it")
+H.section("C.noteMove: what counts as moving")
+local np = B.part(ctB)
+local function moved(v, dx, dy, speed)
+    np:getModData().brokeAt = nil
+    v.x, v.y, v.speed = v.x + dx, v.y + dy, speed or 0
+    C.noteMove(v, np)
+    v.speed = 0
+    return np:getModData().brokeAt ~= nil
+end
+C.noteMove(ctB, np) -- seen standing
+check(moved(ctB, 1, 0) and moved(ctB, -1, 0), "speed 0 (an MP server), a tile between two updates (out and back): moved both times")
+check(not moved(ctB, 0.3, 0), "0.3 tile between two updates: not moved")
+check(moved(ctB, 0, 0, 20), "standing still at 20 km/h (rolling): moved")
+local other = car(CT, 50, ctB.x + 30, ctB.y)
+local otherId = other.id
+other.id = ctB.id -- the same id handed to another truck that has not moved
+check(not moved(other, 0, 0), "the same id on another truck (another keyId): first sight, not moved")
+other.id = otherId
+check(not moved({ _class = "VirtualVehicle", getId = function() return ctB.id end, x = 0, y = 0, getX = function() return 0 end,
+    getY = function() return 0 end, getKeyId = function() return ctB:getKeyId() end, getCurrentSpeedKmHour = function() return 99 end }, 5, 5, 99),
+    "a VirtualVehicle (SP, an id given back to the pool): skipped")
+H.removeVehicle(other)
+ctB.x, ctB.y = 400.5, 400.5
+C.settle(bedMc2, H.hours())
+
+H.section("bed outlet + Sentry (the real Sentry.settle): who pays the standby and the car's own loads (chg.fed)")
 local S = T.Sentry
 local function arm(v) md(v).sentry = { by = "own", at = H.hours(), kwh = B.kwh(B.part(v)), since = H.hours() } end
-B.set(y3, B.part(y3), 40) -- above Sentry's 20 % all the way
-B.set(ctB, B.part(ctB), 110)
-C.settle(bedMc2, H.hours())
-local t = H.hours()
-arm(y3)
-local yK, cK = B.kwh(B.part(y3)), B.kwh(B.part(ctB))
+local function prep(truckKwh)
+    B.set(y3, B.part(y3), 40) -- above Sentry's 20 % all the way
+    B.set(ctB, B.part(ctB), truckKwh or 110)
+    C.settle(bedMc2, H.hours())
+    local t1 = H.hours()
+    arm(y3)
+    return t1, B.kwh(B.part(y3)), B.kwh(B.part(ctB))
+end
+-- the truck stays, the car away 8 h, disarmed by its key card before its relink: the truck pays all of it
+local t, yK, cK = prep()
 H.removeVehicle(y3)
 C.settle(bedMc2, t)
-ctB.x = 470.5 -- driven off, the outlet still on
-H.setHours(t + 48)
+H.setHours(t + 8)
 H.addVehicle(y3)
-S.disarm(y3, "own") -- the key card unlocks it first (an event: C.powerUntil decides alone)
-check(near(md(y3).chg.fed or 0, S.KW, 1e-9) and near(yK - B.kwh(B.part(y3)), 47 * S.KW, 1e-6),
-    string.format("disarmed 48 h on: 1 h of standby free (chg.fed %.2f), the other 47 h off the car's pack", md(y3).chg.fed or 0))
+S.disarm(y3, "own")
+check(near(md(y3).chg.fed or 0, 8 * S.KW, 1e-9) and near(B.kwh(B.part(y3)), yK, 1e-9),
+    "the truck stayed, disarmed 8 h on: the standby is on the record (chg.fed 2.0), the car's pack untouched")
 C.relink(y3)
 got, lost = B.kwh(B.part(y3)) - yK, cK - B.kwh(B.part(ctB))
-check(near(got, 7.6 - 47 * S.KW, 1e-6) and near(lost, 7.6 + S.KW, 1e-6) and md(y3).chg.paused == "nopower",
-    string.format("relinked: the truck pays one hour of charge and that hour's standby (-%.2f), the car the rest (%+.2f)", lost, got))
--- the truck still away past the wait, Sentry on and the car's own loads on the record: the car pays them all
+check(near(got, math.min(7.6 * 8, 78.4 * 0.9 - yK), 1e-6) and near(lost, got + 8 * S.KW, 1e-6), string.format(
+    "relinked: the truck pays the 8 h of charge and the standby (-%.2f), the car only gains (%+.2f)", lost, got))
+-- the truck drives off, the car away 48 h, disarmed before its relink
+t, yK, cK = prep()
+H.removeVehicle(y3)
+C.settle(bedMc2, t)
+ctB.x = 470.5
+H.setHours(t + 48)
+H.addVehicle(y3)
+S.disarm(y3, "own")
+check(near(md(y3).chg.fed or 0, S.KW, 1e-9) and near(yK - B.kwh(B.part(y3)), 47 * S.KW, 1e-6),
+    "the truck drove off, disarmed 48 h on: 1 h of standby on the record, the other 47 h off the car's pack")
+C.relink(y3)
+got, lost = B.kwh(B.part(y3)) - yK, cK - B.kwh(B.part(ctB))
+check(near(lost, 7.6 + S.KW / 48, 1e-6) and near(got, 7.6 - 47 * S.KW - S.KW * 47 / 48, 1e-6) and md(y3).chg.paused == "nopower",
+    string.format("relinked: the truck pays an hour of charge and the capped hour's part of the record (-%.4f), the car the rest", lost))
 ctB.x = 400.5
+-- the truck closes its outlet where it stands while the car is away 48 h
 C.settle(bedMc2, H.hours())
-check(md(y3).chg.src == "outlet", "the truck back: the outlet again")
-t = H.hours()
-arm(y3)
+t, yK, cK = prep()
+H.removeVehicle(y3)
+C.settle(bedMc2, t)
+H.setHours(t + 1)
+PS.set(owner, ctB, "outlet", false) -- an hour on, where it stands
+H.setHours(t + 48)
+H.addVehicle(y3)
+S.disarm(y3, "own")
+check(near(md(y3).chg.fed or 0, S.KW, 1e-9) and near(yK - B.kwh(B.part(y3)), 47 * S.KW, 1e-6), "disarmed: 1 h of standby on the record (brokeAt), 47 h off the car's pack")
+C.relink(y3)
+got, lost = B.kwh(B.part(y3)) - yK, cK - B.kwh(B.part(ctB))
+check(near(lost, 7.6 + S.KW / 48, 1e-6) and near(got, 7.6 - 47 * S.KW - S.KW * 47 / 48, 1e-6),
+    "outlet switched off in place while the car was away: the truck pays at most an hour, the car the standby past it")
+PS.set(owner, ctB, "outlet", true)
+-- waiting for the truck, disarmed meanwhile; the truck loads before the deadline, unmoved: it pays it all
+C.settle(bedMc2, H.hours())
+t, yK, cK = prep()
+H.removeVehicle(ctB)
+H.setHours(t + 5)
+C.relink(y3)
+check(md(y3).chg.hold ~= nil, "the truck not loaded: the car waits")
+S.disarm(y3, "own")
+check(near(md(y3).chg.fed or 0, 5 * S.KW, 1e-9) and near(B.kwh(B.part(y3)), yK, 1e-9),
+    "disarmed while waiting: no verdict yet, the 5 h of standby on the record, the car's pack untouched")
+H.addVehicle(ctB)
+H.setHours(t + 5.1)
+C.settle(bedMc2, H.hours())
+got, lost = B.kwh(B.part(y3)) - yK, cK - B.kwh(B.part(ctB))
+check(near(got, math.min(7.6 * 5.1, 78.4 * 0.9 - yK), 1e-6) and near(lost, got + 5 * S.KW, 1e-6), "the truck back before the deadline, unmoved: it pays the stretch and the standby")
+-- the truck only a little above its limit, Sentry on, the car away 48 h: the car pays what the truck cannot
+t, yK, cK = prep(floorKwh + 2)
+H.removeVehicle(y3)
+C.settle(bedMc2, t)
+H.setHours(t + 48)
+H.addVehicle(y3)
+C.relink(y3)
+got = B.kwh(B.part(y3)) - yK
+check(near(B.kwh(B.part(ctB)), floorKwh, 1e-9) and near(got, 2 - 48 * S.KW, 1e-6),
+    "the truck 2 kWh above its limit: it stops there; the car gets the 2 kWh and pays the 12 kWh of standby itself")
+-- the truck still away past the wait, Sentry on and the car's own loads on the record: the car pays them all
+md(y3).sentry = nil
+t, yK, cK = prep()
 md(y3).chg.fed = 0.2 -- its own loads meanwhile (Battery.draw)
-yK, cK = B.kwh(B.part(y3)), B.kwh(B.part(ctB))
 H.removeVehicle(ctB)
 H.setHours(t + 5)
 C.relink(y3)
 local holdY = md(y3).chg.hold
-check(holdY and near(B.kwh(B.part(y3)), yK, 1e-9), "the truck not loaded: the car waits")
 H.setHours(holdY)
 C.settle(bedMc2, H.hours())
 check(near(yK - B.kwh(B.part(y3)), (holdY - t) * S.KW + 0.2, 1e-6) and near(B.kwh(B.part(ctB)), cK, 1e-9) and md(y3).chg.fed == nil,
     "past the wait, the truck still away: no charge, the car pays all its standby and its 0.2 kWh of loads (nothing made up)")
 md(y3).sentry = nil
 H.addVehicle(ctB)
-ctB.y = 400.5
-unplug(y3)
+-- the cable no longer reaches (C.stop tooFar): the record goes, its chg.fed is paid first, not dropped
+C.settle(bedMc2, H.hours())
+cK = B.kwh(B.part(ctB))
+md(y3).chg.fed = 0.5
+y3.x = y3.x + 30
+C.settle(bedMc2, H.hours())
+check(md(y3).chg == nil and near(cK - B.kwh(B.part(ctB)), 0.5, 1e-9), "cable too far: unplugged, the truck that ran it pays its 0.5 kWh of loads first")
+y3.x = y3.x - 30
+plug(y3, bedMc2)
+md(y3).chg.power, md(y3).chg.sup, md(y3).chg.fed = "generator", nil, 0.4 -- as if a vanilla generator ran it
+yK = B.kwh(B.part(y3))
+y3.x = y3.x + 30
+C.settle(bedMc2, H.hours())
+check(md(y3).chg == nil and near(yK - B.kwh(B.part(y3)), 0.4, 1e-9), "cable too far on a generator: the car pays its 0.4 kWh of loads itself (not dropped)")
+y3.x = y3.x - 30
 PS.set(owner, ctB, "outlet", false)
 
 H.section("Powershare: its generator's square not loaded -> wait; a 0 kW share and a full car still settle hourly; a lower limit powers the cars at once")

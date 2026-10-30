@@ -213,44 +213,63 @@ local function settleSentry(vehicle, now, freeUntil)
     if f then f(vehicle, now, freeUntil) end
 end
 
--- A Cybertruck that fed chg (chg.sup) and whether its supply may have ended unseen since the last settle: not loaded,
--- its Powershare generator's square not loaded, driven since (movedAt, C.noteMove), or not where it stood then (more
--- than 0.5 tile: pushed, towed, teleported). Returns the truck (or nil) and ended.
+-- The Cybertruck that fed chg (chg.sup) and how its supply stands since the last settle (chg.last): away = not all
+-- there (not loaded, or its Powershare generator's square not loaded: the car waits for it, C.settle chg.hold);
+-- ended = its supply to some charger may have ended at an hour nobody saw (brokeAt after chg.last: it moved, C.noteMove,
+-- or its outlet / tailgate / Powershare / an AC cable cut it, Powershare.lua PS.broke), or it is not where it stood
+-- then (more than 0.5 tile: pushed, towed, teleported with no part update). Returns sup or nil, ended, away.
 function C.supplyEnded(chg)
     local sup = chg.sup and C.carByKey(chg.sup)
-    if not sup then return nil, true end
-    if chg.power == "powershare" and T.Powershare.genAway(sup) then return sup, true end
-    local moved = B.part(sup) and B.part(sup):getModData().movedAt
-    if moved and moved > (chg.last or 0) then return sup, true end
-    if chg.supX and (math.abs(sup:getX() - chg.supX) > 0.5 or math.abs(sup:getY() - chg.supY) > 0.5) then return sup, true end
-    return sup, false
+    if not sup then return nil, true, true end
+    if chg.power == "powershare" and T.Powershare.genAway(sup) then return sup, true, true end
+    local broke = B.part(sup) and B.part(sup):getModData().brokeAt
+    if broke and broke > (chg.last or 0) then return sup, true, false end
+    if chg.supX and (math.abs(sup:getX() - chg.supX) > 0.5 or math.abs(sup:getY() - chg.supY) > 0.5) then return sup, true, false end
+    return sup, false, false
 end
 
--- A supplier truck's parts update (Battery.lua, every game minute while it drives or charges): it moved (rolling, or
--- not where the last update saw it) -> md.movedAt. Catches driving off and back to the same spot between two settles.
-local lastPos = {} -- vehicle id -> { x, y } at its last update (this session; ids are handed out again on load)
+-- A supplier truck's parts update (Battery.lua; parts update while someone sits in the driver's seat, the motor runs,
+-- camping, an alarm or the mechanics window is open, BaseVehicle.java:3507-3511): it rolls (over 0.5 km/h; an MP
+-- server may read 0, Battery.lua B.summonKm) or stands over 0.5 tile from where the last update saw it ->
+-- md.brokeAt. Catches driving off and back to the same spot between two settles. A VirtualVehicle (SP, an id handed
+-- back to the pool, VirtualVehicle.java:40-42,139-145) is skipped; an id now on another truck (keyId) starts over.
+local lastPos = {} -- vehicle id -> { keyId, x, y } at its last update (this session; cleared when a car loads)
 function C.noteMove(v, part)
-    local id, x, y = v:getId(), v:getX(), v:getY()
+    if not instanceof(v, "BaseVehicle") then return end
+    local id, key, x, y = v:getId(), v:getKeyId(), v:getX(), v:getY()
     local p = lastPos[id]
-    if math.abs(v:getCurrentSpeedKmHour()) > 0.5 or (p and (math.abs(p[1] - x) > 0.1 or math.abs(p[2] - y) > 0.1)) then
-        part:getModData().movedAt = T.hours()
+    if p and p[1] == key then
+        if math.abs(v:getCurrentSpeedKmHour()) > 0.5 or math.abs(p[2] - x) > 0.5 or math.abs(p[3] - y) > 0.5 then
+            part:getModData().brokeAt = T.hours()
+        end
+        p[2], p[3] = x, y
+    elseif p then
+        p[1], p[2], p[3] = key, x, y
+    else
+        lastPos[id] = { key, x, y }
     end
-    if p then p[1], p[2] = x, y else lastPos[id] = { x, y } end
+end
+
+-- World hour Sentry's standby on a Cybertruck's supply was free until (C.powerUntil and C.settle): `away` (not all
+-- there yet) -> now: it goes into chg.fed and the settle that sees the truck decides who pays (C.payFed); `ended` ->
+-- at most C.MAX_STEP_H past the last settle, then the car's own pack; else now.
+function C.carFreeUntil(chg, now, ended, away)
+    if away or not ended then return now end
+    return math.min(now, math.min(chg.last or now, now) + C.MAX_STEP_H)
 end
 
 -- World hour the charger power recorded in chg (chg.power, Battery.onCharger) lasted until, as of `now`; nil = none.
 -- Grid: the shut-off hour, which an unloaded car can pass between two settles, unless a generator took over then
 -- (`generator`: C.settle found one; nil = not looked up, e.g. a sentry event between two settles: after the shut-off
 -- the charger has power only from a generator, through the wiring or plugged straight in, Chargers.lua). Generator:
--- up to now. A Cybertruck (powershare / outlet): up to now, or if its supply may have ended unseen (C.supplyEnded)
--- at most C.MAX_STEP_H past the last settle. Every Sentry booking (settles, events, unplugging) goes through here.
+-- up to now. A Cybertruck (powershare / outlet): C.carFreeUntil. Every Sentry booking (settles, events, unplugging)
+-- goes through here.
 -- ponytail: a generator counts as running the whole stretch (its fuel is billed at each settle, C.settle)
 function C.powerUntil(chg, now, generator)
     if not chg or not chg.power then return nil end
     if fromCar(chg.power) then
-        local _, ended = C.supplyEnded(chg)
-        local last = math.min(chg.last or now, now)
-        return ended and math.min(now, last + C.MAX_STEP_H) or now
+        local _, ended, away = C.supplyEnded(chg)
+        return C.carFreeUntil(chg, now, ended, away)
     end
     local off = chg.power == "grid" and C.gridOffHour()
     if not off or now <= off then return now end
@@ -261,14 +280,37 @@ function C.powerUntil(chg, now, generator)
     return generator and now or off
 end
 
+-- chg.fed: the car's own loads that ran on its charger's power since the last settle (Battery.draw, Sentry.settle).
+-- Cybertruck sup (its supply src) pays `share` of it (1; the capped hour's part of the stretch), down to its limit;
+-- whatever nobody pays (the limit, a truck still away, the rest past the cap) comes off the car's own pack: they ran,
+-- nothing is made up. Generators: C.settle bills their fuel itself.
+function C.payFed(v, part, chg, sup, src, share)
+    local fed = chg.fed
+    if not fed then return end
+    chg.fed = nil
+    local paid = sup and C.takeFrom(sup, src, fed * share) or 0
+    if fed - paid > 1e-9 then B.set(v, part, math.max(0, B.kwh(part) - (fed - paid))) end
+end
+
 -- The link goes: the stretch since the last settle is booked without a generator taking over after the grid shut-off
 -- (C.powerUntil with generator = false): on load with the charger gone or taken (relink) a powered square no longer
--- says this car had a charger. ponytail: a car pulled out of reach after the shut-off pays that bit itself.
+-- says this car had a charger. ponytail: a car pulled out of reach after the shut-off pays that bit itself. Its
+-- chg.fed is settled first (C.payFed): a Cybertruck's share as in C.settle, a generator's left to the car itself.
 local function clearChg(vehicle, part)
     local now = T.hours()
     -- the record goes whatever the sentry booking does: a stale record holds the car in Park (CheckOperate.Battery)
-    local ok, err = pcall(function() settleSentry(vehicle, now, C.powerUntil(part:getModData().chg, now, false)) end)
-    if not ok then T.log("sentry settle before unplug failed: " .. tostring(err)) end
+    local ok, err = pcall(function()
+        local chg = part:getModData().chg
+        settleSentry(vehicle, now, C.powerUntil(chg, now, false))
+        if chg and chg.fed then
+            local sup, ended, away
+            if fromCar(chg.power) then sup, ended, away = C.supplyEnded(chg) end
+            local h = now - math.min(chg.last or now, now)
+            local share = ended and h > C.MAX_STEP_H and C.MAX_STEP_H / h or 1
+            C.payFed(vehicle, part, chg, not away and sup or nil, chg.power, share)
+        end
+    end)
+    if not ok then T.log("sentry / own loads before unplug failed: " .. tostring(err)) end
     part:getModData().chg = nil
     vehicle:transmitPartModData(part)
     touchVM(vehicle)
@@ -315,15 +357,13 @@ function C.settle(o, now, here, fresh)
     -- one after the other (the car first on load, the truck first as the player walks off), so wait until chg.hold (a
     -- world hour, set once, again on a fresh load) leaving chg and draws as they are; past it, a truck still away pays
     -- nothing and the car pays its own loads. A truck there books, even at 0 (its outlet off, at its limit, its share
-    -- gone); but if its supply may have ended unseen (C.supplyEnded: driven, moved) or this settle finds it no longer
+    -- gone); but if its supply may have ended unseen (C.supplyEnded: moved, cut) or this settle finds it no longer
     -- feeding this charger: at most C.MAX_STEP_H is booked (below).
-    local PS = T.Powershare
     local wasCar = fromCar(chg.power)
     local wasSrc, supKey = chg.power, wasCar and chg.sup or nil
-    local prevSup, ended
-    if wasCar then prevSup, ended = C.supplyEnded(chg) end
-    local away = wasCar and (not prevSup and "the Cybertruck it ran on is not loaded"
-        or wasSrc == "powershare" and PS.genAway(prevSup) and "its Powershare generator's square is not loaded")
+    local prevSup, ended, gone
+    if wasCar then prevSup, ended, gone = C.supplyEnded(chg) end
+    local away = gone and (not prevSup and "the Cybertruck it ran on is not loaded" or "its Powershare generator's square is not loaded")
     if away then prevSup = nil end
     if type(chg.hold) ~= "number" then chg.hold = nil end
     if away and now > t0 then
@@ -381,26 +421,29 @@ function C.settle(o, now, here, fresh)
     -- car's own loads run on it meanwhile (Battery.onCharger), and off the grid they cost the source (chg.fed, below).
     -- ponytail: they do not slow charging.
     local power = now < gUntil and "grid" or src
-    chg.last = now
-    -- Sentry's standby until now was free while the power lasted: a truck still away past the wait gave none (t0)
+    -- Sentry's standby until now was free while the power lasted (one rule with events, C.carFreeUntil); a truck
+    -- still away past the wait gave none (t0)
     local freeUntil
     if wasCar then
-        freeUntil = not prevSup and t0 or capped and math.min(now, t0 + C.MAX_STEP_H) or now
+        freeUntil = not prevSup and t0 or C.carFreeUntil(chg, now, capped, false) -- chg.last is still t0 here
     else
         freeUntil = C.powerUntil(chg, now, src ~= nil)
     end
+    chg.last = now
     settleSentry(v, now, freeUntil)
     -- the car's own loads off the grid since the last settle (Battery.lua B.draw, Sentry.lua settle add them up): the
-    -- generator's fuel, or the Cybertruck that ran it (chg.sup); a truck still away past the wait: the car's own pack
-    -- (they ran, nobody else can pay). ponytail: a generator gone by now (dry, switched off, taken away) is not billed.
+    -- Cybertruck that ran it (C.payFed: capped, its hour's part; the rest, and what it cannot pay, the car itself),
+    -- or the generator's fuel. ponytail: a generator gone by now (dry, switched off, taken away) is not billed.
     if chg.fed then
         if wasCar then
-            if prevSup then C.takeFrom(prevSup, wasSrc, chg.fed)
-            else B.set(v, part, math.max(0, B.kwh(part) - chg.fed)) end
+            local h = now - t0
+            C.payFed(v, part, chg, prevSup, wasSrc, capped and h > C.MAX_STEP_H and C.MAX_STEP_H / h or 1)
         elseif src == "generator" then
             if fuel > 0 then gen:setFuel(gen:getFuel() - chg.fed * fuel) end
+            chg.fed = nil
+        else
+            chg.fed = nil
         end
-        chg.fed = nil
     end
     chg.power = power
     chg.sup = fromCar(power) and gen:getKeyId() or nil
@@ -444,7 +487,10 @@ function C.start(o, v)
     -- AC charging turns a Cybertruck's bed outlet off (owner's manual p.200): what it fed books up to now (also the
     -- cars waiting for it, Powershare.settleFed), then stops
     local outlet = part:getModData().outlet
-    if outlet and T.Powershare then T.Powershare.settleFed(v) end
+    if outlet and T.Powershare then
+        T.Powershare.settleFed(v)
+        T.Powershare.broke(v) -- a car it fed that is not loaded now books at most an hour more (C.supplyEnded)
+    end
     part:getModData().chg = { x = o.x, y = o.y, z = o.z, kind = o.kind, kw = T.Chargers[o.kind].kw * T.chargeMul(),
         last = now, added = 0, src = nil, target = C.DEFAULT_TARGET, paused = nil }
     o.vid = v:getId()
@@ -587,6 +633,7 @@ end
 
 -- vehicle load runs createPhysics, which fires OnSpawnVehicleEnd every time (BaseVehicle.java:7952-7964, :904)
 Events.OnSpawnVehicleEnd.Add(function(v)
+    lastPos[v:getId()] = nil -- the id may have been another car's (C.noteMove; as Regen.lua does)
     if T.isTesla(v) then C.relink(v) end
 end)
 
