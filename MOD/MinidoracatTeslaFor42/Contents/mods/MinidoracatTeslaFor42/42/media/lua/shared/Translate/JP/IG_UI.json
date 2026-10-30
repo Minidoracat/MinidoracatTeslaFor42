@@ -111,7 +111,7 @@
     "IGUI_MinidoracatTesla_TakeDriveUnitParts": "ドライブユニット部品を外す",
     "IGUI_MinidoracatTesla_Deny_NOT_OUTSIDE": "先に降車してください",
     "IGUI_MinidoracatTesla_Deny_NO_KEY_CARD": "この車のキーカードが必要です",
-    "IGUI_MinidoracatTesla_Deny_NO_PHONE": "スマートフォンが見つかりません",
+    "IGUI_MinidoracatTesla_Deny_NO_PHONE": "先にスマートフォンを持ち物に入れてください",
     "IGUI_MinidoracatTesla_Deny_ALREADY_PAIRED": "このスマートフォンはすでにこの車の電話キーです",
     "IGUI_MinidoracatTesla_Deny_AUTOLOCK_CAMP": "施錠されません：キャンプモードがオンです",
     "IGUI_MinidoracatTesla_Deny_AUTOLOCK_OCCUPIED": "施錠されません：車内にまだ人がいます",

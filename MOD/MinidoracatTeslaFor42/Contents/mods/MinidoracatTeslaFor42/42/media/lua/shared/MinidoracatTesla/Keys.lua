@@ -167,6 +167,9 @@ function K.canPair(player, vehicle, phone)
     if ft ~= K.PHONE and ft ~= K.PHONE_KEY then return false, "NO_PHONE" end
     if not vehicle or not T.isTesla(vehicle) or player:getVehicle() ~= vehicle then return false, "NOT_INSIDE" end
     if ft == K.PHONE_KEY and K.pairedWith(phone, vehicle:getKeyId()) then return false, "ALREADY_PAIRED" end
+    -- on the player (bags too), where the server looks it up (KeyActions phonePair): a phone still in the glove box
+    -- (Battery.lua gives new cars one) or another container is greyed with the reason, not refused after the click
+    if not player:getInventory():getItemWithIDRecursiv(phone:getID()) then return false, "NO_PHONE" end
     if K.card(player, vehicle) or cardInIgnition(vehicle) then return true end
     local api = MinidoracatVehicleManagerAPI
     if not (api and api.canUse) then

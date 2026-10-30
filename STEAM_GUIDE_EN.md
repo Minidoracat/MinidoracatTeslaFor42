@@ -125,8 +125,8 @@ A charger that works on the floor, no wall needed; slower than the Wall Connecto
 {{img:07-pair-menu-en.jpg}}
 [h3]Phone Key[/h3]
 [list]
-[*] [b]Where phones come from[/b]: the Smartphone is a new item, most common in electronics stores; sometimes in mall electronics, office desks and bedside tables.
-[*] [b]Set it up[/b]: sit in the Tesla with its key card on you (or in the ignition), right-click the phone and choose Set Up as Phone Key. Without Vehicle Manager, sitting in a hotwired car works too, no card needed.
+[*] [b]Where phones come from[/b]: the Smartphone is a new item, most common in electronics stores; sometimes in mall electronics, office desks and bedside tables. A newly spawned Tesla has a one-in-four chance of an unpaired one in its glove box.
+[*] [b]Set it up[/b]: sit in the Tesla with its key card on you (or in the ignition), right-click the phone and choose Set Up as Phone Key; the phone must be on you too, so take it out of the glove box first. Without Vehicle Manager, sitting in a hotwired car works too, no card needed.
 [*] [b]Walk up and it unlocks[/b]: pull a door handle with the phone key on you and the door unlocks and opens; a backpack or fanny pack is fine.
 [*] [b]Starting[/b]: sit in the driver's seat and start; the phone can stay in a bag.
 [*] [b]Walk-away lock[/b]: get out and walk about 6 tiles away with the phone; the doors lock, the lights flash once and the horn chirps.
@@ -307,7 +307,7 @@ Options elsewhere that also affect Teslas:
 === ❓ FAQ
 [h3]Where do I find a phone?[/h3]
 [list]
-[*] The Smartphone only comes from loot: most common in electronics stores, sometimes in mall and store electronics, office desks and bedside tables.
+[*] The Smartphone only comes from loot: most common in electronics stores, sometimes in mall and store electronics, office desks and bedside tables; a newly spawned Tesla has a one-in-four chance of one in its glove box.
 [*] There is no recipe and you do not spawn with one; the vanilla cordless phone cannot be paired.
 [/list]
 [h3]I lost my key card. What now?[/h3]

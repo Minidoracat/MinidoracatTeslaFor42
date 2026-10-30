@@ -111,7 +111,7 @@
     "IGUI_MinidoracatTesla_TakeDriveUnitParts": "Взять детали блока привода",
     "IGUI_MinidoracatTesla_Deny_NOT_OUTSIDE": "Сначала выйдите из машины",
     "IGUI_MinidoracatTesla_Deny_NO_KEY_CARD": "Нужна ключ-карта этой машины",
-    "IGUI_MinidoracatTesla_Deny_NO_PHONE": "Телефон не найден",
+    "IGUI_MinidoracatTesla_Deny_NO_PHONE": "Сначала возьмите телефон с собой",
     "IGUI_MinidoracatTesla_Deny_ALREADY_PAIRED": "Этот телефон уже ключ этой машины",
     "IGUI_MinidoracatTesla_Deny_AUTOLOCK_CAMP": "Не заперто: включён режим кемпинга",
     "IGUI_MinidoracatTesla_Deny_AUTOLOCK_OCCUPIED": "Не заперто: в машине ещё кто-то есть",

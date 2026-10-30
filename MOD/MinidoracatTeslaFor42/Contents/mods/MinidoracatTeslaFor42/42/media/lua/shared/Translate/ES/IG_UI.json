@@ -111,7 +111,7 @@
     "IGUI_MinidoracatTesla_TakeDriveUnitParts": "Coger piezas de la unidad de tracción",
     "IGUI_MinidoracatTesla_Deny_NOT_OUTSIDE": "Primero baja del coche",
     "IGUI_MinidoracatTesla_Deny_NO_KEY_CARD": "Necesitas la tarjeta llave de este coche",
-    "IGUI_MinidoracatTesla_Deny_NO_PHONE": "No se encontró el teléfono",
+    "IGUI_MinidoracatTesla_Deny_NO_PHONE": "Primero lleva el teléfono contigo",
     "IGUI_MinidoracatTesla_Deny_ALREADY_PAIRED": "Este teléfono ya es la llave de este coche",
     "IGUI_MinidoracatTesla_Deny_AUTOLOCK_CAMP": "No se bloqueó: el modo acampada está activado",
     "IGUI_MinidoracatTesla_Deny_AUTOLOCK_OCCUPIED": "No se bloqueó: aún hay alguien dentro",

@@ -83,7 +83,8 @@ module Base
         Tags = base:fitswallet,
     }
 
-    /* Phone: loot (KeyActions.lua K.LOOT). Not a key until paired; pairing swaps it for the PhoneKey below. */
+    /* Phone: loot (KeyActions.lua K.LOOT); new-car glove box: Battery.lua Create.Motor. Not a key until paired; */
+    /* pairing swaps it for the PhoneKey below. */
     item MinidoracatTesla_Phone
     {
         DisplayCategory = Electronics,

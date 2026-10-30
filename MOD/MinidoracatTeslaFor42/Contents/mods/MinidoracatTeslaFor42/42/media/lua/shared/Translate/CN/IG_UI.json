@@ -111,7 +111,7 @@
     "IGUI_MinidoracatTesla_TakeDriveUnitParts": "拆取驱动电机零件",
     "IGUI_MinidoracatTesla_Deny_NOT_OUTSIDE": "请先下车",
     "IGUI_MinidoracatTesla_Deny_NO_KEY_CARD": "需要这辆车的卡片钥匙",
-    "IGUI_MinidoracatTesla_Deny_NO_PHONE": "找不到手机",
+    "IGUI_MinidoracatTesla_Deny_NO_PHONE": "要先把手机拿到身上",
     "IGUI_MinidoracatTesla_Deny_ALREADY_PAIRED": "这部手机已经是这辆车的手机钥匙",
     "IGUI_MinidoracatTesla_Deny_AUTOLOCK_CAMP": "未上锁：露营模式开启中",
     "IGUI_MinidoracatTesla_Deny_AUTOLOCK_OCCUPIED": "未上锁：车上还有人",
