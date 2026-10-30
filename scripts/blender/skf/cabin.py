@@ -283,9 +283,10 @@ def cabin_mesh(bvh, belt, trunk_floor, trunk_end, arch, opening):
     part((1.10, 0.012, 0.006), 0.002, "screen", DASH["light"], seg=1)          # ambient light line under the trim
     # trunk: sill plate over the opening's lower edge (the floor ends TRUNK_DROP under it, CABIN_INSET short of the
     # tailgate's inner panel) and the under-floor bin's lid (SEATS sill / bin: width, depth)
-    (sw, sd), (bw, bd) = SEATS["sill"], SEATS["bin"]
-    part((sw, sd, TRUNK_DROP + 0.005), 0.01, "base", (0, trunk_end + 0.02, trunk_floor + TRUNK_DROP / 2), seg=1)
-    part((bw, bd, 0.012), 0.004, "console", (0, (TRUNK_Y + trunk_end) / 2 - 0.04, trunk_floor + 0.006), seg=1)
+    if SEATS["sill"]:                                   # (a pickup's cabin has no trunk)
+        (sw, sd), (bw, bd) = SEATS["sill"], SEATS["bin"]
+        part((sw, sd, TRUNK_DROP + 0.005), 0.01, "base", (0, trunk_end + 0.02, trunk_floor + TRUNK_DROP / 2), seg=1)
+        part((bw, bd, 0.012), 0.004, "console", (0, (TRUNK_Y + trunk_end) / 2 - 0.04, trunk_floor + 0.006), seg=1)
     if PARCEL:
         parcel_shelf(add, bvh)
     part((0.05, 0.04, 0.09), 0.012, "screen_back", DASH["stand"])               # screen stand

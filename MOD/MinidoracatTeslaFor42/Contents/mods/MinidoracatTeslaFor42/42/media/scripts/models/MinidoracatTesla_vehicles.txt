@@ -140,4 +140,80 @@ module Base
         static = false,
         scale = 0.5495,
     }
+
+    /* Cybertruck Cyberbeast: same build, units and shaders as the Model Y above (CAR=cybertruck; body adapted from */
+    /* adamsochi2010's "Tesla CyberTruck", CC BY 4.0, CREDITS.md). TrunkDoor is the tailgate, TrunkTonneau the */
+    /* powered tonneau cover (scale keys roll it into its canister). */
+    model MinidoracatTesla_Cybertruck
+    {
+        mesh = vehicles/MinidoracatTesla_Cybertruck,
+        shader = MinidoracatTesla_vehicle,
+        static = true,
+        invertX = false,
+        scale = 0.5495,
+    }
+
+    model MinidoracatTesla_Cybertruck_Wheel
+    {
+        mesh = vehicles/MinidoracatTesla_Cybertruck_Wheel,
+        texture = Vehicles/MinidoracatTesla_Cybertruck_wheel,
+        shader = vehiclewheel,
+        scale = 0.5495,
+    }
+
+    model MinidoracatTesla_Cybertruck_DoorFrontLeft
+    {
+        mesh = vehicles/MinidoracatTesla_Cybertruck_Doors|DoorFrontLeft,
+        shader = MinidoracatTesla_vehicle,
+        static = false,
+        scale = 0.5495,
+    }
+
+    model MinidoracatTesla_Cybertruck_DoorFrontRight
+    {
+        mesh = vehicles/MinidoracatTesla_Cybertruck_Doors|DoorFrontRight,
+        shader = MinidoracatTesla_vehicle,
+        static = false,
+        scale = 0.5495,
+    }
+
+    model MinidoracatTesla_Cybertruck_DoorRearLeft
+    {
+        mesh = vehicles/MinidoracatTesla_Cybertruck_Doors|DoorRearLeft,
+        shader = MinidoracatTesla_vehicle,
+        static = false,
+        scale = 0.5495,
+    }
+
+    model MinidoracatTesla_Cybertruck_DoorRearRight
+    {
+        mesh = vehicles/MinidoracatTesla_Cybertruck_Doors|DoorRearRight,
+        shader = MinidoracatTesla_vehicle,
+        static = false,
+        scale = 0.5495,
+    }
+
+    model MinidoracatTesla_Cybertruck_TrunkDoor
+    {
+        mesh = vehicles/MinidoracatTesla_Cybertruck_Doors|TrunkDoor,
+        shader = MinidoracatTesla_vehicle,
+        static = false,
+        scale = 0.5495,
+    }
+
+    model MinidoracatTesla_Cybertruck_EngineDoor
+    {
+        mesh = vehicles/MinidoracatTesla_Cybertruck_Doors|EngineDoor,
+        shader = MinidoracatTesla_vehicle,
+        static = false,
+        scale = 0.5495,
+    }
+
+    model MinidoracatTesla_Cybertruck_TrunkTonneau
+    {
+        mesh = vehicles/MinidoracatTesla_Cybertruck_Doors|TrunkTonneau,
+        shader = MinidoracatTesla_vehicle,
+        static = false,
+        scale = 0.5495,
+    }
 }

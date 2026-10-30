@@ -54,4 +54,12 @@ module Base
         scale = 1.0,
         undoCoreScale = true,
     }
+
+    model MinidoracatTesla_CablePlugCybertruck
+    {
+        mesh = WorldItems/MinidoracatTesla_CablePlugCybertruck,
+        texture = WorldItems/MinidoracatTesla_Cable,
+        scale = 1.0,
+        undoCoreScale = true,
+    }
 }
