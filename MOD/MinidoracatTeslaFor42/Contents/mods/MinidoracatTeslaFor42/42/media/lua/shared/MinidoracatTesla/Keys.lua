@@ -167,6 +167,9 @@ function K.canPair(player, vehicle, phone)
     if ft ~= K.PHONE and ft ~= K.PHONE_KEY then return false, "NO_PHONE" end
     if not vehicle or not T.isTesla(vehicle) or player:getVehicle() ~= vehicle then return false, "NOT_INSIDE" end
     if ft == K.PHONE_KEY and K.pairedWith(phone, vehicle:getKeyId()) then return false, "ALREADY_PAIRED" end
+    -- on the player (bags too), where the server looks it up (KeyActions phonePair): a phone still in the glove box
+    -- (Battery.lua gives new cars one) or another container is greyed with the reason, not refused after the click
+    if not player:getInventory():getItemWithIDRecursiv(phone:getID()) then return false, "NO_PHONE" end
     if K.card(player, vehicle) or cardInIgnition(vehicle) then return true end
     local api = MinidoracatVehicleManagerAPI
     if not (api and api.canUse) then
@@ -260,22 +263,25 @@ function ISOpenVehicleDoor:complete(...)
     return openComplete(self, ...)
 end
 
--- Phone key in a bag, or paired with this car but carrying another car's keyId (K.pairedWith), also starts the car
--- (the real one drives with the phone in a pocket or bag). Vanilla complete()
+-- A phone key or key card in a wallet or bag, or a phone key paired with this car but carrying another car's keyId
+-- (K.pairedWith), also starts the car: the real one drives with the phone in a pocket or bag, and the card works from a
+-- wallet like the phone (user 2026-10-31, after a Workshop comment). Vanilla complete()
 -- passes haveKey from haveThisKeyId only (ISStartVehicleEngine.lua:29); here tryStartEngine(true) instead. complete()
 -- runs on the server in MP, locally in SP. No key goes into the ignition: the Starting state's setKeysInIgnition looks
 -- with haveThisKeyId too (BaseVehicle.java:7484,7503 -> :8647-8675), finds nothing and sends no putKeyInIgnition, so
--- no extra "container already has id" (pitfalls.md). Key card: vanilla (loose -> onto the reader; wallet -> refused).
-function K.bagPhoneStarts(chr, vehicle)
+-- no extra "container already has id" (pitfalls.md). A key loose or on a keyring: vanilla (into the ignition; the card
+-- onto the console reader).
+function K.bagKeyStarts(chr, vehicle)
     return T.isTesla(vehicle) and not vehicle:isKeysInIgnition() and not vehicle:isHotwired()
-        and not chr:getInventory():haveThisKeyId(vehicle:getKeyId()) and K.phoneKey(chr, vehicle) ~= nil
+        and not chr:getInventory():haveThisKeyId(vehicle:getKeyId())
+        and (K.phoneKey(chr, vehicle) ~= nil or K.card(chr, vehicle) ~= nil)
 end
 
 require "Vehicles/TimedActions/ISStartVehicleEngine"
 local startComplete = ISStartVehicleEngine.complete
 function ISStartVehicleEngine:complete(...)
     local vehicle = self.character:getVehicle()
-    if vehicle and vehicle:isDriver(self.character) and K.bagPhoneStarts(self.character, vehicle) then
+    if vehicle and vehicle:isDriver(self.character) and K.bagKeyStarts(self.character, vehicle) then
         vehicle:tryStartEngine(true)
         return true
     end

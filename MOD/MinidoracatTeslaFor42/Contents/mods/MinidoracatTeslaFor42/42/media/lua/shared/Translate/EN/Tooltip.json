@@ -4,7 +4,7 @@
     "Tooltip_MinidoracatTesla_NoCarInReach": "No Tesla within reach of the cable",
     "Tooltip_MinidoracatTesla_TakeDriveUnitPartsWarning": "This will set drive unit condition to 0.",
     "Tooltip_MinidoracatTesla_DriveUnitCondition": "Drive unit condition: %1",
-    "Tooltip_MinidoracatTesla_KeyCard": "Tap it on the reader on the driver's door pillar to lock or unlock.<br>To drive, carry it loose or on a keyring (it does not start the car from a wallet).",
+    "Tooltip_MinidoracatTesla_KeyCard": "Tap it on the reader on the driver's door pillar to lock or unlock.<br>It also starts the car from a wallet or bag.",
     "Tooltip_MinidoracatTesla_Phone": "Sit in a Tesla with its key card and right-click this phone to set it up as a phone key.<br>With Vehicle Manager, the car's owner needs no key card.",
     "Tooltip_MinidoracatTesla_PhoneKey": "Unlocks when you pull a door handle.<br>Doors lock by themselves when you get out and walk away with it.",
     "Tooltip_MinidoracatTesla_TapCard": "Walk to the driver's door and tap the key card on the reader",

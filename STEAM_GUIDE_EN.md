@@ -42,7 +42,7 @@ https://steamcommunity.com/sharedfiles/filedetails/?id=3829501237
 [/table]
 [list]
 [*] [b]EV parts[/b]: the mechanics window uses Tesla's part names: High Voltage Battery, Drive Unit, Low Voltage Battery, Hood, Front Trunk, Rear Trunk.
-[*] [b]Front Trunk[/b]: open the hood first to reach what is inside.
+[*] [b]Front Trunk[/b]: open the hood first to reach what is inside. With the hood open, press E at the front of the car to close it.
 [*] [b]High Voltage Battery[/b]: comes out without draining it first; the charge stays in the battery.
 [*] [b]Brakes[/b]: regenerative braking halves brake wear compared with a normal car.
 [/list]
@@ -193,14 +193,14 @@ A charger that works on the floor, no wall needed; slower than the Wall Connecto
 [*] [b]How you get one[/b]: a Tesla's car key becomes that car's Key Card, named after the car, even while you sit in it. A key in the ignition changes once you switch the car off and it comes back to you.
 [*] [b]Tap to lock or unlock[/b]: outside the car, right-click the Tesla and choose Tap Key Card: Lock / Unlock; your character walks to the driver's door and taps it, and every door, the liftgate and the hood lock or unlock together.
 [*] [b]Lights and sound[/b]: locking flashes once with a short horn chirp (zombies ignore it); unlocking flashes twice.
-[*] [b]Wallet is fine[/b]: the card taps from a wallet too; to start the car, carry it loose or on a key ring.
-[*] [b]Starting[/b]: the card goes into the ignition (the console's card reader) like a vanilla key.
+[*] [b]Wallet is fine[/b]: the card taps and starts the car from a wallet or bag too.
+[*] [b]Starting[/b]: carried loose or on a key ring, the card goes into the ignition (the console's card reader) like a vanilla key; in a wallet or bag it stays there.
 [/list]
 {{img:07-pair-menu-en.jpg}}
 [h3]Phone Key[/h3]
 [list]
-[*] [b]Where phones come from[/b]: the Smartphone is a new item, most common in phone shops; sometimes in mall electronics, office desks and bedside tables.
-[*] [b]Set it up[/b]: sit in the Tesla with its key card on you (or in the ignition), right-click the phone and choose Set Up as Phone Key. Without Vehicle Manager, sitting in a hotwired car works too, no card needed.
+[*] [b]Where phones come from[/b]: the Smartphone is a new item, most common in electronics stores; sometimes in mall electronics, office desks and bedside tables. A newly spawned Tesla has a one-in-four chance of an unpaired one in its glove box.
+[*] [b]Set it up[/b]: sit in the Tesla with its key card on you (or in the ignition), right-click the phone and choose Set Up as Phone Key; the phone must be on you too, so take it out of the glove box first. Without Vehicle Manager, sitting in a hotwired car works too, no card needed.
 [*] [b]Walk up and it unlocks[/b]: pull a door handle with the phone key on you and the door unlocks and opens; a backpack or fanny pack is fine.
 [*] [b]Starting[/b]: sit in the driver's seat and start; the phone can stay in a bag.
 [*] [b]Walk-away lock[/b]: get out and walk about 6 tiles away with the phone; the doors lock, the lights flash once and the horn chirps.
@@ -383,7 +383,7 @@ Options elsewhere that also affect Teslas:
 === ❓ FAQ
 [h3]Where do I find a phone?[/h3]
 [list]
-[*] The Smartphone only comes from loot: most common in phone shops, sometimes in mall and store electronics, office desks and bedside tables.
+[*] The Smartphone only comes from loot: most common in electronics stores, sometimes in mall and store electronics, office desks and bedside tables; a newly spawned Tesla has a one-in-four chance of one in its glove box.
 [*] There is no recipe and you do not spawn with one; the vanilla cordless phone cannot be paired.
 [/list]
 [h3]I lost my key card. What now?[/h3]

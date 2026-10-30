@@ -119,7 +119,7 @@
     "IGUI_MinidoracatTesla_TakeDriveUnitParts": "Antriebseinheit-Teile ausbauen",
     "IGUI_MinidoracatTesla_Deny_NOT_OUTSIDE": "Steig zuerst aus",
     "IGUI_MinidoracatTesla_Deny_NO_KEY_CARD": "Du brauchst die Schlüsselkarte dieses Autos",
-    "IGUI_MinidoracatTesla_Deny_NO_PHONE": "Telefon nicht gefunden",
+    "IGUI_MinidoracatTesla_Deny_NO_PHONE": "Nimm das Telefon zuerst an dich",
     "IGUI_MinidoracatTesla_Deny_ALREADY_PAIRED": "Dieses Telefon ist schon der Handyschlüssel dieses Autos",
     "IGUI_MinidoracatTesla_Deny_AUTOLOCK_CAMP": "Nicht verriegelt: Camp-Modus ist an",
     "IGUI_MinidoracatTesla_Deny_AUTOLOCK_OCCUPIED": "Nicht verriegelt: Es sitzt noch jemand im Auto",

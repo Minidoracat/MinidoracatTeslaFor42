@@ -4,7 +4,7 @@
     "Tooltip_MinidoracatTesla_NoCarInReach": "No hay ningún Tesla al alcance del cable",
     "Tooltip_MinidoracatTesla_TakeDriveUnitPartsWarning": "Esto colocará la condición de la unidad de tracción en 0.",
     "Tooltip_MinidoracatTesla_DriveUnitCondition": "Condición de la unidad de tracción: %1",
-    "Tooltip_MinidoracatTesla_KeyCard": "Acércala al lector del pilar de la puerta del conductor para bloquear o desbloquear.<br>Para conducir, llévala suelta o en un llavero (en la billetera no arranca).",
+    "Tooltip_MinidoracatTesla_KeyCard": "Acércala al lector del pilar de la puerta del conductor para bloquear o desbloquear.<br>También arranca con ella en la billetera o en un bolso.",
     "Tooltip_MinidoracatTesla_Phone": "Siéntate en un Tesla con su tarjeta llave<br>y haz clic derecho en este teléfono para configurarlo como teléfono-llave.<br>Con el Gestor de vehículos, el dueño del auto no necesita la tarjeta llave.",
     "Tooltip_MinidoracatTesla_PhoneKey": "Se desbloquea al tirar de la manija.<br>Al bajar y alejarte con el teléfono, las puertas se bloquean solas.",
     "Tooltip_MinidoracatTesla_TapCard": "Ve a la puerta del conductor y acerca la tarjeta llave al lector",

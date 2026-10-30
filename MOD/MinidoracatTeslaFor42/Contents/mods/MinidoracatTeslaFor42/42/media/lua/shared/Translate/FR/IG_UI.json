@@ -119,7 +119,7 @@
     "IGUI_MinidoracatTesla_TakeDriveUnitParts": "Récupérer les pièces de l'unité d'entraînement",
     "IGUI_MinidoracatTesla_Deny_NOT_OUTSIDE": "Descendez d'abord de la voiture",
     "IGUI_MinidoracatTesla_Deny_NO_KEY_CARD": "Il faut la carte-clé de cette voiture",
-    "IGUI_MinidoracatTesla_Deny_NO_PHONE": "Téléphone introuvable",
+    "IGUI_MinidoracatTesla_Deny_NO_PHONE": "Prenez d'abord le téléphone sur vous",
     "IGUI_MinidoracatTesla_Deny_ALREADY_PAIRED": "Ce téléphone est déjà la clé de cette voiture",
     "IGUI_MinidoracatTesla_Deny_AUTOLOCK_CAMP": "Non verrouillée : le mode Camping est activé",
     "IGUI_MinidoracatTesla_Deny_AUTOLOCK_OCCUPIED": "Non verrouillée : quelqu'un est encore à bord",

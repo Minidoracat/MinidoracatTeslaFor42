@@ -45,11 +45,23 @@ end
 local function addSlices(menu, player, vehicle)
     local part = T.Battery.part(vehicle)
     if not part then return end
-    -- phone key in a bag (Keys.lua): vanilla offers "Start Engine" only when haveThisKeyId finds a key (ISVehicleMenu.lua:93-101)
+    -- phone key or key card in a wallet or bag (Keys.lua bagKeyStarts): the car takes it as a key, but vanilla looks with
+    -- haveThisKeyId and offers hotwiring instead of "Start Engine" (ISVehicleMenu.lua:93-120); that slice becomes "Start
+    -- Engine" in place (no such slice: one more at the end)
     if vehicle:isDriver(player) and vehicle:isEngineWorking() and not vehicle:isEngineStarted() and not vehicle:isEngineRunning()
-        and not SandboxVars.VehicleEasyUse and T.Keys and T.Keys.bagPhoneStarts(player, vehicle) then
-        menu:addSlice(getText("ContextMenu_VehicleStartEngine"), getTexture("media/ui/vehicles/vehicle_ignitionON.png"),
-            ISVehicleMenu.onStartEngine, player)
+        and not SandboxVars.VehicleEasyUse and T.Keys and T.Keys.bagKeyStarts(player, vehicle) then
+        local text, tex = getText("ContextMenu_VehicleStartEngine"), getTexture("media/ui/vehicles/vehicle_ignitionON.png")
+        local skill, at = getText("ContextMenu_VehicleHotwireSkill"), nil
+        for i, s in ipairs(menu.slices) do
+            if s.command[1] == ISVehicleMenu.onHotwire or s.text == skill then at = i; break end
+        end
+        if at then
+            menu.slices[at].command = { ISVehicleMenu.onStartEngine, player } -- what a click runs (ISRadialMenu.lua:18-27,71-76)
+            menu:setSliceText(at, text)
+            menu:setSliceTexture(at, tex)
+        else
+            menu:addSlice(text, tex, ISVehicleMenu.onStartEngine, player)
+        end
     end
     local on = part:getModData().camp ~= nil
     local label = getText(on and "IGUI_MinidoracatTesla_Radial_CampOff" or "IGUI_MinidoracatTesla_Radial_CampOn")

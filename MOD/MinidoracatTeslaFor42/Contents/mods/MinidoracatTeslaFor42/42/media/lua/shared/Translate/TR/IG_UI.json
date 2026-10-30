@@ -119,7 +119,7 @@
     "IGUI_MinidoracatTesla_TakeDriveUnitParts": "Tahrik Ünitesi Parçalarını Al",
     "IGUI_MinidoracatTesla_Deny_NOT_OUTSIDE": "Önce araçtan in",
     "IGUI_MinidoracatTesla_Deny_NO_KEY_CARD": "Bu aracın anahtar kartı gerekli",
-    "IGUI_MinidoracatTesla_Deny_NO_PHONE": "Telefon bulunamadı",
+    "IGUI_MinidoracatTesla_Deny_NO_PHONE": "Önce telefonu üzerine al",
     "IGUI_MinidoracatTesla_Deny_ALREADY_PAIRED": "Bu telefon zaten bu aracın telefon anahtarı",
     "IGUI_MinidoracatTesla_Deny_AUTOLOCK_CAMP": "Kilitlenmedi: Kamp Modu açık",
     "IGUI_MinidoracatTesla_Deny_AUTOLOCK_OCCUPIED": "Kilitlenmedi: araçta hâlâ biri var",

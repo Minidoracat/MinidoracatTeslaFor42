@@ -119,7 +119,7 @@
     "IGUI_MinidoracatTesla_TakeDriveUnitParts": "Weź części zespołu napędowego",
     "IGUI_MinidoracatTesla_Deny_NOT_OUTSIDE": "Najpierw wysiądź z auta",
     "IGUI_MinidoracatTesla_Deny_NO_KEY_CARD": "Potrzebujesz karty klucza tego auta",
-    "IGUI_MinidoracatTesla_Deny_NO_PHONE": "Nie znaleziono telefonu",
+    "IGUI_MinidoracatTesla_Deny_NO_PHONE": "Najpierw weź telefon ze sobą",
     "IGUI_MinidoracatTesla_Deny_ALREADY_PAIRED": "Ten telefon jest już kluczem tego auta",
     "IGUI_MinidoracatTesla_Deny_AUTOLOCK_CAMP": "Nie zablokowano: tryb kempingowy jest włączony",
     "IGUI_MinidoracatTesla_Deny_AUTOLOCK_OCCUPIED": "Nie zablokowano: ktoś jest jeszcze w środku",

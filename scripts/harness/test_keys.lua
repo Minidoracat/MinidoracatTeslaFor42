@@ -460,6 +460,9 @@ ok = K.canPair(noCard, v, noCard.inv.items[1])
 check(ok == true, "pair: the card on the console reader (in the ignition) counts")
 v.ignitionKey = nil
 check(K.canPair(owner, v, item("Base.Pager")) == false, "pair: not a phone -> refused")
+local gloved = container(item(K.PHONE)) -- a new car's glove box phone, not taken yet (Battery.lua)
+ok, why = K.canPair(owner, v, gloved.items[1])
+check(not ok and why == "NO_PHONE", "pair: a phone still in the glove box -> NO_PHONE (greyed: take it first)")
 F.sent = {}
 cmds.phonePair(owner, { vid = v:getId(), id = phone:getID() })
 local pk = ownerInv.items[#ownerInv.items]
@@ -467,6 +470,10 @@ check(pk.ft == K.PHONE_KEY and pk.keyId == v.keyId and phone.cont == nil, "pair:
 check(F.lastSent("phonePaired") ~= nil, "pair: client told (halo)")
 cmds.phonePair(owner, { vid = v:getId(), id = pk:getID() })
 check(lastDeny() == "ALREADY_PAIRED", "pair: same car again -> ALREADY_PAIRED")
+ownerInv:Remove(pk); gloved:AddItem(pk) -- this car's phone key left in the glove box: the real reason, not "take it"
+ok, why = K.canPair(owner, v, pk)
+check(not ok and why == "ALREADY_PAIRED", "pair: this car's phone key in the glove box -> ALREADY_PAIRED, not NO_PHONE")
+gloved:Remove(pk); ownerInv:AddItem(pk)
 cmds.phonePair(noCard, { vid = v:getId(), id = noCard.inv.items[1]:getID() })
 check(lastDeny() == "NO_KEY_CARD_HOTWIRE" and noCard.inv.items[1].ft == K.PHONE, "phonePair raw command without the card: denied, phone unchanged")
 -- Lost card (user 2026-10-28): VehicleManager's owner of this car (MANAGE, never shareable) pairs without it. Fake VM:
@@ -491,7 +498,10 @@ check(ok == true and why == "VM", "pair: VehicleManager owner without the card -
 check(vmAsked[#vmAsked].code == "MANAGE" and vmAsked[#vmAsked].mod == T.MODULE and vmAsked[#vmAsked].silent == nil,
     "pair: asks VehicleManager MANAGE, as Tesla, not silent (an admin's override is audited)")
 local asked0 = #vmAsked
-check(K.canPair(owner, v, item(K.PHONE)) == true and #vmAsked == asked0, "pair: the card on you -> VehicleManager not asked")
+local spare = item(K.PHONE)
+ownerInv:AddItem(spare)
+check(K.canPair(owner, v, spare) == true and #vmAsked == asked0, "pair: the card on you -> VehicleManager not asked")
+ownerInv:Remove(spare)
 ok, why = K.canPair(vmDriver, v, vmDriver.inv.items[1])
 check(not ok and why == "NO_KEY_CARD", "pair: a DRIVE share without the card -> NO_KEY_CARD")
 ok, why = K.canPair(noCard, v, noCard.inv.items[1])
@@ -516,11 +526,14 @@ local ownerPk = vmOwner.inv.items[#vmOwner.inv.items]
 check(ownerPk.ft == K.PHONE_KEY and ownerPk.keyId == v.keyId and F.lastSent("phonePaired") ~= nil,
     "phonePair: the VehicleManager owner without the card -> a phone key for this car")
 MinidoracatVehicleManagerAPI = nil
-ok, why = K.canPair(vmOwner, v, item(K.PHONE))
+local fresh = item(K.PHONE)
+vmOwner.inv:AddItem(fresh)
+ok, why = K.canPair(vmOwner, v, fresh)
 check(not ok and why == "NO_KEY_CARD_HOTWIRE", "pair: no VehicleManager, not hotwired -> the card")
 SandboxVars.VehicleEasyUse = true -- T.authorized says yes to everyone then; vmGrants must still need VehicleManager
-ok, why = K.canPair(vmOwner, v, item(K.PHONE))
+ok, why = K.canPair(vmOwner, v, fresh)
 check(not ok and why == "NO_KEY_CARD_HOTWIRE", "pair: no VehicleManager, VehicleEasyUse on -> still the card")
+vmOwner.inv:Remove(fresh)
 SandboxVars.VehicleEasyUse = nil
 -- hotwired (user 2026-10-28, decisions.md keyless rules): without VehicleManager, seated in a hotwired car pairs
 v.hotwired = true
@@ -668,22 +681,26 @@ check(v.doors[1].d.locked, "handle (MP client start): never unlocks locally")
 isClient, isServer = cli, srv
 ISUnlockVehicleDoor.start, ISUnlockVehicleDoor.complete = unlockBefore.start, unlockBefore.complete -- other tests' fake parts have no getDoor
 
--- ------------------------------------------------------------------ starting with the phone key in a bag
+-- ------------------------------------------------------------------ starting with the phone key or key card in a bag
 local starts = {}
 function v:tryStartEngine(haveKey) starts[#starts + 1] = haveKey end
 function v:isDriver(p) return p.vehicle == self end
 function v:isHotwired() return self.hotwired == true end
 local function start(p) starts = {}; ISStartVehicleEngine.complete({ character = p }); return starts[1] end
-owner.vehicle, walletOnly.vehicle, stranger.vehicle = v, v, v
-check(start(owner) == true, "start: phone key in a bag -> tryStartEngine(true) (vanilla would pass false)")
-check(start(walletOnly) == false, "start: key card only in the wallet -> vanilla haveKey false (tap = put it on the reader)")
+local otherCard = player("othercard", container(bag("Base.Wallet", item(K.CARD, v.keyId + 1))), v.x, v.y)
+-- each start with one key only (the owner carries both: the card in the wallet would hide a broken phone-key branch)
+local phoneOnly = player("phoneonly", container(bag("Base.Bag_Schoolbag", key(K.PHONE_KEY, v.keyId))), v.x, v.y)
+walletOnly.vehicle, stranger.vehicle, otherCard.vehicle, phoneOnly.vehicle = v, v, v, v
+check(start(phoneOnly) == true, "start: phone key in a bag (no card) -> tryStartEngine(true) (vanilla would pass false)")
+check(start(walletOnly) == true, "start: key card in the wallet -> tryStartEngine(true) (vanilla would pass false)")
 check(start(stranger) == false, "start: no key -> vanilla haveKey false")
+check(start(otherCard) == false, "start: another car's key card in the wallet -> vanilla haveKey false")
 local cardLoose = player("cardloose", container(key(K.CARD, v.keyId)), v.x, v.y)
 cardLoose.vehicle = v
-check(start(cardLoose) == true and K.bagPhoneStarts(cardLoose, v) == false, "start: loose key card -> vanilla path (goes into the ignition)")
+check(start(cardLoose) == true and K.bagKeyStarts(cardLoose, v) == false, "start: loose key card -> vanilla path (goes into the ignition)")
 v.hotwired = true
-check(K.bagPhoneStarts(owner, v) == false, "start: hotwired -> vanilla path")
-v.hotwired, owner.vehicle, walletOnly.vehicle, stranger.vehicle = nil, nil, nil, nil
+check(K.bagKeyStarts(phoneOnly, v) == false and K.bagKeyStarts(walletOnly, v) == false, "start: hotwired -> vanilla path")
+v.hotwired, walletOnly.vehicle, stranger.vehicle, otherCard.vehicle, phoneOnly.vehicle = nil, nil, nil, nil, nil
 
 -- ------------------------------------------------------------------ one phone key, several cars (app v2)
 H.section("one phone key, several cars")
@@ -763,7 +780,7 @@ function carB:isDriver(p) return p.vehicle == self end
 function carB:isHotwired() return false end
 onlyA.vehicle = carB
 ISStartVehicleEngine.complete({ character = onlyA })
-check(carB.startArg == false and not K.bagPhoneStarts(onlyA, carB), "a phone key for A only: B does not start")
+check(carB.startArg == false and not K.bagKeyStarts(onlyA, carB), "a phone key for A only: B does not start")
 onlyA.vehicle, onlyA.x = nil, carB.x - K.LOCK_DIST
 check(K.canAutoLock(onlyA, carB) == false and T.authorized(onlyA, carB, "PASSENGER") == false and not T.legit(onlyA, carB),
     "a phone key for A only: no walk-away lock, not authorized, not legit at B")

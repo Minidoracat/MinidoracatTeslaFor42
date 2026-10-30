@@ -20,7 +20,7 @@ Drive a Tesla Model Y, Model 3 or Cybertruck through the apocalypse: run on batt
 [*] Find a Tesla in a parking lot (the Cybertruck in upscale neighbourhoods); its car key turns into a key card when you pick it up
 [*] Sit in the driver's seat and click the power button at the top left of the dashboard
 [*] With Electrical 3, make a Wall Connector and mount it on a powered wall, or set a Mobile Connector on the floor; right-click it to plug in the charge cable
-[*] Sit in the car with the key card, right-click a smartphone and choose Set Up as Phone Key to use the Tesla app
+[*] Find a smartphone (a new item from this mod, most common in electronics stores; a Tesla's glove box may hold one too), sit in the car with the key card, right-click the phone and choose Set Up as Phone Key to use the Tesla app
 [/olist]
 
 [h2]✨ Features[/h2]

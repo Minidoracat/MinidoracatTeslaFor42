@@ -119,7 +119,7 @@
     "IGUI_MinidoracatTesla_TakeDriveUnitParts": "Retirar Peças da Unidade Motriz",
     "IGUI_MinidoracatTesla_Deny_NOT_OUTSIDE": "Saia do carro primeiro",
     "IGUI_MinidoracatTesla_Deny_NO_KEY_CARD": "Você precisa do cartão-chave deste carro",
-    "IGUI_MinidoracatTesla_Deny_NO_PHONE": "Telefone não encontrado",
+    "IGUI_MinidoracatTesla_Deny_NO_PHONE": "Primeiro leve o telefone com você",
     "IGUI_MinidoracatTesla_Deny_ALREADY_PAIRED": "Este telefone já é a chave deste carro",
     "IGUI_MinidoracatTesla_Deny_AUTOLOCK_CAMP": "Não trancou: o Modo Acampamento está ligado",
     "IGUI_MinidoracatTesla_Deny_AUTOLOCK_OCCUPIED": "Não trancou: ainda há alguém dentro",

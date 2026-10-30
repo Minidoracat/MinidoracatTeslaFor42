@@ -662,6 +662,36 @@ for _, script in ipairs({ "Base.MinidoracatTesla_ModelY", "Base.MinidoracatTesla
 end
 T.MOBILE_IN_TRUNK_PCT = pct0
 
+H.section("smartphone in a new car's glove box")
+do -- own scope: the main chunk is at Lua's 200-local limit
+    local function withGlove(v)
+        local box = { items = {} }
+        function box:AddItem(t) self.items[#self.items + 1] = t end
+        v.parts.GloveBox = { getItemContainer = function() return box end }
+        return box
+    end
+    local phonePct0 = T.PHONE_IN_GLOVEBOX_PCT
+    check(phonePct0 == 25, "default chance: 25 % of new cars")
+    T.MOBILE_IN_TRUNK_PCT = 0
+    for _, script in ipairs({ "Base.MinidoracatTesla_ModelY", "Base.MinidoracatTesla_Model3" }) do
+        T.PHONE_IN_GLOVEBOX_PCT = 100
+        local nv = H.vehicle({ script = script })
+        local trunk, glove = withTrunk(nv), withGlove(nv)
+        T.Create.Motor(nv, nv:getPartById("Engine"))
+        check(#glove.items == 1 and glove.items[1] == "Base.MinidoracatTesla_Phone" and #trunk.items == 0,
+            script .. ": new car at 100 %: one unpaired Smartphone in the glove box, nothing in the trunk")
+        nv._class = "BaseVehicle"
+        H.fire("OnSpawnVehicleEnd", nv) -- every later load fires this, never the part create
+        check(#glove.items == 1, script .. ": loading the car again adds no phone")
+        T.PHONE_IN_GLOVEBOX_PCT = 0
+        local nv0 = H.vehicle({ script = script })
+        local glove0 = withGlove(nv0)
+        T.Create.Motor(nv0, nv0:getPartById("Engine"))
+        check(#glove0.items == 0, script .. ": at 0 %: an empty glove box")
+    end
+    T.MOBILE_IN_TRUNK_PCT, T.PHONE_IN_GLOVEBOX_PCT = pct0, phonePct0
+end
+
 H.section("keyless rules (user 2026-10-28): plug, unplug, charge card, pick up and rotate the charger")
 -- No VehicleManager: a key, a hotwired car (both on a locked car) or an unlocked car -> allowed; a locked car without a
 -- key -> CAR_LOCKED everywhere. VehicleManager present: only its FUEL right, locked or not.

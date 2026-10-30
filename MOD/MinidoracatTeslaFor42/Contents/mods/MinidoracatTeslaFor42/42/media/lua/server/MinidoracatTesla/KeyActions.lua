@@ -344,9 +344,9 @@ T.ServerCommands.autoLock = function(player, args)
 end
 
 -- ------------------------------------------------------------------ phone loot
--- A smartphone is rare in 1993 Kentucky: phone shops carry it, homes and offices seldom. Weights sit below the
--- cordless handset's in the same lists (ProceduralDistributions.lua: ElectronicStorePhones 50/20/20/10,
--- StoreShelfElectronics 8, GigamartHouseElectronics 20/10, OfficeDeskHome 8, BedroomSidetableClassy 10).
+-- A smartphone is rare in 1993 Kentucky: electronics stores' phone shelves carry it, homes and offices seldom.
+-- Weights sit below the cordless handset's in the same lists (ProceduralDistributions.lua: ElectronicStorePhones
+-- 50/20/20/10, StoreShelfElectronics 8, GigamartHouseElectronics 20/10, OfficeDeskHome 8, BedroomSidetableClassy 10).
 -- Same pattern as AutoDrive's MDAD_Distributions.lua: remove our pairs first so a reload does not stack them.
 K.LOOT = {
     ElectronicStorePhones = 10,

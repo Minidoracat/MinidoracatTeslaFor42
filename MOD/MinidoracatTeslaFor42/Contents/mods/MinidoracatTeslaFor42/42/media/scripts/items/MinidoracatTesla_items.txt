@@ -86,7 +86,7 @@ module Base
 
     /* Key card: a Tesla's CarKey becomes this when a player has it (server/MinidoracatTesla/KeyActions.lua); same keyId, */
     /* so vanilla unlock, start and ignition accept it (ItemContainer.java:3242-3256). Wallet tag as CarKey */
-    /* (generated/items/key.txt:65-77); vanilla only sees keys loose or on a keyring, the card reader sees the wallet too. */
+    /* (generated/items/key.txt:65-77); vanilla only sees keys loose or on a keyring, the card reader and start see the wallet too. */
     item MinidoracatTesla_KeyCard
     {
         DisplayCategory = Security,
@@ -98,7 +98,8 @@ module Base
         Tags = base:fitswallet,
     }
 
-    /* Phone: loot (KeyActions.lua K.LOOT). Not a key until paired; pairing swaps it for the PhoneKey below. */
+    /* Phone: loot (KeyActions.lua K.LOOT); new-car glove box: Battery.lua Create.Motor. Not a key until paired; */
+    /* pairing swaps it for the PhoneKey below. */
     item MinidoracatTesla_Phone
     {
         DisplayCategory = Electronics,

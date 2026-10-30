@@ -4,6 +4,7 @@
 -- clients near the car to animate it (architecture.md §7).
 -- Also syncs the part anim of vanilla door open/close on Teslas in MP: vanilla plays it only on the client that
 -- opened the door (ISOpenVehicleDoor.lua:28-31 "TODO: sync part animation"), so everyone else saw no motion.
+-- And E at a Tesla's open hood shuts it (vanilla opens the mechanics window again instead).
 require "MinidoracatTesla/Core"
 
 local T = MinidoracatTesla
@@ -93,6 +94,50 @@ if not isServer() then
         local v = getVehicleById(args.vid)
         if v and args.hue then v:setColorHSV(args.hue, v:getColorSaturation(), v:getColorValue()) end
     end
+end
+
+-- E at a Tesla's open hood shuts it, like E at a trunk (Vehicles.Use.TrunkDoorOpen) and the gamepad's Close Hood
+-- prompt (ISButtonPrompt.lua:590-594). Vanilla E at an open hood (Vehicles.Use.EngineDoor, Vehicles.lua:838-847)
+-- shuts it only by closing the mechanics window opened from that hood while the player stands at the hood
+-- (ISVehicleMechanics.lua:1408-1413). A window gone some other way (it closes itself 6 tiles from the car,
+-- ISVehicleMechanics.lua:20-22) left the lid up, and E there only opened the window again (user 2026-10-31, after a
+-- Workshop comment; E2E tesla-hoode-1031-walk). That window still open: vanilla, which shuts both. Its window still on
+-- the way (E again during this car's ISOpenMechanicsUIAction): that action stops first, or its perform would open the
+-- lid again (ISVehicleMechanics.lua:1414-1417). Vehicles.lua is a server-folder file, loaded after this one:
+-- L.wrapHoodUse runs once the game starts, and wraps once.
+if not isServer() then
+    local function stopWindow(chr, vehicle)
+        local q = ISTimedActionQueue.getTimedActionQueue(chr)
+        for i, a in ipairs(q.queue) do
+            if a.Type == "ISOpenMechanicsUIAction" and a.vehicle == vehicle then
+                -- the running one: stopping it resets the queue anyway (ISBaseTimedAction.lua:63-64)
+                if i == 1 then ISTimedActionQueue.clear(chr) else a:forceCancel(); q:removeFromQueue(a) end
+                return
+            end
+        end
+    end
+    function L.wrapHoodUse()
+        if L.hoodUse then return end
+        local use = Vehicles.Use.EngineDoor
+        L.hoodUse = use
+        Vehicles.Use.EngineDoor = function(vehicle, part, chr)
+            local door = part:getDoor()
+            if door and door:isOpen() and part:getInventoryItem() and T.isTesla(vehicle) then
+                local ui = getPlayerMechanicsUI(chr:getPlayerNum())
+                local shown = ui ~= nil and ui:isReallyVisible()
+                if not (shown and ui.usedHood == part) then
+                    -- a window not from this hood: another car's (it closes itself only 6 tiles from that car), an
+                    -- admin's or the debug cheat's (ISVehicleMenu.lua:968-971), or one opened while no hood was fitted
+                    if shown then ui:close() end
+                    stopWindow(chr, vehicle)
+                    ISTimedActionQueue.add(ISCloseVehicleDoor:new(chr, vehicle, part))
+                    return
+                end
+            end
+            return use(vehicle, part, chr)
+        end
+    end
+    Events.OnGameStart.Add(L.wrapHoodUse)
 end
 
 if not isClient() then
