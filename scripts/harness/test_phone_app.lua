@@ -269,6 +269,19 @@ d = act(owner, "trunk", true)
 check(d.why == nil and v.parts.TrunkDoor.d.open and d.on == true and (v.doorTx or 0) == tx, "liftgate already open, app asks open: nothing moves")
 d = act(owner, "trunk", false)
 check(d.why == nil and not v.parts.TrunkDoor.d.open and d.on == false, "liftgate: app asks closed -> closed")
+-- the Cybertruck's tonneau cover: the same swing as the liftgate (unlock, open, close locks again on a locked car);
+-- a car without one says NO_DOOR and moves nothing
+d = act(owner, "tonneau", true)
+check(d.why == "NO_DOOR", "tonneau on a car without one -> NO_DOOR")
+v.parts.TrunkTonneau = door("TrunkTonneau")
+v.parts.TrunkTonneau.d.locked = true
+d = act(owner, "tonneau", true)
+check(d.why == nil and d.on == true and v.parts.TrunkTonneau.d.open and not v.parts.TrunkTonneau.d.locked
+    and last("partAnim") and last("partAnim").part == "TrunkTonneau", "tonneau: was locked -> unlocked, opened, partAnim")
+check(last("appState") and last("appState").tonneau == true, "tonneau: the record says open")
+d = act(owner, "tonneau", false)
+check(d.why == nil and not v.parts.TrunkTonneau.d.open and v.parts.TrunkTonneau.d.locked, "tonneau closed on a locked car: locked again")
+v.parts.TrunkTonneau = nil
 
 -- charging: no cable -> NOT_PLUGGED; with a cable the call goes to Charge.setStopped
 d = act(owner, "charge", false)

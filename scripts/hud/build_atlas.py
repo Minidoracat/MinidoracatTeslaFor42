@@ -8,7 +8,7 @@
 
 Outputs (overwritten):
   media/textures/MinidoracatTesla/HUD/atlas1x.png, atlas2x.png
-  media/textures/MinidoracatTesla/HUD/radial_camp.png, radial_camp_off.png, radial_charge.png
+  media/textures/MinidoracatTesla/HUD/radial_camp.png, radial_camp_off.png, radial_charge.png, radial_lightbar.png
   media/textures/MinidoracatTesla/HUD/app_arrow1x.png, app_arrow2x.png (phone app location page arrow, drawn rotated)
   media/textures/MinidoracatTesla/HUD/app_ring.png (phone app summon range: radar and pick map, tinted when drawn)
   media/textures/MinidoracatTesla/HUD/map_car.png, map_round.png (MiniMap car marker and its disc)
@@ -248,6 +248,18 @@ def ic_frunk(c):  # front trunk: the lid's trapezoid over the body
 def ic_trunk(c):  # liftgate raised
     c.stroke([("M", 2, 12), ("V", 8), ("L", 5, 5), ("H", 11), ("L", 14, 8), ("V", 12), ("Z",)], w=1.3)
     c.stroke([("M", 11, 5), ("L", 13, 2)], w=1.3)
+
+
+def ic_tonneau(c):  # Cybertruck side view: the bed's open top, the cover rolled up at its front wall
+    c.stroke([("M", 1.5, 12), ("V", 8), ("H", 8), ("L", 10, 4), ("L", 14.5, 8), ("V", 12), ("Z",)], w=1.3)
+    c.circle(8.2, 6.2, 1.3, fill="#FFFFFF")
+    c.stroke([("M", 2.5, 6), ("H", 6)], w=1.3)
+
+
+def ic_lightbar(c):  # roof light bar: the bar and its beams ahead
+    c.rrect(2, 2.5, 12, 3, 1.2, outline="#FFFFFF", ow=1.3)
+    for x0, x1 in ((4, 2.5), (8, 8), (12, 13.5)):
+        c.stroke([("M", x0, 7.5), ("L", x1, 13.5)], w=1.3)
 
 
 def ic_lockfill(c):  # locked: solid body
@@ -507,7 +519,7 @@ def build_sprites(k):
         "ring": ic_ring, "dot": ic_dot, "plug": ic_plug, "power": ic_power,
         "horn": ic_horn, "frunk": ic_frunk, "trunk": ic_trunk, "lockfill": ic_lockfill, "carfront": ic_carfront,
         "nav": ic_nav, "shield": ic_shield, "chev": ic_chev, "chevdown": ic_chevdown, "back": ic_back, "close": ic_close,
-        "wheel": ic_wheel, "pin": ic_pin,
+        "wheel": ic_wheel, "pin": ic_pin, "tonneau": ic_tonneau,
     }
     for key, fn in icons16.items():
         c = Canvas(18 * k, 18 * k, 16)
@@ -562,7 +574,7 @@ def pack(sprites, width, pad):
 def radial_icons():
     out = {}
     for key, fn, color in (("radial_camp", ic_tent, "#F3F5F7"), ("radial_camp_off", ic_tent, "#6B737C"),
-                           ("radial_charge", ic_plug, "#F3F5F7")):
+                           ("radial_charge", ic_plug, "#F3F5F7"), ("radial_lightbar", ic_lightbar, "#F3F5F7")):
         c = Canvas(48, 48, 16)
         # draw at 1.5px scale-adjusted stroke so it reads at 48px like vanilla radial icons
         fn(c)

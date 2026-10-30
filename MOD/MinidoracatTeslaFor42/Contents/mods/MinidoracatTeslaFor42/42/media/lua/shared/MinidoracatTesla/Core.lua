@@ -34,6 +34,8 @@ T.DRIVE_SCALE = 10
 -- plug: the charge cable's plug segment (client/MinidoracatTesla/Cable.lua): render-only item and its handle height
 -- above the floor in units (1 level = 2.44949), measured at the car's chargeport (E2E integration-mp `port`);
 -- scripts/blender/props/props_blender.py PLUGS builds one mesh per entry (build.py --check compares the two).
+-- Cybertruck only: tonneau (the app's tonneau cover button), armorGlass (smashes a window takes, Truck.lua),
+-- powershare and bedOutlet (Powershare, the bed outlets).
 T.Specs = {
     ["Base.MinidoracatTesla_ModelY"] = {
         model = "ModelY",
@@ -93,6 +95,8 @@ T.Specs = {
         regenEff = 0.6,
         powershare = true, -- Powershare (owner's manual p.204)
         bedOutlet = { area = "TruckBed", tiles = 2 }, -- bed outlets: a Mobile Connector this near the bed (p.200)
+        tonneau = true, -- powered tonneau cover (owner's manual p.60)
+        armorGlass = 3, -- Armor Glass: three smashes a window
         -- Cyberbeast is built in stainless only ($PDD, US design studio 2026-07-10); the other 11 are Tesla's Color Paint
         -- Film wraps (shop 2024-06). weight: T.pickColor draws by it, so stainless takes half the spawns. Same order
         -- and append-only rules as above; h/s/v by convert.py build (placeholders until TeslaCybertruck's build).
@@ -170,10 +174,19 @@ T.CarPartNames = {
         IGUI_MinidoracatTesla_Tip_AppTrunk = "IGUI_MinidoracatTesla_Tip_AppTrunkLid",
         IGUI_MinidoracatTesla_App_ControlsSub = "IGUI_MinidoracatTesla_App_ControlsSubLid",
     },
-    -- Cybertruck owner's manual: Tailgate, Cargo Bed (the tonneau cover is its own part, IGUI_VehiclePartTrunkTonneau)
+    -- Cybertruck owner's manual: Tailgate, Cargo Bed (the tonneau cover is its own part, IGUI_VehiclePartTrunkTonneau);
+    -- the app's lock texts name the tonneau too (it locks with the car, Liftgate.lua L.LIDS)
     ["Base.MinidoracatTesla_Cybertruck"] = {
         IGUI_VehiclePartTrunkDoor = "IGUI_MinidoracatTesla_Part_Tailgate",
         IGUI_VehiclePartTruckBed = "IGUI_MinidoracatTesla_Part_CargoBed",
+        IGUI_MinidoracatTesla_App_Trunk = "IGUI_MinidoracatTesla_App_Tailgate",
+        IGUI_MinidoracatTesla_App_Done_trunk = "IGUI_MinidoracatTesla_App_Done_tailgate",
+        IGUI_MinidoracatTesla_App_Done_trunk_on = "IGUI_MinidoracatTesla_App_Done_tailgate_on",
+        IGUI_MinidoracatTesla_App_Done_trunk_off = "IGUI_MinidoracatTesla_App_Done_tailgate_off",
+        IGUI_MinidoracatTesla_Tip_AppLock = "IGUI_MinidoracatTesla_Tip_AppLockCybertruck",
+        IGUI_MinidoracatTesla_Tip_AppUnlock = "IGUI_MinidoracatTesla_Tip_AppUnlockCybertruck",
+        IGUI_MinidoracatTesla_Tip_AppTrunk = "IGUI_MinidoracatTesla_Tip_AppTailgate",
+        IGUI_MinidoracatTesla_App_ControlsSub = "IGUI_MinidoracatTesla_App_ControlsSubCybertruck",
     },
 }
 -- the Tesla key for a key on this car (script full name), or nil
