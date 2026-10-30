@@ -140,7 +140,8 @@ local TITLE = {
     touch = { door = "IGUI_MinidoracatTesla_Sentry_TouchDoor", unlock = "IGUI_MinidoracatTesla_Sentry_TouchUnlock" },
     ["break"] = { window = "IGUI_MinidoracatTesla_Sentry_BreakWindow", windowHit = "IGUI_MinidoracatTesla_Sentry_BreakWindowHit",
         hotwire = "IGUI_MinidoracatTesla_Sentry_BreakHotwire", part = "IGUI_MinidoracatTesla_Sentry_BreakPart" },
-    lowBattery = { sentry = "IGUI_MinidoracatTesla_Sentry_LowBattery", camp = "IGUI_MinidoracatTesla_Camp_LowBattery" },
+    lowBattery = { sentry = "IGUI_MinidoracatTesla_Sentry_LowBattery", camp = "IGUI_MinidoracatTesla_Camp_LowBattery",
+        powershare = "IGUI_MinidoracatTesla_Powershare_LowBattery" }, -- powershare: %1 = its discharge limit
 }
 
 -- Build a card from a server event record (Inbox.entry): { kind, what, part, by, car, hh, mm, pct }.
@@ -166,7 +167,8 @@ function UI.card(e)
         title = getText(key, tostring(e.pct or 20)), -- camp lowBattery: %1 = the sandbox limit (records before it: 20)
         detail = #bits > 0 and table.concat(bits, getText("IGUI_MinidoracatTesla_Sep")) or nil,
         time = tonumber(e.hh) and string.format("%02d:%02d", e.hh, tonumber(e.mm) or 0) or nil,
-        icon = icon(e.what == "camp" and "toast_camp" or (e.kind == "touch" and "toast_sentry_touch" or "toast_sentry_break")),
+        icon = icon(e.what == "camp" and "toast_camp"
+            or ((e.kind == "touch" or e.what == "powershare") and "toast_sentry_touch" or "toast_sentry_break")),
     }
     c.titleH = tm:getFontHeight(FONT_T)
     c.h = PAD * 2 + c.titleH + (c.detail and tm:getFontHeight(FONT_D) or 0)

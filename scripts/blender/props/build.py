@@ -12,7 +12,8 @@ usage (repo root):
 Contract (knowledge base references/charger-art.md; Lua: shared/MinidoracatTesla/Chargers.lua cableExit,
 client/MinidoracatTesla/Cable.lua):
   tileset minidoracat_tesla_01, tiledef MinidoracatTesla_tiles 7431, pack MinidoracatTesla. Sprite names are published:
-  index 0..3 = Wall Connector, 8..11 = Mobile Connector (Facing S E N W each); 16..19 reserved (Supercharger).
+  index 0..3 = Wall Connector, 8..11 = Mobile Connector (Facing S E N W each); 12 = Powershare's hidden generator (no
+  image, only GeneratorSound); 16..19 reserved (Supercharger).
   Wall Connector: Moveables WallObject, no wall flags (ISMoveableSpriteProps.lua:132-147,1782-1855). Mobile Connector:
   default MoveType Object (on the floor, ISMoveableSpriteProps.lua:143,1747-1772), no tools. The engine links the 4
   faces of each by GroupName + CustomName (IsoWorld.java:1064-1160).
@@ -83,14 +84,35 @@ def mc_props(facing: str) -> dict[str, str]:
 DEVICES = {0: ("wc", WC_MODEL, wc_props), 8: ("mc", MC_MODEL, mc_props)}   # first sprite index -> cell, model, props
 SPRITES = [(base + k, cell, model, props(f), f) for base, (cell, model, props) in DEVICES.items()
            for k, f in enumerate(FACINGS)]                                  # (index, temp cell, model, tile props, facing)
+# Cybertruck Powershare's generator (Lua Chargers.lua T.PS_SPRITE; server Powershare.lua): an IsoGenerator on this tile.
+# No image in the pack, so nothing is drawn or picked (IsoSprite.hasNoTextures, IsoSprite.java:850,1383-1385); the only
+# property names its sounds (IsoGenerator.getSoundPrefix, IsoGenerator.java:744-751; scripts/sounds
+# MinidoracatTesla_Powershare*). No solid / BlocksPlacement: it never blocks a square.
+PS_INDEX = 12
+PS_PROPS = {"GeneratorSound": "MinidoracatTesla_Powershare"}
 
 
 def tile_list() -> list[dict[str, str]]:
     """One props dict per index 0..last; the unused indexes in between are empty tiles, as in vanilla tilesets."""
-    tiles = [{} for _ in range(SPRITES[-1][0] + 1)]
+    tiles = [{} for _ in range(PS_INDEX + 1)]
     for i, _, _, props, _ in SPRITES:
         tiles[i] = props
+    tiles[PS_INDEX] = PS_PROPS
     return tiles
+
+
+def check_powershare() -> None:
+    """tile PS_INDEX = Chargers.lua T.PS_SPRITE = the hidden item's WorldObjectSprite (base:generator tag)."""
+    sprite = f"{TILESET}_{PS_INDEX}"
+    ch = (MEDIA / "lua" / "shared" / "MinidoracatTesla" / "Chargers.lua").read_text(encoding="utf-8")
+    assert f'T.PS_SPRITE = "{sprite}"' in ch, f"Chargers.lua T.PS_SPRITE != {sprite}"
+    items = (MEDIA / "scripts" / "items" / "MinidoracatTesla_items.txt").read_text(encoding="ascii")
+    block = re.search(r"item MinidoracatTesla_Powershare\n\s*\{([^}]*)\}", items)
+    assert block and f"WorldObjectSprite = {sprite}," in block.group(1) and "Tags = base:generator," in block.group(1), \
+        "items.txt MinidoracatTesla_Powershare: base:generator with the Powershare sprite"
+    sounds = (MEDIA / "scripts" / "sounds" / "MinidoracatTesla_sounds.txt").read_text(encoding="ascii")
+    for s in ("Loop", "Starting", "Stopping"):
+        assert f"sound {PS_PROPS['GeneratorSound']}{s}\n" in sounds, f"sound {PS_PROPS['GeneratorSound']}{s}"
 
 
 # atlas rects shared with props_blender.py (PANEL, SW, CSW, MTOP, MSW): 256 px Wall Connector and Mobile Connector,
@@ -366,7 +388,8 @@ def check() -> None:
         icon = Image.open(MEDIA / "textures" / f"Item_{item}.png")
         assert icon.size == (32, 32) and icon.mode == "RGBA", (item, icon.size, icon.mode)
     check_geometry()
-    print("check OK: tiles, pack, mod.info, spriteModels, model script, assets, icons, geometry constants")
+    check_powershare()
+    print("check OK: tiles, pack, mod.info, spriteModels, model script, assets, icons, geometry constants, Powershare tile")
 
 
 if __name__ == "__main__":

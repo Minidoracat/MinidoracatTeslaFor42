@@ -2,7 +2,7 @@
 --   * appStatus { key }: every 2 s while a holder has the app open. The car as it is when the server has it loaded and
 --     the phone reaches it (grid up: any distance; grid down: Bluetooth, Keys.btRange()); else its last record.
 --   * appAction { key, act, on }: lock, unlock, flash, horn, sentry, charge, frunk, trunk, tonneau, summon (+ mode, x,
---     y, dir).
+--     y, dir), powershare, outlet, psFloor (+ pct).
 --     Holder, reach, the VehicleManager right for doing the same thing in person, and the action's own rules are
 --     checked every time, but a summoner stopping their own summon skips reach and the VehicleManager.
 --   * appAlerts { key }: the car's last sentry / camp alerts.
@@ -15,6 +15,7 @@ require "MinidoracatTesla/Keys"
 require "MinidoracatTesla/ParkModes"
 require "MinidoracatTesla/Liftgate"
 require "MinidoracatTesla/Store"
+require "MinidoracatTesla/Chargers"
 
 local T = MinidoracatTesla
 local K, S = T.Keys, T.Sentry
@@ -93,6 +94,26 @@ function R.remember(v, create)
         r.kw = math.floor((chg.kw or 0) * 10 + 0.5) / 10
         r.target = chg.target or 90
         if r.chg == "charging" and (chg.kw or 0) > 0 then r.mins = math.floor(left * 60 + 0.5) end
+    end
+    -- Cybertruck: Powershare (T.psState, its limit, the house's load and hours left) and the bed outlet
+    local s = T.spec(v)
+    local ps = md.ps
+    r.ps = s and s.powershare and T.psState(part) or nil
+    r.psFloor = (s and (s.powershare or s.bedOutlet)) and T.psFloor(part) or nil
+    r.psKw, r.psH = nil, nil
+    if r.ps == "backup" and ps.kw then
+        r.psKw = math.floor(ps.kw * 100 + 0.5) / 100
+        local avail = T.Powershare and T.Powershare.avail(v, part) or 0
+        r.psH = ps.kw > 0 and math.floor(avail / ps.kw + 0.5) or nil
+    end
+    r.psWall = r.ps ~= nil and chg ~= nil and chg.kind == "WallConnector" or nil -- armed on a Wall Connector or not
+    -- the outlet switched on, and why it gives nothing now (Chargers.lua T.outletPowers): a cable in, the tailgate up,
+    -- the pack at its limit
+    r.outlet = s and s.bedOutlet and md.outlet == true or nil
+    r.outletWhy = nil
+    if r.outlet then
+        r.outletWhy = (chg and "Plugged") or (not T.lidOpen(v, "TrunkDoor") and "Gate")
+            or (T.Battery.pct(part) <= T.psFloor(part) and "Floor") or nil
     end
     r.h = T.hours()
     return r
@@ -173,6 +194,7 @@ local VM_CODES = {
     sentry = { "PASSENGER" }, trunk = { "CARGO" }, tonneau = { "CARGO" }, frunk = { "REPAIR", "SALVAGE" },
     charge = { "FUEL" },
     summon = { "DRIVE" }, -- the car moves: the right to drive it (VehicleManager also wraps startSummon itself)
+    powershare = { "FUEL" }, outlet = { "FUEL" }, psFloor = { "FUEL" }, -- the charge cable's right (T.mayUseCable)
 }
 
 -- ------------------------------------------------------------------ horn: vanilla, one second
@@ -349,6 +371,10 @@ local ACT = {
         local ok, why = f(v, not on)
         if not ok then return why end
     end,
+    -- Cybertruck (Powershare.lua PS.set: the Specs, the cable rule, then the switch): nil = done, already so too
+    powershare = function(player, v, on) return T.Powershare.set(player, v, "ps", on) end,
+    outlet = function(player, v, on) return T.Powershare.set(player, v, "outlet", on) end,
+    psFloor = function(player, v, _, args) return T.Powershare.set(player, v, "floor", nil, args.pct) end,
     frunk = swing("EngineDoor"),
     trunk = swing("TrunkDoor"),
     tonneau = swing("TrunkTonneau"), -- Cybertruck: the app opens the tonneau cover (owner's manual p.60)
@@ -437,10 +463,12 @@ T.ServerCommands.appAction = function(player, args)
     R.stats.actions = R.stats.actions + 1
     local mvm = MinidoracatVehicleManager -- AGENTS.md: touch after changing the car (ParkedGuard.lua:258-261)
     if mvm and mvm.Parked and mvm.Parked.touch then mvm.Parked.touch(v) end
-    local onOff = (act == "sentry" or act == "charge" or act == "summon") and (args.on == true and " on" or " off") or ""
+    local switch = act == "sentry" or act == "charge" or act == "powershare" or act == "outlet"
+    local onOff = (switch or act == "summon") and (args.on == true and " on" or " off") or ""
+    if act == "psFloor" then onOff = " " .. tostring(args.pct) end
     if act == "summon" and args.on == true then onOff = onOff .. " " .. tostring(args.mode or "come") end
     T.log("app " .. act .. onOff .. " vid=" .. v:getId() .. " by " .. player:getUsername())
-    if result == nil and (act == "sentry" or act == "charge") then result = args.on == true end
+    if result == nil and switch then result = args.on == true end
     done(nil, result)
     T.send(player, "appState", R.state(player, key)) -- creates the record over the live link
 end

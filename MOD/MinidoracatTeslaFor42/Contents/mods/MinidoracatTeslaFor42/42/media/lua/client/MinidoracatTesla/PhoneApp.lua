@@ -9,8 +9,9 @@
 -- pressing one says how to add the car). Only the selected car is polled; the list's grey lines come from App.seen,
 -- refreshed when the list opens (one appStatusAll per App.BATCH cars, one a LIST_MS).
 -- Pages: "home" (name, battery, the car in its paint, four quick icons, a list into the sub pages), "controls" (flash,
--- horn, frunk, liftgate), "location" (arrow, distance, "Show on map", "Navigate to car" with the MiniMap's
--- setNavTarget), "summon", "pick", "security" (Sentry Mode, alerts), "charging", "cars".
+-- horn, frunk, liftgate; a Cybertruck's Powershare cell), "location" (arrow, distance, "Show on map", "Navigate to car"
+-- with the MiniMap's setNavTarget), "summon", "pick", "security" (Sentry Mode, alerts), "charging", "cars",
+-- "powershare" (Cybertruck, plan 4: Powershare, its discharge limit 5-90 %, the bed outlet).
 -- "summon" (only with AutoDrive's summon API, App.summonApi; design temp/plan-summon-1027): AutoDrive drives the empty
 -- car to the player ("come"), to a point picked on the "pick" page's map ("target"), or straight ahead / back
 -- ("dumb"). One tap starts, another stops; the server (Remote.lua ACT.summon) and AutoDrive check everything again.
@@ -27,6 +28,7 @@ require "ISUI/Maps/ISWorldMap"
 require "ISUI/Maps/ISMapDefinitions"
 require "MinidoracatTesla/Core"
 require "MinidoracatTesla/Keys"
+require "MinidoracatTesla/Chargers"
 require "MinidoracatTesla/HUD"
 
 local T = MinidoracatTesla
@@ -70,12 +72,15 @@ local BTN = {
     trunk = { "controls", "trunk" }, tonneau = { "controls", "tonneau" }, map = { "location" }, navcar = { "location" },
     sentry = { "security", "sentry" },
     charge = { "charging", "charge" },
+    -- Cybertruck (plan 4): the Powershare cell opens its page; Powershare, its discharge limit and the bed outlet
+    powershare = { "controls" }, psToggle = { "powershare", "powershare" }, floorDown = { "powershare", "psFloor" },
+    floorUp = { "powershare", "psFloor" }, outlet = { "powershare", "outlet" },
     come = { "summon" }, pick = { "summon" }, fwd = { "summon" }, rev = { "summon" }, again = { "summon" },
     finish = { "summon" }, cancel = { "pick" }, go = { "pick" },
 }
 local BTN_ORDER = { "close", "cars", "lock", "qcharge", "qfrunk", "qtrunk", "controls", "location", "summon", "security",
     "charging", "back", "flash", "horn", "frunk", "trunk", "tonneau", "map", "navcar", "sentry", "charge", "come", "pick",
-    "fwd", "rev", "again", "finish", "cancel", "go" }
+    "fwd", "rev", "again", "finish", "cancel", "go", "powershare", "psToggle", "floorDown", "floorUp", "outlet" }
 -- the joypad's rows per page, top to bottom (buttons not shown are skipped); "cars" is built with its rows
 local NAV = {
     home = { { "cars", "close" }, { "lock", "qcharge", "qfrunk", "qtrunk" }, { "controls" }, { "location" }, { "summon" },
@@ -87,21 +92,24 @@ local NAV = {
     cars = { { "back" } },
     summon = { { "back" }, { "come" }, { "pick" }, { "fwd", "rev" }, { "again" }, { "finish" } },
     pick = { { "back" }, { "spot" }, { "cancel", "go" } }, -- spot: the map (D-pad moves the pin)
+    powershare = { { "back" }, { "floorDown", "floorUp" }, { "psToggle" }, { "outlet" } },
 }
 -- the server actions: dimmed but pressable for a car this phone is not paired with (they say how to add it)
-local REMOTE = { "lock", "qcharge", "qfrunk", "qtrunk", "flash", "horn", "frunk", "trunk", "tonneau", "sentry", "charge" }
+local REMOTE = { "lock", "qcharge", "qfrunk", "qtrunk", "flash", "horn", "frunk", "trunk", "tonneau", "sentry", "charge",
+    "psToggle", "floorDown", "floorUp", "outlet" }
 local QUICK = { "lock", "qcharge", "qfrunk", "qtrunk" }
 local LIST = { "controls", "location", "summon", "security", "charging" }
 local LIST_ICON = { controls = "i_carfront", location = "i_nav", summon = "i_wheel", security = "i_shield", charging = "i_bolt" }
 local TITLE = { controls = "Controls", location = "Location", security = "Security", charging = "ChargingTitle", cars = "Cars",
-    summon = "Summon", pick = "SummonPick" }
+    summon = "Summon", pick = "SummonPick", powershare = "Powershare" }
 -- the summon pages' buttons (drawn as the mock's buttons: blue main, white stop, 1 px frame) and the summon each starts
 local SUM_BTNS = { "come", "pick", "fwd", "rev", "again", "finish", "cancel", "go" }
 local SUM_ID = { come = "come", target = "pick" } -- a running summon's button (dumb: fwd / rev by dir)
-local GRID = { "flash", "horn", "frunk", "trunk", "tonneau" }
+local GRID = { "flash", "horn", "frunk", "trunk", "tonneau", "powershare" }
 -- a control cell only for cars whose Specs entry (Core.lua T.Specs) has this field; the page shows self.cells (read)
-local GRID_NEED = { tonneau = "tonneau" }
-local GRID_ICON = { flash = "i_headlight", horn = "i_horn", frunk = "i_frunk", trunk = "i_trunk", tonneau = "i_tonneau" }
+local GRID_NEED = { tonneau = "tonneau", powershare = "powershare" }
+local GRID_ICON = { flash = "i_headlight", horn = "i_horn", frunk = "i_frunk", trunk = "i_trunk", tonneau = "i_tonneau",
+    powershare = "i_powershare" }
 local LIDS = { "frunk", "trunk", "tonneau" } -- the tonneau has no quick button on the home page
 local HEAD = { "close", "back" } -- header buttons (never scroll)
 local MAIN = { "map", "charge" } -- the blue main actions
@@ -495,7 +503,14 @@ function App:onButton(b)
     if act == "lock" then act = st.locked and "unlock" or "lock"
     elseif act == "sentry" then on = not st.sentry
     elseif act == "frunk" or act == "trunk" or act == "tonneau" then on = not st[act]
-    elseif act == "charge" then on = st.chg == "stopped" end
+    elseif act == "charge" then on = st.chg == "stopped"
+    elseif act == "powershare" then on = st.ps == "off"
+    elseif act == "outlet" then on = st.outlet ~= true
+    elseif act == "psFloor" then -- a 5 % step; the server rounds and clamps it again (Powershare.lua PS.set)
+        local f = (st.psFloor or T.PS_FLOOR) + (id == "floorUp" and 5 or -5)
+        App.stats.sent = App.stats.sent + 1
+        return self:send("appAction", { act = act, pct = math.max(T.PS_FLOOR_MIN, math.min(T.PS_FLOOR_MAX, f)) })
+    end
     App.stats.sent = App.stats.sent + 1
     self:send("appAction", { act = act, on = on })
 end
@@ -670,8 +685,11 @@ function App.summonText(code)
     local s = type(f) == "function" and f(code) or nil
     return type(s) == "string" and s or tostring(code)
 end
--- B / back: the pick page goes back to the summon page, every other page home
-function App:upPage() return self.page == "pick" and "summon" or "home" end
+-- B / back: the pick page goes back to the summon page, Powershare to the controls, every other page home
+function App:upPage()
+    if self.page == "pick" then return "summon" end
+    return self.page == "powershare" and "controls" or "home"
+end
 
 -- this car in the player's game (the server sends its vehicle id over a live link), or nil while not loaded here
 function App:summonCar()
@@ -1022,6 +1040,31 @@ function App:read()
     b.horn.sub = txt("HornSub")
     local sentry = rec and st.sentry == true
     enable(b.sentry, live, sentry, nil, TIP .. (sentry and "SentryOff" or "SentryOn"))
+    -- Powershare (Cybertruck, plan 4's four states) and the bed outlet, from the record (Remote.lua R.remember)
+    local ps = rec and st.ps or "off"
+    local floor = rec and st.psFloor or T.PS_FLOOR
+    self.ps, self.psFloor, self.psOn = ps, floor, ps ~= "off"
+    if ps == "backup" then
+        local h = st.psH
+        local left = h and (h >= 48 and txt("PsDays", tostring(math.floor(h / 24 + 0.5))) or txt("PsHours", tostring(h)))
+        self.sPsState = txt("PsBackup", tostring(st.psKw or 0))
+        self.sPsSub = left and txt("PsBackupSub", left) or txt("PsBackupSub", "--")
+    else
+        self.sPsState = txt("Ps_" .. ps)
+        self.sPsSub = ps == "armed" and txt(st.psWall and "PsArmedSub" or "PsArmedNoWall")
+            or ps == "stopped" and txt("PsStoppedSub", tostring(floor)) or txt("PsOffSub")
+    end
+    self.sPsFloor, self.sPsPct = txt("PsFloor", tostring(floor)), txt("PsCharge", tostring(rec and st.pct or 0))
+    enable(b.powershare, rec, ps == "backup", GRID_ICON.powershare, TIP .. "Powershare")
+    b.powershare.sub = txt("PsCell_" .. ps)
+    enable(b.psToggle, live, self.psOn, nil, TIP .. (self.psOn and "PsOff" or "PsOn"))
+    self.sPsBtn = txt(self.psOn and "PsTurnOff" or "PsTurnOn")
+    enable(b.floorDown, live and floor > T.PS_FLOOR_MIN, false, nil, TIP .. "PsFloorDown")
+    enable(b.floorUp, live and floor < T.PS_FLOOR_MAX, false, nil, TIP .. "PsFloorUp")
+    local outletOn = rec and st.outlet == true
+    self.hasOutlet = spec ~= nil and spec.bedOutlet ~= nil
+    enable(b.outlet, live, outletOn, nil, TIP .. (outletOn and "OutletOff" or "OutletOn"))
+    self.sOutletSub = outletOn and txt(st.outletWhy and ("OutletWhy_" .. st.outletWhy) or "OutletLive") or txt("OutletOffSub")
     enable(b.map, hasPos, false, nil, TIP .. "Map")
     enable(b.navcar, hasPos, false, nil, TIP .. "NavCar")
     enable(b.close, true, false, "i_close", TIP .. "Close")
@@ -1284,6 +1327,35 @@ function App:layout()
             b.sTitle = fitText(self.sChargeBtn, tw - u(16))
             y = y + u(40) + u(14)
         end
+    elseif page == "powershare" then
+        -- plan 4's mock: the state (large), why, the charge bar with the discharge limit's mark, the two numbers; then
+        -- the limit's -/+ (5 %), the switch, and the bed outlet's row (a toggle, like Sentry Mode)
+        self.yPsState, self.sPsStateFit = y, fitText(self.sPsState, tw, UIFont.Large)
+        y = y + FHL + u(4)
+        self.yPsSub = y
+        self.sPsSub1, self.sPsSub2 = wrap2(self.sPsSub, tw)
+        y = y + FH * (self.sPsSub2 and 2 or 1) + u(14)
+        self.yPsBar = y
+        y = y + u(8) + u(8)
+        self.yPsLbl = y
+        self.sPsFloorFit, self.sPsPctFit = fitText(self.sPsFloor, math.floor(tw / 2)), fitText(self.sPsPct, math.floor(tw / 2))
+        y = y + FH + u(12)
+        local bw, bh = u(48), u(32)
+        place("floorDown", pad, y, bw, bh).sTitle = "-"
+        place("floorUp", w - pad - bw, y, bw, bh).sTitle = "+"
+        self.yPsAdj, self.sPsAdj = y + math.floor((bh - FH) / 2), fitText(txt("PsFloorAdjust"), tw - 2 * bw - u(16))
+        y = y + bh + u(14)
+        local b = place("psToggle", pad, y, tw, u(40))
+        b.sTitle = fitText(self.sPsBtn, tw - u(16))
+        y = y + u(40) + u(16)
+        if self.hasOutlet then
+            local rh = math.max(FHM + u(2) + FH, u(36)) + u(20)
+            local ob = place("outlet", pad / 2, y, w - pad, rh)
+            local rw = tw - u(52)
+            ob.sTitle = fitText(txt("Outlet"), rw, UIFont.Medium)
+            ob.sSub = fitText(self.sOutletSub, rw)
+            y = y + rh + u(10)
+        end
     elseif page == "summon" or page == "pick" then
         -- the mock's buttons: style "main" (blue), "stop" (white), "frame" (1 px line); lit = usable
         local bh, gap = u(40), u(8)
@@ -1449,6 +1521,17 @@ local function batteryBar(self, x, y)
     HUD.rrect(self, x, by, bw, bh, 2 * S, C.weak, 1)
     HUD.rrect(self, x, by, math.max(2 * S, bw * self.pct / 100), bh, 2 * S, self.pct < 20 and C.warn or C.text2, 1)
 end
+-- a row's on / off switch at its right end (Sentry Mode, the bed outlet)
+local function switchKnob(self, b, o)
+    local S, pad = self.S, self.pad
+    local tw, th = math.floor(40 * S), math.floor(22 * S)
+    local tx, ty = self.width - pad - tw, b.cy - o + math.floor((b.ch - th) / 2)
+    local a = b.lit and 1 or 0.4
+    HUD.rrect(self, tx, ty, tw, th, th / 2, b.on and C.blue or C.weak, a)
+    local k = th - math.floor(4 * S)
+    HUD.rrect(self, b.on and (tx + tw - k - 2 * S) or (tx + 2 * S), ty + 2 * S, k, k, k / 2, b.on and C.white or C.text2, a)
+end
+local PS_ADJ = { "floorDown", "floorUp" } -- the Powershare page's discharge limit -/+
 
 function App:prerender()
     if not self.S then return end
@@ -1509,15 +1592,23 @@ function App:prerender()
             icon(self, b.icon, b.cx + 14 * S + 11 * S, by + 14 * S + 11 * S, 22, b.lit and C.text or C.weak, 1)
         end
     elseif page == "security" then
-        local b = self.b.sentry
-        local tw, th = math.floor(40 * S), math.floor(22 * S)
-        local tx, ty = w - pad - tw, b.cy - o + math.floor((b.ch - th) / 2)
-        local a = b.lit and 1 or 0.4
-        HUD.rrect(self, tx, ty, tw, th, th / 2, b.on and C.blue or C.weak, a)
-        local k = th - math.floor(4 * S)
-        HUD.rrect(self, b.on and (tx + tw - k - 2 * S) or (tx + 2 * S), ty + 2 * S, k, k, k / 2, b.on and C.white or C.text2, a)
+        switchKnob(self, self.b.sentry, o)
     elseif page == "charging" then
         if self.rec then batteryBar(self, pad, self.yBat - o) end
+    elseif page == "powershare" then
+        local by, bh, tw = self.yPsBar - o, math.max(3, math.floor(8 * S)), w - 2 * pad
+        HUD.rrect(self, pad, by, tw, bh, bh / 2, C.weak, 1)
+        HUD.rrect(self, pad, by, math.max(bh, tw * self.pct / 100), bh, bh / 2, self.ps == "backup" and C.ok or C.text2, 1)
+        local mw = math.max(2, math.floor(2 * S)) -- the discharge limit's mark
+        HUD.rect(self, pad + math.floor(tw * self.psFloor / 100) - mw / 2, by - math.floor(3 * S), mw, bh + math.floor(6 * S), C.warn, 1)
+        for _, id in ipairs(PS_ADJ) do
+            local fb = self.b[id]
+            if fb.shown then frame(self, fb.cx, fb.cy - o, fb.cw, fb.ch, 6 * S, 1, fb.lit and C.text2 or C.line, 1) end
+        end
+        local tb = self.b.psToggle -- off: the blue main action (mock "開啟"); on: a frame (mock "gr")
+        if self.psOn then frame(self, tb.cx, tb.cy - o, tb.cw, tb.ch, 6 * S, 1, tb.lit and C.text2 or C.line, 1)
+        else HUD.rrect(self, tb.cx, tb.cy - o, tb.cw, tb.ch, 6 * S, C.blue, tb.lit and 1 or 0.4) end
+        if self.b.outlet.shown then switchKnob(self, self.b.outlet, o) end
     elseif page == "location" then
         local b = self.b.navcar -- the second action: a frame, not blue
         if b.shown then frame(self, b.cx, b.cy - o, b.cw, b.ch, 6 * S, 1, b.lit and C.text2 or C.line, 1) end
@@ -1643,6 +1734,32 @@ function App:render()
             end
         else
             jo:DrawText(Sm, self.sAlertsMsg, pad, self.yAlertsMsg - o, c2[1], c2[2], c2[3], 1)
+        end
+    elseif page == "powershare" then
+        local ps = self.ps
+        local tc = (ps == "armed" or ps == "backup") and C.ok or (ps == "stopped" and C.warn or c)
+        jo:DrawText(UIFont.Large, self.sPsStateFit, pad, self.yPsState - o, tc[1], tc[2], tc[3], 1)
+        jo:DrawText(Sm, self.sPsSub1, pad, self.yPsSub - o, c2[1], c2[2], c2[3], 1)
+        if self.sPsSub2 then jo:DrawText(Sm, self.sPsSub2, pad, self.yPsSub + self.FH - o, c2[1], c2[2], c2[3], 1) end
+        jo:DrawText(Sm, self.sPsFloorFit, pad, self.yPsLbl - o, c2[1], c2[2], c2[3], 1)
+        self:drawTextRight(self.sPsPctFit, w - pad, self.yPsLbl - o, c2[1], c2[2], c2[3], 1, Sm)
+        self:drawTextCentre(self.sPsAdj, w / 2, self.yPsAdj - o, c2[1], c2[2], c2[3], 1, Sm)
+        for _, id in ipairs(PS_ADJ) do
+            local fb = self.b[id]
+            if fb.shown then
+                self:drawTextCentre(fb.sTitle, fb.cx + fb.cw / 2, fb.cy - o + (fb.ch - self.FHM) / 2, c[1], c[2], c[3],
+                    fb.lit and 1 or 0.4, UIFont.Medium)
+            end
+        end
+        local tb = self.b.psToggle
+        local bc = self.psOn and c or C.white
+        self:drawTextCentre(tb.sTitle, tb.cx + tb.cw / 2, tb.cy - o + (tb.ch - self.FH) / 2, bc[1], bc[2], bc[3],
+            tb.lit and 1 or 0.5, Sm)
+        local ob = self.b.outlet
+        if ob.shown then
+            local ty = ob.cy - o + math.floor((ob.ch - self.FHM - math.floor(2 * S) - self.FH) / 2)
+            jo:DrawText(UIFont.Medium, ob.sTitle, pad, ty, c[1], c[2], c[3], 1)
+            jo:DrawText(Sm, ob.sSub, pad, ty + self.FHM + math.floor(2 * S), c2[1], c2[2], c2[3], 1)
         end
     elseif page == "charging" then
         jo:DrawText(UIFont.Large, self.sStateFit, pad, self.yState - o, c[1], c[2], c[3], 1)

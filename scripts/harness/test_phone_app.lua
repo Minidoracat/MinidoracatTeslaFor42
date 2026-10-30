@@ -879,12 +879,12 @@ getText = realGT
 check(lidTitle == "LID", "Model 3: the controls page's lid button is titled with the trunk lid key (" .. tostring(lidTitle) .. ")")
 T.ClientCommands.appDone({ key = 9001, act = "trunk", on = false })
 check(a.toast.text == "IGUI_MinidoracatTesla_App_Done_trunkLid_off", "Model 3: 'trunk closed', not 'liftgate closed'")
--- Cybertruck: a tonneau cell after the tailgate (Specs tonneau), the tailgate's words, the lock tips naming the tonneau;
--- the other cars have no tonneau cell
+-- Cybertruck: a tonneau cell after the tailgate (Specs tonneau) and the Powershare cell (Specs powershare), the
+-- tailgate's words, the lock tips naming the tonneau; the other cars have neither cell
 state({ car = "MinidoracatTesla_Cybertruck", skin = 0, tonneau = true })
 a.b.controls:forceClick()
 local cells = table.concat(a.cells, ",")
-check(cells == "flash,horn,frunk,trunk,tonneau" and a.b.tonneau.shown and a.b.tonneau.on
+check(cells == "flash,horn,frunk,trunk,tonneau,powershare" and a.b.tonneau.shown and a.b.tonneau.on
     and a.b.tonneau.icon == "i_tonneau" and a.b.tonneau.tipKey == "IGUI_MinidoracatTesla_Tip_AppTonneau"
     and a.b.trunk.tipKey == "IGUI_MinidoracatTesla_Tip_AppTailgate", "Cybertruck: cells " .. cells .. ", tonneau open and lit")
 check(a.b.lock.tipKey == "IGUI_MinidoracatTesla_Tip_AppUnlockCybertruck"
