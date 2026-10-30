@@ -31,7 +31,7 @@
 [*] [b]卡片与手机钥匙[/b]：带着手机走近就解锁，走远自动上锁
 [*] [b]Tesla App[/b]：远程上锁、找车、看充电，一部手机管多台车
 [*] [b]哨兵与露营模式[/b]：有人碰车会通知你，露营时空调照常运行
-[*] [b]召唤[/b]：装了 AutoDrive 与自动驾驶模块，用 App 叫空车过来
+[*] [b]FSD 画面与召唤[/b]：搭配 AutoDrive 自驾，App 也能叫车过来
 [*] [b]家族 MOD 联动[/b]：绑车权限、小地图车标与导航到车
 [/list]
 📖 [b]完整说明与常见问题：[/b][url=https://steamcommunity.com/sharedfiles/filedetails/?id=3829449828]Minidoracat Tesla Collection 完整說明[/url]（繁体中文）

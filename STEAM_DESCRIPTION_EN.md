@@ -31,7 +31,7 @@ Drive a Tesla Model Y or Model 3 through the apocalypse: run on battery power, c
 [*] [b]Key card and phone key[/b]: unlocks as you walk up with your phone, locks as you walk away
 [*] [b]Tesla app[/b]: lock, find the car and watch it charge from afar; one phone for several cars
 [*] [b]Sentry and Camp Mode[/b]: get told when someone touches the car, keep the climate on while camping
-[*] [b]Summon[/b]: with AutoDrive and its autopilot module, call the empty car to you from the app
+[*] [b]FSD view and Summon[/b]: with AutoDrive, watch the route, cars and zombies while it drives itself, or call the car over from the app
 [*] [b]Vehicle Manager and minimap[/b]: its permissions apply, and the minimap shows your cars
 [/list]
 📖 [b]Full guide and FAQ:[/b] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3829449879]Minidoracat Tesla Collection Mod Guide[/url]
