@@ -9,9 +9,10 @@ require "MinidoracatTesla/Core"
 local T = MinidoracatTesla
 local L = {}
 T.Liftgate = L
--- doors the driver may open or close from the dashboard (the HUD car picture; nothing else is accepted)
+-- doors the driver may open or close from the dashboard (the HUD car picture; nothing else is accepted); the
+-- Cybertruck's tonneau cover too (owner's manual p.60: the touchscreen and the app open it)
 L.PARTS = { DoorFrontLeft = true, DoorFrontRight = true, DoorRearLeft = true, DoorRearRight = true, TrunkDoor = true,
-    EngineDoor = true }
+    EngineDoor = true, TrunkTonneau = true }
 
 -- Returns the installed door part `id` (one of L.PARTS), or nil and an IGUI_MinidoracatTesla_Deny_<reason> suffix.
 function L.check(player, vehicle, id)
@@ -101,12 +102,14 @@ if not isClient() then
         sendNear(v, "partAnim", out, except)
     end
 
-    -- A Tesla locks as a whole: the liftgate and the frunk lid lock and unlock with the car. Vanilla never locks the
+    -- A Tesla locks as a whole: the liftgate, the frunk lid and the Cybertruck's tonneau cover lock and unlock with the
+    -- car ("once the vehicle is locked, the tonneau cover is locked in its current position", Cybertruck owner's manual
+    -- p.32: an open one stays open, ContainerAccess.Vault reads only open or shut). Vanilla never locks the
     -- hood (Vehicles.Create.Default; ISLockDoors only the cabin doors), and an unlocked lid opens for anyone
     -- (ISOpenVehicleDoor.lua:61-64) while the frunk only asks whether the lid is open (Core.lua ContainerAccess.Frunk).
     -- A broken lock is never locked (it could never open again), but a lid jammed locked does unlock with the car (the
     -- liftgate always did, through setTrunkLocked, BaseVehicle.java:9533-9545).
-    L.LIDS = { TrunkDoor = true, EngineDoor = true }
+    L.LIDS = { TrunkDoor = true, EngineDoor = true, TrunkTonneau = true }
     function L.lockLids(v, locked)
         for id in pairs(L.LIDS) do
             local part = v:getPartById(id)
@@ -134,6 +137,8 @@ if not isClient() then
         if not open then L.relock(v, part) end
         v:transmitPartDoor(part) -- BaseVehicle.java:8247-8256
         L.syncShell(v)
+        local f = T.Truck and T.Truck.bedLight
+        if f then f(v) end
         broadcast(v, { vid = v:getId(), part = part:getId(), open = open, sound = true })
         T.log("liftgate " .. part:getId() .. " " .. (open and "open" or "close") .. " vid=" .. tostring(v:getId()) .. " by=" .. tostring(who))
     end
@@ -167,6 +172,8 @@ if not isClient() then
                 and part:getDoor():isOpen() == open then
                 if not open and L.relock(v, part) then v:transmitPartDoor(part) end
                 L.syncShell(v)
+                local f = T.Truck and T.Truck.bedLight
+                if f then f(v) end
                 if isServer() then broadcast(v, { vid = v:getId(), part = part:getId(), open = open }, self.character) end
             end
             return ok

@@ -54,8 +54,6 @@ module Base
         /* tesla-brake-feel-c2-1026a; 51 before, -base-1026b); the lower CoM alone at 1.8 stopped as short but spun 2 of */
         /* 8 times (-c1-1026a) */
         wheelFriction = 2.0,
-        frontEndHealth = 150,
-        rearEndHealth = 150,
         template = TrunkDoor,
         template = Trunk/part/TruckBed,
         template = Seat/part/SeatFrontLeft,

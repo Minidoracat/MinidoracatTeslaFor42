@@ -34,6 +34,8 @@ T.DRIVE_SCALE = 10
 -- plug: the charge cable's plug segment (client/MinidoracatTesla/Cable.lua): render-only item and its handle height
 -- above the floor in units (1 level = 2.44949), measured at the car's chargeport (E2E integration-mp `port`);
 -- scripts/blender/props/props_blender.py PLUGS builds one mesh per entry (build.py --check compares the two).
+-- Cybertruck only: tonneau (the app's tonneau cover button), armorGlass (smashes a window takes, Truck.lua),
+-- powershare and bedOutlet (Powershare, the bed outlets).
 T.Specs = {
     ["Base.MinidoracatTesla_ModelY"] = {
         model = "ModelY",
@@ -80,14 +82,61 @@ T.Specs = {
             { name = "FrostBlue", code = "PB00", h = 0.599, s = 0.77, v = 0.483 },
         },
     },
+    ["Base.MinidoracatTesla_Cybertruck"] = {
+        model = "Cybertruck",
+        appCar = "app_car_cybertruck_",
+        -- z: placeholder (the Model 3's) until TeslaCybertruck measures the handle height at this car's charge port
+        plug = { item = "Base.MinidoracatTesla_CablePlugCybertruck", z = 0.74 },
+        v12Kwh = 48 * 4 / 1000, -- 48 V, 4 Ah (Cybertruck owner's manual p.251)
+        -- the Model Y coefficients x 123 / 78.4: a full pack still drives one vanilla tank's distance
+        idleKw = 0.0590 * T.DRIVE_SCALE,
+        kwPerKmh = 0.00897 * T.DRIVE_SCALE,
+        massKg = 3113, -- Cyberbeast curb mass 6,863 lb (tesla.com 2026-10-30)
+        regenEff = 0.6,
+        powershare = true, -- Powershare (owner's manual p.204)
+        bedOutlet = { area = "TruckBed", tiles = 2 }, -- bed outlets: a Mobile Connector this near the bed (p.200)
+        tonneau = true, -- powered tonneau cover (owner's manual p.60)
+        armorGlass = 3, -- Armor Glass: three smashes a window
+        -- Cyberbeast is built in stainless only ($PDD, US design studio 2026-07-10); the other 11 are Tesla's Color Paint
+        -- Film wraps (shop 2024-06). weight: T.pickColor draws by it, so stainless takes half the spawns. Same order
+        -- and append-only rules as above; h/s/v by convert.py build (placeholders until TeslaCybertruck's build).
+        colors = {
+            { name = "Stainless", code = "PDD", weight = 11, h = 0.6, s = 0.05, v = 0.6 },
+            { name = "SatinStealthBlack", weight = 1, h = 0.6, s = 0.05, v = 0.12 },
+            { name = "SatinCeramicWhite", weight = 1, h = 0.1, s = 0.04, v = 0.85 },
+            { name = "SatinRoseGold", weight = 1, h = 0.03, s = 0.3, v = 0.7 },
+            { name = "SatinTacticalGreen", weight = 1, h = 0.25, s = 0.3, v = 0.35 },
+            { name = "SatinDarkGrey", weight = 1, h = 0.6, s = 0.05, v = 0.3 },
+            { name = "SatinForestGreen", weight = 1, h = 0.4, s = 0.5, v = 0.25 },
+            { name = "SatinAbyssBlue", weight = 1, h = 0.6, s = 0.6, v = 0.3 },
+            { name = "CopperTintedClear", weight = 1, h = 0.07, s = 0.45, v = 0.6 },
+            { name = "SatinCrimsonRed", weight = 1, h = 0.99, s = 0.8, v = 0.45 },
+            { name = "SatinIridescentPurple", weight = 1, h = 0.78, s = 0.4, v = 0.4 },
+            { name = "SlipGrey", weight = 1, h = 0.6, s = 0.03, v = 0.5 },
+        },
+    },
 }
 
+-- Index into a colors table, drawn by each entry's weight (none = 1: the Model Y and Model 3 paints stay even)
+function T.pickColor(colors)
+    local total = 0
+    for _, c in ipairs(colors) do total = total + (c.weight or 1) end
+    local r = ZombRand(total)
+    for i, c in ipairs(colors) do
+        r = r - (c.weight or 1)
+        if r < 0 then return i end
+    end
+    return #colors
+end
+
 -- Pack items: exact kWh. Item MaxCapacity is an int (Item.java:2502-2503), so it is rounded up and the exact value
--- lives here. Both are China MIIT filings (Tesla publishes no kWh, references/vehicle-battery.md): Model Y Performance
--- 78.4 kWh; Model 3 Performance (TSL7000BEVBA5) 78.4 kWh, MIIT purchase-tax exemption catalogue batch 6 (2024 No. 11).
+-- lives here. Model Y Performance 78.4 kWh and Model 3 Performance (TSL7000BEVBA5) 78.4 kWh are China MIIT filings
+-- (Tesla publishes no kWh for them, references/vehicle-battery.md), the latter purchase-tax exemption catalogue batch 6
+-- (2024 No. 11); Cyberbeast 123 kWh is Tesla's own figure (tesla.com Cybertruck page 2026-10-30, Powershare).
 T.Packs = {
     ["Base.MinidoracatTesla_ModelYBattery"] = 78.4,
     ["Base.MinidoracatTesla_Model3Battery"] = 78.4,
+    ["Base.MinidoracatTesla_CybertruckBattery"] = 123,
 }
 
 -- Tesla display names for vanilla text keys: vanilla key -> Tesla key. Read by client/MinidoracatTesla/PartNames.lua
@@ -124,6 +173,20 @@ T.CarPartNames = {
         IGUI_MinidoracatTesla_Tip_AppUnlock = "IGUI_MinidoracatTesla_Tip_AppUnlockLid",
         IGUI_MinidoracatTesla_Tip_AppTrunk = "IGUI_MinidoracatTesla_Tip_AppTrunkLid",
         IGUI_MinidoracatTesla_App_ControlsSub = "IGUI_MinidoracatTesla_App_ControlsSubLid",
+    },
+    -- Cybertruck owner's manual: Tailgate, Cargo Bed (the tonneau cover is its own part, IGUI_VehiclePartTrunkTonneau);
+    -- the app's lock texts name the tonneau too (it locks with the car, Liftgate.lua L.LIDS)
+    ["Base.MinidoracatTesla_Cybertruck"] = {
+        IGUI_VehiclePartTrunkDoor = "IGUI_MinidoracatTesla_Part_Tailgate",
+        IGUI_VehiclePartTruckBed = "IGUI_MinidoracatTesla_Part_CargoBed",
+        IGUI_MinidoracatTesla_App_Trunk = "IGUI_MinidoracatTesla_App_Tailgate",
+        IGUI_MinidoracatTesla_App_Done_trunk = "IGUI_MinidoracatTesla_App_Done_tailgate",
+        IGUI_MinidoracatTesla_App_Done_trunk_on = "IGUI_MinidoracatTesla_App_Done_tailgate_on",
+        IGUI_MinidoracatTesla_App_Done_trunk_off = "IGUI_MinidoracatTesla_App_Done_tailgate_off",
+        IGUI_MinidoracatTesla_Tip_AppLock = "IGUI_MinidoracatTesla_Tip_AppLockCybertruck",
+        IGUI_MinidoracatTesla_Tip_AppUnlock = "IGUI_MinidoracatTesla_Tip_AppUnlockCybertruck",
+        IGUI_MinidoracatTesla_Tip_AppTrunk = "IGUI_MinidoracatTesla_Tip_AppTailgate",
+        IGUI_MinidoracatTesla_App_ControlsSub = "IGUI_MinidoracatTesla_App_ControlsSubCybertruck",
     },
 }
 -- the Tesla key for a key on this car (script full name), or nil
@@ -277,9 +340,22 @@ end
 function T.ContainerAccess.Frunk(vehicle, part, chr)
     if chr:getVehicle() then return false end
     if not vehicle:isInArea(part:getArea(), chr) then return false end
-    local lid = vehicle:getPartById("EngineDoor")
+    return T.lidOpen(vehicle, "EngineDoor")
+end
+
+-- a lid (door part) counts as open when it is open, removed, or the car has none
+function T.lidOpen(vehicle, id)
+    local lid = vehicle:getPartById(id)
     if lid and lid:getDoor() and lid:getInventoryItem() then return lid:getDoor():isOpen() end
     return true
+end
+
+-- Cybertruck bed, the vault (owner's manual p.60-61): from the rear (the bed's area) with the tailgate or the
+-- tonneau open; from either side (area BedSide) with the tonneau open.
+function T.ContainerAccess.Vault(vehicle, part, chr)
+    if chr:getVehicle() then return false end
+    if vehicle:isInArea(part:getArea(), chr) then return T.lidOpen(vehicle, "TrunkDoor") or T.lidOpen(vehicle, "TrunkTonneau") end
+    return vehicle:isInArea("BedSide", chr) and T.lidOpen(vehicle, "TrunkTonneau")
 end
 
 -- ---- authorization ----

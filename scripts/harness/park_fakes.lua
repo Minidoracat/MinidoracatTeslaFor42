@@ -88,7 +88,7 @@ local function action(name)
     cls.complete = cls.complete or function() return true end
     _G[name] = cls
 end
-for _, n in ipairs({ "ISOpenVehicleDoor", "ISUnlockVehicleDoor", "ISSmashVehicleWindow", "ISHotwireVehicle",
+for _, n in ipairs({ "ISOpenVehicleDoor", "ISUnlockVehicleDoor", "ISSmashWindow", "ISHotwireVehicle",
     "ISUninstallVehiclePart" }) do action(n) end
 
 -- Vanilla timed action base (shared/TimedActions/ISBaseTimedAction.lua): Camp.lua loads CampPower.lua, whose charge

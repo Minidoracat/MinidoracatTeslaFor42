@@ -1,7 +1,8 @@
 -- Tesla app on the phone key, server side (client: client/MinidoracatTesla/PhoneApp.lua; reach: Keys.appReach).
 --   * appStatus { key }: every 2 s while a holder has the app open. The car as it is when the server has it loaded and
 --     the phone reaches it (grid up: any distance; grid down: Bluetooth, Keys.btRange()); else its last record.
---   * appAction { key, act, on }: lock, unlock, flash, horn, sentry, charge, frunk, trunk, summon (+ mode, x, y, dir).
+--   * appAction { key, act, on }: lock, unlock, flash, horn, sentry, charge, frunk, trunk, tonneau, summon (+ mode, x,
+--     y, dir).
 --     Holder, reach, the VehicleManager right for doing the same thing in person, and the action's own rules are
 --     checked every time, but a summoner stopping their own summon skips reach and the VehicleManager.
 --   * appAlerts { key }: the car's last sentry / camp alerts.
@@ -85,6 +86,7 @@ function R.remember(v, create)
     r.sentry = md.sentry ~= nil
     r.drive = v:isEngineRunning() and not chg -- plugged in = Park, as the HUD gear (HUD.lua:276)
     r.frunk, r.trunk = doorOpen(v, "EngineDoor"), doorOpen(v, "TrunkDoor")
+    r.tonneau = doorOpen(v, "TrunkTonneau") -- Cybertruck; false on a car without one
     r.chg = chargeState(chg)
     r.kw, r.target, r.mins = nil, nil, nil
     if chg then
@@ -168,7 +170,8 @@ end
 -- asks in person on a claimed car (the card tap, KeyActions keyTap, too).
 local VM_CODES = {
     lock = { "PASSENGER" }, unlock = { "PASSENGER" }, flash = { "PASSENGER" }, horn = { "PASSENGER" },
-    sentry = { "PASSENGER" }, trunk = { "CARGO" }, frunk = { "REPAIR", "SALVAGE" }, charge = { "FUEL" },
+    sentry = { "PASSENGER" }, trunk = { "CARGO" }, tonneau = { "CARGO" }, frunk = { "REPAIR", "SALVAGE" },
+    charge = { "FUEL" },
     summon = { "DRIVE" }, -- the car moves: the right to drive it (VehicleManager also wraps startSummon itself)
 }
 
@@ -348,6 +351,7 @@ local ACT = {
     end,
     frunk = swing("EngineDoor"),
     trunk = swing("TrunkDoor"),
+    tonneau = swing("TrunkTonneau"), -- Cybertruck: the app opens the tonneau cover (owner's manual p.60)
     summon = summon,
 }
 

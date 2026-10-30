@@ -1,5 +1,5 @@
--- V key / D-pad up vehicle radial menu: adds "Camp Mode" and "Charging status" for Teslas, and the bed quality under
--- vanilla "Sleep" (an average bed while camping, Camp.bedType).
+-- V key / D-pad up vehicle radial menu: adds "Camp Mode", "Charging status" and the Cybertruck's light bar for
+-- Teslas, and the bed quality under vanilla "Sleep" (an average bed while camping, Camp.bedType).
 -- ISVehicleMenu.showRadialMenu is a toggle (ISVehicleMenu.lua:70-76); remember whether the menu was
 -- open BEFORE the vanilla call, because isReallyVisible() lies right after addToUIManager (pitfalls.md UI).
 require "Vehicles/ISUI/ISVehicleMenu"
@@ -16,6 +16,10 @@ end
 
 local function onChargeStatus(player, vehicle)
     T.ChargeCard.open(player:getPlayerNum(), vehicle)
+end
+
+local function onRoofLight(player, vehicle)
+    T.request(player, "roofLight", { vid = vehicle:getId() }) -- Truck.lua, server
 end
 
 local function addSlices(menu, player, vehicle)
@@ -46,6 +50,12 @@ local function addSlices(menu, player, vehicle)
     end
     menu:addSlice(getText("IGUI_MinidoracatTesla_Radial_ChargeStatus") .. "\n" .. getText("IGUI_MinidoracatTesla_Tip_ChargeStatus"),
         getTexture(TEX .. "radial_charge.png"), onChargeStatus, player, vehicle)
+    -- the light bar, for the driver like the headlights (Truck.lua roofLight)
+    if vehicle:getPartById("RoofLight") and vehicle:isDriver(player) then
+        local lit = T.Truck and T.Truck.roofLightOn(vehicle)
+        menu:addSlice(getText(lit and "IGUI_MinidoracatTesla_Radial_RoofLightOff" or "IGUI_MinidoracatTesla_Radial_RoofLightOn")
+            .. "\n" .. getText("IGUI_MinidoracatTesla_Tip_RoofLight"), getTexture(TEX .. "radial_lightbar.png"), onRoofLight, player, vehicle)
+    end
     -- vanilla's own "Sleep" slice (ISVehicleMenu.lua:225): second line = vanilla's bed tooltip (Tooltip_BedType)
     for i, s in ipairs(menu.slices) do
         if s.command[1] == ISVehicleMenu.onSleep then

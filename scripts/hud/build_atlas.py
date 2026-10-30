@@ -8,7 +8,7 @@
 
 Outputs (overwritten):
   media/textures/MinidoracatTesla/HUD/atlas1x.png, atlas2x.png
-  media/textures/MinidoracatTesla/HUD/radial_camp.png, radial_camp_off.png, radial_charge.png
+  media/textures/MinidoracatTesla/HUD/radial_camp.png, radial_camp_off.png, radial_charge.png, radial_lightbar.png
   media/textures/MinidoracatTesla/HUD/app_arrow1x.png, app_arrow2x.png (phone app location page arrow, drawn rotated)
   media/textures/MinidoracatTesla/HUD/app_ring.png (phone app summon range: radar and pick map, tinted when drawn)
   media/textures/MinidoracatTesla/HUD/map_car.png, map_round.png (MiniMap car marker and its disc)
@@ -250,6 +250,18 @@ def ic_trunk(c):  # liftgate raised
     c.stroke([("M", 11, 5), ("L", 13, 2)], w=1.3)
 
 
+def ic_tonneau(c):  # Cybertruck side view: the bed's open top, the cover rolled up at its front wall
+    c.stroke([("M", 1.5, 12), ("V", 8), ("H", 8), ("L", 10, 4), ("L", 14.5, 8), ("V", 12), ("Z",)], w=1.3)
+    c.circle(8.2, 6.2, 1.3, fill="#FFFFFF")
+    c.stroke([("M", 2.5, 6), ("H", 6)], w=1.3)
+
+
+def ic_lightbar(c):  # roof light bar: the bar and its beams ahead
+    c.rrect(2, 2.5, 12, 3, 1.2, outline="#FFFFFF", ow=1.3)
+    for x0, x1 in ((4, 2.5), (8, 8), (12, 13.5)):
+        c.stroke([("M", x0, 7.5), ("L", x1, 13.5)], w=1.3)
+
+
 def ic_lockfill(c):  # locked: solid body
     c.rrect(3.5, 7, 9, 7, 1.5, fill="#FFFFFF")
     c.stroke([("M", 5.5, 7), ("V", 5), ("Q", 5.5, 2.3, 8, 2.3), ("Q", 10.5, 2.3, 10.5, 5), ("V", 7)], w=1.4)
@@ -371,7 +383,32 @@ def car_model3(c):
     b_pillar(c, 23, 73)
 
 
-CARS = {"ModelY": car_modely, "Model3": car_model3}
+def car_cybertruck(c):
+    """Cyberbeast (owner's manual p.245-246: 5,683 x 2,032 mm, wheelbase 3,635, overhangs front 878 / rear 1,170; bed
+    floor 1,825 long, p.249) at 0.0257 viewBox units per mm: as wide as the Model Y here, 2.80 times as long. Rear 8,
+    nose 154; the tailgate (x 8-9.5), the bed under the tonneau's slats (x 9.5-56.4) to the bed's front wall, the rear
+    glass (x 58-62), the doors split at x 87 and the front doors end at the frunk lid (x 118); the glass roof runs from
+    the rear glass to the windscreen's foot. HUD.lua ZONES.Cybertruck follows these edges."""
+    for x in (26.6, 120.0):  # 35" tyres (890 mm) on the axles, x 38.1 and 131.5
+        for y in (16, 72):
+            c.rrect(x, y, 23, 8, 2, fill="#0B0D0F", outline="#8E98A3", ow=1.1)
+    body = [("M", 8, 22), ("H", 149), ("L", 154, 30), ("V", 66), ("L", 149, 74), ("H", 8), ("Z",)]
+    c.fill(body, "#2A3037")
+    c.stroke(body, w=1.3, color="#AEB6BF")
+    c.fill([("M", 9.5, 25), ("H", 56.4), ("V", 71), ("H", 9.5), ("Z",)], "#323941")  # tonneau over the bed
+    for x in range(14, 56, 5):  # its slats
+        c.stroke([("M", x, 26), ("V", 70)], w=0.8, color="#262B31")
+    c.stroke([("M", 56.4, 25), ("V", 71)], w=1.0, color="#4A525B")  # bed front wall
+    c.fill([("M", 62, 29), ("L", 120, 31), ("V", 65), ("L", 62, 67), ("Z",)], "#15191E")  # glass roof, windscreen
+    c.fill([("M", 58, 30), ("H", 61), ("V", 66), ("H", 58), ("Z",)], "#15191E")  # rear glass
+    c.stroke([("M", 9.5, 23), ("V", 73)], w=1.0, color="#4A525B")  # tailgate seam
+    c.stroke([("M", 118, 25), ("L", 120, 31)], w=1.0, color="#4A525B")  # frunk lid seams
+    c.stroke([("M", 118, 71), ("L", 120, 65)], w=1.0, color="#4A525B")
+    for y0, y1 in ((22, 25), (71, 74)):  # B-pillar seam
+        c.stroke([("M", 87, y0 + 0.6), ("V", y1 - 0.6)], w=1.0, color="#4A525B")
+
+
+CARS = {"ModelY": car_modely, "Model3": car_model3, "Cybertruck": car_cybertruck}
 
 
 def dashed(c, x0, y0, x1, y1, w=1.8, dash=3.0, gap=2.0):
@@ -384,21 +421,37 @@ def dashed(c, x0, y0, x1, y1, w=1.8, dash=3.0, gap=2.0):
         t = e + gap
 
 
-def door_overlay(kind):
+# door overlay geometry (viewBox): front / rear door spans, the car's left and right edges, the rear lid's closed and
+# open lines, the hood's; a car not listed uses the Model Y / Model 3 one and the plain door_<kind> sprites
+DOOR_GEOM = {
+    None: {"front": (78, 100), "rear": (56, 78), "y": (22, 74), "tr": ((22, 36, 60), (16, 34, 62)),
+           "hd": ((146, 38, 58), (152, 36, 60)), "kinds": ("FL", "FR", "RL", "RR", "TR", "HD")},
+    # the tailgate folds down behind the bed; the tonneau rolls into its canister at the bed's front wall
+    "Cybertruck": {"front": (87, 118), "rear": (62, 87), "y": (22, 74), "tr": ((8, 28, 68), (2, 26, 70)),
+                   "hd": ((154, 34, 62), (159, 32, 64)), "kinds": ("FL", "FR", "RL", "RR", "TR", "TN", "HD")},
+}
+
+
+def door_overlay(kind, g):
     def paint(c):
         if kind in ("FL", "RL", "FR", "RR"):
-            front = kind[0] == "F"
-            x0, x1 = (78, 100) if front else (56, 78)
-            y = 22 if kind[1] == "L" else 74
+            x0, x1 = g["front"] if kind[0] == "F" else g["rear"]
+            y = g["y"][0] if kind[1] == "L" else g["y"][1]
             out = -17 if kind[1] == "L" else 17
             dashed(c, x0, y, x1, y)
             c.stroke([("M", x1, y), ("L", x1 - 18, y + out)], w=2.8)
         elif kind == "TR":  # trunk / tailgate (rear = left)
-            dashed(c, 22, 36, 22, 60)
-            c.stroke([("M", 16, 34), ("V", 62)], w=2.8)
+            (dx, dy0, dy1), (sx, sy0, sy1) = g["tr"]
+            dashed(c, dx, dy0, dx, dy1)
+            c.stroke([("M", sx, sy0), ("V", sy1)], w=2.8)
+        elif kind == "TN":  # tonneau: the bed's outline, the cover rolled up at the front wall
+            for x0, y0, x1, y1 in ((10, 25, 55, 25), (10, 71, 55, 71), (10, 25, 10, 71)):
+                dashed(c, x0, y0, x1, y1)
+            c.stroke([("M", 55, 24), ("V", 72)], w=2.8)
         elif kind == "HD":  # hood (front = right)
-            dashed(c, 146, 38, 146, 58)
-            c.stroke([("M", 152, 36), ("V", 60)], w=2.8)
+            (dx, dy0, dy1), (sx, sy0, sy1) = g["hd"]
+            dashed(c, dx, dy0, dx, dy1)
+            c.stroke([("M", sx, sy0), ("V", sy1)], w=2.8)
     return paint
 
 
@@ -415,7 +468,8 @@ GLYPH_SETS = [
 WORDS = [("kmh", "Inter-Regular.ttf", 14, "km/h", 0), ("km", "Inter-Regular.ttf", 17, "km", 0),
          ("inf", "Inter-Regular.ttf", 17, "\u221e", 0),
          ("wm_ModelY", "Inter-Light.ttf", 15, "MODEL Y", 5), ("trim_ModelY", "Inter-Regular.ttf", 13, "Performance", 0),
-         ("wm_Model3", "Inter-Light.ttf", 15, "MODEL 3", 5), ("trim_Model3", "Inter-Regular.ttf", 13, "Performance", 0)]
+         ("wm_Model3", "Inter-Light.ttf", 15, "MODEL 3", 5), ("trim_Model3", "Inter-Regular.ttf", 13, "Performance", 0),
+         ("wm_Cybertruck", "Inter-Light.ttf", 15, "CYBERTRUCK", 3), ("trim_Cybertruck", "Inter-Regular.ttf", 13, "Cyberbeast", 0)]
 
 
 def render_text(fontfile, size, s, track=0):
@@ -465,7 +519,7 @@ def build_sprites(k):
         "ring": ic_ring, "dot": ic_dot, "plug": ic_plug, "power": ic_power,
         "horn": ic_horn, "frunk": ic_frunk, "trunk": ic_trunk, "lockfill": ic_lockfill, "carfront": ic_carfront,
         "nav": ic_nav, "shield": ic_shield, "chev": ic_chev, "chevdown": ic_chevdown, "back": ic_back, "close": ic_close,
-        "wheel": ic_wheel, "pin": ic_pin,
+        "wheel": ic_wheel, "pin": ic_pin, "tonneau": ic_tonneau,
     }
     for key, fn in icons16.items():
         c = Canvas(18 * k, 18 * k, 16)
@@ -487,12 +541,13 @@ def build_sprites(k):
         c = Canvas(cw, ch, CAR_VB[0], CAR_VB[1])
         draw(c)
         sp["car_" + model] = (c.out(), 0, 0, 0)
-    for kind in ("FL", "FR", "RL", "RR", "TR", "HD"):
-        c = Canvas(cw, ch, CAR_VB[0], CAR_VB[1])
-        door_overlay(kind)(c)
-        im = c.out()
-        bb = im.getbbox()
-        sp["door_" + kind] = (im.crop(bb), bb[0], bb[1], 0)
+    for model, g in DOOR_GEOM.items():
+        for kind in g["kinds"]:
+            c = Canvas(cw, ch, CAR_VB[0], CAR_VB[1])
+            door_overlay(kind, g)(c)
+            im = c.out()
+            bb = im.getbbox()
+            sp["door_" + kind + ("_" + model if model else "")] = (im.crop(bb), bb[0], bb[1], 0)
     return sp
 
 
@@ -519,7 +574,7 @@ def pack(sprites, width, pad):
 def radial_icons():
     out = {}
     for key, fn, color in (("radial_camp", ic_tent, "#F3F5F7"), ("radial_camp_off", ic_tent, "#6B737C"),
-                           ("radial_charge", ic_plug, "#F3F5F7")):
+                           ("radial_charge", ic_plug, "#F3F5F7"), ("radial_lightbar", ic_lightbar, "#F3F5F7")):
         c = Canvas(48, 48, 16)
         # draw at 1.5px scale-adjusted stroke so it reads at 48px like vanilla radial icons
         fn(c)

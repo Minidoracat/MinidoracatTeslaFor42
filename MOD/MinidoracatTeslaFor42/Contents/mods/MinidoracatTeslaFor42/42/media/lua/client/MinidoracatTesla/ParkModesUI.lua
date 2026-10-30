@@ -138,8 +138,8 @@ end
 
 local TITLE = {
     touch = { door = "IGUI_MinidoracatTesla_Sentry_TouchDoor", unlock = "IGUI_MinidoracatTesla_Sentry_TouchUnlock" },
-    ["break"] = { window = "IGUI_MinidoracatTesla_Sentry_BreakWindow", hotwire = "IGUI_MinidoracatTesla_Sentry_BreakHotwire",
-        part = "IGUI_MinidoracatTesla_Sentry_BreakPart" },
+    ["break"] = { window = "IGUI_MinidoracatTesla_Sentry_BreakWindow", windowHit = "IGUI_MinidoracatTesla_Sentry_BreakWindowHit",
+        hotwire = "IGUI_MinidoracatTesla_Sentry_BreakHotwire", part = "IGUI_MinidoracatTesla_Sentry_BreakPart" },
     lowBattery = { sentry = "IGUI_MinidoracatTesla_Sentry_LowBattery", camp = "IGUI_MinidoracatTesla_Camp_LowBattery" },
 }
 

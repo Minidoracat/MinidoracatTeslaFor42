@@ -67,19 +67,20 @@ local BTN = {
     qfrunk = { "home", "frunk" }, qtrunk = { "home", "trunk" }, controls = { "home" }, location = { "home" },
     security = { "home" }, charging = { "home" }, summon = { "home" },
     back = {}, flash = { "controls", "flash" }, horn = { "controls", "horn" }, frunk = { "controls", "frunk" },
-    trunk = { "controls", "trunk" }, map = { "location" }, navcar = { "location" }, sentry = { "security", "sentry" },
+    trunk = { "controls", "trunk" }, tonneau = { "controls", "tonneau" }, map = { "location" }, navcar = { "location" },
+    sentry = { "security", "sentry" },
     charge = { "charging", "charge" },
     come = { "summon" }, pick = { "summon" }, fwd = { "summon" }, rev = { "summon" }, again = { "summon" },
     finish = { "summon" }, cancel = { "pick" }, go = { "pick" },
 }
 local BTN_ORDER = { "close", "cars", "lock", "qcharge", "qfrunk", "qtrunk", "controls", "location", "summon", "security",
-    "charging", "back", "flash", "horn", "frunk", "trunk", "map", "navcar", "sentry", "charge", "come", "pick", "fwd",
-    "rev", "again", "finish", "cancel", "go" }
+    "charging", "back", "flash", "horn", "frunk", "trunk", "tonneau", "map", "navcar", "sentry", "charge", "come", "pick",
+    "fwd", "rev", "again", "finish", "cancel", "go" }
 -- the joypad's rows per page, top to bottom (buttons not shown are skipped); "cars" is built with its rows
 local NAV = {
     home = { { "cars", "close" }, { "lock", "qcharge", "qfrunk", "qtrunk" }, { "controls" }, { "location" }, { "summon" },
         { "security" }, { "charging" } },
-    controls = { { "back" }, { "flash", "horn" }, { "frunk", "trunk" } },
+    controls = { { "back" }, { "flash", "horn" }, { "frunk", "trunk" }, { "tonneau", "powershare" } },
     location = { { "back" }, { "map" }, { "navcar" } },
     security = { { "back" }, { "sentry" } },
     charging = { { "back" }, { "charge" } },
@@ -88,7 +89,7 @@ local NAV = {
     pick = { { "back" }, { "spot" }, { "cancel", "go" } }, -- spot: the map (D-pad moves the pin)
 }
 -- the server actions: dimmed but pressable for a car this phone is not paired with (they say how to add it)
-local REMOTE = { "lock", "qcharge", "qfrunk", "qtrunk", "flash", "horn", "frunk", "trunk", "sentry", "charge" }
+local REMOTE = { "lock", "qcharge", "qfrunk", "qtrunk", "flash", "horn", "frunk", "trunk", "tonneau", "sentry", "charge" }
 local QUICK = { "lock", "qcharge", "qfrunk", "qtrunk" }
 local LIST = { "controls", "location", "summon", "security", "charging" }
 local LIST_ICON = { controls = "i_carfront", location = "i_nav", summon = "i_wheel", security = "i_shield", charging = "i_bolt" }
@@ -97,9 +98,11 @@ local TITLE = { controls = "Controls", location = "Location", security = "Securi
 -- the summon pages' buttons (drawn as the mock's buttons: blue main, white stop, 1 px frame) and the summon each starts
 local SUM_BTNS = { "come", "pick", "fwd", "rev", "again", "finish", "cancel", "go" }
 local SUM_ID = { come = "come", target = "pick" } -- a running summon's button (dumb: fwd / rev by dir)
-local GRID = { "flash", "horn", "frunk", "trunk" }
-local GRID_ICON = { flash = "i_headlight", horn = "i_horn", frunk = "i_frunk", trunk = "i_trunk" }
-local LIDS = { "frunk", "trunk" }
+local GRID = { "flash", "horn", "frunk", "trunk", "tonneau" }
+-- a control cell only for cars whose Specs entry (Core.lua T.Specs) has this field; the page shows self.cells (read)
+local GRID_NEED = { tonneau = "tonneau" }
+local GRID_ICON = { flash = "i_headlight", horn = "i_horn", frunk = "i_frunk", trunk = "i_trunk", tonneau = "i_tonneau" }
+local LIDS = { "frunk", "trunk", "tonneau" } -- the tonneau has no quick button on the home page
 local HEAD = { "close", "back" } -- header buttons (never scroll)
 local MAIN = { "map", "charge" } -- the blue main actions
 
@@ -402,13 +405,13 @@ function App:focusFirst(id)
     local rows = self:navRows()
     for r, row in ipairs(rows) do
         for c, bid in ipairs(row) do
-            if bid == id and self.b[bid].shown then return self:focusAt(r, c) end
+            if bid == id and self.b[bid] and self.b[bid].shown then return self:focusAt(r, c) end
         end
     end
     for i = 2, #rows + 1 do -- the first control under the header, else the header's close / back
         local r = i <= #rows and i or 1
         for c, bid in ipairs(rows[r]) do
-            if self.b[bid].shown then return self:focusAt(r, c) end
+            if self.b[bid] and self.b[bid].shown then return self:focusAt(r, c) end
         end
     end
 end
@@ -425,7 +428,7 @@ function App:move(dr, dc)
             local best, bd
             for j, bid in ipairs(rows[i]) do
                 local b = self.b[bid]
-                local d = b.shown and math.abs(b.cx + b.cw / 2 - cx)
+                local d = b and b.shown and math.abs(b.cx + b.cw / 2 - cx)
                 if d and (not bd or d < bd) then best, bd = j, d end
             end
             if best then return self:focusAt(i, best) end
@@ -436,7 +439,7 @@ function App:move(dr, dc)
     end
     local row, j = rows[r], c + dc
     while row and row[j] do
-        if self.b[row[j]].shown then return self:focusAt(r, j) end
+        if self.b[row[j]] and self.b[row[j]].shown then return self:focusAt(r, j) end
         j = j + dc
     end
 end
@@ -491,7 +494,7 @@ function App:onButton(b)
     local st, act, on = self.st or {}, b.act, nil
     if act == "lock" then act = st.locked and "unlock" or "lock"
     elseif act == "sentry" then on = not st.sentry
-    elseif act == "frunk" or act == "trunk" then on = not st[act]
+    elseif act == "frunk" or act == "trunk" or act == "tonneau" then on = not st[act]
     elseif act == "charge" then on = st.chg == "stopped" end
     App.stats.sent = App.stats.sent + 1
     self:send("appAction", { act = act, on = on })
@@ -948,6 +951,12 @@ function App:read()
     self.paintName, self.model = paint and paint.name, spec and spec.model
     self.carSpr = spec and "car_" .. spec.model -- top view glyph on the summon radar and the maps
     self.carTex = paint and carTexture(spec.appCar .. paint.name)
+    local grid = {} -- the controls page's cells for this car (GRID_NEED)
+    for _, id in ipairs(GRID) do
+        local need = GRID_NEED[id]
+        if not need or (spec and spec[need]) then grid[#grid + 1] = id end
+    end
+    self.cells = grid
     local sep = getText("IGUI_MinidoracatTesla_Sep")
     if not st then
         self.sSub = txt("Connecting")
@@ -1003,7 +1012,7 @@ function App:read()
     for _, id in ipairs(LIDS) do
         local open = rec and st[id] == true
         local tip = carKey(self.script, TIP .. id:sub(1, 1):upper() .. id:sub(2))
-        enable(b["q" .. id], live, open, GRID_ICON[id], tip)
+        if b["q" .. id] then enable(b["q" .. id], live, open, GRID_ICON[id], tip) end
         enable(b[id], live, open, GRID_ICON[id], tip)
         b[id].sub = open and txt("Opened") or txt("TapOpen")
     end
@@ -1199,13 +1208,15 @@ function App:layout()
         local gap = u(12)
         local cellW = math.floor((tw - gap) / 2)
         local cellH = u(14) + u(22) + u(8) + FH + u(2) + FH + u(12)
-        for i, id in ipairs(GRID) do
+        local grid = self.cells or GRID
+        for i, id in ipairs(grid) do
             local col, row = (i - 1) % 2, math.floor((i - 1) / 2)
             local b = place(id, pad + col * (cellW + gap), y + row * (cellH + gap), cellW, cellH)
             b.sTitle = fitText(getText(carKey(self.script, P .. id:sub(1, 1):upper() .. id:sub(2))), cellW - u(28))
             b.sSubFit = fitText(b.sub, cellW - u(28))
         end
-        y = y + 2 * cellH + gap + u(16)
+        local rows = math.ceil(#grid / 2)
+        y = y + rows * cellH + (rows - 1) * gap + u(16)
     elseif page == "location" then
         if self.hasPos and self.sDist then
             self.yArrow = y + u(28)
@@ -1491,7 +1502,7 @@ function App:prerender()
         if wm then HUD.spr(self, wm, pad, self.yWm - o, C.text, 1) end
         if trim then HUD.spr(self, trim, pad, self.yTrim - o, C.text2, 1) end
     elseif page == "controls" then
-        for _, id in ipairs(GRID) do
+        for _, id in ipairs(self.cells or GRID) do
             local b = self.b[id]
             local by = b.cy - o
             frame(self, b.cx, by, b.cw, b.ch, 6 * S, 1, b.on and b.lit and C.text or C.line, 1)
@@ -1593,7 +1604,7 @@ function App:render()
             end
         end
     elseif page == "controls" then
-        for _, id in ipairs(GRID) do
+        for _, id in ipairs(self.cells or GRID) do
             local b = self.b[id]
             local tx, ty = b.cx + math.floor(14 * S), b.cy - o + math.floor(44 * S)
             local tc = b.lit and c or cw
