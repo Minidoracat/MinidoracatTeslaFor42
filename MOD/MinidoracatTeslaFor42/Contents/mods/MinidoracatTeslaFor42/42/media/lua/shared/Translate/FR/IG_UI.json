@@ -12,6 +12,7 @@
     "IGUI_MinidoracatTesla_Sentry_TouchDoor": "Sentinelle : quelqu'un a tiré une portière",
     "IGUI_MinidoracatTesla_Sentry_TouchUnlock": "Sentinelle : quelqu'un a tenté de déverrouiller",
     "IGUI_MinidoracatTesla_Sentry_BreakWindow": "Sentinelle : vitre brisée, alarme déclenchée",
+    "IGUI_MinidoracatTesla_Sentry_BreakWindowHit": "Sentinelle : vitre frappée, alarme déclenchée",
     "IGUI_MinidoracatTesla_Sentry_BreakHotwire": "Sentinelle : tentative de démarrage aux fils, alarme déclenchée",
     "IGUI_MinidoracatTesla_Sentry_BreakPart": "Sentinelle : pièce retirée, alarme déclenchée",
     "IGUI_MinidoracatTesla_Sentry_LowBattery": "Mode Sentinelle désactivé : batterie sous 20 %%",

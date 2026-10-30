@@ -12,6 +12,7 @@
     "IGUI_MinidoracatTesla_Sentry_TouchDoor": "哨兵：有人拉了車門",
     "IGUI_MinidoracatTesla_Sentry_TouchUnlock": "哨兵：有人試著解鎖",
     "IGUI_MinidoracatTesla_Sentry_BreakWindow": "哨兵：車窗被打破，警報響起",
+    "IGUI_MinidoracatTesla_Sentry_BreakWindowHit": "哨兵：車窗遭到敲擊，警報響起",
     "IGUI_MinidoracatTesla_Sentry_BreakHotwire": "哨兵：有人試圖短接發動，警報響起",
     "IGUI_MinidoracatTesla_Sentry_BreakPart": "哨兵：零件被拆，警報響起",
     "IGUI_MinidoracatTesla_Sentry_LowBattery": "哨兵模式已關閉：電量低於 20%%",

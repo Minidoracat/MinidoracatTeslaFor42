@@ -12,6 +12,7 @@
     "IGUI_MinidoracatTesla_Sentry_TouchDoor": "감시 모드: 누군가 문을 당겼습니다",
     "IGUI_MinidoracatTesla_Sentry_TouchUnlock": "감시 모드: 누군가 잠금 해제를 시도했습니다",
     "IGUI_MinidoracatTesla_Sentry_BreakWindow": "감시 모드: 창문이 깨져 경보가 울립니다",
+    "IGUI_MinidoracatTesla_Sentry_BreakWindowHit": "감시 모드: 창문이 공격받아 경보가 울립니다",
     "IGUI_MinidoracatTesla_Sentry_BreakHotwire": "감시 모드: 배선 따기 시도로 경보가 울립니다",
     "IGUI_MinidoracatTesla_Sentry_BreakPart": "감시 모드: 부품이 분리되어 경보가 울립니다",
     "IGUI_MinidoracatTesla_Sentry_LowBattery": "감시 모드가 꺼졌습니다: 배터리 20%% 미만",

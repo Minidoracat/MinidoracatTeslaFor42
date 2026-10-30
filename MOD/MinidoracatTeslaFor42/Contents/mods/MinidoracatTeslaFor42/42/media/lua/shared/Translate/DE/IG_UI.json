@@ -12,6 +12,7 @@
     "IGUI_MinidoracatTesla_Sentry_TouchDoor": "Wächter: Jemand hat an einer Tür gezogen",
     "IGUI_MinidoracatTesla_Sentry_TouchUnlock": "Wächter: Jemand wollte entriegeln",
     "IGUI_MinidoracatTesla_Sentry_BreakWindow": "Wächter: Scheibe eingeschlagen, Alarm ausgelöst",
+    "IGUI_MinidoracatTesla_Sentry_BreakWindowHit": "Wächter: Schlag gegen die Scheibe, Alarm ausgelöst",
     "IGUI_MinidoracatTesla_Sentry_BreakHotwire": "Wächter: Kurzschließversuch, Alarm ausgelöst",
     "IGUI_MinidoracatTesla_Sentry_BreakPart": "Wächter: Teil entfernt, Alarm ausgelöst",
     "IGUI_MinidoracatTesla_Sentry_LowBattery": "Wächter-Modus aus: Batterie unter 20 %%",

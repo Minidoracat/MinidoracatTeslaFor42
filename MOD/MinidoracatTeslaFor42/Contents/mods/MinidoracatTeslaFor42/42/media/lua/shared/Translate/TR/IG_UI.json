@@ -12,6 +12,7 @@
     "IGUI_MinidoracatTesla_Sentry_TouchDoor": "Güvenlik: biri kapıyı çekti",
     "IGUI_MinidoracatTesla_Sentry_TouchUnlock": "Güvenlik: biri kilidi açmaya çalıştı",
     "IGUI_MinidoracatTesla_Sentry_BreakWindow": "Güvenlik: cam kırıldı, alarm çalıyor",
+    "IGUI_MinidoracatTesla_Sentry_BreakWindowHit": "Güvenlik: cama vuruldu, alarm çalıyor",
     "IGUI_MinidoracatTesla_Sentry_BreakHotwire": "Güvenlik: düz kontak denemesi, alarm çalıyor",
     "IGUI_MinidoracatTesla_Sentry_BreakPart": "Güvenlik: parça söküldü, alarm çalıyor",
     "IGUI_MinidoracatTesla_Sentry_LowBattery": "Güvenlik Modu kapandı: batarya %%20'nin altında",

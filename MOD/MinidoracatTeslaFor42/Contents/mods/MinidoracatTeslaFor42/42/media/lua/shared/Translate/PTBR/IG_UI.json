@@ -12,6 +12,7 @@
     "IGUI_MinidoracatTesla_Sentry_TouchDoor": "Sentinela: alguém puxou uma porta",
     "IGUI_MinidoracatTesla_Sentry_TouchUnlock": "Sentinela: alguém tentou destrancar",
     "IGUI_MinidoracatTesla_Sentry_BreakWindow": "Sentinela: janela quebrada, alarme tocando",
+    "IGUI_MinidoracatTesla_Sentry_BreakWindowHit": "Sentinela: janela atingida, alarme tocando",
     "IGUI_MinidoracatTesla_Sentry_BreakHotwire": "Sentinela: tentativa de ligação direta, alarme tocando",
     "IGUI_MinidoracatTesla_Sentry_BreakPart": "Sentinela: peça removida, alarme tocando",
     "IGUI_MinidoracatTesla_Sentry_LowBattery": "Modo Sentinela desligado: bateria abaixo de 20%%",

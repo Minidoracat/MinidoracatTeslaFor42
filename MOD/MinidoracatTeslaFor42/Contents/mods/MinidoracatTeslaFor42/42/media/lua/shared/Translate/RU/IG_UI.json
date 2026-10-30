@@ -12,6 +12,7 @@
     "IGUI_MinidoracatTesla_Sentry_TouchDoor": "Часовой: кто-то дернул дверь",
     "IGUI_MinidoracatTesla_Sentry_TouchUnlock": "Часовой: кто-то пытался открыть замок",
     "IGUI_MinidoracatTesla_Sentry_BreakWindow": "Часовой: окно разбито, сработала сигнализация",
+    "IGUI_MinidoracatTesla_Sentry_BreakWindowHit": "Часовой: удар по окну, сработала сигнализация",
     "IGUI_MinidoracatTesla_Sentry_BreakHotwire": "Часовой: попытка взлома зажигания, сработала сигнализация",
     "IGUI_MinidoracatTesla_Sentry_BreakPart": "Часовой: снята деталь, сработала сигнализация",
     "IGUI_MinidoracatTesla_Sentry_LowBattery": "Режим часового выключен: заряд ниже 20%%",

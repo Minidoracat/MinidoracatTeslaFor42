@@ -12,6 +12,7 @@
     "IGUI_MinidoracatTesla_Sentry_TouchDoor": "セントリー：誰かがドアを引きました",
     "IGUI_MinidoracatTesla_Sentry_TouchUnlock": "セントリー：誰かがロック解除を試みました",
     "IGUI_MinidoracatTesla_Sentry_BreakWindow": "セントリー：窓が割られ、アラームが鳴っています",
+    "IGUI_MinidoracatTesla_Sentry_BreakWindowHit": "セントリー：窓が叩かれ、アラームが鳴っています",
     "IGUI_MinidoracatTesla_Sentry_BreakHotwire": "セントリー：直結が試みられ、アラームが鳴っています",
     "IGUI_MinidoracatTesla_Sentry_BreakPart": "セントリー：部品が外され、アラームが鳴っています",
     "IGUI_MinidoracatTesla_Sentry_LowBattery": "セントリーモードをオフにしました：バッテリー残量20%%未満",

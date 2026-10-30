@@ -97,17 +97,29 @@ check(v.toggles >= 6 and v.headlights == false and v.parts.HeadlightLeft.lightAc
 check(md(v).sentry ~= nil, "touch: sentry stays armed")
 
 -- ---- break: stranger -> vanilla alarm, stays armed; owner working on the car -> nothing ----
-ISSmashVehicleWindow.complete({ vehicle = v, character = thief, part = v.parts.GasTank })
-check(v.alarmTriggered == 1 and md(v).sentry ~= nil, "break: alarm triggered, sentry re-armed")
-check(F.lastSent("alert").args.kind == "break" and F.lastSent("alert").args.what == "window", "break: owner alerted (window)")
+-- vanilla "Smash Window" is ISSmashWindow(player, window, part) (ISVehiclePartMenu.lua:377); the window says whose car
+-- it is. Sentry runs after the inner complete (vanilla's hit, or Armor Glass's third), so it reads the glass after the hit.
+local glass = { getVehicle = function() return v end, getId = function() return "WindowFrontLeft" end }
+local function window(destroyed)
+    return { _class = "VehicleWindow", getPart = function() return glass end, isDestroyed = function() return destroyed end }
+end
+ISSmashWindow.complete({ character = thief, window = { _class = "IsoWindow" } })
+check(v.alarmTriggered == 0, "break: a house window (IsoWindow) is not a car's")
+ISSmashWindow.complete({ character = thief, window = window(false), vehiclePart = v.parts.GasTank })
+check(v.alarmTriggered == 1 and md(v).sentry ~= nil, "break: a smash that leaves the glass in (Armor Glass hit 1) rings, sentry re-armed")
+check(F.lastSent("alert").args.kind == "break" and F.lastSent("alert").args.what == "windowHit"
+    and F.lastSent("alert").args.part == "WindowFrontLeft", "break: owner alerted (windowHit, the window's own part)")
+ISSmashWindow.complete({ character = thief, window = window(true) })
+check(v.alarmTriggered == 2 and F.lastSent("alert").args.what == "window", "break: the smash that breaks it rings again (window)")
+ISSmashWindow.complete({ character = owner, window = window(true) })
 ISUninstallVehiclePart.complete({ vehicle = v, character = owner, part = v.parts.GasTank })
-check(v.alarmTriggered == 1, "break: legit user does not trigger alarm")
+check(v.alarmTriggered == 2, "break: legit user does not trigger alarm")
 -- hotwired by a stranger (user 2026-10-28): a hotwired car is "the key in the ignition" for T.authorized, never for
 -- T.legit, so the hotwire still rings and the thief cannot disarm sentry; Camp Mode is his once he sits in it
 thief.vehicle = v -- the driver's seat (ISHotwireVehicle hooks the actor's car)
 v.hotwired = true -- vanilla ISHotwireVehicle:complete has just hotwired it
 ISHotwireVehicle.complete({ character = thief })
-check(v.alarmTriggered == 2 and md(v).sentry ~= nil, "hotwire by a stranger: alarm rings, sentry stays armed")
+check(v.alarmTriggered == 3 and md(v).sentry ~= nil, "hotwire by a stranger: alarm rings, sentry stays armed")
 check(select(2, T.authorized(thief, v, "PASSENGER")) == "HOTWIRED" and not T.legit(thief, v) and not S.canDisarm(thief, v),
     "hotwired: authorized (HOTWIRED: camp, charging) but not legit, the thief cannot disarm sentry")
 check(T.Camp.canEnable(thief, v) == true, "hotwired: the seated stranger may turn Camp Mode on")

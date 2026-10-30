@@ -12,6 +12,7 @@
     "IGUI_MinidoracatTesla_Sentry_TouchDoor": "Sentry: someone pulled a door",
     "IGUI_MinidoracatTesla_Sentry_TouchUnlock": "Sentry: someone tried to unlock",
     "IGUI_MinidoracatTesla_Sentry_BreakWindow": "Sentry: window broken, alarm sounding",
+    "IGUI_MinidoracatTesla_Sentry_BreakWindowHit": "Sentry: window struck, alarm sounding",
     "IGUI_MinidoracatTesla_Sentry_BreakHotwire": "Sentry: hotwire attempt, alarm sounding",
     "IGUI_MinidoracatTesla_Sentry_BreakPart": "Sentry: part removed, alarm sounding",
     "IGUI_MinidoracatTesla_Sentry_LowBattery": "Sentry Mode off: battery below 20%%",

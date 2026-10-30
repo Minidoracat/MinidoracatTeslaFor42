@@ -201,11 +201,21 @@ end
 
 local function partId(part) return part and part:getId() or nil end
 
--- ISOpenVehicleDoor.lua:61, ISUnlockVehicleDoor.lua:55, ISSmashVehicleWindow.lua:55,
--- ISHotwireVehicle.lua:32, ISUninstallVehiclePart.lua:40 (media/lua/shared/Vehicles/TimedActions/)
+-- ISOpenVehicleDoor.lua:61, ISUnlockVehicleDoor.lua:55, ISHotwireVehicle.lua:32, ISUninstallVehiclePart.lua:40
+-- (media/lua/shared/Vehicles/TimedActions/), ISSmashWindow.lua:46 (media/lua/shared/TimedActions/)
 hook(ISOpenVehicleDoor, "ISOpenVehicleDoor", function(a) S.onTouch(a.vehicle, a.character, "door", partId(a.part)) end)
 hook(ISUnlockVehicleDoor, "ISUnlockVehicleDoor", function(a) S.onTouch(a.vehicle, a.character, "unlock", partId(a.part)) end)
-hook(ISSmashVehicleWindow, "ISSmashVehicleWindow", function(a) S.onBreak(a.vehicle, a.character, "window", partId(a.part)) end)
+-- Smashing a car window is ISSmashWindow(player, window, part): ISVehiclePartMenu.onSmashWindow (:367-378), from the
+-- outside radial (ISVehicleMenu.lua:343-351) and the mechanics window (ISVehicleMechanics.lua:286). Vanilla never queues
+-- ISSmashVehicleWindow (no caller in media/lua or the Java). The window's own car (window:getPart(), not the action's
+-- part field). Every hit is a break attempt: Armor Glass (Truck.lua, wrapped from shared, so its hit has landed by now)
+-- rings on the first of its 3 hits, `windowHit` while the glass holds, `window` once it is gone.
+hook(ISSmashWindow, "ISSmashWindow", function(a)
+    local w = a.window
+    if not instanceof(w, "VehicleWindow") then return end -- a house window
+    local part = w:getPart()
+    S.onBreak(part:getVehicle(), a.character, w:isDestroyed() and "window" or "windowHit", part:getId())
+end)
 hook(ISHotwireVehicle, "ISHotwireVehicle", function(a) S.onBreak(a.character:getVehicle(), a.character, "hotwire") end)
 hook(ISUninstallVehiclePart, "ISUninstallVehiclePart", function(a) S.onBreak(a.vehicle, a.character, "part", partId(a.part)) end)
 
