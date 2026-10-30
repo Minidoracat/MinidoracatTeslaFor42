@@ -67,14 +67,15 @@ local BTN = {
     qfrunk = { "home", "frunk" }, qtrunk = { "home", "trunk" }, controls = { "home" }, location = { "home" },
     security = { "home" }, charging = { "home" }, summon = { "home" },
     back = {}, flash = { "controls", "flash" }, horn = { "controls", "horn" }, frunk = { "controls", "frunk" },
-    trunk = { "controls", "trunk" }, map = { "location" }, navcar = { "location" }, sentry = { "security", "sentry" },
+    trunk = { "controls", "trunk" }, tonneau = { "controls", "tonneau" }, map = { "location" }, navcar = { "location" },
+    sentry = { "security", "sentry" },
     charge = { "charging", "charge" },
     come = { "summon" }, pick = { "summon" }, fwd = { "summon" }, rev = { "summon" }, again = { "summon" },
     finish = { "summon" }, cancel = { "pick" }, go = { "pick" },
 }
 local BTN_ORDER = { "close", "cars", "lock", "qcharge", "qfrunk", "qtrunk", "controls", "location", "summon", "security",
-    "charging", "back", "flash", "horn", "frunk", "trunk", "map", "navcar", "sentry", "charge", "come", "pick", "fwd",
-    "rev", "again", "finish", "cancel", "go" }
+    "charging", "back", "flash", "horn", "frunk", "trunk", "tonneau", "map", "navcar", "sentry", "charge", "come", "pick",
+    "fwd", "rev", "again", "finish", "cancel", "go" }
 -- the joypad's rows per page, top to bottom (buttons not shown are skipped); "cars" is built with its rows
 local NAV = {
     home = { { "cars", "close" }, { "lock", "qcharge", "qfrunk", "qtrunk" }, { "controls" }, { "location" }, { "summon" },
@@ -88,7 +89,7 @@ local NAV = {
     pick = { { "back" }, { "spot" }, { "cancel", "go" } }, -- spot: the map (D-pad moves the pin)
 }
 -- the server actions: dimmed but pressable for a car this phone is not paired with (they say how to add it)
-local REMOTE = { "lock", "qcharge", "qfrunk", "qtrunk", "flash", "horn", "frunk", "trunk", "sentry", "charge" }
+local REMOTE = { "lock", "qcharge", "qfrunk", "qtrunk", "flash", "horn", "frunk", "trunk", "tonneau", "sentry", "charge" }
 local QUICK = { "lock", "qcharge", "qfrunk", "qtrunk" }
 local LIST = { "controls", "location", "summon", "security", "charging" }
 local LIST_ICON = { controls = "i_carfront", location = "i_nav", summon = "i_wheel", security = "i_shield", charging = "i_bolt" }
@@ -97,11 +98,11 @@ local TITLE = { controls = "Controls", location = "Location", security = "Securi
 -- the summon pages' buttons (drawn as the mock's buttons: blue main, white stop, 1 px frame) and the summon each starts
 local SUM_BTNS = { "come", "pick", "fwd", "rev", "again", "finish", "cancel", "go" }
 local SUM_ID = { come = "come", target = "pick" } -- a running summon's button (dumb: fwd / rev by dir)
-local GRID = { "flash", "horn", "frunk", "trunk" }
+local GRID = { "flash", "horn", "frunk", "trunk", "tonneau" }
 -- a control cell only for cars whose Specs entry (Core.lua T.Specs) has this field; the page shows self.cells (read)
-local GRID_NEED = {}
-local GRID_ICON = { flash = "i_headlight", horn = "i_horn", frunk = "i_frunk", trunk = "i_trunk" }
-local LIDS = { "frunk", "trunk" }
+local GRID_NEED = { tonneau = "tonneau" }
+local GRID_ICON = { flash = "i_headlight", horn = "i_horn", frunk = "i_frunk", trunk = "i_trunk", tonneau = "i_tonneau" }
+local LIDS = { "frunk", "trunk", "tonneau" } -- the tonneau has no quick button on the home page
 local HEAD = { "close", "back" } -- header buttons (never scroll)
 local MAIN = { "map", "charge" } -- the blue main actions
 
@@ -493,7 +494,7 @@ function App:onButton(b)
     local st, act, on = self.st or {}, b.act, nil
     if act == "lock" then act = st.locked and "unlock" or "lock"
     elseif act == "sentry" then on = not st.sentry
-    elseif act == "frunk" or act == "trunk" then on = not st[act]
+    elseif act == "frunk" or act == "trunk" or act == "tonneau" then on = not st[act]
     elseif act == "charge" then on = st.chg == "stopped" end
     App.stats.sent = App.stats.sent + 1
     self:send("appAction", { act = act, on = on })
@@ -1011,7 +1012,7 @@ function App:read()
     for _, id in ipairs(LIDS) do
         local open = rec and st[id] == true
         local tip = carKey(self.script, TIP .. id:sub(1, 1):upper() .. id:sub(2))
-        enable(b["q" .. id], live, open, GRID_ICON[id], tip)
+        if b["q" .. id] then enable(b["q" .. id], live, open, GRID_ICON[id], tip) end
         enable(b[id], live, open, GRID_ICON[id], tip)
         b[id].sub = open and txt("Opened") or txt("TapOpen")
     end

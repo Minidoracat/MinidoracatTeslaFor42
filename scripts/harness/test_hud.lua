@@ -377,6 +377,37 @@ tesla.parts.TrunkDoor.door.open, m3.parts.TrunkDoor.door.open = false, false
 check(yTitle == "IGUI_MinidoracatTesla_HUD_DoorOpen|IGUI_MinidoracatTesla_Part_TrunkDoor"
     and m3Title == "IGUI_MinidoracatTesla_HUD_DoorOpen|IGUI_MinidoracatTesla_Part_TrunkLid",
     "open-door message: Model Y 'liftgate open', then the Model 3 with the same bits 'trunk lid open' (" .. tostring(m3Title) .. ")")
+-- Cybertruck: its own top view, door overlays (door_<kind>_Cybertruck) and zones: tailgate x 0-14, tonneau over the
+-- bed x 14-51, the rear glass x 51-55 opens nothing; the tonneau has its own zone and message name
+local ct = car({ script = "Base.MinidoracatTesla_Cybertruck", kwh = 61.5 })
+ct.parts.EngineDoor = tesla.parts.EngineDoor
+local tn = { open = false }
+function tn:isOpen() return self.open end
+ct.parts.TrunkTonneau = { door = tn, getDoor = function(self) return self.door end, getModData = function() return {} end,
+    getInventoryItem = function() return {} end }
+dash:setVehicle(ct)
+local own = true
+for _, d in ipairs(h.doors) do own = own and d.spr:find("_Cybertruck", 1, true) ~= nil and T.HUDAtlas[2][d.spr] ~= nil end
+check(h.carSpr == "car_Cybertruck" and h.zones == HUD.ZONES.Cybertruck and #h.doors == 7 and own,
+    "Cybertruck: car_Cybertruck, its zones, 7 doors each with its own overlay sprite at both scales")
+toggled = {}
+local hits = { { 7, 42, "TrunkDoor" }, { 30, 42, "TrunkTonneau" }, { 60, 20, "DoorRearLeft" }, { 60, 64, "DoorRearRight" },
+    { 90, 20, "DoorFrontLeft" }, { 90, 64, "DoorFrontRight" }, { 120, 42, "EngineDoor" } }
+local allOk = true
+for i, z in ipairs(hits) do allOk = allOk and select(1, clickAt(z[1], z[2])) == true and toggled[i] == z[3] end
+check(allOk and #toggled == 7, "Cybertruck: tailgate, tonneau, 4 doors and the frunk lid each toggle their part")
+toggled = {}
+check(select(1, clickAt(53, 42)) == false and #toggled == 0, "Cybertruck: x 53 is the rear glass: passes through")
+mx, my = at(30, 42)
+h:render()
+check(h.tipArg == "IGUI_VehiclePartTrunkTonneau", "hovering the bed names the tonneau cover")
+mx, my = at(7, 42)
+h:render()
+check(h.tipArg == "IGUI_MinidoracatTesla_Part_Tailgate", "hovering the tail names the tailgate")
+tn.open = true
+h:update(); h:update(); h:update()
+check(h.st.doors == 128, "tonneau open: door bit 128 (DOORS[8])")
+tn.open = false
 dash:setVehicle(tesla)
 T.Liftgate.toggle = realToggle
 mx = nil

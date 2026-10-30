@@ -879,6 +879,28 @@ getText = realGT
 check(lidTitle == "LID", "Model 3: the controls page's lid button is titled with the trunk lid key (" .. tostring(lidTitle) .. ")")
 T.ClientCommands.appDone({ key = 9001, act = "trunk", on = false })
 check(a.toast.text == "IGUI_MinidoracatTesla_App_Done_trunkLid_off", "Model 3: 'trunk closed', not 'liftgate closed'")
+-- Cybertruck: a tonneau cell after the tailgate (Specs tonneau), the tailgate's words, the lock tips naming the tonneau;
+-- the other cars have no tonneau cell
+state({ car = "MinidoracatTesla_Cybertruck", skin = 0, tonneau = true })
+a.b.controls:forceClick()
+local cells = table.concat(a.cells, ",")
+check(cells == "flash,horn,frunk,trunk,tonneau" and a.b.tonneau.shown and a.b.tonneau.on
+    and a.b.tonneau.icon == "i_tonneau" and a.b.tonneau.tipKey == "IGUI_MinidoracatTesla_Tip_AppTonneau"
+    and a.b.trunk.tipKey == "IGUI_MinidoracatTesla_Tip_AppTailgate", "Cybertruck: cells " .. cells .. ", tonneau open and lit")
+check(a.b.lock.tipKey == "IGUI_MinidoracatTesla_Tip_AppUnlockCybertruck"
+    and a.rowSub.controls == "IGUI_MinidoracatTesla_App_ControlsSubCybertruck", "Cybertruck: lock tip and controls line name the tonneau")
+a.b.tonneau:forceClick()
+local tcmd, targs = sentLast()
+check(tcmd == "appAction" and targs.act == "tonneau" and targs.on == false, "tonneau cell on an open cover -> appAction tonneau, on = false")
+a.b.back:forceClick()
+T.ClientCommands.appDone({ key = 9001, act = "trunk", on = true })
+check(a.toast.text == "IGUI_MinidoracatTesla_App_Done_tailgate_on", "Cybertruck: 'tailgate opened'")
+T.ClientCommands.appDone({ key = 9001, act = "tonneau", on = false })
+check(a.toast.text == "IGUI_MinidoracatTesla_App_Done_tonneau_off", "Cybertruck: 'tonneau cover closed'")
+state({ car = "MinidoracatTesla_Model3", skin = 5 })
+a.b.controls:forceClick()
+check(table.concat(a.cells, ",") == "flash,horn,frunk,trunk" and not a.b.tonneau.shown, "Model 3: no tonneau cell")
+a.b.back:forceClick()
 a:onMap()
 check(App.mapCar and App.mapCar.spr == "car_Model3", "Model 3: the world map marker draws the Model 3 top view")
 -- no server record with a model yet (paired, never seen live, or VehicleManager said no): the phone key's mirror
