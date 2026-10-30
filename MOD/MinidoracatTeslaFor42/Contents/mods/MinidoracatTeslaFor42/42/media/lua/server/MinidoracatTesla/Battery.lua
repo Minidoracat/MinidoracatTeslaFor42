@@ -207,7 +207,8 @@ end
 
 -- GasTank update: drive draw minus brake regen, every game minute while the car's parts update; cable length check.
 -- A plugged-in car stands still in Park, so its running motor is standby only, and that runs on a powered charger (B.draw).
--- Parts update while the car drives or charges: the phone app's last record (Remote.lua) follows the car then.
+-- Parts update only while needPartsUpdate is on (driver seated, motor running, camping), an alarm sounds or the
+-- mechanics window is open (BaseVehicle.java:3507-3511): the phone app's last record (Remote.lua) follows the car then.
 function T.Update.Battery(vehicle, part, elapsedMinutes)
     if not part:getInventoryItem() then return end
     local remember = T.Remote and T.Remote.remember
