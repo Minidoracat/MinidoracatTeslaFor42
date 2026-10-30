@@ -177,7 +177,8 @@ local function glass(car)
     function w:getPart() return part end
     function w:getHealth() return self.hp end
     function w:isDestroyed() return self.hp <= 0 end
-    function w:damage(n) self.hits = self.hits + 1; self.hp = math.max(0, self.hp - n) end
+    function w:isHittable() return self.hp > 0 and not self.open end -- VehicleWindow.java:63-79
+    function w:damage(n) self.hits = self.hits + 1; self.dmg = (self.dmg or 0) + 1; self.hp = math.max(0, self.hp - n) end
     function w:hit() self.hits = self.hits + 1; self.hp = 0 end
     return w
 end
@@ -225,6 +226,15 @@ local house = { _class = "IsoWindow", isDestroyed = function() return false end,
 a = setmetatable({ character = thief, window = house }, { __index = ISSmashWindow })
 a:complete()
 check(house.hitIt, "a house window: vanilla")
+H.side(false, false)
+local wo = glass(v)
+wo.open = true -- rolled down: VehicleWindow.damage would do nothing to it
+local before = thief.javaSmash or 0
+a = setmetatable({ character = thief, window = wo }, { __index = ISSmashWindow })
+a:start()
+a:complete()
+check((thief.javaSmash or 0) == before + 1 and not a.anim and not wo.dmg,
+    "a Cybertruck window rolled down: vanilla's action, no armoured swing, no hit counted")
 
 ISSmashWindow, instanceof, getOnlinePlayers, sendDamage = saved.ISSmashWindow, saved.instanceof, saved.getOnlinePlayers, saved.sendDamage
 getPlayer, ISOpenVehicleDoor, ISCloseVehicleDoor = saved.getPlayer, saved.ISOpenVehicleDoor, saved.ISCloseVehicleDoor

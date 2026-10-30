@@ -56,9 +56,12 @@ end
 -- broken glass at 0 as vanilla, VehicleWindow.java:76-107); the condition is the count, so a new window starts over.
 -- Bare hands cut like vanilla. Loaded from shared, before VehicleManager's server wrap of the same complete
 -- (MinidoracatVehicleManager_ActionGuards.lua, SALVAGE): its refusal comes first and counts no hit.
+-- A window rolled down (or no glass) is not hittable and VehicleWindow.damage does nothing to it (VehicleWindow.java:
+-- 63-79): vanilla's action as is, else the swing would land forever and report to Sentry every time.
 local function armour(a)
     local w = a.window
     if not w or not instanceof(w, "VehicleWindow") then return nil end -- a house window is not a car's
+    if not w:isHittable() then return nil end
     local part = w:getPart() -- the window's own car, not the action's vehiclePart field
     local s = T.spec(part and part:getVehicle())
     return s and s.armorGlass

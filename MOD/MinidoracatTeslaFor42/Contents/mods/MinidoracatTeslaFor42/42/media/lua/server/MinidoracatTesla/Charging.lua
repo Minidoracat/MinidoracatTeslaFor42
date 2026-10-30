@@ -114,8 +114,9 @@ end
 local function fromCar(src) return src == "powershare" or src == "outlet" end
 
 -- kW a Cybertruck gives charger o, shared by all it charges: Powershare at most T.PS_KW, the bed outlet T.OUTLET_KW,
--- both times the charging speed sandbox like every charger's kw.
--- ponytail: first come first served between settles; the share evens out as each settles again (hourly at most)
+-- both times the charging speed sandbox like every charger's kw. A car full or stopped holds 0 (C.settle).
+-- ponytail: first come first served; a share another car gave back reaches this one from its next settle on (hourly
+-- at most), never for the stretch already run (C.settle wasKw)
 local function supplyKw(o, sup, src, kw)
     local cap = (src == "powershare" and T.PS_KW or T.OUTLET_KW) * T.chargeMul()
     local id, used = sup:getId(), 0
@@ -233,8 +234,9 @@ local function clearChg(vehicle, part)
 end
 
 -- Book energy from chg.last to now, pick the source for what comes next, schedule the next settle.
--- here = true skips the cable check (unplugging: the car is still at the charger).
-function C.settle(o, now, here)
+-- here = true skips the cable check (unplugging: the car is still at the charger). fresh = true: the car just loaded
+-- (relink); a stretch it ran on a Cybertruck that is not back yet waits one retry for that truck to load.
+function C.settle(o, now, here, fresh)
     local v = T.chargerCar(o, o.x, o.y, o.z)
     if not v then
         -- no car on this cable. vid names no loaded car: unloaded, relink resumes it when it loads. vid names a loaded
@@ -270,7 +272,18 @@ function C.settle(o, now, here)
         if not fromCar(s) then draws[o] = nil end
         return s, g, k
     end
+    -- a Cybertruck pays for the stretch since the last settle only if it was the source then (never retroactively: a
+    -- charger with no power, the grid or a generator stays so until now), at the share it had then (draws: 0 while
+    -- full or stopped; chg.kw after a restart), not the one this pick hands out
+    local wasCar = fromCar(chg.power)
+    local wasKw = (draws[o] and draws[o].kw) or chg.kw or kw
     local src, gen, kwS = pick()
+    if fresh and wasCar and not fromCar(src) and now > t0 then
+        -- the car loaded before the truck that fed it (both load with their cells): keep chg as it was, try once more
+        -- once the truck may be back; the retry is not fresh, so a truck still away books nothing
+        T.log("relink: " .. tostring(v:getId()) .. " ran on a Cybertruck not loaded yet, settling again shortly")
+        return C.schedule(o, now + C.RETRY_H)
+    end
     local needK = math.max(0, limit - B.kwh(part))
     local gotK = 0
     if chg.paused ~= "stopped" and needK > 0 and now > t0 then
@@ -285,8 +298,8 @@ function C.settle(o, now, here)
                     gen:setFuel(gen:getFuel() - rate * h) -- syncs from the server (IsoGenerator.java:509-518)
                 end
                 gotK = gotK + kw * h
-            elseif src then
-                gotK = gotK + C.takeFrom(gen, src, math.min(rest * kwS, needK - gotK))
+            elseif fromCar(src) and wasCar then
+                gotK = gotK + C.takeFrom(gen, src, math.min(rest * wasKw, needK - gotK))
             end
         end
     end
@@ -307,7 +320,7 @@ function C.settle(o, now, here)
     if chg.fed then
         if src == "generator" then
             if fuel > 0 then gen:setFuel(gen:getFuel() - chg.fed * fuel) end
-        elseif src then
+        elseif fromCar(src) and wasCar then
             C.takeFrom(gen, src, chg.fed)
         end
         chg.fed = nil
@@ -325,6 +338,8 @@ function C.settle(o, now, here)
         chg.paused = nil
     end
     chg.src = charging
+    -- a car full or stopped gives its share back (supplyKw), its entry stays for C.settleSupplied
+    if draws[o] then draws[o].kw = charging and kwS or 0 end
     md.chg = chg
     v:transmitPartModData(part)
     local step = C.MAX_STEP_H
@@ -481,7 +496,7 @@ function C.relink(v)
     end
     o.vid = v:getId()
     o:updateOnClient()
-    C.settle(o, T.hours())
+    C.settle(o, T.hours(), nil, true) -- fresh: a Cybertruck that fed it may load a moment later (C.settle)
     T.log("relinked " .. tostring(v:getId()) .. " to " .. o.kind .. " at " .. o.x .. "," .. o.y .. "," .. o.z)
 end
 

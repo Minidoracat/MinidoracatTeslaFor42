@@ -80,11 +80,9 @@ local text = f:read("*a")
 f:close()
 local skins = {}
 for tex in text:gmatch("skin%s*{%s*texture%s*=%s*([%w_/]+)") do skins[#skins + 1] = tex end
--- the Model 3 geometry stands in until TeslaCybertruck's build: then every skin is this car's own, in table order
-local own = text:find("file = " .. CT .. ",", 1, true) ~= nil
 local order = #skins == 12
-for i, c in ipairs(colors) do order = order and (not own or skins[i] == "Vehicles/" .. CT .. "_" .. c.name) end
-check(order, "12 skins" .. (own and ", matching the table one to one" or " (placeholder geometry)") .. " (" .. #skins .. ")")
+for i, c in ipairs(colors) do order = order and skins[i] == "Vehicles/" .. CT .. "_" .. c.name end
+check(order, "12 skins, matching the table one to one (" .. #skins .. ")")
 
 H.section("paint pick " .. CT .. " (weighted)")
 local hits = {}

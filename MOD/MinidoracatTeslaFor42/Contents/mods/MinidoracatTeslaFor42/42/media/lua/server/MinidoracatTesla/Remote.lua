@@ -107,14 +107,10 @@ function R.remember(v, create)
         r.psH = ps.kw > 0 and math.floor(avail / ps.kw + 0.5) or nil
     end
     r.psWall = r.ps ~= nil and chg ~= nil and chg.kind == "WallConnector" or nil -- armed on a Wall Connector or not
-    -- the outlet switched on, and why it gives nothing now (Chargers.lua T.outletPowers): a cable in, the tailgate up,
-    -- the pack at its limit
+    r.psStop = r.ps == "stopped" and T.psStopWhy(part) or nil -- "spot" / "floor"
+    -- the outlet switched on, and why it gives nothing now (Chargers.lua T.outletWhy, which T.outletPowers asks too)
     r.outlet = s and s.bedOutlet and md.outlet == true or nil
-    r.outletWhy = nil
-    if r.outlet then
-        r.outletWhy = (chg and "Plugged") or (not T.lidOpen(v, "TrunkDoor") and "Gate")
-            or (T.Battery.pct(part) <= T.psFloor(part) and "Floor") or nil
-    end
+    r.outletWhy = r.outlet and T.outletWhy(v, part) or nil
     r.h = T.hours()
     return r
 end

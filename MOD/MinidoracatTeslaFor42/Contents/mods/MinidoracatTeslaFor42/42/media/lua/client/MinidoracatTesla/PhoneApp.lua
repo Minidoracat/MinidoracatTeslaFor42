@@ -1052,7 +1052,8 @@ function App:read()
     else
         self.sPsState = txt("Ps_" .. ps)
         self.sPsSub = ps == "armed" and txt(st.psWall and "PsArmedSub" or "PsArmedNoWall")
-            or ps == "stopped" and txt("PsStoppedSub", tostring(floor)) or txt("PsOffSub")
+            or ps == "stopped" and (st.psStop == "spot" and txt("PsStoppedSpot") or txt("PsStoppedSub", tostring(floor)))
+            or txt("PsOffSub")
     end
     self.sPsFloor, self.sPsPct = txt("PsFloor", tostring(floor)), txt("PsCharge", tostring(rec and st.pct or 0))
     enable(b.powershare, rec, ps == "backup", GRID_ICON.powershare, TIP .. "Powershare")

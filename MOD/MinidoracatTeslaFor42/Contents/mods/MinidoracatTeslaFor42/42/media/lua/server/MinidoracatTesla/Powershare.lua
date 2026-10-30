@@ -4,16 +4,22 @@
 -- from a generator's position only (IsoGridSquare.java:9696-9700, 11799-11805), so the server puts a vanilla
 -- IsoGenerator by the truck: our invisible tile and hidden item (Chargers.lua T.PS_SPRITE / T.PS_ITEM; silent, no
 -- wear). Its fuel = the kWh above the discharge limit at vanilla's rate (T.GEN_FUEL_PER_KWH x GeneratorFuelConsumption,
--- no ChargeFuelMultiplier: Powershare burns nothing); each settle books the fuel the house burnt since as kWh off the
--- pack and fills it again. Appliances, sync, saving and the catch-up after an unload are vanilla's.
+-- no ChargeFuelMultiplier: Powershare burns nothing); each settle books the hours since the last one times the house's
+-- load as kWh off the pack and fills it again. Never its fuel: any client can write a generator's fuel, condition,
+-- activated and connected (GameServer.receiveSyncIsoObject -> IsoGenerator.syncIsoObjectReceive, GameServer.java:
+-- 2969-2980, IsoGenerator.java:607-614, no range or rights check), the load it reads is the server's own (worked out
+-- from the appliances, setSurroundingElectricity). Appliances, sync and saving are vanilla's.
 -- Other Teslas charging from it, or from the bed outlet, take their kWh straight off this pack (Charging.lua C.takeFrom).
 -- No polling: everything runs from the truck's own charger settles (plugging in, the shut-off hour, at least hourly while
 -- plugged in), unplugging, the switches, and the tailgate.
--- State: battery part modData `ps` = { on, floor, by, gx, gy, gz, fuelSet, stop, kw } and `outlet` = true
+-- State: battery part modData `ps` = { on, floor, by, gx, gy, gz, fuelSet, t, stop, kw } and `outlet` = true
 -- (architecture.md section 4).
 if isClient() then return end
 require "MinidoracatTesla/Chargers"
 require "MinidoracatTesla/Battery"
+require "TimedActions/ISTakeGenerator"
+require "TimedActions/ISPlugGenerator"
+require "TimedActions/ISDestroyStuffAction"
 require "MinidoracatTesla/Charging"
 require "MinidoracatTesla/Inbox"
 require "MinidoracatTesla/Liftgate"
@@ -107,21 +113,22 @@ local function place(v, ps)
     -- IsoGenerator(item, cell, sq) adds it to the square and, on a server, sends it to the clients (IsoGenerator.java:96-108)
     local g = IsoGenerator.new(item, getWorld():getCell(), sq)
     g:setConnected(true)
-    ps.gx, ps.gy, ps.gz, ps.fuelSet = sq:getX(), sq:getY(), sq:getZ(), 0
+    ps.gx, ps.gy, ps.gz, ps.fuelSet, ps.t = sq:getX(), sq:getY(), sq:getZ(), 0, T.hours()
     T.log("powershare on vid=" .. v:getId() .. " generator at " .. key(ps.gx, ps.gy, ps.gz))
     return g
 end
 
--- Book what the house burnt since the last fill as kWh off the pack (the cars it charged were booked as they settled).
--- ponytail: a generator gone (burnt down, smashed) counts as having burnt all it had
+-- Book the house's use since the last fill as kWh off the pack (the cars it charged were booked as they settled): the
+-- hours by the server's clock times the load the server worked out (getTotalPowerUsing = litres an hour, GFC included,
+-- IsoGenerator.java:732-734), at most the fuel it was given. Never g:getFuel(): clients can write it (header).
+-- A generator gone (smashed, taken) bills nothing more.
 local function book(v, part, ps, g)
-    local r = r0()
-    local left = g and g:getFuel() or 0
-    if r > 0 and ps.fuelSet then
-        local used = math.max(0, ps.fuelSet - left) / r
+    local now, r = T.hours(), r0()
+    if g and r > 0 and ps.fuelSet and ps.t then
+        local used = math.min(ps.fuelSet, math.max(0, now - ps.t) * g:getTotalPowerUsing()) / r
         if used > 0 then B.set(v, part, B.kwh(part) - used) end
     end
-    ps.fuelSet = left
+    ps.t = now
 end
 
 -- Fuel = kWh above the limit, at most a full tank and CAP_HOURS of the house's load; condition kept new. GFC 0: vanilla's
@@ -138,6 +145,8 @@ local function fill(v, part, ps, g)
     end
     if math.abs(g:getFuel() - fuel) > 1e-4 then g:setFuel(fuel) end -- syncs (IsoGenerator.java:509-518)
     if g:getCondition() < 100 then g:setCondition(100) end
+    if not g:isConnected() then g:setConnected(true) end -- a client may have unplugged it (header)
+    ps.t = T.hours()
     ps.fuelSet = fuel
     -- shown in the app: the house (litres an hour / litres a kWh) plus the cars it charges
     ps.kw = (r > 0 and g:getTotalPowerUsing() / r or 0) + C.drawnKw(v)
@@ -155,7 +164,7 @@ local function unsupply(v, ps, g)
     end
     byGen[key(ps.gx, ps.gy, ps.gz)] = nil
     T.log("powershare generator removed at " .. key(ps.gx, ps.gy, ps.gz))
-    ps.gx, ps.gy, ps.gz, ps.fuelSet, ps.kw = nil, nil, nil, nil, nil
+    ps.gx, ps.gy, ps.gz, ps.fuelSet, ps.t, ps.kw = nil, nil, nil, nil, nil, nil
     C.settleSupplied(v)
 end
 
@@ -195,19 +204,23 @@ local function update(v, part, ps, o, other)
         if not g then
             g = place(v, ps)
             placed = g ~= nil
-            if not g then T.log("powershare vid=" .. v:getId() .. ": no outdoor square near for the generator") end
+            if not g then -- tried again at every settle
+                ps.stop = "spot"
+                T.log("powershare vid=" .. v:getId() .. ": no outdoor square near for the generator")
+            end
         end
         if g then fill(v, part, ps, g) end
     else
-        ps.stop = want or nil -- the house is out of power and the pack at its limit
+        ps.stop = want and "floor" or nil -- the house is out of power and the pack at its limit
         if ps.gx then unsupply(v, ps, g) end
     end
     local now = T.psState(part)
     v:transmitPartModData(part)
     if was ~= now then T.log("powershare vid=" .. v:getId() .. " " .. was .. " -> " .. now) end
-    if was == "backup" and now == "stopped" then
-        local e = T.Inbox.entry(v, "lowBattery", "powershare")
-        e.pct = T.psFloor(part)
+    if now == "stopped" and was ~= "stopped" then -- the owner told: at the limit, or nowhere to put the generator
+        local spot = T.psStopWhy(part) == "spot"
+        local e = T.Inbox.entry(v, "lowBattery", spot and "powershareSpot" or "powershare")
+        if not spot then e.pct = T.psFloor(part) end
         T.Inbox.notify(ps.by, e)
     end
     if placed then -- the chargers in its range take it from now on (IsoGenerator.isPoweringSquare: the sandbox range)
@@ -237,7 +250,8 @@ local function register(v)
     end
     T.OutletCars[v:getId()] = key0
 end
--- the chargers it feeds book up to now (call before the change), the ones near take the new state (after)
+-- after the outlet changed (on / off, the tailgate, a cable in or out): the chargers within OUTLET_TILES pick their
+-- source again. Before the change the caller settles the ones it fed (C.settleSupplied), so they book with it as it was.
 function PS.outletChanged(v)
     C.settleAround(math.floor(v:getX()), math.floor(v:getY()), math.floor(v:getZ()), PS.OUTLET_TILES, 0, v)
 end
@@ -271,8 +285,9 @@ function PS.set(player, v, what, on, pct)
     md.ps = ps
     if what == "floor" then
         if type(pct) ~= "number" or pct ~= pct then return "BAD_VALUE" end
+        -- what it fed (Powershare or the outlet) books up to now at the old limit (C.takeFrom stops there)
+        C.settleSupplied(v)
         ps.floor = math.max(T.PS_FLOOR_MIN, math.min(T.PS_FLOOR_MAX, math.floor(pct + 0.5)))
-        if md.outlet then C.settleSupplied(v) end
     else
         if ps.on == on then return nil end
         ps.on = on
@@ -303,7 +318,10 @@ T.ServerCommands.outletOff = command("outlet", false)
 -- before it moves the chargers the outlet feeds book with it as it was; after, the ones near take the new state
 local function aroundTailgate(v, part, fn)
     local watch = v and part and part:getId() == "TrunkDoor" and T.OutletCars[v:getId()] ~= nil
-    if watch then pcall(C.settleSupplied, v) end
+    if watch then
+        local ok, err = pcall(C.settleSupplied, v)
+        if not ok then T.log("bed outlet before the tailgate failed: " .. tostring(err)) end
+    end
     local r = fn()
     if watch then
         local ok, err = pcall(PS.outletChanged, v)
@@ -333,7 +351,30 @@ Events.OnSpawnVehicleEnd.Add(function(v)
     if ps and ps.gx then byGen[key(ps.gx, ps.gy, ps.gz)] = v:getId() end
 end)
 
--- vanilla's generator menu (info, switch, plug, fuel, fix, take) never shows for ours: the client drops it from what
--- the right click fetched (client/MinidoracatTesla/PowershareUI.lua)
+-- vanilla's generator menu (info, switch, plug, fuel, fix, take) and the sledgehammer never show for ours: the client
+-- drops them (client/MinidoracatTesla/PowershareUI.lua). A client that skips its menu is refused here, where the action
+-- completes (server / SP; complete() false = refused, NetTimedAction.java:132-134): taking it would hand out the
+-- hidden item (getGeneratorItemType, ISTakeGenerator.lua:39-53), unplugging or smashing it (ISDestroyStuffAction.lua:
+-- 250-252,330) darkens the house. Switching it off or adding fuel changes nothing we bill (book) and the next settle
+-- sets it back (fill). A hook error never breaks the vanilla action.
+local function guard(cls, field)
+    local orig = cls and cls.complete
+    if not orig then return end
+    cls.complete = function(self)
+        local ok, ours = pcall(function()
+            local g = self[field]
+            return g ~= nil and instanceof(g, "IsoGenerator") and T.isPowershare(g)
+        end)
+        if ok and ours then
+            T.log("refused " .. tostring(cls.Type) .. " on a Powershare generator by "
+                .. tostring(self.character and self.character:getUsername()))
+            return false
+        end
+        return orig(self)
+    end
+end
+guard(ISTakeGenerator, "generator")
+guard(ISPlugGenerator, "generator")
+guard(ISDestroyStuffAction, "item")
 
 return PS

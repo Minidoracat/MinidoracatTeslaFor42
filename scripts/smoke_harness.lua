@@ -286,6 +286,13 @@ ISMoveablesAction = { complete = function(self)
     if self.onComplete then self.onComplete(self) end
     return true
 end }
+-- vanilla generator actions (ISTakeGenerator.lua:39-53 hands out getGeneratorItemType, ISPlugGenerator.lua:38-41,
+-- ISDestroyStuffAction.lua:250-252,330); Powershare.lua refuses them on its own generator. `done` = vanilla ran.
+local function vanillaAction(name)
+    return { Type = name, complete = function(self) self.done = true; return true end }
+end
+ISTakeGenerator, ISPlugGenerator, ISDestroyStuffAction =
+    vanillaAction("ISTakeGenerator"), vanillaAction("ISPlugGenerator"), vanillaAction("ISDestroyStuffAction")
 
 -- ---------------------------------------------------------------- loader
 local loaded = {}
@@ -306,6 +313,7 @@ for _, m in ipairs({ "ISOpenVehicleDoor", "ISCloseVehicleDoor", "ISLockDoors", "
 end
 H.stub("Moveables/ISMoveableSpriteProps")
 H.stub("Moveables/ISMoveablesAction")
+for _, m in ipairs({ "ISTakeGenerator", "ISPlugGenerator", "ISDestroyStuffAction" }) do H.stub("TimedActions/" .. m) end
 
 -- ---------------------------------------------------------------- checks
 function H.check(ok, label)

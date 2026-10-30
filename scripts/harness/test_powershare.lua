@@ -62,6 +62,7 @@ local function newGen(sq, sprite)
     function g:getCondition() return self.cond end
     function g:setCondition(c) self.cond = c end
     function g:setConnected(b) self.connected = b end
+    function g:isConnected() return self.connected == true end
     sq.special[#sq.special + 1] = g
     gens[#gens + 1] = g
     return g
@@ -164,13 +165,42 @@ check(near(g.fuel, math.min(10, avail * r0, 0.02 * 0.1 * 720), 1e-6) and near(md
     "fuel = min(10 L, kWh above the limit x r0, 720 h of the load): " .. string.format("%.3f", g.fuel))
 check(near(B.kwh(B.part(ct)), ctBefore + 11.5, 1e-6), "the grid hour before the shut-off charged it (11.5), the half hour after nothing")
 
-H.section("Powershare: the house's fuel is booked as kWh off the pack")
+H.section("Powershare: the house's use is booked by the server's clock x load, never the generator's fuel")
+local HOUSE = 0.02 * 0.1 / r0 -- kWh an hour at the base load (0.0157)
 local k0 = B.kwh(B.part(ct))
-g.fuel = g.fuel - 0.1 -- vanilla burnt 0.1 L (IsoGenerator.update)
+g.fuel = 0 -- a client wrote it (SyncIsoObject: GameServer.java:2969-2980, IsoGenerator.java:607-614)
+H.setHours(337)
+C.settle(wo, H.hours())
+check(near(k0 - B.kwh(B.part(ct)), 0.5 * HOUSE, 1e-6),
+    string.format("a client set the fuel to 0: 0.5 h x load booked (%.4f kWh), not the 1.44 L it was given", 0.5 * HOUSE))
+check(near(g.fuel, md(ct).ps.fuelSet, 1e-9) and g.fuel > 0, "filled again")
+k0 = B.kwh(B.part(ct))
+g.fuel, g.connected, g.cond, g.on = 10, false, 5, false -- a client: full tank, unplugged, worn, off
+H.setHours(337.5)
+C.settle(wo, H.hours())
+check(near(k0 - B.kwh(B.part(ct)), 0.5 * HOUSE, 1e-6), "a client set it to 10 L: still 0.5 h x load, nothing given back")
+check(g.connected and g.on and g.cond == 100 and near(g.fuel, md(ct).ps.fuelSet, 1e-9),
+    "the settle puts back connected, activated, condition and its own fuel")
+H.section("Powershare: vanilla's take / plug / smash on ours are refused on the server")
+local thief = H.player({ name = "mal2", x = 302, y = 302 })
+local function act(cls, field, obj) local a = setmetatable({ character = thief, [field] = obj }, { __index = cls }); return a:complete(), a.done end
+local r, done = act(ISTakeGenerator, "generator", g)
+check(r == false and not done, "ISTakeGenerator on ours: refused, no hidden item handed out")
+r, done = act(ISPlugGenerator, "generator", g)
+check(r == false and not done, "ISPlugGenerator (unplug) on ours: refused")
+r, done = act(ISDestroyStuffAction, "item", g)
+check(r == false and not done and gen(ct) == g, "ISDestroyStuffAction (sledgehammer) on ours: refused, still there")
+local plain = newGen(square(290, 290, 0), "appliances_misc_01_0")
+r, done = act(ISTakeGenerator, "generator", plain)
+check(r == true and done, "a vanilla generator: vanilla's action as usual")
+for i = #gens, 1, -1 do if gens[i] == plain then table.remove(gens, i) end end
+k0 = B.kwh(B.part(ct))
+g.sq:transmitRemoveItemFromSquare(g) -- gone some other way (burnt down)
 H.setHours(338)
 C.settle(wo, H.hours())
-check(near(k0 - B.kwh(B.part(ct)), 0.1 / r0, 1e-6), "0.1 L burnt = " .. string.format("%.4f", 0.1 / r0) .. " kWh (1 load-hour = 0.784 kWh)")
-check(near(g.fuel, md(ct).ps.fuelSet, 1e-9) and g.fuel > 0, "filled again")
+check(near(B.kwh(B.part(ct)), k0, 1e-9), "its generator gone: nothing more booked for it")
+g = gen(ct)
+check(g ~= nil and T.psState(B.part(ct)) == "backup", "a new one in its place")
 
 H.section("Powershare: another Tesla charges from it, kWh for kWh, 11.5 kW at most together")
 local w2 = charger(310, 300, WALL, { room = {} })
@@ -183,7 +213,8 @@ local ctK, myK = B.kwh(B.part(ct)), B.kwh(B.part(my))
 H.setHours(339)
 C.settle(w2, H.hours())
 local gotMy, lostCt = B.kwh(B.part(my)) - myK, ctK - B.kwh(B.part(ct))
-check(near(gotMy, 11.5, 1e-6) and near(lostCt, 11.5, 1e-6), string.format("1 h: Model Y +%.3f, Cybertruck -%.3f", gotMy, lostCt))
+check(near(gotMy, 11.5, 1e-6) and near(lostCt, 11.5 + HOUSE, 1e-6),
+    string.format("1 h: Model Y +%.3f, Cybertruck -%.3f (and the house's hour)", gotMy, lostCt))
 local m3 = car("Base.MinidoracatTesla_Model3", 20, 321.5, 302.5)
 keyFor(m3)
 local w3 = charger(320, 300, MOBILE, { room = {} })
@@ -197,8 +228,8 @@ PS.touch(ct) -- the pack moved: refill caps the fuel
 myK = B.kwh(B.part(my))
 H.setHours(340)
 C.settle(w2, H.hours())
-check(near(B.kwh(B.part(my)) - myK, 2, 1e-6) and near(B.kwh(B.part(ct)), floorKwh, 1e-6),
-    "Model Y got the last 2 kWh above the limit, the Cybertruck sits on it")
+check(near(B.kwh(B.part(my)) - myK, 2, 1e-6) and near(B.kwh(B.part(ct)), floorKwh - HOUSE, 1e-6),
+    "Model Y got the last 2 kWh above the limit, the Cybertruck sits on it (less the house's last hour)")
 C.settle(wo, H.hours())
 check(T.psState(B.part(ct)) == "stopped" and gen(ct) == nil and #gens == 0, "stopped: the generator is gone")
 check(removed[#removed] == g and not g.on, "switched off before the removal packet (chunk positions cleared)")
@@ -334,6 +365,78 @@ B.set(ct, B.part(ct), floorKwh + 1)
 H.setHours(343)
 C.settle(bedMc, H.hours())
 check(near(B.kwh(B.part(ct)), floorKwh, 1e-6) and md(y2).chg.paused == "nopower", "down to the 20 % limit, then none")
+
+H.section("bed outlet: no retroactive stretch, shares given back, the limit, a truck loading late")
+B.set(ct, B.part(ct), 100) -- above the limit again; nothing settles the Model Y now
+myK = B.kwh(B.part(y2))
+H.setHours(343.5)
+C.settle(bedMc, H.hours())
+check(near(B.kwh(B.part(y2)), myK, 1e-9) and md(y2).chg.src == "outlet",
+    "power came back unseen: the half hour it had none books nothing, the outlet from now on")
+plug(y3, bedMc2)
+check(near(md(y3).chg.kw, 2.0, 1e-9), "second car: 2.0 kW left")
+local lim = 78.4 * 0.9
+B.set(y2, B.part(y2), lim - 1)
+local y3K = B.kwh(B.part(y3))
+H.setHours(344)
+C.settle(bedMc, H.hours())
+check(md(y2).chg.paused == "full" and near(T.Charge.drawnKw(ct), 2.0, 1e-9), "first car full: it holds 0 kW (drawnKw 2.0)")
+C.settle(bedMc2, H.hours())
+check(near(B.kwh(B.part(y3)) - y3K, 1.0, 1e-6) and near(md(y3).chg.kw, 7.6, 1e-9),
+    "second car: the half hour run at its 2.0 kW share (1.0 kWh), the freed share (7.6) from now on")
+y3K = B.kwh(B.part(y3))
+H.setHours(344.5)
+C.settle(bedMc2, H.hours())
+check(near(B.kwh(B.part(y3)) - y3K, 3.8, 1e-6), "next half hour at 7.6 kW")
+B.set(ct, B.part(ct), floorKwh + 1)
+y3K = B.kwh(B.part(y3))
+H.setHours(345)
+check(PS.set(owner, ct, "floor", nil, 10) == nil, "limit lowered to 10 %")
+check(near(B.kwh(B.part(y3)) - y3K, 1.0, 1e-6), "the stretch before it booked at the old 20 % limit (1 kWh above it)")
+B.set(ct, B.part(ct), 100)
+C.settle(bedMc2, H.hours())
+y3K = B.kwh(B.part(y3))
+local last0 = md(y3).chg.last
+local listed = T.OutletCars[ct:getId()]
+T.OutletCars[ct:getId()] = nil -- the truck's cell not loaded yet
+H.setHours(346)
+C.relink(y3)
+check(near(B.kwh(B.part(y3)), y3K, 1e-9) and md(y3).chg.last == last0 and md(y3).chg.power == "outlet",
+    "the car loads before the truck that fed it: nothing booked, the record kept, settled again shortly")
+T.OutletCars[ct:getId()] = listed
+H.setHours(346 + 1 / 6)
+C.settle(bedMc2, H.hours())
+check(near(B.kwh(B.part(y3)) - y3K, 7.6 * (1 + 1 / 6), 1e-6), "the truck back: the whole stretch away booked")
+y3K = B.kwh(B.part(y3))
+T.OutletCars[ct:getId()] = nil
+H.setHours(347)
+C.relink(y3)
+H.setHours(347 + 1 / 6)
+C.settle(bedMc2, H.hours())
+check(near(B.kwh(B.part(y3)), y3K, 1e-9) and md(y3).chg.paused == "nopower", "the truck still away on the retry: nothing, as usual")
+T.OutletCars[ct:getId()] = listed
+unplug(y3)
+
+H.section("Powershare: nowhere to put the generator -> stopped (spot), the owner told, retried each settle")
+local gw = charger(500, 500, WALL, { room = {} })
+local ct2 = car(CT, 80, 500.5, 495.5)
+for x = 492, 508 do for y = 487, 503 do square(x, y, 0, { room = {} }) end end -- indoors all round: no spot
+keyFor(ct2)
+plug(ct2, gw)
+local function lastNote() local b = T.Store.get("inbox").own or {}; return b[#b] end
+local before = lastNote()
+PS.set(owner, ct2, "ps", true) -- plugged in, the grid long gone: decides now
+check(T.psState(B.part(ct2)) == "stopped" and T.psStopWhy(B.part(ct2)) == "spot" and gen(ct2) == nil,
+    "no outdoor square near: stopped, why spot, no generator")
+local note = lastNote()
+check(note ~= before and note.what == "powershareSpot" and note.kind == "lowBattery",
+    "the owner is told (lowBattery / powershareSpot)")
+C.settle(gw, H.hours())
+check(lastNote() == note, "still no spot on the next settle: not told again")
+square(500, 494, 0) -- an outdoor square opens up
+C.settle(gw, H.hours())
+check(T.psState(B.part(ct2)) == "backup" and gen(ct2) ~= nil, "a spot near now: backup")
+unplug(ct2)
 
 H.section("no polling")
 check(H.count("OnTick") == ticks0 and H.count("EveryOneMinute") == mins0, "Powershare adds no OnTick / EveryOneMinute")

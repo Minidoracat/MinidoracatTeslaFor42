@@ -126,27 +126,43 @@ function T.psFloor(part)
     return math.max(T.PS_FLOOR_MIN, math.min(T.PS_FLOOR_MAX, f))
 end
 -- plan 4's states: "off", "armed" (on, the house has the grid or another generator, or no Wall Connector cable),
--- "backup" (its generator is out), "stopped" (the house is out of power and the pack is at the limit)
+-- "backup" (its generator is out), "stopped" (the house is out of power and it cannot supply: T.psStopWhy)
 function T.psState(part)
     local ps = part and part:getModData().ps
     if not (ps and ps.on) then return "off" end
     if ps.gx then return "backup" end
     return ps.stop and "stopped" or "armed"
 end
+-- why a stopped Powershare gives nothing: "spot" (no outdoor square near the truck for its generator, Powershare.lua
+-- PS.pickSquare) or "floor" (the pack at its discharge limit)
+function T.psStopWhy(part)
+    local ps = part and part:getModData().ps
+    if not (ps and ps.on and not ps.gx and ps.stop) then return nil end
+    return ps.stop == "spot" and "spot" or "floor"
+end
 
--- Does Cybertruck v's bed outlet power a Mobile Connector at x, y, z (user 2026-10-30: "能，照實車")? The outlet on
--- (battery part modData `outlet`), the tailgate down (a removed tailgate is no lid), no charge cable in v (AC charging
--- turns the outlets off, p.200), no Home Backup running (p.205), above its discharge limit, and the charger within
--- Specs bedOutlet.tiles of the bed area's centre (Chebyshev, like genTiles; getAreaCenter, BaseVehicle.java:8363-8373),
--- same floor.
+-- Why Cybertruck v's bed outlet (switched on, battery part modData `outlet`) gives nothing right now, or nil when it
+-- supplies: "Plugged" (a charge cable in v: AC charging turns the outlets off, owner's manual p.200), "Backup" (Home
+-- Backup running, p.205), "Gate" (the tailgate up; a removed tailgate is no lid), "Floor" (at its discharge limit, or
+-- no pack). The server's T.outletPowers and the phone app's line (Remote.lua outletWhy) both ask this.
+function T.outletWhy(v, part)
+    local md = part:getModData()
+    if md.chg then return "Plugged" end
+    if md.ps and md.ps.gx then return "Backup" end
+    if not T.lidOpen(v, "TrunkDoor") then return "Gate" end
+    if not part:getInventoryItem() or T.Battery.pct(part) <= T.psFloor(part) then return "Floor" end
+    return nil
+end
+
+-- Does Cybertruck v's bed outlet power a Mobile Connector at x, y, z (user 2026-10-30: "能，照實車")? The outlet on and
+-- nothing holding it off (T.outletWhy), and the charger within Specs bedOutlet.tiles of the bed area's centre
+-- (Chebyshev, like genTiles; getAreaCenter, BaseVehicle.java:8363-8373), same floor.
 function T.outletPowers(v, x, y, z)
     local s = T.spec(v)
     local bo = s and s.bedOutlet
     local part = bo and T.Battery.part(v)
-    local md = part and part:getModData()
-    if not (md and md.outlet and not md.chg and not (md.ps and md.ps.gx) and part:getInventoryItem()) then return false end
-    if math.floor(v:getZ()) ~= z or not T.lidOpen(v, "TrunkDoor") then return false end
-    if T.Battery.pct(part) <= T.psFloor(part) then return false end
+    if not (part and part:getModData().outlet) or T.outletWhy(v, part) then return false end
+    if math.floor(v:getZ()) ~= z then return false end
     local c = v:getAreaCenter(bo.area)
     return c ~= nil and math.abs(x + 0.5 - c:getX()) <= bo.tiles and math.abs(y + 0.5 - c:getY()) <= bo.tiles
 end

@@ -134,7 +134,8 @@ module Base
                 init = Vehicles.Init.Door,
             }
         }
-        /* bed lights (owner's manual p.83, Auto: on while the tailgate or the tonneau is open; Liftgate.lua L.bedLight) and */
+        /* bed lights (owner's manual p.83, Auto: on while the tailgate or the tonneau is open; Truck.lua */
+        /* MinidoracatTesla.Truck.bedLight, called from Liftgate.lua) and */
         /* the roof light bar (official accessory; every Cybertruck has one, switched from the V radial menu). Light parts */
         /* like CabinLight: no "Headlight" in the id (the headlight switch would drive it, VehicleParts.java:373), no "Rear" */
         /* (it would shine backwards, IsoGameCharacter.java:17311), not "lightbar" (siren, BaseVehicle.java:3498-3505). */
