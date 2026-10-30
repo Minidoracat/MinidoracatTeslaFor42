@@ -205,6 +205,7 @@ function H.vehicle(o)
     return v
 end
 function H.removeVehicle(v) vehicles[v.id] = nil end
+function H.addVehicle(v) vehicles[v.id] = v end -- loaded again (H.removeVehicle)
 
 -- H.player{ name=, admin=, x=, y=, z=, keys={id=true}, num=, sid= }; each its own connection slot, online id =
 -- slot * 4 + split-screen index like the engine's (GameServer.java:2686, ConnectCoopPacket.java:125): a guest of
@@ -230,6 +231,7 @@ function H.player(o)
     end
     function p:getSteamID() return self.sid or 0 end -- H.player{ sid = } (IsoPlayer.java:6412; 0 off Steam)
     function p:isDead() return self.dead == true end
+    function p:isBuildCheat() return self.buildCheat == true end -- an admin's build cheat (IsoGameCharacter.java:12113)
     function p:getInventory()
         local keys = self.keys
         return { haveThisKeyId = function(_, id) return keys[id] and {} or nil end }

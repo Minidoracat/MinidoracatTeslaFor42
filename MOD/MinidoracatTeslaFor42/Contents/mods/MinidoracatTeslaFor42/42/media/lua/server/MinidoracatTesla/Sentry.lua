@@ -209,10 +209,12 @@ hook(ISUnlockVehicleDoor, "ISUnlockVehicleDoor", function(a) S.onTouch(a.vehicle
 -- outside radial (ISVehicleMenu.lua:343-351) and the mechanics window (ISVehicleMechanics.lua:286). Vanilla never queues
 -- ISSmashVehicleWindow (no caller in media/lua or the Java). The window's own car (window:getPart(), not the action's
 -- part field). Every hit is a break attempt: Armor Glass (Truck.lua, wrapped from shared, so its hit has landed by now)
--- rings on the first of its 3 hits, `windowHit` while the glass holds, `window` once it is gone.
+-- rings on the first of its 3 hits, `windowHit` while the glass holds, `window` once it is gone. A window still
+-- rolled down and whole was not hit (Truck.lua refuses it on an armoured car).
 hook(ISSmashWindow, "ISSmashWindow", function(a)
     local w = a.window
     if not instanceof(w, "VehicleWindow") then return end -- a house window
+    if w:isOpen() and not w:isDestroyed() then return end
     local part = w:getPart()
     S.onBreak(part:getVehicle(), a.character, w:isDestroyed() and "window" or "windowHit", part:getId())
 end)

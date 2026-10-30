@@ -11,6 +11,7 @@ function getPlayer() return nil end -- SP partAnim's sound (Liftgate.lua client 
 -- vanilla ISSmashWindow (shared/TimedActions/ISSmashWindow.lua:23-60): start hands SP to Java, complete hits on the
 -- MP server only
 ISSmashWindow = {
+    isValid = function() return true end, -- ISSmashWindow.lua:5-7
     start = function(self) self.character.javaSmash = (self.character.javaSmash or 0) + 1 end,
     complete = function(self)
         if isServer() and not self.window:isDestroyed() then self.window:hit(self.character) end
@@ -173,13 +174,18 @@ H.side(false, false)
 H.section("Cybertruck: Armor Glass takes 3 smashes (ISSmashWindow)")
 local function glass(car)
     local w = { _class = "VehicleWindow", hp = 100, hits = 0 }
-    local part = { getVehicle = function() return car end, getId = function() return "WindowFrontLeft" end }
+    local part = { getVehicle = function() return car end, getId = function() return "WindowFrontLeft" end,
+        getItemType = function() return { "Base.FrontWindow" } end }
+    function part:getInventoryItem() if w.glassGone then return nil end return {} end
     function w:getPart() return part end
     function w:getHealth() return self.hp end
     function w:isDestroyed() return self.hp <= 0 end
-    function w:isHittable() return self.hp > 0 and not self.open end -- VehicleWindow.java:63-79
-    function w:damage(n) self.hits = self.hits + 1; self.dmg = (self.dmg or 0) + 1; self.hp = math.max(0, self.hp - n) end
-    function w:hit() self.hits = self.hits + 1; self.hp = 0 end
+    function w:isOpen() return self.open == true end
+    function w:damage(n) -- VehicleWindow.java:76-79: only a hittable window (whole, shut, glass in)
+        if self.hp <= 0 or self.open or self.glassGone then return end
+        self.hits = self.hits + 1; self.dmg = (self.dmg or 0) + 1; self.hp = math.max(0, self.hp - n)
+    end
+    function w:hit() self.hits = self.hits + 1; self.hp = 0 end -- :71-74, whatever its state
     return w
 end
 local function hands(p, weapon)
@@ -228,13 +234,23 @@ a:complete()
 check(house.hitIt, "a house window: vanilla")
 H.side(false, false)
 local wo = glass(v)
-wo.open = true -- rolled down: VehicleWindow.damage would do nothing to it
+wo.open = true -- rolled down: vanilla's complete would hit it and break it in one go (VehicleWindow.java:71-74)
 local before = thief.javaSmash or 0
 a = setmetatable({ character = thief, window = wo }, { __index = ISSmashWindow })
+check(a:isValid() == false, "a Cybertruck window rolled down: refused before the swing (isValid false)")
+H.side(false, true)
+check(a:complete() == false and wo.hp == 100 and wo.hits == 0 and (thief.javaSmash or 0) == before,
+    "rolled down, a client skipping isValid: the server's complete refuses it, the glass untouched")
+H.side(false, false)
+local wg = glass(v)
+wg.glassGone = true
+a = setmetatable({ character = thief, window = wg }, { __index = ISSmashWindow })
 a:start()
-a:complete()
-check((thief.javaSmash or 0) == before + 1 and not a.anim and not wo.dmg,
-    "a Cybertruck window rolled down: vanilla's action, no armoured swing, no hit counted")
+check(a:isValid() == true and (thief.javaSmash or 0) == before + 1 and not a.anim, "no glass fitted: vanilla's action")
+local wy = glass(my)
+wy.open = true
+a = setmetatable({ character = thief, window = wy }, { __index = ISSmashWindow })
+check(a:isValid() == true, "a Model Y window rolled down: vanilla (no Armor Glass)")
 
 ISSmashWindow, instanceof, getOnlinePlayers, sendDamage = saved.ISSmashWindow, saved.instanceof, saved.getOnlinePlayers, saved.sendDamage
 getPlayer, ISOpenVehicleDoor, ISCloseVehicleDoor = saved.getPlayer, saved.ISOpenVehicleDoor, saved.ISCloseVehicleDoor

@@ -120,12 +120,14 @@ end
 
 -- Book the house's use since the last fill as kWh off the pack (the cars it charged were booked as they settled): the
 -- hours by the server's clock times the load the server worked out (getTotalPowerUsing = litres an hour, GFC included,
--- IsoGenerator.java:732-734), at most the fuel it was given. Never g:getFuel(): clients can write it (header).
--- A generator gone (smashed, taken) bills nothing more.
+-- IsoGenerator.java:732-734), at most the fuel it was given and never past the discharge limit (PS.avail): in the
+-- odd case the cars took the rest first, that bit of the house's use is free, and the limit holds. Never
+-- g:getFuel(): clients can write it (header). A generator gone (smashed, taken) bills nothing more.
 local function book(v, part, ps, g)
     local now, r = T.hours(), r0()
     if g and r > 0 and ps.fuelSet and ps.t then
         local used = math.min(ps.fuelSet, math.max(0, now - ps.t) * g:getTotalPowerUsing()) / r
+        used = math.min(used, PS.avail(v, part))
         if used > 0 then B.set(v, part, B.kwh(part) - used) end
     end
     ps.t = now
@@ -148,23 +150,35 @@ local function fill(v, part, ps, g)
     if not g:isConnected() then g:setConnected(true) end -- a client may have unplugged it (header)
     ps.t = T.hours()
     ps.fuelSet = fuel
-    -- shown in the app: the house (litres an hour / litres a kWh) plus the cars it charges
-    ps.kw = (r > 0 and g:getTotalPowerUsing() / r or 0) + C.drawnKw(v)
+    -- the house's kW (litres an hour / litres a kWh); the app adds the cars it charges now (Remote.lua, C.drawnKw)
+    ps.house = r > 0 and g:getTotalPowerUsing() / r or 0
     byGen[key(ps.gx, ps.gy, ps.gz)] = v:getId()
+end
+
+-- Before Cybertruck v's supply changes: the cars it feeds book up to now with it (draws), and so do the ones waiting
+-- for it (C.settle chg.hold; after a restart draws is empty) by its bed outlet and its generator.
+function PS.settleFed(v)
+    C.settleSupplied(v)
+    PS.outletChanged(v)
+    local part = B.part(v)
+    local ps = part and part:getModData().ps
+    if ps and ps.gx then
+        C.settleAround(ps.gx, ps.gy, ps.gz, SandboxVars.GeneratorTileRange or 20, SandboxVars.GeneratorVerticalPowerRange or 3, v)
+    end
 end
 
 -- off, then gone: removeFromWorld leaves the chunks' generator positions (IsoGenerator.java:468-479), setActivated(false)
 -- clears them and syncs; the removal packet is the server's (environment.md, 42.21). The cars it charged settle before
 -- (they book up to now with it) and after (they see it gone).
 local function unsupply(v, ps, g)
-    C.settleSupplied(v)
+    PS.settleFed(v)
     if g then
         g:setActivated(false)
         g:getSquare():transmitRemoveItemFromSquare(g)
     end
     byGen[key(ps.gx, ps.gy, ps.gz)] = nil
     T.log("powershare generator removed at " .. key(ps.gx, ps.gy, ps.gz))
-    ps.gx, ps.gy, ps.gz, ps.fuelSet, ps.t, ps.kw = nil, nil, nil, nil, nil, nil
+    ps.gx, ps.gy, ps.gz, ps.fuelSet, ps.t, ps.house = nil, nil, nil, nil, nil, nil
     C.settleSupplied(v)
 end
 
@@ -251,7 +265,7 @@ local function register(v)
     T.OutletCars[v:getId()] = key0
 end
 -- after the outlet changed (on / off, the tailgate, a cable in or out): the chargers within OUTLET_TILES pick their
--- source again. Before the change the caller settles the ones it fed (C.settleSupplied), so they book with it as it was.
+-- source again. Before the change the caller settles the ones it fed (PS.settleFed), so they book with it as it was.
 function PS.outletChanged(v)
     C.settleAround(math.floor(v:getX()), math.floor(v:getY()), math.floor(v:getZ()), PS.OUTLET_TILES, 0, v)
 end
@@ -273,7 +287,7 @@ function PS.set(player, v, what, on, pct)
     local md = part:getModData()
     if what == "outlet" then
         if (md.outlet == true) == on then return nil end
-        C.settleSupplied(v)
+        PS.settleFed(v)
         md.outlet = on or nil
         if on then register(v) else T.OutletCars[v:getId()] = nil end
         v:transmitPartModData(part)
@@ -286,7 +300,7 @@ function PS.set(player, v, what, on, pct)
     if what == "floor" then
         if type(pct) ~= "number" or pct ~= pct then return "BAD_VALUE" end
         -- what it fed (Powershare or the outlet) books up to now at the old limit (C.takeFrom stops there)
-        C.settleSupplied(v)
+        PS.settleFed(v)
         ps.floor = math.max(T.PS_FLOOR_MIN, math.min(T.PS_FLOOR_MAX, math.floor(pct + 0.5)))
     else
         if ps.on == on then return nil end
@@ -319,7 +333,7 @@ T.ServerCommands.outletOff = command("outlet", false)
 local function aroundTailgate(v, part, fn)
     local watch = v and part and part:getId() == "TrunkDoor" and T.OutletCars[v:getId()] ~= nil
     if watch then
-        local ok, err = pcall(C.settleSupplied, v)
+        local ok, err = pcall(PS.settleFed, v)
         if not ok then T.log("bed outlet before the tailgate failed: " .. tostring(err)) end
     end
     local r = fn()
@@ -341,8 +355,11 @@ for _, cls in ipairs({ ISOpenVehicleDoor, ISCloseVehicleDoor }) do -- by hand (s
 end
 
 -- ---------------------------------------------------------------- load
--- every load (BaseVehicle.java:904): the outlet list, and the generator's owner
+-- every load (BaseVehicle.java:904): the outlet list, the generator's owner, and the truck by its keyId for the cars
+-- that ran on it (C.carByKey)
 Events.OnSpawnVehicleEnd.Add(function(v)
+    local s = T.spec(v)
+    if s and (s.powershare or s.bedOutlet) then C.supIds[v:getKeyId()] = v:getId() end
     local part = B.part(v)
     local md = part and part:getModData()
     if not md then return end
@@ -356,8 +373,9 @@ end)
 -- completes (server / SP; complete() false = refused, NetTimedAction.java:132-134): taking it would hand out the
 -- hidden item (getGeneratorItemType, ISTakeGenerator.lua:39-53), unplugging or smashing it (ISDestroyStuffAction.lua:
 -- 250-252,330) darkens the house. Switching it off or adding fuel changes nothing we bill (book) and the next settle
--- sets it back (fill). A hook error never breaks the vanilla action.
-local function guard(cls, field)
+-- sets it back (fill). cheat: a player in build cheat (an admin) may smash one, an orphan left by a truck gone
+-- (charging.md); taking and plugging stay refused. A hook error never breaks the vanilla action.
+local function guard(cls, field, cheat)
     local orig = cls and cls.complete
     if not orig then return end
     cls.complete = function(self)
@@ -365,6 +383,13 @@ local function guard(cls, field)
             local g = self[field]
             return g ~= nil and instanceof(g, "IsoGenerator") and T.isPowershare(g)
         end)
+        if ok and ours and cheat then
+            local okC, admin = pcall(function() return self.character:isBuildCheat() end)
+            if okC and admin then
+                T.log("build cheat " .. tostring(cls.Type) .. " on a Powershare generator by " .. tostring(self.character:getUsername()))
+                ours = false
+            end
+        end
         if ok and ours then
             T.log("refused " .. tostring(cls.Type) .. " on a Powershare generator by "
                 .. tostring(self.character and self.character:getUsername()))
@@ -375,6 +400,6 @@ local function guard(cls, field)
 end
 guard(ISTakeGenerator, "generator")
 guard(ISPlugGenerator, "generator")
-guard(ISDestroyStuffAction, "item")
+guard(ISDestroyStuffAction, "item", true)
 
 return PS

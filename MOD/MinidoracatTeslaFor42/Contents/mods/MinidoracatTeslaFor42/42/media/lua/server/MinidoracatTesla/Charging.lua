@@ -34,7 +34,7 @@ function C.schedule(o, due)
     if due <= nextDueHour then nextDueHour = due
     elseif old ~= nil and old <= nextDueHour then recompute() end
 end
-local draws = {} -- draws[luaObject] = { id = supplier vehicle id, kw }: cars a Cybertruck charges (supplyKw)
+local draws = {} -- draws[luaObject] = { key = supplier keyId, kw = charging share }: cars a Cybertruck feeds (supplyKw)
 function C.unschedule(o)
     draws[o] = nil
     local old = active[o]
@@ -113,34 +113,49 @@ function C.source(o, sq, v)
 end
 local function fromCar(src) return src == "powershare" or src == "outlet" end
 
--- kW a Cybertruck gives charger o, shared by all it charges: Powershare at most T.PS_KW, the bed outlet T.OUTLET_KW,
--- both times the charging speed sandbox like every charger's kw. A car full or stopped holds 0 (C.settle).
--- ponytail: first come first served; a share another car gave back reaches this one from its next settle on (hourly
--- at most), never for the stretch already run (C.settle wasKw)
-local function supplyKw(o, sup, src, kw)
-    local cap = (src == "powershare" and T.PS_KW or T.OUTLET_KW) * T.chargeMul()
-    local id, used = sup:getId(), 0
+-- A Cybertruck by its keyId (the same across loads; vehicle ids are handed out again every load, BaseVehicle.java:
+-- 793-801), loaded right now, or nil. supIds is kept as trucks supply (supplyKw) and load (Powershare.lua).
+C.supIds = C.supIds or {}
+function C.carByKey(key)
+    local v = key and getVehicleById(C.supIds[key] or -1)
+    if v and v:getKeyId() == key then return v end
+    return nil
+end
+
+-- kW Cybertruck sup's supply `src` has left for charger o: Powershare at most T.PS_KW, the bed outlet T.OUTLET_KW (both
+-- times the charging speed sandbox like every charger's kw), less what the others it charges hold (draws).
+local function shareLeft(o, key, src)
+    local used = 0
     for o2, d in pairs(draws) do
-        if o2 ~= o and d.id == id then used = used + d.kw end
+        if o2 ~= o and d.key == key then used = used + d.kw end
     end
-    local k = math.max(0, math.min(kw, cap - used))
-    draws[o] = { id = id, kw = k }
+    return math.max(0, (src == "powershare" and T.PS_KW or T.OUTLET_KW) * T.chargeMul() - used)
+end
+-- The charging kW charger o gets from sup from now on (0: the others hold it all; the car still runs on sup). A car
+-- full or stopped holds 0 (C.settle). ponytail: first come first served; a share another car gave back reaches this
+-- one from its next settle on (hourly at most), never for the stretch already run (C.settle wasKw).
+local function supplyKw(o, sup, src, kw)
+    local key = sup:getKeyId()
+    C.supIds[key] = sup:getId()
+    local k = math.min(kw, shareLeft(o, key, src))
+    draws[o] = { key = key, kw = k }
     return k
 end
--- kW Cybertruck sup is giving the cars it charges now (the app's Powershare page)
+-- kW Cybertruck sup is charging other cars with now (the app's Powershare page)
 function C.drawnKw(sup)
-    local id, kw = sup:getId(), 0
+    local key, kw = sup:getKeyId(), 0
     for _, d in pairs(draws) do
-        if d.id == id then kw = kw + d.kw end
+        if d.key == key then kw = kw + d.kw end
     end
     return kw
 end
 -- Take up to kwh from Cybertruck sup's pack, down to its discharge limit, for a car it charges (or runs, chg.fed): what
--- one car gets the other loses, kWh for kWh. Powershare's generator fuel follows the pack (Powershare.touch). Returns
--- the kWh taken.
+-- one car gets the other loses, kWh for kWh. Powershare: the house's use up to now is booked first (Powershare.touch),
+-- then the generator's fuel follows the pack. Returns the kWh taken.
 function C.takeFrom(sup, src, kwh)
     local PS = T.Powershare
     local part = B.part(sup)
+    if src == "powershare" then PS.touch(sup) end
     local k = math.min(kwh, PS.avail(sup, part))
     if k <= 0 then return 0 end
     B.set(sup, part, B.kwh(part) - k)
@@ -148,12 +163,13 @@ function C.takeFrom(sup, src, kwh)
     return k
 end
 
--- Settle the chargers Cybertruck sup is charging (before its supply changes: they book up to now with it), then those
--- within r tiles (Chebyshev) of x, y and vr floors of z (after it changed: they take it from now on). Event-time only.
+-- Settle the chargers Cybertruck sup feeds (before its supply changes: they book up to now with it), then those
+-- within r tiles (Chebyshev) of x, y and vr floors of z (after it changed: they take it from now on; before it, the
+-- ones waiting for it after a restart, when draws is empty). Event-time only.
 function C.settleSupplied(sup)
-    local id, list = sup:getId(), {}
+    local key, list = sup:getKeyId(), {}
     for o, d in pairs(draws) do
-        if d.id == id then list[#list + 1] = o end
+        if d.key == key then list[#list + 1] = o end
     end
     local now = T.hours()
     for i = 1, #list do
@@ -235,7 +251,7 @@ end
 
 -- Book energy from chg.last to now, pick the source for what comes next, schedule the next settle.
 -- here = true skips the cable check (unplugging: the car is still at the charger). fresh = true: the car just loaded
--- (relink); a stretch it ran on a Cybertruck that is not back yet waits one retry for that truck to load.
+-- (relink): a stretch it ran on a Cybertruck not loaded now waits for it once more (below).
 function C.settle(o, now, here, fresh)
     local v = T.chargerCar(o, o.x, o.y, o.z)
     if not v then
@@ -261,33 +277,39 @@ function C.settle(o, now, here, fresh)
     local gUntil = gridUntil(o.kind, sq)
     local fuel = T.fuelPerKwh()
     local rate = kw * fuel -- litres per hour of charging (per kWh: a full charge costs the same at any charging speed)
-    -- after the grid: a generator, or a Cybertruck (its Powershare, its bed outlet) giving kwS of its supply
+    -- The stretch since the last settle ran on what chg.power says. Run on a Cybertruck (chg.sup = its keyId, chg.power
+    -- powershare / outlet): that truck pays it, at the share it had (draws; after an unload or a restart chg.kw, never
+    -- more than its supply has left now), whatever this settle finds; never retroactively for a stretch with no power,
+    -- the grid or a generator. That truck not loaded: cells load and unload one after the other (the car first on
+    -- load, the truck first as the player walks off), so wait until chg.hold (a world hour, set once, again on a fresh
+    -- load) leaving chg and draws as they are; past it, a truck still away books nothing. A loaded truck books, even
+    -- at 0 (its outlet off, at its limit, its share gone).
+    local wasCar = fromCar(chg.power)
+    local wasSrc, supKey = chg.power, wasCar and chg.sup or nil
+    local prevSup = supKey and C.carByKey(supKey)
+    if type(chg.hold) ~= "number" then chg.hold = nil end
+    if wasCar and not prevSup and now > t0 then
+        if fresh or not chg.hold then chg.hold = now + C.RETRY_H end
+        if now < chg.hold then
+            T.log("charger " .. o.x .. "," .. o.y .. ": " .. tostring(v:getId()) .. " ran on a Cybertruck not loaded, settling again at "
+                .. string.format("%.3f", chg.hold))
+            return C.schedule(o, chg.hold)
+        end
+    end
+    chg.hold = nil
+    local wasKw = 0
+    if prevSup then
+        wasKw = (draws[o] and draws[o].kw) or math.min(chg.kw or 0, shareLeft(o, supKey, wasSrc))
+    end
+    -- after the grid: a generator, or a Cybertruck (its Powershare, its bed outlet) giving kwS of its supply for
+    -- charging (0: the others hold it all, the car still runs on it)
     local function pick()
         local s, g, k = nil, nil, kw
         if now >= gUntil then s, g = C.source(o, sq, v) end
-        if fromCar(s) then
-            k = supplyKw(o, g, s, kw)
-            if k <= 0 then s, g, k = nil, nil, kw end -- the others take all it gives
-        end
-        if not fromCar(s) then draws[o] = nil end
+        if fromCar(s) then k = supplyKw(o, g, s, kw) else draws[o] = nil end
         return s, g, k
     end
-    -- a Cybertruck pays for the stretch since the last settle only if it was the source then (never retroactively: a
-    -- charger with no power, the grid or a generator stays so until now), at the share it had then (draws: 0 while
-    -- full or stopped; chg.kw after a restart), not the one this pick hands out
-    local wasCar = fromCar(chg.power)
-    local wasKw = (draws[o] and draws[o].kw) or chg.kw or kw
     local src, gen, kwS = pick()
-    if wasCar and not fromCar(src) and now > t0 and (fresh or not chg.hold) then
-        -- the truck that fed it is not there now: cells load and unload one after the other, so it may only be not
-        -- loaded (the car loaded first, relink; or the truck unloaded first while the player walks off). Keep chg as
-        -- it was and settle again shortly: the truck back by then books the whole stretch. One wait (chg.hold), a
-        -- fresh load grants another; a truck still away then books nothing (and its free loads, Battery.onCharger, end).
-        chg.hold = true
-        T.log("charger " .. o.x .. "," .. o.y .. ": " .. tostring(v:getId()) .. " ran on a Cybertruck not here now, settling again shortly")
-        return C.schedule(o, now + C.RETRY_H)
-    end
-    chg.hold = nil
     local needK = math.max(0, limit - B.kwh(part))
     local gotK = 0
     if chg.paused ~= "stopped" and needK > 0 and now > t0 then
@@ -295,15 +317,15 @@ function C.settle(o, now, here, fresh)
         gotK = kw * gridH
         local rest = now - t0 - gridH -- > 0 with need left only past the shut-off, where src was looked up
         if rest > 0 and gotK < needK then
-            if src == "generator" then
+            if wasCar then
+                if prevSup and wasKw > 0 then gotK = gotK + C.takeFrom(prevSup, wasSrc, math.min(rest * wasKw, needK - gotK)) end
+            elseif src == "generator" then
                 local h = math.min(rest, (needK - gotK) / kw)
                 if rate > 0 then
                     h = math.min(h, gen:getFuel() / rate)
                     gen:setFuel(gen:getFuel() - rate * h) -- syncs from the server (IsoGenerator.java:509-518)
                 end
                 gotK = gotK + kw * h
-            elseif fromCar(src) and wasCar then
-                gotK = gotK + C.takeFrom(gen, src, math.min(rest * wasKw, needK - gotK))
             end
         end
     end
@@ -312,38 +334,44 @@ function C.settle(o, now, here, fresh)
     if (src == "generator" and gen:getFuel() <= 0) or (fromCar(src) and T.Powershare.avail(gen) <= 0) then
         src, gen, kwS = pick()
     end
-    -- state from now on. power: the charger has a source, whether or not it charges (full / stopped); the car's own
-    -- loads run on it meanwhile (Battery.onCharger), and off the grid they cost the source (chg.fed, below).
+    -- state from now on. power: the charger has a source, whether or not it charges (full / stopped / no share); the
+    -- car's own loads run on it meanwhile (Battery.onCharger), and off the grid they cost the source (chg.fed, below).
     -- ponytail: they do not slow charging.
     local power = now < gUntil and "grid" or src
-    chg.kw, chg.last = power == "grid" and kw or kwS, now
+    chg.last = now
     settleSentry(v, now, C.powerUntil(chg, now, src ~= nil)) -- with the power it ran on until now
     -- the car's own loads off the grid since the last settle (Battery.lua B.draw, Sentry.lua settle add them up): the
-    -- generator's fuel, or the Cybertruck's pack. ponytail: a source gone by now (dry, switched off, taken away) is
-    -- not billed for them.
+    -- generator's fuel, or the Cybertruck that ran it (chg.sup). ponytail: a generator gone by now (dry, switched off,
+    -- taken away), or a truck still away past the wait, is not billed for them.
     if chg.fed then
-        if src == "generator" then
+        if wasCar then
+            if prevSup then C.takeFrom(prevSup, wasSrc, chg.fed) end
+        elseif src == "generator" then
             if fuel > 0 then gen:setFuel(gen:getFuel() - chg.fed * fuel) end
-        elseif fromCar(src) and wasCar then
-            C.takeFrom(gen, src, chg.fed)
         end
         chg.fed = nil
     end
     chg.power = power
+    chg.sup = fromCar(power) and gen:getKeyId() or nil
     local left = math.max(0, limit - B.kwh(part))
     local charging = power
     if chg.paused == "stopped" then
         charging = nil
     elseif left <= 1e-6 then
         chg.paused, charging = "full", nil
-    elseif not power then
-        chg.paused = "nopower"
+    elseif not power or (fromCar(power) and kwS <= 0) then
+        chg.paused, charging = "nopower", nil -- no source, or a Cybertruck whose share the others hold (power kept)
     else
         chg.paused = nil
     end
     chg.src = charging
-    -- a car full or stopped gives its share back (supplyKw), its entry stays for C.settleSupplied
-    if draws[o] then draws[o].kw = charging and kwS or 0 end
+    -- from a Cybertruck kw is the charging share: 0 while full, stopped or shut out, given back to the others
+    if fromCar(power) then
+        chg.kw = charging and kwS or 0
+        draws[o].kw = chg.kw
+    else
+        chg.kw = kw
+    end
     md.chg = chg
     v:transmitPartModData(part)
     local step = C.MAX_STEP_H
@@ -351,7 +379,7 @@ function C.settle(o, now, here, fresh)
     -- grid power ends at the shut-off hour, charging or not (full / stopped still power the car's loads)
     if power == "grid" then step = math.min(step, gUntil - now) end
     if power == "generator" and rate > 0 then step = math.min(step, gen:getFuel() / rate) end
-    if fromCar(power) then step = math.min(step, T.Powershare.avail(gen) / kwS) end -- its discharge limit
+    if fromCar(power) and chg.kw > 0 then step = math.min(step, T.Powershare.avail(gen) / chg.kw) end -- its limit
     C.schedule(o, now + math.max(step, 1 / 60))
     -- a Cybertruck on its own Wall Connector: Powershare decides here, on every settle (plan 4: plugging in, the
     -- shut-off hour, at least hourly while plugged in), whether the house has power without it
@@ -361,9 +389,10 @@ end
 function C.start(o, v)
     local now = T.hours()
     local part = B.part(v)
-    -- AC charging turns a Cybertruck's bed outlet off (owner's manual p.200): what it fed books up to now, then stops
+    -- AC charging turns a Cybertruck's bed outlet off (owner's manual p.200): what it fed books up to now (also the
+    -- cars waiting for it, Powershare.settleFed), then stops
     local outlet = part:getModData().outlet
-    if outlet then C.settleSupplied(v) end
+    if outlet and T.Powershare then T.Powershare.settleFed(v) end
     part:getModData().chg = { x = o.x, y = o.y, z = o.z, kind = o.kind, kw = T.Chargers[o.kind].kw * T.chargeMul(),
         last = now, added = 0, src = nil, target = C.DEFAULT_TARGET, paused = nil }
     o.vid = v:getId()

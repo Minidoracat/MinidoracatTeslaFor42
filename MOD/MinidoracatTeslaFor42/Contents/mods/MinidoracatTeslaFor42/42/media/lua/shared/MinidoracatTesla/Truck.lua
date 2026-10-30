@@ -56,18 +56,23 @@ end
 -- broken glass at 0 as vanilla, VehicleWindow.java:76-107); the condition is the count, so a new window starts over.
 -- Bare hands cut like vanilla. Loaded from shared, before VehicleManager's server wrap of the same complete
 -- (MinidoracatVehicleManager_ActionGuards.lua, SALVAGE): its refusal comes first and counts no hit.
--- A window rolled down (or no glass) is not hittable and VehicleWindow.damage does nothing to it (VehicleWindow.java:
--- 63-79): vanilla's action as is, else the swing would land forever and report to Sentry every time.
+-- A window already broken, or with no glass fitted, is vanilla's (nothing left to resist). A window rolled down with
+-- its glass in is refused (isValid): VehicleWindow.damage skips it (not hittable, VehicleWindow.java:63-79) but
+-- vanilla's complete calls hit, which breaks it in one go (setCondition(0), :71-74), so no swing, no hit, no report.
 local function armour(a)
     local w = a.window
     if not w or not instanceof(w, "VehicleWindow") then return nil end -- a house window is not a car's
-    if not w:isHittable() then return nil end
     local part = w:getPart() -- the window's own car, not the action's vehiclePart field
-    local s = T.spec(part and part:getVehicle())
+    if w:isDestroyed() or (part:getItemType() ~= nil and part:getInventoryItem() == nil) then return nil end
+    local s = T.spec(part:getVehicle())
     return s and s.armorGlass
 end
 
-local start, complete = ISSmashWindow.start, ISSmashWindow.complete
+local isValid, start, complete = ISSmashWindow.isValid, ISSmashWindow.start, ISSmashWindow.complete
+function ISSmashWindow:isValid()
+    if armour(self) and self.window:isOpen() then return false end
+    return isValid(self)
+end
 function ISSmashWindow:start()
     if not armour(self) then return start(self) end
     self:setActionAnim("Destroy") -- AnimSets/player/actions/Destroy.xml: a two-handed heavy hit
@@ -76,7 +81,8 @@ end
 function ISSmashWindow:complete()
     local hits = armour(self)
     if not hits then return complete(self) end
-    if not isClient() and not self.window:isDestroyed() then
+    if self.window:isOpen() then return false end -- rolled down meanwhile (isValid)
+    if not isClient() then
         self.window:damage(math.ceil(100 / hits))
         local c = self.character
         if not instanceof(c:getPrimaryHandItem(), "HandWeapon") and not instanceof(c:getSecondaryHandItem(), "HandWeapon") then

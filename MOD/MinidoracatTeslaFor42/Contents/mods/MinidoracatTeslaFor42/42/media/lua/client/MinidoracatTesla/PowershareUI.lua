@@ -15,14 +15,17 @@ Events.OnPreFillWorldObjectContextMenu.Add(function()
     if fetch and fetch.generator and T.isPowershare(fetch.generator) then fetch.generator = nil end
 end)
 
--- ISDestroyCursor lives in the server folder, loaded after this one: wrap it once the game runs
+-- ISDestroyCursor lives in the server folder, loaded after this one: wrap it once the game runs. Build cheat (an
+-- admin's ISBuildMenu.cheat, the server checks isBuildCheat) still shows it: the way to clear an orphan (charging.md).
 local wrapped = false
 Events.OnGameStart.Add(function()
     if wrapped or not (ISDestroyCursor and ISDestroyCursor.canDestroy) then return end
     wrapped = true
     local canDestroy = ISDestroyCursor.canDestroy
     function ISDestroyCursor:canDestroy(object)
-        if object and instanceof(object, "IsoGenerator") and T.isPowershare(object) then return false end
+        if object and not (ISBuildMenu and ISBuildMenu.cheat) and instanceof(object, "IsoGenerator") and T.isPowershare(object) then
+            return false
+        end
         return canDestroy(self, object)
     end
 end)
