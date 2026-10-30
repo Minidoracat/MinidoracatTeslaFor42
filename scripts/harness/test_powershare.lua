@@ -239,10 +239,10 @@ g = gen(ct)
 B.set(ct, B.part(ct), 123) -- full: the kWh above the limit are no cap here
 LOAD = 0.15 -- a fridge + freezer
 PS.touch(ct)
-check(near(g.fuel, math.min(10, 0.15 * 0.1 * 720), 1e-6), "load 0.15: 720 h of it = 10.8 L, capped at the 10 L tank")
+check(near(g.fuel, 0.02 * 0.1 * 720, 1e-6), "load 0.15: the cap is 720 h of the generator's own 0.02 (1.44 L), not of the house")
 LOAD = 0.05
 PS.touch(ct)
-check(near(g.fuel, 0.05 * 0.1 * 720, 1e-6), "load 0.05: 3.6 L = 720 h, runs dry in 30 days if the mod is gone")
+check(near(g.fuel, 1.44, 1e-6), "load 0.05: still 1.44 L (the house's load may drop to 0.02 once the mod is gone)")
 LOAD = 0.02
 SandboxVars.GeneratorFuelConsumption = 0
 k0 = B.kwh(B.part(ct))

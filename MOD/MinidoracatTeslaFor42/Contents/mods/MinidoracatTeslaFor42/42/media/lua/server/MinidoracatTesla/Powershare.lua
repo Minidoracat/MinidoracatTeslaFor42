@@ -24,9 +24,14 @@ local PS = {}
 T.Powershare = PS
 
 -- Removing the mod leaves a running one as a plain vanilla generator (unknown sprite, IsoObject.java:1073-1083:
--- Base.Generator, engine sound, zombies, wear). Its fuel never holds more than CAP_HOURS of the house's load, so it runs
--- dry before wear can make it backfire or burn (IsoGenerator.java:199-254; ~1,200 h to condition 40 at 1 in 30).
+-- Base.Generator, engine sound, zombies, wear). Its fuel never holds more than CAP_HOURS of a generator's least draw
+-- (its own BASE_DRAW with nothing plugged in, IsoGenerator.java:58,276; the house's load can drop that far once the
+-- mod is gone: E2E powershare-removed-sp read 0.02 after the reload), so it runs dry before wear can make it backfire
+-- or burn (IsoGenerator.java:199-254; ~1,200 h to condition 40 at 1 in 30). 1.44 L at GFC 0.1: 46 h of a house
+-- drawing 0.31 (fridge, lights); the truck refills it at every settle (at least hourly while plugged in).
+-- ponytail: a house drawing over 14.4 (1.44 L an hour, ~100 fridges) goes dark before the next hourly settle.
 PS.CAP_HOURS = 720
+PS.BASE_DRAW = 0.02
 PS.MIN_KWH = 0.01   -- less above the limit than this: stopped
 PS.PICK_TILES = 8   -- a car in a garage: the nearest outdoor square this near
 PS.OUTLET_TILES = 10 -- the bed outlet's chargers to settle around the truck after a change
@@ -128,7 +133,9 @@ local function fill(v, part, ps, g)
     end
     local r = r0()
     local fuel = 10
-    if r > 0 then fuel = math.min(10, PS.avail(v, part) * r, g:getTotalPowerUsing() * PS.CAP_HOURS) end
+    if r > 0 then
+        fuel = math.min(10, PS.avail(v, part) * r, PS.BASE_DRAW * (SandboxVars.GeneratorFuelConsumption or 0.1) * PS.CAP_HOURS)
+    end
     if math.abs(g:getFuel() - fuel) > 1e-4 then g:setFuel(fuel) end -- syncs (IsoGenerator.java:509-518)
     if g:getCondition() < 100 then g:setCondition(100) end
     ps.fuelSet = fuel
