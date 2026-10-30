@@ -1052,7 +1052,8 @@ function App:read()
     else
         self.sPsState = txt("Ps_" .. ps)
         self.sPsSub = ps == "armed" and txt(st.psWall and "PsArmedSub" or "PsArmedNoWall")
-            or ps == "stopped" and txt("PsStoppedSub", tostring(floor)) or txt("PsOffSub")
+            or ps == "stopped" and (st.psStop == "spot" and txt("PsStoppedSpot") or txt("PsStoppedSub", tostring(floor)))
+            or txt("PsOffSub")
     end
     self.sPsFloor, self.sPsPct = txt("PsFloor", tostring(floor)), txt("PsCharge", tostring(rec and st.pct or 0))
     enable(b.powershare, rec, ps == "backup", GRID_ICON.powershare, TIP .. "Powershare")
@@ -1349,11 +1350,12 @@ function App:layout()
         b.sTitle = fitText(self.sPsBtn, tw - u(16))
         y = y + u(40) + u(16)
         if self.hasOutlet then
-            local rh = math.max(FHM + u(2) + FH, u(36)) + u(20)
-            local ob = place("outlet", pad / 2, y, w - pad, rh)
             local rw = tw - u(52)
+            local s1, s2 = wrap2(self.sOutletSub, rw) -- the how-to sentence is long: two lines, like the state's
+            local rh = math.max(FHM + u(2) + FH * (s2 and 2 or 1), u(36)) + u(20)
+            local ob = place("outlet", pad / 2, y, w - pad, rh)
             ob.sTitle = fitText(txt("Outlet"), rw, UIFont.Medium)
-            ob.sSub = fitText(self.sOutletSub, rw)
+            ob.sSub, ob.sSub2 = s1, s2
             y = y + rh + u(10)
         end
     elseif page == "summon" or page == "pick" then
@@ -1757,9 +1759,12 @@ function App:render()
             tb.lit and 1 or 0.5, Sm)
         local ob = self.b.outlet
         if ob.shown then
-            local ty = ob.cy - o + math.floor((ob.ch - self.FHM - math.floor(2 * S) - self.FH) / 2)
+            local subH = self.FH * (ob.sSub2 and 2 or 1)
+            local ty = ob.cy - o + math.floor((ob.ch - self.FHM - math.floor(2 * S) - subH) / 2)
             jo:DrawText(UIFont.Medium, ob.sTitle, pad, ty, c[1], c[2], c[3], 1)
-            jo:DrawText(Sm, ob.sSub, pad, ty + self.FHM + math.floor(2 * S), c2[1], c2[2], c2[3], 1)
+            local sy = ty + self.FHM + math.floor(2 * S)
+            jo:DrawText(Sm, ob.sSub, pad, sy, c2[1], c2[2], c2[3], 1)
+            if ob.sSub2 then jo:DrawText(Sm, ob.sSub2, pad, sy + self.FH, c2[1], c2[2], c2[3], 1) end
         end
     elseif page == "charging" then
         jo:DrawText(UIFont.Large, self.sStateFit, pad, self.yState - o, c[1], c[2], c[3], 1)

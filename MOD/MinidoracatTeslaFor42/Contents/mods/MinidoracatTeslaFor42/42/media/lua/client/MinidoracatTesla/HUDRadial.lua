@@ -25,16 +25,17 @@ local function onRoofLight(player, vehicle)
 end
 
 -- Cybertruck switches (server Powershare.lua PS.set): the charge cable's rule (T.mayUseCable), like the charge card.
--- id: "Powershare" / "Outlet" (texts and icons), cmd: the server command prefix, on: switched on now.
+-- id: "Powershare" / "Outlet" (texts and icons), cmd: the server command prefix, on: switched on now, note: switched on
+-- but giving nothing, why (the phone app's line, T.psStopWhy / T.outletWhy)
 local function onSwitch(player, vehicle, cmd, on)
     T.request(player, cmd .. (on and "Off" or "On"), { vid = vehicle:getId() })
 end
-local function addSwitch(menu, player, vehicle, id, cmd, on)
+local function addSwitch(menu, player, vehicle, id, cmd, on, note)
     local label = getText("IGUI_MinidoracatTesla_Radial_" .. id .. (on and "Off" or "On"))
     local ok, why = T.mayUseCable(player, vehicle)
     local icon = TEX .. "radial_" .. id:lower()
     if ok then
-        local desc = on and "" or ("\n" .. getText("IGUI_MinidoracatTesla_HUD_" .. id .. "Sub"))
+        local desc = on and (note and ("\n" .. note) or "") or ("\n" .. getText("IGUI_MinidoracatTesla_HUD_" .. id .. "Sub"))
         menu:addSlice(label .. desc, getTexture(icon .. ".png"), onSwitch, player, vehicle, cmd, on)
     else
         menu:addSlice(label .. "\n" .. T.denyText(why), getTexture(icon .. "_off.png"), nil)
@@ -70,8 +71,17 @@ local function addSlices(menu, player, vehicle)
     menu:addSlice(getText("IGUI_MinidoracatTesla_Radial_ChargeStatus") .. "\n" .. getText("IGUI_MinidoracatTesla_Tip_ChargeStatus"),
         getTexture(TEX .. "radial_charge.png"), onChargeStatus, player, vehicle)
     local spec, md = T.spec(vehicle), part:getModData()
-    if spec.powershare then addSwitch(menu, player, vehicle, "Powershare", "ps", md.ps ~= nil and md.ps.on == true) end
-    if spec.bedOutlet then addSwitch(menu, player, vehicle, "Outlet", "outlet", md.outlet == true) end
+    if spec.powershare then
+        local stop = T.psStopWhy(part)
+        local note = stop == "spot" and getText("IGUI_MinidoracatTesla_App_PsStoppedSpot")
+            or stop and getText("IGUI_MinidoracatTesla_App_PsStoppedSub", tostring(T.psFloor(part))) or nil
+        addSwitch(menu, player, vehicle, "Powershare", "ps", md.ps ~= nil and md.ps.on == true, note)
+    end
+    if spec.bedOutlet then
+        local why = md.outlet and T.outletWhy(vehicle, part)
+        addSwitch(menu, player, vehicle, "Outlet", "outlet", md.outlet == true,
+            why and getText("IGUI_MinidoracatTesla_App_OutletWhy_" .. why) or nil)
+    end
     -- the light bar, for the driver like the headlights (Truck.lua roofLight)
     if vehicle:getPartById("RoofLight") and vehicle:isDriver(player) then
         local lit = T.Truck and T.Truck.roofLightOn(vehicle)

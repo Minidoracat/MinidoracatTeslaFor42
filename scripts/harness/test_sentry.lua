@@ -100,11 +100,14 @@ check(md(v).sentry ~= nil, "touch: sentry stays armed")
 -- vanilla "Smash Window" is ISSmashWindow(player, window, part) (ISVehiclePartMenu.lua:377); the window says whose car
 -- it is. Sentry runs after the inner complete (vanilla's hit, or Armor Glass's third), so it reads the glass after the hit.
 local glass = { getVehicle = function() return v end, getId = function() return "WindowFrontLeft" end }
-local function window(destroyed)
-    return { _class = "VehicleWindow", getPart = function() return glass end, isDestroyed = function() return destroyed end }
+local function window(destroyed, open)
+    return { _class = "VehicleWindow", getPart = function() return glass end, isDestroyed = function() return destroyed end,
+        isOpen = function() return open == true end }
 end
 ISSmashWindow.complete({ character = thief, window = { _class = "IsoWindow" } })
 check(v.alarmTriggered == 0, "break: a house window (IsoWindow) is not a car's")
+ISSmashWindow.complete({ character = thief, window = window(false, true), vehiclePart = v.parts.GasTank })
+check(v.alarmTriggered == 0, "break: a window rolled down and whole was not hit (Armor Glass refuses it): no alarm")
 ISSmashWindow.complete({ character = thief, window = window(false), vehiclePart = v.parts.GasTank })
 check(v.alarmTriggered == 1 and md(v).sentry ~= nil, "break: a smash that leaves the glass in (Armor Glass hit 1) rings, sentry re-armed")
 check(F.lastSent("alert").args.kind == "break" and F.lastSent("alert").args.what == "windowHit"
