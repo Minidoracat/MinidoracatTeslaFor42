@@ -908,6 +908,27 @@ check(#subs == 4 and subs[4]:find("Wort", 1, true) and words == 22 and not table
     .. table.concat(subs, "|") .. ")")
 ok, why = textInside()
 check(ok, "Powershare page with the four-line sentence: text inside (" .. why .. ")")
+-- the state line keeps its kW (CatLang's German "Versorgt das Haus · 0.24 kW" ran past the Large font and lost the
+-- kW, E2E tesla-ctlayout-1031f-de): Large while it fits, else Medium; laid out and drawn in the same font, never cut
+local psTw = a.width - 2 * math.floor(20 * a.S)
+for _, c in ipairs({ { n = math.floor(psTw / CHAR_W.Large), font = UIFont.Large },
+    { n = math.floor(psTw / CHAR_W.Medium), font = UIFont.Medium } }) do
+    local line = string.rep("k", c.n)
+    getText = function(k, ...)
+        if k == "IGUI_MinidoracatTesla_App_PsBackup" then return line end
+        return realGT(k, ...)
+    end
+    state({ car = "MinidoracatTesla_Cybertruck", skin = 0, ps = "backup", psKw = 0.24 })
+    a:setPage("powershare")
+    drawn = {}
+    a:prerender()
+    a:render()
+    local drawnIn
+    for _, d in ipairs(drawn) do if d.s == line then drawnIn = d.font end end
+    check(a.psFont == c.font and a.sPsStateFit == line and drawnIn == c.font, "Powershare state of " .. c.n
+        .. " characters on a " .. psTw .. " px line: " .. tostring(c.font) .. ", whole (laid out " .. tostring(a.psFont)
+        .. ", drawn " .. tostring(drawnIn) .. ", " .. tostring(a.sPsStateFit) .. ")")
+end
 getText = realGT
 a:setPage("controls")
 a.b.back:forceClick()

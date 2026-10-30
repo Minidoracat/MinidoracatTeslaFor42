@@ -1341,8 +1341,11 @@ function App:layout()
     elseif page == "powershare" then
         -- plan 4's mock: the state (large), why, the charge bar with the discharge limit's mark, the two numbers; then
         -- the limit's -/+ (5 %), the switch, and the bed outlet's row (a toggle, like Sentry Mode)
-        self.yPsState, self.sPsStateFit = y, fitText(self.sPsState, tw, UIFont.Large)
-        y = y + FHL + u(4)
+        -- the state keeps its kW: Medium when Large cuts it (CatLang's German "Versorgt das Haus · 0.24 kW" ran past
+        -- Large on a server, the kW lost: E2E tesla-ctlayout-1031f-de); render draws it in the same font
+        self.psFont = tm:MeasureStringX(UIFont.Large, self.sPsState) <= tw and UIFont.Large or UIFont.Medium
+        self.yPsState, self.sPsStateFit = y, fitText(self.sPsState, tw, self.psFont)
+        y = y + (self.psFont == UIFont.Large and FHL or FHM) + u(4)
         self.yPsSub = y
         self.sPsSubs = wrapN(self.sPsSub, tw, 3) -- the why (stopped: the limit, no spot) runs long in some languages
         y = y + FH * #self.sPsSubs + u(14)
@@ -1752,7 +1755,7 @@ function App:render()
     elseif page == "powershare" then
         local ps = self.ps
         local tc = (ps == "armed" or ps == "backup") and C.ok or (ps == "stopped" and C.warn or c)
-        jo:DrawText(UIFont.Large, self.sPsStateFit, pad, self.yPsState - o, tc[1], tc[2], tc[3], 1)
+        jo:DrawText(self.psFont, self.sPsStateFit, pad, self.yPsState - o, tc[1], tc[2], tc[3], 1)
         for i = 1, #self.sPsSubs do
             jo:DrawText(Sm, self.sPsSubs[i], pad, self.yPsSub + (i - 1) * self.FH - o, c2[1], c2[2], c2[3], 1)
         end
