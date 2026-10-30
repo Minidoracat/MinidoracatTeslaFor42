@@ -85,8 +85,8 @@ T.Specs = {
     ["Base.MinidoracatTesla_Cybertruck"] = {
         model = "Cybertruck",
         appCar = "app_car_cybertruck_",
-        -- z: placeholder (the Model 3's) until TeslaCybertruck measures the handle height at this car's charge port
-        plug = { item = "Base.MinidoracatTesla_CablePlugCybertruck", z = 0.74 },
+        -- z: handle height at this car's charge port (E2E integration-mp tesla-ctbody-integ-1030a: port 0.902)
+        plug = { item = "Base.MinidoracatTesla_CablePlugCybertruck", z = 0.90 },
         v12Kwh = 48 * 4 / 1000, -- 48 V, 4 Ah (Cybertruck owner's manual p.251)
         -- the Model Y coefficients x 123 / 78.4: a full pack still drives one vanilla tank's distance
         idleKw = 0.0590 * T.DRIVE_SCALE,
@@ -99,20 +99,20 @@ T.Specs = {
         armorGlass = 3, -- Armor Glass: three smashes a window
         -- Cyberbeast is built in stainless only ($PDD, US design studio 2026-07-10); the other 11 are Tesla's Color Paint
         -- Film wraps (shop 2024-06). weight: T.pickColor draws by it, so stainless takes half the spawns. Same order
-        -- and append-only rules as above; h/s/v by convert.py build (placeholders until TeslaCybertruck's build).
+        -- and append-only rules as above; h/s/v by convert.py build.
         colors = {
-            { name = "Stainless", code = "PDD", weight = 11, h = 0.6, s = 0.05, v = 0.6 },
-            { name = "SatinStealthBlack", weight = 1, h = 0.6, s = 0.05, v = 0.12 },
-            { name = "SatinCeramicWhite", weight = 1, h = 0.1, s = 0.04, v = 0.85 },
-            { name = "SatinRoseGold", weight = 1, h = 0.03, s = 0.3, v = 0.7 },
-            { name = "SatinTacticalGreen", weight = 1, h = 0.25, s = 0.3, v = 0.35 },
-            { name = "SatinDarkGrey", weight = 1, h = 0.6, s = 0.05, v = 0.3 },
-            { name = "SatinForestGreen", weight = 1, h = 0.4, s = 0.5, v = 0.25 },
-            { name = "SatinAbyssBlue", weight = 1, h = 0.6, s = 0.6, v = 0.3 },
-            { name = "CopperTintedClear", weight = 1, h = 0.07, s = 0.45, v = 0.6 },
-            { name = "SatinCrimsonRed", weight = 1, h = 0.99, s = 0.8, v = 0.45 },
-            { name = "SatinIridescentPurple", weight = 1, h = 0.78, s = 0.4, v = 0.4 },
-            { name = "SlipGrey", weight = 1, h = 0.6, s = 0.03, v = 0.5 },
+            { name = "Stainless", code = "PDD", weight = 11, h = 0.631, s = 0.536, v = 0.393 },
+            { name = "SatinStealthBlack", weight = 1, h = 0.611, s = 0.62, v = 0.139 },
+            { name = "SatinCeramicWhite", weight = 1, h = 0.65, s = 0.526, v = 0.843 },
+            { name = "SatinRoseGold", weight = 1, h = 0.071, s = 0.634, v = 0.387 },
+            { name = "SatinTacticalGreen", weight = 1, h = 0.475, s = 0.517, v = 0.271 },
+            { name = "SatinDarkGrey", weight = 1, h = 0.625, s = 0.554, v = 0.262 },
+            { name = "SatinForestGreen", weight = 1, h = 0.451, s = 0.634, v = 0.273 },
+            { name = "SatinAbyssBlue", weight = 1, h = 0.57, s = 1.0, v = 0.285 },
+            { name = "CopperTintedClear", weight = 1, h = 0.063, s = 0.779, v = 0.353 },
+            { name = "SatinCrimsonRed", weight = 1, h = 0.972, s = 1.0, v = 0.179 },
+            { name = "SatinIridescentPurple", weight = 1, h = 0.644, s = 0.749, v = 0.117 },
+            { name = "SlipGrey", weight = 1, h = 0.611, s = 0.517, v = 0.62 },
         },
     },
 }

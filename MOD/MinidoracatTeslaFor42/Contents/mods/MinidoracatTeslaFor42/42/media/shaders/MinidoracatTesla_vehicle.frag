@@ -100,15 +100,23 @@ const float SHEEN_SKY = 0.22;      // peak added at full daylight
 const float SHEEN_LAMP = 0.45;     // peak added per unit of a nearby light's colour
 const float SHEEN_LAMP_UP = 0.5;   // a nearby light's direction gets this much up (its height is lost, below)
 const float SHEEN_FRESNEL = 1.5;   // sky reflection share x (1 + SHEEN_FRESNEL x (1 - n.v)^5)
+// finish flags in the skin alpha (convert.py PAINT_ALPHAS; Model Y / Model 3 paint is 254 = gloss above):
+// 253 brushed stainless (Cybertruck): a tighter, brighter lobe and a stronger sky reflection, metal-like;
+// 252 satin wrap film: a wide, weak lobe and no Fresnel boost
+const float SHEEN_STEEL_POW = 40.0;
+const float SHEEN_STEEL_GAIN = 1.2;  // 1.6: the hood read near white (tesla-ctbody-1030a)
+const float SHEEN_STEEL_REF = 1.0;  // sky reflection share x (1 + this)
+const float SHEEN_MATTE_POW = 6.0;
+const float SHEEN_MATTE_GAIN = 0.35;
 
 // a nearby light as the vehicle shader gets it: (right, forward, height) of the direction to it, the height taken
 // at the ground (BaseVehicle.getLocalPos sets y 0, ModelSlotRenderData.java:256-262; Shader.setLight swaps y / z,
 // :530-554; a lamp behind-left decoded (-0.82, -0.55, -0.07), tesla-sheen-1027f), so vanilla's diffuse lights the
 // roof for a lamp ahead. Swapped back to (right, up, forward) here
-vec3 lampSheen(vec3 dir, vec3 colour, vec3 n, vec3 v)
+vec3 lampSheen(vec3 dir, vec3 colour, vec3 n, vec3 v, float lobe)
 {
 	vec3 l = normalize(vec3(dir.x, max(dir.z, 0.0) + SHEEN_LAMP_UP, dir.y));
-	return colour * SHEEN_LAMP * pow(max(dot(n, normalize(l + v)), 0.0), SHEEN_POW);
+	return colour * SHEEN_LAMP * pow(max(dot(n, normalize(l + v)), 0.0), lobe);
 }
 
 // cabin palette, sRGB 0-255, in pzveh.py CABIN_CELLS order. Black interior a step lighter than life so the seats
@@ -289,10 +297,12 @@ void main()
 
 	col = mix(col, texRef, reflectionsOn*ref_en*(0.1+ReflectionParam.y*0.5)); // 0.6 max 0.1 min
 	float paint = clamp((1.0 - tex.a) * 255.0, 0.0, 1.0);
+	float steel = 1.0 - clamp(abs(tex.a * 255.0 - 253.0), 0.0, 1.0);   // finish flags (above)
+	float matte = 1.0 - clamp(abs(tex.a * 255.0 - 252.0), 0.0, 1.0);
 	vec3 V = normalize(viewModel);
 	float fresnel = pow(1.0 - max(dot(normal, V), 0.0), 5.0);
 	col = mix(col, texRef/4.0, reflectionsOn*(1.0-ref_en)*(0.05 + ReflectionParam.z*0.3)
-		* (1.0 + SHEEN_FRESNEL * paint * fresnel)); // 0.2 max (vanilla, before Fresnel)
+		* (1.0 + SHEEN_FRESNEL * paint * (1.0 - matte) * fresnel) * (1.0 + SHEEN_STEEL_REF * steel)); // 0.2 max (vanilla, before Fresnel)
 
 	col = mix(col, texColorRust.xyz, texColorRust.a*TextureRustA);
 
@@ -324,11 +334,13 @@ void main()
 	vec3 up = vec3(0.0, 1.0, 0.0);
 	vec3 toCam = normalize(V - up * dot(V, up));
 	vec3 sun = normalize(SHEEN_SUN.x * cross(up, toCam) + SHEEN_SUN.y * up + SHEEN_SUN.z * toCam);
-	vec3 sheen = AmbientColour * SHEEN_SKY * pow(max(dot(normal, normalize(sun + V)), 0.0), SHEEN_POW)
-		+ lampSheen(Light0Direction, Light0Colour, normal, V) + lampSheen(Light1Direction, Light1Colour, normal, V)
-		+ lampSheen(Light2Direction, Light2Colour, normal, V) + lampSheen(Light3Direction, Light3Colour, normal, V)
-		+ lampSheen(Light4Direction, Light4Colour, normal, V);
-	col += sheen * TintColourNew * paint * ReflectionParam.z / 0.3;
+	float lobe = mix(mix(SHEEN_POW, SHEEN_STEEL_POW, steel), SHEEN_MATTE_POW, matte);
+	float gain = mix(mix(1.0, SHEEN_STEEL_GAIN, steel), SHEEN_MATTE_GAIN, matte);
+	vec3 sheen = AmbientColour * SHEEN_SKY * pow(max(dot(normal, normalize(sun + V)), 0.0), lobe)
+		+ lampSheen(Light0Direction, Light0Colour, normal, V, lobe) + lampSheen(Light1Direction, Light1Colour, normal, V, lobe)
+		+ lampSheen(Light2Direction, Light2Colour, normal, V, lobe) + lampSheen(Light3Direction, Light3Colour, normal, V, lobe)
+		+ lampSheen(Light4Direction, Light4Colour, normal, V, lobe);
+	col += sheen * gain * TintColourNew * paint * ReflectionParam.z / 0.3;
 
 	// Do this after ambient lighting so active headlights and taillights aren't dimmed.
 	col = mix(col, texColorLights.xyz, texColorLights.a*t1en);

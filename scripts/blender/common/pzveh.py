@@ -762,11 +762,13 @@ def f4(*v):
     return " ".join(f"{x:.4f}" for x in v)
 
 
-def geometry(body, zmid, wl, r, tire_w, belt_z, doors_y, port_yz):
+def geometry(body, zmid, wl, r, tire_w, belt_z, doors_y, port_yz, extra_areas=(), extra=()):
     """Vehicle script geometry block, spliced into the vehicle script (copy in TMP/geometry_block.txt). Mesh (x, y, z
     rel. mesh centre) -> script (-x, z, y) / S. wl: (side, centre y, centre z pre-centre, outer |x|) per wheel; r,
     tire_w: tire radius and width (grid); belt_z: window bottom (pre-centre z); doors_y: (front door front, B pillar,
-    rear door rear) mesh y; port_yz: charge port (mesh y, pre-centre z), x from a ray onto the left side."""
+    rear door rear) mesh y; port_yz: charge port (mesh y, pre-centre z), x from a ray onto the left side. extra_areas:
+    more areas (name, mesh y centre, mesh length; across the body and both standing strips); extra: more script lines
+    (a car's own parts), before the doors."""
     from mathutils.bvhtree import BVHTree
     co = mesh_co(body)
     me = body.data
@@ -829,6 +831,8 @@ def geometry(body, zmid, wl, r, tire_w, belt_z, doors_y, port_yz):
         areas.append(("Seat" + nm, side * sx, ((door[0] + door[1]) / 2) / S, aw, (door[0] - door[1]) / S))
     for sxn, yc, zc, xo in wl:
         areas.append(("Tire" + names[(sxn, 1 if yc > 0 else -1)], -sxn * sx, yc / S, aw, ah))
+    for nm, yc_, ln_ in extra_areas:           # across the body and both standing strips (a pickup's bed sides)
+        areas.append((nm, 0, yc_ / S, ext[0] + 2 * aw, ln_ / S))
     for nm, ax, az, w, h in areas:
         out += [f"        area {nm}", "        {", f"            xywh = {f4(ax, az, w, h)},", "        }"]
     tow = (bc[:, 2].min() + 0.08) / S
@@ -836,8 +840,10 @@ def geometry(body, zmid, wl, r, tire_w, belt_z, doors_y, port_yz):
             "            rotate = 0.0 0.0 0.0,", "            zoffset = -1.0,", "        }",
             "        attachment trailerfront", "        {", f"            offset = {f4(0, tow, (ln / 2 + 0.03) / S)},",
             "            rotate = 0.0 0.0 0.0,", "            zoffset = 1.0,", "        }",
-            f"        /* charge port: side end of the left tail light ({CAR['PORT_NOTE']}) */",
+            f"        /* charge port: side end of the left tail light ({CAR['PORT_NOTE']}) */" if not CAR.get("PORT")
+            else f"        /* charge port: {CAR['PORT_NOTE']} */",
             "        attachment chargeport", "        {", f"            offset = {f4(*port)},", "            rotate = 0.0 0.0 0.0,", "        }"]
+    out += list(extra)
     # animated doors (convert.py pieces): the clip runs open -> closed, so Open plays it reversed and Opened holds its start
     # (not animated; vanilla vehicle_car_sports_ez.txt layout); ISOpenVehicleDoor / ISCloseVehicleDoor play Open /
     # Close, a new model instance of an open door holds Opened (BaseVehicle.java:3926-3930). No Closed: a shut door
@@ -881,7 +887,23 @@ def official_ramp(code, n=32):
     keep = m & (t > RAMP["t"][0]) & (t < RAMP["t"][1]) & (u > RAMP["u"][0]) & (u < RAMP["u"][1])
     for cu in RAMP["wheels"]:                                            # wheels + arches
         keep &= ((u - cu) * w) ** 2 + ((t - RAMP["wt"]) * h) ** 2 > (RAMP["wr"] * w) ** 2
-    px = a[..., :3][keep]
+    px = a[..., :3][keep & ~np.any([(u > u0) & (u < u1) & (t > t0) & (t < t1) for u0, u1, t0, t1 in RAMP["cut"]], 0)] \
+        if RAMP.get("cut") else a[..., :3][keep]   # cut: (u0, u1, t0, t1) boxes left out (windows)
+    px = px[np.argsort(px.max(1), kind="stable")]
+    e = np.linspace(0, len(px), n + 1).astype(int)
+    return np.array([px[e[i]:e[i + 1]].mean(0) for i in range(n)])
+
+
+def film_ramp(name, n=32):
+    """official_ramp for a wrap film: sRGB paint colour per V quantile of the film's shop image (OFFICIAL/films/<name>,
+    a front 3/4 view on transparency), its lit door panels (CAR FILM_BOX: columns u, rows t of the car's bbox)."""
+    a = img_np(bpy.data.images.load(os.path.join(OFFICIAL, "films", name)))[::-1].astype(np.float64)  # rows top-down
+    m = (a[..., 3] > 0.8) & (a[..., :3].min(-1) < 0.92)
+    ys, xs = np.nonzero(m)
+    yy, xx = np.mgrid[0:a.shape[0], 0:a.shape[1]]
+    u, t = (xx - xs.min()) / np.ptp(xs), (yy - ys.min()) / np.ptp(ys)
+    b = CAR["FILM_BOX"]
+    px = a[..., :3][m & (u > b["u"][0]) & (u < b["u"][1]) & (t > b["t"][0]) & (t < b["t"][1])]
     px = px[np.argsort(px.max(1), kind="stable")]
     e = np.linspace(0, len(px), n + 1).astype(int)
     return np.array([px[e[i]:e[i + 1]].mean(0) for i in range(n)])

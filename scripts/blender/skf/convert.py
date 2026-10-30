@@ -46,7 +46,8 @@ DROP_COMPS, CARBON, ARCH_LINER, PLATES, GLASS_BACKS, SEAL_CLIP, RAIL = (C[k] for
 MAT_RGB = {**C["MAT_RGB"], "badge_chrome": (196, 200, 206), "badge_black": (8, 8, 10),
            "caliper_red": (180, 20, 28),             # Performance calipers (official RIMCLOSEUP, lit side)
            "badge_perf": (57, 61, 70),               # Performance badge plate (navy starburst, mean colour; models.md)
-           "arch_liner": (16, 16, 18)}               # arch_liners()
+           "arch_liner": (16, 16, 18),               # arch_liners()
+           "badge_etch": (150, 152, 156)}            # laser-etched badge (CERBERUS; textures(): a shade of the paint)
 # chrome badges mirror the surroundings: bright on a dark paint, grey on a light one (median V >= 0.55: PearlWhite
 # read 196 on ~210 paint, gone)
 CHROME = ((200, 204, 210), (104, 108, 114))
@@ -81,7 +82,8 @@ PLANES, CUT_X_Y, GATE_CUT_COMPS, GATE_HINGE = (C[k] for k in ("PLANES", "CUT_X_Y
 BADGE_OFF = 0.003                          # grid off the surface (no depth fight)
 T_BADGE, TESLA, LENS_X, MODELY, CALIPER = (C[k] for k in ("T_BADGE", "TESLA", "LENS_X", "MODELY", "CALIPER"))
 BADGE_Y, BLADE, PERF_BADGE = C["BADGE_Y"], C["BLADE"], C["PERF_BADGE"]
-SWATCH = ("Badge_T", "Badge_TESLA", "Badge_MODELY", "Caliper")   # one flat-colour UV spot each (unwrap())
+SWATCH = ("Badge_T", "Badge_TESLA", "Badge_MODELY", "Caliper") + (("Badge_CERB",) if C.get("CERBERUS") else ())
+#                                            one flat-colour UV spot each (unwrap())
 SWATCH_U = 0.03                            # UV0 strip kept for them at u > 1 - SWATCH_U
 SMOKE_RGB = (62, 58, 60)                   # the light blade by day: smoked lens, so the black letters read
 PARTS = ["Body"] + list(pv.DOORS)          # part index: 0 body, 1.. DOORS order (FL, FR, RL, RR, TrunkDoor, EngineDoor)
@@ -90,9 +92,14 @@ ZN = list(pv.Z)                            # zone index -> name
 CELL = {c: i for i, c in enumerate(pv.CABIN_CELLS)}
 GLASS_ZONES = ("WinT", "WinH", "WinLH", "WinLT", "WinRH", "WinRT", "LightBarL")   # UV1 glass code order (the frag's
 #                                                                                  GLASS_ZONE[], feat/edges-1025)
+ROLL_N = 8                                 # a rolling tonneau's strips (tonneau_strips); strip 0 stays: the canister lid
+BED_TUB, ROOF_BAR = C.get("BED_TUB"), C.get("ROOF_BAR")   # a pickup's bed and roof light bar (bed_tub, roof_bar)
 
 
 def lin(name, z):
+    if len(LINES[name]) > 2:               # a polyline (z ascending), held flat past its ends
+        y, zz = np.array(LINES[name]).T
+        return np.interp(z, zz, y)
     (y1, z1), (y2, z2) = LINES[name]
     return y1 + (y2 - y1) * (z - z1) / (z2 - z1)
 
@@ -140,20 +147,32 @@ def lower_hull(p, depth):
 
 def src_frame():
     """Source as imported (import_source) -> pre-centre grid frame, SRC_C centred. OBJ (-Z forward, Y up): front -X,
-    left -Y; SRC_FLIP: front +X, left +Y (the glTF importer's Z up). SRC_SCALE: metres per source unit."""
+    left -Y; SRC_FLIP: front +X, left +Y (the glTF importer's Z up). SRC_SCALE: metres per source unit. SRC_YFRONT
+    (an FBX, Z up): front -Y, left +X, SRC_C the source's (x, y) centre, ground at source z SRC_YFRONT, and
+    SRC_STRETCH (width, length, height) factors onto the official size."""
+    if C.get("SRC_YFRONT") is not None:
+        sx, sy, sz = (K * SRC_SCALE * f for f in C["SRC_STRETCH"])
+        return Matrix(((-sx, 0, 0, sx * SRC_C[0]), (0, -sy, 0, sy * SRC_C[1]), (0, 0, sz, -sz * C["SRC_YFRONT"]),
+                       (0, 0, 0, 1)))
     s = K * SRC_SCALE * (-1 if SRC_FLIP else 1)
     return Matrix(((0, s, 0, -s * SRC_C[1]), (-s, 0, 0, s * SRC_C[0]), (0, 0, K * SRC_SCALE, 0), (0, 0, 0, 1)))
 
 
 def import_source():
-    """The source into an empty scene, OBJ or glTF; glTF nests its meshes under empties: unparented in place."""
+    """The source into an empty scene, OBJ, FBX or glTF; glTF / FBX nest meshes under empties: unparented in place."""
     bpy.ops.wm.read_factory_settings(use_empty=True)
-    if SRC.lower().endswith((".glb", ".gltf")):
-        bpy.ops.import_scene.gltf(filepath=SRC)
+    if SRC.lower().endswith((".glb", ".gltf", ".fbx")):
+        if SRC.lower().endswith(".fbx"):
+            bpy.ops.import_scene.fbx(filepath=SRC)
+        else:
+            bpy.ops.import_scene.gltf(filepath=SRC)
         for o in [o for o in bpy.data.objects if o.type == "MESH"]:
             mw = o.matrix_world.copy()
             o.parent = None
             o.matrix_world = mw
+        for o in [o for o in bpy.data.objects if SRC.lower().endswith(".fbx") and o.type == "MESH"
+                  and not len(o.data.polygons)]:
+            bpy.data.objects.remove(o)              # the FBX's empty meshes
     else:
         bpy.ops.wm.obj_import(filepath=SRC, forward_axis="NEGATIVE_Z", up_axis="Y")
 
@@ -218,7 +237,11 @@ def load_source():
         R = M.to_3x3().normalized()
         cn = np.empty(len(me.loops) * 3, np.float32)
         me.corner_normals.foreach_get("vector", cn)
-        cn = cn.reshape(-1, 3) @ np.array(R).T
+        if C.get("SRC_STRETCH"):        # unequal axes: normals by the inverse transpose (row vectors: n M^-1)
+            cn = cn.reshape(-1, 3) @ np.linalg.inv(np.array(M.to_3x3()))
+            cn /= np.maximum(np.linalg.norm(cn, axis=1, keepdims=True), 1e-12)
+        else:
+            cn = cn.reshape(-1, 3) @ np.array(R).T
         me.transform(M)
         o.matrix_world = Matrix()
         if "custom_normal" in me.attributes:
@@ -241,6 +264,14 @@ def load_source():
             print("TWINS", o.name, len(twins), "faces")
         bm.to_mesh(me)
         bm.free()
+        for objs, lo, hi, ax, (d0, d1) in C.get("DROP_FACES", ()):   # faces by centre and normal (a car's config)
+            if o.name in objs:
+                me.update()
+                fc, fn = pv.face_centres(o), np.array([p.normal[:] for p in me.polygons])
+                d = fn @ np.array(ax, float)
+                gone = (fc > lo).all(1) & (fc < hi).all(1) & (d >= d0) & (d <= d1)
+                pv.keep_faces(o, ~gone)
+                print("DROP_FACES", o.name, int(gone.sum()), "faces")
         name = o.name.split("_Mesh")[0] if "_Mesh" in o.name else o.name
         target = next((t for p, t in DECIMATE.items() if o.name.startswith(p)), None)
         if any(name in objs for objs, _, _ in DROP_COMPS):   # drop first, decimate what is left
@@ -263,8 +294,14 @@ def load_source():
     size = np.array([(hi - lo) for lo, hi in tires])
     tire = (float(size[:, 1:].mean() / 2), float(size[:, 0].mean()))
     print("SOURCE tires: radius %.4f width %.4f centres" % tire, [np.round(w, 3).tolist() for w in wl])
+    if C.get("TIRE"):   # the official tyre and track (metres) where the source's differ; the centres stay the source's
+        t = C["TIRE"]
+        tire = (t["r"] * K, t["w"] * K)
+        wl = [(sd, yc, zc, t["track"] * K / 2 + tire[1] / 2 + pv.WHEEL_INSET) for sd, yc, zc, _ in wl]
+        print("TIRE official: radius %.4f width %.4f outer |x| %.4f" % (*tire, wl[0][3]))
     badges(obs, names)
-    calipers(obs, names, wl, tire)
+    if CALIPER:
+        calipers(obs, names, wl, tire)
     if ARCH_LINER:
         arch_liners(obs, names, wl, tire)
     for name, poly, want, mat in PLATES:   # flat backing polygons where a dropped part left a see-through gap
@@ -506,6 +543,8 @@ def arch_liners(obs, names, wl, tire):
     th = np.radians(np.linspace(*g["arc"], g["n"]))
     pts, faces, want = [], [], []
     for side, yc, zc, xo in wl:
+        if "x" in g:                                 # the liner's outer |x| (inside the cladding)
+            xo = g["x"] + pv.WHEEL_INSET
         xa, xb = side * (xo - pv.WHEEL_INSET), side * (xo - pv.WHEEL_INSET - width - g["inner"])   # outer, inner
         k = len(pts)
         pts += [(x, yc + R * math.cos(t), zc + R * math.sin(t)) for t in th for x in (xa, xb)]
@@ -563,25 +602,28 @@ def badges(obs, names):
     # T: read from ahead of the car (u = -x), its top up the surface. Model Y: on the lid's slope, rays straight down
     # (along the lid normal, the stem tip's ray would pass the lid's front edge onto the light bar), so the outline is
     # stretched by 1 / normal z; ray None: along -normal
-    y, tw, th, z0, nrm, ray = T_BADGE
-    n = Vector(nrm).normalized()
-    flat("Badge_T", [[[(u * tw, (v + 0.05) * th / (nrm[2] if ray else 1)) for u, v in t_logo()[0]]]],
-         ((0, y, z0), (-1, 0, 0), (0, -n.z, n.y), n), "badge_chrome", ray=ray)
+    if T_BADGE:
+        y, tw, th, z0, nrm, ray = T_BADGE
+        n = Vector(nrm).normalized()
+        flat("Badge_T", [[[(u * tw, (v + 0.05) * th / (nrm[2] if ray else 1)) for u, v in t_logo()[0]]]],
+             ((0, y, z0), (-1, 0, 0), (0, -n.z, n.y), n), "badge_chrome", ray=ray)
     # the blade lens (BLADE, Model Y): the source's blade faces back on a 1.5 cm strip (z 0.922-0.937; the underside
     # and a sloped housing below it), the real blade is ~4.5 cm with the letters inside. A plate over the strip across
     # the tailgate, upright, following the bar's curve in plan; it is the blade (smoked, glows as a tail light)
-    zc, ch, pitch, lh = TESLA
     ray_y, face_y = BADGE_Y                # rear badges: ray start y (behind the car), letter frame y
-    if BLADE:
-        xs = np.linspace(-LENS_X, LENS_X, 21)
-        ys = [bvh.ray_cast(Vector((x, ray_y, zc)), Vector((0, 1, 0)))[0].y - BADGE_OFF / 2 for x in xs]
-        _add(obs, names, "Badge_BLADE", [Vector((x, y, zc + s * lh / 2)) for x, y in zip(xs, ys) for s in (-1, 1)],
-             [(2 * i, 2 * i + 2, 2 * i + 3, 2 * i + 1) for i in range(len(xs) - 1)], Vector((0, -1, 0)), "badge_black")
-        bvh = tree()
-    # rear lettering, read from behind (u = +x)
-    letters, wid = stroke_text("TESLA", WORDMARK, 0.22, pitch=pitch / ch)
-    flat("Badge_TESLA", [[[(u * ch, v * ch) for u, v in q] for q in g] for g in letters],
-         ((-wid * ch / 2, face_y, zc - ch / 2), (1, 0, 0), (0, 0, 1), (0, -1, 0)), "badge_black", planar=True)
+    if TESLA:
+        zc, ch, pitch, lh = TESLA
+        if BLADE:
+            xs = np.linspace(-LENS_X, LENS_X, 21)
+            ys = [bvh.ray_cast(Vector((x, ray_y, zc)), Vector((0, 1, 0)))[0].y - BADGE_OFF / 2 for x in xs]
+            _add(obs, names, "Badge_BLADE", [Vector((x, y, zc + s * lh / 2)) for x, y in zip(xs, ys) for s in (-1, 1)],
+                 [(2 * i, 2 * i + 2, 2 * i + 3, 2 * i + 1) for i in range(len(xs) - 1)], Vector((0, -1, 0)),
+                 "badge_black")
+            bvh = tree()
+        # rear lettering, read from behind (u = +x)
+        letters, wid = stroke_text("TESLA", WORDMARK, 0.22, pitch=pitch / ch)
+        flat("Badge_TESLA", [[[(u * ch, v * ch) for u, v in q] for q in g] for g in letters],
+             ((-wid * ch / 2, face_y, zc - ch / 2), (1, 0, 0), (0, 0, 1), (0, -1, 0)), "badge_black", planar=True)
     if MODELY:                             # (text, left x, baseline z, cap height)
         text, x0, z0, ch = MODELY
         letters, _ = stroke_text(text, SANS, 0.16)
@@ -591,6 +633,36 @@ def badges(obs, names):
         x, z, w, h = PERF_BADGE
         flat("Badge_PERF", [[[(0, 0), (w, 0), (w, h), (0, h)]]],
              ((x - w / 2, face_y, z - h / 2), (1, 0, 0), (0, 0, 1), (0, -1, 0)), "badge_perf", planar=True)
+    if C.get("CERBERUS"):                  # Cyberbeast's laser-etched Cerberus: bitmap rows (top first), runs as quads
+        cb = C["CERBERUS"]
+        rows = cb["bitmap"]
+        px = cb["w"] / len(rows[0])
+        quads = [[(i * px, (len(rows) - 1 - r) * px), ((j + 1) * px, (len(rows) - 1 - r) * px),
+                  ((j + 1) * px, (len(rows) - r) * px), (i * px, (len(rows) - r) * px)]
+                 for r, row in enumerate(rows) for i, j in _runs(row)]
+        flat("Badge_CERB", [quads], ((cb["x"] - cb["w"] / 2, face_y, cb["z"] - len(rows) * px / 2), (1, 0, 0),
+                                     (0, 0, 1), (0, -1, 0)), "badge_etch", planar=True)
+    if C.get("HEADBAR"):                   # (z, height, half width): the front light bar (Cybertruck). The source's bar
+        zc, lh, hx = C["HEADBAR"]          # is a strip under the hood's edge, lit only at its two ends from the game's
+        xs = np.linspace(-hx, hx, 21)      # camera (tesla-ctbody-1030c night-S): an upright plate across the nose
+        ys = [bvh.ray_cast(Vector((x, 4.0, zc)), Vector((0, -1, 0)))[0].y + BADGE_OFF / 2 for x in xs]
+        _add(obs, names, "Badge_HEADBAR", [Vector((x, y, zc + s * lh / 2)) for x, y in zip(xs, ys) for s in (-1, 1)],
+             [(2 * i, 2 * i + 2, 2 * i + 3, 2 * i + 1) for i in range(len(xs) - 1)], Vector((0, 1, 0)),
+             LAMPS["head"][0])
+
+
+def _runs(row):
+    """(first, last) column of each run of '#' in a bitmap row."""
+    out, i = [], 0
+    while i < len(row):
+        if row[i] == "#":
+            j = i
+            while j + 1 < len(row) and row[j + 1] == "#":
+                j += 1
+            out.append((i, j))
+            i = j
+        i += 1
+    return out
 
 
 def edit(car, names):
@@ -717,6 +789,11 @@ def classify(car, names, sizes):
     part[rd] = np.where(left, 3, 4)[rd]
     part[paint & (ax < 0.1) & (ay < pn["gate"][0]) & (az > pn["gate"][1])] = 5
     part[paint & (ax < 0.1) & (ay > pn["lid"][0]) & (az > pn["lid"][1])] = 6
+    # a source whose doors are not separate (FACE_PARTS objects): their paint faces by face centre, along the panel gaps
+    fp = paint & np.isin(obj, C.get("FACE_PARTS", ())) & (np.abs(cen[:, 0]) > pn["x"]) & (cen[:, 2] < pn["z"])
+    part[fp] = in_door(cen[fp])
+    for pname, objs in C.get("PART_OBJS", {}).items():   # whole objects that are a part (the tonneau)
+        part[np.isin(obj, objs)] = PARTS.index(pname)
     # door hardware, frames and panes: whole components inside a door (2.5 cm slack), cut components face by face. A
     # strip that runs past its one door's edge (the belt mouldings end under the B-pillar and quarter trim) goes face
     # by face too: whole on the body it was a black bar across the far window, seen through the roof glass with the
@@ -787,7 +864,9 @@ def classify(car, names, sizes):
     put(tail & ~stop, "LightLT", "LightRT")
     put(stop, "StopL", "StopR")
     # glass zones: the mask zone and the UV1 pane code (GLASS_ZONES)
-    gzn = np.where(match(ROOF_PANE, obj, csize), "LightBarL",
+    # (FIXED_GLASS_Y, a car's: body side glass ahead of it is fixed glass, the roof glass's zone: no part, no damage)
+    fixed = match(ROOF_PANE, obj, csize) | (part == 0) & (ax >= 0.1) & (cen[:, 1] > C.get("FIXED_GLASS_Y", np.inf))
+    gzn = np.where(fixed, "LightBarL",
                    np.where((ax < 0.1) & (ay > 0), "WinT", np.where(ax < 0.1, "WinH",
                    np.where(np.isin(part, (1, 2)), np.where(L, "WinLH", "WinRH"), np.where(L, "WinLT", "WinRT")))))
     zone[glass] = [ZN.index(z) for z in gzn[glass]]
@@ -922,8 +1001,9 @@ def paint_hsv(hsvs):
     block = text[start:end]
     for p, code in pv.PAINTS:
         h, s, v = hsvs[p]
-        block, n = re.subn(r'\{ name = "%s", code = "%s", h = [0-9.]+, s = [0-9.]+, v = [0-9.]+ \}' % (p, code),
-                           f'{{ name = "{p}", code = "{code}", h = {h}, s = {s}, v = {v} }}', block)
+        # (code and weight, when the line has them, stay as they are)
+        block, n = re.subn(r'(\{ name = "%s"(?:, code = "[^"]*")?(?:, weight = \d+)?), h = [0-9.]+, s = [0-9.]+, '
+                           r'v = [0-9.]+ \}' % p, lambda m: f"{m.group(1)}, h = {h}, s = {s}, v = {v} }}", block)
         if n != 1:
             raise SystemExit(f"Core.lua {key}: {n} colour lines for {p}")
     open(path, "w", encoding="utf-8", newline="\n").write(text[:start] + block + text[end:])
@@ -936,7 +1016,8 @@ def textures(car, c):
     fz = pv.face_centres(car)
     hgt = np.repeat(((fz[:, 2] - fz[:, 2].min()) / np.ptp(fz[:, 2]))[:, None], 3, 1)    # 0 at the lowest face, 1 at the roof
     layers = {"col": c["rgb"], "zone": zone_rgb[c["zone"]], "aux": aux, "hgt": hgt,
-              "badge": np.repeat(np.where(c["mat"] == "badge_chrome", 1.0, 0.5 * c["badge"])[:, None], 3, 1)}
+              "badge": np.repeat(np.where(c["mat"] == "badge_chrome", 1.0, np.where(c["mat"] == "badge_etch", 0.62,
+                                                                                    0.5 * c["badge"]))[:, None], 3, 1)}
     if c["rail"].any():
         layers["rail"] = np.repeat(c["rail"][:, None], 3, 1)
     b = bake(car, layers)
@@ -958,21 +1039,28 @@ def textures(car, c):
     den = np.maximum(pv.box_blur(pv.box_blur(pm, 3), 3), 1e-6)
     q = (pv.box_blur(pv.box_blur(q * pm, 3), 3) / den)[paint]
     # spread: a monotone remap of q's percentiles onto PAINT_TARGET; equal q stay equal (no texel-rank ties)
-    pc, tg = zip(*PAINT_TARGET)
-    q = np.interp(q, [q.min(), *np.percentile(q, pc), q.max()], [PAINT_ENDS[0], *tg, PAINT_ENDS[1]])
+    # (a car may set its own: stainless reads dark on its flanks and bright on top in the official renders)
+    pc, tg = zip(*C.get("PAINT_TARGET", PAINT_TARGET))
+    ends = C.get("PAINT_ENDS", PAINT_ENDS)
+    q = np.interp(q, [q.min(), *np.percentile(q, pc), q.max()], [ends[0], *tg, ends[1]])
     if "rail" in b:                        # RAIL: the median tone
         q += (dict(PAINT_TARGET)[50] - q) * b["rail"][..., 0][paint]
     # skin alpha 254 marks the paint for the shader's sheen (MinidoracatTesla_vehicle.frag): vanilla reads alpha only
     # as "1 - a of the paint tint" (vehicle_multiuv.frag:144), so the paint takes 1/255 of the tint, under a level
-    alpha = np.where(paint & (b["badge"][..., 0] <= 0.25), PAINT_ALPHA, 1.0)[..., None]
+    badge = b["badge"][..., 0] > 0.25
+    etch = (b["badge"][..., 0] > 0.56) & (b["badge"][..., 0] < 0.7) & bool(C.get("CERBERUS"))
     hsvs = {}
     for p, code in pv.PAINTS:
-        ramp = pv.official_ramp(code)
+        # the finish flag: per paint where the car sets one (PAINT_ALPHAS: 253 stainless, 252 satin film)
+        pa = C["PAINT_ALPHAS"].get(p, C["PAINT_ALPHA_DEFAULT"]) / 255 if C.get("PAINT_ALPHAS") else PAINT_ALPHA
+        alpha = np.where(paint & ~badge, pa, 1.0)[..., None]
+        ramp = pv.official_ramp(code) if code else pv.film_ramp(C["FILMS"][p])
         xp = (np.arange(len(ramp)) + 0.5) / len(ramp)
         a_, b_ = (np.array(t, np.float32) for t in pv.CAL[p])
         s = col * shade[..., None]
         s[paint] = np.clip(a_ * np.stack([np.interp(q, xp, ramp[:, i]) for i in range(3)], -1) / pv.GAIN + b_, 0, 1)
         s[chrome] = np.array(CHROME[int(np.median(s[paint].max(-1)) >= 0.55)]) / 255
+        s[etch] = np.median(s[paint], 0) * 0.78     # etched into the steel (and seen through a film): a shade darker
         pv.save_png(np.concatenate([np.clip(s, 0, 1), alpha], -1),
                     os.path.join(pv.TEX_DIR, f"{pv.NAME}_{p}.png"), p)
         # setColorHSV for the damage overlays: the shader gives Veh_Damage* texels the paint hue and S / V offsets
@@ -1029,8 +1117,18 @@ def stage_build():
     sc_ = fc[corner]
     o = sc_[np.argsort(sc_[:, 0])[: max(1, len(sc_) // 5)]].mean(0)      # outboard end of the left corner lamp
     wl = [(sx, yc - ctr[1], zc, xo) for sx, yc, zc, xo in wheels]
-    g = pv.geometry(car, zmid, wl, tire[0], tire[1], BELT_Z, tuple(y - ctr[1] for y in DOOR_Y),
-                    (float(o[1]), float(o[2] + zmid)))
+    port = (C["PORT"][0] - ctr[1], C["PORT"][1]) if C.get("PORT") else (float(o[1]), float(o[2] + zmid))
+    areas, extra = [], []
+    if BED_TUB:          # the bed's flanks (ContainerAccess.Vault: reached from the side with the tonneau open)
+        (by0, by1) = BED_TUB["y"]
+        areas.append(("BedSide", (by0 + by1) / 2 - ctr[1], by0 - by1))
+    half_len = np.ptp(co[:, 1]) / 2
+    for lp_, (lx, ly) in C.get("LIGHTS", {}).items():   # light spots in half extents (IsoGameCharacter.java:17302)
+        if ly == "bed":
+            ly = ((sum(BED_TUB["y"]) / 2) - ctr[1]) / half_len
+        extra += [f"        part {lp_}", "        {", "            table light", "            {",
+                  f"                xOffset = {lx:.4f},", f"                yOffset = {ly:.4f},", "            }", "        }"]
+    g = pv.geometry(car, zmid, wl, tire[0], tire[1], BELT_Z, tuple(y - ctr[1] for y in DOOR_Y), port, areas, extra)
     bpy.ops.wm.save_as_mainfile(filepath=os.path.join(TMP, "skf_whole.blend"))
     g |= {"centre_y": float(ctr[1]), "zmid": zmid, "tris": pieces(car, c, shift)}
     g["tris"]["Wheel"] = pv.stage_wheel(*tire)
@@ -1203,6 +1301,106 @@ def frunk_tub(V, T, lid, body_tris, attr):
     return P.reshape(-1, 3), np.arange(3 * len(P)).reshape(-1, 3), corners(np.array([attr(c) for c in cl]), n)
 
 
+def quads_soup(quads, cells, faces_in, attr, two_sided=()):
+    """Flat quads (N x 4 x 3, pre-centre) as triangles wound to face faces_in (N x 3 directions), cabin palette cells,
+    flat normals; the quads indexed in two_sided also get a reversed copy. -> (points, tris, attributes)."""
+    Q = np.array(quads, float)
+    P = np.concatenate([Q[:, [0, 1, 2]], Q[:, [0, 2, 3]]])
+    want = np.concatenate([faces_in, faces_in])
+    cl = list(cells) * 2
+    n = np.cross(P[:, 1] - P[:, 0], P[:, 2] - P[:, 0])
+    n /= np.maximum(np.linalg.norm(n, axis=1, keepdims=True), 1e-12)
+    flip = (n * want).sum(1) < 0
+    P[flip] = P[flip][:, [0, 2, 1]]
+    n[flip] *= -1
+    two = np.concatenate([np.isin(np.arange(len(Q)), two_sided)] * 2)
+    P, n, cl = np.concatenate([P, P[two][:, [0, 2, 1]]]), np.concatenate([n, -n[two]]), cl + [c for c, t in zip(cl, two) if t]
+    return P.reshape(-1, 3), np.arange(3 * len(P)).reshape(-1, 3), corners(np.array([attr(c) for c in cl]), n)
+
+
+def tonneau_strips(dv, attr):
+    """A rolling tonneau (the source's cover quad, corners dv) as ROLL_N boxes across its length, front (0) to rear,
+    TONNEAU_T thick under its top face, the cover's cabin cell. The engine drops animation scale (AnimationPlayer.java:
+    1209-1273 blends position and rotation only; tesla-ctbody-1030a: a scaled cover stood up whole), so the strips
+    slide and stack instead, each on its own bone (pieces()). -> (points, tris, attrs, (strip per point, front
+    direction, up normal, length)) pre-centre."""
+    front = dv[:, 1] > dv[:, 1].mean()
+    (FL, FR), (RL, RR) = (s[np.argsort(s[:, 0])][[0, -1]] for s in (dv[front], dv[~front]))
+    n = np.cross(FR - FL, RL - FL)
+    n /= np.linalg.norm(n) * np.sign(n[2])
+    fwd = (FL + FR - RL - RR) / 2
+    L = np.linalg.norm(fwd)
+    fwd /= L
+    side = (FR - FL) / np.linalg.norm(FR - FL)
+    Q, out = [], []
+    for k in range(ROLL_N):
+        f0, f1 = k / ROLL_N, (k + 1) / ROLL_N
+        top = [FL + (RL - FL) * f0, FR + (RR - FR) * f0, FR + (RR - FR) * f1, FL + (RL - FL) * f1]
+        bot = [p - n * C["TONNEAU_T"] for p in top]
+        Q += [top, bot, [top[0], top[1], bot[1], bot[0]], [top[3], top[2], bot[2], bot[3]],
+              [top[0], top[3], bot[3], bot[0]], [top[1], top[2], bot[2], bot[1]]]
+        out += [n, -n, fwd, -fwd, -side, side]
+    P, t, a = quads_soup(Q, ["dash"] * len(Q), np.array(out), attr)
+    strip = np.repeat(np.arange(len(Q)) // 6, 3)      # quads_soup: every quad's first triangle, then every second one
+    return P, t, a, (np.concatenate([strip, strip]), fwd, n, L)
+
+
+def bed_tub(V, Tb, attr):
+    """A pickup's cargo bed (BED_TUB; the source has none): floor (two-sided: the camera sees under the rear), walls
+    up to the rails' inner edge (x and top along y, polylines), wheel humps, the front wall; faces into the bed, the
+    lining's cabin palette cell. The tailgate's inner panel closes it at the rear. -> (points, tris, attrs) pre-centre."""
+    b = BED_TUB
+    (y0, y1), z = b["y"], b["z"]
+    xr = lambda y: np.interp(y, *np.array(b["rail_x"]).T)        # noqa: E731  (y ascending)
+    top = lambda y: np.interp(y, *np.array(b["top"]).T)         # noqa: E731
+    (hy0, hy1), hx, hz = b["hump"]
+    ys = np.unique(np.concatenate([np.linspace(y1, y0, 9), [hy0, hy1], np.array(b["top"])[:, 0]]))
+    ys = ys[(ys >= y1) & (ys <= y0)]
+    Q, cell, inward, two = [], [], [], []
+
+    def quad(p, d, two_sided=False):
+        if two_sided:
+            two.append(len(Q))
+        Q.append(p)
+        cell.append(b["cell"])
+        inward.append(d)
+    for ya, yb in zip(ys[:-1], ys[1:]):
+        ym = (ya + yb) / 2
+        quad([(-xr(ya), ya, z), (xr(ya), ya, z), (xr(yb), yb, z), (-xr(yb), yb, z)], (0, 0, 1), True)
+        for s in (-1, 1):
+            hump = hy1 <= ym <= hy0
+            zb = hz if hump else z                     # the wall stands on the hump there
+            quad([(s * xr(ya), ya, zb), (s * xr(yb), yb, zb), (s * xr(yb), yb, top(yb)), (s * xr(ya), ya, top(ya))],
+                 (-s, 0, 0))
+            if hump:                                   # the hump: top and inner face
+                quad([(s * hx, ya, hz), (s * xr(ya), ya, hz), (s * xr(yb), yb, hz), (s * hx, yb, hz)], (0, 0, 1))
+                quad([(s * hx, ya, z), (s * hx, yb, z), (s * hx, yb, hz), (s * hx, ya, hz)], (-s, 0, 0))
+    for s in (-1, 1):                                  # the humps' front and rear faces
+        for yh, d in ((hy0, -1), (hy1, 1)):
+            quad([(s * hx, yh, z), (s * xr(yh), yh, z), (s * xr(yh), yh, hz), (s * hx, yh, hz)], (0, d, 0))
+    quad([(-xr(y0), y0, z), (xr(y0), y0, z), (xr(y0), y0, top(y0)), (-xr(y0), y0, top(y0))], (0, -1, 0))   # front wall
+    vol = sum((2 * xr((ya + yb) / 2)) * (yb - ya) * (top((ya + yb) / 2) - z) for ya, yb in zip(ys[:-1], ys[1:]))
+    print(f"BED y {y1:.3f}..{y0:.3f}, floor z {z:.3f}, {len(Q)} quads, ~{vol / K ** 3 * 1000:.0f} L to the rails")
+    return quads_soup(Q, cell, np.array(inward, float), attr, two)
+
+
+def roof_bar(V, Tb, attr):
+    """The off-road light bar on the roof's front edge (ROOF_BAR, every Cybertruck): a box on the roof (ray straight
+    down at its centre), housing black, its front face the lens. -> (points, tris, attrs) pre-centre."""
+    r = ROOF_BAR
+    tree = bvh_of([(V, Tb)])
+    hit = tree.ray_cast(Vector((0, r["y"], 5.0)), Vector((0, 0, -1)))[0]
+    z0 = hit.z + 0.004
+    x, y0, y1, z1 = r["w"] / 2, r["y"] - r["d"] / 2, r["y"] + r["d"] / 2, z0 + r["h"]
+    Q = [[(-x, y0, z1), (x, y0, z1), (x, y1, z1), (-x, y1, z1)],               # top
+         [(-x, y1, z0), (x, y1, z0), (x, y1, z1), (-x, y1, z1)],               # front: the lens
+         [(-x, y0, z0), (x, y0, z0), (x, y0, z1), (-x, y0, z1)],               # back
+         [(-x, y0, z0), (-x, y1, z0), (-x, y1, z1), (-x, y0, z1)], [(x, y0, z0), (x, y1, z0), (x, y1, z1), (x, y0, z1)]]
+    out = np.array([(0, 0, 1), (0, 1, 0), (0, -1, 0), (-1, 0, 0), (1, 0, 0)], float)
+    print(f"ROOF_BAR y {r['y']:.3f} on the roof at z {z0:.3f}, {r['w']:.2f} x {r['d']:.3f} x {r['h']:.3f}")
+    return quads_soup(Q, ["base", r["lens"], "base", "base", "base"], out, attr)
+
+
 def build_cabin(bodyV, Tb, Ab, meshes, shift):
     """The mod's own cabin and trunk (cabin.py) inside this body: shell rays against the closed car (centred), shell
     faces in a door opening coded for the shader. -> (points, tris, attrs) centred, to join the body."""
@@ -1216,6 +1414,8 @@ def build_cabin(bodyV, Tb, Ab, meshes, shift):
     o = Vector((0, cab.TRUNK_Y, trunk_floor + 0.1))       # the shell's rear end: tailgate inner panel / bumper behind
     rear = min(h[3] for b in bvh.values() for h in (b.ray_cast(o, Vector((0, -1, 0))),) if h[0] is not None)
     trunk_end = cab.TRUNK_Y - rear + cab.CABIN_INSET
+    if C.get("CABIN_REAR_Y") is not None:          # a pickup: the cabin ends at the bed's front wall (the bed is apart)
+        trunk_end = C["CABIN_REAR_Y"]
     arch = (REAR_ARCH[0] - cy, REAR_ARCH[1] - zmid, REAR_ARCH[2])
     (y0, z0), (y1, z1) = LINES["S"]
     opening = dict(y=tuple(y - cy for y in DOOR_Y), sill=SILL_Z - zmid, gate=GATE_Z - zmid,
@@ -1267,20 +1467,23 @@ def pieces(car, c, shift):
         bodyV = np.concatenate([bodyV, v])
         body_a.append(a)
     conv = np.array(Matrix.Rotation(-math.pi / 2, 3, "X"))
-    meshes, hinges = [], {}
+    meshes, hinges, strips = [], {}, {}
     mat = bpy.data.materials.new(pv.NAME)
     for k, (pname, (sd, axis, ang, secs)) in enumerate(pv.DOORS.items(), 1):
         sel = part == k
         lid = pname == "EngineDoor"
         off = (np.array([-sd, 0, 0]) if sd else np.array((0, 0, -1) if lid else pv.GATE_IN)) * pv.DOOR_T
         skin = sel & panel & ~mirror                     # the mirror cap: outer faces only (a closed shell)
-        P, t, a, _ = pv.slab(V, T, A, skin, off, cab_attr("dash"), BELT_Z - shift[2], outer_extra=sel & ~skin)
-        extra = [backs(bsel, rec, 0) for bsel, rec in back_sets(sel)] + [
-            seals(V, T, skin, cab_attr("base"), gb, solid)]
-        for v, bt, ba in extra:
-            t = np.concatenate([t, bt + len(P)])
-            P = np.concatenate([P, v])
-            a = np.concatenate([a, ba])
+        if ang == "roll":                                # the tonneau: strips of its own (tonneau_strips)
+            P, t, a, strips[pname] = tonneau_strips(V[np.unique(T[sel])], cab_attr)
+        else:
+            P, t, a, _ = pv.slab(V, T, A, skin, off, cab_attr("dash"), BELT_Z - shift[2], outer_extra=sel & ~skin)
+            extra = [backs(bsel, rec, 0) for bsel, rec in back_sets(sel)] + [
+                seals(V, T, skin, cab_attr("base"), gb, solid)]
+            for v, bt, ba in extra:
+                t = np.concatenate([t, bt + len(P)])
+                P = np.concatenate([P, v])
+                a = np.concatenate([a, ba])
         if sd:      # door card details on the inner panel (the slab alone was one flat grey sheet: user image 12)
             front = pname.startswith("DoorFront")
             ys = (DOOR_Y[1], DOOR_Y[0]) if front else (DOOR_Y[2], DOOR_Y[1])
@@ -1304,14 +1507,26 @@ def pieces(car, c, shift):
         elif lid:
             mid = dv[np.abs(dv[:, 0]) < 0.08]
             h = np.array([0.0, *mid[np.argmin(mid[:, 1]), 1:]])
+        elif ang == "roll":                 # the tonneau: its front edge (strip 0, the canister lid; not a hinge)
+            mid = dv[np.abs(dv[:, 0]) < 0.08]
+            h = np.array([0.0, *mid[np.argmax(mid[:, 1]), 1:]])
         elif GATE_HINGE == "front":         # sedan trunk lid: hinged under the rear window's foot, its front edge
             mid = dv[np.abs(dv[:, 0]) < 0.08]
             h = np.array([0.0, *mid[np.argmax(mid[:, 1]), 1:]])
+        elif GATE_HINGE == "bottom":        # pickup tailgate: its lower edge, at the inner panel (level with the bed floor)
+            low = dv[np.argmin(dv[:, 2])]
+            h = np.array([0.0, low[1] + pv.DOOR_T * pv.GATE_IN[1], low[2]])
         else:                               # hatch: the tailgate's top edge
             h = np.array([0.0, dv[:, 1].max(), dv[:, 2].max()])
         hinges[pname] = h - shift
         meshes.append((pname, P - shift, t, a))
         print(f"DOOR {pname}: {int(sel.sum())} faces, {len(t)} tris, hinge {np.round(h, 3).tolist()}")
+    for build, cfg in ((bed_tub, "BED_TUB"), (roof_bar, "ROOF_BAR")):   # a pickup's bed, its roof light bar
+        if C.get(cfg):
+            Pt, tt, at_ = build(bodyV, np.concatenate(body_t), cab_attr)
+            body_t.append(tt + len(bodyV))
+            bodyV = np.concatenate([bodyV, Pt])
+            body_a.append(at_)
     bpy.data.objects.remove(car)
     cv, ct, ca = build_cabin(bodyV - shift, np.concatenate(body_t), np.concatenate(body_a), meshes, shift)
     body_t.append(ct + len(bodyV))
@@ -1322,16 +1537,22 @@ def pieces(car, c, shift):
     bpy.context.scene.collection.objects.link(arm)
     pv.select_only(arm)
     bpy.ops.object.mode_set(mode="EDIT")
-    for pname in pv.DOORS:          # bones at the origin, unrotated: bind = identity (models.md 9)
-        eb = arm.data.edit_bones.new(pname + "_bone")
-        eb.head, eb.tail = Vector((0, 0, 0)), Vector((0, 0.3, 0))
+    for pname in pv.DOORS:          # bones at the origin, unrotated: bind = identity (models.md 9); a rolling cover's
+        for s in range(ROLL_N if pname in strips else 1):    # strips 1.. get <part>_bone<s>
+            eb = arm.data.edit_bones.new(pname + "_bone" + (str(s) if s else ""))
+            eb.head, eb.tail = Vector((0, 0, 0)), Vector((0, 0.3, 0))
     bpy.ops.object.mode_set(mode="OBJECT")
     obs = [arm]
     for pname, P, t, a in meshes:
         af = a.copy()
         af[..., 4:] = a[..., 4:] @ conv.T
         ob = pv.soup_object(pname, P @ conv.T, t, af, mat)
-        ob.vertex_groups.new(name=pname + "_bone").add(list(range(len(ob.data.vertices))), 1.0, "REPLACE")
+        if pname in strips:
+            for s in range(ROLL_N):
+                ob.vertex_groups.new(name=pname + "_bone" + (str(s) if s else "")).add(
+                    np.flatnonzero(strips[pname][0] == s).tolist(), 1.0, "REPLACE")
+        else:
+            ob.vertex_groups.new(name=pname + "_bone").add(list(range(len(ob.data.vertices))), 1.0, "REPLACE")
         ob.parent = arm
         ob.modifiers.new("arm", "ARMATURE").object = arm
         obs.append(ob)
@@ -1345,6 +1566,15 @@ def pieces(car, c, shift):
         q = Quaternion(Vector(conv @ np.array(pv.DOORS[pname][1], float)), math.radians(deg))
         h = Vector(conv @ hinges[pname])
         return h - q @ h, q
+
+    def roll_pose(pname, s, o):
+        """Strip s of a rolling cover, open by o (0..1): the cover slides to the front as one, each strip at most to
+        strip 0's place, sinking under the strips ahead of it as it passes under strip 0 (a stack: the canister)."""
+        _, fwd, n, L = strips[pname]
+        w = L / ROLL_N
+        d = o * (ROLL_N - 1) * w
+        sink = s * 1.05 * C["TONNEAU_T"] * min(max(d / w - (s - 1), 0.0), 1.0)
+        return Vector(conv @ (fwd * min(d, s * w) - n * sink)), Quaternion()
     end = 1
     for pname, (_, _, ang, secs) in pv.DOORS.items():
         act = bpy.data.actions.new(pname + "_closing")
@@ -1354,10 +1584,11 @@ def pieces(car, c, shift):
         end = max(end, last)
         for fr in range(1, last + 1):
             u = (fr - 1) / (last - 1)
-            deg = ang * (1 - u * u * (3 - 2 * u))
+            o = 1 - u * u * (3 - 2 * u)
             for pb in arm.pose.bones:
-                pb.location, pb.rotation_quaternion = hinge_pose(pname, deg) if pb.name == pname + "_bone" else \
-                    (Vector((0, 0, 0)), Quaternion())
+                bp, _, s = pb.name.partition("_bone")
+                pb.location, pb.rotation_quaternion = (Vector((0, 0, 0)), Quaternion()) if bp != pname else \
+                    roll_pose(pname, int(s or 0), o) if ang == "roll" else hinge_pose(pname, ang * o)
                 pb.keyframe_insert("location", frame=fr)
                 pb.keyframe_insert("rotation_quaternion", frame=fr)
         act.frame_range = (1, last)
@@ -1391,7 +1622,9 @@ def pieces(car, c, shift):
     want = {pv.NAME if k == "Body" else k: v for k, v in PANES.items()}
     for nm, t, vg, uv, cl, gz in got:
         print("CHECK FBX", nm, "tris", t, "groups", vg, "uv", uv, "glass", sorted(gz))
-        if (uv[:2] != ["UV0", "UV1"] or (cl[1:] < cl[:-1]).any() or (vg != 1) != (nm == pv.NAME) or gz != want[nm]
+        groups = 0 if nm == pv.NAME else ROLL_N if nm in strips else 1     # the body: none; a rolling cover: per strip
+        if (uv[:2] != ["UV0", "UV1"] or (cl[1:] < cl[:-1]).any() or (vg == 1 if groups == 0 else vg != groups)
+                or gz != want[nm]
                 or t != counts[nm]):    # the importer drops a triangle on the same vertices as another
             raise SystemExit(f"{nm}: uv {uv}, groups {vg}, classes out of order {(cl[1:] < cl[:-1]).sum()}, glass {gz}, "
                              f"tris {t} of {counts[nm]}")
@@ -1420,14 +1653,16 @@ def stage_view(out, heads, state, skin="UltraRed", app=False):
     doors = [bpy.data.objects[p] for p in pv.DOORS]
     arm.matrix_world = Matrix.Rotation(math.pi / 2, 4, "X")
     openp = {"all": list(pv.DOORS)[:4], "gate": ["TrunkDoor"], "frunk": ["EngineDoor"], "shut": [],
-             "fl": ["DoorFrontLeft"], "fr": ["DoorFrontRight"], "rl": ["DoorRearLeft"], "rr": ["DoorRearRight"]}[state]
+             "fl": ["DoorFrontLeft"], "fr": ["DoorFrontRight"], "rl": ["DoorRearLeft"], "rr": ["DoorRearRight"],
+             "tonneau": ["TrunkTonneau"], "bed": ["TrunkDoor", "TrunkTonneau"]}[state]
     ad = arm.animation_data
     poses = {}
     for pb in arm.pose.bones:
         pb.rotation_mode = "QUATERNION"
-        if pb.name[:-5] in openp:
-            ad.action = bpy.data.actions[pb.name[:-5] + "_closing"]
-            bpy.context.scene.frame_set(1)
+        bp = pb.name.partition("_bone")[0]
+        if bp in openp:
+            ad.action = bpy.data.actions[bp + "_closing"]
+            bpy.context.scene.frame_set(int(os.environ.get("FRAME", 1)))     # FRAME: a frame of the clip (1 = open)
             poses[pb.name] = (pb.location.copy(), pb.rotation_quaternion.copy())
     ad.action = None
     for pb in arm.pose.bones:
