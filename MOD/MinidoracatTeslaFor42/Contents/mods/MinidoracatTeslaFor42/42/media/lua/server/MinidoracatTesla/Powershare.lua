@@ -66,6 +66,14 @@ local function genOf(ps)
     end
     return nil, true
 end
+-- truck v powers a house from a generator whose square is not loaded now (the cars it fed wait for it, C.settle)
+function PS.genAway(v)
+    local part = B.part(v)
+    local ps = part and part:getModData().ps
+    if not (ps and ps.gx) then return false end
+    local _, here = genOf(ps)
+    return not here
+end
 
 -- The truck whose running Powershare generator g is (loaded, its record still on that square), else nil.
 function PS.carOf(g)

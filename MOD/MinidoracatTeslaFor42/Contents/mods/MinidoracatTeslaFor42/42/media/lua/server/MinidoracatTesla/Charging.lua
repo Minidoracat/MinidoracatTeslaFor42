@@ -279,14 +279,18 @@ function C.settle(o, now, here, fresh)
     local rate = kw * fuel -- litres per hour of charging (per kWh: a full charge costs the same at any charging speed)
     -- The stretch since the last settle ran on what chg.power says. Run on a Cybertruck (chg.sup = its keyId, chg.power
     -- powershare / outlet): that truck pays it, at the share it had (draws; after an unload or a restart chg.kw, never
-    -- more than its supply has left now), whatever this settle finds; never retroactively for a stretch with no power,
-    -- the grid or a generator. That truck not loaded: cells load and unload one after the other (the car first on
-    -- load, the truck first as the player walks off), so wait until chg.hold (a world hour, set once, again on a fresh
-    -- load) leaving chg and draws as they are; past it, a truck still away books nothing. A loaded truck books, even
-    -- at 0 (its outlet off, at its limit, its share gone).
+    -- more than its supply has left now); never retroactively for a stretch with no power, the grid or a generator.
+    -- That truck not all there (not loaded, or its Powershare generator's square not loaded): cells load and unload
+    -- one after the other (the car first on load, the truck first as the player walks off), so wait until chg.hold (a
+    -- world hour, set once, again on a fresh load) leaving chg and draws as they are; past it, a truck still away books
+    -- nothing. A truck there books, even at 0 (its outlet off, at its limit, its share gone); but if this settle finds
+    -- it no longer feeding this charger, or it moved since (chg.supX / supY: driven off and back, towed, teleported),
+    -- its supply ended at some hour nobody saw: at most C.MAX_STEP_H is booked (below).
+    local PS = T.Powershare
     local wasCar = fromCar(chg.power)
     local wasSrc, supKey = chg.power, wasCar and chg.sup or nil
     local prevSup = supKey and C.carByKey(supKey)
+    if prevSup and wasSrc == "powershare" and PS.genAway(prevSup) then prevSup = nil end
     if type(chg.hold) ~= "number" then chg.hold = nil end
     if wasCar and not prevSup and now > t0 then
         if fresh or not chg.hold then chg.hold = now + C.RETRY_H end
@@ -310,6 +314,10 @@ function C.settle(o, now, here, fresh)
         return s, g, k
     end
     local src, gen, kwS = pick()
+    -- ponytail: the truck's supply ended unseen (it no longer feeds this charger, or it moved): at most one more hour,
+    -- the error of an hourly settle anyway, for the charge, and for Sentry's standby (from then on the car's own pack)
+    local capped = prevSup ~= nil and (not (fromCar(src) and gen:getKeyId() == supKey)
+        or math.abs(prevSup:getX() - (chg.supX or prevSup:getX())) > 0.5 or math.abs(prevSup:getY() - (chg.supY or prevSup:getY())) > 0.5)
     local needK = math.max(0, limit - B.kwh(part))
     local gotK = 0
     if chg.paused ~= "stopped" and needK > 0 and now > t0 then
@@ -318,9 +326,7 @@ function C.settle(o, now, here, fresh)
         local rest = now - t0 - gridH -- > 0 with need left only past the shut-off, where src was looked up
         if rest > 0 and gotK < needK then
             if wasCar then
-                -- ponytail: that truck no longer feeds this charger (driven off with its outlet on, the car unloaded
-                -- before a settle saw it go): at most one more hour is booked, the error of an hourly settle anyway
-                if not (fromCar(src) and gen:getKeyId() == supKey) then rest = math.min(rest, C.MAX_STEP_H) end
+                if capped then rest = math.min(rest, C.MAX_STEP_H) end
                 if prevSup and wasKw > 0 then gotK = gotK + C.takeFrom(prevSup, wasSrc, math.min(rest * wasKw, needK - gotK)) end
             elseif src == "generator" then
                 local h = math.min(rest, (needK - gotK) / kw)
@@ -342,7 +348,9 @@ function C.settle(o, now, here, fresh)
     -- ponytail: they do not slow charging.
     local power = now < gUntil and "grid" or src
     chg.last = now
-    settleSentry(v, now, C.powerUntil(chg, now, src ~= nil)) -- with the power it ran on until now
+    local freeUntil = C.powerUntil(chg, now, src ~= nil) -- with the power it ran on until now
+    if capped and freeUntil then freeUntil = math.min(freeUntil, t0 + C.MAX_STEP_H) end
+    settleSentry(v, now, freeUntil)
     -- the car's own loads off the grid since the last settle (Battery.lua B.draw, Sentry.lua settle add them up): the
     -- generator's fuel, or the Cybertruck that ran it (chg.sup). ponytail: a generator gone by now (dry, switched off,
     -- taken away), or a truck still away past the wait, is not billed for them.
@@ -356,6 +364,7 @@ function C.settle(o, now, here, fresh)
     end
     chg.power = power
     chg.sup = fromCar(power) and gen:getKeyId() or nil
+    chg.supX, chg.supY = chg.sup and gen:getX() or nil, chg.sup and gen:getY() or nil -- where it fed from (capped above)
     local left = math.max(0, limit - B.kwh(part))
     local charging = power
     if chg.paused == "stopped" then

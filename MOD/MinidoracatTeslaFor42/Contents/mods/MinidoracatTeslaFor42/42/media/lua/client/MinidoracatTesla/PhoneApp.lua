@@ -1361,7 +1361,9 @@ function App:layout()
         y = y + u(40) + u(16)
         if self.hasOutlet then
             local rw = tw - u(52)
-            local subs = wrapN(self.sOutletSub, rw, 3) -- the how-to sentence: 44 characters in Japanese, 99 in German
+            -- the how-to sentence: 44 characters in Japanese, 99 in German; four lines leave room for a wider
+            -- multiplayer font (CatLang draws German about 1.5 times as wide as zomboidSmall)
+            local subs = wrapN(self.sOutletSub, rw, 4)
             local rh = math.max(FHM + u(2) + FH * #subs, u(36)) + u(20)
             local ob = place("outlet", pad / 2, y, w - pad, rh)
             ob.sTitle = fitText(txt("Outlet"), rw, UIFont.Medium)

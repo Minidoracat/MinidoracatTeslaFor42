@@ -507,22 +507,39 @@ H.setHours(352.5)
 C.settle(bedMc2, H.hours())
 check(near(B.kwh(B.part(ct)), ctK, 1e-9) and near(100 - B.kwh(B.part(ctB)), 3.8, 1e-6), "the next half hour: the second one pays")
 
-H.section("bed outlet: the truck driven off with its outlet on while the car was unloaded: at most one more hour")
-y3K, ctK = B.kwh(B.part(y3)), B.kwh(B.part(ctB))
-local runKw = md(y3).chg.kw
-H.removeVehicle(y3) -- the car's cell unloads first; its charger's settle drops its share
-C.settle(bedMc2, H.hours())
-ctB.x = 470.5 -- driven off, the outlet still on
-H.setHours(400) -- two days on, the car loads again
-H.addVehicle(y3)
-C.relink(y3)
-check(near(B.kwh(B.part(y3)) - y3K, runKw * C.MAX_STEP_H, 1e-6) and near(ctK - B.kwh(B.part(ctB)), runKw * C.MAX_STEP_H, 1e-6)
-    and md(y3).chg.paused == "nopower", string.format("relinked 47.5 h later, the truck gone: one hour at its %.1f kW share booked, not the whole stretch", runKw))
-ctB.x = 400.5
+H.section("bed outlet: the truck's supply ended unseen: the whole stretch if it stayed, one hour if it left or moved")
+local function away(hours, move) -- the car's cell unloads (its charger's settle drops its share), back `hours` later
+    B.set(y3, B.part(y3), 5)
+    B.set(ctB, B.part(ctB), 110) -- room above its limit for the longest stretch
+    C.settle(bedMc2, H.hours())
+    local kw0, t, yK, cK = md(y3).chg.kw, H.hours(), B.kwh(B.part(y3)), B.kwh(B.part(ctB))
+    H.removeVehicle(y3)
+    C.settle(bedMc2, H.hours())
+    if move then move() end
+    H.setHours(t + hours)
+    H.addVehicle(y3)
+    C.relink(y3)
+    return kw0, t, B.kwh(B.part(y3)) - yK, cK - B.kwh(B.part(ctB))
+end
+local runKw, _, got, lost = away(8)
+check(near(runKw, 7.6, 1e-9) and near(got, 7.6 * 8, 1e-6) and near(lost, 7.6 * 8, 1e-6) and md(y3).chg.src == "outlet",
+    string.format("the truck stayed, the car away 8 h: the whole stretch (+%.2f / -%.2f), not one hour", got, lost))
+_, _, got, lost = away(8, function() ctB.y = 401.5 end) -- driven off and parked back a tile away, still in reach
+check(near(got, 7.6, 1e-6) and near(lost, 7.6, 1e-6) and md(y3).chg.src == "outlet" and md(y3).chg.supY == 401.5,
+    "driven off and parked back a tile away: one hour booked; it feeds again from where it stands")
+local seen, realSentry = nil, T.Sentry
+T.Sentry = { settle = function(_, _, freeUntil) seen = freeUntil end } -- the car's Sentry standby while away
+local t
+_, t, got, lost = away(48, function() ctB.x = 470.5 end) -- driven off, the outlet still on
+T.Sentry = realSentry
+check(near(got, 7.6, 1e-6) and near(lost, 7.6, 1e-6) and md(y3).chg.paused == "nopower",
+    string.format("relinked 48 h later, the truck gone: one hour at its 7.6 kW share booked (+%.2f / -%.2f), not the whole stretch", got, lost))
+check(seen and near(seen, t + C.MAX_STEP_H, 1e-9), "Sentry's standby is free for that hour only (freeUntil = last settle + 1 h), then the car's own pack")
+ctB.x, ctB.y = 400.5, 400.5
 unplug(y3)
 PS.set(owner, ctB, "outlet", false)
 
-H.section("Powershare: a 0 kW share and a full car keep their hourly settle (no NaN); a lower limit powers the cars at once")
+H.section("Powershare: its generator's square not loaded -> wait; a 0 kW share and a full car still settle hourly; a lower limit powers the cars at once")
 local h0 = H.hours()
 local wd = charger(600, 600, WALL, { room = {} })
 local ct4 = car(CT, 100, 602.5, 602.5)
@@ -536,9 +553,22 @@ keyFor(ya); keyFor(yb)
 plug(ya, wa)
 plug(yb, wb)
 check(md(yb).chg.kw == 0 and md(yb).chg.power == "powershare", "the second car: 0 kW share, power kept")
+local ps4 = md(ct4).ps
+local gk = key(ps4.gx, ps4.gy, ps4.gz)
+local gsq, yaK = squares[gk], B.kwh(B.part(ya))
+squares[gk] = nil -- the truck loaded, its generator's square not yet
+H.setHours(h0 + 0.5)
+C.settle(wa, H.hours())
+local hold = md(ya).chg.hold
+check(near(B.kwh(B.part(ya)), yaK, 1e-9) and md(ya).chg.last == h0 and hold and near(hold, h0 + 0.5 + C.RETRY_H, 1e-9),
+    "the generator's square not loaded: nothing booked, the record kept, wait until 10 min on")
+squares[gk] = gsq
+H.setHours(hold)
+C.settle(wa, H.hours())
+check(near(B.kwh(B.part(ya)) - yaK, 11.5 * (hold - h0), 1e-6), "the square back: the whole stretch at 11.5 kW, not capped")
 H.setHours(h0 + 1.01)
 H.fire("EveryTenMinutes")
-check(md(yb).chg.last == H.hours() and md(ya).chg.last == H.hours(), "past the hour: the 0 kW one's due settle ran (chg.last moved on)")
+check(md(yb).chg.last == H.hours(), "past the hour: the 0 kW one's due settle ran (chg.last moved on)")
 B.set(ya, B.part(ya), 78.4 * 0.9)
 C.settle(wa, H.hours())
 check(md(ya).chg.paused == "full" and md(ya).chg.kw == 0, "the first one full: 0 kW")
@@ -546,16 +576,17 @@ local h1 = H.hours()
 H.setHours(h1 + 1.01)
 H.fire("EveryTenMinutes")
 check(md(ya).chg.last == H.hours(), "past the hour: the full one's due settle ran too")
-unplug(yb)
-B.set(ya, B.part(ya), 20)
-C.settle(wa, H.hours())
-B.set(ct4, B.part(ct4), floorKwh + 0.5) -- the Model Y takes the last half kWh above the limit in its next settle
-H.setHours(H.hours() + 0.5)
-C.settle(wa, H.hours())
-check(md(ya).chg.paused == "nopower" and gen(ct4) ~= nil, "the Model Y at the truck's 20 % limit: no power, the generator still there")
-PS.set(owner, ct4, "floor", nil, 10)
-check(md(ya).chg.src == "powershare", "limit lowered to 10 %: it charges again at once, not at its next hourly settle")
 unplug(ya)
+B.set(yb, B.part(yb), 20)
+C.settle(wb, H.hours())
+B.set(ct4, B.part(ct4), floorKwh + 0.5) -- the Model 3 takes the last half kWh above the limit in its next settle
+H.setHours(H.hours() + 0.5)
+C.settle(wb, H.hours())
+check(md(yb).chg.paused == "nopower" and gen(ct4) ~= nil,
+    "the Model 3 17 tiles off (past the outlet's 10, in the generator's range) at the truck's 20 % limit: no power, the generator still there")
+PS.set(owner, ct4, "floor", nil, 10)
+check(md(yb).chg.src == "powershare", "limit lowered to 10 %: it charges again at once (the generator's range), not at its next hourly settle")
+unplug(yb)
 unplug(ct4)
 
 H.section("Powershare: nowhere to put the generator -> stopped (spot), the owner told, retried each settle")
