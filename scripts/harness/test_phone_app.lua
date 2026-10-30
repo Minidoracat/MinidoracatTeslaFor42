@@ -892,6 +892,24 @@ check(a.b.lock.tipKey == "IGUI_MinidoracatTesla_Tip_AppUnlockCybertruck"
 a.b.tonneau:forceClick()
 local tcmd, targs = sentLast()
 check(tcmd == "appAction" and targs.act == "tonneau" and targs.on == false, "tonneau cell on an open cover -> appAction tonneau, on = false")
+-- the bed outlet's how-to sentence runs long (EN 79 characters, DE 99, JP 44; a multiplayer font like CatLang draws
+-- German about 1.5 times as wide): up to four lines, nothing cut. The fake font is 8 px a character
+local longWhy = string.rep("Wort ", 21) .. "Wort" -- 109 characters, 22 words: four lines of the 31-character row
+getText = function(k, ...)
+    if k == "IGUI_MinidoracatTesla_App_OutletWhy_Gate" then return longWhy end
+    return realGT(k, ...)
+end
+state({ car = "MinidoracatTesla_Cybertruck", skin = 0, tonneau = true, ps = "armed", outlet = true, outletWhy = "Gate" })
+a:setPage("powershare")
+local subs, words = a.b.outlet.sSubs, 0
+for _, l in ipairs(subs) do for _ in l:gmatch("Wort") do words = words + 1 end end
+check(#subs == 4 and subs[4]:find("Wort", 1, true) and words == 22 and not table.concat(subs):find("...", 1, true)
+    and a.b.outlet.ch >= 4 * 19, "a 109-character outlet sentence on a 31-character row: four lines, all of it, the row tall enough ("
+    .. table.concat(subs, "|") .. ")")
+ok, why = textInside()
+check(ok, "Powershare page with the four-line sentence: text inside (" .. why .. ")")
+getText = realGT
+a:setPage("controls")
 a.b.back:forceClick()
 T.ClientCommands.appDone({ key = 9001, act = "trunk", on = true })
 check(a.toast.text == "IGUI_MinidoracatTesla_App_Done_tailgate_on", "Cybertruck: 'tailgate opened'")
