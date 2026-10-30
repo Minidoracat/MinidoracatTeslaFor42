@@ -134,7 +134,7 @@ function T.Create.Motor(vehicle, part)
     local s = T.spec(vehicle)
     local colors = s and s.colors
     if colors and #colors > 0 then
-        local i = ZombRand(#colors) + 1
+        local i = T.pickColor(colors) -- by weight (Core.lua); none = 1
         local c = colors[i]
         vehicle:setSkinIndex(i - 1)
         vehicle:setColorHSV(c.h, c.s, c.v)
