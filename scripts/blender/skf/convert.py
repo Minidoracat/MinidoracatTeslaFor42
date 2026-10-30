@@ -1054,7 +1054,7 @@ def textures(car, c):
         # the finish flag: per paint where the car sets one (PAINT_ALPHAS: 253 stainless, 252 satin film)
         pa = C["PAINT_ALPHAS"].get(p, C["PAINT_ALPHA_DEFAULT"]) / 255 if C.get("PAINT_ALPHAS") else PAINT_ALPHA
         alpha = np.where(paint & ~badge, pa, 1.0)[..., None]
-        ramp = pv.official_ramp(code) if code else pv.film_ramp(C["FILMS"][p])
+        ramp = pv.official_ramp(code) if code else pv.film_ramp(C["FILMS"][p], mix=C.get("FILM_MIX", {}).get(p))
         xp = (np.arange(len(ramp)) + 0.5) / len(ramp)
         a_, b_ = (np.array(t, np.float32) for t in pv.CAL[p])
         s = col * shade[..., None]

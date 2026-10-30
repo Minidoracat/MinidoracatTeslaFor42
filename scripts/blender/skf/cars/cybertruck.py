@@ -1,10 +1,11 @@
 """Cybertruck Cyberbeast: adamsochi2010's (Mr3DDD) "Tesla CyberTruck" (Sketchfab, CC BY 4.0, CREDITS.md). CAR=cybertruck.
 Keys as in model_y.py (each is the module constant it sets); the keys only this car has are read with C.get and are off
 for the others: SRC_YFRONT / SRC_STRETCH (an FBX source, scaled onto the official size), DROP_FACES, FACE_PARTS,
-PART_OBJS, TIRE, PORT, CERBERUS, BED_TUB, ROOF_BAR, LIGHTS, TONNEAU_T, FILMS, PAINT_ALPHAS, EXTRA_AREAS. The source's
-body is one welded shell with real 4 mm panel gaps, so its doors are split face by face along those gaps (FACE_PARTS);
-the frunk lid (Body.012), tailgate (Body.005) and tonneau (Body.004, two triangles) are their own objects. The source
-has no cargo bed (a flat panel closes it under the tonneau) and no wheel-arch liners: BED_TUB and ARCH_LINER build them.
+PART_OBJS, TIRE, PORT, CERBERUS, BED_TUB, ROOF_BAR, LIGHTS, TONNEAU_T, FILMS, FILM_MIX, PAINT_ALPHAS, EXTRA_AREAS. The
+source's body is one welded shell with real 4 mm panel gaps, so its doors are split face by face along those gaps
+(FACE_PARTS); the frunk lid (Body.012), tailgate (Body.005) and tonneau (Body.004, two triangles) are their own objects.
+The source has no cargo bed (a flat panel closes it under the tonneau) and no wheel-arch liners: BED_TUB and ARCH_LINER
+build them.
 Grid units, pre-centre frame (+Y front, +Z up, -X car left, ground z 0) unless noted; numbers and sources:
 .claude/skills/tesla-dev/references/models.md "Cybertruck".
 """
@@ -41,10 +42,26 @@ CAR = dict(
     # official stainless render's bright end and the flanks its dark middle (FRONT34: sides ~70, sails ~190)
     PAINT_TARGET=((10, 0.14), (25, 0.28), (50, 0.45), (75, 0.66), (90, 0.78), (97, 0.86)),
     PAINT_ENDS=(0.03, 0.92),
-    CAL={p: ((1.0, 1.0, 1.0), (0.0, 0.0, 0.0)) for p in (
-        "Stainless", "SatinStealthBlack", "SatinCeramicWhite", "SatinRoseGold", "SatinTacticalGreen", "SatinDarkGrey",
-        "SatinForestGreen", "SatinAbyssBlue", "CopperTintedClear", "SatinCrimsonRed", "SatinIridescentPurple",
-        "SlipGrey")},
+    # paint tone (convert.py: a x ramp / GAIN + b, sRGB 0-1): offsets only, so the ramp's spread stays the shop
+    # image's; fitted on the front door of the in-game screenshots (cybertruck-body-sp fl-max, zoom 0.5; satin
+    # door ~ skin - 17 per channel) against the shop image's door. Calibration knob: refit after changing the paint
+    # light or the films (models.md "Cybertruck" 車漆)
+    CAL={
+        "Stainless": ((1.0, 1.0, 1.0), (0.019, -0.004, -0.004)),
+        # (B: near black the game answers ~2x per level; 0.038 left the hood olive, 48 49 44)
+        "SatinStealthBlack": ((1.0, 1.0, 1.0), (0.061, 0.053, 0.042)),
+        "SatinCeramicWhite": ((1.0, 1.0, 1.0), (-0.043, -0.053, -0.065)),
+        "SatinRoseGold": ((1.0, 1.0, 1.0), (0.031, 0.023, 0.015)),
+        "SatinTacticalGreen": ((1.0, 1.0, 1.0), (0.042, 0.03, 0.027)),
+        "SatinDarkGrey": ((1.0, 1.0, 1.0), (0.046, 0.038, 0.027)),
+        "SatinForestGreen": ((1.0, 1.0, 1.0), (0.038, 0.034, 0.034)),
+        "SatinAbyssBlue": ((1.0, 1.0, 1.0), (0.061, 0.045, 0.027)),
+        "CopperTintedClear": ((1.0, 1.0, 1.0), (0.088, 0.057, 0.038)),
+        "SatinCrimsonRed": ((1.0, 1.0, 1.0), (0.065, 0.055, 0.047)),
+        # Iridescent: gain too (its mixed ramp, FILM_MIX): door (12, 12, 15) and hood (83, 89, 120) from the shop image
+        "SatinIridescentPurple": ((0.571, 0.652, 0.739), (0.079, 0.061, 0.048)),
+        "SlipGrey": ((1.0, 1.0, 1.0), (-0.001, -0.019, -0.026)),
+    },
     COMPOSITOR_MODEL="ct",
     OFFICIAL_OPTS="",                      # official renders: copied from temp/plan-cybertruck-1028 (PDD_SIDE.png ...)
     # official_ramp on PDD_SIDE.png: doors, rear quarter and the sail (the bright upper flank), the rear arch's cladding
@@ -52,6 +69,11 @@ CAR = dict(
     RAMP=dict(t=(0.12, 0.74), u=(0.25, 0.97), wheels=(0.795,), wt=0.70, wr=0.155, cut=((0.0, 0.63, 0.0, 0.30),)),
     # film ramps: the shop image's door panels (box in fractions of the car's bbox in the image; front 3/4 view)
     FILM_BOX=dict(u=(0.52, 0.84), t=(0.30, 0.60)),
+    # Iridescent's shop image: doors near black (12, 12, 15), the colour only on the lit up-facing surfaces (the sail
+    # (83, 89, 120), hue 230-238): the ramp's top 30 % from the sail, so the game's hood, roof edges and sails (q above
+    # ~0.7) take it and the flanks stay dark (pzveh.film_ramp mix)
+    FILM_MIX={"SatinIridescentPurple": ((dict(u=(0.52, 0.84), t=(0.30, 0.60)), 0.7),
+                                        (dict(u=(0.82, 0.95), t=(0.14, 0.21)), 0.3))},
     # ---- pzveh: wheel, 20" Core with its aero cover (official RIMCLOSEUP): a matt black cover of six wide angular
     # blades round a hexagonal hub, 285/65 R20 all-terrain tyres (owner's manual p.238)
     WHEEL_RIM=0.62,                        # 20" (254 mm bead + 17 mm flange) / 439 mm tyre radius

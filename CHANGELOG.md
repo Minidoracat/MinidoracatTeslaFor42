@@ -17,7 +17,7 @@
 ### 新增
 
 - **第三台特斯拉：Cybertruck（Cyberbeast）**：只出現在高級住宅區，在那裡的機率是 Model Y 的一半，停車格不會出現。照官方最高規格的 Cyberbeast：維修介面顯示 845 hp，推力比 Model Y、Model 3 大，極速、抓地與煞車和兩台轎車同級；高電壓電池 123 kWh，充滿電一樣跑得和原版同級車加滿一箱油一樣遠，用壁掛式充電座從沒電充到 90% 約 10 小時、行動充電器約 15 小時（遊戲時間）。在草地、泥土這類越野地面推力比較大、輪胎與懸吊磨損比較少，和原版越野車同級。4 個座位（實車 5 座；和其他特斯拉一樣一扇門一位）。外觀照官方尺寸與設計，尾門右下有 Cerberus 標誌；充電口在左後輪上方，插充電線時線拉到那裡。
-- **12 種車色**：生成時一半是原廠的不鏽鋼（Stainless），另一半平均分給特斯拉官方賣過的 11 種包膜：Satin Stealth Black、Satin Ceramic White、Satin Rose Gold、Satin Tactical Green、Satin Dark Grey、Satin Forest Green、Satin Abyss Blue、Copper Tinted Clear、Satin Crimson Red、Satin Iridescent Purple、Slip Grey。不鏽鋼和緞面包膜各有自己的反光質感，App 的車圖跟著車色換。
+- **12 種車色**：生成時一半是原廠的不鏽鋼（Stainless），另一半平均分給特斯拉官方賣過的 11 種包膜：Satin Stealth Black、Satin Ceramic White、Satin Rose Gold、Satin Tactical Green、Satin Dark Grey、Satin Forest Green、Satin Abyss Blue、Copper Tinted Clear、Satin Crimson Red、Satin Iridescent Purple、Slip Grey。包膜的顏色照官方商店圖校過；Satin Iridescent Purple 和商店圖一樣，車身側面近乎黑色，受光的引擎蓋與車頂斜面透出藍紫。不鏽鋼和緞面包膜各有自己的反光質感，App 的車圖跟著車色換。
 - **車斗、尾門與車斗蓋**：車斗容量 110（和原版皮卡一樣），前行李廂 14。尾門往下翻開；車斗上有電動捲簾式車斗蓋，約 4 秒捲開或蓋上。照實車，車斗只能從車外拿：從車尾拿要尾門或車斗蓋開著，從兩側拿要車斗蓋開著，坐在車上拿不到；拆掉的尾門或車斗蓋算開著。車斗蓋用儀表的車子圖或 App 開關，在車尾按互動鍵照舊是開尾門。整台車上鎖時尾門與車斗蓋一起鎖；車斗蓋開著時上鎖會停在打開的位置（實車也是）。維修介面照車主手冊叫「尾門」「車斗」「車斗蓋」。
 - **車斗燈與車頂燈條**：尾門或車斗蓋打開時車斗燈自動亮起，都關上就熄。每台都裝了車頂燈條：駕駛在 V 鍵圓盤選「開啟車頂燈條」，照亮車頭前方的地面，照得比大燈遠。
 - **裝甲玻璃與不鏽鋼車殼**：從車外打破車窗（V 鍵圓盤的「打破 …」或維修介面的「打破窗戶」）要砸 3 下才破，角色改用雙手重擊；換上新的車窗重新算，徒手砸一樣會割傷。玩家拿武器打車門、前蓋、尾門、車斗蓋與擋風玻璃時，比一般車耐打。撞車與殭屍造成的損壞和一般車一樣。
