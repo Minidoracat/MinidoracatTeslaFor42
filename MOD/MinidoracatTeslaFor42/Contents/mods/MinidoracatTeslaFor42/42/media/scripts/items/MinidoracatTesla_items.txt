@@ -118,4 +118,24 @@ module Base
         WorldStaticModel = CordlessPhone,
         Tooltip = Tooltip_MinidoracatTesla_PhoneKey,
     }
+
+    /* Powershare's hidden generator (server/MinidoracatTesla/Powershare.lua): IsoGenerator.new reads condition and the
+       sprite from it (IsoGenerator.java:96-131) and maps the tile back to it by the base:generator tag
+       (getGeneratorItemType, :133-156): SoundRadius / SoundVolume 1 (the world sound zombies hear, :170-190) and
+       ConditionLowerChanceOneIn far past any game (no wear, :199-254). Never in a container or a loot table.
+       Hidden: the admin item list skips it (Item.java:2062-2063). */
+    item MinidoracatTesla_Powershare
+    {
+        DisplayCategory = Electronics,
+        Weight = 1.0,
+        ItemType = base:normal,
+        Icon = Generator,
+        ConditionMax = 100,
+        Tags = base:generator,
+        WorldObjectSprite = minidoracat_tesla_01_12,
+        ConditionLowerChanceOneIn = 1000000,
+        SoundRadius = 1,
+        SoundVolume = 1,
+        Hidden = true,
+    }
 }

@@ -1,10 +1,12 @@
--- V key / D-pad up vehicle radial menu: adds "Camp Mode" and "Charging status" for Teslas, and the bed quality under
+-- V key / D-pad up vehicle radial menu: adds "Camp Mode" and "Charging status" for Teslas, Powershare and the bed
+-- outlet for a Cybertruck (Specs powershare / bedOutlet), and the bed quality under
 -- vanilla "Sleep" (an average bed while camping, Camp.bedType).
 -- ISVehicleMenu.showRadialMenu is a toggle (ISVehicleMenu.lua:70-76); remember whether the menu was
 -- open BEFORE the vanilla call, because isReallyVisible() lies right after addToUIManager (pitfalls.md UI).
 require "Vehicles/ISUI/ISVehicleMenu"
 require "ISUI/ISWorldObjectContextMenu"
 require "MinidoracatTesla/Core"
+require "MinidoracatTesla/Chargers"
 require "MinidoracatTesla/HUD"
 
 local T = MinidoracatTesla
@@ -16,6 +18,23 @@ end
 
 local function onChargeStatus(player, vehicle)
     T.ChargeCard.open(player:getPlayerNum(), vehicle)
+end
+
+-- Cybertruck switches (server Powershare.lua PS.set): the charge cable's rule (T.mayUseCable), like the charge card.
+-- id: "Powershare" / "Outlet" (texts and icons), cmd: the server command prefix, on: switched on now.
+local function onSwitch(player, vehicle, cmd, on)
+    T.request(player, cmd .. (on and "Off" or "On"), { vid = vehicle:getId() })
+end
+local function addSwitch(menu, player, vehicle, id, cmd, on)
+    local label = getText("IGUI_MinidoracatTesla_Radial_" .. id .. (on and "Off" or "On"))
+    local ok, why = T.mayUseCable(player, vehicle)
+    local icon = TEX .. "radial_" .. id:lower()
+    if ok then
+        local desc = on and "" or ("\n" .. getText("IGUI_MinidoracatTesla_HUD_" .. id .. "Sub"))
+        menu:addSlice(label .. desc, getTexture(icon .. ".png"), onSwitch, player, vehicle, cmd, on)
+    else
+        menu:addSlice(label .. "\n" .. T.denyText(why), getTexture(icon .. "_off.png"), nil)
+    end
 end
 
 local function addSlices(menu, player, vehicle)
@@ -46,6 +65,9 @@ local function addSlices(menu, player, vehicle)
     end
     menu:addSlice(getText("IGUI_MinidoracatTesla_Radial_ChargeStatus") .. "\n" .. getText("IGUI_MinidoracatTesla_Tip_ChargeStatus"),
         getTexture(TEX .. "radial_charge.png"), onChargeStatus, player, vehicle)
+    local spec, md = T.spec(vehicle), part:getModData()
+    if spec.powershare then addSwitch(menu, player, vehicle, "Powershare", "ps", md.ps ~= nil and md.ps.on == true) end
+    if spec.bedOutlet then addSwitch(menu, player, vehicle, "Outlet", "outlet", md.outlet == true) end
     -- vanilla's own "Sleep" slice (ISVehicleMenu.lua:225): second line = vanilla's bed tooltip (Tooltip_BedType)
     for i, s in ipairs(menu.slices) do
         if s.command[1] == ISVehicleMenu.onSleep then

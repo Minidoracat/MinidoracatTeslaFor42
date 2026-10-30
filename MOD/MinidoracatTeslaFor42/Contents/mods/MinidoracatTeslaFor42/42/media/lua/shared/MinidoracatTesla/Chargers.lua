@@ -53,8 +53,10 @@ end
 
 -- ---- power at a charger square: Charging.lua's settle and the charger menu's no-power hint share these ----
 
--- a running generator with fuel on that square, else nil
-function T.generatorAt(x, y, z)
+-- a running generator with fuel on that square, else nil. skip: a Cybertruck's `ps` record (gx, gy, gz), whose own
+-- Powershare generator never counts for it (it never charges itself, Charging.lua C.source)
+function T.generatorAt(x, y, z, skip)
+    if skip and skip.gx == x and skip.gy == y and skip.gz == z then return nil end
     local sq = getCell():getGridSquare(x, y, z)
     local g = sq and sq:getGenerator() -- IsoGridSquare.java:9713
     if g and g:isActivated() and g:getFuel() > 0 then return g end -- IsoGenerator.java:497-520
@@ -90,14 +92,87 @@ end
 
 -- plugged straight into a running generator up to genTiles from (x, y), same floor: generator, gx, gy. No sandbox
 -- AllowExteriorGenerator limit (decisions.md 2026-10-28).
-function T.directGenerator(kind, x, y, z)
+function T.directGenerator(kind, x, y, z, skip)
     local c = T.Chargers[kind]
     local r = c and c.genTiles
     if not r then return nil end
     for gx = x - r, x + r do
         for gy = y - r, y + r do
-            local g = T.generatorAt(gx, gy, z)
+            local g = T.generatorAt(gx, gy, z, skip)
             if g then return g, gx, gy end
+        end
+    end
+    return nil
+end
+
+-- ---- Cybertruck power: Powershare and the bed outlet (server/MinidoracatTesla/Powershare.lua; plan 4) ----
+-- Powershare's hidden vanilla generator: our invisible tile (scripts/blender/props/build.py PS_INDEX: no image, tile
+-- property GeneratorSound) placed from a hidden item whose WorldObjectSprite it is; IsoGenerator maps the sprite back
+-- to that item for its SoundRadius and ConditionLowerChanceOneIn (getGeneratorItemType, IsoGenerator.java:133-156,170-199).
+T.PS_SPRITE = "minidoracat_tesla_01_12"
+T.PS_ITEM = "Base.MinidoracatTesla_Powershare"
+T.PS_KW = 11.5     -- Powershare at most, every car it charges together (owner's manual p.204)
+T.OUTLET_KW = 9.6  -- the bed's 240 V outlet, 40 A (p.199-201; tesla.com "up to 9.6 kW")
+T.PS_FLOOR, T.PS_FLOOR_MIN, T.PS_FLOOR_MAX = 20, 5, 90 -- discharge limit %: Low Power Mode's default (p.199); app 5-90
+function T.isPowershare(g)
+    local s = g and g:getSprite()
+    return s ~= nil and s:getName() == T.PS_SPRITE
+end
+-- the discharge limit (%) of a Cybertruck's pack (battery part modData ps.floor): Powershare and the bed outlet stop there
+function T.psFloor(part)
+    local ps = part and part:getModData().ps
+    local f = ps and tonumber(ps.floor)
+    if not f then return T.PS_FLOOR end
+    return math.max(T.PS_FLOOR_MIN, math.min(T.PS_FLOOR_MAX, f))
+end
+-- plan 4's states: "off", "armed" (on, the house has the grid or another generator, or no Wall Connector cable),
+-- "backup" (its generator is out), "stopped" (the house is out of power and the pack is at the limit)
+function T.psState(part)
+    local ps = part and part:getModData().ps
+    if not (ps and ps.on) then return "off" end
+    if ps.gx then return "backup" end
+    return ps.stop and "stopped" or "armed"
+end
+
+-- Does Cybertruck v's bed outlet power a Mobile Connector at x, y, z (user 2026-10-30: "能，照實車")? The outlet on
+-- (battery part modData `outlet`), the tailgate down (a removed tailgate is no lid), no charge cable in v (AC charging
+-- turns the outlets off, p.200), no Home Backup running (p.205), above its discharge limit, and the charger within
+-- Specs bedOutlet.tiles of the bed area's centre (Chebyshev, like genTiles; getAreaCenter, BaseVehicle.java:8363-8373),
+-- same floor.
+function T.outletPowers(v, x, y, z)
+    local s = T.spec(v)
+    local bo = s and s.bedOutlet
+    local part = bo and T.Battery.part(v)
+    local md = part and part:getModData()
+    if not (md and md.outlet and not md.chg and not (md.ps and md.ps.gx) and part:getInventoryItem()) then return false end
+    if math.floor(v:getZ()) ~= z or not T.lidOpen(v, "TrunkDoor") then return false end
+    if T.Battery.pct(part) <= T.psFloor(part) then return false end
+    local c = v:getAreaCenter(bo.area)
+    return c ~= nil and math.abs(x + 0.5 - c:getX()) <= bo.tiles and math.abs(y + 0.5 - c:getY()) <= bo.tiles
+end
+-- The Cybertruck whose bed outlet powers a charger of `kind` at x, y, z (only a Mobile Connector plugs into one), not
+-- `except`; else nil. Server / SP: the cars with the outlet on (T.OutletCars, kept by Powershare.lua), no map scan.
+-- MP client (the menu's hint): the cars on the squares around.
+T.OutletCars = T.OutletCars or {} -- vehicle id -> keyId (ids are handed out again: the keyId must still match)
+function T.bedOutlet(kind, x, y, z, except)
+    local c = T.Chargers[kind]
+    if not (c and c.genTiles) then return nil end
+    if not isClient() then
+        for id, key in pairs(T.OutletCars) do
+            local v = getVehicleById(id)
+            if v and v ~= except and v:getKeyId() == key and T.outletPowers(v, x, y, z) then return v end
+        end
+        return nil
+    end
+    local cell, seen = getCell(), {}
+    for dx = -5, 5 do
+        for dy = -5, 5 do
+            local sq = cell:getGridSquare(x + dx, y + dy, z)
+            local v = sq and sq:getVehicleContainer() -- IsoGridSquare.java:9872
+            if v and not seen[v] then
+                seen[v] = true
+                if v ~= except and T.outletPowers(v, x, y, z) then return v end
+            end
         end
     end
     return nil
@@ -107,8 +182,9 @@ end
 -- hasGridPower = not isNoPower and doesPowerGridExist (IsoGridSquare.java:11799-11801, SandboxOptions.java:1290-1292):
 -- the same shut-off hour as the server's C.gridOffHour.
 function T.chargerPowered(kind, sq)
+    local x, y, z = sq:getX(), sq:getY(), sq:getZ()
     return (sq:hasGridPower() and T.gridReaches(kind, sq)) or T.wiredPower(kind, sq)
-        or T.directGenerator(kind, sq:getX(), sq:getY(), sq:getZ()) ~= nil
+        or T.directGenerator(kind, x, y, z) ~= nil or T.bedOutlet(kind, x, y, z) ~= nil
 end
 
 function T.chargerInfo(isoObject)

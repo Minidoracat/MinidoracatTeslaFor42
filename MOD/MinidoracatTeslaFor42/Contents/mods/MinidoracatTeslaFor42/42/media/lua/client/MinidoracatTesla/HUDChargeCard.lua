@@ -17,6 +17,8 @@ local W, PAD, GAP = 420, 16, 10
 local DAILY_LO, DAILY_HI, TRIP_HI = 50, 90, 100
 local MIN_T, MAX_T, STEP_T = 50, 100, 10
 local FAR = 12 -- tiles: walking away closes the card
+-- chg.src (Charging.lua) -> IGUI_MinidoracatTesla_Card_Src<…>: powershare / outlet are a Cybertruck's (Powershare.lua)
+local SRC = { grid = "Grid", generator = "Generator", powershare = "Powershare", outlet = "Outlet" }
 local TITLES = {
     none = "IGUI_MinidoracatTesla_Card_NotPlugged", charging = "IGUI_MinidoracatTesla_Card_Charging",
     full = "IGUI_MinidoracatTesla_Card_Full", nopower = "IGUI_MinidoracatTesla_Card_NoPower",
@@ -196,8 +198,7 @@ function Card:read()
     self.sTime = state == "charging" and hmm(mins) or "--"
     self.sToTarget = getText("IGUI_MinidoracatTesla_Card_ToTarget", tgt)
     self.sTarget = getText("IGUI_MinidoracatTesla_Card_Target", tgt)
-    self.sSrc = src == "grid" and getText("IGUI_MinidoracatTesla_Card_SrcGrid")
-        or (src == "generator" and getText("IGUI_MinidoracatTesla_Card_SrcGenerator") or nil)
+    self.sSrc = SRC[src] and getText("IGUI_MinidoracatTesla_Card_Src" .. SRC[src]) or nil
     self.sAlert = (state == "full" and getText("IGUI_MinidoracatTesla_Card_FullHint"))
         or (state == "nopower" and getText(T.Chargers[self.kind] and T.Chargers[self.kind].genTiles -- where a Mobile Connector works
             and "ContextMenu_MinidoracatTesla_MobileNoPower" or "IGUI_MinidoracatTesla_Card_NoPowerHint"))

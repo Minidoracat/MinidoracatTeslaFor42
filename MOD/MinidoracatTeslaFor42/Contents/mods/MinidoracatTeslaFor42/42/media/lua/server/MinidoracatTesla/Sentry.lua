@@ -33,7 +33,7 @@ function S.settle(vehicle, t, freeUntil)
     end
     local free = math.max(0, math.min(dt, (freeUntil or at) - at))
     local paid = dt - free
-    if free > 0 and md.chg and md.chg.power == "generator" then md.chg.fed = (md.chg.fed or 0) + free * S.KW end
+    if free > 0 and md.chg and md.chg.power ~= "grid" then md.chg.fed = (md.chg.fed or 0) + free * S.KW end
     local cur = T.Battery.kwh(part)
     local kwh = cur - paid * S.KW
     local floor = T.Battery.capacity(part) * S.MIN_PCT / 100

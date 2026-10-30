@@ -40,6 +40,7 @@ local function generator(fuel, on)
     function g:isActivated() return self.on end
     function g:getFuel() return self.fuel end
     function g:setFuel(f) self.fuel = math.max(0, math.min(f, 10)) end
+    function g:getSprite() return { getName = function() return "appliances_misc_01_0" end } end -- a vanilla generator
     return g
 end
 

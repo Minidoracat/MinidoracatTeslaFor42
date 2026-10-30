@@ -50,7 +50,7 @@ function B.draw(vehicle, part, kwh)
     if kwh <= 0 then return 0 end
     if B.onCharger(part) then
         local chg = part:getModData().chg
-        if chg.power == "generator" then chg.fed = (chg.fed or 0) + kwh end
+        if chg.power ~= "grid" then chg.fed = (chg.fed or 0) + kwh end -- a generator or a Cybertruck pays (Charging.lua)
         return 0
     end
     local now = B.kwh(part)
