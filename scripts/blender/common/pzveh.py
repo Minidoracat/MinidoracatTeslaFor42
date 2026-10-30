@@ -894,19 +894,25 @@ def official_ramp(code, n=32):
     return np.array([px[e[i]:e[i + 1]].mean(0) for i in range(n)])
 
 
-def film_ramp(name, n=32):
+def film_ramp(name, n=32, mix=None):
     """official_ramp for a wrap film: sRGB paint colour per V quantile of the film's shop image (OFFICIAL/films/<name>,
-    a front 3/4 view on transparency), its lit door panels (CAR FILM_BOX: columns u, rows t of the car's bbox)."""
+    a front 3/4 view on transparency), its lit door panels (CAR FILM_BOX: columns u, rows t of the car's bbox).
+    mix ((box, share), ...): each box gives round(share x n) bins of its own quantiles, sorted together (a film whose
+    door panels are all dark and whose colour shows only on the lit up-facing surfaces: the top bins from those)."""
     a = img_np(bpy.data.images.load(os.path.join(OFFICIAL, "films", name)))[::-1].astype(np.float64)  # rows top-down
     m = (a[..., 3] > 0.8) & (a[..., :3].min(-1) < 0.92)
     ys, xs = np.nonzero(m)
     yy, xx = np.mgrid[0:a.shape[0], 0:a.shape[1]]
     u, t = (xx - xs.min()) / np.ptp(xs), (yy - ys.min()) / np.ptp(ys)
-    b = CAR["FILM_BOX"]
-    px = a[..., :3][m & (u > b["u"][0]) & (u < b["u"][1]) & (t > b["t"][0]) & (t < b["t"][1])]
-    px = px[np.argsort(px.max(1), kind="stable")]
-    e = np.linspace(0, len(px), n + 1).astype(int)
-    return np.array([px[e[i]:e[i + 1]].mean(0) for i in range(n)])
+    out = []
+    for b, share in mix or ((CAR["FILM_BOX"], 1.0),):
+        k = round(share * n)
+        px = a[..., :3][m & (u > b["u"][0]) & (u < b["u"][1]) & (t > b["t"][0]) & (t < b["t"][1])]
+        px = px[np.argsort(px.max(1), kind="stable")]
+        e = np.linspace(0, len(px), k + 1).astype(int)
+        out += [px[e[i]:e[i + 1]].mean(0) for i in range(k)]
+    out = np.array(out)
+    return out if mix is None else out[np.argsort(out.max(1), kind="stable")]
 
 
 def stage_official():
