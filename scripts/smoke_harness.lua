@@ -42,10 +42,13 @@ function H.hours() return worldHours end
 function H.setHours(h) worldHours = h end
 function getTimestampMs() return nowMs end
 function H.advanceMs(ms) nowMs = nowMs + ms end
+local unmodded = 1 -- GameTime.getUnmoddedMultiplier: frame time x 60 x the game speed (GameTime.java:1018-1022)
+function H.setMultiplier(m) unmodded = m end
 local gameTime = {
     getWorldAgeHours = function() return worldHours end,
     getMinutesPerDay = function() return 90 end, -- DayLength default: 1 game minute = 3.75 s
     getHour = function() return 9 end, getMinutes = function() return 30 end,
+    getUnmoddedMultiplier = function() return unmodded end,
 }
 function getGameTime() return gameTime end
 

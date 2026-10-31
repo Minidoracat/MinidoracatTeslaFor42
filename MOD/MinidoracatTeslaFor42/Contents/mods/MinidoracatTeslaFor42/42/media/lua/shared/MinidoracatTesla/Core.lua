@@ -36,8 +36,8 @@ T.DRIVE_SCALE = 10
 -- scripts/blender/props/props_blender.py PLUGS builds one mesh per entry (build.py --check compares the two).
 -- Cybertruck only: tonneau (the app's tonneau cover button), armorGlass (smashes a window takes, Truck.lua),
 -- powershare and bedOutlet (Powershare, the bed outlets).
--- Model X only: falcon (the app's falcon wing doors button), doorWait (seconds the climb waits after a door's open
--- action, per door part; EnterDoor.lua, else its E.WAIT).
+-- Model X only: falcon (the app's falcon wing doors button), doorWait (clip seconds into a door's opening swing the
+-- climb starts at, per door part, on T.clipStep's clock; EnterDoor.lua, else its E.WAIT).
 T.Specs = {
     ["Base.MinidoracatTesla_ModelY"] = {
         model = "ModelY",
@@ -131,9 +131,9 @@ T.Specs = {
         hepa = true, -- HEPA filtration, Bioweapon Defense Mode (Model X owner's manual)
         falcon = true, -- falcon wing doors: the app's button opens both rear doors (owner's manual p.31-33)
         -- the falcon wing doors swing up in a 2.4 s clip (cars/model_x.py DOORS): the climb waits until they are nearly
-        -- up (EnterDoor.lua; modelx-sp tesla-mx-1101g: the climb starts 1.84 s into the clip, the wing up); the front
-        -- doors keep E.WAIT
-        doorWait = { DoorRearLeft = 2.3, DoorRearRight = 2.3 },
+        -- up (EnterDoor.lua; modelx-sp tesla-mx-1101g: CLIMB 1.84 s into the clip, the wing up); the front doors keep
+        -- E.WAIT
+        doorWait = { DoorRearLeft = 1.84, DoorRearRight = 1.84 },
         doorClip = { TrunkDoor = 3.6, DoorRearLeft = 2.4, DoorRearRight = 2.4 }, -- cars/model_x.py DOORS
         -- Model X Plaid paints: the last US design studio's six (Lexicon 2026-03-06) and China's pre-refresh Solid
         -- Black and Deep Blue (2025-03). Same order and append-only rules as above; h/s/v by convert.py build.
@@ -273,6 +273,10 @@ function T.spec(vehicle)
     return vehicle and T.Specs[vehicle:getScriptName()] or nil -- BaseVehicle.java:1621 (full name, :1540)
 end
 function T.isTesla(vehicle) return T.spec(vehicle) ~= nil end
+-- clip seconds a part anim (door swing) advances this update: 1/60 x 0.8 x the unmodded multiplier
+-- (BaseVehicle.java:3898-3904), which carries the game speed (GameTime.java:1018-1022): fast forward runs it sooner,
+-- a pause holds it. Timers that wait on a door count on this clock.
+function T.clipStep() return 0.8 / 60 * getGameTime():getUnmoddedMultiplier() end
 
 -- ---- battery readers (any side) ----
 local B = T.Battery
