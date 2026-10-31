@@ -1,7 +1,7 @@
 <!-- 指南網址：https://steamcommunity.com/sharedfiles/filedetails/?id=3829449879 -->
 <!-- Steam guide source (English). The full description lives in this guide; the Workshop page only has a summary. Format and sync: pz-family-docs/release.md "完整說明：Steam 指南" -->
 <!-- 標題：📖 Minidoracat Tesla Collection Mod Guide: Cars, Charging, Keys and the App -->
-<!-- 摘要：A picture guide to Minidoracat Tesla Collection: the Model Y and Model 3 Performance, the Cybertruck Cyberbeast (cargo bed, Powershare home backup and the bed outlets), the battery, the Wall Connector and the Mobile Connector, the Tesla-style dashboard, key cards and phone keys, the Tesla app and Summon, Sentry and Camp Mode, drive unit parts, and how it works with Vehicle Manager, the MiniMap and AutoDrive, plus the sandbox options. -->
+<!-- 摘要：A picture guide to Minidoracat Tesla Collection: the Model Y and Model 3 Performance, the Model S and Model X Plaid (falcon wing doors and six seats), the Cybertruck Cyberbeast (cargo bed, Powershare home backup and the bed outlets), the battery and towing, the Wall Connector and the Mobile Connector, the Tesla-style dashboard, key cards and phone keys, the Tesla app and Summon, Sentry and Camp Mode, Bioweapon Defense Mode and Chill, drive unit parts, and how it works with Vehicle Manager, the MiniMap and AutoDrive, plus the sandbox options. -->
 <!-- Screenshots: docs/screenshots/steam/en/, shot by guide-shots-sp in the family repo's e2e/MinidoracatTeslaFor42 (Summon shots: phone-summon-sp; FSD: fsd-shot-sp; With other mods: guide-mods-sp) -->
 === 🚀 Quick start
 [b]中文版：[/b] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3829449828]Minidoracat Tesla Collection 完整說明[/url]
@@ -9,7 +9,7 @@
 Mod page (Steam Workshop):
 https://steamcommunity.com/sharedfiles/filedetails/?id=3829501237
 [olist]
-[*] [b]Find a car[/b]: Teslas park in parking lots; the Model Y also turns up in upscale neighbourhoods, and the Cybertruck only there.
+[*] [b]Find a car[/b]: the Model Y and Model 3 park in parking lots, and the Model Y also turns up in upscale neighbourhoods; the Model S, Model X and Cybertruck only turn up there.
 [*] [b]Get the key[/b]: a Tesla's car key turns into that car's Key Card when you pick it up.
 [*] [b]Start it[/b]: sit in the driver's seat and click the power button at the top left of the dashboard (or start it the vanilla way).
 [*] [b]Charge it[/b]: with Electrical 3, make a Tesla Wall Connector (Gen 3) and mount it on a powered wall, or set a Tesla Mobile Connector (Gen 3) on the floor; right-click it to plug in the charge cable.
@@ -28,7 +28,7 @@ https://steamcommunity.com/sharedfiles/filedetails/?id=3829501237
 {{img:01-cars-en.jpg}}
 [list]
 [*] [b]Top trims only[/b]: both are the Performance version; power, battery, badges and looks follow Tesla's own data.
-[*] [b]Where they spawn[/b]: parking lots, both at the same chance; upscale neighbourhoods have the Model Y only.
+[*] [b]Where they spawn[/b]: parking lots, both at the same chance; upscale neighbourhoods have the Model Y but not the Model 3.
 [*] [b]Factory paints[/b]: 8 per car, one picked at random; the app's picture of the car follows the paint.
 [*] [b]Performance[/b]: acceleration and top speed match the fastest vanilla sports car, grip and braking too; a full stop from 100 km/h takes about 27 tiles.
 [*] [b]Real opening doors[/b]: the four doors, the liftgate (the trunk lid on the Model 3) and the hood open the way the real car's do, and other players see it.
@@ -45,6 +45,36 @@ https://steamcommunity.com/sharedfiles/filedetails/?id=3829501237
 [*] [b]Front Trunk[/b]: open the hood first to reach what is inside. With the hood open, press E at the front of the car to close it.
 [*] [b]High Voltage Battery[/b]: comes out without draining it first; the charge stays in the battery.
 [*] [b]Brakes[/b]: regenerative braking halves brake wear compared with a normal car.
+[/list]
+=== 🧰 Model S and Model X (Plaid)
+{{img:27-sx-en.jpg}}
+[list]
+[*] [b]Top trim before the end of production[/b]: both are the Plaid, built to Tesla's last official specs and owner's manuals; the mechanics window shows 1,020 hp.
+[*] [b]Where they spawn[/b]: upscale neighbourhoods only, at the Cybertruck's chance there (half the Model Y's); never in parking lots.
+[*] [b]Performance[/b]: they pull harder than the Cybertruck, and the Model S has the quickest launch of them all; the heavier Model X launches a little slower than the Model S. Top speed, grip and braking match the other Teslas.
+[*] [b]Battery[/b]: a 100 kWh High Voltage Battery; a full charge still goes as far as a full tank in a vanilla car of the same class. Empty to 90% takes about 8 hours on a Wall Connector and about 12 on a Mobile Connector (game time).
+[*] [b]Paints[/b]: 8 per car, one picked at random: the last 6 US paints, plus Solid Black and Deep Blue from the Chinese market before the refresh; the app's picture of the car follows the paint.
+[*] [b]Model S doors[/b]: the four doors, the powered liftgate that lifts with the rear glass (about 4 seconds) and the hood open the way the real car's do.
+[*] [b]Seats[/b]: 4 in the Model S (the real car has 5; like every Tesla here, one per door); 6 in the Model X, see below.
+[*] [b]Dashboard[/b]: each has its own top view, and clicking the car still opens its doors.
+[*] [b]Towing[/b]: like every Tesla here, they tow trailers or other cars with the vanilla tow hitch (for the charge it uses, see Battery and range).
+[/list]
+[table]
+[tr][th]Car[/th][th]Factory paints[/th][th]Front Trunk[/th][th]Rear Trunk[/th][/tr]
+[tr][td]Model S Plaid[/td][td]Stealth Grey, Lunar Silver, Pearl White, Ultra Red, Diamond Black, Frost Blue, Solid Black, Deep Blue[/td][td]6[/td][td]45[/td][/tr]
+[tr][td]Model X Plaid[/td][td]Stealth Grey, Lunar Silver, Pearl White, Ultra Red, Diamond Black, Frost Blue, Solid Black, Deep Blue[/td][td]17[/td][td]85[/td][/tr]
+[/table]
+[h3]Model X falcon wing doors and six seats[/h3]
+{{img:28-mx-falcon-en.jpg}}
+[list]
+[*] [b]Falcon wing doors[/b]: the rear doors lift up: the upper half swings up from the roof and the lower half folds out at the elbow; fully open they still fit in a one-storey garage.
+[*] [b]Opening them[/b]: click the rear half of the car on the dashboard to open or close that side's falcon wing door; Falcon Wing Doors on the app's Controls page opens or closes both at once.
+[*] [b]Open means open[/b]: anyone can get in while they are open, so close them before you leave.
+[*] [b]Locking[/b]: locking the car locks the falcon wing doors too.
+[*] [b]Six seats[/b]: 2 in front, 2 captain's chairs in the second row, 2 in the third; both rear rows get in and out through the falcon wing doors.
+[*] [b]Third row[/b]: it has its own boarding spot, so you can still get in when the second row is full.
+[*] [b]Waiting for the door[/b]: a falcon wing door takes a moment to rise, and your character waits for it before climbing in.
+[*] [b]Part names[/b]: the mechanics window uses the owner's manual names Left Falcon Wing Door and Right Falcon Wing Door.
 [/list]
 === 🧰 Cybertruck (Cyberbeast)
 {{img:23-cybertruck-en.jpg}}
@@ -88,7 +118,8 @@ https://steamcommunity.com/sharedfiles/filedetails/?id=3829501237
 [*] [b]Range[/b]: a full battery goes as far as a full tank in a vanilla car of the same class; the sandbox option Range multiplier changes it, and it follows the vanilla sandbox option Gas Consumption too (2 = half as far, 0 = driving uses no charge and the dashboard shows ∞ range).
 [*] [b]Out of charge[/b]: the motor stops and will not start until you charge.
 [*] [b]Low Voltage Battery[/b]: the main battery tops it up while it holds 5% or more, so a car parked for a long time still starts.
-[*] [b]Power in the car[/b]: climate, Camp Mode and Sentry Mode use the main battery too; plugged into a powered charger, the charger supplies them instead, and on generator power that burns the generator's fuel.
+[*] [b]Power in the car[/b]: climate, Bioweapon Defense Mode, Camp Mode and Sentry Mode use the main battery too; plugged into a powered charger, the charger supplies them instead, and on generator power that burns the generator's fuel.
+[*] [b]Towing uses more[/b]: towing a trailer or another car, driving uses more charge for the weight behind you: about 1.5 times with a small trailer, about 3 times with an ordinary car (3 times at most), more with cargo in the trailer; standing still uses the same as before. The range on the dashboard and in the app drops to match, and you cannot Summon while towing.
 [*] [b]Multiplayer speed limit[/b]: the server setting SpeedLimit defaults to 70 km/h; neither vanilla cars nor Teslas go faster.
 [/list]
 === 🧰 Charging: the Wall Connector, the Mobile Connector and the cable
@@ -179,11 +210,11 @@ A charger that works on the floor, no wall needed; slower than the Wall Connecto
 [list]
 [*] [b]Replaces the vanilla dashboard[/b]: in a Tesla you get the gear, speed, charge, range and live use / regen.
 [*] [b]Power button[/b]: top left; click to start, click again to power off; powering off needs the car stopped.
-[*] [b]Click the car to open doors[/b]: click the top view of the car on the dashboard to open or close that door, the liftgate or the hood (on the Cybertruck the bed is the tonneau cover); a locked door unlocks first, and nothing opens while driving.
+[*] [b]Click the car to open doors[/b]: click the top view of the car on the dashboard to open or close that door, the liftgate or the hood (on the Cybertruck the bed is the tonneau cover, on the Model X the rear half is the falcon wing doors); a locked door unlocks first, and nothing opens while driving.
 [*] [b]Quick keys[/b]: headlights, climate controls, radio, Camp Mode; a key that is on turns blue with an underline.
 [*] [b]Reminders[/b]: a door open, charging, charged, no power at the charger, low battery, Camp or Sentry on show as one line below.
 [*] [b]Hover help[/b]: every button and every area of the car picture says what it does when the mouse is over it.
-[*] [b]V radial menu[/b]: adds Turn on Camp Mode and Charging Status; the Cybertruck also has Powershare, the bed outlets and the light bar (the light bar for the driver only). When one is not available its icon is grey and the second line says why.
+[*] [b]V radial menu[/b]: adds Turn on Camp Mode, Charging Status and Turn on Chill (driver only); a car with a HEPA filter also has Turn on Bioweapon Defense Mode (see Bioweapon Defense Mode and Chill); the Cybertruck also has Powershare, the bed outlets and the light bar (the light bar for the driver only). When one is not available its icon is grey and the second line says why.
 [*] [b]With AutoDrive[/b]: AutoDrive's autopilot card sits above the Tesla dashboard, and above the charge card while that is open.
 [/list]
 === 🧰 Key card and phone key
@@ -224,7 +255,7 @@ A charger that works on the floor, no wall needed; slower than the Wall Connecto
 [/list]
 [table]
 [tr][th]Page[/th][th]What it does[/th][/tr]
-[tr][td]Controls[/td][td]Flash the lights to find the car, honk for a second (like the car's horn: nearby zombies hear it), open / close the frunk and the liftgate; the Cybertruck adds the tonneau cover and Powershare (see Powershare and the bed outlets)[/td][/tr]
+[tr][td]Controls[/td][td]Flash the lights to find the car, honk for a second (like the car's horn: nearby zombies hear it), open / close the frunk and the liftgate; the Model X adds the falcon wing doors (both at once); the Cybertruck adds the tonneau cover and Powershare (see Powershare and the bed outlets)[/td][/tr]
 [tr][td]Location[/td][td]Arrow, distance, compass direction; Show on Map opens the world map; Navigate to Car with the MiniMap[/td][/tr]
 [tr][td]Summon[/td][td]Only with AutoDrive; see Summon[/td][/tr]
 [tr][td]Security[/td][td]Turn Sentry Mode on / off, see this car's Sentry Alerts[/td][/tr]
@@ -273,10 +304,15 @@ A charger that works on the floor, no wall needed; slower than the Wall Connecto
 [*] [b]Charge[/b]: needs 20% or more; it uses about 0.25 kWh an hour and turns off below 20% with a notice (plugged into a powered charger it neither drains nor turns off).
 [*] [b]Touch[/b]: someone pulls a door handle or tries to unlock: the headlights flash 3 times and the owner is told.
 [*] [b]Damage[/b]: a smashed window, hotwiring or removed parts sound the vanilla alarm and the owner is told. A Cybertruck window takes 3 hits to break, and every hit sounds the alarm and tells the owner (the first two say the window was struck).
+[*] [b]Any broken window counts[/b]: windows broken by zombies, crashes or weapon hits sound the vanilla alarm and tell the owner within about a game minute; in multiplayer a weapon hit sounds it at once. Fitting a new window in worse condition is not damage.
+[*] [b]When the notice names someone[/b]: smashing a window with the Smash action names who did it; in multiplayer a weapon hit names the player only when they are the only one at the car (same floor, no other player or zombie within about 4 tiles, not split screen, a verified account). Zombies, crashes and anything else give a notice without a name, so nobody is blamed by mistake.
+[*] [b]Hooked up to a tow[/b]: someone else uses the vanilla tow hitch (Attach … to … in the V radial menu) to hook the car to a trailer or behind another car: the vanilla alarm sounds and the owner is told "car hooked up to a tow".
+[*] [b]One alarm per tow[/b]: while the alarm sounds (about 13 game minutes by default, as long as the vanilla alarm), the same car sounds and notifies only once, however often it is hooked up and to whatever.
+[*] [b]Owners towing[/b]: when one of the owners below hooks it up, Sentry simply turns off instead.
 [*] [b]Who counts as the owner[/b]: whoever turned it on, and anyone carrying this car's key, key card or phone key; with Vehicle Manager and a claimed car, only its Ride permission counts.
 [*] [b]Offline owners[/b]: events wait until the owner logs in next.
 [*] [b]Turning it off[/b]: unlocking with the key card, the phone key or the app turns Sentry off too.
-[*] [b]No zombie detection[/b]: zombies do not attack an empty car anyway.
+[*] [b]Rammed in multiplayer[/b]: when another car hits a parked one, vanilla only counts the hit on the driver's own car, so the parked car takes no damage and nothing sounds.
 [/list]
 {{img:13-app-security-en.jpg}}
 === 🧰 Camp Mode
@@ -289,6 +325,27 @@ A charger that works on the floor, no wall needed; slower than the Wall Connecto
 [*] [b]Car outlet[/b]: right-click a Battery or a Car Battery in your inventory and choose Charge from car outlet; it uses the main battery: about 2 hours for a Battery, 5 for a Car Battery (in-game).
 [*] [b]Cabin light[/b]: a warm white cabin light comes on, so others can tell from afar that someone is inside.
 [*] [b]Turns off[/b]: when you start or drive off, nobody is inside, or the charge drops below the Camp Mode battery limit (20% by default); you are told.
+[/list]
+=== 🧰 Bioweapon Defense Mode and Chill
+[h3]Bioweapon Defense Mode (HEPA filter)[/h3]
+{{img:29-bdm-en.jpg}}
+[list]
+[*] [b]Which cars[/b]: the Model Y, Model S, Model X and Cybertruck have a HEPA filter; going by Tesla's owner's manual the Model 3 has none, and its V radial menu has no such slice.
+[*] [b]Climate on means filtered[/b]: when enough corpses lie around to give you corpse sickness, sit in the car with the climate on and nobody inside gets any sicker.
+[*] [b]Turn it on[/b]: in the car, pick Turn on Bioweapon Defense Mode in the V radial menu; anyone inside can. While it is on, the fan filters the air even with the climate knob at 0. Pick Turn off Bioweapon Defense Mode to stop it.
+[*] [b]Needs power[/b]: it works only while the motor runs or in Camp Mode.
+[*] [b]Charge[/b]: the same as running the climate; with the climate already on it uses nothing extra.
+[*] [b]The stench moodle stays[/b]: it still shows for the corpses outside, but the sickness does not get worse; masks and clothing protect as in vanilla.
+[/list]
+[h3]Chill[/h3]
+{{img:30-chill-en.jpg}}
+[list]
+[*] [b]Switching[/b]: the driver picks Turn on Chill in the V radial menu, and Turn off Chill to go back; it works while driving too.
+[*] [b]Acceleration only[/b]: acceleration gets smooth and gentle, top speed stays. Every Tesla uses the same pull: the Model Y and Cybertruck both take about 16 seconds to 100 km/h (normally about 7 for the Model Y and 5 for the Cybertruck).
+[*] [b]Dashboard[/b]: Chill shows next to the speed while it is on.
+[*] [b]Stays with the car[/b]: still on when you get out and back in, or someone else drives.
+[*] [b]No extra saving[/b]: charge use still depends on how you drive; Chill alone does not save charge.
+[*] [b]Mechanics window[/b]: while it is on, the horsepower shown drops too, and comes back when you turn it off.
 [/list]
 === 🧰 Drive unit parts
 [list]
@@ -314,12 +371,12 @@ A charger that works on the floor, no wall needed; slower than the Wall Connecto
 {{img:20-vm-app-en.jpg}}
 [table]
 [tr][th]Action[/th][th]Vehicle Manager permission[/th][/tr]
-[tr][td]Key card tap, app lock / unlock, flash, honk, Sentry on / off[/td][td]Ride[/td][/tr]
+[tr][td]Key card tap, app lock / unlock, flash, honk, Sentry on / off, app falcon wing doors, Bioweapon Defense Mode[/td][td]Ride[/td][/tr]
 [tr][td]App liftgate / trunk[/td][td]Trunk[/td][/tr]
 [tr][td]App frunk[/td][td]Repair or Salvage[/td][/tr]
 [tr][td]Plugging in or unplugging, the charge card, picking up or rotating a charger with the car plugged in, app stop / start charging[/td][td]Fuel (except the charger owner's unplug, charge card Stop, pick-up and rotate, see the FAQ; not the app)[/td][/tr]
 [tr][td]App location and status[/td][td]Location[/td][/tr]
-[tr][td]App Summon[/td][td]Drive[/td][/tr]
+[tr][td]App Summon, Chill[/td][td]Drive[/td][/tr]
 [tr][td]Setting up a new phone key without the key card[/td][td]Owner (cannot be shared)[/td][/tr]
 [/table]
 [h3]Minidoracat MiniMap[/h3]
@@ -362,7 +419,8 @@ Options elsewhere that also affect Teslas:
 === ⚠️ Known limitations
 [list]
 [*] [b]No grid in player-built houses[/b]: they do not count as rooms, so a charger there needs a generator.
-[*] [b]Sentry ignores zombies[/b]: it only reacts to players touching or damaging the car.
+[*] [b]Sentry only sees the vanilla tow hitch[/b]: other mods' ways of hauling a car off (lifting it onto a flatbed, for one) do not set it off.
+[*] [b]Broken windows take a moment[/b]: a window broken by zombies or a crash sounds within about a game minute, and the notice names nobody.
 [*] [b]The Cybertruck's roof light bar[/b]: the bar itself does not glow; what lights up is the ground ahead.
 [*] [b]Powershare's reach[/b]: it follows the vanilla generator sandbox settings and cannot be set apart for the Cybertruck.
 [*] [b]Double notices[/b]: with Vehicle Manager, one event may bring both its parking guard notice and a Sentry notice.
