@@ -141,11 +141,11 @@ T.Specs = {
             { name = "StealthGrey", code = "PN01", h = 0.72, s = 0.538, v = 0.283 },
             { name = "LunarSilver", code = "PN02", h = 0.634, s = 0.53, v = 0.56 },
             { name = "PearlWhite", code = "PPSW", h = 0.645, s = 0.501, v = 0.918 },
-            { name = "UltraRed", code = "PR01", h = 0.981, s = 1.0, v = 0.466 },
+            { name = "UltraRed", code = "PR01", h = 0.986, s = 1.0, v = 0.447 },
             { name = "DiamondBlack", code = "PX02", h = 0.953, s = 0.537, v = 0.227 },
             { name = "FrostBlue", code = "PB00", h = 0.586, s = 0.894, v = 0.487 },
             { name = "SolidBlack", code = "PBSB", h = 0.925, s = 0.52, v = 0.24 },
-            { name = "DeepBlue", code = "PPSB", h = 0.567, s = 1.0, v = 0.502 },
+            { name = "DeepBlue", code = "PPSB", h = 0.588, s = 1.0, v = 0.49 },
         },
     },
 }

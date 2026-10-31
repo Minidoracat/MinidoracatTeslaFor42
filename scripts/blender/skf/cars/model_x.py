@@ -23,7 +23,9 @@ CAR = dict(
     PAINTS=[("StealthGrey", "PN01"), ("LunarSilver", "PN02"), ("PearlWhite", "PPSW"), ("UltraRed", "PR01"),
             ("DiamondBlack", "PX02"), ("FrostBlue", "PB00"), ("SolidBlack", "PBSB"), ("DeepBlue", "PPSB")],
     # tex = a * official-ramp colour / GAIN (model_y.py CAL), b 0: per-channel gains only, a = official FRONT34 p50 over
-    # the game's at a = 1 (perf/paint_sheet.py on modelx-sp paint-<i>-<name>-fl-max, tesla-mx-1101b). An offset (the
+    # the game's at a = 1 (perf/paint_sheet.py on modelx-sp paint-<i>-<name>-fl-max, tesla-mx-1101b; Ultra Red and Deep
+    # Blue refit on fl-max and rr-max against FRONT34 / REAR34, tesla-mx-1101f: Deep Blue came out cyan, G 72 / 67 against
+    # 59 / 53, Ultra Red's shaded lower doors pink, G B 22 33 against 14 19). An offset (the
     # first fit) clipped the dark lower doors to another hue (Ultra Red R < 0 -> grey-green). RAMP_SPLIT (convert.py):
     # the gains act on the paint colour only, the ramp's grey (floor reflection, highlights) gets their mean.
     # Calibration knob: refit after changing the paint light
@@ -31,11 +33,11 @@ CAR = dict(
         "StealthGrey": ((0.82, 0.78, 0.75), (0.0, 0.0, 0.0)),
         "LunarSilver": ((0.76, 0.75, 0.75), (0.0, 0.0, 0.0)),
         "PearlWhite": ((0.92, 0.91, 0.91), (0.0, 0.0, 0.0)),
-        "UltraRed": ((0.75, 1.58, 1.17), (0.0, 0.0, 0.0)),
+        "UltraRed": ((0.75, 1.34, 0.94), (0.0, 0.0, 0.0)),
         "DiamondBlack": ((1.16, 1.09, 0.98), (0.0, 0.0, 0.0)),
         "FrostBlue": ((1.06, 1.02, 0.98), (0.0, 0.0, 0.0)),
         "SolidBlack": ((1.02, 1.0, 0.94), (0.0, 0.0, 0.0)),
-        "DeepBlue": ((2.25, 1.0, 0.83), (0.0, 0.0, 0.0)),
+        "DeepBlue": ((2.43, 0.80, 0.80), (0.0, 0.0, 0.0)),
     },
     RAMP_SPLIT=True,
     # design studio: Plaid, 20" Perihelix, black interior, six seats. The two China paints are the pre-refresh car's
