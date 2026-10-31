@@ -55,6 +55,7 @@ set("getClimateManager", function()
     return { getAirTemperatureForSquare = function(_, sq, v) return F.air + v:getInsideTemperature() end }
 end)
 ensure("CharacterStat", { BOREDOM = "BOREDOM" })
+CharacterStat.FOOD_SICKNESS = CharacterStat.FOOD_SICKNESS or "FOOD_SICKNESS"
 ensure("ItemTag", { PILLOW = "PILLOW" })
 
 local moddata = {}
@@ -109,7 +110,7 @@ end
 -- ------------------------------------------------------------------ parts, vehicle, player
 local function part(id, opts)
     local p = { id = id, md = {}, amount = opts.amount or 0, cap = opts.cap or 0, ctype = opts.ctype,
-        item = opts.item, lightActive = false, hasLight = opts.light }
+        item = opts.item, lightActive = false, hasLight = opts.light, cond = 100, window = opts.window }
     function p:getId() return self.id end
     function p:getModData() return self.md end
     function p:getContainerContentType() return self.ctype end
@@ -118,6 +119,8 @@ local function part(id, opts)
     function p:getContainerCapacity() return self.cap end
     function p:getInventoryItem() return self.item end
     function p:setLightActive(on) self.lightActive = on end
+    function p:getWindow() return self.window and {} or nil end -- VehicleWindow: its health is the part condition
+    function p:getCondition() return self.cond end
     return p
 end
 
@@ -147,8 +150,17 @@ function F.vehicle(o)
         PassengerCompartment = part("PassengerCompartment", {}),
         HeadlightLeft = part("HeadlightLeft", { light = true }),
         HeadlightRight = part("HeadlightRight", { light = true }),
+        Windshield = part("Windshield", { window = true }),
+        WindowFrontLeft = part("WindowFrontLeft", { window = true }),
     }
     v.lights = { v.parts.HeadlightLeft, v.parts.HeadlightRight }
+    v.order = {} -- getPartByIndex order
+    for _, id in ipairs({ "GasTank", "Battery", "Heater", "PassengerCompartment", "HeadlightLeft", "HeadlightRight",
+        "Windshield", "WindowFrontLeft" }) do v.order[#v.order + 1] = v.parts[id] end
+    function v:getPartCount() return #self.order end
+    function v:getPartByIndex(i) return self.order[i + 1] end
+    function v:getVehicleTowing() return self.towing end -- set by a test (a towed fake)
+    function v:getMass() return self.mass or 900 end
     function v:getId() return self.id end
     function v:getScriptName() return self.script end
     function v:getScript()
@@ -206,14 +218,17 @@ function F.player(name, o)
     o = o or {}
     oids = oids + 1
     local p = { name = name, vehicle = o.vehicle, keys = o.keys or {}, dist = o.dist or 2, boredom = o.boredom or 0,
+        sick = o.sick or 0, sickRate = o.sickRate or 0, -- FOOD_SICKNESS and the corpse rate Java left this frame
         asleep = false, bedType = "averageBed", hand = o.hand, oid = oids * 4 + (o.num or 0) }
     function p:getOnlineID() return self.oid end -- slot * 4 + split-screen index, like H.player
     function p:getSteamID() return 0 end -- no-steam
     function p:getStats()
         local me = self
-        return { get = function(_, s) return me.boredom end,
-            remove = function(_, s, n) me.boredom = math.max(0, me.boredom - n) end }
+        local field = function(s) return s == CharacterStat.FOOD_SICKNESS and "sick" or "boredom" end
+        return { get = function(_, s) return me[field(s)] end,
+            remove = function(_, s, n) local f = field(s); me[f] = math.max(0, me[f] - n) end }
     end
+    function p:getCorpseSicknessRate() return self.sickRate end
     function p:isAsleep() return self.asleep end
     function p:getPrimaryHandItem() return self.hand end
     function p:getSecondaryHandItem() return nil end

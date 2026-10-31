@@ -103,6 +103,23 @@ Events.OnSpawnVehicleEnd.Add(function(vehicle) -- BaseVehicle.java:904
     if bp and bp:getModData().camp then vehicle:setNeedPartsUpdate(true) end
 end)
 
+-- HEPA: take back from everyone inside the corpse sickness of the last `minutes`. Java adds it each frame on the
+-- server (MP: the client's BodyDamage.Update returns for its own player, BodyDamage.java:2097-2107), rate x the
+-- GameTime multiplier, the rate already after masks, clothing and traits (BodyDamage.java:2478-2506, kept in
+-- IsoGameCharacter.getCorpseSicknessRate :16107); over a game minute that sums to rate x `units`, as for the camp
+-- screen above. The stats reach the client with the 1 s PlayerStats sync (NetworkPlayerManager.java:9-41). The
+-- "stench" moodle reads the rate itself (Moodle.java:550-570) and stays lit. ponytail: the rate of this frame for the
+-- whole minute; off by at most a minute's worth when the corpse count changed in it.
+function C.filterAir(vehicle, minutes)
+    if not vehicle.getCharacter then return end -- SP VirtualVehicle (unloaded): nobody inside
+    local units = 48 * minutes * getGameTime():getMinutesPerDay() * 60 / 1440
+    for i = 0, vehicle:getMaxPassengers() - 1 do
+        local chr = vehicle:getCharacter(i)
+        local rate = chr and chr:getCorpseSicknessRate() or 0
+        if rate > 0 then chr:getStats():remove(CharacterStat.FOOD_SICKNESS, rate * units) end
+    end
+end
+
 -- Heater part update: vanilla Vehicles.Update.Heater (Vehicles.lua:577-623) with an EV heat pump:
 -- powered when the motor runs or camp is on, no engine-temperature gate, draws the main pack (or a powered charger,
 -- Battery.draw) not the 12V.
@@ -142,7 +159,15 @@ function T.Update.Heater(vehicle, part, elapsedMinutes)
             pcData.temperature = math.min(pcData.temperature + 0.1 * elapsedMinutes, 0)
         end
     end
-    if running and target ~= 0 and bp then T.Battery.draw(vehicle, bp, C.HEATER_KW * elapsedMinutes / 60) end
+    local fan = running and target ~= 0
+    if fan and bp then T.Battery.draw(vehicle, bp, C.HEATER_KW * elapsedMinutes / 60) end
+    -- Bioweapon Defense Mode (Specs hepa): the fan runs with the knob at 0 too, at the climate's draw (the manuals give
+    -- no figure for it). HEPA filters whenever the climate runs or BDM is on (manuals: "whenever the climate control
+    -- system is on"; BDM keeps the cabin at positive pressure).
+    local hepa = powered and bp ~= nil and T.spec(vehicle).hepa
+    local bdm = hepa and bp:getModData().bdm == true
+    if bdm and not fan then T.Battery.draw(vehicle, bp, C.HEATER_KW * elapsedMinutes / 60) end
+    if hepa and (fan or bdm) then C.filterAir(vehicle, elapsedMinutes) end
     -- same sync throttle as vanilla: rounded value moved and more than 2 minutes since the last send
     local id = vehicle:getId()
     local acc = (heaterMinutes[id] or 0) + elapsedMinutes
@@ -182,6 +207,24 @@ T.ServerCommands.campOff = function(player, args)
         return
     end
     C.stop(v)
+end
+
+-- `bdm` { vid }: Bioweapon Defense Mode on a car with HEPA (Specs hepa), anyone inside (the real switch is on the
+-- climate screen); with VehicleManager also its PASSENGER right (Remote.vmAllows: unclaimed cars pass). No reply for a
+-- car without HEPA: the radial never offers it. md.bdm only when on.
+T.ServerCommands.bdm = function(player, args)
+    local v = T.commandVehicle(player, args) -- Commands.lua
+    if not v then return end
+    if player:getVehicle() ~= v then return T.deny(player, "NOT_INSIDE", v:getId()) end
+    if not T.spec(v).hepa then return end
+    local ok, why = T.Remote.vmAllows(player, v, { "PASSENGER" }) -- Remote.lua
+    if not ok then return T.deny(player, why, v:getId()) end
+    local part = T.Battery.part(v)
+    if not part then return end
+    local md = part:getModData()
+    md.bdm = (not md.bdm) or nil
+    v:transmitPartModData(part)
+    T.log("bdm " .. (md.bdm and "on" or "off") .. " vid=" .. v:getId() .. " by " .. player:getUsername())
 end
 
 -- MP sleep in a car: the client picks the bed quality (ISWorldObjectContextMenu.lua:1058,1085; our client wraps

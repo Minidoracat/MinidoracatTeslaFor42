@@ -34,6 +34,8 @@ T.DRIVE_SCALE = 10
 -- plug: the charge cable's plug segment (client/MinidoracatTesla/Cable.lua): render-only item and its handle height
 -- above the floor in units (1 level = 2.44949), measured at the car's chargeport (E2E integration-mp `port`);
 -- scripts/blender/props/props_blender.py PLUGS builds one mesh per entry (build.py --check compares the two).
+-- hepa: a HEPA filter and Bioweapon Defense Mode (owner's manuals: Model Y p.169, Cybertruck p.165, Model S p.148,
+-- Model X p.165; none in the Model 3's), Camp.lua C.filterAir and the radial slice.
 -- Cybertruck only: tonneau (the app's tonneau cover button), armorGlass (smashes a window takes, Truck.lua),
 -- powershare and bedOutlet (Powershare, the bed outlets).
 T.Specs = {
@@ -46,6 +48,7 @@ T.Specs = {
         kwPerKmh = 0.00572 * T.DRIVE_SCALE,
         massKg = 2033,
         regenEff = 0.6,
+        hepa = true,
         -- official Model Y paints (TeslaModelY, references/models.md): entry i = vehicle script skin i-1, and saved
         -- games keep the skin index (BaseVehicle.java:2635/2741), so only append. h/s/v (setColorHSV) tint the
         -- damage overlays to the paint (vehicle_common.frag.glsl:6-15), written by scripts/blender/skf/convert.py build
@@ -93,6 +96,7 @@ T.Specs = {
         kwPerKmh = 0.00897 * T.DRIVE_SCALE,
         massKg = 3113, -- Cyberbeast curb mass 6,863 lb (tesla.com 2026-10-30)
         regenEff = 0.6,
+        hepa = true,
         powershare = true, -- Powershare (owner's manual p.204)
         bedOutlet = { area = "TruckBed", tiles = 2 }, -- bed outlets: a Mobile Connector this near the bed (p.200)
         tonneau = true, -- powered tonneau cover (owner's manual p.60)
@@ -277,9 +281,25 @@ function T.kmPerKwh(vehicle)
     local mul = T.driveMul()
     if mul <= 0 then return nil end
     local kmPerMin = T.REF_KMH / 3600 * T.secPerGameMin()
-    local kwhPerMin = (s.idleKw + s.kwPerKmh * T.REF_KMH) / 60
+    local kwhPerMin = (s.idleKw + s.kwPerKmh * T.REF_KMH * T.towMul(vehicle)) / 60
     return kmPerMin / kwhPerMin / mul
 end
+-- Towing: the drive term (not idle) costs 1 + 2 x towed mass / own mass, at most 3 (user 2026-10-31, towMul = mass).
+-- The manuals only say range "can decrease significantly"; MotorTrend's Model Y with a trailer about half its weight
+-- used about 2x the energy. getMass counts parts and cargo (BaseVehicle.java:9046-9063): a small trailer (script mass
+-- 200) x1.5, a horse trailer (500) x2.25, another car x3. The client has the link (VehicleTowingAttachPacket) and the
+-- masses, so the HUD and the app show the same range the server bills. A VirtualVehicle (SP, unloaded) tows nothing.
+T.TOW_MAX = 3
+function T.towMul(vehicle)
+    local t = vehicle.getVehicleTowing and vehicle:getVehicleTowing() -- BaseVehicle.java:9918
+    if not t then return 1 end
+    return math.min(T.TOW_MAX, 1 + 2 * t:getMass() / math.max(1, vehicle:getMass()))
+end
+-- Chill (owner's manuals: "Limits acceleration for a smooth and gentle ride"; top speed unchanged): the engine force
+-- while on, one value for every car (Chill takes about 7 s to 60 mph on each model, about 2.2x a Model Y Performance's
+-- 3.3 s). Calibration knob: E2E feel-sp 0-100 km/h, Model Y 6260 -> 7.19 s, 3300 -> 14.75 s, 2800 -> 17.60 s
+-- (tesla-chill-1101a); 3100 sits at about 2.2x (vehicle-battery.md "Chill").
+T.CHILL_FORCE = 3100
 -- Charge projection between server settlements: kw * (now - last), capped at the target (architecture §4). The HUD,
 -- the charge card and the phone app's record (Remote.lua) all show this, so they agree.
 function B.chargeEstimate(part, chg, now)

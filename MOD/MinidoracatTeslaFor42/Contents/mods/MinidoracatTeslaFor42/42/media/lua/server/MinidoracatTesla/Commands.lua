@@ -54,7 +54,8 @@ end
 -- second; the harness plays that minute through this dispatch (test_cmd_rate.lua lists where) and every row is at
 -- least 1.5 times it, motor exactly it. No reply: past these only a modified client gets, and a reply per drop would
 -- grow with the flood. Not played there, one per click or per login, inside `default`: camp, sentry, chargeInfo,
--- phoneUnpair, inboxPull, and the Cybertruck's radial slices roofLight, psOn, psOff, outletOn, outletOff.
+-- phoneUnpair, inboxPull, the radial's bdm and chill, and the Cybertruck's radial slices roofLight, psOn, psOff,
+-- outletOn, outletOff.
 local CR = { dropped = {} }
 CR.LIMITS = {
     default = { max = 40, ms = 10000 },      -- legit 20: one per click (charge card, camp, sentry, pairing), autoLock 2 a

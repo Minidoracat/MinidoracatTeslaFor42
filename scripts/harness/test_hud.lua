@@ -65,8 +65,8 @@ H.stub("Vehicles/ISUI/ISVehicleDashboard")
 -- vanilla's hotwire slice for a keyless driver (:109-121) before Sleep
 local menu, hotwireSlice = { slices = {}, open = false }, nil
 function menu:isReallyVisible() return self.open end
-function menu:addSlice(text, tex, fn, a1, a2)
-    self.slices[#self.slices + 1] = { text = text, tex = tex, fn = fn, a1 = a1, a2 = a2, command = { fn, a1, a2 } }
+function menu:addSlice(text, tex, fn, a1, a2, a3)
+    self.slices[#self.slices + 1] = { text = text, tex = tex, fn = fn, a1 = a1, a2 = a2, a3 = a3, command = { fn, a1, a2, a3 } }
 end
 function menu:setSliceText(i, text) self.slices[i].text = text end -- ISRadialMenu.lua:55
 function menu:setSliceTexture(i, tex) self.slices[i].tex = tex end
@@ -841,4 +841,73 @@ check(starts == 0 and hotwire and menu.slices[2].command[1] == ISVehicleMenu.onH
     "radial, no key: vanilla hotwiring stays, no Start Engine")
 T.Keys, hotwireSlice, tesla.driver, tesla.isEngineWorking, tesla.isEngineStarted = realKeys, nil, nil, nil, nil
 menu.open = false
+
+-- Bioweapon Defense Mode (Specs hepa: anyone inside) and Chill (the driver). The official French name stands in for the
+-- long ones (fr_fr owner's manual): the title breaks inside the ring like the second line
+local FR_ON, FR_OFF = "Activer le mode de défense contre les armes biologiques", "Désactiver le mode de défense contre les armes biologiques"
+local textOf = getText
+getText = function(k, ...)
+    if k == "IGUI_MinidoracatTesla_Radial_BdmOn" then return FR_ON end
+    if k == "IGUI_MinidoracatTesla_Radial_BdmOff" then return FR_OFF end
+    return textOf(k, ...)
+end
+local function sliceOf(key)
+    for _, s in ipairs(menu.slices) do if s.text:gsub("\n", " "):find(key, 1, true) == 1 then return s end end
+end
+-- every line inside the ring's 220 px but the harness's untranslated tip key (no space to break at)
+local function fits(s, nLines)
+    local n = 0
+    for l in s.text:gmatch("[^\n]+") do
+        n = n + 1
+        if not l:find("IGUI_", 1, true) and getTextManager():MeasureStringX(UIFont.Medium, l) > 220 then return false end
+    end
+    return n >= nLines
+end
+tesla.driver, tesla.isEngineWorking = nil, nil
+ISVehicleMenu.showRadialMenu(p)
+local bdmSlice = sliceOf(FR_ON)
+check(bdmSlice and bdmSlice.text:gsub("\n", " "):find(FR_ON .. " ", 1, true) == 1 and bdmSlice.text:gsub("\n", ""):find("IGUI_MinidoracatTesla_Tip_Bdm", 1, true) and fits(bdmSlice, 3)
+    and bdmSlice.tex.path:find("radial_bdm.png", 1, true) and sliceOf("IGUI_MinidoracatTesla_Radial_Chill") == nil,
+    "radial, Model Y passenger: Bioweapon Defense Mode, its long title in lines inside the ring, its line; no Chill (driver only)")
+local sent0 = #H.clientSent
+bdmSlice.fn(bdmSlice.a1, bdmSlice.a2, bdmSlice.a3)
+check(#H.clientSent == sent0 + 1 and H.clientSent[#H.clientSent].command == "bdm"
+    and H.clientSent[#H.clientSent].args.vid == tesla:getId(), "radial: the slice sends bdm { vid }")
+menu.open = false
+tesla.driver, tesla.isEngineWorking = p, function() return false end -- no Start Engine slice in the way
+T.Battery.part(tesla):getModData().bdm = true
+ISVehicleMenu.showRadialMenu(p)
+local chillSlice = sliceOf("IGUI_MinidoracatTesla_Radial_ChillOn")
+local offSlice = sliceOf(FR_OFF)
+check(offSlice and offSlice.text:gsub("\n", " ") == FR_OFF and fits(offSlice, 2)
+    and chillSlice and flat(chillSlice.text) == "IGUI_MinidoracatTesla_Radial_ChillOn|IGUI_MinidoracatTesla_Tip_Chill",
+    "radial, driver, BDM on: Turn off (no second line), and Chill with its line")
+getText = textOf
+chillSlice.fn(chillSlice.a1, chillSlice.a2, chillSlice.a3)
+check(H.clientSent[#H.clientSent].command == "chill" and H.clientSent[#H.clientSent].args.vid == tesla:getId(),
+    "radial: the Chill slice sends chill { vid }")
+menu.open = false
+T.Battery.part(tesla):getModData().bdm = nil
+local m3car = car({ script = "Base.MinidoracatTesla_Model3", kwh = 30 })
+local p3 = H.player({ keys = { [m3car.keyId] = true } })
+p3.vehicle, p3.getPlayerNum, m3car.driver = m3car, function() return 0 end, p3
+m3car.isEngineWorking = function() return false end
+ISVehicleMenu.showRadialMenu(p3)
+check(sliceOf("IGUI_MinidoracatTesla_Radial_Bdm") == nil and sliceOf("IGUI_MinidoracatTesla_Radial_ChillOn") ~= nil,
+    "radial, Model 3 (no HEPA in its manuals): no Bioweapon Defense Mode slice; Chill for its driver")
+menu.open = false
+tesla.driver, tesla.isEngineWorking = nil, nil
+
+-- the HUD's Chill badge: shown while md.chill, its text drawn in prerender
+dash:setVehicle(tesla)
+T.Battery.part(tesla):getModData().chill = true
+h:update(); h:update(); h:update()
+lastText = nil
+h:prerender()
+check(h.st.chill == true and h.chillX ~= nil and h.chillText == "IGUI_MinidoracatTesla_HUD_Chill" and lastText == h.chillText,
+    "HUD: Chill on -> badge beside km/h, its text drawn")
+T.Battery.part(tesla):getModData().chill = nil
+h:update(); h:update(); h:update()
+check(h.st.chill == false and h.chillX == nil, "HUD: Chill off -> no badge")
+dash:setVehicle(nil)
 H.side(false, true)

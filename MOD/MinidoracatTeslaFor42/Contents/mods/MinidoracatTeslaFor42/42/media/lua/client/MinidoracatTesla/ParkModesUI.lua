@@ -139,7 +139,8 @@ end
 local TITLE = {
     touch = { door = "IGUI_MinidoracatTesla_Sentry_TouchDoor", unlock = "IGUI_MinidoracatTesla_Sentry_TouchUnlock" },
     ["break"] = { window = "IGUI_MinidoracatTesla_Sentry_BreakWindow", windowHit = "IGUI_MinidoracatTesla_Sentry_BreakWindowHit",
-        hotwire = "IGUI_MinidoracatTesla_Sentry_BreakHotwire", part = "IGUI_MinidoracatTesla_Sentry_BreakPart" },
+        hotwire = "IGUI_MinidoracatTesla_Sentry_BreakHotwire", part = "IGUI_MinidoracatTesla_Sentry_BreakPart",
+        tow = "IGUI_MinidoracatTesla_Sentry_BreakTow" },
     lowBattery = { sentry = "IGUI_MinidoracatTesla_Sentry_LowBattery", camp = "IGUI_MinidoracatTesla_Camp_LowBattery",
         powershare = "IGUI_MinidoracatTesla_Powershare_LowBattery", -- powershare: %1 = its discharge limit
         powershareSpot = "IGUI_MinidoracatTesla_Powershare_Spot" }, -- no outdoor square near the truck for its generator

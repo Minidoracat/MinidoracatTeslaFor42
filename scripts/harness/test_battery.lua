@@ -120,6 +120,31 @@ local empty = H.vehicle({ kwh = 0.01, running = true, speed = 80 })
 T.Update.Battery(empty, B.part(empty), 10)
 check(B.kwh(B.part(empty)) == 0 and empty.transmits == 1, "drain clamps at 0 and transmits the empty state")
 
+H.section("towing (user 2026-10-31: 1 + 2 x towed mass / own mass, at most 3)")
+local tv = H.vehicle({ kwh = 50, running = true, speed = 60 })
+check(T.towMul(tv) == 1, "a car with no getVehicleTowing (SP VirtualVehicle): x1")
+function tv:getMass() return 1000 end
+function tv:getVehicleTowing() return self.towing end
+check(T.towMul(tv) == 1, "towing nothing: x1")
+tv.towing = { getMass = function() return 250 end } -- a small trailer (script 200) and a little cargo
+check(near(T.towMul(tv), 1.5), "small trailer 250 behind 1000: x1.5")
+local tp = B.part(tv)
+local t0 = B.kwh(tp)
+T.Update.Battery(tv, tp, 1)
+check(near(t0 - B.kwh(tp), (s.idleKw + s.kwPerKmh * 60 * 1.5) / 60, 1e-5), "small trailer: the drive term x1.5, idle as before")
+local kTow = T.kmPerKwh(tv)
+check(near(kTow, T.kmPerKwh(v) * (s.idleKw + s.kwPerKmh * 50) / (s.idleKw + s.kwPerKmh * 50 * 1.5)),
+    "small trailer: the HUD / app km per kWh shrinks by the same drive multiplier")
+tv.towing = { getMass = function() return 1160 end } -- another car
+check(T.towMul(tv) == T.TOW_MAX and T.TOW_MAX == 3, "towing a car (1160 behind 1000): capped at x3")
+t0 = B.kwh(tp)
+T.Update.Battery(tv, tp, 1)
+check(near(t0 - B.kwh(tp), (s.idleKw + s.kwPerKmh * 60 * 3) / 60, 1e-5), "towing a car: the drive term x3")
+tv.speed = 0
+t0 = B.kwh(tp)
+T.Update.Battery(tv, tp, 1)
+check(near(t0 - B.kwh(tp), s.idleKw / 60, 1e-5), "towing but standing: idle only (towing is not charged at 0 km/h)")
+
 H.section("summon: drain by distance")
 -- AutoDrive's summon (Remote.lua ACT.summon): the server reads 0 km/h for an unmanned car, so the drive term comes from
 -- the distance moved. Same energy as the speed formula for the same path, whatever speed the server reads.
@@ -442,6 +467,56 @@ check(nv.skin == 4 and nv.hsv and nv.hsv[1] == pal.h and nv.hsv[2] == pal.s and 
     and nv.colorTx == 1 and nv.skinTx == 1, "new car gets a factory paint (skin + damage tint) and transmits it")
 T.Update.Engine(nv, nv:getPartById("Engine"), 1)
 check(nv.vanillaEngine == 1, "Update.Engine runs the vanilla engine update")
+
+H.section("Chill (limits acceleration: the engine force; top speed untouched)")
+local cv = H.vehicle({ kwh = 50, running = true })
+cv._class = "BaseVehicle"
+cv.feature = { 87, 33, 6260 } -- worn engine: quality 87, loudness 33, the script force
+function cv:getEnginePower() return self.feature[3] end
+function cv:getEngineQuality() return self.feature[1] end
+function cv:getEngineLoudness() return self.feature[2] end
+function cv:transmitEngine() self.engineTx = (self.engineTx or 0) + 1 end
+function cv:setMaxSpeed() self.maxSpeedSet = true end
+local drv, pas = H.player({ name = "drv" }), H.player({ name = "pas" })
+drv.vehicle, pas.vehicle, cv.driver = cv, cv, drv
+local savedRemote = T.Remote -- chill asks Remote.vmAllows (test_phone_app loads the real Remote.lua): its rule here
+T.Remote = { vmAllows = function(p, veh, codes)
+    local api = MinidoracatVehicleManagerAPI
+    if not (api and api.canUse) then return true end
+    if api.canUse(p, veh, codes[1]) then return true end
+    return false, "NOT_OWNER"
+end }
+local cmd = T.ServerCommands
+local cmd0 = cv.transmits
+H.sent = {}
+cmd.chill(pas, { vid = cv:getId() })
+check(B.part(cv):getModData().chill == nil and cv.feature[3] == 6260 and H.sent[1] and H.sent[1].args.reason == "NOT_DRIVER",
+    "chill from a passenger: NOT_DRIVER, force unchanged")
+MinidoracatVehicleManagerAPI = { canUse = function(_, _, code) return code ~= "DRIVE", "NOT_SHARED" end }
+H.sent = {}
+cmd.chill(drv, { vid = cv:getId() })
+check(B.part(cv):getModData().chill == nil and H.sent[1] and H.sent[1].args.reason == "NOT_OWNER",
+    "chill with VehicleManager refusing DRIVE: NOT_OWNER")
+MinidoracatVehicleManagerAPI = nil
+cmd.chill(drv, { vid = cv:getId() })
+check(B.part(cv):getModData().chill == true and cv.feature[1] == 87 and cv.feature[2] == 33 and cv.feature[3] == T.CHILL_FORCE
+    and cv.engineTx == 1 and cv.transmits == cmd0 + 1, "chill by the driver: force CHILL_FORCE (quality, loudness kept), engine and modData sent")
+check(T.CHILL_FORCE < 6180 and cv.maxSpeedSet == nil, "Chill force below every car's script force; top speed never touched")
+cv.feature = { 100, 20, 6260 } -- an admin repair: vanilla repair() puts the script force back (VehiclePart.java:999-1005)
+T.Update.Engine(cv, cv:getPartById("Engine"), 1)
+check(cv.feature[3] == T.CHILL_FORCE and cv.engineTx == 2, "after a repair: the next Engine update puts Chill's force back")
+T.Update.Engine(cv, cv:getPartById("Engine"), 1)
+check(cv.engineTx == 2, "Engine update with Chill's force in place: nothing sent")
+cmd.chill(drv, { vid = cv:getId() })
+check(B.part(cv):getModData().chill == nil and cv.feature[3] == 6260 and cv.engineTx == 3, "chill again: off, the script force back")
+cv.feature = { 100, 20, 5000 } -- someone else's force (another mod): Chill off leaves it alone
+T.Update.Engine(cv, cv:getPartById("Engine"), 1)
+check(cv.feature[3] == 5000, "Chill off: the Engine update does not touch the force")
+local virtual = H.vehicle({ kwh = 10 }) -- SP VirtualVehicle (no _class BaseVehicle): no engine to set
+B.part(virtual):getModData().chill = true
+T.Update.Engine(virtual, virtual:getPartById("Engine"), 1)
+check(virtual.feature == nil, "an unloaded SP car (VirtualVehicle): left alone")
+T.Remote = savedRemote
 
 H.section("command guard")
 local gv = H.vehicle({ kwh = 5 })

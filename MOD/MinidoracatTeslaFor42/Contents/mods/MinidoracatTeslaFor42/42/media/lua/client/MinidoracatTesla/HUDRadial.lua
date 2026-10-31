@@ -1,6 +1,7 @@
--- V key / D-pad up vehicle radial menu: adds "Camp Mode" and "Charging status" for Teslas, Powershare, the bed
--- outlet and the light bar for a Cybertruck (Specs powershare / bedOutlet, part RoofLight), and the bed quality under
--- vanilla "Sleep" (an average bed while camping, Camp.bedType).
+-- V key / D-pad up vehicle radial menu: adds "Camp Mode" and "Charging status" for Teslas, Bioweapon Defense Mode for
+-- a car with HEPA (Specs hepa), Chill for the driver, Powershare, the bed outlet and the light bar for a Cybertruck
+-- (Specs powershare / bedOutlet, part RoofLight), and the bed quality under vanilla "Sleep" (an average bed while
+-- camping, Camp.bedType).
 -- ISVehicleMenu.showRadialMenu is a toggle (ISVehicleMenu.lua:70-76); remember whether the menu was
 -- open BEFORE the vanilla call, because isReallyVisible() lies right after addToUIManager (pitfalls.md UI).
 require "Vehicles/ISUI/ISVehicleMenu"
@@ -28,6 +29,11 @@ end
 
 local function onRoofLight(player, vehicle)
     T.request(player, "roofLight", { vid = vehicle:getId() }) -- Truck.lua, server
+end
+
+-- a switch the server flips for this car: `bdm` (Camp.lua) or `chill` (Battery.lua)
+local function onCommand(player, vehicle, cmd)
+    T.request(player, cmd, { vid = vehicle:getId() })
 end
 
 -- Cybertruck switches (server Powershare.lua PS.set): the charge cable's rule (T.mayUseCable), like the charge card.
@@ -105,6 +111,22 @@ local function addSlices(menu, player, vehicle)
         local lit = T.Truck and T.Truck.roofLightOn(vehicle)
         menu:addSlice(getText(lit and "IGUI_MinidoracatTesla_Radial_RoofLightOff" or "IGUI_MinidoracatTesla_Radial_RoofLightOn")
             .. line2(getText("IGUI_MinidoracatTesla_Tip_RoofLight")), getTexture(TEX .. "radial_lightbar.png"), onRoofLight, player, vehicle)
+    end
+    -- Bioweapon Defense Mode: anyone inside, like its switch on the climate screen (owner's manuals). The official names
+    -- run past the ring in French, Spanish, Polish, Russian ("Activer le mode de défense contre les armes
+    -- biologiques"): the title breaks to the ring's width too.
+    if spec.hepa then
+        local on = md.bdm == true
+        local title = getText(on and "IGUI_MinidoracatTesla_Radial_BdmOff" or "IGUI_MinidoracatTesla_Radial_BdmOn")
+        menu:addSlice(T.wrapText(title, LINE_W, UIFont.Medium) .. (on and "" or line2(getText("IGUI_MinidoracatTesla_Tip_Bdm"))),
+            getTexture(TEX .. "radial_bdm.png"), onCommand, player, vehicle, "bdm")
+    end
+    -- Chill: the driver, moving too (Controls > Dynamics on the real car)
+    if vehicle:isDriver(player) then
+        local on = md.chill == true
+        menu:addSlice(getText(on and "IGUI_MinidoracatTesla_Radial_ChillOff" or "IGUI_MinidoracatTesla_Radial_ChillOn")
+            .. (on and "" or line2(getText("IGUI_MinidoracatTesla_Tip_Chill"))), getTexture(TEX .. "radial_chill.png"),
+            onCommand, player, vehicle, "chill")
     end
     -- vanilla's own "Sleep" slice (ISVehicleMenu.lua:225): second line = vanilla's bed tooltip (Tooltip_BedType)
     for i, s in ipairs(menu.slices) do

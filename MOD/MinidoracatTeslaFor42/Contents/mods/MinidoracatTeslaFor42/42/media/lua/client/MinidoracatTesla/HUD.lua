@@ -1,7 +1,8 @@
 -- Tesla-style dashboard strip. Replaces the vanilla ISVehicleDashboard while the local driver sits in a Tesla.
 -- Design and sources: .claude/skills/tesla-dev/references/hud.md
 --   update()    10 Hz (UIManager.java:515-520): reads the car into self.st, rebuilds the quad list only on change.
---   prerender() no game reads, no allocation: one atlas texture, one DrawSubTextureRGBA per quad, then <=2 texts.
+--   prerender() no game reads, no allocation: one atlas texture, one DrawSubTextureRGBA per quad, then <=3 texts
+--               (the pill's two lines, the Chill badge).
 --   render()    only while the mouse is over a quick key, the power key or a door on the car picture: highlight + help.
 require "ISUI/ISUIElement"
 require "Vehicles/ISUI/ISVehicleDashboard"
@@ -339,6 +340,7 @@ function HUD:readSlow()
     local md = part and part:getModData()
     st.camp = md ~= nil and md.camp ~= nil
     st.sentry = md ~= nil and md.sentry ~= nil
+    st.chill = md ~= nil and md.chill == true
     local chg = md and md.chg
     local cs, added, mins = 0, 0, 0
     if chg then
@@ -450,6 +452,8 @@ function HUD:scale()
     self.f = S / k
     self:setWidth(math.floor(W * S))
     self.tipKey = nil -- re-measure the hover help at the new scale
+    self.chillText = getText("IGUI_MinidoracatTesla_HUD_Chill")
+    self.chillW = getTextManager():MeasureStringX(UIFont.Small, self.chillText)
 end
 
 function HUD:layout()
@@ -500,6 +504,19 @@ function HUD:build()
     -- speed + unit
     digits(self, A.big, st.kmh, GEAR_X * S - 2 * S, py + 2 * S, C.text, 1)
     spr(self, A.kmh, GEAR_X * S, py + 48 * S, C.text2, 1)
+    -- Chill (owner's manuals: "Chill displays ... above the driving speed"): an accent outline badge beside km/h, the
+    -- gear row having no room; text drawn in prerender
+    self.chillX = nil
+    if st.chill then
+        local bh = self.FH + 2 * S
+        local bx = GEAR_X * S + A.kmh[7] * self.f + 8 * S
+        local by = py + 48 * S + A.kmh[4] * self.f / 2 - bh / 2
+        local bw = self.chillW + 12 * S
+        local o = math.max(1, math.floor(S + 0.5))
+        pill(self, bx, by, bw, bh, C.accent, 1)
+        pill(self, bx + o, by + o, bw - 2 * o, bh - 2 * o, C.bg, 1)
+        self.chillX, self.chillY = math.floor(bx + 6 * S + 0.5), math.floor(by + (bh - self.FH) / 2 + 0.5)
+    end
 
     -- car, open doors, charge indicator
     local cx, cy = CAR_X * S, CAR_Y * S
@@ -604,12 +621,12 @@ function HUD:update()
         or on ~= st.on
     self.tick = self.tick + 1
     if self.tick % 3 == 0 then
-        local pct, range, locked, doors, avail, heater, radio, camp, sentry, chg =
-            st.pct, st.range, st.locked, st.doors, st.avail, st.heater, st.radio, st.camp, st.sentry, st.chg
+        local pct, range, locked, doors, avail, heater, radio, camp, sentry, chg, chill =
+            st.pct, st.range, st.locked, st.doors, st.avail, st.heater, st.radio, st.camp, st.sentry, st.chg, st.chill
         self:readSlow()
         changed = changed or pct ~= st.pct or range ~= st.range or locked ~= st.locked or doors ~= st.doors
             or avail ~= st.avail or heater ~= st.heater or radio ~= st.radio or camp ~= st.camp or sentry ~= st.sentry
-            or chg ~= st.chg
+            or chg ~= st.chg or chill ~= st.chill
     end
     if changed or self.dirty then self:build() end
     if self.pulseIdx then -- charging: slow green pulse (owner's manual charge-port light), 10 Hz steps
@@ -628,6 +645,10 @@ function HUD:prerender()
         local c, c2 = C.text, C.text2
         jo:DrawText(UIFont.Small, t, self.msgTX, self.msgTY, c[1], c[2], c[3], 1)
         if self.msgSub then jo:DrawText(UIFont.Small, self.msgSub, self.msgTX2, self.msgTY2, c2[1], c2[2], c2[3], 1) end
+    end
+    if self.chillX then
+        local a = C.accent
+        jo:DrawText(UIFont.Small, self.chillText, self.chillX, self.chillY, a[1], a[2], a[3], 1)
     end
 end
 

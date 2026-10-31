@@ -9,7 +9,7 @@
 Outputs (overwritten):
   media/textures/MinidoracatTesla/HUD/atlas1x.png, atlas2x.png
   media/textures/MinidoracatTesla/HUD/radial_camp.png, radial_camp_off.png, radial_charge.png, radial_lightbar.png,
-  radial_powershare(_off).png, radial_outlet(_off).png
+  radial_powershare(_off).png, radial_outlet(_off).png, radial_bdm.png, radial_chill.png
   media/textures/MinidoracatTesla/HUD/app_arrow1x.png, app_arrow2x.png (phone app location page arrow, drawn rotated)
   media/textures/MinidoracatTesla/HUD/app_ring.png (phone app summon range: radar and pick map, tinted when drawn)
   media/textures/MinidoracatTesla/HUD/map_car.png, map_round.png (MiniMap car marker and its disc)
@@ -327,6 +327,22 @@ def ic_outlet(c):  # Cybertruck bed outlet (radial): a socket face, two slots an
     c.circle(8, 11.2, 1.0, fill="#FFFFFF")
 
 
+def ic_biohazard(c):  # Bioweapon Defense Mode (radial): three rings around a centre ring, the biohazard trefoil
+    cx, cy = 8, 8.6
+    for a in (90, 210, 330):
+        c.circle(cx + 3.1 * math.cos(math.radians(a)), cy - 3.1 * math.sin(math.radians(a)), 3.3, outline="#FFFFFF", ow=1.3)
+    c.circle(cx, cy, 1.3, fill="#FFFFFF")
+
+
+def ic_chill(c):  # Chill (radial): a speedometer arc with the needle resting low
+    r, cx, cy = 6.2, 8, 9.5
+    pts = [(cx + r * math.cos(math.radians(a)), cy - r * math.sin(math.radians(a))) for a in range(210, -31, -10)]
+    c.stroke([("M", *pts[0])] + [("L", *p) for p in pts[1:]], w=1.3)
+    a = math.radians(160)
+    c.stroke([("M", cx, cy), ("L", cx + 4.3 * math.cos(a), cy - 4.3 * math.sin(a))], w=1.5)
+    c.circle(cx, cy, 1.2, fill="#FFFFFF")
+
+
 def app_ring():  # the summon range on the app's radar and its pick map: 10% disc, full ring; white, tinted when drawn
     n = 256
     big = Image.new("RGBA", (n * SS // 2, n * SS // 2), (0, 0, 0, 0))
@@ -590,7 +606,8 @@ def radial_icons():
     for key, fn, color in (("radial_camp", ic_tent, "#F3F5F7"), ("radial_camp_off", ic_tent, "#6B737C"),
                            ("radial_charge", ic_plug, "#F3F5F7"), ("radial_lightbar", ic_lightbar, "#F3F5F7"),
                            ("radial_powershare", ic_house, "#F3F5F7"), ("radial_powershare_off", ic_house, "#6B737C"),
-                           ("radial_outlet", ic_outlet, "#F3F5F7"), ("radial_outlet_off", ic_outlet, "#6B737C")):
+                           ("radial_outlet", ic_outlet, "#F3F5F7"), ("radial_outlet_off", ic_outlet, "#6B737C"),
+                           ("radial_bdm", ic_biohazard, "#F3F5F7"), ("radial_chill", ic_chill, "#F3F5F7")):
         c = Canvas(48, 48, 16)
         # draw at 1.5px scale-adjusted stroke so it reads at 48px like vanilla radial icons
         fn(c)

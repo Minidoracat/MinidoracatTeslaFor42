@@ -237,7 +237,8 @@ function T.Update.Battery(vehicle, part, elapsedMinutes)
             used = (s.idleKw * m / 60 + s.kwPerKmh * km * 60 / T.secPerGameMin()) * T.driveMul()
         else
             local kmh = math.abs(vehicle:getCurrentSpeedKmHour())
-            used = (s.idleKw + s.kwPerKmh * kmh) * m / 60 * T.driveMul() -- Core.lua T.driveMul: gas consumption / range
+            -- Core.lua T.driveMul: gas consumption / range; T.towMul: towing (a summon never tows, Remote.lua TOWED)
+            used = (s.idleKw + s.kwPerKmh * kmh * T.towMul(vehicle)) * m / 60 * T.driveMul()
         end
         if B.onCharger(part) then
             B.draw(vehicle, part, used)
@@ -249,9 +250,45 @@ function T.Update.Battery(vehicle, part, elapsedMinutes)
     B.set(vehicle, part, B.kwh(part) - used + regen)
 end
 
--- Engine update: vanilla temperature and needPartsUpdate shut-off (Vehicles.lua:526-560), then camp mode.
+-- Engine update: vanilla temperature and needPartsUpdate shut-off (Vehicles.lua:526-560), then camp mode; Chill's force
+-- back after an admin repair (vanilla repair() sets the script force, VehiclePart.java:999-1005).
 function T.Update.Engine(vehicle, part, elapsedMinutes)
     Vehicles.Update.Engine(vehicle, part, elapsedMinutes)
     local f = T.Camp and T.Camp.onEngineUpdate
     if f then f(vehicle, part, elapsedMinutes) end
+    local bp = B.part(vehicle)
+    if bp and bp:getModData().chill then B.setForce(vehicle, true) end
+end
+
+-- ------------------------------------------------------------------ Chill
+-- The engine force is per car, saved (BaseVehicle.java:2666,2774-2776) and sent with flag 4 (transmitEngine,
+-- :9183-9186; the client sets it in VehicleEngine.parse, network/fields/vehicle/VehicleEngine.java:18-56). MP physics
+-- runs on the driver's client, which then pushes with the new force. Force is all the throttle there is
+-- (CarController.java:754-779), so a lower one limits acceleration and leaves top speed alone. Quality and loudness
+-- stay as they are. Not a VirtualVehicle (SP, unloaded): it has no engine of its own to set.
+function B.setForce(vehicle, chill)
+    if not instanceof(vehicle, "BaseVehicle") then return end
+    local want = chill and T.CHILL_FORCE or vehicle:getScript():getEngineForce()
+    if vehicle:getEnginePower() == want then return end -- BaseVehicle.java:8138
+    vehicle:setEngineFeature(vehicle:getEngineQuality(), vehicle:getEngineLoudness(), want) -- :8125
+    vehicle:transmitEngine()
+end
+
+-- `chill` { vid }: the driver switches Chill (owner's manuals: Controls > Dynamics, while driving too); with
+-- VehicleManager also its DRIVE right (Remote.vmAllows: unclaimed cars pass). md.chill only when on.
+T.ServerCommands = T.ServerCommands or {}
+T.ServerCommands.chill = function(player, args)
+    local v = T.commandVehicle(player, args) -- Commands.lua
+    if not v then return end
+    if v:getDriver() ~= player then return T.deny(player, "NOT_DRIVER", v:getId()) end
+    local ok, why = T.Remote.vmAllows(player, v, { "DRIVE" }) -- Remote.lua
+    if not ok then return T.deny(player, why, v:getId()) end
+    local part = B.part(v)
+    if not part then return end
+    local md = part:getModData()
+    md.chill = (not md.chill) or nil
+    B.setForce(v, md.chill)
+    v:transmitPartModData(part)
+    T.log("chill " .. (md.chill and "on" or "off") .. " vid=" .. v:getId() .. " force=" .. v:getEnginePower()
+        .. " by " .. player:getUsername())
 end

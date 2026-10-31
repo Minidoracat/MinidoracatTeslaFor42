@@ -1,4 +1,4 @@
--- 露營：開啟條件（行駛中拒絕、馬達運轉中停著一次開好）、熄火加熱並扣主電池、12V 補電、下車／低電量／發動自動關閉、重載後重設 needPartsUpdate、與哨兵互斥。
+-- 露營：開啟條件（行駛中拒絕、馬達運轉中停著一次開好）、熄火加熱並扣主電池、12V 補電、下車／低電量／發動自動關閉、重載後重設 needPartsUpdate、與哨兵互斥；HEPA／生化防禦（空調開著、生化防禦、都關著、Model 3 沒有）。
 local F = dofile("scripts/harness/park_fakes.lua")
 local check = (H and H.check) or function(ok, label) print((ok and "  PASS  " or "  FAIL  ") .. label); if not ok then error(label) end end
 
@@ -8,6 +8,15 @@ require "MinidoracatTesla/Battery"
 require "MinidoracatTesla/Inbox"
 require "MinidoracatTesla/Sentry"
 require "MinidoracatTesla/Camp"
+-- bdm asks Remote.vmAllows (test_phone_app loads the real Remote.lua with its fakes); its rule here: no VehicleManager
+-- = yes, else canUse's answer (NOT_OWNER on refusal). Restored at the end of the HEPA block.
+local savedRemote = MinidoracatTesla.Remote
+MinidoracatTesla.Remote = { vmAllows = function(p, v, codes)
+    local api = MinidoracatVehicleManagerAPI
+    if not (api and api.canUse) then return true end
+    if api.canUse(p, v, codes[1]) then return true end
+    return false, "NOT_OWNER"
+end }
 local T = MinidoracatTesla
 local C = T.Camp
 T.Packs["Base.MinidoracatTesla_TestPack"] = 75
@@ -100,6 +109,69 @@ md(v).chg.power = nil
 T.Update.Heater(v, v.parts.Heater, 1)
 check(math.abs((c0 - kwh(v)) - C.HEATER_KW / 60) < 1e-6, "heater on an unpowered charger: the pack pays")
 md(v).chg = nil
+
+-- ---- HEPA / Bioweapon Defense Mode: more than 5 corpses outside (Java left a corpse rate), someone inside ----
+local units = 48 * 1 * 90 * 60 / 1440 -- one game minute at 90 min/day
+local hy = F.track(F.vehicle({ pct = 60, running = true })) -- Model Y: Specs hepa
+local rider0 = F.player("rider0", { vehicle = hy, sick = 10, sickRate = 0.001 })
+hy.seats[0], hy.passengers = rider0, 1
+local hyh = hy.parts.Heater:getModData()
+hyh.active, hyh.temperature = true, 15
+T.Update.Heater(hy, hy.parts.Heater, 1)
+check(H.near(10 - rider0.sick, 0.001 * units, 1e-9), "HEPA: climate running -> this minute's corpse sickness taken back")
+hyh.active = false
+local s0, e0 = rider0.sick, kwh(hy)
+T.Update.Heater(hy, hy.parts.Heater, 1)
+check(rider0.sick == s0 and kwh(hy) == e0, "HEPA: climate off, BDM off -> sickness stays (as now), nothing drawn")
+md(hy).bdm = true
+T.Update.Heater(hy, hy.parts.Heater, 1)
+check(H.near(s0 - rider0.sick, 0.001 * units, 1e-9) and H.near(e0 - kwh(hy), C.HEATER_KW / 60, 1e-9),
+    "BDM on, climate off: the fan filters anyway and draws the climate's 1.5 kW")
+hyh.active, hyh.temperature = true, 0
+local s1, e1 = rider0.sick, kwh(hy)
+T.Update.Heater(hy, hy.parts.Heater, 1)
+check(H.near(s1 - rider0.sick, 0.001 * units, 1e-9) and H.near(e1 - kwh(hy), C.HEATER_KW / 60, 1e-9),
+    "BDM on, knob at 0: filters, one 1.5 kW draw (not two)")
+hyh.temperature = 15
+local e2 = kwh(hy)
+T.Update.Heater(hy, hy.parts.Heater, 1)
+check(H.near(e2 - kwh(hy), C.HEATER_KW / 60, 1e-9), "BDM on with the climate running: still one 1.5 kW draw")
+hy.running = false -- parked, no camp: no power for the fan
+local s2 = rider0.sick
+T.Update.Heater(hy, hy.parts.Heater, 1)
+check(rider0.sick == s2, "BDM on, motor off and no camp: nothing filtered")
+hy.running = true
+rider0.sickRate = 0 -- 5 corpses or fewer: Java's own recovery runs, nothing to take back
+T.Update.Heater(hy, hy.parts.Heater, 1)
+check(rider0.sick == s2, "HEPA: no corpse rate -> nothing removed")
+rider0.sickRate = 0.001
+local m3 = F.track(F.vehicle({ pct = 60, running = true, script = "Base.MinidoracatTesla_Model3" }))
+local rider3 = F.player("rider3", { vehicle = m3, sick = 10, sickRate = 0.001 })
+m3.seats[0], m3.passengers = rider3, 1
+m3.parts.Heater:getModData().active, m3.parts.Heater:getModData().temperature = true, 15
+md(m3).bdm = true -- even if a modified client had set it
+T.Update.Heater(m3, m3.parts.Heater, 1)
+check(rider3.sick == 10, "Model 3 (no HEPA in its manuals): climate running and bdm set -> no filtering")
+-- the `bdm` command: anyone inside a car with HEPA, toggles md.bdm
+md(m3).bdm = nil
+cmds.bdm(rider3, { vid = m3:getId() })
+check(md(m3).bdm == nil, "bdm on a Model 3: ignored")
+md(hy).bdm = nil
+local outside = F.player("outside")
+F.sent = {}
+cmds.bdm(outside, { vid = hy:getId() })
+check(md(hy).bdm == nil and F.lastSent("deny").args.reason == "NOT_INSIDE", "bdm from outside the car: NOT_INSIDE")
+MinidoracatVehicleManagerAPI = { canUse = function() return false, "NOT_SHARED" end }
+cmds.bdm(rider0, { vid = hy:getId() })
+check(md(hy).bdm == nil and F.lastSent("deny").args.reason == "NOT_OWNER", "bdm with VehicleManager refusing PASSENGER: NOT_OWNER")
+MinidoracatVehicleManagerAPI = { canUse = function() return true, "UNCLAIMED" end }
+local tx0 = hy.transmits
+cmds.bdm(rider0, { vid = hy:getId() })
+check(md(hy).bdm == true and hy.transmits == tx0 + 1, "bdm by a passenger: on, synced (an unclaimed car passes VehicleManager)")
+MinidoracatVehicleManagerAPI = nil
+cmds.bdm(rider0, { vid = hy:getId() })
+check(md(hy).bdm == nil, "bdm again: off (no field)")
+T.Remote = savedRemote
 
 -- ---- auto climate: cool in summer, follow the outside air, the player's knob wins ----
 local hot = F.track(F.vehicle({ pct = 60 }))
