@@ -216,4 +216,71 @@ module Base
         static = false,
         scale = 0.5495,
     }
+
+    /* Model S Plaid: same build, units and shaders as the Model Y above (CAR=model_s; body adapted from ValentunW's */
+    /* (Lals) "Tesla Model S Plaid", CC BY 4.0, CREDITS.md). TrunkDoor is the power liftgate with the rear glass. */
+    model MinidoracatTesla_ModelS
+    {
+        mesh = vehicles/MinidoracatTesla_ModelS,
+        shader = MinidoracatTesla_vehicle,
+        static = true,
+        invertX = false,
+        scale = 0.5495,
+    }
+
+    model MinidoracatTesla_ModelS_Wheel
+    {
+        mesh = vehicles/MinidoracatTesla_ModelS_Wheel,
+        texture = Vehicles/MinidoracatTesla_ModelS_wheel,
+        shader = vehiclewheel,
+        scale = 0.5495,
+    }
+
+    model MinidoracatTesla_ModelS_DoorFrontLeft
+    {
+        mesh = vehicles/MinidoracatTesla_ModelS_Doors|DoorFrontLeft,
+        shader = MinidoracatTesla_vehicle,
+        static = false,
+        scale = 0.5495,
+    }
+
+    model MinidoracatTesla_ModelS_DoorFrontRight
+    {
+        mesh = vehicles/MinidoracatTesla_ModelS_Doors|DoorFrontRight,
+        shader = MinidoracatTesla_vehicle,
+        static = false,
+        scale = 0.5495,
+    }
+
+    model MinidoracatTesla_ModelS_DoorRearLeft
+    {
+        mesh = vehicles/MinidoracatTesla_ModelS_Doors|DoorRearLeft,
+        shader = MinidoracatTesla_vehicle,
+        static = false,
+        scale = 0.5495,
+    }
+
+    model MinidoracatTesla_ModelS_DoorRearRight
+    {
+        mesh = vehicles/MinidoracatTesla_ModelS_Doors|DoorRearRight,
+        shader = MinidoracatTesla_vehicle,
+        static = false,
+        scale = 0.5495,
+    }
+
+    model MinidoracatTesla_ModelS_TrunkDoor
+    {
+        mesh = vehicles/MinidoracatTesla_ModelS_Doors|TrunkDoor,
+        shader = MinidoracatTesla_vehicle,
+        static = false,
+        scale = 0.5495,
+    }
+
+    model MinidoracatTesla_ModelS_EngineDoor
+    {
+        mesh = vehicles/MinidoracatTesla_ModelS_Doors|EngineDoor,
+        shader = MinidoracatTesla_vehicle,
+        static = false,
+        scale = 0.5495,
+    }
 }

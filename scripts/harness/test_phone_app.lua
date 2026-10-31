@@ -962,6 +962,23 @@ T.ClientCommands.appDone({ key = 9001, act = "trunk", on = true })
 check(a.toast.text == "IGUI_MinidoracatTesla_App_Done_tailgate_on", "Cybertruck: 'tailgate opened'")
 T.ClientCommands.appDone({ key = 9001, act = "tonneau", on = false })
 check(a.toast.text == "IGUI_MinidoracatTesla_App_Done_tonneau_off", "Cybertruck: 'tonneau cover closed'")
+-- Model S: its own pictures (app_car_models_*; six paint names shared with the Model Y), MODEL S wordmark, the
+-- liftgate's words (Model Y's), no tonneau or Powershare cell
+state({ car = "MinidoracatTesla_ModelS", skin = 6 })
+local cs = T.Specs["Base.MinidoracatTesla_ModelS"].colors
+check(a.carTex.path == "media/textures/MinidoracatTesla/HUD/app_car_models_SolidBlack.png" and a.paintName == cs[7].name
+    and a.model == "ModelS" and T.HUDAtlas[2].wm_ModelS ~= nil and T.HUDAtlas[2].trim_ModelS ~= nil
+    and a.b.trunk.tipKey == "IGUI_MinidoracatTesla_Tip_AppTrunk",
+    "Model S skin 6 -> app_car_models_SolidBlack, MODEL S wordmark and Plaid trim, the liftgate's tip")
+missing = {}
+for _, c in ipairs(cs) do
+    local f = io.open("MOD/MinidoracatTeslaFor42/Contents/mods/MinidoracatTeslaFor42/42/media/textures/MinidoracatTesla/HUD/app_car_models_" .. c.name .. ".png", "rb")
+    if f then f:close() else missing[#missing + 1] = c.name end
+end
+check(#cs == 8 and #missing == 0, "Model S: a car picture for each of its 8 paints (" .. table.concat(missing, ",") .. ")")
+a.b.controls:forceClick()
+check(table.concat(a.cells, ",") == "flash,horn,frunk,trunk" and not a.b.tonneau.shown, "Model S: no tonneau or Powershare cell")
+a.b.back:forceClick()
 state({ car = "MinidoracatTesla_Model3", skin = 5 })
 a.b.controls:forceClick()
 check(table.concat(a.cells, ",") == "flash,horn,frunk,trunk" and not a.b.tonneau.shown, "Model 3: no tonneau cell")

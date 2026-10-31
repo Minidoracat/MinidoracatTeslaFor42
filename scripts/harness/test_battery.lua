@@ -19,6 +19,17 @@ check(T.isTesla(m3) and B.part(m3):getInventoryItem():getFullType() == "Base.Min
 check(near(78.4 * T.kmPerKwh(m3), 75.7, 0.1), "Model 3: a full pack at 50 km/h = one vanilla CarNormal tank too (75.7 km, Gas Consumption 1)")
 check(T.spec(m3).massKg == 1851, "Model 3 regen mass = Performance curb mass 1851 kg")
 H.removeVehicle(m3)
+-- Model S Plaid: EV Database's nominal 100 kWh (Tesla publishes none), an int, so the item holds it exactly
+local ms = H.vehicle({ script = "Base.MinidoracatTesla_ModelS", kwh = 50 })
+check(T.isTesla(ms) and B.part(ms):getInventoryItem():getFullType() == "Base.MinidoracatTesla_ModelSBattery"
+    and B.capacity(B.part(ms)) == 100 and near(B.pct(B.part(ms)), 50)
+    and H.scriptValue("items/MinidoracatTesla_items.txt", "MaxCapacity", "item MinidoracatTesla_ModelSBattery") == 100,
+    "Model S is a Tesla with its own 100 kWh pack (item MaxCapacity 100)")
+check(near(100 * T.kmPerKwh(ms), 75.7, 0.1), "Model S: a full pack at 50 km/h = one vanilla CarNormal tank too (75.7 km)")
+check(T.spec(ms).massKg == 2178 and T.spec(ms).hepa == true and T.spec(m3).hepa == nil,
+    "Model S: regen mass = Plaid curb mass 2178 kg; HEPA (owner's manual), the Model 3 none")
+check(H.scriptValue("vehicles/MinidoracatTesla_ModelS.txt", "engineForce") == 10200, "Model S engineForce = 1,020 hp x 10")
+H.removeVehicle(ms)
 local full = H.vehicle({ kwh = 78.4 })
 -- vanilla repair() fills the tank to the item's int MaxCapacity (VehiclePart.java:989-992): 79 for the 78.4 kWh pack
 B.part(full):setContainerContentAmount(79)
@@ -471,6 +482,8 @@ check(Z.parkingstall.vehicles["Base.MinidoracatTesla_ModelY"].spawnChance == 3
     and Z.good.vehicles["Base.MinidoracatTesla_ModelY"].spawnChance == 4, "spawn table Model Y: parkingstall 3, good 4")
 check(Z.parkingstall.vehicles["Base.MinidoracatTesla_Model3"].spawnChance == 3
     and Z.good.vehicles["Base.MinidoracatTesla_Model3"] == nil, "spawn table Model 3: parkingstall 3, not in good")
+check(Z.good.vehicles["Base.MinidoracatTesla_ModelS"].spawnChance == 2
+    and Z.parkingstall.vehicles["Base.MinidoracatTesla_ModelS"] == nil, "spawn table Model S: good 2, not in parking stalls")
 
 H.section("dispatch")
 local hits = 0

@@ -115,6 +115,31 @@ T.Specs = {
             { name = "SlipGrey", weight = 1, h = 0.807, s = 0.49, v = 0.594 },
         },
     },
+    ["Base.MinidoracatTesla_ModelS"] = {
+        model = "ModelS",
+        appCar = "app_car_models_",
+        -- z: handle height at this car's charge port (E2E integration-mp)
+        plug = { item = "Base.MinidoracatTesla_CablePlugModelS", z = 0.73 },
+        v12Kwh = 15.5 * 6.9 / 1000, -- 15.5 V, 6.9 Ah (Model S owner's manual, Subsystems 2026-05)
+        -- the Model Y coefficients x 100 / 78.4: a full pack still drives one vanilla tank's distance
+        idleKw = 0.0480 * T.DRIVE_SCALE,
+        kwPerKmh = 0.00730 * T.DRIVE_SCALE,
+        massKg = 2178, -- Plaid curb mass 4,802 lb (tesla.com 2026-04-21)
+        regenEff = 0.6,
+        hepa = true, -- HEPA filter and Bioweapon Defense Mode (Model S owner's manual p.148)
+        -- the last US design studio's six paints (2026-03-06) and the China pre-refresh Solid Black and Deep Blue
+        -- (user 2026-10-31); same order and append-only rules as above, h/s/v by convert.py build
+        colors = {
+            { name = "StealthGrey", code = "PN01", h = 0.667, s = 0.571, v = 0.33 },
+            { name = "LunarSilver", code = "PN02", h = 0.628, s = 0.547, v = 0.605 },
+            { name = "PearlWhite", code = "PPSW", h = 0.577, s = 0.497, v = 0.824 },
+            { name = "UltraRed", code = "PR01", h = 0.982, s = 1.0, v = 0.374 },
+            { name = "DiamondBlack", code = "PX02", h = 0.746, s = 0.554, v = 0.151 },
+            { name = "FrostBlue", code = "PB00", h = 0.598, s = 0.954, v = 0.524 },
+            { name = "SolidBlack", code = "PBSB", h = 0.667, s = 0.514, v = 0.151 },
+            { name = "DeepBlue", code = "PPSB", h = 0.604, s = 1.0, v = 0.447 },
+        },
+    },
 }
 
 -- Index into a colors table, drawn by each entry's weight (none = 1: the Model Y and Model 3 paints stay even)
@@ -137,6 +162,8 @@ T.Packs = {
     ["Base.MinidoracatTesla_ModelYBattery"] = 78.4,
     ["Base.MinidoracatTesla_Model3Battery"] = 78.4,
     ["Base.MinidoracatTesla_CybertruckBattery"] = 123,
+    -- Model S Plaid: Tesla publishes no kWh; EV Database's nominal 100 kWh (ev-database.org car 3384)
+    ["Base.MinidoracatTesla_ModelSBattery"] = 100,
 }
 
 -- Tesla display names for vanilla text keys: vanilla key -> Tesla key. Read by client/MinidoracatTesla/PartNames.lua

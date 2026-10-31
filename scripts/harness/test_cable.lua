@@ -55,7 +55,8 @@ local function scriptPort(script)
     return { (ax + mx) * k, (ay + my) * k, (az + mz) * k }
 end
 local PORTS = { ["Base.MinidoracatTesla_ModelY"] = scriptPort("Base.MinidoracatTesla_ModelY"),
-    ["Base.MinidoracatTesla_Model3"] = scriptPort("Base.MinidoracatTesla_Model3") }
+    ["Base.MinidoracatTesla_Model3"] = scriptPort("Base.MinidoracatTesla_Model3"),
+    ["Base.MinidoracatTesla_ModelS"] = scriptPort("Base.MinidoracatTesla_ModelS") }
 
 -- car: yaw only; local x = right flank (+x), local z = forward; its own script's chargeport (default Model Y)
 local function car(x, y, yaw, script)
@@ -183,6 +184,19 @@ check(#lines2d == 6 and H.near(z3, T.Specs["Base.MinidoracatTesla_Model3"].plug.
     "cable: 2D Model 3 handle at its own, lower port height (" .. string.format("%.3f < %.3f levels", z3, zY) .. ")")
 opt3d = true
 T.onChargerChanged(o3, true)
+
+-- ---- Model S: its own plug item and port (behind the left tail light, like the Model Y) ----
+local ms = car(51.2, 24.0, 0.3, "Base.MinidoracatTesla_ModelS")
+local os_ = { x = 50, y = 20, z = 0, kind = "WallConnector", facing = "S", vid = ms:getId() }
+T.onChargerChanged(os_)
+frame()
+local sp = nil
+for _, d in ipairs(draws) do
+    if d.item.type == "Base.MinidoracatTesla_CablePlugModelS" then sp = d end
+end
+check(PORTS["Base.MinidoracatTesla_ModelS"][1] > 0 and PORTS["Base.MinidoracatTesla_ModelS"][3] < 0 and sp ~= nil
+    and tipOn(sp, ms), "cable: Model S draws its own plug, tip on its port (left flank, behind the rear axle)")
+T.onChargerChanged(os_, true)
 
 -- ---- Mobile Connector: cable leaves at floor level (cableExit h = 0), no hang segment ----
 local mm = car(51.2, 24.0, 0.3)

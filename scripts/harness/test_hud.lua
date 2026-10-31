@@ -412,6 +412,26 @@ tn.open = true
 h:update(); h:update(); h:update()
 check(h.st.doors == 128, "tonneau open: door bit 128 (DOORS[8])")
 tn.open = false
+-- Model S: its own top view and overlays; the liftgate (rear glass with it) x 0-42, rear doors 42-67, front doors 67-93,
+-- the frunk lid 93-140; past x 140 (the quick keys) is not the car; the tail is the liftgate (Model Y's name)
+local ms = car({ script = "Base.MinidoracatTesla_ModelS", kwh = 50 })
+ms.parts.EngineDoor = tesla.parts.EngineDoor
+dash:setVehicle(ms)
+own = true
+for _, d in ipairs(h.doors) do own = own and d.spr:find("_ModelS", 1, true) ~= nil and T.HUDAtlas[1][d.spr] ~= nil end
+check(h.carSpr == "car_ModelS" and h.zones == HUD.ZONES.ModelS and T.HUDAtlas[2].car_ModelS ~= nil and #h.doors == 6
+    and own and allZones(), "Model S: car_ModelS, its zones, 6 doors with their own overlays, all 6 toggle their part")
+toggled = {}
+hits = { { 38, 42, "TrunkDoor" }, { 50, 20, "DoorRearLeft" }, { 50, 64, "DoorRearRight" }, { 80, 20, "DoorFrontLeft" },
+    { 80, 64, "DoorFrontRight" }, { 110, 42, "EngineDoor" } }
+allOk = true
+for i, z in ipairs(hits) do allOk = allOk and select(1, clickAt(z[1], z[2])) == true and toggled[i] == z[3] end
+check(allOk and #toggled == 6, "Model S: x 38 (the liftgate's glass) opens the liftgate, each door and the frunk its own")
+toggled = {}
+check(select(1, clickAt(145, 42)) == false and #toggled == 0, "Model S: x 145 is past the car (quick keys): passes through")
+mx, my = at(20, 42)
+h:render()
+check(h.tipArg == "IGUI_MinidoracatTesla_Part_TrunkDoor", "Model S: hovering the tail names the liftgate")
 dash:setVehicle(tesla)
 T.Liftgate.toggle = realToggle
 mx = nil
