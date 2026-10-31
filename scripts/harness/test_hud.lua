@@ -756,12 +756,36 @@ p.vehicle = tesla
 p.getPlayerNum = function() return 0 end
 tesla.running = false
 ISVehicleMenu.showRadialMenu(p)
+-- a slice's text with its second line's breaks taken out (HUDRadial.lua line2 breaks it to the icon ring's 220 px;
+-- this harness's getText returns the long keys, cut where they reach it)
+local function flat(text) local head, rest = text:match("^([^\n]*)\n(.*)$"); return head and (head .. "|" .. rest:gsub("\n", "")) or text end
 local camp, status
 for _, s in ipairs(menu.slices) do
-    if s.text == "IGUI_MinidoracatTesla_Radial_CampOn\nIGUI_MinidoracatTesla_HUD_CampSub" then camp = s end
-    if s.text == "IGUI_MinidoracatTesla_Radial_ChargeStatus\nIGUI_MinidoracatTesla_Tip_ChargeStatus" then status = s end
+    if flat(s.text) == "IGUI_MinidoracatTesla_Radial_CampOn|IGUI_MinidoracatTesla_HUD_CampSub" then camp = s end
+    if flat(s.text) == "IGUI_MinidoracatTesla_Radial_ChargeStatus|IGUI_MinidoracatTesla_Tip_ChargeStatus" then status = s end
 end
 check(camp ~= nil and camp.fn ~= nil and status ~= nil, "radial: camp (enabled) and charging status, each with a what-it-does line")
+-- a long second line breaks into lines inside the ring, nothing lost (E2E tesla-ctlang-1031m-ko: Korean ran over icons)
+local realGetText = getText
+getText = function(k, ...)
+    if k == "IGUI_MinidoracatTesla_Tip_ChargeStatus" then return "Charge level, power and time to target, all in one card" end
+    return realGetText(k, ...)
+end
+ISVehicleMenu.showRadialMenu(p) -- closes
+ISVehicleMenu.showRadialMenu(p)
+getText = realGetText
+local tipLines, tipOk = {}, true
+for _, s in ipairs(menu.slices) do
+    if s.text:find("Radial_ChargeStatus", 1, true) then
+        for l in s.text:gmatch("[^\n]+") do tipLines[#tipLines + 1] = l end
+    end
+end
+for i = 2, #tipLines do if getTextManager():MeasureStringX(UIFont.Medium, tipLines[i]) > 220 then tipOk = false end end
+check(#tipLines >= 3 and tipOk and table.concat(tipLines, " ", 2) == "Charge level, power and time to target, all in one card",
+    "radial: a long second line in lines of at most 220 px, words kept (" .. table.concat(tipLines, "|") .. ")")
+-- balanced lines (Core.lua T.wrapText): the greedy "Powers the home in a / blackout" comes out even
+check(T.wrapText("Powers the home in a blackout", 220, UIFont.Medium) == "Powers the home\nin a blackout",
+    "radial: two lines come out even, not a long line and one word")
 local sleep = menu.slices[2]
 check(sleep.text == "Sleep\nTooltip_BedType" and sleep.fn == ISVehicleMenu.onSleep, "radial: vanilla Sleep slice gets the bed quality line")
 check(ISWorldObjectContextMenu.getBedQuality(p, nil) == "badBed", "bed: not camping -> vanilla bad bed")
@@ -780,7 +804,7 @@ local grey
 for _, s in ipairs(menu.slices) do
     if s.text:find("Radial_CampOn", 1, true) then grey = s end
 end
-check(grey ~= nil and grey.fn == nil and grey.text:find("\nIGUI_MinidoracatTesla_Deny_MOVING", 1, true) ~= nil,
+check(grey ~= nil and grey.fn == nil and flat(grey.text):find("|IGUI_MinidoracatTesla_Deny_MOVING", 1, true) ~= nil,
     "radial: camp greyed with the deny reason while driving")
 
 -- key in a bag (Keys.lua bagKeyStarts): vanilla's hotwire slice, either kind, becomes Start Engine in place

@@ -335,7 +335,7 @@
     "IGUI_MinidoracatTesla_App_PsTurnOff": "Turn off Powershare",
     "IGUI_MinidoracatTesla_App_PsCell_off": "Off",
     "IGUI_MinidoracatTesla_App_PsCell_armed": "Standing by",
-    "IGUI_MinidoracatTesla_App_PsCell_backup": "Powering the home",
+    "IGUI_MinidoracatTesla_App_PsCell_backup": "Powering",
     "IGUI_MinidoracatTesla_App_PsCell_stopped": "Stopped",
     "IGUI_MinidoracatTesla_App_Outlet": "Bed outlets",
     "IGUI_MinidoracatTesla_App_OutletOffSub": "On, with the tailgate down, a Mobile Connector by the bed charges another Tesla",

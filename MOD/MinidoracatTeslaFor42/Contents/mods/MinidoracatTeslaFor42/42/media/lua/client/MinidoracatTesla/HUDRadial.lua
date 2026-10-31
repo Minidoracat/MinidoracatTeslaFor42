@@ -11,6 +11,12 @@ require "MinidoracatTesla/HUD"
 
 local T = MinidoracatTesla
 local TEX = "media/textures/MinidoracatTesla/HUD/"
+-- The centre text's lines (UIFont.Medium, RadialMenu.java:106) stay inside the icon ring: ISRadialMenu's radii 100 /
+-- 200 (ISPlayerData.lua:146) put the 64-px icons' inner edge 118 px out, about 220 px across at the text's rows.
+-- One line past that ran over the icons (E2E tesla-ctlang-1031m-ko: Korean "충전 케이블이 꽂혀 있으면 ...").
+local LINE_W = 220
+-- a slice's second line, broken to the ring's width (Core.lua T.wrapText)
+local function line2(s) return "\n" .. T.wrapText(s, LINE_W, UIFont.Medium) end
 
 local function onCamp(player, vehicle)
     T.HUD.toggleCamp(player, vehicle)
@@ -35,10 +41,10 @@ local function addSwitch(menu, player, vehicle, id, cmd, on, note)
     local ok, why = T.mayUseCable(player, vehicle)
     local icon = TEX .. "radial_" .. id:lower()
     if ok then
-        local desc = on and (note and ("\n" .. note) or "") or ("\n" .. getText("IGUI_MinidoracatTesla_HUD_" .. id .. "Sub"))
+        local desc = on and (note and line2(note) or "") or line2(getText("IGUI_MinidoracatTesla_HUD_" .. id .. "Sub"))
         menu:addSlice(label .. desc, getTexture(icon .. ".png"), onSwitch, player, vehicle, cmd, on)
     else
-        menu:addSlice(label .. "\n" .. T.denyText(why), getTexture(icon .. "_off.png"), nil)
+        menu:addSlice(label .. line2(T.denyText(why)), getTexture(icon .. "_off.png"), nil)
     end
 end
 
@@ -73,14 +79,14 @@ local function addSlices(menu, player, vehicle)
     -- the menu shows the hovered slice's text in its centre, one line per \n (RadialMenu.java:157-198):
     -- second line = what turning it on does, or why it is greyed
     if ok then
-        local desc = on and "" or ("\n" .. getText("IGUI_MinidoracatTesla_HUD_CampSub"))
+        local desc = on and "" or line2(getText("IGUI_MinidoracatTesla_HUD_CampSub"))
         menu:addSlice(label .. desc, getTexture(TEX .. "radial_camp.png"), onCamp, player, vehicle)
     else
         -- greyed: no command
-        local reason = why and ("\n" .. T.denyText(why)) or ""
+        local reason = why and line2(T.denyText(why)) or ""
         menu:addSlice(label .. reason, getTexture(TEX .. "radial_camp_off.png"), nil)
     end
-    menu:addSlice(getText("IGUI_MinidoracatTesla_Radial_ChargeStatus") .. "\n" .. getText("IGUI_MinidoracatTesla_Tip_ChargeStatus"),
+    menu:addSlice(getText("IGUI_MinidoracatTesla_Radial_ChargeStatus") .. line2(getText("IGUI_MinidoracatTesla_Tip_ChargeStatus")),
         getTexture(TEX .. "radial_charge.png"), onChargeStatus, player, vehicle)
     local spec, md = T.spec(vehicle), part:getModData()
     if spec.powershare then
@@ -98,13 +104,13 @@ local function addSlices(menu, player, vehicle)
     if vehicle:getPartById("RoofLight") and vehicle:isDriver(player) then
         local lit = T.Truck and T.Truck.roofLightOn(vehicle)
         menu:addSlice(getText(lit and "IGUI_MinidoracatTesla_Radial_RoofLightOff" or "IGUI_MinidoracatTesla_Radial_RoofLightOn")
-            .. "\n" .. getText("IGUI_MinidoracatTesla_Tip_RoofLight"), getTexture(TEX .. "radial_lightbar.png"), onRoofLight, player, vehicle)
+            .. line2(getText("IGUI_MinidoracatTesla_Tip_RoofLight")), getTexture(TEX .. "radial_lightbar.png"), onRoofLight, player, vehicle)
     end
     -- vanilla's own "Sleep" slice (ISVehicleMenu.lua:225): second line = vanilla's bed tooltip (Tooltip_BedType)
     for i, s in ipairs(menu.slices) do
         if s.command[1] == ISVehicleMenu.onSleep then
             local bed = ISWorldObjectContextMenu.getBedQuality(player, nil)
-            menu:setSliceText(i, s.text .. "\n" .. getText("Tooltip_BedType", getText("Tooltip_BedType_" .. bed))) -- ISRadialMenu.lua:55
+            menu:setSliceText(i, s.text .. line2(getText("Tooltip_BedType", getText("Tooltip_BedType_" .. bed)))) -- ISRadialMenu.lua:55
         end
     end
 end

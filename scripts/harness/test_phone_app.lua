@@ -908,6 +908,32 @@ check(#subs == 4 and subs[4]:find("Wort", 1, true) and words == 22 and not table
     .. table.concat(subs, "|") .. ")")
 ok, why = textInside()
 check(ok, "Powershare page with the four-line sentence: text inside (" .. why .. ")")
+-- line breaks follow the family rules (Core.lua T.cutLine): Japanese breaks beside any character, the space between a
+-- number and its CJK unit holds ("2 マス"; the old wrap broke at the last space: "...から 2 / マス...", E2E
+-- tesla-ctlang-1031m-jp), French ":" never starts a line (the outlet row is 31 characters of the 8 px fake font)
+do -- (a block: the main chunk is near Lua's 200 locals)
+local function outletLines(sentence)
+    getText = function(k, ...)
+        if k == "IGUI_MinidoracatTesla_App_OutletWhy_Gate" then return sentence end
+        return realGT(k, ...)
+    end
+    state({ car = "MinidoracatTesla_Cybertruck", skin = 0, tonneau = true, ps = "armed", outlet = true, outletWhy = "Gate" })
+    a:setPage("powershare")
+    return a.b.outlet.sSubs
+end
+local jp = outletLines("給電中：荷台から 2 マス以内のモバイルコネクターに給電")
+check(#jp >= 2 and not jp[1]:find("2$") and not jp[2]:find("^マ") and #jp[1] >= 3 * 9,
+    "Japanese outlet sentence: a full first line, the number kept with its unit (" .. table.concat(jp, "|") .. ")")
+local fr = outletLines("aaaa " .. string.rep("a", 25) .. " : bbb")
+local colonStart = false
+for _, l in ipairs(fr) do if l:sub(1, 1) == ":" then colonStart = true end end
+check(#fr == 2 and not colonStart and fr[1] == "aaaa", "French ' :' holds: no line starts with ':' (" .. table.concat(fr, "|") .. ")")
+-- Korean breaks at spaces only (Core.lua ideographic: no Hangul; tesla-ctlang-1031n-ko cut "공급하 / 지")
+local ko = outletLines("충전 케이블이 꽂혀 있으면 공급하지 않습니다")
+check(ko[1] == "충전 케이블이 꽂혀" and ko[2] == "있으면 공급하지" and ko[3] == "않습니다",
+    "Korean outlet sentence: broken at spaces (" .. table.concat(ko, "|") .. ")")
+getText = realGT
+end
 -- the state line keeps its kW (CatLang's German "Versorgt das Haus · 0.24 kW" ran past the Large font and lost the
 -- kW, E2E tesla-ctlayout-1031f-de): Large while it fits, else Medium; laid out and drawn in the same font, never cut
 local psTw = a.width - 2 * math.floor(20 * a.S)
@@ -997,6 +1023,38 @@ local cmd, args = sentLast()
 check(cmd == "appAction" and args.act == "unlock" and args.key == 9001, "home lock icon on a locked car -> unlock")
 state({ chg = "charging", kw = 11.5, target = 90, mins = 50 })
 check(a.b.qcharge.enable and a.b.qcharge.on and a.rowEm.charging ~= nil, "charging: quick bolt lit, list row leads with the state")
+-- a home row's grey line that does not fit falls back to its shorter one (rowAlt), one that fits stays whole
+-- (CatLang draws Latin about 1.5x wide: "Southwest, 122 m · updated just now" overflowed in English on a server)
+local shortKw = { IGUI_MinidoracatTesla_App_ChargingNow = "On", IGUI_MinidoracatTesla_App_Kw = "11 kW",
+    IGUI_MinidoracatTesla_App_ToTarget = string.rep("long ", 30), IGUI_MinidoracatTesla_Sep = " - " }
+getText = function(k, ...) return shortKw[k] or realGT(k, ...) end
+state({ chg = "charging", kw = 11.5, target = 90, mins = 50 })
+check(a.b.charging.sSub == a.rowAlt.charging and a.rowAlt.charging ~= a.rowSub.charging
+    and a.rowAlt.charging:find("11 kW", 1, true) and not a.rowAlt.charging:find("long", 1, true),
+    "charging row too long for the row: the rate only (" .. tostring(a.b.charging.sSub) .. ")")
+getText = realGT
+a.rowSub.location, a.rowAlt.location = "near", "x"
+a:layout()
+check(a.b.location.sSub == "near", "a row line that fits: the full one, not the shorter")
+a.rowSub.location = string.rep("far ", 40)
+a:layout()
+check(a.b.location.sSub == "x", "a row line past the row: the shorter one")
+ok, why = textInside()
+check(ok, "home with shorter row lines: text inside (" .. why .. ")")
+-- why the controls are grey: a sentence past the line wraps to a second one (EN "Can't reach the car, showing the last
+-- record" ran past the line in the multiplayer font)
+getText = function(k, ...)
+    if k == "IGUI_MinidoracatTesla_App_FootOff" then return string.rep("Wort ", 9) .. "Wort" end
+    return realGT(k, ...)
+end
+state({ link = false })
+local sub2Tw = a.width - 2 * math.floor(20 * a.S)
+check(#a.sSub2s == 2 and not table.concat(a.sSub2s):find("...", 1, true) and #(a.sSub2s[1] .. a.sSub2s[2]) >= 48,
+    "a 49-character why on a " .. sub2Tw .. " px line: two lines, all of it (" .. table.concat(a.sSub2s, "|") .. ")")
+ok, why = textInside()
+check(ok, "home with the two-line why: text inside (" .. why .. ")")
+getText = realGT
+state({ chg = "charging", kw = 11.5, target = 90, mins = 50 })
 a.b.qcharge:forceClick()
 cmd, args = sentLast()
 check(args.act == "charge" and args.on == false, "quick bolt while charging -> stop charging")

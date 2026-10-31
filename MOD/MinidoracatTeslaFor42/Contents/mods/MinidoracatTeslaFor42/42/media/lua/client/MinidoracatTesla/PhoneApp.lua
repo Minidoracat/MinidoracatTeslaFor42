@@ -126,18 +126,14 @@ local function fitText(s, maxW, font)
     while n > 1 and tm:MeasureStringX(font, s:sub(1, n) .. "...") > maxW do n = n - 1 end
     return s:sub(1, n) .. "..."
 end
--- `s` in up to n lines of `maxW`: each cut at the last space that fits (CJK: at the last character that fits), the
--- last line ends in "..." if still too long. Returns the lines (layout time only, never per frame).
+-- `s` in up to n lines of `maxW` (breaks: Core.lua T.cutLine), the last one ending in "..." if still too long. Returns
+-- the lines (layout time only, never per frame).
 local function wrapN(s, maxW, n)
     local tm, lines = getTextManager(), {}
     while #lines < n - 1 and tm:MeasureStringX(UIFont.Small, s) > maxW do
-        local k = #s
-        while k > 1 and tm:MeasureStringX(UIFont.Small, s:sub(1, k)) > maxW do k = k - 1 end
-        local sp = k
-        while sp > k / 2 and s:sub(sp, sp) ~= " " do sp = sp - 1 end
-        if s:sub(sp, sp) == " " then k = sp end
-        lines[#lines + 1] = s:sub(1, k)
-        s = s:sub(k + 1):gsub("^%s+", "")
+        local line, rest = T.cutLine(s, maxW, UIFont.Small)
+        lines[#lines + 1] = line
+        s = rest
     end
     lines[#lines + 1] = fitText(s, maxW)
     return lines
@@ -171,13 +167,14 @@ end
 -- the official paint names stay as Tesla writes them ("Stealth Grey"), in every language
 local function paintLabel(paint) return (paint.name:gsub("(%l)(%u)", "%1 %2")) end
 -- "Model Y · Pearl White": the car model (the phone key's mirror, else the app's last view) and, once the app has
--- seen the car, its paint. KeysUI's "Remove from phone" entries use it too.
+-- seen the car, its paint. KeysUI's "Remove from phone" entries use it too. The model, not the vehicle name ("Tesla
+-- Cybertruck · Satin Iridescent Purple" ran past the car list's row even in English)
 function App.carLabel(keyId, car)
     local st = keyId and App.seen[keyId]
     car = car or (st and st.car)
-    local name = car and getText("IGUI_VehicleName" .. car) or txt("Title")
-    local paint = st and st.skin and App.paint(car, st.skin)
-    if not paint then return name end
+    local paint, spec = App.paint(car, st and st.skin)
+    local name = spec and (spec.model:gsub("(%l)([%u%d])", "%1 %2")) or txt("Title") -- ModelY -> Model Y
+    if not (paint and st and st.skin) then return name end
     return name .. getText("IGUI_MinidoracatTesla_Sep") .. paintLabel(paint)
 end
 -- this car's version of a text key: the Model 3's trunk lid is not a liftgate (Core.lua T.CarPartNames)
@@ -224,7 +221,9 @@ function App:new(playerNum)
     o.page = "home"
     o.scroll, o.scrollMax, o.dy = 0, 0, 0
     o.L, o.n = {}, 0
-    o.rowEm, o.rowSub = {}, {}
+    -- rowAlt: a row's shorter grey line, used when the full one does not fit (layout): the multiplayer font (CatLang) draws
+    -- Latin text about 1.5 times as wide, so "Southwest, 122 m · updated just now" ran past the row even in English
+    o.rowEm, o.rowSub, o.rowAlt = {}, {}, {}
     -- AutoDrive's canSummon options, reused every read (build-1027 §3: mode, and the picked spot's x, y)
     o.optCome, o.optDumb, o.optPin = { mode = "come" }, { mode = "dumb", dir = 1 }, { mode = "target" }
     return o
@@ -902,12 +901,14 @@ function App:summonRead(api)
     self.sumPhase, self.sSumState, self.sSumSub, self.sSumNote, self.sumWhy = phase, s1, s2, note, why
     -- the running summon's button (it reads "Stop")
     self.sumRun = running(sum) and (sum.mode == "dumb" and (sum.dir == -1 and "rev" or "fwd") or SUM_ID[sum.mode] or "come") or nil
-    -- the home list's row: what the car is doing, else whether it can come (and how far it is)
+    -- the home list's row: what the car is doing, else whether it can come (and how far it is); shorter when it does not
+    -- fit: "Can't summon" for a reason (AutoDrive's run long; the Summon page has it in full), no distance
     if phase ~= "ready" then
-        self.rowEm.summon, self.rowSub.summon = s1, ""
+        self.rowEm.summon, self.rowSub.summon, self.rowAlt.summon = s1, "", nil
     else
         self.rowEm.summon = nil
         self.rowSub.summon = why or (txt("SummonReady") .. (where and (sep .. where) or ""))
+        self.rowAlt.summon = why and txt("SummonRefused") or txt("SummonReady")
     end
     return phase .. "/" .. s1 .. "/" .. s2 .. "/" .. tostring(note) .. "/" .. tostring(self.sumCome) .. tostring(self.sumDumb)
         .. tostring(self.pinOk) .. "/" .. self.sPickNote
@@ -1007,13 +1008,20 @@ function App:read()
     self.sWhen = hasPos and (link and txt("JustNow") or ageText(ageH)) or ""
     self.sTitle = TITLE[self.page] and txt(TITLE[self.page]) or ""
     -- the home list: a grey line under each title, the state that is on in white first (the mock's <em>)
-    local em, sub = self.rowEm, self.rowSub
+    local em, sub, alt = self.rowEm, self.rowSub, self.rowAlt
     sub.controls = getText(carKey(self.script, P .. "ControlsSub"))
+    -- shorter lines (layout uses them when the full one does not fit): no "updated just now" (the Location page has it),
+    -- no "No alerts yet", the charge rate without the time to target (the Charging page has it)
     em.location, sub.location = nil, hasPos and self.sDirDist and (self.sDirDist .. sep .. self.sWhen) or ""
-    local alerts = self.alertsWhy or (self.alerts and (#self.alerts > 0 and txt("AlertCount", tostring(#self.alerts)) or txt("NoAlerts")))
-    if rec and st.sentry then em.security, sub.security = txt("Done_sentry_on"), alerts and (sep .. alerts) or ""
-    elseif rec then em.security, sub.security = nil, txt("Done_sentry_off") .. (alerts and (sep .. alerts) or "")
-    else em.security, sub.security = nil, vmOnly and txt("NotPaired") or alerts or "" end
+    alt.location = hasPos and self.sDirDist or nil
+    local count = self.alerts and #self.alerts > 0 and txt("AlertCount", tostring(#self.alerts)) or nil
+    local alerts = self.alertsWhy or count or (self.alerts and txt("NoAlerts"))
+    if rec and st.sentry then em.security, sub.security, alt.security = txt("Done_sentry_on"), alerts and (sep .. alerts) or "", ""
+    elseif rec then
+        em.security, sub.security = nil, txt("Done_sentry_off") .. (alerts and (sep .. alerts) or "")
+        alt.security = txt("Done_sentry_off")
+    else em.security, sub.security, alt.security = nil, vmOnly and txt("NotPaired") or alerts or "", "" end -- the line above says why
+    if count then alt.security = nil end -- an alert count stays
     local chg = rec and st.chg
     self.chg = chg
     local state = chg == "charging" and txt("ChargingNow") or chg == "full" and txt("ChargeFull", tostring(st.target or 90))
@@ -1023,8 +1031,9 @@ function App:read()
     self.sChgState = state or self.sSub
     if chg == "charging" then
         em.charging, sub.charging = state, sep .. txt("Kw", tostring(st.kw or 0)) .. (self.sEta and (sep .. self.sEta) or "")
+        alt.charging = sep .. txt("Kw", tostring(st.kw or 0))
     else
-        em.charging, sub.charging = nil, state or ""
+        em.charging, sub.charging, alt.charging = nil, state or "", nil
     end
     -- buttons
     local b = self.b
@@ -1222,8 +1231,9 @@ function App:layout()
         y = y + FH + u(2)
         self.ySub, self.sSubFit = y, fitText(self.sSub, tw)
         y = y + FH
-        self.sSub2Fit = self.sSub2 and fitText(self.sSub2, tw)
-        if self.sSub2 then self.ySub2 = y; y = y + FH end
+        -- why the controls are grey (not reached: last record shown; not on this phone): two lines at most
+        self.sSub2s = self.sSub2 and wrapN(self.sSub2, tw, 2)
+        if self.sSub2 then self.ySub2 = y; y = y + FH * #self.sSub2s end
         cw = math.floor(w * 0.68)
         y = y + u(12)
         self.yCar = y
@@ -1241,7 +1251,9 @@ function App:layout()
                 local e = self.rowEm[id]
                 b.sEm = e and fitText(e, rw) or nil
                 b.emW = b.sEm and tm:MeasureStringX(UIFont.Small, b.sEm) or 0
-                b.sSub = fitText(self.rowSub[id] or "", rw - b.emW)
+                local s, alt = self.rowSub[id] or "", self.rowAlt[id]
+                if alt and tm:MeasureStringX(UIFont.Small, s) > rw - b.emW then s = alt end
+                b.sSub = fitText(s, rw - b.emW)
                 y = y + rh
             end
         end
@@ -1422,17 +1434,16 @@ function App:layout()
                 y = y + bh + gap
             end
             self.ySumNote = y + u(2)
-            self.sSumNote1, self.sSumNote2 = nil, nil
-            if self.sSumNote then self.sSumNote1, self.sSumNote2 = wrap2(self.sSumNote, tw) end
-            y = y + u(2) + (self.sSumNote1 and FH * (self.sSumNote2 and 2 or 1) or 0) + u(8)
+            self.sSumNotes = self.sSumNote and wrapN(self.sSumNote, tw, 3) or nil -- the why in full (AutoDrive's reasons run long)
+            y = y + u(2) + (self.sSumNotes and FH * #self.sSumNotes or 0) + u(8)
         else
             local mh = math.floor(tw * 0.8)
             self:pickMap()
             place("spot", pad, y, tw, mh)
             y = y + mh + u(8)
             self.yPickNote = y
-            self.sPickNote1, self.sPickNote2 = wrap2(self.sPickNote or "", tw)
-            y = y + 2 * FH + u(8)
+            self.sPickNotes = wrapN(self.sPickNote or "", tw, 3)
+            y = y + FH * math.max(2, #self.sPickNotes) + u(8) -- two lines kept: the buttons stay put as the note changes
             sbtn("cancel", pad, y, half, txt("SummonCancel"), "frame", true, nil)
             sbtn("go", pad + half + gap, y, half, txt("SummonGo"), "main", self.pinOk and not run, TIP .. "SummonGo")
             y = y + bh + u(8)
@@ -1442,7 +1453,7 @@ function App:layout()
         local rows = { { "back" } } -- this app's own rows (split screen: each player's list is its own length)
         self.navCars = rows
         local rh = math.max(FHM + u(2) + FH, u(36)) + u(20)
-        local rw = tw - u(30) -- room for the current car's check mark
+        local rw = tw - u(24) -- room for the current car's check mark (18 units, centred 10 in from the edge)
         self.curPick = nil
         for i, e in ipairs(self.carList or {}) do
             local b = self:pickButton(i)
@@ -1450,15 +1461,17 @@ function App:layout()
             b.pick = e
             b.cur = (e.key ~= nil and e.key == self.key) or (e.key == nil and e.oid == self.oid)
             if b.cur then self.curPick = b.id end
-            b.sTitle = fitText(App.carLabel(e.key, e.car), rw, UIFont.Medium)
+            local label = App.carLabel(e.key, e.car)
+            b.titleFont = tm:MeasureStringX(UIFont.Medium, label) <= rw and UIFont.Medium or UIFont.Small -- long paint names
+            b.sTitle = fitText(label, rw, b.titleFont)
             b.sSub = fitText(self:carLine(e), rw)
             rows[#rows + 1] = { b.id }
             y = y + rh
         end
         y = y + u(10)
         self.yHint = y
-        self.sHint1, self.sHint2 = wrap2(txt("AddCarHint"), tw)
-        y = y + FH * (self.sHint2 and 2 or 1) + u(12)
+        self.sHints = wrapN(txt("AddCarHint"), tw, 3)
+        y = y + FH * #self.sHints + u(12)
     end
     if cw then self.carX, self.carW, self.carH = math.floor((w - cw) / 2), cw, math.floor(cw / 2) end
     -- the toast sits at the bottom, outside the scrolled part
@@ -1699,7 +1712,9 @@ function App:render()
     if page == "home" then
         jo:DrawText(Sm, self.sBatFit, pad + math.floor(30 * S), self.yBat - o, c2[1], c2[2], c2[3], 1)
         jo:DrawText(Sm, self.sSubFit, pad, self.ySub - o, c2[1], c2[2], c2[3], 1)
-        if self.sSub2Fit then jo:DrawText(Sm, self.sSub2Fit, pad, self.ySub2 - o, c2[1], c2[2], c2[3], 1) end
+        if self.sSub2s then
+            for i = 1, #self.sSub2s do jo:DrawText(Sm, self.sSub2s[i], pad, self.ySub2 + (i - 1) * self.FH - o, c2[1], c2[2], c2[3], 1) end
+        end
         local rx = pad + math.floor(40 * S)
         for _, id in ipairs(LIST) do
             local b = self.b[id]
@@ -1787,16 +1802,17 @@ function App:render()
         if self.sKwFit then jo:DrawText(Sm, self.sKwFit, pad, self.yKw - o, c[1], c[2], c[3], 1) end
         if self.sEtaFit then jo:DrawText(Sm, self.sEtaFit, pad, self.yEta - o, c2[1], c2[2], c2[3], 1) end
     elseif page == "summon" or page == "pick" then
-        local n1, n2, ny
+        local notes, ny
         if page == "summon" then
             self:drawTextCentre(self.sSumStateFit, w / 2, self.ySumState - o, c[1], c[2], c[3], 1, UIFont.Medium)
             self:drawTextCentre(self.sSumSubFit, w / 2, self.ySumSub - o, c2[1], c2[2], c2[3], 1, Sm)
-            n1, n2, ny = self.sSumNote1, self.sSumNote2, self.ySumNote
+            notes, ny = self.sSumNotes, self.ySumNote
         else
-            n1, n2, ny = self.sPickNote1, self.sPickNote2, self.yPickNote
+            notes, ny = self.sPickNotes, self.yPickNote
         end
-        if n1 then jo:DrawText(Sm, n1, pad, ny - o, c2[1], c2[2], c2[3], 1) end
-        if n2 then jo:DrawText(Sm, n2, pad, ny - o + self.FH, c2[1], c2[2], c2[3], 1) end
+        if notes then
+            for i = 1, #notes do jo:DrawText(Sm, notes[i], pad, ny - o + (i - 1) * self.FH, c2[1], c2[2], c2[3], 1) end
+        end
         for _, id in ipairs(SUM_BTNS) do
             local b = self.b[id]
             if b.shown and BTN[id][1] == page then
@@ -1810,13 +1826,12 @@ function App:render()
         local b = self.b.pick1
         while b and b.shown do
             local ty = b.cy - o + math.floor((b.ch - self.FHM - math.floor(2 * S) - self.FH) / 2)
-            jo:DrawText(UIFont.Medium, b.sTitle, rx, ty, c[1], c[2], c[3], 1)
+            jo:DrawText(b.titleFont, b.sTitle, rx, ty, c[1], c[2], c[3], 1)
             jo:DrawText(Sm, b.sSub, rx, ty + self.FHM + math.floor(2 * S), c2[1], c2[2], c2[3], 1)
             i = i + 1
             b = self.b["pick" .. i]
         end
-        jo:DrawText(Sm, self.sHint1, pad, self.yHint - o, c2[1], c2[2], c2[3], 1)
-        if self.sHint2 then jo:DrawText(Sm, self.sHint2, pad, self.yHint - o + self.FH, c2[1], c2[2], c2[3], 1) end
+        for i = 1, #self.sHints do jo:DrawText(Sm, self.sHints[i], pad, self.yHint - o + (i - 1) * self.FH, c2[1], c2[2], c2[3], 1) end
     end
     for _, id in ipairs(MAIN) do
         local b = self.b[id]
