@@ -380,7 +380,7 @@ Options elsewhere that also affect Teslas:
 [/list]
 [*] [b]One console line[/b]: in multiplayer the driver's console gets a container already has id line on each start; it is vanilla (normal cars too), and no key is duplicated or lost.
 [/list]
-=== ❓ FAQ
+=== ❓ FAQ: keys, summon and permissions
 [h3]Where do I find a phone?[/h3]
 [list]
 [*] The Smartphone only comes from loot: most common in electronics stores, sometimes in mall and store electronics, office desks and bedside tables; a newly spawned Tesla has a one-in-four chance of one in its glove box.
@@ -425,6 +425,7 @@ Without Vehicle Manager:
 [*] Unclaimed car: this mod's key rules.
 [*] Exception: the walk-away lock with the phone key only ever locks, and does not ask Vehicle Manager.
 [/list]
+=== ❓ FAQ: charging, the app and removal
 [h3]Why does the charger have no power?[/h3]
 {{img:16-mobile-nopower-en.jpg}}
 [list]

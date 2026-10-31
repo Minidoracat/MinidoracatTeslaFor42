@@ -380,7 +380,7 @@ https://steamcommunity.com/sharedfiles/filedetails/?id=3829501237
 [/list]
 [*] [b]主控台的一行錯誤[/b]：多人時駕駛每次發動，自己的主控台會多一行 container already has id；這是原版的問題（一般車也會），鑰匙不會變多或不見。
 [/list]
-=== ❓ 常見問題
+=== ❓ 常見問題：鑰匙、召喚與權限
 [h3]手機要去哪裡找？[/h3]
 [list]
 [*] 「智慧型手機」只能搜刮：電器行最常見，商場電器區與商店電器架、辦公桌、床頭櫃偶爾有；新生成的特斯拉有四分之一的機率在手套箱放一支。
@@ -425,6 +425,7 @@ https://steamcommunity.com/sharedfiles/filedetails/?id=3829501237
 [*] 車沒綁定：看本 MOD 的鑰匙規則。
 [*] 例外：帶著手機鑰匙走開自動上鎖只會上鎖，不問綁車 MOD。
 [/list]
+=== ❓ 常見問題：充電、App 與移除
 [h3]充電座為什麼沒有電？[/h3]
 {{img:16-mobile-nopower-zh.jpg}}
 [list]
