@@ -155,7 +155,8 @@ def src_frame():
         return Matrix(((-sx, 0, 0, sx * SRC_C[0]), (0, -sy, 0, sy * SRC_C[1]), (0, 0, sz, -sz * C["SRC_YFRONT"]),
                        (0, 0, 0, 1)))
     s = K * SRC_SCALE * (-1 if SRC_FLIP else 1)
-    return Matrix(((0, s, 0, -s * SRC_C[1]), (-s, 0, 0, s * SRC_C[0]), (0, 0, K * SRC_SCALE, 0), (0, 0, 0, 1)))
+    tz = -K * SRC_SCALE * C["SRC_Z"] if C.get("SRC_Z") else 0   # SRC_Z: the ground in source z (glTF Model S)
+    return Matrix(((0, s, 0, -s * SRC_C[1]), (-s, 0, 0, s * SRC_C[0]), (0, 0, K * SRC_SCALE, tz), (0, 0, 0, 1)))
 
 
 def import_source():
@@ -277,6 +278,18 @@ def load_source():
         if any(name in objs for objs, _, _ in DROP_COMPS):   # drop first, decimate what is left
             _label(o, len(names))
             drop_comps(o, name)
+        # DROP_FACES on whole components ((object, tris), lo, hi, axis, (dot min, dot max); Model S: a closed hood's
+        # underside, so frunk_tub finds the lid's outline)
+        for (on, ts), lo, hi, ax, (d0, d1) in C.get("DROP_FACES_COMPS", ()):
+            if on == name:
+                _label(o, len(names))
+                me.update()
+                comp = np.array([d.value for d in me.attributes["comp"].data])
+                fc, fn = pv.face_centres(o), np.array([p.normal[:] for p in me.polygons])
+                d = fn @ np.array(ax, float)
+                gone = np.isin(np.bincount(comp)[comp], ts) & (fc > lo).all(1) & (fc < hi).all(1) & (d >= d0) & (d <= d1)
+                pv.keep_faces(o, ~gone)
+                print("DROP_FACES_COMPS", name, int(gone.sum()), "faces")
         if target:
             pv.decimate(o, target)
         _label(o, len(names))
@@ -289,6 +302,9 @@ def load_source():
         obs.append(o)
     # wheels: (side, centre y, centre z, outer |x|) per tire, pre-centre frame, and the tire's radius and width (the
     # procedural wheel is built to them: the arches were modelled round these tires)
+    if C.get("TIRE", {}).get("centres"):   # tyres merged into a trim object (Model S): axle (y, z) given, no tire object
+        tires = [(np.array((s * 0.8 - 0.1, y - 0.3, z - 0.3)), np.array((s * 0.8 + 0.1, y + 0.3, z + 0.3)))
+                 for y, z in C["TIRE"]["centres"] for s in (-1, 1)]
     wl = sorted(((-1 if hi[0] + lo[0] < 0 else 1, float((lo[1] + hi[1]) / 2), float((lo[2] + hi[2]) / 2),
                   float(max(-lo[0], hi[0]))) for lo, hi in tires), key=lambda w: (-w[1], w[0]))   # FL, FR, RL, RR
     size = np.array([(hi - lo) for lo, hi in tires])
@@ -623,7 +639,8 @@ def badges(obs, names):
         # rear lettering, read from behind (u = +x)
         letters, wid = stroke_text("TESLA", WORDMARK, 0.22, pitch=pitch / ch)
         flat("Badge_TESLA", [[[(u * ch, v * ch) for u, v in q] for q in g] for g in letters],
-             ((-wid * ch / 2, face_y, zc - ch / 2), (1, 0, 0), (0, 0, 1), (0, -1, 0)), "badge_black", planar=True)
+             ((-wid * ch / 2, face_y, zc - ch / 2), (1, 0, 0), (0, 0, 1), (0, -1, 0)), C.get("TESLA_MAT", "badge_black"),
+             planar=True)
     if MODELY:                             # (text, left x, baseline z, cap height)
         text, x0, z0, ch = MODELY
         letters, _ = stroke_text(text, SANS, 0.16)
@@ -827,7 +844,8 @@ def classify(car, names, sizes):
         if not ((obj == o) & (csize == s)).any():
             raise SystemExit(f"GATE_COMPS {(o, s)} matches no component (sizes: the build's COMPS lines)")
         gate |= (obj == o) & (csize == s) & (np.sign(ay) == sy) & (ax < 0.1)
-    gsel = gate & (np.isin(obj, [o for o, _, _ in GATE_COMPS]) | in_gate(cen))
+    # GATE_BY_COMP (Model S): whole components by their centre (the tail lamps' gate and body halves overlap in x)
+    gsel = gate & (np.isin(obj, [o for o, _, _ in GATE_COMPS]) | in_gate(ccen if C.get("GATE_BY_COMP") else cen))
     for o, s in GATE_CUT_COMPS:            # a lid cut out of a bigger panel (edit(): PLANES, X+-), by face centre
         if not ((obj == o) & (csize == s)).any():
             raise SystemExit(f"GATE_CUT_COMPS {(o, s)} matches no component (sizes: the build's COMPS lines)")
@@ -837,7 +855,8 @@ def classify(car, names, sizes):
     # lamps. Tail: the red light bar (a 1 cm strip on the spoiler's lower lip, about a pixel in game), the corner
     # lamps, and the rear face of the smoked light-bar cover across the tailgate (LAMPS blade), which glows red at
     # night like the real light blade (night-N showed one corner patch only)
-    head = np.isin(mat, LAMPS["head"])
+    head = np.isin(mat, LAMPS["head"]) & (cen[:, 1] > LAMPS.get("head_y", -np.inf))   # head_y: a lamp material shared
+    #                                                                                     front and rear (Model S)
     tail = np.isin(mat, LAMPS["tail"]) & (cen[:, 2] > LAMPS["tail_z"]) & (cen[:, 1] < LAMPS["tail_y"])
     fnorm = np.array([p.normal[:] for p in me.polygons])
     blade = (obj == LAMPS["blade"]) & (fnorm[:, 1] < -0.5) | (obj == "Badge_BLADE")
@@ -876,6 +895,8 @@ def classify(car, names, sizes):
     rgb[blade] = np.array(SMOKE_RGB) / 255
     if CARBON:
         rgb[carbon] = np.array(CARBON["rgb"]) / 255
+    if LAMPS.get("tail_rgb"):              # (Model S: one housing material front and rear) the tail half's own colour
+        rgb[tail & (mat == LAMPS["tail"][0])] = np.array(LAMPS["tail_rgb"]) / 255
     print("CLASSIFY parts", {PARTS[k]: int((part == k).sum()) for k in range(len(PARTS))}, "glass", int(glass.sum()),
           "lamps head/tail", int(head.sum()), int(tail.sum()))
     # RAIL: 0..1 weight of the median paint tone (textures()), body panels only
