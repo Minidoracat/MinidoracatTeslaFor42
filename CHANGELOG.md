@@ -12,6 +12,20 @@
 
 格式基於 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.1.0/)，版本號遵循 `{PZ版本}-{主版本}.{次版本}.{修訂}` 格式。
 
+## [Unreleased]
+
+### 新增
+
+- **第四台特斯拉：Model X Plaid**：只出現在高級住宅區，機率和 Cybertruck 一樣，停車格不會出現。照官方規格：維修介面顯示 1,020 hp，起步比 Model S 慢一點（車比較重）；高電壓電池 100 kWh，充滿電一樣跑得和原版同級車加滿一箱油一樣遠。行李廂容量 85（和原版休旅車一樣），前行李廂 17。外觀照官方尺寸，鍍鉻飾條照 2021 改款是黑色，前保桿有攝影機，輪圈是 20 吋 Perihelix。
+- **鷹翼門與 6 個座位**：後門是往上掀的鷹翼門，打開時上半段沿車頂中線往上翻、下半段在肘部再往外折，全開時一樣進得了單層車庫。實車 6 座版：前座 2 位、第二排 2 位、第三排 2 位。第二排和第三排都從鷹翼門上下車，第三排有自己的上車位置，第二排坐滿時一樣上得去。鷹翼門打開要一點時間，角色會等門升起再上車。維修介面照車主手冊叫「鷹翼門」。
+- **8 種車色**：Stealth Grey、Lunar Silver、Pearl White Multi-Coat、Ultra Red、Diamond Black、Frost Blue、Solid Black、Deep Blue Metallic。App 的車圖跟著車色換。
+- **Model X 的儀表與 App**：儀表換成 Model X 的俯視圖，點後半段開關左右鷹翼門。App 控制頁多一格「鷹翼門」，一次打開或關上兩扇鷹翼門；整台車上鎖時鷹翼門一起鎖上。
+
+> 技術要點：
+> - 素材：Model X 車身改作自 Abdul.Hannan 的「Tesla Model X」（Sketchfab，CC BY 4.0，https://sketchfab.com/3d-models/tesla-model-x-6a5469a1b776431cb1e1e17a72a2c4f5 ，授權 http://creativecommons.org/licenses/by/4.0/ ）。鏡射成整台、照官方尺寸縮放、減面、拆件（前門、鷹翼門、尾門、前車廂蓋）、重做貼圖，鍍鉻飾條改黑，加上前保桿攝影機與輪拱內襯，輪子與車內換成本 MOD 自己的；署名全文見 `CREDITS.md`。
+> - 6 座用原版 `PassengerSeat6` 範本；第三排（`RearLeft`／`RearRight`）的車外位置與 `area` 設在第二排的鷹翼門位置，第二排坐滿時仍能直接上第三排。
+> - 鷹翼門是一個車門零件配兩根骨架（車頂鉸鏈與肘部）的一段動畫，開關照原版車門的流程同步。
+
 ## [42.21.0-0.3.0] - 2026-10-31
 
 ### 新增
