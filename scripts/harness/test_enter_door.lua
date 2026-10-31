@@ -36,17 +36,19 @@ check(waitAfter(Y, "DoorRearLeft") == E.WAIT and T.Specs[Y].doorWait == nil, "Mo
 ISOpenVehicleDoor.perform, ISTimedActionQueue, ISEnterVehicle, ISExitVehicle = saved.perform, saved.queue, saved.enter, saved.exit
 
 H.section("falcon wing E: 2nd row first, then the 3rd")
-local savedV, savedMenu = Vehicles, ISVehicleMenu
-local entered, vanilla
+local savedV, savedMenu, savedPrompt, savedGSP = Vehicles, ISVehicleMenu, ISButtonPrompt, getSpecificPlayer
+local entered, vanilla, prompted
 Vehicles = { Use = { Door = function() vanilla = true end } }
 ISVehicleMenu = { onEnter = function(_, _, seat) entered = seat end }
+ISButtonPrompt = { cmdEnterVehicle = function(_, _, seat) prompted = seat end }
 E.doorUse = nil
 E.wrapDoorUse()
 local NAMES = { [0] = "FrontLeft", "FrontRight", "RearLeft", "RearRight", "MiddleLeft", "MiddleRight" } -- PassengerSeat6 order
-local function car(script, taken)
+local function car(script, taken, useable)
     return { getMaxPassengers = function() return 6 end, getScriptName = function() return script end,
         getScript = function() return { getPassenger = function(_, i) return { getId = function() return NAMES[i] end } end } end,
-        isSeatOccupied = function(_, i) return taken[i] == true end }
+        isSeatOccupied = function(_, i) return taken[i] == true end,
+        getUseablePart = function() return useable and { getId = function() return useable end } end }
 end
 local function useAt(v, door)
     entered, vanilla = nil, nil
@@ -62,5 +64,22 @@ e, van = useAt(car(X, {}), "DoorFrontLeft")
 check(e == nil and van == true, "Model X front door: vanilla")
 e, van = useAt(car(Y, {}), "DoorRearLeft")
 check(e == nil and van == true, "Model Y rear door: vanilla")
-Vehicles, ISVehicleMenu = savedV, savedMenu
+
+H.section("falcon wing gamepad Interact: the same seat as E")
+-- ISButtonPrompt binds self.cmdEnterVehicle(vehicle, seat) with the first seat the door serves (Rear* at a falcon wing:
+-- seat 2 left, 3 right), or getBestSeat when no door part is useable
+getSpecificPlayer = function() return {} end
+local function prompt(v, seat)
+    prompted = nil
+    ISButtonPrompt.cmdEnterVehicle({ player = 0 }, v, seat)
+    return prompted
+end
+check(prompt(car(X, {}, "DoorRearLeft"), 2) == 4, "left wing, all free: the 2nd row (seat 4), not vanilla's 3rd row")
+check(prompt(car(X, { [4] = true }, "DoorRearLeft"), 2) == 2, "left wing, 2nd row taken: the 3rd row (seat 2)")
+check(prompt(car(X, {}, "DoorRearRight"), 3) == 5, "right wing: MiddleRight (seat 5)")
+check(prompt(car(X, { [5] = true, [3] = true }, "DoorRearRight"), 3) == 3, "right wing, both rows taken: vanilla's seat")
+check(prompt(car(X, {}, "DoorFrontLeft"), 0) == 0, "Model X front door: vanilla's seat")
+check(prompt(car(X, {}, nil), 2) == 2, "no useable door (getBestSeat branch): vanilla's seat")
+check(prompt(car(Y, {}, "DoorRearLeft"), 2) == 2, "Model Y rear door: vanilla's seat")
+Vehicles, ISVehicleMenu, ISButtonPrompt, getSpecificPlayer = savedV, savedMenu, savedPrompt, savedGSP
 
