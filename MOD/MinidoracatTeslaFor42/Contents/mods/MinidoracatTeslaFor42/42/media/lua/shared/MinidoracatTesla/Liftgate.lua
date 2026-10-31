@@ -52,14 +52,15 @@ L.SHELL_DOORS = { "DoorFrontLeft", "DoorFrontRight", "DoorRearLeft", "DoorRearRi
 -- (a hole) and put it back the moment the door started to shut (a slab in the open doorway for the whole swing:
 -- E2E doors-audit-sp tesla-doorsaudit-1101-y-a W-fr-close-c25 against W-fr-o75). The wall stands while the door is
 -- under about a quarter open: the bit flips a third of the way into the opening swing and two thirds into the closing
--- one (the eased clip, cars/<car>.py via convert.py: smoothstep(1/3) = 0.26 of the angle). A clip advances 0.8 x rate
--- clip seconds a second (1/60 x 0.8 x the unmodded multiplier an update, BaseVehicle.java:3898-3904); clips are 0.8 s,
--- else Specs doorClip[part].
--- [vid] = { [k] = when bit k-1 flips to its door's state (getTimestampMs) }; the OnTick runs while any is pending
+-- one (the eased clip, cars/<car>.py via convert.py: smoothstep(1/3) = 0.26 of the angle). Counted on the door's own
+-- clock: an update advances the clip 1/60 x 0.8 x rate x the unmodded multiplier (BaseVehicle.java:3898-3904), which
+-- carries the game speed (GameTime.java:1018-1022): fast forward ends the swing sooner, a pause holds it. Clips are
+-- 0.8 s, else Specs doorClip[part].
+-- [vid] = { [k] = clip seconds left before bit k-1 flips to its door's state }; the OnTick runs while any is pending
 local pending, ticking = {}, false
-local function flipMs(vehicle, id, open)
+local function flipClip(vehicle, id, open)
     local c = T.spec(vehicle) and T.spec(vehicle).doorClip
-    return (c and c[id] or 0.8) / 0.8 * 1000 * (open and 1 / 3 or 2 / 3)
+    return (c and c[id] or 0.8) * (open and 1 / 3 or 2 / 3)
 end
 local shellTick
 -- add / remove only on a change: Event.trigger walks the list by index (Event.java:52-62), so taking the tick out and
@@ -72,32 +73,37 @@ local function retick()
     if left then Events.OnTick.Add(shellTick) else Events.OnTick.Remove(shellTick) end
 end
 shellTick = function()
-    local now, due = getTimestampMs(), {}
+    local step, due = 0.8 / 60 * getGameTime():getUnmoddedMultiplier(), {}
     for vid, ks in pairs(pending) do
-        for _, t in pairs(ks) do
-            if t <= now then due[#due + 1] = vid; break end
+        local hit = false
+        for k, left in pairs(ks) do
+            ks[k] = left - step
+            hit = hit or ks[k] <= 1e-6
         end
+        if hit then due[#due + 1] = vid end
     end
     for _, vid in ipairs(due) do
         local v = getVehicleById(vid)
-        if v then L.syncShell(v) else pending[vid] = nil end -- unloaded: OnSpawnVehicleEnd syncs it when it is back
+        -- unloaded, or the id now another car's: drop it (OnSpawnVehicleEnd sets a car's bits when it loads)
+        if v and T.isTesla(v) then L.syncShell(v) else pending[vid] = nil end
     end
     retick()
 end
-function L.syncShell(vehicle)
+-- now: set the bits to the doors at once (a car just loaded: its doors stand where they were saved)
+function L.syncShell(vehicle, now)
     local h = vehicle:getColorHue()
-    local was, now, bits, vid = math.floor(h), getTimestampMs(), 0, vehicle:getId()
-    local ks = pending[vid] or {}
+    local was, bits, vid = math.floor(h), 0, vehicle:getId()
+    local ks = not now and pending[vid] or {}
     for k, id in ipairs(L.SHELL_DOORS) do
         local part = vehicle:getPartById(id)
         local door = part and part:getDoor()
         local bit = 2 ^ (k - 1)
         local want, have = door and door:isOpen() or false, math.floor(was / bit) % 2 == 1
-        if not door or want == have then
+        if now or not door or want == have then
             have, ks[k] = want, nil
         else
-            ks[k] = ks[k] or now + flipMs(vehicle, id, want)
-            if ks[k] <= now then have, ks[k] = want, nil end
+            ks[k] = ks[k] or flipClip(vehicle, id, want)
+            if ks[k] <= 1e-6 then have, ks[k] = want, nil end
         end
         if have then bits = bits + bit end
     end
@@ -298,15 +304,16 @@ if not isClient() then
     end
 
     -- every load (BaseVehicle.java:904): a locked car from an older save or the world spawn (cabin doors locked by
-    -- Vehicles.Create.Door, the hood never) gets its shut lids locked; the shell bits follow the saved doors (a save
-    -- inside a door's closing swing kept its bit, an older save's open door had none)
+    -- Vehicles.Create.Door, the hood never) gets its shut lids locked; the shell bits are set to the saved doors at once
+    -- (they stand still; a save inside a swing kept the old bit, an older save's open door had none), dropping whatever
+    -- was still pending under this id
     Events.OnSpawnVehicleEnd.Add(function(v)
         if not T.isTesla(v) then return end
         for id in pairs(L.LIDS) do
             local part = v:getPartById(id)
             if part and part:getInventoryItem() and part:getDoor() and L.relock(v, part) then v:transmitPartDoor(part) end
         end
-        L.syncShell(v)
+        L.syncShell(v, true)
     end)
 end
 

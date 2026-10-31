@@ -55,30 +55,28 @@ local function denied(reason)
 end
 
 H.section("liftgate: server rules")
-local function settle() H.advanceMs(5000); H.fire("OnTick") end -- every swing over (the shell bits follow, Liftgate.syncShell)
+-- the shell bits follow the door's clip clock: 1/60 x 0.8 x the unmodded multiplier a tick (Liftgate.syncShell)
+local function tick(n) for _ = 1, n do H.fire("OnTick") end end
+local function settle() H.setMultiplier(40); tick(20); H.setMultiplier(1) end -- every swing over
 local ticks = H.count("OnTick")
 cmd(driver, { vid = v:getId(), part = "TrunkDoor" })
 local d = v.parts.TrunkDoor.door
 check(d.open and not d.locked and v.doorTx == 1, "driver, parked, locked: unlocked, opened, door synced")
 check(v.anims[1] == "TrunkDoor:Open" and v.sound == "Open", "SP: client handler played the Open anim and its sound")
--- Model Y doorClip TrunkDoor 3.6 clip s at 0.8 a second = a 4.5 s swing: the bit flips 1.5 s in, shut 3 s in
+-- Model Y doorClip TrunkDoor 3.6 clip s: the bit flips 1.2 clip s into the opening (90 ticks at 1x), 2.4 into the closing
 check(math.floor(v:getColorHue()) == 0 and H.count("OnTick") == ticks + 1,
     "opened: the shell stays while the tailgate is under a quarter open (else a hole where it still is), one OnTick")
-H.advanceMs(1400)
-H.fire("OnTick")
-check(math.floor(v:getColorHue()) == 0, "...still there 1.4 s in")
-H.advanceMs(200)
-H.fire("OnTick")
+tick(89)
+check(math.floor(v:getColorHue()) == 0, "...still there 89 ticks in (1x)")
+tick(1)
 check(math.floor(v:getColorHue()) == 16 and H.near(v:getColorHue() - 16, 0.69, 1e-6) and not v.colorTx
-    and H.count("OnTick") == ticks, "...tailgate bit 16 at 1.5 s, the paint hue kept, no transmitColorHSV, OnTick removed")
+    and H.count("OnTick") == ticks, "...tailgate bit 16 at 90 ticks, the paint hue kept, no transmitColorHSV, OnTick removed")
 cmd(driver, { vid = v:getId(), part = "TrunkDoor" })
 check(not d.open and v.anims[2] == "TrunkDoor:Close", "second press closes")
-H.advanceMs(2900)
-H.fire("OnTick")
-check(math.floor(v:getColorHue()) == 16, "closed: the bit stays while the tailgate is over a quarter open (2.9 s in)")
-H.advanceMs(200)
-H.fire("OnTick")
-check(H.near(v:getColorHue(), 0.69, 1e-6) and H.count("OnTick") == ticks, "...cleared at 3 s, OnTick removed")
+tick(179)
+check(math.floor(v:getColorHue()) == 16, "closed: the bit stays while the tailgate is over a quarter open (179 ticks)")
+tick(1)
+check(H.near(v:getColorHue(), 0.69, 1e-6) and H.count("OnTick") == ticks, "...cleared at 180 ticks, OnTick removed")
 check(not d.locked, "car unlocked: the closed liftgate stays unlocked")
 v.cabinLocked = true -- locked car: the liftgate locks again when it shuts
 cmd(driver, { vid = v:getId(), part = "TrunkDoor" })
@@ -95,25 +93,73 @@ cmd(driver, { vid = v:getId(), part = "TrunkDoor" })
 check(not d.locked, "broken lock: shut but not locked (it could never open again)")
 d.broken, v.cabinLocked = false, false
 local sp = car({})
-ISOpenVehicleDoor.complete({ vehicle = sp, part = sp.parts.DoorFrontLeft, character = driver })
-H.advanceMs(300)
-H.fire("OnTick")
-check(math.floor(sp:getColorHue()) == 0 and #sp.anims == 0, "SP door action: no bit 0.3 s in (a 1 s swing), no anim broadcast")
-H.advanceMs(100)
-H.fire("OnTick")
-check(math.floor(sp:getColorHue()) == 1, "...shell bit 1 for DoorFrontLeft 0.4 s in")
-ISCloseVehicleDoor.complete({ vehicle = sp, part = sp.parts.DoorFrontLeft, character = driver })
-H.advanceMs(600)
-H.fire("OnTick")
-check(math.floor(sp:getColorHue()) == 1, "SP door closed: the bit stays 0.6 s in")
-ISOpenVehicleDoor.complete({ vehicle = sp, part = sp.parts.DoorFrontLeft, character = driver })
-H.advanceMs(1000)
-H.fire("OnTick")
-check(math.floor(sp:getColorHue()) == 1, "...opened again before it flipped: the bit stays (no stale flip)")
-ISCloseVehicleDoor.complete({ vehicle = sp, part = sp.parts.DoorFrontLeft, character = driver })
-H.advanceMs(700)
-H.fire("OnTick")
-check(math.floor(sp:getColorHue()) == 0 and H.count("OnTick") == ticks, "...closed again: cleared 0.7 s in, OnTick removed")
+local fl0 = sp.parts.DoorFrontLeft
+local function open(o) (o and ISOpenVehicleDoor or ISCloseVehicleDoor).complete({ vehicle = sp, part = fl0, character = driver }) end
+local function bit() return math.floor(sp:getColorHue()) end
+open(true)
+tick(19)
+check(bit() == 0 and #sp.anims == 0, "SP door action: no bit 19 ticks in (0.8 clip s door: a third is 20 ticks at 1x), no anim broadcast")
+tick(1)
+check(bit() == 1, "...shell bit 1 for DoorFrontLeft at 20 ticks")
+open(false)
+tick(30)
+check(bit() == 1, "SP door closed: the bit stays 30 ticks in (two thirds: 40)")
+open(true)
+tick(60)
+check(bit() == 1, "...opened again before it flipped: the bit stays (no stale flip)")
+open(false)
+tick(39)
+check(bit() == 1, "...closed again: still set at 39 ticks")
+tick(1)
+check(bit() == 0 and H.count("OnTick") == ticks, "...cleared at 40 ticks, OnTick removed")
+for _, m in ipairs({ { 5, 4, 8 }, { 20, 1, 2 }, { 40, 1, 1 } }) do -- multiplier, ticks to open, ticks to close
+    H.setMultiplier(m[1])
+    open(true)
+    tick(m[2] - 1)
+    local early = bit()
+    tick(1)
+    local opened = bit()
+    open(false)
+    tick(m[3] - 1)
+    local late = bit()
+    tick(1)
+    check(early == 0 and opened == 1 and late == 1 and bit() == 0,
+        "game speed x" .. m[1] .. ": the bit flips " .. m[2] .. " ticks into the opening, " .. m[3] .. " into the closing")
+end
+H.setMultiplier(1)
+open(true)
+tick(20)
+open(false)
+tick(10) -- 0.133 of the 0.533 clip s
+H.setMultiplier(0) -- paused: the door stands still, so does the shell
+tick(100)
+check(bit() == 1, "paused mid-swing: the bit holds")
+H.setMultiplier(5) -- 0.4 clip s left at 0.0667 a tick: 6 ticks
+tick(5)
+check(bit() == 1, "speed changed mid-swing (1x, pause, 5x): still set 5 ticks after")
+tick(1)
+check(bit() == 0, "...cleared on the 6th, as the clip got there")
+H.setMultiplier(1)
+open(true)
+tick(5)
+H.removeVehicle(sp) -- unloaded mid-swing; its id goes to another make (the engine reuses ids)
+local gas0 = car({ id = sp:getId(), script = "Base.CarNormal" })
+gas0.parts.DoorFrontLeft.door.open = true
+settle()
+check(H.near(gas0:getColorHue(), 0.69, 1e-6) and H.count("OnTick") == ticks,
+    "a pending swing whose id is now another make's: dropped, that car's hue untouched, OnTick removed")
+H.addVehicle(sp) -- back (fl0 still open, bit still 0): OnSpawnVehicleEnd sets the bit at once, nothing pending
+L.syncShell(sp, true) -- what OnSpawnVehicleEnd calls (its other handlers need a fuller car)
+check(bit() == 1 and H.count("OnTick") == ticks, "loaded with a door open: its bit at once, no OnTick")
+open(true) -- the same door: no change
+fl0.door.open = false -- saved shut inside the swing with the old bit
+L.syncShell(sp, true) -- what OnSpawnVehicleEnd calls (its other handlers need a fuller car)
+check(bit() == 0 and H.count("OnTick") == ticks, "loaded with the door shut but its bit set: cleared at once")
+open(true)
+tick(3)
+L.syncShell(sp, true) -- reloaded mid-swing (opened just before): the doors stand, the pending flip goes
+check(bit() == 1 and H.count("OnTick") == ticks, "reloaded mid-swing: set to the door at once, the pending flip dropped")
+open(false)
 settle() -- the liftgate's opens and closes above
 
 local passenger = H.player({ name = "bob" })

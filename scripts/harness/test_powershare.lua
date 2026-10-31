@@ -753,8 +753,9 @@ check(T.psState(B.part(ct2)) == "backup" and gen(ct2) ~= nil, "a spot near now: 
 unplug(ct2)
 
 H.section("no polling")
-H.advanceMs(5000) -- the tailgate's shell bit settles first (Liftgate.syncShell's own one-shot OnTick)
-H.fire("OnTick")
+H.setMultiplier(40) -- the tailgate's shell bit settles first (Liftgate.syncShell's one-shot OnTick, on the clip clock)
+for _ = 1, 20 do H.fire("OnTick") end
+H.setMultiplier(1)
 check(H.count("OnTick") == ticks0 and H.count("EveryOneMinute") == mins0, "Powershare adds no OnTick / EveryOneMinute")
 
 for k, v in pairs(saved) do _G[k] = v end
