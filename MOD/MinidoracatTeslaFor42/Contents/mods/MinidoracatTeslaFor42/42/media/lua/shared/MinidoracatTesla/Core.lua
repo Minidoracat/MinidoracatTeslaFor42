@@ -36,6 +36,8 @@ T.DRIVE_SCALE = 10
 -- scripts/blender/props/props_blender.py PLUGS builds one mesh per entry (build.py --check compares the two).
 -- hepa: a HEPA filter and Bioweapon Defense Mode (owner's manuals: Model Y p.169, Cybertruck p.165, Model S p.148,
 -- Model X p.165; none in the Model 3's), Camp.lua C.filterAir and the radial slice.
+-- doorClip: every car's door parts whose clip is not 0.8 s, part id -> clip seconds (= scripts/blender/skf/cars/<car>.py
+-- DOORS; Liftgate.syncShell times the cabin shell's door bits on it; harness test_liftgate compares the two).
 -- Cybertruck only: tonneau (the app's tonneau cover button), armorGlass (smashes a window takes, Truck.lua),
 -- powershare and bedOutlet (Powershare, the bed outlets).
 -- Model X only: falcon (the app's falcon wing doors button), doorWait (seconds the climb waits after a door's open
@@ -51,8 +53,7 @@ T.Specs = {
         massKg = 2033,
         regenEff = 0.6,
         hepa = true,
-        -- door clip seconds not 0.8 (scripts/blender/skf/cars/model_y.py DOORS; Liftgate.syncShell, harness test_liftgate)
-        doorClip = { TrunkDoor = 3.6 },
+        doorClip = { TrunkDoor = 3.6 }, -- cars/model_y.py DOORS
         -- official Model Y paints (TeslaModelY, references/models.md): entry i = vehicle script skin i-1, and saved
         -- games keep the skin index (BaseVehicle.java:2635/2741), so only append. h/s/v (setColorHSV) tint the
         -- damage overlays to the paint (vehicle_common.frag.glsl:6-15), written by scripts/blender/skf/convert.py build
@@ -136,7 +137,7 @@ T.Specs = {
         kwPerKmh = 0.00730 * T.DRIVE_SCALE,
         massKg = 2178, -- Plaid curb mass 4,802 lb (tesla.com 2026-04-21)
         regenEff = 0.6,
-        doorClip = { TrunkDoor = 3.6 }, -- shell doors not at 0.8 s: clip seconds (cars/model_s.py DOORS; Liftgate.syncShell)
+        doorClip = { TrunkDoor = 3.6 }, -- cars/model_s.py DOORS
         hepa = true, -- HEPA filter and Bioweapon Defense Mode (Model S owner's manual p.148)
         -- the last US design studio's six paints (2026-03-06) and the China pre-refresh Solid Black and Deep Blue
         -- (user 2026-10-31); same order and append-only rules as above, h/s/v by convert.py build
