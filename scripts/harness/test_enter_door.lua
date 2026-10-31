@@ -34,3 +34,33 @@ check(waitAfter(X, "DoorFrontLeft") == E.WAIT, "Model X front door: E.WAIT (" ..
 check(waitAfter(Y, "DoorRearLeft") == E.WAIT and T.Specs[Y].doorWait == nil, "Model Y rear door (no doorWait): E.WAIT")
 
 ISOpenVehicleDoor.perform, ISTimedActionQueue, ISEnterVehicle, ISExitVehicle = saved.perform, saved.queue, saved.enter, saved.exit
+
+H.section("falcon wing E: 2nd row first, then the 3rd")
+local savedV, savedMenu = Vehicles, ISVehicleMenu
+local entered, vanilla
+Vehicles = { Use = { Door = function() vanilla = true end } }
+ISVehicleMenu = { onEnter = function(_, _, seat) entered = seat end }
+E.doorUse = nil
+E.wrapDoorUse()
+local NAMES = { [0] = "FrontLeft", "FrontRight", "RearLeft", "RearRight", "MiddleLeft", "MiddleRight" } -- PassengerSeat6 order
+local function car(script, taken)
+    return { getMaxPassengers = function() return 6 end, getScriptName = function() return script end,
+        getScript = function() return { getPassenger = function(_, i) return { getId = function() return NAMES[i] end } end } end,
+        isSeatOccupied = function(_, i) return taken[i] == true end }
+end
+local function useAt(v, door)
+    entered, vanilla = nil, nil
+    Vehicles.Use.Door(v, { getId = function() return door end }, {})
+    return entered, vanilla
+end
+check(useAt(car(X, {}), "DoorRearLeft") == 4, "left wing, all free: the 2nd row (MiddleLeft, seat 4)")
+check(useAt(car(X, { [4] = true }), "DoorRearLeft") == 2, "left wing, 2nd row taken: the 3rd row (RearLeft, seat 2)")
+check(useAt(car(X, {}), "DoorRearRight") == 5, "right wing: MiddleRight (seat 5)")
+local e, van = useAt(car(X, { [5] = true, [3] = true }), "DoorRearRight")
+check(e == nil and van == true, "right wing, both rows taken: vanilla (it says the seat is taken)")
+e, van = useAt(car(X, {}), "DoorFrontLeft")
+check(e == nil and van == true, "Model X front door: vanilla")
+e, van = useAt(car(Y, {}), "DoorRearLeft")
+check(e == nil and van == true, "Model Y rear door: vanilla")
+Vehicles, ISVehicleMenu = savedV, savedMenu
+

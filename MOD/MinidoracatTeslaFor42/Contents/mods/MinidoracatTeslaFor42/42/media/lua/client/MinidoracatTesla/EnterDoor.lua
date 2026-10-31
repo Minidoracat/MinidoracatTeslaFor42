@@ -57,4 +57,29 @@ for _, cls in ipairs({ ISEnterVehicle, ISExitVehicle }) do
     end
 end
 
+-- Model X (Specs falcon): E on a door takes the first seat that door serves (Vehicles.Use.Door, Vehicles.lua:816-827),
+-- and PassengerSeat6 loads Rear* (3rd row) before Middle* (template_passenger.txt), so E at a falcon wing sat in the 3rd
+-- row, and did nothing once it was taken. At a falcon wing: the free 2nd-row seat, then the 3rd row's, else vanilla.
+local ROWS = { DoorRearLeft = { "MiddleLeft", "RearLeft" }, DoorRearRight = { "MiddleRight", "RearRight" } }
+function E.wrapDoorUse()
+    if E.doorUse or not (Vehicles and Vehicles.Use and Vehicles.Use.Door) then return end
+    local use = Vehicles.Use.Door
+    E.doorUse = use
+    Vehicles.Use.Door = function(vehicle, part, chr)
+        local rows, s = ROWS[part:getId()], T.spec(vehicle)
+        if rows and s and s.falcon then
+            local script = vehicle:getScript()
+            for _, name in ipairs(rows) do
+                for seat = 0, vehicle:getMaxPassengers() - 1 do
+                    if script:getPassenger(seat):getId() == name and not vehicle:isSeatOccupied(seat) then
+                        return ISVehicleMenu.onEnter(chr, vehicle, seat)
+                    end
+                end
+            end
+        end
+        return use(vehicle, part, chr)
+    end
+end
+Events.OnGameStart.Add(E.wrapDoorUse)
+
 return E
