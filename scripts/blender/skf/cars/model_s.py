@@ -29,16 +29,19 @@ CAR = dict(
     # Deep Blue (user 2026-10-31, add2). Same names and order as Model X. Skin index is saved: only append after release
     PAINTS=[("StealthGrey", "PN01"), ("LunarSilver", "PN02"), ("PearlWhite", "PPSW"), ("UltraRed", "PR01"),
             ("DiamondBlack", "PX02"), ("FrostBlue", "PB00"), ("SolidBlack", "PBSB"), ("DeepBlue", "PPSB")],
-    # paint tone (model_y.py CAL): refit on Model S game screenshots against the official FRONT34 (models-model-s.md)
+    # paint tone (model_y.py CAL): fitted on models-body-sp paint-<i>-<name>-fl-max (zoom 0.5, heading S) against the
+    # official FRONT34 with paint_sheet.py --car MinidoracatTesla_ModelS: one slope per paint (the fit's mean, held to
+    # 0.85-1.15), per-channel offsets put the game p50 on the official p50 (models.md 0b, Model 3 "車漆"); a second pass
+    # (tesla-msbody-1101b) moved the offsets by its residual
     CAL={
-        "StealthGrey": ((1.0, 1.0, 1.0), (0.0, 0.0, 0.0)),
-        "LunarSilver": ((1.0, 1.0, 1.0), (0.0, 0.0, 0.0)),
-        "PearlWhite": ((0.85, 0.85, 0.85), (0.0, 0.0, 0.0)),
-        "UltraRed": ((1.0, 1.0, 1.0), (0.0, 0.0, 0.0)),
-        "DiamondBlack": ((1.0, 1.0, 1.0), (0.0, 0.0, 0.0)),
-        "FrostBlue": ((1.0, 1.0, 1.0), (0.0, 0.0, 0.0)),
-        "SolidBlack": ((1.0, 1.0, 1.0), (0.0, 0.0, 0.0)),
-        "DeepBlue": ((1.0, 1.0, 1.0), (0.0, 0.0, 0.0)),
+        "StealthGrey": ((1.15, 1.15, 1.15), (0.009, -0.002, -0.022)),
+        "LunarSilver": ((1.15, 1.15, 1.15), (-0.101, -0.122, -0.133)),
+        "PearlWhite": ((0.977, 0.977, 0.977), (-0.023, -0.04, -0.047)),
+        "UltraRed": ((1.15, 1.15, 1.15), (-0.006, 0.103, 0.084)),
+        "DiamondBlack": ((0.853, 0.853, 0.853), (0.083, 0.075, 0.061)),
+        "FrostBlue": ((1.15, 1.15, 1.15), (-0.062, -0.071, -0.101)),
+        "SolidBlack": ((0.867, 0.867, 0.867), (0.06, 0.051, 0.045)),
+        "DeepBlue": ((1.15, 1.15, 1.15), (0.107, 0.011, -0.107)),
     },
     # design studio: Plaid ($MTS23), 19" Magnetite ($WS94), black carbon interior ($IBC02), round wheel ($ST06); the
     # two China paints from the pre-refresh $MTS19 (colour only: its nose differs). The renders were fetched by hand

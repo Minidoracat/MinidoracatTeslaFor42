@@ -130,14 +130,14 @@ T.Specs = {
         -- the last US design studio's six paints (2026-03-06) and the China pre-refresh Solid Black and Deep Blue
         -- (user 2026-10-31); same order and append-only rules as above, h/s/v by convert.py build
         colors = {
-            { name = "StealthGrey", code = "PN01", h = 0.667, s = 0.571, v = 0.33 },
-            { name = "LunarSilver", code = "PN02", h = 0.628, s = 0.547, v = 0.605 },
-            { name = "PearlWhite", code = "PPSW", h = 0.577, s = 0.497, v = 0.824 },
-            { name = "UltraRed", code = "PR01", h = 0.982, s = 1.0, v = 0.374 },
-            { name = "DiamondBlack", code = "PX02", h = 0.746, s = 0.554, v = 0.151 },
-            { name = "FrostBlue", code = "PB00", h = 0.598, s = 0.954, v = 0.524 },
-            { name = "SolidBlack", code = "PBSB", h = 0.667, s = 0.514, v = 0.151 },
-            { name = "DeepBlue", code = "PPSB", h = 0.604, s = 1.0, v = 0.447 },
+            { name = "StealthGrey", code = "PN01", h = 0.812, s = 0.512, v = 0.35 },
+            { name = "LunarSilver", code = "PN02", h = 0.726, s = 0.523, v = 0.556 },
+            { name = "PearlWhite", code = "PPSW", h = 0.82, s = 0.475, v = 0.893 },
+            { name = "UltraRed", code = "PR01", h = 0.987, s = 1.0, v = 0.416 },
+            { name = "DiamondBlack", code = "PX02", h = 0.062, s = 0.58, v = 0.215 },
+            { name = "FrostBlue", code = "PB00", h = 0.592, s = 0.976, v = 0.494 },
+            { name = "SolidBlack", code = "PBSB", h = 0.032, s = 0.547, v = 0.194 },
+            { name = "DeepBlue", code = "PPSB", h = 0.616, s = 1.0, v = 0.399 },
         },
     },
 }
