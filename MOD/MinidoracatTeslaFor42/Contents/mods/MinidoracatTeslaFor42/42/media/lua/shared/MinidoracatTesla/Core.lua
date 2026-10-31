@@ -51,6 +51,8 @@ T.Specs = {
         massKg = 2033,
         regenEff = 0.6,
         hepa = true,
+        -- door clip seconds not 0.8 (scripts/blender/skf/cars/model_y.py DOORS; Liftgate.syncShell, harness test_liftgate)
+        doorClip = { TrunkDoor = 3.6 },
         -- official Model Y paints (TeslaModelY, references/models.md): entry i = vehicle script skin i-1, and saved
         -- games keep the skin index (BaseVehicle.java:2635/2741), so only append. h/s/v (setColorHSV) tint the
         -- damage overlays to the paint (vehicle_common.frag.glsl:6-15), written by scripts/blender/skf/convert.py build
@@ -75,6 +77,7 @@ T.Specs = {
         kwPerKmh = 0.00572 * T.DRIVE_SCALE,
         massKg = 1851, -- curb mass, China owner's manual / MIIT filing TSL7000BEVBA5
         regenEff = 0.6,
+        doorClip = { TrunkDoor = 3.0 }, -- cars/model_3.py DOORS
         -- official Model 3 Performance paints (US, DE, TW design studios; references/models.md): same rules as above
         colors = {
             { name = "StealthGrey", code = "PN01", h = 0.696, s = 0.541, v = 0.307 },
@@ -83,7 +86,7 @@ T.Specs = {
             { name = "Quicksilver", code = "PN00", h = 0.808, s = 0.484, v = 0.458 },
             { name = "UltraRed", code = "PR01", h = 0.997, s = 1.0, v = 0.471 },
             { name = "DeepBlue", code = "PPSB", h = 0.603, s = 1.0, v = 0.398 },
-            { name = "MarineBlue", code = "PB02", h = 0.586, s = 0.764, v = 0.285 },
+            { name = "MarineBlue", code = "PB02", h = 0.586, s = 0.762, v = 0.285 },
             { name = "FrostBlue", code = "PB00", h = 0.599, s = 0.77, v = 0.483 },
         },
     },
@@ -99,6 +102,7 @@ T.Specs = {
         massKg = 3113, -- Cyberbeast curb mass 6,863 lb (tesla.com 2026-10-30)
         regenEff = 0.6,
         hepa = true,
+        doorClip = { TrunkDoor = 2.0 }, -- cars/cybertruck.py DOORS
         powershare = true, -- Powershare (owner's manual p.204)
         bedOutlet = { area = "TruckBed", tiles = 2 }, -- bed outlets: a Mobile Connector this near the bed (p.200)
         tonneau = true, -- powered tonneau cover (owner's manual p.60)

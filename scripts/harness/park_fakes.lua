@@ -172,6 +172,7 @@ function F.vehicle(o)
     function v:getVehicleTowing() return self.towing end -- set by a test (a towed fake)
     function v:getMass() return self.mass or 900 end
     function v:getId() return self.id end
+    function v:getColorHue() return 0.6 end -- Liftgate's shell bits (OnSpawnVehicleEnd): no door open on these fakes
     function v:getScriptName() return self.script end
     function v:getScript()
         local name = self.script:gsub("^Base%.", "")

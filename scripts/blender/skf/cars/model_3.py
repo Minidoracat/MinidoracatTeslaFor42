@@ -144,16 +144,17 @@ CAR = dict(
     GUARDS=dict(front=(0.75, 0.80, 0.4), rear=(-0.95, 0.85, 0.45)),
     # the body shell (rear quarters, roof, rear face and the trunk lid in one) is cut along the lid's seams; the
     # window frame trim spans both doors and the C pillar
-    CUT={("Object_11", 5889): ("X+", "X-", "GZ", "CZ"), ("Object_6", 241): ("BF", "BR", "D"),
+    CUT={("Object_11", 5889): ("X+", "X-", "GZ", "CZ", "GY"), ("Object_6", 241): ("BF", "BR", "D"),
          ("Object_11", 1590): ("FZ", "FX+", "FX-")},   # the front bumper
     # name: (point, normal, cut faces centred behind this y); GZ: the trunk lid's lower edge; FZ / FX+-: the edges of
     # the black lower front intake, CZ: the spoiler band's lower edge on the lid's rear face (CARBON), so their
-    # borders run straight instead of along big triangles
+    # borders run straight instead of along big triangles; GY: the lid's front edge (IN_GATE y): uncut, the lid's
+    # front corners went along the triangles, a stair of jamb teeth and body slivers in the opening once it lifted
     PLANES={"GZ": ((0, 0, 0.525), (0, 0, 1), -1.30), "FZ": ((0, 0, 0.28), (0, 0, 1), 9.0),
             "FX+": ((0.60, 0, 0), (1, 0, 0), 9.0), "FX-": ((-0.60, 0, 0), (1, 0, 0), 9.0),
-            "CZ": ((0, 0, 0.805), (0, 0, 1), -1.70)},
+            "CZ": ((0, 0, 0.805), (0, 0, 1), -1.70), "GY": ((0, -1.40, 0), (0, 1, 0), -1.30)},
     CUT_X=("Object_12", "Object_13", "Object_14", "Object_16", "Object_17"),   # cut along +-GATE_X
-    CUT_X_Y=-1.35,
+    CUT_X_Y=-1.30,                         # the lid's side seams from ahead of its front edge (GY) back
     DOOR_OBJS=("Object_6", "Object_7", "Object_9", "Object_12", "Object_13", "Object_14", "Object_17", "Object_18"),
     GATE_OBJS=("Object_12", "Object_13", "Object_14", "Object_16", "Object_17"),
     GATE_COMPS=(),

@@ -83,9 +83,14 @@ Events = setmetatable({}, {
         return ev
     end,
 })
-function H.fire(name, ...)
+function H.fire(name, ...) -- as Event.trigger (Event.java:52-62): a handler that removes itself does not skip the next
     local list = handlers[name] or {}
-    for i = 1, #list do list[i](...) end
+    local i = 1
+    while list[i] do
+        local fn = list[i]
+        fn(...)
+        if list[i] == fn then i = i + 1 end
+    end
 end
 function H.count(name) return #(handlers[name] or {}) end
 
