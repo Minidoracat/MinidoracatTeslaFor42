@@ -60,8 +60,10 @@ end
 -- Model X (Specs falcon): E on a door takes the first seat that door serves (Vehicles.Use.Door, Vehicles.lua:816-827),
 -- and so does the gamepad's Interact prompt (ISButtonPrompt.lua:572-589, cmdEnterVehicle); PassengerSeat6 loads Rear*
 -- (3rd row) before Middle* (template_passenger.txt), so both sat in the 3rd row, and did nothing once it was taken.
--- At a falcon wing: the free 2nd-row seat, then the 3rd row's, else vanilla's. The seat panel (ISVehicleSeatUI) calls
--- ISVehicleMenu.onEnter itself: a seat picked there stays as picked.
+-- At a falcon wing: the free 2nd-row seat, then the 3rd row's, else vanilla's. Free = installed and nobody (no load) in
+-- it: isSeatOccupied only sees people and items, the seat part may be gone (BaseVehicle.java:2232-2239), and vanilla
+-- refuses a missing seat (ISVehicleMenu.lua:1432-1436). The seat panel (ISVehicleSeatUI) calls ISVehicleMenu.onEnter
+-- itself: a seat picked there stays as picked.
 local ROWS = { DoorRearLeft = { "MiddleLeft", "RearLeft" }, DoorRearRight = { "MiddleRight", "RearRight" } }
 function E.falconSeat(vehicle, part)
     local rows, s = part and ROWS[part:getId()], T.spec(vehicle)
@@ -69,7 +71,8 @@ function E.falconSeat(vehicle, part)
     local script = vehicle:getScript()
     for _, name in ipairs(rows) do
         for seat = 0, vehicle:getMaxPassengers() - 1 do
-            if script:getPassenger(seat):getId() == name and not vehicle:isSeatOccupied(seat) then return seat end
+            if script:getPassenger(seat):getId() == name and vehicle:isSeatInstalled(seat)
+                and not vehicle:isSeatOccupied(seat) then return seat end
         end
     end
 end
