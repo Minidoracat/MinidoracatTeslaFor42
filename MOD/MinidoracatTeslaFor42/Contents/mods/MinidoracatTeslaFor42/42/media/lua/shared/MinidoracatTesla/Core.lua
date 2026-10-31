@@ -166,10 +166,10 @@ T.Specs = {
         hepa = true, -- HEPA filtration, Bioweapon Defense Mode (Model X owner's manual)
         falcon = true, -- falcon wing doors: the app's button opens both rear doors (owner's manual p.31-33)
         -- the falcon wing doors swing up in a 2.4 s clip (cars/model_x.py DOORS): the climb waits until they are nearly
-        -- up (EnterDoor.lua; E2E to confirm); the front doors keep E.WAIT
+        -- up (EnterDoor.lua; modelx-sp tesla-mx-1101g: the climb starts 1.84 s into the clip, the wing up); the front
+        -- doors keep E.WAIT
         doorWait = { DoorRearLeft = 2.3, DoorRearRight = 2.3 },
-        -- Open / Close clip seconds per part (cars/model_x.py DOORS); doors not listed run 0.8 s
-        doorClip = { TrunkDoor = 3.6, DoorRearLeft = 2.4, DoorRearRight = 2.4 },
+        doorClip = { TrunkDoor = 3.6, DoorRearLeft = 2.4, DoorRearRight = 2.4 }, -- cars/model_x.py DOORS
         -- Model X Plaid paints: the last US design studio's six (Lexicon 2026-03-06) and China's pre-refresh Solid
         -- Black and Deep Blue (2025-03). Same order and append-only rules as above; h/s/v by convert.py build.
         colors = {
