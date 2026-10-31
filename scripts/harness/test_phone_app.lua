@@ -318,6 +318,38 @@ check(last("appState").falcon == false and last("appState").locked == true, "fal
 RL.open = true -- someone opened the left wing by hand: one open is enough for the app's 'open'
 d = act(owner, "falcon", false)
 check(d.why == nil and not RL.open and not RR.open, "falcon: one wing open, app asks closed -> it closes")
+-- review R1-1: the wings lock again however they were shut, while both front doors are locked
+act(owner, "falcon", true)
+RL.open = false -- the left one shut by hand (unlocked), then the app shuts the right one: both lock
+d = act(owner, "falcon", false)
+check(d.why == nil and not RR.open and RL.locked and RR.locked, "falcon: one shut by hand, the app shuts the other -> both lock")
+act(owner, "falcon", true)
+RL.open, RR.open = false, false -- both shut by hand, unlocked: the app's close has nothing to move and still locks them
+d = act(owner, "falcon", false)
+check(d.why == nil and RL.locked and RR.locked, "falcon: both shut by hand, the app's close (nothing to move) locks them")
+act(owner, "falcon", true)
+RL.open = false -- shut by hand: the close action's hook (Liftgate.relock) locks it
+check(T.Liftgate.relock(v, v:getPartById("DoorRearLeft")) == true and RL.locked, "falcon: a wing shut by hand locks (Liftgate.relock)")
+act(owner, "falcon", false)
+v.script = script0
+RL.open = false
+RL.locked = false
+check(T.Liftgate.relock(v, v:getPartById("DoorRearLeft")) == false and not RL.locked,
+    "Model Y rear door shut on a locked car: an ordinary door, not relocked")
+RL.locked = true
+v.script = "Base.MinidoracatTesla_ModelX"
+-- review R1-2: a removed lid or wing (part there, no item) with its door object still "open" reads shut in the app
+local gate = v.parts.TrunkDoor
+gate.d.open = true
+function gate:getInventoryItem() return nil end
+RL.open = true
+local rlGet = v.parts.DoorRearLeft.getInventoryItem
+function v.parts.DoorRearLeft:getInventoryItem() return nil end
+R.remember(v)
+local rec = R.record(v.keyId)
+check(rec ~= nil and rec.trunk == false and rec.falcon == false, "removed liftgate / left wing, door 'open': the app reads them shut")
+gate.getInventoryItem, gate.d.open = function() return {} end, false
+v.parts.DoorRearLeft.getInventoryItem, RL.open = rlGet, false
 v.doors[1].d.locked = false
 act(owner, "falcon", true)
 act(owner, "falcon", false)
