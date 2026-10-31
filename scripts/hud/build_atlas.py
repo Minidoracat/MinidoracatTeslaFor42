@@ -257,6 +257,12 @@ def ic_tonneau(c):  # Cybertruck side view: the bed's open top, the cover rolled
     c.stroke([("M", 2.5, 6), ("H", 6)], w=1.3)
 
 
+def ic_falcon(c):  # Model X falcon wing doors, seen from behind: the body, both wings raised from the roof
+    c.stroke([("M", 3, 14), ("V", 11), ("L", 5, 8.5), ("H", 11), ("L", 13, 11), ("V", 14), ("Z",)], w=1.3)
+    c.stroke([("M", 7, 8.5), ("L", 4, 3), ("L", 1.5, 5.5)], w=1.3)
+    c.stroke([("M", 9, 8.5), ("L", 12, 3), ("L", 14.5, 5.5)], w=1.3)
+
+
 def ic_lightbar(c):  # roof light bar: the bar and its beams ahead
     c.rrect(2, 2.5, 12, 3, 1.2, outline="#FFFFFF", ow=1.3)
     for x0, x1 in ((4, 2.5), (8, 8), (12, 13.5)):
@@ -422,7 +428,32 @@ def car_cybertruck(c):
         c.stroke([("M", 87, y0 + 0.6), ("V", y1 - 0.6)], w=1.0, color="#4A525B")
 
 
-CARS = {"ModelY": car_modely, "Model3": car_model3, "Cybertruck": car_cybertruck}
+def car_modelx(c):
+    """Model X (owner's manual p.222: 5,057 x 1,999 mm, wheelbase 2,965, overhangs front 988 / rear 1,104) at 0.026
+    viewBox units per mm: as wide as the Model Y here. Rear 18, nose 149, axles x 46.7 and 123.8. The liftgate (x
+    18-49.9) carries the rear glass; each falcon wing door runs from the roof's spine (y 46.5 / 49.5) down its side,
+    from the liftgate's seam (x 49.9) to the B-pillar (x 85), its glass on the roof; the panoramic windscreen runs from
+    the B-pillar to the frunk lid (x 120). HUD.lua ZONES.ModelX follows these edges."""
+    for x in (37.2, 114.3):  # 20" wheels (about 755 mm) on the axles
+        for y in (16, 72):
+            c.rrect(x, y, 19, 8, 2, fill="#0B0D0F", outline="#8E98A3", ow=1.1)
+    body = [("M", 32, 22), ("H", 128), ("Q", 147, 22, 149, 38), ("V", 58), ("Q", 147, 74, 128, 74),
+            ("H", 32), ("Q", 18, 74, 18, 62), ("V", 34), ("Q", 18, 22, 32, 22), ("Z",)]
+    c.fill(body, "#2A3037")
+    c.stroke(body, w=1.3, color="#AEB6BF")
+    c.fill([("M", 86, 28), ("H", 104), ("Q", 117, 29, 120, 38), ("V", 58), ("Q", 117, 67, 104, 68), ("H", 86), ("Z",)],
+           "#15191E")  # windscreen over the front seats
+    c.rrect(51.5, 27, 32.5, 19.5, 3, fill="#15191E")  # falcon wing glass, left (top) and right
+    c.rrect(51.5, 49.5, 32.5, 19.5, 3, fill="#15191E")
+    c.fill([("M", 27, 31), ("H", 47), ("V", 65), ("H", 27), ("Q", 23, 65, 23, 60), ("V", 36), ("Q", 23, 31, 27, 31), ("Z",)],
+           "#15191E")  # liftgate glass
+    c.stroke([("M", 49.9, 22.6), ("V", 73.4)], w=1.0, color="#4A525B")  # liftgate / falcon wing seam
+    c.stroke([("M", 51, 48), ("H", 84)], w=1.0, color="#4A525B")  # the wings' roof hinge (spine)
+    for y0, y1 in ((22, 27), (69, 74)):  # B-pillar seam
+        c.stroke([("M", 85, y0 + 0.6), ("V", y1 - 0.6)], w=1.0, color="#4A525B")
+
+
+CARS = {"ModelY": car_modely, "Model3": car_model3, "Cybertruck": car_cybertruck, "ModelX": car_modelx}
 
 
 def dashed(c, x0, y0, x1, y1, w=1.8, dash=3.0, gap=2.0):
@@ -443,12 +474,22 @@ DOOR_GEOM = {
     # the tailgate folds down behind the bed; the tonneau rolls into its canister at the bed's front wall
     "Cybertruck": {"front": (87, 118), "rear": (62, 87), "y": (22, 74), "tr": ((8, 28, 68), (2, 26, 70)),
                    "hd": ((154, 34, 62), (159, 32, 64)), "kinds": ("FL", "FR", "RL", "RR", "TR", "TN", "HD")},
+    # falcon: the rear doors are the Model X's falcon wings (spine y 48), drawn raised instead of swung out
+    "ModelX": {"front": (85, 113), "rear": (49.9, 85), "y": (22, 74), "falcon": 48, "tr": ((18, 36, 60), (12, 34, 62)),
+               "hd": ((149, 38, 58), (155, 36, 60)), "kinds": ("FL", "FR", "RL", "RR", "TR", "HD")},
 }
 
 
 def door_overlay(kind, g):
     def paint(c):
-        if kind in ("FL", "RL", "FR", "RR"):
+        if kind in ("RL", "RR") and g.get("falcon"):  # falcon wing: its footprint dashed, the raised wing up on the spine
+            x0, x1 = g["rear"]
+            side, spine = (g["y"][0], g["falcon"] - 1.5) if kind == "RL" else (g["y"][1], g["falcon"] + 1.5)
+            for a, b, cc, d in ((x0, side, x1, side), (x0, side, x0, spine), (x1, side, x1, spine)):
+                dashed(c, a, b, cc, d)
+            tip = spine + (-8 if kind == "RL" else 8)  # the folded lower panel stands out a little past the hinge
+            c.stroke([("M", x0 + 2, tip), ("L", x0 + 2, spine), ("H", x1 - 2), ("L", x1 - 2, tip)], w=2.8)
+        elif kind in ("FL", "RL", "FR", "RR"):
             x0, x1 = g["front"] if kind[0] == "F" else g["rear"]
             y = g["y"][0] if kind[1] == "L" else g["y"][1]
             out = -17 if kind[1] == "L" else 17
@@ -483,7 +524,8 @@ WORDS = [("kmh", "Inter-Regular.ttf", 14, "km/h", 0), ("km", "Inter-Regular.ttf"
          ("inf", "Inter-Regular.ttf", 17, "\u221e", 0),
          ("wm_ModelY", "Inter-Light.ttf", 15, "MODEL Y", 5), ("trim_ModelY", "Inter-Regular.ttf", 13, "Performance", 0),
          ("wm_Model3", "Inter-Light.ttf", 15, "MODEL 3", 5), ("trim_Model3", "Inter-Regular.ttf", 13, "Performance", 0),
-         ("wm_Cybertruck", "Inter-Light.ttf", 15, "CYBERTRUCK", 3), ("trim_Cybertruck", "Inter-Regular.ttf", 13, "Cyberbeast", 0)]
+         ("wm_Cybertruck", "Inter-Light.ttf", 15, "CYBERTRUCK", 3), ("trim_Cybertruck", "Inter-Regular.ttf", 13, "Cyberbeast", 0),
+         ("wm_ModelX", "Inter-Light.ttf", 15, "MODEL X", 5), ("trim_ModelX", "Inter-Regular.ttf", 13, "Plaid", 0)]
 
 
 def render_text(fontfile, size, s, track=0):
@@ -532,6 +574,7 @@ def build_sprites(k):
         "heater": ic_heater, "radio": ic_radio, "warn": ic_warn, "bolt": ic_bolt, "check": ic_check,
         "ring": ic_ring, "dot": ic_dot, "plug": ic_plug, "power": ic_power,
         "horn": ic_horn, "frunk": ic_frunk, "trunk": ic_trunk, "lockfill": ic_lockfill, "carfront": ic_carfront,
+        "falcon": ic_falcon,
         "nav": ic_nav, "shield": ic_shield, "chev": ic_chev, "chevdown": ic_chevdown, "back": ic_back, "close": ic_close,
         "wheel": ic_wheel, "pin": ic_pin, "tonneau": ic_tonneau, "powershare": ic_house,
     }

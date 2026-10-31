@@ -43,6 +43,10 @@ local POW2 = { 1, 2, 4, 8, 16, 32, 64, 128 }
 -- The Cybertruck: the tailgate behind the bed (x 0-14), the tonneau over the bed (to its front wall, viewBox 56.4 =
 -- x 51), the rear glass (x 51-55) opens nothing, the doors split at viewBox 87 (x 77), the front doors end at the
 -- frunk lid (viewBox 118 = x 104).
+-- The Model X: the liftgate with its rear glass (x 0-44, its seam at viewBox 49.9), the falcon wing doors (DoorRearLeft
+-- / DoorRearRight) from that seam to the B-pillar (viewBox 85 = x 75), split at the roof's spine like the other cars'
+-- rear doors (an open one is drawn raised, door_RL_ModelX / door_RR_ModelX), the front doors to the windscreen's foot
+-- at the frunk lid (viewBox 120 = x 106).
 local ZONES = {
     ModelY = {
         { 5, 0, 0, 45, 85 }, { 3, 45, 0, 69, 42.5 }, { 4, 45, 42.5, 69, 85 },
@@ -55,6 +59,10 @@ local ZONES = {
     Cybertruck = {
         { 5, 0, 0, 14, 85 }, { 8, 14, 0, 51, 85 }, { 3, 55, 0, 77, 42.5 }, { 4, 55, 42.5, 77, 85 },
         { 1, 77, 0, 104, 42.5 }, { 2, 77, 42.5, 104, 85 }, { 7, 104, 0, 140, 85 },
+    },
+    ModelX = {
+        { 5, 0, 0, 44, 85 }, { 3, 44, 0, 75, 42.5 }, { 4, 44, 42.5, 75, 85 },
+        { 1, 75, 0, 106, 42.5 }, { 2, 75, 42.5, 106, 85 }, { 7, 106, 0, 140, 85 },
     },
 }
 HUD.ZONES = ZONES
