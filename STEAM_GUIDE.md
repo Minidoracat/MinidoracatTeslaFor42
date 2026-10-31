@@ -47,7 +47,7 @@ https://steamcommunity.com/sharedfiles/filedetails/?id=3829501237
 [*] [b]煞車[/b]：動能回收讓煞車磨損只有一般車的一半。
 [/list]
 === 🧰 Cybertruck（Cyberbeast）
-<!-- 待拍圖：23-cybertruck-zh.jpg（不鏽鋼與幾種包膜並排，一台車斗蓋打開、尾門放下；guide-shots-sp 要加 Cybertruck 段） -->
+{{img:23-cybertruck-zh.jpg}}
 [list]
 [*] [b]出現在哪[/b]：只在高級住宅區，在那裡的機率是 Model Y 的一半；停車格不會出現。
 [*] [b]頂規 Cyberbeast[/b]：維修介面顯示 845 hp，推力比 Model Y、Model 3 大；極速、抓地與煞車和兩台轎車同級。
@@ -62,7 +62,7 @@ https://steamcommunity.com/sharedfiles/filedetails/?id=3829501237
 [tr][td]Cybertruck Cyberbeast[/td][td]Stainless（不鏽鋼）、Satin Stealth Black、Satin Ceramic White、Satin Rose Gold、Satin Tactical Green、Satin Dark Grey、Satin Forest Green、Satin Abyss Blue、Copper Tinted Clear、Satin Crimson Red、Satin Iridescent Purple、Slip Grey[/td][td]14[/td][td]110[/td][/tr]
 [/table]
 [h3]車斗、尾門與車斗蓋[/h3]
-<!-- 待拍圖：24-ct-bed-zh.jpg（夜裡車斗蓋打開、尾門放下、車斗燈亮；構圖同 cybertruck-body-sp 的 tonneau-tailgate） -->
+{{img:24-ct-bed-zh.jpg}}
 [list]
 [*] [b]容量[/b]：車斗 110（和原版皮卡一樣），前行李廂 14。
 [*] [b]尾門[/b]：往下翻開；在車尾按互動鍵、點儀表車子圖的車尾，或按 App 首頁的尾門圖示。
@@ -137,7 +137,7 @@ https://steamcommunity.com/sharedfiles/filedetails/?id=3829501237
 [*] [b]按鈕[/b]：停止／開始充電、拔下充電線、關閉；手把也能操作。沒有權限時（車鎖著又沒鑰匙）目標與這些按鈕變灰，滑鼠移上去說明原因。
 [/list]
 === 🧰 Powershare 與車斗插座（Cybertruck）
-<!-- 待拍圖：25-ct-powershare-zh.jpg（停電後屋裡的燈亮著＋App Powershare 頁「供電給家裡 · N kW」；構圖同 powershare-sp 的 ps-* 圖） -->
+{{img:25-ct-powershare-zh.jpg}}
 [h3]Powershare 住宅備援[/h3]
 [list]
 [*] [b]是什麼[/b]：家裡停電時，用 Cybertruck 的電供電給家裡，照實車的 Powershare 住宅備援。
@@ -158,7 +158,7 @@ https://steamcommunity.com/sharedfiles/filedetails/?id=3829501237
 [tr][td]已停止[/td][td]電量到了放電下限，或找不到能供電的位置；App 寫出原因[/td][/tr]
 [/table]
 [h3]車斗插座：幫別台特斯拉充電[/h3]
-<!-- 待拍圖：26-ct-outlet-zh.jpg（尾門放下，車斗旁的行動充電器插著 Model Y，充電卡寫「電源：Cybertruck 車斗插座」；構圖同 powershare-sp 的車斗插座段） -->
+{{img:26-ct-outlet-zh.jpg}}
 [olist]
 [*] 在 V 鍵圓盤選「開啟車斗插座」，或在 App 的 Powershare 頁打開「車斗插座」。
 [*] 放下尾門（拆掉也算）。

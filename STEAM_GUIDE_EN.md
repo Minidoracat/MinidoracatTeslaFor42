@@ -47,7 +47,7 @@ https://steamcommunity.com/sharedfiles/filedetails/?id=3829501237
 [*] [b]Brakes[/b]: regenerative braking halves brake wear compared with a normal car.
 [/list]
 === 🧰 Cybertruck (Cyberbeast)
-<!-- Shot to take: 23-cybertruck-en.jpg (stainless and a few wraps side by side, one with the tonneau open and the tailgate down; guide-shots-sp needs a Cybertruck part) -->
+{{img:23-cybertruck-en.jpg}}
 [list]
 [*] [b]Where it spawns[/b]: upscale neighbourhoods only, at half the Model Y's chance there; never in parking lots.
 [*] [b]Top trim Cyberbeast[/b]: the mechanics window shows 845 hp, and it pulls harder than the Model Y and Model 3; top speed, grip and braking match the two cars.
@@ -62,7 +62,7 @@ https://steamcommunity.com/sharedfiles/filedetails/?id=3829501237
 [tr][td]Cybertruck Cyberbeast[/td][td]Stainless, Satin Stealth Black, Satin Ceramic White, Satin Rose Gold, Satin Tactical Green, Satin Dark Grey, Satin Forest Green, Satin Abyss Blue, Copper Tinted Clear, Satin Crimson Red, Satin Iridescent Purple, Slip Grey[/td][td]14[/td][td]110[/td][/tr]
 [/table]
 [h3]Cargo bed, tailgate and tonneau cover[/h3]
-<!-- Shot to take: 24-ct-bed-en.jpg (at night, tonneau open, tailgate down, bed lights on; framed like cybertruck-body-sp's tonneau-tailgate) -->
+{{img:24-ct-bed-en.jpg}}
 [list]
 [*] [b]Capacity[/b]: Cargo Bed 110 (same as the vanilla pickup), Front Trunk 14.
 [*] [b]Tailgate[/b]: folds down; use the interact key at the rear, click the rear of the car on the dashboard, or the tailgate icon on the app's home page.
@@ -137,7 +137,7 @@ A charger that works on the floor, no wall needed; slower than the Wall Connecto
 [*] [b]Buttons[/b]: stop / start charging, unplug, close; a controller works too. Without the right (car locked, no key) the target and these buttons are grey and the hover help says why.
 [/list]
 === 🧰 Powershare and the bed outlets (Cybertruck)
-<!-- Shot to take: 25-ct-powershare-en.jpg (lights on in the house after the blackout + the app's Powershare page "Powering the home · N kW"; framed like powershare-sp's ps-* shots) -->
+{{img:25-ct-powershare-en.jpg}}
 [h3]Powershare home backup[/h3]
 [list]
 [*] [b]What it is[/b]: in a blackout the Cybertruck powers your home, like the real Powershare home backup.
@@ -158,7 +158,7 @@ A charger that works on the floor, no wall needed; slower than the Wall Connecto
 [tr][td]Stopped[/td][td]The charge reached the discharge limit, or there is nowhere to supply from; the app says which[/td][/tr]
 [/table]
 [h3]Bed outlets: charge another Tesla[/h3]
-<!-- Shot to take: 26-ct-outlet-en.jpg (tailgate down, a Model Y plugged into a Mobile Connector by the bed, charge card "Power: Cybertruck bed outlet"; framed like powershare-sp's bed outlet part) -->
+{{img:26-ct-outlet-en.jpg}}
 [olist]
 [*] Turn on bed outlets in the V radial menu, or on the app's Powershare page.
 [*] Lower the tailgate (a removed one counts).
