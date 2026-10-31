@@ -432,6 +432,54 @@ check(select(1, clickAt(145, 42)) == false and #toggled == 0, "Model S: x 145 is
 mx, my = at(20, 42)
 h:render()
 check(h.tipArg == "IGUI_MinidoracatTesla_Part_TrunkDoor", "Model S: hovering the tail names the liftgate")
+-- Model X: its own top view and overlays (door_<kind>_ModelX; an open falcon wing is drawn raised, door_RL/RR_ModelX)
+-- and zones: the liftgate x 0-44, the falcon wings (DoorRearLeft / DoorRearRight) x 44-75 split at the roof's spine,
+-- the front doors x 75-106, the frunk lid x 106-140; hovering a wing names the falcon wing door
+do
+local mxc = car({ script = "Base.MinidoracatTesla_ModelX", kwh = 80 })
+mxc.parts.EngineDoor = tesla.parts.EngineDoor
+dash:setVehicle(mxc)
+local mine, sprs = true, {}
+for _, d in ipairs(h.doors) do
+    mine = mine and d.spr:find("_ModelX", 1, true) ~= nil and T.HUDAtlas[1][d.spr] ~= nil and T.HUDAtlas[2][d.spr] ~= nil
+    sprs[d.name] = d.spr
+end
+check(h.carSpr == "car_ModelX" and h.zones == HUD.ZONES.ModelX and T.HUDAtlas[1].car_ModelX ~= nil
+    and T.HUDAtlas[2].car_ModelX ~= nil and #h.doors == 6 and mine and sprs.DoorRearLeft == "door_RL_ModelX"
+    and sprs.DoorRearRight == "door_RR_ModelX", "Model X: car_ModelX, its zones, 6 doors each with its own overlay at both scales")
+toggled = {}
+local xh = { { 20, 42, "TrunkDoor" }, { 60, 20, "DoorRearLeft" }, { 60, 64, "DoorRearRight" },
+    { 90, 20, "DoorFrontLeft" }, { 90, 64, "DoorFrontRight" }, { 120, 42, "EngineDoor" } }
+local xOk = true
+for i, z in ipairs(xh) do xOk = xOk and select(1, clickAt(z[1], z[2])) == true and toggled[i] == z[3] end
+check(xOk and #toggled == 6, "Model X: liftgate, both falcon wings, both front doors and the frunk lid each toggle their part")
+toggled = {}
+check(select(1, clickAt(43, 20)) == true and toggled[1] == "TrunkDoor" and select(1, clickAt(45, 20)) == true
+    and toggled[2] == "DoorRearLeft" and select(1, clickAt(74, 64)) == true and toggled[3] == "DoorRearRight"
+    and select(1, clickAt(76, 64)) == true and toggled[4] == "DoorFrontRight", "Model X: the seams at x 44 and 75 split the zones")
+mx, my = at(60, 20)
+h:render()
+check(h.tipArg == "IGUI_MinidoracatTesla_Part_FalconWingLeft", "Model X: hovering the left wing names the falcon wing door")
+mx, my = at(60, 64)
+h:render()
+check(h.tipArg == "IGUI_MinidoracatTesla_Part_FalconWingRight", "...and the right one")
+mxc.parts.DoorRearLeft.door.open = true
+h:update(); h:update(); h:update()
+check(h.st.doors == 4, "Model X: left falcon wing open -> door bit 4 (drawn with door_RL_ModelX)")
+mxc.parts.DoorRearLeft.door.open = false
+-- every car's zones: inside the picture before the quick keys (x <= 140, 0 <= y <= 85), none overlapping
+local zOk = true
+for model, zs in pairs(HUD.ZONES) do
+    for i, a in ipairs(zs) do
+        zOk = zOk and a[2] >= 0 and a[3] >= 0 and a[4] <= 140 and a[5] <= 85 and a[2] < a[4] and a[3] < a[5]
+        for j = i + 1, #zs do
+            local b = zs[j]
+            if a[2] < b[4] and b[2] < a[4] and a[3] < b[5] and b[3] < a[5] then zOk = false; print("overlap " .. model) end
+        end
+    end
+end
+check(zOk, "every car's zones inside x 0-140, y 0-85, none overlapping")
+end
 dash:setVehicle(tesla)
 T.Liftgate.toggle = realToggle
 mx = nil

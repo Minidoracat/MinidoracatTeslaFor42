@@ -38,6 +38,8 @@ T.DRIVE_SCALE = 10
 -- Model X p.165; none in the Model 3's), Camp.lua C.filterAir and the radial slice.
 -- Cybertruck only: tonneau (the app's tonneau cover button), armorGlass (smashes a window takes, Truck.lua),
 -- powershare and bedOutlet (Powershare, the bed outlets).
+-- Model X only: falcon (the app's falcon wing doors button), doorWait (seconds the climb waits after a door's open
+-- action, per door part; EnterDoor.lua, else its E.WAIT).
 T.Specs = {
     ["Base.MinidoracatTesla_ModelY"] = {
         model = "ModelY",
@@ -145,6 +147,37 @@ T.Specs = {
             { name = "DeepBlue", code = "PPSB", h = 0.616, s = 1.0, v = 0.399 },
         },
     },
+    ["Base.MinidoracatTesla_ModelX"] = {
+        model = "ModelX",
+        appCar = "app_car_modelx_",
+        -- z: handle height at this car's charge port (E2E integration-mp)
+        plug = { item = "Base.MinidoracatTesla_CablePlugModelX", z = 0.84 }, -- tesla-mx-1101b (port 0.837)
+        v12Kwh = 15.5 * 6.9 / 1000, -- 15.5 V, 6.9 Ah (Model X owner's manual 2025.2, p.226)
+        -- the Model Y coefficients x 100 / 78.4: a full pack still drives one vanilla tank's distance
+        idleKw = 0.0480 * T.DRIVE_SCALE,
+        kwPerKmh = 0.00730 * T.DRIVE_SCALE,
+        massKg = 2465, -- Model X Plaid curb mass 5,434 lb (tesla.com 2026-03-09)
+        regenEff = 0.6,
+        hepa = true, -- HEPA filtration, Bioweapon Defense Mode (Model X owner's manual)
+        falcon = true, -- falcon wing doors: the app's button opens both rear doors (owner's manual p.31-33)
+        -- the falcon wing doors swing up in a 2.4 s clip (cars/model_x.py DOORS): the climb waits until they are nearly
+        -- up (EnterDoor.lua; E2E to confirm); the front doors keep E.WAIT
+        doorWait = { DoorRearLeft = 2.3, DoorRearRight = 2.3 },
+        -- Open / Close clip seconds per part (cars/model_x.py DOORS); doors not listed run 0.8 s
+        doorClip = { TrunkDoor = 3.6, DoorRearLeft = 2.4, DoorRearRight = 2.4 },
+        -- Model X Plaid paints: the last US design studio's six (Lexicon 2026-03-06) and China's pre-refresh Solid
+        -- Black and Deep Blue (2025-03). Same order and append-only rules as above; h/s/v by convert.py build.
+        colors = {
+            { name = "StealthGrey", code = "PN01", h = 0.72, s = 0.538, v = 0.283 },
+            { name = "LunarSilver", code = "PN02", h = 0.634, s = 0.53, v = 0.56 },
+            { name = "PearlWhite", code = "PPSW", h = 0.645, s = 0.501, v = 0.918 },
+            { name = "UltraRed", code = "PR01", h = 0.981, s = 1.0, v = 0.466 },
+            { name = "DiamondBlack", code = "PX02", h = 0.953, s = 0.537, v = 0.227 },
+            { name = "FrostBlue", code = "PB00", h = 0.586, s = 0.894, v = 0.487 },
+            { name = "SolidBlack", code = "PBSB", h = 0.925, s = 0.52, v = 0.24 },
+            { name = "DeepBlue", code = "PPSB", h = 0.567, s = 1.0, v = 0.502 },
+        },
+    },
 }
 
 -- Index into a colors table, drawn by each entry's weight (none = 1: the Model Y and Model 3 paints stay even)
@@ -169,6 +202,8 @@ T.Packs = {
     ["Base.MinidoracatTesla_CybertruckBattery"] = 123,
     -- Model S Plaid: Tesla publishes no kWh; EV Database's nominal 100 kWh (ev-database.org car 3384)
     ["Base.MinidoracatTesla_ModelSBattery"] = 100,
+    -- Model X Plaid: EV Database's nominal 100 kWh (Tesla publishes none)
+    ["Base.MinidoracatTesla_ModelXBattery"] = 100,
 }
 
 -- Tesla display names for vanilla text keys: vanilla key -> Tesla key. Read by client/MinidoracatTesla/PartNames.lua
@@ -219,6 +254,12 @@ T.CarPartNames = {
         IGUI_MinidoracatTesla_Tip_AppUnlock = "IGUI_MinidoracatTesla_Tip_AppUnlockCybertruck",
         IGUI_MinidoracatTesla_Tip_AppTrunk = "IGUI_MinidoracatTesla_Tip_AppTailgate",
         IGUI_MinidoracatTesla_App_ControlsSub = "IGUI_MinidoracatTesla_App_ControlsSubCybertruck",
+    },
+    -- Model X owner's manual: the rear doors are the falcon wing doors (p.31-33)
+    ["Base.MinidoracatTesla_ModelX"] = {
+        IGUI_VehiclePartDoorRearLeft = "IGUI_MinidoracatTesla_Part_FalconWingLeft",
+        IGUI_VehiclePartDoorRearRight = "IGUI_MinidoracatTesla_Part_FalconWingRight",
+        IGUI_MinidoracatTesla_App_ControlsSub = "IGUI_MinidoracatTesla_App_ControlsSubModelX",
     },
 }
 -- the Tesla key for a key on this car (script full name), or nil

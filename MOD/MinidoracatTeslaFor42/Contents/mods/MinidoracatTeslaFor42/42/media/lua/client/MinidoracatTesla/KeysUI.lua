@@ -140,7 +140,8 @@ local NAMED = { K.CARD, K.PHONE, K.PHONE_KEY }
 local MODELS = { ["Model Y"] = "MinidoracatTesla_ModelY", ModelY = "MinidoracatTesla_ModelY",
     ["Model 3"] = "MinidoracatTesla_Model3", Model3 = "MinidoracatTesla_Model3",
     Cybertruck = "MinidoracatTesla_Cybertruck",
-    ["Model S"] = "MinidoracatTesla_ModelS", ModelS = "MinidoracatTesla_ModelS" }
+    ["Model S"] = "MinidoracatTesla_ModelS", ModelS = "MinidoracatTesla_ModelS",
+    ["Model X"] = "MinidoracatTesla_ModelX", ModelX = "MinidoracatTesla_ModelX" }
 local function carText(car) return type(car) == "string" and getTextOrNull("IGUI_VehicleName" .. car) or nil end
 local function modelIn(name)
     for s, car in pairs(MODELS) do

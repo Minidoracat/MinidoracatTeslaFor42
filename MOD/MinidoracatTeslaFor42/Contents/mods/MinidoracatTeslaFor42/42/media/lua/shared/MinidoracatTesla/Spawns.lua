@@ -2,7 +2,7 @@
 -- OnInitGlobalModData and later replaces the live table (MVSC_Server.lua:99-109,322-327), so late edits are lost.
 -- Format and weights next to the vanilla ModernCar (VehicleZoneDefinition.lua:43,103). Weights follow the designs
 -- (plan-1023): both cars park in parking stalls at 3; only the Model Y also shows up in the upscale "good" zone at 4.
--- The Cybertruck (plan-cybertruck-1030) shows up only in the "good" zone, at 2.
+-- The Cybertruck (plan-cybertruck-1030) shows up only in the "good" zone, at 2; so does the Model X (plan-sx-1031).
 -- The Model S Plaid (plan-sx-1031) likewise: a US$100k flagship, the "good" zone only, at 2.
 local Z = VehicleZoneDistribution
 if Z and Z.parkingstall and Z.parkingstall.vehicles then
@@ -13,4 +13,5 @@ if Z and Z.good and Z.good.vehicles then
     Z.good.vehicles["Base.MinidoracatTesla_ModelY"] = { index = -1, spawnChance = 4 }
     Z.good.vehicles["Base.MinidoracatTesla_Cybertruck"] = { index = -1, spawnChance = 2 }
     Z.good.vehicles["Base.MinidoracatTesla_ModelS"] = { index = -1, spawnChance = 2 }
+    Z.good.vehicles["Base.MinidoracatTesla_ModelX"] = { index = -1, spawnChance = 2 }
 end

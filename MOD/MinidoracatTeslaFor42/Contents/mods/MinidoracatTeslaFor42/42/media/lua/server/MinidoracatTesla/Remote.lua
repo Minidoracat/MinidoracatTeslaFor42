@@ -1,8 +1,8 @@
 -- Tesla app on the phone key, server side (client: client/MinidoracatTesla/PhoneApp.lua; reach: Keys.appReach).
 --   * appStatus { key }: every 2 s while a holder has the app open. The car as it is when the server has it loaded and
 --     the phone reaches it (grid up: any distance; grid down: Bluetooth, Keys.btRange()); else its last record.
---   * appAction { key, act, on }: lock, unlock, flash, horn, sentry, charge, frunk, trunk, tonneau, summon (+ mode, x,
---     y, dir), powershare, outlet, psFloor (+ pct).
+--   * appAction { key, act, on }: lock, unlock, flash, horn, sentry, charge, frunk, trunk, tonneau, falcon, summon (+
+--     mode, x, y, dir), powershare, outlet, psFloor (+ pct).
 --     Holder, reach, the VehicleManager right for doing the same thing in person, and the action's own rules are
 --     checked every time, but a summoner stopping their own summon skips reach and the VehicleManager.
 --   * appAlerts { key }: the car's last sentry / camp alerts.
@@ -95,8 +95,10 @@ function R.remember(v, create)
         r.target = chg.target or 90
         if r.chg == "charging" and (chg.kw or 0) > 0 then r.mins = math.floor(left * 60 + 0.5) end
     end
-    -- Cybertruck: Powershare (T.psState, its limit, the house's load and hours left) and the bed outlet
     local s = T.spec(v)
+    -- Model X falcon wings (Specs falcon): either one open; nil on other cars, whose rear doors are ordinary doors
+    r.falcon = (s and s.falcon or nil) and (doorOpen(v, "DoorRearLeft") or doorOpen(v, "DoorRearRight"))
+    -- Cybertruck: Powershare (T.psState, its limit, the house's load and hours left) and the bed outlet
     local ps = md.ps
     r.ps = s and s.powershare and T.psState(part) or nil
     r.psFloor = (s and (s.powershare or s.bedOutlet)) and T.psFloor(part) or nil
@@ -189,6 +191,7 @@ end
 local VM_CODES = {
     lock = { "PASSENGER" }, unlock = { "PASSENGER" }, flash = { "PASSENGER" }, horn = { "PASSENGER" },
     sentry = { "PASSENGER" }, trunk = { "CARGO" }, tonneau = { "CARGO" }, frunk = { "REPAIR", "SALVAGE" },
+    falcon = { "PASSENGER" }, -- rear doors in person: PASSENGER (MinidoracatVehicleManager_Actions.lua:20-24 doorAction)
     charge = { "FUEL" },
     summon = { "DRIVE" }, -- the car moves: the right to drive it (VehicleManager also wraps startSummon itself)
     powershare = { "FUEL" }, outlet = { "FUEL" }, psFloor = { "FUEL" }, -- the charge cable's right (T.mayUseCable)
@@ -234,6 +237,50 @@ local function swing(id)
         T.Liftgate.swing(v, part, open, player:getUsername())
         return nil, open
     end
+end
+
+-- Model X falcon wing doors (Specs falcon): both together, the same rules as swing. Every installed one takes part;
+-- a broken lock on one that would open refuses the whole press before anything moves. Opening unlocks them; closing
+-- locks them again while the front doors are locked (the car stays locked, like Liftgate.relock for the lids). A
+-- Model Y's rear doors are ordinary doors: NO_DOOR on any car without Specs falcon.
+local FALCON = { "DoorRearLeft", "DoorRearRight" }
+local FRONT = { "DoorFrontLeft", "DoorFrontRight" }
+local function falcon(player, v, open)
+    local s = T.spec(v)
+    if not (s and s.falcon) then return "NO_DOOR" end
+    if not T.stopped(v) then return "MOVING" end
+    local move, any = {}, false
+    for _, id in ipairs(FALCON) do
+        local part = v:getPartById(id)
+        local door = part and part:getInventoryItem() and part:getDoor()
+        if door then
+            any = true
+            if door:isOpen() ~= open then
+                if open and door:isLocked() and door:isLockBroken() then return "LOCK_BROKEN" end
+                move[#move + 1] = part
+            end
+        end
+    end
+    if not any then return "NO_DOOR" end
+    if #move == 0 then return nil, open, true end
+    local relock = not open
+    if relock then
+        for _, id in ipairs(FRONT) do
+            local part = v:getPartById(id)
+            local door = part and part:getDoor()
+            if door and not door:isLocked() then relock = false end
+        end
+    end
+    for _, part in ipairs(move) do
+        local door = part:getDoor()
+        if open and door:isLocked() then door:setLocked(false) end
+        T.Liftgate.swing(v, part, open, player:getUsername())
+        if relock and not door:isLockBroken() then
+            door:setLocked(true)
+            v:transmitPartDoor(part)
+        end
+    end
+    return nil, open
 end
 
 -- ------------------------------------------------------------------ summon: AutoDrive drives the empty car
@@ -375,6 +422,7 @@ local ACT = {
     frunk = swing("EngineDoor"),
     trunk = swing("TrunkDoor"),
     tonneau = swing("TrunkTonneau"), -- Cybertruck: the app opens the tonneau cover (owner's manual p.60)
+    falcon = falcon, -- Model X: both falcon wing doors
     summon = summon,
 }
 
