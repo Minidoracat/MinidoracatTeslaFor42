@@ -12,6 +12,16 @@
 
 格式基於 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.1.0/)，版本號遵循 `{PZ版本}-{主版本}.{次版本}.{修訂}` 格式。
 
+## [Unreleased]
+
+### 新增
+
+- **第四台特斯拉：Model S Plaid**：只出現在高級住宅區，機率和 Cybertruck 一樣（Model Y 的一半），停車格不會出現。照官方規格的 Plaid：維修介面顯示 1020 hp，推力比 Cybertruck 更大；高電壓電池 100 kWh，充滿電一樣跑得和原版同級車加滿一箱油一樣遠，用壁掛式充電座從沒電充到 90% 約 8 小時、行動充電器約 12 小時（遊戲時間）。4 個座位（實車 5 座；和其他特斯拉一樣一扇門一位）。四扇車門、電動上掀尾門（連後擋一起掀，約 4 秒）和前蓋都照實車的方向打開；前行李廂 6、後行李廂 45，零件名稱和 Model Y 一樣。8 種車色，生成時隨機一種：Stealth Grey、Lunar Silver、Pearl White、Ultra Red、Diamond Black、Frost Blue，以及中國市場的 Solid Black、Deep Blue；App 的車圖跟著車色換。儀表換成 Model S 的俯視圖。
+
+> 技術要點：
+> - 素材：Model S 車身改作自 ValentunW（Lals）的「Tesla Model S Plaid」（Sketchfab，CC BY 4.0，https://sketchfab.com/3d-models/tesla-model-s-plaid-9de8855fae324e6cbbb83c9b5288c961 ，授權 http://creativecommons.org/licenses/by/4.0/ ）。照官方車長縮放、減面、拆件（車門、連後擋的尾門、前車廂蓋）、重做貼圖，拿掉車內、輪子、輪胎、煞車與雨刷，重畫標誌，輪子與車內換成本 MOD 自己的；署名全文見 `CREDITS.md`。
+> - ID：車輛 `Base.MinidoracatTesla_ModelS`；電池 `Base.MinidoracatTesla_ModelSBattery`（100 kWh）；充電插頭 `Base.MinidoracatTesla_CablePlugModelS`。生成只在 `VehicleZoneDistribution` 的 `good`，spawnChance 2。
+
 ## [42.21.0-0.3.0] - 2026-10-31
 
 ### 新增
