@@ -73,6 +73,7 @@ https://steamcommunity.com/sharedfiles/filedetails/?id=3829501237
 [*] [b]Locking[/b]: locking the car locks the falcon wing doors too.
 [*] [b]Six seats[/b]: 2 in front, 2 captain's chairs in the second row, 2 in the third; both rear rows get in and out through the falcon wing doors.
 [*] [b]Third row[/b]: it has its own boarding spot, so you can still get in when the second row is full.
+[*] [b]Interact key[/b]: at a falcon wing door the interact key (keyboard or controller) takes the second row first, the third once the second row is taken; to pick a seat, use the seat panel.
 [*] [b]Waiting for the door[/b]: a falcon wing door takes a moment to rise, and your character waits for it before climbing in.
 [*] [b]Part names[/b]: the mechanics window uses the owner's manual names Left Falcon Wing Door and Right Falcon Wing Door.
 [/list]
