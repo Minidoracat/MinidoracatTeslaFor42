@@ -57,4 +57,40 @@ for _, cls in ipairs({ ISEnterVehicle, ISExitVehicle }) do
     end
 end
 
+-- Model X (Specs falcon): E on a door takes the first seat that door serves (Vehicles.Use.Door, Vehicles.lua:816-827),
+-- and so does the gamepad's Interact prompt (ISButtonPrompt.lua:572-589, cmdEnterVehicle); PassengerSeat6 loads Rear*
+-- (3rd row) before Middle* (template_passenger.txt), so both sat in the 3rd row, and did nothing once it was taken.
+-- At a falcon wing: the free 2nd-row seat, then the 3rd row's, else vanilla's. The seat panel (ISVehicleSeatUI) calls
+-- ISVehicleMenu.onEnter itself: a seat picked there stays as picked.
+local ROWS = { DoorRearLeft = { "MiddleLeft", "RearLeft" }, DoorRearRight = { "MiddleRight", "RearRight" } }
+function E.falconSeat(vehicle, part)
+    local rows, s = part and ROWS[part:getId()], T.spec(vehicle)
+    if not (rows and s and s.falcon) then return nil end
+    local script = vehicle:getScript()
+    for _, name in ipairs(rows) do
+        for seat = 0, vehicle:getMaxPassengers() - 1 do
+            if script:getPassenger(seat):getId() == name and not vehicle:isSeatOccupied(seat) then return seat end
+        end
+    end
+end
+
+function E.wrapDoorUse()
+    if E.doorUse or not (Vehicles and Vehicles.Use and Vehicles.Use.Door) then return end
+    local use = Vehicles.Use.Door
+    E.doorUse = use
+    Vehicles.Use.Door = function(vehicle, part, chr)
+        local seat = E.falconSeat(vehicle, part)
+        if seat then return ISVehicleMenu.onEnter(chr, vehicle, seat) end
+        return use(vehicle, part, chr)
+    end
+    -- the prompt is rebuilt every update with self.cmdEnterVehicle (a class method); its other caller, the no-door
+    -- getBestSeat branch (ISButtonPrompt.lua:603-605), has no useable part, so it keeps vanilla's seat
+    local enter = ISButtonPrompt.cmdEnterVehicle
+    ISButtonPrompt.cmdEnterVehicle = function(self, vehicle, seat)
+        local part = vehicle:getUseablePart(getSpecificPlayer(self.player))
+        return enter(self, vehicle, E.falconSeat(vehicle, part) or seat)
+    end
+end
+Events.OnGameStart.Add(E.wrapDoorUse)
+
 return E

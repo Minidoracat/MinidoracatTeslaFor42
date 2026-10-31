@@ -226,10 +226,25 @@ if not isClient() then
     -- A lid that shuts on a locked car locks again, however it was opened or shut (the app, the dashboard, by hand,
     -- the owner's "unlock hood"): areAllDoorsLocked only sees the cabin doors (BaseVehicle.java:9332-9335), so it
     -- would otherwise stay unlocked behind "locked".
+    -- Model X (Specs falcon): a falcon wing door shut while both front doors are locked locks again too, however it
+    -- was shut (the app's falcon button, the dashboard, by hand)
+    local WINGS, FRONTS = { DoorRearLeft = true, DoorRearRight = true }, { "DoorFrontLeft", "DoorFrontRight" }
+    local function frontsLocked(v)
+        for _, id in ipairs(FRONTS) do
+            local p = v:getPartById(id)
+            local d = p and p:getDoor()
+            if not (d and d:isLocked()) then return false end
+        end
+        return true
+    end
     function L.relock(v, part)
-        local door = part:getDoor()
-        if not L.LIDS[part:getId()] or door:isOpen() or door:isLocked() or door:isLockBroken() then return false end
-        if not v:areAllDoorsLocked() then return false end
+        local door, id = part:getDoor(), part:getId()
+        if not part:getInventoryItem() or door:isOpen() or door:isLocked() or door:isLockBroken() then return false end
+        if L.LIDS[id] then
+            if not v:areAllDoorsLocked() then return false end
+        elseif not (WINGS[id] and T.spec(v) and T.spec(v).falcon and frontsLocked(v)) then
+            return false
+        end
         door:setLocked(true)
         return true
     end

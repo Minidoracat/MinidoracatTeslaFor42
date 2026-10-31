@@ -248,7 +248,7 @@
     "IGUI_MinidoracatTesla_App_ControlsSub": "Phares, klaxon, frunk, hayon",
     "IGUI_MinidoracatTesla_App_ControlsSubLid": "Phares, klaxon, frunk, coffre",
     "IGUI_MinidoracatTesla_App_ControlsSubCybertruck": "Klaxon, ouvrants, Powershare",
-    "IGUI_MinidoracatTesla_App_ControlsSubModelX": "Phares, klaxon, portes, frunk, hayon",
+    "IGUI_MinidoracatTesla_App_ControlsSubModelX": "Klaxon, portes, frunk, hayon",
     "IGUI_MinidoracatTesla_App_Security": "Sécurité",
     "IGUI_MinidoracatTesla_App_ChargingTitle": "Recharge",
     "IGUI_MinidoracatTesla_App_SentryMode": "Mode Sentinelle",

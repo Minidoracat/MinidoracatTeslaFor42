@@ -48,9 +48,9 @@ local function chargeState(chg)
     return chg.paused and "stopped" or "charging"
 end
 
-local function doorOpen(v, id)
+local function doorOpen(v, id) -- a removed lid or door (part, no item) is not "open"
     local part = v:getPartById(id)
-    local door = part and part:getDoor()
+    local door = part and part:getInventoryItem() and part:getDoor()
     return door ~= nil and door:isOpen()
 end
 
@@ -244,7 +244,6 @@ end
 -- locks them again while the front doors are locked (the car stays locked, like Liftgate.relock for the lids). A
 -- Model Y's rear doors are ordinary doors: NO_DOOR on any car without Specs falcon.
 local FALCON = { "DoorRearLeft", "DoorRearRight" }
-local FRONT = { "DoorFrontLeft", "DoorFrontRight" }
 local function falcon(player, v, open)
     local s = T.spec(v)
     if not (s and s.falcon) then return "NO_DOOR" end
@@ -262,24 +261,18 @@ local function falcon(player, v, open)
         end
     end
     if not any then return "NO_DOOR" end
-    if #move == 0 then return nil, open, true end
-    local relock = not open
-    if relock then
-        for _, id in ipairs(FRONT) do
-            local part = v:getPartById(id)
-            local door = part and part:getDoor()
-            if door and not door:isLocked() then relock = false end
-        end
-    end
     for _, part in ipairs(move) do
         local door = part:getDoor()
         if open and door:isLocked() then door:setLocked(false) end
-        T.Liftgate.swing(v, part, open, player:getUsername())
-        if relock and not door:isLockBroken() then
-            door:setLocked(true)
-            v:transmitPartDoor(part)
+        T.Liftgate.swing(v, part, open, player:getUsername()) -- closing: relocks it (Liftgate.relock)
+    end
+    if not open then -- a wing already shut by hand but left unlocked locks too, even with nothing to move
+        for _, id in ipairs(FALCON) do
+            local part = v:getPartById(id)
+            if part and part:getDoor() and T.Liftgate.relock(v, part) then v:transmitPartDoor(part) end
         end
     end
+    if #move == 0 then return nil, open, true end
     return nil, open
 end
 
