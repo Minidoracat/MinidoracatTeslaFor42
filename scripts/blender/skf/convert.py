@@ -82,7 +82,8 @@ PLANES, CUT_X_Y, GATE_CUT_COMPS, GATE_HINGE = (C[k] for k in ("PLANES", "CUT_X_Y
 BADGE_OFF = 0.003                          # grid off the surface (no depth fight)
 T_BADGE, TESLA, LENS_X, MODELY, CALIPER = (C[k] for k in ("T_BADGE", "TESLA", "LENS_X", "MODELY", "CALIPER"))
 BADGE_Y, BLADE, PERF_BADGE = C["BADGE_Y"], C["BLADE"], C["PERF_BADGE"]
-SWATCH = ("Badge_T", "Badge_TESLA", "Badge_MODELY", "Caliper") + (("Badge_CERB",) if C.get("CERBERUS") else ())
+SWATCH = ("Badge_T", "Badge_TESLA", "Badge_MODELY", "Caliper") + (("Badge_CERB",) if C.get("CERBERUS") else ()) \
+    + (("Badge_CAM",) if C.get("CAMERA") else ())
 #                                            one flat-colour UV spot each (unwrap())
 SWATCH_U = 0.03                            # UV0 strip kept for them at u > 1 - SWATCH_U
 SMOKE_RGB = (62, 58, 60)                   # the light blade by day: smoked lens, so the black letters read
@@ -94,6 +95,9 @@ GLASS_ZONES = ("WinT", "WinH", "WinLH", "WinLT", "WinRH", "WinRT", "LightBarL") 
 #                                                                                  GLASS_ZONE[], feat/edges-1025)
 ROLL_N = 8                                 # a rolling tonneau's strips (tonneau_strips); strip 0 stays: the canister lid
 BED_TUB, ROOF_BAR = C.get("BED_TUB"), C.get("ROOF_BAR")   # a pickup's bed and roof light bar (bed_tub, roof_bar)
+# falcon wing doors (DOORS axis "falcon"; Model X): pre-centre (|x|, z) of the roof hinge, the elbow (the second
+# hinge where the roof part meets the side glass) and a point down the side glass (sets the bone split at the elbow)
+FALCON = C.get("FALCON")
 
 
 def lin(name, z):
@@ -272,6 +276,12 @@ def load_source():
                 gone = (fc > lo).all(1) & (fc < hi).all(1) & (d >= d0) & (d <= d1)
                 pv.keep_faces(o, ~gone)
                 print("DROP_FACES", o.name, int(gone.sum()), "faces")
+        drop_mats = [i for i, m in enumerate(me.materials) if m and m.name in C.get("DROP_MATS", ())]
+        if drop_mats:            # whole materials (Model X: the source's own door cards and trunk lining)
+            mi = np.empty(len(me.polygons), np.int64)
+            me.polygons.foreach_get("material_index", mi)
+            pv.keep_faces(o, ~np.isin(mi, drop_mats))
+            print("DROP_MATS", o.name, int(np.isin(mi, drop_mats).sum()), "faces")
         name = o.name.split("_Mesh")[0] if "_Mesh" in o.name else o.name
         target = next((t for p, t in DECIMATE.items() if o.name.startswith(p)), None)
         if any(name in objs for objs, _, _ in DROP_COMPS):   # drop first, decimate what is left
@@ -649,6 +659,13 @@ def badges(obs, names):
         _add(obs, names, "Badge_HEADBAR", [Vector((x, y, zc + s * lh / 2)) for x, y in zip(xs, ys) for s in (-1, 1)],
              [(2 * i, 2 * i + 2, 2 * i + 3, 2 * i + 1) for i in range(len(xs) - 1)], Vector((0, 1, 0)),
              LAMPS["head"][0])
+    if C.get("CAMERA"):                    # the front bumper camera (Model X 2025+): a grey ring round the dark lens
+        cm = C["CAMERA"]                   # (the grille behind shows through), read from ahead (u = -x)
+        a = np.linspace(0, 2 * math.pi, 17)
+        ring = lambda r: [(r * math.cos(t), r * math.sin(t)) for t in a]   # noqa: E731
+        ro, ri = ring(cm["r"]), ring(cm["r"] - cm["w"])
+        flat("Badge_CAM", [[[ro[i], ro[i + 1], ri[i + 1], ri[i]] for i in range(16)]],
+             ((0, cm["y"], cm["z"]), (-1, 0, 0), (0, 0, 1), (0, 1, 0)), "badge_cam", planar=True)
 
 
 def _runs(row):
@@ -794,6 +811,9 @@ def classify(car, names, sizes):
     part[fp] = in_door(cen[fp])
     for pname, objs in C.get("PART_OBJS", {}).items():   # whole objects that are a part (the tonneau)
         part[np.isin(obj, objs)] = PARTS.index(pname)
+    for o, (lp, rp) in C.get("SIDE_PARTS", {}).items():  # one source object holding both doors of a pair (Model X)
+        m = obj == o
+        part[m] = np.where(cen[m, 0] < 0, PARTS.index(lp), PARTS.index(rp))
     # door hardware, frames and panes: whole components inside a door (2.5 cm slack), cut components face by face. A
     # strip that runs past its one door's edge (the belt mouldings end under the B-pillar and quarter trim) goes face
     # by face too: whole on the body it was a black bar across the far window, seen through the roof glass with the
@@ -876,6 +896,8 @@ def classify(car, names, sizes):
     rgb[blade] = np.array(SMOKE_RGB) / 255
     if CARBON:
         rgb[carbon] = np.array(CARBON["rgb"]) / 255
+    for m, lo, hi, col in C.get("RECOLOR", ()):           # a material's faces in a box take another colour (Model X T)
+        rgb[(mat == m) & (cen > lo).all(1) & (cen < hi).all(1)] = np.array(col) / 255
     print("CLASSIFY parts", {PARTS[k]: int((part == k).sum()) for k in range(len(PARTS))}, "glass", int(glass.sum()),
           "lamps head/tail", int(head.sum()), int(tail.sum()))
     # RAIL: 0..1 weight of the median paint tone (textures()), body panels only
@@ -1468,12 +1490,16 @@ def pieces(car, c, shift):
         bodyV = np.concatenate([bodyV, v])
         body_a.append(a)
     conv = np.array(Matrix.Rotation(-math.pi / 2, 3, "X"))
-    meshes, hinges, strips = [], {}, {}
+    meshes, hinges, strips, elbows, upper = [], {}, {}, {}, {}
     mat = bpy.data.materials.new(pv.NAME)
     for k, (pname, (sd, axis, ang, secs)) in enumerate(pv.DOORS.items(), 1):
         sel = part == k
         lid = pname == "EngineDoor"
         off = (np.array([-sd, 0, 0]) if sd else np.array((0, 0, -1) if lid else pv.GATE_IN)) * pv.DOOR_T
+        if axis == "falcon":     # the inner panel in towards the cabin below the elbow, down under the roof part
+            w = np.clip((V[:, 2] - FALCON["elbow"][1] + 0.12) / 0.12, 0, 1)
+            d = np.column_stack([-sd * (1 - w), np.zeros(len(V)), -w])
+            off = d / np.linalg.norm(d, axis=1, keepdims=True) * pv.DOOR_T
         skin = sel & panel & ~mirror                     # the mirror cap: outer faces only (a closed shell)
         if ang == "roll":                                # the tonneau: strips of its own (tonneau_strips)
             P, t, a, strips[pname] = tonneau_strips(V[np.unique(T[sel])], cab_attr)
@@ -1500,7 +1526,19 @@ def pieces(car, c, shift):
             bodyV = np.concatenate([bodyV, Pt])
             body_a.append(at_)
         dv = V[np.unique(T[sel])]
-        if sd:
+        if axis == "falcon":     # FALCON: the roof hinge and the elbow (|x|, z); the two bones split at the elbow
+            (hx, hz), (ex, ez), (sx, sz) = FALCON["hinge"], FALCON["elbow"], FALCON["side"]
+            h = np.array([sd * hx, 0.0, hz])
+            elbows[pname] = np.array([sd * ex, 0.0, ez]) - shift
+            # upper bone: inboard / above the line through the elbow that halves the corner between the roof (towards
+            # the hinge) and the side glass (towards FALCON side); a slab's inner twin (P[n + i], n = len(V)) goes
+            # with its outer vertex
+            r_, s_ = (np.array(v, float) / np.linalg.norm(v) for v in ((ex - hx, hz - ez), (ex - sx, sz - ez)))
+            nv = (r_ - s_) / np.linalg.norm(r_ - s_)
+            ref = P.copy()
+            ref[:2 * len(V)] = np.concatenate([V, V])
+            upper[pname] = (ex - np.abs(ref[:, 0])) * nv[0] + (ref[:, 2] - ez) * nv[1] > 0
+        elif sd:
             low = dv[dv[:, 2] < BELT_Z]
             yh = low[:, 1].max()
             near = low[low[:, 1] > yh - 0.05]
@@ -1539,8 +1577,8 @@ def pieces(car, c, shift):
     pv.select_only(arm)
     bpy.ops.object.mode_set(mode="EDIT")
     for pname in pv.DOORS:          # bones at the origin, unrotated: bind = identity (models.md 9); a rolling cover's
-        for s in range(ROLL_N if pname in strips else 1):    # strips 1.. get <part>_bone<s>
-            eb = arm.data.edit_bones.new(pname + "_bone" + (str(s) if s else ""))
+        for s in range(ROLL_N if pname in strips else 2 if pname in upper else 1):   # strips / a falcon door's lower
+            eb = arm.data.edit_bones.new(pname + "_bone" + (str(s) if s else ""))    # part get <part>_bone<s>
             eb.head, eb.tail = Vector((0, 0, 0)), Vector((0, 0.3, 0))
     bpy.ops.object.mode_set(mode="OBJECT")
     obs = [arm]
@@ -1552,6 +1590,10 @@ def pieces(car, c, shift):
             for s in range(ROLL_N):
                 ob.vertex_groups.new(name=pname + "_bone" + (str(s) if s else "")).add(
                     np.flatnonzero(strips[pname][0] == s).tolist(), 1.0, "REPLACE")
+        elif pname in upper:             # falcon door: upper part on _bone, lower on _bone1 (soup_object keeps the used
+            up = upper[pname][np.unique(t.ravel())]          # points in index order)
+            ob.vertex_groups.new(name=pname + "_bone").add(np.flatnonzero(up).tolist(), 1.0, "REPLACE")
+            ob.vertex_groups.new(name=pname + "_bone1").add(np.flatnonzero(~up).tolist(), 1.0, "REPLACE")
         else:
             ob.vertex_groups.new(name=pname + "_bone").add(list(range(len(ob.data.vertices))), 1.0, "REPLACE")
         ob.parent = arm
@@ -1568,6 +1610,17 @@ def pieces(car, c, shift):
         h = Vector(conv @ hinges[pname])
         return h - q @ h, q
 
+    def falcon_pose(pname, s, o):
+        """Falcon door open by o: the upper part (s 0) turns up about the roof hinge; the lower part (s 1) turns with
+        it and folds back out at the elbow: q1 q2, (h1 - q1 h1) + q1 (h2 - q2 h2)."""
+        t1, t2 = pv.DOORS[pname][2]
+        ax = Vector(conv @ np.array((0.0, 1.0, 0.0)))
+        q1, h1 = Quaternion(ax, math.radians(t1 * o)), Vector(conv @ hinges[pname])
+        if not s:
+            return h1 - q1 @ h1, q1
+        q2, h2 = Quaternion(ax, math.radians(t2 * o)), Vector(conv @ elbows[pname])
+        return h1 - q1 @ h1 + q1 @ (h2 - q2 @ h2), q1 @ q2
+
     def roll_pose(pname, s, o):
         """Strip s of a rolling cover, open by o (0..1): the cover slides to the front as one, each strip at most to
         strip 0's place, sinking under the strips ahead of it as it passes under strip 0 (a stack: the canister)."""
@@ -1577,7 +1630,7 @@ def pieces(car, c, shift):
         sink = s * 1.05 * C["TONNEAU_T"] * min(max(d / w - (s - 1), 0.0), 1.0)
         return Vector(conv @ (fwd * min(d, s * w) - n * sink)), Quaternion()
     end = 1
-    for pname, (_, _, ang, secs) in pv.DOORS.items():
+    for pname, (_, axis, ang, secs) in pv.DOORS.items():
         act = bpy.data.actions.new(pname + "_closing")
         act.use_fake_user = True
         ad.action = act
@@ -1589,7 +1642,8 @@ def pieces(car, c, shift):
             for pb in arm.pose.bones:
                 bp, _, s = pb.name.partition("_bone")
                 pb.location, pb.rotation_quaternion = (Vector((0, 0, 0)), Quaternion()) if bp != pname else \
-                    roll_pose(pname, int(s or 0), o) if ang == "roll" else hinge_pose(pname, ang * o)
+                    roll_pose(pname, int(s or 0), o) if ang == "roll" else \
+                    falcon_pose(pname, int(s or 0), o) if axis == "falcon" else hinge_pose(pname, ang * o)
                 pb.keyframe_insert("location", frame=fr)
                 pb.keyframe_insert("rotation_quaternion", frame=fr)
         act.frame_range = (1, last)
@@ -1623,7 +1677,7 @@ def pieces(car, c, shift):
     want = {pv.NAME if k == "Body" else k: v for k, v in PANES.items()}
     for nm, t, vg, uv, cl, gz in got:
         print("CHECK FBX", nm, "tris", t, "groups", vg, "uv", uv, "glass", sorted(gz))
-        groups = 0 if nm == pv.NAME else ROLL_N if nm in strips else 1     # the body: none; a rolling cover: per strip
+        groups = 0 if nm == pv.NAME else ROLL_N if nm in strips else 2 if nm in upper else 1   # body none; per strip
         if (uv[:2] != ["UV0", "UV1"] or (cl[1:] < cl[:-1]).any() or (vg == 1 if groups == 0 else vg != groups)
                 or gz != want[nm]
                 or t != counts[nm]):    # the importer drops a triangle on the same vertices as another

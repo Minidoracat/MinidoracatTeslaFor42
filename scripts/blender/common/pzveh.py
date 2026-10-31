@@ -793,7 +793,7 @@ def geometry(body, zmid, wl, r, tire_w, belt_z, doors_y, port_yz, extra_areas=()
         "        textureDamage1Overlay = Vehicles/Veh_Blood_Mask,", "        textureDamage2Overlay = Vehicles/Veh_Blood_Hvy,",
         "        textureDamage1Shell = Vehicles/Veh_Damage1,", "        textureDamage2Shell = Vehicles/Veh_Damage2,",
         "        textureRust = Vehicles/Veh_Rust,",
-        "        template = PassengerSeat4,",
+        f"        template = {'PassengerSeat6' if SEAT.get('third') else 'PassengerSeat4'},",
         f"        extents = {f4(*ext)},", f"        physicsChassisShape = {f4(*ext)},",
         f"        centerOfMassOffset = {f4(0, OY, 0)},",
         f"        shadowExtents = {f4(ext[0], ext[2])},", "        shadowOffset = 0.0 0.0,",
@@ -819,12 +819,21 @@ def geometry(body, zmid, wl, r, tire_w, belt_z, doors_y, port_yz, extra_areas=()
     fz, rz = (front_y + bpil_y) / 2 - SEAT["back"][0], (bpil_y + rear_y) / 2 - SEAT["back"][1]
     seats = (("FrontLeft", 1, fz, (front_y, bpil_y)), ("FrontRight", -1, fz, (front_y, bpil_y)),
              ("RearLeft", 1, rz, (bpil_y, rear_y)), ("RearRight", -1, rz, (bpil_y, rear_y)))
+    third = SEAT.get("third")   # 6 seats (Model X): 2nd row Middle* through the rear doors, 3rd row Rear* `back` behind
+    if third:                   # the rear door's rear edge, getting in and out at the 2nd row's spot (its own way in)
+        tz = rear_y - third["back"]
+        span = (tz + aw * S / 2, tz - aw * S / 2)
+        seats = seats[:2] + (("MiddleLeft", 1, rz, (bpil_y, rear_y)), ("MiddleRight", -1, rz, (bpil_y, rear_y)),
+                             ("RearLeft", 1, tz, span), ("RearRight", -1, tz, span))
     for nm, side, z, door in seats:        # showPassenger: the 3-D cabin shows whoever sits there through the glass
-        out += [f"        passenger {nm}", "        {", "            showPassenger = true,", "            position inside", "            {",
-                f"                offset = {f4(side * SEAT['x'] / S, seat_y, z / S)},", "                rotate = 0.0 0.0 0.0,", "            }",
+        row3 = bool(third) and nm.startswith("Rear")
+        x, oz, oa = (third["x"], rz, nm.replace("Rear", "Middle")) if row3 else (SEAT["x"], z, nm)
+        own = [f"            door = Door{nm.replace('Middle', 'Rear')},"] if third and nm.startswith("Middle") else []
+        out += [f"        passenger {nm}", "        {", *own, "            showPassenger = true,", "            position inside", "            {",
+                f"                offset = {f4(side * x / S, seat_y, z / S)},", "                rotate = 0.0 0.0 0.0,", "            }",
                 "            position outside", "            {",
-                f"                offset = {f4(side * (w_body / 2 + SEAT['out']) / S, ground, z / S)},", "                rotate = 0.0 0.0 0.0,",
-                f"                area = Seat{nm},", "            }", "        }"]
+                f"                offset = {f4(side * (w_body / 2 + SEAT['out']) / S, ground, oz / S)},", "                rotate = 0.0 0.0 0.0,",
+                f"                area = Seat{oa},", "            }", "        }"]
     areas = [("Engine", 0, ext[2] / 2 + ah / 2, ext[0], ah), ("TruckBed", 0, -(ext[2] / 2 + ah / 2), ext[0], ah),
              ("GasTank", sx, port[2], aw, ah)]
     for nm, side, z, door in seats:

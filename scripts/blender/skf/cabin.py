@@ -262,25 +262,35 @@ def cabin_mesh(bvh, belt, trunk_floor, trunk_end, arch, opening):
     seat_y = ((yf + yb) / 2 - SEAT["back"][0], (yb + yr) / 2 - SEAT["back"][1])
     z0 = SEAT_Z
     fs, rs = SEATS["front"], SEATS["rear"]              # widths, backrest heights, recline (deg)
-    for s in (-1, 1):                                   # front buckets
-        cx, fy = s * SEAT_X, seat_y[0]
-        rec = (fy - 0.11, z0 - 0.03, fs["recline"])
+    def bucket(cx, fy, b, bolster=(0.185, 0.19)):      # a bucket seat: base, cushion, backrest, headrest, side bolsters
+        rec = (fy - 0.11, z0 - 0.03, b["recline"])
         part((0.30, 0.30, z0 - 0.10 - CABIN_FLOOR), 0.02, "base", (cx, fy + 0.05, (z0 - 0.10 + CABIN_FLOOR) / 2), seg=1)
-        part((fs["w"], 0.40, 0.09), 0.035, "seat", (cx, fy + 0.08, z0 - 0.06), cuts=(2, 0, 0), sag=0.025)
-        part((fs["w"], 0.11, fs["back"]), 0.04, "seat", (cx, fy - 0.17, z0 + 0.22), cuts=(2, 0, 0), bend=0.05, taper=0.12,
+        part((b["w"], 0.40, 0.09), 0.035, "seat", (cx, fy + 0.08, z0 - 0.06), cuts=(2, 0, 0), sag=0.025)
+        part((b["w"], 0.11, b["back"]), 0.04, "seat", (cx, fy - 0.17, z0 + 0.22), cuts=(2, 0, 0), bend=0.05, taper=0.12,
              tilt=rec)
-        part((0.25, 0.10, 0.17), 0.05, "seat", (cx, fy - 0.18, z0 + 0.54), taper=0.1, tilt=rec, seg=3)
+        part((0.25, 0.10, 0.17), 0.05, "seat", (cx, fy - 0.18, z0 + b.get("head", 0.54)), taper=0.1, tilt=rec, seg=3)
         for e in (-1, 1):
-            part((0.07, 0.34, 0.07), 0.03, "seat", (cx + e * 0.185, fy + 0.07, z0 - 0.01))
-            part((0.07, 0.13, 0.32), 0.03, "seat", (cx + e * 0.19, fy - 0.11, z0 + 0.15), tilt=rec)
-    ry = seat_y[1]                                      # rear bench: three cushions, three backs, three headrests
-    rec = (ry - 0.11, z0 - 0.03, rs["recline"])
-    part((rs["base"], 0.36, z0 - 0.10 - CABIN_FLOOR), 0.02, "base", (0, ry + 0.06, (z0 - 0.10 + CABIN_FLOOR) / 2), seg=1)
-    for cx, wd in rs["cushions"]:                       # (centre x, width)
-        part((wd, 0.40, 0.09), 0.035, "seat", (cx, ry + 0.08, z0 - 0.06), cuts=(1, 0, 0), sag=0.015)
-        part((wd, 0.11, rs["back"]), 0.04, "seat", (cx, ry - 0.17, z0 + 0.19), cuts=(1, 0, 0), bend=0.02, tilt=rec)
-        part((0.20 if cx else 0.17, 0.09, 0.12), 0.045, "seat", (cx, ry - 0.18, z0 + 0.48), tilt=rec, seg=3)
-    if min(v[:, 1].min() for v in V[-3 * len(rs["cushions"]):]) < trunk_end:
+            part((0.07, 0.34, 0.07), 0.03, "seat", (cx + e * bolster[0], fy + 0.07, z0 - 0.01))
+            part((0.07, 0.13, 0.32), 0.03, "seat", (cx + e * bolster[1], fy - 0.11, z0 + 0.15), tilt=rec)
+    for s in (-1, 1):                                   # front buckets
+        bucket(s * SEAT_X, seat_y[0], fs)
+    ry = seat_y[1]
+    n_seat = len(V)
+    if "middle" in SEATS:       # 6 seats (Model X): the 2nd row's two monopost seats, the 3rd row's two `back` behind the
+        t3 = SEAT["third"]      # rear doors' rear edge, narrower (pzveh.geometry seats the passengers there)
+        for (y_, b, sx) in ((ry, SEATS["middle"], SEAT_X), (yr - t3["back"], SEATS["third"], t3["x"])):
+            n_seat = len(V)
+            for s in (-1, 1):
+                bucket(s * sx, y_, b, (b["w"] / 2 - 0.025, b["w"] / 2 - 0.02))
+    else:                       # rear bench: three cushions, three backs, three headrests
+        rec = (ry - 0.11, z0 - 0.03, rs["recline"])
+        part((rs["base"], 0.36, z0 - 0.10 - CABIN_FLOOR), 0.02, "base", (0, ry + 0.06, (z0 - 0.10 + CABIN_FLOOR) / 2),
+             seg=1)
+        for cx, wd in rs["cushions"]:                   # (centre x, width)
+            part((wd, 0.40, 0.09), 0.035, "seat", (cx, ry + 0.08, z0 - 0.06), cuts=(1, 0, 0), sag=0.015)
+            part((wd, 0.11, rs["back"]), 0.04, "seat", (cx, ry - 0.17, z0 + 0.19), cuts=(1, 0, 0), bend=0.02, tilt=rec)
+            part((0.20 if cx else 0.17, 0.09, 0.12), 0.045, "seat", (cx, ry - 0.18, z0 + 0.48), tilt=rec, seg=3)
+    if min(v[:, 1].min() for v in V[n_seat:]) < trunk_end:     # the last row stays ahead of the rear wall
         raise SystemExit(f"cabin: the rear seats cross the rear wall (y {trunk_end:.3f}): SEAT back / SEATS recline")
     part((0.20, 0.80, 0.22), 0.04, "console", DASH["console"])                  # centre console
     part((1.24, 0.34, 0.16), 0.06, "dash", DASH["dash"])                        # dash, trim strip on its face
