@@ -151,6 +151,15 @@ local s3, e3 = rider0.sick, kwh(hy)
 T.Update.Heater(hy, hy.parts.Heater, 600)
 check(H.near(s3 - rider0.sick, 0.001 * units * T.MAX_ELAPSED, 1e-9) and H.near(e3 - kwh(hy), C.HEATER_KW * T.MAX_ELAPSED / 60, 1e-9),
     "an update handing in 600 minutes: filters and draws for T.MAX_ELAPSED (10) minutes only")
+-- the same with only BDM on and the climate off (the `bdm and not fan` draw)
+hyh.active = false
+md(hy).bdm = true
+local s4, e4 = rider0.sick, kwh(hy)
+T.Update.Heater(hy, hy.parts.Heater, 600)
+check(H.near(s4 - rider0.sick, 0.001 * units * T.MAX_ELAPSED, 1e-9) and H.near(e4 - kwh(hy), C.HEATER_KW * T.MAX_ELAPSED / 60, 1e-9),
+    "BDM only, climate off, an update handing in 600 minutes: filters and draws for T.MAX_ELAPSED minutes only")
+md(hy).bdm = nil
+hyh.active = true
 local m3 = F.track(F.vehicle({ pct = 60, running = true, script = "Base.MinidoracatTesla_Model3" }))
 local rider3 = F.player("rider3", { vehicle = m3, sick = 10, sickRate = 0.001 })
 m3.seats[0], m3.passengers = rider3, 1

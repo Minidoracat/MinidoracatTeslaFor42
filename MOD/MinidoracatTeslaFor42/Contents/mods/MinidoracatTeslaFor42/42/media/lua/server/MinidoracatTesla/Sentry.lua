@@ -244,10 +244,14 @@ end)
 hook(ISHotwireVehicle, "ISHotwireVehicle", function(a) S.onBreak(a.character:getVehicle(), a.character, "hotwire") end)
 hook(ISUninstallVehiclePart, "ISUninstallVehiclePart", function(a) S.onBreak(a.vehicle, a.character, "part", partId(a.part)) end)
 -- Fitting glass is no break, whoever does it: the installed part takes the item's condition (VehiclePart.java:202;
--- uninstalling left the old one, :215-222), so a worse pane would read as a hit on the next scan. That window only.
+-- uninstalling left the old one, :215-222), so a worse pane would read as a hit on the next scan. That window only, and
+-- only when it went in: a failed skill check also returns true from complete (ISInstallVehiclePart.lua:102-114,120)
+-- and must not wash out a break the scan has not seen yet.
 hook(ISInstallVehiclePart, "ISInstallVehiclePart", function(a)
     local s, part = armedState(a.vehicle), a.part
-    if s and s.win and part and part:getWindow() then s.win[part:getId()] = part:getCondition() end
+    if s and s.win and part and part:getWindow() and a.item and part:getInventoryItem() == a.item then
+        s.win[part:getId()] = part:getCondition()
+    end
 end)
 
 -- ------------------------------------------------------------------ windows without an event, towing
@@ -259,9 +263,9 @@ end)
 -- break ("window" once the glass is gone), higher (repaired, new glass) = a new baseline only. An empty list costs
 -- one loop with nothing in it, like Store.lua's scan.
 S.armed = {}   -- vehicle id -> true: armed and loaded (S.arm, OnSpawnVehicleEnd); dropped on the next scan once not
-S.lastHit = {} -- vehicle id -> { name = username, at = world hour }: the last trusted MP weapon hit (damageWindow below)
+S.lastHit = {} -- vehicle id -> { account = T.account, at = world hour }: the last trusted MP weapon hit (damageWindow)
 S.HIT_HOURS = 2 / 60 -- the server's own PlayerHitVehicle pass may take more glass later with no event: same player
-S.tow = {}     -- vehicle id -> id of the vehicle it was reported hooked to (attachTrailer below)
+S.tow = {}     -- vehicle id -> world hour of the last tow report (attachTrailer below)
 
 -- per-car memory keyed by id (ids are reused, VehicleIDMap.java:49-62): cleared on arm, disarm, load, leaving the list
 function S.forget(id) S.lastHit[id], S.tow[id] = nil, nil end
@@ -301,15 +305,15 @@ function S.checkWindows(vehicle, actor)
     S.onBreak(vehicle, actor, hitCond <= 0 and "window" or "windowHit", hitId) -- one alert per look, the worst window
 end
 
--- the account named by the trusted hit of the last S.HIT_HOURS, if that player is still online (getPlayerFromUsername
--- is client-only, LuaManager.java:9142-9147)
+-- the player behind the trusted hit of the last S.HIT_HOURS, if still online: matched by account (conventions: the
+-- principal, never a bare username; getPlayerFromUsername is client-only anyway, LuaManager.java:9142-9147)
 local function lastHitter(id, t)
     local hit = S.lastHit[id]
     if not hit then return nil end
     if t - hit.at > S.HIT_HOURS then S.lastHit[id] = nil; return nil end
     local ps = getOnlinePlayers()
     for i = 0, (ps and ps:size() or 0) - 1 do
-        if ps:get(i):getUsername() == hit.name then return ps:get(i) end
+        if T.account(ps:get(i)) == hit.account then return ps:get(i) end
     end
 end
 
@@ -337,18 +341,24 @@ end)
 
 -- Who sent a damageWindow is not always who hit: the client sends it with no player (VehicleWindow.java:79-81), the
 -- server takes the connection's first one (GameServer.java:2280-2283, 2322-2326), and a zombie on an occupied car
--- goes the same way from the client running it (AttackVehicleState.java:158-159). Trusted only when the sender is the
--- one player on its connection (connection = floor(onlineID / 4): GameServer.java:2686, ConnectCoopPacket.java:125),
--- on foot within reach of the car, and no other player or zombie is.
-S.NAME_RANGE = 4 -- tiles from the car's centre: a 5-tile car plus a swing
+-- goes the same way from the client running it (AttackVehicleState.java:158-159). Trusted only when the sender has a
+-- verified account (T.account: none for a split-screen guest or an unverified Steam name), is the one player on its
+-- connection (connection = floor(onlineID / 4): GameServer.java:2686, ConnectCoopPacket.java:125), on foot on the
+-- car's floor within reach of it, and no other player or zombie is.
+S.NAME_RANGE = 4 -- tiles, straight line from the car's centre: a 5-tile car (2.5 to a bumper) plus a swing
+local function near(vehicle, o, r)
+    if math.floor(o:getZ()) ~= math.floor(vehicle:getZ()) then return false end
+    local dx, dy = o:getX() - vehicle:getX(), o:getY() - vehicle:getY()
+    return dx * dx + dy * dy <= r * r -- not DistTo: that one is Manhattan (IsoMovingObject.java:605-607)
+end
 function S.trusted(vehicle, player)
     local r = S.NAME_RANGE
-    if player:getVehicle() or vehicle:DistTo(player) > r then return false end
+    if player:getVehicle() or not T.account(player) or not near(vehicle, player, r) then return false end
     local conn = math.floor(player:getOnlineID() / 4)
     local ps = getOnlinePlayers()
     for i = 0, (ps and ps:size() or 0) - 1 do
         local o = ps:get(i)
-        if o ~= player and (math.floor(o:getOnlineID() / 4) == conn or vehicle:DistTo(o) <= r) then return false end
+        if o ~= player and (math.floor(o:getOnlineID() / 4) == conn or near(vehicle, o, r)) then return false end
     end
     local cell = getCell()
     local x0, y0, z = math.floor(vehicle:getX()), math.floor(vehicle:getY()), math.floor(vehicle:getZ())
@@ -367,16 +377,21 @@ end
 -- Towing: owner's manuals, "a lot of jerky movement like when getting towed" sounds the alarm (the break tier). The
 -- only vanilla way to hook up is attachTrailer (ISAttachTrailerToVehicle.lua:42-48; the radial's three branches,
 -- ISVehicleMenu.lua:492-588), which checks no key or owner (VehicleCommands.lua:399-411). The menu swaps A and B by
--- hitch (:530-560): look at both. Legit (the owner, a key, VehicleManager's PASSENGER) takes the car away: disarm.
--- Vanilla unhooks and hooks again on every send (BaseVehicle.java:10047-10062): the same pair again is the same tow,
--- one alert per hook-up until a detach, a disarm or a reload.
-local function onTow(vehicle, other, player)
+-- hitch (:530-560): look at both. Legit (the owner, a key, VehicleManager's PASSENGER) takes the car away: disarm,
+-- always. A stranger's tow alerts once per car per S.towHours(), whatever it is hooked to: vanilla unhooks and hooks
+-- again on every send (BaseVehicle.java:10047-10062) and the "vehicle" module skips CmdRate, so attach / detach in a
+-- loop must not flood the owner, and a link broken elsewhere (a third car's attach, a hitch mismatch :10059-10067, a
+-- spontaneous detach) leaves nothing to clear. The window is vanilla's own alarm length: it rings until
+-- startTime + 0.66 x getDeltaMinutesPerDay() world hours (VehicleAlarm.java:85; GameTime.java:433-435), about 13 game
+-- minutes at the default 90-minute day; past it the car is quiet again and a new tow rings again.
+function S.towHours() return 0.66 * getGameTime():getDeltaMinutesPerDay() end
+local function onTow(vehicle, player)
     local s = armedState(vehicle)
     if not s then return end
-    local id = vehicle:getId()
-    if S.tow[id] == other:getId() then return end
-    S.tow[id] = other:getId()
     if T.legit(player, vehicle, s.by) then return S.disarm(vehicle, player:getUsername()) end
+    local id, t = vehicle:getId(), now()
+    if S.tow[id] and t - S.tow[id] < S.towHours() then return end
+    S.tow[id] = t
     S.onBreak(vehicle, player, "tow")
 end
 
@@ -386,38 +401,38 @@ end
 -- like the other sentry hooks. SP routes sendClientCommand here too. Other mods' ways of carrying a car off
 -- (VehicleManager's CommandGate.lua:157-158: Autotsar, rSemiTruck loadVehicle) do not come this way.
 --   attachTrailer: the tow, once vanilla linked the two (addPointConstraint sets the link at once, BaseVehicle.java:10104-10106).
---   detachTrailer(Spontaneous): the pair is free again (breakConstraint, VehicleCommands.lua:413-430).
 --   damageWindow: MP only, a client works out a weapon hit and sends it (VehicleWindow.java:79-81); vanilla applied it
---   (VehicleCommands.lua:169-185, nothing for amount <= 0 or no such window: VehicleWindow.java:77). Only a send that
---   took glass counts; its sender is named, and a legit one keeps the alarm quiet, only when S.trusted.
+--   (VehicleCommands.lua:169-185; nothing for amount <= 0 or no such window, VehicleWindow.java:77). It speaks for its
+--   own drop only: a drop the amount does not explain (another hit since the last look) is nobody's, and only an
+--   explained drop from a S.trusted sender is named, or kept quiet for a legit one.
 Events.OnClientCommand.Add(function(module, command, player, args)
     if module ~= "vehicle" or not player or type(args) ~= "table" then return end
-    if command ~= "attachTrailer" and command ~= "damageWindow" and command ~= "detachTrailer"
-        and command ~= "detachTrailerSpontaneous" then return end
+    if command ~= "attachTrailer" and command ~= "damageWindow" then return end
     local ok, err = pcall(function()
         if command == "attachTrailer" then
             local a, b = getVehicleById(tonumber(args.vehicleA) or -1), getVehicleById(tonumber(args.vehicleB) or -1)
             if not (a and b and a:getVehicleTowing() == b) then return end
-            onTow(a, b, player)
-            onTow(b, a, player)
-        elseif command ~= "damageWindow" then
-            local vid = tonumber(args.vehicle)
-            for id, other in pairs(S.tow) do
-                if id == vid or other == vid then S.tow[id] = nil end
-            end
+            onTow(a, player)
+            onTow(b, player)
         else
             local v = getVehicleById(tonumber(args.vehicle) or -1)
             local s = v and armedState(v)
             if not s then return end
             local id = v:getId()
             S.armed[id] = true
+            local amount = tonumber(args.amount)
+            if not amount or amount <= 0 then return end -- vanilla ignored it; any other loss is the scan's, unnamed
             local part = type(args.part) == "string" and v:getPartById(args.part)
             local was = s.win and part and part:getWindow() and s.win[args.part]
-            if not (was and part:getCondition() < was) then return end -- took nothing: the scan sees anything else
-            local actor = S.trusted(v, player) and player or nil
-            S.lastHit[id] = actor and { name = player:getUsername(), at = now() } or nil
+            if not was then return end
+            local drop = was - part:getCondition()
+            if drop <= 0 then return end -- took nothing
+            local actor = drop <= amount and S.trusted(v, player) and player or nil
+            S.lastHit[id] = actor and { account = T.account(player), at = now() } or nil
+            local dx, dy = player:getX() - v:getX(), player:getY() - v:getY()
             T.log("sentry damageWindow vid=" .. id .. " " .. args.part .. " from " .. player:getUsername()
-                .. (actor and " trusted" or " untrusted") .. string.format(" dist=%.1f", v:DistTo(player)))
+                .. (actor and " trusted" or " untrusted") .. string.format(" dist=%.1f", math.sqrt(dx * dx + dy * dy))
+                .. " drop=" .. tostring(drop) .. " amount=" .. tostring(amount))
             S.checkWindows(v, actor)
         end
     end)

@@ -303,8 +303,8 @@ wc.parts.Windshield.cond = 30
 F.fire("OnClientCommand", "vehicle", "damageWindow", thief, { vehicle = wc:getId(), part = "Windshield", amount = 20 })
 check(wc.alarmTriggered == a0 + 3 and F.lastSent("alert").args.by == "thief" and F.lastSent("alert").args.what == "windowHit",
     "MP damageWindow from a stranger alone at the car: alarm at once, the alert names the attacker")
-check(S.lastHit[wc:getId()] and S.lastHit[wc:getId()].name == "thief" and S.lastHit[wc:getId()].p == nil,
-    "the trusted hit is kept as an account name, not the player object")
+check(S.lastHit[wc:getId()] and S.lastHit[wc:getId()].account == "thief" and S.lastHit[wc:getId()].p == nil
+    and S.lastHit[wc:getId()].name == nil, "the trusted hit is kept by account (T.account), not a username or the player object")
 wc.parts.Windshield.cond = 20 -- the server's own PlayerHitVehicle pass takes more glass, no event
 F.fire("EveryOneMinute")
 check(wc.alarmTriggered == a0 + 4 and F.lastSent("alert").args.by == "thief", "scan within 2 game minutes: blamed on the same attacker")
@@ -349,6 +349,65 @@ thief.dist = 30
 wc.parts.Windshield.cond = 1
 F.fire("OnClientCommand", "vehicle", "damageWindow", thief, { vehicle = wc:getId(), part = "Windshield", amount = 1 })
 check(wc.alarmTriggered == a0 + 9 and F.lastSent("alert").args.by == nil, "damageWindow from a sender out of reach (a gun, or not the hitter): alarm, nobody named")
+-- R2: the packet speaks for its own drop only; the hitter is an account; reach is a straight line on the car's floor
+local wid = wc:getId()
+local function freshGlass() wc.parts.Windshield.cond = 100; F.hours = F.hours + 3 / 60; F.fire("EveryOneMinute") end
+local function hitBy(p, drop, amount)
+    local n0 = wc.alarmTriggered
+    wc.parts.Windshield.cond = wc.parts.Windshield.cond - drop
+    F.fire("OnClientCommand", "vehicle", "damageWindow", p, { vehicle = wid, part = "Windshield", amount = amount })
+    return wc.alarmTriggered - n0
+end
+F.online = { wOwner, thief }
+thief.dist, wOwner.dist = 50, 2
+freshGlass()
+wc.parts.Windshield.cond = 80 -- a loss the scan has not seen yet (a zombie), then the trusted owner's empty packet
+local r0 = wc.alarmTriggered
+F.fire("OnClientCommand", "vehicle", "damageWindow", wOwner, { vehicle = wid, part = "Windshield", amount = 0 })
+check(wc.alarmTriggered == r0 and S.lastHit[wid] == nil and ws.win.Windshield == 100,
+    "unseen loss, then the trusted owner's amount-0 packet: ignored, the baseline stays, not the last hitter")
+F.fire("EveryOneMinute")
+check(wc.alarmTriggered == r0 + 1 and F.lastSent("alert").args.by == nil, "...the scan still rings for that loss, nobody named")
+freshGlass()
+check(hitBy(wOwner, 10, 2) == 1 and F.lastSent("alert").args.by == nil and S.lastHit[wid] == nil,
+    "the trusted owner's packet for 2 with 10 gone (another hit too): alarm, nobody named, not the last hitter")
+freshGlass()
+check(hitBy(wOwner, 2, 2) == 0 and S.lastHit[wid] and S.lastHit[wid].account == "wowner",
+    "the trusted owner's packet explaining its whole drop: quiet, kept by account")
+-- someone else under the owner's name (no verified account: an unbound Steam name, a split-screen guest)
+local impostor = F.player("wowner")
+local account0 = T.account
+T.account = function(p) if p == impostor then return nil end return account0(p) end
+F.online, impostor.dist = { impostor, thief }, 2
+-- the owner is offline, so the alert waits in the inbox (no live send): read the stored entry; a named one would carry
+-- by = false (an actor without an account), nobody named is by = nil
+local function stored() local box = T.Store.get("inbox").wowner; return box and box[#box] end
+wc.parts.Windshield.cond = wc.parts.Windshield.cond - 5 -- within the owner's 2 game minutes, the owner offline
+r0 = wc.alarmTriggered
+F.fire("EveryOneMinute")
+check(wc.alarmTriggered == r0 + 1 and stored() and stored().by == nil,
+    "same name, not the owner's account, online: the owner's last hit is not handed to it (alarm, nobody named)")
+freshGlass()
+check(hitBy(impostor, 2, 2) == 1 and stored().by == nil and S.lastHit[wid] == nil,
+    "same name, no verified account: its own packet is not trusted (alarm, nobody named)")
+T.account = account0
+F.online = { wOwner, thief }
+freshGlass()
+wOwner.x, wOwner.y = 1000 + 2.8, 2000 + 2.8 -- 45 degrees off the centre: 3.96 straight, 5.6 Manhattan
+check(hitBy(wOwner, 2, 2) == 0, "the owner 45 degrees off, 3.96 tiles in a straight line (5.6 Manhattan): trusted, quiet")
+freshGlass()
+wOwner.z = 1
+check(hitBy(wOwner, 2, 2) == 1 and F.lastSent("alert").args.by == nil, "...one floor up: not trusted (alarm, nobody named)")
+wOwner.z = nil
+freshGlass()
+wOwner.vehicle = wc
+check(hitBy(wOwner, 2, 2) == 1 and F.lastSent("alert").args.by == nil, "...sitting in the car: not trusted")
+wOwner.vehicle = nil
+freshGlass()
+thief.x, thief.y = 1000 - 2, 2000 + 2
+check(hitBy(wOwner, 2, 2) == 1 and F.lastSent("alert").args.by == nil, "...another player within reach: not trusted")
+thief.x, thief.y, wOwner.x, wOwner.y = nil, nil, nil, nil
+F.hours = F.hours + 3 / 60
 thief.dist, wOwner.dist = 2, 2
 wc.parts.Windshield.cond = 50 -- new glass for the next cases (a higher reading only moves the baseline)
 F.fire("EveryOneMinute")
@@ -402,21 +461,31 @@ F.fire("OnClientCommand", "vehicle", "attachTrailer", thief, { vehicleA = wc:get
 check(wc.alarmTriggered == t0 + 1, "the same hook-up sent again (vanilla unhooks and hooks again, BaseVehicle.java:10047-10062): no second alarm")
 local trailer2 = { id = 9002, getId = function(self) return self.id end, getScriptName = function() return "Base.Trailer" end }
 F.vehicles[trailer2.id] = trailer2
-wc.towing = trailer2
+wc.towing = trailer2 -- moved to another trailer (B-C), then back to the first (A-B), all inside the window
 F.fire("OnClientCommand", "vehicle", "attachTrailer", thief, { vehicleA = wc:getId(), vehicleB = trailer2.id })
-check(wc.alarmTriggered == t0 + 2 and F.lastSent("alert").args.what == "tow", "hooked to another trailer: alarm again")
-F.fire("OnClientCommand", "vehicle", "detachTrailer", thief, { vehicle = trailer2.id })
+wc.towing = trailer
+F.fire("OnClientCommand", "vehicle", "attachTrailer", thief, { vehicleA = wc:getId(), vehicleB = trailer.id })
+check(wc.alarmTriggered == t0 + 1, "another trailer, then the first again, inside S.towHours(): still one alarm")
+for _ = 1, 5 do -- attach / detach in a loop (the vehicle module skips CmdRate): one alert per window
+    F.fire("OnClientCommand", "vehicle", "detachTrailer", thief, { vehicle = wc:getId() })
+    F.fire("OnClientCommand", "vehicle", "attachTrailer", thief, { vehicleA = wc:getId(), vehicleB = trailer.id })
+end
+check(wc.alarmTriggered == t0 + 1 and alertsTo("wowner") == 1, "attach / detach 5 times inside the window: one alarm, one alert")
+F.hours = F.hours + S.towHours() + 1 / 60
+F.fire("OnClientCommand", "vehicle", "attachTrailer", thief, { vehicleA = wc:getId(), vehicleB = trailer.id })
+check(wc.alarmTriggered == t0 + 2 and F.lastSent("alert").args.what == "tow", "past the window (vanilla's alarm length): the next tow rings again")
+check(math.abs(S.towHours() - 0.66 * 30 / 90) < 1e-9, "the window is vanilla's alarm length, 0.66 x getDeltaMinutesPerDay() hours (VehicleAlarm.java:85)")
+F.hours = F.hours + S.towHours() + 1 / 60
 wc.towing = nil
 trailer.towing = wc -- the menu swaps A and B by hitch: here the trailer side is A and pulls the Tesla
 F.fire("OnClientCommand", "vehicle", "attachTrailer", thief, { vehicleA = trailer.id, vehicleB = wc:getId() })
-check(wc.alarmTriggered == t0 + 3, "after a detach, a stranger hooks it as B (towed): alarm too")
+check(wc.alarmTriggered == t0 + 3, "a stranger hooks it as B (towed): alarm too")
 F.fire("OnClientCommand", "vehicle", "attachTrailer", thief, {})
 F.fire("OnClientCommand", "vehicle", "attachTrailer", thief, { vehicleA = -1, vehicleB = -1 })
 check(wc.alarmTriggered == t0 + 3, "attachTrailer refused by VehicleManager (args emptied, ids -1): nothing")
-F.fire("OnClientCommand", "vehicle", "detachTrailer", wOwner, { vehicle = trailer.id })
 F.fire("OnClientCommand", "vehicle", "attachTrailer", wOwner, { vehicleA = trailer.id, vehicleB = wc:getId() })
 check(wc.alarmTriggered == t0 + 3 and md(wc).sentry == nil and S.tow[wc:getId()] == nil,
-    "the owner hooks it up: sentry off, no alarm, the tow forgotten")
+    "the owner hooks it up inside the stranger's window: sentry off all the same, no alarm, the window forgotten")
 cmds.sentryArm(wOwner, { vid = wc:getId() })
 local sharer = F.player("sharer")
 MinidoracatVehicleManagerAPI = { canUse = function(p) return p == sharer, "SHARED" end }
@@ -429,11 +498,19 @@ wc.parts.Windshield.cond = 100
 cmds.sentryArm(wOwner, { vid = wc:getId() })
 local i0 = wc.alarmTriggered
 ISUninstallVehiclePart.complete({ vehicle = wc, character = wOwner, part = wc.parts.Windshield })
-wc.parts.Windshield.cond = 60
-ISInstallVehiclePart.complete({ vehicle = wc, character = wOwner, part = wc.parts.Windshield })
+local pane = { full = "Base.Windshield1" }
+wc.parts.Windshield.cond, wc.parts.Windshield.item = 60, pane
+ISInstallVehiclePart.complete({ vehicle = wc, character = wOwner, part = wc.parts.Windshield, item = pane })
 F.fire("EveryOneMinute")
 check(md(wc).sentry ~= nil and wc.alarmTriggered == i0 and md(wc).sentry.win.Windshield == 60,
     "the owner takes the windshield out and fits a 60% one: the next scan does not ring, 60 is the baseline")
+-- a failed install still returns true from complete (ISInstallVehiclePart.lua:102-114,120): the baseline stays
+wc.parts.Windshield.cond = 30 -- a loss the scan has not seen yet
+ISInstallVehiclePart.complete({ vehicle = wc, character = wOwner, part = wc.parts.Windshield, item = { full = "Base.Windshield1" } })
+check(md(wc).sentry.win.Windshield == 60, "a failed install (the part still holds another item): the baseline stays")
+F.fire("EveryOneMinute")
+check(wc.alarmTriggered == i0 + 1, "...and the unseen loss still rings on the next scan")
+wc.parts.Windshield.item = nil
 
 -- ---- client: inbox pull goes out on the first OnTick, not inside OnGameStart (family pitfalls.md
 -- "MP client 不可在 OnGameStart 直接送 sendClientCommand"; tesla-sentry-1023b lost the pull this way) ----

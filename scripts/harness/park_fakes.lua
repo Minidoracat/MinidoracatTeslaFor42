@@ -47,6 +47,7 @@ local gt = {
     getHour = function() return 18 end,
     getMinutes = function() return 42 end,
     getMinutesPerDay = function() return 90 end,
+    getDeltaMinutesPerDay = function() return 30 / 90 end, -- GameTime.java:433-435
 }
 set("getGameTime", function() return gt end) -- tests drive the clock
 -- outside air the car sits in (ClimateManager.getAirTemperatureForSquare with the car: base + cabin offset)
@@ -204,7 +205,6 @@ function F.vehicle(o)
     function v:getX() return self.x end
     function v:getY() return self.y end
     function v:getZ() return 0 end
-    function v:DistTo(p) return p.dist end -- the fake player's distance to any car
     function v:setAlarmed(b) self.alarmed = b end
     function v:triggerAlarm()
         if self.alarmed then self.alarmTriggered = self.alarmTriggered + 1 end
@@ -248,6 +248,10 @@ function F.player(name, o)
     function p:getPlayerNum() return o.num or 0 end -- split-screen slot (IsoPlayer.java:979)
     function p:getVehicle() return self.vehicle end
     function p:DistTo() return self.dist end
+    -- position: o.x/o.y/o.z, or `dist` tiles east of the fake cars' spot (1000, 2000) on floor 0 (Sentry.trusted)
+    function p:getX() return self.x or (1000 + self.dist) end
+    function p:getY() return self.y or 2000 end
+    function p:getZ() return self.z or 0 end
     function p:getInventory()
         local keys = self.keys
         return { haveThisKeyId = function(_, id) return keys[id] and {} or nil end }
