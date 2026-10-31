@@ -126,6 +126,7 @@ T.Specs = {
         kwPerKmh = 0.00730 * T.DRIVE_SCALE,
         massKg = 2178, -- Plaid curb mass 4,802 lb (tesla.com 2026-04-21)
         regenEff = 0.6,
+        doorClip = { TrunkDoor = 3.6 }, -- shell doors not at 0.8 s: clip seconds (cars/model_s.py DOORS; Liftgate.syncShell)
         hepa = true, -- HEPA filter and Bioweapon Defense Mode (Model S owner's manual p.148)
         -- the last US design studio's six paints (2026-03-06) and the China pre-refresh Solid Black and Deep Blue
         -- (user 2026-10-31); same order and append-only rules as above, h/s/v by convert.py build
