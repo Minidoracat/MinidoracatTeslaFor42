@@ -1080,6 +1080,18 @@ def textures(car, c):
         xp = (np.arange(len(ramp)) + 0.5) / len(ramp)
         a_, b_ = (np.array(t, np.float32) for t in pv.CAL[p])
         s = col * shade[..., None]
+        if C.get("RAMP_SPLIT"):
+            # the official ramp's low bins are the lower doors reflecting the studio floor (greyed paint) and its top
+            # bins the white highlights; a per-channel CAL tinted those grey parts (Ultra Red's lower doors grey-green,
+            # Deep Blue's pink: user 2026-11-01). Each bin = c x the most saturated bin's colour at the bin's value +
+            # (1 - c) x grey of that value (c = its saturation over that bin's); CAL `a` acts on the colour part, its
+            # channel mean on the grey part, so the paint hue stays one hue from sill to roof
+            v = ramp.max(1, keepdims=True)
+            sat = (ramp.max(1) - ramp.min(1)) / np.maximum(ramp.max(1), 1e-6)
+            k = int(np.argmax(sat))
+            c = np.clip(sat / max(sat[k], 1e-6), 0, 1)[:, None]
+            ramp = c * a_ * ramp[k] / v[k] * v + (1 - c) * a_.mean() * v
+            a_ = np.ones(3, np.float32)
         s[paint] = np.clip(a_ * np.stack([np.interp(q, xp, ramp[:, i]) for i in range(3)], -1) / pv.GAIN + b_, 0, 1)
         s[chrome] = np.array(CHROME[int(np.median(s[paint].max(-1)) >= 0.55)]) / 255
         s[etch] = np.median(s[paint], 0) * 0.78     # etched into the steel (and seen through a film): a shade darker

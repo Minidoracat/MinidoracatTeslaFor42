@@ -22,20 +22,22 @@ CAR = dict(
     # colors (skin index is saved: only append after release)
     PAINTS=[("StealthGrey", "PN01"), ("LunarSilver", "PN02"), ("PearlWhite", "PPSW"), ("UltraRed", "PR01"),
             ("DiamondBlack", "PX02"), ("FrostBlue", "PB00"), ("SolidBlack", "PBSB"), ("DeepBlue", "PPSB")],
-    # tex = a * official-ramp colour / GAIN + b (model_y.py CAL); fitted with perf/paint_sheet.py on modelx-sp
-    # paint-<i>-<name>-fl-max (car heading S, closest zoom) against the official FRONT34. Calibration knob: refit
-    # after changing the paint light
+    # tex = a * official-ramp colour / GAIN (model_y.py CAL), b 0: per-channel gains only, a = official FRONT34 p50 over
+    # the game's at a = 1 (perf/paint_sheet.py on modelx-sp paint-<i>-<name>-fl-max, tesla-mx-1101b). An offset (the
+    # first fit) clipped the dark lower doors to another hue (Ultra Red R < 0 -> grey-green). RAMP_SPLIT (convert.py):
+    # the gains act on the paint colour only, the ramp's grey (floor reflection, highlights) gets their mean.
+    # Calibration knob: refit after changing the paint light
     CAL={
-        "StealthGrey": ((1.05, 1.071, 1.166), (-0.046, -0.071, -0.138)),
-        "LunarSilver": ((1.539, 1.49, 1.585), (-0.557, -0.548, -0.648)),
-        "PearlWhite": ((0.916, 0.986, 1.063), (-0.012, -0.098, -0.182)),
-        "UltraRed": ((1.388, 1.674, 1.664), (-0.373, -0.02, -0.068)),
-        "DiamondBlack": ((0.781, 0.846, 0.98), (0.057, 0.045, 0.013)),
-        "FrostBlue": ((0.791, 1.019, 1.145), (0.085, 0.011, -0.082)),
-        "SolidBlack": ((0.764, 0.809, 0.819), (0.063, 0.045, 0.035)),
-        # DeepBlue R: an offset, not a slope (paint_sheet fit 1.97 turned the shaded lower body purple)
-        "DeepBlue": ((1.0, 0.9, 1.166), (0.057, 0.027, -0.181)),
+        "StealthGrey": ((0.82, 0.78, 0.75), (0.0, 0.0, 0.0)),
+        "LunarSilver": ((0.76, 0.75, 0.75), (0.0, 0.0, 0.0)),
+        "PearlWhite": ((0.92, 0.91, 0.91), (0.0, 0.0, 0.0)),
+        "UltraRed": ((0.75, 1.58, 1.17), (0.0, 0.0, 0.0)),
+        "DiamondBlack": ((1.16, 1.09, 0.98), (0.0, 0.0, 0.0)),
+        "FrostBlue": ((1.06, 1.02, 0.98), (0.0, 0.0, 0.0)),
+        "SolidBlack": ((1.02, 1.0, 0.94), (0.0, 0.0, 0.0)),
+        "DeepBlue": ((2.25, 1.0, 0.83), (0.0, 0.0, 0.0)),
     },
+    RAMP_SPLIT=True,
     # design studio: Plaid, 20" Perihelix, black interior, six seats. The two China paints are the pre-refresh car's
     # ($MTX19,$WX01,$IBC00): their renders were fetched by hand (temp/plan-sx-1031/assets/official), used for the colour
     COMPOSITOR_MODEL="mx",
@@ -127,7 +129,11 @@ CAR = dict(
     GATE_COMPS=(),
     GATE_CUT_COMPS=(),
     # the nose's T stays chrome (official FRONT34); the rest of the chrome trim is black on the last Model X
-    RECOLOR=(("Aluminum", (-0.045, 1.98, 0.55), (0.045, 2.10, 0.67), (196, 200, 206)),),
+    # nose T chrome; the pre-refresh fog lamps (Light / Light_Glass in the bumper's corner pockets) black: the 2021+
+    # car has none there, only a black air-curtain inlet (official FRONT34)
+    RECOLOR=(("Aluminum", (-0.045, 1.98, 0.55), (0.045, 2.10, 0.67), (196, 200, 206)),
+             *((m, (lo, 1.84, 0.22), (hi, 1.96, 0.34), (16, 16, 18)) for m in ("Light", "Light_Glass")
+               for lo, hi in ((-0.68, -0.48), (0.48, 0.68)))),
     # the front bumper camera (2025+ Model X, official FRONT34): grey ring on the lower grille's middle (y: ray start
     # ahead of the bumper, z, ring radius and width)
     CAMERA=dict(y=2.2, z=0.32, r=0.022, w=0.008),

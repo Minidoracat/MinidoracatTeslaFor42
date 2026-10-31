@@ -138,14 +138,14 @@ T.Specs = {
         -- Model X Plaid paints: the last US design studio's six (Lexicon 2026-03-06) and China's pre-refresh Solid
         -- Black and Deep Blue (2025-03). Same order and append-only rules as above; h/s/v by convert.py build.
         colors = {
-            { name = "StealthGrey", code = "PN01", h = 0.033, s = 0.555, v = 0.291 },
-            { name = "LunarSilver", code = "PN02", h = 0.721, s = 0.516, v = 0.479 },
-            { name = "PearlWhite", code = "PPSW", h = 0.792, s = 0.491, v = 0.881 },
-            { name = "UltraRed", code = "PR01", h = 0.0, s = 0.912, v = 0.355 },
-            { name = "DiamondBlack", code = "PX02", h = 0.955, s = 0.502, v = 0.23 },
-            { name = "FrostBlue", code = "PB00", h = 0.584, s = 0.831, v = 0.478 },
-            { name = "SolidBlack", code = "PBSB", h = 0.965, s = 0.535, v = 0.255 },
-            { name = "DeepBlue", code = "PPSB", h = 0.577, s = 1.0, v = 0.415 },
+            { name = "StealthGrey", code = "PN01", h = 0.72, s = 0.538, v = 0.283 },
+            { name = "LunarSilver", code = "PN02", h = 0.634, s = 0.53, v = 0.56 },
+            { name = "PearlWhite", code = "PPSW", h = 0.645, s = 0.501, v = 0.918 },
+            { name = "UltraRed", code = "PR01", h = 0.981, s = 1.0, v = 0.466 },
+            { name = "DiamondBlack", code = "PX02", h = 0.953, s = 0.537, v = 0.227 },
+            { name = "FrostBlue", code = "PB00", h = 0.586, s = 0.894, v = 0.487 },
+            { name = "SolidBlack", code = "PBSB", h = 0.925, s = 0.52, v = 0.24 },
+            { name = "DeepBlue", code = "PPSB", h = 0.567, s = 1.0, v = 0.502 },
         },
     },
 }
