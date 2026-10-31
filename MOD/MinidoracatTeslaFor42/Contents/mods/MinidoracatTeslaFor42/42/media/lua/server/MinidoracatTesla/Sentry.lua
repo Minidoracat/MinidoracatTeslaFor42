@@ -422,20 +422,24 @@ function S.onDamageWindow(player, args)
     if not was then return end
     if not (pre and pre.player == player and pre.vid == id and pre.part == args.part) then pre = nil end
     local cond = part:getCondition()
-    if cond >= (pre and pre.cond or was) then return end -- took nothing; an earlier loss is the scan's
-    local clean = pre ~= nil and pre.cond == was
+    -- glass already gone when the packet came in (that window under its baseline, or any other window): nobody this
+    -- packet can speak for. Drop the last trusted hit too, or the next scan would hand that loss to it (a legit
+    -- one = silence); ring now, unnamed. Checked before "took nothing": a packet on glass already at 0 takes nothing.
+    local unseen = pre ~= nil and pre.cond < was
     for i = 0, v:getPartCount() - 1 do
         local p = v:getPartByIndex(i)
         local base = p:getWindow() and p:getId() ~= args.part and s.win[p:getId()]
-        if base and p:getCondition() < base then clean = false end
+        if base and p:getCondition() < base then unseen = true end
     end
-    local actor = clean and S.trusted(v, player) and player or nil
+    local took = cond < (pre and pre.cond or was)
+    if not unseen and not took then return end -- took nothing, nothing else gone
+    local actor = pre ~= nil and not unseen and S.trusted(v, player) and player or nil
     S.lastHit[id] = actor and { account = T.account(player), at = now() } or nil
     local dx, dy = player:getX() - v:getX(), player:getY() - v:getY()
     T.log("sentry damageWindow vid=" .. id .. " " .. args.part .. " from " .. player:getUsername()
         .. (actor and " trusted" or " untrusted") .. string.format(" dist=%.1f", math.sqrt(dx * dx + dy * dy))
         .. " base=" .. tostring(was) .. " pre=" .. tostring(pre and pre.cond) .. " now=" .. tostring(cond)
-        .. " amount=" .. tostring(amount))
+        .. " amount=" .. tostring(amount) .. (unseen and " unseen" or ""))
     S.checkWindows(v, actor)
 end
 
