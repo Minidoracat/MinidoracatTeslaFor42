@@ -398,6 +398,16 @@ check(wc.alarmTriggered == r1 + 1 and F.lastSent("alert").args.by == nil, "no sn
 freshGlass()
 check(hitBy(wOwner, 2, 2) == 0 and S.lastHit[wid] and S.lastHit[wid].account == "wowner",
     "the trusted owner's packet explaining its whole drop: quiet, kept by account")
+-- right after (no freshGlass, inside the 2 game minutes): another source takes the rest of that glass, then a packet
+-- for 1 lands on glass already at 0 and takes nothing. The snapshot shows the loss: ring now, unnamed, and the
+-- owner's hit must not claim it on the next scan (a legit actor = silence)
+wc.parts.Windshield.cond = 0
+r0 = wc.alarmTriggered
+hit(wOwner, 0, 1)
+check(wc.alarmTriggered == r0 + 1 and F.lastSent("alert").args.by == nil and S.lastHit[wid] == nil and ws.win.Windshield == 0,
+    "trusted owner's hit, then glass lost elsewhere, then a packet that takes nothing: alarm now, nobody named, the old hit dropped")
+F.fire("EveryOneMinute")
+check(wc.alarmTriggered == r0 + 1, "...the next scan adds nothing")
 -- someone else under the owner's name (no verified account: an unbound Steam name, a split-screen guest)
 local impostor = F.player("wowner")
 local account0 = T.account
