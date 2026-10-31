@@ -41,6 +41,7 @@
 > - 素材：Model S 車身改作自 ValentunW（Lals）的「Tesla Model S Plaid」（Sketchfab，CC BY 4.0，https://sketchfab.com/3d-models/tesla-model-s-plaid-9de8855fae324e6cbbb83c9b5288c961 ，授權 http://creativecommons.org/licenses/by/4.0/ ）。照官方車長縮放、減面、拆件（車門、連後擋的尾門、前車廂蓋）、重做貼圖，拿掉車內、輪子、輪胎、煞車與雨刷，重畫標誌，輪子與車內換成本 MOD 自己的；署名全文見 `CREDITS.md`。
 > - ID：車輛 `Base.MinidoracatTesla_ModelS`；電池 `Base.MinidoracatTesla_ModelSBattery`（100 kWh）；充電插頭 `Base.MinidoracatTesla_CablePlugModelS`。生成只在 `VehicleZoneDistribution` 的 `good`，spawnChance 2。
 > - 素材：Model X 車身改作自 Abdul.Hannan 的「Tesla Model X」（Sketchfab，CC BY 4.0，https://sketchfab.com/3d-models/tesla-model-x-6a5469a1b776431cb1e1e17a72a2c4f5 ，授權 http://creativecommons.org/licenses/by/4.0/ ）。鏡射成整台、照官方尺寸縮放、減面、拆件（前門、鷹翼門、尾門、前車廂蓋）、重做貼圖，鍍鉻飾條改黑，加上前保桿攝影機與輪拱內襯，輪子與車內換成本 MOD 自己的；署名全文見 `CREDITS.md`。
+> - ID：車輛 `Base.MinidoracatTesla_ModelX`；電池 `Base.MinidoracatTesla_ModelXBattery`（100 kWh）；充電插頭 `Base.MinidoracatTesla_CablePlugModelX`。生成只在 `VehicleZoneDistribution` 的 `good`，spawnChance 2。
 > - 6 座用原版 `PassengerSeat6` 範本；第三排（`RearLeft`／`RearRight`）的車外位置與 `area` 設在第二排的鷹翼門位置，第二排坐滿時仍能直接上第三排。
 > - 鷹翼門是一個車門零件配兩根骨架（車頂鉸鏈與肘部）的一段動畫，開關照原版車門的流程同步。
 > - 門洞殼的開關位元改在開門動畫跑到三分之一、關門動畫跑到三分之二時切換（原本在開關門動作完成的瞬間切換，原版開關門動作沒有時間長度）；伺服器在這段時間掛一個一次性的 OnTick，沒有待切換的門就移除。讀取存檔或車輛重新載入時也會照存檔裡的門狀態重設這個位元。
