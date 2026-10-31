@@ -148,16 +148,18 @@ gas0.parts.DoorFrontLeft.door.open = true
 settle()
 check(H.near(gas0:getColorHue(), 0.69, 1e-6) and H.count("OnTick") == ticks,
     "a pending swing whose id is now another make's: dropped, that car's hue untouched, OnTick removed")
+-- a load: Liftgate's own OnSpawnVehicleEnd handler (the other mods' handlers need a fuller car)
+local function loaded() L.onLoad(sp) end
 H.addVehicle(sp) -- back (fl0 still open, bit still 0): OnSpawnVehicleEnd sets the bit at once, nothing pending
-L.syncShell(sp, true) -- what OnSpawnVehicleEnd calls (its other handlers need a fuller car)
+loaded()
 check(bit() == 1 and H.count("OnTick") == ticks, "loaded with a door open: its bit at once, no OnTick")
 open(true) -- the same door: no change
 fl0.door.open = false -- saved shut inside the swing with the old bit
-L.syncShell(sp, true) -- what OnSpawnVehicleEnd calls (its other handlers need a fuller car)
+loaded()
 check(bit() == 0 and H.count("OnTick") == ticks, "loaded with the door shut but its bit set: cleared at once")
 open(true)
 tick(3)
-L.syncShell(sp, true) -- reloaded mid-swing (opened just before): the doors stand, the pending flip goes
+loaded() -- reloaded mid-swing (opened just before): the doors stand, the pending flip goes
 check(bit() == 1 and H.count("OnTick") == ticks, "reloaded mid-swing: set to the door at once, the pending flip dropped")
 open(false)
 settle() -- the liftgate's opens and closes above
