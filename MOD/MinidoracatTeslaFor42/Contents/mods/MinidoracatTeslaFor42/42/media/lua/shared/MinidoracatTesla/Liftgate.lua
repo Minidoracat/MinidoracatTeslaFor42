@@ -189,6 +189,9 @@ if not isClient() then
             return false
         end
         door:setLocked(true)
+        -- a wing that was the last unlocked cabin door: a lid shut while it stood unlocked stayed unlocked
+        -- (areAllDoorsLocked false above), so lock the lids now, as the vanilla per-door lock does (ISLockVehicleDoor below)
+        if WINGS[id] and v:areAllDoorsLocked() then L.lockLids(v, true) end
         return true
     end
 

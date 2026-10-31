@@ -325,8 +325,20 @@ d = act(owner, "falcon", false)
 check(d.why == nil and not RR.open and RL.locked and RR.locked, "falcon: one shut by hand, the app shuts the other -> both lock")
 act(owner, "falcon", true)
 RL.open, RR.open = false, false -- both shut by hand, unlocked: the app's close has nothing to move and still locks them
+local fa2 = R.stats.actions
 d = act(owner, "falcon", false)
 check(d.why == nil and RL.locked and RR.locked, "falcon: both shut by hand, the app's close (nothing to move) locks them")
+check(R.stats.actions == fa2 + 1, "falcon: that relock counts as an action (logged), not 'already so'")
+-- review round 2 (R2-3): a liftgate shut while the wings stood open and unlocked stays unlocked (the cabin is not all
+-- locked); once the wings lock again the car reads locked, so the lids lock with them
+local tg = v.parts.TrunkDoor.d
+act(owner, "falcon", true)
+act(owner, "trunk", true)
+act(owner, "trunk", false)
+check(not tg.open and not tg.locked, "liftgate shut while the wings stand unlocked: not locked yet")
+d = act(owner, "falcon", false)
+check(d.why == nil and RL.locked and RR.locked and tg.locked and v.parts.EngineDoor.d.locked,
+    "app: wings open -> liftgate open, shut -> wings shut: wings and liftgate locked")
 act(owner, "falcon", true)
 RL.open = false -- shut by hand: the close action's hook (Liftgate.relock) locks it
 check(T.Liftgate.relock(v, v:getPartById("DoorRearLeft")) == true and RL.locked, "falcon: a wing shut by hand locks (Liftgate.relock)")

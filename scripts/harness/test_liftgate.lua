@@ -231,6 +231,32 @@ local tx2 = v.doorTx
 ISCloseVehicleDoor.complete({ vehicle = v, part = tg, character = passenger })
 check(tg.door.locked and v.doorTx == tx2 + 1, "locked car: liftgate shut by hand (vanilla close) -> locked again and synced")
 v.cabinLocked = false
+-- review round 2 (R2-3), by hand: Model X, the car locked, the app opened both wings (unlocked); the liftgate opened and
+-- shut by hand stays unlocked (cabin not all locked), the wings shut by hand lock; the last one locks the lids too
+do
+    local x = car({ script = "Base.MinidoracatTesla_ModelX" })
+    for _, id in ipairs({ "DoorFrontRight", "DoorRearRight" }) do
+        local d0 = x.parts.DoorFrontLeft
+        local door = setmetatable({ open = false, locked = false, broken = false }, { __index = d0.door })
+        x.parts[id] = setmetatable({ id = id, door = door, item = {} }, { __index = d0 })
+    end
+    local CABIN = { "DoorFrontLeft", "DoorFrontRight", "DoorRearLeft", "DoorRearRight" }
+    function x:areAllDoorsLocked()
+        for _, id in ipairs(CABIN) do if not self.parts[id].door.locked then return false end end
+        return true
+    end
+    for _, id in ipairs(CABIN) do x.parts[id].door.locked = true end
+    local wl, wr, gate = x.parts.DoorRearLeft.door, x.parts.DoorRearRight.door, x.parts.TrunkDoor.door
+    wl.open, wl.locked, wr.open, wr.locked = true, false, true, false -- the app opened both wings
+    gate.open, gate.locked = true, false
+    ISCloseVehicleDoor.complete({ vehicle = x, part = x.parts.TrunkDoor, character = passenger })
+    check(not gate.open and not gate.locked, "by hand: liftgate shut while the wings stand unlocked: not locked yet")
+    ISCloseVehicleDoor.complete({ vehicle = x, part = x.parts.DoorRearLeft, character = passenger })
+    check(wl.locked and not gate.locked, "by hand: the left wing shut locks, the right still open: liftgate waits")
+    ISCloseVehicleDoor.complete({ vehicle = x, part = x.parts.DoorRearRight, character = passenger })
+    check(wr.locked and gate.locked and x.parts.EngineDoor.door.locked,
+        "by hand: wings open -> liftgate open, shut -> wings shut: wings and liftgate locked")
+end
 local gas = car({ script = "Base.CarNormal" })
 n = #H.sent
 ISOpenVehicleDoor.complete({ vehicle = gas, part = gas.parts.DoorFrontLeft, character = driver })
