@@ -295,12 +295,25 @@ local bare = F.track(F.vehicle({ pct = 80 }))
 bare.parts.Windshield.cond = 10
 F.fire("EveryOneMinute")
 check(bare.alarmTriggered == 0 and S.armed[bare:getId()] == nil, "scan: an unarmed car is not on the list, no alarm")
+-- Vanilla's damageWindow handler runs between the two listeners: the shared snapshot (ParkModes.lua, before vanilla),
+-- then vanilla (VehicleCommands.lua:169-185), then Sentry. Here F.vanillaCond is the condition vanilla leaves the window
+-- at; hit() sends one packet that way.
+local before0 = S.beforeVehicleCommand
+S.beforeVehicleCommand = function(m, c, p, args)
+    before0(m, c, p, args)
+    local v = F.vanillaCond and c == "damageWindow" and type(args) == "table" and getVehicleById(tonumber(args.vehicle) or -1)
+    if v and v.parts[args.part] then v.parts[args.part].cond = F.vanillaCond end
+    F.vanillaCond = nil
+end
+local function hit(p, cond, amount, partId)
+    F.vanillaCond = cond
+    F.fire("OnClientCommand", "vehicle", "damageWindow", p, { vehicle = wc:getId(), part = partId or "Windshield", amount = amount })
+end
 -- MP weapon hit: a client sends vanilla damageWindow, vanilla applied it before us. Named (and a legit sender kept
 -- quiet) only when trusted: the one player on its connection, on foot within reach, nobody else or no zombie near.
 F.sent = {}
 thief.dist, wOwner.dist = 2, 50
-wc.parts.Windshield.cond = 30
-F.fire("OnClientCommand", "vehicle", "damageWindow", thief, { vehicle = wc:getId(), part = "Windshield", amount = 20 })
+hit(thief, 30, 20)
 check(wc.alarmTriggered == a0 + 3 and F.lastSent("alert").args.by == "thief" and F.lastSent("alert").args.what == "windowHit",
     "MP damageWindow from a stranger alone at the car: alarm at once, the alert names the attacker")
 check(S.lastHit[wc:getId()] and S.lastHit[wc:getId()].account == "thief" and S.lastHit[wc:getId()].p == nil
@@ -313,8 +326,7 @@ wc.parts.Windshield.cond = 10
 F.fire("EveryOneMinute")
 check(wc.alarmTriggered == a0 + 5 and F.lastSent("alert").args.by == nil, "scan after 2 game minutes: nobody named again")
 thief.dist, wOwner.dist = 50, 2
-wc.parts.Windshield.cond = 5
-F.fire("OnClientCommand", "vehicle", "damageWindow", wOwner, { vehicle = wc:getId(), part = "Windshield", amount = 5 })
+hit(wOwner, 5, 5)
 check(wc.alarmTriggered == a0 + 5 and ws.win.Windshield == 5 and md(wc).sentry ~= nil,
     "MP damageWindow from the owner (key) alone at the car: no alarm, only the baseline moves")
 F.fire("OnClientCommand", "vehicle", "damageWindow", thief, {}) -- VehicleManager's gate refused it: args emptied
@@ -332,30 +344,26 @@ check(wc.alarmTriggered == a0 + 6 and F.lastSent("alert").args.by == nil,
     "...the next window loss: alarm, nobody named (the owner's empty packet does not keep it quiet)")
 -- the owner's send with a zombie at the car: may be the zombie's hit (AttackVehicleState.java:158-159) -> rings, unnamed
 F.zombies[(wc.x + 1) .. "," .. wc.y] = true
-wc.parts.Windshield.cond = 3
-F.fire("OnClientCommand", "vehicle", "damageWindow", wOwner, { vehicle = wc:getId(), part = "Windshield", amount = 1 })
+hit(wOwner, 3, 1)
 check(wc.alarmTriggered == a0 + 7 and F.lastSent("alert").args.by == nil, "damageWindow from the owner with a zombie at the car: alarm, nobody named")
 F.zombies = {}
 -- a split-screen pair on one connection: the server hands any send to the first player (GameServer.java:2280-2283)
 local coop = F.player("coop", { num = 1 })
 coop.oid, coop.dist, thief.dist, wOwner.dist = thief.oid + 1, 50, 2, 50
 F.online = { wOwner, thief, coop }
-wc.parts.Windshield.cond = 2
-F.fire("OnClientCommand", "vehicle", "damageWindow", thief, { vehicle = wc:getId(), part = "Windshield", amount = 1 })
+hit(thief, 2, 1)
 check(wc.alarmTriggered == a0 + 8 and F.lastSent("alert").args.by == nil and S.lastHit[wc:getId()] == nil,
     "damageWindow from a connection with a split-screen partner: alarm, nobody named")
 F.online = { wOwner, thief }
 thief.dist = 30
-wc.parts.Windshield.cond = 1
-F.fire("OnClientCommand", "vehicle", "damageWindow", thief, { vehicle = wc:getId(), part = "Windshield", amount = 1 })
+hit(thief, 1, 1)
 check(wc.alarmTriggered == a0 + 9 and F.lastSent("alert").args.by == nil, "damageWindow from a sender out of reach (a gun, or not the hitter): alarm, nobody named")
 -- R2: the packet speaks for its own drop only; the hitter is an account; reach is a straight line on the car's floor
 local wid = wc:getId()
 local function freshGlass() wc.parts.Windshield.cond = 100; F.hours = F.hours + 3 / 60; F.fire("EveryOneMinute") end
 local function hitBy(p, drop, amount)
     local n0 = wc.alarmTriggered
-    wc.parts.Windshield.cond = wc.parts.Windshield.cond - drop
-    F.fire("OnClientCommand", "vehicle", "damageWindow", p, { vehicle = wid, part = "Windshield", amount = amount })
+    hit(p, math.max(0, wc.parts.Windshield.cond - drop), amount)
     return wc.alarmTriggered - n0
 end
 F.online = { wOwner, thief }
@@ -369,8 +377,24 @@ check(wc.alarmTriggered == r0 and S.lastHit[wid] == nil and ws.win.Windshield ==
 F.fire("EveryOneMinute")
 check(wc.alarmTriggered == r0 + 1 and F.lastSent("alert").args.by == nil, "...the scan still rings for that loss, nobody named")
 freshGlass()
-check(hitBy(wOwner, 10, 2) == 1 and F.lastSent("alert").args.by == nil and S.lastHit[wid] == nil,
-    "the trusted owner's packet for 2 with 10 gone (another hit too): alarm, nobody named, not the last hitter")
+wc.parts.Windshield.cond = 92 -- 8 gone unseen, then the trusted owner's packet for 2
+check(hitBy(wOwner, 2, 2) == 1 and F.lastSent("alert").args.by == nil and S.lastHit[wid] == nil,
+    "an unseen loss, then the trusted owner's packet: alarm, nobody named, not the last hitter")
+freshGlass()
+wc.parts.Windshield.cond = 20 -- 80 gone unseen; the owner's packet for 100 clamps at 0: the total drop is 100 = amount
+check(hitBy(wOwner, 100, 100) == 1 and F.lastSent("alert").args.by == nil and S.lastHit[wid] == nil and ws.win.Windshield == 0,
+    "overkill (amount 100 on glass already at 20, clamped to 0): the earlier 80 is not absorbed (alarm, nobody named)")
+freshGlass()
+wc.parts.WindowFrontLeft.cond = 70 -- another window lost glass unseen; the owner's packet only touches the windshield
+check(hitBy(wOwner, 2, 2) == 1 and F.lastSent("alert").args.by == nil and S.lastHit[wid] == nil,
+    "another window down as well when the trusted owner's packet lands: alarm, nobody named")
+wc.parts.WindowFrontLeft.cond = 100
+freshGlass()
+wc.parts.Windshield.cond = 98 -- no snapshot (another listener order): the post handler alone cannot tell, so unnamed
+local r1 = wc.alarmTriggered
+S.preHit = nil
+S.onDamageWindow(wOwner, { vehicle = wid, part = "Windshield", amount = 2 })
+check(wc.alarmTriggered == r1 + 1 and F.lastSent("alert").args.by == nil, "no snapshot from before vanilla: alarm, nobody named")
 freshGlass()
 check(hitBy(wOwner, 2, 2) == 0 and S.lastHit[wid] and S.lastHit[wid].account == "wowner",
     "the trusted owner's packet explaining its whole drop: quiet, kept by account")
@@ -412,6 +436,7 @@ thief.dist, wOwner.dist = 2, 2
 wc.parts.Windshield.cond = 50 -- new glass for the next cases (a higher reading only moves the baseline)
 F.fire("EveryOneMinute")
 a0 = wc.alarmTriggered - 5 -- the cases below count from here
+S.beforeVehicleCommand = before0
 -- SP: vanilla's smash breaks the glass mid-swing, our named complete comes after: a scan in between waits for it
 local realServer, realQueue, realGSP, realN = isServer, ISTimedActionQueue, getSpecificPlayer, getNumActivePlayers
 isServer = function() return false end

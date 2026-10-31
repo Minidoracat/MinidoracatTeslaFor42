@@ -403,8 +403,42 @@ end
 --   attachTrailer: the tow, once vanilla linked the two (addPointConstraint sets the link at once, BaseVehicle.java:10104-10106).
 --   damageWindow: MP only, a client works out a weapon hit and sends it (VehicleWindow.java:79-81); vanilla applied it
 --   (VehicleCommands.lua:169-185; nothing for amount <= 0 or no such window, VehicleWindow.java:77). It speaks for its
---   own drop only: a drop the amount does not explain (another hit since the last look) is nobody's, and only an
---   explained drop from a S.trusted sender is named, or kept quiet for a legit one.
+--   own drop only: S.preHit (shared ParkModes.lua, before vanilla) is the condition the server held when it came in.
+--   The sender is named, or kept quiet when legit, only if the car stood at its baseline then (that window at
+--   preHit, every other window untouched) and S.trusted holds; otherwise a loss nobody saw is in the mix (the clamp at
+--   0 hides how much was this packet's): it rings, unnamed. No snapshot (another mod's listener order): unnamed.
+function S.onDamageWindow(player, args)
+    local pre = S.preHit
+    S.preHit = nil
+    local v = getVehicleById(tonumber(args.vehicle) or -1)
+    local s = v and armedState(v)
+    if not s then return end
+    local id = v:getId()
+    S.armed[id] = true
+    local amount = tonumber(args.amount)
+    if not amount or amount <= 0 then return end -- vanilla ignored it; any other loss is the scan's, unnamed
+    local part = type(args.part) == "string" and v:getPartById(args.part)
+    local was = s.win and part and part:getWindow() and s.win[args.part]
+    if not was then return end
+    if not (pre and pre.player == player and pre.vid == id and pre.part == args.part) then pre = nil end
+    local cond = part:getCondition()
+    if cond >= (pre and pre.cond or was) then return end -- took nothing; an earlier loss is the scan's
+    local clean = pre ~= nil and pre.cond == was
+    for i = 0, v:getPartCount() - 1 do
+        local p = v:getPartByIndex(i)
+        local base = p:getWindow() and p:getId() ~= args.part and s.win[p:getId()]
+        if base and p:getCondition() < base then clean = false end
+    end
+    local actor = clean and S.trusted(v, player) and player or nil
+    S.lastHit[id] = actor and { account = T.account(player), at = now() } or nil
+    local dx, dy = player:getX() - v:getX(), player:getY() - v:getY()
+    T.log("sentry damageWindow vid=" .. id .. " " .. args.part .. " from " .. player:getUsername()
+        .. (actor and " trusted" or " untrusted") .. string.format(" dist=%.1f", math.sqrt(dx * dx + dy * dy))
+        .. " base=" .. tostring(was) .. " pre=" .. tostring(pre and pre.cond) .. " now=" .. tostring(cond)
+        .. " amount=" .. tostring(amount))
+    S.checkWindows(v, actor)
+end
+
 Events.OnClientCommand.Add(function(module, command, player, args)
     if module ~= "vehicle" or not player or type(args) ~= "table" then return end
     if command ~= "attachTrailer" and command ~= "damageWindow" then return end
@@ -415,25 +449,7 @@ Events.OnClientCommand.Add(function(module, command, player, args)
             onTow(a, player)
             onTow(b, player)
         else
-            local v = getVehicleById(tonumber(args.vehicle) or -1)
-            local s = v and armedState(v)
-            if not s then return end
-            local id = v:getId()
-            S.armed[id] = true
-            local amount = tonumber(args.amount)
-            if not amount or amount <= 0 then return end -- vanilla ignored it; any other loss is the scan's, unnamed
-            local part = type(args.part) == "string" and v:getPartById(args.part)
-            local was = s.win and part and part:getWindow() and s.win[args.part]
-            if not was then return end
-            local drop = was - part:getCondition()
-            if drop <= 0 then return end -- took nothing
-            local actor = drop <= amount and S.trusted(v, player) and player or nil
-            S.lastHit[id] = actor and { account = T.account(player), at = now() } or nil
-            local dx, dy = player:getX() - v:getX(), player:getY() - v:getY()
-            T.log("sentry damageWindow vid=" .. id .. " " .. args.part .. " from " .. player:getUsername()
-                .. (actor and " trusted" or " untrusted") .. string.format(" dist=%.1f", math.sqrt(dx * dx + dy * dy))
-                .. " drop=" .. tostring(drop) .. " amount=" .. tostring(amount))
-            S.checkWindows(v, actor)
+            S.onDamageWindow(player, args)
         end
     end)
     if not ok then T.log("sentry " .. command .. " error " .. tostring(err)) end
