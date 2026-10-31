@@ -216,4 +216,72 @@ module Base
         static = false,
         scale = 0.5495,
     }
+
+    /* Model X Plaid: same build, units and shaders as the Model Y above (CAR=model_x; body adapted from Abdul.Hannan's */
+    /* "Tesla Model X", CC BY 4.0, CREDITS.md). DoorRearLeft / DoorRearRight are the falcon wing doors: two bones each */
+    /* (upper part, lower part), one clip. */
+    model MinidoracatTesla_ModelX
+    {
+        mesh = vehicles/MinidoracatTesla_ModelX,
+        shader = MinidoracatTesla_vehicle,
+        static = true,
+        invertX = false,
+        scale = 0.5495,
+    }
+
+    model MinidoracatTesla_ModelX_Wheel
+    {
+        mesh = vehicles/MinidoracatTesla_ModelX_Wheel,
+        texture = Vehicles/MinidoracatTesla_ModelX_wheel,
+        shader = vehiclewheel,
+        scale = 0.5495,
+    }
+
+    model MinidoracatTesla_ModelX_DoorFrontLeft
+    {
+        mesh = vehicles/MinidoracatTesla_ModelX_Doors|DoorFrontLeft,
+        shader = MinidoracatTesla_vehicle,
+        static = false,
+        scale = 0.5495,
+    }
+
+    model MinidoracatTesla_ModelX_DoorFrontRight
+    {
+        mesh = vehicles/MinidoracatTesla_ModelX_Doors|DoorFrontRight,
+        shader = MinidoracatTesla_vehicle,
+        static = false,
+        scale = 0.5495,
+    }
+
+    model MinidoracatTesla_ModelX_DoorRearLeft
+    {
+        mesh = vehicles/MinidoracatTesla_ModelX_Doors|DoorRearLeft,
+        shader = MinidoracatTesla_vehicle,
+        static = false,
+        scale = 0.5495,
+    }
+
+    model MinidoracatTesla_ModelX_DoorRearRight
+    {
+        mesh = vehicles/MinidoracatTesla_ModelX_Doors|DoorRearRight,
+        shader = MinidoracatTesla_vehicle,
+        static = false,
+        scale = 0.5495,
+    }
+
+    model MinidoracatTesla_ModelX_TrunkDoor
+    {
+        mesh = vehicles/MinidoracatTesla_ModelX_Doors|TrunkDoor,
+        shader = MinidoracatTesla_vehicle,
+        static = false,
+        scale = 0.5495,
+    }
+
+    model MinidoracatTesla_ModelX_EngineDoor
+    {
+        mesh = vehicles/MinidoracatTesla_ModelX_Doors|EngineDoor,
+        shader = MinidoracatTesla_vehicle,
+        static = false,
+        scale = 0.5495,
+    }
 }

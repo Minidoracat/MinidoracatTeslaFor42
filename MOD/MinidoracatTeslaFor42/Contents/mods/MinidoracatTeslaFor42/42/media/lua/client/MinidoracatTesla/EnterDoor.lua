@@ -29,7 +29,9 @@ function ISOpenVehicleDoor:perform(...)
         local queue = ISTimedActionQueue.getTimedActionQueue(self.character)
         local i = queue:indexOf(self)
         local nxt = i > 0 and queue.queue[i + 1]
-        if nxt and CLIMB[nxt.Type] then nxt.teslaDoorWait = E.WAIT end
+        -- a door of its own pace (Model X falcon wing doors: Core.lua Specs doorWait), else E.WAIT
+        local waits = T.spec(self.vehicle).doorWait
+        if nxt and CLIMB[nxt.Type] then nxt.teslaDoorWait = waits and waits[self.part:getId()] or E.WAIT end
     end
     return perform(self, ...)
 end
