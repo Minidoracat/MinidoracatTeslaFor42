@@ -265,12 +265,17 @@ end
 -- :9183-9186; the client sets it in VehicleEngine.parse, network/fields/vehicle/VehicleEngine.java:18-56). MP physics
 -- runs on the driver's client, which then pushes with the new force. Force is all the throttle there is
 -- (CarController.java:754-779), so a lower one limits acceleration and leaves top speed alone. Quality and loudness
--- stay as they are. Not a VirtualVehicle (SP, unloaded): it has no engine of its own to set.
+-- stay as they are: setFeatures stores (int)(loudness x 0.37037036) (VehicleEngine.java:83-86) and the getter hands
+-- back the stored value (:97-98), so pass one that floors back to it (stored + 0.5, scaled up: the product lands
+-- 0.13-0.5 above, clear of float rounding). VehicleEngine itself is not exposed to Lua (LuaManager.java), so no
+-- setPower. Not a VirtualVehicle (SP, unloaded): it has no engine of its own to set.
+B.LOUDNESS_SCALE = 0.37037036
 function B.setForce(vehicle, chill)
     if not instanceof(vehicle, "BaseVehicle") then return end
     local want = chill and T.CHILL_FORCE or vehicle:getScript():getEngineForce()
     if vehicle:getEnginePower() == want then return end -- BaseVehicle.java:8138
-    vehicle:setEngineFeature(vehicle:getEngineQuality(), vehicle:getEngineLoudness(), want) -- :8125
+    local loud = math.floor((vehicle:getEngineLoudness() + 0.5) / B.LOUDNESS_SCALE)
+    vehicle:setEngineFeature(vehicle:getEngineQuality(), loud, want) -- :8125
     vehicle:transmitEngine()
 end
 

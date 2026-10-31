@@ -471,10 +471,13 @@ check(nv.vanillaEngine == 1, "Update.Engine runs the vanilla engine update")
 H.section("Chill (limits acceleration: the engine force; top speed untouched)")
 local cv = H.vehicle({ kwh = 50, running = true })
 cv._class = "BaseVehicle"
-cv.feature = { 87, 33, 6260 } -- worn engine: quality 87, loudness 33, the script force
+cv.feature = { 87, 10, 6260 } -- worn engine: quality 87, stored loudness 10, the script force
 function cv:getEnginePower() return self.feature[3] end
 function cv:getEngineQuality() return self.feature[1] end
 function cv:getEngineLoudness() return self.feature[2] end
+-- VehicleEngine.setFeatures stores (int)(loudness * 0.37037036F) (VehicleEngine.java:83-86); the getter returns that
+local K = 0.37037035822868347 -- the float 0.37037036F
+function cv:setEngineFeature(q, l, f) self.feature = { math.max(0, math.min(100, q)), math.floor(l * K), f } end
 function cv:transmitEngine() self.engineTx = (self.engineTx or 0) + 1 end
 function cv:setMaxSpeed() self.maxSpeedSet = true end
 local drv, pas = H.player({ name = "drv" }), H.player({ name = "pas" })
@@ -499,16 +502,26 @@ check(B.part(cv):getModData().chill == nil and H.sent[1] and H.sent[1].args.reas
     "chill with VehicleManager refusing DRIVE: NOT_OWNER")
 MinidoracatVehicleManagerAPI = nil
 cmd.chill(drv, { vid = cv:getId() })
-check(B.part(cv):getModData().chill == true and cv.feature[1] == 87 and cv.feature[2] == 33 and cv.feature[3] == T.CHILL_FORCE
+check(B.part(cv):getModData().chill == true and cv.feature[1] == 87 and cv.feature[2] == 10 and cv.feature[3] == T.CHILL_FORCE
     and cv.engineTx == 1 and cv.transmits == cmd0 + 1, "chill by the driver: force CHILL_FORCE (quality, loudness kept), engine and modData sent")
 check(T.CHILL_FORCE < 6180 and cv.maxSpeedSet == nil, "Chill force below every car's script force; top speed never touched")
-cv.feature = { 100, 20, 6260 } -- an admin repair: vanilla repair() puts the script force back (VehiclePart.java:999-1005)
+cv:setEngineFeature(100, 20, 6260) -- an admin repair: vanilla repair() sets the script's values (VehiclePart.java:999-1005)
+local repaired = cv.feature[2]
 T.Update.Engine(cv, cv:getPartById("Engine"), 1)
-check(cv.feature[3] == T.CHILL_FORCE and cv.engineTx == 2, "after a repair: the next Engine update puts Chill's force back")
+check(cv.feature[3] == T.CHILL_FORCE and cv.feature[2] == repaired and cv.engineTx == 2,
+    "after a repair: the next Engine update puts Chill's force back, the repaired loudness kept")
 T.Update.Engine(cv, cv:getPartById("Engine"), 1)
 check(cv.engineTx == 2, "Engine update with Chill's force in place: nothing sent")
 cmd.chill(drv, { vid = cv:getId() })
 check(B.part(cv):getModData().chill == nil and cv.feature[3] == 6260 and cv.engineTx == 3, "chill again: off, the script force back")
+for _ = 1, 3 do cmd.chill(drv, { vid = cv:getId() }); cmd.chill(drv, { vid = cv:getId() }) end
+local keeps = cv.feature[2] == repaired
+for l = 0, 60 do -- every stored loudness floors back to itself through one switch
+    cv.feature = { 100, l, 6260 }
+    B.setForce(cv, true)
+    keeps = keeps and cv.feature[2] == l
+end
+check(keeps and B.part(cv):getModData().chill == nil, "chill on and off 3 more times, and stored loudness 0-60: the engine's loudness (its zombie noise) never shrinks")
 cv.feature = { 100, 20, 5000 } -- someone else's force (another mod): Chill off leaves it alone
 T.Update.Engine(cv, cv:getPartById("Engine"), 1)
 check(cv.feature[3] == 5000, "Chill off: the Engine update does not touch the force")

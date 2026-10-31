@@ -90,7 +90,16 @@ local function action(name)
     _G[name] = cls
 end
 for _, n in ipairs({ "ISOpenVehicleDoor", "ISUnlockVehicleDoor", "ISSmashWindow", "ISHotwireVehicle",
-    "ISUninstallVehiclePart" }) do action(n) end
+    "ISUninstallVehiclePart", "ISInstallVehiclePart" }) do action(n) end
+
+-- the world around a car: F.zombies["x,y"] = true puts a zombie on that square (Sentry.trusted); no other squares
+F.zombies = {}
+set("getCell", function()
+    return { getGridSquare = function(_, x, y)
+        if not F.zombies[x .. "," .. y] then return nil end
+        return { getMovingObjects = function() return F.list({ { _class = "IsoZombie" } }) end }
+    end }
+end)
 
 -- Vanilla timed action base (shared/TimedActions/ISBaseTimedAction.lua): Camp.lua loads CampPower.lua, whose charge
 -- action derives from it. Only what that action calls.
@@ -194,6 +203,8 @@ function F.vehicle(o)
     function v:isAnyDoorLocked() return self.locked == true end
     function v:getX() return self.x end
     function v:getY() return self.y end
+    function v:getZ() return 0 end
+    function v:DistTo(p) return p.dist end -- the fake player's distance to any car
     function v:setAlarmed(b) self.alarmed = b end
     function v:triggerAlarm()
         if self.alarmed then self.alarmTriggered = self.alarmTriggered + 1 end

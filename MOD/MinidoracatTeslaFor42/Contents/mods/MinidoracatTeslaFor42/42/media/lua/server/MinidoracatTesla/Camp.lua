@@ -108,8 +108,8 @@ end)
 -- GameTime multiplier, the rate already after masks, clothing and traits (BodyDamage.java:2478-2506, kept in
 -- IsoGameCharacter.getCorpseSicknessRate :16107); over a game minute that sums to rate x `units`, as for the camp
 -- screen above. The stats reach the client with the 1 s PlayerStats sync (NetworkPlayerManager.java:9-41). The
--- "stench" moodle reads the rate itself (Moodle.java:550-570) and stays lit. ponytail: the rate of this frame for the
--- whole minute; off by at most a minute's worth when the corpse count changed in it.
+-- "stench" moodle reads the rate itself (Moodle.java:550-570) and stays lit. ponytail: the rate of this frame for all
+-- of `minutes` (Update.Heater caps them at T.MAX_ELAPSED); off by that much when the corpse count changed meanwhile.
 function C.filterAir(vehicle, minutes)
     if not vehicle.getCharacter then return end -- SP VirtualVehicle (unloaded): nobody inside
     local units = 48 * minutes * getGameTime():getMinutesPerDay() * 60 / 1440
@@ -160,14 +160,17 @@ function T.Update.Heater(vehicle, part, elapsedMinutes)
         end
     end
     local fan = running and target ~= 0
-    if fan and bp then T.Battery.draw(vehicle, bp, C.HEATER_KW * elapsedMinutes / 60) end
+    -- draw and filter for at most T.MAX_ELAPSED minutes like Update.Battery: the first update after the parts stopped
+    -- updating hands in the whole stopped time (VehicleParts.java:381-386), nobody inside meanwhile
+    local m = math.min(elapsedMinutes, T.MAX_ELAPSED)
+    if fan and bp then T.Battery.draw(vehicle, bp, C.HEATER_KW * m / 60) end
     -- Bioweapon Defense Mode (Specs hepa): the fan runs with the knob at 0 too, at the climate's draw (the manuals give
     -- no figure for it). HEPA filters whenever the climate runs or BDM is on (manuals: "whenever the climate control
     -- system is on"; BDM keeps the cabin at positive pressure).
     local hepa = powered and bp ~= nil and T.spec(vehicle).hepa
     local bdm = hepa and bp:getModData().bdm == true
-    if bdm and not fan then T.Battery.draw(vehicle, bp, C.HEATER_KW * elapsedMinutes / 60) end
-    if hepa and (fan or bdm) then C.filterAir(vehicle, elapsedMinutes) end
+    if bdm and not fan then T.Battery.draw(vehicle, bp, C.HEATER_KW * m / 60) end
+    if hepa and (fan or bdm) then C.filterAir(vehicle, m) end
     -- same sync throttle as vanilla: rounded value moved and more than 2 minutes since the last send
     local id = vehicle:getId()
     local acc = (heaterMinutes[id] or 0) + elapsedMinutes

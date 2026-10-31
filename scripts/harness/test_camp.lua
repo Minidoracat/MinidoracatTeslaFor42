@@ -145,6 +145,12 @@ rider0.sickRate = 0 -- 5 corpses or fewer: Java's own recovery runs, nothing to 
 T.Update.Heater(hy, hy.parts.Heater, 1)
 check(rider0.sick == s2, "HEPA: no corpse rate -> nothing removed")
 rider0.sickRate = 0.001
+-- the first update after the parts stopped updating hands in the whole stopped time (VehicleParts.java:381-386):
+-- filter and draw for T.MAX_ELAPSED minutes at most, like Update.Battery
+local s3, e3 = rider0.sick, kwh(hy)
+T.Update.Heater(hy, hy.parts.Heater, 600)
+check(H.near(s3 - rider0.sick, 0.001 * units * T.MAX_ELAPSED, 1e-9) and H.near(e3 - kwh(hy), C.HEATER_KW * T.MAX_ELAPSED / 60, 1e-9),
+    "an update handing in 600 minutes: filters and draws for T.MAX_ELAPSED (10) minutes only")
 local m3 = F.track(F.vehicle({ pct = 60, running = true, script = "Base.MinidoracatTesla_Model3" }))
 local rider3 = F.player("rider3", { vehicle = m3, sick = 10, sickRate = 0.001 })
 m3.seats[0], m3.passengers = rider3, 1

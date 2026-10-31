@@ -295,12 +295,16 @@ local bare = F.track(F.vehicle({ pct = 80 }))
 bare.parts.Windshield.cond = 10
 F.fire("EveryOneMinute")
 check(bare.alarmTriggered == 0 and S.armed[bare:getId()] == nil, "scan: an unarmed car is not on the list, no alarm")
--- MP weapon hit: the attacker's client sends vanilla damageWindow, vanilla applied it before us
+-- MP weapon hit: a client sends vanilla damageWindow, vanilla applied it before us. Named (and a legit sender kept
+-- quiet) only when trusted: the one player on its connection, on foot within reach, nobody else or no zombie near.
 F.sent = {}
+thief.dist, wOwner.dist = 2, 50
 wc.parts.Windshield.cond = 30
 F.fire("OnClientCommand", "vehicle", "damageWindow", thief, { vehicle = wc:getId(), part = "Windshield", amount = 20 })
 check(wc.alarmTriggered == a0 + 3 and F.lastSent("alert").args.by == "thief" and F.lastSent("alert").args.what == "windowHit",
-    "MP damageWindow from a stranger: alarm at once, the alert names the attacker")
+    "MP damageWindow from a stranger alone at the car: alarm at once, the alert names the attacker")
+check(S.lastHit[wc:getId()] and S.lastHit[wc:getId()].name == "thief" and S.lastHit[wc:getId()].p == nil,
+    "the trusted hit is kept as an account name, not the player object")
 wc.parts.Windshield.cond = 20 -- the server's own PlayerHitVehicle pass takes more glass, no event
 F.fire("EveryOneMinute")
 check(wc.alarmTriggered == a0 + 4 and F.lastSent("alert").args.by == "thief", "scan within 2 game minutes: blamed on the same attacker")
@@ -308,13 +312,47 @@ F.hours = F.hours + 3 / 60
 wc.parts.Windshield.cond = 10
 F.fire("EveryOneMinute")
 check(wc.alarmTriggered == a0 + 5 and F.lastSent("alert").args.by == nil, "scan after 2 game minutes: nobody named again")
+thief.dist, wOwner.dist = 50, 2
 wc.parts.Windshield.cond = 5
 F.fire("OnClientCommand", "vehicle", "damageWindow", wOwner, { vehicle = wc:getId(), part = "Windshield", amount = 5 })
 check(wc.alarmTriggered == a0 + 5 and ws.win.Windshield == 5 and md(wc).sentry ~= nil,
-    "MP damageWindow from the owner (key): no alarm, only the baseline moves")
+    "MP damageWindow from the owner (key) alone at the car: no alarm, only the baseline moves")
 F.fire("OnClientCommand", "vehicle", "damageWindow", thief, {}) -- VehicleManager's gate refused it: args emptied
+F.fire("OnClientCommand", "vehicle", "damageWindow", thief, { vehicle = -1 }) -- ...and the id set to -1 (CommandGate.lua:271-279)
 F.fire("OnClientCommand", "vehicle", "damageWindow", thief, { vehicle = bare:getId(), part = "Windshield", amount = 5 })
 check(wc.alarmTriggered == a0 + 5 and bare.alarmTriggered == 0, "damageWindow refused by VehicleManager or on an unarmed car: nothing")
+F.hours = F.hours + 3 / 60
+F.fire("EveryOneMinute") -- the owner's trusted hit above is older than 2 game minutes now: forgotten
+-- a send that took nothing (amount 0: vanilla ignores it, VehicleWindow.java:77) names nobody and silences nothing
+F.fire("OnClientCommand", "vehicle", "damageWindow", wOwner, { vehicle = wc:getId(), part = "Windshield", amount = 0 })
+check(S.lastHit[wc:getId()] == nil, "zero-damage damageWindow from the owner: not kept as the last hitter")
+wc.parts.Windshield.cond = 4 -- a zombie or a crash right after
+F.fire("EveryOneMinute")
+check(wc.alarmTriggered == a0 + 6 and F.lastSent("alert").args.by == nil,
+    "...the next window loss: alarm, nobody named (the owner's empty packet does not keep it quiet)")
+-- the owner's send with a zombie at the car: may be the zombie's hit (AttackVehicleState.java:158-159) -> rings, unnamed
+F.zombies[(wc.x + 1) .. "," .. wc.y] = true
+wc.parts.Windshield.cond = 3
+F.fire("OnClientCommand", "vehicle", "damageWindow", wOwner, { vehicle = wc:getId(), part = "Windshield", amount = 1 })
+check(wc.alarmTriggered == a0 + 7 and F.lastSent("alert").args.by == nil, "damageWindow from the owner with a zombie at the car: alarm, nobody named")
+F.zombies = {}
+-- a split-screen pair on one connection: the server hands any send to the first player (GameServer.java:2280-2283)
+local coop = F.player("coop", { num = 1 })
+coop.oid, coop.dist, thief.dist, wOwner.dist = thief.oid + 1, 50, 2, 50
+F.online = { wOwner, thief, coop }
+wc.parts.Windshield.cond = 2
+F.fire("OnClientCommand", "vehicle", "damageWindow", thief, { vehicle = wc:getId(), part = "Windshield", amount = 1 })
+check(wc.alarmTriggered == a0 + 8 and F.lastSent("alert").args.by == nil and S.lastHit[wc:getId()] == nil,
+    "damageWindow from a connection with a split-screen partner: alarm, nobody named")
+F.online = { wOwner, thief }
+thief.dist = 30
+wc.parts.Windshield.cond = 1
+F.fire("OnClientCommand", "vehicle", "damageWindow", thief, { vehicle = wc:getId(), part = "Windshield", amount = 1 })
+check(wc.alarmTriggered == a0 + 9 and F.lastSent("alert").args.by == nil, "damageWindow from a sender out of reach (a gun, or not the hitter): alarm, nobody named")
+thief.dist, wOwner.dist = 2, 2
+wc.parts.Windshield.cond = 50 -- new glass for the next cases (a higher reading only moves the baseline)
+F.fire("EveryOneMinute")
+a0 = wc.alarmTriggered - 5 -- the cases below count from here
 -- SP: vanilla's smash breaks the glass mid-swing, our named complete comes after: a scan in between waits for it
 local realServer, realQueue, realGSP, realN = isServer, ISTimedActionQueue, getSpecificPlayer, getNumActivePlayers
 isServer = function() return false end
@@ -360,21 +398,42 @@ wc.towing = trailer
 F.fire("OnClientCommand", "vehicle", "attachTrailer", thief, { vehicleA = wc:getId(), vehicleB = trailer.id })
 check(wc.alarmTriggered == t0 + 1 and F.lastSent("alert").to == "wowner" and F.lastSent("alert").args.what == "tow"
     and F.lastSent("alert").args.by == "thief" and md(wc).sentry ~= nil, "a stranger hooks the Tesla (A) to a trailer: alarm, owner alerted (tow)")
+F.fire("OnClientCommand", "vehicle", "attachTrailer", thief, { vehicleA = wc:getId(), vehicleB = trailer.id })
+check(wc.alarmTriggered == t0 + 1, "the same hook-up sent again (vanilla unhooks and hooks again, BaseVehicle.java:10047-10062): no second alarm")
+local trailer2 = { id = 9002, getId = function(self) return self.id end, getScriptName = function() return "Base.Trailer" end }
+F.vehicles[trailer2.id] = trailer2
+wc.towing = trailer2
+F.fire("OnClientCommand", "vehicle", "attachTrailer", thief, { vehicleA = wc:getId(), vehicleB = trailer2.id })
+check(wc.alarmTriggered == t0 + 2 and F.lastSent("alert").args.what == "tow", "hooked to another trailer: alarm again")
+F.fire("OnClientCommand", "vehicle", "detachTrailer", thief, { vehicle = trailer2.id })
 wc.towing = nil
 trailer.towing = wc -- the menu swaps A and B by hitch: here the trailer side is A and pulls the Tesla
 F.fire("OnClientCommand", "vehicle", "attachTrailer", thief, { vehicleA = trailer.id, vehicleB = wc:getId() })
-check(wc.alarmTriggered == t0 + 2, "a stranger hooks it as B (towed): alarm too")
+check(wc.alarmTriggered == t0 + 3, "after a detach, a stranger hooks it as B (towed): alarm too")
 F.fire("OnClientCommand", "vehicle", "attachTrailer", thief, {})
-check(wc.alarmTriggered == t0 + 2, "attachTrailer refused by VehicleManager (args emptied): nothing")
+F.fire("OnClientCommand", "vehicle", "attachTrailer", thief, { vehicleA = -1, vehicleB = -1 })
+check(wc.alarmTriggered == t0 + 3, "attachTrailer refused by VehicleManager (args emptied, ids -1): nothing")
+F.fire("OnClientCommand", "vehicle", "detachTrailer", wOwner, { vehicle = trailer.id })
 F.fire("OnClientCommand", "vehicle", "attachTrailer", wOwner, { vehicleA = trailer.id, vehicleB = wc:getId() })
-check(wc.alarmTriggered == t0 + 2 and md(wc).sentry == nil, "the owner hooks it up: sentry off, no alarm")
+check(wc.alarmTriggered == t0 + 3 and md(wc).sentry == nil and S.tow[wc:getId()] == nil,
+    "the owner hooks it up: sentry off, no alarm, the tow forgotten")
 cmds.sentryArm(wOwner, { vid = wc:getId() })
 local sharer = F.player("sharer")
 MinidoracatVehicleManagerAPI = { canUse = function(p) return p == sharer, "SHARED" end }
 F.fire("OnClientCommand", "vehicle", "attachTrailer", sharer, { vehicleA = trailer.id, vehicleB = wc:getId() })
-check(wc.alarmTriggered == t0 + 2 and md(wc).sentry == nil, "someone with VehicleManager's PASSENGER right hooks it up: sentry off")
+check(wc.alarmTriggered == t0 + 3 and md(wc).sentry == nil, "someone with VehicleManager's PASSENGER right hooks it up: sentry off")
 MinidoracatVehicleManagerAPI = nil
 trailer.towing = nil
+-- fitting glass: the part takes the item's condition (VehiclePart.java:202), a worse pane is no hit
+wc.parts.Windshield.cond = 100
+cmds.sentryArm(wOwner, { vid = wc:getId() })
+local i0 = wc.alarmTriggered
+ISUninstallVehiclePart.complete({ vehicle = wc, character = wOwner, part = wc.parts.Windshield })
+wc.parts.Windshield.cond = 60
+ISInstallVehiclePart.complete({ vehicle = wc, character = wOwner, part = wc.parts.Windshield })
+F.fire("EveryOneMinute")
+check(md(wc).sentry ~= nil and wc.alarmTriggered == i0 and md(wc).sentry.win.Windshield == 60,
+    "the owner takes the windshield out and fits a 60% one: the next scan does not ring, 60 is the baseline")
 
 -- ---- client: inbox pull goes out on the first OnTick, not inside OnGameStart (family pitfalls.md
 -- "MP client 不可在 OnGameStart 直接送 sendClientCommand"; tesla-sentry-1023b lost the pull this way) ----

@@ -73,6 +73,7 @@ function S.arm(player, vehicle, remote)
     md.sentry = { by = T.account(player), at = t, kwh = T.Battery.kwh(part), since = t } -- by nil: nobody to tell
     S.markWindows(vehicle)
     S.armed[vehicle:getId()] = true
+    S.forget(vehicle:getId())
     T.Battery.topUp12V(vehicle)
     vehicle:transmitPartModData(part)
     T.log("sentry armed vid=" .. vehicle:getId() .. " by " .. player:getUsername())
@@ -83,6 +84,7 @@ function S.disarm(vehicle, who)
     if not part or not part:getModData().sentry then return end
     S.settle(vehicle)
     part:getModData().sentry = nil
+    S.forget(vehicle:getId())
     vehicle:transmitPartModData(part)
     T.log("sentry disarmed vid=" .. vehicle:getId() .. " by " .. tostring(who))
 end
@@ -241,6 +243,12 @@ hook(ISSmashWindow, "ISSmashWindow", function(a)
 end)
 hook(ISHotwireVehicle, "ISHotwireVehicle", function(a) S.onBreak(a.character:getVehicle(), a.character, "hotwire") end)
 hook(ISUninstallVehiclePart, "ISUninstallVehiclePart", function(a) S.onBreak(a.vehicle, a.character, "part", partId(a.part)) end)
+-- Fitting glass is no break, whoever does it: the installed part takes the item's condition (VehiclePart.java:202;
+-- uninstalling left the old one, :215-222), so a worse pane would read as a hit on the next scan. That window only.
+hook(ISInstallVehiclePart, "ISInstallVehiclePart", function(a)
+    local s, part = armedState(a.vehicle), a.part
+    if s and s.win and part and part:getWindow() then s.win[part:getId()] = part:getCondition() end
+end)
 
 -- ------------------------------------------------------------------ windows without an event, towing
 -- Every window loss ends in VehicleWindow.damage (VehicleWindow.java:76-109): weapons (BaseVehicle.processHit,
@@ -251,8 +259,12 @@ hook(ISUninstallVehiclePart, "ISUninstallVehiclePart", function(a) S.onBreak(a.v
 -- break ("window" once the glass is gone), higher (repaired, new glass) = a new baseline only. An empty list costs
 -- one loop with nothing in it, like Store.lua's scan.
 S.armed = {}   -- vehicle id -> true: armed and loaded (S.arm, OnSpawnVehicleEnd); dropped on the next scan once not
-S.lastHit = {} -- vehicle id -> { p = player, at = world hour }: the last MP weapon hit (damageWindow below)
+S.lastHit = {} -- vehicle id -> { name = username, at = world hour }: the last trusted MP weapon hit (damageWindow below)
 S.HIT_HOURS = 2 / 60 -- the server's own PlayerHitVehicle pass may take more glass later with no event: same player
+S.tow = {}     -- vehicle id -> id of the vehicle it was reported hooked to (attachTrailer below)
+
+-- per-car memory keyed by id (ids are reused, VehicleIDMap.java:49-62): cleared on arm, disarm, load, leaving the list
+function S.forget(id) S.lastHit[id], S.tow[id] = nil, nil end
 
 -- SP: vanilla's smash breaks the glass mid-swing in Java (SmashWindowState.java:120-125) and complete (our hook, with
 -- the name) runs after the animation. A scan in between would ring once more naming nobody: skip the car until then.
@@ -289,61 +301,122 @@ function S.checkWindows(vehicle, actor)
     S.onBreak(vehicle, actor, hitCond <= 0 and "window" or "windowHit", hitId) -- one alert per look, the worst window
 end
 
+-- the account named by the trusted hit of the last S.HIT_HOURS, if that player is still online (getPlayerFromUsername
+-- is client-only, LuaManager.java:9142-9147)
+local function lastHitter(id, t)
+    local hit = S.lastHit[id]
+    if not hit then return nil end
+    if t - hit.at > S.HIT_HOURS then S.lastHit[id] = nil; return nil end
+    local ps = getOnlinePlayers()
+    for i = 0, (ps and ps:size() or 0) - 1 do
+        if ps:get(i):getUsername() == hit.name then return ps:get(i) end
+    end
+end
+
 function S.scan()
     local t, gone = now(), nil
     for id in pairs(S.armed) do
         local v = getVehicleById(id)
-        local hit = S.lastHit[id]
-        if hit and t - hit.at > S.HIT_HOURS then hit = nil; S.lastHit[id] = nil end
         if v and armedState(v) then
-            S.checkWindows(v, hit and hit.p or nil)
+            S.checkWindows(v, lastHitter(id, t))
         else -- unloaded, disarmed, or the id now names another car (VehicleIDMap.java:49-62)
             gone = gone or {}
             gone[#gone + 1] = id
         end
     end
     if gone then
-        for _, id in ipairs(gone) do S.armed[id], S.lastHit[id] = nil, nil end
+        for _, id in ipairs(gone) do S.armed[id] = nil; S.forget(id) end
     end
 end
 Events.EveryOneMinute.Add(S.scan)
 
 Events.OnSpawnVehicleEnd.Add(function(vehicle) -- every load (BaseVehicle.java:904)
+    S.forget(vehicle:getId())
     if armedState(vehicle) then S.armed[vehicle:getId()] = true end
 end)
 
+-- Who sent a damageWindow is not always who hit: the client sends it with no player (VehicleWindow.java:79-81), the
+-- server takes the connection's first one (GameServer.java:2280-2283, 2322-2326), and a zombie on an occupied car
+-- goes the same way from the client running it (AttackVehicleState.java:158-159). Trusted only when the sender is the
+-- one player on its connection (connection = floor(onlineID / 4): GameServer.java:2686, ConnectCoopPacket.java:125),
+-- on foot within reach of the car, and no other player or zombie is.
+S.NAME_RANGE = 4 -- tiles from the car's centre: a 5-tile car plus a swing
+function S.trusted(vehicle, player)
+    local r = S.NAME_RANGE
+    if player:getVehicle() or vehicle:DistTo(player) > r then return false end
+    local conn = math.floor(player:getOnlineID() / 4)
+    local ps = getOnlinePlayers()
+    for i = 0, (ps and ps:size() or 0) - 1 do
+        local o = ps:get(i)
+        if o ~= player and (math.floor(o:getOnlineID() / 4) == conn or vehicle:DistTo(o) <= r) then return false end
+    end
+    local cell = getCell()
+    local x0, y0, z = math.floor(vehicle:getX()), math.floor(vehicle:getY()), math.floor(vehicle:getZ())
+    for x = x0 - r, x0 + r do
+        for y = y0 - r, y0 + r do
+            local sq = cell:getGridSquare(x, y, z)
+            local mo = sq and sq:getMovingObjects()
+            for k = 0, (mo and mo:size() or 0) - 1 do
+                if instanceof(mo:get(k), "IsoZombie") then return false end
+            end
+        end
+    end
+    return true
+end
+
 -- Towing: owner's manuals, "a lot of jerky movement like when getting towed" sounds the alarm (the break tier). The
--- only way to hook up is vanilla's attachTrailer (ISAttachTrailerToVehicle.lua:42-48; the radial's three branches,
+-- only vanilla way to hook up is attachTrailer (ISAttachTrailerToVehicle.lua:42-48; the radial's three branches,
 -- ISVehicleMenu.lua:492-588), which checks no key or owner (VehicleCommands.lua:399-411). The menu swaps A and B by
 -- hitch (:530-560): look at both. Legit (the owner, a key, VehicleManager's PASSENGER) takes the car away: disarm.
-local function onTow(vehicle, player)
+-- Vanilla unhooks and hooks again on every send (BaseVehicle.java:10047-10062): the same pair again is the same tow,
+-- one alert per hook-up until a detach, a disarm or a reload.
+local function onTow(vehicle, other, player)
     local s = armedState(vehicle)
     if not s then return end
+    local id = vehicle:getId()
+    if S.tow[id] == other:getId() then return end
+    S.tow[id] = other:getId()
     if T.legit(player, vehicle, s.by) then return S.disarm(vehicle, player:getUsername()) end
     S.onBreak(vehicle, player, "tow")
 end
 
 -- Vanilla "vehicle" commands, after vanilla handled them (server/Vehicles/VehicleCommands.lua loads before this file);
--- read only, never refused. VehicleManager's gate (shared, first) empties args when it refuses (its CommandGate), so
--- a refused try never reaches here, like the other sentry hooks. SP routes sendClientCommand here too.
+-- read only, never refused. VehicleManager's gate (shared, first) empties args and sets vehicle / vehicleA / vehicleB
+-- to -1 when it refuses (MinidoracatVehicleManager_CommandGate.lua:271-279), so a refused try never reaches here,
+-- like the other sentry hooks. SP routes sendClientCommand here too. Other mods' ways of carrying a car off
+-- (VehicleManager's CommandGate.lua:157-158: Autotsar, rSemiTruck loadVehicle) do not come this way.
 --   attachTrailer: the tow, once vanilla linked the two (addPointConstraint sets the link at once, BaseVehicle.java:10104-10106).
---   damageWindow: MP only, the attacker's client works out a weapon hit and sends it (VehicleWindow.java:79-81); vanilla
---   applied it (VehicleCommands.lua:169-185). The sender is the actor: a named alert at once.
+--   detachTrailer(Spontaneous): the pair is free again (breakConstraint, VehicleCommands.lua:413-430).
+--   damageWindow: MP only, a client works out a weapon hit and sends it (VehicleWindow.java:79-81); vanilla applied it
+--   (VehicleCommands.lua:169-185, nothing for amount <= 0 or no such window: VehicleWindow.java:77). Only a send that
+--   took glass counts; its sender is named, and a legit one keeps the alarm quiet, only when S.trusted.
 Events.OnClientCommand.Add(function(module, command, player, args)
     if module ~= "vehicle" or not player or type(args) ~= "table" then return end
-    if command ~= "attachTrailer" and command ~= "damageWindow" then return end
+    if command ~= "attachTrailer" and command ~= "damageWindow" and command ~= "detachTrailer"
+        and command ~= "detachTrailerSpontaneous" then return end
     local ok, err = pcall(function()
         if command == "attachTrailer" then
             local a, b = getVehicleById(tonumber(args.vehicleA) or -1), getVehicleById(tonumber(args.vehicleB) or -1)
             if not (a and b and a:getVehicleTowing() == b) then return end
-            onTow(a, player)
-            onTow(b, player)
+            onTow(a, b, player)
+            onTow(b, a, player)
+        elseif command ~= "damageWindow" then
+            local vid = tonumber(args.vehicle)
+            for id, other in pairs(S.tow) do
+                if id == vid or other == vid then S.tow[id] = nil end
+            end
         else
             local v = getVehicleById(tonumber(args.vehicle) or -1)
-            if not (v and armedState(v)) then return end
-            S.armed[v:getId()] = true
-            S.lastHit[v:getId()] = { p = player, at = now() }
-            S.checkWindows(v, player)
+            local s = v and armedState(v)
+            if not s then return end
+            local id = v:getId()
+            S.armed[id] = true
+            local part = type(args.part) == "string" and v:getPartById(args.part)
+            local was = s.win and part and part:getWindow() and s.win[args.part]
+            if not (was and part:getCondition() < was) then return end -- took nothing: the scan sees anything else
+            local actor = S.trusted(v, player) and player or nil
+            S.lastHit[id] = actor and { name = player:getUsername(), at = now() } or nil
+            S.checkWindows(v, actor)
         end
     end)
     if not ok then T.log("sentry " .. command .. " error " .. tostring(err)) end
