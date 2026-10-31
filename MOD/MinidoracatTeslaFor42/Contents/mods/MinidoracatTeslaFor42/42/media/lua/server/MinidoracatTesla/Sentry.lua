@@ -416,6 +416,8 @@ Events.OnClientCommand.Add(function(module, command, player, args)
             if not (was and part:getCondition() < was) then return end -- took nothing: the scan sees anything else
             local actor = S.trusted(v, player) and player or nil
             S.lastHit[id] = actor and { name = player:getUsername(), at = now() } or nil
+            T.log("sentry damageWindow vid=" .. id .. " " .. args.part .. " from " .. player:getUsername()
+                .. (actor and " trusted" or " untrusted") .. string.format(" dist=%.1f", v:DistTo(player)))
             S.checkWindows(v, actor)
         end
     end)

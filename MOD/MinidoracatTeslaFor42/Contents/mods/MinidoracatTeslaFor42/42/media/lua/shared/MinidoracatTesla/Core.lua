@@ -286,9 +286,10 @@ function T.kmPerKwh(vehicle)
 end
 -- Towing: the drive term (not idle) costs 1 + 2 x towed mass / own mass, at most 3 (user 2026-10-31, towMul = mass).
 -- The manuals only say range "can decrease significantly"; MotorTrend's Model Y with a trailer about half its weight
--- used about 2x the energy. getMass counts parts and cargo (BaseVehicle.java:9046-9063): a small trailer (script mass
--- 200) x1.5, a horse trailer (500) x2.25, another car x3. The client has the link (VehicleTowingAttachPacket) and the
--- masses, so the HUD and the app show the same range the server bills. A VirtualVehicle (SP, unloaded) tows nothing.
+-- used about 2x the energy. getMass counts parts and cargo (BaseVehicle.java:9046-9063): measured (features-sp
+-- tesla-feat-1101b) Model Y 1122, small trailer 277 -> x1.49, CarNormal 1112 -> x2.98. The client has the link
+-- (VehicleTowingAttachPacket) and the masses, so the HUD and the app show the same range the server bills. A
+-- VirtualVehicle (SP, unloaded) tows nothing.
 T.TOW_MAX = 3
 function T.towMul(vehicle)
     local t = vehicle.getVehicleTowing and vehicle:getVehicleTowing() -- BaseVehicle.java:9918
@@ -298,7 +299,7 @@ end
 -- Chill (owner's manuals: "Limits acceleration for a smooth and gentle ride"; top speed unchanged): the engine force
 -- while on, one value for every car (Chill takes about 7 s to 60 mph on each model, about 2.2x a Model Y Performance's
 -- 3.3 s). Calibration knob: E2E feel-sp 0-100 km/h, Model Y 6260 -> 7.19 s, 3300 -> 14.75 s, 2800 -> 17.60 s
--- (tesla-chill-1101a); 3100 sits at about 2.2x (vehicle-battery.md "Chill").
+-- (tesla-chill-1101a); 3100 -> 15.78 s = 2.19x, Cybertruck at 3100 16.02 s, top speed 122 as before (tesla-chill-1101b).
 T.CHILL_FORCE = 3100
 -- Charge projection between server settlements: kw * (now - last), capped at the target (architecture §4). The HUD,
 -- the charge card and the phone app's record (Remote.lua) all show this, so they agree.
