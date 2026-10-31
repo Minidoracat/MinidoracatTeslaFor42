@@ -55,20 +55,36 @@ local function denied(reason)
 end
 
 H.section("liftgate: server rules")
+local function settle() H.advanceMs(5000); H.fire("OnTick") end -- every swing over (the shell bits follow, Liftgate.syncShell)
+local ticks = H.count("OnTick")
 cmd(driver, { vid = v:getId(), part = "TrunkDoor" })
 local d = v.parts.TrunkDoor.door
 check(d.open and not d.locked and v.doorTx == 1, "driver, parked, locked: unlocked, opened, door synced")
 check(v.anims[1] == "TrunkDoor:Open" and v.sound == "Open", "SP: client handler played the Open anim and its sound")
-check(math.floor(v:getColorHue()) == 16 and H.near(v:getColorHue() - 16, 0.69, 1e-6) and not v.colorTx,
-    "shell bits: tailgate open = hue integer 16, the paint hue kept, no transmitColorHSV")
+-- Model Y doorClip TrunkDoor 3.6 clip s at 0.8 a second = a 4.5 s swing: the bit flips 1.5 s in, shut 3 s in
+check(math.floor(v:getColorHue()) == 0 and H.count("OnTick") == ticks + 1,
+    "opened: the shell stays while the tailgate is under a quarter open (else a hole where it still is), one OnTick")
+H.advanceMs(1400)
+H.fire("OnTick")
+check(math.floor(v:getColorHue()) == 0, "...still there 1.4 s in")
+H.advanceMs(200)
+H.fire("OnTick")
+check(math.floor(v:getColorHue()) == 16 and H.near(v:getColorHue() - 16, 0.69, 1e-6) and not v.colorTx
+    and H.count("OnTick") == ticks, "...tailgate bit 16 at 1.5 s, the paint hue kept, no transmitColorHSV, OnTick removed")
 cmd(driver, { vid = v:getId(), part = "TrunkDoor" })
 check(not d.open and v.anims[2] == "TrunkDoor:Close", "second press closes")
-check(H.near(v:getColorHue(), 0.69, 1e-6), "shell bits cleared on close")
+H.advanceMs(2900)
+H.fire("OnTick")
+check(math.floor(v:getColorHue()) == 16, "closed: the bit stays while the tailgate is over a quarter open (2.9 s in)")
+H.advanceMs(200)
+H.fire("OnTick")
+check(H.near(v:getColorHue(), 0.69, 1e-6) and H.count("OnTick") == ticks, "...cleared at 3 s, OnTick removed")
 check(not d.locked, "car unlocked: the closed liftgate stays unlocked")
 v.cabinLocked = true -- locked car: the liftgate locks again when it shuts
 cmd(driver, { vid = v:getId(), part = "TrunkDoor" })
 cmd(driver, { vid = v:getId(), part = "TrunkDoor" })
 check(not d.open and d.locked, "locked car: liftgate shut from the dashboard -> locked again")
+check(H.near(v:getColorHue(), 0.69, 1e-6) and H.count("OnTick") == ticks, "...shut before the bit flipped: nothing pending")
 local lidE = v.parts.EngineDoor.door
 cmd(driver, { vid = v:getId(), part = "EngineDoor" })
 cmd(driver, { vid = v:getId(), part = "EngineDoor" })
@@ -80,9 +96,25 @@ check(not d.locked, "broken lock: shut but not locked (it could never open again
 d.broken, v.cabinLocked = false, false
 local sp = car({})
 ISOpenVehicleDoor.complete({ vehicle = sp, part = sp.parts.DoorFrontLeft, character = driver })
-check(math.floor(sp:getColorHue()) == 1 and #sp.anims == 0, "SP door action: shell bit 1 for DoorFrontLeft, no anim broadcast")
+H.advanceMs(300)
+H.fire("OnTick")
+check(math.floor(sp:getColorHue()) == 0 and #sp.anims == 0, "SP door action: no bit 0.3 s in (a 1 s swing), no anim broadcast")
+H.advanceMs(100)
+H.fire("OnTick")
+check(math.floor(sp:getColorHue()) == 1, "...shell bit 1 for DoorFrontLeft 0.4 s in")
 ISCloseVehicleDoor.complete({ vehicle = sp, part = sp.parts.DoorFrontLeft, character = driver })
-check(math.floor(sp:getColorHue()) == 0, "SP door closed: bit cleared")
+H.advanceMs(600)
+H.fire("OnTick")
+check(math.floor(sp:getColorHue()) == 1, "SP door closed: the bit stays 0.6 s in")
+ISOpenVehicleDoor.complete({ vehicle = sp, part = sp.parts.DoorFrontLeft, character = driver })
+H.advanceMs(1000)
+H.fire("OnTick")
+check(math.floor(sp:getColorHue()) == 1, "...opened again before it flipped: the bit stays (no stale flip)")
+ISCloseVehicleDoor.complete({ vehicle = sp, part = sp.parts.DoorFrontLeft, character = driver })
+H.advanceMs(700)
+H.fire("OnTick")
+check(math.floor(sp:getColorHue()) == 0 and H.count("OnTick") == ticks, "...closed again: cleared 0.7 s in, OnTick removed")
+settle() -- the liftgate's opens and closes above
 
 local passenger = H.player({ name = "bob" })
 passenger.vehicle = v
@@ -106,14 +138,16 @@ check(denied("NO_DOOR") and not d.open, "liftgate part uninstalled: NO_DOOR")
 v.parts.TrunkDoor.item = {}
 local n = #H.sent
 cmd(driver, { vid = v:getId(), part = "TrunkDoor" })
-local s1, s2, a, b = H.sent[n + 1], H.sent[n + 2], H.sent[n + 3], H.sent[n + 4]
-check(d.open and #H.sent == n + 4 and s1.player == driver and s2.player == passenger and s1.command == "shell"
+local a, b = H.sent[n + 1], H.sent[n + 2]
+check(d.open and #H.sent == n + 2 and a.player == driver and b.player == passenger and a.command == "partAnim"
+    and a.args.part == "TrunkDoor" and a.args.open == true and a.args.sound == true,
+    "MP: opened, partAnim { TrunkDoor, open, sound } to every player near, the shell bit not yet")
+settle()
+local s1, s2 = H.sent[n + 3], H.sent[n + 4]
+check(#H.sent == n + 4 and s1.player == driver and s2.player == passenger and s1.command == "shell"
     and s2.command == "shell" and s1.args.vid == v:getId() and s1.args.hue == v:getColorHue()
     and math.floor(s1.args.hue) == 16 and not v.colorTx,
-    "MP: shell hue (16 + paint) to every player near as a command, no transmitColorHSV (VehicleProperties)")
-check(a.player == driver and b.player == passenger and a.command == "partAnim"
-    and a.args.part == "TrunkDoor" and a.args.open == true and a.args.sound == true,
-    "MP: opened, partAnim { TrunkDoor, open, sound } to every player near")
+    "MP: then the shell hue (16 + paint) to every player near as a command, no transmitColorHSV (VehicleProperties)")
 
 H.section("liftgate: only the players who can have the car loaded (Liftgate.NEAR_TILES)")
 -- the server sends a car to a connection within relevantRange * 8 tiles on both axes, at most 96
@@ -133,16 +167,21 @@ end
 n = #H.sent
 cmd(driver, { vid = v:getId(), part = "TrunkDoor" })
 check(not d.open and got(far, n) == 0, "dashboard close: nothing to a player 96.5 tiles away on one axis")
-check(got(corner, n, "shell") == 1 and got(corner, n, "partAnim") == 1 and got(driver, n) == 2 and got(passenger, n) == 2,
-    "...shell and partAnim once each to the driver, the passenger and a player 96 tiles away on both axes")
+check(got(corner, n, "shell") == 0 and got(corner, n, "partAnim") == 1 and got(driver, n) == 1 and got(passenger, n) == 1,
+    "...partAnim once each to the driver, the passenger and a player 96 tiles away on both axes; the shell bit waits")
+settle()
+check(got(corner, n, "shell") == 1 and got(driver, n, "shell") == 1 and got(passenger, n, "shell") == 1 and got(far, n) == 0,
+    "...the swing over: the cleared shell hue once each, none far")
 n = #H.sent
 ISOpenVehicleDoor.complete({ vehicle = v, part = v.parts.DoorFrontLeft, character = passenger })
 check(got(far, n) == 0 and got(corner, n, "partAnim") == 1 and got(driver, n, "partAnim") == 1 and got(passenger, n, "partAnim") == 0,
     "vanilla door action: anim to the players near but the opener, none far")
 ISCloseVehicleDoor.complete({ vehicle = v, part = v.parts.DoorFrontLeft, character = passenger })
+settle()
 far.x = v.x + 10 -- walked up: the car (doors, hue) comes with the engine's full update; later changes reach it
 n = #H.sent
 cmd(driver, { vid = v:getId(), part = "TrunkDoor" })
+settle()
 check(d.open and got(far, n, "shell") == 1 and got(far, n, "partAnim") == 1, "the far player walked up: the next open reaches it")
 
 H.section("liftgate: once per client connection (split-screen)")
@@ -167,6 +206,7 @@ local function conn(p, from, command) -- commands sent to p's connection
 end
 n = #H.sent
 cmd(driver, { vid = v:getId(), part = "TrunkDoor" })
+settle()
 check(not d.open and conn(driver, n, "shell") == 1 and conn(driver, n, "partAnim") == 1 and conn(passenger, n, "partAnim") == 1,
     "the driver and its split-screen guest share one client: one shell, one partAnim to it")
 check(conn(away, n, "shell") == 1 and conn(away, n, "partAnim") == 1, "...a client with only its guest near: one each")
@@ -175,8 +215,10 @@ ISOpenVehicleDoor.complete({ vehicle = v, part = v.parts.DoorFrontLeft, characte
 check(conn(driver, n, "partAnim") == 0 and conn(passenger, n, "partAnim") == 1 and conn(away, n, "partAnim") == 1,
     "vanilla door opened by the guest: no anim back to its own client (it played it in :start), one to every other")
 ISCloseVehicleDoor.complete({ vehicle = v, part = v.parts.DoorFrontLeft, character = guest })
+settle()
 cmd(driver, { vid = v:getId(), part = "TrunkDoor" })
 check(d.open, "liftgate open again for the next section")
+settle()
 online = { driver, passenger }
 
 H.section("dashboard doors: any door part (HUD car picture)")
@@ -184,9 +226,10 @@ local rl, lid = v.parts.DoorRearLeft.door, v.parts.EngineDoor.door
 rl.locked = true
 n = #H.sent
 cmd(driver, { vid = v:getId(), part = "DoorRearLeft" })
-a = H.sent[n + 3] -- after the two `shell` commands (driver, passenger)
+a = H.sent[n + 1]
 check(rl.open and not rl.locked and a.command == "partAnim" and a.args.part == "DoorRearLeft" and a.args.sound == true,
     "locked rear left door: unlocked, opened, partAnim { DoorRearLeft, sound }")
+settle()
 check(math.floor(v:getColorHue()) == 16 + 4, "shell bits: liftgate (16) + rear left door (4)")
 cmd(driver, { vid = v:getId(), part = "EngineDoor" })
 check(lid.open and H.sent[#H.sent].args.part == "EngineDoor", "frunk lid: lifted, partAnim EngineDoor")
@@ -205,6 +248,7 @@ check(denied("MOVING") and rl.open and v.doorTx == tx, "driving, rear door: MOVI
 v.speed = 0
 cmd(driver, { vid = v:getId(), part = "EngineDoor" })
 cmd(driver, { vid = v:getId(), part = "DoorRearLeft" })
+settle()
 check(not lid.open and not rl.open and math.floor(v:getColorHue()) == 16, "second clicks close the lid and the door")
 
 H.section("door anim sync (MP server)")
@@ -217,24 +261,42 @@ dofile(SRC) -- MP server load: wraps the two actions
 local fl = v.parts.DoorFrontLeft
 n = #H.sent
 check(ISOpenVehicleDoor.complete({ vehicle = v, part = fl, character = driver }) == true, "wrapped complete keeps the vanilla result")
-b = H.sent[n + 3]
-check(#H.sent == n + 3 and H.sent[n + 1].command == "shell" and math.floor(H.sent[n + 1].args.hue) == 17
-    and b.player == passenger and b.args.part == "DoorFrontLeft" and b.args.open == true and not b.args.sound,
-    "door opened by the driver: shell hue to everyone, anim to the others only (the opener played it in :start)")
+b = H.sent[n + 1]
+check(#H.sent == n + 1 and b.player == passenger and b.args.part == "DoorFrontLeft" and b.args.open == true and not b.args.sound,
+    "door opened by the driver: anim to the others only (the opener played it in :start)")
+settle()
+check(#H.sent == n + 3 and H.sent[n + 2].command == "shell" and math.floor(H.sent[n + 2].args.hue) == 17,
+    "...then the shell hue to everyone")
 n = #H.sent
 ISCloseVehicleDoor.complete({ vehicle = v, part = fl, character = passenger })
-check(#H.sent == n + 3 and H.sent[n + 3].player == driver and H.sent[n + 3].args.open == false
-    and math.floor(H.sent[n + 1].args.hue) == 16, "closed by the passenger: shell bit cleared, anim to the driver")
+check(#H.sent == n + 1 and H.sent[n + 1].player == driver and H.sent[n + 1].args.open == false,
+    "closed by the passenger: anim to the driver at once")
+settle()
+check(#H.sent == n + 3 and H.sent[n + 2].command == "shell" and math.floor(H.sent[n + 2].args.hue) == 16,
+    "...the shell bit cleared to everyone once the swing is over")
 local tg = v.parts.TrunkDoor
 tg.door.open, tg.door.locked, v.cabinLocked = true, false, true -- opened on a locked car (the app, the dashboard)
 local tx2 = v.doorTx
 ISCloseVehicleDoor.complete({ vehicle = v, part = tg, character = passenger })
 check(tg.door.locked and v.doorTx == tx2 + 1, "locked car: liftgate shut by hand (vanilla close) -> locked again and synced")
+settle()
 v.cabinLocked = false
 local gas = car({ script = "Base.CarNormal" })
 n = #H.sent
 ISOpenVehicleDoor.complete({ vehicle = gas, part = gas.parts.DoorFrontLeft, character = driver })
 check(#H.sent == n, "not a Tesla: nothing sent")
+-- a shell door's bit clears when its Close clip is over: Specs doorClip (else 0.8) must be the clip the build animates
+-- (scripts/blender/skf/cars/<car>.py DOORS, 4th value)
+for name, s in pairs(T.Specs) do
+    local f = io.open("scripts/blender/skf/cars/" .. s.model:gsub("^Model", "model_"):lower() .. ".py", "r")
+    local src = f and f:read("*a") or ""
+    if f then f:close() end
+    for _, id in ipairs(L.SHELL_DOORS) do
+        local clip = tonumber(src:match('"' .. id .. '":%s*%([^)]*%)%s*,%s*[^,]+,%s*([%d.]+)%)'))
+        local want = s.doorClip and s.doorClip[id] or 0.8
+        check(clip ~= nil and want == clip, name .. " " .. id .. ": clip " .. tostring(want) .. " = its build's " .. tostring(clip))
+    end
+end
 
 H.section("liftgate: client")
 H.side(true, false)
@@ -350,3 +412,5 @@ H.side(true, false)
 getOnlinePlayers, ISOpenVehicleDoor, ISCloseVehicleDoor = saved.getOnlinePlayers, saved.ISOpenVehicleDoor, saved.ISCloseVehicleDoor
 HaloTextHelper, getPlayer = saved.HaloTextHelper, saved.getPlayer
 H.side(false, true)
+settle()
+check(H.count("OnTick") == ticks, "every shell swing settled: no OnTick left (" .. H.count("OnTick") .. " of " .. ticks .. ")")

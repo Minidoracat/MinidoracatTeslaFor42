@@ -46,15 +46,66 @@ end
 -- VehicleProperties (VehicleProperties.java:42); every reader drops the integer part (vehicle_common.frag.glsl:12
 -- mod 1, the paint shader's mod 1, Color.HSBtoRGB).
 L.SHELL_DOORS = { "DoorFrontLeft", "DoorFrontRight", "DoorRearLeft", "DoorRearRight", "TrunkDoor" }
+-- A bit follows its door part way into the swing, not at once: the vanilla door actions take no time (getDuration 0,
+-- ISCloseVehicleDoor.lua:92-94), and behind the near glass the far door is hidden by depth for the whole swing (the
+-- body draws first, models.md 8), so flipping on complete dropped the wall while the door still covered the opening
+-- (a hole) and put it back the moment the door started to shut (a slab in the open doorway for the whole swing:
+-- E2E doors-audit-sp tesla-doorsaudit-1101-y-a W-fr-close-c25 against W-fr-o75). The wall stands while the door is
+-- under about a quarter open: the bit flips a third of the way into the opening swing and two thirds into the closing
+-- one (the eased clip, cars/<car>.py via convert.py: smoothstep(1/3) = 0.26 of the angle). A clip advances 0.8 x rate
+-- clip seconds a second (1/60 x 0.8 x the unmodded multiplier an update, BaseVehicle.java:3898-3904); clips are 0.8 s,
+-- else Specs doorClip[part].
+-- [vid] = { [k] = when bit k-1 flips to its door's state (getTimestampMs) }; the OnTick runs while any is pending
+local pending, ticking = {}, false
+local function flipMs(vehicle, id, open)
+    local c = T.spec(vehicle) and T.spec(vehicle).doorClip
+    return (c and c[id] or 0.8) / 0.8 * 1000 * (open and 1 / 3 or 2 / 3)
+end
+local shellTick
+-- add / remove only on a change: Event.trigger walks the list by index (Event.java:52-62), so taking the tick out and
+-- back in from inside it would skip the next mod's OnTick once
+local function retick()
+    local left = false
+    for _ in pairs(pending) do left = true; break end
+    if left == ticking then return end
+    ticking = left
+    if left then Events.OnTick.Add(shellTick) else Events.OnTick.Remove(shellTick) end
+end
+shellTick = function()
+    local now, due = getTimestampMs(), {}
+    for vid, ks in pairs(pending) do
+        for _, t in pairs(ks) do
+            if t <= now then due[#due + 1] = vid; break end
+        end
+    end
+    for _, vid in ipairs(due) do
+        local v = getVehicleById(vid)
+        if v then L.syncShell(v) else pending[vid] = nil end -- unloaded: OnSpawnVehicleEnd syncs it when it is back
+    end
+    retick()
+end
 function L.syncShell(vehicle)
-    local bits = 0
+    local h = vehicle:getColorHue()
+    local was, now, bits, vid = math.floor(h), getTimestampMs(), 0, vehicle:getId()
+    local ks = pending[vid] or {}
     for k, id in ipairs(L.SHELL_DOORS) do
         local part = vehicle:getPartById(id)
         local door = part and part:getDoor()
-        if door and door:isOpen() then bits = bits + 2 ^ (k - 1) end
+        local bit = 2 ^ (k - 1)
+        local want, have = door and door:isOpen() or false, math.floor(was / bit) % 2 == 1
+        if not door or want == have then
+            have, ks[k] = want, nil
+        else
+            ks[k] = ks[k] or now + flipMs(vehicle, id, want)
+            if ks[k] <= now then have, ks[k] = want, nil end
+        end
+        if have then bits = bits + bit end
     end
-    local h = vehicle:getColorHue()
-    local hue = h - math.floor(h) + bits
+    local any = false
+    for _ in pairs(ks) do any = true; break end
+    pending[vid] = any and ks or nil
+    retick()
+    local hue = h - was + bits
     if hue == h then return end
     vehicle:setColorHSV(hue, vehicle:getColorSaturation(), vehicle:getColorValue())
     if not isServer() then return end
@@ -247,13 +298,15 @@ if not isClient() then
     end
 
     -- every load (BaseVehicle.java:904): a locked car from an older save or the world spawn (cabin doors locked by
-    -- Vehicles.Create.Door, the hood never) gets its shut lids locked
+    -- Vehicles.Create.Door, the hood never) gets its shut lids locked; the shell bits follow the saved doors (a save
+    -- inside a door's closing swing kept its bit, an older save's open door had none)
     Events.OnSpawnVehicleEnd.Add(function(v)
         if not T.isTesla(v) then return end
         for id in pairs(L.LIDS) do
             local part = v:getPartById(id)
             if part and part:getInventoryItem() and part:getDoor() and L.relock(v, part) then v:transmitPartDoor(part) end
         end
+        L.syncShell(v)
     end)
 end
 

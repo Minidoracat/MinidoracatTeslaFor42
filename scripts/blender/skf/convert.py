@@ -1704,8 +1704,14 @@ def stage_view(out, heads, state, skin="UltraRed", app=False):
         for m in (MB if o is body else MD):
             o.data.materials.append(m)
         me.polygons.foreach_set("material_index", idx)
-        if glass_mode == "hide":
-            pv.keep_faces(o, idx != 1)
+        keep = idx != 1 if glass_mode == "hide" else np.ones(len(idx), bool)
+        if o is body and os.environ.get("SHELL", "drop") == "drop":    # the frag drops an open door's shell (cabin.py
+            fv = u1[1::2][ls]                                          # UV1 v = door k + d, d < 0 inside its opening)
+            k = np.floor(fv + 0.5).astype(int)
+            ks = [cab.SHELL_DOORS.index(p) + 1 for p in openp if p in cab.SHELL_DOORS]
+            keep &= ~((fu < -1.0) & np.isin(k, ks) & (fv < k))
+        if not keep.all():
+            pv.keep_faces(o, keep)
     # HIDE=DoorFrontRight,..: leave pieces out (in game a far door is hidden behind the near body glass's depth)
     hide = set(filter(None, os.environ.get("HIDE", "").split(",")))
     for o in bpy.data.objects:
@@ -1758,8 +1764,8 @@ def stage_view(out, heads, state, skin="UltraRed", app=False):
     cam.data.clip_start = float(os.environ.get("CLIP", 0.1))   # CLIP=30: a section through CENTRE (camera 30 away)
     sc.camera = cam
     F = {"N": (0, -1), "NE": (1, -1), "E": (1, 0), "SE": (1, 1), "S": (0, 1), "SW": (-1, 1), "W": (-1, 0), "NW": (-1, -1)}
-    for h in heads:
-        f = np.array(F[h], float)
+    for h in heads:     # a compass name, or d<deg>: that many degrees clockwise from N (a car parked at an angle)
+        f = np.array(F[h], float) if h in F else np.array([math.sin(math.radians(float(h[1:]))), -math.cos(math.radians(float(h[1:])))])
         f /= np.linalg.norm(f)
         right = np.array([-f[1], f[0]])
         cxy = np.array([1, 1]) / math.sqrt(2)
