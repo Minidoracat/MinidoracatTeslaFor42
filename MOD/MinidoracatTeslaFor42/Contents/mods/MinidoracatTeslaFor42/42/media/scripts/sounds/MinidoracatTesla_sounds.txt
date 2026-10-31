@@ -192,4 +192,25 @@ module Base
             volume = 0.08,
         }
     }
+    /* Model X falcon wing doors: vanilla's power-window motor (temp/sound falcon-A), raised to the liftgate's level: in
+       game it played ~10 dB under VehicleTrunkOpenStandard (E2E tesla-doorsound-1101a: -44.2 vs -33.9 dBFS); 10^(10.3/20) = 3.3.
+       The clip volume multiplies the FMOD event's (FMODSoundEmitter.java:1100-1103,1559-1561). */
+    sound MinidoracatTesla_FalconOpen
+    {
+        category = Vehicle,
+        clip
+        {
+            event = Vehicle/Window/Electric/Open,
+            volume = 3.3,
+        }
+    }
+    sound MinidoracatTesla_FalconClose
+    {
+        category = Vehicle,
+        clip
+        {
+            event = Vehicle/Window/Electric/Close,
+            volume = 3.3,
+        }
+    }
 }

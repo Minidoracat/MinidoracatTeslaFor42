@@ -128,8 +128,8 @@ for _, s in ipairs({ "Left", "Right" }) do
 end
 -- falcon wing doors whine like vanilla's power window (sounds on the car script's anims, the anims in the geometry)
 local falcon = rules(mx, "DoorRear%*")
-check(falcon:find("sound = VehicleWindowElectricOpen,", 1, true) ~= nil
-    and falcon:find("sound = VehicleWindowElectricClose,", 1, true) ~= nil, "falcon wing doors: power window sounds")
+check(falcon:find("sound = MinidoracatTesla_FalconOpen,", 1, true) ~= nil
+    and falcon:find("sound = MinidoracatTesla_FalconClose,", 1, true) ~= nil, "falcon wing doors: power window sounds (raised: MinidoracatTesla_Falcon*)")
 check(geo:find("template = PassengerSeat4,", 1, true) ~= nil and geos.Model3:find("template = PassengerSeat4,", 1, true) ~= nil,
     "Model Y / Model 3 keep PassengerSeat4")
 -- the clip lengths the shell and the climb wait on (Core.lua Specs doorClip) are the build's (cars/model_x.py DOORS)
