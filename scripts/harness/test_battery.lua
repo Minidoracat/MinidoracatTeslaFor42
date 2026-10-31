@@ -471,6 +471,8 @@ check(Z.parkingstall.vehicles["Base.MinidoracatTesla_ModelY"].spawnChance == 3
     and Z.good.vehicles["Base.MinidoracatTesla_ModelY"].spawnChance == 4, "spawn table Model Y: parkingstall 3, good 4")
 check(Z.parkingstall.vehicles["Base.MinidoracatTesla_Model3"].spawnChance == 3
     and Z.good.vehicles["Base.MinidoracatTesla_Model3"] == nil, "spawn table Model 3: parkingstall 3, not in good")
+check(Z.good.vehicles["Base.MinidoracatTesla_ModelX"].spawnChance == 2
+    and Z.parkingstall.vehicles["Base.MinidoracatTesla_ModelX"] == nil, "spawn table Model X: good 2, not in parking stalls")
 
 H.section("dispatch")
 local hits = 0

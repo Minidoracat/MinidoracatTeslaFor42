@@ -6,15 +6,18 @@ local check = H.check
 -- Model Y and Model 3 Performance design-studio codes (US, DE, TW)
 local OFFICIAL = { PN01 = true, PPSW = true, PX02 = true, PN00 = true, PR01 = true, PB01 = true, PB02 = true, PB00 = true,
     PPSB = true }
+-- Model X Plaid: the last US design studio's six and China's pre-refresh Solid Black, Deep Blue (plan-sx-1031)
+local OFFICIAL_X = { PN01 = true, PN02 = true, PPSW = true, PR01 = true, PX02 = true, PB00 = true, PBSB = true, PPSB = true }
 local media = "MOD/MinidoracatTeslaFor42/Contents/mods/MinidoracatTeslaFor42/42/media/"
 
-for _, car in ipairs({ "MinidoracatTesla_ModelY", "MinidoracatTesla_Model3" }) do
+for _, car in ipairs({ "MinidoracatTesla_ModelY", "MinidoracatTesla_Model3", "MinidoracatTesla_ModelX" }) do
+    local codes = car == "MinidoracatTesla_ModelX" and OFFICIAL_X or OFFICIAL
     local colors = T.Specs["Base." .. car].colors
 
     H.section("paint table " .. car)
     local seen, bad = {}, {}
     for _, c in ipairs(colors) do
-        if not OFFICIAL[c.code] or seen[c.code] then bad[#bad + 1] = tostring(c.code) end
+        if not codes[c.code] or seen[c.code] then bad[#bad + 1] = tostring(c.code) end
         seen[c.code] = true
         for _, k in ipairs({ "h", "s", "v" }) do
             if type(c[k]) ~= "number" or c[k] < 0 or c[k] > 1 then bad[#bad + 1] = c.name .. "." .. k end

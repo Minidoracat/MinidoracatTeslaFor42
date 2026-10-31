@@ -55,7 +55,8 @@ local function scriptPort(script)
     return { (ax + mx) * k, (ay + my) * k, (az + mz) * k }
 end
 local PORTS = { ["Base.MinidoracatTesla_ModelY"] = scriptPort("Base.MinidoracatTesla_ModelY"),
-    ["Base.MinidoracatTesla_Model3"] = scriptPort("Base.MinidoracatTesla_Model3") }
+    ["Base.MinidoracatTesla_Model3"] = scriptPort("Base.MinidoracatTesla_Model3"),
+    ["Base.MinidoracatTesla_ModelX"] = scriptPort("Base.MinidoracatTesla_ModelX") }
 
 -- car: yaw only; local x = right flank (+x), local z = forward; its own script's chargeport (default Model Y)
 local function car(x, y, yaw, script)
@@ -72,6 +73,8 @@ end
 check(PORTS["Base.MinidoracatTesla_ModelY"][1] > 0 and PORTS["Base.MinidoracatTesla_Model3"][1] > 0
     and PORTS["Base.MinidoracatTesla_ModelY"][3] ~= PORTS["Base.MinidoracatTesla_Model3"][3],
     "cable: both cars' chargeport read from their scripts (left flank, +x), different positions")
+check(PORTS["Base.MinidoracatTesla_ModelX"][1] > 0 and PORTS["Base.MinidoracatTesla_ModelX"][3] < 0,
+    "cable: the Model X's chargeport from its script (left flank, behind the middle)")
 
 local function frame()
     draws, lines2d = {}, {}

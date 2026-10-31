@@ -282,6 +282,57 @@ check(last("appState") and last("appState").tonneau == true, "tonneau: the recor
 d = act(owner, "tonneau", false)
 check(d.why == nil and not v.parts.TrunkTonneau.d.open and v.parts.TrunkTonneau.d.locked, "tonneau closed on a locked car: locked again")
 v.parts.TrunkTonneau = nil
+do -- (a block: the main chunk is near Lua's 200 locals)
+-- the Model X's falcon wing doors (Specs falcon): both at once, the same rules as the liftgate. On a car without them
+-- (this Model Y: ordinary rear doors) falcon says NO_DOOR and its rear doors stay shut
+local RL, RR = v.parts.DoorRearLeft.d, v.parts.DoorRearRight.d
+d = act(owner, "falcon", true)
+check(d.why == "NO_DOOR" and not RL.open and not RR.open, "falcon on a Model Y -> NO_DOOR, its rear doors stay shut")
+check(last("appState") == nil, "falcon refused: no appState sent")
+local script0 = v.script
+v.script = "Base.MinidoracatTesla_ModelX"
+for _, dd in ipairs(v.doors) do dd.d.locked = true end
+v.kmh = 20
+d = act(owner, "falcon", true)
+check(d.why == "MOVING" and not RL.open and not RR.open and RL.locked, "falcon while moving -> MOVING, nothing moves")
+v.kmh = 0
+RR.broken = true
+d = act(owner, "falcon", true)
+check(d.why == "LOCK_BROKEN" and not RL.open and not RR.open and RL.locked and RR.locked,
+    "falcon, the right wing's lock broken -> LOCK_BROKEN before anything moves (the left stays shut and locked)")
+RR.broken = false
+d = act(owner, "falcon", true)
+local anims = {}
+for _, m in ipairs(F.sent) do if m.cmd == "partAnim" then anims[#anims + 1] = m.args.part end end
+table.sort(anims)
+check(d.why == nil and d.on == true and RL.open and RR.open and not RL.locked and not RR.locked
+    and table.concat(anims, ",") == "DoorRearLeft,DoorRearRight", "falcon: both wings unlocked and opened, partAnim for each")
+check(last("appState") and last("appState").falcon == true, "falcon: the record says open")
+local fa = R.stats.actions
+d = act(owner, "falcon", true)
+check(d.why == nil and d.on == true and R.stats.actions == fa, "falcon already open, app asks open: nothing moves")
+d = act(owner, "falcon", false)
+check(d.why == nil and d.on == false and not RL.open and not RR.open and RL.locked and RR.locked,
+    "falcon closed while the front doors are locked: both wings locked again (the car stays locked)")
+check(last("appState").falcon == false and last("appState").locked == true, "falcon: the record says shut, car locked")
+RL.open = true -- someone opened the left wing by hand: one open is enough for the app's 'open'
+d = act(owner, "falcon", false)
+check(d.why == nil and not RL.open and not RR.open, "falcon: one wing open, app asks closed -> it closes")
+v.doors[1].d.locked = false
+act(owner, "falcon", true)
+act(owner, "falcon", false)
+check(not RL.locked and not RR.locked, "falcon closed on an unlocked car: the wings stay unlocked")
+local rlPart, rrPart = v.parts.DoorRearLeft, v.parts.DoorRearRight
+v.parts.DoorRearLeft = nil
+d = act(owner, "falcon", true)
+check(d.why == nil and RR.open and not RL.open, "falcon, left wing removed: the right one still opens")
+act(owner, "falcon", false)
+v.parts.DoorRearRight = nil
+check(act(owner, "falcon", true).why == "NO_DOOR", "falcon, both wings removed -> NO_DOOR")
+v.parts.DoorRearLeft, v.parts.DoorRearRight = rlPart, rrPart
+v.script = script0
+for _, dd in ipairs(v.doors) do dd.d.locked = true end
+end
 
 -- charging: no cable -> NOT_PLUGGED; with a cable the call goes to Charge.setStopped
 d = act(owner, "charge", false)
@@ -372,6 +423,15 @@ asked = {}
 act(owner, "charge", true)
 check(asked[1].code == "FUEL", "charging: VM FUEL")
 answer.why = "NOT_AUTHORIZED"
+do
+    asked = {}
+    local script0 = v.script
+    v.script = "Base.MinidoracatTesla_ModelX"
+    d = act(owner, "falcon", true)
+    v.script = script0
+    check(#asked == 1 and asked[1].code == "PASSENGER" and d.why == "NOT_OWNER" and not v.parts.DoorRearLeft.d.open,
+        "falcon wings: VM PASSENGER (rear doors in person); car bound to someone else -> refused, nothing opens")
+end
 asked = {}
 v.parts.GasTank:getModData().sentry = nil
 d = act(owner, "sentry", true)
@@ -962,9 +1022,36 @@ T.ClientCommands.appDone({ key = 9001, act = "trunk", on = true })
 check(a.toast.text == "IGUI_MinidoracatTesla_App_Done_tailgate_on", "Cybertruck: 'tailgate opened'")
 T.ClientCommands.appDone({ key = 9001, act = "tonneau", on = false })
 check(a.toast.text == "IGUI_MinidoracatTesla_App_Done_tonneau_off", "Cybertruck: 'tonneau cover closed'")
+-- Model X: a falcon wing cell after the liftgate (Specs falcon), its title and tip through carKey, the controls line
+-- naming the falcon wings (T.CarPartNames); one press asks for both wings (Remote.lua ACT.falcon)
+do
+getText = function(k, ...) if k == "IGUI_MinidoracatTesla_App_Falcon" then return "WINGS" end return realGT(k, ...) end
+state({ car = "MinidoracatTesla_ModelX", skin = 0, falcon = false })
+a.b.controls:forceClick()
+local xc = table.concat(a.cells, ",")
+check(xc == "flash,horn,frunk,trunk,falcon" and a.b.falcon.shown and not a.b.falcon.on and not a.b.tonneau.shown
+    and a.b.falcon.icon == "i_falcon" and a.b.falcon.tipKey == "IGUI_MinidoracatTesla_Tip_AppFalcon"
+    and a.b.falcon.sTitle == "WINGS" and T.HUDAtlas[2].i_falcon ~= nil, "Model X: cells " .. xc .. ", the falcon wing cell, shut")
+getText = realGT
+check(a.rowSub.controls == "IGUI_MinidoracatTesla_App_ControlsSubModelX", "Model X: the controls line names the falcon wings")
+a.b.falcon:forceClick()
+local fcmd, fargs = sentLast()
+check(fcmd == "appAction" and fargs.act == "falcon" and fargs.on == true, "falcon cell, wings shut -> appAction falcon, on = true")
+state({ car = "MinidoracatTesla_ModelX", skin = 0, falcon = true })
+check(a.b.falcon.on, "Model X: a wing open -> the falcon cell lit")
+a.b.falcon:forceClick()
+fcmd, fargs = sentLast()
+check(fcmd == "appAction" and fargs.act == "falcon" and fargs.on == false, "falcon cell, a wing open -> appAction falcon, on = false")
+a.b.back:forceClick()
+T.ClientCommands.appDone({ key = 9001, act = "falcon", on = true })
+check(a.toast.text == "IGUI_MinidoracatTesla_App_Done_falcon_on", "Model X: 'falcon wing doors opened'")
+check(a.model == "ModelX" and T.HUDAtlas[2].wm_ModelX ~= nil and T.HUDAtlas[2].trim_ModelX ~= nil,
+    "Model X: its wordmark and trim (Plaid) are in the atlas")
+end
 state({ car = "MinidoracatTesla_Model3", skin = 5 })
 a.b.controls:forceClick()
-check(table.concat(a.cells, ",") == "flash,horn,frunk,trunk" and not a.b.tonneau.shown, "Model 3: no tonneau cell")
+check(table.concat(a.cells, ",") == "flash,horn,frunk,trunk" and not a.b.tonneau.shown and not a.b.falcon.shown,
+    "Model 3: no tonneau or falcon wing cell")
 a.b.back:forceClick()
 a:onMap()
 check(App.mapCar and App.mapCar.spr == "car_Model3", "Model 3: the world map marker draws the Model 3 top view")
