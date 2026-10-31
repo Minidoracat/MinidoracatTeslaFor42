@@ -120,3 +120,22 @@ function C.canDisable(player, vehicle)
     if player:getVehicle() ~= vehicle and not T.legit(player, vehicle, c.by) then return false, "NOT_OWNER" end
     return true
 end
+
+-- Sentry reads vanilla's damageWindow after vanilla applied it (server/MinidoracatTesla/Sentry.lua). VehicleWindow.damage
+-- clamps at 0 (VehicleWindow.java:76-89, VehiclePart.java:870-872), so the drop after the fact cannot tell this packet's
+-- part from glass lost earlier and not scanned yet. This shared file's listener runs before vanilla's: shared Lua loads
+-- before server Lua (GameServer.java:1469-1471; SP: LuaManager.java:1247 then GameLoadingState.java:148), and
+-- vanilla's VehicleCommands is server Lua. It notes the window's condition the server held when the packet came in.
+-- Not on an MP client: its OnClientCommand never fires (SP routes sendClientCommand here, so SP keeps it).
+function S.beforeVehicleCommand(module, command, player, args)
+    if module ~= "vehicle" or command ~= "damageWindow" then return end
+    S.preHit = nil
+    if type(args) ~= "table" or type(args.part) ~= "string" then return end
+    local v = getVehicleById(tonumber(args.vehicle) or -1)
+    local part = v and v:getPartById(args.part)
+    if part and part:getWindow() then
+        S.preHit = { player = player, vid = v:getId(), part = args.part, cond = part:getCondition() }
+    end
+end
+-- looked up per call (not the function value) so the harness can play vanilla's handler right after it
+if not isClient() then Events.OnClientCommand.Add(function(...) return S.beforeVehicleCommand(...) end) end
