@@ -232,7 +232,7 @@ module Base
             showPassenger = true,
             position inside
             {
-                offset = 0.1484 -0.0813 -0.7124,
+                offset = 0.1484 -0.1253 -0.7124,
                 rotate = 0.0 0.0 0.0,
             }
             position outside
@@ -247,7 +247,7 @@ module Base
             showPassenger = true,
             position inside
             {
-                offset = -0.1484 -0.0813 -0.7124,
+                offset = -0.1484 -0.1253 -0.7124,
                 rotate = 0.0 0.0 0.0,
             }
             position outside

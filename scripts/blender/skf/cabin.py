@@ -262,7 +262,7 @@ def cabin_mesh(bvh, belt, trunk_floor, trunk_end, arch, opening):
     seat_y = ((yf + yb) / 2 - SEAT["back"][0], (yb + yr) / 2 - SEAT["back"][1])
     z0 = SEAT_Z
     fs, rs = SEATS["front"], SEATS["rear"]              # widths, backrest heights, recline (deg)
-    def bucket(cx, fy, b, bolster=(0.185, 0.19)):      # a bucket seat: base, cushion, backrest, headrest, side bolsters
+    def bucket(cx, fy, b, bolster=(0.185, 0.19), z0=z0):   # a bucket seat: base, cushion, backrest, headrest, bolsters
         rec = (fy - 0.11, z0 - 0.03, b["recline"])
         part((0.30, 0.30, z0 - 0.10 - CABIN_FLOOR), 0.02, "base", (cx, fy + 0.05, (z0 - 0.10 + CABIN_FLOOR) / 2), seg=1)
         part((b["w"], 0.40, 0.09), 0.035, "seat", (cx, fy + 0.08, z0 - 0.06), cuts=(2, 0, 0), sag=0.025)
@@ -278,10 +278,10 @@ def cabin_mesh(bvh, belt, trunk_floor, trunk_end, arch, opening):
     n_seat = len(V)
     if "middle" in SEATS:       # 6 seats (Model X): the 2nd row's two monopost seats, the 3rd row's two `back` behind the
         t3 = SEAT["third"]      # rear doors' rear edge, narrower (pzveh.geometry seats the passengers there)
-        for (y_, b, sx) in ((ry, SEATS["middle"], SEAT_X), (yr - t3["back"], SEATS["third"], t3["x"])):
+        for (y_, b, sx, dz) in ((ry, SEATS["middle"], SEAT_X, 0), (yr - t3["back"], SEATS["third"], t3["x"], t3["drop"])):
             n_seat = len(V)
             for s in (-1, 1):
-                bucket(s * sx, y_, b, (b["w"] / 2 - 0.025, b["w"] / 2 - 0.02))
+                bucket(s * sx, y_, b, (b["w"] / 2 - 0.025, b["w"] / 2 - 0.02), z0 - dz)
     else:                       # rear bench: three cushions, three backs, three headrests
         rec = (ry - 0.11, z0 - 0.03, rs["recline"])
         part((rs["base"], 0.36, z0 - 0.10 - CABIN_FLOOR), 0.02, "base", (0, ry + 0.06, (z0 - 0.10 + CABIN_FLOOR) / 2),

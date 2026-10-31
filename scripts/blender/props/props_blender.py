@@ -42,7 +42,7 @@ HANG_REACH = 0.40
 PLUGS = {"MinidoracatTesla_CablePlug": 0.909,                 # Model Y (tesla-integ-1026a, models.md 0)
          "MinidoracatTesla_CablePlugModel3": 0.74,            # Model 3
          "MinidoracatTesla_CablePlugCybertruck": 0.90,        # Cybertruck (tesla-ctbody-1030c: port 0.902)
-         "MinidoracatTesla_CablePlugModelX": 0.81}            # Model X (build GEOMETRY port_mesh z 0.811; E2E TBD)
+         "MinidoracatTesla_CablePlugModelX": 0.84}            # Model X (tesla-mx-1101b modelx-sp: port 0.837)
 PLUG_REACH = 0.36                             # handle tip reaches +x (into the car flank)
 XFORM = {"S": (0.0, 180.0, 0.0), "E": (0.0, -90.0, 0.0), "N": (0.0, 0.0, 0.0), "W": (0.0, 90.0, 0.0)}
 # Mobile Connector Gen 3, Facing S frame, lying on the floor: control box 179.8 x 81.7 x 47.3 mm (official.md 1.2) x 1.3

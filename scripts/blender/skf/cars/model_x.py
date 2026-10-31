@@ -22,17 +22,19 @@ CAR = dict(
     # colors (skin index is saved: only append after release)
     PAINTS=[("StealthGrey", "PN01"), ("LunarSilver", "PN02"), ("PearlWhite", "PPSW"), ("UltraRed", "PR01"),
             ("DiamondBlack", "PX02"), ("FrostBlue", "PB00"), ("SolidBlack", "PBSB"), ("DeepBlue", "PPSB")],
-    # tex = a * official-ramp colour / GAIN + b (model_y.py CAL); fitted on modely-skin-sp screenshots (car heading S,
-    # closest zoom) against the official FRONT34. Calibration knob: refit after changing the paint light
+    # tex = a * official-ramp colour / GAIN + b (model_y.py CAL); fitted with perf/paint_sheet.py on modelx-sp
+    # paint-<i>-<name>-fl-max (car heading S, closest zoom) against the official FRONT34. Calibration knob: refit
+    # after changing the paint light
     CAL={
-        "StealthGrey": ((1.0, 1.0, 1.0), (0.0, 0.0, 0.0)),
-        "LunarSilver": ((1.0, 1.0, 1.0), (0.0, 0.0, 0.0)),
-        "PearlWhite": ((0.8, 0.8, 0.8), (0.1, 0.1, 0.1)),
-        "UltraRed": ((1.0, 1.0, 1.0), (0.0, 0.0, 0.0)),
-        "DiamondBlack": ((1.0, 1.0, 1.0), (0.0, 0.0, 0.0)),
-        "FrostBlue": ((1.0, 1.0, 1.0), (0.0, 0.0, 0.0)),
-        "SolidBlack": ((1.0, 1.0, 1.0), (0.0, 0.0, 0.0)),
-        "DeepBlue": ((1.0, 1.0, 1.0), (0.0, 0.0, 0.0)),
+        "StealthGrey": ((1.05, 1.071, 1.166), (-0.046, -0.071, -0.138)),
+        "LunarSilver": ((1.539, 1.49, 1.585), (-0.557, -0.548, -0.648)),
+        "PearlWhite": ((0.916, 0.986, 1.063), (-0.012, -0.098, -0.182)),
+        "UltraRed": ((1.388, 1.674, 1.664), (-0.373, -0.02, -0.068)),
+        "DiamondBlack": ((0.781, 0.846, 0.98), (0.057, 0.045, 0.013)),
+        "FrostBlue": ((0.791, 1.019, 1.145), (0.085, 0.011, -0.082)),
+        "SolidBlack": ((0.764, 0.809, 0.819), (0.063, 0.045, 0.035)),
+        # DeepBlue R: an offset, not a slope (paint_sheet fit 1.97 turned the shaded lower body purple)
+        "DeepBlue": ((1.0, 0.9, 1.166), (0.057, 0.027, -0.181)),
     },
     # design studio: Plaid, 20" Perihelix, black interior, six seats. The two China paints are the pre-refresh car's
     # ($MTX19,$WX01,$IBC00): their renders were fetched by hand (temp/plan-sx-1031/assets/official), used for the colour
@@ -55,7 +57,8 @@ CAR = dict(
     # passengers / seats (cabin.py): front and 2nd row from the door openings (back: front, 2nd row); third: the 3rd row
     # `back` behind the falcon doors' rear edge, at side x (3rd row shoulder room 1,033 mm against 1,442 in the 2nd,
     # owner's manual Dimensions)
-    SEAT=dict(x=0.35, h=0.62, z=-0.15, back=(0.12, -0.04), out=0.30, third=dict(back=0.10, x=0.27)),
+    # third drop: the 3rd row sits lower, so its passengers' heads stay under the sloping roof (they showed through it)
+    SEAT=dict(x=0.35, h=0.62, z=-0.15, back=(0.12, -0.04), out=0.30, third=dict(back=0.10, x=0.27, drop=0.08)),
     BODY_W_Z=0.55,
     # falcon wing doors (axis "falcon": (roof hinge deg, elbow fold deg), clip seconds): the upper part turns up about
     # its hinge by the roof's spine, the lower part folds back out at the elbow (owner's manual p.31-33: two hinges).

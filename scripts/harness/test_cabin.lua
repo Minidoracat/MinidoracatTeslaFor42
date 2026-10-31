@@ -132,3 +132,11 @@ check(falcon:find("sound = VehicleWindowElectricOpen,", 1, true) ~= nil
     and falcon:find("sound = VehicleWindowElectricClose,", 1, true) ~= nil, "falcon wing doors: power window sounds")
 check(geo:find("template = PassengerSeat4,", 1, true) ~= nil and geos.Model3:find("template = PassengerSeat4,", 1, true) ~= nil,
     "Model Y / Model 3 keep PassengerSeat4")
+-- the clip lengths the shell and the climb wait on (Core.lua Specs doorClip) are the build's (cars/model_x.py DOORS)
+local cfg = assert(io.open("scripts/blender/skf/cars/model_x.py", "r")):read("*a")
+local function clip(part) return tonumber((cfg:match('"' .. part .. '": (%b())') or ""):match("([%d.]+)%)$")) end
+local SX = MinidoracatTesla.Specs["Base.MinidoracatTesla_ModelX"]
+check(SX.doorClip.TrunkDoor == clip("TrunkDoor") and SX.doorClip.DoorRearLeft == clip("DoorRearLeft")
+    and SX.doorClip.DoorRearRight == clip("DoorRearRight") and SX.doorWait.DoorRearLeft < SX.doorClip.DoorRearLeft,
+    "Model X Specs doorClip = the build's clips (" .. tostring(clip("TrunkDoor")) .. ", " .. tostring(clip("DoorRearLeft"))
+    .. "), the climb waits less than the wing's clip")

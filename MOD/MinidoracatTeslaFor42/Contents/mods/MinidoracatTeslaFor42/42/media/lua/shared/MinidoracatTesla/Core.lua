@@ -121,7 +121,7 @@ T.Specs = {
         model = "ModelX",
         appCar = "app_car_modelx_",
         -- z: handle height at this car's charge port (E2E integration-mp)
-        plug = { item = "Base.MinidoracatTesla_CablePlugModelX", z = 0.81 }, -- build GEOMETRY port_mesh z 0.811
+        plug = { item = "Base.MinidoracatTesla_CablePlugModelX", z = 0.84 }, -- tesla-mx-1101b (port 0.837)
         v12Kwh = 15.5 * 6.9 / 1000, -- 15.5 V, 6.9 Ah (Model X owner's manual 2025.2, p.226)
         -- the Model Y coefficients x 100 / 78.4: a full pack still drives one vanilla tank's distance
         idleKw = 0.0480 * T.DRIVE_SCALE,
@@ -133,17 +133,19 @@ T.Specs = {
         -- the falcon wing doors swing up in a 2.4 s clip (cars/model_x.py DOORS): the climb waits until they are nearly
         -- up (EnterDoor.lua; E2E to confirm); the front doors keep E.WAIT
         doorWait = { DoorRearLeft = 2.3, DoorRearRight = 2.3 },
+        -- Open / Close clip seconds per part (cars/model_x.py DOORS); doors not listed run 0.8 s
+        doorClip = { TrunkDoor = 3.6, DoorRearLeft = 2.4, DoorRearRight = 2.4 },
         -- Model X Plaid paints: the last US design studio's six (Lexicon 2026-03-06) and China's pre-refresh Solid
         -- Black and Deep Blue (2025-03). Same order and append-only rules as above; h/s/v by convert.py build.
         colors = {
-            { name = "StealthGrey", code = "PN01", h = 0.653, s = 0.581, v = 0.358 },
-            { name = "LunarSilver", code = "PN02", h = 0.63, s = 0.54, v = 0.729 },
-            { name = "PearlWhite", code = "PPSW", h = 0.628, s = 0.505, v = 0.913 },
-            { name = "UltraRed", code = "PR01", h = 0.987, s = 1.0, v = 0.539 },
-            { name = "DiamondBlack", code = "PX02", h = 0.725, s = 0.55, v = 0.216 },
-            { name = "FrostBlue", code = "PB00", h = 0.59, s = 0.935, v = 0.495 },
-            { name = "SolidBlack", code = "PBSB", h = 0.722, s = 0.539, v = 0.244 },
-            { name = "DeepBlue", code = "PPSB", h = 0.59, s = 1.0, v = 0.519 },
+            { name = "StealthGrey", code = "PN01", h = 0.033, s = 0.555, v = 0.291 },
+            { name = "LunarSilver", code = "PN02", h = 0.721, s = 0.516, v = 0.479 },
+            { name = "PearlWhite", code = "PPSW", h = 0.792, s = 0.491, v = 0.881 },
+            { name = "UltraRed", code = "PR01", h = 0.0, s = 0.912, v = 0.355 },
+            { name = "DiamondBlack", code = "PX02", h = 0.955, s = 0.502, v = 0.23 },
+            { name = "FrostBlue", code = "PB00", h = 0.584, s = 0.831, v = 0.478 },
+            { name = "SolidBlack", code = "PBSB", h = 0.965, s = 0.535, v = 0.255 },
+            { name = "DeepBlue", code = "PPSB", h = 0.577, s = 1.0, v = 0.415 },
         },
     },
 }
