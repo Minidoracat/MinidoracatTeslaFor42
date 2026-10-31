@@ -34,6 +34,8 @@ T.DRIVE_SCALE = 10
 -- plug: the charge cable's plug segment (client/MinidoracatTesla/Cable.lua): render-only item and its handle height
 -- above the floor in units (1 level = 2.44949), measured at the car's chargeport (E2E integration-mp `port`);
 -- scripts/blender/props/props_blender.py PLUGS builds one mesh per entry (build.py --check compares the two).
+-- doorClip: every car's door parts whose clip is not 0.8 s, part id -> clip seconds (= scripts/blender/skf/cars/<car>.py
+-- DOORS; Liftgate.syncShell times the cabin shell's door bits on it; harness test_liftgate compares the two).
 -- Cybertruck only: tonneau (the app's tonneau cover button), armorGlass (smashes a window takes, Truck.lua),
 -- powershare and bedOutlet (Powershare, the bed outlets).
 T.Specs = {
@@ -46,8 +48,7 @@ T.Specs = {
         kwPerKmh = 0.00572 * T.DRIVE_SCALE,
         massKg = 2033,
         regenEff = 0.6,
-        -- door clip seconds not 0.8 (scripts/blender/skf/cars/model_y.py DOORS; Liftgate.syncShell, harness test_liftgate)
-        doorClip = { TrunkDoor = 3.6 },
+        doorClip = { TrunkDoor = 3.6 }, -- cars/model_y.py DOORS
         -- official Model Y paints (TeslaModelY, references/models.md): entry i = vehicle script skin i-1, and saved
         -- games keep the skin index (BaseVehicle.java:2635/2741), so only append. h/s/v (setColorHSV) tint the
         -- damage overlays to the paint (vehicle_common.frag.glsl:6-15), written by scripts/blender/skf/convert.py build
