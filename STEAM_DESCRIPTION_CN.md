@@ -3,7 +3,7 @@
 
 [hr][/hr]
 
-把特斯拉 Model Y、Model 3 与 Cybertruck 开进末日：用电池行驶、在家庭充电桩或移动充电连接器充电，还能用手机 App 远程控制。目前推出这三款车，之后会陆续加入特斯拉全系列车型与更多充电设备。
+把特斯拉 Model S、Model 3、Model X、Model Y 与 Cybertruck 开进末日：用电池行驶、在家庭充电桩或移动充电连接器充电，还能用手机 App 远程控制。之后会陆续加入更多车型与充电设备。
 
 [h2]📦 需要安装[/h2]
 [list]
@@ -17,7 +17,7 @@
 
 [h2]🚀 快速上手[/h2]
 [olist]
-[*] 在停车场找到特斯拉（Cybertruck 在高级住宅区），拿到它的车钥匙就会变成卡片钥匙
+[*] 在停车场或高级住宅区找到特斯拉（Model S、Model X、Cybertruck 只在高级住宅区），拿到它的车钥匙就会变成卡片钥匙
 [*] 坐上驾驶座，点仪表左上角的电源键启动
 [*] 电工 3 级做一座家庭充电桩装上有电的墙，或把移动充电连接器放在地上，右键它插上充电线
 [*] 找一部智能手机（本 MOD 的新物品，电器店最常见，特斯拉的手套箱里也可能有），带着卡片坐在车上，右键手机选「设为手机钥匙」，就能用 Tesla App
@@ -25,15 +25,14 @@
 
 [h2]✨ 主要功能[/h2]
 [list]
-[*] [b]三台顶配特斯拉[/b]：Model Y、Model 3 Performance 各 8 色，Cybertruck Cyberbeast 12 色
-[*] [b]Cybertruck[/b]：车斗与电动车斗盖、装甲玻璃、车顶灯条；停电时用 Powershare 给家里供电，车斗插座帮别的特斯拉充电
+[*] [b]五台顶配特斯拉[/b]：Model Y、Model 3 Performance，Model S、Model X Plaid 与 Cybertruck Cyberbeast
+[*] [b]Model X 与 Cybertruck[/b]：鹰翼门与 6 个座位，车斗、装甲玻璃与 Powershare 家庭供电
 [*] [b]电池与充电[/b]：开车耗电、刹车回收电力，在家庭充电桩或放在地上的移动充电连接器充电
 [*] [b]特斯拉风格仪表[/b]：车速、电量与续航，点车辆图就能开关车门
-[*] [b]卡片与手机钥匙[/b]：带着手机走近就解锁，走远自动上锁
-[*] [b]Tesla App[/b]：远程上锁、找车、看充电，一部手机管多台车
-[*] [b]哨兵与露营模式[/b]：有人碰车会通知你，露营时空调照常运行
-[*] [b]FSD 画面与召唤[/b]：搭配 AutoDrive 自驾，App 也能叫车过来
-[*] [b]家族 MOD 联动[/b]：绑车权限、小地图车标与导航到车
+[*] [b]手机钥匙与 Tesla App[/b]：走近解锁、走远上锁，远程上锁、找车、看充电
+[*] [b]哨兵与露营模式[/b]：有人碰车、破窗或拖走车会通知你，露营时空调照常运行
+[*] [b]生物武器防御与舒适模式[/b]：HEPA 滤网挡住尸臭病，加速也能切换成平顺
+[*] [b]家族 MOD 联动[/b]：AutoDrive 的 FSD 画面与召唤、绑车权限、小地图车标
 [/list]
 📖 [b]完整说明与常见问题：[/b][url=https://steamcommunity.com/sharedfiles/filedetails/?id=3829449828]Minidoracat Tesla Collection 完整說明[/url]（繁体中文）
 

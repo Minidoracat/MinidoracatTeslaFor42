@@ -3,7 +3,7 @@
 
 [hr][/hr]
 
-Drive a Tesla Model Y, Model 3 or Cybertruck through the apocalypse: run on battery power, charge at a Wall Connector or a Mobile Connector, and control the car from the Tesla app on your phone. These three models are here now; the rest of the Tesla lineup and more charging equipment will be added over time.
+Drive a Tesla Model S, Model 3, Model X, Model Y or Cybertruck through the apocalypse: run on battery power, charge at a Wall Connector or a Mobile Connector, and control the car from the Tesla app on your phone. More models and charging equipment will be added over time.
 
 [h2]📦 Requirements[/h2]
 [list]
@@ -17,7 +17,7 @@ Drive a Tesla Model Y, Model 3 or Cybertruck through the apocalypse: run on batt
 
 [h2]🚀 Quick start[/h2]
 [olist]
-[*] Find a Tesla in a parking lot (the Cybertruck in upscale neighbourhoods); its car key turns into a key card when you pick it up
+[*] Find a Tesla in a parking lot or an upscale neighbourhood (the Model S, Model X and Cybertruck only in upscale ones); its car key turns into a key card when you pick it up
 [*] Sit in the driver's seat and click the power button at the top left of the dashboard
 [*] With Electrical 3, make a Wall Connector and mount it on a powered wall, or set a Mobile Connector on the floor; right-click it to plug in the charge cable
 [*] Find a smartphone (a new item from this mod, most common in electronics stores; a Tesla's glove box may hold one too), sit in the car with the key card, right-click the phone and choose Set Up as Phone Key to use the Tesla app
@@ -25,15 +25,14 @@ Drive a Tesla Model Y, Model 3 or Cybertruck through the apocalypse: run on batt
 
 [h2]✨ Features[/h2]
 [list]
-[*] [b]Three top-trim Teslas[/b]: Model Y and Model 3 Performance with 8 factory paints each, Cybertruck Cyberbeast with 12
-[*] [b]Cybertruck[/b]: cargo bed with a powered tonneau cover, Armor Glass, roof light bar; Powershare runs your home in a blackout, and the bed outlets charge another Tesla
+[*] [b]Five top-trim Teslas[/b]: Model Y and Model 3 Performance, Model S and Model X Plaid, Cybertruck Cyberbeast
+[*] [b]Model X and Cybertruck[/b]: falcon wing doors and six seats, a cargo bed, Armor Glass and Powershare home backup
 [*] [b]Battery and charging[/b]: driving uses charge, braking wins some back, charge at a Wall Connector or a Mobile Connector on the floor
 [*] [b]Tesla-style dashboard[/b]: speed, charge and range; click the car picture to open its doors
-[*] [b]Key card and phone key[/b]: unlocks as you walk up with your phone, locks as you walk away
-[*] [b]Tesla app[/b]: lock, find the car and watch it charge from afar; one phone for several cars
-[*] [b]Sentry and Camp Mode[/b]: get told when someone touches the car, keep the climate on while camping
-[*] [b]FSD view and Summon[/b]: with AutoDrive, watch the route, cars and zombies while it drives itself, or call the car over from the app
-[*] [b]Vehicle Manager and minimap[/b]: its permissions apply, and the minimap shows your cars
+[*] [b]Phone key and Tesla app[/b]: unlocks as you walk up, locks as you walk away; lock, find the car and watch it charge from afar
+[*] [b]Sentry and Camp Mode[/b]: get told when someone touches, breaks into or tows the car, keep the climate on while camping
+[*] [b]Bioweapon Defense Mode and Chill[/b]: the HEPA filter keeps corpse sickness out, and acceleration can go gentle
+[*] [b]Family mods[/b]: AutoDrive's FSD view and Summon, Vehicle Manager permissions, your cars on the minimap
 [/list]
 📖 [b]Full guide and FAQ:[/b] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3829449879]Minidoracat Tesla Collection Mod Guide[/url]
 
