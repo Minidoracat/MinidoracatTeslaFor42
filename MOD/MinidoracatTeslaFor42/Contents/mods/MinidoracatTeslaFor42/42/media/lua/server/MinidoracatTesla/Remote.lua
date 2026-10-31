@@ -266,13 +266,18 @@ local function falcon(player, v, open)
         if open and door:isLocked() then door:setLocked(false) end
         T.Liftgate.swing(v, part, open, player:getUsername()) -- closing: relocks it (Liftgate.relock)
     end
+    local relocked = false
     if not open then -- a wing already shut by hand but left unlocked locks too, even with nothing to move
         for _, id in ipairs(FALCON) do
             local part = v:getPartById(id)
-            if part and part:getDoor() and T.Liftgate.relock(v, part) then v:transmitPartDoor(part) end
+            if part and part:getDoor() and T.Liftgate.relock(v, part) then
+                v:transmitPartDoor(part)
+                relocked = true
+            end
         end
     end
-    if #move == 0 then return nil, open, true end
+    -- "already so" (no log, no touch) only when nothing changed: a relock is a change
+    if #move == 0 and not relocked then return nil, open, true end
     return nil, open
 end
 

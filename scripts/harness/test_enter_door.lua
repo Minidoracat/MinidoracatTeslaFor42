@@ -44,10 +44,12 @@ ISButtonPrompt = { cmdEnterVehicle = function(_, _, seat) prompted = seat end }
 E.doorUse = nil
 E.wrapDoorUse()
 local NAMES = { [0] = "FrontLeft", "FrontRight", "RearLeft", "RearRight", "MiddleLeft", "MiddleRight" } -- PassengerSeat6 order
+-- taken[i]: true = someone (or a load) in seat i, "gone" = the seat part removed (isSeatInstalled false)
 local function car(script, taken, useable)
     return { getMaxPassengers = function() return 6 end, getScriptName = function() return script end,
         getScript = function() return { getPassenger = function(_, i) return { getId = function() return NAMES[i] end } end } end,
         isSeatOccupied = function(_, i) return taken[i] == true end,
+        isSeatInstalled = function(_, i) return taken[i] ~= "gone" end,
         getUseablePart = function() return useable and { getId = function() return useable end } end }
 end
 local function useAt(v, door)
@@ -58,6 +60,7 @@ end
 check(useAt(car(X, {}), "DoorRearLeft") == 4, "left wing, all free: the 2nd row (MiddleLeft, seat 4)")
 check(useAt(car(X, { [4] = true }), "DoorRearLeft") == 2, "left wing, 2nd row taken: the 3rd row (RearLeft, seat 2)")
 check(useAt(car(X, {}), "DoorRearRight") == 5, "right wing: MiddleRight (seat 5)")
+check(useAt(car(X, { [4] = "gone" }), "DoorRearLeft") == 2, "left wing, 2nd-row seat removed: the 3rd row (seat 2)")
 local e, van = useAt(car(X, { [5] = true, [3] = true }), "DoorRearRight")
 check(e == nil and van == true, "right wing, both rows taken: vanilla (it says the seat is taken)")
 e, van = useAt(car(X, {}), "DoorFrontLeft")
@@ -78,6 +81,8 @@ check(prompt(car(X, {}, "DoorRearLeft"), 2) == 4, "left wing, all free: the 2nd 
 check(prompt(car(X, { [4] = true }, "DoorRearLeft"), 2) == 2, "left wing, 2nd row taken: the 3rd row (seat 2)")
 check(prompt(car(X, {}, "DoorRearRight"), 3) == 5, "right wing: MiddleRight (seat 5)")
 check(prompt(car(X, { [5] = true, [3] = true }, "DoorRearRight"), 3) == 3, "right wing, both rows taken: vanilla's seat")
+check(prompt(car(X, { [5] = "gone" }, "DoorRearRight"), 3) == 3, "right wing, 2nd-row seat removed: the 3rd row (seat 3)")
+check(prompt(car(X, { [4] = "gone", [2] = "gone" }, "DoorRearLeft"), 2) == 2, "left wing, both seats removed: vanilla's seat")
 check(prompt(car(X, {}, "DoorFrontLeft"), 0) == 0, "Model X front door: vanilla's seat")
 check(prompt(car(X, {}, nil), 2) == 2, "no useable door (getBestSeat branch): vanilla's seat")
 check(prompt(car(Y, {}, "DoorRearLeft"), 2) == 2, "Model Y rear door: vanilla's seat")
