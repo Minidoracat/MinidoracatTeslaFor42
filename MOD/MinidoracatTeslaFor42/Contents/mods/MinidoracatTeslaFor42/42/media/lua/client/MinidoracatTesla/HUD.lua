@@ -43,7 +43,8 @@ local POW2 = { 1, 2, 4, 8, 16, 32, 64, 128 }
 -- outline is drawn (viewBox 56 = x 49), and the rear glass between (viewBox 43-56, fixed in the body) opens nothing.
 -- The Cybertruck: the tailgate behind the bed (x 0-14), the tonneau over the bed (to its front wall, viewBox 56.4 =
 -- x 51), the rear glass (x 51-55) opens nothing, the doors split at viewBox 87 (x 77), the front doors end at the
--- frunk lid (viewBox 118 = x 104).
+-- frunk lid (viewBox 118 = x 104). The Model S: the liftgate with the rear glass back from its roof hinge (viewBox
+-- 48.4 = x 42), the doors split at viewBox 76.4 (x 67), the front doors end at the windscreen's foot (viewBox 105.3 = x 93).
 local ZONES = {
     ModelY = {
         { 5, 0, 0, 45, 85 }, { 3, 45, 0, 69, 42.5 }, { 4, 45, 42.5, 69, 85 },
@@ -56,6 +57,10 @@ local ZONES = {
     Cybertruck = {
         { 5, 0, 0, 14, 85 }, { 8, 14, 0, 51, 85 }, { 3, 55, 0, 77, 42.5 }, { 4, 55, 42.5, 77, 85 },
         { 1, 77, 0, 104, 42.5 }, { 2, 77, 42.5, 104, 85 }, { 7, 104, 0, 140, 85 },
+    },
+    ModelS = {
+        { 5, 0, 0, 42, 85 }, { 3, 42, 0, 67, 42.5 }, { 4, 42, 42.5, 67, 85 },
+        { 1, 67, 0, 93, 42.5 }, { 2, 67, 42.5, 93, 85 }, { 7, 93, 0, 140, 85 },
     },
 }
 HUD.ZONES = ZONES

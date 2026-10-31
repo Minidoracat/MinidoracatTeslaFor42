@@ -3,12 +3,13 @@
 local T = MinidoracatTesla
 local check = H.check
 
--- Model Y and Model 3 Performance design-studio codes (US, DE, TW)
+-- Model Y and Model 3 Performance design-studio codes (US, DE, TW); Model S Plaid: the last US design studio's six
+-- (Lunar Silver PN02 new) and the China pre-refresh Solid Black PBSB (user 2026-10-31)
 local OFFICIAL = { PN01 = true, PPSW = true, PX02 = true, PN00 = true, PR01 = true, PB01 = true, PB02 = true, PB00 = true,
-    PPSB = true }
+    PPSB = true, PN02 = true, PBSB = true }
 local media = "MOD/MinidoracatTeslaFor42/Contents/mods/MinidoracatTeslaFor42/42/media/"
 
-for _, car in ipairs({ "MinidoracatTesla_ModelY", "MinidoracatTesla_Model3" }) do
+for _, car in ipairs({ "MinidoracatTesla_ModelY", "MinidoracatTesla_Model3", "MinidoracatTesla_ModelS" }) do
     local colors = T.Specs["Base." .. car].colors
 
     H.section("paint table " .. car)

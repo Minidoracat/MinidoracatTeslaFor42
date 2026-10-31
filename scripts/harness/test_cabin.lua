@@ -19,7 +19,7 @@ local tpl = read("scripts/vehicles/MinidoracatTesla_template.txt")
 local models = read("scripts/models/MinidoracatTesla_vehicles.txt")
 
 -- every Tesla model but the wheel on the merged shader; no cabin / glass / window models left
-for _, car in ipairs({ "MinidoracatTesla_ModelY", "MinidoracatTesla_Model3" }) do
+for _, car in ipairs({ "MinidoracatTesla_ModelY", "MinidoracatTesla_Model3", "MinidoracatTesla_ModelS" }) do
     local shaders, names = {}, {}
     for name, block in models:gmatch("model (" .. car .. "[%w_]*)%s*(%b{})") do
         names[#names + 1] = name
@@ -38,7 +38,9 @@ for _, car in ipairs({ "MinidoracatTesla_ModelY", "MinidoracatTesla_Model3" }) d
         and read("textures/Vehicles/" .. car .. "_cabin.png") == nil, car .. ": no cabin / glass FBX or cabin palette left")
 end
 local m3 = read("scripts/vehicles/MinidoracatTesla_Model3.txt")
-local geos = { ModelY = geo, Model3 = m3:sub((m3:find("---- geometry", 1, true))) }
+local ms = read("scripts/vehicles/MinidoracatTesla_ModelS.txt")
+local geos = { ModelY = geo, Model3 = m3:sub((m3:find("---- geometry", 1, true))),
+    ModelS = ms:sub((ms:find("---- geometry", 1, true))) }
 for car, g in pairs(geos) do
     check(g:find("part GloveBox", 1, true) == nil and g:find("part Window", 1, true) == nil
         and g:find("part WindshieldRear", 1, true) == nil, car .. ": no models on GloveBox, Window* or WindshieldRear")
@@ -55,6 +57,9 @@ check(rules(veh, "TrunkDoor"):find("requireUninstalled = WindshieldRear,", 1, tr
     "Model Y: liftgate comes off only without its rear glass (in the liftgate's mesh)")
 check(rules(veh, "WindshieldRear"):find("requireInstalled = TrunkDoor,", 1, true) ~= nil,
     "Model Y: rear glass goes on only with the liftgate")
+check(rules(ms, "TrunkDoor"):find("requireUninstalled = WindshieldRear,", 1, true) ~= nil
+    and rules(ms, "WindshieldRear"):find("requireInstalled = TrunkDoor,", 1, true) ~= nil,
+    "Model S: a liftback like the Model Y: the rear glass rides in the liftgate (off first, on only with it)")
 check(not (tpl .. m3):find("requireUninstalled = WindshieldRear", 1, true) and not (tpl .. m3):find("requireInstalled = TrunkDoor", 1, true),
     "Model 3 (and the shared template): trunk lid and rear glass come off and go on independently (glass in the body)")
 

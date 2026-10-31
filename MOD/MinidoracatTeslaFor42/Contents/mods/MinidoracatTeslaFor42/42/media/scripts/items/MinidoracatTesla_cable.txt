@@ -53,4 +53,14 @@ module Base
         WorldStaticModel = Base.MinidoracatTesla_CablePlugCybertruck,
         Hidden = true,
     }
+
+    item MinidoracatTesla_CablePlugModelS
+    {
+        Weight = 0.1,
+        ItemType = base:normal,
+        DisplayCategory = Electronics,
+        Icon = MinidoracatTesla_Cable,
+        WorldStaticModel = Base.MinidoracatTesla_CablePlugModelS,
+        Hidden = true,
+    }
 }

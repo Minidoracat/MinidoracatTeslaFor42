@@ -16,7 +16,9 @@ Exception: the Model 3 body model and its textures are adapted from RBLXSupercar
 
 Exception: the Cybertruck body model and its textures are adapted from adamsochi2010's "Tesla CyberTruck" under CC BY 4.0; see `CREDITS.md` for the attribution.
 
-Tesla, the Tesla "T" logo, Model Y, Model 3, Cybertruck, Wall Connector, Mobile Connector, Supercharger, Sentry Mode and Camp Mode are trademarks of Tesla, Inc. This is an unofficial, free fan mod. It is not affiliated with, sponsored by or endorsed by Tesla, Inc., and no license to these trademarks is granted by this repository.
+Exception: the Model S body model and its textures are adapted from ValentunW's (Lals) "Tesla Model S Plaid" under CC BY 4.0; see `CREDITS.md` for the attribution.
+
+Tesla, the Tesla "T" logo, Model Y, Model 3, Model S, Plaid, Cybertruck, Wall Connector, Mobile Connector, Supercharger, Sentry Mode and Camp Mode are trademarks of Tesla, Inc. This is an unofficial, free fan mod. It is not affiliated with, sponsored by or endorsed by Tesla, Inc., and no license to these trademarks is granted by this repository.
 
 ---
 
@@ -30,4 +32,6 @@ Tesla, the Tesla "T" logo, Model Y, Model 3, Cybertruck, Wall Connector, Mobile 
 
 例外：Cybertruck 車身模型與它的貼圖改作自 adamsochi2010（Mr3DDD）的「Tesla CyberTruck」（CC BY 4.0），署名見 `CREDITS.md`。
 
-Tesla、特斯拉「T」標誌、Model Y、Model 3、Cybertruck、Wall Connector、Mobile Connector、Supercharger、Sentry Mode、Camp Mode 是 Tesla, Inc. 的商標。本 MOD 是免費的非官方愛好者作品，和 Tesla, Inc. 沒有關係，也沒有得到 Tesla, Inc. 的贊助或認可；本 repo 不授予這些商標的任何權利。
+例外：Model S 車身模型與它的貼圖改作自 ValentunW（Lals）的「Tesla Model S Plaid」（CC BY 4.0），署名見 `CREDITS.md`。
+
+Tesla、特斯拉「T」標誌、Model Y、Model 3、Model S、Plaid、Cybertruck、Wall Connector、Mobile Connector、Supercharger、Sentry Mode、Camp Mode 是 Tesla, Inc. 的商標。本 MOD 是免費的非官方愛好者作品，和 Tesla, Inc. 沒有關係，也沒有得到 Tesla, Inc. 的贊助或認可；本 repo 不授予這些商標的任何權利。

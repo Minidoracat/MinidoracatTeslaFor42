@@ -438,7 +438,27 @@ def car_cybertruck(c):
         c.stroke([("M", 87, y0 + 0.6), ("V", y1 - 0.6)], w=1.0, color="#4A525B")
 
 
-CARS = {"ModelY": car_modely, "Model3": car_model3, "Cybertruck": car_cybertruck}
+def car_models(c):
+    """Model S Plaid (owner's manual 2026: 5,046 x 1,987 mm, wheelbase 2,960, overhangs front 963 / rear 1,123) at the
+    Model Y's 0.0259 viewBox units per mm: rear 16.4, nose 147; 19" wheels (712 mm) on the axles, x 45.5 and 122. A
+    liftback: the liftgate (x 16.4-48.4) carries the rear glass, from the roof hinge back; the glass roof runs on to
+    the windscreen's foot (x 114), the frunk lid from there to the nose. Doors split at x 76.4 (rear doors from 48.1,
+    front doors to 105.3). HUD.lua ZONES.ModelS follows these edges."""
+    for x in (36.3, 112.8):
+        for y in (16, 72):
+            c.rrect(x, y, 18.4, 8, 2, fill="#0B0D0F", outline="#8E98A3", ow=1.1)
+    body = [("M", 30, 23), ("H", 125), ("Q", 145, 23, 147, 38), ("V", 58), ("Q", 145, 73, 125, 73),
+            ("H", 30), ("Q", 16.4, 73, 16.4, 61), ("V", 35), ("Q", 16.4, 23, 30, 23), ("Z",)]
+    c.fill(body, "#2A3037")
+    c.stroke(body, w=1.3, color="#AEB6BF")
+    c.fill([("M", 30, 30), ("H", 108), ("Q", 113, 30, 114.4, 38), ("V", 58), ("Q", 113, 66, 108, 66), ("H", 30),
+            ("Q", 26, 66, 26, 60), ("V", 36), ("Q", 26, 30, 30, 30), ("Z",)], "#15191E")   # rear glass, roof, windscreen
+    c.stroke([("M", 48.4, 30), ("V", 66)], w=1.0, color="#4A525B")  # liftgate hinge (rear glass / roof glass)
+    for y0, y1 in ((23, 26), (70, 73)):  # B-pillar seam
+        c.stroke([("M", 76.4, y0 + 0.6), ("V", y1 - 0.6)], w=1.0, color="#4A525B")
+
+
+CARS = {"ModelY": car_modely, "Model3": car_model3, "Cybertruck": car_cybertruck, "ModelS": car_models}
 
 
 def dashed(c, x0, y0, x1, y1, w=1.8, dash=3.0, gap=2.0):
@@ -459,6 +479,9 @@ DOOR_GEOM = {
     # the tailgate folds down behind the bed; the tonneau rolls into its canister at the bed's front wall
     "Cybertruck": {"front": (87, 118), "rear": (62, 87), "y": (22, 74), "tr": ((8, 28, 68), (2, 26, 70)),
                    "hd": ((154, 34, 62), (159, 32, 64)), "kinds": ("FL", "FR", "RL", "RR", "TR", "TN", "HD")},
+    # Model S: doors at its own seams, the liftgate's rear edge at x 16.4, the nose at 147 (car_models)
+    "ModelS": {"front": (76.4, 105.3), "rear": (48.1, 76.4), "y": (23, 73), "tr": ((16.4, 36, 60), (10.5, 34, 62)),
+               "hd": ((147, 38, 58), (153, 36, 60)), "kinds": ("FL", "FR", "RL", "RR", "TR", "HD")},
 }
 
 
@@ -499,7 +522,8 @@ WORDS = [("kmh", "Inter-Regular.ttf", 14, "km/h", 0), ("km", "Inter-Regular.ttf"
          ("inf", "Inter-Regular.ttf", 17, "\u221e", 0),
          ("wm_ModelY", "Inter-Light.ttf", 15, "MODEL Y", 5), ("trim_ModelY", "Inter-Regular.ttf", 13, "Performance", 0),
          ("wm_Model3", "Inter-Light.ttf", 15, "MODEL 3", 5), ("trim_Model3", "Inter-Regular.ttf", 13, "Performance", 0),
-         ("wm_Cybertruck", "Inter-Light.ttf", 15, "CYBERTRUCK", 3), ("trim_Cybertruck", "Inter-Regular.ttf", 13, "Cyberbeast", 0)]
+         ("wm_Cybertruck", "Inter-Light.ttf", 15, "CYBERTRUCK", 3), ("trim_Cybertruck", "Inter-Regular.ttf", 13, "Cyberbeast", 0),
+         ("wm_ModelS", "Inter-Light.ttf", 15, "MODEL S", 5), ("trim_ModelS", "Inter-Regular.ttf", 13, "Plaid", 0)]
 
 
 def render_text(fontfile, size, s, track=0):
