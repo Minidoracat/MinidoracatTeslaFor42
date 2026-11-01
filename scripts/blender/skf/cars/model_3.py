@@ -112,7 +112,7 @@ CAR = dict(
     # the panel gaps shaded in the skin (convert.py seam_shade, model_y.py): a dotted line at the closest zoom
     SEAM_SHADE=dict(reach=0.02, width=0.010, k=0.35, steep=0.5,
                     parts=("DoorFrontLeft", "DoorFrontRight", "DoorRearLeft", "DoorRearRight", "EngineDoor"),
-                    any_slope=("EngineDoor",)),
+                    any_slope={"EngineDoor": 0.6}),
     # collapse-decimated after DROP_COMPS (target tris): underbody, arches, lamp housings and mirror housings at
     # 26k tris after the interior is gone; the build prints their components' new sizes (COMPS)
     DECIMATE={"Object_11": 13000, "Object_13": 6000, "Object_6": 2500},

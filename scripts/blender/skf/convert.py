@@ -1103,11 +1103,12 @@ def seam_shade(car, c, pos, paint):
     meet 1-5 mm apart, so neither the baked AO nor the gap itself drew the seam: in game, under 1 px wide, it came out a
     row of dots (user 2026-11-01: Model X under the front door's handle, Model S up the hood from the headlamp;
     body-edges-sp: Model Y / 3 too, lighter). Paint texels within `width` of a gap edge darken to 1 - k at the edge
-    (pos: each texel's baked position). A gap edge: a paint face's open edge, steeper than `steep` (|dz| / length: the
-    doors' front and rear gaps; along the roof spine and the sills the shade darkened the REAR34 top band,
-    paint_sheet.py) unless its part is in `any_slope` (the hood's gaps run level), with paint of another part within
-    `reach`, one of the two in `parts` (the liftgate gaps show by themselves). The Cybertruck's panels meet flush
-    (0.3 mm): no line, no dots, none."""
+    (pos: each texel's baked position; k of the nearest gap point's part). A gap edge: a paint face's open edge,
+    steeper than `steep` (|dz| / length: the doors' front and rear gaps; along the roof spine and the sills the shade
+    darkened the REAR34 top band, paint_sheet.py) unless its part is in `any_slope` {part: k} (the hood's gaps run
+    level, and at the doors' k they stayed dotted: the dots are nearly black on a level panel), with paint of another
+    part within `reach`, one of the two in `parts` (the liftgate gaps show by themselves). The Cybertruck's panels meet
+    flush (0.3 mm): no line, no dots, none."""
     from mathutils.kdtree import KDTree
     sd = C["SEAM_SHADE"]
     me = car.data
@@ -1119,7 +1120,8 @@ def seam_shade(car, c, pos, paint):
     _, inv, cnt = np.unique(np.sort(pid[e], 1), axis=0, return_inverse=True, return_counts=True)
     d = co[e[:, 1]] - co[e[:, 0]]
     steep = np.abs(d[:, 2]) > sd["steep"] * np.linalg.norm(d, axis=1)
-    steep |= np.isin(c["part"][ef], [PARTS.index(p) for p in sd.get("any_slope", ())])
+    ks = {PARTS.index(p): k for p, k in sd.get("any_slope", {}).items()}   # part -> its own k, any slope
+    steep |= np.isin(c["part"][ef], list(ks))
     sel = np.flatnonzero((cnt[inv.ravel()] == 1) & c["paint"][ef] & steep)   # open edges (by position) of paint
     listed = np.isin(c["part"], [PARTS.index(p) for p in sd["parts"]])
     keep = []
@@ -1127,8 +1129,10 @@ def seam_shade(car, c, pos, paint):
         other = bvh_of([(co, fv[c["paint"] & (c["part"] != k) & (listed | (PARTS[k] in sd["parts"]))])])
         keep += [i for i in sel[c["part"][ef[sel]] == k]
                  if other.find_nearest(Vector(co[e[i]].mean(0)), sd["reach"])[0] is not None]
-    pts = np.concatenate([co[e[i, 0]] + (co[e[i, 1]] - co[e[i, 0]]) * np.linspace(0, 1, 2 + int(
-        np.linalg.norm(co[e[i, 1]] - co[e[i, 0]]) / 0.002))[:, None] for i in keep])
+    seg = [co[e[i, 0]] + (co[e[i, 1]] - co[e[i, 0]]) * np.linspace(0, 1, 2 + int(
+        np.linalg.norm(co[e[i, 1]] - co[e[i, 0]]) / 0.002))[:, None] for i in keep]
+    pts = np.concatenate(seg)
+    kp = np.concatenate([np.full(len(s), ks.get(c["part"][ef[i]], sd["k"])) for s, i in zip(seg, keep)])
     kd = KDTree(len(pts))
     for i, p in enumerate(pts):
         kd.insert(p, i)
@@ -1142,7 +1146,8 @@ def seam_shade(car, c, pos, paint):
     m = np.isin(code(vox(pos[ys, xs])), near)
     f = np.ones(paint.shape, np.float32)
     for y, x in zip(ys[m], xs[m]):
-        f[y, x] = 1 - sd["k"] * max(0.0, 1 - kd.find(pos[y, x])[2] / w)
+        p, j, dist = kd.find(pos[y, x])
+        f[y, x] = 1 - kp[j] * max(0.0, 1 - dist / w)
     print("SEAM_SHADE edges", len(keep), "points", len(pts), "texels", int((f < 1).sum()))
     return f
 
