@@ -53,9 +53,8 @@ L.SHELL_DOORS = { "DoorFrontLeft", "DoorFrontRight", "DoorRearLeft", "DoorRearRi
 -- E2E doors-audit-sp tesla-doorsaudit-1101-y-a W-fr-close-c25 against W-fr-o75). The wall stands while the door is
 -- under about a quarter open: the bit flips a third of the way into the opening swing and two thirds into the closing
 -- one (the eased clip, cars/<car>.py via convert.py: smoothstep(1/3) = 0.26 of the angle). Counted on the door's own
--- clock: an update advances the clip 1/60 x 0.8 x rate x the unmodded multiplier (BaseVehicle.java:3898-3904), which
--- carries the game speed (GameTime.java:1018-1022): fast forward ends the swing sooner, a pause holds it. Clips are
--- 0.8 s, else Specs doorClip[part].
+-- clock, T.clipStep (Core.lua): fast forward ends the swing sooner, a pause holds it. Clips are 0.8 s, else Specs
+-- doorClip[part].
 -- [vid] = { [k] = clip seconds left before bit k-1 flips to its door's state }; the OnTick runs while any is pending
 local pending, ticking = {}, false
 local function flipClip(vehicle, id, open)
@@ -73,7 +72,7 @@ local function retick()
     if left then Events.OnTick.Add(shellTick) else Events.OnTick.Remove(shellTick) end
 end
 shellTick = function()
-    local step, due = 0.8 / 60 * getGameTime():getUnmoddedMultiplier(), {}
+    local step, due = T.clipStep(), {}
     for vid, ks in pairs(pending) do
         local hit = false
         for k, left in pairs(ks) do
