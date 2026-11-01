@@ -4,7 +4,9 @@ Visible = a ray from the face centre towards one of the 8 game camera directions
 (glass ignored: what is behind it shows). Classes by UV1 u (convert.uv1_class): 0 paint / trim, 1 cabin, 2 glass.
 Paint = skin alpha < 255 at the face's UV0 centroid; dark = not paint, luminance < 0.3. Writes px/cm (2048) of the
 visible paint per mesh, the UV square's use, and how much of the visible paint / non-paint border runs inside a UV
-island (texel steps) against on a seam (models.md 10. 已知坑, the Model X entry)."""
+island (texel steps) against on a seam (models.md 10. 已知坑, the Model X entry). Borders of a face under 0.5 cm wide
+across the edge are skipped: slivers (Cybertruck's panel gap bevels, 0.3 mm) never show and their centroid's texel is
+a neighbour's."""
 import bpy, json, math, os, sys
 import numpy as np
 from mathutils import Vector
@@ -122,6 +124,8 @@ for key, fs in edges.items():
     if paint[i] == paint[j]:
         continue
     L = float(np.linalg.norm(P[i, a] - P[i, b])) / K * 100
+    if min(cm2[i], cm2[j]) * 2 / L < 0.5:
+        continue
     same = np.allclose(UV0[i, a], UV0[j, c], atol=1e-5) and np.allclose(UV0[i, b], UV0[j, d], atol=1e-5)
     if same:
         tex_len += L
