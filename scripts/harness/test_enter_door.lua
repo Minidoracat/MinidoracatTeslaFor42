@@ -33,6 +33,35 @@ check(waitAfter(X, "DoorRearLeft", ISExitVehicle) == T.Specs[X].doorWait.DoorRea
 check(waitAfter(X, "DoorFrontLeft") == E.WAIT, "Model X front door: E.WAIT (" .. E.WAIT .. " s)")
 check(waitAfter(Y, "DoorRearLeft") == E.WAIT and T.Specs[Y].doorWait == nil, "Model Y rear door (no doorWait): E.WAIT")
 
+-- the wait counts on the door's clip clock (T.clipStep): updates until the climb may start at multiplier m
+local function climbUpdates(script, door, m)
+    local nxt = setmetatable({}, { __index = ISEnterVehicle })
+    local v = H.vehicle({ script = script })
+    q.queue = { setmetatable({ vehicle = v, part = { getId = function() return door end } }, { __index = ISOpenVehicleDoor }), nxt }
+    q.queue[1]:perform()
+    H.removeVehicle(v)
+    H.setMultiplier(m)
+    local n = 0
+    repeat n = n + 1 until not nxt:waitToStart() or n > 1000
+    H.setMultiplier(1)
+    return n
+end
+-- before 2026-11-01 the wait was 0.55 (E.WAIT) or 2.3 (falcon) less m/60 an update. The multiplier is frame time x 60
+-- x the game speed (GameTime.java:1018-1022), never a round 1 in play (at exactly 1 both counts end on a float crumb)
+local function oldUpdates(w, m) local n = 0; repeat n = n + 1; w = w - m / 60 until w <= 0; return n end
+for _, m in ipairs({ 0.97, 1.03, 2.01, 5.02, 40.1 }) do
+    check(climbUpdates(X, "DoorFrontLeft", m) == oldUpdates(0.55, m) and climbUpdates(X, "DoorRearLeft", m) == oldUpdates(2.3, m),
+        string.format("multiplier %.2f: the climb starts on the same update as the old count (front %d, falcon %d)",
+            m, climbUpdates(X, "DoorFrontLeft", m), climbUpdates(X, "DoorRearLeft", m)))
+end
+-- fast forward: the climb starts the update the clip passes the wait
+local step40 = 0.8 / 60 * 40
+local n40 = climbUpdates(X, "DoorRearLeft", 40)
+check((n40 - 1) * step40 < T.Specs[X].doorWait.DoorRearLeft and n40 * step40 >= T.Specs[X].doorWait.DoorRearLeft,
+    string.format("multiplier 40: the falcon climb starts at clip %.2f s, the update it passes %.2f", n40 * step40,
+        T.Specs[X].doorWait.DoorRearLeft))
+check(climbUpdates(X, "DoorFrontLeft", 0) > 1000, "paused (multiplier 0): the climb keeps waiting")
+
 ISOpenVehicleDoor.perform, ISTimedActionQueue, ISEnterVehicle, ISExitVehicle = saved.perform, saved.queue, saved.enter, saved.exit
 
 H.section("falcon wing E: 2nd row first, then the 3rd")

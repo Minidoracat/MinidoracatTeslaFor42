@@ -16,9 +16,9 @@ local T = MinidoracatTesla
 local E = {}
 T.EnterDoor = E
 
--- seconds of door-anim time the climb waits after the open action: with its ~5 ticks the door has run ~0.63 s of
--- its ~1 s swing, about 70% of the angle (eased clip)
-E.WAIT = 0.55
+-- clip seconds into the door's opening swing (T.clipStep's clock) the climb starts at: 0.44 of a 0.8 s clip, the door
+-- most of the way open (E2E enter-sp; modelx-sp CLIMB)
+E.WAIT = 0.44
 local CLIMB = { ISEnterVehicle = true, ISExitVehicle = true }
 
 -- looked up when the open action ends, not when it starts: getting out queues the open action into an empty queue,
@@ -36,11 +36,11 @@ function ISOpenVehicleDoor:perform(...)
     return perform(self, ...)
 end
 
--- true while the door is still swinging; time as the part anims count it (BaseVehicle.java:3898-3903)
+-- true while the door is still swinging; counted on the part anims' clock (T.clipStep)
 local function swinging(self)
     local left = self.teslaDoorWait
     if not left then return false end
-    left = left - getGameTime():getUnmoddedMultiplier() / 60
+    left = left - T.clipStep()
     if left > 0 then
         self.teslaDoorWait = left
         return true
