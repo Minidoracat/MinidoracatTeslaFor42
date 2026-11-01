@@ -1,12 +1,13 @@
--- The seated pose in a Tesla (models.md section 8 "坐姿與車頂"). Two anim variables pick this MOD's player-vehicle nodes:
--- - MinidoracatTeslaSeated (every Tesla seat): aiming keeps the seated clip. In a car the "aim" variable follows the
---   aim key even with the window shut (IsoPlayer.java:4412-4446, IsoGameCharacter.java:976) and vanilla's aim nodes
---   play standing clips: through the glass the character stood up through the roof.
--- - MinidoracatTeslaRecline (the two front seats): idle and aim play MinidoracatTesla_IdleDrivingRecline, vanilla's
---   Bob_IdleDriving leaned back 20 deg (scripts/seat_anim.py), so the head clears the low roof over the front seats.
---   The rear rows keep the upright clip and sit lower instead (leaning back puts the head under the falling roof).
---   AnimSets/player-vehicle/idle/MinidoracatTesla_idle_recline.xml, aim/MinidoracatTesla_aim_seated.xml,
---   aim/MinidoracatTesla_aim_recline.xml.
+-- The seated pose in a Tesla (references/seating.md). Two anim variables pick this MOD's player-vehicle nodes:
+-- - MinidoracatTeslaSeated (every Tesla seat): idle plays MinidoracatTesla_IdleDrivingRear, vanilla's Bob_IdleDriving
+--   with the thighs raised 30 deg and the knees bent 40 deg more (scripts/seat_anim.py), so rear-row feet reach the
+--   floor of the lower seats without reaching into the front seats; aiming keeps it too. In a car the "aim" variable
+--   follows the aim key even with the window shut (IsoPlayer.java:4412-4446, IsoGameCharacter.java:976) and vanilla's
+--   aim nodes play standing clips: through the glass the character stood up through the roof.
+-- - MinidoracatTeslaRecline (the two front seats): idle and aim play MinidoracatTesla_IdleDrivingRecline, Bob_IdleDriving
+--   leaned back 25 deg with the thighs lowered 10 deg, so the head clears the low roof over the front seats.
+--   AnimSets/player-vehicle/idle/MinidoracatTesla_idle_recline.xml (priority 2) and _idle_rear.xml (1),
+--   aim/MinidoracatTesla_aim_recline.xml (2) and _aim_seated.xml (1): the first matching node wins.
 -- Anim variables live on each client's copy of a character, so every client sets them:
 -- - the local player at once on every enter (ISEnterVehicle:perform, a saved seat on load IsoCell.java:4524-4525, MP
 --   seat sync BaseVehicle.java:2527-2530), seat switch (ISSwitchVehicleSeat:perform, ISSwitchVehicleSeat.lua:57) and

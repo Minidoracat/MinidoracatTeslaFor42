@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Rear rows of a Tesla (Model X: 2nd and 3rd): vanilla Bob_IdleDriving upright with the thighs raised 17 deg
-     (MinidoracatTesla_IdleDrivingRear, scripts/seat_anim.py), so the feet reach the floor of the low rear seats.
+<!-- Rear rows of a Tesla (Model X: 2nd and 3rd): vanilla Bob_IdleDriving upright with the thighs raised 30 deg and the
+     knees bent 40 deg more (MinidoracatTesla_IdleDrivingRear, scripts/seat_anim.py), so the feet reach the floor of the
+     low rear seats without reaching into the front seats.
      m_ConditionPriority 1 puts it before vanilla's idle/default.xml; the front seats' node (2) wins there. Variable set by
      client/MinidoracatTesla/SeatPose.lua. Written out in full, no x_extends (family pitfalls.md, Linux servers). -->
 <animNode>
