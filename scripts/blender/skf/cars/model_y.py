@@ -210,6 +210,9 @@ CAR = dict(
     CABIN_FLOOR=-0.43,         # cabin floor
     CABIN_FRONT_Y=1.06,        # shell front wall: past the windscreen's lower edge (y 1.02 on the centre line)
     TRUNK_Y=-0.95,             # trunk floor starts behind the rear backrests (their foot is at its height)
+    TRUNK_WALL=True,           # trunk side walls from one profile (cabin.py trunk_walls; user 2026-11-01)
+    HUMP_BACKS=False,          # no two-sided arch humps (cabin.py; staircase in the rear doors, 2026-11-01)
+    REAR_DOOR_WALL=True,       # TRUNK_WALL's profile through the rear door openings too (user 2026-11-01)
     CABIN_ZC=-0.10,            # cabin axis the shell rays start from
     SEAM_CLEAR=0.065,          # grid: no ring this close to the B-pillar cut (the seam leans +-0.043 about it)
     # seats (front buckets: cushion / backrest width, backrest height, recline deg; rear bench: base width, cushions
