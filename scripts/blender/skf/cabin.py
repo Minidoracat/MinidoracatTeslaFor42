@@ -188,11 +188,44 @@ def cabin_mesh(bvh, belt, trunk_floor, trunk_end, arch, opening):
     side_v = np.abs(pts[ring["bpil"], :, 0]) > 0.3             # B-pillar ring onto the seam (side walls only)
     pts[ring["bpil"], side_v, 1] = opening["seam"](pts[ring["bpil"], side_v, 2])
     # the top edge: a cell reaching up to 8 cm over the belt is pulled down onto it (dropping it left a staircase of
-    # cells along the trunk's sides, black teeth through the open tailgate: user 2026-10-25); higher cells go
-    near = (pts[..., 2] <= belt + 0.08) & np.isin(kind, ("body", "door"))
-    pts[..., 2] = np.where(near, np.minimum(pts[..., 2], belt), pts[..., 2])
+    # cells along the trunk's sides, black teeth through the open tailgate: user 2026-10-25); higher cells go.
+    # TRUNK_TOP (a hatch whose trunk sides rise over the belt towards the tailgate opening): behind TRUNK_Y each side's
+    # top is a straight line along y fitted to where its rays stop hitting body (the quarter glass / opening edge),
+    # never under the belt, and each wall ray's reach is the median of its 5 neighbours' (the rays hit the quarter
+    # panel, lamp housings and arch at alternating depths: the wall was corrugated along the car, light and dark bands
+    # and teeth through the open tailgate, user 2026-11-01)
+    lim = np.full(pts.shape[:2], belt)
+    if pv.CAR.get("TRUNK_TOP"):
+        for i, y in enumerate(ys):
+            if y >= TRUNK_Y:
+                continue
+            wall = np.array([kind[i, j] == "body" and pts[i, j, 2] > (trunk_floor + 0.02) for j in range(n)])
+            d = np.stack([pts[i, :, 0], pts[i, :, 2] - CABIN_ZC], 1)
+            r = np.hypot(d[:, 0], d[:, 1])
+            med = np.array([np.median(r[max(j - 2, 0):j + 3][wall[max(j - 2, 0):j + 3]]) if wall[j] else r[j]
+                            for j in range(n)])
+            pts[i, wall, 0] = d[wall, 0] / r[wall] * med[wall]
+            pts[i, wall, 2] = CABIN_ZC + d[wall, 1] / r[wall] * med[wall]
+        rows = [i for i, y in enumerate(ys) if y < TRUNK_Y]
+        for js in (range(1, n - 1), range(n - 2, 0, -1)):      # left wall up (200 deg ->), right wall up (<- -20)
+            js = list(js)[: (n - 2) // 2]
+            tops = []
+            for i in rows:
+                z = belt
+                for j in js:
+                    if kind[i, j] not in ("body", "floor"):
+                        break
+                    z = max(z, pts[i, j, 2])
+                tops.append(z)
+            if len(rows) > 1:
+                a, b = np.polyfit(ys[rows], tops, 1)
+                lim[np.ix_(rows, js)] = np.maximum(belt, a * ys[rows] + b)[:, None]
+        print("CABIN trunk top", np.round(lim[rows][:, [1, n - 2]], 3).tolist() if rows else [])
+    near = (pts[..., 2] <= lim + 0.08) & np.isin(kind, ("body", "door"))
+    pts[..., 2] = np.where(near, np.minimum(pts[..., 2], lim), pts[..., 2])
     sv, sf, sc = pts.reshape(-1, 3), [], []
-    keep = lambda q: all(kind.flat[x] in ("body", "door", "floor") and sv[x][2] <= belt for x in q)   # noqa: E731
+    lv = lim.reshape(-1)
+    keep = lambda q: all(kind.flat[x] in ("body", "door", "floor") and sv[x][2] <= lv[x] for x in q)   # noqa: E731
     for i in range(nr - 1):
         for j in range(n):
             q = [i * n + j, (i + 1) * n + j, (i + 1) * n + (j + 1) % n, i * n + (j + 1) % n]
