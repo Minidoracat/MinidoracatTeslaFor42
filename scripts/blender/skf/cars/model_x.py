@@ -156,6 +156,7 @@ CAR = dict(
     CABIN_FLOOR=-0.41,
     CABIN_FRONT_Y=1.00,
     TRUNK_Y=-1.55,
+    TRUNK_WALL=True,                       # trunk side walls from one profile (cabin.py trunk_walls; user 2026-11-01)
     CABIN_ZC=-0.05,
     SEAM_CLEAR=0.065,
     SEATS=dict(front=dict(w=0.42, back=0.52, recline=14),
