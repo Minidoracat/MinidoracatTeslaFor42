@@ -3,7 +3,8 @@ CC BY 4.0, CREDITS.md). CAR=model_s. Keys as in model_y.py (each is the module c
 has are read with C.get and are off for the others: SRC_Z (the glTF is centred on the car, not on the ground), TIRE
 centres (the tyres are components of the black trim object), LAMPS head_y (one lamp material front and rear),
 TESLA_MAT (chrome letters on the black band), GATE_BY_COMP (the tail lamps' liftgate and body halves overlap in x),
-DROP_COVERED (paint lying under the tail lamp housings: a depth fight in game).
+DROP_COVERED (paint lying under the tail lamp housings: a depth fight in game), CARBON zones' `of` / `facing` (the
+jamb's top under the liftgate's hinge corners).
 The source (a Roblox export, decisions.md) is the Sketchfab glTF: 22 objects "Object_<n>", one per material; doors,
 frunk lid and liftgate are components of the paint object (Object_2), and the interior shares objects with the
 exterior (paint seats, black trim cabin tub), so parts come from components (DROP_COMPS boxes, CUT keys).
@@ -187,8 +188,13 @@ CAR = dict(
     GATE_OBJS=("Object_10", "Object_11", "Object_20", "Object_21", "Object_22", "Object_23"),
     GATE_COMPS=(),
     GATE_CUT_COMPS=(),
-    # black: the Plaid's carbon spoiler is a black part (Object_23) already; the black lower front lip too
-    CARBON=None,
+    # black: the Plaid's carbon spoiler is a black part (Object_23) already; the black lower front lip too. Black
+    # here: the body skin's top under the liftgate's hinge corners (the jamb's flange, up-facing, under the shut
+    # gate's corners; open, its ragged decimated end showed as white chips between the black hinge parts, TrunkShell
+    # 2026-11-01; dropped, it bared the clutter under it). Its component is 4659 triangles as decimated
+    CARBON=dict(rgb=(20, 20, 22), zones=tuple(
+        dict(lo=(0.47 if s > 0 else -0.545, -1.13, 1.02), hi=(0.545 if s > 0 else -0.47, -1.06, 1.075),
+             of=("Object_2", 4659), facing=((0, 0, 1), (0.75, 1.0))) for s in _SIDES)),
     PANES={"Body": {"WinT", "LightBarL"}, "DoorFrontLeft": {"WinLH"}, "DoorFrontRight": {"WinRH"},
            "DoorRearLeft": {"WinLT"}, "DoorRearRight": {"WinRT"}, "TrunkDoor": {"WinH"}, "EngineDoor": set()},
     # badges: T on the nose (where the source has it), TESLA in chrome across the black band between the tail lamps

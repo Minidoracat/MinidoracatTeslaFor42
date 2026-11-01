@@ -835,12 +835,18 @@ def classify(car, names, sizes):
     # CARBON: paint the real car has in black (Model 3 Performance's carbon spoiler $SLR1, its black lower front
     # intake): paint faces in each zone's box (lo, hi); with `edge` (axis, depth) only those within depth of the
     # outline's lowest coordinate on that axis (CARBON_EDGE: the lid's trailing edge curves forward towards the sides,
-    # and edit() cut the faces along that border)
+    # and edit() cut the faces along that border); with `of` (a match() spec) only those components' faces, with
+    # `facing` (axis, (dot min, dot max)) only faces so turned (Model S: the hinge corners under the liftgate)
     carbon = np.zeros(n, bool)
     for i, zn in enumerate(CARBON["zones"] if CARBON else ()):
         box = paint & (cen > zn["lo"]).all(1) & (cen < zn["hi"]).all(1)
         if "edge" in zn:
             box &= cen[:, zn["edge"][0]] < np.interp(cen[:, 0], *CARBON_EDGE[i])
+        if "of" in zn:
+            box &= match(zn["of"], obj, csize)
+        if "facing" in zn:
+            d = np.array([p.normal[:] for p in me.polygons]) @ np.array(zn["facing"][0], float)
+            box &= (d >= zn["facing"][1][0]) & (d <= zn["facing"][1][1])
         carbon |= box
     paint &= ~carbon
     glass = np.isin(mat, GLASS_MATS) & ~np.isin(obj, GLASS_OPAQUE)
