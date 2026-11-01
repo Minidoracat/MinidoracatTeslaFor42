@@ -930,13 +930,18 @@ def classify(car, names, sizes):
 
 # ---------------------------------------------------------------- textures
 
-def split_zone_edges(car, zone):
+def split_zone_edges(car, zone, every=False):
     """Cut the mesh where the mask zone changes, so no UV island straddles two zones (the mask is sampled bilinearly
-    and an edge texel between zones reads as none)."""
+    and an edge texel between zones reads as none). every: also the edges of three or more faces (Model X's tail lamp
+    surrounds meet the paint on such edges, so its black and white stayed one island)."""
     bm = bmesh.new()
     bm.from_mesh(car.data)
     bm.faces.ensure_lookup_table()
-    es = [e for e in bm.edges if len(e.link_faces) == 2 and zone[e.link_faces[0].index] != zone[e.link_faces[1].index]]
+    if every:
+        es = [e for e in bm.edges if len({zone[f.index] for f in e.link_faces}) > 1]
+    else:
+        es = [e for e in bm.edges
+              if len(e.link_faces) == 2 and zone[e.link_faces[0].index] != zone[e.link_faces[1].index]]
     bmesh.ops.split_edges(bm, edges=es)
     bm.to_mesh(car.data)
     bm.free()
@@ -975,7 +980,8 @@ def unwrap(car, obj):
 
 
 def bake(car, layers, ao=True):
-    """Bake per-face colour layers (name -> N x 3 array, emission) and AO at SKIN size; -> {name: H x W x 4}."""
+    """Bake colour layers (name -> N x 3 per face, or one row per corner, emission) and AO at SKIN size; -> {name:
+    H x W x 4}."""
     sc = bpy.context.scene
     sc.render.engine = "CYCLES"
     sc.cycles.device = "CPU"
@@ -1010,7 +1016,8 @@ def bake(car, layers, ao=True):
     for name, kind in jobs:
         if kind == "EMIT":
             a = me.color_attributes.new("b_" + name, "FLOAT_COLOR", "CORNER")
-            c = np.concatenate([np.repeat(layers[name], lt, 0), np.ones((lt.sum(), 1))], 1)
+            v = layers[name] if len(layers[name]) == lt.sum() else np.repeat(layers[name], lt, 0)
+            c = np.concatenate([v, np.ones((lt.sum(), 1))], 1)
             a.data.foreach_set("color", c.astype(np.float32).ravel())
             at.attribute_name = "b_" + name
         img = bpy.data.images.new("bake_" + name, SKIN, SKIN, alpha=True, float_buffer=True)
@@ -1053,6 +1060,52 @@ def paint_hsv(hsvs):
     print("LUA colors", hsvs)
 
 
+def seam_shade(car, c, pos, paint):
+    """SEAM_SHADE (Model X): a skin shade along the door gaps, H x W (1 = none). The source's doors and body meet almost
+    flush (about 5 mm), so neither the baked AO nor the gap itself drew the seam: in game, under 1 px wide, it came out
+    a row of dots (user 2026-11-01, under the front door's handle); Model Y / 3's gaps are wider and their AO draws a
+    grey line. Paint texels within `width` of a gap edge darken to 1 - k at the edge (pos: each texel's baked
+    position). A gap edge: a paint face's open edge, steeper than `steep` (|dz| / length: the doors' front and rear
+    gaps; along the roof spine and the sills the shade darkened the REAR34 top band, paint_sheet.py), with paint of
+    another part within `reach`, one of the two in `parts` (the liftgate and frunk gaps show by themselves)."""
+    from mathutils.kdtree import KDTree
+    sd = C["SEAM_SHADE"]
+    me = car.data
+    co = pv.mesh_co(car)
+    fv = np.array([p.vertices[:] for p in me.polygons])
+    pid = np.unique(np.round(co, 5), axis=0, return_inverse=True)[1].ravel()
+    e = np.concatenate([fv[:, [0, 1]], fv[:, [1, 2]], fv[:, [2, 0]]])
+    ef = np.tile(np.arange(len(fv)), 3)
+    _, inv, cnt = np.unique(np.sort(pid[e], 1), axis=0, return_inverse=True, return_counts=True)
+    d = co[e[:, 1]] - co[e[:, 0]]
+    steep = np.abs(d[:, 2]) > sd["steep"] * np.linalg.norm(d, axis=1)
+    sel = np.flatnonzero((cnt[inv.ravel()] == 1) & c["paint"][ef] & steep)   # open edges (by position) of paint
+    listed = np.isin(c["part"], [PARTS.index(p) for p in sd["parts"]])
+    keep = []
+    for k in np.unique(c["part"][ef[sel]]):
+        other = bvh_of([(co, fv[c["paint"] & (c["part"] != k) & (listed | (PARTS[k] in sd["parts"]))])])
+        keep += [i for i in sel[c["part"][ef[sel]] == k]
+                 if other.find_nearest(Vector(co[e[i]].mean(0)), sd["reach"])[0] is not None]
+    pts = np.concatenate([co[e[i, 0]] + (co[e[i, 1]] - co[e[i, 0]]) * np.linspace(0, 1, 2 + int(
+        np.linalg.norm(co[e[i, 1]] - co[e[i, 0]]) / 0.002))[:, None] for i in keep])
+    kd = KDTree(len(pts))
+    for i, p in enumerate(pts):
+        kd.insert(p, i)
+    kd.balance()
+    w = sd["width"]
+    # candidates: paint texels in a voxel (w) next to a seam point's
+    vox = lambda x: np.floor(x / w).astype(np.int64) + 100000   # noqa: E731
+    code = lambda v: (v[..., 0] * 200000 + v[..., 1]) * 200000 + v[..., 2]   # noqa: E731
+    near = np.unique(np.concatenate([code(vox(pts) + d) for d in np.stack(np.meshgrid(*[(-1, 0, 1)] * 3), -1).reshape(-1, 3)]))
+    ys, xs = np.nonzero(paint)
+    m = np.isin(code(vox(pos[ys, xs])), near)
+    f = np.ones(paint.shape, np.float32)
+    for y, x in zip(ys[m], xs[m]):
+        f[y, x] = 1 - sd["k"] * max(0.0, 1 - kd.find(pos[y, x])[2] / w)
+    print("SEAM_SHADE edges", len(keep), "points", len(pts), "texels", int((f < 1).sum()))
+    return f
+
+
 def textures(car, c):
     zone_rgb = np.array([pv.Z[z] for z in ZN], float)
     aux = np.stack([c["paint"].astype(float), (c["lamp"] > 0).astype(float), (c["lamp"] == 2).astype(float)], 1)
@@ -1063,11 +1116,18 @@ def textures(car, c):
                                                                                     0.5 * c["badge"]))[:, None], 3, 1)}
     if c["rail"].any():
         layers["rail"] = np.repeat(c["rail"][:, None], 3, 1)
+    if C.get("SEAM_SHADE"):                # each corner's position, 0..1 over the bbox: seam_shade's texel positions
+        co = pv.mesh_co(car)
+        lo_, span = co.min(0), np.ptp(co, 0)
+        lv = np.empty(len(car.data.loops), np.int64)
+        car.data.loops.foreach_get("vertex_index", lv)
+        layers["pos"] = (co[lv] - lo_) / span
     b = bake(car, layers)
     col, zon, aux, ao = b["col"][..., :3], b["zone"][..., :3], b["aux"][..., :3], b["ao"][..., 0]
     nrm = b["nrm"][..., :3] * 2 - 1
     nz = nrm[..., 2]
     paint = aux[..., 0] > 0.5
+    seam = seam_shade(car, c, b["pos"][..., :3] * span + lo_, paint) if "pos" in b else None
     # badges flat: their strokes overlap at the joints, coplanar faces whose AO rays start on each other (dark specks)
     shade = np.where(b["badge"][..., 0] > 0.25, 1.0, 0.55 + 0.45 * ao)
     chrome = b["badge"][..., 0] > 0.75
@@ -1114,6 +1174,8 @@ def textures(car, c):
             ramp = c * a_ * ramp[k] / v[k] * v + (1 - c) * a_.mean() * v
             a_ = np.ones(3, np.float32)
         s[paint] = np.clip(a_ * np.stack([np.interp(q, xp, ramp[:, i]) for i in range(3)], -1) / pv.GAIN + b_, 0, 1)
+        if seam is not None:
+            s[paint] *= seam[paint][:, None]
         s[chrome] = np.array(CHROME[int(np.median(s[paint].max(-1)) >= 0.55)]) / 255
         s[etch] = np.median(s[paint], 0) * 0.78     # etched into the steel (and seen through a film): a shade darker
         pv.save_png(np.concatenate([np.clip(s, 0, 1), alpha], -1),
@@ -1144,7 +1206,13 @@ def stage_build():
     car, names, wheels, tire = load_source()
     sizes = edit(car, names)
     c = classify(car, names, sizes)
-    split_zone_edges(car, c["zone"] * 2 + c["carbon"])   # and the CARBON border: crisp, not texel steps
+    # and the CARBON border: crisp, not texel steps; SPLIT_COLOURS (Model X: its body is one mesh in several materials,
+    # so the paint / black trim borders ran through UV islands as texel steps, blurred at 512, user 2026-11-01) every
+    # skin colour border too
+    key = c["zone"] * 2 + c["carbon"]
+    if C.get("SPLIT_COLOURS"):
+        key = key * len(c["rgb"]) + np.unique(np.c_[c["rgb"], c["paint"]], axis=0, return_inverse=True)[1].ravel()
+    split_zone_edges(car, key, every=bool(C.get("SPLIT_COLOURS")))
     c = classify(car, names, sizes)         # same faces, new vertex split
     # centre the bbox (mesh centre == model offset == centerOfMassOffset, vanilla convention)
     co = pv.mesh_co(car)
@@ -1537,7 +1605,8 @@ def pieces(car, c, shift):
         if ang == "roll":                                # the tonneau: strips of its own (tonneau_strips)
             P, t, a, strips[pname] = tonneau_strips(V[np.unique(T[sel])], cab_attr)
         else:
-            P, t, a, _ = pv.slab(V, T, A, skin, off, cab_attr("dash"), BELT_Z - shift[2], outer_extra=sel & ~skin)
+            P, t, a, _ = pv.slab(V, T, A, skin, off, cab_attr("dash"), BELT_Z - shift[2], outer_extra=sel & ~skin,
+                                 by_pos=bool(C.get("SPLIT_COLOURS")))
             extra = [backs(bsel, rec, 0) for bsel, rec in back_sets(sel)] + [
                 seals(V, T, skin, cab_attr("base"), gb, solid)]
             for v, bt, ba in extra:
