@@ -170,7 +170,7 @@ module Base
             showPassenger = true,
             position inside
             {
-                offset = 0.1923 -0.0813 0.1090,
+                offset = 0.1923 -0.1671 0.1090,
                 rotate = 0.0 0.0 0.0,
             }
             position outside
@@ -185,7 +185,7 @@ module Base
             showPassenger = true,
             position inside
             {
-                offset = -0.1923 -0.0813 0.1090,
+                offset = -0.1923 -0.1671 0.1090,
                 rotate = 0.0 0.0 0.0,
             }
             position outside
@@ -201,7 +201,7 @@ module Base
             showPassenger = true,
             position inside
             {
-                offset = 0.1923 -0.0813 -0.3581,
+                offset = 0.1923 -0.1764 -0.3581,
                 rotate = 0.0 0.0 0.0,
             }
             position outside
@@ -217,7 +217,7 @@ module Base
             showPassenger = true,
             position inside
             {
-                offset = -0.1923 -0.0813 -0.3581,
+                offset = -0.1923 -0.1764 -0.3581,
                 rotate = 0.0 0.0 0.0,
             }
             position outside
@@ -232,7 +232,7 @@ module Base
             showPassenger = true,
             position inside
             {
-                offset = 0.1484 -0.1253 -0.7124,
+                offset = 0.1484 -0.1764 -0.7124,
                 rotate = 0.0 0.0 0.0,
             }
             position outside
@@ -247,7 +247,7 @@ module Base
             showPassenger = true,
             position inside
             {
-                offset = -0.1484 -0.1253 -0.7124,
+                offset = -0.1484 -0.1764 -0.7124,
                 rotate = 0.0 0.0 0.0,
             }
             position outside

@@ -68,7 +68,10 @@ CAR = dict(
     WHEEL_INSET=0.03,
     CAB_BOX=(1.30, 0.45, -1.40),
     # the seats sit further back in the door openings than Model 3's (the source's seats and yoke)
-    SEAT=dict(x=0.34, h=0.47, z=-0.123, back=(0.25, 0.20), out=0.30),
+    # heights (scripts/blender/skf/seat_head.py, 2026-11-01; the user's driver showed her hair above the windscreen
+    # header): heads and caps under the roof, the feet on CABIN_FLOOR in the seated clips (scripts/seat_anim.py), rear
+    # row `rear` lower; SEATS dz / dy put the cushions and backrests against the body
+    SEAT=dict(x=0.34, h=0.386, z=-0.207, back=(0.25, 0.20), out=0.30, rear=0.017),
     BODY_W_Z=0.55,
     # the power liftgate hinges at the roof (rear glass with it) and swings up (-)
     DOORS={
@@ -220,7 +223,7 @@ CAR = dict(
     FRUNK_TUB=dict(ledge=0.06, rim=0.025, y=(1.21, 1.72), half=(0.34, 0.22), corner=0.07, taper=0.07, depth=0.22,
                    n=128),
     # ---- cabin.py (mesh coords, centred)
-    CABIN_FLOOR=-0.32,
+    CABIN_FLOOR=-0.477,                    # under the seated feet (seat_head.py feet)
     CABIN_FRONT_Y=1.05,
     TRUNK_Y=-1.05,
     TRUNK_WALL=True,                       # trunk side walls from one profile (cabin.py trunk_walls; user 2026-11-01)
@@ -229,12 +232,13 @@ CAR = dict(
     GATE_LINING=False,                     # no liftgate inner panel over the trunk walls' top (cabin.py; spikes, 2026-11-01)
     CABIN_ZC=-0.04,
     SEAM_CLEAR=0.065,
-    SEATS=dict(front=dict(w=0.43, back=0.52, recline=14),
-               rear=dict(base=1.12, cushions=((-0.38, 0.37), (0, 0.34), (0.38, 0.37)), back=0.46, recline=20),
+    SEATS=dict(front=dict(w=0.43, back=0.52, recline=32, dy=0.060, dz=-0.142),
+               rear=dict(base=1.12, cushions=((-0.38, 0.37), (0, 0.34), (0.38, 0.37)), back=0.46, recline=10, dy=0.03,
+                         dz=-0.135),
                sill=(1.04, 0.12), bin=(0.90, 0.40)),
     PARCEL=None,                           # a liftgate: no parcel shelf
     DASH=dict(console=(0, -0.02, -0.25), dash=(0, 0.66, 0.06), trim=(0, 0.487, 0.07), light=(0, 0.489, 0.045),
-              stand=(0, 0.50, 0.17), screen=(0, 0.47, 0.25), wheel=(0.34, 0.12)),
+              stand=(0, 0.50, 0.17), screen=(0, 0.47, 0.25), wheel=(0.197, 0.139)),   # wheel: the reclined driver's hands
     DOOR_CARD={
         "front": [
             ("upper trim", "end", (0.05, 0.10), -0.050, None, 0.060, 0.030, "dash", 0.012),

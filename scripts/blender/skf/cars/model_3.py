@@ -55,7 +55,10 @@ CAR = dict(
     WHEEL_LIFT=0.11,                       # calibration knob (model_y.py)
     WHEEL_INSET=0.03,
     CAB_BOX=(1.25, 0.40, -1.30),
-    SEAT=dict(x=0.33, h=0.47, z=-0.123, back=(0.12, 0.08), out=0.30),
+    # seats (scripts/blender/skf/seat_head.py, 2026-11-01; the driver's head was 116 mm through the roof): heads and caps
+    # under the roof, the feet on CABIN_FLOOR in the seated clips (scripts/seat_anim.py), rear row `rear` lower; SEATS
+    # dz / dy put the cushions and backrests against the body
+    SEAT=dict(x=0.33, h=0.380, z=-0.213, back=(0.16, 0.08), out=0.30, rear=0.027),
     BODY_W_Z=0.55,                         # body width measured below this fraction of DIMS height (no mirrors)
     # the trunk lid hinges at its front edge under the rear window and swings up (-), power trunk
     DOORS={
@@ -188,7 +191,7 @@ CAR = dict(
     FRUNK_TUB=dict(ledge=0.06, rim=0.025, y=(1.12, 1.64), half=(0.33, 0.22), corner=0.07, taper=0.07, depth=0.215,
                    n=128),
     # ---- cabin.py (mesh coords, centred)
-    CABIN_FLOOR=-0.33,
+    CABIN_FLOOR=-0.465,                    # under the seated feet (seat_head.py feet), just over the underbody
     CABIN_FRONT_Y=1.08,
     TRUNK_Y=-1.0,
     REAR_DOOR_WALL=True,                   # cabin.py trunk_walls through the rear door openings (user 2026-11-01)
@@ -196,13 +199,14 @@ CAR = dict(
     CABIN_ZC=-0.04,
     SEAM_CLEAR=0.065,
     # Model 3 and Model Y share the front seats; the source's rear bench is 1.09 wide like Model Y's (model_y.py SEATS)
-    SEATS=dict(front=dict(w=0.42, back=0.50, recline=14),
-               rear=dict(base=1.08, cushions=((-0.365, 0.36), (0, 0.33), (0.365, 0.36)), back=0.44, recline=18),
+    SEATS=dict(front=dict(w=0.42, back=0.50, recline=32, dy=0.059, dz=-0.121),
+               rear=dict(base=1.08, cushions=((-0.365, 0.36), (0, 0.33), (0.365, 0.36)), back=0.44, recline=10, dy=0.03,
+                         dz=-0.112),
                sill=(1.00, 0.12), bin=(0.86, 0.40)),
     # parcel shelf: from the rear backrests' top to the rear window's foot (z 0.906 pre-centre), top just under it
     PARCEL=dict(y=(-0.97, -1.62), z=0.27, t=0.03, n=9, inset=0.02),
     DASH=dict(console=(0, 0.12, -0.25), dash=(0, 0.80, 0.05), trim=(0, 0.627, 0.06), light=(0, 0.629, 0.035),
-              stand=(0, 0.64, 0.16), screen=(0, 0.61, 0.24), wheel=(0.50, 0.11)),
+              stand=(0, 0.64, 0.16), screen=(0, 0.61, 0.24), wheel=(0.317, 0.122)),   # wheel: the reclined driver's hands
     DOOR_CARD={
         "front": [
             ("upper trim", "end", (0.05, 0.10), -0.050, None, 0.060, 0.030, "dash", 0.012),

@@ -829,7 +829,8 @@ def geometry(body, zmid, wl, r, tire_w, belt_z, doors_y, port_yz, extra_areas=()
     for nm, side, z, door in seats:        # showPassenger: the 3-D cabin shows whoever sits there through the glass
         row3 = bool(third) and nm.startswith("Rear")
         x, oz, oa = (third["x"], rz, nm.replace("Rear", "Middle")) if row3 else (SEAT["x"], z, nm)
-        sy = seat_y - third["drop"] / S if row3 else seat_y    # the 3rd row sits `drop` lower, under the sloping roof
+        # the 2nd row sits SEAT["rear"] lower, the 3rd `drop` lower than the front (the roof falls towards the back)
+        sy = seat_y - (third["drop"] if row3 else SEAT.get("rear", 0) if nm[0] in "RM" else 0) / S
         own = [f"            door = Door{nm.replace('Middle', 'Rear')},"] if third and nm.startswith("Middle") else []
         out += [f"        passenger {nm}", "        {", *own, "            showPassenger = true,", "            position inside", "            {",
                 f"                offset = {f4(side * x / S, sy, z / S)},", "                rotate = 0.0 0.0 0.0,", "            }",

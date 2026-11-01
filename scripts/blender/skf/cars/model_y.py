@@ -76,7 +76,10 @@ CAR = dict(
     CAB_BOX=(1.30, 0.45, -1.60),   # the cabin physics box: width, front y, rear y (mesh, grid)
     # passengers and seats (pzveh.geometry, cabin.py): side x, seat height over the ground (script) and its mesh z
     # (centred), seat y = middle of the door opening minus `back` (front, rear row), getting out this far off the body
-    SEAT=dict(x=0.33, h=0.56, z=-0.19, back=(0.12, 0.08), out=0.30),
+    # rear: the rear row sits this much lower. Heights from scripts/blender/skf/seat_head.py (2026-11-01): the seated
+    # heads and caps under the roof, the feet on CABIN_FLOOR in the seated clips (scripts/seat_anim.py; the floor and
+    # both rows follow the clips' hip-to-sole heights), SEATS dz / dy put the cushions and backrests against the body
+    SEAT=dict(x=0.33, h=0.550, z=-0.200, back=(0.12, 0.08), out=0.30, rear=0.017),
     BODY_W_Z=0.55,                         # body width (script extents) measured below this fraction of DIMS height
     # part: side (-1 = left, x < 0; 0 = tailgate), hinge axis, open angle (deg; sign swings the door out, the gate up),
     # clip seconds. Hinge points come from the cut (front edge on the outer skin; the gate's top edge; the frunk lid's
@@ -213,7 +216,7 @@ CAR = dict(
                    n=128),
 
     # ---- cabin.py (mesh coords, centred; ground z -0.748)
-    CABIN_FLOOR=-0.43,         # cabin floor
+    CABIN_FLOOR=-0.42,         # cabin floor: under the seated feet (seat_head.py feet)
     CABIN_FRONT_Y=1.06,        # shell front wall: past the windscreen's lower edge (y 1.02 on the centre line)
     TRUNK_Y=-0.95,             # trunk floor starts behind the rear backrests (their foot is at its height)
     TRUNK_WALL=True,           # trunk side walls from one profile (cabin.py trunk_walls; user 2026-11-01)
@@ -223,13 +226,14 @@ CAR = dict(
     SEAM_CLEAR=0.065,          # grid: no ring this close to the B-pillar cut (the seam leans +-0.043 about it)
     # seats (front buckets: cushion / backrest width, backrest height, recline deg; rear bench: base width, cushions
     # (centre x, width), backrest height, recline), trunk sill plate and under-floor bin lid (width, depth)
-    SEATS=dict(front=dict(w=0.42, back=0.50, recline=14),
-               rear=dict(base=1.08, cushions=((-0.365, 0.36), (0, 0.33), (0.365, 0.36)), back=0.44, recline=18),
+    SEATS=dict(front=dict(w=0.42, back=0.50, recline=32, dy=0.055, dz=-0.083),
+               rear=dict(base=1.08, cushions=((-0.365, 0.36), (0, 0.33), (0.365, 0.36)), back=0.44, recline=10, dy=0.04,
+                         dz=-0.077),
                sill=(1.00, 0.12), bin=(0.86, 0.40)),
     PARCEL=None,               # a sedan's parcel shelf (cabin.parcel_shelf); the hatch has none
     # dash, screen and steering wheel: centres (x, y, z); wheel = (y, z) of its hub, x = the driver's seat
     DASH=dict(console=(0, 0.12, -0.32), dash=(0, 0.80, -0.02), trim=(0, 0.627, -0.01), light=(0, 0.629, -0.033),
-              stand=(0, 0.64, 0.09), screen=(0, 0.61, 0.17), wheel=(0.50, 0.04)),
+              stand=(0, 0.64, 0.09), screen=(0, 0.61, 0.17), wheel=(0.357, 0.132)),   # wheel: the reclined driver's hands
     # door cards (Model Y, black interior; official interior photos): (part, y from the card's front / rear end, z over
     # the belt, size along y, size z, depth off the panel, cell, edge radius). Front door ys = (rear, front) = (B
     # pillar, A pillar); rear door (rear end, B pillar). "end" entries span the card minus (a, b) at its rear and front
