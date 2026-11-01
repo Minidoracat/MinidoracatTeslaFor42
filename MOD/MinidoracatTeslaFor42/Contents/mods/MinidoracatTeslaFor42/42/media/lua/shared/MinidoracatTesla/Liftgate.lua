@@ -324,15 +324,16 @@ if not isClient() then
     -- every load (BaseVehicle.java:904): a locked car from an older save or the world spawn (cabin doors locked by
     -- Vehicles.Create.Door, the hood never) gets its shut lids locked; the shell bits are set to the saved doors at once
     -- (they stand still; a save inside a swing kept the old bit, an older save's open door had none), dropping whatever
-    -- was still pending under this id
-    Events.OnSpawnVehicleEnd.Add(function(v)
+    -- was still pending under this id. Named so harness test_liftgate runs this handler alone.
+    function L.onLoad(v)
         if not T.isTesla(v) then return end
         for id in pairs(L.LIDS) do
             local part = v:getPartById(id)
             if part and part:getInventoryItem() and part:getDoor() and L.relock(v, part) then v:transmitPartDoor(part) end
         end
         L.syncShell(v, true)
-    end)
+    end
+    Events.OnSpawnVehicleEnd.Add(L.onLoad)
 end
 
 return L
