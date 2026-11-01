@@ -212,6 +212,7 @@ CAR = dict(
     TRUNK_WALL=True,                       # trunk side walls from one profile (cabin.py trunk_walls; user 2026-11-01)
     HUMP_BACKS=False,                      # no two-sided arch humps (cabin.py; staircase in the rear doors, 2026-11-01)
     REAR_DOOR_WALL=True,                   # TRUNK_WALL's profile through the rear door openings too (user 2026-11-01)
+    GATE_LINING=False,                     # no liftgate inner panel over the trunk walls' top (cabin.py; spikes, 2026-11-01)
     CABIN_ZC=-0.04,
     SEAM_CLEAR=0.065,
     SEATS=dict(front=dict(w=0.43, back=0.52, recline=14),

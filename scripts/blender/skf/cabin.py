@@ -138,7 +138,7 @@ def parcel_shelf(add, bvh):
 TRUNK_SLOTS = (3, 2, 6)    # trunk_walls: rays on the arch hump's inner wall, on its top, on the outer wall up to the top
 
 
-def trunk_walls(pts, kind, who, ys, lim, belt, trunk_floor, arch, y0, y1=None, trunk=True):
+def trunk_walls(pts, kind, who, ys, lim, belt, trunk_floor, arch, y0, y1=None, trunk=True, lining=True):
     """TRUNK_WALL (a hatch: light and dark bands and teeth on the far trunk wall through the open tailgate, user
     2026-11-01). On the ray grid the rear arch hump's step fell between different rays from ring to ring and the wall's
     top was cut cell by cell at the belt: a saw-tooth of up- and side-facing cells, and over it the body's own inside
@@ -151,7 +151,10 @@ def trunk_walls(pts, kind, who, ys, lim, belt, trunk_floor, arch, y0, y1=None, t
     inner panel keeps its door code), body hits over the top go. y1 (the B-pillar ring, REAR_DOOR_WALL): the rings
     from there back to y0 too, the rear door's inner panel part of the wall, its top the belt (the hump in the door
     opening stays when the door opens, inside the arch circle: the same saw-tooth through it, user 2026-11-01);
-    trunk False: only those. In place."""
+    trunk False: only those. lining False (GATE_LINING): the tailgate's inner panel over the top goes too (a liftgate
+    from the roof whose panel runs far down the sides, Model S: the rows found it 1 to 8+ rays long, so a slot was panel
+    in one ring, glass in the next, and the shader keeps the panel's code under GATE_Z with the gate open: spikes over
+    the wall's top, user 2026-11-01). In place."""
     n = pts.shape[1]
     m, (na, nb, nc) = (n - 2) // 2, TRUNK_SLOTS
     k = na + nb + nc
@@ -217,7 +220,8 @@ def trunk_walls(pts, kind, who, ys, lim, belt, trunk_floor, arch, y0, y1=None, t
                     continue
                 q = round(t * (len(src) - 1) / max(m - k - 1, 1))
                 pts[i, j], kind[i, j], who[i, j] = P[q], K[q], W[q]
-                if K[q] == "body" and P[q][2] > zt + 1e-3:
+                if P[q][2] > zt + 1e-3 and (K[q] == "body" or (not lining and K[q] == "door" and W[q] == 5
+                                                               and i not in dr)):
                     kind[i, j] = "none"
     print(f"CABIN trunk walls: x_in {x_in or 0:.3f}, hump {off:+.3f} on the arch circle ({len(hrow)} sides), top",
           [round(float(belt if i in dr else top(ys[i])), 3) for i in rows])
@@ -280,7 +284,8 @@ def cabin_mesh(bvh, belt, trunk_floor, trunk_end, arch, opening):
     lim = np.full(pts.shape[:2], belt)
     if pv.CAR.get("TRUNK_WALL") or pv.CAR.get("REAR_DOOR_WALL"):
         trunk_walls(pts, kind, who, ys, lim, belt, trunk_floor, arch, opening["y"][2],
-                    opening["y"][1] if pv.CAR.get("REAR_DOOR_WALL") else None, bool(pv.CAR.get("TRUNK_WALL")))
+                    opening["y"][1] if pv.CAR.get("REAR_DOOR_WALL") else None, bool(pv.CAR.get("TRUNK_WALL")),
+                    pv.CAR.get("GATE_LINING", True))
     near = (pts[..., 2] <= lim + 0.08) & np.isin(kind, ("body", "door"))
     pts[..., 2] = np.where(near, np.minimum(pts[..., 2], lim), pts[..., 2])
     sv, sf, sc = pts.reshape(-1, 3), [], []
