@@ -223,6 +223,35 @@ def drop_comps(o, name):
 
 # ---------------------------------------------------------------- source
 
+def drop_covered(o, over, gap):
+    """DROP_COVERED (Model S): delete o's faces lying on a face of the objects `over` (within gap along the normal,
+    either side, facing the same way, the face's corners pulled 15 % in and its centre all covered). The source's
+    tail lamp housings lie on the paint at the liftgate opening's sides (0.3 mm apart): in game the two fought for
+    the depth test, a ragged white ring at the opening's rear corners (TrunkShell 2026-11-01). Pre-centre frame:
+    `over` must come before o in load_source's (sorted) order."""
+    from mathutils.bvhtree import BVHTree
+    off = np.cumsum([0] + [len(m.data.vertices) for m in over])
+    fv = [[v + off[k] for v in f.vertices] for k, m in enumerate(over) for f in m.data.polygons]
+    co = np.concatenate([pv.mesh_co(m) for m in over])
+    on = np.concatenate([np.array([f.normal[:] for f in m.data.polygons]) for m in over])
+    bvh = BVHTree.FromPolygons([Vector(c) for c in co], fv)
+    me = o.data
+    vc = pv.mesh_co(o)
+    gone = np.zeros(len(me.polygons), bool)
+    for f in me.polygons:
+        c, n = np.array(f.center), Vector(f.normal)
+
+        def covered(p):
+            for s in (1, -1):
+                h, _, j, _ = bvh.ray_cast(Vector(p) + n * s * 1e-6, n * s, gap)
+                if h is not None and on[j] @ np.array(n) > 0.8:
+                    return True
+            return False
+        gone[f.index] = all(covered(p) for p in [c + (vc[v] - c) * 0.85 for v in f.vertices] + [c])
+    pv.keep_faces(o, ~gone)
+    print("DROP_COVERED", o.name, int(gone.sum()), "faces")
+
+
 def load_source():
     """Source -> one mesh 'car' in the pre-centre frame, free corner normals, face attributes src (object index) and
     comp (welded connected component within the object). Returns the object names (src index -> name)."""
@@ -302,6 +331,9 @@ def load_source():
                 print("DROP_FACES_COMPS", name, int(gone.sum()), "faces")
         if target:
             pv.decimate(o, target)
+        for under, over, gap in C.get("DROP_COVERED", ()):
+            if under == name:
+                drop_covered(o, [obs[names.index(n)] for n in over], gap)
         _label(o, len(names))
         names.append(name)
         if target:          # the components' triangles now: CUT / GATE_CUT_COMPS / ROOF_PANE / MIRROR_CAP keys

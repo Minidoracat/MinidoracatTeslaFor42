@@ -2,7 +2,8 @@
 CC BY 4.0, CREDITS.md). CAR=model_s. Keys as in model_y.py (each is the module constant it sets); the keys only this car
 has are read with C.get and are off for the others: SRC_Z (the glTF is centred on the car, not on the ground), TIRE
 centres (the tyres are components of the black trim object), LAMPS head_y (one lamp material front and rear),
-TESLA_MAT (chrome letters on the black band), GATE_BY_COMP (the tail lamps' liftgate and body halves overlap in x).
+TESLA_MAT (chrome letters on the black band), GATE_BY_COMP (the tail lamps' liftgate and body halves overlap in x),
+DROP_COVERED (paint lying under the tail lamp housings: a depth fight in game).
 The source (a Roblox export, decisions.md) is the Sketchfab glTF: 22 objects "Object_<n>", one per material; doors,
 frunk lid and liftgate are components of the paint object (Object_2), and the interior shares objects with the
 exterior (paint seats, black trim cabin tub), so parts come from components (DROP_COMPS boxes, CUT keys).
@@ -131,6 +132,9 @@ CAR = dict(
     ),
     # the hood is a closed shell: its underside goes (frunk_tub needs the lid's outline; the slab gives it depth)
     DROP_FACES_COMPS=((("Object_2", 3066), (-0.8, 0.8, 0.4), (0.8, 2.1, 0.9), (0, 0, 1), (-2.0, -0.15)),),
+    # paint lying under the tail lamp housings' inner ends at the liftgate opening's sides (0.3 mm apart in the
+    # source: in game a ragged white ring at the opening's rear corners): (object, objects over it, gap)
+    DROP_COVERED=(("Object_2", ("Object_10",), 0.002),),
     ARCH_LINER=None,                       # the source has its own wheel wells (Object_23)
     # black plate behind the lower grille's slats (else the ground showed between them)
     PLATES=(("GrillePlate", ((-0.55, 1.90, 0.08), (0.55, 1.90, 0.08), (0.55, 1.90, 0.34), (-0.55, 1.90, 0.34)),
