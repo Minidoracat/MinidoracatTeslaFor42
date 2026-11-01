@@ -1742,7 +1742,7 @@ def stage_view(out, heads, state, skin="UltraRed", app=False):
     arm.matrix_world = Matrix.Rotation(math.pi / 2, 4, "X")
     openp = {"all": list(pv.DOORS)[:4], "gate": ["TrunkDoor"], "frunk": ["EngineDoor"], "shut": [],
              "fl": ["DoorFrontLeft"], "fr": ["DoorFrontRight"], "rl": ["DoorRearLeft"], "rr": ["DoorRearRight"],
-             "tonneau": ["TrunkTonneau"], "bed": ["TrunkDoor", "TrunkTonneau"]}[state]
+             "rear": ["DoorRearLeft", "DoorRearRight"], "tonneau": ["TrunkTonneau"], "bed": ["TrunkDoor", "TrunkTonneau"]}[state]
     ad = arm.animation_data
     poses = {}
     for pb in arm.pose.bones:

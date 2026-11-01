@@ -187,6 +187,8 @@ CAR = dict(
     CABIN_FLOOR=-0.33,
     CABIN_FRONT_Y=1.08,
     TRUNK_Y=-1.0,
+    REAR_DOOR_WALL=True,                   # cabin.py trunk_walls through the rear door openings (user 2026-11-01)
+    HUMP_BACKS="trunk",                    # two-sided arch humps only in the trunk (cabin.py; rear doors, 2026-11-01)
     CABIN_ZC=-0.04,
     SEAM_CLEAR=0.065,
     # Model 3 and Model Y share the front seats; the source's rear bench is 1.09 wide like Model Y's (model_y.py SEATS)
