@@ -1,7 +1,8 @@
 """Model X Plaid: Abdul.Hannan's "Tesla Model X" (Sketchfab, CC BY 4.0, CREDITS.md). CAR=model_x.
 Keys as in model_y.py (each is the module constant it sets); the keys only this car has are read with C.get and are off
 for the others: DROP_MATS, PART_OBJS / SIDE_PARTS (whole source objects are the doors and lids), RECOLOR, CAMERA,
-FALCON (DOORS axis "falcon": the rear doors), SEAT third (six seats: pzveh.geometry, cabin.py SEATS middle / third).
+FALCON (DOORS axis "falcon": the rear doors), SEAT third (six seats: pzveh.geometry, cabin.py SEATS middle / third),
+SPLIT_COLOURS and SEAM_SHADE (the paint / trim borders and the door gaps in the skin: convert.py).
 The source is a half model with Mirror + Subsurf + Auto Smooth modifiers in a .blend: scripts/blender/skf/prep_model_x.py
 applies them (Subsurf level 1) and writes TMP/src/source/model_x.obj, front +X, left +Y, ground z 0. Its shape is the
 2016-2020 car; the last (2025+) Model X Plaid's is close: chrome trim black (Aluminum), the front bumper camera
@@ -89,6 +90,16 @@ CAR = dict(
     ARCH_LINER=None,
     PLATES=(),
     SEAL_CLIP=False,
+    # the body is one mesh in several materials (the source .blend), so the paint / black trim borders (rear glass
+    # frame, tail lamp surrounds, window sills) ran inside UV islands as texel steps, blurred at 512: cut the islands
+    # at every skin colour border (convert.py stage_build; user 2026-11-01, models.md)
+    SPLIT_COLOURS=True,
+    # the door gaps shaded in the skin (convert.py seam_shade: the doors and body meet almost flush, the gap alone came
+    # out a row of dots): grid, paint within width of a gap edge (steeper than steep, another part's paint within
+    # reach, one of the two in parts), darkened to 1 - k at the edge. Calibration knob: k / width against Model Y's
+    # seam (body-edges-sp)
+    SEAM_SHADE=dict(reach=0.02, width=0.010, k=0.35, steep=0.5,
+                    parts=("DoorFrontLeft", "DoorFrontRight", "DoorRearLeft", "DoorRearRight")),
     RAIL=None,
     DECIMATE={},                           # done in the prep (material borders held)
     PAINT_MAT="Car_Paint",

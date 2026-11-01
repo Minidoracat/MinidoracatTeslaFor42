@@ -621,15 +621,16 @@ def soup(ob, shift):
     return mesh_co(ob) + shift, lv[tl], attr[tl], lin[tf]
 
 
-def slab(V, T, A, sel, off, liner_attr, belt, outer_extra=None):
+def slab(V, T, A, sel, off, liner_attr, belt, outer_extra=None, by_pos=False):
     """Door piece: its outer faces, an inner panel DOOR_T in along off (liner_attr colour, normals in) and edge strips
     that close the slab (each takes the colour just inside its outer edge; above `belt` z liner_attr). outer_extra:
-    faces with no inner panel (the mirror). Returns points, tris, attributes and the boundary edges (directed as in
+    faces with no inner panel (the mirror). by_pos: boundary edges by position, so a UV split inside the skin
+    (convert.py SPLIT_COLOURS) is no edge. Returns points, tris, attributes and the boundary edges (directed as in
     the piece)."""
     tri, att = T[sel], A[sel]
     ed = np.concatenate([tri[:, [0, 1]], tri[:, [1, 2]], tri[:, [2, 0]]])
     ea = np.concatenate([att[:, [0, 1]], att[:, [1, 2]], att[:, [2, 0]]])
-    und = np.sort(ed, 1)
+    und = np.sort(np.unique(np.round(V, 6), axis=0, return_inverse=True)[1].ravel()[ed] if by_pos else ed, 1)
     _, inv, cnt = np.unique(und, axis=0, return_inverse=True, return_counts=True)
     bnd = cnt[inv.ravel()] == 1
     base = len(V)
