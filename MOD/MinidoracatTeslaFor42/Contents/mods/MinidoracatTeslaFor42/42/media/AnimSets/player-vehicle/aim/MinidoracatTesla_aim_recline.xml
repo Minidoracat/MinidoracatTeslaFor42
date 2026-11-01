@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Aiming from a Tesla front seat: keep the reclined seated idle (idle/MinidoracatTesla_idle_recline.xml's clip),
+     same reason as MinidoracatTesla_aim_seated.xml (vanilla's aim nodes stand the character up through the roof).
+     m_ConditionPriority 2 is checked before aim_seated's 1 (both match in a front seat; the first match stops the
+     search, AnimNode.java:358-370, AnimState.java:40-53). The variable is set by client/MinidoracatTesla/SeatPose.lua.
+     Written out in full, no x_extends (family pitfalls.md, Linux servers). -->
+<animNode>
+	<m_Name>MinidoracatTesla_aim_recline</m_Name>
+	<m_Priority>4</m_Priority>
+	<m_ConditionPriority>2</m_ConditionPriority>
+	<m_AnimName>MinidoracatTesla_IdleDrivingRecline</m_AnimName>
+	<m_BlendTime>0.30</m_BlendTime>
+	<m_SpeedScale>0.80</m_SpeedScale>
+	<m_SyncTrackingEnabled>false</m_SyncTrackingEnabled>
+	<m_Conditions>
+		<m_Name>MinidoracatTeslaRecline</m_Name>
+		<m_Type>BOOL</m_Type>
+		<m_Value>true</m_Value>
+	</m_Conditions>
+</animNode>

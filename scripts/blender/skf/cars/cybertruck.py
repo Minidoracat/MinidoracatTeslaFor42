@@ -90,8 +90,10 @@ CAR = dict(
     WHEEL_INSET=0.03,
     CAB_BOX=(1.40, 0.95, -0.95),
     # passengers / seats (cabin.py) behind the door openings' middle by back (front, rear): the rear bench sits 1 cm
-    # ahead of its door's middle so its backs and headrests clear the cabin's rear wall (CABIN_REAR_Y)
-    SEAT=dict(x=0.36, h=0.60, z=-0.215, back=(0.12, -0.01), out=0.30),
+    # ahead of its door's middle so its backs and headrests clear the cabin's rear wall (CABIN_REAR_Y). Heights
+    # (scripts/blender/skf/seat_head.py, 2026-11-01): the feet on CABIN_FLOOR in the seated clips (scripts/seat_anim.py),
+    # the rear row `rear` lower; SEATS dz / dy put the cushions and backrests against the body
+    SEAT=dict(x=0.36, h=0.625, z=-0.190, back=(0.12, -0.01), out=0.30, rear=0.017),
     BODY_W_Z=0.55,
     # the tailgate hinges at its lower edge and folds down and back (owner's manual p.60-61: the struts lower it);
     # the tonneau rolls into its canister at the bed's front: ROLL_N strips slide forward and stack (tonneau_strips)
@@ -227,18 +229,19 @@ CAR = dict(
     # pre-centre, z; the rear axle at y -1.43)
     PORT=(-1.43, 0.88),
     # ---- cabin.py (mesh coords, centred)
-    CABIN_FLOOR=-0.43,
+    CABIN_FLOOR=-0.453,                    # under the seated feet (seat_head.py feet)
     CABIN_FRONT_Y=1.45,
     TRUNK_Y=-1.50,                         # (no trunk: the cabin floor runs to its rear wall)
     CABIN_REAR_Y=-0.623,                   # the cabin's rear wall: 5 cm inside the bed's front wall
     CABIN_ZC=-0.08,
     SEAM_CLEAR=0.065,
-    SEATS=dict(front=dict(w=0.44, back=0.52, recline=14),
-               rear=dict(base=1.20, cushions=((-0.40, 0.38), (0, 0.36), (0.40, 0.38)), back=0.46, recline=12),
+    SEATS=dict(front=dict(w=0.44, back=0.52, recline=32, dy=0.061, dz=-0.135),
+               rear=dict(base=1.20, cushions=((-0.40, 0.38), (0, 0.36), (0.40, 0.38)), back=0.46, recline=10, dy=0.032,
+                         dz=-0.124),
                sill=None, bin=None),
     PARCEL=None,
     DASH=dict(console=(0, 0.45, -0.32), dash=(0, 1.15, -0.02), trim=(0, 0.975, -0.01), light=(0, 0.977, -0.04),
-              stand=(0, 0.98, 0.10), screen=(0, 0.95, 0.18), wheel=(0.80, 0.07)),
+              stand=(0, 0.98, 0.10), screen=(0, 0.95, 0.18), wheel=(0.657, 0.197)),   # wheel: the reclined driver's hands
     DOOR_CARD={
         "front": [
             ("upper trim", "end", (0.05, 0.10), -0.050, None, 0.060, 0.030, "dash", 0.012),

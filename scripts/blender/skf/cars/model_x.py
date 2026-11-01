@@ -63,8 +63,11 @@ CAR = dict(
     # passengers / seats (cabin.py): front and 2nd row from the door openings (back: front, 2nd row); third: the 3rd row
     # `back` behind the falcon doors' rear edge, at side x (3rd row shoulder room 1,033 mm against 1,442 in the 2nd,
     # owner's manual Dimensions)
-    # third drop: the 3rd row sits lower, so its passengers' heads stay under the sloping roof (they showed through it)
-    SEAT=dict(x=0.35, h=0.62, z=-0.15, back=(0.12, -0.04), out=0.30, third=dict(back=0.10, x=0.27, drop=0.08)),
+    # heights (scripts/blender/skf/seat_head.py, 2026-11-01): heads and caps under the roof, the feet on CABIN_FLOOR in
+    # the seated clips (scripts/seat_anim.py), the 2nd row `rear` and the 3rd row `third drop` under the front; SEATS
+    # dz / dy put the cushions and backrests against the body
+    SEAT=dict(x=0.35, h=0.464, z=-0.306, back=(0.12, -0.04), out=0.30, rear=0.017,
+              third=dict(back=0.10, x=0.27, drop=0.017)),
     BODY_W_Z=0.55,
     # falcon wing doors (axis "falcon": (roof hinge deg, elbow fold deg), clip seconds): the upper part turns up about
     # its hinge by the roof's spine, the lower part folds back out at the elbow (owner's manual p.31-33: two hinges).
@@ -165,7 +168,7 @@ CAR = dict(
     FRUNK_TUB=dict(ledge=0.06, rim=0.025, y=(1.30, 1.78), half=(0.34, 0.19), corner=0.07, taper=0.10, depth=(0.40, 0.28),
                    n=128),
     # ---- cabin.py (mesh coords, centred)
-    CABIN_FLOOR=-0.41,
+    CABIN_FLOOR=-0.526,                    # under the seated feet (seat_head.py feet)
     CABIN_FRONT_Y=1.00,
     TRUNK_Y=-1.55,
     TRUNK_WALL=True,                       # trunk side walls from one profile (cabin.py trunk_walls; user 2026-11-01)
@@ -173,13 +176,14 @@ CAR = dict(
     REAR_DOOR_WALL=True,                   # TRUNK_WALL's profile through the rear door openings too (user 2026-11-01)
     CABIN_ZC=-0.05,
     SEAM_CLEAR=0.065,
-    SEATS=dict(front=dict(w=0.42, back=0.52, recline=14),
+    SEATS=dict(front=dict(w=0.42, back=0.52, recline=32, dy=0.056, dz=-0.084),
                rear=dict(base=1.10, cushions=((-0.37, 0.36), (0, 0.33), (0.37, 0.36)), back=0.46, recline=18),
-               middle=dict(w=0.42, back=0.50, recline=16), third=dict(w=0.36, back=0.34, head=0.42, recline=18),
+               middle=dict(w=0.42, back=0.50, recline=10, dy=0.035, dz=-0.068),
+               third=dict(w=0.36, back=0.34, head=0.42, recline=10, dy=0.028, dz=-0.068),
                sill=(1.00, 0.12), bin=(0.86, 0.20)),
     PARCEL=None,
     DASH=dict(console=(0, 0.12, -0.28), dash=(0, 0.80, 0.02), trim=(0, 0.627, 0.03), light=(0, 0.629, 0.007),
-              stand=(0, 0.64, 0.13), screen=(0, 0.61, 0.21), wheel=(0.50, 0.08)),
+              stand=(0, 0.64, 0.13), screen=(0, 0.61, 0.21), wheel=(0.357, 0.027)),   # wheel: the reclined driver's hands
     DOOR_CARD={
         "front": [
             ("upper trim", "end", (0.05, 0.10), -0.050, None, 0.060, 0.030, "dash", 0.012),
