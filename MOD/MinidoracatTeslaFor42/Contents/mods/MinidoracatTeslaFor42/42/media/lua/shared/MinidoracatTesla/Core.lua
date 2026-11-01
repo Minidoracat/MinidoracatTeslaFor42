@@ -142,14 +142,14 @@ T.Specs = {
         -- the last US design studio's six paints (2026-03-06) and the China pre-refresh Solid Black and Deep Blue
         -- (user 2026-10-31); same order and append-only rules as above, h/s/v by convert.py build
         colors = {
-            { name = "StealthGrey", code = "PN01", h = 0.819, s = 0.511, v = 0.348 },
-            { name = "LunarSilver", code = "PN02", h = 0.727, s = 0.521, v = 0.547 },
+            { name = "StealthGrey", code = "PN01", h = 0.817, s = 0.511, v = 0.348 },
+            { name = "LunarSilver", code = "PN02", h = 0.727, s = 0.522, v = 0.548 },
             { name = "PearlWhite", code = "PPSW", h = 0.814, s = 0.476, v = 0.884 },
             { name = "UltraRed", code = "PR01", h = 0.99, s = 1.0, v = 0.411 },
-            { name = "DiamondBlack", code = "PX02", h = 0.069, s = 0.581, v = 0.211 },
-            { name = "FrostBlue", code = "PB00", h = 0.593, s = 0.984, v = 0.485 },
-            { name = "SolidBlack", code = "PBSB", h = 0.031, s = 0.548, v = 0.191 },
-            { name = "DeepBlue", code = "PPSB", h = 0.618, s = 1.0, v = 0.392 },
+            { name = "DiamondBlack", code = "PX02", h = 0.067, s = 0.58, v = 0.212 },
+            { name = "FrostBlue", code = "PB00", h = 0.592, s = 0.983, v = 0.487 },
+            { name = "SolidBlack", code = "PBSB", h = 0.03, s = 0.547, v = 0.191 },
+            { name = "DeepBlue", code = "PPSB", h = 0.618, s = 1.0, v = 0.393 },
         },
     },
     ["Base.MinidoracatTesla_ModelX"] = {

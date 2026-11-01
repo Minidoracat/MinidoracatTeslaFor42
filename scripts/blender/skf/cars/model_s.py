@@ -145,10 +145,10 @@ CAR = dict(
     SEAL_CLIP=True,
     # the panel gaps shaded in the skin (convert.py seam_shade; model_x.py): the hood, fender and door gaps are 1-5 mm,
     # under a pixel at the closest zoom, and came out a row of black dots (models-lids-S-shut-max, user 2026-11-01).
-    # The hood's gaps run level (any_slope). k 0.6, not X's 0.35: at 0.69 px/cm the shade is about a texel wide and
-    # the 512 skin (texture size option 2) blurs it into a pale band the dots still show through (tesla-seam-after-S
-    # against -k6-S)
-    SEAM_SHADE=dict(reach=0.02, width=0.010, k=0.6, steep=0.5,
+    # The hood's gaps run level (any_slope) and at the doors' k stayed dotted: 0.6 there. The doors keep X's 0.35: at
+    # 0.69 px/cm the shade is about a texel wide and the 512 skin (texture size option 2) blurs it a few cm wide; at 0.6
+    # (tesla-seam2-ms-audit) the door gaps read as dark smudges on Frost Blue
+    SEAM_SHADE=dict(reach=0.02, width=0.010, k=0.35, steep=0.5,
                     parts=("DoorFrontLeft", "DoorFrontRight", "DoorRearLeft", "DoorRearRight", "EngineDoor"),
                     any_slope={"EngineDoor": 0.6}),
     # the roof is glass, so the paint up there is the roof rails (model_3.py RAIL)
