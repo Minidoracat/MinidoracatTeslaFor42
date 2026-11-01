@@ -1099,13 +1099,15 @@ def paint_hsv(hsvs):
 
 
 def seam_shade(car, c, pos, paint):
-    """SEAM_SHADE (Model X): a skin shade along the door gaps, H x W (1 = none). The source's doors and body meet almost
-    flush (about 5 mm), so neither the baked AO nor the gap itself drew the seam: in game, under 1 px wide, it came out
-    a row of dots (user 2026-11-01, under the front door's handle); Model Y / 3's gaps are wider and their AO draws a
-    grey line. Paint texels within `width` of a gap edge darken to 1 - k at the edge (pos: each texel's baked
-    position). A gap edge: a paint face's open edge, steeper than `steep` (|dz| / length: the doors' front and rear
-    gaps; along the roof spine and the sills the shade darkened the REAR34 top band, paint_sheet.py), with paint of
-    another part within `reach`, one of the two in `parts` (the liftgate and frunk gaps show by themselves)."""
+    """SEAM_SHADE (Model X, S, Y, 3): a skin shade along the panel gaps, H x W (1 = none). The sources' doors and body
+    meet 1-5 mm apart, so neither the baked AO nor the gap itself drew the seam: in game, under 1 px wide, it came out a
+    row of dots (user 2026-11-01: Model X under the front door's handle, Model S up the hood from the headlamp;
+    body-edges-sp: Model Y / 3 too, lighter). Paint texels within `width` of a gap edge darken to 1 - k at the edge
+    (pos: each texel's baked position). A gap edge: a paint face's open edge, steeper than `steep` (|dz| / length: the
+    doors' front and rear gaps; along the roof spine and the sills the shade darkened the REAR34 top band,
+    paint_sheet.py) unless its part is in `any_slope` (the hood's gaps run level), with paint of another part within
+    `reach`, one of the two in `parts` (the liftgate gaps show by themselves). The Cybertruck's panels meet flush
+    (0.3 mm): no line, no dots, none."""
     from mathutils.kdtree import KDTree
     sd = C["SEAM_SHADE"]
     me = car.data
@@ -1117,6 +1119,7 @@ def seam_shade(car, c, pos, paint):
     _, inv, cnt = np.unique(np.sort(pid[e], 1), axis=0, return_inverse=True, return_counts=True)
     d = co[e[:, 1]] - co[e[:, 0]]
     steep = np.abs(d[:, 2]) > sd["steep"] * np.linalg.norm(d, axis=1)
+    steep |= np.isin(c["part"][ef], [PARTS.index(p) for p in sd.get("any_slope", ())])
     sel = np.flatnonzero((cnt[inv.ravel()] == 1) & c["paint"][ef] & steep)   # open edges (by position) of paint
     listed = np.isin(c["part"], [PARTS.index(p) for p in sd["parts"]])
     keep = []

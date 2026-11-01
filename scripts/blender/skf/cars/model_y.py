@@ -113,6 +113,12 @@ CAR = dict(
     PLATES=(),                             # (name, corners, facing, material): flat backing polygons
     SEAL_CLIP=False,                       # drop seal strips that pass through a surface (model_3.py); kept as built
     RAIL=None,                             # (z0, z1): paint up there in the median tone (model_3.py roof rails)
+    # the panel gaps shaded in the skin (convert.py seam_shade, as Model X / S): the door, fender and hood gaps are
+    # 3-5 mm, under a pixel at the closest zoom, so the gap alone came out a dotted line (body-edges-sp 2026-11-01).
+    # The hood's gaps run level (any_slope); the doors' front and rear gaps
+    SEAM_SHADE=dict(reach=0.02, width=0.010, k=0.35, steep=0.5,
+                    parts=("DoorFrontLeft", "DoorFrontRight", "DoorRearLeft", "DoorRearRight", "EngineDoor"),
+                    any_slope=("EngineDoor",)),
     # collapse-decimated before anything else (target tris): detail PZ cannot show at 1-4 px per cm
     DECIMATE={"Plane.045": 400,             # 29.5k-tri honeycomb under the tail light bar
               "Plane.034": 1200, "Plane.020": 1000, "Plane.016": 2600},

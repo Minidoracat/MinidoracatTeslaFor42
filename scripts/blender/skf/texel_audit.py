@@ -36,6 +36,8 @@ for o in bpy.data.objects:
     me = o.evaluated_get(dg).to_mesh()
     me.calc_loop_triangles()
     co = np.array([o.matrix_world @ v.co for v in me.vertices])
+    if o.parent and o.parent.type == "ARMATURE":   # door pieces sit in the bone frame (Y up) at rest: body (x, -z, y)
+        co = np.c_[co[:, 0], -co[:, 2], co[:, 1]]
     lt = np.array([t.loops[:] for t in me.loop_triangles])
     lv = np.array([l.vertex_index for l in me.loops])
     uvs = []

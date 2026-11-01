@@ -59,14 +59,14 @@ T.Specs = {
         -- damage overlays to the paint (vehicle_common.frag.glsl:6-15), written by scripts/blender/skf/convert.py build
         -- from each skin's median paint colour; the skins themselves are full colour.
         colors = {
-            { name = "StealthGrey", code = "PN01", h = 0.764, s = 0.566, v = 0.238 },
-            { name = "PearlWhite", code = "PPSW", h = 0.582, s = 0.491, v = 0.865 },
-            { name = "DiamondBlack", code = "PX02", h = 0.923, s = 0.549, v = 0.182 },
-            { name = "Quicksilver", code = "PN00", h = 0.8, s = 0.522, v = 0.366 },
-            { name = "UltraRed", code = "PR01", h = 0.996, s = 1.0, v = 0.416 },
-            { name = "GlacierBlue", code = "PB01", h = 0.608, s = 0.787, v = 0.383 },
-            { name = "MarineBlue", code = "PB02", h = 0.604, s = 0.832, v = 0.225 },
-            { name = "FrostBlue", code = "PB00", h = 0.609, s = 0.839, v = 0.494 },
+            { name = "StealthGrey", code = "PN01", h = 0.76, s = 0.571, v = 0.231 },
+            { name = "PearlWhite", code = "PPSW", h = 0.596, s = 0.492, v = 0.853 },
+            { name = "DiamondBlack", code = "PX02", h = 0.922, s = 0.55, v = 0.18 },
+            { name = "Quicksilver", code = "PN00", h = 0.795, s = 0.525, v = 0.353 },
+            { name = "UltraRed", code = "PR01", h = 0.996, s = 1.0, v = 0.4 },
+            { name = "GlacierBlue", code = "PB01", h = 0.606, s = 0.792, v = 0.37 },
+            { name = "MarineBlue", code = "PB02", h = 0.609, s = 0.802, v = 0.215 },
+            { name = "FrostBlue", code = "PB00", h = 0.61, s = 0.839, v = 0.483 },
         },
     },
     ["Base.MinidoracatTesla_Model3"] = {
@@ -81,14 +81,14 @@ T.Specs = {
         doorClip = { TrunkDoor = 3.0 }, -- cars/model_3.py DOORS
         -- official Model 3 Performance paints (US, DE, TW design studios; references/models.md): same rules as above
         colors = {
-            { name = "StealthGrey", code = "PN01", h = 0.696, s = 0.541, v = 0.307 },
-            { name = "PearlWhite", code = "PPSW", h = 0.543, s = 0.493, v = 0.819 },
-            { name = "DiamondBlack", code = "PX02", h = 0.923, s = 0.555, v = 0.214 },
-            { name = "Quicksilver", code = "PN00", h = 0.808, s = 0.484, v = 0.458 },
-            { name = "UltraRed", code = "PR01", h = 0.997, s = 1.0, v = 0.471 },
-            { name = "DeepBlue", code = "PPSB", h = 0.603, s = 1.0, v = 0.398 },
-            { name = "MarineBlue", code = "PB02", h = 0.586, s = 0.762, v = 0.285 },
-            { name = "FrostBlue", code = "PB00", h = 0.599, s = 0.77, v = 0.483 },
+            { name = "StealthGrey", code = "PN01", h = 0.709, s = 0.546, v = 0.305 },
+            { name = "PearlWhite", code = "PPSW", h = 0.532, s = 0.491, v = 0.811 },
+            { name = "DiamondBlack", code = "PX02", h = 0.922, s = 0.556, v = 0.212 },
+            { name = "Quicksilver", code = "PN00", h = 0.808, s = 0.484, v = 0.456 },
+            { name = "UltraRed", code = "PR01", h = 0.997, s = 1.0, v = 0.465 },
+            { name = "DeepBlue", code = "PPSB", h = 0.603, s = 1.0, v = 0.394 },
+            { name = "MarineBlue", code = "PB02", h = 0.584, s = 0.756, v = 0.281 },
+            { name = "FrostBlue", code = "PB00", h = 0.6, s = 0.769, v = 0.478 },
         },
     },
     ["Base.MinidoracatTesla_Cybertruck"] = {
@@ -142,14 +142,14 @@ T.Specs = {
         -- the last US design studio's six paints (2026-03-06) and the China pre-refresh Solid Black and Deep Blue
         -- (user 2026-10-31); same order and append-only rules as above, h/s/v by convert.py build
         colors = {
-            { name = "StealthGrey", code = "PN01", h = 0.812, s = 0.512, v = 0.35 },
-            { name = "LunarSilver", code = "PN02", h = 0.726, s = 0.523, v = 0.556 },
-            { name = "PearlWhite", code = "PPSW", h = 0.82, s = 0.475, v = 0.893 },
-            { name = "UltraRed", code = "PR01", h = 0.987, s = 1.0, v = 0.416 },
-            { name = "DiamondBlack", code = "PX02", h = 0.062, s = 0.58, v = 0.215 },
-            { name = "FrostBlue", code = "PB00", h = 0.592, s = 0.976, v = 0.494 },
-            { name = "SolidBlack", code = "PBSB", h = 0.032, s = 0.547, v = 0.194 },
-            { name = "DeepBlue", code = "PPSB", h = 0.616, s = 1.0, v = 0.399 },
+            { name = "StealthGrey", code = "PN01", h = 0.817, s = 0.511, v = 0.349 },
+            { name = "LunarSilver", code = "PN02", h = 0.726, s = 0.522, v = 0.549 },
+            { name = "PearlWhite", code = "PPSW", h = 0.814, s = 0.476, v = 0.885 },
+            { name = "UltraRed", code = "PR01", h = 0.99, s = 1.0, v = 0.412 },
+            { name = "DiamondBlack", code = "PX02", h = 0.067, s = 0.58, v = 0.212 },
+            { name = "FrostBlue", code = "PB00", h = 0.592, s = 0.983, v = 0.488 },
+            { name = "SolidBlack", code = "PBSB", h = 0.03, s = 0.547, v = 0.192 },
+            { name = "DeepBlue", code = "PPSB", h = 0.618, s = 1.0, v = 0.394 },
         },
     },
     ["Base.MinidoracatTesla_ModelX"] = {

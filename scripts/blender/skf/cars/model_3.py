@@ -109,6 +109,10 @@ CAR = dict(
     # faces more, a bright white band over the side windows where the official SIDE has a thin body-colour line. Paint
     # centred above z (pre-centre) takes the paint's median tone, blended in from z0 (no step along the pillars)
     RAIL=(0.92, 1.02),
+    # the panel gaps shaded in the skin (convert.py seam_shade, model_y.py): a dotted line at the closest zoom
+    SEAM_SHADE=dict(reach=0.02, width=0.010, k=0.35, steep=0.5,
+                    parts=("DoorFrontLeft", "DoorFrontRight", "DoorRearLeft", "DoorRearRight", "EngineDoor"),
+                    any_slope=("EngineDoor",)),
     # collapse-decimated after DROP_COMPS (target tris): underbody, arches, lamp housings and mirror housings at
     # 26k tris after the interior is gone; the build prints their components' new sizes (COMPS)
     DECIMATE={"Object_11": 13000, "Object_13": 6000, "Object_6": 2500},

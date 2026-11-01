@@ -2,7 +2,8 @@
 Keys as in model_y.py (each is the module constant it sets); the keys only this car has are read with C.get and are off
 for the others: DROP_MATS, PART_OBJS / SIDE_PARTS (whole source objects are the doors and lids), RECOLOR, CAMERA,
 FALCON (DOORS axis "falcon": the rear doors), SEAT third (six seats: pzveh.geometry, cabin.py SEATS middle / third),
-SPLIT_COLOURS and SEAM_SHADE (the paint / trim borders and the door gaps in the skin: convert.py).
+SPLIT_COLOURS (the paint / trim borders in the skin: convert.py) and SEAM_SHADE (the door gaps in the skin; Model S / Y /
+3 have it too).
 The source is a half model with Mirror + Subsurf + Auto Smooth modifiers in a .blend: scripts/blender/skf/prep_model_x.py
 applies them (Subsurf level 1) and writes TMP/src/source/model_x.obj, front +X, left +Y, ground z 0. Its shape is the
 2016-2020 car; the last (2025+) Model X Plaid's is close: chrome trim black (Aluminum), the front bumper camera

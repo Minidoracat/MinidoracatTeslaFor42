@@ -4,7 +4,7 @@ has are read with C.get and are off for the others: SRC_Z (the glTF is centred o
 centres (the tyres are components of the black trim object), LAMPS head_y (one lamp material front and rear),
 TESLA_MAT (chrome letters on the black band), GATE_BY_COMP (the tail lamps' liftgate and body halves overlap in x),
 DROP_COVERED (paint lying under the tail lamp housings: a depth fight in game), CARBON zones' `of` / `facing` (the
-jamb's top under the liftgate's hinge corners).
+jamb's top under the liftgate's hinge corners), SEAM_SHADE `any_slope` (the hood's level gaps; model_x.py SEAM_SHADE).
 The source (a Roblox export, decisions.md) is the Sketchfab glTF: 22 objects "Object_<n>", one per material; doors,
 frunk lid and liftgate are components of the paint object (Object_2), and the interior shares objects with the
 exterior (paint seats, black trim cabin tub), so parts come from components (DROP_COMPS boxes, CUT keys).
@@ -143,6 +143,12 @@ CAR = dict(
             ("GrilleFloor", ((-0.55, 1.70, 0.09), (0.55, 1.70, 0.09), (0.55, 1.90, 0.09), (-0.55, 1.90, 0.09)),
              (0, 0, 1), "arch_liner")),
     SEAL_CLIP=True,
+    # the panel gaps shaded in the skin (convert.py seam_shade; model_x.py): the hood, fender and door gaps are 1-5 mm,
+    # under a pixel at the closest zoom, and came out a row of black dots (models-lids-S-shut-max, user 2026-11-01).
+    # The hood's gaps run level (any_slope); the doors' as Model X's (front and rear gaps)
+    SEAM_SHADE=dict(reach=0.02, width=0.010, k=0.35, steep=0.5,
+                    parts=("DoorFrontLeft", "DoorFrontRight", "DoorRearLeft", "DoorRearRight", "EngineDoor"),
+                    any_slope=("EngineDoor",)),
     # the roof is glass, so the paint up there is the roof rails (model_3.py RAIL)
     RAIL=(0.95, 1.08),
     DECIMATE={"Object_23": 9000, "Object_2": 16000},   # (prefix match: Object_23 first)
