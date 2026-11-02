@@ -112,19 +112,21 @@ def articulate(bones, G, edits):
     return G
 
 
-def write_anim(src, dst, name, rot):
-    """copy the animation .x `src` to `dst` with the AnimationSet renamed `name` and the rotation keys of the bones in
-    `rot` ({bone: [(w, x, y, z) per key]}) replaced, everything else byte for byte"""
+def write_anim(src, dst, name, rot, pos=None):
+    """copy the animation .x `src` to `dst` with the AnimationSet renamed `name`, the rotation keys of the bones in
+    `rot` ({bone: [(w, x, y, z) per key]}) and the position keys of those in `pos` ({bone: [(x, y, z) per key]})
+    replaced, everything else byte for byte"""
     t = open(src, encoding="latin-1", newline="").read()
     t = re.sub(r"\nAnimationSet \w+ \{", f"\nAnimationSet {name} {{", t, count=1)
-    for bone, qs in rot.items():
-        m = re.search(r"Animation\s*\{\s*\{\s*" + bone + r"\s*\}", t)
-        k = re.compile(r"AnimationKey R \{(\s*0;\s*\d+;)([^}]*)\}").search(t, m.end())
-        keys = re.findall(r"(\d+);4;[^;]*;;", k[2])
-        assert len(keys) == len(qs), (bone, len(keys), len(qs))
-        nl = "\r\n" if "\r\n" in k[2] else "\n"
-        ind = re.search(r"\n([ \t]*)\d", k[2])[1]
-        tail = re.search(r"\s*$", k[2])[0]                 # newline and the closing brace's indent
-        body = ("," + nl).join(f"{ind}{tick};4;" + ",".join(f"{v:.6f}" for v in q) + ";;" for tick, q in zip(keys, qs))
-        t = t[:k.start(2)] + nl + body + ";" + tail + t[k.end(2):]
+    for kind, n, table in (("R", 4, rot), ("T", 3, pos or {})):
+        for bone, vs in table.items():
+            m = re.search(r"Animation\s*\{\s*\{\s*" + bone + r"\s*\}", t)
+            k = re.compile(r"AnimationKey " + kind + r" \{(\s*\d;\s*\d+;)([^}]*)\}").search(t, m.end())
+            keys = re.findall(rf"(\d+);{n};[^;]*;;", k[2])
+            assert len(keys) == len(vs), (bone, kind, len(keys), len(vs))
+            nl = "\r\n" if "\r\n" in k[2] else "\n"
+            ind = re.search(r"\n([ \t]*)\d", k[2])[1]
+            tail = re.search(r"\s*$", k[2])[0]                 # newline and the closing brace's indent
+            body = ("," + nl).join(f"{ind}{tick};{n};" + ",".join(f"{v:.6f}" for v in q) + ";;" for tick, q in zip(keys, vs))
+            t = t[:k.start(2)] + nl + body + ";" + tail + t[k.end(2):]
     open(dst, "w", encoding="latin-1", newline="").write(t)

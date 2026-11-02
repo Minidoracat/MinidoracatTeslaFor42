@@ -22,18 +22,21 @@ require "MinidoracatTesla/Core"
 require "Vehicles/ISUI/ISVehicleDashboard" -- registers OnExitVehicle and OnSwitchVehicleSeat (ISVehicleDashboard.lua:715-716)
 
 local T = MinidoracatTesla
-local SEATED, RECLINE = "MinidoracatTeslaSeated", "MinidoracatTeslaRecline"
+local SEATED, RECLINE, CAR = "MinidoracatTeslaSeated", "MinidoracatTeslaRecline", "MinidoracatTeslaCar"
 
 local function set(player, name, on)
-    if on then player:setVariable(name, true) else player:clearVariable(name) end
+    if on then player:setVariable(name, on) else player:clearVariable(name) end
 end
 
+-- MinidoracatTeslaCar (prototype proto/seatref-1102): the car's model name (Core.lua Specs), so a car whose seat points
+-- sit at the depth reference picks its own lifted nodes (idle/MinidoracatTesla_idle_recline_<model>.xml)
 local function sync(player)
     if not player then return end
     local v = player:getVehicle()
-    local tesla = v and T.isTesla(v)
-    set(player, SEATED, tesla)
-    set(player, RECLINE, tesla and v:getSeat(player) <= 1)
+    local spec = v and T.spec(v)
+    set(player, SEATED, spec ~= nil)
+    set(player, RECLINE, spec ~= nil and v:getSeat(player) <= 1)
+    set(player, CAR, spec and spec.model)
 end
 
 -- the local player's own enter / switch / exit also asks the server to put on or take off the hat hider (HatHide.lua):

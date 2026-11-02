@@ -36,7 +36,7 @@ from mathutils.bvhtree import BVHTree
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "..", "common"))
 import vanilla  # noqa: E402
-from xanim import NUM, articulate, pose, read_anim, read_x, skin  # noqa: E402
+from xanim import NUM, pose, read_anim, read_x, skin  # noqa: E402
 sys.path.insert(0, os.path.join(HERE, "..", ".."))
 import seat_anim  # noqa: E402  (the MOD's seated clips: CLIPS, written by scripts/seat_anim.py)
 
@@ -106,11 +106,11 @@ def model_path(rel):
 
 # ---- character sets in .X model space (posed): {name: vertices}
 def character(clip):
-    """clip: a seat_anim.CLIPS name, None = vanilla Bob_IdleDriving"""
+    """clip: a seat_anim.CLIPS or LIFTS name, None = vanilla Bob_IdleDriving"""
     anim = read_anim(VANILLA_ANIM)
     G = pose(anim)
     if clip:
-        G = articulate(anim[0], G, seat_anim.CLIPS[clip])
+        G = seat_anim.posed(anim[0], G, clip)
     sets, bodies = {}, {}
     for b in ("MaleBody", "FemaleBody"):
         path = f"{PZ}/models_X/Skinned/{b}.x"
@@ -483,15 +483,19 @@ def main():
     poses = {None: character(None)}
     if not van:
         poses[FRONT], poses[REAR] = character(FRONT), character(REAR)
+        poses.update({c: character(c) for c in seat_anim.LIFTS})
     _, _, hats, items, missing, _ = poses[None]
     print("HATS", len(items), "items", len(hats), "models; missing", missing)
     res, red, base_ok = {}, [], None
     for car in list(VANILLA) + cars:
         tris, cabt, seats, scale, fx = shell_vanilla(car) if car in VANILLA else shell_tesla(car)
         tree = bvh(tris)
+        # what-if WHATIF_LIFT=1: every car as if lifted (seat_anim.py seat_drop) before a rebuild: the seat points DROP
+        # lower, the body where it is, no cabin push; depth only (head, sit, back, feet, knees do not change)
+        whatif = car in TESLA and os.environ.get("WHATIF_LIFT") and f"{FRONT}_{car}" not in seat_anim.LIFTS
         if fx:
             fx = dict(parts=[(c, bvh(t), t.reshape(-1, 3).mean(0)) for c, t in fx["parts"]], floor=bvh(fx["floor"]),
-                      draw=fx["draw"], H=fx["H"], cell=fx["cell"])
+                      draw=fx["draw"], H=fx["H"] * 0 if whatif else fx["H"], cell=fx["cell"])
         for nm, seat in seats:
             # what-if: SHIFT="Model3/Rear:dy:dz ..." moves those passengers dy forward / dz up (mesh grid units) before
             # a rebuild (head, hats, feet and knees hold; sit / back need the seat moved too: rebuild and rerun)
@@ -499,7 +503,9 @@ def main():
                 key, dy, dz = w.split(":")
                 if f"{car}/{nm}".startswith(key):
                     seat = seat + (0, float(dz) / scale, float(dy) / scale)
+            lift = f"{FRONT}_{car}" in seat_anim.LIFTS   # seat points at the depth reference, lifted clips, no push
             clip = None if van or car not in TESLA else FRONT if nm.startswith("Front") else REAR
+            clip = f"{clip}_{car}" if clip and lift else clip
             G, sets, hats, _, _, bodies = poses[clip]
             allsets, spine = {**sets, **hats}, np.array([G["Bip01_Spine1"][3, :3]])
             c = seat_report(car, nm, tree, seat, scale, allsets, spine)
@@ -525,9 +531,13 @@ def main():
             res[f"{car}/{nm}"] = dict(clear={k: round(float(v), 1) for k, v in c.items()}, fit=f)
             if fx:
                 Hp = passenger_height(f"{M}/scripts/vehicles/MinidoracatTesla_{car}.txt", seat, scale)
+                if whatif:
+                    Hp -= seat_anim.lifted(force=True)[car]
+                    lift = True
                 oc, n_own = depth(fx, bodies, seat, scale, Hp)
                 enc = fx["H"][fx["cell"] >= 0]                 # every cabin face, body and doors (cabin.py mark_depth)
-                dz = (enc.max() - Hp) / K * 1000 if enc.min() > 0 else float("nan")
+                # a lifted car's cabin carries no H (no push); otherwise the front seats' H (nan: a face built before it)
+                dz = (enc.max() - (0 if lift else Hp)) / K * 1000 if lift or enc.min() > 0 else float("nan")
                 res[f"{car}/{nm}"]["depth"] = dict(H=round(float(Hp), 4), faces=n_own,
                                                    **{h: {k: round(v, 3) for k, v in o.items()} for h, o in oc.items()})
                 row = lambda k: " ".join(f"{h} {100 * oc[h][k]:3.0f}" for h in HEADINGS)   # noqa: E731
