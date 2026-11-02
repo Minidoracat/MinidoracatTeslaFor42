@@ -11,20 +11,23 @@ feet come up to the floor of a seat that sits lower than vanilla's chair pose. E
 lifted (DROP below), and the AnimSet nodes that pick them.
 
     uv run scripts/seat_anim.py           write the clips into MOD media/anims_X/Bob/ and the nodes into
-                                          media/AnimSets/player-vehicle/idle|aim/
+                                          media/AnimSets/player-vehicle/idle|aim|actions/
     uv run scripts/seat_anim.py --check   exit 1 when a shipped clip or node differs from a fresh build (after a game
                                           update, a seat change in cars/<car>.py) or a stale one is left over
+                                          (scripts/verify_local.py runs it, so verify_mod.py and pre-commit do)
 
 The clips go in anims_X/Bob: a MOD's own anims_X folders (not Bob / Kate / Zombie) are read only when the MOD also has a
 common/media/anims_X (ModelManager.loadHumanAnimations returns early, ModelManager.java:1807-1823; this MOD has no
 common folder), while Bob is read from the version folder by itself (loadModAnimations, ModelManager.java:1678-1699).
 E2E tesla-seathead-1101d: from anims_X/MinidoracatTesla the node matched and played no clip (character in bind pose).
 """
+import copy
 import glob
 import os
 import runpy
 import sys
 import tempfile
+import xml.etree.ElementTree as ET
 
 import numpy as np
 
@@ -116,10 +119,89 @@ def node_xml(folder, node, base, var, prio, car):
     return "\r\n".join(lines)
 
 
+# Seated versions of vanilla's whole-body action nodes (seating.md "坐著做動作"). player-vehicle "actions" is a substate:
+# it plays on a sub layer over idle / aim (actiongroups/player-vehicle/actions/actions.xml isSubState, idle/to_actions.xml
+# asSubstate) and its clip only drives the bones of the node's m_SubStateBoneWeights (AnimationPlayer.java:433-440,
+# 1212-1263). A node naming the skeleton root Dummy01 (descendants included) drives the whole body, root included, so
+# the standing clip plays at the seat point: legs and hips through the cabin floor with the lowered seat points
+# (E2E tesla-seatacts-1102-after2, BandageLeftLeg head 0.25-0.36 grid under the idle), through the roof before them.
+# Every such node (after x_extends) gets a copy that adds MinidoracatTeslaSeated and a higher m_ConditionPriority: a
+# state's nodes are kept sorted by priority, then condition count (AnimState.addNode, AnimState.java:90-105), and the
+# first match wins over every lower one (AnimState.java:40-53, AnimNode.compareSelectionConditions :358-370). The copy
+# keeps the clip, events and speeds and drops the weights: the engine then masks the clip to the upper body
+# (Bip01_Spine1 0.5 and Neck, BackPack, Prop1, Prop2 with their children, AnimNode.java:249-255), and the hips, legs and
+# root stay on the MOD's lifted seated clip.
+VANILLA_ACTIONS = f"{PZ}/AnimSets/player-vehicle/actions"
+
+
+def _text_only(el):
+    return len(el) == 0 and bool((el.text or "").strip())
+
+
+def _resolve(child, parent):
+    """PZXmlUtil.resolve (PZXmlUtil.java:124-183, TagTable :365-445): the child overrides; an element matches the
+    parent's by x_name, or else by tag and index among that tag; a text-only element replaces; others merge"""
+    if _text_only(child):
+        return copy.deepcopy(child)
+    out = ET.Element(child.tag, {**parent.attrib, **child.attrib})
+    table = []                                   # [tag, name, index, element]
+    for el in parent:
+        table.append([el.tag, el.get("x_name", ""), sum(t[0] == el.tag for t in table), copy.deepcopy(el)])
+    seen = {}
+    for el in child:
+        name, idx = el.get("x_name", ""), seen.get(el.tag, 0)
+        seen[el.tag] = idx + 1
+        hit = next((t for t in table if t[0] == el.tag and (t[1] == name if name else t[2] == idx)), None)
+        if hit:
+            hit[3] = _resolve(el, hit[3])
+        else:
+            table.append([el.tag, name, idx, copy.deepcopy(el)])
+    out.extend(t[3] for t in table)
+    return out
+
+
+def expanded(path):
+    """a vanilla node file with its x_extends chain resolved (PZXmlUtil.parseXml, PZXmlUtil.java:50-72)"""
+    root = ET.parse(path).getroot()
+    ext = root.get("x_extends")
+    return _resolve(root, expanded(os.path.join(os.path.dirname(path), ext))) if ext else root
+
+
+def seated_action_nodes():
+    """{path: xml text}: a seated copy of every vanilla actions node whose weights include Dummy01"""
+    out = {}
+    for path in sorted(glob.glob(os.path.join(VANILLA_ACTIONS, "*.xml"))):
+        node = expanded(path)
+        if not any(w.findtext("boneName") == "Dummy01" for w in node.findall("m_SubStateBoneWeights")):
+            continue
+        assert all(c.findtext("m_Type") != "OR" for c in node.findall("m_Conditions")), f"{path}: OR conditions"
+        name = node.findtext("m_Name")
+        node.attrib.pop("x_extends", None)
+        for w in node.findall("m_SubStateBoneWeights"):
+            node.remove(w)
+        node.find("m_Name").text = f"MinidoracatTesla_seated_{name}"
+        prio = node.find("m_ConditionPriority")
+        if prio is None:
+            prio = ET.Element("m_ConditionPriority")
+            node.insert(list(node).index(node.find("m_Name")) + 1, prio)
+        prio.text = str(int(prio.text or 0) + 1)
+        cond = ET.SubElement(node, "m_Conditions")
+        for tag, text in (("m_Name", "MinidoracatTeslaSeated"), ("m_Type", "BOOL"), ("m_Value", "true")):
+            ET.SubElement(cond, tag).text = text
+        ET.indent(node, "\t")
+        body = ET.tostring(node, encoding="unicode")
+        text = "\r\n".join(['<?xml version="1.0" encoding="utf-8"?>',
+                            f"<!-- Written by scripts/seat_anim.py (seated_action_nodes) from vanilla actions/"
+                            f"{os.path.basename(path)}. -->", *body.split("\n"), ""])
+        out[os.path.join(NODES, "actions", f"MinidoracatTesla_seated_{name}.xml")] = text
+    return out
+
+
 def nodes():
     """{path: xml text} of every node"""
-    return {os.path.join(NODES, folder, f"MinidoracatTesla_{node}_{car}.xml"): node_xml(folder, node, base, var, prio, car)
-            for car in DROPS for folder, kinds in NODE_KINDS.items() for node, base, var, prio in kinds}
+    return {**{os.path.join(NODES, folder, f"MinidoracatTesla_{node}_{car}.xml"): node_xml(folder, node, base, var, prio, car)
+               for car in DROPS for folder, kinds in NODE_KINDS.items() for node, base, var, prio in kinds},
+            **seated_action_nodes()}
 
 
 def posed(bones, G, clip):
@@ -182,6 +264,7 @@ def main():
         if check and not same:
             stale.append(out)
         elif not check:
+            os.makedirs(os.path.dirname(out), exist_ok=True)
             open(out, "w", encoding="utf-8", newline="").write(text)
     if check:
         print("seat_anim: " + (f"{stale} differ from a fresh build or are left over: run without --check" if stale

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Written by scripts/seat_anim.py (seated_action_nodes) from vanilla actions/chop_tree.xml. -->
+<animNode>
+	<m_Name>MinidoracatTesla_seated_chop_tree</m_Name>
+	<m_ConditionPriority>1</m_ConditionPriority>
+	<m_AnimName>Bob_IdleChopDownTree</m_AnimName>
+	<m_BlendTime>0.20</m_BlendTime>
+	<m_SpeedScale>0.80</m_SpeedScale>
+	<m_SyncTrackingEnabled>false</m_SyncTrackingEnabled>
+	<m_Conditions x_name="bc2a6521-e994-40a0-9a94-9c0f0e986a6b">
+		<m_Name>PerformingAction</m_Name>
+		<m_Type>STRING</m_Type>
+		<m_Value>chop_tree</m_Value>
+	</m_Conditions>
+	<m_Events x_name="bd8487fc-9a1c-4ab1-845b-74b180019b62">
+		<m_EventName>ChopTree</m_EventName>
+		<m_TimePc>0.35</m_TimePc>
+		<m_ParameterValue />
+	</m_Events>
+	<m_Conditions>
+		<m_Name>MinidoracatTeslaSeated</m_Name>
+		<m_Type>BOOL</m_Type>
+		<m_Value>true</m_Value>
+	</m_Conditions>
+</animNode>
