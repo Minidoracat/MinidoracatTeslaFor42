@@ -1801,6 +1801,7 @@ def pieces(car, c, shift):
     sc.frame_start, sc.frame_end = 1, end
     for o in [body] + obs[1:]:
         pv.order_faces(o)
+        cab.mark_depth(o)                                  # the cabin's depth for seated passengers (cabin.py)
     pv.export_fbx(body, os.path.join(pv.VEH_DIR, pv.NAME + ".fbx"))
     pv.export_doors(obs)
     bpy.ops.wm.save_as_mainfile(filepath=os.path.join(TMP, "skf_doors.blend"))

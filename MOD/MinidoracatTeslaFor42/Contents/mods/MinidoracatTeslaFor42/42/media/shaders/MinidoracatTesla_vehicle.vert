@@ -58,5 +58,8 @@ void main()
 	positionEye = o - vec4(-0.2, 0.2, 0.2, 0.0);
 	float clip = (o.z + 1.0) / 2.0 + targetDepth - 0.5;
 	o.z = clip * 2.0 - 1.0;
+	// Seated passengers: the cabin faces move back like the body's (MinidoracatTesla_vehicle_static.vert)
+	if (uv2.x < -1.25)
+		o.z -= (ModelViewProjection * skin * vec4(0.0, uv.x * 0.001, 0.0, 0.0)).z;
 	gl_Position = o;
 }

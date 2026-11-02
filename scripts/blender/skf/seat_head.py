@@ -1,5 +1,6 @@
 """Seated passengers against the car, every seat of every car (offline): heads, hair and hats against the shell; the
-body against its own seat; the feet against the cabin floor; the legs against the rest of the cabin.
+body against its own seat; the feet against the cabin floor; the legs against the rest of the cabin; what the game's
+depth (the passenger referenced apart from the car, module comment at SAG) hides of the body from the 8 headings.
 
     B="C:/Program Files/Blender Foundation/Blender 5.2/blender.exe"
     "$B" -b --factory-startup --python scripts/blender/skf/seat_head.py -- [car ...] [--json out.json] [--sweep]
@@ -10,7 +11,8 @@ body against its own seat; the feet against the cabin floor; the legs against th
     SHIFT="Model3/Rear:dy:dz ..." (env): what-if, those passengers moved (grid) before a rebuild; DIAG: see the code.
 Exit 1 when a Tesla seat shows the head, a cap or helmet in COMMON, or a hairstyle that clears vanilla ModernCar's
 driver (ModernCar does not fit mohawks, liberty spikes or the tall hats in TALL either; those may clip), or when sit /
-back / feet / knees leave FIT (README: the knowledge base's seating.md "坐姿與車頂").
+back / feet / knees leave FIT, or the game would hide more of the torso and upper arms than OCC (depth()), or the
+seat faces' seat point is off the script's (README: the knowledge base's seating.md "坐姿與車頂").
 
 How a passenger is drawn (pz/ = decompiled 42.21.0): the seat's clip (vanilla Bob_IdleDriving, player-vehicle idle;
 Tesla seats the MOD's clips, scripts/seat_anim.py CLIPS) puts the pelvis at the model origin; it is placed at the
@@ -31,7 +33,7 @@ from mathutils.bvhtree import BVHTree
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "..", "common"))
 import vanilla  # noqa: E402
-from xanim import articulate, pose, read_anim, read_x, skin  # noqa: E402
+from xanim import NUM, articulate, pose, read_anim, read_x, skin  # noqa: E402
 sys.path.insert(0, os.path.join(HERE, "..", ".."))
 import seat_anim  # noqa: E402  (the MOD's seated clips: CLIPS, written by scripts/seat_anim.py)
 
@@ -57,6 +59,32 @@ FIT = {"sit": (-25, 10), "back": (-25, 20), "feet": (-25, 25), "knees": (-25, fl
 CELLS = ("floor", "liner", "seat", "base", "dash", "trim", "console", "wheel")   # pzveh.py CABIN_CELLS (the first 8)
 CABIN_UV1_U = -2.5                                                                # pzveh.py CABIN_UV1_U
 PARTS = ("seat", "base", "dash", "console", "wheel")   # closed cabin parts (cabin.py part() / the wheel's torus)
+# what the car may wrongly hide (depth()): torso and upper arms (gated); the head separately (reported)
+TORSO = ("Bip01_Spine", "Bip01_Spine1", "Bip01_L_Clavicle", "Bip01_R_Clavicle", "Bip01_BackPack", "Bip01_L_UpperArm",
+         "Bip01_R_UpperArm")
+HEAD = ("Bip01_Head", "Bip01_Neck")
+# the game camera (orthographic, 30 deg down, from the car's south-east looking north-west) by the car's heading: the
+# forward vector on the map (x east, y south), convert.py stage_view's table. S = front-left 3/4 (driver side near),
+# SE = straight front, E = front-right 3/4, SW / NE = left / right side, W / NW / N = from behind
+HEADINGS = {"N": (0, -1), "NE": (1, -1), "E": (1, 0), "SE": (1, 1), "S": (0, 1), "SW": (-1, 1), "W": (-1, 0),
+            "NW": (-1, -1)}
+# The game's depth for a seated passenger (seating.md "乘客的深度", pz/ 42.21.0): a character's depth reference is the
+# square depth at its own x, y, z (ModelSlotRenderData.java:126-128, 224-233), which for a passenger is its seat's x, y
+# on the car's floor level (BaseVehicle.java:3488-3494 sets it to getPassengerWorldPos, :1922-1927 puts z on
+# fastfloor(getZ())), against its origin, the seat point (:829-835, after Model.java:214-226 CharacterModelCameraBegin);
+# the car's is the square depth at its physics origin height (ModelSlotRenderData.java:236-247) against its origin
+# drawn centerOfMassMagic 0.7 lower (Model.java:503-505). Same depth scale both ways (IsoDepthHelper 0.0028867 a level
+# = 2.44949 units, 0.0014434 a square; Core.scale / 10 per unit: 0.0023570 of depth a grid unit along the view). So a
+# passenger draws as if its seat point sat on the ground: H * d_z farther than the car around it (d_z = sin 30 deg),
+# H = seat point height over the physics wheels' bottom + SAG (the 0.7 cancels), less CHAR_BIAS (:835 draws characters
+# 1e-4 nearer). Measured: a constant 0.3 grid back on the front row's faces shows the Cybertruck's (H 0.65) driver
+# whole from the front (E2E tesla-seatwrap-1102-diagG)
+SAG = 0.063                        # the physics wheels' sag at rest: E2E seat-head-sp physZ, five cars within 6 mm
+CHAR_BIAS = 1e-4 / 0.0023570226    # grid
+# the gate: share of the torso and upper arms that the game hides while geometry shows them (max over both bodies),
+# every heading <= 10 % (3e976d9, before the shaders moved the cabin: front / front 3/4 64-96 % on every front seat,
+# rear seats up to 91 %; after: 0-1 %)
+OCC = dict.fromkeys(HEADINGS, 0.10)
 
 
 _MODELS = {}
@@ -77,9 +105,10 @@ def character(clip):
     G = pose(anim)
     if clip:
         G = articulate(anim[0], G, seat_anim.CLIPS[clip])
-    sets = {}
+    sets, bodies = {}, {}
     for b in ("MaleBody", "FemaleBody"):
-        V, sw, _ = read_x(f"{PZ}/models_X/Skinned/{b}.x")
+        path = f"{PZ}/models_X/Skinned/{b}.x"
+        V, sw, _ = read_x(path)
         P = skin(V, sw, G)
         wmax, main = np.zeros(len(V)), np.full(len(V), "", object)
         for bone, (idx, w, _) in sw.items():
@@ -92,6 +121,8 @@ def character(clip):
         sets[f"back:{b}"] = P[np.isin(main, ("Bip01_Spine", "Bip01_Spine1", "Bip01_L_Clavicle", "Bip01_R_Clavicle",
                                              "Bip01_BackPack", "Bip01_DressBack", "Bip01_DressBack02"))]
         sets[f"feet:{b}"] = P[np.isin(main, ("Bip01_L_Foot", "Bip01_R_Foot"))]
+        # whole posed body with its faces: depth()
+        bodies[b] = dict(P=P, F=x_faces(path, len(V)), torso=np.isin(main, TORSO), head=np.isin(main, HEAD))
     neck = G["Bip01_Neck"][3, 1]                     # hair and hats: what is above the neck (suits and long hair hang lower)
     for p in sorted(glob.glob(f"{PZ}/models_X/Skinned/Hair/*.x")):
         V, sw, _ = read_x(p)
@@ -124,7 +155,20 @@ def character(clip):
             V, sw, F = read_x(path)
             P = skin(V, sw, G) if sw and not static else (np.c_[V, np.ones(len(V))] @ F @ G[bone])[:, :3]
             hats[f"hat:{ci}:{sex[0]}"] = P[P[:, 1] > neck]
-    return G, sets, hats, items, missing
+    return G, sets, hats, items, missing, bodies
+
+
+def x_faces(path, n):
+    """triangles of a .X file's first mesh (n vertices; read_x reads the same block up to its first child)"""
+    t = open(path, encoding="latin-1").read()
+    s = re.search(r"\n\s*Mesh \w* ?\{", t).end()
+    a = np.array(NUM.findall(t[s:t.index("{", s)].rsplit("\n", 1)[0]), float).astype(int)
+    i, out = 2 + 3 * n, []
+    for _ in range(a[1 + 3 * n]):
+        k, f = a[i], a[i + 1:i + 1 + a[i]]
+        out += [(f[0], f[j], f[j + 1]) for j in range(1, k - 1)]
+        i += 1 + k
+    return np.array(out)
 
 
 # ---- cars: shell BVH and seats in mesh coordinates (grid units: +Y front, +Z up, -X left)
@@ -147,7 +191,7 @@ def shell_tesla(car):
         if o.type == "ARMATURE":
             o.data.pose_position = "REST"
     dg = bpy.context.evaluated_depsgraph_get()
-    tris, cab, seat, floor = [], [], [], []
+    tris, cab, seat, floor, draw, hd, cells = [], [], [], [], [], [], []
     for o in bpy.data.objects:
         if o.type != "MESH":
             continue
@@ -160,18 +204,28 @@ def shell_tesla(car):
         lv = np.array([lp.vertex_index for lp in me.loops])
         u = np.empty(len(me.loops) * 2)
         me.uv_layers[1].data.foreach_get("uv", u)
-        u = u.reshape(-1, 2)[lt][:, 0, 0]
+        uv1 = u.reshape(-1, 2)[lt][:, 0]
+        u = uv1[:, 0]
+        u0 = np.empty(len(me.loops) * 2)
+        me.uv_layers[0].data.foreach_get("uv", u0)
         keep = u >= -1.25                                       # cabin faces (seats, dash, door cards) are not the shell
+        cell = np.where(keep, -1, np.round(CABIN_UV1_U - u).astype(int))   # cabin.py: UV1 u = CABIN_UV1_U - cell
+        # what the game draws opaque (glass blends, UV1 u >= 1.5): each face's cabin cell (-1: not cabin) and the depth
+        # height H the shaders move cabin faces back by (cabin.py mark_depth: UV0 u = H in 1/1000 grid; 0 before it)
+        opaque = u < 1.5
+        draw.append(co[lv[lt[opaque]]])
+        hd.append((u0.reshape(-1, 2)[lt][:, 0, 0] / 1000 * ~keep)[opaque])
+        cells.append(cell[opaque])
         tris.append(co[lv[lt[keep]]])
         cab.append(co[lv[lt[~keep]]])
-        cell = np.round(CABIN_UV1_U - u).astype(int)          # cabin.py cell_object / UV1: u = CABIN_UV1_U - cell
         for c in PARTS:                                       # closed parts the legs may run into
             idx = lv[lt[~keep & (cell == CELLS.index(c))]]
             if len(idx):
                 seat.extend((c, p) for p in components(co, idx))
         floor.append(co[lv[lt[~keep & (cell == CELLS.index("floor"))]]])
     return (np.concatenate(tris), np.concatenate(cab), *script_seats(f"{M}/scripts/vehicles/{name}.txt"),
-            dict(parts=seat, floor=np.concatenate(floor)))
+            dict(parts=seat, floor=np.concatenate(floor), draw=np.concatenate(draw), H=np.concatenate(hd),
+                 cell=np.concatenate(cells)))
 
 
 def components(co, idx):
@@ -321,6 +375,86 @@ def fit(fx, G, sets, seat, scale, drop=0.0):
     return out
 
 
+def cam_dir(h):
+    """unit vector from the car to the game camera in mesh coordinates (+X right, +Y front, +Z up) for heading h: the
+    iso camera sits south-east of everything and looks 30 deg down (convert.py stage_view, same formula)"""
+    f = np.array(HEADINGS[h], float) / np.hypot(*HEADINGS[h])
+    cxy, el = np.array([1, 1]) / np.sqrt(2), np.radians(30)
+    return Vector((cxy @ np.array([-f[1], f[0]]) * np.cos(el), cxy @ f * np.cos(el), np.sin(el)))
+
+
+def passenger_height(path, seat, scale):
+    """H (module comment) for a seat from the vehicle script: seat point height over the physics wheels' bottom + SAG"""
+    m = re.search(r"wheel \w+\s*\{.*?offset\s*=\s*([-\d. ]+),.*?radius\s*=\s*([\d.]+)", open(path).read(), re.S)
+    return place(np.zeros((1, 3)), seat, scale)[0][2] - (float(m[1].split()[1]) - float(m[2])) * scale - SAG
+
+
+def line_hits(tree, p, d, span=3.0):
+    """every face on the line through p along d: [(t, face, drawn)], t > 0 nearer the camera; drawn = the face looks
+    at the camera (the game culls back faces)"""
+    o, gone, out = Vector(p) - d * span, 0.0, []
+    while True:
+        loc, n, i, t = tree.ray_cast(o, d, 2 * span - gone)
+        if loc is None:
+            return out
+        gone += t
+        out.append((gone - span, i, n.dot(d) > 0))   # gone > span: in front of p
+        o, gone = loc + d * 1e-5, gone + 1e-5
+
+
+def seat_shift(H, dn):
+    """depth (grid, along the view) the vertex shaders move each face back by (MinidoracatTesla_vehicle(_static).vert,
+    same formula): its H along the view, 0 for faces that are not cabin"""
+    return H * dn[2]
+
+
+def depth(fx, bodies, seat, scale, Hp):
+    """The game's picture of one passenger against the car (module comment), by heading, max over both bodies:
+    wrap = share of the torso / upper-arm (head) vertices that face the camera past the body itself and that geometry
+    shows but the game hides (a drawn face f on the line at t > shift(f) - E, E = Hp d_z - CHAR_BIAS, shift:
+    seat_shift); xray = share of all such body vertices geometry hides (a drawn face at t > 0) that the game shows;
+    lost / over = share of the own seat's faces (seat / base cells within its bucket around the seat point) geometry
+    shows but the game hides behind other faces, and the reverse."""
+    tree, H = bvh(fx["draw"]), fx["H"]
+    sp, cen = place(np.zeros((1, 3)), seat, scale)[0], fx["draw"].mean(1)
+    own = np.flatnonzero(np.isin(fx["cell"], [CELLS.index("seat"), CELLS.index("base")])
+                         & (np.abs(cen[:, 0] - sp[0]) < 0.25) & (np.abs(cen[:, 1] - sp[1]) < 0.4))
+    cen = cen[own]
+    out = {h: dict(torso=0.0, head=0.0, xray=0.0, lost=0.0, over=0.0) for h in HEADINGS}
+    for h in HEADINGS:
+        d = cam_dir(h)
+        dn = np.array(d)
+        shift, E = seat_shift(H, dn), Hp * dn[2] - CHAR_BIAS
+        for m in bodies.values():
+            P = place(m["P"], seat, scale)
+            body = BVHTree.FromPolygons([Vector(p) for p in P], m["F"].tolist())
+            n = {k: [0, 0] for k in ("torso", "head", "xray")}
+            for k, p in enumerate(P):
+                if body.ray_cast(Vector(p) + d * 1e-4, d, 4.0)[0] is not None:   # behind the body's own front
+                    continue
+                hits = [(t, i) for t, i, drawn in line_hits(tree, p, d) if drawn]
+                truth = any(t > 0 for t, _ in hits)
+                game = any(t > shift[i] - E for t, i in hits)
+                for key in ("torso", "head"):
+                    if m[key][k] and not truth:
+                        n[key][0] += 1
+                        n[key][1] += game
+                if truth:
+                    n["xray"][0] += 1
+                    n["xray"][1] += not game
+            for key, (a, b) in n.items():
+                out[h][key] = max(out[h][key], b / max(a, 1))
+        lost = [0, 0, 0, 0]
+        for f, c in zip(own, cen):
+            hits = [(t, i) for t, i, drawn in line_hits(tree, c + dn * 1e-4, d) if drawn and i != f]
+            truth = any(t > 0 for t, _ in hits)
+            game = any(t > shift[i] - shift[f] for t, i in hits)
+            lost[0 if not truth else 2] += 1
+            lost[1 if not truth else 3] += game if not truth else not game
+        out[h]["lost"], out[h]["over"] = lost[1] / max(lost[0], 1), lost[3] / max(lost[2], 1)
+    return out, len(own)
+
+
 def seat_report(car, nm, tree, seat, scale, sets, spine, drop=0.0, keys=None):
     A = place(spine, seat, scale, drop)[0]
     dg = os.environ.get("DIAG", "")
@@ -340,14 +474,15 @@ def main():
     poses = {None: character(None)}
     if not van:
         poses[FRONT], poses[REAR] = character(FRONT), character(REAR)
-    _, _, hats, items, missing = poses[None]
+    _, _, hats, items, missing, _ = poses[None]
     print("HATS", len(items), "items", len(hats), "models; missing", missing)
     res, red, base_ok = {}, [], None
     for car in list(VANILLA) + cars:
         tris, cabt, seats, scale, fx = shell_vanilla(car) if car in VANILLA else shell_tesla(car)
         tree = bvh(tris)
         if fx:
-            fx = dict(parts=[(c, bvh(t), t.reshape(-1, 3).mean(0)) for c, t in fx["parts"]], floor=bvh(fx["floor"]))
+            fx = dict(parts=[(c, bvh(t), t.reshape(-1, 3).mean(0)) for c, t in fx["parts"]], floor=bvh(fx["floor"]),
+                      draw=fx["draw"], H=fx["H"], cell=fx["cell"])
         for nm, seat in seats:
             # what-if: SHIFT="Model3/Rear:dy:dz ..." moves those passengers dy forward / dz up (mesh grid units) before
             # a rebuild (head, hats, feet and knees hold; sit / back need the seat moved too: rebuild and rerun)
@@ -356,7 +491,7 @@ def main():
                 if f"{car}/{nm}".startswith(key):
                     seat = seat + (0, float(dz) / scale, float(dy) / scale)
             clip = None if van or car not in TESLA else FRONT if nm.startswith("Front") else REAR
-            G, sets, hats, _, _ = poses[clip]
+            G, sets, hats, _, _, bodies = poses[clip]
             allsets, spine = {**sets, **hats}, np.array([G["Bip01_Spine1"][3, :3]])
             c = seat_report(car, nm, tree, seat, scale, allsets, spine)
             if car == "ModernCar" and nm == "FrontLeft":    # the hair and hats that clear vanilla's ModernCar driver
@@ -379,6 +514,26 @@ def main():
                   f"{sum(c[k] < 0 for k in hr)}/{len(hr)} | must-fit <0: {len(ok_red)} {' '.join(ok_red[:3])} | ModernCar-ok hats <0: "
                   f"{sum(c[k] < 0 for k in base_ok if k.startswith('hat:'))} | {tall}")
             res[f"{car}/{nm}"] = dict(clear={k: round(float(v), 1) for k, v in c.items()}, fit=f)
+            if fx:
+                Hp = passenger_height(f"{M}/scripts/vehicles/MinidoracatTesla_{car}.txt", seat, scale)
+                oc, n_own = depth(fx, bodies, seat, scale, Hp)
+                enc = fx["H"][fx["cell"] >= 0]                 # every cabin face, body and doors (cabin.py mark_depth)
+                dz = (enc.max() - Hp) / K * 1000 if enc.min() > 0 else float("nan")
+                res[f"{car}/{nm}"]["depth"] = dict(H=round(float(Hp), 4), faces=n_own,
+                                                   **{h: {k: round(v, 3) for k, v in o.items()} for h, o in oc.items()})
+                row = lambda k: " ".join(f"{h} {100 * oc[h][k]:3.0f}" for h in HEADINGS)   # noqa: E731
+                print(f"DEPTH {car:10s} {nm:12s} H {Hp:.3f} seat faces {n_own} (cabin's H vs this seat's {dz:+.0f} mm)\n"
+                      f"      wrap torso+arms % {row('torso')}\n      wrap head %       {row('head')}\n"
+                      f"      xray body %       {row('xray')}\n      seat lost %       {row('lost')}\n"
+                      f"      seat over %       {row('over')}")
+                over = [f"{h} {100 * oc[h]['torso']:.0f}%>{100 * lim:.0f}%" for h, lim in OCC.items() if oc[h]["torso"] > lim]
+                if over:
+                    print(f"DEPTH {car}/{nm} the car wraps the body: {', '.join(over)}")
+                    red.append(f"{car}/{nm}:depth")
+                if nm.startswith("Front") and not abs(dz) <= 10:   # nan: a cabin face without H (built before it)
+                    print(f"DEPTH {car}/{nm} the cabin's depth height is {dz:+.0f} mm off the front seats' (cabin.py "
+                          "mark_depth against passenger_height): rebuild, or the two formulas disagree")
+                    red.append(f"{car}/{nm}:seatpoint")
             span = {k: (v if isinstance(v, tuple) else (v, v)) for k, v in (f or {}).items()}
             off = [k for k, (lo, hi) in FIT.items() if f and not (lo <= span[k][0] and span[k][1] <= hi)]
             if off and car in TESLA:

@@ -21,6 +21,25 @@ CABIN_FLOOR, CABIN_FRONT_Y, TRUNK_Y, CABIN_ZC, SEAM_CLEAR = (pv.CAR[k] for k in 
     "CABIN_FLOOR", "CABIN_FRONT_Y", "TRUNK_Y", "CABIN_ZC", "SEAM_CLEAR"))
 SEAT, DASH, DOOR_CARD, SEATS, PARCEL = pv.SEAT, pv.CAR["DASH"], pv.CAR["DOOR_CARD"], pv.CAR["SEATS"], pv.CAR["PARCEL"]
 SEAT_X, SEAT_Z = SEAT["x"], SEAT["z"]
+# Seated passengers' depth (seating.md "乘客的深度"): the engine depth-references a passenger at its seat's x, y on the
+# ground and the car at its physics origin, so passengers draw H * sin 30 deg farther than the car around them, H = the
+# seat point's height over the ground = SEAT h + WHEEL_LIFT - PASSENGER_REF (the physics wheels touch 0.015 lower than
+# the drawn ones and sag 0.063 at rest: E2E seat-head-sp physZ, five cars within 6 mm). mark_depth puts H on every
+# cabin face and the vertex shaders move them back as far (seat_head.py depth(): the same model)
+PASSENGER_REF = 0.078
+
+
+def mark_depth(o):
+    """UV0 = (H in 1/1000 grid, 0) on o's cabin faces (UV1 u < CABIN_UV1_U / 2; their colour is the UV1 cell, UV0 unread):
+    MinidoracatTesla_vehicle(_static).vert moves them back by H's depth. Run on the body and every door mesh."""
+    me = o.data
+    u1 = np.empty(len(me.loops) * 2)
+    me.uv_layers["UV1"].data.foreach_get("uv", u1)
+    u0 = np.empty(len(me.loops) * 2)
+    me.uv_layers["UV0"].data.foreach_get("uv", u0)
+    cab = u1[0::2] < pv.CABIN_UV1_U / 2
+    u0[0::2][cab], u0[1::2][cab] = round((SEAT["h"] + pv.WHEEL_LIFT - PASSENGER_REF) * 1000), 0
+    me.uv_layers["UV0"].data.foreach_set("uv", u0)
 
 
 def rbox(size, r, cuts=(0, 0, 0), seg=2):
