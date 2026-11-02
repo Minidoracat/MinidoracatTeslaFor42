@@ -79,7 +79,9 @@ CAR = dict(
     # rear: the rear row sits this much lower. Heights from scripts/blender/skf/seat_head.py (2026-11-01): the seated
     # heads and caps under the roof, the feet on CABIN_FLOOR in the seated clips (scripts/seat_anim.py; the floor and
     # both rows follow the clips' hip-to-sole heights), SEATS dz / dy put the cushions and backrests against the body
-    SEAT=dict(x=0.33, h=0.550, z=-0.200, back=(0.12, 0.08), out=0.30, rear=0.017),
+    # lift: every seat point sits DROP lower (the front ones at the depth reference), its clips lift the body
+    # (seat_anim.py seat_drop)
+    SEAT=dict(x=0.33, h=0.550, z=-0.200, back=(0.12, 0.08), out=0.30, rear=0.017, lift=True),
     BODY_W_Z=0.55,                         # body width (script extents) measured below this fraction of DIMS height
     # part: side (-1 = left, x < 0; 0 = tailgate), hinge axis, open angle (deg; sign swings the door out, the gate up),
     # clip seconds. Hinge points come from the cut (front edge on the outer skin; the gate's top edge; the frunk lid's

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Aiming from a Model Y front seat (prototype proto/seatref-1102): the lifted reclined idle, as
+     idle/MinidoracatTesla_idle_recline_ModelY.xml; m_ConditionPriority 3 before aim_recline (2). Written out in full. -->
+<animNode>
+	<m_Name>MinidoracatTesla_aim_recline_ModelY</m_Name>
+	<m_Priority>4</m_Priority>
+	<m_ConditionPriority>3</m_ConditionPriority>
+	<m_AnimName>MinidoracatTesla_IdleDrivingRecline_ModelY</m_AnimName>
+	<m_BlendTime>0.30</m_BlendTime>
+	<m_SpeedScale>0.80</m_SpeedScale>
+	<m_SyncTrackingEnabled>false</m_SyncTrackingEnabled>
+	<m_Conditions>
+		<m_Name>MinidoracatTeslaRecline</m_Name>
+		<m_Type>BOOL</m_Type>
+		<m_Value>true</m_Value>
+	</m_Conditions>
+	<m_Conditions>
+		<m_Name>MinidoracatTeslaCar</m_Name>
+		<m_Type>STRING</m_Type>
+		<m_Value>ModelY</m_Value>
+	</m_Conditions>
+</animNode>

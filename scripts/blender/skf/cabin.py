@@ -26,7 +26,7 @@ SEAT_X, SEAT_Z = SEAT["x"], SEAT["z"]
 # seat point's height over the ground = SEAT h + WHEEL_LIFT - PASSENGER_REF (the physics wheels touch 0.015 lower than
 # the drawn ones and sag 0.063 at rest: E2E seat-head-sp physZ, five cars within 6 mm). mark_depth puts H on every
 # cabin face and the vertex shaders move them back as far (seat_head.py depth(): the same model)
-PASSENGER_REF = 0.078
+PASSENGER_REF = 0.078   # seat_anim.py has the same number (a lifted car, SEAT lift: no push, H 0)
 
 
 def mark_depth(o):
@@ -38,7 +38,8 @@ def mark_depth(o):
     u0 = np.empty(len(me.loops) * 2)
     me.uv_layers["UV0"].data.foreach_get("uv", u0)
     cab = u1[0::2] < pv.CABIN_UV1_U / 2
-    u0[0::2][cab], u0[1::2][cab] = round((SEAT["h"] + pv.WHEEL_LIFT - PASSENGER_REF) * 1000), 0
+    H = 0 if SEAT.get("lift") else round((SEAT["h"] + pv.WHEEL_LIFT - PASSENGER_REF) * 1000)
+    u0[0::2][cab], u0[1::2][cab] = H, 0
     me.uv_layers["UV0"].data.foreach_set("uv", u0)
 
 

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Front seats of a Model Y (prototype proto/seatref-1102): idle_recline's pose lifted by the amount the vehicle script
+     lowers the front seat points (scripts/seat_anim.py LIFTS), so the depth reference sits at the seat point and the
+     cabin needs no depth push. m_ConditionPriority 3: before idle_recline (2, also matches); both conditions must hold.
+     MinidoracatTeslaCar is set by client/MinidoracatTesla/SeatPose.lua. Written out in full, no x_extends. -->
+<animNode>
+	<m_Name>MinidoracatTesla_idle_recline_ModelY</m_Name>
+	<m_ConditionPriority>3</m_ConditionPriority>
+	<m_AnimName>MinidoracatTesla_IdleDrivingRecline_ModelY</m_AnimName>
+	<m_BlendTime>0.20</m_BlendTime>
+	<m_SpeedScale>0.80</m_SpeedScale>
+	<m_Conditions>
+		<m_Name>MinidoracatTeslaRecline</m_Name>
+		<m_Type>BOOL</m_Type>
+		<m_Value>true</m_Value>
+	</m_Conditions>
+	<m_Conditions>
+		<m_Name>MinidoracatTeslaCar</m_Name>
+		<m_Type>STRING</m_Type>
+		<m_Value>ModelY</m_Value>
+	</m_Conditions>
+</animNode>
