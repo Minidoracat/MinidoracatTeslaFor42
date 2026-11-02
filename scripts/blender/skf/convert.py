@@ -1825,8 +1825,6 @@ def pieces(car, c, shift):
         pv.order_faces(o)
     bpy.ops.wm.save_as_mainfile(filepath=os.path.join(TMP, "skf_doors.blend"))   # the body with its glass (view, appcar)
     pv.keep_faces(body, pv.face_classes(body) != 2)
-    for o in [body] + obs[1:]:
-        cab.mark_depth(o)                                  # the cabin's depth for seated passengers (cabin.py)
     pv.export_fbx(body, os.path.join(pv.VEH_DIR, pv.NAME + ".fbx"))
     pv.export_fbx(glass_ob, os.path.join(pv.VEH_DIR, glass_ob.name + ".fbx"))
     pv.export_doors(obs)

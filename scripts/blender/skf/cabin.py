@@ -21,25 +21,31 @@ CABIN_FLOOR, CABIN_FRONT_Y, TRUNK_Y, CABIN_ZC, SEAM_CLEAR = (pv.CAR[k] for k in 
     "CABIN_FLOOR", "CABIN_FRONT_Y", "TRUNK_Y", "CABIN_ZC", "SEAM_CLEAR"))
 SEAT, DASH, DOOR_CARD, SEATS, PARCEL = pv.SEAT, pv.CAR["DASH"], pv.CAR["DOOR_CARD"], pv.CAR["SEATS"], pv.CAR["PARCEL"]
 SEAT_X, SEAT_Z = SEAT["x"], SEAT["z"]
-# Seated passengers' depth (seating.md "乘客的深度"): the engine depth-references a passenger at its seat's x, y on the
-# ground and the car at its physics origin, so passengers draw H * sin 30 deg farther than the car around them, H = the
-# seat point's height over the ground = SEAT h + WHEEL_LIFT - PASSENGER_REF (the physics wheels touch 0.015 lower than
-# the drawn ones and sag 0.063 at rest: E2E seat-head-sp physZ, five cars within 6 mm). mark_depth puts H on every
-# cabin face and the vertex shaders move them back as far (seat_head.py depth(): the same model)
-PASSENGER_REF = 0.078
+DASH_BOX = ((1.24, 0.34, 0.16), 0.06)   # dash: full size (x, y, z), edge radius; centre DASH["dash"]
+COLUMN_IN, COLUMN_EDGE, COLUMN_MAX_DEG = 0.02, 0.02, 10.0
 
 
-def mark_depth(o):
-    """UV0 = (H in 1/1000 grid, 0) on o's cabin faces (UV1 u < CABIN_UV1_U / 2; their colour is the UV1 cell, UV0 unread):
-    MinidoracatTesla_vehicle(_static).vert moves them back by H's depth. Run on the body and every door mesh."""
-    me = o.data
-    u1 = np.empty(len(me.loops) * 2)
-    me.uv_layers["UV1"].data.foreach_get("uv", u1)
-    u0 = np.empty(len(me.loops) * 2)
-    me.uv_layers["UV0"].data.foreach_get("uv", u0)
-    cab = u1[0::2] < pv.CABIN_UV1_U / 2
-    u0[0::2][cab], u0[1::2][cab] = round((SEAT["h"] + pv.WHEEL_LIFT - PASSENGER_REF) * 1000), 0
-    me.uv_layers["UV0"].data.foreach_set("uv", u0)
+def column_ends():
+    """Steering column (mesh coords): from the wheel's hub to a point COLUMN_IN inside the dash's rear face, at the
+    height where the wheel's axis meets that face, kept COLUMN_EDGE inside the dash's height. -> (hub, end, degrees
+    off the wheel's axis). SystemExit when the end is not inside the dash or the column turns more than
+    COLUMN_MAX_DEG off the axis (then the wheel's tilt or a column shroud is the call, not a bent column)."""
+    (_, dy, dz), r = DASH_BOX
+    cx, cy, cz = DASH["dash"]
+    hub = np.array([-SEAT_X, *DASH["wheel"]])
+    axis = np.array([0, math.sin(math.radians(70)), -math.cos(math.radians(70))])   # the wheel's local -z (70 deg)
+    face = cy - dy / 2
+    z = hub[2] + axis[2] * (face - hub[1]) / axis[1]
+    end = np.array([hub[0], face + COLUMN_IN, min(max(z, cz - dz / 2 + COLUMN_EDGE), cz + dz / 2 - COLUMN_EDGE)])
+    ang = math.degrees(math.acos(np.clip((end - hub) @ axis / np.linalg.norm(end - hub), -1, 1)))
+    q = np.abs(end - DASH["dash"]) - (np.array(DASH_BOX[0]) / 2 - r)               # rounded box: inside when <= 0
+    depth = r - np.linalg.norm(np.maximum(q, 0)) - min(q.max(), 0)                  # mm into the dash's surface
+    if depth <= 0 or ang > COLUMN_MAX_DEG:
+        raise SystemExit(f"cabin: steering column end {np.round(end, 3)} {depth * 1000:.0f} mm into the dash, "
+                         f"{ang:.1f} deg off the wheel's axis (max {COLUMN_MAX_DEG}): DASH wheel / dash")
+    print(f"COLUMN {NAME} length {np.linalg.norm(end - hub):.3f} angle {ang:.1f} deg, end {depth * 1000:.0f} mm "
+          "into the dash")
+    return hub, end, ang
 
 
 def rbox(size, r, cuts=(0, 0, 0), seg=2):
@@ -425,7 +431,7 @@ def cabin_mesh(bvh, belt, trunk_floor, trunk_end, arch, opening):
     if min(v[:, 1].min() for v in V[n_seat:]) < trunk_end:     # the last row stays ahead of the rear wall
         raise SystemExit(f"cabin: the rear seats cross the rear wall (y {trunk_end:.3f}): SEAT back / SEATS recline")
     part((0.20, 0.80, 0.22), 0.04, "console", DASH["console"])                  # centre console
-    part((1.24, 0.34, 0.16), 0.06, "dash", DASH["dash"])                        # dash, trim strip on its face
+    part(*DASH_BOX, "dash", DASH["dash"])                                        # dash, trim strip on its face
     part((1.16, 0.02, 0.035), 0.008, "trim", DASH["trim"])
     part((1.10, 0.012, 0.006), 0.002, "screen", DASH["light"], seg=1)          # ambient light line under the trim
     # trunk: sill plate over the opening's lower edge (the floor ends TRUNK_DROP under it, CABIN_INSET short of the
@@ -451,7 +457,7 @@ def cabin_mesh(bvh, belt, trunk_floor, trunk_end, arch, opening):
                         ((0.006, 0.003, 0.060), (0.110, -0.0125, 0.047), "trim")):
         v, f = rbox(size, 0.001, seg=1)
         add((v + at) @ rot_x(-12).T + DASH["screen"], f, c)
-    # steering wheel in front of the driver, tilted 70 deg back from horizontal: rim torus, hub, three spokes, column
+    # steering wheel in front of the driver, tilted 70 deg back from horizontal: rim torus, hub, three spokes
     wr = Matrix.Translation((-SEAT_X, *DASH["wheel"])) @ Matrix.Rotation(math.radians(70), 4, "X")
     nu, nv = 20, 6
     tv = [wr @ Vector(((0.15 + 0.024 * math.cos(b)) * math.cos(a), (0.15 + 0.024 * math.cos(b)) * math.sin(a),
@@ -459,10 +465,16 @@ def cabin_mesh(bvh, belt, trunk_floor, trunk_end, arch, opening):
           for a in np.linspace(0, 2 * math.pi, nu, endpoint=False) for b in np.linspace(0, 2 * math.pi, nv, endpoint=False)]
     add([p[:] for p in tv], [[i * nv + j, i * nv + (j + 1) % nv, ((i + 1) % nu) * nv + (j + 1) % nv, ((i + 1) % nu) * nv + j]
                              for i in range(nu) for j in range(nv)], "wheel")
-    for size, at in (((0.11, 0.09, 0.05), (0, 0, 0)), ((0.26, 0.03, 0.02), (0, -0.02, 0)), ((0.03, 0.13, 0.02), (0, -0.08, 0)),
-                     ((0.05, 0.05, 0.22), (0, 0, -0.12))):
+    for size, at in (((0.11, 0.09, 0.05), (0, 0, 0)), ((0.26, 0.03, 0.02), (0, -0.02, 0)), ((0.03, 0.13, 0.02), (0, -0.08, 0))):
         v, f = rbox(size, min(size) * 0.45)
         add([(wr @ Vector(p + np.array(at)))[:] for p in v], f, "wheel")
+    # column: from the hub into the dash's rear face (user 2026-11-02 img13: a fixed 0.22 column ended in mid air,
+    # 0.06-0.11 short of the dash on every car, over its top on the Cybertruck)
+    hub, end, ang = column_ends()
+    axis = (end - hub) / np.linalg.norm(end - hub)
+    rot = np.c_[(1, 0, 0), np.cross(axis, (1, 0, 0)), axis]          # local z along the column, x stays the car's x
+    v, f = rbox((0.05, 0.05, np.linalg.norm(end - hub)), 0.0225)
+    add(v @ rot.T + (hub + end) / 2, f, "wheel")
     # mesh: tris, normals made consistent (outward) on the closed parts, shell faces kept looking at the axis
     me = bpy.data.meshes.new(NAME + "_Cabin")
     me.from_pydata(np.concatenate(V).tolist(), [], F)

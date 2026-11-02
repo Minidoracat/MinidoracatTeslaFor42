@@ -14,6 +14,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.abspath(os.path.join(HERE, "..", "..", ".."))
 sys.path.insert(0, HERE)
 import vanilla  # noqa: E402
+sys.path.insert(0, os.path.join(REPO, "scripts"))
+import seat_anim  # noqa: E402  (seat_drop: the seat points sit lower, the car's clips lift the body)
 
 CARS = os.path.join(REPO, "scripts", "blender", "skf", "cars")   # one config per car: <car>.py with a dict CAR
 MEDIA = os.path.join(REPO, "MOD/MinidoracatTeslaFor42/Contents/mods/MinidoracatTeslaFor42/42/media")
@@ -832,6 +834,7 @@ def geometry(body, zmid, wl, r, tire_w, belt_z, doors_y, port_yz, extra_areas=()
         x, oz, oa = (third["x"], rz, nm.replace("Rear", "Middle")) if row3 else (SEAT["x"], z, nm)
         # the 2nd row sits SEAT["rear"] lower, the 3rd `drop` lower than the front (the roof falls towards the back)
         sy = seat_y - (third["drop"] if row3 else SEAT.get("rear", 0) if nm[0] in "RM" else 0) / S
+        sy -= seat_anim.seat_drop(CAR) / S   # at the depth reference: the car's own clips lift the body (seat_anim.py)
         own = [f"            door = Door{nm.replace('Middle', 'Rear')},"] if third and nm.startswith("Middle") else []
         out += [f"        passenger {nm}", "        {", *own, "            showPassenger = true,", "            position inside", "            {",
                 f"                offset = {f4(side * x / S, sy, z / S)},", "                rotate = 0.0 0.0 0.0,", "            }",

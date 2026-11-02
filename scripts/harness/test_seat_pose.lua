@@ -1,8 +1,8 @@
 -- The seated pose in a Tesla (client/MinidoracatTesla/SeatPose.lua): MinidoracatTeslaSeated is set while a player
--- sits in any Tesla seat, MinidoracatTeslaRecline only in the two front seats; both cleared in any other car and after
--- getting out. The anim nodes they gate (AnimSets/player-vehicle/idle/MinidoracatTesla_idle_recline.xml,
--- aim/MinidoracatTesla_aim_seated.xml, aim/MinidoracatTesla_aim_recline.xml) are engine behaviour: E2E seat-head-sp
--- and aim-seat-sp.
+-- sits in any Tesla seat, MinidoracatTeslaRecline only in the two front seats, MinidoracatTeslaCar to the car's model
+-- (its own lifted clips); all cleared in any other car and after getting out. The anim nodes they gate (AnimSets/
+-- player-vehicle/idle|aim/MinidoracatTesla_*_<model>.xml, scripts/seat_anim.py) are engine behaviour: E2E
+-- seat-head-sp and aim-seat-sp.
 local check = H.check
 
 H.section("seat pose variables")
@@ -38,6 +38,7 @@ sit(tesla, 0)
 local sent = #H.clientSent
 H.fire("OnEnterVehicle", p)
 check(p.vars.MinidoracatTeslaSeated == true and p.vars.MinidoracatTeslaRecline == true, "driver of a Tesla: seated, reclined")
+check(p.vars.MinidoracatTeslaCar == "Model3", "driver of a Tesla: the car's model picks its lifted clips")
 check(#H.clientSent == sent + 1 and H.clientSent[#H.clientSent].command == "seat",
     "the local player's enter sends seat (server/MinidoracatTesla/HatHide.lua: the hat hider, the relay to the clients near)")
 
@@ -55,7 +56,8 @@ H.fire("OnExitVehicle", p)
 sit(van, 0)
 sent = #H.clientSent
 H.fire("OnEnterVehicle", p)
-check(p.vars.MinidoracatTeslaSeated == nil and p.vars.MinidoracatTeslaRecline == nil, "cleared on getting into a vanilla car")
+check(p.vars.MinidoracatTeslaSeated == nil and p.vars.MinidoracatTeslaRecline == nil and p.vars.MinidoracatTeslaCar == nil,
+    "cleared on getting into a vanilla car")
 check(#H.clientSent == sent, "a vanilla car sends no seat")
 sit(nil)
 H.fire("OnExitVehicle", p)
@@ -66,7 +68,8 @@ H.fire("OnEnterVehicle", p)
 sit(nil)
 sent = #H.clientSent
 H.fire("OnExitVehicle", p)
-check(p.vars.MinidoracatTeslaSeated == nil and p.vars.MinidoracatTeslaRecline == nil, "cleared after getting out of a Tesla")
+check(p.vars.MinidoracatTeslaSeated == nil and p.vars.MinidoracatTeslaRecline == nil and p.vars.MinidoracatTeslaCar == nil,
+    "cleared after getting out of a Tesla")
 check(#H.clientSent == sent + 1 and H.clientSent[#H.clientSent].command == "seat",
     "out of a Tesla: seat even though the hider has not reached this client")
 sit(van, 0)
@@ -87,7 +90,7 @@ local front, rear, inVan, onFoot = varPlayer("a"), varPlayer("b"), varPlayer("c"
 front.vehicle, rear.vehicle, inVan.vehicle = tesla, tesla, van
 tesla.seats[front], tesla.seats[rear] = 1, 3
 for _, o in ipairs({ inVan, onFoot }) do -- left over from a Tesla
-    o.vars.MinidoracatTeslaSeated, o.vars.MinidoracatTeslaRecline = true, true
+    o.vars.MinidoracatTeslaSeated, o.vars.MinidoracatTeslaRecline, o.vars.MinidoracatTeslaCar = true, true, "Model3"
 end
 local online = { front, rear, inVan, onFoot }
 function getOnlinePlayers() return { size = function() return #online end, get = function(_, i) return online[i + 1] end } end
@@ -98,9 +101,10 @@ H.fire("EveryOneMinute")
 H.side(false, true)
 check(front.vars.MinidoracatTeslaSeated == true and front.vars.MinidoracatTeslaRecline == true,
     "every minute (MP client): another player in a Tesla front seat is seated and reclined")
-check(rear.vars.MinidoracatTeslaSeated == true and rear.vars.MinidoracatTeslaRecline == nil,
-    "every minute (MP client): another player in a Tesla rear seat is seated, upright")
-check(inVan.vars.MinidoracatTeslaSeated == nil and onFoot.vars.MinidoracatTeslaRecline == nil,
+check(rear.vars.MinidoracatTeslaSeated == true and rear.vars.MinidoracatTeslaRecline == nil
+    and rear.vars.MinidoracatTeslaCar == "Model3", "every minute (MP client): another player in a Tesla rear seat is seated, upright")
+check(inVan.vars.MinidoracatTeslaSeated == nil and onFoot.vars.MinidoracatTeslaRecline == nil
+    and inVan.vars.MinidoracatTeslaCar == nil and onFoot.vars.MinidoracatTeslaCar == nil,
     "every minute (MP client): cleared on players in another car or on foot")
 getOnlinePlayers = nil
 
