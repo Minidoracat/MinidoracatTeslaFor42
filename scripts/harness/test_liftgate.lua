@@ -7,13 +7,19 @@ local SRC = "MOD/MinidoracatTeslaFor42/Contents/mods/MinidoracatTeslaFor42/42/me
 -- SP load: both the server and the client handler register (the module branches on isClient/isServer at load)
 -- globals other tests set up (park_fakes.lua): put them back at the end
 local saved = { getOnlinePlayers = getOnlinePlayers, ISOpenVehicleDoor = ISOpenVehicleDoor,
-    ISCloseVehicleDoor = ISCloseVehicleDoor, HaloTextHelper = HaloTextHelper, getPlayer = getPlayer }
+    ISCloseVehicleDoor = ISCloseVehicleDoor, ISInstallVehiclePart = ISInstallVehiclePart, HaloTextHelper = HaloTextHelper,
+    getPlayer = getPlayer }
 H.side(false, false)
--- vanilla door actions: complete() opens/closes and returns true (ISOpenVehicleDoor.lua:61-97); SP wraps them too
-ISOpenVehicleDoor = { complete = function(self) self.part:getDoor():setOpen(true); return true end }
-ISCloseVehicleDoor = { complete = function(self) self.part:getDoor():setOpen(false); return true end }
+-- vanilla door actions: start() plays the anim, complete() opens/closes and returns true (ISOpenVehicleDoor.lua:26-97);
+-- SP wraps both; vanilla install: complete() fits the item (ISInstallVehiclePart.lua:93-95)
+ISOpenVehicleDoor = { start = function(self) self.vehicle:playPartAnim(self.part, "Open") end,
+    complete = function(self) self.part:getDoor():setOpen(true); return true end }
+ISCloseVehicleDoor = { start = function(self) self.vehicle:playPartAnim(self.part, "Close") end,
+    complete = function(self) self.part:getDoor():setOpen(false); return true end }
+ISInstallVehiclePart = { complete = function(self) self.part.item = self.item; return true end }
 H.stub("Vehicles/TimedActions/ISOpenVehicleDoor")
 H.stub("Vehicles/TimedActions/ISCloseVehicleDoor")
+H.stub("Vehicles/TimedActions/ISInstallVehiclePart")
 dofile(SRC)
 local L = T.Liftgate
 local halo = {}
@@ -22,7 +28,8 @@ function getPlayer() return nil end
 
 local function car(o)
     local v = H.vehicle(o)
-    v.anims, v.doorTx = {}, 0
+    v.anims, v.doorTx, v.order = {}, 0, {}
+    local models = { getModelCount = function() return 1 end }
     for _, id in ipairs({ "TrunkDoor", "DoorFrontLeft", "DoorRearLeft", "EngineDoor" }) do
         local door = { open = false, locked = id == "TrunkDoor", broken = false }
         function door:isOpen() return self.open end
@@ -32,8 +39,17 @@ local function car(o)
         function door:isLockBroken() return self.broken end
         v.parts[id] = { id = id, door = door, item = {}, getId = function(self) return self.id end,
             getDoor = function(self) return self.door end, getInventoryItem = function(self) return self.item end,
-            getVehicle = function() return v end }
+            getVehicle = function() return v end, getScriptPart = function() return models end }
+        v.order[#v.order + 1] = v.parts[id]
     end
+    -- the cabin glass part: no item, one model; setModelVisible logged ("Glass+" shown, "Glass-" hidden)
+    v.glass = {}
+    v.parts.CabinGlass = { id = "CabinGlass", getId = function(self) return self.id end, getInventoryItem = function() end,
+        getScriptPart = function() return models end,
+        setModelVisible = function(_, m, on) v.glass[#v.glass + 1] = m .. (on and "+" or "-") end }
+    v.order[#v.order + 1] = v.parts.CabinGlass
+    function v:getPartCount() return #self.order end
+    function v:getPartByIndex(i) return self.order[i + 1] end
     function v:toggleLockedDoor(part, chr, locked) -- BaseVehicle.java:1230-1244 (seated player may unlock)
         if not locked and not part.door.broken and part.door.locked then part.door.locked = false end
     end
@@ -55,82 +71,90 @@ local function denied(reason)
 end
 
 H.section("liftgate: server rules")
--- the shell bits follow the door's clip clock: 1/60 x 0.8 x the unmodded multiplier a tick (Liftgate.syncShell)
+-- the shell bits follow the door's clip clock: 1/60 x 0.8 x the unmodded multiplier a tick (Liftgate.syncShell): set as
+-- the opening swing starts, cleared as the closing one ends (L.FLIP; the glass draws last, models.md 8)
 local function tick(n) for _ = 1, n do H.fire("OnTick") end end
-local function settle() H.setMultiplier(40); tick(20); H.setMultiplier(1) end -- every swing over
+local function settle() H.setMultiplier(40); tick(70); H.setMultiplier(1) end -- every swing over (3.6 clip s at 40x)
 local ticks = H.count("OnTick")
+check(L.FLIP.open == 0 and L.FLIP.close == 1, "a bit flips as the opening swing starts and as the closing one ends")
 cmd(driver, { vid = v:getId(), part = "TrunkDoor" })
 local d = v.parts.TrunkDoor.door
 check(d.open and not d.locked and v.doorTx == 1, "driver, parked, locked: unlocked, opened, door synced")
 check(v.anims[1] == "TrunkDoor:Open" and v.sound == "Open", "SP: client handler played the Open anim and its sound")
--- Model Y doorClip TrunkDoor 3.6 clip s: the bit flips 1.2 clip s into the opening (90 ticks at 1x), 2.4 into the closing
-check(math.floor(v:getColorHue()) == 0 and H.count("OnTick") == ticks + 1,
-    "opened: the shell stays while the tailgate is under a quarter open (else a hole where it still is), one OnTick")
-tick(89)
-check(math.floor(v:getColorHue()) == 0, "...still there 89 ticks in (1x)")
-tick(1)
 check(math.floor(v:getColorHue()) == 16 and H.near(v:getColorHue() - 16, 0.69, 1e-6) and not v.colorTx
-    and H.count("OnTick") == ticks, "...tailgate bit 16 at 90 ticks, the paint hue kept, no transmitColorHSV, OnTick removed")
+    and H.count("OnTick") == ticks,
+    "opened: tailgate bit 16 at once (its window from the tailgate as it swings), paint hue kept, no transmitColorHSV, no OnTick")
 cmd(driver, { vid = v:getId(), part = "TrunkDoor" })
 check(not d.open and v.anims[2] == "TrunkDoor:Close", "second press closes")
-tick(179)
-check(math.floor(v:getColorHue()) == 16, "closed: the bit stays while the tailgate is over a quarter open (179 ticks)")
+-- Model Y doorClip TrunkDoor 3.6 clip s: 270 ticks at 1x
+tick(269)
+check(math.floor(v:getColorHue()) == 16, "closed: the bit stays while the tailgate swings shut (269 ticks)")
 tick(1)
-check(H.near(v:getColorHue(), 0.69, 1e-6) and H.count("OnTick") == ticks, "...cleared at 180 ticks, OnTick removed")
+check(H.near(v:getColorHue(), 0.69, 1e-6) and H.count("OnTick") == ticks, "...cleared at 270 ticks (3.6 clip s), OnTick removed")
 check(not d.locked, "car unlocked: the closed liftgate stays unlocked")
 v.cabinLocked = true -- locked car: the liftgate locks again when it shuts
 cmd(driver, { vid = v:getId(), part = "TrunkDoor" })
 cmd(driver, { vid = v:getId(), part = "TrunkDoor" })
 check(not d.open and d.locked, "locked car: liftgate shut from the dashboard -> locked again")
-check(H.near(v:getColorHue(), 0.69, 1e-6) and H.count("OnTick") == ticks, "...shut before the bit flipped: nothing pending")
+settle()
+check(H.near(v:getColorHue(), 0.69, 1e-6) and H.count("OnTick") == ticks, "...its swing over: bit clear, nothing pending")
 local lidE = v.parts.EngineDoor.door
 cmd(driver, { vid = v:getId(), part = "EngineDoor" })
 cmd(driver, { vid = v:getId(), part = "EngineDoor" })
 check(not lidE.open and lidE.locked, "frunk lid shut on a locked car: locked again, like the liftgate (the car locks as a whole)")
+check(H.near(v:getColorHue(), 0.69, 1e-6), "...the frunk lid has no shell bit")
 d.locked, d.broken = false, true
 cmd(driver, { vid = v:getId(), part = "TrunkDoor" })
 cmd(driver, { vid = v:getId(), part = "TrunkDoor" })
 check(not d.locked, "broken lock: shut but not locked (it could never open again)")
 d.broken, v.cabinLocked = false, false
+settle()
 local sp = car({})
 local fl0 = sp.parts.DoorFrontLeft
-local function open(o) (o and ISOpenVehicleDoor or ISCloseVehicleDoor).complete({ vehicle = sp, part = fl0, character = driver }) end
+local function act() return { vehicle = sp, part = fl0, character = driver } end
+local function open(o) (o and ISOpenVehicleDoor or ISCloseVehicleDoor).complete(act(o)) end
 local function bit() return math.floor(sp:getColorHue()) end
 open(true)
-tick(19)
-check(bit() == 0 and #sp.anims == 0, "SP door action: no bit 19 ticks in (0.8 clip s door: a third is 20 ticks at 1x), no anim broadcast")
-tick(1)
-check(bit() == 1, "...shell bit 1 for DoorFrontLeft at 20 ticks")
+check(bit() == 1 and #sp.anims == 0 and H.count("OnTick") == ticks,
+    "SP door action complete: shell bit 1 for DoorFrontLeft at once, no anim broadcast, no OnTick")
 open(false)
-tick(30)
-check(bit() == 1, "SP door closed: the bit stays 30 ticks in (two thirds: 40)")
+tick(59)
+check(bit() == 1, "SP door closed: the bit stays 59 ticks in (0.8 clip s door: 60 ticks at 1x)")
 open(true)
-tick(60)
-check(bit() == 1, "...opened again before it flipped: the bit stays (no stale flip)")
+check(bit() == 1 and H.count("OnTick") == ticks, "...opened again inside the closing swing: set, the pending clear dropped")
 open(false)
-tick(39)
-check(bit() == 1, "...closed again: still set at 39 ticks")
+tick(59)
+check(bit() == 1, "...closed again: still set at 59 ticks")
 tick(1)
-check(bit() == 0 and H.count("OnTick") == ticks, "...cleared at 40 ticks, OnTick removed")
-for _, m in ipairs({ { 5, 4, 8 }, { 20, 1, 2 }, { 40, 1, 1 } }) do -- multiplier, ticks to open, ticks to close
+check(bit() == 0 and H.count("OnTick") == ticks, "...cleared at 60 ticks, OnTick removed")
+-- the opener's start (SP runs the client wrap too): the bit with the anim, before complete
+ISOpenVehicleDoor.start(act(true))
+check(sp.anims[#sp.anims] == "DoorFrontLeft:Open" and bit() == 1, "SP Open start: the anim and the bit in the same call")
+open(true)
+ISCloseVehicleDoor.start(act(false))
+check(sp.anims[#sp.anims] == "DoorFrontLeft:Close" and bit() == 1 and H.count("OnTick") == ticks + 1,
+    "SP Close start: the anim, the bit kept for the swing, one OnTick")
+tick(30)
+open(false) -- complete half a swing later (a slow action): the start's clock stands
+tick(29)
+check(bit() == 1, "...complete keeps the start's clear: still set 59 ticks after the start")
+tick(1)
+check(bit() == 0 and H.count("OnTick") == ticks, "...cleared 60 ticks after the start")
+for _, m in ipairs({ { 5, 12 }, { 20, 3 }, { 40, 2 } }) do -- multiplier, ticks to close
     H.setMultiplier(m[1])
     open(true)
-    tick(m[2] - 1)
-    local early = bit()
-    tick(1)
     local opened = bit()
     open(false)
-    tick(m[3] - 1)
+    tick(m[2] - 1)
     local late = bit()
     tick(1)
-    check(early == 0 and opened == 1 and late == 1 and bit() == 0,
-        "game speed x" .. m[1] .. ": the bit flips " .. m[2] .. " ticks into the opening, " .. m[3] .. " into the closing")
+    check(opened == 1 and late == 1 and bit() == 0,
+        "game speed x" .. m[1] .. ": the bit set at the opening, cleared " .. m[2] .. " ticks into the closing")
 end
 H.setMultiplier(1)
 open(true)
-tick(20)
 open(false)
-tick(10) -- 0.133 of the 0.533 clip s
+tick(30) -- 0.4 of the 0.8 clip s
 H.setMultiplier(0) -- paused: the door stands still, so does the shell
 tick(100)
 check(bit() == 1, "paused mid-swing: the bit holds")
@@ -141,26 +165,25 @@ tick(1)
 check(bit() == 0, "...cleared on the 6th, as the clip got there")
 H.setMultiplier(1)
 open(true)
+open(false)
 tick(5)
 H.removeVehicle(sp) -- unloaded mid-swing; its id goes to another make (the engine reuses ids)
 local gas0 = car({ id = sp:getId(), script = "Base.CarNormal" })
-gas0.parts.DoorFrontLeft.door.open = true
 settle()
 check(H.near(gas0:getColorHue(), 0.69, 1e-6) and H.count("OnTick") == ticks,
     "a pending swing whose id is now another make's: dropped, that car's hue untouched, OnTick removed")
 -- a load: Liftgate's own OnSpawnVehicleEnd handler (the other mods' handlers need a fuller car)
 local function loaded() L.onLoad(sp) end
-H.addVehicle(sp) -- back (fl0 still open, bit still 0): OnSpawnVehicleEnd sets the bit at once, nothing pending
+H.addVehicle(sp) -- back (fl0 shut, bit still 1: unloaded inside the swing)
 loaded()
-check(bit() == 1 and H.count("OnTick") == ticks, "loaded with a door open: its bit at once, no OnTick")
-open(true) -- the same door: no change
-fl0.door.open = false -- saved shut inside the swing with the old bit
+check(bit() == 0 and H.count("OnTick") == ticks, "loaded with the door shut but its bit set: cleared at once, no OnTick")
+fl0.door.open = true -- saved open with no bit (an older save)
 loaded()
-check(bit() == 0 and H.count("OnTick") == ticks, "loaded with the door shut but its bit set: cleared at once")
-open(true)
+check(bit() == 1 and H.count("OnTick") == ticks, "loaded with a door open: its bit at once")
+open(false)
 tick(3)
-loaded() -- reloaded mid-swing (opened just before): the doors stand, the pending flip goes
-check(bit() == 1 and H.count("OnTick") == ticks, "reloaded mid-swing: set to the door at once, the pending flip dropped")
+loaded() -- reloaded mid-swing (closed just before): the doors stand, the pending clear goes with it
+check(bit() == 0 and H.count("OnTick") == ticks, "reloaded mid-swing: set to the door at once, the pending clear dropped")
 open(false)
 settle() -- the liftgate's opens and closes above
 
@@ -186,16 +209,16 @@ check(denied("NO_DOOR") and not d.open, "liftgate part uninstalled: NO_DOOR")
 v.parts.TrunkDoor.item = {}
 local n = #H.sent
 cmd(driver, { vid = v:getId(), part = "TrunkDoor" })
-local a, b = H.sent[n + 1], H.sent[n + 2]
-check(d.open and #H.sent == n + 2 and a.player == driver and b.player == passenger and a.command == "partAnim"
-    and a.args.part == "TrunkDoor" and a.args.open == true and a.args.sound == true,
-    "MP: opened, partAnim { TrunkDoor, open, sound } to every player near, the shell bit not yet")
-settle()
-local s1, s2 = H.sent[n + 3], H.sent[n + 4]
-check(#H.sent == n + 4 and s1.player == driver and s2.player == passenger and s1.command == "shell"
+local s1, s2, a, b = H.sent[n + 1], H.sent[n + 2], H.sent[n + 3], H.sent[n + 4]
+check(d.open and #H.sent == n + 4 and s1.player == driver and s2.player == passenger and s1.command == "shell"
     and s2.command == "shell" and s1.args.vid == v:getId() and s1.args.hue == v:getColorHue()
     and math.floor(s1.args.hue) == 16 and not v.colorTx,
-    "MP: then the shell hue (16 + paint) to every player near as a command, no transmitColorHSV (VehicleProperties)")
+    "MP: opened, the shell hue (16 + paint) at once to every player near as a command, no transmitColorHSV (VehicleProperties)")
+check(a.player == driver and b.player == passenger and a.command == "partAnim"
+    and a.args.part == "TrunkDoor" and a.args.open == true and a.args.sound == true,
+    "...then partAnim { TrunkDoor, open, sound } to every player near")
+settle()
+check(#H.sent == n + 4, "...nothing more once the swing is over")
 
 H.section("liftgate: only the players who can have the car loaded (Liftgate.NEAR_TILES)")
 -- the server sends a car to a connection within relevantRange * 8 tiles on both axes, at most 96
@@ -274,11 +297,12 @@ local rl, lid = v.parts.DoorRearLeft.door, v.parts.EngineDoor.door
 rl.locked = true
 n = #H.sent
 cmd(driver, { vid = v:getId(), part = "DoorRearLeft" })
-a = H.sent[n + 1]
+a = H.sent[#H.sent]
 check(rl.open and not rl.locked and a.command == "partAnim" and a.args.part == "DoorRearLeft" and a.args.sound == true,
     "locked rear left door: unlocked, opened, partAnim { DoorRearLeft, sound }")
+check(math.floor(v:getColorHue()) == 16 + 4 and H.sent[n + 1].command == "shell",
+    "shell bits at once, sent before the anim: liftgate (16) + rear left door (4)")
 settle()
-check(math.floor(v:getColorHue()) == 16 + 4, "shell bits: liftgate (16) + rear left door (4)")
 cmd(driver, { vid = v:getId(), part = "EngineDoor" })
 check(lid.open and H.sent[#H.sent].args.part == "EngineDoor", "frunk lid: lifted, partAnim EngineDoor")
 local tx = v.doorTx
@@ -303,18 +327,20 @@ H.section("door anim sync (MP server)")
 -- vanilla door actions: complete() opens/closes and returns true (ISOpenVehicleDoor.lua:61-97)
 ISOpenVehicleDoor = { complete = function(self) self.part:getDoor():setOpen(true); return true end }
 ISCloseVehicleDoor = { complete = function(self) self.part:getDoor():setOpen(false); return true end }
+ISInstallVehiclePart = { complete = function(self) self.part.item = self.item; return true end }
 H.stub("Vehicles/TimedActions/ISOpenVehicleDoor")
 H.stub("Vehicles/TimedActions/ISCloseVehicleDoor")
 dofile(SRC) -- MP server load: wraps the two actions
 local fl = v.parts.DoorFrontLeft
 n = #H.sent
 check(ISOpenVehicleDoor.complete({ vehicle = v, part = fl, character = driver }) == true, "wrapped complete keeps the vanilla result")
-b = H.sent[n + 1]
-check(#H.sent == n + 1 and b.player == passenger and b.args.part == "DoorFrontLeft" and b.args.open == true and not b.args.sound,
-    "door opened by the driver: anim to the others only (the opener played it in :start)")
+local sh = H.sent[n + 1]
+b = H.sent[n + 3]
+check(#H.sent == n + 3 and sh.command == "shell" and math.floor(sh.args.hue) == 17 and H.sent[n + 2].command == "shell"
+    and b.player == passenger and b.args.part == "DoorFrontLeft" and b.args.open == true and not b.args.sound,
+    "door opened by the driver: the shell hue to everyone at once, the anim to the others only (the opener played it in :start)")
 settle()
-check(#H.sent == n + 3 and H.sent[n + 2].command == "shell" and math.floor(H.sent[n + 2].args.hue) == 17,
-    "...then the shell hue to everyone")
+check(#H.sent == n + 3, "...nothing more once the swing is over")
 n = #H.sent
 ISCloseVehicleDoor.complete({ vehicle = v, part = fl, character = passenger })
 check(#H.sent == n + 1 and H.sent[n + 1].player == driver and H.sent[n + 1].args.open == false,
@@ -372,6 +398,39 @@ for name, s in pairs(T.Specs) do
     end
 end
 
+H.section("cabin glass: drawn after every other part model (MP server)")
+local LG = T.Liftgate -- the MP server load's module (its install wrap and repair handler)
+T.Init.CabinGlass(v, v.parts.CabinGlass)
+check(v.glass[#v.glass] == "Glass+", "init (every load, once each part has its item): the glass model shown")
+v.glass, n, fl.item = {}, #H.sent, nil
+check(ISInstallVehiclePart.complete({ vehicle = v, part = fl, item = {} }) == true, "wrapped install keeps the vanilla result")
+local gl = H.sent[n + 1]
+check(table.concat(v.glass, ",") == "Glass-,Glass+" and #H.sent == n + 2 and gl.command == "glassLast"
+    and gl.args.vid == v:getId() and #gl.args.parts == 1 and gl.args.parts[1] == "DoorFrontLeft",
+    "door fitted: the glass hidden and shown again (to the end of the model list), glassLast { the door } to every player near")
+v.glass, n = {}, #H.sent
+ISInstallVehiclePart.complete({ vehicle = v, part = fl, item = nil })
+check(#v.glass == 0 and #H.sent == n, "install that left no item (failed): nothing")
+fl.item = {}
+local bare = { id = "Battery", getId = function(self) return self.id end, getInventoryItem = function() return {} end,
+    getVehicle = function() return v end, getScriptPart = function() return { getModelCount = function() return 0 end } end }
+ISInstallVehiclePart.complete({ vehicle = v, part = bare, item = {} })
+local gasFl = gas.parts.DoorFrontLeft
+ISInstallVehiclePart.complete({ vehicle = gas, part = gasFl, item = {} })
+check(#v.glass == 0 and #gas.glass == 0 and #H.sent == n, "a part with no model, another make's door: nothing")
+LG.onVehicleCommand("vehicle", "repair", driver, { vehicle = v:getId() })
+check(#v.glass == 0 and #H.sent == n, "vanilla repair command from a player without the mechanics cheat: nothing")
+driver._admin = true
+LG.onVehicleCommand("vehicle", "repair", driver, { vehicle = v:getId() })
+gl = H.sent[n + 1]
+check(table.concat(v.glass, ",") == "Glass-,Glass+" and gl.command == "glassLast" and #gl.args.parts == 4,
+    "admin repair: glass to the end, glassLast with every fitted part that has a model (4: not CabinGlass)")
+v.glass, n = {}, #H.sent
+LG.onVehicleCommand("vehicle", "remove", driver, { vehicle = v:getId() })
+LG.onVehicleCommand("vehicle", "repairPart", driver, { vehicle = gas:getId() })
+check(#v.glass == 0 and #H.sent == n, "another vehicle command, another make's repair: nothing")
+driver._admin = nil
+
 H.section("liftgate: client")
 H.side(true, false)
 v.speed = 30
@@ -395,6 +454,44 @@ check(H.near(v:getColorHue(), 1.69, 1e-6), "client: shell sets the server's hue 
 T.ClientCommands.shell({ vid = 424242, hue = 3 })
 check(H.near(v:getColorHue(), 1.69, 1e-6), "client: shell for a car not loaded is ignored")
 v:setColorHSV(hb, v:getColorSaturation(), v:getColorValue())
+-- partAnim plays a swing here: its door's bit in the same frame (Liftgate.localSwing), cleared as the closing clip ends
+H.side(false, true)
+settle() -- the server's swings above (Model X wings) over first
+H.side(true, false)
+local cv = car({})
+local function cbit() return math.floor(cv:getColorHue()) end
+T.ClientCommands.partAnim({ vid = cv:getId(), part = "DoorFrontLeft", open = true })
+check(cbit() == 1 and H.count("OnTick") == ticks, "client partAnim Open: the door's bit at once (the server's hue on its way)")
+T.ClientCommands.partAnim({ vid = cv:getId(), part = "DoorFrontLeft", open = false })
+tick(30)
+T.ClientCommands.shell({ vid = cv:getId(), hue = cv:getColorHue() - 1 }) -- the server's clear, ahead of this swing
+check(cbit() == 1, "...the server's hue clearing it mid-swing: this client's bit stays (its swing still plays)")
+tick(29)
+check(cbit() == 1, "...Close: still set 59 ticks into the swing")
+tick(1)
+check(cbit() == 0 and H.count("OnTick") == ticks, "...cleared as the 0.8 clip s end, OnTick removed")
+T.ClientCommands.partAnim({ vid = cv:getId(), part = "EngineDoor", open = true })
+check(cbit() == 0 and H.count("OnTick") == ticks, "frunk lid: no shell bit")
+-- glassLast from the server: once the fitted part's item is here (a vehicle update, maybe after the command)
+cv.parts.DoorRearLeft.item = nil
+T.ClientCommands.glassLast({ vid = cv:getId(), parts = { "DoorRearLeft" } })
+tick(3)
+check(#cv.glass == 0 and H.count("OnTick") == ticks + 1, "client glassLast before the part's item came: waits, one OnTick")
+cv.parts.DoorRearLeft.item = {}
+tick(1)
+check(table.concat(cv.glass, ",") == "Glass-,Glass+" and H.count("OnTick") == ticks,
+    "...the item here: glass to the end of the model list, OnTick removed")
+cv.glass, cv.parts.DoorRearLeft.item = {}, nil
+T.ClientCommands.glassLast({ vid = cv:getId(), parts = { "DoorRearLeft" } })
+H.advanceMs(10001)
+tick(1)
+check(table.concat(cv.glass, ",") == "Glass-,Glass+" and H.count("OnTick") == ticks,
+    "...an item that never comes: given up after 10 s, the glass to the end anyway")
+cv.glass, cv.parts.DoorRearLeft.item = {}, {}
+T.ClientCommands.glassLast({ vid = 424242, parts = { "DoorRearLeft" } })
+tick(1)
+T.ClientCommands.glassLast({ vid = cv:getId() })
+check(#cv.glass == 0 and H.count("OnTick") == ticks, "glassLast for a car not loaded, or without parts: nothing left")
 -- the driver clicking the car picture twice a second for a minute (the fake's four doors, round and round), each
 -- request through the server's dispatch (Commands.lua CommandRate): none dropped, the busiest 10 s keeps half its
 -- budget again to spare
@@ -484,7 +581,7 @@ check(#queued == 0 and vanillaUse == 1, "another make's open hood: vanilla")
 Vehicles.Use, getPlayerMechanicsUI, ISTimedActionQueue, ISCloseVehicleDoor.new = before.use, before.mech, before.queue, before.new
 H.side(true, false)
 getOnlinePlayers, ISOpenVehicleDoor, ISCloseVehicleDoor = saved.getOnlinePlayers, saved.ISOpenVehicleDoor, saved.ISCloseVehicleDoor
-HaloTextHelper, getPlayer = saved.HaloTextHelper, saved.getPlayer
+HaloTextHelper, getPlayer, ISInstallVehiclePart = saved.HaloTextHelper, saved.getPlayer, saved.ISInstallVehiclePart
 H.side(false, true)
 settle()
 check(H.count("OnTick") == ticks, "every shell swing settled: no OnTick left (" .. H.count("OnTick") .. " of " .. ticks .. ")")

@@ -710,6 +710,7 @@ def export_doors(obs):
 CABIN_CELLS = ("floor", "liner", "seat", "base", "dash", "trim", "console", "wheel", "screen_back", "screen")
 CABIN_UV1_U = -2.5
 GLASS_UV1_SHIFT = 2.0     # glass faces: UV1 u + this (the shader takes it back off for the damage maps)
+GLASS_DOOR_U = 16.0       # a door's glass: UV1 u + this x its shell bit number (cabin.SHELL_DOORS, 1-based; 0 the body's)
 
 
 def face_classes(ob):
@@ -874,6 +875,9 @@ def geometry(body, zmid, wl, r, tire_w, belt_z, doors_y, port_yz, extra_areas=()
             out += ["                rate = 1.0,"] if live else ["                animate = false,"]
             out += ["            }"]
         out += ["        }"]
+    # every window in one static model drawn after the doors (template part CabinGlass, Liftgate.lua)
+    out += ["        part CabinGlass", "        {", "            model Glass", "            {",
+            f"                file = {NAME}_Glass,", "            }", "        }"]
     block = "\n".join(out) + "\n"
     open(os.path.join(TMP, "geometry_block.txt"), "w", newline="\n").write(block)
     # splice into the vehicle script: everything after the geometry marker up to the vehicle's closing brace is ours

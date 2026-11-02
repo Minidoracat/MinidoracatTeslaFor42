@@ -19,7 +19,7 @@ if len(sys.argv[sys.argv.index("--") + 1:]) > 3:
     M = sys.argv[sys.argv.index("--") + 4]
 K = 0.826                                   # grid units per metre
 bpy.ops.wm.read_factory_settings(use_empty=True)
-for f in (name, name + "_Doors"):
+for f in (name, name + "_Doors", name + "_Glass"):
     bpy.ops.import_scene.fbx(filepath=f"{M}/models_X/vehicles/{f}.fbx")
 for o in bpy.data.objects:
     if o.type == "ARMATURE":

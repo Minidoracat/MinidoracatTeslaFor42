@@ -48,6 +48,7 @@ local gt = {
     getMinutes = function() return 42 end,
     getMinutesPerDay = function() return 90 end,
     getDeltaMinutesPerDay = function() return 30 / 90 end, -- GameTime.java:433-435
+    getUnmoddedMultiplier = function() return 1 end, -- a door's clip clock (T.clipStep: Liftgate's shell bits)
 }
 set("getGameTime", function() return gt end) -- tests drive the clock
 -- outside air the car sits in (ClimateManager.getAirTemperatureForSquare with the car: base + cabin offset)
@@ -131,6 +132,8 @@ local function part(id, opts)
     function p:setLightActive(on) self.lightActive = on end
     function p:getWindow() return self.window and {} or nil end -- VehicleWindow: its health is the part condition
     function p:getCondition() return self.cond end
+    -- the part script: no models (the fakes' parts are glass, batteries, containers; Liftgate's install wrap asks)
+    function p:getScriptPart() return { getModelCount = function() return 0 end } end
     return p
 end
 

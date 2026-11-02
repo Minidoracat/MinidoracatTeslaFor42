@@ -39,34 +39,45 @@ local function sendNear(v, cmd, args, except)
     T.sendClients(function(p) return math.abs(p:getX() - x) <= r and math.abs(p:getY() - y) <= r end, cmd, args, except)
 end
 
--- Open doors ride in the colour hue's integer part (bit k-1 for SHELL_DOORS[k]): the shader hides the cabin shell's
--- wall behind an open door (else the far wall showed through the roof glass where the door opening is). Hue is the
+-- Doors open or swinging ride in the colour hue's integer part (bit k-1 for SHELL_DOORS[k]): the shader draws a door's
+-- window from the door model while its bit is set and from its closed copy in the cabin glass model (drawn last,
+-- CabinGlass below) while it is clear, and drops the cabin shell's wall behind a door whose bit is set. Hue is the
 -- only per-car shader value Lua sets that vanilla leaves alone (BaseVehicle.updateLights -> painColor, every render,
 -- BaseVehicle.java:5817), it is saved (:2663) and goes out with the car (VehicleFullUpdatePacket.java:126) and every
 -- VehicleProperties (VehicleProperties.java:42); every reader drops the integer part (vehicle_common.frag.glsl:12
 -- mod 1, the paint shader's mod 1, Color.HSBtoRGB).
 L.SHELL_DOORS = { "DoorFrontLeft", "DoorFrontRight", "DoorRearLeft", "DoorRearRight", "TrunkDoor" }
--- A bit follows its door part way into the swing, not at once: the vanilla door actions take no time (getDuration 0,
--- ISCloseVehicleDoor.lua:92-94), and behind the near glass the far door is hidden by depth for the whole swing (the
--- body draws first, models.md 8), so flipping on complete dropped the wall while the door still covered the opening
--- (a hole) and put it back the moment the door started to shut (a slab in the open doorway for the whole swing:
--- E2E doors-audit-sp tesla-doorsaudit-1101-y-a W-fr-close-c25 against W-fr-o75). The wall stands while the door is
--- under about a quarter open: the bit flips a third of the way into the opening swing and two thirds into the closing
--- one (the eased clip, cars/<car>.py via convert.py: smoothstep(1/3) = 0.26 of the angle). Counted on the door's own
--- clock, T.clipStep (Core.lua): fast forward ends the swing sooner, a pause holds it. Clips are 0.8 s, else Specs
--- doorClip[part].
--- [vid] = { [k] = clip seconds left before bit k-1 flips to its door's state }; the OnTick runs while any is pending
+local SHELL_K = {}
+for k, id in ipairs(L.SHELL_DOORS) do SHELL_K[id] = k end
+-- When a bit flips, as fractions of the door's clip: as the opening swing starts and as the closing one ends. The
+-- glass draws after every door, so a far door shows through the glass for its whole swing; the closed copy hands over
+-- to the door's own window only where the two are the same (the clip's first / last frame). The vanilla door actions
+-- take no time (getDuration 0, ISCloseVehicleDoor.lua:92-94), so the clear waits out the closing clip on the door's
+-- own clock, T.clipStep (Core.lua): fast forward ends the swing sooner, a pause holds it. Clips are 0.8 s, else Specs
+-- doorClip[part]. Read by E2E doors-audit-sp.
+L.FLIP = { open = 0, close = 1 }
+-- [vid] = { [k] = clip seconds left before bit k-1 clears }; the OnTick runs while any is pending. The server (and SP)
+-- then sets it to its door's state; an MP client that played the swing itself (L.localSwing) clears it, and the
+-- server's hue follows (shell command)
 local pending, ticking = {}, false
-local function flipClip(vehicle, id, open)
+local function empty(t)
+    for _ in pairs(t) do return false end
+    return true
+end
+local function flipClip(vehicle, id)
     local c = T.spec(vehicle) and T.spec(vehicle).doorClip
-    return (c and c[id] or 0.8) * (open and 1 / 3 or 2 / 3)
+    return (c and c[id] or 0.8) * L.FLIP.close
+end
+local function setBit(vehicle, k, on)
+    local h, b = vehicle:getColorHue(), 2 ^ (k - 1)
+    if (math.floor(math.floor(h) / b) % 2 == 1) == on then return end
+    vehicle:setColorHSV(h + (on and b or -b), vehicle:getColorSaturation(), vehicle:getColorValue())
 end
 local shellTick
 -- add / remove only on a change: Event.trigger walks the list by index (Event.java:52-62), so taking the tick out and
 -- back in from inside it would skip the next mod's OnTick once
 local function retick()
-    local left = false
-    for _ in pairs(pending) do left = true; break end
+    local left = not empty(pending)
     if left == ticking then return end
     ticking = left
     if left then Events.OnTick.Add(shellTick) else Events.OnTick.Remove(shellTick) end
@@ -74,21 +85,30 @@ end
 shellTick = function()
     local step, due = T.clipStep(), {}
     for vid, ks in pairs(pending) do
-        local hit = false
         for k, left in pairs(ks) do
             ks[k] = left - step
-            hit = hit or ks[k] <= 1e-6
+            if ks[k] <= 1e-6 then due[vid] = true end
         end
-        if hit then due[#due + 1] = vid end
     end
-    for _, vid in ipairs(due) do
+    for vid in pairs(due) do
         local v = getVehicleById(vid)
         -- unloaded, or the id now another car's: drop it (OnSpawnVehicleEnd sets a car's bits when it loads)
-        if v and T.isTesla(v) then L.syncShell(v) else pending[vid] = nil end
+        if not (v and T.isTesla(v)) then
+            pending[vid] = nil
+        elseif isClient() then
+            local ks = pending[vid]
+            for k, left in pairs(ks) do
+                if left <= 1e-6 then ks[k] = nil; setBit(v, k, false) end
+            end
+            if empty(ks) then pending[vid] = nil end
+        else
+            L.syncShell(v)
+        end
     end
     retick()
 end
--- now: set the bits to the doors at once (a car just loaded: its doors stand where they were saved)
+-- The server (and SP) sets the bits from the doors: an open door's at once, a shut door's after its closing clip;
+-- now: all at once (a car just loaded: its doors stand where they were saved)
 function L.syncShell(vehicle, now)
     local h = vehicle:getColorHue()
     local was, bits, vid = math.floor(h), 0, vehicle:getId()
@@ -98,17 +118,15 @@ function L.syncShell(vehicle, now)
         local door = part and part:getDoor()
         local bit = 2 ^ (k - 1)
         local want, have = door and door:isOpen() or false, math.floor(was / bit) % 2 == 1
-        if now or not door or want == have then
+        if now or not door or want or want == have then
             have, ks[k] = want, nil
         else
-            ks[k] = ks[k] or flipClip(vehicle, id, want)
-            if ks[k] <= 1e-6 then have, ks[k] = want, nil end
+            ks[k] = ks[k] or flipClip(vehicle, id)
+            if ks[k] <= 1e-6 then have, ks[k] = false, nil end
         end
         if have then bits = bits + bit end
     end
-    local any = false
-    for _ in pairs(ks) do any = true; break end
-    pending[vid] = any and ks or nil
+    pending[vid] = not empty(ks) and ks or nil
     retick()
     local hue = h - was + bits
     if hue == h then return end
@@ -120,6 +138,19 @@ function L.syncShell(vehicle, now)
     -- ponytail: no sequence number; a resent command overtaking a newer one (RELIABLE, unordered: PacketTypes.java:510)
     -- leaves the older hue until the next door change or VehicleProperties. Add a per-car counter if it shows up.
     sendNear(vehicle, "shell", { vid = vehicle:getId(), hue = hue })
+end
+-- Every client that plays a door's swing (and SP) sets that door's bit in the same frame, so its window never shows
+-- twice or not at all while the server's hue travels: the opener in the vanilla action's start (below), everyone
+-- else on partAnim. Opening: set now; closing: cleared when the clip ends. The server's hue stays the saved truth.
+function L.localSwing(vehicle, part, open)
+    local k = SHELL_K[part:getId()]
+    if isServer() or not k or not T.isTesla(vehicle) then return end
+    local vid = vehicle:getId()
+    local ks = pending[vid] or {}
+    ks[k] = not open and flipClip(vehicle, part:getId()) or nil
+    if open then setBit(vehicle, k, true) end
+    pending[vid] = not empty(ks) and ks or nil
+    retick()
 end
 
 -- client: the dashboard's car picture
@@ -133,6 +164,24 @@ function L.toggle(player, vehicle, id)
     return true
 end
 
+-- Cabin glass (part CabinGlass, model Glass: every window of the car, convert.py pieces) draws after every other part
+-- model, so it blends over a far door instead of hiding it by depth. A car draws its part models in the order they
+-- became visible (BaseVehicle.models: setModelVisible appends, BaseVehicle.java:1707-1754; ModelSlotRenderData.java:
+-- 139-144,210-218). Its init shows it after every part got its item (createPhysics: createParts then initParts,
+-- BaseVehicle.java:868-869), on the server and on each client that loads the car (VehicleFullUpdatePacket.java:86-90).
+-- A part model shown later (a door, liftgate, hood, tonneau or tire fitted again) lands after it, so the glass is
+-- hidden and shown again to go back to the end. An MP client adds the fitted part's model when the part's item reaches
+-- it (VehiclePartItem.java:28) and never reorders the models it has to the server's list (VehiclePartModels.java:
+-- 22-46), so each client does the same once that item is there.
+T.Init = T.Init or {}
+function T.Init.CabinGlass(vehicle, part) part:setModelVisible("Glass", true) end
+function L.glassLast(vehicle)
+    local p = vehicle:getPartById("CabinGlass")
+    if not p then return end
+    p:setModelVisible("Glass", false)
+    p:setModelVisible("Glass", true)
+end
+
 -- every client that has the car loaded: part anim (no-op until the part has a model anim,
 -- BaseVehicle.java:2012-2048) and, with `sound`, the anim's sound from the vehicle script (template TrunkDoor:
 -- VehicleTrunkOpenStandard / VehicleTrunkCloseStandard; BaseVehicle.java:2090-2097)
@@ -144,11 +193,59 @@ if not isServer() then
         if not part or not part:getDoor() then return end
         local anim = args.open and "Open" or "Close"
         v:playPartAnim(part, anim)
+        L.localSwing(v, part, args.open == true)
         if args.sound then v:playPartSound(part, getPlayer(), anim) end
     end
-    T.ClientCommands.shell = function(args) -- L.syncShell's hue from the server
+    -- L.syncShell's hue from the server. A closing swing this client still plays keeps its bit: the server times its
+    -- clear on its own OnTick clock, which runs ahead of the clients' (E2E tesla-glass-1102-mp-y-e: cleared on B 0.4-0.6
+    -- clip s into the 0.8 s swing; not proven why, likely the dedicated server's fpsMultiplier, a running average of its
+    -- frame rate that drops at once and rises by 1 a frame, GameServer.java:1112-1118)
+    T.ClientCommands.shell = function(args)
         local v = getVehicleById(args.vid)
-        if v and args.hue then v:setColorHSV(args.hue, v:getColorSaturation(), v:getColorValue()) end
+        if not (v and args.hue) then return end
+        v:setColorHSV(args.hue, v:getColorSaturation(), v:getColorValue())
+        for k in pairs(pending[args.vid] or {}) do setBit(v, k, true) end
+    end
+    -- L.glassAfter from the server: the glass back to the end once these parts' items are here (they come in a vehicle
+    -- update, often after this command); [vid] = { parts, till }, given up after 10 s
+    local waiting, wticking = {}, false
+    local function glassTick()
+        local now = getTimestampMs()
+        for vid, w in pairs(waiting) do
+            local v, ready = getVehicleById(vid), true
+            for _, id in ipairs(w.parts) do
+                local p = v and v:getPartById(id)
+                if p and not p:getInventoryItem() then ready = false end
+            end
+            if not v or ready or now > w.till then
+                if v and T.isTesla(v) then L.glassLast(v) end
+                waiting[vid] = nil
+            end
+        end
+        if empty(waiting) then
+            wticking = false
+            Events.OnTick.Remove(glassTick)
+        end
+    end
+    T.ClientCommands.glassLast = function(args)
+        if type(args.parts) ~= "table" then return end
+        waiting[args.vid] = { parts = args.parts, till = getTimestampMs() + 10000 }
+        if not wticking then
+            wticking = true
+            Events.OnTick.Add(glassTick)
+        end
+    end
+    -- the opener's own swing (and SP): its bit in the frame the vanilla action plays the anim (:start)
+    require "Vehicles/TimedActions/ISOpenVehicleDoor"
+    require "Vehicles/TimedActions/ISCloseVehicleDoor"
+    for cls, open in pairs({ [ISOpenVehicleDoor] = true, [ISCloseVehicleDoor] = false }) do
+        local start = cls.start
+        cls.start = function(self)
+            start(self)
+            if self.vehicle and self.part and self.part:getVehicle() == self.vehicle then
+                L.localSwing(self.vehicle, self.part, open)
+            end
+        end
     end
 end
 
@@ -319,6 +416,41 @@ if not isClient() then
         if ok and v and T.isTesla(v) and v:areAllDoorsLocked() then L.lockLids(v, true) end
         return ok
     end
+
+    -- a part model shown again (the CabinGlass note above): the glass back to the end here, and on the clients near once
+    -- those parts' items reach them
+    function L.glassAfter(v, parts)
+        L.glassLast(v)
+        if isServer() then sendNear(v, "glassLast", { vid = v:getId(), parts = parts }) end
+    end
+    local function modelled(part)
+        return part:getInventoryItem() and part:getId() ~= "CabinGlass" and part:getScriptPart():getModelCount() > 0
+    end
+    -- fitting a part (SP or MP server, like the door actions above)
+    require "Vehicles/TimedActions/ISInstallVehiclePart"
+    local install = ISInstallVehiclePart.complete
+    ISInstallVehiclePart.complete = function(self)
+        local ok = install(self)
+        local v, part = self.vehicle, self.part
+        if v and part and T.isTesla(v) and modelled(part) then
+            L.glassAfter(v, { part:getId() })
+        end
+        return ok
+    end
+    -- the admin / debug repair (vanilla vehicle commands repair, repairPart: VehicleCommands.lua:330-370; a mod's
+    -- OnClientCommand runs after vanilla's) refits every missing part. Named so harness test_liftgate runs it alone.
+    function L.onVehicleCommand(module, command, player, args)
+        if module ~= "vehicle" or (command ~= "repair" and command ~= "repairPart") then return end
+        local v = type(args) == "table" and getVehicleById(args.vehicle)
+        if not (v and T.isTesla(v)) or isServer() and not checkPermissions(player, Capability.UseMechanicsCheat) then return end
+        local parts = {}
+        for i = 0, v:getPartCount() - 1 do
+            local part = v:getPartByIndex(i)
+            if modelled(part) then parts[#parts + 1] = part:getId() end
+        end
+        L.glassAfter(v, parts)
+    end
+    Events.OnClientCommand.Add(L.onVehicleCommand)
 
     -- every load (BaseVehicle.java:904): a locked car from an older save or the world spawn (cabin doors locked by
     -- Vehicles.Create.Door, the hood never) gets its shut lids locked; the shell bits are set to the saved doors at once

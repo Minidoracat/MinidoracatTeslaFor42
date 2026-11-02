@@ -141,7 +141,7 @@ def script_seats(path):
 def shell_tesla(car):
     bpy.ops.wm.read_factory_settings(use_empty=True)
     name = f"MinidoracatTesla_{car}"
-    for f in (name, name + "_Doors"):
+    for f in (name, name + "_Doors", name + "_Glass"):
         bpy.ops.import_scene.fbx(filepath=f"{M}/models_X/vehicles/{f}.fbx")
     for o in bpy.data.objects:
         if o.type == "ARMATURE":

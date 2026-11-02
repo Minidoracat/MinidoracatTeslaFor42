@@ -1,19 +1,24 @@
 #version 120
 
-// Model Y body, doors, tailgate and frunk lid in one draw each: vanilla vehicle_multiuv.frag for the paint, plus the
-// see-through glass and the 3-D cabin, told apart by UV1 (scripts/blender/skf/convert.py pieces):
+// Model Y body, doors, tailgate, frunk lid and the cabin glass in one draw each: vanilla vehicle_multiuv.frag for the
+// paint, plus the see-through glass and the 3-D cabin, told apart by UV1 (scripts/blender/skf/convert.py pieces):
 //   UV1 u in [0, 1]  paint: vanilla vehicle_multiuv / _noreflect plus the paint sheen (SHEEN_* below)
-//   UV1 u in [2+2k, 3+2k]  glass face of pane zone k (GLASS_ZONE below, convert.py GLASS_ZONES): UV1 - (2+2k, 0) is its
+//   UV1 u in [2+2k+16d, 3+2k+16d]  glass face of pane zone k (GLASS_ZONE below, convert.py GLASS_ZONES) of door d
+//                    (cabin.py SHELL_DOORS 1-based, 0 the body's; pzveh.py GLASS_DOOR_U): UV1 - (2+2k+16d, 0) is its
 //                    damage UV; translucent per pane, a hole when the window is removed, open or smashed (uninstall
 //                    matrices), cracks and blood turn it opaque where marked. The zone rides in UV1, not the mask:
 //                    the mask is bilinear and only counts within 0.01 of a zone colour, so a glass edge read from it
-//                    is a staircase of its 512 texels
+//                    is a staircase of its 512 texels. A door's window is in the door's mesh (skinned, it swings) and
+//                    a closed copy in the cabin glass model (static, drawn after every door, so it blends over a far
+//                    door instead of hiding it by depth): the door's own draws while door d's bit is set (open or
+//                    swinging, Liftgate.lua L.FLIP), the copy while it is clear and the door is fitted
 //   UV1 u <= -2.5    cabin: palette cell = -2.5 - u (CABIN below; u, since the loader flips v, ImportedStaticMesh.java:
 //                    59); lit with a floor so seats keep an outline at night, the screen glows. The shell's faces in a
 //                    door opening carry door k + d = 1 - v (cabin.py SHELL_DOORS; d < 0 inside the opening, linear,
 //                    so the cut follows the sill / arch / tailgate edge per pixel) and are dropped there while that
-//                    door is open (bit k-1 of the paint hue's integer part, Liftgate.lua syncShell; every hue reader
-//                    takes it mod 1) or removed (its uninstall slot, BaseVehicle.doDoorDamage / doOtherBodyWorkDamage)
+//                    door's bit is set (bit k-1 of the paint hue's integer part, Liftgate.lua syncShell; every hue
+//                    reader takes it mod 1) or it is removed (its uninstall slot, BaseVehicle.doDoorDamage /
+//                    doOtherBodyWorkDamage)
 // Inside one mesh the triangles draw in index order: paint, cabin, glass (pzveh.py order_faces), so the glass blends
 // over the cabin and the seated characters drawn before the car.
 // A mod shader name is never swapped for _noreflect (ModelManager.java:1298-1311): the vertex shader reports whether
@@ -27,6 +32,7 @@ varying vec2 texCoords1;
 varying vec4 positionEye;
 varying float reflectionsOn;
 varying vec3 viewModel;
+varying float skinned;      // 1 in the skinned vert (doors), 0 in the static one (body, cabin glass)
 
 uniform sampler2D Texture0;
 uniform vec4 TexturePainColor;
@@ -134,12 +140,34 @@ const vec3 CABIN[10] = vec3[10](
 	vec3(170.0, 192.0, 214.0)); // screen: lit by itself
 const int CABIN_SCREEN = 9;
 const float NIGHT_FLOOR = 0.12;    // cabin's lowest lighting (calibration knob)
+const float GLASS_DOOR_U = 16.0;   // pzveh.py
+
+// door d (cabin.py SHELL_DOORS, 1-based): its bit in the paint hue's integer part (open or swinging, Liftgate.lua)
+float doorBit(int door)
+{
+	return mod(floor(floor(TexturePainColor.x) / exp2(float(door - 1))), 2.0);
+}
+// door d removed: uninstall slot i at [i % 4][i / 4] (uploaded transposed, Shader.setMatrix): 1, 8, 5, 12 and 2nd 10
+float doorGone(int door)
+{
+	return door == 1 ? TextureUninstall1[1][0] : door == 2 ? TextureUninstall1[0][2]
+		: door == 3 ? TextureUninstall1[1][1] : door == 4 ? TextureUninstall1[0][3] : TextureUninstall2[2][2];
+}
 
 void main()
 {
 	float glassFace = step(1.5, texCoords1.x);
-	float glassZone = glassFace * floor((texCoords1.x - 2.0) * 0.5);
-	vec2 uv1 = texCoords1 - vec2(glassFace * (2.0 + 2.0 * glassZone), 0.0);
+	float glassDoor = glassFace * floor((texCoords1.x - 2.0) / GLASS_DOOR_U);
+	float glassZone = glassFace * floor((texCoords1.x - 2.0 - GLASS_DOOR_U * glassDoor) * 0.5);
+	vec2 uv1 = texCoords1 - vec2(glassFace * (2.0 + 2.0 * glassZone + GLASS_DOOR_U * glassDoor), 0.0);
+
+	// a door's window: the door's own while its bit is set, the closed copy in the glass model while it is clear
+	if (glassDoor > 0.5)
+	{
+		int d = int(glassDoor + 0.5);
+		if (abs(doorBit(d) - skinned) > 0.5 || skinned < 0.5 && doorGone(d) > 0.5)
+			discard;
+	}
 
 	vec3 normal = normalize(vertNormal);
 	vec4 tex = texture2D(Texture0, texCoords);
@@ -186,10 +214,8 @@ void main()
 		int door = int(floor(kd + 0.5));
 		if (door > 0 && kd < float(door))
 		{
-			float open = mod(floor(floor(TexturePainColor.x) / exp2(float(door - 1))), 2.0);
-			// uninstall slot i at [i % 4][i / 4] (uploaded transposed, Shader.setMatrix): 1, 8, 5, 12 and 2nd 10
-			float gone = door == 1 ? TextureUninstall1[1][0] : door == 2 ? TextureUninstall1[0][2]
-				: door == 3 ? TextureUninstall1[1][1] : door == 4 ? TextureUninstall1[0][3] : TextureUninstall2[2][2];
+			float open = doorBit(door);
+			float gone = doorGone(door);
 			if (open + gone > 0.5)
 				discard;
 		}

@@ -6,10 +6,20 @@ module Base
        0.5495 = 1 / vehicle scale 1.82, so vertex x model scale x vehicle scale = vertex (vanilla uses 0.008 with
        centimetre meshes). MinidoracatTesla_vehicle = vanilla vehicle_multiuv (paint, mask, damage, rust, blood,
        reflection, lights, removed parts) plus the see-through glass and the 3-D cabin, which ride in the same meshes:
-       the body carries the cabin and the windscreen / roof / quarter glass, each door and the tailgate its own window. */
+       the body carries the cabin, each door and the tailgate its own window, and the Glass model (part CabinGlass,
+       drawn after every other part model) every window: the body's glass and a closed copy of each door's. */
     model MinidoracatTesla_ModelY
     {
         mesh = vehicles/MinidoracatTesla_ModelY,
+        shader = MinidoracatTesla_vehicle,
+        static = true,
+        invertX = false,
+        scale = 0.5495,
+    }
+
+    model MinidoracatTesla_ModelY_Glass
+    {
+        mesh = vehicles/MinidoracatTesla_ModelY_Glass,
         shader = MinidoracatTesla_vehicle,
         static = true,
         invertX = false,
@@ -85,6 +95,15 @@ module Base
         scale = 0.5495,
     }
 
+    model MinidoracatTesla_Model3_Glass
+    {
+        mesh = vehicles/MinidoracatTesla_Model3_Glass,
+        shader = MinidoracatTesla_vehicle,
+        static = true,
+        invertX = false,
+        scale = 0.5495,
+    }
+
     model MinidoracatTesla_Model3_Wheel
     {
         mesh = vehicles/MinidoracatTesla_Model3_Wheel,
@@ -147,6 +166,15 @@ module Base
     model MinidoracatTesla_Cybertruck
     {
         mesh = vehicles/MinidoracatTesla_Cybertruck,
+        shader = MinidoracatTesla_vehicle,
+        static = true,
+        invertX = false,
+        scale = 0.5495,
+    }
+
+    model MinidoracatTesla_Cybertruck_Glass
+    {
+        mesh = vehicles/MinidoracatTesla_Cybertruck_Glass,
         shader = MinidoracatTesla_vehicle,
         static = true,
         invertX = false,
@@ -228,6 +256,15 @@ module Base
         scale = 0.5495,
     }
 
+    model MinidoracatTesla_ModelS_Glass
+    {
+        mesh = vehicles/MinidoracatTesla_ModelS_Glass,
+        shader = MinidoracatTesla_vehicle,
+        static = true,
+        invertX = false,
+        scale = 0.5495,
+    }
+
     model MinidoracatTesla_ModelS_Wheel
     {
         mesh = vehicles/MinidoracatTesla_ModelS_Wheel,
@@ -290,6 +327,15 @@ module Base
     model MinidoracatTesla_ModelX
     {
         mesh = vehicles/MinidoracatTesla_ModelX,
+        shader = MinidoracatTesla_vehicle,
+        static = true,
+        invertX = false,
+        scale = 0.5495,
+    }
+
+    model MinidoracatTesla_ModelX_Glass
+    {
+        mesh = vehicles/MinidoracatTesla_ModelX_Glass,
         shader = MinidoracatTesla_vehicle,
         static = true,
         invertX = false,

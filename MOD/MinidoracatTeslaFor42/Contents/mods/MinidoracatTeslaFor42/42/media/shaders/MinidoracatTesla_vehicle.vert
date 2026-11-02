@@ -11,6 +11,7 @@ varying vec2 texCoords1;
 varying vec4 positionEye;
 varying float reflectionsOn;
 varying vec3 viewModel;
+varying float skinned;
 
 layout (location = 0) in vec4 vertex;
 layout (location = 1) in vec4 normal;
@@ -44,6 +45,7 @@ void main()
 	viewModel = normalize(cross(vec3(m[0][0], m[1][0], m[2][0]), vec3(m[0][1], m[1][1], m[2][1])));
 	viewModel *= -sign(dot(viewModel, r2));
 	vertColour = vec3(1.0, 1.0, 1.0);
+	skinned = 1.0;   // a door's window draws from here while its bit is set (the frag)
 
 	// the reflection map (the 512 x 512 sky, SkyBox.java:207) is bound only with reflections on in GL 3.3 (Model.java:
 	// 556-570); unit 8 is empty otherwise, and an empty unit reads 1 x 1 on NVIDIA (0 x 0 elsewhere). GL 2.1 mode

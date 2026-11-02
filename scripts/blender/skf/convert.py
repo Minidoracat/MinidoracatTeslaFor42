@@ -1719,7 +1719,29 @@ def pieces(car, c, shift):
     body_t.append(ct + len(bodyV))
     bodyV = np.concatenate([bodyV, cv + shift])
     body_a.append(ca)
-    body = pv.soup_object(pv.NAME, bodyV - shift, np.concatenate(body_t), np.concatenate(body_a), mat)
+    Tb, Ab = np.concatenate(body_t), np.concatenate(body_a)
+    body = pv.soup_object(pv.NAME, bodyV - shift, Tb, Ab, mat)
+    # glass drawn last (template part CabinGlass, Liftgate.lua): every window in a static model drawn after every door,
+    # so it blends over a far door instead of hiding it by depth (models.md 8). The body's glass moves there (below,
+    # after skf_doors.blend keeps the whole body for view / appcar); each door keeps its window and the glass model
+    # gets a closed copy, both tagged with the door's shell bit number k in UV1 u (+ GLASS_DOOR_U x k): the frag draws
+    # the door's own window while bit k is set (open or swinging) and the copy while it is clear
+    gb_ = uv1_class(Ab) == 2
+    gl_v, gl_t, gl_a, n = [bodyV - shift], [Tb[gb_]], [Ab[gb_]], len(bodyV)
+    for i, (pname, P, t, a) in enumerate(meshes):
+        g = uv1_class(a) == 2
+        if not g.any():
+            continue
+        if pname not in cab.SHELL_DOORS:
+            raise SystemExit(f"{pname}: glass but no shell bit (cabin.SHELL_DOORS)")
+        a = a.copy()
+        a[g, :, 2] += pv.GLASS_DOOR_U * (cab.SHELL_DOORS.index(pname) + 1)
+        meshes[i] = (pname, P, t, a)
+        gl_v.append(P)
+        gl_t.append(t[g] + n)
+        gl_a.append(a[g])
+        n += len(P)
+    glass_ob = pv.soup_object(pv.NAME + "_Glass", np.concatenate(gl_v), np.concatenate(gl_t), np.concatenate(gl_a), mat)
     arm = bpy.data.objects.new("VehicleSkeleton", bpy.data.armatures.new("VehicleSkeleton"))
     bpy.context.scene.collection.objects.link(arm)
     pv.select_only(arm)
@@ -1799,40 +1821,51 @@ def pieces(car, c, shift):
     for pb in arm.pose.bones:
         pb.location, pb.rotation_quaternion = (0, 0, 0), (1, 0, 0, 0)
     sc.frame_start, sc.frame_end = 1, end
-    for o in [body] + obs[1:]:
+    for o in [body, glass_ob] + obs[1:]:
         pv.order_faces(o)
+    bpy.ops.wm.save_as_mainfile(filepath=os.path.join(TMP, "skf_doors.blend"))   # the body with its glass (view, appcar)
+    pv.keep_faces(body, pv.face_classes(body) != 2)
     pv.export_fbx(body, os.path.join(pv.VEH_DIR, pv.NAME + ".fbx"))
+    pv.export_fbx(glass_ob, os.path.join(pv.VEH_DIR, glass_ob.name + ".fbx"))
     pv.export_doors(obs)
-    bpy.ops.wm.save_as_mainfile(filepath=os.path.join(TMP, "skf_doors.blend"))
-    counts = {o.name: pv.tris(o) for o in [body] + obs[1:]}
-    cls = {o.name: [int((pv.face_classes(o) == k).sum()) for k in range(3)] for o in [body] + obs[1:]}
+    pieces_ = [body, glass_ob] + obs[1:]
+    counts = {o.name: pv.tris(o) for o in pieces_}
+    cls = {o.name: [int((pv.face_classes(o) == k).sum()) for k in range(3)] for o in pieces_}
     print("TRIS", counts, "total", sum(counts.values()), "paint/cabin/glass", cls)
-    # read back: two UV layers, one bone group per door, faces still paint -> cabin -> glass
+    # read back: two UV layers, one bone group per door, faces still paint -> cabin -> glass, every pane where it belongs
     def zones(o):
-        """Glass panes in o (GLASS_ZONES names) read back from UV1: the frag's floor((u - 2) / 2)."""
+        """(door k, pane) of o's glass faces (GLASS_ZONES names) read back from UV1: the frag's floor((u - 2) / 16) and
+        floor((u - 2) mod 16 / 2)."""
         u = np.empty(len(o.data.loops) * 2)
         o.data.uv_layers["UV1"].data.foreach_get("uv", u)
         ls = np.empty(len(o.data.polygons), np.int64)
         o.data.polygons.foreach_get("loop_start", ls)
         fu = u[0::2][ls]
-        return {GLASS_ZONES[int(k)] for k in np.floor((fu[fu > 1.5] - pv.GLASS_UV1_SHIFT) / 2)}
+        t = fu[fu > 1.5] - pv.GLASS_UV1_SHIFT
+        return {(int(k), GLASS_ZONES[int(z)]) for k, z in zip(np.floor(t / pv.GLASS_DOOR_U),
+                                                                np.floor(np.mod(t, pv.GLASS_DOOR_U) / 2))}
     info = lambda o: (o.name, pv.tris(o), len(o.vertex_groups), [u.name for u in o.data.uv_layers],  # noqa: E731
                       pv.face_classes(o), zones(o))
-    got = [info(pv.import_fbx(os.path.join(pv.VEH_DIR, pv.NAME + ".fbx")))]
+    glass_name = glass_ob.name
+    got = [info(pv.import_fbx(os.path.join(pv.VEH_DIR, nm + ".fbx"))) for nm in (pv.NAME, glass_name)]
     bpy.ops.wm.read_factory_settings(use_empty=True)
     bpy.ops.import_scene.fbx(filepath=os.path.join(pv.VEH_DIR, pv.DOORS_FBX + ".fbx"), automatic_bone_orientation=False)
     got += sorted(info(o) for o in bpy.data.objects if o.type == "MESH")
-    want = {pv.NAME if k == "Body" else k: v for k, v in PANES.items()}
+    want = {pv.NAME: set(), glass_name: {(0, z) for z in PANES["Body"]}}
+    for k, v in PANES.items():
+        if k != "Body":
+            want[k] = {(cab.SHELL_DOORS.index(k) + 1 if k in cab.SHELL_DOORS else 0, z) for z in v}
+            want[glass_name] |= want[k]
     for nm, t, vg, uv, cl, gz in got:
         print("CHECK FBX", nm, "tris", t, "groups", vg, "uv", uv, "glass", sorted(gz))
-        groups = 0 if nm == pv.NAME else ROLL_N if nm in strips else 2 if nm in upper else 1   # body none; per strip
+        groups = 0 if nm in (pv.NAME, glass_name) else ROLL_N if nm in strips else 2 if nm in upper else 1
         if (uv[:2] != ["UV0", "UV1"] or (cl[1:] < cl[:-1]).any() or (vg == 1 if groups == 0 else vg != groups)
                 or gz != want[nm]
                 or t != counts[nm]):    # the importer drops a triangle on the same vertices as another
             raise SystemExit(f"{nm}: uv {uv}, groups {vg}, classes out of order {(cl[1:] < cl[:-1]).sum()}, glass {gz}, "
                              f"tris {t} of {counts[nm]}")
-    if sorted(nm for nm, *_ in got[1:]) != sorted(pv.DOORS):
-        raise SystemExit(f"doors FBX meshes {[nm for nm, *_ in got[1:]]}, want {sorted(pv.DOORS)}")
+    if sorted(nm for nm, *_ in got[2:]) != sorted(pv.DOORS):
+        raise SystemExit(f"doors FBX meshes {[nm for nm, *_ in got[2:]]}, want {sorted(pv.DOORS)}")
     json.dump({"tris": counts, "total": sum(counts.values()), "classes": cls},
               open(os.path.join(TMP, "tris.json"), "w"), indent=1)
     return counts

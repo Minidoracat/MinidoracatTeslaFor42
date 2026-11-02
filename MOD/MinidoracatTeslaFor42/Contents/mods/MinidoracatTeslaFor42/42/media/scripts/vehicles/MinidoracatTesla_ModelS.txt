@@ -406,5 +406,12 @@ module Base
                 animate = false,
             }
         }
+        part CabinGlass
+        {
+            model Glass
+            {
+                file = MinidoracatTesla_ModelS_Glass,
+            }
+        }
     }
 }

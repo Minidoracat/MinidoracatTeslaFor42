@@ -1,5 +1,6 @@
--- Model Y 3-D cabin and see-through glass (scripts/blender/skf/convert.py + cabin.py, models.md): no extra models. The body mesh
--- carries the cabin and the body's glass, each door / the tailgate its window; MinidoracatTesla_vehicle draws paint,
+-- Model Y 3-D cabin and see-through glass (scripts/blender/skf/convert.py + cabin.py, models.md): the body mesh
+-- carries the cabin, each door / the tailgate its window, and the Glass model (part CabinGlass, drawn after every other
+-- part model) every window: the body's and a closed copy of each door's; MinidoracatTesla_vehicle draws paint,
 -- glass and cabin by UV1 class. Doors keep rate 1 (one AnimationPlayer update a frame), every seat shows its passenger.
 local check = H.check
 local media = "MOD/MinidoracatTeslaFor42/Contents/mods/MinidoracatTeslaFor42/42/media/"
@@ -18,7 +19,7 @@ local geo = veh:sub((veh:find("---- geometry", 1, true))) -- the generated part 
 local tpl = read("scripts/vehicles/MinidoracatTesla_template.txt")
 local models = read("scripts/models/MinidoracatTesla_vehicles.txt")
 
--- every Tesla model but the wheel on the merged shader; no cabin / glass / window models left
+-- every Tesla model but the wheel on the merged shader; the cabin glass model, no cabin / window models
 for _, car in ipairs({ "MinidoracatTesla_ModelY", "MinidoracatTesla_Model3", "MinidoracatTesla_ModelS", "MinidoracatTesla_ModelX" }) do
     local shaders, names = {}, {}
     for name, block in models:gmatch("model (" .. car .. "[%w_]*)%s*(%b{})") do
@@ -31,11 +32,14 @@ for _, car in ipairs({ "MinidoracatTesla_ModelY", "MinidoracatTesla_Model3", "Mi
     for _, s in ipairs(shaders) do
         if not s:find("=MinidoracatTesla_vehicle$") then wrong[#wrong + 1] = s end
     end
-    check(#shaders == 7 and #wrong == 0, car .. ": body, 4 doors, rear lid, frunk lid on MinidoracatTesla_vehicle (off: "
+    check(#shaders == 8 and #wrong == 0, car .. ": body, glass, 4 doors, rear lid, frunk lid on MinidoracatTesla_vehicle (off: "
         .. table.concat(wrong, ",") .. ")")
-    check(#names == 8, car .. ": 8 models, no cabin / glass / window models (" .. table.concat(names, ",") .. ")")
-    check(read("models_X/vehicles/" .. car .. "_Cabin.fbx") == nil and read("models_X/vehicles/" .. car .. "_Glass.fbx") == nil
-        and read("textures/Vehicles/" .. car .. "_cabin.png") == nil, car .. ": no cabin / glass FBX or cabin palette left")
+    check(#names == 9, car .. ": 9 models, the cabin glass but no cabin / window models (" .. table.concat(names, ",") .. ")")
+    check(read("models_X/vehicles/" .. car .. "_Cabin.fbx") == nil and read("models_X/vehicles/" .. car .. "_Glass.fbx") ~= nil
+        and read("textures/Vehicles/" .. car .. "_cabin.png") == nil, car .. ": the glass FBX, no cabin FBX or cabin palette")
+    local block = models:match("model " .. car .. "_Glass%s*(%b{})") or ""
+    check(block:find("static = true,", 1, true) and block:find("mesh = vehicles/" .. car .. "_Glass,", 1, true) ~= nil,
+        car .. ": the glass model is static, its own FBX")
 end
 local m3 = read("scripts/vehicles/MinidoracatTesla_Model3.txt")
 local ms = read("scripts/vehicles/MinidoracatTesla_ModelS.txt")
@@ -46,7 +50,16 @@ local geos = { ModelY = geo, Model3 = m3:sub((m3:find("---- geometry", 1, true))
 for car, g in pairs(geos) do
     check(g:find("part GloveBox", 1, true) == nil and g:find("part Window", 1, true) == nil
         and g:find("part WindshieldRear", 1, true) == nil, car .. ": no models on GloveBox, Window* or WindshieldRear")
+    local cg = g:match("part CabinGlass%s*(%b{})") or ""
+    check(cg:find("model Glass", 1, true) and cg:find("file = MinidoracatTesla_" .. car .. "_Glass,", 1, true) ~= nil,
+        car .. ": part CabinGlass shows the car's glass model")
 end
+-- the cabin glass part: no item, so the engine must not tie its model to one (setAllModelsVisible, VehiclePart.java:
+-- 148-155); its init shows the model once every part has its item (Liftgate.lua)
+local cgt = tpl:match("part CabinGlass%s*(%b{})") or ""
+check(cgt:find("setAllModelsVisible = false,", 1, true) and cgt:find("category = nodisplay,", 1, true)
+    and cgt:find("init = MinidoracatTesla.Init.CabinGlass,", 1, true) ~= nil,
+    "template part CabinGlass: nodisplay, setAllModelsVisible false, init MinidoracatTesla.Init.CabinGlass")
 
 -- rear lid rules: the hatchback's rear glass rides in its liftgate, the sedan's in the body. Per car script (TeslaLogic,
 -- above the geometry mark); part tables merge with the template's (VehicleScript.java:973-981).

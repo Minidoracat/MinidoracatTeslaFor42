@@ -283,6 +283,8 @@ ISLockVehicleDoor = { complete = function(self) -- ISLockVehicleDoor.lua:28-46
     if not self.part:getDoor():isLockBroken() then self.part:getDoor():setLocked(true) end
     return true
 end }
+-- vanilla part install (ISInstallVehiclePart.lua:93-95, fits the item); Liftgate.lua wraps complete()
+ISInstallVehiclePart = { complete = function() return true end }
 -- vanilla floor / wall placement check (ISMoveableSpriteProps.lua:1736); Chargers.lua wraps it. `free` stands in for
 -- everything vanilla checks. The cursor panel text (:577) and vanilla's red line helper (:519-527) for the move guard.
 ISMoveableSpriteProps = { canPlaceMoveableInternal = function(self) return self.free ~= false end,
@@ -318,7 +320,7 @@ end
 H.require = require
 -- vanilla modules a test fakes itself (e.g. "Map/SGlobalObjectSystem"): mark as loaded so require skips them
 function H.stub(name) loaded[name] = true end
-for _, m in ipairs({ "ISOpenVehicleDoor", "ISCloseVehicleDoor", "ISLockDoors", "ISLockVehicleDoor" }) do
+for _, m in ipairs({ "ISOpenVehicleDoor", "ISCloseVehicleDoor", "ISLockDoors", "ISLockVehicleDoor", "ISInstallVehiclePart" }) do
     H.stub("Vehicles/TimedActions/" .. m)
 end
 H.stub("Moveables/ISMoveableSpriteProps")

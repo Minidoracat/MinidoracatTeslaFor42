@@ -257,5 +257,17 @@ module Base
                 update = MinidoracatTesla.Update.Brakes,
             }
         }
+        /* every window, drawn after every other part model (Liftgate.lua CabinGlass): no item, so not */
+        /* setAllModelsVisible (it would hide the model for want of one, VehiclePart.java:148-155); the init shows */
+        /* it once every part has its item. Each car's model file is in its geometry block (convert.py). */
+        part CabinGlass
+        {
+            category = nodisplay,
+            setAllModelsVisible = false,
+            lua
+            {
+                init = MinidoracatTesla.Init.CabinGlass,
+            }
+        }
     }
 }

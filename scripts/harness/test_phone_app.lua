@@ -2026,3 +2026,8 @@ T.Remote = nil
 getWorld, playServerSound = savedWorld, savedSound
 for k, n in pairs(statsBefore) do S.stats[k] = n end
 F.done()
+-- the app's door swings above: a closing one keeps its shell bit until the clip ends (Liftgate.syncShell's one-shot
+-- OnTick, on the clip clock); let them end so no OnTick is left for the next file
+H.setMultiplier(40)
+for _ = 1, 20 do H.fire("OnTick") end
+H.setMultiplier(1)
