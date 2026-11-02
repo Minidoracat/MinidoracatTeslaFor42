@@ -10,7 +10,8 @@
 -- server has no such event, Camp.lua), and on a server it looks again AGAIN_MS later: the command is RELIABLE, the exit
 -- and seat switch RELIABLE_ORDERED (PacketTypes.java:510; VehicleExitPacket.java:17-23), so the command can be handled
 -- while the seat is still the old one. Each time (MP) the clients near get the sender's online id, `seat` { id }, to
--- set that player's seated pose there (SeatPose.lua; anim variables are per client, no Lua event fires there either):
+-- set that player's seated pose there and draw them from the seat (SeatPose.lua, RemoteSeat.lua; anim variables are
+-- per client, no Lua event fires there either):
 -- only the sender's own id, the command's arguments are never read; again AGAIN_MS later, for a client the relay
 -- reached ahead of that player's vehicle packet. Death takes it off before the corpse copies the worn items
 -- (OnCharacterDeath from DoDeath, IsoGameCharacter.java:2024-2025, before becomeCorpse :14640); and the EveryOneMinute

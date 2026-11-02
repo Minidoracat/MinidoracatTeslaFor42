@@ -59,13 +59,22 @@ end
 Events.OnEnterVehicle.Add(seat)
 Events.OnExitVehicle.Add(seat)
 Events.OnSwitchVehicleSeat.Add(seat)
--- the server's relay of another player's `seat` (only that sender's online id, HatHide.lua)
+-- the server's relay of another player's `seat` (only that sender's online id, HatHide.lua); RemoteSeat.lua then draws
+-- that player from the seat. Both looked up when called: every client file has loaded by then.
 T.ClientCommands = T.ClientCommands or {}
 T.ClientCommands.seat = function(args)
-    if type(args.id) == "number" then sync(getPlayerByOnlineID(args.id)) end
+    if type(args.id) ~= "number" then return end
+    sync(getPlayerByOnlineID(args.id))
+    local R = T.RemoteSeat
+    if R then R.watch(args.id) end
 end
 Events.EveryOneMinute.Add(function()
     if not isClient() then return end
-    local list = getOnlinePlayers()
-    for i = 0, list:size() - 1 do sync(list:get(i)) end
+    local list, R = getOnlinePlayers(), T.RemoteSeat
+    for i = 0, list:size() - 1 do
+        local p = list:get(i)
+        sync(p)
+        local v = R and not p:isLocalPlayer() and p:getVehicle()
+        if v and T.isTesla(v) then R.watch(p:getOnlineID()) end
+    end
 end)

@@ -254,10 +254,12 @@ end
 
 tick = function()
     local now = getTimestampMs()
-    if now >= nextAt then
+    if now >= nextAt or nextAt - now > 100 then -- the clock set back (getTimestampMs is the wall clock): now
         nextAt = now + 100
         local me = getSpecificPlayer(0)
         for vid, e in pairs(heard) do
+            local life = e.sum and Sound.SUMMON_MS or Sound.HEARD_MS
+            if e.exp - now > life then e.exp = now + life end -- the clock set back: count from now
             if now > e.exp then drop[#drop + 1] = vid
             elseif me then refresh(e, me) end
         end

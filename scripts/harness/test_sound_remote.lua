@@ -356,6 +356,19 @@ check(S.heard[a:getId()] ~= nil, "11.9 s without a beat: still registered")
 hz(2)
 check(S.heard[a:getId()] == nil and e2.motor == nil and H.count("OnTick") == base and st.tickRemoves == removes0 + 2,
     "12 s without a beat: expired, silent, OnTick removed")
+-- the clock set back an hour (getTimestampMs is System.currentTimeMillis): the 10 Hz refresh goes on and the entry
+-- still expires HEARD_MS after its last beat, not an hour later (AGENTS.md rule 2: the OnTick only while one is heard)
+motor({ vid = a:getId(), on = true })
+hz(2)
+local e3 = S.heard[a:getId()]
+local p0 = e3.motor.pitch
+H.advanceMs(-3600 * 1000)
+a.speed = 40
+hz(5)
+check(e3.motor.pitch ~= p0, "the clock set back an hour: the 10 Hz refresh goes on (the pitch follows the speed)")
+hz(121)
+check(S.heard[a:getId()] == nil and H.count("OnTick") == base, "the clock set back: still expired 12 s after the last beat")
+a.speed = 20
 
 -- passenger, own car, unloaded car, two cars
 me.vehicle = a

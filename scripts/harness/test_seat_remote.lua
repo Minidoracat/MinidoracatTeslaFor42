@@ -1,7 +1,7 @@
--- Another player seated in a Tesla drawn from its seat (client/MinidoracatTesla/RemoteSeat.lua): who is watched (the
--- server's `seat` relay, the game-minute scan), the OnTick putting them on the seat's world position, and the OnTick
--- going once nobody is watched. Runs after test_seat_pose.lua (name order): SeatPose is loaded. The engine's update
--- order and what the frame draws are E2E seat-remote-mp (`RENDERPOS`, `ORDER`).
+-- Another player seated in a Tesla drawn from its seat (client/MinidoracatTesla/RemoteSeat.lua): who is watched
+-- (SeatPose.lua's handler of the server's `seat` relay and its game-minute scan call RemoteSeat.watch), the OnTick
+-- putting them on the seat's world position, and the OnTick going once nobody is watched. The engine's update order
+-- and what the frame draws are E2E seat-remote-mp (`RENDERPOS`, `ORDER`).
 local check = H.check
 local T = MinidoracatTesla
 local saved = { Vector3f = Vector3f, byId = getPlayerByOnlineID, online = getOnlinePlayers }
@@ -15,13 +15,9 @@ Vector3f = { new = function()
 end }
 
 H.section("remote seat")
-local spied = 0
-local relayed = T.ClientCommands and T.ClientCommands.seat -- SeatPose's own, if it has one
-T.ClientCommands = T.ClientCommands or {}
-T.ClientCommands.seat = function(args) spied = spied + 1; if relayed then relayed(args) end end
+H.require("MinidoracatTesla/SeatPose") -- the relay handler and the minute scan
 H.require("MinidoracatTesla/RemoteSeat")
 local R = T.RemoteSeat
-check(H.count("EveryOneMinute") >= 1, "listens to the game minute")
 
 local function rider(name, isLocal)
     local p = H.player({ name = name })
@@ -56,7 +52,6 @@ H.side(true, false)
 
 local ticks = H.count("OnTick")
 T.ClientCommands.seat({ id = a.oid })
-check(spied == 1, "the relay still reaches the handler before it (SeatPose's pose)")
 check(R.count() == 1 and H.count("OnTick") == ticks + 1, "relay: a watched, one OnTick added")
 H.fire("OnTick")
 check(a.x == 100 and a.y == 100, "relay ahead of their vehicle packet: not in a car yet, left alone")
@@ -118,6 +113,14 @@ sit(a, nil)
 H.advanceMs(R.GRACE_MS + 1)
 H.fire("OnTick")
 check(R.count() == 0 and H.count("OnTick") == ticks, "got out: dropped after the grace time, the OnTick removed")
+-- the clock set back while someone out of a Tesla is within the grace time: dropped on the next frame, not once the
+-- clock catches up (AGENTS.md rule 2: the OnTick only while someone is watched)
+T.ClientCommands.seat({ id = a.oid })
+check(R.count() == 1 and H.count("OnTick") == ticks + 1, "a watched again (a relay), out of any car")
+H.advanceMs(-3600 * 1000)
+H.fire("OnTick")
+check(R.count() == 0 and H.count("OnTick") == ticks, "the clock set back an hour: dropped at once, the OnTick removed")
+H.advanceMs(3600 * 1000)
 check(R.stats.tickAdds == R.stats.tickRemoves, "every OnTick added was removed (" .. R.stats.tickAdds .. ")")
 
 H.side(false, false)
