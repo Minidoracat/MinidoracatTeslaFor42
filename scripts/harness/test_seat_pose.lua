@@ -188,20 +188,19 @@ T.ClientCommands.seat({})
 check(#H.clientSent == before, "an id not loaded here or not a number: nothing (and a relay never sends anything back)")
 getPlayerByOnlineID = savedById
 
--- a real client's busiest minute through the server's dispatch (Commands.lua CommandRate): into a Tesla, then a seat
--- switch at 2 clicks a second, each counted twice (the upper bound: OnEnterVehicle fires twice per enter in MP); none
--- dropped, the busiest 10 s at most 2 / 3 of the seat budget. In and out sends fewer (two per enter, one per exit).
+-- a real client's busiest minute through the server's dispatch (Commands.lua CommandRate): in and out of a Tesla at 2
+-- clicks a second, each enter twice (OnEnterVehicle at perform and on the server's echo in MP), each exit once; none
+-- dropped, the busiest 10 s at most 2 / 3 of the seat budget. A seat switch sends one (E2E seat-pose-mp SEATRELAY).
 local CR = T.CommandRate
 local dropped, from, reached, times = CR.dropped.seat or 0, #H.clientSent, 0, {}
 for i = 0, 119 do
-    if i == 0 then
+    if i % 2 == 0 then
         sit(tesla, 0)
         H.fire("OnEnterVehicle", p)
         H.fire("OnEnterVehicle", p)
     else
-        sit(tesla, i % 2 == 0 and 0 or 2)
-        H.fire("OnSwitchVehicleSeat", p)
-        H.fire("OnEnterVehicle", p)
+        sit(nil)
+        H.fire("OnExitVehicle", p)
     end
     for _ = from + 1, #H.clientSent do times[#times + 1] = i * 500 end
     local got
@@ -210,10 +209,8 @@ for i = 0, 119 do
     H.advanceMs(500)
 end
 local busiest = H.busiest(times, CR.LIMITS.seat.ms)
-check(reached == 240 and #times == 240 and (CR.dropped.seat or 0) == dropped and busiest * 1.5 <= CR.LIMITS.seat.max,
-    "a minute of seat switches in a Tesla, 2 clicks a second (" .. busiest .. " in the busiest 10 s): all " .. reached
+check(reached == 180 and #times == 180 and (CR.dropped.seat or 0) == dropped and busiest * 1.5 <= CR.LIMITS.seat.max,
+    "a minute in and out of a Tesla, 2 clicks a second (" .. busiest .. " in the busiest 10 s): all " .. reached
     .. " reach the server's handler")
-sit(nil)
-H.fire("OnExitVehicle", p)
 H.side(false, true)
 H.advanceMs(CR.LIMITS.seat.ms)

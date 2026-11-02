@@ -96,23 +96,24 @@ local function againTick()
         again[id] = nil
         pending = pending - 1
         local p = getPlayerByOnlineID(id)
-        H.sync(p, false)
         if p then relay(p) end
+        H.sync(p, false)
     end
     if pending == 0 then Events.OnTick.Remove(againTick) end
 end
 
 T.ServerCommands = T.ServerCommands or {}
 T.ServerCommands.seat = function(player)
-    H.sync(player, false)
-    if not isServer() then return end
-    relay(player)
-    local id = player:getOnlineID()
-    if not again[id] then
-        if pending == 0 then Events.OnTick.Add(againTick) end
-        pending = pending + 1
+    if isServer() then
+        local id = player:getOnlineID()
+        if not again[id] then
+            if pending == 0 then Events.OnTick.Add(againTick) end
+            pending = pending + 1
+        end
+        again[id] = getTimestampMs() + H.AGAIN_MS
+        relay(player)
     end
-    again[id] = getTimestampMs() + H.AGAIN_MS
+    H.sync(player, false)
 end
 
 function H.minute()

@@ -69,10 +69,11 @@ CR.LIMITS = {
     appAlerts = { max = 20, ms = 10000 },    -- legit ~10: one per car picked or security page opened (2 clicks each)
     appAction = { max = 30, ms = 10000 },    -- legit 20: one per button press (lock and unlock chirp to everyone near)
     liftgate = { max = 30, ms = 10000 },     -- legit 20: one per click on the car picture; each tells the players near
-    seat = { max = 60, ms = 10000 },         -- legit 40: into, within or out of a Tesla, or out of any car wearing the
-                                             -- hat hider, up to two per own enter or seat switch in MP (OnEnterVehicle
-                                             -- fires twice there, AGENTS.md), one per exit, a click each; each tells
-                                             -- the clients near, again 1 s after a player's last (HatHide.lua)
+    seat = { max = 45, ms = 10000 },         -- legit 30: into, within or out of a Tesla, or out of any car wearing the
+                                             -- hat hider, a click each: two per own enter in MP (OnEnterVehicle at
+                                             -- perform and on the server's echo, BaseVehicle.java:2528-2529), one per
+                                             -- seat switch or exit; each tells the clients near, again 1 s after a
+                                             -- player's last (HatHide.lua)
 }
 T.CommandRate = CR
 

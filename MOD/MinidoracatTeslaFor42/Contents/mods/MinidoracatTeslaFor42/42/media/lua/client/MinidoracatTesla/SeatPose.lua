@@ -17,7 +17,8 @@
 --   OnEnterVehicle for local players only, BaseVehicle.java:2527). Their own client sends `seat` (below); the server
 --   relays their online id to the clients near, now and HatHide.AGAIN_MS later (server HatHide.lua), and this client
 --   syncs that player on each (ClientCommands.seat). The game minute covers the rest: a car or player that just loaded
---   here (the car loads 50-96 tiles away, before it is on screen; its passengers come after OnSpawnVehicleEnd,
+--   here (sent to a client 64-96 tiles away on both axes, GameServer.java:2808-2809, UdpConnection.java:224-226: before
+--   it is on screen; its passengers come after OnSpawnVehicleEnd,
 --   VehicleFullUpdatePacket.java:114, or a vehicle update later for a player not known here yet,
 --   VehiclePassengers.java:36-38), a login in a seat (its enter can fire while loading, when sendClientCommand does
 --   not reach the server, LuaManager.java:8940-8947), a lost command: a game day's real length / 1440, 2.5 s at
