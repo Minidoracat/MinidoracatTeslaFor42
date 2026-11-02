@@ -175,7 +175,7 @@ module Base
        (NPCs/MinidoracatTesla_BodyLocations.lua; PopTemplateManager.java:177,202-220). The ClothingItem has no model and
        a clear 4x4 base texture: getVisual needs a ClothingItem (InventoryItem.java:2323-2337) or the rule never sees
        the item, and a model-less item is composited onto the body by its base texture, "media/textures/null.png" (the
-       red and white missing texture over the whole body) when it has none (ModelInstanceTextureCreator.java:283,302;
+       red and white missing texture over the whole body) when it has none (ModelInstanceTextureCreator.java:283,303;
        ItemVisual.java:172-176). Hidden: the inventory pane and the admin item list skip it (ISInventoryPane.lua:2096,
        Item.java:2062-2063). */
     item MinidoracatTesla_HatHide
