@@ -36,9 +36,14 @@ local function sync(player)
     set(player, RECLINE, tesla and v:getSeat(player) <= 1)
 end
 
-Events.OnEnterVehicle.Add(sync)
-Events.OnExitVehicle.Add(sync)
-Events.OnSwitchVehicleSeat.Add(sync)
+-- the local player's own enter / switch / exit also asks the server to put on or take off the hat hider (HatHide.lua)
+local function seat(player)
+    sync(player)
+    if player and player:isLocalPlayer() then sendClientCommand(player, T.MODULE, "hatHide", {}) end
+end
+Events.OnEnterVehicle.Add(seat)
+Events.OnExitVehicle.Add(seat)
+Events.OnSwitchVehicleSeat.Add(seat)
 Events.EveryOneMinute.Add(function()
     if not isClient() then return end
     local list = getOnlinePlayers()

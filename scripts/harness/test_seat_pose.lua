@@ -16,6 +16,7 @@ local function varPlayer(name)
     o.vars = {}
     function o:setVariable(k, v) self.vars[k] = v end
     function o:clearVariable(k) self.vars[k] = nil end
+    function o:isLocalPlayer() return true end
     return o
 end
 local function car(script)
@@ -32,8 +33,11 @@ local function sit(v, seat)
 end
 
 sit(tesla, 0)
+local sent = #H.clientSent
 H.fire("OnEnterVehicle", p)
 check(p.vars.MinidoracatTeslaSeated == true and p.vars.MinidoracatTeslaRecline == true, "driver of a Tesla: seated, reclined")
+check(#H.clientSent == sent + 1 and H.clientSent[#H.clientSent].command == "hatHide",
+    "the local player's enter asks the server to sync the hat hider (server/MinidoracatTesla/HatHide.lua)")
 
 sit(tesla, 2)
 H.fire("OnSwitchVehicleSeat", p)
