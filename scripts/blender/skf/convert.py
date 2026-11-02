@@ -1949,7 +1949,7 @@ def stage_view(out, heads, state, skin="UltraRed", app=False):
             keep &= ~((fu < -1.0) & np.isin(k, ks) & (fv < k))
         if not keep.all():
             pv.keep_faces(o, keep)
-    # HIDE=DoorFrontRight,..: leave pieces out (in game a far door is hidden behind the near body glass's depth)
+    # HIDE=DoorFrontRight,..: leave pieces out of the render
     hide = set(filter(None, os.environ.get("HIDE", "").split(",")))
     for o in bpy.data.objects:
         o.hide_render = o.type == "MESH" and (not (o is body or o in doors) or o.name in hide)

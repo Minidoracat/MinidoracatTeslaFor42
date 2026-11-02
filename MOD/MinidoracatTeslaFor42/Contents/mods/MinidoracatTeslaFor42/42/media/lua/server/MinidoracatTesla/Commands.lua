@@ -113,4 +113,11 @@ if not T.serverDispatch then
         local ok, err = pcall(fn, player, type(args) == "table" and args or {})
         if not ok then T.log("command " .. tostring(command) .. " failed: " .. tostring(err)) end
     end)
+    -- Liftgate.onVehicleCommand (the cabin glass back to the end after an admin repair) wants the parts vanilla's repair
+    -- refits: a mod's server Lua loads after vanilla's (LuaManager.java:1192-1195), so this listener runs after
+    -- VehicleCommands'. Looked up per call: the harness loads the files in its own order.
+    Events.OnClientCommand.Add(function(...)
+        local L = T.Liftgate
+        if L and L.onVehicleCommand then L.onVehicleCommand(...) end
+    end)
 end

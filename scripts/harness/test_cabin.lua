@@ -41,12 +41,18 @@ for _, car in ipairs({ "MinidoracatTesla_ModelY", "MinidoracatTesla_Model3", "Mi
     check(block:find("static = true,", 1, true) and block:find("mesh = vehicles/" .. car .. "_Glass,", 1, true) ~= nil,
         car .. ": the glass model is static, its own FBX")
 end
+-- the Cybertruck's model list is its own (test_truck); its cabin glass is the same kind
+local ctGlass = models:match("model MinidoracatTesla_Cybertruck_Glass%s*(%b{})") or ""
+check(ctGlass:find("static = true,", 1, true) and ctGlass:find("mesh = vehicles/MinidoracatTesla_Cybertruck_Glass,", 1, true)
+    and read("models_X/vehicles/MinidoracatTesla_Cybertruck_Glass.fbx") ~= nil, "Cybertruck: the glass model is static, its own FBX")
 local m3 = read("scripts/vehicles/MinidoracatTesla_Model3.txt")
 local ms = read("scripts/vehicles/MinidoracatTesla_ModelS.txt")
 local mx = read("scripts/vehicles/MinidoracatTesla_ModelX.txt")
+local ct = read("scripts/vehicles/MinidoracatTesla_Cybertruck.txt")
 local geos = { ModelY = geo, Model3 = m3:sub((m3:find("---- geometry", 1, true))),
     ModelS = ms:sub((ms:find("---- geometry", 1, true))),
-    ModelX = mx:sub((mx:find("---- geometry", 1, true))) }
+    ModelX = mx:sub((mx:find("---- geometry", 1, true))),
+    Cybertruck = ct:sub((ct:find("---- geometry", 1, true))) }
 for car, g in pairs(geos) do
     check(g:find("part GloveBox", 1, true) == nil and g:find("part Window", 1, true) == nil
         and g:find("part WindshieldRear", 1, true) == nil, car .. ": no models on GloveBox, Window* or WindshieldRear")

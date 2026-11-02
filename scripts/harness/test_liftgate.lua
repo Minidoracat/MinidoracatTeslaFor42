@@ -22,9 +22,23 @@ H.stub("Vehicles/TimedActions/ISCloseVehicleDoor")
 H.stub("Vehicles/TimedActions/ISInstallVehiclePart")
 dofile(SRC)
 local L = T.Liftgate
+local openSP = ISOpenVehicleDoor -- the SP load's wrap: its :start sets the bit on the opener's client
 local halo = {}
 HaloTextHelper = { addBadText = function(_, text) halo[#halo + 1] = text end }
 function getPlayer() return nil end
+
+-- a part's item: the id the server sends in glassLast (InventoryItem.getID)
+local lastItem = 0
+local function newItem()
+    lastItem = lastItem + 1
+    local id = lastItem
+    return { getID = function() return id end }
+end
+local function keys(t)
+    local n = 0
+    for _ in pairs(t) do n = n + 1 end
+    return n
+end
 
 local function car(o)
     local v = H.vehicle(o)
@@ -37,7 +51,7 @@ local function car(o)
         function door:isLocked() return self.locked end
         function door:setLocked(b) self.locked = b end
         function door:isLockBroken() return self.broken end
-        v.parts[id] = { id = id, door = door, item = {}, getId = function(self) return self.id end,
+        v.parts[id] = { id = id, door = door, item = newItem(), getId = function(self) return self.id end,
             getDoor = function(self) return self.door end, getInventoryItem = function(self) return self.item end,
             getVehicle = function() return v end, getScriptPart = function() return models end }
         v.order[#v.order + 1] = v.parts[id]
@@ -206,7 +220,7 @@ d.broken = false
 v.parts.TrunkDoor.item = nil
 cmd(driver, { vid = v:getId(), part = "TrunkDoor" })
 check(denied("NO_DOOR") and not d.open, "liftgate part uninstalled: NO_DOOR")
-v.parts.TrunkDoor.item = {}
+v.parts.TrunkDoor.item = newItem()
 local n = #H.sent
 cmd(driver, { vid = v:getId(), part = "TrunkDoor" })
 local s1, s2, a, b = H.sent[n + 1], H.sent[n + 2], H.sent[n + 3], H.sent[n + 4]
@@ -403,31 +417,38 @@ local LG = T.Liftgate -- the MP server load's module (its install wrap and repai
 T.Init.CabinGlass(v, v.parts.CabinGlass)
 check(v.glass[#v.glass] == "Glass+", "init (every load, once each part has its item): the glass model shown")
 v.glass, n, fl.item = {}, #H.sent, nil
-check(ISInstallVehiclePart.complete({ vehicle = v, part = fl, item = {} }) == true, "wrapped install keeps the vanilla result")
+local fitted = newItem()
+check(ISInstallVehiclePart.complete({ vehicle = v, part = fl, item = fitted }) == true, "wrapped install keeps the vanilla result")
 local gl = H.sent[n + 1]
 check(table.concat(v.glass, ",") == "Glass-,Glass+" and #H.sent == n + 2 and gl.command == "glassLast"
-    and gl.args.vid == v:getId() and #gl.args.parts == 1 and gl.args.parts[1] == "DoorFrontLeft",
-    "door fitted: the glass hidden and shown again (to the end of the model list), glassLast { the door } to every player near")
+    and gl.args.vid == v:getId() and keys(gl.args.parts) == 1 and gl.args.parts.DoorFrontLeft == fitted:getID(),
+    "door fitted: the glass hidden and shown again (to the end of the model list), glassLast { the door: its item } to every player near")
 v.glass, n = {}, #H.sent
 ISInstallVehiclePart.complete({ vehicle = v, part = fl, item = nil })
 check(#v.glass == 0 and #H.sent == n, "install that left no item (failed): nothing")
-fl.item = {}
+fl.item = newItem()
 local bare = { id = "Battery", getId = function(self) return self.id end, getInventoryItem = function() return {} end,
     getVehicle = function() return v end, getScriptPart = function() return { getModelCount = function() return 0 end } end }
 ISInstallVehiclePart.complete({ vehicle = v, part = bare, item = {} })
 local gasFl = gas.parts.DoorFrontLeft
 ISInstallVehiclePart.complete({ vehicle = gas, part = gasFl, item = {} })
 check(#v.glass == 0 and #gas.glass == 0 and #H.sent == n, "a part with no model, another make's door: nothing")
-LG.onVehicleCommand("vehicle", "repair", driver, { vehicle = v:getId() })
+-- through the real listener (server/MinidoracatTesla/Commands.lua): in game it runs after vanilla's VehicleCommands,
+-- whose repair has refitted the missing parts by then
+local function repair(vid) H.fire("OnClientCommand", "vehicle", "repair", driver, { vehicle = vid }) end
+repair(v:getId())
 check(#v.glass == 0 and #H.sent == n, "vanilla repair command from a player without the mechanics cheat: nothing")
 driver._admin = true
-LG.onVehicleCommand("vehicle", "repair", driver, { vehicle = v:getId() })
+local refit = newItem()
+fl.item = refit -- the door vanilla's repair refitted (VehiclePart.repair -> setInventoryItem, VehiclePart.java:957-969)
+repair(v:getId())
 gl = H.sent[n + 1]
-check(table.concat(v.glass, ",") == "Glass-,Glass+" and gl.command == "glassLast" and #gl.args.parts == 4,
-    "admin repair: glass to the end, glassLast with every fitted part that has a model (4: not CabinGlass)")
+check(table.concat(v.glass, ",") == "Glass-,Glass+" and gl.command == "glassLast" and keys(gl.args.parts) == 4
+    and gl.args.parts.DoorFrontLeft == refit:getID(),
+    "admin repair: glass to the end, glassLast with every fitted part that has a model, by its item (4: not CabinGlass)")
 v.glass, n = {}, #H.sent
 LG.onVehicleCommand("vehicle", "remove", driver, { vehicle = v:getId() })
-LG.onVehicleCommand("vehicle", "repairPart", driver, { vehicle = gas:getId() })
+repair(gas:getId())
 check(#v.glass == 0 and #H.sent == n, "another vehicle command, another make's repair: nothing")
 driver._admin = nil
 
@@ -459,36 +480,64 @@ H.side(false, true)
 settle() -- the server's swings above (Model X wings) over first
 H.side(true, false)
 local cv = car({})
+local cfl, crl = cv.parts.DoorFrontLeft, cv.parts.DoorRearLeft
 local function cbit() return math.floor(cv:getColorHue()) end
 T.ClientCommands.partAnim({ vid = cv:getId(), part = "DoorFrontLeft", open = true })
-check(cbit() == 1 and H.count("OnTick") == ticks, "client partAnim Open: the door's bit at once (the server's hue on its way)")
+check(cbit() == 1 and H.count("OnTick") == ticks + 1,
+    "client partAnim Open: the door's bit at once, held for the clip (the server's hue on its way)")
+cfl.door.open = true -- the server's door state reached this client
+tick(60)
+check(cbit() == 1 and H.count("OnTick") == ticks, "...the clip over, the door open here: the bit stays, OnTick removed")
 T.ClientCommands.partAnim({ vid = cv:getId(), part = "DoorFrontLeft", open = false })
+cfl.door.open = false
 tick(30)
 T.ClientCommands.shell({ vid = cv:getId(), hue = cv:getColorHue() - 1 }) -- the server's clear, ahead of this swing
 check(cbit() == 1, "...the server's hue clearing it mid-swing: this client's bit stays (its swing still plays)")
-tick(29)
+cv:setColorHSV(cv:getColorHue() - 1, cv:getColorSaturation(), cv:getColorValue()) -- that hue in a VehicleProperties
+tick(1)
+check(cbit() == 1, "...a VehicleProperties hue clearing it mid-swing (VehicleProperties.java:42): set again next tick")
+tick(28)
 check(cbit() == 1, "...Close: still set 59 ticks into the swing")
 tick(1)
 check(cbit() == 0 and H.count("OnTick") == ticks, "...cleared as the 0.8 clip s end, OnTick removed")
+-- the opener's own open action (:start) that the server never completes: cancelled, or the door locked meanwhile
+openSP.start({ vehicle = cv, part = crl, character = driver })
+check(cbit() == 4, "open action started on this client: the door's bit at once")
+tick(60)
+check(cbit() == 0 and H.count("OnTick") == ticks, "...the clip over, the door still shut here: the bit dropped, OnTick removed")
 T.ClientCommands.partAnim({ vid = cv:getId(), part = "EngineDoor", open = true })
 check(cbit() == 0 and H.count("OnTick") == ticks, "frunk lid: no shell bit")
--- glassLast from the server: once the fitted part's item is here (a vehicle update, maybe after the command)
-cv.parts.DoorRearLeft.item = nil
-T.ClientCommands.glassLast({ vid = cv:getId(), parts = { "DoorRearLeft" } })
+-- glassLast from the server: once the fitted item is here (a vehicle update, maybe after the command)
+local old, put = crl.item, newItem()
+T.ClientCommands.glassLast({ vid = cv:getId(), parts = { DoorRearLeft = put:getID() } })
 tick(3)
-check(#cv.glass == 0 and H.count("OnTick") == ticks + 1, "client glassLast before the part's item came: waits, one OnTick")
-cv.parts.DoorRearLeft.item = {}
+check(#cv.glass == 0 and H.count("OnTick") == ticks + 1, "client glassLast, the part's old item still here: waits, one OnTick")
+crl.item = nil
+tick(1)
+check(#cv.glass == 0, "...the old item gone, the fitted one not here yet: waits")
+crl.item = put
 tick(1)
 check(table.concat(cv.glass, ",") == "Glass-,Glass+" and H.count("OnTick") == ticks,
-    "...the item here: glass to the end of the model list, OnTick removed")
-cv.glass, cv.parts.DoorRearLeft.item = {}, nil
-T.ClientCommands.glassLast({ vid = cv:getId(), parts = { "DoorRearLeft" } })
+    "...the fitted item here: glass to the end of the model list, OnTick removed")
+-- two parts fitted, their commands overtaking each other: one wait for both
+cv.glass, crl.item, cfl.item = {}, nil, nil
+local a, b = newItem(), newItem()
+T.ClientCommands.glassLast({ vid = cv:getId(), parts = { DoorRearLeft = a:getID() } })
+T.ClientCommands.glassLast({ vid = cv:getId(), parts = { DoorFrontLeft = b:getID() } })
+cfl.item = b
+tick(1)
+check(#cv.glass == 0, "two glassLast for one car: the later one's part alone does not end the wait")
+crl.item = a
+tick(1)
+check(table.concat(cv.glass, ",") == "Glass-,Glass+" and H.count("OnTick") == ticks, "...both here: glass to the end, once")
+cv.glass, crl.item = {}, nil
+T.ClientCommands.glassLast({ vid = cv:getId(), parts = { DoorRearLeft = put:getID() } })
 H.advanceMs(10001)
 tick(1)
 check(table.concat(cv.glass, ",") == "Glass-,Glass+" and H.count("OnTick") == ticks,
     "...an item that never comes: given up after 10 s, the glass to the end anyway")
-cv.glass, cv.parts.DoorRearLeft.item = {}, {}
-T.ClientCommands.glassLast({ vid = 424242, parts = { "DoorRearLeft" } })
+cv.glass, crl.item = {}, old
+T.ClientCommands.glassLast({ vid = 424242, parts = { DoorRearLeft = 1 } })
 tick(1)
 T.ClientCommands.glassLast({ vid = cv:getId() })
 check(#cv.glass == 0 and H.count("OnTick") == ticks, "glassLast for a car not loaded, or without parts: nothing left")

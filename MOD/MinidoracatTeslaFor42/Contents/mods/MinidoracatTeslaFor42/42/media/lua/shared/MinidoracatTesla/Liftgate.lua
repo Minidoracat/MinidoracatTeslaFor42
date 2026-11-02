@@ -56,9 +56,11 @@ for k, id in ipairs(L.SHELL_DOORS) do SHELL_K[id] = k end
 -- own clock, T.clipStep (Core.lua): fast forward ends the swing sooner, a pause holds it. Clips are 0.8 s, else Specs
 -- doorClip[part]. Read by E2E doors-audit-sp.
 L.FLIP = { open = 0, close = 1 }
--- [vid] = { [k] = clip seconds left before bit k-1 clears }; the OnTick runs while any is pending. The server (and SP)
--- then sets it to its door's state; an MP client that played the swing itself (L.localSwing) clears it, and the
--- server's hue follows (shell command)
+-- [vid] = { [k] = clip seconds bit k-1 is held for }; the OnTick runs while any is pending. When one runs out, the
+-- server (and SP) sets the bit to its door's state (L.syncShell); an MP client that played the swing itself
+-- (L.localSwing) sets it to the door's state that reached it, so an open the server never made (the action cancelled,
+-- the door locked meanwhile) drops it again. Until then such a client sets it again every tick: the server's hue also
+-- comes in every VehicleProperties (blood, keys, alarm: VehicleProperties.java:42), maybe cleared ahead of this swing
 local pending, ticking = {}, false
 local function empty(t)
     for _ in pairs(t) do return false end
@@ -85,20 +87,27 @@ end
 shellTick = function()
     local step, due = T.clipStep(), {}
     for vid, ks in pairs(pending) do
-        for k, left in pairs(ks) do
-            ks[k] = left - step
-            if ks[k] <= 1e-6 then due[vid] = true end
-        end
-    end
-    for vid in pairs(due) do
         local v = getVehicleById(vid)
         -- unloaded, or the id now another car's: drop it (OnSpawnVehicleEnd sets a car's bits when it loads)
         if not (v and T.isTesla(v)) then
             pending[vid] = nil
-        elseif isClient() then
+        else
+            for k, left in pairs(ks) do
+                ks[k] = left - step
+                if ks[k] <= 1e-6 then due[vid] = v elseif isClient() then setBit(v, k, true) end
+            end
+        end
+    end
+    for vid, v in pairs(due) do
+        if isClient() then
             local ks = pending[vid]
             for k, left in pairs(ks) do
-                if left <= 1e-6 then ks[k] = nil; setBit(v, k, false) end
+                if left <= 1e-6 then
+                    local part = v:getPartById(L.SHELL_DOORS[k])
+                    local door = part and part:getDoor()
+                    ks[k] = nil
+                    setBit(v, k, door ~= nil and door:isOpen())
+                end
             end
             if empty(ks) then pending[vid] = nil end
         else
@@ -141,15 +150,17 @@ function L.syncShell(vehicle, now)
 end
 -- Every client that plays a door's swing (and SP) sets that door's bit in the same frame, so its window never shows
 -- twice or not at all while the server's hue travels: the opener in the vanilla action's start (below), everyone
--- else on partAnim. Opening: set now; closing: cleared when the clip ends. The server's hue stays the saved truth.
+-- else on partAnim. It holds the bit for the clip, then follows the door (shellTick): closing, always; opening, while
+-- the door here is not open yet (the server's door state on its way, or an open it never makes). The server's hue
+-- stays the saved truth.
 function L.localSwing(vehicle, part, open)
     local k = SHELL_K[part:getId()]
     if isServer() or not k or not T.isTesla(vehicle) then return end
     local vid = vehicle:getId()
     local ks = pending[vid] or {}
-    ks[k] = not open and flipClip(vehicle, part:getId()) or nil
-    if open then setBit(vehicle, k, true) end
+    ks[k] = not (open and part:getDoor():isOpen()) and flipClip(vehicle, part:getId()) or nil
     pending[vid] = not empty(ks) and ks or nil
+    setBit(vehicle, k, true)
     retick()
 end
 
@@ -196,10 +207,10 @@ if not isServer() then
         L.localSwing(v, part, args.open == true)
         if args.sound then v:playPartSound(part, getPlayer(), anim) end
     end
-    -- L.syncShell's hue from the server. A closing swing this client still plays keeps its bit: the server times its
-    -- clear on its own OnTick clock, which runs ahead of the clients' (E2E tesla-glass-1102-mp-y-e: cleared on B 0.4-0.6
-    -- clip s into the 0.8 s swing; not proven why, likely the dedicated server's fpsMultiplier, a running average of its
-    -- frame rate that drops at once and rises by 1 a frame, GameServer.java:1112-1118)
+    -- L.syncShell's hue from the server. A swing this client still plays keeps its bit (shellTick too): the server
+    -- times its clear on its own OnTick clock, which runs ahead of the clients' (E2E tesla-glass-1102-mp-y-e: cleared on
+    -- B 0.4-0.6 clip s into the 0.8 s swing; not proven why, likely the dedicated server's fpsMultiplier, a running
+    -- average of its frame rate that drops at once and rises by 1 a frame, GameServer.java:1112-1118)
     T.ClientCommands.shell = function(args)
         local v = getVehicleById(args.vid)
         if not (v and args.hue) then return end
@@ -207,15 +218,18 @@ if not isServer() then
         for k in pairs(pending[args.vid] or {}) do setBit(v, k, true) end
     end
     -- L.glassAfter from the server: the glass back to the end once these parts' items are here (they come in a vehicle
-    -- update, often after this command); [vid] = { parts, till }, given up after 10 s
+    -- update, often after this command). [vid] = { parts = { [part id] = item id }, till }: the item that was fitted, not
+    -- one still here from before (InventoryItem.java:1947 keeps the server's id); a later command for the same car adds
+    -- its parts (RELIABLE, unordered: PacketTypes.java:510). Given up after 10 s: the glass to the end anyway.
     local waiting, wticking = {}, false
     local function glassTick()
         local now = getTimestampMs()
         for vid, w in pairs(waiting) do
             local v, ready = getVehicleById(vid), true
-            for _, id in ipairs(w.parts) do
+            for id, item in pairs(w.parts) do
                 local p = v and v:getPartById(id)
-                if p and not p:getInventoryItem() then ready = false end
+                local have = p and p:getInventoryItem()
+                if p and not (have and have:getID() == item) then ready = false end
             end
             if not v or ready or now > w.till then
                 if v and T.isTesla(v) then L.glassLast(v) end
@@ -229,7 +243,12 @@ if not isServer() then
     end
     T.ClientCommands.glassLast = function(args)
         if type(args.parts) ~= "table" then return end
-        waiting[args.vid] = { parts = args.parts, till = getTimestampMs() + 10000 }
+        local w = waiting[args.vid] or { parts = {} }
+        for id, item in pairs(args.parts) do
+            if type(id) == "string" then w.parts[id] = item end
+        end
+        w.till = getTimestampMs() + 10000
+        waiting[args.vid] = w
         if not wticking then
             wticking = true
             Events.OnTick.Add(glassTick)
@@ -418,10 +437,13 @@ if not isClient() then
     end
 
     -- a part model shown again (the CabinGlass note above): the glass back to the end here, and on the clients near once
-    -- those parts' items reach them
+    -- those parts' items reach them (parts: VehiclePart list, each with its item)
     function L.glassAfter(v, parts)
         L.glassLast(v)
-        if isServer() then sendNear(v, "glassLast", { vid = v:getId(), parts = parts }) end
+        if not isServer() then return end
+        local items = {}
+        for _, part in ipairs(parts) do items[part:getId()] = part:getInventoryItem():getID() end
+        sendNear(v, "glassLast", { vid = v:getId(), parts = items })
     end
     local function modelled(part)
         return part:getInventoryItem() and part:getId() ~= "CabinGlass" and part:getScriptPart():getModelCount() > 0
@@ -433,12 +455,14 @@ if not isClient() then
         local ok = install(self)
         local v, part = self.vehicle, self.part
         if v and part and T.isTesla(v) and modelled(part) then
-            L.glassAfter(v, { part:getId() })
+            L.glassAfter(v, { part })
         end
         return ok
     end
-    -- the admin / debug repair (vanilla vehicle commands repair, repairPart: VehicleCommands.lua:330-370; a mod's
-    -- OnClientCommand runs after vanilla's) refits every missing part. Named so harness test_liftgate runs it alone.
+    -- the admin / debug repair (vanilla vehicle commands repair, repairPart: VehicleCommands.lua:330-370) refits every
+    -- missing part. Listens from server/MinidoracatTesla/Commands.lua, after vanilla's handler has refitted them (a
+    -- shared file's listener would run first: ParkModes.lua S.beforeVehicleCommand). Named so harness test_liftgate runs
+    -- it alone.
     function L.onVehicleCommand(module, command, player, args)
         if module ~= "vehicle" or (command ~= "repair" and command ~= "repairPart") then return end
         local v = type(args) == "table" and getVehicleById(args.vehicle)
@@ -446,11 +470,10 @@ if not isClient() then
         local parts = {}
         for i = 0, v:getPartCount() - 1 do
             local part = v:getPartByIndex(i)
-            if modelled(part) then parts[#parts + 1] = part:getId() end
+            if modelled(part) then parts[#parts + 1] = part end
         end
         L.glassAfter(v, parts)
     end
-    Events.OnClientCommand.Add(L.onVehicleCommand)
 
     -- every load (BaseVehicle.java:904): a locked car from an older save or the world spawn (cabin doors locked by
     -- Vehicles.Create.Door, the hood never) gets its shut lids locked; the shell bits are set to the saved doors at once
