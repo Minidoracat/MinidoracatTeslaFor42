@@ -32,6 +32,11 @@ local function wearer(name)
         return {
             AddItem = function(_, t) local it = { type = t }; items[#items + 1] = it; return it end,
             Remove = function(_, it) for i = #items, 1, -1 do if items[i] == it then table.remove(items, i) end end end,
+            getAllType = function(_, t)
+                local l = {}
+                for _, it in ipairs(items) do if it.type == t then l[#l + 1] = it end end
+                return { size = function() return #l end, get = function(_, i) return l[i + 1] end }
+            end,
         }
     end
     return p
@@ -56,11 +61,22 @@ function getNumActivePlayers() return 1 end
 function getSpecificPlayer(i) return i == 0 and p or nil end
 p.worn[HAT] = hatItem("Hat_Stovepipe")
 sit(m3, 0)
+local ticks = H.count("OnTick")
 MinidoracatTesla.ServerCommands.hatHide(p, {})
 check(on() and #p.items == 1 and p.worn[LOC] == p.items[1] and p.items[1].type == Hd.TYPE,
     "top hat in the Model 3 driver's seat (hatHide command): the hider is added and worn")
-Hd.sync(p)
+check(H.count("OnTick") == ticks, "SP: no look-again (the seat is already the new one)")
+Hd.sync(p, false)
 check(#p.items == 1, "asked again: nothing changes")
+local stray = { type = Hd.TYPE }
+p.items[#p.items + 1] = stray
+Hd.sync(p, false)
+check(#p.items == 1 and p.items[1] == p.worn[LOC] and p.worn[LOC] ~= stray,
+    "an unworn copy (item add and worn sync crossed) goes, the worn one stays")
+p.worn[LOC] = nil
+Hd.sync(p, false)
+check(#p.items == 1 and p.worn[LOC] == p.items[1],
+    "the worn list lost it (a client's clothing sync), the copy in the inventory is worn again, no second one")
 p.worn[HAT] = hatItem("Hat_BaseballCap")
 H.fire("EveryOneMinute")
 check(not on() and #p.items == 0, "SP: the game-minute check takes it off for a cap and out of the inventory")
@@ -99,6 +115,31 @@ check(q.worn[LOC] ~= nil and sent.add == 1,
 q.vehicle = nil
 H.fire("EveryOneMinute")
 check(q.worn[LOC] == nil and sent.rem == 1, "MP server: off after the exit, the removal sent")
+
+-- MP server: the exit's command handled before the exit packet (RELIABLE vs RELIABLE_ORDERED): AGAIN_MS later
+local savedById = getPlayerByOnlineID
+local gone = false
+function getPlayerByOnlineID(id) return not gone and id == q:getOnlineID() and q or nil end
+q.vehicle = m3
+H.fire("EveryOneMinute")
+ticks = H.count("OnTick")
+MinidoracatTesla.ServerCommands.hatHide(q, {})
+check(q.worn[LOC] ~= nil and H.count("OnTick") == ticks + 1,
+    "MP server: a command while the server still has them seated keeps the hider, a look-again OnTick is added")
+MinidoracatTesla.ServerCommands.hatHide(q, {})
+check(H.count("OnTick") == ticks + 1, "a second command: still one OnTick")
+q.vehicle = nil
+H.fire("OnTick")
+check(q.worn[LOC] ~= nil, "before AGAIN_MS: not looked at yet")
+H.advanceMs(Hd.AGAIN_MS)
+H.fire("OnTick")
+check(q.worn[LOC] == nil and H.count("OnTick") == ticks, "AGAIN_MS later the exit has applied: off, the OnTick removed")
+MinidoracatTesla.ServerCommands.hatHide(q, {})
+gone = true
+H.advanceMs(Hd.AGAIN_MS)
+H.fire("OnTick")
+check(H.count("OnTick") == ticks, "a player gone by then is skipped, the OnTick removed")
+getPlayerByOnlineID = savedById
 getOnlinePlayers = nil
 sendAddItemToContainer, sendRemoveItemFromContainer = savedSend.add, savedSend.rem
 -- the other tests' fake players wear nothing: unhook this module's minute and death handlers

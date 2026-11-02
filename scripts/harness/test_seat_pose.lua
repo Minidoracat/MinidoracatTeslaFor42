@@ -11,12 +11,14 @@ H.require("MinidoracatTesla/SeatPose")
 check(H.count("OnEnterVehicle") >= 1 and H.count("OnExitVehicle") >= 1 and H.count("OnSwitchVehicleSeat") >= 1,
     "listens to enter, exit and seat switches")
 
+MinidoracatTeslaHatLoc = MinidoracatTeslaHatLoc or "MinidoracatTesla:HatHide"
 local function varPlayer(name)
     local o = H.player({ name = name })
-    o.vars = {}
+    o.vars, o.worn = {}, {}
     function o:setVariable(k, v) self.vars[k] = v end
     function o:clearVariable(k) self.vars[k] = nil end
     function o:isLocalPlayer() return true end
+    function o:getWornItem(loc) return self.worn[loc] end
     return o
 end
 local function car(script)
@@ -49,14 +51,27 @@ H.fire("OnSwitchVehicleSeat", p)
 check(p.vars.MinidoracatTeslaRecline == true, "switched to the front passenger seat: reclined again")
 
 sit(van, 0)
+sent = #H.clientSent
 H.fire("OnEnterVehicle", p)
 check(p.vars.MinidoracatTeslaSeated == nil and p.vars.MinidoracatTeslaRecline == nil, "cleared on getting into a vanilla car")
+check(#H.clientSent == sent, "a vanilla car sends no hatHide")
 
 sit(tesla, 0)
 H.fire("OnEnterVehicle", p)
 sit(nil)
+sent = #H.clientSent
 H.fire("OnExitVehicle", p)
 check(p.vars.MinidoracatTeslaSeated == nil and p.vars.MinidoracatTeslaRecline == nil, "cleared after getting out of a Tesla")
+check(#H.clientSent == sent, "out of a Tesla without the hider: nothing to take off, no hatHide")
+sit(tesla, 0)
+H.fire("OnEnterVehicle", p)
+p.worn[MinidoracatTeslaHatLoc] = {}
+sit(nil)
+sent = #H.clientSent
+H.fire("OnExitVehicle", p)
+check(#H.clientSent == sent + 1 and H.clientSent[#H.clientSent].command == "hatHide",
+    "out of a Tesla wearing the hider: hatHide, the server takes it off")
+p.worn[MinidoracatTeslaHatLoc] = nil
 
 H.fire("OnExitVehicle", nil)
 check(true, "an event without a player is ignored")

@@ -1,15 +1,19 @@
--- Tall hats through a Tesla roof (user 2026-11-02: hide them while seated, over 10 mm out of the roof; a Spiffo head
--- shows bald, its mask drops the hair: HumanVisual.java:611-619, PopTemplateManager.java:165-170). While a player sits
--- in a Tesla seat whose roof the hat they wear leaves (TallHats.lua, from seat_head.py --tall-lua), the server puts
--- the hidden item MinidoracatTesla_HatHide on them. Its body location hides base:hat and base:fullhat models
--- (NPCs/MinidoracatTesla_BodyLocations.lua), on every client: setWornItem on the server sends SyncClothing to
--- everyone (IsoGameCharacter.java:3472-3478).
+-- Tall hats through a Tesla roof (user 2026-11-02: hide them while seated, over 10 mm out of the roof; a bald head
+-- accepted). While a player sits in a Tesla seat whose roof the hat they wear leaves (TallHats.lua, from seat_head.py
+-- --tall-lua), the server puts the hidden item MinidoracatTesla_HatHide on them. Its body location hides base:hat and
+-- base:fullhat models (NPCs/MinidoracatTesla_BodyLocations.lua), on every client: setWornItem on the server sends
+-- SyncClothing to everyone (IsoGameCharacter.java:3472-3478). The hat stays worn, so the hair and beard still follow
+-- it: the hair style is the hat's alternate (PopTemplateManager.java:124-143, HairStyles.java:164-171), none under
+-- the Spiffo head (hatCategory nohair) or the spiked full crash helmets (nohairnobeard: no beard either, :145-152).
 -- When: the player's own client asks after entering, switching seats or exiting (client SeatPose.lua; the server has
--- no such event, Camp.lua); death takes it off before the corpse copies the worn items (OnCharacterDeath from
+-- no such event, Camp.lua), and on a server it looks again AGAIN_MS later: the command is RELIABLE, the exit and seat
+-- switch RELIABLE_ORDERED (PacketTypes.java:510; VehicleExitPacket.java:17-23), so the command can be handled while
+-- the seat is still the old one. Death takes it off before the corpse copies the worn items (OnCharacterDeath from
 -- DoDeath, IsoGameCharacter.java:2024-2025, before becomeCorpse :14640); and the EveryOneMinute event checks every
 -- player again (a hat changed in the seat, a lost command, a login, a seat lost while away): the online players on
--- a server, the local ones in SP. AGENTS.md rule 2: an event, no tick; per player a few getters and two table
--- lookups, an item only when the state flips (E2E seat-hat-sp / hat-mp `RECONCILE`).
+-- a server, the local ones in SP. AGENTS.md rule 2: events, a one-shot OnTick while a look-again is due; per player a
+-- few getters, two table lookups and one inventory scan (getAllType), an item only when the state flips (E2E
+-- seat-hat-sp / hat-mp `RECONCILE`).
 if isClient() then return end
 require "MinidoracatTesla/Core"
 require "MinidoracatTesla/TallHats"
@@ -35,33 +39,74 @@ function H.wanted(player)
     return false
 end
 
--- off: take it off whatever the seat (death: the character may still read as seated and alive here)
+-- off: take it off whatever the seat (death: the character may still read as seated and alive here). Leaves one
+-- hider, worn, or none: an unworn copy goes too (the item add and the worn sync use different ordering channels,
+-- AddInventoryItemToContainerPacket / SyncClothingPacket, so a client can hold two; review 2026-11-02).
 function H.sync(player, off)
     if not player then return end
     local loc, inv = MinidoracatTeslaHatLoc, player:getInventory()
-    local cur, want = player:getWornItem(loc), not off and H.wanted(player)
-    if want == (cur ~= nil) then return end
-    if want then
-        local item = inv:AddItem(H.TYPE)
-        if isServer() then sendAddItemToContainer(inv, item) end
-        player:setWornItem(loc, item)
-    else
+    local want = not off and H.wanted(player)
+    local cur, all = player:getWornItem(loc), inv:getAllType(H.TYPE)
+    local keep = want and (cur or (all:size() > 0 and all:get(0))) or nil
+    local changed = false
+    if cur and cur ~= keep then
         player:removeWornItem(cur, false)
-        inv:Remove(cur)
-        if isServer() then sendRemoveItemFromContainer(inv, cur) end
+        changed = true
     end
-    T.log("hatHide " .. tostring(player:getUsername()) .. " " .. (want and "on" or "off"))
+    for i = all:size() - 1, 0, -1 do
+        local it = all:get(i)
+        if it ~= keep then
+            inv:Remove(it)
+            if isServer() then sendRemoveItemFromContainer(inv, it) end
+            changed = true
+        end
+    end
+    if want and not keep then
+        keep = inv:AddItem(H.TYPE)
+        if isServer() then sendAddItemToContainer(inv, keep) end
+    end
+    if keep and keep ~= cur then
+        player:setWornItem(loc, keep)
+        changed = true
+    end
+    if changed then T.log("hatHide " .. tostring(player:getUsername()) .. " " .. (want and "on" or "off")) end
+end
+
+-- look again AGAIN_MS after a command on a server (see the top): onlineID -> due ms, so a player gone by then is
+-- skipped (getPlayerByOnlineID -> nil). The OnTick goes once none is due, as the horn's (Remote.lua).
+H.AGAIN_MS = 1000
+local again, pending = {}, 0 -- pending: how many ids `again` holds (next is not a Kahlua global, verify_mod)
+local function againTick()
+    local now, due = getTimestampMs(), {}
+    for id, at in pairs(again) do
+        if now >= at or at - now > H.AGAIN_MS then due[#due + 1] = id end -- the clock set back: now
+    end
+    for _, id in ipairs(due) do
+        again[id] = nil
+        pending = pending - 1
+        H.sync(getPlayerByOnlineID(id), false)
+    end
+    if pending == 0 then Events.OnTick.Remove(againTick) end
 end
 
 T.ServerCommands = T.ServerCommands or {}
-T.ServerCommands.hatHide = function(player) H.sync(player) end
+T.ServerCommands.hatHide = function(player)
+    H.sync(player, false)
+    if not isServer() then return end
+    local id = player:getOnlineID()
+    if not again[id] then
+        if pending == 0 then Events.OnTick.Add(againTick) end
+        pending = pending + 1
+    end
+    again[id] = getTimestampMs() + H.AGAIN_MS
+end
 
 function H.minute()
     if isServer() then
         local list = getOnlinePlayers()
-        for i = 0, list:size() - 1 do H.sync(list:get(i)) end
+        for i = 0, list:size() - 1 do H.sync(list:get(i), false) end
     else
-        for i = 0, getNumActivePlayers() - 1 do H.sync(getSpecificPlayer(i)) end
+        for i = 0, getNumActivePlayers() - 1 do H.sync(getSpecificPlayer(i), false) end
     end
 end
 function H.onDeath(chr)

@@ -55,7 +55,8 @@ end
 -- least 1.5 times it, motor exactly it. No reply: past these only a modified client gets, and a reply per drop would
 -- grow with the flood. Not played there, one per click or per login, inside `default`: camp, sentry, chargeInfo,
 -- phoneUnpair, inboxPull, the radial's bdm and chill, the Cybertruck's radial slices roofLight, psOn, psOff,
--- outletOn, outletOff, and hatHide (one per own enter, seat switch or exit; HatHide.lua).
+-- outletOn, outletOff, and hatHide (in a Tesla or wearing the hider: up to two per own enter or seat switch in MP,
+-- OnEnterVehicle fires twice there, AGENTS.md; one per exit; HatHide.lua).
 local CR = { dropped = {} }
 CR.LIMITS = {
     default = { max = 40, ms = 10000 },      -- legit 20: one per click (charge card, camp, sentry, pairing), autoLock 2 a

@@ -36,10 +36,15 @@ local function sync(player)
     set(player, RECLINE, tesla and v:getSeat(player) <= 1)
 end
 
--- the local player's own enter / switch / exit also asks the server to put on or take off the hat hider (HatHide.lua)
+-- the local player's own enter / switch / exit also asks the server to put on or take off the hat hider (HatHide.lua):
+-- in a Tesla, or wearing it (getting out: the server's SyncClothing put it here); a vanilla car sends nothing
 local function seat(player)
     sync(player)
-    if player and player:isLocalPlayer() then sendClientCommand(player, T.MODULE, "hatHide", {}) end
+    if not (player and player:isLocalPlayer()) then return end
+    local v = player:getVehicle()
+    if (v and T.isTesla(v)) or player:getWornItem(MinidoracatTeslaHatLoc) then
+        sendClientCommand(player, T.MODULE, "hatHide", {})
+    end
 end
 Events.OnEnterVehicle.Add(seat)
 Events.OnExitVehicle.Add(seat)
