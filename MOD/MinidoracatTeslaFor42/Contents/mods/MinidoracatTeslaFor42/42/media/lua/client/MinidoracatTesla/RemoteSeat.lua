@@ -15,7 +15,7 @@
 -- Watched: an online id the server relays when that player gets in, switches or gets out (`seat`, SeatPose.lua; now
 -- and 1 s later), and every remote player in a Tesla once a game minute (a car or player that just loaded, a lost
 -- command). Dropped once out of a Tesla for GRACE_MS (the relay can come before the vehicle packet).
--- AGENTS.md rule 2 exception (pending the user's approval): the OnTick is there only while someone is watched, and
+-- AGENTS.md rule 2 exception (approved by the user 2026-11-02): the OnTick is there only while someone is watched, and
 -- removed when nobody is; per watched player one lookup, three getters and three setters.
 require "MinidoracatTesla/Core"
 require "MinidoracatTesla/SeatPose" -- its `seat` handler first, wrapped below

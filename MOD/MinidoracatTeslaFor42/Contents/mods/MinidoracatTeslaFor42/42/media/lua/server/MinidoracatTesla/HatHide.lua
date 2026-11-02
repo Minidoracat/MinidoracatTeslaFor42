@@ -1,4 +1,5 @@
--- Tall hats through a Tesla roof (user 2026-11-02: hide them while seated, over 10 mm out; Spiffo bald accepted).
+-- Tall hats through a Tesla roof (user 2026-11-02: hide them while seated, over 10 mm out; bald under the Spiffo head
+-- and the spiked full crash helmets accepted).
 -- While a player sits in a Tesla seat whose roof the hat they wear leaves (TallHats.lua, from seat_head.py
 -- --tall-lua), the server puts the hidden item MinidoracatTesla_HatHide on them. Its body location hides base:hat and
 -- base:fullhat models (NPCs/MinidoracatTesla_BodyLocations.lua), on every client: setWornItem on the server sends
