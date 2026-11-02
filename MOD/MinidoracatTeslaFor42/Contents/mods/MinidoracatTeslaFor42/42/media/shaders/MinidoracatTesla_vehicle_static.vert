@@ -50,5 +50,11 @@ void main()
 	float clip = ((o.z+1.0) / 2.0); // -1,+1 -> 0,2 -> 0,1
 	clip += targetDepth - 0.5;
 	o.z = (clip*2)-1; // 0-1 -> 0-2 -> -1,+1
+	// Seated passengers (seating.md "乘客的深度"): the engine depth-references a passenger at its seat's x, y on the
+	// ground (BaseVehicle.java:1922-1927, 3488-3494; ModelSlotRenderData.java:126-128, 224-233, 829-835) and the car at
+	// its physics origin (ModelSlotRenderData.java:236-247, Model.java:503-505), so a passenger draws as if its seat
+	// point sat H lower. Cabin faces carry H in UV0 u (mm, cabin.py mark_depth) and move back as far
+	if (uv2.x < -1.25)
+		o.z -= (ModelViewProjection * transform * vec4(0.0, uv.x * 0.001, 0.0, 0.0)).z;
 	gl_Position = o;
 }
