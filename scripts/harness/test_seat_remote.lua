@@ -25,8 +25,9 @@ local function rider(name, isLocal)
     function p:setX(x) self.x = x end
     function p:setY(y) self.y = y end
     function p:setZ(z) self.z = z end
-    function p:setVariable() end -- SeatPose's game-minute sync runs too
-    function p:clearVariable() end
+    p.vars = {} -- SeatPose's sync runs first on the same relay and game minute
+    function p:setVariable(k, v) self.vars[k] = v end
+    function p:clearVariable(k) self.vars[k] = nil end
     return p
 end
 local function car(script, x, y)
@@ -71,6 +72,8 @@ sit(b, tesla, 0)
 check(R.count() == 2 and H.count("OnTick") == ticks + 1, "a second passenger: still one OnTick")
 T.ClientCommands.seat({ id = b.oid })
 check(R.count() == 2, "the relay again (1 s later): not watched twice")
+check(b.vars.MinidoracatTeslaSeated == true and b.vars.MinidoracatTeslaRecline == true and b.vars.MinidoracatTeslaCar == "Cybertruck",
+    "the same relay set b's seated pose first (SeatPose's sync, then RemoteSeat's watch)")
 H.fire("OnTick")
 check(b.x == 200.5 + 0.5 and b.y == 300.5, "both put on their seats")
 
@@ -107,6 +110,8 @@ H.side(true, false)
 H.fire("EveryOneMinute")
 check(R.count() == 1 and H.count("OnTick") == ticks + 1, "every minute (MP client): the remote player in a Tesla only "
     .. "(not one in a vanilla car, not the local player)")
+check(a.vars.MinidoracatTeslaSeated == true and a.vars.MinidoracatTeslaRecline == nil and b.vars.MinidoracatTeslaSeated == nil,
+    "and the same minute set the poses: a seated upright in the rear, b in a vanilla car none")
 H.fire("OnTick")
 check(a.x == 203 and a.y == 300, "and put on the seat")
 sit(a, nil)
