@@ -38,6 +38,7 @@ local function sendNear(v, cmd, args, except)
     local x, y, r = v:getX(), v:getY(), L.NEAR_TILES
     T.sendClients(function(p) return math.abs(p:getX() - x) <= r and math.abs(p:getY() - y) <= r end, cmd, args, except)
 end
+L.sendNear = sendNear -- also around a seated player (server HatHide.lua): v is anything with getX / getY
 
 -- Doors open or swinging ride in the colour hue's integer part (bit k-1 for SHELL_DOORS[k]): the shader draws a door's
 -- window from the door model while its bit is set and from its closed copy in the cabin glass model (drawn last,

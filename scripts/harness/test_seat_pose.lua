@@ -38,8 +38,8 @@ sit(tesla, 0)
 local sent = #H.clientSent
 H.fire("OnEnterVehicle", p)
 check(p.vars.MinidoracatTeslaSeated == true and p.vars.MinidoracatTeslaRecline == true, "driver of a Tesla: seated, reclined")
-check(#H.clientSent == sent + 1 and H.clientSent[#H.clientSent].command == "hatHide",
-    "the local player's enter asks the server to sync the hat hider (server/MinidoracatTesla/HatHide.lua)")
+check(#H.clientSent == sent + 1 and H.clientSent[#H.clientSent].command == "seat",
+    "the local player's enter sends seat (server/MinidoracatTesla/HatHide.lua: the hat hider, the relay to the clients near)")
 
 sit(tesla, 2)
 H.fire("OnSwitchVehicleSeat", p)
@@ -56,10 +56,10 @@ sit(van, 0)
 sent = #H.clientSent
 H.fire("OnEnterVehicle", p)
 check(p.vars.MinidoracatTeslaSeated == nil and p.vars.MinidoracatTeslaRecline == nil, "cleared on getting into a vanilla car")
-check(#H.clientSent == sent, "a vanilla car sends no hatHide")
+check(#H.clientSent == sent, "a vanilla car sends no seat")
 sit(nil)
 H.fire("OnExitVehicle", p)
-check(#H.clientSent == sent, "out of a vanilla car, no hider: no hatHide")
+check(#H.clientSent == sent, "out of a vanilla car, no hider: no seat")
 
 sit(tesla, 0)
 H.fire("OnEnterVehicle", p)
@@ -67,16 +67,16 @@ sit(nil)
 sent = #H.clientSent
 H.fire("OnExitVehicle", p)
 check(p.vars.MinidoracatTeslaSeated == nil and p.vars.MinidoracatTeslaRecline == nil, "cleared after getting out of a Tesla")
-check(#H.clientSent == sent + 1 and H.clientSent[#H.clientSent].command == "hatHide",
-    "out of a Tesla: hatHide even though the hider has not reached this client")
+check(#H.clientSent == sent + 1 and H.clientSent[#H.clientSent].command == "seat",
+    "out of a Tesla: seat even though the hider has not reached this client")
 sit(van, 0)
 H.fire("OnEnterVehicle", p)
 p.worn[MinidoracatTeslaHatLoc] = {}
 sit(nil)
 sent = #H.clientSent
 H.fire("OnExitVehicle", p)
-check(#H.clientSent == sent + 1 and H.clientSent[#H.clientSent].command == "hatHide",
-    "out of a vanilla car still wearing a hider: hatHide, the server takes it off")
+check(#H.clientSent == sent + 1 and H.clientSent[#H.clientSent].command == "seat",
+    "out of a vanilla car still wearing a hider: seat, the server takes it off")
 p.worn[MinidoracatTeslaHatLoc] = nil
 
 H.fire("OnExitVehicle", nil)
@@ -103,3 +103,117 @@ check(rear.vars.MinidoracatTeslaSeated == true and rear.vars.MinidoracatTeslaRec
 check(inVan.vars.MinidoracatTeslaSeated == nil and onFoot.vars.MinidoracatTeslaRecline == nil,
     "every minute (MP client): cleared on players in another car or on foot")
 getOnlinePlayers = nil
+
+-- the server's side (server/MinidoracatTesla/HatHide.lua, the hat itself is test_hat_hide's): each seat command tells
+-- the clients near the sender's online id, again AGAIN_MS later (the relay can beat that player's vehicle packet to a
+-- client); the command's arguments are never read
+local T = MinidoracatTesla
+H.side(false, true)
+H.require("MinidoracatTesla/Liftgate") -- loaded already by the HUD and door tests: Liftgate.sendNear
+H.require("MinidoracatTesla/HatHide") -- loaded already by test_hat_hide: ServerCommands.seat
+local Hd, savedSync, savedById = T.HatHide, T.HatHide.sync, getPlayerByOnlineID
+Hd.sync = function() end
+local sender = H.player({ name = "sender" })
+local guest = H.player({ name = "guest", num = 1 }) -- split-screen on the sender's client
+guest.oid = sender.oid + 1
+local near = H.player({ name = "near", x = sender.x + 5, y = sender.y - 3 })
+local far = H.player({ name = "far", x = sender.x + 96.5, y = sender.y })
+local corner = H.player({ name = "corner", x = sender.x - 96, y = sender.y + 96 })
+local everyone, gone = { sender, guest, near, far, corner }, false
+function getOnlinePlayers() return { size = function() return #everyone end, get = function(_, i) return everyone[i + 1] end } end
+function getPlayerByOnlineID(id) return not gone and id == sender.oid and sender or nil end
+local function relays(from)
+    local to, only = {}, true
+    for i = from + 1, #H.sent do
+        local s = H.sent[i]
+        if s.command == "seat" then
+            to[#to + 1] = s.player.name
+            local keys = 0
+            for _ in pairs(s.args) do keys = keys + 1 end
+            only = only and keys == 1 and s.args.id == sender.oid
+        end
+    end
+    table.sort(to)
+    return table.concat(to, ","), only
+end
+local n0, ticks = #H.sent, H.count("OnTick")
+T.ServerCommands.seat(sender, { id = near.oid, vid = 7 }) -- a forged id is not read
+local to, only = relays(n0)
+check(to == "corner,near" and only, "server: { id = the sender's own online id } once to each client 96 tiles on both "
+    .. "axes, none to the sender's (its split-screen guest too) or 96.5 tiles away (" .. to .. ")")
+check(H.count("OnTick") == ticks + 1, "...and a look-again OnTick")
+n0 = #H.sent
+H.advanceMs(Hd.AGAIN_MS)
+H.fire("OnTick")
+to, only = relays(n0)
+check(to == "corner,near" and only and H.count("OnTick") == ticks,
+    "AGAIN_MS later: the same relay again (for a client it reached ahead of the vehicle packet), the OnTick removed")
+n0 = #H.sent
+T.ServerCommands.seat(sender, {})
+gone = true
+H.advanceMs(Hd.AGAIN_MS)
+H.fire("OnTick")
+check(relays(n0) == "corner,near" and H.count("OnTick") == ticks, "the sender gone by the look-again: no second relay")
+gone = false
+H.side(false, false)
+n0 = #H.sent
+T.ServerCommands.seat(sender, {})
+check(#H.sent == n0, "SP: no relay (no other client)")
+Hd.sync, getPlayerByOnlineID, getOnlinePlayers = savedSync, savedById, nil
+
+-- the server's relay of another player's seat (HatHide.lua): that player synced here at once, and again on the relay
+-- AGAIN_MS later, which sets them right when the first one beat their vehicle packet here
+local other = varPlayer("other")
+other.oid = 4242
+local savedById = getPlayerByOnlineID
+function getPlayerByOnlineID(id) return id == other.oid and other or nil end
+H.side(true, false)
+tesla.seats[other] = 0
+T.ClientCommands.seat({ id = other.oid })
+check(other.vars.MinidoracatTeslaSeated == nil, "relay ahead of their enter packet: nothing to set yet")
+other.vehicle = tesla -- their VehicleEnter applied here
+T.ClientCommands.seat({ id = other.oid })
+check(other.vars.MinidoracatTeslaSeated == true and other.vars.MinidoracatTeslaRecline == true,
+    "the relay again (AGAIN_MS later): seated and reclined, not a game minute later")
+tesla.seats[other] = 3
+T.ClientCommands.seat({ id = other.oid })
+check(other.vars.MinidoracatTeslaSeated == true and other.vars.MinidoracatTeslaRecline == nil, "switched to the rear: upright")
+other.vehicle = nil
+T.ClientCommands.seat({ id = other.oid })
+check(other.vars.MinidoracatTeslaSeated == nil and other.vars.MinidoracatTeslaRecline == nil, "got out: cleared")
+local before = #H.clientSent
+T.ClientCommands.seat({ id = 999 })
+T.ClientCommands.seat({ id = "4242" })
+T.ClientCommands.seat({})
+check(#H.clientSent == before, "an id not loaded here or not a number: nothing (and a relay never sends anything back)")
+getPlayerByOnlineID = savedById
+
+-- a real client's busiest minute through the server's dispatch (Commands.lua CommandRate): into a Tesla, then a seat
+-- switch at 2 clicks a second, each counted twice (the upper bound: OnEnterVehicle fires twice per enter in MP); none
+-- dropped, the busiest 10 s at most 2 / 3 of the seat budget. In and out sends fewer (two per enter, one per exit).
+local CR = T.CommandRate
+local dropped, from, reached, times = CR.dropped.seat or 0, #H.clientSent, 0, {}
+for i = 0, 119 do
+    if i == 0 then
+        sit(tesla, 0)
+        H.fire("OnEnterVehicle", p)
+        H.fire("OnEnterVehicle", p)
+    else
+        sit(tesla, i % 2 == 0 and 0 or 2)
+        H.fire("OnSwitchVehicleSeat", p)
+        H.fire("OnEnterVehicle", p)
+    end
+    for _ = from + 1, #H.clientSent do times[#times + 1] = i * 500 end
+    local got
+    got, from = H.serve(from)
+    reached = reached + (got.seat or 0)
+    H.advanceMs(500)
+end
+local busiest = H.busiest(times, CR.LIMITS.seat.ms)
+check(reached == 240 and #times == 240 and (CR.dropped.seat or 0) == dropped and busiest * 1.5 <= CR.LIMITS.seat.max,
+    "a minute of seat switches in a Tesla, 2 clicks a second (" .. busiest .. " in the busiest 10 s): all " .. reached
+    .. " reach the server's handler")
+sit(nil)
+H.fire("OnExitVehicle", p)
+H.side(false, true)
+H.advanceMs(CR.LIMITS.seat.ms)

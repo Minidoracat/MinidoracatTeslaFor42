@@ -1,8 +1,8 @@
 -- Per-player command budget at the server dispatch (server/MinidoracatTesla/Commands.lua T.CommandRate): past the
 -- budget dropped before the handler, counted, one log line a window; players apart; the window recovers, a clock set
 -- back starts over; SP and unknown commands are left alone. The real client's busiest minute through it (H.serve) is
--- in test_sound_remote (motor), test_phone_app (the app), test_liftgate (car picture), test_hud (charge card) and
--- test_keys (walk-away lock, key sweep, key card taps, pairing).
+-- in test_sound_remote (motor), test_phone_app (the app), test_liftgate (car picture), test_hud (charge card),
+-- test_seat_pose (seat) and test_keys (walk-away lock, key sweep, key card taps, pairing).
 local check = H.check
 local T = MinidoracatTesla
 local CR = T.CommandRate

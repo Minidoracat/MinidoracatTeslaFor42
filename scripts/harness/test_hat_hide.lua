@@ -62,9 +62,9 @@ function getSpecificPlayer(i) return i == 0 and p or nil end
 p.worn[HAT] = hatItem("Hat_Stovepipe")
 sit(m3, 0)
 local ticks = H.count("OnTick")
-MinidoracatTesla.ServerCommands.hatHide(p, {})
+MinidoracatTesla.ServerCommands.seat(p, {})
 check(on() and #p.items == 1 and p.worn[LOC] == p.items[1] and p.items[1].type == Hd.TYPE,
-    "top hat in the Model 3 driver's seat (hatHide command): the hider is added and worn")
+    "top hat in the Model 3 driver's seat (seat command): the hider is added and worn")
 check(H.count("OnTick") == ticks, "SP: no look-again (the seat is already the new one)")
 Hd.sync(p, false)
 check(#p.items == 1, "asked again: nothing changes")
@@ -116,17 +116,19 @@ q.vehicle = nil
 H.fire("EveryOneMinute")
 check(q.worn[LOC] == nil and sent.rem == 1, "MP server: off after the exit, the removal sent")
 
--- MP server: the exit's command handled before the exit packet (RELIABLE vs RELIABLE_ORDERED): AGAIN_MS later
-local savedById = getPlayerByOnlineID
+-- MP server: the exit's command handled before the exit packet (RELIABLE vs RELIABLE_ORDERED): AGAIN_MS later.
+-- The relay to the clients near (Liftgate.sendNear, not loaded yet here) is test_seat_pose's.
+local savedById, savedLiftgate = getPlayerByOnlineID, MinidoracatTesla.Liftgate
+MinidoracatTesla.Liftgate = savedLiftgate or { sendNear = function() end }
 local gone = false
 function getPlayerByOnlineID(id) return not gone and id == q:getOnlineID() and q or nil end
 q.vehicle = m3
 H.fire("EveryOneMinute")
 ticks = H.count("OnTick")
-MinidoracatTesla.ServerCommands.hatHide(q, {})
+MinidoracatTesla.ServerCommands.seat(q, {})
 check(q.worn[LOC] ~= nil and H.count("OnTick") == ticks + 1,
     "MP server: a command while the server still has them seated keeps the hider, a look-again OnTick is added")
-MinidoracatTesla.ServerCommands.hatHide(q, {})
+MinidoracatTesla.ServerCommands.seat(q, {})
 check(H.count("OnTick") == ticks + 1, "a second command: still one OnTick")
 q.vehicle = nil
 H.fire("OnTick")
@@ -134,7 +136,7 @@ check(q.worn[LOC] ~= nil, "before AGAIN_MS: not looked at yet")
 H.advanceMs(Hd.AGAIN_MS)
 H.fire("OnTick")
 check(q.worn[LOC] == nil and H.count("OnTick") == ticks, "AGAIN_MS later the exit has applied: off, the OnTick removed")
-MinidoracatTesla.ServerCommands.hatHide(q, {})
+MinidoracatTesla.ServerCommands.seat(q, {})
 q.vehicle = m3 -- seated again with the top hat: a kept IsoPlayer reference would put the hider on
 gone = true
 H.advanceMs(Hd.AGAIN_MS)
@@ -142,7 +144,7 @@ H.fire("OnTick")
 check(q.worn[LOC] == nil and H.count("OnTick") == ticks,
     "a player gone by then is skipped (looked up by id, no kept reference), the OnTick removed")
 gone = false
-MinidoracatTesla.ServerCommands.hatHide(q, {})
+MinidoracatTesla.ServerCommands.seat(q, {})
 check(q.worn[LOC] ~= nil, "seated with the top hat: the command puts it on")
 q.vehicle = nil
 H.advanceMs(-2 * Hd.AGAIN_MS)
@@ -150,7 +152,9 @@ H.fire("OnTick")
 check(q.worn[LOC] == nil and H.count("OnTick") == ticks,
     "the clock set back: looked at on the next tick instead of waiting, the OnTick removed")
 H.advanceMs(2 * Hd.AGAIN_MS)
+
 getPlayerByOnlineID = savedById
+MinidoracatTesla.Liftgate = savedLiftgate
 getOnlinePlayers = nil
 sendAddItemToContainer, sendRemoveItemFromContainer = savedSend.add, savedSend.rem
 -- the other tests' fake players wear nothing: unhook this module's minute and death handlers

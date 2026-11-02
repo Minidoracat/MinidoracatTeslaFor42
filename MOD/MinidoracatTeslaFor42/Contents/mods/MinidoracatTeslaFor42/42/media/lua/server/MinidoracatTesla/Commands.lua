@@ -55,8 +55,7 @@ end
 -- least 1.5 times it, motor exactly it. No reply: past these only a modified client gets, and a reply per drop would
 -- grow with the flood. Not played there, one per click or per login, inside `default`: camp, sentry, chargeInfo,
 -- phoneUnpair, inboxPull, the radial's bdm and chill, the Cybertruck's radial slices roofLight, psOn, psOff,
--- outletOn, outletOff, and hatHide (into, within or out of a Tesla, or out of any car wearing the hider: up to two per
--- own enter or seat switch in MP, OnEnterVehicle fires twice there, AGENTS.md; one per exit; HatHide.lua).
+-- outletOn and outletOff.
 local CR = { dropped = {} }
 CR.LIMITS = {
     default = { max = 40, ms = 10000 },      -- legit 20: one per click (charge card, camp, sentry, pairing), autoLock 2 a
@@ -70,6 +69,10 @@ CR.LIMITS = {
     appAlerts = { max = 20, ms = 10000 },    -- legit ~10: one per car picked or security page opened (2 clicks each)
     appAction = { max = 30, ms = 10000 },    -- legit 20: one per button press (lock and unlock chirp to everyone near)
     liftgate = { max = 30, ms = 10000 },     -- legit 20: one per click on the car picture; each tells the players near
+    seat = { max = 60, ms = 10000 },         -- legit 40: into, within or out of a Tesla, or out of any car wearing the
+                                             -- hat hider, up to two per own enter or seat switch in MP (OnEnterVehicle
+                                             -- fires twice there, AGENTS.md), one per exit, a click each; each tells
+                                             -- the clients near, again 1 s after a player's last (HatHide.lua)
 }
 T.CommandRate = CR
 

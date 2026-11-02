@@ -5,15 +5,18 @@
 -- SyncClothing to everyone (IsoGameCharacter.java:3472-3478). The hat stays worn, so the hair and beard still follow
 -- it: the hair style is the hat's alternate (PopTemplateManager.java:124-143, HairStyles.java:164-171), none under
 -- the Spiffo head (hatCategory nohair) or the spiked full crash helmets (nohairnobeard: no beard either, :145-152).
--- When: the player's own client asks after entering, switching seats or exiting (client SeatPose.lua; the server has
--- no such event, Camp.lua), and on a server it looks again AGAIN_MS later: the command is RELIABLE, the exit and seat
--- switch RELIABLE_ORDERED (PacketTypes.java:510; VehicleExitPacket.java:17-23), so the command can be handled while
--- the seat is still the old one. Death takes it off before the corpse copies the worn items (OnCharacterDeath from
--- DoDeath, IsoGameCharacter.java:2024-2025, before becomeCorpse :14640); and the EveryOneMinute event checks every
--- player again (a hat changed in the seat, a lost command, a login, a seat lost while away): the online players on
--- a server, the local ones in SP. AGENTS.md rule 2: events, a one-shot OnTick while a look-again is due; per player a
--- few getters, two table lookups and one inventory scan (getAllType), an item only when the state flips (E2E
--- seat-hat-sp / hat-mp `RECONCILE`).
+-- When: the player's own client sends `seat` after entering, switching seats or exiting (client SeatPose.lua; the
+-- server has no such event, Camp.lua), and on a server it looks again AGAIN_MS later: the command is RELIABLE, the exit
+-- and seat switch RELIABLE_ORDERED (PacketTypes.java:510; VehicleExitPacket.java:17-23), so the command can be handled
+-- while the seat is still the old one. Each time (MP) the clients near get the sender's online id, `seat` { id }, to
+-- set that player's seated pose there (SeatPose.lua; anim variables are per client, no Lua event fires there either):
+-- only the sender's own id, the command's arguments are never read; again AGAIN_MS later, for a client the relay
+-- reached ahead of that player's vehicle packet. Death takes it off before the corpse copies the worn items
+-- (OnCharacterDeath from DoDeath, IsoGameCharacter.java:2024-2025, before becomeCorpse :14640); and the EveryOneMinute
+-- event checks every player again (a hat changed in the seat, a lost command, a login, a seat lost while away): the
+-- online players on a server, the local ones in SP. AGENTS.md rule 2: events, a one-shot OnTick while a look-again is
+-- due; per player a few getters, two table lookups and one inventory scan (getAllType), an item only when the state
+-- flips (E2E seat-hat-sp / hat-mp `RECONCILE`).
 if isClient() then return end
 require "MinidoracatTesla/Core"
 require "MinidoracatTesla/TallHats"
@@ -73,6 +76,13 @@ function H.sync(player, off)
     if changed then T.log("hatHide " .. tostring(player:getUsername()) .. " " .. (want and "on" or "off")) end
 end
 
+-- MP: the clients that can have this player's car loaded (Liftgate.sendNear: 96 tiles on both axes of the player, who
+-- sits in or stands by it), but the sender's (it set its own pose): this player's online id, nothing from the client.
+-- Liftgate is a shared file, loaded before any server one; looked up per call (the harness loads it later).
+local function relay(player)
+    T.Liftgate.sendNear(player, "seat", { id = player:getOnlineID() }, player)
+end
+
 -- look again AGAIN_MS after a command on a server (see the top): onlineID -> due ms, so a player gone by then is
 -- skipped (getPlayerByOnlineID -> nil). The OnTick goes once none is due, as the horn's (Remote.lua).
 H.AGAIN_MS = 1000
@@ -85,15 +95,18 @@ local function againTick()
     for _, id in ipairs(due) do
         again[id] = nil
         pending = pending - 1
-        H.sync(getPlayerByOnlineID(id), false)
+        local p = getPlayerByOnlineID(id)
+        H.sync(p, false)
+        if p then relay(p) end
     end
     if pending == 0 then Events.OnTick.Remove(againTick) end
 end
 
 T.ServerCommands = T.ServerCommands or {}
-T.ServerCommands.hatHide = function(player)
+T.ServerCommands.seat = function(player)
     H.sync(player, false)
     if not isServer() then return end
+    relay(player)
     local id = player:getOnlineID()
     if not again[id] then
         if pending == 0 then Events.OnTick.Add(againTick) end

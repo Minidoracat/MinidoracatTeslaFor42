@@ -13,11 +13,15 @@
 --   seat sync BaseVehicle.java:2527-2530), seat switch (ISSwitchVehicleSeat:perform, ISSwitchVehicleSeat.lua:57) and
 --   exit (ISExitVehicle:perform, teleport IsoGameCharacter.java:16722-16727, TeleportPacket.java:63-66). A respawned
 --   character is a new IsoPlayer.
--- - other players once a game minute (MP client): no Lua event fires here when they get in, switch or get out
---   (enterRSync triggers OnEnterVehicle for local players only, BaseVehicle.java:2527).
---   ponytail: another player shows the vanilla upright pose (head through a low roof) for up to one game minute after
---   getting in or switching: a game day's real length / 1440, 2.5 s at the default 1-hour day (sandbox Day Length;
---   10 s at 4 hours); an event from the server when someone gets in, switches or gets out if that ever shows.
+-- - other players (MP client): no Lua event fires here when they get in, switch or get out (enterRSync triggers
+--   OnEnterVehicle for local players only, BaseVehicle.java:2527). Their own client sends `seat` (below); the server
+--   relays their online id to the clients near, now and HatHide.AGAIN_MS later (server HatHide.lua), and this client
+--   syncs that player on each (ClientCommands.seat). The game minute covers the rest: a car or player that just loaded
+--   here (the car loads 50-96 tiles away, before it is on screen; its passengers come after OnSpawnVehicleEnd,
+--   VehicleFullUpdatePacket.java:114, or a vehicle update later for a player not known here yet,
+--   VehiclePassengers.java:36-38), a login in a seat (its enter can fire while loading, when sendClientCommand does
+--   not reach the server, LuaManager.java:8940-8947), a lost command: a game day's real length / 1440, 2.5 s at
+--   the default 1-hour day (10 s at 4 hours).
 require "MinidoracatTesla/Core"
 require "Vehicles/ISUI/ISVehicleDashboard" -- registers OnExitVehicle and OnSwitchVehicleSeat (ISVehicleDashboard.lua:715-716)
 
@@ -36,9 +40,10 @@ local function sync(player)
     set(player, RECLINE, tesla and v:getSeat(player) <= 1)
 end
 
--- the local player's own enter / switch / exit also asks the server to put on or take off the hat hider (HatHide.lua):
--- in a Tesla, out of one (the hider's SyncClothing may not have reached this client yet: review 2026-11-02), or
--- wearing it; a vanilla car sends nothing. inTesla: per split-screen player, set at each enter / switch / exit.
+-- the local player's own enter / switch / exit sends `seat`: the server puts on or takes off the hat hider and tells
+-- the clients near to sync this player (server HatHide.lua). Sent in a Tesla, out of one (the hider's SyncClothing may
+-- not have reached this client yet: review 2026-11-02), or wearing the hider; a vanilla car sends nothing. inTesla:
+-- per split-screen player, set at each enter / switch / exit.
 local inTesla = {}
 local function seat(player)
     sync(player)
@@ -46,13 +51,18 @@ local function seat(player)
     local v, n = player:getVehicle(), player:getPlayerNum()
     local tesla = v and T.isTesla(v) or false
     if tesla or inTesla[n] or player:getWornItem(MinidoracatTeslaHatLoc) then
-        sendClientCommand(player, T.MODULE, "hatHide", {})
+        sendClientCommand(player, T.MODULE, "seat", {})
     end
     inTesla[n] = tesla
 end
 Events.OnEnterVehicle.Add(seat)
 Events.OnExitVehicle.Add(seat)
 Events.OnSwitchVehicleSeat.Add(seat)
+-- the server's relay of another player's `seat` (only that sender's online id, HatHide.lua)
+T.ClientCommands = T.ClientCommands or {}
+T.ClientCommands.seat = function(args)
+    if type(args.id) == "number" then sync(getPlayerByOnlineID(args.id)) end
+end
 Events.EveryOneMinute.Add(function()
     if not isClient() then return end
     local list = getOnlinePlayers()
