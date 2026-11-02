@@ -973,6 +973,29 @@ do -- one click on a phone that is not on the player (KeysUI onPair, user 2026-1
     ISTimedActionQueue.add = function() end
 end
 
+-- The lock chirp stays on this client (KeysUI keyChirp; user 2026-11-03 playtest: the horn kept sounding after a
+-- walk-away lock with a second player near). On an MP client the engine's emitter:playSound also sends PlayWorldSound
+-- for a car's emitter (no parent), the server relays it to every other client within 500 tiles and no stop follows
+-- (FMODSoundEmitter.java:389-400,1004-1007; PlayWorldSoundPacket.java:57-75); the fake emitter does the same.
+H.section("keys: the lock chirp stays on this client")
+do
+    local playing, relayed, nextRef = {}, {}, 1
+    local function start(name) local r = nextRef; nextRef = r + 1; playing[r] = name; return r end
+    local emitter = {
+        playSound = function(_, name) relayed[#relayed + 1] = name; return start(name) end,
+        playSoundLoopedImpl = function(_, name) return start(name) end,
+        stopSound = function(_, r) playing[r] = nil end,
+    }
+    local chirpCar = tesla({ pct = 80 })
+    function chirpCar:getEmitter() return emitter end
+    T.ClientCommands.keyChirp({ vid = chirpCar:getId() })
+    local heard = next(playing) ~= nil
+    H.advanceMs(K.CHIRP_MS + 50)
+    for fn in pairs(ticks) do fn() end
+    check(heard and next(playing) == nil and UI.chirpCount() == 0, "lock chirp: played here and stopped after CHIRP_MS")
+    check(#relayed == 0, "lock chirp: nothing relayed to the other players' clients (no stop ever reaches a relayed copy)")
+end
+
 -- Names in the player's language (KeysUI UI.nameOf / nameAll): the server leaves these items unnamed (KeyActions
 -- replace); the client adds the car from teslaCars, reads it back from a name fixed in the server's language before,
 -- and keeps a name the player gave.

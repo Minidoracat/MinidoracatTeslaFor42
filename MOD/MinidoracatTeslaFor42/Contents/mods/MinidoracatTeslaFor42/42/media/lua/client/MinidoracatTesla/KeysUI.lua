@@ -411,8 +411,12 @@ T.ClientCommands.phoneUnpaired = function(args)
     if App then App.seenRev = App.seenRev + 1 end
 end
 
--- Lock confirmation chirp (Keys.lua K.CHIRP): the vanilla horn event on the car's emitter (FMODSoundEmitter, no
+-- Lock confirmation chirp (Keys.lua K.CHIRP): the vanilla standard horn on the car's emitter (FMODSoundEmitter, no
 -- WorldSoundManager: zombies do not hear it), stopped after K.CHIRP_MS by a one-shot OnTick removed when empty.
+-- playSoundLoopedImpl plays it on this client only, as vanilla HornSound does. emitter:playSound on an MP client also
+-- sends PlayWorldSound (a car's emitter has no parent), the server relays it to every other client within 500 tiles
+-- and no stop ever follows, so the looping horn never ended there (FMODSoundEmitter.java:389-400,1004-1007;
+-- PlayWorldSoundPacket.java:57-75; user 2026-11-03 playtest). Every client plays its own chirp anyway.
 local chirps = {}
 local function chirpTick()
     local now = getTimestampMs()
@@ -430,7 +434,7 @@ T.ClientCommands.keyChirp = function(args)
     local v = args and args.vid and getVehicleById(args.vid)
     if not v then return end
     local emitter = v:getEmitter()
-    local id = emitter:playSound(K.CHIRP)
+    local id = emitter:playSoundLoopedImpl(K.CHIRP)
     if not id or id == 0 then return end
     if #chirps == 0 then Events.OnTick.Add(chirpTick) end
     chirps[#chirps + 1] = { emitter = emitter, id = id, at = getTimestampMs() }
