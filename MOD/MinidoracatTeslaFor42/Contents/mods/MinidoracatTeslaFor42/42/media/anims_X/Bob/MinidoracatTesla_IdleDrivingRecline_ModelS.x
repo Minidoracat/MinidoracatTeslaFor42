@@ -7154,7 +7154,7 @@ AnimTicksPerSecond  {
  4800;
 }
 
-AnimationSet MinidoracatTesla_IdleDrivingRecline {
+AnimationSet MinidoracatTesla_IdleDrivingRecline_ModelS {
  
 
  Animation {
@@ -7204,8 +7204,8 @@ AnimationSet MinidoracatTesla_IdleDrivingRecline {
   AnimationKey T {
    2;
    2;
-   0;3;0.000000,0.000000,0.000000;;,
-   800;3;0.000000,0.000000,0.000000;;;
+   0;3;0.000000,0.000000,0.222667;;,
+   800;3;0.000000,0.000000,0.222667;;;
   }
  }
 

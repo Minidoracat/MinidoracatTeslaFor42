@@ -1,11 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Rear seats of a Model Y (prototype proto/seatref-1102): the rear-row clip lifted by the amount the vehicle script
-     lowers every seat point (scripts/seat_anim.py LIFTS). m_ConditionPriority 2: before aim_seated (1); in a front seat
-     the _recline_ModelY node (3) wins. MinidoracatTeslaCar is set by client/MinidoracatTesla/SeatPose.lua. -->
+<!-- Written by scripts/seat_anim.py (NODE_KINDS): ModelY, rear rows. -->
 <animNode>
 	<m_Name>MinidoracatTesla_aim_seated_ModelY</m_Name>
 	<m_Priority>4</m_Priority>
-	<m_ConditionPriority>2</m_ConditionPriority>
+	<m_ConditionPriority>1</m_ConditionPriority>
 	<m_AnimName>MinidoracatTesla_IdleDrivingRear_ModelY</m_AnimName>
 	<m_BlendTime>0.30</m_BlendTime>
 	<m_SpeedScale>0.80</m_SpeedScale>

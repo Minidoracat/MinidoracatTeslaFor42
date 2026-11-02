@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Written by scripts/seat_anim.py (NODE_KINDS): Cybertruck, front seats. -->
+<animNode>
+	<m_Name>MinidoracatTesla_idle_recline_Cybertruck</m_Name>
+	<m_ConditionPriority>2</m_ConditionPriority>
+	<m_AnimName>MinidoracatTesla_IdleDrivingRecline_Cybertruck</m_AnimName>
+	<m_BlendTime>0.20</m_BlendTime>
+	<m_SpeedScale>0.80</m_SpeedScale>
+	<m_Conditions>
+		<m_Name>MinidoracatTeslaRecline</m_Name>
+		<m_Type>BOOL</m_Type>
+		<m_Value>true</m_Value>
+	</m_Conditions>
+	<m_Conditions>
+		<m_Name>MinidoracatTeslaCar</m_Name>
+		<m_Type>STRING</m_Type>
+		<m_Value>Cybertruck</m_Value>
+	</m_Conditions>
+</animNode>
