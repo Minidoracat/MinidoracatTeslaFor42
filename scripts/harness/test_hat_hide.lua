@@ -135,10 +135,21 @@ H.advanceMs(Hd.AGAIN_MS)
 H.fire("OnTick")
 check(q.worn[LOC] == nil and H.count("OnTick") == ticks, "AGAIN_MS later the exit has applied: off, the OnTick removed")
 MinidoracatTesla.ServerCommands.hatHide(q, {})
+q.vehicle = m3 -- seated again with the top hat: a kept IsoPlayer reference would put the hider on
 gone = true
 H.advanceMs(Hd.AGAIN_MS)
 H.fire("OnTick")
-check(H.count("OnTick") == ticks, "a player gone by then is skipped, the OnTick removed")
+check(q.worn[LOC] == nil and H.count("OnTick") == ticks,
+    "a player gone by then is skipped (looked up by id, no kept reference), the OnTick removed")
+gone = false
+MinidoracatTesla.ServerCommands.hatHide(q, {})
+check(q.worn[LOC] ~= nil, "seated with the top hat: the command puts it on")
+q.vehicle = nil
+H.advanceMs(-2 * Hd.AGAIN_MS)
+H.fire("OnTick")
+check(q.worn[LOC] == nil and H.count("OnTick") == ticks,
+    "the clock set back: looked at on the next tick instead of waiting, the OnTick removed")
+H.advanceMs(2 * Hd.AGAIN_MS)
 getPlayerByOnlineID = savedById
 getOnlinePlayers = nil
 sendAddItemToContainer, sendRemoveItemFromContainer = savedSend.add, savedSend.rem

@@ -14,7 +14,7 @@ check(H.count("OnEnterVehicle") >= 1 and H.count("OnExitVehicle") >= 1 and H.cou
 MinidoracatTeslaHatLoc = MinidoracatTeslaHatLoc or "MinidoracatTesla:HatHide"
 local function varPlayer(name)
     local o = H.player({ name = name })
-    o.vars, o.worn = {}, {}
+    o.vars, o.worn, o.num = {}, {}, 0
     function o:setVariable(k, v) self.vars[k] = v end
     function o:clearVariable(k) self.vars[k] = nil end
     function o:isLocalPlayer() return true end
@@ -50,11 +50,16 @@ sit(tesla, 1)
 H.fire("OnSwitchVehicleSeat", p)
 check(p.vars.MinidoracatTeslaRecline == true, "switched to the front passenger seat: reclined again")
 
+sit(nil)
+H.fire("OnExitVehicle", p)
 sit(van, 0)
 sent = #H.clientSent
 H.fire("OnEnterVehicle", p)
 check(p.vars.MinidoracatTeslaSeated == nil and p.vars.MinidoracatTeslaRecline == nil, "cleared on getting into a vanilla car")
 check(#H.clientSent == sent, "a vanilla car sends no hatHide")
+sit(nil)
+H.fire("OnExitVehicle", p)
+check(#H.clientSent == sent, "out of a vanilla car, no hider: no hatHide")
 
 sit(tesla, 0)
 H.fire("OnEnterVehicle", p)
@@ -62,15 +67,16 @@ sit(nil)
 sent = #H.clientSent
 H.fire("OnExitVehicle", p)
 check(p.vars.MinidoracatTeslaSeated == nil and p.vars.MinidoracatTeslaRecline == nil, "cleared after getting out of a Tesla")
-check(#H.clientSent == sent, "out of a Tesla without the hider: nothing to take off, no hatHide")
-sit(tesla, 0)
+check(#H.clientSent == sent + 1 and H.clientSent[#H.clientSent].command == "hatHide",
+    "out of a Tesla: hatHide even though the hider has not reached this client")
+sit(van, 0)
 H.fire("OnEnterVehicle", p)
 p.worn[MinidoracatTeslaHatLoc] = {}
 sit(nil)
 sent = #H.clientSent
 H.fire("OnExitVehicle", p)
 check(#H.clientSent == sent + 1 and H.clientSent[#H.clientSent].command == "hatHide",
-    "out of a Tesla wearing the hider: hatHide, the server takes it off")
+    "out of a vanilla car still wearing a hider: hatHide, the server takes it off")
 p.worn[MinidoracatTeslaHatLoc] = nil
 
 H.fire("OnExitVehicle", nil)

@@ -1,5 +1,5 @@
--- Tall hats through a Tesla roof (user 2026-11-02: hide them while seated, over 10 mm out of the roof; a bald head
--- accepted). While a player sits in a Tesla seat whose roof the hat they wear leaves (TallHats.lua, from seat_head.py
+-- Tall hats through a Tesla roof (user 2026-11-02: hide them while seated, over 10 mm out; Spiffo bald accepted).
+-- While a player sits in a Tesla seat whose roof the hat they wear leaves (TallHats.lua, from seat_head.py
 -- --tall-lua), the server puts the hidden item MinidoracatTesla_HatHide on them. Its body location hides base:hat and
 -- base:fullhat models (NPCs/MinidoracatTesla_BodyLocations.lua), on every client: setWornItem on the server sends
 -- SyncClothing to everyone (IsoGameCharacter.java:3472-3478). The hat stays worn, so the hair and beard still follow
@@ -40,8 +40,9 @@ function H.wanted(player)
 end
 
 -- off: take it off whatever the seat (death: the character may still read as seated and alive here). Leaves one
--- hider, worn, or none: an unworn copy goes too (the item add and the worn sync use different ordering channels,
--- AddInventoryItemToContainerPacket / SyncClothingPacket, so a client can hold two; review 2026-11-02).
+-- hider, worn, or none: an unworn copy goes too. A client's own SyncClothing sent before the hider reached it drops
+-- the hider from the server's worn list and leaves it in the inventory (SyncClothingPacket.java:176-190, processServer
+-- :230-231); the next sync wears that one again instead of adding another (review 2026-11-02).
 function H.sync(player, off)
     if not player then return end
     local loc, inv = MinidoracatTeslaHatLoc, player:getInventory()

@@ -37,14 +37,18 @@ local function sync(player)
 end
 
 -- the local player's own enter / switch / exit also asks the server to put on or take off the hat hider (HatHide.lua):
--- in a Tesla, or wearing it (getting out: the server's SyncClothing put it here); a vanilla car sends nothing
+-- in a Tesla, out of one (the hider's SyncClothing may not have reached this client yet: review 2026-11-02), or
+-- wearing it; a vanilla car sends nothing. inTesla: per split-screen player, set at each enter / switch / exit.
+local inTesla = {}
 local function seat(player)
     sync(player)
     if not (player and player:isLocalPlayer()) then return end
-    local v = player:getVehicle()
-    if (v and T.isTesla(v)) or player:getWornItem(MinidoracatTeslaHatLoc) then
+    local v, n = player:getVehicle(), player:getPlayerNum()
+    local tesla = v and T.isTesla(v) or false
+    if tesla or inTesla[n] or player:getWornItem(MinidoracatTeslaHatLoc) then
         sendClientCommand(player, T.MODULE, "hatHide", {})
     end
+    inTesla[n] = tesla
 end
 Events.OnEnterVehicle.Add(seat)
 Events.OnExitVehicle.Add(seat)
