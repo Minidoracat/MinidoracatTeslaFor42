@@ -1,11 +1,15 @@
--- Tall hats through a Tesla roof (prototype, temp/report-hat-1102): while a player sits in a Tesla seat whose roof the
--- hat they wear leaves (TallHats.lua, from seat_head.py), the server puts the hidden item MinidoracatTesla_HatHide on
--- them. Its body location hides base:hat and base:fullhat models (NPCs/MinidoracatTesla_BodyLocations.lua), on every
--- client: setWornItem on the server sends SyncClothing to everyone (IsoGameCharacter.java:3472-3478).
+-- Tall hats through a Tesla roof (user 2026-11-02: hide them while seated, over 10 mm out of the roof; a Spiffo head
+-- shows bald, its mask drops the hair: HumanVisual.java:611-619, PopTemplateManager.java:165-170). While a player sits
+-- in a Tesla seat whose roof the hat they wear leaves (TallHats.lua, from seat_head.py --tall-lua), the server puts
+-- the hidden item MinidoracatTesla_HatHide on them. Its body location hides base:hat and base:fullhat models
+-- (NPCs/MinidoracatTesla_BodyLocations.lua), on every client: setWornItem on the server sends SyncClothing to
+-- everyone (IsoGameCharacter.java:3472-3478).
 -- When: the player's own client asks after entering, switching seats or exiting (client SeatPose.lua; the server has
--- no such event, Camp.lua), death takes it off before the corpse copies the worn items (OnCharacterDeath from
--- DoDeath, IsoGameCharacter.java:2024-2025, before becomeCorpse :14640), and every game minute each player is checked
--- again (a lost command, a hat changed in the seat, a login, a seat lost while away).
+-- no such event, Camp.lua); death takes it off before the corpse copies the worn items (OnCharacterDeath from
+-- DoDeath, IsoGameCharacter.java:2024-2025, before becomeCorpse :14640); and the EveryOneMinute event checks every
+-- player again (a hat changed in the seat, a lost command, a login, a seat lost while away): the online players on
+-- a server, the local ones in SP. AGENTS.md rule 2: an event, no tick; per player a few getters and two table
+-- lookups, an item only when the state flips (E2E seat-hat-sp / hat-mp `RECONCILE`).
 if isClient() then return end
 require "MinidoracatTesla/Core"
 require "MinidoracatTesla/TallHats"
@@ -52,15 +56,16 @@ end
 T.ServerCommands = T.ServerCommands or {}
 T.ServerCommands.hatHide = function(player) H.sync(player) end
 
-local function each(fn)
+function H.minute()
     if isServer() then
         local list = getOnlinePlayers()
-        for i = 0, list:size() - 1 do fn(list:get(i)) end
+        for i = 0, list:size() - 1 do H.sync(list:get(i)) end
     else
-        for i = 0, getNumActivePlayers() - 1 do fn(getSpecificPlayer(i)) end
+        for i = 0, getNumActivePlayers() - 1 do H.sync(getSpecificPlayer(i)) end
     end
 end
-Events.EveryOneMinute.Add(function() each(H.sync) end)
-Events.OnCharacterDeath.Add(function(chr)
+function H.onDeath(chr)
     if instanceof(chr, "IsoPlayer") then H.sync(chr, true) end
-end)
+end
+Events.EveryOneMinute.Add(H.minute)
+Events.OnCharacterDeath.Add(H.onDeath)
