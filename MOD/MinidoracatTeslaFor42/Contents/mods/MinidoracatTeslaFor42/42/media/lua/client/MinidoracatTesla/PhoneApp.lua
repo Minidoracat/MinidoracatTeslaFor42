@@ -1003,8 +1003,11 @@ function App:read()
     else
         self.sSub = txt("LastSeen", ageText(ageH))
     end
-    -- why the controls are grey
-    self.sSub2 = vmOnly and txt("NotPaired") or (rec and not link and txt("FootOff")) or nil
+    -- why the controls are grey; with the grid down and the car past Bluetooth, the reason and the range
+    -- (Keys.lua K.appReach: generators do not bring the network back; Workshop guide comment 2026-11-07)
+    local offGrid = st ~= nil and not st.deny and not self.grid and not link
+    self.sSub2 = vmOnly and txt("NotPaired") or (offGrid and T.denyText("NO_LINK"))
+        or (rec and not link and txt("FootOff")) or nil
     -- no km: no range limit (Gas Consumption 0, Remote.lua record); the game fonts have no ∞
     self.sBat = rec and (txt("Km", st.km and tostring(st.km) or "--") .. sep .. tostring(st.pct) .. "%") or ""
     self.pct = rec and st.pct or 0

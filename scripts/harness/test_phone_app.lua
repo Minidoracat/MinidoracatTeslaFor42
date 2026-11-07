@@ -950,6 +950,21 @@ getText = function(k, a) return a and (k .. "|" .. a) or k end
 state({ km = false }) -- vanilla Gas Consumption 0: the record has no km (Remote.lua)
 check(a.sBat:find("_App_Km|--", 1, true) ~= nil, "no km in the record (Gas Consumption 0): the battery line says -- (" .. a.sBat .. ")")
 getText = realGTkm
+-- why the controls are grey with the grid down (Workshop guide comment 2026-11-07: a generator did not bring the
+-- phone back): the power-cut reason with the Bluetooth range, record or not; the grid up and no link: the last record
+getText = function(k, n) return n and (k .. "|" .. n) or k end
+state({ link = false, grid = false })
+check(a.sSub2 == "IGUI_MinidoracatTesla_Deny_NO_LINK|50",
+    "grid down, past Bluetooth: the power-cut reason with the range (" .. tostring(a.sSub2) .. ")")
+state({ link = false, grid = false, pct = false })
+check(a.sSub2 == "IGUI_MinidoracatTesla_Deny_NO_LINK|50", "grid down, no record yet: the same reason (" .. tostring(a.sSub2) .. ")")
+state({ link = "bt", grid = false })
+check(a.sSub2 == nil, "grid down, within Bluetooth: no why line")
+state({ link = false, grid = false, deny = "NOT_OWNER" })
+check(a.sSub2 == nil, "grid down but refused: the refusal is the status line, no power-cut reason")
+state({ link = false })
+check(a.sSub2 == "IGUI_MinidoracatTesla_App_FootOff", "grid up, no link (car not loaded): the last-record line")
+getText = realGTkm
 state()
 -- each car its own picture files, paints, wordmark, map glyph and lid words (Specs appCar / colors / model,
 -- T.CarPartNames): the Model 3 shares six paint names with the Model Y, so a shared file name would show the other car

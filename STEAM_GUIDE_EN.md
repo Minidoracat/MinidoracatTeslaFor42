@@ -265,9 +265,9 @@ A charger that works on the floor, no wall needed; slower than the Wall Connecto
 {{img:10-app-pages-en.jpg}}
 [h3]Connection[/h3]
 [list]
-[*] [b]While the grid is up[/b]: works at any distance.
+[*] [b]While the grid is up[/b]: works at any distance. Generators and solar panels do not count as the grid.
 [*] [b]After the power goes out[/b]: Bluetooth only, within 50 m of the car (sandbox App Bluetooth range after power cut (tiles); 1 tile = 1 m).
-[*] [b]When it cannot reach the car[/b]: it shows the last recorded location, charge and status, with the buttons grey; recording starts once you have looked at the car in the app.
+[*] [b]When it cannot reach the car[/b]: it shows the last recorded location, charge and status, with the buttons grey; after a power cut it also says how close to the car you need to be. Recording starts once you have looked at the car in the app.
 [*] [b]Cars the game has not loaded[/b]: remote actions need the car in a loaded area (in singleplayer about 50 tiles around you); further away you see the last record only.
 [*] [b]Multiplayer[/b]: only someone carrying this car's phone key sees where it is and controls it; the server checks every command again.
 [/list]
