@@ -1,8 +1,8 @@
 <!-- 指南網址：https://steamcommunity.com/sharedfiles/filedetails/?id=3829449879 -->
 <!-- Steam guide source (English). The full description lives in this guide; the Workshop page only has a summary. Format and sync: pz-family-docs/release.md "完整說明：Steam 指南" -->
 <!-- 標題：📖 Minidoracat Tesla Collection Mod Guide: Cars, Charging, Keys and the App -->
-<!-- 摘要：A picture guide to Minidoracat Tesla Collection: the Model Y and Model 3 Performance, the Model S and Model X Plaid (falcon wing doors and six seats), the Cybertruck Cyberbeast (cargo bed, Powershare home backup and the bed outlets), the battery and towing, the Wall Connector and the Mobile Connector, the Tesla-style dashboard, key cards and phone keys, the Tesla app and Summon, Sentry and Camp Mode, Bioweapon Defense Mode and Chill, drive unit parts, and how it works with Vehicle Manager, the MiniMap, AutoDrive and Project Viewpoint, plus the sandbox options. -->
-<!-- Screenshots: docs/screenshots/steam/en/, shot by guide-shots-sp in the family repo's e2e/MinidoracatTeslaFor42 (Summon shots: phone-summon-sp; FSD: fsd-shot-sp; With other mods: guide-mods-sp; Project Viewpoint (31): vd-first-ModelS from this repo's one-off temp/oneoff/vp-detail-sp, cropped (80,40,1660,1080), same picture as zh, needs ZombieBuddy) -->
+<!-- 摘要：A picture guide to Minidoracat Tesla Collection: the Model Y and Model 3 Performance, the Model S and Model X Plaid (falcon wing doors and six seats), the Cybertruck Cyberbeast (cargo bed, Powershare home backup and the bed outlets), the battery and towing, the Wall Connector, the Mobile Connector and the V4 Superchargers at gas stations, the Tesla-style dashboard, key cards and phone keys, the Tesla app and Summon, Sentry and Camp Mode, Bioweapon Defense Mode and Chill, drive unit parts, and how it works with Vehicle Manager, the MiniMap, AutoDrive and Project Viewpoint, plus the sandbox options. -->
+<!-- Screenshots: docs/screenshots/steam/en/, shot by guide-shots-sp in the family repo's e2e/MinidoracatTeslaFor42 (Bioweapon Defense and Chill only: --define part=feat, with hover.py for the radial's hover text; Cybertruck shots: guide-ct-sp; Model S / X: guide-sx-sp; Summon shots: phone-summon-sp; FSD: fsd-shot-sp; With other mods: guide-mods-sp; Project Viewpoint (31): vd-first-ModelS from this repo's one-off temp/oneoff/vp-detail-sp, cropped (80,40,1660,1080), same picture as zh, needs ZombieBuddy; V4 Supercharger (32): supercharger-sp's sc-EN-card / sc-CH-card, cropped (480,160,1480,990)) -->
 === 🚀 Quick start
 [b]中文版：[/b] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3829449828]Minidoracat Tesla Collection 完整說明[/url]
 
@@ -12,7 +12,7 @@ https://steamcommunity.com/sharedfiles/filedetails/?id=3829501237
 [*] [b]Find a car[/b]: the Model Y and Model 3 park in parking lots, and the Model Y also turns up in upscale neighbourhoods; the Model S, Model X and Cybertruck only turn up there.
 [*] [b]Get the key[/b]: a Tesla's car key turns into that car's Key Card when you pick it up.
 [*] [b]Start it[/b]: sit in the driver's seat and click the power button at the top left of the dashboard (or start it the vanilla way).
-[*] [b]Charge it[/b]: with Electrical 3, make a Tesla Wall Connector (Gen 3) and mount it on a powered wall, or set a Tesla Mobile Connector (Gen 3) on the floor; right-click it to plug in the charge cable.
+[*] [b]Charge it[/b]: with Electrical 3, make a Tesla Wall Connector (Gen 3) and mount it on a powered wall, or set a Tesla Mobile Connector (Gen 3) on the floor; right-click it to plug in the charge cable. The Tesla V4 Superchargers next to gas stations fast-charge as soon as you plug in.
 [*] [b]Phone key[/b]: sit in the car with the key card, right-click a Smartphone and choose Set Up as Phone Key; then right-click the phone key and choose Open Tesla App.
 [/olist]
 [list]
@@ -152,22 +152,34 @@ A charger that works on the floor, no wall needed; slower than the Wall Connecto
 {{img:03-charger-menu-en.jpg}}
 [h3]Plug in and charge[/h3]
 [list]
-[*] [b]Plug in[/b]: stand at the charger, right-click it and choose Plug in charge cable: <car>; every Tesla the cable reaches is listed (cable length: about 6 tiles for the Wall Connector, 5 for the Mobile Connector).
+[*] [b]Plug in[/b]: stand at the charger, right-click it and choose Plug in charge cable: <car>; every Tesla the cable reaches is listed (cable length: about 6 tiles for the Wall Connector, 5 for the Mobile Connector, 2.5 for the Supercharger).
 [*] [b]Who can plug in or unplug[/b]: anyone with this car's key, anyone once the car is hotwired, or anyone while the car is unlocked; locked and no key, the rows are grey (see the FAQ What can I do without the key?).
 [*] [b]Motor on is fine[/b]: the car only has to stand still; you can also start it while plugged in.
 [*] [b]No driving off plugged in[/b]: throttle or reverse says Unplug the charge cable first and the dashboard shows P; unplug and drive away.
 [*] [b]Auto unplug[/b]: towed or pushed past the cable's reach, the car is unplugged and you are told.
-[*] [b]Charging speed[/b]: 11.5 kW at the Wall Connector, 7.6 kW at the Mobile Connector; empty to 90% takes about 6 and 9 in-game hours; the sandbox option Charging speed multiplier changes it.
+[*] [b]Charging speed[/b]: 11.5 kW at the Wall Connector, 7.6 kW at the Mobile Connector; empty to 90% takes about 6 and 9 in-game hours; the sandbox option Charging speed multiplier changes it. A Supercharger is far faster, see V4 Supercharger.
 [*] [b]Time skips count[/b]: charge is settled by the hours that passed, so sleeping or fast-forwarding loses nothing.
-[*] [b]Other players see the cable[/b]: it hangs from the Wall Connector to the ground (it leaves the Mobile Connector right on the ground) and runs to the car's charge port.
+[*] [b]Other players see the cable[/b]: it hangs from the Wall Connector or the Supercharger to the ground (it leaves the Mobile Connector right on the ground) and runs to the car's charge port.
 [/list]
 {{img:04-charging-en.jpg}}
 [h3]The charge card[/h3]
 [list]
 [*] [b]Open it[/b]: in the car press V and choose Charging Status, or right-click the charger and choose the same.
-[*] [b]Shows[/b]: power, what this session added (km, kWh), time to the target, and what powers it: the grid, a generator, Powershare or a Cybertruck bed outlet.
+[*] [b]Shows[/b]: power, what this session added (km, kWh), time to the target, and what powers it: the grid, a generator, Powershare or a Cybertruck bed outlet. At a Supercharger the title says Supercharging and the power keeps changing with the charge.
 [*] [b]Target[/b]: − / + move it 10% at a time, 50–100%; Daily is 50–90%, Trip 90–100%.
 [*] [b]Buttons[/b]: stop / start charging, unplug, close; a controller works too. Without the right (car locked, no key) the target and these buttons are grey and the hover help says why.
+[/list]
+=== 🧰 V4 Supercharger
+{{img:32-supercharger-en.jpg}}
+[list]
+[*] [b]Where[/b]: 2 to 4 Tesla V4 Superchargers stand next to gas stations, each with its parking spot in front. They only appear in areas loaded for the first time: if you added the mod mid-save, the gas stations you already visited have none, so look somewhere new. There is no recipe.
+[*] [b]Plug in[/b]: right-click it and plug in the charge cable like any charger. The cable reaches about 2.5 tiles (3 m in the real world), so park in the spot in front of the post.
+[*] [b]Slower as it fills[/b]: it follows the real cars' DC fast-charging curve: fastest at a low charge, slowing down past half, and slow above 80%. Peak power follows Tesla's numbers: 325 kW for the Cybertruck, 250 kW for the other Teslas.
+[*] [b]How long[/b]: 10% to 90% (game time) takes about 36 minutes for the Model Y and Model 3, about 47 for the Model S and Model X, and about 44 for the Cybertruck; the sandbox option Charging speed multiplier still applies.
+[*] [b]Power[/b]: the same rule as a gas pump: outdoors on the grid it just works. After the power cut it charges at full speed within a generator's range or with a running, fuelled generator within 2 tiles (same floor); when the server turns off Generator Working in Exterior, only a generator within 2 tiles counts. With no power, right-clicking it shows a grey line saying so.
+[*] [b]Fuel[/b]: each kWh burns the same fuel as on any charger, so a full charge still takes about one tank; but at this power it burns fuel much faster per hour: at 250 kW a full vanilla generator runs dry in about 19 minutes.
+[*] [b]Take one home[/b]: picking one up or placing it takes Electrical 6 and a screwdriver; it weighs as much as a vanilla generator (40) and takes both hands, so drop other gear if you cannot pick it up. Once placed, the power rule above applies. A gas station's posts belong to nobody, so the car's key rules alone decide who may plug in or unplug; one you place yourself is yours (see the FAQ Someone else's car is plugged into my charger. What now?).
+[*] [b]Solid[/b]: you cannot walk through it, and zombies do not break it.
 [/list]
 === 🧰 Powershare and the bed outlets (Cybertruck)
 {{img:25-ct-powershare-en.jpg}}
@@ -412,7 +424,7 @@ On the Tesla Collection page of the sandbox settings.
 [table]
 [tr][th]Option[/th][th]Default[/th][th]Range[/th][th]What it does[/th][/tr]
 [tr][td]Range multiplier[/td][td]1.0[/td][td]0.25–10.0[/td][td]How far a full battery drives; 1.0 = as far as a full tank in a vanilla car of the same class; vanilla Gas Consumption scales it too[/td][/tr]
-[tr][td]Charging speed multiplier[/td][td]1.0[/td][td]0.1–10.0[/td][td]1.0 = official charger power (Wall Connector 11.5 kW, Mobile Connector 7.6 kW); the Cybertruck's Powershare 11.5 kW and bed outlet 9.6 kW limits scale with it too[/td][/tr]
+[tr][td]Charging speed multiplier[/td][td]1.0[/td][td]0.1–10.0[/td][td]1.0 = official charger power (Wall Connector 11.5 kW, Mobile Connector 7.6 kW, Supercharger up to 250 kW, 325 kW for the Cybertruck); the Cybertruck's Powershare 11.5 kW and bed outlet 9.6 kW limits scale with it too[/td][/tr]
 [tr][td]Charging fuel multiplier[/td][td]1.0[/td][td]0–10.0[/td][td]Generator fuel a Tesla burns, charging and the car's own loads while plugged in; 1.0 = about one tank for a full charge at the default Generator Fuel Consumption, 0 = no fuel[/td][/tr]
 [tr][td]Camp Mode battery limit[/td][td]20[/td][td]10–20 (%)[/td][td]Below this charge Camp Mode cannot turn on, and while camping it turns off[/td][/tr]
 [tr][td]App Bluetooth range after power cut (tiles)[/td][td]50[/td][td]0–64[/td][td]After the power goes out the app reaches the car within this many tiles only (1 tile = 1 m), Summon included; no limit while the grid is up; 0 = no link after the power cut[/td][/tr]
@@ -501,6 +513,7 @@ Without Vehicle Manager:
 [*] Wall Connector on the grid: its square or one next to it must be inside a house, and the grid still up.
 [*] Wall Connector after the power cut: a running, fuelled generator nearby (the vanilla generator range).
 [*] Mobile Connector: indoors where there is power; anywhere else within 2 tiles of a running, fuelled generator, also when the server turns off Generator Working in Exterior. Outdoors in a generator's range with no generator next to it there is no power, and right-clicking it shows a grey line saying so.
+[*] Supercharger: like a gas pump, it has power outdoors on the grid; after the power cut it needs to be within a generator's range or within 2 tiles of a running, fuelled generator. With no power, right-clicking it shows a grey line saying so.
 [*] The charge card shows the current source.
 [/list]
 [h3]Why won't it drive while plugged in?[/h3]
@@ -512,9 +525,9 @@ Without Vehicle Manager:
 [*] After the power cut it is Bluetooth only, within 50 m (servers can change it in the sandbox: App Bluetooth range after power cut); a car outside the loaded area also shows its last record only.
 [*] With Vehicle Manager, buttons you have no permission for do not work.
 [/list]
-[h3]I added the mod mid-save and see no Teslas or phones?[/h3]
+[h3]I added the mod mid-save and see no Teslas, phones or Superchargers?[/h3]
 [list]
-[*] Teslas spawn only in areas loaded for the first time after that, and phones only in containers nobody searched yet. Go somewhere new.
+[*] Teslas and the gas stations' Superchargers appear only in areas loaded for the first time after that, and phones only in containers nobody searched yet. Go somewhere new.
 [/list]
 [h3]What should I do before removing this mod?[/h3]
 [list]
@@ -523,7 +536,7 @@ Without Vehicle Manager:
 [*] [b]Teslas become other vehicles[/b]: each car stays on its spot facing the same way, but its type is picked at random from every vehicle with wheels, vanilla, wrecked or from other mods (tests turned them into vans, a wrecked pickup and sedan, and another mod's utility truck). The new car's gas tank slot is empty, with no tank and no fuel, and its keys are gone too: treat it like a car whose key was lost.
 [*] [b]The replacement car keeps the Tesla's pulling power[/b]: the engine force is saved with the car, so the new type drives with the Tesla's force, not its own (tested: a Model Y became a van at 626 hp where that van has 400; a Model 3 left in Chill became a pickup at 310 hp where that pickup has 420). Its top speed is the new type's. An admin's full vehicle repair sets the force back to the new type's.
 [*] [b]Things in the car[/b]: whatever is in the Front Trunk is always lost (vanilla cars have no such slot). Rear Trunk, seats and glove box: one that somebody opened keeps its contents if the new type has the same slot; one nobody ever opened is emptied and refilled with the new type's random loot. If the new type lacks the slot, its contents are lost too.
-[*] [b]Placed chargers[/b]: Wall Connectors and Mobile Connectors turn into invisible objects that cannot be picked up and stay on that square without blocking it; a plugged cable disappears too.
+[*] [b]Placed chargers[/b]: Wall Connectors, Mobile Connectors and Superchargers (the gas stations' too) turn into invisible objects that cannot be picked up and stay on that square without blocking it; a plugged cable disappears too.
 [*] [b]A Cybertruck's Powershare[/b]: turn it off first; one powering the home at save time stays as a vanilla generator (vanilla noise, draws zombies) until its fuel runs out, 30 days at most.
 [*] [b]The server's Tesla data[/b]: app records, offline notices and phone pairings are in gos_MinidoracatTeslaApp.bin in the save folder, the charger list in gos_MinidoracatTeslaCharger.bin. Without the mod the game neither reads nor changes them; leaving them there is harmless.
 [*] [b]Steps for server admins[/b]:
