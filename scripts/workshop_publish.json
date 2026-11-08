@@ -7,10 +7,10 @@
     "preview_gif": "MOD/MinidoracatTeslaFor42/workshop/preview.gif",
     "changelog": "STEAM_CHANGELOG.md",
     "titles": {
-        "english": "[B42] Tesla Collection by Minidoracat",
-        "tchinese": "[B42] 特斯拉電動車與充電座 Tesla Collection by Minidoracat",
-        "schinese": "[B42] 特斯拉电动车与充电桩 Tesla Collection by Minidoracat",
-        "japanese": "[B42] テスラEVと充電設備 Tesla Collection by Minidoracat"
+        "english": "[B42] Tesla Collection (Viewpoint Support) by Minidoracat",
+        "tchinese": "[B42] 特斯拉電動車與充電座 Tesla Collection (支援 Viewpoint) by Minidoracat",
+        "schinese": "[B42] 特斯拉电动车与充电桩 Tesla Collection (支持 Viewpoint) by Minidoracat",
+        "japanese": "[B42] テスラEVと充電設備 Tesla Collection (Viewpoint対応) by Minidoracat"
     },
     "descriptions": {
         "english": "STEAM_DESCRIPTION_EN.md",

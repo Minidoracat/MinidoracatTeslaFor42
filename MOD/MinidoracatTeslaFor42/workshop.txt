@@ -1,6 +1,6 @@
 version=1
 id=3829501237
-title=[B42] Tesla Collection by Minidoracat
+title=[B42] Tesla Collection (Viewpoint Support) by Minidoracat
 description=[h1]⚡ Minidoracat Tesla Collection[/h1]
 description=[h3]By Minidoracat[/h3]
 description=
