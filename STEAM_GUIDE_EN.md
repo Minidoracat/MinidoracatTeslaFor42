@@ -44,7 +44,7 @@ https://steamcommunity.com/sharedfiles/filedetails/?id=3829501237
 [list]
 [*] [b]EV parts[/b]: the mechanics window uses Tesla's part names: High Voltage Battery, Drive Unit, Low Voltage Battery, Hood, Front Trunk, Rear Trunk.
 [*] [b]Front Trunk[/b]: open the hood first to reach what is inside. With the hood open, press E at the front of the car to close it.
-[*] [b]High Voltage Battery[/b]: comes out without draining it first; the charge stays in the battery.
+[*] [b]High Voltage Battery[/b]: comes out without draining it first; the charge stays in the battery, and the Capacity shown on a removed battery is that charge in kWh, not wear. It cannot be repaired or crafted: its condition does not affect range, charging or starting, and you can only get one by taking it out of a Tesla; it fits only the same model.
 [*] [b]Brakes[/b]: regenerative braking halves brake wear compared with a normal car.
 [/list]
 === 🧰 Model S and Model X (Plaid)
