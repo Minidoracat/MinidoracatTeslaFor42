@@ -251,6 +251,188 @@ def trunk_walls(pts, kind, who, ys, lim, belt, trunk_floor, arch, y0, y1=None, t
     print(f"CABIN trunk walls: x_in {x_in or 0:.3f}, hump {off:+.3f} on the arch circle ({len(hrow)} sides), top",
           [round(float(belt if i in dr else top(ys[i])), 3) for i in rows])
 
+# the cabin detail model (detail_mesh; drawn only under Viewpoint, ViewpointCabin.lua, models.md 8): every furniture
+# part GROW larger all round than its coarse twin in the body (which it hides; seat seams and a sag's chords stay under
+# 1 mm of it, detail stage check), its bevels FINE x finer; seams SEAM_HALF wide each side, SEAM_PROUD off the face,
+# sampled every SEAM_STEP (grid)
+GROW, FINE = 0.004, 3
+SEAM_HALF, SEAM_PROUD, SEAM_STEP = 0.0016, 0.0012, 0.012
+
+
+def lay(bvh, origins, d, half, proud):
+    """A ribbon on a surface: each origin cast along d onto `bvh`, `half` either side of the line through the hits,
+    `proud` off the surface, its faces looking out like the faces hit. -> verts, quads."""
+    P, N = [], []
+    for o in origins:
+        hit, nrm = bvh.ray_cast(Vector(o), Vector(d))[:2]
+        if hit is None:
+            raise SystemExit(f"cabin detail: nothing from {np.round(o, 3)} along {d}")
+        P.append(hit[:])
+        N.append(nrm[:])
+    P, N = np.array(P), np.array(N)
+    side = np.cross(N, np.gradient(P, axis=0))
+    side /= np.linalg.norm(side, axis=1, keepdims=True)
+    k = len(P)
+    V = np.concatenate([P + N * proud + side * half, P + N * proud - side * half])
+    F = []
+    for i in range(k - 1):
+        q = [i, i + 1, k + i + 1, k + i]
+        if np.cross(V[q[1]] - V[q[0]], V[q[2]] - V[q[0]]) @ N[i] < 0:
+            q.reverse()
+        F.append(q)
+    return V, F
+
+
+def channels(across, span, a=0.31):
+    """A seat face's stitched channels in face fractions (x, then depth or height): lines across it at `across`
+    between the insert's sides at x +-a, and those sides over `span`."""
+    return tuple(((-a, b), (a, b)) for b in across) + tuple(((s * a, span[0]), (s * a, span[1])) for s in (-1, 1))
+
+
+def seam_strips(v, f, c, size, face, lines):
+    """Stitched channels on a grown part (local coords, shaped, not yet placed): each line ((a0, b0), (a1, b1)) in
+    face fractions ("top": x, y of the +z face; "front": x, z of the +y face) laid on the part as a ribbon (lay),
+    cell "stitch". -> v, faces, per-face cells (the part's `c`, then the seams')."""
+    from mathutils.bvhtree import BVHTree
+    bvh = BVHTree.FromPolygons(v.tolist(), f)
+    ax, d = ((0, 1), (0, 0, -1)) if face == "top" else ((0, 2), (0, -1, 0))
+    V, F, cells, n = [v], [list(p) for p in f], [c] * len(f), len(v)
+    for (a0, b0), (a1, b1) in lines:
+        k = max(2, int(round(np.hypot((a1 - a0) * size[ax[0]], (b1 - b0) * size[ax[1]]) / SEAM_STEP)) + 1)
+        origins = []
+        for t in np.linspace(0, 1, k):
+            o = -np.array(d, float)
+            o[ax[0]], o[ax[1]] = (a0 + (a1 - a0) * t) * size[ax[0]], (b0 + (b1 - b0) * t) * size[ax[1]]
+            origins.append(o)
+        rv, rf = lay(bvh, origins, d, SEAM_HALF, SEAM_PROUD)
+        V.append(rv)
+        F += [[i + n for i in q] for q in rf]
+        cells += ["stitch"] * len(rf)
+        n += len(rv)
+    return np.concatenate(V), F, cells
+
+
+def furniture(add, opening, grow=0.0, fine=1, between=None):
+    """The cabin's furniture (mesh coords), smooth rounded parts: front buckets, rear bench (Model X: its 2nd and 3rd
+    row buckets), centre console, dash with its trim strip and light line, the screen on its stand with its picture,
+    steering wheel and column; add(v, f, cell or per-face cells) takes each part. between(part) runs after the light
+    line (cabin_mesh's trunk plates and parcel shelf: the body's faces keep their order). grow > 0 (detail_mesh): each
+    part `grow` larger all round with `fine` x the bevel segments, shaped on its coarse size, so it hides the coarse
+    part in the body, stitched channels on the seats; the screen's picture is detail_mesh's then. -> front / rear
+    (that row's seat y and z0), wr (the steering wheel's matrix), dash / console (those parts' verts and faces), last
+    (the last row's lowest y)."""
+    row, out = [], {}
+
+    def box(size, r, cuts=(0, 0, 0), seg=2):
+        return rbox(np.add(size, 2 * grow), r + grow, cuts, seg * fine) if grow else rbox(size, r, cuts, seg)
+
+    def part(size, r, c, at, cuts=(0, 0, 0), sag=0.0, bend=0.0, taper=0.0, tilt=None, seg=2, seams=None):
+        """rbox + shaping: `sag` dips the top's middle (x), `bend` brings the sides forward (+y), `taper` narrows the
+        top; `tilt` = (pivot y, pivot z, deg) reclines about a line along x (top to the rear). Shaped on `size`, so a
+        grown part follows its coarse one; seams = (face, lines) for seam_strips, grown parts only."""
+        v, f = box(size, r, cuts, seg)
+        x = 2 * v[:, 0] / size[0]
+        if sag:
+            v[:, 2] -= sag * np.clip(1 - x * x, 0, 1) * (v[:, 2] > 0)
+        v[:, 1] += bend * x * x
+        v[:, 0] *= 1 - taper * (v[:, 2] / size[2] + 0.5)
+        cells = c
+        if grow and seams:
+            v, f, cells = seam_strips(v, f, c, size, *seams)
+        v += at
+        if tilt:
+            py, pz, deg = tilt
+            v = (v - [0, py, pz]) @ rot_x(deg).T + [0, py, pz]
+        add(v, f, cells)
+        row.append(v)
+        return v, f
+
+    # seats where pzveh.geometry puts the passengers: middle of the door opening minus SEAT["back"]
+    yf, yb, yr = opening["y"]
+    seat_y = ((yf + yb) / 2 - SEAT["back"][0], (yb + yr) / 2 - SEAT["back"][1])
+    z0 = SEAT_Z
+    fs, rs = SEATS["front"], SEATS["rear"]              # widths, backrest heights, recline (deg)
+    # optional per row: dy / dz move that row's seat (not its passengers) forward / up, to fit the passenger's pose
+    # (seat_head.py sit / back numbers; the clips are scripts/seat_anim.py's)
+    def bucket(cx, fy, b, bolster=(0.185, 0.19), z0=z0):   # a bucket seat: base, cushion, backrest, headrest, bolsters
+        fy, z0 = fy + b.get("dy", 0), z0 + b.get("dz", 0)
+        rec = (fy - 0.11, z0 - 0.03, b["recline"])
+        part((0.30, 0.30, z0 - 0.10 - CABIN_FLOOR), 0.02, "base", (cx, fy + 0.05, (z0 - 0.10 + CABIN_FLOOR) / 2), seg=1)
+        part((b["w"], 0.40, 0.09), 0.035, "seat", (cx, fy + 0.08, z0 - 0.06), cuts=(2, 0, 0), sag=0.025,
+             seams=("top", channels((-0.28, -0.10, 0.08, 0.26), (-0.40, 0.40))))
+        # backrest 8 cm thick, its front where the 11 cm one had it: the knees of the passenger behind (seat_head.py knees)
+        part((b["w"], 0.08, b["back"]), 0.035, "seat", (cx, fy - 0.155, z0 + 0.22), cuts=(2, 0, 0), bend=0.05, taper=0.12,
+             tilt=rec, seams=("front", channels((-0.30, -0.15, 0.0, 0.15, 0.30), (-0.42, 0.42))))
+        part((0.25, 0.10, 0.17), 0.05, "seat", (cx, fy - 0.18, z0 + b.get("head", 0.54)), taper=0.1, tilt=rec, seg=3)
+        for e in (-1, 1):
+            part((0.07, 0.34, 0.07), 0.03, "seat", (cx + e * bolster[0], fy + 0.07, z0 - 0.01))
+            part((0.07, 0.13, 0.32), 0.03, "seat", (cx + e * bolster[1], fy - 0.11, z0 + 0.15), tilt=rec)
+        return fy, z0
+    out["front"] = [bucket(s * SEAT_X, seat_y[0], fs) for s in (-1, 1)][0]     # front buckets
+    ry, z1 = seat_y[1], z0 - SEAT.get("rear", 0)       # the 2nd row sits SEAT["rear"] lower (pzveh.geometry, same)
+    row.clear()
+    if "middle" in SEATS:       # 6 seats (Model X): the 2nd row's two monopost seats, the 3rd row's two `back` behind the
+        t3 = SEAT["third"]      # rear doors' rear edge, narrower (pzveh.geometry seats the passengers there)
+        for (y_, b, sx, z_) in ((ry, SEATS["middle"], SEAT_X, z1), (yr - t3["back"], SEATS["third"], t3["x"], z0 - t3["drop"])):
+            row.clear()
+            placed = [bucket(s * sx, y_, b, (b["w"] / 2 - 0.025, b["w"] / 2 - 0.02), z_) for s in (-1, 1)][0]
+            out.setdefault("rear", placed)
+    else:                       # rear bench: three cushions, three backs, three headrests
+        ry, z1 = ry + rs.get("dy", 0), z1 + rs.get("dz", 0)
+        out["rear"] = (ry, z1)
+        rec = (ry - 0.11, z1 - 0.03, rs["recline"])
+        part((rs["base"], 0.36, z1 - 0.10 - CABIN_FLOOR), 0.02, "base", (0, ry + 0.06, (z1 - 0.10 + CABIN_FLOOR) / 2),
+             seg=1)
+        for cx, wd in rs["cushions"]:                   # (centre x, width)
+            part((wd, 0.40, 0.09), 0.035, "seat", (cx, ry + 0.08, z1 - 0.06), cuts=(1, 0, 0), sag=0.015,
+                 seams=("top", channels((-0.20, 0.0, 0.20), (-0.36, 0.36), 0.36)))
+            part((wd, 0.11, rs["back"]), 0.04, "seat", (cx, ry - 0.17, z1 + 0.19), cuts=(1, 0, 0), bend=0.02, tilt=rec,
+                 seams=("front", channels((-0.25, 0.0, 0.25), (-0.40, 0.40), 0.36)))
+            part((0.20 if cx else 0.17, 0.09, 0.12), 0.045, "seat", (cx, ry - 0.18, z1 + 0.48), tilt=rec, seg=3)
+    out["last"] = min(v[:, 1].min() for v in row)
+    out["console"] = part((0.20, 0.80, 0.22), 0.04, "console", DASH["console"])     # centre console
+    out["dash"] = part(*DASH_BOX, "dash", DASH["dash"])                               # dash, trim strip on its face
+    part((1.16, 0.02, 0.035), 0.008, "trim", DASH["trim"])
+    part((1.10, 0.012, 0.006), 0.002, "screen", DASH["light"], seg=1)          # ambient light line under the trim
+    if between:
+        between(part)
+    part((0.05, 0.04, 0.09), 0.012, "screen_back", DASH["stand"])               # screen stand
+    v, f = box((0.30, 0.022, 0.19), 0.012)                                        # 15.4" landscape screen
+    v = v @ rot_x(-12).T + DASH["screen"]
+    fn = np.array([np.cross(v[fc[1]] - v[fc[0]], v[fc[2]] - v[fc[0]]) for fc in f])
+    fn /= np.linalg.norm(fn, axis=1, keepdims=True)
+    add(v, f, ["screen" if k < -0.9 else "screen_back" for k in fn[:, 1]])
+    # its picture in blocks just in front of the lit face (one flat light panel before, user image 12): the dark dock
+    # along the bottom, the car view on the driver's third (dark ground, the car a lit block), a route line on the map
+    for size, at, c in ((() if grow else                # the detail model has the picture itself (detail_mesh)
+                         (((0.296, 0.003, 0.026), (0, -0.0125, -0.080), "screen_back"),
+                          ((0.100, 0.003, 0.160), (-0.098, -0.0125, 0.012), "console"),
+                          ((0.034, 0.003, 0.070), (-0.098, -0.0140, 0.020), "seat"),
+                          ((0.120, 0.003, 0.006), (0.050, -0.0125, 0.020), "trim"),
+                          ((0.006, 0.003, 0.060), (0.110, -0.0125, 0.047), "trim")))):
+        v, f = rbox(size, 0.001, seg=1)
+        add((v + at) @ rot_x(-12).T + DASH["screen"], f, c)
+    # steering wheel in front of the driver, tilted 70 deg back from horizontal: rim torus, hub, three spokes
+    wr = out["wr"] = Matrix.Translation((-SEAT_X, *DASH["wheel"])) @ Matrix.Rotation(math.radians(70), 4, "X")
+    nu, nv, tube = (20 * fine, 6 * (2 if grow else 1), 0.024 + grow)
+    tv = [wr @ Vector(((0.15 + tube * math.cos(b)) * math.cos(a), (0.15 + tube * math.cos(b)) * math.sin(a),
+                       tube * math.sin(b)))
+          for a in np.linspace(0, 2 * math.pi, nu, endpoint=False) for b in np.linspace(0, 2 * math.pi, nv, endpoint=False)]
+    add([p[:] for p in tv], [[i * nv + j, i * nv + (j + 1) % nv, ((i + 1) % nu) * nv + (j + 1) % nv, ((i + 1) % nu) * nv + j]
+                             for i in range(nu) for j in range(nv)], "wheel")
+    for size, at in (((0.11, 0.09, 0.05), (0, 0, 0)), ((0.26, 0.03, 0.02), (0, -0.02, 0)), ((0.03, 0.13, 0.02), (0, -0.08, 0))):
+        v, f = box(size, min(size) * 0.45)
+        add([(wr @ Vector(p + np.array(at)))[:] for p in v], f, "wheel")
+    # column: from the hub into the dash's rear face (user 2026-11-02 img13: a fixed 0.22 column ended in mid air,
+    # 0.06-0.11 short of the dash on every car, over its top on the Cybertruck)
+    hub, end, ang = column_ends()
+    axis = (end - hub) / np.linalg.norm(end - hub)
+    rot = np.c_[(1, 0, 0), np.cross(axis, (1, 0, 0)), axis]          # local z along the column, x stays the car's x
+    v, f = box((0.05, 0.05, np.linalg.norm(end - hub)), 0.0225)
+    add(v @ rot.T + (hub + end) / 2, f, "wheel")
+    return out
+
+
 
 def cabin_mesh(bvh, belt, trunk_floor, trunk_end, arch, opening):
     """Cabin and trunk (mesh coords, centred), smooth-shaded rounded parts: below the belt a shell CABIN_INSET inside
@@ -374,107 +556,18 @@ def cabin_mesh(bvh, belt, trunk_floor, trunk_end, arch, opening):
             smooth=False, door=[door[i] for i in hump])
     shell_n = len(sf) + len(hump)
 
-    def part(size, r, c, at, cuts=(0, 0, 0), sag=0.0, bend=0.0, taper=0.0, tilt=None, seg=2):
-        """rbox + shaping: `sag` dips the top's middle (x), `bend` brings the sides forward (+y), `taper` narrows the
-        top; `tilt` = (pivot y, pivot z, deg) reclines about a line along x (top to the rear)."""
-        v, f = rbox(size, r, cuts, seg)
-        x = 2 * v[:, 0] / size[0]
-        if sag:
-            v[:, 2] -= sag * np.clip(1 - x * x, 0, 1) * (v[:, 2] > 0)
-        v[:, 1] += bend * x * x
-        v[:, 0] *= 1 - taper * (v[:, 2] / size[2] + 0.5)
-        v += at
-        if tilt:
-            py, pz, deg = tilt
-            v = (v - [0, py, pz]) @ rot_x(deg).T + [0, py, pz]
-        add(v, f, c)
-        return v, f
+    def trunk_plates(part):
+        # trunk: sill plate over the opening's lower edge (the floor ends TRUNK_DROP under it, CABIN_INSET short of the
+        # tailgate's inner panel) and the under-floor bin's lid (SEATS sill / bin: width, depth)
+        if SEATS["sill"]:                               # (a pickup's cabin has no trunk)
+            (sw, sd), (bw, bd) = SEATS["sill"], SEATS["bin"]
+            part((sw, sd, TRUNK_DROP + 0.005), 0.01, "base", (0, trunk_end + 0.02, trunk_floor + TRUNK_DROP / 2), seg=1)
+            part((bw, bd, 0.012), 0.004, "console", (0, (TRUNK_Y + trunk_end) / 2 - 0.04, trunk_floor + 0.006), seg=1)
+        if PARCEL:
+            parcel_shelf(add, bvh)
 
-    # seats where pzveh.geometry puts the passengers: middle of the door opening minus SEAT["back"]
-    yf, yb, yr = opening["y"]
-    seat_y = ((yf + yb) / 2 - SEAT["back"][0], (yb + yr) / 2 - SEAT["back"][1])
-    z0 = SEAT_Z
-    fs, rs = SEATS["front"], SEATS["rear"]              # widths, backrest heights, recline (deg)
-    # optional per row: dy / dz move that row's seat (not its passengers) forward / up, to fit the passenger's pose
-    # (seat_head.py sit / back numbers; the clips are scripts/seat_anim.py's)
-    def bucket(cx, fy, b, bolster=(0.185, 0.19), z0=z0):   # a bucket seat: base, cushion, backrest, headrest, bolsters
-        fy, z0 = fy + b.get("dy", 0), z0 + b.get("dz", 0)
-        rec = (fy - 0.11, z0 - 0.03, b["recline"])
-        part((0.30, 0.30, z0 - 0.10 - CABIN_FLOOR), 0.02, "base", (cx, fy + 0.05, (z0 - 0.10 + CABIN_FLOOR) / 2), seg=1)
-        part((b["w"], 0.40, 0.09), 0.035, "seat", (cx, fy + 0.08, z0 - 0.06), cuts=(2, 0, 0), sag=0.025)
-        # backrest 8 cm thick, its front where the 11 cm one had it: the knees of the passenger behind (seat_head.py knees)
-        part((b["w"], 0.08, b["back"]), 0.035, "seat", (cx, fy - 0.155, z0 + 0.22), cuts=(2, 0, 0), bend=0.05, taper=0.12,
-             tilt=rec)
-        part((0.25, 0.10, 0.17), 0.05, "seat", (cx, fy - 0.18, z0 + b.get("head", 0.54)), taper=0.1, tilt=rec, seg=3)
-        for e in (-1, 1):
-            part((0.07, 0.34, 0.07), 0.03, "seat", (cx + e * bolster[0], fy + 0.07, z0 - 0.01))
-            part((0.07, 0.13, 0.32), 0.03, "seat", (cx + e * bolster[1], fy - 0.11, z0 + 0.15), tilt=rec)
-    for s in (-1, 1):                                   # front buckets
-        bucket(s * SEAT_X, seat_y[0], fs)
-    ry, z1 = seat_y[1], z0 - SEAT.get("rear", 0)       # the 2nd row sits SEAT["rear"] lower (pzveh.geometry, same)
-    n_seat = len(V)
-    if "middle" in SEATS:       # 6 seats (Model X): the 2nd row's two monopost seats, the 3rd row's two `back` behind the
-        t3 = SEAT["third"]      # rear doors' rear edge, narrower (pzveh.geometry seats the passengers there)
-        for (y_, b, sx, z_) in ((ry, SEATS["middle"], SEAT_X, z1), (yr - t3["back"], SEATS["third"], t3["x"], z0 - t3["drop"])):
-            n_seat = len(V)
-            for s in (-1, 1):
-                bucket(s * sx, y_, b, (b["w"] / 2 - 0.025, b["w"] / 2 - 0.02), z_)
-    else:                       # rear bench: three cushions, three backs, three headrests
-        ry, z1 = ry + rs.get("dy", 0), z1 + rs.get("dz", 0)
-        rec = (ry - 0.11, z1 - 0.03, rs["recline"])
-        part((rs["base"], 0.36, z1 - 0.10 - CABIN_FLOOR), 0.02, "base", (0, ry + 0.06, (z1 - 0.10 + CABIN_FLOOR) / 2),
-             seg=1)
-        for cx, wd in rs["cushions"]:                   # (centre x, width)
-            part((wd, 0.40, 0.09), 0.035, "seat", (cx, ry + 0.08, z1 - 0.06), cuts=(1, 0, 0), sag=0.015)
-            part((wd, 0.11, rs["back"]), 0.04, "seat", (cx, ry - 0.17, z1 + 0.19), cuts=(1, 0, 0), bend=0.02, tilt=rec)
-            part((0.20 if cx else 0.17, 0.09, 0.12), 0.045, "seat", (cx, ry - 0.18, z1 + 0.48), tilt=rec, seg=3)
-    if min(v[:, 1].min() for v in V[n_seat:]) < trunk_end:     # the last row stays ahead of the rear wall
+    if furniture(add, opening, between=trunk_plates)["last"] < trunk_end:     # the last row stays ahead of the wall
         raise SystemExit(f"cabin: the rear seats cross the rear wall (y {trunk_end:.3f}): SEAT back / SEATS recline")
-    part((0.20, 0.80, 0.22), 0.04, "console", DASH["console"])                  # centre console
-    part(*DASH_BOX, "dash", DASH["dash"])                                        # dash, trim strip on its face
-    part((1.16, 0.02, 0.035), 0.008, "trim", DASH["trim"])
-    part((1.10, 0.012, 0.006), 0.002, "screen", DASH["light"], seg=1)          # ambient light line under the trim
-    # trunk: sill plate over the opening's lower edge (the floor ends TRUNK_DROP under it, CABIN_INSET short of the
-    # tailgate's inner panel) and the under-floor bin's lid (SEATS sill / bin: width, depth)
-    if SEATS["sill"]:                                   # (a pickup's cabin has no trunk)
-        (sw, sd), (bw, bd) = SEATS["sill"], SEATS["bin"]
-        part((sw, sd, TRUNK_DROP + 0.005), 0.01, "base", (0, trunk_end + 0.02, trunk_floor + TRUNK_DROP / 2), seg=1)
-        part((bw, bd, 0.012), 0.004, "console", (0, (TRUNK_Y + trunk_end) / 2 - 0.04, trunk_floor + 0.006), seg=1)
-    if PARCEL:
-        parcel_shelf(add, bvh)
-    part((0.05, 0.04, 0.09), 0.012, "screen_back", DASH["stand"])               # screen stand
-    v, f = rbox((0.30, 0.022, 0.19), 0.012)                                       # 15.4" landscape screen
-    v = v @ rot_x(-12).T + DASH["screen"]
-    fn = np.array([np.cross(v[fc[1]] - v[fc[0]], v[fc[2]] - v[fc[0]]) for fc in f])
-    fn /= np.linalg.norm(fn, axis=1, keepdims=True)
-    add(v, f, ["screen" if k < -0.9 else "screen_back" for k in fn[:, 1]])
-    # its picture in blocks just in front of the lit face (one flat light panel before, user image 12): the dark dock
-    # along the bottom, the car view on the driver's third (dark ground, the car a lit block), a route line on the map
-    for size, at, c in (((0.296, 0.003, 0.026), (0, -0.0125, -0.080), "screen_back"),
-                        ((0.100, 0.003, 0.160), (-0.098, -0.0125, 0.012), "console"),
-                        ((0.034, 0.003, 0.070), (-0.098, -0.0140, 0.020), "seat"),
-                        ((0.120, 0.003, 0.006), (0.050, -0.0125, 0.020), "trim"),
-                        ((0.006, 0.003, 0.060), (0.110, -0.0125, 0.047), "trim")):
-        v, f = rbox(size, 0.001, seg=1)
-        add((v + at) @ rot_x(-12).T + DASH["screen"], f, c)
-    # steering wheel in front of the driver, tilted 70 deg back from horizontal: rim torus, hub, three spokes
-    wr = Matrix.Translation((-SEAT_X, *DASH["wheel"])) @ Matrix.Rotation(math.radians(70), 4, "X")
-    nu, nv = 20, 6
-    tv = [wr @ Vector(((0.15 + 0.024 * math.cos(b)) * math.cos(a), (0.15 + 0.024 * math.cos(b)) * math.sin(a),
-                       0.024 * math.sin(b)))
-          for a in np.linspace(0, 2 * math.pi, nu, endpoint=False) for b in np.linspace(0, 2 * math.pi, nv, endpoint=False)]
-    add([p[:] for p in tv], [[i * nv + j, i * nv + (j + 1) % nv, ((i + 1) % nu) * nv + (j + 1) % nv, ((i + 1) % nu) * nv + j]
-                             for i in range(nu) for j in range(nv)], "wheel")
-    for size, at in (((0.11, 0.09, 0.05), (0, 0, 0)), ((0.26, 0.03, 0.02), (0, -0.02, 0)), ((0.03, 0.13, 0.02), (0, -0.08, 0))):
-        v, f = rbox(size, min(size) * 0.45)
-        add([(wr @ Vector(p + np.array(at)))[:] for p in v], f, "wheel")
-    # column: from the hub into the dash's rear face (user 2026-11-02 img13: a fixed 0.22 column ended in mid air,
-    # 0.06-0.11 short of the dash on every car, over its top on the Cybertruck)
-    hub, end, ang = column_ends()
-    axis = (end - hub) / np.linalg.norm(end - hub)
-    rot = np.c_[(1, 0, 0), np.cross(axis, (1, 0, 0)), axis]          # local z along the column, x stays the car's x
-    v, f = rbox((0.05, 0.05, np.linalg.norm(end - hub)), 0.0225)
-    add(v @ rot.T + (hub + end) / 2, f, "wheel")
     # mesh: tris, normals made consistent (outward) on the closed parts, shell faces kept looking at the axis
     me = bpy.data.meshes.new(NAME + "_Cabin")
     me.from_pydata(np.concatenate(V).tolist(), [], F)
@@ -516,6 +609,171 @@ def cabin_mesh(bvh, belt, trunk_floor, trunk_end, arch, opening):
     ob.data.materials.append(bpy.data.materials.new(NAME + "_Cabin"))
     print("CABIN shell faces", shell_n, "of", nr * n, "cells", {c: cell.count(c) for c in names})
     return ob
+
+
+def cylinder(r, h, n=24):
+    """Closed cylinder on the origin along z: radius r, height h, n sides. -> verts, faces."""
+    a = np.linspace(0, 2 * math.pi, n, endpoint=False)
+    ring = np.c_[r * np.cos(a), r * np.sin(a), np.zeros(n)]
+    V = np.concatenate([ring - [0, 0, h / 2], ring + [0, 0, h / 2]])
+    return V, [[i, (i + 1) % n, n + (i + 1) % n, n + i] for i in range(n)] + [list(range(n))[::-1], list(range(n, 2 * n))]
+
+
+def rot_z(deg):
+    c, s = math.cos(math.radians(deg)), math.sin(math.radians(deg))
+    return np.array([[c, -s, 0], [s, c, 0], [0, 0, 1]])
+
+
+def detail_mesh(opening, windscreen):
+    """The cabin detail model (part CabinDetail, model Detail; drawn only under Project Viewpoint, ViewpointCabin.lua,
+    models.md 8): the furniture grown over the body's coarse parts (furniture grow, seat seams) and what the coarse
+    cabin leaves out: the screen's picture, the wheel's scroll wheels and T, the dash's air vent, the console's phone
+    pads, cup holders, armrest seam and rear screen, floor mats, the rear-view mirror on the windscreen (windscreen:
+    its verts and tris, mesh coords). UV0 = UV1 = the face's cell centre in the shared texture (pzveh.detail_uv), the
+    picture's own over DETAIL_PICTURE. Checks that no coarse furniture part pokes out of its grown twin. -> object."""
+    from mathutils.bvhtree import BVHTree
+    V, F, C, UV, FLAT, RIB, parts = [], [], [], [], [], [], []
+
+    def add(v, f, c, uv=None, flat=False, rib=False):
+        """rib: an open ribbon (lay), its faces' side kept (a closed part's are made outward)."""
+        n = sum(len(x) for x in V)
+        cells = [c] * len(f) if isinstance(c, str) else c
+        V.append(np.asarray(v, float))
+        F.extend([[i + n for i in fc] for fc in f])
+        C.extend(cells)
+        UV.append(np.zeros((len(v), 2)) if uv is None else uv)
+        FLAT.extend([flat] * len(f))
+        RIB.extend([rib or k == "stitch" for k in cells])
+        parts.append((V[-1], f, cells))
+
+    placed = furniture(add, opening, GROW, FINE)
+    grown = list(parts)
+    # the screen's picture: a thin panel just proud of the grown screen and of the coarse picture blocks, its front
+    # DETAIL_PICTURE (u along +x: the car view on the driver's side), the rest the screen's black
+    pw, ph = 0.302, 0.192
+    v, f = rbox((pw, 0.003, ph), 0.0012)
+    (u0, v0, u1, v1), e = pv.DETAIL_PICTURE, 0.5 / pv.DETAIL_PX
+    uv = np.c_[u0 + e + (v[:, 0] / pw + 0.5) * (u1 - u0 - 2 * e), v0 + e + (v[:, 2] / ph + 0.5) * (v1 - v0 - 2 * e)]
+    fn = np.array([np.cross(v[q[1]] - v[q[0]], v[q[2]] - v[q[0]]) for q in f])
+    front = fn[:, 1] / np.linalg.norm(fn, axis=1) < -0.9
+    add((v + [0, -0.0172, 0]) @ rot_x(-12).T + DASH["screen"], f, ["picture" if k else "screen_back" for k in front], uv)
+    # steering wheel: scroll wheels on the cross spoke at the thumbs, a T on the hub (wheel frame: +z to the driver)
+    wr = placed["wr"]
+    wheel = lambda v, at: [(wr @ Vector(p + np.array(at)))[:] for p in v]   # noqa: E731
+    for s in (-1, 1):
+        v, f = cylinder(0.010, 0.007, 16)
+        add(wheel(v[:, [2, 1, 0]], (s * 0.09, -0.02, 0.01 + GROW + 0.004)), f, "chrome", flat=True)
+    for size, at in (((0.034, 0.007, 0.002), (0, 0.013, 0)), ((0.007, 0.030, 0.002), (0, -0.003, 0))):
+        v, f = rbox(size, 0.0008, seg=1)
+        add(wheel(v, np.add(at, (0, 0, 0.025 + GROW + 0.001))), f, "chrome")
+    # the dash's air vent: a dark slot along its cabin face over the trim strip
+    dv, df = placed["dash"]
+    zv = DASH["trim"][2] + 0.0175 + 0.011
+    rv, rf = lay(BVHTree.FromPolygons(dv.tolist(), df), [(x, DASH["dash"][1] - 1.0, zv) for x in np.linspace(-0.55, 0.55, 45)],
+                 (0, 1, 0), 0.0035, 0.001)
+    add(rv, rf, "vent", rib=True)
+    # console: two phone pads at the front, two cup holders behind them, the armrest lid's seam; the rear screen
+    cx, cy, cz = DASH["console"]
+    top, nose = cz + 0.11 + GROW, cy + 0.40
+    for s in (-1, 1):
+        v, f = rbox((0.050, 0.12, 0.003), 0.0012, seg=1)
+        add(v + [s * 0.03, nose - 0.11, top + 0.0012], f, "screen_back")
+        v, f = cylinder(0.028, 0.003, 24)                # (flat: smooth caps read as domes, not holes)
+        add(v + [s * 0.03, nose - 0.27, top + 0.0012], f, "vent", flat=True)
+    v, f = rbox((0.15, 0.004, 0.002), 0.0008, seg=1)
+    add(v + [cx, nose - 0.38, top + 0.0008], f, "screen_back")
+    v, f = rbox((0.13, 0.004, 0.075), 0.0015, seg=1)
+    add(v + [cx, cy - 0.40 - GROW - 0.0018, cz + 0.03], f, "screen")
+    # floor mats: in front of each front seat to under the dash, and in front of each 2nd-row seat to the front seats
+    fy, ry = placed["front"][0], placed["rear"][0]
+    for y0, y1 in ((fy + 0.30, min(fy + 0.74, CABIN_FRONT_Y - 0.10)), (ry + 0.30, fy - 0.12)):
+        for s in (-1, 1):
+            if y1 - y0 > 0.12:
+                v, f = rbox((0.40, y1 - y0, 0.008), 0.004, seg=1)
+                add(v + [s * SEAT_X, (y0 + y1) / 2, CABIN_FLOOR + 0.004], f, "mat")
+    # rear-view mirror: 6.5 cm under the windscreen's top on the centre line (no higher than 33 cm over the dash: Model
+    # X's windscreen runs over the heads), turned 12 deg to the driver, on a stem square to the glass
+    wv, wt = windscreen
+    wb = BVHTree.FromPolygons(wv.tolist(), wt.tolist())
+    zm = min(wv[np.abs(wv[:, 0]) < 0.08][:, 2].max() - 0.065, DASH["dash"][2] + 0.08 + 0.33)
+    hit, nrm = wb.ray_cast(Vector((0, DASH["dash"][1] - 0.6, zm)), Vector((0, 1, 0)))[:2]
+    if hit is None:
+        raise SystemExit(f"cabin detail: no windscreen in front of the mirror (z {zm:.3f})")
+    ym = hit.y - 0.06
+    for size, r, at, c in (((0.165, 0.024, 0.050), 0.010, (0, 0, 0), "mirror"),
+                           ((0.152, 0.003, 0.040), 0.0012, (0, -0.0132, 0), "mirror_glass")):
+        v, f = rbox(size, r)
+        add((v + at) @ rot_z(-12).T + [0, ym, zm], f, c)
+    back = np.array([0, ym + 0.010, zm])
+    d = np.array(nrm[:]) * (1 if nrm.y > 0 else -1)                       # into the glass, square to it
+    end = wb.ray_cast(Vector(back), Vector(d))[0]
+    if end is None:                                                       # (the glass's top edge: straight ahead)
+        d, end = np.array([0.0, 1.0, 0.0]), hit
+    ln = (np.array(end[:]) - back) @ d - 0.001
+    v, f = rbox((0.018, ln, 0.012), 0.004)
+    q = np.array(Vector((0, 1, 0)).rotation_difference(Vector(d)).to_matrix())
+    add(v @ q.T + back + d * ln / 2, f, "mirror")
+
+    # no coarse part pokes out of its grown twin: furniture adds them in the same order, the coarse picture blocks
+    # (5, after the screen) aside; signed distance of each coarse vertex to its twin's surface, the twin's normals made
+    # outward first (furniture leaves the wheel rim's to cabin_mesh), seams aside
+    coarse = []
+    furniture(lambda v, f, c, **_: coarse.append(np.asarray(v, float)), opening)
+    k = next(i for i, (_, _, c) in enumerate(grown) if "screen" in c and "screen_back" in c)
+    coarse = coarse[:k + 1] + coarse[k + 6:]
+    worst = (-1.0, None)
+    for cv, (gv, gf, gc) in zip(coarse, grown):
+        bm = bmesh.new()
+        bv = [bm.verts.new(p) for p in gv]
+        for p, c in zip(gf, gc):
+            if c != "stitch":
+                bm.faces.new([bv[i] for i in p])
+        bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
+        b = BVHTree.FromBMesh(bm)
+        bm.free()
+        for p in cv:
+            loc, n = b.find_nearest(Vector(p))[:2]
+            s = (Vector(p) - loc).dot(n)
+            if s > worst[0]:
+                worst = (s, np.round(p, 3))
+    if len(coarse) != len(grown) or worst[0] > -0.0005:
+        raise SystemExit(f"cabin detail: a coarse part is {worst[0] * 1000:+.1f} mm off its grown twin's surface at "
+                         f"{worst[1]} ({len(coarse)} coarse parts, {len(grown)} grown)")
+    print(f"DETAIL coarse furniture inside the grown: worst {worst[0] * 1000:+.2f} mm at {worst[1]}")
+
+    names = list(pv.DETAIL_RGB) + ["picture"]
+    me = bpy.data.meshes.new(NAME + "_Detail")
+    me.from_pydata(np.concatenate(V).tolist(), [], F)
+    me.polygons.foreach_set("material_index", np.array([names.index(c) for c in C], np.int64))
+    bm = bmesh.new()
+    bm.from_mesh(me)
+    bmesh.ops.recalc_face_normals(bm, faces=[f for f, rib in zip(bm.faces, RIB) if not rib])
+    for f, flat in zip(bm.faces, FLAT):
+        f.smooth = not flat
+    bmesh.ops.triangulate(bm, faces=bm.faces[:])
+    bm.to_mesh(me)
+    bm.free()
+    ci = np.empty(len(me.polygons), np.int64)
+    me.polygons.foreach_get("material_index", ci)
+    vi = np.empty(len(me.loops), np.int64)
+    me.loops.foreach_get("vertex_index", vi)
+    cells = np.repeat(ci, [p.loop_total for p in me.polygons])
+    uv = np.array([pv.detail_uv(c) for c in names[:-1]] + [(0, 0)])[cells]
+    pic = cells == len(names) - 1
+    uv[pic] = np.concatenate(UV)[vi[pic]]
+    for nm in ("UV0", "UV1"):
+        me.uv_layers.new(name=nm).data.foreach_set("uv", uv.ravel())
+    me.polygons.foreach_set("material_index", np.zeros(len(me.polygons), np.int64))
+    me.update()
+    cn = np.empty(len(me.loops) * 3, np.float32)
+    me.corner_normals.foreach_get("vector", cn)
+    me.attributes.new("custom_normal", "FLOAT_VECTOR", "CORNER").data.foreach_set("vector", cn)
+    ob = bpy.data.objects.new(NAME + "_Detail", me)
+    bpy.context.scene.collection.objects.link(ob)
+    ob.data.materials.append(bpy.data.materials.new(NAME + "_Detail"))
+    print("DETAIL", NAME, "triangles", len(me.polygons), "cells", {c: int((ci == i).sum()) for i, c in enumerate(names)})
+    return ob
+
 
 
 # ---------------------------------------------------------------- script numbers, previews, verify

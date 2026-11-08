@@ -82,7 +82,8 @@ win = glfw.create_window(64, 64, "glsl", None, None)
 glfw.make_context_current(win)
 print("GL", GL.glGetString(GL.GL_VERSION).decode(), "|", GL.glGetString(GL.GL_RENDERER).decode())
 bad = 0
-for name, vs in (("vehicle_multiuv_noreflect", "_static"), ("MinidoracatTesla_vehicle", "_static"), ("MinidoracatTesla_vehicle", "")):
+for name, vs in (("vehicle_multiuv_noreflect", "_static"), ("MinidoracatTesla_vehicle", "_static"), ("MinidoracatTesla_vehicle", ""),
+                 ("MinidoracatTesla_viewpoint", "_static")):
     for gl21 in (False, True):
         try:
             print("OK  ", name + vs, "GL2.1" if gl21 else "GL3.3", program(name, gl21, vs))

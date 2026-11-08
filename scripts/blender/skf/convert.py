@@ -9,6 +9,8 @@ of the vehicle script.
     "$B" -b --factory-startup --python scripts/blender/skf/convert.py -- view <out_prefix> <N,NE,..> <shut|all|gate|frunk|fl|..>
     "$B" -b --factory-startup --python scripts/blender/skf/convert.py -- appcar   # phone App car images, 8 paints
     "$B" -b --factory-startup --python scripts/blender/skf/convert.py -- inspect  # source objects -> TMP/inspect.json
+    "$B" -b --factory-startup --python scripts/blender/skf/convert.py -- detail   # cabin detail FBX (Viewpoint) only,
+                                                                                  # from the built body: no source needed
     CAR=<car> "$B" ...                                                            # another cars/<car>.py
 
 Source (gitignored): TMP/<the car's SRC>; Model Y: temp/skf/src/source/Tesla Model Y Performance 2026.obj (+ .mtl),
@@ -1224,8 +1226,9 @@ def textures(car, c):
             s[paint] *= seam[paint][:, None]
         s[chrome] = np.array(CHROME[int(np.median(s[paint].max(-1)) >= 0.55)]) / 255
         s[etch] = np.median(s[paint], 0) * 0.78     # etched into the steel (and seen through a film): a shade darker
-        pv.save_png(np.concatenate([np.clip(s, 0, 1), alpha], -1),
-                    os.path.join(pv.TEX_DIR, f"{pv.NAME}_{p}.png"), p)
+        skin = np.concatenate([np.clip(s, 0, 1), alpha], -1)
+        pv.cabin_corners(skin)              # the cabin's colour under Viewpoint (pzveh CABIN_UV0_RGB)
+        pv.save_png(skin, os.path.join(pv.TEX_DIR, f"{pv.NAME}_{p}.png"), p)
         # setColorHSV for the damage overlays: the shader gives Veh_Damage* texels the paint hue and S / V offsets
         # (vehicle_common.frag.glsl:6-15); their median S 0.03, V 0.45 should land on this skin's median paint
         h_, s_, v_ = colorsys.rgb_to_hsv(*map(float, np.median(s[paint], 0)))
@@ -1301,8 +1304,49 @@ def stage_build():
     bpy.ops.wm.save_as_mainfile(filepath=os.path.join(TMP, "skf_whole.blend"))
     g |= {"centre_y": float(ctr[1]), "zmid": zmid, "tris": pieces(car, c, shift)}
     g["tris"]["Wheel"] = pv.stage_wheel(*tire)
+    g["tris"]["Detail"] = stage_detail(float(ctr[1]))
     json.dump(g, open(os.path.join(TMP, "geometry.json"), "w"), indent=1)
     print("GEOMETRY", json.dumps(g))
+
+
+def script_cy():
+    """The body's centring along y (stage_build's ctr[1]) read back from its vehicle script: pzveh.geometry writes the
+    front passengers at z = ((front + B pillar) / 2 - SEAT back - cy) / S, 4 decimals (cy +-0.0002)."""
+    text = open(os.path.join(pv.MEDIA, "scripts", "vehicles", pv.NAME + ".txt"), encoding="utf-8").read()
+    m = re.search(r"passenger FrontLeft\s*\{.*?position inside\s*\{\s*offset = \S+ \S+ (\S+),", text, re.S)
+    return (DOOR_Y[0] + DOOR_Y[1]) / 2 - pv.SEAT["back"][0] - float(m.group(1)) * pv.S
+
+
+def stage_detail(cy=None):
+    """The cabin detail model and the shared detail texture (cabin.detail_mesh; drawn only under Viewpoint, models.md
+    8), from the car's config and its built body: cy as stage_build has it, else script_cy (a car whose source is not
+    on this machine). Checks the coarse furniture it rebuilds lies on the body FBX's cabin (that cy, the config
+    unchanged since the body was built). -> its triangles."""
+    from mathutils.kdtree import KDTree
+    cy = script_cy() if cy is None else cy
+    opening = dict(y=tuple(y - cy for y in DOOR_Y))
+    (bv, bt, bu), = pv.read_fbx(os.path.join(pv.VEH_DIR, pv.NAME + ".fbx"))
+    cabin_v = np.unique(bt[(bu.reshape(-1, 3) < pv.CABIN_UV1_U / 2).all(1)])
+    kd = KDTree(len(cabin_v))
+    for k, i in enumerate(cabin_v):
+        kd.insert(bv[i], k)
+    kd.balance()
+    coarse = []
+    cab.furniture(lambda v, f, c, **_: coarse.append(np.asarray(v, float)), opening)
+    off = np.array([kd.find(p)[2] for p in np.concatenate(coarse)])
+    print(f"DETAIL cy {cy:.5f}: coarse furniture off the body's cabin max {off.max() * 1000:.3f} mm")
+    if off.max() > 2e-4:
+        raise SystemExit(f"{pv.NAME}: the furniture rebuilt is {off.max() * 1000:.1f} mm off the body FBX's cabin: cy or "
+                         "the cars/ config changed since the body was built (rebuild the car)")
+    # the windscreen: the body glass (no door shell bit) of pane WinT (classify's name for the front pane; UV1 u =
+    # GLASS_UV1_SHIFT + 2 x pane + damage u)
+    (gv, gt, gu), = pv.read_fbx(os.path.join(pv.VEH_DIR, pv.NAME + "_Glass.fbx"))
+    pane = (gu.reshape(-1, 3)[:, 0] - pv.GLASS_UV1_SHIFT) // 2
+    ob = cab.detail_mesh(opening, (gv, gt[pane == GLASS_ZONES.index("WinT")]))
+    pv.detail_texture()
+    pv.export_fbx(ob, os.path.join(pv.VEH_DIR, pv.NAME + "_Detail.fbx"))
+    return len(ob.data.polygons)
+
 
 
 def two_sided(P, attr_of):
@@ -2054,3 +2098,5 @@ if __name__ == "__main__":
         stage_appcar(*argv[1:])
     elif argv[0] == "inspect":
         stage_inspect()
+    elif argv[0] == "detail":
+        stage_detail()

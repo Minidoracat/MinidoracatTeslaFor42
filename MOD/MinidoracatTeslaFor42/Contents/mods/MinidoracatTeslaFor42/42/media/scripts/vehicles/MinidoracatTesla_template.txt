@@ -269,5 +269,13 @@ module Base
                 init = MinidoracatTesla.Init.CabinGlass,
             }
         }
+        /* the cabin's detail for Project Viewpoint (model Detail, each car's geometry block): shown only on a client */
+        /* with Viewpoint loaded, in the car a local player sits in (ViewpointCabin.lua); no item, so not */
+        /* setAllModelsVisible, like CabinGlass */
+        part CabinDetail
+        {
+            category = nodisplay,
+            setAllModelsVisible = false,
+        }
     }
 }

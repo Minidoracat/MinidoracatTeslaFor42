@@ -210,6 +210,23 @@ def export_fbx(ob, path):
                              add_leaf_bones=False, bake_anim=False, path_mode="STRIP")
 
 
+def read_fbx(path):
+    """A static FBX export_fbx wrote, back in mesh coords (it wrote Blender (x, y, z) as (x, z, -y)): -> [(verts, tris,
+    UV1 u per corner)] per geometry, in the file's order."""
+    from io_scene_fbx import parse_fbx
+    kids = lambda e, name: [c for c in e.elems if c.id == name.encode()]   # noqa: E731
+    out = []
+    for g in kids(kids(parse_fbx.parse(path)[0], "Objects")[0], "Geometry"):
+        V = np.array(kids(g, "Vertices")[0].props[0]).reshape(-1, 3)[:, [0, 2, 1]] * [1, -1, 1]
+        pvi = np.array(kids(g, "PolygonVertexIndex")[0].props[0])
+        if len(pvi) % 3 or (pvi[2::3] >= 0).any():
+            raise SystemExit(f"{path}: not all triangles")
+        uv = kids(g, "LayerElementUV")[1]
+        u1 = np.array(kids(uv, "UV")[0].props[0]).reshape(-1, 2)[np.array(kids(uv, "UVIndex")[0].props[0]), 0]
+        out.append((V, np.where(pvi < 0, -pvi - 1, pvi).reshape(-1, 3), u1))
+    return out
+
+
 def smoothstep(e0, e1, x):
     t = np.clip((x - e0) / (e1 - e0), 0, 1)
     return t * t * (3 - 2 * t)
@@ -714,6 +731,97 @@ CABIN_UV1_U = -2.5
 GLASS_UV1_SHIFT = 2.0     # glass faces: UV1 u + this (the shader takes it back off for the damage maps)
 GLASS_DOOR_U = 16.0       # a door's glass: UV1 u + this x its shell bit number (cabin.SHELL_DOORS, 1-based; 0 the body's)
 
+# Project Viewpoint (Workshop 3809306528, a 3-D view; models.md 8 "Viewpoint") draws every vehicle face with the skin
+# at its UV0, and every cabin face sits on UV0 (0, 0) (cabin.py: MinidoracatTesla_vehicle.frag colours it from UV1 and
+# reads no skin there), so the skin's black corner was the whole cabin there. Each corner gets CABIN_UV0_RGB
+# (cabin_corners): which corner the sample reads depends on the wrap (repeat: the four mixed, clamped: one) and
+# Viewpoint's filter (Lanczos reads ~3 texels round it at the default 512 car textures). Calibration knob:
+# CABIN_UV0_RGB (Viewpoint screenshots).
+CABIN_UV0_RGB, CORNER_PX = (52, 52, 56), 12
+
+
+def cabin_corners(rgba):
+    """Paint a skin's four corners CABIN_UV0_RGB, alpha 1 (in place; H x W x 4 floats, either row order): each a square
+    of up to CORNER_PX texels, short of the nearest texel that is not black (an island's bleed: Model X's is 7 texels
+    from a corner). -> the four squares' sizes."""
+    sizes = []
+    for sy in (1, -1):
+        for sx in (1, -1):
+            blk = rgba[::sy, ::sx][:CORNER_PX, :CORNER_PX]
+            used = np.argwhere((blk[..., :3] > 0.5 / 255).any(-1))
+            n = int(used.max(1).min()) if len(used) else CORNER_PX
+            blk[:n, :n, :3] = np.array(CABIN_UV0_RGB) / 255
+            blk[:n, :n, 3] = 1.0
+            sizes.append(n)
+    return sizes
+
+
+# the cabin detail model (cabin.py detail_mesh; drawn only under Viewpoint, models.md 8): one texture for every car,
+# DETAIL_RGB's cells (sRGB) along its top rows, the centre screen's picture in DETAIL_PICTURE. A face of a cell has its
+# UV0 at that cell's centre (one colour at any filter). The cabin cells start from the frag's CABIN[] (vanilla's
+# view); Viewpoint lights them its own way, so they are tuned on its screenshots (calibration knob): seat from
+# CABIN[]'s 100 (a step brighter for the isometric view) to the skin corners' grey (CABIN_UV0_RGB, the door panels
+# next to it), the stitch above it to stay visible (tesla-vd-1108a: 100 read near white in the sun).
+DETAIL_TEX, DETAIL_PX, DETAIL_CELL_PX = "MinidoracatTesla_Detail", 256, 16
+DETAIL_RGB = {
+    "floor": (22, 22, 24), "liner": (40, 40, 44), "seat": (52, 52, 56), "base": (30, 30, 32), "dash": (58, 58, 62),
+    "trim": (112, 106, 98), "console": (46, 46, 50), "wheel": (28, 28, 30), "screen_back": (16, 16, 18),
+    "screen": (170, 192, 214), "stitch": (92, 92, 98), "mat": (18, 18, 20), "chrome": (170, 172, 176),
+    "vent": (8, 8, 9), "mirror": (24, 24, 26), "mirror_glass": (120, 128, 136)}
+DETAIL_PICTURE = (0.0, 0.0, 1.0, 0.625)    # UV (u0, v0, u1, v1): 256 x 160 texels at the bottom
+
+
+def detail_uv(cell):
+    """UV0 of a DETAIL_RGB cell's centre (rows of DETAIL_PX / DETAIL_CELL_PX cells from the top)."""
+    k, per = list(DETAIL_RGB).index(cell), DETAIL_PX // DETAIL_CELL_PX
+    return ((k % per + 0.5) * DETAIL_CELL_PX / DETAIL_PX, 1 - (k // per + 0.5) * DETAIL_CELL_PX / DETAIL_PX)
+
+
+def detail_texture():
+    """Write TEX_DIR/DETAIL_TEX.png: the cells, and in DETAIL_PICTURE the centre screen as seen from the seat (u 0 =
+    the car's left, the driver's side): the car view on the driver's third, the map with the route and the position
+    arrow on the rest, the dock along the bottom. Rows bottom-up (Blender's)."""
+    n = DETAIL_PX
+    img = np.zeros((n, n, 4))
+    img[..., 3] = 1.0
+    for c, rgb in DETAIL_RGB.items():
+        u, v = detail_uv(c)
+        x, y, h = int(u * n), int(v * n), DETAIL_CELL_PX // 2
+        img[y - h:y + h, x - h:x + h, :3] = np.array(rgb) / 255
+    u0, v0, u1, v1 = DETAIL_PICTURE
+    w, h = int((u1 - u0) * n), int((v1 - v0) * n)
+    X, Y = np.meshgrid(np.arange(w) + 0.5, np.arange(h) + 0.5)     # picture texels, y up
+    pic = np.zeros((h, w, 3))
+
+    def fill(mask, rgb):
+        pic[mask] = np.array(rgb) / 255
+
+    def seg(p, q, r):        # within r of the segment p-q
+        p, q = np.array(p, float), np.array(q, float)
+        t = np.clip(((X - p[0]) * (q - p)[0] + (Y - p[1]) * (q - p)[1]) / ((q - p) @ (q - p)), 0, 1)
+        return np.hypot(X - p[0] - t * (q - p)[0], Y - p[1] - t * (q - p)[1]) <= r
+
+    fill(np.ones((h, w), bool), (34, 38, 46))                        # map
+    for p, q in (((84, 104), (256, 112)), ((150, 16), (176, 160)), ((84, 52), (256, 30)), ((214, 16), (246, 160))):
+        fill(seg(p, q, 3.0), (70, 78, 90))                           # roads
+    fill(seg((166, 30), (172, 84), 2.6) | seg((172, 84), (184, 108), 2.6) | seg((184, 108), (256, 116), 2.6),
+         (70, 150, 250))                                             # route
+    fill((np.abs(X - 166) < (42 - Y) * 0.45) & (Y > 30) & (Y < 42), (235, 238, 242))   # position arrow
+    car_view = X < 84
+    fill(car_view, (18, 18, 21))
+    for lx in (20, 64):
+        fill(car_view & (np.abs(X - lx) < 1.2) & ((Y // 10) % 2 == 0), (70, 70, 76))      # lane dashes
+    body = (np.abs(X - 42) < 13) & (np.abs(Y - 88) < 28)
+    corner = (np.abs(X - 42) > 7) & (np.abs(Y - 88) > 22) & (np.hypot(np.abs(X - 42) - 7, np.abs(Y - 88) - 22) > 6)
+    fill(body & ~corner, (205, 207, 212))                            # the car from above
+    fill((np.abs(X - 42) < 10) & (Y > 94) & (Y < 104), (60, 64, 72))   # its glass roof
+    fill(Y < 16, (12, 12, 14))                                       # dock
+    for i in range(7):
+        fill((np.abs(X - (40 + 29 * i)) < 4) & (np.abs(Y - 8) < 4), (150, 152, 158))
+    img[int(v0 * n):int(v0 * n) + h, int(u0 * n):int(u0 * n) + w, :3] = pic
+    save_png(img, os.path.join(TEX_DIR, DETAIL_TEX + ".png"), "detail")
+
+
 
 def face_classes(ob):
     """Per face: 0 paint, 1 cabin, 2 glass, from UV1 u at its first corner (MinidoracatTesla_vehicle.frag)."""
@@ -881,6 +989,9 @@ def geometry(body, zmid, wl, r, tire_w, belt_z, doors_y, port_yz, extra_areas=()
     # every window in one static model drawn after the doors (template part CabinGlass, Liftgate.lua)
     out += ["        part CabinGlass", "        {", "            model Glass", "            {",
             f"                file = {NAME}_Glass,", "            }", "        }"]
+    # the cabin's detail, shown only under Viewpoint (template part CabinDetail, ViewpointCabin.lua, cabin.detail_mesh)
+    out += ["        part CabinDetail", "        {", "            model Detail", "            {",
+            f"                file = {NAME}_Detail,", "            }", "        }"]
     block = "\n".join(out) + "\n"
     open(os.path.join(TMP, "geometry_block.txt"), "w", newline="\n").write(block)
     # splice into the vehicle script: everything after the geometry marker up to the vehicle's closing brace is ours

@@ -397,4 +397,58 @@ module Base
         static = false,
         scale = 0.5495,
     }
+
+    /* The cabin's detail for Project Viewpoint (part CabinDetail; scripts/blender/skf/cabin.py detail_mesh): the
+       furniture a little larger and finer over the body's own, coloured from MinidoracatTesla_Detail. Only the car a
+       local player sits in shows it, and only with Viewpoint loaded (client ViewpointCabin.lua); Viewpoint draws it
+       with the texture, the game's MinidoracatTesla_viewpoint draws nothing. */
+    model MinidoracatTesla_ModelY_Detail
+    {
+        mesh = vehicles/MinidoracatTesla_ModelY_Detail,
+        texture = Vehicles/MinidoracatTesla_Detail,
+        shader = MinidoracatTesla_viewpoint,
+        static = true,
+        invertX = false,
+        scale = 0.5495,
+    }
+
+    model MinidoracatTesla_Model3_Detail
+    {
+        mesh = vehicles/MinidoracatTesla_Model3_Detail,
+        texture = Vehicles/MinidoracatTesla_Detail,
+        shader = MinidoracatTesla_viewpoint,
+        static = true,
+        invertX = false,
+        scale = 0.5495,
+    }
+
+    model MinidoracatTesla_ModelS_Detail
+    {
+        mesh = vehicles/MinidoracatTesla_ModelS_Detail,
+        texture = Vehicles/MinidoracatTesla_Detail,
+        shader = MinidoracatTesla_viewpoint,
+        static = true,
+        invertX = false,
+        scale = 0.5495,
+    }
+
+    model MinidoracatTesla_ModelX_Detail
+    {
+        mesh = vehicles/MinidoracatTesla_ModelX_Detail,
+        texture = Vehicles/MinidoracatTesla_Detail,
+        shader = MinidoracatTesla_viewpoint,
+        static = true,
+        invertX = false,
+        scale = 0.5495,
+    }
+
+    model MinidoracatTesla_Cybertruck_Detail
+    {
+        mesh = vehicles/MinidoracatTesla_Cybertruck_Detail,
+        texture = Vehicles/MinidoracatTesla_Detail,
+        shader = MinidoracatTesla_viewpoint,
+        static = true,
+        invertX = false,
+        scale = 0.5495,
+    }
 }

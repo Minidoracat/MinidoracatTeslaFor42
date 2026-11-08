@@ -397,5 +397,12 @@ module Base
                 file = MinidoracatTesla_Model3_Glass,
             }
         }
+        part CabinDetail
+        {
+            model Detail
+            {
+                file = MinidoracatTesla_Model3_Detail,
+            }
+        }
     }
 }
