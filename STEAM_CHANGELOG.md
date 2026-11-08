@@ -1,35 +1,20 @@
-[h1]Minidoracat Tesla Collection for B42 42.21.0-0.4.0[/h1]
-[i]2026-11-03[/i]
+[h1]Minidoracat Tesla Collection for B42 42.21.0-0.5.0[/h1]
+[i]2026-11-08[/i]
 
-[h3]✨ 新增：Model S Plaid、Model X Plaid[/h3]
+[b]English summary[/b]
 [list]
-[*] [b]第四台特斯拉 Model S Plaid[/b]：只出現在高級住宅區。照官方頂規 Plaid：1,020 hp、100 kWh 電池，8 種原廠車色。
-[*] [b]第五台特斯拉 Model X Plaid[/b]：只出現在高級住宅區。1,020 hp、100 kWh 電池，行李廂 85，8 種原廠車色。
-[*] [b]鷹翼門與 6 個座位[/b]：Model X 的後門往上掀，全開也進得了單層車庫；第二、三排都從鷹翼門上下車。
-[*] [b]Model X 的儀表與 App[/b]：點儀表上的車尾開關鷹翼門，App 控制頁多一格「鷹翼門」。
+[*] With Project Viewpoint (the 3D view mod), sitting in a Tesla now shows a detailed cabin: stitched seats, a steering wheel with the T badge, a centre screen with a map, air vents, cup holders, floor mats and a rear-view mirror.
+[*] Only the car you sit in shows the details. Players without Project Viewpoint see the same picture and get the same performance as before.
+[*] After a power cut, when the Tesla app cannot reach your car, it now says why: only Bluetooth works then, within 50 m by default (a sandbox option).
 [/list]
 
-[h3]✨ 新增：其他功能[/h3]
+[h3]✨ 新增[/h3]
 [list]
-[*] [b]生物武器防禦模式[/b]：Model Y、Cybertruck、Model S、Model X 坐在車上開著它（馬達開著或露營中），屍臭病不會再加重；在 V 鍵圓盤開關。照官方手冊，Model 3 沒有這項。
-[*] [b]舒適加速模式（Chill）[/b]：在 V 鍵圓盤開啟，加速變得平順，極速不變。
-[*] [b]哨兵：被掛上拖車會響警報[/b]：別人用拖車掛鉤把開著哨兵的車掛走，會響警報並通知車主。
-[*] [b]哨兵：殭屍、撞車、武器打破車窗也會響[/b]：以前只有「打破車窗」動作會觸發。
+[*] [b]裝了 Project Viewpoint（3D 視角 MOD）時，坐進特斯拉看得到車內細節[/b]：以前車內幾乎整片黑，只看得到方向盤和手。現在五台車、每個座位都看得到有縫線的座椅、有 T 標的方向盤、顯示地圖的中控螢幕、出風口、杯架、手機座、腳踏墊與後照鏡，其餘車內面是深灰色。
+[*] [b]只有自己坐的那台會顯示細節[/b]：沒裝 Project Viewpoint 的玩家，畫面和效能都和以前一樣。
 [/list]
 
 [h3]🔄 變更[/h3]
 [list]
-[*] [b]拖東西時耗電變多[/b]：拖小拖車約 1.5 倍、拖一台轎車約 3 倍，剩餘里程跟著變少。
-[/list]
-
-[h3]🔧 修正[/h3]
-[list]
-[*] [b]多人伺服器上，有人把特斯拉上鎖後，附近玩家會聽到停不下來的喇叭聲[/b]：0.1.0 起就有。現在上鎖的短鳴只在自己的遊戲裡響一下。
-[*] [b]坐在車上頭穿出車頂、身體陷進椅子、腳穿過地板[/b]：每台車的坐姿與座位高度重新調過，前座往後靠，後座膝蓋抬高。
-[*] [b]從車頭看，坐在車上的人被椅子包住[/b]：現在從任何角度看，上身和手臂都在椅子前面；多人看別的玩家坐車也一樣。
-[*] [b]高禮帽、Spiffo 頭套這類很高的帽子穿出車頂[/b]：坐著的期間不畫那頂帽子，下車馬上回來；保暖與防護照算。
-[*] [b]打開另一側的門，門就不見了[/b]：隔著車窗看另一側打開的門，現在整扇都看得到。
-[*] [b]下車或換座位起身時人從車頂冒出來，坐著處理腿腳的傷會站起來穿出車頂[/b]：現在都留在車裡。
-[*] [b]方向盤柱懸在半空中[/b]：每台都接到儀表板了，Cybertruck 原本最明顯。
-[*] [b]車身細節[/b]：Model Y 行李廂側牆的條紋、Model 3 行李箱蓋前角的鋸齒、Model Y 與 Model 3 後門洞的階梯，以及斷成黑點的門縫都修平了。
+[*] [b]停電後 App 連不到車時，直接寫出原因[/b]：以前只寫「連不到車，只顯示最後紀錄」。現在會寫「連不到車（停電後只能用藍牙，50 公尺內）」，距離照伺服器的沙盒設定。附近有發電機或太陽能板也一樣要靠藍牙，因為手機網路只看市電。
 [/list]

@@ -1,8 +1,8 @@
 <!-- 指南網址：https://steamcommunity.com/sharedfiles/filedetails/?id=3829449828 -->
 <!-- Steam 指南稿源（繁中）：MOD 的完整說明以本指南為準，簡介只放摘要。格式、版面與同步方式見 pz-family-docs/release.md「完整說明：Steam 指南」 -->
 <!-- 標題：📖 Minidoracat Tesla Collection MOD 完整說明：車、充電、鑰匙與 App -->
-<!-- 摘要：Minidoracat Tesla Collection 的圖文說明：Model Y 與 Model 3 Performance、Model S 與 Model X Plaid（鷹翼門與 6 座）、Cybertruck Cyberbeast（車斗、Powershare 住宅備援與車斗插座）、電池與拖車耗電、壁掛式充電座與行動充電器、特斯拉風格儀表、卡片鑰匙與手機鑰匙、手機 Tesla App 與召喚、哨兵與露營模式、生物武器防禦模式與舒適模式、驅動單元零件，以及和 Vehicle Manager、小地圖、AutoDrive 一起用的規則與沙盒選項。 -->
-<!-- 截圖：docs/screenshots/steam/zh/，拍法見家族庫 e2e/MinidoracatTeslaFor42 的 guide-shots-sp（召喚圖用 phone-summon-sp、FSD 圖用 fsd-shot-sp、「和其他 MOD 一起用」用 guide-mods-sp） -->
+<!-- 摘要：Minidoracat Tesla Collection 的圖文說明：Model Y 與 Model 3 Performance、Model S 與 Model X Plaid（鷹翼門與 6 座）、Cybertruck Cyberbeast（車斗、Powershare 住宅備援與車斗插座）、電池與拖車耗電、壁掛式充電座與行動充電器、特斯拉風格儀表、卡片鑰匙與手機鑰匙、手機 Tesla App 與召喚、哨兵與露營模式、生物武器防禦模式與舒適模式、驅動單元零件，以及和 Vehicle Manager、小地圖、AutoDrive、Project Viewpoint 一起用的規則與沙盒選項。 -->
+<!-- 截圖：docs/screenshots/steam/zh/，拍法見家族庫 e2e/MinidoracatTeslaFor42 的 guide-shots-sp（召喚圖用 phone-summon-sp、FSD 圖用 fsd-shot-sp、「和其他 MOD 一起用」用 guide-mods-sp；Project Viewpoint 那張（31）是本 repo 一次性情境 temp/oneoff/vp-detail-sp 的 vd-first-ModelS 裁 (80,40,1660,1080)，中英同一張，要裝 ZombieBuddy 才拍得到） -->
 === 🚀 快速上手
 [b]English version:[/b] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3829449879]Minidoracat Tesla Collection Mod Guide[/url]
 
@@ -21,6 +21,7 @@ https://steamcommunity.com/sharedfiles/filedetails/?id=3829501237
 [*] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3813972279]Minidoracat Vehicle Manager[/url]：綁車保護，特斯拉的鑰匙、App、哨兵都照它的權限
 [*] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3792675881]Minidoracat MiniMap - AutoDrive[/url]：App 的召喚
 [*] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3763913359]Minidoracat MiniMap[/url]：小地圖畫出你的特斯拉、導航到車
+[*] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3809306528]Project Viewpoint[/url]：3D 視角，坐進特斯拉看得到車內細節
 [/list]
 [*] [b]單人與多人[/b]：都能用；多人遊戲時伺服器要啟用本 MOD，規則一律由伺服器判斷。
 [/list]
@@ -396,6 +397,15 @@ https://steamcommunity.com/sharedfiles/filedetails/?id=3829501237
 [list]
 [*] [b]FSD 畫面[/b]：自駕時，卡片畫出要走的路線，以及周圍的車輛與殭屍；自己開車時也會畫出前方的障礙。
 [*] [b]儀表位置[/b]：AutoDrive 的卡片自動擺在特斯拉儀表上方。
+[/list]
+[h3]Project Viewpoint（3D 視角）[/h3]
+{{img:31-viewpoint-zh.jpg}}
+[list]
+[*] [b]車內細節[/b]：坐進特斯拉看得到有縫線的座椅、有 T 標的方向盤、顯示地圖的中控螢幕、出風口、杯架、手機座、腳踏墊與後照鏡；五台車、每個座位都有。
+[*] [b]只有自己坐的那台[/b]：別台車照原本的樣子畫，車內是深灰色。
+[*] [b]沒裝不受影響[/b]：沒裝 Project Viewpoint 的玩家，畫面和效能都和以前一樣。
+[*] [b]多人時偶爾消失一下[/b]：你坐的車有零件裝拆或修理時，細節會消失，遊戲內一分鐘內回來。
+[*] [b]看不到充電線[/b]：Project Viewpoint 的 3D 視角畫不出充電線，切回原版視角就看得到。
 [/list]
 === ⚙️ 沙盒選項與預設值
 在沙盒設定的「特斯拉電動車」分頁。

@@ -1,8 +1,8 @@
 <!-- 指南網址：https://steamcommunity.com/sharedfiles/filedetails/?id=3829449879 -->
 <!-- Steam guide source (English). The full description lives in this guide; the Workshop page only has a summary. Format and sync: pz-family-docs/release.md "完整說明：Steam 指南" -->
 <!-- 標題：📖 Minidoracat Tesla Collection Mod Guide: Cars, Charging, Keys and the App -->
-<!-- 摘要：A picture guide to Minidoracat Tesla Collection: the Model Y and Model 3 Performance, the Model S and Model X Plaid (falcon wing doors and six seats), the Cybertruck Cyberbeast (cargo bed, Powershare home backup and the bed outlets), the battery and towing, the Wall Connector and the Mobile Connector, the Tesla-style dashboard, key cards and phone keys, the Tesla app and Summon, Sentry and Camp Mode, Bioweapon Defense Mode and Chill, drive unit parts, and how it works with Vehicle Manager, the MiniMap and AutoDrive, plus the sandbox options. -->
-<!-- Screenshots: docs/screenshots/steam/en/, shot by guide-shots-sp in the family repo's e2e/MinidoracatTeslaFor42 (Summon shots: phone-summon-sp; FSD: fsd-shot-sp; With other mods: guide-mods-sp) -->
+<!-- 摘要：A picture guide to Minidoracat Tesla Collection: the Model Y and Model 3 Performance, the Model S and Model X Plaid (falcon wing doors and six seats), the Cybertruck Cyberbeast (cargo bed, Powershare home backup and the bed outlets), the battery and towing, the Wall Connector and the Mobile Connector, the Tesla-style dashboard, key cards and phone keys, the Tesla app and Summon, Sentry and Camp Mode, Bioweapon Defense Mode and Chill, drive unit parts, and how it works with Vehicle Manager, the MiniMap, AutoDrive and Project Viewpoint, plus the sandbox options. -->
+<!-- Screenshots: docs/screenshots/steam/en/, shot by guide-shots-sp in the family repo's e2e/MinidoracatTeslaFor42 (Summon shots: phone-summon-sp; FSD: fsd-shot-sp; With other mods: guide-mods-sp; Project Viewpoint (31): vd-first-ModelS from this repo's one-off temp/oneoff/vp-detail-sp, cropped (80,40,1660,1080), same picture as zh, needs ZombieBuddy) -->
 === 🚀 Quick start
 [b]中文版：[/b] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3829449828]Minidoracat Tesla Collection 完整說明[/url]
 
@@ -21,6 +21,7 @@ https://steamcommunity.com/sharedfiles/filedetails/?id=3829501237
 [*] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3813972279]Minidoracat Vehicle Manager[/url]: vehicle claims; the Tesla keys, the app and Sentry follow its permissions
 [*] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3792675881]Minidoracat MiniMap - AutoDrive[/url]: Summon in the app
 [*] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3763913359]Minidoracat MiniMap[/url]: your Teslas on the minimap, navigate to your car
+[*] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3809306528]Project Viewpoint[/url]: a 3D view; sitting in a Tesla shows the cabin details
 [/list]
 [*] [b]Singleplayer and multiplayer[/b]: both work; in multiplayer the server must enable this mod, and the server makes every decision.
 [/list]
@@ -396,6 +397,15 @@ A charger that works on the floor, no wall needed; slower than the Wall Connecto
 [list]
 [*] [b]FSD view[/b]: while the car drives itself, the card draws its route and the cars and zombies around it; when you drive, it still shows what is ahead.
 [*] [b]Dashboard spot[/b]: AutoDrive's cards sit above the Tesla dashboard by themselves.
+[/list]
+[h3]Project Viewpoint (3D view)[/h3]
+{{img:31-viewpoint-en.jpg}}
+[list]
+[*] [b]Cabin details[/b]: sit in a Tesla and you see stitched seats, the steering wheel with its T badge, the centre screen with a map, air vents, cup holders, the phone mount, floor mats and the rear-view mirror; in all five cars and every seat.
+[*] [b]Only the car you sit in[/b]: other cars keep the plain look, with a dark grey cabin.
+[*] [b]Nothing changes without it[/b]: players without Project Viewpoint see the same picture and get the same performance as before.
+[*] [b]Can vanish for a moment in multiplayer[/b]: when a part on the car you sit in is installed, removed or repaired, the details disappear and come back within one in-game minute.
+[*] [b]No charge cable[/b]: Project Viewpoint's 3D view does not draw the charge cable; switch back to the vanilla view to see it.
 [/list]
 === ⚙️ Sandbox options and defaults
 On the Tesla Collection page of the sandbox settings.
