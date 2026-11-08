@@ -7,6 +7,7 @@
     "ContextMenu_MinidoracatTesla_Unplug": "Unplug charge cable",
     "ContextMenu_MinidoracatTesla_ChargeStatus": "Charging status",
     "ContextMenu_MinidoracatTesla_MobileNoPower": "No power here: put it indoors where there is power, or within 2 tiles of a running generator",
+    "ContextMenu_MinidoracatTesla_SuperchargerNoPower": "No power here: needs grid power, a running generator whose range covers this spot, or one within 2 tiles",
     "ContextMenu_MinidoracatTesla_TapUnlock": "Tap Key Card: Unlock",
     "ContextMenu_MinidoracatTesla_TapLock": "Tap Key Card: Lock",
     "ContextMenu_MinidoracatTesla_PairPhone": "Set Up as Phone Key",

@@ -3,7 +3,7 @@
     "Sandbox_MinidoracatTesla_RangeMultiplier": "Range multiplier",
     "Sandbox_MinidoracatTesla_RangeMultiplier_tooltip": "How far a full battery drives.\n1.0 = as far as a full tank in a vanilla car of the same class; 2.0 = twice as far.\nVanilla Gas Consumption scales it too: 2 = half as far; 0 = driving uses no charge.",
     "Sandbox_MinidoracatTesla_ChargeSpeedMultiplier": "Charging speed multiplier",
-    "Sandbox_MinidoracatTesla_ChargeSpeedMultiplier_tooltip": "1.0 = official charger power (Wall Connector 11.5 kW, Mobile Connector 7.6 kW)\n2.0 = twice as fast.",
+    "Sandbox_MinidoracatTesla_ChargeSpeedMultiplier_tooltip": "1.0 = official charger power (Wall Connector 11.5 kW, Mobile Connector 7.6 kW, Supercharger up to 250 kW, 325 kW for the Cybertruck)\n2.0 = twice as fast.",
     "Sandbox_MinidoracatTesla_ChargeFuelMultiplier": "Charging fuel multiplier",
     "Sandbox_MinidoracatTesla_ChargeFuelMultiplier_tooltip": "Generator fuel a Tesla burns: the charge, and the car's climate and Camp Mode while plugged in. Grid power is free.\n1.0 = about one tank to charge a Model Y from empty to full at the default Generator Fuel Consumption; 0.5 = half; 0 = no fuel.\nGenerator Fuel Consumption scales it too.",
     "Sandbox_MinidoracatTesla_CampMinBattery": "Camp Mode battery limit",

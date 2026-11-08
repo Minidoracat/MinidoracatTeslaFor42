@@ -7,6 +7,7 @@
     "ContextMenu_MinidoracatTesla_Unplug": "Şarj kablosunu çıkar",
     "ContextMenu_MinidoracatTesla_ChargeStatus": "Şarj durumunu gör",
     "ContextMenu_MinidoracatTesla_MobileNoPower": "Burada elektrik yok: elektriği olan bir iç mekâna ya da çalışan bir jeneratörün en fazla 2 kare yakınına koyun",
+    "ContextMenu_MinidoracatTesla_SuperchargerNoPower": "Burada elektrik yok: şebeke, çalışan bir jeneratörün menzili ya da en fazla 2 kare yakında bir jeneratör gerekir",
     "ContextMenu_MinidoracatTesla_TapUnlock": "Anahtar kartı okut: kilidi aç",
     "ContextMenu_MinidoracatTesla_TapLock": "Anahtar kartı okut: kilitle",
     "ContextMenu_MinidoracatTesla_PairPhone": "Telefon anahtarı olarak ayarla",

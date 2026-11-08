@@ -53,6 +53,7 @@
     "IGUI_MinidoracatTesla_Radial_ChargeStatus": "Charging Status",
     "IGUI_MinidoracatTesla_Card_NotPlugged": "Not plugged in",
     "IGUI_MinidoracatTesla_Card_Charging": "Charging",
+    "IGUI_MinidoracatTesla_Card_Supercharging": "Supercharging",
     "IGUI_MinidoracatTesla_Card_Full": "Charged to target",
     "IGUI_MinidoracatTesla_Card_NoPower": "No power",
     "IGUI_MinidoracatTesla_Card_Stopped": "Charging stopped",

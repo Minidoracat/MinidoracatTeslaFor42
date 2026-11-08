@@ -156,9 +156,12 @@ local function newPart(id, opts)
     function p:getContainerContentType() return self.contentType end
     function p:getContainerCapacity() return self.item and self.item:getMaxCapacity() or 0 end
     function p:getContainerContentAmount() return self.md.contentAmount or 0 end
+    -- part.float32 = true: stores what the engine's float keeps (VehiclePart.java:375-387; 20 % of 123 reads 24.6000004)
     function p:setContainerContentAmount(v)
         local cap = self:getContainerCapacity()
-        self.md.contentAmount = math.max(0, math.min(v, cap))
+        v = math.max(0, math.min(v, cap))
+        if self.float32 then v = string.unpack("<f", string.pack("<f", v)) end
+        self.md.contentAmount = v
     end
     function p:setRandomCondition() end
     return p
@@ -287,10 +290,12 @@ end }
 ISInstallVehiclePart = { complete = function() return true end }
 -- vanilla floor / wall placement check (ISMoveableSpriteProps.lua:1736); Chargers.lua wraps it. `free` stands in for
 -- everything vanilla checks. The cursor panel text (:577) and vanilla's red line helper (:519-527) for the move guard.
+-- removeComponentsBeforePlacing: the last call on a placed object before it goes on the square (:2527; Chargers.lua).
 ISMoveableSpriteProps = { canPlaceMoveableInternal = function(self) return self.free ~= false end,
     getInfoPanelDescription = function() return {} end,
     addLineToInfoTable = function(t, txt, r, g, b) t[#t + 1] = { { txt = txt, r = r, g = g, b = b } }; return t end,
-    bhc = { getR = function() return 1 end, getG = function() return 0 end, getB = function() return 0 end } }
+    bhc = { getR = function() return 1 end, getG = function() return 0 end, getB = function() return 0 end },
+    removeComponentsBeforePlacing = function(_, obj) return obj.components end }
 -- vanilla pick up / place / rotate action (ISMoveablesAction.lua:236-255); Chargers.lua wraps complete(). `done`
 -- counts what vanilla would have moved; `onComplete` stands in for what vanilla did to the world (a placed object).
 ISMoveablesAction = { complete = function(self)
@@ -305,6 +310,12 @@ local function vanillaAction(name)
 end
 ISTakeGenerator, ISPlugGenerator, ISDestroyStuffAction =
     vanillaAction("ISTakeGenerator"), vanillaAction("ISPlugGenerator"), vanillaAction("ISDestroyStuffAction")
+-- ISActivateGenerator.lua:40-50 (no failToStart): switches it; Charging.lua settles the chargers around it before and after
+ISActivateGenerator = { Type = "ISActivateGenerator", complete = function(self)
+    self.done = true
+    if self.generator and self.generator.setActivated then self.generator:setActivated(self.activate) end
+    return true
+end }
 
 -- ---------------------------------------------------------------- loader
 local loaded = {}
@@ -325,7 +336,7 @@ for _, m in ipairs({ "ISOpenVehicleDoor", "ISCloseVehicleDoor", "ISLockDoors", "
 end
 H.stub("Moveables/ISMoveableSpriteProps")
 H.stub("Moveables/ISMoveablesAction")
-for _, m in ipairs({ "ISTakeGenerator", "ISPlugGenerator", "ISDestroyStuffAction" }) do H.stub("TimedActions/" .. m) end
+for _, m in ipairs({ "ISTakeGenerator", "ISPlugGenerator", "ISDestroyStuffAction", "ISActivateGenerator" }) do H.stub("TimedActions/" .. m) end
 
 -- ---------------------------------------------------------------- checks
 function H.check(ok, label)

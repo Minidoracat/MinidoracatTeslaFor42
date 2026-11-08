@@ -226,6 +226,22 @@ check(#m2d == 2 and H.near(m2d[1][1], 50.5) and H.near(m2d[1][2], 20.7) and H.ne
 opt3d = true
 T.onChargerChanged(om, true)
 
+-- ---- Supercharger: the post's model carries its cable down to the floor (cableExit h = 0): no hang; the exit is the
+-- post's front-right corner (S: 0.40 east, 0.04 north of the centre), turned with the facing ----
+for f, want in pairs({ S = { 50.90, 20.46 }, E = { 50.46, 20.10 }, N = { 50.10, 20.54 }, W = { 50.54, 20.90 } }) do
+    local po = { x = 50, y = 20, z = 0, kind = "Supercharger", facing = f, vid = mm:getId() }
+    T.onChargerChanged(po)
+    frame()
+    local hangs2 = 0
+    for _, d in ipairs(draws) do
+        if d.x > 49 and d.item.type == "Base.MinidoracatTesla_CableHang" then hangs2 = hangs2 + 1 end
+    end
+    local gs = C.solve(po)
+    check(gs and hangs2 == 0 and H.near(gs.ex, want[1]) and H.near(gs.ey, want[2]) and H.near(gs.ax, gs.ex)
+        and H.near(gs.ay, gs.ey), "cable: Supercharger facing " .. f .. ": no hang, exit at " .. want[1] .. "," .. want[2])
+    T.onChargerChanged(po, true)
+end
+
 -- ---- car not loaded on this client / dragged too far ----
 H.removeVehicle(v)
 frame()

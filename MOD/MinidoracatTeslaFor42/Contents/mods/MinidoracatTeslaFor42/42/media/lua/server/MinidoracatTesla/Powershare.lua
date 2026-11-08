@@ -19,6 +19,7 @@ require "MinidoracatTesla/Chargers"
 require "MinidoracatTesla/Battery"
 require "TimedActions/ISTakeGenerator"
 require "TimedActions/ISPlugGenerator"
+require "TimedActions/ISActivateGenerator"
 require "TimedActions/ISDestroyStuffAction"
 require "MinidoracatTesla/Charging"
 require "MinidoracatTesla/Inbox"
@@ -45,11 +46,9 @@ PS.OUTLET_TILES = 10 -- the bed outlet's chargers to settle around the truck aft
 local function r0() return T.GEN_FUEL_PER_KWH * (SandboxVars.GeneratorFuelConsumption or 0.1) end
 local function key(x, y, z) return x .. "," .. y .. "," .. z end
 
--- kWh above the discharge limit
+-- kWh above the discharge limit (0 within T.KWH_EPS of it: a float pack at its limit reads a hair above, Chargers.lua)
 function PS.avail(v, part)
-    part = part or B.part(v)
-    if not (part and part:getInventoryItem()) then return 0 end
-    return math.max(0, B.kwh(part) - B.capacity(part) * T.psFloor(part) / 100)
+    return T.psAbove(part or B.part(v))
 end
 
 -- ---------------------------------------------------------------- the generator
@@ -392,10 +391,13 @@ end)
 -- vanilla's generator menu (info, switch, plug, fuel, fix, take) and the sledgehammer never show for ours: the client
 -- drops them (client/MinidoracatTesla/PowershareUI.lua). A client that skips its menu is refused here, where the action
 -- completes (server / SP; complete() false = refused, NetTimedAction.java:132-134): taking it would hand out the
--- hidden item (getGeneratorItemType, ISTakeGenerator.lua:39-53), unplugging or smashing it (ISDestroyStuffAction.lua:
--- 250-252,330) darkens the house. Switching it off or adding fuel changes nothing we bill (book) and the next settle
--- sets it back (fill). cheat: a player in build cheat (an admin) may smash one, an orphan left by a truck gone
--- (charging.md); taking and plugging stay refused. A hook error never breaks the vanilla action.
+-- hidden item (getGeneratorItemType, ISTakeGenerator.lua:39-53), unplugging, switching or smashing it
+-- (ISActivateGenerator.lua:40-50, ISDestroyStuffAction.lua:250-252,330) darkens the house; switching it off would also
+-- settle the chargers on it as nopower at once (Charging.lua wraps ISActivateGenerator; this guard sits outside it, so a
+-- refused switch settles nothing). Powershare switches its generator itself (setActivated, PS.fill / unsupply), never
+-- through these actions. Adding fuel changes nothing we bill (book) and the next settle sets it back (fill). cheat: a
+-- player in build cheat (an admin) may smash one, an orphan left by a truck gone (charging.md); taking, plugging and
+-- switching stay refused. A hook error never breaks the vanilla action.
 local function guard(cls, field, cheat)
     local orig = cls and cls.complete
     if not orig then return end
@@ -421,6 +423,7 @@ local function guard(cls, field, cheat)
 end
 guard(ISTakeGenerator, "generator")
 guard(ISPlugGenerator, "generator")
+guard(ISActivateGenerator, "generator")
 guard(ISDestroyStuffAction, "item", true)
 
 return PS

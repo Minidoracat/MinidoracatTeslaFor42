@@ -21,6 +21,16 @@ module Base
         undoCoreScale = true,
     }
 
+    /* V4 Supercharger post on the floor, real size (spriteModels tiles 16..19). */
+    model MinidoracatTesla_Supercharger
+    {
+        mesh = IsoObject/MinidoracatTesla_Supercharger,
+        texture = IsoObject/MinidoracatTesla_Supercharger,
+        static = true,
+        scale = 1.0,
+        undoCoreScale = true,
+    }
+
     /* Charge cable segments: drawn only by client/MinidoracatTesla/Cable.lua with Render3DItem.
        undoCoreScale cancels the item 1.5x (Core.java:2584), so 1 mesh unit = 1 tile. */
     model MinidoracatTesla_CableHang

@@ -53,6 +53,7 @@
     "IGUI_MinidoracatTesla_Radial_ChargeStatus": "Şarj Durumu",
     "IGUI_MinidoracatTesla_Card_NotPlugged": "Takılı değil",
     "IGUI_MinidoracatTesla_Card_Charging": "Şarj oluyor",
+    "IGUI_MinidoracatTesla_Card_Supercharging": "Supercharger ile şarj",
     "IGUI_MinidoracatTesla_Card_Full": "Hedefe ulaşıldı",
     "IGUI_MinidoracatTesla_Card_NoPower": "Elektrik yok",
     "IGUI_MinidoracatTesla_Card_Stopped": "Şarj durduruldu",

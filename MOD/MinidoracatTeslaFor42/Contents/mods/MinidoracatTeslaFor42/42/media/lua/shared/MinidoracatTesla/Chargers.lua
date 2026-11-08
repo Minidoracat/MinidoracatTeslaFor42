@@ -17,7 +17,8 @@ function T.fuelPerKwh()
     return T.GEN_FUEL_PER_KWH * (SandboxVars.GeneratorFuelConsumption or 0.1) * T.chargeFuelMul()
 end
 
--- Cable tiles: official metres x 6 / 7.3 (the Wall Connector's 7.3 m plays as 6 tiles), rounded.
+-- Cable tiles: official metres x 6 / 7.3 (the Wall Connector's 7.3 m plays as 6 tiles), rounded. noPower: the greyed
+-- line the charger's menu (ChargerMenu.lua) and the charge card's no-power hint (HUDChargeCard.lua) show where it works.
 T.Chargers = {
     -- Tesla Wall Connector Gen 3: 48 A, 11.5 kW (R4); 7.3 m cable -> 6 tiles.
     WallConnector = {
@@ -42,6 +43,24 @@ T.Chargers = {
         sprites = { S = "minidoracat_tesla_01_8", E = "minidoracat_tesla_01_9", N = "minidoracat_tesla_01_10", W = "minidoracat_tesla_01_11" },
         cableExit = { 0, 0.20, 0 },
         genTiles = 2,
+        noPower = "ContextMenu_MinidoracatTesla_MobileNoPower",
+    },
+    -- Tesla V4 Supercharger post on a V3 cabinet (Tesla Supercharger datasheet: 325 kW, 90 kg, 3 m cable). DC: each
+    -- car charges on the DC curve up to its own peak (Core.lua B.chargeKwAt, Specs dcKw). Power as a gas pump
+    -- (ItemContainer.java:2347-2349: the grid outdoors, no room needed; a generator through haveElectricity), or
+    -- straight into a running generator genTiles away like the Mobile Connector. Spawned by gas stations only
+    -- (SuperchargerSpawn.lua).
+    Supercharger = {
+        kind = "Supercharger",
+        kw = 325,
+        cableTiles = 2.5, -- 3 m x 6 / 7.3 = 2.47: half a tile, so parking need not be exact
+        item = "Base.MinidoracatTesla_Supercharger",
+        sprites = { S = "minidoracat_tesla_01_16", E = "minidoracat_tesla_01_17", N = "minidoracat_tesla_01_18", W = "minidoracat_tesla_01_19" },
+        cableExit = { 0.40, -0.04, 0 },
+        dc = true,
+        pump = true,
+        genTiles = 2,
+        noPower = "ContextMenu_MinidoracatTesla_SuperchargerNoPower",
     },
 }
 
@@ -49,6 +68,20 @@ T.Chargers = {
 T.ChargerSprites = {}
 for kind, c in pairs(T.Chargers) do
     for facing, sprite in pairs(c.sprites) do T.ChargerSprites[sprite] = { kind = kind, facing = facing } end
+end
+
+-- kW a charger of `kind` gives car v from the grid or a generator: its kw times the charging speed sandbox. A DC
+-- charger (Supercharger) gives no more than the car's own DC peak (Specs dcKw; T.DC_KW without one): that is the
+-- peak of its DC curve (Core.lua B.chargeKwAt), written into chg.peak when it plugs in (Charging.lua C.start).
+T.DC_KW = 250
+function T.chargerKw(kind, v)
+    local c = T.Chargers[kind]
+    local kw = c.kw
+    if c.dc then
+        local s = T.spec(v)
+        kw = math.min(kw, s and s.dcKw or T.DC_KW)
+    end
+    return kw * T.chargeMul()
 end
 
 -- ---- power at a charger square: Charging.lua's settle and the charger menu's no-power hint share these ----
@@ -63,21 +96,24 @@ function T.generatorAt(x, y, z, skip)
     return nil
 end
 
--- The charger is on the building wiring. A Wall Connector always is (it hangs on a wall); a charger with genTiles
--- (Mobile Connector) only indoors, vanilla's exterior flag off (IsoGridSquare.isOutside, :9431): a room or a roof
--- overhead (:7306-7317; IsoChunk.java:2428-2440 on load, IsoCell.java:4393-4405 when one is built), so a roofed
--- player-built base counts. The same flag the sandbox AllowExteriorGenerator reads in haveElectricity (:9697).
+-- The charger is on the building wiring. A Wall Connector always is (it hangs on a wall), and so is a Supercharger
+-- (pump: a gas pump's own feed, ItemContainer.java:2347-2349); a charger with genTiles (Mobile Connector) only indoors,
+-- vanilla's exterior flag off (IsoGridSquare.isOutside, :9431): a room or a roof overhead (:7306-7317;
+-- IsoChunk.java:2428-2440 on load, IsoCell.java:4393-4405 when one is built), so a roofed player-built base counts.
+-- The same flag the sandbox AllowExteriorGenerator reads in haveElectricity (:9697).
 function T.onWiring(kind, sq)
     local c = T.Chargers[kind]
-    return not (c and c.genTiles and sq:isOutside())
+    return not (c and c.genTiles and not c.pump and sq:isOutside())
 end
 
 -- the grid reaches the charger while the grid is up: on the wiring, and the fridge rule (ItemContainer.java:2307-2330):
--- not a no-power zone, and the square or a neighbour is inside a room
+-- not a no-power zone, and the square or a neighbour is inside a room. A Supercharger takes the gas pump rule
+-- (:2347-2349): not a no-power zone is enough.
 local DIRS = { "N", "S", "W", "E" }
 function T.gridReaches(kind, sq)
     if not T.onWiring(kind, sq) or sq:isNoPower() then return false end -- IsoGridSquare.java:11617
-    if sq:getRoom() ~= nil then return true end
+    local c = T.Chargers[kind]
+    if (c and c.pump) or sq:getRoom() ~= nil then return true end
     for i = 1, #DIRS do
         local a = sq:getAdjacentSquare(IsoDirections[DIRS[i]])
         if a ~= nil and a:getRoom() ~= nil then return true end
@@ -127,6 +163,16 @@ function T.psFloor(part)
     if not f then return T.PS_FLOOR end
     return math.max(T.PS_FLOOR_MIN, math.min(T.PS_FLOOR_MAX, f))
 end
+-- kWh a pack reading counts as at a mark (a target, a discharge limit): the pack is a float (VehiclePart.java:375-387),
+-- 90 % of 78.4 reads back 70.5599976 and 20 % of 123 reads back 24.6000004
+T.KWH_EPS = 1e-3
+-- kWh above the discharge limit of a Cybertruck's pack; 0 within T.KWH_EPS of it (Powershare PS.avail, T.outletWhy)
+function T.psAbove(part)
+    if not (part and part:getInventoryItem()) then return 0 end
+    local B = T.Battery
+    local a = B.kwh(part) - B.capacity(part) * T.psFloor(part) / 100
+    return a > T.KWH_EPS and a or 0
+end
 -- plan 4's states: "off", "armed" (on, the house has the grid or another generator, or no Wall Connector cable),
 -- "backup" (its generator is out), "stopped" (the house is out of power and it cannot supply: T.psStopWhy)
 function T.psState(part)
@@ -144,7 +190,8 @@ function T.psStopWhy(part)
 end
 
 -- Why Cybertruck v's bed outlet (switched on, battery part modData `outlet`) gives nothing right now, or nil when it
--- supplies: "Plugged" (a charge cable in v: AC charging turns the outlets off, owner's manual p.200), "Backup" (Home
+-- supplies: "Plugged" (any charge cable in v; the owner's manual p.200 says AC charging turns the outlets off, we stop
+-- them for every charger, as the guide tells players), "Backup" (Home
 -- Backup running, p.205), "Gate" (the tailgate up; a removed tailgate is no lid), "Floor" (at its discharge limit, or
 -- no pack). The server's T.outletPowers and the phone app's line (Remote.lua outletWhy) both ask this.
 function T.outletWhy(v, part)
@@ -152,7 +199,7 @@ function T.outletWhy(v, part)
     if md.chg then return "Plugged" end
     if md.ps and md.ps.gx then return "Backup" end
     if not T.lidOpen(v, "TrunkDoor") then return "Gate" end
-    if not part:getInventoryItem() or T.Battery.pct(part) <= T.psFloor(part) then return "Floor" end
+    if T.psAbove(part) <= 0 then return "Floor" end
     return nil
 end
 
@@ -168,13 +215,13 @@ function T.outletPowers(v, x, y, z)
     local c = v:getAreaCenter(bo.area)
     return c ~= nil and math.abs(x + 0.5 - c:getX()) <= bo.tiles and math.abs(y + 0.5 - c:getY()) <= bo.tiles
 end
--- The Cybertruck whose bed outlet powers a charger of `kind` at x, y, z (only a Mobile Connector plugs into one), not
--- `except`; else nil. Server / SP: the cars with the outlet on (T.OutletCars, kept by Powershare.lua), no map scan.
--- MP client (the menu's hint): the cars on the squares around.
+-- The Cybertruck whose bed outlet powers a charger of `kind` at x, y, z (only a Mobile Connector plugs into one; a
+-- Supercharger post is no 240 V plug), not `except`; else nil. Server / SP: the cars with the outlet on (T.OutletCars,
+-- kept by Powershare.lua), no map scan. MP client (the menu's hint): the cars on the squares around.
 T.OutletCars = T.OutletCars or {} -- vehicle id -> keyId (ids are handed out again: the keyId must still match)
 function T.bedOutlet(kind, x, y, z, except)
     local c = T.Chargers[kind]
-    if not (c and c.genTiles) then return nil end
+    if not (c and c.genTiles) or c.dc then return nil end
     if not isClient() then
         for id, key in pairs(T.OutletCars) do
             local v = getVehicleById(id)
@@ -233,6 +280,29 @@ if canPlace then
     end
 else
     T.log("charger placement guard: ISMoveableSpriteProps.canPlaceMoveableInternal missing")
+end
+
+-- No invisible wall once the MOD is gone (main agent 2026-11-09): a solid moveable (the Supercharger) is placed as an
+-- IsoThumpable that blocks the whole square by its own saved fields (ISMoveableSpriteProps.lua:2379-2385;
+-- IsoThumpable.java load :455,479-480, save :659,690, TestCollide :836-915), whatever its sprite: after removal the
+-- sprite is blank and the wall stays. Ours keep those off; the tile's solidtrans flag blocks while the MOD is in, and
+-- zombies leave it alone like the map's own furniture. removeComponentsBeforePlacing runs on the new object before
+-- AddSpecialObject and transmitCompleteItemToClients (:2527-2538); the calls in between (CreateIsoEntityFromCellLoading,
+-- TransferComponents, restoreComponentsAfterPlacing, :2531-2534) do not touch these three fields, so clients get them
+-- as set here; placing,
+-- rotating (:2894) and the gas station spawn (SuperchargerSpawn.lua) all come through placeMoveableInternal.
+local beforePlacing = ISMoveableSpriteProps and ISMoveableSpriteProps.removeComponentsBeforePlacing
+if beforePlacing then
+    function ISMoveableSpriteProps:removeComponentsBeforePlacing(obj)
+        if instanceof(obj, "IsoThumpable") and T.chargerInfo(obj) then
+            obj:setBlockAllTheSquare(false)
+            obj:setCanPassThrough(true)
+            obj:setIsThumpable(false)
+        end
+        return beforePlacing(self, obj)
+    end
+else
+    T.log("charger placement: ISMoveableSpriteProps.removeComponentsBeforePlacing missing, a placed Supercharger blocks like vanilla")
 end
 
 -- Charge port world position: attachment "chargeport" (BaseVehicle.java:9955-9958); x, y in tiles.

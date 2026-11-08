@@ -114,6 +114,24 @@ module Base
         Tooltip = Tooltip_MinidoracatTesla_MobileConnector,
     }
 
+    /* V4 Supercharger post: moveable, only spawned by gas stations (SuperchargerSpawn.lua, no recipe); Electrical 6 and */
+    /* a screwdriver to pick up and place (tile PickUpLevel / PickUpTool). 90 kg on Tesla's datasheet: Weight 40, the */
+    /* generator's and the anvil's (generated/items/normal.txt:4800-4815, moveable.txt), whose tags and both hands it */
+    /* shares. Not more: picking up asks hasRoomFor(the item's weight) against the main inventory's 50 */
+    /* (ISMoveableSpriteProps.lua:174-188,1207; ItemContainer.java:237-269), the screwdriver on top of 50 never fits. */
+    /* The tile's PickUpWeight is 400 (x10, ISMoveableSpriteProps.lua:148-149). */
+    item MinidoracatTesla_Supercharger
+    {
+        DisplayCategory = Electronics,
+        ItemType = base:moveable,
+        Icon = MinidoracatTesla_Supercharger,
+        Weight = 40.0,
+        RequiresEquippedBothHands = true,
+        Tags = base:heavyitem;base:hasmetal,
+        WorldObjectSprite = minidoracat_tesla_01_16,
+        Tooltip = Tooltip_MinidoracatTesla_Supercharger,
+    }
+
     /* Key card: a Tesla's CarKey becomes this when a player has it (server/MinidoracatTesla/KeyActions.lua); same keyId, */
     /* so vanilla unlock, start and ignition accept it (ItemContainer.java:3242-3256). Wallet tag as CarKey */
     /* (generated/items/key.txt:65-77); vanilla only sees keys loose or on a keyring, the card reader and start see the wallet too. */

@@ -70,5 +70,37 @@ spriteModel
             rotate = 0.0000 90.0000 0.0000,
             scale = 1.0000,
         }
+        tile
+        {
+            xy = 0 2,
+            modelScript = Base.MinidoracatTesla_Supercharger,
+            translate = 0.0000 0.0000 0.0000,
+            rotate = 0.0000 180.0000 0.0000,
+            scale = 1.0000,
+        }
+        tile
+        {
+            xy = 1 2,
+            modelScript = Base.MinidoracatTesla_Supercharger,
+            translate = 0.0000 0.0000 0.0000,
+            rotate = 0.0000 -90.0000 0.0000,
+            scale = 1.0000,
+        }
+        tile
+        {
+            xy = 2 2,
+            modelScript = Base.MinidoracatTesla_Supercharger,
+            translate = 0.0000 0.0000 0.0000,
+            rotate = 0.0000 0.0000 0.0000,
+            scale = 1.0000,
+        }
+        tile
+        {
+            xy = 3 2,
+            modelScript = Base.MinidoracatTesla_Supercharger,
+            translate = 0.0000 0.0000 0.0000,
+            rotate = 0.0000 90.0000 0.0000,
+            scale = 1.0000,
+        }
     }
 }

@@ -7,6 +7,7 @@
     "ContextMenu_MinidoracatTesla_Unplug": "充電ケーブルを抜く",
     "ContextMenu_MinidoracatTesla_ChargeStatus": "充電状況を見る",
     "ContextMenu_MinidoracatTesla_MobileNoPower": "ここは電気がありません：電気の来ている屋内か、動いている発電機から 2 マス以内に置いてください",
+    "ContextMenu_MinidoracatTesla_SuperchargerNoPower": "ここは電気がありません：送電網か、動いている発電機の給電範囲内か、2 マス以内に動いている発電機が必要です",
     "ContextMenu_MinidoracatTesla_TapUnlock": "キーカードをタッチ：解錠",
     "ContextMenu_MinidoracatTesla_TapLock": "キーカードをタッチ：施錠",
     "ContextMenu_MinidoracatTesla_PairPhone": "電話キーとして設定",

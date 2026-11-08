@@ -681,11 +681,25 @@ local savedChg, savedItemName, savedPlayer = tmd.chg, getItemName, card.player
 card.player = nil -- the cable rule's pre-check (keyless rules, below) needs an inventory; this checks only the line
 getItemName = savedItemName or function(t) return t end -- the card names the charger kind (LuaManager.java:8745-8763)
 for _, e in ipairs({ { "MobileConnector", "ContextMenu_MinidoracatTesla_MobileNoPower" },
+    { "Supercharger", "ContextMenu_MinidoracatTesla_SuperchargerNoPower" },
     { "WallConnector", "IGUI_MinidoracatTesla_Card_NoPowerHint" } }) do
     tmd.chg = { kind = e[1], paused = "nopower", kw = T.Chargers[e[1]].kw, last = T.hours(), target = 90, added = 0 }
     card.key = ""
     card:read()
     check(card.state == "nopower" and card.sAlert == e[2], "card nopower line for the " .. e[1] .. ": " .. tostring(card.sAlert))
+end
+-- a Supercharger charging: its own title, the kW on the DC curve right now (Core.lua B.chargeKwAt), as the app's
+local tpart = T.Battery.part(tesla)
+for _, e in ipairs({ { "Supercharger", 250, "IGUI_MinidoracatTesla_Card_Supercharging" },
+    { "WallConnector", nil, "IGUI_MinidoracatTesla_Card_Charging" } }) do
+    tmd.chg = { kind = e[1], kw = e[2] or 11.5, peak = e[2], last = T.hours(), target = 90, added = 0, src = "grid" }
+    card.key = ""
+    card:read()
+    local want = T.Battery.chargeKwAt(tmd.chg, T.Battery.capacity(tpart), T.Battery.kwh(tpart))
+    local t = math.floor(want * 10 + 0.5)
+    check(card.state == "charging" and card.sTitle == e[3] and card.sKw == math.floor(t / 10) .. "." .. t % 10 .. " kW"
+        and (e[2] == nil or want < e[2]), string.format("%s charging: title %s, %s at %.0f %%", e[1], card.sTitle,
+            card.sKw, T.Battery.pct(tpart)))
 end
 tmd.chg, card.kind, card.key, card.player = savedChg, nil, "", savedPlayer
 card:read()

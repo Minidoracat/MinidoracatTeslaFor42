@@ -67,7 +67,8 @@ function C.solve(e)
     g.ey = e.y + 0.5 - ox * fx + oy * fy
     g.eh = exit[3]
     g.hangAngle = f[3]
-    -- a floor charger (h = 0, the Mobile Connector) has no hang: the floor run starts at the exit
+    -- h = 0 (the Mobile Connector; the Supercharger, whose model carries its cable down to the floor): no hang, the
+    -- floor run starts at the exit
     local reach = g.eh > 0 and C.HANG_REACH or 0
     g.ax = g.ex + fx * reach
     g.ay = g.ey + fy * reach

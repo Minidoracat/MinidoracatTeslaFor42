@@ -6,6 +6,7 @@
     "Base.MinidoracatTesla_ModelXBattery": "Akumulator wysokiego napięcia Model X Plaid (100 kWh)",
     "Base.MinidoracatTesla_WallConnector": "Tesla Wall Connector (3. gen.)",
     "Base.MinidoracatTesla_MobileConnector": "Tesla Mobile Connector (3. gen.)",
+    "Base.MinidoracatTesla_Supercharger": "Tesla Supercharger V4",
     "Base.MinidoracatTesla_CableHang": "Kabel ładowania (odcinek ścienny)",
     "Base.MinidoracatTesla_CableFloor": "Kabel ładowania (odcinek podłogowy)",
     "Base.MinidoracatTesla_CablePlug": "Kabel ładowania (złącze)",

@@ -6,6 +6,7 @@
     "Base.MinidoracatTesla_ModelXBattery": "Batterie haute tension Model X Plaid (100 kWh)",
     "Base.MinidoracatTesla_WallConnector": "Tesla Wall Connector (3e gén.)",
     "Base.MinidoracatTesla_MobileConnector": "Tesla Mobile Connector (3e gén.)",
+    "Base.MinidoracatTesla_Supercharger": "Superchargeur Tesla V4",
     "Base.MinidoracatTesla_CableHang": "Câble de recharge (descente murale)",
     "Base.MinidoracatTesla_CableFloor": "Câble de recharge (au sol)",
     "Base.MinidoracatTesla_CablePlug": "Câble de recharge (connecteur)",

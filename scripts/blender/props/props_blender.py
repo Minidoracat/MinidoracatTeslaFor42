@@ -1,7 +1,9 @@
-"""Blender 5.2 headless: Wall Connector + Mobile Connector Gen 3 meshes + cable segments -> glb/fbx, 2D tile cells,
-icons, previews.
+"""Blender 5.2 headless: Wall Connector + Mobile Connector Gen 3 + V4 Supercharger meshes + cable segments -> glb/fbx,
+2D tile cells, icons, previews.
 
-blender -b --factory-startup --python props_blender.py -- <temp dir>   (build.py runs this; textures come from build.py)
+blender -b --factory-startup --python props_blender.py -- <temp dir> [--cpu] [wc mc sc cable]
+  (build.py runs this; textures come from build.py). --cpu renders with Cycles on the CPU (EEVEE and Workbench crash
+  without a GPU, e.g. the VM). Devices listed = only those are built; none = all.
 
 Units: 1 Blender unit = 1 PZ tile edge. Heights are in the same unit (1 floor = 2.44949 units).
 Wall Connector (IsoObject, glb): built for Facing S with spriteModels rotate (0,180,0): Blender +X = PZ east,
@@ -9,6 +11,8 @@ Wall Connector (IsoObject, glb): built for Facing S with spriteModels rotate (0,
   Real unit H 345 x W 155 x D 110 mm (Tesla Gen 3 install manual); drawn 1.3x so it reads at game zoom.
 Mobile Connector (IsoObject, glb): same frame, lying on the floor; control box 179.8 x 81.7 x 47.3 mm drawn 1.3x.
   The car cable ends on the floor at (0, MC_EXIT_Y, R_CABLE), where Cable.lua starts the floor run (h = 0, no hang).
+Supercharger V4 (IsoObject, glb): same frame, real size 0.891 x 0.334 x 1.946 (datasheet), back on the tile's north
+  edge; its car cable runs from the top of the east frame down to the floor at SC_EXIT (h = 0, no hang).
 Cable segments (WorldItems, fbx, Render3DItem): model +X = the direction passed as the Render3DItem angle
   (atan2(dy, dx) in PZ degrees, ItemModelRenderer.java:260-268,908-921 + Core.java:2578-2587), +Z up; the model
   script has undoCoreScale so 1 mesh unit = 1 tile (ModelScript.java:106-108).
@@ -16,7 +20,7 @@ Cable segments (WorldItems, fbx, Render3DItem): model +X = the direction passed 
   Floor: straight, x -0.5..0.5 (origin = segment midpoint).
   Plug:  one per car (PLUGS: mesh name -> handle height); origin = floor point; rises and ends in the handle tip at
          (PLUG_REACH, 0, z) pointing +X (into the car).
-Keep EXIT_Z/HANG_REACH/PLUG_REACH/MC_EXIT_Y in sync with Cable.lua and Chargers.lua cableExit, PLUGS with Core.lua
+Keep EXIT_Z/HANG_REACH/PLUG_REACH/MC_EXIT_Y/SC_EXIT in sync with Cable.lua and Chargers.lua cableExit, PLUGS with Core.lua
 T.Specs plug (build.py --check).
 """
 import math
@@ -26,7 +30,12 @@ from pathlib import Path
 import bpy
 from mathutils import Matrix, Vector
 
-OUT = Path(sys.argv[sys.argv.index("--") + 1]).resolve()
+ARGS = sys.argv[sys.argv.index("--") + 1:]
+OUT = Path(ARGS[0]).resolve()
+CPU = "--cpu" in ARGS
+ONLY = {a for a in ARGS[1:] if not a.startswith("--")} or {"wc", "mc", "sc", "cable"}
+MODMEDIA = OUT.parent.parent / "MOD/MinidoracatTeslaFor42/Contents/mods/MinidoracatTeslaFor42/42/media"
+REPORT = []
 EXP, CELLS, ICONS, PREV = OUT / "export", OUT / "cells", OUT / "icons", OUT / "previews"
 PX = 128 / math.sqrt(2)             # px per tile unit at 2x (tiles-and-sprite-models.md section 7)
 
@@ -59,6 +68,15 @@ CTEX = 64
 CSW = {"rubber": (0, 0), "handle": (32, 0), "ring": (0, 32)}
 MTOP = (8, 8, 120, 248)                       # Mobile Connector 256 px atlas: box top (logo + status LEDs)
 MSW = {"black": (136, 8), "rubber": (136, 68), "metal": (196, 8), "adapter": (196, 68)}
+# Supercharger V4 post, Facing S frame, real size (Tesla datasheet 334 x 891 x 1946 mm, 1 unit ~ 1 m, not enlarged):
+# back on the tile's north edge, convex white shell facing south, black spine + holster on the west (the post's left),
+# cable out of the top of the east frame, down the east edge and onto the floor at SC_EXIT (Cable.lua's floor run starts
+# there: Chargers.lua cableExit = (SC_EXIT[0], -SC_EXIT[1], 0), no hang). Official photo v4-official.jpg.
+SC_W, SC_D, SC_H = 0.891, 0.334, 1.946        # width (x), depth (y), height
+SC_BACK = 0.48                                # back face y; front of the shell at its centre = SC_BACK - SC_D
+SC_EXIT = (0.40, 0.04)                        # car cable lies on the floor here, heading south (x east, y north)
+SPANEL = (8, 2, 120, 254)                     # Supercharger 256 px atlas: shell front (TESLA wordmark)
+SSW = {"white": (136, 8), "black": (196, 8), "base": (136, 68), "rubber": (196, 68), "holster": (136, 128)}
 
 
 def rect_uv(rect, tex, u, v):
@@ -321,14 +339,74 @@ def mobile_connector(image):
     return mb.build("MinidoracatTesla_MobileConnector", image)
 
 
+# ---------------------------------------------------------------- Supercharger V4
+
+def supercharger(image):
+    """Facing S post on the tile's north edge: black body, west spine with the (empty) holster, east frame and plinth;
+    convex white shell with a U-shaped bottom in front (TESLA on the atlas); the car cable leaves the top of the east
+    frame and runs down the east edge onto the floor at SC_EXIT. No handle: while plugged in it is on the car
+    (Cable.lua), as with the Wall Connector (charger-art.md)."""
+    mb = MB()
+
+    def ssw(name):
+        return swatch(name, SSW)
+
+    y_front, y_back = SC_BACK - SC_D, SC_BACK
+    hx = SC_W / 2
+    # body, spine (west, holds the holster), east frame, plinth; body and plinth inset a little so no faces are coplanar
+    cuboid(mb, (-0.40, 0.24, 0.002), (0.40, y_back - 0.004, SC_H - 0.01), ssw("black"))
+    cuboid(mb, (-hx, y_front + 0.03, 0), (-0.39, y_back, SC_H), ssw("black"))
+    cuboid(mb, (0.39, y_front + 0.06, 0), (hx, y_back, SC_H - 0.02), ssw("black"))
+    cuboid(mb, (-0.42, y_front + 0.02, 0.001), (0.42, y_back - 0.008, 0.10), ssw("base"))
+    # white shell: convex across its width (edges 0.05 behind the centre), U-shaped bottom, rounded top corners
+    r, rv, zb, zt, rc, bulge, ys = 0.40, 0.48, 0.16, 1.90, 0.06, 0.05, 0.25
+    rows = [(zb + rv * (1 - math.cos(a)), r * math.sin(a)) for a in (math.radians(d) for d in range(0, 90, 10))]
+    rows += [(zb + rv + (zt - rc - zb - rv) * k / 4, r) for k in range(4)]
+    rows += [(zt - rc + rc * math.sin(a), r - rc + rc * math.cos(a)) for a in (math.radians(d) for d in range(0, 91, 30))]
+    cols = [-1 + 2 * j / 12 for j in range(13)]
+
+    def yf(x):
+        return y_front + bulge * (x / r) ** 2
+
+    def front_uv(x, z):
+        return rect_uv(SPANEL, TEX, 0.5 + x / (2 * r), (z - zb) / (zt - zb))
+
+    grid = [[(u * hw, z) for u in cols] for z, hw in rows]
+    for lo, hi in zip(grid, grid[1:]):
+        for j in range(len(cols) - 1):
+            xz = [lo[j], lo[j + 1], hi[j + 1], hi[j]]          # counter-clockwise seen from the front (-Y)
+            mb.face([(x, yf(x), z) for x, z in xz], [front_uv(x, z) for x, z in xz])
+    rim = [row[-1] for row in grid] + grid[-1][-2:0:-1] + [row[0] for row in reversed(grid)]
+    for (ax, az), (bx, bz) in zip(rim, rim[1:]):
+        if (ax, az) != (bx, bz):
+            mb.patch([(ax, yf(ax), az), (ax, ys, az), (bx, ys, bz), (bx, yf(bx), bz)], ssw("white"))
+    # holster on the spine (the post's left), about 60 % up like the photo; empty, the handle is drawn on the car
+    cuboid(mb, (-0.455, y_front - 0.04, 1.10), (-0.375, y_front + 0.04, 1.30), ssw("holster"))
+    cuboid(mb, (-0.445, y_front - 0.07, 1.10), (-0.385, y_front - 0.04, 1.18), ssw("holster"))
+    # car cable: boot on the east frame near the top, down the east edge, onto the floor at SC_EXIT heading south
+    ex, ey = SC_EXIT
+    rr = R_CABLE
+    tube(mb, [Vector((0.42, 0.31, 1.84)), Vector((0.465, 0.29, 1.80))], rr * 1.5, ssw("holster"), sides=10)
+    path = catmull([(0.45, 0.30, 1.82), (0.468, 0.26, 1.70), (0.472, 0.21, 1.35), (0.468, 0.18, 0.80),
+                    (0.458, 0.15, 0.35), (0.44, 0.11, 0.10), (ex + 0.01, ey + 0.035, rr + 0.004), (ex, ey, rr)], 5)
+    tube(mb, path, rr, ssw("rubber"))
+    return mb.build("MinidoracatTesla_Supercharger", image)
+
+
 # ---------------------------------------------------------------- scene, export, render
 
 def reset():
-    """Knox Pass render_tiles.reset: EEVEE, transparent film, PZ 2x iso camera (elevation 30, looking PZ NW)."""
+    """Knox Pass render_tiles.reset: EEVEE (Cycles CPU with --cpu), transparent film, PZ 2x iso camera (elevation 30,
+    looking PZ NW)."""
     bpy.ops.wm.read_factory_settings(use_empty=True)
     sc = bpy.context.scene
-    sc.render.engine = "BLENDER_EEVEE"
-    sc.eevee.taa_render_samples = 32
+    if CPU:
+        sc.render.engine = "CYCLES"
+        sc.cycles.device = "CPU"
+        sc.cycles.samples = 48
+    else:
+        sc.render.engine = "BLENDER_EEVEE"
+        sc.eevee.taa_render_samples = 32
     sc.render.film_transparent = True
     sc.render.filter_size = 1.0
     sc.render.image_settings.file_format = "PNG"
@@ -453,13 +531,15 @@ def floor_and_wall(facing=None):
 
 
 def render_icon(ob, out, az, el, ortho):
-    """Workbench, studio light, texture colour, orthographic 256 px transparent (items-and-icons.md section 4)."""
+    """Workbench, studio light, texture colour, orthographic 256 px transparent (items-and-icons.md section 4).
+    --cpu: Cycles CPU under the white world of reset() (Workbench needs a GPU context too)."""
     sc = bpy.context.scene
-    sc.render.engine = "BLENDER_WORKBENCH"
-    sh = sc.display.shading
-    sh.light = "STUDIO"
-    sh.color_type = "TEXTURE"
-    sh.show_cavity = False
+    if not CPU:
+        sc.render.engine = "BLENDER_WORKBENCH"
+        sh = sc.display.shading
+        sh.light = "STUDIO"
+        sh.color_type = "TEXTURE"
+        sh.show_cavity = False
     sc.render.film_transparent = True
     sc.render.resolution_x = sc.render.resolution_y = 256
     lo, hi = bbox(ob)
@@ -476,74 +556,103 @@ def render_icon(ob, out, az, el, ortho):
     render(out)
 
 
+def cells(prefix, glb, preview):
+    """glb placed with each facing's spriteModels transform -> 2D cells + a preview (wall for the Wall Connector)."""
+    for facing, rot in XFORM.items():
+        reset()
+        ob = import_glb(glb, pz_matrix((0, 0, 0), rot))
+        REPORT.append(f"{prefix} cell {facing}: placed bbox {bbox(ob)}")
+        aim((0, 0, 0), 64, 224, 128, 256)
+        render(CELLS / f"{prefix}_{facing}.png")
+        floor_and_wall(facing if prefix == "wc" else None)
+        aim(*preview)
+        render(PREV / f"{prefix}_{facing}_{'wall' if prefix == 'wc' else 'floor'}.png")
+
+
+def asset(dev, name):
+    """A mesh this run built (EXP) or, for a device not rebuilt, the one the MOD ships: a clean temp/props/export
+    holds only this run's devices (build.py --only)."""
+    if dev in ONLY:
+        return EXP / name
+    return MODMEDIA / "models_X" / ("WorldItems" if name.endswith(".fbx") else "IsoObject") / name
+
+
+def place_cable(name, x, y):
+    """Cable fbx laid toward PZ south (scene -Y) with its origin at scene (x, y)."""
+    path = asset("cable", f"MinidoracatTesla_Cable{name}.fbx")
+    ob = import_fbx(path)
+    ob.matrix_world = Matrix.Translation((x, y, 0)) @ Matrix.Rotation(math.radians(-90), 4, "Z") @ ob.matrix_world
+    return ob
+
+
+def icon(ob, name, *view):
+    for o in list(bpy.context.scene.objects):
+        o.hide_render = o.type == "MESH" and o != ob
+    render_icon(ob, ICONS / name, *view)
+
+
 def main():
     EXP.mkdir(parents=True, exist_ok=True)
-    report = []
     reset()
-    wc_img = bpy.data.images.load(str(EXP / "MinidoracatTesla_WallConnector.png"))
-    cb_img = bpy.data.images.load(str(EXP / "MinidoracatTesla_Cable.png"))
-    wc = wall_connector(wc_img)
-    report.append(f"WallConnector bbox {bbox(wc)} verts {len(wc.data.vertices)}")
-    export_glb(wc, EXP / "MinidoracatTesla_WallConnector.glb")
-    for ob in [cable_hang(cb_img), cable_floor(cb_img)] + [cable_plug(cb_img, n, z) for n, z in PLUGS.items()]:
-        report.append(f"{ob.name} bbox {bbox(ob)} verts {len(ob.data.vertices)}")
-        export_fbx(ob, EXP / f"{ob.name}.fbx")
-    mc = mobile_connector(bpy.data.images.load(str(EXP / "MinidoracatTesla_MobileConnector.png")))
-    report.append(f"MobileConnector bbox {bbox(mc)} verts {len(mc.data.vertices)}")
-    export_glb(mc, EXP / "MinidoracatTesla_MobileConnector.glb")
+    built = {}
+    if "wc" in ONLY:
+        built["wc"] = wall_connector(bpy.data.images.load(str(EXP / "MinidoracatTesla_WallConnector.png")))
+    if "cable" in ONLY:
+        cb_img = bpy.data.images.load(str(EXP / "MinidoracatTesla_Cable.png"))
+        for ob in [cable_hang(cb_img), cable_floor(cb_img)] + [cable_plug(cb_img, n, z) for n, z in PLUGS.items()]:
+            REPORT.append(f"{ob.name} bbox {bbox(ob)} verts {len(ob.data.vertices)}")
+            export_fbx(ob, EXP / f"{ob.name}.fbx")
+    if "mc" in ONLY:
+        built["mc"] = mobile_connector(bpy.data.images.load(str(EXP / "MinidoracatTesla_MobileConnector.png")))
+    if "sc" in ONLY:
+        built["sc"] = supercharger(bpy.data.images.load(str(EXP / "MinidoracatTesla_Supercharger.png")))
+    for ob in built.values():
+        REPORT.append(f"{ob.name} bbox {bbox(ob)} verts {len(ob.data.vertices)}")
+        export_glb(ob, EXP / f"{ob.name}.glb")
     # icons from the freshly built meshes (Facing S: front toward -Y)
-    for o in list(bpy.context.scene.objects):
-        o.hide_render = o.name != "MinidoracatTesla_WallConnector" and o.type == "MESH"
-    render_icon(wc, ICONS / "wc_icon.png", 25, 8, 0.62)
-    for o in list(bpy.context.scene.objects):
-        o.hide_render = o.name != "MinidoracatTesla_CablePlug" and o.type == "MESH"
-    render_icon(bpy.data.objects["MinidoracatTesla_CablePlug"], ICONS / "cable_icon.png", 200, 20, 0.75)
-    for o in list(bpy.context.scene.objects):
-        o.hide_render = o.name != "MinidoracatTesla_MobileConnector" and o.type == "MESH"
-    render_icon(mc, ICONS / "mc_icon.png", 25, 40, 0.75)
+    if "wc" in ONLY:
+        icon(built["wc"], "wc_icon.png", 25, 8, 0.62)
+    if "cable" in ONLY:
+        icon(bpy.data.objects["MinidoracatTesla_CablePlug"], "cable_icon.png", 200, 20, 0.75)
+    if "mc" in ONLY:
+        icon(built["mc"], "mc_icon.png", 25, 40, 0.75)
+    if "sc" in ONLY:
+        icon(built["sc"], "sc_icon.png", 25, 12, 2.1)
 
-    # read back: glb placed with each facing's spriteModels transform -> 2D cells (and a preview with wall + floor)
-    for facing, rot in XFORM.items():
+    if "wc" in ONLY:
+        cells("wc", EXP / "MinidoracatTesla_WallConnector.glb", ((0, 0, 0.5), 160, 200, 320, 320, 2.0))
+    if "mc" in ONLY:
+        cells("mc", EXP / "MinidoracatTesla_MobileConnector.glb", ((0, 0, 0), 160, 170, 320, 320, 3.0))
+        # Facing S + the floor run Cable.lua starts at the exit (h = 0: no hang); exit PZ (0, -MC_EXIT_Y) = scene MC_EXIT_Y
         reset()
-        ob = import_glb(EXP / "MinidoracatTesla_WallConnector.glb", pz_matrix((0, 0, 0), rot))
-        report.append(f"cell {facing}: placed bbox {bbox(ob)}")
-        aim((0, 0, 0), 64, 224, 128, 256)
-        render(CELLS / f"wc_{facing}.png")
-        floor_and_wall(facing)
-        aim((0, 0, 0.5), 160, 200, 320, 320, 2.0)
-        render(PREV / f"wc_{facing}_wall.png")
-    # Mobile Connector: same placement on the floor, cells + floor previews
-    for facing, rot in XFORM.items():
-        reset()
-        ob = import_glb(EXP / "MinidoracatTesla_MobileConnector.glb", pz_matrix((0, 0, 0), rot))
-        report.append(f"mc cell {facing}: placed bbox {bbox(ob)}")
-        aim((0, 0, 0), 64, 224, 128, 256)
-        render(CELLS / f"mc_{facing}.png")
+        import_glb(EXP / "MinidoracatTesla_MobileConnector.glb", pz_matrix((0, 0, 0), XFORM["S"]))
         floor_and_wall()
-        aim((0, 0, 0), 160, 170, 320, 320, 3.0)
-        render(PREV / f"mc_{facing}_floor.png")
-    # Facing S + the floor run Cable.lua starts at the exit (h = 0: no hang); exit PZ (0, -MC_EXIT_Y) = scene MC_EXIT_Y
-    reset()
-    import_glb(EXP / "MinidoracatTesla_MobileConnector.glb", pz_matrix((0, 0, 0), XFORM["S"]))
-    floor_and_wall()
-    ob = import_fbx(EXP / "MinidoracatTesla_CableFloor.fbx")
-    ob.matrix_world = Matrix.Translation((0, MC_EXIT_Y - 0.5, 0)) @ Matrix.Rotation(math.radians(-90), 4, "Z") @ ob.matrix_world
-    aim((0, -0.4, 0), 160, 170, 320, 320, 3.0)
-    render(PREV / "mc_cable.png")
-    # read back the cable fbx: sizes in tiles, one assembled preview (charger S + hang + 2 floor + plug)
-    reset()
-    import_glb(EXP / "MinidoracatTesla_WallConnector.glb", pz_matrix((0, 0, 0), XFORM["S"]))
-    floor_and_wall("S")
-    # Facing S forward = PZ south = scene -Y; the hang origin is the exit floor point, PZ (0,-EXIT_Y) = scene +EXIT_Y
-    a = EXIT_Y - HANG_REACH
-    for name, y in (("Hang", EXIT_Y), ("Floor", a - 0.5), ("Floor", a - 1.5), ("Plug", a - 2.0)):
-        ob = import_fbx(EXP / f"MinidoracatTesla_Cable{name}.fbx")
-        report.append(f"fbx {name}: imported bbox {bbox(ob)}")
-        ob.matrix_world = Matrix.Translation((0, y, 0)) @ Matrix.Rotation(math.radians(-90), 4, "Z") @ ob.matrix_world
-    aim((0, -1.0, 0.4), 200, 220, 400, 400, 2.0)
-    render(PREV / "cable_assembled.png")
-    (OUT / "export" / "verify.txt").write_text("\n".join(report) + "\n", encoding="utf-8")
-    print("[props_blender] " + "\n[props_blender] ".join(report))
-
+        place_cable("Floor", 0, MC_EXIT_Y - 0.5)
+        aim((0, -0.4, 0), 160, 170, 320, 320, 3.0)
+        render(PREV / "mc_cable.png")
+    if "sc" in ONLY:
+        cells("sc", EXP / "MinidoracatTesla_Supercharger.glb", ((0, 0, 0.8), 160, 160, 320, 320, 1.2))
+        # Facing S + the floor run from SC_EXIT (h = 0: no hang) toward PZ south and a Model Y plug
+        reset()
+        import_glb(EXP / "MinidoracatTesla_Supercharger.glb", pz_matrix((0, 0, 0), XFORM["S"]))
+        floor_and_wall()
+        ex, ey = SC_EXIT
+        for name, y in (("Floor", ey - 0.5), ("Floor", ey - 1.5), ("Plug", ey - 2.0)):
+            place_cable(name, ex, y)
+        aim((0.2, -0.8, 0.6), 200, 200, 400, 400, 1.3)
+        render(PREV / "sc_cable.png")
+    if "wc" in ONLY or "cable" in ONLY:
+        # read back the cable fbx: sizes in tiles, one assembled preview (charger S + hang + 2 floor + plug)
+        reset()
+        import_glb(asset("wc", "MinidoracatTesla_WallConnector.glb"), pz_matrix((0, 0, 0), XFORM["S"]))
+        floor_and_wall("S")
+        # Facing S forward = PZ south = scene -Y; the hang origin is the exit floor point, PZ (0,-EXIT_Y) = scene +EXIT_Y
+        a = EXIT_Y - HANG_REACH
+        for name, y in (("Hang", EXIT_Y), ("Floor", a - 0.5), ("Floor", a - 1.5), ("Plug", a - 2.0)):
+            REPORT.append(f"fbx {name}: imported bbox {bbox(place_cable(name, 0, y))}")
+        aim((0, -1.0, 0.4), 200, 220, 400, 400, 2.0)
+        render(PREV / "cable_assembled.png")
+    (OUT / "export" / "verify.txt").write_text("\n".join(REPORT) + "\n", encoding="utf-8")
+    print("[props_blender] " + "\n[props_blender] ".join(REPORT))
 
 main()

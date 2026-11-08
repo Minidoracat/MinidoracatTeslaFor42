@@ -6,6 +6,7 @@
     "Base.MinidoracatTesla_ModelXBattery": "Model X Plaid 高压电池（100 kWh）",
     "Base.MinidoracatTesla_WallConnector": "特斯拉第三代家庭充电桩",
     "Base.MinidoracatTesla_MobileConnector": "特斯拉第三代移动充电连接器",
+    "Base.MinidoracatTesla_Supercharger": "特斯拉 V4 超级充电桩",
     "Base.MinidoracatTesla_CableHang": "充电线（垂下段）",
     "Base.MinidoracatTesla_CableFloor": "充电线（地面段）",
     "Base.MinidoracatTesla_CablePlug": "充电线（插头段）",

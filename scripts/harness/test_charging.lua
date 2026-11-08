@@ -94,7 +94,7 @@ local SYS = SMinidoracatTeslaChargerSystem.instance
 check(SYS ~= nil and SYS.systemName == "MinidoracatTeslaCharger", "charger system registered under its contract name")
 check(SYS.saved[1] == "kind" and SYS.saved[3] == "owner" and SYS.synced[3] == "owner" and SYS.synced[4] == "vid",
     "saves kind/facing/owner, syncs kind/facing/owner/vid")
-check(#H.onLoadSprites == 8, "chunk load hook covers the 4 Wall Connector + 4 Mobile Connector sprites")
+check(#H.onLoadSprites == 12, "chunk load hook covers the 4 sprites of each of the 3 chargers")
 
 -- a placed charger at (200,200,0) facing S, inside a room
 local function charger(x, y, o, sprite)
@@ -143,10 +143,10 @@ local settles = 0
 local realSettle = C.settle
 C.settle = function(...) settles = settles + 1; return realSettle(...) end
 H.setHours(C.nextDue() - 0.05)
-H.fire("EveryTenMinutes")
-check(settles == 0, "EveryTenMinutes before the due hour settles nothing")
+H.fire("EveryOneMinute")
+check(settles == 0, "EveryOneMinute before the due hour settles nothing")
 H.setHours(C.nextDue() + 0.01)
-H.fire("EveryTenMinutes")
+H.fire("EveryOneMinute")
 check(settles == 1, "due hour reached: exactly the due charger settles")
 C.settle = realSettle
 
@@ -154,6 +154,11 @@ H.section("chargeTarget / chargeStop")
 owner.x, owner.y = 201, 202
 H.fire("OnClientCommand", "MinidoracatTesla", "chargeTarget", owner, { vid = v:getId(), pct = 100 })
 check(chg.target == 100 and chg.paused == nil and chg.src == "grid", "raising the target resumes charging")
+chg.target = 80
+H.fire("OnClientCommand", "MinidoracatTesla", "chargeTarget", owner, { vid = v:getId(), pct = 0 / 0 })
+H.fire("OnClientCommand", "MinidoracatTesla", "chargeTarget", owner, { vid = v:getId(), pct = "nan" })
+check(chg.target == 80, "a NaN target (0/0, \"nan\"): refused, the target stays")
+chg.target = 100
 H.fire("OnClientCommand", "MinidoracatTesla", "chargeStop", owner, { vid = v:getId() })
 check(chg.paused == "stopped", "chargeStop pauses")
 local k = B.kwh(B.part(v))
@@ -945,3 +950,191 @@ C.settle(plo, H.hours())
 check(pchg() == nil and plo.vid == false, "settle with the pack gone: the car's record cleared, the charger forgets it")
 B.part(pv).item = a.taken
 ISUninstallVehiclePart = uninstallBefore
+
+H.section("Supercharger: DC curve, gas pump power, generator at full speed, estimate = settle")
+;(function() -- its own function: the file's main chunk is at Lua's 200 locals
+local SCS = "minidoracat_tesla_01_16"
+for _, o in pairs(SYS.objs) do C.unschedule(o) end -- the earlier sections' chargers: C.nextDue is this one's below
+-- the contract's figures (main agent's check of the curve, sc-contract.md): game minutes, +-0.5
+local MY_DC, CT_DC = { kw = 250, peak = 250 }, { kw = 325, peak = 325 }
+local function mins(chg, cap, a, b) return B.chargeHours(chg, cap, cap * a / 100, cap * b / 100) * 60 end
+check(near(mins(MY_DC, 78.4, 10, 90), 36.4, 0.5), string.format("Model Y 10->90 %% in %.2f game minutes (36.4)", mins(MY_DC, 78.4, 10, 90)))
+check(near(mins(MY_DC, 78.4, 0, 100), 63.6, 0.5), string.format("Model Y 0->100 %% in %.2f (63.6)", mins(MY_DC, 78.4, 0, 100)))
+local avg = 78.4 * 0.7 / (mins(MY_DC, 78.4, 10, 80) / 60)
+check(near(avg, 125.5, 0.5), string.format("Model Y 10->80 %% averages %.1f kW (125.5)", avg))
+check(near(mins(CT_DC, 123, 10, 90), 44.0, 0.5), string.format("Cybertruck at 325 kW 10->90 %% in %.2f (44.0)", mins(CT_DC, 123, 10, 90)))
+check(near(B.chargeKwAt(MY_DC, 78.4, 78.4 * 0.10), 250, 1e-9) and near(B.chargeKwAt(MY_DC, 78.4, 78.4 * 0.5), 128, 1e-9)
+    and near(B.chargeKwAt(MY_DC, 78.4, 78.4 * 0.95), 250 * 0.088, 1e-9), "the curve: 250 kW at 10 %, 128 at 50 %, 22 at 95 %")
+local gk, gh = B.chargeGain(MY_DC, 78.4, 7.84, 0.25, 70.56)
+check(near(gh, 0.25, 1e-12) and near(B.chargeHours(MY_DC, 78.4, 7.84, 7.84 + gk) * 60, 15, 1e-6),
+    string.format("chargeGain and chargeHours agree (+%.2f kWh in 15 min)", gk))
+-- AC (no peak): the flat kw as before
+local ak, ah = B.chargeGain({ kw = 11.5 }, 78.4, 10, 2, 70.56)
+check(ak == 11.5 * 2 and ah == 2 and B.chargeHours({ kw = 11.5 }, 78.4, 10, 70.56) == (70.56 - 10) / 11.5
+    and B.chargeKwAt({ kw = 7.6 }, 78.4, 50) == 7.6, "AC: chargeGain / chargeHours / chargeKwAt are kw x hours as before")
+-- a Cybertruck's share caps it (Powershare 11.5 kW): the curve is far above it at 25 %
+local qk = B.chargeGain({ kw = 11.5, peak = 250 }, 78.4, 20, 1, 70.56)
+check(near(qk, 11.5, 1e-9), "a 11.5 kW share on the curve: 11.5 kWh an hour")
+check(T.chargerKw("Supercharger", car(10, 0, 0)) == 250 and T.chargerKw("WallConnector", car(10, 0, 0)) == 11.5,
+    "chargerKw: a Model Y takes 250 of the 325 kW post; the Wall Connector stays 11.5")
+
+-- gas pump power (ItemContainer.java:2347-2349): outdoors, no room near
+local slo, siso, ssq = charger(700, 700, { outside = true }, SCS)
+check(slo.kind == "Supercharger" and slo.facing == "S", "sprite 16 is a south-facing Supercharger")
+check(T.onWiring("Supercharger", ssq) and T.gridReaches("Supercharger", ssq)
+    and not T.gridReaches("MobileConnector", ssq), "outdoors, no room: the grid reaches a Supercharger (not a Mobile Connector)")
+ssq.noPower = true
+check(not T.gridReaches("Supercharger", ssq) and not T.chargerPowered("Supercharger", ssq), "a no-power zone: no grid")
+ssq.elec = true
+check(T.wiredPower("Supercharger", ssq) and T.chargerPowered("Supercharger", ssq), "a generator's range (haveElectricity): powered, outdoors too")
+ssq.noPower, ssq.elec = false, false
+check(T.bedOutlet("Supercharger", 700, 700, 0) == nil, "no bed outlet for a Supercharger")
+
+local sp = H.player({ name = "sc", keys = { [77] = true }, x = 700, y = 702 })
+H.setHours(200) -- grid up (shut-off 336)
+local sv = car(78.4 * 0.10, 700.5, 702.5)
+C.plug(sp, sv, siso)
+local schg = B.part(sv):getModData().chg
+check(schg and schg.src == "grid" and schg.peak == 250 and schg.kw == 250, "Model Y plugged in: grid, peak 250 (its dcKw), kw 250")
+check(near((C.nextDue() - 200) * 60, mins(MY_DC, 78.4, 10, 90), 1e-6),
+    string.format("next settle when it reaches the 90 %% target: %.2f min", (C.nextDue() - 200) * 60))
+local est = B.chargeEstimate(B.part(sv), schg, 200.25)
+H.setHours(200.25)
+C.settle(slo, H.hours())
+check(near(B.kwh(B.part(sv)), est, 1e-9) and near(B.kwh(B.part(sv)) - 7.84, gk, 1e-9),
+    string.format("15 min: the server books what the card / app estimated (+%.2f kWh)", B.kwh(B.part(sv)) - 7.84))
+local k, _, left = B.chargeEstimate(B.part(sv), schg, H.hours())
+check(near(left * 60, mins(MY_DC, 78.4, k * 100 / 78.4, 90), 1e-9) and near((C.nextDue() - H.hours()) * 60, left * 60, 1e-6),
+    "the minutes to target the card shows = the server's schedule")
+H.setHours(C.nextDue())
+C.settle(slo, H.hours())
+check(near(B.pct(B.part(sv)), 90, 1e-6) and schg.paused == "full", string.format("90 %% at %.1f min: full", (H.hours() - 200) * 60))
+C.unplug(sp, sv)
+local fv = car(70.56 - 2.44e-6, 700.5, 702.5) -- what the float pack reads back for 90 % of 78.4 (VehiclePart.java:375)
+C.plug(sp, fv, siso)
+check(B.part(fv):getModData().chg.paused == "full", "90 % read back from a float pack (2.4e-6 short): full, not charging forever")
+C.unplug(sp, fv)
+
+-- Cybertruck: 325
+local ctv = H.vehicle({ script = "Base.MinidoracatTesla_Cybertruck", pack = "Base.MinidoracatTesla_CybertruckBattery", x = 700.5, y = 702.5 })
+ctv._class = "BaseVehicle"
+ctv.parts.GasTank.item.maxCap = 123
+ctv.parts.GasTank:setContainerContentAmount(12.3)
+function ctv:getAttachmentWorldPos(_, out) out._x, out._y = self.x, self.y; return out end
+C.plug(sp, ctv, siso)
+local cchg = B.part(ctv):getModData().chg
+check(cchg and cchg.peak == 325 and cchg.kw == 325 and near(B.chargeKwAt(cchg, 123, 12.3), 325, 1e-9),
+    "Cybertruck: peak 325 (its dcKw), 325 kW at 10 %")
+C.unplug(sp, ctv)
+
+-- the grid gone: a generator 2 tiles off, full speed, fuel per kWh
+H.setHours(400)
+local gsq = square(702, 700, 0, { outside = true })
+gsq.gen = generator(10, true)
+local gv = car(78.4 * 0.10, 700.5, 702.5)
+C.plug(sp, gv, siso)
+local gchg = B.part(gv):getModData().chg
+check(gchg.src == "generator" and gchg.kw == 250, "after the shut-off: a running generator 2 tiles off, 250 kW")
+H.setHours(400.25)
+C.settle(slo, H.hours())
+local got = B.kwh(B.part(gv)) - 7.84
+check(near(got, gk, 1e-9) and near(10 - gsq.gen.fuel, got * T.fuelPerKwh(), 1e-9),
+    string.format("15 min on the generator: full speed (+%.2f kWh), fuel = kWh x fuelPerKwh (%.3f L)", got, 10 - gsq.gen.fuel))
+check((10 - gsq.gen.fuel) / 0.25 > 11.5 * T.fuelPerKwh() * 10, "per hour it burns over 10x what a Wall Connector does")
+gsq.gen.fuel = 1
+local k1 = B.kwh(B.part(gv))
+H.setHours(401.25)
+C.settle(slo, H.hours())
+check(gsq.gen.fuel == 0 and near(B.kwh(B.part(gv)) - k1, 1 / T.fuelPerKwh(), 1e-6) and gchg.paused == "nopower",
+    string.format("1 L left: +%.2f kWh (1 / fuelPerKwh), then dry: nopower", B.kwh(B.part(gv)) - k1))
+C.unplug(sp, gv)
+-- the same 1 L driven only by the game-minute event (the schedule, no direct C.settle): dry within that minute
+gsq.gen = generator(1, true)
+local mh0 = H.hours()
+local mv = car(78.4 * 0.10, 700.5, 702.5)
+C.plug(sp, mv, siso)
+local mchg = B.part(mv):getModData().chg
+local dryMin = B.chargeHours(mchg, 78.4, 7.84, 7.84 + 1 / T.fuelPerKwh()) * 60
+local m, early = 0, true
+while mchg.paused ~= "nopower" and m < 10 do
+    if m > 0 and gsq.gen.fuel ~= 1 then early = false end -- nothing booked before the due minute
+    m = m + 1
+    H.setHours(mh0 + m / 60)
+    H.fire("EveryOneMinute")
+end
+check(mchg.paused == "nopower" and m == math.ceil(dryMin) and early,
+    string.format("minute events: the 1 L runs dry at %.2f min, nopower at the minute event %d, nothing booked before", dryMin, m))
+check(gsq.gen.fuel == 0 and near(B.kwh(B.part(mv)) - 7.84, 1 / T.fuelPerKwh(), 1e-6),
+    string.format("...fuel 0, the car +%.3f kWh = 1 L / fuelPerKwh (kWh and fuel conserved)", B.kwh(B.part(mv)) - 7.84))
+C.unplug(sp, mv)
+
+-- switched on 40 min after the shut-off left it on nopower, then off mid-charge, by the vanilla ISActivateGenerator
+-- (Charging.lua wraps its complete): only the time it ran is booked, its fuel billed before it stops. Sandbox
+-- GeneratorTileRange 1 (its least, SandboxOptions.java:253): the generator plugged straight in 2 tiles off still settles.
+local range0 = SandboxVars.GeneratorTileRange
+SandboxVars.GeneratorTileRange = 1
+local sg = generator(10, false)
+function sg:setActivated(b) self.on = b end
+function sg:getX() return 702 end
+function sg:getY() return 700 end
+function sg:getZ() return 0 end
+gsq.gen = sg
+local lv = car(78.4 * 0.10, 700.5, 702.5)
+C.plug(sp, lv, siso)
+local lchg, lh0 = B.part(lv):getModData().chg, H.hours()
+check(lchg.paused == "nopower", "a Model Y on the post after the shut-off, the generator off: nopower")
+H.setHours(lh0 + 40 / 60)
+ISActivateGenerator.complete({ generator = sg, activate = true })
+check(sg.on and near(B.kwh(B.part(lv)), 7.84, 1e-9) and lchg.last == H.hours() and lchg.src == "generator" and sg.fuel == 10,
+    "switched on 40 min later (GeneratorTileRange 1, 2 tiles off): those 40 min book nothing, charging on it from now")
+H.setHours(lh0 + 55 / 60)
+ISActivateGenerator.complete({ generator = sg, activate = false })
+local lk = B.kwh(B.part(lv)) - 7.84
+check(not sg.on and near(lk, gk, 1e-9) and near(10 - sg.fuel, lk * T.fuelPerKwh(), 1e-9) and lchg.paused == "nopower",
+    string.format("switched off 15 min later (range 1): those 15 min booked (+%.2f kWh), fuel billed (%.3f L), then nopower", lk, 10 - sg.fuel))
+H.setHours(lh0 + 85 / 60)
+C.settle(slo, H.hours())
+check(near(B.kwh(B.part(lv)) - 7.84, lk, 1e-12), "30 min with it off: nothing more")
+SandboxVars.GeneratorTileRange = range0
+
+-- the wrap's error paths: a settle that throws never stops the vanilla action; a missing class is logged
+local logs, log0, around0 = {}, T.log, C.settleAround
+T.log = function(m) logs[#logs + 1] = m end
+local fake = { complete = function(self) self.n = (self.n or 0) + 1; return "vanilla" end }
+C.aroundGenerator(fake, "FakeAction")
+C.settleAround = function() error("boom") end
+local fa = { generator = sg }
+local fr = fake.complete(fa)
+check(fr == "vanilla" and fa.n == 1 and #logs == 2 and logs[1]:find("settle around a generator failed", 1, true),
+    "a settle that throws: vanilla's complete still runs once, its return value kept, both failures logged")
+C.aroundGenerator(nil, "GoneAction")
+check(logs[3] and logs[3]:find("GoneAction.complete missing", 1, true), "the class missing: logged, nothing wrapped")
+T.log, C.settleAround = log0, around0
+C.unplug(sp, lv)
+
+-- full on a generator with little fuel: no step off the charging power (that ran a settle every game minute); hourly,
+-- the car's own loads bill the fuel through chg.fed
+sg.on, sg.fuel = true, 0.05
+local fullv = car(78.4 * 0.90, 700.5, 702.5)
+C.plug(sp, fullv, siso)
+local fchg = B.part(fullv):getModData().chg
+check(fchg.paused == "full" and fchg.power == "generator" and near(C.nextDue() - H.hours(), C.MAX_STEP_H, 1e-9),
+    string.format("full on a generator with 0.05 L: next settle in %.2f h (C.MAX_STEP_H), not within the minute", C.nextDue() - H.hours()))
+C.unplug(sp, fullv)
+gsq.gen = nil
+
+-- no invisible wall after the MOD goes (Chargers.lua, ISMoveableSpriteProps.lua:2379-2385 sets these on a solid one)
+local function thump(sprite, cls)
+    local o = { _class = cls or "IsoThumpable", block = true, pass = false, thumpable = true, components = "c" }
+    function o:getSprite() return { getName = function() return sprite end } end
+    function o:setBlockAllTheSquare(b) self.block = b end
+    function o:setCanPassThrough(b) self.pass = b end
+    function o:setIsThumpable(b) self.thumpable = b end
+    return o, ISMoveableSpriteProps.removeComponentsBeforePlacing({}, o)
+end
+local o1, r1 = thump(SCS)
+check(not o1.block and o1.pass and not o1.thumpable and r1 == "c",
+    "a placed Supercharger (IsoThumpable): not blocking the square by itself, passable, not thumpable; vanilla's call goes on")
+local o2 = thump("furniture_seating_01_0")
+check(o2.block and not o2.pass and o2.thumpable, "anyone else's solid moveable: untouched")
+end)()

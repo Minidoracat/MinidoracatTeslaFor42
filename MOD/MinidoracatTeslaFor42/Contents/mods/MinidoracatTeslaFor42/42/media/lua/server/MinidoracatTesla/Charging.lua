@@ -1,10 +1,13 @@
 -- Charging: plug / unplug, time-difference settlement, grid first then generator fuel, cable length, relink after
--- restart, and the charge commands. No OnTick: EveryTenMinutes is one comparison unless a settle is due.
+-- restart, and the charge commands. No OnTick: EveryOneMinute is one comparison unless a settle is due (a game minute,
+-- not ten: a Supercharger books about 4 kWh a minute, so a due settle (target, shut-off, dry generator) is late by at
+-- most one minute; main agent 2026-11-09).
 -- Link state lives in the battery part modData `chg` (architecture.md section 4); the charger Lua object only holds vid.
 if isClient() then return end
 require "MinidoracatTesla/Chargers"
 require "MinidoracatTesla/Battery"
 require "MinidoracatTesla/ChargerSystem"
+require "TimedActions/ISActivateGenerator" -- wrapped below (aroundGenerator), as Powershare.lua requires its own
 
 local T = MinidoracatTesla
 local B = T.Battery
@@ -55,16 +58,17 @@ function C.gridOffHour()
 end
 
 -- world hour the grid powers this charger until (-HUGE = never had it): T.gridReaches (Chargers.lua: the fridge rule,
--- and a Mobile Connector only indoors)
+-- a Mobile Connector only indoors, a Supercharger the gas pump rule: any square not isNoPower, ItemContainer.java:2347-2349)
 local function gridUntil(kind, sq)
     return T.gridReaches(kind, sq) and C.gridOffHour() or -HUGE
 end
 
 -- The generator the charger runs on, cached square first. On the wiring with generator power (T.wiredPower) one scan
 -- of the generator range, the circle vanilla powers (IsoGenerator.isPoweringSquare, IsoGenerator.java:713-719), so the
--- fuel comes from a generator that can be powering it; otherwise only one a Mobile Connector is plugged straight into
--- (T.directGenerator, decisions.md 2026-10-28). A cached generator outside genTiles only counts while the square is on
--- wired power. skip: the plugged car's own Powershare record (Chargers.lua T.generatorAt).
+-- fuel comes from a generator that can be powering it; otherwise only one plugged straight in: a running generator
+-- within genTiles of a Mobile Connector or a Supercharger (T.directGenerator, decisions.md 2026-10-28; sc-contract).
+-- A cached generator outside genTiles only counts while the square is on wired power. skip: the plugged car's own
+-- Powershare record (Chargers.lua T.generatorAt).
 -- ponytail: square scan (41x41x7 at defaults) only when the cache misses; keep a generator index if it shows up in profiles
 function C.findGenerator(o, sq, skip)
     local wired = T.wiredPower(o.kind, sq)
@@ -264,7 +268,12 @@ end
 -- the charger has power only from a generator, through the wiring or plugged straight in, Chargers.lua). Generator:
 -- up to now. A Cybertruck (powershare / outlet): C.carFreeUntil. Every Sentry booking (settles, events, unplugging)
 -- goes through here.
--- ponytail: a generator counts as running the whole stretch (its fuel is billed at each settle, C.settle)
+-- A generator counts as running the whole stretch since the last settle: fuel running out while charging is scheduled
+-- (C.settle), and switching one on or off by hand settles the chargers around it before and after (the
+-- ISActivateGenerator wrap below). ponytail: one that stops without that action (vanilla: out of fuel while nothing
+-- charges, condition 0, fire, explosion, IsoGenerator.java:216,222,249,253; picked up; another mod) is not seen until
+-- the next settle (at most C.MAX_STEP_H): the charge since the last settle is not booked (src nil then), and Sentry's
+-- standby and the car's own loads for that stretch are free (chg.power was "generator": up to now; chg.fed dropped).
 function C.powerUntil(chg, now, generator)
     if not chg or not chg.power then return nil end
     if fromCar(chg.power) then
@@ -341,15 +350,17 @@ function C.settle(o, now, here, fresh)
     local iso = o:getIsoObject()
     if not iso then return C.schedule(o, now + C.RETRY_H) end
     if not here and not T.cableReaches(o.kind, o.x, o.y, o.z, v) then return C.stop(o, v, "tooFar") end
-    local c = T.Chargers[o.kind]
-    local kw = c.kw * T.chargeMul()
+    -- the charger's own limit for this car (a Supercharger's: the car's DC peak, its curve on top, Core.lua
+    -- B.chargeKwAt); the grid and a generator give it whole, a Cybertruck its share (supplyKw)
+    local kw = T.chargerKw(o.kind, v)
+    chg.peak = T.Chargers[o.kind].dc and kw or nil
+    local own = { kw = kw, peak = chg.peak }
     local sq = iso:getSquare()
     local t0 = math.min(chg.last or now, now)
     local cap = B.capacity(part)
     local limit = cap * chg.target / 100
     local gUntil = gridUntil(o.kind, sq)
-    local fuel = T.fuelPerKwh()
-    local rate = kw * fuel -- litres per hour of charging (per kWh: a full charge costs the same at any charging speed)
+    local fuel = T.fuelPerKwh() -- litres per kWh: a full charge costs the same at any charging speed or curve
     -- The stretch since the last settle ran on what chg.power says. Run on a Cybertruck (chg.sup = its keyId, chg.power
     -- powershare / outlet): that truck pays it, at the share it had (draws; after an unload or a restart chg.kw, never
     -- more than its supply has left now); never retroactively for a stretch with no power, the grid or a generator.
@@ -392,23 +403,30 @@ function C.settle(o, now, here, fresh)
     -- charger: at most one more hour, the error of an hourly settle anyway, for the charge, and for Sentry's standby
     -- (C.powerUntil, from then on the car's own pack)
     local capped = prevSup ~= nil and (ended or not (fromCar(src) and gen:getKeyId() == supKey))
-    local needK = math.max(0, limit - B.kwh(part))
+    local kwh0 = B.kwh(part)
+    local needK = math.max(0, limit - kwh0)
     local gotK = 0
     if chg.paused ~= "stopped" and needK > 0 and now > t0 then
-        local gridH = math.min(math.max(0, math.min(now, gUntil) - t0), needK / kw)
-        gotK = kw * gridH
+        local gridH
+        gotK, gridH = B.chargeGain(own, cap, kwh0, math.max(0, math.min(now, gUntil) - t0), limit)
         local rest = now - t0 - gridH -- > 0 with need left only past the shut-off, where src was looked up
         if rest > 0 and gotK < needK then
             if wasCar then
                 if capped then rest = math.min(rest, C.MAX_STEP_H) end
-                if prevSup and wasKw > 0 then gotK = gotK + C.takeFrom(prevSup, wasSrc, math.min(rest * wasKw, needK - gotK)) end
-            elseif src == "generator" then
-                local h = math.min(rest, (needK - gotK) / kw)
-                if rate > 0 then
-                    h = math.min(h, gen:getFuel() / rate)
-                    gen:setFuel(gen:getFuel() - rate * h) -- syncs from the server (IsoGenerator.java:509-518)
+                if prevSup and wasKw > 0 then
+                    local want = B.chargeGain({ kw = wasKw, peak = chg.peak }, cap, kwh0 + gotK, rest, limit)
+                    gotK = gotK + C.takeFrom(prevSup, wasSrc, want)
                 end
-                gotK = gotK + kw * h
+            elseif src == "generator" then
+                -- the fuel as the kWh it buys, then charged on the curve; it burns per kWh
+                local f = gen:getFuel()
+                local to = fuel > 0 and math.min(limit, kwh0 + gotK + f / fuel) or limit
+                local k = B.chargeGain(own, cap, kwh0 + gotK, rest, to)
+                if fuel > 0 then
+                    local burnt = k * fuel
+                    gen:setFuel(burnt >= f - 1e-9 and 0 or f - burnt) -- syncs from the server (IsoGenerator.java:509-518)
+                end
+                gotK = gotK + k
             end
         end
     end
@@ -452,7 +470,7 @@ function C.settle(o, now, here, fresh)
     local charging = power
     if chg.paused == "stopped" then
         charging = nil
-    elseif left <= 1e-6 then
+    elseif left <= T.KWH_EPS then -- the pack is a float (VehiclePart.java:375-387): 90 % of 78.4 reads back 70.5599976
         chg.paused, charging = "full", nil
     elseif not power or (fromCar(power) and kwS <= 0) then
         chg.paused, charging = "nopower", nil -- no source, or a Cybertruck whose share the others hold (power kept)
@@ -469,12 +487,18 @@ function C.settle(o, now, here, fresh)
     end
     md.chg = chg
     v:transmitPartModData(part)
+    local k = B.kwh(part)
     local step = C.MAX_STEP_H
-    if charging then step = math.min(step, left / chg.kw) end
+    if charging then step = math.min(step, B.chargeHours(chg, cap, k, limit)) end
     -- grid power ends at the shut-off hour, charging or not (full / stopped still power the car's loads)
     if power == "grid" then step = math.min(step, gUntil - now) end
-    if power == "generator" and rate > 0 then step = math.min(step, gen:getFuel() / rate) end
-    if fromCar(power) and chg.kw > 0 then step = math.min(step, T.Powershare.avail(gen) / chg.kw) end -- its limit
+    if charging == "generator" and fuel > 0 then -- its fuel runs out while charging; not charging, the car's own
+        -- loads burn it through chg.fed at each settle (hourly), never a step off the charging power
+        step = math.min(step, B.chargeHours(chg, cap, k, math.min(limit, k + gen:getFuel() / fuel)))
+    end
+    if fromCar(power) and chg.kw > 0 then -- its limit
+        step = math.min(step, B.chargeHours(chg, cap, k, math.min(limit, k + T.Powershare.avail(gen))))
+    end
     C.schedule(o, now + math.max(step, 1 / 60))
     -- a Cybertruck on its own Wall Connector: Powershare decides here, on every settle (plan 4: plugging in, the
     -- shut-off hour, at least hourly while plugged in), whether the house has power without it
@@ -484,14 +508,16 @@ end
 function C.start(o, v)
     local now = T.hours()
     local part = B.part(v)
-    -- AC charging turns a Cybertruck's bed outlet off (owner's manual p.200): what it fed books up to now (also the
-    -- cars waiting for it, Powershare.settleFed), then stops
+    -- any charge cable plugged in turns a Cybertruck's bed outlet off (owner's manual p.200 says AC charging; we stop it
+    -- for every charger, as the guide tells players): what it fed books up to now (also the cars waiting for it,
+    -- Powershare.settleFed), then stops
     local outlet = part:getModData().outlet
     if outlet and T.Powershare then
         T.Powershare.settleFed(v)
         T.Powershare.broke(v) -- a car it fed that is not loaded now books at most an hour more (C.supplyEnded)
     end
-    part:getModData().chg = { x = o.x, y = o.y, z = o.z, kind = o.kind, kw = T.Chargers[o.kind].kw * T.chargeMul(),
+    local kw = T.chargerKw(o.kind, v)
+    part:getModData().chg = { x = o.x, y = o.y, z = o.z, kind = o.kind, kw = kw, peak = T.Chargers[o.kind].dc and kw or nil,
         last = now, added = 0, src = nil, target = C.DEFAULT_TARGET, paused = nil }
     o.vid = v:getId()
     o:updateOnClient()
@@ -637,7 +663,7 @@ Events.OnSpawnVehicleEnd.Add(function(v)
     if T.isTesla(v) then C.relink(v) end
 end)
 
-Events.EveryTenMinutes.Add(function()
+Events.EveryOneMinute.Add(function()
     if activeCount == 0 then return end
     local now = T.hours()
     if now < nextDueHour then return end
@@ -653,6 +679,45 @@ Events.EveryTenMinutes.Add(function()
         end
     end
 end)
+
+-- A generator switched on or off (ISActivateGenerator) by hand: the chargers in its reach settle up to now under the
+-- old state (its fuel billed), then again from now under the new one (rescheduled). Without this a Supercharger that
+-- sat on nopower for 40 minutes would book those 40 minutes on the curve the moment a generator came on (main agent
+-- review 2026-11-09). Reach: the sandbox generator range, or a charger plugged straight in (genTiles, fixed 2) when
+-- that is wider (GeneratorTileRange may be 1, SandboxOptions.java:253). ISPlugGenerator is not wrapped: connected only
+-- sets the field (IsoGenerator.java:581-590); what powers a square (isActivated, isPoweringSquare, haveElectricity)
+-- never reads it, and vanilla offers unplugging only while it is off. complete() runs on the server / SP
+-- (NetTimedAction.java:132-134); Powershare.lua refuses it on its own generator on top of this. A hook error never
+-- breaks the vanilla action.
+local function reach()
+    local r = SandboxVars.GeneratorTileRange or 20
+    for _, c in pairs(T.Chargers) do
+        if type(c) == "table" and c.genTiles and c.genTiles > r then r = c.genTiles end
+    end
+    return r
+end
+function C.aroundGenerator(cls, name)
+    local orig = cls and cls.complete
+    if not orig then
+        T.log(name .. ".complete missing, generator switches do not settle chargers")
+        return
+    end
+    cls.complete = function(self)
+        local function settle()
+            local ok, err = pcall(function()
+                local g = self.generator
+                if activeCount == 0 or not g then return end
+                C.settleAround(g:getX(), g:getY(), g:getZ(), reach(), SandboxVars.GeneratorVerticalPowerRange or 3)
+            end)
+            if not ok then T.log("settle around a generator failed: " .. tostring(err)) end
+        end
+        settle()
+        local r = orig(self)
+        settle()
+        return r
+    end
+end
+C.aroundGenerator(ISActivateGenerator, "ISActivateGenerator")
 
 -- ---- commands ----
 T.ServerCommands = T.ServerCommands or {}
@@ -707,7 +772,7 @@ T.ServerCommands.chargeTarget = function(player, args)
     local v, _, chg, o = linked(player, args, T.mayUseCable)
     if not v then return end
     local pct = tonumber(args.pct)
-    if not pct then return end
+    if not pct or pct ~= pct then return end -- NaN (0/0 over the wire) would set the target to 100 past the clamp
     C.settle(o, T.hours())
     chg.target = math.max(50, math.min(100, math.floor(pct + 0.5)))
     if chg.paused == "stopped" or chg.paused == "full" then chg.paused = nil end

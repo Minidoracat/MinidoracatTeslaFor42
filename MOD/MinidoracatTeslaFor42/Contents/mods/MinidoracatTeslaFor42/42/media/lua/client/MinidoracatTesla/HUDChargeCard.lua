@@ -161,7 +161,7 @@ function Card:read()
         addKm = kmk and math.floor(added * kmk + 0.5) or "--"
         addKwh = math.floor(added * 10 + 0.5)
         mins = math.floor(hours * 60 + 0.5)
-        kw = math.floor((chg.kw or 0) * 10 + 0.5)
+        kw = math.floor(T.Battery.chargeKwAt(chg, cap, kwh) * 10 + 0.5) -- a Supercharger's on its DC curve now
         target = chg.target or 90
         src = chg.src or ""
         if chg.paused == "full" then state = "full"
@@ -188,7 +188,8 @@ function Card:read()
     local was = self.state
     self.state = state
     local tgt = tostring(self:target())
-    self.sTitle = getText(TITLES[state])
+    local dev = T.Chargers[self.kind]
+    self.sTitle = getText(state == "charging" and dev and dev.dc and "IGUI_MinidoracatTesla_Card_Supercharging" or TITLES[state])
     self.sPct = tostring(pct) .. "%"
     self.sDaily, self.sTrip = getText("IGUI_MinidoracatTesla_Card_Daily"), getText("IGUI_MinidoracatTesla_Card_Trip")
     self.sKw = fmt1(kw / 10) .. " kW"
@@ -200,8 +201,7 @@ function Card:read()
     self.sTarget = getText("IGUI_MinidoracatTesla_Card_Target", tgt)
     self.sSrc = SRC[src] and getText("IGUI_MinidoracatTesla_Card_Src" .. SRC[src]) or nil
     self.sAlert = (state == "full" and getText("IGUI_MinidoracatTesla_Card_FullHint"))
-        or (state == "nopower" and getText(T.Chargers[self.kind] and T.Chargers[self.kind].genTiles -- where a Mobile Connector works
-            and "ContextMenu_MinidoracatTesla_MobileNoPower" or "IGUI_MinidoracatTesla_Card_NoPowerHint"))
+        or (state == "nopower" and getText(dev and dev.noPower or "IGUI_MinidoracatTesla_Card_NoPowerHint")) -- where it works
         or (state == "none" and getText("IGUI_MinidoracatTesla_Card_NotPluggedHint")) or nil
     self.alertColor = state == "full" and C.ok or (state == "nopower" and C.warn or C.text2)
     self.btnToggle:setTitle(getText(state == "charging" and "IGUI_MinidoracatTesla_Card_Stop" or "IGUI_MinidoracatTesla_Card_Start"))

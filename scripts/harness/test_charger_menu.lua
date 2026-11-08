@@ -92,7 +92,7 @@ local function hintRow(f, genNext, sprite, vid)
     H.fire("OnFillWorldObjectContextMenu", 0, ctx, { iso }, false)
     getCell, getSpecificPlayer = savedCell, savedPlayer
     for _, r in ipairs(rows) do
-        if r.name == "ContextMenu_MinidoracatTesla_MobileNoPower" then return r end
+        if r.name == "ContextMenu_MinidoracatTesla_MobileNoPower" or r.name == "ContextMenu_MinidoracatTesla_SuperchargerNoPower" then return r end
     end
 end
 local noPow = hintRow({ elec = true })
@@ -101,6 +101,13 @@ check(hintRow({ elec = true }, true) == nil, "running generator next to it: no h
 check(hintRow({ room = {}, grid = true }) == nil, "indoors on the grid: no hint")
 check(hintRow({ room = {}, elec = true }) == nil, "indoors on a generator's power: no hint")
 check(hintRow({}, false, "minidoracat_tesla_01_0") == nil, "Wall Connector: no such row")
+-- Supercharger (a gas pump's power rule): outdoors on the grid it has power; with none, its own row
+local SCS = "minidoracat_tesla_01_16"
+check(hintRow({ grid = true }, false, SCS) == nil, "Supercharger outdoors on the grid, no room near: no hint")
+check(hintRow({ elec = true }, false, SCS) == nil, "Supercharger outdoors in a generator's range: no hint")
+local scRow = hintRow({}, false, SCS)
+check(scRow ~= nil and scRow.name == "ContextMenu_MinidoracatTesla_SuperchargerNoPower" and scRow.notAvailable == true,
+    "Supercharger with no grid and no generator: its own greyed 'no power here' row")
 T.Battery.part(v):getModData().chg = { x = 40, y = 5, z = 0 }
 check(hintRow({ elec = true }, false, nil, v:getId()) ~= nil, "plugged in with no power: the row is there too (the card says nopower)")
 T.Battery.part(v):getModData().chg = { x = 50, y = 5, z = 0 } -- the id now names a car plugged in elsewhere

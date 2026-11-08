@@ -36,6 +36,8 @@ T.DRIVE_SCALE = 10
 -- scripts/blender/props/props_blender.py PLUGS builds one mesh per entry (build.py --check compares the two).
 -- hepa: a HEPA filter and Bioweapon Defense Mode (owner's manuals: Model Y p.169, Cybertruck p.165, Model S p.148,
 -- Model X p.165; none in the Model 3's), Camp.lua C.filterAir and the radial slice.
+-- dcKw: the car's DC fast charging peak (Supercharger, Chargers.lua T.chargerKw; T.DC_KW 250 without one): Model Y P,
+-- Model 3 P, Model S / X Plaid 250 kW (tesla.com), Cybertruck (Cyberbeast) 325 kW (Korean spec page footnote).
 -- doorClip: every car's door parts whose clip is not 0.8 s, part id -> clip seconds (= scripts/blender/skf/cars/<car>.py
 -- DOORS; Liftgate.syncShell times the cabin shell's door bits on it; harness test_liftgate compares the two).
 -- Cybertruck only: tonneau (the app's tonneau cover button), armorGlass (smashes a window takes, Truck.lua),
@@ -51,6 +53,7 @@ T.Specs = {
         idleKw = 0.0376 * T.DRIVE_SCALE,
         kwPerKmh = 0.00572 * T.DRIVE_SCALE,
         massKg = 2033,
+        dcKw = 250,
         regenEff = 0.6,
         hepa = true,
         doorClip = { TrunkDoor = 3.6 }, -- cars/model_y.py DOORS
@@ -77,6 +80,7 @@ T.Specs = {
         idleKw = 0.0376 * T.DRIVE_SCALE,
         kwPerKmh = 0.00572 * T.DRIVE_SCALE,
         massKg = 1851, -- curb mass, China owner's manual / MIIT filing TSL7000BEVBA5
+        dcKw = 250,
         regenEff = 0.6,
         doorClip = { TrunkDoor = 3.0 }, -- cars/model_3.py DOORS
         -- official Model 3 Performance paints (US, DE, TW design studios; references/models.md): same rules as above
@@ -101,6 +105,7 @@ T.Specs = {
         idleKw = 0.0590 * T.DRIVE_SCALE,
         kwPerKmh = 0.00897 * T.DRIVE_SCALE,
         massKg = 3113, -- Cyberbeast curb mass 6,863 lb (tesla.com 2026-10-30)
+        dcKw = 325,
         regenEff = 0.6,
         hepa = true,
         doorClip = { TrunkDoor = 2.0 }, -- cars/cybertruck.py DOORS
@@ -136,6 +141,7 @@ T.Specs = {
         idleKw = 0.0480 * T.DRIVE_SCALE,
         kwPerKmh = 0.00730 * T.DRIVE_SCALE,
         massKg = 2178, -- Plaid curb mass 4,802 lb (tesla.com 2026-04-21)
+        dcKw = 250,
         regenEff = 0.6,
         doorClip = { TrunkDoor = 3.6 }, -- cars/model_s.py DOORS
         hepa = true, -- HEPA filter and Bioweapon Defense Mode (Model S owner's manual p.148)
@@ -162,6 +168,7 @@ T.Specs = {
         idleKw = 0.0480 * T.DRIVE_SCALE,
         kwPerKmh = 0.00730 * T.DRIVE_SCALE,
         massKg = 2465, -- Model X Plaid curb mass 5,434 lb (tesla.com 2026-03-09)
+        dcKw = 250,
         regenEff = 0.6,
         hepa = true, -- HEPA filtration, Bioweapon Defense Mode (Model X owner's manual)
         falcon = true, -- falcon wing doors: the app's button opens both rear doors (owner's manual p.31-33)
@@ -379,20 +386,73 @@ end
 -- 3.3 s). Calibration knob: E2E feel-sp 0-100 km/h, Model Y 6260 -> 7.19 s, 3300 -> 14.75 s, 2800 -> 17.60 s
 -- (tesla-chill-1101a); 3100 -> 15.78 s = 2.19x, Cybertruck at 3100 16.02 s, top speed 122 as before (tesla-chill-1101b).
 T.CHILL_FORCE = 3100
--- Charge projection between server settlements: kw * (now - last), capped at the target (architecture §4). The HUD,
--- the charge card and the phone app's record (Remote.lua) all show this, so they agree.
+-- DC fast charging curve (Supercharger, plan-chargers-1028 design's 250 kW table normalised): charge % -> share of
+-- the peak, linear in between. Model Y 10->90 % 36.4 game minutes, 0->100 % 63.6; Cybertruck at 325 kW 10->90 % 44.0
+-- (harness test_charging.lua "DC curve").
+T.DC_CURVE = { { 0, 0.80 }, { 5, 1.00 }, { 15, 1.00 }, { 30, 0.78 }, { 40, 0.64 }, { 50, 0.512 }, { 60, 0.408 },
+    { 70, 0.32 }, { 80, 0.232 }, { 90, 0.144 }, { 100, 0.032 } }
+function B.dcShare(pct)
+    local c = T.DC_CURVE
+    if pct <= c[1][1] then return c[1][2] end
+    for i = 2, #c do
+        local a, b = c[i - 1], c[i]
+        if pct <= b[1] then return a[2] + (b[2] - a[2]) * (pct - a[1]) / (b[1] - a[1]) end
+    end
+    return c[#c][2]
+end
+-- kW flowing into a pack of cap kWh holding kwh, on cable record chg: chg.kw is the source's limit (the charger, or a
+-- Cybertruck's share); a DC charger's (chg.peak, Charging.lua C.start) also follows the curve.
+function B.chargeKwAt(chg, cap, kwh)
+    local kw = chg.kw or 0
+    if not chg.peak or cap <= 0 then return kw end
+    return math.min(kw, chg.peak * B.dcShare(kwh * 100 / cap))
+end
+-- Charging from kwh for at most `hours`, never past toKwh: kWh added, hours it took. AC (no chg.peak): chg.kw flat.
+-- DC: the kW at the middle of each 1 % step all through it (so a partial step and B.chargeHours agree), at most
+-- about 100 steps.
+function B.chargeGain(chg, cap, kwh, hours, toKwh)
+    local need = math.max(0, toKwh - kwh)
+    if hours <= 0 or need <= 0 then return 0, 0 end
+    if not chg.peak or cap <= 0 then
+        local kw = chg.kw or 0
+        if kw <= 0 then return 0, 0 end
+        local g = kw * hours
+        if g >= need then return need, need / kw end
+        return g, hours
+    end
+    local step, to = cap / 100, math.min(toKwh, cap)
+    local k, h = kwh, 0
+    while k < to - 1e-9 do
+        local i = math.floor(k / step + 1e-9)
+        local nxt = math.min(to, (i + 1) * step)
+        local kw = B.chargeKwAt(chg, cap, (i + 0.5) * step)
+        if kw <= 0 then break end
+        local dh = (nxt - k) / kw
+        if h + dh >= hours then return k + kw * (hours - h) - kwh, hours end
+        k, h = nxt, h + dh
+    end
+    return k - kwh, h
+end
+-- hours to charge from kwh to toKwh (0 when nothing flows)
+function B.chargeHours(chg, cap, kwh, toKwh)
+    local _, h = B.chargeGain(chg, cap, kwh, math.huge, toKwh)
+    return h
+end
+
+-- Charge projection between server settlements: the charge since chg.last on the same curve the server books
+-- (B.chargeGain, Charging.lua C.settle), capped at the target (architecture §4). The HUD, the charge card and the
+-- phone app's record (Remote.lua) all show this, so they agree.
 function B.chargeEstimate(part, chg, now)
     local cap = B.capacity(part)
     local kwh = B.kwh(part)
     local target = (chg.target or 100) * cap / 100
     local added = chg.added or 0
     if not chg.paused and chg.kw and chg.last and now > chg.last then
-        local gain = math.min(chg.kw * (now - chg.last), math.max(0, target - kwh))
+        local gain = B.chargeGain(chg, cap, kwh, now - chg.last, target)
         kwh = kwh + gain
         added = added + gain
     end
-    local hoursLeft = (chg.kw and chg.kw > 0) and math.max(0, target - kwh) / chg.kw or 0
-    return kwh, added, hoursLeft, cap
+    return kwh, added, B.chargeHours(chg, cap, kwh, target), cap
 end
 
 -- math.huge with charge left when driving takes none (Gas Consumption 0); an empty pack still cannot start

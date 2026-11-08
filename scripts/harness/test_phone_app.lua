@@ -517,6 +517,14 @@ local want = T.Battery.chargeEstimate(gas, gas:getModData().chg, F.hours)
 check(want > before and r.pct == math.floor(want * 100 / T.Battery.capacity(gas) + 0.5) and r.chg == "charging",
     "charging: record pct = the HUD projection since the last settlement")
 check(r.mins and r.mins > 0, "charging: minutes left from the projection")
+do -- a Supercharger: the kW on its DC curve at the projected charge, the minutes on the same curve as the card's
+gas:getModData().chg = { kind = "Supercharger", kw = 250, peak = 250, last = F.hours - 0.05, added = 0, target = 90 }
+local sr = R.remember(v)
+local sk, _, sh, scap = T.Battery.chargeEstimate(gas, gas:getModData().chg, F.hours)
+check(sr.kw == math.floor(T.Battery.chargeKwAt(gas:getModData().chg, scap, sk) * 10 + 0.5) / 10 and sr.kw < 250
+    and sr.mins == math.floor(sh * 60 + 0.5), string.format("Supercharger: the app shows %.1f kW and %d min, the card's curve",
+        sr.kw, sr.mins or -1))
+end
 local wasRunning = v.running
 v.running = true
 check(R.remember(v).drive == false, "motor on while plugged in: the app says Parked, like the HUD's P")

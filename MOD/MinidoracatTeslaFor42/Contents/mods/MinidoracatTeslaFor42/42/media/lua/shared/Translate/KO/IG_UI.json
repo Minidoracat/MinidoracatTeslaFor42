@@ -53,6 +53,7 @@
     "IGUI_MinidoracatTesla_Radial_ChargeStatus": "충전 상태",
     "IGUI_MinidoracatTesla_Card_NotPlugged": "연결 안 됨",
     "IGUI_MinidoracatTesla_Card_Charging": "충전 중",
+    "IGUI_MinidoracatTesla_Card_Supercharging": "수퍼차징",
     "IGUI_MinidoracatTesla_Card_Full": "목표까지 충전됨",
     "IGUI_MinidoracatTesla_Card_NoPower": "전원 없음",
     "IGUI_MinidoracatTesla_Card_Stopped": "충전 중지됨",

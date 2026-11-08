@@ -188,6 +188,8 @@ local r, done = act(ISTakeGenerator, "generator", g)
 check(r == false and not done, "ISTakeGenerator on ours: refused, no hidden item handed out")
 r, done = act(ISPlugGenerator, "generator", g)
 check(r == false and not done, "ISPlugGenerator (unplug) on ours: refused")
+local sw = setmetatable({ character = thief, generator = g, activate = false }, { __index = ISActivateGenerator })
+check(sw:complete() == false and not sw.done and g.on, "ISActivateGenerator (switch off) on ours: refused, still running")
 r, done = act(ISDestroyStuffAction, "item", g)
 check(r == false and not done and gen(ct) == g, "ISDestroyStuffAction (sledgehammer) on ours: refused, still there")
 thief.buildCheat = true -- an admin clearing an orphan
@@ -240,6 +242,15 @@ md(my).chg.fed = 0.3 -- the full Model Y's own loads meanwhile (Battery.draw)
 C.settle(w2, H.hours())
 check(near(ctK - B.kwh(B.part(ct)), 0.3, 1e-9), "its own loads paid by the truck (chg.fed)")
 unplug(m3)
+-- a Supercharger in its generator's range (gas pump rule: on the wiring outdoors) takes the share, not its 250 kW
+local scLo = charger(300, 312, "minidoracat_tesla_01_16")
+local scv = car(MY, 20, 300.5, 314.5)
+keyFor(scv)
+plug(scv, scLo)
+check(md(scv).chg.src == "powershare" and near(md(scv).chg.kw, 11.5, 1e-9) and md(scv).chg.peak == 250
+    and near(B.chargeKwAt(md(scv).chg, 78.4, 20), 11.5, 1e-9), "a Model Y on a Supercharger fed by Powershare: the 11.5 kW share caps the 250 kW curve")
+unplug(scv)
+C.unschedule(scLo)
 B.set(my, B.part(my), 20)
 C.settle(w2, H.hours())
 
@@ -394,6 +405,21 @@ check(near(B.kwh(B.part(y2)), myK, 1e-9) and near(B.kwh(B.part(ct)), ctK, 1e-9) 
     "limit lowered after it stopped: nothing booked for the quarter hour it had none, the outlet from now on")
 PS.set(owner, ct, "floor", nil, 20)
 check(md(y2).chg.paused == "nopower", "limit back to 20 %: none again")
+-- the engine keeps the pack as a float: 20 % of 123 reads back 24.6000004, 3.8e-7 above the limit (T.KWH_EPS)
+do
+local ctPart = B.part(ct)
+ctPart.float32 = true
+B.set(ct, ctPart, floorKwh + 1)
+md(y2).chg.paused = nil
+C.settle(bedMc, H.hours())
+H.setHours(343.4)
+C.settle(bedMc, H.hours())
+check(B.kwh(ctPart) > floorKwh and B.kwh(ctPart) - floorKwh < 1e-5 and PS.avail(ct) == 0 and T.outletWhy(ct, ctPart) == "Floor"
+    and md(y2).chg.paused == "nopower" and md(y2).chg.src == nil,
+    string.format("float pack at the limit (%.7f, %.1e above): nothing left, the outlet says Floor, the car nopower",
+        B.kwh(ctPart), B.kwh(ctPart) - floorKwh))
+ctPart.float32 = nil
+end
 
 H.section("bed outlet: no retroactive stretch, shares given back, the limit, a truck loading late")
 B.set(ct, B.part(ct), 100) -- above the limit again; nothing settles the Model Y now
@@ -709,14 +735,14 @@ H.setHours(hold)
 C.settle(wa, H.hours())
 check(near(B.kwh(B.part(ya)) - yaK, 11.5 * (hold - h0), 1e-6), string.format("the square back: the whole %.2f h at 11.5 kW, not capped at 1 h", hold - h0))
 H.setHours(H.hours() + 1.01)
-H.fire("EveryTenMinutes")
+H.fire("EveryOneMinute")
 check(md(yb).chg.last == H.hours(), "past the hour: the 0 kW one's due settle ran (chg.last moved on)")
 B.set(ya, B.part(ya), 78.4 * 0.9)
 C.settle(wa, H.hours())
 check(md(ya).chg.paused == "full" and md(ya).chg.kw == 0, "the first one full: 0 kW")
 local h1 = H.hours()
 H.setHours(h1 + 1.01)
-H.fire("EveryTenMinutes")
+H.fire("EveryOneMinute")
 check(md(ya).chg.last == H.hours(), "past the hour: the full one's due settle ran too")
 unplug(ya)
 B.set(yb, B.part(yb), 20)

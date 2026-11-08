@@ -123,9 +123,10 @@ local function onFill(playerNum, context, worldObjects, test)
     local sq = charger:getSquare()
     local plugged = T.pluggedCarOn(sq) -- a reused id is no car here: the plug rows show, plugging in takes the charger over
     local c = T.Chargers[info.kind]
-    -- a Mobile Connector without power still takes the cable and charges once power comes; plugged or not, say where it works
-    if c.genTiles and not T.chargerPowered(info.kind, sq) then
-        context:addOption(getText("ContextMenu_MinidoracatTesla_MobileNoPower"), nil, nil).notAvailable = true
+    -- a Mobile Connector or a Supercharger without power still takes the cable and charges once power comes; plugged
+    -- or not, say where it works (Chargers.lua noPower)
+    if c.noPower and not T.chargerPowered(info.kind, sq) then
+        context:addOption(getText(c.noPower), nil, nil).notAvailable = true
     end
     if plugged then
         notOwner(context:addOption(getText("ContextMenu_MinidoracatTesla_Unplug"), player, C.queueUnplug, plugged), player, plugged, T.mayUnplug)

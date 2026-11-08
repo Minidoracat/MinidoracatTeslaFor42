@@ -53,6 +53,7 @@
     "IGUI_MinidoracatTesla_Radial_ChargeStatus": "充電状況",
     "IGUI_MinidoracatTesla_Card_NotPlugged": "未接続",
     "IGUI_MinidoracatTesla_Card_Charging": "充電中",
+    "IGUI_MinidoracatTesla_Card_Supercharging": "スーパーチャージャーで充電中",
     "IGUI_MinidoracatTesla_Card_Full": "目標まで充電完了",
     "IGUI_MinidoracatTesla_Card_NoPower": "電力なし",
     "IGUI_MinidoracatTesla_Card_Stopped": "充電停止",

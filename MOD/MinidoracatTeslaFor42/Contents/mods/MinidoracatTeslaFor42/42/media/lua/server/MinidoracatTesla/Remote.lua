@@ -91,7 +91,7 @@ function R.remember(v, create)
     r.chg = chargeState(chg)
     r.kw, r.target, r.mins = nil, nil, nil
     if chg then
-        r.kw = math.floor((chg.kw or 0) * 10 + 0.5) / 10
+        r.kw = math.floor(T.Battery.chargeKwAt(chg, cap, kwh) * 10 + 0.5) / 10 -- a Supercharger's on its curve now
         r.target = chg.target or 90
         if r.chg == "charging" and (chg.kw or 0) > 0 then r.mins = math.floor(left * 60 + 0.5) end
     end
