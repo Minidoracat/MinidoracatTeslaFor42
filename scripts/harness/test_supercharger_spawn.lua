@@ -1,16 +1,15 @@
 -- Supercharger spawn at gas stations (server/MinidoracatTesla/SuperchargerSpawn.lua): the placement rules on made-up
 -- forecourts (S.plan: a normal row, room for 2 only, no room, doors, roads by Nav zone or centre line, walled-in
--- yards, parked cars), the square codes read from fake squares (S.cellAt), and the station record flow through
--- S.build on fake squares (one record a station whichever pump square loads first, posts once the chunks and the
--- charger system are up, at most once, the minute hook gone when nothing waits). The real vanilla stations were
--- checked the same way offline: the map's lotpacks and streets.xml roads exported as these grids, S.plan run on all 46.
+-- yards, parked cars), the square codes read from fake squares (S.cellAt, a safehouse's squares blocked), and the
+-- station record flow through S.build on fake squares (one record a station whichever pump square loads first or
+-- again, posts once the chunks and the charger system are up, at most once, none in a safehouse, the minute hook gone
+-- when nothing waits). The real vanilla stations were checked the same way offline: the map's lotpacks and
+-- streets.xml roads exported as these grids, S.plan run on all 46.
 local check = H.check
 H.side(false, true)
 local saved = { getCell = getCell, getWorld = getWorld, MapObjects = MapObjects, sys = SMinidoracatTeslaChargerSystem,
-    IsoFlagType = IsoFlagType, getTimestampMs = getTimestampMs }
-local registered
-MapObjects = { OnNewWithSprite = function(list, fn, prio) registered = { list = list, fn = fn, prio = prio } end,
-    OnLoadWithSprite = function() end }
+    IsoFlagType = IsoFlagType, getTimestampMs = getTimestampMs, SafeHouse = SafeHouse }
+MapObjects = { OnLoadWithSprite = function() end }
 H.require("MinidoracatTesla/SuperchargerSpawn")
 local T = MinidoracatTesla
 local S = T.SuperchargerSpawn
@@ -306,9 +305,23 @@ local function fakeSq(o)
 end
 local squares = {}
 getCell = function() return { getGridSquare = function(_, x, y) return squares[x .. "," .. y] end } end
-local function code(o, nav)
+-- the one safehouse { x, y, x2, y2 } (x2, y2 exclusive, as SafeHouse.java keeps it) or nil; safeAsked: squares asked
+local safeRect, safeAsked = nil, 0
+SafeHouse = {
+    getSafehouseOverlapping = function(x1, y1, x2, y2)
+        local r = safeRect
+        return r and x1 < r[3] and x2 > r[1] and y1 < r[4] and y2 > r[2] and r or nil
+    end,
+    getSafeHouse = function(sq)
+        safeAsked = safeAsked + 1
+        local r, x, y = safeRect, sq:getX(), sq:getY()
+        return r and x >= r[1] and x < r[3] and y >= r[2] and y < r[4] and r or nil
+    end,
+}
+local function code(o, nav, safe)
+    o.x, o.y = 0, 0
     squares["0,0"] = fakeSq(o)
-    return S.cellAt(0, 0, nav)
+    return S.cellAt(0, 0, nav, safe)
 end
 check(S.cellAt(5, 5) == nil, "no square: nil")
 local c = code({ objs = { { "location_shop_fossoil_01_12" } } })
@@ -339,12 +352,15 @@ local function poly(on) return { x = -5, y = -5, w = 10, h = 10, poly = true,
     zone = { contains = function(_, x, y, z) asked = { x, y, z }; return on end } } end
 check(code({}, { poly(true) }).nav and asked[1] == 0 and asked[2] == 0 and asked[3] == 0, "on a diagonal street (the polyline zone contains it): nav")
 check(not code({}, { poly(false) }).nav, "in a diagonal street's bounding box, off the road: no nav")
+safeRect = { 0, 0, 1, 1 }
+check(code({}, nil, true).k == "o" and code({ objs = { { "location_shop_fossoil_01_12" } } }, nil, true).k == "P"
+    and code({ flags = { "doorW" } }, nil, true).k == "D", "in a safehouse: a free square blocked (o); a pump, a door keep their code")
+safeAsked = 0
+check(code({}).k == "=" and safeAsked == 0, "no safehouse near the station (safe not set): the square not asked, still =")
+safeRect = nil
 
 H.section("build: one record a station, posts once everything is loaded, at most once")
-check(registered and registered.prio == 5 and #registered.list == 8, "OnNewWithSprite on the 8 pump sprites")
-local names = {}
-for _, nm in ipairs(registered.list) do names[nm] = true end
-check(names.location_shop_fossoil_01_12 and names.location_shop_gas2go_01_15, "Fossoil and Gas2Go 12-15")
+-- S.onPump is what MapObjects.OnLoadWithSprite calls for each pump square of a chunk that loads
 H.moddata[S.MODDATA] = nil
 -- the world: lot (above) at 1000,1000 as fake squares; chunks loaded per flag
 local OX, OY = 1000, 1000
@@ -382,12 +398,12 @@ local function pump(x, y)
 end
 SMinidoracatTeslaChargerSystem = nil
 local hooks = H.count("EveryOneMinute") -- other modules' minute handlers
-registered.fn(pump(OX + 13, OY + 14))
+S.onPump(pump(OX + 13, OY + 14))
 local st = H.moddata[S.MODDATA].stations
 check(#st == 1 and st[1].x == OX + 13 and st[1].done == false, "first pump square: a station record, waiting")
 check(H.count("EveryOneMinute") == hooks + 1, "one minute hook while it waits")
-registered.fn(pump(OX + 19, OY + 18))
-registered.fn(pump(OX + 13 + S.STATION_R, OY + 14))
+S.onPump(pump(OX + 19, OY + 18))
+S.onPump(pump(OX + 13 + S.STATION_R, OY + 14))
 check(#st == 1, "the station's other pump squares (and one " .. S.STATION_R .. " away): no second record")
 H.fire("EveryOneMinute")
 check(#placed == 0 and not st[1].done and not st[1].x0, "the charger system not up yet (new SP game): nothing read, still waiting")
@@ -431,16 +447,34 @@ for i, p in ipairs(lotPosts) do
     local q = placed[i]
     if not (q and q.x == OX + p.x and q.y == OY + p.y and q.facing == p.facing) then same = false end
 end
-check(same, "placed where the plan said, with its facing")
+check(same and safeAsked == 0, "no safehouse near: placed where the plan said, with its facing, no square asked")
 local line = H.logLines[#H.logLines] or ""
 check(line:find("planned 4 placed 4", 1, true) and line:find("0 centre line squares", 1, true)
     and line:find("in %- %+ %d+ %+ %d+ %+ %d+ = %d+ ms"), "the log says planned / placed, the centre line squares and the time (scan in an earlier minute): " .. line)
 check(H.count("EveryOneMinute") == hooks, "nothing waits: the minute hook is gone")
+-- MP: a player's safehouse over the row the plan took (the lot's west strip): no post or slot in it
+safeRect = { OX, OY, OX + 8, OY + 25 }
+placed, objects = {}, {}
+st[1].done, st[1].n = false, nil
+S.tick()
+local inSafe = false
+for _, q in ipairs(placed) do
+    local post, slot = squaresOf(q)
+    slot[#slot + 1] = post[1]
+    for _, s in ipairs(slot) do
+        if s[1] >= safeRect[1] and s[1] < safeRect[3] and s[2] >= safeRect[2] and s[2] < safeRect[4] then inSafe = true end
+    end
+end
+line = H.logLines[#H.logLines] or ""
+check(#placed >= 2 and not inSafe and placed[1].facing ~= lotPosts[1].facing and line:find("a safehouse near", 1, true),
+    "a safehouse over that row: " .. #placed .. " posts elsewhere, no post or slot in it, the log says so: " .. line)
+safeRect = nil
 H.fire("EveryOneMinute")
-registered.fn(pump(OX + 14, OY + 14))
-check(#placed == 4 and #st == 1 and H.count("EveryOneMinute") == hooks,
+local had = #placed
+S.onPump(pump(OX + 14, OY + 14))
+check(#placed == had and #st == 1 and H.count("EveryOneMinute") == hooks,
     "the same station loading again (another chunk, a later session): no record, no posts, no hook")
-registered.fn(pump(OX + 200, OY + 14))
+S.onPump(pump(OX + 200, OY + 14))
 check(#st == 2 and H.count("EveryOneMinute") == hooks + 1, "another station far off: its own record and the hook again")
 -- both ready in the same minute: one station's work a minute
 placed, objects = {}, {}
@@ -461,5 +495,5 @@ H.fire("EveryOneMinute")
 
 S.place = realPlace
 H.moddata[S.MODDATA] = nil
-getCell, getWorld, MapObjects, SMinidoracatTeslaChargerSystem, IsoFlagType =
-    saved.getCell, saved.getWorld, saved.MapObjects, saved.sys, saved.IsoFlagType
+getCell, getWorld, MapObjects, SMinidoracatTeslaChargerSystem, IsoFlagType, SafeHouse =
+    saved.getCell, saved.getWorld, saved.MapObjects, saved.sys, saved.IsoFlagType, saved.SafeHouse

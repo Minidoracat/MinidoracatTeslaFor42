@@ -1,17 +1,18 @@
 -- V4 Superchargers at gas stations (decisions.md "超級充電座", user 2026-11-09): 2-4 posts a station, put down once,
 -- the way a player places one (vanilla placeMoveableInternal), on the server only.
--- Trigger: MapObjects.OnNewWithSprite on the gas pump sprites (every tiledef tile with fuelAmount: Fossoil and Gas2Go
--- 12-15, newtiledefinitions.tiles). MapObjects.newGridSquare runs for each square of a brand-new chunk
--- (IsoChunk.java:3825-3826: addZombies, set by LoadBrandNew :2259-2260, never on an MP client) and for a tile object
--- added through IsoGridSquare.addTileObject / IsoCell / RandomizedWorldBase (IsoGridSquare.java:10660-10662,
--- IsoCell.java:4234-4236, RandomizedWorldBase.java:1239,1264), never for a chunk loaded from the save: a station
--- explored before this version never gets posts.
+-- Trigger: MapObjects.OnLoadWithSprite on the gas pump sprites (every tiledef tile with fuelAmount: Fossoil and Gas2Go
+-- 12-15, newtiledefinitions.tiles). MapObjects.loadGridSquare runs for each square of every chunk that loads, from the
+-- save too (IsoChunk.java:3825-3829; newGridSquare only for a brand-new one), and for a tile object added through
+-- IsoGridSquare.addTileObject / IsoCell / RandomizedWorldBase (IsoGridSquare.java:10660-10662, IsoCell.java:4234-4236,
+-- RandomizedWorldBase.java:1239-1240,1264-1265): a station explored before the MOD was added gets its posts the next
+-- time its chunks load (user 2026-11-09), and every later load finds its record and does nothing.
 -- Neighbour chunks may not be loaded yet then (SP: one chunk at a time, IsoChunkMap.java:182-207; MP: a 64x64 server
 -- cell, ServerMap.java:927-956), and the charger system does not exist yet for the first chunks of a new SP game
 -- (IsoWorld init loads them before GameLoadingState.java:313 initSystems). So the callback only records the station
 -- in global ModData (server save) and the posts go down on a later EveryOneMinute, once the chunks around it are
 -- loaded and the charger system is up. The record also dedupes: pumps within STATION_R of a known station are the
--- same station, whichever chunk or session they load in.
+-- same station, whichever chunk or session they load in; a done station stays done (posts picked up are not put
+-- back). On a server no post or slot goes in a safehouse (S.cellAt's safe).
 if isClient() then return end
 require "MinidoracatTesla/Chargers"
 require "Moveables/ISMoveableSpriteProps"
@@ -336,8 +337,10 @@ local function pumpOn(sq)
     return false
 end
 
--- the code S.plan reads for square x, y, 0 (nav: S.navZones); nil when it is not loaded
-function S.cellAt(x, y, nav)
+-- the code S.plan reads for square x, y, 0 (nav: S.navZones); nil when it is not loaded. safe: a safehouse overlaps
+-- the plan's squares (SafeHouse.java:181-189), so ask each free square (getSafeHouse: the one holding it, whoever the
+-- player, :157-159,201-222) and block it: the claimed lot is the player's
+function S.cellAt(x, y, nav, safe)
     local sq = getCell():getGridSquare(x, y, 0)
     if not sq then return nil end
     if not F then flags() end
@@ -380,6 +383,7 @@ function S.cellAt(x, y, nav)
         elseif n:find("^blends_natural") then c.k = "g"
         elseif n ~= "" then c.k = "." end
     end
+    if safe and c.k == "=" and SafeHouse.getSafeHouse(sq) then c.k = "o" end
     c.car = c.k == "=" and sq:isVehicleIntersecting() or nil -- IsoGridSquare.java:9895
     return c
 end
@@ -461,10 +465,11 @@ function S.build(s)
     end
     local ta = getTimestampMs()
     local nav = S.navZones(bx0, by0, bx1, by1)
+    local safe = SafeHouse.getSafehouseOverlapping(bx0, by0, bx1 + 1, by1 + 1) ~= nil -- x2, y2 exclusive
     local W, cells, lines = bx1 - bx0 + 1, {}, 0
     for y = by0, by1 do
         for x = bx0, bx1 do
-            local c = S.cellAt(x, y, nav) or false
+            local c = S.cellAt(x, y, nav, safe) or false
             cells[(y - by0) * W + (x - bx0) + 1] = c
             if c and c.line then lines = lines + 1 end
         end
@@ -481,7 +486,8 @@ function S.build(s)
     s.n = n
     local t2 = getTimestampMs()
     T.log("supercharger spawn: station " .. s.x .. "," .. s.y .. " (" .. s.pumps .. " pump squares, " .. #nav
-        .. " road zones, " .. lines .. " centre line squares) planned " .. #posts .. " placed " .. n
+        .. " road zones, " .. lines .. " centre line squares" .. (safe and ", a safehouse near" or "") .. ") planned "
+        .. #posts .. " placed " .. n
         .. (posts[1] and (" facing " .. posts[1].facing .. " from " .. posts[1].x .. "," .. posts[1].y) or "")
         .. " in " .. (scan and tostring(scan) or "-") .. " + " .. (tr - ta) .. " + " .. (t1 - tr) .. " + " .. (t2 - t1)
         .. " = " .. (t2 - t0) .. " ms (scan + read + plan + place; scan - = an earlier minute)")
@@ -516,7 +522,7 @@ local function hook()
     Events.EveryOneMinute.Add(tick)
 end
 
--- MapObjects callback: a pump square in a brand-new chunk
+-- MapObjects callback: a pump square in a chunk that loads (new or from the save), or a pump put down
 function S.onPump(isoObject)
     local sq = isoObject:getSquare()
     if not sq or sq:getZ() ~= 0 then return end
@@ -530,7 +536,7 @@ end
 
 local list = {}
 for name in pairs(S.PUMPS) do list[#list + 1] = name end
-MapObjects.OnNewWithSprite(list, S.onPump, 5) -- MOBarricade.lua pattern
+MapObjects.OnLoadWithSprite(list, S.onPump, 5) -- MOCampfire.lua pattern
 -- a station still waiting when the game was saved (GlobalModData.init, IsoWorld.java:2009)
 Events.OnInitGlobalModData.Add(function()
     for _, s in ipairs(md().stations) do
