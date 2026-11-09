@@ -172,7 +172,8 @@ A charger that works on the floor, no wall needed; slower than the Wall Connecto
 === 🧰 V4 Supercharger
 {{img:32-supercharger-en.jpg}}
 [list]
-[*] [b]Where[/b]: 2 to 4 Tesla V4 Superchargers stand next to gas stations, each with its parking spot in front. They only appear in areas loaded for the first time: if you added the mod mid-save, the gas stations you already visited have none, so look somewhere new. There is no recipe.
+[*] [b]Where[/b]: 2 to 4 Tesla V4 Superchargers stand next to gas stations, each with its parking spot in front. If you add the mod mid-save, the gas stations you already visited get theirs the next time they load; each station gets them only once, and posts taken away do not come back. They only go on empty pavement (gravel floors players lay count too), never on furniture or cars; on a multiplayer server none appear inside a safehouse.
+[*] [b]Make one[/b]: Electrical 6 learns the recipe Make Tesla V4 Supercharger; craft it next to a work surface such as a table with a Screwdriver and Pliers (kept), Electrical Wire 12, Scrap Electronics 9, Steel Sheet - Small 6 and Screws 12.
 [*] [b]Plug in[/b]: right-click it and plug in the charge cable like any charger. The cable reaches about 2.5 tiles (3 m in the real world), so park in the spot in front of the post.
 [*] [b]Slower as it fills[/b]: it follows the real cars' DC fast-charging curve: fastest at a low charge, slowing down past half, and slow above 80%. Peak power follows Tesla's numbers: 325 kW for the Cybertruck, 250 kW for the other Teslas.
 [*] [b]How long[/b]: 10% to 90% (game time) takes about 36 minutes for the Model Y and Model 3, about 47 for the Model S and Model X, and about 44 for the Cybertruck; the sandbox option Charging speed multiplier still applies.
@@ -527,7 +528,7 @@ Without Vehicle Manager:
 [/list]
 [h3]I added the mod mid-save and see no Teslas, phones or Superchargers?[/h3]
 [list]
-[*] Teslas and the gas stations' Superchargers appear only in areas loaded for the first time after that, and phones only in containers nobody searched yet. Go somewhere new.
+[*] Teslas appear only in areas loaded for the first time after that, and phones only in containers nobody searched yet, so go somewhere new. The gas stations' Superchargers are different: stations you already visited get theirs the next time they load, and with Electrical 6 you can make one.
 [/list]
 [h3]What should I do before removing this mod?[/h3]
 [list]
