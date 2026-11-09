@@ -82,10 +82,14 @@ end
 
 SGlobalObjectSystem.RegisterSystemClass(SMinidoracatTeslaChargerSystem)
 
--- chunk load: one Java hash lookup per object, Lua only on our sprites
+-- chunk load: one Java hash lookup per object, Lua only on our sprites; then the plugged / idle tile for its car
+-- (Charging.lua C.onChargerLoaded; the IsoObject itself: its square may not be in the cell's grid yet)
 local function onLoad(isoObject)
     local sys = SMinidoracatTeslaChargerSystem.instance
-    if sys then sys:loadIsoObject(isoObject) end
+    if not sys then return end
+    sys:loadIsoObject(isoObject)
+    local o = sys:getLuaObjectOnSquare(isoObject:getSquare())
+    if o and T.Charge and T.Charge.onChargerLoaded then T.Charge.onChargerLoaded(o, isoObject) end
 end
 local sprites = {}
 for name in pairs(T.ChargerSprites) do sprites[#sprites + 1] = name end

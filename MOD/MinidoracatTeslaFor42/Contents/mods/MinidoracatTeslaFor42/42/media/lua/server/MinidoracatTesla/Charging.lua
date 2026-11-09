@@ -200,6 +200,30 @@ local function touchVM(vehicle)
     if mvm and mvm.Parked and mvm.Parked.touch then mvm.Parked.touch(vehicle) end -- ParkedGuard.lua:258-261
 end
 
+-- The charger's tile shows whether a cable is in it (decisions.md 2026-11-09: the gun in its holster when idle, out of
+-- it when plugged; Chargers.lua `sprites` / `busy`; the Mobile Connector has one tile). Swapped only when it changes:
+-- setSpriteFromName (IsoThumpable also takes it as closedSprite, the one it saves, IsoThumpable.java:372-375,616-618),
+-- then on a server UpdateItemSprite to the clients (IsoObject.java:4618-4659, as SRainBarrelGlobalObject.lua:100-101;
+-- the client sets the sprite and RecalcAllWithNeighbours, GameClient.java:1122-1166). Neither touches the three
+-- blocking fields Chargers.lua turns off at placing, and both tiles carry the same flags, so nothing to recalc here.
+-- iso: the charger's IsoObject when the caller has it (a chunk loading: its squares may not be in the cell's grid yet,
+-- IsoChunk.java:3799-3829, so o:getIsoObject() may not find it)
+-- o.removing (C.onChargerRemoved): the charger is leaving its square, keep its tile whatever path asks (the unplug's
+-- own settle can stop it again with "pack"). Its UpdateItemSprite is reliable but unordered (PacketTypes.java:517,
+-- 628-647) and the client applies it by square index (GameClient.java:1133-1141): arriving after RemoveItemFromSquare
+-- (sent first on a sledgehammer, GameServer.java:2990-2998) it would paint whatever object took that index. A
+-- picked-up item keeps the plugged tile; it goes down idle (Chargers.lua removeComponentsBeforePlacing).
+function C.setBusy(o, busy, iso)
+    if o and o.removing then return end
+    iso = iso or (o and o:getIsoObject())
+    local info = iso and T.chargerInfo(iso)
+    local set = info and T.Chargers[info.kind][busy and "busy" or "sprites"]
+    local name = set and set[info.facing]
+    if not name or iso:getSprite():getName() == name then return end
+    iso:setSpriteFromName(name)
+    if isServer() then iso:transmitUpdatedSpriteToClients() end
+end
+
 function C.unlink(o)
     C.unschedule(o)
     if o.vid then
@@ -208,6 +232,22 @@ function C.unlink(o)
         o.vid = false
         o:updateOnClient()
     end
+    C.setBusy(o, false)
+end
+
+-- A charger's tile loads (ChargerSystem.lua; a placed one, IsoThumpable or the Wall Connector's IsoObject, goes down
+-- idle already: Chargers.lua removeComponentsBeforePlacing).
+-- Its car already relinked (the car's chunk loaded first, or a save from before the plugged tiles, whose Wall
+-- Connector shows the idle one): plugged tile. Loaded plugged with no car yet: the car's own load relinks it
+-- (C.relink); still none C.RETRY_H later, that settle (o.loadCheck, cleared by any settle that finds the car) shows the
+-- idle tile: the car was deleted or blew up with its cable in. Restart or a chunk loading again in the same session
+-- alike (vid may still name the gone car).
+function C.onChargerLoaded(o, iso)
+    if T.chargerCar(o, o.x, o.y, o.z) then return C.setBusy(o, true, iso) end
+    local info = T.chargerInfo(iso)
+    if not (info and info.busy) then return end
+    o.loadCheck = true
+    C.schedule(o, T.hours() + C.RETRY_H)
 end
 
 -- Sentry standby is booked on events (Sentry.settle) with the power state it ran under (Battery.onCharger), so settle
@@ -340,9 +380,12 @@ function C.settle(o, now, here, fresh)
         -- no car on this cable. vid names no loaded car: unloaded, relink resumes it when it loads. vid names a loaded
         -- car whose record is not this charger (its id handed on, VehicleIDMap.java:49-62,91-95, or its cable gone):
         -- forget the id and never touch that car; ours, still holding its record, relinks to a free charger later.
-        if o.vid and getVehicleById(o.vid) then return C.unlink(o) end
+        -- loadCheck: a plugged tile's check after it loaded (C.onChargerLoaded), no car came: idle tile.
+        if o.vid and getVehicleById(o.vid) then C.unlink(o) end
+        if o.loadCheck then o.loadCheck = nil; C.setBusy(o, false) end
         return C.unschedule(o)
     end
+    o.loadCheck = nil
     local part = B.part(v)
     local md = part:getModData()
     local chg = md.chg
@@ -521,6 +564,7 @@ function C.start(o, v)
         last = now, added = 0, src = nil, target = C.DEFAULT_TARGET, paused = nil }
     o.vid = v:getId()
     o:updateOnClient()
+    C.setBusy(o, true)
     C.settle(o, now)
     if outlet then C.settleSupplied(v) end
     touchVM(v)
@@ -547,6 +591,7 @@ end
 
 -- only the car on this charger's cable: an id handed to another car (maybe plugged in elsewhere) is not unplugged
 function C.onChargerRemoved(o)
+    o.removing = true
     local v = T.chargerCar(o, o.x, o.y, o.z)
     if v then C.stop(o, v, "removed") else C.unschedule(o) end
 end
@@ -654,6 +699,8 @@ function C.relink(v)
     o.vid = v:getId()
     o:updateOnClient()
     C.settle(o, T.hours(), nil, true) -- fresh: a Cybertruck that fed it may load a moment later (C.settle)
+    -- after settle: one that unplugs it at once (no pack) sends no plugged-then-idle pair of unordered sprite packets
+    if o.vid == v:getId() then C.setBusy(o, true) end
     T.log("relinked " .. tostring(v:getId()) .. " to " .. o.kind .. " at " .. o.x .. "," .. o.y .. "," .. o.z)
 end
 

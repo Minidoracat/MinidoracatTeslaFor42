@@ -93,6 +93,8 @@ local function charger(x, y, sprite, o)
     local iso = { sq = sq, sprite = sprite }
     function iso:getSquare() return self.sq end
     function iso:getSprite() local n = self.sprite; return { getName = function() return n end } end
+    function iso:setSpriteFromName(n) self.sprite = n end
+    function iso:transmitUpdatedSpriteToClients() end
     local lo = SMinidoracatTeslaCharger:new(SYS, { gx_ = x, gy_ = y, gz_ = 0 })
     lo:stateFromIsoObject(iso)
     lo.iso = iso

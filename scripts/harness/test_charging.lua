@@ -94,7 +94,7 @@ local SYS = SMinidoracatTeslaChargerSystem.instance
 check(SYS ~= nil and SYS.systemName == "MinidoracatTeslaCharger", "charger system registered under its contract name")
 check(SYS.saved[1] == "kind" and SYS.saved[3] == "owner" and SYS.synced[3] == "owner" and SYS.synced[4] == "vid",
     "saves kind/facing/owner, syncs kind/facing/owner/vid")
-check(#H.onLoadSprites == 12, "chunk load hook covers the 4 sprites of each of the 3 chargers")
+check(#H.onLoadSprites == 20, "chunk load hook covers the 4 sprites of each of the 3 chargers and the plugged ones of 2")
 
 -- a placed charger at (200,200,0) facing S, inside a room
 local function charger(x, y, o, sprite)
@@ -102,6 +102,8 @@ local function charger(x, y, o, sprite)
     local iso = { sq = sq, sprite = sprite or "minidoracat_tesla_01_0" }
     function iso:getSquare() return self.sq end
     function iso:getSprite() local n = self.sprite; return { getName = function() return n end } end
+    function iso:setSpriteFromName(n) self.sprite = n end
+    function iso:transmitUpdatedSpriteToClients() self.sent = (self.sent or 0) + 1 end
     local lo = SMinidoracatTeslaCharger:new(SYS, { gx_ = x, gy_ = y, gz_ = 0 })
     lo:stateFromIsoObject(iso)
     lo.iso = iso
@@ -1125,16 +1127,163 @@ gsq.gen = nil
 
 -- no invisible wall after the MOD goes (Chargers.lua, ISMoveableSpriteProps.lua:2379-2385 sets these on a solid one)
 local function thump(sprite, cls)
-    local o = { _class = cls or "IsoThumpable", block = true, pass = false, thumpable = true, components = "c" }
-    function o:getSprite() return { getName = function() return sprite end } end
+    local o = { _class = cls or "IsoThumpable", block = true, pass = false, thumpable = true, components = "c", sprite = sprite }
+    function o:getSprite() local n = self.sprite; return { getName = function() return n end } end
+    function o:setSpriteFromName(n) self.sprite = n end
     function o:setBlockAllTheSquare(b) self.block = b end
     function o:setCanPassThrough(b) self.pass = b end
     function o:setIsThumpable(b) self.thumpable = b end
     return o, ISMoveableSpriteProps.removeComponentsBeforePlacing({}, o)
 end
 local o1, r1 = thump(SCS)
-check(not o1.block and o1.pass and not o1.thumpable and r1 == "c",
+check(not o1.block and o1.pass and not o1.thumpable and r1 == "c" and o1.sprite == SCS,
     "a placed Supercharger (IsoThumpable): not blocking the square by itself, passable, not thumpable; vanilla's call goes on")
+local o3 = thump("minidoracat_tesla_01_21")
+local o4 = thump("minidoracat_tesla_01_6", "IsoObject") -- vanilla builds a Wall Connector as IsoObject.new (:2330,2342-2343)
+check(not o3.block and o3.sprite == "minidoracat_tesla_01_17" and o4.sprite == "minidoracat_tesla_01_2" and o4.block,
+    "a plugged tile placed (item picked up plugged, rotating one): goes on the square idle, same facing, in the add packet; "
+    .. "the Wall Connector (IsoObject) too, its fields untouched")
 local o2 = thump("furniture_seating_01_0")
-check(o2.block and not o2.pass and o2.thumpable, "anyone else's solid moveable: untouched")
+check(o2.block and not o2.pass and o2.thumpable and o2.sprite == "furniture_seating_01_0", "anyone else's solid moveable: untouched")
+end)()
+
+;(function() -- plugged / idle tile (decisions.md 2026-11-09; Charging.lua C.setBusy)
+H.section("charger tile: plugged / idle")
+for _, o in pairs(SYS.objs) do C.unschedule(o) end
+local WC0, WC4, SC18, SC22 = "minidoracat_tesla_01_0", "minidoracat_tesla_01_4", "minidoracat_tesla_01_18", "minidoracat_tesla_01_22"
+local i4, i23 = T.ChargerSprites[WC4], T.ChargerSprites["minidoracat_tesla_01_23"]
+check(i4.kind == "WallConnector" and i4.facing == "S" and i4.busy and i23.kind == "Supercharger" and i23.facing == "W" and i23.busy
+    and not T.ChargerSprites[WC0].busy, "plugged tiles name the same kind and facing as the idle ones (busy = true)")
+check(T.ChargerSprites["minidoracat_tesla_01_12"] == nil and T.ChargerSprites["minidoracat_tesla_01_24"] == nil,
+    "no plugged Mobile Connector, nothing past _23")
+local own = H.player({ name = "own", keys = { [77] = true } })
+local function plugAt(x, sprite)
+    local lo, iso = charger(x, 1200, { room = {} }, sprite)
+    local v = car(20, x + 1.5, 1200.5)
+    own.x, own.y = x + 1, 1201
+    C.plug(own, v, iso)
+    return lo, iso, v
+end
+
+local lo, iso, v = plugAt(1200, WC0)
+check(lo.vid == v:getId() and iso.sprite == WC4 and iso.sent == 1, "plug a Wall Connector: plugged tile, sent to the clients once")
+C.setBusy(lo, true)
+check(iso.sent == 1, "already plugged: no second sprite packet")
+local sv = B.part(v):getModData().chg
+lo.vid = 424242 -- the car unloaded (its id names no loaded car): settle keeps the link
+C.settle(lo, H.hours())
+check(iso.sprite == WC4, "car only unloaded (C.settle unschedules): still the plugged tile")
+lo.vid = v:getId()
+C.unplug(own, v)
+check(sv and B.part(v):getModData().chg == nil and iso.sprite == WC0 and iso.sent == 2, "unplug: idle tile, sent")
+
+local slo, siso, scv = plugAt(1210, SC18)
+check(siso.sprite == SC22 and slo.facing == "N", "plug a north Supercharger: its north plugged tile, facing kept")
+local was = siso.sprite
+scv.x = scv.x + 10
+C.checkCable(scv, B.part(scv), B.part(scv):getModData().chg)
+check(was == SC22 and B.part(scv):getModData().chg == nil and siso.sprite == SC18 and siso.sent == 2,
+    "car drives off (tooFar): plugged -> idle tile, sent")
+
+local rlo, riso, rv = plugAt(1220, "minidoracat_tesla_01_1")
+check(riso.sprite == "minidoracat_tesla_01_5", "east Wall Connector: _5")
+local sent = riso.sent
+C.onChargerRemoved(rlo)
+check(B.part(rv):getModData().chg == nil and rlo.vid == false and riso.sprite == "minidoracat_tesla_01_5" and riso.sent == sent,
+    "picked up / destroyed (removed): unplugged, the leaving tile kept, no sprite packet (it could land after the removal)")
+
+local plo, piso, pv = plugAt(1230, WC0)
+was = piso.sprite
+B.part(pv).item = nil
+C.settle(plo, H.hours())
+check(was == WC4 and B.part(pv):getModData().chg == nil and piso.sprite == WC0, "pack gone (pack): plugged -> idle tile")
+
+-- the pack gone some other way than the uninstall action, then the charger removed: the unplug's own settle stops it
+-- again with "pack" (C.settle), and that nested unlink must not send a sprite packet either (review round 2)
+local qlo, qiso, qv = plugAt(1295, WC0)
+B.part(qv).item = nil
+local qsent = qiso.sent
+C.onChargerRemoved(qlo)
+check(B.part(qv):getModData().chg == nil and qiso.sprite == WC4 and qiso.sent == qsent,
+    "pack gone, then removed: unplugged by the nested pack stop, the leaving tile kept, no sprite packet")
+
+local mlo, miso = plugAt(1240, "minidoracat_tesla_01_8")
+check(mlo.vid and miso.sprite == "minidoracat_tesla_01_8" and miso.sent == nil, "Mobile Connector: one tile, nothing sent")
+
+-- restart: ids reallocated, vid nil. A save from before the plugged tiles: its Wall Connector shows the idle one
+local llo, liso, lv = plugAt(1250, WC0)
+H.removeVehicle(lv)
+llo.vid = nil
+C.unschedule(llo)
+liso.sprite = WC0
+lv.id = 9100
+H.addVehicle(lv)
+H.fire("OnSpawnVehicleEnd", lv)
+check(llo.vid == 9100 and liso.sprite == WC4, "old save's Wall Connector, car loads: relinked, plugged tile")
+-- the car's chunk first, the charger's after it (relink found no IsoObject)
+H.removeVehicle(lv)
+llo.vid, llo.iso = nil, nil
+liso.sprite = WC0
+lv.id = 9101
+H.addVehicle(lv)
+H.fire("OnSpawnVehicleEnd", lv)
+check(llo.vid == 9101 and liso.sprite == WC0, "charger not loaded at relink: nothing to swap yet")
+llo.iso = liso
+C.onChargerLoaded(llo, liso)
+check(liso.sprite == WC4, "its tile loads later: plugged tile")
+-- an old save's car whose pack is gone: relink's settle unplugs it at once, so no plugged-then-idle packet pair
+local xlo, xiso, xv = plugAt(1285, WC0)
+H.removeVehicle(xv)
+xlo.vid = nil
+C.unschedule(xlo)
+xiso.sprite = WC0
+local xsent = xiso.sent
+B.part(xv).item = nil
+xv.id = 9300
+H.addVehicle(xv)
+H.fire("OnSpawnVehicleEnd", xv)
+check(B.part(xv):getModData().chg == nil and xiso.sprite == WC0 and xiso.sent == xsent,
+    "relink unplugged at once by its settle (no pack): idle tile, no sprite packet")
+H.removeVehicle(xv)
+
+-- plugged tile, its car deleted or blown up: no car relinks; C.RETRY_H after the tile loaded, the idle tile
+local glo, giso = charger(1260, 1200, { room = {} }, SC22)
+C.onChargerLoaded(glo, giso)
+check(giso.sprite == SC22 and C.nextDue() <= H.hours() + C.RETRY_H + 1e-9, "plugged tile loads with no car: waits for a relink")
+H.setHours(H.hours() + C.RETRY_H / 2)
+H.fire("EveryOneMinute")
+check(giso.sprite == SC22, "half the wait: still plugged")
+H.setHours(H.hours() + C.RETRY_H)
+H.fire("EveryOneMinute")
+check(giso.sprite == SC18 and glo.vid == nil, "no car came: idle tile")
+-- the same, but the car relinks within the wait: stays plugged
+local klo, kiso, kv = plugAt(1270, SC18)
+H.removeVehicle(kv)
+klo.vid = nil
+C.unschedule(klo)
+C.onChargerLoaded(klo, kiso)
+kv.id = 9200
+H.addVehicle(kv)
+H.fire("OnSpawnVehicleEnd", kv)
+H.setHours(H.hours() + C.RETRY_H * 2)
+H.fire("EveryOneMinute")
+check(klo.vid == 9200 and kiso.sprite == SC22, "the car relinks within the wait: plugged tile stays")
+-- later the car unloads (only that): its due settle must not take the load check's idle tile
+H.removeVehicle(kv)
+C.settle(klo, H.hours())
+check(kiso.sprite == SC22 and klo.loadCheck == nil, "after a relink the load check is gone: the car only unloading keeps the plugged tile")
+H.addVehicle(kv)
+C.unplug(own, kv)
+-- same session: the chunk loads again, vid still names the car that was deleted meanwhile
+local slo2, siso3, sv2 = plugAt(1275, SC18)
+H.removeVehicle(sv2)
+C.onChargerLoaded(slo2, siso3)
+H.setHours(H.hours() + C.RETRY_H + 0.01)
+H.fire("EveryOneMinute")
+check(slo2.vid ~= nil and siso3.sprite == SC18, "same session, vid still set, no car came after the tile loaded: idle tile")
+
+H.side(false, false) -- SP: no packet
+local slo2, siso2 = plugAt(1290, WC0)
+check(siso2.sprite == WC4 and siso2.sent == nil, "SP: plugged tile, nothing transmitted")
+H.side(false, true)
 end)()

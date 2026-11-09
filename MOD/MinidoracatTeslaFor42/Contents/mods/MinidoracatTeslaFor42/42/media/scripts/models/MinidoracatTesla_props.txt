@@ -1,10 +1,20 @@
 module Base
 {
     /* Wall Connector Gen 3: static IsoObject model for spriteModels (common/media/spriteModels.txt).
-       static + undoCoreScale like vanilla models_isoobject.txt; 1 mesh unit = 1 tile. */
+       static + undoCoreScale like vanilla models_isoobject.txt; 1 mesh unit = 1 tile.
+       Idle (handle in the holster, tiles 0..3) and plugged in (empty holster, tiles 4..7), one texture. */
     model MinidoracatTesla_WallConnector
     {
         mesh = IsoObject/MinidoracatTesla_WallConnector,
+        texture = IsoObject/MinidoracatTesla_WallConnector,
+        static = true,
+        scale = 1.0,
+        undoCoreScale = true,
+    }
+
+    model MinidoracatTesla_WallConnectorPlugged
+    {
+        mesh = IsoObject/MinidoracatTesla_WallConnectorPlugged,
         texture = IsoObject/MinidoracatTesla_WallConnector,
         static = true,
         scale = 1.0,
@@ -21,10 +31,19 @@ module Base
         undoCoreScale = true,
     }
 
-    /* V4 Supercharger post on the floor, real size (spriteModels tiles 16..19). */
+    /* V4 Supercharger post on the floor, real size: idle (tiles 16..19) and plugged in (tiles 20..23). */
     model MinidoracatTesla_Supercharger
     {
         mesh = IsoObject/MinidoracatTesla_Supercharger,
+        texture = IsoObject/MinidoracatTesla_Supercharger,
+        static = true,
+        scale = 1.0,
+        undoCoreScale = true,
+    }
+
+    model MinidoracatTesla_SuperchargerPlugged
+    {
+        mesh = IsoObject/MinidoracatTesla_SuperchargerPlugged,
         texture = IsoObject/MinidoracatTesla_Supercharger,
         static = true,
         scale = 1.0,

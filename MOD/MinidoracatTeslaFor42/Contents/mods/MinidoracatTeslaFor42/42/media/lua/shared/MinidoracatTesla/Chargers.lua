@@ -27,6 +27,8 @@ T.Chargers = {
         cableTiles = 6,
         item = "Base.MinidoracatTesla_WallConnector",
         sprites = { S = "minidoracat_tesla_01_0", E = "minidoracat_tesla_01_1", N = "minidoracat_tesla_01_2", W = "minidoracat_tesla_01_3" },
+        -- a cable in it: the gun out of its holster (decisions.md 2026-11-09; Charging.lua C.setBusy swaps them)
+        busy = { S = "minidoracat_tesla_01_4", E = "minidoracat_tesla_01_5", N = "minidoracat_tesla_01_6", W = "minidoracat_tesla_01_7" },
         -- { x, y, h }: point on the floor under the cable outlet, Facing=S, tiles from the square centre; h in floors
         -- (0 = the cable leaves at floor level: no hang segment, Cable.lua)
         cableExit = { 0, -0.40, 0.327 },
@@ -56,6 +58,7 @@ T.Chargers = {
         cableTiles = 2.5, -- 3 m x 6 / 7.3 = 2.47: half a tile, so parking need not be exact
         item = "Base.MinidoracatTesla_Supercharger",
         sprites = { S = "minidoracat_tesla_01_16", E = "minidoracat_tesla_01_17", N = "minidoracat_tesla_01_18", W = "minidoracat_tesla_01_19" },
+        busy = { S = "minidoracat_tesla_01_20", E = "minidoracat_tesla_01_21", N = "minidoracat_tesla_01_22", W = "minidoracat_tesla_01_23" },
         cableExit = { 0.40, -0.04, 0 },
         dc = true,
         pump = true,
@@ -64,10 +67,12 @@ T.Chargers = {
     },
 }
 
--- sprite name -> { kind, facing }
+-- sprite name -> { kind, facing, busy }: idle (`sprites`) and plugged (`busy`) tiles of a charger give the same kind and
+-- facing; busy = true on the plugged one
 T.ChargerSprites = {}
 for kind, c in pairs(T.Chargers) do
     for facing, sprite in pairs(c.sprites) do T.ChargerSprites[sprite] = { kind = kind, facing = facing } end
+    for facing, sprite in pairs(c.busy or {}) do T.ChargerSprites[sprite] = { kind = kind, facing = facing, busy = true } end
 end
 
 -- kW a charger of `kind` gives car v from the grid or a generator: its kw times the charging speed sandbox. A DC
@@ -291,14 +296,20 @@ end
 -- TransferComponents, restoreComponentsAfterPlacing, :2531-2534) do not touch these three fields, so clients get them
 -- as set here; placing,
 -- rotating (:2894) and the gas station spawn (SuperchargerSpawn.lua) all come through placeMoveableInternal.
+-- A new charger has no car: a plugged tile (an item picked up plugged keeps it as its world sprite, Moveable.java:
+-- 111-138; rotating places the turned tile of the set it was in, :2899-2900) goes down idle, in the one add packet.
+-- Any class: the Wall Connector is a plain IsoObject (no wall / door / window flags, :2330,2342-2343).
+-- setSpriteFromName only sets the sprite (IsoObject.java:2020-2023, 2003-2010; IsoThumpable.java:372-375).
 local beforePlacing = ISMoveableSpriteProps and ISMoveableSpriteProps.removeComponentsBeforePlacing
 if beforePlacing then
     function ISMoveableSpriteProps:removeComponentsBeforePlacing(obj)
-        if instanceof(obj, "IsoThumpable") and T.chargerInfo(obj) then
+        local info = T.chargerInfo(obj)
+        if info and instanceof(obj, "IsoThumpable") then
             obj:setBlockAllTheSquare(false)
             obj:setCanPassThrough(true)
             obj:setIsThumpable(false)
         end
+        if info and info.busy then obj:setSpriteFromName(T.Chargers[info.kind].sprites[info.facing]) end
         return beforePlacing(self, obj)
     end
 else

@@ -40,6 +40,38 @@ spriteModel
         }
         tile
         {
+            xy = 4 0,
+            modelScript = Base.MinidoracatTesla_WallConnectorPlugged,
+            translate = 0.0000 0.0000 0.0000,
+            rotate = 0.0000 180.0000 0.0000,
+            scale = 1.0000,
+        }
+        tile
+        {
+            xy = 5 0,
+            modelScript = Base.MinidoracatTesla_WallConnectorPlugged,
+            translate = 0.0000 0.0000 0.0000,
+            rotate = 0.0000 -90.0000 0.0000,
+            scale = 1.0000,
+        }
+        tile
+        {
+            xy = 6 0,
+            modelScript = Base.MinidoracatTesla_WallConnectorPlugged,
+            translate = 0.0000 0.0000 0.0000,
+            rotate = 0.0000 0.0000 0.0000,
+            scale = 1.0000,
+        }
+        tile
+        {
+            xy = 7 0,
+            modelScript = Base.MinidoracatTesla_WallConnectorPlugged,
+            translate = 0.0000 0.0000 0.0000,
+            rotate = 0.0000 90.0000 0.0000,
+            scale = 1.0000,
+        }
+        tile
+        {
             xy = 0 1,
             modelScript = Base.MinidoracatTesla_MobileConnector,
             translate = 0.0000 0.0000 0.0000,
@@ -98,6 +130,38 @@ spriteModel
         {
             xy = 3 2,
             modelScript = Base.MinidoracatTesla_Supercharger,
+            translate = 0.0000 0.0000 0.0000,
+            rotate = 0.0000 90.0000 0.0000,
+            scale = 1.0000,
+        }
+        tile
+        {
+            xy = 4 2,
+            modelScript = Base.MinidoracatTesla_SuperchargerPlugged,
+            translate = 0.0000 0.0000 0.0000,
+            rotate = 0.0000 180.0000 0.0000,
+            scale = 1.0000,
+        }
+        tile
+        {
+            xy = 5 2,
+            modelScript = Base.MinidoracatTesla_SuperchargerPlugged,
+            translate = 0.0000 0.0000 0.0000,
+            rotate = 0.0000 -90.0000 0.0000,
+            scale = 1.0000,
+        }
+        tile
+        {
+            xy = 6 2,
+            modelScript = Base.MinidoracatTesla_SuperchargerPlugged,
+            translate = 0.0000 0.0000 0.0000,
+            rotate = 0.0000 0.0000 0.0000,
+            scale = 1.0000,
+        }
+        tile
+        {
+            xy = 7 2,
+            modelScript = Base.MinidoracatTesla_SuperchargerPlugged,
             translate = 0.0000 0.0000 0.0000,
             rotate = 0.0000 90.0000 0.0000,
             scale = 1.0000,

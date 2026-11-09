@@ -13,7 +13,9 @@ Contract (knowledge base references/charger-art.md; Lua: shared/MinidoracatTesla
 client/MinidoracatTesla/Cable.lua):
   tileset minidoracat_tesla_01, tiledef MinidoracatTesla_tiles 7431, pack MinidoracatTesla. Sprite names are published:
   index 0..3 = Wall Connector, 8..11 = Mobile Connector, 16..19 = Supercharger (Facing S E N W each); 12 = Powershare's
-  hidden generator (no image, only GeneratorSound).
+  hidden generator (no image, only GeneratorSound). 0..3 and 16..19 draw the idle mesh (handle in the holster); 4..7
+  and 20..23 are their plugged-in tiles (empty holster, CustomName "... Plugged"; Chargers.lua busy), which the server
+  swaps in on plug / unplug.
   Wall Connector: Moveables WallObject, no wall flags (ISMoveableSpriteProps.lua:132-147,1782-1855). Mobile Connector:
   default MoveType Object (on the floor, ISMoveableSpriteProps.lua:143,1747-1772), no tools. Supercharger: on the floor,
   Electrician 6, solid (solidtrans + BlocksPlacement). The engine links the 4 faces of each by GroupName + CustomName
@@ -59,10 +61,17 @@ XFORM = {"S": (0.0, 180.0, 0.0), "E": (0.0, -90.0, 0.0), "N": (0.0, 0.0, 0.0), "
 WC_MODEL = "MinidoracatTesla_WallConnector"
 MC_MODEL = "MinidoracatTesla_MobileConnector"
 SC_MODEL = "MinidoracatTesla_Supercharger"
+# plugged-in meshes (empty holster): the server swaps a charger's idle <-> plugged tiles on plug / unplug (Chargers.lua
+# busy, user 2026-11-09); they share the idle model's texture
+WC_PLUGGED, SC_PLUGGED = WC_MODEL + "Plugged", SC_MODEL + "Plugged"
 CABLE_MODELS = ("MinidoracatTesla_CableHang", "MinidoracatTesla_CableFloor")   # + one plug per car: cable_models()
 ITEM_ICONS = {WC_MODEL: "wc_icon.png", "MinidoracatTesla_Cable": "cable_icon.png", MC_MODEL: "mc_icon.png",
               SC_MODEL: "sc_icon.png"}
-DEV = {WC_MODEL: "wc", MC_MODEL: "mc", SC_MODEL: "sc", "MinidoracatTesla_Cable": "cable"}   # model/icon -> device
+# released icons this build leaves as shipped, not re-rendered: the Wall Connector's (Main 2026-11-09) and the cable's
+# (shipped hook-shaped cable from 7704382; today's cable_icon.png render is a plain straight cable)
+KEPT_ICONS = {WC_MODEL, "MinidoracatTesla_Cable"}
+DEV = {WC_MODEL: "wc", WC_PLUGGED: "wc", MC_MODEL: "mc", SC_MODEL: "sc", SC_PLUGGED: "sc",
+       "MinidoracatTesla_Cable": "cable"}   # model/icon -> device
 ALL_DEVICES = ("wc", "mc", "sc", "cable")     # build.py --only / props_blender.py device names
 # per-icon tone (gamma, lift) applied after fit_icon: the black Mobile Connector all but vanished on the crafting
 # window's dark panel (mean RGB 28); user 2026-10-28 picked "B" from icon-compare.png (mean ~76, the Wall Connector's)
@@ -99,8 +108,15 @@ def sc_props(facing: str) -> dict[str, str]:
             "PickUpLevel": "6", "PickUpWeight": "400", "solidtrans": "", "BlocksPlacement": ""}
 
 
-# first sprite index -> cell, model, props
-DEVICES = {0: ("wc", WC_MODEL, wc_props), 8: ("mc", MC_MODEL, mc_props), 16: ("sc", SC_MODEL, sc_props)}
+def plugged(props):
+    """Plugged-in tiles: the idle tile's props with CustomName + " Plugged", so the engine links their four faces as a
+    group of their own (IsoWorld.java:1064-1160)."""
+    return lambda f: props(f) | {"CustomName": props(f)["CustomName"] + " Plugged"}
+
+
+# first sprite index -> temp cell, model, props: idle and plugged-in Wall Connector and Supercharger
+DEVICES = {0: ("wc", WC_MODEL, wc_props), 4: ("wcp", WC_PLUGGED, plugged(wc_props)), 8: ("mc", MC_MODEL, mc_props),
+           16: ("sc", SC_MODEL, sc_props), 20: ("scp", SC_PLUGGED, plugged(sc_props))}
 SPRITES = [(base + k, cell, model, props(f), f) for base, (cell, model, props) in DEVICES.items()
            for k, f in enumerate(FACINGS)]                                  # (index, temp cell, model, tile props, facing)
 # Cybertruck Powershare's generator (Lua Chargers.lua T.PS_SPRITE; server Powershare.lua): an IsoGenerator on this tile.
@@ -137,9 +153,12 @@ def check_powershare() -> None:
 # atlas rects shared with props_blender.py (PANEL, SW, CSW, MTOP, MSW): 256 px Wall Connector and Mobile Connector,
 # 64 px cable. Model textures load at 256 by default (items-and-icons.md section 5), so the chargers ship at 256.
 PANEL = (8, 2, 120, 254)
-SW = {"white": ((136, 8), (240, 242, 244)), "black": ((196, 8), (32, 33, 36)), "rubber": ((136, 68), (40, 41, 44)),
+# rubber at 58 (was 40) on the Wall Connector and the drawn cable alike: daylight crushes darks to about half
+# (charger-art.md), the idle mesh's wrapped cable is most of its outline, and the drawn cable continues its spare ring.
+# white = the glass's thin rim: 240 came out 255 in daylight (tesla-scpolish-1109-art-d), so a grey edge round the glass
+SW = {"white": ((136, 8), (208, 210, 213)), "black": ((196, 8), (32, 33, 36)), "rubber": ((136, 68), (58, 59, 63)),
       "handle": ((196, 68), (26, 26, 28)), "holster": ((136, 128), (14, 14, 16))}
-CSW = {"rubber": ((0, 0), (40, 41, 44)), "handle": ((32, 0), (24, 24, 26)), "ring": ((0, 32), (92, 96, 100))}
+CSW = {"rubber": ((0, 0), (58, 59, 63)), "handle": ((32, 0), (24, 24, 26)), "ring": ((0, 32), (92, 96, 100))}
 MTOP = (8, 8, 120, 248)            # Mobile Connector 256 px atlas: box top
 MSW = {"black": ((136, 8), (30, 31, 34)), "rubber": ((136, 68), (36, 37, 40)), "metal": ((196, 8), (176, 178, 182)),
        "adapter": ((196, 68), (26, 26, 28))}
@@ -153,31 +172,6 @@ SSW = {"black": ((132, 4), ((24, 24, 27), (140, 142, 148))), "base": ((132, 20),
 SGRILLE = (132, 88, 252, 136)      # side ribs: the "black" ramp across, 12 ribs (4 px: 2 lit, 2 groove) down
 
 
-def wordmark(d, x0: float, y0: float, w: float, h: float, fill) -> None:
-    """Geometric T E S L A (the logo is allowed: decisions.md 2026-10-23); letters are bars, no font file."""
-    lw = w / 9.0                                   # letter width; 5 letters + 4 gaps
-    t = h * 0.22                                   # stroke
-
-    def bar(x, y, bw, bh):
-        d.rectangle((x, y, x + bw, y + bh), fill=fill)
-    xs = [x0 + i * lw * 2 for i in range(5)]
-    bar(xs[0], y0, lw, t)                                                   # T
-    bar(xs[0] + lw / 2 - t / 2, y0 + t * 1.4, t, h - t * 1.4)
-    for k in (0, 0.5, 1):                                                   # E: three bars
-        bar(xs[1], y0 + k * (h - t), lw, t)
-    bar(xs[2], y0, lw, t)                                                   # S
-    bar(xs[2], y0, t, h / 2)
-    bar(xs[2], y0 + h / 2 - t / 2, lw, t)
-    bar(xs[2] + lw - t, y0 + h / 2, t, h / 2)
-    bar(xs[2], y0 + h - t, lw, t)
-    bar(xs[3], y0, t, h)                                                    # L
-    bar(xs[3], y0 + h - t, lw, t)
-    d.polygon([(xs[4], y0 + h), (xs[4] + lw / 2 - t / 2, y0 + t * 1.4), (xs[4] + lw / 2 + t / 2, y0 + t * 1.4),
-               (xs[4] + lw, y0 + h), (xs[4] + lw - t, y0 + h), (xs[4] + lw / 2, y0 + t * 2.6),
-               (xs[4] + t, y0 + h)], fill=fill)                             # A: chevron + top bar
-    bar(xs[4], y0, lw, t)
-
-
 def textures() -> None:
     from PIL import ImageDraw
     exp = TEMP / "export"
@@ -188,14 +182,25 @@ def textures() -> None:
     for name, ((x, y), rgb) in SW.items():
         d.rectangle((x * k, y * k, (x + 56) * k, (y + 56) * k), fill=rgb)
     x0, y0, x1, y1 = (v * k for v in PANEL)
-    for py in range(y0 - 2 * k, y1 + 2 * k):      # glass: cool white, darker toward the bottom and the flanks
-        t = (py - y0) / (y1 - y0)
+    # glass with the light baked in, as on the Supercharger: daylight lifts the brights (texel 221 -> 241, >= 239 -> 255)
+    # and the old 246 .. 224 glass came out a flat 255 (tesla-scpolish-1109-art-d), so it stays <= 234: lit from the
+    # upper left front, greyer toward the shield outline (props_blender.shield, superellipse power 5) and the bottom,
+    # a soft reflection left of centre
+    b = blender_consts()
+    w = b["WC_W"]
+    for py in range(y0 - 2 * k, y1 + 2 * k, k):
+        zt = min(1.0, max(0.0, 1 - (py / k + 0.5 - PANEL[1]) / (PANEL[3] - PANEL[1])))   # 0 bottom .. 1 top
+        hw = (w / 2) * 0.95 * (0.80 + 0.20 * math.sin(math.pi * min(1.0, zt / 0.85) * 0.5) - 0.08 * max(0, zt - 0.85) / 0.15)
         for px in range(x0 - 2 * k, x1 + 2 * k, k):
-            e = abs((px - (x0 + x1) / 2) / ((x1 - x0) / 2))
-            g = 246 - 22 * t - 26 * max(0.0, e - 0.55) / 0.45
-            d.rectangle((px, py, px + k - 1, py), fill=(round(g - 3), round(g - 1), round(g + 1)))
+            xn = ((px / k + 0.5 - PANEL[0]) / (PANEL[2] - PANEL[0]) - 0.5) * w * 1.04 / hw
+            q = min(1.0, (abs(xn) ** 5 + (abs(2 * zt - 1) / 0.95) ** 5) ** 0.2)
+            g = (214 + 14 * zt) * (0.86 + 0.14 * max(0.0, 1 - max(0.0, (q - 0.70) / 0.30)) ** 1.5)
+            g = min(234.0, g + 9 * math.exp(-((xn + 0.42) / 0.16) ** 2))
+            d.rectangle((px, py, px + k - 1, py + k - 1), fill=(round(g - 3), round(g - 1), round(g + 1)))
     cx, pw, ph = (x0 + x1) / 2, x1 - x0, y1 - y0
-    wordmark(d, cx - pw * 0.23, y0 + ph * 0.28, pw * 0.46, ph * 0.026, (128, 132, 138))
+    # grey TESLA, 46 % of the panel wide, 28 % down (official front); texels are 538 / 560 px per unit across / down
+    sx = pw * 0.46 / TESLA_W
+    tesla(d, cx - pw * 0.23, y0 + ph * 0.28, sx, sx * (560 / 538.5), (128, 132, 138))
     for py in range(round(y0 + ph * 0.58), round(y0 + ph * 0.83)):  # green status strip, fading downward
         f = 1 - (py - (y0 + ph * 0.58)) / (ph * 0.25)
         d.rectangle((cx - 1.2 * k, py, cx + 1.2 * k, py), fill=(round(200 - 150 * f), 255 - round(30 * (1 - f)),
@@ -239,7 +244,16 @@ TESLA = (
     (1.05, [[(0, 0), (1.05, 0), (1.0, 0.19), (0.05, 0.19)],
             [(0, 0.39), (1.05, 0.39), (1.05, 1), (0.86, 1), (0.86, 0.58), (0.19, 0.58), (0.19, 1), (0, 1)]]),
 )
-TESLA_GAP, TESLA_H = 1.05, 0.05     # letter gap (letter heights) and letter height (m): 9.5 h = 58 % of the shell
+TESLA_GAP, TESLA_H = 1.05, 0.05     # letter gap (letter heights) and the Supercharger's letter height (m)
+TESLA_W = sum(w for w, _ in TESLA) + TESLA_GAP * (len(TESLA) - 1)     # word width, 9.5 h: 58 % of the shell
+
+
+def tesla(d, left: float, top: float, sx: float, sy: float, fill) -> None:
+    """The TESLA polygons with the word's top-left at (left, top), sx / sy px per letter height across / down."""
+    for w, polys in TESLA:
+        for poly in polys:
+            d.polygon([(left + px * sx, top + py * sy) for px, py in poly], fill=fill)
+        left += (w + TESLA_GAP) * sx
 
 
 def sc_texture(exp: Path, k: int) -> None:
@@ -288,14 +302,8 @@ def sc_texture(exp: Path, k: int) -> None:
                 g = shell(xc - r + (px / k + 0.5 - x0) / (x1 - x0) * 2 * r, z)
                 d.rectangle((px, py, px + k - 1, py + k - 1), fill=(round(g - 2), round(g - 1), round(g)))
     x0, y0, x1, y1 = SLOGO
-    h = TESLA_H
-    left = xc - h * (sum(w for w, _ in TESLA) + TESLA_GAP * (len(TESLA) - 1)) / 2
-    top = (lz0 + lz1) / 2 + h / 2
-    for w, polys in TESLA:
-        for poly in polys:
-            d.polygon([(k * (x0 + (left + px * h - xc + r) / (2 * r) * (x1 - x0)),
-                        k * (y1 - (top - py * h - lz0) / (lz1 - lz0) * (y1 - y0))) for px, py in poly], fill=(196, 32, 42))
-        left += (w + TESLA_GAP) * h
+    sx, sy = TESLA_H * (x1 - x0) / (2 * r) * k, TESLA_H * (y1 - y0) / (lz1 - lz0) * k   # px per letter height
+    tesla(d, (x0 + (x1 - x0) / 2) * k - sx * TESLA_W / 2, (y0 + y1) / 2 * k - sy / 2, sx, sy, (196, 32, 42))
     s.resize((256, 256), Image.LANCZOS).save(exp / f"{SC_MODEL}.png", optimize=True)
 
 
@@ -319,8 +327,9 @@ def sprite_models() -> str:
 def assets() -> list[tuple[str, Path, Path]]:
     """(device, temp export, MOD path) of every model asset."""
     exp = TEMP / "export"
-    out = [(DEV[m], exp / f"{m}{ext}", MEDIA / sub / "IsoObject" / f"{m}{ext}")
-           for m in (WC_MODEL, MC_MODEL, SC_MODEL) for sub, ext in (("models_X", ".glb"), ("textures", ".png"))]
+    out = [(DEV[m], exp / f"{m}.glb", MEDIA / "models_X" / "IsoObject" / f"{m}.glb") for _, m, _ in DEVICES.values()]
+    out += [(DEV[m], exp / f"{m}.png", MEDIA / "textures" / "IsoObject" / f"{m}.png")
+            for m in (WC_MODEL, MC_MODEL, SC_MODEL)]                        # the plugged meshes share these
     out += [("cable", exp / f"{m}.fbx", MEDIA / "models_X" / "WorldItems" / f"{m}.fbx") for m in cable_models()]
     out.append(("cable", exp / "MinidoracatTesla_Cable.png",
                 MEDIA / "textures" / "WorldItems" / "MinidoracatTesla_Cable.png"))
@@ -381,8 +390,10 @@ def build(skip_blender: bool, only: set[str], cpu: bool) -> None:
         textures()
         run_blender(only, cpu)
     old = pack_cells()
-    cells = [(i, Image.open(TEMP / "cells" / f"{cell}_{f}.png").convert("RGBA") if cell in only else old[i])
-             for i, cell, _, _, f in SPRITES]
+    # a rebuilt device's new cells, except published ones (FROZEN keeps their 0.5.0 pixels; the Wall Connector's idle
+    # 0..3 are drawn only by the build cursor, Main 2026-11-09; a deliberate redraw edits FROZEN)
+    cells = [(i, Image.open(TEMP / "cells" / f"{cell}_{f}.png").convert("RGBA")
+              if DEV[model] in only and i not in FROZEN else old[i]) for i, cell, model, _, f in SPRITES]
     for _, c in cells:
         assert c.size == (CELL_W, CELL_H), c.size
     sheet = Image.new("RGBA", (CELL_W * 8, CELL_H * (SPRITES[-1][0] // 8 + 1)), (0, 0, 0, 0))
@@ -406,7 +417,7 @@ def build(skip_blender: bool, only: set[str], cpu: bool) -> None:
     for src, dst in copied:
         dst.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(src, dst)
-    icons = {item: src for item, src in ITEM_ICONS.items() if DEV[item] in only}
+    icons = {item: src for item, src in ITEM_ICONS.items() if DEV[item] in only and item not in KEPT_ICONS}
     for item, src in icons.items():
         icon = fit_icon(Image.open(TEMP / "icons" / src))
         if item in ICON_TONE:
@@ -459,18 +470,23 @@ def check_geometry() -> None:
     items = (MEDIA / "scripts" / "items" / "MinidoracatTesla_cable.txt").read_text(encoding="ascii")
     for m in specs:
         assert re.search(rf"item {m}\n\s*\{{[^}}]*WorldStaticModel = Base\.{m},[^}}]*Hidden = true,", items), f"item {m}"
-    # Chargers.lua: each kind's sprites = our tile names per facing, cableExit = the mesh's exit point
+    # Chargers.lua: each kind's sprites = our idle tile names per facing, busy = the plugged ones (only kinds that have
+    # a plugged mesh), cableExit = the mesh's exit point (the plugged mesh's: Cable.lua draws from it)
     ch = (MEDIA / "lua" / "shared" / "MinidoracatTesla" / "Chargers.lua").read_text(encoding="utf-8")
     blocks = dict(re.findall(r'kind = "(\w+)",(.*?)\n    \},', ch, re.S))
-    kinds = {model.removeprefix("MinidoracatTesla_"): model for _, model, _ in DEVICES.values()}
+    kinds = {model.removeprefix("MinidoracatTesla_"): model for model in (WC_MODEL, MC_MODEL, SC_MODEL)}
+    busy = {WC_MODEL: WC_PLUGGED, SC_MODEL: SC_PLUGGED}
     assert blocks.keys() == kinds.keys() and ch.count("cableExit =") == len(kinds), (blocks.keys(), kinds)
     want_exit = {"WallConnector": (0.0, -b["EXIT_Y"], round(b["EXIT_Z"] / 2.44949, 3)),
                  "MobileConnector": (0.0, -b["MC_EXIT_Y"], 0.0),
                  "Supercharger": (b["SC_EXIT"][0], -b["SC_EXIT"][1], 0.0)}   # on the floor: no hang segment
     for kind, body in blocks.items():
-        want = {f: f"{TILESET}_{i}" for i, _, model, _, f in SPRITES if model == kinds[kind]}
-        got = dict(re.findall(r'(\w) = "(\w+)"', re.search(r"sprites = \{([^}]*)\}", body).group(1)))
-        assert got == want, f"Chargers.lua {kind} sprites {got} != {want}"
+        for key, model in (("sprites", kinds[kind]), ("busy", busy.get(kinds[kind]))):
+            want = {f: f"{TILESET}_{i}" for i, _, m, _, f in SPRITES if m == model}
+            table = re.search(rf"\b{key} = \{{([^}}]*)\}}", body)
+            got = dict(re.findall(r'(\w) = "(\w+)"', table.group(1))) if table else {}
+            assert got == want, f"Chargers.lua {kind} {key} {got} != {want}"
+        want = {f: f"{TILESET}_{i}" for i, _, m, _, f in SPRITES if m == kinds[kind]}
         m = re.search(r"cableExit\s*=\s*\{\s*([-0-9.]+)\s*,\s*([-0-9.]+)\s*,\s*([-0-9.]+)\s*\}", body)
         got = m and tuple(float(x) for x in m.groups())
         assert got == want_exit[kind], f"Chargers.lua {kind} cableExit {got} != {want_exit[kind]}"
@@ -498,12 +514,13 @@ def check() -> None:
     tiles = pzfmt.read_tiles((MEDIA / f"{TILEDEF}.tiles").read_bytes())
     assert [t["name"] for t in tiles] == [TILESET] and tiles[0]["number"] == TILESET_NUMBER, tiles
     assert tiles[0]["tiles"] == tile_list(), tiles[0]["tiles"]
-    assert [i for i, *_ in SPRITES] == [0, 1, 2, 3, 8, 9, 10, 11, 16, 17, 18, 19], "published sprite indexes changed"
+    assert [i for i, *_ in SPRITES] == [*range(0, 8), *range(8, 12), *range(16, 24)], \
+        "sprite indexes changed (0..3, 8..11, 16..19 are published)"
     solid = {"solidtrans", "BlocksPlacement"}
     for i, t in enumerate(tiles[0]["tiles"]):
         assert not {"WallN", "WallW", "solid", "CanScrap"} & t.keys(), t
         # only the Supercharger blocks (Chargers.lua clears the IsoThumpable's own flags: no wall left after removal)
-        assert solid & t.keys() == (solid if 16 <= i <= 19 else set()), (i, t)
+        assert solid & t.keys() == (solid if 16 <= i <= 23 else set()), (i, t)
     pages = pzfmt.read_pack((MEDIA / "texturepacks" / f"{PACK}.pack").read_bytes())
     names = [e[0] for p in pages for e in p["entries"]]
     assert names == [f"{TILESET}_{i}" for i, *_ in SPRITES], names
@@ -520,8 +537,9 @@ def check() -> None:
     xyz = re.findall(r"xy = (\d) (\d),\s*modelScript = Base\.(\w+),\s*translate = [^,]+,\s*rotate = ([^,]+),", sm)
     assert xyz == [(str(i % 8), str(i // 8), m, fmt3(XFORM[f])) for i, _, m, _, f in SPRITES], xyz
     models = (MEDIA / "scripts" / "models" / "MinidoracatTesla_props.txt").read_text(encoding="ascii")
-    for m in (WC_MODEL, MC_MODEL, SC_MODEL):       # static IsoObject models for spriteModels
-        assert re.search(rf"model {m}\n\s*\{{\s*mesh = IsoObject/{m},\s*texture = IsoObject/{m},\s*static = true,"
+    for _, m, _ in DEVICES.values():       # static IsoObject models for spriteModels; plugged ones use the idle texture
+        tex = m.removesuffix("Plugged")
+        assert re.search(rf"model {m}\n\s*\{{\s*mesh = IsoObject/{m},\s*texture = IsoObject/{tex},\s*static = true,"
                          rf"\s*scale = 1\.0,\s*undoCoreScale = true,\s*\}}", models), m
     for m in cable_models():
         assert f"model {m}\n" in models, m
