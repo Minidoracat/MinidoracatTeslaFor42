@@ -69,14 +69,47 @@ CSW = {"rubber": (0, 0), "handle": (32, 0), "ring": (0, 32)}
 MTOP = (8, 8, 120, 248)                       # Mobile Connector 256 px atlas: box top (logo + status LEDs)
 MSW = {"black": (136, 8), "rubber": (136, 68), "metal": (196, 8), "adapter": (196, 68)}
 # Supercharger V4 post, Facing S frame, real size (Tesla datasheet 334 x 891 x 1946 mm, 1 unit ~ 1 m, not enlarged):
-# back on the tile's north edge, convex white shell facing south, black spine + holster on the west (the post's left),
-# cable out of the top of the east frame, down the east edge and onto the floor at SC_EXIT (Cable.lua's floor run starts
-# there: Chargers.lua cableExit = (SC_EXIT[0], -SC_EXIT[1], 0), no hang). Official photo v4-official.jpg.
+# back on the tile's north edge; black body whose plan is a U channel (west spine, east frame) holding the convex white
+# shell, plinth at the floor, holster bracket on the west side (the post's left). Plugged in (the shipped mesh): empty
+# holster, car cable out of the top of the east frame, down the east edge and onto the floor at SC_EXIT (Cable.lua's
+# floor run starts there: Chargers.lua cableExit = (SC_EXIT[0], -SC_EXIT[1], 0), no hang). Official photo
+# v4-official.jpg.
 SC_W, SC_D, SC_H = 0.891, 0.334, 1.946        # width (x), depth (y), height
 SC_BACK = 0.48                                # back face y; front of the shell at its centre = SC_BACK - SC_D
 SC_EXIT = (0.40, 0.04)                        # car cable lies on the floor here, heading south (x east, y north)
-SPANEL = (8, 2, 120, 254)                     # Supercharger 256 px atlas: shell front (TESLA wordmark)
-SSW = {"white": (136, 8), "black": (196, 8), "base": (136, 68), "rubber": (196, 68), "holster": (136, 128)}
+# white shell, front view: centre x, half width, U tip z, top z, U depth, top corner radius, bulge (edges behind centre)
+SC_SHELL = (0.015, 0.41, 0.18, 1.92, 0.40, 0.07, 0.05)
+SC_LOGO_Z = (1.545, 1.685)                    # shell band textured from SLOGO (TESLA at twice SPANEL's texel density)
+SC_LIGHT = (-0.35, -0.80, 0.50)               # light baked into the texture, model frame (front-left-top)
+SPANEL = (4, 2, 124, 196)                     # Supercharger 256 px atlas: shell front (light baked by build.py)
+SLOGO = (4, 204, 252, 252)                    # shell band SC_LOGO_Z across its full width, with the red TESLA
+# ramps 120 x 12 px, dark (u 0) .. lit (u 1): every other Supercharger face samples its baked light (sc_shade) here
+SSW = {"black": (132, 4), "base": (132, 20), "holster": (132, 36), "rubber": (132, 52), "white": (132, 68)}
+SGRILLE = (132, 88, 252, 136)                 # side ribs: u = baked light like the ramps, v = 12 ribs across the depth
+
+
+def ramp_uv(name, s):
+    x, y = SSW[name]
+    return (x + 2 + s * 116) / TEX, 1.0 - (y + 6) / TEX
+
+
+def grille_uv(s, t):
+    x0, y0, x1, y1 = SGRILLE
+    return (x0 + 2 + s * (x1 - x0 - 4)) / TEX, 1.0 - (y0 + t * (y1 - y0)) / TEX
+
+
+def sc_shade(p, n):
+    """Baked light for the Supercharger (in daylight PZ lights a static model flat: basicEffect.frag clamps the sum
+    to 1): key light SC_LIGHT, a brighter top, a sky sheen up the height, darker toward the floor."""
+    s = 0.16 + 0.45 * max(0.0, n.dot(Vector(SC_LIGHT).normalized())) + 0.18 * max(0.0, n.z) + 0.14 * p[2] / SC_H
+    return max(0.0, min(1.0, s * (0.55 + 0.45 * min(1.0, p[2] / 0.3))))
+
+
+def newell(pts):
+    n = Vector()
+    for a, b in zip(pts, pts[1:] + pts[:1]):
+        n += Vector(((a[1] - b[1]) * (a[2] + b[2]), (a[2] - b[2]) * (a[0] + b[0]), (a[0] - b[0]) * (a[1] + b[1])))
+    return n.normalized()
 
 
 def rect_uv(rect, tex, u, v):
@@ -102,6 +135,10 @@ class MB:
         self.uvs.append(list(uvs))
 
     def patch(self, pts, sw):
+        if isinstance(sw, str):                   # Supercharger ramp name: per-vertex baked light
+            n = newell(pts)
+            self.face(pts, [ramp_uv(sw, sc_shade(p, n)) for p in pts])
+            return
         rect, tex = sw
         n = len(pts)
         uvs = [rect_uv(rect, tex, 0.5 + 0.4 * math.cos(2 * math.pi * k / n), 0.5 + 0.4 * math.sin(2 * math.pi * k / n))
@@ -341,56 +378,119 @@ def mobile_connector(image):
 
 # ---------------------------------------------------------------- Supercharger V4
 
-def supercharger(image):
-    """Facing S post on the tile's north edge: black body, west spine with the (empty) holster, east frame and plinth;
-    convex white shell with a U-shaped bottom in front (TESLA on the atlas); the car cable leaves the top of the east
-    frame and runs down the east edge onto the floor at SC_EXIT. No handle: while plugged in it is on the car
-    (Cable.lua), as with the Wall Connector (charger-art.md)."""
+def offset(outline, d):
+    """Plan outline (XY, counter-clockwise from above) moved inward by d, mitred corners."""
+    out = []
+    for i, p in enumerate(outline):
+        p, a, b = Vector(p), Vector(outline[i - 1]), Vector(outline[(i + 1) % len(outline)])
+        e1, e2 = (p - a).normalized(), (b - p).normalized()
+        n1, n2 = Vector((-e1.y, e1.x)), Vector((-e2.y, e2.x))
+        m = (n1 + n2).normalized()
+        out.append(p + m * (d / m.dot(n1)))
+    return out
+
+
+def column(mb, outline, rings, ramp, bottom=False):
+    """Plan outline stacked at rings (z, inset, half width): inset pulls the ring inward (bevels), half width clamps |x|
+    (rounded corners seen from the front); top cap, bottom cap if asked."""
+    loops = [[(max(-hw, min(hw, p.x)), p.y, z) for p in offset(outline, d)] for z, d, hw in rings]
+    if bottom:
+        mb.patch(list(reversed(loops[0])), ramp)
+    n = len(outline)
+    for a, b in zip(loops, loops[1:]):
+        for k in range(n):
+            mb.patch([a[k], a[(k + 1) % n], b[(k + 1) % n], b[k]], ramp)
+    mb.patch(loops[-1], ramp)
+
+
+def rect_xy(x0, y0, x1, y1, c):
+    return [(x1, y1 - c), (x1 - c, y1), (x0 + c, y1), (x0, y1 - c), (x0, y0 + c), (x0 + c, y0), (x1 - c, y0), (x1, y0 + c)]
+
+
+def bevel_box(mb, lo, hi, c, ramp):
+    (x0, y0, z0), (x1, y1, z1) = lo, hi
+    column(mb, rect_xy(x0, y0, x1, y1, c), [(z0, c, 9), (z0 + c, 0, 9), (z1 - c, 0, 9), (z1, c, 9)], ramp, bottom=True)
+
+
+def supercharger(image, idle=False):
+    """Facing S post on the tile's north edge (v4-official.jpg): black body whose plan is a U channel (west spine, east
+    frame) with rounded top corners, plinth, convex white shell with a U-shaped bottom in the channel (TESLA on the
+    atlas), holster bracket on the west side. Light is baked: shell in SPANEL/SLOGO (build.py), the rest per vertex
+    through the ramps (sc_shade).
+    idle=False (shipped, plugged in): empty holster; the car cable leaves the top of the east frame and runs down the east
+    edge onto the floor at SC_EXIT, where Cable.lua carries on to the car's handle.
+    idle=True (official idle look, not shipped): handle in the holster; the cable runs down the east edge, loops in
+    front of the shell's bottom and up the west side into the handle."""
     mb = MB()
-
-    def ssw(name):
-        return swatch(name, SSW)
-
     y_front, y_back = SC_BACK - SC_D, SC_BACK
-    hx = SC_W / 2
-    # body, spine (west, holds the holster), east frame, plinth; body and plinth inset a little so no faces are coplanar
-    cuboid(mb, (-0.40, 0.24, 0.002), (0.40, y_back - 0.004, SC_H - 0.01), ssw("black"))
-    cuboid(mb, (-hx, y_front + 0.03, 0), (-0.39, y_back, SC_H), ssw("black"))
-    cuboid(mb, (0.39, y_front + 0.06, 0), (hx, y_back, SC_H - 0.02), ssw("black"))
-    cuboid(mb, (-0.42, y_front + 0.02, 0.001), (0.42, y_back - 0.008, 0.10), ssw("base"))
-    # white shell: convex across its width (edges 0.05 behind the centre), U-shaped bottom, rounded top corners
-    r, rv, zb, zt, rc, bulge, ys = 0.40, 0.48, 0.16, 1.90, 0.06, 0.05, 0.25
+    hx, c = SC_W / 2, 0.012
+    xc, r, zb, zt, rv, rc, bulge = SC_SHELL
+    # plinth, its front lip 2.5 cm proud of the frames
+    bevel_box(mb, (-hx, 0.165, 0), (hx, y_back, 0.07), c, "base")
+    # body: spine (west) and frame (east) 4 cm in front of the channel back that holds the shell; top corners rounded
+    yf, yc, xl, xr, c2 = 0.19, 0.23, xc - r - 0.003, xc + r + 0.003, 0.006
+    plan = [(hx, y_back - c), (hx - c, y_back), (-hx + c, y_back), (-hx, y_back - c), (-hx, yf + c), (-hx + c, yf),
+            (xl - c, yf), (xl, yf + c), (xl, yc), (xr, yc), (xr, yf + c2), (xr + c2, yf), (hx - c2, yf), (hx, yf + c2)]
+    rt = 0.06
+    top = [(SC_H - rt + rt * math.sin(math.radians(a)), 0, hx - rt * (1 - math.cos(math.radians(a)))) for a in (30, 60, 80)]
+    column(mb, plan, [(0.07, 0, hx), (SC_H - rt, 0, hx)] + top + [(SC_H, 0.006, hx - rt)], "black")
+    # lid over the channel above the shell: a thin black edge from the front (photo), no white rim seen from behind
+    bevel_box(mb, (-(hx - rt), yf + 0.006, zt + 0.004), (hx - rt, yc + 0.004, SC_H - 0.002), 0.004, "black")
+    # white shell: convex across its width, U-shaped bottom, rounded top corners; the TESLA band maps to SLOGO
+    lz0, lz1 = SC_LOGO_Z
     rows = [(zb + rv * (1 - math.cos(a)), r * math.sin(a)) for a in (math.radians(d) for d in range(0, 90, 10))]
-    rows += [(zb + rv + (zt - rc - zb - rv) * k / 4, r) for k in range(4)]
+    rows += [(z, r) for z in sorted({zb + rv + (zt - rc - zb - rv) * k / 5 for k in range(5)} | {lz0, lz1})]
     rows += [(zt - rc + rc * math.sin(a), r - rc + rc * math.cos(a)) for a in (math.radians(d) for d in range(0, 91, 30))]
     cols = [-1 + 2 * j / 12 for j in range(13)]
 
-    def yf(x):
-        return y_front + bulge * (x / r) ** 2
+    def yshell(x):
+        return y_front + bulge * ((x - xc) / r) ** 2
 
-    def front_uv(x, z):
-        return rect_uv(SPANEL, TEX, 0.5 + x / (2 * r), (z - zb) / (zt - zb))
+    def front_uv(x, z, logo):
+        if logo:
+            return rect_uv(SLOGO, TEX, 0.5 + (x - xc) / (2 * r), (z - lz0) / (lz1 - lz0))
+        return rect_uv(SPANEL, TEX, 0.5 + (x - xc) / (2 * r), (z - zb) / (zt - zb))
 
-    grid = [[(u * hw, z) for u in cols] for z, hw in rows]
+    grid = [[(xc + u * hw, z) for u in cols] for z, hw in rows]
     for lo, hi in zip(grid, grid[1:]):
+        logo = lo[0][1] >= lz0 - 1e-6 and hi[0][1] <= lz1 + 1e-6
         for j in range(len(cols) - 1):
             xz = [lo[j], lo[j + 1], hi[j + 1], hi[j]]          # counter-clockwise seen from the front (-Y)
-            mb.face([(x, yf(x), z) for x, z in xz], [front_uv(x, z) for x, z in xz])
+            mb.face([(x, yshell(x), z) for x, z in xz], [front_uv(x, z, logo) for x, z in xz])
     rim = [row[-1] for row in grid] + grid[-1][-2:0:-1] + [row[0] for row in reversed(grid)]
     for (ax, az), (bx, bz) in zip(rim, rim[1:]):
         if (ax, az) != (bx, bz):
-            mb.patch([(ax, yf(ax), az), (ax, ys, az), (bx, ys, bz), (bx, yf(bx), bz)], ssw("white"))
-    # holster on the spine (the post's left), about 60 % up like the photo; empty, the handle is drawn on the car
-    cuboid(mb, (-0.455, y_front - 0.04, 1.10), (-0.375, y_front + 0.04, 1.30), ssw("holster"))
-    cuboid(mb, (-0.445, y_front - 0.07, 1.10), (-0.385, y_front - 0.04, 1.18), ssw("holster"))
-    # car cable: boot on the east frame near the top, down the east edge, onto the floor at SC_EXIT heading south
+            mb.patch([(ax, yshell(ax), az), (ax, yc + 0.01, az), (bx, yc + 0.01, bz), (bx, yshell(bx), bz)], "white")
+    # cooling ribs down both sides (official close-up): quads just off the side faces, u = baked light, v = rib stripes
+    g0, g1 = 0.205, 0.465
+    for sx in (-1, 1):
+        x, n = sx * (hx + 0.0008), Vector((sx, 0, 0))
+        for z0, z1 in ((0.10, 0.30), (0.30, 1.0), (1.0, 1.86)):
+            pts = [(x, g0, z0), (x, g1, z0), (x, g1, z1), (x, g0, z1)][::sx]
+            mb.face(pts, [grille_uv(sc_shade(p, n), (p[1] - g0) / (g1 - g0)) for p in pts])
+    # holster on the spine's west side at the front (official close-up): a wedge sloping down and out that the handle's
+    # head sits under, a small rest below it
+    prism(mb, [(-hx + 0.003, 1.235), (-hx + 0.003, 1.45), (-0.49, 1.33), (-0.51, 1.31), (-0.512, 1.27), (-0.50, 1.255)],
+          0.16, 0.33, lambda x, z: ramp_uv("holster", sc_shade((x, 0, z), Vector((0, -1, 0)))), lambda *a: "holster",
+          "holster")
+    bevel_box(mb, (-0.478, 0.26, 0.95), (-hx + 0.003, 0.32, 1.02), 0.01, "holster")
+    # car cable out of a boot at the top of the east frame, down the east edge
     ex, ey = SC_EXIT
     rr = R_CABLE
-    tube(mb, [Vector((0.42, 0.31, 1.84)), Vector((0.465, 0.29, 1.80))], rr * 1.5, ssw("holster"), sides=10)
-    path = catmull([(0.45, 0.30, 1.82), (0.468, 0.26, 1.70), (0.472, 0.21, 1.35), (0.468, 0.18, 0.80),
-                    (0.458, 0.15, 0.35), (0.44, 0.11, 0.10), (ex + 0.01, ey + 0.035, rr + 0.004), (ex, ey, rr)], 5)
-    tube(mb, path, rr, ssw("rubber"))
-    return mb.build("MinidoracatTesla_Supercharger", image)
+    tube(mb, [Vector((0.42, 0.31, 1.84)), Vector((0.468, 0.29, 1.80))], rr * 1.5, "holster", sides=10)
+    down = [(0.45, 0.30, 1.82), (0.474, 0.26, 1.70), (0.478, 0.21, 1.35), (0.474, 0.18, 0.80)]
+    if not idle:   # onto the floor at SC_EXIT heading south
+        path = down + [(0.462, 0.15, 0.35), (0.44, 0.11, 0.10), (ex + 0.01, ey + 0.035, rr + 0.004), (ex, ey, rr)]
+        tube(mb, catmull(path, 5), rr, "rubber")
+        return mb.build("MinidoracatTesla_Supercharger", image)
+    # idle: loop in front of the shell's bottom, up the west side into the handle hanging in the holster
+    gx, gy = -0.488, 0.235
+    path = down + [(0.45, 0.12, 0.38), (0.30, 0.06, 0.15), (0.0, 0.045, 0.10), (-0.30, 0.06, 0.16), (-0.47, 0.13, 0.42),
+                   (-0.495, 0.20, 0.75), (gx, gy, 0.97)]
+    tube(mb, catmull(path, 5), rr, "rubber")
+    lofted(mb, squircle(0.022, 0.048, 16), [(0.96, 0.55), (1.0, 0.85), (1.06, 1.0), (1.22, 1.0), (1.30, 0.8)], (gx, gy),
+           lambda p: ramp_uv("holster", 0.6), "holster", 9)
+    return mb.build("MinidoracatTesla_SuperchargerIdle", image)
 
 
 # ---------------------------------------------------------------- scene, export, render
@@ -605,9 +705,12 @@ def main():
     if "mc" in ONLY:
         built["mc"] = mobile_connector(bpy.data.images.load(str(EXP / "MinidoracatTesla_MobileConnector.png")))
     if "sc" in ONLY:
-        built["sc"] = supercharger(bpy.data.images.load(str(EXP / "MinidoracatTesla_Supercharger.png")))
+        sc_img = bpy.data.images.load(str(EXP / "MinidoracatTesla_Supercharger.png"))
+        built["sc"] = supercharger(sc_img)
+        built["sc_idle"] = supercharger(sc_img, idle=True)   # preview only: build.py ships the plugged-in mesh
     for ob in built.values():
-        REPORT.append(f"{ob.name} bbox {bbox(ob)} verts {len(ob.data.vertices)}")
+        tris = sum(len(p.vertices) - 2 for p in ob.data.polygons)
+        REPORT.append(f"{ob.name} bbox {bbox(ob)} verts {len(ob.data.vertices)} tris {tris}")
         export_glb(ob, EXP / f"{ob.name}.glb")
     # icons from the freshly built meshes (Facing S: front toward -Y)
     if "wc" in ONLY:
@@ -641,6 +744,12 @@ def main():
             place_cable(name, ex, y)
         aim((0.2, -0.8, 0.6), 200, 200, 400, 400, 1.3)
         render(PREV / "sc_cable.png")
+        # the official idle look (handle in the holster, cable looped in front), for the user to compare
+        reset()
+        import_glb(EXP / "MinidoracatTesla_SuperchargerIdle.glb", pz_matrix((0, 0, 0), XFORM["S"]))
+        floor_and_wall()
+        aim((0, 0, 0.8), 160, 160, 320, 320, 1.2)
+        render(PREV / "sc_idle_S_floor.png")
     if "wc" in ONLY or "cable" in ONLY:
         # read back the cable fbx: sizes in tiles, one assembled preview (charger S + hang + 2 floor + plug)
         reset()

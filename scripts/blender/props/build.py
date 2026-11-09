@@ -143,9 +143,14 @@ CSW = {"rubber": ((0, 0), (40, 41, 44)), "handle": ((32, 0), (24, 24, 26)), "rin
 MTOP = (8, 8, 120, 248)            # Mobile Connector 256 px atlas: box top
 MSW = {"black": ((136, 8), (30, 31, 34)), "rubber": ((136, 68), (36, 37, 40)), "metal": ((196, 8), (176, 178, 182)),
        "adapter": ((196, 68), (26, 26, 28))}
-SPANEL = (8, 2, 120, 254)          # Supercharger 256 px atlas: shell front, x -0.40..0.40, z 0.16 (U tip)..1.90
-SSW = {"white": ((136, 8), (226, 228, 228)), "black": ((196, 8), (26, 27, 30)), "base": ((136, 68), (16, 16, 18)),
-       "rubber": ((196, 68), (34, 35, 38)), "holster": ((136, 128), (12, 12, 14))}
+SPANEL = (4, 2, 124, 196)          # Supercharger 256 px atlas: shell front (props_blender SC_SHELL, light baked here)
+SLOGO = (4, 204, 252, 252)         # the shell band SC_LOGO_Z with the red TESLA, at twice SPANEL's texel density
+# ramps 120 x 12 px, dark (u 0) .. lit (u 1); props_blender.sc_shade picks u per vertex (baked light). Daylight crushes
+# the darks (charger-art.md): from 12 the east side came out 16 and the top 40 (tesla-scpolish-1109-art-a), so from 24.
+SSW = {"black": ((132, 4), ((24, 24, 27), (140, 142, 148))), "base": ((132, 20), ((16, 16, 18), (104, 105, 110))),
+       "holster": ((132, 36), ((28, 28, 31), (156, 158, 164))), "rubber": ((132, 52), ((22, 22, 24), (110, 112, 116))),
+       "white": ((132, 68), ((112, 114, 116), (230, 231, 231)))}
+SGRILLE = (132, 88, 252, 136)      # side ribs: the "black" ramp across, 12 ribs (4 px: 2 lit, 2 groove) down
 
 
 def wordmark(d, x0: float, y0: float, w: float, h: float, fill) -> None:
@@ -220,21 +225,77 @@ def textures() -> None:
         sy = y0 + ph * (0.54 + 0.065 * i)
         d.rounded_rectangle((cx - 5 * k, sy, cx + 5 * k, sy + ph * 0.052), radius=2 * k, fill=(80, 235, 110))
     m.resize((256, 256), Image.LANCZOS).save(exp / f"{MC_MODEL}.png", optimize=True)
+    sc_texture(exp, k)
+
+
+# TESLA as drawn on the V4 shell (official photo v4-official.jpg): per letter (width, polygons) in units of the letter
+# height, y down from the letter's top; letters 1.05 h apart. Bars end in a slant like the photo's. No font file.
+TESLA = (
+    (1.20, [[(0, 0), (1.2, 0), (1.14, 0.19), (0.06, 0.19)], [(0.51, 0.19), (0.69, 0.19), (0.69, 1), (0.51, 1)]]),
+    (1.05, [[(0, y), (1.05, y), (1.0, y + 0.19), (0.05, y + 0.19)] for y in (0, 0.405, 0.81)]),
+    (1.05, [[(0, 0), (1.05, 0), (1.05, 0.19), (0.19, 0.19), (0.19, 0.405), (1.05, 0.405), (1.05, 1), (-0.04, 1),
+             (0, 0.81), (0.86, 0.81), (0.86, 0.595), (0, 0.595)]]),
+    (0.95, [[(0, 0), (0.19, 0), (0.19, 0.81), (0.95, 0.81), (0.91, 1), (0, 1)]]),
+    (1.05, [[(0, 0), (1.05, 0), (1.0, 0.19), (0.05, 0.19)],
+            [(0, 0.39), (1.05, 0.39), (1.05, 1), (0.86, 1), (0.86, 0.58), (0.19, 0.58), (0.19, 1), (0, 1)]]),
+)
+TESLA_GAP, TESLA_H = 1.05, 0.05     # letter gap (letter heights) and letter height (m): 9.5 h = 58 % of the shell
+
+
+def sc_texture(exp: Path, k: int) -> None:
+    """Supercharger atlas: shell (SPANEL) and its TESLA band (SLOGO) with the light baked in (convex shell lit from
+    SC_LIGHT, greyer toward its outline, a soft reflection left of centre); ramps for every other face."""
+    from PIL import ImageDraw
+    b = blender_consts()
+    xc, r, zb, zt, rv, rc, bulge = b["SC_SHELL"]
+    lz0, lz1 = b["SC_LOGO_Z"]
+    lx, ly, lz = b["SC_LIGHT"]
+    ln = math.sqrt(lx * lx + ly * ly + lz * lz)
+
+    def shell(x: float, z: float) -> float:
+        u = (x - xc) / r
+        slope = 2 * bulge * u / r                           # shell normal (slope, -1, 0) / |.|
+        diff = max(0.0, (slope * lx - ly) / math.sqrt(slope * slope + 1) / ln)
+        d = min(r - abs(x - xc), zt - z)
+        if z < zb + rv:
+            d = min(d, (1 - math.hypot(u, (z - zb - rv) / rv)) * min(r, rv))
+        # in game the brights go up (texel 221 -> 241, art-a): the flanks and the outline need to be well below the centre
+        v = (120 + 125 * diff) * (0.80 + 0.20 * min(1.0, max(0.0, d) / 0.10) ** 0.6)
+        v += 7 * (z - zb) / (zt - zb) - 5 + 9 * math.exp(-((u + 0.35) / 0.12) ** 2)
+        return min(234.0, v)
+
     s = Image.new("RGB", (256 * k, 256 * k), (26, 27, 30))
     d = ImageDraw.Draw(s)
-    for (x, y), rgb in SSW.values():
-        d.rectangle((x * k, y * k, (x + 56) * k, (y + 56) * k), fill=rgb)
-    x0, y0, x1, y1 = (v * k for v in SPANEL)
-    cx, pw, ph = (x0 + x1) / 2, x1 - x0, y1 - y0
-    for px in range(x0 - 2 * k, x1 + 2 * k, k):  # pearl white shell: darker toward the curved flanks, a soft highlight
-        e = (px - cx) / (pw / 2)
-        g = 244 - 26 * e * e + 6 * math.exp(-((e + 0.25) / 0.18) ** 2)
-        for py in range(y0 - 2 * k, y1 + 2 * k, k):
-            t = (py - y0) / ph                     # 0 top .. 1 bottom (U tip)
-            v = min(255.0, g - 8 * t)
-            d.rectangle((px, py, px + k - 1, py + k - 1), fill=(round(v - 2), round(v - 1), round(v)))
-    # red TESLA across the upper shell (official photo: ~45 % of the width, about 1.68 m up)
-    wordmark(d, cx - pw * 0.24, y0 + ph * 0.115, pw * 0.48, ph * 0.026, (196, 32, 42))
+
+    def ramp(lo, hi, px: int, x: int, width: int):
+        t = min(1.0, max(0.0, (px / k + 0.5 - x - 2) / (width - 4)))
+        return [a + (c - a) * t for a, c in zip(lo, hi)]
+
+    for (x, y), (lo, hi) in SSW.values():
+        for px in range(x * k, (x + 120) * k, k):
+            d.rectangle((px, y * k, px + k - 1, (y + 12) * k - 1), fill=tuple(round(c) for c in ramp(lo, hi, px, x, 120)))
+    x0, y0, x1, y1 = SGRILLE
+    for py in range((y0 - 2) * k, (y1 + 2) * k, k):
+        f = 1.0 if (py // k - y0) % 4 < 2 else 0.55       # rib face, groove
+        for px in range(x0 * k, x1 * k, k):
+            rgb = ramp(*SSW["black"][1], px, x0, x1 - x0)
+            d.rectangle((px, py, px + k - 1, py + k - 1), fill=tuple(round(c * f) for c in rgb))
+    for rect, z0, z1 in ((SPANEL, zb, zt), (SLOGO, lz0, lz1)):
+        x0, y0, x1, y1 = rect
+        for py in range((y0 - 2) * k, (y1 + 2) * k, k):
+            z = z0 + (y1 - (py / k + 0.5)) / (y1 - y0) * (z1 - z0)
+            for px in range((x0 - 2) * k, (x1 + 2) * k, k):
+                g = shell(xc - r + (px / k + 0.5 - x0) / (x1 - x0) * 2 * r, z)
+                d.rectangle((px, py, px + k - 1, py + k - 1), fill=(round(g - 2), round(g - 1), round(g)))
+    x0, y0, x1, y1 = SLOGO
+    h = TESLA_H
+    left = xc - h * (sum(w for w, _ in TESLA) + TESLA_GAP * (len(TESLA) - 1)) / 2
+    top = (lz0 + lz1) / 2 + h / 2
+    for w, polys in TESLA:
+        for poly in polys:
+            d.polygon([(k * (x0 + (left + px * h - xc + r) / (2 * r) * (x1 - x0)),
+                        k * (y1 - (top - py * h - lz0) / (lz1 - lz0) * (y1 - y0))) for px, py in poly], fill=(196, 32, 42))
+        left += (w + TESLA_GAP) * h
     s.resize((256, 256), Image.LANCZOS).save(exp / f"{SC_MODEL}.png", optimize=True)
 
 
@@ -380,8 +441,8 @@ def check_geometry() -> None:
     """One set of numbers: props_blender.py meshes = build.py atlas/spriteModels = Cable.lua = Chargers.lua sprites and
     cableExit = Core.lua T.Specs plug."""
     b = blender_consts()
-    assert b["XFORM"] == XFORM and b["PANEL"] == PANEL and b["MTOP"] == MTOP and b["SPANEL"] == SPANEL, \
-        "props_blender.py XFORM/PANEL/MTOP/SPANEL differ"
+    assert b["XFORM"] == XFORM and b["PANEL"] == PANEL and b["MTOP"] == MTOP and b["SPANEL"] == SPANEL \
+        and b["SLOGO"] == SLOGO and b["SGRILLE"] == SGRILLE, "props_blender.py XFORM or atlas rects differ"
     assert b["MSW"] == {k: xy for k, (xy, _) in MSW.items()}, "Mobile Connector atlas"
     assert b["SSW"] == {k: xy for k, (xy, _) in SSW.items()}, "Supercharger atlas"
     assert b["SW"] == {k: xy for k, (xy, _) in SW.items()} and b["CSW"] == {k: xy for k, (xy, _) in CSW.items()}, "atlas"
