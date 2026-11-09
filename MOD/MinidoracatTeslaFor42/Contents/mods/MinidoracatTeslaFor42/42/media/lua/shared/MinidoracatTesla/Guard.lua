@@ -1,8 +1,11 @@
--- Command guard: vanilla vehicle/setContainerContentAmount has no permission check (VehicleCommands.lua:76-88),
--- so any client could set a Tesla's charge. Registered from shared so it runs before every server/ handler
--- (dedicated server loads all shared before server, GameServer.java:1469-1471; Event.trigger keeps Add order and
--- hands the same args table to every callback, Event.java:52-63). Same approach as VehicleManager
--- shared/MinidoracatVehicleManager_CommandGate.lua:266-279,331-335. Admins pass.
+-- Command guard: in 42.21 vanilla vehicle/setContainerContentAmount had no permission check (VehicleCommands.lua:76-88
+-- then), so any client could set a Tesla's charge. 42.22.2 checks UseMechanicsCheat itself (VehicleCommands.lua:44-56),
+-- which only the admin role has (Roles.java:465-469): every call this guard blocks, vanilla now refuses too. Kept as
+-- a second line; harmless (a role with ManipulateVehicle but no UseMechanicsCheat passes here and stops there).
+-- Registered from shared so it runs before every server/ handler (dedicated server loads all shared before server,
+-- GameServer.java:1469-1471; Event.trigger keeps Add order and hands the same args table to every callback,
+-- Event.java:52-63). Same approach as VehicleManager shared/MinidoracatVehicleManager_CommandGate.lua:266-279,331-335.
+-- Admins pass.
 require "MinidoracatTesla/Core"
 
 local T = MinidoracatTesla
