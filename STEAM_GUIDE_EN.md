@@ -160,6 +160,7 @@ A charger that works on the floor, no wall needed; slower than the Wall Connecto
 [*] [b]Charging speed[/b]: 11.5 kW at the Wall Connector, 7.6 kW at the Mobile Connector; empty to 90% takes about 6 and 9 in-game hours; the sandbox option Charging speed multiplier changes it. A Supercharger is far faster, see V4 Supercharger.
 [*] [b]Time skips count[/b]: charge is settled by the hours that passed, so sleeping or fast-forwarding loses nothing.
 [*] [b]Other players see the cable[/b]: it hangs from the Wall Connector or the Supercharger to the ground (it leaves the Mobile Connector right on the ground) and runs to the car's charge port.
+[*] [b]The holster[/b]: with no car plugged in, the Wall Connector's and the Supercharger's connector sits in its holster with the cable hung up; once a car is plugged in, the holster is empty. Other players see the same.
 [/list]
 {{img:04-charging-en.jpg}}
 [h3]The charge card[/h3]
@@ -180,6 +181,7 @@ A charger that works on the floor, no wall needed; slower than the Wall Connecto
 [*] [b]Power[/b]: the same rule as a gas pump: outdoors on the grid it just works. After the power cut it charges at full speed within a generator's range or with a running, fuelled generator within 2 tiles (same floor); when the server turns off Generator Working in Exterior, only a generator within 2 tiles counts. With no power, right-clicking it shows a grey line saying so.
 [*] [b]Fuel[/b]: each kWh burns the same fuel as on any charger, so a full charge still takes about one tank; but at this power it burns fuel much faster per hour: at 250 kW a full vanilla generator runs dry in about 19 minutes.
 [*] [b]Take one home[/b]: picking one up or placing it takes Electrical 6 and a screwdriver; it weighs as much as a vanilla generator (40) and takes both hands, so drop other gear if you cannot pick it up. Once placed, the power rule above applies. A gas station's posts belong to nobody, so the car's key rules alone decide who may plug in or unplug; one you place yourself is yours (see the FAQ Someone else's car is plugged into my charger. What now?).
+[*] [b]Destroy one[/b]: a vanilla sledgehammer's Destroy takes it down at any Electrical level; it is gone for good and drops nothing, and a car plugged into it is unplugged first. A server that allows sledgehammers only in safehouses applies that rule here too.
 [*] [b]Solid[/b]: you cannot walk through it, and zombies do not break it.
 [/list]
 === 🧰 Powershare and the bed outlets (Cybertruck)
