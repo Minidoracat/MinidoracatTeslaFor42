@@ -1,5 +1,5 @@
 -- 專用伺服器補學本 MOD 配方（Recipes.lua）：伺服器開始製作時補學、電工升級時補學並送配方清單；
--- 只認三條配方名稱、等級不夠不學、其他技能升級不送、單機與客戶端不包。
+-- 只認四條配方名稱、等級不夠不學、其他技能升級不送、單機與客戶端不包。
 local check = H.check
 local SRC = "MOD/MinidoracatTeslaFor42/Contents/mods/MinidoracatTeslaFor42/42/media/lua/server/MinidoracatTesla/Recipes.lua"
 local GLOBALS = { "Events", "ISHandcraftAction", "Perks", "getScriptManager", "sendSyncPlayerFields" }
@@ -27,7 +27,7 @@ local function recipe(name, need)
 end
 local byName = {}
 for _, r in ipairs({ recipe("MinidoracatTesla_MakeWallConnector", 3), recipe("MinidoracatTesla_MakeMobileConnector", 2),
-    recipe("MinidoracatTesla_MakeDriveUnitParts", 4) }) do byName[r.name] = r end
+    recipe("MinidoracatTesla_MakeDriveUnitParts", 4), recipe("MinidoracatTesla_MakeSupercharger", 6) }) do byName[r.name] = r end
 getScriptManager = function() return { getCraftRecipe = function(_, n) return byName[n] end } end
 local syncs = {}
 sendSyncPlayerFields = function(p, flags) syncs[#syncs + 1] = { p = p, flags = flags } end
@@ -35,7 +35,8 @@ local function character(elec)
     return { elec = elec, known = {}, isRecipeActuallyKnown = function(self, r) return self.known[r:getName()] == true end }
 end
 local function start(c, r) return ISHandcraftAction.serverStart({ character = c, craftRecipe = r }) end
-local wall, mobile = byName.MinidoracatTesla_MakeWallConnector, byName.MinidoracatTesla_MakeMobileConnector
+local wall, mobile, sc = byName.MinidoracatTesla_MakeWallConnector, byName.MinidoracatTesla_MakeMobileConnector,
+    byName.MinidoracatTesla_MakeSupercharger
 
 H.section("recipes: the server learns this MOD's recipes its client already knows (dedicated server)")
 H.stub("Entity/TimedActions/ISHandcraftAction")
@@ -50,16 +51,22 @@ check(#H.logLines == logs + 1 and H.logLines[#H.logLines]:find("learned on the s
 local low = character(1)
 start(low, wall)
 check(starts == 2 and not low.known[wall.name], "level too low: nothing learned, vanilla still runs (and refuses)")
+local five = character(5)
+start(five, sc)
+check(starts == 3 and not five.known[sc.name], "Supercharger at Electricity 5: nothing learned (it needs 6)")
+local six = character(6)
+start(six, sc)
+check(starts == 4 and six.known[sc.name] == true, "... at 6: learned, then vanilla's serverStart")
 local n = asks
 start(c, wall)
-check(asks == n and starts == 3, "already learned: no learning asked")
-local alike = recipe("MinidoracatTesla_MakeSomethingElse", 0) -- named like ours, not one of the three
+check(asks == n and starts == 5, "already learned: no learning asked")
+local alike = recipe("MinidoracatTesla_MakeSomethingElse", 0) -- named like ours, not one of the four
 local other = recipe("Base.MakeSpearCrafted", 0)
 start(c, alike)
 start(c, other)
-check(asks == n and not c.known[alike.name] and not c.known[other.name] and starts == 5,
+check(asks == n and not c.known[alike.name] and not c.known[other.name] and starts == 7,
     "another recipe, even one named like ours: never learned here")
-check(start(c, nil) == RESULT and starts == 6, "no recipe: straight to vanilla")
+check(start(c, nil) == RESULT and starts == 8, "no recipe: straight to vanilla")
 
 local p = character(2)
 fire("LevelPerk", p, Perks.Woodwork)

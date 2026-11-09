@@ -114,7 +114,8 @@ module Base
         Tooltip = Tooltip_MinidoracatTesla_MobileConnector,
     }
 
-    /* V4 Supercharger post: moveable, only spawned by gas stations (SuperchargerSpawn.lua, no recipe); Electrical 6 and */
+    /* V4 Supercharger post: moveable, spawned by gas stations (SuperchargerSpawn.lua) or crafted at Electrical 6 */
+    /* (MinidoracatTesla_recipes.txt MakeSupercharger); Electrical 6 and */
     /* a screwdriver to pick up and place (tile PickUpLevel / PickUpTool). 90 kg on Tesla's datasheet: Weight 40, the */
     /* generator's and the anvil's (generated/items/normal.txt:4800-4815, moveable.txt), whose tags and both hands it */
     /* shares. Not more: picking up asks hasRoomFor(the item's weight) against the main inventory's 50 */

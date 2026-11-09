@@ -1,5 +1,6 @@
 {
     "MinidoracatTesla_MakeWallConnector": "Собрать Tesla Wall Connector",
+    "MinidoracatTesla_MakeSupercharger": "Собрать Суперчарджер Tesla V4",
     "MinidoracatTesla_MakeMobileConnector": "Собрать Tesla Mobile Connector",
     "MinidoracatTesla_MakeDriveUnitParts": "Собрать детали блока привода"
 }

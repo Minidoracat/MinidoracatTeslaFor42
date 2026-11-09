@@ -15,8 +15,9 @@ require "Entity/TimedActions/ISHandcraftAction"
 require "MinidoracatTesla/Core"
 
 local T = MinidoracatTesla
-local RECIPES = { "MinidoracatTesla_MakeWallConnector", "MinidoracatTesla_MakeMobileConnector", "MinidoracatTesla_MakeDriveUnitParts" }
-local OURS = {} -- exactly these three: a name prefix would also take another MOD's recipe named alike
+local RECIPES = { "MinidoracatTesla_MakeWallConnector", "MinidoracatTesla_MakeMobileConnector", "MinidoracatTesla_MakeDriveUnitParts",
+    "MinidoracatTesla_MakeSupercharger" }
+local OURS = {} -- exactly these four: a name prefix would also take another MOD's recipe named alike
 for _, name in ipairs(RECIPES) do OURS[name] = true end
 
 -- the server half of a craft (NetTimedAction.java:95-104 -> ISHandcraftAction.lua:67-83), before vanilla rebuilds the

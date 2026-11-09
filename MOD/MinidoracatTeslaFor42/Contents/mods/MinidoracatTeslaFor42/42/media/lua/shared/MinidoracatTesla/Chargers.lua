@@ -48,8 +48,8 @@ T.Chargers = {
     -- Tesla V4 Supercharger post on a V3 cabinet (Tesla Supercharger datasheet: 325 kW, 90 kg, 3 m cable). DC: each
     -- car charges on the DC curve up to its own peak (Core.lua B.chargeKwAt, Specs dcKw). Power as a gas pump
     -- (ItemContainer.java:2347-2349: the grid outdoors, no room needed; a generator through haveElectricity), or
-    -- straight into a running generator genTiles away like the Mobile Connector. Spawned by gas stations only
-    -- (SuperchargerSpawn.lua).
+    -- straight into a running generator genTiles away like the Mobile Connector. Spawned by gas stations
+    -- (SuperchargerSpawn.lua) or crafted at Electrical 6 (MinidoracatTesla_recipes.txt MakeSupercharger).
     Supercharger = {
         kind = "Supercharger",
         kw = 325,

@@ -26,6 +26,35 @@ module Base
         }
     }
 
+    /* V4 Supercharger: Electricity 6, the same tools, materials three times the Wall Connector's (user 2026-11-09, */
+    /* decisions.md); time and xp scaled the same way. Same format as above. The 40-weight post goes to the */
+    /* inventory, or the floor when that is full (ISHandcraftAction.lua:230 -> Actions.addOrDropItem, */
+    /* ActionManager.lua:4-24). */
+    craftRecipe MinidoracatTesla_MakeSupercharger
+    {
+        timedAction = MakingElectrical,
+        time = 1200,
+        NeedToBeLearn = true,
+        SkillRequired = Electricity:6,
+        Tags = AnySurfaceCraft,
+        category = Electrical,
+        AutoLearnAny = Electricity:6,
+        xpAward = Electricity:75,
+        inputs
+        {
+            item 1 tags[base:screwdriver] mode:keep flags[Prop1],
+            item 1 tags[base:pliers] mode:keep flags[MayDegradeVeryLight],
+            item 12 [Base.ElectricWire],
+            item 9 [Base.ElectronicsScrap],
+            item 6 [Base.SmallSheetMetal],
+            item 12 [Base.Screws],
+        }
+        outputs
+        {
+            item 1 Base.MinidoracatTesla_Supercharger,
+        }
+    }
+
     /* Mobile Connector: rework vanilla's car battery charger, Electricity 2 (decisions.md 2026-10-28): its */
     /* transformer and case, wire for the 6 m cable, scrap for the control board. Same format as above. */
     craftRecipe MinidoracatTesla_MakeMobileConnector
