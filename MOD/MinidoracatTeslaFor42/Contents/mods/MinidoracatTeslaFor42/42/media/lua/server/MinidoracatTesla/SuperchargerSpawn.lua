@@ -536,7 +536,10 @@ end
 
 local list = {}
 for name in pairs(S.PUMPS) do list[#list + 1] = name end
-MapObjects.OnLoadWithSprite(list, S.onPump, 5) -- MOCampfire.lua pattern
+-- priority 41, not vanilla's 5 (every MapObjects/MO*.lua uses 5): a second callback on the same sprite with the same
+-- priority replaces the first (MapObjects.java:148-152), so another MOD's pump hook copying 5 would silently drop one
+-- of the two. Higher runs first: the station is recorded before anything else touches the pump.
+MapObjects.OnLoadWithSprite(list, S.onPump, 41)
 -- a station still waiting when the game was saved (GlobalModData.init, IsoWorld.java:2009)
 Events.OnInitGlobalModData.Add(function()
     for _, s in ipairs(md().stations) do
