@@ -12,7 +12,8 @@
 -- in global ModData (server save) and the posts go down on a later EveryOneMinute, once the chunks around it are
 -- loaded and the charger system is up. The record also dedupes: pumps within STATION_R of a known station are the
 -- same station, whichever chunk or session they load in; a done station stays done (posts picked up are not put
--- back). On a server no post or slot goes in a safehouse (S.cellAt's safe).
+-- back), but for one an older version's rules left without posts (S.RULES). On a server no post or slot goes in a
+-- safehouse (S.cellAt's safe).
 if isClient() then return end
 require "MinidoracatTesla/Chargers"
 require "Moveables/ISMoveableSpriteProps"
@@ -327,15 +328,23 @@ end
 -- centre is within width / 2 of it (vanilla: a polyline zone, the line moved half a square when the width is odd and
 -- offset by width / 2 with mitred joins and butt ends, Zone.java:604-643; round here: the same squares but for a
 -- corner square at a bend or a dead end); a railroad is no road.
--- nextLine() -> the next line of a streets.xml or nil (as vanilla writes the file, WorldMapStreetsXML.java:30-55: a
--- tag a line, name before width, x before y). Adds every piece to out: { x, y, w, h } the bounding box of its
--- squares, and for a diagonal one ax, ay (where it starts), dx, dy, len2, r2 (width / 2 squared).
+-- nextLine() -> the next line of a streets.xml or nil (a tag a line, as vanilla writes the file,
+-- WorldMapStreetsXML.java:30-55; attributes in any order). Adds every piece to out: { x, y, w, h } the bounding box
+-- of its squares, and for a diagonal one ax, ay (where it starts), dx, dy, len2, r2 (width / 2 squared). Returns
+-- true when the file is one this reads and it got to its closing tag: a Java exception inside readLine reaches Lua
+-- as nil (MethodCaller.java:33-43 logs and drops it), the same as the end of the file; a line with two tags is
+-- another layout (only its first point would be taken).
+local function int(v) return v < 0 and math.ceil(v) or math.floor(v) end -- Java's (int): towards zero
 function S.streetPieces(nextLine, out)
     local width, px, py -- width nil: a railroad, or no street yet
+    local whole, flat = false, false
     for line in nextLine do
-        local a, b = line:match('<point x="([^"]+)" y="([^"]+)"')
+        local lt = line:find("<", 1, true)
+        if lt and line:find("<", lt + 1, true) then flat = true end
+        local a, b = line:match('<point x="([^"]*)" y="([^"]*)"')
+        if not a and line:find("<point", 1, true) then a, b = line:match('%sx="([^"]*)"'), line:match('%sy="([^"]*)"') end
         if a then
-            local x, y = math.floor(tonumber(a) or 0), math.floor(tonumber(b) or 0)
+            local x, y = int(tonumber(a) or 0), int(tonumber(b) or 0)
             if px and width then
                 if px == x or py == y then
                     local half = math.floor(width / 2)
@@ -350,17 +359,16 @@ function S.streetPieces(nextLine, out)
                 end
             end
             px, py = x, y
-        else
-            local name = line:match('<street name="([^"]*)"')
-            if name then
-                name = name:lower()
-                width = not name:find("railroad", 1, true) and not name:find("branch line", 1, true)
-                    and (tonumber(line:match('width="(%d+)"')) or 5) or nil
-                px = nil
-            end
+        elseif line:find("<street[%s>]") then
+            local name = (line:match('%sname="([^"]*)"') or ""):lower()
+            width = not name:find("railroad", 1, true) and not name:find("branch line", 1, true)
+                and (tonumber(line:match('%swidth="(%d+)"')) or 5) or nil
+            px = nil
+        elseif line:find("</streets>", 1, true) or line:find("<streets[^>]*/>") then -- or a file with no street
+            whole = true
         end
     end
-    return out
+    return whole and not flat
 end
 
 -- is square x, y on one of the pieces
@@ -378,21 +386,26 @@ function S.onRoad(pieces, x, y)
     return false
 end
 
--- the pieces touching x0..x1, y0..y1. The streets are read once a session, the first time a station is planned:
--- getGameFilesInput gives a DataInputStream on a game or mod file (LuaManager.java:6819-6842), no buffer, so
--- readLine takes the file a byte a call (about 0.3 s for vanilla's 300 KB). A streets.xml that is there and cannot
--- be read is an error: no plan without the roads.
+-- the pieces touching x0..x1, y0..y1, or nil when the streets could not be read. The streets are read once a
+-- session, the first time a station is planned: getGameFilesInput gives a DataInputStream on a game or mod file
+-- (LuaManager.java:6819-6842), no buffer, so readLine takes the file a byte a call (0.3-0.4 s for vanilla's 300 KB).
+-- A streets.xml that is there and does not read to its end (S.streets false): no station is planned this session,
+-- rather than posts put down without knowing the roads; the next session reads again.
 function S.roads(x0, y0, x1, y1)
-    if not S.streets then
+    if S.streets == nil then
         local t0, list, files = getTimestampMs(), {}, 0
         local dirs = getLotDirectories()
         for i = 0, dirs:size() - 1 do
             local path = "media/maps/" .. dirs:get(i) .. "/streets.xml"
             if fileExists(path) then
                 local input = getGameFilesInput(path)
-                if not input then error("supercharger spawn: cannot read " .. path) end
-                S.streetPieces(function() return input:readLine() end, list)
+                local whole = input and S.streetPieces(function() return input:readLine() end, list)
                 endFileInput()
+                if not whole then
+                    S.streets = false
+                    T.log("supercharger spawn: " .. path .. " did not read to its end, no station is planned this session")
+                    return nil
+                end
                 files = files + 1
             end
         end
@@ -400,6 +413,7 @@ function S.roads(x0, y0, x1, y1)
         T.log("supercharger spawn: " .. #list .. " street pieces from " .. files .. " streets.xml in "
             .. (getTimestampMs() - t0) .. " ms")
     end
+    if not S.streets then return nil end
     local out = {}
     for _, p in ipairs(S.streets) do
         if p.x <= x1 and p.x + p.w > x0 and p.y <= y1 and p.y + p.h > y0 then out[#out + 1] = p end
@@ -528,18 +542,19 @@ function S.build(s)
         end
         return false, scan ~= nil
     end
+    local had = existing(sys, bx0, by0, bx1, by1)
+    local ta = getTimestampMs()
+    local nav = had == 0 and S.roads(bx0, by0, bx1, by1)
+    if had == 0 and not nav then return false, scan ~= nil end -- the streets did not read: wait for another session
     -- at most once: done before anything is placed (an error half way, or a server down after the chunks were saved
     -- and before the global ModData was, must not put down a second row)
     s.done = true
     s.v = S.RULES
-    local had = existing(sys, bx0, by0, bx1, by1)
     if had > 0 then
         s.n = had
         T.log("supercharger spawn: station " .. s.x .. "," .. s.y .. " already has " .. had .. " posts")
         return true, scan ~= nil
     end
-    local ta = getTimestampMs()
-    local nav = S.roads(bx0, by0, bx1, by1)
     local safe = SafeHouse.getSafehouseOverlapping(bx0, by0, bx1 + 1, by1 + 1) ~= nil -- x2, y2 exclusive
     local W, cells, lines = bx1 - bx0 + 1, {}, 0
     for y = by0, by1 do

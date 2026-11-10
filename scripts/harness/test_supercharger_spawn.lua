@@ -371,9 +371,10 @@ local function xml(streets)
     t[#t + 1] = "</streets>"
     return t
 end
-local function pieces(streets)
-    local lines, i = xml(streets), 0
-    return S.streetPieces(function() i = i + 1; return lines[i] end, {})
+local function pieces(streets, lines)
+    local i, out = 0, {}
+    lines = lines or xml(streets)
+    return out, S.streetPieces(function() i = i + 1; return lines[i] end, out)
 end
 local function on(p, ...) -- every x, y given is on a piece
     local a = { ... }
@@ -409,6 +410,22 @@ check(#p == 2 and off(p, 250, 250, 11, 0), "two streets: the first one's end not
 p = pieces({ { "Railroad", 6, 0, 0, 100, 0 }, { "Fort Knox Branch Line", 6, 0, 10, 100, 10 }, { "Rail St", false, 0, 20, 100, 20 } })
 check(#p == 1 and off(p, 50, 0, 50, 10) and on(p, 50, 18, 50, 22) and off(p, 50, 17, 50, 23),
     "railroads are no roads (WorldMapStreet.java:1056-1060); a street with no width is 5 wide")
+local whole
+p, whole = pieces({ { "Main St", 8, 10, 100, 50, 100 } })
+check(whole == true and select(2, pieces(nil, { '<streets version="1"/>' })) == true, "read to the closing tag (or a file with no street): whole")
+local cut = xml({ { "Main St", 8, 10, 100, 50, 100 }, { "Oak Ave", 5, 200, 10, 200, 30 } })
+cut[#cut], cut[#cut - 1], cut[#cut - 2] = nil, nil, nil
+p, whole = pieces(nil, cut)
+check(whole == false and #p == 2, "the lines stop before the closing tag (a read error reaches Lua as nil): not whole")
+p, whole = pieces(nil, { '<streets version="1"><street name="A St" width="4"><points><point x="0.0" y="0.0"/><point x="10.0" y="0.0"/></points></street></streets>' })
+check(whole == false, "a file with its tags on one line (not the layout this reads): not whole, so no plan on half its streets")
+-- attributes in another order, as an XML parser takes them (WorldMapStreetsXML.java:76-117)
+p = pieces(nil, { '<streets version="1">', '<street name="A St" width="4">', '<point x="0.0" y="0.0"/>', '<point x="10.0" y="0.0"/>',
+    '</street>', '<street width="8" name="B St">', '<point y="500.0" x="500.0"/>', '<point y="500.0" x="510.0"/>', '</street>', '</streets>' })
+check(#p == 2 and on(p, 500, 496, 509, 503) and off(p, 250, 250, 500, 495, 510, 500),
+    "width before name, y before x: the same street, not joined to the one before")
+p = pieces({ { "West Rd", 4, -10.5, -0.5, -0.5, -0.5 } })
+check(on(p, -10, -2, -1, 1) and off(p, -11, 0, 0, 0, -10, -3, -10, 2), "points below zero are cut towards zero, as Java's (int)")
 -- S.roads: every lot directory's file, once a session
 local files, opened, closed = {}, 0, 0
 local lotDirs = { "Town, KY", "No Streets" }
@@ -428,11 +445,17 @@ check(#near == 1 and near[1].y == 96 and opened == 1 and closed == 1,
     "the streets touching the squares asked for, from the one directory that has a streets.xml, the file closed")
 check(#S.roads(0, 0, 9, 200) == 0 and #S.roads(5050, 4990, 5060, 4996) == 1 and opened == 1,
     "asked again, for other squares: the file is not read twice")
-S.streets = nil
+-- a streets.xml that is there and does not read to its end: no roads this session (S.streets false), not read again
+S.streets, opened, closed = nil, 0, 0
 files["media/maps/Town, KY/streets.xml"] = false -- there (fileExists), no stream for it
-check(not pcall(S.roads, 0, 0, 10, 10) and S.streets == nil,
-    "a streets.xml that is there and cannot be read: an error, nothing kept (no plan without the roads)")
-files, opened, lotDirs = {}, 0, { "Lot" }
+check(S.roads(0, 0, 10, 10) == nil and S.streets == false and S.roads(0, 0, 10, 10) == nil and opened == 1,
+    "a streets.xml with no stream: no roads, asked once this session")
+S.streets, opened = nil, 0
+files["media/maps/Town, KY/streets.xml"] = cut
+check(S.roads(0, 0, 300, 300) == nil and S.streets == false and closed == 2
+    and (H.logLines[#H.logLines] or ""):find("did not read to its end", 1, true),
+    "a streets.xml that stops before its closing tag: no roads (not the half that was read), the stream closed, logged")
+files, opened, lotDirs, S.streets = {}, 0, { "Lot" }, nil
 
 H.section("build: one record a station, posts once everything is loaded, at most once")
 -- S.onPump is what MapObjects.OnLoadWithSprite calls for each pump square of a chunk that loads
@@ -581,6 +604,18 @@ line = H.logLines[#H.logLines] or ""
 check(#placed >= 2 and not onStreet and placed[1].facing ~= lotPosts[1].facing and line:find("1 street pieces", 1, true),
     "a street over that row: " .. #placed .. " posts elsewhere, no post or slot on it, the log counts it: " .. line)
 check(st[1].v == S.RULES, "the record keeps the rules' version it was planned with")
+-- the streets do not read this session: the station waits, nothing placed, the file asked once; a later session plans it
+files["media/maps/Lot/streets.xml"] = false
+S.streets, opened = nil, 0
+placed, objects = {}, {}
+st[1].done, st[1].n, st[1].v = false, nil, nil
+S.tick()
+S.tick()
+check(#placed == 0 and st[1].done == false and st[1].v == nil and opened == 1,
+    "the streets did not read: the station still waits (not marked done), no posts, the file not asked again the next minute")
+files, S.streets = {}, nil
+S.tick()
+check(#placed == 4 and st[1].done and st[1].n == 4, "a later session reads the streets: the station is planned then")
 -- a station 0.6.0 planned to no posts (the save's old Nav zones over its forecourt): once more when its pumps load
 files, S.streets = {}, nil
 placed, objects = {}, {}
@@ -599,6 +634,13 @@ st[2].n, st[2].v = 3, nil
 S.onPump(pump(OX + 200, OY + 14))
 check(st[1].done and st[2].done and #placed == 0 and H.count("EveryOneMinute") == hooks,
     "no posts by this version's rules, or posts from an older version: not planned again")
+-- an older version's plan that stopped half way (done, no n recorded): planned again, the posts it did put down counted
+objects = { { kind = "Supercharger", x = OX + 1, y = OY + 5 } }
+st[1].done, st[1].n, st[1].v = true, nil, nil
+S.onPump(pump(OX + 13, OY + 14))
+H.fire("EveryOneMinute")
+check(st[1].done and st[1].n == 1 and st[1].v == S.RULES and #placed == 0,
+    "an older record with no post count: looked at again, the post already there counted, none added")
 
 S.place = realPlace
 H.moddata[S.MODDATA] = nil

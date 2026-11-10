@@ -12,6 +12,14 @@
 
 格式基於 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.1.0/)，版本號遵循 `{PZ版本}-{主版本}.{次版本}.{修訂}` 格式。
 
+## [Unreleased]
+
+### 修正
+
+- **舊存檔的加油站旁沒有 V4 超級充電座**：在比較早的遊戲版本建立、一路玩到現在的存檔與伺服器上，不少加油站旁沒有長出超級充電座，Louisville 最明顯。現在不論存檔多舊，都和新存檔擺在同樣的位置。0.6.0 已經判定「沒位置」的加油站，更新後下次有人到那附近（那一帶重新載入）時會再擺一次，不用重開存檔；已經長出來的不會變動。影響 0.6.0。
+
+> 技術要點：0.6.0 把世界的 `Nav` zone 當成道路。zone 存在存檔的 `map_zone.bin`，舊存檔裡是當年 `objects.lua` 那一套（加油站前庭整片是 Nav），不是現在由世界地圖街道註冊的那一套，樁和車位全被當成在路上。現在伺服器自己讀各地圖目錄的 `streets.xml` 判斷道路（每次開服或開存檔後，第一次有加油站要擺時讀一次，原版地圖約 0.3～0.4 秒），有街道資料的地圖 MOD 一樣適用。站紀錄多一個規則版本；0 根而且版本較舊的站，在加油機所在的 chunk 再次載入時重排一次。伺服器 log：`supercharger spawn: N street pieces from 1 streets.xml in X ms`、`station x,y got no posts under older rules, planning it again`。
+
 ## [42.22.2-0.6.0] - 2026-11-10
 
 ### 新增
