@@ -25,19 +25,24 @@ S.PUMPS = {}
 for _, brand in ipairs({ "fossoil", "gas2go" }) do
     for i = 12, 15 do S.PUMPS["location_shop_" .. brand .. "_01_" .. i] = true end
 end
--- { stations = { { x, y, done, n, x0, y0, x1, y1, pumps } } }: x, y = the first pump seen; x0..y1 its pumps' extent
+-- { stations = { { x, y, done, n, v, x0, y0, x1, y1, pumps } } }: x, y = the first pump seen; x0..y1 its pumps'
+-- extent; n posts; v = S.RULES when it was planned (nil: 0.6.0)
 S.MODDATA = "MinidoracatTeslaSupercharger"
+-- the rules' version. A station an older version planned to no posts is planned once more the next time its pumps
+-- load (S.onPump). 2: roads are the world map's streets whatever zones the save has (S.roads); 0.6.0 asked the
+-- save's Nav zones and found no room at 14 of the production server's 39 stations.
+S.RULES = 2
 S.STATION_R = 32  -- pumps this close (Chebyshev) are one station: the longest vanilla station spans 27 tiles (Rosewood)
 S.MARGIN = 12     -- posts stand this far from the station's pumps at most
 S.DEPTH = 5       -- the parking slot in front of a post: 5 deep x 2 wide (a Tesla is about 4 x 1.6 tiles)
 S.SPACING = 3     -- post to post along a row: a 2-wide slot and a 1-tile gap
 S.PUMP_GAP = 4    -- post and slot squares at least this far (Chebyshev) from a pump: a lane stays beside each island
 S.DOOR_GAP = 3    -- and from a door: the shop's entrance stays open
--- and from a road (Nav zone) by 2: a street's Nav rectangle is its width attribute wide and leaves out the asphalt
--- row with the curb on each side (streets.xml width, WorldMapStreet.java:1087-1092; measured near the 46 vanilla
--- stations: that row is street floor all along the edge). Same plans as 1 at all 46 stations.
+-- and from a road (a street, S.roads) by 2: a street's rectangle is its width attribute wide and leaves out the
+-- asphalt row with the curb on each side (streets.xml width, WorldMapStreet.java:1087-1092; measured near the 46
+-- vanilla stations: that row is street floor all along the edge). Same plans as 1 at all 46 stations.
 S.NAV_GAP = 2
--- maps without Nav zones (map mods): a road's centre line, a straight run of ROAD_RUN bright yellow line squares
+-- maps without streets.xml (map mods): a road's centre line, a straight run of ROAD_RUN bright yellow line squares
 -- (street_trafficlines_01_24-31, FloorOverlay tiles the cell loader puts on the floor's attached sprites; lots paint
 -- the faded 16-23 and yellow curbs). Muldraugh's 4-lane highway at 10585-10598,9745 is 5-6 squares from its centre
 -- line to either edge.
@@ -55,7 +60,7 @@ local FACINGS = { "S", "E", "N", "W" }
 -- ---- the plan: pure, over a grid of square codes (harness: scripts/harness/test_supercharger_spawn.lua) ----
 -- grid(x, y) -> nil (no square) or { k, wn, ww, nav, line, car }: k "=" paved and free (street floor, nothing in the
 -- way), "P" pump, "D" door, "I" indoors, "o" blocked, "g" grass, "." other floor, " " nothing; wn / ww: a wall, fence,
--- door or window on the square's north / west edge; nav: on a road (Nav zone, S.navZones); line: a bright yellow
+-- door or window on the square's north / west edge; nav: on a road (a street, S.roads); line: a bright yellow
 -- traffic line on it; car: a car stands on it (still "=": a parked car is no lot edge to back a post on, but nothing
 -- goes under it).
 -- A post faces f with its slot in front: S.DEPTH rows of 2 squares, the post's column and the one on the car's
@@ -311,18 +316,93 @@ local function anyFlag(sq, list)
     return false
 end
 
--- the roads over x0..x1, y0..y1: { { x, y, w, h, zone, poly } }. Vanilla's Nav zones come from the world map's streets
--- only (registerNavZones, metazoneHandler.lua:178-184; objects.lua's own Nav entries are skipped, :93): a rectangle per
--- straight piece, a polyline zone with the street's width for the diagonal ones (WorldMapStreet.java:1055-1111).
--- getZonesIntersecting: IsoMetaGrid.java:199-214; Zone.java:229,276,516-558.
-function S.navZones(x0, y0, x1, y1)
-    local zones = getWorld():getMetaGrid():getZonesIntersecting(x0, y0, 0, x1 - x0 + 1, y1 - y0 + 1)
-    local out = {}
-    for i = 0, zones:size() - 1 do
-        local z = zones:get(i)
-        if z:getType() == "Nav" then
-            out[#out + 1] = { x = z:getX(), y = z:getY(), w = z:getWidth(), h = z:getHeight(), zone = z, poly = z:isPolyline() }
+-- ---- roads: the world map's streets ----
+-- Vanilla turns each lot directory's streets.xml into Nav zones when a world loads (IsoWorld.registerNavZones,
+-- IsoWorld.java:446-457, from metazoneHandler.lua:178-184; objects.lua's own Nav entries are skipped, :93), but a
+-- save keeps the zones it was made with: IsoMetaGrid.load swaps every zone for map_zone.bin's right after
+-- (IsoWorld.java:2063-2067, IsoMetaGrid.java:1793-1840). A world older than the streets still has objects.lua's Nav,
+-- painted over whole forecourts. So the streets are read here, the way WorldMapStreet.registerNavZones makes zones
+-- of them (WorldMapStreet.java:1055-1111): points cut to whole squares; a piece along x or y is a rectangle the
+-- street's width wide (width / 2 squares before the line, the rest after); a diagonal piece is every square whose
+-- centre is within width / 2 of it (vanilla: a polyline zone, the line moved half a square when the width is odd and
+-- offset by width / 2 with mitred joins and butt ends, Zone.java:604-643; round here: the same squares but for a
+-- corner square at a bend or a dead end); a railroad is no road.
+-- nextLine() -> the next line of a streets.xml or nil (as vanilla writes the file, WorldMapStreetsXML.java:30-55: a
+-- tag a line, name before width, x before y). Adds every piece to out: { x, y, w, h } the bounding box of its
+-- squares, and for a diagonal one ax, ay (where it starts), dx, dy, len2, r2 (width / 2 squared).
+function S.streetPieces(nextLine, out)
+    local width, px, py -- width nil: a railroad, or no street yet
+    for line in nextLine do
+        local a, b = line:match('<point x="([^"]+)" y="([^"]+)"')
+        if a then
+            local x, y = math.floor(tonumber(a) or 0), math.floor(tonumber(b) or 0)
+            if px and width then
+                if px == x or py == y then
+                    local half = math.floor(width / 2)
+                    out[#out + 1] = { x = px == x and x - half or math.min(px, x), y = py == y and y - half or math.min(py, y),
+                        w = py == y and math.abs(x - px) or width, h = px == x and math.abs(y - py) or width }
+                else
+                    local d, r = width % 2 == 0 and 0 or 0.5, width / 2
+                    local bx, by = math.floor(math.min(px, x) + d - r), math.floor(math.min(py, y) + d - r)
+                    out[#out + 1] = { x = bx, y = by, w = math.ceil(math.max(px, x) + d + r) - bx,
+                        h = math.ceil(math.max(py, y) + d + r) - by, ax = px + d, ay = py + d, dx = x - px, dy = y - py,
+                        len2 = (x - px) ^ 2 + (y - py) ^ 2, r2 = r * r }
+                end
+            end
+            px, py = x, y
+        else
+            local name = line:match('<street name="([^"]*)"')
+            if name then
+                name = name:lower()
+                width = not name:find("railroad", 1, true) and not name:find("branch line", 1, true)
+                    and (tonumber(line:match('width="(%d+)"')) or 5) or nil
+                px = nil
+            end
         end
+    end
+    return out
+end
+
+-- is square x, y on one of the pieces
+function S.onRoad(pieces, x, y)
+    for _, p in ipairs(pieces) do
+        if x >= p.x and y >= p.y and x < p.x + p.w and y < p.y + p.h then
+            if not p.dx then return true end
+            local qx, qy = x + 0.5 - p.ax, y + 0.5 - p.ay
+            local t = (qx * p.dx + qy * p.dy) / p.len2
+            t = t < 0 and 0 or t > 1 and 1 or t
+            qx, qy = qx - t * p.dx, qy - t * p.dy
+            if qx * qx + qy * qy <= p.r2 then return true end
+        end
+    end
+    return false
+end
+
+-- the pieces touching x0..x1, y0..y1. The streets are read once a session, the first time a station is planned:
+-- getGameFilesInput gives a DataInputStream on a game or mod file (LuaManager.java:6819-6842), no buffer, so
+-- readLine takes the file a byte a call (about 0.3 s for vanilla's 300 KB). A streets.xml that is there and cannot
+-- be read is an error: no plan without the roads.
+function S.roads(x0, y0, x1, y1)
+    if not S.streets then
+        local t0, list, files = getTimestampMs(), {}, 0
+        local dirs = getLotDirectories()
+        for i = 0, dirs:size() - 1 do
+            local path = "media/maps/" .. dirs:get(i) .. "/streets.xml"
+            if fileExists(path) then
+                local input = getGameFilesInput(path)
+                if not input then error("supercharger spawn: cannot read " .. path) end
+                S.streetPieces(function() return input:readLine() end, list)
+                endFileInput()
+                files = files + 1
+            end
+        end
+        S.streets = list
+        T.log("supercharger spawn: " .. #list .. " street pieces from " .. files .. " streets.xml in "
+            .. (getTimestampMs() - t0) .. " ms")
+    end
+    local out = {}
+    for _, p in ipairs(S.streets) do
+        if p.x <= x1 and p.x + p.w > x0 and p.y <= y1 and p.y + p.h > y0 then out[#out + 1] = p end
     end
     return out
 end
@@ -337,7 +417,7 @@ local function pumpOn(sq)
     return false
 end
 
--- the code S.plan reads for square x, y, 0 (nav: S.navZones); nil when it is not loaded. safe: a safehouse overlaps
+-- the code S.plan reads for square x, y, 0 (nav: S.roads); nil when it is not loaded. safe: a safehouse overlaps
 -- the plan's squares (SafeHouse.java:181-189), so ask each free square (getSafeHouse: the one holding it, whoever the
 -- player, :157-159,201-222) and block it: the claimed lot is the player's
 function S.cellAt(x, y, nav, safe)
@@ -345,13 +425,7 @@ function S.cellAt(x, y, nav, safe)
     if not sq then return nil end
     if not F then flags() end
     local c = { k = " ", wn = anyFlag(sq, EDGE_N), ww = anyFlag(sq, EDGE_W) }
-    for _, r in ipairs(nav or {}) do
-        -- the bounding box first; a polyline asks its zone (Zone.contains, Zone.java:276)
-        if x >= r.x and y >= r.y and x < r.x + r.w and y < r.y + r.h and (not r.poly or r.zone:contains(x, y, 0)) then
-            c.nav = true
-            break
-        end
-    end
+    if nav and S.onRoad(nav, x, y) then c.nav = true end
     local objs, floor, moveable = sq:getObjects(), sq:getFloor(), false
     for i = 0, objs:size() - 1 do
         local o = objs:get(i)
@@ -457,6 +531,7 @@ function S.build(s)
     -- at most once: done before anything is placed (an error half way, or a server down after the chunks were saved
     -- and before the global ModData was, must not put down a second row)
     s.done = true
+    s.v = S.RULES
     local had = existing(sys, bx0, by0, bx1, by1)
     if had > 0 then
         s.n = had
@@ -464,7 +539,7 @@ function S.build(s)
         return true, scan ~= nil
     end
     local ta = getTimestampMs()
-    local nav = S.navZones(bx0, by0, bx1, by1)
+    local nav = S.roads(bx0, by0, bx1, by1)
     local safe = SafeHouse.getSafehouseOverlapping(bx0, by0, bx1 + 1, by1 + 1) ~= nil -- x2, y2 exclusive
     local W, cells, lines = bx1 - bx0 + 1, {}, 0
     for y = by0, by1 do
@@ -486,7 +561,7 @@ function S.build(s)
     s.n = n
     local t2 = getTimestampMs()
     T.log("supercharger spawn: station " .. s.x .. "," .. s.y .. " (" .. s.pumps .. " pump squares, " .. #nav
-        .. " road zones, " .. lines .. " centre line squares" .. (safe and ", a safehouse near" or "") .. ") planned "
+        .. " street pieces, " .. lines .. " centre line squares" .. (safe and ", a safehouse near" or "") .. ") planned "
         .. #posts .. " placed " .. n
         .. (posts[1] and (" facing " .. posts[1].facing .. " from " .. posts[1].x .. "," .. posts[1].y) or "")
         .. " in " .. (scan and tostring(scan) or "-") .. " + " .. (tr - ta) .. " + " .. (t1 - tr) .. " + " .. (t2 - t1)
@@ -528,7 +603,15 @@ function S.onPump(isoObject)
     if not sq or sq:getZ() ~= 0 then return end
     local x, y = sq:getX(), sq:getY()
     local t = md()
-    if S.stationOf(t.stations, x, y) then return end
+    local s = S.stationOf(t.stations, x, y)
+    if s then
+        if s.done and (s.n or 0) == 0 and (s.v or 1) < S.RULES then
+            s.done = false
+            T.log("supercharger spawn: station " .. s.x .. "," .. s.y .. " got no posts under older rules, planning it again")
+            hook()
+        end
+        return
+    end
     t.stations[#t.stations + 1] = { x = x, y = y, done = false }
     T.log("supercharger spawn: new station at " .. x .. "," .. y)
     hook()

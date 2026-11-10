@@ -1,14 +1,18 @@
 -- Supercharger spawn at gas stations (server/MinidoracatTesla/SuperchargerSpawn.lua): the placement rules on made-up
--- forecourts (S.plan: a normal row, room for 2 only, no room, doors, roads by Nav zone or centre line, walled-in
--- yards, parked cars), the square codes read from fake squares (S.cellAt, a safehouse's squares blocked), and the
--- station record flow through S.build on fake squares (one record a station whichever pump square loads first or
--- again, posts once the chunks and the charger system are up, at most once, none in a safehouse, the minute hook gone
--- when nothing waits). The real vanilla stations were checked the same way offline: the map's lotpacks and
--- streets.xml roads exported as these grids, S.plan run on all 46.
+-- forecourts (S.plan: a normal row, room for 2 only, no room, doors, roads by street or centre line, walled-in
+-- yards, parked cars), the square codes read from fake squares (S.cellAt, a safehouse's squares blocked), the roads
+-- read from a streets.xml's lines (S.streetPieces, S.onRoad, S.roads: never the save's zones), and the station
+-- record flow through S.build on fake squares (one record a station whichever pump square loads first or again,
+-- posts once the chunks and the charger system are up, at most once, none in a safehouse or on a street, a station
+-- 0.6.0 left without posts planned once more, the minute hook gone when nothing waits). The real vanilla stations
+-- were checked the same way offline: the map's lotpacks as these grids, the real streets.xml through
+-- S.streetPieces, S.plan run on all 46.
 local check = H.check
 H.side(false, true)
 local saved = { getCell = getCell, getWorld = getWorld, MapObjects = MapObjects, sys = SMinidoracatTeslaChargerSystem,
-    IsoFlagType = IsoFlagType, getTimestampMs = getTimestampMs, SafeHouse = SafeHouse }
+    IsoFlagType = IsoFlagType, getTimestampMs = getTimestampMs, SafeHouse = SafeHouse,
+    getLotDirectories = getLotDirectories, fileExists = fileExists, getGameFilesInput = getGameFilesInput,
+    endFileInput = endFileInput }
 MapObjects = { OnLoadWithSprite = function() end }
 H.require("MinidoracatTesla/SuperchargerSpawn")
 local T = MinidoracatTesla
@@ -345,19 +349,90 @@ check(not code({ attached = { "street_trafficlines_01_17" } }).line and not code
     "a faded lot line, or the yellow line as a separate object: no line")
 check(code({ car = true }).car == true and code({ car = true, floor = "blends_natural_01_1" }).car == nil, "a car on pavement: car (only on =)")
 check(code({}, { { x = -100, y = -1, w = 300, h = 3 } }).nav, "in a street's rectangle: nav")
-check(not code({}, { { x = 1, y = 1, w = 5, h = 5 } }).nav, "outside every zone: no nav")
--- a diagonal street is a polyline zone: its bounding box covers squares off the road, the zone decides
-local asked
-local function poly(on) return { x = -5, y = -5, w = 10, h = 10, poly = true,
-    zone = { contains = function(_, x, y, z) asked = { x, y, z }; return on end } } end
-check(code({}, { poly(true) }).nav and asked[1] == 0 and asked[2] == 0 and asked[3] == 0, "on a diagonal street (the polyline zone contains it): nav")
-check(not code({}, { poly(false) }).nav, "in a diagonal street's bounding box, off the road: no nav")
+check(not code({}, { { x = 1, y = 1, w = 5, h = 5 } }).nav, "outside every street: no nav")
 safeRect = { 0, 0, 1, 1 }
 check(code({}, nil, true).k == "o" and code({ objs = { { "location_shop_fossoil_01_12" } } }, nil, true).k == "P"
     and code({ flags = { "doorW" } }, nil, true).k == "D", "in a safehouse: a free square blocked (o); a pump, a door keep their code")
 safeAsked = 0
 check(code({}).k == "=" and safeAsked == 0, "no safehouse near the station (safe not set): the square not asked, still =")
 safeRect = nil
+
+H.section("roads: the world map's streets, read from streets.xml")
+-- a streets.xml as vanilla writes it (WorldMapStreetsXML.java:30-55), from { name, width or false, x, y, x, y, ... }
+local function xml(streets)
+    local t = { '<streets version="1">' }
+    for _, s in ipairs(streets) do
+        t[#t + 1] = '    <street name="' .. s[1] .. '"' .. (s[2] and ' width="' .. s[2] .. '"' or "") .. ">"
+        t[#t + 1] = "        <points>"
+        for i = 3, #s, 2 do t[#t + 1] = string.format('            <point x="%.1f" y="%.1f"/>', s[i], s[i + 1]) end
+        t[#t + 1] = "        </points>"
+        t[#t + 1] = "    </street>"
+    end
+    t[#t + 1] = "</streets>"
+    return t
+end
+local function pieces(streets)
+    local lines, i = xml(streets), 0
+    return S.streetPieces(function() i = i + 1; return lines[i] end, {})
+end
+local function on(p, ...) -- every x, y given is on a piece
+    local a = { ... }
+    for i = 1, #a, 2 do
+        if not S.onRoad(p, a[i], a[i + 1]) then return false end
+    end
+    return true
+end
+local function off(p, ...)
+    local a = { ... }
+    for i = 1, #a, 2 do
+        if S.onRoad(p, a[i], a[i + 1]) then return false end
+    end
+    return true
+end
+-- vanilla's zone for a piece along x: x1..x2 - 1, the line's y - width / 2 on, width rows (WorldMapStreet.java:1087-1092)
+local p = pieces({ { "Main St", 8, 10, 100.5, 50, 100 } })
+check(#p == 1 and on(p, 10, 96, 49, 96, 10, 103, 49, 103) and off(p, 9, 100, 50, 100, 10, 95, 10, 104),
+    "a street along x, width 8: 4 rows before the line and 4 from it on, the end point's column out")
+p = pieces({ { "Oak Ave", 5, 200.9, 10, 200, 30 } })
+check(#p == 1 and on(p, 198, 10, 202, 29) and off(p, 197, 10, 203, 10, 200, 9, 200, 30),
+    "a street along y, width 5, points cut to whole squares: 2 columns before the line, 3 from it on")
+p = pieces({ { "Hill Rd", 6, 0, 0, 20, 20 } })
+check(#p == 1 and on(p, 10, 10, 10, 14, 14, 10) and off(p, 10, 15, 15, 10, 22, 1),
+    "a diagonal street, width 6: squares whose centre is within 3 of the line, not the rest of its bounding box")
+p = pieces({ { "Creek Rd", 5, 0, 0, 20, 10 } })
+check(on(p, 10, 3, 10, 7) and off(p, 10, 2, 10, 8),
+    "a diagonal street with an odd width: the line half a square on (vanilla's polyline zone, Zone.java:617)")
+p = pieces({ { "Bend St", 6, 0, 50, 30, 50, 40, 60, 40, 90 } })
+check(#p == 3 and on(p, 0, 50, 35, 55, 40, 89), "a street with a bend: a piece for each stretch")
+p = pieces({ { "A St", 4, 0, 0, 10, 0 }, { "B St", 4, 500, 500, 510, 500 } })
+check(#p == 2 and off(p, 250, 250, 11, 0), "two streets: the first one's end not joined to the second one's start")
+p = pieces({ { "Railroad", 6, 0, 0, 100, 0 }, { "Fort Knox Branch Line", 6, 0, 10, 100, 10 }, { "Rail St", false, 0, 20, 100, 20 } })
+check(#p == 1 and off(p, 50, 0, 50, 10) and on(p, 50, 18, 50, 22) and off(p, 50, 17, 50, 23),
+    "railroads are no roads (WorldMapStreet.java:1056-1060); a street with no width is 5 wide")
+-- S.roads: every lot directory's file, once a session
+local files, opened, closed = {}, 0, 0
+local lotDirs = { "Town, KY", "No Streets" }
+getLotDirectories = function() return list(lotDirs) end
+fileExists = function(path) return files[path] ~= nil end
+getGameFilesInput = function(path)
+    opened = opened + 1
+    local lines, i = files[path], 0
+    return lines and { readLine = function() i = i + 1; return lines[i] end } or nil
+end
+endFileInput = function() closed = closed + 1 end
+getWorld = function() error("the save's zones asked") end
+files["media/maps/Town, KY/streets.xml"] = xml({ { "Main St", 8, 10, 100, 50, 100 }, { "Far Rd", 8, 5000, 5000, 5100, 5000 } })
+S.streets = nil
+local near = S.roads(40, 90, 60, 96)
+check(#near == 1 and near[1].y == 96 and opened == 1 and closed == 1,
+    "the streets touching the squares asked for, from the one directory that has a streets.xml, the file closed")
+check(#S.roads(0, 0, 9, 200) == 0 and #S.roads(5050, 4990, 5060, 4996) == 1 and opened == 1,
+    "asked again, for other squares: the file is not read twice")
+S.streets = nil
+files["media/maps/Town, KY/streets.xml"] = false -- there (fileExists), no stream for it
+check(not pcall(S.roads, 0, 0, 10, 10) and S.streets == nil,
+    "a streets.xml that is there and cannot be read: an error, nothing kept (no plan without the roads)")
+files, opened, lotDirs = {}, 0, { "Lot" }
 
 H.section("build: one record a station, posts once everything is loaded, at most once")
 -- S.onPump is what MapObjects.OnLoadWithSprite calls for each pump square of a chunk that loads
@@ -379,10 +454,6 @@ getCell = function()
         getChunkForGridSquare = function(_, x, y) return (loadedAll or (x >= OX and x < OX + 32 and y >= OY and y < OY + 32)) and {} or nil end,
         getGridSquare = function(_, x, y) return squares[x .. "," .. y] end,
     }
-end
-local zonesAsked = 0
-getWorld = function()
-    return { getMetaGrid = function() return { getZonesIntersecting = function() zonesAsked = zonesAsked + 1; return list({}) end } end }
 end
 local objects = {}
 local fakeSys = { getLuaObjectCount = function() return #objects end, getLuaObjectByIndex = function(_, i) return objects[i] end }
@@ -418,12 +489,12 @@ getCell = function()
 end
 H.fire("EveryOneMinute")
 H.fire("EveryOneMinute")
-check(#placed == 0 and not st[1].done and not st[1].x0 and scanned == 0 and zonesAsked == 0,
+check(#placed == 0 and not st[1].done and not st[1].x0 and scanned == 0 and S.streets == nil,
     "only the station's middle loaded: chunk checks only, no square read (" .. scanned .. "), nothing planned")
 -- the pumps scanned in an earlier minute (x0 known), the squares around them not loaded yet: no rescan, still waiting
 st[1].x0, st[1].y0, st[1].x1, st[1].y1, st[1].pumps = OX + 13, OY + 14, OX + 18, OY + 18, 8
 local done, worked = S.build(st[1])
-check(done == false and worked == false and scanned == 0 and zonesAsked == 0 and #placed == 0,
+check(done == false and worked == false and scanned == 0 and S.streets == nil and #placed == 0,
     "pumps known, the plan's squares not loaded: no square read (" .. scanned .. "), nothing planned, waiting")
 getCell = cellFn
 loadedAll = true
@@ -492,8 +563,47 @@ H.fire("OnInitGlobalModData")
 check(H.count("EveryOneMinute") == hooks + 1, "a station still waiting in the save: hooked again on OnInitGlobalModData")
 st[2].done = true
 H.fire("EveryOneMinute")
+-- a street down the lot's west strip, where the plan's row stood: the posts go elsewhere, off it
+files["media/maps/Lot/streets.xml"] = xml({ { "Pump St", 8, OX + 4, OY - 10, OX + 4, OY + 40 } })
+S.streets = nil
+placed, objects = {}, {}
+st[1].done, st[1].n = false, nil
+S.tick()
+local onStreet = false
+for _, q in ipairs(placed) do
+    local post, slot = squaresOf(q)
+    slot[#slot + 1] = post[1]
+    for _, s in ipairs(slot) do
+        if S.onRoad(S.streets, s[1], s[2]) then onStreet = true end
+    end
+end
+line = H.logLines[#H.logLines] or ""
+check(#placed >= 2 and not onStreet and placed[1].facing ~= lotPosts[1].facing and line:find("1 street pieces", 1, true),
+    "a street over that row: " .. #placed .. " posts elsewhere, no post or slot on it, the log counts it: " .. line)
+check(st[1].v == S.RULES, "the record keeps the rules' version it was planned with")
+-- a station 0.6.0 planned to no posts (the save's old Nav zones over its forecourt): once more when its pumps load
+files, S.streets = {}, nil
+placed, objects = {}, {}
+st[1].done, st[1].n, st[1].v = true, 0, nil
+S.onPump(pump(OX + 13, OY + 14))
+S.onPump(pump(OX + 14, OY + 14))
+check(st[1].done == false and #st == 2 and H.count("EveryOneMinute") == hooks + 1,
+    "a station an older version left without posts, loading again: waiting once more, one hook")
+H.fire("EveryOneMinute")
+check(#placed == 4 and st[1].done and st[1].v == S.RULES and H.count("EveryOneMinute") == hooks,
+    "planned again by this version's rules: 4 posts, hook gone")
+placed, objects = {}, {}
+st[1].n = 0
+S.onPump(pump(OX + 13, OY + 14))
+st[2].n, st[2].v = 3, nil
+S.onPump(pump(OX + 200, OY + 14))
+check(st[1].done and st[2].done and #placed == 0 and H.count("EveryOneMinute") == hooks,
+    "no posts by this version's rules, or posts from an older version: not planned again")
 
 S.place = realPlace
 H.moddata[S.MODDATA] = nil
 getCell, getWorld, MapObjects, SMinidoracatTeslaChargerSystem, IsoFlagType, SafeHouse =
     saved.getCell, saved.getWorld, saved.MapObjects, saved.sys, saved.IsoFlagType, saved.SafeHouse
+getLotDirectories, fileExists, getGameFilesInput, endFileInput =
+    saved.getLotDirectories, saved.fileExists, saved.getGameFilesInput, saved.endFileInput
+S.streets = nil
