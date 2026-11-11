@@ -21,6 +21,8 @@ CAR = dict(
     DIMS=(4.969, 1.920, 1.668),            # owner's manual (US 2026.38 p.244: length without the plate bracket; China
     #                                        2026.26 p.202: width without mirrors, height)
     PORT_NOTE="real Model Y L, China owner's manual p.166",
+    PORT=(-1.7666, 0.8725),                # (y, z pre-centre) where the left corner lamp's outboard end put it before
+    #                                        the prep's `lamp` reshaped the lamps: the in-game plug.z 0.90 is measured
     # China's six ($MTY87) and the US Marine Blue ($MTY83): order = Core.lua Specs colors (skin index is saved: only
     # append after release)
     PAINTS=[("StealthGrey", "PN01"), ("PearlWhite", "PPSW"), ("DiamondBlack", "PX02"), ("UltraRed", "PR01"),
@@ -47,22 +49,41 @@ CAR = dict(
     COMPOSITOR_MODEL="my",
     OFFICIAL_OPTS="$MDLY,$MTY87,$STY6S,${},$WY19L,$IPB9",
     RAMP=dict(t=(0.40, 0.74), u=(0.04, 0.96), wheels=(0.18, 0.79), wt=0.80, wr=0.13),
-    # ---- pzveh: wheel, 19" Machina 2.0 ($WY19L, official RIMCLOSEUP): a black aero cover, a five-pointed black star
-    # of spokes (each forking into two thin blades to the rim), between the spokes five silver chevrons pointing in
-    # (the spokes' machined side faces), a silver ring at the rim's edge. Here: the black face (WHEEL_FACETS) with the
-    # Y spokes standing out of it as a dark grey star, the chevrons silver polygons on it. 255/45 R19 front, 275/45 R19
-    # rear: one wheel model, the front's radius (the prep scales the source tyres to it)
+    # ---- pzveh: wheel, 19" Machina 2.0 ($WY19L, official RIMCLOSEUP / SIDE): a black aero cover, seven groups round
+    # it (the SIDE wheel unrolled round its centre repeats every 51.4 deg): a silver Y pointing in (a wedge at 0.42-0.66
+    # of the rim radius, the machined side face of a black spoke, and two thin arms out to the rim) cradling a recessed
+    # black window (0.68-1.0), a pointed black spoke between the Ys (a ridge down its middle, one side catching the
+    # light in the 3/4 renders), a continuous silver ring at the rim's edge. Here a flat face (WHEEL_FACETS, no raised
+    # spokes: in the official SIDE the spokes and the windows are the same black, 15-22) in the spokes' colour, the
+    # windows darker, the spokes' lit side lighter and the Ys silver as polygons on it (angles negative: the SIDE
+    # camera sees the wheel's -x face, mirrored); the outlines are the official SIDE front wheel's, unrolled and the
+    # seven groups' median (silver = grey > 65, read every 3 % of the rim radius), the arms 2-3 deg (8-10 mm) as
+    # there, the wedge 0.01 bigger (the 3/4 renders see more of its slanted face); `at` puts them where the SIDE front
+    # wheel has them. 255/45 R19 front, 275/45 R19 rear: one wheel model, the front's radius (the prep scales the
+    # source tyres)
     WHEEL_RIM=0.725,                       # 19" (241 mm bead + 17 mm flange) / 356 mm tyre radius
-    WHEEL_SPOKE=dict(n=5, hub=0.16, fork=0.42, spread=math.radians(16), main=(0.20, 0.15), arm=0.07, cap=0.17,
+    WHEEL_SPOKE=dict(n=0, hub=0.16, fork=0.42, spread=math.radians(16), main=(0.20, 0.15), arm=0.07, cap=0.17,
                      inset=0.010, dish=0.008, depth=0.020, sweep=0.0),
-    WHEEL_FACETS=dict(n=5, at=36, sink=0.008, rings=3, tip=0.55, notch=0.80, out_a=16, in_a=5, face="barrel"),
+    WHEEL_FACETS=dict(n=7, at=13.3, sink=0.008, rings=3, face="spoke", ring=(0.97, "facet"), shapes=(
+        ("barrel", ((1.0, -1.6), (0.93, -2.9), (0.84, -5.5), (0.75, -9.0), (0.69, -12.3), (0.685, -16.5),
+                    (0.71, -20.8), (0.74, -24.6), (0.78, -27.0), (0.86, -28.6), (1.0, -29.2), (1.0, -22.4),
+                    (1.0, -15.4), (1.0, -8.4))),
+        ("facet", ((1.0, 0.2), (0.84, -3.2), (0.69, -8.6), (0.62, -11.6), (0.52, -12.5), (0.41, -12.9), (0.45, -18),
+                   (0.52, -22.8), (0.6, -25.8), (0.68, -28.6), (0.8, -30.1), (1.0, -31.4), (1.0, -29.2),
+                   (0.86, -28.6), (0.78, -27.0), (0.74, -24.6), (0.71, -20.8), (0.685, -16.5), (0.69, -12.3),
+                   (0.75, -9.0), (0.84, -5.5), (0.93, -2.9), (1.0, -1.6))),
+        ("lit", ((0.97, -41.3), (0.68, -28.8), (0.6, -26.0), (0.52, -23.0), (0.45, -18.3), (0.2, -18.3), (0.2, -42),
+                 (0.6, -42))))),
     WHEEL_DISC=dict(rotor=0.74, hat=0.30),
-    WHEEL_RGB=dict(spoke=34, cap=30, barrel=10, lip=170, rotor=10, hat=10, dark=10, gap=8, tire=(22, 28), tread=20,
-                   facet=170),             # the face (barrel swatch) darker than the star (spoke), silver chevrons
+    WHEEL_RGB=dict(spoke=20, cap=20, barrel=10, lip=170, rotor=10, hat=10, dark=10, gap=8, tire=(22, 28), tread=20,
+                   facet=170, lit=34),     # spokes (spoke swatch) a little lighter than the windows (barrel), silver
     # ---- pzveh: vehicle script
     OY=0.2878,
     WHEEL_LIFT=0.11,
-    WHEEL_INSET=0.03,
+    WHEEL_INSET=0.0,      # the source's tyre where the prep left it: outer face 941 mm off the centreline, official
+    #                       946 front / 950 rear (track 1,636 / 1,624 + tyre width / 2); 0.03 put it 36 mm further in
+    #                       and the FRONT34 rim ring 6 px inside the official's (2 px at 0). Steered to 0.9 rad the
+    #                       front tyre pokes out of the arch at either value (offline top view: 150 -> 180 mm)
     CAB_BOX=(1.30, 0.53, -1.70),
     # passengers / seats: front and 2nd row from the door openings (back: front, 2nd row); third: the 3rd row `back`
     # behind the rear doors' rear edge, over the rear axle (official interior renders), at side x (shoulder room 1,089
@@ -90,7 +111,9 @@ CAR = dict(
           "Plane.031", "Plane.040", "Plane.051",   # clear lamp covers: opaque in PZ, they'd hide the lamps
           "Interior", "Hyundai_KONA", "Plane.067",   # BloxBloger's interior: the mod's own cabin (cabin.py)
           "Tesla_Model_3",               # rear TESLA: block letters sunk under the blade (Badge_TESLA instead)
-          "Plane.072"),                  # DUAL MOTOR letters on the gate's right: the China Model Y L has none
+          "Plane.072",                   # DUAL MOTOR letters on the gate's right: the China Model Y L has none
+          "Plane.026"),                  # the diffuser's lower lip: its strakes' ends were 2-3 cm teeth under the
+    #                                      bumper seen low from behind (official REAR34: a smooth lower edge)
     DROP_COMPS=(),
     CARBON=None,                           # (the blade spoiler is its own object, Blade_YL: prep_model_yl.py blade())
     ARCH_LINER=None,
@@ -105,16 +128,23 @@ CAR = dict(
     PAINT_MAT="Material_#2125765635",       # the body paint (the mirror caps too)
     MAT_RGB={"black_base": (34, 34, 36), "black_reflection": (20, 20, 22), "black": (20, 20, 22),
              "Material_#2125767099": (26, 26, 28), "front_white_light": (226, 230, 236), "back_red_Light": (150, 12, 16),
-             "red_plastic": (120, 12, 16), "M22": (120, 12, 16), "mirror": (58, 64, 72), "chrome": (96, 98, 104),
+             "red_plastic": (90, 16, 20), "M22": (66, 34, 38), "mirror": (58, 64, 72), "chrome": (96, 98, 104),
              "glass_base": (14, 14, 16), "glass_roof_panorama": (14, 14, 16),
-             "spoiler_black": (12, 12, 14)},     # the blade spoiler (prep_model_yl.py BLADE_MAT): gloss black
+             "spoiler_black": (12, 12, 14),     # the blade spoiler (prep_model_yl.py BLADE_MAT): gloss black
+             "splitter_black": (70, 70, 74)},   # the front splitter (prep FIELD splitter): lighter than the intake
+    # unlit tail lamp parts smoked (official REAR34 and SIDE): M22 the corner lamps' inner C (~60 50 54 there),
+    # red_plastic the side lamps' red bar and the bumper's reflectors; the lights texture still lights the lamps
     GLASS_MATS=("glass_base", "glass_roof_panorama"),
     GLASS_OPAQUE=(),
     GLASS_BACKS=(),
     ROOF_PANE="Plane.023",
     MIRROR_CAP="Plane.046",                # already body paint in this source
+    # tail: the corner lamps and the red light bar between them: Badge_BLADE (TESLA lh), dark red by day (official
+    # REAR34 shows it lit: a red bar in a black recess, the housing Plane.034 stays black), lit with the tail lights;
+    # flush with the housing's shelf (recessed under it, the game's camera saw none of it); one swatch texel (lit
+    # whole at night, not in dashes)
     LAMPS=dict(head=("front_white_light",), tail=("back_red_Light", "red_plastic", "M22"), tail_z=0.75, tail_y=-1.5,
-               blade="Plane.034"),
+               blade="Badge_BLADE", blade_rgb=(125, 20, 24), blade_flush=True, blade_swatch=True),
     # part lines, side view (y, z): S, BF, BR off this source's panel edges (B pillar: unchanged by the prep); D the
     # rear door glass / quarter glass divider bar's middle; R1 (z ascending) the rear door's rear edge, upright from
     # the belt to the arch since the prep (work/outline.py)
@@ -145,18 +175,23 @@ CAR = dict(
     DOOR_OBJS=("Plane.011", "Plane.004", "Plane.070", "Plane.019", "Plane.002", "Plane.046", "Plane.047", "Plane.048",
                "Plane.049", "Plane.050"),
     GATE_OBJS=_CUT_X + ("Blade_YL",),     # the blade spoiler rides the tailgate
+    SHELL_OBJS=("Blade_YL",),              # its body-colour faces outer only (convert.py; no door slab)
     GATE_COMPS=(("Plane.011", 248, -1), ("Plane.006", 102, -1)),   # rear window and its frame (y sign of the centre)
     GATE_CUT_COMPS=(),
     PANES={"Body": {"WinT", "LightBarL", "WinLT", "WinRT"}, "DoorFrontLeft": {"WinLH"}, "DoorFrontRight": {"WinRH"},
            "DoorRearLeft": {"WinLT"}, "DoorRearRight": {"WinRT"}, "TrunkDoor": {"WinH"}, "EngineDoor": set()},
     # badges (model_y.py): T on the frunk lid, TESLA on the light blade, and on the gate's lower left MODEL Y and the
-    # Model Y L's three slanted bars (China $MTY87 REAR34: no 特斯拉 here, no Performance badge)
+    # Model Y L's three slanted bars (China $MTY87 REAR34: no 特斯拉 here, no Performance badge). Placed on the
+    # official REAR34 (same camera): the red bar h 1.063-1.135 m, TESLA in it at the official width; MODEL Y/// a
+    # line under the left lamp, left end |z| 0.466 m, baseline h 0.800. Letters at the size that reads at the game's
+    # closest zoom, not the official's (user 2026-10-26 on the Model Y: 1.5-2 x the real car's): TESLA 3.6 cm as
+    # model_y.py (official 2.5), MODEL Y 3.6 cm (official 1.8; model_y.py 4.0)
     T_BADGE=(1.914, 0.0644, 0.0677, 0.632, (0, 0.34, 0.94), (0, 0, -1)),
-    TESLA=(0.9517, 0.03, 0.11, 0.045),
-    LENS_X=0.4544,
+    TESLA=(0.908, 0.03, 0.092, 0.0595),
+    LENS_X=0.50,                           # the red bar into the corner lamps (official REAR34: red from x 1290)
     BADGE_Y=(-2.6, -1.85),
     BLADE=True,
-    MODELY=("MODEL Y///", -0.4544, 0.5572, 0.033),
+    MODELY=("MODEL Y///", -0.385, 0.661, 0.030),
     PERF_BADGE=None,
     CALIPER=None,                          # the aero cover hides them (and the Y L's are not red)
     FRUNK_TUB=dict(ledge=0.08, rim=0.025, y=(1.151, 1.875), half=(0.29, 0.18), corner=0.07, taper=0.11, depth=0.29,

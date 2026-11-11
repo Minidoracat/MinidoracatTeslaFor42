@@ -7,13 +7,17 @@ keys hold) plus one new object, the blade spoiler. Against the source (a Model Y
 arch trims, front overhang 911, wheelbase 2,902, tyres 369 mm):
 - width scaled about the centre line onto FIELD width;
 - the bumper ahead of the front arch shortened onto the front overhang (FIELD nose);
+- the front end lowered onto the official SIDE (FIELD nose_drop), the mirrors moved down and forward (FIELD mirror), the
+  front splitter in its own lighter black (FIELD splitter);
 - the rear wheel and its arch moved back onto the wheelbase, turned along itself (FIELD turn: a round arch stays round)
   so the rear door's rear edge, kept where the source has it (FIELD edge), meets it at about ten o'clock like the
   official SIDE render; the rear door's lower half, the sill and the quarter panel round the arch take the stretch: a
   harmonic (smoothest) field between those fixed parts (lower_grid), so the door's edge has no kinks;
 - the tail moved back onto the rear overhang (FIELD tail, upper); the roof raised from the B pillar back (FIELD roof);
-- the source's duck lip, the Y L's body-colour tailgate top under the blade, lowered (FIELD lip), and the blade spoiler
-  built over it (blade(): a separate gloss black wing, convert.py puts it on the tailgate by GATE_OBJS);
+- the roof rails pulled up to the glass roof's crown (FIELD rail), the quarter window's tip moved back (quarter_tip);
+- the source's duck lip lowered (FIELD gate, lip) and the spoiler built over it (blade(): a gloss black blade on a body
+  colour ducktail down to the tail lamps, its own object, convert.py puts it on the tailgate by GATE_OBJS);
+- the tail lamps' lower half raised (FIELD lamp);
 - the rear bumper's lower black cladding: its corner fins pulled in onto the bumper (FIELD fins);
 - the tyres (dropped by convert.py, only measured for the wheel) scaled about their centres to FIELD tyre, and the car
   set on them (the lowest tyre point = ground 0).
@@ -46,6 +50,16 @@ FIELD = dict(
     tyre=0.356,                     # 255/45 R19 (the front's; the rear 275/45 R19 is 365: one wheel model per car)
     front=0.889,                    # front overhang: the bumper ahead of u nose[1] shortened, ramp from nose[0]
     nose=(0.02, 0.40),
+    # the front end sat high against the official SIDE (hood edge, light bar 40-45 mm, lower lamp slot 30 mm, nose's
+    # bottom 15 mm, front arch top 25 mm; the sill and the belt match): down d[0] + d[1] x s(h over h), fading out over
+    # u (the windscreen's foot stays)
+    nose_drop=dict(u=(0.75, 1.20), h=(0.30, 0.80), d=(0.016, 0.026)),
+    # the front splitter (the lower cladding ahead of the front arches, source u < u, h < h) in its own material: the
+    # official FRONT34 reads it as a lit grey lip under the near-black intake, the source's black ran on as one band
+    splitter=dict(objs=("Plane.021",), u=0.37, h=0.33, mat="splitter_black"),
+    # the mirror (cap, arm, glass ring, glass): forward, down onto the official SIDE's (it sat 31 mm high, 12 mm back),
+    # x s(|z| over z): the arm's foot on the door (and the sail) stays, the arm shears, the head moves whole
+    mirror=dict(objs=("Plane.046", "Plane.048", "Plane.049", "Plane.050"), d=(-0.012, -0.030), z=(0.78, 0.86)),
     wheelbase=3.040,
     wheel=(0.354, 0.505),           # rear arch centre h (u: the tyres'), the trim's outer radius: moved whole inside
     turn=(-23.3, -9.5, 110.0),      # inside: a point at angle phi (deg from the top, + rearward) turned to phi + d,
@@ -67,20 +81,40 @@ FIELD = dict(
     # terms (up over h[0..1], down over h[2..3]: the belt and the roof rail stay) x the side (|z| over z: the rear
     # glass, |z| <= 0.55, stays)
     quarter=dict(u=(3.64, 3.85, 4.02, 4.14), h=(1.12, 1.30, 1.40, 1.56), z=(0.555, 0.605), d=0.065),
+    # its tip (source (4.046, 1.345), the frame's) 70 mm short and 20 mm low on the official SIDE through the fitted
+    # camera (the earlier de-perspective overlay scaled the official about the image centre, so it read the near side's
+    # tip that much forward): moved d x a bump (smoothstep in the ellipse's radius: u ahead / behind, h) x the side
+    quarter_tip=dict(c=(4.046, 1.345), u=(0.35, 0.25), h=0.14, z=(0.555, 0.605), d=(0.070, 0.020)),
     roof=((2.30, 0.0), (2.55, 0.008), (2.90, 0.031), (3.30, 0.067), (3.66, 0.097), (3.95, 0.112), (4.20, 0.100),
           (4.40, 0.085), (4.60, 0.050), (4.80, 0.035)),   # raise at the top (source u)
     roof_h=1.00,                    # the raise fades to 0 at this height (under the belt): top(u) gets all of it
+    # the roof rails up to the glass: the source's glass crowns 30-35 mm over its body-colour rails, so the official
+    # FRONT34 / REAR34 (cameras at roof height) see a rail band 25-30 mm taller and no glass over it (SIDE: the band
+    # over the side windows 11-15 px, the source's 7-9). Points pulled up k of their way to the crown (top(u) + roof:
+    # nothing passes it, the height holds) x a bump over u (the glass roof's length) x the top band (h over the crown
+    # minus h[0]..h[1]: the side windows and their frame stay) x the side (|z| over z: the glass flattens to its edges)
+    rail=dict(u=(2.15, 2.40, 3.70, 3.95), h=(0.065, 0.035), z=(0.30, 0.55), k=0.8),
     gate=(4.30, 4.50, 1.15, 1.30, 1.48, 0.070),   # the tailgate's top lowered onto the Y L's (its rear glass reaches
     #                                 lower, the blade over the joint): behind u gate[0]..[1], h gate[2]..[4] (source)
     #                                 squashed down, gate[5] at h gate[3] (the glass's end), the tail lamps under it kept
     lip=(4.60, 4.73, 1.15, 1.22, 0.030),   # the duck lip (the tailgate's top edge under the blade) back to the Y L's:
     #                                 points behind u lip[0]..[1] and over h lip[2]..[3] (source) lip[4] forward
-    # the blade spoiler (blade()): a wedge over the tailgate from the rear glass frame's end (BLADE_ROOT, final frame):
-    # half span, chord at the middle, root thickness, its top's rise to the trailing edge (the upturn), the trailing
-    # edge's height (the underside rises from the root to it: the black wedge in the side view, the shadow gap over
-    # the tailgate); chord, thickness, rise and edge fall to the tips as f = (1 - |z / span| ^ tip[0]) ^ tip[1], the
-    # whole section drops by droop (|z| / span) ^ 2 (the ends come down over the tail lamps); stations each side
-    blade=dict(span=0.60, chord=0.16, thick=0.050, rise=0.025, te=0.018, tip=(3.0, 0.5), droop=0.040, n=16),
+    lamp=(4.20, 4.32, 0.90, 0.97, 1.08, 0.025),   # the tail lamps' lower half up onto the Y L's (official SIDE: the
+    #                                 lamp's foot 16-28 mm higher; REAR34's corner lamps sit ~45 mm low top and bottom
+    #                                 alike, its camera pitch is less sure: SIDE wins): behind u lamp[0]..[1], h
+    #                                 lamp[2]..[4] (source) up by lamp[5] at h lamp[3] (their bottom), the shelf kept
+    # the spoiler (blade()): a gloss black blade over a body colour ducktail (official REAR34 / SIDE in all six
+    # colours: the blade's trailing face and top are the same black in each, the face under it down to the tail lamps
+    # takes the paint), from the rear glass frame's end (BLADE_ROOT, final frame) to the trailing edge. Final u, h
+    # (metres), z across: half span; the trailing edge's u, its top and its bottom h, each (middle, x z^2); the chord
+    # at most `chord` (the root follows the glass's end, which curves forward much more than the trailing edge); the
+    # root's thickness over the body; the ducktail's rear face from the trailing edge's bottom down to its foot at h
+    # `foot` (the tail lamps' top, found from behind, at most `reach` ahead of the trailing edge: the ends overhang the
+    # narrowing tail), hollowed `concave` forward at mid height. Trailing edge to the tips as f = (1 - |z / span| ^
+    # tip[0]) ^ tip[1] (rounded in plan); stations each side. Fitted on REAR34 (trailing face h 1.288-1.335 at the
+    # middle; far tip x 1501) and SIDE (near tip u 4.90, h 1.29 at |z| 0.58)
+    blade=dict(span=0.66, te=(4.95, -0.18), chord=0.21, top=(1.335, -0.12), bot=(1.288, -0.06), root=0.020,
+               foot=1.150, reach=0.08, concave=0.030, tip=(30.0, 0.5), n=12),
     # dark strips inside door gaps that one sees through from the side (blackout()): the rear door's rear edge where
     # it runs over the quarter's shoulder, above the belt (the two panels end in return flanges 3 mm apart, so one sees
     # between them into the cabin; convert.py's panel-gap strips lie along the flanges, edge-on), and the lower ends
@@ -94,15 +128,18 @@ FIELD = dict(
                          ((1.4025, 0.5456, 0.941), (1.4182, 0.4002, 0.928), (1.4235, 0.3604, 0.919),
                           (1.429, 0.3204, 0.911), (1.4343, 0.2785, 0.902), (1.436, 0.25, 0.898))),
                   inset=0.04, half=0.025),
-    # the rear bumper's black parts (lower cladding's corner lip, the diffuser's strakes) stuck 5-10 cm out past the
-    # bumper in the side view (two spikes): their points behind u zone[0], h zone[1]..zone[2] held at most `margin`
-    # behind the reference parts' rearmost point within `near` (h, z) of them (source frame, before the field)
-    fins=dict(objs=("Plane.021", "Plane.026"), ref=("Plane", "Plane.022"), zone=(4.40, 0.15, 0.70), near=(0.03, 0.05),
+    # the rear bumper's lower cladding's corner lip stuck 5-10 cm out past the bumper in the side view (a spike): its
+    # points behind u zone[0], h zone[1]..zone[2] held at most `margin` behind the reference parts' rearmost point
+    # within `near` (h, z) of them (source frame, before the field). (The diffuser's lip, Plane.026, the other spike
+    # and the teeth under the bumper seen low from behind: cars/model_yl.py DROP)
+    fins=dict(objs=("Plane.021",), ref=("Plane", "Plane.022"), zone=(4.40, 0.15, 0.70), near=(0.03, 0.05),
               margin=0.01),
 )
 GRID = (2.40, 5.20, -0.10, 1.10, 0.01)   # lower_grid: u0, u1, h0, h1, step
 BLADE_ROOT = "Plane.006"           # the rear glass frame: the blade's leading edge along its rear end
 BLADE_MAT = "spoiler_black"        # cars/model_yl.py MAT_RGB
+BLADE_PAINT = "Material_#2125765635"   # the body paint (cars/model_yl.py PAINT_MAT): the ducktail under the blade
+BLADE_HULL = ("Plane", "Plane.006", "Plane.011", "Plane.034", "Plane.041", "Plane.043")   # what blade() sits on
 BLACKOUT_MAT = "black_base"        # the source's black trim
 
 
@@ -217,12 +254,24 @@ def field(u, h, az, prof, g, nose):
     ru, rz = np.array(f["roof"]).T
     top = np.interp(u, *prof)
     g0, g1, gh0, ghm, gh1, gd = f["gate"]
+    nd = f["nose_drop"]
+    m0, m1, mh0, mhm, mh1, md = f["lamp"]
     dz = lh * (1 - w) + np.interp(u, ru, rz) * np.clip((h - f["roof_h"]) / np.maximum(top - f["roof_h"], 0.05), 0, 1) \
-        - gd * s(u, g0, g1) * s(h, gh0, ghm) * (1 - s(h, ghm, gh1))
+        - gd * s(u, g0, g1) * s(h, gh0, ghm) * (1 - s(h, ghm, gh1)) \
+        - (nd["d"][0] + nd["d"][1] * s(h, *nd["h"])) * (1 - s(u, *nd["u"])) \
+        + md * s(u, m0, m1) * s(h, mh0, mhm) * (1 - s(h, mhm, mh1))
     q = f["quarter"]
     h1 = h + dz
     dz = dz - q["d"] * s(u, *q["u"][:2]) * (1 - s(u, *q["u"][2:])) * s(h1, *q["h"][:2]) * (1 - s(h1, *q["h"][2:])) \
         * s(az, *q["z"])
+    qt = f["quarter_tip"]
+    qb = s(np.hypot((u - qt["c"][0]) / np.where(u < qt["c"][0], *qt["u"]), (h - qt["c"][1]) / qt["h"]), 1, 0) \
+        * s(az, *qt["z"])
+    du, dz = du + qt["d"][0] * qb, dz + qt["d"][1] * qb
+    r = f["rail"]
+    t = top + np.interp(u, ru, rz)                        # the crown after the roof raise
+    dz = dz + r["k"] * (t - h - dz) * s(u, *r["u"][:2]) * (1 - s(u, *r["u"][2:])) \
+        * s(h + dz, t - r["h"][0], t - r["h"][1]) * s(az, *r["z"])
     return du, dz
 
 
@@ -271,43 +320,56 @@ def new_nose(new):
     return min(p2[:, 0].min() for o, (p2, n) in new.items() if not o.name.startswith(PLATES))
 
 
-def blade(frame, nose, zc):
-    """The blade spoiler's mesh (final frame, OBJ axes): stations across, a four-sided section each (leading face, top,
-    blunt trailing face, underside), its leading edge along the rear glass frame's end (frame: that object's points),
-    a little into it; end caps. Returns (vertices, faces)."""
+def blade(frame, nose, zc, bvh):
+    """The spoiler's mesh (final frame, OBJ axes): stations across, a six-sided section each, black blade over a body
+    colour ducktail. Root on the rear glass frame's end (frame: that object's points), a little into the body (bvh: the
+    body as prepped); the blade's top up to the trailing edge, its blunt trailing face; under it the ducktail's
+    concave rear face down to its foot on the tail lamps' top (found from behind, a little in); open at the bottom,
+    inside the body. End caps. Returns (vertices, faces, black: per face)."""
+    from mathutils import Vector
     b = FIELD["blade"]
     u, h, z = frame[:, 0] - nose, frame[:, 1], frame[:, 2] - zc
     zs = b["span"] * np.linspace(-1, 1, 2 * b["n"] + 1)
     pts = []                                    # the frame's rear end across the glass, its bottom edge (the side
-    h0 = h[(np.abs(z) < 0.05) & (u > 4.3)].min()   # pieces run up the C pillars): u, h as quadratics in z
+    h0 = h[(np.abs(z) < 0.05) & (u > 4.3)].min()   # pieces run up the C pillars): u as a quadratic in z
     for x in np.linspace(-0.5, 0.5, 21):
         m = (np.abs(z - x) < 0.04) & (u > 4.3) & (h > 1.1) & (h < h0 + 0.03)
         if m.any():
             k = np.flatnonzero(m)[np.argmax(u[m])]
             pts.append((z[k], u[k], h[k]))
     q = np.array(pts)
-    ru = np.polyval(np.polyfit(q[:, 0] ** 2, q[:, 1], 1), zs ** 2) - 0.020
-    rh = np.polyval(np.polyfit(q[:, 0] ** 2, q[:, 2], 1), zs ** 2) - 0.015 - b["droop"] * (zs / b["span"]) ** 2
-    f = (1 - np.abs(zs / b["span"]) ** b["tip"][0]) ** b["tip"][1]
-    c, t, e = (np.maximum(b[k] * f, lo) for k, lo in (("chord", 0.012), ("thick", 0.003), ("te", 0.002)))
-    lb = np.stack([ru, rh, zs], 1)                                     # leading edge, bottom and top
-    lt = np.stack([ru - 0.004, rh + t, zs], 1)
-    tt = np.stack([ru + c, rh + t + b["rise"] * f, zs], 1)            # trailing edge, top and bottom
-    tb = tt - [0, 1, 0] * e[:, None]
-    V, F = [], []
+    te = b["te"][0] + b["te"][1] * zs ** 2
+    ru = np.maximum(np.polyval(np.polyfit(q[:, 0] ** 2, q[:, 1], 1), zs ** 2) - 0.020, te - b["chord"])
+    f = (1 - np.abs(zs / b["span"]) ** b["tip"][0]) ** b["tip"][1]     # the tips rounded in plan
+    te = ru + (te - ru) * np.maximum(f, 0.15)
+    tt = b["top"][0] + b["top"][1] * zs ** 2
+    tb = tt - (tt - b["bot"][0] - b["bot"][1] * zs ** 2) * np.maximum(f, 0.3)
+
+    def hit(o, d):
+        p = bvh.ray_cast(Vector(o), Vector(d))[0]
+        if p is None:
+            raise SystemExit(f"blade: no body from {np.round(o, 3).tolist()} along {d}")
+        return p
+    rh = np.array([hit((nose + a, 2.5, zc + c), (0, -1, 0)).y for a, c in zip(ru, zs)]) - 0.015
+    fu = np.array([hit((nose + 6.0, b["foot"], zc + c), (-1, 0, 0)).x - nose for c in zs]) - 0.010
+    fu = np.maximum(fu, te - b["reach"])       # the ends overhang the narrowing tail: their foot on the lamps' top
+    uh = (tb + b["foot"]) / 2                  # the hollow's middle, kept 6 mm behind the tailgate's own top (the two
+    gu = [bvh.ray_cast(Vector((nose + 6.0, a, zc + c)), Vector((-1, 0, 0)))[0] for a, c in zip(uh, zs)]   # fought)
+    uu = np.maximum((te + fu) / 2 - b["concave"], [p.x - nose + 0.006 if p else -9 for p in gu])
+    sec = [np.stack([ru, rh]), np.stack([ru - 0.004, rh + 0.015 + b["root"]]), np.stack([te, tt]),
+           np.stack([te - 0.002, tb]), np.stack([uu, uh]), np.stack([fu, np.full_like(zs, b["foot"])])]
+    #                                            L, LT, TT, TB, U, S: (u, h) rows
     m = len(zs)
-    for a, bb in ((lt, tt), (tt, tb), (tb, lb), (lb, lt)):  # top, trailing face, underside, leading face: own vertices
-        o = len(V)
-        V += list(a) + list(bb)
-        F += [(o + i, o + i + 1, o + m + i + 1, o + m + i) for i in range(m - 1)]
-    for k, w in ((0, 1), (-1, -1)):                          # end caps
-        o = len(V)
-        V += [lb[k], lt[k], tt[k], tb[k]]
-        F += [(o, o + 1, o + 2, o + 3)[::w]]
-    V = np.array(V)
-    V[:, 0] += nose
-    V[:, 2] += zc
-    return V, F
+    V = [np.stack([p[0] + nose, p[1], zs + zc], 1) for p in sec]
+    F, black = [], []
+    for i in range(5):                          # top, trailing face: black; the leading face (body colour where it
+        a, c = i * m, (i + 1) * m               # shows, at the ends), the rear face: paint; no bottom (inside the
+        F += [(a + k, a + k + 1, c + k + 1, c + k) for k in range(m - 1)]   # body)
+        black += [i in (1, 2)] * (m - 1)
+    for k, w in ((0, 1), (m - 1, -1)):          # end caps: paint (the official SIDE: body colour where the blade
+        F += [tuple(np.array((1, 2, 3))[::w] * m + k), tuple(np.array((0, 1, 3, 4, 5))[::w] * m + k)]   # ends)
+        black += [False, False]
+    return np.concatenate(V), F, black
 
 
 def main():
@@ -356,6 +418,9 @@ def main():
             J[:, 0, 0] = J[:, 1, 1] = sc
         else:
             du, dz = fld(u, h, az)
+            if o.name.startswith(FIELD["mirror"]["objs"]):   # the Jacobian skips it: the arm's shear is black trim
+                k = s(az, *FIELD["mirror"]["z"])
+                du, dz = du + k * FIELD["mirror"]["d"][0], dz + k * FIELD["mirror"]["d"][1]
             # Jacobian of (x, y, z) -> (x + du, y + dz, z wk) by central differences
             dxu = [(a - b) / (2 * E) for a, b in zip(fld(u + E, h, az), fld(u - E, h, az))]
             dxh = [(a - b) / (2 * E) for a, b in zip(fld(u, h + E, az), fld(u, h - E, az))]
@@ -384,12 +449,31 @@ def main():
             me.attributes.remove(me.attributes["custom_normal"])
         me.attributes.new("custom_normal", "FLOAT_VECTOR", "CORNER").data.foreach_set("vector", n.astype(np.float32).ravel())
         me.update()
-    for name, (bv, bf), mat in (
-            ("Blade_YL", blade(new[[o for o in obs if base(o) == BLADE_ROOT][0]][0], new_nose(new), zc), BLADE_MAT),
-            ("Blackout_YL", blackout(fld, wk, lift, nose, zc), BLACKOUT_MAT)):
+    sp = FIELD["splitter"]
+    for o in obs:
+        if base(o) in sp["objs"]:
+            me, c = o.data, co[o]
+            me.materials.append(bpy.data.materials.get(sp["mat"]) or bpy.data.materials.new(sp["mat"]))
+            for poly in me.polygons:
+                q = c[list(poly.vertices)].mean(0)
+                if q[0] - nose < sp["u"] and q[1] < sp["h"]:
+                    poly.material_index = len(me.materials) - 1
+    from mathutils.bvhtree import BVHTree
+    hull = [o for o in obs if base(o) in BLADE_HULL]
+    k = np.cumsum([0] + [len(new[o][0]) for o in hull])
+    bvh = BVHTree.FromPolygons([tuple(v) for o in hull for v in new[o][0]],
+                               [[i + k0 for i in p.vertices] for o, k0 in zip(hull, k) for p in o.data.polygons])
+    bv, bf, black = blade(new[[o for o in obs if base(o) == BLADE_ROOT][0]][0], new_nose(new), zc, bvh)
+    for name, (bv, bf, mi), mats in (
+            ("Blade_YL", (bv, bf, np.logical_not(black).astype(int)), (BLADE_MAT, BLADE_PAINT)),
+            ("Blackout_YL", blackout(fld, wk, lift, nose, zc) + (None,), (BLACKOUT_MAT,))):
         me = bpy.data.meshes.new(name)
         me.from_pydata([tuple(v) for v in bv], [], bf)
-        me.materials.append(bpy.data.materials.get(mat) or bpy.data.materials.new(mat))
+        for mat in mats:
+            me.materials.append(bpy.data.materials.get(mat) or bpy.data.materials.new(mat))
+        if mi is not None:                      # the ducktail's faces smooth (its concave face read faceted)
+            me.polygons.foreach_set("material_index", mi)
+            me.polygons.foreach_set("use_smooth", [bool(m == 1 and len(f) == 4) for m, f in zip(mi, bf)])
         me.update()
         bo = bpy.data.objects.new(name, me)
         bo.matrix_world = obs[0].matrix_world.copy()          # the importer's axes, as every source object

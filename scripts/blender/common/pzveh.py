@@ -67,7 +67,9 @@ WHEEL_DISC_X = 0.002                        # grid: the disc's two faces either 
 # flat-colour spots (u, v) of the geometry that has no planar layout (spokes, hub cap, barrel)
 WHEEL_UV = dict(c=(0.5, 0.43), rho=0.40, tread=(0.865, 0.125),
                 swatch={"spoke": (0.05, 0.05), "cap": (0.95, 0.05), "barrel": (0.05, 0.80)})
-FACET_UV = (0.95, 0.80)                     # the facets' swatch (a car's WHEEL_FACETS, stage_wheel)
+# a car with WHEEL_FACETS (stage_wheel) also has these swatches: silver facets, the lit side of a black spoke; off the
+# disc and the tread, on the plain tire colour
+FACET_UV = {"facet": (0.95, 0.80), "lit": (0.95, 0.70)}
 # WHEEL_RGB: game-screen sRGB grey levels; wheel_texture turns each into the texture value that renders it: the
 # vehiclewheel output measured on ModernCar's vanilla wheel in the same scenario is 0.143 * tex ** 1.395 (texture
 # 37 / 105 / 169 / 189 -> 22 / ~115 / 193 / 214, tesla-modely-tex-1024e scale-S-zoomin). Vehicle textures get no
@@ -234,8 +236,8 @@ def smoothstep(e0, e1, x):
 
 
 def wheel_swatches():
-    """The wheel's flat-colour UV spots: WHEEL_UV's, and the facets' when the car has WHEEL_FACETS."""
-    return {**WHEEL_UV["swatch"], **({"facet": FACET_UV} if CAR.get("WHEEL_FACETS") else {})}
+    """The wheel's flat-colour UV spots: WHEEL_UV's, and FACET_UV's when the car has WHEEL_FACETS."""
+    return {**WHEEL_UV["swatch"], **(FACET_UV if CAR.get("WHEEL_FACETS") else {})}
 
 
 def wheel_texture(r_out, rim):
@@ -316,7 +318,8 @@ def stage_wheel(r, width):
     rb = strips[2][0][1]                                 # barrel radius: the spokes end on it
     n = WHEEL_SEG
     (cu, cv), rho, (v0, h) = WHEEL_UV["c"], WHEEL_UV["rho"], WHEEL_UV["tread"]
-    sw = wheel_swatches()
+    sw, fc = wheel_swatches(), CAR.get("WHEEL_FACETS")
+    lip = fc and fc.get("ring")                           # the step strip takes the ring's swatch (below)
     xw = strips[0][3][0]                                 # the tread strip spans the tread and both shoulders
     ang = [2 * math.pi * j / n - math.pi for j in range(n + 1)]
     bm = bmesh.new()
@@ -349,7 +352,7 @@ def stage_wheel(r, width):
                     for lp, (rg, pi, col) in zip(f.loops, corners):
                         x, y, z = lp.vert.co
                         lp[uv].uv = (col / n, v0 + (x / xw * 0.5 + 0.5) * h) if tread else sw["barrel"] if si == 2 \
-                            else (cu - y / r * rho, cv + z / r * rho)
+                            else sw[lip[1]] if si == 1 and lip else (cu - y / r * rho, cv + z / r * rho)
                         nx, nr = nrm[pi]
                         loop_n.append((side * nx, nr * math.cos(ang[col]), nr * math.sin(ang[col])))
                         loop_v.append(lp.vert)
@@ -393,17 +396,16 @@ def stage_wheel(r, width):
             flat([cf[j], cf[(j + 1) % n], cb[(j + 1) % n], cb[j]],
                  Vector((0, math.cos(ang[j] + math.pi / n), math.sin(ang[j] + math.pi / n))), "cap")
     # WHEEL_FACETS (an aero cover, Model Y L's 19" Machina 2.0): a flat face over the spokes' back, `sink` behind their
-    # front, from the hub cap to the barrel (the disc and barrel behind it hidden), the spokes standing out of it as
-    # relief; the face takes the `face` swatch's colour. On it `n` silver chevrons between the spokes (their machined
-    # side faces), point in: polygon (radius / rim flange radius, angle off the chevron's centreline in deg) tip
-    # (tip, 0), out to the barrel at +-out_a (outer edge) and +-in_a (inner edge), notch (notch, 0); the first chevron
-    # `at` deg off the first spoke
-    fc = CAR.get("WHEEL_FACETS")
+    # front, from the hub cap to the barrel (the disc and barrel behind it hidden), the spokes (if any) standing out of
+    # it as relief; the face takes the `face` swatch's colour. On it, `n` times round the wheel (the first `at` deg off
+    # the first spoke), the flat polygons `shapes`: (swatch, ((radius / rim flange radius, angle deg), ...)), a little in
+    # front of the face. `ring` (inner radius / rim flange radius, swatch): a band from there out to the barrel, and
+    # the step from the flange into the barrel, in that swatch (a thin machined rim edge: the 64 px texture blurs a
+    # flange ring away); the shapes stop at its inner radius
     if fc:
         cx = lambda rad: spoke_x(rad, rr, hw) - fc["sink"]                    # noqa: E731
         radii = np.linspace(sp["cap"] * rr, rb, fc["rings"] + 1)
-        tip, notch, oa, ia = fc["tip"] * rr, fc["notch"] * rr, math.radians(fc["out_a"]), math.radians(fc["in_a"])
-        chev = [(tip, 0.0), (rb, -oa), (rb, -ia), (notch, 0.0), (rb, ia), (rb, oa)]
+        rmax = fc["ring"][0] * rr if lip else rb
         for side in (1, -1):
             out = Vector((side, 0, 0))
             rg = [[bm.verts.new((side * cx(rad), rad * math.cos(a), rad * math.sin(a))) for a in ang[:n]]
@@ -411,12 +413,19 @@ def stage_wheel(r, width):
             for a_, b_ in zip(rg[:-1], rg[1:]):
                 for j in range(n):
                     flat([a_[j], a_[(j + 1) % n], b_[(j + 1) % n], b_[j]], out, fc["face"])
+            if lip:
+                band = [[bm.verts.new((side * (cx(rad) + 0.0015), rad * math.cos(a), rad * math.sin(a)))
+                         for a in ang[:n]] for rad in (rmax, rb)]
+                for j in range(n):
+                    flat([band[0][j], band[0][(j + 1) % n], band[1][(j + 1) % n], band[1][j]], out, lip[1])
             for k in range(fc["n"]):
                 a0 = 2 * math.pi * k / fc["n"] + math.radians(fc["at"])
-                yz = [(rad * math.cos(a0 + da), rad * math.sin(a0 + da)) for rad, da in chev]
-                vs = [bm.verts.new((side * (cx(rad) + 0.0015), y, z)) for (rad, _), (y, z) in zip(chev, yz)]
-                for tri in tessellate_polygon([[Vector((y, z, 0)) for y, z in yz]]):
-                    flat([vs[i] for i in tri], out, "facet")
+                for spot, pts in fc["shapes"]:
+                    rd = [(min(f * rr, rmax), a0 + math.radians(d)) for f, d in pts]
+                    yz = [(rad * math.cos(a), rad * math.sin(a)) for rad, a in rd]
+                    vs = [bm.verts.new((side * (cx(rad) + 0.0015), y, z)) for (rad, _), (y, z) in zip(rd, yz)]
+                    for tri in tessellate_polygon([[Vector((y, z, 0)) for y, z in yz]]):
+                        flat([vs[i] for i in tri], out, spot)
     me = bpy.data.meshes.new(NAME + "_Wheel")
     bm.verts.index_update()
     loop_v = [v.index for v in loop_v]

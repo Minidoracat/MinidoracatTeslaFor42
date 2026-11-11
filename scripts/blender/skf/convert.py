@@ -85,8 +85,10 @@ BADGE_OFF = 0.003                          # grid off the surface (no depth figh
 T_BADGE, TESLA, LENS_X, MODELY, CALIPER = (C[k] for k in ("T_BADGE", "TESLA", "LENS_X", "MODELY", "CALIPER"))
 BADGE_Y, BLADE, PERF_BADGE = C["BADGE_Y"], C["BLADE"], C["PERF_BADGE"]
 SWATCH = ("Badge_T", "Badge_TESLA", "Badge_MODELY", "Caliper") + (("Badge_CERB",) if C.get("CERBERUS") else ()) \
-    + (("Badge_CAM",) if C.get("CAMERA") else ())
-#                                            one flat-colour UV spot each (unwrap())
+    + (("Badge_CAM",) if C.get("CAMERA") else ()) + (("Badge_BLADE",) if LAMPS.get("blade_swatch") else ())
+#                                            one flat-colour UV spot each (unwrap()); LAMPS blade_swatch (Model Y L,
+#                                            a flat red bar): the blade too, so the lights texture lights it whole
+#                                            (its own thin island came out dashed at 512)
 SWATCH_U = 0.03                            # UV0 strip kept for them at u > 1 - SWATCH_U
 SMOKE_RGB = (62, 58, 60)                   # the light blade by day: smoked lens, so the black letters read
 PARTS = ["Body"] + list(pv.DOORS)          # part index: 0 body, 1.. DOORS order (FL, FR, RL, RR, TrunkDoor, EngineDoor)
@@ -676,10 +678,16 @@ def badges(obs, names):
         zc, ch, pitch, lh = TESLA
         if BLADE:
             xs = np.linspace(-LENS_X, LENS_X, 21)
-            ys = [bvh.ray_cast(Vector((x, ray_y, zc)), Vector((0, 1, 0)))[0].y - BADGE_OFF / 2 for x in xs]
+            # LAMPS blade_flush (Model Y L): at the rearmost of the plate's top, middle and bottom rays, so a bar
+            # recessed under the housing's shelf stands flush with it (the game's 30 deg camera looked over it)
+            dz = (-lh / 2, 0, lh / 2) if LAMPS.get("blade_flush") else (0,)
+            ys = [min(bvh.ray_cast(Vector((x, ray_y, zc + d)), Vector((0, 1, 0)))[0].y for d in dz) - BADGE_OFF / 2
+                  for x in xs]
+            q = [(2 * i, 2 * i + 2, 2 * i + 3, 2 * i + 1) for i in range(len(xs) - 1)]
+            if LAMPS.get("blade_swatch"):      # triangles: unwrap() puts a swatch's three corners per face
+                q = [t for a, b, c, d in q for t in ((a, b, c), (a, c, d))]
             _add(obs, names, "Badge_BLADE", [Vector((x, y, zc + s * lh / 2)) for x, y in zip(xs, ys) for s in (-1, 1)],
-                 [(2 * i, 2 * i + 2, 2 * i + 3, 2 * i + 1) for i in range(len(xs) - 1)], Vector((0, -1, 0)),
-                 "badge_black")
+                 q, Vector((0, -1, 0)), "badge_black")
             bvh = tree()
         # rear lettering, read from behind (u = +x)
         letters, wid = stroke_text("TESLA", WORDMARK, 0.22, pitch=pitch / ch)
@@ -953,7 +961,7 @@ def classify(car, names, sizes):
     pane = np.full(n, -1)
     pane[glass] = [GLASS_ZONES.index(z) for z in gzn[glass]]
     rgb = np.array([MAT_RGB.get(m) or (0, 0, 0) for m in mat], float) / 255
-    rgb[blade] = np.array(SMOKE_RGB) / 255
+    rgb[blade] = np.array(LAMPS.get("blade_rgb", SMOKE_RGB)) / 255   # blade_rgb: a car's own (Model Y L: a red bar)
     if CARBON:
         rgb[carbon] = np.array(CARBON["rgb"]) / 255
     if LAMPS.get("tail_rgb"):              # (Model S: one housing material front and rear) the tail half's own colour
@@ -1651,6 +1659,9 @@ def pieces(car, c, shift):
     tf = np.repeat(np.arange(len(me.polygons)), [p.loop_total - 2 for p in me.polygons])
     part, glass, mirror = c["part"][tf], c["glass"][tf], c["mirror"][tf]
     panel = (c["paint"] | c["carbon"])[tf]                # body panels, whatever their colour (CARBON's are black)
+    # SHELL_OBJS (Model Y L's Blade_YL): closed solids riding a door, outer faces only like the mirror cap (a slab's
+    # inner copy of a face along the door's offset lay in that face's plane: dark depth fight on the spoiler's ends)
+    shell = np.isin(c["obj"][tf], C.get("SHELL_OBJS", ()))
 
     def cab_attr(cell):
         return np.array([0, 0, pv.CABIN_UV1_U - CELL[cell], 0, 0, 0, 1], float)
@@ -1692,7 +1703,7 @@ def pieces(car, c, shift):
             w = np.clip((V[:, 2] - FALCON["elbow"][1] + 0.12) / 0.12, 0, 1)
             d = np.column_stack([-sd * (1 - w), np.zeros(len(V)), -w])
             off = d / np.linalg.norm(d, axis=1, keepdims=True) * pv.DOOR_T
-        skin = sel & panel & ~mirror                     # the mirror cap: outer faces only (a closed shell)
+        skin = sel & panel & ~mirror & ~shell            # the mirror cap: outer faces only (a closed shell)
         if ang == "roll":                                # the tonneau: strips of its own (tonneau_strips)
             P, t, a, strips[pname] = tonneau_strips(V[np.unique(T[sel])], cab_attr)
         else:
