@@ -21,27 +21,27 @@ def _mx(v):
 
 
 def _corners(zn):
-    """A left rear bumper corner's zone (convert.py CARBON / SHADE keys) and its mirror on the right."""
+    """A left rear bumper corner's zone (convert.py CARBON keys) and its mirror on the right."""
     right = dict(zn, lo=(-zn["hi"][0], *zn["lo"][1:]), hi=(-zn["lo"][0], *zn["hi"][1:]))
     if "below" in zn:
         right["below"] = tuple((_mx(p), _mx(n)) for p, n in zn["below"])
     return zn, right
 
 
-# the rear bumper's corners (official REAR34, all paints): a recessed panel in the paint's shadow, a thin dark line at
-# its front edge behind the arch, a black lower edge. The source's corner panel (Plane, a 418-tri component each side,
-# mirror images) is sunk there too, 1.2 cm under the panel ahead, but the step's wall stops 1 cm short of it: an open
-# slit that showed the cabin shell; the cabin shell's floor corner (cabin.py, rays clamped up to the trunk floor) also
-# stands out through the panel 1 cm ahead of the step, a dark line (white / black stripes in game). Left side planes
-# (pre-centre grid, the prepped model): (point, normal), "below" = on the normal's back side. _BLACK_TOP: the
-# official's black top through the fitted REAR34 camera (8 points unprojected onto the panel, plane fit within 2 mm;
-# the model's sat 3-4 cm lower); _RIM: across the panel ahead, on the cabin's dark line (1.9 cm ahead of the step's
-# edge, square to the surface, within 6 mm of that edge's curve), so the step and the slit go into the shadow with
-# the sunk panel; _CREASE: under the panel's top crease strip (it rises rearward)
+# the rear bumper's corners (official REAR34, all paints): a rounded recess in the paint's shadow, lighter at the top,
+# a thin dark line along its front edge behind the arch, a black lower edge. The source's corner panel (Plane, a
+# 418-tri component each side, mirror images; 428 with prep_model_y.py's FIELD slit, which closes the 3 cm opening
+# between its sunk part's step and lip: it showed the cabin shell) is sunk there too, but its shape and crease differ:
+# the recess is drawn in the skin (RECESS). Left side, pre-centre grid, the prepped model. _BLACK_TOP: (point, normal)
+# of the official's black top through the fitted REAR34 camera (8 points unprojected onto the panel, plane fit within
+# 2 mm; the model's sat 3-4 cm lower). _OUTLINE: the official's recess outline through the same camera (its dark front
+# line, then the rounded corner and the top edge, unprojected onto the panel) in (s, z), s = position . (0.4971,
+# -0.8677, 0) (across the corner, rearward); the front line run on down to the black
 _BLACK_TOP = ((-0.5981, -1.8355, 0.4542), (0.2492, 0.8045, 0.5392))
-_RIM = ((-0.7168, -1.7023, 0.4321), (-0.5075, 0.8254, 0.2473))
-_CREASE = ((-0.651, -1.80, 0.548), (-0.06, 0.0, 1.0))
-_CORNER = ("Plane", 418)
+_OUTLINE = ((1.1130, 0.3000), (1.1209, 0.3467), (1.1302, 0.3905), (1.1371, 0.4449), (1.1451, 0.4836),
+            (1.1484, 0.5141), (1.1567, 0.5364), (1.1808, 0.5541), (1.2105, 0.5596), (1.2631, 0.5666),
+            (1.3138, 0.5740), (1.3647, 0.5785), (1.3935, 0.5804))
+_CORNER = ("Plane", 430)
 
 CAR = dict(
     # ---- pzveh: paths and names. TMP: work dir under temp/ (source in TMP/src, official renders in TMP/official)
@@ -171,17 +171,13 @@ CAR = dict(
     # above; CUT along it), black like the bumper (black_base)
     CARBON=dict(rgb=(34, 34, 36), zones=_corners(dict(lo=(-0.80, -1.95, 0.25), hi=(-0.47, -1.70, 0.56), of=_CORNER,
                                                        below=(_BLACK_TOP,)))),
-    # the sunk corner panel (above): the official renders' shadowed recess, paint x k (official REAR34: about half the
-    # paint above it in PPSW, PN01, PR01, PB01)
-    SHADE=dict(k=0.55, zones=_corners(dict(lo=(-0.73, -1.95, 0.28), hi=(-0.47, -1.66, 0.60), of=_CORNER,
-                                           below=(_RIM, _CREASE)))),
+    # the recess (above) in the skin, every paint: k[0] x the paint under its top edge to k[1] `depth` (grid) below
+    # (official REAR34 PPSW: about 0.7 to 0.47 of the paint over it; PN01, PR01, PB01 alike), the edge blended over
+    # +-`soft` (sub-texel: a texel here is ~8 mm), the dark front line `line` (width, k) (convert.py recess)
+    RECESS=dict(of=_CORNER, t=(0.4971, -0.8677, 0.0), outline=_OUTLINE, rim=5, k=(0.75, 0.5), depth=0.07, soft=0.006,
+                line=(0.014, 0.6)),
     ARCH_LINER=None,                       # dict(gap, inner, arc, n): procedural arch liners (the source has its own)
-    # (name, corners, facing, material): flat backing polygons. Behind the corner slits (above), under the sunk panel's
-    # level, along its slant: the slit reads as the official's dark line
-    PLATES=tuple((name, tuple(f(p) for p in ((-0.6931, -1.6705, 0.300), (-0.6658, -1.7183, 0.300),
-                                              (-0.6746, -1.7694, 0.535), (-0.6995, -1.7260, 0.535))),
-                  f((-0.859, -0.492, -0.139)), "black_base")
-                 for name, f in (("SlitPlateL", lambda v: v), ("SlitPlateR", _mx))),
+    PLATES=(),                             # (name, corners, facing, material): flat backing polygons
     SEAL_CLIP=False,                       # drop seal strips that pass through a surface (model_3.py); kept as built
     RAIL=None,                             # (z0, z1): paint up there in the median tone (model_3.py roof rails)
     # the panel gaps shaded in the skin (convert.py seam_shade, as Model X / S): the door, fender and hood gaps are
@@ -247,10 +243,9 @@ CAR = dict(
     # fenders (mask zones Guard*): front (ahead of y, below z, |x| > x), rear (behind y, below z, |x| > x)
     GUARDS=dict(front=(0.750, 0.910, 0.395), rear=(-0.989, 1.100, 0.444)),
     # components cut along the lines (object, tris after welding): the window surround
-    CUT={("Plane.005", 342): ("BF", "BR", "D"), _CORNER: ("BlackTopL", "BlackTopR", "RimL", "RimR")},
+    CUT={("Plane.005", 342): ("BF", "BR", "D"), _CORNER: ("BlackTopL", "BlackTopR")},
     # more cut planes for CUT: name -> (point, normal, cut faces behind y)
-    PLANES={f"{nm}{s}": (f(p), f(n), -1.66) for nm, (p, n) in (("BlackTop", _BLACK_TOP), ("Rim", _RIM))
-            for s, f in (("L", lambda v: v), ("R", _mx))},
+    PLANES={"BlackTopL": (*_BLACK_TOP, -1.66), "BlackTopR": (_mx(_BLACK_TOP[0]), _mx(_BLACK_TOP[1]), -1.66)},
     CUT_X=_CUT_X,                          # cut along +-GATE_X
     CUT_X_Y=None,                          # ... only faces behind this y (None: all)
     DOOR_OBJS=("Plane.062", "Plane.005", "Plane.002", "Plane.046", "Plane.048", "Plane.050", "Plane.047"),

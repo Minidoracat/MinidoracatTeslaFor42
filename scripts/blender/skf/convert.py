@@ -896,11 +896,8 @@ def classify(car, names, sizes):
     for i, zn in enumerate(CARBON["zones"] if CARBON else ()):
         carbon |= in_zone(zn, CARBON_EDGE.get(i))
     paint &= ~carbon
-    # SHADE (a car's, optional): paint in its zones (CARBON's zone keys) takes k x its colour in every skin, a
-    # recess the official renders show in shadow (Model Y's rear bumper corners); 1 elsewhere
-    shade = np.ones(n)
-    for zn in C["SHADE"]["zones"] if C.get("SHADE") else ():
-        shade[in_zone(zn)] = C["SHADE"]["k"]
+    # RECESS (a car's, optional; textures() recess()): the paint faces whose skin texels it shades
+    recess = paint & match(C["RECESS"]["of"], obj, csize) if C.get("RECESS") else np.zeros(n, bool)
     glass = np.isin(mat, GLASS_MATS) & ~np.isin(obj, GLASS_OPAQUE)
     part = np.zeros(n, np.int64)
     ax, ay, az = np.abs(ccen[:, 0]), ccen[:, 1], ccen[:, 2]
@@ -1021,7 +1018,7 @@ def classify(car, names, sizes):
     rail = paint * (part == 0) * pv.smoothstep(*RAIL, cen[:, 2]) if RAIL else np.zeros(n)
     return dict(part=part, zone=zone, rgb=rgb, paint=paint, lamp=lamp, glass=glass, pane=pane, obj=obj, csize=csize,
                 badge=np.array([o.startswith(("Badge_", "Caliper")) for o in obj]),
-                mat=mat, mirror=mirror, carbon=carbon, rail=rail, shade=shade)
+                mat=mat, mirror=mirror, carbon=carbon, rail=rail, recess=recess)
 
 
 # ---------------------------------------------------------------- textures
@@ -1156,6 +1153,39 @@ def paint_hsv(hsvs):
     print("LUA colors", hsvs)
 
 
+def recess(pos, sel):
+    """RECESS (Model Y's rear bumper corners): a shadowed recess drawn in the skin, H x W factor (1 = none) for the
+    texels sel at their baked positions pos (pre-centre; |x| mirrored onto the left side). In the plane (s, z), s =
+    position . t: the polygon closed below and to the right of `outline` (points, z of the last ones rising with s
+    from index `rim`: the recess's front edge up to there, then its top edge) is shaded from k[0] at the top edge to
+    k[1] `depth` below it, its edge blended over +-`soft`; `line` (width, k): a darker line just inside the front
+    edge (the official renders' dark rim)."""
+    r = C["RECESS"]
+    f = np.ones(sel.shape, np.float32)
+    p = pos[sel].copy()
+    p[:, 0] = -np.abs(p[:, 0])
+    q = np.stack([p @ np.array(r["t"], float), p[:, 2]], 1)
+    o = np.array(r["outline"], float)
+    a, ab = o[:-1], o[1:] - o[:-1]
+    w = np.clip(((q[:, None] - a) * ab).sum(2) / (ab ** 2).sum(1), 0, 1)
+    d = np.linalg.norm(q[:, None] - (a + w[..., None] * ab), axis=2)
+    seg = d.argmin(1)
+    poly = np.concatenate([o, [(o[-1, 0] + 1, o[-1, 1]), (o[-1, 0] + 1, -9), (o[0, 0], -9)]])
+    inside = np.zeros(len(q), bool)
+    for (x1, y1), (x2, y2) in zip(poly, np.roll(poly, -1, 0)):
+        cross = (y1 > q[:, 1]) != (y2 > q[:, 1])
+        inside ^= cross & (q[:, 0] < x1 + (q[:, 1] - y1) * (x2 - x1) / np.where(y2 == y1, 1, y2 - y1))
+    sd = np.where(inside, 1, -1) * d[np.arange(len(q)), seg]
+    top = np.interp(q[:, 0], o[r["rim"]:, 0], o[r["rim"]:, 1])
+    g = r["k"][0] + (r["k"][1] - r["k"][0]) * pv.smoothstep(0, r["depth"], top - q[:, 1])
+    v = 1 + (g - 1) * pv.smoothstep(-r["soft"], r["soft"], sd)
+    lw, lk = r["line"]
+    v *= 1 - lk * (seg < r["rim"]) * np.clip(1 - np.abs(sd - lw / 2) / (lw / 2), 0, 1)
+    f[sel] = v
+    print("RECESS texels", int(sel.sum()), "shaded", int((v < 0.99).sum()), "min %.2f" % v.min())
+    return f
+
+
 def seam_shade(car, c, pos, paint):
     """SEAM_SHADE (Model X, S, Y, 3): a skin shade along the panel gaps, H x W (1 = none). The sources' doors and body
     meet 1-5 mm apart, so neither the baked AO nor the gap itself drew the seam: in game, under 1 px wide, it came out a
@@ -1230,7 +1260,7 @@ def seam_shade(car, c, pos, paint):
     return f
 
 
-def textures(car, c):
+def textures(car, c, shift=0.0):
     zone_rgb = np.array([pv.Z[z] for z in ZN], float)
     aux = np.stack([c["paint"].astype(float), (c["lamp"] > 0).astype(float), (c["lamp"] == 2).astype(float)], 1)
     fz = pv.face_centres(car)
@@ -1241,20 +1271,22 @@ def textures(car, c):
                                                                      0.5 * c["badge"])))[:, None], 3, 1)}
     if c["rail"].any():
         layers["rail"] = np.repeat(c["rail"][:, None], 3, 1)
-    if C.get("SEAM_SHADE"):                # each corner's position, 0..1 over the bbox: seam_shade's texel positions
+    if C.get("SEAM_SHADE") or C.get("RECESS"):   # each corner's position, 0..1 over the bbox: texel positions
         co = pv.mesh_co(car)
         lo_, span = co.min(0), np.ptp(co, 0)
         lv = np.empty(len(car.data.loops), np.int64)
         car.data.loops.foreach_get("vertex_index", lv)
         layers["pos"] = (co[lv] - lo_) / span
-    if C.get("SHADE"):
-        layers["shade"] = np.repeat(c["shade"][:, None], 3, 1)
+    if C.get("RECESS"):
+        layers["recess"] = np.repeat(c["recess"][:, None].astype(float), 3, 1)
     b = bake(car, layers)
     col, zon, aux, ao = b["col"][..., :3], b["zone"][..., :3], b["aux"][..., :3], b["ao"][..., 0]
     nrm = b["nrm"][..., :3] * 2 - 1
     nz = nrm[..., 2]
     paint = aux[..., 0] > 0.5
-    seam = seam_shade(car, c, b["pos"][..., :3] * span + lo_, paint) if "pos" in b else None
+    pos = b["pos"][..., :3] * span + lo_ if "pos" in b else None
+    seam = seam_shade(car, c, pos, paint) if C.get("SEAM_SHADE") else None
+    rec = recess(pos + shift, paint & (b["recess"][..., 0] > 0.5)) if "recess" in b else None
     # badges flat: their strokes overlap at the joints, coplanar faces whose AO rays start on each other (dark specks)
     shade = np.where(b["badge"][..., 0] > 0.25, 1.0, 0.55 + 0.45 * ao)
     chrome = b["badge"][..., 0] > 0.75
@@ -1309,8 +1341,8 @@ def textures(car, c):
             s[ink] = np.array(INK["rgb"][p in INK["dark_on"]]) / 255
         s[etch] = np.median(s[paint], 0) * 0.78     # etched into the steel (and seen through a film): a shade darker
         skin = np.clip(s, 0, 1)
-        if "shade" in b:                   # (after the medians above and the damage tint below: the paint's own)
-            skin[paint] *= b["shade"][..., :1][paint]
+        if rec is not None:                # (after the medians above and the damage tint below: the paint's own)
+            skin[paint] *= rec[paint][:, None]
         skin = np.concatenate([skin, alpha], -1)
         pv.cabin_corners(skin)              # the cabin's colour under Viewpoint (pzveh CABIN_UV0_RGB)
         pv.save_png(skin, os.path.join(pv.TEX_DIR, f"{pv.NAME}_{p}.png"), p)
@@ -1355,7 +1387,7 @@ def stage_build():
     shift = np.array([0.0, ctr[1], zmid])
     pv.set_co(car, co - shift)
     unwrap(car, c["obj"])
-    textures(car, c)
+    textures(car, c, shift)
     # UV1: vanilla ModernCar's damage layout (damage_uv1); glass faces + 2 + 2 x pane (the frag's glass class and
     # GLASS_ZONE[])
     me = car.data

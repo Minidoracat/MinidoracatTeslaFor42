@@ -3,7 +3,8 @@ Model Y Performance" (Sketchfab, CC BY-NC 4.0; CREDITS.md) -> the Performance at
 2026.38.3 p.244 / CN manual dimensions page, "Model Y Performance": length 4,796 without the plate bracket, width
 1,920 without mirrors, height 1,611, wheelbase 2,890, front overhang 895, rear 1,011; tyres 255/35 R21 front,
 275/35 R21 rear) by one continuous displacement field, as prep_model_yl.py: no cuts, every source object and
-component keeps its triangles (the config's CUT / GATE_COMPS keys hold). Against the source (4,783 long, 1,944 wide
+component keeps its triangles (the config's CUT / GATE_COMPS keys hold) but the rear bumper corners' (FIELD slit: 12
+triangles each closing a slit, cars/model_y.py _CORNER counts them). Against the source (4,783 long, 1,944 wide
 over the rear arch trims, 1,648 high, front overhang 911, wheelbase 2,903, rear overhang 969, tyres 369 mm):
 - width scaled about the centre line onto FIELD width (the wheels keep the source's track);
 - the bumper ahead of the front arch shortened onto the front overhang (FIELD nose);
@@ -91,7 +92,50 @@ FIELD = dict(
     # f fading back to 1 over u: its black housing showed 1 px and grey on the official SIDE's 2 px black outline, the
     # outline broken half way (measure.py's lamp blob). Behind u[0] the housing has gaps round the strip (see-through)
     lamp=dict(obj="Plane.038", f=0.7, r=0.015, u=(0.30, 0.45)),
+    # the rear bumper corner's slit (cars/model_y.py, the corner panel): the sunk panel's step wall stops 3 cm short
+    # of the panel, an opening onto the cabin shell (and seal strips off its edges, convert.py seals, stood out through
+    # the panel ahead). Closed by a strip of faces (object `obj`) between the wall's foot and the panel's lip up to the
+    # opening's top edge: two chains of the source's points (u, h, |z - zc|), both sides, two triangles per step
+    slit=dict(obj="Plane", a=((4.4075, 0.4039, 0.8604), (4.4043, 0.4042, 0.8592), (4.4047, 0.4114, 0.8604),
+                              (4.4080, 0.4277, 0.8614), (4.4191, 0.5116, 0.8632), (4.4397, 0.6080, 0.8586),
+                              (4.4759, 0.6533, 0.8473)),
+              b=((4.4376, 0.4473, 0.8427), (4.4337, 0.4467, 0.8452), (4.4348, 0.4535, 0.8453),
+                 (4.4432, 0.5066, 0.8458), (4.4533, 0.5592, 0.8442), (4.4652, 0.6115, 0.8402),
+                 (4.4832, 0.6500, 0.8396))),
 )
+
+
+def close_slit(obs, nose, zc):
+    """Add the FIELD slit strip's faces to its object (the vertices exist; each face wound like its corners' vertex
+    normals, smooth, the object's first face's material). Returns how many."""
+    import bmesh
+    f, n = FIELD["slit"], 0
+    o = next(o for o in obs if o.name.split("_Mesh")[0] == f["obj"])
+    me = o.data
+    p = np.array([v.co[:] for v in me.vertices])
+    vn = np.array([v.normal[:] for v in me.vertices])
+    bm = bmesh.new()
+    bm.from_mesh(me)
+    bm.verts.ensure_lookup_table()
+    bm.faces.ensure_lookup_table()
+    ref = bm.faces[0]
+    for side in (1, -1):
+        def find(q):
+            d = np.linalg.norm(p - (nose + q[0], q[1], zc + side * q[2]), axis=1)
+            assert d.min() < 1e-3, ("slit point not found", side, q)
+            return int(d.argmin())
+        ia, ib = [find(q) for q in f["a"]], [find(q) for q in f["b"]]
+        for i in range(len(ia) - 1):
+            for t in ((ia[i], ia[i + 1], ib[i + 1]), (ia[i], ib[i + 1], ib[i])):
+                t = np.array(t)
+                if np.cross(p[t[1]] - p[t[0]], p[t[2]] - p[t[0]]) @ vn[t].sum(0) < 0:
+                    t = t[[0, 2, 1]]
+                face = bm.faces.new([bm.verts[k] for k in t], ref)
+                face.smooth = True
+                n += 1
+    bm.to_mesh(me)
+    bm.free()
+    return n
 
 
 def s(x, a, b):
@@ -229,6 +273,7 @@ def main():
     obs = [o for o in bpy.data.objects if o.type == "MESH"]
     co = {o: np.array([v.co[:] for v in o.data.vertices]) for o in obs}      # OBJ coordinates (x, y up, z)
     fld, wk, hw, r = landmarks({o.name: c for o, c in co.items()})
+    nslit = close_slit(obs, fld.nose, fld.zc)
     for o in obs:
         me = o.data
         q, J = move(fld, wk, hw, o.name, co[o])
@@ -244,8 +289,8 @@ def main():
         me.attributes.new("custom_normal", "FLOAT_VECTOR", "CORNER").data.foreach_set("vector", n.astype(np.float32).ravel())
         me.update()
     print("PREP nose %.4f back, rear axle %+.4f, tail %+.4f, width x %.5f, tyres r %.4f / %.4f -> %.4f / %.4f, "
-          "drop %.4f / %.4f" % (fld.short, fld.wbd, fld.taild, wk, r["f"], r["r"], *FIELD["tyre"], fld.drop["f"],
-                                fld.drop["r"]))
+          "drop %.4f / %.4f, slit %d faces" % (fld.short, fld.wbd, fld.taild, wk, r["f"], r["r"], *FIELD["tyre"],
+                                               fld.drop["f"], fld.drop["r"], nslit))
     bpy.ops.object.select_all(action="DESELECT")
     for o in obs:
         o.select_set(True)
