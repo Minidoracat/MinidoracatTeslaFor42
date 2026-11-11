@@ -2,7 +2,7 @@
 <!-- Steam 指南稿源（繁中）：MOD 的完整說明以本指南為準，簡介只放摘要。格式、版面與同步方式見 pz-family-docs/release.md「完整說明：Steam 指南」 -->
 <!-- 標題：📖 Minidoracat Tesla Collection MOD 完整說明：車、充電、鑰匙與 App -->
 <!-- 摘要：Minidoracat Tesla Collection 的圖文說明：Model Y 與 Model 3 Performance、Model Y L（六座）、Model S 與 Model X Plaid（鷹翼門與 6 座）、Cybertruck Cyberbeast（車斗、Powershare 住宅備援與車斗插座）、電池與拖車耗電、壁掛式充電座、行動充電器與加油站的 V4 超級充電座、特斯拉風格儀表、卡片鑰匙與手機鑰匙、手機 Tesla App 與召喚、哨兵與露營模式、生物武器防禦模式與舒適模式、驅動單元零件，以及和 Vehicle Manager、小地圖、AutoDrive、Project Viewpoint 一起用的規則與沙盒選項。 -->
-<!-- 截圖：docs/screenshots/steam/zh/，拍法見家族庫 e2e/MinidoracatTeslaFor42 的 guide-shots-sp（生物武器防禦與舒適模式只跑那段用 --define part=feat，圓盤停留文字要另開 hover.py；Cybertruck 圖用 guide-ct-sp、Model S／X 圖用 guide-sx-sp、Model Y L 的圖（33、34）用 guide-yl-sp（之後建立）、召喚圖用 phone-summon-sp、FSD 圖用 fsd-shot-sp、「和其他 MOD 一起用」用 guide-mods-sp；Project Viewpoint 那張（31）是本 repo 一次性情境 temp/oneoff/vp-detail-sp 的 vd-first-ModelS 裁 (80,40,1660,1080)，中英同一張，要裝 ZombieBuddy 才拍得到；V4 超級充電座那張（32）是 supercharger-sp 的 sc-CH-card／sc-EN-card 裁 (480,160,1480,990)） -->
+<!-- 截圖：docs/screenshots/steam/zh/，拍法見家族庫 e2e/MinidoracatTeslaFor42 的 guide-shots-sp（生物武器防禦與舒適模式只跑那段用 --define part=feat，圓盤停留文字要另開 hover.py；Cybertruck 圖用 guide-ct-sp、Model S／X 圖用 guide-sx-sp、Model Y L 的圖（33、34）用 guide-yl-sp、召喚圖用 phone-summon-sp、FSD 圖用 fsd-shot-sp、「和其他 MOD 一起用」用 guide-mods-sp；Project Viewpoint 那張（31）是本 repo 一次性情境 temp/oneoff/vp-detail-sp 的 vd-first-ModelS 裁 (80,40,1660,1080)，中英同一張，要裝 ZombieBuddy 才拍得到；V4 超級充電座那張（32）是 supercharger-sp 的 sc-CH-card／sc-EN-card 裁 (480,160,1480,990)） -->
 === 🚀 快速上手
 [b]English version:[/b] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3829449879]Minidoracat Tesla Collection Mod Guide[/url]
 
