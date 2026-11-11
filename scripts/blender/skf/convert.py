@@ -86,10 +86,14 @@ BADGE_OFF = 0.003                          # grid off the surface (no depth figh
 T_BADGE, TESLA, LENS_X, MODELY, CALIPER = (C[k] for k in ("T_BADGE", "TESLA", "LENS_X", "MODELY", "CALIPER"))
 BADGE_Y, BLADE, PERF_BADGE = C["BADGE_Y"], C["BLADE"], C["PERF_BADGE"]
 SWATCH = ("Badge_T", "Badge_TESLA", "Badge_MODELY", "Caliper") + (("Badge_CERB",) if C.get("CERBERUS") else ()) \
-    + (("Badge_CAM",) if C.get("CAMERA") else ()) + (("Badge_BLADE",) if LAMPS.get("blade_swatch") else ())
+    + (("Badge_CAM",) if C.get("CAMERA") else ()) + (("Badge_BLADE",) if LAMPS.get("blade_swatch") else ()) \
+    + (("Badge_BLADE_R",) if LAMPS.get("blade_split") else ())
 #                                            one flat-colour UV spot each (unwrap()); LAMPS blade_swatch (Model Y L,
 #                                            a flat red bar): the blade too, so the lights texture lights it whole
-#                                            (its own thin island came out dashed at 512)
+#                                            (its own thin island came out dashed at 512); LAMPS blade_split (Model Y):
+#                                            its right half (x > 0) on a spot of its own, so each half takes its own
+#                                            side's tail zone (one spot baked the whole bar LightRT: a removed right
+#                                            rear lamp put out all of it)
 SWATCH_U = 0.03                            # UV0 strip kept for them at u > 1 - SWATCH_U
 SMOKE_RGB = (62, 58, 60)                   # the light blade by day: smoked lens, so the black letters read
 PARTS = ["Body"] + list(pv.DOORS)          # part index: 0 body, 1.. DOORS order (FL, FR, RL, RR, TrunkDoor, EngineDoor)
@@ -989,9 +993,12 @@ def classify(car, names, sizes):
     put(part == 5, "Boot", "Boot")
     put(part == 6, "Hood", "Hood")
     put(head, "LightLH", "LightRH")
-    # tail lights (lit with the headlights, HeadlightRear* parts: BaseVehicle.java:5858-5882) on the bar, the blade and
-    # the corner lamps' outboard ends; brake lights (Stop, :5883-5895) on their inboard part
+    # tail lights (lit with the headlights, HeadlightRear* parts: BaseVehicle.java:5894-5919) on the bar, the blade and
+    # the corner lamps' outboard ends; brake lights (Stop, :5920-5934) on their inboard part
     stop = tail & (part == 0) & ~lit & (np.abs(cen[:, 0]) < STOP_X)
+    if LAMPS.get("brake"):     # (object, |x|), Model Y: its rear faces outboard of |x| are brake lights too (the real
+        b_obj, b_x = LAMPS["brake"]   # corner lamps' inner C: unlit with the tail lights, lit when braking)
+        stop |= tail & (part == 0) & (obj == b_obj) & (fnorm[:, 1] < -0.5) & (np.abs(cen[:, 0]) > b_x)
     put(tail & ~stop, "LightLT", "LightRT")
     put(stop, "StopL", "StopR")
     # glass zones: the mask zone and the UV1 pane code (GLASS_ZONES)
@@ -1063,10 +1070,14 @@ def unwrap(car, obj):
     uv[:, 0] *= 1 - SWATCH_U
     ls = np.empty(len(me.polygons), np.int64)
     me.polygons.foreach_get("loop_start", ls)
+    sobj = obj
+    if LAMPS.get("blade_split"):            # the blade's right half on the Badge_BLADE_R spot (SWATCH)
+        fx = pv.face_centres(car)[:, 0]
+        sobj = np.where((obj == "Badge_BLADE") & (fx > 0), "Badge_BLADE_R", obj.astype(object))
     for k, name in enumerate(SWATCH):       # 4 texels (2048) a side: the bake's margin fills the rest of the strip
         cu, cv, h = 1 - SWATCH_U / 2, (k + 0.5) / len(SWATCH), 2 / SKIN
         for i, d in enumerate(((-h, -h), (h, -h), (0, h))):
-            uv[ls[obj == name] + i] = (cu + d[0], cv + d[1])
+            uv[ls[sobj == name] + i] = (cu + d[0], cv + d[1])
     uv = uv.ravel()
     me.uv_layers["UV0"].data.foreach_set("uv", uv)
     me.uv_layers.new(name="UV1").data.foreach_set("uv", uv)

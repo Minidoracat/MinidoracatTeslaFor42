@@ -222,11 +222,15 @@ CAR = dict(
     # swatch texel so the lights texture lights it whole, round ends of radius blade_round; blade_n stations and
     # blade_rays rays a station: past the source's strip ends (|x| 0.454) the bar steps 6 cm forward onto the lamp
     # housing, whose lip at |x| 0.50-0.58 came through the bar's lower half at 21 x 3; blade_lit: Plane.034's rear
-    # faces outboard of the gate (the corner lamps' inner C) stay smoked and lit as on the cover; else the smoked cover,
-    # Plane.034's rear faces with it), lit with the tail lights at night
+    # faces outboard of the gate (the corner lamps' inner C) stay smoked and lit as on the cover; blade_split: the
+    # bar's halves on two swatch spots, each lit by its own side's tail lamp part; else the smoked cover, Plane.034's
+    # rear faces with it), lit with the tail lights at night. brake (both): the C is the brake light (Juniper: the bar
+    # and a thin outer strip are the tail lights, the brake lights sit at the tailgate's corners; teslaoracle.com
+    # 2026-01-05, teslaownersonline.com "Juniper rear brake lights as an extension of the light bar")
     LAMPS=dict(head=("front_white_light",), tail=("back_red_Light", "red_plastic111"), tail_z=0.75, tail_y=-1.4,
+               brake=("Plane.034", 0.509),
                **(dict(blade="Badge_BLADE", blade_rgb=(236, 78, 44), blade_flush=True, blade_swatch=True,
-                       blade_round=0.019, blade_n=57, blade_rays=9, blade_lit=("Plane.034", 0.509))
+                       blade_split=True, blade_round=0.019, blade_n=57, blade_rays=9, blade_lit=("Plane.034", 0.509))
                if _RED_BAR else dict(blade="Plane.034"))),
     # part lines, side view (y, z); read off the source's panel edges (build log OUTLINE)
     LINES={
