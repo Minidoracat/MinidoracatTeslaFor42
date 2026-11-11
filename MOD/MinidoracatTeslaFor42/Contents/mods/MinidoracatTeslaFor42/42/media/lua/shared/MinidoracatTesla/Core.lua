@@ -48,7 +48,7 @@ T.Specs = {
     ["Base.MinidoracatTesla_ModelY"] = {
         model = "ModelY",
         appCar = "app_car_",
-        plug = { item = "Base.MinidoracatTesla_CablePlug", z = 0.909 }, -- tesla-integ-1026a
+        plug = { item = "Base.MinidoracatTesla_CablePlug", z = 0.87 }, -- E2E integration-mp tesla-yhn (15dba30 body: port 0.870)
         v12Kwh = 15.5 * 6.9 / 1000, -- lithium-ion 15.5 V, 6.9 Ah (Model Y owner's manual, R10)
         idleKw = 0.0376 * T.DRIVE_SCALE,
         kwPerKmh = 0.00572 * T.DRIVE_SCALE,
