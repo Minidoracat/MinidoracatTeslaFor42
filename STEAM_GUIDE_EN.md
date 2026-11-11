@@ -83,7 +83,7 @@ https://steamcommunity.com/sharedfiles/filedetails/?id=3829501237
 [list]
 [*] [b]One version only[/b]: every Model Y L in the world is the same long-range, all-wheel-drive six-seater, built to the current China version (after the October 2026 refresh); there is no Performance. The mechanics window shows 502 hp (176 kW front plus 198 kW rear).
 [*] [b]Where it spawns[/b]: parking lots and upscale neighbourhoods, at the same chance as the Model Y.
-[*] [b]Performance[/b]: heavier than the other Teslas and with less thrust than the Model Y Performance, it launches slower than the Model Y; top speed, grip and braking match the other Teslas.
+[*] [b]Performance[/b]: a little heavier than the Model Y and with less thrust, it launches slower than the Model Y; top speed, grip and braking match the other Teslas.
 [*] [b]Battery[/b]: an 82 kWh High Voltage Battery (Tesla does not publish it; the figure comes from China's MIIT filing); a full charge still goes as far as a full tank in a vanilla car of the same class. Empty to 90% takes about 6 hours on a Wall Connector and about 10 on a Mobile Connector (game time); a Supercharger gives up to 250 kW and takes about 38 minutes from 10% to 90%.
 [*] [b]Paints[/b]: 7, one picked at random; Cosmic Silver is exclusive to the Model Y L. The app's picture of the car follows the paint, and the app calls it Model Y L.
 [*] [b]Doors[/b]: four ordinary doors (no falcon wing doors), the powered liftgate and the hood open the way the real car's do.
@@ -184,7 +184,7 @@ A charger that works on the floor, no wall needed; slower than the Wall Connecto
 [*] [b]Motor on is fine[/b]: the car only has to stand still; you can also start it while plugged in.
 [*] [b]No driving off plugged in[/b]: throttle or reverse says Unplug the charge cable first and the dashboard shows P; unplug and drive away.
 [*] [b]Auto unplug[/b]: towed or pushed past the cable's reach, the car is unplugged and you are told.
-[*] [b]Charging speed[/b]: 11.5 kW at the Wall Connector, 7.6 kW at the Mobile Connector; empty to 90% takes about 6 and 9 in-game hours; the sandbox option Charging speed multiplier changes it. A Supercharger is far faster, see V4 Supercharger.
+[*] [b]Charging speed[/b]: 11.5 kW at the Wall Connector, 7.6 kW at the Mobile Connector; a Model Y or Model 3 takes about 6 and 9 in-game hours from empty to 90%, and cars with a bigger battery take longer in proportion; the sandbox option Charging speed multiplier changes it. A Supercharger is far faster, see V4 Supercharger.
 [*] [b]Time skips count[/b]: charge is settled by the hours that passed, so sleeping or fast-forwarding loses nothing.
 [*] [b]Other players see the cable[/b]: it hangs from the Wall Connector or the Supercharger to the ground (it leaves the Mobile Connector right on the ground) and runs to the car's charge port.
 [*] [b]The holster[/b]: with no car plugged in, the Wall Connector's and the Supercharger's connector sits in its holster with the cable hung up; once a car is plugged in, the holster is empty. Other players see the same.

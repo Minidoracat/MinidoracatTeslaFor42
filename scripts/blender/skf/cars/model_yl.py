@@ -44,14 +44,18 @@ CAR = dict(
     COMPOSITOR_MODEL="my",
     OFFICIAL_OPTS="$MDLY,$MTY87,$STY6S,${},$WY19L,$IPB9",
     RAMP=dict(t=(0.40, 0.74), u=(0.04, 0.96), wheels=(0.18, 0.79), wt=0.80, wr=0.13),
-    # ---- pzveh: wheel, 19" Machina 2.0 ($WY19L, official RIMCLOSEUP): a black aero cover, five wide Y spokes, the
-    # pockets between their arms silver; 255/45 R19 front, 275/45 R19 rear (one size here, the source tyres'). The
-    # pockets are the disc behind the spokes: its outer ring (WHEEL_RGB dark) silver, the middle (rotor, hat) black
+    # ---- pzveh: wheel, 19" Machina 2.0 ($WY19L, official RIMCLOSEUP): a black aero cover, a five-pointed black star
+    # of spokes (each forking into two thin blades to the rim), between the spokes five silver chevrons pointing in
+    # (the spokes' machined side faces), a silver ring at the rim's edge. Here: the black face (WHEEL_FACETS) with the
+    # Y spokes standing out of it as a dark grey star, the chevrons silver polygons on it. 255/45 R19 front, 275/45 R19
+    # rear: one wheel model, the front's radius (the prep scales the source tyres to it)
     WHEEL_RIM=0.725,                       # 19" (241 mm bead + 17 mm flange) / 356 mm tyre radius
-    WHEEL_SPOKE=dict(n=5, hub=0.16, fork=0.40, spread=math.radians(18), main=(0.20, 0.17), arm=0.16, cap=0.17,
-                     inset=0.010, dish=0.008, depth=0.020, sweep=math.radians(16)),
+    WHEEL_SPOKE=dict(n=5, hub=0.16, fork=0.42, spread=math.radians(16), main=(0.20, 0.15), arm=0.07, cap=0.17,
+                     inset=0.010, dish=0.008, depth=0.020, sweep=0.0),
+    WHEEL_FACETS=dict(n=5, at=36, sink=0.008, rings=3, tip=0.55, notch=0.80, out_a=16, in_a=5, face="barrel"),
     WHEEL_DISC=dict(rotor=0.74, hat=0.30),
-    WHEEL_RGB=dict(spoke=20, cap=24, barrel=90, lip=110, rotor=14, hat=14, dark=185, gap=8, tire=(22, 28), tread=20),
+    WHEEL_RGB=dict(spoke=34, cap=30, barrel=10, lip=170, rotor=10, hat=10, dark=10, gap=8, tire=(22, 28), tread=20,
+                   facet=170),             # the face (barrel swatch) darker than the star (spoke), silver chevrons
     # ---- pzveh: vehicle script
     OY=0.2878,
     WHEEL_LIFT=0.11,
@@ -60,8 +64,8 @@ CAR = dict(
     # passengers / seats: front and 2nd row from the door openings (back: front, 2nd row); third: the 3rd row `back`
     # behind the rear doors' rear edge, over the rear axle (official interior renders), at side x (shoulder room 1,089
     # against 1,384 mm in the 2nd row, China owner's manual p.202), `drop` under the front (seat_head.py)
-    SEAT=dict(x=0.33, h=0.562, z=-0.203, back=(0.12, -0.03), out=0.30, rear=0.017,
-              third=dict(back=0.15, x=0.28, drop=0.029)),
+    SEAT=dict(x=0.326, h=0.5517, z=-0.2009, back=(0.12, -0.03), out=0.30, rear=0.017,
+              third=dict(back=0.15, x=0.2766, drop=0.029)),
     BODY_W_Z=0.55,
     DOORS={
         "DoorFrontLeft": (-1, (0, 0, 1), -65, 0.8), "DoorFrontRight": (1, (0, 0, 1), 65, 0.8),
@@ -76,7 +80,7 @@ CAR = dict(
     SRC_C=(-1.0845, -1.7659),              # source X (length) and Y (width) centre, metres (inspect src_c, after the prep)
     SRC_SCALE=1.0,
     SRC_FLIP=False,
-    BELT_Z=0.882,                          # side window bottom (front door glass z min 0.880)
+    BELT_Z=0.8717,                         # side window bottom (front door glass z min 0.870)
     TIRE_OBJ="Object005",
     DROP=("Object005", "Circle", "Cylinder", "Line0", "Object43",   # tyres, aero covers, rotors, calipers
           "Object_11", "Object_12",                                 # licence plates
@@ -85,9 +89,7 @@ CAR = dict(
           "Tesla_Model_3",               # rear TESLA: block letters sunk under the blade (Badge_TESLA instead)
           "Plane.072"),                  # DUAL MOTOR letters on the gate's right: the China Model Y L has none
     DROP_COMPS=(),
-    # the Model Y L's black blade spoiler (official REAR34 / SIDE): the duck lip, moved by the prep to the Y L blade's
-    # place (prep_model_yl.py), black in a band `edge` deep along its trailing edge seen from above (model_3.py)
-    CARBON=dict(rgb=(22, 22, 24), zones=(dict(lo=(-0.70, -2.10, 1.057), hi=(0.70, -1.70, 1.212), edge=(1, 0.10)),)),
+    CARBON=None,                           # (the blade spoiler is its own object, Blade_YL: prep_model_yl.py blade())
     ARCH_LINER=None,
     PLATES=(),
     SEAL_CLIP=False,
@@ -101,7 +103,8 @@ CAR = dict(
     MAT_RGB={"black_base": (34, 34, 36), "black_reflection": (20, 20, 22), "black": (20, 20, 22),
              "Material_#2125767099": (26, 26, 28), "front_white_light": (226, 230, 236), "back_red_Light": (150, 12, 16),
              "red_plastic": (120, 12, 16), "M22": (120, 12, 16), "mirror": (58, 64, 72), "chrome": (96, 98, 104),
-             "glass_base": (14, 14, 16), "glass_roof_panorama": (14, 14, 16)},
+             "glass_base": (14, 14, 16), "glass_roof_panorama": (14, 14, 16),
+             "spoiler_black": (12, 12, 14)},     # the blade spoiler (prep_model_yl.py BLADE_MAT): gloss black
     GLASS_MATS=("glass_base", "glass_roof_panorama"),
     GLASS_OPAQUE=(),
     GLASS_BACKS=(),
@@ -113,22 +116,23 @@ CAR = dict(
     # rear door glass / quarter glass divider bar's middle; R1 (z ascending) the rear door's rear edge, upright from
     # the belt to the arch since the prep (work/outline.py)
     LINES={
-        "S": ((-0.069, 0.412), (-0.146, 0.912)),
-        "BF": ((-0.098, 0.942), (-0.1925, 1.302)),
-        "BR": ((-0.230, 0.952), (-0.281, 1.312)),
-        "D": ((-0.880, 0.962), (-0.917, 1.262)),
-        "R1": ((-1.10, 0.632), (-1.06, 0.672), (-1.008, 0.732), (-1.012, 0.812), (-1.000, 0.912), (-0.96, 1.002)),
+        "S": ((-0.069, 0.4016), (-0.146, 0.9014)),
+        "BF": ((-0.098, 0.9314), (-0.1925, 1.2894)),
+        "BR": ((-0.2303, 0.9410), (-0.2815, 1.2989)),
+        "D": ((-0.9048, 0.9511), (-0.9418, 1.2495)),
+        "R1": ((-0.996, 0.632), (-0.999, 0.712), (-1.005, 0.770), (-1.011, 0.812), (-1.020, 0.868), (-1.029, 0.897),
+               (-1.037, 0.923), (-1.018, 0.969), (-0.994, 0.999)),
     },
-    FRONT_Y=0.91, SILL_Z=0.232, ARCH=(0.562, -0.92),
-    IN_DOOR=dict(up=0.912, x=0.42),
-    IN_GATE=dict(y=-1.56, z=0.512, up=0.962, x_up=0.62),
+    FRONT_Y=0.91, SILL_Z=0.2217, ARCH=(0.5517, -0.91),
+    IN_DOOR=dict(up=0.9017, x=0.42),
+    IN_GATE=dict(y=-1.56, z=0.5017, up=0.9517, x_up=0.6124),
     DOOR_Y=(0.901, -0.100, -1.00),
-    GATE_Z=0.525,
-    REAR_ARCH=(-1.2215, 0.3045, 0.40),
-    GATE_X=0.515,
-    STOP_X=0.645,
+    GATE_Z=0.5147,
+    REAR_ARCH=(-1.2123, 0.2941, 0.40),
+    GATE_X=0.5087,
+    STOP_X=0.6371,
     PANELS=dict(x=0.6, z=0.7, front=(-0.2, 0.6), rear=(-1.0, -0.2), gate=(-1.5, 0.5), lid=(0.9, 0.6)),
-    GUARDS=dict(front=(0.83, 0.962, 0.4), rear=(-0.95, 1.192, 0.45)),
+    GUARDS=dict(front=(0.83, 0.9517, 0.4), rear=(-0.95, 1.1817, 0.45)),
     # components cut along the lines (object, tris): the window surround; the rear door glass and the quarter glass
     # are one component here
     CUT={("Plane.004", 342): ("BF", "BR", "D"), ("Plane.011", 268): ("D",)},
@@ -137,33 +141,33 @@ CAR = dict(
     CUT_X_Y=None,
     DOOR_OBJS=("Plane.011", "Plane.004", "Plane.070", "Plane.019", "Plane.002", "Plane.046", "Plane.047", "Plane.048",
                "Plane.049", "Plane.050"),
-    GATE_OBJS=_CUT_X,
+    GATE_OBJS=_CUT_X + ("Blade_YL",),     # the blade spoiler rides the tailgate
     GATE_COMPS=(("Plane.011", 248, -1), ("Plane.006", 102, -1)),   # rear window and its frame (y sign of the centre)
     GATE_CUT_COMPS=(),
     PANES={"Body": {"WinT", "LightBarL", "WinLT", "WinRT"}, "DoorFrontLeft": {"WinLH"}, "DoorFrontRight": {"WinRH"},
            "DoorRearLeft": {"WinLT"}, "DoorRearRight": {"WinRT"}, "TrunkDoor": {"WinH"}, "EngineDoor": set()},
     # badges (model_y.py): T on the frunk lid, TESLA on the light blade, and on the gate's lower left MODEL Y and the
     # Model Y L's three slanted bars (China $MTY87 REAR34: no 特斯拉 here, no Performance badge)
-    T_BADGE=(1.93, 0.0644, 0.0677, 0.632, (0, 0.34, 0.94), (0, 0, -1)),
-    TESLA=(0.962, 0.03, 0.11, 0.045),
-    LENS_X=0.46,
+    T_BADGE=(1.914, 0.0644, 0.0677, 0.632, (0, 0.34, 0.94), (0, 0, -1)),
+    TESLA=(0.9517, 0.03, 0.11, 0.045),
+    LENS_X=0.4544,
     BADGE_Y=(-2.6, -1.85),
     BLADE=True,
-    MODELY=("MODEL Y///", -0.46, 0.567, 0.033),
+    MODELY=("MODEL Y///", -0.4544, 0.5572, 0.033),
     PERF_BADGE=None,
     CALIPER=None,                          # the aero cover hides them (and the Y L's are not red)
-    FRUNK_TUB=dict(ledge=0.08, rim=0.025, y=(1.151, 1.881), half=(0.29, 0.18), corner=0.07, taper=0.11, depth=0.29,
+    FRUNK_TUB=dict(ledge=0.08, rim=0.025, y=(1.151, 1.875), half=(0.29, 0.18), corner=0.07, taper=0.11, depth=0.29,
                    n=128),
 
-    # ---- cabin.py (mesh coords, centred; ground z -0.751): the Model Y's front cabin + 0.081 in y, - 0.003 in z (the
-    # raised roof lifts the mesh centre)
-    CABIN_FLOOR=-0.423,
-    CABIN_FRONT_Y=1.141,
-    TRUNK_Y=-1.45,             # trunk floor behind the 3rd row backrests
+    # ---- cabin.py (mesh coords, centred; ground z -0.751): the Model Y's front cabin + 0.100 in y (0.081 between the
+    # two sources, 0.019 the prep's shorter nose and longer tail moving the mesh centre), - 0.001 in z
+    CABIN_FLOOR=-0.4209,
+    CABIN_FRONT_Y=1.1602,
+    TRUNK_Y=-1.4308,           # trunk floor behind the 3rd row backrests
     TRUNK_WALL=True,
     HUMP_BACKS=False,
     REAR_DOOR_WALL=True,
-    CABIN_ZC=-0.103,
+    CABIN_ZC=-0.1009,
     SEAM_CLEAR=0.065,
     # seats: front buckets as the Model Y; the 2nd row two separate seats with an armrest each on the aisle side
     # (arms: height over the cushion, length, width; China owner's manual p.45 "armrests"), the 3rd row two seats
@@ -175,8 +179,8 @@ CAR = dict(
                third=dict(w=0.36, back=0.34, head=0.42, recline=10, dy=0.028, dz=-0.068),
                sill=(1.00, 0.12), bin=(0.86, 0.20)),
     PARCEL=None,
-    DASH=dict(console=(0, 0.201, -0.323), dash=(0, 0.881, -0.023), trim=(0, 0.708, -0.013), light=(0, 0.710, -0.036),
-              stand=(0, 0.721, 0.087), screen=(0, 0.691, 0.167), wheel=(0.438, 0.129)),
+    DASH=dict(console=(0, 0.2202, -0.3209), dash=(0, 0.9002, -0.0209), trim=(0, 0.7272, -0.0109),
+              light=(0, 0.7292, -0.0339), stand=(0, 0.7402, 0.0891), screen=(0, 0.7102, 0.1691), wheel=(0.4572, 0.1311)),
     DOOR_CARD={
         "front": [
             ("upper trim", "end", (0.05, 0.10), -0.050, None, 0.060, 0.030, "dash", 0.012),

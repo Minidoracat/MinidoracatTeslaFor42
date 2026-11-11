@@ -208,13 +208,13 @@ T.Specs = {
         -- Model Y L paints: China's six ($MTY87, Lexicon 2026-10-30) and the US Marine Blue ($MTY83, 2026-07-10).
         -- Same order and append-only rules as above; h/s/v by convert.py build.
         colors = {
-            { name = "StealthGrey", code = "PN01", h = 0.773, s = 0.563, v = 0.22 },
-            { name = "PearlWhite", code = "PPSW", h = 0.582, s = 0.493, v = 0.84 },
-            { name = "DiamondBlack", code = "PX02", h = 0.944, s = 0.537, v = 0.174 },
-            { name = "UltraRed", code = "PR01", h = 0.997, s = 1.0, v = 0.375 },
+            { name = "StealthGrey", code = "PN01", h = 0.773, s = 0.562, v = 0.22 },
+            { name = "PearlWhite", code = "PPSW", h = 0.582, s = 0.493, v = 0.841 },
+            { name = "DiamondBlack", code = "PX02", h = 0.944, s = 0.538, v = 0.174 },
+            { name = "UltraRed", code = "PR01", h = 0.997, s = 1.0, v = 0.374 },
             { name = "CosmicSilver", code = "PN03", h = 0.04, s = 0.512, v = 0.496 },
-            { name = "GlacierBlue", code = "PB01", h = 0.61, s = 0.789, v = 0.349 },
-            { name = "MarineBlue", code = "PB02", h = 0.607, s = 0.762, v = 0.203 },
+            { name = "GlacierBlue", code = "PB01", h = 0.61, s = 0.79, v = 0.349 },
+            { name = "MarineBlue", code = "PB02", h = 0.604, s = 0.76, v = 0.202 },
         },
     },
 }

@@ -105,7 +105,8 @@ Events.OnGameStart.Add(E.wrapDoorUse)
 -- SeatOffsetX/Y (:13-59), move every icon alike. Here: when the panel gets a six-seat Tesla (setVehicle, once a showing,
 -- ISVehicleMenu.lua:1634) it is made just tall enough that no two icons overlap; the scale grows with it, so every icon
 -- keeps its side and row. Any other car gets the panel's own height back (one panel a player, reused). The panel
--- recentres itself every update (:400-402).
+-- recentres itself every update (:400-402), top and bottom alike, so it stops at the player's screen height (a split
+-- screen's quarter at 1080p is 540 px): the icons there overlap again, at worst as far as vanilla's.
 local ICON_W, ICON_H = 41, 59
 -- a six-seat Tesla's inside offsets by seat (1-based; nil where vanilla draws no icon) and its seat count, else nil
 local function sixSeats(vehicle)
@@ -160,7 +161,8 @@ function E.wrapSeatUI()
     ISVehicleSeatUI.setVehicle = function(self, vehicle, ...)
         set(self, vehicle, ...)
         self.teslaBaseHeight = self.teslaBaseHeight or self.height
-        local h = E.seatPanelHeight(vehicle, self.teslaBaseHeight)
+        local h = math.min(E.seatPanelHeight(vehicle, self.teslaBaseHeight),
+            math.max(self.teslaBaseHeight, getPlayerScreenHeight(self.playerNum)))
         if h ~= self.height then self:setHeight(h) end
     end
     ISVehicleSeatUI.onJoypadDirUp = function(self, ...)

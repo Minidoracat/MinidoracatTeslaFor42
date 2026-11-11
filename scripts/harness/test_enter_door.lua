@@ -205,6 +205,8 @@ ISVehicleSeatUI = {
 local function panel()
     return setmetatable({ width = 263, height = 500, setHeight = function(self, h) self.height = h end }, { __index = ISVehicleSeatUI })
 end
+local savedScreenH, screenH = getPlayerScreenHeight, 1080
+function getPlayerScreenHeight() return screenH end
 E.seatSetVehicle = nil
 if E.wrapSeatUI then E.wrapSeatUI() end
 
@@ -236,6 +238,15 @@ ui = panel()
 ui:setVehicle(seatCar(X, XZ, XS))
 ui:setVehicle(seatCar(Y, YZ, YS))
 check(ui.height == 500, "the player's one panel, a Model X then a Model Y: back to vanilla's 500 px")
+screenH = 512
+ui = panel()
+ui:setVehicle(seatCar(X, XZ, XS))
+check(ui.height == 512, "a 512 px split screen: the panel stops at the player's screen height")
+screenH = 400
+ui = panel()
+ui:setVehicle(seatCar(X, XZ, XS))
+check(ui.height == 500, "a screen shorter than vanilla's panel: vanilla's 500 px, never less")
+screenH = 1080
 
 local YLZ, YLS = readSeats("MinidoracatTesla_ModelYL.txt")
 before, after, ui = fixed(seatCar(YL, YLZ, YLS))
@@ -266,3 +277,4 @@ check(pad(mx, 2, "down") == 6 and pad(mx, 2, "down", "down") == 4 and pad(mx, 4,
 check(pad(seatCar(Y, YZ, YS), 1, "down") == 3, "Model Y (four seats): vanilla's 1 -> 3")
 check(pad(seatCar("Base.VanSeats", XZ, XS), 1, "down") == 3, "a vanilla six-seat car: vanilla's 1 -> 3")
 ISVehicleSeatUI = savedSeatUI
+getPlayerScreenHeight = savedScreenH
