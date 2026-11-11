@@ -254,19 +254,19 @@ module Base
         }
         area SeatFrontLeft
         {
-            xywh = 0.6720 0.2306 0.4725 0.5500,
+            xywh = 0.6720 0.2345 0.4725 0.5423,
         }
         area SeatFrontRight
         {
-            xywh = -0.6720 0.2306 0.4725 0.5500,
+            xywh = -0.6720 0.2345 0.4725 0.5423,
         }
         area SeatMiddleLeft
         {
-            xywh = 0.6720 -0.2916 0.4725 0.4945,
+            xywh = 0.6720 -0.2782 0.4725 0.4830,
         }
         area SeatMiddleRight
         {
-            xywh = -0.6720 -0.2916 0.4725 0.4945,
+            xywh = -0.6720 -0.2782 0.4725 0.4830,
         }
         area SeatRearLeft
         {
@@ -307,7 +307,7 @@ module Base
         /* charge port: real Model Y L, China owner's manual p.166 */
         attachment chargeport
         {
-            offset = 0.3588 0.0669 -0.9601,
+            offset = 0.3615 0.0669 -0.9601,
             rotate = 0.0 0.0 0.0,
         }
         part DoorFrontLeft

@@ -53,6 +53,7 @@ MAT_RGB = {**C["MAT_RGB"], "badge_chrome": (196, 200, 206), "badge_black": (8, 8
 # chrome badges mirror the surroundings: bright on a dark paint, grey on a light one (median V >= 0.55: PearlWhite
 # read 196 on ~210 paint, gone)
 CHROME = ((200, 204, 210), (104, 108, 114))
+INK = C.get("BADGE_INK")                   # a car's badge inked by the paint instead (textures(); Model Y L's MODEL Y)
 # paint light (textures()): official-render paint quantile q = (base + up x upness(nz) + height x h) x AO term:
 # (base, up, height); h = face centre height, 0 at the lowest face, 1 at the roof. Calibration knob. Only soft volume:
 # the game lights a car by ambient alone in daylight (vehicle_multiuv.frag:72-96, no sun direction), so the skin keeps
@@ -678,6 +679,12 @@ def badges(obs, names):
         zc, ch, pitch, lh = TESLA
         if BLADE:
             xs = np.linspace(-LENS_X, LENS_X, 21)
+            hh = np.full(len(xs), lh / 2)
+            if LAMPS.get("blade_round"):       # (Model Y L) round ends, radius r: closer stations over the last r,
+                r = LAMPS["blade_round"]       # the plate's half height on a circle there (to 80 deg: no zero face)
+                e = LENS_X - r + r * np.sin(np.linspace(0, 1.4, 6))
+                xs = np.unique(np.concatenate([xs[np.abs(xs) < LENS_X - r], -e, e]))
+                hh = lh / 2 * np.sqrt(1 - np.clip((np.abs(xs) - LENS_X + r) / r, 0, 1) ** 2)
             # LAMPS blade_flush (Model Y L): at the rearmost of the plate's top, middle and bottom rays, so a bar
             # recessed under the housing's shelf stands flush with it (the game's 30 deg camera looked over it)
             dz = (-lh / 2, 0, lh / 2) if LAMPS.get("blade_flush") else (0,)
@@ -686,8 +693,9 @@ def badges(obs, names):
             q = [(2 * i, 2 * i + 2, 2 * i + 3, 2 * i + 1) for i in range(len(xs) - 1)]
             if LAMPS.get("blade_swatch"):      # triangles: unwrap() puts a swatch's three corners per face
                 q = [t for a, b, c, d in q for t in ((a, b, c), (a, c, d))]
-            _add(obs, names, "Badge_BLADE", [Vector((x, y, zc + s * lh / 2)) for x, y in zip(xs, ys) for s in (-1, 1)],
-                 q, Vector((0, -1, 0)), "badge_black")
+            _add(obs, names, "Badge_BLADE",
+                 [Vector((x, y, zc + s * h)) for x, y, h in zip(xs, ys, hh) for s in (-1, 1)], q, Vector((0, -1, 0)),
+                 "badge_black")
             bvh = tree()
         # rear lettering, read from behind (u = +x)
         letters, wid = stroke_text("TESLA", WORDMARK, 0.22, pitch=pitch / ch)
@@ -696,9 +704,9 @@ def badges(obs, names):
              planar=True)
     if MODELY:                             # (text, left x, baseline z, cap height)
         text, x0, z0, ch = MODELY
-        letters, _ = stroke_text(text, SANS, 0.16)
+        letters, _ = stroke_text(text, {**SANS, **C.get("MODELY_GLYPHS", {})}, 0.16)   # a car's own glyphs over SANS
         flat("Badge_MODELY", [[[(u * ch, v * ch) for u, v in q] for q in g] for g in letters],
-             ((x0, face_y, z0), (1, 0, 0), (0, 0, 1), (0, -1, 0)), "badge_chrome", planar=True)
+             ((x0, face_y, z0), (1, 0, 0), (0, 0, 1), (0, -1, 0)), C.get("MODELY_MAT", "badge_chrome"), planar=True)
     if PERF_BADGE:                         # the Performance badge plate (centre x, z, width, height)
         x, z, w, h = PERF_BADGE
         flat("Badge_PERF", [[[(0, 0), (w, 0), (w, h), (0, h)]]],
@@ -1118,8 +1126,11 @@ def seam_shade(car, c, pos, paint):
     steeper than `steep` (|dz| / length: the doors' front and rear gaps; along the roof spine and the sills the shade
     darkened the REAR34 top band, paint_sheet.py) unless its part is in `any_slope` {part: k} (the hood's gaps run
     level, and at the doors' k they stayed dotted: the dots are nearly black on a level panel), with paint of another
-    part within `reach`, one of the two in `parts` (the liftgate gaps show by themselves). The Cybertruck's panels meet
-    flush (0.3 mm): no line, no dots, none."""
+    part within `reach`, one of the two in `parts` (the liftgate gaps show by themselves). `cracks` (optional,
+    {"gap", "k"}): also every open paint edge, any part and slope, with another open paint edge (no shared corner)
+    within `gap` of its middle: a panel gap the parts split left inside one part (Model Y L: the bumpers' seams to the
+    fenders and quarters) came out dotted too. The Cybertruck's panels meet flush (0.3 mm): no
+    line, no dots, none."""
     from mathutils.kdtree import KDTree
     sd = C["SEAM_SHADE"]
     me = car.data
@@ -1144,6 +1155,23 @@ def seam_shade(car, c, pos, paint):
         np.linalg.norm(co[e[i, 1]] - co[e[i, 0]]) / 0.002))[:, None] for i in keep]
     pts = np.concatenate(seg)
     kp = np.concatenate([np.full(len(s), ks.get(c["part"][ef[i]], sd["k"])) for s, i in zip(seg, keep)])
+    if sd.get("cracks"):
+        cr = sd["cracks"]
+        op = np.flatnonzero((cnt[inv.ravel()] == 1) & c["paint"][ef])
+        smp = [co[e[i, 0]] + (co[e[i, 1]] - co[e[i, 0]]) * np.linspace(0, 1, 2 + int(
+            np.linalg.norm(co[e[i, 1]] - co[e[i, 0]]) / 0.002))[:, None] for i in op]
+        own = np.repeat(op, [len(s) for s in smp])
+        kc = KDTree(len(own))
+        for i, p in enumerate(np.concatenate(smp)):
+            kc.insert(p, i)
+        kc.balance()
+        got = set(keep)
+        crack = [i for i in op if i not in got and any(
+            not set(pid[e[own[j]]]) & set(pid[e[i]]) for _, j, _ in kc.find_range(Vector(co[e[i]].mean(0)), cr["gap"]))]
+        seg += [smp[k] for k in np.searchsorted(op, crack)]
+        pts = np.concatenate(seg)
+        kp = np.concatenate([kp] + [np.full(len(smp[k]), cr["k"]) for k in np.searchsorted(op, crack)])
+        print("SEAM_SHADE cracks", len(crack))
     kd = KDTree(len(pts))
     for i, p in enumerate(pts):
         kd.insert(p, i)
@@ -1169,8 +1197,9 @@ def textures(car, c):
     fz = pv.face_centres(car)
     hgt = np.repeat(((fz[:, 2] - fz[:, 2].min()) / np.ptp(fz[:, 2]))[:, None], 3, 1)    # 0 at the lowest face, 1 at the roof
     layers = {"col": c["rgb"], "zone": zone_rgb[c["zone"]], "aux": aux, "hgt": hgt,
-              "badge": np.repeat(np.where(c["mat"] == "badge_chrome", 1.0, np.where(c["mat"] == "badge_etch", 0.62,
-                                                                                    0.5 * c["badge"]))[:, None], 3, 1)}
+              "badge": np.repeat(np.where(c["mat"] == "badge_chrome", 1.0, np.where(
+                  c["mat"] == (INK or {}).get("mat"), 0.85, np.where(c["mat"] == "badge_etch", 0.62,
+                                                                     0.5 * c["badge"])))[:, None], 3, 1)}
     if c["rail"].any():
         layers["rail"] = np.repeat(c["rail"][:, None], 3, 1)
     if C.get("SEAM_SHADE"):                # each corner's position, 0..1 over the bbox: seam_shade's texel positions
@@ -1209,6 +1238,7 @@ def textures(car, c):
     # as "1 - a of the paint tint" (vehicle_multiuv.frag:144), so the paint takes 1/255 of the tint, under a level
     badge = b["badge"][..., 0] > 0.25
     etch = (b["badge"][..., 0] > 0.56) & (b["badge"][..., 0] < 0.7) & bool(C.get("CERBERUS"))
+    ink = (b["badge"][..., 0] > 0.8) & (b["badge"][..., 0] < 0.9) & bool(INK)
     hsvs = {}
     for p, code in pv.PAINTS:
         # the finish flag: per paint where the car sets one (PAINT_ALPHAS: 253 stainless, 252 satin film)
@@ -1234,6 +1264,8 @@ def textures(car, c):
         if seam is not None:
             s[paint] *= seam[paint][:, None]
         s[chrome] = np.array(CHROME[int(np.median(s[paint].max(-1)) >= 0.55)]) / 255
+        if INK:                            # BADGE_INK (Model Y L): its badge light on a dark paint, dark on a light
+            s[ink] = np.array(INK["rgb"][p in INK["dark_on"]]) / 255
         s[etch] = np.median(s[paint], 0) * 0.78     # etched into the steel (and seen through a film): a shade darker
         skin = np.concatenate([np.clip(s, 0, 1), alpha], -1)
         pv.cabin_corners(skin)              # the cabin's colour under Viewpoint (pzveh CABIN_UV0_RGB)

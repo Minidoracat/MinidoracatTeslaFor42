@@ -319,7 +319,7 @@ def stage_wheel(r, width):
     n = WHEEL_SEG
     (cu, cv), rho, (v0, h) = WHEEL_UV["c"], WHEEL_UV["rho"], WHEEL_UV["tread"]
     sw, fc = wheel_swatches(), CAR.get("WHEEL_FACETS")
-    lip = fc and fc.get("ring")                           # the step strip takes the ring's swatch (below)
+    lip = fc and fc.get("ring")                           # the step strip takes the ring's last swatch (below)
     xw = strips[0][3][0]                                 # the tread strip spans the tread and both shoulders
     ang = [2 * math.pi * j / n - math.pi for j in range(n + 1)]
     bm = bmesh.new()
@@ -352,7 +352,7 @@ def stage_wheel(r, width):
                     for lp, (rg, pi, col) in zip(f.loops, corners):
                         x, y, z = lp.vert.co
                         lp[uv].uv = (col / n, v0 + (x / xw * 0.5 + 0.5) * h) if tread else sw["barrel"] if si == 2 \
-                            else sw[lip[1]] if si == 1 and lip else (cu - y / r * rho, cv + z / r * rho)
+                            else sw[lip[-1]] if si == 1 and lip else (cu - y / r * rho, cv + z / r * rho)
                         nx, nr = nrm[pi]
                         loop_n.append((side * nx, nr * math.cos(ang[col]), nr * math.sin(ang[col])))
                         loop_v.append(lp.vert)
@@ -368,13 +368,21 @@ def stage_wheel(r, width):
             loop_n.append(tuple(f.normal))
             loop_v.append(lp.vert)
 
+    # WHEEL_TURN (a wheel whose real design is the same both sides of the car, Model Y L's Machina cover): the game draws
+    # all four wheels from this one model, moved but never mirrored (BaseVehicle.java:4511-4538), so the left wheels
+    # show its -x face and the right ones its +x face. Faces mirrored through x = 0 (the default) turn the right side's
+    # pattern the other way round; with WHEEL_TURN the +x face's spokes and facet shapes are the -x face's turned 180 deg
+    # about the vertical, here y (export_fbx writes y as the file's Z, the vehicle frame's up: convert.py stage_view
+    # stands the raw wheel mesh on Z), (x, y, z) -> (-x, y, -z): the default +x face mirrored in z (`fz`). The round
+    # parts (profile, hub cap, facet face, ring) map onto themselves (WHEEL_SEG is even), so they are left as they are
+    turn = CAR.get("WHEEL_TURN")
     sp, outline = WHEEL_SPOKE, spoke_outline(rr, rb)
     hw = width / 2
     for side in (1, -1):
-        out = Vector((side, 0, 0))
+        out, fz = Vector((side, 0, 0)), -1 if turn and side > 0 else 1
         for k in range(sp["n"]):
             a0 = 2 * math.pi * k / sp["n"]
-            yz = [(rad * math.cos(a0 + da), rad * math.sin(a0 + da)) for rad, da in outline]
+            yz = [(rad * math.cos(a0 + da), fz * rad * math.sin(a0 + da)) for rad, da in outline]
             front = [bm.verts.new((side * spoke_x(rad, rr, hw), y, z)) for (rad, _), (y, z) in zip(outline, yz)]
             back = [bm.verts.new((side * (spoke_x(rad, rr, hw) - sp["depth"]), y, z))
                     for (rad, _), (y, z) in zip(outline, yz)]
@@ -386,7 +394,7 @@ def stage_wheel(r, width):
                 if {outline[i][0], outline[j][0]} == {rb} or {outline[i][0], outline[j][0]} == {outline[0][0]}:
                     continue                             # ends on the barrel and under the hub cap: no wall
                 (y0, z0), (y1, z1) = yz[i], yz[j]
-                flat([front[i], front[j], back[j], back[i]], Vector((0, z1 - z0, -(y1 - y0))), "spoke")
+                flat([front[i], front[j], back[j], back[i]], fz * Vector((0, z1 - z0, -(y1 - y0))), "spoke")
         rc, xc = sp["cap"] * rr, spoke_x(sp["cap"] * rr, rr, hw) + 0.004
         cf = [bm.verts.new((side * xc, rc * math.cos(a), rc * math.sin(a))) for a in ang[:n]]
         cb = [bm.verts.new((side * (xc - sp["depth"] - 0.006), rc * math.cos(a), rc * math.sin(a))) for a in ang[:n]]
@@ -399,15 +407,16 @@ def stage_wheel(r, width):
     # front, from the hub cap to the barrel (the disc and barrel behind it hidden), the spokes (if any) standing out of
     # it as relief; the face takes the `face` swatch's colour. On it, `n` times round the wheel (the first `at` deg off
     # the first spoke), the flat polygons `shapes`: (swatch, ((radius / rim flange radius, angle deg), ...)), a little in
-    # front of the face. `ring` (inner radius / rim flange radius, swatch): a band from there out to the barrel, and
-    # the step from the flange into the barrel, in that swatch (a thin machined rim edge: the 64 px texture blurs a
-    # flange ring away); the shapes stop at its inner radius
+    # front of the face. `ring` (inner radius / rim flange radius, swatch[, step swatch]): a band from there out to the
+    # barrel, and the step from the flange into the barrel, in that swatch or the step swatch if given (a thin machined
+    # rim edge: the 64 px texture blurs a flange ring away; a dark step leaves the band alone, thinner); the shapes stop
+    # at its inner radius
     if fc:
         cx = lambda rad: spoke_x(rad, rr, hw) - fc["sink"]                    # noqa: E731
         radii = np.linspace(sp["cap"] * rr, rb, fc["rings"] + 1)
         rmax = fc["ring"][0] * rr if lip else rb
         for side in (1, -1):
-            out = Vector((side, 0, 0))
+            out, fz = Vector((side, 0, 0)), -1 if turn and side > 0 else 1
             rg = [[bm.verts.new((side * cx(rad), rad * math.cos(a), rad * math.sin(a))) for a in ang[:n]]
                   for rad in radii]
             for a_, b_ in zip(rg[:-1], rg[1:]):
@@ -422,7 +431,7 @@ def stage_wheel(r, width):
                 a0 = 2 * math.pi * k / fc["n"] + math.radians(fc["at"])
                 for spot, pts in fc["shapes"]:
                     rd = [(min(f * rr, rmax), a0 + math.radians(d)) for f, d in pts]
-                    yz = [(rad * math.cos(a), rad * math.sin(a)) for rad, a in rd]
+                    yz = [(rad * math.cos(a), fz * rad * math.sin(a)) for rad, a in rd]
                     vs = [bm.verts.new((side * (cx(rad) + 0.0015), y, z)) for (rad, _), (y, z) in zip(rd, yz)]
                     for tri in tessellate_polygon([[Vector((y, z, 0)) for y, z in yz]]):
                         flat([vs[i] for i in tri], out, spot)
