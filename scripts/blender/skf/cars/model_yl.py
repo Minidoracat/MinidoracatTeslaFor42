@@ -34,15 +34,17 @@ CAR = dict(
     # Slopes kept (the front fit asks 0.65-1.15, the rear the 1.6 clamp: no slope serves both views); offsets only, from
     # the Model Y start: round 1 put each channel's game p50 on FRONT34 through the measured skin-p50 -> game-p50 curve
     # (game ~ skin - 13 levels in the dark, ~ skin from 70 up), round 2 moved each channel toward its REAR34 residual
-    # while keeping FRONT34 within 2 levels (tesla-ylb-skin1 / -skin2). Game p50 minus official now -3..+2 levels
-    # front, -2..+7 rear (MOD repo temp/e2e-yl/paint/yl-paint-front.png, -rear.png). Calibration knob
+    # while keeping FRONT34 within 2 levels (tesla-ylb-skin1 / -skin2). The b34bd30 body re-made the skins: Glacier
+    # Blue read G / B +4 / +5 front (tesla-yld-skin-1111a), its G / B offsets moved down 0.012 / 0.016
+    # (tesla-yle-skin1-1111a). Game p50 minus official now -2..+2 levels front, -5..+7 rear (MOD repo
+    # temp/e2e-yl/paint/yl-paint-front.png, -rear.png). Calibration knob
     CAL={
         "StealthGrey": ((0.88, 0.88, 0.88), (0.092, 0.084, 0.077)),
         "PearlWhite": ((0.80, 0.80, 0.80), (0.201, 0.185, 0.185)),
         "DiamondBlack": ((0.99, 0.99, 0.99), (0.113, 0.108, 0.104)),
         "UltraRed": ((0.97, 0.97, 0.97), (0.071, 0.082, 0.093)),
         "CosmicSilver": ((0.90, 0.90, 0.90), (0.041, 0.037, 0.040)),
-        "GlacierBlue": ((0.80, 0.80, 0.80), (0.095, 0.099, 0.101)),
+        "GlacierBlue": ((0.80, 0.80, 0.80), (0.095, 0.087, 0.085)),
         "MarineBlue": ((0.81, 0.81, 0.81), (0.117, 0.117, 0.108)),
     },
     # design studio (China; MarineBlue is only on the US $MTY83: its renders, same camera, were fetched by hand to
