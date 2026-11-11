@@ -1,8 +1,11 @@
-"""Model Y Performance (BloxBloger's "2026 Tesla Model Y Performance", Sketchfab, CC BY-NC 4.0, CREDITS.md): everything
-the body pipeline needs to know about this car and its source model. Picked with CAR=model_y (the default,
-pzveh.load). Each key is the module constant it sets: pzveh.use (paths, script, wheel, paints), convert.py (source
-objects, part lines, badges), cabin.py (cabin layout). Grid units, pre-centre frame (+Y front, +Z up, -X car left,
-ground z 0) unless noted; numbers and sources: .claude/skills/tesla-dev/references/models.md section 0.
+"""Model Y Performance (BloxBloger's "2026 Tesla Model Y Performance", Sketchfab, CC BY-NC 4.0, CREDITS.md) brought to
+the owner's manual's size and the official renders' shape by scripts/blender/skf/prep_model_y.py (run it first: TMP/src/
+source/Tesla Model Y Performance 2026.obj -> model_y.obj): everything the body pipeline needs to know about this car
+and its source model. Picked with CAR=model_y (the default, pzveh.load). Each key is the module constant it sets:
+pzveh.use (paths, script, wheel, paints), convert.py (source objects, part lines, badges), cabin.py (cabin layout).
+Grid units, pre-centre frame (+Y front, +Z up, -X car left, ground z 0) unless noted; positions are the prepped
+model's (the source's through prep's field); numbers and sources: .claude/skills/tesla-dev/references/models.md
+section 0.
 """
 import math
 
@@ -14,7 +17,7 @@ CAR = dict(
     NAME="MinidoracatTesla_ModelY",        # vehicle script, FBX and texture file name
     SCRIPT_MARK="---- geometry (TeslaModelY)",   # the vehicle script's line after which the geometry block is ours
     APP_CAR="app_car_{}.png",              # phone App car image per paint (PhoneApp.lua)
-    DIMS=(4.790, 1.920, 1.624),            # official length, body width (no mirrors), height, metres
+    DIMS=(4.796, 1.920, 1.611),            # official Performance length, body width (no mirrors), height, metres
     PORT_NOTE="real Model Y",              # source of the charge port spot, written into the vehicle script's comment
     # official Model Y paints (decisions.md "車款外觀"): skin order = vehicle script skin index = Core.lua colors order;
     # saved games store the index (BaseVehicle.java:2635/2741), so after release only append
@@ -46,12 +49,13 @@ CAR = dict(
     # round u wheels at row wt, radius wr of the width)
     RAMP=dict(t=(0.36, 0.74), u=(0.04, 0.96), wheels=(0.165, 0.80), wt=0.80, wr=0.135),
     # ---- pzveh: wheel, the Model Y Performance's 21" Arachnid 2.0 (design studio $MTY70,$WY21A, view RIMCLOSEUP):
-    # five Y spokes in dark graphite, open between them onto the brake rotor; staggered 255/35 R21 front / 275/35 R21
-    # rear (one size here, the source tires'). Spokes and hub cap are geometry (the gaps really open: the vehiclewheel
-    # shader has no alpha cutout), the tire, rim flange, barrel and the disc behind the spokes a surface of revolution
-    # (wheel_profile). The disc closes the wheel at its middle (x = +-WHEEL_DISC_X): the brake rotor round the hub, dark
-    # between rotor and barrel; the red calipers sit between it and the spokes but belong to the body (convert.py
-    # calipers), they must not spin
+    # five Y spokes in dark graphite, open between them onto the brake rotor; staggered 255/35 R21 front (r 356) /
+    # 275/35 R21 rear (r 363): prep_model_y.py scales the source's tyres to those, the one wheel model here takes their
+    # mean radius (359) and the source's width (294 mm). Spokes and hub cap are geometry (the gaps really open: the
+    # vehiclewheel shader has no alpha cutout), the tire, rim flange, barrel and the disc behind the spokes a surface of
+    # revolution (wheel_profile). The disc closes the wheel at its middle (x = +-WHEEL_DISC_X): the brake rotor round the
+    # hub, dark between rotor and barrel; the red calipers sit between it and the spokes but belong to the body
+    # (convert.py calipers), they must not spin
     WHEEL_RIM=0.76,                        # rim flange radius / tire radius: 21" (266.7 mm bead + ~17 mm) / 356 mm
     # Y spoke in rr units (rr = WHEEL_RIM x tire radius), half-widths tangential: main arm from the hub to the fork,
     # then two arms spreading to +-spread at the barrel; front face `inset` grid inside the tire's half width at the
@@ -73,13 +77,13 @@ CAR = dict(
     WHEEL_LIFT=0.11,      # rendered wheel sits this much (grid) above its script offset at rest: vanilla arch centres
     #                       minus wheel offsets, ModernCar +0.10/+0.16, SUV +0.12/+0.10 (arch circle fit); calibration knob
     WHEEL_INSET=0.03,     # tire outer face this far inside the body's own tire (flush tires looked proud of the arch)
-    CAB_BOX=(1.30, 0.45, -1.60),   # the cabin physics box: width, front y, rear y (mesh, grid)
+    CAB_BOX=(1.284, 0.468, -1.595),   # the cabin physics box: width, front y, rear y (mesh, grid)
     # passengers and seats (pzveh.geometry, cabin.py): side x, seat height over the ground (script) and its mesh z
     # (centred), seat y = middle of the door opening minus `back` (front, rear row), getting out this far off the body
     # rear: the rear row sits this much lower. Heights from scripts/blender/skf/seat_head.py (2026-11-01): the seated
     # heads and caps under the roof, the feet on CABIN_FLOOR in the seated clips (scripts/seat_anim.py; the floor and
     # both rows follow the clips' hip-to-sole heights), SEATS dz / dy put the cushions and backrests against the body
-    SEAT=dict(x=0.33, h=0.550, z=-0.200, back=(0.12, 0.08), out=0.30, rear=0.017),
+    SEAT=dict(x=0.326, h=0.516, z=-0.204, back=(0.12, 0.08), out=0.30, rear=0.017),
     BODY_W_Z=0.55,                         # body width (script extents) measured below this fraction of DIMS height
     # part: side (-1 = left, x < 0; 0 = tailgate), hinge axis, open angle (deg; sign swings the door out, the gate up),
     # clip seconds. Hinge points come from the cut (front edge on the outer skin; the gate's top edge; the frunk lid's
@@ -94,14 +98,14 @@ CAR = dict(
     GATE_IN=(0.0, 0.894, -0.447),   # tailgate inward direction (forward and down: the glass leans, the panel stands)
     GATE_HINGE="top",               # the tailgate hinges at its top edge (a sedan's lid: "front")
 
-    # ---- convert.py: the source (gitignored): the OBJ inside the Sketchfab download, under TMP
-    SRC=("src", "source", "Tesla Model Y Performance 2026.obj"),
+    # ---- convert.py: the source (gitignored): prep_model_y.py's output from the OBJ inside the Sketchfab download
+    SRC=("src", "source", "model_y.obj"),
     # OBJ (Blender import, -Z forward, Y up: front -X, left -Y) -> pre-centre frame, centres of the source bbox
     # (inspect prints them)
     SRC_C=(-1.0675, -1.787),               # source X (length) and Y (width) centre, metres; true to size (4.78 x 1.94 m)
     SRC_SCALE=1.0,                         # metres per source unit
     SRC_FLIP=False,                        # source front +X (glTF) instead of -X
-    BELT_Z=0.88,                           # side window bottom (glass z min 0.878)
+    BELT_Z=0.840,                           # side window bottom (glass z min 0.878)
     TIRE_OBJ="Object005",                  # tires: wheel centres, radius and width (load_source)
     # what each source object is (names from the OBJ; sizes in the build log, or inspect)
     DROP=("Object005", "Cylinder", "Circle.", "Plane.027", "Plane.076", "Plane.088", "Plane.090", "Plane.026",
@@ -145,28 +149,28 @@ CAR = dict(
                blade="Plane.034"),
     # part lines, side view (y, z); read off the source's panel edges (build log OUTLINE)
     LINES={
-        "S": ((-0.150, 0.40), (-0.227, 0.90)),   # front / rear door seam below the belt
-        "BF": ((-0.171, 0.90), (-0.266, 1.25)),  # B-pillar trim front edge (front door frame ends)
-        "BR": ((-0.306, 0.90), (-0.360, 1.25)),  # B-pillar trim rear edge (rear door frame starts)
-        "D": ((-0.955, 0.95), (-1.000, 1.20)),   # rear door glass / fixed quarter glass divider
-        "R1": ((-0.956, 0.60), (-1.081, 0.90)),  # rear door rear edge above the wheel arch
+        "S": ((-0.150, 0.369), (-0.227, 0.860)),   # front / rear door seam below the belt
+        "BF": ((-0.171, 0.860), (-0.266, 1.219)),  # B-pillar trim front edge (front door frame ends)
+        "BR": ((-0.306, 0.861), (-0.360, 1.219)),  # B-pillar trim rear edge (rear door frame starts)
+        "D": ((-0.944, 0.914), (-0.989, 1.171)),   # rear door glass / fixed quarter glass divider
+        "R1": ((-0.945, 0.566), (-1.070, 0.862)),  # rear door rear edge above the wheel arch
     },
-    FRONT_Y=0.83, SILL_Z=0.235, ARCH=(0.55, -0.79),   # front door front, door bottom, rear door above / ahead of arch
-    IN_DOOR=dict(up=0.9, x=0.42),          # convert.in_door: frame lines (BF / BR / D) above z `up`; doors at |x| > x
+    FRONT_Y=0.832, SILL_Z=0.204, ARCH=(0.518, -0.782),   # front door front, door bottom, rear door above / ahead of arch
+    IN_DOOR=dict(up=0.860, x=0.415),          # convert.in_door: frame lines (BF / BR / D) above z `up`; doors at |x| > x
     # convert.in_gate: tailgate behind y, above z; |x| under GATE_X, under x_up above z up (the spoiler)
-    IN_GATE=dict(y=-1.45, z=0.52, up=0.93, x_up=0.62),
+    IN_GATE=dict(y=-1.451, z=0.492, up=0.895, x_up=0.612),
     # door openings for the cabin shell and the seats (pre-centre y): front door front, B pillar (middle of the seam S
     # between the cabin floor z 0.32 and the belt; the shell's B-pillar ring follows S itself), rear door rear
-    DOOR_Y=(0.82, -0.181, -1.08),
-    GATE_Z=0.525,                          # tailgate opening's lower edge (gate panel bottom)
-    REAR_ARCH=(-1.175, 0.30, 0.40),        # rear wheel arch (y, z, r): rear tire centre, arch radius
-    GATE_X=0.515,                          # tailgate side edge through the light bar (gate panel half width)
-    STOP_X=0.645,                          # corner lamps inboard of this |x| are the brake lights, outboard the tail
+    DOOR_Y=(0.820, -0.181, -1.069),
+    GATE_Z=0.497,                          # tailgate opening's lower edge (gate panel bottom)
+    REAR_ARCH=(-1.164, 0.271, 0.40),        # rear wheel arch (y, z, r): rear tire centre, arch radius
+    GATE_X=0.509,                          # tailgate side edge through the light bar (gate panel half width)
+    STOP_X=0.637,                          # corner lamps inboard of this |x| are the brake lights, outboard the tail
     # paint panels by component centre (classify): side doors at |x| > x, below z, front / rear door y range; the
     # tailgate (behind y, above z) and the frunk lid (ahead of y, above z) within |x| < 0.1
-    PANELS=dict(x=0.6, z=0.7, front=(-0.2, 0.6), rear=(-1.0, -0.2), gate=(-1.5, 0.5), lid=(0.9, 0.6)),
+    PANELS=dict(x=0.593, z=0.660, front=(-0.200, 0.600), rear=(-0.989, -0.200), gate=(-1.505, 0.472), lid=(0.900, 0.556)),
     # fenders (mask zones Guard*): front (ahead of y, below z, |x| > x), rear (behind y, below z, |x| > x)
-    GUARDS=dict(front=(0.75, 0.95, 0.4), rear=(-1.0, 1.13, 0.45)),
+    GUARDS=dict(front=(0.750, 0.910, 0.395), rear=(-0.989, 1.100, 0.444)),
     # components cut along the lines (object, tris after welding): the window surround
     CUT={("Plane.005", 342): ("BF", "BR", "D")},
     PLANES={},                             # more cut planes for CUT: name -> (point, normal, cut faces behind y)
@@ -187,14 +191,14 @@ CAR = dict(
     # frunk lid (OEM 1494949-00-A, chrome, 7.8 x 8.2 cm), TESLA in black across the light blade (letters ~2 cm tall,
     # 42 cm span), MODEL Y in chrome on the tailgate's lower left (jig on its left and lower edges). Letters are scaled
     # for the closest zoom, where 1 cm is about 1.5 px: true-size letters would be one or two pixels tall
-    T_BADGE=(1.85, 0.0644, 0.0677, 0.62, (0, 0.34, 0.94), (0, 0, -1)),   # centre y on the frunk lid (stem tip ~3 cm
+    T_BADGE=(1.841, 0.0644, 0.0677, 0.571, (0, 0.34, 0.94), (0, 0, -1)),   # centre y on the frunk lid (stem tip ~3 cm
     #                                       off its front edge), width, height, ray start z, the lid's normal there,
     #                                       ray (straight down; None: along -normal)
-    TESLA=(0.93, 0.03, 0.11, 0.045),       # blade strip centre z, cap height, letter pitch, lens height
-    LENS_X=0.46,                           # the blade's rear strip ends here (the corner lamps' lenses outboard)
-    BADGE_Y=(-2.5, -1.7),                  # rear badges: blade ray start y, letter frame y (rays from 0.3 behind it)
+    TESLA=(0.895, 0.03, 0.11, 0.045),       # blade strip centre z, cap height, letter pitch, lens height
+    LENS_X=0.454,                           # the blade's rear strip ends here (the corner lamps' lenses outboard)
+    BADGE_Y=(-2.5, -1.720),                  # rear badges: blade ray start y, letter frame y (rays from 0.3 behind it)
     BLADE=True,                            # the light blade lens across the tailgate (Badge_BLADE)
-    MODELY=("MODEL Y", -0.46, 0.555, 0.033),   # text, left x, baseline z, cap height (true ~2.4 cm): under the crease
+    MODELY=("MODEL Y", -0.454, 0.526, 0.033),   # text, left x, baseline z, cap height (true ~2.4 cm): under the crease
     #                                        at z 0.60, inside the tailgate (|x| < 0.50 at this height)
     PERF_BADGE=None,                       # (x, z, w, h): a drawn Performance plate (here the source's Plane.086)
     # brake calipers (calipers()): front / rear (angle behind the top, half span) in degrees, radii and x from the
@@ -203,7 +207,7 @@ CAR = dict(
     # plan: top or bottom of the wheel. From the game camera (30 deg down) a recess is seen through the gaps above it:
     # at the top the caliper hid behind the fender and the rim in 5 of 6 spin angles, at the bottom it showed in all 6
     # (offline view S, Quicksilver, 85-573 red px)
-    CALIPER=dict(front=(176, 18), rear=(80, 15), r=(0.100, 0.168), x=(0.010, 0.045)),   # r: the front pair's
+    CALIPER=dict(front=(176, 18), rear=(80, 15), r=(0.097, 0.162), x=(0.010, 0.045)),   # r: the front pair's
     #                                                             bottom stays above the body's lowest point (calipers())
     # frunk under the lid (frunk_tub(); user 2026-10-27 「前面是不是沒做置物箱的位置」): 2025 Model Y front trunk 117 L,
     # a tapered bin about 70 cm wide at the windshield end, 91 cm on its longest line, 35-43 cm deep (basenor.com
@@ -212,17 +216,17 @@ CAR = dict(
     # outline (rear / front y and half widths: a rounded trapezoid, corner radius `corner`), walls `taper` in to a
     # floor `depth` under the rim (a plane through the rear and front middles: the lid falls to the nose); `n` rays
     # round the plan centre resample the opening outline. build prints the volume (FRUNK ... L)
-    FRUNK_TUB=dict(ledge=0.08, rim=0.025, y=(1.07, 1.80), half=(0.29, 0.18), corner=0.07, taper=0.11, depth=0.29,
+    FRUNK_TUB=dict(ledge=0.08, rim=0.025, y=(1.074, 1.794), half=(0.286, 0.178), corner=0.07, taper=0.11, depth=0.29,
                    n=128),
 
     # ---- cabin.py (mesh coords, centred; ground z -0.748)
-    CABIN_FLOOR=-0.42,         # cabin floor: under the seated feet (seat_head.py feet)
-    CABIN_FRONT_Y=1.06,        # shell front wall: past the windscreen's lower edge (y 1.02 on the centre line)
-    TRUNK_Y=-0.95,             # trunk floor starts behind the rear backrests (their foot is at its height)
+    CABIN_FLOOR=-0.424,         # cabin floor: under the seated feet (seat_head.py feet)
+    CABIN_FRONT_Y=1.083,        # shell front wall: past the windscreen's lower edge (y 1.02 on the centre line)
+    TRUNK_Y=-0.921,             # trunk floor starts behind the rear backrests (their foot is at its height)
     TRUNK_WALL=True,           # trunk side walls from one profile (cabin.py trunk_walls; user 2026-11-01)
     HUMP_BACKS=False,          # no two-sided arch humps (cabin.py; staircase in the rear doors, 2026-11-01)
     REAR_DOOR_WALL=True,       # TRUNK_WALL's profile through the rear door openings too (user 2026-11-01)
-    CABIN_ZC=-0.10,            # cabin axis the shell rays start from
+    CABIN_ZC=-0.108,            # cabin axis the shell rays start from
     SEAM_CLEAR=0.065,          # grid: no ring this close to the B-pillar cut (the seam leans +-0.043 about it)
     # seats (front buckets: cushion / backrest width, backrest height, recline deg; rear bench: base width, cushions
     # (centre x, width), backrest height, recline), trunk sill plate and under-floor bin lid (width, depth)
@@ -232,8 +236,8 @@ CAR = dict(
                sill=(1.00, 0.12), bin=(0.86, 0.40)),
     PARCEL=None,               # a sedan's parcel shelf (cabin.parcel_shelf); the hatch has none
     # dash, screen and steering wheel: centres (x, y, z); wheel = (y, z) of its hub, x = the driver's seat
-    DASH=dict(console=(0, 0.12, -0.32), dash=(0, 0.80, -0.02), trim=(0, 0.627, -0.01), light=(0, 0.629, -0.033),
-              stand=(0, 0.64, 0.09), screen=(0, 0.61, 0.17), wheel=(0.357, 0.132)),   # wheel: the reclined driver's hands
+    DASH=dict(console=(0, 0.138, -0.324), dash=(0, 0.818, -0.024), trim=(0, 0.645, -0.014), light=(0, 0.647, -0.037),
+              stand=(0, 0.658, 0.086), screen=(0, 0.628, 0.166), wheel=(0.375, 0.128)),   # wheel: the reclined driver's hands
     # door cards (Model Y, black interior; official interior photos): (part, y from the card's front / rear end, z over
     # the belt, size along y, size z, depth off the panel, cell, edge radius). Front door ys = (rear, front) = (B
     # pillar, A pillar); rear door (rear end, B pillar). "end" entries span the card minus (a, b) at its rear and front
