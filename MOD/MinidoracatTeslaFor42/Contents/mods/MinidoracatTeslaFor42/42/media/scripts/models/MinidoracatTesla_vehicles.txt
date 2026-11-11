@@ -34,6 +34,14 @@ module Base
         scale = 0.5495,
     }
 
+    model MinidoracatTesla_ModelY_WheelRear
+    {
+        mesh = vehicles/MinidoracatTesla_ModelY_WheelRear,
+        texture = Vehicles/MinidoracatTesla_ModelY_wheelrear,
+        shader = vehiclewheel,
+        scale = 0.5495,
+    }
+
     /* Animated doors, tailgate and frunk lid (convert.py pieces): skinned meshes on VehicleSkeleton in one FBX, same
        units and UV0 / UV1 as the body; static = false picks the skinned media/shaders/MinidoracatTesla_vehicle.vert. */
     model MinidoracatTesla_ModelY_DoorFrontLeft

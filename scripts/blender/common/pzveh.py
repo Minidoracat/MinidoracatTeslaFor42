@@ -70,6 +70,10 @@ WHEEL_UV = dict(c=(0.5, 0.43), rho=0.40, tread=(0.865, 0.125),
 # a car with WHEEL_FACETS (stage_wheel) also has these swatches: silver facets, the lit side of a black spoke; off the
 # disc and the tread, on the plain tire colour
 FACET_UV = {"facet": (0.95, 0.80), "lit": (0.95, 0.70)}
+# WHEEL_LIP (cars/<car>.py, optional): the step from the rim flange into the barrel in WHEEL_RGB's flat `lip` colour off
+# this swatch (off the disc and the tread, on the plain tire colour) instead of the planar texture, whose 5 mm flange
+# band the 64 px texture blurs into the dark gap round it: the thin bright lip ring between the spokes and the tyre
+LIP_UV = {"lip": (0.05, 0.70)}
 # WHEEL_RGB: game-screen sRGB grey levels; wheel_texture turns each into the texture value that renders it: the
 # vehiclewheel output measured on ModernCar's vanilla wheel in the same scenario is 0.143 * tex ** 1.395 (texture
 # 37 / 105 / 169 / 189 -> 22 / ~115 / 193 / 214, tesla-modely-tex-1024e scale-S-zoomin). Vehicle textures get no
@@ -236,8 +240,9 @@ def smoothstep(e0, e1, x):
 
 
 def wheel_swatches():
-    """The wheel's flat-colour UV spots: WHEEL_UV's, and FACET_UV's when the car has WHEEL_FACETS."""
-    return {**WHEEL_UV["swatch"], **(FACET_UV if CAR.get("WHEEL_FACETS") else {})}
+    """The wheel's flat-colour UV spots: WHEEL_UV's, FACET_UV's when the car has WHEEL_FACETS, LIP_UV's with WHEEL_LIP."""
+    return {**WHEEL_UV["swatch"], **(FACET_UV if CAR.get("WHEEL_FACETS") else {}),
+            **(LIP_UV if CAR.get("WHEEL_LIP") else {})}
 
 
 def wheel_texture(r_out, rim):
@@ -294,14 +299,22 @@ def spoke_x(r, rr, hw):
 
 def spoke_outline(rr, rb):
     """One Y spoke's outline (radius, angle off its centreline), counter-clockwise seen from +x (y right, z up); the
-    whole spoke turned `sweep` rad more at the barrel than at the hub (a swept, turbine-like spoke)."""
+    whole spoke turned `sweep` rad more at the barrel than at the hub (a swept, turbine-like spoke). `shape` (optional,
+    rr units, tangential half widths): the left edge's (r, t) from the hub out to the barrel, then the window between
+    the arms from the barrel down to its tip (t 0); r past the barrel ends on it. Without it the Y is drawn from hub /
+    fork / spread / main / arm."""
     sp = WHEEL_SPOKE
-    h, f, a, w = sp["hub"] * rr, sp["fork"] * rr, sp["spread"], sp["arm"] * rr
-    centre = lambda r: r * a * max(0.0, r - f) / (rb - f)              # arm centreline, tangential  # noqa: E731
-    crotch = next(r for r in np.linspace(f, rb, 200) if centre(r) >= w)
-    left = [(h, -sp["main"][0] * rr), (f, -sp["main"][1] * rr)] + [(r, -centre(r) - w) for r in (f + 0.5 * (rb - f), rb)]
-    inner = [(rb, -centre(rb) + w), (f + 0.75 * (rb - f), -centre(f + 0.75 * (rb - f)) + w), (crotch, 0.0)]
-    half = left + inner                                  # hub, out along the left edge, back down the left arm's inside
+    if "shape" in sp:
+        half = [(min(r * rr, rb), -t * rr) for r, t in sp["shape"]["outer"] + sp["shape"]["inner"]]
+    else:
+        h, f, a, w = sp["hub"] * rr, sp["fork"] * rr, sp["spread"], sp["arm"] * rr
+        centre = lambda r: r * a * max(0.0, r - f) / (rb - f)              # arm centreline, tangential  # noqa: E731
+        crotch = next(r for r in np.linspace(f, rb, 200) if centre(r) >= w)
+        left = [(h, -sp["main"][0] * rr), (f, -sp["main"][1] * rr)] + [(r, -centre(r) - w)
+                                                                      for r in (f + 0.5 * (rb - f), rb)]
+        inner = [(rb, -centre(rb) + w), (f + 0.75 * (rb - f), -centre(f + 0.75 * (rb - f)) + w), (crotch, 0.0)]
+        half = left + inner                              # hub, out along the left edge, back down the left arm's inside
+    h = half[0][0]
     pts = half + [(r, -t) for r, t in reversed(half[:-1])]
     out = [(r, t / r) for r, t in pts]
     return [(r, ang + sp["sweep"] * (r - h) / (rb - h)) for r, ang in out] if sp["sweep"] else out
@@ -322,6 +335,7 @@ def stage_wheel(r, width, rim=None, tag=""):
     (cu, cv), rho, (v0, h) = WHEEL_UV["c"], WHEEL_UV["rho"], WHEEL_UV["tread"]
     sw, fc = wheel_swatches(), CAR.get("WHEEL_FACETS")
     lip = fc and fc.get("ring")                           # the step strip takes the ring's last swatch (below)
+    step = lip[-1] if lip else "lip" if CAR.get("WHEEL_LIP") else None   # ... or WHEEL_LIP's flat lip colour
     xw = strips[0][3][0]                                 # the tread strip spans the tread and both shoulders
     ang = [2 * math.pi * j / n - math.pi for j in range(n + 1)]
     bm = bmesh.new()
@@ -354,7 +368,7 @@ def stage_wheel(r, width, rim=None, tag=""):
                     for lp, (rg, pi, col) in zip(f.loops, corners):
                         x, y, z = lp.vert.co
                         lp[uv].uv = (col / n, v0 + (x / xw * 0.5 + 0.5) * h) if tread else sw["barrel"] if si == 2 \
-                            else sw[lip[-1]] if si == 1 and lip else (cu - y / r * rho, cv + z / r * rho)
+                            else sw[step] if si == 1 and step else (cu - y / r * rho, cv + z / r * rho)
                         nx, nr = nrm[pi]
                         loop_n.append((side * nx, nr * math.cos(ang[col]), nr * math.sin(ang[col])))
                         loop_v.append(lp.vert)
@@ -383,7 +397,7 @@ def stage_wheel(r, width, rim=None, tag=""):
     for side in (1, -1):
         out, fz = Vector((side, 0, 0)), -1 if turn and side > 0 else 1
         for k in range(sp["n"]):
-            a0 = 2 * math.pi * k / sp["n"]
+            a0 = 2 * math.pi * k / sp["n"] + math.radians(sp.get("at", 0))   # `at` (optional): first spoke, deg
             yz = [(rad * math.cos(a0 + da), fz * rad * math.sin(a0 + da)) for rad, da in outline]
             front = [bm.verts.new((side * spoke_x(rad, rr, hw), y, z)) for (rad, _), (y, z) in zip(outline, yz)]
             back = [bm.verts.new((side * (spoke_x(rad, rr, hw) - sp["depth"]), y, z))
@@ -997,7 +1011,9 @@ def geometry(body, zmid, wl, r, tire_w, belt_z, doors_y, port_yz, extra_areas=()
                              ("RearLeft", 1, tz, span), ("RearRight", -1, tz, span))
     for nm, side, z, door in seats:        # showPassenger: the 3-D cabin shows whoever sits there through the glass
         row3 = bool(third) and nm.startswith("Rear")
-        x, oz, oa = (third["x"], rz, nm.replace("Rear", "Middle")) if row3 else (SEAT["x"], z, nm)
+        # optional SEAT front_x: the front row's side x apart from the 2nd row's x (default x; cabin.py FRONT_X)
+        x, oz, oa = (third["x"], rz, nm.replace("Rear", "Middle")) if row3 else (
+            SEAT.get("front_x", SEAT["x"]) if nm.startswith("Front") else SEAT["x"], z, nm)
         # the 2nd row sits SEAT["rear"] lower, the 3rd `drop` lower than the front (the roof falls towards the back)
         sy = seat_y - (third["drop"] if row3 else SEAT.get("rear", 0) if nm[0] in "RM" else 0) / S
         sy -= seat_anim.seat_drop(CAR) / S   # at the depth reference: the car's own clips lift the body (seat_anim.py)

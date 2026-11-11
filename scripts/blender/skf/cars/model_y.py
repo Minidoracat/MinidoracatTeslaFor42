@@ -10,6 +10,38 @@ section 0.
 import math
 
 _CUT_X = ("Plane.034", "Plane.044", "Plane.045", "Plane.036", "Plane.042", "Plane.043", "Plane.041")  # rear lamps
+# the light bar between the tail lamps (2026-11-12, official REAR34: a bright red bar with round ends in a black recess,
+# as the Model Y L's, models-model-yl.md "標誌與燈條"): True the red bar (LAMPS blade_*, TESLA in dark red ink in it,
+# Plane.034 back to its black); False the earlier smoked cover with black TESLA (8803c8b)
+_RED_BAR = True
+
+
+def _mx(v):
+    return (-v[0], *v[1:])
+
+
+def _corners(zn):
+    """A left rear bumper corner's zone (convert.py CARBON / SHADE keys) and its mirror on the right."""
+    right = dict(zn, lo=(-zn["hi"][0], *zn["lo"][1:]), hi=(-zn["lo"][0], *zn["hi"][1:]))
+    if "below" in zn:
+        right["below"] = tuple((_mx(p), _mx(n)) for p, n in zn["below"])
+    return zn, right
+
+
+# the rear bumper's corners (official REAR34, all paints): a recessed panel in the paint's shadow, a thin dark line at
+# its front edge behind the arch, a black lower edge. The source's corner panel (Plane, a 418-tri component each side,
+# mirror images) is sunk there too, 1.2 cm under the panel ahead, but the step's wall stops 1 cm short of it: an open
+# slit that showed the cabin shell; the cabin shell's floor corner (cabin.py, rays clamped up to the trunk floor) also
+# stands out through the panel 1 cm ahead of the step, a dark line (white / black stripes in game). Left side planes
+# (pre-centre grid, the prepped model): (point, normal), "below" = on the normal's back side. _BLACK_TOP: the
+# official's black top through the fitted REAR34 camera (8 points unprojected onto the panel, plane fit within 2 mm;
+# the model's sat 3-4 cm lower); _RIM: across the panel ahead, on the cabin's dark line (1.9 cm ahead of the step's
+# edge, square to the surface, within 6 mm of that edge's curve), so the step and the slit go into the shadow with
+# the sunk panel; _CREASE: under the panel's top crease strip (it rises rearward)
+_BLACK_TOP = ((-0.5981, -1.8355, 0.4542), (0.2492, 0.8045, 0.5392))
+_RIM = ((-0.7168, -1.7023, 0.4321), (-0.5075, 0.8254, 0.2473))
+_CREASE = ((-0.651, -1.80, 0.548), (-0.06, 0.0, 1.0))
+_CORNER = ("Plane", 418)
 
 CAR = dict(
     # ---- pzveh: paths and names. TMP: work dir under temp/ (source in TMP/src, official renders in TMP/official)
@@ -49,21 +81,35 @@ CAR = dict(
     # round u wheels at row wt, radius wr of the width)
     RAMP=dict(t=(0.36, 0.74), u=(0.04, 0.96), wheels=(0.165, 0.80), wt=0.80, wr=0.135),
     # ---- pzveh: wheel, the Model Y Performance's 21" Arachnid 2.0 (design studio $MTY70,$WY21A, view RIMCLOSEUP):
-    # five Y spokes in dark graphite, open between them onto the brake rotor; staggered 255/35 R21 front (r 356) /
-    # 275/35 R21 rear (r 363): prep_model_y.py scales the source's tyres to those, the one wheel model here takes their
-    # mean radius (359) and the source's width (294 mm). Spokes and hub cap are geometry (the gaps really open: the
+    # five Y spokes in dark graphite, open between them onto a near-black wheel well; staggered 255/35 R21 front (r 356) /
+    # 275/35 R21 rear (r 363): prep_model_y.py scales the source's tyres to those, a wheel model per axle (TIRE_AXLES)
+    # on one rim. Spokes and hub cap are geometry (the gaps really open: the
     # vehiclewheel shader has no alpha cutout), the tire, rim flange, barrel and the disc behind the spokes a surface of
-    # revolution (wheel_profile). The disc closes the wheel at its middle (x = +-WHEEL_DISC_X): the brake rotor round the
-    # hub, dark between rotor and barrel; the red calipers sit between it and the spokes but belong to the body
+    # revolution (wheel_profile). The disc closes the wheel at its middle (x = +-WHEEL_DISC_X): dark behind the spokes
+    # (WHEEL_DISC); the red calipers sit between it and the spokes but belong to the body
     # (convert.py calipers), they must not spin
-    WHEEL_RIM=0.76,                        # rim flange radius / tire radius: 21" (266.7 mm bead + ~17 mm) / 356 mm
-    # Y spoke in rr units (rr = WHEEL_RIM x tire radius), half-widths tangential: main arm from the hub to the fork,
-    # then two arms spreading to +-spread at the barrel; front face `inset` grid inside the tire's half width at the
-    # barrel, `dish` deeper at the hub; side walls `depth` grid deep. cap: hub cap radius; sweep: the spoke turned this
-    # much more (rad) at the barrel than at the hub
-    WHEEL_SPOKE=dict(n=5, hub=0.14, fork=0.50, spread=math.radians(17), main=(0.085, 0.065), arm=0.05, cap=0.17,
-                     inset=0.020, dish=0.015, depth=0.018, sweep=0),
-    WHEEL_DISC=dict(rotor=0.636, hat=0.30),   # brake rotor (355 mm) and its hat, rr units
+    WHEEL_RIM=0.79,                        # rim flange radius / tire radius: the official lip ring 282 mm (camfit SIDE /
+    #                                        FRONT34 / REAR34 ring fit, cams.json ring_radius_m) / 356 mm
+    # staggered tyres (US manual 2026.38.3 PDF p.249, CN manual PDF p.210, "21 in (Performance)"): 255/35 R21
+    # front, 275/35 R21 rear, radius 266.7 + 0.35 x section; prep_model_y.py scales the source's tyres to these
+    # radii (its FIELD tyre). Rear: its own wheel model on the front's rim (models.md TIRE_AXLES)
+    TIRE_AXLES=dict(front=(0.3560, 0.255), rear=(0.3629, 0.275)),
+    # Y spoke (pzveh.spoke_outline `shape`, rr units = WHEEL_RIM x tire radius, tangential half widths): the left edge
+    # from under the hub cap out to the barrel, then the window between the two arms back down to its tip. Read off the
+    # official SIDE front wheel (PPSW and PN01, the five Ys unwrapped round the hub and folded onto one, median): the
+    # stem widens from the cap, the arms fork at 0.52 and flare to +-25.5 deg at the lip round a +-15.5 deg window. Front
+    # face `inset` grid inside the tire's half width at the barrel, `dish` deeper at the hub; side walls `depth` grid
+    # deep. cap: hub cap radius; sweep: the spoke turned this much more (rad) at the barrel than at the hub; at: the
+    # first spoke's angle (deg), the official SIDE front wheel's phase (a parked car shows it)
+    WHEEL_SPOKE=dict(n=5, shape=dict(outer=((0.13, 0.02), (0.35, 0.069), (0.50, 0.127), (0.70, 0.259), (0.85, 0.353),
+                                            (1.0, 0.445)),
+                                     inner=((1.0, 0.272), (0.88, 0.25), (0.75, 0.186), (0.62, 0.12), (0.55, 0.07),
+                                            (0.51, 0.0))),
+                     cap=0.15, inset=0.020, dish=0.015, depth=0.018, sweep=0, at=35.7),
+    WHEEL_LIP=True,     # the flange-to-barrel step in the flat `lip` grey: the official lip ring (SIDE ~65, 2 px)
+    # brake rotor and its hat (rr units) kept under the hub cap: the official renders are black between the spokes
+    # (SIDE 1-11 grey near the hub; RIMCLOSEUP shows the rotor only faintly), a 0.636 rotor at 60 read as one big grey disc
+    WHEEL_DISC=dict(rotor=0.14, hat=0.12),
     # Game-screen sRGB grey levels (calibration knob, compare with game screenshots); pzveh.wheel_texture turns each
     # into the texture value that renders it. Official RIMCLOSEUP: spokes 105-170 (studio light), windows ~28, black
     # tire; lighting comes from the spokes' own normals here
@@ -76,14 +122,20 @@ CAR = dict(
     #                       (MinidoracatTesla_template.txt wheelFriction)
     WHEEL_LIFT=0.11,      # rendered wheel sits this much (grid) above its script offset at rest: vanilla arch centres
     #                       minus wheel offsets, ModernCar +0.10/+0.16, SUV +0.12/+0.10 (arch circle fit); calibration knob
-    WHEEL_INSET=0.03,     # tire outer face this far inside the body's own tire (flush tires looked proud of the arch)
+    WHEEL_INSET=0.0,      # tire outer face this far inside the body's own tire: track 1,650 / 1,630 (manual CN 1,654 /
+    #                       1,636, US 1,636 / 1,622). Same cameras, tyre edge against the arch: official FRONT34 front
+    #                       +2.75 / rear +1.7 px further out than at 0, REAR34 rear 0.4 px in (2 px per 10 mm); 0.03
+    #                       put it ~9 px inside. Steered to 0.9 rad the front tyre pokes 202 mm past the body width
+    #                       (offline, 8803c8b's 1,538 track: 149), no outer panel inside it (ray check, 2026-11-12)
     CAB_BOX=(1.284, 0.468, -1.595),   # the cabin physics box: width, front y, rear y (mesh, grid)
     # passengers and seats (pzveh.geometry, cabin.py): side x, seat height over the ground (script) and its mesh z
     # (centred), seat y = middle of the door opening minus `back` (front, rear row), getting out this far off the body
     # rear: the rear row sits this much lower. Heights from scripts/blender/skf/seat_head.py (2026-11-01): the seated
     # heads and caps under the roof, the feet on CABIN_FLOOR in the seated clips (scripts/seat_anim.py; the floor and
     # both rows follow the clips' hip-to-sole heights), SEATS dz / dy put the cushions and backrests against the body
-    SEAT=dict(x=0.326, h=0.516, z=-0.204, back=(0.12, 0.08), out=0.30, rear=0.017),
+    # front_x: the front row 2 mm inboard of the 2nd row, the outer foot off the front wheel well's inner wall (|x| 0.490,
+    # the source's; seat_head.py legs 123 / 28 -> 138 / 42 mm, the gap 8803c8b's width scale took)
+    SEAT=dict(x=0.326, front_x=0.324, h=0.516, z=-0.204, back=(0.12, 0.08), out=0.30, rear=0.017),
     BODY_W_Z=0.55,                         # body width (script extents) measured below this fraction of DIMS height
     # part: side (-1 = left, x < 0; 0 = tailgate), hinge axis, open angle (deg; sign swings the door out, the gate up),
     # clip seconds. Hinge points come from the cut (front edge on the outer skin; the gate's top edge; the frunk lid's
@@ -115,9 +167,21 @@ CAR = dict(
           "Plane.067", "Hyundai_KONA",   # BloxBloger's interior (tub, seats, dash): the mod's own cabin (cabin.py)
           "Tesla_Model_3"),              # rear TESLA: 1.2 cm block letters (E a solid block) sunk 4 cm under the blade
     DROP_COMPS=(),                         # (objects, lo, hi): drop their components centred in the box
-    CARBON=None,                           # dict(rgb, zones): black paint zones (model_3.py); none on the Model Y
+    # black paint zones (convert.py classify): the rear bumper corners under the official's black top (_BLACK_TOP
+    # above; CUT along it), black like the bumper (black_base)
+    CARBON=dict(rgb=(34, 34, 36), zones=_corners(dict(lo=(-0.80, -1.95, 0.25), hi=(-0.47, -1.70, 0.56), of=_CORNER,
+                                                       below=(_BLACK_TOP,)))),
+    # the sunk corner panel (above): the official renders' shadowed recess, paint x k (official REAR34: about half the
+    # paint above it in PPSW, PN01, PR01, PB01)
+    SHADE=dict(k=0.55, zones=_corners(dict(lo=(-0.73, -1.95, 0.28), hi=(-0.47, -1.66, 0.60), of=_CORNER,
+                                           below=(_RIM, _CREASE)))),
     ARCH_LINER=None,                       # dict(gap, inner, arc, n): procedural arch liners (the source has its own)
-    PLATES=(),                             # (name, corners, facing, material): flat backing polygons
+    # (name, corners, facing, material): flat backing polygons. Behind the corner slits (above), under the sunk panel's
+    # level, along its slant: the slit reads as the official's dark line
+    PLATES=tuple((name, tuple(f(p) for p in ((-0.6931, -1.6705, 0.300), (-0.6658, -1.7183, 0.300),
+                                              (-0.6746, -1.7694, 0.535), (-0.6995, -1.7260, 0.535))),
+                  f((-0.859, -0.492, -0.139)), "black_base")
+                 for name, f in (("SlitPlateL", lambda v: v), ("SlitPlateR", _mx))),
     SEAL_CLIP=False,                       # drop seal strips that pass through a surface (model_3.py); kept as built
     RAIL=None,                             # (z0, z1): paint up there in the median tone (model_3.py roof rails)
     # the panel gaps shaded in the skin (convert.py seam_shade, as Model X / S): the door, fender and hood gaps are
@@ -130,23 +194,34 @@ CAR = dict(
     DECIMATE={"Plane.045": 400,             # 29.5k-tri honeycomb under the tail light bar
               "Plane.034": 1200, "Plane.020": 1000, "Plane.016": 2600},
     PAINT_MAT="Material_#2125780493",       # the body paint (skin colour from the official renders, textures())
-    # skin colour (sRGB 0-255) of the source's other materials
+    # skin colour (sRGB 0-255) of the source's other materials. Unlit tail lamp parts smoked like the Model Y L's
+    # (official REAR34 / SIDE by day: the corner lamps' lens grey with a red hint, 88-93 / 73-81 / 77-86 there where
+    # the source's red_plastic111 read a red patch): red_plastic111 the corner lamps (its M22), red_plastic the
+    # bumper's reflectors; the lights texture still lights them at night
     MAT_RGB={"black_base": (34, 34, 36), "Material_#2125706098": (57, 61, 70),
              "Material_#2125774706": (26, 26, 28), "black_refl": (20, 20, 22), "Material_#2125780326": (22, 22, 24),
              "black": (20, 20, 22), "black.001": (20, 20, 22), "black.002": (20, 20, 22), "black222": (20, 20, 22),
              "Iron_Clean_Distorted": (60, 60, 64), "front_white_light": (226, 230, 236),
-             "back_red_Light": (150, 12, 16), "red_plastic111": (120, 12, 16), "red_plastic": (120, 12, 16),
+             "back_red_Light": (150, 12, 16), "red_plastic111": (66, 34, 38), "red_plastic": (90, 16, 20),
              "mirror": (58, 64, 72), "glass_base": (14, 14, 16), "Material_#2125773440": (14, 14, 16),
-             "04_-_Default": (60, 60, 60)},
+             "04_-_Default": (60, 60, 60),
+             "tesla_ink": (60, 22, 22)},       # TESLA in the red light bar (TESLA_MAT): dark red, the bar's own shade
     GLASS_MATS=("glass_base", "Material_#2125773440"),
     GLASS_OPAQUE=("Plane.008",),           # glass_base on the B-pillar cover: opaque black
     GLASS_BACKS=(),                        # panes that get a reversed copy (one-sided in the source; these are slabs)
     ROOF_PANE="Plane.023",                 # the roof glass: zone LightBarL
     MIRROR_CAP="Plane.046",                # body colour (official FRONT34; the source paints it black_refl)
     # lamps: headlight materials; tail: the red light bar and the corner lamps (materials, faces above z / behind y),
-    # and the smoked blade cover across the tailgate (its rear faces glow red at night like the real light blade)
+    # and the light bar across the tailgate (_RED_BAR: Badge_BLADE a bright red bar flush with the housing's shelf, one
+    # swatch texel so the lights texture lights it whole, round ends of radius blade_round; blade_n stations and
+    # blade_rays rays a station: past the source's strip ends (|x| 0.454) the bar steps 6 cm forward onto the lamp
+    # housing, whose lip at |x| 0.50-0.58 came through the bar's lower half at 21 x 3; blade_lit: Plane.034's rear
+    # faces outboard of the gate (the corner lamps' inner C) stay smoked and lit as on the cover; else the smoked cover,
+    # Plane.034's rear faces with it), lit with the tail lights at night
     LAMPS=dict(head=("front_white_light",), tail=("back_red_Light", "red_plastic111"), tail_z=0.75, tail_y=-1.4,
-               blade="Plane.034"),
+               **(dict(blade="Badge_BLADE", blade_rgb=(236, 78, 44), blade_flush=True, blade_swatch=True,
+                       blade_round=0.019, blade_n=57, blade_rays=9, blade_lit=("Plane.034", 0.509))
+               if _RED_BAR else dict(blade="Plane.034"))),
     # part lines, side view (y, z); read off the source's panel edges (build log OUTLINE)
     LINES={
         "S": ((-0.150, 0.369), (-0.227, 0.860)),   # front / rear door seam below the belt
@@ -158,7 +233,7 @@ CAR = dict(
     FRONT_Y=0.832, SILL_Z=0.204, ARCH=(0.518, -0.782),   # front door front, door bottom, rear door above / ahead of arch
     IN_DOOR=dict(up=0.860, x=0.415),          # convert.in_door: frame lines (BF / BR / D) above z `up`; doors at |x| > x
     # convert.in_gate: tailgate behind y, above z; |x| under GATE_X, under x_up above z up (the spoiler)
-    IN_GATE=dict(y=-1.451, z=0.492, up=0.895, x_up=0.612),
+    IN_GATE=dict(y=-1.436, z=0.492, up=0.895, x_up=0.612),
     # door openings for the cabin shell and the seats (pre-centre y): front door front, B pillar (middle of the seam S
     # between the cabin floor z 0.32 and the belt; the shell's B-pillar ring follows S itself), rear door rear
     DOOR_Y=(0.820, -0.181, -1.069),
@@ -168,12 +243,14 @@ CAR = dict(
     STOP_X=0.637,                          # corner lamps inboard of this |x| are the brake lights, outboard the tail
     # paint panels by component centre (classify): side doors at |x| > x, below z, front / rear door y range; the
     # tailgate (behind y, above z) and the frunk lid (ahead of y, above z) within |x| < 0.1
-    PANELS=dict(x=0.593, z=0.660, front=(-0.200, 0.600), rear=(-0.989, -0.200), gate=(-1.505, 0.472), lid=(0.900, 0.556)),
+    PANELS=dict(x=0.593, z=0.660, front=(-0.200, 0.600), rear=(-0.989, -0.200), gate=(-1.489, 0.472), lid=(0.900, 0.556)),
     # fenders (mask zones Guard*): front (ahead of y, below z, |x| > x), rear (behind y, below z, |x| > x)
     GUARDS=dict(front=(0.750, 0.910, 0.395), rear=(-0.989, 1.100, 0.444)),
     # components cut along the lines (object, tris after welding): the window surround
-    CUT={("Plane.005", 342): ("BF", "BR", "D")},
-    PLANES={},                             # more cut planes for CUT: name -> (point, normal, cut faces behind y)
+    CUT={("Plane.005", 342): ("BF", "BR", "D"), _CORNER: ("BlackTopL", "BlackTopR", "RimL", "RimR")},
+    # more cut planes for CUT: name -> (point, normal, cut faces behind y)
+    PLANES={f"{nm}{s}": (f(p), f(n), -1.66) for nm, (p, n) in (("BlackTop", _BLACK_TOP), ("Rim", _RIM))
+            for s, f in (("L", lambda v: v), ("R", _mx))},
     CUT_X=_CUT_X,                          # cut along +-GATE_X
     CUT_X_Y=None,                          # ... only faces behind this y (None: all)
     DOOR_OBJS=("Plane.062", "Plane.005", "Plane.002", "Plane.046", "Plane.048", "Plane.050", "Plane.047"),
@@ -191,11 +268,16 @@ CAR = dict(
     # frunk lid (OEM 1494949-00-A, chrome, 7.8 x 8.2 cm), TESLA in black across the light blade (letters ~2 cm tall,
     # 42 cm span), MODEL Y in chrome on the tailgate's lower left (jig on its left and lower edges). Letters are scaled
     # for the closest zoom, where 1 cm is about 1.5 px: true-size letters would be one or two pixels tall
-    T_BADGE=(1.841, 0.0644, 0.0677, 0.571, (0, 0.34, 0.94), (0, 0, -1)),   # centre y on the frunk lid (stem tip ~3 cm
+    T_BADGE=(1.840, 0.0644, 0.0677, 0.571, (0, 0.34, 0.94), (0, 0, -1)),   # centre y on the frunk lid (stem tip ~3 cm
     #                                       off its front edge), width, height, ray start z, the lid's normal there,
     #                                       ray (straight down; None: along -normal)
-    TESLA=(0.895, 0.03, 0.11, 0.045),       # blade strip centre z, cap height, letter pitch, lens height
-    LENS_X=0.454,                           # the blade's rear strip ends here (the corner lamps' lenses outboard)
+    # blade strip centre z, cap height, letter pitch, lens height; the red bar on the official REAR34's vivid line (13
+    # px tall at x 1380, the smoked cover 16), its left end on the official's (x 1245, just inboard of the left lamp's
+    # C): LENS_X into the corner lamps, 0.08 past GATE_X (10 cm; rides the tailgate); TESLA 3.0 cm at the Model Y L's
+    # pitch (3.6 crowded the thinner bar there)
+    TESLA=(0.895, 0.025, 0.092, 0.0375) if _RED_BAR else (0.895, 0.03, 0.11, 0.045),
+    TESLA_MAT="tesla_ink" if _RED_BAR else "badge_black",
+    LENS_X=0.59 if _RED_BAR else 0.454,     # the blade's rear strip ends here (smoked: the corner lamps' lenses outboard)
     BADGE_Y=(-2.5, -1.720),                  # rear badges: blade ray start y, letter frame y (rays from 0.3 behind it)
     BLADE=True,                            # the light blade lens across the tailgate (Badge_BLADE)
     MODELY=("MODEL Y", -0.454, 0.526, 0.033),   # text, left x, baseline z, cap height (true ~2.4 cm): under the crease
@@ -207,7 +289,7 @@ CAR = dict(
     # plan: top or bottom of the wheel. From the game camera (30 deg down) a recess is seen through the gaps above it:
     # at the top the caliper hid behind the fender and the rim in 5 of 6 spin angles, at the bottom it showed in all 6
     # (offline view S, Quicksilver, 85-573 red px)
-    CALIPER=dict(front=(176, 18), rear=(80, 15), r=(0.097, 0.162), x=(0.010, 0.045)),   # r: the front pair's
+    CALIPER=dict(front=(176, 18), rear=(80, 15), r=(0.097, 0.162), x=(0.008, 0.036)),   # r: the front pair's
     #                                                             bottom stays above the body's lowest point (calipers())
     # frunk under the lid (frunk_tub(); user 2026-10-27 「前面是不是沒做置物箱的位置」): 2025 Model Y front trunk 117 L,
     # a tapered bin about 70 cm wide at the windshield end, 91 cm on its longest line, 35-43 cm deep (basenor.com
@@ -216,7 +298,7 @@ CAR = dict(
     # outline (rear / front y and half widths: a rounded trapezoid, corner radius `corner`), walls `taper` in to a
     # floor `depth` under the rim (a plane through the rear and front middles: the lid falls to the nose); `n` rays
     # round the plan centre resample the opening outline. build prints the volume (FRUNK ... L)
-    FRUNK_TUB=dict(ledge=0.08, rim=0.025, y=(1.074, 1.794), half=(0.286, 0.178), corner=0.07, taper=0.11, depth=0.29,
+    FRUNK_TUB=dict(ledge=0.08, rim=0.025, y=(1.074, 1.790), half=(0.286, 0.178), corner=0.07, taper=0.11, depth=0.29,
                    n=128),
 
     # ---- cabin.py (mesh coords, centred; ground z -0.748)

@@ -114,36 +114,43 @@ module Base
         wheel FrontLeft
         {
             front = true,
-            offset = 0.3490 -0.2931 0.6821,
-            radius = 0.1549,
-            width = 0.2432,
+            offset = 0.3745 -0.2931 0.6821,
+            radius = 0.1533,
+            width = 0.2106,
         }
         wheel FrontRight
         {
             front = true,
-            offset = -0.3490 -0.2931 0.6821,
-            radius = 0.1549,
-            width = 0.2432,
+            offset = -0.3745 -0.2931 0.6821,
+            radius = 0.1533,
+            width = 0.2106,
         }
         wheel RearLeft
         {
             front = false,
-            offset = 0.3490 -0.2899 -0.6295,
-            radius = 0.1549,
-            width = 0.2432,
+            offset = 0.3699 -0.2899 -0.6295,
+            radius = 0.1565,
+            width = 0.2272,
         }
         wheel RearRight
         {
             front = false,
-            offset = -0.3490 -0.2899 -0.6295,
-            radius = 0.1549,
-            width = 0.2432,
+            offset = -0.3699 -0.2899 -0.6295,
+            radius = 0.1565,
+            width = 0.2272,
         }
-        part Tire*
+        part TireFront*
         {
             model InflatedTirePlusWheel
             {
                 file = MinidoracatTesla_ModelY_Wheel,
+            }
+        }
+        part TireRear*
+        {
+            model InflatedTirePlusWheel
+            {
+                file = MinidoracatTesla_ModelY_WheelRear,
             }
         }
         passenger FrontLeft
@@ -151,7 +158,7 @@ module Base
             showPassenger = true,
             position inside
             {
-                offset = 0.1791 -0.3657 0.1195,
+                offset = 0.1780 -0.3657 0.1195,
                 rotate = 0.0 0.0 0.0,
             }
             position outside
@@ -166,7 +173,7 @@ module Base
             showPassenger = true,
             position inside
             {
-                offset = -0.1791 -0.3657 0.1195,
+                offset = -0.1780 -0.3657 0.1195,
                 rotate = 0.0 0.0 0.0,
             }
             position outside

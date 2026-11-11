@@ -6,11 +6,11 @@ The Tesla Model Y body, doors, tailgate, frunk lid, glass and lamps are based on
 
 - **"2026 Tesla Model Y Performance"** by **BloxBloger** — https://sketchfab.com/3d-models/2026-tesla-model-y-performance-8a0bc252f9da4015a02a7bd99efd4847 (author: https://sketchfab.com/BloxBloger)
 - Licensed under **CC BY-NC 4.0** — http://creativecommons.org/licenses/by-nc/4.0/
-- **Modified**: decimated, split into parts (doors, tailgate, frunk lid cut along the model's panel lines), re-textured (new UV layout, baked shading, paint colours, damage / light / part masks, mirror caps in body colour, tail lamp zones), its rear lettering replaced and front / rear badges drawn (T on the frunk lid, TESLA on a taller light blade, MODEL Y), red brake calipers added, its wheels and interior replaced by the mod's own (with door cards added to its doors, and a front trunk bin under the frunk lid); converted for Project Zomboid.
+- **Modified**: reshaped to the owner's manual's dimensions and the official renders' proportions, decimated, split into parts (doors, tailgate, frunk lid cut along the model's panel lines), re-textured (new UV layout, baked shading, paint colours, damage / light / part masks, mirror caps in body colour, smoked tail lamps, the rear bumper's black lower corners and shaded corner recesses), its rear lettering replaced and front / rear badges drawn (T on the frunk lid, TESLA on a red light bar, MODEL Y), backing plates behind the rear bumper's corner slits and red brake calipers added, its wheels (21" Arachnid 2.0, wider tyres at the rear) and interior replaced by the mod's own (with door cards added to its doors, and a front trunk bin under the frunk lid); converted for Project Zomboid.
 
 Use of this model and of the mod's modified version is non-commercial. BloxBloger does not endorse this mod.
 
-本 MOD 的 Model Y 車身、車門、尾門、前車廂蓋、玻璃與車燈，改作自 BloxBloger 的「2026 Tesla Model Y Performance」（Sketchfab，上方連結），以 CC BY-NC 4.0 授權（上方連結）。已修改：減面、拆件（沿模型原有的板縫切出車門、尾門、前車廂蓋）、重做貼圖（新的 UV、烘焙光影、車漆顏色、損壞／車燈／零件遮罩、後照鏡外殼改車身色、尾燈分區），換掉車尾原有的字樣、重畫車頭車尾的標誌（前蓋的 T、加高的燈條上的 TESLA、MODEL Y），加上紅色煞車卡鉗，輪子與車內換成本 MOD 自己的（車門內側加上門板飾件，前車廂蓋下加上置物槽），轉成 Project Zomboid 格式。這個模型與本 MOD 的改作版只供非商業使用；原作者沒有為本 MOD 背書。
+本 MOD 的 Model Y 車身、車門、尾門、前車廂蓋、玻璃與車燈，改作自 BloxBloger 的「2026 Tesla Model Y Performance」（Sketchfab，上方連結），以 CC BY-NC 4.0 授權（上方連結）。已修改：照車主手冊尺寸與官方渲染的比例調整外形、減面、拆件（沿模型原有的板縫切出車門、尾門、前車廂蓋）、重做貼圖（新的 UV、烘焙光影、車漆顏色、損壞／車燈／零件遮罩、後照鏡外殼改車身色、燻黑的尾燈、後保桿下角改黑色與轉角凹面的陰影），換掉車尾原有的字樣、重畫車頭車尾的標誌（前蓋的 T、紅色燈條上的 TESLA、MODEL Y），在後保桿轉角開槽後加上擋板，加上紅色煞車卡鉗，輪子（21 吋 Arachnid 2.0，後輪胎比前輪寬）與車內換成本 MOD 自己的（車門內側加上門板飾件，前車廂蓋下加上置物槽），轉成 Project Zomboid 格式。這個模型與本 MOD 的改作版只供非商業使用；原作者沒有為本 MOD 背書。
 
 ## Model Y L 車身模型 / Model Y L body model
 

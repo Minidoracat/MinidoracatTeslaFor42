@@ -13,7 +13,10 @@ over the rear arch trims, 1,648 high, front overhang 911, wheelbase 2,903, rear 
   and set on the ground (each axle's lowest tyre point = ground 0: a 0.14 deg nose-down shear);
 - the body (not the wheels) lowered onto the manual's height (FIELD lower: official SIDE through the fitted camera had
   everything over the wheels 8-15 px high), the waist a little more (FIELD mid), the front end more (nose_drop), the
-  front arch's top pulled in over the tyre (FIELD arch).
+  front arch's top pulled in over the tyre (FIELD arch);
+- the fender between the headlamp and the front arch moved back (the lamp's tip, the arch's front edge), the body
+  round the rear arch's rear edge forward (FIELD shift), the headlamp's light strip thinner in its black housing
+  (FIELD lamp), the rear bumper's lower outer corners squared off rearward (FIELD lip).
 Normals: each corner's by the field's Jacobian, inverse transpose (finite differences).
 Frame: the OBJ's own: x along the car, front -x, metres; y up, ground 0; z across. u = metres behind the nose, h =
 height. `python prep_model_y.py map` (no Blender) maps pre-centre grid points (stdin "name x y z", the config's
@@ -71,6 +74,23 @@ FIELD = dict(
     # the rear bumper's lower black (diffuser, under h[1]) 5-10 px short of the official SIDE's after the tail stretch:
     # back d behind u (ramp), fading out over h (the bumper's rearmost point, the length, stays)
     diffuser=dict(u=(4.40, 4.70), h=(0.30, 0.45), d=0.020),
+    # its lower corners (official SIDE: square, the bottom running back to the rear face; the source's rounded off
+    # 4-14 px short over the lowest 3 cm): back d more behind u (ramp), under h (fade), outboard of az (ramp)
+    lip=dict(u=(4.44, 4.53), h=(0.30, 0.345), az=(0.55, 0.70), d=0.055),
+    # moved back d and up `up` x a bump over u (0 at u[0] and u[2], all at u[1]; nothing at the axles, which the wheels
+    # follow) x s(h over h), x s(|z - zc| over z) if given (h[0] > h[1]: fading out upward). Front: official SIDE's
+    # headlamp's rear tip 6 px (25 mm) further back and 3 px higher, the front arch's front edge 4 px further back; the
+    # lift keeps the hood's slope over the lamp; the outer fender's top 9 mm more (FRONT34's tip, the hood's nose
+    # stays). Rear: the rear arch's rear edge 4 px (16 mm) forward, under the tail lamps (FRONT34's moved), ending at
+    # u 4.45: to 4.70 convert's collapse decimate of Plane.016 (black trims) put a vertex 0.2 grid out of the bumper
+    # corner on both sides (game view spikes)
+    shift=(dict(u=(0.10, 0.50, 0.90), d=0.022), dict(u=(0.10, 0.50, 0.90), up=0.009, h=(0.60, 0.80)),
+           dict(u=(0.25, 0.50, 0.90), d=0.009, h=(0.65, 0.80), z=(0.35, 0.60)),
+           dict(u=(3.85, 4.20, 4.45), d=-0.020, h=(0.85, 0.65))),
+    # the headlamp's light strip (object) f as thick about its middle (h at each point: of the strip's points within r),
+    # f fading back to 1 over u: its black housing showed 1 px and grey on the official SIDE's 2 px black outline, the
+    # outline broken half way (measure.py's lamp blob). Behind u[0] the housing has gaps round the strip (see-through)
+    lamp=dict(obj="Plane.038", f=0.7, r=0.015, u=(0.30, 0.45)),
 )
 
 
@@ -94,14 +114,20 @@ class Field:
     def __call__(self, u, h, az):
         f = FIELD
         du = self.short * (1 - s(u, *f["nose"])) + self.wbd * s(u, *f["wb"]) + self.taild * s(u, *f["tail"])
-        df = f["diffuser"]
-        du = du + df["d"] * s(u, *df["u"]) * (1 - s(h, *df["h"]))
+        df, lp = f["diffuser"], f["lip"]
+        du = du + df["d"] * s(u, *df["u"]) * (1 - s(h, *df["h"])) \
+            + lp["d"] * s(u, *lp["u"]) * (1 - s(h, *lp["h"])) * s(az, *lp["az"])
         a = np.clip((u - self.ax["f"]) / (self.ax["r"] - self.ax["f"]), -1, 2)
         m, nd, ar = f["mid"], f["nose_drop"], f["arch"]
         dh = -(self.drop["f"] + (self.drop["r"] - self.drop["f"]) * a) - f["lower"] \
             + 0 * az \
             - m["d"] * s(h, m["h"][0], m["h"][1]) * (1 - s(h, m["h"][1], m["h"][2])) \
             - nd["d"] * s(h, *nd["h"]) * (1 - s(u, *nd["u"]))
+        for sh in f["shift"]:
+            b = s(u, sh["u"][0], sh["u"][1]) * (1 - s(u, sh["u"][1], sh["u"][2])) \
+                * (s(h, *sh["h"]) if "h" in sh else 1) * (s(az, *sh["z"]) if "z" in sh else 1)
+            du = du + sh.get("d", 0) * b
+            dh = dh + sh.get("up", 0) * b
         x, y = u - self.ax["f"], h - self.r["f"]                   # about the front wheel's centre (source)
         rr = np.hypot(x, y)
         k = ar["d"] * s(rr, ar["r"][0], ar["r"][1]) * (1 - s(rr, ar["r"][1], ar["r"][2])) \
@@ -163,6 +189,14 @@ def move(fld, wk, hw, name, p):
     q[:, 0] += du
     q[:, 1] += dh
     q[:, 2] = fld.zc + (p[:, 2] - fld.zc) * J[:, 2, 2]
+    lp = FIELD["lamp"]
+    if name.startswith(lp["obj"]):    # thinner about (min + max) / 2 of h over the points within r (u, z)
+        near = np.hypot(p[:, None, 0] - p[None, :, 0], p[:, None, 2] - p[None, :, 2]) < lp["r"]
+        hn = np.where(near, q[None, :, 1], np.nan)
+        mid = (np.nanmin(hn, 1) + np.nanmax(hn, 1)) / 2
+        f = 1 - (1 - lp["f"]) * (1 - s(u, *lp["u"]))
+        q[:, 1] = mid + (q[:, 1] - mid) * f
+        J[:, 1] *= f[:, None]
     return q, J
 
 

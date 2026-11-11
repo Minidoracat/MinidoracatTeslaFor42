@@ -690,7 +690,8 @@ def badges(obs, names):
     if TESLA:
         zc, ch, pitch, lh = TESLA
         if BLADE:
-            xs = np.linspace(-LENS_X, LENS_X, 21)
+            xs = np.linspace(-LENS_X, LENS_X, LAMPS.get("blade_n", 21))   # blade_n: stations (Model Y: a closer
+            #                                    step past the source's strip ends, its lamp housing's lip in between)
             hh = np.full(len(xs), lh / 2)
             if LAMPS.get("blade_round"):       # (Model Y L) round ends, radius r: closer stations over the last r,
                 r = LAMPS["blade_round"]       # the plate's half height on a circle there (to 80 deg: no zero face)
@@ -698,8 +699,9 @@ def badges(obs, names):
                 xs = np.unique(np.concatenate([xs[np.abs(xs) < LENS_X - r], -e, e]))
                 hh = lh / 2 * np.sqrt(1 - np.clip((np.abs(xs) - LENS_X + r) / r, 0, 1) ** 2)
             # LAMPS blade_flush (Model Y L): at the rearmost of the plate's top, middle and bottom rays, so a bar
-            # recessed under the housing's shelf stands flush with it (the game's 30 deg camera looked over it)
-            dz = (-lh / 2, 0, lh / 2) if LAMPS.get("blade_flush") else (0,)
+            # recessed under the housing's shelf stands flush with it (the game's 30 deg camera looked over it);
+            # blade_rays: more rays between (Model Y: its lamp housing's lip came through the bar's lower half)
+            dz = np.linspace(-lh / 2, lh / 2, LAMPS.get("blade_rays", 3)) if LAMPS.get("blade_flush") else (0,)
             ys = [min(bvh.ray_cast(Vector((x, ray_y, zc + d)), Vector((0, 1, 0)))[0].y for d in dz) - BADGE_OFF / 2
                   for x in xs]
             q = [(2 * i, 2 * i + 2, 2 * i + 3, 2 * i + 1) for i in range(len(xs) - 1)]
@@ -874,19 +876,31 @@ def classify(car, names, sizes):
     # intake): paint faces in each zone's box (lo, hi); with `edge` (axis, depth) only those within depth of the
     # outline's lowest coordinate on that axis (CARBON_EDGE: the lid's trailing edge curves forward towards the sides,
     # and edit() cut the faces along that border); with `of` (a match() spec) only those components' faces, with
-    # `facing` (axis, (dot min, dot max)) only faces so turned (Model S: the hinge corners under the liftgate)
-    carbon = np.zeros(n, bool)
-    for i, zn in enumerate(CARBON["zones"] if CARBON else ()):
+    # `facing` (axis, (dot min, dot max)) only faces so turned (Model S: the hinge corners under the liftgate), with
+    # `below` ((point, normal), ...) only faces centred on every plane's back side (cut along it with CUT / PLANES)
+    fnorm = np.array([p.normal[:] for p in me.polygons])
+
+    def in_zone(zn, edge=None):
         box = paint & (cen > zn["lo"]).all(1) & (cen < zn["hi"]).all(1)
         if "edge" in zn:
-            box &= cen[:, zn["edge"][0]] < np.interp(cen[:, 0], *CARBON_EDGE[i])
+            box &= cen[:, zn["edge"][0]] < np.interp(cen[:, 0], *edge)
         if "of" in zn:
             box &= match(zn["of"], obj, csize)
         if "facing" in zn:
-            d = np.array([p.normal[:] for p in me.polygons]) @ np.array(zn["facing"][0], float)
+            d = fnorm @ np.array(zn["facing"][0], float)
             box &= (d >= zn["facing"][1][0]) & (d <= zn["facing"][1][1])
-        carbon |= box
+        for p, nrm in zn.get("below", ()):
+            box &= (cen - np.array(p, float)) @ np.array(nrm, float) < 0
+        return box
+    carbon = np.zeros(n, bool)
+    for i, zn in enumerate(CARBON["zones"] if CARBON else ()):
+        carbon |= in_zone(zn, CARBON_EDGE.get(i))
     paint &= ~carbon
+    # SHADE (a car's, optional): paint in its zones (CARBON's zone keys) takes k x its colour in every skin, a
+    # recess the official renders show in shadow (Model Y's rear bumper corners); 1 elsewhere
+    shade = np.ones(n)
+    for zn in C["SHADE"]["zones"] if C.get("SHADE") else ():
+        shade[in_zone(zn)] = C["SHADE"]["k"]
     glass = np.isin(mat, GLASS_MATS) & ~np.isin(obj, GLASS_OPAQUE)
     part = np.zeros(n, np.int64)
     ax, ay, az = np.abs(ccen[:, 0]), ccen[:, 1], ccen[:, 2]
@@ -954,9 +968,14 @@ def classify(car, names, sizes):
     head = np.isin(mat, LAMPS["head"]) & (cen[:, 1] > LAMPS.get("head_y", -np.inf))   # head_y: a lamp material shared
     #                                                                                     front and rear (Model S)
     tail = np.isin(mat, LAMPS["tail"]) & (cen[:, 2] > LAMPS["tail_z"]) & (cen[:, 1] < LAMPS["tail_y"])
-    fnorm = np.array([p.normal[:] for p in me.polygons])
     blade = (obj == LAMPS["blade"]) & (fnorm[:, 1] < -0.5) | (obj == "Badge_BLADE")
-    tail |= blade
+    # LAMPS blade_lit (Model Y): (object, |x|) whose rear faces outboard of |x| stay lit and smoked with the blade gone
+    # to Badge_BLADE: the corner lamps' C on the old cover (Plane.034)
+    lit = blade.copy()
+    if LAMPS.get("blade_lit"):
+        lit_obj, lit_x = LAMPS["blade_lit"]
+        lit |= (obj == lit_obj) & (fnorm[:, 1] < -0.5) & (np.abs(cen[:, 0]) > lit_x)
+    tail |= lit
     lamp = np.where(head, 1, np.where(tail, 2, 0))
     # zones
     zone = np.full(n, ZN.index("Roof"))
@@ -975,7 +994,7 @@ def classify(car, names, sizes):
     put(head, "LightLH", "LightRH")
     # tail lights (lit with the headlights, HeadlightRear* parts: BaseVehicle.java:5858-5882) on the bar, the blade and
     # the corner lamps' outboard ends; brake lights (Stop, :5883-5895) on their inboard part
-    stop = tail & (part == 0) & ~blade & (np.abs(cen[:, 0]) < STOP_X)
+    stop = tail & (part == 0) & ~lit & (np.abs(cen[:, 0]) < STOP_X)
     put(tail & ~stop, "LightLT", "LightRT")
     put(stop, "StopL", "StopR")
     # glass zones: the mask zone and the UV1 pane code (GLASS_ZONES)
@@ -989,6 +1008,7 @@ def classify(car, names, sizes):
     pane[glass] = [GLASS_ZONES.index(z) for z in gzn[glass]]
     rgb = np.array([MAT_RGB.get(m) or (0, 0, 0) for m in mat], float) / 255
     rgb[blade] = np.array(LAMPS.get("blade_rgb", SMOKE_RGB)) / 255   # blade_rgb: a car's own (Model Y L: a red bar)
+    rgb[lit & ~blade] = np.array(SMOKE_RGB) / 255                    # blade_lit: smoked, as when they were the blade
     if CARBON:
         rgb[carbon] = np.array(CARBON["rgb"]) / 255
     if LAMPS.get("tail_rgb"):              # (Model S: one housing material front and rear) the tail half's own colour
@@ -1001,7 +1021,7 @@ def classify(car, names, sizes):
     rail = paint * (part == 0) * pv.smoothstep(*RAIL, cen[:, 2]) if RAIL else np.zeros(n)
     return dict(part=part, zone=zone, rgb=rgb, paint=paint, lamp=lamp, glass=glass, pane=pane, obj=obj, csize=csize,
                 badge=np.array([o.startswith(("Badge_", "Caliper")) for o in obj]),
-                mat=mat, mirror=mirror, carbon=carbon, rail=rail)
+                mat=mat, mirror=mirror, carbon=carbon, rail=rail, shade=shade)
 
 
 # ---------------------------------------------------------------- textures
@@ -1227,6 +1247,8 @@ def textures(car, c):
         lv = np.empty(len(car.data.loops), np.int64)
         car.data.loops.foreach_get("vertex_index", lv)
         layers["pos"] = (co[lv] - lo_) / span
+    if C.get("SHADE"):
+        layers["shade"] = np.repeat(c["shade"][:, None], 3, 1)
     b = bake(car, layers)
     col, zon, aux, ao = b["col"][..., :3], b["zone"][..., :3], b["aux"][..., :3], b["ao"][..., 0]
     nrm = b["nrm"][..., :3] * 2 - 1
@@ -1286,7 +1308,10 @@ def textures(car, c):
         if INK:                            # BADGE_INK (Model Y L): its badge light on a dark paint, dark on a light
             s[ink] = np.array(INK["rgb"][p in INK["dark_on"]]) / 255
         s[etch] = np.median(s[paint], 0) * 0.78     # etched into the steel (and seen through a film): a shade darker
-        skin = np.concatenate([np.clip(s, 0, 1), alpha], -1)
+        skin = np.clip(s, 0, 1)
+        if "shade" in b:                   # (after the medians above and the damage tint below: the paint's own)
+            skin[paint] *= b["shade"][..., :1][paint]
+        skin = np.concatenate([skin, alpha], -1)
         pv.cabin_corners(skin)              # the cabin's colour under Viewpoint (pzveh CABIN_UV0_RGB)
         pv.save_png(skin, os.path.join(pv.TEX_DIR, f"{pv.NAME}_{p}.png"), p)
         # setColorHSV for the damage overlays: the shader gives Veh_Damage* texels the paint hue and S / V offsets
@@ -1345,7 +1370,8 @@ def stage_build():
     me.uv_layers["UV1"].data.foreach_set("uv", u1.ravel())
     # vehicle script geometry block
     fc = pv.face_centres(car)
-    corner = (c["lamp"] == 2) & (c["part"] == 0) & (c["obj"] != LAMPS["blade"]) & (fc[:, 0] < 0)
+    corner = (c["lamp"] == 2) & (c["part"] == 0) & (fc[:, 0] < 0) \
+        & ~np.isin(c["obj"], [LAMPS["blade"], *LAMPS.get("blade_lit", ())[:1]])   # blade_lit: as before it
     sc_ = fc[corner]
     o = sc_[np.argsort(sc_[:, 0])[: max(1, len(sc_) // 5)]].mean(0)      # outboard end of the left corner lamp
     wl = [(sx, yc - ctr[1], zc, xo) for sx, yc, zc, xo in wheels]

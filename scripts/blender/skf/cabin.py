@@ -21,6 +21,7 @@ CABIN_FLOOR, CABIN_FRONT_Y, TRUNK_Y, CABIN_ZC, SEAM_CLEAR = (pv.CAR[k] for k in 
     "CABIN_FLOOR", "CABIN_FRONT_Y", "TRUNK_Y", "CABIN_ZC", "SEAM_CLEAR"))
 SEAT, DASH, DOOR_CARD, SEATS, PARCEL = pv.SEAT, pv.CAR["DASH"], pv.CAR["DOOR_CARD"], pv.CAR["SEATS"], pv.CAR["PARCEL"]
 SEAT_X, SEAT_Z = SEAT["x"], SEAT["z"]
+FRONT_X = SEAT.get("front_x", SEAT_X)   # optional: the front row's side x (passengers, buckets, wheel, mats); default x
 DASH_BOX = ((1.24, 0.34, 0.16), 0.06)   # dash: full size (x, y, z), edge radius; centre DASH["dash"]
 COLUMN_IN, COLUMN_EDGE, COLUMN_MAX_DEG = 0.02, 0.02, 10.0
 
@@ -32,7 +33,7 @@ def column_ends():
     COLUMN_MAX_DEG off the axis (then the wheel's tilt or a column shroud is the call, not a bent column)."""
     (_, dy, dz), r = DASH_BOX
     cx, cy, cz = DASH["dash"]
-    hub = np.array([-SEAT_X, *DASH["wheel"]])
+    hub = np.array([-FRONT_X, *DASH["wheel"]])
     axis = np.array([0, math.sin(math.radians(70)), -math.cos(math.radians(70))])   # the wheel's local -z (70 deg)
     face = cy - dy / 2
     z = hub[2] + axis[2] * (face - hub[1]) / axis[1]
@@ -373,7 +374,7 @@ def furniture(add, opening, grow=0.0, fine=1, between=None):
             part((aw, al, 0.05), 0.02, "seat", (ax, fy - 0.115 + al / 2, z0 - 0.04 + ah))
             part((aw * 0.7, 0.07, ah + 0.065), 0.015, "seat", (ax, fy - 0.08, z0 - 0.105 + (ah + 0.065) / 2))
         return fy, z0
-    out["front"] = [bucket(s * SEAT_X, seat_y[0], fs) for s in (-1, 1)][0]     # front buckets
+    out["front"] = [bucket(s * FRONT_X, seat_y[0], fs) for s in (-1, 1)][0]     # front buckets
     ry, z1 = seat_y[1], z0 - SEAT.get("rear", 0)       # the 2nd row sits SEAT["rear"] lower (pzveh.geometry, same)
     row.clear()
     if "middle" in SEATS:       # 6 seats (Model X): the 2nd row's two monopost seats, the 3rd row's two `back` behind the
@@ -418,7 +419,7 @@ def furniture(add, opening, grow=0.0, fine=1, between=None):
         v, f = rbox(size, 0.001, seg=1)
         add((v + at) @ rot_x(-12).T + DASH["screen"], f, c)
     # steering wheel in front of the driver, tilted 70 deg back from horizontal: rim torus, hub, three spokes
-    wr = out["wr"] = Matrix.Translation((-SEAT_X, *DASH["wheel"])) @ Matrix.Rotation(math.radians(70), 4, "X")
+    wr = out["wr"] = Matrix.Translation((-FRONT_X, *DASH["wheel"])) @ Matrix.Rotation(math.radians(70), 4, "X")
     nu, nv, tube = (20 * fine, 6 * (2 if grow else 1), 0.024 + grow)
     tv = [wr @ Vector(((0.15 + tube * math.cos(b)) * math.cos(a), (0.15 + tube * math.cos(b)) * math.sin(a),
                        tube * math.sin(b)))
@@ -691,11 +692,11 @@ def detail_mesh(opening, windscreen):
     add(v + [cx, cy - 0.40 - GROW - 0.0018, cz + 0.03], f, "screen")
     # floor mats: in front of each front seat to under the dash, and in front of each 2nd-row seat to the front seats
     fy, ry = placed["front"][0], placed["rear"][0]
-    for y0, y1 in ((fy + 0.30, min(fy + 0.74, CABIN_FRONT_Y - 0.10)), (ry + 0.30, fy - 0.12)):
+    for y0, y1, sx in ((fy + 0.30, min(fy + 0.74, CABIN_FRONT_Y - 0.10), FRONT_X), (ry + 0.30, fy - 0.12, SEAT_X)):
         for s in (-1, 1):
             if y1 - y0 > 0.12:
                 v, f = rbox((0.40, y1 - y0, 0.008), 0.004, seg=1)
-                add(v + [s * SEAT_X, (y0 + y1) / 2, CABIN_FLOOR + 0.004], f, "mat")
+                add(v + [s * sx, (y0 + y1) / 2, CABIN_FLOOR + 0.004], f, "mat")
     # rear-view mirror: 6.5 cm under the windscreen's top on the centre line (no higher than 33 cm over the dash: Model
     # X's windscreen runs over the heads), turned 12 deg to the driver, on a stem square to the glass
     wv, wt = windscreen
