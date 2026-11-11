@@ -105,15 +105,25 @@ CAR = dict(
                                             (1.0, 0.445)),
                                      inner=((1.0, 0.272), (0.88, 0.25), (0.75, 0.186), (0.62, 0.12), (0.55, 0.07),
                                             (0.51, 0.0))),
-                     cap=0.15, inset=0.020, dish=0.015, depth=0.018, sweep=0, at=35.7),
+                     cap=0.15, inset=0.020, dish=0.015, depth=0.018, sweep=0, at=35.7,
+                     # the lit band (pzveh `lit`): the official spokes are lit along their middle and dark at the edges
+                     # and walls (SIDE: >60 grey on 0.20-0.21 of the face ring, 40-60 on another 0.09-0.13; a flat face
+                     # read lit on 0.31-0.33). Each arm and the stem 0.6 x as wide about its own centreline: the lit
+                     # area 0.62 x the face's
+                     lit=dict(outer=((0.13, 0.012), (0.35, 0.041), (0.50, 0.076), (0.55, 0.142), (0.62, 0.189),
+                                     (0.70, 0.239), (0.85, 0.329), (1.0, 0.41)),
+                                inner=((1.0, 0.307), (0.88, 0.274), (0.75, 0.207), (0.65, 0.153), (0.51, 0.0)))),
     WHEEL_LIP=True,     # the flange-to-barrel step in the flat `lip` grey: the official lip ring (SIDE ~65, 2 px)
     # brake rotor and its hat (rr units) kept under the hub cap: the official renders are black between the spokes
     # (SIDE 1-11 grey near the hub; RIMCLOSEUP shows the rotor only faintly), a 0.636 rotor at 60 read as one big grey disc
     WHEEL_DISC=dict(rotor=0.14, hat=0.12),
     # Game-screen sRGB grey levels (calibration knob, compare with game screenshots); pzveh.wheel_texture turns each
-    # into the texture value that renders it. Official RIMCLOSEUP: spokes 105-170 (studio light), windows ~28, black
-    # tire; lighting comes from the spokes' own normals here
-    WHEEL_RGB=dict(spoke=100, cap=40, barrel=28, lip=90, rotor=60, hat=35, dark=12, gap=8, tire=(22, 28), tread=20),
+    # into the texture value that renders it. Lighting comes from the spokes' own normals. Official SIDE (PPSW / PN01,
+    # front and rear): the spokes' lit band ~94-99 (median of >60), its edges and walls 47-50, the hub cap 25-30, the
+    # lip ring ~85-92 (p90), between the spokes 4-6 (p25). The game reads ~1.1 x these (E2E 2026-11-12: spoke 100 ->
+    # 110); offline (camfit, Workbench) this set reads lit 89-90, edge ~50, cap ~29, lip ~80, between ~16
+    WHEEL_RGB=dict(spoke=82, edge=40, cap=16, barrel=18, lip=72, rotor=60, hat=35, dark=8, gap=8, tire=(22, 28),
+                   tread=20),
     # ---- pzveh: vehicle script
     OY=0.2878,            # model offset == centerOfMassOffset (unscaled) = height of the mesh centre above the physics
     #                       CoM. Not ModernCar's 0.1978: the body, wheels, seats and attachments all hang off the model

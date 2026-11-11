@@ -74,6 +74,10 @@ FACET_UV = {"facet": (0.95, 0.80), "lit": (0.95, 0.70)}
 # this swatch (off the disc and the tread, on the plain tire colour) instead of the planar texture, whose 5 mm flange
 # band the 64 px texture blurs into the dark gap round it: the thin bright lip ring between the spokes and the tyre
 LIP_UV = {"lip": (0.05, 0.70)}
+# WHEEL_SPOKE["lit"] (cars/<car>.py, optional): a spoke whose real face is lit along its middle and dark at its edges
+# (Model Y's Arachnid): the full face and its walls take this swatch, WHEEL_RGB's `edge` grey, and the `lit` outline
+# (spoke_outline's `shape` format) is drawn over it in the `spoke` grey
+EDGE_UV = {"edge": (0.05, 0.60)}
 # WHEEL_RGB: game-screen sRGB grey levels; wheel_texture turns each into the texture value that renders it: the
 # vehiclewheel output measured on ModernCar's vanilla wheel in the same scenario is 0.143 * tex ** 1.395 (texture
 # 37 / 105 / 169 / 189 -> 22 / ~115 / 193 / 214, tesla-modely-tex-1024e scale-S-zoomin). Vehicle textures get no
@@ -240,9 +244,10 @@ def smoothstep(e0, e1, x):
 
 
 def wheel_swatches():
-    """The wheel's flat-colour UV spots: WHEEL_UV's, FACET_UV's when the car has WHEEL_FACETS, LIP_UV's with WHEEL_LIP."""
+    """The wheel's flat-colour UV spots: WHEEL_UV's, FACET_UV's when the car has WHEEL_FACETS, LIP_UV's with WHEEL_LIP,
+    EDGE_UV's with a WHEEL_SPOKE `lit` outline."""
     return {**WHEEL_UV["swatch"], **(FACET_UV if CAR.get("WHEEL_FACETS") else {}),
-            **(LIP_UV if CAR.get("WHEEL_LIP") else {})}
+            **(LIP_UV if CAR.get("WHEEL_LIP") else {}), **(EDGE_UV if "lit" in WHEEL_SPOKE else {})}
 
 
 def wheel_texture(r_out, rim):
@@ -297,15 +302,16 @@ def spoke_x(r, rr, hw):
     return hw - sp["inset"] - sp["dish"] * (1 - r / rr)
 
 
-def spoke_outline(rr, rb):
+def spoke_outline(rr, rb, shape=None):
     """One Y spoke's outline (radius, angle off its centreline), counter-clockwise seen from +x (y right, z up); the
     whole spoke turned `sweep` rad more at the barrel than at the hub (a swept, turbine-like spoke). `shape` (optional,
     rr units, tangential half widths): the left edge's (r, t) from the hub out to the barrel, then the window between
     the arms from the barrel down to its tip (t 0); r past the barrel ends on it. Without it the Y is drawn from hub /
-    fork / spread / main / arm."""
+    fork / spread / main / arm. shape (argument): that outline instead of WHEEL_SPOKE's (its `lit` band)."""
     sp = WHEEL_SPOKE
-    if "shape" in sp:
-        half = [(min(r * rr, rb), -t * rr) for r, t in sp["shape"]["outer"] + sp["shape"]["inner"]]
+    shape = shape or sp.get("shape")
+    if shape:
+        half = [(min(r * rr, rb), -t * rr) for r, t in shape["outer"] + shape["inner"]]
     else:
         h, f, a, w = sp["hub"] * rr, sp["fork"] * rr, sp["spread"], sp["arm"] * rr
         centre = lambda r: r * a * max(0.0, r - f) / (rb - f)              # arm centreline, tangential  # noqa: E731
@@ -393,6 +399,8 @@ def stage_wheel(r, width, rim=None, tag=""):
     # parts (profile, hub cap, facet face, ring) map onto themselves (WHEEL_SEG is even), so they are left as they are
     turn = CAR.get("WHEEL_TURN")
     sp, outline = WHEEL_SPOKE, spoke_outline(rr, rb)
+    # `lit` (optional): the face and the walls in the `edge` grey, the lit band over the face, 1.5 mm in front
+    lit, face = (spoke_outline(rr, rb, sp["lit"]), "edge") if "lit" in sp else (None, "spoke")
     hw = width / 2
     for side in (1, -1):
         out, fz = Vector((side, 0, 0)), -1 if turn and side > 0 else 1
@@ -403,14 +411,19 @@ def stage_wheel(r, width, rim=None, tag=""):
             back = [bm.verts.new((side * (spoke_x(rad, rr, hw) - sp["depth"]), y, z))
                     for (rad, _), (y, z) in zip(outline, yz)]
             for tri in tessellate_polygon([[Vector((y, z, 0)) for y, z in yz]]):
-                flat([front[i] for i in tri], out, "spoke")
+                flat([front[i] for i in tri], out, face)
+            if lit:
+                lz = [(rad * math.cos(a0 + da), fz * rad * math.sin(a0 + da)) for rad, da in lit]
+                lv = [bm.verts.new((side * (spoke_x(rad, rr, hw) + 0.0015), y, z)) for (rad, _), (y, z) in zip(lit, lz)]
+                for tri in tessellate_polygon([[Vector((y, z, 0)) for y, z in lz]]):
+                    flat([lv[i] for i in tri], out, "spoke")
             m = len(outline)
             for i in range(m):
                 j = (i + 1) % m
                 if {outline[i][0], outline[j][0]} == {rb} or {outline[i][0], outline[j][0]} == {outline[0][0]}:
                     continue                             # ends on the barrel and under the hub cap: no wall
                 (y0, z0), (y1, z1) = yz[i], yz[j]
-                flat([front[i], front[j], back[j], back[i]], fz * Vector((0, z1 - z0, -(y1 - y0))), "spoke")
+                flat([front[i], front[j], back[j], back[i]], fz * Vector((0, z1 - z0, -(y1 - y0))), face)
         rc, xc = sp["cap"] * rr, spoke_x(sp["cap"] * rr, rr, hw) + 0.004
         cf = [bm.verts.new((side * xc, rc * math.cos(a), rc * math.sin(a))) for a in ang[:n]]
         cb = [bm.verts.new((side * (xc - sp["depth"] - 0.006), rc * math.cos(a), rc * math.sin(a))) for a in ang[:n]]
