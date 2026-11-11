@@ -367,6 +367,11 @@ def furniture(add, opening, grow=0.0, fine=1, between=None):
         for e in (-1, 1):
             part((0.07, 0.34, 0.07), 0.03, "seat", (cx + e * bolster[0], fy + 0.07, z0 - 0.01))
             part((0.07, 0.13, 0.32), 0.03, "seat", (cx + e * bolster[1], fy - 0.11, z0 + 0.15), tilt=rec)
+        if b.get("arms"):   # (Model Y L 2nd row) an armrest on the aisle side: (height over the cushion, length, width)
+            ah, al, aw = b["arms"]
+            ax = cx - math.copysign(b["w"] / 2 + aw / 2 + 0.005, cx)
+            part((aw, al, 0.05), 0.02, "seat", (ax, fy - 0.115 + al / 2, z0 - 0.04 + ah))
+            part((aw * 0.7, 0.07, ah + 0.065), 0.015, "seat", (ax, fy - 0.08, z0 - 0.105 + (ah + 0.065) / 2))
         return fy, z0
     out["front"] = [bucket(s * SEAT_X, seat_y[0], fs) for s in (-1, 1)][0]     # front buckets
     ry, z1 = seat_y[1], z0 - SEAT.get("rear", 0)       # the 2nd row sits SEAT["rear"] lower (pzveh.geometry, same)

@@ -398,6 +398,82 @@ module Base
         scale = 0.5495,
     }
 
+    /* Model Y L: same build, units and shaders as the Model Y above (CAR=model_yl; BloxBloger's "2025 Tesla Model Y", */
+    /* CC BY-NC 4.0, CREDITS.md, lengthened by scripts/blender/skf/prep_model_yl.py). Four plain doors. */
+    model MinidoracatTesla_ModelYL
+    {
+        mesh = vehicles/MinidoracatTesla_ModelYL,
+        shader = MinidoracatTesla_vehicle,
+        static = true,
+        invertX = false,
+        scale = 0.5495,
+    }
+
+    model MinidoracatTesla_ModelYL_Glass
+    {
+        mesh = vehicles/MinidoracatTesla_ModelYL_Glass,
+        shader = MinidoracatTesla_vehicle,
+        static = true,
+        invertX = false,
+        scale = 0.5495,
+    }
+
+    model MinidoracatTesla_ModelYL_Wheel
+    {
+        mesh = vehicles/MinidoracatTesla_ModelYL_Wheel,
+        texture = Vehicles/MinidoracatTesla_ModelYL_wheel,
+        shader = vehiclewheel,
+        scale = 0.5495,
+    }
+
+    model MinidoracatTesla_ModelYL_DoorFrontLeft
+    {
+        mesh = vehicles/MinidoracatTesla_ModelYL_Doors|DoorFrontLeft,
+        shader = MinidoracatTesla_vehicle,
+        static = false,
+        scale = 0.5495,
+    }
+
+    model MinidoracatTesla_ModelYL_DoorFrontRight
+    {
+        mesh = vehicles/MinidoracatTesla_ModelYL_Doors|DoorFrontRight,
+        shader = MinidoracatTesla_vehicle,
+        static = false,
+        scale = 0.5495,
+    }
+
+    model MinidoracatTesla_ModelYL_DoorRearLeft
+    {
+        mesh = vehicles/MinidoracatTesla_ModelYL_Doors|DoorRearLeft,
+        shader = MinidoracatTesla_vehicle,
+        static = false,
+        scale = 0.5495,
+    }
+
+    model MinidoracatTesla_ModelYL_DoorRearRight
+    {
+        mesh = vehicles/MinidoracatTesla_ModelYL_Doors|DoorRearRight,
+        shader = MinidoracatTesla_vehicle,
+        static = false,
+        scale = 0.5495,
+    }
+
+    model MinidoracatTesla_ModelYL_TrunkDoor
+    {
+        mesh = vehicles/MinidoracatTesla_ModelYL_Doors|TrunkDoor,
+        shader = MinidoracatTesla_vehicle,
+        static = false,
+        scale = 0.5495,
+    }
+
+    model MinidoracatTesla_ModelYL_EngineDoor
+    {
+        mesh = vehicles/MinidoracatTesla_ModelYL_Doors|EngineDoor,
+        shader = MinidoracatTesla_vehicle,
+        static = false,
+        scale = 0.5495,
+    }
+
     /* The cabin's detail for Project Viewpoint (part CabinDetail; scripts/blender/skf/cabin.py detail_mesh): the
        furniture a little larger and finer over the body's own, coloured from MinidoracatTesla_Detail. Only the car a
        local player sits in shows it, and only with Viewpoint loaded (client ViewpointCabin.lua); Viewpoint draws it
@@ -445,6 +521,16 @@ module Base
     model MinidoracatTesla_Cybertruck_Detail
     {
         mesh = vehicles/MinidoracatTesla_Cybertruck_Detail,
+        texture = Vehicles/MinidoracatTesla_Detail,
+        shader = MinidoracatTesla_viewpoint,
+        static = true,
+        invertX = false,
+        scale = 0.5495,
+    }
+
+    model MinidoracatTesla_ModelYL_Detail
+    {
+        mesh = vehicles/MinidoracatTesla_ModelYL_Detail,
         texture = Vehicles/MinidoracatTesla_Detail,
         shader = MinidoracatTesla_viewpoint,
         static = true,

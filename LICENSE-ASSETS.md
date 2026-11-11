@@ -12,6 +12,8 @@ You may download the published mod and use it in Project Zomboid. You may not co
 
 Exception: the Model Y body model and its textures are adapted from BloxBloger's "2026 Tesla Model Y Performance" under CC BY-NC 4.0; see `CREDITS.md` for the attribution and the terms that apply to that part.
 
+Exception: the Model Y L body model and its textures are adapted from BloxBloger's "2025 Tesla Model Y" under CC BY-NC 4.0; see `CREDITS.md` for the attribution and the terms that apply to that part.
+
 Exception: the Model 3 body model and its textures are adapted from RBLXSupercars' "2024 Tesla Model 3" (as re-posted by brandonleong28) under CC BY 4.0; see `CREDITS.md` for the attribution.
 
 Exception: the Cybertruck body model and its textures are adapted from adamsochi2010's "Tesla CyberTruck" under CC BY 4.0; see `CREDITS.md` for the attribution.
@@ -28,6 +30,8 @@ Tesla, the Tesla "T" logo, Model Y, Model 3, Model S, Model X, Plaid, Cybertruck
 你可以下載已發布的 MOD，並在 Project Zomboid 裡使用。未經書面同意，不得複製、修改、再散布這些素材，也不得用在其他 MOD 或作品。
 
 例外：Model Y 車身模型與它的貼圖改作自 BloxBloger 的「2026 Tesla Model Y Performance」（CC BY-NC 4.0），署名與適用條款見 `CREDITS.md`。
+
+例外：Model Y L 車身模型與它的貼圖改作自 BloxBloger 的「2025 Tesla Model Y」（CC BY-NC 4.0），署名與適用條款見 `CREDITS.md`。
 
 例外：Model 3 車身模型與它的貼圖改作自 RBLXSupercars 的「2024 Tesla Model 3」（brandonleong28 轉載，CC BY 4.0），署名見 `CREDITS.md`。
 

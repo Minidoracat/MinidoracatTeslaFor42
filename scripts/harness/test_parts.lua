@@ -134,8 +134,11 @@ check(mapped == 16, "16 vanilla keys mapped (7 parts, category, out of charge, 3
 H.section("cargo capacities (each car script)")
 -- trunk anchored to the vanilla class (Model Y: SUV NormalTrunk2 85; Model 3: sedan NormalTrunk3 45), frunk by the
 -- owner's manual ratio (Model Y 114 / 835 L, Model 3 88 / 594 L, Model S 89 / 709 L: a liftback, the sedan's 45)
--- Model X: SUV class like the Model Y; frunk 183 L against the 6-seat car's 935 L behind the 2nd row
-for _, c in ipairs({ { "ModelY", 85, 12, 114 / 835 }, { "Model3", 45, 7, 88 / 594 }, { "ModelS", 45, 6, 89 / 709 }, { "ModelX", 85, 17, 183 / 935 } }) do
+-- Model X: SUV class like the Model Y; frunk 183 L against the 6-seat car's 935 L behind the 2nd row. Model Y L: the SUV
+-- class too; its frunk is the Model Y's 116 L (China owner's manual p.202-203, both tables), so the Model Y's capacity
+-- and ratio (user 2026-11-11)
+for _, c in ipairs({ { "ModelY", 85, 12, 114 / 835 }, { "Model3", 45, 7, 88 / 594 }, { "ModelS", 45, 6, 89 / 709 }, { "ModelX", 85, 17, 183 / 935 },
+    { "ModelYL", 85, 12, 114 / 835 } }) do
     local f = assert(io.open("MOD/MinidoracatTeslaFor42/Contents/mods/MinidoracatTeslaFor42/42/media/scripts/vehicles/MinidoracatTesla_"
         .. c[1] .. ".txt", "r"))
     local script = f:read("*a")

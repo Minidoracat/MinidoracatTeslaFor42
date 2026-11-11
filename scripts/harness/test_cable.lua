@@ -57,7 +57,8 @@ end
 local PORTS = { ["Base.MinidoracatTesla_ModelY"] = scriptPort("Base.MinidoracatTesla_ModelY"),
     ["Base.MinidoracatTesla_Model3"] = scriptPort("Base.MinidoracatTesla_Model3"),
     ["Base.MinidoracatTesla_ModelS"] = scriptPort("Base.MinidoracatTesla_ModelS"),
-    ["Base.MinidoracatTesla_ModelX"] = scriptPort("Base.MinidoracatTesla_ModelX") }
+    ["Base.MinidoracatTesla_ModelX"] = scriptPort("Base.MinidoracatTesla_ModelX"),
+    ["Base.MinidoracatTesla_ModelYL"] = scriptPort("Base.MinidoracatTesla_ModelYL") }
 
 -- car: yaw only; local x = right flank (+x), local z = forward; its own script's chargeport (default Model Y)
 local function car(x, y, yaw, script)
@@ -76,6 +77,8 @@ check(PORTS["Base.MinidoracatTesla_ModelY"][1] > 0 and PORTS["Base.MinidoracatTe
     "cable: both cars' chargeport read from their scripts (left flank, +x), different positions")
 check(PORTS["Base.MinidoracatTesla_ModelX"][1] > 0 and PORTS["Base.MinidoracatTesla_ModelX"][3] < 0,
     "cable: the Model X's chargeport from its script (left flank, behind the middle)")
+check(PORTS["Base.MinidoracatTesla_ModelYL"][1] > 0 and PORTS["Base.MinidoracatTesla_ModelYL"][3] < 0,
+    "cable: the Model Y L's chargeport from its script (left flank, behind the middle, like the Model Y)")
 
 local function frame()
     draws, lines2d = {}, {}
@@ -200,6 +203,17 @@ end
 check(PORTS["Base.MinidoracatTesla_ModelS"][1] > 0 and PORTS["Base.MinidoracatTesla_ModelS"][3] < 0 and sp ~= nil
     and tipOn(sp, ms), "cable: Model S draws its own plug, tip on its port (left flank, behind the rear axle)")
 T.onChargerChanged(os_, true)
+-- ---- Model Y L: its own plug item (handle height Specs plug.z) on its own port ----
+local myl = car(51.2, 24.0, 0.3, "Base.MinidoracatTesla_ModelYL")
+local oyl = { x = 50, y = 20, z = 0, kind = "WallConnector", facing = "S", vid = myl:getId() }
+T.onChargerChanged(oyl)
+frame()
+local ylp = nil
+for _, d in ipairs(draws) do
+    if d.item.type == "Base.MinidoracatTesla_CablePlugModelYL" then ylp = d end
+end
+check(ylp ~= nil and tipOn(ylp, myl), "cable: Model Y L draws its own plug, tip on its port")
+T.onChargerChanged(oyl, true)
 
 -- ---- Mobile Connector: cable leaves at floor level (cableExit h = 0), no hang segment ----
 local mm = car(51.2, 24.0, 0.3)

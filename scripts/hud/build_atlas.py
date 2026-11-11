@@ -4,7 +4,7 @@
 # ///
 """Build the Tesla HUD atlas (1x and 2x PNG) and its Lua index.
 
-    uv run scripts/hud/build_atlas.py
+    uv run scripts/hud/build_atlas.py   (a Pillow with libraqm: see below)
 
 Outputs (overwritten):
   media/textures/MinidoracatTesla/HUD/atlas1x.png, atlas2x.png
@@ -19,11 +19,17 @@ Digits are rendered from Inter (SIL OFL 1.1, scripts/hud/fonts/OFL.txt). Font fi
 go into MOD/. Icons are drawn here from 16-unit vector paths (all original artwork).
 Also asserts the palette contrast ratios (the design's measured values) so a colour edit
 that breaks readability fails the build.
+
+Text is laid out by Pillow's libraqm (fractional advances); without it Pillow falls back to hinted whole-pixel advances
+and every glyph's metrics in HUDAtlas.lua change, so the build stops. PyPI's Windows wheels have no libraqm: use
+MSYS2's mingw-w64-x86_64-python-pillow (its python.exe with mingw64/bin on PATH).
 """
 import math
 import os
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, features
+
+assert features.check("raqm"), "Pillow without libraqm: HUDAtlas.lua glyph metrics would change (see the docstring)"
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(os.path.dirname(HERE))
@@ -404,6 +410,26 @@ def car_modely(c):  # Model Y: the glass roof runs into the liftgate glass (x 34
     b_pillar(c, 22, 74)
 
 
+def car_modelyl(c):
+    """Model Y L (owner's manual: 4,969 x 1,920 mm, wheelbase 3,040, overhangs front 889 / rear 1,040; 255/45R19 front,
+    275/45R19 rear) at the Model Y's 0.0259 viewBox units per mm, nose on the Model Y's (x 146): as wide as the Model
+    Y, the same from the nose to the B-pillar (windscreen, front doors, x 78 seam). Behind it 179 mm longer: the
+    rear 17.3, the axles on the official wheelbase (x 123 and 44.2), the rear doors' lower half 150 mm further back
+    (DOOR_GEOM rear from x 52.1) and a longer roof to the liftgate glass (x 29.4-46.4, the Model Y's moved back with
+    the tail). HUD.lua ZONES.ModelYL follows these edges."""
+    for x0, w in ((113.8, 18.4), (34.8, 18.9)):  # front 712 mm, rear 730 mm tyres on the axles
+        for y in (16, 72):
+            c.rrect(x0, y, w, 8, 2, fill="#0B0D0F", outline="#8E98A3", ow=1.1)
+    body = [("M", 29.3, 22), ("H", 122), ("Q", 142, 22, 146, 36), ("V", 60), ("Q", 142, 74, 122, 74),
+            ("H", 29.3), ("Q", 17.3, 74, 17.3, 62), ("V", 34), ("Q", 17.3, 22, 29.3, 22), ("Z",)]
+    c.fill(body, "#2A3037")
+    c.stroke(body, w=1.3, color="#AEB6BF")
+    c.fill([("M", 102, 29), ("Q", 117, 29, 120, 38), ("V", 58), ("Q", 117, 67, 102, 67), ("Z",)], "#15191E")
+    c.fill([("M", 34.4, 31), ("H", 46.4), ("V", 65), ("H", 34.4), ("Q", 29.4, 65, 29.4, 60), ("V", 36),
+            ("Q", 29.4, 31, 34.4, 31), ("Z",)], "#15191E")
+    b_pillar(c, 22, 74)
+
+
 def car_model3(c):
     """Model 3 (4,724 x 1,848 mm against the Model Y's 4,790 x 1,921: 98.6% as long, 96% as wide; same wheelbase
     class, so the same wheels): a sedan, the rear glass (x 43-56, up to where the rear doors' outline starts) behind
@@ -489,7 +515,8 @@ def car_modelx(c):
         c.stroke([("M", 85, y0 + 0.6), ("V", y1 - 0.6)], w=1.0, color="#4A525B")
 
 
-CARS = {"ModelY": car_modely, "Model3": car_model3, "Cybertruck": car_cybertruck, "ModelS": car_models, "ModelX": car_modelx}
+CARS = {"ModelY": car_modely, "Model3": car_model3, "Cybertruck": car_cybertruck, "ModelS": car_models, "ModelX": car_modelx,
+        "ModelYL": car_modelyl}
 
 
 def dashed(c, x0, y0, x1, y1, w=1.8, dash=3.0, gap=2.0):
@@ -516,6 +543,10 @@ DOOR_GEOM = {
     # falcon: the rear doors are the Model X's falcon wings (spine y 48), drawn raised instead of swung out
     "ModelX": {"front": (85, 113), "rear": (49.9, 85), "y": (22, 74), "falcon": 48, "tr": ((18, 36, 60), (12, 34, 62)),
                "hd": ((149, 38, 58), (155, 36, 60)), "kinds": ("FL", "FR", "RL", "RR", "TR", "HD")},
+    # Model Y L: the Model Y's front doors and frunk lid (door_FL / FR / HD); its rear doors reach 150 mm further back
+    # (x 52.1) and the liftgate's rear edge is the longer tail (x 17.3, car_modelyl)
+    "ModelYL": {"front": (78, 100), "rear": (52.1, 78), "y": (22, 74), "tr": ((17.3, 36, 60), (11.3, 34, 62)),
+                "hd": ((146, 38, 58), (152, 36, 60)), "kinds": ("RL", "RR", "TR")},
 }
 
 
@@ -565,7 +596,10 @@ WORDS = [("kmh", "Inter-Regular.ttf", 14, "km/h", 0), ("km", "Inter-Regular.ttf"
          ("wm_Model3", "Inter-Light.ttf", 15, "MODEL 3", 5), ("trim_Model3", "Inter-Regular.ttf", 13, "Performance", 0),
          ("wm_Cybertruck", "Inter-Light.ttf", 15, "CYBERTRUCK", 3), ("trim_Cybertruck", "Inter-Regular.ttf", 13, "Cyberbeast", 0),
          ("wm_ModelS", "Inter-Light.ttf", 15, "MODEL S", 5), ("trim_ModelS", "Inter-Regular.ttf", 13, "Plaid", 0),
-         ("wm_ModelX", "Inter-Light.ttf", 15, "MODEL X", 5), ("trim_ModelX", "Inter-Regular.ttf", 13, "Plaid", 0)]
+         ("wm_ModelX", "Inter-Light.ttf", 15, "MODEL X", 5), ("trim_ModelX", "Inter-Regular.ttf", 13, "Plaid", 0),
+         # the Model Y L comes in one version (Long Range All-Wheel Drive; "Model Y L AWD" / "Premium All-Wheel Drive")
+         ("wm_ModelYL", "Inter-Light.ttf", 15, "MODEL Y L", 5),
+         ("trim_ModelYL", "Inter-Regular.ttf", 13, "All-Wheel Drive", 0)]
 
 
 def render_text(fontfile, size, s, track=0):

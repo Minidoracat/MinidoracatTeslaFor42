@@ -48,7 +48,8 @@ local POW2 = { 1, 2, 4, 8, 16, 32, 64, 128 }
 -- The Model X: the liftgate with its rear glass (x 0-44, its seam at viewBox 49.9), the falcon wing doors (DoorRearLeft
 -- / DoorRearRight) from that seam to the B-pillar (viewBox 85 = x 75), split at the roof's spine like the other cars'
 -- rear doors (an open one is drawn raised, door_RL_ModelX / door_RR_ModelX), the front doors to the windscreen's foot
--- at the frunk lid (viewBox 120 = x 106).
+-- at the frunk lid (viewBox 120 = x 106). The Model Y L: the Model Y's front, its longer tail's liftgate with the rear
+-- glass back from viewBox 46.4 (x 41), the rear doors from there to the B-pillar (x 69).
 local ZONES = {
     ModelY = {
         { 5, 0, 0, 45, 85 }, { 3, 45, 0, 69, 42.5 }, { 4, 45, 42.5, 69, 85 },
@@ -69,6 +70,10 @@ local ZONES = {
     ModelX = {
         { 5, 0, 0, 44, 85 }, { 3, 44, 0, 75, 42.5 }, { 4, 44, 42.5, 75, 85 },
         { 1, 75, 0, 106, 42.5 }, { 2, 75, 42.5, 106, 85 }, { 7, 106, 0, 140, 85 },
+    },
+    ModelYL = {
+        { 5, 0, 0, 41, 85 }, { 3, 41, 0, 69, 42.5 }, { 4, 41, 42.5, 69, 85 },
+        { 1, 69, 0, 97, 42.5 }, { 2, 69, 42.5, 97, 85 }, { 7, 97, 0, 140, 85 },
     },
 }
 HUD.ZONES = ZONES

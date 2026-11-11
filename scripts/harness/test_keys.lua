@@ -1009,7 +1009,8 @@ do
         getText = function(k, a) if k == "IGUI_MinidoracatTesla_PhoneCars" then return many(a) end return cars[k] or k end
     end
     speak({ [K.CARD] = "卡片鑰匙", [K.PHONE] = "智慧型手機", [K.PHONE_KEY] = "手機鑰匙" },
-        { IGUI_VehicleNameMinidoracatTesla_ModelY = "特斯拉 Model Y", IGUI_VehicleNameMinidoracatTesla_Model3 = "特斯拉 Model 3" },
+        { IGUI_VehicleNameMinidoracatTesla_ModelY = "特斯拉 Model Y", IGUI_VehicleNameMinidoracatTesla_Model3 = "特斯拉 Model 3",
+            IGUI_VehicleNameMinidoracatTesla_ModelYL = "特斯拉 Model Y L" },
         function(n) return n .. " 台特斯拉" end)
     check(UI.nameOf(served.card) == "卡片鑰匙 - 特斯拉 Model Y", "name: the swapped key card, in the client's language")
     check(UI.nameOf(served.one) == "手機鑰匙 - 特斯拉 Model Y", "name: a phone key for one car")
@@ -1038,6 +1039,11 @@ do
     local n = UI.stats.names
     UI.nameAll(inv)
     check(UI.stats.names == n, "a second pass renames nothing")
+    local yl, ylBare, y = fixed(K.CARD, "Key Card - Tesla Model Y L"), fixed(K.CARD, "Key Card - Tesla ModelYL"),
+        fixed(K.CARD, "Key Card - Tesla Model Y")
+    UI.nameAll(container(yl, ylBare, y))
+    check(yl.name == "卡片鑰匙 - 特斯拉 Model Y L" and ylBare.name == "卡片鑰匙 - 特斯拉 Model Y L"
+        and y.name == "卡片鑰匙 - 特斯拉 Model Y", "'Model Y L' / 'ModelYL' read back as the Model Y L, 'Model Y' still the Model Y")
     local loot = pane(container(fixed(K.CARD, "Key Card - Tesla Model Y")), false)
     loot:refreshContainer()
     check(loot.inventory.items[1].name == "卡片鑰匙 - 特斯拉 Model Y" and loot.refreshed == 1,

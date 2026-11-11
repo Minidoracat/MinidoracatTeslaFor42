@@ -190,6 +190,33 @@ T.Specs = {
             { name = "DeepBlue", code = "PPSB", h = 0.589, s = 1.0, v = 0.488 },
         },
     },
+    ["Base.MinidoracatTesla_ModelYL"] = {
+        model = "ModelYL",
+        label = "Model Y L", -- the app's car name (PhoneApp.carLabel; else the model split at its capitals)
+        appCar = "app_car_modelyl_",
+        -- z: handle height at this car's charge port; the Model Y's until E2E integration-mp measures this car's
+        plug = { item = "Base.MinidoracatTesla_CablePlugModelYL", z = 0.909 },
+        v12Kwh = 14.4 * 12 / 1000, -- 14.4 V, 12 Ah (Model Y owner's manual 2026.26, 6-seater, p.208)
+        -- the Model Y coefficients x 82 / 78.4: a full pack still drives one vanilla tank's distance
+        idleKw = 0.0393 * T.DRIVE_SCALE,
+        kwPerKmh = 0.00598 * T.DRIVE_SCALE,
+        massKg = 2088, -- curb mass (China owner's manual p.204; MIIT filing TSL6500BEVBA0)
+        dcKw = 250,
+        regenEff = 0.6,
+        hepa = true, -- HEPA filter, Bioweapon Defense Mode (China design studio $MTY87 compare table)
+        doorClip = { TrunkDoor = 3.6 }, -- cars/model_yl.py DOORS
+        -- Model Y L paints: China's six ($MTY87, Lexicon 2026-10-30) and the US Marine Blue ($MTY83, 2026-07-10).
+        -- Same order and append-only rules as above; h/s/v by convert.py build.
+        colors = {
+            { name = "StealthGrey", code = "PN01", h = 0.773, s = 0.563, v = 0.22 },
+            { name = "PearlWhite", code = "PPSW", h = 0.582, s = 0.493, v = 0.84 },
+            { name = "DiamondBlack", code = "PX02", h = 0.944, s = 0.537, v = 0.174 },
+            { name = "UltraRed", code = "PR01", h = 0.997, s = 1.0, v = 0.375 },
+            { name = "CosmicSilver", code = "PN03", h = 0.04, s = 0.512, v = 0.496 },
+            { name = "GlacierBlue", code = "PB01", h = 0.61, s = 0.789, v = 0.349 },
+            { name = "MarineBlue", code = "PB02", h = 0.607, s = 0.762, v = 0.203 },
+        },
+    },
 }
 
 -- Index into a colors table, drawn by each entry's weight (none = 1: the Model Y and Model 3 paints stay even)
@@ -216,6 +243,8 @@ T.Packs = {
     ["Base.MinidoracatTesla_ModelSBattery"] = 100,
     -- Model X Plaid: EV Database's nominal 100 kWh (Tesla publishes none)
     ["Base.MinidoracatTesla_ModelXBattery"] = 100,
+    -- Model Y L: 82.0 kWh, China MIIT filing as reported by the press (Tesla publishes none)
+    ["Base.MinidoracatTesla_ModelYLBattery"] = 82,
 }
 
 -- Tesla display names for vanilla text keys: vanilla key -> Tesla key. Read by client/MinidoracatTesla/PartNames.lua

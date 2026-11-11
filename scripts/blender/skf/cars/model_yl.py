@@ -1,0 +1,201 @@
+"""Model Y L (six seats, China $MTY87): BloxBloger's "2025 Tesla Model Y" (the standard car, Sketchfab, CC BY-NC 4.0,
+CREDITS.md) lengthened by scripts/blender/skf/prep_model_yl.py (run it first: TMP/src/source/tesla.obj ->
+model_yl.obj). CAR=model_yl. Keys as in model_y.py (each is the module constant it sets); SEAT third / SEATS middle and
+third as model_x.py (six seats), SEATS middle arms (the 2nd row's armrests, cabin.py). The source has the Model Y's
+object names, but not all of them mean the same parts (the window glass, the rear glass and its frame, the badges):
+read off this source's inspect. Its front to the B pillar is the source's own: Model Y values ahead of the B pillar are
+the Performance source's + 0.081 in y (the two sources sit 0.081 apart; B-pillar trims, seam S). Grid units,
+pre-centre frame (+Y front, +Z up, -X car left, ground z 0) unless noted; numbers and sources:
+.claude/skills/tesla-dev/references/models-model-yl.md.
+"""
+import math
+
+_CUT_X = ("Plane.034", "Plane.044", "Plane.045", "Plane.036", "Plane.042", "Plane.043", "Plane.041")  # rear lamps
+
+CAR = dict(
+    # ---- pzveh: paths and names
+    TMP="skf_yl",
+    NAME="MinidoracatTesla_ModelYL",
+    SCRIPT_MARK="---- geometry (TeslaModelYL)",
+    APP_CAR="app_car_modelyl_{}.png",
+    DIMS=(4.969, 1.920, 1.668),            # owner's manual (US 2026.38 p.244: length without the plate bracket; China
+    #                                        2026.26 p.202: width without mirrors, height)
+    PORT_NOTE="real Model Y L, China owner's manual p.166",
+    # China's six ($MTY87) and the US Marine Blue ($MTY83): order = Core.lua Specs colors (skin index is saved: only
+    # append after release)
+    PAINTS=[("StealthGrey", "PN01"), ("PearlWhite", "PPSW"), ("DiamondBlack", "PX02"), ("UltraRed", "PR01"),
+            ("CosmicSilver", "PN03"), ("GlacierBlue", "PB01"), ("MarineBlue", "PB02")],
+    # tex = a x official-ramp colour / GAIN + b (model_y.py CAL, the same skin pipeline: PAINT_Q, PAINT_TARGET, no
+    # RAMP_SPLIT). Offline start (2026-11-11): the six paints the Model Y has take its in-game fit (modely-skin-sp,
+    # tesla-gloss-skinA-1026a; design-studio door p50 Stealth Grey Y L 29 30 35 against Model Y 27 28 34,
+    # temp/plan-yl-1111 colors.md); Cosmic Silver (Y L only) a = 0.90, b = 0 until fitted. Refit all seven in game
+    # (modely-skin-sp, perf/paint_sheet.py --car) before release. Calibration knob
+    CAL={
+        "StealthGrey": ((0.88, 0.88, 0.88), (0.030, 0.016, 0.012)),
+        "PearlWhite": ((0.80, 0.80, 0.80), (0.134, 0.129, 0.129)),
+        "DiamondBlack": ((0.99, 0.99, 0.99), (0.073, 0.067, 0.063)),
+        "UltraRed": ((0.97, 0.97, 0.97), (-0.067, 0.078, 0.062)),
+        "CosmicSilver": ((0.90, 0.90, 0.90), (0.0, 0.0, 0.0)),
+        "GlacierBlue": ((0.80, 0.80, 0.80), (0.003, -0.017, -0.029)),
+        "MarineBlue": ((0.81, 0.81, 0.81), (0.084, 0.069, 0.039)),
+    },
+    # design studio (China; MarineBlue is only on the US $MTY83: its renders, same camera, were fetched by hand to
+    # TMP/official, so `official` fails on it)
+    COMPOSITOR_MODEL="my",
+    OFFICIAL_OPTS="$MDLY,$MTY87,$STY6S,${},$WY19L,$IPB9",
+    RAMP=dict(t=(0.40, 0.74), u=(0.04, 0.96), wheels=(0.18, 0.79), wt=0.80, wr=0.13),
+    # ---- pzveh: wheel, 19" Machina 2.0 ($WY19L, official RIMCLOSEUP): a black aero cover, five wide Y spokes, the
+    # pockets between their arms silver; 255/45 R19 front, 275/45 R19 rear (one size here, the source tyres'). The
+    # pockets are the disc behind the spokes: its outer ring (WHEEL_RGB dark) silver, the middle (rotor, hat) black
+    WHEEL_RIM=0.725,                       # 19" (241 mm bead + 17 mm flange) / 356 mm tyre radius
+    WHEEL_SPOKE=dict(n=5, hub=0.16, fork=0.40, spread=math.radians(18), main=(0.20, 0.17), arm=0.16, cap=0.17,
+                     inset=0.010, dish=0.008, depth=0.020, sweep=math.radians(16)),
+    WHEEL_DISC=dict(rotor=0.74, hat=0.30),
+    WHEEL_RGB=dict(spoke=20, cap=24, barrel=90, lip=110, rotor=14, hat=14, dark=185, gap=8, tire=(22, 28), tread=20),
+    # ---- pzveh: vehicle script
+    OY=0.2878,
+    WHEEL_LIFT=0.11,
+    WHEEL_INSET=0.03,
+    CAB_BOX=(1.30, 0.53, -1.70),
+    # passengers / seats: front and 2nd row from the door openings (back: front, 2nd row); third: the 3rd row `back`
+    # behind the rear doors' rear edge, over the rear axle (official interior renders), at side x (shoulder room 1,089
+    # against 1,384 mm in the 2nd row, China owner's manual p.202), `drop` under the front (seat_head.py)
+    SEAT=dict(x=0.33, h=0.562, z=-0.203, back=(0.12, -0.03), out=0.30, rear=0.017,
+              third=dict(back=0.15, x=0.28, drop=0.029)),
+    BODY_W_Z=0.55,
+    DOORS={
+        "DoorFrontLeft": (-1, (0, 0, 1), -65, 0.8), "DoorFrontRight": (1, (0, 0, 1), 65, 0.8),
+        "DoorRearLeft": (-1, (0, 0, 1), -65, 0.8), "DoorRearRight": (1, (0, 0, 1), 65, 0.8),
+        "TrunkDoor": (0, (1, 0, 0), -75, 3.6), "EngineDoor": (0, (1, 0, 0), 55, 1.0),
+    },
+    GATE_IN=(0.0, 0.894, -0.447),
+    GATE_HINGE="top",
+
+    # ---- convert.py: the source (TMP/src, gitignored; temp/sketchfab-modely-std in the main checkout)
+    SRC=("src", "source", "model_yl.obj"),
+    SRC_C=(-1.0845, -1.7659),              # source X (length) and Y (width) centre, metres (inspect src_c, after the prep)
+    SRC_SCALE=1.0,
+    SRC_FLIP=False,
+    BELT_Z=0.882,                          # side window bottom (front door glass z min 0.880)
+    TIRE_OBJ="Object005",
+    DROP=("Object005", "Circle", "Cylinder", "Line0", "Object43",   # tyres, aero covers, rotors, calipers
+          "Object_11", "Object_12",                                 # licence plates
+          "Plane.031", "Plane.040", "Plane.051",   # clear lamp covers: opaque in PZ, they'd hide the lamps
+          "Interior", "Hyundai_KONA", "Plane.067",   # BloxBloger's interior: the mod's own cabin (cabin.py)
+          "Tesla_Model_3",               # rear TESLA: block letters sunk under the blade (Badge_TESLA instead)
+          "Plane.072"),                  # DUAL MOTOR letters on the gate's right: the China Model Y L has none
+    DROP_COMPS=(),
+    # the Model Y L's black blade spoiler (official REAR34 / SIDE): the duck lip, moved by the prep to the Y L blade's
+    # place (prep_model_yl.py), black in a band `edge` deep along its trailing edge seen from above (model_3.py)
+    CARBON=dict(rgb=(22, 22, 24), zones=(dict(lo=(-0.70, -2.10, 1.057), hi=(0.70, -1.70, 1.212), edge=(1, 0.10)),)),
+    ARCH_LINER=None,
+    PLATES=(),
+    SEAL_CLIP=False,
+    RAIL=None,
+    SEAM_SHADE=dict(reach=0.02, width=0.010, k=0.35, steep=0.5,
+                    parts=("DoorFrontLeft", "DoorFrontRight", "DoorRearLeft", "DoorRearRight", "EngineDoor"),
+                    any_slope={"EngineDoor": 0.6}),
+    DECIMATE={"Plane.045": 400,             # 29.5k-tri honeycomb under the tail light bar
+              "Plane.034": 1200},
+    PAINT_MAT="Material_#2125765635",       # the body paint (the mirror caps too)
+    MAT_RGB={"black_base": (34, 34, 36), "black_reflection": (20, 20, 22), "black": (20, 20, 22),
+             "Material_#2125767099": (26, 26, 28), "front_white_light": (226, 230, 236), "back_red_Light": (150, 12, 16),
+             "red_plastic": (120, 12, 16), "M22": (120, 12, 16), "mirror": (58, 64, 72), "chrome": (96, 98, 104),
+             "glass_base": (14, 14, 16), "glass_roof_panorama": (14, 14, 16)},
+    GLASS_MATS=("glass_base", "glass_roof_panorama"),
+    GLASS_OPAQUE=(),
+    GLASS_BACKS=(),
+    ROOF_PANE="Plane.023",
+    MIRROR_CAP="Plane.046",                # already body paint in this source
+    LAMPS=dict(head=("front_white_light",), tail=("back_red_Light", "red_plastic", "M22"), tail_z=0.75, tail_y=-1.5,
+               blade="Plane.034"),
+    # part lines, side view (y, z): S, BF, BR off this source's panel edges (B pillar: unchanged by the prep); D the
+    # rear door glass / quarter glass divider bar's middle; R1 (z ascending) the rear door's rear edge, upright from
+    # the belt to the arch since the prep (work/outline.py)
+    LINES={
+        "S": ((-0.069, 0.412), (-0.146, 0.912)),
+        "BF": ((-0.098, 0.942), (-0.1925, 1.302)),
+        "BR": ((-0.230, 0.952), (-0.281, 1.312)),
+        "D": ((-0.880, 0.962), (-0.917, 1.262)),
+        "R1": ((-1.10, 0.632), (-1.06, 0.672), (-1.008, 0.732), (-1.012, 0.812), (-1.000, 0.912), (-0.96, 1.002)),
+    },
+    FRONT_Y=0.91, SILL_Z=0.232, ARCH=(0.562, -0.92),
+    IN_DOOR=dict(up=0.912, x=0.42),
+    IN_GATE=dict(y=-1.56, z=0.512, up=0.962, x_up=0.62),
+    DOOR_Y=(0.901, -0.100, -1.00),
+    GATE_Z=0.525,
+    REAR_ARCH=(-1.2215, 0.3045, 0.40),
+    GATE_X=0.515,
+    STOP_X=0.645,
+    PANELS=dict(x=0.6, z=0.7, front=(-0.2, 0.6), rear=(-1.0, -0.2), gate=(-1.5, 0.5), lid=(0.9, 0.6)),
+    GUARDS=dict(front=(0.83, 0.962, 0.4), rear=(-0.95, 1.192, 0.45)),
+    # components cut along the lines (object, tris): the window surround; the rear door glass and the quarter glass
+    # are one component here
+    CUT={("Plane.004", 342): ("BF", "BR", "D"), ("Plane.011", 268): ("D",)},
+    PLANES={},
+    CUT_X=_CUT_X,
+    CUT_X_Y=None,
+    DOOR_OBJS=("Plane.011", "Plane.004", "Plane.070", "Plane.019", "Plane.002", "Plane.046", "Plane.047", "Plane.048",
+               "Plane.049", "Plane.050"),
+    GATE_OBJS=_CUT_X,
+    GATE_COMPS=(("Plane.011", 248, -1), ("Plane.006", 102, -1)),   # rear window and its frame (y sign of the centre)
+    GATE_CUT_COMPS=(),
+    PANES={"Body": {"WinT", "LightBarL", "WinLT", "WinRT"}, "DoorFrontLeft": {"WinLH"}, "DoorFrontRight": {"WinRH"},
+           "DoorRearLeft": {"WinLT"}, "DoorRearRight": {"WinRT"}, "TrunkDoor": {"WinH"}, "EngineDoor": set()},
+    # badges (model_y.py): T on the frunk lid, TESLA on the light blade, and on the gate's lower left MODEL Y and the
+    # Model Y L's three slanted bars (China $MTY87 REAR34: no 特斯拉 here, no Performance badge)
+    T_BADGE=(1.93, 0.0644, 0.0677, 0.632, (0, 0.34, 0.94), (0, 0, -1)),
+    TESLA=(0.962, 0.03, 0.11, 0.045),
+    LENS_X=0.46,
+    BADGE_Y=(-2.6, -1.85),
+    BLADE=True,
+    MODELY=("MODEL Y///", -0.46, 0.567, 0.033),
+    PERF_BADGE=None,
+    CALIPER=None,                          # the aero cover hides them (and the Y L's are not red)
+    FRUNK_TUB=dict(ledge=0.08, rim=0.025, y=(1.151, 1.881), half=(0.29, 0.18), corner=0.07, taper=0.11, depth=0.29,
+                   n=128),
+
+    # ---- cabin.py (mesh coords, centred; ground z -0.751): the Model Y's front cabin + 0.081 in y, - 0.003 in z (the
+    # raised roof lifts the mesh centre)
+    CABIN_FLOOR=-0.423,
+    CABIN_FRONT_Y=1.141,
+    TRUNK_Y=-1.45,             # trunk floor behind the 3rd row backrests
+    TRUNK_WALL=True,
+    HUMP_BACKS=False,
+    REAR_DOOR_WALL=True,
+    CABIN_ZC=-0.103,
+    SEAM_CLEAR=0.065,
+    # seats: front buckets as the Model Y; the 2nd row two separate seats with an armrest each on the aisle side
+    # (arms: height over the cushion, length, width; China owner's manual p.45 "armrests"), the 3rd row two seats
+    # (model_x.py); `rear` (the bench) unused with `middle`
+    SEATS=dict(front=dict(w=0.42, back=0.50, recline=32, dy=0.055, dz=-0.083),
+               rear=dict(base=1.08, cushions=((-0.365, 0.36), (0, 0.33), (0.365, 0.36)), back=0.44, recline=10, dy=0.04,
+                         dz=-0.077),
+               middle=dict(w=0.42, back=0.50, recline=10, dy=0.035, dz=-0.068, arms=(0.16, 0.30, 0.05)),
+               third=dict(w=0.36, back=0.34, head=0.42, recline=10, dy=0.028, dz=-0.068),
+               sill=(1.00, 0.12), bin=(0.86, 0.20)),
+    PARCEL=None,
+    DASH=dict(console=(0, 0.201, -0.323), dash=(0, 0.881, -0.023), trim=(0, 0.708, -0.013), light=(0, 0.710, -0.036),
+              stand=(0, 0.721, 0.087), screen=(0, 0.691, 0.167), wheel=(0.438, 0.129)),
+    DOOR_CARD={
+        "front": [
+            ("upper trim", "end", (0.05, 0.10), -0.050, None, 0.060, 0.030, "dash", 0.012),
+            ("ambient light", "end", (0.07, 0.16), -0.086, None, 0.007, 0.012, "screen", 0.002),
+            ("armrest", "rear", 0.07, -0.215, 0.44, 0.050, 0.085, "seat", 0.018),
+            ("pull handle", "rear", 0.13, -0.165, 0.26, 0.026, 0.050, "dash", 0.010),
+            ("window switches", "rear", 0.31, -0.188, 0.13, 0.012, 0.060, "screen_back", 0.004),
+            ("door button", "rear", 0.43, -0.186, 0.035, 0.012, 0.050, "trim", 0.004),
+            ("map pocket", "end", (0.10, 0.30), -0.545, None, 0.085, 0.045, "base", 0.015),
+            ("speaker grille", "front", 0.20, -0.400, 0.17, 0.150, 0.018, "console", 0.050),
+        ],
+        "rear": [
+            ("upper trim", "end", (0.05, 0.05), -0.050, None, 0.060, 0.030, "dash", 0.012),
+            ("ambient light", "end", (0.07, 0.07), -0.086, None, 0.007, 0.012, "screen", 0.002),
+            ("armrest", "front", 0.06, -0.215, 0.38, 0.050, 0.080, "seat", 0.018),
+            ("pull handle", "front", 0.10, -0.165, 0.22, 0.026, 0.050, "dash", 0.010),
+            ("window switches", "front", 0.32, -0.188, 0.09, 0.012, 0.055, "screen_back", 0.004),
+            ("map pocket", "end", (0.32, 0.05), -0.500, None, 0.080, 0.040, "base", 0.015),   # rear end: wheel arch
+            ("speaker grille", "front", 0.08, -0.370, 0.14, 0.120, 0.018, "console", 0.045),
+        ],
+    },
+)

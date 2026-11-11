@@ -467,6 +467,37 @@ mxc.parts.DoorRearLeft.door.open = true
 h:update(); h:update(); h:update()
 check(h.st.doors == 4, "Model X: left falcon wing open -> door bit 4 (drawn with door_RL_ModelX)")
 mxc.parts.DoorRearLeft.door.open = false
+-- Model Y L: its own top view (the longer tail), the Model Y's front doors and frunk overlays (door_FL / FR / HD), its
+-- own rear doors and liftgate (door_RL / RR / TR_ModelYL); the liftgate x 0-41, rear doors 41-69, the rest the Model Y's
+local ylc = car({ script = "Base.MinidoracatTesla_ModelYL", kwh = 60 })
+ylc.parts.EngineDoor = tesla.parts.EngineDoor
+dash:setVehicle(ylc)
+local ylSpr = {}
+for _, d in ipairs(h.doors) do ylSpr[d.name] = T.HUDAtlas[1][d.spr] and T.HUDAtlas[2][d.spr] and d.spr end
+check(h.carSpr == "car_ModelYL" and h.zones == HUD.ZONES.ModelYL and T.HUDAtlas[1].car_ModelYL ~= nil
+    and T.HUDAtlas[2].car_ModelYL ~= nil and #h.doors == 6 and ylSpr.DoorRearLeft == "door_RL_ModelYL"
+    and ylSpr.DoorRearRight == "door_RR_ModelYL" and ylSpr.TrunkDoor == "door_TR_ModelYL" and ylSpr.DoorFrontLeft == "door_FL"
+    and ylSpr.DoorFrontRight == "door_FR" and ylSpr.EngineDoor == "door_HD",
+    "Model Y L: car_ModelYL, its zones, its own rear door and liftgate overlays, the Model Y's front ones, at both scales")
+toggled = {}
+local ylh = { { 20, 42, "TrunkDoor" }, { 55, 20, "DoorRearLeft" }, { 55, 64, "DoorRearRight" },
+    { 80, 20, "DoorFrontLeft" }, { 80, 64, "DoorFrontRight" }, { 120, 42, "EngineDoor" } }
+local ylOk = true
+for i, z in ipairs(ylh) do ylOk = ylOk and select(1, clickAt(z[1], z[2])) == true and toggled[i] == z[3] end
+check(ylOk and #toggled == 6, "Model Y L: liftgate, 4 doors and the frunk lid each toggle their part")
+toggled = {}
+check(select(1, clickAt(40, 20)) == true and toggled[1] == "TrunkDoor" and select(1, clickAt(42, 20)) == true
+    and toggled[2] == "DoorRearLeft", "Model Y L: the liftgate glass's front edge at x 41 splits liftgate and rear door")
+mx, my = at(55, 20)
+h:render()
+check(h.tipArg == "IGUI_VehiclePartDoorRearLeft", "Model Y L: hovering a rear door names an ordinary rear door")
+mx, my = at(20, 42)
+h:render()
+check(h.tipArg == "IGUI_MinidoracatTesla_Part_TrunkDoor", "Model Y L: hovering the tail names the liftgate")
+ylc.parts.DoorRearLeft.door.open = true
+h:update(); h:update(); h:update()
+check(h.st.doors == 4, "Model Y L: left rear door open -> door bit 4 (drawn with door_RL_ModelYL)")
+ylc.parts.DoorRearLeft.door.open = false
 -- every car's zones: inside the picture before the quick keys (x <= 140, 0 <= y <= 85), none overlapping
 local zOk = true
 for model, zs in pairs(HUD.ZONES) do

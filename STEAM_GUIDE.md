@@ -1,15 +1,15 @@
 <!-- 指南網址：https://steamcommunity.com/sharedfiles/filedetails/?id=3829449828 -->
 <!-- Steam 指南稿源（繁中）：MOD 的完整說明以本指南為準，簡介只放摘要。格式、版面與同步方式見 pz-family-docs/release.md「完整說明：Steam 指南」 -->
 <!-- 標題：📖 Minidoracat Tesla Collection MOD 完整說明：車、充電、鑰匙與 App -->
-<!-- 摘要：Minidoracat Tesla Collection 的圖文說明：Model Y 與 Model 3 Performance、Model S 與 Model X Plaid（鷹翼門與 6 座）、Cybertruck Cyberbeast（車斗、Powershare 住宅備援與車斗插座）、電池與拖車耗電、壁掛式充電座、行動充電器與加油站的 V4 超級充電座、特斯拉風格儀表、卡片鑰匙與手機鑰匙、手機 Tesla App 與召喚、哨兵與露營模式、生物武器防禦模式與舒適模式、驅動單元零件，以及和 Vehicle Manager、小地圖、AutoDrive、Project Viewpoint 一起用的規則與沙盒選項。 -->
-<!-- 截圖：docs/screenshots/steam/zh/，拍法見家族庫 e2e/MinidoracatTeslaFor42 的 guide-shots-sp（生物武器防禦與舒適模式只跑那段用 --define part=feat，圓盤停留文字要另開 hover.py；Cybertruck 圖用 guide-ct-sp、Model S／X 圖用 guide-sx-sp、召喚圖用 phone-summon-sp、FSD 圖用 fsd-shot-sp、「和其他 MOD 一起用」用 guide-mods-sp；Project Viewpoint 那張（31）是本 repo 一次性情境 temp/oneoff/vp-detail-sp 的 vd-first-ModelS 裁 (80,40,1660,1080)，中英同一張，要裝 ZombieBuddy 才拍得到；V4 超級充電座那張（32）是 supercharger-sp 的 sc-CH-card／sc-EN-card 裁 (480,160,1480,990)） -->
+<!-- 摘要：Minidoracat Tesla Collection 的圖文說明：Model Y 與 Model 3 Performance、Model Y L（六座）、Model S 與 Model X Plaid（鷹翼門與 6 座）、Cybertruck Cyberbeast（車斗、Powershare 住宅備援與車斗插座）、電池與拖車耗電、壁掛式充電座、行動充電器與加油站的 V4 超級充電座、特斯拉風格儀表、卡片鑰匙與手機鑰匙、手機 Tesla App 與召喚、哨兵與露營模式、生物武器防禦模式與舒適模式、驅動單元零件，以及和 Vehicle Manager、小地圖、AutoDrive、Project Viewpoint 一起用的規則與沙盒選項。 -->
+<!-- 截圖：docs/screenshots/steam/zh/，拍法見家族庫 e2e/MinidoracatTeslaFor42 的 guide-shots-sp（生物武器防禦與舒適模式只跑那段用 --define part=feat，圓盤停留文字要另開 hover.py；Cybertruck 圖用 guide-ct-sp、Model S／X 圖用 guide-sx-sp、Model Y L 的圖（33、34）用 guide-yl-sp（之後建立）、召喚圖用 phone-summon-sp、FSD 圖用 fsd-shot-sp、「和其他 MOD 一起用」用 guide-mods-sp；Project Viewpoint 那張（31）是本 repo 一次性情境 temp/oneoff/vp-detail-sp 的 vd-first-ModelS 裁 (80,40,1660,1080)，中英同一張，要裝 ZombieBuddy 才拍得到；V4 超級充電座那張（32）是 supercharger-sp 的 sc-CH-card／sc-EN-card 裁 (480,160,1480,990)） -->
 === 🚀 快速上手
 [b]English version:[/b] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3829449879]Minidoracat Tesla Collection Mod Guide[/url]
 
 MOD 本體（Steam Workshop）：
 https://steamcommunity.com/sharedfiles/filedetails/?id=3829501237
 [olist]
-[*] [b]找車[/b]：Model Y 與 Model 3 出現在停車場的停車格，Model Y 也會出現在高級住宅區；Model S、Model X 與 Cybertruck 只出現在高級住宅區。
+[*] [b]找車[/b]：Model Y 與 Model 3 出現在停車場的停車格，Model Y 也會出現在高級住宅區；Model Y L 停車格與高級住宅區都有，機率和 Model Y 一樣；Model S、Model X 與 Cybertruck 只出現在高級住宅區。
 [*] [b]拿鑰匙[/b]：拿到特斯拉的車鑰匙，它會自動變成這台車的「卡片鑰匙」。
 [*] [b]發動[/b]：坐上駕駛座，點儀表左上角的電源鍵（或用原版的發動方式）。
 [*] [b]充電[/b]：電工 3 級做一座「特斯拉第三代壁掛式充電座」裝在有電的牆上，或把「特斯拉第三代行動充電器」放在地上，右鍵它插上充電線；加油站旁的「特斯拉 V4 超級充電座」插上就是快充。
@@ -77,6 +77,33 @@ https://steamcommunity.com/sharedfiles/filedetails/?id=3829501237
 [*] [b]按互動鍵上車[/b]：在鷹翼門按互動鍵（鍵盤或手把）先坐第二排，第二排有人才坐第三排；要指定座位就用座位面板。
 [*] [b]等門升起[/b]：鷹翼門打開要一點時間，角色會等門升起再上車。
 [*] [b]零件名[/b]：維修介面照車主手冊叫「左鷹翼門」「右鷹翼門」。
+[/list]
+=== 🧰 Model Y L
+{{img:33-modelyl-zh.jpg}}
+[list]
+[*] [b]只有一個版本[/b]：全世界的 Model Y L 都是同一個長續航、全輪驅動的六座版，照中國現行版本（2026 年 10 月改款後）；沒有 Performance。維修介面顯示 502 hp（前 176 kW＋後 198 kW）。
+[*] [b]出現在哪[/b]：停車格與高級住宅區都會出現，機率和 Model Y 一樣。
+[*] [b]性能[/b]：車比其他特斯拉略重，推力比 Model Y Performance 小，起步比 Model Y 慢；極速、抓地與煞車和其他特斯拉同級。
+[*] [b]電池[/b]：高電壓電池 82 kWh（官方沒有公布，取自中國工信部申報），充滿電一樣跑得和原版同級車加滿一箱油一樣遠。壁掛式從沒電充到 90% 約 6 小時、行動充電器約 10 小時（遊戲時間）；超級充電座最高 250 kW，從 10% 充到 90% 約 38 分鐘。
+[*] [b]車色[/b]：7 種，生成時隨機一種；Cosmic Silver 是 Model Y L 專屬。App 的車圖跟著車色換，車名顯示「Model Y L」。
+[*] [b]車門[/b]：四扇一般車門（沒有鷹翼門）、電動掀背尾門和前蓋照實車的方向打開。
+[*] [b]外觀[/b]：比 Model Y 長約 18 公分、軸距長 15 公分，車頂後段加高；19 吋 Machina 2.0 輪圈、黑色加長尾翼，尾門字樣是 MODEL Y 加三條斜線。
+[*] [b]充電口[/b]：在左尾燈，和 Model Y 一樣。
+[*] [b]生物武器防禦模式[/b]：有 HEPA 濾網，見「生物武器防禦模式與舒適模式」。
+[*] [b]儀表[/b]：有自己的俯視圖，點車子圖一樣能開關車門。
+[*] [b]拖車[/b]：和其他特斯拉一樣能用原版拖車掛鉤拖拖車或別的車（耗電見「電池與續航」）。
+[*] [b]其他功能[/b]：卡片鑰匙、手機鑰匙、App、哨兵、露營、舒適模式、召喚都和其他特斯拉一樣。
+[/list]
+[table]
+[tr][th]車型[/th][th]原廠車色[/th][th]前行李廂[/th][th]後行李廂[/th][/tr]
+[tr][td]Model Y L[/td][td]Stealth Grey、Pearl White、Diamond Black、Ultra Red、Cosmic Silver、Glacier Blue、Marine Blue[/td][td]12[/td][td]85[/td][/tr]
+[/table]
+[h3]Model Y L 的六個座位[/h3]
+{{img:34-modelyl-seats-zh.jpg}}
+[list]
+[*] [b]6 個座位[/b]：前座 2 位、第二排 2 張獨立座椅（中間有走道）、第三排 2 位。
+[*] [b]第三排怎麼上[/b]：從後門上下車，有自己的上車位置，第二排坐滿時一樣上得去。
+[*] [b]按互動鍵上車[/b]：在後門按互動鍵（鍵盤或手把）先坐空的第二排，第二排有人才坐第三排；要指定座位就用座位面板，可以直接點第三排。
 [/list]
 === 🧰 Cybertruck（Cyberbeast）
 {{img:23-cybertruck-zh.jpg}}
@@ -177,7 +204,7 @@ https://steamcommunity.com/sharedfiles/filedetails/?id=3829501237
 [*] [b]自己做[/b]：電工 6 級自動學會配方「製作特斯拉 V4 超級充電座」，要在桌子之類的工作面旁製作：螺絲起子、鉗子（不消耗），電線 12、電子零件 9、小金屬片 6、螺絲 12。
 [*] [b]插線[/b]：和其他充電設備一樣右鍵插上充電線。線長約 2.5 格（官方 3 公尺），車要停進樁前面的車位。
 [*] [b]越充越慢[/b]：照實車的直流快充：電量低時最快，過了一半逐漸變慢，80% 以上很慢。最高功率照官方：Cybertruck 325 kW，其他特斯拉 250 kW。
-[*] [b]要多久[/b]：從 10% 充到 90%（遊戲時間）：Model Y、Model 3 約 36 分鐘，Model S、Model X 約 47 分鐘，Cybertruck 約 44 分鐘；沙盒「充電速度倍率」一樣有效。
+[*] [b]要多久[/b]：從 10% 充到 90%（遊戲時間）：Model Y、Model 3 約 36 分鐘，Model Y L 約 38 分鐘，Model S、Model X 約 47 分鐘，Cybertruck 約 44 分鐘；沙盒「充電速度倍率」一樣有效。
 [*] [b]電源[/b]：和加油機同一套規則，戶外有市電就能用。停電後在發電機的供電範圍內，或樁旁 2 格內（同一層）有運轉中、有油的發電機，照樣全速充電；伺服器關掉沙盒「發電機室外運轉」時，只有旁邊 2 格內的發電機算。沒電時右鍵選單多一行灰字說明。
 [*] [b]耗油[/b]：每度電耗的油和其他充電設備一樣，充滿一台一樣約一桶；但功率高，每小時耗油快很多：250 kW 時，加滿的原版發電機約 19 分鐘就燒完。
 [*] [b]搬回家[/b]：電工 6 級、拿著螺絲起子才能撿起和放下；它和原版發電機一樣重（40），要雙手搬，身上其他東西太多時撿不起來。放下後照上面的電源規則。加油站長出來的樁不屬於任何人，照車的鑰匙規則誰都能插拔；自己放下的才算你的（見常見問題「別人的車插在我的充電座上怎麼辦？」）。
@@ -227,7 +254,7 @@ https://steamcommunity.com/sharedfiles/filedetails/?id=3829501237
 [list]
 [*] [b]取代原版儀表[/b]：坐上特斯拉時換成特斯拉風格的儀表，顯示檔位、車速、電量、剩餘里程與即時耗電／回收。
 [*] [b]電源鍵[/b]：左上角，點一下發動、再點一下關閉電源；關閉電源要先停車。
-[*] [b]點車子開關門[/b]：點儀表上的車子俯視圖，就能打開或關上那個位置的車門、尾門或前蓋（Cybertruck 點車斗是車斗蓋，Model X 點後半段是鷹翼門）；門鎖著會先解鎖，行駛中不會開。
+[*] [b]點車子開關門[/b]：點儀表上的車子俯視圖，就能打開或關上那個位置的車門、尾門或前蓋（Cybertruck 點車斗是車斗蓋，Model X 點後半段是鷹翼門；Model Y L 有自己的俯視圖）；門鎖著會先解鎖，行駛中不會開。
 [*] [b]快捷鍵[/b]：大燈、恆溫控制、收音機、露營模式；開著時圖示變藍加底線。
 [*] [b]提醒[/b]：門沒關、充電中、已充好、充電座沒電、電量不足、露營或哨兵中，會在下方顯示一行提醒。
 [*] [b]滑鼠停留說明[/b]：每顆按鈕與車子圖的每個區域，滑鼠移上去都會說明它做什麼。
@@ -347,7 +374,7 @@ https://steamcommunity.com/sharedfiles/filedetails/?id=3829501237
 [h3]生物武器防禦模式（HEPA 濾網）[/h3]
 {{img:29-bdm-zh.jpg}}
 [list]
-[*] [b]哪些車有[/b]：Model Y、Model S、Model X、Cybertruck 有 HEPA 濾網；照官方車主手冊，Model 3 沒有，它的 V 鍵圓盤不會出現這一格。
+[*] [b]哪些車有[/b]：Model Y、Model Y L、Model S、Model X、Cybertruck 有 HEPA 濾網；照官方車主手冊，Model 3 沒有，它的 V 鍵圓盤不會出現這一格。
 [*] [b]空調開著就過濾[/b]：車外屍體多到會讓人染上屍臭病時，坐在車上開著空調，車上每個人的屍臭病就不會再往上升。
 [*] [b]開啟[/b]：坐在車上按 V 鍵圓盤選「開啟生物武器防禦模式」，車上任何人都能按；開著時空調旋鈕在 0 也照樣送風過濾。再選一次「關閉生物武器防禦模式」就關掉。
 [*] [b]要有電[/b]：馬達開著或露營中才會運作。
@@ -416,7 +443,7 @@ https://steamcommunity.com/sharedfiles/filedetails/?id=3829501237
 [h3]Project Viewpoint（3D 視角）[/h3]
 {{img:31-viewpoint-zh.jpg}}
 [list]
-[*] [b]車內細節[/b]：坐進特斯拉看得到有縫線的座椅、有 T 標的方向盤、顯示地圖的中控螢幕、出風口、杯架、手機座、腳踏墊與後照鏡；五台車、每個座位都有。
+[*] [b]車內細節[/b]：坐進特斯拉看得到有縫線的座椅、有 T 標的方向盤、顯示地圖的中控螢幕、出風口、杯架、手機座、腳踏墊與後照鏡；六台車、每個座位都有。
 [*] [b]只有自己坐的那台[/b]：別台車照原本的樣子畫，車內是深灰色。
 [*] [b]沒裝不受影響[/b]：沒裝 Project Viewpoint 的玩家，畫面和效能都和以前一樣。
 [*] [b]多人時偶爾消失一下[/b]：你坐的車有零件裝拆或修理時，細節會消失，遊戲內一分鐘內回來。

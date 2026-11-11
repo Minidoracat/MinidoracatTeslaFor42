@@ -1344,6 +1344,9 @@ local line2 = a:carLine(a.b.pick2.pick) -- (the drawn row is cut to fit: getText
 check(line2:find("41%", 1, true) == 1 and line2:find("LastSeen", 1, true) and App.carLabel(9002):find("Pearl White", 1, true),
     "batch answer: the other car's line (41% · last seen) and paint")
 check(#H.clientSent == sent0 + 1, "the list asked once (no batch per redraw)")
+check(App.carLabel(nil, "MinidoracatTesla_ModelYL") == "Model Y L" and App.carLabel(nil, "MinidoracatTesla_ModelY") == "Model Y"
+    and App.carLabel(nil, "MinidoracatTesla_Model3") == "Model 3",
+    "car names: Specs label for the Model Y L ('Model Y L', not 'Model YL'), the split model elsewhere")
 ok, why = textInside()
 check(ok, "car list: text inside the phone (" .. why .. ")")
 -- joypad: D-pad picks, A selects, B closes the list

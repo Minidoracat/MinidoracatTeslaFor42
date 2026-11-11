@@ -176,7 +176,8 @@ function App.carLabel(keyId, car)
     local st = keyId and App.seen[keyId]
     car = car or (st and st.car)
     local paint, spec = App.paint(car, st and st.skin)
-    local name = spec and (spec.model:gsub("(%l)([%u%d])", "%1 %2")) or txt("Title") -- ModelY -> Model Y
+    -- Specs label where the split would be wrong (ModelYL -> "Model Y L", not "Model YL"), else ModelY -> Model Y
+    local name = spec and (spec.label or spec.model:gsub("(%l)([%u%d])", "%1 %2")) or txt("Title")
     if not (paint and st and st.skin) then return name end
     return name .. getText("IGUI_MinidoracatTesla_Sep") .. paintLabel(paint)
 end

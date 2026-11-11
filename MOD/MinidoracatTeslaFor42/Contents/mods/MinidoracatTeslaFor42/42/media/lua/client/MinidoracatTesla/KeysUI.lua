@@ -133,19 +133,21 @@ Events.OnGameStart.Add(function() Events.OnTick.Add(loginCheck) end)
 -- The server leaves the key card, the phone and the phone key unnamed (KeyActions.lua replace), so the client builds
 -- them from its own scripts, in its own language; the car comes from the item's teslaCars (K.PAIRED_CARS). Items from
 -- before carry a name fixed in the server's language (saved and sent as it is, InventoryItem.java:1711-1714): the car
--- model is read back from it (every language's IGUI_VehicleName has "Model Y" / "Model 3" / "Cybertruck"). A name the
--- player gave (vanilla rename: setCustomName) stays. setName here is local only, never synced: what the server sends
--- is named again at the next list refresh.
+-- model is read back from it (every language's IGUI_VehicleName has the model's name: "Model Y", "Model Y L", "Model 3",
+-- "Cybertruck", ...). A name the player gave (vanilla rename: setCustomName) stays. setName here is local only, never
+-- synced: what the server sends is named again at the next list refresh.
 local NAMED = { K.CARD, K.PHONE, K.PHONE_KEY }
-local MODELS = { ["Model Y"] = "MinidoracatTesla_ModelY", ModelY = "MinidoracatTesla_ModelY",
-    ["Model 3"] = "MinidoracatTesla_Model3", Model3 = "MinidoracatTesla_Model3",
-    Cybertruck = "MinidoracatTesla_Cybertruck",
-    ["Model S"] = "MinidoracatTesla_ModelS", ModelS = "MinidoracatTesla_ModelS",
-    ["Model X"] = "MinidoracatTesla_ModelX", ModelX = "MinidoracatTesla_ModelX" }
+-- in order: a name that holds another ("Model Y L" holds "Model Y") comes first
+local MODELS = { { "Model Y L", "MinidoracatTesla_ModelYL" }, { "ModelYL", "MinidoracatTesla_ModelYL" },
+    { "Model Y", "MinidoracatTesla_ModelY" }, { "ModelY", "MinidoracatTesla_ModelY" },
+    { "Model 3", "MinidoracatTesla_Model3" }, { "Model3", "MinidoracatTesla_Model3" },
+    { "Cybertruck", "MinidoracatTesla_Cybertruck" },
+    { "Model S", "MinidoracatTesla_ModelS" }, { "ModelS", "MinidoracatTesla_ModelS" },
+    { "Model X", "MinidoracatTesla_ModelX" }, { "ModelX", "MinidoracatTesla_ModelX" } }
 local function carText(car) return type(car) == "string" and getTextOrNull("IGUI_VehicleName" .. car) or nil end
 local function modelIn(name)
-    for s, car in pairs(MODELS) do
-        if name:find(s, 1, true) then return car end
+    for _, m in ipairs(MODELS) do
+        if name:find(m[1], 1, true) then return m[2] end
     end
 end
 -- "Key Card - Tesla Model Y", "Phone Key - 2 Teslas", "Smartphone" in this client's language

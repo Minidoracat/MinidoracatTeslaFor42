@@ -54,7 +54,8 @@ PLUGS = {"MinidoracatTesla_CablePlug": 0.909,                 # Model Y (tesla-i
          "MinidoracatTesla_CablePlugModel3": 0.74,            # Model 3
          "MinidoracatTesla_CablePlugCybertruck": 0.90,        # Cybertruck (tesla-ctbody-1030c: port 0.902)
          "MinidoracatTesla_CablePlugModelS": 0.73,            # Model S
-         "MinidoracatTesla_CablePlugModelX": 0.84}            # Model X (tesla-mx-1101b modelx-sp: port 0.837)
+         "MinidoracatTesla_CablePlugModelX": 0.84,            # Model X (tesla-mx-1101b modelx-sp: port 0.837)
+         "MinidoracatTesla_CablePlugModelYL": 0.909}          # Model Y L: the Model Y's until E2E integration-mp measures it
 PLUG_REACH = 0.36                             # handle tip reaches +x (into the car flank)
 XFORM = {"S": (0.0, 180.0, 0.0), "E": (0.0, -90.0, 0.0), "N": (0.0, 0.0, 0.0), "W": (0.0, 90.0, 0.0)}
 # Mobile Connector Gen 3, Facing S frame, lying on the floor: control box 179.8 x 81.7 x 47.3 mm (official.md 1.2) x 1.3

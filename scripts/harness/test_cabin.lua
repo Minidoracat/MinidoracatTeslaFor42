@@ -21,12 +21,16 @@ local models = read("scripts/models/MinidoracatTesla_vehicles.txt")
 
 -- every Tesla model but the wheel and the Viewpoint detail on the merged shader; the cabin glass model, no cabin /
 -- window models
-for _, car in ipairs({ "MinidoracatTesla_ModelY", "MinidoracatTesla_Model3", "MinidoracatTesla_ModelS", "MinidoracatTesla_ModelX" }) do
+for _, car in ipairs({ "MinidoracatTesla_ModelY", "MinidoracatTesla_Model3", "MinidoracatTesla_ModelS", "MinidoracatTesla_ModelX",
+    "MinidoracatTesla_ModelYL" }) do
     local shaders, names = {}, {}
-    for name, block in models:gmatch("model (" .. car .. "[%w_]*)%s*(%b{})") do
-        names[#names + 1] = name
-        if name ~= car .. "_Wheel" and name ~= car .. "_Detail" then
-            shaders[#shaders + 1] = name .. "=" .. tostring(block:match("shader = ([%w_]+),"))
+    for name, block in models:gmatch("model ([%w_]+)%s*(%b{})") do
+        -- the car itself or car_<part> only: "MinidoracatTesla_ModelY" must not take the Model Y L's models
+        if name == car or name:sub(1, #car + 1) == car .. "_" then
+            names[#names + 1] = name
+            if name ~= car .. "_Wheel" and name ~= car .. "_Detail" then
+                shaders[#shaders + 1] = name .. "=" .. tostring(block:match("shader = ([%w_]+),"))
+            end
         end
     end
     local wrong = {}
@@ -51,10 +55,12 @@ local m3 = read("scripts/vehicles/MinidoracatTesla_Model3.txt")
 local ms = read("scripts/vehicles/MinidoracatTesla_ModelS.txt")
 local mx = read("scripts/vehicles/MinidoracatTesla_ModelX.txt")
 local ct = read("scripts/vehicles/MinidoracatTesla_Cybertruck.txt")
+local yl = read("scripts/vehicles/MinidoracatTesla_ModelYL.txt")
 local geos = { ModelY = geo, Model3 = m3:sub((m3:find("---- geometry", 1, true))),
     ModelS = ms:sub((ms:find("---- geometry", 1, true))),
     ModelX = mx:sub((mx:find("---- geometry", 1, true))),
-    Cybertruck = ct:sub((ct:find("---- geometry", 1, true))) }
+    Cybertruck = ct:sub((ct:find("---- geometry", 1, true))),
+    ModelYL = yl:sub((yl:find("---- geometry (TeslaModelYL)", 1, true))) }
 for car, g in pairs(geos) do
     check(g:find("part GloveBox", 1, true) == nil and g:find("part Window", 1, true) == nil
         and g:find("part WindshieldRear", 1, true) == nil, car .. ": no models on GloveBox, Window* or WindshieldRear")
@@ -101,6 +107,9 @@ check(rules(ms, "TrunkDoor"):find("requireUninstalled = WindshieldRear,", 1, tru
 check(rules(mx, "TrunkDoor"):find("requireUninstalled = WindshieldRear,", 1, true) ~= nil
     and rules(mx, "WindshieldRear"):find("requireInstalled = TrunkDoor,", 1, true) ~= nil,
     "Model X: the liftgate carries its rear glass like the Model Y's")
+check(rules(yl, "TrunkDoor"):find("requireUninstalled = WindshieldRear,", 1, true) ~= nil
+    and rules(yl, "WindshieldRear"):find("requireInstalled = TrunkDoor,", 1, true) ~= nil,
+    "Model Y L: the liftgate carries its rear glass like the Model Y's")
 check(not (tpl .. m3):find("requireUninstalled = WindshieldRear", 1, true) and not (tpl .. m3):find("requireInstalled = TrunkDoor", 1, true),
     "Model 3 (and the shared template): trunk lid and rear glass come off and go on independently (glass in the body)")
 
@@ -143,34 +152,39 @@ for id, block in geo:gmatch("passenger (%w+)%s*(%b{})") do
 end
 check(seats == 4 and #shown == 4, "all four seats show their passenger (" .. table.concat(shown, ",") .. ")")
 
--- Model X: six seats (template PassengerSeat6). The 2nd row (Middle*) gets in through the falcon wing doors (DoorRear*);
--- the 3rd row (Rear*) has its own way in at the 2nd row's spot through the same doors, so a full 2nd row never blocks
--- it (plan-sx-1031 engine-feasibility 2.2 B).
-H.section("Model X six seats")
-local gx = geos.ModelX
-check(mx:find("\n        seats = 6,", 1, true) ~= nil and gx:find("template = PassengerSeat6,", 1, true) ~= nil
-    and mx:find("template = Seat/part/SeatMiddleLeft,", 1, true) ~= nil
-    and mx:find("template = Seat/part/SeatMiddleRight,", 1, true) ~= nil, "seats = 6, PassengerSeat6, SeatMiddleLeft / Right parts")
-local pas, n6 = {}, 0
-for nm, block in gx:gmatch("passenger (%w+)%s*(%b{})") do
-    pas[nm], n6 = block, n6 + 1
-end
-check(n6 == 6, "six passengers in the geometry block (" .. n6 .. ")")
-local function outside(nm) return (pas[nm] or ""):match("position outside%s*(%b{})") or "" end
-for _, s in ipairs({ "Left", "Right" }) do
-    local mid, rear = outside("Middle" .. s), outside("Rear" .. s)
-    check((pas["Middle" .. s] or ""):find("door = DoorRear" .. s .. ",", 1, true) ~= nil
-        and mid:match("area = (%w+),") == "SeatMiddle" .. s, "2nd row " .. s .. ": through DoorRear" .. s .. ", outside at SeatMiddle" .. s)
-    check(rear:match("area = (%w+),") == "SeatMiddle" .. s and rear:match("offset = ([^,]+),") ~= nil
-        and rear:match("offset = ([^,]+),") == mid:match("offset = ([^,]+),"),
-        "3rd row " .. s .. ": its own way in, at the 2nd row's spot (" .. tostring(rear:match("offset = ([^,]+),")) .. ")")
-    check(gx:find("area SeatMiddle" .. s, 1, true) ~= nil and gx:find("area SeatRear" .. s, 1, true) ~= nil,
-        "areas SeatMiddle" .. s .. " / SeatRear" .. s)
+-- Six seats (template PassengerSeat6): the Model X and the Model Y L. The 2nd row (Middle*) gets in through the rear
+-- doors (DoorRear*: the Model X's falcon wings, the Model Y L's ordinary doors); the 3rd row (Rear*) has its own way in
+-- at the 2nd row's spot through the same doors, so a full 2nd row never blocks it (plan-sx-1031 engine-feasibility
+-- 2.2 B; plan-yl-1111 engine-feasibility 1.2).
+for _, pair in ipairs({ { "ModelX", mx }, { "ModelYL", yl } }) do
+    local car, text = pair[1], pair[2]
+    H.section(car .. " six seats")
+    local gx = geos[car]
+    check(text:find("\n        seats = 6,", 1, true) ~= nil and gx:find("template = PassengerSeat6,", 1, true) ~= nil
+        and text:find("template = Seat/part/SeatMiddleLeft,", 1, true) ~= nil
+        and text:find("template = Seat/part/SeatMiddleRight,", 1, true) ~= nil, "seats = 6, PassengerSeat6, SeatMiddleLeft / Right parts")
+    local pas, n6 = {}, 0
+    for nm, block in gx:gmatch("passenger (%w+)%s*(%b{})") do
+        pas[nm], n6 = block, n6 + 1
+    end
+    check(n6 == 6, "six passengers in the geometry block (" .. n6 .. ")")
+    local function outside(nm) return (pas[nm] or ""):match("position outside%s*(%b{})") or "" end
+    for _, s in ipairs({ "Left", "Right" }) do
+        local mid, rear = outside("Middle" .. s), outside("Rear" .. s)
+        check((pas["Middle" .. s] or ""):find("door = DoorRear" .. s .. ",", 1, true) ~= nil
+            and mid:match("area = (%w+),") == "SeatMiddle" .. s, "2nd row " .. s .. ": through DoorRear" .. s .. ", outside at SeatMiddle" .. s)
+        check(rear:match("area = (%w+),") == "SeatMiddle" .. s and rear:match("offset = ([^,]+),") ~= nil
+            and rear:match("offset = ([^,]+),") == mid:match("offset = ([^,]+),"),
+            "3rd row " .. s .. ": its own way in, at the 2nd row's spot (" .. tostring(rear:match("offset = ([^,]+),")) .. ")")
+        check(gx:find("area SeatMiddle" .. s, 1, true) ~= nil and gx:find("area SeatRear" .. s, 1, true) ~= nil,
+            "areas SeatMiddle" .. s .. " / SeatRear" .. s)
+    end
 end
 -- falcon wing doors whine like vanilla's power window (sounds on the car script's anims, the anims in the geometry)
 local falcon = rules(mx, "DoorRear%*")
 check(falcon:find("sound = MinidoracatTesla_FalconOpen,", 1, true) ~= nil
     and falcon:find("sound = MinidoracatTesla_FalconClose,", 1, true) ~= nil, "falcon wing doors: power window sounds (raised: MinidoracatTesla_Falcon*)")
+check(not yl:find("MinidoracatTesla_Falcon", 1, true), "Model Y L: ordinary rear doors, vanilla door sounds (no falcon wing sound)")
 check(geo:find("template = PassengerSeat4,", 1, true) ~= nil and geos.Model3:find("template = PassengerSeat4,", 1, true) ~= nil,
     "Model Y / Model 3 keep PassengerSeat4")
 -- the clip lengths the shell and the climb wait on (Core.lua Specs doorClip) are the build's (cars/model_x.py DOORS)

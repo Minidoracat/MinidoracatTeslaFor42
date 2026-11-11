@@ -12,6 +12,26 @@
 
 格式基於 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.1.0/)，版本號遵循 `{PZ版本}-{主版本}.{次版本}.{修訂}` 格式。
 
+## [Unreleased]
+
+### 新增
+
+- **第六台特斯拉：Model Y L（六座長軸距 Model Y）**：停車格與高級住宅區都找得到，機率和 Model Y 一樣。照中國現行版本（2026 年 10 月改款後）：全世界只有這一個版本，沒有 Performance。維修介面顯示 502 hp（前 176 kW＋後 198 kW），推力比 Model Y Performance 小，是全車系最低；車比其他特斯拉略重，起步比 Model Y 慢，極速、抓地與煞車和其他特斯拉同級。高電壓電池 82 kWh（官方沒有公布，取自中國工信部申報），充滿電一樣跑得和原版同級車加滿一箱油一樣遠；壁掛式從沒電充到 90% 約 6 小時、行動充電器約 10 小時，超級充電座最高 250 kW、從 10% 充到 90% 約 38 分鐘（遊戲時間）。6 個座位：前座 2 位、第二排 2 張獨立座椅（中間有走道）、第三排 2 位；四扇一般車門（沒有鷹翼門），第三排從後門上下車、有自己的上車位置，第二排坐滿時一樣上得去。在後門按互動鍵（鍵盤或手把）先坐空的第二排，第二排有人才坐第三排；座位面板可以直接點第三排。7 種車色，生成時隨機一種，App 的車圖跟著車色換：Stealth Grey、Pearl White、Diamond Black、Ultra Red、Cosmic Silver（Model Y L 專屬）、Glacier Blue、Marine Blue。行李廂 85、前車廂 12。外觀比 Model Y 長約 18 cm、軸距長 15 cm、車頂後段加高，19 吋 Machina 2.0 輪圈、黑色加長尾翼，尾門字樣是 MODEL Y 加三條斜線；電動掀背尾門、四扇車門與前蓋照實車打開，充電口在左尾燈，和 Model Y 一樣。有 HEPA 濾網與生物武器防禦模式；卡片鑰匙、手機鑰匙、App（車名顯示「Model Y L」）、哨兵、露營、舒適模式、召喚與拖車都和其他特斯拉一樣。儀表有自己的俯視圖，點車子圖開關車門。不做外供電（V2L）。
+
+> 技術要點：
+> - ID：車輛 `Base.MinidoracatTesla_ModelYL`；電池 `Base.MinidoracatTesla_ModelYLBattery`（82 kWh）；充電插頭 `Base.MinidoracatTesla_CablePlugModelYL`。生成在 `VehicleZoneDistribution` 的 `parkingstall`（spawnChance 3）與 `good`（spawnChance 4），和 Model Y 相同。
+> - 性能：`engineForce` 5020、`mass` 824（800 × 2,088 ÷ 2,027，中國官方整備重，Y L 對 Model Y Performance，算法同 Model X）；極速沿用範本的 `maxSpeed` 120，所以極速不另外調。維修介面的 502 hp 是前 176 kW＋後 198 kW 的官方數字。
+> - 電池 82 kWh 取自中國工信部申報（媒體轉載），官方不公布；容量表 `T.Packs` 存精確值，物品 `MaxCapacity` 是整數。超充用同一條直流曲線 `T.DC_CURVE`，峰值 250 kW。
+> - 6 座：`EnterDoor` 改成看六座，在後門先坐空的第二排，第二排有人才坐第三排。
+> - 鑰匙卡認車型：以前依卡片名稱比對車型，新增 Model Y L 後它的名稱含 Model Y，改成長名稱優先，避免 Model Y L 的卡被當成 Model Y。App 車名顯示 `label`（Model Y L），其他車照原本的拆字規則；對現有的車沒有可見差別。
+> - 素材：車身改作自 BloxBloger 的「2025 Tesla Model Y」（Sketchfab，CC BY-NC 4.0，https://sketchfab.com/3d-models/2025-tesla-model-y-619601e7800d418da5922c4fa7833f74 ，作者 https://sketchfab.com/BloxBloger ，授權 http://creativecommons.org/licenses/by-nc/4.0/ ），和現有 Model Y 同一位作者的另一個模型；只供非商業使用。加長軸距與車尾、加高後段車頂、減面、拆件、重做貼圖，換掉車尾字樣並重畫標誌，加上黑色加長尾翼，輪子與車內（六個座位）換成本 MOD 自己的；署名全文見 `CREDITS.md`。
+
+### 修正
+
+- **Model X 的座位面板裡，第二排與第三排的圖示疊在一起**：座位面板（上車時選座位的那個小視窗）在六座車上，第二排和第三排的圖示上下互相蓋住約 5 像素。現在六座的特斯拉（Model X、Model Y L）會把面板加高，六個圖示不再重疊。用手把選座位時，上下鍵也改成照畫面上的排移動：以前按「下」會從前座跳到第三排，再按「下」反而回到第二排。影響 0.4.0 起的 Model X。
+
+> 技術要點：只在客戶端、只對特斯拉六座車：打開座位面板時，把面板高度加到圖示剛好不疊（Model X 500→548）；四座車與原版車照舊；沒有新增每 tick 的工作。
+
 ## [42.22.2-0.6.1] - 2026-11-10
 
 ### 修正

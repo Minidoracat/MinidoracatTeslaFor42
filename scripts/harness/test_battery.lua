@@ -30,6 +30,19 @@ check(T.spec(ms).massKg == 2178 and T.spec(ms).hepa == true and T.spec(m3).hepa 
     "Model S: regen mass = Plaid curb mass 2178 kg; HEPA (owner's manual), the Model 3 none")
 check(H.scriptValue("vehicles/MinidoracatTesla_ModelS.txt", "engineForce") == 10200, "Model S engineForce = 1,020 hp x 10")
 H.removeVehicle(ms)
+-- Model Y L: MIIT's 82.0 kWh as reported by the press (Tesla publishes none), an int like the Model S's
+local yl = H.vehicle({ script = "Base.MinidoracatTesla_ModelYL", kwh = 41 })
+check(T.isTesla(yl) and B.part(yl):getInventoryItem():getFullType() == "Base.MinidoracatTesla_ModelYLBattery"
+    and B.capacity(B.part(yl)) == 82 and near(B.pct(B.part(yl)), 50)
+    and H.scriptValue("items/MinidoracatTesla_items.txt", "MaxCapacity", "item MinidoracatTesla_ModelYLBattery") == 82,
+    "Model Y L is a Tesla with its own 82 kWh pack (item MaxCapacity 82)")
+check(near(82 * T.kmPerKwh(yl), 75.7, 0.1), "Model Y L: a full pack at 50 km/h = one vanilla CarNormal tank too (75.7 km)")
+check(T.spec(yl).massKg == 2088 and T.spec(yl).hepa == true and T.spec(yl).falcon == nil and T.spec(yl).doorWait == nil,
+    "Model Y L: regen mass = curb mass 2088 kg; HEPA; ordinary rear doors (no falcon, no doorWait)")
+check(H.scriptValue("vehicles/MinidoracatTesla_ModelYL.txt", "engineForce") == 5020
+    and H.scriptValue("vehicles/MinidoracatTesla_ModelYL.txt", "mass") == 824,
+    "Model Y L engineForce = (176 + 198 kW) 502 hp x 10, mass 824 (800 x 2,088 / 2,027)")
+H.removeVehicle(yl)
 local full = H.vehicle({ kwh = 78.4 })
 -- vanilla repair() fills the tank to the item's int MaxCapacity (VehiclePart.java:989-992): 79 for the 78.4 kWh pack
 B.part(full):setContainerContentAmount(79)
@@ -574,6 +587,8 @@ check(Z.good.vehicles["Base.MinidoracatTesla_ModelS"].spawnChance == 2
     and Z.parkingstall.vehicles["Base.MinidoracatTesla_ModelS"] == nil, "spawn table Model S: good 2, not in parking stalls")
 check(Z.good.vehicles["Base.MinidoracatTesla_ModelX"].spawnChance == 2
     and Z.parkingstall.vehicles["Base.MinidoracatTesla_ModelX"] == nil, "spawn table Model X: good 2, not in parking stalls")
+check(Z.parkingstall.vehicles["Base.MinidoracatTesla_ModelYL"].spawnChance == 3
+    and Z.good.vehicles["Base.MinidoracatTesla_ModelYL"].spawnChance == 4, "spawn table Model Y L: parkingstall 3, good 4")
 
 H.section("dispatch")
 local hits = 0

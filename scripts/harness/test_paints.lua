@@ -9,10 +9,15 @@ local OFFICIAL = { PN01 = true, PPSW = true, PX02 = true, PN00 = true, PR01 = tr
     PPSB = true, PN02 = true, PBSB = true }
 -- Model X Plaid: the last US design studio's six and China's pre-refresh Solid Black, Deep Blue (plan-sx-1031)
 local OFFICIAL_X = { PN01 = true, PN02 = true, PPSW = true, PR01 = true, PX02 = true, PB00 = true, PBSB = true, PPSB = true }
+-- Model Y L: China's current seven ($MTY87; Cosmic Silver PN03 new; plan-yl-1111 colors.md)
+local OFFICIAL_YL = { PN01 = true, PPSW = true, PX02 = true, PR01 = true, PN03 = true, PB01 = true, PB02 = true }
+local CODES = { MinidoracatTesla_ModelX = OFFICIAL_X, MinidoracatTesla_ModelYL = OFFICIAL_YL }
+local COUNT = { MinidoracatTesla_ModelYL = 7 }
 local media = "MOD/MinidoracatTeslaFor42/Contents/mods/MinidoracatTeslaFor42/42/media/"
 
-for _, car in ipairs({ "MinidoracatTesla_ModelY", "MinidoracatTesla_Model3", "MinidoracatTesla_ModelS", "MinidoracatTesla_ModelX" }) do
-    local codes = car == "MinidoracatTesla_ModelX" and OFFICIAL_X or OFFICIAL
+for _, car in ipairs({ "MinidoracatTesla_ModelY", "MinidoracatTesla_Model3", "MinidoracatTesla_ModelS", "MinidoracatTesla_ModelX",
+    "MinidoracatTesla_ModelYL" }) do
+    local codes, count = CODES[car] or OFFICIAL, COUNT[car] or 8
     local colors = T.Specs["Base." .. car].colors
 
     H.section("paint table " .. car)
@@ -24,7 +29,7 @@ for _, car in ipairs({ "MinidoracatTesla_ModelY", "MinidoracatTesla_Model3", "Mi
             if type(c[k]) ~= "number" or c[k] < 0 or c[k] > 1 then bad[#bad + 1] = c.name .. "." .. k end
         end
     end
-    check(#colors == 8 and #bad == 0, "8 colours, each an official code once, HSV in 0..1 (" .. table.concat(bad, ",") .. ")")
+    check(#colors == count and #bad == 0, count .. " colours, each an official code once, HSV in 0..1 (" .. table.concat(bad, ",") .. ")")
 
     -- skins in the vehicle script, in file order (= skin index)
     local f = assert(io.open(media .. "scripts/vehicles/" .. car .. ".txt", "r"))
@@ -57,7 +62,7 @@ for _, car in ipairs({ "MinidoracatTesla_ModelY", "MinidoracatTesla_Model3", "Mi
     end
     local n = 0
     for _ in pairs(hits) do n = n + 1 end
-    check(n == 8, "the 16 draws reach all 8 skins (" .. n .. ")")
+    check(n == count, "the 16 draws reach all " .. count .. " skins (" .. n .. ")")
     H.setRand(0.5)
 end
 
