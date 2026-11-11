@@ -362,18 +362,29 @@ def load_source():
         tire = (t["r"] * K, t["w"] * K)
         wl = [(sd, yc, zc, t["track"] * K / 2 + tire[1] / 2 + pv.WHEEL_INSET) for sd, yc, zc, _ in wl]
         print("TIRE official: radius %.4f width %.4f outer |x| %.4f" % (*tire, wl[0][3]))
+    rear = None
+    if C.get("TIRE_AXLES"):   # official (radius, width) per axle, metres (models.md): each wheel centre its axle's
+        # tyre bottom + r (standing where the source's tyre stood), the outer face kept (the width inward); the rear a
+        # wheel model of its own when it differs, on the front's rim
+        fr = np.array([lo[1] + hi[1] > 0 for lo, hi in tires])
+        meas = {f: tire[0] if C.get("TIRE") else float(size[fr == f, 1:].mean() / 2) for f in (True, False)}
+        tire, rear = (tuple(float(v) * K for v in C["TIRE_AXLES"][a]) for a in ("front", "rear"))
+        wl = [(sd, yc, zc - meas[yc > 0] + (tire if yc > 0 else rear)[0], xo) for sd, yc, zc, xo in wl]
+        print("TIRE_AXLES: measured radius front %.4f rear %.4f -> front %.4f / %.4f, rear %.4f / %.4f, centres"
+              % (meas[True], meas[False], *tire, *rear), [np.round(w, 4).tolist() for w in wl])
+        rear = None if rear == tire else rear
     badges(obs, names)
     if CALIPER:
-        calipers(obs, names, wl, tire)
+        calipers(obs, names, wl, tire, rear)
     if ARCH_LINER:
-        arch_liners(obs, names, wl, tire)
+        arch_liners(obs, names, wl, tire, rear)
     for name, poly, want, mat in PLATES:   # flat backing polygons where a dropped part left a see-through gap
         _add(obs, names, name, poly, [tuple(range(len(poly)))], Vector(want), mat)
     pv.select_only(*obs)
     bpy.ops.object.join()
     car = bpy.context.view_layer.objects.active
     car.name = pv.NAME
-    return car, names, wl, tire
+    return car, names, wl, tire, rear
 
 
 def stage_inspect():
@@ -544,12 +555,13 @@ def _add(obs, names, name, pts, faces, want, mat):
     print("ADDED", name, len(me.polygons), "faces")
 
 
-def calipers(obs, names, wl, tire):
+def calipers(obs, names, wl, tire, rear=None):
     """Red brake calipers (Performance), one per wheel, in the body: they stay put while the wheel spins and steers.
     An annular sector between the wheel's middle disc and its spokes (CALIPER), centred `angle` behind the top. The
     wheel model turns about the vertical through its centre, up to 0.9 rad standing still (VehicleScript.java:1678-1686,
     BaseVehicle.java:4480-4490): a front caliper must stay behind the spokes' front faces and inside the barrel at every
-    angle, checked here (it may cut into the solid spokes and the disc: hidden there)."""
+    angle, checked here (it may cut into the solid spokes and the disc: hidden there). rear: the rear axle's (radius,
+    width) when it differs (TIRE_AXLES)."""
     r, width = tire
     rr, hw = pv.WHEEL_RIM * r, width / 2
     rb = rr - 0.004
@@ -558,7 +570,7 @@ def calipers(obs, names, wl, tire):
         front = yc > 0
         ang, span = CALIPER["front" if front else "rear"]
         (r1, r2), (x1, x2) = CALIPER["r"], CALIPER["x"]
-        cx = side * (xo - width / 2 - pv.WHEEL_INSET)
+        cx = side * (xo - (width if front or not rear else rear[1]) / 2 - pv.WHEEL_INSET)
         psi = np.radians(np.linspace(ang - span, ang + span, 4))
         k = len(pts)
         for p in psi:
@@ -595,18 +607,18 @@ def calipers(obs, names, wl, tire):
     _add(obs, names, "Caliper", pts, faces, want, "caliper_red")
 
 
-def arch_liners(obs, names, wl, tire):
+def arch_liners(obs, names, wl, tire, rear=None):
     """Black wheel-arch liners (ARCH_LINER, for a source without them): per wheel an arc `gap` outside the tire from
     `arc` deg (0 = ahead of the axle, 90 = over it) round to behind it, across from the tire's outer face to `inner`
     inboard of its inner face, and a wall closing the arc inboard; all of it faces the wheel. Without them the cabin
     shell's rays left through the arches onto the wheel parts (black wedges over the wheels) and the arches showed
-    the ground."""
+    the ground. rear: the rear axle's (radius, width) when it differs (TIRE_AXLES)."""
     g = ARCH_LINER
-    r, width = tire
-    R = r + g["gap"]
     th = np.radians(np.linspace(*g["arc"], g["n"]))
     pts, faces, want = [], [], []
     for side, yc, zc, xo in wl:
+        r, width = rear if rear and yc < 0 else tire
+        R = r + g["gap"]
         if "x" in g:                                 # the liner's outer |x| (inside the cladding)
             xo = g["x"] + pv.WHEEL_INSET
         xa, xb = side * (xo - pv.WHEEL_INSET), side * (xo - pv.WHEEL_INSET - width - g["inner"])   # outer, inner
@@ -704,8 +716,15 @@ def badges(obs, names):
              planar=True)
     if MODELY:                             # (text, left x, baseline z, cap height)
         text, x0, z0, ch = MODELY
-        letters, _ = stroke_text(text, {**SANS, **C.get("MODELY_GLYPHS", {})}, 0.16)   # a car's own glyphs over SANS
-        flat("Badge_MODELY", [[[(u * ch, v * ch) for u, v in q] for q in g] for g in letters],
+        font = {**SANS, **C.get("MODELY_GLYPHS", {})}   # a car's own glyphs over SANS
+        letters, _ = stroke_text(text, font, 0.16)
+        groups = [[[(u * ch, v * ch) for u, v in q] for q in g] for g in letters]
+        # MODELY_LINES (Model Y L's 特斯拉 above): more lines, same object and ink: (text, left x, baseline z, cap
+        # height, stroke width)
+        for t, x, z, h, w in C.get("MODELY_LINES", ()):
+            groups += [[[(x - x0 + u * h, z - z0 + v * h) for u, v in q] for q in g]
+                       for g in stroke_text(t, font, w)[0]]
+        flat("Badge_MODELY", groups,
              ((x0, face_y, z0), (1, 0, 0), (0, 0, 1), (0, -1, 0)), C.get("MODELY_MAT", "badge_chrome"), planar=True)
     if PERF_BADGE:                         # the Performance badge plate (centre x, z, width, height)
         x, z, w, h = PERF_BADGE
@@ -1293,7 +1312,7 @@ def textures(car, c):
 
 def stage_build():
     os.makedirs(TMP, exist_ok=True)
-    car, names, wheels, tire = load_source()
+    car, names, wheels, tire, rear = load_source()
     sizes = edit(car, names)
     c = classify(car, names, sizes)
     # and the CARBON border: crisp, not texel steps; SPLIT_COLOURS (Model X: its body is one mesh in several materials,
@@ -1341,10 +1360,13 @@ def stage_build():
             ly = ((sum(BED_TUB["y"]) / 2) - ctr[1]) / half_len
         extra += [f"        part {lp_}", "        {", "            table light", "            {",
                   f"                xOffset = {lx:.4f},", f"                yOffset = {ly:.4f},", "            }", "        }"]
-    g = pv.geometry(car, zmid, wl, tire[0], tire[1], BELT_Z, tuple(y - ctr[1] for y in DOOR_Y), port, areas, extra)
+    g = pv.geometry(car, zmid, wl, tire[0], tire[1], BELT_Z, tuple(y - ctr[1] for y in DOOR_Y), port, areas, extra,
+                    rear)
     bpy.ops.wm.save_as_mainfile(filepath=os.path.join(TMP, "skf_whole.blend"))
     g |= {"centre_y": float(ctr[1]), "zmid": zmid, "tris": pieces(car, c, shift)}
     g["tris"]["Wheel"] = pv.stage_wheel(*tire)
+    if rear:            # TIRE_AXLES: the rear tyre on the front's rim
+        g["tris"]["WheelRear"] = pv.stage_wheel(*rear, rim=pv.WHEEL_RIM * tire[0], tag="Rear")
     g["tris"]["Detail"] = stage_detail(float(ctr[1]))
     json.dump(g, open(os.path.join(TMP, "geometry.json"), "w"), indent=1)
     print("GEOMETRY", json.dumps(g))
@@ -2040,29 +2062,34 @@ def stage_view(out, heads, state, skin="UltraRed", app=False):
     for o in bpy.data.objects:
         o.hide_render = o.type == "MESH" and (not (o is body or o in doors) or o.name in hide)
     # WHEELS=1: the wheel FBX at the four script offsets (rendered centre = offset + WHEEL_LIFT), STEER=<rad> turns the
-    # front pair about the vertical (the game's m.rotationY, BaseVehicle.java:7440), SPIN=<rad> turns all about the axle
+    # front pair about the vertical (the game's m.rotationY, BaseVehicle.java:7440), SPIN=<rad> turns all about the axle;
+    # the rear pair on <NAME>_WheelRear when the script has it (TIRE_AXLES)
     if app or os.environ.get("WHEELS") == "1":
-        bpy.ops.import_scene.fbx(filepath=os.path.join(pv.VEH_DIR, pv.NAME + "_Wheel.fbx"), axis_forward="-Z",
-                                 axis_up="Y")
-        wheel = bpy.context.selected_objects[0]
-        wm = bpy.data.materials.new("wheel")
-        wm.use_backface_culling = True
-        wm.use_nodes = True
-        tx = wm.node_tree.nodes.new("ShaderNodeTexImage")
-        tx.image = bpy.data.images.load(os.path.join(pv.TEX_DIR, pv.NAME + "_wheel.png"))
-        tx.interpolation = "Closest"
-        wm.node_tree.links.new(tx.outputs[0], wm.node_tree.nodes["Principled BSDF"].inputs[0])
-        wheel.data.materials.clear()
-        wheel.data.materials.append(wm)
         block = open(os.path.join(TMP, "geometry_block.txt"), encoding="utf-8").read()
+        tags = {"true": "", "false": "Rear" if "part TireRear*" in block else ""}
+        src = {}
+        for tag in dict.fromkeys(tags.values()):
+            bpy.ops.import_scene.fbx(filepath=os.path.join(pv.VEH_DIR, pv.NAME + "_Wheel" + tag + ".fbx"),
+                                     axis_forward="-Z", axis_up="Y")
+            wheel = src[tag] = bpy.context.selected_objects[0]
+            wm = bpy.data.materials.new("wheel" + tag.lower())
+            wm.use_backface_culling = True
+            wm.use_nodes = True
+            tx = wm.node_tree.nodes.new("ShaderNodeTexImage")
+            tx.image = bpy.data.images.load(os.path.join(pv.TEX_DIR, pv.NAME + "_wheel" + tag.lower() + ".png"))
+            tx.interpolation = "Closest"
+            wm.node_tree.links.new(tx.outputs[0], wm.node_tree.nodes["Principled BSDF"].inputs[0])
+            wheel.data.materials.clear()
+            wheel.data.materials.append(wm)
         steer, spin = float(os.environ.get("STEER", 0)), float(os.environ.get("SPIN", 0))
         for front, ox, oy, oz in re.findall(r"front = (\w+),\s+offset = (\S+) (\S+) (\S+),", block):
-            w = wheel.copy()
+            w = src[tags[front]].copy()
             bpy.context.scene.collection.objects.link(w)
             w.matrix_world = (Matrix.Translation((-float(ox) * pv.S, float(oz) * pv.S, float(oy) * pv.S + float(os.environ.get("WLIFT", pv.WHEEL_LIFT))))
                               @ Matrix.Rotation(steer if front == "true" else 0.0, 4, "Z") @ Matrix.Rotation(spin, 4, "X"))
             w.hide_render = False
-        wheel.hide_render = True
+        for wheel in src.values():
+            wheel.hide_render = True
     sc = bpy.context.scene
     sc.render.engine = "BLENDER_WORKBENCH"
     sc.view_settings.view_transform = "Standard"

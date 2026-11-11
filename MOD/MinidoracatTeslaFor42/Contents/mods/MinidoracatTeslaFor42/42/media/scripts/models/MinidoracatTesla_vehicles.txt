@@ -426,6 +426,14 @@ module Base
         scale = 0.5495,
     }
 
+    model MinidoracatTesla_ModelYL_WheelRear
+    {
+        mesh = vehicles/MinidoracatTesla_ModelYL_WheelRear,
+        texture = Vehicles/MinidoracatTesla_ModelYL_wheelrear,
+        shader = vehiclewheel,
+        scale = 0.5495,
+    }
+
     model MinidoracatTesla_ModelYL_DoorFrontLeft
     {
         mesh = vehicles/MinidoracatTesla_ModelYL_Doors|DoorFrontLeft,

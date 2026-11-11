@@ -19,16 +19,18 @@ local geo = veh:sub((veh:find("---- geometry", 1, true))) -- the generated part 
 local tpl = read("scripts/vehicles/MinidoracatTesla_template.txt")
 local models = read("scripts/models/MinidoracatTesla_vehicles.txt")
 
--- every Tesla model but the wheel and the Viewpoint detail on the merged shader; the cabin glass model, no cabin /
--- window models
+-- every Tesla model but the wheels (<car>_Wheel, and <car>_WheelRear for a car with its own rear tyres, TIRE_AXLES)
+-- and the Viewpoint detail on the merged shader; the cabin glass model, no cabin / window models
 for _, car in ipairs({ "MinidoracatTesla_ModelY", "MinidoracatTesla_Model3", "MinidoracatTesla_ModelS", "MinidoracatTesla_ModelX",
     "MinidoracatTesla_ModelYL" }) do
-    local shaders, names = {}, {}
+    local shaders, names, wheels = {}, {}, 0
     for name, block in models:gmatch("model ([%w_]+)%s*(%b{})") do
         -- the car itself or car_<part> only: "MinidoracatTesla_ModelY" must not take the Model Y L's models
         if name == car or name:sub(1, #car + 1) == car .. "_" then
             names[#names + 1] = name
-            if name ~= car .. "_Wheel" and name ~= car .. "_Detail" then
+            if name == car .. "_Wheel" or name == car .. "_WheelRear" then
+                wheels = wheels + 1
+            elseif name ~= car .. "_Detail" then
                 shaders[#shaders + 1] = name .. "=" .. tostring(block:match("shader = ([%w_]+),"))
             end
         end
@@ -39,8 +41,8 @@ for _, car in ipairs({ "MinidoracatTesla_ModelY", "MinidoracatTesla_Model3", "Mi
     end
     check(#shaders == 8 and #wrong == 0, car .. ": body, glass, 4 doors, rear lid, frunk lid on MinidoracatTesla_vehicle (off: "
         .. table.concat(wrong, ",") .. ")")
-    check(#names == 10, car .. ": 10 models, the cabin glass and the Viewpoint detail but no cabin / window models ("
-        .. table.concat(names, ",") .. ")")
+    check(#names == 9 + wheels and wheels >= 1, car .. ": 9 models and its wheel(s), the cabin glass and the Viewpoint "
+        .. "detail but no cabin / window models (" .. table.concat(names, ",") .. ")")
     check(read("models_X/vehicles/" .. car .. "_Cabin.fbx") == nil and read("models_X/vehicles/" .. car .. "_Glass.fbx") ~= nil
         and read("textures/Vehicles/" .. car .. "_cabin.png") == nil, car .. ": the glass FBX, no cabin FBX or cabin palette")
     local block = models:match("model " .. car .. "_Glass%s*(%b{})") or ""

@@ -307,13 +307,15 @@ def spoke_outline(rr, rb):
     return [(r, ang + sp["sweep"] * (r - h) / (rb - h)) for r, ang in out] if sp["sweep"] else out
 
 
-def stage_wheel(r, width):
+def stage_wheel(r, width, rim=None, tag=""):
     """Procedural wheel (axle along X, vanilla Vehicles_Wheel convention), both faces alike: tire radius r and width in
     grid, spokes per the car's WHEEL_SPOKE (Model Y 21" Arachnid 2.0, Model 3 20" Warp); MOD wheel FBX (two equal UV layers) + 64^2 texture. -> triangle count.
-    Fresh scene: the caller saves its own .blend first."""
+    rim: the rim flange radius (grid; default WHEEL_RIM x r), tag: after "_Wheel" / "_wheel" in the file names (a
+    second wheel model: TIRE_AXLES' rear, the front's rim on the rear tyre). Fresh scene: the caller saves its own
+    .blend first."""
     from mathutils.geometry import tessellate_polygon
     bpy.ops.wm.read_factory_settings(use_empty=True)
-    rr = WHEEL_RIM * r
+    rr = rim or WHEEL_RIM * r
     strips = wheel_profile(r, rr, width / 2)
     rb = strips[2][0][1]                                 # barrel radius: the spokes end on it
     n = WHEEL_SEG
@@ -435,12 +437,12 @@ def stage_wheel(r, width):
                     vs = [bm.verts.new((side * (cx(rad) + 0.0015), y, z)) for (rad, _), (y, z) in zip(rd, yz)]
                     for tri in tessellate_polygon([[Vector((y, z, 0)) for y, z in yz]]):
                         flat([vs[i] for i in tri], out, spot)
-    me = bpy.data.meshes.new(NAME + "_Wheel")
+    me = bpy.data.meshes.new(NAME + "_Wheel" + tag)
     bm.verts.index_update()
     loop_v = [v.index for v in loop_v]
     bm.to_mesh(me)
     bm.free()
-    low = bpy.data.objects.new(NAME + "_Wheel", me)
+    low = bpy.data.objects.new(NAME + "_Wheel" + tag, me)
     bpy.context.scene.collection.objects.link(low)
     lv = np.empty(len(me.loops), np.int64)
     me.loops.foreach_get("vertex_index", lv)
@@ -454,12 +456,13 @@ def stage_wheel(r, width):
     # VertexBufferObject.java:324-345). With one UV map the shader read attribute 3 left over from an earlier draw:
     # garbage UVs. UV1 = UV0 puts the wheel's own UVs there
     me.uv_layers.new(name="UV1")
-    grey = wheel_texture(strips[0][3][1] / r, WHEEL_RIM)[::-1]          # rows run bottom-up
-    save_png(np.dstack([grey, grey, grey, np.ones_like(grey)]), os.path.join(TEX_DIR, NAME + "_wheel.png"), "wheel")
-    mat = bpy.data.materials.new(NAME + "_Wheel")
+    grey = wheel_texture(strips[0][3][1] / r, rr / r if rim else WHEEL_RIM)[::-1]          # rows run bottom-up
+    save_png(np.dstack([grey, grey, grey, np.ones_like(grey)]), os.path.join(TEX_DIR, NAME + "_wheel" + tag.lower() + ".png"),
+             "wheel" + tag.lower())
+    mat = bpy.data.materials.new(NAME + "_Wheel" + tag)
     me.materials.append(mat)
-    export_fbx(low, os.path.join(VEH_DIR, NAME + "_Wheel.fbx"))
-    print("WHEEL tris", tris(low), "radius", r, "rim", round(rr, 4), "barrel", round(rb, 4), "width", width,
+    export_fbx(low, os.path.join(VEH_DIR, NAME + "_Wheel" + tag + ".fbx"))
+    print("WHEEL" + tag, "tris", tris(low), "radius", r, "rim", round(rr, 4), "barrel", round(rb, 4), "width", width,
           "spoke back x", round(spoke_x(rb, rr, width / 2) - WHEEL_SPOKE["depth"], 4))
     return tris(low)
 
@@ -923,13 +926,14 @@ def f4(*v):
     return " ".join(f"{x:.4f}" for x in v)
 
 
-def geometry(body, zmid, wl, r, tire_w, belt_z, doors_y, port_yz, extra_areas=(), extra=()):
+def geometry(body, zmid, wl, r, tire_w, belt_z, doors_y, port_yz, extra_areas=(), extra=(), rear=None):
     """Vehicle script geometry block, spliced into the vehicle script (copy in TMP/geometry_block.txt). Mesh (x, y, z
     rel. mesh centre) -> script (-x, z, y) / S. wl: (side, centre y, centre z pre-centre, outer |x|) per wheel; r,
     tire_w: tire radius and width (grid); belt_z: window bottom (pre-centre z); doors_y: (front door front, B pillar,
     rear door rear) mesh y; port_yz: charge port (mesh y, pre-centre z), x from a ray onto the left side. extra_areas:
     more areas (name, mesh y centre, mesh length; across the body and both standing strips); extra: more script lines
-    (a car's own parts), before the doors."""
+    (a car's own parts), before the doors. rear: the rear axle's (radius, width) when its tyres differ (TIRE_AXLES):
+    its wheels take them and the rear tyre parts the second wheel model <NAME>_WheelRear (stage_wheel tag)."""
     from mathutils.bvhtree import BVHTree
     co = mesh_co(body)
     me = body.data
@@ -971,11 +975,16 @@ def geometry(body, zmid, wl, r, tire_w, belt_z, doors_y, port_yz, extra_areas=()
     wl = [(sxn, *np.mean([w[1:] for w in wl if (w[1] > 0) == (yc > 0)], 0)) for sxn, yc, zc, xo in wl]
     for sxn, yc, zc, xo in wl:
         nm = names[(sxn, 1 if yc > 0 else -1)]
+        wr, ww = rear if rear and yc < 0 else (r, tire_w)
         out += [f"        wheel {nm}", "        {", f"            front = {'true' if yc > 0 else 'false'},",
-                f"            offset = {f4(-sxn * (xo - tire_w / 2 - WHEEL_INSET) / S, (zc - zmid - WHEEL_LIFT) / S, yc / S)},",
-                f"            radius = {(r - 0.015) / S:.4f},", f"            width = {tire_w:.4f},", "        }"]
-    out += ["        part Tire*", "        {", "            model InflatedTirePlusWheel", "            {",
-            f"                file = {NAME}_Wheel,", "            }", "        }"]
+                f"            offset = {f4(-sxn * (xo - ww / 2 - WHEEL_INSET) / S, (zc - zmid - WHEEL_LIFT) / S, yc / S)},",
+                f"            radius = {(wr - 0.015) / S:.4f},", f"            width = {ww:.4f},", "        }"]
+    # a part's models are its own: `part TireRear*` loads into the parts the template made, each its own model list
+    # (VehicleScript.java:310-322, 967-972); installing / removing a tyre shows / hides that part's model
+    # (VehiclePart.java:148-155, 175-182), drawn at its wheel (BaseVehicle.java:1752, 4503-4518)
+    for pat, tag in ((("TireFront*", ""), ("TireRear*", "Rear")) if rear else (("Tire*", ""),)):
+        out += [f"        part {pat}", "        {", "            model InflatedTirePlusWheel", "            {",
+                f"                file = {NAME}_Wheel{tag},", "            }", "        }"]
     seat_y, ground = (SEAT["h"] - zmid) / S, -zmid / S
     fz, rz = (front_y + bpil_y) / 2 - SEAT["back"][0], (bpil_y + rear_y) / 2 - SEAT["back"][1]
     seats = (("FrontLeft", 1, fz, (front_y, bpil_y)), ("FrontRight", -1, fz, (front_y, bpil_y)),
@@ -1050,7 +1059,8 @@ def geometry(body, zmid, wl, r, tire_w, belt_z, doors_y, port_yz, extra_areas=()
     tail = text.rindex("    }\n}")
     open(path, "w", encoding="utf-8", newline="\n").write(text[:head] + block + text[tail:])
     return {"zmid_ground": zmid, "body_width": w_body, "body_height": hgt, "length": ln,
-            "port_mesh": [hit.x, port_yz[0], port_yz[1]], "wheelbase": wl[0][1] - wl[2][1], "wheel_radius": r}
+            "port_mesh": [hit.x, port_yz[0], port_yz[1]], "wheelbase": wl[0][1] - wl[2][1], "wheel_radius": r,
+            **({"wheel_radius_rear": rear[0]} if rear else {})}
 
 
 def official_ramp(code, n=32):

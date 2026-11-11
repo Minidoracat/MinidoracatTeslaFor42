@@ -25,7 +25,8 @@ arch trims, front overhang 911, wheelbase 2,902, tyres 369 mm):
   colour ducktail down to the tail lamps, its own object, convert.py puts it on the tailgate by GATE_OBJS);
 - the tail lamps' lower half raised (FIELD lamp);
 - the rear bumper's lower black cladding: its corner fins pulled in onto the bumper (FIELD fins);
-- the tyres (dropped by convert.py, only measured for the wheel) scaled about their centres to FIELD tyre, and the car
+- the tyres (dropped by convert.py, only measured for the wheel) scaled about their centres to FIELD tyre (front,
+  rear), the rear axle raised by the difference (both tyres stand on the ground, the body stays level), and the car
   set on them (the lowest tyre point = ground 0).
 Normals: each corner's by the field's Jacobian, inverse transpose (finite differences).
 Frame here: the OBJ's own (the importer leaves its axes in each object's rotation): x along the car, front -x,
@@ -53,7 +54,8 @@ NOT_BODY = WHEEL + PLATES + MIRRORS + ("Interior", "Hyundai_KONA", "Plane.067") 
 # cladding's corner fins; the bumper 4.73). Calibration knobs, fitted on side_iou and the official SIDE render
 FIELD = dict(
     width=1.920,                    # without mirrors, over the rear arch trims (the widest part)
-    tyre=0.356,                     # 255/45 R19 (the front's; the rear 275/45 R19 is 365: one wheel model per car)
+    tyre=(0.356, 0.365),            # tyre radius front 255/45 R19, rear 275/45 R19 (cars/model_yl.py TIRES: a wheel
+    #                                 model each); the rear axle sits 9 mm higher on the body, the bottoms level
     front=0.889,                    # front overhang: the bumper ahead of u nose[1] shortened, ramp from nose[0]
     nose=(0.02, 0.40),
     # the front end sat high against the official SIDE (hood edge, light bar 40-45 mm, lower lamp slot 30 mm, nose's
@@ -649,7 +651,9 @@ def main():
           (("f", tyre[:, 0] - nose < 2.5), ("r", tyre[:, 0] - nose >= 2.5))}
     hw = {k: (tyre[m, 1].min() + tyre[m, 1].max()) / 2 for k, m in
           (("f", tyre[:, 0] - nose < 2.5), ("r", tyre[:, 0] - nose >= 2.5))}
-    tk = FIELD["tyre"] / (np.ptp(tyre[tyre[:, 0] - nose < 2.5, 1]) / 2)
+    rad = {k: np.ptp(tyre[m, 1]) / 2 for k, m in (("f", tyre[:, 0] - nose < 2.5), ("r", tyre[:, 0] - nose >= 2.5))}
+    tk = {k: FIELD["tyre"][i] / rad[k] for i, k in enumerate("fr")}
+    hc = {"f": hw["f"], "r": hw["f"] - FIELD["tyre"][0] + FIELD["tyre"][1]}   # axle heights: the bottoms level
     shorten = ax["f"] - FIELD["front"]                      # the nose moves this far back
     rear = ax["f"] + FIELD["wheelbase"] - ax["r"]           # the rear axle this far
     ends, eaz = [], []
@@ -677,9 +681,9 @@ def main():
         J[:, 2, 2] = wk
         if o.name.startswith(WHEEL):        # wheels: moved whole with their axle; the tyres scaled to FIELD tyre
             k = "f" if u.mean() < 2.5 else "r"
-            sc = tk if o.name.startswith(TYRES) else 1.0
+            sc = tk[k] if o.name.startswith(TYRES) else 1.0
             du = (ax[k] + (u - ax[k]) * sc - u) + (rear if k == "r" else 0)
-            dz = (hw[k] + (h - hw[k]) * sc) - h
+            dz = (hc[k] + (h - hw[k]) * sc) - h
             J[:, 0, 0] = J[:, 1, 1] = sc
         else:
             sl = (0.0, 0.0)
@@ -755,8 +759,10 @@ def main():
         bo.matrix_world = obs[0].matrix_world.copy()          # the importer's axes, as every source object
         bpy.context.scene.collection.objects.link(bo)
         obs.append(bo)
-    print("PREP nose %.4f back, rear axle %.4f back, width x %.5f, tyres x %.4f, lifted %.4f, fins %d points, "
-          "patch %d faces" % (shorten, rear, wk, tk, lift, nfin, npatch))
+    print("PREP nose %.4f back, rear axle %.4f back, width x %.5f, tyres x %.4f / %.4f (source r %.4f / %.4f, axle h "
+          "%.4f / %.4f -> %.4f / %.4f), lifted %.4f, fins %d points, patch %d faces"
+          % (shorten, rear, wk, tk["f"], tk["r"], rad["f"], rad["r"], hw["f"], hw["r"], hc["f"], hc["r"], lift, nfin,
+             npatch))
     bpy.ops.object.select_all(action="DESELECT")
     for o in obs:
         o.select_set(True)

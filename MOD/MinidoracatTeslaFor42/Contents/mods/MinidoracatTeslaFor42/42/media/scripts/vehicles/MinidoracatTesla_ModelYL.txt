@@ -116,36 +116,43 @@ module Base
         wheel FrontLeft
         {
             front = true,
-            offset = 0.3610 -0.3113 0.7241,
+            offset = 0.3692 -0.3113 0.7241,
             radius = 0.1533,
-            width = 0.2402,
+            width = 0.2106,
         }
         wheel FrontRight
         {
             front = true,
-            offset = -0.3610 -0.3113 0.7241,
+            offset = -0.3692 -0.3113 0.7241,
             radius = 0.1533,
-            width = 0.2402,
+            width = 0.2106,
         }
         wheel RearLeft
         {
             front = false,
-            offset = 0.3610 -0.3113 -0.6556,
-            radius = 0.1533,
-            width = 0.2402,
+            offset = 0.3646 -0.3072 -0.6556,
+            radius = 0.1574,
+            width = 0.2272,
         }
         wheel RearRight
         {
             front = false,
-            offset = -0.3610 -0.3113 -0.6556,
-            radius = 0.1533,
-            width = 0.2402,
+            offset = -0.3646 -0.3072 -0.6556,
+            radius = 0.1574,
+            width = 0.2272,
         }
-        part Tire*
+        part TireFront*
         {
             model InflatedTirePlusWheel
             {
                 file = MinidoracatTesla_ModelYL_Wheel,
+            }
+        }
+        part TireRear*
+        {
+            model InflatedTirePlusWheel
+            {
+                file = MinidoracatTesla_ModelYL_WheelRear,
             }
         }
         passenger FrontLeft

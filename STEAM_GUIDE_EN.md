@@ -87,7 +87,7 @@ https://steamcommunity.com/sharedfiles/filedetails/?id=3829501237
 [*] [b]Battery[/b]: an 82 kWh High Voltage Battery (Tesla does not publish it; the figure comes from China's MIIT filing); a full charge still goes as far as a full tank in a vanilla car of the same class. Empty to 90% takes about 6 hours on a Wall Connector and about 10 on a Mobile Connector (game time); a Supercharger gives up to 250 kW and takes about 38 minutes from 10% to 90%.
 [*] [b]Paints[/b]: 7, one picked at random; Cosmic Silver is exclusive to the Model Y L. The app's picture of the car follows the paint, and the app calls it Model Y L.
 [*] [b]Doors[/b]: four ordinary doors (no falcon wing doors), the powered liftgate and the hood open the way the real car's do.
-[*] [b]Looks[/b]: about 18 cm longer than the Model Y with a wheelbase 15 cm longer and a higher rear roofline; 19" Machina 2.0 wheels, a black extended rear spoiler, and MODEL Y with three slashes on the tailgate.
+[*] [b]Looks[/b]: about 18 cm longer than the Model Y with a wheelbase 15 cm longer and a higher rear roofline; 19" Machina 2.0 wheels (wider tyres at the rear, as on the real car), a black extended rear spoiler, a red light bar between the tail lamps, and two lines on the tailgate as on the China car: 特斯拉 above MODEL Y with three slashes.
 [*] [b]Charge port[/b]: in the left tail lamp, like the Model Y.
 [*] [b]Bioweapon Defense Mode[/b]: it has a HEPA filter; see Bioweapon Defense Mode and Chill.
 [*] [b]Dashboard[/b]: it has its own top view, and clicking the car still opens its doors.

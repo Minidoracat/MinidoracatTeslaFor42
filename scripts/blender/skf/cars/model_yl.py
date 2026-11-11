@@ -64,9 +64,12 @@ CAR = dict(
     # renders see more of its slanted face), the arms 1.2-1.7 deg (at 2-3 deg the same-camera SIDE crop read them a
     # deg wider than the official's, the silver Ys too big); `at` puts them where the SIDE front wheel has them. The
     # rim's edge: the `ring` band, 0.965 out to the barrel (1 px at the SIDE camera, as there; the step from the
-    # flange in silver too read 2.5 px), the step dark. 255/45 R19 front, 275/45 R19 rear: one wheel model, the front's
-    # radius (the prep scales the source tyres)
+    # flange in silver too read 2.5 px), the step dark. The rim and tyre radius here are the front's (TIRE_AXLES)
     WHEEL_RIM=0.725,                       # 19" (241 mm bead + 17 mm flange) / 356 mm tyre radius
+    # official tyres (radius, width; metres) per axle, 255/45 R19 front, 275/45 R19 rear: the rear a wheel model of
+    # its own on the same rim (convert.py load_source); the prep scales the source tyres to these radii, the rear
+    # axle 9 mm higher so both stand on the ground (prep_model_yl.py FIELD tyre)
+    TIRE_AXLES=dict(front=(0.356, 0.255), rear=(0.365, 0.275)),
     WHEEL_SPOKE=dict(n=0, hub=0.16, fork=0.42, spread=math.radians(16), main=(0.20, 0.15), arm=0.07, cap=0.17,
                      inset=0.010, dish=0.008, depth=0.020, sweep=0.0),
     WHEEL_FACETS=dict(n=7, at=13.3, sink=0.008, rings=3, face="spoke", ring=(0.965, "facet", "barrel"), shapes=(
@@ -202,8 +205,8 @@ CAR = dict(
     GATE_CUT_COMPS=(),
     PANES={"Body": {"WinT", "LightBarL", "WinLT", "WinRT"}, "DoorFrontLeft": {"WinLH"}, "DoorFrontRight": {"WinRH"},
            "DoorRearLeft": {"WinLT"}, "DoorRearRight": {"WinRT"}, "TrunkDoor": {"WinH"}, "EngineDoor": set()},
-    # badges (model_y.py): T on the frunk lid, TESLA on the light blade, and on the gate's lower left MODEL Y and the
-    # Model Y L's three slanted bars (China $MTY87 REAR34: no 特斯拉 here, no Performance badge). Placed on the
+    # badges (model_y.py): T on the frunk lid, TESLA on the light blade, and on the gate's lower left 特斯拉 over MODEL Y
+    # and the Model Y L's three slanted bars (China $MTY87 REAR34; no Performance badge). Placed on the
     # official REAR34 (camfit camera): the red bar's vivid line y 444-455 (h 1.078-1.124 m: the lit lens under it is
     # pale, read as the black recess here), its round ends from x 1290; TESLA in it at the official width;
     # MODEL Y/// on the official's line under the left lamp (its middle y 548), left end |z| 0.466 m. Letters at the
@@ -220,7 +223,27 @@ CAR = dict(
     BADGE_Y=(-2.6, -1.85),
     BLADE=True,
     MODELY=("MODEL Y///", -0.385, 0.618, 0.030),
-    MODELY_GLYPHS={"/": (0.95, [[(0, 0), (0.7, 1)]])},
+    # 特斯拉 over it, left-aligned (official REAR34, camfit camera: the line 0.77 x MODEL's width, its ink 1.3-1.8 x
+    # M's on 5-8 px letters, one M height above); same 2 x as MODEL Y: 4.6 cm (MODEL Y 3.6), strokes 6 mm as MODEL Y's;
+    # in REAR34 50 px under the left lamp (official 64), 28 px off the gate seam (official 19). Not readable at the
+    # closest zoom (~150 px/m: 3 blocks of ~7 px, the strokes merge or break); at 300 px/m it is. (text, left x,
+    # baseline z, cap height, stroke width)
+    MODELY_LINES=[("特斯拉", -0.385, 0.675, 0.0378, 0.13)],
+    MODELY_GLYPHS={"/": (0.95, [[(0, 0), (0.7, 1)]]),
+                   # own strokes, a bold sans's structure: 牜 + 寺, 其 + 斤, 扌 + 立 (cap height 1, 0.94 wide)
+                   "特": (0.94, [[(0.12, 0.98), (0.05, 0.78)], [(0.19, 1.0), (0.19, 0.0)], [(0.02, 0.66), (0.34, 0.66)],
+                                [(0.0, 0.26), (0.36, 0.40)], [(0.46, 0.90), (0.86, 0.90)], [(0.66, 1.04), (0.66, 0.64)],
+                                [(0.40, 0.64), (0.92, 0.64)], [(0.40, 0.38), (0.92, 0.38)],
+                                [(0.78, 0.50), (0.78, 0.0), (0.68, 0.06)], [(0.52, 0.26), (0.58, 0.14)]]),
+                   "斯": (0.94, [[(0.0, 0.80), (0.46, 0.80)], [(0.10, 1.0), (0.10, 0.24)], [(0.36, 1.0), (0.36, 0.24)],
+                                [(0.10, 0.60), (0.36, 0.60)], [(0.10, 0.42), (0.36, 0.42)], [(0.0, 0.24), (0.46, 0.24)],
+                                [(0.16, 0.16), (0.04, 0.0)], [(0.30, 0.16), (0.44, 0.02)],
+                                [(0.92, 0.98), (0.58, 0.86)], [(0.58, 0.86), (0.58, 0.40), (0.52, 0.02)],
+                                [(0.58, 0.56), (0.94, 0.56)], [(0.80, 0.56), (0.80, 0.0)]]),
+                   "拉": (0.94, [[(0.0, 0.70), (0.32, 0.70)], [(0.17, 1.0), (0.17, 0.06), (0.08, 0.12)],
+                                [(0.0, 0.30), (0.33, 0.44)], [(0.66, 1.0), (0.70, 0.86)], [(0.46, 0.80), (0.90, 0.80)],
+                                [(0.54, 0.64), (0.60, 0.24)], [(0.84, 0.64), (0.76, 0.24)],
+                                [(0.42, 0.08), (0.94, 0.08)]])},
     MODELY_MAT="badge_ink",
     # light ink, dark ink; the paints taking the dark one: the skins' paint median luma >= 100 (Pearl White 214, Cosmic
     # Silver 120; Glacier Blue 87 read 46 levels off a dark ink, 135 off the light one)
