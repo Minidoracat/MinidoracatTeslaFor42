@@ -167,9 +167,14 @@ CAR = dict(
     # (official REAR34 shows it lit: a thin red bar with round ends in a black recess, the housing Plane.034 stays
     # black; the earlier dark red 125 20 24 was Ultra Red's own paint in game, the bar gone on that car), lit with
     # the tail lights; flush with the housing's shelf (recessed under it, the game's camera saw none of it); one
-    # swatch texel (lit whole at night, not in dashes); round ends of radius blade_round (half its height)
+    # swatch texel (lit whole at night, not in dashes); round ends of radius blade_round (half its height);
+    # blade_split: its halves on two swatch spots, each lit by its own side's tail lamp part. brake: M22's Plane.043
+    # (|x| 0.394-0.638, on the body and the tailgate) is the corner lamps' inner C, the brake light as on Model Y
+    # (the bar and the thin outer strip the tail lights; teslaoracle.com 2026-01-05, teslaownersonline.com "Juniper
+    # rear brake lights as an extension of the light bar")
     LAMPS=dict(head=("front_white_light",), tail=("back_red_Light", "red_plastic", "M22"), tail_z=0.75, tail_y=-1.5,
-               blade="Badge_BLADE", blade_rgb=(236, 78, 44), blade_flush=True, blade_swatch=True, blade_round=0.019),
+               blade="Badge_BLADE", blade_rgb=(236, 78, 44), blade_flush=True, blade_swatch=True, blade_round=0.019,
+               blade_split=True, brake=("Plane.043", 0.39)),
     # part lines, side view (y, z): S, BF, BR off this source's panel edges; D the rear door glass / quarter glass
     # divider bar's middle; R1 (z ascending) the rear door's rear edge, upright from the belt to the arch since the
     # prep (work/outline.py; prep FIELD fit moved them forward: work/remap.py)

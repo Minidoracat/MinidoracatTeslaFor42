@@ -996,9 +996,9 @@ def classify(car, names, sizes):
     # tail lights (lit with the headlights, HeadlightRear* parts: BaseVehicle.java:5894-5919) on the bar, the blade and
     # the corner lamps' outboard ends; brake lights (Stop, :5920-5934) on their inboard part
     stop = tail & (part == 0) & ~lit & (np.abs(cen[:, 0]) < STOP_X)
-    if LAMPS.get("brake"):     # (object, |x|), Model Y: its rear faces outboard of |x| are brake lights too (the real
+    if LAMPS.get("brake"):     # (object, |x|): that object's tail faces outboard of |x| are brake lights (the real
         b_obj, b_x = LAMPS["brake"]   # corner lamps' inner C: unlit with the tail lights, lit when braking)
-        stop |= tail & (part == 0) & (obj == b_obj) & (fnorm[:, 1] < -0.5) & (np.abs(cen[:, 0]) > b_x)
+        stop |= tail & (obj == b_obj) & (np.abs(cen[:, 0]) > b_x)
     put(tail & ~stop, "LightLT", "LightRT")
     put(stop, "StopL", "StopR")
     # glass zones: the mask zone and the UV1 pane code (GLASS_ZONES)
