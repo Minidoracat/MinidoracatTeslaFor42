@@ -26,18 +26,21 @@ CAR = dict(
     PAINTS=[("StealthGrey", "PN01"), ("PearlWhite", "PPSW"), ("DiamondBlack", "PX02"), ("UltraRed", "PR01"),
             ("CosmicSilver", "PN03"), ("GlacierBlue", "PB01"), ("MarineBlue", "PB02")],
     # tex = a x official-ramp colour / GAIN + b (model_y.py CAL, the same skin pipeline: PAINT_Q, PAINT_TARGET, no
-    # RAMP_SPLIT). Offline start (2026-11-11): the six paints the Model Y has take its in-game fit (modely-skin-sp,
-    # tesla-gloss-skinA-1026a; design-studio door p50 Stealth Grey Y L 29 30 35 against Model Y 27 28 34,
-    # temp/plan-yl-1111 colors.md); Cosmic Silver (Y L only) a = 0.90, b = 0 until fitted. Refit all seven in game
-    # (modely-skin-sp, perf/paint_sheet.py --car) before release. Calibration knob
+    # RAMP_SPLIT). Fitted in game (2026-11-11, 4a067bd body): modely-skin-sp --define views=S,N --define out=0 (option
+    # 2, closest zoom) against the official FRONT34 / REAR34 with perf/paint_sheet.py --car MinidoracatTesla_ModelYL.
+    # Slopes kept (the front fit asks 0.65-1.15, the rear the 1.6 clamp: no slope serves both views); offsets only, from
+    # the Model Y start: round 1 put each channel's game p50 on FRONT34 through the measured skin-p50 -> game-p50 curve
+    # (game ~ skin - 13 levels in the dark, ~ skin from 70 up), round 2 moved each channel toward its REAR34 residual
+    # while keeping FRONT34 within 2 levels (tesla-ylb-skin1 / -skin2). Game p50 minus official now -3..+2 levels
+    # front, -2..+7 rear (MOD repo temp/e2e-yl/paint/yl-paint-front.png, -rear.png). Calibration knob
     CAL={
-        "StealthGrey": ((0.88, 0.88, 0.88), (0.030, 0.016, 0.012)),
-        "PearlWhite": ((0.80, 0.80, 0.80), (0.134, 0.129, 0.129)),
-        "DiamondBlack": ((0.99, 0.99, 0.99), (0.073, 0.067, 0.063)),
-        "UltraRed": ((0.97, 0.97, 0.97), (-0.067, 0.078, 0.062)),
-        "CosmicSilver": ((0.90, 0.90, 0.90), (0.0, 0.0, 0.0)),
-        "GlacierBlue": ((0.80, 0.80, 0.80), (0.003, -0.017, -0.029)),
-        "MarineBlue": ((0.81, 0.81, 0.81), (0.084, 0.069, 0.039)),
+        "StealthGrey": ((0.88, 0.88, 0.88), (0.092, 0.084, 0.077)),
+        "PearlWhite": ((0.80, 0.80, 0.80), (0.201, 0.185, 0.185)),
+        "DiamondBlack": ((0.99, 0.99, 0.99), (0.113, 0.108, 0.104)),
+        "UltraRed": ((0.97, 0.97, 0.97), (0.071, 0.082, 0.093)),
+        "CosmicSilver": ((0.90, 0.90, 0.90), (0.041, 0.037, 0.040)),
+        "GlacierBlue": ((0.80, 0.80, 0.80), (0.095, 0.099, 0.101)),
+        "MarineBlue": ((0.81, 0.81, 0.81), (0.117, 0.117, 0.108)),
     },
     # design studio (China; MarineBlue is only on the US $MTY83: its renders, same camera, were fetched by hand to
     # TMP/official, so `official` fails on it)

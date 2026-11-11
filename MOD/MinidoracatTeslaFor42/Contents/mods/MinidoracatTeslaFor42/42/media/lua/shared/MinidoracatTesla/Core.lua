@@ -194,8 +194,8 @@ T.Specs = {
         model = "ModelYL",
         label = "Model Y L", -- the app's car name (PhoneApp.carLabel; else the model split at its capitals)
         appCar = "app_car_modelyl_",
-        -- z: handle height at this car's charge port; the Model Y's until E2E integration-mp measures this car's
-        plug = { item = "Base.MinidoracatTesla_CablePlugModelYL", z = 0.909 },
+        -- z: handle height at this car's charge port (E2E integration-mp tesla-ylb-geo, 4a067bd body: port 0.900)
+        plug = { item = "Base.MinidoracatTesla_CablePlugModelYL", z = 0.90 },
         v12Kwh = 14.4 * 12 / 1000, -- 14.4 V, 12 Ah (Model Y owner's manual 2026.26, 6-seater, p.208)
         -- the Model Y coefficients x 82 / 78.4: a full pack still drives one vanilla tank's distance
         idleKw = 0.0393 * T.DRIVE_SCALE,
@@ -208,13 +208,13 @@ T.Specs = {
         -- Model Y L paints: China's six ($MTY87, Lexicon 2026-10-30) and the US Marine Blue ($MTY83, 2026-07-10).
         -- Same order and append-only rules as above; h/s/v by convert.py build.
         colors = {
-            { name = "StealthGrey", code = "PN01", h = 0.773, s = 0.562, v = 0.22 },
-            { name = "PearlWhite", code = "PPSW", h = 0.582, s = 0.493, v = 0.841 },
-            { name = "DiamondBlack", code = "PX02", h = 0.944, s = 0.538, v = 0.174 },
-            { name = "UltraRed", code = "PR01", h = 0.997, s = 1.0, v = 0.374 },
-            { name = "CosmicSilver", code = "PN03", h = 0.04, s = 0.512, v = 0.496 },
-            { name = "GlacierBlue", code = "PB01", h = 0.61, s = 0.79, v = 0.349 },
-            { name = "MarineBlue", code = "PB02", h = 0.604, s = 0.76, v = 0.202 },
+            { name = "StealthGrey", code = "PN01", h = 0.72, s = 0.524, v = 0.284 },
+            { name = "PearlWhite", code = "PPSW", h = 0.7, s = 0.481, v = 0.897 },
+            { name = "DiamondBlack", code = "PX02", h = 0.936, s = 0.515, v = 0.214 },
+            { name = "UltraRed", code = "PR01", h = 0.986, s = 1.0, v = 0.511 },
+            { name = "CosmicSilver", code = "PN03", h = 0.013, s = 0.511, v = 0.537 },
+            { name = "GlacierBlue", code = "PB01", h = 0.596, s = 0.781, v = 0.477 },
+            { name = "MarineBlue", code = "PB02", h = 0.601, s = 0.83, v = 0.271 },
         },
     },
 }
