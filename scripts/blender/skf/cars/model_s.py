@@ -39,8 +39,12 @@ def _lr(zn):
 # through the fitted cameras onto the model, temp/skf_ms/work/lampzones.py). Head: the lens dark, the DRL strip along
 # its top edge white, the outboard end behind the lens (SIDE; FRONT34's DRL down stroke) light. Tail: the clear upper
 # lens over the outboard half grey, a red bar under it, the inboard C (lit in the renders) pink round a dark inner
-_DRL_IN = dict(lo=(-0.693, 1.701, 0.512), hi=(-0.362, 2.005, 0.716), below=(((-0.4573, 1.9133, 0.5473), (-0.4043, 0.1247, -0.9061)),), cut=True)
-_DRL_OUT = dict(lo=(-0.804, 1.5, 0.573), hi=(-0.623, 1.785, 0.716), below=(((-0.6489, 1.7423, 0.6093), (-0.3, 0.0676, -0.9515)),), cut=True)
+_DRL_IN = dict(lo=(-0.693, 1.701, 0.512), hi=(-0.362, 2.005, 0.716),
+               below=(((-0.4573, 1.9133, 0.5473), (-0.4043, 0.1247, -0.9061)),),
+               cut=True)
+_DRL_OUT = dict(lo=(-0.804, 1.5, 0.573), hi=(-0.623, 1.785, 0.716),
+                below=(((-0.6489, 1.7423, 0.6093), (-0.3, 0.0676, -0.9515)),),
+                cut=True)
 
 
 def _band(zn, d):
@@ -51,11 +55,29 @@ def _band(zn, d):
 
 
 _DRL_IN, _DRL_OUT = _band(_DRL_IN, 0.010), _band(_DRL_OUT, 0.010)
-_REAR = dict(lo=(-0.804, 1.5, 0.472), hi=(-0.663, 1.737, 0.716), below=(((-0.7037, 1.6498, 0.6317), (0.3021, 0.6531, 0.6944)),), cut=True)
-_T_UPPER = dict(lo=(-0.955, -2.045, 0.614), hi=(-0.402, -1.55, 0.818), below=(((-0.6699, -1.8, 0.7363), (0.7139, -0.7002, 0.)), ((-0.7035, -1.6994, 0.7281), (-0., -0., -1.))), cut=True)
-_T_BAR = dict(lo=(-0.955, -2.045, 0.614), hi=(-0.402, -1.55, 0.818), below=(((-0.6699, -1.8, 0.7363), (0.7139, -0.7002, 0.)), ((-0.7035, -1.6994, 0.7159), (0., 0., 1.)), ((-0.7035, -1.6994, 0.7023), (-0., -0., -1.)), ((-0.7243, -1.6555, 0.7057), (-0.7139, 0.7002, -0.))), cut=True)
-_T_C = dict(lo=(-0.955, -2.045, 0.614), hi=(-0.402, -1.55, 0.818), below=(((-0.6699, -1.8, 0.7363), (-0.7139, 0.7002, -0.)), ((-0.603, -1.8448, 0.7702), (0., 0., 1.)), ((-0.603, -1.8448, 0.7031), (-0., -0., -1.))), cut=True)
-_T_INNER = dict(lo=(-0.955, -2.045, 0.614), hi=(-0.402, -1.55, 0.818), below=(((-0.6455, -1.8209, 0.7363), (-0.7139, 0.7002, -0.)), ((-0.603, -1.8448, 0.7515), (0., 0., 1.)), ((-0.603, -1.8448, 0.7225), (-0., -0., -1.))), cut=True)
+_REAR = dict(lo=(-0.804, 1.5, 0.472), hi=(-0.663, 1.737, 0.716),
+             below=(((-0.7037, 1.6498, 0.6317), (0.3021, 0.6531, 0.6944)),),
+             cut=True)
+_T_UPPER = dict(lo=(-0.955, -2.045, 0.614), hi=(-0.402, -1.55, 0.818),
+                below=(((-0.6699, -1.8, 0.7363), (0.7139, -0.7002, 0.)),
+                       ((-0.7035, -1.6994, 0.7281), (-0., -0., -1.))),
+                cut=True)
+_T_BAR = dict(lo=(-0.955, -2.045, 0.614), hi=(-0.402, -1.55, 0.818),
+              below=(((-0.6699, -1.8, 0.7363), (0.7139, -0.7002, 0.)),
+                     ((-0.7035, -1.6994, 0.7159), (0., 0., 1.)),
+                     ((-0.7035, -1.6994, 0.7023), (-0., -0., -1.)),
+                     ((-0.7243, -1.6555, 0.7057), (-0.7139, 0.7002, -0.))),
+              cut=True)
+_T_C = dict(lo=(-0.955, -2.045, 0.614), hi=(-0.402, -1.55, 0.818),
+            below=(((-0.6699, -1.8, 0.7363), (-0.7139, 0.7002, -0.)),
+                   ((-0.603, -1.8448, 0.7702), (0., 0., 1.)),
+                   ((-0.603, -1.8448, 0.7031), (-0., -0., -1.))),
+            cut=True)
+_T_INNER = dict(lo=(-0.955, -2.045, 0.614), hi=(-0.402, -1.55, 0.818),
+                below=(((-0.6455, -1.8209, 0.7363), (-0.7139, 0.7002, -0.)),
+                       ((-0.603, -1.8448, 0.7515), (0., 0., 1.)),
+                       ((-0.603, -1.8448, 0.7225), (-0., -0., -1.))),
+                cut=True)
 _SLOTS = dict(lo=(-0.82, 1.50, 0.0), hi=(-0.40, 2.15, 0.45))   # the bumper's lamp-material slots (side intakes)
 
 
@@ -81,7 +103,8 @@ def _poly_zones(poly, ax, rng):
     return tuple(out)
 
 # 19" Magnetite blade (pzveh.spoke_outline `polar`): the silver machined edges of the windows between the blades, read
-# off the official SIDE front wheel (PPSW, polar unwrap round the fitted rim lip, the five folded, median: work/polar.py),
+# off the official SIDE front wheel (PPSW, polar unwrap round the fitted rim lip, the five folded, median:
+# work/polar.py),
 # screen angle (deg, counter-clockwise from the rear) at r (rr units). A: one window's trailing edge from its apex (r
 # 0.21) out to the lip; B: the next window's leading edge (one blade between). The windows reach in to r 0.21, the hub
 # inside it is solid
@@ -115,7 +138,8 @@ CAR = dict(
     # Deep Blue (user 2026-10-31, add2). Same names and order as Model X. Skin index is saved: only append after release
     PAINTS=[("StealthGrey", "PN01"), ("LunarSilver", "PN02"), ("PearlWhite", "PPSW"), ("UltraRed", "PR01"),
             ("DiamondBlack", "PX02"), ("FrostBlue", "PB00"), ("SolidBlack", "PBSB"), ("DeepBlue", "PPSB")],
-    # Pearl White's sun lobe at 0.62 (skin alpha 251, MinidoracatTesla_vehicle.frag SHEEN_SOFT_GAIN): the game showed 31 %
+    # Pearl White's sun lobe at 0.62 (skin alpha 251, MinidoracatTesla_vehicle.frag SHEEN_SOFT_GAIN): the game showed 31
+    # %
     # of its lit paint >= 250 against the official 5.6 % at the same p50 (Main, 2026-11-12). The skin can't fix it: its
     # seen paint is already tight (p50 234, p95 238); squeezing the upper half onto the median moved a model of the
     # frag's lobe (work/sheenfit.py: the S view's normals and skin, fitted gain 0.22 = SHEEN_SKY) only 32 -> 28 %;
@@ -248,13 +272,15 @@ CAR = dict(
              (0, 0, 1), "arch_liner")),
     SEAL_CLIP=True,
     # the gaps as the official's thin continuous dark line (convert.py seals): a 4 mm strip on one panel's edge (the
-    # later part's: the door over the body) where another panel's edge lies across the gap (console cell: darker than the black paints, lighter than a hole), not
+    # later part's: the door over the body) where another panel's edge lies across the gap (console cell: darker than
+    # the black paints, lighter than a hole), not
     # by the glass (the hood's back edge against the cowl), in runs >= 10 cm, not round the liftgate (its bottom edge
     # over the bumper read as dark dashes); and no seal strip whose far edge has nothing over it within 3 cm (one stood
     # 21 mm out of the outline behind the front fender, temp/fit-1112/seals)
     SEAL_RIBBON=dict(w=0.0035, lift=0.0010, gap=0.025, glass=0.03, chain=0.08, skip=("TrunkDoor",),
                      cell="console"),
     SEAL_COVER=0.03,
+    SEAL_FULL=("TrunkDoor",),               # (convert.py seals) but the liftgate's: open, they close its gap to the pillar
     SEAL=(0.008, 0.008),                   # (convert.py SEAL) reach 1 cm: its gaps are 1-5 mm; at 2 cm the strips showed
     #                                        below the door sills and at the A-pillar's foot as black blocks
     # the roof is glass, so the paint up there is the roof rails (model_3.py RAIL)

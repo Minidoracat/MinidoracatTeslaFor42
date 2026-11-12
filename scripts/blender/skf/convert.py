@@ -75,7 +75,8 @@ LIGHT_RGB = {"head": (255, 250, 240), "tail": (255, 30, 30)}
 LINES, FRONT_Y, SILL_Z, ARCH, DOOR_Y, GATE_Z, REAR_ARCH, GATE_X, STOP_X = (C[k] for k in (
     "LINES", "FRONT_Y", "SILL_Z", "ARCH", "DOOR_Y", "GATE_Z", "REAR_ARCH", "GATE_X", "STOP_X"))
 IN_DOOR, IN_GATE, PANELS, GUARDS, PANES = (C[k] for k in ("IN_DOOR", "IN_GATE", "PANELS", "GUARDS", "PANES"))
-SEAL = C.get("SEAL", (0.008, 0.02))       # grid: dark strip behind every panel edge (depth, reach past the edge):
+SEAL_DEFAULT = (0.008, 0.02)
+SEAL = C.get("SEAL", SEAL_DEFAULT)        # grid: dark strip behind every panel edge (depth, reach past the edge):
 #                                             the source's panel gaps are real gaps, the ground showed through them
 DOOR_REACH = 0.10                          # grid: a whole component goes to a door within this of its paint skin
 #                                             (classify; the slab is pv.DOOR_T 0.06 deep, the farthest door part 0.08)
@@ -374,7 +375,7 @@ def load_source():
         meas = {f: tire[0] if C.get("TIRE") else float(size[fr == f, 1:].mean() / 2) for f in (True, False)}
         tire, rear = (tuple(float(v) * K for v in C["TIRE_AXLES"][a]) for a in ("front", "rear"))
         wl = [(sd, yc, zc - meas[yc > 0] + (tire if yc > 0 else rear)[0], xo) for sd, yc, zc, xo in wl]
-        if C["TIRE"].get("centre_track"):   # TIRE track at each axle's wheel centre (Model S manual), not its outer face
+        if (C.get("TIRE") or {}).get("centre_track"):   # TIRE track at each axle's wheel centre (Model S manual), not its outer face
             wl = [(sd, yc, zc, (C["TIRE"]["track"] * K + (tire if yc > 0 else rear)[1]) / 2 + pv.WHEEL_INSET)
                   for sd, yc, zc, _ in wl]
         print("TIRE_AXLES: measured radius front %.4f rear %.4f -> front %.4f / %.4f, rear %.4f / %.4f, centres"
@@ -839,7 +840,8 @@ def edit(car, names):
         for p, nrm in zn["below"]:
             fs = [f for f in bm.faces if f.is_valid and f.material_index == mi
                   and (lo < np.array(f.calc_center_median())).all() and (np.array(f.calc_center_median()) < hi).all()]
-            geom = list({*fs, *[e for f in fs for e in f.edges], *[v for f in fs for v in f.verts]})
+            # (ordered: a set's order follows memory addresses, and the bisect's new vertex order followed it)
+            geom = list(dict.fromkeys([*fs, *[e for f in fs for e in f.edges], *[v for f in fs for v in f.verts]]))
             bmesh.ops.bisect_plane(bm, geom=geom, dist=1e-6, plane_co=p, plane_no=nrm)
     bmesh.ops.triangulate(bm, faces=bm.faces[:])
     sizes = {k: len(v) for k, v in groups.items()}
@@ -1534,14 +1536,15 @@ def corners(attr, n):
     return a
 
 
-def seals(V, T, sel, attr, glass_bvh, solid=None, seams=None):
+def seals(V, T, sel, attr, glass_bvh, solid=None, seams=None, full=False):
     """Dark strips SEAL[0] behind every open edge of the faces sel (open by position: the zone split doubled the
     vertices there), reaching SEAL[1] past the edge, both sides: the source's panel gaps are real gaps, the ground
     showed through them. Not along a pane (glass_bvh within 1.2 cm of the strip's far edge): the pane closes that
     gap, and the strips lay on the glass as black spikes round the roof rails and A-pillars. solid (SEAL_CLIP: BVH
     of the whole car): not where the strip passes through a surface (it showed on the far side); with SEAL_COVER (a
     distance) also not where nothing lies over its far edge within it (Model S: it stood out of the outline past a
-    fender's corner). seams (SEAL_RIBBON: a KD tree of points along every panel's open edges, their parts, sel's
+    fender's corner); full: SEAL_DEFAULT and no cover test (SEAL_FULL: Model S's liftgate, whose side strips close
+    the gap to the pillar when it is open). seams (SEAL_RIBBON: a KD tree of points along every panel's open edges, their parts, sel's
     part): along each edge whose nearest edge within SEAL_RIBBON gap is an earlier part's (or its own part's across
     the gap, in the face's plane, away from it), not within `glass` of a pane, in runs at least `chain` long, a strip
     w wide (at most its face's height) on the panel, lift over it, in the
@@ -1593,22 +1596,23 @@ def seals(V, T, sel, attr, glass_bvh, solid=None, seams=None):
             r3, r4 = r2 - d * w, r1 - d * w
             for tr in ((r1, r2, r3), (r1, r3, r4)):   # wound to face out like the panel (n)
                 rib.append(tr if np.cross(tr[1] - tr[0], tr[2] - tr[0]) @ n > 0 else (tr[0], tr[2], tr[1]))
-    far = (a_ + b_) / 2 + t * SEAL[1]
+    sl = SEAL_DEFAULT if full else SEAL   # full (SEAL_FULL parts): the default reach, no cover test
+    far = (a_ + b_) / 2 + t * sl[1]
     keep = np.array([glass_bvh.find_nearest(Vector(p), 0.012)[0] is None for p in far], bool)
     if solid is not None:
         def through(p, q):
             d = Vector(q - p)
             return solid.ray_cast(Vector(p), d.normalized(), d.length)[0] is not None
         m = (a_ + b_) / 2 - t * 0.001 - fn * 1e-4           # just inside the edge, behind its face
-        back = m - fn * SEAL[0]
+        back = m - fn * sl[0]
         keep &= ~np.array([through(*s) for s in zip(m, back)], bool)
-        keep &= ~np.array([through(*s) for s in zip(back, back + t * SEAL[1])], bool)
-        if C.get("SEAL_COVER"):
-            fb = back + t * SEAL[1]
+        keep &= ~np.array([through(*s) for s in zip(back, back + t * sl[1])], bool)
+        if C.get("SEAL_COVER") and not full:
+            fb = back + t * sl[1]
             keep &= np.array([through(p, p + n * C["SEAL_COVER"]) for p, n in zip(fb, fn)], bool)
     a_, b_, fn, t = a_[keep], b_[keep], fn[keep], t[keep]
-    p1, p2 = a_ - fn * SEAL[0], b_ - fn * SEAL[0]
-    p3, p4 = p2 + t * SEAL[1], p1 + t * SEAL[1]
+    p1, p2 = a_ - fn * sl[0], b_ - fn * sl[0]
+    p3, p4 = p2 + t * sl[1], p1 + t * sl[1]
     P = np.concatenate([np.stack([p1, p3, p2], 1), np.stack([p1, p4, p3], 1)])
     Vs, Ts, As = two_sided(P, lambda n: corners(attr, n))
     if not rib:
@@ -1946,7 +1950,8 @@ def pieces(car, c, shift):
             P, t, a, _ = pv.slab(V, T, A, skin, off, cab_attr("dash"), BELT_Z - shift[2], outer_extra=sel & ~skin,
                                  by_pos=bool(C.get("SPLIT_COLOURS")))
             extra = [backs(bsel, rec, 0) for bsel, rec in back_sets(sel)] + [
-                seals(V, T, skin, cab_attr("base"), gb, solid, seams and k not in skip and (*seams, k) or None)]
+                seals(V, T, skin, cab_attr("base"), gb, solid, seams and k not in skip and (*seams, k) or None,
+                      full=pname in C.get("SEAL_FULL", ()))]
             for v, bt, ba in extra:
                 t = np.concatenate([t, bt + len(P)])
                 P = np.concatenate([P, v])
