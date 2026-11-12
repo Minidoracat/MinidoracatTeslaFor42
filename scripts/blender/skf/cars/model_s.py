@@ -289,12 +289,16 @@ CAR = dict(
     # dots in game, the door bottoms' in their own plane out of sight), half the paint's median (official SIDE seam
     # contrast 0.45-0.64 of the paint; a console-cell line was 0.80, a black line on Pearl White); and no seal strip whose far
     # edge has nothing over it within 3 cm (one stood 21 mm out of the outline behind the front fender,
-    # temp/fit-1112/seals)
+    # temp/fit-1112/seals); `flat` (r5): each half's gap end at its own corner's height: the right front door stands
+    # 1.5 mm proud of the rear one at the B-pillar (the left ones are flush), its half sloped down under its own edge
+    # and the rear door's faced backwards (game E / SE 66 % / 68 % continuous; flat: 100 % / 95 %); 3 mm wide broke
+    # the B-pillar in game (N 85 %, E 88 %), 2 mm more (E 68 %, NW 62 %)
     SEAM_LINE=dict(w=0.004, over=0.002, bridge=0.003, lift=0.0010, gap=0.025, glass=0.03, step=0.006, chain=0.04,
-                   tone=0.5),
+                   tone=0.5, flat=True),
     SEAL_COVER=0.03,
     SEAL_COVER_EDGE=True,                  # (convert.py seals) its far corners too, none down past a bottom edge
     UV_FILL=True,                          # (convert.py fill_slivers) texels the bake left black under sliver UVs
+    UV_FILL_TONE=True,                     # (convert.py textures) the filled texels stay out of the paint's quantiles
     SEAL_TRIM=True,                        # (convert.py seals) reach cut back to inside the game cameras' outline
     # (convert.py seals) but round the liftgate, both sides of its gap: open, they close its gap to the C-pillar (the
     # body's side went with SEAL_COVER and the short reach: the ground showed there)
