@@ -30,6 +30,11 @@ CAR = dict(
     # colors (skin index is saved: only append after release)
     PAINTS=[("StealthGrey", "PN01"), ("LunarSilver", "PN02"), ("PearlWhite", "PPSW"), ("UltraRed", "PR01"),
             ("DiamondBlack", "PX02"), ("FrostBlue", "PB00"), ("SolidBlack", "PBSB"), ("DeepBlue", "PPSB")],
+    # Pearl White's sun lobe at 0.62 (skin alpha 251, MinidoracatTesla_vehicle.frag SHEEN_SOFT_GAIN, the flag Model S
+    # brought): the game showed 31.5 % of its lit paint >= 250 against the official FRONT34's 14.4 % at p50 218 / 214
+    # (Main, 2026-11-12). The other paints stay 254
+    PAINT_ALPHAS={"PearlWhite": 251},
+    PAINT_ALPHA_DEFAULT=254,
     # tex = a * official-ramp colour / GAIN (model_y.py CAL), b 0: per-channel gains only, a = official FRONT34 p50 over
     # the game's at a = 1 (perf/paint_sheet.py on modelx-sp paint-<i>-<name>-fl-max, tesla-mx-1101b; Ultra Red and Deep
     # Blue refit on fl-max and rr-max against FRONT34 / REAR34, tesla-mx-1101f: Deep Blue came out cyan, G 72 / 67 against
