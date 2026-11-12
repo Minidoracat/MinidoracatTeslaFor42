@@ -147,8 +147,10 @@ CAR = dict(
     # of its lit paint >= 250 against the official 5.6 % at the same p50 (Main, 2026-11-12). The skin can't fix it: its
     # seen paint is already tight (p50 234, p95 238); squeezing the upper half onto the median moved a model of the
     # frag's lobe (work/sheenfit.py: the S view's normals and skin, fitted gain 0.22 = SHEEN_SKY) only 32 -> 28 %;
-    # the lobe at 0.62 x -> ~6 %. The other paints stay 254 (p95 <= 170: no clipping)
-    PAINT_ALPHAS={"PearlWhite": 251},
+    # the lobe at 0.62 x -> ~6 %. The other paints stay 254 (p95 <= 170: no clipping). In game 0.62 was still too
+    # bright and 0.45 fits (GameMS), but Model X's Pearl White, which shared the flag 251, needs 0.62 (11.8 % against
+    # the official 14 %; 0 % at 0.41, GameMX): Model S takes its own flag 250 (frag SHEEN_SOFT2_GAIN)
+    PAINT_ALPHAS={"PearlWhite": 250},
     PAINT_ALPHA_DEFAULT=254,
     # paint tone (model_y.py CAL): fitted on models-body-sp paint-<i>-<name>-fl-max (zoom 0.5, heading S) against the
     # official FRONT34 with paint_sheet.py --car MinidoracatTesla_ModelS: one slope per paint (the fit's mean, held to
