@@ -96,7 +96,10 @@ CAR = dict(
     CARBON=None,
     ARCH_LINER=None,
     PLATES=(),
-    SEAL_CLIP=False,
+    SEAL_CLIP=True,                        # (the strips through a panel showed outside: B-pillar roof seam, arch lips)
+    # the strips 45 deg into the body (convert.py seals): in the panel's plane they stood up to 27 mm past the outline
+    # at the roof, tail lamp and arch seams (temp/fit-1112/seals)
+    SEAL_TILT=math.radians(45),
     # the body is one mesh in several materials (the source .blend), so the paint / black trim borders (rear glass
     # frame, tail lamp surrounds, window sills) ran inside UV islands as texel steps, blurred at 512: cut the islands
     # at every skin colour border (convert.py stage_build; user 2026-11-01, models.md)
@@ -111,14 +114,16 @@ CAR = dict(
     DECIMATE={},                           # done in the prep (material borders held)
     PAINT_MAT="Car_Paint",
     MAT_RGB={"Black_Car_Paint": (24, 24, 26), "Aluminum": (28, 28, 30), "Light_Glass": (30, 30, 32),
-             "Light": (210, 210, 214), "Light_Glass_Simple": (226, 230, 236), "Red_Light_Glass": (150, 14, 18),
+             "Light": (210, 210, 214), "Lamp_Lens": (60, 60, 64), "Lamp_DRL": (236, 240, 246), "Red_Light_Glass": (240, 100, 100), "Lamp_Smoke": (32, 10, 12), "Lamp_Reflector": (100, 24, 27),
+             "Cam_Black": (36, 36, 39), "Slot_Black": (18, 18, 19), "Marker_Red": (36, 18, 17), "Band_Black": (14, 14, 16),
+             "Intake_Black": (18, 18, 20),
              "Mirror": (58, 64, 72), "Window_Glass": (14, 14, 16), "badge_cam": (96, 98, 104)},
     GLASS_MATS=("Window_Glass",),
     GLASS_OPAQUE=(),
     GLASS_BACKS=("WinLH", "WinLT", "WinRH", "WinRT"),   # the source's panes are one-sided
     ROOF_PANE="-",
     MIRROR_CAP="-",
-    LAMPS=dict(head=("Light_Glass_Simple",), tail=("Red_Light_Glass",), tail_z=0.6, tail_y=-1.5, blade=None),
+    LAMPS=dict(head=("Lamp_Lens", "Lamp_DRL"), tail=("Red_Light_Glass",), tail_z=0.6, tail_y=-1.5, blade=None),
     # side-view lines (y, z): only the B-pillar seam S is used (the cabin shell's ring); the doors are source objects
     LINES={
         "S": ((-0.150, 0.20), (-0.214, 0.90)),
@@ -138,12 +143,12 @@ CAR = dict(
     # door panels by component centre are off: PART_OBJS / SIDE_PARTS give whole objects
     PANELS=dict(x=9.0, z=0.0, front=(9.0, 9.0), rear=(9.0, 9.0), gate=(-9.0, 9.0), lid=(9.0, 9.0)),
     GUARDS=dict(front=(0.85, 0.95, 0.45), rear=(-1.19, 1.15, 0.50)),
-    PART_OBJS={"EngineDoor": ("Bonnet",), "TrunkDoor": ("Trunk",)},
+    PART_OBJS={"EngineDoor": ("Bonnet",), "TrunkDoor": ("Trunk", "Spoiler_X")},   # (the prep's spoiler rides the tailgate)
     SIDE_PARTS={"Front_Door": ("DoorFrontLeft", "DoorFrontRight"), "Back_Door": ("DoorRearLeft", "DoorRearRight"),
                 "Mirror_X": ("DoorFrontLeft", "DoorFrontRight")},
     # the mirrors (the prep cuts them out of the front doors): outer faces only, no slab inner copy (it stood 6 cm in
     # off the housing's back, a cabin-grey shell round the glass: official black)
-    SHELL_OBJS=("Mirror_X",),
+    SHELL_OBJS=("Mirror_X", "Spoiler_X"),
     CUT={},
     PLANES={},
     CUT_X=("-",),
@@ -152,12 +157,9 @@ CAR = dict(
     GATE_OBJS=(),
     GATE_COMPS=(),
     GATE_CUT_COMPS=(),
-    # the nose's T stays chrome (official FRONT34); the rest of the chrome trim is black on the last Model X
-    # nose T chrome; the pre-refresh fog lamps (Light / Light_Glass in the bumper's corner pockets) black: the 2021+
-    # car has none there, only a black air-curtain inlet (official FRONT34)
-    RECOLOR=(("Aluminum", (-0.045, 1.98, 0.55), (0.045, 2.10, 0.67), (196, 200, 206)),
-             *((m, (lo, 1.84, 0.22), (hi, 1.96, 0.34), (16, 16, 18)) for m in ("Light", "Light_Glass")
-               for lo, hi in ((-0.68, -0.48), (0.48, 0.68)))),
+    # the nose's T stays chrome (official FRONT34); the band round it, the bumper's slots and grille: prep_model_x.py
+    # FIELD decals
+    RECOLOR=(("Aluminum", (-0.045, 1.98, 0.55), (0.045, 2.10, 0.67), (196, 200, 206)),),
     # the front bumper camera (2025+ Model X, official FRONT34): grey ring on the lower grille's middle (y: ray start
     # ahead of the bumper, z, ring radius and width)
     CAMERA=dict(y=2.2, z=0.32, r=0.022, w=0.008),
@@ -171,6 +173,9 @@ CAR = dict(
     MODELY=None,
     PERF_BADGE=None,
     CALIPER=dict(front=(176, 18), rear=(80, 15), r=(0.085, 0.145), x=(0.010, 0.045)),   # r: above the body floor (z 0.161)
+    # the frunk lid's inner panel tilted back at its front lip (convert.py pieces(): straight down, the lip's twin stood
+    # 14 mm out of the nose under it, a dark band across the nose in FRONT34)
+    LID_TILT=(1.85, 2.0, 1.0),
     # frunk 183 L (owner's manual Dimensions) under the lid (Bonnet)
     FRUNK_TUB=dict(ledge=0.06, rim=0.025, y=(1.30, 1.78), half=(0.34, 0.19), corner=0.07, taper=0.10, depth=(0.37, 0.25),
                    n=128),
@@ -187,7 +192,7 @@ CAR = dict(
                rear=dict(base=1.10, cushions=((-0.37, 0.36), (0, 0.33), (0.37, 0.36)), back=0.46, recline=18),
                middle=dict(w=0.42, back=0.50, recline=10, dy=0.035, dz=-0.068),
                third=dict(w=0.36, back=0.34, head=0.42, recline=10, dy=0.028, dz=-0.068),
-               sill=(1.00, 0.12), bin=(0.86, 0.20)),
+               sill=(0.90, 0.08), bin=(0.86, 0.20)),
     PARCEL=None,
     DASH=dict(console=(0, 0.12, -0.28), dash=(0, 0.80, 0.02), trim=(0, 0.627, 0.03), light=(0, 0.629, 0.007),
               stand=(0, 0.64, 0.13), screen=(0, 0.61, 0.21), wheel=(0.357, 0.027)),   # wheel: the reclined driver's hands

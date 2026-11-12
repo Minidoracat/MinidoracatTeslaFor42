@@ -1593,6 +1593,8 @@ def seals(V, T, sel, attr, glass_bvh, solid=None, seams=None):
             r3, r4 = r2 - d * w, r1 - d * w
             for tr in ((r1, r2, r3), (r1, r3, r4)):   # wound to face out like the panel (n)
                 rib.append(tr if np.cross(tr[1] - tr[0], tr[2] - tr[0]) @ n > 0 else (tr[0], tr[2], tr[1]))
+    if C.get("SEAL_TILT"):                        # (Model X) into the body by that angle: in the face's plane the
+        t = t * math.cos(C["SEAL_TILT"]) - fn * math.sin(C["SEAL_TILT"])   # strip stood past the outline at seams
     far = (a_ + b_) / 2 + t * SEAL[1]
     keep = np.array([glass_bvh.find_nearest(Vector(p), 0.012)[0] is None for p in far], bool)
     if solid is not None:
@@ -1938,6 +1940,11 @@ def pieces(car, c, shift):
         if axis == "falcon":     # the inner panel in towards the cabin below the elbow, down under the roof part
             w = np.clip((V[:, 2] - FALCON["elbow"][1] + 0.12) / 0.12, 0, 1)
             d = np.column_stack([-sd * (1 - w), np.zeros(len(V)), -w])
+            off = d / np.linalg.norm(d, axis=1, keepdims=True) * pv.DOOR_T
+        if lid and C.get("LID_TILT"):    # (y0, y1, k) Model X: the lid's inner panel also k back per unit down, from
+            y0, y1, k = C["LID_TILT"]    # none at y0 to all at y1 (its front lip's twin stood out of the nose below)
+            w = np.clip((V[:, 1] - y0) / (y1 - y0), 0, 1)
+            d = np.column_stack([np.zeros(len(V)), -k * w, -np.ones(len(V))])
             off = d / np.linalg.norm(d, axis=1, keepdims=True) * pv.DOOR_T
         skin = sel & panel & ~mirror & ~shell            # the mirror cap: outer faces only (a closed shell)
         if ang == "roll":                                # the tonneau: strips of its own (tonneau_strips)
