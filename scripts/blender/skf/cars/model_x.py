@@ -70,8 +70,9 @@ CAR = dict(
     CAL={
         # (round 8) Stealth Grey, Lunar Silver and Ultra Red per channel by the game's p50 against the official FRONT34's
         # (modelx-sp paint, 824bf64: [52 52 59] / [60 59 66], [131 134 142] / [141 142 150], [93 24 30] / [101 30 34];
-        # temp/fit-1112/game/after-6e52fea/mx/RESULT.txt); the others as they were
-        "StealthGrey": ((0.946, 0.885, 0.839), (0.0, 0.0, 0.0)),
+        # temp/fit-1112/game/after-6e52fea/mx/RESULT.txt); the others as they were. Round 10: Stealth Grey x 0.96 (GameMX2
+        # on 6acfe7e: luminance 65 against the official 62; (0.946, 0.885, 0.839) before)
+        "StealthGrey": ((0.908, 0.850, 0.805), (0.0, 0.0, 0.0)),
         "LunarSilver": ((0.818, 0.795, 0.792), (0.0, 0.0, 0.0)),
         # Pearl White x 1.4 round the visible paint's median 230 (the offset): Model S's frag sun-lobe model
         # (temp/wt-fix-ms/temp/skf_ms/work/sheenfit.py, k 0.93 c 0.22 x 0.62 for flag 251) on this car's offline game S
@@ -102,14 +103,16 @@ CAR = dict(
     # rear 0.727 / 0.619 -> 0.705 / 0.624, p50 23 / 21 -> 31 / 28 (official 30 / 33); the edges' grey stays 108
     # Round 8: the blade face 9 -> 50 (game SW front wheel rim p50 / p75 21 / 26 against the official 38 / 63, the grey
     # edges at the official's p90: modelx-sp 824bf64, RESULT.txt). Round 9: 50 -> 43 (GameMX2, 6acfe7e: the face
-    # read 60 against the official's 52 inside 35-90, p75 60 / 63 matched)
+    # read 60 against the official's 52 inside 35-90, p75 60 / 63 matched). Round 10: 43 -> 39 (GameMX3, e67bb61, the rim
+    # lip's fitted circle 0.95 R: the face 52 against the official's 47 the same way; the area > 30 39 / 45 % official /
+    # game alike, the offline 68 % is the barrel and disc lit 30-40 offline: the blades' outline stays)
     WHEEL_RIM=0.727,                       # 20" (254 mm bead + 17 mm flange) / 373 mm tyre radius
     WHEEL_SPOKE=dict(n=5, shape=_blade(0.0), lit=_blade(0.04), cap=0.13, inset=0.016, dish=0.020, depth=0.018,
                      sweep=0),
     WHEEL_LIP=True,                        # the grey lip ring in the flat `lip` grey
     WHEEL_TURN=True,                       # one part all round: the right wheels show the left's pattern, not a mirror
     WHEEL_DISC=dict(rotor=0.70, hat=0.30),
-    WHEEL_RGB=dict(spoke=43, edge=108, cap=18, barrel=16, lip=105, rotor=22, hat=20, dark=6, gap=6, tire=(22, 28),
+    WHEEL_RGB=dict(spoke=39, edge=108, cap=18, barrel=16, lip=105, rotor=22, hat=20, dark=6, gap=6, tire=(22, 28),
                    tread=20),
     # ---- pzveh: vehicle script
     OY=0.2878,
