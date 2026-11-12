@@ -331,7 +331,7 @@ module Base
         /* charge port: real Model X, owner's manual p.189 */
         attachment chargeport
         {
-            offset = 0.3762 0.0245 -0.9903,
+            offset = 0.3898 0.0245 -0.9903,
             rotate = 0.0 0.0 0.0,
         }
         part DoorFrontLeft

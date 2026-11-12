@@ -213,9 +213,10 @@ CAR = dict(
              "Lamp_Housing": (33, 32, 35), "Lamp_Reflector": (88, 22, 25),
              "Cam_Black": (36, 36, 39), "Slot_Black": (18, 18, 19), "Marker_Red": (36, 18, 17),
              "Band_Black": (14, 14, 16), "Intake_Black": (18, 18, 20),
-             # (round 6) the tailgate band between the lamps dark grey (official REAR34 42; Band_Black drew 9) and the
-             # rear bumper reflector slits (official 34-37 red over the dark, mostly in the bumper lip shadow)
-             "Gate_Band": (46, 46, 50), "Bump_Refl": (62, 17, 19),
+             # (round 6) the tailgate band between the lamps dark grey (official REAR34 42; Band_Black drew 9, round 6's
+             # 46 drew 24, round 7's 72 draws 39) and the rear bumper reflector slits (official 34-37 red over the dark,
+             # mostly in the bumper lip shadow)
+             "Gate_Band": (72, 72, 76), "Bump_Refl": (62, 17, 19),
              # the lower trim (prep_model_x.py FIELD trim_grey; official SIDE sills 30-37, arch lips 45-67)
              "Trim_Grey": (40, 40, 43)},
     GLASS_MATS=("Window_Glass",),
@@ -243,13 +244,14 @@ CAR = dict(
     # door panels by component centre are off: PART_OBJS / SIDE_PARTS give whole objects
     PANELS=dict(x=9.0, z=0.0, front=(9.0, 9.0), rear=(9.0, 9.0), gate=(-9.0, 9.0), lid=(9.0, 9.0)),
     GUARDS=dict(front=(0.85, 0.95, 0.45), rear=(-1.19, 1.15, 0.50)),
-    # (the prep's spoiler and the tail lamp decals' halves on the gate ride the tailgate)
-    PART_OBJS={"EngineDoor": ("Bonnet",), "TrunkDoor": ("Trunk", "Spoiler_X", *TAIL_T)},
+    # (the prep's spoiler, the tailgate band and the tail lamp decals' halves on the gate ride the tailgate; round 7:
+    # GateBand_X (round 6) had stayed on the body, a dark strip hanging where the closed gate was once it opened)
+    PART_OBJS={"EngineDoor": ("Bonnet",), "TrunkDoor": ("Trunk", "Spoiler_X", "GateBand_X", *TAIL_T)},
     SIDE_PARTS={"Front_Door": ("DoorFrontLeft", "DoorFrontRight"), "Back_Door": ("DoorRearLeft", "DoorRearRight"),
                 "Mirror_X": ("DoorFrontLeft", "DoorFrontRight")},
     # the mirrors (the prep cuts them out of the front doors): outer faces only, no slab inner copy (it stood 6 cm in
     # off the housing's back, a cabin-grey shell round the glass: official black)
-    SHELL_OBJS=("Mirror_X", "Spoiler_X", *TAIL_T),
+    SHELL_OBJS=("Mirror_X", "Spoiler_X", "GateBand_X", *TAIL_T),
     CUT={},
     PLANES={},
     CUT_X=("-",),

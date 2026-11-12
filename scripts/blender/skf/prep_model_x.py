@@ -92,14 +92,19 @@ FIELD = dict(
         # u 4.28 (an earlier one from u 4.10 lifted the roof ahead of it, @x1300 -3 -> -4) and back to the spoiler's legs
         # (a lift under them left the legs' rays starting inside the tailgate: the prep crashed); the spoiler `top` +12 mm
         dict(d=(0, 0.023), u=(4.28, 4.50, 4.78, 4.95), h=(1.10, 1.24)),
-        # round 6: the tail's sides in (not the corners: REAR34's far outline), the lamps' level. The official tail lamp
-        # triangulated from two views sat 2-7 cm inboard of the model's side (SIDE + FRONT34 2.3, SIDE + REAR34 6.0 at its
-        # front tip, 7.4 at the red C's spine): REAR34's decals landed 12-17 px back of the official's in SIDE (the red
-        # C's spine on the corner). -5 cm: FRONT34 IoU 0.9682 -> 0.9688, the other two the same, SIDE lamp guide IoU
-        # 0.13 -> 0.20, REAR34 lamp outline p90 8.5 -> 3.6 px; az (0.74, 0.82) at -4 cm cost REAR34 0.0002 (its far
-        # corner's outline at the lamps lies at az 0.63-0.77, FRONT34's near one at 0.80-0.85). The az ramp 16 cm wide
-        # (0.78-0.86 squeezed the side's 8 cm into 3: a crease at the corner in the game views)
-        dict(d=(0, 0, -0.05), u=(4.30, 4.55, 5.3, 5.4), h=(0.62, 0.85, 1.22, 1.36), az=(0.76, 0.92)),
+        # round 7 (cameras refit, below): the three official cameras now agree on the side (two-view triangulations of
+        # the fender camera, door handles and tail lamp tip within 1.4 cm of each other); against them the model's
+        # fender at the side camera stood 2.9-3.5 cm out, the tail lamp's front tip 4.6 cm in (round 6's -5 cm "tail's
+        # sides in" came from the old REAR34: gone) and both rear corners 4-5 cm out (REAR34's far outline +10..+17
+        # px, FRONT34's near one +2..+8). The tail's plan rounder from behind the lamps' front tip (u 4.5) back, a
+        # ramp over az (no step: round 6's 6 cm local pull dented the quarter); the fender in behind the front arch
+        # (above the lip: the 1,999 width is the lip's; under the A-pillar foot, whose crack plates stay put: up to h
+        # 1.10 it opened fl SE 0 -> 3 px; ending at u 1.65, ahead of the front door's seam, cost that seam NW 59 -> 46
+        # %); the bumper's side ahead of the front arch in (FRONT34's arch band at 175-220 deg -11..-5 -> -2..+3 px:
+        # the bumper bulged over the arch moulding's front)
+        dict(d=(0, 0, -0.03), u=(4.50, 4.95), h=(0.20, 0.35, 1.20, 1.40), az=(0.35, 0.95)),
+        dict(d=(0, 0, -0.03), u=(1.05, 1.25, 1.55, 1.85), h=(0.60, 0.72, 0.92, 1.00), az=(0.60, 0.85)),
+        dict(d=(0, 0, -0.04), u=(0.30, 0.45, 0.60, 0.70), h=(0.22, 0.32, 0.70, 0.80), az=(0.70, 0.90)),
     ),
     # faces recoloured by box (source frame, before the field): obj, mat -> to; u, h, az windows (lo, hi).
     # The tail lamps body colour, lens and housing (the source's lamp sat 5-16 px low and had another shape: official
@@ -177,15 +182,19 @@ FIELD = dict(
     # the fitted official cameras (temp/skf_mx/work/camfit/cams.json: R world -> OpenCV, C, f, w, h in the scene's grid
     # frame; anchor: the front wheel centre y and the ground there) for FIELD decals. FRONT34 / REAR34 refit
     # 2026-11-12 (round 2) with their height held at SIDE's (fit.py HOLD: one studio rig): FRONT34 had sat 20 cm lower,
-    # IoU 0.9421 -> 0.9682
+    # IoU 0.9421 -> 0.9682. Round 7 (camfit/fit7.py): REAR34 refit on body-independent marks -- the tyres' silhouettes
+    # (the far rear one under the bumper too), the centre line (TESLA's S, the plate), the rim lip -- plus the side
+    # marks' heights and the roof top; the old one put the centre line 15.9 px and the far rear tyre 14 px off (its rim
+    # lip radius had drifted to 312 mm, now 272 = SIDE's). FRONT34 then on the side marks triangulated by SIDE + REAR34
+    # (it moved 1 cm)
     cams=dict(
         SIDE=dict(R=((-0.0614609, -0.9980892, 0.0063593), (-0.0737313, -0.0018138, -0.9972765),
                      (0.9953825, -0.0617624, -0.0734789)), C=(-5.568395, 0.311058, 0.128667), f=1464.931, w=1920, h=1080),
-        FRONT34=dict(R=((-0.6395837, -0.7687143, 0.0033001), (-0.0445775, 0.0328027, -0.9984672),
-                        (0.7674278, -0.6387505, -0.0552474)), C=(-5.011238, 4.428743, 0.128402), f=1913.128, w=1920,
+        FRONT34=dict(R=((-0.6395348, -0.7687545, 0.0034362), (-0.0448232, 0.0328260, -0.9984555),
+                        (0.7674543, -0.6387010, -0.0554514)), C=(-5.018416, 4.428444, 0.128216), f=1903.533, w=1920,
                      h=1080),
-        REAR34=dict(R=((0.7066468, -0.7074291, -0.0139408), (-0.0434781, -0.0237479, -0.9987721),
-                       (0.7062294, 0.7063852, -0.0475391)), C=(-5.159372, -5.496818, 0.128159), f=2126.391, w=1920,
+        REAR34=dict(R=((0.7079705, -0.7061538, -0.0111645), (-0.0390861, -0.0233928, -0.9989620),
+                       (0.7051596, 0.7076720, -0.0441622)), C=(-5.485325, -5.786292, 0.128223), f=2287.880, w=1920,
                     h=1080)),
     anchor=(1.261078, -0.768273),
     # decals: name, the view and its outline (px), the objects they lie on, material, offset (m)
