@@ -23,6 +23,9 @@ CAR = dict(
     APP_CAR="app_car_modelx_{}.png",
     DIMS=(5.057, 1.999, 1.680),            # owner's manual (2021+, tesla.com 2026-11-01): length, width w/o mirrors, height
     PORT_NOTE="real Model X, owner's manual p.189",
+    # (y, z pre-centre) where the left corner lamp's outboard end put it before 2026-11-12 (the lamps are prep decals
+    # now: their red guide's end sat 11 cm back, 4 cm up; plug.z 0.84 against the real 0.837 stays)
+    PORT=(-1.802, 0.807),
     # the last US design studio's six (Lexicon 2026-03-06) and China's pre-refresh two (2025-03); order = Core.lua Specs
     # colors (skin index is saved: only append after release)
     PAINTS=[("StealthGrey", "PN01"), ("LunarSilver", "PN02"), ("PearlWhite", "PPSW"), ("UltraRed", "PR01"),
@@ -51,13 +54,14 @@ CAR = dict(
     OFFICIAL_OPTS="$MDLX,$MTX23,${},$WX03,$IBC02,$CC02,$ST06",
     RAMP=dict(t=(0.36, 0.78), u=(0.08, 0.95), wheels=(0.172, 0.808), wt=0.76, wr=0.115),
     # ---- pzveh: wheel, 20" Perihelix ($WX03, official RIMCLOSEUP): five wide swept blades in dark grey, each lighter
-    # along its face, open between them onto the red caliper; 265/45 R20 front, 275/45 R20 rear (one size here, the
-    # source tyres': radius 0.311, 1 % over the official 373 mm)
+    # along its face, open between them onto the red caliper; 265/45 R20 front, 275/45 R20 rear (TIRE_AXLES). Greys
+    # from the official SIDE wheel (2026-11-12: blade face p50 33, the gaps black p10 7-9, the hub 22; offline the
+    # build's read 58 / 57 / 48): spoke, rotor, hat, cap darker
     WHEEL_RIM=0.727,                       # 20" (254 mm bead + 17 mm flange) / 373 mm tyre radius
     WHEEL_SPOKE=dict(n=5, hub=0.16, fork=0.80, spread=math.radians(5), main=(0.095, 0.15), arm=0.085, cap=0.17,
                      inset=0.016, dish=0.020, depth=0.020, sweep=math.radians(42)),
     WHEEL_DISC=dict(rotor=0.70, hat=0.30),
-    WHEEL_RGB=dict(spoke=66, cap=34, barrel=20, lip=52, rotor=44, hat=30, dark=10, gap=8, tire=(22, 28), tread=20),
+    WHEEL_RGB=dict(spoke=42, cap=22, barrel=20, lip=52, rotor=18, hat=14, dark=10, gap=8, tire=(22, 28), tread=20),
     # ---- pzveh: vehicle script
     OY=0.2878,
     WHEEL_LIFT=0.11,
@@ -73,7 +77,8 @@ CAR = dict(
     # the seated clips (scripts/seat_anim.py), the 2nd row `rear` and the 3rd row `third drop` under the front; SEATS
     # dz / dy put the cushions and backrests against the body
     SEAT=dict(x=0.35, h=0.464, z=-0.306, back=(0.12, -0.04), out=0.30, rear=0.017,
-              third=dict(back=0.10, x=0.27, drop=0.017)),
+              third=dict(back=0.08, x=0.27, drop=0.017)),   # back 0.10 -> 0.08 (2026-11-12 prep: seat_head 3rd row knees
+    #                                                         -21 / -23 mm; 0.06 -30, 0.10 -28, 0.12 -27, 0.14 -36)
     BODY_W_Z=0.55,
     # falcon wing doors (axis "falcon": (roof hinge deg, elbow fold deg), clip seconds): the upper part turns up about
     # its hinge by the roof's spine, the lower part folds back out at the elbow (owner's manual p.31-33: two hinges).

@@ -239,7 +239,7 @@ module Base
             showPassenger = true,
             position inside
             {
-                offset = 0.1484 -0.4005 -0.7102,
+                offset = 0.1484 -0.4005 -0.6992,
                 rotate = 0.0 0.0 0.0,
             }
             position outside
@@ -254,7 +254,7 @@ module Base
             showPassenger = true,
             position inside
             {
-                offset = -0.1484 -0.4005 -0.7102,
+                offset = -0.1484 -0.4005 -0.6992,
                 rotate = 0.0 0.0 0.0,
             }
             position outside
@@ -274,7 +274,7 @@ module Base
         }
         area GasTank
         {
-            xywh = 0.6900 -1.0526 0.4725 0.4725,
+            xywh = 0.6900 -0.9915 0.4725 0.4725,
         }
         area SeatFrontLeft
         {
@@ -294,11 +294,11 @@ module Base
         }
         area SeatRearLeft
         {
-            xywh = 0.6900 -0.7102 0.4725 0.4725,
+            xywh = 0.6900 -0.6992 0.4725 0.4725,
         }
         area SeatRearRight
         {
-            xywh = -0.6900 -0.7102 0.4725 0.4725,
+            xywh = -0.6900 -0.6992 0.4725 0.4725,
         }
         area TireFrontRight
         {
@@ -328,10 +328,10 @@ module Base
             rotate = 0.0 0.0 0.0,
             zoffset = 1.0,
         }
-        /* charge port: side end of the left tail light (real Model X, owner's manual p.189) */
+        /* charge port: real Model X, owner's manual p.189 */
         attachment chargeport
         {
-            offset = 0.3748 0.0470 -1.0526,
+            offset = 0.3939 0.0237 -0.9915,
             rotate = 0.0 0.0 0.0,
         }
         part DoorFrontLeft

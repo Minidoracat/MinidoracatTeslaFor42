@@ -219,7 +219,8 @@ local function fixed(v)
     return before, icons(ui, v), ui
 end
 local before, after, ui = fixed(seatCar(X, XZ, XS))
-check(H.near(worst(before), 5.1, 0.1), string.format("Model X at vanilla's 500 px: the 2nd and 3rd rows overlap %.1f px (E2E SEATUI 5.1)", worst(before)))
+-- 6.7 since the 2026-11-12 body (3rd row 0.02 back, SEAT third back 0.08; E2E SEATUI measured 5.1 before it)
+check(H.near(worst(before), 6.7, 0.1), string.format("Model X at vanilla's 500 px: the 2nd and 3rd rows overlap %.1f px (offline 6.7)", worst(before)))
 check(worst(after) <= 0, string.format("Model X: no two icons overlap (worst %.2f px; panel %d px)", worst(after), ui.height))
 check(sameOrder(before, after), "Model X: every icon keeps its left/right and front/back")
 local gap = after[3].y - after[5].y -- 3rd row (RearLeft, seat 3) below the 2nd (MiddleLeft, seat 5)
