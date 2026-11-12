@@ -63,13 +63,13 @@ T.Specs = {
         -- from each skin's median paint colour; the skins themselves are full colour.
         colors = {
             { name = "StealthGrey", code = "PN01", h = 0.759, s = 0.572, v = 0.231 },
-            { name = "PearlWhite", code = "PPSW", h = 0.597, s = 0.492, v = 0.854 },
-            { name = "DiamondBlack", code = "PX02", h = 0.922, s = 0.55, v = 0.179 },
-            { name = "Quicksilver", code = "PN00", h = 0.795, s = 0.525, v = 0.352 },
-            { name = "UltraRed", code = "PR01", h = 0.996, s = 1.0, v = 0.399 },
-            { name = "GlacierBlue", code = "PB01", h = 0.606, s = 0.793, v = 0.369 },
-            { name = "MarineBlue", code = "PB02", h = 0.61, s = 0.801, v = 0.215 },
-            { name = "FrostBlue", code = "PB00", h = 0.61, s = 0.839, v = 0.483 },
+            { name = "PearlWhite", code = "PPSW", h = 0.597, s = 0.492, v = 0.855 },
+            { name = "DiamondBlack", code = "PX02", h = 0.922, s = 0.55, v = 0.18 },
+            { name = "Quicksilver", code = "PN00", h = 0.795, s = 0.524, v = 0.353 },
+            { name = "UltraRed", code = "PR01", h = 0.996, s = 1.0, v = 0.4 },
+            { name = "GlacierBlue", code = "PB01", h = 0.606, s = 0.792, v = 0.37 },
+            { name = "MarineBlue", code = "PB02", h = 0.609, s = 0.802, v = 0.216 },
+            { name = "FrostBlue", code = "PB00", h = 0.61, s = 0.839, v = 0.484 },
         },
     },
     ["Base.MinidoracatTesla_Model3"] = {
@@ -91,7 +91,7 @@ T.Specs = {
             { name = "Quicksilver", code = "PN00", h = 0.808, s = 0.484, v = 0.456 },
             { name = "UltraRed", code = "PR01", h = 0.997, s = 1.0, v = 0.464 },
             { name = "DeepBlue", code = "PPSB", h = 0.602, s = 1.0, v = 0.393 },
-            { name = "MarineBlue", code = "PB02", h = 0.583, s = 0.755, v = 0.281 },
+            { name = "MarineBlue", code = "PB02", h = 0.585, s = 0.753, v = 0.281 },
             { name = "FrostBlue", code = "PB00", h = 0.6, s = 0.769, v = 0.477 },
         },
     },
@@ -208,13 +208,13 @@ T.Specs = {
         -- Model Y L paints: China's six ($MTY87, Lexicon 2026-10-30) and the US Marine Blue ($MTY83, 2026-07-10).
         -- Same order and append-only rules as above; h/s/v by convert.py build.
         colors = {
-            { name = "StealthGrey", code = "PN01", h = 0.725, s = 0.523, v = 0.28 },
-            { name = "PearlWhite", code = "PPSW", h = 0.701, s = 0.48, v = 0.885 },
-            { name = "DiamondBlack", code = "PX02", h = 0.932, s = 0.518, v = 0.21 },
-            { name = "UltraRed", code = "PR01", h = 0.986, s = 1.0, v = 0.493 },
-            { name = "CosmicSilver", code = "PN03", h = 0.984, s = 0.504, v = 0.519 },
-            { name = "GlacierBlue", code = "PB01", h = 0.603, s = 0.751, v = 0.442 },
-            { name = "MarineBlue", code = "PB02", h = 0.6, s = 0.823, v = 0.265 },
+            { name = "StealthGrey", code = "PN01", h = 0.719, s = 0.528, v = 0.275 },
+            { name = "PearlWhite", code = "PPSW", h = 0.709, s = 0.479, v = 0.871 },
+            { name = "DiamondBlack", code = "PX02", h = 0.977, s = 0.503, v = 0.206 },
+            { name = "UltraRed", code = "PR01", h = 0.986, s = 1.0, v = 0.483 },
+            { name = "CosmicSilver", code = "PN03", h = 0.97, s = 0.505, v = 0.506 },
+            { name = "GlacierBlue", code = "PB01", h = 0.603, s = 0.749, v = 0.43 },
+            { name = "MarineBlue", code = "PB02", h = 0.6, s = 0.807, v = 0.257 },
         },
     },
 }
