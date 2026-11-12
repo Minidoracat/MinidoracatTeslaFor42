@@ -54,6 +54,9 @@ CAR = dict(
     # convert.py fill_slivers (model_3.py): 2,158 paint triangles sampled the skin's unbaked black texels in game
     # (uvblack.py, 2026-11-13); 15 with it. Texels inside the islands stay as baked (|d| > 4 on 895 of 348,754)
     UV_FILL=True,
+    # the filled and grown texels stay out of the paint's blur and quantiles: with UV_FILL alone 20-32 % of the
+    # baked texels moved (PearlWhite p75 +2..3, Model Y Quicksilver p50 +7; tonechk.sh 2026-11-13), with it none
+    UV_FILL_TONE=True,
     # official Model Y paints (decisions.md "車款外觀"): skin order = vehicle script skin index = Core.lua colors order;
     # saved games store the index (BaseVehicle.java:2635/2741), so after release only append
     PAINTS=[("StealthGrey", "PN01"), ("PearlWhite", "PPSW"), ("DiamondBlack", "PX02"), ("Quicksilver", "PN00"),
