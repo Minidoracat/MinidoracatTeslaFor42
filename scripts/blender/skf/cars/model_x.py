@@ -58,7 +58,10 @@ CAR = dict(
     # ---- pzveh: vehicle script
     OY=0.2878,
     WHEEL_LIFT=0.11,
-    WHEEL_INSET=0.03,
+    # 265/45 R20 front (r 373.3), 275/45 R20 rear (r 377.8), owner's manual p.234: prep_model_x.py scales the source's
+    # tyres to those on the manual's track, a wheel model per axle (models.md TIRE_AXLES)
+    TIRE_AXLES=dict(front=(0.3733, 0.265), rear=(0.3778, 0.275)),
+    WHEEL_INSET=0.0,                       # the prep puts the tyres on the manual's track (centres)
     CAB_BOX=(1.32, 0.45, -1.75),
     # passengers / seats (cabin.py): front and 2nd row from the door openings (back: front, 2nd row); third: the 3rd row
     # `back` behind the falcon doors' rear edge, at side x (3rd row shoulder room 1,033 mm against 1,442 in the 2nd,
@@ -136,7 +139,11 @@ CAR = dict(
     PANELS=dict(x=9.0, z=0.0, front=(9.0, 9.0), rear=(9.0, 9.0), gate=(-9.0, 9.0), lid=(9.0, 9.0)),
     GUARDS=dict(front=(0.85, 0.95, 0.45), rear=(-1.19, 1.15, 0.50)),
     PART_OBJS={"EngineDoor": ("Bonnet",), "TrunkDoor": ("Trunk",)},
-    SIDE_PARTS={"Front_Door": ("DoorFrontLeft", "DoorFrontRight"), "Back_Door": ("DoorRearLeft", "DoorRearRight")},
+    SIDE_PARTS={"Front_Door": ("DoorFrontLeft", "DoorFrontRight"), "Back_Door": ("DoorRearLeft", "DoorRearRight"),
+                "Mirror_X": ("DoorFrontLeft", "DoorFrontRight")},
+    # the mirrors (the prep cuts them out of the front doors): outer faces only, no slab inner copy (it stood 6 cm in
+    # off the housing's back, a cabin-grey shell round the glass: official black)
+    SHELL_OBJS=("Mirror_X",),
     CUT={},
     PLANES={},
     CUT_X=("-",),
@@ -165,7 +172,7 @@ CAR = dict(
     PERF_BADGE=None,
     CALIPER=dict(front=(176, 18), rear=(80, 15), r=(0.085, 0.145), x=(0.010, 0.045)),   # r: above the body floor (z 0.161)
     # frunk 183 L (owner's manual Dimensions) under the lid (Bonnet)
-    FRUNK_TUB=dict(ledge=0.06, rim=0.025, y=(1.30, 1.78), half=(0.34, 0.19), corner=0.07, taper=0.10, depth=(0.40, 0.28),
+    FRUNK_TUB=dict(ledge=0.06, rim=0.025, y=(1.30, 1.78), half=(0.34, 0.19), corner=0.07, taper=0.10, depth=(0.37, 0.25),
                    n=128),
     # ---- cabin.py (mesh coords, centred)
     CABIN_FLOOR=-0.526,                    # under the seated feet (seat_head.py feet)
