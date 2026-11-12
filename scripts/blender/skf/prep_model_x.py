@@ -122,8 +122,8 @@ FIELD = dict(
               # SIDE + FRONT34 triangulated) and the black round it; the lamps are FIELD decals Lens_X / LensSide_X
               dict(obj="Car Body", mat="Light Glass Simple", to="Car Paint", u=(-1, 0.8), h=(0.6, 1.0)),
               dict(obj="Car Body", mat="Black Car Paint", to="Car Paint", u=(0.1, 0.7), h=(0.74, 0.93), az=(0.45, 0.95)),
-              # the nose cone's trim body colour but the T (FIELD decals Band_X)
-              dict(obj="Car Body", mat="Aluminum", to="Car Paint", u=(-1, 0.6), h=(0.6, 0.85), az=(0.06, 1.0))),
+              # the nose cone's trim body colour, the T too (round 8: cars/model_x.py T_BADGE; FIELD decals Band_X)
+              dict(obj="Car Body", mat="Aluminum", to="Car Paint", u=(-1, 0.6), h=(0.6, 0.85))),
     # the raised spoiler (spoiler(); official SIDE / REAR34 triangulated: tips u 4.90 h 1.29 |z| 0.61, blade over the
     # tailgate's rear edge ~0.2 m chord, legs near the tips)
     spoiler=dict(span=0.61, te=(4.89, 0.09), chord=0.17, top=(1.317, -0.012), thick=0.014, n=24, leg=0.52,
@@ -142,6 +142,20 @@ FIELD = dict(
                 step=0.012, seam=0.04, weld=0.008, fill=4,
                 # (the nose's tip not ahead of where it was: the manual's length)
                 tip=0.0),
+    # round 8 (fair()): the nose's upper band (the pre-2021 nose cone and its T, recoloured above) and the headlamps'
+    # surrounds (their recoloured lens and pockets) faired: crumpled facets and dark specks in the studio light (same
+    # camera FRONT34) and the game's sheen. Not the panels more than `under` m below the lid, nor black / grey trim not
+    # seen from outside; the lamps' insides left under the lid's edge dropped; nothing in the nose's middle (|az| <
+    # `ahead_az`) more than `ahead` m forward (unclamped it bulged 14 px past the official SIDE outline)
+    fair=(dict(obj="Car Body", lid="Bonnet", under=0.06, ahead=0.005, ahead_az=0.40,
+               mats=("Car Paint", "Aluminum", "Light", "Light Glass", "Black Car Paint", "Trim Grey"),
+               paint=("Light", "Light Glass", "Black Car Paint", "Trim Grey"), seen=("Black Car Paint", "Trim Grey"),
+               drop=("Light", "Light Glass"),
+               boxes=(dict(u=(-1, -0.5, 0.55, 0.62), h=(0.62, 0.68)), dict(u=(-1, -0.5, 0.72, 0.80), h=(0.74, 0.80)))),),
+    # round 8 (smooth_normals()): the frunk lid's and the front's normals smoothed (the source's subsurf level 1 lid lit
+    # as flat patches; same camera FRONT34 paint normal deviation > 8 deg 3.3 -> 1.5 %)
+    smooth_normals=(dict(obj="Bonnet", angle=25.0, iters=8),
+                    dict(obj="Car Body", angle=25.0, iters=8, u=(-1, -0.5, 1.80, 2.0), h=(0.50, 0.58))),
     # the lower black trim (sills, arch lips, the bumpers' lower parts: source Black Car Paint under h) dark grey (official
     # SIDE: sills 30-37 grading to 17-27, arch lips 45-67, rear bumper 43-49 against the build's flat 22): the faces
     # black before arch_inner (its wheel wells stay black) and still black after `recolour`
@@ -220,6 +234,11 @@ FIELD = dict(
         dict(name="LensSide_X", view="SIDE", compete=("FRONT34",), mat="Lamp_Lens", on=("Car Body",), off=0.008, u=(0.1, 0.75),
              outline=((400, 503), (404, 498), (420, 492), (440, 487), (460, 483), (471, 481), (466, 488), (455, 497),
                       (440, 504), (420, 507), (405, 508))),
+        # (round 8) the lamp's thin dark rim round the lens and the light strip (official FRONT34: the white strip reads
+        # off the white paint by it), under both
+        dict(name="LampRim_X", view="FRONT34", compete=("SIDE",), mat="Lamp_Rim", on=("Car Body",), off=0.006, u=(0.1, 0.75),
+             outline=((571.5, 527.5), (600, 514.5), (650, 504.5), (700, 495.5), (738, 492.5), (747, 494.5), (757.5, 500),
+                      (744, 516.5), (703, 533.5), (650, 541.5), (600, 540.5), (571, 531))),
         # the headlamps' daytime light strip along their lower edge (official FRONT34: a smoked lamp, a white strip
         # under it running up round its outer end)
         dict(name="Drl_X", view="FRONT34", compete=("SIDE",), mat="Lamp_DRL", on=("Car Body",), off=0.008, u=(0.1, 0.75),
@@ -776,6 +795,200 @@ def fascia(meshes, nose, yc, filled):
         np.abs(d[mv]).max() * 1000, ride.sum(), k.sum()))
 
 
+def fair(meshes, nose, yc):
+    """FIELD fair (round 8): each box's vertices of `obj` (u, h windows; not on an open edge: the lid gap stays; every
+    face round them in `mats` and not under the `lid`: the panels below it) moved to the smoothest surface through what
+    is round them (minimum |L x|^2, uniform Laplacian L, the rest fixed: C1 onto the neighbours), their corners'
+    normals the new mesh's; the source's lumps there (the pre-2021 nose cone, the headlamp pockets, recoloured body
+    colour) read as crumpled facets in the studio light and the game's sheen. Loose pieces left with nothing fixed (the
+    lamps' reflectors inside their pockets) go; the `paint` materials moved become body colour."""
+    import bmesh
+    from mathutils import Vector
+    from mathutils.bvhtree import BVHTree
+    for F in FIELD["fair"]:
+        o = next(o for o in meshes if o.name == F["obj"])
+        me = o.data
+        lid = next(o_ for o_ in meshes if o_.name == F["lid"]).data
+        cover = BVHTree.FromPolygons([v.co[:] for v in lid.vertices], [p_.vertices[:] for p_ in lid.polygons])
+        objs = [o_ for o_ in meshes if not o_.name.startswith(("Tyre", "Rim"))]
+        k0 = np.cumsum([0] + [len(o_.data.vertices) for o_ in objs])
+        hull = BVHTree.FromPolygons([v.co[:] for o_ in objs for v in o_.data.vertices],
+                                    [[i + k for i in p_.vertices] for o_, k in zip(objs, k0) for p_ in o_.data.polygons])
+        g = (np.sqrt(5) - 1) / 2                      # directions round the car, none from under it
+        dirs = [Vector((np.cos(2 * np.pi * g * i) * np.sqrt(1 - z * z), np.sin(2 * np.pi * g * i) * np.sqrt(1 - z * z),
+                        z)) for i, z in enumerate(np.linspace(-0.3, 0.98, 48))]
+        ok_m = np.array([bool(m) and m.name in F["mats"] for m in me.materials])
+        seen_m = np.array([bool(m) and m.name in F.get("seen", ()) for m in me.materials])
+        for _ in range(2):                            # (again once the loose pieces are gone)
+            p = np.array([v.co[:] for v in me.vertices])
+            u, h, a = (nose - p[:, 0]) * S, p[:, 2] * S, np.abs(p[:, 1] - yc) * S
+            e = np.array([ed.vertices[:] for ed in me.edges])
+            nf = np.zeros(len(e), np.int64)          # faces per edge: open edges (1) pinned
+            ek = {tuple(sorted(x)): i for i, x in enumerate(e.tolist())}
+            for poly in me.polygons:
+                for k_ in poly.edge_keys:
+                    nf[ek[k_]] += 1
+            box = np.zeros(len(p), bool)
+            for b in F["boxes"]:
+                box |= (win(u, b["u"]) > 0.999) & (win(h, b["h"]) > 0.999) & (win(a, b.get("az")) > 0.999)
+            bad = np.zeros(len(p), bool)              # a vertex with a face it may not move
+            for poly in me.polygons:
+                vs = list(poly.vertices)
+                if not box[vs].any():
+                    continue
+                c, n = poly.center, poly.normal
+                if not ok_m[poly.material_index] or cover.ray_cast(c + Vector((0, 0, F["under"] / S)), Vector((0, 0, 1)),
+                                                                    0.4 / S)[0] is not None:
+                    bad[vs] = True                    # (more than `under` m below the lid)
+                elif seen_m[poly.material_index] and all(hull.ray_cast(c + n * (0.0005 / S), d, 3.0 / S)[0] is not None
+                                                         for d in dirs if d.dot(n) > 0.15):
+                    bad[vs] = True                    # (`seen` materials: only where seen from outside)
+            free = box & ~bad
+            free[e[nf == 1].ravel()] = False
+            lab = np.where(free, np.arange(len(p)), -1)   # free pieces touching no fixed vertex: loose
+            fe = e[free[e[:, 0]] & free[e[:, 1]]]
+            for _ in range(500):
+                m_ = np.minimum(lab[fe[:, 0]], lab[fe[:, 1]])
+                new = lab.copy()
+                np.minimum.at(new, fe[:, 0], m_)
+                np.minimum.at(new, fe[:, 1], m_)
+                if (new == lab).all():
+                    break
+                lab = new
+            edge_fix = (free[e[:, 0]] & ~free[e[:, 1]]) | (~free[e[:, 0]] & free[e[:, 1]])
+            held = np.unique(lab[e[edge_fix].ravel()])
+            loose = free & ~np.isin(lab, held[held >= 0])
+            if not loose.any():
+                break
+            bm = bmesh.new()
+            bm.from_mesh(me)
+            bm.verts.ensure_lookup_table()
+            bmesh.ops.delete(bm, geom=[bm.verts[i] for i in np.flatnonzero(loose)], context="VERTS")
+            bm.to_mesh(me)
+            bm.free()
+            me.update()
+            print("PREP fair %s: %d loose vertices out" % (F["obj"], loose.sum()))
+        deg = np.maximum(np.bincount(e[:, 0], minlength=len(p)) + np.bincount(e[:, 1], minlength=len(p)), 1)
+
+        def lap(x):                                   # x - neighbours' mean, per column
+            s_ = np.stack([np.bincount(e[:, 0], x[e[:, 1], c], len(p)) + np.bincount(e[:, 1], x[e[:, 0], c], len(p))
+                           for c in range(3)], 1)
+            return x - s_ / deg[:, None]
+
+        def lapT(y):                                  # L^T y = y - sum over neighbours j of y_j / deg_j
+            z_ = y / deg[:, None]
+            s_ = np.stack([np.bincount(e[:, 0], z_[e[:, 1], c], len(p)) + np.bincount(e[:, 1], z_[e[:, 0], c], len(p))
+                           for c in range(3)], 1)
+            return y - s_
+
+        def A(v):
+            x = np.zeros_like(p)
+            x[free] = v
+            return lapT(lap(x))[free]
+        for rnd in range(6):                          # (the nose's middle: no vertex `ahead` m forward)
+            x0 = p.copy()
+            x0[free] = 0
+            rhs = -lapT(lap(x0))[free]
+            v = p[free].copy()                        # conjugate gradients from where they are
+            rr = rhs - A(v)
+            d = rr.copy()
+            r2 = (rr * rr).sum(0)
+            for it in range(F.get("iters", 3000)):
+                Ad = A(d)
+                al = r2 / np.maximum((d * Ad).sum(0), 1e-30)
+                v += d * al
+                rr -= Ad * al
+                r2n = (rr * rr).sum(0)
+                if np.sqrt(r2n.max()) < 1e-9:
+                    break
+                d = rr + d * (r2n / np.maximum(r2, 1e-30))
+                r2 = r2n
+            q = p.copy()
+            q[free] = v
+            ahead = free & ((q[:, 0] - p[:, 0]) * S > F.get("ahead", 9.0)) & (a < F.get("ahead_az", 9.0))
+            if not ahead.any():
+                break
+            free &= ~ahead
+        me.vertices.foreach_set("co", q.ravel())
+        me.update()
+        # the corners of every face touching a moved vertex: the area-weighted vertex normal of the new mesh
+        lv = np.empty(len(me.loops), np.int64)
+        me.loops.foreach_get("vertex_index", lv)
+        lt = np.empty(len(me.polygons), np.int64)
+        me.polygons.foreach_get("loop_total", lt)
+        lf = np.repeat(np.arange(len(me.polygons)), lt)
+        fn = np.empty(len(me.polygons) * 3)
+        me.polygons.foreach_get("normal", fn)
+        ar = np.empty(len(me.polygons))
+        me.polygons.foreach_get("area", ar)
+        fn = fn.reshape(-1, 3) * ar[:, None]
+        vn = np.stack([np.bincount(lv, fn[lf, c], len(p)) for c in range(3)], 1)
+        vn /= np.maximum(np.linalg.norm(vn, axis=1, keepdims=True), 1e-12)
+        cn = np.empty(len(me.loops) * 3, np.float32)
+        me.attributes["custom_normal"].data.foreach_get("vector", cn)
+        cn = cn.reshape(-1, 3)
+        k = free[lv]
+        cn[k] = vn[lv[k]]
+        me.attributes["custom_normal"].data.foreach_set("vector", cn.ravel())
+        allf = np.bincount(lf, free[lv], len(lt)) == lt   # faces of moved vertices only
+        mi = np.empty(len(me.polygons), np.int64)
+        me.polygons.foreach_get("material_index", mi)
+        mi[allf & np.isin(mi, [i for m in F.get("paint", ()) for i in slots(me, m)])] = slots(me, "Car Paint")[0]
+        me.polygons.foreach_set("material_index", mi)
+        me.update()
+        mv = np.stack([np.bincount(lf, vn[lv, c], len(lt)) for c in range(3)], 1)
+        fold = allf & ((fn * mv).sum(1) < 0)
+        # the `drop` materials left in the box unmoved (the lamps' insides under the lid's edge) go: the faired skin
+        # sank under them
+        inbox = np.bincount(lf, box[lv], len(lt)) > 0
+        gone = inbox & ~allf & np.isin(mi, [i for m in F.get("drop", ()) for i in slots(me, m)])
+        if gone.any():
+            bm = bmesh.new()
+            bm.from_mesh(me)
+            bm.faces.ensure_lookup_table()
+            bmesh.ops.delete(bm, geom=[bm.faces[i] for i in np.flatnonzero(gone)], context="FACES_ONLY")
+            bmesh.ops.delete(bm, geom=[v for v in bm.verts if not v.link_faces], context="VERTS")
+            bm.to_mesh(me)
+            bm.free()
+            me.update()
+        print("PREP fair %s: %d vertices, %d CG steps, max move %.1f mm, %d faces folded over" % (
+            F["obj"], free.sum(), it + 1, np.linalg.norm(q - p, axis=1).max() * S * 1000, int(fold.sum())),
+              "%d left inside dropped" % gone.sum())
+
+
+def smooth_normals(meshes, nose, yc):
+    """FIELD smooth_normals (round 8): each `obj`'s vertex normals (the mean of its corners') averaged with its
+    neighbours' `iters` times, in its box (u, h windows) and only across neighbours within `angle` deg (the lid's lip and
+    the panels' creases stay); a corner within `angle` of its vertex's takes it. The source's subsurf level 1 mesh lit
+    as patches of flat light on the frunk lid (official smooth)"""
+    for F in FIELD["smooth_normals"]:
+        me = next(o for o in meshes if o.name == F["obj"]).data
+        p = np.array([v.co[:] for v in me.vertices])
+        u, h = (nose - p[:, 0]) * S, p[:, 2] * S
+        box = (win(u, F.get("u")) > 0.999) & (win(h, F.get("h")) > 0.999)
+        lv = np.empty(len(me.loops), np.int64)
+        me.loops.foreach_get("vertex_index", lv)
+        cn = np.empty(len(me.loops) * 3, np.float32)
+        me.attributes["custom_normal"].data.foreach_get("vector", cn)
+        cn = cn.reshape(-1, 3).astype(float)
+        vn = np.stack([np.bincount(lv, cn[:, c], len(p)) for c in range(3)], 1)
+        vn /= np.maximum(np.linalg.norm(vn, axis=1, keepdims=True), 1e-12)
+        e = np.array([ed.vertices[:] for ed in me.edges])
+        ca = np.cos(np.radians(F["angle"]))
+        for _ in range(F["iters"]):
+            ok = ((vn[e[:, 0]] * vn[e[:, 1]]).sum(1) > ca)[:, None]
+            s_ = vn.copy()
+            np.add.at(s_, e[:, 0], vn[e[:, 1]] * ok)
+            np.add.at(s_, e[:, 1], vn[e[:, 0]] * ok)
+            s_ /= np.maximum(np.linalg.norm(s_, axis=1, keepdims=True), 1e-12)
+            vn = np.where(box[:, None], s_, vn)
+        k = box[lv] & ((cn * vn[lv]).sum(1) > ca)
+        cn[k] = vn[lv[k]]
+        me.attributes["custom_normal"].data.foreach_set("vector", cn.astype(np.float32).ravel())
+        me.update()
+        print("PREP smooth normals %s: %d corners" % (F["obj"], k.sum()))
+
+
 def cam_px(P, view, yc, ftyre_x):
     """world points (source units, n x 3) -> FIELD cams[view] pixels (n x 2), each on the camera's side of the centre
     line (mirrored: both sides of the car alike), and that side's camera centre (world); decals()'s world() inverted"""
@@ -1181,6 +1394,10 @@ def main():
         me.update()
     if FIELD.get("fascia"):
         fascia(meshes, nose, yc, filled)
+    if FIELD.get("fair"):
+        fair(meshes, nose, yc)
+    if FIELD.get("smooth_normals"):
+        smooth_normals(meshes, nose, yc)
     ftyre = next(o for o in meshes if o.name.startswith("Tyre") and (nose - pts(o)[:, 0].mean()) * S < 2.5)
     fx = pts(ftyre)[:, 0]
     arch_lip(meshes, nose, yc, (fx.min() + fx.max()) / 2)
