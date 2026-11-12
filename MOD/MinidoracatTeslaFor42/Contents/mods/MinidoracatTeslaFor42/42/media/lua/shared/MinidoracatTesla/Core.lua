@@ -127,7 +127,7 @@ T.Specs = {
             { name = "SatinAbyssBlue", weight = 1, h = 0.566, s = 1.0, v = 0.312 },
             { name = "CopperTintedClear", weight = 1, h = 0.063, s = 0.837, v = 0.441 },
             { name = "SatinCrimsonRed", weight = 1, h = 0.986, s = 1.0, v = 0.244 },
-            { name = "SatinIridescentPurple", weight = 1, h = 0.897, s = 0.557, v = 0.164 },
+            { name = "SatinIridescentPurple", weight = 1, h = 0.894, s = 0.557, v = 0.164 },
             { name = "SlipGrey", weight = 1, h = 0.807, s = 0.49, v = 0.594 },
         },
     },

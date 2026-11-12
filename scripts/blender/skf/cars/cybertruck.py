@@ -247,20 +247,22 @@ CAR = dict(
     # charge port (owner's manual p.190): above the driver's side rear wheel, on the arch's upper trim edge (mesh y
     # pre-centre, z; the rear axle at y -1.39)
     PORT=(-1.405, 0.917),                 # (-1.43, 0.88) through prep_cybertruck.py's field
-    # ---- cabin.py (mesh coords, centred)
-    CABIN_FLOOR=-0.453,                    # under the seated feet (seat_head.py feet)
-    CABIN_FRONT_Y=1.45,
-    TRUNK_Y=-1.50,                         # (no trunk: the cabin floor runs to its rear wall)
-    CABIN_REAR_Y=-0.623,                   # the cabin's rear wall: 5 cm inside the bed's front wall
-    CABIN_ZC=-0.08,
+    # ---- cabin.py (mesh coords, centred): the official fit moved the centre (centre_y -0.0069, zmid -0.0026: nose and
+    # tail, lowest point), so these are their old places in the body + (0, 0.0069, 0.0026)
+    CABIN_FLOOR=-0.4504,                   # under the seated feet (seat_head.py feet)
+    CABIN_FRONT_Y=1.4569,
+    TRUNK_Y=-1.4931,                       # (no trunk: the cabin floor runs to its rear wall)
+    CABIN_REAR_Y=-0.6161,                  # the cabin's rear wall: 5 cm inside the bed's front wall
+    CABIN_ZC=-0.0774,
     SEAM_CLEAR=0.065,
     SEATS=dict(front=dict(w=0.44, back=0.52, recline=32, dy=0.061, dz=-0.135),
                rear=dict(base=1.20, cushions=((-0.40, 0.38), (0, 0.36), (0.40, 0.38)), back=0.46, recline=10, dy=0.032,
                          dz=-0.124),
                sill=None, bin=None),
     PARCEL=None,
-    DASH=dict(console=(0, 0.45, -0.32), dash=(0, 1.15, -0.02), trim=(0, 0.975, -0.01), light=(0, 0.977, -0.04),
-              stand=(0, 0.98, 0.10), screen=(0, 0.95, 0.18), wheel=(0.657, 0.197)),   # wheel: the reclined driver's hands
+    DASH=dict(console=(0, 0.4569, -0.3174), dash=(0, 1.1569, -0.0174), trim=(0, 0.9819, -0.0074),
+              light=(0, 0.9839, -0.0374), stand=(0, 0.9869, 0.1026), screen=(0, 0.9569, 0.1826),
+              wheel=(0.6639, 0.1996)),     # wheel: the reclined driver's hands
     DOOR_CARD={
         "front": [
             ("upper trim", "end", (0.05, 0.10), -0.050, None, 0.060, 0.030, "dash", 0.012),

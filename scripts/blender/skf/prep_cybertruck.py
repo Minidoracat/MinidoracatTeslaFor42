@@ -107,15 +107,21 @@ FIELD = dict(
     corner=dict(p1=(0.458, 2.322, 0.835), p2=(0.715, 1.712, 1.039), p3=(0.759, 2.115, 0.9073), d=(-0.044, -0.017),
                 slope=(1.039 - 0.835) / (2.322 - 1.712), band=0.012, zcut=0.83, t=(1.95, 2.11), u=(0.80, 0.907),
                 zlow=0.56, skip=("Cube.004",)),
-    # rear bumper's lower block (skid())
-    skid=((-1.84, 0.31, 0.250, 0.79, 0.74), (-2.06, 0.37, 0.280, 0.76, 0.70), (-2.18, 0.40, 0.293, 0.60, 0.53)),
+    # keep (move()): side-view boxes ((y, z) lo, hi) and |x| (none of the move inboard of x_in, all of it from x_out):
+    # the front footwell's toe board behind the front arch (it moved with the arch's rear leg, 1-2 cm into the front
+    # passengers' feet: seat_head.py legs -11 mm, 4 before)
+    keep=(((1.05, 0.40), (1.50, 0.95), 0.52, 0.68),),
+    # rear bumper's lower block (skid()): official SIDE bottom z 0.224-0.276 from y -1.85 back to -2.24, its rear face
+    # leaning back to (-2.27, 0.375); REAR34 its back |x| 0.62 / 0.55
+    skid=((-1.84, 0.31, 0.226, 0.79, 0.74), (-2.06, 0.37, 0.245, 0.76, 0.70), (-2.24, 0.40, 0.274, 0.60, 0.53),
+          (-2.265, 0.40, 0.372, 0.60, 0.55)),
     # the off-road light bar (light_bar()) on the windshield, top at its visible upper edge (FIELD ctrl a4's target),
     # foot a point further down the glass (the windshield's lower edge at the cowl); ~1.3 m x 10 cm x 3.6 cm (the
     # glass's width between the A-pillars: service manual photos), 3 mm off the glass
     lightbar=dict(top=(0.561, 1.4288), foot=(1.702, 1.030), x=0.55, l=0.085, t=0.030, gap=0.003, lens="Gluss Button"),
-    # the A-pillar wiper (Cube.008, parked up the driver's pillar) 2.6 x as far off the glass as from its lowest point
-    # (official SIDE: its top 8-12 px over ours, the lower end clear of the hood); the glass: its top edge, the cowl
-    wiper=dict(obj="Cube.008", k=2.6, glass=((0.561, 1.4288), (1.702, 1.030))),
+    # the A-pillar wiper (Cube.008, parked up the driver's pillar) k x as tall off its foot along it (official SIDE:
+    # its top 8-12 px over ours, on the pillar with no gap under it); the glass: its top edge, the cowl
+    wiper=dict(obj="Cube.008", k=3.5, glass=((0.561, 1.4288), (1.702, 1.030))),
     # the tail bar's ends (tail_ends()): the corner blocks' rear face (y, z) and how far out, |x| from the tailgate's
     # edge to the corner, the band's and the red strip's z (the source's Body.003 / Cube.030 heights, mapped)
     tailends=dict(face=(-2.334, 1.1), off=0.002, x=(0.668, 0.760), band=(1.067, 1.135), strip=(1.105, 1.121),
@@ -231,7 +237,26 @@ def corner(g):
 
 
 def move(maps, name, g):
-    """Grid points of object `name` -> (new points, Jacobians). maps: object -> Map, built on first use."""
+    """Grid points of object `name` -> (new points, Jacobians). maps: object -> Map, built on first use. FIELD keep:
+    inside each side-view box the move fades out inboard, from all of it at |x| x_out to none at x_in (the body's
+    inner panels behind the arches, the front footwell's toe board, stay where the cabin and the passengers' feet
+    were fitted)."""
+    q, J = _warp(maps, name, g)
+    for (y0, z0), (y1, z1), x_in, x_out in FIELD["keep"]:
+        box = (g[:, 1] > y0) & (g[:, 1] < y1) & (g[:, 2] > z0) & (g[:, 2] < z1) & (np.abs(g[:, 0]) < x_out)
+        if not box.any():
+            continue
+        ax = np.abs(g[box, 0])
+        w = np.clip((ax - x_in) / (x_out - x_in), 0, 1)
+        dw = np.where((ax > x_in) & (ax < x_out), np.sign(g[box, 0]) / (x_out - x_in), 0.0)
+        d = q[box] - g[box]
+        J[box] = np.eye(3) + w[:, None, None] * (J[box] - np.eye(3)) + d[:, :, None] * np.c_[dw, 0 * dw, 0 * dw][:, None, :]
+        q[box] = g[box] + w[:, None] * d
+    return q, J
+
+
+def _warp(maps, name, g):
+    """move() before FIELD keep."""
     if name.startswith("Tire"):          # whole, with its axle
         q = g.copy()
         q[:, 1] += np.where(g[:, 1] > 0, FIELD["axle"]["front"], FIELD["axle"]["rear"])   # all four in one object
@@ -246,7 +271,10 @@ def move(maps, name, g):
         n = np.array([0.0, z0 - z1, y1 - y0])
         n /= np.linalg.norm(n) * np.sign(n[2])
         h = (q - [0.0, y1, z1]) @ n
-        q = q + np.outer((wp["k"] - 1) * (h - h.min()), n)
+        yb = np.arange(q[:, 1].min(), q[:, 1].max() + 0.02, 0.02)      # its foot along it: per 2 cm the lowest
+        hb = np.array([h[(q[:, 1] >= y) & (q[:, 1] < y + 0.02)].min(initial=np.inf) for y in yb])
+        ok = np.isfinite(hb)
+        q = q + np.outer((wp["k"] - 1) * (h - np.interp(q[:, 1], yb[ok] + 0.01, hb[ok])), n)
         J = np.einsum("ij,njk->nik", np.eye(3) + (wp["k"] - 1) * np.outer(n, n), J)
     if name.startswith(FIELD["corner"]["skip"]):
         return q, J
