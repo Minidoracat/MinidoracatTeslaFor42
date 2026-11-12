@@ -54,8 +54,12 @@ FIELD = dict(
         dict(d=(-0.020, 0), u=(1.30, 1.53, 1.53, 1.78), h=(0.40, 0.55)),           # front door's front seam +5 px
         dict(d=(-0.026, 0), u=(2.35, 2.75, 2.75, 3.15)),                          # B seam +6..+7 px
         dict(d=(-0.020, 0), u=(3.70, 3.98, 3.98, 4.25), h=(0.62, 0.75)),           # falcon rear seam +3..+6 px
-        dict(d=(0.19, 0), u=(4.50, 4.85), h=(0.10, 0.22, 0.72, 0.85), az=(0.30, 0.92)),   # tail corners -24..-29
-        dict(d=(0.10, 0), u=(4.50, 4.85), h=(0.78, 0.88, 1.15, 1.25), az=(0.30, 0.92)),   # (lamps) -14..-15 px
+        # the rear's plan boxier, rising monotonic out to the corners (official SIDE tail -24..-29 px, lamps -14..-15;
+        # REAR34 -28..-30): du over az, the bumper's full, the lamps' 0.55 of it (complementary h windows)
+        dict(prof=((0, 0), (0.12, 0), (0.2, 0.012), (0.4, 0.04), (0.6, 0.08), (0.7, 0.11), (0.8, 0.15), (0.92, 0.17), (1.1, 0.17)),
+             axis="az", u=(4.50, 4.85), h=(0.10, 0.22, 0.72, 0.88)),
+        dict(prof=((0, 0), (0.12, 0), (0.2, 0.007), (0.4, 0.022), (0.6, 0.044), (0.7, 0.06), (0.8, 0.082), (0.92, 0.094),
+                   (1.1, 0.094)), axis="az", u=(4.50, 4.85), h=(0.72, 0.88, 1.15, 1.25)),
         # the nose under the lid's lip forward (official SIDE nose @y520 +7 px; the frunk jamb under the lip stood 14 mm
         # out of it)
         dict(d=(-0.022, 0), u=(-1, -0.5, 0.25, 0.45), h=(0.56, 0.66, 0.705, 0.732), az=(0.75, 0.55)),
@@ -74,16 +78,12 @@ FIELD = dict(
         dict(d=(-0.08, 0), u=(-1, -0.5, 0.25, 0.55), h=(0.18, 0.26, 0.30, 0.40), az=(0.45, 0.70)),
         dict(d=(0, -0.05), u=(-1, -0.5, 0.30, 0.60), h=(0.20, 0.36, 0.36, 0.50)),
         dict(d=(0, -0.04), u=(-1, -0.5, 0.30, 0.60), h=(0.30, 0.20), az=(0.55, 0.40)),
-        # the tail lamps 7 cm shorter from below and their front tip back (official REAR34: the housing 58 px tall
-        # against 83, SIDE: front -13 px, tip +13.5 px)
-        dict(d=(0, 0.07), u=(4.30, 4.50, 5.1, 5.2), h=(0.65, 0.86, 0.88, 1.12), az=(0.35, 0.60)),
-        dict(d=(0.08, 0), u=(4.25, 4.45, 4.55, 4.85), h=(0.72, 0.85, 0.95, 1.08), az=(0.78, 0.92)),
     ),
-    # faces recoloured by box (source frame, before the field): obj, mat -> to; u, h, az windows (lo, hi). The tail
-    # lamps' lens below its lower bar smoked, its bottom strip a dim reflector (official REAR34: a red C light guide in
-    # a smoked housing (32, 10, 12), the reflector (100, 24, 27))
-    recolour=(dict(obj="Car Body", mat="Red Light Glass", to="Lamp_Smoke", u=(4.5, 9), h=(0.91, 0.97)),
-              dict(obj="Car Body", mat="Red Light Glass", to="Lamp_Reflector", u=(4.5, 9), h=(0.6, 0.91)),
+    # faces recoloured by box (source frame, before the field): obj, mat -> to; u, h, az windows (lo, hi).
+    # The tail lamps body colour, lens and housing (the source's lamp sat 5-16 px low and had another shape: official
+    # REAR34 / SIDE); the lamps are FIELD decals Tail*_X
+    recolour=(*(dict(obj=o, mat=m, to="Car Paint", u=(4.5, 9), h=(0.80, 1.11), az=(0.38, 0.95))
+                for o in ("Car Body", "Trunk") for m in ("Red Light Glass", "Black Car Paint")),
               # the pre-2021 fog lamp pockets in the front bumper's corners body colour (official FRONT34: smooth,
               # with the air curtain slot above: FIELD decals Slot_X)
               *(dict(obj="Car Body", mat=m, to="Car Paint", u=(-1, 0.45), h=(0.34, 0.64), az=(0.58, 0.95))
@@ -130,21 +130,42 @@ FIELD = dict(
                       (520, 542.5), (500, 541), (480, 542), (474, 548), (468, 557), (463, 550), (456, 542),
                       (445, 538), (432, 534), (428, 531))),
         # the headlamps' smoked lens (official FRONT34, SIDE)
-        dict(name="Lens_X", view="FRONT34", mat="Lamp_Lens", on=("Car Body",), off=0.008, u=(0.1, 0.75),
+        dict(name="Lens_X", view="FRONT34", compete=("SIDE",), mat="Lamp_Lens", on=("Car Body",), off=0.008, u=(0.1, 0.75),
              outline=((574, 527), (600, 516), (650, 506), (700, 497), (738, 494), (745, 496), (740, 500), (730, 510),
                       (700, 522), (650, 530), (600, 531), (580, 528.5))),
-        dict(name="LensSide_X", view="SIDE", mat="Lamp_Lens", on=("Car Body",), off=0.008, u=(0.1, 0.75),
+        dict(name="LensSide_X", view="SIDE", compete=("FRONT34",), mat="Lamp_Lens", on=("Car Body",), off=0.008, u=(0.1, 0.75),
              outline=((400, 503), (404, 498), (420, 492), (440, 487), (460, 483), (471, 481), (466, 488), (455, 497),
                       (440, 504), (420, 507), (405, 508))),
         # the headlamps' daytime light strip along their lower edge (official FRONT34: a smoked lamp, a white strip
         # under it running up round its outer end)
-        dict(name="Drl_X", view="FRONT34", mat="Lamp_DRL", on=("Car Body",), off=0.008, u=(0.1, 0.75),
+        dict(name="Drl_X", view="FRONT34", compete=("SIDE",), mat="Lamp_DRL", on=("Car Body",), off=0.008, u=(0.1, 0.75),
              outline=((574, 525.5), (600, 533.5), (650, 534.5), (700, 526.5), (737, 509.5), (750, 497.5), (755, 500.5),
                       (742, 515), (702, 532), (650, 540), (600, 539), (573, 530))),
         # its front end from the side: a hook down the lamp's front and along under it (official SIDE)
-        dict(name="DrlSide_X", view="SIDE", mat="Lamp_DRL", on=("Car Body",), off=0.008, u=(0.0, 0.6),
+        dict(name="DrlSide_X", view="SIDE", compete=("FRONT34",), mat="Lamp_DRL", on=("Car Body",), off=0.008, u=(0.0, 0.6),
              outline=((396, 503), (401, 502), (402, 510), (430, 509), (455, 505), (456, 508), (430, 513), (403, 516),
                       (398, 517), (396, 510))),
+        # the tail lamps (official REAR34, SIDE; REAR34's on top, the SIDE's under it add what REAR34 does not reach; the SIDE's red guide
+        # fell outside REAR34's housing: REAR34's alone):
+        # the black housing (its upper corner's grey in REAR34 is a reflection:
+        # dark in SIDE), the red C light guide
+        # (lit: cars/model_x.py LAMPS) and the dim reflector bar; across the tailgate's seam (_T halves on the gate)
+        dict(name="TailLamp_X", view="REAR34", mat="Lamp_Housing", on=("Car Body", "Trunk"), off=0.007, u=(4.3, 5.2),
+             outline=((1129.2, 473.3), (1150, 458.3), (1170, 446.7), (1190, 437.5), (1206.7, 430), (1220, 425.8),
+                      (1253.3, 424.2), (1286.7, 425), (1303.3, 428.3), (1311.7, 438.3), (1320, 453.3), (1324, 464),
+                      (1278, 468.3), (1266.7, 478.3), (1261.7, 481.7), (1203.3, 481.7), (1153.3, 481.7),
+                      (1135, 479.2))),
+        dict(name="TailGuide_X", view="REAR34", mat="Tail_Guide", on=("Car Body", "Trunk"), off=0.010, u=(4.3, 5.2),
+             outline=((1198.3, 460), (1201.7, 446.7), (1208.3, 434.2), (1220, 427.5), (1253.3, 426.7), (1300, 428.3),
+                      (1309.2, 438.3), (1308.3, 442.5), (1300, 440), (1296.7, 436.7), (1253.3, 435), (1226.7, 435),
+                      (1221.7, 440), (1220, 453.3), (1221.7, 455), (1318.3, 455), (1319.2, 463.3), (1200, 464.2))),
+        dict(name="TailRefl_X", view="REAR34", mat="Lamp_Reflector", on=("Car Body", "Trunk"), off=0.010,
+             u=(4.3, 5.2), outline=((1143, 466.5), (1186, 464), (1186, 470.5), (1143, 471))),
+        dict(name="TailLampS_X", view="SIDE", mat="Lamp_Housing", on=("Car Body", "Trunk"), off=0.004, u=(4.3, 5.2),
+             outline=((1456.3, 465.6), (1477.5, 450), (1496.3, 438.8), (1510, 430.6), (1515, 427.5), (1525, 426.9),
+                      (1528.8, 430), (1530.6, 460), (1530, 471.3), (1515, 473.1), (1477.5, 471.9), (1460, 468.8))),
+        dict(name="TailReflS_X", view="SIDE", mat="Lamp_Reflector", on=("Car Body", "Trunk"), off=0.006,
+             u=(4.3, 5.2), outline=((1468.8, 458.1), (1503.8, 456.9), (1503.8, 463.1), (1468.8, 463.1))),
         # the lower grille across the front (official FRONT34; the mirror copy covers the other half)
         dict(name="Intake_X", view="FRONT34", mat="Intake_Black", on=("Car Body",), off=0.003,
              outline=((430, 622.5), (550, 632.5), (556, 635), (570, 652.5), (585, 670), (560, 666), (495, 665),
@@ -184,8 +205,8 @@ class Field:
         du, dh, da = np.zeros_like(u), np.zeros_like(u), np.zeros_like(u)
         for t in FIELD["terms"]:
             w = win(u, t.get("u")) * win(h, t.get("h")) * win(az, t.get("az"))
-            if "prof" in t:                # du over h from a table (h, du)
-                du += np.interp(h, *zip(*t["prof"])) * w
+            if "prof" in t:                # du over h (or `axis` az) from a table (x, du)
+                du += np.interp(az if t.get("axis") == "az" else h, *zip(*t["prof"])) * w
                 continue
             d = t["d"]
             du, dh, da = du + d[0] * w, dh + d[1] * w, da + (d[2] if len(d) > 2 else 0) * w
@@ -363,14 +384,53 @@ def spoiler(bpy, meshes, nose, yc):
     return o
 
 
+def inside(p, loops):
+    """even-odd: points p (n, 2) inside the loops (an outline and its holes)"""
+    k = np.zeros(len(p), bool)
+    for lp in loops:
+        a, b = lp, np.roll(lp, -1, 0)
+        for (x0, y0), (x1, y1) in zip(a, b):
+            c = (y0 > p[:, 1]) != (y1 > p[:, 1])
+            k ^= c & (p[:, 0] < x0 + (p[:, 1] - y0) * (x1 - x0) / np.where(y1 == y0, 1e-9, y1 - y0))
+    return k
+
+
+def decal_mesh(loops, step):
+    """A decal's flat mesh in pixels: the loops resampled every `step`, a `step` grid inside, constrained Delaunay;
+    -> (points, triangles)"""
+    from mathutils import Vector
+    from mathutils.geometry import delaunay_2d_cdt
+    pts, edges = [], []
+    for lp in loops:
+        ring = []
+        for a, b in zip(lp, np.roll(lp, -1, 0)):
+            n = max(1, int(np.ceil(np.linalg.norm(b - a) / step)))
+            ring += [a + (b - a) * t for t in np.arange(n) / n]
+        i0 = len(pts)
+        pts += ring
+        edges += [(i0 + i, i0 + (i + 1) % len(ring)) for i in range(len(ring))]
+    lo, hi = loops[0].min(0), loops[0].max(0)
+    g = np.stack(np.meshgrid(np.arange(lo[0] + step / 2, hi[0], step), np.arange(lo[1] + step / 2, hi[1], step)),
+                 -1).reshape(-1, 2)
+    g = g[inside(g, loops)]
+    b = np.array(pts)                                 # (grid points off the outline by half a step)
+    g = g[np.min(np.linalg.norm(g[:, None] - b[None], axis=2), 1) > step / 2] if len(g) else g
+    allp = [Vector(p) for p in [*pts, *g]]
+    V, _, F, *_ = delaunay_2d_cdt(allp, edges, [], 0, 1e-6)
+    V = np.array([v[:] for v in V])
+    F = [f for f in F if inside(V[list(f)].mean(0)[None], loops)[0]]
+    return V, F
+
+
 def decals(bpy, meshes, nose, yc, ftyre_x):
     """FIELD decals: the mod's own flat pieces drawn in an official view's pixels (outline, VIEW) and cast from that
     view's fitted camera (FIELD cams) onto the car as prepped (the `on` objects), `off` towards the camera; both sides
-    (mirrored across the centre line). One object per decal, its material `mat` (cars/model_x.py MAT_RGB)."""
+    (mirrored across the centre line). One object per decal, its material `mat` (cars/model_x.py MAT_RGB); the faces
+    lying on a lid or door (`on` beyond the body: the tailgate's lamp halves) in an object `<name>_<that object's
+    initial>` riding it (cars/model_x.py PART_OBJS / SHELL_OBJS). `holes`: loops cut out of the outline."""
     import bmesh
     from mathutils import Vector
     from mathutils.bvhtree import BVHTree
-    from mathutils.geometry import tessellate_polygon
     cams, (fy, gnd) = FIELD["cams"], FIELD["anchor"]
     dy = fy / K - S * (ftyre_x - SRC_C[0])            # the cams' frame: the front tyre centre and the ground on its anchor
     dz = gnd / K
@@ -391,46 +451,64 @@ def decals(bpy, meshes, nose, yc, ftyre_x):
         R, C = np.array(c["R"]), np.array(c["C"])
         eye = world(C)
         bm = bmesh.new()
-        ring = [bm.verts.new((x, y, 0)) for x, y in dc["outline"]]
-        for tri in tessellate_polygon([[Vector((x, y, 0)) for x, y in dc["outline"]]]):   # (bmesh's EAR_CLIP left
-            bm.faces.new([ring[i] for i in tri])                                         # thin bent strips)
-        for _ in range(8):                            # densify: every edge within `step` px
-            long_ = [e for e in bm.edges if e.calc_length() > dc.get("step", 6.0)]
-            if not long_:
-                break
-            bmesh.ops.subdivide_edges(bm, edges=long_, cuts=1, use_grid_fill=False)
-            bmesh.ops.triangulate(bm, faces=[f for f in bm.faces if len(f.verts) > 3])
-        off = []                                      # vertices whose ray met nothing or another part first
+        loops = [np.array(lp, float) for lp in (dc["outline"], *dc.get("holes", ()))]
+        P, E = decal_mesh(loops, dc.get("step", 6.0))
+        vs = [bm.verts.new((x, y, 0)) for x, y in P]
+        for t in E:
+            bm.faces.new([vs[i] for i in t])
+        off, lay, nrm = [], {}, {}                    # vertices whose ray met nothing or another part first; owners
+        others = [world(cams[w]["C"]) for w in dc.get("compete", ())]
         for v in bm.verts:
             d = R.T @ np.array([(v.co.x - c["w"] / 2) / c["f"], (v.co.y - c["h"] / 2) / c["f"], 1.0])
             ray = (world(C + d) - eye).normalized()
-            hit, _, fi, _ = bvh.ray_cast(eye, ray)
+            hit, n, fi, _ = bvh.ray_cast(eye, ray)
             if hit is None:                           # past the car's outline
                 off.append(v)
                 continue
             if owner[fi] not in dc["on"] or pmat[fi] in dc.get("skip", ()) or not dc.get("u", (-9, 9))[0] < (nose - hit.x) * S < dc.get("u", (-9, 9))[1]:
                 off.append(v)
-            v.co = hit - ray * (dc["off"] / S)
+            lay[v] = owner[fi]
+            n = n if n.dot(ray) < 0 else -n                # off the surface along its normal (a ray-wise offset
+            nrm[v] = n                                     # sank in where the view grazes it)
+            v.co = hit + n * (dc["off"] / S)
         bmesh.ops.delete(bm, geom=off, context="VERTS")
+        if others:      # compete: views also drawing this part; a face stays where its own view meets it squarest
+            drop = []
+            for f in bm.faces:
+                n = sum((nrm[v] for v in f.verts), Vector()).normalized()
+                p = f.calc_center_median()
+                own = n.dot((eye - p).normalized())
+                if any(n.dot((e - p).normalized()) > own for e in others):
+                    drop.append(f)
+            bmesh.ops.delete(bm, geom=drop, context="FACES")
+        rider = {f: next((lay[v] for v in f.verts if lay[v] != dc["on"][0]), dc["on"][0]) for f in bm.faces}
         bm.normal_update()
         for f in bm.faces:                            # facing the camera
             if f.normal.dot(eye - f.calc_center_median()) < 0:
                 f.normal_flip()
-        mir = bmesh.ops.duplicate(bm, geom=bm.verts[:] + bm.edges[:] + bm.faces[:])["geom"]
-        for e in mir:
-            if isinstance(e, bmesh.types.BMVert):
-                e.co.y = 2 * yc - e.co.y
-        for f in [e for e in mir if isinstance(e, bmesh.types.BMFace)]:
-            f.normal_flip()
-        bm.normal_update()
-        me = bpy.data.meshes.new(dc["name"])
-        bm.to_mesh(me)
+        for on in dc["on"]:
+            part = bm.copy()
+            bmesh.ops.delete(part, geom=[f for f, g in zip(part.faces, bm.faces) if rider[g] != on], context="FACES")
+            if not part.faces:
+                part.free()
+                continue
+            mir = bmesh.ops.duplicate(part, geom=part.verts[:] + part.edges[:] + part.faces[:])["geom"]
+            for e in mir:
+                if isinstance(e, bmesh.types.BMVert):
+                    e.co.y = 2 * yc - e.co.y
+            for f in [e for e in mir if isinstance(e, bmesh.types.BMFace)]:
+                f.normal_flip()
+            part.normal_update()
+            name = dc["name"] if on == dc["on"][0] else "%s_%s" % (dc["name"], on[0])
+            me = bpy.data.meshes.new(name)
+            part.to_mesh(me)
+            part.free()
+            me.materials.append(bpy.data.materials.get(dc["mat"]) or bpy.data.materials.new(dc["mat"]))
+            o = bpy.data.objects.new(name, me)
+            bpy.context.scene.collection.objects.link(o)
+            made.append(o)
+            print("PREP decal %s: %d faces" % (name, len(me.polygons)))
         bm.free()
-        me.materials.append(bpy.data.materials.get(dc["mat"]) or bpy.data.materials.new(dc["mat"]))
-        o = bpy.data.objects.new(dc["name"], me)
-        bpy.context.scene.collection.objects.link(o)
-        made.append(o)
-        print("PREP decal %s: %d faces" % (dc["name"], len(me.polygons)))
     return made
 
 

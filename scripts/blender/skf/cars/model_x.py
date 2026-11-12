@@ -12,6 +12,9 @@ unless noted; numbers and sources: .claude/skills/tesla-dev/references/models-mo
 """
 import math
 
+# the tail lamp decals' halves on the tailgate (prep_model_x.py FIELD decals Tail*_X: <name>_T)
+TAIL_T = tuple(n + "_T" for n in ("TailLamp_X", "TailGuide_X", "TailRefl_X", "TailLampS_X", "TailReflS_X"))
+
 CAR = dict(
     # ---- pzveh: paths and names
     TMP="skf_mx",
@@ -114,16 +117,19 @@ CAR = dict(
     DECIMATE={},                           # done in the prep (material borders held)
     PAINT_MAT="Car_Paint",
     MAT_RGB={"Black_Car_Paint": (24, 24, 26), "Aluminum": (28, 28, 30), "Light_Glass": (30, 30, 32),
-             "Light": (210, 210, 214), "Lamp_Lens": (60, 60, 64), "Lamp_DRL": (236, 240, 246), "Red_Light_Glass": (240, 100, 100), "Lamp_Smoke": (32, 10, 12), "Lamp_Reflector": (100, 24, 27),
-             "Cam_Black": (36, 36, 39), "Slot_Black": (18, 18, 19), "Marker_Red": (36, 18, 17), "Band_Black": (14, 14, 16),
-             "Intake_Black": (18, 18, 20),
-             "Mirror": (58, 64, 72), "Window_Glass": (14, 14, 16), "badge_cam": (96, 98, 104)},
+             "Light": (210, 210, 214), "Red_Light_Glass": (100, 24, 27), "Mirror": (58, 64, 72),
+             "Window_Glass": (14, 14, 16), "badge_cam": (96, 98, 104),
+             # prep_model_x.py FIELD decals (official renders sampled)
+             "Lamp_Lens": (60, 60, 64), "Lamp_DRL": (236, 240, 246), "Tail_Guide": (255, 128, 124),
+             "Lamp_Housing": (23, 21, 23), "Lamp_Reflector": (100, 24, 27),
+             "Cam_Black": (36, 36, 39), "Slot_Black": (18, 18, 19), "Marker_Red": (36, 18, 17),
+             "Band_Black": (14, 14, 16), "Intake_Black": (18, 18, 20)},
     GLASS_MATS=("Window_Glass",),
     GLASS_OPAQUE=(),
     GLASS_BACKS=("WinLH", "WinLT", "WinRH", "WinRT"),   # the source's panes are one-sided
     ROOF_PANE="-",
     MIRROR_CAP="-",
-    LAMPS=dict(head=("Lamp_Lens", "Lamp_DRL"), tail=("Red_Light_Glass",), tail_z=0.6, tail_y=-1.5, blade=None),
+    LAMPS=dict(head=("Lamp_Lens", "Lamp_DRL"), tail=("Tail_Guide",), tail_z=0.6, tail_y=-1.5, blade=None),
     # side-view lines (y, z): only the B-pillar seam S is used (the cabin shell's ring); the doors are source objects
     LINES={
         "S": ((-0.150, 0.20), (-0.214, 0.90)),
@@ -143,12 +149,13 @@ CAR = dict(
     # door panels by component centre are off: PART_OBJS / SIDE_PARTS give whole objects
     PANELS=dict(x=9.0, z=0.0, front=(9.0, 9.0), rear=(9.0, 9.0), gate=(-9.0, 9.0), lid=(9.0, 9.0)),
     GUARDS=dict(front=(0.85, 0.95, 0.45), rear=(-1.19, 1.15, 0.50)),
-    PART_OBJS={"EngineDoor": ("Bonnet",), "TrunkDoor": ("Trunk", "Spoiler_X")},   # (the prep's spoiler rides the tailgate)
+    # (the prep's spoiler and the tail lamp decals' halves on the gate ride the tailgate)
+    PART_OBJS={"EngineDoor": ("Bonnet",), "TrunkDoor": ("Trunk", "Spoiler_X", *TAIL_T)},
     SIDE_PARTS={"Front_Door": ("DoorFrontLeft", "DoorFrontRight"), "Back_Door": ("DoorRearLeft", "DoorRearRight"),
                 "Mirror_X": ("DoorFrontLeft", "DoorFrontRight")},
     # the mirrors (the prep cuts them out of the front doors): outer faces only, no slab inner copy (it stood 6 cm in
     # off the housing's back, a cabin-grey shell round the glass: official black)
-    SHELL_OBJS=("Mirror_X", "Spoiler_X"),
+    SHELL_OBJS=("Mirror_X", "Spoiler_X", *TAIL_T),
     CUT={},
     PLANES={},
     CUT_X=("-",),
