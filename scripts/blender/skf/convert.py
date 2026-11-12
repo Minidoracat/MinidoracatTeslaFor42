@@ -1784,7 +1784,7 @@ def seals(V, T, sel, attr, glass_bvh, solid=None, seams=None, full=False, near_f
 
 
 def seam_lines(V, T, part, panel, glass_bvh):
-    """SEAM_LINE=dict(w, over, bridge, lift, gap, glass, step, chain, tone | cell[, skip]) (Model S): every gap between
+    """SEAM_LINE=dict(w, over, bridge, lift, gap, glass, step, chain, tone | cell[, skip, flat]) (Model S): every gap between
     two parts (doors, lids, the body; not within `glass` of a pane, not the parts in `skip`) as one continuous dark
     line of even width, half on each side. Its colour: with `tone`, every corner on SEAM_SPOT, which textures()
     paints the skin's median paint x tone (a shade of each paint: a dark cabin cell was a black line on the white
@@ -1797,7 +1797,10 @@ def seam_lines(V, T, part, panel, glass_bvh):
     it find where each part's skin comes up to its own height (a line through its heights 1-2 cm from the gap: a
     tilted panel; a rolled edge seen into the gap is not it). The own half runs from `over` past the middle between
     that corner and the other part's (at most `bridge` of gap past the own corner when no other skin is across) to
-    `w` in, `lift` over the skin, tapered to a point at the run's ends. A sample without its skin under the rays
+    `w` in, `lift` over the skin, tapered to a point at the run's ends; with `flat` its gap end is at the own corner's
+    height (half the gap plus `over` past it), not between the two corners: where one panel stands proud of the
+    other, a strip sloping down to the middle passed under its own edge and the other's faced away (Model S's right
+    B-pillar, 1.5 mm proud: the line there broke in the front 3/4 views). A sample without its skin under the rays
     splits the run. Why: the sources' 1-5 mm gaps are under a pixel at the game's nearest zoom (6.7 mm/px) and seen
     without antialiasing: the ground through them, a hairline on one panel (SEAL_RIBBON) broke into dots and dashes;
     halves meeting edge to edge fell between the pixel centres, and a rolled door bottom put a line in its own plane
@@ -1955,6 +1958,9 @@ def seam_lines(V, T, part, panel, glass_bvh):
                     other = hs[cand[-1]][0]
                     d_ = other - corner
                     start = (corner + other) / 2 + d_ / max(np.linalg.norm(d_), 1e-9) * sl["over"]
+                    if sl.get("flat"):    # in the own skin's plane, at its corner's height (a panel standing proud
+                        # of the other tilted the strip from it down under its own edge, the other's up: one half hid)
+                        start = corner - bx * (abs(d_ @ bx) / 2 + sl["over"])
                 else:             # no other skin across: over at most `bridge` of gap, at the corner's height
                     start = corner - bx * (min(max(s0, 0), sl["bridge"]) + sl["over"])
                 rows.append((start + n * lift, inner + n * lift, n))
