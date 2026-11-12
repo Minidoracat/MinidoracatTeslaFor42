@@ -41,6 +41,16 @@ def _lr(zn):
 # lens over the outboard half grey, a red bar under it, the inboard C (lit in the renders) pink round a dark inner
 _DRL_IN = dict(lo=(-0.693, 1.701, 0.512), hi=(-0.362, 2.005, 0.716), below=(((-0.4573, 1.9133, 0.5473), (-0.4043, 0.1247, -0.9061)),), cut=True)
 _DRL_OUT = dict(lo=(-0.804, 1.5, 0.573), hi=(-0.623, 1.785, 0.716), below=(((-0.6489, 1.7423, 0.6093), (-0.3, 0.0676, -0.9515)),), cut=True)
+
+
+def _band(zn, d):
+    """zn's first plane's side cut down to a band d (grid) wide: the official DRL is a 1 cm strip under the housing's
+    black brow, not the lens's whole top"""
+    (p, n), = zn["below"]
+    return dict(zn, below=((p, n), (tuple(a - b * d for a, b in zip(p, n)), tuple(-b for b in n))))
+
+
+_DRL_IN, _DRL_OUT = _band(_DRL_IN, 0.010), _band(_DRL_OUT, 0.010)
 _REAR = dict(lo=(-0.804, 1.5, 0.472), hi=(-0.663, 1.737, 0.716), below=(((-0.7037, 1.6498, 0.6317), (0.3021, 0.6531, 0.6944)),), cut=True)
 _T_UPPER = dict(lo=(-0.955, -2.045, 0.614), hi=(-0.402, -1.55, 0.818), below=(((-0.6699, -1.8, 0.7363), (0.7139, -0.7002, 0.)), ((-0.7035, -1.6994, 0.7281), (-0., -0., -1.))), cut=True)
 _T_BAR = dict(lo=(-0.955, -2.045, 0.614), hi=(-0.402, -1.55, 0.818), below=(((-0.6699, -1.8, 0.7363), (0.7139, -0.7002, 0.)), ((-0.7035, -1.6994, 0.7159), (0., 0., 1.)), ((-0.7035, -1.6994, 0.7023), (-0., -0., -1.)), ((-0.7243, -1.6555, 0.7057), (-0.7139, 0.7002, -0.))), cut=True)
@@ -105,6 +115,13 @@ CAR = dict(
     # Deep Blue (user 2026-10-31, add2). Same names and order as Model X. Skin index is saved: only append after release
     PAINTS=[("StealthGrey", "PN01"), ("LunarSilver", "PN02"), ("PearlWhite", "PPSW"), ("UltraRed", "PR01"),
             ("DiamondBlack", "PX02"), ("FrostBlue", "PB00"), ("SolidBlack", "PBSB"), ("DeepBlue", "PPSB")],
+    # Pearl White's sun lobe at 0.62 (skin alpha 251, MinidoracatTesla_vehicle.frag SHEEN_SOFT_GAIN): the game showed 31 %
+    # of its lit paint >= 250 against the official 5.6 % at the same p50 (Main, 2026-11-12). The skin can't fix it: its
+    # seen paint is already tight (p50 234, p95 238); squeezing the upper half onto the median moved a model of the
+    # frag's lobe (work/sheenfit.py: the S view's normals and skin, fitted gain 0.22 = SHEEN_SKY) only 32 -> 28 %;
+    # the lobe at 0.62 x -> ~6 %. The other paints stay 254 (p95 <= 170: no clipping)
+    PAINT_ALPHAS={"PearlWhite": 251},
+    PAINT_ALPHA_DEFAULT=254,
     # paint tone (model_y.py CAL): fitted on models-body-sp paint-<i>-<name>-fl-max (zoom 0.5, heading S) against the
     # official FRONT34 with paint_sheet.py --car MinidoracatTesla_ModelS: one slope per paint (the fit's mean, held to
     # 0.85-1.15), per-channel offsets put the game p50 on the official p50 (models.md 0b, Model 3 "車漆"); a second pass
@@ -230,12 +247,16 @@ CAR = dict(
             ("GrilleFloor", ((-0.55, 1.70, 0.15), (0.55, 1.70, 0.15), (0.55, 1.90, 0.15), (-0.55, 1.90, 0.15)),
              (0, 0, 1), "arch_liner")),
     SEAL_CLIP=True,
-    # the gaps as the official's thin continuous dark line (convert.py seals): a 5 mm strip on each panel's edge where
-    # another panel's edge lies across the gap (console cell: darker than the black paints, lighter than a hole), not
-    # by the glass (the hood's back edge against the cowl); and no seal strip whose far edge has nothing over it within
-    # 3 cm (one stood 21 mm out of the outline behind the front fender, temp/fit-1112/seals)
-    SEAL_RIBBON=dict(w=0.004, lift=0.0010, gap=0.025, glass=0.03, cell="console"),
+    # the gaps as the official's thin continuous dark line (convert.py seals): a 4 mm strip on one panel's edge (the
+    # later part's: the door over the body) where another panel's edge lies across the gap (console cell: darker than the black paints, lighter than a hole), not
+    # by the glass (the hood's back edge against the cowl), in runs >= 10 cm, not round the liftgate (its bottom edge
+    # over the bumper read as dark dashes); and no seal strip whose far edge has nothing over it within 3 cm (one stood
+    # 21 mm out of the outline behind the front fender, temp/fit-1112/seals)
+    SEAL_RIBBON=dict(w=0.0035, lift=0.0010, gap=0.025, glass=0.03, chain=0.08, skip=("TrunkDoor",),
+                     cell="console"),
     SEAL_COVER=0.03,
+    SEAL=(0.008, 0.008),                   # (convert.py SEAL) reach 1 cm: its gaps are 1-5 mm; at 2 cm the strips showed
+    #                                        below the door sills and at the A-pillar's foot as black blocks
     # the roof is glass, so the paint up there is the roof rails (model_3.py RAIL)
     RAIL=(0.95, 1.08),
     DECIMATE={"Object_23": 9000, "Object_2": 16000},   # (prefix match: Object_23 first)

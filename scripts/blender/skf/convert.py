@@ -75,7 +75,7 @@ LIGHT_RGB = {"head": (255, 250, 240), "tail": (255, 30, 30)}
 LINES, FRONT_Y, SILL_Z, ARCH, DOOR_Y, GATE_Z, REAR_ARCH, GATE_X, STOP_X = (C[k] for k in (
     "LINES", "FRONT_Y", "SILL_Z", "ARCH", "DOOR_Y", "GATE_Z", "REAR_ARCH", "GATE_X", "STOP_X"))
 IN_DOOR, IN_GATE, PANELS, GUARDS, PANES = (C[k] for k in ("IN_DOOR", "IN_GATE", "PANELS", "GUARDS", "PANES"))
-SEAL = (0.008, 0.02)                       # grid: dark strip behind every panel edge (depth, reach past the edge):
+SEAL = C.get("SEAL", (0.008, 0.02))       # grid: dark strip behind every panel edge (depth, reach past the edge):
 #                                             the source's panel gaps are real gaps, the ground showed through them
 DOOR_REACH = 0.10                          # grid: a whole component goes to a door within this of its paint skin
 #                                             (classify; the slab is pv.DOOR_T 0.06 deep, the farthest door part 0.08)
@@ -1048,7 +1048,8 @@ def classify(car, names, sizes):
         rgb[tail & (mat == LAMPS["tail"][0])] = np.array(LAMPS["tail_rgb"]) / 255
     if LAMPS.get("head_rgb"):              # (Model S) the head half's own colour (the official lens)
         rgb[head & (mat == LAMPS["head"][0])] = np.array(LAMPS["head_rgb"]) / 255
-    area = np.zeros(n, np.int64)           # (stage_build cuts the islands where it changes: crisp at the 512 skin)
+    area = np.zeros(n, np.int64)   # (stage_build cuts the islands where it changes: crisp at 512; flat like a badge:
+    #                                the lens layers 3 cm apart took each other's AO, the DRL read grey)
     for i, (m, col) in enumerate(areas, 1):
         rgb[m] = np.array(col) / 255
         area[m] = i
@@ -1314,7 +1315,7 @@ def textures(car, c, shift=0.0):
     layers = {"col": c["rgb"], "zone": zone_rgb[c["zone"]], "aux": aux, "hgt": hgt,
               "badge": np.repeat(np.where(c["mat"] == "badge_chrome", 1.0, np.where(
                   c["mat"] == (INK or {}).get("mat"), 0.85, np.where(c["mat"] == "badge_etch", 0.62,
-                                                                     0.5 * c["badge"])))[:, None], 3, 1)}
+                                                                     0.5 * (c["badge"] | (c["area"] > 0)))))[:, None], 3, 1)}
     if c["rail"].any():
         layers["rail"] = np.repeat(c["rail"][:, None], 3, 1)
     if C.get("SEAM_SHADE") or C.get("RECESS"):   # each corner's position, 0..1 over the bbox: texel positions
@@ -1541,8 +1542,9 @@ def seals(V, T, sel, attr, glass_bvh, solid=None, seams=None):
     of the whole car): not where the strip passes through a surface (it showed on the far side); with SEAL_COVER (a
     distance) also not where nothing lies over its far edge within it (Model S: it stood out of the outline past a
     fender's corner). seams (SEAL_RIBBON: a KD tree of points along every panel's open edges, their parts, sel's
-    part): along each edge with another part's edge within SEAL_RIBBON gap, or its own part's across the gap (in the
-    face's plane, away from it), not within `glass` of a pane, a strip w wide on the panel, lift over it, in the
+    part): along each edge whose nearest edge within SEAL_RIBBON gap is an earlier part's (or its own part's across
+    the gap, in the face's plane, away from it), not within `glass` of a pane, in runs at least `chain` long, a strip
+    w wide (at most its face's height) on the panel, lift over it, in the
     cabin cell `cell`: the gap read as a continuous thin line instead of the ground's dots through a sub-pixel slit."""
     tri = T[sel]
     ed = np.concatenate([tri[:, [0, 1]], tri[:, [1, 2]], tri[:, [2, 0]]])
@@ -1558,15 +1560,39 @@ def seals(V, T, sel, attr, glass_bvh, solid=None, seams=None):
     rib = []
     if seams is not None:
         rb, (kd, sp, own) = C["SEAL_RIBBON"], seams
-        for p, q, n, d in zip(a_, b_, fn, t):
+        c_ = V[np.concatenate([tri[:, 2], tri[:, 0], tri[:, 1]])[b]]     # each edge's third corner
+        ok = np.zeros(len(a_), bool)
+        for i, (p, q, d) in enumerate(zip(a_, b_, t)):
             m = (p + q) / 2
-            near = [(np.array(e) - m, sp[i]) for e, i, _ in kd.find_range(Vector(m), rb["gap"])]
-            if glass_bvh.find_nearest(Vector(m), rb["glass"])[0] is None and any(
-                    np.linalg.norm(e) > 1e-4 and (k != own or e @ d > 0.6 * np.linalg.norm(e)) for e, k in near):
-                r1, r2 = p + n * rb["lift"], q + n * rb["lift"]
-                r3, r4 = r2 - d * rb["w"], r1 - d * rb["w"]
-                for tr in ((r1, r2, r3), (r1, r3, r4)):   # wound to face out like the panel (n)
-                    rib.append(tr if np.cross(tr[1] - tr[0], tr[2] - tr[0]) @ n > 0 else (tr[0], tr[2], tr[1]))
+            near = [(np.linalg.norm(e), k) for e, k in ((np.array(e) - m, sp[j]) for e, j, _ in
+                                                       kd.find_range(Vector(m), rb["gap"]))
+                    if np.linalg.norm(e) > 1e-4 and (k != own or e @ d > 0.6 * np.linalg.norm(e))]
+            # one strip per gap: on the side whose part comes later (a door over the body, the rear door over the
+            # front one); two read twice the official line's width
+            ok[i] = bool(near) and min(near)[1] <= own and glass_bvh.find_nearest(Vector(m), rb["glass"])[0] is None
+        # only runs of such edges at least `chain` long: a short hole's rim by another panel read as a dark dash
+        ends = pid[ed[b]]
+        root = {v: v for v in ends[ok].ravel()}
+
+        def find(v):
+            while root[v] != v:
+                root[v] = root[root[v]]
+                v = root[v]
+            return v
+        for u, v in ends[ok]:
+            root[find(u)] = find(v)
+        run = {}
+        for i in np.flatnonzero(ok):
+            run[find(ends[i, 0])] = run.get(find(ends[i, 0]), 0.0) + float(np.linalg.norm(b_[i] - a_[i]))
+        for i in np.flatnonzero(ok):
+            if run[find(ends[i, 0])] < rb["chain"]:
+                continue
+            p, q, n, d, o = a_[i], b_[i], fn[i], t[i], c_[i]
+            w = min(rb["w"], float((p - o) @ d))      # no wider than its face (else it stood off a curve)
+            r1, r2 = p + n * rb["lift"], q + n * rb["lift"]
+            r3, r4 = r2 - d * w, r1 - d * w
+            for tr in ((r1, r2, r3), (r1, r3, r4)):   # wound to face out like the panel (n)
+                rib.append(tr if np.cross(tr[1] - tr[0], tr[2] - tr[0]) @ n > 0 else (tr[0], tr[2], tr[1]))
     far = (a_ + b_) / 2 + t * SEAL[1]
     keep = np.array([glass_bvh.find_nearest(Vector(p), 0.012)[0] is None for p in far], bool)
     if solid is not None:
@@ -1879,12 +1905,14 @@ def pieces(car, c, shift):
     seams = None
     if C.get("SEAL_RIBBON"):    # points along every panel's open edges, all parts (seals: a gap has another across)
         from mathutils.kdtree import KDTree
-        tri = T[panel]
+        # `skip`: parts without (nor partners for) them (Model S's liftgate: its bottom edge over the bumper)
+        skip = [k for k, nm in enumerate(pv.DOORS, 1) if nm in C["SEAL_RIBBON"].get("skip", ())]
+        tri = T[panel & ~np.isin(part, skip)]
         ed = np.concatenate([tri[:, [0, 1]], tri[:, [1, 2]], tri[:, [2, 0]]])
         pid = np.unique(np.round(V / 1e-5).astype(np.int64), axis=0, return_inverse=True)[1].ravel()
         _, inv, cnt = np.unique(np.sort(pid[ed], 1), axis=0, return_inverse=True, return_counts=True)
         b = cnt[inv.ravel()] == 1
-        oe, op = ed[b], np.tile(part[panel], 3)[b]
+        oe, op = ed[b], np.tile(part[panel & ~np.isin(part, skip)], 3)[b]
         pts, pp = [], []
         for p, q, k in zip(V[oe[:, 0]], V[oe[:, 1]], op):       # every 4 mm along each edge
             for f in np.linspace(0, 1, max(2, int(np.linalg.norm(q - p) / 0.0033) + 1)):
@@ -1918,7 +1946,7 @@ def pieces(car, c, shift):
             P, t, a, _ = pv.slab(V, T, A, skin, off, cab_attr("dash"), BELT_Z - shift[2], outer_extra=sel & ~skin,
                                  by_pos=bool(C.get("SPLIT_COLOURS")))
             extra = [backs(bsel, rec, 0) for bsel, rec in back_sets(sel)] + [
-                seals(V, T, skin, cab_attr("base"), gb, solid, seams and (*seams, k))]
+                seals(V, T, skin, cab_attr("base"), gb, solid, seams and k not in skip and (*seams, k) or None)]
             for v, bt, ba in extra:
                 t = np.concatenate([t, bt + len(P)])
                 P = np.concatenate([P, v])

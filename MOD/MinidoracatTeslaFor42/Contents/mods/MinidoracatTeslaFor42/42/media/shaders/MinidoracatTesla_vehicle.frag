@@ -108,12 +108,15 @@ const float SHEEN_LAMP_UP = 0.5;   // a nearby light's direction gets this much 
 const float SHEEN_FRESNEL = 1.5;   // sky reflection share x (1 + SHEEN_FRESNEL x (1 - n.v)^5)
 // finish flags in the skin alpha (convert.py PAINT_ALPHAS; Model Y / Model 3 paint is 254 = gloss above):
 // 253 brushed stainless (Cybertruck): a tighter, brighter lobe and a stronger sky reflection, metal-like;
-// 252 satin wrap film: a wide, weak lobe and no Fresnel boost
+// 252 satin wrap film: a wide, weak lobe and no Fresnel boost;
+// 251 gloss with a weaker sun lobe (Model S Pearl White: its paint sits ~20 levels brighter than Model 3's at the same
+// official median, and the full lobe pushed 31 % of its lit paint to white against the official 6 %)
 const float SHEEN_STEEL_POW = 40.0;
 const float SHEEN_STEEL_GAIN = 1.2;  // 1.6: the hood read near white (tesla-ctbody-1030a)
 const float SHEEN_STEEL_REF = 1.0;  // sky reflection share x (1 + this)
 const float SHEEN_MATTE_POW = 6.0;
 const float SHEEN_MATTE_GAIN = 0.35;
+const float SHEEN_SOFT_GAIN = 0.62;  // 251 (calibration knob: game white share >= 250, paint_sheet.py)
 
 // a nearby light as the vehicle shader gets it: (right, forward, height) of the direction to it, the height taken
 // at the ground (BaseVehicle.getLocalPos sets y 0, ModelSlotRenderData.java:256-262; Shader.setLight swaps y / z,
@@ -325,6 +328,7 @@ void main()
 	float paint = clamp((1.0 - tex.a) * 255.0, 0.0, 1.0);
 	float steel = 1.0 - clamp(abs(tex.a * 255.0 - 253.0), 0.0, 1.0);   // finish flags (above)
 	float matte = 1.0 - clamp(abs(tex.a * 255.0 - 252.0), 0.0, 1.0);
+	float soft = 1.0 - clamp(abs(tex.a * 255.0 - 251.0), 0.0, 1.0);
 	vec3 V = normalize(viewModel);
 	float fresnel = pow(1.0 - max(dot(normal, V), 0.0), 5.0);
 	col = mix(col, texRef/4.0, reflectionsOn*(1.0-ref_en)*(0.05 + ReflectionParam.z*0.3)
@@ -361,7 +365,7 @@ void main()
 	vec3 toCam = normalize(V - up * dot(V, up));
 	vec3 sun = normalize(SHEEN_SUN.x * cross(up, toCam) + SHEEN_SUN.y * up + SHEEN_SUN.z * toCam);
 	float lobe = mix(mix(SHEEN_POW, SHEEN_STEEL_POW, steel), SHEEN_MATTE_POW, matte);
-	float gain = mix(mix(1.0, SHEEN_STEEL_GAIN, steel), SHEEN_MATTE_GAIN, matte);
+	float gain = mix(mix(mix(1.0, SHEEN_STEEL_GAIN, steel), SHEEN_MATTE_GAIN, matte), SHEEN_SOFT_GAIN, soft);
 	vec3 sheen = AmbientColour * SHEEN_SKY * pow(max(dot(normal, normalize(sun + V)), 0.0), lobe)
 		+ lampSheen(Light0Direction, Light0Colour, normal, V, lobe) + lampSheen(Light1Direction, Light1Colour, normal, V, lobe)
 		+ lampSheen(Light2Direction, Light2Colour, normal, V, lobe) + lampSheen(Light3Direction, Light3Colour, normal, V, lobe)
