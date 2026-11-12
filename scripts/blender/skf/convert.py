@@ -1612,10 +1612,12 @@ def seals(V, T, sel, attr, glass_bvh, solid=None, seams=None, full=False, near_f
         back = m - fn * s0
         keep &= ~np.array([through(*s) for s in zip(m, back)], bool)
         keep &= ~np.array([through(*s) for s in zip(back, back + t * s1)], bool)
-        if C.get("SEAL_COVER"):     # its far edge's middle and both corners covered (a corner stood out below a sill)
-            for fb in (back + t * s1, a_ - fn * s0 + t * s1, b_ - fn * s0 + t * s1):
+        if C.get("SEAL_COVER"):     # SEAL_COVER_EDGE: both far corners covered too, and none reaching down past a
+            edge = C.get("SEAL_COVER_EDGE")   # bottom edge (Model S: one stood out below a sill; the game looks down)
+            for fb in (back + t * s1,) + ((a_ - fn * s0 + t * s1, b_ - fn * s0 + t * s1) if edge else ()):
                 keep &= fe | np.array([through(p, p + n * C["SEAL_COVER"]) for p, n in zip(fb, fn)], bool)
-            keep &= fe | (t[:, 2] > -0.7)   # nor reaching down past a bottom edge (the game looks from above)
+            if edge:
+                keep &= fe | (t[:, 2] > -0.7)
     a_, b_, fn, t, s0, s1 = a_[keep], b_[keep], fn[keep], t[keep], s0[keep], s1[keep]
     p1, p2 = a_ - fn * s0, b_ - fn * s0
     p3, p4 = p2 + t * s1, p1 + t * s1

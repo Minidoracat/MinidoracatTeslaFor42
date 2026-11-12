@@ -285,6 +285,7 @@ CAR = dict(
     SEAL_RIBBON=dict(w=0.0035, lift=0.0010, gap=0.025, glass=0.03, chain=0.08, skip=("TrunkDoor",),
                      cell="console"),
     SEAL_COVER=0.03,
+    SEAL_COVER_EDGE=True,                  # (convert.py seals) its far corners too, none down past a bottom edge
     # (convert.py seals) but round the liftgate, both sides of its gap: open, they close its gap to the C-pillar (the
     # body's side went with SEAL_COVER and the short reach: the ground showed there)
     SEAL_FULL=("TrunkDoor",),
