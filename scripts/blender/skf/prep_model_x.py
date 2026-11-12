@@ -84,7 +84,8 @@ FIELD = dict(
         dict(d=(0, -0.05), u=(-1, -0.5, 0.30, 0.60), h=(0.20, 0.36, 0.36, 0.50)),
         dict(d=(0, -0.04), u=(-1, -0.5, 0.30, 0.60), h=(0.30, 0.20), az=(0.55, 0.40)),
         # round 2 (new cameras): the nose's lower front forward (official SIDE nose @y640 +7 px) and the chin's lip up
-        # (its bottom @x430-450 +4..+5 px, the lip @y650 23 px ahead of the official's sloping bottom)
+        # (its bottom @x430-450 +4..+5 px); round 3: kept (without them FRONT34 IoU 0.9687 -> 0.9679), the rest of
+        # the bumper is FIELD fascia's
         dict(d=(-0.026, 0), u=(-1, -0.5, 0.10, 0.20), h=(0.20, 0.225, 0.25, 0.28)),
         dict(d=(0, 0.018), u=(0.10, 0.18, 0.26, 0.33), h=(0.24, 0.205)),
         # the roof's rear end up (official SIDE roof @x1400 / x1480 +4 px, the tail top @x1520 +3)
@@ -97,7 +98,7 @@ FIELD = dict(
                 for o in ("Car Body", "Trunk") for m in ("Red Light Glass", "Black Car Paint")),
               # the pre-2021 fog lamp pockets in the front bumper's corners body colour (official FRONT34: smooth,
               # with the air curtain slot above: FIELD decals Slot_X)
-              *(dict(obj="Car Body", mat=m, to="Car Paint", u=(-1, 0.45), h=(0.34, 0.64), az=(0.58, 0.95))
+              *(dict(obj="Car Body", mat=m, to="Car Paint", u=(-1, 0.45), h=(0.34, 0.64), az=(0.58, 0.95), fill=True)
                 for m in ("Black Car Paint", "Light", "Light Glass")),
               # the headlamps body colour: the source's lens (its lamp 7 cm longer, 1 cm higher than the official's,
               # SIDE + FRONT34 triangulated) and the black round it; the lamps are FIELD decals Lens_X / LensSide_X
@@ -119,6 +120,13 @@ FIELD = dict(
     # the frunk lid's lip below h[0] eased back (u: near the nose): the convert's frunk jamb hangs straight down from the
     # lid's edge and stood 11 mm out of the nose under it (seals analyze.py)
     lid_lip=dict(obj="Bonnet", d=0.030, h=(0.82, 0.76), u=(0.35, 0.20)),
+    # the front bumper / nose one smooth surface (fascia(): the source's pre-2021 fog lamp pockets filled, the
+    # decimation's and the field's lumps gone; official FRONT34 / SIDE smooth)
+    fascia=dict(obj="Car Body", axis=1.0, u=(-1, -0.5, 0.45, 0.62), h=(0.20, 0.26, 0.72, 0.80), facing=0.3, grow=2,
+                knots=(26, 14), lam=0.05, cap=0.15, carry=("Aluminum", "Black Car Paint", "Trim Grey"), align=0.5,
+                step=0.012, seam=0.04, weld=0.008,
+                # (the nose's tip not ahead of where it was: the manual's length)
+                tip=0.0),
     # the lower black trim (sills, arch lips, the bumpers' lower parts: source Black Car Paint under h) dark grey (official
     # SIDE: sills 30-37 grading to 17-27, arch lips 45-67, rear bumper 43-49 against the build's flat 22): the faces
     # black before arch_inner (its wheel wells stay black) and still black after `recolour`
@@ -191,19 +199,24 @@ FIELD = dict(
         dict(name="TailReflS_X", view="SIDE", mat="Lamp_Reflector", on=("Car Body", "Trunk"), off=0.006,
              u=(4.3, 5.2), outline=((1468.8, 458.1), (1503.8, 456.9), (1503.8, 463.1), (1468.8, 463.1))),
         # the front bumper camera (2025+, official FRONT34): a grey ring on the lower grille's middle (as a decal on
-        # the bumper: convert.py CAMERA's flat ring stood 16 mm off it); on the model's centre line (x 463: at the official's 478
-        # its mirror copy stood 24 px apart)
-        dict(name="CamRing_X", view="FRONT34", mat="badge_cam", on=("Car Body",), off=0.006, step=1.0,
+        # the bumper: convert.py CAMERA's flat ring stood 16 mm off it) and its dark lens, on the model's centre line (x
+        # 463: at the official's 478 its mirror copy stood 24 px apart); on the nose's tip: `front` (the ring 6 mm off
+        # it made the game model 5,062.4 long), Intake_X holed under them
+        dict(name="CamRing_X", view="FRONT34", mat="badge_cam", on=("Car Body",), off=0.002, front=0.001, step=1.0,
              outline=tuple((463 + 5.0 * np.cos(t), 638 + 4.0 * np.sin(t)) for t in np.linspace(0, 2 * np.pi, 16, endpoint=False)),
              holes=(tuple((463 + 3.0 * np.cos(t), 638 + 2.4 * np.sin(t)) for t in np.linspace(0, 2 * np.pi, 12, endpoint=False)),)),
+        dict(name="CamLens_X", view="FRONT34", mat="Intake_Black", on=("Car Body",), off=0.002, front=0.001,
+             step=1.0,
+             outline=tuple((463 + 3.0 * np.cos(t), 638 + 2.4 * np.sin(t)) for t in np.linspace(0, 2 * np.pi, 12, endpoint=False))),
         # the black band across the tailgate between the lamps (official REAR34 y 439-461; the source's trim 8 px)
         dict(name="GateBand_X", view="REAR34", mat="Band_Black", on=("Trunk",), off=0.004, u=(4.3, 5.2),
              outline=((1288, 441), (1330, 440), (1420, 440), (1450, 442), (1462, 445), (1462, 459), (1420, 461),
                       (1330, 461), (1288, 466))),
         # the lower grille across the front (official FRONT34; the mirror copy covers the other half)
-        dict(name="Intake_X", view="FRONT34", mat="Intake_Black", on=("Car Body",), off=0.003, step=3.0,
+        dict(name="Intake_X", view="FRONT34", mat="Intake_Black", on=("Car Body",), off=0.003, front=0.0008, step=3.0,
              outline=((430, 622.5), (550, 632.5), (556, 635), (570, 652.5), (585, 670), (560, 666), (495, 665),
-                      (450, 661), (430, 647.5))),
+                      (450, 661), (430, 647.5)),
+             holes=(tuple((463 + 5.0 * np.cos(t), 638 + 4.0 * np.sin(t)) for t in np.linspace(0, 2 * np.pi, 16, endpoint=False)),)),
     ),
     # the wheel arches' openings: round the axle, towards it by d x k(angle from the top, deg: + rearward) x win(rho)
     arches=(
@@ -424,6 +437,269 @@ def spoiler(bpy, meshes, nose, yc):
     return o
 
 
+def bspline(x, lo, hi, k):
+    """uniform cubic B-spline basis: (len(x), k), k functions over [lo, hi] (k - 3 spans)"""
+    t = (np.clip(x, lo, hi) - lo) / (hi - lo) * (k - 3)
+    i0 = np.clip(np.floor(t).astype(int), 0, k - 4)
+    f = t - i0
+    w = np.stack([(1 - f) ** 3, 3 * f ** 3 - 6 * f ** 2 + 4, -3 * f ** 3 + 3 * f ** 2 + 3 * f + 1, f ** 3], 1) / 6
+    B = np.zeros((len(x), k))
+    for j in range(4):
+        B[np.arange(len(x)), i0 + j] = w[:, j]
+    return B
+
+
+def in_tris(pts, T):
+    """points (m, 2) inside any of the triangles T (n, 3, 2)"""
+    if not len(T) or not len(pts):
+        return np.zeros(len(pts), bool)
+    a, b, c = T[:, 0][None], T[:, 1][None], T[:, 2][None]
+    cr = lambda o, p_, r_: (p_[..., 0] - o[..., 0]) * (r_[..., 1] - o[..., 1]) - (p_[..., 1] - o[..., 1]) * (r_[..., 0] - o[..., 0])  # noqa
+    out = []
+    for i in range(0, len(pts), 256):
+        q = pts[i:i + 256, None]
+        d1, d2, d3 = cr(a, b, q), cr(b, c, q), cr(c, a, q)
+        out.append((((d1 >= 0) & (d2 >= 0) & (d3 >= 0)) | ((d1 <= 0) & (d2 <= 0) & (d3 <= 0))).any(1))
+    return np.concatenate(out)
+
+
+def pspline(x, z, y, knots, lam):
+    """y(x, z) as a tensor cubic P-spline over the samples' box (knots per axis, 2nd-difference penalty lam), Huber
+    reweighted (the outliers: pockets, lumps); -> fit(x, z), clamped to the box"""
+    kt, kh = knots
+    lo, hi = (x.min(), z.min()), (x.max(), z.max())
+
+    def basis(t, s_):
+        Bt, Bh = bspline(t, lo[0], hi[0], kt), bspline(s_, lo[1], hi[1], kh)
+        return (Bt[:, :, None] * Bh[:, None, :]).reshape(len(t), -1)
+
+    B = basis(x, z)
+    D = lambda k: np.diff(np.eye(k), 2, axis=0)      # noqa: E731
+    pen = lam * (np.kron(D(kt).T @ D(kt), np.eye(kh)) + np.kron(np.eye(kt), D(kh).T @ D(kh)))
+    w = np.ones(len(y))
+    for _ in range(8):
+        c = np.linalg.solve(B.T @ (B * w[:, None]) + pen, B.T @ (w * y))
+        res = y - B @ c
+        sd = 1.4826 * np.median(np.abs(res)) + 1e-4
+        w = np.minimum(1, 2 * sd / np.maximum(np.abs(res), 1e-9))
+    return lambda t, s_: basis(t, s_) @ c
+
+
+def rebuild(me, F, fit, nose, yc, inner, P2, rm):
+    """FIELD fascia's pockets (`inner`: the filled faces and `grow` rings round them) made afresh on the fitted
+    surface: their faces out (moved onto it the walls fold over face down and coincide: dark specks, dark AO), the
+    hole they leave in the (arc, h) plane P2 triangulated again (constrained Delaunay of the rim and a `step` grid)
+    where no face on the surface covers it, the new vertices on the surface."""
+    import bmesh
+    from mathutils import Vector
+    from mathutils.geometry import delaunay_2d_cdt
+    bm = bmesh.new()
+    bm.from_mesh(me)
+    bm.verts.ensure_lookup_table()
+    pin = {bm.verts[i] for i in np.flatnonzero(inner)}
+    paint = {i for i, m in enumerate(me.materials) if m and m.name == "Car Paint"}
+    gone = {f for f in bm.faces if f.material_index in paint and all(v in pin for v in f.verts)}
+    # (the source's pockets are loose shells over open seams: moved onto the surface the seams gape; the paint faces
+    # on an open edge near a pocket go too, so the new faces span the seam)
+    pp = P2[[v.index for v in pin]]
+    ov = {v for e_ in bm.edges if len(e_.link_faces) == 1 for v in e_.verts
+          if inner[v.index] or np.min(np.linalg.norm(pp - P2[v.index], axis=1)) < F["seam"]}
+    gone |= {f for v in ov for f in v.link_faces if f.material_index in paint}
+
+    def tris(faces):
+        return np.array([P2[[f.verts[0].index, f.verts[j].index, f.verts[j + 1].index]]
+                         for f in faces for j in range(1, len(f.verts) - 1)]).reshape(-1, 3, 2)
+
+    co = np.array([v.co[:] for v in bm.verts])
+    u, h, a = (nose - co[:, 0]) * S, co[:, 2] * S, (co[:, 1] - yc) * S
+    surf = np.abs(fit(np.arctan2(a, F["axis"] - u), h) - np.hypot(F["axis"] - u, a)) < 0.002
+    surf &= win(u, F["u"]) * win(h, F["h"]) > 0
+    bm.normal_update()
+    for f in bm.faces:                               # on the surface but wound inwards (a pocket's undercut wall): out
+        if f not in gone and f.material_index in paint and any(v in pin for v in f.verts) and \
+                all(surf[v.index] for v in f.verts):
+            t_ = np.mean([np.arctan2(a[v.index], F["axis"] - u[v.index]) for v in f.verts])
+            if f.normal.x * np.cos(t_) + f.normal.y * np.sin(t_) < 0:
+                gone.add(f)
+    G = tris(gone)
+    lo, hi = G.reshape(-1, 2).min(0) - 0.05, G.reshape(-1, 2).max(0) + 0.05
+    stay = tris([f for f in bm.faces if f not in gone and all(surf[v.index] for v in f.verts)
+                 and all((P2[v.index] > lo).all() and (P2[v.index] < hi).all() for v in f.verts)])
+    # (and the trim near it, facing out: the lower lip, the arch lips; not filled over)
+    dr = np.abs(fit(np.arctan2(a, F["axis"] - u), h) - np.hypot(F["axis"] - u, a))
+    trim = []
+    for f in bm.faces:
+        if f in gone or not all(dr[v.index] < 0.03 and (P2[v.index] > lo).all() and (P2[v.index] < hi).all()
+                                for v in f.verts):
+            continue
+        t_ = np.mean([np.arctan2(a[v.index], F["axis"] - u[v.index]) for v in f.verts])
+        if f.normal.x * np.cos(t_) + f.normal.y * np.sin(t_) > 0:
+            trim.append(f)
+    stay = np.concatenate([stay, tris(trim)])
+    rim_e = [e_ for e_ in bm.edges if any(f in gone for f in e_.link_faces) and any(f not in gone for f in e_.link_faces)]
+    rim_v = sorted({v for e_ in rim_e for v in e_.verts}, key=lambda v: v.index)
+    at = {v: i for i, v in enumerate(rim_v)}
+    st = F["step"]
+    # where to fill: the pockets' footprint (and 2 cells round it: no slivers at the rim), not what the surface covers
+    xs, ys = np.arange(lo[0], hi[0], st / 2), np.arange(lo[1], hi[1], st / 2)
+    cc = np.stack(np.meshgrid(xs, ys), -1).reshape(-1, 2)
+    fillm = in_tris(cc, G).reshape(len(ys), len(xs))
+    for _ in range(2):
+        m_ = fillm.copy()
+        fillm[1:] |= m_[:-1]; fillm[:-1] |= m_[1:]; fillm[:, 1:] |= m_[:, :-1]; fillm[:, :-1] |= m_[:, 1:]  # noqa: E702
+    fillm &= ~in_tris(cc, stay).reshape(len(ys), len(xs))
+    infill = lambda x: fillm[np.clip(np.round((x[:, 1] - lo[1]) / (st / 2)).astype(int), 0, len(ys) - 1),   # noqa
+                             np.clip(np.round((x[:, 0] - lo[0]) / (st / 2)).astype(int), 0, len(xs) - 1)]
+    g = np.stack(np.meshgrid(np.arange(lo[0], hi[0], st), np.arange(lo[1], hi[1], st)), -1).reshape(-1, 2)
+    rp = P2[[v.index for v in rim_v]]
+    g = g[infill(g) & ~in_tris(g, stay)]
+    g = g[np.min(np.linalg.norm(g[:, None] - rp[None], axis=2), 1) > st / 2] if len(g) and len(rp) else g
+    V, _, Fs, orig, *_ = delaunay_2d_cdt([Vector(x) for x in (*rp, *g)], [(at[e_.verts[0]], at[e_.verts[1]]) for e_ in rim_e],
+                                         [], 0, 1e-7)
+    V = np.array([x[:] for x in V])
+    keep = [f for f in Fs if len(f) == 3 and infill(V[list(f)].mean(0)[None])[0]
+            and not in_tris(V[list(f)].mean(0)[None], stay)[0]]
+    bmesh.ops.delete(bm, geom=list(gone), context="FACES")
+    made, pslot = {}, next(i for i, m in enumerate(me.materials) if m and m.name == "Car Paint")
+
+    def vert(i):
+        if i not in made:
+            src = [j for j in orig[i] if j < len(rim_v)]
+            if src and rim_v[src[0]].is_valid:
+                made[i] = rim_v[src[0]]
+            else:
+                t_, z_ = V[i][0] / rm, V[i][1]
+                r_ = fit(np.array([t_]), np.array([z_]))[0]
+                made[i] = bm.verts.new((nose - (F["axis"] - r_ * np.cos(t_)) / S, yc + r_ * np.sin(t_) / S, z_ / S))
+        return made[i]
+
+    n = 0
+    for f in keep:
+        vs = [vert(i) for i in f]
+        if len(set(vs)) < 3 or bm.faces.get(vs):
+            continue
+        nf = bm.faces.new(vs)
+        nf.material_index = pslot
+        nf.normal_update()
+        t_ = np.mean([np.arctan2((v.co.y - yc) * S, F["axis"] - (nose - v.co.x) * S) for v in vs])
+        if nf.normal.x * np.cos(t_) + nf.normal.y * np.sin(t_) < 0:
+            nf.normal_flip()
+        n += 1
+    # the seams left open round them (loose shells meeting the new faces): their vertices within `weld` m merged
+    lo_, hi_ = lo - 0.02, hi + 0.02
+    ends = [v for e_ in bm.edges if len(e_.link_faces) == 1 for v in e_.verts
+            if v.is_valid and lo_[1] < v.co.z * S < hi_[1]
+            and lo_[0] < np.arctan2((v.co.y - yc) * S, F["axis"] - (nose - v.co.x) * S) * rm < hi_[0]]
+    nv = len(bm.verts)
+    bmesh.ops.remove_doubles(bm, verts=list(set(ends)), dist=F["weld"] / S)
+    bmesh.ops.dissolve_degenerate(bm, dist=1e-6, edges=bm.edges[:])
+    print("PREP fascia: %d seam vertices welded" % (nv - len(bm.verts)))
+    bm.to_mesh(me)
+    bm.free()
+    me.update()
+    print("PREP fascia: pockets made afresh, %d faces out, %d in (%d rim edges, %d grid points)" % (
+        len(gone), n, len(rim_e), len(g)))
+
+
+def fascia(meshes, nose, yc, filled):
+    """FIELD fascia: the front bumper / nose as one smooth surface. Seen from a vertical axis behind the nose (`axis` u)
+    the fascia is a radial height field r(theta, h); its paint vertices facing out (`facing`, not the filled fog lamp
+    pockets `filled` and `grow` rings round them) fit a P-spline (`knots`, `lam`, Huber reweighted), then every paint
+    vertex in the window (u, h) moves radially onto it (the pockets fill, the decimation's and the field's lumps go),
+    `carry` materials' vertices ride along by the neighbours' mean move; the paint corners get the surface's normal."""
+    F = FIELD["fascia"]
+    o = next(o for o in meshes if o.name == F["obj"])
+    me = o.data
+    p = np.array([v.co[:] for v in me.vertices])
+    u, h, a = (nose - p[:, 0]) * S, p[:, 2] * S, (p[:, 1] - yc) * S
+    th, r = np.arctan2(a, F["axis"] - u), np.hypot(F["axis"] - u, a)
+    mi = np.empty(len(me.polygons), np.int64)
+    me.polygons.foreach_get("material_index", mi)
+    lv = np.empty(len(me.loops), np.int64)
+    me.loops.foreach_get("vertex_index", lv)
+    lt = np.empty(len(me.polygons), np.int64)
+    me.polygons.foreach_get("loop_total", lt)
+    lf = np.repeat(np.arange(len(me.polygons)), lt)                   # face of each loop
+    pu, ph, paz, pn, psg = face_frame(me, nose, yc)
+    rd = np.stack([F["axis"] - pu, psg * paz], 1)
+    facing = (pn[:, 0] * rd[:, 0] + pn[:, 1] * rd[:, 1]) / np.maximum(np.linalg.norm(rd, axis=1), 1e-9)
+    paint = np.isin(mi, slots(me, "Car Paint"))
+    wv = win(u, F["u"]) * win(h, F["h"])
+    near = np.zeros(len(p), bool)                    # the pockets and `grow` rings round them: no samples
+    near[lv[filled[lf]]] = True
+    for _ in range(F["grow"]):
+        near[lv[np.bincount(lf, near[lv], len(lt))[lf] > 0]] = True
+    sv = np.zeros(len(p), bool)
+    sv[lv[(paint & (facing > F["facing"]))[lf]]] = True
+    sv &= ~near & (wv > 0.5)
+    fit = pspline(th[sv], h[sv], r[sv], F["knots"], F["lam"])
+    # the pockets' leftovers (walls, the lamps' other materials) body colour, onto the surface whatever they were
+    trim = np.isin(mi, [i for m in F["carry"] for i in slots(me, m)])
+    mi[(np.bincount(lf, near[lv], len(lt)) == lt) & ~trim] = slots(me, "Car Paint")[0]
+    me.polygons.foreach_set("material_index", mi)
+    paint = np.isin(mi, slots(me, "Car Paint"))
+    mv = np.zeros(len(p), bool)
+    mv[lv[paint[lf]]] = True
+    mv = (mv | near) & (wv > 0)
+    e = np.array([(ed.vertices[0], ed.vertices[1]) for ed in me.edges])
+    cnt = np.maximum(np.bincount(e[:, 0], minlength=len(p)) + np.bincount(e[:, 1], minlength=len(p)), 1)
+    nb = lambda x: (np.bincount(e[:, 0], x[e[:, 1]], len(p)) + np.bincount(e[:, 1], x[e[:, 0]], len(p))) / cnt  # noqa
+    d = np.zeros(len(p))
+    d[mv] = np.clip(fit(th[mv], h[mv]) - r[mv], -F["cap"], F["cap"]) * wv[mv]
+    ride = np.zeros(len(p), bool)                    # carried trim: the neighbours' mean move (Jacobi)
+    ride[lv[np.isin(mi, [i for m in F["carry"] for i in slots(me, m)])[lf]]] = True
+    ride &= ~mv & (wv > 0)
+    for _ in range(60):
+        d[ride] = nb(d)[ride] * wv[ride]
+    r2 = r + d
+    u2, a2 = F["axis"] - r2 * np.cos(th), r2 * np.sin(th)
+    u2 = np.where(mv, np.maximum(u2, u.min() + F["tip"]), u2)   # (the manual's length: the nose `tip` back)
+    q = np.stack([nose - u2 / S, yc + a2 / S, h / S], 1)
+    me.vertices.foreach_set("co", q.ravel())
+    me.update()
+    rebuild(me, F, fit, nose, yc, near & (wv > 0.999), np.stack([th * np.median(r[sv]), h], 1), np.median(r[sv]))
+    # the surface's normal at the paint corners on it: X(theta, h) = (r cos - axis, r sin, h) forward / left / up
+    p = np.array([v.co[:] for v in me.vertices])
+    u, h, a = (nose - p[:, 0]) * S, p[:, 2] * S, (p[:, 1] - yc) * S
+    th, r = np.arctan2(a, F["axis"] - u), np.hypot(F["axis"] - u, a)
+    wv = win(u, F["u"]) * win(h, F["h"])
+    mi = np.empty(len(me.polygons), np.int64)
+    me.polygons.foreach_get("material_index", mi)
+    lv = np.empty(len(me.loops), np.int64)
+    me.loops.foreach_get("vertex_index", lv)
+    lt = np.empty(len(me.polygons), np.int64)
+    me.polygons.foreach_get("loop_total", lt)
+    lf = np.repeat(np.arange(len(me.polygons)), lt)
+    on = (wv > 0) & (np.abs(fit(th, h) - r) < 0.002)
+    k = np.isin(mi, slots(me, "Car Paint"))[lf] & on[lv]
+    E = 1e-4
+    t0, z0 = th[lv[k]], h[lv[k]]
+    rr = fit(t0, z0)
+    rt, rh = (fit(t0 + E, z0) - fit(t0 - E, z0)) / (2 * E), (fit(t0, z0 + E) - fit(t0, z0 - E)) / (2 * E)
+    ct, st = np.cos(t0), np.sin(t0)
+    dt = np.stack([rt * ct - rr * st, rt * st + rr * ct, np.zeros_like(rr)], 1)
+    dz = np.stack([rh * ct, rh * st, np.ones_like(rr)], 1)
+    n = np.cross(dt, dz)
+    n *= np.sign((n[:, 0] * ct + n[:, 1] * st))[:, None]
+    n /= np.linalg.norm(n, axis=1, keepdims=True)
+    fn = np.empty(len(me.polygons) * 3)
+    me.polygons.foreach_get("normal", fn)
+    fn = fn.reshape(-1, 3)[lf[k]]
+    cn = np.empty(len(me.loops) * 3, np.float32)
+    me.attributes["custom_normal"].data.foreach_get("vector", cn)
+    cn = cn.reshape(-1, 3)
+    # (not the faces folding under or round the corner, unless every corner of the face is on the surface)
+    full = (np.bincount(lf, k, len(lt)) == lt)[lf[k]]
+    al = wv[lv[k]][:, None] * (((fn * n).sum(1) > F["align"]) | full)[:, None]
+    m = al * n + (1 - al) * cn[k]
+    cn[k] = m / np.maximum(np.linalg.norm(m, axis=1, keepdims=True), 1e-9)
+    me.attributes["custom_normal"].data.foreach_set("vector", cn.ravel())
+    me.update()
+    print("PREP fascia: %d samples, %d moved (|d| p50 %.1f p99 %.1f max %.1f mm), %d carried, %d corners" % (
+        sv.sum(), mv.sum(), np.median(np.abs(d[mv])) * 1000, np.percentile(np.abs(d[mv]), 99) * 1000,
+        np.abs(d[mv]).max() * 1000, ride.sum(), k.sum()))
+
+
 def inside(p, loops):
     """even-odd: points p (n, 2) inside the loops (an outline and its holes)"""
     k = np.zeros(len(p), bool)
@@ -467,7 +743,8 @@ def decals(bpy, meshes, nose, yc, ftyre_x):
     view's fitted camera (FIELD cams) onto the car as prepped (the `on` objects), `off` towards the camera; both sides
     (mirrored across the centre line). One object per decal, its material `mat` (cars/model_x.py MAT_RGB); the faces
     lying on a lid or door (`on` beyond the body: the tailgate's lamp halves) in an object `<name>_<that object's
-    initial>` riding it (cars/model_x.py PART_OBJS / SHELL_OBJS). `holes`: loops cut out of the outline."""
+    initial>` riding it (cars/model_x.py PART_OBJS / SHELL_OBJS). `holes`: loops cut out of the outline; `front`: no
+    vertex past the body's nose by more than it (m)."""
     import bmesh
     from mathutils import Vector
     from mathutils.bvhtree import BVHTree
@@ -486,6 +763,7 @@ def decals(bpy, meshes, nose, yc, ftyre_x):
     owner = np.repeat([o.name for o in hull], [len(o.data.polygons) for o in hull])
     pmat = np.array([o.data.materials[p.material_index].name if o.data.materials else "" for o in hull
                      for p in o.data.polygons])
+    tip = max(v.co.x for v in next(o for o in meshes if o.name == "Car Body").data.vertices)
     for dc in FIELD["decals"]:
         c = cams[dc["view"]]
         R, C = np.array(c["R"]), np.array(c["C"])
@@ -511,6 +789,8 @@ def decals(bpy, meshes, nose, yc, ftyre_x):
             n = n if n.dot(ray) < 0 else -n                # off the surface along its normal (a ray-wise offset
             nrm[v] = n                                     # sank in where the view grazes it)
             v.co = hit + n * (dc["off"] / S)
+            if "front" in dc:                         # not past the nose's tip by more than `front` m (the length)
+                v.co.x = min(v.co.x, tip + dc["front"] / S)
         bmesh.ops.delete(bm, geom=off, context="VERTS")
         if others:      # compete: views also drawing this part; a face stays where its own view meets it squarest
             drop = []
@@ -628,6 +908,7 @@ def main():
         o.data.polygons.foreach_get("material_index", mi)
         grey[o.name] = np.isin(mi, slots(o.data, tg["mat"])) & (h < tg["h"])
     narch = recolour_arches(meshes, nose, yc, ax)
+    filled = None                                     # the faces `fill` recolours (FIELD fascia: no samples there)
     for r in FIELD["recolour"]:
         o = next(o for o in meshes if o.name == r["obj"])
         u, h, az, _, _ = face_frame(o.data, nose, yc)
@@ -637,6 +918,8 @@ def main():
         k = np.isin(mi, slots(o.data, r["mat"])) & (u > r["u"][0]) & (u < r["u"][1]) & (h > r["h"][0]) & \
             (h < r["h"][1]) & (az > a_[0]) & (az < a_[1])
         mi[k] = slot(o.data, r["to"])
+        if r.get("fill"):
+            filled = k if filled is None else filled | k
         o.data.polygons.foreach_set("material_index", mi)
         print("PREP recolour %s %s -> %s: %d faces" % (r["obj"], r["mat"], r["to"], int(k.sum())))
     for o in (o for o in meshes if o.name in grey):   # (not what the recolours above turned body colour)
@@ -695,6 +978,8 @@ def main():
             me.attributes.remove(me.attributes["custom_normal"])
         me.attributes.new("custom_normal", "FLOAT_VECTOR", "CORNER").data.foreach_set("vector", n.astype(np.float32).ravel())
         me.update()
+    if FIELD.get("fascia"):
+        fascia(meshes, nose, yc, filled)
     meshes.append(spoiler(bpy, meshes, nose, yc))
     ftyre = next(o for o in meshes if o.name.startswith("Tyre") and (nose - pts(o)[:, 0].mean()) * S < 2.5)
     fx = pts(ftyre)[:, 0]
