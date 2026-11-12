@@ -88,8 +88,10 @@ FIELD = dict(
         # the bumper is FIELD fascia's
         dict(d=(-0.026, 0), u=(-1, -0.5, 0.10, 0.20), h=(0.20, 0.225, 0.25, 0.28)),
         dict(d=(0, 0.018), u=(0.10, 0.18, 0.26, 0.33), h=(0.24, 0.205)),
-        # the roof's rear end up (official SIDE roof @x1400 / x1480 +4 px, the tail top @x1520 +3)
-        # dict(d=(0, 0.018), u=(4.10, 4.30, 4.45, 4.62), h=(1.12, 1.24)),
+        # the roof's rear end up (official SIDE roof @x1400 / x1480 +4 / +5 px, the tail top @x1520 +3): round 4, behind
+        # u 4.28 (an earlier one from u 4.10 lifted the roof ahead of it, @x1300 -3 -> -4) and back to the spoiler's legs
+        # (a lift under them left the legs' rays starting inside the tailgate: the prep crashed); the spoiler `top` +12 mm
+        dict(d=(0, 0.023), u=(4.28, 4.50, 4.78, 4.95), h=(1.10, 1.24)),
     ),
     # faces recoloured by box (source frame, before the field): obj, mat -> to; u, h, az windows (lo, hi).
     # The tail lamps body colour, lens and housing (the source's lamp sat 5-16 px low and had another shape: official
@@ -111,7 +113,7 @@ FIELD = dict(
               dict(obj="Car Body", mat="Aluminum", to="Car Paint", u=(-1, 0.6), h=(0.6, 0.85), az=(0.06, 1.0))),
     # the raised spoiler (spoiler(); official SIDE / REAR34 triangulated: tips u 4.90 h 1.29 |z| 0.61, blade over the
     # tailgate's rear edge ~0.2 m chord, legs near the tips)
-    spoiler=dict(span=0.61, te=(4.89, 0.09), chord=0.17, top=(1.305, -0.012), thick=0.014, n=24, leg=0.52,
+    spoiler=dict(span=0.61, te=(4.89, 0.09), chord=0.17, top=(1.317, -0.012), thick=0.014, n=24, leg=0.52,
                  leg_u=(0.30, 0.75), leg_w=0.03, sink=0.02,
                  # round 2 (official REAR34 from below: a dark underside 15 px under the blade): the leading edge
                  # `rake` lower than the trailing, the underside black; optional: the last `tip` of the span curled

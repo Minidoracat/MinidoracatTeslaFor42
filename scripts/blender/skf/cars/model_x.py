@@ -58,6 +58,7 @@ CAR = dict(
     # convert.py fill_slivers (from fix/m3): the texels a triangle's UV touches that the bake left empty take its own
     # values (1,419 triangles sampled the skin's black, 656 of them on the front end; the game's 1 px dark points)
     UV_FILL=True,
+    UV_FILL_TONE=True,                     # (convert.py textures) the filled texels out of the paint's blur and quantiles
     PAINT_ALPHA_DEFAULT=254,
     # tex = a * official-ramp colour / GAIN (model_y.py CAL), b 0: per-channel gains only, a = official FRONT34 p50 over
     # the game's at a = 1 (perf/paint_sheet.py on modelx-sp paint-<i>-<name>-fl-max, tesla-mx-1101b; Ultra Red and Deep
@@ -129,6 +130,10 @@ CAR = dict(
     FALCON=dict(hinge=(0.14, 1.37), elbow=(0.55, 1.30), side=(0.75, 0.86)),
     GATE_IN=(0.0, 0.894, -0.447),
     GATE_HINGE="top",
+    # (convert.py pieces) the hinge 3 cm under the tailgate's top edge: the roof's crown put the front edge's sides 2-4
+    # cm under a hinge at its top, so open they swung back and up off the roof: from the front, over the roof, the
+    # ground showed through under the raised gate (game SE 751 px, b9fe78a 156; 0.01 / 0.02 / 0.03: 294 / 63 / 1)
+    GATE_HINGE_DROP=0.03,
     # ---- convert.py: the source (TMP/src, gitignored; temp/sketchfab-model-x-plaid in the main checkout)
     SRC=("src", "source", "model_x.obj"),
     SRC_C=(1.5579, -0.448),                # source length / width centre (the mirror plane), source units
@@ -144,7 +149,15 @@ CAR = dict(
     CARBON=dict(rgb=(40, 40, 43), zones=(dict(lo=(-1.2, 1.62, -0.1), hi=(1.2, 2.4, 0.30), below=(((0.0, 2.0, 0.233), (0.0, 0.0, 1.0)),),
                                               cut=True),)),
     ARCH_LINER=None,
-    PLATES=(),
+    # the trunk's sill under the open tailgate (pre-centre z 0.55, the cargo floor's rear wall back to the bumper's
+    # inside): the ground showed between them through the open trunk (game N / NE / SW / W 54 / 267 / 308 / 35 px)
+    PLATES=(("SillPlate", ((-0.47, -2.025, 0.550), (0.45, -2.025, 0.550), (0.45, -2.052, 0.550), (0.30, -2.067, 0.550),
+                           (0.15, -2.077, 0.550), (0.0, -2.087, 0.550), (-0.15, -2.077, 0.550), (-0.30, -2.067, 0.550),
+                           (-0.47, -2.052, 0.550)), (0, 0, 1), "arch_liner"),
+            # (as model_s.py) under the 1 px cracks at the headlamps' top inner corners (fascia, round 3: game NW 4 px)
+            *((f"LampCrack{'L' if sx < 0 else 'R'}", tuple((sx * x, y, 0.692) for x, y in
+                                                         ((0.72, 1.60), (0.60, 1.60), (0.60, 1.73), (0.72, 1.73))),
+               (0, 0, 1), "arch_liner") for sx in (-1, 1))),
     SEAL_CLIP=True,                        # (the strips through a panel showed outside: B-pillar roof seam, arch lips)
     # the strips 45 deg into the body (convert.py seals): in the panel's plane they stood up to 27 mm past the outline
     # at the roof, tail lamp and arch seams (temp/fit-1112/seals)
@@ -153,11 +166,13 @@ CAR = dict(
     # frame, tail lamp surrounds, window sills) ran inside UV islands as texel steps, blurred at 512: cut the islands
     # at every skin colour border (convert.py stage_build; user 2026-11-01, models.md)
     SPLIT_COLOURS=True,
-    # the gaps as the official's thin continuous dark line (convert.py seals, as model_s.py): a 3.5 mm strip on the
-    # later part's edge where another panel's edge lies across the gap, not by the glass, in runs >= 8 cm, not round
-    # the liftgate; no seal strip whose far edge has nothing over it within 3 cm. SEAM_SHADE (the gaps shaded in the
-    # 512 skin) blurred into a 3-6 px grey band, the 2 cm strips showed as black wedges at the A-pillar's foot
-    SEAL_RIBBON=dict(w=0.0065, lift=0.0010, gap=0.025, glass=0.03, chain=0.08, skip=("TrunkDoor",), cell="dash"),
+    # the gaps as the official's continuous grey line (convert.py seam_lines, as model_s.py): half on each side of
+    # every gap between two parts, half the paint's median (round 4: SEAL_RIBBON's 6.5 mm strip on one panel drew a
+    # dashed line at 512 without antialiasing); no seal strip whose far edge has nothing over it within 3 cm, the
+    # strips' reach cut back inside the game cameras' outline (SEAL_TRIM)
+    SEAM_LINE=dict(w=0.004, over=0.002, bridge=0.003, lift=0.0010, gap=0.025, glass=0.03, step=0.006, chain=0.04,
+                   tone=0.5),
+    SEAL_TRIM=True,
     SEAL_COVER=0.03,
     SEAL_FULL=("TrunkDoor",),              # but the liftgate's: open, they close its gap to the pillars
     SEAL=(0.008, 0.008),
@@ -241,6 +256,9 @@ CAR = dict(
     CABIN_FRONT_Y=1.00,
     TRUNK_Y=-1.55,
     TRUNK_WALL=True,                       # trunk side walls from one profile (cabin.py trunk_walls; user 2026-11-01)
+    # (cabin.py trunk_walls, as Model Y L) over the outer wall's last hit, the slots on the chords between its hits: the
+    # last ring's wall held that hit's x up to its top and stood 7.2 mm out of the rear bumper's corner (seals)
+    TRUNK_WALL_INSIDE=True,
     HUMP_BACKS=False,                      # no two-sided arch humps (cabin.py; staircase in the rear doors, 2026-11-01)
     REAR_DOOR_WALL=True,                   # TRUNK_WALL's profile through the rear door openings too (user 2026-11-01)
     CABIN_ZC=-0.05,
