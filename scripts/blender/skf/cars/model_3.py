@@ -168,6 +168,10 @@ CAR = dict(
     # faces more, a bright white band over the side windows where the official SIDE has a thin body-colour line. Paint
     # centred above z (pre-centre) takes the paint's median tone, blended in from z0 (no step along the pillars)
     RAIL=(0.926, 1.032),
+    # convert.py fill_slivers: the texels a triangle's UV touches that the bake left empty take its own values (a
+    # sliver island or a thin tail far from its island's texels gets none: the game showed the skin's black there, a
+    # 10 px dash at a rear door's sill and a line under the spoiler's ends, 2026-11-13)
+    UV_FILL=True,
     # the panel gaps shaded in the skin (convert.py seam_shade, model_y.py): a dotted line at the closest zoom
     SEAM_SHADE=dict(reach=0.02, width=0.010, k=0.35, steep=0.5,
                     parts=("DoorFrontLeft", "DoorFrontRight", "DoorRearLeft", "DoorRearRight", "EngineDoor"),
@@ -244,7 +248,7 @@ CAR = dict(
                                              below=_REAR_PLANES))),
     # ... and its corners body colour above it (the source's black ran 2 cm higher there)
     PAINT_OVER=(dict(of=_DIFFUSER, lo=(-0.62, -9.0, 0.175), hi=(0.62, -1.60, 0.40), above=_REAR_PLANES,
-                     facing=((0, -1, 0), (0.28, 1.0))),),
+                     facing=((0, -1, 0), (0.28, 1.0)), tone=0.25),),   # tone: the bumper's beside it (game 177)
     PANES={"Body": {"WinT", "LightBarL", "WinH"}, "DoorFrontLeft": {"WinLH"}, "DoorFrontRight": {"WinRH"},
            "DoorRearLeft": {"WinLT"}, "DoorRearRight": {"WinRT"}, "TrunkDoor": set(), "EngineDoor": set()},
     # badges: T on the nose (where the source has it), TESLA across the trunk lid between the tail lamps, the

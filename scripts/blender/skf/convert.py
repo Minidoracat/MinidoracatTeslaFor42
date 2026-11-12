@@ -879,13 +879,19 @@ def classify(car, names, sizes):
     fnorm = np.array([p.normal[:] for p in me.polygons])
     # PAINT_OVER (Model 3): faces of `of` (a match() spec) in the box (lo, hi) on the front side of any `above` plane
     # ((point, normal), ...; cut along them with CUT / PLANES), with `facing` as CARBON's, are paint: the source's
-    # black diffuser reaches higher at its corners than the official's body colour
+    # black diffuser reaches higher at its corners than the official's body colour. `tone` (0..1): their paint takes
+    # that quantile of the paint's tones (textures(); the diffuser's corner ledge faces up, so the up-facing term made
+    # it a 1-2 px bright edge over the black and a white point at the corner's foot)
+    tone = np.zeros((n, 3))
     for zn in C.get("PAINT_OVER", ()):
         over = match(zn["of"], obj, csize) & (cen > zn["lo"]).all(1) & (cen < zn["hi"]).all(1)
         if "facing" in zn:
             d = fnorm @ np.array(zn["facing"][0], float)
             over &= (d >= zn["facing"][1][0]) & (d <= zn["facing"][1][1])
-        paint |= over & np.any([(cen - np.array(p, float)) @ np.array(nrm, float) > 0 for p, nrm in zn["above"]], 0)
+        over &= np.any([(cen - np.array(p, float)) @ np.array(nrm, float) > 0 for p, nrm in zn["above"]], 0)
+        paint |= over
+        if "tone" in zn:
+            tone[over] = (1.0, zn["tone"], 0.0)
     # CARBON: paint the real car has in black (Model 3 Performance's carbon spoiler $SLR1, its black lower front
     # intake): paint faces in each zone's box (lo, hi); with `edge` (axis, depth) only those within depth of the
     # outline's lowest coordinate on that axis (CARBON_EDGE: the lid's trailing edge curves forward towards the sides,
@@ -1034,7 +1040,7 @@ def classify(car, names, sizes):
     rail = paint * (part == 0) * pv.smoothstep(*RAIL, cen[:, 2]) if RAIL else np.zeros(n)
     return dict(part=part, zone=zone, rgb=rgb, paint=paint, lamp=lamp, glass=glass, pane=pane, obj=obj, csize=csize,
                 badge=np.array([o.startswith(("Badge_", "Caliper")) for o in obj]),
-                mat=mat, mirror=mirror, carbon=carbon, rail=rail, recess=recess)
+                mat=mat, mirror=mirror, carbon=carbon, rail=rail, recess=recess, tone=tone)
 
 
 # ---------------------------------------------------------------- textures
@@ -1054,6 +1060,101 @@ def split_zone_edges(car, zone, every=False):
     bmesh.ops.split_edges(bm, edges=es)
     bm.to_mesh(car.data)
     bm.free()
+
+
+def _tri_closest(P, A, B, C):
+    """Closest points of 2-D points P (n x 2) on triangle ABC: (barycentrics n x 3, distances n)."""
+    e0, e1, d = B - A, C - A, P - A
+    den = e0[0] * e1[1] - e0[1] * e1[0]
+    if abs(den) > 1e-12:
+        v = (d[:, 0] * e1[1] - d[:, 1] * e1[0]) / den
+        w = (e0[0] * d[:, 1] - e0[1] * d[:, 0]) / den
+        bary = np.c_[1 - v - w, v, w]
+    else:
+        bary = np.zeros((len(P), 3))
+    dist = np.where((bary >= 0).all(1) & (abs(den) > 1e-12), 0.0, np.inf)
+    V = (A, B, C)
+    for i, j in ((0, 1), (1, 2), (2, 0)):           # outside (or a degenerate triangle): the nearest edge point
+        s = V[j] - V[i]
+        t = np.clip((P - V[i]) @ s / max(s @ s, 1e-12), 0, 1)
+        dd = np.linalg.norm(P - (V[i] + t[:, None] * s), axis=1)
+        better = dd < dist
+        b = np.zeros((len(P), 3))
+        b[:, i], b[:, j] = 1 - t, t
+        bary = np.where(better[:, None], b, bary)
+        dist = np.minimum(dist, dd)
+    return bary, dist
+
+
+def fill_slivers(me, res, layers, grow=8, reach=0.75):
+    """UV_FILL (Model 3): the texels each triangle's UV0 touches (centre within `reach` px) that the bake left empty
+    (its `cov` layer 0) take the triangle's own values at the nearest point: the attribute layers interpolated, the
+    normal from the corners', AO the baked texels' mean within 4 px (else the median); then `grow` px of margin round
+    them, so the game's 512 copy (4 x 4 means) never mixes in black. In place. Most triangles are under a texel thin in
+    UV and ride on their island's texels, but a sliver island or a thin tail far from its island's texels has none:
+    the bake writes nothing there and the game showed the skin's black (a 10 px dash at a rear door's sill, a line
+    under the spoiler's ends, 2026-11-13)."""
+    H, W = res["cov"].shape[:2]
+    cov = res["cov"][..., 0] > 0.5
+    me.calc_loop_triangles()
+    n = len(me.loop_triangles)
+    tl = np.empty(n * 3, np.int64)
+    me.loop_triangles.foreach_get("loops", tl)
+    tl = tl.reshape(-1, 3)
+    tp = np.empty(n, np.int64)
+    me.loop_triangles.foreach_get("polygon_index", tp)
+    uv = np.empty(len(me.loops) * 2)
+    me.uv_layers["UV0"].data.foreach_get("uv", uv)
+    T = uv.reshape(-1, 2)[tl] * (W, H) - 0.5        # texel-centre units: x column, y row (img_np: row 0 = v 0)
+    lo = np.clip(np.floor(T.min(1) - reach).astype(int), 0, (W - 1, H - 1))
+    hi = np.clip(np.ceil(T.max(1) + reach).astype(int), 0, (W - 1, H - 1))
+    S = np.pad(np.cumsum(np.cumsum(~cov, 0), 1), ((1, 0), (1, 0)))   # empty texels in each triangle's box
+    empty = S[hi[:, 1] + 1, hi[:, 0] + 1] - S[lo[:, 1], hi[:, 0] + 1] - S[hi[:, 1] + 1, lo[:, 0]] + S[lo[:, 1], lo[:, 0]]
+    pix, dist, tri, bary = [], [], [], []
+    for k in np.where(empty > 0)[0]:
+        gx, gy = np.meshgrid(np.arange(lo[k, 0], hi[k, 0] + 1), np.arange(lo[k, 1], hi[k, 1] + 1))
+        g = np.c_[gx.ravel(), gy.ravel()]
+        g = g[~cov[g[:, 1], g[:, 0]]]
+        if not len(g):
+            continue
+        b, d = _tri_closest(g.astype(float), *T[k])
+        m = d <= reach
+        pix.append(g[m, 1] * W + g[m, 0]); dist.append(d[m]); tri.append(np.full(m.sum(), k)); bary.append(b[m])
+    if not pix:
+        return
+    pix, dist, tri, bary = (np.concatenate(a) for a in (pix, dist, tri, bary))
+    o = np.lexsort((dist, pix))
+    keep = o[np.r_[True, pix[o][1:] != pix[o][:-1]]]  # each texel: its nearest triangle
+    pix, tri, bary = pix[keep], tri[keep], bary[keep]
+    lt = np.array([p.loop_total for p in me.polygons])
+    for name, v in layers.items():
+        v = np.asarray(v, float)
+        val = np.einsum("nk,nkc->nc", bary, v[tl[tri]]) if len(v) == lt.sum() else v[tp[tri]]
+        res[name].reshape(-1, 4)[pix] = np.c_[val, np.ones(len(pix))]
+    cn = np.empty(len(me.loops) * 3)
+    me.corner_normals.foreach_get("vector", cn)
+    nv = np.einsum("nk,nkc->nc", bary, cn.reshape(-1, 3)[tl[tri]])
+    nv /= np.maximum(np.linalg.norm(nv, axis=1, keepdims=True), 1e-9)
+    res["nrm"].reshape(-1, 4)[pix] = np.c_[nv * 0.5 + 0.5, np.ones(len(pix))]
+    ao = res["ao"][..., 0]
+    num, den = pv.box_blur(np.where(cov, ao, 0.0), 4), pv.box_blur(cov.astype(float), 4)
+    a = np.where(den.ravel()[pix] > 1e-6, num.ravel()[pix] / np.maximum(den.ravel()[pix], 1e-6), np.median(ao[cov]))
+    res["ao"].reshape(-1, 4)[pix] = np.c_[a, a, a, np.ones(len(pix))]
+    src = np.full(H * W, -1, np.int64)              # the margin: each empty texel within `grow` copies its nearest
+    src[pix] = pix                                  # filled one (8-neighbour steps)
+    src = src.reshape(H, W)
+    free = ~cov
+    free.ravel()[pix] = False
+    for _ in range(grow):
+        for dy, dx in ((-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)):
+            sh = np.full_like(src, -1)
+            sh[max(dy, 0):H + min(dy, 0), max(dx, 0):W + min(dx, 0)] = src[max(-dy, 0):H + min(-dy, 0), max(-dx, 0):W + min(-dx, 0)]
+            put = free & (src < 0) & (sh >= 0)
+            src[put] = sh[put]
+    g = np.where(free.ravel() & (src.ravel() >= 0))[0]
+    for r in res.values():
+        r.reshape(-1, 4)[g] = r.reshape(-1, 4)[src.ravel()[g]]
+    print(f"UV_FILL {len(pix)} empty texels under {len(np.unique(tri))} triangles filled, {len(g)} margin texels")
 
 
 def unwrap(car, obj):
@@ -1125,6 +1226,8 @@ def bake(car, layers, ao=True):
     me.polygons.foreach_set("material_index", np.zeros(len(mi), np.int64))
     pv.select_only(car)
     res = {}
+    if C.get("UV_FILL") and ao:                     # coverage: 1 where the bake (or its margin) wrote, 0 elsewhere
+        layers = {**layers, "cov": np.ones((len(lt), 3))}
     jobs = [(k, "EMIT") for k in layers] + ([("ao", "AO"), ("nrm", "NORMAL")] if ao else [])
     for name, kind in jobs:
         if kind == "EMIT":
@@ -1143,6 +1246,8 @@ def bake(car, layers, ao=True):
         res[name] = pv.img_np(img)
         bpy.data.images.remove(img)
         print("BAKE", name, "done")
+    if "cov" in res:
+        fill_slivers(me, res, layers)
     me.materials.clear()
     for m in saved:
         me.materials.append(m)
@@ -1291,6 +1396,8 @@ def textures(car, c, shift=0.0):
                                                                      0.5 * c["badge"])))[:, None], 3, 1)}
     if c["rail"].any():
         layers["rail"] = np.repeat(c["rail"][:, None], 3, 1)
+    if c["tone"][:, 0].any():
+        layers["tone"] = c["tone"]
     if C.get("SEAM_SHADE") or C.get("RECESS"):   # each corner's position, 0..1 over the bbox: texel positions
         co = pv.mesh_co(car)
         lo_, span = co.min(0), np.ptp(co, 0)
@@ -1327,6 +1434,8 @@ def textures(car, c, shift=0.0):
     q = np.interp(q, [q.min(), *np.percentile(q, pc), q.max()], [ends[0], *tg, ends[1]])
     if "rail" in b:                        # RAIL: the median tone
         q += (dict(PAINT_TARGET)[50] - q) * b["rail"][..., 0][paint]
+    if "tone" in b:                        # PAINT_OVER tone: that quantile of the paint's tones
+        q += (np.interp(b["tone"][..., 1][paint] * 100, pc, tg) - q) * b["tone"][..., 0][paint]
     # skin alpha 254 marks the paint for the shader's sheen (MinidoracatTesla_vehicle.frag): vanilla reads alpha only
     # as "1 - a of the paint tint" (vehicle_multiuv.frag:144), so the paint takes 1/255 of the tint, under a level
     badge = b["badge"][..., 0] > 0.25

@@ -15,7 +15,12 @@ overhang 879, rear 969, sill bottom 106 over the ground:
   (`hood`), the trunk lid's trailing edge back and up onto the official's spoiler (`spoiler`);
 - the tyres (Object_19: convert.py only measures them, for the wheels' centres and outer faces) moved whole: the rear
   axle onto the wheelbase, each axle's outer faces so the track comes out at FIELD track with the config's
-  TIRE_AXLES widths and WHEEL_INSET (pzveh geometry: centre |x| = outer - width / 2 - inset).
+  TIRE_AXLES widths and WHEEL_INSET (pzveh geometry: centre |x| = outer - width / 2 - inset);
+- the field's last terms on where each point lands (fitted on the output): `low_nose` (the bumper's old lip tip back),
+  `tail_low`, `tail_corner` (the diffuser's foot and corner);
+- two objects of its own in the source's black trim material (MAT_BLACK), built on the moved body and left out of
+  the overhangs (cn / ct): `Lip_M3` (LIP: the Performance front's black splitter blade along the bumper's foot, never
+  more than `cap` proud of it) and `Fin_M3` (FIN: the rear diffuser's ledge strip).
 Normals: each corner's by the field's Jacobian, inverse transpose (finite differences).
 Frame: convert.py's pre-centre grid (src_frame: +Y front, +Z up, -X car left, ground z 0); the field works in metres
 of it (X, Y, Z = grid / K). The OBJ keeps the glTF importer's world axes (cars/model_3.py SRC_FLIP, SRC_C, SRC_SCALE
@@ -90,8 +95,11 @@ FIELD = dict(
 # the Performance front's black splitter blade (grid, pre-centre; official SIDE through the c2 camera): the source's
 # lip tip sat 4-5 px low and its underside 1-2 px high. A wedge per station along the old tip's plan line (`tip`: |x|,
 # y, read off the prepped bumper), from the bumper face at `root` z (a ray from ahead, `inset` in) to the tip at `zt`
-# (by |x|) and back under to `back` behind the tip at `zb`; built after the field, so the nose's extreme (cn) ignores it
-LIP = dict(name="Lip_M3", span=0.72, n=61, root=0.185, inset=0.004,
+# (by |x|) and back under to `back` behind the tip at `zb`; built after the field, so the nose's extreme (cn) ignores it.
+# The tip never more than `cap` ahead of the root: round the corner the bumper's face falls back while the tip line
+# held, so the ends stood 7 cm proud of it, past the body's side ahead of the front wheels (a black tooth at the
+# bumper's corners in game, a black block by the tyre from N / W, 2026-11-13); mid-span the tip is 2-3 cm ahead
+LIP = dict(name="Lip_M3", span=0.72, n=61, root=0.185, inset=0.004, cap=0.03,
            tip=((0.0, 1.945), (0.1, 1.942), (0.2, 1.932), (0.3, 1.917), (0.35, 1.895), (0.4, 1.88), (0.45, 1.855),
                 (0.5, 1.828), (0.55, 1.80), (0.6, 1.75), (0.65, 1.712), (0.7, 1.65)),
            zt=((0.0, 0.192), (0.35, 0.192), (0.70, 0.165)),
@@ -281,6 +289,7 @@ def lip(bvh, ymax):
         yt = min(np.interp(ax, *np.array(L["tip"]).T), ymax - 0.001)     # never the nose's extreme
         hit = bvh.ray_cast(Vector((x, 3.0, L["root"])), Vector((0, -1, 0)))[0]
         yr = hit.y - L["inset"] if hit is not None else yt - 0.03
+        yt = min(yt, yr + L["cap"])
         S.append([(x, yr, L["root"]), (x, yt, np.interp(ax, *np.array(L["zt"]).T)),
                   (x, yt - np.interp(ax, *np.array(L["back"]).T), np.interp(ax, *np.array(L["zb"]).T))])
     return strips(np.array(S))
