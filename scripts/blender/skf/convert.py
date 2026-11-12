@@ -1047,6 +1047,101 @@ def split_zone_edges(car, zone, every=False):
     bm.free()
 
 
+def _tri_closest(P, A, B, C):
+    """Closest points of 2-D points P (n x 2) on triangle ABC: (barycentrics n x 3, distances n)."""
+    e0, e1, d = B - A, C - A, P - A
+    den = e0[0] * e1[1] - e0[1] * e1[0]
+    if abs(den) > 1e-12:
+        v = (d[:, 0] * e1[1] - d[:, 1] * e1[0]) / den
+        w = (e0[0] * d[:, 1] - e0[1] * d[:, 0]) / den
+        bary = np.c_[1 - v - w, v, w]
+    else:
+        bary = np.zeros((len(P), 3))
+    dist = np.where((bary >= 0).all(1) & (abs(den) > 1e-12), 0.0, np.inf)
+    V = (A, B, C)
+    for i, j in ((0, 1), (1, 2), (2, 0)):           # outside (or a degenerate triangle): the nearest edge point
+        s = V[j] - V[i]
+        t = np.clip((P - V[i]) @ s / max(s @ s, 1e-12), 0, 1)
+        dd = np.linalg.norm(P - (V[i] + t[:, None] * s), axis=1)
+        better = dd < dist
+        b = np.zeros((len(P), 3))
+        b[:, i], b[:, j] = 1 - t, t
+        bary = np.where(better[:, None], b, bary)
+        dist = np.minimum(dist, dd)
+    return bary, dist
+
+
+def fill_slivers(me, res, layers, grow=8, reach=0.75):
+    """UV_FILL (Model 3): the texels each triangle's UV0 touches (centre within `reach` px) that the bake left empty
+    (its `cov` layer 0) take the triangle's own values at the nearest point: the attribute layers interpolated, the
+    normal from the corners', AO the baked texels' mean within 4 px (else the median); then `grow` px of margin round
+    them, so the game's 512 copy (4 x 4 means) never mixes in black. In place. Most triangles are under a texel thin in
+    UV and ride on their island's texels, but a sliver island or a thin tail far from its island's texels has none:
+    the bake writes nothing there and the game showed the skin's black (a 10 px dash at a rear door's sill, a line
+    under the spoiler's ends, 2026-11-13)."""
+    H, W = res["cov"].shape[:2]
+    cov = res["cov"][..., 0] > 0.5
+    me.calc_loop_triangles()
+    n = len(me.loop_triangles)
+    tl = np.empty(n * 3, np.int64)
+    me.loop_triangles.foreach_get("loops", tl)
+    tl = tl.reshape(-1, 3)
+    tp = np.empty(n, np.int64)
+    me.loop_triangles.foreach_get("polygon_index", tp)
+    uv = np.empty(len(me.loops) * 2)
+    me.uv_layers["UV0"].data.foreach_get("uv", uv)
+    T = uv.reshape(-1, 2)[tl] * (W, H) - 0.5        # texel-centre units: x column, y row (img_np: row 0 = v 0)
+    lo = np.clip(np.floor(T.min(1) - reach).astype(int), 0, (W - 1, H - 1))
+    hi = np.clip(np.ceil(T.max(1) + reach).astype(int), 0, (W - 1, H - 1))
+    S = np.pad(np.cumsum(np.cumsum(~cov, 0), 1), ((1, 0), (1, 0)))   # empty texels in each triangle's box
+    empty = S[hi[:, 1] + 1, hi[:, 0] + 1] - S[lo[:, 1], hi[:, 0] + 1] - S[hi[:, 1] + 1, lo[:, 0]] + S[lo[:, 1], lo[:, 0]]
+    pix, dist, tri, bary = [], [], [], []
+    for k in np.where(empty > 0)[0]:
+        gx, gy = np.meshgrid(np.arange(lo[k, 0], hi[k, 0] + 1), np.arange(lo[k, 1], hi[k, 1] + 1))
+        g = np.c_[gx.ravel(), gy.ravel()]
+        g = g[~cov[g[:, 1], g[:, 0]]]
+        if not len(g):
+            continue
+        b, d = _tri_closest(g.astype(float), *T[k])
+        m = d <= reach
+        pix.append(g[m, 1] * W + g[m, 0]); dist.append(d[m]); tri.append(np.full(m.sum(), k)); bary.append(b[m])
+    if not pix:
+        return
+    pix, dist, tri, bary = (np.concatenate(a) for a in (pix, dist, tri, bary))
+    o = np.lexsort((dist, pix))
+    keep = o[np.r_[True, pix[o][1:] != pix[o][:-1]]]  # each texel: its nearest triangle
+    pix, tri, bary = pix[keep], tri[keep], bary[keep]
+    lt = np.array([p.loop_total for p in me.polygons])
+    for name, v in layers.items():
+        v = np.asarray(v, float)
+        val = np.einsum("nk,nkc->nc", bary, v[tl[tri]]) if len(v) == lt.sum() else v[tp[tri]]
+        res[name].reshape(-1, 4)[pix] = np.c_[val, np.ones(len(pix))]
+    cn = np.empty(len(me.loops) * 3)
+    me.corner_normals.foreach_get("vector", cn)
+    nv = np.einsum("nk,nkc->nc", bary, cn.reshape(-1, 3)[tl[tri]])
+    nv /= np.maximum(np.linalg.norm(nv, axis=1, keepdims=True), 1e-9)
+    res["nrm"].reshape(-1, 4)[pix] = np.c_[nv * 0.5 + 0.5, np.ones(len(pix))]
+    ao = res["ao"][..., 0]
+    num, den = pv.box_blur(np.where(cov, ao, 0.0), 4), pv.box_blur(cov.astype(float), 4)
+    a = np.where(den.ravel()[pix] > 1e-6, num.ravel()[pix] / np.maximum(den.ravel()[pix], 1e-6), np.median(ao[cov]))
+    res["ao"].reshape(-1, 4)[pix] = np.c_[a, a, a, np.ones(len(pix))]
+    src = np.full(H * W, -1, np.int64)              # the margin: each empty texel within `grow` copies its nearest
+    src[pix] = pix                                  # filled one (8-neighbour steps)
+    src = src.reshape(H, W)
+    free = ~cov
+    free.ravel()[pix] = False
+    for _ in range(grow):
+        for dy, dx in ((-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)):
+            sh = np.full_like(src, -1)
+            sh[max(dy, 0):H + min(dy, 0), max(dx, 0):W + min(dx, 0)] = src[max(-dy, 0):H + min(-dy, 0), max(-dx, 0):W + min(-dx, 0)]
+            put = free & (src < 0) & (sh >= 0)
+            src[put] = sh[put]
+    g = np.where(free.ravel() & (src.ravel() >= 0))[0]
+    for r in res.values():
+        r.reshape(-1, 4)[g] = r.reshape(-1, 4)[src.ravel()[g]]
+    print(f"UV_FILL {len(pix)} empty texels under {len(np.unique(tri))} triangles filled, {len(g)} margin texels")
+
+
 def unwrap(car, obj):
     """UV0: smart projection of every face, packed; UV1 starts as a copy (damage_uv1 rewrites it). Badge faces (obj
     in SWATCH) all map onto one small triangle per badge in a strip kept free at the right edge: their strokes are
@@ -1116,6 +1211,8 @@ def bake(car, layers, ao=True):
     me.polygons.foreach_set("material_index", np.zeros(len(mi), np.int64))
     pv.select_only(car)
     res = {}
+    if C.get("UV_FILL") and ao:                     # coverage: 1 where the bake (or its margin) wrote, 0 elsewhere
+        layers = {**layers, "cov": np.ones((len(lt), 3))}
     jobs = [(k, "EMIT") for k in layers] + ([("ao", "AO"), ("nrm", "NORMAL")] if ao else [])
     for name, kind in jobs:
         if kind == "EMIT":
@@ -1134,6 +1231,8 @@ def bake(car, layers, ao=True):
         res[name] = pv.img_np(img)
         bpy.data.images.remove(img)
         print("BAKE", name, "done")
+    if "cov" in res:
+        fill_slivers(me, res, layers)
     me.materials.clear()
     for m in saved:
         me.materials.append(m)
