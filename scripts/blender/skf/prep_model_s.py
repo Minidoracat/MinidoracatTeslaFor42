@@ -75,6 +75,23 @@ FIELD = dict(
                 hu=(0.15, 0.30, 0.42, 0.60, 0.75, 0.90, 1.05, 1.20),
                 du=(0.0, -0.007, 0.0, 0.017, 0.007, 0.011, -0.003, -0.002), u=(0.35, 0.70)),
 )
+# after the decimation (cars/model_s.py POST_FIELD -> post()): what the decimation sees stays the field's above, so
+# these do not re-run its collapse order (a waist term in FIELD moved which edge pairs collapse; the symmetric collapse
+# then tore the left rear door's skin open, models-model-s.md). Metres on the field's output.
+POST = dict(
+    # the door sides in (official door seams triangulated SIDE + FRONT34 and SIDE + REAR34, epipolar, and the handles,
+    # tri8 points, through the camcheck cameras: the B pillar seam h 0.42-0.90 +2.2 / +1.8-2.1 cm inboard of ours, the
+    # handles +1.8-2.4; ahead of the front doors (A seam, side repeater) the two pairs disagree, so none there; the
+    # mirrors stay): |x| in by d, full over y[1..2] (y[0..1] / y[2..3] ramps; under the rear arch's top, h under
+    # hr[0], the rear ramp is yl: the rear door's lower rear corner and the flare stay, so does the widest point over
+    # the rear fenders) and h (h[1..2]; ramps h[0..1], h[2..3]: under the belt, the glass stays), only the skin (|x|
+    # over ax: the door inner trims stay)
+    waist=dict(d=0.022, y=(-1.36, -1.14, 0.15, 0.40), yl=(-0.80, -0.55), hr=(0.74, 0.84), h=(0.30, 0.42, 0.92, 0.99),
+               ax=(0.84, 0.88)),
+    # the mirrors' outer ends in by d over |x| x (only they stand past the body's 0.9935): the decimation that holds
+    # open edges kept their tips (width over the mirrors 2,190.4, manual 2,189)
+    mirror=dict(d=0.0007, x=(1.00, 1.09)),
+)
 
 
 def s(x, a, b):
@@ -132,26 +149,63 @@ def field(p):
 
 
 def moved_plane(p, n):
-    """A cut plane (point p, normal n; pre-centre grid) through the field: the point moved, the normal by the
+    """A cut plane (point p, normal n; pre-centre grid) through the field and POST: the point moved, the normal by the
     Jacobian's inverse transpose there (the planes that stand in the tail's corner term turn with it)."""
-    m = np.linalg.inv(jacobian(np.array([p], float))[0]).T @ np.asarray(n, float)
+    q = np.array([p], float)
+    J = jacobian(q + field(q), fn=post_field)[0] @ jacobian(q)[0]
+    m = np.linalg.inv(J).T @ np.asarray(n, float)
     return moved(*p), tuple(round(float(v), 4) for v in m / np.linalg.norm(m))
 
 
-def moved(x, y, z):
-    """One source pre-centre grid point through the field (cars/model_s.py's positions)."""
+def moved(x, y, z, post=True):
+    """One source pre-centre grid point through the field and (post) POST (cars/model_s.py's positions; post False:
+    what the build reads before the decimation, the DROP boxes)."""
     p = np.array([[x, y, z]], float)
-    return tuple(round(float(v), 4) for v in (p + field(p))[0])
+    p = p + field(p)
+    if post:
+        p = p + post_field(p)
+    return tuple(round(float(v), 4) for v in p[0])
 
 
-def jacobian(p, E=1e-4):
-    """d(p + field(p)) / dp per point (n, 3, 3), central differences."""
+def jacobian(p, E=1e-4, fn=field):
+    """d(p + fn(p)) / dp per point (n, 3, 3), central differences."""
     J = np.zeros((len(p), 3, 3))
     for j in range(3):
         e = np.zeros(3)
         e[j] = E
-        J[:, :, j] = (field(p + e) - field(p - e)) / (2 * E)
+        J[:, :, j] = (fn(p + e) - fn(p - e)) / (2 * E)
     return J + np.eye(3)
+
+
+def post_field(p):
+    """POST (waist, mirror) on grid points (n, 3) of the decimated mesh (through field() already) -> displacement,
+    grid units."""
+    wa = POST["waist"]
+    x, y, h = p[:, 0] / K, p[:, 1] / K, p[:, 2] / K
+    t = s(h, *wa["hr"])                # the rear ramp: yl under the arch's top, y over it
+    yr = s(y, *(lo + t * (hi - lo) for lo, hi in zip(wa["yl"], wa["y"][:2])))
+    d = wa["d"] * yr * (1 - s(y, *wa["y"][2:])) * s(h, *wa["h"][:2]) * (1 - s(h, *wa["h"][2:])) \
+        * s(np.abs(x), *wa["ax"])
+    d = d + POST["mirror"]["d"] * s(np.abs(x), *POST["mirror"]["x"])
+    return np.stack([-np.sign(x) * d, 0 * d, 0 * d], 1) * K
+
+
+def post(o):
+    """cars/model_s.py POST_FIELD (convert.py load_source, each object after its decimation; mesh in the pre-centre
+    grid): post_field() on the points, the corner normals by its Jacobian's inverse transpose."""
+    me = o.data
+    g = np.empty(len(me.vertices) * 3)
+    me.vertices.foreach_get("co", g)
+    g = g.reshape(-1, 3)
+    lv = np.empty(len(me.loops), np.int64)
+    me.loops.foreach_get("vertex_index", lv)
+    cn = np.empty(len(me.loops) * 3, np.float32)
+    me.attributes["custom_normal"].data.foreach_get("vector", cn)
+    n = np.einsum("lij,li->lj", np.linalg.inv(jacobian(g, fn=post_field))[lv], cn.reshape(-1, 3))
+    n /= np.maximum(np.linalg.norm(n, axis=1, keepdims=True), 1e-12)
+    me.vertices.foreach_set("co", (g + post_field(g)).ravel())
+    me.attributes["custom_normal"].data.foreach_set("vector", n.astype(np.float32).ravel())
+    me.update()
 
 
 def map_points():

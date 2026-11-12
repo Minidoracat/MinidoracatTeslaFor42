@@ -20,7 +20,7 @@ import sys
 import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from prep_model_s import moved, moved_plane  # noqa: E402  (the build reads prep_model_s.py's output; see the end)
+from prep_model_s import moved, moved_plane, post  # noqa: E402  (the build reads prep_model_s.py's output; see the end)
 
 _PAINT = "Color1Mtl"
 _LAMP = "MeshesteslaMdoelStrunk2mesh2400622Mtl"     # head and tail lamp housings (smoked)
@@ -328,6 +328,11 @@ CAR = dict(
     # the roof is glass, so the paint up there is the roof rails (model_3.py RAIL)
     RAIL=(0.95, 1.08),
     DECIMATE={"Object_23": 9000, "Object_2": 16000},   # (prefix match: Object_23 first)
+    # (convert.py) open edges held: the symmetric collapse on this asymmetric source dragged open edges across panels
+    # (12 of them 1-2 cm at the sills and the roof's rear edge; the raised liftgate's lower corner let the ground
+    # through; a waist term in the prep tore the left rear door's skin open below the B pillar)
+    DECIMATE_KEEP_BOUNDARY=True,
+    POST_FIELD=post,                       # (convert.py) prep_model_s.py POST: the waist, after the decimation
     PAINT_MAT=_PAINT,
     MAT_RGB={_LAMP: (40, 36, 38),                     # smoked lamp housings (official: dark lamps)
              "I1Mtl": (232, 236, 240),                 # the headlamps' running-light strip
@@ -338,7 +343,7 @@ CAR = dict(
     GLASS_OPAQUE=(),
     GLASS_BACKS=(),
     ROOF_PANE=("Object_11", 452),          # the glass roof
-    MIRROR_CAP=("Object_2", (222,)),        # (decimated sizes)
+    MIRROR_CAP=("Object_2", (194, 198)),        # (decimated sizes)
     # lamp colours: official medians (PPSW / PN01 / PR01 alike): head lens FRONT34 33 32 35; tail black band and lower
     # part SIDE 15-19; clear upper lens SIDE 191 / REAR34 70 (between: the game looks down on it); red bar 190 25 28;
     # C 254 121 120 (lit), its inner 21 20 22
@@ -382,7 +387,7 @@ CAR = dict(
     # 2026-11-01; dropped, it bared the clutter under it). Its component is 4659 triangles as decimated
     CARBON=dict(rgb=(20, 20, 22), zones=tuple(
         dict(lo=(0.47 if s > 0 else -0.545, -1.13, 1.02), hi=(0.545 if s > 0 else -0.47, -1.06, 1.075),
-             of=("Object_2", 4666), facing=((0, 0, 1), (0.75, 1.0))) for s in _SIDES)
+             of=("Object_2", 4547), facing=((0, 0, 1), (0.75, 1.0))) for s in _SIDES)
         # the Plaid's front (official FRONT34 PPSW, its outline through the fitted camera onto the model): the lower
         # intake running down into the black splitter, the white fang between it and the tall side intake, a white
         # strip under the side intake, the splitter under that; the band over the fang joins the two intakes. Round 3:
@@ -477,8 +482,8 @@ def _moved_positions(c):
     def x(v, yy=0.0, zz=0.6):
         return moved(v, yy, zz)[0]
 
-    def box(lo, hi):                    # corner by corner (the field keeps the order)
-        return moved(*lo), moved(*hi)
+    def box(lo, hi, post=True):         # corner by corner (the field keeps the order)
+        return moved(*lo, post=post), moved(*hi, post=post)
 
     def _plane(p, n):                   # behind the rear axle the planes turn with the tail's corner term
         return moved_plane(p, n) if p[1] < -1.2 else (moved(*p), n)
@@ -507,8 +512,9 @@ def _moved_positions(c):
     c["BADGE_Y"] = tuple(y(v, c["TESLA"][0], 0.0) for v in c["BADGE_Y"])
     c["FRUNK_TUB"] = dict(c["FRUNK_TUB"], y=tuple(y(v, 0.65, 0.0) for v in c["FRUNK_TUB"]["y"]))
     c["PLATES"] = tuple((n, tuple(moved(*q) for q in poly), w, m) for n, poly, w, m in c["PLATES"])
-    c["DROP_COMPS"] = tuple((o, *box(lo, hi)) for o, lo, hi in c["DROP_COMPS"])
-    c["DROP_FACES_COMPS"] = tuple((o, *box(lo, hi), a, d) for o, lo, hi, a, d in c["DROP_FACES_COMPS"])
+    # (before the decimation: the field only)
+    c["DROP_COMPS"] = tuple((o, *box(lo, hi, False)) for o, lo, hi in c["DROP_COMPS"])
+    c["DROP_FACES_COMPS"] = tuple((o, *box(lo, hi, False), a, d) for o, lo, hi, a, d in c["DROP_FACES_COMPS"])
     c["CARBON"] = dict(c["CARBON"], zones=tuple(dict(zn, **dict(zip(("lo", "hi"), box(zn["lo"], zn["hi"]))),
                                                      **({"below": tuple(_plane(p, nrm) for p, nrm in zn["below"])}
                                                         if "below" in zn else {}))
@@ -519,7 +525,7 @@ def _moved_positions(c):
 # 21, roof 26; the cabin is rigid: the seat_head.py heads and the sit / back / feet fits set it), so the passengers'
 # SEAT h (over the ground) by _CAB; cabin.py's heights are over the built body's bbox centre (geometry.json zmid),
 # which the field moved from _ZMID[0] to _ZMID[1] (its lowest point is the rear bumper's now): those by the difference
-_CAB, _ZMID = -0.0219, (0.6414, 0.6397)
+_CAB, _ZMID = -0.0219, (0.6414, 0.6391)
 
 
 def _cabin_down(c):
