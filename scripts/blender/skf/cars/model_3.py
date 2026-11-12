@@ -63,13 +63,14 @@ CAR = dict(
     # ---- pzveh: wheel, 20" Warp (official RIMCLOSEUP): a dark wheel read by its ten thin grey spokes, in five swept V
     # pairs from the hub (a Y spoke with thin arms: model_y.py WHEEL_SPOKE), round matte-black aero faces and the red
     # caliper. Five wide grey blades (spoke 44 over a 60 rotor) read in game as a flat grey disc with red dots (user
-    # 2026-10-28). 235/35 R20 front, 275/30 R20 rear (both ~336 mm radius; the source's tires, 345 mm, set the size:
+    # 2026-10-28). Thin dark arms since 2026-11-13 (official SIDE front wheel: wheel mean luminance 32, ours 35; arms
+    # 3-4 px; the old 95-grey swept blades read as a pinwheel). 235/35 R20 front, 275/30 R20 rear (both ~336 mm radius; the source's tires, 345 mm, set the size:
     # the arches were modelled round them)
     WHEEL_RIM=0.80,                        # rim flange radius / tire radius: 20" (254 mm bead + ~17 mm) / 336 mm
-    WHEEL_SPOKE=dict(n=5, hub=0.12, fork=0.22, spread=math.radians(18), main=(0.07, 0.08), arm=0.045, cap=0.14,
-                     inset=0.018, dish=0.020, depth=0.018, sweep=math.radians(32)),
+    WHEEL_SPOKE=dict(n=5, hub=0.12, fork=0.30, spread=math.radians(17), main=(0.055, 0.06), arm=0.024, cap=0.14,
+                     inset=0.018, dish=0.020, depth=0.018, sweep=math.radians(14)),
     WHEEL_DISC=dict(rotor=0.655, hat=0.30),   # 355 mm rotor (US owner's manual p.215) / 271 mm flange
-    WHEEL_RGB=dict(spoke=95, cap=30, barrel=22, lip=70, rotor=36, hat=28, dark=12, gap=8, tire=(22, 28), tread=20),
+    WHEEL_RGB=dict(spoke=52, cap=30, barrel=22, lip=110, rotor=20, hat=18, dark=12, gap=8, tire=(22, 28), tread=20),
     # ---- pzveh: vehicle script
     OY=0.1978,                             # CoM = mesh centre - OY; brake knob (model_y.py). The sedan's lower body and
     #                                        higher wheel mounts put Model Y's 0.2878 ~0.09 nearer the ground: braking
