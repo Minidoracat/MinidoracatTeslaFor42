@@ -119,7 +119,7 @@ const float SHEEN_STEEL_REF = 1.0;  // sky reflection share x (1 + this)
 const float SHEEN_MATTE_POW = 6.0;
 const float SHEEN_MATTE_GAIN = 0.35;
 const float SHEEN_SOFT_GAIN = 0.62;  // 251 (calibration knob: game white share >= 250, paint_sheet.py)
-const float SHEEN_SOFT2_GAIN = 0.45; // 250 (the same knob for Model S: E2E GameMS tune/ms-sheen-1113 b4f3f7e)
+const float SHEEN_SOFT2_GAIN = 0.48; // 250 (the same knob for Model S: E2E GameMS tune/ms-sheen2-1113; 42f4cdf at 0.45 3.7 % white)
 
 // a nearby light as the vehicle shader gets it: (right, forward, height) of the direction to it, the height taken
 // at the ground (BaseVehicle.getLocalPos sets y 0, ModelSlotRenderData.java:256-262; Shader.setLight swaps y / z,
