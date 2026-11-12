@@ -349,6 +349,8 @@ def load_source():
         for under, over, gap in C.get("DROP_COVERED", ()):
             if under == name:
                 drop_covered(o, [obs[names.index(n)] for n in over], gap)
+        if C.get("POST_FIELD"):    # (Model S) a car's displacement after the decimation: its collapse order stays put
+            C["POST_FIELD"](o)
         _label(o, len(names))
         names.append(name)
         if target:          # the components' triangles now: CUT / GATE_CUT_COMPS / ROOF_PANE / MIRROR_CAP keys
