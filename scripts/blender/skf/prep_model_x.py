@@ -92,6 +92,9 @@ FIELD = dict(
               # SIDE + FRONT34 triangulated) and the black round it; the lamps are FIELD decals Lens_X / LensSide_X
               dict(obj="Car Body", mat="Light Glass Simple", to="Car Paint", u=(-1, 0.8), h=(0.6, 1.0)),
               dict(obj="Car Body", mat="Black Car Paint", to="Car Paint", u=(0.1, 0.7), h=(0.74, 0.93), az=(0.45, 0.95)),
+              # the front arch lip's lower front corner body colour (official SIDE: white down to y 635 at x 450, a
+              # thin lip; the source's black ran 20 px ahead of the arch there)
+              dict(obj="Car Body", mat="Black Car Paint", to="Car Paint", u=(0.30, 0.555), h=(0.26, 0.45), az=(0.60, 9)),
               # the nose cone's trim body colour but the T (FIELD decals Band_X)
               dict(obj="Car Body", mat="Aluminum", to="Car Paint", u=(-1, 0.6), h=(0.6, 0.85), az=(0.06, 1.0))),
     # the raised spoiler (spoiler(); official SIDE / REAR34 triangulated: tips u 4.90 h 1.29 |z| 0.61, blade over the
@@ -101,6 +104,10 @@ FIELD = dict(
     # the frunk lid's lip below h[0] eased back (u: near the nose): the convert's frunk jamb hangs straight down from the
     # lid's edge and stood 11 mm out of the nose under it (seals analyze.py)
     lid_lip=dict(obj="Bonnet", d=0.030, h=(0.82, 0.76), u=(0.35, 0.20)),
+    # the lower black trim (sills, arch lips, the bumpers' lower parts: source Black Car Paint under h) dark grey (official
+    # SIDE: sills 30-37 grading to 17-27, arch lips 45-67, rear bumper 43-49 against the build's flat 22): the faces
+    # black before arch_inner (its wheel wells stay black) and still black after `recolour`
+    trim_grey=dict(objs=("Car Body", "Front Door", "Back Door", "Trunk"), mat="Black Car Paint", to="Trim Grey", h=0.75),
     # the fitted official cameras (temp/skf_mx/work/camfit/cams.json: R world -> OpenCV, C, f, w, h in the scene's grid
     # frame; anchor: the front wheel centre y and the ground there) for FIELD decals. FRONT34 / REAR34 refit
     # 2026-11-12 (round 2) with their height held at SIDE's (fit.py HOLD: one studio rig): FRONT34 had sat 20 cm lower,
@@ -583,6 +590,12 @@ def main():
     ax = {k: ((nose - (t[:, 0].min() + t[:, 0].max()) / 2) * S, (t[:, 2].min() + t[:, 2].max()) / 2 * S,
               np.ptp(t[:, 2]) / 2 * S) for k, t in tyre.items()}
     meshes.append(split_mirror(bpy, meshes, nose, yc))
+    tg, grey = FIELD["trim_grey"], {}
+    for o in (o for o in meshes if o.name in tg["objs"]):     # the source's own black trim low down
+        u, h, az, _, _ = face_frame(o.data, nose, yc)
+        mi = np.empty(len(o.data.polygons), np.int64)
+        o.data.polygons.foreach_get("material_index", mi)
+        grey[o.name] = np.isin(mi, slots(o.data, tg["mat"])) & (h < tg["h"])
     narch = recolour_arches(meshes, nose, yc, ax)
     for r in FIELD["recolour"]:
         o = next(o for o in meshes if o.name == r["obj"])
@@ -595,6 +608,13 @@ def main():
         mi[k] = slot(o.data, r["to"])
         o.data.polygons.foreach_set("material_index", mi)
         print("PREP recolour %s %s -> %s: %d faces" % (r["obj"], r["mat"], r["to"], int(k.sum())))
+    for o in (o for o in meshes if o.name in grey):   # (not what the recolours above turned body colour)
+        mi = np.empty(len(o.data.polygons), np.int64)
+        o.data.polygons.foreach_get("material_index", mi)
+        k = grey[o.name] & np.isin(mi, slots(o.data, tg["mat"]))
+        mi[k] = slot(o.data, tg["to"])
+        o.data.polygons.foreach_set("material_index", mi)
+        print("PREP trim grey %s: %d faces" % (o.name, int(k.sum())))
     lip = FIELD["lid_lip"]                            # the frunk lid's lower lip back off the nose (its own move)
     o = next(o for o in meshes if o.name == lip["obj"])
     p = pts(o)

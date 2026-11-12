@@ -187,7 +187,7 @@ T.Specs = {
             { name = "DiamondBlack", code = "PX02", h = 0.953, s = 0.537, v = 0.227 },
             { name = "FrostBlue", code = "PB00", h = 0.586, s = 0.894, v = 0.487 },
             { name = "SolidBlack", code = "PBSB", h = 0.925, s = 0.52, v = 0.24 },
-            { name = "DeepBlue", code = "PPSB", h = 0.589, s = 1.0, v = 0.489 },
+            { name = "DeepBlue", code = "PPSB", h = 0.589, s = 1.0, v = 0.49 },
         },
     },
     ["Base.MinidoracatTesla_ModelYL"] = {

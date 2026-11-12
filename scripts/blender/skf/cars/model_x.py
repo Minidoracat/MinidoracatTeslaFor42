@@ -135,7 +135,9 @@ CAR = dict(
              "Lamp_Lens": (60, 60, 64), "Lamp_DRL": (236, 240, 246), "Tail_Guide": (255, 128, 124),
              "Lamp_Housing": (23, 21, 23), "Lamp_Reflector": (100, 24, 27),
              "Cam_Black": (36, 36, 39), "Slot_Black": (18, 18, 19), "Marker_Red": (36, 18, 17),
-             "Band_Black": (14, 14, 16), "Intake_Black": (18, 18, 20)},
+             "Band_Black": (14, 14, 16), "Intake_Black": (18, 18, 20),
+             # the lower trim (prep_model_x.py FIELD trim_grey; official SIDE sills 30-37, arch lips 45-67)
+             "Trim_Grey": (40, 40, 43)},
     GLASS_MATS=("Window_Glass",),
     GLASS_OPAQUE=(),
     GLASS_BACKS=("WinLH", "WinLT", "WinRH", "WinRT"),   # the source's panes are one-sided
