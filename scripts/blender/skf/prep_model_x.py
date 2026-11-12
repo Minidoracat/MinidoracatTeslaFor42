@@ -51,6 +51,9 @@ FIELD = dict(
         dict(d=(0, 0.030), u=(3.85, 4.25, 5.2, 5.3), h=(1.15, 1.30), az=(0.68, 0.45)),   # rear roof: +10..+12 px
         dict(d=(0, -0.024), u=(1.55, 1.85, 3.20, 3.85), h=(1.02, 1.07, 1.10, 1.30)),   # belt: -5..-7 px
         dict(d=(0, -0.026), u=(1.30, 1.55, 3.55, 3.75), h=(0.32, 0.22)),           # skirt bottom: -4..-5 px
+        # the floor under the cabin (inboard of the sills, which the SIDE outline shows right): ground clearance 169.4
+        # -> the manual's 166
+        dict(d=(0, -0.0036), h=(0.26, 0.20), az=(0.80, 0.70)),
         dict(d=(-0.020, 0), u=(1.30, 1.53, 1.53, 1.78), h=(0.40, 0.55)),           # front door's front seam +5 px
         dict(d=(-0.026, 0), u=(2.35, 2.75, 2.75, 3.15)),                          # B seam +6..+7 px
         dict(d=(-0.020, 0), u=(3.70, 3.98, 3.98, 4.25), h=(0.62, 0.75)),           # falcon rear seam +3..+6 px
