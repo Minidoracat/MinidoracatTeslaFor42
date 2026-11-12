@@ -157,6 +157,18 @@ CAR = dict(
             # (as model_s.py) under the 1 px cracks at the headlamps' top inner corners (fascia, round 3: game NW 4 px)
             *((f"LampCrack{'L' if sx < 0 else 'R'}", tuple((sx * x, y, 0.692) for x, y in
                                                          ((0.72, 1.60), (0.60, 1.60), (0.60, 1.73), (0.72, 1.73))),
+               (0, 0, 1), "arch_liner") for sx in (-1, 1)),
+            # (round 5) under the frunk lid / fender gap over those corners (shut NW 1 px), the cowl corner by the
+            # A-pillar's foot (the front door open: SE 9 px, b9fe78a 3) and the rear door opening's lower rear corner,
+            # where the sill meets the rear arch (both falcon doors open: SW, the ground through a 6 mm gap)
+            *((f"LidCrack{'L' if sx < 0 else 'R'}", tuple((sx * x, y, 0.715) for x, y in
+                                                        ((0.70, 1.62), (0.57, 1.62), (0.57, 1.80), (0.70, 1.80))),
+               (0, 0, 1), "arch_liner") for sx in (-1, 1)),
+            *((f"CowlCrack{'L' if sx < 0 else 'R'}", tuple((sx * x, y, 0.83) for x, y in
+                                                         ((0.77, 0.74), (0.66, 0.74), (0.66, 0.90), (0.77, 0.90))),
+               (0, 0, 1), "arch_liner") for sx in (-1, 1)),
+            *((f"ArchCorner{'L' if sx < 0 else 'R'}", tuple((sx * x, y, 0.19) for x, y in
+                                                          ((0.64, -0.84), (0.44, -0.84), (0.44, -0.66), (0.64, -0.66))),
                (0, 0, 1), "arch_liner") for sx in (-1, 1))),
     SEAL_CLIP=True,                        # (the strips through a panel showed outside: B-pillar roof seam, arch lips)
     # the strips 45 deg into the body (convert.py seals): in the panel's plane they stood up to 27 mm past the outline
@@ -170,8 +182,10 @@ CAR = dict(
     # every gap between two parts, half the paint's median (round 4: SEAL_RIBBON's 6.5 mm strip on one panel drew a
     # dashed line at 512 without antialiasing); no seal strip whose far edge has nothing over it within 3 cm, the
     # strips' reach cut back inside the game cameras' outline (SEAL_TRIM)
+    # flat (round 5, as model_s.py): each half at its own corner's height (game NW: B-pillar 37 -> 76 %, front door's
+    # front 77 -> 95 % by the Model S seam_bl measure; same-camera SIDE front door's front 90 -> 75 %, official 71 %)
     SEAM_LINE=dict(w=0.004, over=0.002, bridge=0.003, lift=0.0010, gap=0.025, glass=0.03, step=0.006, chain=0.04,
-                   tone=0.5),
+                   tone=0.5, flat=True),
     SEAL_TRIM=True,
     SEAL_COVER=0.03,
     SEAL_FULL=("TrunkDoor",),              # but the liftgate's: open, they close its gap to the pillars

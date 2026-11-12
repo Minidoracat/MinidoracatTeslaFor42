@@ -106,9 +106,6 @@ FIELD = dict(
               # SIDE + FRONT34 triangulated) and the black round it; the lamps are FIELD decals Lens_X / LensSide_X
               dict(obj="Car Body", mat="Light Glass Simple", to="Car Paint", u=(-1, 0.8), h=(0.6, 1.0)),
               dict(obj="Car Body", mat="Black Car Paint", to="Car Paint", u=(0.1, 0.7), h=(0.74, 0.93), az=(0.45, 0.95)),
-              # the front arch lip's lower front corner body colour (official SIDE: white down to y 635 at x 450, a
-              # thin lip; the source's black ran 20 px ahead of the arch there)
-              dict(obj="Car Body", mat="Black Car Paint", to="Car Paint", u=(0.30, 0.555), h=(0.26, 0.45), az=(0.60, 9)),
               # the nose cone's trim body colour but the T (FIELD decals Band_X)
               dict(obj="Car Body", mat="Aluminum", to="Car Paint", u=(-1, 0.6), h=(0.6, 0.85), az=(0.06, 1.0))),
     # the raised spoiler (spoiler(); official SIDE / REAR34 triangulated: tips u 4.90 h 1.29 |z| 0.61, blade over the
@@ -126,13 +123,35 @@ FIELD = dict(
     # decimation's and the field's lumps gone; official FRONT34 / SIDE smooth)
     fascia=dict(obj="Car Body", axis=1.0, u=(-1, -0.5, 0.45, 0.62), h=(0.20, 0.26, 0.72, 0.80), facing=0.3, grow=2,
                 knots=(26, 14), lam=0.05, cap=0.15, carry=("Aluminum", "Black Car Paint", "Trim Grey"), align=0.5,
-                step=0.012, seam=0.04, weld=0.008,
+                step=0.012, seam=0.04, weld=0.008, fill=4,
                 # (the nose's tip not ahead of where it was: the manual's length)
                 tip=0.0),
     # the lower black trim (sills, arch lips, the bumpers' lower parts: source Black Car Paint under h) dark grey (official
     # SIDE: sills 30-37 grading to 17-27, arch lips 45-67, rear bumper 43-49 against the build's flat 22): the faces
     # black before arch_inner (its wheel wells stay black) and still black after `recolour`
     trim_grey=dict(objs=("Car Body", "Front Door", "Back Door", "Trunk"), mat="Black Car Paint", to="Trim Grey", h=0.75),
+    # the arch lips' paint border (arch_lip(); round 5): the official SIDE's first paint past each near tyre (PPSW grey
+    # > 110, sub-px) as (image angle deg, radius px) round the tyre's rim-lip ring centre, every 5 deg from the start
+    # angle. The faces of `objs` in `mats` outboard of `az` m (the front fender is narrower than its lip) with a corner
+    # facing the camera by `facing` within `inn` px inside / `out` px outside the border are cut along it (projected
+    # through the SIDE camera, both sides) and recoloured: paint inside trim grey, trim outside paint, black outside
+    # paint when every corner is in that band, faces the camera by `black`[0] and lies outboard of `black`[1] m
+    # (arch_inner took some of the flare's faces; not the wells' walls, which project outside the border too). The
+    # source's black flare ran 10-14 px wider behind the rear wheel (down to the bumper corner) and round the front
+    # arch's rear, the lip 6-13 px narrower over the rear wheel; recolouring whole faces by box bit a sawtooth into it
+    # (round 4). The front ring's first two angles extrapolated (the official's ray there leaves the car), its 285-290
+    # and the rear's 315-325 interpolated over a highlight on the lip.
+    arch_lip=dict(objs=("Car Body", "Back Door", "Front Door"), mats=("Car Paint", "Trim Grey", "Black Car Paint"),
+                  view="SIDE", az=0.50, facing=0.15, black=(0.3, 0.85), inn=40, out=24,
+                  rings=(((574.7, 608.4), 160, (124.0, 123.3, 122.3, 120.8, 119.8, 118.8, 118.8, 118.2, 118.2, 117.7,
+                                                117.6, 117.1, 116.6, 116.0, 116.0, 115.5, 115.0, 114.9, 114.4, 113.9,
+                                                113.9, 113.9, 114.0, 113.5, 114.0, 114.0, 114.1, 114.6, 115.1, 115.7,
+                                                116.2, 116.2, 117.3, 117.8, 118.3, 119.3, 120.3, 121.3, 121.8, 123.3,
+                                                124.8, 127.3)),
+                        ((1316.5, 608.6), 180, (122.4, 121.2, 120.4, 119.7, 119.1, 118.9, 118.8, 118.3, 118.3, 118.4,
+                                                118.0, 118.1, 117.8, 118.0, 117.8, 118.1, 117.8, 118.1, 118.4, 118.7,
+                                                118.9, 119.2, 119.3, 120.0, 120.6, 121.1, 121.6, 122.1, 122.6, 123.0,
+                                                123.5, 123.8, 124.6, 125.3, 126.5, 128.2)))),
     # the fitted official cameras (temp/skf_mx/work/camfit/cams.json: R world -> OpenCV, C, f, w, h in the scene's grid
     # frame; anchor: the front wheel centre y and the ground there) for FIELD decals. FRONT34 / REAR34 refit
     # 2026-11-12 (round 2) with their height held at SIDE's (fit.py HOLD: one studio rig): FRONT34 had sat 20 cm lower,
@@ -589,15 +608,34 @@ def rebuild(me, F, fit, nose, yc, inner, P2, rm):
         n += 1
     # the seams left open round them (loose shells meeting the new faces): their vertices within `weld` m merged
     lo_, hi_ = lo - 0.02, hi + 0.02
-    ends = [v for e_ in bm.edges if len(e_.link_faces) == 1 for v in e_.verts
-            if v.is_valid and lo_[1] < v.co.z * S < hi_[1]
-            and lo_[0] < np.arctan2((v.co.y - yc) * S, F["axis"] - (nose - v.co.x) * S) * rm < hi_[0]]
+    win_ = lambda v: lo_[1] < v.co.z * S < hi_[1] and \
+        lo_[0] < np.arctan2((v.co.y - yc) * S, F["axis"] - (nose - v.co.x) * S) * rm < hi_[0]   # noqa: E731
+    ends = [v for e_ in bm.edges if len(e_.link_faces) == 1 for v in e_.verts if v.is_valid and win_(v)]
     nv = len(bm.verts)
     bmesh.ops.remove_doubles(bm, verts=list(set(ends)), dist=F["weld"] / S)
     bmesh.ops.dissolve_degenerate(bm, dist=1e-6, edges=bm.edges[:])
     print("PREP fascia: %d seam vertices welded" % (nv - len(bm.verts)))
+    # the slivers the weld left open (whole thin triangles missing, 12-65 mm long: from outside the liner showed
+    # through, three dark scratches on each lower corner): loops of at most `fill` open edges closed in paint (a
+    # wider weld closed two of three but opened the bumper's side)
+    rim2 = [e_ for e_ in bm.edges if len(e_.link_faces) == 1 and all(win_(v) for v in e_.verts)]
+    made_ = bmesh.ops.holes_fill(bm, edges=rim2, sides=F["fill"])["faces"]
+    for f_ in made_:
+        f_.material_index = pslot
+    print("PREP fascia: %d slivers filled" % len(made_))
     bm.to_mesh(me)
     bm.free()
+    cn = np.empty(len(me.loops) * 3, np.float32)     # (their corners' normals: the face's)
+    me.attributes["custom_normal"].data.foreach_get("vector", cn)
+    cn = cn.reshape(-1, 3)
+    bad = np.linalg.norm(cn, axis=1) < 0.5
+    if bad.any():
+        lt = np.empty(len(me.polygons), np.int64)
+        me.polygons.foreach_get("loop_total", lt)
+        fn = np.empty(len(me.polygons) * 3)
+        me.polygons.foreach_get("normal", fn)
+        cn[bad] = np.repeat(fn.reshape(-1, 3), lt, 0)[bad]
+        me.attributes["custom_normal"].data.foreach_set("vector", cn.ravel())
     me.update()
     print("PREP fascia: pockets made afresh, %d faces out, %d in (%d rim edges, %d grid points)" % (
         len(gone), n, len(rim_e), len(g)))
@@ -700,6 +738,87 @@ def fascia(meshes, nose, yc, filled):
     print("PREP fascia: %d samples, %d moved (|d| p50 %.1f p99 %.1f max %.1f mm), %d carried, %d corners" % (
         sv.sum(), mv.sum(), np.median(np.abs(d[mv])) * 1000, np.percentile(np.abs(d[mv]), 99) * 1000,
         np.abs(d[mv]).max() * 1000, ride.sum(), k.sum()))
+
+
+def cam_px(P, view, yc, ftyre_x):
+    """world points (source units, n x 3) -> FIELD cams[view] pixels (n x 2), each on the camera's side of the centre
+    line (mirrored: both sides of the car alike), and that side's camera centre (world); decals()'s world() inverted"""
+    c, (fy, gnd) = FIELD["cams"][view], FIELD["anchor"]
+    R, C = np.array(c["R"]), np.array(c["C"])
+    dy, dz = fy / K - S * (ftyre_x - SRC_C[0]), gnd / K
+    eye = np.array([(C[1] / K - dy) / S + SRC_C[0], SRC_C[1] - C[0] / K / S, (C[2] / K - dz) / S])
+    y = yc + np.sign(eye[1] - yc) * np.abs(P[:, 1] - yc)
+    g = K * np.stack([(SRC_C[1] - y) * S, (P[:, 0] - SRC_C[0]) * S + dy, P[:, 2] * S + dz], 1)
+    q = (g - C) @ R.T
+    return np.stack([c["f"] * q[:, 0] / q[:, 2] + c["w"] / 2, c["f"] * q[:, 1] / q[:, 2] + c["h"] / 2], 1), eye
+
+
+def arch_lip(meshes, nose, yc, ftyre_x):
+    """FIELD arch_lip: the paint / trim faces round each arch cut along the official's paint border (a level set: per
+    vertex, its distance in px past the border radius at its angle round the ring in the view; edges crossing it split
+    where it crosses, the split points joined across each face) and recoloured by side: inside trim, outside paint.
+    A face goes when its vertices are all within the rings' angles and one of them is in the band (a long face reaching
+    past `out` kept the old colour: a step at the flare's foot)."""
+    import bmesh
+    A = FIELD["arch_lip"]
+    for o in (o for o in meshes if o.name in A["objs"]):
+        me = o.data
+        bm = bmesh.new()
+        bm.from_mesh(me)
+        bm.verts.ensure_lookup_table()
+        bm.normal_update()
+        P = np.array([v.co[:] for v in bm.verts])
+        N = np.array([v.normal[:] for v in bm.verts])
+        px, eye = cam_px(P, A["view"], yc, ftyre_x)
+        sd = np.sign(eye[1] - yc)                      # the camera's side: every vertex and normal mirrored onto it
+        e = eye - np.c_[P[:, 0], yc + sd * np.abs(P[:, 1] - yc), P[:, 2]]
+        face = (N * np.c_[e[:, 0], sd * np.sign(P[:, 1] - yc + 1e-12) * e[:, 1], e[:, 2]]).sum(1) / np.linalg.norm(e, axis=1)
+        f, band = np.full(len(P), np.nan), np.zeros(len(P), bool)
+        for (cx, cy), a0, rs in A["rings"]:
+            ang = (np.degrees(np.arctan2(px[:, 1] - cy, px[:, 0] - cx)) - a0) % 360 + a0
+            d = np.hypot(px[:, 0] - cx, px[:, 1] - cy) - np.interp(ang, a0 + 5 * np.arange(len(rs)), rs)
+            k = (ang <= a0 + 5 * (len(rs) - 1)) & (d < 3 * A["out"]) & (np.abs(P[:, 1] - yc) * S > A["az"])
+            f[k] = d[k]
+            band |= k & (d > -A["inn"]) & (d < A["out"]) & (face > A["facing"])
+        ms = [i for m in A["mats"] for i in slots(me, m)]
+        trim, paint = slot(me, "Trim Grey"), slot(me, "Car Paint")
+        fv, bv, fa = ({v: x[v.index] for v in bm.verts} for x in (f, band, face))
+        cand = lambda fc: fc.material_index in ms and all(np.isfinite(fv[v]) for v in fc.verts) and \
+            any(bv[v] for v in fc.verts)   # noqa: E731
+        cut = {e for fc in bm.faces if cand(fc) for e in fc.edges if fv[e.verts[0]] * fv[e.verts[1]] < 0}
+        new = []
+        for e in sorted(cut, key=lambda e: e.index):  # (index order: the split's vertex order is the build's)
+            a, b = e.verts
+            _, nv = bmesh.utils.edge_split(e, a, fv[a] / (fv[a] - fv[b]))
+            fv[nv], bv[nv], fa[nv] = 0.0, True, (fa[a] + fa[b]) / 2
+            new.append(nv)
+        bmesh.ops.connect_verts(bm, verts=new)
+        n = [0, 0]
+        for fc in bm.faces:
+            if not cand(fc):
+                continue
+            m = np.mean([fv[v] for v in fc.verts])
+            if m < 0 and fc.material_index == paint:
+                fc.material_index, n[0] = trim, n[0] + 1
+            elif m > 0 and (fc.material_index == trim or all(bv[v] and fa[v] > A["black"][0] and
+                                                               abs(v.co.y - yc) * S > A["black"][1] for v in fc.verts)):
+                fc.material_index, n[1] = paint, n[1] + 1
+        bm.to_mesh(me)
+        bm.free()
+        cn = np.empty(len(me.loops) * 3, np.float32)  # the split corners' normals: interpolated, else the face's
+        me.attributes["custom_normal"].data.foreach_get("vector", cn)
+        cn = cn.reshape(-1, 3)
+        bad = np.linalg.norm(cn, axis=1) < 0.5
+        if bad.any():
+            lt = np.empty(len(me.polygons), np.int64)
+            me.polygons.foreach_get("loop_total", lt)
+            fn = np.empty(len(me.polygons) * 3)
+            me.polygons.foreach_get("normal", fn)
+            cn[bad] = np.repeat(fn.reshape(-1, 3), lt, 0)[bad]
+            me.attributes["custom_normal"].data.foreach_set("vector", cn.ravel())
+        me.update()
+        print("PREP arch lip %s: %d edges cut, %d faces to trim, %d to paint, %d corners without a normal"
+              % (o.name, len(new), n[0], n[1], int(bad.sum())))
 
 
 def inside(p, loops):
@@ -982,9 +1101,10 @@ def main():
         me.update()
     if FIELD.get("fascia"):
         fascia(meshes, nose, yc, filled)
-    meshes.append(spoiler(bpy, meshes, nose, yc))
     ftyre = next(o for o in meshes if o.name.startswith("Tyre") and (nose - pts(o)[:, 0].mean()) * S < 2.5)
     fx = pts(ftyre)[:, 0]
+    arch_lip(meshes, nose, yc, (fx.min() + fx.max()) / 2)
+    meshes.append(spoiler(bpy, meshes, nose, yc))
     meshes += decals(bpy, meshes, nose, yc, (fx.min() + fx.max()) / 2)
     print("PREP width x %.5f, axles u %.4f / %.4f h %.4f / %.4f r %.4f / %.4f, doors centred on y %.4f, arch faces %d"
           % (wk, ax["f"][0], ax["r"][0], ax["f"][1], ax["r"][1], ax["f"][2], ax["r"][2], yc, narch))
