@@ -95,10 +95,10 @@ module Base
         textureDamage2Shell = Vehicles/Veh_Damage2,
         textureRust = Vehicles/Veh_Rust,
         template = PassengerSeat4,
-        extents = 0.9018 0.5953 2.2901,
-        physicsChassisShape = 0.9018 0.5953 2.2901,
+        extents = 0.9018 0.5953 2.2900,
+        physicsChassisShape = 0.9018 0.5953 2.2900,
         centerOfMassOffset = 0.0000 0.1978 0.0000,
-        shadowExtents = 0.9018 2.2901,
+        shadowExtents = 0.9018 2.2900,
         shadowOffset = 0.0 0.0,
         useChassisPhysicsCollision = false,
         physics box
@@ -223,15 +223,15 @@ module Base
         }
         area GasTank
         {
-            xywh = 0.6872 -0.8903 0.4725 0.4725,
+            xywh = 0.6872 -0.8845 0.4725 0.4725,
         }
         area SeatFrontLeft
         {
-            xywh = 0.6872 0.1636 0.4725 0.5192,
+            xywh = 0.6872 0.1635 0.4725 0.5192,
         }
         area SeatFrontRight
         {
-            xywh = -0.6872 0.1636 0.4725 0.5192,
+            xywh = -0.6872 0.1635 0.4725 0.5192,
         }
         area SeatRearLeft
         {
@@ -272,7 +272,7 @@ module Base
         /* charge port: side end of the left tail light (real Model S: behind the left tail light's cover, owner's manual p.172) */
         attachment chargeport
         {
-            offset = 0.4005 0.0257 -0.8903,
+            offset = 0.3926 0.0258 -0.8845,
             rotate = 0.0 0.0 0.0,
         }
         part DoorFrontLeft

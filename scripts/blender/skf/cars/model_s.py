@@ -17,8 +17,10 @@ import math
 import os
 import sys
 
+import numpy as np
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from prep_model_s import moved  # noqa: E402  (the build reads prep_model_s.py's output; see the end)
+from prep_model_s import moved, moved_plane  # noqa: E402  (the build reads prep_model_s.py's output; see the end)
 
 _PAINT = "Color1Mtl"
 _LAMP = "MeshesteslaMdoelStrunk2mesh2400622Mtl"     # head and tail lamp housings (smoked)
@@ -85,10 +87,18 @@ _T_INNER = dict(lo=(-0.955, -2.045, 0.614), hi=(-0.402, -1.55, 0.818),
 _SLOTS = dict(lo=(-0.82, 1.50, 0.0), hi=(-0.40, 2.15, 0.45))   # the bumper's lamp-material slots (side intakes)
 
 
-def _poly_zones(poly, ax, rng):
+# the rear zones' planes on the body (_poly_zones `at`; the source's surface read off the built body, prep field undone):
+# the back face's y by |x|, the bumper sides' |x| by |y|
+_AT_BACK = ((0.0, 0.1437, 0.3699, 0.5055, 0.5789, 0.6261, 0.678), (-2.0709, -2.0709, -2.0298, -1.9834, -1.9386, -1.8821, -1.84))
+_AT_SIDE = ((1.5058, 1.5884, 1.6710, 1.7536, 1.8362, 1.9188, 2.0014), (0.7961, 0.7662, 0.7339, 0.6982, 0.6508, 0.5844, 0.3578))
+
+
+def _poly_zones(poly, ax, rng, at=None):
     """CARBON zones (convert.py `cut`): the paint inside a convex polygon, its corners in coordinates ax (two of 0 x,
     1 y, 2 z) on the left (pre-centre grid, the source's), between rng on the third axis; and its mirror on the right.
-    The box is the polygon's with 0.06 to spare (the planes draw the border)."""
+    The box is the polygon's with 0.06 to spare (the planes draw the border). at: ((|first axis|...), (third...)):
+    each edge's plane through its midpoint at the body's surface (interpolated over the midpoint's |first axis|), so
+    the field moves and turns it where it cuts (else the range's middle)."""
     third, out = 3 - ax[0] - ax[1], []
 
     def p3(a, b, t):
@@ -101,9 +111,12 @@ def _poly_zones(poly, ax, rng):
         if sum(a[0] * b[1] - b[0] * a[1] for a, b in zip(pts, pts[1:] + pts[:1])) < 0:
             pts = pts[::-1]                # counter-clockwise: the outward normal is (db, -da)
         u, w = [q[0] for q in pts], [q[1] for q in pts]
+        mids = [((a[0] + b[0]) / 2, (a[1] + b[1]) / 2) for a, b in zip(pts, pts[1:] + pts[:1])]
+        ts = [((s * float(np.interp(abs(m[0]), *at)) if third == 0 else float(np.interp(abs(m[0]), *at)))
+               if at else (r[0] + r[1]) / 2) for m in mids]
         out.append(dict(lo=p3(min(u) - 0.06, min(w) - 0.06, r[0]), hi=p3(max(u) + 0.06, max(w) + 0.06, r[1]), cut=True,
-                        below=tuple((p3(a[0], a[1], (r[0] + r[1]) / 2), p3(b[1] - a[1], a[0] - b[0], 0.0))
-                                    for a, b in zip(pts, pts[1:] + pts[:1]))))
+                        below=tuple((p3(*(m if at else a), t), p3(b[1] - a[1], a[0] - b[0], 0.0))
+                                    for a, b, m, t in zip(pts, pts[1:] + pts[:1], mids, ts))))
     return tuple(out)
 
 # 19" Magnetite blade (pzveh.spoke_outline `polar`): the silver machined edges of the windows between the blades, read
@@ -284,6 +297,11 @@ CAR = dict(
                (0, 0, 1), "arch_liner") for sx in (-1, 1)),
             *((f"SillCrack{'L' if sx < 0 else 'R'}", tuple((sx * x, y, 0.1641) for x, y in
                                                          ((0.7387, 0.62), (0.7035, 0.62), (0.7035, 0.8), (0.7387, 0.8))),
+               (0, 0, 1), "arch_liner") for sx in (-1, 1)),
+            # r6: four doors open, NW: the ground between the open rear door's front edge and the sill's outer face
+            # at the front door opening (sightlines 2-3 mm outside the sill, 9 px); a 7 mm shelf off the sill under them
+            *((f"SillSlit{'L' if sx < 0 else 'R'}", tuple((sx * x, y, 0.1708) for x, y in
+                                                        ((0.7665, 0.345), (0.7540, 0.345), (0.7540, 0.435), (0.7665, 0.435))),
                (0, 0, 1), "arch_liner") for sx in (-1, 1))),
     SEAL_CLIP=True,
     # the gaps as the official's continuous dark line (convert.py seam_lines): half on each side of every gap between
@@ -320,7 +338,7 @@ CAR = dict(
     GLASS_OPAQUE=(),
     GLASS_BACKS=(),
     ROOF_PANE=("Object_11", 452),          # the glass roof
-    MIRROR_CAP=("Object_2", (230,)),        # (decimated sizes)
+    MIRROR_CAP=("Object_2", (222,)),        # (decimated sizes)
     # lamp colours: official medians (PPSW / PN01 / PR01 alike): head lens FRONT34 33 32 35; tail black band and lower
     # part SIDE 15-19; clear upper lens SIDE 191 / REAR34 70 (between: the game looks down on it); red bar 190 25 28;
     # C 254 121 120 (lit), its inner 21 20 22
@@ -364,7 +382,7 @@ CAR = dict(
     # 2026-11-01; dropped, it bared the clutter under it). Its component is 4659 triangles as decimated
     CARBON=dict(rgb=(20, 20, 22), zones=tuple(
         dict(lo=(0.47 if s > 0 else -0.545, -1.13, 1.02), hi=(0.545 if s > 0 else -0.47, -1.06, 1.075),
-             of=("Object_2", 4675), facing=((0, 0, 1), (0.75, 1.0))) for s in _SIDES)
+             of=("Object_2", 4666), facing=((0, 0, 1), (0.75, 1.0))) for s in _SIDES)
         # the Plaid's front (official FRONT34 PPSW, its outline through the fitted camera onto the model): the lower
         # intake running down into the black splitter, the white fang between it and the tall side intake, a white
         # strip under the side intake, the splitter under that; the band over the fang joins the two intakes. Round 3:
@@ -378,9 +396,11 @@ CAR = dict(
         # the Plaid's rear (official REAR34 and SIDE, the same way): the diffuser's black up to the bumper's lower
         # crease across the rear face (seen from behind), round the corners and along the sides to the rear arch
         + _poly_zones(((0.0, 0.3936), (-0.2874, 0.3886), (-0.4523, 0.3825), (-0.5588, 0.3608), (-0.599, 0.3343),
-                       (-0.6533, 0.2597), (-0.7035, 0.024), (0.0, 0.024)), (0, 2), (-2.70, -1.82))
-        + _poly_zones(((-1.9648, 0.3557), (-1.7854, 0.2293), (-1.7854, 0.024), (-1.9648, 0.024)), (1, 2), (-0.95, -0.55))
-        + _poly_zones(((-1.7854, 0.2293), (-1.4874, 0.1731), (-1.4874, 0.01), (-1.7854, 0.01)), (1, 2), (-0.95, -0.55))),
+                       (-0.6533, 0.2597), (-0.7035, 0.024), (0.0, 0.024)), (0, 2), (-2.70, -1.82), _AT_BACK)
+        + _poly_zones(((-1.9648, 0.3557), (-1.7854, 0.2293), (-1.7854, 0.024), (-1.9648, 0.024)), (1, 2), (-0.95, -0.55),
+                      _AT_SIDE)
+        + _poly_zones(((-1.7854, 0.2293), (-1.4874, 0.1731), (-1.4874, 0.01), (-1.7854, 0.01)), (1, 2), (-0.95, -0.55),
+                      _AT_SIDE)),
     PANES={"Body": {"WinT", "LightBarL"}, "DoorFrontLeft": {"WinLH"}, "DoorFrontRight": {"WinRH"},
            "DoorRearLeft": {"WinLT"}, "DoorRearRight": {"WinRT"}, "TrunkDoor": {"WinH"}, "EngineDoor": set()},
     # badges: T on the nose (where the source has it), TESLA in chrome across the black band between the tail lamps
@@ -460,6 +480,9 @@ def _moved_positions(c):
     def box(lo, hi):                    # corner by corner (the field keeps the order)
         return moved(*lo), moved(*hi)
 
+    def _plane(p, n):                   # behind the rear axle the planes turn with the tail's corner term
+        return moved_plane(p, n) if p[1] < -1.2 else (moved(*p), n)
+
     c["BELT_Z"], c["SILL_Z"], c["GATE_Z"] = z(c["BELT_Z"]), z(c["SILL_Z"]), z(c["GATE_Z"], -1.9, 0.0)
     c["LINES"] = {k: tuple(moved(0.80, *p)[1:] for p in v) for k, v in c["LINES"].items()}
     c["FRONT_Y"], c["DOOR_Y"] = y(c["FRONT_Y"]), tuple(y(v) for v in c["DOOR_Y"])
@@ -476,7 +499,7 @@ def _moved_positions(c):
     c["RAIL"] = tuple(z(v, -0.3, 0.70) for v in c["RAIL"])
     c["LAMPS"] = dict(c["LAMPS"], tail_z=z(c["LAMPS"]["tail_z"], -2.0, 0.6), tail_y=y(c["LAMPS"]["tail_y"], 0.6, 0.6),
                       areas=tuple((dict(zn, **dict(zip(("lo", "hi"), box(zn["lo"], zn["hi"]))),
-                                        below=tuple((moved(*p), n) for p, n in zn.get("below", ()))), rgb, lit)
+                                        below=tuple(_plane(p, n) for p, n in zn.get("below", ()))), rgb, lit)
                                   for zn, rgb, lit in c["LAMPS"]["areas"]))
     t = c["T_BADGE"]
     c["T_BADGE"] = (*moved(0.0, t[0], t[3])[1:2], t[1], t[2], moved(0.0, t[0], t[3])[2], *t[4:])
@@ -487,7 +510,7 @@ def _moved_positions(c):
     c["DROP_COMPS"] = tuple((o, *box(lo, hi)) for o, lo, hi in c["DROP_COMPS"])
     c["DROP_FACES_COMPS"] = tuple((o, *box(lo, hi), a, d) for o, lo, hi, a, d in c["DROP_FACES_COMPS"])
     c["CARBON"] = dict(c["CARBON"], zones=tuple(dict(zn, **dict(zip(("lo", "hi"), box(zn["lo"], zn["hi"]))),
-                                                     **({"below": tuple((moved(*p), nrm) for p, nrm in zn["below"])}
+                                                     **({"below": tuple(_plane(p, nrm) for p, nrm in zn["below"])}
                                                         if "below" in zn else {}))
                                                  for zn in c["CARBON"]["zones"]))
 
