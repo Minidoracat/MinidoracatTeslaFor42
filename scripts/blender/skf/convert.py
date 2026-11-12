@@ -96,6 +96,8 @@ SWATCH = ("Badge_T", "Badge_TESLA", "Badge_MODELY", "Caliper") + (("Badge_CERB",
 #                                            side's tail zone (one spot baked the whole bar LightRT: a removed right
 #                                            rear lamp put out all of it)
 SWATCH_U = 0.03                            # UV0 strip kept for them at u > 1 - SWATCH_U
+# SEAM_LINE tone: the lines' flat UV0 / UV1 spot, a 512 texel's centre in that strip between the first two spots
+SEAM_SPOT = (504.5 / 512, (round(512 / len(SWATCH)) + 0.5) / 512)
 SMOKE_RGB = (62, 58, 60)                   # the light blade by day: smoked lens, so the black letters read
 PARTS = ["Body"] + list(pv.DOORS)          # part index: 0 body, 1.. DOORS order (FL, FR, RL, RR, TrunkDoor, EngineDoor)
 FRUNK_TUB = C["FRUNK_TUB"]                 # the bin under the frunk lid (frunk_tub())
@@ -1488,6 +1490,10 @@ def textures(car, c, shift=0.0):
         if INK:                            # BADGE_INK (Model Y L): its badge light on a dark paint, dark on a light
             s[ink] = np.array(INK["rgb"][p in INK["dark_on"]]) / 255
         s[etch] = np.median(s[paint], 0) * 0.78     # etched into the steel (and seen through a film): a shade darker
+        if (C.get("SEAM_LINE") or {}).get("tone"):  # the seam lines' spot (seam_lines): 3 x 3 texels of 512 round it
+            r_, c_ = (int(v * SKIN) for v in SEAM_SPOT[::-1])
+            h = 3 * SKIN // MASK // 2
+            s[r_ - h:r_ + h, c_ - h:c_ + h] = np.median(s[paint], 0) * C["SEAM_LINE"]["tone"]
         skin = np.clip(s, 0, 1)
         if rec is not None:                # (after the medians above and the damage tint below: the paint's own)
             skin[paint] *= rec[paint][:, None]
@@ -1759,10 +1765,13 @@ def seals(V, T, sel, attr, glass_bvh, solid=None, seams=None, full=False, near_f
 
 
 def seam_lines(V, T, part, panel, glass_bvh):
-    """SEAM_LINE=dict(w, over, bridge, lift, gap, glass, step, chain, cell[, skip]) (Model S): every gap between two
-    parts (doors, lids, the body; not within `glass` of a pane, not the parts in `skip`) as one continuous dark line
-    of even width, half on each side, in the cabin cell `cell` (the shader's palette: no skin texel, so no bake gap
-    can blacken it). The gap's path: the outline of each part's outer skin (panel faces facing out of the car's
+    """SEAM_LINE=dict(w, over, bridge, lift, gap, glass, step, chain, tone | cell[, skip]) (Model S): every gap between
+    two parts (doors, lids, the body; not within `glass` of a pane, not the parts in `skip`) as one continuous dark
+    line of even width, half on each side. Its colour: with `tone`, every corner on SEAM_SPOT, which textures()
+    paints the skin's median paint x tone (a shade of each paint: a dark cabin cell was a black line on the white
+    paint, twice the official renders' contrast); else the cabin cell `cell` (the shader's palette). A 3 x 3 texel
+    flat square around a 512 texel's centre: every sample reads its own colour at 2048 and 512, whatever the phase
+    (a strip's own island would be under a texel, the bake's gaps black). The gap's path: the outline of each part's outer skin (panel faces facing out of the car's
     ellipsoid with nothing over them within 15 cm; a door's return flange, its inner edge are not), where another
     part's outline lies within `gap`; runs of it at least `chain` long, sampled
     every `step`. At each sample, out = n, the mean skin normal 3 cm to either side of the gap; rays along -n across
@@ -1952,7 +1961,8 @@ def seam_lines(V, T, part, panel, glass_bvh):
             rn = np.cross(R[:, 1] - R[:, 0], R[:, 2] - R[:, 0])
             rn /= np.maximum(np.linalg.norm(rn, axis=1, keepdims=True), 1e-12)
             out[int(k)] = (R.reshape(-1, 3), np.arange(len(R) * 3).reshape(-1, 3),
-                           corners(np.array([0, 0, pv.CABIN_UV1_U - CELL[sl["cell"]], 0, 0, 0, 1], float), rn))
+                           corners(np.array([*SEAM_SPOT, *SEAM_SPOT, 0, 0, 1] if sl.get("tone") else
+                                            [0, 0, pv.CABIN_UV1_U - CELL[sl["cell"]], 0, 0, 0, 1], float), rn))
         print(f"SEAM_LINE part {k}: {len(Tt)} tris, {int((ok & (op == k)).sum())} outline edges")
     return out
 
