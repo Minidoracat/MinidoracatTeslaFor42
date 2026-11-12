@@ -284,10 +284,14 @@ def wheel_profile(R, rr, hw):
     the barrel (inside face, seen through the spokes) and the disc that closes the wheel at its middle (dark, the rotor,
     its hat). Normals are smooth along a strip and split between strips. Grid units: R tire radius, rr rim flange
     radius, hw half tire width."""
-    tire = [(0.0, R), (0.075, R - 0.0045)]
+    # the tread's flat part to 0.075, less on a tyre under ~255 mm (hw - the shoulder's 0.0303): the fixed 0.075 put
+    # the shoulder out at 0.105 whatever the width (Model 3's 235 front read 254 mm wide); every other car's hw is
+    # over 0.105, so their wheels stay as they were
+    tw = min(0.075, hw - 0.0303)
+    tire = [(0.0, R), (tw, R - 0.0045)]
     for a in (45, 90):                                   # shoulder, radius 0.03
         t = math.radians(a)
-        tire.append((0.075 + 0.030 * math.sin(t), R - 0.0345 + 0.030 * math.cos(t)))
+        tire.append((tw + 0.030 * math.sin(t), R - 0.0345 + 0.030 * math.cos(t)))
     tire += [(hw + 0.0022, R - 0.052), (hw - 0.0075, rr + 0.006), (hw - 0.0100, rr + 0.002)]
     step = [tire[-1], (hw - 0.0150, rr - 0.004)]
     barrel = [step[-1], (WHEEL_DISC_X, rr - 0.004)]

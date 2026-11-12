@@ -1501,7 +1501,8 @@ def seals(V, T, sel, attr, glass_bvh, solid=None):
     vertices there), reaching SEAL[1] past the edge, both sides: the source's panel gaps are real gaps, the ground
     showed through them. Not along a pane (glass_bvh within 1.2 cm of the strip's far edge): the pane closes that
     gap, and the strips lay on the glass as black spikes round the roof rails and A-pillars. solid (SEAL_CLIP: BVH
-    of the whole car): not where the strip passes through a surface (it showed on the far side)."""
+    of the whole car): not where the strip passes through a surface (it showed on the far side); with SEAL_COVER, not
+    where nothing covers its far edge."""
     tri = T[sel]
     ed = np.concatenate([tri[:, [0, 1]], tri[:, [1, 2]], tri[:, [2, 0]]])
     owner = np.tile(np.arange(len(tri)), 3)
@@ -1523,6 +1524,10 @@ def seals(V, T, sel, attr, glass_bvh, solid=None):
         back = m - fn * SEAL[0]
         keep &= ~np.array([through(*s) for s in zip(m, back)], bool)
         keep &= ~np.array([through(*s) for s in zip(back, back + t * SEAL[1])], bool)
+        cover = C.get("SEAL_COVER")   # grid: only strips whose far edge has a surface over it that close (along the
+        if cover:                     # face's normal); past an outer edge (sill, arch lip) nothing does, and they stuck out
+            tip = back + t * SEAL[1]
+            keep &= np.array([solid.ray_cast(Vector(p), Vector(n), cover)[0] is not None for p, n in zip(tip, fn)], bool)
     a_, b_, fn, t = a_[keep], b_[keep], fn[keep], t[keep]
     p1, p2 = a_ - fn * SEAL[0], b_ - fn * SEAL[0]
     p3, p4 = p2 + t * SEAL[1], p1 + t * SEAL[1]

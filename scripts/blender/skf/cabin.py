@@ -584,18 +584,19 @@ def cabin_mesh(bvh, belt, trunk_floor, trunk_end, arch, opening):
     def trunk_plates(part):
         # trunk: sill plate over the opening's lower edge (the floor ends TRUNK_DROP under it, CABIN_INSET short of the
         # tailgate's inner panel) and the under-floor bin's lid (SEATS sill / bin: width, depth); an optional third
-        # sill value fits the plate's rear half that far inside the body behind it (rays back from the plate's middle,
-        # 24 loops across): Model 3's lip curves forward to the corners, and a square plate deep enough to close the
-        # lip stuck out of the rear face at the trunk lid's lower corners (2026-11-12)
+        # sill value fits the plate's rear half that far inside the body or the shut lid behind it (rays back from the
+        # plate's middle, 24 loops across): Model 3's lip curves forward to the corners, and a square plate deep enough
+        # to close the lip stuck out of the rear face at the trunk lid's lower corners (2026-11-12)
         if SEATS["sill"]:                               # (a pickup's cabin has no trunk)
             (sw, sd, *fit), (bw, bd) = SEATS["sill"], SEATS["bin"]
             yc = trunk_end + 0.02
 
             def to_lip(v):
                 for i in np.nonzero(v[:, 1] < yc)[0]:
-                    h = bvh["body"].ray_cast(Vector((v[i, 0], yc, v[i, 2])), Vector((0, -1, 0)), 1.0)[0]
-                    if h is not None:
-                        v[i, 1] = max(v[i, 1], h.y + fit[0])
+                    o = Vector((v[i, 0], yc, v[i, 2]))
+                    hs = [h.y for h in (bvh[k].ray_cast(o, Vector((0, -1, 0)), 1.0)[0] for k in ("body", "door")) if h]
+                    if hs:
+                        v[i, 1] = max(v[i, 1], max(hs) + fit[0])
                 return v
             part((sw, sd, TRUNK_DROP + 0.005), 0.01, "base", (0, yc, trunk_floor + TRUNK_DROP / 2), seg=1,
                  **(dict(cuts=(24, 0, 0), fit=to_lip) if fit else {}))
