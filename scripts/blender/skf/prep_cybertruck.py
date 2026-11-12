@@ -13,6 +13,8 @@ src_frame: +Y front, +Z up, -X the car's left, ground 0, 0.826 grid / m); the FB
     "$B" -b --factory-startup --python scripts/blender/skf/prep_cybertruck.py -- map     # stdin "name y z" -> mapped
 Numbers, targets and the same-camera check: .claude/skills/tesla-dev/references/models-cybertruck.md.
 """
+import json
+import math
 import os
 import runpy
 import sys
@@ -74,6 +76,7 @@ FIELD = dict(
         "w1": ((-0.713, 1.298), (-0.645, 1.322)), "w2": ((-0.713, 1.334), (-0.645, 1.355)),
         "w3": ((-0.713, 1.341), (-0.645, 1.362)),
         # the roof line behind the glass up 1.2 cm, its tail end (rails' ends, the tailgate's top, its light bar) down
+        # (the rails' top one straight line from q1 to t3: the source's rails are one plane)
         # 1.6 cm (official SIDE top line: 3-5 px low mid-roof, 4 px high at the tail; REAR34 the bar 10-20 px high;
         # manual p.246 B: floor to the top at the tail 503.8)
         "q1": ((-0.99, 1.306), (-0.99, 1.318)), "q2": _FIX(-0.99, 1.06), "q3": ((-0.978, 1.245), (-0.978, 1.257)),
@@ -82,12 +85,12 @@ FIELD = dict(
         "rA3": ((-1.693, 0.834), (-1.635, 0.900)), "rA4": ((-1.906, 0.580), (-1.900, 0.585)),
         "rC1": ((-0.995, 0.529), (-0.990, 0.540)), "rC2": ((-1.181, 0.784), (-1.140, 0.838)),
         "rC3": ((-1.642, 0.785), (-1.605, 0.842)), "rC4": ((-1.825, 0.579), (-1.822, 0.580)),
-        "rk1": _FIX(-1.175, 1.065), "rk2": _FIX(-1.673, 1.088), "rk3": ((-1.175, 1.280), (-1.175, 1.290)),
-        "rk4": ((-1.679, 1.213), (-1.679, 1.216)), "rk5": ((-1.671, 1.154), (-1.671, 1.157)),
+        "rk1": _FIX(-1.175, 1.065), "rk2": _FIX(-1.673, 1.088), "rk3": ((-1.175, 1.280), (-1.175, 1.2894)),
+        "rk4": ((-1.679, 1.213), (-1.679, 1.2114)), "rk5": ((-1.671, 1.154), (-1.671, 1.1524)),
         # tail: the bumper's back 6.9 mm out (rear overhang)
         "t1": ((-2.340, 0.440), (-2.347, 0.440)), "t2": ((-2.350, 0.560), (-2.357, 0.560)),
         "t3": ((-2.334, 1.126), (-2.334, 1.110)), "t4": ((-2.326, 1.066), (-2.326, 1.050)), "t5": _FIX(-2.25, 0.62),
-        "t6": ((-2.265, 1.135), (-2.265, 1.119)), "t7": ((-2.255, 1.071), (-2.255, 1.055)),
+        "t6": ((-2.265, 1.135), (-2.265, 1.1207)), "t7": ((-2.255, 1.071), (-2.255, 1.055)),
         # roof: the apex 8.4 cm forward and 5.8 mm up (official SIDE; manual height 1,793.8), the windscreen's top
         # edge along with it on the new windscreen line from the cowl
         "a1": ((0.306, 1.476), (0.390, 1.4818)), "a2": ((0.306, 1.469), (0.390, 1.4748)),
@@ -110,7 +113,7 @@ FIELD = dict(
     # keep (move()): side-view boxes ((y, z) lo, hi) and |x| (none of the move inboard of x_in, all of it from x_out):
     # the front footwell's toe board behind the front arch (it moved with the arch's rear leg, 1-2 cm into the front
     # passengers' feet: seat_head.py legs -11 mm, 4 before)
-    keep=(((1.05, 0.40), (1.50, 0.95), 0.52, 0.68),),
+    keep=(((0.90, 0.10), (1.70, 1.00), 0.70, 0.755),),
     # rear bumper's lower block (skid()): official SIDE bottom z 0.224-0.276 from y -1.85 back to -2.24, its rear face
     # leaning back to (-2.27, 0.375); REAR34 its back |x| 0.62 / 0.55
     skid=((-1.84, 0.31, 0.226, 0.79, 0.74), (-2.06, 0.37, 0.245, 0.76, 0.70), (-2.24, 0.40, 0.274, 0.60, 0.53),
@@ -126,9 +129,13 @@ FIELD = dict(
     # edge to the corner, the band's and the red strip's z (the source's Body.003 / Cube.030 heights, mapped)
     tailends=dict(face=(-2.334, 1.1), off=0.002, x=(0.668, 0.760), band=(1.067, 1.135), strip=(1.105, 1.121),
                   mat="Car Reflection White"),
-    # wheel wells (wells()): per arch its C line (ctrl keys, front to back) and the inner |x| (front: ARCH_LINER's
-    # inner face; rear: the bed's wheel hump, BED_TUB hump x 0.535), out from the outline, the cladding's inside |x|
-    wells=dict(arches=((("fC1", "fC2", "fC3", "fC4"), 0.52), (("rC1", "rC2", "rC3", "rC4"), 0.545)), off=0.012,
+    # flat panels (flat_stats_of(), a report): the source's panels (normals within ang deg, one plane within tol grid,
+    # area grid^2 or more) of these objects; flat shading of the faces flat in the source (main())
+    flat=dict(objs=("Body", "Body.005", "Body.012", "Body.004", "Cube.002", "Cube.004", "Plane.004"), ang=0.5,
+              tol=0.0008, area=0.004),
+    # wheel wells (wells()): per arch its C line (ctrl keys, front to back) and the inner |x| (front: clear of the
+    # front passengers' feet, seat_head.py legs; rear: the bed's wheel hump, BED_TUB hump x 0.535), out from the outline, the cladding's inside |x|
+    wells=dict(arches=((("fC1", "fC2", "fC3", "fC4"), 0.545), (("rC1", "rC2", "rC3", "rC4"), 0.545)), off=0.012,
                x_out=0.83, mat="Black Plastick"),
     # front light bar (head_bar()): its centre under the face's top edge (middle, corner: over the source's strip),
     # height, out from the face (chamfer_tol: a chamfer hit further than that off its top edge's line is the corner
@@ -236,12 +243,13 @@ def corner(g):
     return q
 
 
-def move(maps, name, g):
+def move(maps, name, g, faces=None, flat_stats=None):
     """Grid points of object `name` -> (new points, Jacobians). maps: object -> Map, built on first use. FIELD keep:
     inside each side-view box the move fades out inboard, from all of it at |x| x_out to none at x_in (the body's
     inner panels behind the arches, the front footwell's toe board, stay where the cabin and the passengers' feet
-    were fitted)."""
-    q, J = _warp(maps, name, g)
+    were fitted). faces: the object's polygons, for FIELD flat's report (after the side-view map, before the corner
+    warp), appended to flat_stats."""
+    q, J = _warp(maps, name, g, faces, flat_stats)
     for (y0, z0), (y1, z1), x_in, x_out in FIELD["keep"]:
         box = (g[:, 1] > y0) & (g[:, 1] < y1) & (g[:, 2] > z0) & (g[:, 2] < z1) & (np.abs(g[:, 0]) < x_out)
         if not box.any():
@@ -255,7 +263,7 @@ def move(maps, name, g):
     return q, J
 
 
-def _warp(maps, name, g):
+def _warp(maps, name, g, faces=None, flat_stats=None):
     """move() before FIELD keep."""
     if name.startswith("Tire"):          # whole, with its axle
         q = g.copy()
@@ -276,6 +284,9 @@ def _warp(maps, name, g):
         ok = np.isfinite(hb)
         q = q + np.outer((wp["k"] - 1) * (h - np.interp(q[:, 1], yb[ok] + 0.01, hb[ok])), n)
         J = np.einsum("ij,njk->nik", np.eye(3) + (wp["k"] - 1) * np.outer(n, n), J)
+    fl = FIELD["flat"]
+    if faces is not None and name.startswith(fl["objs"]):
+        flat_stats += [dict(obj=name, **d) for d in flat_stats_of(g, q, faces, fl)]
     if name.startswith(FIELD["corner"]["skip"]):
         return q, J
     r = corner(q)
@@ -479,6 +490,76 @@ def head_bar(P, body):
     return add_object("Lamp_CT_head", hb["mat"], V, F, P)
 
 
+def panels(g, faces, cfg):
+    """The source's flat panels: faces joined across shared edges while their normals agree within cfg ang (deg) and
+    they lie in one plane within cfg tol (grid); panels of at least cfg area (grid^2). -> (panel per face or -1,
+    face normals, face areas)."""
+    nf, ar, cen = [], [], []
+    for f in faces:
+        P = g[f]
+        n = sum(np.cross(P[i] - P[0], P[i + 1] - P[0]) for i in range(1, len(f) - 1))
+        a = np.linalg.norm(n)
+        nf.append(n / a if a > 0 else n)
+        ar.append(a / 2)
+        cen.append(P.mean(0))
+    nf, ar, cen = np.array(nf), np.array(ar), np.array(cen)
+    par = list(range(len(faces)))
+
+    def root(i):
+        while par[i] != i:
+            par[i] = par[par[i]]
+            i = par[i]
+        return i
+    edge = {}
+    for fi, f in enumerate(faces):
+        for k in range(len(f)):
+            edge.setdefault(tuple(sorted((f[k], f[(k + 1) % len(f)]))), []).append(fi)
+    ca = math.cos(math.radians(cfg["ang"]))
+    for fs in edge.values():
+        for i in fs[1:]:
+            a, b = fs[0], i
+            if nf[a] @ nf[b] > ca and abs(nf[a] @ (cen[b] - cen[a])) < cfg["tol"]:
+                par[root(a)] = root(b)
+    lab = np.array([root(i) for i in range(len(faces))])
+    out = np.full(len(faces), -1)
+    for k, r in enumerate(np.unique(lab)):
+        m = lab == r
+        if ar[m].sum() >= cfg["area"]:
+            out[m] = k
+    return out, nf, ar
+
+
+def plane_fit(P, w=None):
+    c = np.average(P, 0, w)
+    n = np.linalg.svd((P - c) * (np.sqrt(w)[:, None] if w is not None else 1))[2][2]
+    return n, n @ c
+
+
+def flat_stats_of(g, q, faces, cfg):
+    """FIELD flat: how flat each source panel (panels()) stays through the side-view map: per panel its area, the
+    source's and the moved points' max deviation from their best-fit plane (grid) and normal spread (deg). Report
+    only (prep_flat.json): projecting the moved points back onto planes (tried, 2026-11-12) pulled the panels' shared
+    edges apart (dark wedges on the sail); the creases the game showed were the normals (main())."""
+    pan, _, ar = panels(g, faces, cfg)
+    out = []
+    for k in np.unique(pan[pan >= 0]):
+        fs = np.nonzero(pan == k)[0]
+        vs = np.unique(np.concatenate([faces[i] for i in fs]))
+        st = []
+        for P in (g, q):
+            n, d = plane_fit(P[vs])
+            st += [float(np.abs(P[vs] @ n - d).max()),
+                   float(max(np.degrees(np.arccos(min(1.0, abs(n @ fn(P, faces[i]))))) for i in fs))]
+        out.append(dict(panel=int(k), centre=np.round(q[vs].mean(0), 3).tolist(), area=float(ar[fs].sum()),
+                        src=st[:2], moved=st[2:]))
+    return out
+
+
+def fn(P, f):
+    n = sum(np.cross(P[f[i]] - P[f[0]], P[f[i + 1]] - P[f[0]]) for i in range(1, len(f) - 1))
+    return n / max(np.linalg.norm(n), 1e-15)
+
+
 def main():
     import bpy
     bpy.ops.wm.read_factory_settings(use_empty=True)
@@ -487,6 +568,7 @@ def main():
     maps = {}
     n = 0
     body = None
+    flat_stats = []
     for o in [o for o in bpy.data.objects if o.type == "MESH"]:
         me = o.data
         if not len(me.vertices):
@@ -495,9 +577,10 @@ def main():
         co = np.empty(len(me.vertices) * 3)
         me.vertices.foreach_get("co", co)
         g = co.reshape(-1, 3) @ M[:3, :3].T + M[:3, 3]
-        q, J = move(maps, o.name, g)
+        faces = [list(p.vertices) for p in me.polygons]
+        q, J = move(maps, o.name, g, faces, flat_stats)
         if o.name == "Body":
-            body = (q, [list(p.vertices) for p in me.polygons])
+            body = (q, faces)
         Mi = np.linalg.inv(M)
         me.vertices.foreach_set("co", (q @ Mi[:3, :3].T + Mi[:3, 3]).ravel())
         cn = np.empty(len(me.loops) * 3, np.float32)
@@ -509,6 +592,19 @@ def main():
         nn = cn.reshape(-1, 3).astype(float) @ M3i
         nn = np.einsum("li,lij->lj", nn, np.linalg.inv(J)[lv]) @ M3
         nn /= np.maximum(np.linalg.norm(nn, axis=1, keepdims=True), 1e-12)
+        # flat in the source (its corners on the face normal): flat after the move too, the face's new normal (or
+        # its panel's plane); else the per-corner Jacobian above (piecewise constant over the field's triangles,
+        # it drew the field's edges across flat panels as shading creases)
+        n0 = cn.reshape(-1, 3).astype(float) @ M3i
+        n0 /= np.maximum(np.linalg.norm(n0, axis=1, keepdims=True), 1e-12)
+        ls = np.empty(len(me.polygons), np.int64)
+        me.polygons.foreach_get("loop_start", ls)
+        for fi, f in enumerate(faces):
+            lo = slice(ls[fi], ls[fi] + len(f))
+            f0 = fn(g, f)
+            if (n0[lo] @ f0).min() > math.cos(math.radians(FIELD["flat"]["ang"])):
+                fq = fn(q, f)
+                nn[lo] = (fq @ M3) / np.linalg.norm(fq @ M3)           # grid -> world (row vectors, as above)
         if "custom_normal" in me.attributes:
             me.attributes.remove(me.attributes["custom_normal"])
         me.attributes.new("custom_normal", "FLOAT_VECTOR", "CORNER").data.foreach_set("vector",
@@ -517,6 +613,7 @@ def main():
         n += int((np.abs(q - g) > 1e-9).any(1).sum())
     for o in [o for o in bpy.data.objects if o.type == "MESH" and not len(o.data.polygons)]:
         bpy.data.objects.remove(o)
+    json.dump(flat_stats, open(os.path.join(SRC_DIR, "prep_flat.json"), "w"), indent=0)
     nsk, nhb = skid(P), head_bar(P, body)
     light_bar(P)
     tail_ends(P, maps[None])

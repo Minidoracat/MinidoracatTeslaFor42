@@ -77,18 +77,19 @@ CAR = dict(
                                         (dict(u=(0.82, 0.95), t=(0.14, 0.21)), 0.3))},
     # ---- pzveh: wheel, 20" Core with its aero cover (official SIDE wheels, unrolled round the manual's wheel centres
     # and folded every 60 deg: the 6th harmonic dominates): six flat blades (grey 45), 20 deg wide at 0.36 rr,
-    # 30 at 0.5, 34 from 0.65 out (their half widths below), round an octagonal hub (0.27 rr, grey 36), darker
-    # windows (28-30) between them, out to the cover's rim (0.95 rr); colours: the official pixels' (r 20-57 px);
+    # 30 at 0.5, 34 from 0.65 out (their half widths below), round an octagonal hub (0.27 rr, cap_n 8), darker
+    # windows between them, out to the cover's rim (0.95 rr); colours: same-camera SIDE renders' greys on the
+    # official's (blades 45, windows 30, hub 36 there; our offline render draws them ~1.3-1.4 x their RGB);
     # `at` puts them where the SIDE wheels have them (blade middles 54 deg off the horizontal). 285/65 R20 all-terrain
     # tyres (owner's manual p.238), square shouldered (TIRE_SHOULDER: the tread flat to 0.098 grid off its middle,
     # 1.2 cm shoulders; the official SIDE's tyres meet the ground on a flat, 16-19 px wider near it than ours were)
     WHEEL_RIM=0.62,                        # 20" (254 mm bead + 17 mm flange) / 439 mm tyre radius
     WHEEL_SPOKE=dict(n=6, shape=dict(outer=((0.27, 0.045), (0.36, 0.063), (0.51, 0.13), (0.65, 0.19), (0.80, 0.22),
                                             (0.95, 0.26), (1.0, 0.27)), inner=((1.0, 0.0),)),
-                     cap=0.27, inset=0.012, dish=0.010, depth=0.020, sweep=0, at=-23.1),
+                     cap=0.27, cap_n=8, inset=0.012, dish=0.010, depth=0.020, sweep=0, at=-23.1),
     TIRE_SHOULDER=(0.098, 0.012),
     WHEEL_DISC=dict(rotor=0.95, hat=0.27),
-    WHEEL_RGB=dict(spoke=45, cap=36, barrel=14, lip=20, rotor=30, hat=30, dark=26, gap=8, tire=(24, 30), tread=22),
+    WHEEL_RGB=dict(spoke=29, cap=25, barrel=14, lip=20, rotor=19, hat=19, dark=18, gap=8, tire=(24, 30), tread=22),
     # 285/65 R20: radius 439 mm, width 285 mm; track 1,772 mm (owner's manual p.238, p.245): the source's tyres are
     # 6 % bigger and 2.5 cm further out
     TIRE=dict(r=0.4393, w=0.285, track=1.772),

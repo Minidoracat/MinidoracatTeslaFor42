@@ -430,13 +430,17 @@ def stage_wheel(r, width, rim=None, tag=""):
                 (y0, z0), (y1, z1) = yz[i], yz[j]
                 flat([front[i], front[j], back[j], back[i]], fz * Vector((0, z1 - z0, -(y1 - y0))), face)
         rc, xc = sp["cap"] * rr, spoke_x(sp["cap"] * rr, rr, hw) + 0.004
-        cf = [bm.verts.new((side * xc, rc * math.cos(a), rc * math.sin(a))) for a in ang[:n]]
-        cb = [bm.verts.new((side * (xc - sp["depth"] - 0.006), rc * math.cos(a), rc * math.sin(a))) for a in ang[:n]]
+        ca, cn, fc_ = ang[:n], n, 1                      # the hub cap round, or WHEEL_SPOKE cap_n sided (from `at`,
+        if sp.get("cap_n"):                              # turned with the spokes)
+            cn, fc_ = sp["cap_n"], fz
+            ca = [2 * math.pi * k / cn + math.radians(sp.get("at", 0)) for k in range(cn)]
+        cf = [bm.verts.new((side * xc, rc * math.cos(a), fc_ * rc * math.sin(a))) for a in ca]
+        cb = [bm.verts.new((side * (xc - sp["depth"] - 0.006), rc * math.cos(a), fc_ * rc * math.sin(a))) for a in ca]
         hub = bm.verts.new((side * (xc + 0.003), 0.0, 0.0))
-        for j in range(n):
-            flat([hub, cf[j], cf[(j + 1) % n]], out, "cap")
-            flat([cf[j], cf[(j + 1) % n], cb[(j + 1) % n], cb[j]],
-                 Vector((0, math.cos(ang[j] + math.pi / n), math.sin(ang[j] + math.pi / n))), "cap")
+        for j in range(cn):
+            flat([hub, cf[j], cf[(j + 1) % cn]], out, "cap")
+            flat([cf[j], cf[(j + 1) % cn], cb[(j + 1) % cn], cb[j]],
+                 Vector((0, math.cos(ca[j] + math.pi / cn), fc_ * math.sin(ca[j] + math.pi / cn))), "cap")
     # WHEEL_FACETS (an aero cover, Model Y L's 19" Machina 2.0): a flat face over the spokes' back, `sink` behind their
     # front, from the hub cap to the barrel (the disc and barrel behind it hidden), the spokes (if any) standing out of
     # it as relief; the face takes the `face` swatch's colour. On it, `n` times round the wheel (the first `at` deg off
