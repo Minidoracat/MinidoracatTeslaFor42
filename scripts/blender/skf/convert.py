@@ -2373,8 +2373,9 @@ def pieces(car, c, shift):
         elif GATE_HINGE == "bottom":        # pickup tailgate: its lower edge, at the inner panel (level with the bed floor)
             low = dv[np.argmin(dv[:, 2])]
             h = np.array([0.0, low[1] + pv.DOOR_T * pv.GATE_IN[1], low[2]])
-        else:                               # hatch: the tailgate's top edge
-            h = np.array([0.0, dv[:, 1].max(), dv[:, 2].max()])
+        else:                               # hatch: the tailgate's top edge; GATE_HINGE_DROP (Model X) that much lower:
+            # a crowned roof's front edge sits under a hinge at its top, so its sides swung back and up off the roof
+            h = np.array([0.0, dv[:, 1].max(), dv[:, 2].max() - C.get("GATE_HINGE_DROP", 0.0)])
         hinges[pname] = h - shift
         meshes.append((pname, P - shift, t, a))
         print(f"DOOR {pname}: {int(sel.sum())} faces, {len(t)} tris, hinge {np.round(h, 3).tolist()}")
