@@ -25,6 +25,9 @@ CAR = dict(
     # convert.py fill_slivers (model_3.py): 2,440 paint triangles sampled the skin's unbaked black texels in game
     # (uvblack.py, 2026-11-13); 5 with it
     UV_FILL=True,
+    # the filled and grown texels stay out of the paint's blur and quantiles: with UV_FILL alone 20-32 % of the
+    # baked texels moved (PearlWhite p75 +2..3, Model Y Quicksilver p50 +7; tonechk.sh 2026-11-13), with it none
+    UV_FILL_TONE=True,
     PORT=(-1.7666, 0.8725),                # (y, z pre-centre) where the left corner lamp's outboard end put it before
     #                                        the prep's `lamp` reshaped the lamps: the in-game plug.z 0.90 is measured
     # China's six ($MTY87) and the US Marine Blue ($MTY83): order = Core.lua Specs colors (skin index is saved: only
