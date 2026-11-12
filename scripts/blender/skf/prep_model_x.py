@@ -24,7 +24,9 @@ import numpy as np
 
 REPO = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", ".."))
 SRC_DIR = os.path.join(REPO, "temp", "skf_mx", "src", "source")
-TARGET = {"Car Body": 26000, "Front Door": 4400, "Trunk": 3200, "Bonnet": 1200}   # triangles after the collapse
+# triangles after the collapse (2026-11-12 round 2: body 26,000 -> 30,000, tailgate 3,200 -> 6,400, frunk lid 1,200 ->
+# 3,000: at the old counts the lid and the tailgate read as flat facets with dark creases, official smooth)
+TARGET = {"Car Body": 30000, "Front Door": 4400, "Trunk": 6400, "Bonnet": 3000}
 S = 5.057 / 3.1184                         # metres per source unit (cars/model_x.py SRC_SCALE)
 K, SRC_C = 0.826, (1.5579, -0.448)          # pzveh.K; cars/model_x.py SRC_C (the pre-centre frame's origin)
 CENTRED = ("Front Door", "Back Door", "Bonnet", "Trunk")   # onto Car_Body's mirror plane
@@ -81,6 +83,12 @@ FIELD = dict(
         dict(d=(-0.08, 0), u=(-1, -0.5, 0.25, 0.55), h=(0.18, 0.26, 0.30, 0.40), az=(0.45, 0.70)),
         dict(d=(0, -0.05), u=(-1, -0.5, 0.30, 0.60), h=(0.20, 0.36, 0.36, 0.50)),
         dict(d=(0, -0.04), u=(-1, -0.5, 0.30, 0.60), h=(0.30, 0.20), az=(0.55, 0.40)),
+        # round 2 (new cameras): the nose's lower front forward (official SIDE nose @y640 +7 px) and the chin's lip up
+        # (its bottom @x430-450 +4..+5 px, the lip @y650 23 px ahead of the official's sloping bottom)
+        dict(d=(-0.026, 0), u=(-1, -0.5, 0.10, 0.20), h=(0.20, 0.225, 0.25, 0.28)),
+        dict(d=(0, 0.018), u=(0.10, 0.18, 0.26, 0.33), h=(0.24, 0.205)),
+        # the roof's rear end up (official SIDE roof @x1400 / x1480 +4 px, the tail top @x1520 +3)
+        dict(d=(0, 0.018), u=(4.10, 4.30, 4.45, 4.62), h=(1.12, 1.24)),
     ),
     # faces recoloured by box (source frame, before the field): obj, mat -> to; u, h, az windows (lo, hi).
     # The tail lamps body colour, lens and housing (the source's lamp sat 5-16 px low and had another shape: official
@@ -103,7 +111,11 @@ FIELD = dict(
     # the raised spoiler (spoiler(); official SIDE / REAR34 triangulated: tips u 4.90 h 1.29 |z| 0.61, blade over the
     # tailgate's rear edge ~0.2 m chord, legs near the tips)
     spoiler=dict(span=0.61, te=(4.89, 0.09), chord=0.17, top=(1.305, -0.012), thick=0.014, n=24, leg=0.52,
-                 leg_u=(0.30, 0.75), leg_w=0.03, sink=0.02),
+                 leg_u=(0.30, 0.75), leg_w=0.03, sink=0.02,
+                 # round 2 (official REAR34 from below: a dark underside 15 px under the blade): the leading edge
+                 # `rake` lower than the trailing, the underside black; optional: the last `tip` of the span curled
+                 # down by `droop` (tried 0.12 / 0.05: the near tip read as a white wedge, official SIDE straight)
+                 rake=0.035),
     # the frunk lid's lip below h[0] eased back (u: near the nose): the convert's frunk jamb hangs straight down from the
     # lid's edge and stood 11 mm out of the nose under it (seals analyze.py)
     lid_lip=dict(obj="Bonnet", d=0.030, h=(0.82, 0.76), u=(0.35, 0.20)),
@@ -162,12 +174,12 @@ FIELD = dict(
         # the black housing (its upper corner's grey in REAR34 is a reflection:
         # dark in SIDE), the red C light guide
         # (lit: cars/model_x.py LAMPS) and the dim reflector bar; across the tailgate's seam (_T halves on the gate)
-        dict(name="TailLamp_X", view="REAR34", mat="Lamp_Housing", on=("Car Body", "Trunk"), off=0.007, u=(4.3, 5.2),
+        dict(name="TailLamp_X", view="REAR34", mat="Lamp_Housing", on=("Car Body", "Trunk"), off=0.007, u=(4.3, 5.2), step=3.0,
              outline=((1129.2, 473.3), (1150, 458.3), (1170, 446.7), (1190, 437.5), (1206.7, 430), (1220, 425.8),
                       (1253.3, 424.2), (1286.7, 425), (1303.3, 428.3), (1311.7, 438.3), (1320, 453.3), (1324, 464),
                       (1278, 468.3), (1266.7, 478.3), (1261.7, 481.7), (1203.3, 481.7), (1153.3, 481.7),
                       (1135, 479.2))),
-        dict(name="TailGuide_X", view="REAR34", mat="Tail_Guide", on=("Car Body", "Trunk"), off=0.010, u=(4.3, 5.2),
+        dict(name="TailGuide_X", view="REAR34", mat="Tail_Guide", on=("Car Body", "Trunk"), off=0.010, u=(4.3, 5.2), step=3.0,
              outline=((1198.3, 460), (1201.7, 446.7), (1208.3, 434.2), (1220, 427.5), (1253.3, 426.7), (1300, 428.3),
                       (1309.2, 438.3), (1308.3, 442.5), (1300, 440), (1296.7, 436.7), (1253.3, 435), (1226.7, 435),
                       (1221.7, 440), (1220, 453.3), (1221.7, 455), (1318.3, 455), (1319.2, 463.3), (1200, 464.2))),
@@ -178,8 +190,18 @@ FIELD = dict(
                       (1528.8, 430), (1530.6, 460), (1530, 471.3), (1515, 473.1), (1477.5, 471.9), (1460, 468.8))),
         dict(name="TailReflS_X", view="SIDE", mat="Lamp_Reflector", on=("Car Body", "Trunk"), off=0.006,
              u=(4.3, 5.2), outline=((1468.8, 458.1), (1503.8, 456.9), (1503.8, 463.1), (1468.8, 463.1))),
+        # the front bumper camera (2025+, official FRONT34): a grey ring on the lower grille's middle (as a decal on
+        # the bumper: convert.py CAMERA's flat ring stood 16 mm off it); on the model's centre line (x 463: at the official's 478
+        # its mirror copy stood 24 px apart)
+        dict(name="CamRing_X", view="FRONT34", mat="badge_cam", on=("Car Body",), off=0.006, step=1.0,
+             outline=tuple((463 + 5.0 * np.cos(t), 638 + 4.0 * np.sin(t)) for t in np.linspace(0, 2 * np.pi, 16, endpoint=False)),
+             holes=(tuple((463 + 3.0 * np.cos(t), 638 + 2.4 * np.sin(t)) for t in np.linspace(0, 2 * np.pi, 12, endpoint=False)),)),
+        # the black band across the tailgate between the lamps (official REAR34 y 439-461; the source's trim 8 px)
+        dict(name="GateBand_X", view="REAR34", mat="Band_Black", on=("Trunk",), off=0.004, u=(4.3, 5.2),
+             outline=((1288, 441), (1330, 440), (1420, 440), (1450, 442), (1462, 445), (1462, 459), (1420, 461),
+                      (1330, 461), (1288, 466))),
         # the lower grille across the front (official FRONT34; the mirror copy covers the other half)
-        dict(name="Intake_X", view="FRONT34", mat="Intake_Black", on=("Car Body",), off=0.003,
+        dict(name="Intake_X", view="FRONT34", mat="Intake_Black", on=("Car Body",), off=0.003, step=3.0,
              outline=((430, 622.5), (550, 632.5), (556, 635), (570, 652.5), (585, 670), (560, 666), (495, 665),
                       (450, 661), (430, 647.5))),
     ),
@@ -360,20 +382,25 @@ def spoiler(bpy, meshes, nose, yc):
     for z in zs:
         f = (z / sp["span"]) ** 2
         te, top = sp["te"][0] + sp["te"][1] * f, sp["top"][0] + sp["top"][1] * f
-        le = te - sp["chord"]
-        sec.append([(le, top - sp["thick"], z), (te, top - sp["thick"] * 0.6, z), (te, top, z), (le + 0.02, top, z)])
+        top -= sp.get("droop", 0) * s(abs(z), sp["span"] - sp.get("tip", 0), sp["span"]) if sp.get("tip") else 0
+        le, rk = te - sp["chord"], sp.get("rake", 0)
+        sec.append([(le, top - sp["thick"] - rk, z), (te, top - sp["thick"] * 0.6, z), (te, top, z), (le + 0.02, top - rk, z)])
     rows = [[bm.verts.new(to_w(*q)) for q in s_] for s_ in sec]
     for a_, b_ in zip(rows[:-1], rows[1:]):             # sides: 0-1 bottom, 1-2 trailing,
         for i in range(4):                              # 2-3 top, 3-0 leading: all body colour
             j = (i + 1) % 4
-            bm.faces.new([a_[i], b_[i], b_[j], a_[j]]).material_index = paint
+            bm.faces.new([a_[i], b_[i], b_[j], a_[j]]).material_index = black if i == 0 and sp.get("rake") else paint
     for r_ in (rows[0], rows[-1]):
         bm.faces.new(r_).material_index = paint
     for zc_ in (-sp["leg"], sp["leg"]):
         f = (zc_ / sp["span"]) ** 2
         te, top = sp["te"][0] + sp["te"][1] * f, sp["top"][0] + sp["top"][1] * f
+        top -= sp.get("droop", 0) * s(abs(zc_), sp["span"] - sp.get("tip", 0), sp["span"]) if sp.get("tip") else 0
         u0, u1 = te - sp["chord"] * sp["leg_u"][1], te - sp["chord"] * sp["leg_u"][0]
-        hb = top - sp["thick"]
+        # the blade's underside over each end of the leg (its section's bottom edge, le to te)
+        under = [top - sp["thick"] - sp.get("rake", 0) + (sp["thick"] * 0.4 + sp.get("rake", 0)) * (u_ - te + sp["chord"])
+                 / sp["chord"] for u_ in (u0, u1)]
+        hb = min(under)
         foot = []
         for u_ in (u0, u1):
             hit = bvh.ray_cast(to_w(u_, hb, zc_), Vector((0, 0, -1)))[0]
@@ -382,7 +409,8 @@ def spoiler(bpy, meshes, nose, yc):
             foot.append(hit.z * S - sp["sink"])
         w = sp["leg_w"] / 2
         box([(u0, foot[0], zc_ - w), (u1, foot[1], zc_ - w), (u1, foot[1], zc_ + w), (u0, foot[0], zc_ + w),
-             (u0, hb + 0.003, zc_ - w), (u1, hb + 0.003, zc_ - w), (u1, hb + 0.003, zc_ + w), (u0, hb + 0.003, zc_ + w)],
+             (u0, under[0] + 0.003, zc_ - w), (u1, under[1] + 0.003, zc_ - w), (u1, under[1] + 0.003, zc_ + w),
+             (u0, under[0] + 0.003, zc_ + w)],
             [black] * 6)
     bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
     me = bpy.data.meshes.new("Spoiler_X")

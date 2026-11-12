@@ -66,7 +66,11 @@ CAR = dict(
     CAL={
         "StealthGrey": ((0.82, 0.78, 0.75), (0.0, 0.0, 0.0)),
         "LunarSilver": ((0.76, 0.75, 0.75), (0.0, 0.0, 0.0)),
-        "PearlWhite": ((0.92, 0.91, 0.91), (0.0, 0.0, 0.0)),
+        # Pearl White x 1.4 round the visible paint's median 230 (the offset): Model S's frag sun-lobe model
+        # (temp/wt-fix-ms/temp/skf_ms/work/sheenfit.py, k 0.93 c 0.22 x 0.62 for flag 251) on this car's offline game S
+        # view predicts game p50 214 and 14 % >= 250 (official FRONT34 214 / 14.4 %; at 0.92 / 0 it was 214 / 8 %), the
+        # skin's p5 171 -> ~147 (the other cars 140-151). An estimate: measure in game (paint_sheet.py)
+        "PearlWhite": ((1.288, 1.274, 1.274), (-0.361, -0.361, -0.361)),
         "UltraRed": ((0.75, 1.34, 0.94), (0.0, 0.0, 0.0)),
         "DiamondBlack": ((1.16, 1.09, 0.98), (0.0, 0.0, 0.0)),
         "FrostBlue": ((1.06, 1.02, 0.98), (0.0, 0.0, 0.0)),
@@ -106,8 +110,8 @@ CAR = dict(
     # the seated clips (scripts/seat_anim.py), the 2nd row `rear` and the 3rd row `third drop` under the front; SEATS
     # dz / dy put the cushions and backrests against the body
     SEAT=dict(x=0.35, h=0.464, z=-0.306, back=(0.12, -0.04), out=0.30, rear=0.017,
-              third=dict(back=0.08, x=0.27, drop=0.017)),   # back 0.10 -> 0.08 (2026-11-12 prep: seat_head 3rd row knees
-    #                                                         -21 / -23 mm; 0.06 -30, 0.10 -28, 0.12 -27, 0.14 -36)
+              third=dict(back=0.09, x=0.27, drop=0.017)),   # back (seat_head 3rd row knees on the round 2 body: 0.07
+    #                                                         -23 / -24 mm, 0.075 -24 / -22, 0.08 -23 / -24, 0.085 -21 / -23, 0.09 -20 / -22, 0.10 -22 / -30 fail)
     BODY_W_Z=0.55,
     # falcon wing doors (axis "falcon": (roof hinge deg, elbow fold deg), clip seconds): the upper part turns up about
     # its hinge by the roof's spine, the lower part folds back out at the elbow (owner's manual p.31-33: two hinges).
@@ -130,7 +134,10 @@ CAR = dict(
     DROP=("Tyre", "Rim"),                  # the procedural wheel instead
     DROP_MATS=("Door_Inside",),            # the source's door cards and trunk lining: the mod's slab, door_card, cabin
     DROP_COMPS=(),
-    CARBON=None,
+    # the front bumper's dark lower lip (official SIDE: the white ends at y 629 over x 391-462, h 0.28 m; the source's
+    # white ran down to 0.23 m): the paint below z 0.233 ahead of the front arch cut and dark grey (as Trim_Grey)
+    CARBON=dict(rgb=(40, 40, 43), zones=(dict(lo=(-1.2, 1.62, -0.1), hi=(1.2, 2.4, 0.30), below=(((0.0, 2.0, 0.233), (0.0, 0.0, 1.0)),),
+                                              cut=True),)),
     ARCH_LINER=None,
     PLATES=(),
     SEAL_CLIP=True,                        # (the strips through a panel showed outside: B-pillar roof seam, arch lips)
@@ -205,9 +212,9 @@ CAR = dict(
     # the nose's T stays chrome (official FRONT34); the band round it, the bumper's slots and grille: prep_model_x.py
     # FIELD decals
     RECOLOR=(("Aluminum", (-0.045, 1.98, 0.55), (0.045, 2.10, 0.67), (196, 200, 206)),),
-    # the front bumper camera (2025+ Model X, official FRONT34): grey ring on the lower grille's middle (y: ray start
-    # ahead of the bumper, z, ring radius and width)
-    CAMERA=dict(y=2.2, z=0.32, r=0.022, w=0.008),
+    # the front bumper camera (2025+ Model X, official FRONT34): prep_model_x.py FIELD decals CamRing_X (CAMERA's flat
+    # ring stood 16 mm off the bumper)
+    CAMERA=None,
     PANES={"Body": {"WinT"}, "DoorFrontLeft": {"WinLH"}, "DoorFrontRight": {"WinRH"},
            "DoorRearLeft": {"WinLT"}, "DoorRearRight": {"WinRT"}, "TrunkDoor": {"WinH"}, "EngineDoor": set()},
     T_BADGE=None,
