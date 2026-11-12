@@ -88,7 +88,7 @@ FIELD = dict(
         dict(d=(-0.026, 0), u=(-1, -0.5, 0.10, 0.20), h=(0.20, 0.225, 0.25, 0.28)),
         dict(d=(0, 0.018), u=(0.10, 0.18, 0.26, 0.33), h=(0.24, 0.205)),
         # the roof's rear end up (official SIDE roof @x1400 / x1480 +4 px, the tail top @x1520 +3)
-        dict(d=(0, 0.018), u=(4.10, 4.30, 4.45, 4.62), h=(1.12, 1.24)),
+        # dict(d=(0, 0.018), u=(4.10, 4.30, 4.45, 4.62), h=(1.12, 1.24)),
     ),
     # faces recoloured by box (source frame, before the field): obj, mat -> to; u, h, az windows (lo, hi).
     # The tail lamps body colour, lens and housing (the source's lamp sat 5-16 px low and had another shape: official
