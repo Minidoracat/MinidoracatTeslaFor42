@@ -4,8 +4,8 @@ has are read with C.get and are off for the others: SRC_Z (the glTF is centred o
 centres (the tyres are components of the black trim object), LAMPS head_y (one lamp material front and rear),
 TESLA_MAT (chrome letters on the black band), GATE_BY_COMP (the tail lamps' liftgate and body halves overlap in x),
 DROP_COVERED (paint lying under the tail lamp housings: a depth fight in game), CARBON zones' `of` / `facing` (the
-jamb's top under the liftgate's hinge corners), SEAL_RIBBON / SEAL_COVER (the panel
-gaps as a continuous thin line; convert.py seals), LAMPS `areas` / `head_rgb`, CARBON `cut`, TIRE `centre_track`,
+jamb's top under the liftgate's hinge corners), SEAM_LINE (the panel gaps as a continuous dark line; convert.py
+seam_lines), SEAL_COVER (convert.py seals), LAMPS `areas` / `head_rgb`, CARBON `cut`, TIRE `centre_track`,
 WHEEL_SPOKE `polar`.
 The source (a Roblox export, decisions.md) is the Sketchfab glTF: 22 objects "Object_<n>", one per material; doors,
 frunk lid and liftgate are components of the paint object (Object_2), and the interior shares objects with the
@@ -274,18 +274,28 @@ CAR = dict(
     PLATES=(("GrillePlate", ((-0.55, 1.90, 0.13), (0.55, 1.90, 0.13), (0.55, 1.90, 0.34), (-0.55, 1.90, 0.34)),
              (0, 1, 0), "arch_liner"),
             ("GrilleFloor", ((-0.55, 1.70, 0.13), (0.55, 1.70, 0.13), (0.55, 1.90, 0.13), (-0.55, 1.90, 0.13)),
-             (0, 0, 1), "arch_liner")),
+             (0, 0, 1), "arch_liner"),
+            # r4: under the source's two cracks the game's SW / W cameras saw the ground through (1 px each; the r3
+            # SEAL_RIBBON lay over them by chance): the headlamp's top corner, the sill's crease ahead of the door
+            *((f"LampCrack{'L' if sx < 0 else 'R'}", tuple((sx * x, y, 0.6426) for x, y in
+                                                         ((0.7256, 1.55), (0.7035, 1.55), (0.7035, 1.6), (0.7256, 1.6))),
+               (0, 0, 1), "arch_liner") for sx in (-1, 1)),
+            *((f"SillCrack{'L' if sx < 0 else 'R'}", tuple((sx * x, y, 0.1641) for x, y in
+                                                         ((0.7387, 0.62), (0.7035, 0.62), (0.7035, 0.8), (0.7387, 0.8))),
+               (0, 0, 1), "arch_liner") for sx in (-1, 1))),
     SEAL_CLIP=True,
-    # the gaps as the official's thin continuous dark line (convert.py seals): a 4 mm strip on one panel's edge (the
-    # later part's: the door over the body) where another panel's edge lies across the gap (console cell: darker than
-    # the black paints, lighter than a hole), not
-    # by the glass (the hood's back edge against the cowl), in runs >= 10 cm, not round the liftgate (its bottom edge
-    # over the bumper read as dark dashes); and no seal strip whose far edge has nothing over it within 3 cm (one stood
-    # 21 mm out of the outline behind the front fender, temp/fit-1112/seals)
-    SEAL_RIBBON=dict(w=0.0035, lift=0.0010, gap=0.025, glass=0.03, chain=0.08, skip=("TrunkDoor",),
-                     cell="console"),
+    # the gaps as the official's continuous dark line (convert.py seam_lines): half on each side of every gap between
+    # two parts, 4.8 mm each, overlapping 2.4 mm past the middle (r4: one 4 mm hairline on the later part broke into
+    # dots in game, the door bottoms' in their own plane out of sight), half the paint's median (official SIDE seam
+    # contrast 0.45-0.64 of the paint; a console-cell line was 0.80, a black line on Pearl White); and no seal strip whose far
+    # edge has nothing over it within 3 cm (one stood 21 mm out of the outline behind the front fender,
+    # temp/fit-1112/seals)
+    SEAM_LINE=dict(w=0.004, over=0.002, bridge=0.003, lift=0.0010, gap=0.025, glass=0.03, step=0.006, chain=0.04,
+                   tone=0.5),
     SEAL_COVER=0.03,
     SEAL_COVER_EDGE=True,                  # (convert.py seals) its far corners too, none down past a bottom edge
+    UV_FILL=True,                          # (convert.py fill_slivers) texels the bake left black under sliver UVs
+    SEAL_TRIM=True,                        # (convert.py seals) reach cut back to inside the game cameras' outline
     # (convert.py seals) but round the liftgate, both sides of its gap: open, they close its gap to the C-pillar (the
     # body's side went with SEAL_COVER and the short reach: the ground showed there)
     SEAL_FULL=("TrunkDoor",),
