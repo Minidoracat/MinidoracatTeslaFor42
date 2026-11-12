@@ -46,6 +46,10 @@ CAR = dict(
     # the paint's height term per corner (convert.py textures): per face, the big flat side panels' triangles showed
     # as light / dark steps (App car image, game flanks)
     HGT_CORNER=True,
+    # fill the texels a triangle's UV0 touches that the bake left empty (convert.py fill_slivers): sliver islands
+    # sampled the skin's black (dashes along the rear doors' rear seam, 2026-11-12)
+    UV_FILL=True,
+    UV_FILL_TONE=True,                     # the paint's tones from the baked texels only (quantiles unchanged)
     # paint tone (convert.py: a x ramp / GAIN + b, sRGB 0-1): offsets only, so the ramp's spread stays the shop
     # image's; fitted on the front door of the in-game screenshots (cybertruck-body-sp fl-max, zoom 0.5; satin
     # door ~ skin - 17 per channel) against the shop image's door. Calibration knob: refit after changing the paint
