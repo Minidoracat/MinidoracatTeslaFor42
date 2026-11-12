@@ -92,12 +92,23 @@ FIELD = dict(
         # u 4.28 (an earlier one from u 4.10 lifted the roof ahead of it, @x1300 -3 -> -4) and back to the spoiler's legs
         # (a lift under them left the legs' rays starting inside the tailgate: the prep crashed); the spoiler `top` +12 mm
         dict(d=(0, 0.023), u=(4.28, 4.50, 4.78, 4.95), h=(1.10, 1.24)),
+        # round 6: the tail's sides in (not the corners: REAR34's far outline), the lamps' level. The official tail lamp
+        # triangulated from two views sat 2-7 cm inboard of the model's side (SIDE + FRONT34 2.3, SIDE + REAR34 6.0 at its
+        # front tip, 7.4 at the red C's spine): REAR34's decals landed 12-17 px back of the official's in SIDE (the red
+        # C's spine on the corner). -5 cm: FRONT34 IoU 0.9682 -> 0.9688, the other two the same, SIDE lamp guide IoU
+        # 0.13 -> 0.20, REAR34 lamp outline p90 8.5 -> 3.6 px; az (0.74, 0.82) at -4 cm cost REAR34 0.0002 (its far
+        # corner's outline at the lamps lies at az 0.63-0.77, FRONT34's near one at 0.80-0.85). The az ramp 16 cm wide
+        # (0.78-0.86 squeezed the side's 8 cm into 3: a crease at the corner in the game views)
+        dict(d=(0, 0, -0.05), u=(4.30, 4.55, 5.3, 5.4), h=(0.62, 0.85, 1.22, 1.36), az=(0.76, 0.92)),
     ),
     # faces recoloured by box (source frame, before the field): obj, mat -> to; u, h, az windows (lo, hi).
     # The tail lamps body colour, lens and housing (the source's lamp sat 5-16 px low and had another shape: official
     # REAR34 / SIDE); the lamps are FIELD decals Tail*_X
     recolour=(*(dict(obj=o, mat=m, to="Car Paint", u=(4.5, 9), h=(0.80, 1.11), az=(0.38, 0.95))
                 for o in ("Car Body", "Trunk") for m in ("Red Light Glass", "Black Car Paint")),
+              # the rear bumper's reflectors trim grey (round 6: they sat 10 px right and 5 px over the official's
+              # thin slits, REAR34; FIELD decals BumpRefl_X)
+              dict(obj="Car Body", mat="Red Light Glass", to="Trim Grey", u=(4.8, 9), h=(0.35, 0.65)),
               # the pre-2021 fog lamp pockets in the front bumper's corners body colour (official FRONT34: smooth,
               # with the air curtain slot above: FIELD decals Slot_X)
               *(dict(obj="Car Body", mat=m, to="Car Paint", u=(-1, 0.45), h=(0.34, 0.64), az=(0.58, 0.95), fill=True)
@@ -152,6 +163,17 @@ FIELD = dict(
                                                 118.0, 118.1, 117.8, 118.0, 117.8, 118.1, 117.8, 118.1, 118.4, 118.7,
                                                 118.9, 119.2, 119.3, 120.0, 120.6, 121.1, 121.6, 122.1, 122.6, 123.0,
                                                 123.5, 123.8, 124.6, 125.3, 126.5, 128.2)))),
+    # the rear bumper's paint / dark trim border (rear_trim(); round 6): the official's, SIDE (x 1444-1532) and REAR34
+    # (x 1104-1446, both sides) back-projected onto the prepped body, as height h (m) over theta (deg) round a vertical
+    # axis at u `axis`: 0 out to the side, 90 at the centre line (the two views agree within 7 mm). The source's trim
+    # top stepped up 13-14 px behind the rear arch (SIDE x 1444-1455) and rose 4-12 px early / high under the tail
+    # lamps (REAR34 x 1244-1316). Faces of `mats` behind u `u` with every corner within `band` m of the border and
+    # outside the rear arch's paint border (arch_lip's ring, + `clear` px: the lip is arch_lip's) are cut along it:
+    # paint over it, trim grey under it
+    rear_trim=dict(obj="Car Body", mats=("Car Paint", "Trim Grey"), u=4.40, band=0.10, clear=0.0, axis=4.3,
+                   table=((8, 0.421), (12, 0.419), (16, 0.420), (20, 0.425), (24, 0.429), (28, 0.434), (32, 0.439),
+                          (36, 0.446), (40, 0.452), (43, 0.459), (46, 0.465), (47.6, 0.479), (49, 0.484),
+                          (50.4, 0.503), (53.5, 0.507), (58.7, 0.510), (64, 0.514), (75, 0.517), (90, 0.518))),
     # the fitted official cameras (temp/skf_mx/work/camfit/cams.json: R world -> OpenCV, C, f, w, h in the scene's grid
     # frame; anchor: the front wheel centre y and the ground there) for FIELD decals. FRONT34 / REAR34 refit
     # 2026-11-12 (round 2) with their height held at SIDE's (fit.py HOLD: one studio rig): FRONT34 had sat 20 cm lower,
@@ -209,12 +231,14 @@ FIELD = dict(
                       (1278, 468.3), (1266.7, 478.3), (1261.7, 481.7), (1203.3, 481.7), (1153.3, 481.7),
                       (1135, 479.2))),
         dict(name="TailGuide_X", view="REAR34", mat="Tail_Guide", on=("Car Body", "Trunk"), off=0.010, u=(4.3, 5.2), step=3.0,
-             outline=((1198.3, 460), (1201.7, 446.7), (1208.3, 434.2), (1220, 427.5), (1253.3, 426.7), (1300, 428.3),
-                      (1309.2, 438.3), (1308.3, 442.5), (1300, 440), (1296.7, 436.7), (1253.3, 435), (1226.7, 435),
-                      (1221.7, 440), (1220, 453.3), (1221.7, 455), (1318.3, 455), (1319.2, 463.3), (1200, 464.2))),
+             outline=((1198.3, 460), (1202.8, 447), (1209.5, 435.2), (1221, 428.6), (1253.3, 426.7), (1299, 429),
+                      (1307.8, 438.3), (1307, 442), (1300, 440), (1296.7, 436.7), (1253.3, 435), (1228, 436.5),
+                      (1224, 441), (1220, 453.3), (1221.7, 455), (1275, 455), (1318.3, 453.3), (1317.5, 463), (1200, 464.2))),
         dict(name="TailRefl_X", view="REAR34", mat="Lamp_Reflector", on=("Car Body", "Trunk"), off=0.010,
              u=(4.3, 5.2), outline=((1143, 466.5), (1186, 464), (1186, 470.5), (1143, 471))),
-        dict(name="TailLampS_X", view="SIDE", mat="Lamp_Housing", on=("Car Body", "Trunk"), off=0.004, u=(4.3, 5.2),
+        # (step 2, round 6: at the default 6 px the faces round the vertices past the car's outline went, a paint gap at
+        # the housing's top rear corner in SIDE and REAR34)
+        dict(name="TailLampS_X", view="SIDE", mat="Lamp_Housing", on=("Car Body", "Trunk"), off=0.004, u=(4.3, 5.2), step=2.0,
              outline=((1456.3, 465.6), (1477.5, 450), (1496.3, 438.8), (1510, 430.6), (1515, 427.5), (1525, 426.9),
                       (1528.8, 430), (1530.6, 460), (1530, 471.3), (1515, 473.1), (1477.5, 471.9), (1460, 468.8))),
         dict(name="TailReflS_X", view="SIDE", mat="Lamp_Reflector", on=("Car Body", "Trunk"), off=0.006,
@@ -230,9 +254,12 @@ FIELD = dict(
              step=1.0,
              outline=tuple((463 + 3.0 * np.cos(t), 638 + 2.4 * np.sin(t)) for t in np.linspace(0, 2 * np.pi, 12, endpoint=False))),
         # the black band across the tailgate between the lamps (official REAR34 y 439-461; the source's trim 8 px)
-        dict(name="GateBand_X", view="REAR34", mat="Band_Black", on=("Trunk",), off=0.004, u=(4.3, 5.2),
+        dict(name="GateBand_X", view="REAR34", mat="Gate_Band", on=("Trunk",), off=0.004, u=(4.3, 5.2),
              outline=((1288, 441), (1330, 440), (1420, 440), (1450, 442), (1462, 445), (1462, 459), (1420, 461),
                       (1330, 461), (1288, 466))),
+        # the rear bumper's reflector: a thin slit under the bumper's lip (official REAR34, x 1267-1310 y 618-625)
+        dict(name="BumpRefl_X", view="REAR34", mat="Bump_Refl", on=("Car Body",), off=0.003, step=2.0,
+             outline=((1266, 626), (1272, 622.5), (1290, 619), (1311, 617.5), (1311, 620.5), (1290, 623), (1272, 626.5))),
         # the lower grille across the front (official FRONT34; the mirror copy covers the other half)
         dict(name="Intake_X", view="FRONT34", mat="Intake_Black", on=("Car Body",), off=0.003, front=0.0008, step=3.0,
              outline=((430, 622.5), (550, 632.5), (556, 635), (570, 652.5), (585, 670), (560, 666), (495, 665),
@@ -805,20 +832,64 @@ def arch_lip(meshes, nose, yc, ftyre_x):
                 fc.material_index, n[1] = paint, n[1] + 1
         bm.to_mesh(me)
         bm.free()
-        cn = np.empty(len(me.loops) * 3, np.float32)  # the split corners' normals: interpolated, else the face's
-        me.attributes["custom_normal"].data.foreach_get("vector", cn)
-        cn = cn.reshape(-1, 3)
-        bad = np.linalg.norm(cn, axis=1) < 0.5
-        if bad.any():
-            lt = np.empty(len(me.polygons), np.int64)
-            me.polygons.foreach_get("loop_total", lt)
-            fn = np.empty(len(me.polygons) * 3)
-            me.polygons.foreach_get("normal", fn)
-            cn[bad] = np.repeat(fn.reshape(-1, 3), lt, 0)[bad]
-            me.attributes["custom_normal"].data.foreach_set("vector", cn.ravel())
-        me.update()
         print("PREP arch lip %s: %d edges cut, %d faces to trim, %d to paint, %d corners without a normal"
-              % (o.name, len(new), n[0], n[1], int(bad.sum())))
+              % (o.name, len(new), n[0], n[1], split_normals(me)))
+
+
+def rear_trim(meshes, nose, yc, ftyre_x):
+    """FIELD rear_trim: the rear bumper's paint / trim border cut along the official's (a level set as arch_lip's, in
+    metres: per vertex its height over the border's at its angle round the axis) and recoloured by side."""
+    import bmesh
+    A, ((cx, cy), a0, rs) = FIELD["rear_trim"], FIELD["arch_lip"]["rings"][1]
+    me = next(o for o in meshes if o.name == A["obj"]).data
+    bm = bmesh.new()
+    bm.from_mesh(me)
+    P = np.array([v.co[:] for v in bm.verts])
+    u, h, az = (nose - P[:, 0]) * S, P[:, 2] * S, np.abs(P[:, 1] - yc) * S
+    f = h - np.interp(np.degrees(np.arctan2(u - A["axis"], az)), *zip(*A["table"]))
+    px, _ = cam_px(P, "SIDE", yc, ftyre_x)
+    ang = (np.degrees(np.arctan2(px[:, 1] - cy, px[:, 0] - cx)) - a0) % 360 + a0
+    lip = np.hypot(px[:, 0] - cx, px[:, 1] - cy) < np.interp(ang, a0 + 5 * np.arange(len(rs)), rs) + A["clear"]
+    ok = (u > A["u"]) & (np.abs(f) < A["band"]) & ~lip
+    ms = [i for m in A["mats"] for i in slots(me, m)]
+    trim, paint = slot(me, "Trim Grey"), slot(me, "Car Paint")
+    fv, kv = ({v: x[v.index] for v in bm.verts} for x in (f, ok))
+    cand = lambda fc: fc.material_index in ms and all(kv[v] for v in fc.verts)   # noqa: E731
+    cut = {e for fc in bm.faces if cand(fc) for e in fc.edges if fv[e.verts[0]] * fv[e.verts[1]] < 0}
+    new = []
+    for e in sorted(cut, key=lambda e: e.index):
+        a, b = e.verts
+        _, nv = bmesh.utils.edge_split(e, a, fv[a] / (fv[a] - fv[b]))
+        fv[nv], kv[nv] = 0.0, True
+        new.append(nv)
+    bmesh.ops.connect_verts(bm, verts=new)
+    n = [0, 0]
+    for fc in bm.faces:
+        if cand(fc):
+            to = trim if np.mean([fv[v] for v in fc.verts]) < 0 else paint
+            n[to == paint] += fc.material_index != to
+            fc.material_index = to
+    bm.to_mesh(me)
+    bm.free()
+    print("PREP rear trim: %d edges cut, %d faces to trim, %d to paint, %d corners without a normal"
+          % (len(new), n[0], n[1], split_normals(me)))
+
+
+def split_normals(me):
+    """the corners a split made: normals interpolated, else (none) the face's; -> how many were missing"""
+    cn = np.empty(len(me.loops) * 3, np.float32)
+    me.attributes["custom_normal"].data.foreach_get("vector", cn)
+    cn = cn.reshape(-1, 3)
+    bad = np.linalg.norm(cn, axis=1) < 0.5
+    if bad.any():
+        lt = np.empty(len(me.polygons), np.int64)
+        me.polygons.foreach_get("loop_total", lt)
+        fn = np.empty(len(me.polygons) * 3)
+        me.polygons.foreach_get("normal", fn)
+        cn[bad] = np.repeat(fn.reshape(-1, 3), lt, 0)[bad]
+        me.attributes["custom_normal"].data.foreach_set("vector", cn.ravel())
+    me.update()
+    return int(bad.sum())
 
 
 def inside(p, loops):
@@ -1104,6 +1175,7 @@ def main():
     ftyre = next(o for o in meshes if o.name.startswith("Tyre") and (nose - pts(o)[:, 0].mean()) * S < 2.5)
     fx = pts(ftyre)[:, 0]
     arch_lip(meshes, nose, yc, (fx.min() + fx.max()) / 2)
+    rear_trim(meshes, nose, yc, (fx.min() + fx.max()) / 2)
     meshes.append(spoiler(bpy, meshes, nose, yc))
     meshes += decals(bpy, meshes, nose, yc, (fx.min() + fx.max()) / 2)
     print("PREP width x %.5f, axles u %.4f / %.4f h %.4f / %.4f r %.4f / %.4f, doors centred on y %.4f, arch faces %d"

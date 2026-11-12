@@ -92,14 +92,18 @@ CAR = dict(
     # (pzveh WHEEL_RGB) from the official SIDE front wheel's polar unwrap: blade face 6-17, window (disc) 17-37, hub 21-31,
     # the grey edges peak 85-107 and the lip 88-106 there, both 1-2 px anti-aliased (the game draws them unblended).
     # Round 3: the edges 130 -> 108 (same-camera SIDE r/R 0.65-0.95 p95 110-119 against the official's 96-107) and
-    # their band _blade 0.04 -> 0.024 rr (1.6 -> 1.0 px at the game's closest zoom, 180.7 px / grid unit)
+    # their band _blade 0.04 -> 0.024 rr (1.6 -> 1.0 px at the game's closest zoom, 180.7 px / grid unit).
+    # Round 6: the blades read as thin grey lines on black (the face 11 and the windows' disc 14 alike; official SIDE:
+    # face 6-17, disc 17-37): the band back to 0.04, the disc and barrel lighter, the face darker. Polar unwrap folded
+    # over the five blades (each round its own fitted rim lip), r/R 0.20-0.95: correlation with the official front /
+    # rear 0.727 / 0.619 -> 0.705 / 0.624, p50 23 / 21 -> 31 / 28 (official 30 / 33); the edges' grey stays 108
     WHEEL_RIM=0.727,                       # 20" (254 mm bead + 17 mm flange) / 373 mm tyre radius
-    WHEEL_SPOKE=dict(n=5, shape=_blade(0.0), lit=_blade(0.024), cap=0.13, inset=0.016, dish=0.020, depth=0.018,
+    WHEEL_SPOKE=dict(n=5, shape=_blade(0.0), lit=_blade(0.04), cap=0.13, inset=0.016, dish=0.020, depth=0.018,
                      sweep=0),
     WHEEL_LIP=True,                        # the grey lip ring in the flat `lip` grey
     WHEEL_TURN=True,                       # one part all round: the right wheels show the left's pattern, not a mirror
     WHEEL_DISC=dict(rotor=0.70, hat=0.30),
-    WHEEL_RGB=dict(spoke=11, edge=108, cap=18, barrel=10, lip=105, rotor=14, hat=14, dark=6, gap=6, tire=(22, 28),
+    WHEEL_RGB=dict(spoke=9, edge=108, cap=18, barrel=16, lip=105, rotor=22, hat=20, dark=6, gap=6, tire=(22, 28),
                    tread=20),
     # ---- pzveh: vehicle script
     OY=0.2878,
@@ -169,6 +173,12 @@ CAR = dict(
                (0, 0, 1), "arch_liner") for sx in (-1, 1)),
             *((f"ArchCorner{'L' if sx < 0 else 'R'}", tuple((sx * x, y, 0.19) for x, y in
                                                           ((0.64, -0.84), (0.44, -0.84), (0.44, -0.66), (0.64, -0.66))),
+               (0, 0, 1), "arch_liner") for sx in (-1, 1)),
+            # (round 6) under the 4 mm gap where the falcon door's rear top corner, the tailgate's front edge and the
+            # roof meet (the front right door open: W 3 px, through the cabin and out of the door opening); a patch,
+            # not a header across (RoofHeader, round 4: it closed the sky between the open falcon doors and the roof)
+            *((f"GateCrack{'L' if sx < 0 else 'R'}", tuple((sx * x, y, 1.29) for x, y in
+                                                         ((0.42, -1.22), (0.26, -1.22), (0.26, -1.13), (0.42, -1.13))),
                (0, 0, 1), "arch_liner") for sx in (-1, 1))),
     SEAL_CLIP=True,                        # (the strips through a panel showed outside: B-pillar roof seam, arch lips)
     # the strips 45 deg into the body (convert.py seals): in the panel's plane they stood up to 27 mm past the outline
@@ -198,9 +208,14 @@ CAR = dict(
              "Window_Glass": (14, 14, 16), "badge_cam": (96, 98, 104),
              # prep_model_x.py FIELD decals (official renders sampled)
              "Lamp_Lens": (60, 60, 64), "Lamp_DRL": (236, 240, 246), "Tail_Guide": (255, 128, 124),
-             "Lamp_Housing": (23, 21, 23), "Lamp_Reflector": (100, 24, 27),
+             # (round 6) the tail lamp housing 23 -> 33 and its reflector bar 100 -> 88: same-camera grey 21 / 54 against
+             # the official REAR34 42 / 47, SIDE 40 / 31 (now 29-30 / 49-56)
+             "Lamp_Housing": (33, 32, 35), "Lamp_Reflector": (88, 22, 25),
              "Cam_Black": (36, 36, 39), "Slot_Black": (18, 18, 19), "Marker_Red": (36, 18, 17),
              "Band_Black": (14, 14, 16), "Intake_Black": (18, 18, 20),
+             # (round 6) the tailgate band between the lamps dark grey (official REAR34 42; Band_Black drew 9) and the
+             # rear bumper reflector slits (official 34-37 red over the dark, mostly in the bumper lip shadow)
+             "Gate_Band": (46, 46, 50), "Bump_Refl": (62, 17, 19),
              # the lower trim (prep_model_x.py FIELD trim_grey; official SIDE sills 30-37, arch lips 45-67)
              "Trim_Grey": (40, 40, 43)},
     GLASS_MATS=("Window_Glass",),
