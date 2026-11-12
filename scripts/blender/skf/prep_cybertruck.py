@@ -54,6 +54,9 @@ FIELD = dict(
         "n5": _FIX(2.12, 0.570), "n6": _FIX(2.12, 0.910), "n7": _FIX(2.13, 0.860),
         "n8": ((2.036, 0.230), (2.066, 0.219)), "n9": ((2.20, 0.300), (2.225, 0.289)),
         "n10": ((2.249, 0.350), (2.278, 0.348)),
+        # the chin (Plane.004's underside, one plane): its back edge's move (with n8 / n9) and n4 on one chain, so
+        # the face between stays a plane
+        "c0": ((2.0318, 0.3164), (2.0508, 0.3087)),
         # front arch: the trim's outer line (A, x 0.76) and opening (C, x 0.84), tops up 4 cm, the front leg steeper
         "fA1": ((2.111, 0.569), (2.036, 0.575), ("Cube.004",)), "fA2": ((1.908, 0.834), (1.855, 0.874)),
         "fA3": ((1.341, 0.833), (1.327, 0.878)), "fA4": _FIX(1.133, 0.504),
@@ -94,14 +97,22 @@ FIELD = dict(
         # roof: the apex 8.4 cm forward and 5.8 mm up (official SIDE; manual height 1,793.8), the windscreen's top
         # edge along with it on the new windscreen line from the cowl
         "a1": ((0.306, 1.476), (0.390, 1.4818)), "a2": ((0.306, 1.469), (0.390, 1.4748)),
-        "a3": ((0.306, 1.427), (0.390, 1.4388)), "a4": ((0.477, 1.423), (0.561, 1.4288)),
+        "a3": ((0.306, 1.427), (0.390, 1.4388)), "a4": ((0.477, 1.423), (0.561, 1.42405)),
         "a5": _FIX(1.707, 1.037), "a6": ((0.306, 1.079), (0.306, 1.069)),
+        # the windshield glass (Body.007, 8.5 mm under the frame's plane) on a chain parallel to the frame's new line
+        "gs0": ((1.7797, 1.0052), (1.7797, 1.0039)), "gs1": ((0.4038, 1.4371), (0.4878, 1.4402)),
         # the side window's top edge ahead of the apex 1.2 cm up, the A-pillar's top (windscreen line) stays (official
         # SIDE: the pillar band 15-16 px, ours 18-19)
         "wt1": ((0.9, 1.252), (0.9, 1.264)), "wt2": ((1.3, 1.135), (1.3, 1.147)),
         "ap1": _FIX(0.9, 1.3128), "ap2": _FIX(1.3, 1.176),
+        # the strip under the A-pillar (from a3 down to the side glass's front foot gf0, one line side-on): a point on
+        # it at a4's y, on the line between a3's and gf0's targets
+        "sl1": ((0.4767, 1.3729), (0.5501, 1.3820)),
     },
-    chains=[],
+    # constrained edges (side view): the windshield frame (cowl, its top edge, the apex: one line, the hood's plane
+    # from the cowl on), the glass, the strip under the A-pillar, the chin -- each panel maps onto one line, so it
+    # stays a plane (panels seen edge-on side-on; the ones leaning sideways: flat xslide)
+    chains=[["a5", "a4", "a1"], ["gs0", "gs1"], ["a3", "sl1", "gf0"], ["c0", "n4"]],
     frame=((-4.0, -1.0), (4.0, 3.0)),      # fixed corners round everything
     # the nose's corner (|x| 0.76, y 2.12) 4.4 cm back and its top 1.7 cm down: official SIDE corner edge at y 2.076
     # (z 0.62-0.88) and top 0.89. Points |x| (hood front edge's inner corner P1, the lid's rear outer corner at the
@@ -121,18 +132,25 @@ FIELD = dict(
     # the off-road light bar (light_bar()) on the windshield, top at its visible upper edge (FIELD ctrl a4's target),
     # foot a point further down the glass (the windshield's lower edge at the cowl); ~1.3 m x 10 cm x 3.6 cm (the
     # glass's width between the A-pillars: service manual photos), 3 mm off the glass
-    lightbar=dict(top=(0.561, 1.4288), foot=(1.702, 1.030), x=0.55, l=0.085, t=0.030, gap=0.003, lens="Gluss Button"),
+    lightbar=dict(top=(0.561, 1.42405), foot=(1.702, 1.030), x=0.55, l=0.085, t=0.030, gap=0.003, lens="Gluss Button"),
     # the A-pillar wiper (Cube.008, parked up the driver's pillar) k x as tall off its foot along it (official SIDE:
-    # its top 8-12 px over ours, on the pillar with no gap under it); the glass: its top edge, the cowl
-    wiper=dict(obj="Cube.008", k=3.5, glass=((0.561, 1.4288), (1.702, 1.030))),
+    # its top 8-12 px over ours; k 2.7 with ride, official SIDE top +-2 px); the glass: its top edge, the cowl; ride:
+    # it moves off the glass as the glass chain does (those ctrl, interpolated along it) and stays parked along it,
+    # not through the field's thin band between the glass and the frame chains
+    wiper=dict(obj="Cube.008", k=2.7, glass=((0.561, 1.42405), (1.702, 1.030)), ride=("gs0", "gs1")),
     # the tail bar's ends (tail_ends()): the corner blocks' rear face (y, z) and how far out, |x| from the tailgate's
     # edge to the corner, the band's and the red strip's z (the source's Body.003 / Cube.030 heights, mapped)
     tailends=dict(face=(-2.334, 1.1), off=0.002, x=(0.668, 0.760), band=(1.067, 1.135), strip=(1.105, 1.121),
                   mat="Car Reflection White"),
     # flat panels (flat_stats_of(), a report): the source's panels (normals within ang deg, one plane within tol grid,
-    # area grid^2 or more) of these objects; flat shading of the faces flat in the source (main())
+    # area grid^2 or more) of these objects; flat shading of the faces flat in the source (main()). facet: the body's
+    # big panels leaning sideways (nx <= |normal x| <= 0.98, area grid^2 or more: the upper side facets) and
+    # everything over their lower edge go along x onto planes again (facets(), facet_shift(); belt: the beltline's
+    # |x|; split: y of the facet's edge from the beltline's rear end up to the rail; tail: the tail corner's |x|;
+    # ramp: |x| where the move starts and is whole)
     flat=dict(objs=("Body", "Body.005", "Body.012", "Body.004", "Cube.002", "Cube.004", "Plane.004"), ang=0.5,
-              tol=0.0008, area=0.004),
+              tol=0.0008, area=0.004,
+              facet=dict(nx=0.5, area=0.3, belt=0.761, split=-1.676, tail=0.75, ramp=(0.45, 0.55))),
     # wheel wells (wells()): per arch its C line (ctrl keys, front to back) and the inner |x| (front: clear of the
     # front passengers' feet, seat_head.py legs; rear: the bed's wheel hump, BED_TUB hump x 0.535), out from the outline, the cladding's inside |x|
     wells=dict(arches=((("fC1", "fC2", "fC3", "fC4"), 0.545), (("rC1", "rC2", "rC3", "rC4"), 0.545)), off=0.012,
@@ -275,6 +293,14 @@ def _warp(maps, name, g, faces=None, flat_stats=None):
     q, J = maps[key](g)
     wp = FIELD["wiper"]
     if name.startswith(wp["obj"]):                    # thicker off the glass about its foot (FIELD wiper)
+        (a0, a1), (b0, b1) = (FIELD["ctrl"][c] for c in wp["ride"])
+        a0, a1, b0, b1 = (np.array(p) for p in (a0, a1, b0, b1))
+        e = (b0 - a0) / np.linalg.norm(b0 - a0)
+        u = np.clip((g[:, 1:] - a0) @ e / np.linalg.norm(b0 - a0), 0, 1)
+        dv = (1 - u)[:, None] * (a1 - a0) + u[:, None] * (b1 - b0)
+        q = g.copy()
+        q[:, 1:] += dv - np.outer(dv @ e, e)          # off the glass only: along it, it stays parked where it was
+        J = np.tile(np.eye(3), (len(g), 1, 1))
         (y0, z0), (y1, z1) = wp["glass"]
         n = np.array([0.0, z0 - z1, y1 - y0])
         n /= np.linalg.norm(n) * np.sign(n[2])
@@ -284,6 +310,7 @@ def _warp(maps, name, g, faces=None, flat_stats=None):
         ok = np.isfinite(hb)
         q = q + np.outer((wp["k"] - 1) * (h - np.interp(q[:, 1], yb[ok] + 0.01, hb[ok])), n)
         J = np.einsum("ij,njk->nik", np.eye(3) + (wp["k"] - 1) * np.outer(n, n), J)
+    q = facet_shift(maps.get("facets", ()), g, q)
     fl = FIELD["flat"]
     if faces is not None and name.startswith(fl["objs"]):
         flat_stats += [dict(obj=name, **d) for d in flat_stats_of(g, q, faces, fl)]
@@ -535,11 +562,73 @@ def plane_fit(P, w=None):
     return n, n @ c
 
 
+def facets(maps, g, faces):
+    """FIELD flat facet: the side-view map keeps x, so a source panel leaning sideways bends wherever the map is not
+    affine over its outline (the upper side facets run nose - apex - tail: the apex, the rear window's edge, the glass
+    foot and the tail all move side-on). Per such panel of the body (g, faces: Body's grid points and polygons), in
+    two parts at y split (its edge from the beltline up to the rail there: behind it the tail's top went down with
+    the side panel's top edge, so the beltline bends there): each part's source plane x = a + b y + c z and a new
+    one x = a' + b' y' + c' z'. The front one holds the beltline (points at |x| belt and out keep x) and tilts about
+    it to the moved points; the rear one holds the split edge (on the front plane) and the tail's corner (|x| tail
+    and out: on the vertical side, keeps x). facet_shift() takes everything over each part's lower edge from one to
+    the other. Moving along x keeps (y, z), so every side-on silhouette, and the panels seen edge-on side-on (roof,
+    windshield: normal x 0) stay planes; the side glass, parallel 16 mm inboard, stays parallel. (Projecting each
+    panel's moved points onto its plane along the normal moved the shared edges, 2026-11-12.)"""
+    cfg = FIELD["flat"]
+    fc = cfg["facet"]
+    q, _ = maps[None](g)
+    pan, _, ar = panels(g, faces, cfg)
+    out = []
+    one = lambda P: np.c_[np.ones(len(P)), P[:, 1:]]                                       # noqa: E731
+    for k in np.unique(pan[pan >= 0]):
+        fs = np.nonzero(pan == k)[0]
+        vs = np.unique(np.concatenate([faces[i] for i in fs]))
+        n, d = plane_fit(g[vs])
+        if ar[fs].sum() < fc["area"] or not fc["nx"] <= abs(n[0]) <= 0.98:
+            continue
+        s, src, G, Q = np.sign(g[vs, 0].mean()), np.r_[d, -n[1:]] / n[0], g[vs], q[vs]
+        front, edge = G[:, 1] > fc["split"] - 0.01, np.abs(G[:, 1] - fc["split"]) < 0.01
+        # front: x - xb = t h, h the height over the beltline (side-on z = l0 + l1 y), t by least squares
+        belt = front & (np.abs(G[:, 0]) >= fc["belt"])
+        xb, (l1, l0) = G[belt, 0].mean(), np.polyfit(Q[belt, 1], Q[belt, 2], 1)
+        h = Q[front & ~belt, 2] - l0 - l1 * Q[front & ~belt, 1]
+        t = (G[front & ~belt, 0] - xb) @ h / (h @ h)
+        new = np.array([xb - t * l0, -t * l1, t])
+        out.append(dict(s=s, src=src, new=new, line=np.polyfit(G[belt, 1], G[belt, 2], 1),
+                        y=(fc["split"], G[:, 1].max() + 0.005)))
+        # rear: through the split edge (where the front plane put it) and the tail's corner (x kept)
+        tail = ~front & (np.abs(G[:, 0]) >= fc["tail"])
+        X = np.r_[one(Q[edge]) @ new, G[tail, 0]]
+        out.append(dict(s=s, src=src, new=np.linalg.lstsq(one(np.r_[Q[edge], Q[tail]]), X, rcond=None)[0],
+                        line=np.polyfit(*G[(edge & belt) | tail][:, 1:].T, 1),
+                        y=(G[:, 1].min() - 0.005, fc["split"])))
+    return out
+
+
+def facet_shift(fcs, g, q):
+    """facets(): grid points g (source) / q (moved) over a facet part's lower edge (side-on, its y span), on its
+    side, move along x by the part's new plane minus its source plane, fading in over |x| ramp."""
+    if not len(fcs):
+        return q
+    r0, r1 = FIELD["flat"]["facet"]["ramp"]
+    q = q.copy()
+    for f in fcs:
+        m = ((np.sign(g[:, 0]) == f["s"]) & (g[:, 2] > np.polyval(f["line"], g[:, 1]) - 0.002)
+             & (g[:, 1] >= f["y"][0]) & (g[:, 1] < f["y"][1]))
+        if not m.any():
+            continue
+        w = np.clip((np.abs(g[m, 0]) - r0) / (r1 - r0), 0, 1)
+        dx = f["new"] @ np.c_[np.ones(m.sum()), q[m, 1:]].T - f["src"] @ np.c_[np.ones(m.sum()), g[m, 1:]].T
+        q[m, 0] += w * dx
+    return q
+
+
 def flat_stats_of(g, q, faces, cfg):
     """FIELD flat: how flat each source panel (panels()) stays through the side-view map: per panel its area, the
     source's and the moved points' max deviation from their best-fit plane (grid) and normal spread (deg). Report
-    only (prep_flat.json): projecting the moved points back onto planes (tried, 2026-11-12) pulled the panels' shared
-    edges apart (dark wedges on the sail); the creases the game showed were the normals (main())."""
+    only (prep_flat.json), after x_slide: projecting the moved points back onto planes along their normals (tried,
+    2026-11-12) pulled the panels' shared edges apart (dark wedges on the sail); the creases the game showed were the
+    normals (main())."""
     pan, _, ar = panels(g, faces, cfg)
     out = []
     for k in np.unique(pan[pan >= 0]):
@@ -569,6 +658,13 @@ def main():
     n = 0
     body = None
     flat_stats = []
+    for o in bpy.data.objects:                         # the side facets' planes first (facets(), every object uses them)
+        if o.name == "Body":
+            Mb = P @ np.array(o.matrix_world)
+            gb = np.array([v.co[:] for v in o.data.vertices]) @ Mb[:3, :3].T + Mb[:3, 3]
+            maps[None] = Map(None)
+            maps["facets"] = facets(maps, gb, [list(p.vertices) for p in o.data.polygons])
+            print("PREP facets", [(f["s"], np.round(f["new"] - f["src"], 4).tolist()) for f in maps["facets"]])
     for o in [o for o in bpy.data.objects if o.type == "MESH"]:
         me = o.data
         if not len(me.vertices):

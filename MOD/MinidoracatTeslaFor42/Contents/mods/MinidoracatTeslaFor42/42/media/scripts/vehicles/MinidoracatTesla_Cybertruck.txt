@@ -219,8 +219,8 @@ module Base
         textureDamage2Shell = Vehicles/Veh_Damage2,
         textureRust = Vehicles/Veh_Rust,
         template = PassengerSeat4,
-        extents = 0.9221 0.6974 2.5790,
-        physicsChassisShape = 0.9221 0.6974 2.5790,
+        extents = 0.9221 0.6973 2.5790,
+        physicsChassisShape = 0.9221 0.6973 2.5790,
         centerOfMassOffset = 0.0000 0.1978 0.0000,
         shadowExtents = 0.9221 2.5790,
         shadowOffset = 0.0 0.0,
@@ -232,8 +232,8 @@ module Base
         }
         physics box
         {
-            offset = 0.0000 0.4262 0.0000,
-            extents = 0.7692 0.2407 1.0440,
+            offset = 0.0000 0.4261 0.0000,
+            extents = 0.7692 0.2406 1.0440,
         }
         wheel FrontLeft
         {
@@ -380,20 +380,20 @@ module Base
         }
         attachment trailer
         {
-            offset = 0.0000 -0.3048 -1.3060,
+            offset = 0.0000 -0.3047 -1.3060,
             rotate = 0.0 0.0 0.0,
             zoffset = -1.0,
         }
         attachment trailerfront
         {
-            offset = 0.0000 -0.3048 1.3060,
+            offset = 0.0000 -0.3047 1.3060,
             rotate = 0.0 0.0 0.0,
             zoffset = 1.0,
         }
         /* charge port: real Cybertruck: above the driver's side rear wheel, owner's manual p.190 */
         attachment chargeport
         {
-            offset = 0.4186 0.0350 -0.7682,
+            offset = 0.4186 0.0349 -0.7682,
             rotate = 0.0 0.0 0.0,
         }
         part BedLight
