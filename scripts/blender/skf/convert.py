@@ -374,7 +374,7 @@ def load_source():
         meas = {f: tire[0] if C.get("TIRE") else float(size[fr == f, 1:].mean() / 2) for f in (True, False)}
         tire, rear = (tuple(float(v) * K for v in C["TIRE_AXLES"][a]) for a in ("front", "rear"))
         wl = [(sd, yc, zc - meas[yc > 0] + (tire if yc > 0 else rear)[0], xo) for sd, yc, zc, xo in wl]
-        if C["TIRE"].get("centre_track"):   # TIRE track at each axle's wheel centre (Model S manual), not its outer face
+        if (C.get("TIRE") or {}).get("centre_track"):   # TIRE track at each axle's wheel centre (Model S manual), not its outer face
             wl = [(sd, yc, zc, (C["TIRE"]["track"] * K + (tire if yc > 0 else rear)[1]) / 2 + pv.WHEEL_INSET)
                   for sd, yc, zc, _ in wl]
         print("TIRE_AXLES: measured radius front %.4f rear %.4f -> front %.4f / %.4f, rear %.4f / %.4f, centres"
