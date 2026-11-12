@@ -4,7 +4,9 @@ has are read with C.get and are off for the others: SRC_Z (the glTF is centred o
 centres (the tyres are components of the black trim object), LAMPS head_y (one lamp material front and rear),
 TESLA_MAT (chrome letters on the black band), GATE_BY_COMP (the tail lamps' liftgate and body halves overlap in x),
 DROP_COVERED (paint lying under the tail lamp housings: a depth fight in game), CARBON zones' `of` / `facing` (the
-jamb's top under the liftgate's hinge corners), SEAM_SHADE `any_slope` (the hood's level gaps; model_x.py SEAM_SHADE).
+jamb's top under the liftgate's hinge corners), SEAL_RIBBON / SEAL_COVER (the panel
+gaps as a continuous thin line; convert.py seals), LAMPS `areas` / `head_rgb`, CARBON `cut`, TIRE `centre_track`,
+WHEEL_SPOKE `polar`.
 The source (a Roblox export, decisions.md) is the Sketchfab glTF: 22 objects "Object_<n>", one per material; doors,
 frunk lid and liftgate are components of the paint object (Object_2), and the interior shares objects with the
 exterior (paint seats, black trim cabin tub), so parts come from components (DROP_COMPS boxes, CUT keys).
@@ -12,12 +14,84 @@ Grid units, pre-centre frame (+Y front, +Z up, -X car left, ground z 0) unless n
 .claude/skills/tesla-dev/references/models-model-s.md.
 """
 import math
+import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from prep_model_s import moved  # noqa: E402  (the build reads prep_model_s.py's output; see the end)
 
 _PAINT = "Color1Mtl"
 _LAMP = "MeshesteslaMdoelStrunk2mesh2400622Mtl"     # head and tail lamp housings (smoked)
 _BLACK = "Wiper11Mtl"                               # black trim, tyres, brakes, cabin tub
 _GLASS = "MeshesteslaMdoelSwindowlf2mesh021Mtl"
 _SIDES = (-1, 1)
+
+
+def _lr(zn):
+    """A left-side zone (lo, hi, below planes) and its mirror on the right."""
+    def mx(v):
+        return (-v[0], *v[1:])
+    return zn, dict(zn, lo=(-zn["hi"][0], *zn["lo"][1:]), hi=(-zn["lo"][0], *zn["hi"][1:]),
+                    below=tuple((mx(p), mx(n)) for p, n in zn.get("below", ())))
+
+
+# the lamps as the official renders draw them (LAMPS areas, left side; the planes' points and the official outlines
+# through the fitted cameras onto the model, temp/skf_ms/work/lampzones.py). Head: the lens dark, the DRL strip along
+# its top edge white, the outboard end behind the lens (SIDE; FRONT34's DRL down stroke) light. Tail: the clear upper
+# lens over the outboard half grey, a red bar under it, the inboard C (lit in the renders) pink round a dark inner
+_DRL_IN = dict(lo=(-0.693, 1.701, 0.512), hi=(-0.362, 2.005, 0.716), below=(((-0.4573, 1.9133, 0.5473), (-0.4043, 0.1247, -0.9061)),), cut=True)
+_DRL_OUT = dict(lo=(-0.804, 1.5, 0.573), hi=(-0.623, 1.785, 0.716), below=(((-0.6489, 1.7423, 0.6093), (-0.3, 0.0676, -0.9515)),), cut=True)
+_REAR = dict(lo=(-0.804, 1.5, 0.472), hi=(-0.663, 1.737, 0.716), below=(((-0.7037, 1.6498, 0.6317), (0.3021, 0.6531, 0.6944)),), cut=True)
+_T_UPPER = dict(lo=(-0.955, -2.045, 0.614), hi=(-0.402, -1.55, 0.818), below=(((-0.6699, -1.8, 0.7363), (0.7139, -0.7002, 0.)), ((-0.7035, -1.6994, 0.7281), (-0., -0., -1.))), cut=True)
+_T_BAR = dict(lo=(-0.955, -2.045, 0.614), hi=(-0.402, -1.55, 0.818), below=(((-0.6699, -1.8, 0.7363), (0.7139, -0.7002, 0.)), ((-0.7035, -1.6994, 0.7159), (0., 0., 1.)), ((-0.7035, -1.6994, 0.7023), (-0., -0., -1.)), ((-0.7243, -1.6555, 0.7057), (-0.7139, 0.7002, -0.))), cut=True)
+_T_C = dict(lo=(-0.955, -2.045, 0.614), hi=(-0.402, -1.55, 0.818), below=(((-0.6699, -1.8, 0.7363), (-0.7139, 0.7002, -0.)), ((-0.603, -1.8448, 0.7702), (0., 0., 1.)), ((-0.603, -1.8448, 0.7031), (-0., -0., -1.))), cut=True)
+_T_INNER = dict(lo=(-0.955, -2.045, 0.614), hi=(-0.402, -1.55, 0.818), below=(((-0.6455, -1.8209, 0.7363), (-0.7139, 0.7002, -0.)), ((-0.603, -1.8448, 0.7515), (0., 0., 1.)), ((-0.603, -1.8448, 0.7225), (-0., -0., -1.))), cut=True)
+_SLOTS = dict(lo=(-0.82, 1.50, 0.0), hi=(-0.40, 2.15, 0.45))   # the bumper's lamp-material slots (side intakes)
+
+
+def _poly_zones(poly, ax, rng):
+    """CARBON zones (convert.py `cut`): the paint inside a convex polygon, its corners in coordinates ax (two of 0 x,
+    1 y, 2 z) on the left (pre-centre grid, the source's), between rng on the third axis; and its mirror on the right.
+    The box is the polygon's with 0.06 to spare (the planes draw the border)."""
+    third, out = 3 - ax[0] - ax[1], []
+
+    def p3(a, b, t):
+        v = [0.0, 0.0, 0.0]
+        v[ax[0]], v[ax[1]], v[third] = a, b, t
+        return tuple(v)
+    for s in _SIDES:
+        pts = [(s * a, b) for a, b in poly] if ax[0] == 0 else list(poly)
+        r = rng if third != 0 or s < 0 else (-rng[1], -rng[0])
+        if sum(a[0] * b[1] - b[0] * a[1] for a, b in zip(pts, pts[1:] + pts[:1])) < 0:
+            pts = pts[::-1]                # counter-clockwise: the outward normal is (db, -da)
+        u, w = [q[0] for q in pts], [q[1] for q in pts]
+        out.append(dict(lo=p3(min(u) - 0.06, min(w) - 0.06, r[0]), hi=p3(max(u) + 0.06, max(w) + 0.06, r[1]), cut=True,
+                        below=tuple((p3(a[0], a[1], (r[0] + r[1]) / 2), p3(b[1] - a[1], a[0] - b[0], 0.0))
+                                    for a, b in zip(pts, pts[1:] + pts[:1]))))
+    return tuple(out)
+
+# 19" Magnetite blade (pzveh.spoke_outline `polar`): the silver machined edges of the windows between the blades, read
+# off the official SIDE front wheel (PPSW, polar unwrap round the fitted rim lip, the five folded, median: work/polar.py),
+# screen angle (deg, counter-clockwise from the rear) at r (rr units). A: one window's trailing edge from its apex (r
+# 0.21) out to the lip; B: the next window's leading edge (one blade between). The windows reach in to r 0.21, the hub
+# inside it is solid
+_MAG_A = ((0.21, -3), (0.26, 10.5), (0.34, 20.5), (0.42, 27.5), (0.50, 31.5), (0.62, 35), (0.74, 36.5), (0.86, 38),
+          (1.0, 39.5))
+_MAG_B = ((0.21, 69), (0.26, 58.5), (0.34, 55), (0.42, 55), (0.50, 57.5), (0.62, 63.5), (0.74, 68), (0.86, 71.5),
+          (1.0, 74.5))
+
+
+def _blade(w):
+    """One blade, w (rr units) in from both window edges (the black face over the silver edge band; 0: the whole
+    blade). The SIDE sees the wheel's -x face, front to the left: screen angle t is the wheel's (y, z) angle 126 - t
+    (mirrored; the 126 put the folded pattern on the official's, work/polar.py), so the list is reversed to stay
+    counter-clockwise (pzveh)."""
+    a = [(r, t + math.degrees(w / r)) for r, t in _MAG_A]
+    b = [(r, t - math.degrees(w / r)) for r, t in _MAG_B]
+    rim = [(1.0, a[-1][1] + (b[-1][1] - a[-1][1]) * i / 8) for i in range(1, 8)]   # along the barrel, not a chord
+    pts = [(0.13, _MAG_A[0][1])] + a + rim + b[::-1] + [(0.13, _MAG_B[0][1])]
+    return dict(polar=[(r, 126 - t) for r, t in reversed(pts)])
+
 
 CAR = dict(
     # ---- pzveh: paths and names
@@ -52,16 +126,26 @@ CAR = dict(
     OFFICIAL_OPTS="$MDLS,$MTS23,${},$WS94,$IBC02,$ST06",
     # official_ramp: the SIDE render's paint rows / columns (car bbox fractions) and the wheel arches cut out
     RAMP=dict(t=(0.40, 0.76), u=(0.04, 0.96), wheels=(0.166, 0.80), wt=0.75, wr=0.12),
-    # ---- pzveh: wheel, 19" Magnetite (official RIMCLOSEUP): a black wheel, five wide swept blades with machined
-    # silver edges, open between them onto the red caliper. 255/45 R19 front, 285/40 R19 rear (~356 mm radius)
-    WHEEL_RIM=0.725,                       # rim flange radius / tire radius: 19" (241.3 mm bead + ~17 mm) / 356 mm
-    WHEEL_SPOKE=dict(n=5, hub=0.13, fork=0.30, spread=math.radians(15), main=(0.08, 0.09), arm=0.055, cap=0.14,
-                     inset=0.018, dish=0.020, depth=0.018, sweep=math.radians(40)),
+    # ---- pzveh: wheel, 19" Magnetite (official RIMCLOSEUP): five wide black blades swept round the hub, the windows
+    # between them edged in machined silver, a thin silver lip ring; the red caliper behind. 255/45 R19 front, 285/40
+    # R19 rear (~356 mm radius)
+    WHEEL_RIM=0.725,                       # rim flange radius / tire radius: the fitted lip ring 0.2586 m / 356 mm
+    # the blade (_blade: whole) in the `edge` silver, its face (_blade(0.025): 6.5 mm in from each window edge) in the
+    # `spoke` black over it; the windows' silver edges are what is left
+    WHEEL_SPOKE=dict(n=5, shape=_blade(0.0), lit=_blade(0.025), cap=0.13, inset=0.018, dish=0.020, depth=0.018,
+                     sweep=0),
+    WHEEL_LIP=True,                        # the silver lip ring in the flat `lip` grey (official SIDE ~88-106, 2 px)
+    WHEEL_TURN=True,                       # one part all round: the right wheels show the left's pattern, not a mirror
     WHEEL_DISC=dict(rotor=0.70, hat=0.30),     # 395 mm front rotor (owner's manual) / 258 mm flange
-    WHEEL_RGB=dict(spoke=78, cap=26, barrel=18, lip=96, rotor=36, hat=28, dark=12, gap=8, tire=(22, 28), tread=20),
+    # game-screen levels (pzveh WHEEL_RGB) = the official SIDE's (PPSW front, work/polar.py): blade face 12, windows
+    # 6-12, hub 9; the silver edges peak 100-127 and the lip 88-111 there, both 1-2 px anti-aliased (the game draws them
+    # unblended: brighter). Offline (Workbench) the dark ones read ~+13 (v12: blade 25, window 29, hub 22)
+    WHEEL_RGB=dict(spoke=11, edge=130, cap=9, barrel=10, lip=115, rotor=12, hat=10, dark=6, gap=6, tire=(22, 28),
+                   tread=20),
     # 255/45 R19 front, 285/40 R19 rear (owner's manual p.210): radius ~356 mm, one width per car (their mean), track
     # 1,690 mm; the axles where the source has them (its tyres sit in the black trim object, dropped below)
-    TIRE=dict(r=0.3557, w=0.270, track=1.690, centres=((1.2833, 0.2925), (-1.169, 0.2895))),
+    TIRE=dict(r=0.3557, w=0.270, track=1.690, centres=((1.2833, 0.2938), (-1.16157, 0.2938)), centre_track=True),
+    TIRE_AXLES=dict(front=(0.3560, 0.2497), rear=(0.3553, 0.2797)),
     # ---- pzveh: vehicle script
     OY=0.1978,                             # Model 3's (a sedan's CoM)
     WHEEL_LIFT=0.11,
@@ -82,7 +166,7 @@ CAR = dict(
     GATE_IN=(0.0, 0.8, -0.6),              # liftgate inner panel: forward under the glass, down behind the rear face
     GATE_HINGE="top",
     # ---- convert.py: the source (TMP/src, gitignored; temp/sketchfab-model-s-plaid in the main checkout)
-    SRC=("src", "source", "tesla_model_s_plaid.glb"),
+    SRC=("src", "source", "model_s.glb"),            # prep_model_s.py's output
     SRC_C=(0.3293, -0.2435),               # source bbox centre, x (length) and y (width), source units
     SRC_SCALE=5.046 / 20.707,              # metres per source unit: official length / source length
     SRC_FLIP=False,                        # front -X as imported (the PLAID badge on the liftgate's right)
@@ -141,19 +225,17 @@ CAR = dict(
     DROP_COVERED=(("Object_2", ("Object_10",), 0.002),),
     ARCH_LINER=None,                       # the source has its own wheel wells (Object_23)
     # black plate behind the lower grille's slats (else the ground showed between them)
-    PLATES=(("GrillePlate", ((-0.55, 1.90, 0.08), (0.55, 1.90, 0.08), (0.55, 1.90, 0.34), (-0.55, 1.90, 0.34)),
+    PLATES=(("GrillePlate", ((-0.55, 1.90, 0.15), (0.55, 1.90, 0.15), (0.55, 1.90, 0.34), (-0.55, 1.90, 0.34)),
              (0, 1, 0), "arch_liner"),
-            ("GrilleFloor", ((-0.55, 1.70, 0.09), (0.55, 1.70, 0.09), (0.55, 1.90, 0.09), (-0.55, 1.90, 0.09)),
+            ("GrilleFloor", ((-0.55, 1.70, 0.15), (0.55, 1.70, 0.15), (0.55, 1.90, 0.15), (-0.55, 1.90, 0.15)),
              (0, 0, 1), "arch_liner")),
     SEAL_CLIP=True,
-    # the panel gaps shaded in the skin (convert.py seam_shade; model_x.py): the hood, fender and door gaps are 1-5 mm,
-    # under a pixel at the closest zoom, and came out a row of black dots (models-lids-S-shut-max, user 2026-11-01).
-    # The hood's gaps run level (any_slope) and at the doors' k stayed dotted: 0.6 there. The doors keep X's 0.35: at
-    # 0.69 px/cm the shade is about a texel wide and the 512 skin (texture size option 2) blurs it a few cm wide; at 0.6
-    # (tesla-seam2-ms-audit) the door gaps read as dark smudges on Frost Blue
-    SEAM_SHADE=dict(reach=0.02, width=0.010, k=0.35, steep=0.5,
-                    parts=("DoorFrontLeft", "DoorFrontRight", "DoorRearLeft", "DoorRearRight", "EngineDoor"),
-                    any_slope={"EngineDoor": 0.6}),
+    # the gaps as the official's thin continuous dark line (convert.py seals): a 5 mm strip on each panel's edge where
+    # another panel's edge lies across the gap (console cell: darker than the black paints, lighter than a hole), not
+    # by the glass (the hood's back edge against the cowl); and no seal strip whose far edge has nothing over it within
+    # 3 cm (one stood 21 mm out of the outline behind the front fender, temp/fit-1112/seals)
+    SEAL_RIBBON=dict(w=0.004, lift=0.0010, gap=0.025, glass=0.03, cell="console"),
+    SEAL_COVER=0.03,
     # the roof is glass, so the paint up there is the roof rails (model_3.py RAIL)
     RAIL=(0.95, 1.08),
     DECIMATE={"Object_23": 9000, "Object_2": 16000},   # (prefix match: Object_23 first)
@@ -167,10 +249,16 @@ CAR = dict(
     GLASS_OPAQUE=(),
     GLASS_BACKS=(),
     ROOF_PANE=("Object_11", 452),          # the glass roof
-    MIRROR_CAP=("Object_2", (230, 231)),   # (decimated sizes)
+    MIRROR_CAP=("Object_2", (230,)),        # (decimated sizes)
+    # lamp colours: official medians (PPSW / PN01 / PR01 alike): head lens FRONT34 33 32 35; tail black band and lower
+    # part SIDE 15-19; clear upper lens SIDE 191 / REAR34 70 (between: the game looks down on it); red bar 190 25 28;
+    # C 254 121 120 (lit), its inner 21 20 22
     LAMPS=dict(head=(_LAMP, "I1Mtl"), head_y=0.0, tail=(_LAMP, "Meshpart7Mtl", "Stop1Mtl"), tail_z=0.6, tail_y=-1.4,
-               tail_rgb=(40, 24, 28),           # the tail lamps' smoked red (official REAR34 lamp median 37 28 31)
-               blade=None),
+               tail_rgb=(17, 15, 17), head_rgb=(33, 32, 35), blade=None,
+               areas=tuple((zn, rgb, lit) for z, rgb, lit in (
+                   (_SLOTS, (20, 20, 22), False), (_DRL_IN, (240, 242, 246), True), (_DRL_OUT, (240, 242, 246), True),
+                   (_REAR, (205, 207, 212), True), (_T_UPPER, (130, 130, 134), True), (_T_BAR, (190, 25, 28), True),
+                   (_T_C, (254, 121, 120), True), (_T_INNER, (21, 20, 22), True)) for zn in _lr(z))),
     # part lines, side view (y, z), read off the source's door skins and windows (temp/skf_ms/outline.py)
     LINES={
         "S": ((-0.170, 0.20), (-0.194, 0.82)),   # front / rear door seam below the belt
@@ -205,7 +293,21 @@ CAR = dict(
     # 2026-11-01; dropped, it bared the clutter under it). Its component is 4659 triangles as decimated
     CARBON=dict(rgb=(20, 20, 22), zones=tuple(
         dict(lo=(0.47 if s > 0 else -0.545, -1.13, 1.02), hi=(0.545 if s > 0 else -0.47, -1.06, 1.075),
-             of=("Object_2", 4659), facing=((0, 0, 1), (0.75, 1.0))) for s in _SIDES)),
+             of=("Object_2", 4675), facing=((0, 0, 1), (0.75, 1.0))) for s in _SIDES)
+        # the Plaid's front (official FRONT34 PPSW, its outline through the fitted camera onto the model): the lower
+        # intake running down into the black splitter, the white fang between it and the tall side intake, a white
+        # strip under the side intake, the splitter under that; the band over the fang joins the two intakes
+        + _poly_zones(((0.0, 0.3022), (-0.409, 0.2993), (-0.5498, 0.1771), (-0.6281, 0.0891), (0.0, 0.0891)), (0, 2),
+                      (1.60, 2.40))
+        + _poly_zones(((-0.5116, 0.3097), (-0.6191, 0.2061), (-0.7628, 0.1966), (-0.7332, 0.3643)), (0, 2), (1.55, 2.40))
+        + _poly_zones(((-0.5528, 0.1747), (-0.804, 0.1811), (-0.804, 0.0891), (-0.5528, 0.0891)), (0, 2), (1.55, 2.40))
+        + _poly_zones(((-0.375, 0.2850), (-0.565, 0.2852), (-0.565, 0.3171), (-0.375, 0.2908)), (0, 2), (1.60, 2.40))
+        # the Plaid's rear (official REAR34 and SIDE, the same way): the diffuser's black up to the bumper's lower
+        # crease across the rear face (seen from behind), round the corners and along the sides to the rear arch
+        + _poly_zones(((0.0, 0.3936), (-0.2874, 0.3886), (-0.4523, 0.3825), (-0.5588, 0.3608), (-0.599, 0.3343),
+                       (-0.6533, 0.2597), (-0.7035, 0.024), (0.0, 0.024)), (0, 2), (-2.70, -1.82))
+        + _poly_zones(((-1.9648, 0.3557), (-1.7854, 0.2293), (-1.7854, 0.024), (-1.9648, 0.024)), (1, 2), (-0.95, -0.55))
+        + _poly_zones(((-1.7854, 0.2293), (-1.4874, 0.1731), (-1.4874, 0.01), (-1.7854, 0.01)), (1, 2), (-0.95, -0.55))),
     PANES={"Body": {"WinT", "LightBarL"}, "DoorFrontLeft": {"WinLH"}, "DoorFrontRight": {"WinRH"},
            "DoorRearLeft": {"WinLT"}, "DoorRearRight": {"WinRT"}, "TrunkDoor": {"WinH"}, "EngineDoor": set()},
     # badges: T on the nose (where the source has it), TESLA in chrome across the black band between the tail lamps
@@ -218,7 +320,11 @@ CAR = dict(
     BLADE=False,
     MODELY=None,
     PERF_BADGE=None,
-    CALIPER=dict(front=(176, 12), rear=(80, 15), r=(0.100, 0.168), x=(0.008, 0.040)),
+    # (deg behind the top) the rear where the official SIDE shows it through the windows (~28 deg above the axle's
+    # level, rear side). The official front one sits there too (64 deg), but a caliper in the body must clear the
+    # spokes at full lock: -0.084 grid there, >= 0.003 only within 9 deg of the top or the bottom (convert.py calipers);
+    # the bottom, as model_y.py (seen from the game camera; at the top the fender hides it)
+    CALIPER=dict(front=(176, 12), rear=(62, 15), r=(0.100, 0.168), x=(0.008, 0.040)),
     # frunk 89 L (owner's manual p.207) under the lid
     FRUNK_TUB=dict(ledge=0.06, rim=0.025, y=(1.21, 1.72), half=(0.34, 0.22), corner=0.07, taper=0.07, depth=0.22,
                    n=128),
@@ -235,7 +341,7 @@ CAR = dict(
     SEATS=dict(front=dict(w=0.43, back=0.52, recline=32, dy=0.060, dz=-0.142),
                rear=dict(base=1.12, cushions=((-0.38, 0.37), (0, 0.34), (0.38, 0.37)), back=0.46, recline=10, dy=0.03,
                          dz=-0.135),
-               sill=(1.04, 0.12), bin=(0.90, 0.40)),
+               sill=(0.90, 0.08), bin=(0.90, 0.40)),
     PARCEL=None,                           # a liftgate: no parcel shelf
     DASH=dict(console=(0, -0.02, -0.25), dash=(0, 0.66, 0.06), trim=(0, 0.487, 0.07), light=(0, 0.489, 0.045),
               stand=(0, 0.50, 0.17), screen=(0, 0.47, 0.25), wheel=(0.197, 0.139)),   # wheel: the reclined driver's hands
@@ -261,3 +367,69 @@ CAR = dict(
         ],
     },
 )
+
+
+def _moved_positions(c):
+    """The positions in CAR are the source glTF's (pre-centre grid, read off it with outline.py / inspect); the build
+    reads prep_model_s.py's output, so they move with its field: points and (y, z) lines at the body side, levels at
+    the side (y 0) unless they belong to the tail / nose, |x| limits, boxes corner by corner."""
+    def z(v, y=0.0, x=0.80):
+        return moved(x, y, v)[2]
+
+    def y(v, zz=0.5, x=0.80):
+        return moved(x, v, zz)[1]
+
+    def x(v, yy=0.0, zz=0.6):
+        return moved(v, yy, zz)[0]
+
+    def box(lo, hi):                    # corner by corner (the field keeps the order)
+        return moved(*lo), moved(*hi)
+
+    c["BELT_Z"], c["SILL_Z"], c["GATE_Z"] = z(c["BELT_Z"]), z(c["SILL_Z"]), z(c["GATE_Z"], -1.9, 0.0)
+    c["LINES"] = {k: tuple(moved(0.80, *p)[1:] for p in v) for k, v in c["LINES"].items()}
+    c["FRONT_Y"], c["DOOR_Y"] = y(c["FRONT_Y"]), tuple(y(v) for v in c["DOOR_Y"])
+    c["IN_DOOR"] = dict(c["IN_DOOR"], up=z(c["IN_DOOR"]["up"]), x=x(c["IN_DOOR"]["x"]))
+    g = c["IN_GATE"]
+    c["IN_GATE"] = dict(g, y=y(g["y"], g["z"], 0.0), z=z(g["z"], g["y"], 0.0), x_up=x(g["x_up"], g["y"]))
+    c["REAR_ARCH"] = (*moved(0.80, *c["REAR_ARCH"][:2])[1:], c["REAR_ARCH"][2])
+    c["GATE_X"], c["STOP_X"], c["LENS_X"] = x(c["GATE_X"], -1.9), x(c["STOP_X"], -1.9), x(c["LENS_X"], -2.0)
+    pn = c["PANELS"]
+    c["PANELS"] = dict(x=x(pn["x"]), z=z(pn["z"]), front=tuple(y(v) for v in pn["front"]),
+                       rear=tuple(y(v) for v in pn["rear"]), gate=(y(pn["gate"][0], 0.6, 0.0), z(pn["gate"][1], -1.3, 0.0)),
+                       lid=(y(pn["lid"][0], 0.6, 0.0), z(pn["lid"][1], 0.9, 0.0)))
+    c["GUARDS"] = {k: (y(gy, gz), z(gz, gy), x(gx, gy, gz)) for k, (gy, gz, gx) in c["GUARDS"].items()}
+    c["RAIL"] = tuple(z(v, -0.3, 0.70) for v in c["RAIL"])
+    c["LAMPS"] = dict(c["LAMPS"], tail_z=z(c["LAMPS"]["tail_z"], -2.0, 0.6), tail_y=y(c["LAMPS"]["tail_y"], 0.6, 0.6),
+                      areas=tuple((dict(zn, **dict(zip(("lo", "hi"), box(zn["lo"], zn["hi"]))),
+                                        below=tuple((moved(*p), n) for p, n in zn.get("below", ()))), rgb, lit)
+                                  for zn, rgb, lit in c["LAMPS"]["areas"]))
+    t = c["T_BADGE"]
+    c["T_BADGE"] = (*moved(0.0, t[0], t[3])[1:2], t[1], t[2], moved(0.0, t[0], t[3])[2], *t[4:])
+    c["TESLA"] = (z(c["TESLA"][0], -2.0, 0.0), *c["TESLA"][1:])
+    c["BADGE_Y"] = tuple(y(v, c["TESLA"][0], 0.0) for v in c["BADGE_Y"])
+    c["FRUNK_TUB"] = dict(c["FRUNK_TUB"], y=tuple(y(v, 0.65, 0.0) for v in c["FRUNK_TUB"]["y"]))
+    c["PLATES"] = tuple((n, tuple(moved(*q) for q in poly), w, m) for n, poly, w, m in c["PLATES"])
+    c["DROP_COMPS"] = tuple((o, *box(lo, hi)) for o, lo, hi in c["DROP_COMPS"])
+    c["DROP_FACES_COMPS"] = tuple((o, *box(lo, hi), a, d) for o, lo, hi, a, d in c["DROP_FACES_COMPS"])
+    c["CARBON"] = dict(c["CARBON"], zones=tuple(dict(zn, **dict(zip(("lo", "hi"), box(zn["lo"], zn["hi"]))),
+                                                     **({"below": tuple((moved(*p), nrm) for p, nrm in zn["below"])}
+                                                        if "below" in zn else {}))
+                                                 for zn in c["CARBON"]["zones"]))
+
+
+# the cabin with the body (grid): the field brings the body round the cabin down about _CAB (seat height 13 mm, belt
+# 21, roof 26; the cabin is rigid: the seat_head.py heads and the sit / back / feet fits set it), so the passengers'
+# SEAT h (over the ground) by _CAB; cabin.py's heights are over the built body's bbox centre (geometry.json zmid),
+# which the field moved from _ZMID[0] to _ZMID[1] (its lowest point is the rear bumper's now): those by the difference
+_CAB, _ZMID = -0.0219, (0.6414, 0.6397)
+
+
+def _cabin_down(c):
+    dz = _CAB - (_ZMID[1] - _ZMID[0])
+    c["SEAT"] = dict(c["SEAT"], h=round(c["SEAT"]["h"] + _CAB, 4), z=round(c["SEAT"]["z"] + dz, 4))
+    c["CABIN_FLOOR"], c["CABIN_ZC"] = round(c["CABIN_FLOOR"] + dz, 4), round(c["CABIN_ZC"] + dz, 4)
+    c["DASH"] = {k: (*v[:-1], round(v[-1] + dz, 4)) for k, v in c["DASH"].items()}
+
+
+_moved_positions(CAR)
+_cabin_down(CAR)

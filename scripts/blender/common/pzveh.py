@@ -307,9 +307,12 @@ def spoke_outline(rr, rb, shape=None):
     whole spoke turned `sweep` rad more at the barrel than at the hub (a swept, turbine-like spoke). `shape` (optional,
     rr units, tangential half widths): the left edge's (r, t) from the hub out to the barrel, then the window between
     the arms from the barrel down to its tip (t 0); r past the barrel ends on it. Without it the Y is drawn from hub /
-    fork / spread / main / arm. shape (argument): that outline instead of WHEEL_SPOKE's (its `lit` band)."""
+    fork / spread / main / arm. shape (argument): that outline instead of WHEEL_SPOKE's (its `lit` band). A shape with
+    `polar` instead: the whole outline, (r, deg) counter-clockwise, no mirror and no sweep (an asymmetric blade)."""
     sp = WHEEL_SPOKE
     shape = shape or sp.get("shape")
+    if shape and "polar" in shape:     # (Model S) any outline: (r rr units, angle deg) all the way round, as given
+        return [(min(r * rr, rb), math.radians(a)) for r, a in shape["polar"]]
     if shape:
         half = [(min(r * rr, rb), -t * rr) for r, t in shape["outer"] + shape["inner"]]
     else:
