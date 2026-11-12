@@ -1526,7 +1526,8 @@ def textures(car, c, shift=0.0):
         s[paint] = np.clip(a_ * np.stack([np.interp(q, xp, ramp[:, i]) for i in range(3)], -1) / pv.GAIN + b_, 0, 1)
         if seam is not None:
             s[paint] *= seam[paint][:, None]
-        s[chrome] = np.array(CHROME[int(np.median(s[paint].max(-1)) >= 0.55)]) / 255
+        # (CHROME_RGB: one chrome on every paint, Model X's T on its black nose band; else light on dark paints)
+        s[chrome] = np.array(C.get("CHROME_RGB") or CHROME[int(np.median(s[paint].max(-1)) >= 0.55)]) / 255
         if INK:                            # BADGE_INK (Model Y L): its badge light on a dark paint, dark on a light
             s[ink] = np.array(INK["rgb"][p in INK["dark_on"]]) / 255
         s[etch] = np.median(s[keep], 0) * 0.78     # etched into the steel (and seen through a film): a shade darker
