@@ -1,7 +1,8 @@
 """Cybertruck Cyberbeast: adamsochi2010's (Mr3DDD) "Tesla CyberTruck" (Sketchfab, CC BY 4.0, CREDITS.md). CAR=cybertruck.
 Keys as in model_y.py (each is the module constant it sets); the keys only this car has are read with C.get and are off
 for the others: SRC_YFRONT / SRC_STRETCH (an FBX source, scaled onto the official size), DROP_FACES, FACE_PARTS,
-PART_OBJS, TIRE, PORT, CERBERUS, BED_TUB, LIGHTS, TONNEAU_T, FILMS, FILM_MIX, PAINT_ALPHAS, EXTRA_AREAS, TIRE_SHOULDER.
+PART_OBJS, TIRE, PORT, CERBERUS, BED_TUB, LIGHTS, TONNEAU_T, FILMS, FILM_MIX, PAINT_ALPHAS, EXTRA_AREAS, TIRE_SHOULDER,
+CELL_PRISMS, UV_HOLD_MOVE.
 SRC is scripts/blender/skf/prep_cybertruck.py's output (the source fitted to the official renders and the manual). The
 source's body is one welded shell with real 4 mm panel gaps, so its doors are split face by face along those gaps
 (FACE_PARTS); the frunk lid (Body.012), tailgate (Body.005) and tonneau (Body.004, two triangles) are their own objects.
@@ -304,4 +305,20 @@ CAR = dict(
             ("speaker grille", "front", 0.08, -0.330, 0.14, 0.110, 0.018, "console", 0.045),
         ],
     },
+    # the black splash flap under each rear arch's front leg (official SIDE / FRONT34 / REAR34: 6-7 cm under the sill,
+    # its front edge chamfered, its rear face 4.5 cm ahead of the tyre at 0.21-0.30 m), a palette cell so the skin's
+    # UV layout stays (convert.py cell_prisms); the front arches' rear legs have none (REAR34 sees no flap there)
+    CELL_PRISMS=(dict(cell="base", x=(0.6525, 0.7930),
+                      yz=((-1.0160, 0.1798), (-0.9086, 0.1798), (-0.8797, 0.2458), (-0.8797, 0.2541), (-1.0160, 0.2541))),),
+    # the rear bumper's near corner, lower part (official FRONT34 / SIDE / REAR34, round 5): the bumper's lower outer edge
+    # behind the rear arch up under its crease and 1 cm in, prep_cybertruck.py's skid (FIELD skid, kept as the UV
+    # layout's shape) to the official outline: its bottom 0.7-2.3 cm up, its back 1-2 cm out, narrower, its front top up
+    # under the raised bumper edge (a 3 px gap there, offline view N). Moved after the
+    # unwrap and the skins so every skin texel stays (convert.py hold_move); points (|x|, y, z) old -> new
+    UV_HOLD_MOVE=dict(tol=0.004, pts=(
+        ((0.833, -1.8205, 0.28), (0.823, -1.8205, 0.324)), ((0.82, -1.898, 0.3035), (0.81, -1.898, 0.344)),
+        ((0.79, -1.84, 0.31), (0.785, -1.84, 0.34)), ((0.74, -1.84, 0.226), (0.75, -1.84, 0.233)),
+        ((0.76, -2.06, 0.37), (0.665, -2.06, 0.37)), ((0.7, -2.06, 0.245), (0.665, -2.06, 0.263)),
+        ((0.6, -2.24, 0.4), (0.52, -2.262, 0.4)), ((0.53, -2.24, 0.274), (0.54, -2.262, 0.297)),
+        ((0.6, -2.265, 0.4), (0.52, -2.275, 0.4)), ((0.55, -2.265, 0.372), (0.52, -2.275, 0.368)))),
 )
