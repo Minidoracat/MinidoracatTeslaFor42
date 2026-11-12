@@ -11,16 +11,23 @@ import math
 
 # components by (object, triangles) after prep_model_3.py and the decimation (the build's COMPS lines): they change
 # whenever the prep's field does
-_SHELL = ("Object_11", 5901)               # the body shell: roof, rear quarters, tail, trunk lid
-_BUMPER = ("Object_11", 1592)              # the front bumper
+_SHELL = ("Object_11", 5913)               # the body shell: roof, rear quarters, tail, trunk lid
+_BUMPER = ("Object_11", 1574)              # the front bumper
 _MIRRORS = ("Object_11", (188, 186))       # the mirror caps (left, right)
 _FRAMES = (245, 239)                       # Object_6: the window frame trims along both doors (left, right)
+_DIFFUSER = ("Object_13", 506)            # the black rear diffuser under the bumper
 # the Performance front's black lower intake (CARBON, official FRONT34 through camfit's c2 camera, 2026-11-12): its
 # top edge (|x|, z) falls from z 0.28 in the middle to 0.145 at the corners; the shipped box (|x| 0.60, z 0.28)
 # blacked the near corner, which the official has in body colour, and sat 17-43 mm high
 _FRONT_BLACK = ((0.15, 0.28), (0.40, 0.25), (0.56, 0.145))
 _FRONT_LINES = tuple(zip(_FRONT_BLACK[:-1], _FRONT_BLACK[1:]))
 _FRONT_LIP = 0.185                           # z: the black lip under the bumper corners (CARBON third zone)
+# the rear diffuser's black top edge (|x|, z), official REAR34 through camfit's c2 camera (2026-11-13): z 0.355 in the
+# middle, down the bumper's corners to 0.17 at |x| 0.565 (the source's black ran 1-3 cm low in the middle, 2 cm high
+# at the corners); concave, so "below every line" is the region under it
+_REAR_BLACK = ((0.0, 0.355), (0.2, 0.352), (0.30, 0.344), (0.41, 0.328), (0.45, 0.317), (0.475, 0.302), (0.50, 0.279),
+               (0.52, 0.254), (0.565, 0.17))
+_REAR_LINES = tuple(zip(_REAR_BLACK[:-1], _REAR_BLACK[1:]))
 
 
 def _below(a, b):
@@ -28,6 +35,10 @@ def _below(a, b):
     (x1, z1), (x2, z2) = a, b
     n = math.hypot(z1 - z2, x2 - x1)
     return [((sd * x1, 0, z1), (sd * (z1 - z2) / n, 0, (x2 - x1) / n)) for sd in (1, -1)]
+
+
+_REAR_PLANES = tuple(pn for ln in _REAR_LINES for pn in _below(*ln))
+_RB = tuple(f"RB{i}{c}" for i in range(len(_REAR_LINES)) for c in "+-")   # their PLANES names, middle lines first
 
 
 CAR = dict(
@@ -140,7 +151,13 @@ CAR = dict(
             ("SlotPlate", ((-0.46, 1.749, 0.128), (0.46, 1.749, 0.128), (0.46, 1.749, 0.3025), (-0.46, 1.749, 0.3025)),
              (0, 1, 0), "arch_liner"),
             ("SlotFloor", ((-0.46, 1.492, 0.156), (0.46, 1.492, 0.156), (0.46, 1.72, 0.156), (0.30, 1.83, 0.156),
-                           (0.0, 1.86, 0.156), (-0.30, 1.83, 0.156), (-0.46, 1.72, 0.156)), (0, 0, 1), "arch_liner")),
+                           (0.0, 1.86, 0.156), (-0.30, 1.83, 0.156), (-0.46, 1.72, 0.156)), (0, 0, 1), "arch_liner"),
+            # behind the B pillar trim's rear edge (BR, leaning with the glass): there the trim, its edge seals (a few
+            # mm, turned forward) and the rear door glass leave a slit, and through the rear window the seals read as a
+            # dotted black line on the cabin's grey (NE, 2026-11-13); without the seals it was see-through
+            *((f"BPillarGap{'LR'[sd > 0]}", ((sd * 0.633, -0.300, 0.80), (sd * 0.633, -0.245, 0.80),
+                                             (sd * 0.523, -0.300, 1.09), (sd * 0.523, -0.355, 1.09)),
+               (sd * 0.93, 0, 0.36), "arch_liner") for sd in (-1, 1))),
     # the paint is a thin shell folded round every panel edge (outer face, hem, inner face a few mm behind), so the
     # inner face's open edge got a seal strip "behind" it, out through the outer face: 1-2 px black dashes along the
     # door seams in game. Seal strips that pass through any surface are dropped
@@ -192,8 +209,9 @@ CAR = dict(
     GUARDS=dict(front=(0.742, 0.8025, 0.4), rear=(-0.958, 0.853, 0.45)),
     # the body shell (rear quarters, roof, rear face and the trunk lid in one) is cut along the lid's seams; the
     # window frame trim spans both doors and the C pillar
-    CUT={_SHELL: ("X+", "X-", "GZ", "CZ", "GY"), **{("Object_6", n): ("BF", "BR", "D") for n in _FRAMES},
-         _BUMPER: ("FZ", "FX+", "FX-", "FL", *(f"FS{i}{c}" for i in range(len(_FRONT_LINES)) for c in "+-"))},
+    CUT={_SHELL: ("X+", "X-", "GZ", "CZ", "GY", *_RB[:8]), **{("Object_6", n): ("BF", "BR", "D") for n in _FRAMES},
+         _BUMPER: ("FZ", "FX+", "FX-", "FL", *(f"FS{i}{c}" for i in range(len(_FRONT_LINES)) for c in "+-")),
+         _DIFFUSER: _RB},
     # name: (point, normal, cut faces centred behind this y); GZ: the trunk lid's lower edge; FZ / FX+-: the edges of
     # the black lower front intake, CZ: the spoiler band's lower edge on the lid's rear face (CARBON), so their
     # borders run straight instead of along big triangles (CZ only behind y -1.85: the body's tail-lamp tops beside
@@ -202,7 +220,10 @@ CAR = dict(
     PLANES={"GZ": ((0, 0, 0.530), (0, 0, 1), -1.308), "FZ": ((0, 0, _FRONT_BLACK[0][1]), (0, 0, 1), 9.0),
             "FX+": ((0.60, 0, 0), (1, 0, 0), 9.0), "FX-": ((-0.60, 0, 0), (1, 0, 0), 9.0), "FL": ((0, 0, _FRONT_LIP), (0, 0, 1), 9.0),
             **{f"FS{i}{'+-'[k]}": (*pn, 9.0) for i, ln in enumerate(_FRONT_LINES) for k, pn in enumerate(_below(*ln))},
-            "CZ": ((0, 0, 0.827), (0, 0, 1), -1.85), "GY": ((0, -1.408, 0), (0, 1, 0), -1.308)},
+            "CZ": ((0, 0, 0.827), (0, 0, 1), -1.85), "GY": ((0, -1.408, 0), (0, 1, 0), -1.308),
+            # the rear diffuser's black top (_REAR_BLACK); the shell only along the four middle lines (the corner ones
+            # would cross the whole tail behind y -1.6)
+            **{nm: (*pn, -1.6) for nm, pn in zip(_RB, _REAR_PLANES)}},
     CUT_X=("Object_12", "Object_13", "Object_14", "Object_16", "Object_17"),   # cut along +-GATE_X
     CUT_X_Y=-1.308,                         # the lid's side seams from ahead of its front edge (GY) back
     DOOR_OBJS=("Object_6", "Object_7", "Object_9", "Object_12", "Object_13", "Object_14", "Object_17", "Object_18"),
@@ -217,7 +238,13 @@ CAR = dict(
                                              below=tuple(pn for ln in _FRONT_LINES for pn in _below(*ln))),
                                         # the black lip under the corners to the front wheels (official FRONT34): the
                                         # body-coloured corner fins stand between it and the intake
-                                        dict(lo=(-0.82, 1.50, 0.0), hi=(0.82, 9.0, _FRONT_LIP), of=_BUMPER))),
+                                        dict(lo=(-0.82, 1.50, 0.0), hi=(0.82, 9.0, _FRONT_LIP), of=_BUMPER),
+                                        # the rear diffuser's black up to _REAR_BLACK on the bumper's middle
+                                        dict(lo=(-0.62, -9.0, 0.0), hi=(0.62, -1.60, 0.40), of=_SHELL,
+                                             below=_REAR_PLANES))),
+    # ... and its corners body colour above it (the source's black ran 2 cm higher there)
+    PAINT_OVER=(dict(of=_DIFFUSER, lo=(-0.62, -9.0, 0.175), hi=(0.62, -1.60, 0.40), above=_REAR_PLANES,
+                     facing=((0, -1, 0), (0.28, 1.0))),),
     PANES={"Body": {"WinT", "LightBarL", "WinH"}, "DoorFrontLeft": {"WinLH"}, "DoorFrontRight": {"WinRH"},
            "DoorRearLeft": {"WinLT"}, "DoorRearRight": {"WinRT"}, "TrunkDoor": set(), "EngineDoor": set()},
     # badges: T on the nose (where the source has it), TESLA across the trunk lid between the tail lamps, the
@@ -240,6 +267,9 @@ CAR = dict(
     # ---- cabin.py (mesh coords, centred; prep_model_3.py moved the centre: y -0.0059, zmid +0.0127, the values
     # below follow the body through it, `prep_model_3.py -- map`)
     CABIN_FLOOR=-0.474,                    # under the seated feet (seat_head.py feet), just over the underbody
+    # cabin.py trunk_walls: the rear doors' walls' floor corner 12 mm in (straight under the wall's lowest ray hit it
+    # stood 2-3 mm out of the sill's undercut, below the rear doors: a 1 px black dash in game, SW, 2026-11-13)
+    FLOOR_IN=0.012,
     CABIN_FRONT_Y=1.078,
     TRUNK_Y=-1.002,
     REAR_DOOR_WALL=True,                   # cabin.py trunk_walls through the rear door openings (user 2026-11-01)

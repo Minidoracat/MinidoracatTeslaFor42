@@ -241,8 +241,10 @@ def trunk_walls(pts, kind, who, ys, lim, belt, trunk_floor, arch, y0, y1=None, t
             up = zo > np.maximum.accumulate(np.r_[-9.0, zo[:-1]])
             xo, zo = xo[up], zo[up]
             zh = min(max(circle(ys[i]) + off, f), zt) if x_in else f
-            xc = x_in if zh > f + 1e-3 else float(np.interp(f, zo, xo))
-            xh = float(np.interp(zh, zo, xo))
+            # FLOOR_IN (Model 3): the floor corner that much in (straight under the wall's lowest hit it stood out
+            # through the sill's undercut under the rear doors: a 1 px black dash in game)
+            xc = x_in if zh > f + 1e-3 else float(np.interp(f, zo, xo)) - pv.CAR.get("FLOOR_IN", 0.0)
+            xh = float(np.interp(zh, zo, xo)) - (pv.CAR.get("FLOOR_IN", 0.0) if zh <= f + 1e-3 else 0.0)
             prof = ([(xc, f + (zh - f) * t / na) for t in range(na + 1)]
                     + [(xc + (xh - xc) * t / nb, zh) for t in range(1, nb + 1)]
                     + [(float(np.interp(zh + (zt - zh) * t / nc, zo, xo)), zh + (zt - zh) * t / nc)

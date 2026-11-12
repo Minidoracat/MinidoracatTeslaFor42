@@ -78,7 +78,29 @@ FIELD = dict(
     # the trunk lid's trailing edge (the carbon spoiler): back d[0], up d[1] x s over -y (te[0] -> te[1]) x s(z),
     # fading out towards the spoiler's ends over |x| (else the tail lamps' tops and the lid's side seams shear)
     spoiler=dict(y=(-2.05, -2.29), z=(0.92, 1.00), x=(0.40, 0.60), d=(0.034, 0.012)),
+    # then, where each point lands (metres of the output: these were fitted on it, official SIDE rows through the c2
+    # camera): `low_nose` the bumper's old lip tip back (dy by height, weight over y) behind LIP's blade, which it
+    # poked 3-4 px ahead of the official lip's underside; `tail_low` the diffuser's foot up (dz by height, weight over
+    # -y), 2-3 px low under the tail; `tail_corner` its rear corner reshaped (dy by |x| in a height band `z` (in,
+    # full, full, out), weight over -y): the source's corner bulged 5 px out at row 636 and fell 4 px short at 640
+    low_nose=dict(y=(1.80, 2.10), z=((0.17, 0.0), (0.20, -0.012), (0.23, 0.0))),
+    tail_low=dict(y=(1.80, 2.00), z=((0.16, 0.011), (0.25, 0.0))),
+    tail_corner=dict(y=(1.95, 2.15), z=(0.18, 0.20, 0.25, 0.27), x=((0.40, 0.0), (0.50, 0.012), (0.58, 0.0), (0.66, -0.018))),
 )
+# the Performance front's black splitter blade (grid, pre-centre; official SIDE through the c2 camera): the source's
+# lip tip sat 4-5 px low and its underside 1-2 px high. A wedge per station along the old tip's plan line (`tip`: |x|,
+# y, read off the prepped bumper), from the bumper face at `root` z (a ray from ahead, `inset` in) to the tip at `zt`
+# (by |x|) and back under to `back` behind the tip at `zb`; built after the field, so the nose's extreme (cn) ignores it
+LIP = dict(name="Lip_M3", span=0.72, n=61, root=0.185, inset=0.004,
+           tip=((0.0, 1.945), (0.1, 1.942), (0.2, 1.932), (0.3, 1.917), (0.35, 1.895), (0.4, 1.88), (0.45, 1.855),
+                (0.5, 1.828), (0.55, 1.80), (0.6, 1.75), (0.65, 1.712), (0.7, 1.65)),
+           zt=((0.0, 0.192), (0.35, 0.192), (0.70, 0.165)),
+           back=((0.0, 0.04), (0.45, 0.045), (0.55, 0.03), (0.72, 0.04)),
+           zb=((0.0, 0.134), (0.45, 0.135), (0.55, 0.133), (0.65, 0.126), (0.72, 0.115)))
+# the rear diffuser's ledge (grid; official SIDE rows 620-628, REAR34's lit step across the black): a box strip `d`
+# behind the diffuser's rear face (a ray from behind at the band's middle), `inset` into it, z `band`, |x| <= span
+FIN = dict(name="Fin_M3", span=0.42, n=43, band=(0.215, 0.236), d=0.025, inset=0.01)
+MAT_BLACK = "Georimblurlfsub01Mtl"            # cars/model_3.py MAT_RGB: the source's black trim
 
 
 def s(x, a, b):
@@ -148,6 +170,11 @@ class Field:
         h = f["hood"]
         dZ = dZ + h["d"] * s(Y, h["y"][0], h["y"][1]) * (1 - s(Y, h["y"][1], h["y"][2])) * s(Z, *h["z"])
         dZ = dZ + sp["d"][1] * wsp
+        Q = p + np.stack([dX, dY, dZ], 1)                          # the post terms, where the point lands
+        ln, tl, tc = f["low_nose"], f["tail_low"], f["tail_corner"]
+        dY = dY + s(Q[:, 1], *ln["y"]) * smooth(Q[:, 2], ln["z"]) + s(-Q[:, 1], *tc["y"]) * s(Q[:, 2], *tc["z"][:2]) \
+            * (1 - s(Q[:, 2], *tc["z"][2:])) * smooth(np.abs(Q[:, 0]), tc["x"])
+        dZ = dZ + s(-Q[:, 1], *tl["y"]) * smooth(Q[:, 2], tl["z"])
         return np.stack([dX, dY, dZ], 1)
 
 
@@ -224,6 +251,58 @@ def map_points():
         print("MAP %-14s (%.4f, %.4f, %.4f) -> (%.4f, %.4f, %.4f)  d %+.4f %+.4f %+.4f" % (w[0], *g[0], *n, *(n - g[0])))
 
 
+def strips(S):
+    """Stations x section points (grid, a convex section each, stations along x) -> faces facing out: a quad per
+    section edge and station step (out from the section's centroid), and both end caps."""
+    F = []
+    m, k = S.shape[:2]
+    idx = np.arange(m * k).reshape(m, k)
+    c = S.mean(1)
+    for i in range(m - 1):
+        for j in range(k - 1):                  # open between the last point and the first (inside the body)
+            q = [idx[i, j], idx[i, j + 1], idx[i + 1, j + 1], idx[i + 1, j]]
+            p = S.reshape(-1, 3)[q]
+            out = p.mean(0) - (c[i] + c[i + 1]) / 2
+            F.append(q if np.cross(p[1] - p[0], p[2] - p[0]) @ out > 0 else q[::-1])
+    for i, sd in ((0, -1), (m - 1, 1)):
+        q = list(idx[i])
+        p = S[i]
+        F.append(q if np.cross(p[1] - p[0], p[2] - p[0])[0] * sd > 0 else q[::-1])
+    return S.reshape(-1, 3), F
+
+
+def lip(bvh, ymax):
+    """LIP's wedge (grid): stations x (root on the bumper face, tip, underside)."""
+    from mathutils import Vector
+    L = LIP
+    S = []
+    for x in np.linspace(-L["span"], L["span"], L["n"]):
+        ax = abs(x)
+        yt = min(np.interp(ax, *np.array(L["tip"]).T), ymax - 0.001)     # never the nose's extreme
+        hit = bvh.ray_cast(Vector((x, 3.0, L["root"])), Vector((0, -1, 0)))[0]
+        yr = hit.y - L["inset"] if hit is not None else yt - 0.03
+        S.append([(x, yr, L["root"]), (x, yt, np.interp(ax, *np.array(L["zt"]).T)),
+                  (x, yt - np.interp(ax, *np.array(L["back"]).T), np.interp(ax, *np.array(L["zb"]).T))])
+    return strips(np.array(S))
+
+
+def fin(bvh, ymin):
+    """FIN's strip (grid): stations x (front top, rear top, rear bottom, front bottom); never past the tail's extreme
+    ymin (the rear overhang is the body's)."""
+    from mathutils import Vector
+    f = FIN
+    lo, hi = f["band"]
+    S = []
+    for x in np.linspace(-f["span"], f["span"], f["n"]):
+        hit = bvh.ray_cast(Vector((x, -3.0, (lo + hi) / 2)), Vector((0, 1, 0)))[0]
+        if hit is None:
+            raise SystemExit(f"FIN: no diffuser ahead of x {x:.3f}")
+        y = hit.y
+        r = max(y - f["d"], ymin + 0.001)
+        S.append([(x, y + f["inset"], hi), (x, r, hi), (x, r, lo), (x, y + f["inset"], lo)])
+    return strips(np.array(S))
+
+
 def main():
     import bpy
     obs, grid = load()
@@ -234,6 +313,7 @@ def main():
     R = A / np.linalg.norm(A[0])                       # rotation (uniform scale)
     tyre_obs = [o for o in obs if o.name.startswith(TYRES)]
     flips = 0
+    moved = {}
     # the tyre object holds all four: split by side and axle (convert.py tire_groups)
     for o in obs:
         me = o.data
@@ -267,10 +347,30 @@ def main():
         nw = ng @ R
         nw /= np.maximum(np.linalg.norm(nw, axis=1, keepdims=True), 1e-12)
         me.vertices.foreach_set("co", ((q - b) @ Ai.T).ravel())
+        moved[o] = q
         if "custom_normal" in me.attributes:
             me.attributes.remove(me.attributes["custom_normal"])
         me.attributes.new("custom_normal", "FLOAT_VECTOR", "CORNER").data.foreach_set("vector", nw.astype(np.float32).ravel())
         me.update()
+    # the blade and the ledge on the prepped body (grid; rays through BVHs of those objects as moved)
+    from mathutils.bvhtree import BVHTree
+
+    def bvh_of(names):
+        sel = [o for o in obs if o.name.startswith(names)]
+        k = np.cumsum([0] + [len(moved[o]) for o in sel])
+        return BVHTree.FromPolygons([tuple(v) for o in sel for v in moved[o]],
+                                    [[i + k0 for i in p.vertices] for o, k0 in zip(sel, k) for p in o.data.polygons])
+    body = [moved[o][:, 1] for o in obs if not o.name.startswith(NOT_BODY)]
+    ymax, ymin = max(y.max() for y in body), min(y.min() for y in body)
+    for name, (V, Fc) in ((LIP["name"], lip(bvh_of(("Object_11",)), ymax)),
+                          (FIN["name"], fin(bvh_of(("Object_11", "Object_13")), ymin))):
+        me = bpy.data.meshes.new(name)
+        me.from_pydata([tuple(v) for v in (V - b) @ Ai.T], [], Fc)
+        me.materials.append(bpy.data.materials[MAT_BLACK])
+        me.update()
+        bo = bpy.data.objects.new(name, me)
+        bpy.context.scene.collection.objects.link(bo)
+        obs.append(bo)
     for o in [o for o in bpy.data.objects if o.type != "MESH"]:
         bpy.data.objects.remove(o)
     bpy.ops.object.select_all(action="DESELECT")

@@ -791,8 +791,8 @@ def edit(car, names):
     for (s, c), fs in groups.items():
         key = (names[s], len(fs))
         cuts = CUT.get(key, ())
-        if names[s].startswith(CUT_X):
-            cuts = ("X+", "X-")
+        if names[s].startswith(CUT_X):     # (a CUT key of such an object adds its own: Model 3's diffuser)
+            cuts = ("X+", "X-", *cuts)
         for cname in cuts:
             ymax = None                    # PLANES and X+- (CUT_X_Y): only the faces centred behind this y
             if cname in ("X+", "X-"):
@@ -876,13 +876,22 @@ def classify(car, names, sizes):
     cc = np.stack([np.bincount(inv, cen[:, i]) for i in range(3)], 1) / np.bincount(inv)[:, None]
     ccen = cc[inv]
     paint = mat == PAINT_MAT
+    fnorm = np.array([p.normal[:] for p in me.polygons])
+    # PAINT_OVER (Model 3): faces of `of` (a match() spec) in the box (lo, hi) on the front side of any `above` plane
+    # ((point, normal), ...; cut along them with CUT / PLANES), with `facing` as CARBON's, are paint: the source's
+    # black diffuser reaches higher at its corners than the official's body colour
+    for zn in C.get("PAINT_OVER", ()):
+        over = match(zn["of"], obj, csize) & (cen > zn["lo"]).all(1) & (cen < zn["hi"]).all(1)
+        if "facing" in zn:
+            d = fnorm @ np.array(zn["facing"][0], float)
+            over &= (d >= zn["facing"][1][0]) & (d <= zn["facing"][1][1])
+        paint |= over & np.any([(cen - np.array(p, float)) @ np.array(nrm, float) > 0 for p, nrm in zn["above"]], 0)
     # CARBON: paint the real car has in black (Model 3 Performance's carbon spoiler $SLR1, its black lower front
     # intake): paint faces in each zone's box (lo, hi); with `edge` (axis, depth) only those within depth of the
     # outline's lowest coordinate on that axis (CARBON_EDGE: the lid's trailing edge curves forward towards the sides,
     # and edit() cut the faces along that border); with `of` (a match() spec) only those components' faces, with
     # `facing` (axis, (dot min, dot max)) only faces so turned (Model S: the hinge corners under the liftgate), with
     # `below` ((point, normal), ...) only faces centred on every plane's back side (cut along it with CUT / PLANES)
-    fnorm = np.array([p.normal[:] for p in me.polygons])
 
     def in_zone(zn, edge=None):
         box = paint & (cen > zn["lo"]).all(1) & (cen < zn["hi"]).all(1)
