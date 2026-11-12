@@ -51,6 +51,9 @@ CAR = dict(
     APP_CAR="app_car_{}.png",              # phone App car image per paint (PhoneApp.lua)
     DIMS=(4.796, 1.920, 1.611),            # official Performance length, body width (no mirrors), height, metres
     PORT_NOTE="real Model Y",              # source of the charge port spot, written into the vehicle script's comment
+    # convert.py fill_slivers (model_3.py): 2,158 paint triangles sampled the skin's unbaked black texels in game
+    # (uvblack.py, 2026-11-13); 15 with it. Texels inside the islands stay as baked (|d| > 4 on 895 of 348,754)
+    UV_FILL=True,
     # official Model Y paints (decisions.md "車款外觀"): skin order = vehicle script skin index = Core.lua colors order;
     # saved games store the index (BaseVehicle.java:2635/2741), so after release only append
     PAINTS=[("StealthGrey", "PN01"), ("PearlWhite", "PPSW"), ("DiamondBlack", "PX02"), ("Quicksilver", "PN00"),
