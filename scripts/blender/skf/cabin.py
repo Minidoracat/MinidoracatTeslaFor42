@@ -164,7 +164,7 @@ def parcel_shelf(add, bvh):
 TRUNK_SLOTS = (3, 2, 6)    # trunk_walls: rays on the arch hump's inner wall, on its top, on the outer wall up to the top
 
 
-def trunk_walls(pts, kind, who, ys, lim, belt, trunk_floor, arch, y0, y1=None, trunk=True, lining=True):
+def trunk_walls(pts, kind, who, ys, lim, belt, trunk_floor, arch, y0, y1=None, trunk=True, lining=True, inside=False):
     """TRUNK_WALL (a hatch: light and dark bands and teeth on the far trunk wall through the open tailgate, user
     2026-11-01). On the ray grid the rear arch hump's step fell between different rays from ring to ring and the wall's
     top was cut cell by cell at the belt: a saw-tooth of up- and side-facing cells, and over it the body's own inside
@@ -180,7 +180,9 @@ def trunk_walls(pts, kind, who, ys, lim, belt, trunk_floor, arch, y0, y1=None, t
     trunk False: only those. lining False (GATE_LINING): the tailgate's inner panel over the top goes too (a liftgate
     from the roof whose panel runs far down the sides, Model S: the rows found it 1 to 8+ rays long, so a slot was panel
     in one ring, glass in the next, and the shader keeps the panel's code under GATE_Z with the gate open: spikes over
-    the wall's top, user 2026-11-01). In place."""
+    the wall's top, user 2026-11-01). inside True (TRUNK_WALL_INSIDE): over the outer wall's last hit its slots
+    are pulled along their rays onto the chords between this side's hits (they held the last hit's x up to the top
+    line, outside a body that tapers in there: Model Y L, a 42 mm nub at the spoiler's root, 2026-11-12). In place."""
     n = pts.shape[1]
     m, (na, nb, nc) = (n - 2) // 2, TRUNK_SLOTS
     k = na + nb + nc
@@ -210,6 +212,18 @@ def trunk_walls(pts, kind, who, ys, lim, belt, trunk_floor, arch, y0, y1=None, t
     hi, lo = fit([p for p in stops if p[1] >= belt - 0.01]), fit([p for p in stops if p[1] < belt - 0.01])
     top = lambda y: min(belt if hi is None else max(belt, np.polyval(hi, y)),          # noqa: E731
                         9.0 if lo is None else np.polyval(lo, y))
+    def hull(px, pz, H):                # (px, pz) onto the first chord between the hits H its ray from the axis crosses
+        u = np.array([px, pz - CABIN_ZC])
+        r = float(np.hypot(*u))
+        u /= r
+        A = np.c_[np.abs(H[:, 0]), H[:, 2] - CABIN_ZC]
+        D, A = A[1:] - A[:-1], A[:-1]
+        den = u[0] * D[:, 1] - u[1] * D[:, 0]
+        den = np.where(np.abs(den) < 1e-12, np.nan, den)
+        s, t = (A[:, 0] * u[1] - A[:, 1] * u[0]) / den, (A[:, 0] * D[:, 1] - A[:, 1] * D[:, 0]) / den
+        t = t[(s >= 0) & (s <= 1) & (t > 0)]
+        return (px, pz) if not len(t) or r <= t.min() else (u[0] * t.min(), CABIN_ZC + u[1] * t.min())
+
     for i in rows:
         f = floor[i]
         zt = max(belt if i in dr else top(ys[i]), f + 0.02)
@@ -233,6 +247,8 @@ def trunk_walls(pts, kind, who, ys, lim, belt, trunk_floor, arch, y0, y1=None, t
                     + [(xc + (xh - xc) * t / nb, zh) for t in range(1, nb + 1)]
                     + [(float(np.interp(zh + (zt - zh) * t / nc, zo, xo)), zh + (zt - zh) * t / nc)
                        for t in range(1, nc + 1)])
+            if inside:                                      # this side's rays untouched yet (the other side's differ)
+                prof[-nc:] = [hull(px, pz, pts[i, js]) if pz > zo[-1] + 1e-6 else (px, pz) for px, pz in prof[-nc:]]
             src = js[s:]                                    # the rays above the wall onto the slots left
             P, K, W = pts[i, src].copy(), kind[i, src].copy(), who[i, src].copy()
             sgn = -1 if j0 == 0 else 1
@@ -498,7 +514,7 @@ def cabin_mesh(bvh, belt, trunk_floor, trunk_end, arch, opening):
     if pv.CAR.get("TRUNK_WALL") or pv.CAR.get("REAR_DOOR_WALL"):
         trunk_walls(pts, kind, who, ys, lim, belt, trunk_floor, arch, opening["y"][2],
                     opening["y"][1] if pv.CAR.get("REAR_DOOR_WALL") else None, bool(pv.CAR.get("TRUNK_WALL")),
-                    pv.CAR.get("GATE_LINING", True))
+                    pv.CAR.get("GATE_LINING", True), pv.CAR.get("TRUNK_WALL_INSIDE", False))
     near = (pts[..., 2] <= lim + 0.08) & np.isin(kind, ("body", "door"))
     pts[..., 2] = np.where(near, np.minimum(pts[..., 2], lim), pts[..., 2])
     sv, sf, sc = pts.reshape(-1, 3), [], []

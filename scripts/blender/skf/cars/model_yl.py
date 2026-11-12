@@ -264,6 +264,8 @@ CAR = dict(
     CABIN_FRONT_Y=1.1602,
     TRUNK_Y=-1.4308,           # trunk floor behind the 3rd row backrests
     TRUNK_WALL=True,
+    TRUNK_WALL_INSIDE=True,    # its outer wall over the last hit held x outside the tapering gate side: a nub at the
+                               # spoiler's root (cabin.py trunk_walls, 2026-11-12)
     HUMP_BACKS=False,
     REAR_DOOR_WALL=True,
     CABIN_ZC=-0.1009,
@@ -277,8 +279,9 @@ CAR = dict(
                middle=dict(w=0.42, back=0.50, recline=10, dy=0.035, dz=-0.068, arms=(0.16, 0.30, 0.05)),
                third=dict(w=0.36, back=0.34, head=0.42, recline=10, dy=0.028, dz=-0.068),
                # sill: the trunk's sill plate narrower than the Model Y's 1.00: its rear corners stood out past the rear
-               # bumper's (narrower) corners, a 5-7 px dark step on the official REAR34's smooth corner
-               sill=(0.90, 0.12), bin=(0.86, 0.20)),
+               # bumper's (narrower) corners, a 5-7 px dark step on the official REAR34's smooth corner; 0.08 deep (Model
+               # Y 0.12): at 0.12 its rear corners still stood 16 mm out of the outline from above (2026-11-12)
+               sill=(0.90, 0.08), bin=(0.86, 0.20)),
     PARCEL=None,
     DASH=dict(console=(0, 0.2202, -0.3209), dash=(0, 0.9002, -0.0209), trim=(0, 0.7272, -0.0109),
               light=(0, 0.7292, -0.0339), stand=(0, 0.7402, 0.0891), screen=(0, 0.7102, 0.1691), wheel=(0.4572, 0.1311)),
