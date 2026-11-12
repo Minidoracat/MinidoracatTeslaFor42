@@ -22,6 +22,9 @@ CAR = dict(
     DIMS=(4.969, 1.920, 1.668),            # owner's manual (US 2026.38 p.244: length without the plate bracket; China
     #                                        2026.26 p.202: width without mirrors, height)
     PORT_NOTE="real Model Y L, China owner's manual p.166",
+    # convert.py fill_slivers (model_3.py): 2,440 paint triangles sampled the skin's unbaked black texels in game
+    # (uvblack.py, 2026-11-13); 5 with it
+    UV_FILL=True,
     PORT=(-1.7666, 0.8725),                # (y, z pre-centre) where the left corner lamp's outboard end put it before
     #                                        the prep's `lamp` reshaped the lamps: the in-game plug.z 0.90 is measured
     # China's six ($MTY87) and the US Marine Blue ($MTY83): order = Core.lua Specs colors (skin index is saved: only

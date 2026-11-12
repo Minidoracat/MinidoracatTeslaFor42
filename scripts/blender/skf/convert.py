@@ -791,8 +791,8 @@ def edit(car, names):
     for (s, c), fs in groups.items():
         key = (names[s], len(fs))
         cuts = CUT.get(key, ())
-        if names[s].startswith(CUT_X):
-            cuts = ("X+", "X-")
+        if names[s].startswith(CUT_X):     # (a CUT key of such an object adds its own: Model 3's diffuser)
+            cuts = ("X+", "X-", *cuts)
         for cname in cuts:
             ymax = None                    # PLANES and X+- (CUT_X_Y): only the faces centred behind this y
             if cname in ("X+", "X-"):
@@ -876,13 +876,28 @@ def classify(car, names, sizes):
     cc = np.stack([np.bincount(inv, cen[:, i]) for i in range(3)], 1) / np.bincount(inv)[:, None]
     ccen = cc[inv]
     paint = mat == PAINT_MAT
+    fnorm = np.array([p.normal[:] for p in me.polygons])
+    # PAINT_OVER (Model 3): faces of `of` (a match() spec) in the box (lo, hi) on the front side of any `above` plane
+    # ((point, normal), ...; cut along them with CUT / PLANES), with `facing` as CARBON's, are paint: the source's
+    # black diffuser reaches higher at its corners than the official's body colour. `tone` (0..1): their paint takes
+    # that quantile of the paint's tones (textures(); the diffuser's corner ledge faces up, so the up-facing term made
+    # it a 1-2 px bright edge over the black and a white point at the corner's foot)
+    tone = np.zeros((n, 3))
+    for zn in C.get("PAINT_OVER", ()):
+        over = match(zn["of"], obj, csize) & (cen > zn["lo"]).all(1) & (cen < zn["hi"]).all(1)
+        if "facing" in zn:
+            d = fnorm @ np.array(zn["facing"][0], float)
+            over &= (d >= zn["facing"][1][0]) & (d <= zn["facing"][1][1])
+        over &= np.any([(cen - np.array(p, float)) @ np.array(nrm, float) > 0 for p, nrm in zn["above"]], 0)
+        paint |= over
+        if "tone" in zn:
+            tone[over] = (1.0, zn["tone"], 0.0)
     # CARBON: paint the real car has in black (Model 3 Performance's carbon spoiler $SLR1, its black lower front
     # intake): paint faces in each zone's box (lo, hi); with `edge` (axis, depth) only those within depth of the
     # outline's lowest coordinate on that axis (CARBON_EDGE: the lid's trailing edge curves forward towards the sides,
     # and edit() cut the faces along that border); with `of` (a match() spec) only those components' faces, with
     # `facing` (axis, (dot min, dot max)) only faces so turned (Model S: the hinge corners under the liftgate), with
     # `below` ((point, normal), ...) only faces centred on every plane's back side (cut along it with CUT / PLANES)
-    fnorm = np.array([p.normal[:] for p in me.polygons])
 
     def in_zone(zn, edge=None):
         box = paint & (cen > zn["lo"]).all(1) & (cen < zn["hi"]).all(1)
@@ -1025,7 +1040,7 @@ def classify(car, names, sizes):
     rail = paint * (part == 0) * pv.smoothstep(*RAIL, cen[:, 2]) if RAIL else np.zeros(n)
     return dict(part=part, zone=zone, rgb=rgb, paint=paint, lamp=lamp, glass=glass, pane=pane, obj=obj, csize=csize,
                 badge=np.array([o.startswith(("Badge_", "Caliper")) for o in obj]),
-                mat=mat, mirror=mirror, carbon=carbon, rail=rail, recess=recess)
+                mat=mat, mirror=mirror, carbon=carbon, rail=rail, recess=recess, tone=tone)
 
 
 # ---------------------------------------------------------------- textures
@@ -1387,6 +1402,8 @@ def textures(car, c, shift=0.0):
                                                                      0.5 * c["badge"])))[:, None], 3, 1)}
     if c["rail"].any():
         layers["rail"] = np.repeat(c["rail"][:, None], 3, 1)
+    if c["tone"][:, 0].any():
+        layers["tone"] = c["tone"]
     if C.get("SEAM_SHADE") or C.get("RECESS"):   # each corner's position, 0..1 over the bbox: texel positions
         co = pv.mesh_co(car)
         lo_, span = co.min(0), np.ptp(co, 0)
@@ -1431,6 +1448,8 @@ def textures(car, c, shift=0.0):
     q = np.interp(q, [qk.min(), *np.percentile(qk, pc), qk.max()], [ends[0], *tg, ends[1]])
     if "rail" in b:                        # RAIL: the median tone
         q += (dict(PAINT_TARGET)[50] - q) * b["rail"][..., 0][paint]
+    if "tone" in b:                        # PAINT_OVER tone: that quantile of the paint's tones
+        q += (np.interp(b["tone"][..., 1][paint] * 100, pc, tg) - q) * b["tone"][..., 0][paint]
     # skin alpha 254 marks the paint for the shader's sheen (MinidoracatTesla_vehicle.frag): vanilla reads alpha only
     # as "1 - a of the paint tint" (vehicle_multiuv.frag:144), so the paint takes 1/255 of the tint, under a level
     badge = b["badge"][..., 0] > 0.25
@@ -1614,7 +1633,8 @@ def seals(V, T, sel, attr, glass_bvh, solid=None):
     vertices there), reaching SEAL[1] past the edge, both sides: the source's panel gaps are real gaps, the ground
     showed through them. Not along a pane (glass_bvh within 1.2 cm of the strip's far edge): the pane closes that
     gap, and the strips lay on the glass as black spikes round the roof rails and A-pillars. solid (SEAL_CLIP: BVH
-    of the whole car): not where the strip passes through a surface (it showed on the far side)."""
+    of the whole car): not where the strip passes through a surface (it showed on the far side); with SEAL_COVER, not
+    where nothing covers its far edge."""
     tri = T[sel]
     ed = np.concatenate([tri[:, [0, 1]], tri[:, [1, 2]], tri[:, [2, 0]]])
     owner = np.tile(np.arange(len(tri)), 3)
@@ -1636,6 +1656,10 @@ def seals(V, T, sel, attr, glass_bvh, solid=None):
         back = m - fn * SEAL[0]
         keep &= ~np.array([through(*s) for s in zip(m, back)], bool)
         keep &= ~np.array([through(*s) for s in zip(back, back + t * SEAL[1])], bool)
+        cover = C.get("SEAL_COVER")   # grid: only strips whose far edge has a surface over it that close (along the
+        if cover:                     # face's normal); past an outer edge (sill, arch lip) nothing does, and they stuck out
+            tip = back + t * SEAL[1]
+            keep &= np.array([solid.ray_cast(Vector(p), Vector(n), cover)[0] is not None for p, n in zip(tip, fn)], bool)
     a_, b_, fn, t = a_[keep], b_[keep], fn[keep], t[keep]
     p1, p2 = a_ - fn * SEAL[0], b_ - fn * SEAL[0]
     p3, p4 = p2 + t * SEAL[1], p1 + t * SEAL[1]

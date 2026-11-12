@@ -241,8 +241,10 @@ def trunk_walls(pts, kind, who, ys, lim, belt, trunk_floor, arch, y0, y1=None, t
             up = zo > np.maximum.accumulate(np.r_[-9.0, zo[:-1]])
             xo, zo = xo[up], zo[up]
             zh = min(max(circle(ys[i]) + off, f), zt) if x_in else f
-            xc = x_in if zh > f + 1e-3 else float(np.interp(f, zo, xo))
-            xh = float(np.interp(zh, zo, xo))
+            # FLOOR_IN (Model 3): the floor corner that much in (straight under the wall's lowest hit it stood out
+            # through the sill's undercut under the rear doors: a 1 px black dash in game)
+            xc = x_in if zh > f + 1e-3 else float(np.interp(f, zo, xo)) - pv.CAR.get("FLOOR_IN", 0.0)
+            xh = float(np.interp(zh, zo, xo)) - (pv.CAR.get("FLOOR_IN", 0.0) if zh <= f + 1e-3 else 0.0)
             prof = ([(xc, f + (zh - f) * t / na) for t in range(na + 1)]
                     + [(xc + (xh - xc) * t / nb, zh) for t in range(1, nb + 1)]
                     + [(float(np.interp(zh + (zt - zh) * t / nc, zo, xo)), zh + (zt - zh) * t / nc)
@@ -343,10 +345,11 @@ def furniture(add, opening, grow=0.0, fine=1, between=None):
     def box(size, r, cuts=(0, 0, 0), seg=2):
         return rbox(np.add(size, 2 * grow), r + grow, cuts, seg * fine) if grow else rbox(size, r, cuts, seg)
 
-    def part(size, r, c, at, cuts=(0, 0, 0), sag=0.0, bend=0.0, taper=0.0, tilt=None, seg=2, seams=None):
+    def part(size, r, c, at, cuts=(0, 0, 0), sag=0.0, bend=0.0, taper=0.0, tilt=None, seg=2, seams=None, fit=None):
         """rbox + shaping: `sag` dips the top's middle (x), `bend` brings the sides forward (+y), `taper` narrows the
         top; `tilt` = (pivot y, pivot z, deg) reclines about a line along x (top to the rear). Shaped on `size`, so a
-        grown part follows its coarse one; seams = (face, lines) for seam_strips, grown parts only."""
+        grown part follows its coarse one; seams = (face, lines) for seam_strips, grown parts only; `fit(v)` moves the
+        placed points last (the trunk sill onto the body's lip)."""
         v, f = box(size, r, cuts, seg)
         x = 2 * v[:, 0] / size[0]
         if sag:
@@ -360,6 +363,8 @@ def furniture(add, opening, grow=0.0, fine=1, between=None):
         if tilt:
             py, pz, deg = tilt
             v = (v - [0, py, pz]) @ rot_x(deg).T + [0, py, pz]
+        if fit is not None:
+            v = fit(v)
         add(v, f, cells)
         row.append(v)
         return v, f
@@ -580,10 +585,23 @@ def cabin_mesh(bvh, belt, trunk_floor, trunk_end, arch, opening):
 
     def trunk_plates(part):
         # trunk: sill plate over the opening's lower edge (the floor ends TRUNK_DROP under it, CABIN_INSET short of the
-        # tailgate's inner panel) and the under-floor bin's lid (SEATS sill / bin: width, depth)
+        # tailgate's inner panel) and the under-floor bin's lid (SEATS sill / bin: width, depth); an optional third
+        # sill value fits the plate's rear half that far inside the body or the shut lid behind it (rays back from the
+        # plate's middle, 24 loops across): Model 3's lip curves forward to the corners, and a square plate deep enough
+        # to close the lip stuck out of the rear face at the trunk lid's lower corners (2026-11-12)
         if SEATS["sill"]:                               # (a pickup's cabin has no trunk)
-            (sw, sd), (bw, bd) = SEATS["sill"], SEATS["bin"]
-            part((sw, sd, TRUNK_DROP + 0.005), 0.01, "base", (0, trunk_end + 0.02, trunk_floor + TRUNK_DROP / 2), seg=1)
+            (sw, sd, *fit), (bw, bd) = SEATS["sill"], SEATS["bin"]
+            yc = trunk_end + 0.02
+
+            def to_lip(v):
+                for i in np.nonzero(v[:, 1] < yc)[0]:
+                    o = Vector((v[i, 0], yc, v[i, 2]))
+                    hs = [h.y for h in (bvh[k].ray_cast(o, Vector((0, -1, 0)), 1.0)[0] for k in ("body", "door")) if h]
+                    if hs:
+                        v[i, 1] = max(v[i, 1], max(hs) + fit[0])
+                return v
+            part((sw, sd, TRUNK_DROP + 0.005), 0.01, "base", (0, yc, trunk_floor + TRUNK_DROP / 2), seg=1,
+                 **(dict(cuts=(24, 0, 0), fit=to_lip) if fit else {}))
             part((bw, bd, 0.012), 0.004, "console", (0, (TRUNK_Y + trunk_end) / 2 - 0.04, trunk_floor + 0.006), seg=1)
         if PARCEL:
             parcel_shelf(add, bvh)

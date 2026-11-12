@@ -285,7 +285,10 @@ def wheel_profile(R, rr, hw):
     its hat). Normals are smooth along a strip and split between strips. Grid units: R tire radius, rr rim flange
     radius, hw half tire width. TIRE_SHOULDER (cars/<car>.py, optional): (tread's flat half width, shoulder radius)
     for a squarer all-terrain shoulder than the default (0.075, 0.030)."""
-    fl, sr, sd = 0.075, 0.030, 0.0345                    # shoulder: flat to fl, radius sr, its centre sd under R
+    # the tread's flat part to 0.075, less on a tyre under ~255 mm (hw - the shoulder's 0.0303): the fixed 0.075 put
+    # the shoulder out at 0.105 whatever the width (Model 3's 235 front read 254 mm wide); every other car's hw is
+    # over 0.105, so their wheels stay as they were
+    fl, sr, sd = min(0.075, hw - 0.0303), 0.030, 0.0345  # shoulder: flat to fl, radius sr, its centre sd under R
     if CAR.get("TIRE_SHOULDER"):
         fl, sr = CAR["TIRE_SHOULDER"]
         sd = 0.0045 + sr
