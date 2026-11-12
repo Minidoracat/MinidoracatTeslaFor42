@@ -1145,6 +1145,13 @@ def fill_slivers(me, res, layers, grow=8, reach=0.75):
     src = src.reshape(H, W)
     free = ~cov
     free.ravel()[pix] = False
+    # the four corners stay empty for pzveh.cabin_corners (the cabin's colour under Viewpoint), which paints a corner
+    # only up to its first texel that is not black: the margin (the steps of one pass add up, it runs up to 8 x grow
+    # along a diagonal) had reached the UV (0, 0) corner, left (14, 14, 15) on Model 3, (27, 27, 29) on Model Y L
+    # (2026-11-13)
+    for cy in (slice(None, pv.CORNER_PX), slice(-pv.CORNER_PX, None)):
+        for cx in (slice(None, pv.CORNER_PX), slice(-pv.CORNER_PX, None)):
+            free[cy, cx] = False
     for _ in range(grow):
         for dy, dx in ((-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)):
             sh = np.full_like(src, -1)
