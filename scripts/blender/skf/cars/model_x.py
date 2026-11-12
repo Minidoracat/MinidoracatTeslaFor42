@@ -101,14 +101,15 @@ CAR = dict(
     # over the five blades (each round its own fitted rim lip), r/R 0.20-0.95: correlation with the official front /
     # rear 0.727 / 0.619 -> 0.705 / 0.624, p50 23 / 21 -> 31 / 28 (official 30 / 33); the edges' grey stays 108
     # Round 8: the blade face 9 -> 50 (game SW front wheel rim p50 / p75 21 / 26 against the official 38 / 63, the grey
-    # edges at the official's p90: modelx-sp 824bf64, RESULT.txt)
+    # edges at the official's p90: modelx-sp 824bf64, RESULT.txt). Round 9: 50 -> 43 (GameMX2, 6acfe7e: the face
+    # read 60 against the official's 52 inside 35-90, p75 60 / 63 matched)
     WHEEL_RIM=0.727,                       # 20" (254 mm bead + 17 mm flange) / 373 mm tyre radius
     WHEEL_SPOKE=dict(n=5, shape=_blade(0.0), lit=_blade(0.04), cap=0.13, inset=0.016, dish=0.020, depth=0.018,
                      sweep=0),
     WHEEL_LIP=True,                        # the grey lip ring in the flat `lip` grey
     WHEEL_TURN=True,                       # one part all round: the right wheels show the left's pattern, not a mirror
     WHEEL_DISC=dict(rotor=0.70, hat=0.30),
-    WHEEL_RGB=dict(spoke=50, edge=108, cap=18, barrel=16, lip=105, rotor=22, hat=20, dark=6, gap=6, tire=(22, 28),
+    WHEEL_RGB=dict(spoke=43, edge=108, cap=18, barrel=16, lip=105, rotor=22, hat=20, dark=6, gap=6, tire=(22, 28),
                    tread=20),
     # ---- pzveh: vehicle script
     OY=0.2878,
@@ -155,8 +156,13 @@ CAR = dict(
     DROP_COMPS=(),
     # the front bumper's dark lower lip (official SIDE: the white ends at y 629 over x 391-462, h 0.28 m; the source's
     # white ran down to 0.23 m): the paint below z 0.233 ahead of the front arch cut and dark grey (as Trim_Grey)
-    CARBON=dict(rgb=(40, 40, 43), zones=(dict(lo=(-1.2, 1.62, -0.1), hi=(1.2, 2.4, 0.30), below=(((0.0, 2.0, 0.233), (0.0, 0.0, 1.0)),),
-                                              cut=True),)),
+    # round 9: lower towards the middle (official FRONT34: under the grille a white lip 12-15 px tall, then the dark
+    # splitter from h ~0.25 m on the centre line; ours was dark from the grille down): z 0.2065 on the centre line
+    # rising to 0.233 at |x| 0.58 and level out from there (one zone per side: a face goes below every plane)
+    CARBON=dict(rgb=(40, 40, 43), zones=tuple(
+        dict(lo=(lx, 1.62, -0.1), hi=(hx, 2.4, 0.30), below=(((0.0, 2.0, 0.233), (0.0, 0.0, 1.0)),
+                                                          ((0.0, 2.0, 0.2065), (sx * 0.0457, 0.0, 1.0))), cut=True)
+        for lx, hx, sx in ((-1.2, 0.0, 1.0), (0.0, 1.2, -1.0)))),
     ARCH_LINER=None,
     # the trunk's sill under the open tailgate (pre-centre z 0.55, the cargo floor's rear wall back to the bumper's
     # inside): the ground showed between them through the open trunk (game N / NE / SW / W 54 / 267 / 308 / 35 px)
@@ -229,7 +235,10 @@ CAR = dict(
              # mostly in the bumper lip shadow)
              "Gate_Band": (84, 84, 88), "Bump_Refl": (62, 17, 19),
              # the lower trim (prep_model_x.py FIELD trim_grey; official SIDE sills 30-37, arch lips 45-67)
-             "Trim_Grey": (40, 40, 43)},
+             "Trim_Grey": (40, 40, 43),
+             # (round 9) the arch lips' own grey (prep FIELD arch_lip lip: they were black, the well's wall too;
+             # official SIDE lips 45-95, median ~65)
+             "Lip_Grey": (64, 64, 68)},
     GLASS_MATS=("Window_Glass",),
     GLASS_OPAQUE=(),
     GLASS_BACKS=("WinLH", "WinLT", "WinRH", "WinRT"),   # the source's panes are one-sided
@@ -281,6 +290,10 @@ CAR = dict(
     # out, prep FIELD fair): centre on the faired nose at h 0.735 m (official FRONT34 T 0.708-0.763 m on the centre
     # line), the surface's normal there; 5.8 x 6.1 cm (official ~5.5 cm, a little over: the game's closest zoom)
     T_BADGE=(2.0628, 0.048, 0.050, 0.6081, (0, 0.857, 0.514), None),
+    # (round 9, convert.py textures) the T's chrome the same on every paint: it lies on the black band, but the shared
+    # rule (dark chrome 104 on light paints) drew it 96 on Pearl White against 194 on black and red in the game (GameMX2,
+    # 6acfe7e); official FRONT34 T glyph p50 / p90 99-120 / 133-135 on white, red, grey (black 120 / 234)
+    CHROME_RGB=(140, 144, 150),
     TESLA=None,
     LENS_X=0.0,
     BADGE_Y=(-2.6, -2.2),

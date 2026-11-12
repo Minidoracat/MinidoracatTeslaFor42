@@ -123,7 +123,10 @@ FIELD = dict(
               dict(obj="Car Body", mat="Light Glass Simple", to="Car Paint", u=(-1, 0.8), h=(0.6, 1.0)),
               dict(obj="Car Body", mat="Black Car Paint", to="Car Paint", u=(0.1, 0.7), h=(0.74, 0.93), az=(0.45, 0.95)),
               # the nose cone's trim body colour, the T too (round 8: cars/model_x.py T_BADGE; FIELD decals Band_X)
-              dict(obj="Car Body", mat="Aluminum", to="Car Paint", u=(-1, 0.6), h=(0.6, 0.85))),
+              dict(obj="Car Body", mat="Aluminum", to="Car Paint", u=(-1, 0.6), h=(0.6, 0.85)),
+              # round 9: the chin's front body colour under the grille (official FRONT34: a white lip 12-15 px tall
+              # between the grille and the dark splitter; the splitter's top is cars/model_x.py CARBON's)
+              dict(obj="Car Body", mat="Black Car Paint", to="Car Paint", u=(-1, 0.35), h=(0.16, 0.33), az=(-1, 0.60))),
     # the raised spoiler (spoiler(); official SIDE / REAR34 triangulated: tips u 4.90 h 1.29 |z| 0.61, blade over the
     # tailgate's rear edge ~0.2 m chord, legs near the tips)
     spoiler=dict(span=0.61, te=(4.89, 0.09), chord=0.17, top=(1.317, -0.012), thick=0.014, n=24, leg=0.52,
@@ -131,7 +134,10 @@ FIELD = dict(
                  # round 2 (official REAR34 from below: a dark underside 15 px under the blade): the leading edge
                  # `rake` lower than the trailing, the underside black; optional: the last `tip` of the span curled
                  # down by `droop` (tried 0.12 / 0.05: the near tip read as a white wedge, official SIDE straight)
-                 rake=0.035),
+                 rake=0.035,
+                 # round 9: the legs body colour (0; black 1 drew a 2 x 5 px black block under each tip from behind
+                 # and a black arrowhead from the side in the game: GameMX NW / W / N, 824bf64)
+                 leg_mat=0),
     # the frunk lid's lip below h[0] eased back (u: near the nose): the convert's frunk jamb hangs straight down from the
     # lid's edge and stood 11 mm out of the nose under it (seals analyze.py)
     lid_lip=dict(obj="Bonnet", d=0.030, h=(0.82, 0.76), u=(0.35, 0.20)),
@@ -146,8 +152,11 @@ FIELD = dict(
     # surrounds (their recoloured lens and pockets) faired: crumpled facets and dark specks in the studio light (same
     # camera FRONT34) and the game's sheen. Not the panels more than `under` m below the lid, nor black / grey trim not
     # seen from outside; the lamps' insides left under the lid's edge dropped; nothing in the nose's middle (|az| <
-    # `ahead_az`) more than `ahead` m forward (unclamped it bulged 14 px past the official SIDE outline)
-    fair=(dict(obj="Car Body", lid="Bonnet", under=0.06, ahead=0.005, ahead_az=0.40,
+    # `ahead_az`) more than `ahead` m forward (unclamped it bulged 14 px past the official SIDE outline; round 9: 0.40 -> 0.75,
+    # at 0.44 m out the band's far end stood 3 cm ahead, a spike past the official FRONT34 outline). Round 9: nor what
+    # lies `jamb` m or more under the lid and is seen from nowhere with it shut (the opening's sides: faired, they met
+    # the convert's frunk jamb, a white / black comb with the lid open: GameMX2, 6acfe7e S / SE / E)
+    fair=(dict(obj="Car Body", lid="Bonnet", under=0.06, jamb=0.003, ahead=0.005, ahead_az=0.75,
                mats=("Car Paint", "Aluminum", "Light", "Light Glass", "Black Car Paint", "Trim Grey"),
                paint=("Light", "Light Glass", "Black Car Paint", "Trim Grey"), seen=("Black Car Paint", "Trim Grey"),
                drop=("Light", "Light Glass"),
@@ -155,7 +164,11 @@ FIELD = dict(
     # round 8 (smooth_normals()): the frunk lid's and the front's normals smoothed (the source's subsurf level 1 lid lit
     # as flat patches; same camera FRONT34 paint normal deviation > 8 deg 3.3 -> 1.5 %)
     smooth_normals=(dict(obj="Bonnet", angle=25.0, iters=8),
-                    dict(obj="Car Body", angle=25.0, iters=8, u=(-1, -0.5, 1.80, 2.0), h=(0.50, 0.58))),
+                    dict(obj="Car Body", angle=25.0, iters=8, u=(-1, -0.5, 1.80, 2.0), h=(0.50, 0.58)),
+                    # round 9: the tailgate and the body behind the rear doors (same camera REAR34 paint: facets lit as
+                    # grey patches, normal deviation > 8 deg 3.2 %)
+                    dict(obj="Trunk", angle=20.0, iters=8),
+                    dict(obj="Car Body", angle=20.0, iters=8, u=(3.9, 4.1, 9, 9), h=(0.25, 0.32))),
     # the lower black trim (sills, arch lips, the bumpers' lower parts: source Black Car Paint under h) dark grey (official
     # SIDE: sills 30-37 grading to 17-27, arch lips 45-67, rear bumper 43-49 against the build's flat 22): the faces
     # black before arch_inner (its wheel wells stay black) and still black after `recolour`
@@ -173,6 +186,20 @@ FIELD = dict(
     # and the rear's 315-325 interpolated over a highlight on the lip.
     arch_lip=dict(objs=("Car Body", "Back Door", "Front Door"), mats=("Car Paint", "Trim Grey", "Black Car Paint"),
                   view="SIDE", az=0.50, facing=0.15, black=(0.3, 0.85), inn=40, out=24,
+                  # round 9: the lip itself (inside the border, outboard of `az` m, its face normal out sideways by
+                  # `facing`) in its own dark grey (the source's lip face was black like the well's wall) out from its
+                  # inner edge: the official SIDE's first lip pixel past the dark well (lum >= 30 scanning in from the
+                  # paint, D:/temp-bitcmp/FixModelXR9/a/rings.py), radius px round each ring's centre from its start
+                  # angle every 5 deg (None: no lip there, the paint meets the well); inside it black
+                  lip=dict(to="Lip Grey", mats=("Car Paint", "Trim Grey", "Black Car Paint"), az=0.90, facing=0.4,
+                           inner=((None, None, None, 120.3, 109.3, 109.3, 108.3, 108.3, 108.2, 108.2, 107.2, 107.1,
+                                   106.1, 106.1, 106.0, 105.0, 105.0, 105.0, 105.0, 104.0, 104.0, 104.0, 103.0, 103.0,
+                                   103.0, 103.0, 104.1, 104.1, 104.1, 104.2, 105.2, 105.2, 106.3, 105.3, 106.3, 106.3,
+                                   106.3, 112.0, 116.0, 120.0, 124.3, 127.3),
+                                  (None, None, 107.4, 106.2, 106.1, 104.9, 105.9, 105.8, 104.8, 104.9, 105.0, 105.2,
+                                   105.4, 105.6, 105.8, 105.1, 105.4, 105.7, 106.0, 106.2, 106.5, 107.7, 106.9, 108.0,
+                                   108.1, 109.1, 109.1, 111.1, 110.9, 111.8, 111.6, 111.3, 111.1, 111.8, 111.5,
+                                   112.2))),
                   rings=(((574.7, 608.4), 160, (124.0, 123.3, 122.3, 120.8, 119.8, 118.8, 118.8, 118.2, 118.2, 117.7,
                                                 117.6, 117.1, 116.6, 116.0, 116.0, 115.5, 115.0, 114.9, 114.4, 113.9,
                                                 113.9, 113.9, 114.0, 113.5, 114.0, 114.0, 114.1, 114.6, 115.1, 115.7,
@@ -290,16 +317,29 @@ FIELD = dict(
              outline=((1266, 626), (1272, 622.5), (1290, 619), (1311, 617.5), (1311, 620.5), (1290, 623), (1272, 626.5))),
         # the lower grille across the front (official FRONT34; the mirror copy covers the other half)
         dict(name="Intake_X", view="FRONT34", mat="Intake_Black", on=("Car Body",), off=0.003, front=0.0008, step=3.0,
-             outline=((430, 622.5), (550, 632.5), (556, 635), (570, 652.5), (585, 670), (560, 666), (495, 665),
-                      (450, 661), (430, 647.5)),
+             # (round 9: its top 5-7 px lower, its bottom on the official's: official FRONT34 x 445-580 per 15 px)
+             outline=((430, 625), (445, 626), (475, 632), (505, 636), (550, 640), (565, 645), (580, 662), (588, 670),
+                      (565, 669), (535, 667), (505, 663), (475, 659), (445, 651), (430, 648)),
              holes=(tuple((463 + 5.0 * np.cos(t), 638 + 4.0 * np.sin(t)) for t in np.linspace(0, 2 * np.pi, 16, endpoint=False)),)),
     ),
-    # the wheel arches' openings: round the axle, towards it by d x k(angle from the top, deg: + rearward) x win(rho)
+    # the wheel arches' openings: round the axle, towards it by d x k(angle from the top, deg: + rearward) x win(rho);
+    # `to` (round 9): out sideways to that az (m) x the same weight
     arches=(
         dict(ax="r", d=0.064, rho=(0.40, 0.47, 0.58, 0.80), ang=((-180, 0.0), (-110, 0.0), (-90, 0.5), (0, 1.0),
                                                                     (90, 0.0), (180, 0.0)), az=(0.55, 0.65)),
         dict(ax="f", d=-0.012, rho=(0.40, 0.45, 0.55, 0.70), ang=((-180, 0.0), (-60, 0.0), (0, 1.0), (60, 0.0),
                                                                      (180, 0.0)), az=(0.55, 0.65)),   # top +3 px
+        # round 9: the front lip's lower edge down towards the tyre over its upper rear (official SIDE / FRONT34: the lip
+        # 11 px wide from 14 px past the tyre at 290-340 deg; ours 2-6 px wide, the well's wall seen 10 px above the
+        # tyre): the edge's outboard vertices only, the paint border (SIDE, arch_lip) where it was
+        dict(ax="f", d=0.04, rho=(0.40, 0.43, 0.48, 0.51), ang=((-180, 0.0), (15, 0.0), (35, 1.0), (80, 1.0),
+                                                                     (100, 0.0), (180, 0.0)), az=(0.80, 0.90)),
+        # round 9: the rear lip and the flank round it out over the tyre (the rear tyres' outer faces at 0.992 m stood
+        # 2-3 cm out of the lip's rear half, 0.964-0.972: official REAR34 the lip hides the tread's rear, ours showed
+        # it, 30 px of tyre where the official has the grey lip); the front lips (0.9995) stay the widest
+        dict(ax="r", d=0.0, to=0.997, rho=(0.36, 0.40, 0.505, 0.515), ang=((-180, 0.0), (-20, 0.0), (20, 0.4),
+                                                                             (80, 1.0), (130, 1.0), (160, 0.0),
+                                                                             (180, 0.0)), az=(0.80, 0.90)),
     ),
 )
 
@@ -337,7 +377,7 @@ class Field:
             x, y = u - self.ax[a["ax"]][0], h - self.ax[a["ax"]][1]
             rho = np.maximum(np.hypot(x, y), 1e-6)
             k = np.interp(np.degrees(np.arctan2(x, y)), *zip(*a["ang"])) * win(rho, a["rho"]) * win(az, a["az"])
-            du, dh = du - a["d"] * k * x / rho, dh - a["d"] * k * y / rho
+            du, dh, da = du - a["d"] * k * x / rho, dh - a["d"] * k * y / rho, da + np.maximum(a.get("to", 0.0) - az, 0.0) * k
         return du, dh, da
 
 
@@ -448,7 +488,7 @@ def spoiler(bpy, meshes, nose, yc):
     """FIELD spoiler: the raised active spoiler over the tailgate's rear (official SIDE / REAR34; the source has none),
     its own object riding the tailgate (cars/model_x.py PART_OBJS TrunkDoor, SHELL_OBJS): a blade, stations across
     span (te: trailing edge u + k (z / span)^2, chord, top: h + k (z / span)^2, thick), body colour all round (the
-    official's underside reads body colour from the low studio cameras); two black legs at |z| `leg` down onto the tailgate (a ray down
+    official's underside reads body colour from the low studio cameras); two legs (`leg_mat`) at |z| `leg` down onto the tailgate (a ray down
     from under the blade, `sink` into it)."""
     import bmesh
     from mathutils import Vector
@@ -500,7 +540,7 @@ def spoiler(bpy, meshes, nose, yc):
         box([(u0, foot[0], zc_ - w), (u1, foot[1], zc_ - w), (u1, foot[1], zc_ + w), (u0, foot[0], zc_ + w),
              (u0, under[0] + 0.003, zc_ - w), (u1, under[1] + 0.003, zc_ - w), (u1, under[1] + 0.003, zc_ + w),
              (u0, under[0] + 0.003, zc_ + w)],
-            [black] * 6)
+            [sp.get("leg_mat", black)] * 6)
     bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
     me = bpy.data.meshes.new("Spoiler_X")
     bm.to_mesh(me)
@@ -817,6 +857,8 @@ def fair(meshes, nose, yc):
         g = (np.sqrt(5) - 1) / 2                      # directions round the car, none from under it
         dirs = [Vector((np.cos(2 * np.pi * g * i) * np.sqrt(1 - z * z), np.sin(2 * np.pi * g * i) * np.sqrt(1 - z * z),
                         z)) for i, z in enumerate(np.linspace(-0.3, 0.98, 48))]
+        dirs_j = [Vector((np.cos(2 * np.pi * g * i) * np.sqrt(1 - z * z), np.sin(2 * np.pi * g * i) * np.sqrt(1 - z * z),
+                          z)) for i, z in enumerate(np.linspace(-0.3, 0.995, 400))]   # (finer: the lamp's top under the lip)
         ok_m = np.array([bool(m) and m.name in F["mats"] for m in me.materials])
         seen_m = np.array([bool(m) and m.name in F.get("seen", ()) for m in me.materials])
         for _ in range(2):                            # (again once the loose pieces are gone)
@@ -837,12 +879,16 @@ def fair(meshes, nose, yc):
                 if not box[vs].any():
                     continue
                 c, n = poly.center, poly.normal
+                hidden = lambda ds=dirs: all(hull.ray_cast(c + n * (0.0005 / S), d, 3.0 / S)[0] is not None   # noqa: E731
+                                             for d in ds if d.dot(n) > 0.15)
                 if not ok_m[poly.material_index] or cover.ray_cast(c + Vector((0, 0, F["under"] / S)), Vector((0, 0, 1)),
                                                                     0.4 / S)[0] is not None:
                     bad[vs] = True                    # (more than `under` m below the lid)
-                elif seen_m[poly.material_index] and all(hull.ray_cast(c + n * (0.0005 / S), d, 3.0 / S)[0] is not None
-                                                         for d in dirs if d.dot(n) > 0.15):
+                elif seen_m[poly.material_index] and hidden():
                     bad[vs] = True                    # (`seen` materials: only where seen from outside)
+                elif F.get("jamb") and cover.ray_cast(c + Vector((0, 0, F["jamb"] / S)), Vector((0, 0, 1)), 0.4 / S)[0] \
+                        is not None and hidden(dirs_j):
+                    bad[vs] = True                    # (round 9: under the lid and unseen with it shut: the opening's sides)
             free = box & ~bad
             free[e[nf == 1].ravel()] = False
             lab = np.where(free, np.arange(len(p)), -1)   # free pieces touching no fixed vertex: loose
@@ -1022,40 +1068,64 @@ def arch_lip(meshes, nose, yc, ftyre_x):
         sd = np.sign(eye[1] - yc)                      # the camera's side: every vertex and normal mirrored onto it
         e = eye - np.c_[P[:, 0], yc + sd * np.abs(P[:, 1] - yc), P[:, 2]]
         face = (N * np.c_[e[:, 0], sd * np.sign(P[:, 1] - yc + 1e-12) * e[:, 1], e[:, 2]]).sum(1) / np.linalg.norm(e, axis=1)
-        f, band = np.full(len(P), np.nan), np.zeros(len(P), bool)
-        for (cx, cy), a0, rs in A["rings"]:
+        f, g, band = np.full(len(P), np.nan), np.full(len(P), np.nan), np.zeros(len(P), bool)
+        lip, ln = A.get("lip"), [0, 0]
+        for j, ((cx, cy), a0, rs) in enumerate(A["rings"]):
             ang = (np.degrees(np.arctan2(px[:, 1] - cy, px[:, 0] - cx)) - a0) % 360 + a0
-            d = np.hypot(px[:, 0] - cx, px[:, 1] - cy) - np.interp(ang, a0 + 5 * np.arange(len(rs)), rs)
+            r = np.hypot(px[:, 0] - cx, px[:, 1] - cy)
+            d = r - np.interp(ang, a0 + 5 * np.arange(len(rs)), rs)
             k = (ang <= a0 + 5 * (len(rs) - 1)) & (d < 3 * A["out"]) & (np.abs(P[:, 1] - yc) * S > A["az"])
             f[k] = d[k]
             band |= k & (d > -A["inn"]) & (d < A["out"]) & (face > A["facing"])
+            if lip:                                    # the lip's inner edge (None: none there)
+                ri = np.array([np.nan if x is None else x for x in lip["inner"][j]])
+                g[k] = (r - np.interp(ang, a0 + 5 * np.arange(len(ri)), ri))[k]
         ms = [i for m in A["mats"] for i in slots(me, m)]
         trim, paint = slot(me, "Trim Grey"), slot(me, "Car Paint")
-        fv, bv, fa = ({v: x[v.index] for v in bm.verts} for x in (f, band, face))
+        fv, gv, bv, fa = ({v: x[v.index] for v in bm.verts} for x in (f, g, band, face))
         cand = lambda fc: fc.material_index in ms and all(np.isfinite(fv[v]) for v in fc.verts) and \
             any(bv[v] for v in fc.verts)   # noqa: E731
-        cut = {e for fc in bm.faces if cand(fc) for e in fc.edges if fv[e.verts[0]] * fv[e.verts[1]] < 0}
         new = []
-        for e in sorted(cut, key=lambda e: e.index):  # (index order: the split's vertex order is the build's)
-            a, b = e.verts
-            _, nv = bmesh.utils.edge_split(e, a, fv[a] / (fv[a] - fv[b]))
-            fv[nv], bv[nv], fa[nv] = 0.0, True, (fa[a] + fa[b]) / 2
-            new.append(nv)
-        bmesh.ops.connect_verts(bm, verts=new)
+        for lv, other in ((fv, gv), (gv, fv)) if lip else ((fv, gv),):
+            cut = {e for fc in bm.faces if cand(fc) for e in fc.edges if lv[e.verts[0]] * lv[e.verts[1]] < 0}
+            nw = []
+            for e in sorted(cut, key=lambda e: e.index):  # (index order: the split's vertex order is the build's)
+                a, b = e.verts
+                t = lv[a] / (lv[a] - lv[b])
+                _, nv = bmesh.utils.edge_split(e, a, t)
+                lv[nv], other[nv] = 0.0, other[a] + t * (other[b] - other[a])
+                bv[nv], fa[nv] = True, (fa[a] + fa[b]) / 2
+                nw.append(nv)
+            bmesh.ops.connect_verts(bm, verts=nw)
+            new += nw
+        if lip:
+            bm.normal_update()
+            ls, keep = slot(me, lip["to"]), [i for m in lip["mats"] for i in slots(me, m)]
+            black = slot(me, "Black Car Paint")
         n = [0, 0]
         for fc in bm.faces:
             if not cand(fc):
                 continue
             m = np.mean([fv[v] for v in fc.verts])
-            if m < 0 and fc.material_index == paint:
+            mg = np.mean([gv[v] for v in fc.verts])
+            c = fc.calc_center_median()
+            if lip and m < 0 and fc.material_index in keep and fc.normal.y * np.sign(c.y - yc) > lip["facing"] and \
+                    all(abs(v.co.y - yc) * S > lip["az"] for v in fc.verts):
+                if mg < 0:                             # inside the official lip: the well
+                    fc.material_index, ln[1] = black, ln[1] + 1
+                else:
+                    fc.material_index, ln[0] = ls, ln[0] + 1
+            elif lip and m < 0 and mg < 0 and fc.material_index in (trim, paint):
+                fc.material_index, ln[1] = black, ln[1] + 1
+            elif m < 0 and fc.material_index == paint:
                 fc.material_index, n[0] = trim, n[0] + 1
             elif m > 0 and (fc.material_index == trim or all(bv[v] and fa[v] > A["black"][0] and
                                                                abs(v.co.y - yc) * S > A["black"][1] for v in fc.verts)):
                 fc.material_index, n[1] = paint, n[1] + 1
         bm.to_mesh(me)
         bm.free()
-        print("PREP arch lip %s: %d edges cut, %d faces to trim, %d to paint, %d corners without a normal"
-              % (o.name, len(new), n[0], n[1], split_normals(me)))
+        print("PREP arch lip %s: %d edges cut, %d faces to trim, %d to paint, %d to the lip, %d to the well, "
+              "%d corners without a normal" % (o.name, len(new), n[0], n[1], ln[0], ln[1], split_normals(me)))
 
 
 def rear_trim(meshes, nose, yc, ftyre_x):
