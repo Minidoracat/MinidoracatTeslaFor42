@@ -134,10 +134,10 @@ FIELD = dict(
     # glass's width between the A-pillars: service manual photos), 3 mm off the glass
     lightbar=dict(top=(0.561, 1.42405), foot=(1.702, 1.030), x=0.55, l=0.085, t=0.030, gap=0.003, lens="Gluss Button"),
     # the A-pillar wiper (Cube.008, parked up the driver's pillar) k x as tall off its foot along it (official SIDE:
-    # its top 8-12 px over ours; k 2.7 with ride, official SIDE top +-2 px); the glass: its top edge, the cowl; ride:
-    # it moves off the glass as the glass chain does (those ctrl, interpolated along it) and stays parked along it,
-    # not through the field's thin band between the glass and the frame chains
-    wiper=dict(obj="Cube.008", k=2.7, glass=((0.561, 1.42405), (1.702, 1.030)), ride=("gs0", "gs1")),
+    # its top 8-12 px over ours); the glass: its top edge, the cowl; plain: ctrl left out of its own map (and no
+    # chains): through the chains' thin band between the glass and the frame it tore and sank under the pillar
+    # (riding the glass instead: a gap under it, its foot out of the cowl 18 mm)
+    wiper=dict(obj="Cube.008", k=3.5, glass=((0.561, 1.42405), (1.702, 1.030)), plain=("gs0", "gs1", "sl1", "c0")),
     # the tail bar's ends (tail_ends()): the corner blocks' rear face (y, z) and how far out, |x| from the tailgate's
     # edge to the corner, the band's and the red strip's z (the source's Body.003 / Cube.030 heights, mapped)
     tailends=dict(face=(-2.334, 1.1), off=0.002, x=(0.668, 0.760), band=(1.067, 1.135), strip=(1.105, 1.121),
@@ -147,18 +147,23 @@ FIELD = dict(
     # big panels leaning sideways (nx <= |normal x| <= 0.98, area grid^2 or more: the upper side facets) and
     # everything over their lower edge go along x onto planes again (facets(), facet_shift(); belt: the beltline's
     # |x|; split: y of the facet's edge from the beltline's rear end up to the rail; tail: the tail corner's |x|;
-    # ramp: |x| where the move starts and is whole)
+    # ramp: |x| where the move starts and is whole; k: per object a share of it -- the mirrors (Cube.007) 0.31, so
+    # the width over them stays the manual's 2,413.3 mm, p.245; whole they went 6 mm out a side, their foot with the
+    # glass's foot)
     flat=dict(objs=("Body", "Body.005", "Body.012", "Body.004", "Cube.002", "Cube.004", "Plane.004"), ang=0.5,
               tol=0.0008, area=0.004,
-              facet=dict(nx=0.5, area=0.3, belt=0.761, split=-1.676, tail=0.75, ramp=(0.45, 0.55))),
+              facet=dict(nx=0.5, area=0.3, belt=0.761, split=-1.676, tail=0.75, ramp=(0.45, 0.55),
+                         k={"Cube.007": 0.31})),
     # wheel wells (wells()): per arch its C line (ctrl keys, front to back) and the inner |x| (front: clear of the
     # front passengers' feet, seat_head.py legs; rear: the bed's wheel hump, BED_TUB hump x 0.535), out from the outline, the cladding's inside |x|
     wells=dict(arches=((("fC1", "fC2", "fC3", "fC4"), 0.545), (("rC1", "rC2", "rC3", "rC4"), 0.545)), off=0.012,
                x_out=0.83, mat="Black Plastick"),
     # front light bar (head_bar()): its centre under the face's top edge (middle, corner: over the source's strip),
     # height, out from the face (chamfer_tol: a chamfer hit further than that off its top edge's line is the corner
-    # lamp's pocket), points corner to corner, how far (y) and in how many it runs on along the flanks
-    headbar=dict(dz=(0.019, 0.029), h=0.025, off=0.004, chamfer_tol=0.012, n=41, wrap=0.06, n_side=3, mat="White headlights"),
+    # lamp's pocket), points corner to corner, how far (y) and in how many it runs on along the flanks (none: official
+    # SIDE shows no bar behind the corner; the wrap stood 1.5-2.5 cm off the corner on the fender's flare)
+    headbar=dict(dz=(0.019, 0.029), h=0.025, off=0.004, chamfer_tol=0.012, n=41, wrap=0.06, n_side=0,
+                 mat="White headlights"),
 )
 
 
@@ -171,17 +176,18 @@ def frame():
 
 
 class Map:
-    """Piecewise affine (y, z) map from FIELD ctrl, for object `obj` (its own points too; None: the body's)."""
+    """Piecewise affine (y, z) map from FIELD ctrl, for object `obj` (its own points too; None: the body's). skip: ctrl
+    left out, and then no chains (FIELD wiper plain: the field before the chains)."""
 
-    def __init__(self, obj=None):
+    def __init__(self, obj=None, skip=()):
         from mathutils import Vector
         from mathutils.geometry import delaunay_2d_cdt
         (fy0, fz0), (fy1, fz1) = FIELD["frame"]
-        names = [n for n, c in FIELD["ctrl"].items() if len(c) < 3 or obj in c[2]]
+        names = [n for n, c in FIELD["ctrl"].items() if (len(c) < 3 or obj in c[2]) and n not in skip]
         old = [FIELD["ctrl"][n][0] for n in names] + [(fy0, fz0), (fy1, fz0), (fy1, fz1), (fy0, fz1)]
         new = [FIELD["ctrl"][n][1] for n in names] + old[len(names):]
-        cons = [(names.index(a), names.index(b)) for ch in FIELD["chains"] for a, b in zip(ch[:-1], ch[1:])
-                if a in names and b in names]
+        cons = [(names.index(a), names.index(b)) for ch in (() if skip else FIELD["chains"])
+                for a, b in zip(ch[:-1], ch[1:]) if a in names and b in names]
         vs, _, faces, orig, _, _ = delaunay_2d_cdt([Vector(p) for p in old], cons, [], 0, 1e-7)
         assert len(vs) == len(old), "FIELD chains cross: the triangulation added %d points" % (len(vs) - len(old))
         idx = [o[0] for o in orig]                      # output vertex -> input point
@@ -293,14 +299,9 @@ def _warp(maps, name, g, faces=None, flat_stats=None):
     q, J = maps[key](g)
     wp = FIELD["wiper"]
     if name.startswith(wp["obj"]):                    # thicker off the glass about its foot (FIELD wiper)
-        (a0, a1), (b0, b1) = (FIELD["ctrl"][c] for c in wp["ride"])
-        a0, a1, b0, b1 = (np.array(p) for p in (a0, a1, b0, b1))
-        e = (b0 - a0) / np.linalg.norm(b0 - a0)
-        u = np.clip((g[:, 1:] - a0) @ e / np.linalg.norm(b0 - a0), 0, 1)
-        dv = (1 - u)[:, None] * (a1 - a0) + u[:, None] * (b1 - b0)
-        q = g.copy()
-        q[:, 1:] += dv - np.outer(dv @ e, e)          # off the glass only: along it, it stays parked where it was
-        J = np.tile(np.eye(3), (len(g), 1, 1))
+        if "wiper" not in maps:
+            maps["wiper"] = Map(None, wp["plain"])
+        q, J = maps["wiper"](g)
         (y0, z0), (y1, z1) = wp["glass"]
         n = np.array([0.0, z0 - z1, y1 - y0])
         n /= np.linalg.norm(n) * np.sign(n[2])
@@ -310,7 +311,7 @@ def _warp(maps, name, g, faces=None, flat_stats=None):
         ok = np.isfinite(hb)
         q = q + np.outer((wp["k"] - 1) * (h - np.interp(q[:, 1], yb[ok] + 0.01, hb[ok])), n)
         J = np.einsum("ij,njk->nik", np.eye(3) + (wp["k"] - 1) * np.outer(n, n), J)
-    q = facet_shift(maps.get("facets", ()), g, q)
+    q = facet_shift(maps.get("facets", ()), g, q, FIELD["flat"]["facet"]["k"].get(name, 1.0))
     fl = FIELD["flat"]
     if faces is not None and name.startswith(fl["objs"]):
         flat_stats += [dict(obj=name, **d) for d in flat_stats_of(g, q, faces, fl)]
@@ -461,7 +462,7 @@ def light_bar(P):
 def head_bar(P, body):
     """FIELD headbar: the front light bar, one strip `dz` under the nose face's top edge from corner to corner and on
     along each flank (official FRONT34: one line from the far corner to the near one under the hood's front edge,
-    wrapping round it; the source's strip stops at |x| 0.456 and resumes as a stub on each corner). The top edge: the
+    to the corners (n_side: on along the flanks); the source's strip stops at |x| 0.456 and resumes as a stub on each corner). The top edge: the
     hood's front edge, flat to |x| `x0` then rising across the chamfer to the corner (FIELD corner p1, p3 + d). Rays
     onto the moved body (grid frame) square to the face (the chamfer's in plan), the strip `off` out from the outermost
     surface over its height (the source's own strip is tucked under the hood's lip, hidden from above). -> faces."""
@@ -594,8 +595,10 @@ def facets(maps, g, faces):
         h = Q[front & ~belt, 2] - l0 - l1 * Q[front & ~belt, 1]
         t = (G[front & ~belt, 0] - xb) @ h / (h @ h)
         new = np.array([xb - t * l0, -t * l1, t])
+        # forward only to its cowl end (its points off the beltline): ahead of that, over the beltline, are the hood's
+        # side and the frunk lid (moved, the lid's seal stood 18 mm out at the cowl)
         out.append(dict(s=s, src=src, new=new, line=np.polyfit(G[belt, 1], G[belt, 2], 1),
-                        y=(fc["split"], G[:, 1].max() + 0.005)))
+                        y=(fc["split"], G[~belt, 1].max() + 0.005)))
         # rear: through the split edge (where the front plane put it) and the tail's corner (x kept)
         tail = ~front & (np.abs(G[:, 0]) >= fc["tail"])
         X = np.r_[one(Q[edge]) @ new, G[tail, 0]]
@@ -605,9 +608,9 @@ def facets(maps, g, faces):
     return out
 
 
-def facet_shift(fcs, g, q):
+def facet_shift(fcs, g, q, k=1.0):
     """facets(): grid points g (source) / q (moved) over a facet part's lower edge (side-on, its y span), on its
-    side, move along x by the part's new plane minus its source plane, fading in over |x| ramp."""
+    side, move along x by k x (the part's new plane minus its source plane), fading in over |x| ramp."""
     if not len(fcs):
         return q
     r0, r1 = FIELD["flat"]["facet"]["ramp"]
@@ -619,7 +622,7 @@ def facet_shift(fcs, g, q):
             continue
         w = np.clip((np.abs(g[m, 0]) - r0) / (r1 - r0), 0, 1)
         dx = f["new"] @ np.c_[np.ones(m.sum()), q[m, 1:]].T - f["src"] @ np.c_[np.ones(m.sum()), g[m, 1:]].T
-        q[m, 0] += w * dx
+        q[m, 0] += k * w * dx
     return q
 
 

@@ -43,6 +43,9 @@ CAR = dict(
     # official stainless render's bright end and the flanks its dark middle (FRONT34: sides ~70, sails ~190)
     PAINT_TARGET=((10, 0.14), (25, 0.28), (50, 0.45), (75, 0.66), (90, 0.78), (97, 0.86)),
     PAINT_ENDS=(0.03, 0.92),
+    # the paint's height term per corner (convert.py textures): per face, the big flat side panels' triangles showed
+    # as light / dark steps (App car image, game flanks)
+    HGT_CORNER=True,
     # paint tone (convert.py: a x ramp / GAIN + b, sRGB 0-1): offsets only, so the ramp's spread stays the shop
     # image's; fitted on the front door of the in-game screenshots (cybertruck-body-sp fl-max, zoom 0.5; satin
     # door ~ skin - 17 per channel) against the shop image's door. Calibration knob: refit after changing the paint

@@ -1276,6 +1276,10 @@ def textures(car, c, shift=0.0):
     aux = np.stack([c["paint"].astype(float), (c["lamp"] > 0).astype(float), (c["lamp"] == 2).astype(float)], 1)
     fz = pv.face_centres(car)
     hgt = np.repeat(((fz[:, 2] - fz[:, 2].min()) / np.ptp(fz[:, 2]))[:, None], 3, 1)    # 0 at the lowest face, 1 at the roof
+    if C.get("HGT_CORNER"):      # per corner instead: one height per face drew a big flat panel's triangles as steps
+        lv = np.empty(len(car.data.loops), np.int64)
+        car.data.loops.foreach_get("vertex_index", lv)
+        hgt = np.repeat(((pv.mesh_co(car)[lv, 2] - fz[:, 2].min()) / np.ptp(fz[:, 2]))[:, None], 3, 1)
     layers = {"col": c["rgb"], "zone": zone_rgb[c["zone"]], "aux": aux, "hgt": hgt,
               "badge": np.repeat(np.where(c["mat"] == "badge_chrome", 1.0, np.where(
                   c["mat"] == (INK or {}).get("mat"), 0.85, np.where(c["mat"] == "badge_etch", 0.62,
