@@ -101,16 +101,18 @@ FIELD = dict(
     # the frunk lid's lip below h[0] eased back (u: near the nose): the convert's frunk jamb hangs straight down from the
     # lid's edge and stood 11 mm out of the nose under it (seals analyze.py)
     lid_lip=dict(obj="Bonnet", d=0.030, h=(0.82, 0.76), u=(0.35, 0.20)),
-    # the fitted official cameras (temp/fit-1112/mx/camfit/cams.json, 2026-11-12: R world -> OpenCV, C, f, w, h in the
-    # scene's grid frame; anchor: the front wheel centre y and the ground there) for FIELD decals
+    # the fitted official cameras (temp/skf_mx/work/camfit/cams.json: R world -> OpenCV, C, f, w, h in the scene's grid
+    # frame; anchor: the front wheel centre y and the ground there) for FIELD decals. FRONT34 / REAR34 refit
+    # 2026-11-12 (round 2) with their height held at SIDE's (fit.py HOLD: one studio rig): FRONT34 had sat 20 cm lower,
+    # IoU 0.9421 -> 0.9682
     cams=dict(
         SIDE=dict(R=((-0.0614609, -0.9980892, 0.0063593), (-0.0737313, -0.0018138, -0.9972765),
                      (0.9953825, -0.0617624, -0.0734789)), C=(-5.568395, 0.311058, 0.128667), f=1464.931, w=1920, h=1080),
-        FRONT34=dict(R=((-0.6492998, -0.7602117, -0.0220894), (-0.0021856, 0.0309098, -0.9995198),
-                        (0.7605295, -0.6489397, -0.0217312)), C=(-5.728787, 5.109935, -0.036518), f=2236.076, w=1920,
+        FRONT34=dict(R=((-0.6395837, -0.7687143, 0.0033001), (-0.0445775, 0.0328027, -0.9984672),
+                        (0.7674278, -0.6387505, -0.0552474)), C=(-5.011238, 4.428743, 0.128402), f=1913.128, w=1920,
                      h=1080),
-        REAR34=dict(R=((0.7069016, -0.7072157, -0.0116645), (-0.0401881, -0.0236946, -0.9989111),
-                       (0.7061692, 0.7066007, -0.0451714)), C=(-4.898611, -5.237008, 0.097435), f=2027.715, w=1920,
+        REAR34=dict(R=((0.7066468, -0.7074291, -0.0139408), (-0.0434781, -0.0237479, -0.9987721),
+                       (0.7062294, 0.7063852, -0.0475391)), C=(-5.159372, -5.496818, 0.128159), f=2126.391, w=1920,
                     h=1080)),
     anchor=(1.261078, -0.768273),
     # decals: name, the view and its outline (px), the objects they lie on, material, offset (m)

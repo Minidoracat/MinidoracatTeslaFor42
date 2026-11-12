@@ -117,12 +117,14 @@ CAR = dict(
     # frame, tail lamp surrounds, window sills) ran inside UV islands as texel steps, blurred at 512: cut the islands
     # at every skin colour border (convert.py stage_build; user 2026-11-01, models.md)
     SPLIT_COLOURS=True,
-    # the door gaps shaded in the skin (convert.py seam_shade: the doors and body meet almost flush, the gap alone came
-    # out a row of dots): grid, paint within width of a gap edge (steeper than steep, another part's paint within
-    # reach, one of the two in parts), darkened to 1 - k at the edge. Calibration knob: k / width against Model Y's
-    # seam (body-edges-sp)
-    SEAM_SHADE=dict(reach=0.02, width=0.010, k=0.35, steep=0.5,
-                    parts=("DoorFrontLeft", "DoorFrontRight", "DoorRearLeft", "DoorRearRight")),
+    # the gaps as the official's thin continuous dark line (convert.py seals, as model_s.py): a 3.5 mm strip on the
+    # later part's edge where another panel's edge lies across the gap, not by the glass, in runs >= 8 cm, not round
+    # the liftgate; no seal strip whose far edge has nothing over it within 3 cm. SEAM_SHADE (the gaps shaded in the
+    # 512 skin) blurred into a 3-6 px grey band, the 2 cm strips showed as black wedges at the A-pillar's foot
+    SEAL_RIBBON=dict(w=0.0065, lift=0.0010, gap=0.025, glass=0.03, chain=0.08, skip=("TrunkDoor",), cell="dash"),
+    SEAL_COVER=0.03,
+    SEAL_FULL=("TrunkDoor",),              # but the liftgate's: open, they close its gap to the pillars
+    SEAL=(0.008, 0.008),
     RAIL=None,
     DECIMATE={},                           # done in the prep (material borders held)
     PAINT_MAT="Car_Paint",
