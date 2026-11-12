@@ -136,7 +136,7 @@ T.Specs = {
         model = "ModelS",
         appCar = "app_car_models_",
         -- z: handle height at this car's charge port (E2E integration-mp)
-        plug = { item = "Base.MinidoracatTesla_CablePlugModelS", z = 0.73 },
+        plug = { item = "Base.MinidoracatTesla_CablePlugModelS", z = 0.72 },
         v12Kwh = 15.5 * 6.9 / 1000, -- 15.5 V, 6.9 Ah (Model S owner's manual, Subsystems 2026-05)
         -- the Model Y coefficients x 100 / 78.4: a full pack still drives one vanilla tank's distance
         idleKw = 0.0480 * T.DRIVE_SCALE,
