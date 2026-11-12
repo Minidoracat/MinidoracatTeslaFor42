@@ -79,8 +79,14 @@ CAR = dict(
           "Object_2", "Object_3", "Object_4", "Object_5", "Object_8"),   # screens, interior trim: the mod's cabin
     # components dropped by bbox centre (objects, lo, hi): the interior and trunk lining (the mod's cabin), the frunk
     # tub and lid underside (frunk_tub, the lid slab), the clear lamp lenses (opaque in PZ), the source's badges
-    # (TESLA, DUAL MOTOR, T: badges() draws ours)
-    DROP_COMPS=((("Object_12", "Object_13", "Object_14", "Object_18"), (-0.62, -1.45, 0.25), (0.62, 0.92, 1.20)),
+    # (TESLA, DUAL MOTOR, T: badges() draws ours). The interior box leaves out the B pillars' outer band (|x| > 0.58,
+    # z > 0.88, y -0.36..-0.13): the black B-pillar trim (Object_13, 112 tris a side, centre |x| 0.595) and its two
+    # edge seals (Object_13 / Object_14, 8-24 tris) sit there; one box to |x| 0.62 dropped them and from outside there
+    # was nothing between the front and rear door glass (2026-11-12, in game since release)
+    DROP_COMPS=(*((("Object_12", "Object_13", "Object_14", "Object_18"), lo, hi) for lo, hi in (
+                    ((-0.62, -1.45, 0.25), (0.62, 0.92, 0.88)), ((-0.58, -1.45, 0.88), (0.58, 0.92, 1.20)),
+                    *(((s0, y0, 0.88), (s1, y1, 1.20)) for s0, s1 in ((-0.62, -0.58), (0.58, 0.62))
+                      for y0, y1 in ((-1.45, -0.36), (-0.13, 0.92))))),
                 (("Object_13", "Object_14"), (-0.35, 0.92, 0.50), (0.35, 1.95, 0.80)),
                 (("Object_9",), (-0.9, -2.1, 0.0), (0.9, -1.3, 1.2)),
                 (("Object_9",), (-0.9, 1.3, 0.0), (0.9, 2.1, 1.2)),
@@ -202,7 +208,7 @@ CAR = dict(
     SEATS=dict(front=dict(w=0.42, back=0.50, recline=32, dy=0.059, dz=-0.121),
                rear=dict(base=1.08, cushions=((-0.365, 0.36), (0, 0.33), (0.365, 0.36)), back=0.44, recline=10, dy=0.03,
                          dz=-0.112),
-               sill=(1.00, 0.12), bin=(0.86, 0.40)),
+               sill=(1.00, 0.12, 0.004), bin=(0.86, 0.40)),
     # parcel shelf: from the rear backrests' top to the rear window's foot (z 0.906 pre-centre), top just under it
     PARCEL=dict(y=(-0.97, -1.62), z=0.27, t=0.03, n=9, inset=0.02),
     DASH=dict(console=(0, 0.12, -0.25), dash=(0, 0.80, 0.05), trim=(0, 0.627, 0.06), light=(0, 0.629, 0.035),
