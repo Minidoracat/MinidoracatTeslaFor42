@@ -1693,13 +1693,21 @@ def tonneau_strips(dv, attr):
 def bed_tub(V, Tb, attr):
     """A pickup's cargo bed (BED_TUB; the source has none): floor (two-sided: the camera sees under the rear), walls
     up to the rails' inner edge (x and top along y, polylines), wheel humps, the front wall; faces into the bed, the
-    lining's cabin palette cell. The tailgate's inner panel closes it at the rear. -> (points, tris, attrs) pre-centre."""
+    lining's cabin palette cell. The tailgate's inner panel closes it at the rear. BED_TUB ledge (optional, (width,
+    walls' top polyline)): the walls `width` inboard of the rails, up to that top (the manual's bed heights), a ledge
+    out to the rails and a riser up to them. -> (points, tris, attrs) pre-centre."""
     b = BED_TUB
     (y0, y1), z = b["y"], b["z"]
     xr = lambda y: np.interp(y, *np.array(b["rail_x"]).T)        # noqa: E731  (y ascending)
     top = lambda y: np.interp(y, *np.array(b["top"]).T)         # noqa: E731
+    xw, wt, cuts = xr, top, [np.array(b["top"])[:, 0]]          # the walls' x and top
+    if b.get("ledge"):
+        lw, lt = b["ledge"]
+        xw = lambda y: xr(y) - lw                                # noqa: E731
+        wt = lambda y: np.interp(y, *np.array(lt).T)             # noqa: E731
+        cuts.append(np.array(lt)[:, 0])
     (hy0, hy1), hx, hz = b["hump"]
-    ys = np.unique(np.concatenate([np.linspace(y1, y0, 9), [hy0, hy1], np.array(b["top"])[:, 0]]))
+    ys = np.unique(np.concatenate([np.linspace(y1, y0, 9), [hy0, hy1], *cuts]))
     ys = ys[(ys >= y1) & (ys <= y0)]
     Q, cell, inward, two = [], [], [], []
 
@@ -1715,8 +1723,13 @@ def bed_tub(V, Tb, attr):
         for s in (-1, 1):
             hump = hy1 <= ym <= hy0
             zb = hz if hump else z                     # the wall stands on the hump there
-            quad([(s * xr(ya), ya, zb), (s * xr(yb), yb, zb), (s * xr(yb), yb, top(yb)), (s * xr(ya), ya, top(ya))],
+            quad([(s * xw(ya), ya, zb), (s * xw(yb), yb, zb), (s * xw(yb), yb, wt(yb)), (s * xw(ya), ya, wt(ya))],
                  (-s, 0, 0))
+            if b.get("ledge"):                         # the ledge out to the rails, the riser up to them
+                quad([(s * xw(ya), ya, wt(ya)), (s * xr(ya), ya, wt(ya)), (s * xr(yb), yb, wt(yb)),
+                      (s * xw(yb), yb, wt(yb))], (0, 0, 1))
+                quad([(s * xr(ya), ya, wt(ya)), (s * xr(yb), yb, wt(yb)), (s * xr(yb), yb, top(yb)),
+                      (s * xr(ya), ya, top(ya))], (-s, 0, 0))
             if hump:                                   # the hump: top and inner face
                 quad([(s * hx, ya, hz), (s * xr(ya), ya, hz), (s * xr(yb), yb, hz), (s * hx, yb, hz)], (0, 0, 1))
                 quad([(s * hx, ya, z), (s * hx, yb, z), (s * hx, yb, hz), (s * hx, ya, hz)], (-s, 0, 0))
@@ -1725,7 +1738,7 @@ def bed_tub(V, Tb, attr):
             quad([(s * hx, yh, z), (s * xr(yh), yh, z), (s * xr(yh), yh, hz), (s * hx, yh, hz)], (0, d, 0))
     quad([(-xr(y0), y0, z), (xr(y0), y0, z), (xr(y0), y0, top(y0)), (-xr(y0), y0, top(y0))], (0, -1, 0),
          True)   # front wall, two-sided: it stands at the rear doors' rear edge, seen from the cabin through their glass
-    vol = sum((2 * xr((ya + yb) / 2)) * (yb - ya) * (top((ya + yb) / 2) - z) for ya, yb in zip(ys[:-1], ys[1:]))
+    vol = sum((2 * xw((ya + yb) / 2)) * (yb - ya) * (wt((ya + yb) / 2) - z) for ya, yb in zip(ys[:-1], ys[1:]))
     print(f"BED y {y1:.3f}..{y0:.3f}, floor z {z:.3f}, {len(Q)} quads, ~{vol / K ** 3 * 1000:.0f} L to the rails")
     return quads_soup(Q, cell, np.array(inward, float), attr, two)
 

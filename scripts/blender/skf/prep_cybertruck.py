@@ -41,13 +41,17 @@ FIELD = dict(
         **{f"h{i}": _FIX(y, 2.0) for i, y in enumerate((-2.6, 0.0, 2.6))},
         **{f"nf{i}": _FIX(2.6, z) for i, z in enumerate((0.3, 0.9, 1.4))},
         **{f"tf{i}": _FIX(-2.6, z) for i, z in enumerate((0.3, 0.9, 1.4))},
-        # nose: its tip 6.9 mm back (front overhang 886.6 -> 878.3); the bumper's lower front out 2.3 cm (official SIDE)
-        # and its lowest corner (by the front tyre) down 1.1 cm: ground clearance 257 mm (manual p.245, Medium). The
-        # fender's front edge (y 2.12) moves with FIELD corner
-        "n1": ((2.342, 0.834), (2.335, 0.834)), "n2": ((2.342, 0.780), (2.335, 0.780)),
+        # nose: the bumper's top edge (the frontmost point, Plane.004 z 0.54) 6.9 mm back (front overhang 886.6 ->
+        # 878.3), the stainless nose above it 2 cm back (official SIDE: 1.3 cm behind ours, the black bumper ahead of
+        # it), the bumper's face below out 2.3 cm and its chin 2.5-3 cm (official SIDE 2-3 cm; its face at z 0.45-0.5
+        # stays 2 cm short: further would pass the manual's length), its lowest corner (by the front tyre) down 1.1 cm
+        # (and out 3 cm with the chin):
+        # ground clearance 257 mm (manual p.245, Medium). The fender's front edge (y 2.12) moves with FIELD corner
+        "n1": ((2.342, 0.834), (2.322, 0.834)), "n2": ((2.342, 0.780), (2.322, 0.780)),
         "n3": ((2.347, 0.540), (2.340, 0.540)), "n4": ((2.312, 0.370), (2.335, 0.370)),
         "n5": _FIX(2.12, 0.570), "n6": _FIX(2.12, 0.910), "n7": _FIX(2.13, 0.860),
-        "n8": ((2.036, 0.230), (2.036, 0.219)), "n9": ((2.20, 0.300), (2.20, 0.289)),
+        "n8": ((2.036, 0.230), (2.066, 0.219)), "n9": ((2.20, 0.300), (2.225, 0.289)),
+        "n10": ((2.249, 0.350), (2.278, 0.348)),
         # front arch: the trim's outer line (A, x 0.76) and opening (C, x 0.84), tops up 4 cm, the front leg steeper
         "fA1": ((2.111, 0.569), (2.036, 0.575), ("Cube.004",)), "fA2": ((1.908, 0.834), (1.855, 0.874)),
         "fA3": ((1.341, 0.833), (1.327, 0.878)), "fA4": _FIX(1.133, 0.504),
@@ -100,8 +104,8 @@ FIELD = dict(
     # (z 0.62-0.88) and top 0.89. Points |x| (hood front edge's inner corner P1, the lid's rear outer corner at the
     # cowl P2, the lid's front corner P3, on the hood plane z_h = z1 + (y1 - y) slope); d: P3's (dy, dz); the column
     # below the hood by s(|x|) t(y) and its top by u(z), above zlow
-    corner=dict(p1=(0.458, 2.335, 0.835), p2=(0.715, 1.712, 1.039), p3=(0.759, 2.115, 0.9073), d=(-0.044, -0.017),
-                slope=(1.039 - 0.835) / (2.335 - 1.712), band=0.012, zcut=0.83, t=(1.95, 2.11), u=(0.80, 0.907),
+    corner=dict(p1=(0.458, 2.322, 0.835), p2=(0.715, 1.712, 1.039), p3=(0.759, 2.115, 0.9073), d=(-0.044, -0.017),
+                slope=(1.039 - 0.835) / (2.322 - 1.712), band=0.012, zcut=0.83, t=(1.95, 2.11), u=(0.80, 0.907),
                 zlow=0.56, skip=("Cube.004",)),
     # rear bumper's lower block (skid())
     skid=((-1.84, 0.31, 0.250, 0.79, 0.74), (-2.06, 0.37, 0.280, 0.76, 0.70), (-2.18, 0.40, 0.293, 0.60, 0.53)),
@@ -160,6 +164,9 @@ class Map:
             self.A.append(S[:2].T)
             self.t.append(S[2])
         self.A, self.t = np.array(self.A), np.array(self.t)
+        bad = np.linalg.det(self.A) <= 0
+        assert not bad.any(), "FIELD folds over: triangles %s" % [[names[i] if i < len(names) else "frame"
+                                                                   for i in f] for f in self.tri[bad]]
 
     def which(self, p):
         """Containing triangle of each (y, z) point (the first one: points on shared edges map alike)."""

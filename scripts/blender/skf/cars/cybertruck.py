@@ -1,7 +1,8 @@
 """Cybertruck Cyberbeast: adamsochi2010's (Mr3DDD) "Tesla CyberTruck" (Sketchfab, CC BY 4.0, CREDITS.md). CAR=cybertruck.
 Keys as in model_y.py (each is the module constant it sets); the keys only this car has are read with C.get and are off
 for the others: SRC_YFRONT / SRC_STRETCH (an FBX source, scaled onto the official size), DROP_FACES, FACE_PARTS,
-PART_OBJS, TIRE, PORT, CERBERUS, BED_TUB, LIGHTS, TONNEAU_T, FILMS, FILM_MIX, PAINT_ALPHAS, EXTRA_AREAS. The
+PART_OBJS, TIRE, PORT, CERBERUS, BED_TUB, LIGHTS, TONNEAU_T, FILMS, FILM_MIX, PAINT_ALPHAS, EXTRA_AREAS, TIRE_SHOULDER.
+SRC is scripts/blender/skf/prep_cybertruck.py's output (the source fitted to the official renders and the manual). The
 source's body is one welded shell with real 4 mm panel gaps, so its doors are split face by face along those gaps
 (FACE_PARTS); the frunk lid (Body.012), tailgate (Body.005) and tonneau (Body.004, two triangles) are their own objects.
 The source has no cargo bed (a flat panel closes it under the tonneau) and no wheel-arch liners: BED_TUB and ARCH_LINER
@@ -74,13 +75,20 @@ CAR = dict(
     # ~0.7) take it and the flanks stay dark (pzveh.film_ramp mix)
     FILM_MIX={"SatinIridescentPurple": ((dict(u=(0.52, 0.84), t=(0.30, 0.60)), 0.7),
                                         (dict(u=(0.82, 0.95), t=(0.14, 0.21)), 0.3))},
-    # ---- pzveh: wheel, 20" Core with its aero cover (official RIMCLOSEUP): a matt black cover of six wide angular
-    # blades round a hexagonal hub, 285/65 R20 all-terrain tyres (owner's manual p.238)
+    # ---- pzveh: wheel, 20" Core with its aero cover (official SIDE wheels, unrolled round the manual's wheel centres
+    # and folded every 60 deg: the 6th harmonic dominates): six flat blades (grey 45), 20 deg wide at 0.36 rr,
+    # 30 at 0.5, 34 from 0.65 out (their half widths below), round an octagonal hub (0.27 rr, grey 36), darker
+    # windows (28-30) between them, out to the cover's rim (0.95 rr); colours: the official pixels' (r 20-57 px);
+    # `at` puts them where the SIDE wheels have them (blade middles 54 deg off the horizontal). 285/65 R20 all-terrain
+    # tyres (owner's manual p.238), square shouldered (TIRE_SHOULDER: the tread flat to 0.098 grid off its middle,
+    # 1.2 cm shoulders; the official SIDE's tyres meet the ground on a flat, 16-19 px wider near it than ours were)
     WHEEL_RIM=0.62,                        # 20" (254 mm bead + 17 mm flange) / 439 mm tyre radius
-    WHEEL_SPOKE=dict(n=6, hub=0.20, fork=0.60, spread=math.radians(6), main=(0.11, 0.13), arm=0.075, cap=0.22,
-                     inset=0.012, dish=0.010, depth=0.020, sweep=math.radians(8)),
-    WHEEL_DISC=dict(rotor=0.80, hat=0.35),
-    WHEEL_RGB=dict(spoke=46, cap=34, barrel=14, lip=30, rotor=18, hat=16, dark=10, gap=8, tire=(24, 30), tread=22),
+    WHEEL_SPOKE=dict(n=6, shape=dict(outer=((0.27, 0.045), (0.36, 0.063), (0.51, 0.13), (0.65, 0.19), (0.80, 0.22),
+                                            (0.95, 0.26), (1.0, 0.27)), inner=((1.0, 0.0),)),
+                     cap=0.27, inset=0.012, dish=0.010, depth=0.020, sweep=0, at=-23.1),
+    TIRE_SHOULDER=(0.098, 0.012),
+    WHEEL_DISC=dict(rotor=0.95, hat=0.27),
+    WHEEL_RGB=dict(spoke=45, cap=36, barrel=14, lip=20, rotor=30, hat=30, dark=26, gap=8, tire=(24, 30), tread=22),
     # 285/65 R20: radius 439 mm, width 285 mm; track 1,772 mm (owner's manual p.238, p.245): the source's tyres are
     # 6 % bigger and 2.5 cm further out
     TIRE=dict(r=0.4393, w=0.285, track=1.772),
@@ -221,11 +229,16 @@ CAR = dict(
     # official side render; its front 0.3 grid lies under the roof's stainless end behind the glass (the tonneau's
     # canister), so the tonneau (the source's cover) keeps its length. y front .. rear (the tailgate's inner panel),
     # floor z (the tailgate's lower edge), the rails' inner edge x and the walls' top z along y (polylines (y, value), y
-    # ascending: where the dropped cover met the rails, stepped like it; flat ahead of -0.99), wheel humps ((front y,
-    # rear y), half width inside = the floor's 1,295 mm, top z), lining (cabin palette cell)
-    BED_TUB=dict(y=(-0.673, -2.18), z=0.625, rail_x=((-2.26, 0.63), (-0.99, 0.57)),
-                 top=((-2.26, 1.105), (-1.675, 1.105), (-1.668, 1.19), (-1.17, 1.19), (-1.164, 1.235), (-0.99, 1.25)),
-                 hump=((-1.055, -1.755), 0.535, 0.86), cell="dash"),
+    # ascending: where the dropped cover met the rails, stepped like it, through prep_cybertruck.py's field; flat ahead
+    # of -0.99), wheel humps ((front y, rear y) round the rear axle, half width inside = the floor's 1,295 mm, top z),
+    # lining (cabin palette cell). ledge: the walls 3 cm inboard of the rails up to the manual's heights (p.246 A 727.9
+    # at the front wall, B 503.8 at the rear: the figure measures floor to the bed's top line), a ledge out to the
+    # rails and a riser up to them (the tonneau's rails stand on it)
+    BED_TUB=dict(y=(-0.6738, -2.18), z=0.625, rail_x=((-2.26, 0.63), (-0.99, 0.57)),
+                 top=((-2.26, 1.089), (-1.675, 1.1057), (-1.668, 1.1931), (-1.17, 1.1959), (-1.164, 1.2431),
+                      (-0.99, 1.2619)),
+                 ledge=(0.03, ((-2.18, 0.625 + 0.5038 * 0.826), (-0.6738, 0.625 + 0.7279 * 0.826))),
+                 hump=((-1.030, -1.730), 0.535, 0.86), cell="dash"),
     # the off-road light bar (official accessory, every Cybertruck here) is prep_cybertruck.py's Lamp_CT_roofbar, on the
     # windshield's upper edge (FIELD lightbar; ROOF_BAR's box on the roof behind the apex is off)
     # light spots (Truck.lua T.Init.BedLight / RoofLight): (x, y) in half extents, "bed" = the bed's centre; the roof

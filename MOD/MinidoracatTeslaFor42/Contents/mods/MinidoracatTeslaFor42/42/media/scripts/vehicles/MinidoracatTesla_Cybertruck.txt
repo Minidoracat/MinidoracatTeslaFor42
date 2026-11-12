@@ -219,20 +219,20 @@ module Base
         textureDamage2Shell = Vehicles/Veh_Damage2,
         textureRust = Vehicles/Veh_Rust,
         template = PassengerSeat4,
-        extents = 0.9221 0.6974 2.5791,
-        physicsChassisShape = 0.9221 0.6974 2.5791,
+        extents = 0.9221 0.6974 2.5790,
+        physicsChassisShape = 0.9221 0.6974 2.5790,
         centerOfMassOffset = 0.0000 0.1978 0.0000,
-        shadowExtents = 0.9221 2.5791,
+        shadowExtents = 0.9221 2.5790,
         shadowOffset = 0.0 0.0,
         useChassisPhysicsCollision = false,
         physics box
         {
             offset = 0.0000 0.0775 0.0000,
-            extents = 0.9056 0.4567 2.5461,
+            extents = 0.9056 0.4567 2.5460,
         }
         physics box
         {
-            offset = 0.0000 0.4261 0.0000,
+            offset = 0.0000 0.4262 0.0000,
             extents = 0.7692 0.2407 1.0440,
         }
         wheel FrontLeft
@@ -275,12 +275,12 @@ module Base
             showPassenger = true,
             position inside
             {
-                offset = 0.1978 -0.4403 0.2907,
+                offset = 0.1978 -0.4403 0.2908,
                 rotate = 0.0 0.0 0.0,
             }
             position outside
             {
-                offset = 0.6259 -0.4689 0.2907,
+                offset = 0.6259 -0.4689 0.2908,
                 rotate = 0.0 0.0 0.0,
                 area = SeatFrontLeft,
             }
@@ -290,12 +290,12 @@ module Base
             showPassenger = true,
             position inside
             {
-                offset = -0.1978 -0.4403 0.2907,
+                offset = -0.1978 -0.4403 0.2908,
                 rotate = 0.0 0.0 0.0,
             }
             position outside
             {
-                offset = -0.6259 -0.4689 0.2907,
+                offset = -0.6259 -0.4689 0.2908,
                 rotate = 0.0 0.0 0.0,
                 area = SeatFrontRight,
             }
@@ -332,11 +332,11 @@ module Base
         }
         area Engine
         {
-            xywh = 0.0000 1.5258 0.9221 0.4725,
+            xywh = 0.0000 1.5257 0.9221 0.4725,
         }
         area TruckBed
         {
-            xywh = 0.0000 -1.5258 0.9221 0.4725,
+            xywh = 0.0000 -1.5257 0.9221 0.4725,
         }
         area GasTank
         {
@@ -376,24 +376,24 @@ module Base
         }
         area BedSide
         {
-            xywh = 0.0000 -0.7800 1.8671 0.8280,
+            xywh = 0.0000 -0.7802 1.8671 0.8276,
         }
         attachment trailer
         {
-            offset = 0.0000 -0.3047 -1.3060,
+            offset = 0.0000 -0.3048 -1.3060,
             rotate = 0.0 0.0 0.0,
             zoffset = -1.0,
         }
         attachment trailerfront
         {
-            offset = 0.0000 -0.3047 1.3060,
+            offset = 0.0000 -0.3048 1.3060,
             rotate = 0.0 0.0 0.0,
             zoffset = 1.0,
         }
         /* charge port: real Cybertruck: above the driver's side rear wheel, owner's manual p.190 */
         attachment chargeport
         {
-            offset = 0.4186 0.0349 -0.7682,
+            offset = 0.4186 0.0350 -0.7682,
             rotate = 0.0 0.0 0.0,
         }
         part BedLight
@@ -401,7 +401,7 @@ module Base
             table light
             {
                 xOffset = 0.0000,
-                yOffset = -0.6049,
+                yOffset = -0.6050,
             }
         }
         part RoofLight

@@ -283,11 +283,16 @@ def wheel_profile(R, rr, hw):
     low-profile tire (tread, shoulder, bulging sidewall, bead, rim flange), the step from the flange into the barrel,
     the barrel (inside face, seen through the spokes) and the disc that closes the wheel at its middle (dark, the rotor,
     its hat). Normals are smooth along a strip and split between strips. Grid units: R tire radius, rr rim flange
-    radius, hw half tire width."""
-    tire = [(0.0, R), (0.075, R - 0.0045)]
-    for a in (45, 90):                                   # shoulder, radius 0.03
+    radius, hw half tire width. TIRE_SHOULDER (cars/<car>.py, optional): (tread's flat half width, shoulder radius)
+    for a squarer all-terrain shoulder than the default (0.075, 0.030)."""
+    fl, sr, sd = 0.075, 0.030, 0.0345                    # shoulder: flat to fl, radius sr, its centre sd under R
+    if CAR.get("TIRE_SHOULDER"):
+        fl, sr = CAR["TIRE_SHOULDER"]
+        sd = 0.0045 + sr
+    tire = [(0.0, R), (fl, R - 0.0045)]
+    for a in (45, 90):
         t = math.radians(a)
-        tire.append((0.075 + 0.030 * math.sin(t), R - 0.0345 + 0.030 * math.cos(t)))
+        tire.append((fl + sr * math.sin(t), R - sd + sr * math.cos(t)))
     tire += [(hw + 0.0022, R - 0.052), (hw - 0.0075, rr + 0.006), (hw - 0.0100, rr + 0.002)]
     step = [tire[-1], (hw - 0.0150, rr - 0.004)]
     barrel = [step[-1], (WHEEL_DISC_X, rr - 0.004)]
