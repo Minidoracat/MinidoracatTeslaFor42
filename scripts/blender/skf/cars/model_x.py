@@ -12,6 +12,27 @@ unless noted; numbers and sources: .claude/skills/tesla-dev/references/models-mo
 """
 import math
 
+# 20" wheel (pzveh.spoke_outline `polar`, as model_s.py's Magnetite): five black blades, each edged on both sides by a
+# thin grey line (the official's "pairs" of thin spokes), read off the official SIDE front wheel (PPSW, polar unwrap
+# round the fitted rim lip, the five folded, median: temp/skf_mx/work/polar.py): screen angle (deg, counter-clockwise
+# from the rear) at r (rr units) of the grey lines' window side. A: the blade's first edge (a window's far edge) from the
+# window's apex out to the lip; B: the next window's near edge
+_BLADE_A = ((0.23, 33), (0.26, 36), (0.32, 51.5), (0.38, 53), (0.44, 54), (0.50, 54), (0.62, 53), (0.74, 51),
+            (0.86, 47), (1.0, 44.5))
+_BLADE_B = ((0.23, 105), (0.26, 97.5), (0.32, 90.5), (0.38, 83), (0.44, 80), (0.50, 78), (0.62, 75), (0.74, 74.5),
+            (0.86, 74), (1.0, 74))
+
+
+def _blade(w):
+    """One blade, w (rr units) in from both window edges (the black face over the grey edge band; 0: the whole blade).
+    Screen angle t is the wheel's (y, z) angle 126 - t (model_s.py _blade), the list reversed to stay counter-clockwise."""
+    a = [(r, t + math.degrees(w / r)) for r, t in _BLADE_A]
+    b = [(r, t - math.degrees(w / r)) for r, t in _BLADE_B]
+    rim = [(1.0, a[-1][1] + (b[-1][1] - a[-1][1]) * i / 8) for i in range(1, 8)]   # along the barrel, not a chord
+    pts = [(0.13, _BLADE_A[0][1])] + a + rim + b[::-1] + [(0.13, _BLADE_B[0][1])]
+    return dict(polar=[(r, 126 - t) for r, t in reversed(pts)])
+
+
 # the tail lamp decals' halves on the tailgate (prep_model_x.py FIELD decals Tail*_X: <name>_T)
 TAIL_T = tuple(n + "_T" for n in ("TailLamp_X", "TailGuide_X", "TailRefl_X", "TailLampS_X", "TailReflS_X"))
 
@@ -58,15 +79,18 @@ CAR = dict(
     COMPOSITOR_MODEL="mx",
     OFFICIAL_OPTS="$MDLX,$MTX23,${},$WX03,$IBC02,$CC02,$ST06",
     RAMP=dict(t=(0.36, 0.78), u=(0.08, 0.95), wheels=(0.172, 0.808), wt=0.76, wr=0.115),
-    # ---- pzveh: wheel, 20" Perihelix ($WX03, official RIMCLOSEUP): five wide swept blades in dark grey, each lighter
-    # along its face, open between them onto the red caliper; 265/45 R20 front, 275/45 R20 rear (TIRE_AXLES). Greys
-    # from the official SIDE wheel (2026-11-12: blade face p50 33, the gaps black p10 7-9, the hub 22; offline the
-    # build's read 58 / 57 / 48): spoke, rotor, hat, cap darker
+    # ---- pzveh: wheel ($WX03, official SIDE / RIMCLOSEUP): five swept black blades edged in thin grey lines (_blade),
+    # the brake disc dark through the windows; 265/45 R20 front, 275/45 R20 rear (TIRE_AXLES). Game-screen levels
+    # (pzveh WHEEL_RGB) from the official SIDE front wheel's polar unwrap: blade face 6-17, window (disc) 17-37, hub 21-31,
+    # the grey edges peak 85-107 and the lip 88-106 there, both 1-2 px anti-aliased (the game draws them unblended)
     WHEEL_RIM=0.727,                       # 20" (254 mm bead + 17 mm flange) / 373 mm tyre radius
-    WHEEL_SPOKE=dict(n=5, hub=0.16, fork=0.80, spread=math.radians(5), main=(0.095, 0.15), arm=0.085, cap=0.17,
-                     inset=0.016, dish=0.020, depth=0.020, sweep=math.radians(42)),
+    WHEEL_SPOKE=dict(n=5, shape=_blade(0.0), lit=_blade(0.04), cap=0.13, inset=0.016, dish=0.020, depth=0.018,
+                     sweep=0),
+    WHEEL_LIP=True,                        # the grey lip ring in the flat `lip` grey
+    WHEEL_TURN=True,                       # one part all round: the right wheels show the left's pattern, not a mirror
     WHEEL_DISC=dict(rotor=0.70, hat=0.30),
-    WHEEL_RGB=dict(spoke=42, cap=22, barrel=20, lip=52, rotor=18, hat=14, dark=10, gap=8, tire=(22, 28), tread=20),
+    WHEEL_RGB=dict(spoke=11, edge=130, cap=18, barrel=10, lip=105, rotor=14, hat=14, dark=6, gap=6, tire=(22, 28),
+                   tread=20),
     # ---- pzveh: vehicle script
     OY=0.2878,
     WHEEL_LIFT=0.11,
