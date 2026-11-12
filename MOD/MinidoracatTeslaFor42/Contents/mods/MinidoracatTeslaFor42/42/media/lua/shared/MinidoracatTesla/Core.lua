@@ -98,8 +98,9 @@ T.Specs = {
     ["Base.MinidoracatTesla_Cybertruck"] = {
         model = "Cybertruck",
         appCar = "app_car_cybertruck_",
-        -- z: handle height at this car's charge port (E2E integration-mp tesla-ctbody-integ-1030a: port 0.902)
-        plug = { item = "Base.MinidoracatTesla_CablePlugCybertruck", z = 0.90 },
+        -- z: handle height at this car's charge port (E2E tesla-gct-1112a: integration-mp port 0.938,
+        -- cybertruck-body-sp 0.943; the rear arch raised in fix/ct-official-1112)
+        plug = { item = "Base.MinidoracatTesla_CablePlugCybertruck", z = 0.94 },
         v12Kwh = 48 * 4 / 1000, -- 48 V, 4 Ah (Cybertruck owner's manual p.251)
         -- the Model Y coefficients x 123 / 78.4: a full pack still drives one vanilla tank's distance
         idleKw = 0.0590 * T.DRIVE_SCALE,
@@ -120,14 +121,14 @@ T.Specs = {
             { name = "Stainless", code = "PDD", weight = 11, h = 0.836, s = 0.523, v = 0.389 },
             { name = "SatinStealthBlack", weight = 1, h = 0.062, s = 0.511, v = 0.187 },
             { name = "SatinCeramicWhite", weight = 1, h = 0.7, s = 0.509, v = 0.778 },
-            { name = "SatinRoseGold", weight = 1, h = 0.074, s = 0.663, v = 0.418 },
+            { name = "SatinRoseGold", weight = 1, h = 0.073, s = 0.665, v = 0.418 },
             { name = "SatinTacticalGreen", weight = 1, h = 0.125, s = 0.494, v = 0.303 },
             { name = "SatinDarkGrey", weight = 1, h = 0.889, s = 0.485, v = 0.29 },
-            { name = "SatinForestGreen", weight = 1, h = 0.445, s = 0.596, v = 0.307 },
+            { name = "SatinForestGreen", weight = 1, h = 0.446, s = 0.597, v = 0.307 },
             { name = "SatinAbyssBlue", weight = 1, h = 0.566, s = 1.0, v = 0.312 },
             { name = "CopperTintedClear", weight = 1, h = 0.063, s = 0.837, v = 0.441 },
             { name = "SatinCrimsonRed", weight = 1, h = 0.986, s = 1.0, v = 0.244 },
-            { name = "SatinIridescentPurple", weight = 1, h = 0.895, s = 0.557, v = 0.164 },
+            { name = "SatinIridescentPurple", weight = 1, h = 0.887, s = 0.556, v = 0.164 },
             { name = "SlipGrey", weight = 1, h = 0.807, s = 0.49, v = 0.594 },
         },
     },

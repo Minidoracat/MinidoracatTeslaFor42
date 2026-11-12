@@ -1,7 +1,8 @@
 """Cybertruck Cyberbeast: adamsochi2010's (Mr3DDD) "Tesla CyberTruck" (Sketchfab, CC BY 4.0, CREDITS.md). CAR=cybertruck.
 Keys as in model_y.py (each is the module constant it sets); the keys only this car has are read with C.get and are off
 for the others: SRC_YFRONT / SRC_STRETCH (an FBX source, scaled onto the official size), DROP_FACES, FACE_PARTS,
-PART_OBJS, TIRE, PORT, CERBERUS, BED_TUB, ROOF_BAR, LIGHTS, TONNEAU_T, FILMS, FILM_MIX, PAINT_ALPHAS, EXTRA_AREAS. The
+PART_OBJS, TIRE, PORT, CERBERUS, BED_TUB, LIGHTS, TONNEAU_T, FILMS, FILM_MIX, PAINT_ALPHAS, EXTRA_AREAS, TIRE_SHOULDER.
+SRC is scripts/blender/skf/prep_cybertruck.py's output (the source fitted to the official renders and the manual). The
 source's body is one welded shell with real 4 mm panel gaps, so its doors are split face by face along those gaps
 (FACE_PARTS); the frunk lid (Body.012), tailgate (Body.005) and tonneau (Body.004, two triangles) are their own objects.
 The source has no cargo bed (a flat panel closes it under the tonneau) and no wheel-arch liners: BED_TUB and ARCH_LINER
@@ -42,6 +43,13 @@ CAR = dict(
     # official stainless render's bright end and the flanks its dark middle (FRONT34: sides ~70, sails ~190)
     PAINT_TARGET=((10, 0.14), (25, 0.28), (50, 0.45), (75, 0.66), (90, 0.78), (97, 0.86)),
     PAINT_ENDS=(0.03, 0.92),
+    # the paint's height term per corner (convert.py textures): per face, the big flat side panels' triangles showed
+    # as light / dark steps (App car image, game flanks)
+    HGT_CORNER=True,
+    # fill the texels a triangle's UV0 touches that the bake left empty (convert.py fill_slivers): sliver islands
+    # sampled the skin's black (dashes along the rear doors' rear seam, 2026-11-12)
+    UV_FILL=True,
+    UV_FILL_TONE=True,                     # the paint's tones from the baked texels only (quantiles unchanged)
     # paint tone (convert.py: a x ramp / GAIN + b, sRGB 0-1): offsets only, so the ramp's spread stays the shop
     # image's; fitted on the front door of the in-game screenshots (cybertruck-body-sp fl-max, zoom 0.5; satin
     # door ~ skin - 17 per channel) against the shop image's door. Calibration knob: refit after changing the paint
@@ -74,13 +82,21 @@ CAR = dict(
     # ~0.7) take it and the flanks stay dark (pzveh.film_ramp mix)
     FILM_MIX={"SatinIridescentPurple": ((dict(u=(0.52, 0.84), t=(0.30, 0.60)), 0.7),
                                         (dict(u=(0.82, 0.95), t=(0.14, 0.21)), 0.3))},
-    # ---- pzveh: wheel, 20" Core with its aero cover (official RIMCLOSEUP): a matt black cover of six wide angular
-    # blades round a hexagonal hub, 285/65 R20 all-terrain tyres (owner's manual p.238)
+    # ---- pzveh: wheel, 20" Core with its aero cover (official SIDE wheels, unrolled round the manual's wheel centres
+    # and folded every 60 deg: the 6th harmonic dominates): six flat blades (grey 45), 20 deg wide at 0.36 rr,
+    # 30 at 0.5, 34 from 0.65 out (their half widths below), round an octagonal hub (0.27 rr, cap_n 8), darker
+    # windows between them, out to the cover's rim (0.95 rr); colours: same-camera SIDE renders' greys on the
+    # official's (blades 45, windows 30, hub 36 there; our offline render draws them ~1.3-1.4 x their RGB);
+    # `at` puts them where the SIDE wheels have them (blade middles 54 deg off the horizontal). 285/65 R20 all-terrain
+    # tyres (owner's manual p.238), square shouldered (TIRE_SHOULDER: the tread flat to 0.098 grid off its middle,
+    # 1.2 cm shoulders; the official SIDE's tyres meet the ground on a flat, 16-19 px wider near it than ours were)
     WHEEL_RIM=0.62,                        # 20" (254 mm bead + 17 mm flange) / 439 mm tyre radius
-    WHEEL_SPOKE=dict(n=6, hub=0.20, fork=0.60, spread=math.radians(6), main=(0.11, 0.13), arm=0.075, cap=0.22,
-                     inset=0.012, dish=0.010, depth=0.020, sweep=math.radians(8)),
-    WHEEL_DISC=dict(rotor=0.80, hat=0.35),
-    WHEEL_RGB=dict(spoke=46, cap=34, barrel=14, lip=30, rotor=18, hat=16, dark=10, gap=8, tire=(24, 30), tread=22),
+    WHEEL_SPOKE=dict(n=6, shape=dict(outer=((0.27, 0.045), (0.36, 0.063), (0.51, 0.13), (0.65, 0.19), (0.80, 0.22),
+                                            (0.95, 0.26), (1.0, 0.27)), inner=((1.0, 0.0),)),
+                     cap=0.27, cap_n=8, inset=0.012, dish=0.010, depth=0.020, sweep=0, at=-23.1),
+    TIRE_SHOULDER=(0.098, 0.012),
+    WHEEL_DISC=dict(rotor=0.95, hat=0.27),
+    WHEEL_RGB=dict(spoke=29, cap=25, barrel=14, lip=20, rotor=19, hat=19, dark=18, gap=8, tire=(24, 30), tread=22),
     # 285/65 R20: radius 439 mm, width 285 mm; track 1,772 mm (owner's manual p.238, p.245): the source's tyres are
     # 6 % bigger and 2.5 cm further out
     TIRE=dict(r=0.4393, w=0.285, track=1.772),
@@ -89,11 +105,13 @@ CAR = dict(
     WHEEL_LIFT=0.11,
     WHEEL_INSET=0.03,
     CAB_BOX=(1.40, 0.95, -0.95),
-    # passengers / seats (cabin.py) behind the door openings' middle by back (front, rear): the rear bench sits 1 cm
-    # ahead of its door's middle so its backs and headrests clear the cabin's rear wall (CABIN_REAR_Y). Heights
+    # passengers / seats (cabin.py) behind the door openings' middle by back (front, rear): the rear bench where it was
+    # with the rear door's rear edge at -0.72 (1 cm ahead of that opening's middle; the edge is -0.645 since the
+    # official fit, its middle 3.75 cm further forward), its backs and headrests clear of the cabin's rear wall
+    # (CABIN_REAR_Y). Heights
     # (scripts/blender/skf/seat_head.py, 2026-11-01): the feet on CABIN_FLOOR in the seated clips (scripts/seat_anim.py),
     # the rear row `rear` lower; SEATS dz / dy put the cushions and backrests against the body
-    SEAT=dict(x=0.36, h=0.625, z=-0.190, back=(0.12, -0.01), out=0.30, rear=0.017),
+    SEAT=dict(x=0.36, h=0.625, z=-0.190, back=(0.12, 0.0275), out=0.30, rear=0.017),
     BODY_W_Z=0.55,
     # the tailgate hinges at its lower edge and folds down and back (owner's manual p.60-61: the struts lower it);
     # the tonneau rolls into its canister at the bed's front: ROLL_N strips slide forward and stack (tonneau_strips)
@@ -107,7 +125,8 @@ CAR = dict(
     GATE_HINGE="bottom",
     TONNEAU_T=0.025,                       # tonneau slab: about 3 cm (the real cover's slats)
     # ---- convert.py: the source (TMP/src, gitignored; temp/sketchfab-cybertruck in the main checkout)
-    SRC=("src", "source", "forFUBfbx.fbx"),
+    # prep_cybertruck.py's output (the source FBX on the manual and the official side render; run it first)
+    SRC=("src", "source", "cybertruck_prep.fbx"),
     SRC_C=(0.0, 0.0041),                   # source bbox centre, x (width) and y (length), source units (inspect)
     SRC_YFRONT=-0.939,                     # the source's ground (tyre bottoms), source z
     SRC_SCALE=5.6829 / 5.6797,             # metres per source unit: official length / source length
@@ -126,10 +145,16 @@ CAR = dict(
     DROP_COMPS=((("Cube",), (-0.7, 2.1, 0.3), (0.7, 2.3, 0.5)),),
     # faces dropped by centre and normal (objects, lo, hi, axis, (dot min, dot max)): the flat panel that closes the
     # source's bed under the tonneau (BED_TUB is the bed), the frunk lid's underside and edges (the pipeline's slab
-    # gives it thickness; frunk_tub needs its outline)
+    # gives it thickness; frunk_tub needs its outline), and the underbody's tunnel over the rear axle (its top 0.18 grid
+    # over the bed's floor between the wheel humps: through the floor, a box in the open bed)
     DROP_FACES=((("Body",), (-0.62, -2.28, 1.00), (0.62, -0.97, 1.40), (0, 0, 1), (0.5, 2.0)),
-                (("Body.012",), (-0.8, 1.6, 0.7), (0.8, 2.4, 1.1), (0, 0, 1), (-2.0, 0.5))),
-    ARCH_LINER=dict(gap=0.04, inner=0.06, arc=(0, 180), n=17, x=0.82),   # inside the cladding (|x| 0.839)
+                (("Body.012",), (-0.8, 1.6, 0.7), (0.8, 2.4, 1.1), (0, 0, 1), (-2.0, 0.5)),
+                (("Body",), (-0.60, -1.86, 0.50), (0.60, -0.95, 0.95), (0, 0, 1), (-2.0, -0.2)),
+                # the rear bumper's black top reaching forward 1 cm over the bed's floor behind the rear humps (y -2.21
+                # .. -1.73): the open bed's rear third showed it (game ~8, darker than the walls)
+                (("Cube.002", "Cube.003"), (-0.59, -2.19, 0.60), (0.59, -1.70, 0.66), (0, 0, 1), (0.9, 2.0))),
+    # inside the cladding (|x| 0.839); the raised openings' upper corners: prep_cybertruck.py's Trim_CT_well
+    ARCH_LINER=dict(gap=0.04, inner=0.06, arc=(0, 180), n=17, x=0.82),
     PLATES=(),
     SEAL_CLIP=True,
     RAIL=None,
@@ -144,29 +169,30 @@ CAR = dict(
     GLASS_BACKS=("WinLH", "WinLT", "WinRH", "WinRT"),
     ROOF_PANE=("Body.008", 16),
     MIRROR_CAP="-",                        # black mirror housings (official FRONT34): no body-colour cap
-    LAMPS=dict(head=("White headlights",), tail=("Car Reflection White",), tail_z=0.3, tail_y=-1.5, blade=None),
-    # the front light bar: a plate across the top of the nose face, under the hood's edge (z 0.84) (z, height, half
-    # width). The source's bar is lit only at its ends from the game's camera (tesla-ctbody-1030c night-S)
-    HEADBAR=(0.815, 0.035, 0.72),
+    # the bumper's corner lamps (Cube.003) are the brake lights (LAMPS brake, all of them; STOP_X 0), the tailgate's bar
+    # and its ends on the body's corners (prep_cybertruck.py Lamp_CT_tailend) the tail lights
+    LAMPS=dict(head=("White headlights",), tail=("Car Reflection White",), tail_z=0.3, tail_y=-1.5, blade=None,
+               brake=("Cube.003", 0.0)),
+    # the front light bar is prep_cybertruck.py's Lamp_CT_head (FIELD headbar: corner to corner and round the corners)
     # part lines, side view (y, z): the source's 4 mm panel gaps. A line of 3+ points is a polyline (z ascending)
     LINES={
         "S": ((0.185, 0.30), (0.185, 1.00)),     # front / rear door seam (vertical); above the belt the B-pillar split
         "BF": ((0.185, 0.30), (0.185, 1.00)),
         "BR": ((0.185, 0.30), (0.185, 1.00)),
-        "D": ((-0.7205, 1.043), (-0.709, 1.14)),  # rear door's rear edge above the belt (into the glass)
-        "R1": ((-0.682, 0.362), (-0.7285, 0.53), (-0.7205, 1.043)),   # ... and below it
+        "D": ((-0.661, 1.043), (-0.660, 1.13)),  # rear door's rear edge above the belt (into the glass)
+        "R1": ((-0.630, 0.342), (-0.641, 0.53), (-0.661, 1.043)),   # ... and below it (prep: 6-9 cm forward)
         "FQ": ((1.0995, 0.30), (1.0995, 1.00)),  # front door's front edge carried up the glass: the fixed quarter glass
     },
-    FRONT_Y=1.0995, SILL_Z=0.35, ARCH=(0.0, -9.0),
+    FRONT_Y=1.0995, SILL_Z=0.33, ARCH=(0.0, -9.0),
     IN_DOOR=dict(up=1.0, x=0.55),
-    IN_GATE=dict(y=-2.20, z=0.60, up=1.10, x_up=0.67),   # tailgate; the light bar's middle on its top edge
-    DOOR_Y=(1.0995, 0.185, -0.72),
+    IN_GATE=dict(y=-2.20, z=0.60, up=1.08, x_up=0.67),   # tailgate; the light bar's middle on its top edge
+    DOOR_Y=(1.0995, 0.185, -0.645),
     GATE_Z=0.621,                          # tailgate's lower edge = the bed floor
-    REAR_ARCH=(-1.41, 0.37, 0.40),
+    REAR_ARCH=(-1.385, 0.37, 0.40),        # the rear wheel (prep FIELD axle: 25.3 mm forward)
     GATE_X=0.76,
-    STOP_X=0.80,                           # the bumper's corner lamps are the brake lights, the tailgate bar the tail
-    PANELS=dict(x=0.70, z=1.15, front=(0.185, 1.10), rear=(-0.73, 0.185), gate=(-2.2, 0.6), lid=(1.6, 0.8)),
-    GUARDS=dict(front=(1.10, 1.0, 0.5), rear=(-0.72, 1.3, 0.5)),
+    STOP_X=0.0,                            # (LAMPS brake)
+    PANELS=dict(x=0.70, z=1.15, front=(0.185, 1.10), rear=(-0.67, 0.185), gate=(-2.2, 0.6), lid=(1.6, 0.8)),
+    GUARDS=dict(front=(1.10, 1.0, 0.5), rear=(-0.63, 1.3, 0.5)),
     # paint faces of these objects split face by face (the source's doors are not separate): doors by in_door(centre)
     # outside |x| PANELS x and under PANELS z
     FACE_PARTS=("Body",),
@@ -214,34 +240,49 @@ CAR = dict(
     # official side render; its front 0.3 grid lies under the roof's stainless end behind the glass (the tonneau's
     # canister), so the tonneau (the source's cover) keeps its length. y front .. rear (the tailgate's inner panel),
     # floor z (the tailgate's lower edge), the rails' inner edge x and the walls' top z along y (polylines (y, value), y
-    # ascending: where the dropped cover met the rails, stepped like it; flat ahead of -0.99), wheel humps ((front y,
-    # rear y), half width inside = the floor's 1,295 mm, top z), lining (cabin palette cell)
-    BED_TUB=dict(y=(-0.673, -2.18), z=0.625, rail_x=((-2.26, 0.63), (-0.99, 0.57)),
-                 top=((-2.26, 1.105), (-1.675, 1.105), (-1.668, 1.19), (-1.17, 1.19), (-1.164, 1.235), (-0.99, 1.25)),
-                 hump=((-1.08, -1.78), 0.535, 0.86), cell="dash"),
-    # the off-road light bar (official accessory, every Cybertruck here) on the roof's front edge over the windscreen:
-    # centre y, width (~46"), depth, height (grid); the lens's cabin palette cell
-    ROOF_BAR=dict(y=0.22, w=0.96, d=0.05, h=0.035, lens="seat"),
+    # ascending: where the dropped cover met the rails, stepped like it, through prep_cybertruck.py's field; flat ahead
+    # of -0.99), wheel humps ((front y, rear y) round the rear axle, half width inside = the floor's 1,295 mm, top z),
+    # lining (cabin palette cell). ledge: the walls 3 cm inboard of the rails up to the manual's heights (p.246 A 727.9
+    # at the front wall, B 503.8 at the rear: the figure measures floor to the bed's top line), a ledge out to the
+    # rails and a riser up to them (the tonneau's rails stand on it)
+    BED_TUB=dict(y=(-0.6738, -2.18), z=0.625, rail_x=((-2.26, 0.63), (-0.99, 0.57)),
+                 top=((-2.26, 1.089), (-1.675, 1.1057), (-1.668, 1.1931), (-1.17, 1.1959), (-1.164, 1.2431),
+                      (-0.99, 1.2619)),
+                 ledge=(0.03, ((-2.18, 0.625 + 0.5038 * 0.826), (-0.6738, 0.625 + 0.7279 * 0.826))),
+                 hump=((-1.030, -1.730), 0.535, 0.86), cell="dash",
+                 # cells per surface (pzveh CABIN_CELLS bed_*, colours in MinidoracatTesla_vehicle.frag): all "dash" like
+                 # the tonneau read as one flat dark sheet from the game's camera, open or shut (2026-11-12, game 49 49 53).
+                 # The official bed (manual p.246): black composite, a lighter floor with longitudinal ribs, walls
+                 # darker downwards (bands at these heights over the floor), the ledge (L-track) an edge light
+                 # the floor under the wheel humps ("well"): seen only through the rear wheel wells (a grey band under the
+                 # arch's top, game cb6ea37), black like the official's wells
+                 shade=dict(floor="bed_floor", rib="bed_rib", rim="bed_rim", well="floor",
+                            wall=("bed_wall_lo", "bed_wall_mid", "bed_wall_hi"), bands=(0.16, 0.32),
+                            ribs=(10, 0.02, 0.006))),
+    # the off-road light bar (official accessory, every Cybertruck here) is prep_cybertruck.py's Lamp_CT_roofbar, on the
+    # windshield's upper edge (FIELD lightbar; ROOF_BAR's box on the roof behind the apex is off)
     # light spots (Truck.lua T.Init.BedLight / RoofLight): (x, y) in half extents, "bed" = the bed's centre; the roof
     # bar like vanilla's headlights (yOffset 2.0, Vehicles.lua:1504-1505)
     LIGHTS={"BedLight": (0.0, "bed"), "RoofLight": (0.0, 2.0)},
     # charge port (owner's manual p.190): above the driver's side rear wheel, on the arch's upper trim edge (mesh y
-    # pre-centre, z; the rear axle at y -1.43)
-    PORT=(-1.43, 0.88),
-    # ---- cabin.py (mesh coords, centred)
-    CABIN_FLOOR=-0.453,                    # under the seated feet (seat_head.py feet)
-    CABIN_FRONT_Y=1.45,
-    TRUNK_Y=-1.50,                         # (no trunk: the cabin floor runs to its rear wall)
-    CABIN_REAR_Y=-0.623,                   # the cabin's rear wall: 5 cm inside the bed's front wall
-    CABIN_ZC=-0.08,
+    # pre-centre, z; the rear axle at y -1.39)
+    PORT=(-1.405, 0.917),                 # (-1.43, 0.88) through prep_cybertruck.py's field
+    # ---- cabin.py (mesh coords, centred): the official fit moved the centre (centre_y -0.0069, zmid -0.0026: nose and
+    # tail, lowest point), so these are their old places in the body + (0, 0.0069, 0.0026)
+    CABIN_FLOOR=-0.4504,                   # under the seated feet (seat_head.py feet)
+    CABIN_FRONT_Y=1.4569,
+    TRUNK_Y=-1.4931,                       # (no trunk: the cabin floor runs to its rear wall)
+    CABIN_REAR_Y=-0.6161,                  # the cabin's rear wall: 5 cm inside the bed's front wall
+    CABIN_ZC=-0.0774,
     SEAM_CLEAR=0.065,
     SEATS=dict(front=dict(w=0.44, back=0.52, recline=32, dy=0.061, dz=-0.135),
                rear=dict(base=1.20, cushions=((-0.40, 0.38), (0, 0.36), (0.40, 0.38)), back=0.46, recline=10, dy=0.032,
                          dz=-0.124),
                sill=None, bin=None),
     PARCEL=None,
-    DASH=dict(console=(0, 0.45, -0.32), dash=(0, 1.15, -0.02), trim=(0, 0.975, -0.01), light=(0, 0.977, -0.04),
-              stand=(0, 0.98, 0.10), screen=(0, 0.95, 0.18), wheel=(0.657, 0.197)),   # wheel: the reclined driver's hands
+    DASH=dict(console=(0, 0.4569, -0.3174), dash=(0, 1.1569, -0.0174), trim=(0, 0.9819, -0.0074),
+              light=(0, 0.9839, -0.0374), stand=(0, 0.9869, 0.1026), screen=(0, 0.9569, 0.1826),
+              wheel=(0.6639, 0.1996)),     # wheel: the reclined driver's hands
     DOOR_CARD={
         "front": [
             ("upper trim", "end", (0.05, 0.10), -0.050, None, 0.060, 0.030, "dash", 0.012),

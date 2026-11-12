@@ -1439,6 +1439,10 @@ def textures(car, c, shift=0.0):
     aux = np.stack([c["paint"].astype(float), (c["lamp"] > 0).astype(float), (c["lamp"] == 2).astype(float)], 1)
     fz = pv.face_centres(car)
     hgt = np.repeat(((fz[:, 2] - fz[:, 2].min()) / np.ptp(fz[:, 2]))[:, None], 3, 1)    # 0 at the lowest face, 1 at the roof
+    if C.get("HGT_CORNER"):      # per corner instead: one height per face drew a big flat panel's triangles as steps
+        lv = np.empty(len(car.data.loops), np.int64)
+        car.data.loops.foreach_get("vertex_index", lv)
+        hgt = np.repeat(((pv.mesh_co(car)[lv, 2] - fz[:, 2].min()) / np.ptp(fz[:, 2]))[:, None], 3, 1)
     layers = {"col": c["rgb"], "zone": zone_rgb[c["zone"]], "aux": aux, "hgt": hgt,
               "badge": np.repeat(np.where(c["mat"] == "badge_chrome", 1.0, np.where(
                   c["mat"] == (INK or {}).get("mat"), 0.85, np.where(c["mat"] == "badge_etch", 0.62,
@@ -2172,41 +2176,112 @@ def tonneau_strips(dv, attr):
 def bed_tub(V, Tb, attr):
     """A pickup's cargo bed (BED_TUB; the source has none): floor (two-sided: the camera sees under the rear), walls
     up to the rails' inner edge (x and top along y, polylines), wheel humps, the front wall; faces into the bed, the
-    lining's cabin palette cell. The tailgate's inner panel closes it at the rear. -> (points, tris, attrs) pre-centre."""
+    lining's cabin palette cell. The tailgate's inner panel closes it at the rear. BED_TUB ledge (optional, (width,
+    walls' top polyline)): the walls `width` inboard of the rails, up to that top (the manual's bed heights), a ledge
+    out to the rails and a riser up to them. BED_TUB shade (optional, dict: cells floor, rib, rim, well (the floor
+    under the humps, seen only through the wheel wells), wall (bottom to top), bands (heights over the floor where the
+    wall cells change), ribs (count, width, height)): a cell per surface instead of `cell`, the walls, humps' sides and
+    front wall in horizontal bands, longitudinal ribs on the floor between the humps (the tailgate's inner panel:
+    gate_bands). -> (points, tris, attrs) pre-centre."""
     b = BED_TUB
+    sh = b.get("shade")
     (y0, y1), z = b["y"], b["z"]
     xr = lambda y: np.interp(y, *np.array(b["rail_x"]).T)        # noqa: E731  (y ascending)
     top = lambda y: np.interp(y, *np.array(b["top"]).T)         # noqa: E731
+    xw, wt, cuts = xr, top, [np.array(b["top"])[:, 0]]          # the walls' x and top
+    if b.get("ledge"):
+        lw, lt = b["ledge"]
+        xw = lambda y: xr(y) - lw                                # noqa: E731
+        wt = lambda y: np.interp(y, *np.array(lt).T)             # noqa: E731
+        cuts.append(np.array(lt)[:, 0])
     (hy0, hy1), hx, hz = b["hump"]
-    ys = np.unique(np.concatenate([np.linspace(y1, y0, 9), [hy0, hy1], np.array(b["top"])[:, 0]]))
+    ys = np.unique(np.concatenate([np.linspace(y1, y0, 9), [hy0, hy1], *cuts]))
     ys = ys[(ys >= y1) & (ys <= y0)]
     Q, cell, inward, two = [], [], [], []
 
-    def quad(p, d, two_sided=False):
+    def quad(p, d, two_sided=False, zone="floor"):
         if two_sided:
             two.append(len(Q))
         Q.append(p)
-        cell.append(b["cell"])
+        cell.append(sh[zone] if sh else b["cell"])
         inward.append(d)
+
+    def wall(pa, pb, lo, hi, d, two_sided=False):
+        """A vertical quad from (x, y) pa to pb, bottoms lo, tops hi (per end); shaded: cut at the bands."""
+        cut = [z + h for h in sh["bands"]] if sh else []
+        za, zb = [lo[0], *[c for c in cut if lo[0] < c < hi[0]], hi[0]], [lo[1], *[c for c in cut if lo[1] < c < hi[1]], hi[1]]
+        if len(za) != len(zb):
+            raise SystemExit(f"BED_TUB shade: a band crosses a wall's top or foot between y {pa[1]:.3f} and {pb[1]:.3f}")
+        for k in range(len(za) - 1):
+            q = [(*pa, za[k]), (*pb, zb[k]), (*pb, zb[k + 1]), (*pa, za[k + 1])]
+            if sh:
+                Q.append(q)
+                cell.append(sh["wall"][sum(c <= za[k] + 1e-9 for c in cut)])
+                inward.append(d)
+                if two_sided:
+                    two.append(len(Q) - 1)
+            else:
+                quad(q, d, two_sided)
     for ya, yb in zip(ys[:-1], ys[1:]):
         ym = (ya + yb) / 2
-        quad([(-xr(ya), ya, z), (xr(ya), ya, z), (xr(yb), yb, z), (-xr(yb), yb, z)], (0, 0, 1), True)
+        hump = hy1 <= ym <= hy0
+        if sh and hump:     # under the humps sh["well"]: seen only through the wheel wells (the official's are black)
+            for xs, zone in (((-xr(ya), -hx, -hx, -xr(yb)), "well"), ((-hx, hx, hx, -hx), "floor"),
+                             ((hx, xr(ya), xr(yb), hx), "well")):
+                quad([(xs[0], ya, z), (xs[1], ya, z), (xs[2], yb, z), (xs[3], yb, z)], (0, 0, 1), True, zone)
+        else:
+            quad([(-xr(ya), ya, z), (xr(ya), ya, z), (xr(yb), yb, z), (-xr(yb), yb, z)], (0, 0, 1), True)
         for s in (-1, 1):
-            hump = hy1 <= ym <= hy0
             zb = hz if hump else z                     # the wall stands on the hump there
-            quad([(s * xr(ya), ya, zb), (s * xr(yb), yb, zb), (s * xr(yb), yb, top(yb)), (s * xr(ya), ya, top(ya))],
-                 (-s, 0, 0))
+            wall((s * xw(ya), ya), (s * xw(yb), yb), (zb, zb), (wt(ya), wt(yb)), (-s, 0, 0))
+            if b.get("ledge"):                         # the ledge out to the rails, the riser up to them
+                quad([(s * xw(ya), ya, wt(ya)), (s * xr(ya), ya, wt(ya)), (s * xr(yb), yb, wt(yb)),
+                      (s * xw(yb), yb, wt(yb))], (0, 0, 1), zone="rim")
+                quad([(s * xr(ya), ya, wt(ya)), (s * xr(yb), yb, wt(yb)), (s * xr(yb), yb, top(yb)),
+                      (s * xr(ya), ya, top(ya))], (-s, 0, 0), zone="rim")
             if hump:                                   # the hump: top and inner face
                 quad([(s * hx, ya, hz), (s * xr(ya), ya, hz), (s * xr(yb), yb, hz), (s * hx, yb, hz)], (0, 0, 1))
-                quad([(s * hx, ya, z), (s * hx, yb, z), (s * hx, yb, hz), (s * hx, ya, hz)], (-s, 0, 0))
-    for s in (-1, 1):                                  # the humps' front and rear faces
-        for yh, d in ((hy0, -1), (hy1, 1)):
-            quad([(s * hx, yh, z), (s * xr(yh), yh, z), (s * xr(yh), yh, hz), (s * hx, yh, hz)], (0, d, 0))
-    quad([(-xr(y0), y0, z), (xr(y0), y0, z), (xr(y0), y0, top(y0)), (-xr(y0), y0, top(y0))], (0, -1, 0),
-         True)   # front wall, two-sided: it stands at the rear doors' rear edge, seen from the cabin through their glass
-    vol = sum((2 * xr((ya + yb) / 2)) * (yb - ya) * (top((ya + yb) / 2) - z) for ya, yb in zip(ys[:-1], ys[1:]))
+                wall((s * hx, ya), (s * hx, yb), (z, z), (hz, hz), (-s, 0, 0))
+                if sh:                                 # its back toward the wheel well (else the floor beyond showed)
+                    xo = s * (hx + 0.002)
+                    quad([(xo, ya, z), (xo, yb, z), (xo, yb, hz), (xo, ya, hz)], (s, 0, 0), zone="well")
+    for s in (-1, 1):                                  # the humps' front and rear faces, toward the floor beyond them
+        for yh, d in ((hy0, 1), (hy1, -1)):
+            wall((s * hx, yh), (s * xr(yh), yh), (z, z), (hz, hz), (0, d, 0))
+    # front wall, two-sided: it stands at the rear doors' rear edge, seen from the cabin through their glass
+    wall((-xr(y0), y0), (xr(y0), y0), (z, z), (top(y0), top(y0)), (0, -1, 0), True)
+    if sh and sh.get("ribs"):                          # floor ribs between the humps, front wall to tailgate: top, sides
+        n, w, h = sh["ribs"]
+        for xc in (np.arange(n) - (n - 1) / 2) * (2 * hx / (n + 1)):
+            xa, xb, zt = xc - w / 2, xc + w / 2, z + h
+            quad([(xa, y1, zt), (xb, y1, zt), (xb, y0, zt), (xa, y0, zt)], (0, 0, 1), zone="rib")
+            for xs, d in ((xa, -1), (xb, 1)):
+                quad([(xs, y1, z), (xs, y0, z), (xs, y0, zt), (xs, y1, zt)], (d, 0, 0), zone="rib")
+    vol = sum((2 * xw((ya + yb) / 2)) * (yb - ya) * (wt((ya + yb) / 2) - z) for ya, yb in zip(ys[:-1], ys[1:]))
     print(f"BED y {y1:.3f}..{y0:.3f}, floor z {z:.3f}, {len(Q)} quads, ~{vol / K ** 3 * 1000:.0f} L to the rails")
     return quads_soup(Q, cell, np.array(inward, float), attr, two)
+
+
+def gate_bands(P, t, a, attr):
+    """BED_TUB shade: the tailgate's inner panel (its slab's faces into the bed, GATE_IN) under the bed walls' bands, a
+    quad per band 3 mm into the bed over the panel's plane and width (pre-centre, closed). -> (points, tris, attrs)."""
+    sh, z = BED_TUB["shade"], BED_TUB["z"]
+    tri = P[t]
+    n = np.cross(tri[:, 1] - tri[:, 0], tri[:, 2] - tri[:, 0])
+    n /= np.maximum(np.linalg.norm(n, axis=1, keepdims=True), 1e-12)
+    inner = (n @ np.array(pv.GATE_IN, float) > 0.5) & (a[:, 0, 2] == attr("dash")[2])
+    pts = tri[inner].reshape(-1, 3)
+    lo, hi = pts[pts[:, 2] < pts[:, 2].min() + 0.01], pts[pts[:, 2] > pts[:, 2].max() - 0.01]
+    (yb, zb), (yt, zt) = lo[:, 1:].mean(0), hi[:, 1:].mean(0)
+    xa, xb = pts[:, 0].min(), pts[:, 0].max()
+    off = np.array(pv.GATE_IN, float) * 0.003
+    zs = [zb, *[z + h for h in sh["bands"] if zb < z + h < zt], zt]
+    Q, cells = [], []
+    for k in range(len(zs) - 1):
+        ya, yc = (np.interp(v, (zb, zt), (yb, yt)) for v in zs[k:k + 2])
+        Q.append([np.array(p) + off for p in ((xa, ya, zs[k]), (xb, ya, zs[k]), (xb, yc, zs[k + 1]), (xa, yc, zs[k + 1]))])
+        cells.append(sh["wall"][sum(z + h <= zs[k] + 1e-9 for h in sh["bands"])])
+    return quads_soup(Q, cells, np.repeat([pv.GATE_IN], len(Q), 0).astype(float), attr)
 
 
 def roof_bar(V, Tb, attr):
@@ -2341,6 +2416,8 @@ def pieces(car, c, shift):
             extra = [backs(bsel, rec, 0) for bsel, rec in back_sets(sel)] + [
                 seals(V, T, skin, cab_attr("base"), gb, solid, seams and k not in skip and (*seams, k) or None,
                       full=pname in C.get("SEAL_FULL", ()))] + ([lines[k]] if k in lines else [])
+            if pname == "TrunkDoor" and BED_TUB and BED_TUB.get("shade"):    # inner panel: the bed walls' bands
+                extra.append(gate_bands(P, t, a, cab_attr))
             for v, bt, ba in extra:
                 t = np.concatenate([t, bt + len(P)])
                 P = np.concatenate([P, v])
@@ -2592,7 +2669,8 @@ def stage_view(out, heads, state, skin="UltraRed", app=False):
     bpy.context.view_layer.update()
     img = bpy.data.images.load(os.path.join(pv.TEX_DIR, f"{pv.NAME}_{skin}.png"))
     CAB = [(22, 22, 24), (40, 40, 44), (100, 100, 106), (30, 30, 32), (58, 58, 62), (112, 106, 98), (46, 46, 50),
-           (28, 28, 30), (16, 16, 18), (170, 192, 214)]
+           (28, 28, 30), (16, 16, 18), (170, 192, 214),
+           (88, 88, 92), (120, 120, 126), (44, 44, 48), (58, 58, 62), (72, 72, 76), (128, 128, 134)]   # bed_*
 
     def mat(name, rgb=None, tex=False):
         m = bpy.data.materials.new(name)
@@ -2620,7 +2698,7 @@ def stage_view(out, heads, state, skin="UltraRed", app=False):
         ls = np.empty(len(me.polygons), np.int64)
         me.polygons.foreach_get("loop_start", ls)
         fu = u1[0::2][ls]
-        idx = np.where(fu > 1.5, 1, np.where(fu < -1.0, 2 + np.clip((-fu - 2.0).astype(int), 0, 9), 0))
+        idx = np.where(fu > 1.5, 1, np.where(fu < -1.0, 2 + np.clip((-fu - 2.0).astype(int), 0, len(CAB) - 1), 0))
         o.data.materials.clear()
         for m in (MB if o is body else MD):
             o.data.materials.append(m)

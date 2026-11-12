@@ -283,15 +283,19 @@ def wheel_profile(R, rr, hw):
     low-profile tire (tread, shoulder, bulging sidewall, bead, rim flange), the step from the flange into the barrel,
     the barrel (inside face, seen through the spokes) and the disc that closes the wheel at its middle (dark, the rotor,
     its hat). Normals are smooth along a strip and split between strips. Grid units: R tire radius, rr rim flange
-    radius, hw half tire width."""
+    radius, hw half tire width. TIRE_SHOULDER (cars/<car>.py, optional): (tread's flat half width, shoulder radius)
+    for a squarer all-terrain shoulder than the default (0.075, 0.030)."""
     # the tread's flat part to 0.075, less on a tyre under ~255 mm (hw - the shoulder's 0.0303): the fixed 0.075 put
     # the shoulder out at 0.105 whatever the width (Model 3's 235 front read 254 mm wide); every other car's hw is
     # over 0.105, so their wheels stay as they were
-    tw = min(0.075, hw - 0.0303)
-    tire = [(0.0, R), (tw, R - 0.0045)]
-    for a in (45, 90):                                   # shoulder, radius 0.03
+    fl, sr, sd = min(0.075, hw - 0.0303), 0.030, 0.0345  # shoulder: flat to fl, radius sr, its centre sd under R
+    if CAR.get("TIRE_SHOULDER"):
+        fl, sr = CAR["TIRE_SHOULDER"]
+        sd = 0.0045 + sr
+    tire = [(0.0, R), (fl, R - 0.0045)]
+    for a in (45, 90):
         t = math.radians(a)
-        tire.append((tw + 0.030 * math.sin(t), R - 0.0345 + 0.030 * math.cos(t)))
+        tire.append((fl + sr * math.sin(t), R - sd + sr * math.cos(t)))
     tire += [(hw + 0.0022, R - 0.052), (hw - 0.0075, rr + 0.006), (hw - 0.0100, rr + 0.002)]
     step = [tire[-1], (hw - 0.0150, rr - 0.004)]
     barrel = [step[-1], (WHEEL_DISC_X, rr - 0.004)]
@@ -432,13 +436,17 @@ def stage_wheel(r, width, rim=None, tag=""):
                 (y0, z0), (y1, z1) = yz[i], yz[j]
                 flat([front[i], front[j], back[j], back[i]], fz * Vector((0, z1 - z0, -(y1 - y0))), face)
         rc, xc = sp["cap"] * rr, spoke_x(sp["cap"] * rr, rr, hw) + 0.004
-        cf = [bm.verts.new((side * xc, rc * math.cos(a), rc * math.sin(a))) for a in ang[:n]]
-        cb = [bm.verts.new((side * (xc - sp["depth"] - 0.006), rc * math.cos(a), rc * math.sin(a))) for a in ang[:n]]
+        ca, cn, fc_ = ang[:n], n, 1                      # the hub cap round, or WHEEL_SPOKE cap_n sided (from `at`,
+        if sp.get("cap_n"):                              # turned with the spokes)
+            cn, fc_ = sp["cap_n"], fz
+            ca = [2 * math.pi * k / cn + math.radians(sp.get("at", 0)) for k in range(cn)]
+        cf = [bm.verts.new((side * xc, rc * math.cos(a), fc_ * rc * math.sin(a))) for a in ca]
+        cb = [bm.verts.new((side * (xc - sp["depth"] - 0.006), rc * math.cos(a), fc_ * rc * math.sin(a))) for a in ca]
         hub = bm.verts.new((side * (xc + 0.003), 0.0, 0.0))
-        for j in range(n):
-            flat([hub, cf[j], cf[(j + 1) % n]], out, "cap")
-            flat([cf[j], cf[(j + 1) % n], cb[(j + 1) % n], cb[j]],
-                 Vector((0, math.cos(ang[j] + math.pi / n), math.sin(ang[j] + math.pi / n))), "cap")
+        for j in range(cn):
+            flat([hub, cf[j], cf[(j + 1) % cn]], out, "cap")
+            flat([cf[j], cf[(j + 1) % cn], cb[(j + 1) % cn], cb[j]],
+                 Vector((0, math.cos(ca[j] + math.pi / cn), fc_ * math.sin(ca[j] + math.pi / cn))), "cap")
     # WHEEL_FACETS (an aero cover, Model Y L's 19" Machina 2.0): a flat face over the spokes' back, `sink` behind their
     # front, from the hub cap to the barrel (the disc and barrel behind it hidden), the spokes (if any) standing out of
     # it as relief; the face takes the `face` swatch's colour. On it, `n` times round the wheel (the first `at` deg off
@@ -812,7 +820,10 @@ def export_doors(obs):
 
 # cabin palette cells, in MinidoracatTesla_vehicle.frag CABIN[] order (the colours live there): a cabin face carries
 # UV1 = (CABIN_UV1_U - cell, 0) (the loader flips v, ImportedStaticMesh.java:59)
-CABIN_CELLS = ("floor", "liner", "seat", "base", "dash", "trim", "console", "wheel", "screen_back", "screen")
+# (the bed_* cells: convert.py bed_tub's BED_TUB shade, the Cybertruck's cargo bed; appended, so the others keep their
+# numbers)
+CABIN_CELLS = ("floor", "liner", "seat", "base", "dash", "trim", "console", "wheel", "screen_back", "screen",
+               "bed_floor", "bed_rib", "bed_wall_lo", "bed_wall_mid", "bed_wall_hi", "bed_rim")
 CABIN_UV1_U = -2.5
 GLASS_UV1_SHIFT = 2.0     # glass faces: UV1 u + this (the shader takes it back off for the damage maps)
 GLASS_DOOR_U = 16.0       # a door's glass: UV1 u + this x its shell bit number (cabin.SHELL_DOORS, 1-based; 0 the body's)

@@ -133,7 +133,7 @@ vec3 lampSheen(vec3 dir, vec3 colour, vec3 n, vec3 v, float lobe)
 
 // cabin palette, sRGB 0-255, in pzveh.py CABIN_CELLS order. Black interior a step lighter than life so the seats
 // read against the floor through the glass (calibration knob)
-const vec3 CABIN[10] = vec3[10](
+const vec3 CABIN[16] = vec3[16](
 	vec3(22.0, 22.0, 24.0),     // floor
 	vec3(40.0, 40.0, 44.0),     // liner
 	vec3(100.0, 100.0, 106.0),  // seat
@@ -143,7 +143,15 @@ const vec3 CABIN[10] = vec3[10](
 	vec3(46.0, 46.0, 50.0),     // console
 	vec3(28.0, 28.0, 30.0),     // wheel
 	vec3(16.0, 16.0, 18.0),     // screen_back
-	vec3(170.0, 192.0, 214.0)); // screen: lit by itself
+	vec3(170.0, 192.0, 214.0),  // screen: lit by itself
+	// the Cybertruck's cargo bed (convert.py bed_tub, BED_TUB shade): the floor a step over the walls, light ribs,
+	// the walls darker downwards, the ledge's edge light; the closed tonneau stays dash (game ~0.845 x in daylight)
+	vec3(88.0, 88.0, 92.0),     // bed_floor
+	vec3(120.0, 120.0, 126.0),  // bed_rib
+	vec3(44.0, 44.0, 48.0),     // bed_wall_lo
+	vec3(58.0, 58.0, 62.0),     // bed_wall_mid
+	vec3(72.0, 72.0, 76.0),     // bed_wall_hi
+	vec3(128.0, 128.0, 134.0)); // bed_rim
 const int CABIN_SCREEN = 9;
 const float NIGHT_FLOOR = 0.12;    // cabin's lowest lighting (calibration knob)
 const float GLASS_DOOR_U = 16.0;   // pzveh.py
