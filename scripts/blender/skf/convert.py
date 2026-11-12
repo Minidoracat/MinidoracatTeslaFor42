@@ -342,10 +342,15 @@ def load_source():
                 pv.keep_faces(o, ~gone)
                 print("DROP_FACES_COMPS", name, int(gone.sum()), "faces")
         if target:
-            pv.decimate(o, target)
+            # DECIMATE_KEEP_BOUNDARY (Model S): the X-symmetric collapse moves each mirror edge to the mirrored target
+            # without its own flip check (Blender bmesh_decimate_collapse.cc), so on an asymmetric source it can drag
+            # an open edge's vertex across a panel and tear the skin; keep_boundary prices those collapses out
+            pv.decimate(o, target, C.get("DECIMATE_KEEP_BOUNDARY", False))
         for under, over, gap in C.get("DROP_COVERED", ()):
             if under == name:
                 drop_covered(o, [obs[names.index(n)] for n in over], gap)
+        if C.get("POST_FIELD"):    # (Model S) a car's displacement after the decimation: its collapse order stays put
+            C["POST_FIELD"](o)
         _label(o, len(names))
         names.append(name)
         if target:          # the components' triangles now: CUT / GATE_CUT_COMPS / ROOF_PANE / MIRROR_CAP keys

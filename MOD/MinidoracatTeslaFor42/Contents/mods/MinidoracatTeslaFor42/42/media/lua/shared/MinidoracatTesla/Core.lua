@@ -136,7 +136,7 @@ T.Specs = {
         model = "ModelS",
         appCar = "app_car_models_",
         -- z: handle height at this car's charge port (E2E integration-mp)
-        plug = { item = "Base.MinidoracatTesla_CablePlugModelS", z = 0.73 },
+        plug = { item = "Base.MinidoracatTesla_CablePlugModelS", z = 0.72 },
         v12Kwh = 15.5 * 6.9 / 1000, -- 15.5 V, 6.9 Ah (Model S owner's manual, Subsystems 2026-05)
         -- the Model Y coefficients x 100 / 78.4: a full pack still drives one vanilla tank's distance
         idleKw = 0.0480 * T.DRIVE_SCALE,
@@ -152,7 +152,7 @@ T.Specs = {
             { name = "StealthGrey", code = "PN01", h = 0.812, s = 0.512, v = 0.35 },
             { name = "LunarSilver", code = "PN02", h = 0.726, s = 0.523, v = 0.556 },
             { name = "PearlWhite", code = "PPSW", h = 0.82, s = 0.475, v = 0.893 },
-            { name = "UltraRed", code = "PR01", h = 0.987, s = 1.0, v = 0.416 },
+            { name = "UltraRed", code = "PR01", h = 0.986, s = 1.0, v = 0.416 },
             { name = "DiamondBlack", code = "PX02", h = 0.062, s = 0.58, v = 0.215 },
             { name = "FrostBlue", code = "PB00", h = 0.592, s = 0.976, v = 0.494 },
             { name = "SolidBlack", code = "PBSB", h = 0.032, s = 0.547, v = 0.194 },
