@@ -149,7 +149,10 @@ CAR = dict(
     # over the bed's floor between the wheel humps: through the floor, a box in the open bed)
     DROP_FACES=((("Body",), (-0.62, -2.28, 1.00), (0.62, -0.97, 1.40), (0, 0, 1), (0.5, 2.0)),
                 (("Body.012",), (-0.8, 1.6, 0.7), (0.8, 2.4, 1.1), (0, 0, 1), (-2.0, 0.5)),
-                (("Body",), (-0.60, -1.86, 0.50), (0.60, -0.95, 0.95), (0, 0, 1), (-2.0, -0.2))),
+                (("Body",), (-0.60, -1.86, 0.50), (0.60, -0.95, 0.95), (0, 0, 1), (-2.0, -0.2)),
+                # the rear bumper's black top reaching forward 1 cm over the bed's floor behind the rear humps (y -2.21
+                # .. -1.73): the open bed's rear third showed it (game ~8, darker than the walls)
+                (("Cube.002", "Cube.003"), (-0.59, -2.19, 0.60), (0.59, -1.70, 0.66), (0, 0, 1), (0.9, 2.0))),
     # inside the cladding (|x| 0.839); the raised openings' upper corners: prep_cybertruck.py's Trim_CT_well
     ARCH_LINER=dict(gap=0.04, inner=0.06, arc=(0, 180), n=17, x=0.82),
     PLATES=(),
@@ -246,7 +249,14 @@ CAR = dict(
                  top=((-2.26, 1.089), (-1.675, 1.1057), (-1.668, 1.1931), (-1.17, 1.1959), (-1.164, 1.2431),
                       (-0.99, 1.2619)),
                  ledge=(0.03, ((-2.18, 0.625 + 0.5038 * 0.826), (-0.6738, 0.625 + 0.7279 * 0.826))),
-                 hump=((-1.030, -1.730), 0.535, 0.86), cell="dash"),
+                 hump=((-1.030, -1.730), 0.535, 0.86), cell="dash",
+                 # cells per surface (pzveh CABIN_CELLS bed_*, colours in MinidoracatTesla_vehicle.frag): all "dash" like
+                 # the tonneau read as one flat dark sheet from the game's camera, open or shut (2026-11-12, game 49 49 53).
+                 # The official bed (manual p.246): black composite, a lighter floor with longitudinal ribs, walls
+                 # darker downwards (bands at these heights over the floor), the ledge (L-track) an edge light
+                 shade=dict(floor="bed_floor", rib="bed_rib", rim="bed_rim",
+                            wall=("bed_wall_lo", "bed_wall_mid", "bed_wall_hi"), bands=(0.16, 0.32),
+                            ribs=(10, 0.02, 0.006))),
     # the off-road light bar (official accessory, every Cybertruck here) is prep_cybertruck.py's Lamp_CT_roofbar, on the
     # windshield's upper edge (FIELD lightbar; ROOF_BAR's box on the roof behind the apex is off)
     # light spots (Truck.lua T.Init.BedLight / RoofLight): (x, y) in half extents, "bed" = the bed's centre; the roof

@@ -814,7 +814,10 @@ def export_doors(obs):
 
 # cabin palette cells, in MinidoracatTesla_vehicle.frag CABIN[] order (the colours live there): a cabin face carries
 # UV1 = (CABIN_UV1_U - cell, 0) (the loader flips v, ImportedStaticMesh.java:59)
-CABIN_CELLS = ("floor", "liner", "seat", "base", "dash", "trim", "console", "wheel", "screen_back", "screen")
+# (the bed_* cells: convert.py bed_tub's BED_TUB shade, the Cybertruck's cargo bed; appended, so the others keep their
+# numbers)
+CABIN_CELLS = ("floor", "liner", "seat", "base", "dash", "trim", "console", "wheel", "screen_back", "screen",
+               "bed_floor", "bed_rib", "bed_wall_lo", "bed_wall_mid", "bed_wall_hi", "bed_rim")
 CABIN_UV1_U = -2.5
 GLASS_UV1_SHIFT = 2.0     # glass faces: UV1 u + this (the shader takes it back off for the damage maps)
 GLASS_DOOR_U = 16.0       # a door's glass: UV1 u + this x its shell bit number (cabin.SHELL_DOORS, 1-based; 0 the body's)
