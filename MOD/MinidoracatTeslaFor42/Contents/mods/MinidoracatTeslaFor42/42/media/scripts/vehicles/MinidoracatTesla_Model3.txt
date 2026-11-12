@@ -79,10 +79,10 @@ module Base
         textureDamage2Shell = Vehicles/Veh_Damage2,
         textureRust = Vehicles/Veh_Rust,
         template = PassengerSeat4,
-        extents = 0.8396 0.6004 2.1444,
-        physicsChassisShape = 0.8396 0.6004 2.1444,
+        extents = 0.8396 0.6004 2.1443,
+        physicsChassisShape = 0.8396 0.6004 2.1443,
         centerOfMassOffset = 0.0000 0.1978 0.0000,
-        shadowExtents = 0.8396 2.1444,
+        shadowExtents = 0.8396 2.1443,
         shadowOffset = 0.0 0.0,
         useChassisPhysicsCollision = false,
         physics box
@@ -98,14 +98,14 @@ module Base
         wheel FrontLeft
         {
             front = true,
-            offset = 0.3590 -0.2570 0.6764,
+            offset = 0.3590 -0.2570 0.6765,
             radius = 0.1444,
             width = 0.1897,
         }
         wheel FrontRight
         {
             front = true,
-            offset = -0.3590 -0.2570 0.6764,
+            offset = -0.3590 -0.2570 0.6765,
             radius = 0.1444,
             width = 0.1897,
         }
@@ -227,11 +227,11 @@ module Base
         }
         area TireFrontLeft
         {
-            xywh = 0.6560 0.6764 0.4725 0.4725,
+            xywh = 0.6560 0.6765 0.4725 0.4725,
         }
         area TireFrontRight
         {
-            xywh = -0.6560 0.6764 0.4725 0.4725,
+            xywh = -0.6560 0.6765 0.4725 0.4725,
         }
         area TireRearLeft
         {

@@ -11,8 +11,8 @@ import math
 
 # components by (object, triangles) after prep_model_3.py and the decimation (the build's COMPS lines): they change
 # whenever the prep's field does
-_SHELL = ("Object_11", 5909)               # the body shell: roof, rear quarters, tail, trunk lid
-_BUMPER = ("Object_11", 1576)              # the front bumper
+_SHELL = ("Object_11", 5901)               # the body shell: roof, rear quarters, tail, trunk lid
+_BUMPER = ("Object_11", 1592)              # the front bumper
 _MIRRORS = ("Object_11", (188, 186))       # the mirror caps (left, right)
 _FRAMES = (245, 239)                       # Object_6: the window frame trims along both doors (left, right)
 # the Performance front's black lower intake (CARBON, official FRONT34 through camfit's c2 camera, 2026-11-12): its
@@ -20,6 +20,7 @@ _FRAMES = (245, 239)                       # Object_6: the window frame trims al
 # blacked the near corner, which the official has in body colour, and sat 17-43 mm high
 _FRONT_BLACK = ((0.15, 0.28), (0.40, 0.25), (0.56, 0.145))
 _FRONT_LINES = tuple(zip(_FRONT_BLACK[:-1], _FRONT_BLACK[1:]))
+_FRONT_LIP = 0.185                           # z: the black lip under the bumper corners (CARBON third zone)
 
 
 def _below(a, b):
@@ -192,14 +193,14 @@ CAR = dict(
     # the body shell (rear quarters, roof, rear face and the trunk lid in one) is cut along the lid's seams; the
     # window frame trim spans both doors and the C pillar
     CUT={_SHELL: ("X+", "X-", "GZ", "CZ", "GY"), **{("Object_6", n): ("BF", "BR", "D") for n in _FRAMES},
-         _BUMPER: ("FZ", "FX+", "FX-", *(f"FS{i}{c}" for i in range(len(_FRONT_LINES)) for c in "+-"))},
+         _BUMPER: ("FZ", "FX+", "FX-", "FL", *(f"FS{i}{c}" for i in range(len(_FRONT_LINES)) for c in "+-"))},
     # name: (point, normal, cut faces centred behind this y); GZ: the trunk lid's lower edge; FZ / FX+-: the edges of
     # the black lower front intake, CZ: the spoiler band's lower edge on the lid's rear face (CARBON), so their
     # borders run straight instead of along big triangles (CZ only behind y -1.85: the body's tail-lamp tops beside
     # the lid's corners, cut there, grew SEAL strips that stood out of them as black wedges); GY: the lid's front edge (IN_GATE y): uncut, the lid's
     # front corners went along the triangles, a stair of jamb teeth and body slivers in the opening once it lifted
     PLANES={"GZ": ((0, 0, 0.530), (0, 0, 1), -1.308), "FZ": ((0, 0, _FRONT_BLACK[0][1]), (0, 0, 1), 9.0),
-            "FX+": ((0.60, 0, 0), (1, 0, 0), 9.0), "FX-": ((-0.60, 0, 0), (1, 0, 0), 9.0),
+            "FX+": ((0.60, 0, 0), (1, 0, 0), 9.0), "FX-": ((-0.60, 0, 0), (1, 0, 0), 9.0), "FL": ((0, 0, _FRONT_LIP), (0, 0, 1), 9.0),
             **{f"FS{i}{'+-'[k]}": (*pn, 9.0) for i, ln in enumerate(_FRONT_LINES) for k, pn in enumerate(_below(*ln))},
             "CZ": ((0, 0, 0.827), (0, 0, 1), -1.85), "GY": ((0, -1.408, 0), (0, 1, 0), -1.308)},
     CUT_X=("Object_12", "Object_13", "Object_14", "Object_16", "Object_17"),   # cut along +-GATE_X
@@ -213,7 +214,10 @@ CAR = dict(
     # FRONT34; the corners stay body colour)
     CARBON=dict(rgb=(30, 30, 32), zones=(dict(lo=(-0.62, -9.0, 0.827), hi=(0.62, -1.708, 0.975), edge=(1, 0.035)),
                                         dict(lo=(-0.60, 1.60, 0.0), hi=(0.60, 9.0, _FRONT_BLACK[0][1]),
-                                             below=tuple(pn for ln in _FRONT_LINES for pn in _below(*ln))))),
+                                             below=tuple(pn for ln in _FRONT_LINES for pn in _below(*ln))),
+                                        # the black lip under the corners to the front wheels (official FRONT34): the
+                                        # body-coloured corner fins stand between it and the intake
+                                        dict(lo=(-0.82, 1.50, 0.0), hi=(0.82, 9.0, _FRONT_LIP), of=_BUMPER))),
     PANES={"Body": {"WinT", "LightBarL", "WinH"}, "DoorFrontLeft": {"WinLH"}, "DoorFrontRight": {"WinRH"},
            "DoorRearLeft": {"WinLT"}, "DoorRearRight": {"WinRT"}, "TrunkDoor": set(), "EngineDoor": set()},
     # badges: T on the nose (where the source has it), TESLA across the trunk lid between the tail lamps, the

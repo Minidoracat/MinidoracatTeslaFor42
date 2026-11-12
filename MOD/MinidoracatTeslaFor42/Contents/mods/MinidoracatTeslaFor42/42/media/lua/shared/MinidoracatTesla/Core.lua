@@ -85,13 +85,13 @@ T.Specs = {
         doorClip = { TrunkDoor = 3.0 }, -- cars/model_3.py DOORS
         -- official Model 3 Performance paints (US, DE, TW design studios; references/models.md): same rules as above
         colors = {
-            { name = "StealthGrey", code = "PN01", h = 0.709, s = 0.546, v = 0.305 },
+            { name = "StealthGrey", code = "PN01", h = 0.71, s = 0.546, v = 0.305 },
             { name = "PearlWhite", code = "PPSW", h = 0.532, s = 0.491, v = 0.811 },
             { name = "DiamondBlack", code = "PX02", h = 0.923, s = 0.557, v = 0.212 },
             { name = "Quicksilver", code = "PN00", h = 0.808, s = 0.484, v = 0.456 },
             { name = "UltraRed", code = "PR01", h = 0.997, s = 1.0, v = 0.464 },
             { name = "DeepBlue", code = "PPSB", h = 0.602, s = 1.0, v = 0.393 },
-            { name = "MarineBlue", code = "PB02", h = 0.584, s = 0.757, v = 0.281 },
+            { name = "MarineBlue", code = "PB02", h = 0.584, s = 0.756, v = 0.281 },
             { name = "FrostBlue", code = "PB00", h = 0.6, s = 0.769, v = 0.478 },
         },
     },

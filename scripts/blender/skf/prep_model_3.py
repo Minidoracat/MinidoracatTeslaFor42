@@ -57,7 +57,7 @@ FIELD = dict(
     # the nose's profile: y offsets by height (z, dy), full ahead of y nose_y[1], none behind nose_y[0]; then the
     # whole nose (that same weight) moved so the extreme lands on `front`
     nose_y=(1.80, 2.10),
-    nose=((0.20, -0.012), (0.30, -0.016), (0.45, -0.016), (0.52, -0.012), (0.58, 0.004), (0.63, 0.012),
+    nose=((0.14, 0.006), (0.20, -0.002), (0.26, -0.012), (0.30, -0.016), (0.45, -0.016), (0.52, -0.012), (0.58, 0.004), (0.63, 0.012),
           (0.72, 0.010), (0.80, 0.013), (0.90, 0.016)),
     tail_y=(-1.95, -2.20),          # the tail's weight (behind -tail_y), its extreme onto `rear`
     tail=((0.30, 0.0), (0.50, 0.0)),
