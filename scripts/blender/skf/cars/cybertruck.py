@@ -254,7 +254,9 @@ CAR = dict(
                  # the tonneau read as one flat dark sheet from the game's camera, open or shut (2026-11-12, game 49 49 53).
                  # The official bed (manual p.246): black composite, a lighter floor with longitudinal ribs, walls
                  # darker downwards (bands at these heights over the floor), the ledge (L-track) an edge light
-                 shade=dict(floor="bed_floor", rib="bed_rib", rim="bed_rim",
+                 # the floor under the wheel humps ("well"): seen only through the rear wheel wells (a grey band under the
+                 # arch's top, game cb6ea37), black like the official's wells
+                 shade=dict(floor="bed_floor", rib="bed_rib", rim="bed_rim", well="floor",
                             wall=("bed_wall_lo", "bed_wall_mid", "bed_wall_hi"), bands=(0.16, 0.32),
                             ribs=(10, 0.02, 0.006))),
     # the off-road light bar (official accessory, every Cybertruck here) is prep_cybertruck.py's Lamp_CT_roofbar, on the

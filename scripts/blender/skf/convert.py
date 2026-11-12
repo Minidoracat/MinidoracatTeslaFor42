@@ -1808,10 +1808,11 @@ def bed_tub(V, Tb, attr):
     up to the rails' inner edge (x and top along y, polylines), wheel humps, the front wall; faces into the bed, the
     lining's cabin palette cell. The tailgate's inner panel closes it at the rear. BED_TUB ledge (optional, (width,
     walls' top polyline)): the walls `width` inboard of the rails, up to that top (the manual's bed heights), a ledge
-    out to the rails and a riser up to them. BED_TUB shade (optional, dict: cells floor, rib, rim, wall (bottom to
-    top), bands (heights over the floor where the wall cells change), ribs (count, width, height)): a cell per surface
-    instead of `cell`, the walls, humps' sides and front wall in horizontal bands, longitudinal ribs on the floor
-    between the humps (the tailgate's inner panel: gate_bands). -> (points, tris, attrs) pre-centre."""
+    out to the rails and a riser up to them. BED_TUB shade (optional, dict: cells floor, rib, rim, well (the floor
+    under the humps, seen only through the wheel wells), wall (bottom to top), bands (heights over the floor where the
+    wall cells change), ribs (count, width, height)): a cell per surface instead of `cell`, the walls, humps' sides and
+    front wall in horizontal bands, longitudinal ribs on the floor between the humps (the tailgate's inner panel:
+    gate_bands). -> (points, tris, attrs) pre-centre."""
     b = BED_TUB
     sh = b.get("shade")
     (y0, y1), z = b["y"], b["z"]
@@ -1853,9 +1854,14 @@ def bed_tub(V, Tb, attr):
                 quad(q, d, two_sided)
     for ya, yb in zip(ys[:-1], ys[1:]):
         ym = (ya + yb) / 2
-        quad([(-xr(ya), ya, z), (xr(ya), ya, z), (xr(yb), yb, z), (-xr(yb), yb, z)], (0, 0, 1), True)
+        hump = hy1 <= ym <= hy0
+        if sh and hump:     # under the humps sh["well"]: seen only through the wheel wells (the official's are black)
+            for xs, zone in (((-xr(ya), -hx, -hx, -xr(yb)), "well"), ((-hx, hx, hx, -hx), "floor"),
+                             ((hx, xr(ya), xr(yb), hx), "well")):
+                quad([(xs[0], ya, z), (xs[1], ya, z), (xs[2], yb, z), (xs[3], yb, z)], (0, 0, 1), True, zone)
+        else:
+            quad([(-xr(ya), ya, z), (xr(ya), ya, z), (xr(yb), yb, z), (-xr(yb), yb, z)], (0, 0, 1), True)
         for s in (-1, 1):
-            hump = hy1 <= ym <= hy0
             zb = hz if hump else z                     # the wall stands on the hump there
             wall((s * xw(ya), ya), (s * xw(yb), yb), (zb, zb), (wt(ya), wt(yb)), (-s, 0, 0))
             if b.get("ledge"):                         # the ledge out to the rails, the riser up to them
@@ -1866,8 +1872,11 @@ def bed_tub(V, Tb, attr):
             if hump:                                   # the hump: top and inner face
                 quad([(s * hx, ya, hz), (s * xr(ya), ya, hz), (s * xr(yb), yb, hz), (s * hx, yb, hz)], (0, 0, 1))
                 wall((s * hx, ya), (s * hx, yb), (z, z), (hz, hz), (-s, 0, 0))
-    for s in (-1, 1):                                  # the humps' front and rear faces
-        for yh, d in ((hy0, -1), (hy1, 1)):
+                if sh:                                 # its back toward the wheel well (else the floor beyond showed)
+                    xo = s * (hx + 0.002)
+                    quad([(xo, ya, z), (xo, yb, z), (xo, yb, hz), (xo, ya, hz)], (s, 0, 0), zone="well")
+    for s in (-1, 1):                                  # the humps' front and rear faces, toward the floor beyond them
+        for yh, d in ((hy0, 1), (hy1, -1)):
             wall((s * hx, yh), (s * xr(yh), yh), (z, z), (hz, hz), (0, d, 0))
     # front wall, two-sided: it stands at the rear doors' rear edge, seen from the cabin through their glass
     wall((-xr(y0), y0), (xr(y0), y0), (z, z), (top(y0), top(y0)), (0, -1, 0), True)
