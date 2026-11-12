@@ -96,6 +96,8 @@ SWATCH = ("Badge_T", "Badge_TESLA", "Badge_MODELY", "Caliper") + (("Badge_CERB",
 #                                            side's tail zone (one spot baked the whole bar LightRT: a removed right
 #                                            rear lamp put out all of it)
 SWATCH_U = 0.03                            # UV0 strip kept for them at u > 1 - SWATCH_U
+# SEAM_LINE tone: the lines' flat UV0 / UV1 spot, a 512 texel's centre in that strip between the first two spots
+SEAM_SPOT = (504.5 / 512, (round(512 / len(SWATCH)) + 0.5) / 512)
 SMOKE_RGB = (62, 58, 60)                   # the light blade by day: smoked lens, so the black letters read
 PARTS = ["Body"] + list(pv.DOORS)          # part index: 0 body, 1.. DOORS order (FL, FR, RL, RR, TrunkDoor, EngineDoor)
 FRUNK_TUB = C["FRUNK_TUB"]                 # the bin under the frunk lid (frunk_tub())
@@ -795,8 +797,8 @@ def edit(car, names):
     for (s, c), fs in groups.items():
         key = (names[s], len(fs))
         cuts = CUT.get(key, ())
-        if names[s].startswith(CUT_X):
-            cuts = ("X+", "X-")
+        if names[s].startswith(CUT_X):     # (a CUT key of such an object adds its own: Model 3's diffuser)
+            cuts = ("X+", "X-", *cuts)
         for cname in cuts:
             ymax = None                    # PLANES and X+- (CUT_X_Y): only the faces centred behind this y
             if cname in ("X+", "X-"):
@@ -895,13 +897,28 @@ def classify(car, names, sizes):
     cc = np.stack([np.bincount(inv, cen[:, i]) for i in range(3)], 1) / np.bincount(inv)[:, None]
     ccen = cc[inv]
     paint = mat == PAINT_MAT
+    fnorm = np.array([p.normal[:] for p in me.polygons])
+    # PAINT_OVER (Model 3): faces of `of` (a match() spec) in the box (lo, hi) on the front side of any `above` plane
+    # ((point, normal), ...; cut along them with CUT / PLANES), with `facing` as CARBON's, are paint: the source's
+    # black diffuser reaches higher at its corners than the official's body colour. `tone` (0..1): their paint takes
+    # that quantile of the paint's tones (textures(); the diffuser's corner ledge faces up, so the up-facing term made
+    # it a 1-2 px bright edge over the black and a white point at the corner's foot)
+    tone = np.zeros((n, 3))
+    for zn in C.get("PAINT_OVER", ()):
+        over = match(zn["of"], obj, csize) & (cen > zn["lo"]).all(1) & (cen < zn["hi"]).all(1)
+        if "facing" in zn:
+            d = fnorm @ np.array(zn["facing"][0], float)
+            over &= (d >= zn["facing"][1][0]) & (d <= zn["facing"][1][1])
+        over &= np.any([(cen - np.array(p, float)) @ np.array(nrm, float) > 0 for p, nrm in zn["above"]], 0)
+        paint |= over
+        if "tone" in zn:
+            tone[over] = (1.0, zn["tone"], 0.0)
     # CARBON: paint the real car has in black (Model 3 Performance's carbon spoiler $SLR1, its black lower front
     # intake): paint faces in each zone's box (lo, hi); with `edge` (axis, depth) only those within depth of the
     # outline's lowest coordinate on that axis (CARBON_EDGE: the lid's trailing edge curves forward towards the sides,
     # and edit() cut the faces along that border); with `of` (a match() spec) only those components' faces, with
     # `facing` (axis, (dot min, dot max)) only faces so turned (Model S: the hinge corners under the liftgate), with
     # `below` ((point, normal), ...) only faces centred on every plane's back side (cut along it with CUT / PLANES)
-    fnorm = np.array([p.normal[:] for p in me.polygons])
 
     def in_zone(zn, edge=None):
         box = paint & (cen > zn["lo"]).all(1) & (cen < zn["hi"]).all(1)
@@ -1063,7 +1080,7 @@ def classify(car, names, sizes):
     rail = paint * (part == 0) * pv.smoothstep(*RAIL, cen[:, 2]) if RAIL else np.zeros(n)
     return dict(part=part, zone=zone, rgb=rgb, paint=paint, lamp=lamp, glass=glass, pane=pane, obj=obj, csize=csize,
                 badge=np.array([o.startswith(("Badge_", "Caliper")) for o in obj]),
-                mat=mat, mirror=mirror, carbon=carbon, rail=rail, recess=recess, area=area)
+                mat=mat, mirror=mirror, carbon=carbon, rail=rail, recess=recess, area=area, tone=tone)
 
 
 # ---------------------------------------------------------------- textures
@@ -1419,6 +1436,8 @@ def textures(car, c, shift=0.0):
                                                                      0.5 * (c["badge"] | (c["area"] > 0)))))[:, None], 3, 1)}
     if c["rail"].any():
         layers["rail"] = np.repeat(c["rail"][:, None], 3, 1)
+    if c["tone"][:, 0].any():
+        layers["tone"] = c["tone"]
     if C.get("SEAM_SHADE") or C.get("RECESS"):   # each corner's position, 0..1 over the bbox: texel positions
         co = pv.mesh_co(car)
         lo_, span = co.min(0), np.ptp(co, 0)
@@ -1455,6 +1474,8 @@ def textures(car, c, shift=0.0):
     q = np.interp(q, [q.min(), *np.percentile(q, pc), q.max()], [ends[0], *tg, ends[1]])
     if "rail" in b:                        # RAIL: the median tone
         q += (dict(PAINT_TARGET)[50] - q) * b["rail"][..., 0][paint]
+    if "tone" in b:                        # PAINT_OVER tone: that quantile of the paint's tones
+        q += (np.interp(b["tone"][..., 1][paint] * 100, pc, tg) - q) * b["tone"][..., 0][paint]
     # skin alpha 254 marks the paint for the shader's sheen (MinidoracatTesla_vehicle.frag): vanilla reads alpha only
     # as "1 - a of the paint tint" (vehicle_multiuv.frag:144), so the paint takes 1/255 of the tint, under a level
     badge = b["badge"][..., 0] > 0.25
@@ -1488,6 +1509,10 @@ def textures(car, c, shift=0.0):
         if INK:                            # BADGE_INK (Model Y L): its badge light on a dark paint, dark on a light
             s[ink] = np.array(INK["rgb"][p in INK["dark_on"]]) / 255
         s[etch] = np.median(s[paint], 0) * 0.78     # etched into the steel (and seen through a film): a shade darker
+        if (C.get("SEAM_LINE") or {}).get("tone"):  # the seam lines' spot (seam_lines): 3 x 3 texels of 512 round it
+            r_, c_ = (int(v * SKIN) for v in SEAM_SPOT[::-1])
+            h = 3 * SKIN // MASK // 2
+            s[r_ - h:r_ + h, c_ - h:c_ + h] = np.median(s[paint], 0) * C["SEAM_LINE"]["tone"]
         skin = np.clip(s, 0, 1)
         if rec is not None:                # (after the medians above and the damage tint below: the paint's own)
             skin[paint] *= rec[paint][:, None]
@@ -1635,7 +1660,20 @@ def corners(attr, n):
     return a
 
 
-def seals(V, T, sel, attr, glass_bvh, solid=None, seams=None, full=False):
+def in_outline(bvh):
+    """p -> inside the outline of bvh (the car) from all eight game cameras (30 degrees down, every 45): a line through
+    p along each view meets it. Outside, a dark strip shows past the car's edge and blocks no gap."""
+    el = math.radians(30)
+    dirs = [Vector((math.sin(a) * math.cos(el), math.cos(a) * math.cos(el), math.sin(el)))
+            for a in np.radians(np.arange(0, 360, 45))]
+
+    def inside(p):
+        q = Vector(p)
+        return all(bvh.ray_cast(q, d, 50)[2] is not None or bvh.ray_cast(q, -d, 50)[2] is not None for d in dirs)
+    return inside
+
+
+def seals(V, T, sel, attr, glass_bvh, solid=None, seams=None, full=False, near_full=None):
     """Dark strips SEAL[0] behind every open edge of the faces sel (open by position: the zone split doubled the
     vertices there), reaching SEAL[1] past the edge, both sides: the source's panel gaps are real gaps, the ground
     showed through them. Not along a pane (glass_bvh within 1.2 cm of the strip's far edge): the pane closes that
@@ -1643,7 +1681,7 @@ def seals(V, T, sel, attr, glass_bvh, solid=None, seams=None, full=False):
     of the whole car): not where the strip passes through a surface (it showed on the far side); with SEAL_COVER (a
     distance) also not where nothing lies over its far edge within it (Model S: it stood out of the outline past a
     fender's corner); full: SEAL_DEFAULT and no cover test (SEAL_FULL: Model S's liftgate, whose side strips close
-    the gap to the pillar when it is open). seams (SEAL_RIBBON: a KD tree of points along every panel's open edges, their parts, sel's
+    the gap to the pillar when it is open; near_full: the body's edges along them too). seams (SEAL_RIBBON: a KD tree of points along every panel's open edges, their parts, sel's
     part): along each edge whose nearest edge within SEAL_RIBBON gap is an earlier part's (or its own part's across
     the gap, in the face's plane, away from it), not within `glass` of a pane, in runs at least `chain` long, a strip
     w wide (at most its face's height) on the panel, lift over it, in the
@@ -1697,23 +1735,43 @@ def seals(V, T, sel, attr, glass_bvh, solid=None, seams=None, full=False):
                 rib.append(tr if np.cross(tr[1] - tr[0], tr[2] - tr[0]) @ n > 0 else (tr[0], tr[2], tr[1]))
     if C.get("SEAL_TILT"):                        # (Model X) into the body by that angle: in the face's plane the
         t = t * math.cos(C["SEAL_TILT"]) - fn * math.sin(C["SEAL_TILT"])   # strip stood past the outline at seams
-    sl = SEAL_DEFAULT if full else SEAL   # full (SEAL_FULL parts): the default reach, no cover test
-    far = (a_ + b_) / 2 + t * sl[1]
+    # full (SEAL_FULL parts, and with near_full, a BVH of them, the edges within 1.5 cm of one: the body's side of
+    # their gaps): the default reach, no cover test
+    fe = np.full(len(a_), bool(full))
+    if near_full is not None:
+        fe |= np.array([near_full.find_nearest(Vector(p), 0.015)[0] is not None for p in (a_ + b_) / 2], bool)
+    s0, s1 = (np.where(fe, SEAL_DEFAULT[i], SEAL[i])[:, None] for i in (0, 1))
+    far = (a_ + b_) / 2 + t * s1
     keep = np.array([glass_bvh.find_nearest(Vector(p), 0.012)[0] is None for p in far], bool)
     if solid is not None:
         def through(p, q):
             d = Vector(q - p)
             return solid.ray_cast(Vector(p), d.normalized(), d.length)[0] is not None
         m = (a_ + b_) / 2 - t * 0.001 - fn * 1e-4           # just inside the edge, behind its face
-        back = m - fn * sl[0]
+        back = m - fn * s0
         keep &= ~np.array([through(*s) for s in zip(m, back)], bool)
-        keep &= ~np.array([through(*s) for s in zip(back, back + t * sl[1])], bool)
-        if C.get("SEAL_COVER") and not full:
-            fb = back + t * sl[1]
-            keep &= np.array([through(p, p + n * C["SEAL_COVER"]) for p, n in zip(fb, fn)], bool)
-    a_, b_, fn, t = a_[keep], b_[keep], fn[keep], t[keep]
-    p1, p2 = a_ - fn * sl[0], b_ - fn * sl[0]
-    p3, p4 = p2 + t * sl[1], p1 + t * sl[1]
+        keep &= ~np.array([through(*s) for s in zip(back, back + t * s1)], bool)
+        if C.get("SEAL_COVER"):     # SEAL_COVER_EDGE: both far corners covered too, and none reaching down past a
+            edge = C.get("SEAL_COVER_EDGE")   # bottom edge (Model S: one stood out below a sill; the game looks down)
+            for fb in (back + t * s1,) + ((a_ - fn * s0 + t * s1, b_ - fn * s0 + t * s1) if edge else ()):
+                keep &= fe | np.array([through(p, p + n * C["SEAL_COVER"]) for p, n in zip(fb, fn)], bool)
+            if edge:
+                keep &= fe | (t[:, 2] > -0.7)
+    if C.get("SEAL_TRIM") and solid is not None:
+        # SEAL_TRIM: the reach cut back (whole, 3/4, ... none: dropped) until both far corners lie inside the car's
+        # outline from the game's eight 30-degree cameras: a line through them along each view meets the car
+        # (Model S: strips at the sill's front corner and the A-pillar's foot stood 7-13 mm out; outside the outline
+        # they block no gap, so cutting them opens none)
+        inside = in_outline(solid)
+        for i in np.flatnonzero(keep & ~fe):
+            for f in (1.0, 0.75, 0.5, 0.25, 0.0):
+                if f == 0.0 or all(inside(e - fn[i] * s0[i, 0] + t[i] * s1[i, 0] * f) for e in (a_[i], b_[i])):
+                    break
+            s1[i] *= f
+            keep[i] = f > 0
+    a_, b_, fn, t, s0, s1 = a_[keep], b_[keep], fn[keep], t[keep], s0[keep], s1[keep]
+    p1, p2 = a_ - fn * s0, b_ - fn * s0
+    p3, p4 = p2 + t * s1, p1 + t * s1
     P = np.concatenate([np.stack([p1, p3, p2], 1), np.stack([p1, p4, p3], 1)])
     Vs, Ts, As = two_sided(P, lambda n: corners(attr, n))
     if not rib:
@@ -1725,6 +1783,209 @@ def seals(V, T, sel, attr, glass_bvh, solid=None, seams=None, full=False):
     ra = corners(np.array([0, 0, pv.CABIN_UV1_U - CELL[C["SEAL_RIBBON"]["cell"]], 0, 0, 0, 1], float), rn)
     rt = len(Vs) + np.arange(len(R) * 3).reshape(-1, 3)
     return np.concatenate([Vs, R.reshape(-1, 3)]), np.concatenate([Ts, rt]), np.concatenate([As, ra])
+
+
+def seam_lines(V, T, part, panel, glass_bvh):
+    """SEAM_LINE=dict(w, over, bridge, lift, gap, glass, step, chain, tone | cell[, skip]) (Model S): every gap between
+    two parts (doors, lids, the body; not within `glass` of a pane, not the parts in `skip`) as one continuous dark
+    line of even width, half on each side. Its colour: with `tone`, every corner on SEAM_SPOT, which textures()
+    paints the skin's median paint x tone (a shade of each paint: a dark cabin cell was a black line on the white
+    paint, twice the official renders' contrast); else the cabin cell `cell` (the shader's palette). A 3 x 3 texel
+    flat square around a 512 texel's centre: every sample reads its own colour at 2048 and 512, whatever the phase
+    (a strip's own island would be under a texel, the bake's gaps black). The gap's path: the outline of each part's outer skin (panel faces facing out of the car's
+    ellipsoid with nothing over them within 15 cm; a door's return flange, its inner edge are not), where another
+    part's outline lies within `gap`; runs of it at least `chain` long, sampled
+    every `step`. At each sample, out = n, the mean skin normal 3 cm to either side of the gap; rays along -n across
+    it find where each part's skin comes up to its own height (a line through its heights 1-2 cm from the gap: a
+    tilted panel; a rolled edge seen into the gap is not it). The own half runs from `over` past the middle between
+    that corner and the other part's (at most `bridge` of gap past the own corner when no other skin is across) to
+    `w` in, `lift` over the skin, tapered to a point at the run's ends. A sample without its skin under the rays
+    splits the run. Why: the sources' 1-5 mm gaps are under a pixel at the game's nearest zoom (6.7 mm/px) and seen
+    without antialiasing: the ground through them, a hairline on one panel (SEAL_RIBBON) broke into dots and dashes;
+    halves meeting edge to edge fell between the pixel centres, and a rolled door bottom put a line in its own plane
+    out of sight. Grid units. -> {part: (points, tris, attributes)}."""
+    from mathutils.kdtree import KDTree
+    from mathutils.bvhtree import BVHTree
+    sl = C["SEAM_LINE"]
+    w, lift, step = sl["w"], sl["lift"], sl["step"]
+    skip = [k for k, nm in enumerate(pv.DOORS, 1) if nm in sl.get("skip", ())]
+    pid = np.unique(np.round(V / 1e-5).astype(np.int64), axis=0, return_inverse=True)[1].ravel()
+    fn = np.cross(V[T[:, 1]] - V[T[:, 0]], V[T[:, 2]] - V[T[:, 0]])
+    fn = fn / np.maximum(np.linalg.norm(fn, axis=1), 1e-12)[:, None]
+    bvh = BVHTree.FromPolygons(V.tolist(), T.tolist())       # the whole car: what lies over the skin hides it
+    lo, hi = V[T[panel]].reshape(-1, 3).min(0), V[T[panel]].reshape(-1, 3).max(0)
+    ctr, ext = (lo + hi) / 2, (hi - lo) / 2
+    pbvh = BVHTree.FromPolygons(V.tolist(), T[panel].tolist())
+    # the outer skin: panel faces facing out of the car's ellipsoid with nothing over them within 15 cm (not a
+    # door's return flange in the gap, nor its inner edge); its outline per part is where the gaps show
+    sel = panel & ~np.isin(part, skip)
+    fc = V[T].mean(1)
+    sel[sel] = np.array([fn[f] @ ((fc[f] - ctr) / ext ** 2) > 0 and
+                         bvh.ray_cast(Vector(fc[f] + fn[f] * 1e-4), Vector(fn[f]), 0.15)[2] is None
+                         for f in np.flatnonzero(sel)], bool)
+    tri = T[sel]
+    tp = part[sel]
+    ed = np.concatenate([tri[:, [0, 1]], tri[:, [1, 2]], tri[:, [2, 0]]])
+    ep = np.tile(tp, 3)
+    key = np.c_[np.sort(pid[ed], 1), ep]
+    _, inv, cnt = np.unique(key, axis=0, return_inverse=True, return_counts=True)
+    b = cnt[inv.ravel()] == 1
+    oe, op = ed[b], ep[b]
+    pts, pp = [], []
+    for (i, j), k in zip(oe, op):
+        p, q = V[i], V[j]
+        for f in np.linspace(0, 1, max(2, int(np.linalg.norm(q - p) / 0.002) + 1)):
+            pts.append(p + (q - p) * f)
+            pp.append(k)
+    kd = KDTree(len(pts))
+    for i, p in enumerate(pts):
+        kd.insert(Vector(p), i)
+    kd.balance()
+    pp = np.array(pp)
+
+    def across(m, k):
+        """Nearest other part's outline point within gap of m, or None."""
+        best = None
+        for co, j, d in kd.find_range(Vector(m), sl["gap"]):
+            if pp[j] != k and (best is None or d < best[1]):
+                best = (np.array(co), d)
+        return best and best[0]
+    mids = (V[oe[:, 0]] + V[oe[:, 1]]) / 2
+    ok = np.array([across(m, k) is not None and glass_bvh.find_nearest(Vector(m), sl["glass"])[0] is None
+                   for m, k in zip(mids, op)], bool)
+
+    def outward(c, tg):
+        """The skin's outward normal across the gap at c: the mean of the skin normals 3 cm to either side (the
+        nearest panel faces to two probes 2 cm out), out = away from the car's ellipsoid centre; twice refined."""
+        n = (c - ctr) / ext ** 2
+        for _ in range(2):
+            n = n - tg * (n @ tg)
+            n /= max(np.linalg.norm(n), 1e-12)
+            bx = np.cross(tg, n)
+            acc = np.zeros(3)
+            for sgn in (-1, 1):
+                f = pbvh.find_nearest(Vector(c + n * 0.02 + bx * sgn * 0.03), 0.06)[1]
+                if f is None:
+                    return None
+                f = np.array(f)
+                acc += f if f @ n > 0 else -f
+            n = acc
+        n = n - tg * (n @ tg)
+        return n / max(np.linalg.norm(n), 1e-12)
+
+    def ray(o, d):
+        """First surface along d from o: (its point, its part, -1 if not a panel), or None."""
+        loc, _, f, _ = bvh.ray_cast(Vector(o), Vector(d), 0.3)
+        return None if f is None else (np.array(loc), int(part[f]) if panel[f] else -1)
+    # chains of the kept edges per part (by position)
+    out = {}
+    for k in np.unique(op[ok]):
+        es = np.flatnonzero(ok & (op == k))
+        adj = {}
+        for e in es:
+            u, v = pid[oe[e]]
+            adj.setdefault(u, []).append((v, e))
+            adj.setdefault(v, []).append((u, e))
+        pos = {pid[i]: V[i] for e in es for i in oe[e]}
+        used, Tt = set(), []
+        starts = [v for v in adj if len(adj[v]) != 2] + list(adj)      # open runs first, then loops
+        for s in starts:
+            if all(e in used for _, e in adj[s]):
+                continue
+            line, cur = [s], s
+            while True:
+                nxt = [(v, e) for v, e in adj[cur] if e not in used]
+                if not nxt:
+                    break
+                v, e = nxt[0]
+                used.add(e)
+                line.append(v)
+                cur = v
+                if v == s:
+                    break
+            poly = np.array([pos[v] for v in line])
+            seg = np.linalg.norm(np.diff(poly, axis=0), axis=1)
+            L = seg.sum()
+            if L < sl["chain"]:
+                continue
+            arc = np.r_[0, np.cumsum(seg)]
+            ts = np.linspace(0, L, max(2, int(L / step) + 1))
+            sp = np.stack([np.interp(ts, arc, poly[:, i]) for i in range(3)], 1)
+            rows = []        # per sample: (start over the gap, inner point, n) or None
+            for i, p in enumerate(sp):
+                tg = sp[min(i + 1, len(sp) - 1)] - sp[max(i - 1, 0)]
+                tg /= max(np.linalg.norm(tg), 1e-12)
+                q = across(p, k)
+                n = None if q is None else outward((p + q) / 2, tg)
+                if n is None:
+                    rows.append(None)
+                    continue
+                c = (p + q) / 2
+                bx = np.cross(tg, n)
+                bx *= 1 if bx @ (p - q) >= 0 else -1          # across the gap, into the own part
+                # rays along -n from 15 cm out (an edge inside the car, a door's inner one, sees the outer skin
+                # first: none), across the gap: h, the height over the gap of the panel each meets first; the line
+                # starts where the own part's is up to its height 1-2 cm in (a rolled edge seen into the gap is not
+                # it), and bridges to halfway to where the other part's does the same on the other side
+                ss = np.arange(-0.022, 0.02 + w, 0.0005)
+                for _ in range(2):
+                    hs = [ray(c + bx * s + n * 0.15, -n) for s in ss]
+                    h = np.array([np.nan if x is None else (x[0] - c) @ n for x in hs])
+                    hp = np.array([-1 if x is None else x[1] for x in hs])
+                    fo = (ss >= 0.01) & (ss <= 0.02) & (hp == k)
+                    if fo.any():
+                        break
+                    bx = -bx        # no gap to tell the side by (the two edges coincide): the other side
+                if fo.sum() < 2 or abs(np.median(h[fo])) > 0.025:
+                    rows.append(None)
+                    continue
+
+                def skin(m_, k_):    # where part k_'s skin is up to the line through its heights at m_ (a tilt)
+                    a_, b_ = np.polyfit(ss[m_], h[m_], 1)
+                    return (hp == k_) & (h >= a_ * ss + b_ - 0.002)
+                top = np.flatnonzero(skin(fo, k))
+                j = np.searchsorted(ss, ss[top[0]] + w)
+                if j >= len(ss) or hp[j] != k:
+                    rows.append(None)
+                    continue
+                corner, inner, s0 = hs[top[0]][0], hs[j][0], ss[top[0]]
+                fn_ = (ss >= -0.02) & (ss <= -0.01) & (hp >= 0) & (hp != k)
+                nb = np.bincount(hp[fn_]).argmax() if fn_.any() else -1
+                cand = [] if nb < 0 or (fn_ & (hp == nb)).sum() < 2 else np.flatnonzero(skin(fn_ & (hp == nb), nb)[:top[0]])
+                if len(cand):     # `over` past the middle between the two corners: the halves overlap (edge to edge,
+                    # each alone fell between the game's pixel centres)
+                    other = hs[cand[-1]][0]
+                    d_ = other - corner
+                    start = (corner + other) / 2 + d_ / max(np.linalg.norm(d_), 1e-9) * sl["over"]
+                else:             # no other skin across: over at most `bridge` of gap, at the corner's height
+                    start = corner - bx * (min(max(s0, 0), sl["bridge"]) + sl["over"])
+                rows.append((start + n * lift, inner + n * lift, n))
+            # runs of good samples, tapered ends (the inner point on the edge one)
+            runs, cur_ = [], []
+            for r in rows + [None]:
+                if r is None or cur_ and np.linalg.norm(r[0] - cur_[-1][0]) > 4 * step:
+                    if len(cur_) * step >= sl["chain"]:
+                        runs.append(cur_)
+                    cur_ = [] if r is None else [r]
+                else:
+                    cur_.append(r)
+            for run in runs:
+                run = [list(r) for r in run]
+                run[0][1], run[-1][1] = run[0][0], run[-1][0]
+                for (a0, a1, na), (b0, b1, nb_) in zip(run[:-1], run[1:]):
+                    for tr in ((a0, b0, b1), (a0, b1, a1)):
+                        cr = np.cross(tr[1] - tr[0], tr[2] - tr[0])
+                        if np.linalg.norm(cr) > 1e-12:
+                            Tt.append(tr if cr @ (na + nb_) > 0 else (tr[0], tr[2], tr[1]))   # facing out (n)
+        if Tt:
+            R = np.array(Tt, float)
+            rn = np.cross(R[:, 1] - R[:, 0], R[:, 2] - R[:, 0])
+            rn /= np.maximum(np.linalg.norm(rn, axis=1, keepdims=True), 1e-12)
+            out[int(k)] = (R.reshape(-1, 3), np.arange(len(R) * 3).reshape(-1, 3),
+                           corners(np.array([*SEAM_SPOT, *SEAM_SPOT, 0, 0, 1] if sl.get("tone") else
+                                            [0, 0, pv.CABIN_UV1_U - CELL[sl["cell"]], 0, 0, 0, 1], float), rn))
+        print(f"SEAM_LINE part {k}: {len(Tt)} tris, {int((ok & (op == k)).sum())} outline edges")
+    return out
 
 
 def uv1_class(a):
@@ -2028,7 +2289,13 @@ def pieces(car, c, shift):
             kd.insert(Vector(p), i)
         kd.balance()
         seams = (kd, pp)
-    adds += [seals(V, T, (part == 0) & panel, cab_attr("base"), gb, solid, seams and (*seams, 0))]
+    # SEAL_FULL: the body's side of those parts' gaps full too (Model S: with SEAL_COVER and the short SEAL the
+    # strips along the liftgate's sides went, and the open liftgate's gap to the C-pillar showed the ground)
+    fullk = [k for k, nm in enumerate(pv.DOORS, 1) if nm in C.get("SEAL_FULL", ())]
+    near_full = bvh_of([(V, T[np.isin(part, fullk)])]) if fullk else None
+    adds += [seals(V, T, (part == 0) & panel, cab_attr("base"), gb, solid, seams and (*seams, 0), near_full=near_full)]
+    lines = seam_lines(V, T, part, panel, gb) if C.get("SEAM_LINE") else {}
+    adds += [lines[0]] if 0 in lines else []
     for v, t, a in adds:
         body_t.append(t + len(bodyV))
         bodyV = np.concatenate([bodyV, v])
@@ -2057,7 +2324,7 @@ def pieces(car, c, shift):
                                  by_pos=bool(C.get("SPLIT_COLOURS")))
             extra = [backs(bsel, rec, 0) for bsel, rec in back_sets(sel)] + [
                 seals(V, T, skin, cab_attr("base"), gb, solid, seams and k not in skip and (*seams, k) or None,
-                      full=pname in C.get("SEAL_FULL", ()))]
+                      full=pname in C.get("SEAL_FULL", ()))] + ([lines[k]] if k in lines else [])
             for v, bt, ba in extra:
                 t = np.concatenate([t, bt + len(P)])
                 P = np.concatenate([P, v])
