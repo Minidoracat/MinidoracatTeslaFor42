@@ -68,14 +68,17 @@ CAR = dict(
     # the gains act on the paint colour only, the ramp's grey (floor reflection, highlights) gets their mean.
     # Calibration knob: refit after changing the paint light
     CAL={
-        "StealthGrey": ((0.82, 0.78, 0.75), (0.0, 0.0, 0.0)),
-        "LunarSilver": ((0.76, 0.75, 0.75), (0.0, 0.0, 0.0)),
+        # (round 8) Stealth Grey, Lunar Silver and Ultra Red per channel by the game's p50 against the official FRONT34's
+        # (modelx-sp paint, 824bf64: [52 52 59] / [60 59 66], [131 134 142] / [141 142 150], [93 24 30] / [101 30 34];
+        # temp/fit-1112/game/after-6e52fea/mx/RESULT.txt); the others as they were
+        "StealthGrey": ((0.946, 0.885, 0.839), (0.0, 0.0, 0.0)),
+        "LunarSilver": ((0.818, 0.795, 0.792), (0.0, 0.0, 0.0)),
         # Pearl White x 1.4 round the visible paint's median 230 (the offset): Model S's frag sun-lobe model
         # (temp/wt-fix-ms/temp/skf_ms/work/sheenfit.py, k 0.93 c 0.22 x 0.62 for flag 251) on this car's offline game S
         # view predicts game p50 214 and 14 % >= 250 (official FRONT34 214 / 14.4 %; at 0.92 / 0 it was 214 / 8 %), the
         # skin's p5 171 -> ~147 (the other cars 140-151). An estimate: measure in game (paint_sheet.py)
         "PearlWhite": ((1.288, 1.274, 1.274), (-0.361, -0.361, -0.361)),
-        "UltraRed": ((0.75, 1.34, 0.94), (0.0, 0.0, 0.0)),
+        "UltraRed": ((0.8145, 1.675, 1.065), (0.0, 0.0, 0.0)),
         "DiamondBlack": ((1.16, 1.09, 0.98), (0.0, 0.0, 0.0)),
         "FrostBlue": ((1.06, 1.02, 0.98), (0.0, 0.0, 0.0)),
         "SolidBlack": ((1.02, 1.0, 0.94), (0.0, 0.0, 0.0)),
@@ -97,13 +100,15 @@ CAR = dict(
     # face 6-17, disc 17-37): the band back to 0.04, the disc and barrel lighter, the face darker. Polar unwrap folded
     # over the five blades (each round its own fitted rim lip), r/R 0.20-0.95: correlation with the official front /
     # rear 0.727 / 0.619 -> 0.705 / 0.624, p50 23 / 21 -> 31 / 28 (official 30 / 33); the edges' grey stays 108
+    # Round 8: the blade face 9 -> 50 (game SW front wheel rim p50 / p75 21 / 26 against the official 38 / 63, the grey
+    # edges at the official's p90: modelx-sp 824bf64, RESULT.txt)
     WHEEL_RIM=0.727,                       # 20" (254 mm bead + 17 mm flange) / 373 mm tyre radius
     WHEEL_SPOKE=dict(n=5, shape=_blade(0.0), lit=_blade(0.04), cap=0.13, inset=0.016, dish=0.020, depth=0.018,
                      sweep=0),
     WHEEL_LIP=True,                        # the grey lip ring in the flat `lip` grey
     WHEEL_TURN=True,                       # one part all round: the right wheels show the left's pattern, not a mirror
     WHEEL_DISC=dict(rotor=0.70, hat=0.30),
-    WHEEL_RGB=dict(spoke=9, edge=108, cap=18, barrel=16, lip=105, rotor=22, hat=20, dark=6, gap=6, tire=(22, 28),
+    WHEEL_RGB=dict(spoke=50, edge=108, cap=18, barrel=16, lip=105, rotor=22, hat=20, dark=6, gap=6, tire=(22, 28),
                    tread=20),
     # ---- pzveh: vehicle script
     OY=0.2878,
@@ -219,9 +224,10 @@ CAR = dict(
              "Cam_Black": (36, 36, 39), "Slot_Black": (18, 18, 19), "Marker_Red": (36, 18, 17),
              "Band_Black": (14, 14, 16), "Intake_Black": (18, 18, 20),
              # (round 6) the tailgate band between the lamps dark grey (official REAR34 42; Band_Black drew 9, round 6's
-             # 46 drew 24, round 7's 72 draws 39) and the rear bumper reflector slits (official 34-37 red over the dark,
+             # 46 drew 24, round 7's 72 draws 39; round 8: 72 read 36.7 in the game against the official's 41-53, 84 by
+             # the line ~43) and the rear bumper reflector slits (official 34-37 red over the dark,
              # mostly in the bumper lip shadow)
-             "Gate_Band": (72, 72, 76), "Bump_Refl": (62, 17, 19),
+             "Gate_Band": (84, 84, 88), "Bump_Refl": (62, 17, 19),
              # the lower trim (prep_model_x.py FIELD trim_grey; official SIDE sills 30-37, arch lips 45-67)
              "Trim_Grey": (40, 40, 43)},
     GLASS_MATS=("Window_Glass",),

@@ -181,10 +181,10 @@ T.Specs = {
         -- Model X Plaid paints: the last US design studio's six (Lexicon 2026-03-06) and China's pre-refresh Solid
         -- Black and Deep Blue (2025-03). Same order and append-only rules as above; h/s/v by convert.py build.
         colors = {
-            { name = "StealthGrey", code = "PN01", h = 0.72, s = 0.538, v = 0.283 },
-            { name = "LunarSilver", code = "PN02", h = 0.634, s = 0.53, v = 0.56 },
+            { name = "StealthGrey", code = "PN01", h = 0.767, s = 0.528, v = 0.311 },
+            { name = "LunarSilver", code = "PN02", h = 0.667, s = 0.515, v = 0.589 },
             { name = "PearlWhite", code = "PPSW", h = 0.645, s = 0.514, v = 0.904 },
-            { name = "UltraRed", code = "PR01", h = 0.986, s = 1.0, v = 0.447 },
+            { name = "UltraRed", code = "PR01", h = 0.988, s = 1.0, v = 0.493 },
             { name = "DiamondBlack", code = "PX02", h = 0.953, s = 0.537, v = 0.227 },
             { name = "FrostBlue", code = "PB00", h = 0.586, s = 0.894, v = 0.487 },
             { name = "SolidBlack", code = "PBSB", h = 0.925, s = 0.52, v = 0.24 },
