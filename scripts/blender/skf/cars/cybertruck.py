@@ -1,7 +1,7 @@
 """Cybertruck Cyberbeast: adamsochi2010's (Mr3DDD) "Tesla CyberTruck" (Sketchfab, CC BY 4.0, CREDITS.md). CAR=cybertruck.
 Keys as in model_y.py (each is the module constant it sets); the keys only this car has are read with C.get and are off
 for the others: SRC_YFRONT / SRC_STRETCH (an FBX source, scaled onto the official size), DROP_FACES, FACE_PARTS,
-PART_OBJS, TIRE, PORT, CERBERUS, BED_TUB, ROOF_BAR, LIGHTS, TONNEAU_T, FILMS, FILM_MIX, PAINT_ALPHAS, EXTRA_AREAS. The
+PART_OBJS, TIRE, PORT, CERBERUS, BED_TUB, LIGHTS, TONNEAU_T, FILMS, FILM_MIX, PAINT_ALPHAS, EXTRA_AREAS. The
 source's body is one welded shell with real 4 mm panel gaps, so its doors are split face by face along those gaps
 (FACE_PARTS); the frunk lid (Body.012), tailgate (Body.005) and tonneau (Body.004, two triangles) are their own objects.
 The source has no cargo bed (a flat panel closes it under the tonneau) and no wheel-arch liners: BED_TUB and ARCH_LINER
@@ -89,11 +89,13 @@ CAR = dict(
     WHEEL_LIFT=0.11,
     WHEEL_INSET=0.03,
     CAB_BOX=(1.40, 0.95, -0.95),
-    # passengers / seats (cabin.py) behind the door openings' middle by back (front, rear): the rear bench sits 1 cm
-    # ahead of its door's middle so its backs and headrests clear the cabin's rear wall (CABIN_REAR_Y). Heights
+    # passengers / seats (cabin.py) behind the door openings' middle by back (front, rear): the rear bench where it was
+    # with the rear door's rear edge at -0.72 (1 cm ahead of that opening's middle; the edge is -0.645 since the
+    # official fit, its middle 3.75 cm further forward), its backs and headrests clear of the cabin's rear wall
+    # (CABIN_REAR_Y). Heights
     # (scripts/blender/skf/seat_head.py, 2026-11-01): the feet on CABIN_FLOOR in the seated clips (scripts/seat_anim.py),
     # the rear row `rear` lower; SEATS dz / dy put the cushions and backrests against the body
-    SEAT=dict(x=0.36, h=0.625, z=-0.190, back=(0.12, -0.01), out=0.30, rear=0.017),
+    SEAT=dict(x=0.36, h=0.625, z=-0.190, back=(0.12, 0.0275), out=0.30, rear=0.017),
     BODY_W_Z=0.55,
     # the tailgate hinges at its lower edge and folds down and back (owner's manual p.60-61: the struts lower it);
     # the tonneau rolls into its canister at the bed's front: ROLL_N strips slide forward and stack (tonneau_strips)
@@ -107,7 +109,8 @@ CAR = dict(
     GATE_HINGE="bottom",
     TONNEAU_T=0.025,                       # tonneau slab: about 3 cm (the real cover's slats)
     # ---- convert.py: the source (TMP/src, gitignored; temp/sketchfab-cybertruck in the main checkout)
-    SRC=("src", "source", "forFUBfbx.fbx"),
+    # prep_cybertruck.py's output (the source FBX on the manual and the official side render; run it first)
+    SRC=("src", "source", "cybertruck_prep.fbx"),
     SRC_C=(0.0, 0.0041),                   # source bbox centre, x (width) and y (length), source units (inspect)
     SRC_YFRONT=-0.939,                     # the source's ground (tyre bottoms), source z
     SRC_SCALE=5.6829 / 5.6797,             # metres per source unit: official length / source length
@@ -126,10 +129,13 @@ CAR = dict(
     DROP_COMPS=((("Cube",), (-0.7, 2.1, 0.3), (0.7, 2.3, 0.5)),),
     # faces dropped by centre and normal (objects, lo, hi, axis, (dot min, dot max)): the flat panel that closes the
     # source's bed under the tonneau (BED_TUB is the bed), the frunk lid's underside and edges (the pipeline's slab
-    # gives it thickness; frunk_tub needs its outline)
+    # gives it thickness; frunk_tub needs its outline), and the underbody's tunnel over the rear axle (its top 0.18 grid
+    # over the bed's floor between the wheel humps: through the floor, a box in the open bed)
     DROP_FACES=((("Body",), (-0.62, -2.28, 1.00), (0.62, -0.97, 1.40), (0, 0, 1), (0.5, 2.0)),
-                (("Body.012",), (-0.8, 1.6, 0.7), (0.8, 2.4, 1.1), (0, 0, 1), (-2.0, 0.5))),
-    ARCH_LINER=dict(gap=0.04, inner=0.06, arc=(0, 180), n=17, x=0.82),   # inside the cladding (|x| 0.839)
+                (("Body.012",), (-0.8, 1.6, 0.7), (0.8, 2.4, 1.1), (0, 0, 1), (-2.0, 0.5)),
+                (("Body",), (-0.60, -1.86, 0.50), (0.60, -0.95, 0.95), (0, 0, 1), (-2.0, -0.2))),
+    # inside the cladding (|x| 0.839); the raised openings' upper corners: prep_cybertruck.py's Trim_CT_well
+    ARCH_LINER=dict(gap=0.04, inner=0.06, arc=(0, 180), n=17, x=0.82),
     PLATES=(),
     SEAL_CLIP=True,
     RAIL=None,
@@ -144,29 +150,30 @@ CAR = dict(
     GLASS_BACKS=("WinLH", "WinLT", "WinRH", "WinRT"),
     ROOF_PANE=("Body.008", 16),
     MIRROR_CAP="-",                        # black mirror housings (official FRONT34): no body-colour cap
-    LAMPS=dict(head=("White headlights",), tail=("Car Reflection White",), tail_z=0.3, tail_y=-1.5, blade=None),
-    # the front light bar: a plate across the top of the nose face, under the hood's edge (z 0.84) (z, height, half
-    # width). The source's bar is lit only at its ends from the game's camera (tesla-ctbody-1030c night-S)
-    HEADBAR=(0.815, 0.035, 0.72),
+    # the bumper's corner lamps (Cube.003) are the brake lights (LAMPS brake, all of them; STOP_X 0), the tailgate's bar
+    # and its ends on the body's corners (prep_cybertruck.py Lamp_CT_tailend) the tail lights
+    LAMPS=dict(head=("White headlights",), tail=("Car Reflection White",), tail_z=0.3, tail_y=-1.5, blade=None,
+               brake=("Cube.003", 0.0)),
+    # the front light bar is prep_cybertruck.py's Lamp_CT_head (FIELD headbar: corner to corner and round the corners)
     # part lines, side view (y, z): the source's 4 mm panel gaps. A line of 3+ points is a polyline (z ascending)
     LINES={
         "S": ((0.185, 0.30), (0.185, 1.00)),     # front / rear door seam (vertical); above the belt the B-pillar split
         "BF": ((0.185, 0.30), (0.185, 1.00)),
         "BR": ((0.185, 0.30), (0.185, 1.00)),
-        "D": ((-0.7205, 1.043), (-0.709, 1.14)),  # rear door's rear edge above the belt (into the glass)
-        "R1": ((-0.682, 0.362), (-0.7285, 0.53), (-0.7205, 1.043)),   # ... and below it
+        "D": ((-0.661, 1.043), (-0.660, 1.13)),  # rear door's rear edge above the belt (into the glass)
+        "R1": ((-0.630, 0.342), (-0.641, 0.53), (-0.661, 1.043)),   # ... and below it (prep: 6-9 cm forward)
         "FQ": ((1.0995, 0.30), (1.0995, 1.00)),  # front door's front edge carried up the glass: the fixed quarter glass
     },
-    FRONT_Y=1.0995, SILL_Z=0.35, ARCH=(0.0, -9.0),
+    FRONT_Y=1.0995, SILL_Z=0.33, ARCH=(0.0, -9.0),
     IN_DOOR=dict(up=1.0, x=0.55),
-    IN_GATE=dict(y=-2.20, z=0.60, up=1.10, x_up=0.67),   # tailgate; the light bar's middle on its top edge
-    DOOR_Y=(1.0995, 0.185, -0.72),
+    IN_GATE=dict(y=-2.20, z=0.60, up=1.08, x_up=0.67),   # tailgate; the light bar's middle on its top edge
+    DOOR_Y=(1.0995, 0.185, -0.645),
     GATE_Z=0.621,                          # tailgate's lower edge = the bed floor
-    REAR_ARCH=(-1.41, 0.37, 0.40),
+    REAR_ARCH=(-1.385, 0.37, 0.40),        # the rear wheel (prep FIELD axle: 25.3 mm forward)
     GATE_X=0.76,
-    STOP_X=0.80,                           # the bumper's corner lamps are the brake lights, the tailgate bar the tail
-    PANELS=dict(x=0.70, z=1.15, front=(0.185, 1.10), rear=(-0.73, 0.185), gate=(-2.2, 0.6), lid=(1.6, 0.8)),
-    GUARDS=dict(front=(1.10, 1.0, 0.5), rear=(-0.72, 1.3, 0.5)),
+    STOP_X=0.0,                            # (LAMPS brake)
+    PANELS=dict(x=0.70, z=1.15, front=(0.185, 1.10), rear=(-0.67, 0.185), gate=(-2.2, 0.6), lid=(1.6, 0.8)),
+    GUARDS=dict(front=(1.10, 1.0, 0.5), rear=(-0.63, 1.3, 0.5)),
     # paint faces of these objects split face by face (the source's doors are not separate): doors by in_door(centre)
     # outside |x| PANELS x and under PANELS z
     FACE_PARTS=("Body",),
@@ -218,16 +225,15 @@ CAR = dict(
     # rear y), half width inside = the floor's 1,295 mm, top z), lining (cabin palette cell)
     BED_TUB=dict(y=(-0.673, -2.18), z=0.625, rail_x=((-2.26, 0.63), (-0.99, 0.57)),
                  top=((-2.26, 1.105), (-1.675, 1.105), (-1.668, 1.19), (-1.17, 1.19), (-1.164, 1.235), (-0.99, 1.25)),
-                 hump=((-1.08, -1.78), 0.535, 0.86), cell="dash"),
-    # the off-road light bar (official accessory, every Cybertruck here) on the roof's front edge over the windscreen:
-    # centre y, width (~46"), depth, height (grid); the lens's cabin palette cell
-    ROOF_BAR=dict(y=0.22, w=0.96, d=0.05, h=0.035, lens="seat"),
+                 hump=((-1.055, -1.755), 0.535, 0.86), cell="dash"),
+    # the off-road light bar (official accessory, every Cybertruck here) is prep_cybertruck.py's Lamp_CT_roofbar, on the
+    # windshield's upper edge (FIELD lightbar; ROOF_BAR's box on the roof behind the apex is off)
     # light spots (Truck.lua T.Init.BedLight / RoofLight): (x, y) in half extents, "bed" = the bed's centre; the roof
     # bar like vanilla's headlights (yOffset 2.0, Vehicles.lua:1504-1505)
     LIGHTS={"BedLight": (0.0, "bed"), "RoofLight": (0.0, 2.0)},
     # charge port (owner's manual p.190): above the driver's side rear wheel, on the arch's upper trim edge (mesh y
-    # pre-centre, z; the rear axle at y -1.43)
-    PORT=(-1.43, 0.88),
+    # pre-centre, z; the rear axle at y -1.39)
+    PORT=(-1.405, 0.917),                 # (-1.43, 0.88) through prep_cybertruck.py's field
     # ---- cabin.py (mesh coords, centred)
     CABIN_FLOOR=-0.453,                    # under the seated feet (seat_head.py feet)
     CABIN_FRONT_Y=1.45,
