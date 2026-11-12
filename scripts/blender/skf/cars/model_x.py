@@ -55,6 +55,9 @@ CAR = dict(
     # brought): the game showed 31.5 % of its lit paint >= 250 against the official FRONT34's 14.4 % at p50 218 / 214
     # (Main, 2026-11-12). The other paints stay 254
     PAINT_ALPHAS={"PearlWhite": 251},
+    # convert.py fill_slivers (from fix/m3): the texels a triangle's UV touches that the bake left empty take its own
+    # values (1,419 triangles sampled the skin's black, 656 of them on the front end; the game's 1 px dark points)
+    UV_FILL=True,
     PAINT_ALPHA_DEFAULT=254,
     # tex = a * official-ramp colour / GAIN (model_y.py CAL), b 0: per-channel gains only, a = official FRONT34 p50 over
     # the game's at a = 1 (perf/paint_sheet.py on modelx-sp paint-<i>-<name>-fl-max, tesla-mx-1101b; Ultra Red and Deep
@@ -86,14 +89,16 @@ CAR = dict(
     # ---- pzveh: wheel ($WX03, official SIDE / RIMCLOSEUP): five swept black blades edged in thin grey lines (_blade),
     # the brake disc dark through the windows; 265/45 R20 front, 275/45 R20 rear (TIRE_AXLES). Game-screen levels
     # (pzveh WHEEL_RGB) from the official SIDE front wheel's polar unwrap: blade face 6-17, window (disc) 17-37, hub 21-31,
-    # the grey edges peak 85-107 and the lip 88-106 there, both 1-2 px anti-aliased (the game draws them unblended)
+    # the grey edges peak 85-107 and the lip 88-106 there, both 1-2 px anti-aliased (the game draws them unblended).
+    # Round 3: the edges 130 -> 108 (same-camera SIDE r/R 0.65-0.95 p95 110-119 against the official's 96-107) and
+    # their band _blade 0.04 -> 0.024 rr (1.6 -> 1.0 px at the game's closest zoom, 180.7 px / grid unit)
     WHEEL_RIM=0.727,                       # 20" (254 mm bead + 17 mm flange) / 373 mm tyre radius
-    WHEEL_SPOKE=dict(n=5, shape=_blade(0.0), lit=_blade(0.04), cap=0.13, inset=0.016, dish=0.020, depth=0.018,
+    WHEEL_SPOKE=dict(n=5, shape=_blade(0.0), lit=_blade(0.024), cap=0.13, inset=0.016, dish=0.020, depth=0.018,
                      sweep=0),
     WHEEL_LIP=True,                        # the grey lip ring in the flat `lip` grey
     WHEEL_TURN=True,                       # one part all round: the right wheels show the left's pattern, not a mirror
     WHEEL_DISC=dict(rotor=0.70, hat=0.30),
-    WHEEL_RGB=dict(spoke=11, edge=130, cap=18, barrel=10, lip=105, rotor=14, hat=14, dark=6, gap=6, tire=(22, 28),
+    WHEEL_RGB=dict(spoke=11, edge=108, cap=18, barrel=10, lip=105, rotor=14, hat=14, dark=6, gap=6, tire=(22, 28),
                    tread=20),
     # ---- pzveh: vehicle script
     OY=0.2878,
