@@ -172,6 +172,9 @@ CAR = dict(
     # sliver island or a thin tail far from its island's texels gets none: the game showed the skin's black there, a
     # 10 px dash at a rear door's sill and a line under the spoiler's ends, 2026-11-13)
     UV_FILL=True,
+    # the filled and grown texels stay out of the paint's blur and quantiles: with UV_FILL alone 20-32 % of the
+    # baked texels moved (PearlWhite p75 +2..3, Model Y Quicksilver p50 +7; tonechk.sh 2026-11-13), with it none
+    UV_FILL_TONE=True,
     # the panel gaps shaded in the skin (convert.py seam_shade, model_y.py): a dotted line at the closest zoom
     SEAM_SHADE=dict(reach=0.02, width=0.010, k=0.35, steep=0.5,
                     parts=("DoorFrontLeft", "DoorFrontRight", "DoorRearLeft", "DoorRearRight", "EngineDoor"),

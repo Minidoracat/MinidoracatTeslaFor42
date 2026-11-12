@@ -1185,6 +1185,13 @@ def fill_slivers(me, res, layers, grow=8, reach=0.75):
     src = src.reshape(H, W)
     free = ~cov
     free.ravel()[pix] = False
+    # the four corners stay empty for pzveh.cabin_corners (the cabin's colour under Viewpoint), which paints a corner
+    # only up to its first texel that is not black: the margin (the steps of one pass add up, it runs up to 8 x grow
+    # along a diagonal) had reached the UV (0, 0) corner, left (14, 14, 15) on Model 3, (27, 27, 29) on Model Y L
+    # (2026-11-13)
+    for cy in (slice(None, pv.CORNER_PX), slice(-pv.CORNER_PX, None)):
+        for cx in (slice(None, pv.CORNER_PX), slice(-pv.CORNER_PX, None)):
+            free[cy, cx] = False
     for _ in range(grow):
         for dy, dx in ((-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)):
             sh = np.full_like(src, -1)
@@ -1287,7 +1294,9 @@ def bake(car, layers, ao=True):
         bpy.data.images.remove(img)
         print("BAKE", name, "done")
     if "cov" in res:
+        baked = res["cov"].copy()                   # UV_FILL_TONE: the texels the bake itself wrote
         fill_slivers(me, res, layers)
+        res["baked"] = baked
     me.materials.clear()
     for m in saved:
         me.materials.append(m)
@@ -1464,14 +1473,22 @@ def textures(car, c, shift=0.0):
     q = (PAINT_Q[0] + PAINT_Q[1] * np.clip((nz + 0.3) / 1.2, 0, 1) + PAINT_Q[2] * b["hgt"][..., 0]) * lit
     # AO samples are noisy and the ramp is steep in places: blurred inside the paint (about 6 px of 2048), else flat
     # panels came out speckled
-    pm = paint.astype(np.float32)
+    # UV_FILL_TONE (with UV_FILL): the blur and the percentiles below read only the texels the bake itself wrote
+    # (bake()'s "baked"), so UV_FILL's filled and grown texels leave every baked texel and the paint's quantiles as
+    # they were (the grown margin had shifted the percentiles: Cybertruck p5 / p95 up to 34 levels); a filled texel
+    # with no baked paint near keeps its own tone
+    keep = paint & (b["baked"][..., 0] > 0.5) if C.get("UV_FILL_TONE") and "baked" in b else paint
+    pm = keep.astype(np.float32)
     den = np.maximum(pv.box_blur(pv.box_blur(pm, 3), 3), 1e-6)
-    q = (pv.box_blur(pv.box_blur(q * pm, 3), 3) / den)[paint]
+    qb = pv.box_blur(pv.box_blur(q * pm, 3), 3) / den
+    if keep is not paint:
+        qb = np.where(keep | (den > 0.05), qb, q)
+    q, qk = qb[paint], qb[keep]
     # spread: a monotone remap of q's percentiles onto PAINT_TARGET; equal q stay equal (no texel-rank ties)
     # (a car may set its own: stainless reads dark on its flanks and bright on top in the official renders)
     pc, tg = zip(*C.get("PAINT_TARGET", PAINT_TARGET))
     ends = C.get("PAINT_ENDS", PAINT_ENDS)
-    q = np.interp(q, [q.min(), *np.percentile(q, pc), q.max()], [ends[0], *tg, ends[1]])
+    q = np.interp(q, [qk.min(), *np.percentile(qk, pc), qk.max()], [ends[0], *tg, ends[1]])
     if "rail" in b:                        # RAIL: the median tone
         q += (dict(PAINT_TARGET)[50] - q) * b["rail"][..., 0][paint]
     if "tone" in b:                        # PAINT_OVER tone: that quantile of the paint's tones
@@ -1508,11 +1525,11 @@ def textures(car, c, shift=0.0):
         s[chrome] = np.array(CHROME[int(np.median(s[paint].max(-1)) >= 0.55)]) / 255
         if INK:                            # BADGE_INK (Model Y L): its badge light on a dark paint, dark on a light
             s[ink] = np.array(INK["rgb"][p in INK["dark_on"]]) / 255
-        s[etch] = np.median(s[paint], 0) * 0.78     # etched into the steel (and seen through a film): a shade darker
+        s[etch] = np.median(s[keep], 0) * 0.78     # etched into the steel (and seen through a film): a shade darker
         if (C.get("SEAM_LINE") or {}).get("tone"):  # the seam lines' spot (seam_lines): 3 x 3 texels of 512 round it
             r_, c_ = (int(v * SKIN) for v in SEAM_SPOT[::-1])
             h = 3 * SKIN // MASK // 2
-            s[r_ - h:r_ + h, c_ - h:c_ + h] = np.median(s[paint], 0) * C["SEAM_LINE"]["tone"]
+            s[r_ - h:r_ + h, c_ - h:c_ + h] = np.median(s[keep], 0) * C["SEAM_LINE"]["tone"]
         skin = np.clip(s, 0, 1)
         if rec is not None:                # (after the medians above and the damage tint below: the paint's own)
             skin[paint] *= rec[paint][:, None]
@@ -1521,7 +1538,7 @@ def textures(car, c, shift=0.0):
         pv.save_png(skin, os.path.join(pv.TEX_DIR, f"{pv.NAME}_{p}.png"), p)
         # setColorHSV for the damage overlays: the shader gives Veh_Damage* texels the paint hue and S / V offsets
         # (vehicle_common.frag.glsl:6-15); their median S 0.03, V 0.45 should land on this skin's median paint
-        h_, s_, v_ = colorsys.rgb_to_hsv(*map(float, np.median(s[paint], 0)))
+        h_, s_, v_ = colorsys.rgb_to_hsv(*map(float, np.median(s[keep], 0)))
         hsvs[p] = (round(h_, 3), round(min(1.0, s_ + 0.47), 3), round(min(1.0, v_ + 0.05), 3))
     paint_hsv(hsvs)
     f = SKIN // MASK
