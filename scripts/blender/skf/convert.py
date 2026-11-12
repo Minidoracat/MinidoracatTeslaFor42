@@ -1536,7 +1536,7 @@ def corners(attr, n):
     return a
 
 
-def seals(V, T, sel, attr, glass_bvh, solid=None, seams=None, full=False):
+def seals(V, T, sel, attr, glass_bvh, solid=None, seams=None, full=False, near_full=None):
     """Dark strips SEAL[0] behind every open edge of the faces sel (open by position: the zone split doubled the
     vertices there), reaching SEAL[1] past the edge, both sides: the source's panel gaps are real gaps, the ground
     showed through them. Not along a pane (glass_bvh within 1.2 cm of the strip's far edge): the pane closes that
@@ -1544,7 +1544,7 @@ def seals(V, T, sel, attr, glass_bvh, solid=None, seams=None, full=False):
     of the whole car): not where the strip passes through a surface (it showed on the far side); with SEAL_COVER (a
     distance) also not where nothing lies over its far edge within it (Model S: it stood out of the outline past a
     fender's corner); full: SEAL_DEFAULT and no cover test (SEAL_FULL: Model S's liftgate, whose side strips close
-    the gap to the pillar when it is open). seams (SEAL_RIBBON: a KD tree of points along every panel's open edges, their parts, sel's
+    the gap to the pillar when it is open; near_full: the body's edges along them too). seams (SEAL_RIBBON: a KD tree of points along every panel's open edges, their parts, sel's
     part): along each edge whose nearest edge within SEAL_RIBBON gap is an earlier part's (or its own part's across
     the gap, in the face's plane, away from it), not within `glass` of a pane, in runs at least `chain` long, a strip
     w wide (at most its face's height) on the panel, lift over it, in the
@@ -1596,23 +1596,29 @@ def seals(V, T, sel, attr, glass_bvh, solid=None, seams=None, full=False):
             r3, r4 = r2 - d * w, r1 - d * w
             for tr in ((r1, r2, r3), (r1, r3, r4)):   # wound to face out like the panel (n)
                 rib.append(tr if np.cross(tr[1] - tr[0], tr[2] - tr[0]) @ n > 0 else (tr[0], tr[2], tr[1]))
-    sl = SEAL_DEFAULT if full else SEAL   # full (SEAL_FULL parts): the default reach, no cover test
-    far = (a_ + b_) / 2 + t * sl[1]
+    # full (SEAL_FULL parts, and with near_full, a BVH of them, the edges within 1.5 cm of one: the body's side of
+    # their gaps): the default reach, no cover test
+    fe = np.full(len(a_), bool(full))
+    if near_full is not None:
+        fe |= np.array([near_full.find_nearest(Vector(p), 0.015)[0] is not None for p in (a_ + b_) / 2], bool)
+    s0, s1 = (np.where(fe, SEAL_DEFAULT[i], SEAL[i])[:, None] for i in (0, 1))
+    far = (a_ + b_) / 2 + t * s1
     keep = np.array([glass_bvh.find_nearest(Vector(p), 0.012)[0] is None for p in far], bool)
     if solid is not None:
         def through(p, q):
             d = Vector(q - p)
             return solid.ray_cast(Vector(p), d.normalized(), d.length)[0] is not None
         m = (a_ + b_) / 2 - t * 0.001 - fn * 1e-4           # just inside the edge, behind its face
-        back = m - fn * sl[0]
+        back = m - fn * s0
         keep &= ~np.array([through(*s) for s in zip(m, back)], bool)
-        keep &= ~np.array([through(*s) for s in zip(back, back + t * sl[1])], bool)
-        if C.get("SEAL_COVER") and not full:
-            fb = back + t * sl[1]
-            keep &= np.array([through(p, p + n * C["SEAL_COVER"]) for p, n in zip(fb, fn)], bool)
-    a_, b_, fn, t = a_[keep], b_[keep], fn[keep], t[keep]
-    p1, p2 = a_ - fn * sl[0], b_ - fn * sl[0]
-    p3, p4 = p2 + t * sl[1], p1 + t * sl[1]
+        keep &= ~np.array([through(*s) for s in zip(back, back + t * s1)], bool)
+        if C.get("SEAL_COVER"):     # its far edge's middle and both corners covered (a corner stood out below a sill)
+            for fb in (back + t * s1, a_ - fn * s0 + t * s1, b_ - fn * s0 + t * s1):
+                keep &= fe | np.array([through(p, p + n * C["SEAL_COVER"]) for p, n in zip(fb, fn)], bool)
+            keep &= fe | (t[:, 2] > -0.7)   # nor reaching down past a bottom edge (the game looks from above)
+    a_, b_, fn, t, s0, s1 = a_[keep], b_[keep], fn[keep], t[keep], s0[keep], s1[keep]
+    p1, p2 = a_ - fn * s0, b_ - fn * s0
+    p3, p4 = p2 + t * s1, p1 + t * s1
     P = np.concatenate([np.stack([p1, p3, p2], 1), np.stack([p1, p4, p3], 1)])
     Vs, Ts, As = two_sided(P, lambda n: corners(attr, n))
     if not rib:
@@ -1927,7 +1933,11 @@ def pieces(car, c, shift):
             kd.insert(Vector(p), i)
         kd.balance()
         seams = (kd, pp)
-    adds += [seals(V, T, (part == 0) & panel, cab_attr("base"), gb, solid, seams and (*seams, 0))]
+    # SEAL_FULL: the body's side of those parts' gaps full too (Model S: with SEAL_COVER and the short SEAL the
+    # strips along the liftgate's sides went, and the open liftgate's gap to the C-pillar showed the ground)
+    fullk = [k for k, nm in enumerate(pv.DOORS, 1) if nm in C.get("SEAL_FULL", ())]
+    near_full = bvh_of([(V, T[np.isin(part, fullk)])]) if fullk else None
+    adds += [seals(V, T, (part == 0) & panel, cab_attr("base"), gb, solid, seams and (*seams, 0), near_full=near_full)]
     for v, t, a in adds:
         body_t.append(t + len(bodyV))
         bodyV = np.concatenate([bodyV, v])

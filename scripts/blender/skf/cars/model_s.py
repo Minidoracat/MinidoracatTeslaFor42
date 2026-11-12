@@ -55,6 +55,10 @@ def _band(zn, d):
 
 
 _DRL_IN, _DRL_OUT = _band(_DRL_IN, 0.010), _band(_DRL_OUT, 0.010)
+# the J's lower stroke (official FRONT34 x 656-718 along the lens's lower edge, through the fitted camera onto the
+# model): a band over the stroke's lower edge
+_DRL_LOW = _band(dict(lo=(-0.716, 1.723, 0.50), hi=(-0.591, 1.845, 0.591),
+                      below=(((-0.5906, 1.8449, 0.5295), (-0.0659, -0.0245, -0.9975)),), cut=True), 0.010)
 _REAR = dict(lo=(-0.804, 1.5, 0.472), hi=(-0.663, 1.737, 0.716),
              below=(((-0.7037, 1.6498, 0.6317), (0.3021, 0.6531, 0.6944)),),
              cut=True)
@@ -265,10 +269,11 @@ CAR = dict(
     # source: in game a ragged white ring at the opening's rear corners): (object, objects over it, gap)
     DROP_COVERED=(("Object_2", ("Object_10",), 0.002),),
     ARCH_LINER=None,                       # the source has its own wheel wells (Object_23)
-    # black plate behind the lower grille's slats (else the ground showed between them)
-    PLATES=(("GrillePlate", ((-0.55, 1.90, 0.15), (0.55, 1.90, 0.15), (0.55, 1.90, 0.34), (-0.55, 1.90, 0.34)),
+    # black plate behind the lower grille's slats (else the ground showed between them); from 0.13 up: lower it stood
+    # out under the raised lip (the field's spat) as a black wedge, at 0.15 the ground showed through the lip's slots
+    PLATES=(("GrillePlate", ((-0.55, 1.90, 0.13), (0.55, 1.90, 0.13), (0.55, 1.90, 0.34), (-0.55, 1.90, 0.34)),
              (0, 1, 0), "arch_liner"),
-            ("GrilleFloor", ((-0.55, 1.70, 0.15), (0.55, 1.70, 0.15), (0.55, 1.90, 0.15), (-0.55, 1.90, 0.15)),
+            ("GrilleFloor", ((-0.55, 1.70, 0.13), (0.55, 1.70, 0.13), (0.55, 1.90, 0.13), (-0.55, 1.90, 0.13)),
              (0, 0, 1), "arch_liner")),
     SEAL_CLIP=True,
     # the gaps as the official's thin continuous dark line (convert.py seals): a 4 mm strip on one panel's edge (the
@@ -280,7 +285,9 @@ CAR = dict(
     SEAL_RIBBON=dict(w=0.0035, lift=0.0010, gap=0.025, glass=0.03, chain=0.08, skip=("TrunkDoor",),
                      cell="console"),
     SEAL_COVER=0.03,
-    SEAL_FULL=("TrunkDoor",),               # (convert.py seals) but the liftgate's: open, they close its gap to the pillar
+    # (convert.py seals) but round the liftgate, both sides of its gap: open, they close its gap to the C-pillar (the
+    # body's side went with SEAL_COVER and the short reach: the ground showed there)
+    SEAL_FULL=("TrunkDoor",),
     SEAL=(0.008, 0.008),                   # (convert.py SEAL) reach 1 cm: its gaps are 1-5 mm; at 2 cm the strips showed
     #                                        below the door sills and at the A-pillar's foot as black blocks
     # the roof is glass, so the paint up there is the roof rails (model_3.py RAIL)
@@ -304,7 +311,7 @@ CAR = dict(
                tail_rgb=(17, 15, 17), head_rgb=(33, 32, 35), blade=None,
                areas=tuple((zn, rgb, lit) for z, rgb, lit in (
                    (_SLOTS, (20, 20, 22), False), (_DRL_IN, (240, 242, 246), True), (_DRL_OUT, (240, 242, 246), True),
-                   (_REAR, (205, 207, 212), True), (_T_UPPER, (130, 130, 134), True), (_T_BAR, (190, 25, 28), True),
+                   (_REAR, (205, 207, 212), True), (_DRL_LOW, (240, 242, 246), True), (_T_UPPER, (130, 130, 134), True), (_T_BAR, (190, 25, 28), True),
                    (_T_C, (254, 121, 120), True), (_T_INNER, (21, 20, 22), True)) for zn in _lr(z))),
     # part lines, side view (y, z), read off the source's door skins and windows (temp/skf_ms/outline.py)
     LINES={
@@ -343,11 +350,13 @@ CAR = dict(
              of=("Object_2", 4675), facing=((0, 0, 1), (0.75, 1.0))) for s in _SIDES)
         # the Plaid's front (official FRONT34 PPSW, its outline through the fitted camera onto the model): the lower
         # intake running down into the black splitter, the white fang between it and the tall side intake, a white
-        # strip under the side intake, the splitter under that; the band over the fang joins the two intakes
-        + _poly_zones(((0.0, 0.3022), (-0.409, 0.2993), (-0.5498, 0.1771), (-0.6281, 0.0891), (0.0, 0.0891)), (0, 2),
+        # strip under the side intake, the splitter under that; the band over the fang joins the two intakes. Round 3:
+        # the fang's inner edge, the side intake's outer edge and the splitter's top re-read off FRONT34 (<= 3 px a column)
+        + _poly_zones(((0.0, 0.3022), (-0.36, 0.2993), (-0.5572, 0.1587), (-0.6281, 0.0891), (0.0, 0.0891)), (0, 2),
                       (1.60, 2.40))
-        + _poly_zones(((-0.5116, 0.3097), (-0.6191, 0.2061), (-0.7628, 0.1966), (-0.7332, 0.3643)), (0, 2), (1.55, 2.40))
-        + _poly_zones(((-0.5528, 0.1747), (-0.804, 0.1811), (-0.804, 0.0891), (-0.5528, 0.0891)), (0, 2), (1.55, 2.40))
+        + _poly_zones(((-0.5116, 0.3097), (-0.6191, 0.2061), (-0.7690, 0.1966), (-0.7434, 0.3643)), (0, 2), (1.55, 2.40))
+        + _poly_zones(((-0.5528, 0.159), (-0.727, 0.1494), (-0.804, 0.1342), (-0.804, 0.0891), (-0.5528, 0.0891)), (0, 2),
+                      (1.55, 2.40))
         + _poly_zones(((-0.375, 0.2850), (-0.565, 0.2852), (-0.565, 0.3171), (-0.375, 0.2908)), (0, 2), (1.60, 2.40))
         # the Plaid's rear (official REAR34 and SIDE, the same way): the diffuser's black up to the bumper's lower
         # crease across the rear face (seen from behind), round the corners and along the sides to the rear arch
@@ -385,10 +394,12 @@ CAR = dict(
     GATE_LINING=False,                     # no liftgate inner panel over the trunk walls' top (cabin.py; spikes, 2026-11-01)
     CABIN_ZC=-0.04,
     SEAM_CLEAR=0.065,
+    # rear base 1.08: at 1.12 its lower corners stood 8 mm out under the sills ahead of the rear wheels (the cabin
+    # lowered _CAB, the body there less)
     SEATS=dict(front=dict(w=0.43, back=0.52, recline=32, dy=0.060, dz=-0.142),
-               rear=dict(base=1.12, cushions=((-0.38, 0.37), (0, 0.34), (0.38, 0.37)), back=0.46, recline=10, dy=0.03,
+               rear=dict(base=1.08, cushions=((-0.38, 0.37), (0, 0.34), (0.38, 0.37)), back=0.46, recline=10, dy=0.03,
                          dz=-0.135),
-               sill=(0.90, 0.08), bin=(0.90, 0.40)),
+               sill=(0.90, 0.12), bin=(0.90, 0.40)),   # sill depth 0.12: at 0.08 the open liftgate's gap showed by it
     PARCEL=None,                           # a liftgate: no parcel shelf
     DASH=dict(console=(0, -0.02, -0.25), dash=(0, 0.66, 0.06), trim=(0, 0.487, 0.07), light=(0, 0.489, 0.045),
               stand=(0, 0.50, 0.17), screen=(0, 0.47, 0.25), wheel=(0.197, 0.139)),   # wheel: the reclined driver's hands
