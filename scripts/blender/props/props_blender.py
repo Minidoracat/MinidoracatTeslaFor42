@@ -52,7 +52,7 @@ HANG_REACH = 0.40
 # Plug handle height per car = its chargeport above the floor, units (E2E integration-mp `port`; Core.lua T.Specs plug)
 PLUGS = {"MinidoracatTesla_CablePlug": 0.87,                  # Model Y (tesla-yhn integration-mp, 15dba30 body: port 0.870)
          "MinidoracatTesla_CablePlugModel3": 0.74,            # Model 3
-         "MinidoracatTesla_CablePlugCybertruck": 0.90,        # Cybertruck (tesla-ctbody-1030c: port 0.902)
+         "MinidoracatTesla_CablePlugCybertruck": 0.94,        # Cybertruck (tesla-gct-1112a: port 0.938 / 0.943)
          "MinidoracatTesla_CablePlugModelS": 0.73,            # Model S
          "MinidoracatTesla_CablePlugModelX": 0.84,            # Model X (tesla-mx-1101b modelx-sp: port 0.837)
          "MinidoracatTesla_CablePlugModelYL": 0.90}           # Model Y L (tesla-ylb-geo integration-mp: port 0.900)
