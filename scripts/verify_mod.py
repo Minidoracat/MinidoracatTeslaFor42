@@ -964,7 +964,7 @@ def model_blocks(body):
         yield mm.group(1), {k.lower(): v.strip() for k, v in re.findall(r"(\w+)\s*=\s*([^,\n]*)", inner)}
 
 
-wheel_uv = []
+wheel_uv, model_names, model_refs = [], set(), []
 for m in MEDIA_DIRS:
     sdir = os.path.join(m, "scripts")
     if not os.path.isdir(sdir):
@@ -972,6 +972,8 @@ for m in MEDIA_DIRS:
     for f in iter_files(sdir, {".txt"}):
         with open(f, encoding="utf-8") as fh:
             body = re.sub(r"/\*.*?\*/", "", fh.read(), flags=re.S)
+        model_names.update(name for name, _ in model_blocks(body))
+        model_refs += [(f, name) for name in re.findall(r"(?m)^\s*file\s*=\s*(\w+)\s*,?\s*$", body)]
         for name, kv in model_blocks(body):
             if kv.get("shader", "").lower() != "vehiclewheel" or kv.get("static", "true").lower() == "false":
                 continue
@@ -981,6 +983,17 @@ for m in MEDIA_DIRS:
                     wheel_uv.append(f"model {name}: {_prel(mesh)} 只有 {mesh_uv_layers(mesh)} 層 UV")
 _t = "vehiclewheel 模型的 FBX／GLB 有兩層 UV（引擎從第二層讀）"
 fail(_t, wheel_uv) if wheel_uv else ok(_t)
+
+# ---- 17b. 零件 `file = X` 指到的 model 要有定義 ----
+# 車輛零件的 `file = X` 沒有對應的 `model X` 區塊時，那個零件在遊戲裡不畫（Tesla Model S 後輪 2026-11-13：加了
+# `_WheelRear` 的 FBX、貼圖與輪胎零件，漏了 scripts/models 的 model 區塊，實機八個朝向後輪都只剩卡鉗；離線出圖
+# 不讀遊戲腳本，看不出來）。只查 MOD 自己有同名網格檔的名字：指到原版 model 的不算。
+_meshes = {os.path.splitext(os.path.basename(f))[0] for m in MEDIA_DIRS if os.path.isdir(os.path.join(m, "models_X"))
+           for f in iter_files(os.path.join(m, "models_X"), {".fbx", ".glb", ".x"})}
+model_missing = sorted({f"{_prel(f)}: file = {name} 沒有 model {name} 區塊"
+                        for f, name in model_refs if name in _meshes and name not in model_names})
+_t = "零件 file 指到的自家網格都有 model 區塊"
+fail(_t, model_missing) if model_missing else ok(_t)
 
 # ---- 18. server／shared 不用顯示名稱 setName（警告）----
 # 伺服器端 setName 的名稱和原名不同時存進存檔、照原樣送給每個客戶端（InventoryItem.java:1711-1714 存、:2038 讀回）；
