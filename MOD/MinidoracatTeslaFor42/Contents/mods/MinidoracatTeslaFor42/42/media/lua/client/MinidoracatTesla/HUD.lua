@@ -52,10 +52,10 @@ local NO_WARN = { SoftTop = true }
 -- rear doors (an open one is drawn raised, door_RL_ModelX / door_RR_ModelX), the front doors to the windscreen's foot
 -- at the frunk lid (viewBox 120 = x 106). The Model Y L: the Model Y's front, its longer tail's liftgate with the rear
 -- glass back from viewBox 46.4 (x 41), the rear doors from there to the B-pillar (x 69).
--- The Roadster (a shorter car at the same scale, nose on the Model Y's): the trunk lid back from viewBox 60.5 (x 53),
--- the doors from viewBox 76.3 to 111.6 (x 67-98.5) on the car's sides, the soft top between them over the seats (its
--- roof viewBox y 34-62.3 = y 30-55, along the doors), the hood from the windscreen's foot (x 98.5). The rear deck
--- between the trunk lid and the doors (x 53-67) opens nothing.
+-- The Roadster (a shorter car at the same scale, nose on the Model Y's): the trunk lid back from viewBox 51.2 (x 45),
+-- the doors from viewBox 80.3 to 110.2 (x 71-97) on the car's sides, the soft top between them over the seats (its
+-- roof viewBox y 34-62.3 = y 30-55, along the doors), the hood from the doors' front edge (x 97, the windscreen split
+-- as on the Model Y). The rear deck between the trunk lid and the doors (x 45-71) opens nothing.
 local ZONES = {
     ModelY = {
         { 5, 0, 0, 45, 85 }, { 3, 45, 0, 69, 42.5 }, { 4, 45, 42.5, 69, 85 },
@@ -82,8 +82,8 @@ local ZONES = {
         { 1, 69, 0, 97, 42.5 }, { 2, 69, 42.5, 97, 85 }, { 7, 97, 0, 140, 85 },
     },
     Roadster = {
-        { 5, 0, 0, 53, 85 }, { 1, 67, 0, 98.5, 30 }, { 9, 67, 30, 98.5, 55 }, { 2, 67, 55, 98.5, 85 },
-        { 7, 98.5, 0, 140, 85 },
+        { 5, 0, 0, 45, 85 }, { 1, 71, 0, 97, 30 }, { 9, 71, 30, 97, 55 }, { 2, 71, 55, 97, 85 },
+        { 7, 97, 0, 140, 85 },
     },
 }
 HUD.ZONES = ZONES

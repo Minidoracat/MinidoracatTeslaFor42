@@ -526,10 +526,11 @@ def car_modelx(c):
 def car_roadster(c):
     """Roadster 2.5 (owner's manual 10-15: 3,946 x 1,851 mm with mirrors, wheelbase 2,351, overhangs front 871 / rear 723;
     195/50 R16 front, 225/45 R17 rear, 10-4) at the Model Y's 0.0259 viewBox units per mm, nose on the Model Y's (x 146):
-    rear 43.8, axles x 123.4 and 62.6. The body without mirrors about 1,730 mm wide (y 25-71). From the side view (10-15,
-    2-2): the trunk lid from x 60.5, the soft top over the seats (x 82.8-101.4, from the roll hoop to the windscreen's
-    top), the windscreen to its foot (x 114.2), the doors x 76.3-111.6, the hood ahead. HUD.lua ZONES.Roadster follows
-    these edges."""
+    rear 43.8, axles x 123.4 and 62.6. The body without mirrors about 1,730 mm wide (y 25-71). The car model's edges
+    (scripts/blender/skf/cars/roadster.py; the manual's side view draws the wheels nearer than the ends, its seams sit
+    off by up to 35 cm): the trunk lid from x 51.2, the soft top over the seats (x 80.3-99.8, from the roll hoop to the
+    windscreen's top), the windscreen to its foot (x 119.1), the doors x 80.3-110.2, the hood ahead. HUD.lua
+    ZONES.Roadster follows these edges."""
     for x0, w in ((115.6, 15.6), (54.4, 16.4)):  # front 601 mm, rear 634 mm tyres on the axles
         for y in (19, 69):
             c.rrect(x0, y, w, 8, 2, fill="#0B0D0F", outline="#8E98A3", ow=1.1)
@@ -537,12 +538,12 @@ def car_roadster(c):
             ("H", 56), ("Q", 43.8, 71, 43.8, 60), ("V", 36), ("Q", 43.8, 25, 56, 25), ("Z",)]
     c.fill(body, "#2A3037")
     c.stroke(body, w=1.3, color="#AEB6BF")
-    c.fill([("M", 101.4, 33), ("L", 112, 31), ("Q", 114.6, 48, 112, 65), ("L", 101.4, 63), ("Z",)], "#15191E")  # windscreen
-    c.rrect(82.8, 34, 18.6, 28.3, 3, fill="#1B1F24")  # soft top
-    c.stroke([("M", 83.6, 34.6), ("V", 61.7)], w=1.0, color="#4A525B")  # its rear edge, the roll hoop
-    c.stroke([("M", 60.5, 28), ("Q", 59, 48, 60.5, 68)], w=1.0, color="#4A525B")  # trunk lid seam
+    c.fill([("M", 99.8, 33), ("L", 116.5, 31), ("Q", 119.6, 48, 116.5, 65), ("L", 99.8, 63), ("Z",)], "#15191E")  # windscreen
+    c.rrect(80.3, 34, 19.5, 28.3, 3, fill="#1B1F24")  # soft top
+    c.stroke([("M", 81.1, 34.6), ("V", 61.7)], w=1.0, color="#4A525B")  # its rear edge, the roll hoop
+    c.stroke([("M", 51.2, 28), ("Q", 49.7, 48, 51.2, 68)], w=1.0, color="#4A525B")  # trunk lid seam
     for y0, y1 in ((25, 28), (68, 71)):  # door seams
-        for x in (76.3, 111.6):
+        for x in (80.3, 110.2):
             c.stroke([("M", x, y0 + 0.6), ("V", y1 - 0.6)], w=1.0, color="#4A525B")
 
 
@@ -578,11 +579,11 @@ DOOR_GEOM = {
     # (x 52.1) and the liftgate's rear edge is the longer tail (x 17.3, car_modelyl)
     "ModelYL": {"front": (78, 100), "rear": (52.1, 78), "y": (22, 74), "tr": ((17.3, 36, 60), (11.3, 34, 62)),
                 "hd": ((146, 38, 58), (152, 36, 60)), "kinds": ("RL", "RR", "TR")},
-    # Roadster: two doors (x 76.3-111.6) on its narrower body (y 25 / 71), the trunk lid's rear edge at x 43.8, the soft
+    # Roadster: two doors (x 80.3-110.2) on its narrower body (y 25 / 71), the trunk lid's rear edge at x 43.8, the soft
     # top over the seats (st: x0 its rear edge, the roll hoop, where it folds; x1 the windscreen's top; y0, y1); the hood
     # is the Model Y's (nose x 146: plain door_HD)
-    "Roadster": {"front": (76.3, 111.6), "rear": (76.3, 76.3), "y": (25, 71), "tr": ((43.8, 38, 58), (37.8, 36, 60)),
-                 "st": (82.8, 101.4, 34, 62.3), "kinds": ("FL", "FR", "TR", "ST")},
+    "Roadster": {"front": (80.3, 110.2), "rear": (80.3, 80.3), "y": (25, 71), "tr": ((43.8, 38, 58), (37.8, 36, 60)),
+                 "st": (80.3, 99.8, 34, 62.3), "kinds": ("FL", "FR", "TR", "ST")},
 }
 
 
