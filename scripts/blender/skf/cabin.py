@@ -380,7 +380,9 @@ def furniture(add, opening, grow=0.0, fine=1, between=None):
     def bucket(cx, fy, b, bolster=(0.185, 0.19), z0=z0):   # a bucket seat: base, cushion, backrest, headrest, bolsters
         fy, z0 = fy + b.get("dy", 0), z0 + b.get("dz", 0)
         rec = (fy - 0.11, z0 - 0.03, b["recline"])
-        part((0.30, 0.30, z0 - 0.10 - CABIN_FLOOR), 0.02, "base", (cx, fy + 0.05, (z0 - 0.10 + CABIN_FLOOR) / 2), seg=1)
+        # (a cushion on the floor, the Roadster: the base no thinner than 1 cm, under the floor)
+        part((0.30, 0.30, max(z0 - 0.10 - CABIN_FLOOR, 0.01)), 0.02, "base", (cx, fy + 0.05, (z0 - 0.10 + CABIN_FLOOR) / 2),
+             seg=1)
         part((b["w"], 0.40, 0.09), 0.035, "seat", (cx, fy + 0.08, z0 - 0.06), cuts=(2, 0, 0), sag=0.025,
              seams=("top", channels((-0.28, -0.10, 0.08, 0.26), (-0.40, 0.40))))
         # backrest 8 cm thick, its front where the 11 cm one had it: the knees of the passenger behind (seat_head.py knees)

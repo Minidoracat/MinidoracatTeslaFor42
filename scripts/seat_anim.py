@@ -72,12 +72,19 @@ def seat_drop(cfg):
     return cfg["SEAT"]["h"] + cfg["WHEEL_LIFT"] - PASSENGER_REF - SEAT_REF_H
 
 
+# {LIFTS clip: [(bone, deg)]}: a car's own turns in place of CLIPS' (cars/<car>.py SEAT_POSE {"front"|"rear": turns},
+# a cabin the shared pose does not fit: the Roadster's low roof and floor)
+POSES = {}
+
+
 def drops():
-    """{car model name (vehicle script name after MinidoracatTesla_ = Core.lua Specs model): DROP grid}"""
+    """{car model name (vehicle script name after MinidoracatTesla_ = Core.lua Specs model): DROP grid}; fills POSES"""
     out = {}
     for p in sorted(glob.glob(os.path.join(CARS, "*.py"))):
         cfg = runpy.run_path(p)["CAR"]
-        out[cfg["NAME"].split("_", 1)[1]] = seat_drop(cfg)
+        car = cfg["NAME"].split("_", 1)[1]
+        out[car] = seat_drop(cfg)
+        POSES.update({f"{dict(front=FRONT, rear=REAR)[k]}_{car}": t for k, t in cfg.get("SEAT_POSE", {}).items()})
     return out
 
 
@@ -208,7 +215,7 @@ def posed(bones, G, clip):
     """pose() matrices of `clip` (CLIPS or LIFTS) from Bob_IdleDriving's: CLIPS' turns, then a LIFTS clip moves Bip01 and
     everything under it up (model +Y) by its lift"""
     base, up = LIFTS.get(clip, (clip, 0.0))
-    G = articulate(bones, G, CLIPS[base])
+    G = articulate(bones, G, POSES.get(clip, CLIPS[base]))
     if up:
         parent = dict(bones)
         for b, _ in bones:
@@ -226,7 +233,7 @@ def build(name, dst):
     bones, parent = anim[0], dict(anim[0])
     base, up = LIFTS.get(name, (name, 0.0))
     rot, pos = {}, {}
-    for b in dict.fromkeys(b for b, _ in CLIPS[base]):
+    for b in dict.fromkeys(b for b, _ in POSES.get(name, CLIPS[base])):
         qs = []
         for tick in anim[1][b]["R"][0]:
             G = posed(bones, pose(anim, tick), name)

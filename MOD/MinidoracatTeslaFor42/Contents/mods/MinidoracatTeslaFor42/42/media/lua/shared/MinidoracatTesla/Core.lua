@@ -242,28 +242,29 @@ T.Specs = {
         acKw = 16.8, -- 70 A x 240 V on the High Power Wall Connector (2.5 owner's manual 5-4)
         regenEff = 0.6,
         softTop = true, -- the removable soft top (2.5 owner's manual 7-9) as a switch (user 2026-11-14)
+        doorClip = { TrunkDoor = 1.0, EngineDoor = 1.0, SoftTop = 4.0 }, -- cars/roadster.py DOORS
         -- the 2013 tesla.com colour chart's 17 paints in its order (Cosmic Black, Galactic Gray, Magma Orange: the 2012
         -- encore colours). The chart gives no paint codes. h/s/v: the chart's door-panel medians by convert.py's formula
         -- (s + 0.47, v + 0.05) as a stand-in; convert.py build writes each skin's own. Same order and append-only rules as
         -- above.
         colors = {
-            { name = "VeryOrange", h = 0.076, s = 1.0, v = 0.789 },
-            { name = "ElectricBlue", h = 0.568, s = 1.0, v = 0.493 },
-            { name = "ArcticWhite", h = 0.417, s = 0.487, v = 0.748 },
-            { name = "ThunderGray", h = 0.643, s = 0.609, v = 0.446 },
-            { name = "JetBlack", h = 0.0, s = 0.47, v = 0.089 },
-            { name = "LightningGreen", h = 0.358, s = 1.0, v = 0.46 },
-            { name = "SterlingSilver", h = 0.803, s = 0.507, v = 0.638 },
-            { name = "RadiantRed", h = 0.995, s = 1.0, v = 0.532 },
-            { name = "GlacierBlue", h = 0.582, s = 0.857, v = 0.517 },
-            { name = "TwilightBlue", h = 0.684, s = 0.992, v = 0.23 },
-            { name = "BrilliantYellow", h = 0.121, s = 1.0, v = 0.821 },
-            { name = "ObsidianBlack", h = 0.0, s = 0.47, v = 0.16 },
-            { name = "FusionRed", h = 0.019, s = 1.0, v = 0.521 },
-            { name = "RacingGreen", h = 0.47, s = 1.0, v = 0.201 },
-            { name = "GalacticGray", h = 0.167, s = 0.52, v = 0.207 },
-            { name = "MagmaOrange", h = 0.061, s = 1.0, v = 0.697 },
-            { name = "CosmicBlack", h = 0.625, s = 1.0, v = 0.105 },
+            { name = "VeryOrange", h = 0.086, s = 1.0, v = 1.0 },
+            { name = "ElectricBlue", h = 0.557, s = 1.0, v = 0.826 },
+            { name = "ArcticWhite", h = 0.5, s = 0.49, v = 0.987 },
+            { name = "ThunderGray", h = 0.645, s = 0.557, v = 0.685 },
+            { name = "JetBlack", h = 0.0, s = 0.47, v = 0.146 },
+            { name = "LightningGreen", h = 0.364, s = 1.0, v = 0.687 },
+            { name = "SterlingSilver", h = 0.755, s = 0.486, v = 0.908 },
+            { name = "RadiantRed", h = 0.996, s = 1.0, v = 0.922 },
+            { name = "GlacierBlue", h = 0.583, s = 0.716, v = 0.801 },
+            { name = "TwilightBlue", h = 0.694, s = 0.819, v = 0.409 },
+            { name = "BrilliantYellow", h = 0.133, s = 1.0, v = 1.0 },
+            { name = "ObsidianBlack", h = 0.0, s = 0.47, v = 0.272 },
+            { name = "FusionRed", h = 0.017, s = 1.0, v = 0.963 },
+            { name = "RacingGreen", h = 0.463, s = 1.0, v = 0.397 },
+            { name = "GalacticGray", h = 0.167, s = 0.527, v = 0.37 },
+            { name = "MagmaOrange", h = 0.074, s = 1.0, v = 0.965 },
+            { name = "CosmicBlack", h = 0.68, s = 0.758, v = 0.211 },
         },
     },
 }

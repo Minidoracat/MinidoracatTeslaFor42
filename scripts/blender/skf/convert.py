@@ -1513,6 +1513,16 @@ def seam_shade(car, c, pos, paint):
     return f
 
 
+def chart_ramp(anchors, n=32):
+    """official_ramp for a paint with no design-studio render (PAINT_CHART; Roadster: the 2013 colour chart's 120 px
+    cars): its (dark, median, bright) sRGB, the chart's 5-15 %, 40-60 % and 85-95 % luminance bands, at quantiles 0.10,
+    0.50, 0.90, linear between and on past them to the ends (clipped); 0..1 like official_ramp."""
+    xp = (np.arange(n) + 0.5) / n
+    d, m, b = (np.array(c, float) / 255 for c in anchors)
+    lo, hi = m + (d - m) * (0.5 - xp[:, None]) / 0.4, m + (b - m) * (xp[:, None] - 0.5) / 0.4
+    return np.clip(np.where(xp[:, None] < 0.5, lo, hi), 0, 1)
+
+
 def textures(car, c, shift=0.0):
     zone_rgb = np.array([pv.Z[z] for z in ZN], float)
     aux = np.stack([c["paint"].astype(float), (c["lamp"] > 0).astype(float), (c["lamp"] == 2).astype(float)], 1)
@@ -1586,7 +1596,8 @@ def textures(car, c, shift=0.0):
         # the finish flag: per paint where the car sets one (PAINT_ALPHAS: 253 stainless, 252 satin film)
         pa = C["PAINT_ALPHAS"].get(p, C["PAINT_ALPHA_DEFAULT"]) / 255 if C.get("PAINT_ALPHAS") else PAINT_ALPHA
         alpha = np.where(paint & ~badge, pa, 1.0)[..., None]
-        ramp = pv.official_ramp(code) if code else pv.film_ramp(C["FILMS"][p], mix=C.get("FILM_MIX", {}).get(p))
+        ramp = pv.official_ramp(code) if code else chart_ramp(C["PAINT_CHART"][p]) if C.get("PAINT_CHART") else \
+            pv.film_ramp(C["FILMS"][p], mix=C.get("FILM_MIX", {}).get(p))
         xp = (np.arange(len(ramp)) + 0.5) / len(ramp)
         a_, b_ = (np.array(t, np.float32) for t in pv.CAL[p])
         s = col * shade[..., None]
@@ -1701,8 +1712,10 @@ def stage_build():
     bpy.ops.wm.save_as_mainfile(filepath=os.path.join(TMP, "skf_whole.blend"))
     g |= {"centre_y": float(ctr[1]), "zmid": zmid, "tris": pieces(car, c, shift)}
     g["tris"]["Wheel"] = pv.stage_wheel(*tire)
-    if rear:            # TIRE_AXLES: the rear tyre on the front's rim
-        g["tris"]["WheelRear"] = pv.stage_wheel(*rear, rim=pv.WHEEL_RIM * tire[0], tag="Rear")
+    if rear:            # TIRE_AXLES: the rear tyre on the front's rim; WHEEL_RIM_REAR (Roadster's 16" / 17"): its own,
+        # that fraction of the rear tyre's radius
+        rim = C["WHEEL_RIM_REAR"] * rear[0] if C.get("WHEEL_RIM_REAR") else pv.WHEEL_RIM * tire[0]
+        g["tris"]["WheelRear"] = pv.stage_wheel(*rear, rim=rim, tag="Rear")
     g["tris"]["Detail"] = stage_detail(float(ctr[1]))
     json.dump(g, open(os.path.join(TMP, "geometry.json"), "w"), indent=1)
     print("GEOMETRY", json.dumps(g))
@@ -2154,7 +2167,8 @@ def frunk_tub(V, T, lid, body_tris, attr):
         with np.errstate(divide="ignore", invalid="ignore"):
             t, s = cross(w, e) / den, cross(w, d[:, None]) / den
         t = np.where((s >= 0) & (s <= 1) & (t > 1e-6), t, np.inf)
-        k = np.argmin(t, 1)
+        # (FRUNK_TUB outer, Roadster: the farthest crossing, the lid's outer edge past the vents' own edges on it)
+        k = np.argmax(np.where(np.isfinite(t), t, -1), 1) if f.get("outer") else np.argmin(t, 1)
         r, s = t[np.arange(len(th)), k], s[np.arange(len(th)), k]
         if not np.isfinite(r).all():
             raise SystemExit("frunk: a ray misses an outline")
@@ -2259,6 +2273,32 @@ def tonneau_strips(dv, attr):
     P, t, a = quads_soup(Q, ["dash"] * len(Q), np.array(out), attr)
     strip = np.repeat(np.arange(len(Q)) // 6, 3)      # quads_soup: every quad's first triangle, then every second one
     return P, t, a, (np.concatenate([strip, strip]), fwd, n, L)
+
+
+def soft_strips(V, T, A, sel, shift):
+    """A stowing soft top (DOORS angle "stow", SOFT_TOP; Roadster): the part's own triangles (fabric outside, lining
+    inside: a closed shell, no slab), each in one of SOFT_TOP n strips across its length by its centre's y (the prep
+    cut the source along the strip lines), each strip on its own bone (pieces()). The path every strip's front edge
+    follows (centred, (y, z)): the top's centre line front to rear (its highest point every 1 cm of y within 5 cm of
+    the middle), then SOFT_TOP path (pre-centre) over the roll hoop and down into the body. -> (points, tris, attrs,
+    (strip per point, front y and rear y per strip, path, its cumulative length))."""
+    st = C["SOFT_TOP"]
+    P = V[T[sel]].reshape(-1, 3)
+    cy = P.reshape(-1, 3, 3).mean(1)[:, 1]
+    lo, hi = P[:, 1].min(), P[:, 1].max()
+    edges = lo + (hi - lo) * np.arange(st["n"] + 1) / st["n"]
+    strip = st["n"] - 1 - np.clip(np.searchsorted(edges, cy, side="right") - 1, 0, st["n"] - 1)   # 0 = the front
+    mid = P[np.abs(P[:, 0]) < 0.05]
+    ys = np.arange(hi, lo - 0.01, -0.01)
+    top = [(y, mid[np.abs(mid[:, 1] - y) < 0.006, 2].max()) for y in ys if (np.abs(mid[:, 1] - y) < 0.006).any()]
+    path = np.array(top + [(y, z) for y, z in st["path"]], float) - [shift[1], shift[2]]
+    path = path[np.r_[True, np.linalg.norm(np.diff(path, axis=0), axis=1) > 1e-6]]
+    cum = np.r_[0, np.cumsum(np.linalg.norm(np.diff(path, axis=0), axis=1))]
+    s_of = lambda y: float(np.interp(-y, -path[:len(top), 0], cum[:len(top)]))   # noqa: E731  (roof part: y falls)
+    fronts = [s_of(edges[st["n"] - k] - shift[1]) for k in range(st["n"])]
+    rears = [s_of(edges[st["n"] - 1 - k] - shift[1]) for k in range(st["n"])]
+    n_ = int(sel.sum())
+    return P, np.arange(3 * n_).reshape(-1, 3), A[sel], (np.repeat(strip, 3), fronts, rears, path, cum)
 
 
 def bed_tub(V, Tb, attr):
@@ -2510,7 +2550,7 @@ def pieces(car, c, shift):
         bodyV = np.concatenate([bodyV, v])
         body_a.append(a)
     conv = np.array(Matrix.Rotation(-math.pi / 2, 3, "X"))
-    meshes, hinges, strips, elbows, upper = [], {}, {}, {}, {}
+    meshes, hinges, strips, elbows, upper, stows = [], {}, {}, {}, {}, {}
     mat = bpy.data.materials.new(pv.NAME)
     for pname, (sd, axis, ang, secs) in pv.DOORS.items():
         k = PARTS.index(pname)
@@ -2529,6 +2569,8 @@ def pieces(car, c, shift):
         skin = sel & panel & ~mirror & ~shell            # the mirror cap: outer faces only (a closed shell)
         if ang == "roll":                                # the tonneau: strips of its own (tonneau_strips)
             P, t, a, strips[pname] = tonneau_strips(V[np.unique(T[sel])], cab_attr)
+        elif ang == "stow":                              # the soft top: its own strips, no slab (soft_strips)
+            P, t, a, stows[pname] = soft_strips(V, T, A, sel, shift)
         else:
             P, t, a, _ = pv.slab(V, T, A, skin, off, cab_attr("dash"), BELT_Z - shift[2], outer_extra=sel & ~skin,
                                  by_pos=bool(C.get("SPLIT_COLOURS")))
@@ -2576,7 +2618,7 @@ def pieces(car, c, shift):
         elif lid:
             mid = dv[np.abs(dv[:, 0]) < 0.08]
             h = np.array([0.0, *mid[np.argmin(mid[:, 1]), 1:]])
-        elif ang == "roll":                 # the tonneau: its front edge (strip 0, the canister lid; not a hinge)
+        elif ang in ("roll", "stow"):       # the tonneau: its front edge (strip 0, the canister lid; not a hinge)
             mid = dv[np.abs(dv[:, 0]) < 0.08]
             h = np.array([0.0, *mid[np.argmax(mid[:, 1]), 1:]])
         elif GATE_HINGE == "front":         # sedan trunk lid: hinged under the rear window's foot, its front edge
@@ -2599,7 +2641,10 @@ def pieces(car, c, shift):
             bodyV = np.concatenate([bodyV, Pt])
             body_a.append(at_)
     bpy.data.objects.remove(car)
-    cv, ct, ca = build_cabin(bodyV - shift, np.concatenate(body_t), np.concatenate(body_a), meshes, shift)
+    # (a stowing soft top is no wall of the cabin: the shell's rays pass it, so none of the shell stays up there with
+    # the top stowed)
+    cv, ct, ca = build_cabin(bodyV - shift, np.concatenate(body_t), np.concatenate(body_a),
+                             [m for m in meshes if m[0] not in stows], shift)
     body_t.append(ct + len(bodyV))
     bodyV = np.concatenate([bodyV, cv + shift])
     body_a.append(ca)
@@ -2631,7 +2676,8 @@ def pieces(car, c, shift):
     pv.select_only(arm)
     bpy.ops.object.mode_set(mode="EDIT")
     for pname in pv.DOORS:          # bones at the origin, unrotated: bind = identity (models.md 9); a rolling cover's
-        for s in range(ROLL_N if pname in strips else 2 if pname in upper else 1):   # strips / a falcon door's lower
+        nb = ROLL_N if pname in strips else C["SOFT_TOP"]["n"] if pname in stows else 2 if pname in upper else 1
+        for s in range(nb):   # strips / a soft top's strips / a falcon door's lower part get <part>_bone<s>
             eb = arm.data.edit_bones.new(pname + "_bone" + (str(s) if s else ""))    # part get <part>_bone<s>
             eb.head, eb.tail = Vector((0, 0, 0)), Vector((0, 0.3, 0))
     bpy.ops.object.mode_set(mode="OBJECT")
@@ -2644,6 +2690,10 @@ def pieces(car, c, shift):
             for s in range(ROLL_N):
                 ob.vertex_groups.new(name=pname + "_bone" + (str(s) if s else "")).add(
                     np.flatnonzero(strips[pname][0] == s).tolist(), 1.0, "REPLACE")
+        elif pname in stows:             # soft top: strip s on _bone<s> (soup_object keeps every point: one per corner)
+            for s in range(C["SOFT_TOP"]["n"]):
+                ob.vertex_groups.new(name=pname + "_bone" + (str(s) if s else "")).add(
+                    np.flatnonzero(stows[pname][0] == s).tolist(), 1.0, "REPLACE")
         elif pname in upper:             # falcon door: upper part on _bone, lower on _bone1 (soup_object keeps the used
             up = upper[pname][np.unique(t.ravel())]          # points in index order)
             ob.vertex_groups.new(name=pname + "_bone").add(np.flatnonzero(up).tolist(), 1.0, "REPLACE")
@@ -2683,6 +2733,18 @@ def pieces(car, c, shift):
         d = o * (ROLL_N - 1) * w
         sink = s * 1.05 * C["TONNEAU_T"] * min(max(d / w - (s - 1), 0.0), 1.0)
         return Vector(conv @ (fwd * min(d, s * w) - n * sink)), Quaternion()
+
+    def stow_pose(pname, s, o):
+        """Strip s of a stowing soft top, open by o (0..1): every strip's front edge o x the travel further along the
+        path (soft_strips; open, the last strip's rear edge on the path's end), the strip turned about x onto the
+        path's chord from there to its rear edge's spot. Position and rotation only: the engine's blend drops scale."""
+        _, fr, rr, path, cum = stows[pname]
+        at = lambda u: np.array([0.0, np.interp(u, cum, path[:, 0]), np.interp(u, cum, path[:, 1])])  # noqa: E731
+        d = o * (cum[-1] - rr[-1])
+        f0, r0, f1, r1 = at(fr[s]), at(rr[s]), at(fr[s] + d), at(rr[s] + d)
+        phi = math.atan2(*(r1 - f1)[[2, 1]]) - math.atan2(*(r0 - f0)[[2, 1]])
+        q = Quaternion(Vector(conv @ np.array((1.0, 0.0, 0.0))), math.atan2(math.sin(phi), math.cos(phi)))
+        return Vector(conv @ f1) - q @ Vector(conv @ f0), q
     end = 1
     for pname, (_, axis, ang, secs) in pv.DOORS.items():
         act = bpy.data.actions.new(pname + "_closing")
@@ -2697,6 +2759,7 @@ def pieces(car, c, shift):
                 bp, _, s = pb.name.partition("_bone")
                 pb.location, pb.rotation_quaternion = (Vector((0, 0, 0)), Quaternion()) if bp != pname else \
                     roll_pose(pname, int(s or 0), o) if ang == "roll" else \
+                    stow_pose(pname, int(s or 0), o) if ang == "stow" else \
                     falcon_pose(pname, int(s or 0), o) if axis == "falcon" else hinge_pose(pname, ang * o)
                 pb.keyframe_insert("location", frame=fr)
                 pb.keyframe_insert("rotation_quaternion", frame=fr)
@@ -2742,7 +2805,8 @@ def pieces(car, c, shift):
             want[glass_name] |= want[k]
     for nm, t, vg, uv, cl, gz in got:
         print("CHECK FBX", nm, "tris", t, "groups", vg, "uv", uv, "glass", sorted(gz))
-        groups = 0 if nm in (pv.NAME, glass_name) else ROLL_N if nm in strips else 2 if nm in upper else 1
+        groups = 0 if nm in (pv.NAME, glass_name) else ROLL_N if nm in strips else \
+            C["SOFT_TOP"]["n"] if nm in stows else 2 if nm in upper else 1
         if (uv[:2] != ["UV0", "UV1"] or (cl[1:] < cl[:-1]).any() or (vg == 1 if groups == 0 else vg != groups)
                 or gz != want[nm]
                 or t != counts[nm]):    # the importer drops a triangle on the same vertices as another
@@ -2774,7 +2838,8 @@ def stage_view(out, heads, state, skin="UltraRed", app=False):
     arm.matrix_world = Matrix.Rotation(math.pi / 2, 4, "X")
     openp = {"all": [p for p in pv.DOORS if p in PARTS[1:5]], "gate": ["TrunkDoor"], "frunk": ["EngineDoor"], "shut": [],
              "fl": ["DoorFrontLeft"], "fr": ["DoorFrontRight"], "rl": ["DoorRearLeft"], "rr": ["DoorRearRight"],
-             "rear": ["DoorRearLeft", "DoorRearRight"], "tonneau": ["TrunkTonneau"], "bed": ["TrunkDoor", "TrunkTonneau"]}[state]
+             "rear": ["DoorRearLeft", "DoorRearRight"], "tonneau": ["TrunkTonneau"], "bed": ["TrunkDoor", "TrunkTonneau"],
+             "soft": ["SoftTop"]}[state]
     ad = arm.animation_data
     poses = {}
     for pb in arm.pose.bones:
@@ -2888,6 +2953,10 @@ def stage_view(out, heads, state, skin="UltraRed", app=False):
     cam.data.ortho_scale = float(os.environ.get("ORTHO", 5.2))
     cam.data.clip_start = float(os.environ.get("CLIP", 0.1))   # CLIP=30: a section through CENTRE (camera 30 away)
     sc.camera = cam
+    dist = float(os.environ.get("PERSP", 30))   # PERSP=<grid>: a perspective camera that far, ORTHO wide at CENTRE
+    if "PERSP" in os.environ:                   # (a photo's or drawing's side view: wheels nearer than the nose)
+        cam.data.type, cam.data.sensor_fit = "PERSP", "HORIZONTAL"
+        cam.data.angle = 2 * math.atan(cam.data.ortho_scale / 2 / dist)
     F = {"N": (0, -1), "NE": (1, -1), "E": (1, 0), "SE": (1, 1), "S": (0, 1), "SW": (-1, 1), "W": (-1, 0), "NW": (-1, -1)}
     for h in heads:     # a compass name, or d<deg>: that many degrees clockwise from N (a car parked at an angle)
         f = np.array(F[h], float) if h in F else np.array([math.sin(math.radians(float(h[1:]))), -math.cos(math.radians(float(h[1:])))])
@@ -2896,7 +2965,7 @@ def stage_view(out, heads, state, skin="UltraRed", app=False):
         cxy = np.array([1, 1]) / math.sqrt(2)
         el = math.radians(APP_ELEV if app else float(os.environ.get("ELEV", 30)))   # ELEV=0 / 89.5: side / top
         d = Vector((cxy @ right * math.cos(el), cxy @ f * math.cos(el), math.sin(el)))
-        cam.location = Vector([float(v) for v in os.environ.get("CENTRE", "0,0,0").split(",")]) + d * 30
+        cam.location = Vector([float(v) for v in os.environ.get("CENTRE", "0,0,0").split(",")]) + d * dist
         cam.rotation_euler = (-d).to_track_quat("-Z", "Y").to_euler()
         sc.render.filepath = out if app else f"{out}_{h}_{state}.png"
         if app:

@@ -514,6 +514,83 @@ module Base
         scale = 0.5495,
     }
 
+    /* Roadster 2.5 Sport: same build, units and shaders as the Model Y above (CAR=roadster; body adapted from */
+    /* the_86_guy's "2008 Tesla Roadster", CC BY 4.0, CREDITS.md, made a 2.5 Sport by scripts/blender/skf/prep_roadster.py). */
+    /* Two doors; SoftTop is the soft top: one bone per strip, one clip (convert.py soft_strips / stow_pose). */
+    model MinidoracatTesla_Roadster
+    {
+        mesh = vehicles/MinidoracatTesla_Roadster,
+        shader = MinidoracatTesla_vehicle,
+        static = true,
+        invertX = false,
+        scale = 0.5495,
+    }
+
+    model MinidoracatTesla_Roadster_Glass
+    {
+        mesh = vehicles/MinidoracatTesla_Roadster_Glass,
+        shader = MinidoracatTesla_vehicle,
+        static = true,
+        invertX = false,
+        scale = 0.5495,
+    }
+
+    model MinidoracatTesla_Roadster_Wheel
+    {
+        mesh = vehicles/MinidoracatTesla_Roadster_Wheel,
+        texture = Vehicles/MinidoracatTesla_Roadster_wheel,
+        shader = vehiclewheel,
+        scale = 0.5495,
+    }
+
+    model MinidoracatTesla_Roadster_WheelRear
+    {
+        mesh = vehicles/MinidoracatTesla_Roadster_WheelRear,
+        texture = Vehicles/MinidoracatTesla_Roadster_wheelrear,
+        shader = vehiclewheel,
+        scale = 0.5495,
+    }
+
+    model MinidoracatTesla_Roadster_DoorFrontLeft
+    {
+        mesh = vehicles/MinidoracatTesla_Roadster_Doors|DoorFrontLeft,
+        shader = MinidoracatTesla_vehicle,
+        static = false,
+        scale = 0.5495,
+    }
+
+    model MinidoracatTesla_Roadster_DoorFrontRight
+    {
+        mesh = vehicles/MinidoracatTesla_Roadster_Doors|DoorFrontRight,
+        shader = MinidoracatTesla_vehicle,
+        static = false,
+        scale = 0.5495,
+    }
+
+    model MinidoracatTesla_Roadster_TrunkDoor
+    {
+        mesh = vehicles/MinidoracatTesla_Roadster_Doors|TrunkDoor,
+        shader = MinidoracatTesla_vehicle,
+        static = false,
+        scale = 0.5495,
+    }
+
+    model MinidoracatTesla_Roadster_EngineDoor
+    {
+        mesh = vehicles/MinidoracatTesla_Roadster_Doors|EngineDoor,
+        shader = MinidoracatTesla_vehicle,
+        static = false,
+        scale = 0.5495,
+    }
+
+    model MinidoracatTesla_Roadster_SoftTop
+    {
+        mesh = vehicles/MinidoracatTesla_Roadster_Doors|SoftTop,
+        shader = MinidoracatTesla_vehicle,
+        static = false,
+        scale = 0.5495,
+    }
+
     /* The cabin's detail for Project Viewpoint (part CabinDetail; scripts/blender/skf/cabin.py detail_mesh): the
        furniture a little larger and finer over the body's own, coloured from MinidoracatTesla_Detail. Only the car a
        local player sits in shows it, and only with Viewpoint loaded (client ViewpointCabin.lua); Viewpoint draws it
@@ -571,6 +648,16 @@ module Base
     model MinidoracatTesla_ModelYL_Detail
     {
         mesh = vehicles/MinidoracatTesla_ModelYL_Detail,
+        texture = Vehicles/MinidoracatTesla_Detail,
+        shader = MinidoracatTesla_viewpoint,
+        static = true,
+        invertX = false,
+        scale = 0.5495,
+    }
+
+    model MinidoracatTesla_Roadster_Detail
+    {
+        mesh = vehicles/MinidoracatTesla_Roadster_Detail,
         texture = Vehicles/MinidoracatTesla_Detail,
         shader = MinidoracatTesla_viewpoint,
         static = true,
