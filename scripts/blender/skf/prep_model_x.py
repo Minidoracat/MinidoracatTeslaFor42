@@ -1503,8 +1503,6 @@ def decals(bpy, meshes, nose, yc, ftyre_x):
                 continue
             if owner[fi] not in dc["on"] or pmat[fi] in dc.get("skip", ()) or not dc.get("u", (-9, 9))[0] < (nose - hit.x) * S < dc.get("u", (-9, 9))[1]:
                 off.append(v)
-            elif "half" in dc and (hit.y - yc) * np.sign(eye.y - yc) * S < -dc["half"]:
-                off.append(v)                         # (past the centre line by more than `half` m: the mirror's)
             lay[v] = owner[fi]
             n = n if n.dot(ray) < 0 else -n                # off the surface along its normal (a ray-wise offset
             nrm[v] = n                                     # sank in where the view grazes it)
