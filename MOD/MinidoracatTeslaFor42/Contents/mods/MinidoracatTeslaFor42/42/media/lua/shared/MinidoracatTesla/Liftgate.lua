@@ -466,9 +466,18 @@ if not isClient() then
     ISInstallVehiclePart.complete = function(self)
         local ok = install(self)
         local v, part = self.vehicle, self.part
-        if v and part and T.isTesla(v) and modelled(part) then
-            L.glassAfter(v, { part })
+        if v and part and T.isTesla(v) then
+            if modelled(part) then L.glassAfter(v, { part }) end
+            roofMoved(v, part)
         end
+        return ok
+    end
+    -- the soft top taken off: no roof (HatHide.lua H.wanted)
+    require "Vehicles/TimedActions/ISUninstallVehiclePart"
+    local uninstall = ISUninstallVehiclePart.complete
+    ISUninstallVehiclePart.complete = function(self)
+        local ok = uninstall(self)
+        if self.vehicle and self.part and T.isTesla(self.vehicle) then roofMoved(self.vehicle, self.part) end
         return ok
     end
     -- the admin / debug repair (vanilla vehicle commands repair, repairPart: VehicleCommands.lua:330-370) refits every
@@ -485,6 +494,8 @@ if not isClient() then
             if modelled(part) then parts[#parts + 1] = part end
         end
         L.glassAfter(v, parts)
+        local top = v:getPartById("SoftTop") -- refitted: a roof again
+        if top then roofMoved(v, top) end
     end
 
     -- every load (BaseVehicle.java:904): a locked car from an older save or the world spawn (cabin doors locked by

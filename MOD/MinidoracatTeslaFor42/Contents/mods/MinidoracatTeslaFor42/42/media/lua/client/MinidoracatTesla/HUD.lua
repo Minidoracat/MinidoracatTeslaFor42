@@ -35,8 +35,6 @@ local DOORS = { "DoorFrontLeft", "DoorFrontRight", "DoorRearLeft", "DoorRearRigh
 -- door overlay sprites; a car whose doors sit elsewhere has its own, door_<kind>_<model> (build_atlas.py DOOR_GEOM)
 local DOOR_SPR = { "door_FL", "door_FR", "door_RL", "door_RR", "door_TR", "door_TR", "door_HD", "door_TN", "door_ST" }
 local POW2 = { 1, 2, 4, 8, 16, 32, 64, 128, 256 }
--- open, but no "close before driving": the Roadster's soft top (a convertible drives top down)
-local NO_WARN = { SoftTop = true }
 -- clickable car picture, per car model (Core.lua Specs model; sprite car_<model>, scripts/hud/build_atlas.py):
 -- { DOORS index, x0, y0, x1, y1 } in design units from the car sprite's top-left (150x85, nose right, left side up;
 -- build_atlas.py draws at 150/170 px per viewBox unit). Rear doors end at the B-pillar seam (x 69), the front doors
@@ -357,7 +355,7 @@ function HUD:readSlow()
         local d = self.doors[i]
         if d.part:getDoor():isOpen() then
             bits = bits + d.bit
-            if not NO_WARN[d.name] then warn = warn + d.bit end
+            if not T.OPEN_OK[d.name] then warn = warn + d.bit end
         end
         if d.part:getInventoryItem() then avail = avail + d.bit end
     end
@@ -554,7 +552,9 @@ function HUD:build()
     spr(self, A[self.carSpr], cx, cy, C.white, 1)
     for i = 1, #self.doors do
         local d = self.doors[i]
-        if math.floor(st.doors / d.bit) % 2 == 1 then spr(self, A[d.spr], cx, cy, C.warn, 1) end
+        if math.floor(st.doors / d.bit) % 2 == 1 then -- a top that is down is a state, not a warning
+            spr(self, A[d.spr], cx, cy, T.OPEN_OK[d.name] and C.accent or C.warn, 1)
+        end
     end
     local zones = self.zones
     for i = 1, #zones do -- door removed: its zone darkened, not clickable

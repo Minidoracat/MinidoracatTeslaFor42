@@ -181,8 +181,9 @@ end
 
 local function anyDoorOpen(vehicle)
     for i = 0, vehicle:getPartCount() - 1 do
-        local door = vehicle:getPartByIndex(i):getDoor()
-        if door and door:isOpen() then return true end
+        local part = vehicle:getPartByIndex(i)
+        local door = part:getDoor()
+        if door and door:isOpen() and not T.OPEN_OK[part:getId()] then return true end
     end
     return false
 end

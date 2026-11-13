@@ -394,7 +394,8 @@ function C.settle(o, now, here, fresh)
     if not iso then return C.schedule(o, now + C.RETRY_H) end
     if not here and not T.cableReaches(o.kind, o.x, o.y, o.z, v) then return C.stop(o, v, "tooFar") end
     -- the charger's own limit for this car (a Supercharger's: the car's DC peak, its curve on top, Core.lua
-    -- B.chargeKwAt); the grid and a generator give it whole, a Cybertruck its share (supplyKw)
+    -- B.chargeKwAt; a car with no DC charging its acKw, flat: Chargers.lua T.dcPeak); the grid and a generator give it
+    -- whole, a Cybertruck its share (supplyKw)
     local kw = T.chargerKw(o.kind, v)
     chg.peak = T.dcPeak(o.kind, v, kw)
     local own = { kw = kw, peak = chg.peak }

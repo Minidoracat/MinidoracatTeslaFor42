@@ -302,6 +302,26 @@ check(d.why == nil and d.on == true and top.open and not top.locked and last("pa
 check(last("appState") and last("appState").softtop == true, "softtop: the record says open (top down)")
 d = act(owner, "softtop", false)
 check(d.why == nil and d.on == false and not top.open and top.locked, "softtop closed on a locked car: locked again (Liftgate L.LIDS)")
+-- the hats of whoever sits in it follow the top: every way it moves tells HatHide (server HatHide.lua H.car). Counted
+-- as "told or not": other harness files load Liftgate.lua again, each load wraps the actions once more
+H.require("MinidoracatTesla/HatHide")
+local moved, hatCar = 0, T.HatHide.car
+T.HatHide.car = function(c) if c == v then moved = moved + 1 end end
+local function told(f) local was = moved; f(); return moved > was end
+local roof = v.parts.SoftTop
+function roof:getScriptPart() return { getModelCount = function() return 0 end } end
+check(told(function() act(owner, "softtop", true) end) and told(function() act(owner, "softtop", false) end),
+    "soft top opened, closed: HatHide told each time")
+check(told(function() ISUninstallVehiclePart.complete({ vehicle = v, part = roof }) end)
+    and told(function() ISInstallVehiclePart.complete({ vehicle = v, part = roof, item = {} }) end),
+    "soft top taken off, fitted: told")
+owner._admin = true -- the mechanics cheat (harness checkPermissions)
+check(told(function() T.Liftgate.onVehicleCommand("vehicle", "repair", owner, { vehicle = v:getId() }) end),
+    "the admin repair (refits a missing top): told")
+owner._admin = nil
+check(not told(function() ISUninstallVehiclePart.complete({ vehicle = v, part = v.parts.TrunkDoor }) end),
+    "another part taken off: not told")
+T.HatHide.car = hatCar
 R.remember(v)
 check(R.record(9001).softtop == false, "record: softtop false when shut on a Roadster")
 v.script = scriptY
