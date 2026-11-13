@@ -299,7 +299,8 @@ CAR = dict(
                                                          ((0.7387, 0.62), (0.7035, 0.62), (0.7035, 0.8), (0.7387, 0.8))),
                (0, 0, 1), "arch_liner") for sx in (-1, 1)),
             # r6: four doors open, NW: the ground between the open rear door's front edge and the sill's outer face
-            # at the front door opening (sightlines 2-3 mm outside the sill, 9 px); a 7 mm shelf off the sill under them
+            # at the front door opening (sightlines 2-3 mm outside the sill, 9 px); a 7 mm shelf off the sill under
+            # them. r8: folded into the sill after the bake (UV_HOLD_MOVE below _moved_positions)
             *((f"SillSlit{'L' if sx < 0 else 'R'}", tuple((sx * x, y, 0.1708) for x, y in
                                                         ((0.7665, 0.345), (0.7540, 0.345), (0.7540, 0.435), (0.7665, 0.435))),
                (0, 0, 1), "arch_liner") for sx in (-1, 1))),
@@ -333,6 +334,12 @@ CAR = dict(
     # through; a waist term in the prep tore the left rear door's skin open below the B pillar)
     DECIMATE_KEEP_BOUNDARY=True,
     POST_FIELD=post,                       # (convert.py) prep_model_s.py POST: the waist, after the decimation
+    # (convert.py, after the bake: the skin stays) r8: the doors' corners 1-2 cm over their bottom at the B pillar
+    # 1.5 mm out (pre-centre grid, the decimated mesh's points; the left front door's sit 2 mm off the right's mirror):
+    # POST waist's lower ramp tilted the faces between them past convert.py seam_lines' outward test, the B pillar's
+    # line broke 1 px over the sill (game E / N / W 93-96 %)
+    UV_HOLD_MOVE=dict(tol=0.0004, pts=tuple((p, (p[0] + 0.0015, *p[1:])) for p in (
+        (0.7623, -0.1715, 0.30225), (0.7624, -0.1691, 0.3023), (0.75475, -0.1714, 0.31325), (0.7547, -0.1690, 0.3132)))),
     PAINT_MAT=_PAINT,
     MAT_RGB={_LAMP: (40, 36, 38),                     # smoked lamp housings (official: dark lamps)
              "I1Mtl": (232, 236, 240),                 # the headlamps' running-light strip
@@ -537,3 +544,9 @@ def _cabin_down(c):
 
 _moved_positions(CAR)
 _cabin_down(CAR)
+# r8: the SillSlit shelves stood 7 mm out under the shut front doors (a 1 x 17 px black line in game NE / SW) and
+# r7's decimation closed the slit they were for (four doors open NW 105 px with or without them): each folded to a
+# 0.1 mm speck inside the sill after the bake (|x| 0.744, the sill's face 0.749 there); dropping them would repack the
+# skin. shortcut: drop them from PLATES at the next whole-skin change
+CAR["UV_HOLD_MOVE"]["pts"] += tuple((q, (0.7440 + 0.0001 * (q[0] > 0.76), 0.39 + 0.0001 * (q[1] > 0.4), q[2]))
+                                    for n, poly, _, _ in CAR["PLATES"] if n == "SillSlitR" for q in poly)

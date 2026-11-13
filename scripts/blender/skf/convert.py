@@ -1209,6 +1209,56 @@ def fill_slivers(me, res, layers, grow=8, reach=0.75):
     print(f"UV_FILL {len(pix)} empty texels under {len(np.unique(tri))} triangles filled, {len(g)} margin texels")
 
 
+def hold_move(car, shift):
+    """UV_HOLD_MOVE (dict tol, pts: ((|x|, y, z) old, (|x|, y, z) new) pre-centre, mirrored to both sides): after the
+    unwrap and the skins, every vertex within tol of an old point moves by that point's offset, so every skin texel
+    stays as without the move (a changed shape repacks every UV island, and the bake's AO moves the paint's
+    quantiles); the moved faces keep their texels, flat ones (a source flat face) get their new normal. The moves stay
+    inside the body's bbox (its centre is already the model's)."""
+    hm = C["UV_HOLD_MOVE"]
+    co = pv.mesh_co(car) + shift
+    d = np.zeros_like(co)
+    hit = np.zeros(len(co), int)
+    for old, new in hm["pts"]:
+        for sx in (-1, 1) if old[0] else (1,):
+            o = np.array([sx * old[0], *old[1:]])
+            s = np.linalg.norm(co - o, axis=1) < hm["tol"]
+            d[s] = np.array([sx * new[0], *new[1:]]) - o
+            hit += s
+    if (hit > 1).any():
+        raise SystemExit("UV_HOLD_MOVE: a vertex within tol of two points")
+    lo, hi = co.min(0), co.max(0)
+    co += d
+    if (co.min(0) < lo - 1e-9).any() or (co.max(0) > hi + 1e-9).any():
+        raise SystemExit("UV_HOLD_MOVE: a move leaves the body's bbox")
+    me = car.data
+    cn = np.empty(len(me.loops) * 3, np.float32)
+    me.attributes["custom_normal"].data.foreach_get("vector", cn)
+    cn = cn.reshape(-1, 3)
+    ls, lt = (np.empty(len(me.polygons), np.int64) for _ in range(2))
+    me.polygons.foreach_get("loop_start", ls)
+    me.polygons.foreach_get("loop_total", lt)
+    lv = np.empty(len(me.loops), np.int64)
+    me.loops.foreach_get("vertex_index", lv)
+    old_n = np.empty(len(me.polygons) * 3)
+    me.polygons.foreach_get("normal", old_n)
+    old_n = old_n.reshape(-1, 3)
+    pv.set_co(car, co - shift)
+    new_n = np.empty(len(me.polygons) * 3)
+    me.polygons.foreach_get("normal", new_n)
+    new_n = new_n.reshape(-1, 3)
+    moved = np.add.reduceat(hit[lv] > 0, ls) > 0
+    n = 0
+    for f in np.flatnonzero(moved):
+        lo_ = slice(ls[f], ls[f] + lt[f])
+        if (cn[lo_] @ old_n[f]).min() > math.cos(math.radians(0.5)):
+            cn[lo_] = new_n[f]
+            n += 1
+    me.attributes["custom_normal"].data.foreach_set("vector", cn.ravel())
+    me.update()
+    print(f"UV_HOLD_MOVE {int((hit > 0).sum())} vertices moved, {int(moved.sum())} faces ({n} flat re-normalled)")
+
+
 def unwrap(car, obj, big=None):
     """UV0: smart projection of every face, packed; UV1 starts as a copy (damage_uv1 rewrites it). Badge faces (obj
     in SWATCH) all map onto one small triangle per badge in a strip kept free at the right edge: their strokes are
@@ -1608,6 +1658,8 @@ def stage_build():
     pv.set_co(car, co - shift)
     unwrap(car, c["obj"], np.isin(c["zone"], [ZN.index("StopL"), ZN.index("StopR")]) if C.get("STOP_UV_SCALE") else None)
     textures(car, c, shift)
+    if C.get("UV_HOLD_MOVE"):
+        hold_move(car, shift)
     # UV1: vanilla ModernCar's damage layout (damage_uv1); glass faces + 2 + 2 x pane (the frag's glass class and
     # GLASS_ZONE[])
     me = car.data
@@ -2327,6 +2379,31 @@ def roof_bar(V, Tb, attr):
     return quads_soup(Q, ["base", r["lens"], "base", "base", "base"], out, attr)
 
 
+def cell_prisms(V, Tb, attr):
+    """CELL_PRISMS (Cybertruck's splash flaps under the arch legs): per item a convex prism across x on both sides, a
+    cabin palette cell (cell): |x| from x[0] to x[1] and its side-view profile yz ((y, z) convex, in order),
+    pre-centre. -> (points, tris, attrs) pre-centre."""
+    P, cl, nr = [], [], []
+    for pr in C["CELL_PRISMS"]:
+        yz = np.array(pr["yz"], float)
+        k = len(yz)
+        for sx in (-1, 1):
+            Q = np.array([(sx * x, y, z) for x in pr["x"] for y, z in yz])
+            ctr = Q.mean(0)
+            for f in [list(range(k)), list(range(k, 2 * k))] + [[i, (i + 1) % k, k + (i + 1) % k, k + i] for i in range(k)]:
+                for j in range(1, len(f) - 1):
+                    t = Q[[f[0], f[j], f[j + 1]]]
+                    n = np.cross(t[1] - t[0], t[2] - t[0])
+                    n /= np.linalg.norm(n)
+                    if n @ (t.mean(0) - ctr) < 0:
+                        t, n = t[[0, 2, 1]], -n
+                    P.append(t)
+                    nr.append(n)
+                    cl.append(pr["cell"])
+    P = np.array(P)
+    return P.reshape(-1, 3), np.arange(3 * len(P)).reshape(-1, 3), corners(np.array([attr(c) for c in cl]), np.array(nr))
+
+
 def build_cabin(bodyV, Tb, Ab, meshes, shift):
     """The mod's own cabin and trunk (cabin.py) inside this body: shell rays against the closed car (centred), shell
     faces in a door opening coded for the shader. -> (points, tris, attrs) centred, to join the body."""
@@ -2503,7 +2580,8 @@ def pieces(car, c, shift):
         hinges[pname] = h - shift
         meshes.append((pname, P - shift, t, a))
         print(f"DOOR {pname}: {int(sel.sum())} faces, {len(t)} tris, hinge {np.round(h, 3).tolist()}")
-    for build, cfg in ((bed_tub, "BED_TUB"), (roof_bar, "ROOF_BAR")):   # a pickup's bed, its roof light bar
+    for build, cfg in ((bed_tub, "BED_TUB"), (roof_bar, "ROOF_BAR"), (cell_prisms, "CELL_PRISMS")):   # a pickup's bed, its
+        # roof light bar, palette-cell solids (no skin island: the skin's layout stays)
         if C.get(cfg):
             Pt, tt, at_ = build(bodyV, np.concatenate(body_t), cab_attr)
             body_t.append(tt + len(bodyV))

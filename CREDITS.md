@@ -30,11 +30,11 @@ The Tesla Model 3 body, doors, trunk lid, frunk lid, glass and lamps are based o
 
 - **"2024 Tesla Model 3"** by **RBLXSupercars** — https://sketchfab.com/3d-models/2024-tesla-model-3-fd22be415215453693d67e33aa7812d0 (author: https://sketchfab.com/RBLXSupercars), as re-posted by brandonleong28 as **"Tesla model 3 2024"** — https://sketchfab.com/3d-models/tesla-model-3-2024-36c52f3f89f6439c90310f14e8ff33f2
 - Licensed under **CC BY 4.0** — http://creativecommons.org/licenses/by/4.0/
-- **Modified**: decimated, split into parts (doors, frunk lid, and a trunk lid cut out of the body shell along the model's panel lines), re-textured (new UV layout, baked shading, paint colours, damage / light / part masks, the spoiler and the lower front intake in black), its lamp lenses, interior, wheels and rear lettering removed, wheel-arch liners and intake backing added, front / rear badges drawn (T, TESLA, a Performance badge), red brake calipers added, its wheels and interior replaced by the mod's own (with door cards, a parcel shelf and a front trunk bin); converted for Project Zomboid.
+- **Modified**: reshaped to the owner's manual's dimensions and the official renders' proportions, decimated, split into parts (doors, frunk lid, and a trunk lid cut out of the body shell along the model's panel lines), re-textured (new UV layout, baked shading, paint colours, damage / light / part masks, the spoiler, the lower front intake and the rear diffuser in black), a front lower lip and a rear diffuser fin added, its lamp lenses, interior, wheels and rear lettering removed, wheel-arch liners and intake backing added, front / rear badges drawn (T, TESLA, a Performance badge), red brake calipers added, its wheels and interior replaced by the mod's own (with door cards, a parcel shelf and a front trunk bin); converted for Project Zomboid.
 
 RBLXSupercars and brandonleong28 do not endorse this mod.
 
-本 MOD 的 Model 3 車身、車門、行李箱蓋、前車廂蓋、玻璃與車燈，改作自 RBLXSupercars 的「2024 Tesla Model 3」（Sketchfab，上方連結；取自 brandonleong28 轉載的「Tesla model 3 2024」，上方連結），以 CC BY 4.0 授權（上方連結）。已修改：減面、拆件（車門、前車廂蓋，以及沿模型原有的板縫從車身切出行李箱蓋）、重做貼圖（新的 UV、烘焙光影、車漆顏色、損壞／車燈／零件遮罩、尾翼與前保桿下方進氣口改成黑色），拿掉燈罩、車內、輪子與車尾原有的字樣，加上輪拱內襯與進氣口內的擋板，重畫車頭車尾的標誌（T、TESLA、Performance 徽章），加上紅色煞車卡鉗，輪子與車內換成本 MOD 自己的（車門內側加上門板飾件，加上後置物板與前車廂置物槽），轉成 Project Zomboid 格式。原作者與轉載者沒有為本 MOD 背書。
+本 MOD 的 Model 3 車身、車門、行李箱蓋、前車廂蓋、玻璃與車燈，改作自 RBLXSupercars 的「2024 Tesla Model 3」（Sketchfab，上方連結；取自 brandonleong28 轉載的「Tesla model 3 2024」，上方連結），以 CC BY 4.0 授權（上方連結）。已修改：照車主手冊的尺寸與官方圖的比例調整外形、減面、拆件（車門、前車廂蓋，以及沿模型原有的板縫從車身切出行李箱蓋）、重做貼圖（新的 UV、烘焙光影、車漆顏色、損壞／車燈／零件遮罩、尾翼、前保桿下方進氣口與後擴散器改成黑色），加上前下唇與後擴散器的鰭片，拿掉燈罩、車內、輪子與車尾原有的字樣，加上輪拱內襯與進氣口內的擋板，重畫車頭車尾的標誌（T、TESLA、Performance 徽章），加上紅色煞車卡鉗，輪子與車內換成本 MOD 自己的（車門內側加上門板飾件，加上後置物板與前車廂置物槽），轉成 Project Zomboid 格式。原作者與轉載者沒有為本 MOD 背書。
 
 ## Cybertruck 車身模型 / Cybertruck body model
 
@@ -42,11 +42,11 @@ The Tesla Cybertruck body, doors, tailgate, tonneau cover, frunk lid, glass and 
 
 - **"Tesla CyberTruck"** by **adamsochi2010** (Mr3DDD) — https://sketchfab.com/3d-models/tesla-cybertruck-e95c44b87b57467098c82ba9f316f36d (author: https://sketchfab.com/adamsochi2010)
 - Licensed under **CC BY 4.0** — http://creativecommons.org/licenses/by/4.0/
-- **Modified**: scaled to the official dimensions, decimated, split into parts (four doors cut out of the body shell and side glass along the model's panel lines, the tailgate, the tonneau cover, the frunk lid), re-textured (new UV layout, baked shading, stainless and satin-film paints, damage / light / part masks), its interior, wheels, tyres and bed cover panel removed, a cargo bed, wheel-arch liners and a roof light bar added, a Cerberus badge drawn on the tailgate, its wheels and interior replaced by the mod's own (with door cards and a front trunk bin); converted for Project Zomboid.
+- **Modified**: reshaped to the owner's manual's dimensions and the official renders' proportions (wheelbase, roof apex, rear doors and side glass, wheel arches, bumpers), decimated, split into parts (four doors cut out of the body shell and side glass along the model's panel lines, the tailgate, the tonneau cover, the frunk lid), re-textured (new UV layout, baked shading, stainless and satin-film paints, damage / light / part masks), its interior, wheels, tyres and bed cover panel removed, a cargo bed with a ribbed floor, wheel-arch liners, a roof light bar and the head and tail light bars' corner ends added, its wipers thickened, a Cerberus badge drawn on the tailgate, its wheels and interior replaced by the mod's own (with door cards and a front trunk bin); converted for Project Zomboid.
 
 adamsochi2010 does not endorse this mod.
 
-本 MOD 的 Cybertruck 車身、車門、尾門、車斗捲簾蓋、前車廂蓋、玻璃與車燈，改作自 adamsochi2010（Mr3DDD）的「Tesla CyberTruck」（Sketchfab，上方連結），以 CC BY 4.0 授權（上方連結）。已修改：照官方尺寸縮放、減面、拆件（沿模型原有的板縫從車身與側窗切出四扇車門，尾門、車斗捲簾蓋、前車廂蓋）、重做貼圖（新的 UV、烘焙光影、不鏽鋼與緞面包膜車色、損壞／車燈／零件遮罩），拿掉車內、輪子、輪胎與車斗上的蓋板，加上車斗、輪拱內襯與車頂燈條，在尾門畫上 Cerberus 標誌，輪子與車內換成本 MOD 自己的（車門內側加上門板飾件，前車廂蓋下加上置物槽），轉成 Project Zomboid 格式。原作者沒有為本 MOD 背書。
+本 MOD 的 Cybertruck 車身、車門、尾門、車斗捲簾蓋、前車廂蓋、玻璃與車燈，改作自 adamsochi2010（Mr3DDD）的「Tesla CyberTruck」（Sketchfab，上方連結），以 CC BY 4.0 授權（上方連結）。已修改：照車主手冊的尺寸與官方圖的比例調整外形（軸距、車頂尖點、後門與側窗、輪拱、保桿）、減面、拆件（沿模型原有的板縫從車身與側窗切出四扇車門，尾門、車斗捲簾蓋、前車廂蓋）、重做貼圖（新的 UV、烘焙光影、不鏽鋼與緞面包膜車色、損壞／車燈／零件遮罩），拿掉車內、輪子、輪胎與車斗上的蓋板，加上車斗（底板有肋條）、輪拱內襯、車頂燈條與頭尾燈條在車角的兩端，雨刷加粗，在尾門畫上 Cerberus 標誌，輪子與車內換成本 MOD 自己的（車門內側加上門板飾件，前車廂蓋下加上置物槽），轉成 Project Zomboid 格式。原作者沒有為本 MOD 背書。
 
 ## Model S 車身模型 / Model S body model
 
@@ -54,11 +54,11 @@ The Tesla Model S body, doors, liftgate, frunk lid, glass and lamps are based on
 
 - **"Tesla Model S Plaid"** by **ValentunW** (Lals) — https://sketchfab.com/3d-models/tesla-model-s-plaid-9de8855fae324e6cbbb83c9b5288c961 (author: https://sketchfab.com/Lals)
 - Licensed under **CC BY 4.0** — http://creativecommons.org/licenses/by/4.0/
-- **Modified**: scaled to the official length, decimated, split into parts (doors, liftgate with the rear glass, frunk lid), re-textured (new UV layout, baked shading, paint colours, damage / light / part masks, smoked tail lamps), its interior, wheels, tyres, brakes, wipers, frunk and trunk linings, the underside of its frunk lid and its rear lettering and badges removed, a grille backing added, front / rear badges drawn (T, TESLA in chrome), red brake calipers added, its wheels and interior replaced by the mod's own (with door cards and a front trunk bin); converted for Project Zomboid.
+- **Modified**: reshaped to the owner's manual's dimensions and the official renders' proportions (height, width, rear overhang, rear corners, the body side at the B-pillar), decimated, split into parts (doors, liftgate with the rear glass, frunk lid), re-textured (new UV layout, baked shading, paint colours, damage / light / part masks, panel gaps drawn as thin lines, the lower bumpers and the rear diffuser in black, tail lamps in red bars and grey lenses), its interior, wheels, tyres, brakes, wipers, frunk and trunk linings, the underside of its frunk lid and its rear lettering and badges removed, a grille backing added, front / rear badges drawn (T, TESLA in chrome), red brake calipers added, its wheels and interior replaced by the mod's own (with door cards and a front trunk bin); converted for Project Zomboid.
 
 ValentunW does not endorse this mod.
 
-本 MOD 的 Model S 車身、車門、尾門、前車廂蓋、玻璃與車燈，改作自 ValentunW（Lals）的「Tesla Model S Plaid」（Sketchfab，上方連結），以 CC BY 4.0 授權（上方連結）。已修改：照官方車長縮放、減面、拆件（車門、連同後擋玻璃的尾門、前車廂蓋）、重做貼圖（新的 UV、烘焙光影、車漆顏色、損壞／車燈／零件遮罩、燻黑的尾燈），拿掉車內、輪子、輪胎、煞車、雨刷、前後行李廂內襯、前車廂蓋的底面與車尾原有的字樣和標誌，加上水箱護罩後的擋板，重畫車頭車尾的標誌（T、鍍鉻的 TESLA），加上紅色煞車卡鉗，輪子與車內換成本 MOD 自己的（車門內側加上門板飾件，前車廂蓋下加上置物槽），轉成 Project Zomboid 格式。ValentunW 沒有為本 MOD 背書。
+本 MOD 的 Model S 車身、車門、尾門、前車廂蓋、玻璃與車燈，改作自 ValentunW（Lals）的「Tesla Model S Plaid」（Sketchfab，上方連結），以 CC BY 4.0 授權（上方連結）。已修改：照車主手冊的尺寸與官方圖的比例調整外形（車高、車寬、後懸、車尾兩角、B 柱一帶的車身側面）、減面、拆件（車門、連同後擋玻璃的尾門、前車廂蓋）、重做貼圖（新的 UV、烘焙光影、車漆顏色、損壞／車燈／零件遮罩、把板縫畫成細線、前後保桿下半部與後擴散器改成黑色、尾燈分成紅條與灰色透鏡），拿掉車內、輪子、輪胎、煞車、雨刷、前後行李廂內襯、前車廂蓋的底面與車尾原有的字樣和標誌，加上水箱護罩後的擋板，重畫車頭車尾的標誌（T、鍍鉻的 TESLA），加上紅色煞車卡鉗，輪子與車內換成本 MOD 自己的（車門內側加上門板飾件，前車廂蓋下加上置物槽），轉成 Project Zomboid 格式。ValentunW 沒有為本 MOD 背書。
 
 ## Model X 車身模型 / Model X body model
 
