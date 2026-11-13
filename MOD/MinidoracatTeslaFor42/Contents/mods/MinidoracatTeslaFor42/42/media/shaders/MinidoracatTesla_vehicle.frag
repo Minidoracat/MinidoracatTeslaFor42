@@ -81,6 +81,23 @@ uniform vec3 Light4Colour;
 
 #include "vehicle_common.frag"
 
+// vanilla addDamage (vehicle_common.frag.glsl:6-15) with the shell's own saturation scaled to the paint's. Our skins are
+// full colour; setColorHSV only tints the damage (convert.py: s = the skin's median paint S + 0.47, the shells' median S
+// 0.03). Vanilla adds the shell's S (its rust-brown texels, up to 0.3) on top and gives it the paint hue, which on a
+// white car (median S 0.005-0.04, hue meaningless) painted the scratches pink or lilac; vanilla's own white and black
+// cars have S 0-0.1 against its 0.5 offset, so their scratches come out grey. Here the shell S scales the paint's:
+// paint S 0.5 and over is vanilla exactly, a white car's scratches stay white
+vec3 addPaintDamage(vec3 col, vec4 texDamage, vec3 paintHSV, float alpha)
+{
+	vec3 fragHSV = rgb2hsv(texDamage.xyz).xyz;
+	float paintS = max(paintHSV.y - 0.47, 0.0);
+	fragHSV.x = paintHSV.x;
+	fragHSV.y = clamp(paintS + (fragHSV.y - 0.03) * min(2.0 * paintS, 1.0), 0.0, 0.9999);
+	fragHSV.z = clamp(fragHSV.z + paintHSV.z - 0.5, 0.0, 0.9999);
+	fragHSV.xyz = mod(fragHSV.xyz, 1.0);
+	return mix(col, hsv2rgb(fragHSV), texDamage.a * 0.75 * alpha);
+}
+
 // glass calibration knobs: opacity per pane (alpha = share of the glass colour over the cabin), glass colour
 // (game-readable, not the car's light transmission: the driver and the seats must read at default zoom by day)
 const float A_WINDSCREEN = 0.22;   // WinT
@@ -355,10 +372,10 @@ void main()
 	// Blood below damage on windows, ignore vehicle body.
 	col = addBlood(texColorDamage2Overlay, texColorDamage1Overlay, intensity, maskAlpha * windowAlpha, lighting, TintColourNew, col);
 
-	col = addDamage(col, texColorDamage1Shell, paintColor, lighting, TintColourNew, t2en*(1.0-noTintAlpha));
+	col = addPaintDamage(col, texColorDamage1Shell, paintColor, t2en*(1.0-noTintAlpha));
 	col = mix(col, texColorDamage1Shell.xyz, texColorDamage1Shell.a*t2en*noTintAlpha);
 
-	col = addDamage(col, texColorDamage2Shell, paintColor, lighting, TintColourNew, t3en*(1.0-noTintAlpha));
+	col = addPaintDamage(col, texColorDamage2Shell, paintColor, t3en*(1.0-noTintAlpha));
 	col = mix(col, texColorDamage2Shell.xyz, texColorDamage2Shell.a*t3en*noTintAlpha);
 
 	// Blood above damage on vehicle body, ignore windows.
