@@ -105,6 +105,23 @@ FIELD = dict(
         dict(d=(0, 0, -0.03), u=(4.50, 4.95), h=(0.20, 0.35, 1.20, 1.40), az=(0.35, 0.95)),
         dict(d=(0, 0, -0.03), u=(1.05, 1.25, 1.55, 1.85), h=(0.60, 0.72, 0.92, 1.00), az=(0.60, 0.85)),
         dict(d=(0, 0, -0.04), u=(0.30, 0.45, 0.60, 0.70), h=(0.22, 0.32, 0.70, 0.80), az=(0.70, 0.90)),
+        # round 11: the rear roof's middle down (a/silpt.py: per column the official's top outline against ours and
+        # what our outline ray touches). REAR34 saw the middle at u 3.4-3.9 4-5 px high, the shoulders (az 0.57-0.59)
+        # at u 3.9-4.6 6-10 px and FRONT34 the shoulders (az 0.6) at u 4.0-4.5 4-8 px, while SIDE's outline is the near
+        # shoulder (az 0.51-0.61) and was right (-1..+2): the whole rear roof down 2.5 cm put SIDE at +5..+8 px. Down
+        # to the tailgate (u 4.70) with the shoulders too it fitted all three (REAR34 -4..-6, SIDE <= +3) but opened the
+        # cargo bay's side wall (the tailgate open N / W 0 -> 50 px, through the quarter glass) and, ending before the
+        # tailgate's front edge with the shoulders still down, the roof / falcon door / tailgate corner (SE 1 -> 75): the
+        # middle only, ending ahead of the tailgate. The roof's top (the manual's 1,680.6 at u 3.03) stays
+        dict(d=(0, -0.025), u=(3.15, 3.55, 3.65, 3.85), h=(1.30, 1.40), az=(0.60, 0.45)),
+        # round 11: the nose's corners forward (a/nosesec.py: per image row the outline's nose end, official against
+        # ours, across the ray at that depth; SIDE the near corner, FRONT34 the far one, both az 0.4-0.6): the bumper's
+        # middle (h 0.44-0.55: SIDE +1.8..+2.9, FRONT34 +1.5..+3.5 cm, ours inside) and the splitter's corners (h
+        # 0.22-0.28: SIDE +3.2..+3.8, FRONT34 +2.4..+5.7 cm) -> -3..+2 / -2..+6 px. Not the lamps' height (h 0.74:
+        # +2.2..+3.1 cm, under the lid's lip) nor the far fender's top (h 0.94-1.05, FRONT34 only, +5..+8 cm: SIDE sees
+        # that side's lip right). The fascia's P-spline spreads a term ~4 cm up: the windows end low
+        dict(d=(-0.02, 0), u=(-1, -0.5, 0.25, 0.40), h=(0.36, 0.42, 0.47, 0.53), az=(0.30, 0.42, 0.62, 0.75)),
+        dict(d=(-0.035, 0), u=(-1, -0.5, 0.25, 0.40), h=(0.18, 0.21, 0.26, 0.30), az=(0.10, 0.25, 0.62, 0.75)),
     ),
     # faces recoloured by box (source frame, before the field): obj, mat -> to; u, h, az windows (lo, hi).
     # The tail lamps body colour, lens and housing (the source's lamp sat 5-16 px low and had another shape: official
@@ -229,9 +246,17 @@ FIELD = dict(
     # side seam 11-16 px left of ours, 0..+3 after), the gate and the body round it slid together on the surface. Its
     # bottom (4-8 px under the official's) stays: raised 1.9 cm the convert's cabin wall came through the bumper's
     # top at the corner as a dark wedge. `side` in 0.10: at 0.20 the rear glass's frame on the gate moved off the glass
-    # (1 px holes in every state E); 0.06 tore the gate open (SE 1 -> 14 px)
-    gate_slide=dict(objs=("Car Body", "Trunk"), u=4.3, da=0.05, side=(0.10, 0.12), h_lo=0.65, fade=(1.15, 1.30),
+    # (1 px holes in every state E); 0.06 tore the gate open (SE 1 -> 14 px). Round 11: fade 1.15-1.30 -> 1.08-1.22
+    # (above 1.22 the skin round the gate's top corner faces sideways: slid sideways along u it kinked the upper seam;
+    # 1.25-1.45 tore it open; `facing`, the slide weighted by the skin's u-facing, also bent the side seam)
+    gate_slide=dict(objs=("Car Body", "Trunk"), u=4.3, da=0.05, side=(0.10, 0.12), h_lo=0.65, fade=(1.08, 1.22),
                     reach=0.15),
+    # round 11: the frunk lid's side edge over the headlamps up onto the official's lamp top (lid_slide(); the top:
+    # LampRim_X's outline 3 px up, whose ring the official lamp's edge is: on it the body's gutter under the lid's edge
+    # still showed white between the lid and the ring)
+    lid_slide=dict(objs=("Car Body", "Bonnet"), lid="Bonnet", view="FRONT34", x=(572, 752), fade=12, band=(30, 24),
+                   top=((571.5, 524.5), (600, 511.5), (650, 501.5), (700, 492.5), (738, 489.5), (747, 491.5)),
+                   u=(-1, 1.2), h=(0.60, 0.95), reach=0.06),
     # the fitted official cameras (temp/skf_mx/work/camfit/cams.json: R world -> OpenCV, C, f, w, h in the scene's grid
     # frame; anchor: the front wheel centre y and the ground there) for FIELD decals. FRONT34 / REAR34 refit
     # 2026-11-12 (round 2) with their height held at SIDE's (fit.py HOLD: one studio rig): FRONT34 had sat 20 cm lower,
@@ -278,10 +303,11 @@ FIELD = dict(
                       (440, 504), (420, 507), (405, 508))),
         # (round 8) the lamp's thin dark rim round the lens and the light strip (official FRONT34: the white strip reads
         # off the white paint by it). Round 10: a ring, the lens and the strip cut out (`holes`, their union): a whole
-        # plate 2 mm under the lens poked through its chords on the curve (the game's lit lamp at night half dark)
+        # plate 2 mm under the lens poked through its chords on the curve (the game's lit lamp at night half dark).
+        # Round 11: its outer tip from x 577 (lid_slide uncovered it: a black wedge past the lamp's end)
         dict(name="LampRim_X", view="FRONT34", compete=("SIDE",), mat="Lamp_Rim", on=("Car Body",), off=0.006, u=(0.1, 0.75),
-             outline=((571.5, 527.5), (600, 514.5), (650, 504.5), (700, 495.5), (738, 492.5), (747, 494.5), (757.5, 500),
-                      (744, 516.5), (703, 533.5), (650, 541.5), (600, 540.5), (571, 531)),
+             outline=((577, 525.3), (600, 514.5), (650, 504.5), (700, 495.5), (738, 492.5), (747, 494.5), (757.5, 500),
+                      (744, 516.5), (703, 533.5), (650, 541.5), (600, 540.5), (577, 533)),
              holes=(((574, 527), (600, 516), (650, 506), (700, 497), (738, 494), (745, 496), (750, 497.5), (755, 500.5),
                      (742, 515), (702, 532), (650, 540), (600, 539), (573, 530)),)),
         # the headlamps' daytime light strip along their lower edge (official FRONT34: a smoked lamp, a white strip
@@ -725,7 +751,7 @@ def rebuild(me, F, fit, nose, yc, inner, P2, rm):
         lo_[0] < np.arctan2((v.co.y - yc) * S, F["axis"] - (nose - v.co.x) * S) * rm < hi_[0]   # noqa: E731
     ends = [v for e_ in bm.edges if len(e_.link_faces) == 1 for v in e_.verts if v.is_valid and win_(v)]
     nv = len(bm.verts)
-    bmesh.ops.remove_doubles(bm, verts=list(set(ends)), dist=F["weld"] / S)
+    bmesh.ops.remove_doubles(bm, verts=list(dict.fromkeys(ends)), dist=F["weld"] / S)   # (edge order: a set's ran per run)
     bmesh.ops.dissolve_degenerate(bm, dist=1e-6, edges=bm.edges[:])
     print("PREP fascia: %d seam vertices welded" % (nv - len(bm.verts)))
     # the slivers the weld left open (whole thin triangles missing, 12-65 mm long: from outside the liner showed
@@ -1105,6 +1131,7 @@ def arch_lip(meshes, nose, yc, ftyre_x):
             any(bv[v] for v in fc.verts)   # noqa: E731
         new = []
         for lv, other in ((fv, gv), (gv, fv)) if lip else ((fv, gv),):
+            bm.edges.index_update()                    # (the first pass's new edges: else ties, set order per run)
             cut = {e for fc in bm.faces if cand(fc) for e in fc.edges if lv[e.verts[0]] * lv[e.verts[1]] < 0}
             nw = []
             for e in sorted(cut, key=lambda e: e.index):  # (index order: the split's vertex order is the build's)
@@ -1188,8 +1215,10 @@ def rear_trim(meshes, nose, yc, ftyre_x):
 def gate_slide(meshes, nose, yc):
     """FIELD gate_slide: the tailgate's side seams moved out on the surface (the body round them and the tailgate both,
     so the seam stays closed): by `da` (m, lateral) in a tent `side` (in, out) round the seam's az at that height, over
-    h from `h_lo` and fading over `fade`; each moved vertex back onto the old surface along u (the rear face a height
-    field there), its normals the old surface's there."""
+    h from `h_lo` and fading over `fade`; each moved vertex of the skin back onto the old surface along u (the rear face
+    a height field there), its normals the old surface's there; the rest (the lamps' pockets, the jambs, the liners
+    under the skin) shifted with the skin over them (round 11: projected onto the skin too they folded over it, dark
+    specks round the lamps' lower edge and a crease on the C pillar, same camera REAR34)."""
     from mathutils import Vector
     from mathutils.bvhtree import BVHTree
     A = FIELD.get("gate_slide")
@@ -1213,16 +1242,78 @@ def gate_slide(meshes, nose, yc):
         da = A["da"] * tent(az - np.interp(h, hs, side), *A["side"]) * \
             s(h, A["fade"][1], A["fade"][0]) * (h > A["h_lo"])
         i = np.flatnonzero((u > A["u"]) & (da > 1e-6))
-        o_ = np.c_[np.full(len(i), nose - 6.0 / S), yc + np.sign(p[i, 1] - yc + 1e-12) * (az[i] + da[i]) / S, p[i, 2]]
-        return i, o_, np.tile((1.0, 0, 0), (len(i), 1))
+        o0 = np.c_[np.full(len(i), nose - 6.0 / S), p[i, 1], p[i, 2]]
+        o1 = o0 + np.c_[np.zeros(len(i)), np.sign(p[i, 1] - yc + 1e-12) * da[i] / S, np.zeros(len(i))]
+        d = np.tile((1.0, 0, 0), (len(i), 1))
+        return i, o0, d, o1, d
     print("PREP gate slide: seam az %.3f-%.3f (h %.2f-%.2f), %d vertices moved"
           % (side.min(), side.max(), hs.min(), hs.max(), resurface(ms, target, A["reach"])))
 
+def lid_slide(meshes, nose, yc, ftyre_x):
+    """FIELD lid_slide (round 11): the frunk lid's side edge over the headlamps moved up onto the official's lamp top
+    (official FRONT34: the lid's edge is the lamp's top edge; ours came down over the lamp's top 3-9 px, the lens decal
+    under it hidden and the lid's edge read as white specks over the lamp). Per image column in `x` the lid's lowest
+    visible pixel against the `top` chain (px) gives how far up; the lid and the body round the edge (a tent `band`
+    px above / below it, faded over `fade` px at the columns' ends) slide up together in the view, back onto the old
+    surface along the camera's rays (resurface()), both sides alike (the far side through the mirrored camera)."""
+    from mathutils import Vector
+    from mathutils.bvhtree import BVHTree
+    A = FIELD.get("lid_slide")
+    if not A:
+        return
+    ms = [o for o in meshes if o.name in A["objs"]]
+    c = FIELD["cams"][A["view"]]
+    R, C, (fy, gnd) = np.array(c["R"]), np.array(c["C"]), FIELD["anchor"]
+    dy, dz = fy / K - S * (ftyre_x - SRC_C[0]), gnd / K
+    world = lambda g: np.array([(g[1] / K - dy) / S + SRC_C[0], SRC_C[1] - g[0] / K / S, (g[2] / K - dz) / S])  # noqa
+    eye = world(C)
+    side = np.sign(eye[1] - yc)
 
-def resurface(ms, target, reach):
-    """the vertices target(o, p) picks (-> indices, ray origins, ray directions; world) moved onto the objects' old
-    surface, each to its ray's first hit if within `reach` (m) of where it was; its corner normals the old surface's
-    there (barycentric on the hit triangle's) -> how many moved"""
+    def ray(x, y):                                    # pixel -> unit direction (world), the camera's side
+        d = world(C + R.T @ np.array([(x - c["w"] / 2) / c["f"], (y - c["h"] / 2) / c["f"], 1.0])) - eye
+        return d / np.linalg.norm(d)
+    k0 = np.cumsum([0] + [len(o.data.vertices) for o in ms])
+    bvh = BVHTree.FromPolygons([v.co[:] for o in ms for v in o.data.vertices],
+                               [[i + k for i in f.vertices] for o, k in zip(ms, k0) for f in o.data.polygons])
+    lid = np.repeat([o.name == A["lid"] for o in ms], [len(o.data.polygons) for o in ms])
+    top = np.array(A["top"], float)
+    xs = np.arange(A["x"][0], A["x"][1] + 1.0)
+    up = np.zeros(len(xs))
+    for j, x in enumerate(xs):                        # the lid's lowest pixel near the official top, 0.25 px steps
+        yt = np.interp(x, top[:, 0], top[:, 1])
+        ys = [y for y in np.arange(yt - 20, yt + 20, 0.25)
+              if (h := bvh.ray_cast(Vector(eye), Vector(ray(x, y))))[0] is not None and lid[h[2]]]
+        up[j] = max(max(ys) - yt, 0.0) if ys else 0.0
+    up = np.convolve(np.pad(up, 2, mode="edge"), np.ones(5) / 5, mode="valid")
+    up *= np.clip(np.minimum(xs - xs[0], xs[-1] - xs) / A["fade"], 0, 1)
+    yb = np.interp(xs, top[:, 0], top[:, 1]) + up    # the lid's edge now
+
+    def target(o, p):
+        px, _ = cam_px(p, A["view"], yc, ftyre_x)
+        u, h = (nose - p[:, 0]) * S, p[:, 2] * S
+        e = px[:, 1] - np.interp(px[:, 0], xs, yb)   # px below the lid's edge
+        w = np.clip(np.minimum(1 + e / A["band"][0], 1 - e / A["band"][1]), 0, 1)
+        dv = np.interp(px[:, 0], xs, up, left=0, right=0) * w * (u > A["u"][0]) * (u < A["u"][1]) * \
+            (h > A["h"][0]) * (h < A["h"][1])
+        i = np.flatnonzero(dv > 0.05)
+        far = np.sign(p[i, 1] - yc) != side
+        eo = np.where(far[:, None], eye * (1, -1, 1) + (0, 2 * yc, 0), eye)
+        d0 = p[i] - eo
+        d0 /= np.linalg.norm(d0, axis=1, keepdims=True)
+        d1 = np.array([ray(x, y - v) for (x, y), v in zip(px[i], dv[i])]).reshape(-1, 3)
+        d1[far, 1] *= -1
+        return i, eo, d0, eo, d1
+    print("PREP lid slide: up to %.1f px (x %d-%d), %d vertices moved"
+          % (up.max(), xs[0], xs[-1], resurface(ms, target, A["reach"])))
+
+
+
+def resurface(ms, target, reach, skin=0.003):
+    """the vertices target(o, p) picks (-> indices; per vertex its own ray (origin, direction) through it and the ray
+    it moves to; world) moved onto the objects' old surface: a skin vertex (its own ray's first hit within `skin` m of
+    it, its normal facing the ray) to the new ray's first hit if within `reach` (m) of where it was, its corner normals
+    the old surface's there (barycentric on the hit triangle's); any other by the skin's move over it (new hit - own
+    hit; none past `reach`), its normals kept -> how many moved"""
     from mathutils import Vector
     from mathutils.bvhtree import BVHTree
     old, tn = [], []                                  # (vertices, triangles) per object; the triangles' corner normals
@@ -1240,23 +1331,32 @@ def resurface(ms, target, reach):
     bvh = BVHTree.FromPolygons([Vector(p) for p in allv], allt.tolist())
     n_moved = 0
     for o, (p, _) in zip(ms, old):
-        idx, org, drn = target(o, p)
+        idx, org0, drn0, org1, drn1 = target(o, p)
         me = o.data
         cn = np.empty(len(me.loops) * 3, np.float32)
         me.attributes["custom_normal"].data.foreach_get("vector", cn)
         cn = cn.reshape(-1, 3)
         lv = np.empty(len(me.loops), np.int64)
         me.loops.foreach_get("vertex_index", lv)
+        vn = np.zeros_like(p)                         # the vertices' normals: their corners' mean
+        np.add.at(vn, lv, cn)
         q = p.copy()
-        for i, a, d in zip(idx, org, drn):
-            hit = bvh.ray_cast(Vector(a), Vector(d))
-            if hit[0] is None or np.linalg.norm(np.array(hit[0][:]) - p[i]) * S > reach:
-                continue
-            q[i] = hit[0][:]
-            a_, b_, c_ = allv[allt[hit[2]]]
-            w = np.linalg.lstsq(np.c_[a_ - c_, b_ - c_], np.array(hit[0][:]) - c_, rcond=None)[0]
-            nn = alln[hit[2]].T @ np.r_[w, 1 - w.sum()]
-            cn[lv == i] = nn / max(np.linalg.norm(nn), 1e-9)
+        for i, a0, d0, a1, d1 in zip(idx, org0, drn0, org1, drn1):
+            hit = bvh.ray_cast(Vector(a1), Vector(d1))
+            own = bvh.ray_cast(Vector(a0), Vector(d0))
+            if own[0] is not None and np.linalg.norm(np.array(own[0][:]) - p[i]) * S < skin and vn[i] @ d0 < 0:
+                if hit[0] is None or np.linalg.norm(np.array(hit[0][:]) - p[i]) * S > reach:
+                    continue
+                q[i] = hit[0][:]
+                a_, b_, c_ = allv[allt[hit[2]]]
+                w = np.linalg.lstsq(np.c_[a_ - c_, b_ - c_], np.array(hit[0][:]) - c_, rcond=None)[0]
+                nn = alln[hit[2]].T @ np.r_[w, 1 - w.sum()]
+                cn[lv == i] = nn / max(np.linalg.norm(nn), 1e-9)
+            elif hit[0] is not None and own[0] is not None:
+                m = np.array(hit[0][:]) - np.array(own[0][:])
+                q[i] = p[i] + (m if np.linalg.norm(m) * S < reach else (a1 - a0))
+            else:
+                q[i] = p[i] + (a1 - a0)
             n_moved += 1
         me.vertices.foreach_set("co", q.ravel())
         me.attributes["custom_normal"].data.foreach_set("vector", cn.ravel())
@@ -1403,6 +1503,8 @@ def decals(bpy, meshes, nose, yc, ftyre_x):
                 continue
             if owner[fi] not in dc["on"] or pmat[fi] in dc.get("skip", ()) or not dc.get("u", (-9, 9))[0] < (nose - hit.x) * S < dc.get("u", (-9, 9))[1]:
                 off.append(v)
+            elif "half" in dc and (hit.y - yc) * np.sign(eye.y - yc) * S < -dc["half"]:
+                off.append(v)                         # (past the centre line by more than `half` m: the mirror's)
             lay[v] = owner[fi]
             n = n if n.dot(ray) < 0 else -n                # off the surface along its normal (a ray-wise offset
             nrm[v] = n                                     # sank in where the view grazes it)
@@ -1605,6 +1707,7 @@ def main():
         smooth_normals(meshes, nose, yc)
     ftyre = next(o for o in meshes if o.name.startswith("Tyre") and (nose - pts(o)[:, 0].mean()) * S < 2.5)
     fx = pts(ftyre)[:, 0]
+    lid_slide(meshes, nose, yc, (fx.min() + fx.max()) / 2)
     arch_lip(meshes, nose, yc, (fx.min() + fx.max()) / 2)
     rear_trim(meshes, nose, yc, (fx.min() + fx.max()) / 2)
     px_cut(meshes, nose, yc, (fx.min() + fx.max()) / 2)

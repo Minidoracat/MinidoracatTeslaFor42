@@ -114,16 +114,16 @@ module Base
         textureDamage2Shell = Vehicles/Veh_Damage2,
         textureRust = Vehicles/Veh_Rust,
         template = PassengerSeat6,
-        extents = 0.9075 0.6874 2.2949,
-        physicsChassisShape = 0.9075 0.6874 2.2949,
+        extents = 0.9075 0.6874 2.2950,
+        physicsChassisShape = 0.9075 0.6874 2.2950,
         centerOfMassOffset = 0.0000 0.2878 0.0000,
-        shadowExtents = 0.9075 2.2949,
+        shadowExtents = 0.9075 2.2950,
         shadowOffset = 0.0 0.0,
         useChassisPhysicsCollision = false,
         physics box
         {
             offset = 0.0000 0.1537 0.0000,
-            extents = 0.8910 0.4193 2.2619,
+            extents = 0.8910 0.4193 2.2620,
         }
         physics box
         {
@@ -133,14 +133,14 @@ module Base
         wheel FrontRight
         {
             front = true,
-            offset = -0.3869 -0.3100 0.6995,
+            offset = -0.3869 -0.3100 0.6994,
             radius = 0.1612,
             width = 0.2189,
         }
         wheel FrontLeft
         {
             front = true,
-            offset = 0.3869 -0.3100 0.6995,
+            offset = 0.3869 -0.3100 0.6994,
             radius = 0.1612,
             width = 0.2189,
         }
@@ -274,15 +274,15 @@ module Base
         }
         area GasTank
         {
-            xywh = 0.6900 -0.9900 0.4725 0.4725,
+            xywh = 0.6900 -0.9901 0.4725 0.4725,
         }
         area SeatFrontLeft
         {
-            xywh = 0.6900 0.1787 0.4725 0.5549,
+            xywh = 0.6900 0.1786 0.4725 0.5549,
         }
         area SeatFrontRight
         {
-            xywh = -0.6900 0.1787 0.4725 0.5549,
+            xywh = -0.6900 0.1786 0.4725 0.5549,
         }
         area SeatMiddleLeft
         {
@@ -302,11 +302,11 @@ module Base
         }
         area TireFrontRight
         {
-            xywh = -0.6900 0.6995 0.4725 0.4725,
+            xywh = -0.6900 0.6994 0.4725 0.4725,
         }
         area TireFrontLeft
         {
-            xywh = 0.6900 0.6995 0.4725 0.4725,
+            xywh = 0.6900 0.6994 0.4725 0.4725,
         }
         area TireRearRight
         {
@@ -318,20 +318,20 @@ module Base
         }
         attachment trailer
         {
-            offset = 0.0000 -0.2997 -1.1639,
+            offset = 0.0000 -0.2997 -1.1640,
             rotate = 0.0 0.0 0.0,
             zoffset = -1.0,
         }
         attachment trailerfront
         {
-            offset = 0.0000 -0.2997 1.1639,
+            offset = 0.0000 -0.2997 1.1640,
             rotate = 0.0 0.0 0.0,
             zoffset = 1.0,
         }
         /* charge port: real Model X, owner's manual p.189 */
         attachment chargeport
         {
-            offset = 0.3898 0.0245 -0.9900,
+            offset = 0.3898 0.0245 -0.9901,
             rotate = 0.0 0.0 0.0,
         }
         part DoorFrontLeft

@@ -190,9 +190,12 @@ CAR = dict(
                (0, 0, 1), "arch_liner") for sx in (-1, 1)),
             # (round 6) under the 4 mm gap where the falcon door's rear top corner, the tailgate's front edge and the
             # roof meet (the front right door open: W 3 px, through the cabin and out of the door opening); a patch,
-            # not a header across (RoofHeader, round 4: it closed the sky between the open falcon doors and the roof)
+            # not a header across (RoofHeader, round 4: it closed the sky between the open falcon doors and the roof).
+            # Round 11: out to |x| 0.58 and back to y -1.30 under the gap's outer end by the tailgate's top corner
+            # (prep's gate_slide now shifts the skin's under-layers with it: the tailgate open SE 1 -> 6 px there; this
+            # patch did not close it, the 6 px stay)
             *((f"GateCrack{'L' if sx < 0 else 'R'}", tuple((sx * x, y, 1.29) for x, y in
-                                                         ((0.42, -1.22), (0.26, -1.22), (0.26, -1.13), (0.42, -1.13))),
+                                                         ((0.58, -1.30), (0.26, -1.30), (0.26, -1.13), (0.58, -1.13))),
                (0, 0, 1), "arch_liner") for sx in (-1, 1))),
     SEAL_CLIP=True,                        # (the strips through a panel showed outside: B-pillar roof seam, arch lips)
     # the strips 45 deg into the body (convert.py seals): in the panel's plane they stood up to 27 mm past the outline
