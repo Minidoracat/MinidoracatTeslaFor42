@@ -1883,7 +1883,7 @@ def seals(V, T, sel, attr, glass_bvh, solid=None, seams=None, full=False, near_f
 
 
 def seam_lines(V, T, part, panel, glass_bvh):
-    """SEAM_LINE=dict(w, over, bridge, lift, gap, glass, step, chain, tone | cell[, skip, flat]) (Model S): every gap between
+    """SEAM_LINE=dict(w, over, bridge, lift, gap, glass, step, chain, tone | cell[, skip, flat, wide]) (Model S): every gap between
     two parts (doors, lids, the body; not within `glass` of a pane, not the parts in `skip`) as one continuous dark
     line of even width, half on each side. Its colour: with `tone`, every corner on SEAM_SPOT, which textures()
     paints the skin's median paint x tone (a shade of each paint: a dark cabin cell was a black line on the white
@@ -1903,11 +1903,14 @@ def seam_lines(V, T, part, panel, glass_bvh):
     splits the run. Why: the sources' 1-5 mm gaps are under a pixel at the game's nearest zoom (6.7 mm/px) and seen
     without antialiasing: the ground through them, a hairline on one panel (SEAL_RIBBON) broke into dots and dashes;
     halves meeting edge to edge fell between the pixel centres, and a rolled door bottom put a line in its own plane
-    out of sight. Grid units. -> {part: (points, tris, attributes)}."""
+    out of sight. `wide` {part: w} (Model X's frunk lid): that part's strips and the ones across from it `w` in
+    instead (4 mm drew the lid's sides, seen obliquely, as dashes). Grid units. -> {part: (points, tris, attributes)}."""
     from mathutils.kdtree import KDTree
     from mathutils.bvhtree import BVHTree
     sl = C["SEAM_LINE"]
     w, lift, step = sl["w"], sl["lift"], sl["step"]
+    wide = sl.get("wide", {})
+    wmax = max([w, *wide.values()])
     skip = [k for k, nm in enumerate(pv.DOORS, 1) if nm in sl.get("skip", ())]
     pid = np.unique(np.round(V / 1e-5).astype(np.int64), axis=0, return_inverse=True)[1].ravel()
     fn = np.cross(V[T[:, 1]] - V[T[:, 0]], V[T[:, 2]] - V[T[:, 0]])
@@ -2027,7 +2030,7 @@ def seam_lines(V, T, part, panel, glass_bvh):
                 # first: none), across the gap: h, the height over the gap of the panel each meets first; the line
                 # starts where the own part's is up to its height 1-2 cm in (a rolled edge seen into the gap is not
                 # it), and bridges to halfway to where the other part's does the same on the other side
-                ss = np.arange(-0.022, 0.02 + w, 0.0005)
+                ss = np.arange(-0.022, 0.02 + wmax, 0.0005)
                 for _ in range(2):
                     hs = [ray(c + bx * s + n * 0.15, -n) for s in ss]
                     h = np.array([np.nan if x is None else (x[0] - c) @ n for x in hs])
@@ -2044,13 +2047,14 @@ def seam_lines(V, T, part, panel, glass_bvh):
                     a_, b_ = np.polyfit(ss[m_], h[m_], 1)
                     return (hp == k_) & (h >= a_ * ss + b_ - 0.002)
                 top = np.flatnonzero(skin(fo, k))
-                j = np.searchsorted(ss, ss[top[0]] + w)
+                fn_ = (ss >= -0.02) & (ss <= -0.01) & (hp >= 0) & (hp != k)
+                nb = np.bincount(hp[fn_]).argmax() if fn_.any() else -1
+                w_ = max(wide.get(int(k), w), wide.get(int(nb), w)) if wide else w
+                j = np.searchsorted(ss, ss[top[0]] + w_)
                 if j >= len(ss) or hp[j] != k:
                     rows.append(None)
                     continue
                 corner, inner, s0 = hs[top[0]][0], hs[j][0], ss[top[0]]
-                fn_ = (ss >= -0.02) & (ss <= -0.01) & (hp >= 0) & (hp != k)
-                nb = np.bincount(hp[fn_]).argmax() if fn_.any() else -1
                 cand = [] if nb < 0 or (fn_ & (hp == nb)).sum() < 2 else np.flatnonzero(skin(fn_ & (hp == nb), nb)[:top[0]])
                 if len(cand):     # `over` past the middle between the two corners: the halves overlap (edge to edge,
                     # each alone fell between the game's pixel centres)
