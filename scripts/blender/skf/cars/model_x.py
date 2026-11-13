@@ -163,10 +163,18 @@ CAR = dict(
     # round 9: lower towards the middle (official FRONT34: under the grille a white lip 12-15 px tall, then the dark
     # splitter from h ~0.25 m on the centre line; ours was dark from the grille down): z 0.2065 on the centre line
     # rising to 0.233 at |x| 0.58 and level out from there (one zone per side: a face goes below every plane)
-    CARBON=dict(rgb=(40, 40, 43), zones=tuple(
+    # Round 14: the frunk's gutter walls under the cowl (|x| 0.40-0.54, y 1.27-1.52, z 0.50-0.71) and the cowl's inward
+    # end wall by the A-pillar's foot (|x| 0.76-0.79, facing in), which prep's round 13 recolour made body colour, black
+    # again (the real car's black plastic): seen through the windscreen past the single-sided firewall, the game's N / W
+    # showed a white wedge under the windscreen (GameMX6 A / B); as paint (not prep's Black Car Paint) they stay panels,
+    # so the seam lines' outlines (convert.py seam_lines) and the lid seam do not move
+    CARBON=dict(rgb=(40, 40, 43), zones=(*(
         dict(lo=(lx, 1.62, -0.1), hi=(hx, 2.4, 0.30), below=(((0.0, 2.0, 0.233), (0.0, 0.0, 1.0)),
                                                           ((0.0, 2.0, 0.2065), (sx * 0.0457, 0.0, 1.0))), cut=True)
-        for lx, hx, sx in ((-1.2, 0.0, 1.0), (0.0, 1.2, -1.0)))),
+        for lx, hx, sx in ((-1.2, 0.0, 1.0), (0.0, 1.2, -1.0))),
+        *(dict(lo=(lx, 1.27, 0.50), hi=(hx, 1.52, 0.71)) for lx, hx in ((-0.54, -0.40), (0.40, 0.54))),
+        *(dict(lo=(lx, 1.28, 0.62), hi=(hx, 1.38, 0.70), facing=((-sx, 0, 0), (0.7, 1.1)))
+          for lx, hx, sx in ((-0.79, -0.76, -1), (0.76, 0.79, 1))))),
     ARCH_LINER=None,
     # the trunk's sill under the open tailgate (pre-centre z 0.55, the cargo floor's rear wall back to the bumper's
     # inside): the ground showed between them through the open trunk (game N / NE / SW / W 54 / 267 / 308 / 35 px)
