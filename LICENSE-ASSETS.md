@@ -21,7 +21,9 @@ Exception: the Cybertruck body model and its textures are adapted from adamsochi
 Exception: the Model S body model and its textures are adapted from ValentunW's (Lals) "Tesla Model S Plaid" under CC BY 4.0; see `CREDITS.md` for the attribution.
 Exception: the Model X body model and its textures are adapted from Abdul.Hannan's "Tesla Model X" under CC BY 4.0; see `CREDITS.md` for the attribution.
 
-Tesla, the Tesla "T" logo, Model Y, Model 3, Model S, Model X, Plaid, Cybertruck, Wall Connector, Mobile Connector, Supercharger, Sentry Mode and Camp Mode are trademarks of Tesla, Inc. This is an unofficial, free fan mod. It is not affiliated with, sponsored by or endorsed by Tesla, Inc., and no license to these trademarks is granted by this repository.
+Exception: the Roadster body model and its textures are adapted from the 86 guy's "2008 Tesla Roadster" under CC BY 4.0; see `CREDITS.md` for the attribution.
+
+Tesla, the Tesla "T" logo, Model Y, Model 3, Model S, Model X, Plaid, Cybertruck, Roadster, Wall Connector, Mobile Connector, Supercharger, Sentry Mode and Camp Mode are trademarks of Tesla, Inc. This is an unofficial, free fan mod. It is not affiliated with, sponsored by or endorsed by Tesla, Inc., and no license to these trademarks is granted by this repository.
 
 ---
 
@@ -40,4 +42,6 @@ Tesla, the Tesla "T" logo, Model Y, Model 3, Model S, Model X, Plaid, Cybertruck
 例外：Model S 車身模型與它的貼圖改作自 ValentunW（Lals）的「Tesla Model S Plaid」（CC BY 4.0），署名見 `CREDITS.md`。
 例外：Model X 車身模型與它的貼圖改作自 Abdul.Hannan 的「Tesla Model X」（CC BY 4.0），署名見 `CREDITS.md`。
 
-Tesla、特斯拉「T」標誌、Model Y、Model 3、Model S、Model X、Plaid、Cybertruck、Wall Connector、Mobile Connector、Supercharger、Sentry Mode、Camp Mode 是 Tesla, Inc. 的商標。本 MOD 是免費的非官方愛好者作品，和 Tesla, Inc. 沒有關係，也沒有得到 Tesla, Inc. 的贊助或認可；本 repo 不授予這些商標的任何權利。
+例外：Roadster 車身模型與它的貼圖改作自 the 86 guy 的「2008 Tesla Roadster」（CC BY 4.0），署名見 `CREDITS.md`。
+
+Tesla、特斯拉「T」標誌、Model Y、Model 3、Model S、Model X、Plaid、Cybertruck、Roadster、Wall Connector、Mobile Connector、Supercharger、Sentry Mode、Camp Mode 是 Tesla, Inc. 的商標。本 MOD 是免費的非官方愛好者作品，和 Tesla, Inc. 沒有關係，也沒有得到 Tesla, Inc. 的贊助或認可；本 repo 不授予這些商標的任何權利。

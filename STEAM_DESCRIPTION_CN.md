@@ -3,7 +3,7 @@
 
 [hr][/hr]
 
-把特斯拉 Model S、Model 3、Model X、Model Y、Model Y L 与 Cybertruck 开进末日：用电池行驶、在家充电或到加油站超充，还能用手机 App 远程控制。之后会陆续加入更多车型与充电设备。
+把特斯拉 Model S、Model 3、Model X、Model Y、Model Y L、Roadster 与 Cybertruck 开进末日：用电池行驶、在家充电或到加油站超充，还能用手机 App 远程控制。之后会陆续加入更多车型与充电设备。
 
 [h2]📦 需要安装[/h2]
 [list]
@@ -17,7 +17,7 @@
 
 [h2]🚀 快速上手[/h2]
 [olist]
-[*] 在停车场或高级住宅区找到特斯拉（Model S、Model X、Cybertruck 只在高级住宅区；Model Y L 两处都有），拿到它的车钥匙就会变成卡片钥匙
+[*] 在停车场或高级住宅区找到特斯拉（Model S、Model X、Roadster、Cybertruck 只在高级住宅区；Model Y L 两处都有），拿到它的车钥匙就会变成卡片钥匙
 [*] 坐上驾驶座，点仪表左上角的电源键启动
 [*] 电工 3 级做一座家庭充电桩装上有电的墙、把移动充电连接器放在地上，或到加油站找超级充电桩，右键它插上充电线
 [*] 找一部智能手机（本 MOD 的新物品，电器店最常见，特斯拉的手套箱里也可能有），带着卡片坐在车上，右键手机选「设为手机钥匙」，就能用 Tesla App
@@ -25,8 +25,8 @@
 
 [h2]✨ 主要功能[/h2]
 [list]
-[*] [b]六台特斯拉[/b]：Model Y、Model Y L、Model 3 Performance，Model S、Model X Plaid 与 Cybertruck Cyberbeast
-[*] [b]六座与 Cybertruck[/b]：Model X 鹰翼门、Model Y L 六座，车斗、装甲玻璃与 Powershare 家庭供电
+[*] [b]七台特斯拉[/b]：Model Y、Model Y L、Model 3 Performance，Model S、Model X Plaid，Roadster 2.5 Sport 与 Cybertruck Cyberbeast
+[*] [b]各车特色[/b]：Model X 鹰翼门、Model Y L 六座、Roadster 敞篷软顶篷，Cybertruck 车斗、装甲玻璃与 Powershare 家庭供电
 [*] [b]电池与充电[/b]：刹车回收电力，家庭充电桩、移动充电连接器与加油站超充都能充
 [*] [b]特斯拉风格仪表[/b]：车速、电量与续航，点车辆图就能开关车门
 [*] [b]手机钥匙与 Tesla App[/b]：走近解锁、走远上锁，远程上锁、找车、看充电

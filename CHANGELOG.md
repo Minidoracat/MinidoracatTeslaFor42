@@ -12,6 +12,21 @@
 
 格式基於 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.1.0/)，版本號遵循 `{PZ版本}-{主版本}.{次版本}.{修訂}` 格式。
 
+## [Unreleased]
+
+### 新增
+
+- **第七台特斯拉：初代 Roadster 2.5 Sport（兩座敞篷跑車）**：只出現在高級住宅區，在那裡的機率和 Model S、Model X、Cybertruck 一樣；停車格不會出現。照初代 Roadster 的最後一版、也是最高版本 2.5 Sport（2010–2012 年款），規格照 2.5 車主手冊與 2013 年官網。維修介面顯示 288 hp（車主手冊的 215 kW），推力是全車系最小，車也是全車系最輕。高電壓電池 56 kWh，充滿電一樣跑得和原版同級車加滿一箱油一樣遠。實車只能用交流電充、最高 16.8 kW，所以這台從任何充電設備最多拿 16.8 kW：壁掛式從沒電充到 90% 約 4 小時、行動充電器約 7 小時；超級充電座也能充，但固定 16.8 kW、不會越充越慢，從 10% 充到 90% 約 2 小時 40 分鐘（遊戲時間）。2 個座位、兩扇車門，前蓋與行李廂蓋照實車的方向打開；行李廂 30，前車廂保留但很小（2），沒有後座。軟頂篷是開關，不用拆：停車時點儀表車子俯視圖的車頂，或按 App 控制頁的「軟頂篷」，約 4 秒收起或蓋上，行駛中不能切換。蓋著時跟著鎖車一起上鎖；收起時，鎖車和帶手機鑰匙走遠自動上鎖照常鎖上兩扇車門與前後蓋，軟頂篷維持收起，可以敞篷開車，也能敞篷開哨兵。收起的軟頂篷不會讓儀表跳「開車前關上」的提醒；敞篷時坐在車上的人戴高帽子也照常顯示。17 種車色（2013 年官網色卡），生成時隨機一種，App 的車圖跟著車色換：Very Orange、Electric Blue、Arctic White、Thunder Gray、Jet Black、Lightning Green、Sterling Silver、Radiant Red、Glacier Blue、Twilight Blue、Brilliant Yellow、Obsidian Black、Fusion Red、Racing Green、Galactic Gray、Magma Orange、Cosmic Black。Sport 的黑色鍛造輪圈，前後輪不同尺寸（前 195/50 R16、後 225/45 R17）；充電口在左後葉子板，充電線的插頭是 Roadster 專用的圓形接頭。實車沒有 HEPA 濾網，所以和 Model 3 一樣沒有生物武器防禦模式。卡片鑰匙、手機鑰匙、App、召喚、哨兵、露營、舒適模式、拖車與 Project Viewpoint 的車內細節都和其他特斯拉一樣；儀表有自己的俯視圖，點車子圖開關車門、前後蓋與軟頂篷。
+
+> 技術要點：
+> - ID：車輛 `Base.MinidoracatTesla_Roadster`；電池 `Base.MinidoracatTesla_RoadsterBattery`（56 kWh）；充電插頭 `Base.MinidoracatTesla_CablePlugRoadster`（圓形接頭）。生成只在 `VehicleZoneDistribution` 的 `good`（spawnChance 2），和 Model S、Model X、Cybertruck 相同。
+> - 性能：`engineForce` 2880（2.5 車主手冊 215 kW＝288 hp × 10；2013 年官網的 299 hp 不採）、`mass` 486（800 × 1,235 ÷ 2,033，車主手冊整備重對 Model 3 Performance，算法同 Model X、Model Y L）；極速沿用範本的 `maxSpeed` 120。`seats` 2；`TruckBed` 30（官方沒有公布行李廂容量，照原版跑車）、`Frunk` 2（實車前蓋下沒有置物空間，取車身放得下的最小槽）。
+> - 充電：Specs 新欄位 `acKw`（車自己的交流上限，任何充電設備都不超過它；Roadster 16.8 = 70 A × 240 V，車主手冊 5-4）與 `dcKw = false`（沒有直流快充：超級充電座對它給 `acKw`、固定功率、不套直流曲線）。其他六台沒有 `acKw`、`dcKw` 照舊，充電不變。沙盒「充電速度倍率」照樣乘在這個上限上。
+> - 軟頂篷：門類零件 `SoftTop`（零件名翻譯鍵 `IGUI_VehiclePartSoftTop`；打開＝收起），Specs 新旗標 `softTop = true`；手機 App 的 `appAction` 新動作 `softtop`（裝了 Vehicle Manager 時要「搭乘」權限，和車門相同）。蓋著時跟著鎖車上鎖；收起時，鎖車、走遠自動上鎖與儀表的「沒關」提醒都略過它。
+> - 沒有 HEPA（Specs 沒有 `hepa`），V 鍵圓盤不出現生物武器防禦模式。
+> - 車輛範本拆成兩層：`MinidoracatTeslaCore`（每台都有的零件：前門、前座、側窗）與 `MinidoracatTeslaBase`（Core 加上後門、後座與後側窗）。Roadster 繼承 Core；現有六台繼承 Base，名字不變，展開後的零件與順序和以前相同，舊存檔照零件 id 讀回。
+> - 素材：車身改作自 the 86 guy 的「2008 Tesla Roadster」（Sketchfab，CC BY 4.0，https://sketchfab.com/3d-models/2008-tesla-roadster-317dabbe5e824948a92091f7bd39c2de ，作者 https://sketchfab.com/the_86_guy ，授權 http://creativecommons.org/licenses/by/4.0/ ）。照 2.5 車主手冊調整長寬高、軸距與輪距，前保桿與後擴散器改成 2.5 的樣子，減面、拆件（前蓋與行李廂蓋沿原有的縫切出）、車頂改成切條收合的軟頂篷、重做貼圖、重畫頭燈與尾燈，輪子與車內（兩個座位）換成本 MOD 自己的；署名全文見 `CREDITS.md`。
+
 ## [42.22.2-0.7.0] - 2026-11-13
 
 ### 新增

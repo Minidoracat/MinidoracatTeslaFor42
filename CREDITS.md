@@ -71,3 +71,15 @@ The Tesla Model X body, front doors, falcon wing doors, liftgate, frunk lid, gla
 Abdul.Hannan does not endorse this mod.
 
 本 MOD 的 Model X 車身、前門、鷹翼門、尾門、前車廂蓋、玻璃與車燈，改作自 Abdul.Hannan 的「Tesla Model X」（Sketchfab，上方連結），以 CC BY 4.0 授權（上方連結）。已修改：鏡射並細分成整台車、照官方尺寸縮放、減面、拆件（模型原有的前門、鷹翼門、尾門、前車廂蓋；鷹翼門在肘部加上折點）、重做貼圖（新的 UV、烘焙光影、八種 Plaid 車色、損壞／車燈／零件遮罩），鍍鉻飾條照 2021 改款改成黑色，照官方圖修正外形（2021 改款後的前保桿與頭燈、尾翼、輪拱、車尾兩角、車頂與尾門接縫），拿掉門內板、輪子與輪胎，加上前保桿攝影機與輪拱內襯，輪子（20 吋 Perihelix）與車內（六個座位）換成本 MOD 自己的（車門內側加上門板飾件，前車廂蓋下加上置物槽），轉成 Project Zomboid 格式。原作者沒有為本 MOD 背書。
+
+## Roadster 車身模型 / Roadster body model
+
+The Tesla Roadster body, doors, trunk lid, hood, soft top, glass and lamps are based on:
+
+- **"2008 Tesla Roadster"** by **the 86 guy** — https://sketchfab.com/3d-models/2008-tesla-roadster-317dabbe5e824948a92091f7bd39c2de (author: https://sketchfab.com/the_86_guy)
+- Licensed under **CC BY 4.0** — http://creativecommons.org/licenses/by/4.0/
+- **Modified**: scaled to the Roadster 2.5 owner's manual dimensions (length, width, height, wheelbase, track), its front bumper and rear grille reshaped into the 2.5's (a wide black intake with two bars and a tow hook, corner side intakes, a rear diffuser), decimated, split into parts (hood and trunk lid cut along the model's own seams), its roof turned into the soft top and cut into strips that fold away behind the seats, re-textured (new UV layout, baked shading, the 17 paints of the 2013 colour chart, damage / light / part masks, a black roll hoop fairing), its headlamps and tail lamps redrawn, its interior, brakes and wheels removed, its wheels (the Sport's black forged wheels) and interior (two seats) replaced by the mod's own; converted for Project Zomboid.
+
+the 86 guy does not endorse this mod.
+
+本 MOD 的 Roadster 車身、車門、行李廂蓋、前蓋、軟頂篷、玻璃與車燈，改作自 the 86 guy 的「2008 Tesla Roadster」（Sketchfab，上方連結），以 CC BY 4.0 授權（上方連結）。已修改：照 Roadster 2.5 車主手冊的尺寸調整外形（長、寬、高、軸距、輪距），前保桿與後格柵改成 2.5 的樣子（寬的黑色進氣口加兩道橫條與拖車鉤、兩角的側進氣口、後擴散器），減面、拆件（沿模型原有的縫切出前蓋與行李廂蓋），車頂改成軟頂篷並切成條狀、收合到座椅後方，重做貼圖（新的 UV、烘焙光影、2013 年色卡的 17 種車色、損壞／車燈／零件遮罩、黑色防滾架整流罩），重畫頭燈與尾燈，拿掉車內、煞車與輪子，輪子（Sport 的黑色鍛造輪圈）與車內（兩個座位）換成本 MOD 自己的，轉成 Project Zomboid 格式。原作者沒有為本 MOD 背書。

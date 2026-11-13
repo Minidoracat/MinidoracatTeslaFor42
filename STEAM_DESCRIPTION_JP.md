@@ -3,7 +3,7 @@
 
 [hr][/hr]
 
-テスラ Model S、Model 3、Model X、Model Y、Model Y L、Cybertruck で終末世界を走ろう。バッテリーで走り、自宅やガソリンスタンドのスーパーチャージャーで充電し、スマホの Tesla アプリで遠隔操作できます。今後も車種と充電設備を順次追加していく予定です。
+テスラ Model S、Model 3、Model X、Model Y、Model Y L、Roadster、Cybertruck で終末世界を走ろう。バッテリーで走り、自宅やガソリンスタンドのスーパーチャージャーで充電し、スマホの Tesla アプリで遠隔操作できます。今後も車種と充電設備を順次追加していく予定です。
 
 [h2]📦 導入[/h2]
 [list]
@@ -17,7 +17,7 @@
 
 [h2]🚀 クイックスタート[/h2]
 [olist]
-[*] 駐車場や高級住宅街でテスラを見つけ（Model S、Model X、Cybertruck は高級住宅街のみ、Model Y L はどちらにも出現）、その車のキーを手に入れるとキーカードに変わります
+[*] 駐車場や高級住宅街でテスラを見つけ（Model S、Model X、Roadster、Cybertruck は高級住宅街のみ、Model Y L はどちらにも出現）、その車のキーを手に入れるとキーカードに変わります
 [*] 運転席に座り、ダッシュボード左上の電源ボタンをクリックして起動します
 [*] 電気工学 3 でウォールコネクターを作って電気の来ている壁に付けるか、モバイルコネクターを床に置くか、ガソリンスタンドのスーパーチャージャーを見つけ、右クリックで充電ケーブルを差し込みます
 [*] スマートフォン（この MOD の新アイテム、電器店に多く、テスラのグローブボックスに入っていることも）を見つけ、キーカードを持って車に座り、スマートフォンを右クリックして「電話キーとして設定」を選ぶと Tesla アプリが使えます
@@ -25,8 +25,8 @@
 
 [h2]✨ 主な機能[/h2]
 [list]
-[*] [b]テスラ 6 台[/b]：Model Y、Model Y L、Model 3 Performance、Model S と Model X Plaid、Cybertruck Cyberbeast
-[*] [b]6 人乗りと Cybertruck[/b]：Model X のファルコンウィングドア、Model Y L の 6 人乗り、荷台・装甲ガラス・Powershare による家への給電
+[*] [b]テスラ 7 台[/b]：Model Y、Model Y L、Model 3 Performance、Model S と Model X Plaid、Roadster 2.5 Sport、Cybertruck Cyberbeast
+[*] [b]個性的な車種[/b]：Model X のファルコンウィングドア、Model Y L の 6 人乗り、Roadster のソフトトップ、Cybertruck の荷台・装甲ガラス・Powershare による家への給電
 [*] [b]バッテリーと充電[/b]：ブレーキで回生。ウォールコネクター、モバイルコネクター、ガソリンスタンドのスーパーチャージャーで充電
 [*] [b]テスラ風ダッシュボード[/b]：速度・残量・航続距離。車の図をクリックしてドアを開閉
 [*] [b]電話キーと Tesla アプリ[/b]：近づくと解錠、離れると自動で施錠。遠隔で施錠、車を探す、充電を確認
