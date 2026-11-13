@@ -1209,10 +1209,12 @@ def fill_slivers(me, res, layers, grow=8, reach=0.75):
     print(f"UV_FILL {len(pix)} empty texels under {len(np.unique(tri))} triangles filled, {len(g)} margin texels")
 
 
-def unwrap(car, obj):
+def unwrap(car, obj, big=None):
     """UV0: smart projection of every face, packed; UV1 starts as a copy (damage_uv1 rewrites it). Badge faces (obj
     in SWATCH) all map onto one small triangle per badge in a strip kept free at the right edge: their strokes are
-    narrower than a texel (5 mm; ~1 cm at 2048, 4 cm at 512), so on own islands they took the neighbours' colours."""
+    narrower than a texel (5 mm; ~1 cm at 2048, 4 cm at 512), so on own islands they took the neighbours' colours.
+    big (STOP_UV_SCALE, Model X): the islands made only of these faces that many times larger before the packing
+    (the brake zones' few texels at 512 were mostly the bake's margin round them: 125-616 per side, build to build)."""
     me = car.data
     for nm in [u.name for u in me.uv_layers]:
         me.uv_layers.remove(me.uv_layers[nm])
@@ -1222,6 +1224,22 @@ def unwrap(car, obj):
     bpy.ops.mesh.select_mode(type="FACE")
     bpy.ops.mesh.select_all(action="SELECT")
     bpy.ops.uv.smart_project(angle_limit=math.radians(60), island_margin=0.002, area_weight=0.0, scale_to_bounds=False)
+    if big is not None and big.any():
+        from bpy_extras import mesh_utils
+        bpy.ops.object.mode_set(mode="OBJECT")
+        uv = np.empty(len(me.loops) * 2)
+        me.uv_layers["UV0"].data.foreach_get("uv", uv)
+        uv = uv.reshape(-1, 2)
+        lt = np.array([p.loop_total for p in me.polygons])
+        ls = np.cumsum(lt) - lt
+        for isl in mesh_utils.mesh_linked_uv_islands(me):
+            if big[isl].all():
+                lp = np.concatenate([np.arange(ls[f], ls[f] + lt[f]) for f in isl])
+                c = uv[lp].mean(0)
+                uv[lp] = c + (uv[lp] - c) * C["STOP_UV_SCALE"]
+        me.uv_layers["UV0"].data.foreach_set("uv", uv.ravel())
+        bpy.ops.object.mode_set(mode="EDIT")
+        bpy.ops.mesh.select_all(action="SELECT")
     # 4 mask texels (512) between islands: the bake's margin meets halfway, and the shader samples the mask
     # bilinearly, so at 2 a zone's edge texels mixed in the neighbour island's zone colour
     bpy.ops.uv.pack_islands(rotate=True, margin=0.008)
@@ -1588,7 +1606,7 @@ def stage_build():
     zmid = float(ctr[2])
     shift = np.array([0.0, ctr[1], zmid])
     pv.set_co(car, co - shift)
-    unwrap(car, c["obj"])
+    unwrap(car, c["obj"], np.isin(c["zone"], [ZN.index("StopL"), ZN.index("StopR")]) if C.get("STOP_UV_SCALE") else None)
     textures(car, c, shift)
     # UV1: vanilla ModernCar's damage layout (damage_uv1); glass faces + 2 + 2 x pane (the frag's glass class and
     # GLASS_ZONE[])
