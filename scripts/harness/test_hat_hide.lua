@@ -153,6 +153,40 @@ check(q.worn[LOC] == nil and H.count("OnTick") == ticks,
     "the clock set back: looked at on the next tick instead of waiting, the OnTick removed")
 H.advanceMs(2 * Hd.AGAIN_MS)
 
+H.section("Roadster: soft top down, nothing to hide")
+-- TallHats.lua is generated with the body (seat_head.py --tall-lua); a planted entry stands in for it here
+MinidoracatTesla.TallHats["Roadster/FrontLeft"] = { Hat_Stovepipe = true }
+local rd = car("Roadster", { "FrontLeft", "FrontRight" })
+local top = { open = false }
+function top:isOpen() return self.open end
+rd.parts.SoftTop = { door = top, getDoor = function(s) return s.door end, getInventoryItem = function() return {} end }
+function rd:getMaxPassengers() return 2 end
+function rd:getCharacter(i) for pl, s in pairs(self.seats) do if s == i and pl.vehicle == self then return pl end end end
+p.worn[HAT] = hatItem("Hat_Stovepipe")
+sit(rd, 0)
+Hd.sync(p, false)
+check(on(), "Roadster, top up: the top hat leaves the roof, hidden")
+top.open = true
+Hd.car(rd)
+check(not on() and #p.items == 0, "soft top down (Liftgate tells HatHide.car): the hider comes off, the hat shows")
+top.open = false
+Hd.car(rd)
+check(on(), "soft top up again: hidden again")
+rd.parts.SoftTop.getInventoryItem = function() return nil end
+Hd.sync(p, false)
+check(not on(), "soft top taken off (no part item): no roof, nothing hidden")
+rd.parts.SoftTop.getInventoryItem = function() return {} end
+local ys = MinidoracatTesla.Specs["Base.MinidoracatTesla_Roadster"]
+ys.softTop = nil
+top.open = true
+Hd.sync(p, false)
+check(on(), "a car without Specs softTop: its door states never unhide (planted: flag off, top open, still hidden)")
+ys.softTop = true
+sit(nil)
+Hd.sync(p, false)
+H.removeVehicle(rd)
+MinidoracatTesla.TallHats["Roadster/FrontLeft"] = nil
+
 getPlayerByOnlineID = savedById
 MinidoracatTesla.Liftgate = savedLiftgate
 getOnlinePlayers = nil

@@ -112,3 +112,46 @@ check(T.pickColor({ {}, {} }) == 1 and T.pickColor({ { weight = 3 }, {} }) == 1,
 H.setRand(0.6)
 check(T.pickColor({ {}, {} }) == 2 and T.pickColor({ { weight = 3 }, {} }) == 1, "rand 0.6: { 1, 1 } -> 2, { 3, 1 } -> 1 (weight counts)")
 H.setRand(0.5)
+
+-- Roadster 2.5: the 2013 tesla.com colour chart's 17 paints in its order (no paint codes on the chart)
+local RD = "MinidoracatTesla_Roadster"
+local CHART = { "VeryOrange", "ElectricBlue", "ArcticWhite", "ThunderGray", "JetBlack", "LightningGreen", "SterlingSilver",
+    "RadiantRed", "GlacierBlue", "TwilightBlue", "BrilliantYellow", "ObsidianBlack", "FusionRed", "RacingGreen",
+    "GalacticGray", "MagmaOrange", "CosmicBlack" }
+local rcol = T.Specs["Base." .. RD].colors
+H.section("paint table " .. RD)
+local rbad = {}
+for i, c in ipairs(rcol) do
+    if c.name ~= CHART[i] or c.code ~= nil or c.weight ~= nil then rbad[#rbad + 1] = i .. ":" .. tostring(c.name) end
+    for _, k in ipairs({ "h", "s", "v" }) do
+        if type(c[k]) ~= "number" or c[k] < 0 or c[k] > 1 then rbad[#rbad + 1] = c.name .. "." .. k end
+    end
+end
+check(#rcol == 17 and #rbad == 0, "17 paints in the chart's order, HSV in 0..1, no codes or weights (" .. table.concat(rbad, ",") .. ")")
+if H.bodyBuilt("Roadster") then -- skins come with the body (convert.py build)
+    local rf = assert(io.open(media .. "scripts/vehicles/" .. RD .. ".txt", "r"))
+    local rtext = rf:read("*a")
+    rf:close()
+    local rskins, rmissing = {}, {}
+    for tex in rtext:gmatch("skin%s*{%s*texture%s*=%s*([%w_/]+)") do rskins[#rskins + 1] = tex end
+    local rorder = #rskins == #rcol
+    for i, c in ipairs(rcol) do rorder = rorder and rskins[i] == "Vehicles/" .. RD .. "_" .. c.name end
+    check(rorder, "Roadster: 17 skins matching the table one to one (" .. #rskins .. ")")
+    for _, tex in ipairs(rskins) do
+        local t = io.open(media .. "textures/" .. tex .. ".png", "rb")
+        if t then t:close() else rmissing[#rmissing + 1] = tex end
+    end
+    check(#rmissing == 0, "Roadster: every skin texture exists (" .. table.concat(rmissing, ",") .. ")")
+end
+H.section("paint pick " .. RD)
+local rhits, rn = {}, 0
+for k = 0, 33 do
+    H.setRand((k + 0.5) / 34)
+    local v = H.vehicle({ script = "Base." .. RD })
+    T.Create.Motor(v, v:getPartById("Engine"))
+    local c = v.skin and rcol[v.skin + 1]
+    if c and v.hsv[1] == c.h and v.hsv[2] == c.s and v.hsv[3] == c.v and not rhits[v.skin] then rhits[v.skin], rn = true, rn + 1 end
+    H.removeVehicle(v)
+end
+check(rn == 17, "34 draws reach all 17 skins, each with its HSV (" .. rn .. ")")
+H.setRand(0.5)

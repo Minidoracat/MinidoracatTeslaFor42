@@ -1010,7 +1010,8 @@ do
     end
     speak({ [K.CARD] = "卡片鑰匙", [K.PHONE] = "智慧型手機", [K.PHONE_KEY] = "手機鑰匙" },
         { IGUI_VehicleNameMinidoracatTesla_ModelY = "特斯拉 Model Y", IGUI_VehicleNameMinidoracatTesla_Model3 = "特斯拉 Model 3",
-            IGUI_VehicleNameMinidoracatTesla_ModelYL = "特斯拉 Model Y L" },
+            IGUI_VehicleNameMinidoracatTesla_ModelYL = "特斯拉 Model Y L",
+            IGUI_VehicleNameMinidoracatTesla_Roadster = "特斯拉 Roadster" },
         function(n) return n .. " 台特斯拉" end)
     check(UI.nameOf(served.card) == "卡片鑰匙 - 特斯拉 Model Y", "name: the swapped key card, in the client's language")
     check(UI.nameOf(served.one) == "手機鑰匙 - 特斯拉 Model Y", "name: a phone key for one car")
@@ -1044,6 +1045,20 @@ do
     UI.nameAll(container(yl, ylBare, y))
     check(yl.name == "卡片鑰匙 - 特斯拉 Model Y L" and ylBare.name == "卡片鑰匙 - 特斯拉 Model Y L"
         and y.name == "卡片鑰匙 - 特斯拉 Model Y", "'Model Y L' / 'ModelYL' read back as the Model Y L, 'Model Y' still the Model Y")
+    local rdCard, rdPk = fixed(K.CARD, "Key Card - Tesla Roadster"), fixed(K.PHONE_KEY, "Phone Key - Tesla Roadster")
+    UI.nameAll(container(rdCard, rdPk))
+    check(rdCard.name == "卡片鑰匙 - 特斯拉 Roadster" and rdPk.name == "手機鑰匙 - 特斯拉 Roadster",
+        "'Roadster' read back as the Roadster (key card and phone key)")
+    -- read back needs "Roadster" in every language's car name (KeysUI MODELS is the English model name)
+    local miss = {}
+    for _, lang in ipairs({ "AR", "CH", "CN", "DE", "EN", "ES", "ES_CL", "ES_MX", "FR", "JP", "KO", "PL", "PT", "PTBR", "RU", "TR" }) do
+        local f = io.open("MOD/MinidoracatTeslaFor42/Contents/mods/MinidoracatTeslaFor42/42/media/lua/shared/Translate/" .. lang .. "/IG_UI.json", "r")
+        local s = f and f:read("*a") or ""
+        if f then f:close() end
+        local name = s:match('"IGUI_VehicleNameMinidoracatTesla_Roadster": "([^"]*)"')
+        if not (name and name:find("Roadster", 1, true)) then miss[#miss + 1] = lang end
+    end
+    check(#miss == 0, "every language's Roadster name holds 'Roadster' (" .. table.concat(miss, ",") .. ")")
     local loot = pane(container(fixed(K.CARD, "Key Card - Tesla Model Y")), false)
     loot:refreshContainer()
     check(loot.inventory.items[1].name == "卡片鑰匙 - 特斯拉 Model Y" and loot.refreshed == 1,

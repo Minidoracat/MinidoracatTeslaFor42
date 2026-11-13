@@ -29,10 +29,12 @@ T.HatHide = H
 H.TYPE = "Base.MinidoracatTesla_HatHide"
 local HATS = { ItemBodyLocation.HAT, ItemBodyLocation.FULL_HAT }
 
--- does a hat this player wears leave the roof of the Tesla seat they sit in
+-- does a hat this player wears leave the roof of the Tesla seat they sit in. The Roadster with its soft top down (or
+-- taken off) has no roof: nothing to hide (Liftgate.lua calls H.car when it moves)
 function H.wanted(player)
     local v = not player:isDead() and player:getVehicle()
     local spec = v and T.spec(v)
+    if spec and spec.softTop and T.lidOpen(v, "SoftTop") then return false end
     local seat = spec and v:getSeat(player) or -1
     local p = seat >= 0 and v:getScript():getPassenger(seat)
     local tall = p and T.TallHats[spec.model .. "/" .. p:getId()]
@@ -76,6 +78,15 @@ function H.sync(player, off)
         changed = true
     end
     if changed then T.log("hatHide " .. tostring(player:getUsername()) .. " " .. (want and "on" or "off")) end
+end
+
+-- every player seated in car v, again (the soft top moved: Liftgate.lua swing and the vanilla door actions, on the
+-- server or SP). The hider is a worn item, so every client sees the change (setWornItem, see the top).
+function H.car(v)
+    for i = 0, v:getMaxPassengers() - 1 do
+        local p = v:getCharacter(i)
+        if p and instanceof(p, "IsoPlayer") then H.sync(p, false) end
+    end
 end
 
 -- MP: the clients that can have this player's car loaded (Liftgate.sendNear: 96 tiles on both axes of the player, who

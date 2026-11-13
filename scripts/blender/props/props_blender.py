@@ -55,7 +55,10 @@ PLUGS = {"MinidoracatTesla_CablePlug": 0.87,                  # Model Y (tesla-y
          "MinidoracatTesla_CablePlugCybertruck": 0.94,        # Cybertruck (tesla-gct-1112a: port 0.938 / 0.943)
          "MinidoracatTesla_CablePlugModelS": 0.72,            # Model S (23a483d game port 0.714-0.719)
          "MinidoracatTesla_CablePlugModelX": 0.84,            # Model X (tesla-mx-1101b modelx-sp: port 0.837)
-         "MinidoracatTesla_CablePlugModelYL": 0.90}           # Model Y L (tesla-ylb-geo integration-mp: port 0.900)
+         "MinidoracatTesla_CablePlugModelYL": 0.90,           # Model Y L (tesla-ylb-geo integration-mp: port 0.900)
+         "MinidoracatTesla_CablePlugRoadster": 0.90}          # Roadster (estimate from the 2.5 manual 2-2; measure it)
+# plugs with the first-generation Roadster's round connector (2.5 owner's manual 5-7) instead of the NACS handle
+PLUG_ROUND = ("MinidoracatTesla_CablePlugRoadster",)
 PLUG_REACH = 0.36                             # handle tip reaches +x (into the car flank)
 XFORM = {"S": (0.0, 180.0, 0.0), "E": (0.0, -90.0, 0.0), "N": (0.0, 0.0, 0.0), "W": (0.0, 90.0, 0.0)}
 # Mobile Connector Gen 3, Facing S frame, lying on the floor: control box 179.8 x 81.7 x 47.3 mm (official.md 1.2) x 1.3
@@ -310,6 +313,18 @@ def cable_plug(image, name, plug_z):
     path = catmull([(0, 0, r), (0.07, 0, r), (0.15, 0, 0.10), (0.17, 0, plug_z * 0.55), (0.15, 0, plug_z - 0.07),
                     (h0, 0, plug_z)])
     tube(mb, path, r, swatch("rubber", CSW, 32, CTEX))
+    if name in PLUG_ROUND:
+        # Roadster connector (2.5 owner's manual 5-7): a straight round body, a ribbed boot where the cable goes in,
+        # the locking collar (pushed forward and turned onto the port), its latch tab on top, the nose up to the tip
+        x0, tip = h0 - 0.01, PLUG_REACH - 0.012
+        tube(mb, [Vector((x0 - 0.03 + 0.01 * k, 0, plug_z)) for k in range(5)], 0, swatch("rubber", CSW, 32, CTEX),
+             sides=10, radii=[0.028, 0.033, 0.028, 0.033, 0.030])
+        body = [Vector((x0 + (tip - x0) * k / 4, 0, plug_z)) for k in range(5)]
+        tube(mb, body, 0, swatch("handle", CSW, 32, CTEX), sides=12, radii=[0.032, 0.040, 0.041, 0.041, 0.039])
+        tube(mb, [body[2], body[3]], 0.047, swatch("ring", CSW, 32, CTEX), sides=12)
+        tube(mb, [body[-1], body[-1] + Vector((0.012, 0, 0))], 0.030, swatch("ring", CSW, 32, CTEX), sides=12)
+        cuboid(mb, (body[3].x, -0.008, plug_z + 0.040), (body[4].x, 0.008, plug_z + 0.052), swatch("ring", CSW, 32, CTEX))
+        return mb.build(name, image)
     # NACS handle: thick grip tapering to the nose, slightly bent down like the official handle
     grip = [Vector((h0 - 0.01 + 0.17 * k / 6, 0, plug_z + 0.012 * math.sin(math.pi * k / 6))) for k in range(7)]
     tube(mb, grip, 0, swatch("handle", CSW, 32, CTEX), sides=10,

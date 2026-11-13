@@ -269,6 +269,14 @@ def ic_falcon(c):  # Model X falcon wing doors, seen from behind: the body, both
     c.stroke([("M", 9, 8.5), ("L", 12, 3), ("L", 14.5, 5.5)], w=1.3)
 
 
+def ic_softtop(c):  # Roadster side view, top down: the low body on its wheels, the windscreen, the top folded behind
+    c.stroke([("M", 1.5, 11), ("V", 8.5), ("H", 9), ("L", 14.5, 9.8), ("V", 11), ("Z",)], w=1.3)
+    c.stroke([("M", 9, 8.5), ("L", 7.6, 4.8)], w=1.3)
+    c.rrect(2.3, 6.2, 3.6, 2.0, 1.0, fill="#FFFFFF")
+    for x in (4.4, 11.6):
+        c.circle(x, 11.9, 1.7, fill="#FFFFFF")
+
+
 def ic_lightbar(c):  # roof light bar: the bar and its beams ahead
     c.rrect(2, 2.5, 12, 3, 1.2, outline="#FFFFFF", ow=1.3)
     for x0, x1 in ((4, 2.5), (8, 8), (12, 13.5)):
@@ -515,8 +523,31 @@ def car_modelx(c):
         c.stroke([("M", 85, y0 + 0.6), ("V", y1 - 0.6)], w=1.0, color="#4A525B")
 
 
+def car_roadster(c):
+    """Roadster 2.5 (owner's manual 10-15: 3,946 x 1,851 mm with mirrors, wheelbase 2,351, overhangs front 871 / rear 723;
+    195/50 R16 front, 225/45 R17 rear, 10-4) at the Model Y's 0.0259 viewBox units per mm, nose on the Model Y's (x 146):
+    rear 43.8, axles x 123.4 and 62.6. The body without mirrors about 1,730 mm wide (y 25-71). From the side view (10-15,
+    2-2): the trunk lid from x 60.5, the soft top over the seats (x 82.8-101.4, from the roll hoop to the windscreen's
+    top), the windscreen to its foot (x 114.2), the doors x 76.3-111.6, the hood ahead. HUD.lua ZONES.Roadster follows
+    these edges."""
+    for x0, w in ((115.6, 15.6), (54.4, 16.4)):  # front 601 mm, rear 634 mm tyres on the axles
+        for y in (19, 69):
+            c.rrect(x0, y, w, 8, 2, fill="#0B0D0F", outline="#8E98A3", ow=1.1)
+    body = [("M", 56, 25), ("H", 124), ("Q", 142, 26, 146, 40), ("V", 56), ("Q", 142, 70, 124, 71),
+            ("H", 56), ("Q", 43.8, 71, 43.8, 60), ("V", 36), ("Q", 43.8, 25, 56, 25), ("Z",)]
+    c.fill(body, "#2A3037")
+    c.stroke(body, w=1.3, color="#AEB6BF")
+    c.fill([("M", 101.4, 33), ("L", 112, 31), ("Q", 114.6, 48, 112, 65), ("L", 101.4, 63), ("Z",)], "#15191E")  # windscreen
+    c.rrect(82.8, 34, 18.6, 28.3, 3, fill="#1B1F24")  # soft top
+    c.stroke([("M", 83.6, 34.6), ("V", 61.7)], w=1.0, color="#4A525B")  # its rear edge, the roll hoop
+    c.stroke([("M", 60.5, 28), ("Q", 59, 48, 60.5, 68)], w=1.0, color="#4A525B")  # trunk lid seam
+    for y0, y1 in ((25, 28), (68, 71)):  # door seams
+        for x in (76.3, 111.6):
+            c.stroke([("M", x, y0 + 0.6), ("V", y1 - 0.6)], w=1.0, color="#4A525B")
+
+
 CARS = {"ModelY": car_modely, "Model3": car_model3, "Cybertruck": car_cybertruck, "ModelS": car_models, "ModelX": car_modelx,
-        "ModelYL": car_modelyl}
+        "ModelYL": car_modelyl, "Roadster": car_roadster}
 
 
 def dashed(c, x0, y0, x1, y1, w=1.8, dash=3.0, gap=2.0):
@@ -547,6 +578,11 @@ DOOR_GEOM = {
     # (x 52.1) and the liftgate's rear edge is the longer tail (x 17.3, car_modelyl)
     "ModelYL": {"front": (78, 100), "rear": (52.1, 78), "y": (22, 74), "tr": ((17.3, 36, 60), (11.3, 34, 62)),
                 "hd": ((146, 38, 58), (152, 36, 60)), "kinds": ("RL", "RR", "TR")},
+    # Roadster: two doors (x 76.3-111.6) on its narrower body (y 25 / 71), the trunk lid's rear edge at x 43.8, the soft
+    # top over the seats (st: x0 its rear edge, the roll hoop, where it folds; x1 the windscreen's top; y0, y1); the hood
+    # is the Model Y's (nose x 146: plain door_HD)
+    "Roadster": {"front": (76.3, 111.6), "rear": (76.3, 76.3), "y": (25, 71), "tr": ((43.8, 38, 58), (37.8, 36, 60)),
+                 "st": (82.8, 101.4, 34, 62.3), "kinds": ("FL", "FR", "TR", "ST")},
 }
 
 
@@ -573,6 +609,11 @@ def door_overlay(kind, g):
             for x0, y0, x1, y1 in ((10, 25, 55, 25), (10, 71, 55, 71), (10, 25, 10, 71)):
                 dashed(c, x0, y0, x1, y1)
             c.stroke([("M", 55, 24), ("V", 72)], w=2.8)
+        elif kind == "ST":  # soft top: the roof's outline dashed, the top folded down at its rear edge
+            x0, x1, y0, y1 = g["st"]
+            for a, b, cc, d in ((x0, y0, x1, y0), (x0, y1, x1, y1), (x1, y0, x1, y1)):
+                dashed(c, a, b, cc, d)
+            c.stroke([("M", x0, y0 - 1), ("V", y1 + 1)], w=2.8)
         elif kind == "HD":  # hood (front = right)
             (dx, dy0, dy1), (sx, sy0, sy1) = g["hd"]
             dashed(c, dx, dy0, dx, dy1)
@@ -599,7 +640,9 @@ WORDS = [("kmh", "Inter-Regular.ttf", 14, "km/h", 0), ("km", "Inter-Regular.ttf"
          ("wm_ModelX", "Inter-Light.ttf", 15, "MODEL X", 5), ("trim_ModelX", "Inter-Regular.ttf", 13, "Plaid", 0),
          # the Model Y L comes in one version (Long Range All-Wheel Drive; "Model Y L AWD" / "Premium All-Wheel Drive")
          ("wm_ModelYL", "Inter-Light.ttf", 15, "MODEL Y L", 5),
-         ("trim_ModelYL", "Inter-Regular.ttf", 13, "All-Wheel Drive", 0)]
+         ("trim_ModelYL", "Inter-Regular.ttf", 13, "All-Wheel Drive", 0),
+         # the Roadster 2.5 Sport (the car's own badge reads "Roadster Sport")
+         ("wm_Roadster", "Inter-Light.ttf", 15, "ROADSTER", 5), ("trim_Roadster", "Inter-Regular.ttf", 13, "2.5 Sport", 0)]
 
 
 def render_text(fontfile, size, s, track=0):
@@ -650,7 +693,7 @@ def build_sprites(k):
         "horn": ic_horn, "frunk": ic_frunk, "trunk": ic_trunk, "lockfill": ic_lockfill, "carfront": ic_carfront,
         "falcon": ic_falcon,
         "nav": ic_nav, "shield": ic_shield, "chev": ic_chev, "chevdown": ic_chevdown, "back": ic_back, "close": ic_close,
-        "wheel": ic_wheel, "pin": ic_pin, "tonneau": ic_tonneau, "powershare": ic_house,
+        "wheel": ic_wheel, "pin": ic_pin, "tonneau": ic_tonneau, "powershare": ic_house, "softtop": ic_softtop,
     }
     for key, fn in icons16.items():
         c = Canvas(18 * k, 18 * k, 16)

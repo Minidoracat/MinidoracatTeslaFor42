@@ -498,6 +498,58 @@ ylc.parts.DoorRearLeft.door.open = true
 h:update(); h:update(); h:update()
 check(h.st.doors == 4, "Model Y L: left rear door open -> door bit 4 (drawn with door_RL_ModelYL)")
 ylc.parts.DoorRearLeft.door.open = false
+-- Roadster: its own top view, two doors, the trunk lid, the soft top (DOORS[9], door_ST_Roadster) between the doors
+-- over the seats; the rear deck x 53-67 opens nothing. An open soft top is drawn but asks nobody to close it
+local rdc = car({ script = "Base.MinidoracatTesla_Roadster", kwh = 28 })
+rdc.parts.DoorRearLeft, rdc.parts.DoorRearRight = nil, nil
+rdc.parts.EngineDoor = tesla.parts.EngineDoor
+local st = { open = false }
+function st:isOpen() return self.open end
+rdc.parts.SoftTop = { door = st, getDoor = function(self) return self.door end, getModData = function() return {} end,
+    getInventoryItem = function() return {} end }
+dash:setVehicle(rdc)
+local rdSpr = {}
+for _, d in ipairs(h.doors) do rdSpr[d.name] = T.HUDAtlas[1][d.spr] and T.HUDAtlas[2][d.spr] and d.spr end
+check(h.carSpr == "car_Roadster" and h.zones == HUD.ZONES.Roadster and T.HUDAtlas[1].car_Roadster ~= nil
+    and T.HUDAtlas[2].car_Roadster ~= nil and #h.doors == 5 and rdSpr.SoftTop == "door_ST_Roadster"
+    and rdSpr.DoorFrontLeft == "door_FL_Roadster" and rdSpr.TrunkDoor == "door_TR_Roadster" and rdSpr.EngineDoor == "door_HD",
+    "Roadster: car_Roadster, its zones, two doors, trunk lid and soft top with their own overlays, the Model Y's hood")
+toggled = {}
+local rdh = { { 20, 42, "TrunkDoor" }, { 80, 15, "DoorFrontLeft" }, { 80, 42, "SoftTop" }, { 80, 70, "DoorFrontRight" },
+    { 120, 42, "EngineDoor" } }
+local rdOk = true
+for i, z in ipairs(rdh) do rdOk = rdOk and select(1, clickAt(z[1], z[2])) == true and toggled[i] == z[3] end
+check(rdOk and #toggled == 5, "Roadster: trunk lid, both doors, the soft top and the hood each toggle their part")
+toggled = {}
+check(select(1, clickAt(60, 42)) == false and #toggled == 0, "Roadster: x 60 is the rear deck: passes through")
+mx, my = at(80, 42)
+h:render()
+check(h.tipArg == "IGUI_VehiclePartSoftTop", "Roadster: hovering the roof names the soft top")
+mx, my = at(20, 42)
+h:render()
+check(h.tipArg == "IGUI_MinidoracatTesla_Part_TrunkLid", "Roadster: hovering the tail names the trunk lid (owner's manual: Trunk)")
+st.open = true
+h:update(); h:update(); h:update()
+check(h.st.doors == 256 and h.msgId == 0, "soft top open: door bit 256 (DOORS[9]) drawn, no 'close before driving' message")
+rdc.parts.DoorFrontLeft.door.open = true
+h:update(); h:update(); h:update()
+check(h.st.doors == 257 and h.msgId == 1 and h.msgA1 == 1, "soft top and a door open: the message counts only the door")
+st.open, rdc.parts.DoorFrontLeft.door.open = false, false
+h:update(); h:update(); h:update()
+-- the shared rule behind the click and the server's liftgate command (Liftgate.check): driver only, stopped only
+local rdDrv, rdPas = H.player({ name = "rdDrv" }), H.player({ name = "rdPas" })
+rdc.driver = rdDrv
+local _, why1 = T.Liftgate.check(rdPas, rdc, "SoftTop")
+rdc.speed = 20
+local _, why2 = T.Liftgate.check(rdDrv, rdc, "SoftTop")
+rdc.speed = 0
+local teslaDrv = tesla.driver
+tesla.driver = rdDrv
+check(why1 == "NOT_DRIVER" and why2 == "MOVING" and T.Liftgate.check(rdDrv, rdc, "SoftTop") == rdc.parts.SoftTop
+    and select(2, T.Liftgate.check(rdDrv, tesla, "SoftTop")) == "NO_DOOR",
+    "soft top: a passenger -> NOT_DRIVER, moving -> MOVING, the stopped driver -> the part; a car without one -> NO_DOOR")
+rdc.driver, tesla.driver = nil, teslaDrv
+mx = nil
 -- every car's zones: inside the picture before the quick keys (x <= 140, 0 <= y <= 85), none overlapping
 local zOk = true
 for model, zs in pairs(HUD.ZONES) do

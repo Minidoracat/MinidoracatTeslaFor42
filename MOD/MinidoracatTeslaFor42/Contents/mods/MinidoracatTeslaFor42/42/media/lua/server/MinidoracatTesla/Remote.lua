@@ -1,8 +1,8 @@
 -- Tesla app on the phone key, server side (client: client/MinidoracatTesla/PhoneApp.lua; reach: Keys.appReach).
 --   * appStatus { key }: every 2 s while a holder has the app open. The car as it is when the server has it loaded and
 --     the phone reaches it (grid up: any distance; grid down: Bluetooth, Keys.btRange()); else its last record.
---   * appAction { key, act, on }: lock, unlock, flash, horn, sentry, charge, frunk, trunk, tonneau, falcon, summon (+
---     mode, x, y, dir), powershare, outlet, psFloor (+ pct).
+--   * appAction { key, act, on }: lock, unlock, flash, horn, sentry, charge, frunk, trunk, tonneau, falcon, softtop,
+--     summon (+ mode, x, y, dir), powershare, outlet, psFloor (+ pct).
 --     Holder, reach, the VehicleManager right for doing the same thing in person, and the action's own rules are
 --     checked every time, but a summoner stopping their own summon skips reach and the VehicleManager.
 --   * appAlerts { key }: the car's last sentry / camp alerts.
@@ -98,6 +98,8 @@ function R.remember(v, create)
     local s = T.spec(v)
     -- Model X falcon wings (Specs falcon): either one open; nil on other cars, whose rear doors are ordinary doors
     r.falcon = (s and s.falcon or nil) and (doorOpen(v, "DoorRearLeft") or doorOpen(v, "DoorRearRight"))
+    -- Roadster soft top (Specs softTop): open = top down; nil on other cars
+    r.softtop = (s and s.softTop or nil) and doorOpen(v, "SoftTop")
     -- Cybertruck: Powershare (T.psState, its limit, the house's load and hours left) and the bed outlet
     local ps = md.ps
     r.ps = s and s.powershare and T.psState(part) or nil
@@ -192,6 +194,7 @@ local VM_CODES = {
     lock = { "PASSENGER" }, unlock = { "PASSENGER" }, flash = { "PASSENGER" }, horn = { "PASSENGER" },
     sentry = { "PASSENGER" }, trunk = { "CARGO" }, tonneau = { "CARGO" }, frunk = { "REPAIR", "SALVAGE" },
     falcon = { "PASSENGER" }, -- rear doors in person: PASSENGER (MinidoracatVehicleManager_Actions.lua:20-24 doorAction)
+    softtop = { "PASSENGER" }, -- the top opens the cabin like a door: PASSENGER, as the doors
     charge = { "FUEL" },
     summon = { "DRIVE" }, -- the car moves: the right to drive it (VehicleManager also wraps startSummon itself)
     powershare = { "FUEL" }, outlet = { "FUEL" }, psFloor = { "FUEL" }, -- the charge cable's right (T.mayUseCable)
@@ -421,6 +424,13 @@ local ACT = {
     trunk = swing("TrunkDoor"),
     tonneau = swing("TrunkTonneau"), -- Cybertruck: the app opens the tonneau cover (owner's manual p.60)
     falcon = falcon, -- Model X: both falcon wing doors
+    -- Roadster (Specs softTop): the soft top, the same rules as the lids (stopped, a broken lock refuses); NO_DOOR on any
+    -- other car, even one that somehow has a SoftTop part
+    softtop = function(player, v, open)
+        local s = T.spec(v)
+        if not (s and s.softTop) then return "NO_DOOR" end
+        return swing("SoftTop")(player, v, open)
+    end,
     summon = summon,
 }
 

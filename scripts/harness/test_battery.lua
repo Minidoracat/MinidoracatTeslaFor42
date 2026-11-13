@@ -43,6 +43,25 @@ check(H.scriptValue("vehicles/MinidoracatTesla_ModelYL.txt", "engineForce") == 5
     and H.scriptValue("vehicles/MinidoracatTesla_ModelYL.txt", "mass") == 824,
     "Model Y L engineForce = (176 + 198 kW) 502 hp x 10, mass 824 (800 x 2,088 / 2,027)")
 H.removeVehicle(yl)
+-- Roadster 2.5: 56 kWh (tesla.com 2013), an int item; the Model Y coefficients x 56 / 78.4
+local rd = H.vehicle({ script = "Base.MinidoracatTesla_Roadster", kwh = 28 })
+check(T.isTesla(rd) and B.part(rd):getInventoryItem():getFullType() == "Base.MinidoracatTesla_RoadsterBattery"
+    and B.capacity(B.part(rd)) == 56 and near(B.pct(B.part(rd)), 50)
+    and H.scriptValue("items/MinidoracatTesla_items.txt", "MaxCapacity", "item MinidoracatTesla_RoadsterBattery") == 56,
+    "Roadster is a Tesla with its own 56 kWh pack (item MaxCapacity 56)")
+check(near(56 * T.kmPerKwh(rd), 75.7, 0.1), "Roadster: a full pack at 50 km/h = one vanilla CarNormal tank too (75.7 km)")
+local rs = T.spec(rd)
+check(rs.massKg == 1235 and rs.hepa == nil and rs.falcon == nil and rs.tonneau == nil and rs.powershare == nil
+    and rs.softTop == true and rs.dcKw == false and rs.acKw == 16.8,
+    "Roadster: regen mass 1235 kg (manual 10-16); soft top; no HEPA, falcon, tonneau, Powershare; AC 16.8 kW only")
+check(T.Specs["Base.MinidoracatTesla_ModelY"].softTop == nil and T.Specs["Base.MinidoracatTesla_ModelY"].acKw == nil,
+    "the other cars: no softTop, no acKw (their chargers' own kW)")
+if H.bodyBuilt("Roadster") then -- the vehicle script comes with the body
+    check(H.scriptValue("vehicles/MinidoracatTesla_Roadster.txt", "engineForce") == 2880
+        and H.scriptValue("vehicles/MinidoracatTesla_Roadster.txt", "mass") == 486,
+        "Roadster engineForce = 215 kW (288 hp) x 10, mass 486 (800 x 1,235 / 2,033)")
+end
+H.removeVehicle(rd)
 local full = H.vehicle({ kwh = 78.4 })
 -- vanilla repair() fills the tank to the item's int MaxCapacity (VehiclePart.java:989-992): 79 for the 78.4 kWh pack
 B.part(full):setContainerContentAmount(79)
@@ -589,6 +608,8 @@ check(Z.good.vehicles["Base.MinidoracatTesla_ModelX"].spawnChance == 2
     and Z.parkingstall.vehicles["Base.MinidoracatTesla_ModelX"] == nil, "spawn table Model X: good 2, not in parking stalls")
 check(Z.parkingstall.vehicles["Base.MinidoracatTesla_ModelYL"].spawnChance == 3
     and Z.good.vehicles["Base.MinidoracatTesla_ModelYL"].spawnChance == 4, "spawn table Model Y L: parkingstall 3, good 4")
+check(Z.good.vehicles["Base.MinidoracatTesla_Roadster"].spawnChance == 2
+    and Z.parkingstall.vehicles["Base.MinidoracatTesla_Roadster"] == nil, "spawn table Roadster: good 2, not in parking stalls")
 
 H.section("dispatch")
 local hits = 0

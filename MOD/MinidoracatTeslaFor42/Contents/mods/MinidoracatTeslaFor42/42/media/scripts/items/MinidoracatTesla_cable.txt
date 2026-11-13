@@ -83,4 +83,15 @@ module Base
         WorldStaticModel = Base.MinidoracatTesla_CablePlugModelYL,
         Hidden = true,
     }
+
+    /* Roadster: its own round connector (2.5 owner's manual 5-7), props_blender.py PLUG_ROUND */
+    item MinidoracatTesla_CablePlugRoadster
+    {
+        Weight = 0.1,
+        ItemType = base:normal,
+        DisplayCategory = Electronics,
+        Icon = MinidoracatTesla_Cable,
+        WorldStaticModel = Base.MinidoracatTesla_CablePlugRoadster,
+        Hidden = true,
+    }
 }

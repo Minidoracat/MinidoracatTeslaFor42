@@ -6,6 +6,7 @@
 -- The Model S Plaid (plan-sx-1031) likewise: a US$100k flagship, the "good" zone only, at 2.
 -- The Model Y L (plan-yl-1111) like the Model Y, parking stalls at 3 and "good" at 4: its China price sits between the
 -- Model Y Long Range and the Performance, the same class (user 2026-11-11).
+-- The Roadster 2.5 Sport (plan-next-1114): a rare sports car, the "good" zone only, at 2 like the Model S, X and Cybertruck.
 local Z = VehicleZoneDistribution
 if Z and Z.parkingstall and Z.parkingstall.vehicles then
     Z.parkingstall.vehicles["Base.MinidoracatTesla_ModelY"] = { index = -1, spawnChance = 3 }
@@ -17,5 +18,6 @@ if Z and Z.good and Z.good.vehicles then
     Z.good.vehicles["Base.MinidoracatTesla_Cybertruck"] = { index = -1, spawnChance = 2 }
     Z.good.vehicles["Base.MinidoracatTesla_ModelS"] = { index = -1, spawnChance = 2 }
     Z.good.vehicles["Base.MinidoracatTesla_ModelX"] = { index = -1, spawnChance = 2 }
+    Z.good.vehicles["Base.MinidoracatTesla_Roadster"] = { index = -1, spawnChance = 2 }
     Z.good.vehicles["Base.MinidoracatTesla_ModelYL"] = { index = -1, spawnChance = 4 }
 end

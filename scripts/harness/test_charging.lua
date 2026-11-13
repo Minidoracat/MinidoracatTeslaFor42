@@ -1029,6 +1029,46 @@ check(cchg and cchg.peak == 325 and cchg.kw == 325 and near(B.chargeKwAt(cchg, 1
     "Cybertruck: peak 325 (its dcKw), 325 kW at 10 %")
 C.unplug(sp, ctv)
 
+-- Roadster (Specs dcKw = false, acKw 16.8: 70 A x 240 V, 2.5 owner's manual 5-4): every charger, the Supercharger
+-- too, gives at most 16.8 kW, flat (no chg.peak, no DC curve); the sandbox speed multiplier on top as for every car
+H.section("Roadster: 16.8 kW AC limit, no DC curve")
+local RD = "Base.MinidoracatTesla_Roadster"
+local function roadster(kwh)
+    local v = H.vehicle({ script = RD, kwh = kwh, x = 700.5, y = 702.5 })
+    v._class = "BaseVehicle"
+    function v:getAttachmentWorldPos(_, out) out._x, out._y = self.x, self.y; return out end
+    return v
+end
+local rv0 = roadster(0)
+check(T.Specs[RD].dcKw == false and B.capacity(B.part(rv0)) == 56, "Roadster: dcKw false (not nil: no fall back to T.DC_KW 250), 56 kWh")
+check(T.chargerKw("Supercharger", rv0) == 16.8 and T.chargerKw("WallConnector", rv0) == 11.5
+    and T.chargerKw("MobileConnector", rv0) == 7.6, "chargerKw: Supercharger 16.8 (its acKw, not 250 or 325), Wall Connector 11.5, Mobile 7.6")
+check(T.dcPeak("Supercharger", rv0, 16.8) == nil and T.dcPeak("Supercharger", car(10, 0, 0), 250) == 250
+    and T.dcPeak("WallConnector", car(10, 0, 0), 11.5) == nil, "dcPeak: none for the Roadster; the Model Y's Supercharger peak as before; none on AC")
+local prevSpeed = TS.ChargeSpeedMultiplier
+TS.ChargeSpeedMultiplier = 2
+check(T.chargerKw("Supercharger", rv0) == 33.6 and T.chargerKw("WallConnector", rv0) == 23
+    and T.chargerKw("Supercharger", car(10, 0, 0)) == 500, "ChargeSpeedMultiplier 2: the cap first, then x2 (33.6, 23; a Model Y 500 as before)")
+TS.ChargeSpeedMultiplier = prevSpeed
+H.removeVehicle(rv0)
+H.setHours(300)
+local rv = roadster(5.6)
+C.plug(sp, rv, siso)
+local rchg = B.part(rv):getModData().chg
+check(rchg and rchg.kw == 16.8 and rchg.peak == nil and rchg.src == "grid", "Roadster on the Supercharger: kw 16.8, no peak, the grid")
+check(B.chargeKwAt(rchg, 56, 5.6) == 16.8 and B.chargeKwAt(rchg, 56, 50) == 16.8, "flat 16.8 kW at 10 % and at 89 %: no DC curve")
+check(near(B.chargeHours(rchg, 56, 0, 56), 56 / 16.8, 1e-12), string.format("0 -> 100 %% in %.4f h = 56 / 16.8", B.chargeHours(rchg, 56, 0, 56)))
+local rest = B.chargeEstimate(B.part(rv), rchg, 301)
+H.setHours(301)
+C.settle(slo, H.hours())
+check(near(B.kwh(B.part(rv)), rest, 1e-9) and near(rest, 5.6 + 16.8, 1e-9),
+    "an hour: the server books what the charge card and the app estimate (+16.8 kWh)")
+local _, _, rleft = B.chargeEstimate(B.part(rv), rchg, H.hours())
+check(near(rleft, (56 * 0.9 - 22.4) / 16.8, 1e-9) and near(C.nextDue() - H.hours(), math.min(rleft, C.MAX_STEP_H), 1e-9),
+    string.format("the card's %.1f min to target at 16.8 kW flat; the server settles again within the hour", rleft * 60))
+C.unplug(sp, rv)
+H.removeVehicle(rv)
+
 -- the grid gone: a generator 2 tiles off, full speed, fuel per kWh
 H.setHours(400)
 local gsq = square(702, 700, 0, { outside = true })

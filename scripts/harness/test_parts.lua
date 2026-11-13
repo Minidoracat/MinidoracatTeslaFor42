@@ -105,6 +105,12 @@ local m3w = { vehicle = H.vehicle({ script = "Base.MinidoracatTesla_Model3" }) }
 ISVehicleMechanics.initParts(m3w)
 check(m3w.names[1] == "IGUI_MinidoracatTesla_Part_GasTank" and m3w.names[3] == "IGUI_MinidoracatTesla_Part_TrunkLid",
     "Model 3: the shared EV names, and TrunkDoor shows the trunk lid (T.CarPartNames)")
+local rdw = { vehicle = H.vehicle({ script = "Base.MinidoracatTesla_Roadster" }) }
+ISVehicleMechanics.initParts(rdw)
+check(rdw.names[1] == "IGUI_MinidoracatTesla_Part_GasTank" and rdw.names[3] == "IGUI_MinidoracatTesla_Part_TrunkLid"
+    and T.partNameKey("Base.MinidoracatTesla_Roadster", "IGUI_VehiclePartEngineDoor") == "IGUI_MinidoracatTesla_Part_EngineDoor"
+    and T.partNameKey("Base.MinidoracatTesla_Roadster", "IGUI_VehiclePartSoftTop") == nil,
+    "Roadster (2.5 owner's manual): Trunk = the trunk lid, Hood, the soft top keeps its own key IGUI_VehiclePartSoftTop")
 check(ISVehicleMechanics.render(tw) == "IGUI_MinidoracatTesla_OutOfCharge", "Tesla: empty pack says out of charge")
 local vw = { vehicle = H.vehicle({ script = "Base.CarNormal" }) }
 ISVehicleMechanics.initParts(vw)
@@ -150,4 +156,19 @@ for _, c in ipairs({ { "ModelY", 85, 12, 114 / 835 }, { "Model3", 45, 7, 88 / 59
     local trunk, frunkCap = partCapacity("TruckBed"), partCapacity("Frunk")
     check(trunk == c[2] and frunkCap == c[3], c[1] .. ": TruckBed " .. tostring(trunk) .. ", Frunk " .. tostring(frunkCap))
     check(trunk and frunkCap and math.abs(frunkCap - trunk * c[4]) < 0.5, c[1] .. ": frunk / trunk follows the manual's litres")
+end
+-- Roadster (the body's vehicle script): the trunk the vanilla sports car class, a front space the smallest the body
+-- holds (the 2.5 has none under the hood; the user chose every feature, roadster.md); the soft top a door part
+if H.bodyBuilt("Roadster") then
+    local f = assert(io.open("MOD/MinidoracatTeslaFor42/Contents/mods/MinidoracatTeslaFor42/42/media/scripts/vehicles/MinidoracatTesla_Roadster.txt", "r"))
+    local script = f:read("*a")
+    f:close()
+    local function block(id) return script:match("\n        part " .. id .. "\n        {(.-)\n        }") end
+    local trunk = tonumber((block("TruckBed") or ""):match("capacity%s*=%s*(%d+)"))
+    local frunkCap = tonumber((block("Frunk") or ""):match("capacity%s*=%s*(%d+)"))
+    check(trunk and frunkCap and frunkCap > 0 and frunkCap < trunk, "Roadster: TruckBed " .. tostring(trunk) .. ", a smaller Frunk " .. tostring(frunkCap))
+    local top = block("SoftTop") or ""
+    check(top:find("door", 1, true) and top:find("anim Open", 1, true) and top:find("anim Close", 1, true),
+        "Roadster: part SoftTop is a door with Open / Close anims (RoadsterLua-needs.md)")
+    check(not script:find("part DoorRear", 1, true) and not script:find("part SeatRear", 1, true), "Roadster: two doors, two seats")
 end

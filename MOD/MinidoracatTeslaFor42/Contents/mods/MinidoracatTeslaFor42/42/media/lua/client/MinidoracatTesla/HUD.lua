@@ -31,10 +31,12 @@ local MSG_Y, MSG_H, MSG_MINW, MSG_MAXW = 108, 30, 312, 474
 local H_NOMSG = 112
 local LOW_PCT = 20
 local DOORS = { "DoorFrontLeft", "DoorFrontRight", "DoorRearLeft", "DoorRearRight", "TrunkDoor", "DoorRear", "EngineDoor",
-    "TrunkTonneau" }
+    "TrunkTonneau", "SoftTop" }
 -- door overlay sprites; a car whose doors sit elsewhere has its own, door_<kind>_<model> (build_atlas.py DOOR_GEOM)
-local DOOR_SPR = { "door_FL", "door_FR", "door_RL", "door_RR", "door_TR", "door_TR", "door_HD", "door_TN" }
-local POW2 = { 1, 2, 4, 8, 16, 32, 64, 128 }
+local DOOR_SPR = { "door_FL", "door_FR", "door_RL", "door_RR", "door_TR", "door_TR", "door_HD", "door_TN", "door_ST" }
+local POW2 = { 1, 2, 4, 8, 16, 32, 64, 128, 256 }
+-- open, but no "close before driving": the Roadster's soft top (a convertible drives top down)
+local NO_WARN = { SoftTop = true }
 -- clickable car picture, per car model (Core.lua Specs model; sprite car_<model>, scripts/hud/build_atlas.py):
 -- { DOORS index, x0, y0, x1, y1 } in design units from the car sprite's top-left (150x85, nose right, left side up;
 -- build_atlas.py draws at 150/170 px per viewBox unit). Rear doors end at the B-pillar seam (x 69), the front doors
@@ -50,6 +52,10 @@ local POW2 = { 1, 2, 4, 8, 16, 32, 64, 128 }
 -- rear doors (an open one is drawn raised, door_RL_ModelX / door_RR_ModelX), the front doors to the windscreen's foot
 -- at the frunk lid (viewBox 120 = x 106). The Model Y L: the Model Y's front, its longer tail's liftgate with the rear
 -- glass back from viewBox 46.4 (x 41), the rear doors from there to the B-pillar (x 69).
+-- The Roadster (a shorter car at the same scale, nose on the Model Y's): the trunk lid back from viewBox 60.5 (x 53),
+-- the doors from viewBox 76.3 to 111.6 (x 67-98.5) on the car's sides, the soft top between them over the seats (its
+-- roof viewBox y 34-62.3 = y 30-55, along the doors), the hood from the windscreen's foot (x 98.5). The rear deck
+-- between the trunk lid and the doors (x 53-67) opens nothing.
 local ZONES = {
     ModelY = {
         { 5, 0, 0, 45, 85 }, { 3, 45, 0, 69, 42.5 }, { 4, 45, 42.5, 69, 85 },
@@ -74,6 +80,10 @@ local ZONES = {
     ModelYL = {
         { 5, 0, 0, 41, 85 }, { 3, 41, 0, 69, 42.5 }, { 4, 41, 42.5, 69, 85 },
         { 1, 69, 0, 97, 42.5 }, { 2, 69, 42.5, 97, 85 }, { 7, 97, 0, 140, 85 },
+    },
+    Roadster = {
+        { 5, 0, 0, 53, 85 }, { 1, 67, 0, 98.5, 30 }, { 9, 67, 30, 98.5, 55 }, { 2, 67, 55, 98.5, 85 },
+        { 7, 98.5, 0, 140, 85 },
     },
 }
 HUD.ZONES = ZONES
@@ -342,10 +352,13 @@ function HUD:readSlow()
     local kpk = T.kmPerKwh(v)
     st.range = kpk and math.floor(kwh * kpk + 0.5) or (kwh <= 0 and 0 or nil)
     st.locked = v:areAllDoorsLocked()
-    local bits, avail = 0, 0 -- open doors; installed doors (a car-picture zone dims without one)
+    local bits, avail, warn = 0, 0, 0 -- open doors; installed doors (a car-picture zone dims without one); open, to close
     for i = 1, #self.doors do
         local d = self.doors[i]
-        if d.part:getDoor():isOpen() then bits = bits + d.bit end
+        if d.part:getDoor():isOpen() then
+            bits = bits + d.bit
+            if not NO_WARN[d.name] then warn = warn + d.bit end
+        end
         if d.part:getInventoryItem() then avail = avail + d.bit end
     end
     st.avail = avail
@@ -377,7 +390,7 @@ function HUD:readSlow()
     st.chg = cs
     -- message: priority door > no power > low battery > charging > charged > camp > sentry
     local id, a1, a2 = 0, 0, 0
-    if bits > 0 then id, a1 = 1, bits
+    if warn > 0 then id, a1 = 1, warn
     elseif cs == 3 then id = 2
     elseif st.pct < LOW_PCT and cs == 0 then id, a1 = 3, st.range
     elseif cs == 1 then id, a1, a2 = 4, added, mins
