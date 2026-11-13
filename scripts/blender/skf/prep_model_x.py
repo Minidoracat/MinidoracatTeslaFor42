@@ -288,7 +288,10 @@ FIELD = dict(
                      h=1080),
         REAR34=dict(R=((0.7079705, -0.7061538, -0.0111645), (-0.0390861, -0.0233928, -0.9989620),
                        (0.7051596, 0.7076720, -0.0441622)), C=(-5.485325, -5.786292, 0.128223), f=2287.880, w=1920,
-                    h=1080)),
+                    h=1080),
+        # (round 16) a virtual camera over the nose, 30 deg down like the game's views (FIELD decals BandGap*_X)
+        TOPN=dict(R=((-1.0, 0.0, 0.0), (0.0, 0.5, -0.8660254), (-0.0, -0.8660254, -0.5)),
+                  C=(-0.000194, 19.339522, 9.844147), f=13333.0, w=1920, h=1080)),
     anchor=(1.261078, -0.768273),
     # decals: name, the view and its outline (px), the objects they lie on, material, offset (m)
     decals=(
@@ -337,6 +340,26 @@ FIELD = dict(
              # body showed between them as a white / red line along the lamp's top, game S)
              holes=(((577, 527.5), (600, 518), (650, 508), (700, 499), (738, 496), (744, 498), (749, 499), (752, 501),
                      (741, 513.5), (702, 530.5), (650, 538.5), (600, 537.5), (576, 529)),)),
+        # (round 16) the band's gaps: from above (game SE / S / E) Band_X's two halves left the body between them as
+        # four grey dashes along the band (white car 64 / 54 / 54 light px); the dashes drawn in TOPN (game sampling
+        # px projected into it), black. A fifth piece at the T's foot dropped: it ringed the chrome T's stem in black
+        # and the stem's tip counted as a light px (black car SE 17 -> 19); the T stays whole without it
+        dict(name="BandGap_X", view="TOPN", mat="Band_Black", on=("Car Body",), off=0.005, front=0.001,
+             skip=("Aluminum",), step=3.0, env=3, through=("Bonnet",),
+             outline=((1068, 530), (1065, 528), (1017, 529), (1016, 530), (1002, 531), (998, 533), (997, 536),
+                      (1000, 538), (1009, 538), (1010, 537), (1059, 535), (1060, 534), (1065, 534), (1067, 533))),
+        dict(name="BandGap1_X", view="TOPN", mat="Band_Black", on=("Car Body",), off=0.005, front=0.001,
+             skip=("Aluminum",), step=3.0, env=3, through=("Bonnet",),
+             outline=((1181, 524), (1178, 522), (1170, 526), (1144, 526), (1138, 528), (1137, 531), (1140, 533),
+                      (1178, 533), (1181, 531), (1180, 528))),
+        dict(name="BandGap3_X", view="TOPN", mat="Band_Black", on=("Car Body",), off=0.005, front=0.001,
+             skip=("Aluminum",), step=3.0, env=3, through=("Bonnet",),
+             outline=((1077, 530), (1077, 532), (1080, 534), (1094, 534), (1097, 532), (1097, 530), (1094, 528),
+                      (1080, 528))),
+        dict(name="BandGap4_X", view="TOPN", mat="Band_Black", on=("Car Body",), off=0.005, front=0.001,
+             skip=("Aluminum",), step=3.0, env=3, through=("Bonnet",),
+             outline=((986, 576), (983, 574), (978, 573), (974, 576), (971, 580), (971, 582), (974, 584), (977, 584),
+                      (983, 581), (986, 578))),
         # the headlamps' daytime light strip along their lower edge (official FRONT34: a smoked lamp, a white strip
         # under it running up round its outer end)
         dict(name="Drl_X", view="FRONT34", mat="Lamp_DRL", on=("Car Body",), off=0.008, step=3.0, env=4,
