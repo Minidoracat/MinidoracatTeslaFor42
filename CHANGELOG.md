@@ -24,6 +24,7 @@
 > - 充電：Specs 新欄位 `acKw`（車自己的交流上限，任何充電設備都不超過它；Roadster 16.8 = 70 A × 240 V，車主手冊 5-4）與 `dcKw = false`（沒有直流快充：超級充電座對它給 `acKw`、固定功率、不套直流曲線）。其他六台沒有 `acKw`、`dcKw` 照舊，充電不變。沙盒「充電速度倍率」照樣乘在這個上限上。
 > - 軟頂篷：門類零件 `SoftTop`（零件名翻譯鍵 `IGUI_VehiclePartSoftTop`；打開＝收起），Specs 新旗標 `softTop = true`；手機 App 的 `appAction` 新動作 `softtop`（裝了 Vehicle Manager 時要「搭乘」權限，和車門相同）。蓋著時跟著鎖車上鎖；收起時，鎖車、走遠自動上鎖與儀表的「沒關」提醒都略過它。
 > - 沒有 HEPA（Specs 沒有 `hepa`），V 鍵圓盤不出現生物武器防禦模式。
+> - 舒適模式：Specs 新欄位 `chillForce`（舒適模式開著時的推力）。Roadster 是 1440（腳本推力 2880 的一半，和 Model Y 的 3100 ÷ 6260 同比例）；其他六台沒有這個欄位，仍是 3100。
 > - 車輛範本拆成兩層：`MinidoracatTeslaCore`（每台都有的零件：前門、前座、側窗）與 `MinidoracatTeslaBase`（Core 加上後門、後座與後側窗）。Roadster 繼承 Core；現有六台繼承 Base，名字不變，展開後的零件與順序和以前相同，舊存檔照零件 id 讀回。
 > - 素材：車身改作自 the 86 guy 的「2008 Tesla Roadster」（Sketchfab，CC BY 4.0，https://sketchfab.com/3d-models/2008-tesla-roadster-317dabbe5e824948a92091f7bd39c2de ，作者 https://sketchfab.com/the_86_guy ，授權 http://creativecommons.org/licenses/by/4.0/ ）。照 2.5 車主手冊調整長寬高、軸距與輪距，前保桿與後擴散器改成 2.5 的樣子，減面、拆件（前蓋與行李廂蓋沿原有的縫切出）、車頂改成切條收合的軟頂篷、重做貼圖、重畫頭燈與尾燈，輪子與車內（兩個座位）換成本 MOD 自己的；署名全文見 `CREDITS.md`。
 
