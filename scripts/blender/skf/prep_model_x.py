@@ -139,9 +139,10 @@ FIELD = dict(
               # SIDE + FRONT34 triangulated) and the black round it; the lamps are FIELD decals Lens_X / LensSide_X.
               # (Round 12 tried this box out to the lid's gutter behind the lamp, u 0.95 / h 1.02, whose black seal
               # faces lid_slide uncovered: the black dash and flecks went, but the lid seam's game sampling fell 6-9
-              # points, gmeas10 N 92 -> 84 %: the seam is that black)
+              # points, gmeas10 N 92 -> 84 %: the seam is that black. Round 13: out there with the lid's seam lines 8
+              # mm (cars/model_x.py SEAM_LINE wide) and LampRim_X up under the lid's edge, the seam holds)
               dict(obj="Car Body", mat="Light Glass Simple", to="Car Paint", u=(-1, 0.8), h=(0.6, 1.0)),
-              dict(obj="Car Body", mat="Black Car Paint", to="Car Paint", u=(0.1, 0.7), h=(0.74, 0.93), az=(0.45, 0.95)),
+              dict(obj="Car Body", mat="Black Car Paint", to="Car Paint", u=(0.1, 0.95), h=(0.74, 1.02), az=(0.45, 0.95)),
               # the nose cone's trim body colour, the T too (round 8: cars/model_x.py T_BADGE; FIELD decals Band_X)
               dict(obj="Car Body", mat="Aluminum", to="Car Paint", u=(-1, 0.6), h=(0.6, 0.85)),
               # round 9: the chin's front body colour under the grille (official FRONT34: a white lip 12-15 px tall
@@ -300,9 +301,13 @@ FIELD = dict(
         # its side end: the dark red side marker (official SIDE)
         dict(name="Marker_X", view="SIDE", mat="Marker_Red", on=("Car Body",), off=0.005,
              outline=((396, 562.5), (425.5, 560.5), (425, 573.5), (385, 575.5))),
-        # the nose cone's black band round the chrome T (official FRONT34; the source's wider band body colour)
-        dict(name="Band_X", view="FRONT34", mat="Band_Black", on=("Car Body",), off=0.002, skip=("Aluminum",),
-             outline=((428, 526), (440, 524.5), (470, 525), (500, 528), (520, 533), (535, 539), (542, 543.5),
+        # the nose cone's black band round the chrome T (official FRONT34; the source's wider band body colour).
+        # Round 13: `step` 2.5 (6 px chords sank under the curved nose: white flecks through the band in the game),
+        # `off` 4 mm (`front` holds the length), its top 3-5 px up through the lid (the body's ledge under the lid's
+        # lip, hidden in FRONT34, read as a white line along the band's top from above: game S / SE)
+        dict(name="Band_X", view="FRONT34", mat="Band_Black", on=("Car Body",), off=0.004, front=0.001,
+             skip=("Aluminum",), step=2.5, through=("Bonnet",),
+             outline=((428, 521), (440, 519.5), (470, 520), (500, 523), (520, 528), (535, 534), (542, 541),
                       (520, 542.5), (500, 541), (480, 542), (474, 548), (468, 557), (463, 550), (456, 542),
                       (445, 538), (432, 534), (428, 531))),
         # the headlamps' smoked lens (official FRONT34, SIDE). Round 12, the rim and the strip too: `env` 4 px, `step` 3
@@ -320,13 +325,18 @@ FIELD = dict(
         # (round 8) the lamp's thin dark rim round the lens and the light strip (official FRONT34: the white strip reads
         # off the white paint by it). Round 10: a ring, the lens and the strip cut out (`holes`, their union): a whole
         # plate 2 mm under the lens poked through its chords on the curve (the game's lit lamp at night half dark).
-        # Round 11: its outer tip from x 577 (lid_slide uncovered it: a black wedge past the lamp's end)
+        # Round 11: its outer tip from x 577 (lid_slide uncovered it: a black wedge past the lamp's end). Round 13: its
+        # top 3 px over lid_slide's line, through the lid (the body's strip under the lid's edge, white with grey flecks
+        # between the lid and the lamp in the game's views from above, now the lamp's dark top: official FRONT34, the
+        # lamp's top is the lid's edge), its bottom 2 px lower (1.5 px read as a dashed line in the game)
         dict(name="LampRim_X", view="FRONT34", mat="Lamp_Rim", on=("Car Body",), off=0.006, step=3.0, env=4,
-             u=(0.1, 0.75),
-             outline=((577, 525.3), (600, 514.5), (650, 504.5), (700, 495.5), (738, 492.5), (747, 494.5), (757.5, 500),
-                      (744, 516.5), (703, 533.5), (650, 541.5), (600, 540.5), (577, 533)),
-             holes=(((574, 527), (600, 516), (650, 506), (700, 497), (738, 494), (745, 496), (750, 497.5), (755, 500.5),
-                     (742, 515), (702, 532), (650, 540), (600, 539), (573, 530)),)),
+             through=("Bonnet",), u=(0.1, 0.75),
+             outline=((577, 522), (600, 508.5), (650, 498.5), (700, 489.5), (738, 486.5), (747, 488.5), (757.5, 497),
+                      (744, 518.5), (703, 535.5), (650, 543.5), (600, 542.5), (577, 535)),
+             # (round 13: the hole 1.5-3 px inside the lens and the strip, the rim under their edges: edge to edge, the
+             # body showed between them as a white / red line along the lamp's top, game S)
+             holes=(((577, 527.5), (600, 518), (650, 508), (700, 499), (738, 496), (744, 498), (749, 499), (752, 501),
+                     (741, 513.5), (702, 530.5), (650, 538.5), (600, 537.5), (576, 529)),)),
         # the headlamps' daytime light strip along their lower edge (official FRONT34: a smoked lamp, a white strip
         # under it running up round its outer end)
         dict(name="Drl_X", view="FRONT34", mat="Lamp_DRL", on=("Car Body",), off=0.008, step=3.0, env=4,
@@ -1535,7 +1545,8 @@ def decals(bpy, meshes, nose, yc, ftyre_x):
     lying on a lid or door (`on` beyond the body: the tailgate's lamp halves) in an object `<name>_<that object's
     initial>` riding it (cars/model_x.py PART_OBJS / SHELL_OBJS). `holes`: loops cut out of the outline; `front`: no
     vertex past the body's nose by more than it (m); `step`: the mesh's spacing (px, 6); `env` (px): each vertex `off`
-    along its ray from the envelope of the hits round it (below)."""
+    along its ray from the envelope of the hits round it (below); `through`: objects the rays pass (the frunk lid: the
+    body under its edge, hidden in the official view, shows in the game's from above)."""
     import bmesh
     from mathutils import Vector
     from mathutils.bvhtree import BVHTree
@@ -1572,6 +1583,8 @@ def decals(bpy, meshes, nose, yc, ftyre_x):
             d = R.T @ np.array([(v.co.x - c["w"] / 2) / c["f"], (v.co.y - c["h"] / 2) / c["f"], 1.0])
             ray = (world(C + d) - eye).normalized()
             hit, n, fi, _ = bvh.ray_cast(eye, ray)
+            while hit is not None and owner[fi] in dc.get("through", ()):   # (round 13) seen through those
+                hit, n, fi, _ = bvh.ray_cast(hit + ray * 1e-5, ray)
             if hit is None:                           # past the car's outline
                 off.append(v)
                 continue

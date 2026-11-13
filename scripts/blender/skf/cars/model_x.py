@@ -173,18 +173,19 @@ CAR = dict(
     PLATES=(("SillPlate", ((-0.47, -2.025, 0.550), (0.45, -2.025, 0.550), (0.45, -2.052, 0.550), (0.30, -2.067, 0.550),
                            (0.15, -2.077, 0.550), (0.0, -2.087, 0.550), (-0.15, -2.077, 0.550), (-0.30, -2.067, 0.550),
                            (-0.47, -2.052, 0.550)), (0, 0, 1), "arch_liner"),
-            # (as model_s.py) under the 1 px cracks at the headlamps' top inner corners (fascia, round 3: game NW 4 px)
-            *((f"LampCrack{'L' if sx < 0 else 'R'}", tuple((sx * x, y, 0.692) for x, y in
-                                                         ((0.72, 1.60), (0.60, 1.60), (0.60, 1.73), (0.72, 1.73))),
-               (0, 0, 1), "arch_liner") for sx in (-1, 1)),
-            # (round 5) under the frunk lid / fender gap over those corners (shut NW 1 px), the cowl corner by the
-            # A-pillar's foot (the front door open: SE 9 px, b9fe78a 3) and the rear door opening's lower rear corner,
-            # where the sill meets the rear arch (both falcon doors open: SW, the ground through a 6 mm gap)
-            *((f"LidCrack{'L' if sx < 0 else 'R'}", tuple((sx * x, y, 0.715) for x, y in
-                                                        ((0.70, 1.62), (0.57, 1.62), (0.57, 1.80), (0.70, 1.80))),
-               (0, 0, 1), "arch_liner") for sx in (-1, 1)),
+            # (round 5) the cowl corner by the A-pillar's foot (the front door open: SE 9 px, b9fe78a 3) and the rear
+            # door opening's lower rear corner, where the sill meets the rear arch (both falcon doors open: SW, the
+            # ground through a 6 mm gap). Round 13: the cowl plate inboard of |x| 0.72, a lower one (z 0.79, |x| <=
+            # 0.735) under the gap the outer part closed: out there the body's skin is lower than 0.83 (fair,
+            # lid_slide), the plate's corner stood out of the A-pillar's foot as a black wedge (game S / E / SE, GameMX4
+            # 3b6e80c). The headlamp corners' LampCrack (z 0.692, round 3) and LidCrack (0.715, round 5) went: since
+            # fair / lid_slide / the lamp decals they stood through the lens as a black block and past the far fender
+            # as a black fin (game S / E), and every state's holes are the same without them
             *((f"CowlCrack{'L' if sx < 0 else 'R'}", tuple((sx * x, y, 0.83) for x, y in
-                                                         ((0.77, 0.74), (0.66, 0.74), (0.66, 0.90), (0.77, 0.90))),
+                                                         ((0.72, 0.74), (0.66, 0.74), (0.66, 0.90), (0.72, 0.90))),
+               (0, 0, 1), "arch_liner") for sx in (-1, 1)),
+            *((f"CowlCrackLo{'L' if sx < 0 else 'R'}", tuple((sx * x, y, 0.79) for x, y in
+                                                           ((0.735, 0.72), (0.68, 0.72), (0.68, 0.80), (0.735, 0.80))),
                (0, 0, 1), "arch_liner") for sx in (-1, 1)),
             *((f"ArchCorner{'L' if sx < 0 else 'R'}", tuple((sx * x, y, 0.19) for x, y in
                                                           ((0.64, -0.84), (0.44, -0.84), (0.44, -0.66), (0.64, -0.66))),
@@ -215,9 +216,11 @@ CAR = dict(
     # dashed line at 512 without antialiasing); no seal strip whose far edge has nothing over it within 3 cm, the
     # strips' reach cut back inside the game cameras' outline (SEAL_TRIM)
     # flat (round 5, as model_s.py): each half at its own corner's height (game NW: B-pillar 37 -> 76 %, front door's
-    # front 77 -> 95 % by the Model S seam_bl measure; same-camera SIDE front door's front 90 -> 75 %, official 71 %)
+    # front 77 -> 95 % by the Model S seam_bl measure; same-camera SIDE front door's front 90 -> 75 %, official 71 %).
+    # wide (round 13): the frunk lid's strips 8 mm (4 mm drew its sides as dashes in the game's S / SE / E / W, seen
+    # obliquely; 12 mm read as a doubled line)
     SEAM_LINE=dict(w=0.004, over=0.002, bridge=0.003, lift=0.0010, gap=0.025, glass=0.03, step=0.006, chain=0.04,
-                   tone=0.5, flat=True),
+                   tone=0.5, flat=True, wide={6: 0.008}),
     SEAL_TRIM=True,
     SEAL_COVER=0.03,
     SEAL_FULL=("TrunkDoor",),              # but the liftgate's: open, they close its gap to the pillars
