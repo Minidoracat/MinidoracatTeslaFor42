@@ -35,7 +35,7 @@ def _edge(a, b, sd):
     return (0, y1, z1), (0, (z1 - z2) / n, (y2 - y1) / n)
 
 
-def _disc(cx, cz, rx, rz, y, n=12):
+def _disc(cx, cz, rx, rz, y, n=24):
     """Both sides' zones (convert.py LAMPS areas): the faces in the elliptic cylinder along y round (+-cx, cz),
     radii rx, rz, between y[0] and y[1] (a round lamp seen from ahead or behind), cut along it."""
     out = []
@@ -50,19 +50,24 @@ def _disc(cx, cz, rx, rz, y, n=12):
 
 
 # the head lamps through their clear lens (official tm2013-front-intake-closeup-blue.jpg, -front34-red-softtop-off;
-# the source's bulbs, prep frame x 0.826): a light housing, the projector's chrome ring, the main lamp, the amber
-# indicator (not lit with the head lamps); the tail lamps' three round lenses (tm2013-photo-rear34-red-top-on.jpg):
-# a red ring round a light centre each. (cx, cz, rx, rz, y range, rgb, lit), later over earlier
+# the source's bulbs, prep frame x 0.826): a dark housing a step lighter than the case's frame (not lit: only the
+# lamps glow), the big inner main lamp and the small outer projector, each a bright chrome ring round a silver face
+# with a slightly darker light centre (no dark pupil), the amber indicator a small spot in the housing's inner corner
+# (not lit); the tail lamps' three round lenses (tm2013-photo-rear34-red-top-on.jpg): a light silver-pink face inside
+# a red ring each (all the tail glass glows already, so the faces change no glow).
+# (cx, cz, rx, rz, y range, rgb, lit), later over earlier
 _LAMP_AREAS = (
-    (0.431, 0.505, 0.105, 0.045, (1.10, 1.40), (178, 182, 188), True),
-    (0.493, 0.519, 0.022, 0.022, (1.10, 1.40), (214, 217, 222), True),
-    (0.493, 0.519, 0.011, 0.011, (1.10, 1.40), (128, 132, 138), True),
-    (0.429, 0.507, 0.028, 0.028, (1.10, 1.40), (236, 238, 241), True),
-    (0.429, 0.507, 0.012, 0.012, (1.10, 1.40), (190, 192, 196), True),
-    (0.369, 0.490, 0.018, 0.018, (1.10, 1.40), (226, 136, 40), False),
-    (0.352, 0.624, 0.026, 0.026, (-1.56, -1.42), (214, 210, 212), True),
-    (0.452, 0.618, 0.023, 0.023, (-1.56, -1.42), (214, 210, 212), True),
-    (0.531, 0.613, 0.014, 0.014, (-1.56, -1.42), (214, 210, 212), True),
+    (0.431, 0.505, 0.105, 0.045, (1.10, 1.40), (74, 77, 84), False),
+    (0.493, 0.519, 0.024, 0.024, (1.10, 1.40), (246, 247, 249), True),
+    (0.493, 0.519, 0.019, 0.019, (1.10, 1.40), (220, 223, 228), True),
+    (0.493, 0.519, 0.009, 0.009, (1.10, 1.40), (204, 207, 212), True),
+    (0.429, 0.507, 0.031, 0.031, (1.10, 1.40), (246, 247, 249), True),
+    (0.429, 0.507, 0.025, 0.025, (1.10, 1.40), (220, 223, 228), True),
+    (0.429, 0.507, 0.012, 0.012, (1.10, 1.40), (204, 207, 212), True),
+    (0.352, 0.494, 0.009, 0.009, (1.10, 1.40), (226, 136, 40), False),
+    (0.352, 0.624, 0.030, 0.030, (-1.56, -1.42), (236, 216, 220), True),
+    (0.452, 0.618, 0.027, 0.027, (-1.56, -1.42), (236, 216, 220), True),
+    (0.531, 0.613, 0.016, 0.016, (-1.56, -1.42), (236, 216, 220), True),
 )
 
 
@@ -199,8 +204,8 @@ CAR = dict(
              "light reflector bowl": (200, 202, 206), "Projector lights": (150, 152, 158),
              "Emissive lights": (232, 234, 236), "Emissive lights (orange)": (196, 124, 52), "Mirrors": (110, 116, 122),
              "Fender lights (orange)": (196, 118, 44), "Fender lights (red)": (140, 22, 26),
-             "Fender lights LED": (200, 200, 200), "Taillight glass": (192, 32, 38), "Rear lights": (150, 20, 24),
-             "Signal lights": (196, 124, 52), "Reverse lights": (210, 210, 210), "Reflector": (120, 16, 20),
+             "Fender lights LED": (200, 200, 200), "Taillight glass": (192, 32, 38), "Rear lights": (226, 204, 208),
+             "Signal lights": (196, 124, 52), "Reverse lights": (210, 210, 210), "Reflector": (226, 204, 208),
              "3rd taillight": (90, 18, 22), "Tesla text": (200, 204, 210), "Tesla logo": (200, 204, 210),
              "SoftTop": (24, 24, 26), "SoftTopLining": (40, 40, 42),
              "Intake bar": (84, 88, 94), "Diffuser": (44, 46, 50)},   # (prep NOSE: the 2.5's bars, louvres, plate)
