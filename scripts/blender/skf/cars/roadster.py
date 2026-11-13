@@ -22,9 +22,10 @@ def _below(a, b):
 # the 2.5's wide black intake (owner's manual 2-2 front view, tm2013-front-intake-closeup-blue.jpg): its outline
 # (|x|, z) over the 2008 smile, flat on top, widest two thirds down, rounding in to the lip (prep NOSE: body colour)
 _INTAKE = ((0.0, 0.318), (0.388, 0.318), (0.438, 0.306), (0.496, 0.256), (0.504, 0.223), (0.483, 0.190))
-# the corner side intakes (manual 2-2 side view: a slot ahead of the front arch leaning back at the top), (y, z) of
-# its front and rear edges' ends
-_SLOT = (((1.338, 0.388), (1.429, 0.198)), ((1.289, 0.388), (1.371, 0.198)))
+# the corner side intakes (manual 2-2 side view, tm2013-photo-front34-red-softtop-off.jpg: a narrow slot ahead of the
+# front arch, leaning back at the top), (y, z) of its front and rear edges' ends: about 3.5 cm across, 19 cm tall (the
+# first cut, 6.4 x 23 cm, read as a notch out of the nose from the side)
+_SLOT = (((1.318, 0.370), (1.398, 0.215)), ((1.289, 0.370), (1.369, 0.215)))
 
 
 def _edge(a, b, sd):
@@ -32,6 +33,37 @@ def _edge(a, b, sd):
     (y1, z1), (y2, z2) = a, b
     n = math.hypot(z1 - z2, y2 - y1) * sd
     return (0, y1, z1), (0, (z1 - z2) / n, (y2 - y1) / n)
+
+
+def _disc(cx, cz, rx, rz, y, n=12):
+    """Both sides' zones (convert.py LAMPS areas): the faces in the elliptic cylinder along y round (+-cx, cz),
+    radii rx, rz, between y[0] and y[1] (a round lamp seen from ahead or behind), cut along it."""
+    out = []
+    for sd in (1, -1):
+        t = [2 * math.pi * k / n for k in range(n)]
+        below = tuple(((sd * cx + rx * math.cos(a), 0, cz + rz * math.sin(a)),
+                       (math.cos(a) / rx / math.hypot(math.cos(a) / rx, math.sin(a) / rz), 0,
+                        math.sin(a) / rz / math.hypot(math.cos(a) / rx, math.sin(a) / rz))) for a in t)
+        x0, x1 = sorted((sd * (cx - rx - 0.01), sd * (cx + rx + 0.01)))
+        out.append(dict(lo=(x0, y[0], cz - rz - 0.01), hi=(x1, y[1], cz + rz + 0.01), below=below, cut=True))
+    return out
+
+
+# the head lamps through their clear lens (official tm2013-front-intake-closeup-blue.jpg, -front34-red-softtop-off;
+# the source's bulbs, prep frame x 0.826): a light housing, the projector's chrome ring, the main lamp, the amber
+# indicator (not lit with the head lamps); the tail lamps' three round lenses (tm2013-photo-rear34-red-top-on.jpg):
+# a red ring round a light centre each. (cx, cz, rx, rz, y range, rgb, lit), later over earlier
+_LAMP_AREAS = (
+    (0.431, 0.505, 0.105, 0.045, (1.10, 1.40), (178, 182, 188), True),
+    (0.493, 0.519, 0.022, 0.022, (1.10, 1.40), (214, 217, 222), True),
+    (0.493, 0.519, 0.011, 0.011, (1.10, 1.40), (128, 132, 138), True),
+    (0.429, 0.507, 0.028, 0.028, (1.10, 1.40), (236, 238, 241), True),
+    (0.429, 0.507, 0.012, 0.012, (1.10, 1.40), (190, 192, 196), True),
+    (0.369, 0.490, 0.018, 0.018, (1.10, 1.40), (226, 136, 40), False),
+    (0.352, 0.624, 0.026, 0.026, (-1.56, -1.42), (214, 210, 212), True),
+    (0.452, 0.618, 0.023, 0.023, (-1.56, -1.42), (214, 210, 212), True),
+    (0.531, 0.613, 0.014, 0.014, (-1.56, -1.42), (214, 210, 212), True),
+)
 
 
 CAR = dict(
@@ -161,13 +193,13 @@ CAR = dict(
               "Projector_lights": 500, "Emissive_lights": 500, "Taillight_glass": 1000, "Tesla_text": 900,
               "SoftTop": 3000},
     PAINT_MAT="Paint",
-    # the head lamps' case is the source's black glass lens over the bowls (drawn opaque here): a smoked grey that
-    # reads as a lens, lit with the head lamps (LAMPS head)
-    MAT_RGB={"Trim": (20, 20, 22), "Grill": (14, 14, 16), "Headllight case": (96, 100, 106),
-             "light reflector bowl": (190, 192, 196), "Projector lights": (120, 122, 126),
+    # the head lamps' case: the source's black glass lens (opaque here) as the lamp's dark frame, the lamp itself
+    # painted on it (LAMPS areas, _LAMP_AREAS), lit with the head lamps (LAMPS head); the tail lamps' lenses red
+    MAT_RGB={"Trim": (20, 20, 22), "Grill": (14, 14, 16), "Headllight case": (52, 54, 58),
+             "light reflector bowl": (200, 202, 206), "Projector lights": (150, 152, 158),
              "Emissive lights": (232, 234, 236), "Emissive lights (orange)": (196, 124, 52), "Mirrors": (110, 116, 122),
              "Fender lights (orange)": (196, 118, 44), "Fender lights (red)": (140, 22, 26),
-             "Fender lights LED": (200, 200, 200), "Taillight glass": (124, 30, 34), "Rear lights": (150, 20, 24),
+             "Fender lights LED": (200, 200, 200), "Taillight glass": (192, 32, 38), "Rear lights": (150, 20, 24),
              "Signal lights": (196, 124, 52), "Reverse lights": (210, 210, 210), "Reflector": (120, 16, 20),
              "3rd taillight": (90, 18, 22), "Tesla text": (200, 204, 210), "Tesla logo": (200, 204, 210),
              "SoftTop": (24, 24, 26), "SoftTopLining": (40, 40, 42),
@@ -181,7 +213,8 @@ CAR = dict(
     # brake: LAMPS brake |x| over 0.40) and the third brake light on the hoop (STOP_X)
     LAMPS=dict(head=("Headllight case", "Emissive lights", "Emissive lights (orange)", "light reflector bowl"), head_y=0.5,
                tail=("Taillight glass", "3rd taillight"), tail_z=0.55, tail_y=-0.5, blade=None,
-               brake=("Taillight_glass", 0.40)),
+               brake=("Taillight_glass", 0.40),
+               areas=tuple((zn, rgb, lit) for cx, cz, rx, rz, y, rgb, lit in _LAMP_AREAS for zn in _disc(cx, cz, rx, rz, y))),
     # part lines, side view (y, z): the door skin's rear edge (prep geometry)
     LINES={"S": ((-0.339, 0.29), (-0.464, 0.61)), "BF": ((-0.339, 0.29), (-0.464, 0.61))},
     FRONT_Y=0.4868, SILL_Z=0.235, ARCH=(0.0, -9.0),
@@ -204,15 +237,22 @@ CAR = dict(
     GATE_COMPS=(),
     GATE_CUT_COMPS=(),
     PART_OBJS={"SoftTop": ("SoftTop",)},  # the soft top: the whole prep object (its strips, soft_strips)
-    # the 2.5's black paint: the intake's surround over the smile (below _INTAKE, over the lip) and the corner side
-    # intakes (between _SLOT's edges), cut along their edges
+    # the 2.5's black paint: the intake's surround over the smile (below _INTAKE, over the lip), the corner side
+    # intakes (between _SLOT's edges), cut along their edges; the roll hoop over the rear window (PaintHoop: black
+    # with the top off, official tm2013-photo-side-gray-top-off.jpg, -front34-red-softtop-off)
     CARBON=dict(rgb=(20, 20, 22), zones=(
         dict(lo=(-0.52, 1.30, 0.194), hi=(0.52, 9.0, 0.33), facing=((0, 1, 0), (0.25, 1.0)), cut=True,
              below=tuple(pn for ln in zip(_INTAKE[:-1], _INTAKE[1:]) for pn in _below(*ln))),
-        *(dict(lo=(0.40 if sd > 0 else -0.75, 1.25, 0.19), hi=(0.75 if sd > 0 else -0.40, 1.45, 0.40),
+        *(dict(lo=(0.40 if sd > 0 else -0.75, 1.25, 0.20), hi=(0.75 if sd > 0 else -0.40, 1.45, 0.38),
                facing=((sd, 0, 0), (0.4, 1.0)), cut=True,
-               below=(((0, 0, 0.388), (0, 0, 1)), ((0, 0, 0.198), (0, 0, -1)), _edge(*_SLOT[0], 1), _edge(*_SLOT[1], -1)))
-          for sd in (1, -1)))),
+               below=(((0, 0, 0.370), (0, 0, 1)), ((0, 0, 0.215), (0, 0, -1)), _edge(*_SLOT[0], 1), _edge(*_SLOT[1], -1)))
+          for sd in (1, -1)),
+        dict(lo=(-9.0, -9.0, -9.0), hi=(9.0, 9.0, 9.0), of="PaintHoop"))),
+    # the source's black Trim wedges either side of the windscreen's foot (the mirror sails and the frame's lower
+    # corners, |x| over 0.47): body colour, as the official front 3/4 and the manual's 2-2 front view have it (the
+    # windscreen's thin frame stays black)
+    PAINT_OVER=(dict(of="Trim", lo=(-0.62, 0.20, 0.58), hi=(0.62, 0.50, 0.72),
+                     above=(((0.47, 0, 0), (1, 0, 0)), ((-0.47, 0, 0), (-1, 0, 0)))),),
     PANES={"Body": {"WinT", "WinH"}, "DoorFrontLeft": {"WinLH"}, "DoorFrontRight": {"WinRH"}, "TrunkDoor": set(),
            "EngineDoor": set(), "SoftTop": set()},
     # badges: the source's own (the T on the nose, T E S L A across the tail)
@@ -231,14 +271,18 @@ CAR = dict(
     # charge port (owner's manual 2-2 item 2, 5-7): the left rear fender's round lid (prep PaintPort's centre)
     PORT=(-0.566, 0.75),
     # ---- cabin.py (mesh coords, centred)
-    CABIN_FLOOR=-0.40,                     # the underbody (ground clearance): the hips sit at floor level
+    CABIN_FLOOR=-0.40,                     # the underbody: the hips sit at floor level (SEATS cushion 3.5 cm over it)
     CABIN_FRONT_Y=0.70,
     TRUNK_Y=-0.62,
     CABIN_ZC=-0.10,
     SEAM_CLEAR=0.065,
-    SEATS=dict(front=dict(w=0.40, back=0.36, recline=28, head=0.47, dy=-0.066, dz=-0.085), sill=None, bin=None),
+    SEATS=dict(front=dict(w=0.40, back=0.36, recline=28, head=0.47, dy=-0.066, dz=-0.085, cushion=0.035), sill=None,
+               bin=None),
     PARCEL=None,
-    DASH=dict(console=(0, 0.0, -0.25), dash=(0, 0.50, 0.06), trim=(0, 0.367, 0.075), light=(0, 0.369, 0.051),
+    # the dash 1.00 wide and 0.24 deep, its cabin face where the 0.34 one had it (cabin.py DASH size; the default
+    # 1.24 x 0.34 dash's front corners stood out through the windscreen's low corners as black wedges)
+    DASH=dict(size=(1.00, 0.24, 0.16), console=(0, 0.0, -0.25), dash=(0, 0.45, 0.06), trim=(0, 0.367, 0.075),
+              light=(0, 0.369, 0.051),
               stand=(0, 0.40, 0.05), screen=(0, 0.362, 0.05), wheel=(0.307, 0.033)),
     DOOR_CARD={
         "front": [

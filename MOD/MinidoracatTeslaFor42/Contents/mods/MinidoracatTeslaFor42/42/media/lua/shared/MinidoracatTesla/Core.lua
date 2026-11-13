@@ -232,7 +232,7 @@ T.Specs = {
         -- z: estimate from the 2.5 owner's manual 2-2 side view (the port door behind the left door, about 0.95 m of the
         -- 1,127 mm car above the ground) on the other cars' port-to-units ratio; measure it (E2E integration-mp `port`)
         -- once the body is built
-        plug = { item = "Base.MinidoracatTesla_CablePlugRoadster", z = 0.90 },
+        plug = { item = "Base.MinidoracatTesla_CablePlugRoadster", z = 0.78 }, -- body port 0.750 + 0.03 (Y L / X: E2E port = PORT z + 0.03)
         -- the 2.5 owner's manual names a 12V DC system (1-2) but no battery size: the Model Y's 15.5 V, 6.9 Ah
         v12Kwh = 15.5 * 6.9 / 1000,
         -- the Model Y coefficients x 56 / 78.4: a full pack still drives one vanilla tank's distance

@@ -56,7 +56,7 @@ PLUGS = {"MinidoracatTesla_CablePlug": 0.87,                  # Model Y (tesla-y
          "MinidoracatTesla_CablePlugModelS": 0.72,            # Model S (23a483d game port 0.714-0.719)
          "MinidoracatTesla_CablePlugModelX": 0.84,            # Model X (tesla-mx-1101b modelx-sp: port 0.837)
          "MinidoracatTesla_CablePlugModelYL": 0.90,           # Model Y L (tesla-ylb-geo integration-mp: port 0.900)
-         "MinidoracatTesla_CablePlugRoadster": 0.90}          # Roadster (estimate from the 2.5 manual 2-2; measure it)
+         "MinidoracatTesla_CablePlugRoadster": 0.78}          # Roadster (cars/roadster.py PORT z 0.750 + 0.03, as Y L / X)
 # plugs with the first-generation Roadster's round connector (2.5 owner's manual 5-7) instead of the NACS handle
 PLUG_ROUND = ("MinidoracatTesla_CablePlugRoadster",)
 PLUG_REACH = 0.36                             # handle tip reaches +x (into the car flank)

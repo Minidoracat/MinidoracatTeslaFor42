@@ -22,7 +22,9 @@ CABIN_FLOOR, CABIN_FRONT_Y, TRUNK_Y, CABIN_ZC, SEAM_CLEAR = (pv.CAR[k] for k in 
 SEAT, DASH, DOOR_CARD, SEATS, PARCEL = pv.SEAT, pv.CAR["DASH"], pv.CAR["DOOR_CARD"], pv.CAR["SEATS"], pv.CAR["PARCEL"]
 SEAT_X, SEAT_Z = SEAT["x"], SEAT["z"]
 FRONT_X = SEAT.get("front_x", SEAT_X)   # optional: the front row's side x (passengers, buckets, wheel, mats); default x
-DASH_BOX = ((1.24, 0.34, 0.16), 0.06)   # dash: full size (x, y, z), edge radius; centre DASH["dash"]
+# dash: full size (x, y, z), edge radius; centre DASH["dash"]; optional DASH size (the Roadster's narrow cowl: the
+# 1.24 wide dash's ends showed through it beside the windscreen)
+DASH_BOX = (DASH.get("size", (1.24, 0.34, 0.16)), 0.06)
 COLUMN_IN, COLUMN_EDGE, COLUMN_MAX_DEG = 0.02, 0.02, 10.0
 
 
@@ -380,11 +382,14 @@ def furniture(add, opening, grow=0.0, fine=1, between=None):
     def bucket(cx, fy, b, bolster=(0.185, 0.19), z0=z0):   # a bucket seat: base, cushion, backrest, headrest, bolsters
         fy, z0 = fy + b.get("dy", 0), z0 + b.get("dz", 0)
         rec = (fy - 0.11, z0 - 0.03, b["recline"])
-        # (a cushion on the floor, the Roadster: the base no thinner than 1 cm, under the floor)
-        part((0.30, 0.30, max(z0 - 0.10 - CABIN_FLOOR, 0.01)), 0.02, "base", (cx, fy + 0.05, (z0 - 0.10 + CABIN_FLOOR) / 2),
-             seg=1)
-        part((b["w"], 0.40, 0.09), 0.035, "seat", (cx, fy + 0.08, z0 - 0.06), cuts=(2, 0, 0), sag=0.025,
-             seams=("top", channels((-0.28, -0.10, 0.08, 0.26), (-0.40, 0.40))))
+        # optional per row: cushion = its thickness (default 9 cm), the top where the 9 cm one has it (the Roadster's
+        # thin cushion on the floor); a base under 1 cm tall is left out (it would hang under the floor)
+        if z0 - 0.10 - CABIN_FLOOR > 0.01:
+            part((0.30, 0.30, z0 - 0.10 - CABIN_FLOOR), 0.02, "base", (cx, fy + 0.05, (z0 - 0.10 + CABIN_FLOOR) / 2),
+                 seg=1)
+        t = b.get("cushion")
+        part((b["w"], 0.40, t or 0.09), 0.035, "seat", (cx, fy + 0.08, z0 - 0.06 if t is None else z0 - 0.015 - t / 2),
+             cuts=(2, 0, 0), sag=0.025, seams=("top", channels((-0.28, -0.10, 0.08, 0.26), (-0.40, 0.40))))
         # backrest 8 cm thick, its front where the 11 cm one had it: the knees of the passenger behind (seat_head.py knees)
         part((b["w"], 0.08, b["back"]), 0.035, "seat", (cx, fy - 0.155, z0 + 0.22), cuts=(2, 0, 0), bend=0.05, taper=0.12,
              tilt=rec, seams=("front", channels((-0.30, -0.15, 0.0, 0.15, 0.30), (-0.42, 0.42))))
@@ -716,7 +721,8 @@ def detail_mesh(opening, windscreen):
     # the dash's air vent: a dark slot along its cabin face over the trim strip
     dv, df = placed["dash"]
     zv = DASH["trim"][2] + 0.0175 + 0.011
-    rv, rf = lay(BVHTree.FromPolygons(dv.tolist(), df), [(x, DASH["dash"][1] - 1.0, zv) for x in np.linspace(-0.55, 0.55, 45)],
+    vx = DASH["size"][0] / 2 - 0.07 if "size" in DASH else 0.55        # (7 cm in from the dash's ends)
+    rv, rf = lay(BVHTree.FromPolygons(dv.tolist(), df), [(x, DASH["dash"][1] - 1.0, zv) for x in np.linspace(-vx, vx, 45)],
                  (0, 1, 0), 0.0035, 0.001)
     add(rv, rf, "vent", rib=True)
     # console: two phone pads at the front, two cup holders behind them, the armrest lid's seam; the rear screen
