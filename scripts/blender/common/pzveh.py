@@ -673,6 +673,11 @@ def damage_uv1(body, fzone):
         vv, inv = np.unique(blv[L], return_inverse=True)
         k, bc = nearest_tri(put(co[vv], kk % 16), rco[T])
         out[L] = np.einsum("nk,nkc->nc", bc, ru1[T[k]])[inv]
+    for g in CAR.get("DAMAGE_FILL", ()):   # optional per car: the group's UV1 stretched box onto ModernCar's island box
+        L, q = np.flatnonzero(fgrp[lf] == g), ru1[rcls == g].reshape(-1, 2)
+        if len(L) and len(q):
+            u = out[L]
+            out[L] = q.min(0) + (u - u.min(0)) / np.maximum(np.ptp(u, 0), 1e-9) * np.ptp(q, 0)
     for g in DAMAGE_LAMPS:      # lamps: tiled at panel density round ModernCar's lamp triangle, our corner lamp at its
         L = np.flatnonzero(fgrp[lf] == g)      # centre (else the bar's middle): the box round it is half blank
         if not len(L):
@@ -687,7 +692,9 @@ def damage_uv1(body, fzone):
         o = p[stop].mean(0) if stop.any() else (p.min(0) + p.max(0)) / 2
         t = (p[:, a] - o[a]) * DAMAGE_PX / 512
         cen = np.stack([np.bincount(fl, t[:, i]) for i in range(2)], 1)[fl] / np.bincount(fl)[fl, None]
-        out[L[:, None], s] = q.mean(0)[s] + t - np.round(cen / size) * size    # whole faces per tile
+        # optional per car (DAMAGE_LAMP_AT {group: UV1}): another tile centre in the triangle's box (small lamps)
+        ctr = np.array(CAR.get("DAMAGE_LAMP_AT", {}).get(g, q.mean(0)), float)
+        out[L[:, None], s] = ctr[s] + t - np.round(cen / size) * size    # whole faces per tile
     me.uv_layers["UV1"].data.foreach_set("uv", out.ravel())
     print("UV1 from", DAMAGE_REF, "islands", len(np.unique(fisl)), "faces per own-zone group",
           {"/".join(zs): int((fgrp == i + 1).sum()) for i, zs in enumerate(DAMAGE_GROUPS)})

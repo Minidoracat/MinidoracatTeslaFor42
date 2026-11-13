@@ -270,6 +270,12 @@ CAR = dict(
                    n=128, outer=True),
     # charge port (owner's manual 2-2 item 2, 5-7): the left rear fender's round lid (prep PaintPort's centre)
     PORT=(-0.566, 0.75),
+    # damage maps (pzveh.damage_uv1): by nearest surface the raked windscreen took a corner of ModernCar's windscreen
+    # island, blank on Veh_Damage1 (WinH 0); stretched over the whole island: 0.081 (ModernCar 0.084)
+    DAMAGE_FILL=(2,),
+    # the round tail lamps tile a few px round ModernCar's tail triangle's centroid, blank on Veh_Damage1 (0): the
+    # densest 12 px of Veh_Damage1 inside that triangle's UV1 box instead (work/r3: D1 0.22 / 0.47 there)
+    DAMAGE_LAMP_AT={9: (0.6504, 0.2656), 10: (0.5488, 0.4512)},
     # ---- cabin.py (mesh coords, centred)
     CABIN_FLOOR=-0.40,                     # the underbody: the hips sit at floor level (SEATS cushion 3.5 cm over it)
     CABIN_FRONT_Y=0.70,
@@ -281,7 +287,7 @@ CAR = dict(
     PARCEL=None,
     # the dash 1.00 wide and 0.24 deep, its cabin face where the 0.34 one had it (cabin.py DASH size; the default
     # 1.24 x 0.34 dash's front corners stood out through the windscreen's low corners as black wedges)
-    DASH=dict(size=(1.00, 0.24, 0.16), console=(0, 0.0, -0.25), dash=(0, 0.45, 0.06), trim=(0, 0.367, 0.075),
+    DASH=dict(size=(0.84, 0.20, 0.16), console=(0, 0.0, -0.25), dash=(0, 0.43, 0.04), trim=(0, 0.367, 0.075),
               light=(0, 0.369, 0.051),
               stand=(0, 0.40, 0.05), screen=(0, 0.362, 0.05), wheel=(0.307, 0.033)),
     DOOR_CARD={
