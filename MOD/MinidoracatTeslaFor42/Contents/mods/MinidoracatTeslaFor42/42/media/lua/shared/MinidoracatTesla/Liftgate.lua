@@ -494,6 +494,8 @@ if not isClient() then
             if modelled(part) then parts[#parts + 1] = part end
         end
         L.glassAfter(v, parts)
+        local top = v:getPartById("SoftTop") -- refitted: a roof again
+        if top then roofMoved(v, top) end
     end
 
     -- every load (BaseVehicle.java:904): a locked car from an older save or the world spawn (cabin doors locked by

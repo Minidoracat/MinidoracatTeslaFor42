@@ -80,8 +80,9 @@ function H.sync(player, off)
     if changed then T.log("hatHide " .. tostring(player:getUsername()) .. " " .. (want and "on" or "off")) end
 end
 
--- every player seated in car v, again (the soft top moved: Liftgate.lua swing and the vanilla door actions, on the
--- server or SP). The hider is a worn item, so every client sees the change (setWornItem, see the top).
+-- every player seated in car v, again (the soft top moved: Liftgate.lua swing, the vanilla door actions, the part
+-- fitted or taken off, the admin repair; on the server or SP). The hider is a worn item, so every client sees the
+-- change (setWornItem, see the top).
 function H.car(v)
     for i = 0, v:getMaxPassengers() - 1 do
         local p = v:getCharacter(i)
