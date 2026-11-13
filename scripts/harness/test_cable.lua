@@ -214,6 +214,41 @@ for _, d in ipairs(draws) do
 end
 check(ylp ~= nil and tipOn(ylp, myl), "cable: Model Y L draws its own plug, tip on its port")
 T.onChargerChanged(oyl, true)
+-- ---- Roadster: its own round-connector plug item (render-only item, model block, mesh); its port from its script
+-- once the body is built (until then the Model Y's port stands in: the plug item and its tip are what is checked) ----
+do
+local RDS = "Base.MinidoracatTesla_Roadster"
+local media = "MOD/MinidoracatTeslaFor42/Contents/mods/MinidoracatTeslaFor42/42/media/"
+local function has(file, text)
+    local f = io.open(media .. file, "rb")
+    local s = f and f:read("*a") or ""
+    if f then f:close() end
+    return s:find(text, 1, true) ~= nil
+end
+check(T.Specs[RDS].plug.item == "Base.MinidoracatTesla_CablePlugRoadster"
+    and has("scripts/items/MinidoracatTesla_cable.txt", "WorldStaticModel = Base.MinidoracatTesla_CablePlugRoadster,")
+    and has("scripts/models/MinidoracatTesla_props.txt", "mesh = WorldItems/MinidoracatTesla_CablePlugRoadster,")
+    and has("models_X/WorldItems/MinidoracatTesla_CablePlugRoadster.fbx", "FBX"),
+    "Roadster: its plug item, model block and mesh (props_blender.py PLUG_ROUND)")
+if H.bodyBuilt("Roadster") then
+    PORTS[RDS] = scriptPort(RDS)
+    check(PORTS[RDS][1] > 0 and PORTS[RDS][3] < 0, "cable: the Roadster's chargeport from its script (left flank, behind the door)")
+else
+    PORTS[RDS] = PORTS["Base.MinidoracatTesla_ModelY"]
+end
+local mrd = car(51.2, 24.0, 0.3, RDS)
+local ord = { x = 50, y = 20, z = 0, kind = "Supercharger", facing = "S", vid = mrd:getId() }
+T.onChargerChanged(ord)
+frame()
+local rdp, types = nil, {}
+for _, d in ipairs(draws) do
+    if d.item.type == "Base.MinidoracatTesla_CablePlugRoadster" then rdp = d end
+    if d.item.type:find("CablePlug", 1, true) then types[#types + 1] = d.item.type end
+end
+check(rdp ~= nil and tipOn(rdp, mrd), "cable: Roadster draws its own plug, tip on its port (" .. table.concat(types, ",") .. ")")
+T.onChargerChanged(ord, true)
+H.removeVehicle(mrd)
+end
 
 -- ---- Mobile Connector: cable leaves at floor level (cableExit h = 0), no hang segment ----
 local mm = car(51.2, 24.0, 0.3)

@@ -11,9 +11,10 @@ local T = MinidoracatTesla
 local L = {}
 T.Liftgate = L
 -- doors the driver may open or close from the dashboard (the HUD car picture; nothing else is accepted); the
--- Cybertruck's tonneau cover too (owner's manual p.60: the touchscreen and the app open it)
+-- Cybertruck's tonneau cover too (owner's manual p.60: the touchscreen and the app open it), and the Roadster's soft
+-- top (Specs softTop; a switch here, user 2026-11-14; the 2.5 owner's manual 7-9: not while driving, L.check MOVING)
 L.PARTS = { DoorFrontLeft = true, DoorFrontRight = true, DoorRearLeft = true, DoorRearRight = true, TrunkDoor = true,
-    EngineDoor = true, TrunkTonneau = true }
+    EngineDoor = true, TrunkTonneau = true, SoftTop = true }
 
 -- Returns the installed door part `id` (one of L.PARTS), or nil and an IGUI_MinidoracatTesla_Deny_<reason> suffix.
 function L.check(player, vehicle, id)
@@ -327,7 +328,9 @@ if not isClient() then
     -- (ISOpenVehicleDoor.lua:61-64) while the frunk only asks whether the lid is open (Core.lua ContainerAccess.Frunk).
     -- A broken lock is never locked (it could never open again), but a lid jammed locked does unlock with the car (the
     -- liftgate always did, through setTrunkLocked, BaseVehicle.java:9533-9545).
-    L.LIDS = { TrunkDoor = true, EngineDoor = true, TrunkTonneau = true }
+    -- The Roadster's soft top the same way as the tonneau: a shut top locks with the car, an open one stays open on a
+    -- locked car (locking never closes it, so arming Sentry, which asks for locked doors, works with the top down too).
+    L.LIDS = { TrunkDoor = true, EngineDoor = true, TrunkTonneau = true, SoftTop = true }
     function L.lockLids(v, locked)
         for id in pairs(L.LIDS) do
             local part = v:getPartById(id)
@@ -368,6 +371,12 @@ if not isClient() then
         return true
     end
 
+    -- the soft top went up or down: the hats of whoever sits in that car (server HatHide.lua, loaded after this file)
+    local function roofMoved(v, part)
+        local f = part:getId() == "SoftTop" and T.HatHide and T.HatHide.car
+        if f then f(v) end
+    end
+
     function L.swing(v, part, open, who)
         part:getDoor():setOpen(open)
         if not open then L.relock(v, part) end
@@ -375,6 +384,7 @@ if not isClient() then
         L.syncShell(v)
         local f = T.Truck and T.Truck.bedLight
         if f then f(v) end
+        roofMoved(v, part)
         broadcast(v, { vid = v:getId(), part = part:getId(), open = open, sound = true })
         T.log("liftgate " .. part:getId() .. " " .. (open and "open" or "close") .. " vid=" .. tostring(v:getId()) .. " by=" .. tostring(who))
     end
@@ -410,6 +420,7 @@ if not isClient() then
                 L.syncShell(v)
                 local f = T.Truck and T.Truck.bedLight
                 if f then f(v) end
+                roofMoved(v, part)
                 if isServer() then broadcast(v, { vid = v:getId(), part = part:getId(), open = open }, self.character) end
             end
             return ok

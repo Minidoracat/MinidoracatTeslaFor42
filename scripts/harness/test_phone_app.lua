@@ -282,6 +282,33 @@ check(last("appState") and last("appState").tonneau == true, "tonneau: the recor
 d = act(owner, "tonneau", false)
 check(d.why == nil and not v.parts.TrunkTonneau.d.open and v.parts.TrunkTonneau.d.locked, "tonneau closed on a locked car: locked again")
 v.parts.TrunkTonneau = nil
+do -- the Roadster's soft top (Specs softTop): the liftgate's rules; a car without the flag says NO_DOOR even with the part
+local scriptY = v.script
+v.parts.SoftTop = door("SoftTop")
+local top = v.parts.SoftTop.d
+d = act(owner, "softtop", true)
+check(d.why == "NO_DOOR" and not top.open, "softtop on a Model Y (no Specs softTop), even with a SoftTop part -> NO_DOOR")
+v.script = "Base.MinidoracatTesla_Roadster"
+d = act(stranger, "softtop", true)
+check(d.why == "NO_PHONE_KEY" and not top.open, "softtop without the phone key: NO_PHONE_KEY, the top stays shut")
+v.kmh = 20
+d = act(owner, "softtop", true)
+check(d.why == "MOVING" and not top.open, "softtop while moving -> MOVING (2.5 owner's manual 7-9)")
+v.kmh = 0
+top.locked = true
+d = act(owner, "softtop", true)
+check(d.why == nil and d.on == true and top.open and not top.locked and last("partAnim")
+    and last("partAnim").part == "SoftTop" and last("partAnim").sound == true, "softtop: was locked -> unlocked, opened, partAnim with sound")
+check(last("appState") and last("appState").softtop == true, "softtop: the record says open (top down)")
+d = act(owner, "softtop", false)
+check(d.why == nil and d.on == false and not top.open and top.locked, "softtop closed on a locked car: locked again (Liftgate L.LIDS)")
+R.remember(v)
+check(R.record(9001).softtop == false, "record: softtop false when shut on a Roadster")
+v.script = scriptY
+R.remember(v)
+check(R.record(9001).softtop == nil, "record: no softtop field on other cars")
+v.parts.SoftTop = nil
+end
 do -- (a block: the main chunk is near Lua's 200 locals)
 -- the Model X's falcon wing doors (Specs falcon): both at once, the same rules as the liftgate. On a car without them
 -- (this Model Y: ordinary rear doors) falcon says NO_DOOR and its rear doors stay shut
@@ -463,6 +490,16 @@ check(#asked == 2 and asked[1].code == "REPAIR" and asked[2].code == "SALVAGE", 
 asked = {}
 act(owner, "trunk")
 check(asked[1].code == "CARGO", "liftgate: VM CARGO")
+asked = {}
+do
+local vmScript = v.script
+v.script = "Base.MinidoracatTesla_Roadster"
+v.parts.SoftTop = door("SoftTop")
+d = act(owner, "softtop", true)
+check(asked[1].code == "PASSENGER" and d.why == answer.why and not v.parts.SoftTop.d.open,
+    "soft top: VM PASSENGER (like the doors); refused (" .. tostring(d.why) .. ") -> nothing moves")
+v.parts.SoftTop, v.script = nil, vmScript
+end
 asked = {}
 act(owner, "charge", true)
 check(asked[1].code == "FUEL", "charging: VM FUEL")
@@ -1132,6 +1169,34 @@ check(a.toast.text == "IGUI_MinidoracatTesla_App_Done_falcon_on", "Model X: 'fal
 check(a.model == "ModelX" and T.HUDAtlas[2].wm_ModelX ~= nil and T.HUDAtlas[2].trim_ModelX ~= nil,
     "Model X: its wordmark and trim (Plaid) are in the atlas")
 end
+do -- Roadster (Specs softTop): a soft top cell after the trunk; the trunk's and lock tip's words name the trunk lid and soft top
+state({ car = "MinidoracatTesla_Roadster", skin = 0, softtop = false })
+a.b.controls:forceClick()
+local rc = table.concat(a.cells, ",")
+check(rc == "flash,horn,frunk,trunk,softtop" and a.b.softtop.shown and not a.b.softtop.on and not a.b.tonneau.shown
+    and not a.b.falcon.shown and a.b.softtop.icon == "i_softtop" and T.HUDAtlas[1].i_softtop ~= nil and T.HUDAtlas[2].i_softtop ~= nil
+    and a.b.softtop.tipKey == "IGUI_MinidoracatTesla_Tip_AppSofttop" and a.b.trunk.tipKey == "IGUI_MinidoracatTesla_Tip_AppTrunkLid",
+    "Roadster: cells " .. rc .. ", the soft top cell (shut), the trunk lid's words")
+check(a.rowSub.controls == "IGUI_MinidoracatTesla_App_ControlsSubRoadster"
+    and a.b.lock.tipKey:find("Roadster", 1, true) ~= nil, "Roadster: the controls line and the lock tip name the soft top")
+a.b.softtop:forceClick()
+local rcmd, rargs = sentLast()
+check(rcmd == "appAction" and rargs.act == "softtop" and rargs.on == true, "soft top cell, top up -> appAction softtop, on = true")
+state({ car = "MinidoracatTesla_Roadster", skin = 0, softtop = true })
+check(a.b.softtop.on, "Roadster: top down -> the soft top cell lit")
+a.b.softtop:forceClick()
+rcmd, rargs = sentLast()
+check(rcmd == "appAction" and rargs.act == "softtop" and rargs.on == false, "soft top cell, top down -> appAction softtop, on = false")
+a.b.back:forceClick()
+T.ClientCommands.appDone({ key = 9001, act = "softtop", on = true })
+check(a.toast.text == "IGUI_MinidoracatTesla_App_Done_softtop_on", "Roadster: 'soft top opened'")
+T.ClientCommands.appDone({ key = 9001, act = "trunk", on = false })
+check(a.toast.text == "IGUI_MinidoracatTesla_App_Done_trunkLid_off", "Roadster: 'trunk closed', not 'liftgate closed'")
+check(App.carLabel(nil, "MinidoracatTesla_Roadster") == "Roadster" and a.model == "Roadster" and a.carSpr == "car_Roadster",
+    "Roadster: named 'Roadster', its own top view")
+state({ car = "MinidoracatTesla_ModelY", skin = 0, softtop = true })
+check(not table.concat(a.cells, ","):find("softtop", 1, true), "Model Y: no soft top cell (a stray softtop field in its record too)")
+end
 state({ car = "MinidoracatTesla_Model3", skin = 5 })
 a.b.controls:forceClick()
 check(table.concat(a.cells, ",") == "flash,horn,frunk,trunk" and not a.b.tonneau.shown and not a.b.falcon.shown,
@@ -1158,11 +1223,14 @@ for script, s in pairs(T.Specs) do
     for k = 1, 2 do
         for _, pre in ipairs({ "car_", "wm_", "trim_" }) do need(T.HUDAtlas[k][pre .. s.model], pre .. s.model .. "@" .. k) end
     end
-    for _, c in ipairs(s.colors) do
-        local f = io.open("MOD/MinidoracatTeslaFor42/Contents/mods/MinidoracatTeslaFor42/42/media/textures/MinidoracatTesla/HUD/"
-            .. s.appCar .. c.name .. ".png", "rb")
-        need(f, s.appCar .. c.name)
-        if f then f:close() end
+    -- the app pictures come with the car's body (convert.py appcar): the Roadster's once its vehicle script is there
+    if s.model ~= "Roadster" or H.bodyBuilt("Roadster") then
+        for _, c in ipairs(s.colors) do
+            local f = io.open("MOD/MinidoracatTeslaFor42/Contents/mods/MinidoracatTeslaFor42/42/media/textures/MinidoracatTesla/HUD/"
+                .. s.appCar .. c.name .. ".png", "rb")
+            need(f, s.appCar .. c.name)
+            if f then f:close() end
+        end
     end
     need(s.plug and s.plug.item and s.plug.z, "plug")
 end

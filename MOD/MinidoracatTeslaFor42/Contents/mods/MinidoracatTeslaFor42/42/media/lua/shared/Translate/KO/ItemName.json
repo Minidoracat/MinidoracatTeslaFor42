@@ -5,6 +5,7 @@
     "Base.MinidoracatTesla_ModelSBattery": "Model S Plaid 고전압 배터리 (100 kWh)",
     "Base.MinidoracatTesla_ModelXBattery": "Model X Plaid 고전압 배터리 (100 kWh)",
     "Base.MinidoracatTesla_ModelYLBattery": "Model Y L 고전압 배터리 (82 kWh)",
+    "Base.MinidoracatTesla_RoadsterBattery": "Roadster 고전압 배터리 (56 kWh)",
     "Base.MinidoracatTesla_WallConnector": "Tesla 월 커넥터 (3세대)",
     "Base.MinidoracatTesla_MobileConnector": "Tesla 모바일 커넥터 (3세대)",
     "Base.MinidoracatTesla_Supercharger": "Tesla V4 수퍼차저",

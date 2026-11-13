@@ -70,6 +70,7 @@ local BTN = {
     security = { "home" }, charging = { "home" }, summon = { "home" },
     back = {}, flash = { "controls", "flash" }, horn = { "controls", "horn" }, frunk = { "controls", "frunk" },
     trunk = { "controls", "trunk" }, tonneau = { "controls", "tonneau" }, falcon = { "controls", "falcon" },
+    softtop = { "controls", "softtop" },
     map = { "location" }, navcar = { "location" },
     sentry = { "security", "sentry" },
     charge = { "charging", "charge" },
@@ -80,14 +81,14 @@ local BTN = {
     finish = { "summon" }, cancel = { "pick" }, go = { "pick" },
 }
 local BTN_ORDER = { "close", "cars", "lock", "qcharge", "qfrunk", "qtrunk", "controls", "location", "summon", "security",
-    "charging", "back", "flash", "horn", "frunk", "trunk", "tonneau", "falcon", "map", "navcar", "sentry", "charge",
-    "come", "pick", "fwd", "rev", "again", "finish", "cancel", "go", "powershare", "psToggle", "floorDown", "floorUp",
-    "outlet" }
+    "charging", "back", "flash", "horn", "frunk", "trunk", "tonneau", "falcon", "softtop", "map", "navcar", "sentry",
+    "charge", "come", "pick", "fwd", "rev", "again", "finish", "cancel", "go", "powershare", "psToggle", "floorDown",
+    "floorUp", "outlet" }
 -- the joypad's rows per page, top to bottom (buttons not shown are skipped); "cars" is built with its rows
 local NAV = {
     home = { { "cars", "close" }, { "lock", "qcharge", "qfrunk", "qtrunk" }, { "controls" }, { "location" }, { "summon" },
         { "security" }, { "charging" } },
-    controls = { { "back" }, { "flash", "horn" }, { "frunk", "trunk" }, { "tonneau", "falcon", "powershare" } },
+    controls = { { "back" }, { "flash", "horn" }, { "frunk", "trunk" }, { "tonneau", "falcon", "softtop", "powershare" } },
     location = { { "back" }, { "map" }, { "navcar" } },
     security = { { "back" }, { "sentry" } },
     charging = { { "back" }, { "charge" } },
@@ -97,8 +98,8 @@ local NAV = {
     powershare = { { "back" }, { "floorDown", "floorUp" }, { "psToggle" }, { "outlet" } },
 }
 -- the server actions: dimmed but pressable for a car this phone is not paired with (they say how to add it)
-local REMOTE = { "lock", "qcharge", "qfrunk", "qtrunk", "flash", "horn", "frunk", "trunk", "tonneau", "falcon", "sentry",
-    "charge", "psToggle", "floorDown", "floorUp", "outlet" }
+local REMOTE = { "lock", "qcharge", "qfrunk", "qtrunk", "flash", "horn", "frunk", "trunk", "tonneau", "falcon", "softtop",
+    "sentry", "charge", "psToggle", "floorDown", "floorUp", "outlet" }
 local QUICK = { "lock", "qcharge", "qfrunk", "qtrunk" }
 local LIST = { "controls", "location", "summon", "security", "charging" }
 local LIST_ICON = { controls = "i_carfront", location = "i_nav", summon = "i_wheel", security = "i_shield", charging = "i_bolt" }
@@ -107,13 +108,14 @@ local TITLE = { controls = "Controls", location = "Location", security = "Securi
 -- the summon pages' buttons (drawn as the mock's buttons: blue main, white stop, 1 px frame) and the summon each starts
 local SUM_BTNS = { "come", "pick", "fwd", "rev", "again", "finish", "cancel", "go" }
 local SUM_ID = { come = "come", target = "pick" } -- a running summon's button (dumb: fwd / rev by dir)
-local GRID = { "flash", "horn", "frunk", "trunk", "tonneau", "falcon", "powershare" }
+local GRID = { "flash", "horn", "frunk", "trunk", "tonneau", "falcon", "softtop", "powershare" }
 -- a control cell only for cars whose Specs entry (Core.lua T.Specs) has this field; the page shows self.cells (read)
-local GRID_NEED = { tonneau = "tonneau", falcon = "falcon", powershare = "powershare" }
+local GRID_NEED = { tonneau = "tonneau", falcon = "falcon", softtop = "softTop", powershare = "powershare" }
 local GRID_ICON = { flash = "i_headlight", horn = "i_horn", frunk = "i_frunk", trunk = "i_trunk", tonneau = "i_tonneau",
-    falcon = "i_falcon", powershare = "i_powershare" }
--- the tonneau and the Model X's falcon wing doors (both at once, Remote.lua ACT.falcon) have no quick button on the home page
-local LIDS = { "frunk", "trunk", "tonneau", "falcon" }
+    falcon = "i_falcon", softtop = "i_softtop", powershare = "i_powershare" }
+-- the tonneau, the Model X's falcon wing doors (both at once, Remote.lua ACT.falcon) and the Roadster's soft top have no
+-- quick button on the home page
+local LIDS = { "frunk", "trunk", "tonneau", "falcon", "softtop" }
 local HEAD = { "close", "back" } -- header buttons (never scroll)
 local MAIN = { "map", "charge" } -- the blue main actions
 
@@ -515,7 +517,7 @@ function App:onButton(b)
     local st, act, on = self.st or {}, b.act, nil
     if act == "lock" then act = st.locked and "unlock" or "lock"
     elseif act == "sentry" then on = not st.sentry
-    elseif act == "frunk" or act == "trunk" or act == "tonneau" or act == "falcon" then on = not st[act]
+    elseif act == "frunk" or act == "trunk" or act == "tonneau" or act == "falcon" or act == "softtop" then on = not st[act]
     elseif act == "charge" then on = st.chg == "stopped"
     elseif act == "powershare" then on = st.ps == "off"
     elseif act == "outlet" then on = st.outlet ~= true

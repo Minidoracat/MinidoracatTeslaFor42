@@ -5,6 +5,7 @@
     "Base.MinidoracatTesla_ModelSBattery": "Batería de alta tensión Model S Plaid (100 kWh)",
     "Base.MinidoracatTesla_ModelXBattery": "Batería de alta tensión Model X Plaid (100 kWh)",
     "Base.MinidoracatTesla_ModelYLBattery": "Batería de alta tensión Model Y L (82 kWh)",
+    "Base.MinidoracatTesla_RoadsterBattery": "Batería de alta tensión Roadster (56 kWh)",
     "Base.MinidoracatTesla_WallConnector": "Tesla Wall Connector (3.ª gen.)",
     "Base.MinidoracatTesla_MobileConnector": "Tesla Mobile Connector (3.ª gen.)",
     "Base.MinidoracatTesla_Supercharger": "Supercargador Tesla V4",

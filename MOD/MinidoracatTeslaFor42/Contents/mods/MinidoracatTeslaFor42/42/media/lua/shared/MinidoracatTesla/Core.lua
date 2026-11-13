@@ -38,12 +38,18 @@ T.DRIVE_SCALE = 10
 -- Model X p.165; none in the Model 3's), Camp.lua C.filterAir and the radial slice.
 -- dcKw: the car's DC fast charging peak (Supercharger, Chargers.lua T.chargerKw; T.DC_KW 250 without one): Model Y P,
 -- Model 3 P, Model S / X Plaid 250 kW (tesla.com), Cybertruck (Cyberbeast) 325 kW (Korean spec page footnote).
+-- dcKw = false: no DC fast charging (Roadster: Tesla published no DC figure); a DC charger then gives acKw, flat, no
+-- curve (no chg.peak). acKw: the car's own AC charging limit, every charger capped at it (Roadster 16.8 kW = 70 A x
+-- 240 V, 2.5 owner's manual 5-4); none = the charger's own kW (the other six cars).
 -- doorClip: every car's door parts whose clip is not 0.8 s, part id -> clip seconds (= scripts/blender/skf/cars/<car>.py
 -- DOORS; Liftgate.syncShell times the cabin shell's door bits on it; harness test_liftgate compares the two).
 -- Cybertruck only: tonneau (the app's tonneau cover button), armorGlass (smashes a window takes, Truck.lua),
 -- powershare and bedOutlet (Powershare, the bed outlets).
 -- Model X only: falcon (the app's falcon wing doors button), doorWait (clip seconds into a door's opening swing the
 -- climb starts at, per door part, on T.clipStep's clock; EnterDoor.lua, else its E.WAIT).
+-- Roadster only: softTop (the soft top part SoftTop, opened and closed like a door: the HUD car picture, the app's
+-- soft top button; Liftgate.lua L.PARTS / L.LIDS, Remote.lua ACT.softtop, HatHide.lua). Open = top down.
+-- A field counts only when it is truthy: no field = no such feature (hepa, falcon, tonneau, softTop ...).
 T.Specs = {
     ["Base.MinidoracatTesla_ModelY"] = {
         model = "ModelY",
@@ -218,6 +224,48 @@ T.Specs = {
             { name = "MarineBlue", code = "PB02", h = 0.6, s = 0.823, v = 0.265 },
         },
     },
+    -- Roadster 2.5 Sport (the last of the first-generation Roadster, 2012; references/roadster.md, specs-roadster.md B)
+    ["Base.MinidoracatTesla_Roadster"] = {
+        model = "Roadster",
+        appCar = "app_car_roadster_",
+        -- z: estimate from the 2.5 owner's manual 2-2 side view (the port door behind the left door, about 0.95 m of the
+        -- 1,127 mm car above the ground) on the other cars' port-to-units ratio; measure it (E2E integration-mp `port`)
+        -- once the body is built
+        plug = { item = "Base.MinidoracatTesla_CablePlugRoadster", z = 0.90 },
+        -- the 2.5 owner's manual names a 12V DC system (1-2) but no battery size: the Model Y's 15.5 V, 6.9 Ah
+        v12Kwh = 15.5 * 6.9 / 1000,
+        -- the Model Y coefficients x 56 / 78.4: a full pack still drives one vanilla tank's distance
+        idleKw = 0.0269 * T.DRIVE_SCALE,
+        kwPerKmh = 0.00409 * T.DRIVE_SCALE,
+        massKg = 1235, -- curb mass (2.5 owner's manual 10-16)
+        dcKw = false, -- Tesla published no DC fast charging for it: a Supercharger gives acKw, flat
+        acKw = 16.8, -- 70 A x 240 V on the High Power Wall Connector (2.5 owner's manual 5-4)
+        regenEff = 0.6,
+        softTop = true, -- the removable soft top (2.5 owner's manual 7-9) as a switch (user 2026-11-14)
+        -- the 2013 tesla.com colour chart's 17 paints in its order (Cosmic Black, Galactic Gray, Magma Orange: the 2012
+        -- encore colours). The chart gives no paint codes. h/s/v: the chart's door-panel medians by convert.py's formula
+        -- (s + 0.47, v + 0.05) as a stand-in; convert.py build writes each skin's own. Same order and append-only rules as
+        -- above.
+        colors = {
+            { name = "VeryOrange", h = 0.076, s = 1.0, v = 0.789 },
+            { name = "ElectricBlue", h = 0.568, s = 1.0, v = 0.493 },
+            { name = "ArcticWhite", h = 0.417, s = 0.487, v = 0.748 },
+            { name = "ThunderGray", h = 0.643, s = 0.609, v = 0.446 },
+            { name = "JetBlack", h = 0.0, s = 0.47, v = 0.089 },
+            { name = "LightningGreen", h = 0.358, s = 1.0, v = 0.46 },
+            { name = "SterlingSilver", h = 0.803, s = 0.507, v = 0.638 },
+            { name = "RadiantRed", h = 0.995, s = 1.0, v = 0.532 },
+            { name = "GlacierBlue", h = 0.582, s = 0.857, v = 0.517 },
+            { name = "TwilightBlue", h = 0.684, s = 0.992, v = 0.23 },
+            { name = "BrilliantYellow", h = 0.121, s = 1.0, v = 0.821 },
+            { name = "ObsidianBlack", h = 0.0, s = 0.47, v = 0.16 },
+            { name = "FusionRed", h = 0.019, s = 1.0, v = 0.521 },
+            { name = "RacingGreen", h = 0.47, s = 1.0, v = 0.201 },
+            { name = "GalacticGray", h = 0.167, s = 0.52, v = 0.207 },
+            { name = "MagmaOrange", h = 0.061, s = 1.0, v = 0.697 },
+            { name = "CosmicBlack", h = 0.625, s = 1.0, v = 0.105 },
+        },
+    },
 }
 
 -- Index into a colors table, drawn by each entry's weight (none = 1: the Model Y and Model 3 paints stay even)
@@ -246,6 +294,8 @@ T.Packs = {
     ["Base.MinidoracatTesla_ModelXBattery"] = 100,
     -- Model Y L: 82.0 kWh, China MIIT filing as reported by the press (Tesla publishes none)
     ["Base.MinidoracatTesla_ModelYLBattery"] = 82,
+    -- Roadster 2.5: 56 kWh (tesla.com 2013 battery page)
+    ["Base.MinidoracatTesla_RoadsterBattery"] = 56,
 }
 
 -- Tesla display names for vanilla text keys: vanilla key -> Tesla key. Read by client/MinidoracatTesla/PartNames.lua
@@ -302,6 +352,19 @@ T.CarPartNames = {
         IGUI_VehiclePartDoorRearLeft = "IGUI_MinidoracatTesla_Part_FalconWingLeft",
         IGUI_VehiclePartDoorRearRight = "IGUI_MinidoracatTesla_Part_FalconWingRight",
         IGUI_MinidoracatTesla_App_ControlsSub = "IGUI_MinidoracatTesla_App_ControlsSubModelX",
+    },
+    -- Roadster 2.5 owner's manual: Trunk (4-6), Hood (8-3), Removable roof (7-9; the part's own name,
+    -- IGUI_VehiclePartSoftTop); the app's lock texts name the soft top too (it locks with the car, Liftgate.lua L.LIDS)
+    ["Base.MinidoracatTesla_Roadster"] = {
+        IGUI_VehiclePartTrunkDoor = "IGUI_MinidoracatTesla_Part_TrunkLid",
+        IGUI_MinidoracatTesla_App_Trunk = "IGUI_MinidoracatTesla_App_TrunkLid",
+        IGUI_MinidoracatTesla_App_Done_trunk = "IGUI_MinidoracatTesla_App_Done_trunkLid",
+        IGUI_MinidoracatTesla_App_Done_trunk_on = "IGUI_MinidoracatTesla_App_Done_trunkLid_on",
+        IGUI_MinidoracatTesla_App_Done_trunk_off = "IGUI_MinidoracatTesla_App_Done_trunkLid_off",
+        IGUI_MinidoracatTesla_Tip_AppLock = "IGUI_MinidoracatTesla_Tip_AppLockRoadster",
+        IGUI_MinidoracatTesla_Tip_AppUnlock = "IGUI_MinidoracatTesla_Tip_AppUnlockRoadster",
+        IGUI_MinidoracatTesla_Tip_AppTrunk = "IGUI_MinidoracatTesla_Tip_AppTrunkLid",
+        IGUI_MinidoracatTesla_App_ControlsSub = "IGUI_MinidoracatTesla_App_ControlsSubRoadster",
     },
 }
 -- the Tesla key for a key on this car (script full name), or nil

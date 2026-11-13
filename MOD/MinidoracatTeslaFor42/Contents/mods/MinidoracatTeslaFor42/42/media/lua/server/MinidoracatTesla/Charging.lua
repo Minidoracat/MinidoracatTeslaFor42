@@ -396,7 +396,7 @@ function C.settle(o, now, here, fresh)
     -- the charger's own limit for this car (a Supercharger's: the car's DC peak, its curve on top, Core.lua
     -- B.chargeKwAt); the grid and a generator give it whole, a Cybertruck its share (supplyKw)
     local kw = T.chargerKw(o.kind, v)
-    chg.peak = T.Chargers[o.kind].dc and kw or nil
+    chg.peak = T.dcPeak(o.kind, v, kw)
     local own = { kw = kw, peak = chg.peak }
     local sq = iso:getSquare()
     local t0 = math.min(chg.last or now, now)
@@ -560,7 +560,7 @@ function C.start(o, v)
         T.Powershare.broke(v) -- a car it fed that is not loaded now books at most an hour more (C.supplyEnded)
     end
     local kw = T.chargerKw(o.kind, v)
-    part:getModData().chg = { x = o.x, y = o.y, z = o.z, kind = o.kind, kw = kw, peak = T.Chargers[o.kind].dc and kw or nil,
+    part:getModData().chg = { x = o.x, y = o.y, z = o.z, kind = o.kind, kw = kw, peak = T.dcPeak(o.kind, v, kw),
         last = now, added = 0, src = nil, target = C.DEFAULT_TARGET, paused = nil }
     o.vid = v:getId()
     o:updateOnClient()

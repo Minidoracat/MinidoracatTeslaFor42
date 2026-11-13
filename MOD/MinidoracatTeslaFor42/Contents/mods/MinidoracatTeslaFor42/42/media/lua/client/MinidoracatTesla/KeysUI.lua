@@ -137,13 +137,15 @@ Events.OnGameStart.Add(function() Events.OnTick.Add(loginCheck) end)
 -- "Cybertruck", ...). A name the player gave (vanilla rename: setCustomName) stays. setName here is local only, never
 -- synced: what the server sends is named again at the next list refresh.
 local NAMED = { K.CARD, K.PHONE, K.PHONE_KEY }
--- in order: a name that holds another ("Model Y L" holds "Model Y") comes first
+-- in order: a name that holds another ("Model Y L" holds "Model Y") comes first. "Roadster" holds no other model's name;
+-- a later Roadster model ("Roadster 2" or so) must go before it
 local MODELS = { { "Model Y L", "MinidoracatTesla_ModelYL" }, { "ModelYL", "MinidoracatTesla_ModelYL" },
     { "Model Y", "MinidoracatTesla_ModelY" }, { "ModelY", "MinidoracatTesla_ModelY" },
     { "Model 3", "MinidoracatTesla_Model3" }, { "Model3", "MinidoracatTesla_Model3" },
     { "Cybertruck", "MinidoracatTesla_Cybertruck" },
     { "Model S", "MinidoracatTesla_ModelS" }, { "ModelS", "MinidoracatTesla_ModelS" },
-    { "Model X", "MinidoracatTesla_ModelX" }, { "ModelX", "MinidoracatTesla_ModelX" } }
+    { "Model X", "MinidoracatTesla_ModelX" }, { "ModelX", "MinidoracatTesla_ModelX" },
+    { "Roadster", "MinidoracatTesla_Roadster" } }
 local function carText(car) return type(car) == "string" and getTextOrNull("IGUI_VehicleName" .. car) or nil end
 local function modelIn(name)
     for _, m in ipairs(MODELS) do

@@ -77,16 +77,25 @@ end
 
 -- kW a charger of `kind` gives car v from the grid or a generator: its kw times the charging speed sandbox. A DC
 -- charger (Supercharger) gives no more than the car's own DC peak (Specs dcKw; T.DC_KW without one): that is the
--- peak of its DC curve (Core.lua B.chargeKwAt), written into chg.peak when it plugs in (Charging.lua C.start).
+-- peak of its DC curve (Core.lua B.chargeKwAt), written into chg.peak when it plugs in (Charging.lua C.start). A car
+-- with Specs acKw takes no more than that from any charger; dcKw = false: a DC charger gives it acKw (T.dcPeak nil).
 T.DC_KW = 250
 function T.chargerKw(kind, v)
     local c = T.Chargers[kind]
+    local s = T.spec(v)
     local kw = c.kw
     if c.dc then
-        local s = T.spec(v)
-        kw = math.min(kw, s and s.dcKw or T.DC_KW)
+        kw = math.min(kw, s and (s.dcKw or s.acKw) or T.DC_KW)
     end
+    if s and s.acKw then kw = math.min(kw, s.acKw) end
     return kw * T.chargeMul()
+end
+-- the cable record's chg.peak for car v at a `kind` charger giving kw (T.chargerKw): kw on a DC charger, unless the car
+-- has no DC charging (Specs dcKw = false: flat, like AC); nil on an AC charger
+function T.dcPeak(kind, v, kw)
+    local s = T.spec(v)
+    if T.Chargers[kind].dc and not (s and s.dcKw == false) then return kw end
+    return nil
 end
 
 -- ---- power at a charger square: Charging.lua's settle and the charger menu's no-power hint share these ----
