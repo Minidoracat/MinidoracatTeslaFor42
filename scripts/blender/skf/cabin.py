@@ -371,9 +371,10 @@ def furniture(add, opening, grow=0.0, fine=1, between=None):
 
     # seats where pzveh.geometry puts the passengers: middle of the door opening minus SEAT["back"]
     yf, yb, yr = opening["y"]
-    seat_y = ((yf + yb) / 2 - SEAT["back"][0], (yb + yr) / 2 - SEAT["back"][1])
+    seat_y = ((yf + yb) / 2 - SEAT["back"][0], (yb + yr) / 2 - SEAT["back"][1]) if not SEAT.get("front_only") else \
+        ((yf + yb) / 2 - SEAT["back"][0],)
     z0 = SEAT_Z
-    fs, rs = SEATS["front"], SEATS["rear"]              # widths, backrest heights, recline (deg)
+    fs, rs = SEATS["front"], SEATS.get("rear")         # widths, backrest heights, recline (deg)
     # optional per row: dy / dz move that row's seat (not its passengers) forward / up, to fit the passenger's pose
     # (seat_head.py sit / back numbers; the clips are scripts/seat_anim.py's)
     def bucket(cx, fy, b, bolster=(0.185, 0.19), z0=z0):   # a bucket seat: base, cushion, backrest, headrest, bolsters
@@ -396,15 +397,17 @@ def furniture(add, opening, grow=0.0, fine=1, between=None):
             part((aw * 0.7, 0.07, ah + 0.065), 0.015, "seat", (ax, fy - 0.08, z0 - 0.105 + (ah + 0.065) / 2))
         return fy, z0
     out["front"] = [bucket(s * FRONT_X, seat_y[0], fs) for s in (-1, 1)][0]     # front buckets
-    ry, z1 = seat_y[1], z0 - SEAT.get("rear", 0)       # the 2nd row sits SEAT["rear"] lower (pzveh.geometry, same)
-    row.clear()
-    if "middle" in SEATS:       # 6 seats (Model X): the 2nd row's two monopost seats, the 3rd row's two `back` behind the
+    ry, z1 = seat_y[-1], z0 - SEAT.get("rear", 0)      # the 2nd row sits SEAT["rear"] lower (pzveh.geometry, same)
+    if SEAT.get("front_only"):  # a two-seater (SEAT front_only, PassengerSeat2): the front row is the last row (`last`
+        out["rear"] = out["front"]   # below: its backrests' rear; the detail model's 2nd-row mats then span nothing)
+    elif "middle" in SEATS:     # 6 seats (Model X): the 2nd row's two monopost seats, the 3rd row's two `back` behind the
         t3 = SEAT["third"]      # rear doors' rear edge, narrower (pzveh.geometry seats the passengers there)
         for (y_, b, sx, z_) in ((ry, SEATS["middle"], SEAT_X, z1), (yr - t3["back"], SEATS["third"], t3["x"], z0 - t3["drop"])):
             row.clear()
             placed = [bucket(s * sx, y_, b, (b["w"] / 2 - 0.025, b["w"] / 2 - 0.02), z_) for s in (-1, 1)][0]
             out.setdefault("rear", placed)
     else:                       # rear bench: three cushions, three backs, three headrests
+        row.clear()
         ry, z1 = ry + rs.get("dy", 0), z1 + rs.get("dz", 0)
         out["rear"] = (ry, z1)
         rec = (ry - 0.11, z1 - 0.03, rs["recline"])
@@ -417,6 +420,8 @@ def furniture(add, opening, grow=0.0, fine=1, between=None):
                  seams=("front", channels((-0.25, 0.0, 0.25), (-0.40, 0.40), 0.36)))
             part((0.20 if cx else 0.17, 0.09, 0.12), 0.045, "seat", (cx, ry - 0.18, z1 + 0.48), tilt=rec, seg=3)
     out["last"] = min(v[:, 1].min() for v in row)
+    if SEAT.get("front_only") and out["last"] < TRUNK_Y:     # behind the front backrests: the trunk's floor (TRUNK_Y)
+        raise SystemExit(f"cabin: the front backrests (y {out['last']:.3f}) reach behind TRUNK_Y {TRUNK_Y}")
     out["console"] = part((0.20, 0.80, 0.22), 0.04, "console", DASH["console"])     # centre console
     out["dash"] = part(*DASH_BOX, "dash", DASH["dash"])                               # dash, trim strip on its face
     part((1.16, 0.02, 0.035), 0.008, "trim", DASH["trim"])

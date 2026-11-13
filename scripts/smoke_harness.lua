@@ -22,6 +22,16 @@ function H.scriptValue(file, key, after)
     if after then s = s:sub((assert(s:find(after, 1, true), after))) end
     return tonumber(s:match("\n%s*" .. key .. "%s*=%s*([%d%.]+)"))
 end
+-- the side doors a Tesla has, by the template its script inherits (MinidoracatTesla_template.txt: Core the front two,
+-- Base all four; test_cabin checks the template file against this); car = "ModelY". -> door ids, template name
+H.TEMPLATE_DOORS = { MinidoracatTeslaCore = { "DoorFrontLeft", "DoorFrontRight" },
+    MinidoracatTeslaBase = { "DoorFrontLeft", "DoorFrontRight", "DoorRearLeft", "DoorRearRight" } }
+function H.carDoors(car)
+    local f = assert(io.open(MEDIA:gsub("/lua$", "/scripts/") .. "vehicles/MinidoracatTesla_" .. car .. ".txt", "r"))
+    local tpl = f:read("*a"):match("\n%s*template! = (%w+),")
+    f:close()
+    return H.TEMPLATE_DOORS[tpl], tpl
+end
 -- per Tesla: its script's engineForce and its pack item's int MaxCapacity (H.vehicle; other packs get 63)
 local ENGINE_FORCE, PACK_CAP = {}, {}
 for _, car in ipairs({ "ModelY", "Model3", "Cybertruck", "ModelS", "ModelX", "ModelYL" }) do

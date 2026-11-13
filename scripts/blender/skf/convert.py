@@ -99,7 +99,11 @@ SWATCH_U = 0.03                            # UV0 strip kept for them at u > 1 - 
 # SEAM_LINE tone: the lines' flat UV0 / UV1 spot, a 512 texel's centre in that strip between the first two spots
 SEAM_SPOT = (504.5 / 512, (round(512 / len(SWATCH)) + 0.5) / 512)
 SMOKE_RGB = (62, 58, 60)                   # the light blade by day: smoked lens, so the black letters read
-PARTS = ["Body"] + list(pv.DOORS)          # part index: 0 body, 1.. DOORS order (FL, FR, RL, RR, TrunkDoor, EngineDoor)
+# part index: 0 body, 1-6 these slots whether the car has them or not (classify's door numbers), then any other DOORS
+# part (the tonneau); a two-seater's DOORS has no rear doors, nothing is numbered 3 / 4 (in_door, classify)
+PARTS = ["Body", "DoorFrontLeft", "DoorFrontRight", "DoorRearLeft", "DoorRearRight", "TrunkDoor", "EngineDoor"]
+PARTS += [p for p in pv.DOORS if p not in PARTS]
+REAR_DOORS = "DoorRearLeft" in pv.DOORS
 FRUNK_TUB = C["FRUNK_TUB"]                 # the bin under the frunk lid (frunk_tub())
 ZN = list(pv.Z)                            # zone index -> name
 CELL = {c: i for i, c in enumerate(pv.CABIN_CELLS)}
@@ -133,7 +137,8 @@ def in_door(p, t=0.0):
     up = z > IN_DOOR["up"]
     fd = (y < FRONT_Y + t) & (z > SILL_Z - t) & (y > np.where(up, lin("BF", z), lin("S", z)) - t)
     rd = (z > SILL_Z - t) & np.where(up, (y < lin("BR", z) + t) & (y > lin("D", z) - t),
-                                     (y < lin("S", z) + t) & (y > lin("R1", z) - t) & ((z > ARCH[0] - t) | (y > ARCH[1] - t)))
+                                     (y < lin("S", z) + t) & (y > lin("R1", z) - t) & ((z > ARCH[0] - t) | (y > ARCH[1] - t))) \
+        if REAR_DOORS else np.zeros(len(p), bool)      # (a two-seater: no rear door, no BR / D / R1 lines)
     side = np.abs(x) > IN_DOOR["x"]
     left = x < 0
     return np.where(side & fd, np.where(left, 1, 2), np.where(side & rd, np.where(left, 3, 4), 0))
@@ -951,8 +956,9 @@ def classify(car, names, sizes):
     pn = PANELS
     fd = paint & (ax > pn["x"]) & (ay > pn["front"][0]) & (ay < pn["front"][1]) & (az < pn["z"])
     part[fd] = np.where(left, 1, 2)[fd]
-    rd = paint & (ax > pn["x"]) & (ay > pn["rear"][0]) & (ay <= pn["rear"][1]) & (az < pn["z"])
-    part[rd] = np.where(left, 3, 4)[rd]
+    if REAR_DOORS:
+        rd = paint & (ax > pn["x"]) & (ay > pn["rear"][0]) & (ay <= pn["rear"][1]) & (az < pn["z"])
+        part[rd] = np.where(left, 3, 4)[rd]
     part[paint & (ax < 0.1) & (ay < pn["gate"][0]) & (az > pn["gate"][1])] = 5
     part[paint & (ax < 0.1) & (ay > pn["lid"][0]) & (az > pn["lid"][1])] = 6
     # a source whose doors are not separate (FACE_PARTS objects): their paint faces by face centre, along the panel gaps
@@ -1911,7 +1917,7 @@ def seam_lines(V, T, part, panel, glass_bvh):
     w, lift, step = sl["w"], sl["lift"], sl["step"]
     wide = sl.get("wide", {})
     wmax = max([w, *wide.values()])
-    skip = [k for k, nm in enumerate(pv.DOORS, 1) if nm in sl.get("skip", ())]
+    skip = [PARTS.index(nm) for nm in pv.DOORS if nm in sl.get("skip", ())]
     pid = np.unique(np.round(V / 1e-5).astype(np.int64), axis=0, return_inverse=True)[1].ravel()
     fn = np.cross(V[T[:, 1]] - V[T[:, 0]], V[T[:, 2]] - V[T[:, 0]])
     fn = fn / np.maximum(np.linalg.norm(fn, axis=1), 1e-12)[:, None]
@@ -2475,7 +2481,7 @@ def pieces(car, c, shift):
     if C.get("SEAL_RIBBON"):    # points along every panel's open edges, all parts (seals: a gap has another across)
         from mathutils.kdtree import KDTree
         # `skip`: parts without (nor partners for) them (Model S's liftgate: its bottom edge over the bumper)
-        skip = [k for k, nm in enumerate(pv.DOORS, 1) if nm in C["SEAL_RIBBON"].get("skip", ())]
+        skip = [PARTS.index(nm) for nm in pv.DOORS if nm in C["SEAL_RIBBON"].get("skip", ())]
         tri = T[panel & ~np.isin(part, skip)]
         ed = np.concatenate([tri[:, [0, 1]], tri[:, [1, 2]], tri[:, [2, 0]]])
         pid = np.unique(np.round(V / 1e-5).astype(np.int64), axis=0, return_inverse=True)[1].ravel()
@@ -2494,7 +2500,7 @@ def pieces(car, c, shift):
         seams = (kd, pp)
     # SEAL_FULL: the body's side of those parts' gaps full too (Model S: with SEAL_COVER and the short SEAL the
     # strips along the liftgate's sides went, and the open liftgate's gap to the C-pillar showed the ground)
-    fullk = [k for k, nm in enumerate(pv.DOORS, 1) if nm in C.get("SEAL_FULL", ())]
+    fullk = [PARTS.index(nm) for nm in pv.DOORS if nm in C.get("SEAL_FULL", ())]
     near_full = bvh_of([(V, T[np.isin(part, fullk)])]) if fullk else None
     adds += [seals(V, T, (part == 0) & panel, cab_attr("base"), gb, solid, seams and (*seams, 0), near_full=near_full)]
     lines = seam_lines(V, T, part, panel, gb) if C.get("SEAM_LINE") else {}
@@ -2506,7 +2512,8 @@ def pieces(car, c, shift):
     conv = np.array(Matrix.Rotation(-math.pi / 2, 3, "X"))
     meshes, hinges, strips, elbows, upper = [], {}, {}, {}, {}
     mat = bpy.data.materials.new(pv.NAME)
-    for k, (pname, (sd, axis, ang, secs)) in enumerate(pv.DOORS.items(), 1):
+    for pname, (sd, axis, ang, secs) in pv.DOORS.items():
+        k = PARTS.index(pname)
         sel = part == k
         lid = pname == "EngineDoor"
         off = (np.array([-sd, 0, 0]) if sd else np.array((0, 0, -1) if lid else pv.GATE_IN)) * pv.DOOR_T
@@ -2765,7 +2772,7 @@ def stage_view(out, heads, state, skin="UltraRed", app=False):
     body = bpy.data.objects[pv.NAME]
     doors = [bpy.data.objects[p] for p in pv.DOORS]
     arm.matrix_world = Matrix.Rotation(math.pi / 2, 4, "X")
-    openp = {"all": list(pv.DOORS)[:4], "gate": ["TrunkDoor"], "frunk": ["EngineDoor"], "shut": [],
+    openp = {"all": [p for p in pv.DOORS if p in PARTS[1:5]], "gate": ["TrunkDoor"], "frunk": ["EngineDoor"], "shut": [],
              "fl": ["DoorFrontLeft"], "fr": ["DoorFrontRight"], "rl": ["DoorRearLeft"], "rr": ["DoorRearRight"],
              "rear": ["DoorRearLeft", "DoorRearRight"], "tonneau": ["TrunkTonneau"], "bed": ["TrunkDoor", "TrunkTonneau"]}[state]
     ad = arm.animation_data

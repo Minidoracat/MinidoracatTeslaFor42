@@ -3,7 +3,10 @@ module Base
     /* Shared EV base for every Tesla. Numbers, sounds and the part list; geometry lives in each car's own script, */
     /* and so do the per-car numbers and rules (power, cargo, hatch or sedan rear lid) in its TeslaLogic part. */
     /* Based on template vehicle ModernCar (generated/vehicles/vehicle_car_modern_template.txt) without Muffler. */
-    template vehicle MinidoracatTeslaBase
+    /* Core: what every Tesla has, the front doors, seats and side windows (a two-seater: template! = */
+    /* MinidoracatTeslaCore, geometry template PassengerSeat2). MinidoracatTeslaBase at the end adds the rear doors, */
+    /* seats and side windows: a script only adds parts, never drops one (VehicleScript.java:909-915). */
+    template vehicle MinidoracatTeslaCore
     {
         mechanicType = 3,
         engineRepairLevel = 6,
@@ -58,8 +61,6 @@ module Base
         template = Trunk/part/TruckBed,
         template = Seat/part/SeatFrontLeft,
         template = Seat/part/SeatFrontRight,
-        template = Seat/part/SeatRearLeft,
-        template = Seat/part/SeatRearRight,
         template = GloveBox,
         template = GasTank,
         /* 12V battery: tryStartEngine dereferences it without a null check (BaseVehicle.java:7570-7612) */
@@ -71,12 +72,8 @@ module Base
         template = Windshield/part/WindshieldRear,
         template = Window/part/WindowFrontLeft,
         template = Window/part/WindowFrontRight,
-        template = Window/part/WindowRearLeft,
-        template = Window/part/WindowRearRight,
         template = Door/part/DoorFrontLeft,
         template = Door/part/DoorFrontRight,
-        template = Door/part/DoorRearLeft,
-        template = Door/part/DoorRearRight,
         template = Tire,
         template = Brake,
         template = Suspension,
@@ -277,5 +274,36 @@ module Base
             category = nodisplay,
             setAllModelsVisible = false,
         }
+    }
+    /* Base = Core + the rear doors, seats and side windows: every four- and six-seat Tesla. The template lines first, */
+    /* in Core's order with the rear ones in between, then Core: a part keeps the place it was first added at, a */
+    /* template line copies over it in place (VehicleScript.java:1271-1295, 909-915), and a part's save is read back */
+    /* by its id (VehicleParts.java:275-298). So Base resolves to the part list, part order and fields the single */
+    /* template had before Core existed (scripts/vehicle_parts.py; harness test_cabin "template"). */
+    template vehicle MinidoracatTeslaBase
+    {
+        template = TrunkDoor,
+        template = Trunk/part/TruckBed,
+        template = Seat/part/SeatFrontLeft,
+        template = Seat/part/SeatFrontRight,
+        template = Seat/part/SeatRearLeft,
+        template = Seat/part/SeatRearRight,
+        template = GloveBox,
+        template = GasTank,
+        template = Battery,
+        template = Engine,
+        template = EngineDoor,
+        template = Heater,
+        template = Windshield/part/Windshield,
+        template = Windshield/part/WindshieldRear,
+        template = Window/part/WindowFrontLeft,
+        template = Window/part/WindowFrontRight,
+        template = Window/part/WindowRearLeft,
+        template = Window/part/WindowRearRight,
+        template = Door/part/DoorFrontLeft,
+        template = Door/part/DoorFrontRight,
+        template = Door/part/DoorRearLeft,
+        template = Door/part/DoorRearRight,
+        template! = MinidoracatTeslaCore,
     }
 }

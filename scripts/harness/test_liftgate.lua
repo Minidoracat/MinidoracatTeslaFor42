@@ -400,15 +400,22 @@ n = #H.sent
 ISOpenVehicleDoor.complete({ vehicle = gas, part = gas.parts.DoorFrontLeft, character = driver })
 check(#H.sent == n, "not a Tesla: nothing sent")
 -- a shell door's bit clears when its Close clip is over: Specs doorClip (else 0.8) must be the clip the build animates
--- (scripts/blender/skf/cars/<car>.py DOORS, 4th value)
+-- (scripts/blender/skf/cars/<car>.py DOORS, 4th value), for every shell door the car has (its template's side doors and
+-- the tailgate; a two-seater on MinidoracatTeslaCore has no rear doors)
 for name, s in pairs(T.Specs) do
     local f = io.open("scripts/blender/skf/cars/" .. s.model:gsub("^Model", "model_"):lower() .. ".py", "r")
     local src = f and f:read("*a") or ""
     if f then f:close() end
+    local side = H.carDoors(name:match("MinidoracatTesla_(%w+)$"))
+    check(side ~= nil, name .. ": its script inherits MinidoracatTeslaCore or MinidoracatTeslaBase")
+    local has = { TrunkDoor = true }
+    for _, id in ipairs(side or {}) do has[id] = true end
     for _, id in ipairs(L.SHELL_DOORS) do
-        local clip = tonumber((src:match('"' .. id .. '":%s*(%b())') or ""):match(",%s*([%d.]+)%)$")) -- the falcon axis is a string
-        local want = s.doorClip and s.doorClip[id] or 0.8
-        check(clip ~= nil and want == clip, name .. " " .. id .. ": clip " .. tostring(want) .. " = its build's " .. tostring(clip))
+        if has[id] then
+            local clip = tonumber((src:match('"' .. id .. '":%s*(%b())') or ""):match(",%s*([%d.]+)%)$")) -- the falcon axis is a string
+            local want = s.doorClip and s.doorClip[id] or 0.8
+            check(clip ~= nil and want == clip, name .. " " .. id .. ": clip " .. tostring(want) .. " = its build's " .. tostring(clip))
+        end
     end
 end
 

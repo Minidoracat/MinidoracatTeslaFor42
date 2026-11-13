@@ -992,6 +992,11 @@ def geometry(body, zmid, wl, r, tire_w, belt_z, doors_y, port_yz, extra_areas=()
     port = (-hit.x / S, (port_yz[1] - zmid) / S, port_yz[0] / S)
     belt = belt_z - zmid
     front_y, bpil_y, rear_y = doors_y
+    # SEAT front_only (a two-seater): the front row only, PassengerSeat2, the head on template MinidoracatTeslaCore;
+    # doors_y's third value is then where the cabin ends (cabin.py's ring cut), no door
+    two = SEAT.get("front_only")
+    if two and SEAT.get("third"):
+        raise SystemExit("SEAT: front_only and third")
     lo = (bc[:, 2].min() + belt) / 2
     cab = ((belt + bc[:, 2].max()) / 2, *CAB_BOX)
     aw, ah = 0.4725, 0.4725
@@ -1003,7 +1008,7 @@ def geometry(body, zmid, wl, r, tire_w, belt_z, doors_y, port_yz, extra_areas=()
         "        textureDamage1Overlay = Vehicles/Veh_Blood_Mask,", "        textureDamage2Overlay = Vehicles/Veh_Blood_Hvy,",
         "        textureDamage1Shell = Vehicles/Veh_Damage1,", "        textureDamage2Shell = Vehicles/Veh_Damage2,",
         "        textureRust = Vehicles/Veh_Rust,",
-        f"        template = {'PassengerSeat6' if SEAT.get('third') else 'PassengerSeat4'},",
+        f"        template = {'PassengerSeat2' if two else 'PassengerSeat6' if SEAT.get('third') else 'PassengerSeat4'},",
         f"        extents = {f4(*ext)},", f"        physicsChassisShape = {f4(*ext)},",
         f"        centerOfMassOffset = {f4(0, OY, 0)},",
         f"        shadowExtents = {f4(ext[0], ext[2])},", "        shadowOffset = 0.0 0.0,",
@@ -1031,9 +1036,11 @@ def geometry(body, zmid, wl, r, tire_w, belt_z, doors_y, port_yz, extra_areas=()
         out += [f"        part {pat}", "        {", "            model InflatedTirePlusWheel", "            {",
                 f"                file = {NAME}_Wheel{tag},", "            }", "        }"]
     seat_y, ground = (SEAT["h"] - zmid) / S, -zmid / S
-    fz, rz = (front_y + bpil_y) / 2 - SEAT["back"][0], (bpil_y + rear_y) / 2 - SEAT["back"][1]
-    seats = (("FrontLeft", 1, fz, (front_y, bpil_y)), ("FrontRight", -1, fz, (front_y, bpil_y)),
-             ("RearLeft", 1, rz, (bpil_y, rear_y)), ("RearRight", -1, rz, (bpil_y, rear_y)))
+    fz = (front_y + bpil_y) / 2 - SEAT["back"][0]
+    seats = (("FrontLeft", 1, fz, (front_y, bpil_y)), ("FrontRight", -1, fz, (front_y, bpil_y)))
+    if not two:             # (a two-seater: the front row only, through the front doors)
+        rz = (bpil_y + rear_y) / 2 - SEAT["back"][1]
+        seats += (("RearLeft", 1, rz, (bpil_y, rear_y)), ("RearRight", -1, rz, (bpil_y, rear_y)))
     third = SEAT.get("third")   # 6 seats (Model X): 2nd row Middle* through the rear doors, 3rd row Rear* `back` behind
     if third:                   # the rear door's rear edge, getting in and out at the 2nd row's spot (its own way in)
         tz = rear_y - third["back"]
@@ -1099,10 +1106,16 @@ def geometry(body, zmid, wl, r, tire_w, belt_z, doors_y, port_yz, extra_areas=()
             f"                file = {NAME}_Detail,", "            }", "        }"]
     block = "\n".join(out) + "\n"
     open(os.path.join(TMP, "geometry_block.txt"), "w", newline="\n").write(block)
-    # splice into the vehicle script: everything after the geometry marker up to the vehicle's closing brace is ours
+    # splice into the vehicle script: everything after the geometry marker up to the vehicle's closing brace is ours.
+    # The hand-written head above the marker inherits the template with these doors and seats (MinidoracatTesla_
+    # template.txt: Core the front doors and seats, Base the rear ones too) and says as many seats
     path = os.path.join(MEDIA, "scripts", "vehicles", NAME + ".txt")
     text = open(path, encoding="utf-8").read()
     head = text.index("\n", text.index(SCRIPT_MARK)) + 1
+    want = (f"template! = MinidoracatTesla{'Core' if two else 'Base'},", f"\n        seats = {len(seats)},")
+    if not all(w in text[:head] for w in want):
+        raise SystemExit(f"{NAME}.txt: the head above {SCRIPT_MARK!r} must have {want[0]!r} and {want[1].strip()!r} "
+                         f"(SEAT front_only {bool(two)})")
     tail = text.rindex("    }\n}")
     open(path, "w", encoding="utf-8", newline="\n").write(text[:head] + block + text[tail:])
     return {"zmid_ground": zmid, "body_width": w_body, "body_height": hgt, "length": ln,
