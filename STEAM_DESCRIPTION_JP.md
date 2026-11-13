@@ -34,6 +34,8 @@
 [*] [b]対生物兵器モードとコンフォート[/b]：HEPA フィルターで死体の悪臭による病気を防ぎ、加速をなめらかにもできます
 [*] [b]ファミリー MOD 連携[/b]：AutoDrive の FSD 画面とサモン、Vehicle Manager の権限、ミニマップの車アイコン
 [/list]
+[b]AutoDrive と併用：[/b]自動運転カードがテスラ風ダッシュボードの上に並びます。
+[url=https://images.steamusercontent.com/ugc/12652213061014520672/127174CF6DDD57309035B9BDD24E3CA705D72E3C/][img]https://images.steamusercontent.com/ugc/12652213061014520672/127174CF6DDD57309035B9BDD24E3CA705D72E3C/[/img][/url]
 📖 [b]詳しい説明とよくある質問：[/b][url=https://steamcommunity.com/sharedfiles/filedetails/?id=3829449879]Minidoracat Tesla Collection Mod Guide[/url]（英語）
 
 [h2]🔗 Minidoracat シリーズ[/h2]

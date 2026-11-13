@@ -37,6 +37,8 @@ description=[*] [b]Sentry and Camp Mode[/b]: get told when someone touches, brea
 description=[*] [b]Bioweapon Defense Mode and Chill[/b]: the HEPA filter keeps corpse sickness out, and acceleration can go gentle
 description=[*] [b]Family mods[/b]: AutoDrive's FSD view and Summon, Vehicle Manager permissions, your cars on the minimap
 description=[/list]
+description=[b]With AutoDrive:[/b] its self-driving card sits above the Tesla dashboard.
+description=[url=https://images.steamusercontent.com/ugc/12652213061014520672/127174CF6DDD57309035B9BDD24E3CA705D72E3C/][img]https://images.steamusercontent.com/ugc/12652213061014520672/127174CF6DDD57309035B9BDD24E3CA705D72E3C/[/img][/url]
 description=📖 [b]Full guide and FAQ:[/b] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3829449879]Minidoracat Tesla Collection Mod Guide[/url]
 description=
 description=[h2]🔗 Minidoracat collection[/h2]

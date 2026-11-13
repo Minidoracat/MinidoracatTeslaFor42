@@ -34,6 +34,8 @@ Drive a Tesla Model S, Model 3, Model X, Model Y, Model Y L or Cybertruck throug
 [*] [b]Bioweapon Defense Mode and Chill[/b]: the HEPA filter keeps corpse sickness out, and acceleration can go gentle
 [*] [b]Family mods[/b]: AutoDrive's FSD view and Summon, Vehicle Manager permissions, your cars on the minimap
 [/list]
+[b]With AutoDrive:[/b] its self-driving card sits above the Tesla dashboard.
+[url=https://images.steamusercontent.com/ugc/12652213061014520672/127174CF6DDD57309035B9BDD24E3CA705D72E3C/][img]https://images.steamusercontent.com/ugc/12652213061014520672/127174CF6DDD57309035B9BDD24E3CA705D72E3C/[/img][/url]
 📖 [b]Full guide and FAQ:[/b] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3829449879]Minidoracat Tesla Collection Mod Guide[/url]
 
 [h2]🔗 Minidoracat collection[/h2]

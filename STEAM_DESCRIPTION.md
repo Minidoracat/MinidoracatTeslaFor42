@@ -34,6 +34,8 @@
 [*] [b]生物武器防禦與舒適模式[/b]：HEPA 濾網擋住屍臭病，加速也能切成平順
 [*] [b]家族 MOD 連動[/b]：AutoDrive 的 FSD 畫面與召喚、綁車權限、小地圖車標
 [/list]
+[b]搭配 AutoDrive：[/b]自動駕駛卡片會疊在特斯拉儀表上方。
+[url=https://images.steamusercontent.com/ugc/16700533977953792943/DAB4A84023F3D47717A63960B692CAE31F394CBE/][img]https://images.steamusercontent.com/ugc/16700533977953792943/DAB4A84023F3D47717A63960B692CAE31F394CBE/[/img][/url]
 📖 [b]完整說明與常見問題：[/b][url=https://steamcommunity.com/sharedfiles/filedetails/?id=3829449828]Minidoracat Tesla Collection 完整說明[/url]
 
 [h2]🔗 Minidoracat 全系列[/h2]
