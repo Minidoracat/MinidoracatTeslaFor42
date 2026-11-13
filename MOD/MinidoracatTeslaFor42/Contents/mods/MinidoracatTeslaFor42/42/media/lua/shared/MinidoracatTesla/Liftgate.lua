@@ -466,9 +466,18 @@ if not isClient() then
     ISInstallVehiclePart.complete = function(self)
         local ok = install(self)
         local v, part = self.vehicle, self.part
-        if v and part and T.isTesla(v) and modelled(part) then
-            L.glassAfter(v, { part })
+        if v and part and T.isTesla(v) then
+            if modelled(part) then L.glassAfter(v, { part }) end
+            roofMoved(v, part)
         end
+        return ok
+    end
+    -- the soft top taken off: no roof (HatHide.lua H.wanted)
+    require "Vehicles/TimedActions/ISUninstallVehiclePart"
+    local uninstall = ISUninstallVehiclePart.complete
+    ISUninstallVehiclePart.complete = function(self)
+        local ok = uninstall(self)
+        if self.vehicle and self.part and T.isTesla(self.vehicle) then roofMoved(self.vehicle, self.part) end
         return ok
     end
     -- the admin / debug repair (vanilla vehicle commands repair, repairPart: VehicleCommands.lua:330-370) refits every

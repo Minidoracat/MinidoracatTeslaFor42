@@ -573,6 +573,9 @@ v.passengers = 0
 v.trunk.d.open = true
 check(select(2, autoLockReason()) == "AUTOLOCK_DOOR_OPEN", "auto-lock: trunk open -> AUTOLOCK_DOOR_OPEN")
 v.trunk.d.open = false
+v.trunk.id, v.trunk.d.open = "SoftTop", true -- stands in for the Roadster's soft top (Core.lua T.OPEN_OK)
+check(autoLockReason() == true, "auto-lock: only the soft top open -> lock (a convertible locks top down)")
+v.trunk.id, v.trunk.d.open = "TrunkDoor", false
 check(autoLockReason() == true, "auto-lock: away, empty, closed -> lock")
 check(K.canAutoLock(player("cardonly", container(item(K.CARD, v.keyId)), owner.x, owner.y), v) == false,
     "auto-lock: a key card alone never auto-locks (manual: key card has no walk-away lock)")

@@ -56,6 +56,9 @@ check(rs.massKg == 1235 and rs.hepa == nil and rs.falcon == nil and rs.tonneau =
     "Roadster: regen mass 1235 kg (manual 10-16); soft top; no HEPA, falcon, tonneau, Powershare; AC 16.8 kW only")
 check(T.Specs["Base.MinidoracatTesla_ModelY"].softTop == nil and T.Specs["Base.MinidoracatTesla_ModelY"].acKw == nil,
     "the other cars: no softTop, no acKw (their chargers' own kW)")
+for name, s in pairs(T.Specs) do
+    check(s.dcKw ~= false or type(s.acKw) == "number", name .. ": no DC charging (dcKw false) needs acKw, else 250 kW flat")
+end
 if H.bodyBuilt("Roadster") then -- the vehicle script comes with the body
     check(H.scriptValue("vehicles/MinidoracatTesla_Roadster.txt", "engineForce") == 2880
         and H.scriptValue("vehicles/MinidoracatTesla_Roadster.txt", "mass") == 486,

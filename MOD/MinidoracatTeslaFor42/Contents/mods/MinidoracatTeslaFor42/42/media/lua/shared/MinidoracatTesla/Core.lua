@@ -49,7 +49,8 @@ T.DRIVE_SCALE = 10
 -- climb starts at, per door part, on T.clipStep's clock; EnterDoor.lua, else its E.WAIT).
 -- Roadster only: softTop (the soft top part SoftTop, opened and closed like a door: the HUD car picture, the app's
 -- soft top button; Liftgate.lua L.PARTS / L.LIDS, Remote.lua ACT.softtop, HatHide.lua). Open = top down.
--- A field counts only when it is truthy: no field = no such feature (hepa, falcon, tonneau, softTop ...).
+-- A flag counts only when it is truthy: no field = no such feature (hepa, falcon, tonneau, softTop ...). dcKw is not
+-- a flag: a number = the DC peak, nil = T.DC_KW, false = no DC charging (then acKw is a must, Chargers.lua T.chargerKw).
 T.Specs = {
     ["Base.MinidoracatTesla_ModelY"] = {
         model = "ModelY",
@@ -601,6 +602,9 @@ function T.lidOpen(vehicle, id)
     if lid and lid:getDoor() and lid:getInventoryItem() then return lid:getDoor():isOpen() end
     return true
 end
+-- door parts that may stay open: the Roadster's soft top (a convertible drives and locks top down). The HUD's "close
+-- before driving" and Walk-Away Door Lock (Keys.lua K.canAutoLock) skip them.
+T.OPEN_OK = { SoftTop = true }
 
 -- Cybertruck bed, the vault (owner's manual p.60-61): from the rear (the bed's area) with the tailgate or the
 -- tonneau open; from either side (area BedSide) with the tonneau open.

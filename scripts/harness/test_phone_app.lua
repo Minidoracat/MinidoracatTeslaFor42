@@ -302,6 +302,20 @@ check(d.why == nil and d.on == true and top.open and not top.locked and last("pa
 check(last("appState") and last("appState").softtop == true, "softtop: the record says open (top down)")
 d = act(owner, "softtop", false)
 check(d.why == nil and d.on == false and not top.open and top.locked, "softtop closed on a locked car: locked again (Liftgate L.LIDS)")
+-- the hats of whoever sits in it follow the top: every way it moves tells HatHide (server HatHide.lua H.car). Counted
+-- as "told or not": other harness files load Liftgate.lua again, each load wraps the uninstall once more
+local moved, hatCar = 0, T.HatHide.car
+T.HatHide.car = function(c) if c == v then moved = moved + 1 end end
+act(owner, "softtop", true)
+local opened = moved
+act(owner, "softtop", false)
+local closed = moved
+ISUninstallVehiclePart.complete({ vehicle = v, part = v.parts.SoftTop })
+check(opened == 1 and closed == 2 and moved > closed, "soft top opened, closed, taken off: HatHide told each time")
+local was = moved
+ISUninstallVehiclePart.complete({ vehicle = v, part = v.parts.TrunkDoor })
+check(moved == was, "another part taken off: not told")
+T.HatHide.car = hatCar
 R.remember(v)
 check(R.record(9001).softtop == false, "record: softtop false when shut on a Roadster")
 v.script = scriptY
