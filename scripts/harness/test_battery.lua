@@ -550,7 +550,20 @@ MinidoracatVehicleManagerAPI = nil
 cmd.chill(drv, { vid = cv:getId() })
 check(B.part(cv):getModData().chill == true and cv.feature[1] == 87 and cv.feature[2] == 10 and cv.feature[3] == T.CHILL_FORCE
     and cv.engineTx == 1 and cv.transmits == cmd0 + 1, "chill by the driver: force CHILL_FORCE (quality, loudness kept), engine and modData sent")
-check(T.CHILL_FORCE < 6180 and cv.maxSpeedSet == nil, "Chill force below every car's script force; top speed never touched")
+check(cv.maxSpeedSet == nil, "Chill: top speed never touched")
+for name, s in pairs(T.Specs) do -- Chill must slow the car: a new car below T.CHILL_FORCE needs Specs chillForce
+    local force = H.scriptValue("vehicles/MinidoracatTesla_" .. s.model .. ".txt", "engineForce")
+    check((s.chillForce or T.CHILL_FORCE) < force, name .. ": Chill force below its script force " .. tostring(force))
+end
+local tx = cv.engineTx -- the same fake car as a Roadster, then back as it was (Model Y, Chill on)
+cv.script = "Base.MinidoracatTesla_Roadster"
+B.setForce(cv, true)
+check(cv.feature[3] == 1440, "Roadster: Chill halves its force (Specs chillForce), not T.CHILL_FORCE")
+B.setForce(cv, false)
+check(cv.feature[3] == 2880, "Roadster: Chill off, its script force again")
+cv.script = "Base.MinidoracatTesla_ModelY"
+B.setForce(cv, true)
+cv.engineTx = tx
 cv:setEngineFeature(100, 20, 6260) -- an admin repair: vanilla repair() sets the script's values (VehiclePart.java:999-1005)
 local repaired = cv.feature[2]
 T.Update.Engine(cv, cv:getPartById("Engine"), 1)

@@ -241,6 +241,7 @@ T.Specs = {
         massKg = 1235, -- curb mass (2.5 owner's manual 10-16)
         dcKw = false, -- Tesla published no DC fast charging for it: a Supercharger gives acKw, flat
         acKw = 16.8, -- 70 A x 240 V on the High Power Wall Connector (2.5 owner's manual 5-4)
+        chillForce = 1440, -- half its script force, the Model Y's ratio (3100 / 6260): T.CHILL_FORCE is above its 2880
         regenEff = 0.6,
         softTop = true, -- the removable soft top (2.5 owner's manual 7-9) as a switch (user 2026-11-14)
         doorClip = { TrunkDoor = 1.0, EngineDoor = 1.0, SoftTop = 4.0 }, -- cars/roadster.py DOORS
@@ -480,6 +481,7 @@ end
 -- while on, one value for every car (Chill takes about 7 s to 60 mph on each model, about 2.2x a Model Y Performance's
 -- 3.3 s). Calibration knob: E2E feel-sp 0-100 km/h, Model Y 6260 -> 7.19 s, 3300 -> 14.75 s, 2800 -> 17.60 s
 -- (tesla-chill-1101a); 3100 -> 15.78 s = 2.19x, Cybertruck at 3100 16.02 s, top speed 122 as before (tesla-chill-1101b).
+-- A car whose script force is not above it has its own in Specs chillForce (Battery.lua B.setForce).
 T.CHILL_FORCE = 3100
 -- DC fast charging curve (Supercharger, plan-chargers-1028 design's 250 kW table normalised): charge % -> share of
 -- the peak, linear in between. Model Y 10->90 % 36.4 game minutes, 0->100 % 63.6; Cybertruck at 325 kW 10->90 % 44.0

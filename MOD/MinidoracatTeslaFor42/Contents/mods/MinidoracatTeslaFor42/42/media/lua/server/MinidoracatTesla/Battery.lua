@@ -272,7 +272,8 @@ end
 B.LOUDNESS_SCALE = 0.37037036
 function B.setForce(vehicle, chill)
     if not instanceof(vehicle, "BaseVehicle") then return end
-    local want = chill and T.CHILL_FORCE or vehicle:getScript():getEngineForce()
+    local spec = T.spec(vehicle)
+    local want = chill and (spec and spec.chillForce or T.CHILL_FORCE) or vehicle:getScript():getEngineForce()
     if vehicle:getEnginePower() == want then return end -- BaseVehicle.java:8138
     local loud = math.floor((vehicle:getEngineLoudness() + 0.5) / B.LOUDNESS_SCALE)
     vehicle:setEngineFeature(vehicle:getEngineQuality(), loud, want) -- :8125
