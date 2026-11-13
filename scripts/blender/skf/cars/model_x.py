@@ -71,8 +71,9 @@ CAR = dict(
         # (round 8) Stealth Grey, Lunar Silver and Ultra Red per channel by the game's p50 against the official FRONT34's
         # (modelx-sp paint, 824bf64: [52 52 59] / [60 59 66], [131 134 142] / [141 142 150], [93 24 30] / [101 30 34];
         # temp/fit-1112/game/after-6e52fea/mx/RESULT.txt); the others as they were. Round 10: Stealth Grey x 0.96 (GameMX2
-        # on 6acfe7e: luminance 65 against the official 62; (0.946, 0.885, 0.839) before)
-        "StealthGrey": ((0.908, 0.850, 0.805), (0.0, 0.0, 0.0)),
+        # on 6acfe7e: luminance 65 against the official 62; (0.946, 0.885, 0.839) before). Round 12: x 62/64 (GameMX4 on
+        # 3b6e80c: 64 against 62; (0.908, 0.850, 0.805) before)
+        "StealthGrey": ((0.880, 0.823, 0.780), (0.0, 0.0, 0.0)),
         "LunarSilver": ((0.818, 0.795, 0.792), (0.0, 0.0, 0.0)),
         # Pearl White x 1.4 round the visible paint's median 230 (the offset): Model S's frag sun-lobe model
         # (temp/wt-fix-ms/temp/skf_ms/work/sheenfit.py, k 0.93 c 0.22 x 0.62 for flag 251) on this car's offline game S
@@ -191,11 +192,15 @@ CAR = dict(
             # (round 6) under the 4 mm gap where the falcon door's rear top corner, the tailgate's front edge and the
             # roof meet (the front right door open: W 3 px, through the cabin and out of the door opening); a patch,
             # not a header across (RoofHeader, round 4: it closed the sky between the open falcon doors and the roof).
-            # Round 11: out to |x| 0.58 and back to y -1.30 under the gap's outer end by the tailgate's top corner
-            # (prep's gate_slide now shifts the skin's under-layers with it: the tailgate open SE 1 -> 6 px there; this
-            # patch did not close it, the 6 px stay)
+            # Round 11: out to |x| 0.58 and back to y -1.30 under the gap's outer end by the tailgate's top corner.
+            # Round 12: that outer end's rays pass 3-7 cm under it (t/hpick.py: between the falcon door's rear top
+            # corner, the body and the open tailgate's front edge at |x| 0.53, z 1.22-1.29), a second patch there
+            # (the tailgate open SE 6 -> 1 px, every other state unchanged)
             *((f"GateCrack{'L' if sx < 0 else 'R'}", tuple((sx * x, y, 1.29) for x, y in
                                                          ((0.58, -1.30), (0.26, -1.30), (0.26, -1.13), (0.58, -1.13))),
+               (0, 0, 1), "arch_liner") for sx in (-1, 1)),
+            *((f"GateCrackLo{'L' if sx < 0 else 'R'}", tuple((sx * x, y, 1.215) for x, y in
+                                                           ((0.60, -1.30), (0.44, -1.30), (0.44, -1.13), (0.60, -1.13))),
                (0, 0, 1), "arch_liner") for sx in (-1, 1))),
     SEAL_CLIP=True,                        # (the strips through a panel showed outside: B-pillar roof seam, arch lips)
     # the strips 45 deg into the body (convert.py seals): in the panel's plane they stood up to 27 mm past the outline
@@ -267,6 +272,9 @@ CAR = dict(
     REAR_ARCH=(-1.18, 0.31, 0.45),
     GATE_X=0.555,
     STOP_X=0.64,
+    # (convert.py unwrap, round 12) the brake zones' UV islands 12 x larger: they covered 2-4 texels of 512 a side, the
+    # mask's StopL / StopR counts (125-616, build to build and side to side) were the bake's margin round them
+    STOP_UV_SCALE=12.0,
     # door panels by component centre are off: PART_OBJS / SIDE_PARTS give whole objects
     PANELS=dict(x=9.0, z=0.0, front=(9.0, 9.0), rear=(9.0, 9.0), gate=(-9.0, 9.0), lid=(9.0, 9.0)),
     GUARDS=dict(front=(0.85, 0.95, 0.45), rear=(-1.19, 1.15, 0.50)),

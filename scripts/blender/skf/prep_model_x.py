@@ -136,7 +136,10 @@ FIELD = dict(
               *(dict(obj="Car Body", mat=m, to="Car Paint", u=(-1, 0.45), h=(0.34, 0.64), az=(0.58, 0.95), fill=True)
                 for m in ("Black Car Paint", "Light", "Light Glass")),
               # the headlamps body colour: the source's lens (its lamp 7 cm longer, 1 cm higher than the official's,
-              # SIDE + FRONT34 triangulated) and the black round it; the lamps are FIELD decals Lens_X / LensSide_X
+              # SIDE + FRONT34 triangulated) and the black round it; the lamps are FIELD decals Lens_X / LensSide_X.
+              # (Round 12 tried this box out to the lid's gutter behind the lamp, u 0.95 / h 1.02, whose black seal
+              # faces lid_slide uncovered: the black dash and flecks went, but the lid seam's game sampling fell 6-9
+              # points, gmeas10 N 92 -> 84 %: the seam is that black)
               dict(obj="Car Body", mat="Light Glass Simple", to="Car Paint", u=(-1, 0.8), h=(0.6, 1.0)),
               dict(obj="Car Body", mat="Black Car Paint", to="Car Paint", u=(0.1, 0.7), h=(0.74, 0.93), az=(0.45, 0.95)),
               # the nose cone's trim body colour, the T too (round 8: cars/model_x.py T_BADGE; FIELD decals Band_X)
@@ -237,6 +240,14 @@ FIELD = dict(
                    table=((8, 0.421), (12, 0.419), (16, 0.420), (20, 0.425), (24, 0.429), (28, 0.434), (32, 0.439),
                           (36, 0.446), (40, 0.452), (43, 0.459), (46, 0.465), (47.6, 0.479), (49, 0.484),
                           (50.4, 0.503), (53.5, 0.507), (58.7, 0.510), (64, 0.514), (75, 0.517), (90, 0.518))),
+    # round 12: Car Body's vertices on the centre plane (within `plane` m; u, h windows) welded within `dist` m: the two
+    # halves' edges along it in the nose's middle under the lid's lip (fascia's rebuild) left a slit whose seal strip
+    # stood 5.6 mm out of the outline (seals, az247e30)
+    weld_mid=dict(obj="Car Body", u=(-1, 0.10), h=(0.65, 0.75), plane=0.0015, dist=0.009),
+    # round 12: the sills' trim top 1 cm lower between the arches (sill_trim(); same camera, + = ours lower: SIDE 0..-2,
+    # FRONT34 -3..-5, REAR34 -1..-3 px)
+    sill_trim=dict(objs=("Car Body", "Front Door", "Back Door"), d=0.010, x=(705, 1190), fade=40, az=0.80, h=0.50,
+                   band=0.05),
     # round 10: the A pillar's foot body colour down to the belt (px_cut(); official FRONT34: the pillar's white runs
     # down to the belt along this line, only a small black triangle at the mirror's root behind it; the source's black
     # sail filled the pillar's lower 3 cm between the windscreen's corner and the mirror)
@@ -294,29 +305,37 @@ FIELD = dict(
              outline=((428, 526), (440, 524.5), (470, 525), (500, 528), (520, 533), (535, 539), (542, 543.5),
                       (520, 542.5), (500, 541), (480, 542), (474, 548), (468, 557), (463, 550), (456, 542),
                       (445, 538), (432, 534), (428, 531))),
-        # the headlamps' smoked lens (official FRONT34, SIDE)
-        dict(name="Lens_X", view="FRONT34", compete=("SIDE",), mat="Lamp_Lens", on=("Car Body",), off=0.008, u=(0.1, 0.75),
+        # the headlamps' smoked lens (official FRONT34, SIDE). Round 12, the rim and the strip too: `env` 4 px, `step` 3
+        # and no `compete` (the source's pocket, crumpled under the lid's old edge, stood through the lens as white
+        # chunks: same camera FRONT34 body pixels 1.5 px or more inside the lens 259 -> 3; with SIDE competing, the
+        # strip and the lens's lower band were missing where SIDE met them squarer)
+        dict(name="Lens_X", view="FRONT34", mat="Lamp_Lens", on=("Car Body",), off=0.008, step=3.0, env=4,
+             u=(0.1, 0.75),
              outline=((574, 527), (600, 516), (650, 506), (700, 497), (738, 494), (745, 496), (740, 500), (730, 510),
                       (700, 522), (650, 530), (600, 531), (580, 528.5))),
-        dict(name="LensSide_X", view="SIDE", compete=("FRONT34",), mat="Lamp_Lens", on=("Car Body",), off=0.008, u=(0.1, 0.75),
+        dict(name="LensSide_X", view="SIDE", compete=("FRONT34",), mat="Lamp_Lens", on=("Car Body",), off=0.008,
+             u=(0.1, 0.75),
              outline=((400, 503), (404, 498), (420, 492), (440, 487), (460, 483), (471, 481), (466, 488), (455, 497),
                       (440, 504), (420, 507), (405, 508))),
         # (round 8) the lamp's thin dark rim round the lens and the light strip (official FRONT34: the white strip reads
         # off the white paint by it). Round 10: a ring, the lens and the strip cut out (`holes`, their union): a whole
         # plate 2 mm under the lens poked through its chords on the curve (the game's lit lamp at night half dark).
         # Round 11: its outer tip from x 577 (lid_slide uncovered it: a black wedge past the lamp's end)
-        dict(name="LampRim_X", view="FRONT34", compete=("SIDE",), mat="Lamp_Rim", on=("Car Body",), off=0.006, u=(0.1, 0.75),
+        dict(name="LampRim_X", view="FRONT34", mat="Lamp_Rim", on=("Car Body",), off=0.006, step=3.0, env=4,
+             u=(0.1, 0.75),
              outline=((577, 525.3), (600, 514.5), (650, 504.5), (700, 495.5), (738, 492.5), (747, 494.5), (757.5, 500),
                       (744, 516.5), (703, 533.5), (650, 541.5), (600, 540.5), (577, 533)),
              holes=(((574, 527), (600, 516), (650, 506), (700, 497), (738, 494), (745, 496), (750, 497.5), (755, 500.5),
                      (742, 515), (702, 532), (650, 540), (600, 539), (573, 530)),)),
         # the headlamps' daytime light strip along their lower edge (official FRONT34: a smoked lamp, a white strip
         # under it running up round its outer end)
-        dict(name="Drl_X", view="FRONT34", compete=("SIDE",), mat="Lamp_DRL", on=("Car Body",), off=0.008, u=(0.1, 0.75),
+        dict(name="Drl_X", view="FRONT34", mat="Lamp_DRL", on=("Car Body",), off=0.008, step=3.0, env=4,
+             u=(0.1, 0.75),
              outline=((574, 525.5), (600, 533.5), (650, 534.5), (700, 526.5), (737, 509.5), (750, 497.5), (755, 500.5),
                       (742, 515), (702, 532), (650, 540), (600, 539), (573, 530))),
         # its front end from the side: a hook down the lamp's front and along under it (official SIDE)
-        dict(name="DrlSide_X", view="SIDE", compete=("FRONT34",), mat="Lamp_DRL", on=("Car Body",), off=0.008, u=(0.0, 0.6),
+        dict(name="DrlSide_X", view="SIDE", compete=("FRONT34",), mat="Lamp_DRL", on=("Car Body",), off=0.008,
+             u=(0.0, 0.6),
              outline=((396, 503), (401, 502), (402, 510), (430, 509), (455, 505), (456, 508), (430, 513), (403, 516),
                       (398, 517), (396, 510))),
         # the tail lamps (official REAR34, SIDE; REAR34's on top, the SIDE's under it add what REAR34 does not reach; the SIDE's red guide
@@ -1212,6 +1231,59 @@ def rear_trim(meshes, nose, yc, ftyre_x):
           % (len(new), n[0], n[1], split_normals(me)))
 
 
+def sill_trim(meshes, nose, yc, ftyre_x):
+    """FIELD sill_trim (round 12): the sills' trim top `d` m lower (a level set as rear_trim's: per vertex its height
+    over the old border's at its u, the border the median height of the trim / paint corners per 2 cm of u), over the
+    SIDE view's columns `x` (px, faded over `fade` px at both ends onto the arch lips), the side's outer faces only."""
+    import bmesh
+    A = FIELD.get("sill_trim")
+    if not A:
+        return
+    for o in (o for o in meshes if o.name in A["objs"]):
+        me = o.data
+        trim, paint = slot(me, "Trim Grey"), slot(me, "Car Paint")
+        bm = bmesh.new()
+        bm.from_mesh(me)
+        P = np.array([v.co[:] for v in bm.verts])
+        u, h, az = (nose - P[:, 0]) * S, P[:, 2] * S, np.abs(P[:, 1] - yc) * S
+        px, _ = cam_px(P, "SIDE", yc, ftyre_x)
+        x0, x1 = A["x"]
+        w = s(px[:, 0], x0, x0 + A["fade"]) * (1 - s(px[:, 0], x1 - A["fade"], x1))
+        side = (az > A["az"]) & (h < A["h"]) & (w > 0)
+        mats = lambda v: {f.material_index for f in v.link_faces}   # noqa: E731
+        bd = np.array([v.index for v in bm.verts if side[v.index] and {trim, paint} <= mats(v)])
+        if not len(bd):
+            bm.free()
+            continue
+        bins = np.arange(u[bd].min(), u[bd].max() + 0.02, 0.02)
+        k = np.digitize(u[bd], bins)
+        bu = np.array([u[bd][k == i].mean() for i in np.unique(k)])
+        bh = np.array([np.median(h[bd][k == i]) for i in np.unique(k)])
+        f = h - (np.interp(u, bu, bh) - A["d"] * w)
+        ok = side & (np.abs(h - np.interp(u, bu, bh)) < A["band"])
+        fv, kv = ({v: x[v.index] for v in bm.verts} for x in (f, ok))
+        cand = lambda fc: fc.material_index in (trim, paint) and all(kv[v] for v in fc.verts)   # noqa: E731
+        cut = {e for fc in bm.faces if cand(fc) for e in fc.edges if fv[e.verts[0]] * fv[e.verts[1]] < 0}
+        new = []
+        for e in sorted(cut, key=lambda e: e.index):
+            a, b = e.verts
+            _, nv = bmesh.utils.edge_split(e, a, fv[a] / (fv[a] - fv[b]))
+            fv[nv], kv[nv] = 0.0, True
+            new.append(nv)
+        bmesh.ops.connect_verts(bm, verts=new)
+        n = [0, 0]
+        for fc in bm.faces:
+            if cand(fc):
+                to = trim if np.mean([fv[v] for v in fc.verts]) < 0 else paint
+                n[to == paint] += fc.material_index != to
+                fc.material_index = to
+        bm.to_mesh(me)
+        bm.free()
+        print("PREP sill trim %s: border h %.3f-%.3f over u %.2f-%.2f, %d edges cut, %d faces to trim, %d to paint, "
+              "%d corners without a normal" % (o.name, bh.min(), bh.max(), bu.min(), bu.max(), len(new), n[0], n[1],
+                                               split_normals(me)))
+
+
 def gate_slide(meshes, nose, yc):
     """FIELD gate_slide: the tailgate's side seams moved out on the surface (the body round them and the tailgate both,
     so the seam stays closed): by `da` (m, lateral) in a tent `side` (in, out) round the seam's az at that height, over
@@ -1462,7 +1534,8 @@ def decals(bpy, meshes, nose, yc, ftyre_x):
     (mirrored across the centre line). One object per decal, its material `mat` (cars/model_x.py MAT_RGB); the faces
     lying on a lid or door (`on` beyond the body: the tailgate's lamp halves) in an object `<name>_<that object's
     initial>` riding it (cars/model_x.py PART_OBJS / SHELL_OBJS). `holes`: loops cut out of the outline; `front`: no
-    vertex past the body's nose by more than it (m)."""
+    vertex past the body's nose by more than it (m); `step`: the mesh's spacing (px, 6); `env` (px): each vertex `off`
+    along its ray from the envelope of the hits round it (below)."""
     import bmesh
     from mathutils import Vector
     from mathutils.bvhtree import BVHTree
@@ -1493,6 +1566,7 @@ def decals(bpy, meshes, nose, yc, ftyre_x):
         for t in E:
             bm.faces.new([vs[i] for i in t])
         off, lay, nrm = [], {}, {}                    # vertices whose ray met nothing or another part first; owners
+        reach = {}                                    # (env) per vertex: its pixel, ray, distance to its hit
         others = [world(cams[w]["C"]) for w in dc.get("compete", ())]
         for v in bm.verts:
             d = R.T @ np.array([(v.co.x - c["w"] / 2) / c["f"], (v.co.y - c["h"] / 2) / c["f"], 1.0])
@@ -1503,12 +1577,24 @@ def decals(bpy, meshes, nose, yc, ftyre_x):
                 continue
             if owner[fi] not in dc["on"] or pmat[fi] in dc.get("skip", ()) or not dc.get("u", (-9, 9))[0] < (nose - hit.x) * S < dc.get("u", (-9, 9))[1]:
                 off.append(v)
+            else:
+                reach[v] = (np.array(v.co[:2]), ray, (hit - eye).length)
             lay[v] = owner[fi]
             n = n if n.dot(ray) < 0 else -n                # off the surface along its normal (a ray-wise offset
             nrm[v] = n                                     # sank in where the view grazes it)
             v.co = hit + n * (dc["off"] / S)
             if "front" in dc:                         # not past the nose's tip by more than `front` m (the length)
                 v.co.x = min(v.co.x, tip + dc["front"] / S)
+        if dc.get("env"):     # (round 12) on the envelope of the hits within `env` px (their nearest, then the mean
+            ks = list(reach)  # of those) `off` along the ray: over a crumpled surface the normal-wise offsets
+            q = np.array([reach[v][0] for v in ks])  # scattered, the surface's folds stood through as chunks
+            t = np.array([reach[v][2] for v in ks])
+            nb = np.linalg.norm(q[:, None] - q[None], axis=2) <= dc["env"]
+            t = np.where(nb, np.where(nb, t[None], np.inf).min(1)[None], 0).sum(1) / nb.sum(1)
+            for v, t_ in zip(ks, t):
+                v.co = eye + reach[v][1] * (t_ - dc["off"] / S)
+                if "front" in dc:
+                    v.co.x = min(v.co.x, tip + dc["front"] / S)
         bmesh.ops.delete(bm, geom=off, context="VERTS")
         if others:      # compete: views also drawing this part; a face stays where its own view meets it squarest
             drop = []
@@ -1519,7 +1605,10 @@ def decals(bpy, meshes, nose, yc, ftyre_x):
                 if any(n.dot((e - p).normalized()) > own for e in others):
                     drop.append(f)
             bmesh.ops.delete(bm, geom=drop, context="FACES")
-        rider = {f: next((lay[v] for v in f.verts if lay[v] != dc["on"][0]), dc["on"][0]) for f in bm.faces}
+        # a face rides a lid or door only when all its corners lie on it (round 12: any one corner on the tailgate took
+        # the face along: SIDE's housing faces across the gate's side seam, 7 cm deep there, swung out past the half
+        # open gate's edge as black lines, GameMX4 3b6e80c doors-audit NW o50; by majority 1 px stayed open, W)
+        rider = {f: next((o_ for o_ in dc["on"][1:] if all(lay[v] == o_ for v in f.verts)), dc["on"][0]) for f in bm.faces}
         bm.normal_update()
         for f in bm.faces:                            # facing the camera
             if f.normal.dot(eye - f.calc_center_median()) < 0:
@@ -1708,7 +1797,19 @@ def main():
     lid_slide(meshes, nose, yc, (fx.min() + fx.max()) / 2)
     arch_lip(meshes, nose, yc, (fx.min() + fx.max()) / 2)
     rear_trim(meshes, nose, yc, (fx.min() + fx.max()) / 2)
+    sill_trim(meshes, nose, yc, (fx.min() + fx.max()) / 2)
     px_cut(meshes, nose, yc, (fx.min() + fx.max()) / 2)
+    mid = FIELD["weld_mid"]                           # (round 12) the centre line's slit at the nose closed
+    bm = bmesh.new()
+    o = next(o for o in meshes if o.name == mid["obj"])
+    bm.from_mesh(o.data)
+    vs = [v for v in bm.verts if abs(v.co.y - yc) * S < mid["plane"] and mid["u"][0] < (nose - v.co.x) * S < mid["u"][1]
+          and mid["h"][0] < v.co.z * S < mid["h"][1]]
+    n = len(bm.verts)
+    bmesh.ops.remove_doubles(bm, verts=vs, dist=mid["dist"] / S)
+    print("PREP weld mid %s: %d vertices welded" % (mid["obj"], n - len(bm.verts)))
+    bm.to_mesh(o.data)
+    bm.free()
     meshes.append(spoiler(bpy, meshes, nose, yc))
     meshes += decals(bpy, meshes, nose, yc, (fx.min() + fx.max()) / 2)
     print("PREP width x %.5f, axles u %.4f / %.4f h %.4f / %.4f r %.4f / %.4f, doors centred on y %.4f, arch faces %d"
