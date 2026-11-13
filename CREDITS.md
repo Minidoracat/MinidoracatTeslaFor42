@@ -54,11 +54,11 @@ The Tesla Model S body, doors, liftgate, frunk lid, glass and lamps are based on
 
 - **"Tesla Model S Plaid"** by **ValentunW** (Lals) — https://sketchfab.com/3d-models/tesla-model-s-plaid-9de8855fae324e6cbbb83c9b5288c961 (author: https://sketchfab.com/Lals)
 - Licensed under **CC BY 4.0** — http://creativecommons.org/licenses/by/4.0/
-- **Modified**: scaled to the official length, decimated, split into parts (doors, liftgate with the rear glass, frunk lid), re-textured (new UV layout, baked shading, paint colours, damage / light / part masks, smoked tail lamps), its interior, wheels, tyres, brakes, wipers, frunk and trunk linings, the underside of its frunk lid and its rear lettering and badges removed, a grille backing added, front / rear badges drawn (T, TESLA in chrome), red brake calipers added, its wheels and interior replaced by the mod's own (with door cards and a front trunk bin); converted for Project Zomboid.
+- **Modified**: reshaped to the owner's manual's dimensions and the official renders' proportions (height, width, rear overhang, rear corners, the body side at the B-pillar), decimated, split into parts (doors, liftgate with the rear glass, frunk lid), re-textured (new UV layout, baked shading, paint colours, damage / light / part masks, panel gaps drawn as thin lines, the lower bumpers and the rear diffuser in black, tail lamps in red bars and grey lenses), its interior, wheels, tyres, brakes, wipers, frunk and trunk linings, the underside of its frunk lid and its rear lettering and badges removed, a grille backing added, front / rear badges drawn (T, TESLA in chrome), red brake calipers added, its wheels and interior replaced by the mod's own (with door cards and a front trunk bin); converted for Project Zomboid.
 
 ValentunW does not endorse this mod.
 
-本 MOD 的 Model S 車身、車門、尾門、前車廂蓋、玻璃與車燈，改作自 ValentunW（Lals）的「Tesla Model S Plaid」（Sketchfab，上方連結），以 CC BY 4.0 授權（上方連結）。已修改：照官方車長縮放、減面、拆件（車門、連同後擋玻璃的尾門、前車廂蓋）、重做貼圖（新的 UV、烘焙光影、車漆顏色、損壞／車燈／零件遮罩、燻黑的尾燈），拿掉車內、輪子、輪胎、煞車、雨刷、前後行李廂內襯、前車廂蓋的底面與車尾原有的字樣和標誌，加上水箱護罩後的擋板，重畫車頭車尾的標誌（T、鍍鉻的 TESLA），加上紅色煞車卡鉗，輪子與車內換成本 MOD 自己的（車門內側加上門板飾件，前車廂蓋下加上置物槽），轉成 Project Zomboid 格式。ValentunW 沒有為本 MOD 背書。
+本 MOD 的 Model S 車身、車門、尾門、前車廂蓋、玻璃與車燈，改作自 ValentunW（Lals）的「Tesla Model S Plaid」（Sketchfab，上方連結），以 CC BY 4.0 授權（上方連結）。已修改：照車主手冊的尺寸與官方圖的比例調整外形（車高、車寬、後懸、車尾兩角、B 柱一帶的車身側面）、減面、拆件（車門、連同後擋玻璃的尾門、前車廂蓋）、重做貼圖（新的 UV、烘焙光影、車漆顏色、損壞／車燈／零件遮罩、把板縫畫成細線、前後保桿下半部與後擴散器改成黑色、尾燈分成紅條與灰色透鏡），拿掉車內、輪子、輪胎、煞車、雨刷、前後行李廂內襯、前車廂蓋的底面與車尾原有的字樣和標誌，加上水箱護罩後的擋板，重畫車頭車尾的標誌（T、鍍鉻的 TESLA），加上紅色煞車卡鉗，輪子與車內換成本 MOD 自己的（車門內側加上門板飾件，前車廂蓋下加上置物槽），轉成 Project Zomboid 格式。ValentunW 沒有為本 MOD 背書。
 
 ## Model X 車身模型 / Model X body model
 
