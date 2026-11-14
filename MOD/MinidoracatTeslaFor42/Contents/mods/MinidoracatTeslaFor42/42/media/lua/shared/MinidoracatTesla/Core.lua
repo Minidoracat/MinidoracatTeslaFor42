@@ -241,7 +241,9 @@ T.Specs = {
         massKg = 1235, -- curb mass (2.5 owner's manual 10-16)
         dcKw = false, -- Tesla published no DC fast charging for it: a Supercharger gives acKw, flat
         acKw = 16.8, -- 70 A x 240 V on the High Power Wall Connector (2.5 owner's manual 5-4)
-        chillForce = 1440, -- half its script force, the Model Y's ratio (3100 / 6260): T.CHILL_FORCE is above its 2880
+        -- T.CHILL_FORCE is above its 2880; this aims at the other cars' Chill 0-100 km/h (15.8 s): E2E feel-sp 2880 ->
+        -- 11.45 s, 1440 -> 23.27 s (tesla-rd-feel-chill-1114b), 0-100 about 1 / force
+        chillForce = 2100,
         regenEff = 0.6,
         softTop = true, -- the removable soft top (2.5 owner's manual 7-9) as a switch (user 2026-11-14)
         doorClip = { TrunkDoor = 1.0, EngineDoor = 1.0, SoftTop = 4.0 }, -- cars/roadster.py DOORS

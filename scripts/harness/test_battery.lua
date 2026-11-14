@@ -558,7 +558,7 @@ end
 local tx = cv.engineTx -- the same fake car as a Roadster, then back as it was (Model Y, Chill on)
 cv.script = "Base.MinidoracatTesla_Roadster"
 B.setForce(cv, true)
-check(cv.feature[3] == 1440, "Roadster: Chill halves its force (Specs chillForce), not T.CHILL_FORCE")
+check(cv.feature[3] == 2100, "Roadster: Chill sets its own force (Specs chillForce), not T.CHILL_FORCE")
 B.setForce(cv, false)
 check(cv.feature[3] == 2880, "Roadster: Chill off, its script force again")
 cv.script = "Base.MinidoracatTesla_ModelY"
