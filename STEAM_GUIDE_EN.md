@@ -2,7 +2,7 @@
 <!-- Steam guide source (English). The full description lives in this guide; the Workshop page only has a summary. Format and sync: pz-family-docs/release.md "完整說明：Steam 指南" -->
 <!-- 標題：📖 Minidoracat Tesla Collection Mod Guide: Cars, Charging, Keys and the App -->
 <!-- 摘要：A picture guide to Minidoracat Tesla Collection: the Model Y and Model 3 Performance, the Model Y L (six seats), the Model S and Model X Plaid (falcon wing doors and six seats), the first-generation Roadster 2.5 Sport (soft top), the Cybertruck Cyberbeast (cargo bed, Powershare home backup and the bed outlets), the battery and towing, the Wall Connector, the Mobile Connector and the V4 Superchargers at gas stations, the Tesla-style dashboard, key cards and phone keys, the Tesla app and Summon, Sentry and Camp Mode, Bioweapon Defense Mode and Chill, drive unit parts, and how it works with Vehicle Manager, the MiniMap, AutoDrive and Project Viewpoint, plus the sandbox options. -->
-<!-- Screenshots: docs/screenshots/steam/en/, shot by guide-shots-sp in the family repo's e2e/MinidoracatTeslaFor42 (Bioweapon Defense and Chill only: --define part=feat, with hover.py for the radial's hover text; Cybertruck shots: guide-ct-sp; Model S / X: guide-sx-sp; Model Y L shots (33, 34): guide-yl-sp; Summon shots: phone-summon-sp; FSD: fsd-shot-sp (01c is 01b cropped (350,370,1090,977), not used in the guide, referenced by the Workshop description: re-crop it when 01b is reshot and update the image URL in the description, see release.md); With other mods: guide-mods-sp; Project Viewpoint (31): vd-first-ModelS from this repo's one-off temp/oneoff/vp-detail-sp, cropped (80,40,1660,1080), same picture as zh, needs ZombieBuddy; V4 Supercharger (32): supercharger-sp's sc-EN-card / sc-CH-card, cropped (480,160,1480,990)) -->
+<!-- Screenshots: docs/screenshots/steam/en/, shot by guide-shots-sp in the family repo's e2e/MinidoracatTeslaFor42 (Bioweapon Defense and Chill only: --define part=feat, with hover.py for the radial's hover text; Cybertruck shots: guide-ct-sp; Model S / X: guide-sx-sp; Model Y L shots (33, 34): guide-yl-sp; Roadster shots (35, 36): guide-rd-sp (one CH run, same pictures as zh; 35 is four cars facing S at zoom 1.0 cropped (210,622,1710,967), 36 is one Radiant Red car with the soft top closed and stowed at zoom 0.5, each cropped (284,320,854,880), side by side with a 16 px gap); Summon shots: phone-summon-sp; FSD: fsd-shot-sp (01c is 01b cropped (350,370,1090,977), not used in the guide, referenced by the Workshop description: re-crop it when 01b is reshot and update the image URL in the description, see release.md); With other mods: guide-mods-sp; Project Viewpoint (31): vd-first-ModelS from this repo's one-off temp/oneoff/vp-detail-sp, cropped (80,40,1660,1080), same picture as zh, needs ZombieBuddy; V4 Supercharger (32): supercharger-sp's sc-EN-card / sc-CH-card, cropped (480,160,1480,990)) -->
 === 🚀 Quick start
 [b]中文版：[/b] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3829449828]Minidoracat Tesla Collection 完整說明[/url]
 
@@ -106,6 +106,7 @@ https://steamcommunity.com/sharedfiles/filedetails/?id=3829501237
 [*] [b]Interact key[/b]: at a rear door the interact key (keyboard or controller) takes a free second-row seat first, the third row once the second row is taken; to pick a seat, use the seat panel, where you can click a third-row seat directly.
 [/list]
 === 🧰 Roadster (2.5 Sport)
+{{img:35-roadster-en.jpg}}
 [list]
 [*] [b]The top first-generation car[/b]: the 2.5 Sport is the last and highest version of the first-generation Roadster (2010–2012 model years), built to the 2.5 owner's manual and the 2013 tesla.com site; the mechanics window shows 288 hp (the manual's 215 kW).
 [*] [b]Where it spawns[/b]: upscale neighbourhoods only, at the same chance there as the Model S, Model X and Cybertruck (half the Model Y's); never in parking lots.
@@ -128,8 +129,10 @@ https://steamcommunity.com/sharedfiles/filedetails/?id=3829501237
 [tr][td]Roadster 2.5 Sport[/td][td]Very Orange, Electric Blue, Arctic White, Thunder Gray, Jet Black, Lightning Green, Sterling Silver, Radiant Red, Glacier Blue, Twilight Blue, Brilliant Yellow, Obsidian Black, Fusion Red, Racing Green, Galactic Gray, Magma Orange, Cosmic Black[/td][td]2[/td][td]30[/td][/tr]
 [/table]
 [h3]The soft top: a convertible switch[/h3]
+{{img:36-roadster-softtop-en.jpg}}
 [list]
-[*] [b]No taking it off[/b]: the soft top is a switch; stowed, it folds away behind the seats and never becomes an item.
+[*] [b]No taking it off[/b]: the soft top is a switch; stowed, it folds away behind the seats, so there is no lifting it off and into the trunk as on the real car.
+[*] [b]Repairs[/b]: when damaged it can be repaired in the mechanics window, and taken off or fitted there too (the part it uses is a Trunk Lid).
 [*] [b]Open or close[/b]: click the roof on the dashboard's car picture, or press Soft Top on the app's Controls page; it stows or closes in about 4 seconds.
 [*] [b]Parked only[/b]: it does not open or close while the car is moving (nor does the real one).
 [*] [b]Drive with the top down[/b]: a stowed soft top does not raise the dashboard's Close before driving reminder; the top view draws the roof in blue, not in the open-door warning colour.

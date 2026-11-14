@@ -2,7 +2,7 @@
 <!-- Steam 指南稿源（繁中）：MOD 的完整說明以本指南為準，簡介只放摘要。格式、版面與同步方式見 pz-family-docs/release.md「完整說明：Steam 指南」 -->
 <!-- 標題：📖 Minidoracat Tesla Collection MOD 完整說明：車、充電、鑰匙與 App -->
 <!-- 摘要：Minidoracat Tesla Collection 的圖文說明：Model Y 與 Model 3 Performance、Model Y L（六座）、Model S 與 Model X Plaid（鷹翼門與 6 座）、初代 Roadster 2.5 Sport（敞篷軟頂篷）、Cybertruck Cyberbeast（車斗、Powershare 住宅備援與車斗插座）、電池與拖車耗電、壁掛式充電座、行動充電器與加油站的 V4 超級充電座、特斯拉風格儀表、卡片鑰匙與手機鑰匙、手機 Tesla App 與召喚、哨兵與露營模式、生物武器防禦模式與舒適模式、驅動單元零件，以及和 Vehicle Manager、小地圖、AutoDrive、Project Viewpoint 一起用的規則與沙盒選項。 -->
-<!-- 截圖：docs/screenshots/steam/zh/，拍法見家族庫 e2e/MinidoracatTeslaFor42 的 guide-shots-sp（生物武器防禦與舒適模式只跑那段用 --define part=feat，圓盤停留文字要另開 hover.py；Cybertruck 圖用 guide-ct-sp、Model S／X 圖用 guide-sx-sp、Model Y L 的圖（33、34）用 guide-yl-sp、召喚圖用 phone-summon-sp、FSD 圖用 fsd-shot-sp（01c 是 01b 裁 (350,370,1090,977)，指南不用，給 Workshop 簡介引用：重拍 01b 要一起重裁，並照 release.md 換簡介裡的圖片網址）、「和其他 MOD 一起用」用 guide-mods-sp；Project Viewpoint 那張（31）是本 repo 一次性情境 temp/oneoff/vp-detail-sp 的 vd-first-ModelS 裁 (80,40,1660,1080)，中英同一張，要裝 ZombieBuddy 才拍得到；V4 超級充電座那張（32）是 supercharger-sp 的 sc-CH-card／sc-EN-card 裁 (480,160,1480,990)） -->
+<!-- 截圖：docs/screenshots/steam/zh/，拍法見家族庫 e2e/MinidoracatTeslaFor42 的 guide-shots-sp（生物武器防禦與舒適模式只跑那段用 --define part=feat，圓盤停留文字要另開 hover.py；Cybertruck 圖用 guide-ct-sp、Model S／X 圖用 guide-sx-sp、Model Y L 的圖（33、34）用 guide-yl-sp、Roadster 的圖（35、36）用 guide-rd-sp（只跑 CH 一輪、中英同一張；35 是四台車頭朝 S、縮放 1.0 裁 (210,622,1710,967)，36 是同一台 Radiant Red 軟頂篷蓋著與收起、縮放 0.5 各裁 (284,320,854,880) 左右拼、間隔 16）、召喚圖用 phone-summon-sp、FSD 圖用 fsd-shot-sp（01c 是 01b 裁 (350,370,1090,977)，指南不用，給 Workshop 簡介引用：重拍 01b 要一起重裁，並照 release.md 換簡介裡的圖片網址）、「和其他 MOD 一起用」用 guide-mods-sp；Project Viewpoint 那張（31）是本 repo 一次性情境 temp/oneoff/vp-detail-sp 的 vd-first-ModelS 裁 (80,40,1660,1080)，中英同一張，要裝 ZombieBuddy 才拍得到；V4 超級充電座那張（32）是 supercharger-sp 的 sc-CH-card／sc-EN-card 裁 (480,160,1480,990)） -->
 === 🚀 快速上手
 [b]English version:[/b] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3829449879]Minidoracat Tesla Collection Mod Guide[/url]
 
@@ -106,6 +106,7 @@ https://steamcommunity.com/sharedfiles/filedetails/?id=3829501237
 [*] [b]按互動鍵上車[/b]：在後門按互動鍵（鍵盤或手把）先坐空的第二排，第二排有人才坐第三排；要指定座位就用座位面板，可以直接點第三排。
 [/list]
 === 🧰 Roadster（2.5 Sport）
+{{img:35-roadster-zh.jpg}}
 [list]
 [*] [b]初代的最高版本[/b]：2.5 Sport 是初代 Roadster 的最後一版、也是最高版本（2010–2012 年款），照 2.5 車主手冊與 2013 年官網；維修介面顯示 288 hp（車主手冊的 215 kW）。
 [*] [b]出現在哪[/b]：只在高級住宅區，在那裡的機率和 Model S、Model X、Cybertruck 一樣（Model Y 的一半）；停車格不會出現。
@@ -128,8 +129,10 @@ https://steamcommunity.com/sharedfiles/filedetails/?id=3829501237
 [tr][td]Roadster 2.5 Sport[/td][td]Very Orange、Electric Blue、Arctic White、Thunder Gray、Jet Black、Lightning Green、Sterling Silver、Radiant Red、Glacier Blue、Twilight Blue、Brilliant Yellow、Obsidian Black、Fusion Red、Racing Green、Galactic Gray、Magma Orange、Cosmic Black[/td][td]2[/td][td]30[/td][/tr]
 [/table]
 [h3]軟頂篷：敞篷開關[/h3]
+{{img:36-roadster-softtop-zh.jpg}}
 [list]
-[*] [b]不用拆[/b]：軟頂篷是開關，收起時收合在座椅後方，不會變成物品。
+[*] [b]不用拆[/b]：軟頂篷是開關，收起時收合在座椅後方，不用像實車那樣拆下來收進行李廂。
+[*] [b]維修[/b]：壞了可以在維修介面修理，也能拆下與安裝（用的零件是行李廂蓋）。
 [*] [b]開關[/b]：點儀表車子圖的車頂，或按 App 控制頁的「軟頂篷」；約 4 秒收起或蓋上。
 [*] [b]只能停車時切換[/b]：行駛中不能收起或蓋上（實車也是）。
 [*] [b]可以敞篷開車[/b]：收起的軟頂篷不會讓儀表跳「開車前關上」的提醒，俯視圖上的車頂畫成藍色，不是沒關的門的警告色。
