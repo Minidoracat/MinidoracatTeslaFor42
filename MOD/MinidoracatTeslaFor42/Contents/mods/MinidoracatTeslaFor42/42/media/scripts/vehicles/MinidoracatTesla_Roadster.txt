@@ -46,6 +46,9 @@ module Base
         {
             mechanicArea = Back,
             category = bodywork,
+            /* where the mechanic stands to fit, take off or repair it (vanilla walks to part:getArea(); with none the
+               action never starts). No `use`, so nothing on foot opens it: as the Cybertruck's tonneau */
+            area = SeatFrontLeft,
             durability = 5,
             itemType = Base.TrunkDoor,
             mechanicRequireKey = true,

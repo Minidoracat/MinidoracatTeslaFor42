@@ -170,5 +170,7 @@ if H.bodyBuilt("Roadster") then
     local top = block("SoftTop") or ""
     check(top:find("door", 1, true) and top:find("anim Open", 1, true) and top:find("anim Close", 1, true),
         "Roadster: part SoftTop is a door with Open / Close anims (RoadsterLua-needs.md)")
+    check(top:find("\n%s*area%s*=%s*SeatFrontLeft,") and not top:find("use%s*=", 1),
+        "Roadster: SoftTop has an area (vanilla fit / take off / repair walk to it) and no use (nothing on foot opens it)")
     check(not script:find("part DoorRear", 1, true) and not script:find("part SeatRear", 1, true), "Roadster: two doors, two seats")
 end
