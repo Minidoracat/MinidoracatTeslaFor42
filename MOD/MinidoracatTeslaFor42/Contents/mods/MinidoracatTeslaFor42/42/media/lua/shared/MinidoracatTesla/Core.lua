@@ -262,7 +262,7 @@ T.Specs = {
             { name = "RadiantRed", h = 0.998, s = 1.0, v = 0.838 },
             { name = "GlacierBlue", h = 0.583, s = 0.744, v = 0.666 },
             { name = "TwilightBlue", h = 0.704, s = 0.873, v = 0.347 },
-            { name = "BrilliantYellow", h = 0.13, s = 1.0, v = 0.944 },
+            { name = "BrilliantYellow", h = 0.125, s = 1.0, v = 0.979 },
             { name = "ObsidianBlack", h = 0.118, s = 0.507, v = 0.237 },
             { name = "FusionRed", h = 0.018, s = 1.0, v = 0.863 },
             { name = "RacingGreen", h = 0.456, s = 1.0, v = 0.319 },
