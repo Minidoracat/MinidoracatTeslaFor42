@@ -114,7 +114,7 @@ SIDE_GLASS = np.array((
     (0.127, 1.346), (0.050, 1.354), (0.005, 1.356), (-0.151, 1.355), (-0.212, 1.353), (-0.273, 1.346),
     (-0.320, 1.344), (-0.400, 1.335), (-0.477, 1.325), (-0.487, 1.322), (-0.505, 1.320), (-0.531, 1.316),
     (-0.620, 1.302), (-0.763, 1.275), (-0.848, 1.258), (-0.991, 1.225), (-1.047, 1.210), (-1.047, 1.210),
-    (-1.075, 1.203), (-1.075, 1.168), (-1.047, 1.157), (-1.047, 1.157), (-1.040, 1.155), (-1.017, 1.152),
+    (-1.075, 1.203), (-1.066, 1.168), (-1.047, 1.157), (-1.047, 1.157), (-1.040, 1.155), (-1.017, 1.152),
     (-0.968, 1.136), (-0.898, 1.119), (-0.822, 1.105), (-0.781, 1.102), (-0.724, 1.094), (-0.656, 1.081),
     (-0.588, 1.070), (-0.526, 1.063), (-0.500, 1.061), (-0.493, 1.060), (-0.479, 1.059), (-0.472, 1.058),
     (-0.465, 1.057), (-0.448, 1.056), (-0.436, 1.055), (-0.429, 1.054), (-0.417, 1.053), (-0.411, 1.052),
@@ -130,6 +130,9 @@ GLASS_BOTTOM = 37                    # SIDE_GLASS from here on: the lower edge, 
 _y = SIDE_GLASS[:, 0]
 SIDE_GLASS[GLASS_BOTTOM:, 1] += (0.020 * np.clip((-0.50 - _y[GLASS_BOTTOM:]) / 0.25, 0, 1)
                                  * np.clip((_y[GLASS_BOTTOM:] + 1.075) / 0.06, 0, 1))
+# round 8: the door glass's lower edge one smooth curve (the trace's 1-2 mm wiggles kinked the cut: a wavy edge on 02)
+_m = (np.arange(len(SIDE_GLASS)) >= GLASS_BOTTOM) & (_y > -0.45)
+SIDE_GLASS[_m, 1] = np.polyval(np.polyfit(_y[_m], SIDE_GLASS[_m, 1], 2), _y[_m])
 # round 6: its top edge over the roof 9 mm higher (01 side; 02 too, against 03), on a fuller roof edge (crown);
 # all the way to the tip (eased there, the edge bent in a cell and its cut ran 0.9 mm off)
 SIDE_GLASS[:GLASS_BOTTOM, 1] += 0.009 * np.clip((0.60 - _y[:GLASS_BOTTOM]) / 0.12, 0, 1)
@@ -158,12 +161,15 @@ SECTION = dict(
                               # edge, 02); behind the glass it meets
                               # the near-flat deck in a crease on TRUNK_PLAN's line (03, 06 top view: the haunch
                               # stands out below it)
-    crown=np.array([0.000, 0.000, 0.005, 0.012, 0.050, 0.100, 0.100, 0.085, 0.055, 0.045, 0.030, 0.030, 0.020,
+    crown=np.array([0.000, 0.000, 0.005, 0.012, 0.050, 0.060, 0.060, 0.070, 0.055, 0.045, 0.030, 0.030, 0.020,
                     0.020, 0.020]),   # roof / deck crown at the plan edge (the hood: hood_cap; the deck near flat;
-                                      # over the rear seats a fuller edge: the roof's outline on 02 and 03)
-    k=np.array([0.008, 0.030, 0.050, 0.055, 0.045, 0.030, 0.025, 0.025, 0.025, 0.020, 0.030, 0.035, 0.030, 0.012,
+                                      # over the rear seats a fuller edge: the roof's outline on 02 and 03; round 8
+                                      # over the windshield's roof part 0.10 -> 0.06: 01 side's gold rail above the glass)
+    k=np.array([0.008, 0.030, 0.050, 0.055, 0.045, 0.030, 0.025, 0.025, 0.025, 0.020, 0.045, 0.050, 0.040, 0.012,
                 0.012]),      # edge rounding (the front fenders roll over into the side: 01 front; ahead of the tail
-                              # the deck rolls over into the haunch: 03, one convex roll, no flat band under a crease)
+                              # the deck rolls over into the haunch: 03, one convex roll, no flat band under a crease;
+                              # round 8 rounder there, 0.030 / 0.035 / 0.030 -> 0.045 / 0.050 / 0.040: 03's bright
+                              # streak behind the C pillar)
 )
 # wheel houses (01: the arch openings 241 / 257 px about the hubs), inner wall, lip rounding
 ARCH = dict(front=dict(R=0.421, x_in=0.50, lip=0.012), rear=dict(R=0.448, x_in=0.50, lip=0.016))
