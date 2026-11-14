@@ -1115,14 +1115,16 @@ def geometry(body, zmid, wl, r, tire_w, belt_z, doors_y, port_yz, extra_areas=()
     open(os.path.join(TMP, "geometry_block.txt"), "w", newline="\n").write(block)
     # splice into the vehicle script: everything after the geometry marker up to the vehicle's closing brace is ours.
     # The hand-written head above the marker inherits the template with these doors and seats (MinidoracatTesla_
-    # template.txt: Core the front doors and seats, Base the rear ones too) and says as many seats
+    # template.txt: Core the front doors and seats, CoreNoFrunk the same without the frunk (Cybercab), Base the rear
+    # ones too) and says as many seats
     path = os.path.join(MEDIA, "scripts", "vehicles", NAME + ".txt")
     text = open(path, encoding="utf-8").read()
     head = text.index("\n", text.index(SCRIPT_MARK)) + 1
-    want = (f"template! = MinidoracatTesla{'Core' if two else 'Base'},", f"\n        seats = {len(seats)},")
-    if not all(w in text[:head] for w in want):
-        raise SystemExit(f"{NAME}.txt: the head above {SCRIPT_MARK!r} must have {want[0]!r} and {want[1].strip()!r} "
-                         f"(SEAT front_only {bool(two)})")
+    tpls = ("Core", "CoreNoFrunk") if two else ("Base",)
+    seats_line = f"\n        seats = {len(seats)},"
+    if not (any(f"template! = MinidoracatTesla{t}," in text[:head] for t in tpls) and seats_line in text[:head]):
+        raise SystemExit(f"{NAME}.txt: the head above {SCRIPT_MARK!r} must have template! = MinidoracatTesla"
+                         f"{' or '.join(tpls)} and {seats_line.strip()!r} (SEAT front_only {bool(two)})")
     tail = text.rindex("    }\n}")
     open(path, "w", encoding="utf-8", newline="\n").write(text[:head] + block + text[tail:])
     return {"zmid_ground": zmid, "body_width": w_body, "body_height": hgt, "length": ln,

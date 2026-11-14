@@ -72,12 +72,17 @@ function C.solve(e)
     local reach = g.eh > 0 and C.HANG_REACH or 0
     g.ax = g.ex + fx * reach
     g.ay = g.ey + fy * reach
-    -- plug sits outside the car flank the port is on: local x pushed outward by PLUG_REACH
+    -- plug sits outside the car flank the port is on: local x pushed outward by PLUG_REACH; a port in the rear bumper
+    -- (Specs plug.rear, Cybercab): local z pushed back instead (+z = forward)
     local lx, ly, lz = lp:x(), lp:y(), lp:z()
     local side = lx >= 0 and C.PLUG_REACH or -C.PLUG_REACH
     local w = vehicle:getWorldPos(lx, ly, lz, vWorld)         -- BaseVehicle.java:1891-1893 (x,y world; z see below)
     g.px, g.py = w:x(), w:y()
-    w = vehicle:getWorldPos(lx + side, ly, lz, vWorld)
+    if g.plug.rear then
+        w = vehicle:getWorldPos(lx, ly, lz - C.PLUG_REACH, vWorld)
+    else
+        w = vehicle:getWorldPos(lx + side, ly, lz, vWorld)
+    end
     g.bx, g.by = w:x(), w:y()
     -- ground under the plug: the car's floor level (BaseVehicle.java:3371-3377) plus the ramp height there
     -- (IsoGridSquare.getApparentZ, :10177-10196; vanilla ramps_01 tiles); the handle height is built into each car's mesh

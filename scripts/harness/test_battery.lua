@@ -65,6 +65,36 @@ if H.bodyBuilt("Roadster") then -- the vehicle script comes with the body
         "Roadster engineForce 4000 (by feel: 0-100 km/h 7.8 s; 215 kW x 10 = 2880 took 11.5 s), mass 486 (800 x 1,235 / 2,033)")
 end
 H.removeVehicle(rd)
+do -- Cybercab: 47.6 kWh (EPA 326 V x 146 Ah), an int item rounded up; the Model Y coefficients x 47.6 / 78.4
+local CC = "Base.MinidoracatTesla_Cybercab"
+local cc = H.vehicle({ script = CC, kwh = 23.8 })
+check(T.isTesla(cc) and B.part(cc):getInventoryItem():getFullType() == "Base.MinidoracatTesla_CybercabBattery"
+    and B.capacity(B.part(cc)) == 47.6 and near(B.pct(B.part(cc)), 50)
+    and H.scriptValue("items/MinidoracatTesla_items.txt", "MaxCapacity", "item MinidoracatTesla_CybercabBattery") == 48,
+    "Cybercab is a Tesla with its own 47.6 kWh pack (item MaxCapacity 48)")
+check(near(47.6 * T.kmPerKwh(cc), 75.7, 0.1), string.format("Cybercab: a full pack at 50 km/h = one vanilla CarNormal tank too (%.2f km)", 47.6 * T.kmPerKwh(cc)))
+local cs, ys = T.spec(cc), T.Specs["Base.MinidoracatTesla_ModelY"]
+check(cs.massKg == 1412 and cs.dcKw == 152 and cs.acKw == nil and cs.regenEff == 0.6 and cs.v12Kwh == ys.v12Kwh
+    and cs.butterfly == true and cs.frunk == false and not T.hasFrunk(cs) and cs.hepa == nil and cs.falcon == nil
+    and cs.softTop == nil and cs.tonneau == nil and cs.powershare == nil and #cs.colors == 1 and cs.colors[1].name == "Gold",
+    "Cybercab: regen mass 1412 kg (EPA), DC 152 kW, butterfly doors, no front trunk; no HEPA, falcon, soft top, tonneau; Gold only")
+check(cs.chillForce and cs.chillForce > 0 and cs.chillForce < 2190, "Cybercab: its own Chill force, below its 2190 (T.CHILL_FORCE 3100 is above it)")
+local others = {}
+for name, s in pairs(T.Specs) do
+    if name ~= CC and (s.butterfly ~= nil or s.frunk ~= nil or not T.hasFrunk(s)) then others[#others + 1] = name end
+end
+check(#others == 0 and T.hasFrunk(nil), "the other seven: no butterfly, a front trunk (no frunk field) (" .. table.concat(others, ",") .. ")")
+if H.bodyBuilt("Cybercab") then -- the vehicle script comes with the body (CybercabLua-needs.md)
+    local f = assert(io.open("MOD/MinidoracatTeslaFor42/Contents/mods/MinidoracatTeslaFor42/42/media/scripts/vehicles/MinidoracatTesla_Cybercab.txt", "r"))
+    local txt = f:read("*a")
+    f:close()
+    check(H.scriptValue("vehicles/MinidoracatTesla_Cybercab.txt", "engineForce") == 2190
+        and H.scriptValue("vehicles/MinidoracatTesla_Cybercab.txt", "mass") == 556
+        and txt:find("\n        template! = MinidoracatTeslaCoreNoFrunk,", 1, true) ~= nil and not txt:find("Frunk%s*{"),
+        "Cybercab script: engineForce 2190 (163 kW x 10), mass 556 (800 x 1,412 / 2,033), CoreNoFrunk, no Frunk part")
+end
+H.removeVehicle(cc)
+end
 local full = H.vehicle({ kwh = 78.4 })
 -- vanilla repair() fills the tank to the item's int MaxCapacity (VehiclePart.java:989-992): 79 for the 78.4 kWh pack
 B.part(full):setContainerContentAmount(79)
@@ -552,8 +582,10 @@ check(B.part(cv):getModData().chill == true and cv.feature[1] == 87 and cv.featu
     and cv.engineTx == 1 and cv.transmits == cmd0 + 1, "chill by the driver: force CHILL_FORCE (quality, loudness kept), engine and modData sent")
 check(cv.maxSpeedSet == nil, "Chill: top speed never touched")
 for name, s in pairs(T.Specs) do -- Chill must slow the car: a new car below T.CHILL_FORCE needs Specs chillForce
-    local force = H.scriptValue("vehicles/MinidoracatTesla_" .. s.model .. ".txt", "engineForce")
-    check((s.chillForce or T.CHILL_FORCE) < force, name .. ": Chill force below its script force " .. tostring(force))
+    if H.bodyBuilt(s.model) then -- the force is in the car's vehicle script (a car still being built: H.BUILDING)
+        local force = H.scriptValue("vehicles/MinidoracatTesla_" .. s.model .. ".txt", "engineForce")
+        check((s.chillForce or T.CHILL_FORCE) < force, name .. ": Chill force below its script force " .. tostring(force))
+    end
 end
 local tx = cv.engineTx -- the same fake car as a Roadster, then back as it was (Model Y, Chill on)
 cv.script = "Base.MinidoracatTesla_Roadster"
@@ -626,6 +658,8 @@ check(Z.parkingstall.vehicles["Base.MinidoracatTesla_ModelYL"].spawnChance == 3
     and Z.good.vehicles["Base.MinidoracatTesla_ModelYL"].spawnChance == 4, "spawn table Model Y L: parkingstall 3, good 4")
 check(Z.good.vehicles["Base.MinidoracatTesla_Roadster"].spawnChance == 2
     and Z.parkingstall.vehicles["Base.MinidoracatTesla_Roadster"] == nil, "spawn table Roadster: good 2, not in parking stalls")
+check(Z.parkingstall.vehicles["Base.MinidoracatTesla_Cybercab"].spawnChance == 1
+    and Z.good.vehicles["Base.MinidoracatTesla_Cybercab"] == nil, "spawn table Cybercab: parkingstall 1, not in good (a fleet car)")
 
 H.section("dispatch")
 local hits = 0

@@ -154,7 +154,7 @@ check((read("shaders/MinidoracatTesla_vehicle.vert") or ""):find("MatrixPalette"
 check(read("shaders/vehicle_multiuv.vert") == nil, "no vehicle_multiuv.vert override left")
 
 -- every seat shows its passenger; the passengers are the script's seats, the geometry's PassengerSeatN, and two for a
--- car on MinidoracatTeslaCore (front doors only), four or six on MinidoracatTeslaBase
+-- car on MinidoracatTeslaCore or MinidoracatTeslaCoreNoFrunk (front doors only), four or six on MinidoracatTeslaBase
 for car, g in pairs(geos) do
     local shown, seats = {}, 0
     for id, block in g:gmatch("passenger (%w+)%s*(%b{})") do
@@ -163,21 +163,34 @@ for car, g in pairs(geos) do
     end
     local n, side = tonumber(texts[car]:match("\n        seats = (%d+),")), select(2, H.carDoors(car))
     check(n ~= nil and seats == n and #shown == n and g:find("template = PassengerSeat" .. tostring(n) .. ",", 1, true) ~= nil
-        and (side == "MinidoracatTeslaCore") == (n == 2), car .. ": " .. tostring(n) .. " seats (" .. tostring(side)
+        and (side == "MinidoracatTeslaCore" or side == "MinidoracatTeslaCoreNoFrunk") == (n == 2), car .. ": " .. tostring(n) .. " seats (" .. tostring(side)
         .. ", PassengerSeat" .. tostring(n) .. ") show their passenger (" .. table.concat(shown, ",") .. ")")
 end
 
--- the two templates (MinidoracatTesla_template.txt): Core has the front doors, seats and side windows; Base is Core's
--- template lines up to its last pair of front doors, each front pair followed by its rear pair, then
--- template! = Core and nothing else: it adds the rear three pairs and keeps the single template's part order
--- (scripts/vehicle_parts.py --against <rev>)
+-- the three templates (MinidoracatTesla_template.txt): CoreNoFrunk has the front doors, seats and side windows and no
+-- frunk (Cybercab); Core is CoreNoFrunk's template lines, then part Frunk, then template! = CoreNoFrunk and nothing
+-- else; Base is Core's template lines up to its last pair of front doors, each front pair followed by its rear pair,
+-- then template! = Core and nothing else. Each keeps the single template's part order (scripts/vehicle_parts.py
+-- --against <rev>: the frunk right after the template parts, the rear three pairs among them)
 local function tlines(block)
     local t = {}
     for ln in block:gmatch("\n        (template!? = [^\n]+),") do t[#t + 1] = ln end
     return t
 end
 local core, base = tpl:match("template vehicle MinidoracatTeslaCore%s*(%b{})") or "", tpl:match("template vehicle MinidoracatTeslaBase%s*(%b{})") or ""
-local cl, bl, want = tlines(core), tlines(base), {}
+local nf = tpl:match("template vehicle MinidoracatTeslaCoreNoFrunk%s*(%b{})") or ""
+local cl, bl, nl, want = tlines(core), tlines(base), tlines(nf), {}
+local function at(s, pat) return s:find(pat, 1, true) or -1 end
+local rest = core:gsub("/%*.-%*/", "")
+rest = rest:gsub("\n        template!? = [^\n]+,", "")
+rest = rest:gsub("\n        part Frunk%s*%b{}", "")
+local fr, lastTpl = at(core, "\n        part Frunk"), at(core, "\n        template = Headlight,")
+check(#nl == 21 and table.concat(cl, "\n") == table.concat(nl, "\n") .. "\ntemplate! = MinidoracatTeslaCoreNoFrunk"
+    and rest:match("^{%s*}$") ~= nil and fr > lastTpl and lastTpl > 0 and fr < at(core, "template! = ")
+    and nl[#nl] == "template = Headlight",
+    "template Core: CoreNoFrunk's 21 template lines, then part Frunk, then template! = CoreNoFrunk, nothing else")
+check(not nf:find("Frunk", 1, true) and nf:find("part GasTank", 1, true) ~= nil and nf:find("part CabinDetail", 1, true) ~= nil,
+    "template CoreNoFrunk: every shared part block, no Frunk")
 for _, ln in ipairs(cl) do
     want[#want + 1] = ln
     local pre = ln:match("^(template = %w+/part/%w+)FrontRight$")
@@ -194,9 +207,11 @@ local function doorsOf(block)
     return table.concat(t, ",")
 end
 check(doorsOf(core) == table.concat(H.TEMPLATE_DOORS.MinidoracatTeslaCore, ",")
+    and doorsOf(nf) == table.concat(H.TEMPLATE_DOORS.MinidoracatTeslaCoreNoFrunk, ",")
     and doorsOf(base) == table.concat(H.TEMPLATE_DOORS.MinidoracatTeslaBase, ",")
-    and not core:find("SeatRear", 1, true) and not core:find("WindowRear", 1, true) and not core:find("DoorRear", 1, true),
-    "template Core: the front doors only, no rear seat / window / door; Base all four (H.TEMPLATE_DOORS)")
+    and not (core .. nf):find("SeatRear", 1, true) and not (core .. nf):find("WindowRear", 1, true)
+    and not (core .. nf):find("DoorRear", 1, true),
+    "template Core / CoreNoFrunk: the front doors only, no rear seat / window / door; Base all four (H.TEMPLATE_DOORS)")
 
 -- Six seats (template PassengerSeat6): the Model X and the Model Y L. The 2nd row (Middle*) gets in through the rear
 -- doors (DoorRear*: the Model X's falcon wings, the Model Y L's ordinary doors); the 3rd row (Rear*) has its own way in

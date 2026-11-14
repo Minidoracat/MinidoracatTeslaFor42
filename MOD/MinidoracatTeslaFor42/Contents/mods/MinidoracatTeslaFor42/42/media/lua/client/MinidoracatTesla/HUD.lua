@@ -54,6 +54,9 @@ local POW2 = { 1, 2, 4, 8, 16, 32, 64, 128, 256 }
 -- the doors from viewBox 80.3 to 110.2 (x 71-97) on the car's sides, the soft top between them over the seats (its
 -- roof viewBox y 34-62.3 = y 30-55, along the doors), the hood from the doors' front edge (x 97, the windscreen split
 -- as on the Model Y). The rear deck between the trunk lid and the doors (x 45-71) opens nothing.
+-- The Cybercab (build_atlas.py car_cybercab, from the rescue sheet's line art): the trunk lid from the roof's end
+-- (viewBox 69 = x 61), the doors from viewBox 82 to 118 (x 72-104), split at the roof's spine like the other cars'
+-- doors; the rear quarter (x 61-72) and the hood (no front trunk, T.hasFrunk) open nothing.
 local ZONES = {
     ModelY = {
         { 5, 0, 0, 45, 85 }, { 3, 45, 0, 69, 42.5 }, { 4, 45, 42.5, 69, 85 },
@@ -82,6 +85,9 @@ local ZONES = {
     Roadster = {
         { 5, 0, 0, 45, 85 }, { 1, 71, 0, 97, 30 }, { 9, 71, 30, 97, 55 }, { 2, 71, 55, 97, 85 },
         { 7, 97, 0, 140, 85 },
+    },
+    Cybercab = {
+        { 5, 0, 0, 61, 85 }, { 1, 72, 0, 104, 42.5 }, { 2, 72, 42.5, 104, 85 },
     },
 }
 HUD.ZONES = ZONES
@@ -250,12 +256,14 @@ function HUD:attach(vehicle)
     self.battery = T.Battery.part(vehicle)
     self.heaterPart = vehicle:getPartById("Heater")
     self.radioPart = vehicle:getPartById("Radio")
-    local model = T.spec(vehicle).model -- this car's top view and door zones (attach runs for Teslas only)
+    local spec = T.spec(vehicle)
+    local model = spec.model -- this car's top view and door zones (attach runs for Teslas only)
+    local hood = T.hasFrunk(spec) -- no front trunk: the hood is not a lid here (no overlay, no "close it" message)
     self.doors, self.doorSpr = {}, {}
     for i = 1, #DOORS do
         local own = DOOR_SPR[i] .. "_" .. model
         self.doorSpr[i] = T.HUDAtlas[1][own] and own or DOOR_SPR[i]
-        local p = vehicle:getPartById(DOORS[i])
+        local p = (hood or DOORS[i] ~= "EngineDoor") and vehicle:getPartById(DOORS[i])
         if p and p:getDoor() then self.doors[#self.doors + 1] = { part = p, bit = POW2[i], spr = self.doorSpr[i], name = DOORS[i] } end
     end
     self.fake = BaseVehicle.getFakeSpeedModifier() -- BaseVehicle.java:666; vanilla :256 multiplies the gauge too

@@ -424,6 +424,52 @@ v.parts.DoorRearLeft, v.parts.DoorRearRight = rlPart, rrPart
 v.script = script0
 for _, dd in ipairs(v.doors) do dd.d.locked = true end
 end
+do -- the Cybercab (Specs butterfly, frunk = false): its two doors at once (they swing up and out, rider guide p.5); no
+-- frunk and no hood from the app ("the hood cannot be opened"). Other cars: butterfly NO_DOOR, their frunk as before
+local FL, FR, hood = v.parts.DoorFrontLeft.d, v.parts.DoorFrontRight.d, v.parts.EngineDoor.d
+local script0 = v.script
+d = act(owner, "butterfly", true)
+check(d.why == "NO_DOOR" and not FL.open and not FR.open, "butterfly on a Model Y -> NO_DOOR, its front doors stay shut")
+v.script = "Base.MinidoracatTesla_ModelX"
+d = act(owner, "butterfly", true)
+check(d.why == "NO_DOOR" and not FL.open and not FR.open, "butterfly on a Model X (falcon, not butterfly) -> NO_DOOR")
+v.script = "Base.MinidoracatTesla_Cybercab"
+d = act(owner, "falcon", true)
+check(d.why == "NO_DOOR" and not v.parts.DoorRearLeft.d.open, "falcon on a Cybercab -> NO_DOOR (only the flag counts)")
+d = act(owner, "frunk", true)
+check(d.why == "NO_DOOR" and not hood.open, "frunk on a Cybercab (no front trunk) -> NO_DOOR, the hood stays shut")
+for _, dd in ipairs(v.doors) do dd.d.locked = true end
+v.kmh = 20
+d = act(owner, "butterfly", true)
+check(d.why == "MOVING" and not FL.open and not FR.open and FL.locked, "butterfly while moving -> MOVING, nothing moves")
+v.kmh = 0
+FR.broken = true
+d = act(owner, "butterfly", true)
+check(d.why == "LOCK_BROKEN" and not FL.open and not FR.open and FL.locked and FR.locked,
+    "butterfly, the right door's lock broken -> LOCK_BROKEN before anything moves")
+FR.broken = false
+F.sent = {}
+d = act(owner, "butterfly", true)
+local anims = {}
+for _, m in ipairs(F.sent) do if m.cmd == "partAnim" then anims[#anims + 1] = m.args.part end end
+table.sort(anims)
+check(d.why == nil and d.on == true and FL.open and FR.open and not FL.locked and not FR.locked
+    and table.concat(anims, ",") == "DoorFrontLeft,DoorFrontRight", "butterfly: both doors unlocked and opened, partAnim for each")
+check(last("appState") and last("appState").butterfly == true and last("appState").frunk == nil and last("appState").falcon == nil,
+    "butterfly: the record says open; no frunk or falcon field on a Cybercab")
+local ba = R.stats.actions
+d = act(owner, "butterfly", true)
+check(d.why == nil and d.on == true and R.stats.actions == ba, "butterfly already open, app asks open: nothing moves")
+d = act(owner, "butterfly", false)
+check(d.why == nil and d.on == false and not FL.open and not FR.open and not FL.locked and not FR.locked,
+    "butterfly closed: shut, and unlocked (opening them unlocked the car, as by hand; the app's lock locks it)")
+check(last("appState").butterfly == false and last("appState").locked == false, "butterfly: the record says shut, car unlocked")
+check(act(owner, "lock").why == nil and FL.locked and FR.locked, "the app's lock locks the Cybercab's doors again")
+v.script = script0
+R.remember(v)
+check(R.record(9001).butterfly == nil and R.record(9001).frunk == false, "Model Y record: no butterfly field, its frunk shut")
+for _, dd in ipairs(v.doors) do dd.d.locked = true end
+end
 
 -- charging: no cable -> NOT_PLUGGED; with a cable the call goes to Charge.setStopped
 d = act(owner, "charge", false)
@@ -519,6 +565,16 @@ d = act(owner, "softtop", true)
 check(asked[1].code == "PASSENGER" and d.why == answer.why and not v.parts.SoftTop.d.open,
     "soft top: VM PASSENGER (like the doors); refused (" .. tostring(d.why) .. ") -> nothing moves")
 v.parts.SoftTop, v.script = nil, vmScript
+end
+do
+local vmScript = v.script
+asked = {}
+v.script = "Base.MinidoracatTesla_Cybercab"
+d = act(owner, "butterfly", true)
+check(asked[1].code == "PASSENGER" and d.why == answer.why and not v.parts.DoorFrontLeft.d.open,
+    "Cybercab doors: VM PASSENGER (like the doors in person); refused (" .. tostring(d.why) .. ") -> nothing moves")
+v.script = vmScript
+asked = {}
 end
 asked = {}
 act(owner, "charge", true)
@@ -1217,6 +1273,34 @@ check(App.carLabel(nil, "MinidoracatTesla_Roadster") == "Roadster" and a.model =
 state({ car = "MinidoracatTesla_ModelY", skin = 0, softtop = true })
 check(not table.concat(a.cells, ","):find("softtop", 1, true), "Model Y: no soft top cell (a stray softtop field in its record too)")
 end
+do -- Cybercab (Specs butterfly, frunk = false): a doors cell, no frunk cell, no frunk quick button; trunk lid words
+state({ car = "MinidoracatTesla_Cybercab", skin = 0, butterfly = false })
+a.b.controls:forceClick()
+local cc = table.concat(a.cells, ",")
+check(cc == "flash,horn,trunk,butterfly" and a.b.butterfly.shown and not a.b.frunk.shown and not a.b.butterfly.on
+    and not a.b.falcon.shown and a.b.butterfly.icon == "i_butterfly" and T.HUDAtlas[1].i_butterfly ~= nil
+    and T.HUDAtlas[2].i_butterfly ~= nil and a.b.butterfly.tipKey == "IGUI_MinidoracatTesla_Tip_AppButterfly"
+    and a.b.trunk.tipKey == "IGUI_MinidoracatTesla_Tip_AppTrunkLid", "Cybercab: cells " .. cc .. ", the doors cell (shut), no frunk")
+check(a.rowSub.controls == "IGUI_MinidoracatTesla_App_ControlsSubCybercab"
+    and a.b.lock.tipKey == "IGUI_MinidoracatTesla_Tip_AppUnlockLid", "Cybercab: its controls line, the (locked) lock tip names doors and trunk")
+a.b.butterfly:forceClick()
+local ccmd, cargs = sentLast()
+check(ccmd == "appAction" and cargs.act == "butterfly" and cargs.on == true, "doors cell, doors shut -> appAction butterfly, on = true")
+state({ car = "MinidoracatTesla_Cybercab", skin = 0, butterfly = true })
+check(a.b.butterfly.on, "Cybercab: a door open -> the doors cell lit")
+a.b.back:forceClick()
+check(table.concat(a.quick, ",") == "lock,qcharge,qtrunk" and not a.b.qfrunk.shown and a.b.qtrunk.shown,
+    "Cybercab home: no frunk quick button (lock, charge, trunk)")
+T.ClientCommands.appDone({ key = 9001, act = "butterfly", on = true })
+check(a.toast.text == "IGUI_MinidoracatTesla_App_Done_butterfly_on", "Cybercab: 'doors opened'")
+check(App.carLabel(nil, "MinidoracatTesla_Cybercab") == "Cybercab" and a.model == "Cybercab" and a.carSpr == "car_Cybercab"
+    and T.HUDAtlas[2].wm_Cybercab ~= nil and T.HUDAtlas[2].trim_Cybercab ~= nil, "Cybercab: named 'Cybercab', its own top view and wordmark")
+state({ car = "MinidoracatTesla_ModelY", skin = 0, butterfly = true })
+a.b.controls:forceClick()
+check(table.concat(a.cells, ",") == "flash,horn,frunk,trunk", "Model Y: frunk cell, no doors cell (a stray butterfly field in its record too)")
+a.b.back:forceClick()
+check(table.concat(a.quick, ",") == "lock,qcharge,qfrunk,qtrunk" and a.b.qfrunk.shown, "Model Y home: its frunk quick button")
+end
 state({ car = "MinidoracatTesla_Model3", skin = 5 })
 a.b.controls:forceClick()
 check(table.concat(a.cells, ",") == "flash,horn,frunk,trunk" and not a.b.tonneau.shown and not a.b.falcon.shown,
@@ -1243,8 +1327,8 @@ for script, s in pairs(T.Specs) do
     for k = 1, 2 do
         for _, pre in ipairs({ "car_", "wm_", "trim_" }) do need(T.HUDAtlas[k][pre .. s.model], pre .. s.model .. "@" .. k) end
     end
-    -- the app pictures come with the car's body (convert.py appcar): the Roadster's once its vehicle script is there
-    if s.model ~= "Roadster" or H.bodyBuilt("Roadster") then
+    -- the app pictures come with the car's body (convert.py appcar): a car still being built (H.BUILDING) has none yet
+    if H.bodyBuilt(s.model) then
         for _, c in ipairs(s.colors) do
             local f = io.open("MOD/MinidoracatTeslaFor42/Contents/mods/MinidoracatTeslaFor42/42/media/textures/MinidoracatTesla/HUD/"
                 .. s.appCar .. c.name .. ".png", "rb")

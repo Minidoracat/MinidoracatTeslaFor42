@@ -111,6 +111,20 @@ check(rdw.names[1] == "IGUI_MinidoracatTesla_Part_GasTank" and rdw.names[3] == "
     and T.partNameKey("Base.MinidoracatTesla_Roadster", "IGUI_VehiclePartEngineDoor") == "IGUI_MinidoracatTesla_Part_EngineDoor"
     and T.partNameKey("Base.MinidoracatTesla_Roadster", "IGUI_VehiclePartSoftTop") == nil,
     "Roadster (2.5 owner's manual): Trunk = the trunk lid, Hood, the soft top keeps its own key IGUI_VehiclePartSoftTop")
+do -- Cybercab (rider guide): Trunk = the trunk lid; the hood keeps vanilla's own words (ours say frunk lid in CN, PL, PTBR,
+-- RU), the outside menu's hood entries too; the lock tip names the doors and the trunk
+local CC = "Base.MinidoracatTesla_Cybercab"
+local ccw = { vehicle = H.vehicle({ script = CC }) }
+ISVehicleMechanics.initParts(ccw)
+local same = true
+for _, k in ipairs({ "IGUI_VehiclePartEngineDoor", "IGUI_OpenHood", "IGUI_CloseHood", "IGUI_LockHood", "IGUI_UnlockHood" }) do
+    same = same and T.partNameKey(CC, k) == k
+end
+check(ccw.names[1] == "IGUI_MinidoracatTesla_Part_GasTank" and ccw.names[3] == "IGUI_MinidoracatTesla_Part_TrunkLid" and same
+    and T.partNameKey(CC, "IGUI_MinidoracatTesla_Tip_AppLock") == "IGUI_MinidoracatTesla_Tip_AppLockLid"
+    and T.partNameKey("Base.MinidoracatTesla_ModelY", "IGUI_OpenHood") == "IGUI_MinidoracatTesla_OpenFrunk",
+    "Cybercab: the trunk lid, vanilla's hood words (no front trunk); the Model Y still opens its frunk")
+end
 check(ISVehicleMechanics.render(tw) == "IGUI_MinidoracatTesla_OutOfCharge", "Tesla: empty pack says out of charge")
 local vw = { vehicle = H.vehicle({ script = "Base.CarNormal" }) }
 ISVehicleMechanics.initParts(vw)

@@ -1,7 +1,7 @@
 -- Tesla app on the phone key, server side (client: client/MinidoracatTesla/PhoneApp.lua; reach: Keys.appReach).
 --   * appStatus { key }: every 2 s while a holder has the app open. The car as it is when the server has it loaded and
 --     the phone reaches it (grid up: any distance; grid down: Bluetooth, Keys.btRange()); else its last record.
---   * appAction { key, act, on }: lock, unlock, flash, horn, sentry, charge, frunk, trunk, tonneau, falcon, softtop,
+--   * appAction { key, act, on }: lock, unlock, flash, horn, sentry, charge, frunk, trunk, tonneau, falcon, butterfly, softtop,
 --     summon (+ mode, x, y, dir), powershare, outlet, psFloor (+ pct).
 --     Holder, reach, the VehicleManager right for doing the same thing in person, and the action's own rules are
 --     checked every time, but a summoner stopping their own summon skips reach and the VehicleManager.
@@ -86,7 +86,9 @@ function R.remember(v, create)
     r.locked = v:areAllDoorsLocked()
     r.sentry = md.sentry ~= nil
     r.drive = v:isEngineRunning() and not chg -- plugged in = Park, as the HUD gear (HUD.lua:276)
-    r.frunk, r.trunk = doorOpen(v, "EngineDoor"), doorOpen(v, "TrunkDoor")
+    local s = T.spec(v)
+    -- no front trunk (Specs frunk = false, Cybercab): nil, the app has no frunk cell
+    r.frunk, r.trunk = (T.hasFrunk(s) or nil) and doorOpen(v, "EngineDoor"), doorOpen(v, "TrunkDoor")
     r.tonneau = doorOpen(v, "TrunkTonneau") -- Cybertruck; false on a car without one
     r.chg = chargeState(chg)
     r.kw, r.target, r.mins = nil, nil, nil
@@ -95,9 +97,10 @@ function R.remember(v, create)
         r.target = chg.target or 90
         if r.chg == "charging" and (chg.kw or 0) > 0 then r.mins = math.floor(left * 60 + 0.5) end
     end
-    local s = T.spec(v)
     -- Model X falcon wings (Specs falcon): either one open; nil on other cars, whose rear doors are ordinary doors
     r.falcon = (s and s.falcon or nil) and (doorOpen(v, "DoorRearLeft") or doorOpen(v, "DoorRearRight"))
+    -- Cybercab doors (Specs butterfly): either one open; nil on other cars
+    r.butterfly = (s and s.butterfly or nil) and (doorOpen(v, "DoorFrontLeft") or doorOpen(v, "DoorFrontRight"))
     -- Roadster soft top (Specs softTop): open = top down; nil on other cars
     r.softtop = (s and s.softTop or nil) and doorOpen(v, "SoftTop")
     -- Cybertruck: Powershare (T.psState, its limit, the house's load and hours left) and the bed outlet
@@ -194,6 +197,7 @@ local VM_CODES = {
     lock = { "PASSENGER" }, unlock = { "PASSENGER" }, flash = { "PASSENGER" }, horn = { "PASSENGER" },
     sentry = { "PASSENGER" }, trunk = { "CARGO" }, tonneau = { "CARGO" }, frunk = { "REPAIR", "SALVAGE" },
     falcon = { "PASSENGER" }, -- rear doors in person: PASSENGER (MinidoracatVehicleManager_Actions.lua:20-24 doorAction)
+    butterfly = { "PASSENGER" }, -- the Cybercab's doors in person: PASSENGER, as the falcon wings
     softtop = { "PASSENGER" }, -- the top opens the cabin like a door: PASSENGER, as the doors
     charge = { "FUEL" },
     summon = { "DRIVE" }, -- the car moves: the right to drive it (VehicleManager also wraps startSummon itself)
@@ -242,46 +246,50 @@ local function swing(id)
     end
 end
 
--- Model X falcon wing doors (Specs falcon): both together, the same rules as swing. Every installed one takes part;
--- a broken lock on one that would open refuses the whole press before anything moves. Opening unlocks them; closing
--- locks them again while the front doors are locked (the car stays locked, like Liftgate.relock for the lids). A
--- Model Y's rear doors are ordinary doors: NO_DOOR on any car without Specs falcon.
-local FALCON = { "DoorRearLeft", "DoorRearRight" }
-local function falcon(player, v, open)
-    local s = T.spec(v)
-    if not (s and s.falcon) then return "NO_DOOR" end
-    if not T.stopped(v) then return "MOVING" end
-    local move, any = {}, false
-    for _, id in ipairs(FALCON) do
-        local part = v:getPartById(id)
-        local door = part and part:getInventoryItem() and part:getDoor()
-        if door then
-            any = true
-            if door:isOpen() ~= open then
-                if open and door:isLocked() and door:isLockBroken() then return "LOCK_BROKEN" end
-                move[#move + 1] = part
-            end
-        end
-    end
-    if not any then return "NO_DOOR" end
-    for _, part in ipairs(move) do
-        local door = part:getDoor()
-        if open and door:isLocked() then door:setLocked(false) end
-        T.Liftgate.swing(v, part, open, player:getUsername()) -- closing: relocks it (Liftgate.relock)
-    end
-    local relocked = false
-    if not open then -- a wing already shut by hand but left unlocked locks too, even with nothing to move
-        for _, id in ipairs(FALCON) do
+-- Two doors together (Specs flag): the Model X's falcon wing doors (falcon, the rear pair) and the Cybercab's doors
+-- (butterfly, the front pair; rider guide p.5: they swing up and out). The same rules as swing. Every installed one
+-- takes part; a broken lock on one that would open refuses the whole press before anything moves. Opening unlocks
+-- them. Closing the falcon wings locks them again while the front doors are locked (the car stays locked, like
+-- Liftgate.relock for the lids); the Cybercab's doors are the cabin's own, so once opened its car stays unlocked, as
+-- when its doors are opened by hand (the app's lock locks it again). NO_DOOR on any car without the flag: a Model Y's
+-- rear doors are ordinary doors.
+local function doorPair(flag, ids)
+    return function(player, v, open)
+        local s = T.spec(v)
+        if not (s and s[flag]) then return "NO_DOOR" end
+        if not T.stopped(v) then return "MOVING" end
+        local move, any = {}, false
+        for _, id in ipairs(ids) do
             local part = v:getPartById(id)
-            if part and part:getDoor() and T.Liftgate.relock(v, part) then
-                v:transmitPartDoor(part)
-                relocked = true
+            local door = part and part:getInventoryItem() and part:getDoor()
+            if door then
+                any = true
+                if door:isOpen() ~= open then
+                    if open and door:isLocked() and door:isLockBroken() then return "LOCK_BROKEN" end
+                    move[#move + 1] = part
+                end
             end
         end
+        if not any then return "NO_DOOR" end
+        for _, part in ipairs(move) do
+            local door = part:getDoor()
+            if open and door:isLocked() then door:setLocked(false) end
+            T.Liftgate.swing(v, part, open, player:getUsername()) -- closing a falcon wing: relocks it (Liftgate.relock)
+        end
+        local relocked = false
+        if not open then -- a wing already shut by hand but left unlocked locks too, even with nothing to move
+            for _, id in ipairs(ids) do
+                local part = v:getPartById(id)
+                if part and part:getDoor() and T.Liftgate.relock(v, part) then
+                    v:transmitPartDoor(part)
+                    relocked = true
+                end
+            end
+        end
+        -- "already so" (no log, no touch) only when nothing changed: a relock is a change
+        if #move == 0 and not relocked then return nil, open, true end
+        return nil, open
     end
-    -- "already so" (no log, no touch) only when nothing changed: a relock is a change
-    if #move == 0 and not relocked then return nil, open, true end
-    return nil, open
 end
 
 -- ------------------------------------------------------------------ summon: AutoDrive drives the empty car
@@ -420,10 +428,15 @@ local ACT = {
     powershare = function(player, v, on) return T.Powershare.set(player, v, "ps", on) end,
     outlet = function(player, v, on) return T.Powershare.set(player, v, "outlet", on) end,
     psFloor = function(player, v, _, args) return T.Powershare.set(player, v, "floor", nil, args.pct) end,
-    frunk = swing("EngineDoor"),
+    -- the hood of a car without a front trunk (Specs frunk = false, Cybercab) does not open (rider guide)
+    frunk = function(player, v, open)
+        if not T.hasFrunk(T.spec(v)) then return "NO_DOOR" end
+        return swing("EngineDoor")(player, v, open)
+    end,
     trunk = swing("TrunkDoor"),
     tonneau = swing("TrunkTonneau"), -- Cybertruck: the app opens the tonneau cover (owner's manual p.60)
-    falcon = falcon, -- Model X: both falcon wing doors
+    falcon = doorPair("falcon", { "DoorRearLeft", "DoorRearRight" }), -- Model X: both falcon wing doors
+    butterfly = doorPair("butterfly", { "DoorFrontLeft", "DoorFrontRight" }), -- Cybercab: both doors
     -- Roadster (Specs softTop): the soft top, the same rules as the lids (stopped, a broken lock refuses); NO_DOOR on any
     -- other car, even one that somehow has a SoftTop part
     softtop = function(player, v, open)
