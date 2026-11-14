@@ -108,9 +108,9 @@ https://steamcommunity.com/sharedfiles/filedetails/?id=3829501237
 === 🧰 Roadster (2.5 Sport)
 {{img:35-roadster-en.jpg}}
 [list]
-[*] [b]The top first-generation car[/b]: the 2.5 Sport is the last and highest version of the first-generation Roadster (2010–2012 model years), built to the 2.5 owner's manual and the 2013 tesla.com site; the mechanics window shows 288 hp (the manual's 215 kW).
+[*] [b]The top first-generation car[/b]: the 2.5 Sport is the last and highest version of the first-generation Roadster (2010–2012 model years), built to the 2.5 owner's manual and the 2013 tesla.com site.
 [*] [b]Where it spawns[/b]: upscale neighbourhoods only, at the same chance there as the Model S, Model X and Cybertruck (half the Model Y's); never in parking lots.
-[*] [b]Performance[/b]: the least thrust of any Tesla here, and the lightest car too.
+[*] [b]Performance[/b]: about 8 seconds to 100 km/h, a little behind the Model Y and ahead of the Model Y L, the same order as the real cars; the least thrust of any Tesla here, and the lightest car too. The mechanics window shows 400 hp: the thrust is tuned for that acceleration, not taken from the manual's 288 hp.
 [*] [b]Battery[/b]: a 56 kWh High Voltage Battery; a full charge still goes as far as a full tank in a vanilla car of the same class.
 [*] [b]16.8 kW charging limit[/b]: the real car only charges on AC, at up to 16.8 kW; all three chargers work, but it takes no more than 16.8 kW from any of them.
 [*] [b]Charging times[/b]: empty to 90% takes about 4 hours on a Wall Connector and about 7 on a Mobile Connector; a Supercharger gives a flat 16.8 kW that does not slow down as it fills, about 2 hours 40 minutes from 10% to 90% (game time). The charging card still says Supercharging, and the power stays the same.
@@ -421,7 +421,7 @@ A charger that works on the floor, no wall needed; slower than the Wall Connecto
 {{img:30-chill-en.jpg}}
 [list]
 [*] [b]Switching[/b]: the driver picks Turn on Chill in the V radial menu, and Turn off Chill to go back; it works while driving too.
-[*] [b]Acceleration only[/b]: acceleration gets smooth and gentle, top speed stays. Every Tesla but the Roadster uses the same pull: the Model Y and Cybertruck both take about 16 seconds to 100 km/h (normally about 7 for the Model Y and 5 for the Cybertruck); the Roadster, already the least powerful, slows down from its own pull.
+[*] [b]Acceleration only[/b]: acceleration gets smooth and gentle, top speed stays. Every Tesla but the Roadster uses the same pull: the Model Y and Cybertruck both take about 16 seconds to 100 km/h (normally about 7 for the Model Y and 5 for the Cybertruck); the Roadster is light, so it uses a smaller pull of its own and takes about 16 seconds too (normally about 8).
 [*] [b]Dashboard[/b]: Chill shows next to the speed while it is on.
 [*] [b]Stays with the car[/b]: still on when you get out and back in, or someone else drives.
 [*] [b]No extra saving[/b]: charge use still depends on how you drive; Chill alone does not save charge.

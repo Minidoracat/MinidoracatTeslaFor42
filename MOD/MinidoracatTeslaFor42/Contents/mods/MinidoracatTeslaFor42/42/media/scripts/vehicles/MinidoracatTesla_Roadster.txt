@@ -10,10 +10,12 @@ module Base
         {
             itemType = Base.MinidoracatTesla_RoadsterBattery,
         }
-        /* 2.5 Sport 215 kW = 288 hp (owner's manual 10-17; the 2013 site's 299 hp not used) x 10: the mechanics */
-        /* window shows power / 10 hp (ISVehicleMechanics.lua:1178). Create.Motor and vanilla repair() */
+        /* Tuned by feel, not hp x 10 as on the other cars (user 2026-11-14): the real 2.5 Sport does 0-60 mph in */
+        /* 3.7 s, just behind the Model Y Performance; 215 kW x 10 = 2880 took 11.5 s to 100 km/h here (slower than */
+        /* vanilla ModernCar), 4000 takes 7.8 s (E2E feel-sp; Model Y 7.2 s). The mechanics window shows power / 10 */
+        /* hp (ISVehicleMechanics.lua:1178): 400, not the manual's 288. Create.Motor and vanilla repair() */
         /* (VehiclePart.java:999-1005) both set this value. */
-        engineForce = 2880,
+        engineForce = 4000,
         /* curb 1,235 kg (owner's manual 10-16) on the template's 800 = Model 3's 2,033 kg: 800 x 1,235 / 2,033 */
         /* (references/roadster.md) */
         mass = 486,

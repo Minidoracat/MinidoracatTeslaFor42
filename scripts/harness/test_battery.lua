@@ -60,9 +60,9 @@ for name, s in pairs(T.Specs) do
     check(s.dcKw ~= false or type(s.acKw) == "number", name .. ": no DC charging (dcKw false) needs acKw, else 250 kW flat")
 end
 if H.bodyBuilt("Roadster") then -- the vehicle script comes with the body
-    check(H.scriptValue("vehicles/MinidoracatTesla_Roadster.txt", "engineForce") == 2880
+    check(H.scriptValue("vehicles/MinidoracatTesla_Roadster.txt", "engineForce") == 4000
         and H.scriptValue("vehicles/MinidoracatTesla_Roadster.txt", "mass") == 486,
-        "Roadster engineForce = 215 kW (288 hp) x 10, mass 486 (800 x 1,235 / 2,033)")
+        "Roadster engineForce 4000 (by feel: 0-100 km/h 7.8 s; 215 kW x 10 = 2880 took 11.5 s), mass 486 (800 x 1,235 / 2,033)")
 end
 H.removeVehicle(rd)
 local full = H.vehicle({ kwh = 78.4 })
@@ -560,7 +560,7 @@ cv.script = "Base.MinidoracatTesla_Roadster"
 B.setForce(cv, true)
 check(cv.feature[3] == 2100, "Roadster: Chill sets its own force (Specs chillForce), not T.CHILL_FORCE")
 B.setForce(cv, false)
-check(cv.feature[3] == 2880, "Roadster: Chill off, its script force again")
+check(cv.feature[3] == 4000, "Roadster: Chill off, its script force again")
 cv.script = "Base.MinidoracatTesla_ModelY"
 B.setForce(cv, true)
 cv.engineTx = tx
