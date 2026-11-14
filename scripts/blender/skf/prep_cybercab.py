@@ -97,35 +97,41 @@ PLAN = np.array((
     (0.6800, 0.8515), (1.2050, 0.8710), (1.3000, 0.8738), (1.4300, 0.8777),
     (1.4700, 0.8780), (1.5100, 0.8775), (1.5650, 0.8750), (1.6050, 0.8728),   # peak +1 mm: the edge rounding
     (1.6450, 0.8694), (1.7210, 0.8613), (1.7473, 0.8583), (1.7735, 0.8546),
-    (1.7945, 0.8506), (1.8155, 0.8452), (1.8365, 0.8383), (1.8575, 0.8296),
-    (1.8785, 0.8190), (1.8995, 0.8062), (1.9153, 0.7949), (1.9310, 0.7818),
-    (1.9520, 0.7616), (1.9678, 0.7442), (1.9835, 0.7246), (1.9993, 0.7026),
-    (2.0150, 0.6778), (2.0255, 0.6595), (2.0413, 0.6288), (2.0518, 0.6058),
-    (2.0623, 0.5805), (2.0728, 0.5523), (2.0833, 0.5206), (2.0938, 0.4844),
-    (2.1043, 0.4419), (2.1095, 0.4173), (2.1148, 0.3898), (2.1200, 0.3585),
-    (2.1253, 0.3232), (2.1358, 0.2476), (2.1410, 0.0000),
+    (1.7945, 0.8506), (1.8155, 0.8452), (1.8365, 0.8383),
+    # the nose ahead of the front tyres (06 top: half width 1.04 (d / 0.514)^0.413, d from the tip; 02 plate)
+    (1.8910, 0.7720), (1.9410, 0.7040), (1.9810, 0.6420), (2.0110, 0.5890), (2.0410, 0.5290), (2.0610, 0.4820),
+    (2.0810, 0.4280), (2.0960, 0.3800), (2.1110, 0.3220), (2.1210, 0.2720), (2.1310, 0.2040), (2.1360, 0.1535),
+    (2.1390, 0.1050), (2.1410, 0.0000),
 ))
-# side windows (both panes; 01 side, (y, z)): the door glass ahead of DIVIDER, the fixed quarter glass behind it
+# side windows (both panes; 01 side, (y, z)): the door glass ahead of DIVIDER, the fixed quarter glass behind it. Round
+# 6: the two tips 2 cm tall (1 cm, under two mesh cells, their cut came out mm off) and the trace's 5-10 mm wiggles at
+# the B pillar straightened (a notch in the edge on 02)
 SIDE_GLASS = np.array((
-    (0.896, 0.944), (0.896, 0.954), (0.889, 0.956), (0.881, 0.962), (0.845, 0.993), (0.796, 1.032),
-    (0.719, 1.089), (0.670, 1.121), (0.646, 1.128), (0.625, 1.150), (0.614, 1.158), (0.571, 1.184),
+    (0.896, 0.938), (0.893, 0.958), (0.887, 0.961), (0.881, 0.964), (0.845, 0.993), (0.796, 1.032),
+    (0.719, 1.089), (0.670, 1.121), (0.646, 1.136), (0.625, 1.150), (0.614, 1.158), (0.571, 1.184),
     (0.495, 1.225), (0.452, 1.247), (0.389, 1.275), (0.307, 1.306), (0.226, 1.328), (0.181, 1.337),
     (0.127, 1.346), (0.050, 1.354), (0.005, 1.356), (-0.151, 1.355), (-0.212, 1.353), (-0.273, 1.346),
-    (-0.320, 1.344), (-0.400, 1.335), (-0.477, 1.325), (-0.487, 1.322), (-0.505, 1.314), (-0.531, 1.316),
-    (-0.620, 1.302), (-0.763, 1.275), (-0.848, 1.258), (-0.991, 1.225), (-1.047, 1.210), (-1.070, 1.197),
-    (-1.091, 1.198), (-1.091, 1.188), (-1.082, 1.184), (-1.047, 1.157), (-1.040, 1.155), (-1.017, 1.152),
+    (-0.320, 1.344), (-0.400, 1.335), (-0.477, 1.325), (-0.487, 1.322), (-0.505, 1.320), (-0.531, 1.316),
+    (-0.620, 1.302), (-0.763, 1.275), (-0.848, 1.258), (-0.991, 1.225), (-1.047, 1.210), (-1.068, 1.199),
+    (-1.085, 1.200), (-1.085, 1.172), (-1.068, 1.170), (-1.047, 1.157), (-1.040, 1.155), (-1.017, 1.152),
     (-0.968, 1.136), (-0.898, 1.119), (-0.822, 1.105), (-0.781, 1.102), (-0.724, 1.094), (-0.656, 1.081),
-    (-0.588, 1.070), (-0.526, 1.063), (-0.500, 1.062), (-0.493, 1.063), (-0.479, 1.070), (-0.472, 1.071),
-    (-0.465, 1.069), (-0.448, 1.058), (-0.436, 1.055), (-0.429, 1.057), (-0.417, 1.065), (-0.411, 1.067),
-    (-0.406, 1.065), (-0.390, 1.053), (-0.376, 1.049), (-0.238, 1.038), (-0.188, 1.032), (-0.142, 1.030),
+    (-0.588, 1.070), (-0.526, 1.063), (-0.500, 1.061), (-0.493, 1.060), (-0.479, 1.059), (-0.472, 1.058),
+    (-0.465, 1.057), (-0.448, 1.056), (-0.436, 1.055), (-0.429, 1.054), (-0.417, 1.053), (-0.411, 1.052),
+    (-0.406, 1.052), (-0.390, 1.050), (-0.376, 1.049), (-0.238, 1.038), (-0.188, 1.032), (-0.142, 1.030),
     (-0.097, 1.024), (-0.053, 1.022), (0.093, 1.008), (0.139, 1.005), (0.189, 0.999), (0.296, 0.992),
     (0.343, 0.986), (0.388, 0.983), (0.435, 0.978), (0.521, 0.971), (0.565, 0.970), (0.582, 0.967),
     (0.601, 0.966), (0.626, 0.961), (0.692, 0.956), (0.720, 0.957), (0.814, 0.946), (0.853, 0.945),
     (0.870, 0.943),
 ))
-# round 5 (feature lines on 01 side): the quarter glass's lower edge toward its tip sat ~2 cm under the official's
-# (its top edge 9 mm under it too, but raised it wraps over the roof's edge: 02)
-SIDE_GLASS[37:, 1] += 0.020 * np.clip((-0.50 - SIDE_GLASS[37:, 0]) / 0.25, 0, 1)
+GLASS_BOTTOM = 37                    # SIDE_GLASS from here on: the lower edge, tail to nose
+# round 5 (feature lines on 01 side): the quarter glass's lower edge toward its tip sat ~2 cm under the official's;
+# eased out over the last 6 cm (raised at the tip itself it crossed over the top edge: a bow tie, its cut mm off)
+_y = SIDE_GLASS[:, 0]
+SIDE_GLASS[GLASS_BOTTOM:, 1] += (0.020 * np.clip((-0.50 - _y[GLASS_BOTTOM:]) / 0.25, 0, 1)
+                                 * np.clip((_y[GLASS_BOTTOM:] + 1.091) / 0.06, 0, 1))
+# round 6: its top edge over the roof 9 mm higher (01 side; 02 too, against 03), on a fuller roof edge (crown)
+SIDE_GLASS[:GLASS_BOTTOM, 1] += 0.009 * np.clip((0.60 - _y[:GLASS_BOTTOM]) / 0.12, 0, 1) * np.clip(
+    (_y[:GLASS_BOTTOM] + 1.091) / 0.06, 0, 1)
 
 # ---- section knots along y (nose -> tail), fitted on 01 front / rear and 02 / 03 (REPORT.md)
 KY = np.array([2.14, 1.95, 1.70, 1.45, 1.10, 0.75, 0.35, -0.05, -0.45, -0.85, -1.15, -1.45, -1.75, -2.00, -2.14])
@@ -141,16 +147,19 @@ SECTION = dict(
                  0.920]),     # shoulder (belt) height; behind the glass the hip's top (SHOULDER). Under the glass the
                               # step (g, zs +-3 cm) ends where the glass starts: a glass edge cut across the step's
                               # near-flat middle runs at a grazing angle and shades as a saw tooth (02)
-    g=np.array([0.000, 0.000, 0.000, 0.000, 0.030, 0.090, 0.100, 0.100, 0.100, 0.090, 0.030, 0.000, 0.000, 0.000,
-                0.000]),      # step in at the shoulder (behind the quarter glass none: 03's haunch is one round bulge)
+    g=np.array([0.000, 0.000, 0.000, 0.000, 0.020, 0.050, 0.060, 0.060, 0.060, 0.050, 0.020, 0.000, 0.000, 0.000,
+                0.000]),      # step in at the shoulder (behind the quarter glass none: 03's haunch is one round bulge;
+                              # round 6 from 9-10 cm to 5-6: the glass sits further out on a steeper wall, 01 front /
+                              # 01 rear / 02 / 03 outlines all closer; less of 03's fold under the quarter glass)
     t=np.array([1.300, 1.300, 1.100, 0.800, 0.500, 0.350, 0.330, 0.360, 0.460, 0.600, 0.750, 1.000, 1.250, 1.000,
                 1.000]),      # tumblehome above the shoulder (01 front, 02: the windshield's sides further out; 01
                               # rear: narrower over the C pillars; much wider and the side glass wraps over the roof's
                               # edge, 02); behind the glass it meets
                               # the near-flat deck in a crease on TRUNK_PLAN's line (03, 06 top view: the haunch
                               # stands out below it)
-    crown=np.array([0.000, 0.000, 0.005, 0.012, 0.050, 0.100, 0.100, 0.100, 0.100, 0.100, 0.060, 0.030, 0.020,
-                    0.020, 0.020]),   # roof / deck crown at the plan edge (the hood: hood_cap; the deck near flat)
+    crown=np.array([0.000, 0.000, 0.005, 0.012, 0.050, 0.100, 0.100, 0.085, 0.070, 0.060, 0.040, 0.030, 0.020,
+                    0.020, 0.020]),   # roof / deck crown at the plan edge (the hood: hood_cap; the deck near flat;
+                                      # over the rear seats a fuller edge: the roof's outline on 02 and 03)
     k=np.array([0.008, 0.030, 0.050, 0.055, 0.045, 0.030, 0.025, 0.025, 0.025, 0.020, 0.030, 0.035, 0.030, 0.012,
                 0.012]),      # edge rounding (the front fenders roll over into the side: 01 front; ahead of the tail
                               # the deck rolls over into the haunch: 03, one convex roll, no flat band under a crease)
@@ -179,7 +188,9 @@ FRONT_BLACK = ((0.0, 0.390), (0.60, 0.385), (0.80, 0.360), (0.95, 0.320), (1.11,
 REAR_BLACK = ((0.0, 0.502), (0.85, 0.502), (1.13, 0.500))    # rear bumper top by q (01 side: dark below 0.54): on
                                      # the bumper's vertical face 15 mm under the ledge's corner (a plane through the
                                      # rounded corner itself leaves its cut mm off: the boundary check)
-BAR = (0.005, 0.011)                 # light bar: from / to depth under the leading edge (above it a dark shadow line)
+BAR = (0.009, 0.015, 0.0045)        # light bar: from / to depth under the leading edge, and its dark shadow line's top
+                                     # (all on the face under the edge's 4 mm rounding: cut in the rounding, a plane
+                                     # lying along the surface lands mm off, the boundary check)
 # head lamp: the bar runs on along the lens' top, which leaves the leading edge at LAMP[0] and rises straight to the
 # tip (q, z); the lens' bottom LAMP[2] (q, z); the outer end leans back LAMP[3] in q per metre up (01 front, 01 side:
 # top 0.627 -> 0.692, bottom 0.603 -> 0.624; 02: a slim wedge, the bar's extension)
@@ -191,12 +202,19 @@ SPOILER = dict(z=((0.0, 0.862), (1.13, 0.862)), top=0.930, q_end=0.98,
                # edge (a step at the edge itself: a grazing cut and a bright line under the strip, 03)
 TAIL_LAMP = ((0.0, 0.546), (1.13, 0.546)), 0.33, 0.006, 0.52   # bar top z by q, |x| of its dark middle, middle
                # recess, |x| where the red starts (inboard of it the clear reversing lens, unlit grey: 07, 03, 01 rear)
-TAIL_ROUND = 0.035                   # the tail face sets forward by this (|x| / 0.8)^2: convex in plan (03)
-TAIL_CHAMFER = (0.740, 0.860)        # the tail's top corners cut where |x| + z > the sum, under the lip (01 rear: ~3.5 cm)
-WINDSHIELD = dict(cowl=(1.12, 0.21), top=(0.324, 0.40), side=((0.21, 0.540), (0.97, 0.672)), z=0.92)
+TAIL_BOW = (0.55, 1.16, 3.46)        # the tail (face, bumper, lip) sets forward a (|x| / b)^p: a bow in plan, near flat in
+                                     # the middle, 14 cm forward at the corner. Shape: 06 top (0.28 / 0.38 / 0.47 / 0.54 /
+                                     # 0.66 half width 0.01 / 0.03 / 0.06 / 0.10 / 0.20 m from the end, |x| x b: a 0.83);
+                                     # depth: 03's far corner (a 0.83 sets it 20 px inside the official's, none 20 px out)
+WINDSHIELD = dict(cowl=(1.12, 0.21), top=(0.324, 0.40), side=((0.21, 0.540), (0.97, 0.700)), z=0.92)   # side: 01 front
 DIVIDER = ((-0.508, 1.319), (-0.455, 1.066))      # door glass rear edge (01 side)
-DOOR = ((0.924, 0.932), (1.012, 0.828), (1.082, 0.744), (1.152, 0.668))   # front seam down to the arch
-B_SEAM = ((-0.530, 1.062), (-0.274, 0.342))       # door rear seam below the belt
+DOOR = ((0.924, 0.932), (1.012, 0.828), (1.082, 0.744), (1.152, 0.668), (1.20, 0.62))   # front seam down into the
+                                     # arch (its corner inside the wheel house: on the lip, its chord ran mm off the cut)
+B_SEAM = ((-0.530, 1.077), (-0.274, 0.342))       # door rear seam below the belt; its top runs 1.2 cm inside the
+                                     # quarter glass to the divider (along the glass's lower edge the two cuts crossed
+                                     # back and forth: slivers; under it, a groove of its own on 02)
+B_PILLAR = 0.007                     # the B pillar between the door and quarter glass: a matte black frame +-7 mm on
+                                     # DIVIDER (01 side: a dark line ~8 px, 03)
 TRUNK_Y = -0.845                     # tailgate front seam across the roof (01 side: the roof's step)
 TRUNK_PLAN = ((-0.845, 0.600), (-1.00, 0.615), (-1.15, 0.630), (-1.45, 0.650), (-1.65, 0.667), (-1.84, 0.680),
               (-1.95, 0.695), (-2.00, 0.700), (-2.05, 0.700), (-2.20, 0.700))   # (y, |x|) its side seam: along the
@@ -266,6 +284,20 @@ def poly_sdf(poly, py, pz, chunk=20000):
     return out
 
 
+def round_poly(poly, r=0.012, n=6):
+    """The closed polygon with each corner replaced by a quadratic arc from r before it to r after (at most half
+    an edge): an outline cut into the mesh bends no tighter than ~r (a sharp corner's chord runs mm off it)."""
+    p = np.asarray(poly, float)
+    t = np.linspace(0, 1, n)[:, None]
+    out = []
+    for i in range(len(p)):
+        p0, p1, p2 = p[i - 1], p[i], p[(i + 1) % len(p)]
+        a = p1 + (p0 - p1) * min(r / max(np.linalg.norm(p0 - p1), 1e-9), 0.5)
+        b = p1 + (p2 - p1) * min(r / max(np.linalg.norm(p2 - p1), 1e-9), 0.5)
+        out.append((1 - t) ** 2 * a + 2 * (1 - t) * t * p1 + t ** 2 * b)
+    return np.concatenate(out)
+
+
 def interp_tab(tab, x):
     tab = np.asarray(tab, float)
     o = np.argsort(tab[:, 0])
@@ -286,6 +318,12 @@ def nose_y(ax, y):
     """The nose's side profile slides back with x^2 (where it is read: y + this): a slightly convex bumper face
     and leading edge rounding into the plan's corners (02, 06 top)."""
     return y + NOSE_ROUND * (ax / 0.80) ** 2 * ss((y - 1.97) / 0.06)
+
+
+def tail_bow(ax):
+    """How far the tail sets forward at |x| (TAIL_BOW; past the corner the side: no more)."""
+    a, b, p = TAIL_BOW
+    return a * (np.minimum(ax, 0.82) / b) ** p
 
 
 def hood_cap(ax, y):
@@ -363,9 +401,9 @@ class Field:
 
     def __call__(self, p):
         x, y, z = np.abs(p[:, 0]), p[:, 1], p[:, 2]
-        # the nose rounds in plan (nose_y); the tail above the bumper ledge comes forward with x^2 the same way, the
-        # lip's strip with it (03: one curved face, no overhang at the corners)
-        ys = nose_y(x, y) - TAIL_ROUND * (x / 0.80) ** 2 * ss((-1.98 - y) / 0.06) * ss((z - 0.53) / 0.03)
+        # the nose rounds in plan (nose_y); the tail (face, bumper, lip) bows forward toward its corners (tail_bow),
+        # the side profile read that much further back
+        ys = nose_y(x, y) - tail_bow(x) * ss((-1.75 - y) / 0.10)
         ds = self.samp(self.side, ys, z)
         nz = self.samp(self.gz, ys, z)
         w = self.plan(y)
@@ -373,12 +411,6 @@ class Field:
         d1 = ds + self.knot("crown", y) * tx ** 2 * np.maximum(nz, 0)
         d2 = x - self.hw(y, z, w)
         d = smax(d1, d2, self.knot("k", y))
-        # the tail face's top corners cut on the diagonal, under the duck lip (01 rear)
-        cx_, cz_ = TAIL_CHAMFER
-        # (the cut fades out inside the black strip, from 14 mm over its lower edge: fading on the gold face it left
-        # a small gold triangle, 03; fading across the edge's cut or the face's bevel it folds the mesh)
-        off = 2.0 * (1 - ss((-1.99 - y) / 0.04) * ss((SPOILER["z"][0][1] + 0.034 - z) / 0.020))   # away: no cut
-        d = smax(d, ((x - cx_) + (z - cz_)) / math.sqrt(2) - off, 0.012)
         cap = smax(d, z - hood_cap(x, y), 0.004)
         d = np.where((y > 1.08) & (y < 2.09), cap, d)
         for nm, a in ARCH.items():
@@ -387,21 +419,23 @@ class Field:
             d = smax(d, -smax(dc, a["x_in"] - x, 0.02), a["lip"])
         it = INTAKE
         xi = it["x"][1] + (it["x"][0] - it["x"][1]) * np.clip((z - it["z"][0]) / (it["z"][1] - it["z"][0]), 0, 1)
-        # depth eased out toward the opening's ends: the bumper corner behind is thin (a full-depth step there
-        # meshes non-manifold); the whole opening inside the black (a step into the gold reads as a dent: 02)
-        d = d + it["depth"] * (ss((xi - x) / 0.02) * ss((z - it["z"][0]) / 0.006) * ss((it["z"][1] - z) / 0.006)
+        # depth eased out over 6 cm toward the opening's ends: they wrap round the nose's corners, where the bumper
+        # is thin (a full-depth step there folds the mesh); the whole opening inside the black (a step into the gold
+        # reads as a dent: 02)
+        d = d + it["depth"] * (ss((xi - x) / 0.06) * ss((z - it["z"][0]) / 0.006) * ss((it["z"][1] - z) / 0.006)
                                * ss((y - it["y"]) / 0.04))
         # tail: the gold face's top rounding forward under the duck lip, the tail lamp bar's dark middle set in
         # (01 side, 01 rear, 03)
         qt = wrap_q(x, y, TAIL_C, front=False)
-        aft = ss((-2.00 - y) / 0.03) * ss((1.0 - qt) / 0.08)
+        yt = y - tail_bow(x)                    # the tail's own y: its features keep their place on the bow
+        aft = ss((-2.00 - yt) / 0.03) * ss((1.0 - qt) / 0.08)
         zb = interp_tab(SPOILER["z"], qt)
         b0, bs = SPOILER["bevel"]
         d = d + aft * bs * CREASE * np.logaddexp(0, (z - b0) / CREASE) * ss((zb + 0.016 - z) / 0.012)
         lt = interp_tab(TAIL_LAMP[0], qt)
         rb = interp_tab(REAR_BLACK, qt)
         dx, dz0, dz1, dd = DIFFUSER
-        d = d + dd * (ss((dx - x) / 0.012) * ss((z - dz0) / 0.004) * ss((dz1 - z) / 0.004) * ss((-2.06 - y) / 0.02))
+        d = d + dd * (ss((dx - x) / 0.012) * ss((z - dz0) / 0.004) * ss((dz1 - z) / 0.004) * ss((-2.06 - yt) / 0.02))
         # the recess's steps sit 4-7 mm inside its outline's cuts (a cut along a step runs grazing: mm off)
         return d + aft * TAIL_LAMP[2] * (ss((TAIL_LAMP[1] - 0.004 - x) / 0.006) * ss((z - rb - 0.004) / 0.003)
                                           * ss((lt - 0.004 - z) / 0.003))
@@ -536,13 +570,13 @@ def lens_bottom(ax, y):
 
 def door_polygon():
     """The door's outline below the glass (side view (y, z)); its top overlaps the glass by 2 cm."""
-    gy, gz = SIDE_GLASS.T
-    belt = (gz < 1.10) & (gy > DIVIDER[1][0]) & (gy < DOOR[0][0])
+    gy, gz = SIDE_GLASS[GLASS_BOTTOM:].T    # the bottom edge only: the top edge's points by the A pillar sorted in
+    belt = (gy > DIVIDER[1][0]) & (gy < DOOR[0][0])   # with it zigzag the outline (a saw tooth seam, 01 side)
     bo = np.argsort(gy[belt])
     yf = TYRES["front"]["y"]
     return np.concatenate([np.array(DOOR), [[yf - 0.30, 0.40]], [[yf - 0.43, SILL[0] + SILL[1] * (yf - 0.43)]],
                            [[B_SEAM[1][0], SILL[0] + SILL[1] * B_SEAM[1][0]]], [B_SEAM[1]], [B_SEAM[0]],
-                           [DIVIDER[1]], np.stack([gy[belt][bo], gz[belt][bo] + 0.02], 1)])
+                           [[DIVIDER[1][0] + 0.003, B_SEAM[0][1]]], np.stack([gy[belt][bo], gz[belt][bo] + 0.02], 1)])
 
 
 def divider_y(z):
@@ -554,16 +588,18 @@ def levels(f):
     """{name: g(x, y, z, |x|)}: the region outlines (classify() reads the same functions' signs). A plane only
     needed in one place is bent off the body elsewhere (`far`): a cut running the car's length lands next to other
     cuts at a shallow angle and leaves slivers that mesh non-manifold. No two share a zero set (a cut over a cut)."""
-    door = door_polygon()
+    door, side_glass = round_poly(door_polygon()), round_poly(SIDE_GLASS)
     bw = BAR[1] - BAR[0]
     qn = lambda ax, y: wrap_q(ax, y, NOSE_C)
     qt = lambda ax, y: wrap_q(ax, y, TAIL_C, front=False)
     far = lambda a: 5.0 * np.maximum(a, 0)
     lt = lambda ax, y: lamp_top(ax, y) - far(1.80 - y)              # head lamp levels: only at the nose
-    sz = lambda ax, y: interp_tab(SPOILER["z"], qt(ax, y)) - far(y + 1.95)   # tail levels: only at the tail
+    yt = lambda ax, y: y - tail_bow(ax)                              # tail levels: only at the tail (on its bow)
+    sz = lambda ax, y: interp_tab(SPOILER["z"], qt(ax, y)) - far(yt(ax, y) + 1.95)
     return dict(
-        glass=lambda x, y, z, ax: poly_sdf(SIDE_GLASS, y, z) + far(0.40 - ax),
+        glass=lambda x, y, z, ax: poly_sdf(side_glass, y, z) + far(0.40 - ax),
         divider=lambda x, y, z, ax: y - divider_y(z),
+        pillar=lambda x, y, z, ax: np.abs(y - divider_y(z)) - B_PILLAR + far(0.40 - ax) + far(1.0 - z),
         cowl=lambda x, y, z, ax: y - windshield(x, y)[0], ws_top=lambda x, y, z, ax: y - windshield(x, y)[1],
         ws_side=lambda x, y, z, ax: ax - windshield(x, y)[2],
         ws_z=lambda x, y, z, ax: z - WINDSHIELD["z"] - far(-y) - far(y - 1.25),
@@ -572,27 +608,28 @@ def levels(f):
         lamp_end=lambda x, y, z, ax: (qn(ax, y) - LAMP[1][0] - LAMP[3] * (z - LAMP[1][1]) + far(0.58 - z)
                                       + far(z - 0.76) + far(1.70 - y)),
         bar_top=lambda x, y, z, ax: z - lt(ax, y), bar_bot=lambda x, y, z, ax: z - lt(ax, y) + bw,
-        bar_gap=lambda x, y, z, ax: z - lt(ax, y) - BAR[0] + 0.0015,
+        bar_gap=lambda x, y, z, ax: z - lt(ax, y) - BAR[0] + BAR[2],
         lens_bot=lambda x, y, z, ax: z - lens_bottom(ax, y) + far(1.80 - y),
-        aft=lambda x, y, z, ax: y + 2.0,
-        lip=lambda x, y, z, ax: z - SPOILER["top"] + far(y + 1.95),   # the strip's top: the deck's trailing edge
+        aft=lambda x, y, z, ax: yt(ax, y) + 2.0,
+        lip=lambda x, y, z, ax: z - SPOILER["top"] + far(yt(ax, y) + 1.95),   # the strip's top: the deck's rear edge
         spoiler=lambda x, y, z, ax: z - sz(ax, y),
         spoil_end=lambda x, y, z, ax: qt(ax, y) - SPOILER["q_end"],
-        tail_red=lambda x, y, z, ax: ax - TAIL_LAMP[3] - far(y + 2.0),
-        tail_top=lambda x, y, z, ax: z - interp_tab(TAIL_LAMP[0], qt(ax, y)) + far(y + 1.95),   # also the
-        tail_mid=lambda x, y, z, ax: ax - TAIL_LAMP[1] - far(y + 2.0),                       # tailgate's bottom
-        liner=lambda x, y, z, ax: f.well(ax, y, z) - 0.004,
+        tail_red=lambda x, y, z, ax: ax - TAIL_LAMP[3] - far(yt(ax, y) + 2.0),
+        tail_top=lambda x, y, z, ax: z - interp_tab(TAIL_LAMP[0], qt(ax, y)) + far(yt(ax, y) + 1.95),   # also the
+        tail_mid=lambda x, y, z, ax: ax - TAIL_LAMP[1] - far(yt(ax, y) + 2.0),                       # tailgate's bottom
+        liner=lambda x, y, z, ax: f.well(ax, y, z) - 0.010,   # over the lip's rounding, past its tangent start
         door=lambda x, y, z, ax: poly_sdf(door, y, z) + far(0.35 - ax),
         trunk_y=lambda x, y, z, ax: y - TRUNK_Y,
         trunk_x=lambda x, y, z, ax: ax - interp_tab(TRUNK_PLAN, y) + far(0.50 - z) + far(y - TRUNK_Y),
-        hood_x=lambda x, y, z, ax: ax - interp_tab(HOOD_SEAM, y) + far(0.60 - z) + far(1.00 - y),
+        hood_x=lambda x, y, z, ax: ax - interp_tab(HOOD_SEAM, y) + far(0.60 - z) + far(0.97 - y),   # (across the cowl
+        # square, bent away behind it: bent where it meets it, the two cuts ran together)
         hood_z=lambda x, y, z, ax: (z - hood_cap(ax, np.clip(y, 1.09, 2.08)) + BAR[0] + far(1.00 - y)
                                     + far(ax - 0.62 - 4 * np.maximum(1.9 - y, 0))),   # (off the fenders at the nose)
         # the port's outline: its four lines bent off the body beyond the box (not up the whole tail face)
-        port_x0=lambda x, y, z, ax: x - PORT[0] + far(y + 2.0) + far(4 * (z - 0.48)) + far(0.30 - z),
-        port_x1=lambda x, y, z, ax: x - PORT[1] + far(y + 2.0) + far(4 * (z - 0.48)) + far(0.30 - z),
-        port_z0=lambda x, y, z, ax: z - PORT[2] + far(y + 2.0) + far(x + 0.60) + far(-0.85 - x),
-        port_z1=lambda x, y, z, ax: z - PORT[3] + far(y + 2.0) + far(x + 0.60) + far(-0.85 - x))
+        port_x0=lambda x, y, z, ax: x - PORT[0] + far(yt(ax, y) + 2.0) + far(4 * (z - 0.48)) + far(0.30 - z),
+        port_x1=lambda x, y, z, ax: x - PORT[1] + far(yt(ax, y) + 2.0) + far(4 * (z - 0.48)) + far(0.30 - z),
+        port_z0=lambda x, y, z, ax: z - PORT[2] + far(yt(ax, y) + 2.0) + far(x + 0.60) + far(-0.85 - x),
+        port_z1=lambda x, y, z, ax: z - PORT[3] + far(yt(ax, y) + 2.0) + far(x + 0.60) + far(-0.85 - x))
 
 
 def weld(v, t, eps=2e-5):
@@ -641,7 +678,8 @@ def classify(f, v, t):
     # glass: windshield, side windows (outboard of the windshield's side edge: the A pillar between)
     ws = s["cowl"] & ~s["ws_top"] & s["ws_side"] & ~s["ws_z"]
     in_side = s["glass"] & ~s["ws_side"]
-    glass = ws | in_side
+    bpil = in_side & s["pillar"]
+    glass = ws | (in_side & ~bpil)
     mat[glass] = 1
     # black: lower body round the nose and tail; the duck lip's rear face, across the tail to
     # the corners; tail lamp bar: dark middle, white reversing lens, red outboard
@@ -660,11 +698,12 @@ def classify(f, v, t):
     mat[lens | shadow] = 2
     mat[bar] = 4
     liner = s["liner"]
-    mat[liner] = 3
+    mat[liner | bpil] = 3
     # panels
     pan = np.zeros(len(t), np.int8)
     in_dg = in_side & ~s["divider"]
-    door = ((s["door"] & ~s["liner"] & ~s["black"]) | in_dg) & ~liner
+    door = ((s["door"] & ~s["liner"] & ~s["black"] & ~(in_side & s["divider"])) | in_dg) & ~liner   # (not the
+    # quarter glass the outline's top reaches into)
     pan[door] = np.where(x[door] < 0, 1, 2)
     tg = s["trunk_y"] & s["trunk_x"] & ~s["tail_top"] & ~liner & ~glass
     pan[tg] = 3
@@ -704,20 +743,28 @@ def edge_faces(t):
 
 def boundary_off(f, v, t, key, tol=5e-4):
     """Region outlines that left their cut: on every edge between two regions (key: classify()'s material, panel,
-    pane), its ends and middle farther than tol from every levels() zero set, as a distance |g| / |grad g| on the
-    left half, read on the surface (a chord's middle sits under it). Returns (points, distances) of the misses."""
+    pane), its ends farther than tol from every levels() zero set, its middle farther than tol from its ends' own
+    zero set, as a distance |g| / |grad g| on the left half, read on the surface (a chord's middle sits under it).
+    An edge from one cut to another spans the corner where they meet: its middle lies on neither (not counted).
+    Returns (points, distances) of the misses."""
     ue, fa, fb = edge_faces(t)
     o = np.maximum(fb, 0)
     e2 = ue[(fb >= 0) & (key[fa] != key[o])]
-    q = np.concatenate([v[np.unique(e2)], v[e2].mean(1)])
+    ends, inv = np.unique(e2, return_inverse=True)
+    inv = inv.reshape(-1, 2)
+    q = np.concatenate([v[ends], v[e2].mean(1)])
     x, y, z = project(f, np.c_[-np.abs(q[:, 0]), q[:, 1], q[:, 2]]).T
-    gs = list(levels(f).values())
-    d = np.full(len(q), np.inf)
     e = 1e-4
-    for g in gs:
+    dd = []
+    for g in levels(f).values():
         ev = lambda dx, dy, dz: g(x + dx, y + dy, z + dz, np.abs(x + dx))
         gn = np.sqrt(sum(((ev(*s) - ev(*(-np.array(s)))) / (2 * e)) ** 2 for s in np.eye(3) * e))
-        d = np.minimum(d, np.abs(ev(0, 0, 0)) / np.maximum(gn, 1e-9))
+        dd.append(np.abs(ev(0, 0, 0)) / np.maximum(gn, 1e-9))
+    dd = np.stack(dd, 1)
+    de, dm = dd[:len(ends)], dd[len(ends):]
+    own = de.argmin(1)[inv]                          # each end's nearest cut
+    same = own[:, 0] == own[:, 1]
+    d = np.concatenate([de.min(1), np.where(same, dm[np.arange(len(dm)), own[:, 0]], 0.0)])
     return q[d > tol], d[d > tol]
 
 
