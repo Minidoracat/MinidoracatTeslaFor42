@@ -98,7 +98,8 @@ PLAN = np.array((
     (1.4700, 0.8780), (1.5100, 0.8775), (1.5650, 0.8750), (1.6050, 0.8728),   # peak +1 mm: the edge rounding
     (1.6450, 0.8694), (1.7210, 0.8613), (1.7473, 0.8583), (1.7735, 0.8546),
     (1.7945, 0.8506), (1.8155, 0.8452), (1.8365, 0.8383),
-    # the nose ahead of the front tyres (06 top: half width 1.04 (d / 0.514)^0.413, d from the tip; 02 plate)
+    # the nose ahead of the front tyres (06 top: half width 1.04 (d / 0.514)^0.413, d from the tip; round 7 tried it
+    # 3-4 cm wider by the tyre for 02's side marker (37 -> 18 px): the far front corner's outline went 20 -> 25 px)
     (1.8910, 0.7720), (1.9410, 0.7040), (1.9810, 0.6420), (2.0110, 0.5890), (2.0410, 0.5290), (2.0610, 0.4820),
     (2.0810, 0.4280), (2.0960, 0.3800), (2.1110, 0.3220), (2.1210, 0.2720), (2.1310, 0.2040), (2.1360, 0.1535),
     (2.1390, 0.1050), (2.1410, 0.0000),
@@ -112,8 +113,8 @@ SIDE_GLASS = np.array((
     (0.495, 1.225), (0.452, 1.247), (0.389, 1.275), (0.307, 1.306), (0.226, 1.328), (0.181, 1.337),
     (0.127, 1.346), (0.050, 1.354), (0.005, 1.356), (-0.151, 1.355), (-0.212, 1.353), (-0.273, 1.346),
     (-0.320, 1.344), (-0.400, 1.335), (-0.477, 1.325), (-0.487, 1.322), (-0.505, 1.320), (-0.531, 1.316),
-    (-0.620, 1.302), (-0.763, 1.275), (-0.848, 1.258), (-0.991, 1.225), (-1.047, 1.210), (-1.068, 1.199),
-    (-1.085, 1.200), (-1.085, 1.172), (-1.068, 1.170), (-1.047, 1.157), (-1.040, 1.155), (-1.017, 1.152),
+    (-0.620, 1.302), (-0.763, 1.275), (-0.848, 1.258), (-0.991, 1.225), (-1.047, 1.210), (-1.047, 1.210),
+    (-1.075, 1.203), (-1.075, 1.168), (-1.047, 1.157), (-1.047, 1.157), (-1.040, 1.155), (-1.017, 1.152),
     (-0.968, 1.136), (-0.898, 1.119), (-0.822, 1.105), (-0.781, 1.102), (-0.724, 1.094), (-0.656, 1.081),
     (-0.588, 1.070), (-0.526, 1.063), (-0.500, 1.061), (-0.493, 1.060), (-0.479, 1.059), (-0.472, 1.058),
     (-0.465, 1.057), (-0.448, 1.056), (-0.436, 1.055), (-0.429, 1.054), (-0.417, 1.053), (-0.411, 1.052),
@@ -128,10 +129,10 @@ GLASS_BOTTOM = 37                    # SIDE_GLASS from here on: the lower edge, 
 # eased out over the last 6 cm (raised at the tip itself it crossed over the top edge: a bow tie, its cut mm off)
 _y = SIDE_GLASS[:, 0]
 SIDE_GLASS[GLASS_BOTTOM:, 1] += (0.020 * np.clip((-0.50 - _y[GLASS_BOTTOM:]) / 0.25, 0, 1)
-                                 * np.clip((_y[GLASS_BOTTOM:] + 1.091) / 0.06, 0, 1))
-# round 6: its top edge over the roof 9 mm higher (01 side; 02 too, against 03), on a fuller roof edge (crown)
-SIDE_GLASS[:GLASS_BOTTOM, 1] += 0.009 * np.clip((0.60 - _y[:GLASS_BOTTOM]) / 0.12, 0, 1) * np.clip(
-    (_y[:GLASS_BOTTOM] + 1.091) / 0.06, 0, 1)
+                                 * np.clip((_y[GLASS_BOTTOM:] + 1.075) / 0.06, 0, 1))
+# round 6: its top edge over the roof 9 mm higher (01 side; 02 too, against 03), on a fuller roof edge (crown);
+# all the way to the tip (eased there, the edge bent in a cell and its cut ran 0.9 mm off)
+SIDE_GLASS[:GLASS_BOTTOM, 1] += 0.009 * np.clip((0.60 - _y[:GLASS_BOTTOM]) / 0.12, 0, 1)
 
 # ---- section knots along y (nose -> tail), fitted on 01 front / rear and 02 / 03 (REPORT.md)
 KY = np.array([2.14, 1.95, 1.70, 1.45, 1.10, 0.75, 0.35, -0.05, -0.45, -0.85, -1.15, -1.45, -1.75, -2.00, -2.14])
@@ -157,7 +158,7 @@ SECTION = dict(
                               # edge, 02); behind the glass it meets
                               # the near-flat deck in a crease on TRUNK_PLAN's line (03, 06 top view: the haunch
                               # stands out below it)
-    crown=np.array([0.000, 0.000, 0.005, 0.012, 0.050, 0.100, 0.100, 0.085, 0.070, 0.060, 0.040, 0.030, 0.020,
+    crown=np.array([0.000, 0.000, 0.005, 0.012, 0.050, 0.100, 0.100, 0.085, 0.055, 0.045, 0.030, 0.030, 0.020,
                     0.020, 0.020]),   # roof / deck crown at the plan edge (the hood: hood_cap; the deck near flat;
                                       # over the rear seats a fuller edge: the roof's outline on 02 and 03)
     k=np.array([0.008, 0.030, 0.050, 0.055, 0.045, 0.030, 0.025, 0.025, 0.025, 0.020, 0.030, 0.035, 0.030, 0.012,
@@ -206,7 +207,8 @@ TAIL_BOW = (0.55, 1.16, 3.46)        # the tail (face, bumper, lip) sets forward
                                      # the middle, 14 cm forward at the corner. Shape: 06 top (0.28 / 0.38 / 0.47 / 0.54 /
                                      # 0.66 half width 0.01 / 0.03 / 0.06 / 0.10 / 0.20 m from the end, |x| x b: a 0.83);
                                      # depth: 03's far corner (a 0.83 sets it 20 px inside the official's, none 20 px out)
-WINDSHIELD = dict(cowl=(1.12, 0.21), top=(0.324, 0.40), side=((0.21, 0.540), (0.97, 0.700)), z=0.92)   # side: 01 front
+WINDSHIELD = dict(cowl=(1.12, 0.21), top=(0.324, 0.40), side=((0.21, 0.540), (0.97, 0.700)), z=0.92)   # side: 01
+# front (round 7 tried its top 3.5 cm in for a broader A pillar on 02: 01 front's side lines 7.7 / 12.7 -> 13 / 18 px)
 DIVIDER = ((-0.508, 1.319), (-0.455, 1.066))      # door glass rear edge (01 side)
 DOOR = ((0.924, 0.932), (1.012, 0.828), (1.082, 0.744), (1.152, 0.668), (1.20, 0.62))   # front seam down into the
                                      # arch (its corner inside the wheel house: on the lip, its chord ran mm off the cut)
@@ -231,8 +233,9 @@ HOOD_SEAM = ((0.96, 0.765), (1.10, 0.760), (1.40, 0.720), (1.70, 0.650), (1.90, 
 HOOD_VALLEY = ((1.08, 0.0), (1.18, 0.010), (1.90, 0.012), (2.04, 0.006), (2.09, 0.0))
 HOOD_COWL = ((1.12, 0.0), (1.20, 0.020), (1.30, 0.016), (1.50, 0.0))   # the dome's middle dips just ahead of the
                                      # windshield's base (on the cap too): the base shows over it across (01 front, 02)
-FENDER_DROP = ((1.08, 0.0), (1.16, 0.012), (1.26, 0.035), (1.40, 0.052), (1.55, 0.060), (1.80, 0.045), (1.95, 0.015),
-               (2.02, 0.0))          # eased in from the cowl (a steep start twists the crest: a wavy reflection, 02)
+FENDER_DROP = ((1.08, 0.0), (1.16, 0.006), (1.26, 0.018), (1.40, 0.026), (1.55, 0.030), (1.80, 0.023), (1.95, 0.008),
+               (2.02, 0.0))          # eased in from the cowl (a steep start twists the crest: a wavy reflection, 02);
+                                     # round 7 halved: the far front corner's fender top stood under 02's outline
 FENDER_X, FENDER_CREST = 0.86, 0.4
 CREASE = 0.015                      # rounding of the hood ridges and the shoulder crease (a few mesh cells)
 NOSE_ROUND = 0.06                    # the nose's side profile slides back by this (|x| / 0.8)^2: round face in plan
@@ -559,7 +562,7 @@ def lamp_top(ax, y):
     q = wrap_q(ax, y, NOSE_C)
     e = hood_cap(ax, np.clip(y, 1.09, 2.08)) - BAR[0]
     (q1, z1) = LAMP[1]
-    s = np.clip((q - LAMP[0]) / (q1 - LAMP[0]), 0, 1)
+    s = ss((q - LAMP[0]) / (q1 - LAMP[0]))      # (eased: a kink where it starts rising is a corner in its cuts)
     return np.minimum(e, (1 - s) * e + s * z1)
 
 
@@ -588,7 +591,7 @@ def levels(f):
     """{name: g(x, y, z, |x|)}: the region outlines (classify() reads the same functions' signs). A plane only
     needed in one place is bent off the body elsewhere (`far`): a cut running the car's length lands next to other
     cuts at a shallow angle and leaves slivers that mesh non-manifold. No two share a zero set (a cut over a cut)."""
-    door, side_glass = round_poly(door_polygon()), round_poly(SIDE_GLASS)
+    door, side_glass = round_poly(door_polygon()), round_poly(SIDE_GLASS, 0.016)   # (the quarter glass's 4 cm end)
     bw = BAR[1] - BAR[0]
     qn = lambda ax, y: wrap_q(ax, y, NOSE_C)
     qt = lambda ax, y: wrap_q(ax, y, TAIL_C, front=False)
@@ -697,7 +700,8 @@ def classify(f, v, t):
     shadow = nose & ~s["bar_top"] & s["bar_gap"]     # the leading edge's shadow line over the bar (01 front)
     mat[lens | shadow] = 2
     mat[bar] = 4
-    liner = s["liner"]
+    liner = s["liner"] & ~s["black"]                 # (under the black's top the wheel house is black: there the liner's
+    # cut ran into the floor and the inner wall's corner, mm off)
     mat[liner | bpil] = 3
     # panels
     pan = np.zeros(len(t), np.int8)
@@ -936,13 +940,15 @@ def revolve(prof, seg=72):
     return v, np.array(q)
 
 
-def tyre_profile(r, w, rim):
-    """Half section (lateral from the tyre's middle, radius) from the inner bead round the tread to the outer bead."""
+def tyre_profile(r, w, rim, bulge=0.008):
+    """Half section (lateral from the tyre's middle, radius) from the inner bead round the tread to the outer bead.
+    The sidewall bulges `bulge` past the bead line at mid height: over the cover's ring (02, 03 see the covers 5-8 %
+    smaller than 01 side's 0.338: the bulge hides their edge at a slant)."""
     side = r - rim
-    pts = [(-w / 2 + 0.016, rim), (-w / 2 + 0.004, rim + 0.22 * side), (-w / 2, rim + 0.50 * side),
-           (-w / 2 + 0.004, rim + 0.72 * side), (-w / 2 + 0.014, rim + 0.88 * side), (-w / 2 + 0.030, r - 0.004),
-           (-w / 2 + 0.050, r)]     # a round shoulder (02, 03: the sidewall reads as a black ring round the cover)
-    return pts + [(-x, rr) for x, rr in pts[::-1]]
+    pts = [(-w / 2 + 0.016, rim), (-w / 2 + 0.004, rim + 0.22 * side), (-w / 2 - bulge, rim + 0.50 * side),
+           (-w / 2 + 0.002 - bulge, rim + 0.72 * side), (-w / 2 + 0.014, rim + 0.88 * side),
+           (-w / 2 + 0.030, r - 0.004), (-w / 2 + 0.050, r)]   # a round shoulder (02, 03: the sidewall reads as a
+    return pts + [(-x, rr) for x, rr in pts[::-1]]        # black ring round the cover)
 
 
 def wheel_parts(seg=72):
@@ -951,8 +957,8 @@ def wheel_parts(seg=72):
     for axle, tag in (("front", "F"), ("rear", "R")):
         ty = TYRES[axle]
         r, w, rim, xc, rc = ty["r"], ty["w"], ty["rim"], WHEEL_X[axle], COVER_R[axle]
-        # the cover reaches out over the sidewall (01 side: 0.85 of the tyre's radius), so the sidewall bulges
-        # 6 mm inboard of the cover's ring face and only its shoulder shows beyond the ring (02, 03)
+        # the cover reaches out over the sidewall (01 side: 0.85 of the tyre's radius); the sidewall's bulge stands
+        # 2 mm past the cover's ring, over its edge (tyre_profile)
         mid = xc - 0.006 - w / 2
         tv, tq = revolve(tyre_profile(r, w, rim), seg)
         # cover (01 side, 02): a flat outer ring, a thin step down to a near flat disc and a small centre bump
