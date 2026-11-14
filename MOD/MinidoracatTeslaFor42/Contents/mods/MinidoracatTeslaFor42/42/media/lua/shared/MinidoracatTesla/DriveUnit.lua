@@ -50,11 +50,13 @@ function DU.salvage(cond, skill)
 end
 
 -- ---- vanilla actions refuse a Tesla
+-- only on the drive unit: a job on any other part (another mod's heater repair) is not refused here
+local function onDriveUnit(a) return T.isTesla(a.vehicle) and a.part:getId() == "Engine" end
 for _, cls in ipairs({ ISRepairEngine, ISTakeEngineParts }) do
     local isValid, complete = cls.isValid, cls.complete
-    function cls:isValid() return not T.isTesla(self.vehicle) and isValid(self) end
+    function cls:isValid() return not onDriveUnit(self) and isValid(self) end
     function cls:complete()
-        if T.isTesla(self.vehicle) then return false end
+        if onDriveUnit(self) then return false end
         return complete(self)
     end
 end

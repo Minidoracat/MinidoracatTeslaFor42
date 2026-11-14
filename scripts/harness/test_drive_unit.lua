@@ -82,6 +82,11 @@ local nv, ne = car("Base.CarNormal", 50)
 local va = ISRepairEngine:new(who, ne, wrench, 300)
 check(va:isValid() == true and va:complete() == true and va.vanillaRan, "ISRepairEngine on a vanilla car: vanilla runs")
 check(ISTakeEngineParts:new(who, ne, wrench, 300):complete() == true, "ISTakeEngineParts on a vanilla car: vanilla runs")
+-- another mod reuses ISRepairEngine for a part without an item (Repair & Dismantle Any Car: heater, frunk)
+local heater = { getId = function() return "Heater" end, getVehicle = function() return tv end }
+local ha = ISRepairEngine:new(who, heater, wrench, 300)
+check(ha:isValid() == true and ha:complete() == true and ha.vanillaRan,
+    "ISRepairEngine on a Tesla part that is not the Engine: not refused, the wrapped action runs")
 
 H.section("repair with Drive Unit Parts")
 check(ISMinidoracatTeslaRepairDriveUnit:new(who, ne, wrench, 300):isValid() == false
