@@ -34,23 +34,10 @@ function H.carDoors(car)
     f:close()
     return H.TEMPLATE_DOORS[tpl], tpl
 end
--- does the car's vehicle script exist yet (car = "ModelY"): a car whose body is still being built (H.BUILDING, e.g.
--- { Cybercab = true } before its body came) has its Lua and data first; the checks that read its script, skins or app
--- pictures run once it does (and fail then if anything is missing). Any other car counts as built, so a released
--- car's checks never skip (a missing file fails). Take the car out of H.BUILDING once its body is merged.
-H.BUILDING = {}
-function H.bodyBuilt(car)
-    if not H.BUILDING[car] then return true end
-    local f = io.open(MEDIA:gsub("/lua$", "/scripts/") .. "vehicles/MinidoracatTesla_" .. car .. ".txt", "r")
-    if f then f:close() end
-    return f ~= nil
-end
 -- per Tesla: its script's engineForce and its pack item's int MaxCapacity (H.vehicle; other packs get 63)
 local ENGINE_FORCE, PACK_CAP = {}, {}
 for _, car in ipairs({ "ModelY", "Model3", "Cybertruck", "ModelS", "ModelX", "ModelYL", "Roadster", "Cybercab" }) do
-    if H.bodyBuilt(car) then
-        ENGINE_FORCE["Base.MinidoracatTesla_" .. car] = H.scriptValue("vehicles/MinidoracatTesla_" .. car .. ".txt", "engineForce")
-    end
+    ENGINE_FORCE["Base.MinidoracatTesla_" .. car] = H.scriptValue("vehicles/MinidoracatTesla_" .. car .. ".txt", "engineForce")
     PACK_CAP["Base.MinidoracatTesla_" .. car .. "Battery"] = H.scriptValue("items/MinidoracatTesla_items.txt", "MaxCapacity",
         "item MinidoracatTesla_" .. car .. "Battery")
 end

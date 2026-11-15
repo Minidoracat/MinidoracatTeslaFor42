@@ -48,7 +48,7 @@ end
 -- false when the car or the charger definition is not available here.
 -- g.ex,ey: floor point under the charger's exit (hang origin); g.ax,ay: where the hang lies on the floor;
 -- g.bx,by,bz: plug segment origin on the floor; g.px,py: charge port; g.len: floor run a -> b;
--- g.plug: the car's T.Specs plug ({ item, z }).
+-- g.plug: the car's T.Specs plug ({ item, z, rear? }; rear: the port is in the rear bumper).
 function C.solve(e)
     local vehicle = getVehicleById(e.vid)                    -- LuaManager.java:10276-10281
     local def = vehicle and T.Chargers and T.Chargers[e.kind]

@@ -8,8 +8,9 @@
 -- player that no phone here is paired with (MinidoracatTesla.VMLink.cars: last position only; remote buttons dimmed,
 -- pressing one says how to add the car). Only the selected car is polled; the list's grey lines come from App.seen,
 -- refreshed when the list opens (one appStatusAll per App.BATCH cars, one a LIST_MS).
--- Pages: "home" (name, battery, the car in its paint, four quick icons, a list into the sub pages), "controls" (flash,
--- horn, frunk, liftgate; a Cybertruck's Powershare cell), "location" (arrow, distance, "Show on map", "Navigate to car"
+-- Pages: "home" (name, battery, the car in its paint, four quick icons, three on a car without a front trunk
+-- (T.hasFrunk), a list into the sub pages), "controls" (flash, horn, frunk, liftgate and the car's own cells, GRID_NEED;
+-- no frunk cell without a front trunk), "location" (arrow, distance, "Show on map", "Navigate to car"
 -- with the MiniMap's setNavTarget), "summon", "pick", "security" (Sentry Mode, alerts), "charging", "cars",
 -- "powershare" (Cybertruck, plan 4: Powershare, its discharge limit 5-90 %, the bed outlet).
 -- "summon" (only with AutoDrive's summon API, App.summonApi; design temp/plan-summon-1027): AutoDrive drives the empty
@@ -84,11 +85,11 @@ local BTN_ORDER = { "close", "cars", "lock", "qcharge", "qfrunk", "qtrunk", "con
     "charging", "back", "flash", "horn", "frunk", "trunk", "tonneau", "falcon", "butterfly", "softtop", "map", "navcar", "sentry",
     "charge", "come", "pick", "fwd", "rev", "again", "finish", "cancel", "go", "powershare", "psToggle", "floorDown",
     "floorUp", "outlet" }
--- the joypad's rows per page, top to bottom (buttons not shown are skipped); "cars" is built with its rows
+-- the joypad's rows per page, top to bottom (buttons not shown are skipped); "cars" and "controls" are built (navRows)
 local NAV = {
     home = { { "cars", "close" }, { "lock", "qcharge", "qfrunk", "qtrunk" }, { "controls" }, { "location" }, { "summon" },
         { "security" }, { "charging" } },
-    controls = { { "back" }, { "flash", "horn" }, { "frunk", "trunk" }, { "tonneau", "falcon", "butterfly", "softtop", "powershare" } },
+    controls = { { "back" } }, -- then the cells two to a row (navRows)
     location = { { "back" }, { "map" }, { "navcar" } },
     security = { { "back" }, { "sentry" } },
     charging = { { "back" }, { "charge" } },
@@ -410,8 +411,15 @@ function App:sendList()
     T.request(self.player, "appStatusAll", { keys = keys })
 end
 
--- this page's joypad rows: NAV, except the car list's (built per app by layout)
-function App:navRows() return self.page == "cars" and self.navCars or NAV[self.page] end
+-- this page's joypad rows: NAV, except the car list's (built per app by layout) and the controls page's: its cells two
+-- to a row, as layout places them
+function App:navRows()
+    if self.page == "cars" then return self.navCars end
+    if self.page ~= "controls" then return NAV[self.page] end
+    local rows, grid = { NAV.controls[1] }, self.cells or GRID
+    for i = 1, #grid, 2 do rows[#rows + 1] = { grid[i], grid[i + 1] } end
+    return rows
+end
 
 -- ---------------------------------------------------------------- joypad: own rows (NAV), not ISPanelJoypad's grid
 -- the focused control stays in view (layout scrolls to it) until the player scrolls the page by hand

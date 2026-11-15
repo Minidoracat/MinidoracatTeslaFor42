@@ -249,7 +249,8 @@ end
 -- Two doors together (Specs flag): the Model X's falcon wing doors (falcon, the rear pair) and the Cybercab's doors
 -- (butterfly, the front pair; rider guide p.5: they swing up and out). The same rules as swing. Every installed one
 -- takes part; a broken lock on one that would open refuses the whole press before anything moves. Opening unlocks
--- them. Closing the falcon wings locks them again while the front doors are locked (the car stays locked, like
+-- them, so it turns sentry off like the app's unlock (S.canArm needs a locked car).
+-- Closing the falcon wings locks them again while the front doors are locked (the car stays locked, like
 -- Liftgate.relock for the lids); the Cybercab's doors are the cabin's own, so once opened its car stays unlocked, as
 -- when its doors are opened by hand (the app's lock locks it again). NO_DOOR on any car without the flag: a Model Y's
 -- rear doors are ordinary doors.
@@ -276,6 +277,8 @@ local function doorPair(flag, ids)
             if open and door:isLocked() then door:setLocked(false) end
             T.Liftgate.swing(v, part, open, player:getUsername()) -- closing a falcon wing: relocks it (Liftgate.relock)
         end
+        local bat = open and #move > 0 and T.Battery.part(v)
+        if bat and bat:getModData().sentry then S.disarm(v, player:getUsername()) end
         local relocked = false
         if not open then -- a wing already shut by hand but left unlocked locks too, even with nothing to move
             for _, id in ipairs(ids) do

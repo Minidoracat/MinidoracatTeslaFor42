@@ -348,7 +348,12 @@ d = act(owner, "falcon", true)
 check(d.why == "LOCK_BROKEN" and not RL.open and not RR.open and RL.locked and RR.locked,
     "falcon, the right wing's lock broken -> LOCK_BROKEN before anything moves (the left stays shut and locked)")
 RR.broken = false
+-- review cc-1: opening the wings unlocks the car, so sentry goes off with it (like the app's unlock; S.canArm needs a
+-- locked car)
+local md = v.parts.GasTank:getModData()
+md.sentry = { by = "owner", at = F.hours, kwh = 50, since = F.hours }
 d = act(owner, "falcon", true)
+check(md.sentry == nil and last("appState").sentry == false, "falcon opened with sentry on: sentry disarmed, the record says off")
 local anims = {}
 for _, m in ipairs(F.sent) do if m.cmd == "partAnim" then anims[#anims + 1] = m.args.part end end
 table.sort(anims)
@@ -356,8 +361,11 @@ check(d.why == nil and d.on == true and RL.open and RR.open and not RL.locked an
     and table.concat(anims, ",") == "DoorRearLeft,DoorRearRight", "falcon: both wings unlocked and opened, partAnim for each")
 check(last("appState") and last("appState").falcon == true, "falcon: the record says open")
 local fa = R.stats.actions
+md.sentry = { by = "owner", at = F.hours, kwh = 50, since = F.hours }
 d = act(owner, "falcon", true)
 check(d.why == nil and d.on == true and R.stats.actions == fa, "falcon already open, app asks open: nothing moves")
+check(md.sentry ~= nil, "falcon already open: nothing moved, sentry left as it was")
+md.sentry = nil
 d = act(owner, "falcon", false)
 check(d.why == nil and d.on == false and not RL.open and not RR.open and RL.locked and RR.locked,
     "falcon closed while the front doors are locked: both wings locked again (the car stays locked)")
@@ -448,8 +456,11 @@ d = act(owner, "butterfly", true)
 check(d.why == "LOCK_BROKEN" and not FL.open and not FR.open and FL.locked and FR.locked,
     "butterfly, the right door's lock broken -> LOCK_BROKEN before anything moves")
 FR.broken = false
+local md = v.parts.GasTank:getModData()
+md.sentry = { by = "owner", at = F.hours, kwh = 50, since = F.hours } -- review cc-1: opening disarms sentry (car unlocked)
 F.sent = {}
 d = act(owner, "butterfly", true)
+check(md.sentry == nil and last("appState").sentry == false, "butterfly opened with sentry on: sentry disarmed, the record says off")
 local anims = {}
 for _, m in ipairs(F.sent) do if m.cmd == "partAnim" then anims[#anims + 1] = m.args.part end end
 table.sort(anims)
@@ -458,8 +469,11 @@ check(d.why == nil and d.on == true and FL.open and FR.open and not FL.locked an
 check(last("appState") and last("appState").butterfly == true and last("appState").frunk == nil and last("appState").falcon == nil,
     "butterfly: the record says open; no frunk or falcon field on a Cybercab")
 local ba = R.stats.actions
+md.sentry = { by = "owner", at = F.hours, kwh = 50, since = F.hours }
 d = act(owner, "butterfly", true)
 check(d.why == nil and d.on == true and R.stats.actions == ba, "butterfly already open, app asks open: nothing moves")
+check(md.sentry ~= nil, "butterfly already open: nothing moved, sentry left as it was")
+md.sentry = nil
 d = act(owner, "butterfly", false)
 check(d.why == nil and d.on == false and not FL.open and not FR.open and not FL.locked and not FR.locked,
     "butterfly closed: shut, and unlocked (opening them unlocked the car, as by hand; the app's lock locks it)")
@@ -1288,6 +1302,24 @@ local ccmd, cargs = sentLast()
 check(ccmd == "appAction" and cargs.act == "butterfly" and cargs.on == true, "doors cell, doors shut -> appAction butterfly, on = true")
 state({ car = "MinidoracatTesla_Cybercab", skin = 0, butterfly = true })
 check(a.b.butterfly.on, "Cybercab: a door open -> the doors cell lit")
+-- review cc-2: the joypad rows are the cells as drawn, two to a row (no frunk cell here: trunk moves up beside horn)
+local function navShown()
+    local out = {}
+    for _, row in ipairs(a:navRows()) do
+        local ids = {}
+        for _, id in ipairs(row) do if a.b[id] and a.b[id].shown then ids[#ids + 1] = id end end
+        if #ids > 0 then out[#out + 1] = table.concat(ids, ",") end
+    end
+    return table.concat(out, "|")
+end
+a:focusFirst("horn")
+a:onJoypadDirDown()
+check(a.b.butterfly.joypadFocused, "Cybercab joypad: down from Horn -> the doors cell drawn under it")
+a:onJoypadDirLeft()
+check(a.b.trunk.joypadFocused, "Cybercab joypad: left from the doors cell -> Trunk")
+a:onJoypadDirRight()
+check(a.b.butterfly.joypadFocused, "Cybercab joypad: right from Trunk -> the doors cell")
+a:setFocus(nil)
 a.b.back:forceClick()
 check(table.concat(a.quick, ",") == "lock,qcharge,qtrunk" and not a.b.qfrunk.shown and a.b.qtrunk.shown,
     "Cybercab home: no frunk quick button (lock, charge, trunk)")
@@ -1300,6 +1332,26 @@ a.b.controls:forceClick()
 check(table.concat(a.cells, ",") == "flash,horn,frunk,trunk", "Model Y: frunk cell, no doors cell (a stray butterfly field in its record too)")
 a.b.back:forceClick()
 check(table.concat(a.quick, ",") == "lock,qcharge,qfrunk,qtrunk" and a.b.qfrunk.shown, "Model Y home: its frunk quick button")
+-- every car's controls joypad rows match its cells as drawn (the other seven: the same rows as before review cc-2)
+for car, want in pairs({ ModelY = "back|flash,horn|frunk,trunk", ModelYL = "back|flash,horn|frunk,trunk",
+    Model3 = "back|flash,horn|frunk,trunk", ModelS = "back|flash,horn|frunk,trunk",
+    ModelX = "back|flash,horn|frunk,trunk|falcon", Cybertruck = "back|flash,horn|frunk,trunk|tonneau,powershare",
+    Roadster = "back|flash,horn|frunk,trunk|softtop", Cybercab = "back|flash,horn|trunk,butterfly" }) do
+    state({ car = "MinidoracatTesla_" .. car, skin = 0 })
+    a.b.controls:forceClick()
+    local got = navShown()
+    check(got == want, car .. ": controls joypad rows " .. got)
+    a.b.back:forceClick()
+end
+state({ car = "MinidoracatTesla_ModelY", skin = 0 })
+a.b.controls:forceClick()
+a:focusFirst("horn")
+a:onJoypadDirDown()
+check(a.b.trunk.joypadFocused, "Model Y joypad: down from Horn -> Liftgate (unchanged)")
+a:onJoypadDirLeft()
+check(a.b.frunk.joypadFocused, "Model Y joypad: left -> Frunk")
+a:setFocus(nil)
+a.b.back:forceClick()
 end
 state({ car = "MinidoracatTesla_Model3", skin = 5 })
 a.b.controls:forceClick()
@@ -1327,14 +1379,11 @@ for script, s in pairs(T.Specs) do
     for k = 1, 2 do
         for _, pre in ipairs({ "car_", "wm_", "trim_" }) do need(T.HUDAtlas[k][pre .. s.model], pre .. s.model .. "@" .. k) end
     end
-    -- the app pictures come with the car's body (convert.py appcar): a car still being built (H.BUILDING) has none yet
-    if H.bodyBuilt(s.model) then
-        for _, c in ipairs(s.colors) do
-            local f = io.open("MOD/MinidoracatTeslaFor42/Contents/mods/MinidoracatTeslaFor42/42/media/textures/MinidoracatTesla/HUD/"
-                .. s.appCar .. c.name .. ".png", "rb")
-            need(f, s.appCar .. c.name)
-            if f then f:close() end
-        end
+    for _, c in ipairs(s.colors) do -- the app pictures (convert.py appcar)
+        local f = io.open("MOD/MinidoracatTeslaFor42/Contents/mods/MinidoracatTeslaFor42/42/media/textures/MinidoracatTesla/HUD/"
+            .. s.appCar .. c.name .. ".png", "rb")
+        need(f, s.appCar .. c.name)
+        if f then f:close() end
     end
     need(s.plug and s.plug.item and s.plug.z, "plug")
 end
