@@ -200,6 +200,10 @@ CAR = dict(
     # rear guards'; the bumpers' dark trim there in Head / Tail (shell drawn untinted, as vanilla's bumpers)
     HEAD_TAIL=(round(1.80 * K, 4), round(-1.85 * K, 4)),
     MASK_PAINT_GUARD=True,   # (convert.py mask_paint_guard) the nose lip's sliver trim under the paint: no Head on gold
+    # (convert.py lamp_zones) the lamps' unlit faces in Head / Tail (HEAD_TAIL) into the light zones: the front corner
+    # markers, the reverse lens and camera glass on the rear bumper, the tail lamps' unlit part, the light bar's
+    # housing (Trim, the bumper's too: a box)
+    LAMP_ZONES=dict(keep=("Marker", "Glass"), boxes=((("Trim",), (0.0, 1.58, -0.14), (0.60, 1.74, -0.05)),)),
     PANEL_ZONES={4: ("GuardLH", "GuardRH")},
     CUT={},
     PLANES={},

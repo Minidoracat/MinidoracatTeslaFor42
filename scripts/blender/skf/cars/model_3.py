@@ -214,7 +214,11 @@ CAR = dict(
     STOP_X=0.569,
     PANELS=dict(x=0.599, z=0.852, front=(-0.208, 0.592), rear=(-1.008, -0.208), gate=(-9.0, 9.0), lid=(0.892, 0.555)),
     GUARDS=dict(front=(0.742, 0.8025, 0.4), rear=(-0.958, 0.853, 0.45)),
-    END_ZONES=True,                        # (convert.py end_zones) nose / tail under the belt: guards' zones, trim Head / Tail
+    # (convert.py end_zones) nose / tail under the belt: guards' zones, trim Head / Tail; keep / boxes: the headlamp
+    # housing, lens and inside (the inside is the bumper's black material, so a box), the rear reflectors, into the
+    # light zones (lamp_zones; E2E 85cfe12 greyed headlamps)
+    END_ZONES=dict(keep=("Geohoodsub00031Mtl", "Ln1Mtl"),
+                   boxes=((("Georimblurlfsub01Mtl",), (0.40, 1.45, -0.15), (0.72, 1.86, -0.03)),)),
     # the body shell (rear quarters, roof, rear face and the trunk lid in one) is cut along the lid's seams; the
     # window frame trim spans both doors and the C pillar
     CUT={_SHELL: ("X+", "X-", "GZ", "CZ", "GY", *_RB[:8]), **{("Object_6", n): ("BF", "BR", "D") for n in _FRAMES},

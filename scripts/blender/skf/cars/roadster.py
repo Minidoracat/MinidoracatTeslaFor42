@@ -235,7 +235,11 @@ CAR = dict(
     STOP_X=0.2,
     PANELS=dict(x=0.45, z=0.80, front=(-0.45, 0.50), rear=(-0.45, -0.45), gate=(-1.38, 0.6), lid=(0.55, 0.45)),
     GUARDS=dict(front=(0.49, 0.75, 0.35), rear=(-0.45, 0.75, 0.35)),
-    END_ZONES=True,                        # (convert.py end_zones) nose / tail under the belt: guards' zones, trim Head / Tail
+    # (convert.py end_zones) nose / tail under the belt: guards' zones, trim Head / Tail; keep: the projectors, the
+    # fender markers, the tail lamps' parts (the headlamp case and bowls are LAMPS materials; E2E 85cfe12 greyed
+    # headlamps)
+    END_ZONES=dict(keep=("Projector lights", "Fender lights (orange)", "Fender lights (red)", "Fender lights LED",
+                         "Rear lights", "Reflector", "Reverse lights", "Signal lights")),
     CUT={},
     PLANES={},
     CUT_X=("-",),

@@ -1150,18 +1150,20 @@ def split_zone_edges(car, zone, every=False):
 
 
 def end_zones(car, c):
-    """END_ZONES (True): the body's faces still in Roof ahead of the front guards' y / behind the rear guards' y
-    (GUARDS) and under the belt (BELT_Z), which no part damages (vanilla gives Roof none), into the zones of the parts
-    at that end (BaseVehicle.java doOtherBodyWorkDamage): paint into the guards' zones (EngineDoor checkDamage 3 / 11,
-    TruckBed 7 / 15), the bumpers' dark trim into Head / Tail (EngineDoor 0, TruckBed 4) as vanilla's bumpers. Paint
-    never in Head / Tail: vehicle_multiuv.frag's frontAlpha / tailAlpha put them in noTintAlpha, their damage shell
-    drawn in its own green-grey, not the paint's hue (Cybercab 8db3078, E2E damage-front-cc-vs-m3). Applied after
+    """END_ZONES (True, or dict(keep=(material, ...))): the body's faces still in Roof ahead of the front guards' y /
+    behind the rear guards' y (GUARDS) and under the belt (BELT_Z), which no part damages (vanilla gives Roof none),
+    into the zones of the parts at that end (BaseVehicle.java doOtherBodyWorkDamage): paint into the guards' zones
+    (EngineDoor checkDamage 3 / 11, TruckBed 7 / 15), the bumpers' dark trim into Head / Tail (EngineDoor 0, TruckBed
+    4) as vanilla's bumpers. Paint never in Head / Tail: vehicle_multiuv.frag's frontAlpha / tailAlpha put them in
+    noTintAlpha, their damage shell drawn in its own green-grey, not the paint's hue (Cybercab 8db3078, E2E
+    damage-front-cc-vs-m3). The lamps there go to the light zones (lamp_zones), not Head / Tail. Applied after
     split_zone_edges: the UV islands, the skin and the lights stay as built, only the mask changes (an island cut by
     the new border reads one texel of no zone there)."""
     fy, ry, tz = GUARDS["front"][0], GUARDS["rear"][0], BELT_Z
     cen = pv.face_centres(car)
     zone = c["zone"]
-    free = (zone == ZN.index("Roof")) & (c["part"] == 0) & (cen[:, 2] < tz)
+    lamp = lamp_zones(car, c, C["END_ZONES"])
+    free = (zone == ZN.index("Roof")) & (c["part"] == 0) & (cen[:, 2] < tz) & ~lamp
     left = cen[:, 0] < 0
     for at, l, r, trim in ((cen[:, 1] > fy, "GuardLH", "GuardRH", "Head"), (cen[:, 1] < ry, "GuardLT", "GuardRT", "Tail")):
         m = free & at
@@ -1169,6 +1171,40 @@ def end_zones(car, c):
         zone[m & c["paint"] & ~left] = ZN.index(r)
         zone[m & ~c["paint"]] = ZN.index(trim)
         print(f"END_ZONES {trim}: paint {int((m & c['paint']).sum())} faces to {l}/{r}, trim {int((m & ~c['paint']).sum())} to {trim}")
+
+
+def lamp_zones(car, c, spec):
+    """The lamps' faces outside the light zones (housings, rims, lenses, reflectors, markers: the LAMPS head / tail
+    materials and objects, spec's `keep` materials, and spec's `boxes` ((materials, lo, hi), ...: faces of those
+    materials centred in the box, lo / hi (|x|, y, z) in the built mesh's centred coordinates, for lamp parts in a
+    material the bumper shares); END_ZONES or LAMP_ZONES = True or dict(keep=..., boxes=...))
+    ahead of the front guards' y / behind the rear guards' y and under the belt, still in Roof or in Head / Tail (the
+    Cybercab's HEAD_TAIL), into the light zones of their end and side (LightLH / RH, LightLT / RT), as vanilla's lamps:
+    their damage never drawn (TextureDamage1/2Enables2, the second matrix's, are written only by checkDamage2, called for
+    slots 6 Hood and 10 Boot: BaseVehicle.java:6184-6193, 6224-6240). In Head / Tail the EngineDoor / TruckBed's damage
+    drew the untinted shell over a whole headlamp (E2E 85cfe12: Model 3 and Roadster, vanilla's five cars none). Only
+    the mask takes them (c["mask_lamp"], read by textures()): c["zone"] stays, so damage_uv1's lamp groups, the UV1
+    and the FBX stay as built; the lights texture is the lamp texels' own. Returns the lamp faces (end_zones leaves
+    them out)."""
+    fy, ry, tz = GUARDS["front"][0], GUARDS["rear"][0], BELT_Z
+    cen = pv.face_centres(car)
+    zone = c["zone"]
+    keep = spec.get("keep", ()) if isinstance(spec, dict) else ()
+    lamp = np.isin(c["mat"], [*LAMPS["head"], *LAMPS["tail"], *keep]) | np.isin(c["obj"], LAMPS.get("head_objs", ()))
+    co = pv.mesh_co(car)
+    cc = cen - np.r_[0.0, ((co.min(0) + co.max(0)) / 2)[1:]]   # centred as stage_build centres the mesh
+    cc[:, 0] = np.abs(cc[:, 0])
+    for mats, lo, hi in (spec.get("boxes", ()) if isinstance(spec, dict) else ()):
+        lamp |= np.isin(c["mat"], mats) & (cc > lo).all(1) & (cc < hi).all(1)
+    m = lamp & (c["part"] == 0) & (cen[:, 2] < tz) & np.isin(zone, [ZN.index(z) for z in ("Roof", "Head", "Tail")])
+    left = cen[:, 0] < 0
+    mz = np.full(len(zone), -1)
+    for at, l, r in ((cen[:, 1] > fy, "LightLH", "LightRH"), (cen[:, 1] < ry, "LightLT", "LightRT")):
+        mz[m & at & left] = ZN.index(l)
+        mz[m & at & ~left] = ZN.index(r)
+        print(f"LAMP_ZONES {l}/{r}: {int((m & at).sum())} faces")
+    c["mask_lamp"] = mz
+    return lamp
 
 
 def _tri_closest(P, A, B, C):
@@ -1663,7 +1699,8 @@ def textures(car, c, shift=0.0):
         lv = np.empty(len(car.data.loops), np.int64)
         car.data.loops.foreach_get("vertex_index", lv)
         hgt = np.repeat(((pv.mesh_co(car)[lv, 2] - fz[:, 2].min()) / np.ptp(fz[:, 2]))[:, None], 3, 1)
-    layers = {"col": c["rgb"], "zone": zone_rgb[c["zone"]], "aux": aux, "hgt": hgt,
+    mzone = c["zone"] if "mask_lamp" not in c else np.where(c["mask_lamp"] >= 0, c["mask_lamp"], c["zone"])
+    layers = {"col": c["rgb"], "zone": zone_rgb[mzone], "aux": aux, "hgt": hgt,
               "badge": np.repeat(np.where(c["mat"] == "badge_chrome", 1.0, np.where(
                   c["mat"] == (INK or {}).get("mat"), 0.85, np.where(c["mat"] == "badge_etch", 0.62,
                                                                      0.5 * (c["badge"] | (c["area"] > 0)))))[:, None], 3, 1)}
@@ -1809,6 +1846,8 @@ def stage_build():
     c = classify(car, names, sizes)         # same faces, new vertex split
     if C.get("END_ZONES"):
         end_zones(car, c)
+    elif C.get("LAMP_ZONES"):              # (Cybercab: HEAD_TAIL put its lamps' housings in Head / Tail)
+        lamp_zones(car, c, C["LAMP_ZONES"])
     # centre the bbox (mesh centre == model offset == centerOfMassOffset, vanilla convention)
     co = pv.mesh_co(car)
     ctr = (co.min(0) + co.max(0)) / 2
