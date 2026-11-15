@@ -76,7 +76,7 @@ check(cs.massKg == 1412 and cs.dcKw == 152 and cs.acKw == nil and cs.regenEff ==
     and cs.butterfly == true and cs.frunk == false and not T.hasFrunk(cs) and cs.hepa == nil and cs.falcon == nil
     and cs.softTop == nil and cs.tonneau == nil and cs.powershare == nil and #cs.colors == 1 and cs.colors[1].name == "Gold",
     "Cybercab: regen mass 1412 kg (EPA), DC 152 kW, butterfly doors, no front trunk; no HEPA, falcon, soft top, tonneau; Gold only")
-check(cs.chillForce and cs.chillForce > 0 and cs.chillForce < 2190, "Cybercab: its own Chill force, below its 2190 (T.CHILL_FORCE 3100 is above it)")
+check(cs.chillForce == 1800, "Cybercab: its own Chill force 1800 (E2E feel-sp 19.99 s to 100 km/h, the user's pick)")
 local others = {}
 for name, s in pairs(T.Specs) do
     if name ~= CC and (s.butterfly ~= nil or s.frunk ~= nil or not T.hasFrunk(s)) then others[#others + 1] = name end
@@ -85,10 +85,10 @@ check(#others == 0 and T.hasFrunk(nil), "the other seven: no butterfly, a front 
 local f = assert(io.open("MOD/MinidoracatTeslaFor42/Contents/mods/MinidoracatTeslaFor42/42/media/scripts/vehicles/MinidoracatTesla_Cybercab.txt", "r"))
 local txt = f:read("*a")
 f:close()
-check(H.scriptValue("vehicles/MinidoracatTesla_Cybercab.txt", "engineForce") == 2190
+check(H.scriptValue("vehicles/MinidoracatTesla_Cybercab.txt", "engineForce") == 3800
     and H.scriptValue("vehicles/MinidoracatTesla_Cybercab.txt", "mass") == 556
     and txt:find("\n        template! = MinidoracatTeslaCoreNoFrunk,", 1, true) ~= nil and not txt:find("Frunk%s*{"),
-    "Cybercab script: engineForce 2190 (163 kW x 10), mass 556 (800 x 1,412 / 2,033), CoreNoFrunk, no Frunk part")
+    "Cybercab script: engineForce 3800 (E2E feel-sp 9.08 s to 100 km/h, the user's pick), mass 556 (800 x 1,412 / 2,033), CoreNoFrunk, no Frunk part")
 H.removeVehicle(cc)
 end
 local full = H.vehicle({ kwh = 78.4 })

@@ -294,10 +294,9 @@ T.Specs = {
         -- 10 -> 90 % Supercharge takes the Model Y's time
         dcKw = 152,
         regenEff = 0.6,
-        -- its script force 2190 is already below T.CHILL_FORCE (about 16.7 s to 100 km/h by the Roadster's E2E
-        -- numbers, mass 556): Chill keeps the other cars' Chill / normal time, about 2.2x (T.CHILL_FORCE note),
-        -- 2190 / 2.19 = 1000. An estimate: measure it (E2E feel-sp) with the car
-        chillForce = 1000,
+        -- Chill by feel (E2E feel-sp with the body): 1800 = 0-100 km/h in 19.99 s against the script's 3800 in
+        -- 9.08 s, the user's pick (acceptance page 2026-11-15); T.CHILL_FORCE 3100 would barely slow it
+        chillForce = 1800,
         butterfly = true, -- the doors swing up and out (rider guide p.5): the app opens both
         frunk = false, -- no front trunk (rider guide), template MinidoracatTeslaCoreNoFrunk
         doorClip = { DoorFrontLeft = 2.0, DoorFrontRight = 2.0, TrunkDoor = 3.0 }, -- cars/cybercab.py DOORS

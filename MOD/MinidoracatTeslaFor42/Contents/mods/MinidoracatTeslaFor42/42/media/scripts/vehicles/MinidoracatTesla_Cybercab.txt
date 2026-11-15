@@ -12,10 +12,11 @@ module Base
         {
             itemType = Base.MinidoracatTesla_CybercabBattery,
         }
-        /* 163 kW = 219 hp (EPA) x 10: the mechanics window shows power / 10 hp (ISVehicleMechanics.lua:1178). Tesla */
-        /* gives no 0-100 km/h: measured by feel (E2E feel-sp) with the body, the user picks. Create.Motor and vanilla */
-        /* repair() (VehiclePart.java:999-1005) both set this value. */
-        engineForce = 2190,
+        /* Tesla gives no power or 0-100 km/h for the Cybercab: set by feel (E2E feel-sp, the body): 3800 = 0-100 */
+        /* km/h in 9.08 s, the user's pick (acceptance page 2026-11-15); 2190 (163 kW x 10, EPA) was before. The */
+        /* mechanics window shows power / 10 hp (ISVehicleMechanics.lua:1178). Create.Motor and vanilla repair() */
+        /* (VehiclePart.java:999-1005) both set this value. */
+        engineForce = 3800,
         /* curb 1,412 kg (EPA) on the template's 800 = Model 3's 2,033 kg: 800 x 1,412 / 2,033 */
         mass = 556,
         maxSpeed = 120,
