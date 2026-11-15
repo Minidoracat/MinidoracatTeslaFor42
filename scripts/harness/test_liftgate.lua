@@ -336,6 +336,19 @@ cmd(driver, { vid = v:getId(), part = "EngineDoor" })
 cmd(driver, { vid = v:getId(), part = "DoorRearLeft" })
 settle()
 check(not lid.open and not rl.open and math.floor(v:getColorHue()) == 16, "second clicks close the lid and the door")
+-- the Cybercab (Specs frunk = false: "the hood cannot be opened"): the dashboard's liftgate command has no hood for it,
+-- even sent by hand; its trunk lid as on every car
+do
+local script0 = v.script
+v.script = "Base.MinidoracatTesla_Cybercab"
+local tx0 = v.doorTx
+cmd(driver, { vid = v:getId(), part = "EngineDoor" })
+check(denied("NO_DOOR") and not lid.open and v.doorTx == tx0, "Cybercab, the hood: NO_DOOR, it stays shut")
+check(select(2, L.check(driver, v, "EngineDoor")) == "NO_DOOR" and L.check(driver, v, "TrunkDoor") ~= nil,
+    "Cybercab: Liftgate.check has no hood, the trunk lid yes")
+v.script = script0
+check(L.check(driver, v, "EngineDoor") ~= nil, "Model Y: the frunk lid as before")
+end
 
 H.section("door anim sync (MP server)")
 -- vanilla door actions: complete() opens/closes and returns true (ISOpenVehicleDoor.lua:61-97)
@@ -401,20 +414,23 @@ ISOpenVehicleDoor.complete({ vehicle = gas, part = gas.parts.DoorFrontLeft, char
 check(#H.sent == n, "not a Tesla: nothing sent")
 -- a shell door's bit clears when its Close clip is over: Specs doorClip (else 0.8) must be the clip the build animates
 -- (scripts/blender/skf/cars/<car>.py DOORS, 4th value), for every shell door the car has (its template's side doors and
--- the tailgate; a two-seater on MinidoracatTeslaCore has no rear doors)
+-- the tailgate; a two-seater on MinidoracatTeslaCore or CoreNoFrunk has no rear doors). A car whose body is still being
+-- built (H.BUILDING) has no script or build file yet.
 for name, s in pairs(T.Specs) do
-    local f = io.open("scripts/blender/skf/cars/" .. s.model:gsub("^Model", "model_"):lower() .. ".py", "r")
-    local src = f and f:read("*a") or ""
-    if f then f:close() end
-    local side = H.carDoors(name:match("MinidoracatTesla_(%w+)$"))
-    check(side ~= nil, name .. ": its script inherits MinidoracatTeslaCore or MinidoracatTeslaBase")
-    local has = { TrunkDoor = true }
-    for _, id in ipairs(side or {}) do has[id] = true end
-    for _, id in ipairs(L.SHELL_DOORS) do
-        if has[id] then
-            local clip = tonumber((src:match('"' .. id .. '":%s*(%b())') or ""):match(",%s*([%d.]+)%)$")) -- the falcon axis is a string
-            local want = s.doorClip and s.doorClip[id] or 0.8
-            check(clip ~= nil and want == clip, name .. " " .. id .. ": clip " .. tostring(want) .. " = its build's " .. tostring(clip))
+    if H.bodyBuilt(s.model) then
+        local f = io.open("scripts/blender/skf/cars/" .. s.model:gsub("^Model", "model_"):lower() .. ".py", "r")
+        local src = f and f:read("*a") or ""
+        if f then f:close() end
+        local side = H.carDoors(name:match("MinidoracatTesla_(%w+)$"))
+        check(side ~= nil, name .. ": its script inherits MinidoracatTeslaCore, CoreNoFrunk or Base")
+        local has = { TrunkDoor = true }
+        for _, id in ipairs(side or {}) do has[id] = true end
+        for _, id in ipairs(L.SHELL_DOORS) do
+            if has[id] then
+                local clip = tonumber((src:match('"' .. id .. '":%s*(%b())') or ""):match(",%s*([%d.]+)%)$")) -- the falcon axis is a string
+                local want = s.doorClip and s.doorClip[id] or 0.8
+                check(clip ~= nil and want == clip, name .. " " .. id .. ": clip " .. tostring(want) .. " = its build's " .. tostring(clip))
+            end
         end
     end
 end

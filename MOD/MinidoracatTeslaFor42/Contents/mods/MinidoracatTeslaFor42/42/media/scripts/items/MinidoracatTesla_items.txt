@@ -104,6 +104,21 @@ module Base
         WorldStaticModel = CarBattery,
     }
 
+    /* Cybercab: 47.6 kWh (EPA filing 326 V x 146 Ah), Core.lua T.Packs; MaxCapacity rounded up */
+    item MinidoracatTesla_CybercabBattery
+    {
+        DisplayCategory = VehicleMaintenance,
+        Weight = 45.0,
+        ItemType = base:normal,
+        Icon = CarBattery,
+        MaxCapacity = 48,
+        ConditionAffectsCapacity = false,
+        ConditionMax = 100,
+        ChanceToSpawnDamaged = 0,
+        MechanicsItem = true,
+        WorldStaticModel = CarBattery,
+    }
+
     /* Drive Unit Parts: repairs a Tesla's drive unit (Engine part) in place of Base.EngineParts; values copied from */
     /* vanilla EngineParts (generated/items/normal.txt:11818-11827), world model reused. Icon: drive_unit_icon.py. */
     item MinidoracatTesla_DriveUnitParts

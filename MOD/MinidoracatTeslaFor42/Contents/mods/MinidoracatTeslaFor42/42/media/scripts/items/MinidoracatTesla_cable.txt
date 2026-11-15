@@ -94,4 +94,15 @@ module Base
         WorldStaticModel = Base.MinidoracatTesla_CablePlugRoadster,
         Hidden = true,
     }
+
+    /* Cybercab: the NACS handle; its port is in the rear bumper (Core.lua Specs plug.rear) */
+    item MinidoracatTesla_CablePlugCybercab
+    {
+        Weight = 0.1,
+        ItemType = base:normal,
+        DisplayCategory = Electronics,
+        Icon = MinidoracatTesla_Cable,
+        WorldStaticModel = Base.MinidoracatTesla_CablePlugCybercab,
+        Hidden = true,
+    }
 }

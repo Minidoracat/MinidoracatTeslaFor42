@@ -1069,6 +1069,35 @@ check(near(rleft, (56 * 0.9 - 22.4) / 16.8, 1e-9) and near(C.nextDue() - H.hours
 C.unplug(sp, rv)
 H.removeVehicle(rv)
 
+-- Cybercab (Specs dcKw 152 = 250 x 47.6 / 78.4, user: all152): the DC curve as every car, scaled to its peak, so a
+-- 10 -> 90 % Supercharge takes the Model Y's time; AC chargers their own kW
+H.section("Cybercab: 152 kW on the DC curve, the Model Y's 10 -> 90 % time")
+do
+local CC = "Base.MinidoracatTesla_Cybercab"
+local cv0 = H.vehicle({ script = CC, kwh = 0, x = 700.5, y = 702.5 })
+check(T.Specs[CC].dcKw == 152 and T.Specs[CC].acKw == nil and B.capacity(B.part(cv0)) == 47.6, "Cybercab: dcKw 152, no acKw, 47.6 kWh")
+check(T.chargerKw("Supercharger", cv0) == 152 and T.chargerKw("WallConnector", cv0) == 11.5
+    and T.chargerKw("MobileConnector", cv0) == 7.6 and T.dcPeak("Supercharger", cv0, 152) == 152
+    and T.dcPeak("WallConnector", cv0, 11.5) == nil, "chargerKw: Supercharger 152 (peak 152), Wall Connector 11.5, Mobile 7.6")
+H.removeVehicle(cv0)
+local function mins(chg, cap, a, b) return B.chargeHours(chg, cap, cap * a / 100, cap * b / 100) * 60 end
+local yk, ck = T.Specs["Base.MinidoracatTesla_ModelY"].dcKw, T.Specs[CC].dcKw
+local my = mins({ kw = yk, peak = yk }, T.Packs["Base.MinidoracatTesla_ModelYBattery"], 10, 90)
+local cc = mins({ kw = ck, peak = ck }, T.Packs["Base.MinidoracatTesla_CybercabBattery"], 10, 90)
+check(near(cc, my, 0.5) and near(my, 36.4, 0.5), string.format("Cybercab 10->90 %% in %.2f game minutes, the Model Y %.2f (+-0.5)", cc, my))
+H.setHours(350)
+local cv = H.vehicle({ script = CC, kwh = 4.76, x = 700.5, y = 702.5 })
+cv._class = "BaseVehicle"
+function cv:getAttachmentWorldPos(_, out) out._x, out._y = self.x, self.y; return out end
+C.plug(sp, cv, siso)
+local cchg = B.part(cv):getModData().chg
+check(cchg and cchg.kw == 152 and cchg.peak == 152, "Cybercab on the Supercharger: kw 152, peak 152 (the curve)")
+check(near(B.chargeKwAt(cchg, 47.6, 4.76), 152, 1e-9) and near(B.chargeKwAt(cchg, 47.6, 23.8), 152 * 0.512, 1e-9),
+    "the curve at its peak: 152 kW at 10 %, 77.8 at 50 %")
+C.unplug(sp, cv)
+H.removeVehicle(cv)
+end
+
 -- the grid gone: a generator 2 tiles off, full speed, fuel per kWh
 H.setHours(400)
 local gsq = square(702, 700, 0, { outside = true })

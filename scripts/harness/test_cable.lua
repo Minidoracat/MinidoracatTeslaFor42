@@ -249,6 +249,54 @@ check(rdp ~= nil and tipOn(rdp, mrd), "cable: Roadster draws its own plug, tip o
 T.onChargerChanged(ord, true)
 H.removeVehicle(mrd)
 end
+-- ---- Cybercab: the NACS handle on its own plug item; the port is in the rear bumper (Specs plug.rear), so the plug
+-- comes in from behind the car (local z back by PLUG_REACH), not from the flank. Its port from its script once the
+-- body is built; until then a stand-in in the rear bumper left of centre (ERG p.6) ----
+do
+local CC = "Base.MinidoracatTesla_Cybercab"
+local media = "MOD/MinidoracatTeslaFor42/Contents/mods/MinidoracatTeslaFor42/42/media/"
+local function has(file, text)
+    local f = io.open(media .. file, "rb")
+    local s = f and f:read("*a") or ""
+    if f then f:close() end
+    return s:find(text, 1, true) ~= nil
+end
+check(T.Specs[CC].plug.item == "Base.MinidoracatTesla_CablePlugCybercab" and T.Specs[CC].plug.rear == true
+    and has("scripts/items/MinidoracatTesla_cable.txt", "WorldStaticModel = Base.MinidoracatTesla_CablePlugCybercab,")
+    and has("scripts/models/MinidoracatTesla_props.txt", "mesh = WorldItems/MinidoracatTesla_CablePlugCybercab,")
+    and has("models_X/WorldItems/MinidoracatTesla_CablePlugCybercab.fbx", "FBX"),
+    "Cybercab: its plug item, model block and mesh, plug.rear")
+if H.bodyBuilt("Cybercab") then
+    PORTS[CC] = scriptPort(CC)
+    check(PORTS[CC][1] > 0 and PORTS[CC][3] < 0 and math.abs(PORTS[CC][3]) > 3 * PORTS[CC][1],
+        "cable: the Cybercab's chargeport from its script (rear bumper, left of centre)")
+else
+    PORTS[CC] = { 0.25, 0.30, -2.05 }
+end
+local mcc = car(51.2, 24.0, 0.3, CC)
+local occ = { x = 50, y = 20, z = 0, kind = "Supercharger", facing = "S", vid = mcc:getId() }
+T.onChargerChanged(occ)
+frame()
+local ccp
+for _, d in ipairs(draws) do
+    if d.item.type == "Base.MinidoracatTesla_CablePlugCybercab" then ccp = d end
+end
+local back = mcc:getWorldPos(PORTS[CC][1], PORTS[CC][2], PORTS[CC][3] - C.PLUG_REACH, Vector3f.new())
+check(ccp ~= nil and tipOn(ccp, mcc) and H.near(ccp.x, back:x(), 1e-6) and H.near(ccp.y, back:y(), 1e-6),
+    "cable: Cybercab's plug comes in from behind the car (origin PLUG_REACH back of the port), tip on its port")
+T.onChargerChanged(occ, true)
+H.removeVehicle(mcc)
+local side = car(51.2, 24.0, 0.3)
+local oside = { x = 50, y = 20, z = 0, kind = "Supercharger", facing = "S", vid = side:getId() }
+T.onChargerChanged(oside)
+frame()
+local yp
+for _, d in ipairs(draws) do if d.item.type == "Base.MinidoracatTesla_CablePlug" then yp = d end end
+local flank = side:getWorldPos(side.port[1] + C.PLUG_REACH, side.port[2], side.port[3], Vector3f.new())
+check(yp ~= nil and H.near(yp.x, flank:x(), 1e-6) and H.near(yp.y, flank:y(), 1e-6), "cable: the Model Y's plug still from its flank")
+T.onChargerChanged(oside, true)
+H.removeVehicle(side)
+end
 
 -- ---- Mobile Connector: cable leaves at floor level (cableExit h = 0), no hang segment ----
 local mm = car(51.2, 24.0, 0.3)

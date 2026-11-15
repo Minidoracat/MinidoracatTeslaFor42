@@ -34,6 +34,7 @@ T.DRIVE_SCALE = 10
 -- plug: the charge cable's plug segment (client/MinidoracatTesla/Cable.lua): render-only item and its handle height
 -- above the floor in units (1 level = 2.44949), measured at the car's chargeport (E2E integration-mp `port`);
 -- scripts/blender/props/props_blender.py PLUGS builds one mesh per entry (build.py --check compares the two).
+-- plug.rear: the port is in the rear bumper, so the plug comes in from behind the car, not from its flank.
 -- hepa: a HEPA filter and Bioweapon Defense Mode (owner's manuals: Model Y p.169, Cybertruck p.165, Model S p.148,
 -- Model X p.165; none in the Model 3's), Camp.lua C.filterAir and the radial slice.
 -- dcKw: the car's DC fast charging peak (Supercharger, Chargers.lua T.chargerKw; T.DC_KW 250 without one): Model Y P,
@@ -49,8 +50,14 @@ T.DRIVE_SCALE = 10
 -- climb starts at, per door part, on T.clipStep's clock; EnterDoor.lua, else its E.WAIT).
 -- Roadster only: softTop (the soft top part SoftTop, opened and closed like a door: the HUD car picture, the app's
 -- soft top button; Liftgate.lua L.PARTS / L.LIDS, Remote.lua ACT.softtop, HatHide.lua). Open = top down.
+-- Cybercab only: butterfly (the app's doors button opens both front doors, which swing up and out: rider guide p.5;
+-- Remote.lua ACT.butterfly).
+-- frunk = false: no front trunk (Cybercab, rider guide: "not equipped with a front trunk. The hood cannot be opened"):
+-- its script inherits MinidoracatTeslaCoreNoFrunk (no Frunk part), and the dashboard, the app and the `liftgate`
+-- command have no hood (T.hasFrunk). The hood part EngineDoor stays for vanilla's mechanics (E at the hood).
 -- A flag counts only when it is truthy: no field = no such feature (hepa, falcon, tonneau, softTop ...). dcKw is not
 -- a flag: a number = the DC peak, nil = T.DC_KW, false = no DC charging (then acKw is a must, Chargers.lua T.chargerKw).
+-- Nor is frunk: nil = the car has its front trunk, false = none.
 T.Specs = {
     ["Base.MinidoracatTesla_ModelY"] = {
         model = "ModelY",
@@ -271,6 +278,37 @@ T.Specs = {
             { name = "CosmicBlack", h = 0.682, s = 0.733, v = 0.177 },
         },
     },
+    -- Cybercab (2026, the production car, gold, 47.6 kWh; references/cybercab.md, temp/plan-next-1114/specs-cybercab.md)
+    ["Base.MinidoracatTesla_Cybercab"] = {
+        model = "Cybercab",
+        appCar = "app_car_cybercab_",
+        -- z: estimate. The port sits in the rear bumper under the trunk (ERG p.6; the rescue sheet's rear view puts it
+        -- about 0.26 m above the ground), and the other cars' handles stand about 1 unit per metre of port height +
+        -- 0.03; measure it (E2E integration-mp `port`) once the body is built
+        plug = { item = "Base.MinidoracatTesla_CablePlugCybercab", z = 0.30, rear = true },
+        -- Tesla gives only a 48 V low voltage system (no capacity): the Model Y's 15.5 V, 6.9 Ah
+        v12Kwh = 15.5 * 6.9 / 1000,
+        -- the Model Y coefficients x 47.6 / 78.4: a full pack still drives one vanilla tank's distance
+        idleKw = 0.0228 * T.DRIVE_SCALE,
+        kwPerKmh = 0.00347 * T.DRIVE_SCALE,
+        massKg = 1412, -- curb mass 3,113 lb (EPA)
+        -- Tesla publishes no DC peak: the Model Y's 250 kW x 47.6 / 78.4 on the same curve (user: all152), so a
+        -- 10 -> 90 % Supercharge takes the Model Y's time
+        dcKw = 152,
+        regenEff = 0.6,
+        -- its script force 2190 is already below T.CHILL_FORCE (about 16.7 s to 100 km/h by the Roadster's E2E
+        -- numbers, mass 556): Chill keeps the other cars' Chill / normal time, about 2.2x (T.CHILL_FORCE note),
+        -- 2190 / 2.19 = 1000. An estimate: measure it (E2E feel-sp) with the car
+        chillForce = 1000,
+        butterfly = true, -- the doors swing up and out (rider guide p.5): the app opens both
+        frunk = false, -- no front trunk (rider guide), template MinidoracatTeslaCoreNoFrunk
+        -- the one production colour (rescue sheet; the silver 40 kWh car is not made here). h/s/v: the rider guide's
+        -- side view door panel median by convert.py's formula (s + 0.47, v + 0.05) as a stand-in; convert.py build
+        -- writes the skin's own. Same order and append-only rules as above.
+        colors = {
+            { name = "Gold", h = 0.1, s = 0.902, v = 0.658 },
+        },
+    },
 }
 
 -- Index into a colors table, drawn by each entry's weight (none = 1: the Model Y and Model 3 paints stay even)
@@ -301,6 +339,8 @@ T.Packs = {
     ["Base.MinidoracatTesla_ModelYLBattery"] = 82,
     -- Roadster 2.5: 56 kWh (tesla.com 2013 battery page)
     ["Base.MinidoracatTesla_RoadsterBattery"] = 56,
+    -- Cybercab: 47.6 kWh, the EPA filing's 326 V x 146 Ah
+    ["Base.MinidoracatTesla_CybercabBattery"] = 47.6,
 }
 
 -- Tesla display names for vanilla text keys: vanilla key -> Tesla key. Read by client/MinidoracatTesla/PartNames.lua
@@ -371,6 +411,24 @@ T.CarPartNames = {
         IGUI_MinidoracatTesla_Tip_AppTrunk = "IGUI_MinidoracatTesla_Tip_AppTrunkLid",
         IGUI_MinidoracatTesla_App_ControlsSub = "IGUI_MinidoracatTesla_App_ControlsSubRoadster",
     },
+    -- Cybercab rider guide: Trunk (p.7), Hood (p.4: "not equipped with a front trunk. The hood cannot be opened"), the
+    -- doors. The hood keeps vanilla's own words in every language (ours say frunk lid in some); the app has no frunk
+    ["Base.MinidoracatTesla_Cybercab"] = {
+        IGUI_VehiclePartTrunkDoor = "IGUI_MinidoracatTesla_Part_TrunkLid",
+        IGUI_VehiclePartEngineDoor = "IGUI_VehiclePartEngineDoor",
+        IGUI_OpenHood = "IGUI_OpenHood",
+        IGUI_CloseHood = "IGUI_CloseHood",
+        IGUI_LockHood = "IGUI_LockHood",
+        IGUI_UnlockHood = "IGUI_UnlockHood",
+        IGUI_MinidoracatTesla_App_Trunk = "IGUI_MinidoracatTesla_App_TrunkLid",
+        IGUI_MinidoracatTesla_App_Done_trunk = "IGUI_MinidoracatTesla_App_Done_trunkLid",
+        IGUI_MinidoracatTesla_App_Done_trunk_on = "IGUI_MinidoracatTesla_App_Done_trunkLid_on",
+        IGUI_MinidoracatTesla_App_Done_trunk_off = "IGUI_MinidoracatTesla_App_Done_trunkLid_off",
+        IGUI_MinidoracatTesla_Tip_AppLock = "IGUI_MinidoracatTesla_Tip_AppLockLid",
+        IGUI_MinidoracatTesla_Tip_AppUnlock = "IGUI_MinidoracatTesla_Tip_AppUnlockLid",
+        IGUI_MinidoracatTesla_Tip_AppTrunk = "IGUI_MinidoracatTesla_Tip_AppTrunkLid",
+        IGUI_MinidoracatTesla_App_ControlsSub = "IGUI_MinidoracatTesla_App_ControlsSubCybercab",
+    },
 }
 -- the Tesla key for a key on this car (script full name), or nil
 function T.partNameKey(script, key)
@@ -415,6 +473,9 @@ function T.spec(vehicle)
     return vehicle and T.Specs[vehicle:getScriptName()] or nil -- BaseVehicle.java:1621 (full name, :1540)
 end
 function T.isTesla(vehicle) return T.spec(vehicle) ~= nil end
+-- the car has a front trunk (Specs frunk ~= false; spec = a T.Specs entry or nil): the frunk, and the hood on the
+-- dashboard's car picture and in the app, are this car's
+function T.hasFrunk(spec) return spec == nil or spec.frunk ~= false end
 -- clip seconds a part anim (door swing) advances this update: 1/60 x 0.8 x the unmodded multiplier
 -- (BaseVehicle.java:3898-3904), which carries the game speed (GameTime.java:1018-1022): fast forward runs it sooner,
 -- a pause holds it. Timers that wait on a door count on this clock.

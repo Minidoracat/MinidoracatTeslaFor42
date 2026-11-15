@@ -70,7 +70,7 @@ local BTN = {
     security = { "home" }, charging = { "home" }, summon = { "home" },
     back = {}, flash = { "controls", "flash" }, horn = { "controls", "horn" }, frunk = { "controls", "frunk" },
     trunk = { "controls", "trunk" }, tonneau = { "controls", "tonneau" }, falcon = { "controls", "falcon" },
-    softtop = { "controls", "softtop" },
+    butterfly = { "controls", "butterfly" }, softtop = { "controls", "softtop" },
     map = { "location" }, navcar = { "location" },
     sentry = { "security", "sentry" },
     charge = { "charging", "charge" },
@@ -81,14 +81,14 @@ local BTN = {
     finish = { "summon" }, cancel = { "pick" }, go = { "pick" },
 }
 local BTN_ORDER = { "close", "cars", "lock", "qcharge", "qfrunk", "qtrunk", "controls", "location", "summon", "security",
-    "charging", "back", "flash", "horn", "frunk", "trunk", "tonneau", "falcon", "softtop", "map", "navcar", "sentry",
+    "charging", "back", "flash", "horn", "frunk", "trunk", "tonneau", "falcon", "butterfly", "softtop", "map", "navcar", "sentry",
     "charge", "come", "pick", "fwd", "rev", "again", "finish", "cancel", "go", "powershare", "psToggle", "floorDown",
     "floorUp", "outlet" }
 -- the joypad's rows per page, top to bottom (buttons not shown are skipped); "cars" is built with its rows
 local NAV = {
     home = { { "cars", "close" }, { "lock", "qcharge", "qfrunk", "qtrunk" }, { "controls" }, { "location" }, { "summon" },
         { "security" }, { "charging" } },
-    controls = { { "back" }, { "flash", "horn" }, { "frunk", "trunk" }, { "tonneau", "falcon", "softtop", "powershare" } },
+    controls = { { "back" }, { "flash", "horn" }, { "frunk", "trunk" }, { "tonneau", "falcon", "butterfly", "softtop", "powershare" } },
     location = { { "back" }, { "map" }, { "navcar" } },
     security = { { "back" }, { "sentry" } },
     charging = { { "back" }, { "charge" } },
@@ -98,9 +98,10 @@ local NAV = {
     powershare = { { "back" }, { "floorDown", "floorUp" }, { "psToggle" }, { "outlet" } },
 }
 -- the server actions: dimmed but pressable for a car this phone is not paired with (they say how to add it)
-local REMOTE = { "lock", "qcharge", "qfrunk", "qtrunk", "flash", "horn", "frunk", "trunk", "tonneau", "falcon", "softtop",
+local REMOTE = { "lock", "qcharge", "qfrunk", "qtrunk", "flash", "horn", "frunk", "trunk", "tonneau", "falcon", "butterfly", "softtop",
     "sentry", "charge", "psToggle", "floorDown", "floorUp", "outlet" }
 local QUICK = { "lock", "qcharge", "qfrunk", "qtrunk" }
+local QUICK_NO_FRUNK = { "lock", "qcharge", "qtrunk" } -- a car without a front trunk (Core.lua T.hasFrunk)
 local LIST = { "controls", "location", "summon", "security", "charging" }
 local LIST_ICON = { controls = "i_carfront", location = "i_nav", summon = "i_wheel", security = "i_shield", charging = "i_bolt" }
 local TITLE = { controls = "Controls", location = "Location", security = "Security", charging = "ChargingTitle", cars = "Cars",
@@ -108,14 +109,15 @@ local TITLE = { controls = "Controls", location = "Location", security = "Securi
 -- the summon pages' buttons (drawn as the mock's buttons: blue main, white stop, 1 px frame) and the summon each starts
 local SUM_BTNS = { "come", "pick", "fwd", "rev", "again", "finish", "cancel", "go" }
 local SUM_ID = { come = "come", target = "pick" } -- a running summon's button (dumb: fwd / rev by dir)
-local GRID = { "flash", "horn", "frunk", "trunk", "tonneau", "falcon", "softtop", "powershare" }
--- a control cell only for cars whose Specs entry (Core.lua T.Specs) has this field; the page shows self.cells (read)
-local GRID_NEED = { tonneau = "tonneau", falcon = "falcon", softtop = "softTop", powershare = "powershare" }
+local GRID = { "flash", "horn", "frunk", "trunk", "tonneau", "falcon", "butterfly", "softtop", "powershare" }
+-- a control cell only for cars whose Specs entry (Core.lua T.Specs) has this field; the page shows self.cells (read).
+-- The frunk cell: not on a car without a front trunk (T.hasFrunk)
+local GRID_NEED = { tonneau = "tonneau", falcon = "falcon", butterfly = "butterfly", softtop = "softTop", powershare = "powershare" }
 local GRID_ICON = { flash = "i_headlight", horn = "i_horn", frunk = "i_frunk", trunk = "i_trunk", tonneau = "i_tonneau",
-    falcon = "i_falcon", softtop = "i_softtop", powershare = "i_powershare" }
--- the tonneau, the Model X's falcon wing doors (both at once, Remote.lua ACT.falcon) and the Roadster's soft top have no
--- quick button on the home page
-local LIDS = { "frunk", "trunk", "tonneau", "falcon", "softtop" }
+    falcon = "i_falcon", butterfly = "i_butterfly", softtop = "i_softtop", powershare = "i_powershare" }
+-- the tonneau, the Model X's falcon wing doors (both at once, Remote.lua ACT.falcon), the Cybercab's doors (both,
+-- ACT.butterfly) and the Roadster's soft top have no quick button on the home page
+local LIDS = { "frunk", "trunk", "tonneau", "falcon", "butterfly", "softtop" }
 local HEAD = { "close", "back" } -- header buttons (never scroll)
 local MAIN = { "map", "charge" } -- the blue main actions
 
@@ -517,7 +519,7 @@ function App:onButton(b)
     local st, act, on = self.st or {}, b.act, nil
     if act == "lock" then act = st.locked and "unlock" or "lock"
     elseif act == "sentry" then on = not st.sentry
-    elseif act == "frunk" or act == "trunk" or act == "tonneau" or act == "falcon" or act == "softtop" then on = not st[act]
+    elseif act == "frunk" or act == "trunk" or act == "tonneau" or act == "falcon" or act == "butterfly" or act == "softtop" then on = not st[act]
     elseif act == "charge" then on = st.chg == "stopped"
     elseif act == "powershare" then on = st.ps == "off"
     elseif act == "outlet" then on = st.outlet ~= true
@@ -986,12 +988,14 @@ function App:read()
     self.paintName, self.model = paint and paint.name, spec and spec.model
     self.carSpr = spec and "car_" .. spec.model -- top view glyph on the summon radar and the maps
     self.carTex = paint and carTexture(spec.appCar .. paint.name)
-    local grid = {} -- the controls page's cells for this car (GRID_NEED)
+    local grid = {} -- the controls page's cells for this car (GRID_NEED; no frunk cell without a front trunk)
+    local frunk = T.hasFrunk(spec)
     for _, id in ipairs(GRID) do
         local need = GRID_NEED[id]
-        if not need or (spec and spec[need]) then grid[#grid + 1] = id end
+        if (id ~= "frunk" or frunk) and (not need or (spec and spec[need])) then grid[#grid + 1] = id end
     end
     self.cells = grid
+    self.quick = frunk and QUICK or QUICK_NO_FRUNK
     local sep = getText("IGUI_MinidoracatTesla_Sep")
     if not st then
         self.sSub = txt("Connecting")
@@ -1247,8 +1251,9 @@ function App:layout()
         y = y + u(12)
         self.yCar = y
         y = y + math.floor(cw / 2) + u(8)
-        local slot, qw, qh = tw / 4, u(48), u(40)
-        for i, id in ipairs(QUICK) do place(id, pad + (i - 0.5) * slot - qw / 2, y, qw, qh) end
+        local quick = self.quick or QUICK
+        local slot, qw, qh = tw / #quick, u(48), u(40)
+        for i, id in ipairs(quick) do place(id, pad + (i - 0.5) * slot - qw / 2, y, qw, qh) end
         y = y + qh + u(10)
         local rh = math.max(FHM + u(2) + FH, u(36)) + u(20)
         local rx = pad + u(40)
@@ -1606,7 +1611,7 @@ function App:prerender()
     end
     if page == "home" then
         if self.rec then batteryBar(self, pad, self.yBat - o) end
-        for _, id in ipairs(QUICK) do
+        for _, id in ipairs(self.quick or QUICK) do
             local b = self.b[id]
             local c = not b.lit and C.weak or (b.on and C.text or C.text2)
             icon(self, b.icon, b.x + b.width / 2, b.y + b.height / 2, 24, c, 1)

@@ -464,7 +464,7 @@ def check_geometry() -> None:
     # one plug per car: props_blender.py PLUGS (mesh -> handle height) = Core.lua T.Specs plug { item, z }, and each
     # plug item draws its own model
     core = (MEDIA / "lua" / "shared" / "MinidoracatTesla" / "Core.lua").read_text(encoding="utf-8")
-    specs = {m: float(z) for m, z in re.findall(r'plug = \{ item = "Base\.(\w+)", z = ([0-9.]+) \}', core)}
+    specs = {m: float(z) for m, z in re.findall(r'plug = \{ item = "Base\.(\w+)", z = ([0-9.]+)(?:, rear = true)? \}', core)}
     assert specs == b["PLUGS"], f"Core.lua T.Specs plug {specs} != props_blender.py PLUGS {b['PLUGS']}"
     assert len(specs) == core.count("plug = {"), "Core.lua: a plug entry not in the { item = ..., z = ... } form"
     items = (MEDIA / "scripts" / "items" / "MinidoracatTesla_cable.txt").read_text(encoding="ascii")

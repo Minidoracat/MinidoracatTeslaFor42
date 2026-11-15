@@ -550,6 +550,41 @@ check(why1 == "NOT_DRIVER" and why2 == "MOVING" and T.Liftgate.check(rdDrv, rdc,
     "soft top: a passenger -> NOT_DRIVER, moving -> MOVING, the stopped driver -> the part; a car without one -> NO_DOOR")
 rdc.driver, tesla.driver = nil, teslaDrv
 mx = nil
+do -- Cybercab: its own top view, two doors and the trunk lid; no front trunk, so its hood (the part is there, vanilla's
+-- mechanics open it) is no lid here: no zone, no overlay, no "close before driving" message
+local ccc = car({ script = "Base.MinidoracatTesla_Cybercab", kwh = 28 })
+ccc.parts.DoorRearLeft, ccc.parts.DoorRearRight = nil, nil
+ccc.parts.EngineDoor = tesla.parts.EngineDoor
+dash:setVehicle(ccc)
+local ccSpr = {}
+for _, d in ipairs(h.doors) do ccSpr[d.name] = T.HUDAtlas[1][d.spr] and T.HUDAtlas[2][d.spr] and d.spr end
+check(h.carSpr == "car_Cybercab" and h.zones == HUD.ZONES.Cybercab and T.HUDAtlas[1].car_Cybercab ~= nil
+    and T.HUDAtlas[2].car_Cybercab ~= nil and #h.doors == 3 and ccSpr.EngineDoor == nil
+    and ccSpr.DoorFrontLeft == "door_FL_Cybercab" and ccSpr.DoorFrontRight == "door_FR_Cybercab"
+    and ccSpr.TrunkDoor == "door_TR_Cybercab" and T.HUDAtlas[2].door_HD_Cybercab == nil,
+    "Cybercab: car_Cybercab, its zones, two butterfly doors and the trunk lid with their own overlays, no hood")
+toggled = {}
+local cch = { { 20, 42, "TrunkDoor" }, { 85, 20, "DoorFrontLeft" }, { 85, 64, "DoorFrontRight" } }
+local ccOk = true
+for i, z in ipairs(cch) do ccOk = ccOk and select(1, clickAt(z[1], z[2])) == true and toggled[i] == z[3] end
+check(ccOk and #toggled == 3, "Cybercab: trunk lid and both doors each toggle their part")
+toggled = {}
+check(select(1, clickAt(120, 42)) == false and select(1, clickAt(66, 42)) == false and #toggled == 0,
+    "Cybercab: the hood (x 120) and the rear quarter (x 66) pass through")
+mx, my = at(20, 42)
+h:render()
+check(h.tipArg == "IGUI_MinidoracatTesla_Part_TrunkLid", "Cybercab: hovering the tail names the trunk lid (rider guide: Trunk)")
+ccc.parts.EngineDoor.door.open = true
+h:update(); h:update(); h:update()
+check(h.st.doors == 0 and h.msgId == 0, "Cybercab: the hood opened by hand (vanilla mechanics): not drawn, no message")
+ccc.parts.EngineDoor.door.open = false
+ccc.parts.DoorFrontLeft.door.open = true
+h:update(); h:update(); h:update()
+check(h.st.doors == 1 and h.msgId == 1, "Cybercab: a door open: bit 1, 'close before driving'")
+ccc.parts.DoorFrontLeft.door.open = false
+h:update(); h:update(); h:update()
+mx = nil
+end
 -- every car's zones: inside the picture before the quick keys (x <= 140, 0 <= y <= 85), none overlapping
 local zOk = true
 for model, zs in pairs(HUD.ZONES) do

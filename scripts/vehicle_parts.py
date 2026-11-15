@@ -256,11 +256,9 @@ def main(argv):
             d = argv[argv.index("--json") + 1]
             os.makedirs(d, exist_ok=True)
             json.dump(rb, open(os.path.join(d, car + ".json"), "w", encoding="utf-8"), indent=1, sort_keys=True)
-    if "--core" in argv:   # what a car on Core alone resolves to (a two-seater's template part list)
-        core = Registry(vanilla + list(new.values())).script("MinidoracatTeslaCore")
-        print("  MinidoracatTeslaCore parts:", ", ".join(core.parts))
-        base = Registry(vanilla + list(new.values())).script("MinidoracatTeslaBase")
-        print("  MinidoracatTeslaBase parts:", ", ".join(base.parts))
+    if "--core" in argv:   # what a car on each template alone resolves to (a two-seater's template part list)
+        for name in ("MinidoracatTeslaCoreNoFrunk", "MinidoracatTeslaCore", "MinidoracatTeslaBase"):
+            print(f"  {name} parts:", ", ".join(Registry(vanilla + list(new.values())).script(name).parts))
     print("vehicle_parts:", "FAIL" if bad else "OK")
     return 1 if bad else 0
 

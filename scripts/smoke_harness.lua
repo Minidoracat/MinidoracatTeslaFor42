@@ -22,9 +22,11 @@ function H.scriptValue(file, key, after)
     if after then s = s:sub((assert(s:find(after, 1, true), after))) end
     return tonumber(s:match("\n%s*" .. key .. "%s*=%s*([%d%.]+)"))
 end
--- the side doors a Tesla has, by the template its script inherits (MinidoracatTesla_template.txt: Core the front two,
--- Base all four; test_cabin checks the template file against this); car = "ModelY". -> door ids, template name
+-- the side doors a Tesla has, by the template its script inherits (MinidoracatTesla_template.txt: Core and CoreNoFrunk
+-- the front two, Base all four; test_cabin checks the template file against this); car = "ModelY". -> door ids, template
+-- name
 H.TEMPLATE_DOORS = { MinidoracatTeslaCore = { "DoorFrontLeft", "DoorFrontRight" },
+    MinidoracatTeslaCoreNoFrunk = { "DoorFrontLeft", "DoorFrontRight" },
     MinidoracatTeslaBase = { "DoorFrontLeft", "DoorFrontRight", "DoorRearLeft", "DoorRearRight" } }
 function H.carDoors(car)
     local f = assert(io.open(MEDIA:gsub("/lua$", "/scripts/") .. "vehicles/MinidoracatTesla_" .. car .. ".txt", "r"))
@@ -32,17 +34,21 @@ function H.carDoors(car)
     f:close()
     return H.TEMPLATE_DOORS[tpl], tpl
 end
--- does the car's vehicle script exist yet (car = "Roadster"): a car whose body is still being built has its Lua and data
--- first; the checks that read its script, skins or app pictures run once it does (and fail then if anything is missing)
+-- does the car's vehicle script exist yet (car = "Cybercab"): a car whose body is still being built (H.BUILDING) has its
+-- Lua and data first; the checks that read its script, skins or app pictures run once it does (and fail then if
+-- anything is missing). Any other car counts as built, so a released car's checks never skip (a missing file fails).
+-- Take the car out of H.BUILDING once its body is merged.
+H.BUILDING = { Cybercab = true }
 function H.bodyBuilt(car)
+    if not H.BUILDING[car] then return true end
     local f = io.open(MEDIA:gsub("/lua$", "/scripts/") .. "vehicles/MinidoracatTesla_" .. car .. ".txt", "r")
     if f then f:close() end
     return f ~= nil
 end
 -- per Tesla: its script's engineForce and its pack item's int MaxCapacity (H.vehicle; other packs get 63)
 local ENGINE_FORCE, PACK_CAP = {}, {}
-for _, car in ipairs({ "ModelY", "Model3", "Cybertruck", "ModelS", "ModelX", "ModelYL", "Roadster" }) do
-    if car ~= "Roadster" or H.bodyBuilt(car) then
+for _, car in ipairs({ "ModelY", "Model3", "Cybertruck", "ModelS", "ModelX", "ModelYL", "Roadster", "Cybercab" }) do
+    if H.bodyBuilt(car) then
         ENGINE_FORCE["Base.MinidoracatTesla_" .. car] = H.scriptValue("vehicles/MinidoracatTesla_" .. car .. ".txt", "engineForce")
     end
     PACK_CAP["Base.MinidoracatTesla_" .. car .. "Battery"] = H.scriptValue("items/MinidoracatTesla_items.txt", "MaxCapacity",
