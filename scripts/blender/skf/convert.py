@@ -1064,24 +1064,29 @@ def classify(car, names, sizes):
     (gy, gz, gx), (ry, rz, rx) = GUARDS["front"], GUARDS["rear"]
     put(paint & (part == 0) & (cen[:, 1] > gy) & (cen[:, 2] < gz) & (np.abs(cen[:, 0]) > gx), "GuardLH", "GuardRH")
     put(paint & (part == 0) & (cen[:, 1] < ry) & (cen[:, 2] < rz) & (np.abs(cen[:, 0]) > rx), "GuardLT", "GuardRT")
-    # HEAD_TAIL (y front, y rear; Cybercab): the rest of the body ahead of / behind those (paint and the bumpers' dark
-    # trim; lamps and glass take their own zones below) in the Head / Tail zones, vanilla's front and rear ends (damage
-    # with EngineDoor / TruckBed like the guards: BaseVehicle.java checkDamage 0 / 4, vehicle_common.frag.h colZone1 /
-    # 2); left in Roof they never show damage (no part sets Roof's)
+    # HEAD_TAIL (y front, y rear; Cybercab): the rest of the body ahead of / behind those, left in Roof, never damaged
+    # (no part sets Roof's). Its paint in the guards' zones (EngineDoor / TruckBed: BaseVehicle.java
+    # doOtherBodyWorkDamage checkDamage 3, 11 / 7, 15 = texen1 [3][0], [3][2] / [3][1], [3][3]), its bumper trim in
+    # Head / Tail (the same parts, checkDamage 0 / 4): vanilla draws those two zones' damage shell untinted
+    # (vehicle_multiuv.frag frontAlpha / tailAlpha -> noTintAlpha), on paint a raw green-grey (E2E 2026-11-15
+    # damage-front-cc-vs-m3: the hood in Head)
     if C.get("HEAD_TAIL"):
         hy, ty = C["HEAD_TAIL"]
         free = (part == 0) & (zone == ZN.index("Roof"))
-        put(free & (cen[:, 1] > hy), "Head", "Head")
-        put(free & (cen[:, 1] < ty), "Tail", "Tail")
+        put(free & paint & (cen[:, 1] > hy), "GuardLH", "GuardRH")
+        put(free & paint & (cen[:, 1] < ty), "GuardLT", "GuardRT")
+        put(free & ~paint & (cen[:, 1] > hy), "Head", "Head")
+        put(free & ~paint & (cen[:, 1] < ty), "Tail", "Tail")
     for k, (l, r) in {1: ("DoorLH", "DoorLH"), 2: ("DoorRH", "DoorRH"), 3: ("DoorLT", "DoorLT"),
                       4: ("DoorRT", "DoorRT")}.items():
         put(part == k, l, r)
     put(part == 5, "Boot", "Boot")
     put(part == 6, "Hood", "Hood")
-    # PANEL_ZONES {panel: zone} (Cybercab: its hood on the body in Head, damage with EngineDoor; not Hood, whose
-    # uninstall flag (checkDamage2 EngineDoor 6, doBlack) would open a hole in the body when the part comes off)
-    for k, z in C.get("PANEL_ZONES", {}).items():
-        put(paint & (panel_of == k), z, z)
+    # PANEL_ZONES {panel: (left zone, right zone)} (Cybercab: its hood on the body in the front guards' zones, damage
+    # with EngineDoor; not Hood, whose uninstall flag (checkDamage2 EngineDoor 6, doBlack) would open a hole in the
+    # body when the part comes off)
+    for k, (l, r) in C.get("PANEL_ZONES", {}).items():
+        put(paint & (panel_of == k), l, r)
     put(head, "LightLH", "LightRH")
     # tail lights (lit with the headlights, HeadlightRear* parts: BaseVehicle.java:5894-5919) on the bar, the blade and
     # the corner lamps' outboard ends; brake lights (Stop, :5920-5934) on their inboard part
