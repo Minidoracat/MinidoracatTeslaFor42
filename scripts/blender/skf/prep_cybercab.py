@@ -15,11 +15,12 @@ a panel (body, doors, tailgate, hood, charge port door; face attribute `panel`, 
 the outlines between them are smoothed into real edges. The left half is decimated with every outline held and
 mirrored (exactly symmetric, no cracks between materials), then split one object per material (glass per pane).
 The fender cameras and B pillar buttons are small parts; tyres and flat wheel covers are revolved meshes.
-Length / wheelbase: 01 side at the official height's scale (4,280 / 2,757 mm; 06's side view agrees to 0.3 %).
-Frame (as prep_roadster): metres, +Y front, +Z up, -X the car's left, ground 0, y 0 half way along the car.
-    "$B" -b --factory-startup --python scripts/blender/skf/prep_cybercab.py [-- <out dir>]
+Length / wheelbase: 01 side at the official height's scale (4,280 / 2,757 mm; 06's side view agrees to 0.3 %); the
+nose B (default) 19 cm longer, NOSE.
+Frame (as prep_roadster): metres, +Y front, +Z up, -X the car's left, ground 0, y 0 half way along A's car.
+    "$B" -b --factory-startup --python scripts/blender/skf/prep_cybercab.py [-- <out dir> [nose=A]]
         -> <out dir>/cybercab_src.blend, cybercab_src.glb, cybercab_lines.json, prep_report.json
-           (default temp/skf_cc; about a minute)
+           (default temp/skf_cc, nose B; about a minute)
 Everything above `# ---- Blender` is plain numpy (importable without bpy: the checks in temp/skf_cc/work).
 How the numbers were measured: temp/skf_cc/REPORT.md.
 """
@@ -289,6 +290,23 @@ SIDE_MARKER = (1.870, 1.892, 0.330, 0.495)       # amber reflector strip ahead o
                                                  # 01 side 1.862-1.889 wide, hugging the arch (round 10; was 6 mm)
 BUTTON = (-0.490, 1.071, 0.030, 0.012)          # B pillar button (y, z, length, height), 01 side + rider guide p.5
 
+# ---- the nose (round 10). The official pictures come in two families that disagree on its length (temp/skf_cc/
+# review10/STEP1.md): "A" is 01 side's (x55 and 06's side view agree), 4.28 m long; "B" (the default) is 02 and
+# x253's (two views triangulate the plate 19-20 cm further ahead, 4.4 cm lower) with the plan outline of 06's top view
+# and x92's bottom view (each scaled by the 1,754 width: the two agree within 1 cm). Wheels, track, width, height,
+# glass, doors and tail are the same in both. Choose with `-- <out dir> nose=A`.
+NOSE = next((a[5:] for a in sys.argv[1:] if a.startswith("nose=")), "B")
+assert NOSE in ("A", "B"), NOSE
+# B: the car is built in A's frame, then every point ahead of y0 moves forward d * smoothstep((y - y0) / (y1 - y0)):
+# the face (plate, intake, the bar's middle) d ahead, the hood's front and the corners stretched. y0 just ahead of
+# the front arch (its edge at 1.87 moves 1 mm) and of the lamps' outer ends (1.873: the three views put them within
+# 4 cm of A's); d: the plate triangulated +0.196 (02, x253), x92's front overhang +0.18 at its wheelbase
+NOSE_B = dict(y=(1.86, 2.08), d=0.190, plate_dz=-0.044)
+# B's plan ahead of the front wheel: half width (m) at d m behind the nose's tip; 06 top and x92 (bottom view)
+NOSE_PLAN_B = ((0.0, 0.0), (0.005, 0.107), (0.01, 0.170), (0.02, 0.258), (0.04, 0.367), (0.06, 0.447),
+               (0.086, 0.515), (0.10, 0.545), (0.15, 0.621), (0.20, 0.684), (0.25, 0.735), (0.30, 0.780),
+               (0.35, 0.817), (0.40, 0.846), (0.45, 0.862), (0.50, 0.871), (0.60, 0.876), (0.70, 0.877))
+
 
 def smax(a, b, k):
     """Smooth maximum (polynomial), rounding radius about k."""
@@ -300,6 +318,46 @@ def smax(a, b, k):
 def ss(t):
     t = np.clip(t, 0.0, 1.0)
     return t * t * (3.0 - 2.0 * t)
+
+
+def nose_map(y):
+    """A's frame -> the output frame (y; identity for nose A)."""
+    if NOSE != "B":
+        return y
+    (y0, y1), d = NOSE_B["y"], NOSE_B["d"]
+    return y + d * ss((np.asarray(y, float) - y0) / (y1 - y0))
+
+
+def nose_jy(y):
+    """d nose_map / dy (the stretch; normals scale y by its inverse)."""
+    if NOSE != "B":
+        return np.ones_like(y)
+    (y0, y1), d = NOSE_B["y"], NOSE_B["d"]
+    u = np.clip((np.asarray(y, float) - y0) / (y1 - y0), 0.0, 1.0)
+    return 1.0 + d * 6.0 * u * (1.0 - u) / (y1 - y0)
+
+
+def nose_inv(y):
+    """The output frame -> A's frame (y)."""
+    g = np.linspace(1.0, 2.6, 3201)
+    return np.interp(y, nose_map(g), g)
+
+
+def nose_pts(p):
+    """Points (..., 3) to the output frame."""
+    p = np.array(p, float)
+    p[..., 1] = nose_map(p[..., 1])
+    return p
+
+
+if NOSE == "B":
+    # the plan from y 1.62 on, read in A's frame (B stays near its full width further forward: 0.871 at y 1.83,
+    # A 0.84); the side marker keeps its place on the output car; the plate lower (02, x253)
+    _y = np.r_[np.arange(1.62, 2.12, 0.005), np.arange(2.12, 2.1405, 0.0025), 2.141]
+    _d = nose_map(2.141) - nose_map(_y)
+    PLAN = np.concatenate([PLAN[PLAN[:, 0] < 1.615], np.c_[_y, np.interp(_d, *np.array(NOSE_PLAN_B).T)]])
+    SIDE_MARKER = (*nose_inv(np.array(SIDE_MARKER[:2])).round(4).tolist(), *SIDE_MARKER[2:])
+    PLATE = (PLATE[0], PLATE[1] + NOSE_B["plate_dz"], PLATE[2] + NOSE_B["plate_dz"], PLATE[3])
 
 
 def poly_sdf(poly, py, pz, chunk=20000):
@@ -1149,11 +1207,38 @@ PANES = ("Glass_Windshield", "Glass_DoorLeft", "Glass_DoorRight", "Glass_Quarter
          "Glass_ReverseLens")
 
 
+def uncross(v, t, lab, tol=4e-4):
+    """Faces that touch or cross a face they share no vertex with: where two cuts cross at a grazing angle they leave
+    vertex pairs 0.1-0.3 mm apart joined by sliver faces, which can touch (A, rear deck) or, stretched by nose B,
+    cross (the light bar's end). Merge the closest vertex pair of each such face pair (under tol, v in the output
+    frame) and drop the faces that collapse. Returns t, lab and the number of face pairs found."""
+    from mathutils.bvhtree import BVHTree
+    found = 0
+    for _ in range(4):
+        tree = BVHTree.FromPolygons(v.tolist(), t.tolist(), all_triangles=True)
+        fs = [set(f_) for f_ in t.tolist()]
+        pairs = [(a, b) for a, b in {tuple(sorted(p)) for p in tree.overlap(tree)} if not fs[a] & fs[b]]
+        if not pairs:
+            break
+        found += len(pairs)
+        remap = np.arange(len(v))
+        for a, b in pairs:
+            d = np.linalg.norm(v[t[a]][:, None] - v[t[b]][None], axis=2)
+            i, j = np.unravel_index(np.argmin(d), d.shape)
+            if d[i, j] < tol:
+                remap[remap[t[b][j]]] = remap[t[a][i]]
+        t = remap[remap[t]]
+        keep = (t[:, 0] != t[:, 1]) & (t[:, 1] != t[:, 2]) & (t[:, 0] != t[:, 2])
+        t, lab = t[keep], lab[keep]
+    return t, lab, found
+
+
 def main():
     import bmesh
     import bpy
 
-    out = (sys.argv[sys.argv.index("--") + 1:] + [OUT_DIR])[0] if "--" in sys.argv else OUT_DIR
+    args = [a for a in sys.argv[sys.argv.index("--") + 1:] if not a.startswith("nose=")] if "--" in sys.argv else []
+    out = (args + [OUT_DIR])[0]
     os.makedirs(out, exist_ok=True)
     bpy.ops.wm.read_factory_settings(use_empty=True)
     B = build()
@@ -1273,7 +1358,9 @@ def main():
     e = np.sort(t[:, [0, 1, 1, 2, 2, 0]].reshape(-1, 2), 1)
     _, inv, cnt = np.unique(e, axis=0, return_inverse=True, return_counts=True)
     keep = ~((cnt[inv.ravel()].reshape(-1, 3) > 2).any(1) & (np.linalg.norm(fn, axis=1) < 2e-6))
-    t, lab, fn = t[keep], lab[keep], fn[keep]
+    t, lab = t[keep], lab[keep]
+    t, lab, crossed = uncross(nose_pts(v), t, lab)
+    fn = np.cross(v[t[:, 1]] - v[t[:, 0]], v[t[:, 2]] - v[t[:, 0]])
     fn /= np.maximum(np.linalg.norm(fn, axis=1, keepdims=True), 1e-15)
     # field normals per corner, read a quarter of the way into the face: across a crease the mesh's edges do not
     # follow, each face takes its own side's normal instead of a blend (no saw tooth along the crease) ...
@@ -1298,7 +1385,16 @@ def main():
                                                 at=off[np.argsort(-dist)[:40]].round(4).tolist(),
                                                 cells=[[*c.tolist(), int(n)] for c, n in
                                                        zip(cells[np.argsort(-cn)[:30]], np.sort(cn)[::-1][:30])]),
-                  boundary_known=known_at)
+                  boundary_known=known_at, nose=NOSE, uncrossed=crossed)
+    # nose B: to the output frame (the checks above ran in A's frame); normals scale y by the stretch's inverse
+    jy = nose_jy(v[t][:, :, 1])[..., None]
+    nrm = nrm * np.concatenate([np.ones_like(jy), 1.0 / jy, np.ones_like(jy)], -1)
+    nrm /= np.linalg.norm(nrm, axis=2, keepdims=True)
+    v = nose_pts(v)
+    # a sliver the stretch bent past its field normal: that face faceted (B: 2 corners on the bar's shadow line)
+    fo = np.cross(v[t[:, 1]] - v[t[:, 0]], v[t[:, 2]] - v[t[:, 0]])
+    fo /= np.maximum(np.linalg.norm(fo, axis=1, keepdims=True), 1e-15)
+    nrm = np.where(((nrm * fo[:, None]).sum(2) < 0.05)[..., None], fo[:, None], nrm)
     for mi, nm in enumerate(MATS):
         for pi, on in enumerate(PANES if nm == "Glass" else (nm,)):
             sel = (mat == mi) & ((pane == pi) if nm == "Glass" else True)
@@ -1308,15 +1404,15 @@ def main():
     cv, cs, cl = B["parts"]["camera"]
     bv, bt = B["parts"]["button"]
     for sx, side in ((-1, "Left"), (1, "Right")):
-        p = cv * [sx, 1, 1]
+        p = nose_pts(cv * [sx, 1, 1])
         flip = (lambda a: a[:, ::-1]) if sx > 0 else (lambda a: a)
         make(f"FenderCam_{side}", p, flip(cs), "Paint")
         make(f"FenderCamLens_{side}", p, flip(cl), "Trim")
-        make(f"Button_{side}", bv * [sx, 1, 1], flip(bt), "Trim")
+        make(f"Button_{side}", nose_pts(bv * [sx, 1, 1]), flip(bt), "Trim")
     for nm, (vv, tt) in {**B["parts"]["front"], **B["parts"]["rear"]}.items():
         mn, mirrored = PARTS[nm]
         for sx, side in (((-1, "_Left"), (1, "_Right")) if mirrored else ((1, ""),)):
-            p = vv * [-sx if mirrored else 1, 1, 1]          # computed on the left
+            p = nose_pts(vv * [-sx if mirrored else 1, 1, 1])          # computed on the left
             ob = make(nm + side, p, tt[:, ::-1] if (mirrored and sx > 0) else tt, mn)
             ob.data.polygons.foreach_set("use_smooth", np.zeros(len(ob.data.polygons), bool))
     for nm, (vv, tt) in B["wheels"].items():
@@ -1335,8 +1431,9 @@ def main():
                                  r=TYRES[ax]["r"], w=TYRES[ax]["w"]) for ax in TYRES}
     report["wheels"]["note"] = "track: measured off the official pictures (01 front / rear), not an official figure"
     json.dump(report, open(os.path.join(out, "prep_report.json"), "w"), indent=1)
+    lines = B["lines"] if NOSE != "B" else {k: nose_pts(p).round(4).tolist() for k, p in B["lines"].items()}
     json.dump(dict(frame="metres, +Y front, +Z up, -X the car's left, ground 0 (prep_cybercab.py)",
-                   **B["lines"]), open(os.path.join(out, "cybercab_lines.json"), "w"), indent=1)
+                   **lines), open(os.path.join(out, "cybercab_lines.json"), "w"), indent=1)
     bpy.ops.wm.save_as_mainfile(filepath=os.path.join(out, "cybercab_src.blend"))
     bpy.ops.export_scene.gltf(filepath=os.path.join(out, "cybercab_src.glb"), export_format="GLB")
     print("PREP", report["body_tris"], "body triangles; bbox", report["body_bbox"])
