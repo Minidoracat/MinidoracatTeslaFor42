@@ -282,10 +282,8 @@ T.Specs = {
     ["Base.MinidoracatTesla_Cybercab"] = {
         model = "Cybercab",
         appCar = "app_car_cybercab_",
-        -- z: estimate. The port sits in the rear bumper under the trunk (ERG p.6; the rescue sheet's rear view puts it
-        -- about 0.26 m above the ground), and the other cars' handles stand about 1 unit per metre of port height +
-        -- 0.03; measure it (E2E integration-mp `port`) once the body is built
-        plug = { item = "Base.MinidoracatTesla_CablePlugCybercab", z = 0.30, rear = true },
+        -- z: handle height at the rear bumper port (E2E integration-mp tesla-cc1, 94f2d6d body: port 0.355)
+        plug = { item = "Base.MinidoracatTesla_CablePlugCybercab", z = 0.36, rear = true },
         -- Tesla gives only a 48 V low voltage system (no capacity): the Model Y's 15.5 V, 6.9 Ah
         v12Kwh = 15.5 * 6.9 / 1000,
         -- the Model Y coefficients x 47.6 / 78.4: a full pack still drives one vanilla tank's distance
