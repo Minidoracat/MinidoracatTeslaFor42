@@ -194,6 +194,7 @@ CAR = dict(
     STOP_X=0.0,                            # (LAMPS brake)
     PANELS=dict(x=0.70, z=1.15, front=(0.185, 1.10), rear=(-0.67, 0.185), gate=(-2.2, 0.6), lid=(1.6, 0.8)),
     GUARDS=dict(front=(1.10, 1.0, 0.5), rear=(-0.63, 1.3, 0.5)),
+    END_ZONES=True,                        # (convert.py end_zones) nose / tail under the belt: guards' zones, trim Head / Tail
     # paint faces of these objects split face by face (the source's doors are not separate): doors by in_door(centre)
     # outside |x| PANELS x and under PANELS z
     FACE_PARTS=("Body",),
