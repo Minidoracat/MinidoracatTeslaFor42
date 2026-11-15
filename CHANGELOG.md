@@ -22,7 +22,7 @@
 
 - **用手機 App 打開 Model X 的鷹翼門時，哨兵模式沒有跟著關掉**：App 開鷹翼門會把車解鎖，哨兵模式卻還開著，變成車沒鎖、哨兵仍在顧車；正常情況下車沒鎖是開不了哨兵模式的。從 0.4.0 加入 App 的鷹翼門按鈕起就有。現在和用 App 解鎖一樣，開門的同時關掉哨兵模式；門本來就開著、按了也沒有門在動時，哨兵模式維持原樣。
 - **超級充電座的物品說明沒寫到 Roadster 的例外**：說明寫「每台車照自己的峰值（250 kW，Cybertruck 325 kW）」，但 Roadster 沒有直流快充，從 0.8.0 加入起在超級充電座就固定 16.8 kW。現在說明列出 Cybertruck 325 kW、Cybercab 152 kW、其他 250 kW，並寫明 Roadster 固定 16.8 kW；充電本身沒有改。
-- **特斯拉撞到車頭中央或車尾，車身上看不到損壞**：Model Y、Model Y L、Model 3、Model S、Model X、Cybertruck 與 Roadster 的車頭中央、前保桿與車尾，不管撞得多重都不會出現凹痕或刮痕（車門、葉子板這些地方照常會出）。從各車第一次上架起就這樣：Model Y、Model 3 從 0.1.0，Cybertruck 從 0.3.0，Model S、Model X 從 0.4.0，Model Y L 從 0.7.0，Roadster 從 0.8.0。現在和原版車一樣，車頭跟著前蓋零件的車況、車尾跟著後行李廂（Cybertruck 是車斗）零件的車況出現損壞：車況低於 60 開始有凹痕，低於 40 更嚴重。漆面上的凹痕照車漆的顏色，黑色保桿、格柵與擴散器上的痕是原本的顏色（原版車的保桿也是這樣）。拆下前蓋或尾門時只有蓋子不見，車頭車尾不會開洞。只改了損壞的貼圖，車漆、車的模型與存檔都不變；舊存檔裡前蓋或後行李廂已經有損傷的車，更新後車頭車尾就會看到損壞。
+- **特斯拉撞到車頭中央或車尾，車身上看不到損壞**：Model Y、Model Y L、Model 3、Model S、Model X、Cybertruck 與 Roadster 的車頭中央、前保桿與車尾，不管撞得多重都不會出現凹痕或刮痕（車門、葉子板這些地方照常會出）。從各車第一次上架起就這樣：Model Y、Model 3 從 0.1.0，Cybertruck 從 0.3.0，Model S、Model X 從 0.4.0，Model Y L 從 0.7.0，Roadster 從 0.8.0。現在和原版車一樣，車頭跟著前蓋零件的車況、車尾跟著後行李廂（Cybertruck 是車斗）零件的車況出現損壞：車況低於 60 開始有凹痕，低於 40 更嚴重。漆面上的凹痕照車漆的顏色，黑色保桿、格柵與擴散器上的痕是原本的顏色（原版車的保桿也是這樣）。尾門、行李廂蓋上的黑色飾條、後窗黑框與燈，以前撞了會被染成車漆的顏色，現在維持黑色。拆下前蓋或尾門時只有蓋子不見，車頭車尾不會開洞。只改了損壞的貼圖，車漆、車的模型與存檔都不變；舊存檔裡前蓋或後行李廂已經有損傷的車，更新後車頭車尾就會看到損壞。
 
 > 技術要點：
 > - ID：車輛 `Base.MinidoracatTesla_Cybercab`；電池 `Base.MinidoracatTesla_CybercabBattery`（47.6 kWh，EPA 326 V × 146 Ah）；充電插頭 `Base.MinidoracatTesla_CablePlugCybercab`。生成只在 `VehicleZoneDistribution` 的 `parkingstall`（spawnChance 1，Model Y 是 3），不在 `good`。
@@ -34,7 +34,7 @@
 > - 哨兵：`falcon` 與 `butterfly` 真的打開了門時，若電池零件 modData 有 `sentry`，伺服器照 App 解鎖的做法關掉哨兵並同步車況。
 > - 沒有 HEPA（Specs 沒有 `hepa`），V 鍵圓盤不出現生物武器防禦模式。
 > - 素材：車身、車內與貼圖是本 MOD 照 Tesla 官方公開的圖（乘客手冊、救援指南與官方照片）自己做的，沒有用任何第三方模型，所以 `CREDITS.md` 沒有新增署名。
-> - 損壞區（原七台）：車身損壞貼圖的分區圖（`_mask.png`）裡，車頭中央、保桿下半與車尾原本落在 Roof 區；原版沒有零件控制 Roof 區的損壞，所以那裡永遠不出損壞圖。現在 Guard 框前後、窗線以下、原本在 Roof 的面：車漆面改進 GuardLH／GuardRH（車頭，`EngineDoor` 車況）與 GuardLT／GuardRT（車尾，`TruckBed` 車況），深色塑料改進 Head／Tail（同樣兩個零件）。漆面不放 Head／Tail：原版這兩區的損壞殼不套車漆色，車漆放進去是綠灰條紋。燈殼、燈框、鏡片與連著燈帶的黑色飾條改進同側的燈區：遊戲不畫燈區的損壞殼（原版也一樣），放在 Head／Tail 會在頭燈上畫出灰綠痕。Hood、Boot 不動：那兩區在零件拆下時會塗黑，現在只在蓋子本身的網格上，車身不會開洞。只改分區圖；skin、lights、輪子、FBX、腳本與 Lua 逐位元不變。Cybercab 用同一套規則（`HEAD_TAIL`、`LAMP_ZONES`）；Head 裡 skin 是金漆的格子（車頭板縫的填色、下唇細條）改進前 Guard（`MASK_PAINT_GUARD`）。
+> - 損壞區（原七台）：車身損壞貼圖的分區圖（`_mask.png`）裡，車頭中央、保桿下半與車尾原本落在 Roof 區；原版沒有零件控制 Roof 區的損壞，所以那裡永遠不出損壞圖。現在 Guard 框前後、窗線以下、原本在 Roof 的面：車漆面改進 GuardLH／GuardRH（車頭，`EngineDoor` 車況）與 GuardLT／GuardRT（車尾，`TruckBed` 車況），深色塑料改進 Head／Tail（同樣兩個零件）。漆面不放 Head／Tail：原版這兩區的損壞殼不套車漆色，車漆放進去是綠灰條紋。燈殼、燈框、鏡片與連著燈帶的黑色飾條改進同側的燈區：遊戲不畫燈區的損壞殼（原版也一樣），放在 Head／Tail 會在頭燈上畫出灰綠痕。Hood、Boot 的車身格不動：那兩區在零件拆下時會塗黑，現在只在蓋子本身的網格上，車身不會開洞。尾門、行李廂蓋零件自己的燈具與非車漆的黑面（各車 `trim=`：燈間黑帶、擾流板、後窗黑框、Cybercab 鴨尾立面）改進同端同側的燈區：Boot 的殼照車漆著色，黑面撞了會變成車漆色；放 Head／Tail 又因為 UV1 落在殼的不透明處，會畫成整條實心灰綠帶。只改分區圖；skin、lights、輪子、FBX、腳本與 Lua 逐位元不變。Cybercab 用同一套規則（`HEAD_TAIL`、`LAMP_ZONES`）；Head 裡 skin 是金漆的格子（車頭板縫的填色、下唇細條）改進前 Guard（`MASK_PAINT_GUARD`）；尾門的損壞 UV1 只對原版 ModernCar 尾箱蓋與後板的後 3/4（`DAMAGE_BOX_REF`），尾門頂不會出一整塊扁平色斑。
 
 ## [42.22.2-0.8.1] - 2026-11-15
 

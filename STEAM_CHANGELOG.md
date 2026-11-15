@@ -7,7 +7,7 @@
 [*] About 9 seconds to 100 km/h, like a vanilla sedan (Tesla publishes no figure; 380 hp in the mechanics window).
 [*] No steering wheel, but you drive it from the left seat. Doors swing up; the app's Doors button opens both. No front trunk.
 [*] 47.6 kWh; Superchargers peak at 152 kW. The charge port is at the back: reverse into the stall.
-[*] Fixed: crashes into the middle of the nose or tail of the other seven Teslas never showed damage there. Now they do, as on vanilla cars.
+[*] Fixed: crashes into the middle of the nose or tail of the other seven Teslas never showed damage there. Now they do, as on vanilla cars, and black trim and lamps on the tailgate or trunk lid stay black instead of taking the paint color.
 [*] Fixed: opening the Model X's falcon wing doors from the app now turns Sentry Mode off.
 [/list]
 
@@ -25,7 +25,7 @@
 
 [h3]🔧 修正[/h3]
 [list]
-[*] [b]撞到車頭中央或車尾看不到損壞[/b]：原本的七台從上架起就這樣。現在和原版車一樣會出現凹痕，車頭跟著前蓋、車尾跟著後行李廂（Cybertruck 是車斗）的車況，漆面凹痕照車漆顏色。舊存檔裡已經撞過的車，更新後就看得到。
+[*] [b]撞到車頭中央或車尾看不到損壞[/b]：原本的七台從上架起就這樣。現在和原版車一樣會出現凹痕，車頭跟著前蓋、車尾跟著後行李廂（Cybertruck 是車斗）的車況，漆面凹痕照車漆顏色。尾門、行李廂蓋上的黑色飾條、後窗黑框與燈撞了維持黑色，不再被染成車漆色。舊存檔裡已經撞過的車，更新後就看得到。
 [*] [b]App 打開 Model X 的鷹翼門時沒關掉哨兵[/b]：從 0.4.0 起就有。現在和用 App 解鎖一樣，開門的同時關掉哨兵。
 [*] [b]超級充電座的說明沒寫到 Roadster[/b]：Roadster 固定 16.8 kW，說明卻寫峰值 250 kW。現在列出各車峰值。
 [/list]
