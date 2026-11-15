@@ -436,7 +436,11 @@ def furniture(add, opening, grow=0.0, fine=1, between=None):
     if between:
         between(part)
     part((0.05, 0.04, 0.09), 0.012, "screen_back", DASH["stand"])               # screen stand
-    v, f = box((0.30, 0.022, 0.19), 0.012)                                        # 15.4" landscape screen
+    # DASH screen_size (optional, (width, height)): another screen than the 15.4" (Cybercab's big landscape one), its
+    # picture blocks scaled with it
+    sw, sh = DASH.get("screen_size", (0.30, 0.19))
+    kx, kz = (sw / 0.30, sh / 0.19) if "screen_size" in DASH else (1, 1)
+    v, f = box((sw, 0.022, sh), 0.012)                                            # 15.4" landscape screen
     v = v @ rot_x(-12).T + DASH["screen"]
     fn = np.array([np.cross(v[fc[1]] - v[fc[0]], v[fc[2]] - v[fc[0]]) for fc in f])
     fn /= np.linalg.norm(fn, axis=1, keepdims=True)
@@ -449,8 +453,13 @@ def furniture(add, opening, grow=0.0, fine=1, between=None):
                           ((0.034, 0.003, 0.070), (-0.098, -0.0140, 0.020), "seat"),
                           ((0.120, 0.003, 0.006), (0.050, -0.0125, 0.020), "trim"),
                           ((0.006, 0.003, 0.060), (0.110, -0.0125, 0.047), "trim")))):
+        if kx != 1:
+            size, at = (size[0] * kx, size[1], size[2] * kz), (at[0] * kx, at[1], at[2] * kz)
         v, f = rbox(size, 0.001, seg=1)
         add((v + at) @ rot_x(-12).T + DASH["screen"], f, c)
+    if DASH["wheel"] is None:          # (Cybercab: no steering wheel, column or pedals)
+        out["wr"] = None
+        return out
     # steering wheel in front of the driver, tilted 70 deg back from horizontal: rim torus, hub, three spokes
     wr = out["wr"] = Matrix.Translation((-FRONT_X, *DASH["wheel"])) @ Matrix.Rotation(math.radians(70), 4, "X")
     nu, nv, tube = (20 * fine, 6 * (2 if grow else 1), 0.024 + grow)
@@ -702,7 +711,7 @@ def detail_mesh(opening, windscreen):
     grown = list(parts)
     # the screen's picture: a thin panel just proud of the grown screen and of the coarse picture blocks, its front
     # DETAIL_PICTURE (u along +x: the car view on the driver's side), the rest the screen's black
-    pw, ph = 0.302, 0.192
+    pw, ph = (DASH["screen_size"][0] + 0.002, DASH["screen_size"][1] + 0.002) if "screen_size" in DASH else (0.302, 0.192)
     v, f = rbox((pw, 0.003, ph), 0.0012)
     (u0, v0, u1, v1), e = pv.DETAIL_PICTURE, 0.5 / pv.DETAIL_PX
     uv = np.c_[u0 + e + (v[:, 0] / pw + 0.5) * (u1 - u0 - 2 * e), v0 + e + (v[:, 2] / ph + 0.5) * (v1 - v0 - 2 * e)]
@@ -712,10 +721,11 @@ def detail_mesh(opening, windscreen):
     # steering wheel: scroll wheels on the cross spoke at the thumbs, a T on the hub (wheel frame: +z to the driver)
     wr = placed["wr"]
     wheel = lambda v, at: [(wr @ Vector(p + np.array(at)))[:] for p in v]   # noqa: E731
-    for s in (-1, 1):
+    for s in (-1, 1) if wr is not None else ():   # (no steering wheel: DASH wheel None)
         v, f = cylinder(0.010, 0.007, 16)
         add(wheel(v[:, [2, 1, 0]], (s * 0.09, -0.02, 0.01 + GROW + 0.004)), f, "chrome", flat=True)
-    for size, at in (((0.034, 0.007, 0.002), (0, 0.013, 0)), ((0.007, 0.030, 0.002), (0, -0.003, 0))):
+    for size, at in (((0.034, 0.007, 0.002), (0, 0.013, 0)), ((0.007, 0.030, 0.002), (0, -0.003, 0))) \
+            if wr is not None else ():
         v, f = rbox(size, 0.0008, seg=1)
         add(wheel(v, np.add(at, (0, 0, 0.025 + GROW + 0.001))), f, "chrome")
     # the dash's air vent: a dark slot along its cabin face over the trim strip

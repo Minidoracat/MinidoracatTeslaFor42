@@ -181,9 +181,15 @@ def src_frame():
 
 
 def import_source():
-    """The source into an empty scene, OBJ, FBX or glTF; glTF / FBX nest meshes under empties: unparented in place."""
+    """The source into an empty scene, OBJ, FBX, glTF or .blend (a prep's own scene, Cybercab: face attributes such as
+    `panel` kept); glTF / FBX nest meshes under empties: unparented in place."""
     bpy.ops.wm.read_factory_settings(use_empty=True)
-    if SRC.lower().endswith((".glb", ".gltf", ".fbx")):
+    if SRC.lower().endswith(".blend"):
+        with bpy.data.libraries.load(SRC) as (src, dst):
+            dst.objects = list(src.objects)
+        for o in dst.objects:
+            bpy.context.scene.collection.objects.link(o)
+    elif SRC.lower().endswith((".glb", ".gltf", ".fbx")):
         if SRC.lower().endswith(".fbx"):
             bpy.ops.import_scene.fbx(filepath=SRC)
         else:
@@ -349,8 +355,11 @@ def load_source():
         if target:
             # DECIMATE_KEEP_BOUNDARY (Model S): the X-symmetric collapse moves each mirror edge to the mirrored target
             # without its own flip check (Blender bmesh_decimate_collapse.cc), so on an asymmetric source it can drag
-            # an open edge's vertex across a panel and tear the skin; keep_boundary prices those collapses out
-            pv.decimate(o, target, C.get("DECIMATE_KEEP_BOUNDARY", False))
+            # an open edge's vertex across a panel and tear the skin; keep_boundary prices those collapses out.
+            # DECIMATE_SNAP (Cybercab, grid): vertices the collapse left that far off the surface go back onto it;
+            # DECIMATE_HOLD_UNDER (Cybercab): the flat underside's outline held too
+            pv.decimate(o, target, C.get("DECIMATE_KEEP_BOUNDARY", False), C.get("DECIMATE_SNAP"),
+                        C.get("DECIMATE_HOLD_UNDER", False))
         for under, over, gap in C.get("DROP_COVERED", ()):
             if under == name:
                 drop_covered(o, [obs[names.index(n)] for n in over], gap)
@@ -969,6 +978,10 @@ def classify(car, names, sizes):
     for o, (lp, rp) in C.get("SIDE_PARTS", {}).items():  # one source object holding both doors of a pair (Model X)
         m = obj == o
         part[m] = np.where(cen[m, 0] < 0, PARTS.index(lp), PARTS.index(rp))
+    if C.get("PANEL_PARTS"):   # a source whose faces carry their panel (prep_cybercab.py `panel`): {panel: part name},
+        pa = np.empty(n, np.int64)  # panels not listed stay on the body (Cybercab: the hood, no lid; the port lid)
+        me.attributes["panel"].data.foreach_get("value", pa)
+        part = np.array([PARTS.index(C["PANEL_PARTS"][k]) if k in C["PANEL_PARTS"] else 0 for k in range(pa.max() + 1)])[pa]
     # door hardware, frames and panes: whole components inside a door (2.5 cm slack), cut components face by face. A
     # strip that runs past its one door's edge (the belt mouldings end under the B-pillar and quarter trim) goes face
     # by face too: whole on the body it was a black bar across the far window, seen through the roof glass with the
@@ -1015,6 +1028,8 @@ def classify(car, names, sizes):
     # night like the real light blade (night-N showed one corner patch only)
     head = np.isin(mat, LAMPS["head"]) & (cen[:, 1] > LAMPS.get("head_y", -np.inf))   # head_y: a lamp material shared
     #                                                                                     front and rear (Model S)
+    head |= np.isin(obj, LAMPS.get("head_objs", ()))   # whole objects lit as head lamps (Cybercab's lamp dots: their
+    #                                                    material is the plate's)
     tail = np.isin(mat, LAMPS["tail"]) & (cen[:, 2] > LAMPS["tail_z"]) & (cen[:, 1] < LAMPS["tail_y"])
     blade = (obj == LAMPS["blade"]) & (fnorm[:, 1] < -0.5) | (obj == "Badge_BLADE")
     # LAMPS blade_lit (Model Y): (object, |x|) whose rear faces outboard of |x| stay lit and smoked with the blade gone
@@ -2610,6 +2625,8 @@ def pieces(car, c, shift):
             ref = P.copy()
             ref[:2 * len(V)] = np.concatenate([V, V])
             upper[pname] = (ex - np.abs(ref[:, 0])) * nv[0] + (ref[:, 2] - ez) * nv[1] > 0
+        elif pname in C.get("DOOR_HINGE", {}):   # a hinge point of the car's (pre-centre grid; Cybercab's butterfly
+            h = np.array(C["DOOR_HINGE"][pname], float)   # doors turn about a raked axis at the A-pillar's foot)
         elif sd:
             low = dv[dv[:, 2] < BELT_Z]
             yh = low[:, 1].max()
@@ -2901,6 +2918,11 @@ def stage_view(out, heads, state, skin="UltraRed", app=False):
     hide = set(filter(None, os.environ.get("HIDE", "").split(",")))
     for o in bpy.data.objects:
         o.hide_render = o.type == "MESH" and (not (o is body or o in doors) or o.name in hide)
+    # EXTRA=<a.ply>,..: more meshes in this frame (+Y front, +Z up, grid units; e.g. passengers posed by seat_head.py's
+    # place()), drawn plain skin-coloured
+    for f in filter(None, os.environ.get("EXTRA", "").split(",")):
+        bpy.ops.wm.ply_import(filepath=f)
+        bpy.context.selected_objects[0].data.materials.append(mat("extra", (176, 140, 112)))
     # WHEELS=1: the wheel FBX at the four script offsets (rendered centre = offset + WHEEL_LIFT), STEER=<rad> turns the
     # front pair about the vertical (the game's m.rotationY, BaseVehicle.java:7440), SPIN=<rad> turns all about the axle;
     # the rear pair on <NAME>_WheelRear when the script has it (TIRE_AXLES)

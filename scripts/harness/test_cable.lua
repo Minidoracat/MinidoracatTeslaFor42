@@ -230,12 +230,8 @@ check(T.Specs[RDS].plug.item == "Base.MinidoracatTesla_CablePlugRoadster"
     and has("scripts/models/MinidoracatTesla_props.txt", "mesh = WorldItems/MinidoracatTesla_CablePlugRoadster,")
     and has("models_X/WorldItems/MinidoracatTesla_CablePlugRoadster.fbx", "FBX"),
     "Roadster: its plug item, model block and mesh (props_blender.py PLUG_ROUND)")
-if H.bodyBuilt("Roadster") then
-    PORTS[RDS] = scriptPort(RDS)
-    check(PORTS[RDS][1] > 0 and PORTS[RDS][3] < 0, "cable: the Roadster's chargeport from its script (left flank, behind the door)")
-else
-    PORTS[RDS] = PORTS["Base.MinidoracatTesla_ModelY"]
-end
+PORTS[RDS] = scriptPort(RDS)
+check(PORTS[RDS][1] > 0 and PORTS[RDS][3] < 0, "cable: the Roadster's chargeport from its script (left flank, behind the door)")
 local mrd = car(51.2, 24.0, 0.3, RDS)
 local ord = { x = 50, y = 20, z = 0, kind = "Supercharger", facing = "S", vid = mrd:getId() }
 T.onChargerChanged(ord)
@@ -250,8 +246,7 @@ T.onChargerChanged(ord, true)
 H.removeVehicle(mrd)
 end
 -- ---- Cybercab: the NACS handle on its own plug item; the port is in the rear bumper (Specs plug.rear), so the plug
--- comes in from behind the car (local z back by PLUG_REACH), not from the flank. Its port from its script once the
--- body is built; until then a stand-in in the rear bumper left of centre (ERG p.6) ----
+-- comes in from behind the car (local z back by PLUG_REACH), not from the flank ----
 do
 local CC = "Base.MinidoracatTesla_Cybercab"
 local media = "MOD/MinidoracatTeslaFor42/Contents/mods/MinidoracatTeslaFor42/42/media/"
@@ -266,13 +261,18 @@ check(T.Specs[CC].plug.item == "Base.MinidoracatTesla_CablePlugCybercab" and T.S
     and has("scripts/models/MinidoracatTesla_props.txt", "mesh = WorldItems/MinidoracatTesla_CablePlugCybercab,")
     and has("models_X/WorldItems/MinidoracatTesla_CablePlugCybercab.fbx", "FBX"),
     "Cybercab: its plug item, model block and mesh, plug.rear")
-if H.bodyBuilt("Cybercab") then
-    PORTS[CC] = scriptPort(CC)
-    check(PORTS[CC][1] > 0 and PORTS[CC][3] < 0 and math.abs(PORTS[CC][3]) > 3 * PORTS[CC][1],
-        "cable: the Cybercab's chargeport from its script (rear bumper, left of centre)")
-else
-    PORTS[CC] = { 0.25, 0.30, -2.05 }
-end
+PORTS[CC] = scriptPort(CC)
+-- on the tail behind the rear axle, not on the flank: the port sits in the rear bumper's outer corner (rider guide 01
+-- rear, ERG 07), |x| 0.72 m of the 0.88 m half width, so |z| is under 3 x but over 2 x
+local ccTxt = assert(io.open(media .. "scripts/vehicles/MinidoracatTesla_Cybercab.txt", "r"))
+local ccScript = ccTxt:read("*a")
+ccTxt:close()
+local ccModel = ccScript:match("\n        model\n        {(.-)\n        }")
+local rearZ = (tonumber(ccScript:match("wheel RearLeft%s*{[^}]-offset = [-%d.]+ [-%d.]+ ([-%d.]+)"))
+    + tonumber(select(3, ccModel:match("offset = ([-%d.]+) ([-%d.]+) ([-%d.]+)")))) * tonumber(ccModel:match("scale = ([-%d.]+)"))
+check(PORTS[CC][1] > 0 and PORTS[CC][3] < 0 and math.abs(PORTS[CC][3]) > 2 * PORTS[CC][1]
+    and math.abs(PORTS[CC][3]) > math.abs(rearZ), "cable: the Cybercab's chargeport from its script (rear bumper, left of "
+    .. "centre, behind the rear axle " .. string.format("%.3f", rearZ) .. ")")
 local mcc = car(51.2, 24.0, 0.3, CC)
 local occ = { x = 50, y = 20, z = 0, kind = "Supercharger", facing = "S", vid = mcc:getId() }
 T.onChargerChanged(occ)

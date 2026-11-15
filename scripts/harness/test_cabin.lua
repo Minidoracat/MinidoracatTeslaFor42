@@ -20,9 +20,10 @@ local tpl = read("scripts/vehicles/MinidoracatTesla_template.txt")
 local models = read("scripts/models/MinidoracatTesla_vehicles.txt")
 
 -- every Tesla model but the wheels (<car>_Wheel, and <car>_WheelRear for a car with its own rear tyres, TIRE_AXLES)
--- and the Viewpoint detail on the merged shader; the cabin glass model, no cabin / window models
+-- and the Viewpoint detail on the merged shader; the cabin glass model, no cabin / window models. The frunk lid only on
+-- a car with a frunk (T.hasFrunk: the Cybercab's hood is no model)
 for _, car in ipairs({ "MinidoracatTesla_ModelY", "MinidoracatTesla_Model3", "MinidoracatTesla_ModelS", "MinidoracatTesla_ModelX",
-    "MinidoracatTesla_ModelYL" }) do
+    "MinidoracatTesla_ModelYL", "MinidoracatTesla_Cybercab" }) do
     local shaders, names, wheels = {}, {}, 0
     for name, block in models:gmatch("model ([%w_]+)%s*(%b{})") do
         -- the car itself or car_<part> only: "MinidoracatTesla_ModelY" must not take the Model Y L's models
@@ -40,10 +41,11 @@ for _, car in ipairs({ "MinidoracatTesla_ModelY", "MinidoracatTesla_Model3", "Mi
         if not s:find("=MinidoracatTesla_vehicle$") then wrong[#wrong + 1] = s end
     end
     local nd = #(H.carDoors(car:match("_(%w+)$")) or {})   -- side doors by the car's template (4; a two-seater 2)
-    check(nd > 0 and #shaders == 4 + nd and #wrong == 0, car .. ": body, glass, " .. nd .. " doors, rear lid, frunk lid on "
-        .. "MinidoracatTesla_vehicle (off: " .. table.concat(wrong, ",") .. ")")
-    check(#names == 5 + nd + wheels and wheels >= 1, car .. ": " .. (5 + nd) .. " models and its wheel(s), the cabin glass "
-        .. "and the Viewpoint detail but no cabin / window models (" .. table.concat(names, ",") .. ")")
+    local lid = MinidoracatTesla.hasFrunk(MinidoracatTesla.Specs["Base." .. car]) and 1 or 0
+    check(nd > 0 and #shaders == 3 + lid + nd and #wrong == 0, car .. ": body, glass, " .. nd .. " doors, rear lid"
+        .. (lid == 1 and ", frunk lid" or "") .. " on MinidoracatTesla_vehicle (off: " .. table.concat(wrong, ",") .. ")")
+    check(#names == 4 + lid + nd + wheels and wheels >= 1, car .. ": " .. (4 + lid + nd) .. " models and its wheel(s), the "
+        .. "cabin glass and the Viewpoint detail but no cabin / window models (" .. table.concat(names, ",") .. ")")
     check(read("models_X/vehicles/" .. car .. "_Cabin.fbx") == nil and read("models_X/vehicles/" .. car .. "_Glass.fbx") ~= nil
         and read("textures/Vehicles/" .. car .. "_cabin.png") == nil, car .. ": the glass FBX, no cabin FBX or cabin palette")
     local block = models:match("model " .. car .. "_Glass%s*(%b{})") or ""
@@ -59,11 +61,15 @@ local ms = read("scripts/vehicles/MinidoracatTesla_ModelS.txt")
 local mx = read("scripts/vehicles/MinidoracatTesla_ModelX.txt")
 local ct = read("scripts/vehicles/MinidoracatTesla_Cybertruck.txt")
 local yl = read("scripts/vehicles/MinidoracatTesla_ModelYL.txt")
+local rd = read("scripts/vehicles/MinidoracatTesla_Roadster.txt")
+local cc = read("scripts/vehicles/MinidoracatTesla_Cybercab.txt")
 local geos = { ModelY = geo, Model3 = m3:sub((m3:find("---- geometry", 1, true))),
     ModelS = ms:sub((ms:find("---- geometry", 1, true))),
     ModelX = mx:sub((mx:find("---- geometry", 1, true))),
     Cybertruck = ct:sub((ct:find("---- geometry", 1, true))),
-    ModelYL = yl:sub((yl:find("---- geometry (TeslaModelYL)", 1, true))) }
+    ModelYL = yl:sub((yl:find("---- geometry (TeslaModelYL)", 1, true))),
+    Roadster = rd:sub((rd:find("---- geometry", 1, true))),
+    Cybercab = cc:sub((cc:find("---- geometry", 1, true))) }
 for car, g in pairs(geos) do
     check(g:find("part GloveBox", 1, true) == nil and g:find("part Window", 1, true) == nil
         and g:find("part WindshieldRear", 1, true) == nil, car .. ": no models on GloveBox, Window* or WindshieldRear")
@@ -117,8 +123,9 @@ check(not (tpl .. m3):find("requireUninstalled = WindshieldRear", 1, true) and n
     "Model 3 (and the shared template): trunk lid and rear glass come off and go on independently (glass in the body)")
 
 -- door anim rate: one model per door, one player update a frame; every door the car has (its template's side doors,
--- H.carDoors, the tailgate and the frunk lid) and no other
-local texts = { ModelY = veh, Model3 = m3, ModelS = ms, ModelX = mx, Cybertruck = ct, ModelYL = yl }
+-- H.carDoors, the tailgate and, on a car with a frunk (T.hasFrunk), the frunk lid) and no other
+local texts = { ModelY = veh, Model3 = m3, ModelS = ms, ModelX = mx, Cybertruck = ct, ModelYL = yl, Roadster = rd,
+    Cybercab = cc }
 for car, g in pairs(geos) do
     local rates, bad = 0, {}
     for door in pairs({ DoorFrontLeft = 1, DoorFrontRight = 1, DoorRearLeft = 1, DoorRearRight = 1, TrunkDoor = 1,
@@ -129,7 +136,8 @@ for car, g in pairs(geos) do
             if r ~= "1.0" then bad[#bad + 1] = door .. "=" .. r end
         end
     end
-    local want = 2 * (#(H.carDoors(car) or {}) + 2)
+    local want = 2 * (#(H.carDoors(car) or {}) + 1
+        + (MinidoracatTesla.hasFrunk(MinidoracatTesla.Specs["Base.MinidoracatTesla_" .. car]) and 1 or 0))
     check(rates == want and #bad == 0, car .. ": door Open / Close rate 1.0 (" .. rates .. " rates of " .. want .. ", off: "
         .. table.concat(bad, ",") .. ")")
 end

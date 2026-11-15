@@ -54,9 +54,9 @@ local POW2 = { 1, 2, 4, 8, 16, 32, 64, 128, 256 }
 -- the doors from viewBox 80.3 to 110.2 (x 71-97) on the car's sides, the soft top between them over the seats (its
 -- roof viewBox y 34-62.3 = y 30-55, along the doors), the hood from the doors' front edge (x 97, the windscreen split
 -- as on the Model Y). The rear deck between the trunk lid and the doors (x 45-71) opens nothing.
--- The Cybercab (build_atlas.py car_cybercab, from the rescue sheet's line art): the trunk lid from the roof's end
--- (viewBox 69 = x 61), the doors from viewBox 82 to 118 (x 72-104), split at the roof's spine like the other cars'
--- doors; the rear quarter (x 61-72) and the hood (no front trunk, T.hasFrunk) open nothing.
+-- The Cybercab (build_atlas.py car_cybercab, on the built body): the trunk lid from the roof's end (viewBox 68.6 =
+-- x 60), the doors from viewBox 80.6 to 120.4 (x 70.5-105.4), split at the roof's spine like the other cars' doors; the
+-- rear quarter (x 60-70.5) and the hood (no front trunk, T.hasFrunk) open nothing.
 local ZONES = {
     ModelY = {
         { 5, 0, 0, 45, 85 }, { 3, 45, 0, 69, 42.5 }, { 4, 45, 42.5, 69, 85 },
@@ -87,7 +87,7 @@ local ZONES = {
         { 7, 97, 0, 140, 85 },
     },
     Cybercab = {
-        { 5, 0, 0, 61, 85 }, { 1, 72, 0, 104, 42.5 }, { 2, 72, 42.5, 104, 85 },
+        { 5, 0, 0, 60, 85 }, { 1, 70.5, 0, 105.4, 42.5 }, { 2, 70.5, 42.5, 105.4, 85 },
     },
 }
 HUD.ZONES = ZONES

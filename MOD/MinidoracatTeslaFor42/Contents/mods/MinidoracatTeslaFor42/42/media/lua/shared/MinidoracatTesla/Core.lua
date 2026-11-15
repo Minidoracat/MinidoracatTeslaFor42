@@ -46,8 +46,8 @@ T.DRIVE_SCALE = 10
 -- DOORS; Liftgate.syncShell times the cabin shell's door bits on it; harness test_liftgate compares the two).
 -- Cybertruck only: tonneau (the app's tonneau cover button), armorGlass (smashes a window takes, Truck.lua),
 -- powershare and bedOutlet (Powershare, the bed outlets).
--- Model X only: falcon (the app's falcon wing doors button), doorWait (clip seconds into a door's opening swing the
--- climb starts at, per door part, on T.clipStep's clock; EnterDoor.lua, else its E.WAIT).
+-- Model X only: falcon (the app's falcon wing doors button). Model X and Cybercab: doorWait (clip seconds into a door's
+-- opening swing the climb starts at, per door part, on T.clipStep's clock; EnterDoor.lua, else its E.WAIT).
 -- Roadster only: softTop (the soft top part SoftTop, opened and closed like a door: the HUD car picture, the app's
 -- soft top button; Liftgate.lua L.PARTS / L.LIDS, Remote.lua ACT.softtop, HatHide.lua). Open = top down.
 -- Cybercab only: butterfly (the app's doors button opens both front doors, which swing up and out: rider guide p.5;
@@ -302,11 +302,15 @@ T.Specs = {
         chillForce = 1000,
         butterfly = true, -- the doors swing up and out (rider guide p.5): the app opens both
         frunk = false, -- no front trunk (rider guide), template MinidoracatTeslaCoreNoFrunk
+        doorClip = { DoorFrontLeft = 2.0, DoorFrontRight = 2.0, TrunkDoor = 3.0 }, -- cars/cybercab.py DOORS
+        -- the butterfly door's rear end is 1.65 m up (its lower edge 0.48 m) 1.4 s into its 2 s swing, over a ducking
+        -- passenger's head: climb in then (the Model X's wings wait 1.84 of 2.4 s; convert.py's skf_doors.blend clips)
+        doorWait = { DoorFrontLeft = 1.4, DoorFrontRight = 1.4 },
         -- the one production colour (rescue sheet; the silver 40 kWh car is not made here). h/s/v: the rider guide's
         -- side view door panel median by convert.py's formula (s + 0.47, v + 0.05) as a stand-in; convert.py build
         -- writes the skin's own. Same order and append-only rules as above.
         colors = {
-            { name = "Gold", h = 0.1, s = 0.902, v = 0.658 },
+            { name = "Gold", h = 0.1, s = 0.888, v = 0.711 },
         },
     },
 }

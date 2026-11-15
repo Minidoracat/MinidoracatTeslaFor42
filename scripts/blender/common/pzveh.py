@@ -146,9 +146,24 @@ def keep_faces(ob, mask):
     bm.free()
 
 
-def decimate(ob, target, keep_boundary=False):
+def decimate(ob, target, keep_boundary=False, snap=None, hold_under=False):
     """Collapse to target triangles (X symmetric). keep_boundary: open-edge vertices are left out of the decimate
-    modifier's vertex group at factor 1000, so collapsing their edges costs that much more and the outline stays."""
+    modifier's vertex group at factor 1000, so collapsing their edges costs that much more and the outline stays; so are
+    the vertices between two faces of different `panel` (a face attribute: Cybercab's prep, its seams inside an object).
+    hold_under (with keep_boundary): so is the outline of the flat underside (faces facing straight down): without it
+    the collapse emptied the Cybercab's floor pan into a few car-long triangles from bumper to bumper, up to 17 cm
+    over the cabin floor. snap (a distance, optional): every vertex the collapse left farther than that off the mesh's
+    own surface goes back onto it (Cybercab: with its seams held, a few dozen collapses stood 1-19 cm off, spikes out
+    of the roof and sills)."""
+    from mathutils.bvhtree import BVHTree
+    if snap:                                # the mesh as it was, and each face's smooth normal (its corners' mean)
+        me = ob.data
+        ref = BVHTree.FromPolygons([v.co.copy() for v in me.vertices], [p.vertices[:] for p in me.polygons])
+        cn = np.empty(len(me.loops) * 3, np.float32)
+        me.corner_normals.foreach_get("vector", cn)
+        ls = np.array([p.loop_start for p in me.polygons])
+        ref_n = np.add.reduceat(cn.reshape(-1, 3), ls)
+        ref_n /= np.linalg.norm(ref_n, axis=1, keepdims=True)
     select_only(ob)
     for _ in range(3):                      # ratio is on triangles; repeat until within 3 %
         n = tris(ob)
@@ -162,6 +177,13 @@ def decimate(ob, target, keep_boundary=False):
             bm = bmesh.new()
             bm.from_mesh(ob.data)
             edge = {v.index for e in bm.edges if e.is_boundary for v in e.verts}
+            pl = bm.faces.layers.int.get("panel")
+            if pl is not None:
+                edge |= {v.index for e in bm.edges if len({f[pl] for f in e.link_faces}) > 1 for v in e.verts}
+            if hold_under:
+                bm.normal_update()
+                edge |= {v.index for e in bm.edges if len({f.normal.z < -0.99 for f in e.link_faces}) > 1
+                         for v in e.verts}
             bm.free()
             if "interior" in ob.vertex_groups:
                 ob.vertex_groups.remove(ob.vertex_groups["interior"])
@@ -182,9 +204,26 @@ def decimate(ob, target, keep_boundary=False):
             twins.append(f)
         seen.add(k)
     bmesh.ops.delete(bm, geom=twins, context="FACES_ONLY")
+    if snap:
+        off = [(v, loc) for v in bm.verts for loc in (ref.find_nearest(v.co)[0],) if (loc - v.co).length > snap]
+        for v, loc in off:
+            v.co = loc
+        print("DECIMATE snap", ob.name, len(off), "vertices back onto the surface")
     bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
     bm.to_mesh(ob.data)
     bm.free()
+    if snap:   # the collapse kept a few of the fine mesh's corner normals and gave the rest their big triangle's: each
+        me = ob.data   # corner takes the old surface's normal just inside its own face (a crease's own side)
+        me.update()
+        co = mesh_co(ob)
+        lv = np.empty(len(me.loops), np.int64)
+        me.loops.foreach_get("vertex_index", lv)
+        fc = np.repeat(face_centres(ob), [p.loop_total for p in me.polygons], 0)
+        q = co[lv] + (fc - co[lv]) * 0.05
+        n = np.array([ref_n[ref.find_nearest(Vector(p))[2]] for p in q], np.float32)
+        if "custom_normal" in me.attributes:
+            me.attributes.remove(me.attributes["custom_normal"])
+        me.attributes.new("custom_normal", "FLOAT_VECTOR", "CORNER").data.foreach_set("vector", n.ravel())
 
 
 def img_np(img):
@@ -250,11 +289,13 @@ def wheel_swatches():
             **(LIP_UV if CAR.get("WHEEL_LIP") else {}), **(EDGE_UV if "lit" in WHEEL_SPOKE else {})}
 
 
-def wheel_texture(r_out, rim):
+def wheel_texture(r_out, rim, ch=None):
     """WHEEL_TEX^2 grey texture values (0..1), rows top-down, in the WHEEL_UV layout: the disc (sidewall, flange and the
     rotor disc behind the spokes, planar), the tread strip (around x across) and the swatches. r_out = shoulder radius,
-    rim = flange radius, both / tire radius."""
-    n, g = WHEEL_TEX * WHEEL_SS, {k: (np.array(v, float) / 0.143) ** (1 / 1.395) / 255 for k, v in WHEEL_RGB.items()}
+    rim = flange radius, both / tire radius. ch (0-2): that channel, WHEEL_TINT's colours (cars/<car>.py, optional:
+    {WHEEL_RGB key: sRGB}; Cybercab's gold covers) over their grey."""
+    rgb = {**WHEEL_RGB, **({k: v[ch] for k, v in CAR.get("WHEEL_TINT", {}).items()} if ch is not None else {})}
+    n, g = WHEEL_TEX * WHEEL_SS, {k: (np.array(v, float) / 0.143) ** (1 / 1.395) / 255 for k, v in rgb.items()}
     (cu, cv), rho, (v0, h) = WHEEL_UV["c"], WHEEL_UV["rho"], WHEEL_UV["tread"]
     U, V = np.meshgrid((np.arange(n) + 0.5) / n, 1 - (np.arange(n) + 0.5) / n)
     x, y = (U - cu) / rho, (cv - V) / rho
@@ -296,7 +337,10 @@ def wheel_profile(R, rr, hw):
     for a in (45, 90):
         t = math.radians(a)
         tire.append((fl + sr * math.sin(t), R - sd + sr * math.cos(t)))
-    tire += [(hw + 0.0022, R - 0.052), (hw - 0.0075, rr + 0.006), (hw - 0.0100, rr + 0.002)]
+    # TIRE_BULGE (optional, (out, down) grid): the sidewall's widest point that far out of hw and down from R (Cybercab:
+    # 8 mm out, high up the short sidewall its big aero covers leave)
+    bx, bd = CAR.get("TIRE_BULGE", (0.0022, 0.052))
+    tire += [(hw + bx, R - bd), (hw - 0.0075, rr + 0.006), (hw - 0.0100, rr + 0.002)]
     step = [tire[-1], (hw - 0.0150, rr - 0.004)]
     barrel = [step[-1], (WHEEL_DISC_X, rr - 0.004)]
     disc = [barrel[-1], (WHEEL_DISC_X, WHEEL_DISC["rotor"] * rr), (WHEEL_DISC_X, WHEEL_DISC["hat"] * rr),
@@ -498,8 +542,10 @@ def stage_wheel(r, width, rim=None, tag=""):
     # VertexBufferObject.java:324-345). With one UV map the shader read attribute 3 left over from an earlier draw:
     # garbage UVs. UV1 = UV0 puts the wheel's own UVs there
     me.uv_layers.new(name="UV1")
-    grey = wheel_texture(strips[0][3][1] / r, rr / r if rim else WHEEL_RIM)[::-1]          # rows run bottom-up
-    save_png(np.dstack([grey, grey, grey, np.ones_like(grey)]), os.path.join(TEX_DIR, NAME + "_wheel" + tag.lower() + ".png"),
+    args = (strips[0][3][1] / r, rr / r if rim else WHEEL_RIM)
+    grey = wheel_texture(*args)[::-1]                                                          # rows run bottom-up
+    rgb = [wheel_texture(*args, ch=i)[::-1] for i in range(3)] if CAR.get("WHEEL_TINT") else [grey] * 3
+    save_png(np.dstack([*rgb, np.ones_like(grey)]), os.path.join(TEX_DIR, NAME + "_wheel" + tag.lower() + ".png"),
              "wheel" + tag.lower())
     mat = bpy.data.materials.new(NAME + "_Wheel" + tag)
     me.materials.append(mat)
@@ -995,7 +1041,11 @@ def geometry(body, zmid, wl, r, tire_w, belt_z, doors_y, port_yz, extra_areas=()
     hgt, ln = bc[:, 2].max() - bc[:, 2].min(), np.ptp(bc[:, 1])
     ext = (w_body / S, hgt / S, ln / S)
     bvh = BVHTree.FromObject(body, bpy.context.evaluated_depsgraph_get())
-    hit = bvh.ray_cast(Vector((-3, port_yz[0], port_yz[1] - zmid)), Vector((1, 0, 0)))[0]
+    if CAR.get("PORT_X") is None:
+        hit = bvh.ray_cast(Vector((-3, port_yz[0], port_yz[1] - zmid)), Vector((1, 0, 0)))[0]
+    else:   # PORT_X (mesh x; Cybercab): a port in the rear bumper, from behind onto the tail at (PORT_X, PORT z)
+        hit = bvh.ray_cast(Vector((CAR["PORT_X"], -9, port_yz[1] - zmid)), Vector((0, 1, 0)))[0]
+        port_yz = (hit.y, port_yz[1])
     port = (-hit.x / S, (port_yz[1] - zmid) / S, port_yz[0] / S)
     belt = belt_z - zmid
     front_y, bpil_y, rear_y = doors_y

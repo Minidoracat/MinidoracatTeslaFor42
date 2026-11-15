@@ -555,25 +555,24 @@ def car_roadster(c):
 
 
 def car_cybercab(c):
-    """Cybercab (rider guide: 1,754 mm wide; about 4,270 long and 2,750 wheelbase from the official side view,
-    references/cybercab.md) at the Model Y's 0.0259 viewBox units per mm, nose on the Model Y's (x 146): tail 35.4,
-    axles x 128.7 and 57.3 (the rescue sheet's line art, 06-top-side-lineart_rescuesheet.png, 0.0768 viewBox units
-    per px from its nose). The body y 25.5-70.5. The doors x 82-118 (the side view's door seams), the windscreen
-    ahead of them, the trunk lid from the roof's end (x 69) to the tail; x 69-82 (the rear quarter) opens nothing and
-    the hood opens nothing (no front trunk). First pass from the line art: check it against the body once built.
-    HUD.lua ZONES.Cybercab follows these edges."""
-    for x0, w in ((119.7, 18.0), (48.0, 18.6)):  # front and rear tyres (different sizes, rider guide) on the axles
+    """Cybercab (rider guide: 1,754 mm wide) at the Model Y's 0.0259 viewBox units per mm, nose on the Model Y's (x 146),
+    on the built body (scripts/blender/skf/cars/cybercab.py, prep_cybercab.py metres; nose y 2.140, tail -2.138): tail
+    35.2, axles x 128.1 (y 1.4495) and 56.7 (y -1.3074). The body y 25.3-70.7. The doors x 80.6-120.4 (their outer
+    edge at the body's widest, z 0.65: y -0.384 to 1.150), the windscreen ahead of them, the trunk lid from the roof's
+    end (y -0.847, x 68.6) to the tail; x 68.6-80.6 (the rear quarter) opens nothing and the hood opens nothing (no
+    front trunk). HUD.lua ZONES.Cybercab follows these edges."""
+    for x0, w in ((119.1, 18.0), (47.4, 18.6)):  # front and rear tyres (different sizes, rider guide) on the axles
         for y in (19.5, 68.5):
             c.rrect(x0, y, w, 8, 2, fill="#0B0D0F", outline="#8E98A3", ow=1.1)
-    body = [("M", 46, 25.5), ("H", 126), ("Q", 143, 26.5, 146, 40), ("V", 56), ("Q", 143, 69.5, 126, 70.5),
-            ("H", 46), ("Q", 35.4, 70.5, 35.4, 60), ("V", 36), ("Q", 35.4, 25.5, 46, 25.5), ("Z",)]
+    body = [("M", 46, 25.3), ("H", 126), ("Q", 143, 26.3, 146, 40), ("V", 56), ("Q", 143, 69.7, 126, 70.7),
+            ("H", 46), ("Q", 35.2, 70.7, 35.2, 60), ("V", 36), ("Q", 35.2, 25.3, 46, 25.3), ("Z",)]
     c.fill(body, "#2A3037")
     c.stroke(body, w=1.3, color="#AEB6BF")
     c.fill([("M", 99, 31), ("L", 115.5, 29), ("Q", 119.5, 48, 115.5, 67), ("L", 99, 65), ("Z",)], "#15191E")  # windscreen
     c.fill([("M", 62.5, 32), ("H", 68), ("V", 64), ("H", 62.5), ("Q", 61, 48, 62.5, 32), ("Z",)], "#15191E")  # rear glass
-    c.stroke([("M", 69, 26.2), ("Q", 67.5, 48, 69, 69.8)], w=1.0, color="#4A525B")  # trunk lid seam at the roof's end
-    for y0, y1 in ((25.5, 28.5), (67.5, 70.5)):  # door seams
-        for x in (82, 118):
+    c.stroke([("M", 68.6, 26), ("Q", 67.1, 48, 68.6, 70)], w=1.0, color="#4A525B")  # trunk lid seam at the roof's end
+    for y0, y1 in ((25.3, 28.3), (67.7, 70.7)):  # door seams
+        for x in (80.6, 120.4):
             c.stroke([("M", x, y0 + 0.6), ("V", y1 - 0.6)], w=1.0, color="#4A525B")
 
 
@@ -614,10 +613,10 @@ DOOR_GEOM = {
     # is the Model Y's (nose x 146: plain door_HD)
     "Roadster": {"front": (80.3, 110.2), "rear": (80.3, 80.3), "y": (25, 71), "tr": ((43.8, 38, 58), (37.8, 36, 60)),
                  "st": (80.3, 99.8, 34, 62.3), "kinds": ("FL", "FR", "TR", "ST")},
-    # Cybercab: two doors (x 82-118) that swing up and out from the front (butterfly: drawn raised, not swung out), the
-    # trunk lid's rear edge at x 35.4; no hood (no front trunk: no door_HD)
-    "Cybercab": {"front": (82, 118), "rear": (82, 82), "y": (25.5, 70.5), "butterfly": True,
-                 "tr": ((35.4, 38, 58), (29.4, 36, 60)), "kinds": ("FL", "FR", "TR")},
+    # Cybercab: two doors (x 80.6-120.4) that swing up and out from the front (butterfly: drawn raised, not swung out),
+    # the trunk lid's rear edge at x 35.2; no hood (no front trunk: no door_HD)
+    "Cybercab": {"front": (80.6, 120.4), "rear": (80.6, 80.6), "y": (25.3, 70.7), "butterfly": True,
+                 "tr": ((35.2, 38, 58), (29.2, 36, 60)), "kinds": ("FL", "FR", "TR")},
 }
 
 

@@ -34,11 +34,11 @@ function H.carDoors(car)
     f:close()
     return H.TEMPLATE_DOORS[tpl], tpl
 end
--- does the car's vehicle script exist yet (car = "Cybercab"): a car whose body is still being built (H.BUILDING) has its
--- Lua and data first; the checks that read its script, skins or app pictures run once it does (and fail then if
--- anything is missing). Any other car counts as built, so a released car's checks never skip (a missing file fails).
--- Take the car out of H.BUILDING once its body is merged.
-H.BUILDING = { Cybercab = true }
+-- does the car's vehicle script exist yet (car = "ModelY"): a car whose body is still being built (H.BUILDING, e.g.
+-- { Cybercab = true } before its body came) has its Lua and data first; the checks that read its script, skins or app
+-- pictures run once it does (and fail then if anything is missing). Any other car counts as built, so a released
+-- car's checks never skip (a missing file fails). Take the car out of H.BUILDING once its body is merged.
+H.BUILDING = {}
 function H.bodyBuilt(car)
     if not H.BUILDING[car] then return true end
     local f = io.open(MEDIA:gsub("/lua$", "/scripts/") .. "vehicles/MinidoracatTesla_" .. car .. ".txt", "r")

@@ -128,7 +128,7 @@ for i, c in ipairs(rcol) do
     end
 end
 check(#rcol == 17 and #rbad == 0, "17 paints in the chart's order, HSV in 0..1, no codes or weights (" .. table.concat(rbad, ",") .. ")")
-if H.bodyBuilt("Roadster") then -- skins come with the body (convert.py build)
+do -- Roadster skins (convert.py build)
     local rf = assert(io.open(media .. "scripts/vehicles/" .. RD .. ".txt", "r"))
     local rtext = rf:read("*a")
     rf:close()

@@ -173,7 +173,7 @@ for _, c in ipairs({ { "ModelY", 85, 12, 114 / 835 }, { "Model3", 45, 7, 88 / 59
 end
 -- Roadster (the body's vehicle script): the trunk the vanilla sports car class, a front space the smallest the body
 -- holds (the 2.5 has none under the hood; the user chose every feature, roadster.md); the soft top a door part
-if H.bodyBuilt("Roadster") then
+do
     local f = assert(io.open("MOD/MinidoracatTeslaFor42/Contents/mods/MinidoracatTeslaFor42/42/media/scripts/vehicles/MinidoracatTesla_Roadster.txt", "r"))
     local script = f:read("*a")
     f:close()

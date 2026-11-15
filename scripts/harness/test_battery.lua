@@ -59,11 +59,9 @@ check(T.Specs["Base.MinidoracatTesla_ModelY"].softTop == nil and T.Specs["Base.M
 for name, s in pairs(T.Specs) do
     check(s.dcKw ~= false or type(s.acKw) == "number", name .. ": no DC charging (dcKw false) needs acKw, else 250 kW flat")
 end
-if H.bodyBuilt("Roadster") then -- the vehicle script comes with the body
-    check(H.scriptValue("vehicles/MinidoracatTesla_Roadster.txt", "engineForce") == 4000
-        and H.scriptValue("vehicles/MinidoracatTesla_Roadster.txt", "mass") == 486,
-        "Roadster engineForce 4000 (by feel: 0-100 km/h 7.8 s; 215 kW x 10 = 2880 took 11.5 s), mass 486 (800 x 1,235 / 2,033)")
-end
+check(H.scriptValue("vehicles/MinidoracatTesla_Roadster.txt", "engineForce") == 4000
+    and H.scriptValue("vehicles/MinidoracatTesla_Roadster.txt", "mass") == 486,
+    "Roadster engineForce 4000 (by feel: 0-100 km/h 7.8 s; 215 kW x 10 = 2880 took 11.5 s), mass 486 (800 x 1,235 / 2,033)")
 H.removeVehicle(rd)
 do -- Cybercab: 47.6 kWh (EPA 326 V x 146 Ah), an int item rounded up; the Model Y coefficients x 47.6 / 78.4
 local CC = "Base.MinidoracatTesla_Cybercab"
@@ -84,15 +82,13 @@ for name, s in pairs(T.Specs) do
     if name ~= CC and (s.butterfly ~= nil or s.frunk ~= nil or not T.hasFrunk(s)) then others[#others + 1] = name end
 end
 check(#others == 0 and T.hasFrunk(nil), "the other seven: no butterfly, a front trunk (no frunk field) (" .. table.concat(others, ",") .. ")")
-if H.bodyBuilt("Cybercab") then -- the vehicle script comes with the body (CybercabLua-needs.md)
-    local f = assert(io.open("MOD/MinidoracatTeslaFor42/Contents/mods/MinidoracatTeslaFor42/42/media/scripts/vehicles/MinidoracatTesla_Cybercab.txt", "r"))
-    local txt = f:read("*a")
-    f:close()
-    check(H.scriptValue("vehicles/MinidoracatTesla_Cybercab.txt", "engineForce") == 2190
-        and H.scriptValue("vehicles/MinidoracatTesla_Cybercab.txt", "mass") == 556
-        and txt:find("\n        template! = MinidoracatTeslaCoreNoFrunk,", 1, true) ~= nil and not txt:find("Frunk%s*{"),
-        "Cybercab script: engineForce 2190 (163 kW x 10), mass 556 (800 x 1,412 / 2,033), CoreNoFrunk, no Frunk part")
-end
+local f = assert(io.open("MOD/MinidoracatTeslaFor42/Contents/mods/MinidoracatTeslaFor42/42/media/scripts/vehicles/MinidoracatTesla_Cybercab.txt", "r"))
+local txt = f:read("*a")
+f:close()
+check(H.scriptValue("vehicles/MinidoracatTesla_Cybercab.txt", "engineForce") == 2190
+    and H.scriptValue("vehicles/MinidoracatTesla_Cybercab.txt", "mass") == 556
+    and txt:find("\n        template! = MinidoracatTeslaCoreNoFrunk,", 1, true) ~= nil and not txt:find("Frunk%s*{"),
+    "Cybercab script: engineForce 2190 (163 kW x 10), mass 556 (800 x 1,412 / 2,033), CoreNoFrunk, no Frunk part")
 H.removeVehicle(cc)
 end
 local full = H.vehicle({ kwh = 78.4 })
