@@ -57,9 +57,10 @@ CAR = dict(
     # (dark, median, bright) sRGB of the rider guide's 01 side view door panel (its 10 / 50 / 90 % luminance pixels):
     # convert.py chart_ramp
     PAINT_CHART={"Gold": ((135, 109, 74), (173, 145, 102), (246, 216, 150))},
-    # an estimate: the light paints' in-game slopes of the Roadster's two measured rounds (0.88-0.93); measure in game
-    # (E2E modely-skin-sp) against the 01 side door
-    CAL={"Gold": ((0.90, 0.90, 0.90), (0.0, 0.0, 0.0))},
+    # E2E look-cc-gold (CybercabE2E 2026-11-15, 0.90 skin, noon side view, nearest zoom, left door 9,050 px): game p50
+    # (138,115,80) against the 01 side door's (171,144,99), same hue (R:G:B 1:0.833:0.580 / 1:0.842:0.579), 19 % dark;
+    # 0.90 x 171/138, 144/115, 99/80
+    CAL={"Gold": ((1.115, 1.127, 1.114), (0.0, 0.0, 0.0))},
     COMPOSITOR_MODEL="",
     OFFICIAL_OPTS="",
     RAMP=dict(t=(0.0, 1.0), u=(0.0, 1.0), wheels=()),   # (official_ramp: unused, no design-studio renders)
