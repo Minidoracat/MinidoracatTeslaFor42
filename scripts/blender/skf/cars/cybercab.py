@@ -129,9 +129,14 @@ CAR = dict(
               "Glass_Quarter": 350, "Glass_ReverseLens": 300, "HeadLight": 800, "TailLight": 1000, "Grille": 700},
     DECIMATE_KEEP_BOUNDARY=True,
     DECIMATE_HOLD_UNDER=True,
+    DECIMATE_THIN=(round(0.0003 * K, 6), round(0.02 * K, 4)),   # (pzveh.thin_seams: the cut's 1-2 mm seam vertices)
     DECIMATE_SNAP=round(0.001 * K, 6),     # (pzveh.decimate: a few held-seam collapses stood up to 19 cm off)
     PAINT_MAT="Paint",
     HGT_CORNER=True,                       # (convert.py textures: the collapsed body's big triangles drew steps)
+    # the hood's seam groove (the hood stays on the body: no SEAM_LINE part) drawn as an even line along the prep's
+    # own hood path instead of its 5 mm groove's ragged dark texels (convert.py groove_ink)
+    GROOVE_INK=dict(file="cybercab_lines.json", lines=("hood",), w=round(0.006 * K, 4), k=0.6,
+                    reach=round(0.012 * K, 4), rgb=(58, 58, 60)),
     # by day: the lower body, bumpers and seam grooves dark grey (01: sill p50 50), the wheel house liners and B pillar
     # black, the light bar white, the tail bar smoked grey (its corners red: LAMPS areas), the plate light grey, the
     # side markers amber
@@ -196,7 +201,7 @@ CAR = dict(
     PORT=_g(-1.9943, 0.3968),
     PORT_X=round(-0.7228 * K, 4),
     # ---- cabin.py (mesh coords, centred)
-    CABIN_FLOOR=-0.474,
+    CABIN_FLOOR=-0.480,                    # (seat_head feet: the passengers' feet 6 mm into -0.474)
     CABIN_FRONT_Y=0.90,
     TRUNK_Y=-0.60,
     CABIN_ZC=-0.048,
