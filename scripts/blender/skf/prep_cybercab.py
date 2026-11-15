@@ -5,9 +5,9 @@ Shape: one signed distance field (SDF) sampled on a grid and meshed by surface n
 zero level, normals from the field's gradient:
   - the side profile (SIDE_TOP / SIDE_BOT: 01's side view, height scale 1,408 mm over the ground line through the
     two tyre bottoms) as a 2-D distance in (y, z), eroded with |x| by the crown (SECTION crown);
-  - the plan (PLAN: 06's top view, widest point the official 1,754; the nose squared and the rear haunch widened on
-    01 / 02 / 03, REPORT.md) and the section (SECTION knots along y: height of the widest point, the tuck under,
-    the shoulder and the tumblehome above it) as |x| <= hw(y, z);
+  - the plan (PLAN: x92's outline, Tesla's ERG bottom view, scaled by the official 1,754 width; the nose B's own
+    table NOSE_PLAN_B) and the section (SECTION knots along y: height of the widest point, the tuck under,
+    the shoulder and the tumblehome above it) as |x| <= hw(y, z); the tail's rounded end a bow (tail_bow);
   - the two joined by a smooth max (rounded edges, SECTION k), the wheel houses carved out (ARCH), the front lower
     intake recessed (INTAKE).
 Then (REGIONS) every face gets a material (paint, glass, black trim, wheel house liner, head light, tail light) and
@@ -15,11 +15,14 @@ a panel (body, doors, tailgate, hood, charge port door; face attribute `panel`, 
 the outlines between them are smoothed into real edges. The left half is decimated with every outline held and
 mirrored (exactly symmetric, no cracks between materials), then split one object per material (glass per pane).
 The fender cameras and B pillar buttons are small parts; tyres and flat wheel covers are revolved meshes.
-Length / wheelbase: 01 side at the official height's scale (4,280 / 2,757 mm; 06's side view agrees to 0.3 %).
-Frame (as prep_roadster): metres, +Y front, +Z up, -X the car's left, ground 0, y 0 half way along the car.
-    "$B" -b --factory-startup --python scripts/blender/skf/prep_cybercab.py [-- <out dir>]
+Length / wheelbase: x92 (near orthographic: its tyres measure 215 / 715 mm at that scale): wheelbase 2,700, overhangs
+0.88 / 0.97, 4.55 m long. The car is built in round 9's frame (01 side read as orthographic: 4,280 / 2,757 mm, but 01
+side is a close perspective, its near side 2.5-3.8 % long), then out_y() moves every y: the nose B 19 cm longer, the
+middle between the wheel arches 5.7 cm shorter, the tail behind the rear arch 13.7 cm longer (FRAME).
+Frame (as prep_roadster): metres, +Y front, +Z up, -X the car's left, ground 0, y 0 half way along A's car.
+    "$B" -b --factory-startup --python scripts/blender/skf/prep_cybercab.py [-- <out dir> [nose=A]]
         -> <out dir>/cybercab_src.blend, cybercab_src.glb, cybercab_lines.json, prep_report.json
-           (default temp/skf_cc; about a minute)
+           (default temp/skf_cc, nose B; about a minute)
 Everything above `# ---- Blender` is plain numpy (importable without bpy: the checks in temp/skf_cc/work).
 How the numbers were measured: temp/skf_cc/REPORT.md.
 """
@@ -33,15 +36,17 @@ import numpy as np
 REPO = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", ".."))
 OUT_DIR = os.path.join(REPO, "temp", "skf_cc")
 
-# official (rider guide p.15): width 1,754, height 1,408, ground clearance 144; length and wheelbase measured on 01
-# (height scale; 06's side view agrees to 0.3 %), tyres third party (front 215/60 R18, rear 225/60 R21)
+# official (rider guide p.15): width 1,754, height 1,408, ground clearance 144; L: round 9's length on 01 (height
+# scale), the build frame's (FRAME: 4.55 m out); tyres third party (front 215/60 R18, rear 225/60 R21). y in the
+# build frame: out_y() puts the rear axle at -1.2505 (wheelbase 2.700, x92)
 L, WIDTH, HEIGHT, CLEAR = 4.2799, 1.754, 1.408, 0.144
 TYRES = dict(front=dict(y=1.4495, r=0.3576, w=0.215, rim=0.2286),
              rear=dict(y=-1.3074, r=0.4017, w=0.225, rim=0.2667))
-# outer face of the wheel cover (|x|): 01 front / rear's tyre contact widths back-projected through their fitted
-# cameras put the tyres' outer faces at |x| 0.846 / 0.795 (track ~1.48 / ~1.37 m, measured off the official pictures,
-# not an official figure); the sidewalls sit 30 / 33 mm inside the body side over the arches (02, 03: near flush)
-WHEEL_X = dict(front=0.852, rear=0.806)
+# outer face of the wheel cover (|x|): 01 front's tyre contact widths back-projected through its fitted camera put the
+# front tyres' outer faces at |x| 0.846 (track ~1.48 m, x92 1.489); the rear track 1.31 m: x92's rear / front track
+# ratio 0.883 (four tyres at one depth: free of the perspective; x92 direct 1.315; round 9's 1.375 off 01 rear's
+# fitted camera). Not official figures. Front sidewalls 30 mm inside the body side over the arch (02, 03: near flush)
+WHEEL_X = dict(front=0.852, rear=0.7735)
 COVER_R = dict(front=0.309, rear=0.338)        # the covers' gold outline on 01 (178 / 195 px)
 
 # ---- tables read off the official pictures (temp/skf_cc/work: tables.json, tables_lit.txt)
@@ -84,26 +89,37 @@ SIDE_BOT = np.array((
     (-2.1063, 0.4751), (-2.1090, 0.4788), (-2.1277, 0.4903), (-2.1337, 0.4964),
     (-2.1407, 0.5057),
 ))
-PLAN = np.array((
-    (-2.1410, 0.7170), (-2.1250, 0.7487), (-2.1200, 0.7575), (-2.1150, 0.7648),
-    (-2.1100, 0.7708), (-2.1050, 0.7758), (-2.0950, 0.7841), (-2.0900, 0.7875),
-    (-2.0800, 0.7933), (-2.0700, 0.7977), (-2.0550, 0.8023), (-2.0400, 0.8050),
-    (-1.9900, 0.8105), (-1.9400, 0.8171), (-1.7850, 0.8407), (-1.7150, 0.8503),
-    (-1.6800, 0.8543), (-1.6450, 0.8576), (-1.6150, 0.8597), (-1.5800, 0.8613),
-    (-1.5050, 0.8624), (-1.1600, 0.8625), (-1.0950, 0.8621), (-1.0450, 0.8608),
-    (-0.9900, 0.8577), (-0.9250, 0.8523), (-0.8650, 0.8462), (-0.7350, 0.8314),
-    (-0.6350, 0.8222), (-0.6000, 0.8199), (-0.5600, 0.8182), (-0.5150, 0.8170),
-    (-0.4750, 0.8167), (-0.4050, 0.8173), (-0.0850, 0.8257), (0.0900, 0.8311),
-    (0.6800, 0.8515), (1.2050, 0.8710), (1.3000, 0.8738), (1.4300, 0.8777),
-    (1.4700, 0.8780), (1.5100, 0.8775), (1.5650, 0.8750), (1.6050, 0.8728),   # peak +1 mm: the edge rounding
-    (1.6450, 0.8694), (1.7210, 0.8613), (1.7473, 0.8583), (1.7735, 0.8546),
-    (1.7945, 0.8506), (1.8155, 0.8452), (1.8365, 0.8383),
-    # the nose ahead of the front tyres (06 top: half width 1.04 (d / 0.514)^0.413, d from the tip; round 7 tried it
-    # 3-4 cm wider by the tyre for 02's side marker (37 -> 18 px): the far front corner's outline went 20 -> 25 px)
-    (1.8910, 0.7720), (1.9410, 0.7040), (1.9810, 0.6420), (2.0110, 0.5890), (2.0410, 0.5290), (2.0610, 0.4820),
-    (2.0810, 0.4280), (2.0960, 0.3800), (2.1110, 0.3220), (2.1210, 0.2720), (2.1310, 0.2040), (2.1360, 0.1535),
-    (2.1390, 0.1050), (2.1410, 0.0000),
-))
+# the plan (half width): x92, Tesla's ERG bottom view (near orthographic; temp/plan-next-1114/raw/img-cc2/x92_plan.md,
+# scaled by the official 1,754 width), (x92 column, half width): column 31 is the nose's tip, 1573 the tail's
+# (NOSE_TIP, TAIL_TIP), linear between in the output frame; along the body a 9-point running mean (its 3 mm pixel
+# steps), held to 1.2 mm; capped at 0.877 over the fender camera's bump 25-31 cm behind the front axle. Round 9's
+# plan (06 top view, the rear haunch widened on 01 / 02 / 03) was 2-4 cm wider behind the rear doors, 1-2 cm narrower
+# along the middle. Ahead of y 1.615 the nose's own (NOSE_PLAN_B, PLAN_NOSE_A); the tail's round end: tail_bow().
+# Columns 231-407 (the widest, over the front wheel) 0.8765: the mesh then measures the official 1,754 (x92's 0.8755
+# is its outline half a pixel in)
+X92_PLAN = np.array((
+    (231, 0.8765), (407, 0.8765), (427, 0.8746), (495, 0.8631), (807, 0.8402), (939, 0.8294),
+    (1091, 0.8133), (1319, 0.7962), (1367, 0.7904), (1387, 0.7841), (1407, 0.7720), (1423, 0.7576),
+    (1463, 0.7281), (1467, 0.7222), (1503, 0.6957), (1511, 0.6839), (1519, 0.6544), (1539, 0.5660),
+    (1543, 0.5454), (1555, 0.4746), (1559, 0.4451), (1563, 0.4068), (1567, 0.3449), (1571, 0.2417),
+    (1573, 0.0)))
+# what the section takes off the plan's width at the body's widest (the tuck under, the shoulder's lean; over the rear
+# arch, where the arch carves the body below z ~0.85, the round hip's softplus up to 4.7 cm), measured on the field
+# (build frame y, metres): the plan is x92 plus this
+PLAN_PAD = np.array((
+    (-1.990, 0.0170), (-1.980, 0.0150), (-1.950, 0.0148), (-1.940, 0.0138), (-1.930, 0.0110), (-1.920, 0.0104),
+    (-1.880, 0.0113), (-1.810, 0.0155), (-1.750, 0.0156), (-1.730, 0.0162), (-1.680, 0.0205), (-1.560, 0.0362),
+    (-1.510, 0.0418), (-1.450, 0.0467), (-1.410, 0.0474), (-1.360, 0.0466), (-1.310, 0.0444), (-1.200, 0.0356),
+    (-1.180, 0.0320), (-1.140, 0.0196), (-1.120, 0.0144), (-1.100, 0.0118), (-1.060, 0.0089), (-0.890, 0.0097),
+    (-0.790, 0.0113), (0.790, 0.0110), (1.110, 0.0101), (1.220, 0.0039), (1.360, 0.0028), (1.450, 0.0010),
+    (1.540, 0.0026), (1.610, 0.0031)))
+# nose A's plan ahead of the front tyres (06 top: half width 1.04 (d / 0.514)^0.413, d from the tip; round 7 tried it
+# 3-4 cm wider by the tyre for 02's side marker (37 -> 18 px): the far front corner's outline went 20 -> 25 px)
+PLAN_NOSE_A = np.array((
+    (1.6450, 0.8694), (1.7210, 0.8613), (1.7473, 0.8583), (1.7735, 0.8546), (1.7945, 0.8506), (1.8155, 0.8452),
+    (1.8365, 0.8383), (1.8910, 0.7720), (1.9410, 0.7040), (1.9810, 0.6420), (2.0110, 0.5890), (2.0410, 0.5290),
+    (2.0610, 0.4820), (2.0810, 0.4280), (2.0960, 0.3800), (2.1110, 0.3220), (2.1210, 0.2720), (2.1310, 0.2040),
+    (2.1360, 0.1535), (2.1390, 0.1050), (2.1410, 0.0000)))
 # side windows (both panes; 01 side, (y, z)): the door glass ahead of DIVIDER, the fixed quarter glass behind it. Round
 # 6: the two tips 2 cm tall (1 cm, under two mesh cells, their cut came out mm off) and the trace's 5-10 mm wiggles at
 # the B pillar straightened (a notch in the edge on 02)
@@ -205,27 +221,37 @@ BAR = (0.009, 0.015, 0.0045)        # light bar: from / to depth under the leadi
                                      # lying along the surface lands mm off, the boundary check)
 # head lamp: the bar runs on along the lens' top, which leaves the leading edge at LAMP[0] and rises straight to the
 # tip (q, z); the lens' bottom LAMP[2] (q, z); the outer end leans back LAMP[3] in q per metre up (01 front, 01 side:
-# top 0.627 -> 0.692, bottom 0.603 -> 0.624; 02: a slim wedge, the bar's extension)
-LAMP = (0.48, (0.93, 0.692), ((0.48, 0.620), (0.62, 0.606), (0.85, 0.610), (1.00, 0.626)), 0.8)
+# top 0.627 -> 0.692, bottom 0.603 -> 0.624; 02: a slim wedge, the bar's extension). Round 10: the tip round the
+# corner to q 1.00 (|x| ~0.78, y ~1.89): 01 front puts the outer end at |x| 0.795, 01 side at y 1.873, 02 + x253
+# triangulated (0.83, 1.89); at q 0.93 it stopped at (0.70, 1.93)
+LAMP = (0.48, (1.00, 0.688), ((0.48, 0.620), (0.62, 0.606), (0.85, 0.610), (1.00, 0.622), (1.08, 0.630)), 0.8)
 SPOILER = dict(z=((0.0, 0.862), (1.13, 0.862)), top=0.930, q_end=0.98,
                bevel=(0.840, 0.30))  # the duck lip's black rear face: a strip between z and top, right under the
                # deck's trailing edge (01 side 0.866-0.936; 01 rear: full width, gold only at the very corners); the
                # gold face's top rounds forward from bevel[0], the strip standing out of it from 4 mm above its lower
                # edge (a step at the edge itself: a grazing cut and a bright line under the strip, 03)
-TAIL_LAMP = ((0.0, 0.546), (1.13, 0.546)), 0.33, 0.006, 0.52   # bar top z by q, |x| of its dark middle, middle
+TAIL_LAMP = ((0.0, 0.546), (1.13, 0.546)), 0.285, 0.006, 0.45   # bar top z by q, |x| of its dark middle, middle
                # recess, |x| where the red starts (inboard of it the clear reversing lens, unlit grey: 07, 03, 01 rear)
-# for the game's texture (cybercab_lines.json tail_lamp_red_left): the official lamp is red only from |x| 0.665 on the
-# face (01 rear: smoked red 81 px in from the edge, through the fitted camera) round the corner to y -1.95 (01 side:
-# its last 7-8 cm red), smoked dark grey along the side ahead of that; band z from the bumper's top to the lamp's top
-TAIL_RED_GAME = dict(x_in=0.665, y_corner=-1.95, z=(0.502, 0.546))
+# for the game's texture (cybercab_lines.json tail_lamp_red_left): the official lamp is red only from |x| 0.575 on the
+# face (01 rear: smoked red 81 px in from the edge, through the fitted camera) round the corner to y -1.97 (01 side:
+# its last 7-8 cm red), smoked dark grey along the side ahead of that; band z from the bumper's top to the lamp's top.
+# Round 10: every |x| on the tail face (lamps, port, diffuser, the tailgate's sides) x 0.865 with the face, which
+# turns into the side at |x| 0.69 on x92 (round 9's at ~0.80, where 01 rear's camera put these)
+TAIL_RED_GAME = dict(x_in=0.575, y_corner=-1.97, z=(0.502, 0.546))
 # region outlines boundary_off() may miss without failing prep: (|x|, y, z), radius, largest miss (m). The light
 # bar's outer end where it rises: two parallel cuts 4.5 mm apart (bar_top, bar_gap), under a 6.5 mm cell; its one
-# vertex 1.38 mm off (round 8: hood_z bent elsewhere left it unchanged; a wider gap changes the bar's look)
-BOUNDARY_KNOWN = (((0.6046, 1.9824, 0.6984), 0.010, 0.0016),)
-TAIL_BOW = (0.55, 1.16, 3.46)        # the tail (face, bumper, lip) sets forward a (|x| / b)^p: a bow in plan, near flat in
-                                     # the middle, 14 cm forward at the corner. Shape: 06 top (0.28 / 0.38 / 0.47 / 0.54 /
-                                     # 0.66 half width 0.01 / 0.03 / 0.06 / 0.10 / 0.20 m from the end, |x| x b: a 0.83);
-                                     # depth: 03's far corner (a 0.83 sets it 20 px inside the official's, none 20 px out)
+# vertex 0.68 mm off (round 10: moved 1.5 cm down with the lamp's longer rise, LAMP; round 8 it sat at z 0.698).
+# Round 10 (x92's plan moved the side 1-4 cm): the side glass's two tips, the door glass's front (y 0.89) and the
+# quarter glass's rear (-1.07), each a 1.6 cm rounded turn (round_poly) under a 6.5 mm cell: one chord's middle
+# 0.56 / 0.60 mm off its cut
+BOUNDARY_KNOWN = (((0.6086, 1.9865, 0.6834), 0.010, 0.0010), ((0.8000, 0.8944, 0.9517), 0.010, 0.0010),
+                  ((0.6002, -1.0658, 1.2143), 0.010, 0.0010))
+TAIL_BOW = (0.197, 0.692, 3.43)      # the tail (face, bumper, lip) sets forward a (|x| / b)^p (output metres): x92's
+                                     # outline within a of its tip (half width 0 -> b, where the face turns into the
+                                     # side; rms 4.5 mm, at most 8.6 mm in |x| over x92's 0.004-0.21 m); round 9's
+                                     # a (|x| / 1.16)^3.46 off 06 top had p alike, a 0.55 (x92: 1.16). Past b the bow
+                                     # runs on under the plan's side (no crease where it stops), cut at 0.80 off the body
+                                     # (a table of x92 points kinked the face: vertical shading bands)
 WINDSHIELD = dict(cowl=(1.12, 0.21), top=(0.324, 0.40), side=((0.21, 0.540), (0.97, 0.700)), z=0.92)   # side: 01
 # front (round 7 tried its top 3.5 cm in for a broader A pillar on 02: 01 front's side lines 7.7 / 12.7 -> 13 / 18 px)
 DIVIDER = ((-0.508, 1.319), (-0.455, 1.066))      # door glass rear edge (01 side)
@@ -237,12 +263,13 @@ B_SEAM = ((-0.530, 1.077), (-0.274, 0.342))       # door rear seam below the bel
 B_PILLAR = 0.007                     # the B pillar between the door and quarter glass: a matte black frame +-7 mm on
                                      # DIVIDER (01 side: a dark line ~8 px, 03)
 TRUNK_Y = -0.845                     # tailgate front seam across the roof (01 side: the roof's step)
-TRUNK_PLAN = ((-0.845, 0.600), (-1.00, 0.605), (-1.15, 0.605), (-1.45, 0.615), (-1.65, 0.630), (-1.84, 0.668),
-              (-1.95, 0.695), (-2.00, 0.700), (-2.05, 0.700), (-2.20, 0.700))   # (y, |x|) its side seam: along the
+TRUNK_PLAN = ((-0.845, 0.580), (-1.00, 0.566), (-1.15, 0.573), (-1.45, 0.598), (-1.65, 0.589), (-1.84, 0.603),
+              (-1.95, 0.604), (-2.00, 0.605), (-2.20, 0.605))   # (y, |x|) its side seam: along the
               # deck's edge to the tail (01 side's seam line read back onto the surface, 03, 06 top view), then down
-              # the face just inside the corner chamfer (a cut through the chamfer folds the mesh) with no groove
+              # the face just inside the corner (a cut through the corner's rounding folds the mesh) with no groove
               # there (grooves(): 01 rear shows no line). Round 9 up to 3.5 cm inboard over the haunch: on the deck,
-              # off the wider edge rounding (k), and 01 side's seam 1-2 cm higher (it sat under the official's)
+              # off the wider edge rounding (k), and 01 side's seam 1-2 cm higher (it sat under the official's);
+              # round 10 moved with the plan (x92: 2-6.5 cm narrower, the deck's crease with it), down the face x 0.865
 # hood (01 front, 02): a low dome, its middle on the side silhouette, falling HOOD_VALLEY to the seams; the seams lie
 # in shallow valleys between the hood and the fenders' crests (02: the bright band from the A pillar's base down over
 # the lamp), which rise back to the silhouette's height FENDER_CREST of the way out to FENDER_X, then roll down,
@@ -273,9 +300,9 @@ CREASE = 0.015                      # rounding of the hood ridges and the should
 NOSE_ROUND = 0.06                    # the nose's side profile slides back by this (|x| / 0.8)^2: round face in plan
 SHOULDER = ((1.15, 0.790), (0.50, 0.850), (-0.42, 0.915), (-1.40, 0.925), (-2.10, 0.915))   # crease (y, z): 01 side
 TUCK = (0.10, 0.012)                 # below the crease the side leans in: slope, at most
-PORT = (-0.775, -0.665, 0.330, 0.470)            # charge port door (x0, x1, z0, z1), driver side: the square cover
+PORT = (-0.670, -0.575, 0.330, 0.470)            # charge port door (x0, x1, z0, z1), driver side: the square cover
                                                  # at the bumper's outer corner (01 rear; mirrored: a blank cover)
-DIFFUSER = (0.55, 0.305, 0.345, 0.015)          # rear bumper's lower step: |x|, z range, set in (01 rear, 03, 04)
+DIFFUSER = (0.475, 0.305, 0.345, 0.015)         # rear bumper's lower step: |x|, z range, set in (01 rear, 03, 04)
 # seams: the outlines of the doors, tailgate, hood and charge port door as V grooves (GROOVE: half width, depth)
 SEAMS = ("door", "cowl", "hood_x", "hood_z", "trunk_y", "trunk_x", "tail_top", "port_x0", "port_x1", "port_z0",
          "port_z1")
@@ -283,8 +310,26 @@ GROOVE = (0.0025, 0.0020)
 FENDER_CAM = ((1.230, 0.768), (1.126, 0.794), (1.178, 0.741), 0.028)   # tip, rear top, rear bottom, height
 PLATE = (0.0, 0.430, 0.590, 0.138)               # plate (x, z0, z1, half width): 01 front (228 x 132 px: 1.73 : 1)
 LAMP_DOTS = 8                                    # small lamps in each head lamp lens (01 front, 02)
-SIDE_MARKER = (1.890, 1.896, 0.330, 0.500)       # amber reflector strip ahead of the front wheel (y0, y1, z0, z1)
+SIDE_MARKER = (1.870, 1.892, 0.330, 0.495)       # amber reflector strip ahead of the front wheel (y0, y1, z0, z1):
+                                                 # 01 side 1.862-1.889 wide, hugging the arch (round 10; was 6 mm)
 BUTTON = (-0.490, 1.071, 0.030, 0.012)          # B pillar button (y, z, length, height), 01 side + rider guide p.5
+
+# ---- the nose (round 10). The official pictures come in two families that disagree on its length (temp/skf_cc/
+# review10/STEP1.md): "A" is 01 side's (x55 and 06's side view agree), 4.28 m long; "B" (the default) is 02 and
+# x253's (two views triangulate the plate 19-20 cm further ahead, 4.4 cm lower) with the plan outline of 06's top view
+# and x92's bottom view (each scaled by the 1,754 width: the two agree within 1 cm). Wheels, track, width, height,
+# glass, doors and tail are the same in both. Choose with `-- <out dir> nose=A`.
+NOSE = next((a[5:] for a in sys.argv[1:] if a.startswith("nose=")), "B")
+assert NOSE in ("A", "B"), NOSE
+# B: the car is built in A's frame, then every point ahead of y0 moves forward d * smoothstep((y - y0) / (y1 - y0)):
+# the face (plate, intake, the bar's middle) d ahead, the hood's front and the corners stretched. y0 just ahead of
+# the front arch (its edge at 1.87 moves 1 mm) and of the lamps' outer ends (1.873: the three views put them within
+# 4 cm of A's); d: the plate triangulated +0.196 (02, x253), x92's front overhang +0.18 at its wheelbase
+NOSE_B = dict(y=(1.86, 2.08), d=0.190, plate_dz=-0.044)
+# B's plan ahead of the front wheel: half width (m) at d m behind the nose's tip; 06 top and x92 (bottom view)
+NOSE_PLAN_B = ((0.0, 0.0), (0.005, 0.107), (0.01, 0.170), (0.02, 0.258), (0.04, 0.367), (0.06, 0.447),
+               (0.086, 0.515), (0.10, 0.545), (0.15, 0.621), (0.20, 0.684), (0.25, 0.735), (0.30, 0.780),
+               (0.35, 0.817), (0.40, 0.846), (0.45, 0.862), (0.50, 0.871), (0.60, 0.876), (0.70, 0.877))
 
 
 def smax(a, b, k):
@@ -297,6 +342,83 @@ def smax(a, b, k):
 def ss(t):
     t = np.clip(t, 0.0, 1.0)
     return t * t * (3.0 - 2.0 * t)
+
+
+# ---- the output frame (round 10). The car is built in round 9's frame (A's: 01 side read as orthographic), then
+# out_y() moves every y: nose B forward (NOSE_B); the middle between the wheel arches shorter to the wheelbase (x92
+# 2.702), a smoothstep over FRAME["mid"], whose ends stay clear of the arches and their lips (the arches stay round,
+# the rear arch and wheels move whole); the tail behind the rear arch longer, its tip to TAIL_TIP (x92's rear overhang
+# 0.973), a smoothstep over FRAME["tail"] (the face, bumper and lip at its end move near whole). The checks run in
+# the build frame; normals scale y by the stretch's inverse.
+NOSE_TIP, TAIL_TIP = 2.330, -2.220            # the output car's ends (x92 columns 31 / 1573; nose A ends at 2.141)
+TIP_A = -2.140                                 # the tail's tip in the build frame (SIDE_TOP / SIDE_BOT at x 0)
+FRAME = dict(wheelbase=2.700, mid=(-0.84, 1.00), tail=(-1.775, -2.14))
+_SW = TYRES["front"]["y"] - TYRES["rear"]["y"] - FRAME["wheelbase"]   # the rear axle moves forward this
+_ST = TIP_A + _SW - TAIL_TIP                                          # the tail grows this
+
+
+def ss_d(t):
+    """d ss / dt."""
+    t = np.clip(t, 0.0, 1.0)
+    return 6.0 * t * (1.0 - t)
+
+
+def out_y(y):
+    """The build frame -> the output frame (y)."""
+    y = np.asarray(y, float)
+    (m0, m1), (t0, t1) = FRAME["mid"], FRAME["tail"]
+    o = y + _SW * (1.0 - ss((y - m0) / (m1 - m0))) - _ST * ss((t0 - y) / (t0 - t1))
+    if NOSE == "B":
+        (y0, y1), d = NOSE_B["y"], NOSE_B["d"]
+        o = o + d * ss((y - y0) / (y1 - y0))
+    return o
+
+
+def out_jy(y):
+    """d out_y / dy (the stretch; normals scale y by its inverse)."""
+    y = np.asarray(y, float)
+    (m0, m1), (t0, t1) = FRAME["mid"], FRAME["tail"]
+    j = 1.0 - _SW * ss_d((y - m0) / (m1 - m0)) / (m1 - m0) + _ST * ss_d((t0 - y) / (t0 - t1)) / (t0 - t1)
+    if NOSE == "B":
+        (y0, y1), d = NOSE_B["y"], NOSE_B["d"]
+        j = j + d * ss_d((y - y0) / (y1 - y0)) / (y1 - y0)
+    return j
+
+
+_G = np.linspace(-2.6, 2.6, 26001)
+_OG = out_y(_G)
+
+
+def in_y(y):
+    """The output frame -> the build frame (y)."""
+    return np.interp(y, _OG, _G)
+
+
+def out_pts(p):
+    """Points (..., 3) to the output frame."""
+    p = np.array(p, float)
+    p[..., 1] = out_y(p[..., 1])
+    return p
+
+
+def x92_w(yo):
+    """x92's half width at output y."""
+    return np.interp(31 + (NOSE_TIP - yo) / (NOSE_TIP - TAIL_TIP) * (1573 - 31), X92_PLAN[:, 0], X92_PLAN[:, 1])
+
+
+# the plan in the build frame: x92 plus what the section takes off (PLAN_PAD); within TAIL_BOW a of the tail's tip held
+# at the face's corner (the bow shapes the end there); ahead of 1.615 the nose's own (B stays near its full width
+# further forward: 0.871 at y 1.83, A 0.84). B: the side marker keeps its place on the output car; the plate lower
+# (02, x253)
+_y = np.r_[TIP_A - 0.001, np.arange(-2.13, 1.6151, 0.01)]
+PLAN = np.c_[_y, x92_w(np.maximum(out_y(_y), TAIL_TIP + TAIL_BOW[0])) + np.interp(_y, *PLAN_PAD.T)]
+if NOSE == "B":
+    _y = np.r_[np.arange(1.62, 2.12, 0.005), np.arange(2.12, 2.1405, 0.0025), 2.141]
+    PLAN = np.concatenate([PLAN, np.c_[_y, np.interp(out_y(2.141) - out_y(_y), *np.array(NOSE_PLAN_B).T)]])
+    SIDE_MARKER = (*in_y(np.array(SIDE_MARKER[:2])).round(4).tolist(), *SIDE_MARKER[2:])
+    PLATE = (PLATE[0], PLATE[1] + NOSE_B["plate_dz"], PLATE[2] + NOSE_B["plate_dz"], PLATE[3])
+else:
+    PLAN = np.concatenate([PLAN, PLAN_NOSE_A])
 
 
 def poly_sdf(poly, py, pz, chunk=20000):
@@ -356,9 +478,9 @@ def nose_y(ax, y):
 
 
 def tail_bow(ax):
-    """How far the tail sets forward at |x| (TAIL_BOW; past the corner the side: no more)."""
+    """How far the tail sets forward at |x| in the build frame (TAIL_BOW, read back through out_y)."""
     a, b, p = TAIL_BOW
-    return a * (np.minimum(ax, 0.82) / b) ** p
+    return in_y(TAIL_TIP + a * (np.minimum(ax, 0.80) / b) ** p) - TIP_A
 
 
 def hood_cap(ax, y):
@@ -668,8 +790,8 @@ def levels(f):
         # the port's outline: its four lines bent off the body beyond the box (not up the whole tail face)
         port_x0=lambda x, y, z, ax: x - PORT[0] + far(yt(ax, y) + 2.0) + far(4 * (z - 0.48)) + far(0.30 - z),
         port_x1=lambda x, y, z, ax: x - PORT[1] + far(yt(ax, y) + 2.0) + far(4 * (z - 0.48)) + far(0.30 - z),
-        port_z0=lambda x, y, z, ax: z - PORT[2] + far(yt(ax, y) + 2.0) + far(x + 0.60) + far(-0.85 - x),
-        port_z1=lambda x, y, z, ax: z - PORT[3] + far(yt(ax, y) + 2.0) + far(x + 0.60) + far(-0.85 - x))
+        port_z0=lambda x, y, z, ax: z - PORT[2] + far(yt(ax, y) + 2.0) + far(x + 0.50) + far(-0.745 - x),
+        port_z1=lambda x, y, z, ax: z - PORT[3] + far(yt(ax, y) + 2.0) + far(x + 0.50) + far(-0.745 - x))
 
 
 def weld(v, t, eps=2e-5):
@@ -931,7 +1053,7 @@ def front_parts(f):
     # lamp dots: along the lens' middle (left lamp)
     xc, yc0, r = NOSE_C
     dots = []
-    for q in np.linspace(0.58, 0.93, LAMP_DOTS):
+    for q in np.linspace(0.58, 0.98, LAMP_DOTS):
         th = (q - xc) / r
         o = np.array([[-(xc + 0.8 * np.sin(th)), yc0 + 0.8 * np.cos(th), 0.66]])
         dr = np.array([[np.sin(th), -np.cos(th), 0.0]])
@@ -1009,7 +1131,7 @@ def wheel_parts(seg=72):
             for nm, (vv, qq) in (("Tyre", (tv, tq)), ("Cover", (cv, cq))):
                 p = vv.copy()
                 p[:, 0] = sx * (mid + p[:, 0])
-                p[:, 1] += ty["y"]
+                p[:, 1] += out_y(ty["y"])
                 p[:, 2] += ty["r"]
                 tt = np.concatenate([qq[:, [0, 1, 2]], qq[:, [0, 2, 3]]])
                 if sx < 0:
@@ -1030,7 +1152,8 @@ def grooves(f, v, t, mat, pan):
     o = np.maximum(fb, 0)
     seam = (fb >= 0) & (pan[fa] != pan[o]) & (mat[fa] == mat[o]) & (mat[fa] != MATS.index("Glass"))
     c = v[ue].mean(1)
-    seam &= ~((c[:, 1] < -1.99) & (c[:, 2] > 0.56) & (c[:, 2] < 0.90) & (np.abs(c[:, 0]) > 0.6))
+    seam &= ~((c[:, 1] - tail_bow(np.abs(c[:, 0])) < -2.06) & (c[:, 2] > 0.56) & (c[:, 2] < 0.90)
+              & (np.abs(c[:, 0]) > 0.5))
     vb = np.unique(ue[seam])
     cc = v[t].mean(1)
     lv = levels(f)
@@ -1146,11 +1269,38 @@ PANES = ("Glass_Windshield", "Glass_DoorLeft", "Glass_DoorRight", "Glass_Quarter
          "Glass_ReverseLens")
 
 
+def uncross(v, t, lab, tol=4e-4):
+    """Faces that touch or cross a face they share no vertex with: where two cuts cross at a grazing angle they leave
+    vertex pairs 0.1-0.3 mm apart joined by sliver faces, which can touch (A, rear deck) or, stretched by nose B,
+    cross (the light bar's end). Merge the closest vertex pair of each such face pair (under tol, v in the output
+    frame) and drop the faces that collapse. Returns t, lab and the number of face pairs found."""
+    from mathutils.bvhtree import BVHTree
+    found = 0
+    for _ in range(4):
+        tree = BVHTree.FromPolygons(v.tolist(), t.tolist(), all_triangles=True)
+        fs = [set(f_) for f_ in t.tolist()]
+        pairs = [(a, b) for a, b in {tuple(sorted(p)) for p in tree.overlap(tree)} if not fs[a] & fs[b]]
+        if not pairs:
+            break
+        found += len(pairs)
+        remap = np.arange(len(v))
+        for a, b in pairs:
+            d = np.linalg.norm(v[t[a]][:, None] - v[t[b]][None], axis=2)
+            i, j = np.unravel_index(np.argmin(d), d.shape)
+            if d[i, j] < tol:
+                remap[remap[t[b][j]]] = remap[t[a][i]]
+        t = remap[remap[t]]
+        keep = (t[:, 0] != t[:, 1]) & (t[:, 1] != t[:, 2]) & (t[:, 0] != t[:, 2])
+        t, lab = t[keep], lab[keep]
+    return t, lab, found
+
+
 def main():
     import bmesh
     import bpy
 
-    out = (sys.argv[sys.argv.index("--") + 1:] + [OUT_DIR])[0] if "--" in sys.argv else OUT_DIR
+    args = [a for a in sys.argv[sys.argv.index("--") + 1:] if not a.startswith("nose=")] if "--" in sys.argv else []
+    out = (args + [OUT_DIR])[0]
     os.makedirs(out, exist_ok=True)
     bpy.ops.wm.read_factory_settings(use_empty=True)
     B = build()
@@ -1260,7 +1410,8 @@ def main():
     v, t, lab = read(body)
     # one charge port (driver side): the mirror's copy of its groove on the right pulled back onto the surface (a
     # blank face; the game's ambient occlusion would draw the groove as a dark frame)
-    rp = (v[:, 0] > 0.62) & (v[:, 0] < 0.86) & (v[:, 1] < -1.85) & (v[:, 2] > 0.30) & (v[:, 2] < 0.50)
+    rp = ((v[:, 0] > -PORT[1] - 0.04) & (v[:, 0] < -PORT[0] + 0.04) & (v[:, 1] < -1.85) & (v[:, 2] > 0.30)
+          & (v[:, 2] < 0.50))
     v[rp] = project(f, v[rp])
     lab = np.where(rp[t].all(1) & (lab // 512 % 2 > 0), lab - 512, lab)
     bpy.data.meshes.remove(body.data)
@@ -1270,7 +1421,9 @@ def main():
     e = np.sort(t[:, [0, 1, 1, 2, 2, 0]].reshape(-1, 2), 1)
     _, inv, cnt = np.unique(e, axis=0, return_inverse=True, return_counts=True)
     keep = ~((cnt[inv.ravel()].reshape(-1, 3) > 2).any(1) & (np.linalg.norm(fn, axis=1) < 2e-6))
-    t, lab, fn = t[keep], lab[keep], fn[keep]
+    t, lab = t[keep], lab[keep]
+    t, lab, crossed = uncross(out_pts(v), t, lab)
+    fn = np.cross(v[t[:, 1]] - v[t[:, 0]], v[t[:, 2]] - v[t[:, 0]])
     fn /= np.maximum(np.linalg.norm(fn, axis=1, keepdims=True), 1e-15)
     # field normals per corner, read a quarter of the way into the face: across a crease the mesh's edges do not
     # follow, each face takes its own side's normal instead of a blend (no saw tooth along the crease) ...
@@ -1295,7 +1448,16 @@ def main():
                                                 at=off[np.argsort(-dist)[:40]].round(4).tolist(),
                                                 cells=[[*c.tolist(), int(n)] for c, n in
                                                        zip(cells[np.argsort(-cn)[:30]], np.sort(cn)[::-1][:30])]),
-                  boundary_known=known_at)
+                  boundary_known=known_at, nose=NOSE, uncrossed=crossed)
+    # to the output frame (the checks above ran in the build frame); normals scale y by the stretch's inverse
+    jy = out_jy(v[t][:, :, 1])[..., None]
+    nrm = nrm * np.concatenate([np.ones_like(jy), 1.0 / jy, np.ones_like(jy)], -1)
+    nrm /= np.linalg.norm(nrm, axis=2, keepdims=True)
+    v = out_pts(v)
+    # a sliver the stretch bent past its field normal: that face faceted (B: 2 corners on the bar's shadow line)
+    fo = np.cross(v[t[:, 1]] - v[t[:, 0]], v[t[:, 2]] - v[t[:, 0]])
+    fo /= np.maximum(np.linalg.norm(fo, axis=1, keepdims=True), 1e-15)
+    nrm = np.where(((nrm * fo[:, None]).sum(2) < 0.05)[..., None], fo[:, None], nrm)
     for mi, nm in enumerate(MATS):
         for pi, on in enumerate(PANES if nm == "Glass" else (nm,)):
             sel = (mat == mi) & ((pane == pi) if nm == "Glass" else True)
@@ -1305,15 +1467,15 @@ def main():
     cv, cs, cl = B["parts"]["camera"]
     bv, bt = B["parts"]["button"]
     for sx, side in ((-1, "Left"), (1, "Right")):
-        p = cv * [sx, 1, 1]
+        p = out_pts(cv * [sx, 1, 1])
         flip = (lambda a: a[:, ::-1]) if sx > 0 else (lambda a: a)
         make(f"FenderCam_{side}", p, flip(cs), "Paint")
         make(f"FenderCamLens_{side}", p, flip(cl), "Trim")
-        make(f"Button_{side}", bv * [sx, 1, 1], flip(bt), "Trim")
+        make(f"Button_{side}", out_pts(bv * [sx, 1, 1]), flip(bt), "Trim")
     for nm, (vv, tt) in {**B["parts"]["front"], **B["parts"]["rear"]}.items():
         mn, mirrored = PARTS[nm]
         for sx, side in (((-1, "_Left"), (1, "_Right")) if mirrored else ((1, ""),)):
-            p = vv * [-sx if mirrored else 1, 1, 1]          # computed on the left
+            p = out_pts(vv * [-sx if mirrored else 1, 1, 1])          # computed on the left
             ob = make(nm + side, p, tt[:, ::-1] if (mirrored and sx > 0) else tt, mn)
             ob.data.polygons.foreach_set("use_smooth", np.zeros(len(ob.data.polygons), bool))
     for nm, (vv, tt) in B["wheels"].items():
@@ -1328,12 +1490,14 @@ def main():
     report["body_bbox"] = [allv.min(0).round(4).tolist(), allv.max(0).round(4).tolist()]
     report["body_tris"] = int(sum(n for k, n in report["objects"].items() if not k.startswith(("Tyre", "Cover"))))
     report["panels"] = PANELS
-    report["wheels"] = {ax: dict(track_m=round(2 * (WHEEL_X[ax] - 0.006 - TYRES[ax]["w"] / 2), 4), y=TYRES[ax]["y"],
+    report["wheels"] = {ax: dict(track_m=round(2 * (WHEEL_X[ax] - 0.006 - TYRES[ax]["w"] / 2), 4),
+                                 y=round(float(out_y(TYRES[ax]["y"])), 4),
                                  r=TYRES[ax]["r"], w=TYRES[ax]["w"]) for ax in TYRES}
-    report["wheels"]["note"] = "track: measured off the official pictures (01 front / rear), not an official figure"
+    report["wheels"]["note"] = "track: front off 01 front's fitted camera, rear x92's rear / front ratio; not official"
     json.dump(report, open(os.path.join(out, "prep_report.json"), "w"), indent=1)
+    lines = {k: out_pts(p).round(4).tolist() for k, p in B["lines"].items()}
     json.dump(dict(frame="metres, +Y front, +Z up, -X the car's left, ground 0 (prep_cybercab.py)",
-                   **B["lines"]), open(os.path.join(out, "cybercab_lines.json"), "w"), indent=1)
+                   **lines), open(os.path.join(out, "cybercab_lines.json"), "w"), indent=1)
     bpy.ops.wm.save_as_mainfile(filepath=os.path.join(out, "cybercab_src.blend"))
     bpy.ops.export_scene.gltf(filepath=os.path.join(out, "cybercab_src.glb"), export_format="GLB")
     print("PREP", report["body_tris"], "body triangles; bbox", report["body_bbox"])
