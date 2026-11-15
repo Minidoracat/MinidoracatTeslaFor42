@@ -34,7 +34,7 @@
 > - 哨兵：`falcon` 與 `butterfly` 真的打開了門時，若電池零件 modData 有 `sentry`，伺服器照 App 解鎖的做法關掉哨兵並同步車況。
 > - 沒有 HEPA（Specs 沒有 `hepa`），V 鍵圓盤不出現生物武器防禦模式。
 > - 素材：車身、車內與貼圖是本 MOD 照 Tesla 官方公開的圖（乘客手冊、救援指南與官方照片）自己做的，沒有用任何第三方模型，所以 `CREDITS.md` 沒有新增署名。
-> - 損壞區（原七台）：車身損壞貼圖的分區圖（`_mask.png`）裡，車頭中央、保桿下半與車尾原本落在 Roof 區；原版沒有零件控制 Roof 區的損壞，所以那裡永遠不出損壞圖。現在 Guard 框前後、窗線以下、原本在 Roof 的面：車漆面改進 GuardLH／GuardRH（車頭，`EngineDoor` 車況）與 GuardLT／GuardRT（車尾，`TruckBed` 車況），深色塑料改進 Head／Tail（同樣兩個零件）。漆面不放 Head／Tail：原版這兩區的損壞殼不套車漆色，車漆放進去是綠灰條紋。Hood、Boot 不動：那兩區在零件拆下時會塗黑，現在只在蓋子本身的網格上，車身不會開洞。只改分區圖；skin、lights、輪子、FBX、腳本與 Lua 逐位元不變。Cybercab 用同一套規則（`HEAD_TAIL`），前保桿下唇的金漆也從 Head 改進 Guard。
+> - 損壞區（原七台）：車身損壞貼圖的分區圖（`_mask.png`）裡，車頭中央、保桿下半與車尾原本落在 Roof 區；原版沒有零件控制 Roof 區的損壞，所以那裡永遠不出損壞圖。現在 Guard 框前後、窗線以下、原本在 Roof 的面：車漆面改進 GuardLH／GuardRH（車頭，`EngineDoor` 車況）與 GuardLT／GuardRT（車尾，`TruckBed` 車況），深色塑料改進 Head／Tail（同樣兩個零件）。漆面不放 Head／Tail：原版這兩區的損壞殼不套車漆色，車漆放進去是綠灰條紋。燈殼、燈框、鏡片與連著燈帶的黑色飾條改進同側的燈區：遊戲不畫燈區的損壞殼（原版也一樣），放在 Head／Tail 會在頭燈上畫出灰綠痕。Hood、Boot 不動：那兩區在零件拆下時會塗黑，現在只在蓋子本身的網格上，車身不會開洞。只改分區圖；skin、lights、輪子、FBX、腳本與 Lua 逐位元不變。Cybercab 用同一套規則（`HEAD_TAIL`、`LAMP_ZONES`）；Head 裡 skin 是金漆的格子（車頭板縫的填色、下唇細條）改進前 Guard（`MASK_PAINT_GUARD`）。
 
 ## [42.22.2-0.8.1] - 2026-11-15
 
