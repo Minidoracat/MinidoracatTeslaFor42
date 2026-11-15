@@ -251,21 +251,56 @@ CAR = dict(
     # along them through the open lid
     TRUNK_WALL=True,
     HUMP_BACKS=False,
-    SEATS=dict(front=dict(w=0.42, back=0.50, recline=32, dy=0.056, dz=-0.121), sill=None, bin=None),
+    # the front seats (ERG p.22, rider guide pp.10-12; cabin.py slim): a thin backrest with two seams across, the headrest
+    # on it narrower (the shoulder step), no bolsters, a thick cushion with a round front on one low pedestal; the
+    # cushion's top and the headrest's top where the bucket had them, the backrest's front 5 mm ahead (ahead: the thin
+    # flat back left 23 mm to the passengers' backs, over seat_head.py's 20); recline kept 32 for the passengers' pose
+    # (the official reads ~26: cabin-r1 d; at 26 seat_head back -70..-14, the backrest 70 mm into their backs); an
+    # armrest between them at elbow height (centre) with the seat-belt buckles
+    SEATS=dict(front=dict(w=0.42, back=0.50, recline=32, dy=0.056, dz=-0.121, cushion=0.10,
+                          slim=dict(back=0.06, ahead=0.005, head=(0.26, 0.155, 0.08), seams=(0.36, 0.68),
+                                    pedestal=(0.26, 0.30), round=0.045),
+                          centre=(0.17, 0.30, 0.14)),
+               sill=None, bin=None),
     PARCEL=None,
-    # a low dash (rider guide 05), narrower than the default so its ends stay off the A-pillars; the big centre screen
-    # (screen_size) on a stand in front of it; no steering wheel (wheel None)
-    DASH=dict(size=(1.10, 0.30, 0.16), console=(0, 0.06, -0.2594), dash=(0, 0.80, 0.030), trim=(0, 0.645, 0.050),
-              light=(0, 0.647, 0.0256), stand=(0, 0.62, 0.02), screen=(0, 0.585, 0.14), screen_size=(0.42, 0.26),
-              wheel=None),
+    # rider guide 05 / pp.11-14, ERG pp.19 / 23 (temp/plan-next8-1114/cabin-r1): a low dash (narrower than the default
+    # so its ends stay off the A-pillars), no console (the footwell open), no steering wheel (wheel None). Its parts: the
+    # light upper shelf with its lip over the cabin face, the long slot under it (silver rim, dark slot), the ledge
+    # the big screen (screen_size, 1.54:1, top 12 deg forward) stands on, no stand, its back silver (rear), the window
+    # switches on the ledge under it (the detail model's marks: icons); vent: the detail model's second groove
+    DASH=dict(size=(1.10, 0.30, 0.16), console=None, dash=(0, 0.80, 0.030), stand=None, screen=(0, 0.597, 0.0455),
+              screen_size=(0.42, 0.272), rear="screen_rear", wheel=None, vent=-0.022,
+              parts=(((1.12, 0.075, 0.034), 0.015, "shelf", (0, 0.6625, 0.093)),
+                     ((1.04, 0.020, 0.024), 0.006, "shelf", (0, 0.645, 0.046)),
+                     ((1.02, 0.012, 0.008), 0.002, "slot", (0, 0.639, 0.046)),
+                     ((0.24, 0.105, 0.030), 0.010, "dash", (0, 0.6075, -0.103)),
+                     ((0.10, 0.008, 0.014), 0.003, "switch", (0, 0.5545, -0.097))),
+              icons=((-0.022, 0.5505, -0.097), (0.022, 0.5505, -0.097))),
+    # the door card (rider guide 05 / p.7, ERG p.19): the inner panel light over the armrest's pocket (DOOR_INNER), the
+    # dark pocket with the armrest under it and the pull handle in it, the speaker grille low at the front
     DOOR_CARD={
         "front": [
-            ("upper trim", "end", (0.08, 0.10), -0.050, None, 0.060, 0.030, "dash", 0.012),
-            ("ambient light", "end", (0.10, 0.16), -0.086, None, 0.007, 0.012, "screen", 0.002),
-            ("armrest", "rear", 0.12, -0.215, 0.44, 0.050, 0.085, "seat", 0.018),
-            ("pull handle", "rear", 0.17, -0.165, 0.26, 0.026, 0.050, "dash", 0.010),
+            ("armrest pocket", "rear", 0.10, -0.205, 0.50, 0.085, 0.030, "base", 0.020),
+            ("armrest", "rear", 0.12, -0.262, 0.44, 0.030, 0.070, "bed_wall_mid", 0.012),
+            ("pull handle", "rear", 0.20, -0.195, 0.22, 0.020, 0.040, "screen_back", 0.008),
             ("door button", "rear", 0.43, -0.186, 0.035, 0.012, 0.050, "trim", 0.004),
-            ("map pocket", "end", (0.22, 0.30), -0.360, None, 0.080, 0.040, "base", 0.015),
+            ("speaker grille", "front", 0.06, -0.47, 0.17, 0.13, 0.010, "wheel", 0.030),
         ],
     },
+    DOOR_INNER=dict(cell="console", upper=("bed_rib", -0.16)),
+    # the headliner, the pillars and the roof rails inside light grey (rider guide 05; the body's reversed faces over
+    # the belt, ahead of the trunk)
+    LINER_UP=dict(cell="bed_rib", dz=0.0, y=-0.60),
+    # cabin.py: the parts' names -> palette cells (MinidoracatTesla_vehicle.frag CABIN; DETAIL_RGB for the detail
+    # model): the seats darker than the other cars' (ERG p.9 through the windscreen: mid-dark grey), their seams, the
+    # dash's near black body, the light shelf, the screen's silver back
+    CABIN_CELL_MAP=dict(seat="bed_wall_hi", seam="liner", dash="console", shelf="bed_rim", slot="screen_back",
+                        screen_rear="bed_rim", switch="screen_back", buckle="screen_back"),
+    DETAIL_CELL_MAP=dict(seam="mat", stitch="mat", dash="console", shelf="mirror_glass", slot="vent", screen_rear="chrome",
+                         switch="vent", buckle="vent", icon="chrome", pod="mirror_glass", lamp="chrome", stop="chrome",
+                         stop_button="screen_back", camera="mirror"),
+    # the detail model's overhead console instead of a rear-view mirror (no rear window; rider guide 05: the camera
+    # housing at the windscreen's top, p.14: the STOP button between the reading lamps)
+    ROOF_CONSOLE=dict(size=(0.16, 0.36, 0.035), lamp=(0.045, 0.030), lamp_x=0.05, stop=(0.050, 0.022),
+                      camera=(0.07, 0.06, 0.045)),
 )

@@ -1948,7 +1948,7 @@ def stage_detail(cy=None):
     # GLASS_UV1_SHIFT + 2 x pane + damage u)
     (gv, gt, gu), = pv.read_fbx(os.path.join(pv.VEH_DIR, pv.NAME + "_Glass.fbx"))
     pane = (gu.reshape(-1, 3)[:, 0] - pv.GLASS_UV1_SHIFT) // 2
-    ob = cab.detail_mesh(opening, (gv, gt[pane == GLASS_ZONES.index("WinT")]))
+    ob = cab.detail_mesh(opening, (gv, gt[pane == GLASS_ZONES.index("WinT")]), (bv, bt))
     pv.detail_texture()
     pv.export_fbx(ob, os.path.join(pv.VEH_DIR, pv.NAME + "_Detail.fbx"))
     return len(ob.data.polygons)
@@ -2676,6 +2676,33 @@ def build_cabin(bodyV, Tb, Ab, meshes, shift):
     return V, T, A
 
 
+def cut_z(P, t, a, rows, zc):
+    """Triangles `rows` of (P, t, a: corner attributes) that cross z = zc cut along it (DOOR_INNER: its colour edge on
+    the line, not the big triangles' zigzag by centre; tesla-cc-cabin-r1). The piece on the lone corner's side keeps the
+    row, the other two are appended (winding kept); new corners interpolate the attributes. -> P, t, a, rows + new."""
+    P, t, a = list(P), list(t), list(a)
+    new = []
+    for r in rows:
+        z = np.array([P[i][2] for i in t[r]]) > zc
+        if z.all() or not z.any():
+            continue
+        lone = int(np.flatnonzero(z == (z.sum() == 1))[0])
+        o = [(lone + 1) % 3, (lone + 2) % 3]
+        tri, att = t[r], a[r]
+        pts = []
+        for j in o:
+            p0, p1 = P[tri[lone]], P[tri[j]]
+            s = (zc - p0[2]) / (p1[2] - p0[2])
+            P.append(p0 + s * (p1 - p0))
+            pts.append((len(P) - 1, att[lone] + s * (att[j] - att[lone])))
+        (q1, a1), (q2, a2) = pts
+        t[r], a[r] = np.array([tri[lone], q1, q2]), np.stack([att[lone], a1, a2])
+        t += [np.array([q1, tri[o[0]], tri[o[1]]]), np.array([q1, tri[o[1]], q2])]
+        a += [np.stack([a1, att[o[0]], att[o[1]]]), np.stack([a1, att[o[1]], a2])]
+        new += [len(t) - 2, len(t) - 1]
+    return np.array(P), np.array(t), np.array(a), np.concatenate([rows, np.array(new, int)])
+
+
 def pieces(car, c, shift):
     """Whole car -> body FBX and doors FBX (slab doors, VehicleSkeleton, hinge keys). -> triangles per piece."""
     V, T, A, _ = pv.soup(car, shift)
@@ -2691,13 +2718,17 @@ def pieces(car, c, shift):
         return np.array([0, 0, pv.CABIN_UV1_U - CELL[cell], 0, 0, 0, 1], float)
     back_liner = ~glass & ((part == 0) & panel | (part > 0) & ~panel)
 
-    def backs(sel, recolour, base):
-        """Reversed copies on their own vertices (the FBX import keeps one of two faces on the same vertices)."""
+    def backs(sel, recolour, base, up=None):
+        """Reversed copies on their own vertices (the FBX import keeps one of two faces on the same vertices). up (the
+        body's, LINER_UP): those whose centre is over the belt + dz and ahead of y (centred) that cell instead."""
         n = int(sel.sum())
         a = A[sel][:, [0, 2, 1]].copy()
         a[..., 4:] *= -1
         if recolour:
             a[..., :4] = cab_attr("liner")[:4]
+        if recolour and up:
+            ctr = V[T[sel]].mean(1)
+            a[(ctr[:, 2] > BELT_Z + up["dz"]) & (ctr[:, 1] > up["y"] + shift[1]), :, :4] = cab_attr(up["cell"])[:4]
         return V[T[sel][:, [0, 2, 1]]].reshape(-1, 3), base + np.arange(3 * n).reshape(-1, 3), a
     # no reversed glass on Model Y: every source pane is a closed slab (outer and inner face 0.9 mm apart, the rim), so
     # its inner face already shows the glass from inside; a reversed outer face on top put two layers there (darker,
@@ -2708,7 +2739,8 @@ def pieces(car, c, shift):
     gback = glass & np.isin(c["pane"][tf], [GLASS_ZONES.index(z) for z in GLASS_BACKS])
     back_sets = lambda sel: ((sel & back_liner, True),) + (((sel & gback, False),) if gback.any() else ())  # noqa: E731
     body_t, body_a, bodyV = [T[part == 0]], [A[part == 0]], V
-    adds = [backs(sel, rec, 0) for sel, rec in back_sets(part == 0)]
+    # LINER_UP (optional, Cybercab: rider guide 05, the headliner and pillars light grey): {cell, dz, y}
+    adds = [backs(sel, rec, 0, C.get("LINER_UP")) for sel, rec in back_sets(part == 0)]
     gb = bvh_of([(V, T[glass])])
     solid = bvh_of([(V, T)]) if SEAL_CLIP else None
     seams = None
@@ -2768,6 +2800,13 @@ def pieces(car, c, shift):
         else:
             P, t, a, _ = pv.slab(V, T, A, skin, off, cab_attr("dash"), BELT_Z - shift[2], outer_extra=sel & ~skin,
                                  by_pos=bool(C.get("SPLIT_COLOURS")))
+            if sd and C.get("DOOR_INNER"):  # (Cybercab: rider guide pp.7 / 11, ERG p.19) the inner panel's cell (cell)
+                di = C["DOOR_INNER"]         # and over the belt + dz the upper's (upper: (cell, dz)), cut on that line
+                n0, zc = int((sel & ~skin).sum() + skin.sum()), BELT_Z + di["upper"][1]
+                P, t, a, inner = cut_z(P, t, a, np.arange(n0, n0 + int(skin.sum())), zc)
+                hi = P[t[inner]].mean(1)[:, 2] > zc
+                a[inner[~hi], :, :4] = cab_attr(di["cell"])[:4]
+                a[inner[hi], :, :4] = cab_attr(di["upper"][0])[:4]
             extra = [backs(bsel, rec, 0) for bsel, rec in back_sets(sel)] + [
                 seals(V, T, skin, cab_attr("base"), gb, solid, seams and k not in skip and (*seams, k) or None,
                       full=pname in C.get("SEAL_FULL", ()))] + ([lines[k]] if k in lines else [])

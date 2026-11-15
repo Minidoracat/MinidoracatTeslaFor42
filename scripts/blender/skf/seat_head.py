@@ -65,9 +65,30 @@ TALL_MM = -10   # --tall-lua: deeper out of the shell than this (mm) = hidden in
 # backs that showed sunk into the seat there measured -78..-20 (Model S driver, 2026-11-01). A gap shows as daylight: sit and back
 # allow less of it than of sinking (clothes sit 5-15 mm off the body and fill some).
 FIT = {"sit": (-25, 10), "back": (-25, 20), "feet": (-25, 25), "knees": (-25, float("inf"))}
-CELLS = ("floor", "liner", "seat", "base", "dash", "trim", "console", "wheel")   # pzveh.py CABIN_CELLS (the first 8)
+CELLS = ("floor", "liner", "seat", "base", "dash", "trim", "console", "wheel", "screen_back", "screen", "bed_floor",
+         "bed_rib", "bed_wall_lo", "bed_wall_mid", "bed_wall_hi", "bed_rim")                # pzveh.py CABIN_CELLS
 CABIN_UV1_U = -2.5                                                                # pzveh.py CABIN_UV1_U
 PARTS = ("seat", "base", "dash", "console", "wheel")   # closed cabin parts (cabin.py part() / the wheel's torus)
+
+
+def cell_map(car):
+    """The car's CABIN_CELL_MAP (scripts/blender/skf/cars/*.py, cabin.py: a part's name -> the palette cell it is drawn
+    in; Cybercab's seats and dash): the palette index each of PARTS and floor is drawn in."""
+    import importlib.util
+    for path in glob.glob(os.path.join(HERE, "cars", "*.py")):
+        text = open(path, encoding="utf-8").read()
+        if f'NAME="MinidoracatTesla_{car}"' not in text:
+            continue
+        if "CABIN_CELL_MAP" not in text:
+            return {c: CELLS.index(c) for c in PARTS + ("floor",)}
+        spec = importlib.util.spec_from_file_location("car_" + os.path.basename(path)[:-3], path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        m = mod.CAR.get("CABIN_CELL_MAP", {})
+        return {c: CELLS.index(m.get(c, c)) for c in PARTS + ("floor",)}
+    raise SystemExit(f"seat_head: no cars/*.py with NAME MinidoracatTesla_{car}")
+
+
 # what the car may wrongly hide (depth()): torso and upper arms (gated); the head separately (reported)
 TORSO = ("Bip01_Spine", "Bip01_Spine1", "Bip01_L_Clavicle", "Bip01_R_Clavicle", "Bip01_BackPack", "Bip01_L_UpperArm",
          "Bip01_R_UpperArm")
@@ -202,7 +223,7 @@ def shell_tesla(car):
     for o in bpy.data.objects:
         if o.type == "ARMATURE":
             o.data.pose_position = "REST"
-    dg = bpy.context.evaluated_depsgraph_get()
+    dg, at = bpy.context.evaluated_depsgraph_get(), cell_map(car)
     tris, cab, seat, floor, draw, cells = [], [], [], [], [], []
     for o in bpy.data.objects:
         if o.type != "MESH":
@@ -226,11 +247,11 @@ def shell_tesla(car):
         cells.append(cell[opaque])
         tris.append(co[lv[lt[keep]]])
         cab.append(co[lv[lt[~keep]]])
-        for c in PARTS:                                       # closed parts the legs may run into
-            idx = lv[lt[~keep & (cell == CELLS.index(c))]]
+        for c in PARTS:                                       # closed parts the legs may run into (by the palette cell
+            idx = lv[lt[~keep & (cell == at[c])]]             # the car draws each in: cell_map)
             if len(idx):
                 seat.extend((c, p) for p in components(co, idx))
-        floor.append(co[lv[lt[~keep & (cell == CELLS.index("floor"))]]])
+        floor.append(co[lv[lt[~keep & (cell == at["floor"])]]])
     return (np.concatenate(tris), np.concatenate(cab), *script_seats(f"{M}/scripts/vehicles/{name}.txt"),
             dict(parts=seat, floor=np.concatenate(floor), draw=np.concatenate(draw), cell=np.concatenate(cells)))
 
