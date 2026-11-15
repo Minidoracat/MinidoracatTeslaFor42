@@ -235,6 +235,7 @@ CAR = dict(
     STOP_X=0.2,
     PANELS=dict(x=0.45, z=0.80, front=(-0.45, 0.50), rear=(-0.45, -0.45), gate=(-1.38, 0.6), lid=(0.55, 0.45)),
     GUARDS=dict(front=(0.49, 0.75, 0.35), rear=(-0.45, 0.75, 0.35)),
+    END_ZONES=True,                        # (convert.py end_zones) nose / tail under the belt: guards' zones, trim Head / Tail
     CUT={},
     PLANES={},
     CUT_X=("-",),
