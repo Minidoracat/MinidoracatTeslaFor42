@@ -1149,6 +1149,28 @@ def split_zone_edges(car, zone, every=False):
     bm.free()
 
 
+def end_zones(car, c):
+    """END_ZONES (True): the body's faces still in Roof ahead of the front guards' y / behind the rear guards' y
+    (GUARDS) and under the belt (BELT_Z), which no part damages (vanilla gives Roof none), into the zones of the parts
+    at that end (BaseVehicle.java doOtherBodyWorkDamage): paint into the guards' zones (EngineDoor checkDamage 3 / 11,
+    TruckBed 7 / 15), the bumpers' dark trim into Head / Tail (EngineDoor 0, TruckBed 4) as vanilla's bumpers. Paint
+    never in Head / Tail: vehicle_multiuv.frag's frontAlpha / tailAlpha put them in noTintAlpha, their damage shell
+    drawn in its own green-grey, not the paint's hue (Cybercab 8db3078, E2E damage-front-cc-vs-m3). Applied after
+    split_zone_edges: the UV islands, the skin and the lights stay as built, only the mask changes (an island cut by
+    the new border reads one texel of no zone there)."""
+    fy, ry, tz = GUARDS["front"][0], GUARDS["rear"][0], BELT_Z
+    cen = pv.face_centres(car)
+    zone = c["zone"]
+    free = (zone == ZN.index("Roof")) & (c["part"] == 0) & (cen[:, 2] < tz)
+    left = cen[:, 0] < 0
+    for at, l, r, trim in ((cen[:, 1] > fy, "GuardLH", "GuardRH", "Head"), (cen[:, 1] < ry, "GuardLT", "GuardRT", "Tail")):
+        m = free & at
+        zone[m & c["paint"] & left] = ZN.index(l)
+        zone[m & c["paint"] & ~left] = ZN.index(r)
+        zone[m & ~c["paint"]] = ZN.index(trim)
+        print(f"END_ZONES {trim}: paint {int((m & c['paint']).sum())} faces to {l}/{r}, trim {int((m & ~c['paint']).sum())} to {trim}")
+
+
 def _tri_closest(P, A, B, C):
     """Closest points of 2-D points P (n x 2) on triangle ABC: (barycentrics n x 3, distances n)."""
     e0, e1, d = B - A, C - A, P - A
@@ -1745,6 +1767,8 @@ def stage_build():
         key = key * len(c["rgb"]) + np.unique(np.c_[c["rgb"], c["paint"]], axis=0, return_inverse=True)[1].ravel()
     split_zone_edges(car, key, every=bool(C.get("SPLIT_COLOURS")))
     c = classify(car, names, sizes)         # same faces, new vertex split
+    if C.get("END_ZONES"):
+        end_zones(car, c)
     # centre the bbox (mesh centre == model offset == centerOfMassOffset, vanilla convention)
     co = pv.mesh_co(car)
     ctr = (co.min(0) + co.max(0)) / 2

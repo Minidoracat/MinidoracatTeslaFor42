@@ -262,6 +262,7 @@ CAR = dict(
     PANELS=dict(x=0.593, z=0.660, front=(-0.200, 0.600), rear=(-0.989, -0.200), gate=(-1.489, 0.472), lid=(0.900, 0.556)),
     # fenders (mask zones Guard*): front (ahead of y, below z, |x| > x), rear (behind y, below z, |x| > x)
     GUARDS=dict(front=(0.750, 0.910, 0.395), rear=(-0.989, 1.100, 0.444)),
+    END_ZONES=True,                        # (convert.py end_zones) nose / tail under the belt: guards' zones, trim Head / Tail
     # components cut along the lines (object, tris after welding): the window surround
     CUT={("Plane.005", 342): ("BF", "BR", "D"), _CORNER: ("BlackTopL", "BlackTopR")},
     # more cut planes for CUT: name -> (point, normal, cut faces behind y)
