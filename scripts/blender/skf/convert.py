@@ -979,10 +979,12 @@ def classify(car, names, sizes):
     for o, (lp, rp) in C.get("SIDE_PARTS", {}).items():  # one source object holding both doors of a pair (Model X)
         m = obj == o
         part[m] = np.where(cen[m, 0] < 0, PARTS.index(lp), PARTS.index(rp))
+    panel_of = None
     if C.get("PANEL_PARTS"):   # a source whose faces carry their panel (prep_cybercab.py `panel`): {panel: part name},
         pa = np.empty(n, np.int64)  # panels not listed stay on the body (Cybercab: the hood, no lid; the port lid)
         me.attributes["panel"].data.foreach_get("value", pa)
         part = np.array([PARTS.index(C["PANEL_PARTS"][k]) if k in C["PANEL_PARTS"] else 0 for k in range(pa.max() + 1)])[pa]
+        panel_of = pa
     # door hardware, frames and panes: whole components inside a door (2.5 cm slack), cut components face by face. A
     # strip that runs past its one door's edge (the belt mouldings end under the B-pillar and quarter trim) goes face
     # by face too: whole on the body it was a black bar across the far window, seen through the roof glass with the
@@ -1062,11 +1064,24 @@ def classify(car, names, sizes):
     (gy, gz, gx), (ry, rz, rx) = GUARDS["front"], GUARDS["rear"]
     put(paint & (part == 0) & (cen[:, 1] > gy) & (cen[:, 2] < gz) & (np.abs(cen[:, 0]) > gx), "GuardLH", "GuardRH")
     put(paint & (part == 0) & (cen[:, 1] < ry) & (cen[:, 2] < rz) & (np.abs(cen[:, 0]) > rx), "GuardLT", "GuardRT")
+    # HEAD_TAIL (y front, y rear; Cybercab): the rest of the body ahead of / behind those (paint and the bumpers' dark
+    # trim; lamps and glass take their own zones below) in the Head / Tail zones, vanilla's front and rear ends (damage
+    # with EngineDoor / TruckBed like the guards: BaseVehicle.java checkDamage 0 / 4, vehicle_common.frag.h colZone1 /
+    # 2); left in Roof they never show damage (no part sets Roof's)
+    if C.get("HEAD_TAIL"):
+        hy, ty = C["HEAD_TAIL"]
+        free = (part == 0) & (zone == ZN.index("Roof"))
+        put(free & (cen[:, 1] > hy), "Head", "Head")
+        put(free & (cen[:, 1] < ty), "Tail", "Tail")
     for k, (l, r) in {1: ("DoorLH", "DoorLH"), 2: ("DoorRH", "DoorRH"), 3: ("DoorLT", "DoorLT"),
                       4: ("DoorRT", "DoorRT")}.items():
         put(part == k, l, r)
     put(part == 5, "Boot", "Boot")
     put(part == 6, "Hood", "Hood")
+    # PANEL_ZONES {panel: zone} (Cybercab: its hood on the body in Head, damage with EngineDoor; not Hood, whose
+    # uninstall flag (checkDamage2 EngineDoor 6, doBlack) would open a hole in the body when the part comes off)
+    for k, z in C.get("PANEL_ZONES", {}).items():
+        put(paint & (panel_of == k), z, z)
     put(head, "LightLH", "LightRH")
     # tail lights (lit with the headlights, HeadlightRear* parts: BaseVehicle.java:5894-5919) on the bar, the blade and
     # the corner lamps' outboard ends; brake lights (Stop, :5920-5934) on their inboard part

@@ -132,6 +132,8 @@ CAR = dict(
     DECIMATE_THIN=(round(0.0003 * K, 6), round(0.02 * K, 4)),   # (pzveh.thin_seams: the cut's 1-2 mm seam vertices)
     DECIMATE_SNAP=round(0.001 * K, 6),     # (pzveh.decimate: a few held-seam collapses stood up to 19 cm off)
     PAINT_MAT="Paint",
+    UV_FILL=True,                          # (convert.py fill_slivers) texels the bake left black under sliver UVs
+    UV_FILL_TONE=True,                     # (convert.py textures) the filled texels stay out of the paint's quantiles
     HGT_CORNER=True,                       # (convert.py textures: the collapsed body's big triangles drew steps)
     # the hood's seam groove (the hood stays on the body: no SEAM_LINE part) drawn as an even line along the prep's
     # own hood path instead of its 5 mm groove's ragged dark texels (convert.py groove_ink)
@@ -174,6 +176,10 @@ CAR = dict(
     # the doors and the trunk lid are parts, the hood and the port lid stay on the body
     PANEL_PARTS={1: "DoorFrontLeft", 2: "DoorFrontRight", 3: "TrunkDoor"},
     GUARDS=dict(front=(round(0.95 * K, 4), 0.80, 0.45), rear=(round(-0.45 * K, 4), 0.85, 0.45)),
+    # damage zones of the rest of the body: the nose and bumper ahead of 1.80 m and the hood (panel 4) in Head
+    # (EngineDoor's condition), the tail below the lid behind -1.85 m in Tail (TruckBed's); else Roof, never damaged
+    HEAD_TAIL=(round(1.80 * K, 4), round(-1.85 * K, 4)),
+    PANEL_ZONES={4: "Head"},
     CUT={},
     PLANES={},
     CUT_X=("-",),
