@@ -202,6 +202,7 @@ CAR = dict(
     STOP_X=0.6371,
     PANELS=dict(x=0.6, z=0.7, front=(-0.2, 0.6), rear=(-1.0, -0.2), gate=(-1.5, 0.5), lid=(0.9, 0.6)),
     GUARDS=dict(front=(0.83, 0.9517, 0.4), rear=(-0.916, 1.1817, 0.45)),
+    END_ZONES=True,                        # (convert.py end_zones) nose / tail under the belt: guards' zones, trim Head / Tail
     # components cut along the lines (object, tris): the window surround; the rear door glass and the quarter glass
     # are one component here
     CUT={("Plane.004", 342): ("BF", "BR", "D"), ("Plane.011", 268): ("D",)},
