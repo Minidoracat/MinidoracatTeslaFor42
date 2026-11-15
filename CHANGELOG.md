@@ -14,11 +14,24 @@
 
 ## [Unreleased]
 
+### 新增
+
+- **第八台特斯拉：Cybercab（兩座無人計程車）**：只出現在停車場的停車格，機率是 Model Y 的三分之一；高級住宅區不會出現（實車是車隊用車，不賣給個人）。照 2026 年量產的 Cybercab，規格照官方乘客手冊、救援指南與 EPA 資料；只有這一個版本，車色只有金色。兩個座位、兩扇往上往前掀的車門，全開時一樣進得了單層車庫。車內沒有方向盤和踏板，只有中央一塊橫置大螢幕，但坐左邊座位照樣用鍵盤或手把開車。沒有前車廂：實車的前蓋打不開，儀表的車子圖與 App 都沒有前行李廂；修車時一樣可以在車頭打開引擎蓋。行李廂 45。高電壓電池 47.6 kWh（全車系最小），充滿電一樣跑得和原版同級車加滿一箱油一樣遠。三種充電設備都能充：壁掛式從沒電充到 90% 約 4 小時、行動充電器約 6 小時；超級充電座最高 152 kW（官方沒有公布，照電池大小和 Model Y 的 250 kW 等比例），從 10% 充到 90% 約 36 分鐘，和 Model Y 一樣（遊戲時間）。充電口在車尾（後保桿、偏駕駛側）：超級充電座的線短，要倒車、車尾朝樁停進車位才插得到，車頭朝樁時選單會寫「充電線拉不到車子」。App 控制頁多一格「車門」，一次打開或關上兩扇車門：打開時會先解鎖並關掉哨兵模式，關上不會自動上鎖（和用手開門一樣），要上鎖就按 App 的鎖車鍵；行駛中不能用。儀表有自己的俯視圖，點車子圖開關車門與行李廂蓋。沒有生物武器防禦模式（官方文件沒有提到 HEPA 濾網）。實車是無人駕駛，遊戲裡和其他特斯拉一樣，要自己裝 AutoDrive 的自動駕駛模組才能自駕或召喚。卡片鑰匙、手機鑰匙、App、召喚、哨兵、露營、舒適模式、拖車與 Project Viewpoint 的車內細節都和其他特斯拉一樣。
+
 ### 修正
 
-- **用手機 App 打開 Model X 的鷹翼門時，哨兵模式沒有跟著關掉**：App 開鷹翼門會把車解鎖，哨兵模式卻還開著，變成車沒鎖、哨兵仍在顧車；正常情況下車沒鎖是開不了哨兵模式的。從 0.4.0 加入 App 的鷹翼門按鈕起就有。現在和用 App 解鎖一樣，開門的同時關掉哨兵模式；門本來就開著、按了什麼都沒動時，哨兵模式維持原樣。
+- **用手機 App 打開 Model X 的鷹翼門時，哨兵模式沒有跟著關掉**：App 開鷹翼門會把車解鎖，哨兵模式卻還開著，變成車沒鎖、哨兵仍在顧車；正常情況下車沒鎖是開不了哨兵模式的。從 0.4.0 加入 App 的鷹翼門按鈕起就有。現在和用 App 解鎖一樣，開門的同時關掉哨兵模式；門本來就開著、按了也沒有門在動時，哨兵模式維持原樣。
+- **超級充電座的物品說明沒寫到 Roadster 的例外**：說明寫「每台車照自己的峰值（250 kW，Cybertruck 325 kW）」，但 Roadster 沒有直流快充，從 0.8.0 加入起在超級充電座就固定 16.8 kW。現在說明列出 Cybertruck 325 kW、Cybercab 152 kW、其他 250 kW，並寫明 Roadster 固定 16.8 kW；充電本身沒有改。
 
-> 技術要點：App 的 `appAction` 動作 `falcon`（以及同一套做法的雙門動作）真的打開了門時，若電池零件 modData 有 `sentry`，伺服器照 App 解鎖的做法關掉哨兵並同步車況。
+> 技術要點：
+> - ID：車輛 `Base.MinidoracatTesla_Cybercab`；電池 `Base.MinidoracatTesla_CybercabBattery`（47.6 kWh，EPA 326 V × 146 Ah）；充電插頭 `Base.MinidoracatTesla_CablePlugCybercab`。生成只在 `VehicleZoneDistribution` 的 `parkingstall`（spawnChance 1，Model Y 是 3），不在 `good`。
+> - 車體：`mass` 556（800 × 1,412 ÷ 2,033，EPA 整備重對 Model 3 Performance，算法同其他車）；極速沿用範本的 `maxSpeed` 120。`seats` 2；`TruckBed` 45（官方 572 L，和 Model 3 的 594 L 同級）。
+> - 充電：Specs `dcKw = 152`（官方沒有公布：Model Y 的 250 kW × 47.6 ÷ 78.4），同一條直流曲線 `T.DC_CURVE`。新欄位 `plug.rear = true`：充電口在後保桿，插頭放在口的正後方。線長規則不變：車頭朝超級充電座停時口離樁約 5 格，拉不到。
+> - 沒有前車廂：Specs 新欄位 `frunk = false`（沒寫＝有）。車輛範本新增 `MinidoracatTeslaCoreNoFrunk`（`MinidoracatTeslaCore` 去掉 `Frunk`），`MinidoracatTeslaCore` 改成 CoreNoFrunk 加上 `Frunk`；現有七台展開後的零件、順序與欄位不變，0.8.0、0.8.1 的舊存檔照零件 id 讀回。`EngineDoor` 零件保留給原版維修；App 的 `frunk` 動作與 `liftgate { part = "EngineDoor" }` 對這台車回 `NO_DOOR`。維修介面的引擎蓋用原版的零件名。
+> - 車門：Specs 新旗標 `butterfly = true`；手機 App 的 `appAction` 新動作 `butterfly`，一次開關 `DoorFrontLeft`／`DoorFrontRight`（裝了 Vehicle Manager 時要「搭乘」權限，和 Model X 的鷹翼門相同；行駛中回 `MOVING`）。開門先解鎖；關上不自動上鎖。
+> - 哨兵：`falcon` 與 `butterfly` 真的打開了門時，若電池零件 modData 有 `sentry`，伺服器照 App 解鎖的做法關掉哨兵並同步車況。
+> - 沒有 HEPA（Specs 沒有 `hepa`），V 鍵圓盤不出現生物武器防禦模式。
+> - 素材：車身、車內與貼圖是本 MOD 照 Tesla 官方公開的圖（乘客手冊、救援指南與官方照片）自己做的，沒有用任何第三方模型，所以 `CREDITS.md` 沒有新增署名。
 
 ## [42.22.2-0.8.1] - 2026-11-15
 

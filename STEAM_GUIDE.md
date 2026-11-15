@@ -1,15 +1,15 @@
 <!-- 指南網址：https://steamcommunity.com/sharedfiles/filedetails/?id=3829449828 -->
 <!-- Steam 指南稿源（繁中）：MOD 的完整說明以本指南為準，簡介只放摘要。格式、版面與同步方式見 pz-family-docs/release.md「完整說明：Steam 指南」 -->
 <!-- 標題：📖 Minidoracat Tesla Collection MOD 完整說明：車、充電、鑰匙與 App -->
-<!-- 摘要：Minidoracat Tesla Collection 的圖文說明：Model Y 與 Model 3 Performance、Model Y L（六座）、Model S 與 Model X Plaid（鷹翼門與 6 座）、初代 Roadster 2.5 Sport（敞篷軟頂篷）、Cybertruck Cyberbeast（車斗、Powershare 住宅備援與車斗插座）、電池與拖車耗電、壁掛式充電座、行動充電器與加油站的 V4 超級充電座、特斯拉風格儀表、卡片鑰匙與手機鑰匙、手機 Tesla App 與召喚、哨兵與露營模式、生物武器防禦模式與舒適模式、驅動單元零件，以及和 Vehicle Manager、小地圖、AutoDrive、Project Viewpoint 一起用的規則與沙盒選項。 -->
-<!-- 截圖：docs/screenshots/steam/zh/，拍法見家族庫 e2e/MinidoracatTeslaFor42 的 guide-shots-sp（生物武器防禦與舒適模式只跑那段用 --define part=feat，圓盤停留文字要另開 hover.py；Cybertruck 圖用 guide-ct-sp、Model S／X 圖用 guide-sx-sp、Model Y L 的圖（33、34）用 guide-yl-sp、Roadster 的圖（35、36）用 guide-rd-sp（只跑 CH 一輪、中英同一張；35 是四台車頭朝 S、縮放 1.0 裁 (210,622,1710,967)，36 是同一台 Radiant Red 軟頂篷蓋著與收起、縮放 0.5 各裁 (284,320,854,880) 左右拼、間隔 16）、召喚圖用 phone-summon-sp、FSD 圖用 fsd-shot-sp（01c 是 01b 裁 (350,370,1090,977)，指南不用，給 Workshop 簡介引用：重拍 01b 要一起重裁，並照 release.md 換簡介裡的圖片網址）、「和其他 MOD 一起用」用 guide-mods-sp；Project Viewpoint 那張（31）是本 repo 一次性情境 temp/oneoff/vp-detail-sp 的 vd-first-ModelS 裁 (80,40,1660,1080)，中英同一張，要裝 ZombieBuddy 才拍得到；V4 超級充電座那張（32）是 supercharger-sp 的 sc-CH-card／sc-EN-card 裁 (480,160,1480,990)） -->
+<!-- 摘要：Minidoracat Tesla Collection 的圖文說明：Model Y 與 Model 3 Performance、Model Y L（六座）、Model S 與 Model X Plaid（鷹翼門與 6 座）、初代 Roadster 2.5 Sport（敞篷軟頂篷）、Cybertruck Cyberbeast（車斗、Powershare 住宅備援與車斗插座）、Cybercab（兩座無人計程車：上掀門、沒有方向盤、充電口在車尾）、電池與拖車耗電、壁掛式充電座、行動充電器與加油站的 V4 超級充電座、特斯拉風格儀表、卡片鑰匙與手機鑰匙、手機 Tesla App 與召喚、哨兵與露營模式、生物武器防禦模式與舒適模式、驅動單元零件，以及和 Vehicle Manager、小地圖、AutoDrive、Project Viewpoint 一起用的規則與沙盒選項。 -->
+<!-- 截圖：docs/screenshots/steam/zh/，拍法見家族庫 e2e/MinidoracatTeslaFor42 的 guide-shots-sp（生物武器防禦與舒適模式只跑那段用 --define part=feat，圓盤停留文字要另開 hover.py；Cybertruck 圖用 guide-ct-sp、Model S／X 圖用 guide-sx-sp、Model Y L 的圖（33、34）用 guide-yl-sp、Roadster 的圖（35、36）用 guide-rd-sp（只跑 CH 一輪、中英同一張；35 是四台車頭朝 S、縮放 1.0 裁 (210,622,1710,967)，36 是同一台 Radiant Red 軟頂篷蓋著與收起、縮放 0.5 各裁 (284,320,854,880) 左右拼、間隔 16）、Cybercab 的圖（37、38、39）用 guide-cc-sp（只跑 CH 一輪、中英同一張；37 是兩台車頭朝 S 與朝 N 並排，38 是同一台車門全開與尾門全開左右拼，39 是車尾朝 V4 超級充電座插著線；方向、縮放與裁切框寫在該情境的 README.md 與 make_jpg.py）、召喚圖用 phone-summon-sp、FSD 圖用 fsd-shot-sp（01c 是 01b 裁 (350,370,1090,977)，指南不用，給 Workshop 簡介引用：重拍 01b 要一起重裁，並照 release.md 換簡介裡的圖片網址）、「和其他 MOD 一起用」用 guide-mods-sp；Project Viewpoint 那張（31）是本 repo 一次性情境 temp/oneoff/vp-detail-sp 的 vd-first-ModelS 裁 (80,40,1660,1080)，中英同一張，要裝 ZombieBuddy 才拍得到；V4 超級充電座那張（32）是 supercharger-sp 的 sc-CH-card／sc-EN-card 裁 (480,160,1480,990)） -->
 === 🚀 快速上手
 [b]English version:[/b] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3829449879]Minidoracat Tesla Collection Mod Guide[/url]
 
 MOD 本體（Steam Workshop）：
 https://steamcommunity.com/sharedfiles/filedetails/?id=3829501237
 [olist]
-[*] [b]找車[/b]：Model Y 與 Model 3 出現在停車場的停車格，Model Y 也會出現在高級住宅區；Model Y L 停車格與高級住宅區都有，機率和 Model Y 一樣；Model S、Model X、Roadster 與 Cybertruck 只出現在高級住宅區。
+[*] [b]找車[/b]：Model Y 與 Model 3 出現在停車場的停車格，Model Y 也會出現在高級住宅區；Model Y L 停車格與高級住宅區都有，機率和 Model Y 一樣；Model S、Model X、Roadster 與 Cybertruck 只出現在高級住宅區；Cybercab 只出現在停車格。
 [*] [b]拿鑰匙[/b]：拿到特斯拉的車鑰匙，它會自動變成這台車的「卡片鑰匙」。
 [*] [b]發動[/b]：坐上駕駛座，點儀表左上角的電源鍵（或用原版的發動方式）。
 [*] [b]充電[/b]：電工 3 級做一座「特斯拉第三代壁掛式充電座」裝在有電的牆上，或把「特斯拉第三代行動充電器」放在地上，右鍵它插上充電線；加油站旁的「特斯拉 V4 超級充電座」插上就是快充。
@@ -141,6 +141,36 @@ https://steamcommunity.com/sharedfiles/filedetails/?id=3829501237
 [*] [b]高帽子[/b]：敞篷時坐在車上的人戴高帽子也照常顯示；蓋著時和其他特斯拉一樣，穿出車頂的帽子會先藏起來。
 [*] [b]零件名[/b]：維修介面叫「軟頂篷」「行李廂蓋」。
 [/list]
+=== 🧰 Cybercab
+{{img:37-cybercab-zh.jpg}}
+[list]
+[*] [b]特斯拉的無人計程車[/b]：照 2026 年量產的 Cybercab，規格照官方乘客手冊、救援指南與 EPA 資料；只有這一個版本。
+[*] [b]出現在哪[/b]：只在停車場的停車格，機率是 Model Y 的三分之一；高級住宅區不會出現（實車是車隊用車，不賣給個人）。
+[*] [b]沒有方向盤[/b]：車內沒有方向盤和踏板，中央是一塊橫置的大螢幕；坐左邊座位照樣用鍵盤或手把開。
+[*] [b]自駕要自己裝[/b]：實車是無人駕駛，遊戲裡和其他特斯拉一樣，要裝 AutoDrive 的「自動駕駛模組」才能自駕或召喚。
+[*] [b]電池[/b]：高電壓電池 47.6 kWh，全車系最小；充滿電一樣跑得和原版同級車加滿一箱油一樣遠。
+[*] [b]充電時間[/b]：壁掛式從沒電充到 90% 約 4 小時、行動充電器約 6 小時；超級充電座最高 152 kW（官方沒有公布，照電池大小和 Model Y 的 250 kW 等比例），一樣越充越慢，從 10% 充到 90% 約 36 分鐘，和 Model Y 一樣（遊戲時間）。
+[*] [b]充電口在車尾[/b]：在後保桿、行李廂下方，偏駕駛側（左邊）。超級充電座的線只有約 2.5 格，要倒車、車尾朝樁停進車位才插得到；車頭朝樁時選單是灰的，寫「充電線拉不到車子」。壁掛式與行動充電器的線比較長，車頭朝它們停時一樣可能拉不到，把車尾轉過去就好。
+[*] [b]車色[/b]：只有金色。
+[*] [b]座位與置物[/b]：2 個座位；行李廂 45，和 Model 3 一樣；沒有前車廂。
+[*] [b]沒有生物武器防禦模式[/b]：官方文件沒有提到 HEPA 濾網，V 鍵圓盤不會出現這一格。
+[*] [b]其他功能[/b]：卡片鑰匙、手機鑰匙、App、召喚、哨兵、露營、舒適模式、拖車與 Project Viewpoint 的車內細節都和其他特斯拉一樣；新車一樣可能在手套箱放一支手機、在行李廂附一組行動充電器。
+[/list]
+[table]
+[tr][th]車型[/th][th]原廠車色[/th][th]前行李廂[/th][th]後行李廂[/th][/tr]
+[tr][td]Cybercab[/td][td]Gold（金色）[/td][td]沒有[/td][td]45[/td][/tr]
+[/table]
+[h3]上掀門、沒有前車廂與車內[/h3]
+{{img:38-cybercab-doors-zh.jpg}}
+[list]
+[*] [b]上掀門[/b]：兩扇車門往上、往前掀開，全開時一樣進得了單層車庫；上車時角色會等車門掀起來再坐進去。
+[*] [b]App 的「車門」[/b]：控制頁多一格「車門」，一次打開或關上兩扇車門。打開時會先解鎖、關掉哨兵模式；關上不會自動上鎖（和用手開門一樣），要上鎖就按 App 的鎖車鍵。行駛中不能用。
+[*] [b]開著時誰都上得去[/b]：車門開著時誰都能上車，離開前記得關上。
+[*] [b]儀表[/b]：有自己的俯視圖，點車子圖開關兩扇車門與行李廂蓋；前蓋那一塊點了不會開。
+[*] [b]沒有前車廂[/b]：實車的前蓋打不開（乘客手冊）；App 首頁只有三個快捷圖示，控制頁也沒有前行李廂。
+[*] [b]修車[/b]：在車頭按 E 一樣會打開引擎蓋和維修介面，修驅動單元照常；維修介面的零件叫「引擎蓋」「行李廂蓋」。拆下引擎蓋時車頭不會開洞（前蓋和車身是一體的）。
+[*] [b]車內[/b]：兩個座位，中央一塊橫置的大螢幕；坐在車上的人手放在腿上。
+[/list]
 === 🧰 Cybertruck（Cyberbeast）
 {{img:23-cybertruck-zh.jpg}}
 [list]
@@ -220,9 +250,10 @@ https://steamcommunity.com/sharedfiles/filedetails/?id=3829501237
 [*] [b]馬達開著也能插[/b]：車停著就行，不用先熄火；插著線也能發動。
 [*] [b]插著線開不走[/b]：踩油門或倒車會提示「請先拔除充電線」，儀表檔位顯示 P；拔掉就能開走。
 [*] [b]自動拔線[/b]：車被拖走或推到線拉不到的地方，會自動拔線並通知你。
-[*] [b]充電速度[/b]：壁掛式 11.5 kW、行動充電器 7.6 kW，Model Y 與 Model 3 從沒電充到 90% 約 6 小時與 9 小時（遊戲時間），電池比較大的車照比例更久、比較小的更快（Roadster 約 4 小時與 7 小時）；沙盒「充電速度倍率」可以調。超級充電座快得多，見「V4 超級充電座」。
+[*] [b]充電速度[/b]：壁掛式 11.5 kW、行動充電器 7.6 kW，Model Y 與 Model 3 從沒電充到 90% 約 6 小時與 9 小時（遊戲時間），電池比較大的車照比例更久、比較小的更快（Roadster 約 4 小時與 7 小時，Cybercab 約 4 小時與 6 小時）；沙盒「充電速度倍率」可以調。超級充電座快得多，見「V4 超級充電座」。
 [*] [b]快轉、睡覺也照算[/b]：電量照經過的時間結算，不會少算。
 [*] [b]其他玩家看得到線[/b]：線從壁掛式充電座與超級充電座垂到地上（行動充電器直接從地上拉出）再接到車的充電口。
+[*] [b]Cybercab 的充電口在車尾[/b]：其他特斯拉的充電口在車身左後方的側面，Cybercab 在車尾的後保桿（偏駕駛側），停車時車尾要朝向充電設備；超級充電座的線最短，見「V4 超級充電座」。
 [*] [b]槍座[/b]：沒插線時，壁掛式充電座與超級充電座的充電槍插在槍座上、線掛好；插上車後槍座就空著。其他玩家看到的也一樣。
 [/list]
 {{img:04-charging-zh.jpg}}
@@ -239,14 +270,16 @@ https://steamcommunity.com/sharedfiles/filedetails/?id=3829501237
 [*] [b]在哪裡[/b]：加油站旁有 2～4 根「特斯拉 V4 超級充電座」，車位在樁的正面。中途加入本 MOD 時，已經去過的加油站下次載入時也會長；每座站只長一次，撿走的不會補回。只長在空著的路面上（玩家鋪的碎石地也算），不會壓到家具或車；多人伺服器上，安全屋範圍內不會長。
 [*] [b]自己做[/b]：電工 6 級自動學會配方「製作特斯拉 V4 超級充電座」，要在桌子之類的工作面旁製作：螺絲起子、鉗子（不消耗），電線 12、電子零件 9、小金屬片 6、螺絲 12。
 [*] [b]插線[/b]：和其他充電設備一樣右鍵插上充電線。線長約 2.5 格（官方 3 公尺），車要停進樁前面的車位。
-[*] [b]越充越慢[/b]：照實車的直流快充：電量低時最快，過了一半逐漸變慢，80% 以上很慢。最高功率照官方：Cybertruck 325 kW，其他特斯拉 250 kW。Roadster 例外：實車沒有直流快充，在超級充電座固定 16.8 kW，不會越充越慢。
-[*] [b]要多久[/b]：從 10% 充到 90%（遊戲時間）：Model Y、Model 3 約 36 分鐘，Model Y L 約 38 分鐘，Model S、Model X 約 46 分鐘，Cybertruck 約 44 分鐘，Roadster 約 2 小時 40 分鐘；沙盒「充電速度倍率」一樣有效。
+[*] [b]越充越慢[/b]：照實車的直流快充：電量低時最快，過了一半逐漸變慢，80% 以上很慢。最高功率照官方：Cybertruck 325 kW，其他特斯拉 250 kW；Cybercab 官方沒有公布，照電池大小和 Model Y 等比例取 152 kW。Roadster 例外：實車沒有直流快充，在超級充電座固定 16.8 kW，不會越充越慢。
+[*] [b]要多久[/b]：從 10% 充到 90%（遊戲時間）：Model Y、Model 3、Cybercab 約 36 分鐘，Model Y L 約 38 分鐘，Model S、Model X 約 46 分鐘，Cybertruck 約 44 分鐘，Roadster 約 2 小時 40 分鐘；沙盒「充電速度倍率」一樣有效。
 [*] [b]電源[/b]：和加油機同一套規則，戶外有市電就能用。停電後在發電機的供電範圍內，或樁旁 2 格內（同一層）有運轉中、有油的發電機，照樣全速充電；伺服器關掉沙盒「發電機室外運轉」時，只有旁邊 2 格內的發電機算。沒電時右鍵選單多一行灰字說明。
 [*] [b]耗油[/b]：每度電耗的油和其他充電設備一樣，充滿一台一樣約一桶；但功率高，每小時耗油快很多：250 kW 時，加滿的原版發電機約 19 分鐘就燒完。
 [*] [b]搬回家[/b]：電工 6 級、拿著螺絲起子才能撿起和放下；它和原版發電機一樣重（40），要雙手搬，身上其他東西太多時撿不起來。放下後照上面的電源規則。加油站長出來的樁不屬於任何人，照車的鑰匙規則誰都能插拔；自己放下的才算你的（見常見問題「別人的車插在我的充電座上怎麼辦？」）。
 [*] [b]拆掉[/b]：用原版大鐵鎚選「拆除」就能拆，不看電工等級；拆了就沒了，不會掉任何東西，插著的車會先自動拔線。伺服器設定只准在安全屋用大鐵鎚時，照伺服器的設定。
 [*] [b]實心[/b]：人走不過去，殭屍也不會把它打壞。
+[*] [b]Cybercab 要倒車入位[/b]：它的充電口在車尾，車頭朝樁停時線拉不到（選單變灰，寫「充電線拉不到車子」）；倒車、車尾朝樁停進車位就插得到。
 [/list]
+{{img:39-cybercab-charge-zh.jpg}}
 === 🧰 Powershare 與車斗插座（Cybertruck）
 {{img:25-ct-powershare-zh.jpg}}
 [h3]Powershare 住宅備援[/h3]
@@ -290,7 +323,7 @@ https://steamcommunity.com/sharedfiles/filedetails/?id=3829501237
 [list]
 [*] [b]取代原版儀表[/b]：坐上特斯拉時換成特斯拉風格的儀表，顯示檔位、車速、電量、剩餘里程與即時耗電／回收。
 [*] [b]電源鍵[/b]：左上角，點一下發動、再點一下關閉電源；關閉電源要先停車。
-[*] [b]點車子開關門[/b]：點儀表上的車子俯視圖，就能打開或關上那個位置的車門、尾門或前蓋（Cybertruck 點車斗是車斗蓋，Model X 點後半段是鷹翼門，Roadster 點車頂是軟頂篷；Model Y L、Roadster 有自己的俯視圖）；門鎖著會先解鎖，行駛中不會開。
+[*] [b]點車子開關門[/b]：點儀表上的車子俯視圖，就能打開或關上那個位置的車門、尾門或前蓋（Cybertruck 點車斗是車斗蓋，Model X 點後半段是鷹翼門，Roadster 點車頂是軟頂篷，Cybercab 沒有前車廂、點前蓋不會開；Model Y L、Roadster、Cybercab 有自己的俯視圖）；門鎖著會先解鎖，行駛中不會開。
 [*] [b]快捷鍵[/b]：大燈、恆溫控制、收音機、露營模式；開著時圖示變藍加底線。
 [*] [b]提醒[/b]：門沒關、充電中、已充好、充電座沒電、電量不足、露營或哨兵中，會在下方顯示一行提醒。
 [*] [b]滑鼠停留說明[/b]：每顆按鈕與車子圖的每個區域，滑鼠移上去都會說明它做什麼。
@@ -330,12 +363,12 @@ https://steamcommunity.com/sharedfiles/filedetails/?id=3829501237
 [*] [b]打開[/b]：右鍵手機鑰匙選「打開 Tesla App」，手機出現在畫面右邊。還沒配對的手機也看得到這一項，但是紅字，滑鼠移上去會說明怎麼配對。
 [*] [b]換位置[/b]：按住手機上按鈕以外的地方，拖到畫面上別的位置；放開後會記住，下次打開還在那裡（記在這台電腦上，分割畫面每位玩家各記各的）。
 [*] [b]首頁[/b]：車名、電池與續航、「已停車 · 已上鎖」這類狀態、照車漆顏色的車圖。
-[*] [b]四個快捷圖示[/b]：上鎖／解鎖、停止／開始充電、開關前行李廂、開關尾門（Model 3、Roadster 是行李廂）；開著的變白，現在不能用的變暗。
+[*] [b]四個快捷圖示[/b]：上鎖／解鎖、停止／開始充電、開關前行李廂、開關尾門（Model 3、Roadster、Cybercab 是行李廂）；Cybercab 沒有前行李廂，只有三個。開著的變白，現在不能用的變暗。
 [*] [b]手把[/b]：十字鍵移動、A 按下、B 在子頁回首頁、在首頁關閉。
 [/list]
 [table]
 [tr][th]頁面[/th][th]能做什麼[/th][/tr]
-[tr][td]控制[/td][td]閃燈找車、鳴喇叭一秒（和車上喇叭一樣，附近的殭屍聽得到）、開關前行李廂與尾門；Model X 另有鷹翼門（一次開關兩扇）；Cybertruck 另有車斗蓋與 Powershare（見「Powershare 與車斗插座」）；Roadster 另有軟頂篷（只能停車時切換）[/td][/tr]
+[tr][td]控制[/td][td]閃燈找車、鳴喇叭一秒（和車上喇叭一樣，附近的殭屍聽得到）、開關前行李廂與尾門；Model X 另有鷹翼門（一次開關兩扇）；Cybertruck 另有車斗蓋與 Powershare（見「Powershare 與車斗插座」）；Roadster 另有軟頂篷（只能停車時切換）；Cybercab 沒有前行李廂，另有「車門」（一次開關兩扇）[/td][/tr]
 [tr][td]地點[/td][td]方向箭頭、距離、方位；「在地圖上看」打開世界地圖；裝了小地圖時多「導航到車」[/td][/tr]
 [tr][td]召喚[/td][td]裝了 AutoDrive 才有，見「召喚」[/td][/tr]
 [tr][td]安全性[/td][td]開關哨兵模式、看這台車的哨兵警報紀錄[/td][/tr]
@@ -410,7 +443,7 @@ https://steamcommunity.com/sharedfiles/filedetails/?id=3829501237
 [h3]生物武器防禦模式（HEPA 濾網）[/h3]
 {{img:29-bdm-zh.jpg}}
 [list]
-[*] [b]哪些車有[/b]：Model Y、Model Y L、Model S、Model X、Cybertruck 有 HEPA 濾網；照官方車主手冊，Model 3 與 Roadster 沒有，它們的 V 鍵圓盤不會出現這一格。
+[*] [b]哪些車有[/b]：Model Y、Model Y L、Model S、Model X、Cybertruck 有 HEPA 濾網；照官方車主手冊與乘客手冊，Model 3、Roadster 與 Cybercab 沒有，它們的 V 鍵圓盤不會出現這一格。
 [*] [b]空調開著就過濾[/b]：車外屍體多到會讓人染上屍臭病時，坐在車上開著空調，車上每個人的屍臭病就不會再往上升。
 [*] [b]開啟[/b]：坐在車上按 V 鍵圓盤選「開啟生物武器防禦模式」，車上任何人都能按；開著時空調旋鈕在 0 也照樣送風過濾。再選一次「關閉生物武器防禦模式」就關掉。
 [*] [b]要有電[/b]：馬達開著或露營中才會運作。
@@ -421,7 +454,7 @@ https://steamcommunity.com/sharedfiles/filedetails/?id=3829501237
 {{img:30-chill-zh.jpg}}
 [list]
 [*] [b]切換[/b]：駕駛在 V 鍵圓盤選「開啟舒適模式」，再選一次「關閉舒適模式」；行駛中也能切換。
-[*] [b]只限加速[/b]：加速變平順，極速不變。Roadster 以外的特斯拉用同一個推力，Model Y 與 Cybertruck 0 到 100 km/h 都約 16 秒（平常 Model Y 約 7 秒、Cybertruck 約 5 秒）；Roadster 車輕，用它自己較小的推力，一樣約 16 秒（平常約 8 秒）。
+[*] [b]只限加速[/b]：加速變平順，極速不變。Roadster、Cybercab 以外的特斯拉用同一個推力，Model Y 與 Cybertruck 0 到 100 km/h 都約 16 秒（平常 Model Y 約 7 秒、Cybertruck 約 5 秒）；Roadster 車輕，用它自己較小的推力，一樣約 16 秒（平常約 8 秒）；Cybercab 平常就比較慢，也用它自己較小的推力再放慢。
 [*] [b]儀表[/b]：開著時車速旁邊顯示「舒適」。
 [*] [b]跟著車[/b]：下車再上來照舊，換人開也一樣。
 [*] [b]不另外省電[/b]：耗電照平常怎麼開來算，不會因為開了舒適模式就省電。
@@ -451,7 +484,7 @@ https://steamcommunity.com/sharedfiles/filedetails/?id=3829501237
 {{img:20-vm-app-zh.jpg}}
 [table]
 [tr][th]動作[/th][th]需要的綁車權限[/th][/tr]
-[tr][td]刷卡上鎖／解鎖、App 上鎖解鎖、閃燈、喇叭、哨兵開關、App 開關鷹翼門與軟頂篷、生物武器防禦模式[/td][td]搭乘[/td][/tr]
+[tr][td]刷卡上鎖／解鎖、App 上鎖解鎖、閃燈、喇叭、哨兵開關、App 開關鷹翼門、Cybercab 的車門與軟頂篷、生物武器防禦模式[/td][td]搭乘[/td][/tr]
 [tr][td]App 開關尾門[/td][td]後車廂[/td][/tr]
 [tr][td]App 開關前行李廂[/td][td]安裝修理或拆零件[/td][/tr]
 [tr][td]插拔線、充電卡、撿起或轉向插著車的充電座、App 停止／開始充電[/td][td]加油（充電座主人的拔線、充電卡停止、撿起與轉向除外，見常見問題；App 不算）[/td][/tr]
@@ -479,7 +512,7 @@ https://steamcommunity.com/sharedfiles/filedetails/?id=3829501237
 [h3]Project Viewpoint（3D 視角）[/h3]
 {{img:31-viewpoint-zh.jpg}}
 [list]
-[*] [b]車內細節[/b]：坐進特斯拉看得到有縫線的座椅、有 T 標的方向盤、顯示地圖的中控螢幕、出風口、杯架、手機座、腳踏墊與後照鏡；七台車、每個座位都有。
+[*] [b]車內細節[/b]：坐進特斯拉看得到有縫線的座椅、有 T 標的方向盤（Cybercab 沒有方向盤）、顯示地圖的中控螢幕、出風口、杯架、手機座、腳踏墊與後照鏡；八台車、每個座位都有。
 [*] [b]只有自己坐的那台[/b]：別台車照原本的樣子畫，車內是深灰色。
 [*] [b]沒裝不受影響[/b]：沒裝 Project Viewpoint 的玩家，畫面和效能都和以前一樣。
 [*] [b]多人時偶爾消失一下[/b]：你坐的車有零件裝拆或修理時，細節會消失，遊戲內一分鐘內回來。
@@ -490,7 +523,7 @@ https://steamcommunity.com/sharedfiles/filedetails/?id=3829501237
 [table]
 [tr][th]選項[/th][th]預設[/th][th]範圍[/th][th]說明[/th][/tr]
 [tr][td]續航倍率[/td][td]1.0[/td][td]0.25～10.0[/td][td]電池充滿能開多遠；1.0＝和原版同級車加滿一箱油一樣遠，也跟著原版「耗油量」增減[/td][/tr]
-[tr][td]充電速度倍率[/td][td]1.0[/td][td]0.1～10.0[/td][td]1.0＝照官方功率（壁掛式充電座 11.5 kW、行動充電器 7.6 kW、超級充電座最高 250 kW，Cybertruck 325 kW；Roadster 從任何設備最多 16.8 kW）；Cybertruck 的 Powershare 11.5 kW、車斗插座 9.6 kW 上限與 Roadster 的 16.8 kW 也跟著乘[/td][/tr]
+[tr][td]充電速度倍率[/td][td]1.0[/td][td]0.1～10.0[/td][td]1.0＝照官方功率（壁掛式充電座 11.5 kW、行動充電器 7.6 kW、超級充電座最高 250 kW，Cybertruck 325 kW、Cybercab 152 kW；Roadster 從任何設備最多 16.8 kW）；Cybertruck 的 Powershare 11.5 kW、車斗插座 9.6 kW 上限與 Roadster 的 16.8 kW 也跟著乘[/td][/tr]
 [tr][td]充電耗油倍率[/td][td]1.0[/td][td]0～10.0[/td][td]用發電機的電時耗多少油（充電，以及插著線時車上的用電）；1.0＝原版預設「發電機油耗」下充滿一台約用一桶，0＝不耗油[/td][/tr]
 [tr][td]露營模式電量下限[/td][td]20[/td][td]10～20（%）[/td][td]低於這個電量開不了露營模式，露營中降到這以下自動關閉[/td][/tr]
 [tr][td]停電時 App 藍牙距離（格）[/td][td]50[/td][td]0～64[/td][td]停電後 App 只在車子這麼多格內連得到（1 格＝1 公尺），召喚也不超過它；有電網時不限距離；0＝停電後連不到車[/td][/tr]
@@ -585,6 +618,10 @@ https://steamcommunity.com/sharedfiles/filedetails/?id=3829501237
 [h3]插著線為什麼開不走？[/h3]
 [list]
 [*] 和實車一樣，插著線時車子留在 P 檔；拔下充電線就能開走。
+[/list]
+[h3]Cybercab 插不上超級充電座？[/h3]
+[list]
+[*] Cybercab 的充電口在車尾，車頭朝樁停時線拉不到，選單會寫「充電線拉不到車子」；倒車、車尾朝樁停進車位就插得到。
 [/list]
 [h3]App 的按鈕是灰的，或只顯示最後紀錄？[/h3]
 [list]
