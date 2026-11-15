@@ -120,7 +120,25 @@ CAR = dict(
     DROP=("Tyre_", "Cover_"),
     DROP_COMPS=(),
     ARCH_LINER=None,
-    PLATES=(),
+    # the front wells (source frame: metres, z from the ground). Toe plates: the cabin's toe board (y 0.86-0.90, its
+    # liner facing the cabin) is culled from the well, so the seated passengers' shins and shoes showed through the
+    # front arches' top (main checkout temp/plan-next8-1114/e2e/shots/acc-cc-seat-4fb17dc.png: a blue-purple patch,
+    # their trousers under the sky light); a plate facing forward just ahead of it, where every such sight line
+    # crosses (temp/skf_cc/work/pax_leak.py: |x| 0.445-0.655, z 0.39-0.65 at y 0.87, Male and Female). Well plates:
+    # the well has no inner or front wall seen from the wheel (the nose's side skin at |x| 0.41 faces in, the bumper
+    # corner's at |x| 0.62-0.65 out), so from behind (W / N cameras) the arch's front half showed the ground under the
+    # nose (temp/skf_cc/work/pix_ray.py); an inner plate facing out at |x| 0.33 (the tyre's inner face swings in to
+    # 0.33 at full lock) from the underbody to 3 cm under the hood, and a front one facing back at y 1.53 (the tyre's
+    # front reaches 1.49, 1.45 steered) out to inside the skin
+    PLATES=tuple((f"ToePlate{s}", tuple((s * x, 0.88, z) for x, z in ((0.42, 0.34), (0.67, 0.34), (0.67, 0.68), (0.42, 0.68))),
+                  (0, 1, 0), "arch_liner") for s in (-1, 1))
+    + tuple((f"WellInner{s}", tuple((s * 0.33, y, z) for y, z in (
+        (0.90, 0.16), (1.68, 0.16), (1.68, 0.52), (1.65, 0.535), (1.60, 0.57), (1.55, 0.595), (1.50, 0.62),
+        (1.45, 0.645), (1.40, 0.665), (1.30, 0.695), (1.20, 0.71), (0.95, 0.72), (0.90, 0.72))), (s, 0, 0), "arch_liner")
+            for s in (-1, 1))
+    + tuple((f"WellFront{s}", tuple((s * x, 1.53, z) for x, z in (
+        (0.33, 0.16), (0.60, 0.16), (0.62, 0.22), (0.65, 0.40), (0.65, 0.59), (0.63, 0.61), (0.33, 0.61))),
+             (0, -1, 0), "arch_liner") for s in (-1, 1)),
     SEAL_CLIP=True,
     RAIL=None,
     # the prep's 146k-triangle body (a 3 mm cut mesh) collapsed to about the other cars' size: each object X
