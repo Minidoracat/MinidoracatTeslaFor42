@@ -2835,9 +2835,12 @@ def pieces(car, c, shift):
                     a[inner[hi], :, :4] = cab_attr(di["upper"][0])[:4]
                     inner = inner[~hi]
                 a[inner, :, :4] = cab_attr(di["cell"])[:4]
-            extra = [backs(bsel, rec, 0) for bsel, rec in back_sets(sel)] + [
+            # SEAL_NONE (optional): parts without seal strips (Cybercab's lid: its prep panels share their edges, no gap
+            # to close; clipped where they met the tail lamp bar, the bottom edge's strips hung under the open lid as
+            # a dashed black line)
+            extra = [backs(bsel, rec, 0) for bsel, rec in back_sets(sel)] + ([] if pname in C.get("SEAL_NONE", ()) else [
                 seals(V, T, skin, cab_attr("base"), gb, solid, seams and k not in skip and (*seams, k) or None,
-                      full=pname in C.get("SEAL_FULL", ()))] + ([lines[k]] if k in lines else [])
+                      full=pname in C.get("SEAL_FULL", ()))]) + ([lines[k]] if k in lines else [])
             if pname == "TrunkDoor" and BED_TUB and BED_TUB.get("shade"):    # inner panel: the bed walls' bands
                 extra.append(gate_bands(P, t, a, cab_attr))
             for v, bt, ba in extra:

@@ -208,6 +208,9 @@ CAR = dict(
         (0.33, 0.16), (0.60, 0.16), (0.62, 0.22), (0.65, 0.40), (0.65, 0.59), (0.63, 0.61), (0.33, 0.61))),
              (0, -1, 0), "arch_liner") for s in (-1, 1)),
     SEAL_CLIP=True,
+    # none on the trunk lid (convert.py SEAL_NONE): its panels share their edges with the body (the prep's grooves,
+    # no gap); clipped to dashes where they met the tail lamp bar, its bottom edge's strips hung under the open lid
+    SEAL_NONE=("TrunkDoor",),
     RAIL=None,
     # the prep's 146k-triangle body (a 3 mm cut mesh) collapsed to about the other cars' size: each object X
     # symmetric, its open edges, its panel seams and its flat underside's outline held (DECIMATE_KEEP_BOUNDARY,
