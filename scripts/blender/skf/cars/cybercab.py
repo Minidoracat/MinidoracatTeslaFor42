@@ -199,6 +199,7 @@ CAR = dict(
     # damaged): the paint ahead of 1.80 m and the hood (panel 4) in the front guards' zones, behind -1.85 m in the
     # rear guards'; the bumpers' dark trim there in Head / Tail (shell drawn untinted, as vanilla's bumpers)
     HEAD_TAIL=(round(1.80 * K, 4), round(-1.85 * K, 4)),
+    MASK_PAINT_GUARD=True,   # (convert.py mask_paint_guard) the nose lip's sliver trim under the paint: no Head on gold
     PANEL_ZONES={4: ("GuardLH", "GuardRH")},
     CUT={},
     PLANES={},

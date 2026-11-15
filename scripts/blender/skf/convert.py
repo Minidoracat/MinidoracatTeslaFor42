@@ -1616,6 +1616,44 @@ def chart_ramp(anchors, n=32):
     return np.clip(np.where(xp[:, None] < 0.5, lo, hi), 0, 1)
 
 
+def mask_paint_guard(near, paint, f):
+    """MASK_PAINT_GUARD (Cybercab): mask texels in Head / Tail whose f x f block of skin texels is paint anywhere (the
+    skin's alpha flag: the paint, and GROOVE_INK's paint-filled grooves), into the nearest guard zone of the same end
+    (Head: GuardLH / RH, Tail: GuardLT / RT; the same part's condition, BaseVehicle.java doOtherBodyWorkDamage
+    EngineDoor 0, 3, 11 / TruckBed 4, 7, 15, so only the tint changes). The zones follow the faces' material, the skin
+    does not everywhere: GROOVE_INK fills trim grooves and slivers along the paint with the paint (the nose lip under
+    the bonnet, 66 cm2), whose Head texels drew the damage shell untinted there, green-grey on the gold
+    (vehicle_multiuv.frag frontAlpha / tailAlpha -> noTintAlpha). Each texel takes its nearest guard texel by 4-way
+    growth (ties: up, down, left, right), else the right-hand guard."""
+    H, W = near.shape
+    share = paint.reshape(H, f, W, f).any((1, 3))
+    out = near.copy()
+    for zone, guards in (("Head", ("GuardLH", "GuardRH")), ("Tail", ("GuardLT", "GuardRT"))):
+        bad = (near == ZN.index(zone)) & share
+        if not bad.any():
+            continue
+        gi = [ZN.index(g) for g in guards]
+        lab = np.where(np.isin(near, gi), near, -1)
+        todo = bad.copy()
+        for _ in range(64):
+            if not todo.any():
+                break
+            grown = lab.copy()
+            for dy, dx in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+                sh = np.full_like(lab, -1)
+                sh[max(dy, 0):H + min(dy, 0), max(dx, 0):W + min(dx, 0)] = \
+                    lab[max(-dy, 0):H + min(-dy, 0), max(-dx, 0):W + min(-dx, 0)]
+                take = (grown < 0) & (sh >= 0)
+                grown[take] = sh[take]
+            hit = todo & (grown >= 0)
+            out[hit] = grown[hit]
+            todo &= ~hit
+            lab = grown
+        out[todo] = gi[1]
+        print(f"MASK_PAINT_GUARD {zone}: {int(bad.sum())} texels over paint to {'/'.join(guards)}")
+    return out
+
+
 def textures(car, c, shift=0.0):
     zone_rgb = np.array([pv.Z[z] for z in ZN], float)
     aux = np.stack([c["paint"].astype(float), (c["lamp"] > 0).astype(float), (c["lamp"] == 2).astype(float)], 1)
@@ -1739,6 +1777,8 @@ def textures(car, c, shift=0.0):
     f = SKIN // MASK
     zc = zon[f // 2::f, f // 2::f]
     near = np.argmin(((zc[:, :, None, :] - zone_rgb[None, None]) ** 2).sum(-1), -1)   # snap: exact zone colours
+    if C.get("MASK_PAINT_GUARD"):       # the skin's paint flag: the paint and GROOVE_INK's paint-filled grooves
+        near = mask_paint_guard(near, paint if gfill is None else paint | gfill, f)
     m = np.concatenate([zone_rgb[near], np.ones(near.shape + (1,))], -1)
     pv.save_png(m, os.path.join(pv.TEX_DIR, pv.NAME + "_mask.png"), "mask")
     lx = aux[f // 2::f, f // 2::f]
