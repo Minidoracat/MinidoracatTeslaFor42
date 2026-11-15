@@ -246,10 +246,22 @@ TRUNK_PLAN = ((-0.845, 0.600), (-1.00, 0.605), (-1.15, 0.605), (-1.45, 0.615), (
 # hood (01 front, 02): a low dome, its middle on the side silhouette, falling HOOD_VALLEY to the seams; the seams lie
 # in shallow valleys between the hood and the fenders' crests (02: the bright band from the A pillar's base down over
 # the lamp), which rise back to the silhouette's height FENDER_CREST of the way out to FENDER_X, then roll down,
-# FENDER_DROP at FENDER_X (quadratic). Seam route: the lamps' inner ends (|x| ~0.48) up to outboard of the A pillar's
-# base (01 front: 55 px outside the windshield's corner, ~0.79; 02)
-HOOD_SEAM = ((0.96, 0.765), (1.10, 0.760), (1.40, 0.720), (1.70, 0.650), (1.90, 0.570), (2.05, 0.490),
-             (2.20, 0.480))          # (y, |x|)
+# FENDER_DROP at FENDER_X (quadratic). Seam route: the lamps' inner ends (|x| ~0.48) up over the fender crest (01
+# front: 55 px outside the windshield's corner) and back in to the windshield's corner, the hood's rear edge the
+# cowl line only across the glass (01 front / 02: no seam on the A pillar's base). A Catmull-Rom curve through the
+# knots, sampled 8 per span (a polyline's kinks moved the cut 2-3 mm side to side round the turn)
+def _smooth_tab(knots, n=8):
+    p = np.asarray(knots, float)
+    p = np.vstack([2 * p[0] - p[1], p, 2 * p[-1] - p[-2]])
+    s = np.linspace(0, 1, n, endpoint=False)[:, None]
+    out = [0.5 * (2 * p1 + (p2 - p0) * s + (2 * p0 - 5 * p1 + 4 * p2 - p3) * s ** 2 + (3 * p1 - p0 - 3 * p2 + p3) * s ** 3)
+           for p0, p1, p2, p3 in zip(p[:-3], p[1:-2], p[2:-1], p[3:])]
+    return np.vstack(out + [p[-2:-1]])
+
+
+HOOD_SEAM = _smooth_tab(((0.96, 0.672), (1.017, 0.700), (1.08, 0.735), (1.20, 0.752), (1.40, 0.720), (1.70, 0.650),
+                         (1.90, 0.570), (2.05, 0.490), (2.20, 0.480)))          # (y, |x|)
+assert (np.diff(HOOD_SEAM[:, 0]) > 0).all()
 HOOD_VALLEY = ((1.08, 0.0), (1.18, 0.010), (1.90, 0.012), (2.04, 0.006), (2.09, 0.0))
 HOOD_COWL = ((1.12, 0.0), (1.20, 0.020), (1.30, 0.016), (1.50, 0.0))   # the dome's middle dips just ahead of the
                                      # windshield's base (on the cap too): the base shows over it across (01 front, 02)
@@ -434,8 +446,11 @@ class Field:
         d1 = ds + self.knot("crown", y) * tx ** 2 * np.maximum(nz, 0)
         d2 = x - self.hw(y, z, w)
         d = smax(d1, d2, self.knot("k", y))
-        cap = smax(d, z - hood_cap(x, y), 0.004)
-        d = np.where((y > 1.08) & (y < 2.09), cap, d)
+        # behind the cap's rear edge (y 1.08) it lifts away up a ramp steeper than the windshield: the fender top runs
+        # up into the A pillar's base (it stopped at a step: a flat ledge outside the windshield's corners, 01 front)
+        yb = np.maximum(1.08 - y, 0.0)
+        cap = smax(d, z - hood_cap(x, np.clip(y, 1.08, 2.09)) - (1.0 * yb + 3.0 * yb ** 2), 0.004)
+        d = np.where(y < 2.09, cap, d)
         for nm, a in ARCH.items():
             ty = TYRES[nm]
             dc = np.hypot(y - ty["y"], z - ty["r"]) - a["R"]
@@ -644,9 +659,11 @@ def levels(f):
         door=lambda x, y, z, ax: poly_sdf(door, y, z) + far(0.35 - ax),
         trunk_y=lambda x, y, z, ax: y - TRUNK_Y,
         trunk_x=lambda x, y, z, ax: ax - interp_tab(TRUNK_PLAN, y) + far(0.50 - z) + far(y - TRUNK_Y),
-        hood_x=lambda x, y, z, ax: ax - interp_tab(HOOD_SEAM, y) + far(0.60 - z) + far(0.97 - y),   # (across the cowl
-        # square, bent away behind it: bent where it meets it, the two cuts ran together)
-        hood_z=lambda x, y, z, ax: (z - hood_cap(ax, np.clip(y, 1.09, 2.08)) + BAR[0] + far(1.00 - y)
+        hood_x=lambda x, y, z, ax: ax - interp_tab(HOOD_SEAM, y) + far(0.60 - z) + far(0.99 - y),   # (it meets the
+        # cowl at the windshield's corner, y 1.017; bent away behind that: bent where it meets it, the cuts ran together)
+        # the hood's leading edge only (y > 1.85): further back the surface dips under the cap beside the seams and
+        # the cut ran there, its rear edge a seam ahead of the windshield (a flat strip, 01 front); now the cowl
+        hood_z=lambda x, y, z, ax: (z - hood_cap(ax, np.clip(y, 1.09, 2.08)) + BAR[0] + far(1.85 - y)
                                     + far(ax - 0.62 - 4 * np.maximum(1.9 - y, 0))),   # (off the fenders at the nose)
         # the port's outline: its four lines bent off the body beyond the box (not up the whole tail face)
         port_x0=lambda x, y, z, ax: x - PORT[0] + far(yt(ax, y) + 2.0) + far(4 * (z - 0.48)) + far(0.30 - z),
