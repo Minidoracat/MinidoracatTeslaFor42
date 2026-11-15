@@ -22,9 +22,10 @@ def _g(*m):
 
 
 def _axis(sd):
-    """The butterfly hinge axis of the door on side sd (-1 left): up the A-pillar, raked back and in (rider guide p.5:
-    the doors swing up and forward); the right one mirrored (its angle the other sign)."""
-    x, y, z = -0.3 * sd, -0.75, 0.6
+    """The butterfly hinge axis of the door on side sd (-1 left): raked back and in (rider guide p.5: the doors swing up
+    and forward); the right one mirrored (its angle the other sign). With DOORS' 93 deg and DOOR_HINGE: fitted to the
+    rider guide p.7's open door (rg-p07-x742, the camera on the wheels and the body: temp/skf_cc_car/pairs)."""
+    x, y, z = -0.37 * sd, -0.43, 0.6
     n = math.sqrt(x * x + y * y + z * z)
     return (x / n, y / n, z / n)
 
@@ -165,14 +166,15 @@ CAR = dict(
     SEAT_POSE={"front": [("Bip01", 25.0), ("Bip01_L_Thigh", -10.0), ("Bip01_R_Thigh", -10.0),
                          ("Bip01_L_UpperArm", -35.0), ("Bip01_R_UpperArm", -35.0)]},
     BODY_W_Z=0.55,
-    # butterfly doors about DOOR_HINGE along _axis, 2 s; the trunk lid at its top edge, 50 deg (rider guide 04: 49.5
-    # fitted), 3 s like the Model 3's powered lid. No EngineDoor: the hood stays on the body (no lid, no animation)
+    # butterfly doors about DOOR_HINGE along _axis, 93 deg, 2 s (fitted on rider guide p.7: the door's top 2.36 m up);
+    # the trunk lid at its top edge, 50 deg (rider guide 04: 49.5 fitted), 3 s like the Model 3's powered lid. No
+    # EngineDoor: the hood stays on the body (no lid, no animation)
     DOORS={
-        "DoorFrontLeft": (-1, _axis(-1), -85, 2.0), "DoorFrontRight": (1, _axis(1), 85, 2.0),
+        "DoorFrontLeft": (-1, _axis(-1), -93, 2.0), "DoorFrontRight": (1, _axis(1), 93, 2.0),
         "TrunkDoor": (0, (1, 0, 0), -50, 3.0),
     },
-    # the hinges at the door's front top corner, at the A-pillar's foot (prep door paint at z 0.95: y 0.919, x 0.807)
-    DOOR_HINGE={"DoorFrontLeft": _g(-0.80, 0.93, 0.96), "DoorFrontRight": _g(0.80, 0.93, 0.96)},
+    # the hinges near the door's front top corner (prep door paint at z 0.95: y 0.919, x 0.807), with _axis fitted
+    DOOR_HINGE={"DoorFrontLeft": _g(-0.84, 1.00, 1.04), "DoorFrontRight": _g(0.84, 1.00, 1.04)},
     GATE_IN=(0.0, 0.894, -0.447),
     GATE_HINGE="top",
     # ---- convert.py: the source (TMP, gitignored: a copy of the prep's output, temp/skf_cc in the main checkout)

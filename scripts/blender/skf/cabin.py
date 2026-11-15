@@ -809,7 +809,30 @@ def roof_console(add, rc, wv, roof):
         ends.append(np.array(hit[:]))
     (f_, r_) = ends
     m = rot_x(math.degrees(math.atan2(f_[2] - r_[2], f_[1] - r_[1])))   # local +y forward along the roof, +z up
-    ctr = (f_ + r_) / 2 - m @ [0, 0, t / 2 - 0.004]
+    # the pod's top on the chord between the two hits (on the roof's outer skin: the headliner is its reversed copy
+    # there), then down in 0.001 steps until every pod vertex lies at least 0.001 (grid, 1.2 mm) under the roof: the
+    # roof falls away to the sides and between the ends (r10: a line at y 0.31 and a patch at y -0.08, |x| <= 0.08,
+    # stood through it, the top 4 mm over the chord)
+    pv_, _ = rbox((w, ln, t), 0.012, seg=1)
+
+    def clear(c):
+        """Per pod vertex at centre c: how far up to the roof (None: no roof over it)."""
+        return [None if (h := rb.ray_cast(Vector(p), Vector((0, 0, 1)))[0]) is None else h[2] - p[2]
+                for p in pv_ @ m.T + c]
+    ctr = (f_ + r_) / 2 - m @ [0, 0, t / 2]
+    for _ in range(40):
+        d = clear(ctr)
+        if all(x is not None and x >= 0.001 for x in d):
+            break
+        ctr = ctr - np.array([0, 0, 0.001])
+    d = clear(ctr)
+    if not all(x is not None and x >= 0.001 for x in d):
+        raise SystemExit(f"cabin detail: the overhead console's top stands through the roof (worst "
+                         f"{min((x for x in d if x is not None), default=float('nan')):.4f}, "
+                         f"{sum(x is None for x in d)} vertices with no roof over them)")
+    dt = [x for x, p in zip(d, pv_) if p[2] > 0]                  # the top's vertices (grid; x 1000 / K: mm)
+    print(f"ROOF_CONSOLE top {min(dt) / 0.826 * 1000:.1f}-{max(dt) / 0.826 * 1000:.1f} mm under the roof, "
+          f"centre z {ctr[2]:.4f}")
 
     def put(size, r, at, c):
         v, f = rbox(size, r, seg=1)

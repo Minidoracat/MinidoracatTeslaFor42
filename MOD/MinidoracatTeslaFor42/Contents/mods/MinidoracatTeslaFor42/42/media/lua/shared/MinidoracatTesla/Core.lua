@@ -300,9 +300,9 @@ T.Specs = {
         butterfly = true, -- the doors swing up and out (rider guide p.5): the app opens both
         frunk = false, -- no front trunk (rider guide), template MinidoracatTeslaCoreNoFrunk
         doorClip = { DoorFrontLeft = 2.0, DoorFrontRight = 2.0, TrunkDoor = 3.0 }, -- cars/cybercab.py DOORS
-        -- the butterfly door's rear end is 1.65 m up (its lower edge 0.48 m) 1.4 s into its 2 s swing, over a ducking
+        -- the butterfly door's rear end is 1.75 m up (its lower edge 0.60 m) 1.7 s into its 2 s swing, over a ducking
         -- passenger's head: climb in then (the Model X's wings wait 1.84 of 2.4 s; convert.py's skf_doors.blend clips)
-        doorWait = { DoorFrontLeft = 1.4, DoorFrontRight = 1.4 },
+        doorWait = { DoorFrontLeft = 1.7, DoorFrontRight = 1.7 },
         -- the one production colour (rescue sheet; the silver 40 kWh car is not made here). h/s/v: the rider guide's
         -- side view door panel median by convert.py's formula (s + 0.47, v + 0.05) as a stand-in; convert.py build
         -- writes the skin's own. Same order and append-only rules as above.
