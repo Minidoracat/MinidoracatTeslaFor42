@@ -145,6 +145,7 @@ https://steamcommunity.com/sharedfiles/filedetails/?id=3829501237
 {{img:37-cybercab-en.jpg}}
 [list]
 [*] [b]Tesla's robotaxi[/b]: the production Cybercab of 2026, built to Tesla's rider guide, emergency response guide and EPA data; there is only this one version.
+[*] [b]Performance[/b]: about 9 seconds to 100 km/h, slower than the Model Y (about 7) and on par with a vanilla sedan (about 10); top speed matches the other Teslas. Tesla publishes no acceleration figure, so this is a feel set for the game: the mechanics window shows 380 hp, not the EPA's 219 hp.
 [*] [b]Where it spawns[/b]: parking lots only, at a third of the Model Y's chance; never in upscale neighbourhoods (the real car is a fleet car, not sold to people).
 [*] [b]No steering wheel[/b]: there is no steering wheel and no pedals, just a wide centre screen; you still drive it from the left seat with the keyboard or a controller.
 [*] [b]Self-driving needs the module[/b]: the real car drives itself, but in the game, like every other Tesla, it needs AutoDrive's Autopilot Module installed to drive itself or be summoned.
@@ -454,7 +455,7 @@ A charger that works on the floor, no wall needed; slower than the Wall Connecto
 {{img:30-chill-en.jpg}}
 [list]
 [*] [b]Switching[/b]: the driver picks Turn on Chill in the V radial menu, and Turn off Chill to go back; it works while driving too.
-[*] [b]Acceleration only[/b]: acceleration gets smooth and gentle, top speed stays. Every Tesla but the Roadster and Cybercab uses the same pull: the Model Y and Cybertruck both take about 16 seconds to 100 km/h (normally about 7 for the Model Y and 5 for the Cybertruck); the Roadster is light, so it uses a smaller pull of its own and takes about 16 seconds too (normally about 8); the Cybercab, already slower, also uses a smaller pull of its own.
+[*] [b]Acceleration only[/b]: acceleration gets smooth and gentle, top speed stays. Every Tesla but the Roadster and Cybercab uses the same pull: the Model Y and Cybertruck both take about 16 seconds to 100 km/h (normally about 7 for the Model Y and 5 for the Cybertruck); the Roadster is light, so it uses a smaller pull of its own and takes about 16 seconds too (normally about 8); the Cybercab also uses a smaller pull of its own and takes about 20 seconds (normally about 9).
 [*] [b]Dashboard[/b]: Chill shows next to the speed while it is on.
 [*] [b]Stays with the car[/b]: still on when you get out and back in, or someone else drives.
 [*] [b]No extra saving[/b]: charge use still depends on how you drive; Chill alone does not save charge.
