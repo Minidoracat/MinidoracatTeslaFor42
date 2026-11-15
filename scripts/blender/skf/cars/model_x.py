@@ -292,9 +292,12 @@ CAR = dict(
     # (convert.py end_zones) nose / tail under the belt: guards' zones, trim Head / Tail; keep: the headlamp rims, the
     # front markers, the tail lamp housings, reflectors and decals, the bumper reflectors (lamps out of Head / Tail);
     # box: the nose's black band between the headlamps and the nose under it (Band_Black / Black_Car_Paint; E2E4 at
-    # a55a4a7, a grey-green line along the band's top, which reads as the headlamp band's)
+    # a55a4a7, a grey-green line along the band's top, which reads as the headlamp band's); on the tailgate (Boot, its
+    # damage shell in the paint's hue: lamp_zones) the lamp halves, the band between them, its inlay and the rear
+    # window's black surround (trim) into the light zones too
     END_ZONES=dict(keep=("Lamp_Rim", "Marker_Red", "Lamp_Housing", "Lamp_Reflector", "Light", "Bump_Refl"),
-                   boxes=((("Band_Black", "Black_Car_Paint"), (0.0, 1.85, -0.30), (0.50, 2.20, 0.0)),)),
+                   boxes=((("Band_Black", "Black_Car_Paint"), (0.0, 1.85, -0.30), (0.50, 2.20, 0.0)),),
+                   trim=("Aluminum", "Black_Car_Paint", "Gate_Band")),
     # (the prep's spoiler, the tailgate band and the tail lamp decals' halves on the gate ride the tailgate; round 7:
     # GateBand_X (round 6) had stayed on the body, a dark strip hanging where the closed gate was once it opened)
     PART_OBJS={"EngineDoor": ("Bonnet",), "TrunkDoor": ("Trunk", "Spoiler_X", "GateBand_X", *TAIL_T)},

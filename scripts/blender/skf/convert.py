@@ -1177,15 +1177,22 @@ def lamp_zones(car, c, spec):
     """The lamps' faces outside the light zones (housings, rims, lenses, reflectors, markers: the LAMPS head / tail
     materials and objects, spec's `keep` materials, and spec's `boxes` ((materials, lo, hi), ...: faces of those
     materials centred in the box, lo / hi (|x|, y, z) in the built mesh's centred coordinates, for lamp parts in a
-    material the bumper shares); END_ZONES or LAMP_ZONES = True or dict(keep=..., boxes=...))
+    material the bumper shares); END_ZONES or LAMP_ZONES = True or dict(keep=..., boxes=..., trim=...))
     ahead of the front guards' y / behind the rear guards' y and under the belt, still in Roof or in Head / Tail (the
     Cybercab's HEAD_TAIL), into the light zones of their end and side (LightLH / RH, LightLT / RT), as vanilla's lamps:
     their damage never drawn (TextureDamage1/2Enables2, the second matrix's, are written only by checkDamage2, called for
     slots 6 Hood and 10 Boot: BaseVehicle.java:6184-6193, 6224-6240). In Head / Tail the EngineDoor / TruckBed's damage
-    drew the untinted shell over a whole headlamp (E2E 85cfe12: Model 3 and Roadster, vanilla's five cars none). Only
-    the mask takes them (c["mask_lamp"], read by textures()): c["zone"] stays, so damage_uv1's lamp groups, the UV1
-    and the FBX stay as built; the lights texture is the lamp texels' own. Returns the lamp faces (end_zones leaves
-    them out)."""
+    drew the untinted shell over a whole headlamp (E2E 85cfe12: Model 3 and Roadster, vanilla's five cars none).
+    The hood's and the trunk lid's (tailgate's) own faces in Hood / Boot, whose damage shell takes the paint's hue over
+    black as well (E2E f503acb: the Cybercab's duck lip gold): their lamps (as above) and spec's `trim` materials'
+    faces that are not paint (the spoilers, the bars' black surrounds, the window surrounds) into the light zones of
+    that end and side, kept black. Not into Head / Tail as the bumpers' trim: the lids' UV1 lies on the damage
+    shell's opaque part, so Head / Tail's untinted shell drew those thin strips as one solid grey-green band, not
+    scattered scratches (offline at f503acb: the Cybercab's duck lip, the Model X's band between its lamps). Those
+    parts' only: the body's Hood / Boot texels are the ones drawn black with the part off (doBlack), they stay, and the
+    body's mask does not change (the part off looks the same). Only the mask takes them (c["mask_zone"], read by
+    textures()): c["zone"] stays, so damage_uv1's lamp groups, the UV1 and the FBX stay as built; the lights texture
+    is the lamp texels' own. Returns the lamp faces (end_zones leaves them out)."""
     fy, ry, tz = GUARDS["front"][0], GUARDS["rear"][0], BELT_Z
     cen = pv.face_centres(car)
     zone = c["zone"]
@@ -1203,7 +1210,13 @@ def lamp_zones(car, c, spec):
         mz[m & at & left] = ZN.index(l)
         mz[m & at & ~left] = ZN.index(r)
         print(f"LAMP_ZONES {l}/{r}: {int((m & at).sum())} faces")
-    c["mask_lamp"] = mz
+    trim = np.isin(c["mat"], spec.get("trim", ()) if isinstance(spec, dict) else ()) & ~c["paint"] & ~lamp
+    for lid, l, r in (("Hood", "LightLH", "LightRH"), ("Boot", "LightLT", "LightRT")):
+        k = (zone == ZN.index(lid)) & (c["part"] != 0) & (lamp | trim)
+        mz[k & left] = ZN.index(l)
+        mz[k & ~left] = ZN.index(r)
+        print(f"LAMP_ZONES {lid}: {int((k & lamp).sum())} lamp faces, {int((k & trim).sum())} trim faces to {l}/{r}")
+    c["mask_zone"] = mz
     return lamp
 
 
@@ -1699,7 +1712,7 @@ def textures(car, c, shift=0.0):
         lv = np.empty(len(car.data.loops), np.int64)
         car.data.loops.foreach_get("vertex_index", lv)
         hgt = np.repeat(((pv.mesh_co(car)[lv, 2] - fz[:, 2].min()) / np.ptp(fz[:, 2]))[:, None], 3, 1)
-    mzone = c["zone"] if "mask_lamp" not in c else np.where(c["mask_lamp"] >= 0, c["mask_lamp"], c["zone"])
+    mzone = c["zone"] if "mask_zone" not in c else np.where(c["mask_zone"] >= 0, c["mask_zone"], c["zone"])
     layers = {"col": c["rgb"], "zone": zone_rgb[mzone], "aux": aux, "hgt": hgt,
               "badge": np.repeat(np.where(c["mat"] == "badge_chrome", 1.0, np.where(
                   c["mat"] == (INK or {}).get("mat"), 0.85, np.where(c["mat"] == "badge_etch", 0.62,

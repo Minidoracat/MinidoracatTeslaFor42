@@ -265,10 +265,13 @@ CAR = dict(
     # (convert.py end_zones) nose / tail under the belt: guards' zones, trim Head / Tail; keep / boxes: the tail lamps'
     # surrounds, the rear bumper's reflector housings, the headlamp clusters in the bumper's pockets under the light
     # bar (black_base / black_refl, which the lower bumper shares: a box round the pockets), the light bar's black
-    # bezel (black_base round it: E2E4 at a55a4a7, a grey-green line along the bar's lower edge), into the light zones
+    # bezel (black_base round it: E2E4 at a55a4a7, a grey-green line along the bar's lower edge), into the light zones;
+    # on the tailgate (Boot, its damage shell in the paint's hue: lamp_zones) the rear bar's black bezel, the strip over
+    # it and the rear window's black surround (trim) into the light zones too
     END_ZONES=dict(keep=("Material_#2125774706", "Material_#2125780326"),
                    boxes=((("black_base", "black_refl"), (0.50, 1.50, -0.31), (0.77, 1.84, -0.18)),
-                          (("black_base",), (0.0, 1.50, -0.17), (0.75, 1.95, 0.0)))),
+                          (("black_base",), (0.0, 1.50, -0.17), (0.75, 1.95, 0.0))),
+                   trim=("black_base", "black_refl")),
     # components cut along the lines (object, tris after welding): the window surround
     CUT={("Plane.005", 342): ("BF", "BR", "D"), _CORNER: ("BlackTopL", "BlackTopR")},
     # more cut planes for CUT: name -> (point, normal, cut faces behind y)

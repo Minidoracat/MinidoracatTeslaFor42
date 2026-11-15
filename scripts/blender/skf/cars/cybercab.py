@@ -202,8 +202,11 @@ CAR = dict(
     MASK_PAINT_GUARD=True,   # (convert.py mask_paint_guard) the nose lip's sliver trim under the paint: no Head on gold
     # (convert.py lamp_zones) the lamps' unlit faces in Head / Tail (HEAD_TAIL) into the light zones: the front corner
     # markers, the reverse lens and camera glass on the rear bumper, the tail lamps' unlit part, the light bar's
-    # housing (Trim, the bumper's too: a box)
-    LAMP_ZONES=dict(keep=("Marker", "Glass"), boxes=((("Trim",), (0.0, 1.58, -0.14), (0.60, 1.74, -0.05)),)),
+    # housing (Trim, the bumper's too: a box); on the tailgate (Boot, its damage shell in the paint's hue) the duck
+    # lip's black rear face and the seams (Trim) into the light zones too: not a lamp (prep_cybercab SPOILER; the tail
+    # lamp bar is under it on the body), gold at f503acb (E2E cc5h), a solid grey-green band in Tail (lamp_zones)
+    LAMP_ZONES=dict(keep=("Marker", "Glass"), boxes=((("Trim",), (0.0, 1.58, -0.14), (0.60, 1.74, -0.05)),),
+                    trim=("Trim",)),
     # (pzveh damage_uv1) the tailgate's UV1 box (DAMAGE_BOX) fitted onto ModernCar's boot deck (UV1 island 36) and back
     # (12) only, and only their rear 0.75 of the length: ModernCar's whole Boot box reaches 26 cm further forward with
     # island 43 (four slanted triangles, |n.x| 0.79), so the front third of our long deck lay ahead of ModernCar's deck

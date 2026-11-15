@@ -204,9 +204,12 @@ CAR = dict(
     GUARDS=dict(front=(0.83, 0.9517, 0.4), rear=(-0.916, 1.1817, 0.45)),
     # (convert.py end_zones) nose / tail under the belt: guards' zones, trim Head / Tail; keep: the tail lamps'
     # surrounds and the lit rear bumper strip (lamps stay out of Head / Tail); box: the light bar's black bezel
-    # (black_base round it, as the Model Y's: E2E4 at a55a4a7, a grey-green line along the bar's lower edge)
+    # (black_base round it, as the Model Y's: E2E4 at a55a4a7, a grey-green line along the bar's lower edge); on the
+    # tailgate (Boot, its damage shell in the paint's hue: lamp_zones) the rear bar's black bezel, the spoiler and the
+    # rear window's black surround (trim) into the light zones too
     END_ZONES=dict(keep=("Material_#2125767099", "bumper_lit"),
-                   boxes=((("black_base",), (0.0, 1.60, -0.21), (0.75, 2.10, 0.05)),)),
+                   boxes=((("black_base",), (0.0, 1.60, -0.21), (0.75, 2.10, 0.05)),),
+                   trim=("black_base", "spoiler_black", "spoiler_mid", "spoiler_sheen", "spoiler_top")),
     # components cut along the lines (object, tris): the window surround; the rear door glass and the quarter glass
     # are one component here
     CUT={("Plane.004", 342): ("BF", "BR", "D"), ("Plane.011", 268): ("D",)},

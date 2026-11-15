@@ -381,8 +381,10 @@ CAR = dict(
     PANELS=dict(x=0.6, z=0.9, front=(-0.16, 0.6), rear=(-1.1, -0.16), gate=(-1.3, 0.6), lid=(0.9, 0.6)),
     GUARDS=dict(front=(0.765, 0.85, 0.45), rear=(-0.95, 0.95, 0.45)),
     # (convert.py end_zones) nose / tail under the belt: guards' zones, trim Head / Tail; keep: the tail lamps' side
-    # piece and the rear reflectors (the lamp housings are LAMPS materials; lamps stay out of Head / Tail)
-    END_ZONES=dict(keep=("Meshpart16Mtl", "Meshpart18Mtl")),
+    # piece and the rear reflectors (the lamp housings are LAMPS materials; lamps stay out of Head / Tail); on the
+    # liftgate (Boot, its damage shell in the paint's hue: lamp_zones) the lamps' inboard black inside, the black band
+    # between the lamps and the window's black surround (trim) into the light zones too
+    END_ZONES=dict(keep=("Meshpart16Mtl", "Meshpart18Mtl"), trim=("Wiper11Mtl",)),
     CUT={},
     PLANES={},
     CUT_X=("-",),
