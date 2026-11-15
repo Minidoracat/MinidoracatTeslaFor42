@@ -151,25 +151,30 @@ SECTION = dict(
                  0.920]),     # shoulder (belt) height; behind the glass the hip's top (SHOULDER). Under the glass the
                               # step (g, zs +-3 cm) ends where the glass starts: a glass edge cut across the step's
                               # near-flat middle runs at a grazing angle and shades as a saw tooth (02)
-    g=np.array([0.000, 0.000, 0.000, 0.000, 0.020, 0.050, 0.060, 0.060, 0.060, 0.050, 0.020, 0.000, 0.000, 0.000,
+    g=np.array([0.000, 0.000, 0.000, 0.000, 0.020, 0.050, 0.060, 0.060, 0.050, 0.035, 0.010, 0.000, 0.000, 0.000,
                 0.000]),      # step in at the shoulder (behind the quarter glass none: 03's haunch is one round bulge;
                               # round 6 from 9-10 cm to 5-6: the glass sits further out on a steeper wall, 01 front /
-                              # 01 rear / 02 / 03 outlines all closer; less of 03's fold under the quarter glass)
-    t=np.array([1.300, 1.300, 1.100, 0.800, 0.500, 0.350, 0.330, 0.360, 0.460, 0.600, 0.750, 1.000, 1.250, 1.000,
+                              # 01 rear / 02 / 03 outlines all closer; less of 03's fold under the quarter glass;
+                              # round 9 under the quarter glass 6 / 5 / 2 -> 5 / 3.5 / 1 cm: 03's glass bottom lower)
+    t=np.array([1.300, 1.300, 1.100, 0.800, 0.500, 0.350, 0.280, 0.310, 0.460, 0.600, 0.750, 1.000, 1.250, 1.000,
                 1.000]),      # tumblehome above the shoulder (01 front, 02: the windshield's sides further out; 01
                               # rear: narrower over the C pillars; much wider and the side glass wraps over the roof's
                               # edge, 02); behind the glass it meets
                               # the near-flat deck in a crease on TRUNK_PLAN's line (03, 06 top view: the haunch
-                              # stands out below it)
-    crown=np.array([0.000, 0.000, 0.005, 0.012, 0.050, 0.060, 0.060, 0.070, 0.055, 0.045, 0.030, 0.030, 0.020,
+                              # stands out below it). Round 9 over the doors 0.33 / 0.36 -> 0.28 / 0.31: a wider
+                              # roof, a gold rail between the roof glass and the side glass (02; at 0.75 too, the front
+                              # door's seam at the shoulder came out 2 mm off its cut)
+    crown=np.array([0.000, 0.000, 0.005, 0.012, 0.050, 0.005, 0.005, 0.030, 0.045, 0.045, 0.030, 0.030, 0.020,
                     0.020, 0.020]),   # roof / deck crown at the plan edge (the hood: hood_cap; the deck near flat;
-                                      # over the rear seats a fuller edge: the roof's outline on 02 and 03; round 8
-                                      # over the windshield's roof part 0.10 -> 0.06: 01 side's gold rail above the glass)
-    k=np.array([0.008, 0.030, 0.050, 0.055, 0.045, 0.030, 0.025, 0.025, 0.025, 0.020, 0.045, 0.050, 0.040, 0.012,
+                                      # over the rear seats a fuller edge: the roof's outline on 02 and 03; rounds 8-9
+                                      # over the doors 0.10 -> 0.005, a flat roof: on 01 side the gold edge, not the
+                                      # roof glass, between the side glass and the roof line; at the cowl (1.10) less
+                                      # left the windshield's corner cuts mm off)
+    k=np.array([0.008, 0.030, 0.050, 0.055, 0.045, 0.030, 0.025, 0.025, 0.025, 0.020, 0.080, 0.090, 0.070, 0.012,
                 0.012]),      # edge rounding (the front fenders roll over into the side: 01 front; ahead of the tail
                               # the deck rolls over into the haunch: 03, one convex roll, no flat band under a crease;
-                              # round 8 rounder there, 0.030 / 0.035 / 0.030 -> 0.045 / 0.050 / 0.040: 03's bright
-                              # streak behind the C pillar)
+                              # rounds 8-9 rounder there, 0.030 / 0.035 / 0.030 -> 0.080 / 0.090 / 0.070: 03's broad
+                              # rounded ridge behind the C pillar)
 )
 # wheel houses (01: the arch openings 241 / 257 px about the hubs), inner wall, lip rounding
 ARCH = dict(front=dict(R=0.421, x_in=0.50, lip=0.012), rear=dict(R=0.448, x_in=0.50, lip=0.016))
@@ -209,6 +214,14 @@ SPOILER = dict(z=((0.0, 0.862), (1.13, 0.862)), top=0.930, q_end=0.98,
                # edge (a step at the edge itself: a grazing cut and a bright line under the strip, 03)
 TAIL_LAMP = ((0.0, 0.546), (1.13, 0.546)), 0.33, 0.006, 0.52   # bar top z by q, |x| of its dark middle, middle
                # recess, |x| where the red starts (inboard of it the clear reversing lens, unlit grey: 07, 03, 01 rear)
+# for the game's texture (cybercab_lines.json tail_lamp_red_left): the official lamp is red only from |x| 0.665 on the
+# face (01 rear: smoked red 81 px in from the edge, through the fitted camera) round the corner to y -1.95 (01 side:
+# its last 7-8 cm red), smoked dark grey along the side ahead of that; band z from the bumper's top to the lamp's top
+TAIL_RED_GAME = dict(x_in=0.665, y_corner=-1.95, z=(0.502, 0.546))
+# region outlines boundary_off() may miss without failing prep: (|x|, y, z), radius, largest miss (m). The light
+# bar's outer end where it rises: two parallel cuts 4.5 mm apart (bar_top, bar_gap), under a 6.5 mm cell; its one
+# vertex 1.38 mm off (round 8: hood_z bent elsewhere left it unchanged; a wider gap changes the bar's look)
+BOUNDARY_KNOWN = (((0.6046, 1.9824, 0.6984), 0.010, 0.0016),)
 TAIL_BOW = (0.55, 1.16, 3.46)        # the tail (face, bumper, lip) sets forward a (|x| / b)^p: a bow in plan, near flat in
                                      # the middle, 14 cm forward at the corner. Shape: 06 top (0.28 / 0.38 / 0.47 / 0.54 /
                                      # 0.66 half width 0.01 / 0.03 / 0.06 / 0.10 / 0.20 m from the end, |x| x b: a 0.83);
@@ -224,11 +237,12 @@ B_SEAM = ((-0.530, 1.077), (-0.274, 0.342))       # door rear seam below the bel
 B_PILLAR = 0.007                     # the B pillar between the door and quarter glass: a matte black frame +-7 mm on
                                      # DIVIDER (01 side: a dark line ~8 px, 03)
 TRUNK_Y = -0.845                     # tailgate front seam across the roof (01 side: the roof's step)
-TRUNK_PLAN = ((-0.845, 0.600), (-1.00, 0.615), (-1.15, 0.630), (-1.45, 0.650), (-1.65, 0.667), (-1.84, 0.680),
+TRUNK_PLAN = ((-0.845, 0.600), (-1.00, 0.605), (-1.15, 0.605), (-1.45, 0.615), (-1.65, 0.630), (-1.84, 0.668),
               (-1.95, 0.695), (-2.00, 0.700), (-2.05, 0.700), (-2.20, 0.700))   # (y, |x|) its side seam: along the
               # deck's edge to the tail (01 side's seam line read back onto the surface, 03, 06 top view), then down
               # the face just inside the corner chamfer (a cut through the chamfer folds the mesh) with no groove
-              # there (grooves(): 01 rear shows no line)
+              # there (grooves(): 01 rear shows no line). Round 9 up to 3.5 cm inboard over the haunch: on the deck,
+              # off the wider edge rounding (k), and 01 side's seam 1-2 cm higher (it sat under the official's)
 # hood (01 front, 02): a low dome, its middle on the side silhouette, falling HOOD_VALLEY to the seams; the seams lie
 # in shallow valleys between the hood and the fenders' crests (02: the bright band from the A pillar's base down over
 # the lamp), which rise back to the silhouette's height FENDER_CREST of the way out to FENDER_X, then roll down,
@@ -1065,6 +1079,17 @@ def seam_loops(v, t, pan):
     return out
 
 
+def tail_red_outline(f):
+    """The official tail lamp's red part on the car's left (TAIL_RED_GAME), for the game's texture: a closed loop
+    on the surface, inboard top / bottom on the face, then outboard bottom / top at the corner (metres)."""
+    z0, z1 = TAIL_RED_GAME["z"]
+    zz = np.array([z1, z0])
+    xi = -TAIL_RED_GAME["x_in"]
+    pin = ray_point(f, np.c_[np.full(2, xi), np.full(2, -2.6), zz], [0, 1, 0])[0]
+    pout = side_point(f, np.full(2, TAIL_RED_GAME["y_corner"]), zz[::-1])[0]
+    return np.concatenate([pin, pout, pin[:1]]).round(4).tolist()
+
+
 def build(h=CELL):
     """Everything numpy: {'field', 'v', 't', 'mat', 'pan', 'pane', 'groove', 'boundary', 'parts', 'wheels', 'lines'}
     (boundary: boundary_off() on the cut mesh, before the grooves move the seams; the decimation keeps every
@@ -1079,6 +1104,7 @@ def build(h=CELL):
     mat, pan, pane = classify(f, v, t)
     boundary = boundary_off(f, v, t, mat.astype(np.int32) * 64 + pan * 8 + pane + 1)
     lines = seam_loops(v, t, pan)
+    lines["tail_lamp_red_left"] = tail_red_outline(f)
     v, groove = grooves(f, v, t, mat, pan)
     mat = np.where(groove, MATS.index("Trim"), mat)        # the seams read as thin dark lines (a gap), not facets
     cam_v, cam_s, cam_l = fender_camera(f)
@@ -1215,6 +1241,11 @@ def main():
     bm.to_mesh(body.data)
     bm.free()
     v, t, lab = read(body)
+    # one charge port (driver side): the mirror's copy of its groove on the right pulled back onto the surface (a
+    # blank face; the game's ambient occlusion would draw the groove as a dark frame)
+    rp = (v[:, 0] > 0.62) & (v[:, 0] < 0.86) & (v[:, 1] < -1.85) & (v[:, 2] > 0.30) & (v[:, 2] < 0.50)
+    v[rp] = project(f, v[rp])
+    lab = np.where(rp[t].all(1) & (lab // 512 % 2 > 0), lab - 512, lab)
     bpy.data.meshes.remove(body.data)
     fn = np.cross(v[t[:, 1]] - v[t[:, 0]], v[t[:, 2]] - v[t[:, 0]])
     # a cut passing a fraction of a mm from a vertex the decimation kept can leave a needle fin (third vertex ~0.1 mm
@@ -1235,13 +1266,19 @@ def main():
     pan[right & (pan == PANELS.index("DoorFrontLeft"))] = PANELS.index("DoorFrontRight")
     pane[right & (pane == 1)], pane[right & (pane == 3)] = 2, 4
     pan[right & (pan == PANELS.index("ChargePortDoor"))] = PANELS.index("Body")    # one port: driver side
-    off, dist = B["boundary"]                                # every region outline on its cut (0.5 mm)
+    off, dist = B["boundary"]                                # every region outline on its cut (0.5 mm) ...
+    known = np.zeros(len(off), bool)                         # ... but the known misses (BOUNDARY_KNOWN)
+    for p, r, dmax in BOUNDARY_KNOWN:
+        known |= (np.linalg.norm(np.c_[np.abs(off[:, 0]), off[:, 1:]] - p, axis=1) < r) & (dist < dmax)
+    known_at = off[known].round(4).tolist()
+    off, dist = off[~known], dist[~known]
     cells, cn = np.unique(np.round(np.c_[np.abs(off[:, 0]), off[:, 1], off[:, 2]], 1).reshape(-1, 3), axis=0,
                           return_counts=True)
     report = dict(objects={}, boundary_off=dict(count=int(len(off)), max_mm=round(float(dist.max(initial=0)) * 1e3, 2),
                                                 at=off[np.argsort(-dist)[:40]].round(4).tolist(),
                                                 cells=[[*c.tolist(), int(n)] for c, n in
-                                                       zip(cells[np.argsort(-cn)[:30]], np.sort(cn)[::-1][:30])]))
+                                                       zip(cells[np.argsort(-cn)[:30]], np.sort(cn)[::-1][:30])]),
+                  boundary_known=known_at)
     for mi, nm in enumerate(MATS):
         for pi, on in enumerate(PANES if nm == "Glass" else (nm,)):
             sel = (mat == mi) & ((pane == pi) if nm == "Glass" else True)
