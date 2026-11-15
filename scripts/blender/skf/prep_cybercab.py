@@ -205,8 +205,10 @@ BAR = (0.009, 0.015, 0.0045)        # light bar: from / to depth under the leadi
                                      # lying along the surface lands mm off, the boundary check)
 # head lamp: the bar runs on along the lens' top, which leaves the leading edge at LAMP[0] and rises straight to the
 # tip (q, z); the lens' bottom LAMP[2] (q, z); the outer end leans back LAMP[3] in q per metre up (01 front, 01 side:
-# top 0.627 -> 0.692, bottom 0.603 -> 0.624; 02: a slim wedge, the bar's extension)
-LAMP = (0.48, (0.93, 0.692), ((0.48, 0.620), (0.62, 0.606), (0.85, 0.610), (1.00, 0.626)), 0.8)
+# top 0.627 -> 0.692, bottom 0.603 -> 0.624; 02: a slim wedge, the bar's extension). Round 10: the tip round the
+# corner to q 1.00 (|x| ~0.78, y ~1.89): 01 front puts the outer end at |x| 0.795, 01 side at y 1.873, 02 + x253
+# triangulated (0.83, 1.89); at q 0.93 it stopped at (0.70, 1.93)
+LAMP = (0.48, (1.00, 0.688), ((0.48, 0.620), (0.62, 0.606), (0.85, 0.610), (1.00, 0.622), (1.08, 0.630)), 0.8)
 SPOILER = dict(z=((0.0, 0.862), (1.13, 0.862)), top=0.930, q_end=0.98,
                bevel=(0.840, 0.30))  # the duck lip's black rear face: a strip between z and top, right under the
                # deck's trailing edge (01 side 0.866-0.936; 01 rear: full width, gold only at the very corners); the
@@ -220,8 +222,8 @@ TAIL_LAMP = ((0.0, 0.546), (1.13, 0.546)), 0.33, 0.006, 0.52   # bar top z by q,
 TAIL_RED_GAME = dict(x_in=0.665, y_corner=-1.95, z=(0.502, 0.546))
 # region outlines boundary_off() may miss without failing prep: (|x|, y, z), radius, largest miss (m). The light
 # bar's outer end where it rises: two parallel cuts 4.5 mm apart (bar_top, bar_gap), under a 6.5 mm cell; its one
-# vertex 1.38 mm off (round 8: hood_z bent elsewhere left it unchanged; a wider gap changes the bar's look)
-BOUNDARY_KNOWN = (((0.6046, 1.9824, 0.6984), 0.010, 0.0016),)
+# vertex 0.68 mm off (round 10: moved 1.5 cm down with the lamp's longer rise, LAMP; round 8 it sat at z 0.698)
+BOUNDARY_KNOWN = (((0.6086, 1.9865, 0.6834), 0.010, 0.0010),)
 TAIL_BOW = (0.55, 1.16, 3.46)        # the tail (face, bumper, lip) sets forward a (|x| / b)^p: a bow in plan, near flat in
                                      # the middle, 14 cm forward at the corner. Shape: 06 top (0.28 / 0.38 / 0.47 / 0.54 /
                                      # 0.66 half width 0.01 / 0.03 / 0.06 / 0.10 / 0.20 m from the end, |x| x b: a 0.83);
@@ -283,7 +285,8 @@ GROOVE = (0.0025, 0.0020)
 FENDER_CAM = ((1.230, 0.768), (1.126, 0.794), (1.178, 0.741), 0.028)   # tip, rear top, rear bottom, height
 PLATE = (0.0, 0.430, 0.590, 0.138)               # plate (x, z0, z1, half width): 01 front (228 x 132 px: 1.73 : 1)
 LAMP_DOTS = 8                                    # small lamps in each head lamp lens (01 front, 02)
-SIDE_MARKER = (1.890, 1.896, 0.330, 0.500)       # amber reflector strip ahead of the front wheel (y0, y1, z0, z1)
+SIDE_MARKER = (1.870, 1.892, 0.330, 0.495)       # amber reflector strip ahead of the front wheel (y0, y1, z0, z1):
+                                                 # 01 side 1.862-1.889 wide, hugging the arch (round 10; was 6 mm)
 BUTTON = (-0.490, 1.071, 0.030, 0.012)          # B pillar button (y, z, length, height), 01 side + rider guide p.5
 
 
@@ -931,7 +934,7 @@ def front_parts(f):
     # lamp dots: along the lens' middle (left lamp)
     xc, yc0, r = NOSE_C
     dots = []
-    for q in np.linspace(0.58, 0.93, LAMP_DOTS):
+    for q in np.linspace(0.58, 0.98, LAMP_DOTS):
         th = (q - xc) / r
         o = np.array([[-(xc + 0.8 * np.sin(th)), yc0 + 0.8 * np.cos(th), 0.66]])
         dr = np.array([[np.sin(th), -np.cos(th), 0.0]])
