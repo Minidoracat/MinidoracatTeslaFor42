@@ -556,24 +556,28 @@ def car_roadster(c):
 
 def car_cybercab(c):
     """Cybercab (rider guide: 1,754 mm wide) at the Model Y's 0.0259 viewBox units per mm, nose on the Model Y's (x 146),
-    on the built body (scripts/blender/skf/cars/cybercab.py, prep_cybercab.py metres; nose y 2.140, tail -2.138): tail
-    35.2, axles x 128.1 (y 1.4495) and 56.7 (y -1.3074). The body y 25.3-70.7. The doors x 80.6-120.4 (their outer
-    edge at the body's widest, z 0.65: y -0.384 to 1.150), the windscreen ahead of them, the trunk lid from the roof's
-    end (y -0.847, x 68.6) to the tail; x 68.6-80.6 (the rear quarter) opens nothing and the hood opens nothing (no
-    front trunk). HUD.lua ZONES.Cybercab follows these edges."""
-    for x0, w in ((119.1, 18.0), (47.4, 18.6)):  # front and rear tyres (different sizes, rider guide) on the axles
-        for y in (19.5, 68.5):
+    on the built body (scripts/blender/skf/cars/cybercab.py, prep_cybercab.py's tenth round, metres; nose y 2.330, tail
+    -2.218): tail 28.2, axles x 123.2 (y 1.4495) and 53.3 (y -1.2505, the rear track 65 mm in each side). The outline is
+    the body's plan (|x| max per 0.1 m of y, y 25.3-70.7 at its widest, narrower and round at the rear). The doors x
+    77.0-115.0 (their outer edge at the body's widest, z 0.65: y -0.333 to 1.133), the windscreen ahead of them, the
+    trunk lid from the roof's end (y -0.788, x 65.2) to the tail; x 65.2-77.0 (the rear quarter) opens nothing and the
+    hood opens nothing (no front trunk). HUD.lua ZONES.Cybercab follows these edges."""
+    for x0, w, ys in ((114.2, 18.0, (19.5, 68.5)), (44.0, 18.6, (21.7, 66.3))):  # front and rear tyres (rider guide
+        for y in ys:                                                                # sizes) on the axles
             c.rrect(x0, y, w, 8, 2, fill="#0B0D0F", outline="#8E98A3", ow=1.1)
-    body = [("M", 46, 25.3), ("H", 126), ("Q", 143, 26.3, 146, 40), ("V", 56), ("Q", 143, 69.7, 126, 70.7),
-            ("H", 46), ("Q", 35.2, 70.7, 35.2, 60), ("V", 36), ("Q", 35.2, 25.3, 46, 25.3), ("Z",)]
+    half = [(28.2, 48), (28.7, 37.0), (30.0, 33.7), (32.0, 30.8), (34.6, 29.6), (37.2, 28.9), (39.8, 28.2), (42.4, 27.6),
+            (45.0, 27.5), (52.8, 27.2), (76.1, 26.5), (109.7, 25.9), (130.5, 25.3), (133.1, 25.4), (135.6, 26.0),
+            (138.2, 27.4), (140.8, 30.0), (143.4, 33.2), (146, 41.6)]      # tail centre round the left side to the nose
+    body = ([("M", *half[0])] + [("L", x, y) for x, y in half[1:]] + [("L", x, 96 - y) for x, y in half[::-1]]
+            + [("Z",)])
     c.fill(body, "#2A3037")
     c.stroke(body, w=1.3, color="#AEB6BF")
-    c.fill([("M", 99, 31), ("L", 115.5, 29), ("Q", 119.5, 48, 115.5, 67), ("L", 99, 65), ("Z",)], "#15191E")  # windscreen
-    c.fill([("M", 62.5, 32), ("H", 68), ("V", 64), ("H", 62.5), ("Q", 61, 48, 62.5, 32), ("Z",)], "#15191E")  # rear glass
-    c.stroke([("M", 68.6, 26), ("Q", 67.1, 48, 68.6, 70)], w=1.0, color="#4A525B")  # trunk lid seam at the roof's end
-    for y0, y1 in ((25.3, 28.3), (67.7, 70.7)):  # door seams
-        for x in (80.6, 120.4):
-            c.stroke([("M", x, y0 + 0.6), ("V", y1 - 0.6)], w=1.0, color="#4A525B")
+    c.fill([("M", 94.7, 31), ("L", 110.6, 29), ("Q", 114.6, 48, 110.6, 67), ("L", 94.7, 65), ("Z",)], "#15191E")  # windscreen
+    c.fill([("M", 59.1, 32), ("H", 64.6), ("V", 64), ("H", 59.1), ("Q", 57.6, 48, 59.1, 32), ("Z",)], "#15191E")  # rear glass
+    c.stroke([("M", 65.2, 27), ("Q", 63.7, 48, 65.2, 69)], w=1.0, color="#4A525B")  # trunk lid seam at the roof's end
+    for x, y0 in ((77.0, 26.5), (115.0, 25.6)):  # door seams, from the body's edge 3 units in
+        for a, b in ((y0, y0 + 3), (96 - y0 - 3, 96 - y0)):
+            c.stroke([("M", x, a + 0.6), ("V", b - 0.6)], w=1.0, color="#4A525B")
 
 
 CARS = {"ModelY": car_modely, "Model3": car_model3, "Cybertruck": car_cybertruck, "ModelS": car_models, "ModelX": car_modelx,
@@ -613,10 +617,11 @@ DOOR_GEOM = {
     # is the Model Y's (nose x 146: plain door_HD)
     "Roadster": {"front": (80.3, 110.2), "rear": (80.3, 80.3), "y": (25, 71), "tr": ((43.8, 38, 58), (37.8, 36, 60)),
                  "st": (80.3, 99.8, 34, 62.3), "kinds": ("FL", "FR", "TR", "ST")},
-    # Cybercab: two doors (x 80.6-120.4) that swing up and out from the front (butterfly: drawn raised, not swung out),
-    # the trunk lid's rear edge at x 35.2; no hood (no front trunk: no door_HD)
-    "Cybercab": {"front": (80.6, 120.4), "rear": (80.6, 80.6), "y": (25.3, 70.7), "butterfly": True,
-                 "tr": ((35.2, 38, 58), (29.2, 36, 60)), "kinds": ("FL", "FR", "TR")},
+    # Cybercab: two doors (x 77.0-115.0) that swing up and out from the front (butterfly: drawn raised, not swung out),
+    # along the body's edge there (y 26.0 / 70.0), the trunk lid's rear edge at x 28.2; no hood (no front trunk: no
+    # door_HD)
+    "Cybercab": {"front": (77.0, 115.0), "rear": (77.0, 77.0), "y": (26.0, 70.0), "butterfly": True,
+                 "tr": ((28.2, 38, 58), (22.2, 36, 60)), "kinds": ("FL", "FR", "TR")},
 }
 
 

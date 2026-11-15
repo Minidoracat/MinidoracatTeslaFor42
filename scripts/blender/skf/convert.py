@@ -1119,7 +1119,12 @@ def classify(car, names, sizes):
     for i, (m, col) in enumerate(areas, 1):
         rgb[m] = np.array(col) / 255
         area[m] = i
-    for m, lo, hi, col in C.get("RECOLOR", ()):           # a material's faces in a box take another colour (Model X T)
+    # a material's faces in a box take another colour (Model X T); with an object after the colour (Cybercab: the
+    # reverse lens bar) lo / hi are offsets from that object's face centres' range, the box follows it round to round
+    for m, lo, hi, col, *ob in C.get("RECOLOR", ()):
+        if ob:
+            o = cen[obj == ob[0]]
+            lo, hi = o.min(0) + lo, o.max(0) + hi
         rgb[(mat == m) & (cen > lo).all(1) & (cen < hi).all(1)] = np.array(col) / 255
     print("CLASSIFY parts", {PARTS[k]: int((part == k).sum()) for k in range(len(PARTS))}, "glass", int(glass.sum()),
           "lamps head/tail", int(head.sum()), int(tail.sum()))
@@ -1175,9 +1180,11 @@ def end_zones(car, c):
 
 def lamp_zones(car, c, spec):
     """The lamps' faces outside the light zones (housings, rims, lenses, reflectors, markers: the LAMPS head / tail
-    materials and objects, spec's `keep` materials, and spec's `boxes` ((materials, lo, hi), ...: faces of those
-    materials centred in the box, lo / hi (|x|, y, z) in the built mesh's centred coordinates, for lamp parts in a
-    material the bumper shares); END_ZONES or LAMP_ZONES = True or dict(keep=..., boxes=..., trim=...))
+    materials and objects, spec's `keep` materials, and spec's `boxes` ((materials, lo, hi[, object]), ...: faces of
+    those materials centred in the box, lo / hi (|x|, y, z) in the built mesh's centred coordinates, for lamp parts in a
+    material the bumper shares; with an object (Cybercab: the light bar) lo / hi's y and z are offsets from the y and z
+    range of that object's face centres, so the box follows the lamp from one body round to the next); END_ZONES or
+    LAMP_ZONES = True or dict(keep=..., boxes=..., trim=...))
     ahead of the front guards' y / behind the rear guards' y and under the belt, still in Roof or in Head / Tail (the
     Cybercab's HEAD_TAIL), into the light zones of their end and side (LightLH / RH, LightLT / RT), as vanilla's lamps:
     their damage never drawn (TextureDamage1/2Enables2, the second matrix's, are written only by checkDamage2, called for
@@ -1201,7 +1208,12 @@ def lamp_zones(car, c, spec):
     co = pv.mesh_co(car)
     cc = cen - np.r_[0.0, ((co.min(0) + co.max(0)) / 2)[1:]]   # centred as stage_build centres the mesh
     cc[:, 0] = np.abs(cc[:, 0])
-    for mats, lo, hi in (spec.get("boxes", ()) if isinstance(spec, dict) else ()):
+    for box in (spec.get("boxes", ()) if isinstance(spec, dict) else ()):
+        mats, lo, hi = (np.array(b, float) if k else b for k, b in enumerate(box[:3]))
+        if len(box) > 3:
+            o = cc[c["obj"] == box[3]]
+            lo, hi = np.r_[lo[0], o.min(0)[1:] + lo[1:]], np.r_[hi[0], o.max(0)[1:] + hi[1:]]
+            print(f"LAMP_ZONES box on {box[3]}: lo {np.round(lo, 4).tolist()} hi {np.round(hi, 4).tolist()}")
         lamp |= np.isin(c["mat"], mats) & (cc > lo).all(1) & (cc < hi).all(1)
     m = lamp & (c["part"] == 0) & (cen[:, 2] < tz) & np.isin(zone, [ZN.index(z) for z in ("Roof", "Head", "Tail")])
     left = cen[:, 0] < 0
@@ -2717,6 +2729,14 @@ def pieces(car, c, shift):
     def cab_attr(cell):
         return np.array([0, 0, pv.CABIN_UV1_U - CELL[cell], 0, 0, 0, 1], float)
     back_liner = ~glass & ((part == 0) & panel | (part > 0) & ~panel)
+    # TRIM_BACKS (optional, Cybercab int-r10): the body's non-panel faces (black trim: the rear arches' lips) whose centre
+    # is in this box (lo, hi; centred mesh coords) get the reversed liner copy too. Behind the cabin the trunk walls'
+    # top drops below them, and through the windscreen's top corners (the game's front views) their culled backs let
+    # the ground through: light triangles, cabin-r2 e_windscreen
+    if C.get("TRIM_BACKS"):
+        lo, hi = (np.array(b) + shift for b in C["TRIM_BACKS"])
+        ctr = V[T].mean(1)
+        back_liner |= (part == 0) & ~glass & ~panel & np.all((ctr >= lo) & (ctr <= hi), 1)
 
     def backs(sel, recolour, base, up=None):
         """Reversed copies on their own vertices (the FBX import keeps one of two faces on the same vertices). up (the

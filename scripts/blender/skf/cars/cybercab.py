@@ -11,6 +11,7 @@ sources: references/cybercab.md, models-cybercab.md.
 """
 import json
 import math
+import os
 import pathlib
 
 K = 0.826                                  # grid per metre (pzveh.K): the prep's numbers are metres
@@ -28,15 +29,79 @@ def _axis(sd):
     return (x / n, y / n, z / n)
 
 
+# The prep's own numbers (metres in its frame: +Y front, ground 0): the body's bbox and the wheels (prep_report.json),
+# the doors', trunk lid's, port's and tail lamp's lines (cybercab_lines.json). Every module that lists the cars
+# (scripts/seat_anim.py: all of them, for any car's build) imports this file, so they come from a committed snapshot
+# of those keys (cars/cybercab_body.json), not from temp/skf_cc (gitignored: absent from a clean checkout). A body round:
+# copy the prep's four files into temp/skf_cc, `python scripts/blender/skf/cars/cybercab.py` (refreshes the snapshot),
+# build (models-cybercab.md). A Cybercab build (CAR=cybercab) stops while the snapshot is behind temp/skf_cc.
+_TMP = pathlib.Path(__file__).resolve().parents[4] / "temp" / "skf_cc"
+_SNAP = pathlib.Path(__file__).with_name("cybercab_body.json")
+_KEYS = {"prep_report.json": ("body_bbox", "wheels"),
+         "cybercab_lines.json": ("door_left", "trunk", "charge_port_centre", "tail_lamp_red_left")}
+
+
+def _from_tmp():
+    """The snapshot's keys as temp/skf_cc has them (None without the prep's files there)."""
+    if not all((_TMP / f).exists() for f in _KEYS):
+        return None
+    return {f: {k: json.loads((_TMP / f).read_text())[k] for k in ks} for f, ks in _KEYS.items()}
+
+
+if __name__ == "__main__":
+    _now = _from_tmp()
+    if _now is None:
+        raise SystemExit(f"cars/cybercab.py: no prep output in {_TMP} (models-cybercab.md)")
+    _SNAP.write_text("{\n" + ",\n".join(f" {json.dumps(f)}: {{\n" + ",\n".join(
+        f"  {json.dumps(k)}: {json.dumps(v, separators=(',', ':'))}" for k, v in d.items()) + "\n }"
+        for f, d in _now.items()) + "\n}\n", newline="\n")
+    print(f"cars/cybercab.py: wrote {_SNAP}")
+_SNAPD = json.loads(_SNAP.read_text())
+if os.environ.get("CAR") == "cybercab" and _from_tmp() not in (None, _SNAPD):
+    raise SystemExit(f"cars/cybercab.py: {_SNAP.name} is behind {_TMP}: python scripts/blender/skf/cars/cybercab.py")
+_REP, _LN = _SNAPD["prep_report.json"], _SNAPD["cybercab_lines.json"]
+_WF, _WR = _REP["wheels"]["front"], _REP["wheels"]["rear"]
+_FA, _RA = _WF["y"], _WR["y"]              # the axles' y (metres)
+_BB = _REP["body_bbox"]
+# stage_build centres the mesh on its bbox: the shift from the pre-centre frame along y (grid). The cabin's numbers
+# below are mesh (centred) coordinates; they were set on the ninth round's body, whose shift was 0.0009
+_YC = (_BB[0][1] + _BB[1][1]) / 2 * K
+
+
+def _cf(v):
+    """A centred y set on the ninth round's body in the front half (the front axle and windscreen stayed): the same
+    place on this body, centred."""
+    return round(v + 0.0009 - _YC, 4)
+
+
+def _cr(v):
+    """A centred y set on the ninth round's body behind the doors: the same distance ahead of the rear axle (-1.3074 m
+    then; the rear body moves with it), centred."""
+    return round(v + 0.0009 + (_RA + 1.3074) * K - _YC, 4)
+
+
+def _cross(line, z):
+    """The y where the closed polyline `line` (cybercab_lines.json) crosses height z (metres), rearmost first."""
+    p, ys = _LN[line], []
+    for a, b in zip(p, p[1:] + p[:1]):
+        if (a[2] - z) * (b[2] - z) < 0:
+            ys.append(a[1] + (z - a[2]) / (b[2] - a[2]) * (b[1] - a[1]))
+    return sorted(ys)
+
+
+# the door's rear edge (B pillar) as a straight line through its crossings at z 0.65 and 0.95, out to 0.35 (the ninth
+# round's hand-set line was that, to 3 mm: -0.28 at 0.35, -0.489 at 0.95)
+_D65, _D95 = _cross("door_left", 0.65)[0], _cross("door_left", 0.95)[0]
+_D35 = _D65 - (_D95 - _D65)
+_TRUNK_X = max(abs(q[0]) for q in _LN["trunk"])
+_PORT = _LN["charge_port_centre"]
+
+
 def _red():
-    """The tail lamp's red ring on the car's left (prep cybercab_lines.json tail_lamp_red_left, metres, five points):
-    the rear face's corner from its inner |x| (rider guide 01 rear: 0.665) round to its y on the side (01 side: only the
-    corner's last 7-8 cm is red: -1.95); ahead of it the side's run is smoked grey. The ring's inner |x| and front y
-    bound the red; the prep owns them (these numbers until its lines have the key)."""
-    p = pathlib.Path(__file__).resolve().parents[4] / "temp" / "skf_cc" / "cybercab_lines.json"
-    ring = json.loads(p.read_text()).get("tail_lamp_red_left") if p.exists() else None
-    if not ring:
-        return dict(x=0.665, y=-1.95)
+    """The tail lamp's red ring on the car's left (cybercab_lines.json tail_lamp_red_left, five points): the rear
+    face's corner from its inner |x| round to its y on the side (01 side: only the corner's last cm are red); ahead of
+    it the side's run is smoked grey. The ring's inner |x| and front y bound the red."""
+    ring = _LN["tail_lamp_red_left"]
     return dict(x=round(min(abs(q[0]) for q in ring), 4), y=round(max(q[1] for q in ring), 4))
 
 
@@ -48,8 +113,9 @@ CAR = dict(
     NAME="MinidoracatTesla_Cybercab",
     SCRIPT_MARK="---- geometry (TeslaCybercab)",
     APP_CAR="app_car_cybercab_{}.png",
-    # rider guide: width 1,754, height 1,408; length off the 01 side view (REPORT.md)
-    DIMS=(4.278, 1.754, 1.408),
+    # rider guide: width 1,754, height 1,408; length: the prep's body (its bbox; 01 side is a close perspective view,
+    # decisions.md "Cybercab 外形")
+    DIMS=(round(_BB[1][1] - _BB[0][1], 4), 1.754, 1.408),
     PORT_NOTE="real Cybercab: the rear bumper's driver side corner under the trunk lid (ERG p.6, rider guide 01 rear, "
               "07)",
     # the one production paint (rescue sheet); Core.lua Specs colors
@@ -84,11 +150,12 @@ CAR = dict(
     # ---- pzveh: vehicle script
     OY=0.1978,
     WHEEL_LIFT=0.11,
-    TIRE_AXLES=dict(front=(0.3576, 0.215), rear=(0.4017, 0.225)),
-    # the prep's tyres stand with their 8 mm bulge out (outer |x| 0.854 / 0.808): the wheel centres that far in, on the
-    # prep's track (1.477 / 1.375)
+    TIRE_AXLES=dict(front=(_WF["r"], _WF["w"]), rear=(_WR["r"], _WR["w"])),
+    # the prep's tyres stand with their 8 mm bulge out: the wheel centres that far in, on the prep's track
+    # (prep_report.json wheels track_m)
     WHEEL_INSET=0.0066,
-    CAB_BOX=(1.20, 0.35, -0.95),
+    # the cabin's physics box (mesh coords): from the windscreen's foot back to 0.157 m ahead of the rear axle
+    CAB_BOX=(1.20, _cf(0.35), _cr(-0.95)),
     # two seats behind the door opening's middle by back (front only), x 0.27 (06 top view: two ~0.48-0.52 m seats
     # 0.09-0.10 m apart, K 0.826 grid per m; at 0.31 the gap was 0.24 m, cabin-r2); the passengers' pose: SEAT_POSE
     SEAT=dict(x=0.27, h=0.384, z=-0.222, back=(0.16,), out=0.30, front_only=True),
@@ -164,9 +231,10 @@ CAR = dict(
     # side markers amber
     MAT_RGB={"Trim": (58, 58, 60), "Liner": (24, 24, 26), "Glass": (26, 30, 34), "HeadLight": (226, 228, 232),
              "TailLight": (104, 104, 108), "Plate": (206, 208, 212), "Marker": (196, 122, 44)},
-    # (pane, box lo, hi, colour): the reverse lens bar under the tail face, grey, dark in its middle (01 rear)
-    RECOLOR=(("Glass", _g(-0.53, -2.2, 0.49), _g(0.53, -2.0, 0.56), (112, 112, 116)),
-             ("Glass", _g(-0.354, -2.2, 0.49), _g(0.354, -2.0, 0.56), (40, 40, 42))),
+    # (pane, box lo, hi, colour, object): the reverse lens bar under the tail face, grey, dark in its middle but for
+    # 0.166 m at each end (01 rear); the boxes on the lens's own range (convert.py classify RECOLOR)
+    RECOLOR=(("Glass", _g(-0.01, -0.066, -0.012), _g(0.01, 0.061, 0.014), (112, 112, 116), "Glass_ReverseLens"),
+             ("Glass", _g(0.166, -0.066, -0.012), _g(-0.166, 0.061, 0.014), (40, 40, 42), "Glass_ReverseLens")),
     GLASS_MATS=("Glass",),
     GLASS_OPAQUE=("Glass_ReverseLens", "RearCamera"),
     GLASS_BACKS=("WinLH", "WinLT", "WinRH", "WinRT"),
@@ -180,34 +248,38 @@ CAR = dict(
                areas=((dict(lo=_g(-9, -9, -9), hi=_g(-_RED["x"], _RED["y"], 9)), (122, 30, 36), True),
                       (dict(lo=_g(_RED["x"], -9, -9), hi=_g(9, _RED["y"], 9)), (122, 30, 36), True),
                       (dict(lo=_g(-9, _RED["y"], -9), hi=_g(9, -1.0, 9)), (46, 46, 48), False))),
-    # part lines, side view (y, z): the door's rear edge (prep door paint: y -0.28 at z 0.35 to -0.489 at 0.95)
-    LINES={"S": (_g(-0.28, 0.35), _g(-0.489, 0.95)), "BF": (_g(-0.28, 0.35), _g(-0.489, 0.95))},
+    # part lines, side view (y, z): the door's rear edge, a straight line through the prep's door outline at z 0.65 and
+    # 0.95 (cybercab_lines.json door_left), out to z 0.35
+    LINES={"S": (_g(_D35, 0.35), _g(_D95, 0.95)), "BF": (_g(_D35, 0.35), _g(_D95, 0.95))},
     FRONT_Y=round(1.15 * K, 4), SILL_Z=round(0.30 * K, 4), ARCH=(0.0, -9.0),
     IN_DOOR=dict(up=round(0.95 * K, 4), x=0.40),
     IN_GATE=dict(y=-9.0, z=9.0, up=9.0, x_up=0.0),
-    # door front edge and rear edge (B pillar) at the belt, the cabin's ring cut behind the seats (no door)
-    DOOR_Y=_g(0.919, -0.489, -0.75),
+    # door front edge and rear edge (B pillar) at the belt (the outline at 0.95), the cabin's ring cut behind the seats
+    # (no door): 0.557 m ahead of the rear axle
+    DOOR_Y=_g(0.919, _D95, _RA + 0.5574),
     GATE_Z=round(0.466 * K, 4),            # the trunk lid's lower edge (prep panel 3)
-    REAR_ARCH=(*_g(-1.3074, 0.4017), round(0.338 * K, 4)),
-    GATE_X=0.55,
+    REAR_ARCH=(*_g(_RA, _WR["r"]), round(0.338 * K, 4)),
+    GATE_X=round((_TRUNK_X - 0.034) * K, 4),   # (inside the trunk lid's seam; unused: IN_GATE off, no CUT_X)
     STOP_X=round(_RED["x"] * K, 4),
     PANELS=dict(x=9.0, z=-9.0, front=(9.0, 9.0), rear=(9.0, 9.0), gate=(-9.0, 9.0), lid=(9.0, 9.0)),   # (PANEL_PARTS)
     # the faces' panels (prep PANELS: Body, DoorFrontLeft, DoorFrontRight, TrunkDoor, EngineDoor, ChargePortDoor):
     # the doors and the trunk lid are parts, the hood and the port lid stay on the body
     PANEL_PARTS={1: "DoorFrontLeft", 2: "DoorFrontRight", 3: "TrunkDoor"},
-    GUARDS=dict(front=(round(0.95 * K, 4), 0.80, 0.45), rear=(round(-0.45 * K, 4), 0.85, 0.45)),
+    # rear guards from 0.857 m ahead of the rear axle (the rear quarter behind the door)
+    GUARDS=dict(front=(round(0.95 * K, 4), 0.80, 0.45), rear=(round((_RA + 0.8574) * K, 4), 0.85, 0.45)),
     # damage zones of the rest of the body (EngineDoor's condition in front, TruckBed's behind; else Roof, never
-    # damaged): the paint ahead of 1.80 m and the hood (panel 4) in the front guards' zones, behind -1.85 m in the
-    # rear guards'; the bumpers' dark trim there in Head / Tail (shell drawn untinted, as vanilla's bumpers)
-    HEAD_TAIL=(round(1.80 * K, 4), round(-1.85 * K, 4)),
+    # damaged): the paint ahead of the front wheel arch's front (0.35 m ahead of the front axle) and the hood (panel 4)
+    # in the front guards' zones, behind 0.543 m behind the rear axle (0.14 m behind its arch) in the rear guards';
+    # the bumpers' dark trim there in Head / Tail (shell drawn untinted, as vanilla's bumpers)
+    HEAD_TAIL=(round((_FA + 0.3505) * K, 4), round((_RA - 0.5426) * K, 4)),
     MASK_PAINT_GUARD=True,   # (convert.py mask_paint_guard) the nose lip's sliver trim under the paint: no Head on gold
     # (convert.py lamp_zones) the lamps' unlit faces in Head / Tail (HEAD_TAIL) into the light zones: the front corner
     # markers, the reverse lens and camera glass on the rear bumper, the tail lamps' unlit part, the light bar's
     # housing (Trim, the bumper's too: a box); on the tailgate (Boot, its damage shell in the paint's hue) the duck
     # lip's black rear face and the seams (Trim) into the light zones too: not a lamp (prep_cybercab SPOILER; the tail
     # lamp bar is under it on the body), gold at f503acb (E2E cc5h), a solid grey-green band in Tail (lamp_zones)
-    LAMP_ZONES=dict(keep=("Marker", "Glass"), boxes=((("Trim",), (0.0, 1.58, -0.14), (0.60, 1.74, -0.05)),),
-                    trim=("Trim",)),
+    LAMP_ZONES=dict(keep=("Marker", "Glass"),
+                    boxes=((("Trim",), (0.0, -0.01, -0.017), (0.60, 0.01, 0.02), "HeadLight"),), trim=("Trim",)),
     # (pzveh damage_uv1) the tailgate's UV1 box (DAMAGE_BOX) fitted onto ModernCar's boot deck (UV1 island 36) and back
     # (12) only, and only their rear 0.75 of the length: ModernCar's whole Boot box reaches 26 cm further forward with
     # island 43 (four slanted triangles, |n.x| 0.79), so the front third of our long deck lay ahead of ModernCar's deck
@@ -239,13 +311,13 @@ CAR = dict(
     CALIPER=None,
     FRUNK_TUB=None,                        # (no front trunk)
     # charge port (ERG p.6, rider guide 01 rear / 07): the prep's port lid centre (cybercab_lines.json
-    # charge_port_centre x -0.7228, y -1.9943, z 0.3968), from behind onto the bumper (pzveh PORT_X)
-    PORT=_g(-1.9943, 0.3968),
-    PORT_X=round(-0.7228 * K, 4),
-    # ---- cabin.py (mesh coords, centred)
+    # charge_port_centre), from behind onto the bumper (pzveh PORT_X)
+    PORT=_g(_PORT[1], _PORT[2]),
+    PORT_X=round(_PORT[0] * K, 4),
+    # ---- cabin.py (mesh coords, centred: _cf the front half's, _cr the rear's on this body)
     CABIN_FLOOR=-0.480,                    # (seat_head feet: the passengers' feet 6 mm into -0.474)
-    CABIN_FRONT_Y=0.90,
-    TRUNK_Y=-0.60,
+    CABIN_FRONT_Y=_cf(0.90),
+    TRUNK_Y=_cr(-0.60),
     CABIN_ZC=-0.048,
     SEAM_CLEAR=0.065,
     # the trunk's sides from one profile (cabin.py trunk_walls, as Model S / X): the per-ray shell left black teeth
@@ -276,14 +348,14 @@ CAR = dict(
     # the body's dark lower edge; the ledge the big screen (screen_size, 1.54:1, top 12 deg forward) stands on, no
     # stand, its back dark (rear: 05 / ERG p.9 x99), the window switches on the ledge under it (the detail model's
     # marks: icons); vent: the detail model's groove in the lower edge
-    DASH=dict(size=(1.10, 0.30, 0.16), console=None, dash=(0, 0.80, 0.030), stand=None, screen=(0, 0.597, 0.0455),
-              screen_size=(0.42, 0.272), rear="screen_rear", wheel=None, vent=-0.022,
-              parts=(((1.12, 0.075, 0.034), 0.015, "dash_top", (0, 0.6625, 0.093)),
-                     ((1.08, 0.016, 0.070), 0.006, "dash_up", (0, 0.645, 0.040)),
-                     ((1.02, 0.008, 0.008), 0.002, "strip", (0, 0.6355, 0.047)),
-                     ((0.24, 0.105, 0.030), 0.010, "dash", (0, 0.6075, -0.103)),
-                     ((0.10, 0.008, 0.014), 0.003, "switch", (0, 0.5545, -0.097))),
-              icons=((-0.022, 0.5505, -0.097), (0.022, 0.5505, -0.097))),
+    DASH=dict(size=(1.10, 0.30, 0.16), console=None, dash=(0, _cf(0.80), 0.030), stand=None,
+              screen=(0, _cf(0.597), 0.0455), screen_size=(0.42, 0.272), rear="screen_rear", wheel=None, vent=-0.022,
+              parts=(((1.12, 0.075, 0.034), 0.015, "dash_top", (0, _cf(0.6625), 0.093)),
+                     ((1.08, 0.016, 0.070), 0.006, "dash_up", (0, _cf(0.645), 0.040)),
+                     ((1.02, 0.008, 0.008), 0.002, "strip", (0, _cf(0.6355), 0.047)),
+                     ((0.24, 0.105, 0.030), 0.010, "dash", (0, _cf(0.6075), -0.103)),
+                     ((0.10, 0.008, 0.014), 0.003, "switch", (0, _cf(0.5545), -0.097))),
+              icons=((-0.022, _cf(0.5505), -0.097), (0.022, _cf(0.5505), -0.097))),
     # the door card (rider guide 05 / p.7 x795, ERG p.21 x198): all dark, the inner panel one step over the carpet
     # (DOOR_INNER), the darker pocket with the armrest under it and the pull handle in it, the speaker grille low at the
     # front
@@ -302,7 +374,11 @@ CAR = dict(
     SLAB_BELT_PRE=True,
     # the headliner, the pillars and the roof rails inside light grey (rider guide 05; the body's reversed faces over
     # the belt, ahead of the trunk)
-    LINER_UP=dict(cell="bed_rib", dz=0.0, y=-0.60),
+    LINER_UP=dict(cell="bed_rib", dz=0.0, y=_cr(-0.60)),
+    # the black trim behind the cabin (the rear arches' lips) seen from inside over the trunk walls' top: reversed
+    # liner copies too, else through the windscreen's top corners its culled backs showed the ground (cabin-r2
+    # e_windscreen's light triangles; convert.py pieces). From the trunk floor up, behind the cabin's rear wall
+    TRIM_BACKS=((-1.0, -2.5, -0.25), (1.0, _cr(-0.60), 0.5)),
     # cabin.py: the parts' names -> palette cells (MinidoracatTesla_vehicle.frag CABIN; the detail model's: DETAIL_RGB
     # and DETAIL_RGB_EXTRA): the seats darker than the other cars' (ERG p.9 through the windscreen: mid-dark grey),
     # their seams, the dash's layers, the screen's dark back, the screen's car block the other cars' seat grey
