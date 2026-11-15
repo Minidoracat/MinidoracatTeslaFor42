@@ -177,10 +177,11 @@ CAR = dict(
     # the doors and the trunk lid are parts, the hood and the port lid stay on the body
     PANEL_PARTS={1: "DoorFrontLeft", 2: "DoorFrontRight", 3: "TrunkDoor"},
     GUARDS=dict(front=(round(0.95 * K, 4), 0.80, 0.45), rear=(round(-0.45 * K, 4), 0.85, 0.45)),
-    # damage zones of the rest of the body: the nose and bumper ahead of 1.80 m and the hood (panel 4) in Head
-    # (EngineDoor's condition), the tail below the lid behind -1.85 m in Tail (TruckBed's); else Roof, never damaged
+    # damage zones of the rest of the body (EngineDoor's condition in front, TruckBed's behind; else Roof, never
+    # damaged): the paint ahead of 1.80 m and the hood (panel 4) in the front guards' zones, behind -1.85 m in the
+    # rear guards'; the bumpers' dark trim there in Head / Tail (shell drawn untinted, as vanilla's bumpers)
     HEAD_TAIL=(round(1.80 * K, 4), round(-1.85 * K, 4)),
-    PANEL_ZONES={4: "Head"},
+    PANEL_ZONES={4: ("GuardLH", "GuardRH")},
     CUT={},
     PLANES={},
     CUT_X=("-",),
