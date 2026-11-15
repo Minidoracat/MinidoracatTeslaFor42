@@ -642,7 +642,8 @@ def stage_wheel(r, width, rim=None, tag=""):
 # bar is 1.5 grid wide: our lamps (along, z) tile round that triangle at DAMAGE_PX (DAMAGE_LAMPS; by nearest surface
 # the corner lamps landed off it on blank texels). ModernCar's boot is a long deck with a
 # short back while our tailgate is mostly upright: by nearest surface it took the dent blob on the boot's back
-# (Veh_Damage1 58% vs ModernCar 18%), so its bounding box is first fitted onto ModernCar's (DAMAGE_BOX)
+# (Veh_Damage1 58% vs ModernCar 18%), so its bounding box is first fitted onto ModernCar's (DAMAGE_BOX). A long sloped
+# tailgate (Cybercab) fitted onto that whole box runs ahead of ModernCar's deck: DAMAGE_BOX_REF (per car) narrows the box
 DAMAGE_GROUPS = (("WinT",), ("WinH",), ("WinLH",), ("WinLT",), ("WinRH",), ("WinRT",),
                  ("LightLH",), ("LightRH",), ("LightLT", "StopL"), ("LightRT", "StopR"), ("Boot",))
 DAMAGE_LAMPS, DAMAGE_BOX = (7, 8, 9, 10), (11,)          # group numbers (index in DAMAGE_GROUPS + 1)
@@ -780,9 +781,16 @@ def damage_uv1(body, fzone):
     lf = np.repeat(np.arange(len(lt)), lt)
     box = {}                                        # group -> (our min, size, ModernCar min, size)
     for g in DAMAGE_BOX:
-        p, q = co[blv[fcls[lf] == g]], rco[rcls == g].reshape(-1, 3)
+        # optional per car (DAMAGE_BOX_REF {group: dict(islands=ModernCar UV1 islands, y=(lo, hi))}): ModernCar's box from
+        # those islands only, and only the part (lo, hi) of its length (0 its rear, 1 its front) taken as the target
+        ref_ = CAR.get("DAMAGE_BOX_REF", {}).get(g, {})
+        isl = ref_.get("islands")
+        p, q = co[blv[fcls[lf] == g]], rco[(rcls == g) & (np.isin(risl, isl) if isl else True)].reshape(-1, 3)
         if len(p) and len(q):
-            box[g] = (p.min(0), np.maximum(np.ptp(p, 0), 1e-6), q.min(0), np.ptp(q, 0))
+            qlo, qsz = q.min(0), np.ptp(q, 0)
+            if "y" in ref_:
+                qlo[1], qsz[1] = qlo[1] + ref_["y"][0] * qsz[1], (ref_["y"][1] - ref_["y"][0]) * qsz[1]
+            box[g] = (p.min(0), np.maximum(np.ptp(p, 0), 1e-6), qlo, qsz)
     put = lambda p, g: (p - box[g][0]) / box[g][1] * box[g][3] + box[g][2] if g in box else p  # noqa: E731
     fgrp, fisl = fcls.copy(), np.empty(len(fc), np.int64)
     for g in range(len(DAMAGE_GROUPS) + 1):

@@ -204,6 +204,13 @@ CAR = dict(
     # markers, the reverse lens and camera glass on the rear bumper, the tail lamps' unlit part, the light bar's
     # housing (Trim, the bumper's too: a box)
     LAMP_ZONES=dict(keep=("Marker", "Glass"), boxes=((("Trim",), (0.0, 1.58, -0.14), (0.60, 1.74, -0.05)),)),
+    # (pzveh damage_uv1) the tailgate's UV1 box (DAMAGE_BOX) fitted onto ModernCar's boot deck (UV1 island 36) and back
+    # (12) only, and only their rear 0.75 of the length: ModernCar's whole Boot box reaches 26 cm further forward with
+    # island 43 (four slanted triangles, |n.x| 0.79), so the front third of our long deck lay ahead of ModernCar's deck
+    # and its UV1 ran on (extrapolated, bary to -1) into Veh_Damage2's flat dent blob (u 66-160, v 186-255 px of 512):
+    # one flat orange patch mid-deck at condition < 40 (bb1f119 on). Islands only: the deck's front edge still on the
+    # blob's tip (787 cm2); ModernCar's own deck front reaches u 82 there. 0.75: none (temp/skf_cc_car/blob_hit.py)
+    DAMAGE_BOX_REF={11: dict(islands=(12, 36), y=(0.0, 0.75))},
     PANEL_ZONES={4: ("GuardLH", "GuardRH")},
     CUT={},
     PLANES={},
