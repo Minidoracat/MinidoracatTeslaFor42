@@ -289,6 +289,7 @@ CAR = dict(
     # door panels by component centre are off: PART_OBJS / SIDE_PARTS give whole objects
     PANELS=dict(x=9.0, z=0.0, front=(9.0, 9.0), rear=(9.0, 9.0), gate=(-9.0, 9.0), lid=(9.0, 9.0)),
     GUARDS=dict(front=(0.85, 0.95, 0.45), rear=(-1.19, 1.15, 0.50)),
+    END_ZONES=True,                        # (convert.py end_zones) nose / tail under the belt: guards' zones, trim Head / Tail
     # (the prep's spoiler, the tailgate band and the tail lamp decals' halves on the gate ride the tailgate; round 7:
     # GateBand_X (round 6) had stayed on the body, a dark strip hanging where the closed gate was once it opened)
     PART_OBJS={"EngineDoor": ("Bonnet",), "TrunkDoor": ("Trunk", "Spoiler_X", "GateBand_X", *TAIL_T)},
