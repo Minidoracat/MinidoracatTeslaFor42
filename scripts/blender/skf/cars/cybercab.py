@@ -89,8 +89,9 @@ CAR = dict(
     # prep's track (1.477 / 1.375)
     WHEEL_INSET=0.0066,
     CAB_BOX=(1.20, 0.35, -0.95),
-    # two seats behind the door opening's middle by back (front only); the passengers' pose: SEAT_POSE
-    SEAT=dict(x=0.31, h=0.384, z=-0.222, back=(0.16,), out=0.30, front_only=True),
+    # two seats behind the door opening's middle by back (front only), x 0.27 (06 top view: two ~0.48-0.52 m seats
+    # 0.09-0.10 m apart, K 0.826 grid per m; at 0.31 the gap was 0.24 m, cabin-r2); the passengers' pose: SEAT_POSE
+    SEAT=dict(x=0.27, h=0.384, z=-0.222, back=(0.16,), out=0.30, front_only=True),
     # scripts/seat_anim.py POSES: the shared front pose (leant back, thighs down) and the hands from the wheel to the
     # lap (no steering wheel): upper arms down 35 put both hands on the thighs' middle, their lowest point 1.4 cm into
     # (male) / 2.0 cm over (female) the thigh top
@@ -251,33 +252,41 @@ CAR = dict(
     # along them through the open lid
     TRUNK_WALL=True,
     HUMP_BACKS=False,
-    # the front seats (ERG p.22, rider guide pp.10-12; cabin.py slim): a thin backrest with two seams across, the headrest
-    # on it narrower (the shoulder step), no bolsters, a thick cushion with a round front on one low pedestal; the
-    # cushion's top and the headrest's top where the bucket had them, the backrest's front 5 mm ahead (ahead: the thin
-    # flat back left 23 mm to the passengers' backs, over seat_head.py's 20); recline kept 32 for the passengers' pose
-    # (the official reads ~26: cabin-r1 d; at 26 seat_head back -70..-14, the backrest 70 mm into their backs); an
-    # armrest between them at elbow height (centre) with the seat-belt buckles
-    SEATS=dict(front=dict(w=0.42, back=0.50, recline=32, dy=0.056, dz=-0.121, cushion=0.10,
-                          slim=dict(back=0.06, ahead=0.005, head=(0.26, 0.155, 0.08), seams=(0.36, 0.68),
-                                    pedestal=(0.26, 0.30), round=0.045),
-                          centre=(0.17, 0.30, 0.14)),
+    # the front seats (06, ERG p.22, rider guide pp.10-12; cabin.py slim): a thin backrest in three slightly convex
+    # sections between its two seams (bulge), its top corners rounded in towards the headrest (shoulder), low side
+    # bolsters on the backrest and the cushion (side), the headrest on it narrower, a thick cushion ending in a
+    # waterfall roll (roll) on one low pedestal; 0.44 wide, 0.10 apart (06 top view, cabin-r2); the cushion's front
+    # 4 cm back from the bucket's (front: 06 side view 0.392 of the wheelbase behind the front axle, it was 0.362);
+    # its top and the headrest's top where the bucket had them, the sections' crowns 3 mm ahead of the r1 flat
+    # backrest; recline kept 32 for the passengers' pose (the official reads ~26: cabin-r1 d; at 26 seat_head back
+    # -70..-14, into their backs). Between them (centre: the armrest pad's top over the cushions, length, width) the
+    # bench piece with the cup holders and buckles, the armrest pad over it (06 top view: ~0.16 long, from between
+    # the backrests)
+    SEATS=dict(front=dict(w=0.44, back=0.50, recline=32, dy=0.056, dz=-0.121, cushion=0.10,
+                          slim=dict(back=0.06, ahead=0.0, head=(0.26, 0.155, 0.08), seams=(0.36, 0.68),
+                                    pedestal=(0.26, 0.30), round=0.045, front=0.26, roll=(0.06, 0.02),
+                                    shoulder=(0.25, 0.23), bulge=0.008, side=(0.04, 0.025)),
+                          centre=(0.14, 0.16, 0.09)),
                sill=None, bin=None),
     PARCEL=None,
-    # rider guide 05 / pp.11-14, ERG pp.19 / 23 (temp/plan-next8-1114/cabin-r1): a low dash (narrower than the default
-    # so its ends stay off the A-pillars), no console (the footwell open), no steering wheel (wheel None). Its parts: the
-    # light upper shelf with its lip over the cabin face, the long slot under it (silver rim, dark slot), the ledge
-    # the big screen (screen_size, 1.54:1, top 12 deg forward) stands on, no stand, its back silver (rear), the window
-    # switches on the ledge under it (the detail model's marks: icons); vent: the detail model's second groove
+    # rider guide 05 / pp.11-14, ERG pp.19 / 23 (temp/plan-next8-1114/cabin-r1, -r2): a low dash (narrower than the
+    # default so its ends stay off the A-pillars), no console (the footwell open), no steering wheel (wheel None). In
+    # 05's layers: its top and the lip over the cabin face dark (dash, dash_top: the game's view down through the
+    # windscreen), the cabin face mid grey (dash_up) with a bright thin line across it (strip, 05's label 4), under it
+    # the body's dark lower edge; the ledge the big screen (screen_size, 1.54:1, top 12 deg forward) stands on, no
+    # stand, its back dark (rear: 05 / ERG p.9 x99), the window switches on the ledge under it (the detail model's
+    # marks: icons); vent: the detail model's groove in the lower edge
     DASH=dict(size=(1.10, 0.30, 0.16), console=None, dash=(0, 0.80, 0.030), stand=None, screen=(0, 0.597, 0.0455),
               screen_size=(0.42, 0.272), rear="screen_rear", wheel=None, vent=-0.022,
-              parts=(((1.12, 0.075, 0.034), 0.015, "shelf", (0, 0.6625, 0.093)),
-                     ((1.04, 0.020, 0.024), 0.006, "shelf", (0, 0.645, 0.046)),
-                     ((1.02, 0.012, 0.008), 0.002, "slot", (0, 0.639, 0.046)),
+              parts=(((1.12, 0.075, 0.034), 0.015, "dash_top", (0, 0.6625, 0.093)),
+                     ((1.08, 0.016, 0.070), 0.006, "dash_up", (0, 0.645, 0.040)),
+                     ((1.02, 0.008, 0.008), 0.002, "strip", (0, 0.6355, 0.047)),
                      ((0.24, 0.105, 0.030), 0.010, "dash", (0, 0.6075, -0.103)),
                      ((0.10, 0.008, 0.014), 0.003, "switch", (0, 0.5545, -0.097))),
               icons=((-0.022, 0.5505, -0.097), (0.022, 0.5505, -0.097))),
-    # the door card (rider guide 05 / p.7, ERG p.19): the inner panel light over the armrest's pocket (DOOR_INNER), the
-    # dark pocket with the armrest under it and the pull handle in it, the speaker grille low at the front
+    # the door card (rider guide 05 / p.7 x795, ERG p.21 x198): all dark, the inner panel one step over the carpet
+    # (DOOR_INNER), the darker pocket with the armrest under it and the pull handle in it, the speaker grille low at the
+    # front
     DOOR_CARD={
         "front": [
             ("armrest pocket", "rear", 0.10, -0.205, 0.50, 0.085, 0.030, "base", 0.020),
@@ -287,20 +296,30 @@ CAR = dict(
             ("speaker grille", "front", 0.06, -0.47, 0.17, 0.13, 0.010, "wheel", 0.030),
         ],
     },
-    DOOR_INNER=dict(cell="console", upper=("bed_rib", -0.16)),
+    DOOR_INNER=dict(cell="console"),
+    # the doors' and the trunk lid's edge strips under the belt in the paint next to them, over it black (convert.py
+    # pieces: the belt in the pieces' pre-centre frame; cabin-r2 D)
+    SLAB_BELT_PRE=True,
     # the headliner, the pillars and the roof rails inside light grey (rider guide 05; the body's reversed faces over
     # the belt, ahead of the trunk)
     LINER_UP=dict(cell="bed_rib", dz=0.0, y=-0.60),
-    # cabin.py: the parts' names -> palette cells (MinidoracatTesla_vehicle.frag CABIN; DETAIL_RGB for the detail
-    # model): the seats darker than the other cars' (ERG p.9 through the windscreen: mid-dark grey), their seams, the
-    # dash's near black body, the light shelf, the screen's silver back
-    CABIN_CELL_MAP=dict(seat="bed_wall_hi", seam="liner", dash="console", shelf="bed_rim", slot="screen_back",
-                        screen_rear="bed_rim", switch="screen_back", buckle="screen_back"),
-    DETAIL_CELL_MAP=dict(seam="mat", stitch="mat", dash="console", shelf="mirror_glass", slot="vent", screen_rear="chrome",
-                         switch="vent", buckle="vent", icon="chrome", pod="mirror_glass", lamp="chrome", stop="chrome",
-                         stop_button="screen_back", camera="mirror"),
+    # cabin.py: the parts' names -> palette cells (MinidoracatTesla_vehicle.frag CABIN; the detail model's: DETAIL_RGB
+    # and DETAIL_RGB_EXTRA): the seats darker than the other cars' (ERG p.9 through the windscreen: mid-dark grey),
+    # their seams, the dash's layers, the screen's dark back, the screen's car block the other cars' seat grey
+    # (screen_car: the seats' cell is darker here)
+    CABIN_CELL_MAP=dict(seat="bed_wall_hi", seam="liner", dash="base", dash_top="base", dash_up="bed_floor",
+                        strip="bed_rim", screen_rear="screen_back", switch="screen_back", buckle="screen_back",
+                        screen_car="seat"),
+    DETAIL_CELL_MAP=dict(seam="mat", stitch="mat", dash="base", dash_top="base", dash_up="stitch", strip="chrome",
+                         screen_rear="screen_back", switch="vent", buckle="vent", button="red", icon="chrome",
+                         pod="headliner", lamp="pale", stop="red", stop_button="dash", camera="mirror"),
+    # the detail model's own texture (pzveh.detail_texture: the shared cells, then these): the red of the buckles'
+    # buttons and the STOP sign, the headliner's light grey for the overhead console, its light strip
+    DETAIL_TEX="MinidoracatTesla_Cybercab_Detail",
+    DETAIL_RGB_EXTRA=dict(red=(196, 30, 36), headliner=(120, 120, 126), pale=(228, 228, 224)),
     # the detail model's overhead console instead of a rear-view mirror (no rear window; rider guide 05: the camera
-    # housing at the windscreen's top, p.14: the STOP button between the reading lamps)
-    ROOF_CONSOLE=dict(size=(0.16, 0.36, 0.035), lamp=(0.045, 0.030), lamp_x=0.05, stop=(0.050, 0.022),
+    # housing at the windscreen's top; p.14 x1691: the pod the headliner's grey, near its rear end a white capsule
+    # across it, the dark STOP button with its red triangle in the capsule's middle)
+    ROOF_CONSOLE=dict(size=(0.16, 0.36, 0.035), strip=(0.11, 0.045), strip_y=-0.10, stop=(0.040, 0.024),
                       camera=(0.07, 0.06, 0.045)),
 )

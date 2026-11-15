@@ -77,17 +77,19 @@ for car, g in pairs(geos) do
     check(cg:find("model Glass", 1, true) and cg:find("file = MinidoracatTesla_" .. car .. "_Glass,", 1, true) ~= nil,
         car .. ": part CabinGlass shows the car's glass model")
     -- the cabin detail under Viewpoint (ViewpointCabin.lua): Viewpoint draws it with its texture (a part model whose
-    -- shader is not a vehicle shader), the game's shader draws nothing, so the isometric view does not change
+    -- shader is not a vehicle shader), the game's shader draws nothing, so the isometric view does not change. The
+    -- shared detail texture; the Cybercab its own (cars/cybercab.py DETAIL_TEX: the shared cells and its reds)
+    local tex = car == "Cybercab" and "MinidoracatTesla_Cybercab_Detail" or "MinidoracatTesla_Detail"
     local cd = g:match("part CabinDetail%s*(%b{})") or ""
     local m = models:match("model MinidoracatTesla_" .. car .. "_Detail%s*(%b{})") or ""
     check(cd:find("model Detail", 1, true) and cd:find("file = MinidoracatTesla_" .. car .. "_Detail,", 1, true)
         and m:find("shader = MinidoracatTesla_viewpoint,", 1, true) and m:find("static = true,", 1, true)
-        and m:find("texture = Vehicles/MinidoracatTesla_Detail,", 1, true)
+        and m:find("texture = Vehicles/" .. tex .. ",", 1, true)
         and m:find("mesh = vehicles/MinidoracatTesla_" .. car .. "_Detail,", 1, true)
-        and read("models_X/vehicles/MinidoracatTesla_" .. car .. "_Detail.fbx") ~= nil,
-        car .. ": part CabinDetail shows its own static FBX on MinidoracatTesla_viewpoint with the detail texture")
+        and read("models_X/vehicles/MinidoracatTesla_" .. car .. "_Detail.fbx") ~= nil
+        and read("textures/Vehicles/" .. tex .. ".png") ~= nil,
+        car .. ": part CabinDetail shows its own static FBX on MinidoracatTesla_viewpoint with its detail texture")
 end
-check(read("textures/Vehicles/MinidoracatTesla_Detail.png") ~= nil, "the detail texture is there")
 -- the cabin glass part: no item, so the engine must not tie its model to one (setAllModelsVisible, VehiclePart.java:
 -- 148-155); its init shows the model once every part has its item (Liftgate.lua). The detail part: the same, shown by
 -- ViewpointCabin.lua alone

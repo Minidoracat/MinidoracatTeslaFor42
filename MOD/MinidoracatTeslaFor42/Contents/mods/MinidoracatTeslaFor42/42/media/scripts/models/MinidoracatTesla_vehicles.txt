@@ -719,10 +719,11 @@ module Base
         scale = 0.5495,
     }
 
+    /* the Cybercab's detail on its own texture: the shared cells and its reds (cars/cybercab.py DETAIL_TEX) */
     model MinidoracatTesla_Cybercab_Detail
     {
         mesh = vehicles/MinidoracatTesla_Cybercab_Detail,
-        texture = Vehicles/MinidoracatTesla_Detail,
+        texture = Vehicles/MinidoracatTesla_Cybercab_Detail,
         shader = MinidoracatTesla_viewpoint,
         static = true,
         invertX = false,

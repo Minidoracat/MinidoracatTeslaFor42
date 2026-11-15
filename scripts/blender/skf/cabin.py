@@ -351,10 +351,14 @@ def furniture(add, opening, grow=0.0, fine=1, between=None):
     def box(size, r, cuts=(0, 0, 0), seg=2):
         return rbox(np.add(size, 2 * grow), r + grow, cuts, seg * fine) if grow else rbox(size, r, cuts, seg)
 
-    def part(size, r, c, at, cuts=(0, 0, 0), sag=0.0, bend=0.0, taper=0.0, tilt=None, seg=2, seams=None, fit=None):
+    def part(size, r, c, at, cuts=(0, 0, 0), sag=0.0, bend=0.0, taper=0.0, tilt=None, seg=2, seams=None, fit=None,
+             shoulder=None, bulge=None):
         """rbox + shaping: `sag` dips the top's middle (x), `bend` brings the sides forward (+y), `taper` narrows the
-        top; `tilt` = (pivot y, pivot z, deg) reclines about a line along x (top to the rear). Shaped on `size`, so a
-        grown part follows its coarse one; seams = (face, lines) for seam_strips, grown parts only; `fit(v)` moves the
+        top; `bulge` = (edges, b): between each two edges (fractions of the height, bottom up) the front (+y) swells
+        up to b forward, none at the edges and the sides (slightly convex sections); `shoulder` = (share of the
+        height, narrowing) rounds the top's corners in over that top share (smooth, the top that much narrower);
+        `tilt` = (pivot y, pivot z, deg) reclines about a line along x (top to the rear). Shaped on `size`, so a grown
+        part follows its coarse one; seams = (face, lines) for seam_strips, grown parts only; `fit(v)` moves the
         placed points last (the trunk sill onto the body's lip)."""
         v, f = box(size, r, cuts, seg)
         x = 2 * v[:, 0] / size[0]
@@ -362,6 +366,16 @@ def furniture(add, opening, grow=0.0, fine=1, between=None):
             v[:, 2] -= sag * np.clip(1 - x * x, 0, 1) * (v[:, 2] > 0)
         v[:, 1] += bend * x * x
         v[:, 0] *= 1 - taper * (v[:, 2] / size[2] + 0.5)
+        if bulge:
+            e, b = np.asarray(bulge[0], float), bulge[1]
+            h = np.clip(v[:, 2] / size[2] + 0.5, 0, 1)
+            k = np.clip(np.searchsorted(e, h, side="right") - 1, 0, len(e) - 2)
+            v[:, 1] += (b * np.sin(np.pi * (h - e[k]) / (e[k + 1] - e[k])) * np.sqrt(np.clip(1 - x * x, 0, 1))
+                        * (v[:, 1] > 0))
+        if shoulder:
+            k0, k = shoulder
+            u = np.clip((v[:, 2] / size[2] + 0.5 - (1 - k0)) / k0, 0, 1)
+            v[:, 0] *= 1 - k * u * u * (3 - 2 * u)
         cells = c
         if grow and seams:
             v, f, cells = seam_strips(v, f, c, size, *seams)
@@ -398,22 +412,45 @@ def furniture(add, opening, grow=0.0, fine=1, between=None):
     def slim(cx, fy, z0, b, rec):
         """(SEATS row `slim`, Cybercab: ERG p.22, rider guide pp.10-12) on one low pedestal (pedestal: width, depth) a
         thick cushion `cushion` with a round front edge (round: its edge radius) and one seam across, a thin backrest
-        (back: its thickness) with no bolsters, its front `ahead` ahead of the other buckets' (the passengers' backs,
-        seat_head.py back: the thin one's flat front sits further from their shoulders), dark seams across it at `seams`
-        (fractions of its height), the headrest on it narrower (head: width, height over the backrest, depth; a
-        shoulder step each side; 1 cm proud of its front), 4 cm down into it."""
-        s, t, bh = b["slim"], b["cushion"], b["back"]
+        (back: its thickness), its front `ahead` ahead of the other buckets' (the passengers' backs, seat_head.py back:
+        the thin one's flat front sits further from their shoulders), dark seams across it at `seams` (fractions of
+        its height), the headrest on it narrower (head: width, height over the backrest, depth; a shoulder step each
+        side; 1 cm proud of its front), 4 cm down into it. Optional: front (the cushion's front edge ahead of the row's
+        y, default 0.30), roll ((depth, drop): the cushion's front a rounded roll that far deep reaching `drop` under
+        it, its top 4 mm under the cushion's: a waterfall front), shoulder (part shoulder: the backrest's top corners
+        rounded in towards the headrest), bulge (each section of the backrest between the seams swells that far
+        forward: slightly convex; one part, seat_head.py back measures it), side ((width, height): low bolsters along
+        the backrest's sides and the cushion's door side, that high over their faces)."""
+        s, t, bh, w = b["slim"], b["cushion"], b["back"], b["w"]
         ped = z0 - 0.015 - t - CABIN_FLOOR
         if ped > 0.01:
             part((*s["pedestal"], ped), 0.015, "base", (cx, fy + 0.08, CABIN_FLOOR + ped / 2), seg=1)
-        part((b["w"], 0.42, t), s["round"], "seat", (cx, fy + 0.09, z0 - 0.015 - t / 2), cuts=(2, 0, 0), sag=0.025,
+        ztop, fc = z0 - 0.015, fy + s.get("front", 0.30)
+        cd = fc - (fy - 0.12)
+        part((w, cd, t), s["round"], "seat", (cx, fc - cd / 2, ztop - t / 2), cuts=(2, 0, 0), sag=0.025,
              seams=("top", (((-0.42, 0.22), (0.42, 0.22)),)))
+        if "roll" in s:
+            rd, drop = s["roll"]
+            rh = t - 0.004 + drop
+            part((w - 0.012, rd, rh), min(rd, rh) / 2 - 0.002, "seat", (cx, fc - rd / 2 + 0.008, ztop - 0.004 - rh / 2),
+                 tilt=(fc - rd / 2, ztop - t / 2, -12), seg=3)
         bt, foot, front = s["back"], z0 - 0.03, fy - 0.115 + s["ahead"]
-        part((b["w"], bt, bh), 0.025, "seat", (cx, front - bt / 2, foot + bh / 2), cuts=(2, 0, 0), tilt=rec)
+        sh, bg = s.get("shoulder"), s.get("bulge")
+        part((w, bt, bh), 0.025, "seat", (cx, front - bt / 2, foot + bh / 2),
+             cuts=(4 if bg else 2, 0, 14 if bg else 8 if sh else 0), tilt=rec, shoulder=sh,
+             bulge=((0, *s["seams"], 1), bg) if bg else None)
         hw, hh, hd = s["head"]
         part((hw, hd, hh + 0.04), 0.03, "seat", (cx, front + 0.01 - hd / 2, foot + bh + hh / 2 - 0.02), tilt=rec, seg=3)
         for k in s["seams"]:
-            seam_box((b["w"] - 0.06, 0.006, 0.010), "seam", (cx, front, foot + k * bh), rec)
+            seam_box((w - 0.06, 0.006, 0.010), "seam", (cx, front, foot + k * bh), rec)
+        if "side" in s:     # the cushion's on its door side only (the inner side runs on into the centre bench)
+            sw_, sh_ = s["side"]
+            out_ = 1 if cx > 0 else -1
+            part((sw_, cd - 0.08, 0.07), 0.018, "seat", (cx + out_ * (w / 2 - sw_ / 2), fc - cd / 2 - 0.01,
+                                                         ztop + sh_ - 0.035))
+            for e in (-1, 1):
+                part((sw_, 0.045, bh * 0.62), 0.018, "seat",
+                     (cx + e * (w / 2 - sw_ / 2), front + sh_ - 0.0225, foot + 0.03 + bh * 0.31), tilt=rec)
         return fy, z0
 
     def bucket(cx, fy, b, bolster=(0.185, 0.19), z0=z0):   # a bucket seat: base, cushion, backrest, headrest, bolsters
@@ -443,16 +480,25 @@ def furniture(add, opening, grow=0.0, fine=1, between=None):
             part((aw * 0.7, 0.07, ah + 0.065), 0.015, "seat", (ax, fy - 0.08, z0 - 0.105 + (ah + 0.065) / 2))
         return fy, z0
     out["front"] = [bucket(s * FRONT_X, seat_y[0], fs) for s in (-1, 1)][0]     # front buckets
-    if fs.get("centre"):    # (Cybercab: rider guide 05, pp.11-12) an armrest between the front seats at elbow height:
-        ah, al, aw = fs["centre"]   # (its top over the cushions' top, length, width), from the backrests forward, on a
-        fy, zf = out["front"]       # stand to the floor; a seat-belt buckle each side of its foot
-        top, rake = zf - 0.015 + ah, math.tan(math.radians(fs["recline"]))
-        y0 = fy - 0.115 - (top - 0.035 - (zf - 0.03)) * rake
-        part((aw, al, 0.07), 0.025, "seat", (0, y0 + al / 2, top - 0.035))
-        part((aw - 0.03, al - 0.08, top - 0.06 - CABIN_FLOOR), 0.015, "base", (0, y0 + al / 2, (top - 0.06 + CABIN_FLOOR) / 2),
-             seg=1)
+    if fs.get("centre"):    # (Cybercab: 06 top view, rider guide 05, pp.10-12, ERG p.5) between the slim front seats
+        ah, al, aw = fs["centre"]   # the cushions run on as one bench (a piece across the gap at their height, on its
+        fy, zf = out["front"]       # own base), a seat-belt buckle each side at its rear; over it an armrest pad
+        sl, t = fs["slim"], fs["cushion"]   # (centre: its top over the cushions' top, length, width) from between the
+        ztop, fc, gap = zf - 0.015, fy + sl.get("front", 0.30), 2 * FRONT_X - fs["w"]  # backrests forward on one
+        bench = ztop - 0.005                # small rear support; out cups / buckles: the detail model's cup holders
+        part((gap + 0.02, fc - fy + 0.10, t - 0.02), 0.02, "seat", (0, (fc + fy - 0.12) / 2 - 0.01, bench - (t - 0.02) / 2))
+        ped = ztop - t - CABIN_FLOOR        # (on its front) and the buckles' buttons
+        if ped > 0.01:
+            part((gap - 0.02, 0.26, ped), 0.012, "base", (0, fy + 0.08, CABIN_FLOOR + ped / 2), seg=1)
+        fb = fy - 0.115 + sl["ahead"]
+        part((aw, al, 0.045), 0.018, "seat", (0, fb - 0.06 + al / 2, ztop + ah - 0.0225))
+        part((aw * 0.6, 0.05, ah - 0.03), 0.01, "base", (0, fb + 0.02, bench - 0.005 + (ah - 0.03) / 2), seg=1)
+        out["buckles"] = []
         for s in (-1, 1):
-            part((0.020, 0.035, 0.065), 0.007, "buckle", (s * (aw / 2 + 0.015), fy - 0.07, zf - 0.015 + 0.01))
+            at = (s * (gap / 2 - 0.012), fy - 0.04, bench + 0.02)
+            part((0.020, 0.035, 0.05), 0.007, "buckle", at)
+            out["buckles"].append((at[0], at[1], at[2] + 0.025))
+        out["cups"] = [(0, fc - 0.04, bench), (0, fc - 0.10, bench)]
     ry, z1 = seat_y[-1], z0 - SEAT.get("rear", 0)      # the 2nd row sits SEAT["rear"] lower (pzveh.geometry, same)
     if SEAT.get("front_only"):  # a two-seater (SEAT front_only, PassengerSeat2): the front row is the last row (`last`
         out["rear"] = out["front"]   # below: its backrests' rear; the detail model's 2nd-row mats then span nothing)
@@ -506,7 +552,8 @@ def furniture(add, opening, grow=0.0, fine=1, between=None):
     for size, at, c in ((() if grow else                # the detail model has the picture itself (detail_mesh)
                          (((0.296, 0.003, 0.026), (0, -0.0125, -0.080), "screen_back"),
                           ((0.100, 0.003, 0.160), (-0.098, -0.0125, 0.012), "console"),
-                          ((0.034, 0.003, 0.070), (-0.098, -0.0140, 0.020), "seat"),
+                          ((0.034, 0.003, 0.070), (-0.098, -0.0140, 0.020),     # the car (CABIN_CELL_MAP
+                           "screen_car" if "screen_car" in CELL_MAP else "seat"),   # screen_car: not the seats')
                           ((0.120, 0.003, 0.006), (0.050, -0.0125, 0.020), "trim"),
                           ((0.006, 0.003, 0.060), (0.110, -0.0125, 0.047), "trim")))):
         if kx != 1:
@@ -743,11 +790,12 @@ def rot_z(deg):
 
 
 def roof_console(add, rc, wv, roof):
-    """(ROOF_CONSOLE, Cybercab: rider guide 05 / p.14, no rear-view mirror) the overhead console on the headliner's
+    """(ROOF_CONSOLE, Cybercab: rider guide 05 / p.14 x1691, no rear-view mirror) the overhead console on the headliner's
     centre line from the windscreen's top back: a pod (size: width, length, thickness) along the roof (rays up onto the
-    body at its two ends: `roof`, the body FBX's verts and tris), under it two reading lamps (lamp: width, length; at
-    +-lamp_x) with the STOP button between them (stop: the bezel's width, length; the button inside it), the camera
-    housing at its front end (camera: width, length, height)."""
+    body at its two ends: `roof`, the body FBX's verts and tris), under it a capsule light across it (strip: length
+    across, width; strip_y: its centre along the pod from the pod's middle, + forward) with the STOP button in its
+    middle (stop: the button's width, length; a red triangle on it), the camera housing at its front end (camera:
+    width, length, height)."""
     from mathutils.bvhtree import BVHTree
     rb = BVHTree.FromPolygons(roof[0].tolist(), roof[1].tolist())
     mid = np.abs(wv[:, 0]) < 0.08
@@ -768,12 +816,14 @@ def roof_console(add, rc, wv, roof):
         add((v + at) @ m.T + ctr, f, c)
     put((w, ln, t), 0.012, (0, 0, 0), "pod")
     under = -t / 2
-    lw, ll = rc["lamp"]
-    for s in (-1, 1):
-        put((lw, ll, 0.006), 0.002, (s * rc["lamp_x"], 0.04, under), "lamp")
+    lw, ll, sy = rc["strip"][1], rc["strip"][0], rc.get("strip_y", 0.0)
+    v, f = cylinder(lw / 2, 0.006, 32)                         # a stadium: a cylinder's halves pulled apart (along x)
+    v[:, 0] += np.sign(v[:, 0]) * (ll - lw) / 2
+    add((v + [0, sy, under]) @ m.T + ctr, f, "lamp")
     sw_, sl = rc["stop"]
-    put((sw_, sl, 0.006), 0.003, (0, 0.04, under), "stop")
-    put((sw_ * 0.55, sl * 0.5, 0.004), 0.0015, (0, 0.04, under - 0.002), "stop_button")
+    put((sw_, sl, 0.004), 0.0015, (0, sy, under - 0.004), "stop_button")
+    v, f = cylinder(min(sw_, sl) * 0.36, 0.002, 3)             # the warning triangle, its tip forward
+    add((v @ rot_z(90).T + [0, sy, under - 0.0065]) @ m.T + ctr, f, "stop")
     cw, cl, ch = rc["camera"]
     put((cw, cl, ch), 0.008, (0, ln / 2 - cl / 2, under - ch / 2 + 0.006), "camera")
 
@@ -784,7 +834,7 @@ def detail_mesh(opening, windscreen, roof=None):
     cabin leaves out: the screen's picture, the wheel's scroll wheels and T, the dash's air vent, the console's phone
     pads, cup holders, armrest seam and rear screen, floor mats, the rear-view mirror on the windscreen (windscreen:
     its verts and tris, mesh coords) or the overhead console (ROOF_CONSOLE; roof: the body FBX's verts and tris), the
-    window switches' marks (DASH icons). UV0 = UV1 = the face's cell centre in the shared texture (pzveh.detail_uv), the
+    window switches' marks (DASH icons). UV0 = UV1 = the face's cell centre in the detail texture (pzveh.detail_uv), the
     picture's own over DETAIL_PICTURE. Checks that no coarse furniture part pokes out of its grown twin. -> object."""
     from mathutils.bvhtree import BVHTree
     V, F, C, UV, FLAT, RIB, parts = [], [], [], [], [], [], []
@@ -834,6 +884,14 @@ def detail_mesh(opening, windscreen, roof=None):
     for x, y, z in DASH.get("icons", ()):
         v, f = rbox((0.016, 0.002, 0.004), 0.0008, seg=1)
         add(v + [x, y - GROW - 0.001, z], f, "icon")
+    # SEATS front centre (Cybercab, 06 top view, rider guide p.10): two cup holders one behind the other on the bench's
+    # front (dark discs on its grown top), the buckles' buttons on their grown tops
+    for x, y, z in placed.get("cups", ()):
+        v, f = cylinder(0.022, 0.003, 24)
+        add(v + [x, y, z + GROW + 0.0005], f, "vent", flat=True)
+    for x, y, z in placed.get("buckles", ()):
+        v, f = rbox((0.012, 0.016, 0.003), 0.001, seg=1)
+        add(v + [x, y, z + GROW + 0.0005], f, "button")
     # console: two phone pads at the front, two cup holders behind them, the armrest lid's seam; the rear screen
     if DASH["console"]:
         cx, cy, cz = DASH["console"]
@@ -908,7 +966,7 @@ def detail_mesh(opening, windscreen, roof=None):
                          f"{worst[1]} ({len(coarse)} coarse parts, {len(grown)} grown)")
     print(f"DETAIL coarse furniture inside the grown: worst {worst[0] * 1000:+.2f} mm at {worst[1]}")
 
-    names = list(pv.DETAIL_RGB) + ["picture"]
+    names = list(pv.detail_cells()) + ["picture"]
     me = bpy.data.meshes.new(NAME + "_Detail")
     me.from_pydata(np.concatenate(V).tolist(), [], F)
     me.polygons.foreach_set("material_index", np.array([names.index(DETAIL_MAP.get(c, c)) for c in C], np.int64))

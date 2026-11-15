@@ -2798,15 +2798,23 @@ def pieces(car, c, shift):
         elif ang == "stow":                              # the soft top: its own strips, no slab (soft_strips)
             P, t, a, stows[pname] = soft_strips(V, T, A, sel, shift)
         else:
-            P, t, a, _ = pv.slab(V, T, A, skin, off, cab_attr("dash"), BELT_Z - shift[2], outer_extra=sel & ~skin,
-                                 by_pos=bool(C.get("SPLIT_COLOURS")))
-            if sd and C.get("DOOR_INNER"):  # (Cybercab: rider guide pp.7 / 11, ERG p.19) the inner panel's cell (cell)
-                di = C["DOOR_INNER"]         # and over the belt + dz the upper's (upper: (cell, dz)), cut on that line
-                n0, zc = int((sel & ~skin).sum() + skin.sum()), BELT_Z + di["upper"][1]
-                P, t, a, inner = cut_z(P, t, a, np.arange(n0, n0 + int(skin.sum())), zc)
-                hi = P[t[inner]].mean(1)[:, 2] > zc
-                a[inner[~hi], :, :4] = cab_attr(di["cell"])[:4]
-                a[inner[hi], :, :4] = cab_attr(di["upper"][0])[:4]
+            # V is pre-centre (soup + shift) but the slab's belt is the centred BELT_Z - zmid: every edge strip of a door
+            # (its lowest point 0.25 over the ground, the centred belt 0.145) came out the liner's, not only the window
+            # frames'; optional SLAB_BELT_PRE (Cybercab, cabin-r2: 242 of 1,163 strips over the belt on the front
+            # left door) passes the belt in V's frame. The published cars keep theirs.
+            P, t, a, _ = pv.slab(V, T, A, skin, off, cab_attr("dash"), BELT_Z - (0 if C.get("SLAB_BELT_PRE") else shift[2]),
+                                 outer_extra=sel & ~skin, by_pos=bool(C.get("SPLIT_COLOURS")))
+            if sd and C.get("DOOR_INNER"):  # (Cybercab: rider guide pp.7 / 11, ERG p.19) the inner panel's cell (cell);
+                di = C["DOOR_INNER"]         # optional upper = (cell, dz): over the belt + dz that cell, cut on that line
+                n0 = int((sel & ~skin).sum() + skin.sum())
+                inner = np.arange(n0, n0 + int(skin.sum()))
+                if "upper" in di:
+                    zc = BELT_Z + di["upper"][1]
+                    P, t, a, inner = cut_z(P, t, a, inner, zc)
+                    hi = P[t[inner]].mean(1)[:, 2] > zc
+                    a[inner[hi], :, :4] = cab_attr(di["upper"][0])[:4]
+                    inner = inner[~hi]
+                a[inner, :, :4] = cab_attr(di["cell"])[:4]
             extra = [backs(bsel, rec, 0) for bsel, rec in back_sets(sel)] + [
                 seals(V, T, skin, cab_attr("base"), gb, solid, seams and k not in skip and (*seams, k) or None,
                       full=pname in C.get("SEAL_FULL", ()))] + ([lines[k]] if k in lines else [])

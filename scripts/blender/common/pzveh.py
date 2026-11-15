@@ -996,12 +996,13 @@ def cabin_corners(rgba):
     return sizes
 
 
-# the cabin detail model (cabin.py detail_mesh; drawn only under Viewpoint, models.md 8): one texture for every car,
-# DETAIL_RGB's cells (sRGB) along its top rows, the centre screen's picture in DETAIL_PICTURE. A face of a cell has its
-# UV0 at that cell's centre (one colour at any filter). The cabin cells start from the frag's CABIN[] (vanilla's
-# view); Viewpoint lights them its own way, so they are tuned on its screenshots (calibration knob): seat from
-# CABIN[]'s 100 (a step brighter for the isometric view) to the skin corners' grey (CABIN_UV0_RGB, the door panels
-# next to it), the stitch above it to stay visible (tesla-vd-1108a: 100 read near white in the sun).
+# the cabin detail model (cabin.py detail_mesh; drawn only under Viewpoint, models.md 8): one texture for every car
+# (the Cybercab its own, detail_tex), DETAIL_RGB's cells (sRGB) along its top rows, the centre screen's picture in
+# DETAIL_PICTURE. A face of a cell has its UV0 at that cell's centre (one colour at any filter). The cabin cells start
+# from the frag's CABIN[] (vanilla's view); Viewpoint lights them its own way, so they are tuned on its screenshots
+# (calibration knob): seat from CABIN[]'s 100 (a step brighter for the isometric view) to the skin corners' grey
+# (CABIN_UV0_RGB, the door panels next to it), the stitch above it to stay visible (tesla-vd-1108a: 100 read near
+# white in the sun).
 DETAIL_TEX, DETAIL_PX, DETAIL_CELL_PX = "MinidoracatTesla_Detail", 256, 16
 DETAIL_RGB = {
     "floor": (22, 22, 24), "liner": (40, 40, 44), "seat": (52, 52, 56), "base": (30, 30, 32), "dash": (58, 58, 62),
@@ -1011,20 +1012,31 @@ DETAIL_RGB = {
 DETAIL_PICTURE = (0.0, 0.0, 1.0, 0.625)    # UV (u0, v0, u1, v1): 256 x 160 texels at the bottom
 
 
+def detail_cells():
+    """DETAIL_RGB and the car's own cells after it (optional DETAIL_RGB_EXTRA, Cybercab: the red of the buckles' buttons
+    and the STOP sign; they go in its own texture, DETAIL_TEX below)."""
+    return {**DETAIL_RGB, **CAR.get("DETAIL_RGB_EXTRA", {})}
+
+
+def detail_tex():
+    """The detail texture's name: the shared one, or the car's own (optional DETAIL_TEX, with its extra cells)."""
+    return CAR.get("DETAIL_TEX", DETAIL_TEX)
+
+
 def detail_uv(cell):
-    """UV0 of a DETAIL_RGB cell's centre (rows of DETAIL_PX / DETAIL_CELL_PX cells from the top)."""
-    k, per = list(DETAIL_RGB).index(cell), DETAIL_PX // DETAIL_CELL_PX
+    """UV0 of a detail cell's centre (rows of DETAIL_PX / DETAIL_CELL_PX cells from the top)."""
+    k, per = list(detail_cells()).index(cell), DETAIL_PX // DETAIL_CELL_PX
     return ((k % per + 0.5) * DETAIL_CELL_PX / DETAIL_PX, 1 - (k // per + 0.5) * DETAIL_CELL_PX / DETAIL_PX)
 
 
 def detail_texture():
-    """Write TEX_DIR/DETAIL_TEX.png: the cells, and in DETAIL_PICTURE the centre screen as seen from the seat (u 0 =
+    """Write TEX_DIR/detail_tex().png: the cells, and in DETAIL_PICTURE the centre screen as seen from the seat (u 0 =
     the car's left, the driver's side): the car view on the driver's third, the map with the route and the position
     arrow on the rest, the dock along the bottom. Rows bottom-up (Blender's)."""
     n = DETAIL_PX
     img = np.zeros((n, n, 4))
     img[..., 3] = 1.0
-    for c, rgb in DETAIL_RGB.items():
+    for c, rgb in detail_cells().items():
         u, v = detail_uv(c)
         x, y, h = int(u * n), int(v * n), DETAIL_CELL_PX // 2
         img[y - h:y + h, x - h:x + h, :3] = np.array(rgb) / 255
@@ -1059,7 +1071,7 @@ def detail_texture():
     for i in range(7):
         fill((np.abs(X - (40 + 29 * i)) < 4) & (np.abs(Y - 8) < 4), (150, 152, 158))
     img[int(v0 * n):int(v0 * n) + h, int(u0 * n):int(u0 * n) + w, :3] = pic
-    save_png(img, os.path.join(TEX_DIR, DETAIL_TEX + ".png"), "detail")
+    save_png(img, os.path.join(TEX_DIR, detail_tex() + ".png"), "detail")
 
 
 
