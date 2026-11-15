@@ -357,9 +357,10 @@ def load_source():
             # without its own flip check (Blender bmesh_decimate_collapse.cc), so on an asymmetric source it can drag
             # an open edge's vertex across a panel and tear the skin; keep_boundary prices those collapses out.
             # DECIMATE_SNAP (Cybercab, grid): vertices the collapse left that far off the surface go back onto it;
-            # DECIMATE_HOLD_UNDER (Cybercab): the flat underside's outline held too
+            # DECIMATE_HOLD_UNDER (Cybercab): the flat underside's outline held too; DECIMATE_THIN (Cybercab): the held
+            # seams' near-straight runs thinned (pzveh.thin_seams)
             pv.decimate(o, target, C.get("DECIMATE_KEEP_BOUNDARY", False), C.get("DECIMATE_SNAP"),
-                        C.get("DECIMATE_HOLD_UNDER", False))
+                        C.get("DECIMATE_HOLD_UNDER", False), C.get("DECIMATE_THIN"))
         for under, over, gap in C.get("DROP_COVERED", ()):
             if under == name:
                 drop_covered(o, [obs[names.index(n)] for n in over], gap)
@@ -978,10 +979,12 @@ def classify(car, names, sizes):
     for o, (lp, rp) in C.get("SIDE_PARTS", {}).items():  # one source object holding both doors of a pair (Model X)
         m = obj == o
         part[m] = np.where(cen[m, 0] < 0, PARTS.index(lp), PARTS.index(rp))
+    panel_of = None
     if C.get("PANEL_PARTS"):   # a source whose faces carry their panel (prep_cybercab.py `panel`): {panel: part name},
         pa = np.empty(n, np.int64)  # panels not listed stay on the body (Cybercab: the hood, no lid; the port lid)
         me.attributes["panel"].data.foreach_get("value", pa)
         part = np.array([PARTS.index(C["PANEL_PARTS"][k]) if k in C["PANEL_PARTS"] else 0 for k in range(pa.max() + 1)])[pa]
+        panel_of = pa
     # door hardware, frames and panes: whole components inside a door (2.5 cm slack), cut components face by face. A
     # strip that runs past its one door's edge (the belt mouldings end under the B-pillar and quarter trim) goes face
     # by face too: whole on the body it was a black bar across the far window, seen through the roof glass with the
@@ -1061,11 +1064,24 @@ def classify(car, names, sizes):
     (gy, gz, gx), (ry, rz, rx) = GUARDS["front"], GUARDS["rear"]
     put(paint & (part == 0) & (cen[:, 1] > gy) & (cen[:, 2] < gz) & (np.abs(cen[:, 0]) > gx), "GuardLH", "GuardRH")
     put(paint & (part == 0) & (cen[:, 1] < ry) & (cen[:, 2] < rz) & (np.abs(cen[:, 0]) > rx), "GuardLT", "GuardRT")
+    # HEAD_TAIL (y front, y rear; Cybercab): the rest of the body ahead of / behind those (paint and the bumpers' dark
+    # trim; lamps and glass take their own zones below) in the Head / Tail zones, vanilla's front and rear ends (damage
+    # with EngineDoor / TruckBed like the guards: BaseVehicle.java checkDamage 0 / 4, vehicle_common.frag.h colZone1 /
+    # 2); left in Roof they never show damage (no part sets Roof's)
+    if C.get("HEAD_TAIL"):
+        hy, ty = C["HEAD_TAIL"]
+        free = (part == 0) & (zone == ZN.index("Roof"))
+        put(free & (cen[:, 1] > hy), "Head", "Head")
+        put(free & (cen[:, 1] < ty), "Tail", "Tail")
     for k, (l, r) in {1: ("DoorLH", "DoorLH"), 2: ("DoorRH", "DoorRH"), 3: ("DoorLT", "DoorLT"),
                       4: ("DoorRT", "DoorRT")}.items():
         put(part == k, l, r)
     put(part == 5, "Boot", "Boot")
     put(part == 6, "Hood", "Hood")
+    # PANEL_ZONES {panel: zone} (Cybercab: its hood on the body in Head, damage with EngineDoor; not Hood, whose
+    # uninstall flag (checkDamage2 EngineDoor 6, doBlack) would open a hole in the body when the part comes off)
+    for k, z in C.get("PANEL_ZONES", {}).items():
+        put(paint & (panel_of == k), z, z)
     put(head, "LightLH", "LightRH")
     # tail lights (lit with the headlights, HeadlightRear* parts: BaseVehicle.java:5894-5919) on the bar, the blade and
     # the corner lamps' outboard ends; brake lights (Stop, :5920-5934) on their inboard part
@@ -1528,6 +1544,41 @@ def seam_shade(car, c, pos, paint):
     return f
 
 
+def groove_ink(pos, paint, col):
+    """GROOVE_INK=dict(file, lines, w, k, reach, rgb) (Cybercab): a prep seam groove inside one part (the hood's:
+    the hood stays on the body) drawn on the skin as an even line along the prep's own seam path (`file` in TMP,
+    `lines` its polylines, metres, prep frame = pre-centre / K). The groove's faces are 5 mm wide, under a texel
+    (5.8 mm), so their dark material and the groove's baked AO on the paint beside it drew a ragged line, 2-6 mm off
+    the path and of uneven width. Texels within `reach` (grid) of the path, paint or the groove's material colour
+    `rgb`, take the paint from beyond reach round them (fill), then every texel within `w` (grid) darkens to 1 - k at
+    the path. pos: pre-centre texel positions. -> (factor H x W, fill H x W)."""
+    from mathutils.kdtree import KDTree
+    gi = C["GROOVE_INK"]
+    src = json.load(open(os.path.join(TMP, gi["file"]), encoding="utf-8"))
+    pts = []
+    for name in gi["lines"]:
+        p = np.array(src[name], float) * pv.K
+        for a, b in zip(p[:-1], p[1:]):
+            pts.append(a + (b - a) * np.linspace(0, 1, 2 + int(np.linalg.norm(b - a) / 0.001))[:, None])
+    pts = np.concatenate(pts)
+    kd = KDTree(len(pts))
+    for i, p in enumerate(pts):
+        kd.insert(p, i)
+    kd.balance()
+    lo, hi = pts.min(0) - gi["reach"], pts.max(0) + gi["reach"]
+    ys, xs = np.nonzero((pos > lo).all(-1) & (pos < hi).all(-1))
+    d = np.array([kd.find(pos[y, x])[2] for y, x in zip(ys, xs)])
+    groove = np.abs(col[ys, xs] - np.array(gi["rgb"]) / 255).max(1) < 0.03
+    f = np.ones(paint.shape, np.float32)
+    fill = np.zeros(paint.shape, bool)
+    g = (d < gi["reach"]) & (groove | paint[ys, xs])
+    fill[ys[g], xs[g]] = True
+    near = d < gi["w"]
+    f[ys[near], xs[near]] = 1 - gi["k"] * (1 - d[near] / gi["w"])
+    print("GROOVE_INK points", len(pts), "filled", int(fill.sum()), "inked", int(near.sum()))
+    return f, fill
+
+
 def chart_ramp(anchors, n=32):
     """official_ramp for a paint with no design-studio render (PAINT_CHART; Roadster: the 2013 colour chart's 120 px
     cars): its (dark, median, bright) sRGB, the chart's 5-15 %, 40-60 % and 85-95 % luminance bands, at quantiles 0.10,
@@ -1555,7 +1606,7 @@ def textures(car, c, shift=0.0):
         layers["rail"] = np.repeat(c["rail"][:, None], 3, 1)
     if c["tone"][:, 0].any():
         layers["tone"] = c["tone"]
-    if C.get("SEAM_SHADE") or C.get("RECESS"):   # each corner's position, 0..1 over the bbox: texel positions
+    if C.get("SEAM_SHADE") or C.get("RECESS") or C.get("GROOVE_INK"):   # each corner's position, 0..1 over the bbox
         co = pv.mesh_co(car)
         lo_, span = co.min(0), np.ptp(co, 0)
         lv = np.empty(len(car.data.loops), np.int64)
@@ -1571,6 +1622,7 @@ def textures(car, c, shift=0.0):
     pos = b["pos"][..., :3] * span + lo_ if "pos" in b else None
     seam = seam_shade(car, c, pos, paint) if C.get("SEAM_SHADE") else None
     rec = recess(pos + shift, paint & (b["recess"][..., 0] > 0.5)) if "recess" in b else None
+    gink, gfill = groove_ink(pos + shift, paint, col) if C.get("GROOVE_INK") else (None, None)
     # badges flat: their strokes overlap at the joints, coplanar faces whose AO rays start on each other (dark specks)
     shade = np.where(b["badge"][..., 0] > 0.25, 1.0, 0.55 + 0.45 * ao)
     chrome = b["badge"][..., 0] > 0.75
@@ -1610,7 +1662,7 @@ def textures(car, c, shift=0.0):
     for p, code in pv.PAINTS:
         # the finish flag: per paint where the car sets one (PAINT_ALPHAS: 253 stainless, 252 satin film)
         pa = C["PAINT_ALPHAS"].get(p, C["PAINT_ALPHA_DEFAULT"]) / 255 if C.get("PAINT_ALPHAS") else PAINT_ALPHA
-        alpha = np.where(paint & ~badge, pa, 1.0)[..., None]
+        alpha = np.where((paint if gfill is None else paint | gfill) & ~badge, pa, 1.0)[..., None]
         ramp = pv.official_ramp(code) if code else chart_ramp(C["PAINT_CHART"][p]) if C.get("PAINT_CHART") else \
             pv.film_ramp(C["FILMS"][p], mix=C.get("FILM_MIX", {}).get(p))
         xp = (np.arange(len(ramp)) + 0.5) / len(ramp)
@@ -1631,6 +1683,12 @@ def textures(car, c, shift=0.0):
         s[paint] = np.clip(a_ * np.stack([np.interp(q, xp, ramp[:, i]) for i in range(3)], -1) / pv.GAIN + b_, 0, 1)
         if seam is not None:
             s[paint] *= seam[paint][:, None]
+        if gink is not None:               # GROOVE_INK: its band takes the paint beyond it (a band in its own UV
+            pm_ = (paint & ~gfill).astype(np.float32)   # island: the median paint), then the line
+            den_ = pv.box_blur(pm_, 6)
+            got = np.stack([pv.box_blur(s[..., i] * pm_, 6) for i in range(3)], -1) / np.maximum(den_, 1e-6)[..., None]
+            s[gfill] = np.where((den_ > 0.05)[..., None], got, np.median(s[keep], 0))[gfill]
+            s[paint | gfill] *= gink[paint | gfill][:, None]
         # (CHROME_RGB: one chrome on every paint, Model X's T on its black nose band; else light on dark paints)
         s[chrome] = np.array(C.get("CHROME_RGB") or CHROME[int(np.median(s[paint].max(-1)) >= 0.55)]) / 255
         if INK:                            # BADGE_INK (Model Y L): its badge light on a dark paint, dark on a light

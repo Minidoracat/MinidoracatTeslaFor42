@@ -146,74 +146,156 @@ def keep_faces(ob, mask):
     bm.free()
 
 
-def decimate(ob, target, keep_boundary=False, snap=None, hold_under=False):
+def thin_seams(bm, tol, max_len):
+    """Merge each seam vertex (on exactly two seam edges: open, or between two `panel` values) into the nearer of its
+    two seam neighbours when it lies within tol of the line through them and they are at most max_len apart, unless
+    that would turn a face round it over (Cybercab: the prep's cut put a seam vertex every 1-2 mm, so the held seams
+    kept them all and the door pieces' edge strips and seals ran to 4,730 edges round the trunk lid). -> merged."""
+    pl = bm.faces.layers.int.get("panel")
+
+    def seam(e):
+        return e.is_boundary or (pl is not None and len({f[pl] for f in e.link_faces}) > 1)
+    n = 0
+    for _ in range(8):                      # rounds of non-touching merges, welded at once (a merge per op was minutes)
+        bm.normal_update()
+        weld, touched = {}, set()
+        for v in sorted(bm.verts, key=lambda v: (round(abs(v.co.x), 6), v.co.y, v.co.z, v.co.x)):   # mirror pairs
+            if v in touched:
+                continue
+            se = [e for e in v.link_edges if seam(e)]
+            if len(se) != 2:
+                continue
+            a, b = (e.other_vert(v) for e in se)
+            ab = b.co - a.co
+            if ab.length > max_len or ab.length < 1e-9 or a in touched or b in touched:
+                continue
+            t = (v.co - a.co).dot(ab) / ab.length_squared
+            if not 0 < t < 1 or (a.co + ab * t - v.co).length > tol:
+                continue
+            tgt = a if (v.co - a.co).length <= (v.co - b.co).length else b
+            ring = {w for f in v.link_faces for w in f.verts}
+            if ring & touched:
+                continue
+            ok = True
+            for f in v.link_faces:
+                if tgt in f.verts:
+                    continue
+                p = [tgt.co if w is v else w.co for w in f.verts]
+                nn = (p[1] - p[0]).cross(p[2] - p[0])
+                long_ = max((p[i] - p[i - 1]).length for i in range(3))
+                # not over, and not a sliver (height under 1/12 of its longest side: a texel-thin UV strip whose
+                # baked AO drew dark streaks across the hood)
+                if nn.length < 1e-12 or nn.normalized().dot(f.normal) < 0.7 or nn.length / long_ < long_ / 12:
+                    ok = False
+                    break
+            if ok:
+                weld[v] = tgt
+                touched |= ring
+        if not weld:
+            break
+        bmesh.ops.weld_verts(bm, targetmap=weld)
+        n += len(weld)
+    return n
+
+
+def decimate(ob, target, keep_boundary=False, snap=None, hold_under=False, thin=None):
     """Collapse to target triangles (X symmetric). keep_boundary: open-edge vertices are left out of the decimate
     modifier's vertex group at factor 1000, so collapsing their edges costs that much more and the outline stays; so are
     the vertices between two faces of different `panel` (a face attribute: Cybercab's prep, its seams inside an object).
     hold_under (with keep_boundary): so is the outline of the flat underside (faces facing straight down): without it
     the collapse emptied the Cybercab's floor pan into a few car-long triangles from bumper to bumper, up to 17 cm
-    over the cabin floor. snap (a distance, optional): every vertex the collapse left farther than that off the mesh's
-    own surface goes back onto it (Cybercab: with its seams held, a few dozen collapses stood 1-19 cm off, spikes out
-    of the roof and sills)."""
+    over the cabin floor. thin (tol, max_len, optional): then thin_seams. snap (a distance, optional): every vertex
+    the collapse left farther than that off the mesh's own surface goes back onto it (Cybercab: with its seams held, a
+    few dozen collapses stood 1-19 cm off, spikes out of the roof and sills); then a face whose middle or edge middles
+    still stand 8 x snap off the surface (a long triangle across a notch: the Cybercab's bumper corners, 6-10 cm
+    spikes) gets the fine mesh's vertices under it held too and the collapse runs again from the fine mesh, up to 3
+    more times."""
     from mathutils.bvhtree import BVHTree
     if snap:                                # the mesh as it was, and each face's smooth normal (its corners' mean)
         me = ob.data
         ref = BVHTree.FromPolygons([v.co.copy() for v in me.vertices], [p.vertices[:] for p in me.polygons])
+        ref_f = [p.vertices[:] for p in me.polygons]
+        ref_co = np.array([v.co[:] for v in me.vertices])
         cn = np.empty(len(me.loops) * 3, np.float32)
         me.corner_normals.foreach_get("vector", cn)
         ls = np.array([p.loop_start for p in me.polygons])
         ref_n = np.add.reduceat(cn.reshape(-1, 3), ls)
-        ref_n /= np.linalg.norm(ref_n, axis=1, keepdims=True)
+        ref_n /= np.maximum(np.linalg.norm(ref_n, axis=1, keepdims=True), 1e-12)
+        fine = me.copy()
     select_only(ob)
-    for _ in range(3):                      # ratio is on triangles; repeat until within 3 %
-        n = tris(ob)
-        if n <= target * 1.03:
-            break
-        m = ob.modifiers.new("dec", "DECIMATE")
-        m.decimate_type = "COLLAPSE"
-        m.ratio = target / n
-        m.use_symmetry, m.symmetry_axis = True, "X"
-        if keep_boundary:
+    hold = set()                            # fine-mesh vertex positions held after a pass left faces off the surface
+    for attempt in range(4 if snap else 1):
+        if attempt:                         # back to the fine mesh in the same datablock (callers hold it)
             bm = bmesh.new()
-            bm.from_mesh(ob.data)
-            edge = {v.index for e in bm.edges if e.is_boundary for v in e.verts}
-            pl = bm.faces.layers.int.get("panel")
-            if pl is not None:
-                edge |= {v.index for e in bm.edges if len({f[pl] for f in e.link_faces}) > 1 for v in e.verts}
-            if hold_under:
-                bm.normal_update()
-                edge |= {v.index for e in bm.edges if len({f.normal.z < -0.99 for f in e.link_faces}) > 1
-                         for v in e.verts}
+            bm.from_mesh(fine)
+            bm.to_mesh(ob.data)
             bm.free()
-            if "interior" in ob.vertex_groups:
-                ob.vertex_groups.remove(ob.vertex_groups["interior"])
-            ob.vertex_groups.new(name="interior").add([i for i in range(len(ob.data.vertices)) if i not in edge],
-                                                      1.0, "REPLACE")
-            m.vertex_group, m.vertex_group_factor = "interior", 1000.0
-        bpy.ops.object.modifier_apply(modifier=m.name)
-    bm = bmesh.new()
-    bm.from_mesh(ob.data)
-    bmesh.ops.triangulate(bm, faces=bm.faces[:])
-    bmesh.ops.dissolve_degenerate(bm, edges=bm.edges, dist=0.0005)
-    # a collapse can fold two triangles onto the same three vertices; the FBX importer keeps one of them (readback
-    # was 4 short), and the pair z-fights in game
-    seen, twins = set(), []
-    for f in bm.faces:
-        k = frozenset(v.index for v in f.verts)
-        if k in seen:
-            twins.append(f)
-        seen.add(k)
-    bmesh.ops.delete(bm, geom=twins, context="FACES_ONLY")
-    if snap:
-        off = [(v, loc) for v in bm.verts for loc in (ref.find_nearest(v.co)[0],) if (loc - v.co).length > snap]
-        for v, loc in off:
-            v.co = loc
-        print("DECIMATE snap", ob.name, len(off), "vertices back onto the surface")
-    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
-    bm.to_mesh(ob.data)
-    bm.free()
+        for _ in range(3):                  # ratio is on triangles; repeat until within 3 %
+            n = tris(ob)
+            if n <= target * 1.03:
+                break
+            m = ob.modifiers.new("dec", "DECIMATE")
+            m.decimate_type = "COLLAPSE"
+            m.ratio = target / n
+            m.use_symmetry, m.symmetry_axis = True, "X"
+            if keep_boundary:
+                bm = bmesh.new()
+                bm.from_mesh(ob.data)
+                edge = {v.index for e in bm.edges if e.is_boundary for v in e.verts}
+                pl = bm.faces.layers.int.get("panel")
+                if pl is not None:
+                    edge |= {v.index for e in bm.edges if len({f[pl] for f in e.link_faces}) > 1 for v in e.verts}
+                if hold_under:
+                    bm.normal_update()
+                    edge |= {v.index for e in bm.edges if len({f.normal.z < -0.99 for f in e.link_faces}) > 1
+                             for v in e.verts}
+                if hold:
+                    edge |= {v.index for v in bm.verts if tuple(np.round(v.co[:], 6)) in hold}
+                bm.free()
+                if "interior" in ob.vertex_groups:
+                    ob.vertex_groups.remove(ob.vertex_groups["interior"])
+                ob.vertex_groups.new(name="interior").add([i for i in range(len(ob.data.vertices)) if i not in edge],
+                                                          1.0, "REPLACE")
+                m.vertex_group, m.vertex_group_factor = "interior", 1000.0
+            bpy.ops.object.modifier_apply(modifier=m.name)
+        bm = bmesh.new()
+        bm.from_mesh(ob.data)
+        bmesh.ops.triangulate(bm, faces=bm.faces[:])
+        bmesh.ops.dissolve_degenerate(bm, edges=bm.edges, dist=0.0005)
+        # a collapse can fold two triangles onto the same three vertices; the FBX importer keeps one of them (readback
+        # was 4 short), and the pair z-fights in game
+        seen, twins = set(), []
+        for f in bm.faces:
+            k = frozenset(v.index for v in f.verts)
+            if k in seen:
+                twins.append(f)
+            seen.add(k)
+        bmesh.ops.delete(bm, geom=twins, context="FACES_ONLY")
+        if thin:
+            print("DECIMATE thin", ob.name, thin_seams(bm, *thin), "seam vertices merged")
+        bad = []
+        if snap:
+            off = [(v, loc) for v in bm.verts for loc in (ref.find_nearest(v.co)[0],) if (loc - v.co).length > snap]
+            for v, loc in off:
+                v.co = loc
+            for f in bm.faces:
+                t = [v.co for v in f.verts]
+                probes = [sum(t, Vector()) / len(t)] + [(t[i] + t[i - 1]) / 2 for i in range(len(t))]
+                if max(ref.find_nearest(p)[3] for p in probes) > 8 * snap:
+                    bad.append(probes)
+            print("DECIMATE snap", ob.name, len(off), "vertices back onto the surface,", len(bad), "faces off it",
+                  f"(pass {attempt + 1})")
+        bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+        bm.to_mesh(ob.data)
+        bm.free()
+        if not bad or attempt == 3:
+            break
+        for probes in bad:                  # the fine faces under the off face's middle and edge middles
+            for p in probes:
+                hold.update(tuple(np.round(ref_co[i], 6)) for i in ref_f[ref.find_nearest(p)[2]])
     if snap:   # the collapse kept a few of the fine mesh's corner normals and gave the rest their big triangle's: each
         me = ob.data   # corner takes the old surface's normal just inside its own face (a crease's own side)
+        bpy.data.meshes.remove(fine)
         me.update()
         co = mesh_co(ob)
         lv = np.empty(len(me.loops), np.int64)
@@ -1049,7 +1131,8 @@ def geometry(body, zmid, wl, r, tire_w, belt_z, doors_y, port_yz, extra_areas=()
     port = (-hit.x / S, (port_yz[1] - zmid) / S, port_yz[0] / S)
     belt = belt_z - zmid
     front_y, bpil_y, rear_y = doors_y
-    # SEAT front_only (a two-seater): the front row only, PassengerSeat2, the head on template MinidoracatTeslaCore;
+    # SEAT front_only (a two-seater): the front row only, PassengerSeat2, the head on template MinidoracatTeslaCore or
+    # MinidoracatTeslaCoreNoFrunk;
     # doors_y's third value is then where the cabin ends (cabin.py's ring cut), no door
     two = SEAT.get("front_only")
     if two and SEAT.get("third"):
