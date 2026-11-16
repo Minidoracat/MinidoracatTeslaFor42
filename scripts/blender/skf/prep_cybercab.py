@@ -289,7 +289,8 @@ LAMP = (((0.0, 0.582), (0.3, 0.582), (0.4, 0.593), (0.572, 0.604), (0.730, 0.622
          (1.08, 0.690)),
         (1.01, 0.683),
         ((0.0, 0.571), (0.3, 0.572), (0.4, 0.573), (0.480, 0.574), (0.649, 0.582), (0.702, 0.584), (0.771, 0.585),
-         (0.822, 0.593), (0.870, 0.598), (0.920, 0.607), (0.970, 0.624), (1.08, 0.653)), 0.8)
+         (0.822, 0.593), (0.870, 0.598), (0.920, 0.611), (0.970, 0.628), (1.08, 0.657)), 0.8)
+# (a10: 0.920 / 0.970 / 1.08 each 4 mm higher; a9's rounder corner put |x| 0.78 at q ~0.93, read 0.610 for 0.616)
 # round 12 (erg p24 x222 / x230, x253): a short seam from the head lamp's outer end back along the fender's side to the
 # arch's lip, rising a little: (output y, z) of its two ends, 8 mm short of the lamp's end cut, 2 cm short of the arch
 FENDER_SEAM = ((1.875, 0.685), (1.690, 0.712))
@@ -544,8 +545,15 @@ NOSE_SET = dict(s=((0.0, 0.078), (0.27, 0.078), (0.285, 0.066), (0.30, 0.055), (
                    (0.763, 0.022), (0.80, 0.010), (0.85, 0.0)),
                 lip=(0.239, 0.0, 0.0, 0.22, 0.010), gate=((0.0, 1.87), (0.62, 1.87), (0.72, 1.76), (1.0, 1.76)),
                 gw=0.13, corner=(0.5, 0.55, 0.10, 0.50, 0.06), fade=(0.08, 0.30),
-                lip_s=((0.0, 0.0349), (0.1, 0.0323), (0.2, 0.0364), (0.3, 0.0434), (0.35, 0.0409), (0.4, 0.0319),
-                       (0.45, 0.0179), (0.5, 0.0105), (0.55, 0.0025), (0.62, 0.0), (0.7, 0.0)))
+                # (lip_s round 13 a10, Main: refit every 2.5 cm so the lip's front (z 0.232) runs a concave curve in
+                # plan, front/lipprof.py; a9's 0.1-spaced table left a flat at |x| 0.35-0.45 and a step at 0.5, up to
+                # 6.7 mm off it)
+                lip_s=((0.000, 0.0349), (0.025, 0.0341), (0.050, 0.0331), (0.075, 0.0326), (0.100, 0.0335),
+                       (0.125, 0.0349), (0.150, 0.0364), (0.175, 0.0376), (0.200, 0.0386), (0.225, 0.0392),
+                       (0.250, 0.0392), (0.275, 0.0386), (0.300, 0.0378), (0.325, 0.0366), (0.350, 0.0352),
+                       (0.375, 0.0334), (0.400, 0.0311), (0.425, 0.0280), (0.450, 0.0238), (0.475, 0.0181),
+                       (0.500, 0.0114), (0.525, 0.0068), (0.550, 0.0023), (0.575, 0.0009), (0.600, 0.0004),
+                       (0.625, 0.0), (0.700, 0.0)))
 # (corner: s times 1 - k on the corners (|x| from x0 over xw) under z1 (over zw): 02 left edge rows 660-700, the far
 # corner at |x| 0.63-0.80, z 0.38-0.43, 8-10 px inside; higher up 02's rows 540-600 want it too, but 01 side rows
 # 620-640 then stand 10-16 px proud: left)
@@ -555,8 +563,10 @@ NOSE_SET = dict(s=((0.0, 0.078), (0.27, 0.078), (0.285, 0.066), (0.30, 0.055), (
 # bottom (02's lower edge 6-9 px low) and its top 0.5 cm over v2's (01 side row 860 8 px proud at |x| 0.38). Its top
 # LIP_LIFT (|x|, m: the field read that much lower under z 0.28 ahead of output y 2.15), its underside chamfered up to
 # LIP_EDGE's bottom zb (|x|, z) at its front y (|x|, output y), rising `slope` toward it (02 sees down 0.17-0.2)
-LIP_LIFT = ((0.0, 0.009), (0.1, 0.009), (0.2, 0.004), (0.3, -0.007), (0.4, -0.003), (0.5, -0.005), (0.6, -0.004),
-            (0.7, 0.0))
+# (round 13 a10, Main: LIP_LIFT one smooth dip, falling to 0.3 and rising from 0.4 on; was +9 / +4 / -7 / -3 / -5 / -4 mm
+# at 0.1-0.6, a wave along the lip's top)
+LIP_LIFT = ((0.0, 0.009), (0.1, 0.0088), (0.2, 0.0035), (0.3, -0.005), (0.4, -0.005), (0.5, -0.0045), (0.6, -0.0035),
+            (0.7, -0.001), (0.75, 0.0))
 LIP_EDGE = dict(y=((0.0, 2.295), (0.1, 2.293), (0.2, 2.278), (0.3, 2.257), (0.4, 2.247), (0.5, 2.236), (0.6, 2.200),
                    (0.684, 2.130), (0.735, 2.080)),
                 zb=((0.0, 0.230), (0.1, 0.230), (0.2, 0.225), (0.3, 0.219), (0.4, 0.222), (0.5, 0.220), (0.735, 0.220)),
@@ -721,10 +731,18 @@ def plan_w(y):
     return np.interp(y, PLAN[:, 0], PLAN[:, 1], left=0.0, right=0.0)
 
 
+_HOOD_Y = np.arange(0.90, 2.10, 0.001)
+_HOOD_Z = np.interp(_HOOD_Y, SIDE_TOP[::-1, 0], SIDE_TOP[::-1, 1])
+_HOOD_Z[_HOOD_Y > 2.086] = np.interp(2.086, SIDE_TOP[::-1, 0], SIDE_TOP[::-1, 1])   # (flat ahead of the edge)
+for _ in range(2):                                     # two 2.1 cm box passes: a 4 cm triangle
+    _HOOD_Z = np.convolve(np.pad(_HOOD_Z, 10, mode="edge"), np.ones(21) / 21, "valid")
+
+
 def zsil(y):
-    """The side silhouette's top over the hood (01 side)."""
-    hm = (SIDE_TOP[:, 0] > 0.9) & (SIDE_TOP[:, 0] < 2.09)
-    return np.interp(y, SIDE_TOP[hm, 0][::-1], SIDE_TOP[hm, 1][::-1])
+    """The side silhouette's top over the hood (01 side), SIDE_TOP's line averaged over +-2 cm (round 13 a10, Main:
+    its kinks ran across the hood as bands, front34's high views, and its two knots at the leading edge 1.2 cm apart,
+    2.074 / 2.086, were a step along it that the mesh drew as a saw tooth; a spline through the knots folded back)."""
+    return np.interp(y, _HOOD_Y, _HOOD_Z)
 
 
 def nose_y(ax, y):
@@ -843,11 +861,12 @@ def hood_cap(ax, y):
     silhouette (read where nose_y slides it) falling HOOD_VALLEY to the seam; the fender rising from the same valley
     to the silhouette's height at its crest, then rolling down, FENDER_DROP at FENDER_X. The valley is a smooth
     maximum (radius CREASE): a kink off the mesh's edges would shade as a saw tooth."""
-    zc, V, xs = zsil(nose_y(ax, y)), interp_tab(HOOD_VALLEY, y), interp_tab(HOOD_SEAM, y)
+    zc, V, xs = zsil(nose_y(ax, y)), interp_tab(_smooth_tab(HOOD_VALLEY), y), interp_tab(HOOD_SEAM, y)
     xc = xs + np.maximum(FENDER_CREST * (FENDER_X - xs), 0.05)    # a narrower crest twists into a saddle (02)
     hood = zc - V * (ax / xs) ** 2 - interp_tab(HOOD_COWL, y) * (1 - np.minimum(ax / xs, 1) ** 2)
     u = np.clip((ax - xc) / np.maximum(FENDER_X - xc, 0.01), 0.0, 1.3)
-    fender = np.where(ax < xc, zc - V * ((xc - ax) / (xc - xs)) ** 2, zc - interp_tab(FENDER_DROP, y) * u ** 2)
+    fender = np.where(ax < xc, zc - V * ((xc - ax) / (xc - xs)) ** 2,
+                      zc - interp_tab(_smooth_tab(FENDER_DROP), y) * u ** 2)
     return smax(hood, fender, CREASE)
 
 
@@ -1021,9 +1040,11 @@ class Field:
         d = d + it["depth"] * (ss((xi - x) / 0.06) * ss((z - it["z"][0]) / 0.006) * ss((it["z"][1] - z) / 0.006)
                                * ss((y - it["y"]) / 0.04))
         # the nose's lip: its underside chamfered up to its front's bottom (LIP_EDGE), off the corners past |x| 0.72
+        # (round 13 a10: eased off over 3 cm, a C1 ramp; a hard turn there was a crease at the black's corner, front34)
         le = LIP_EDGE
+        t = np.clip(ax - 0.72, 0, None)
         d = smax(d, interp_tab(_LIP["zb"], ax) - z0 - le["slope"] * (interp_tab(_LIP["y"], ax) - yo)
-                 - 5.0 * np.maximum(2.05 - yo, 0) - 5.0 * np.maximum(ax - 0.72, 0), 0.003)
+                 - 5.0 * np.maximum(2.05 - yo, 0) - 5.0 * np.where(t < 0.03, t * t / 0.06, t - 0.015), 0.003)
         # tail: the tail lamp's dark middle set in (01 rear, 03); the rear overhang's underside up inboard (REAR_FLOOR)
         qt = wrap_q(x, y, TAIL_C, front=False)
         yt = y - tail_bow(x)                    # the tail's own y: its features keep their place on the bow
