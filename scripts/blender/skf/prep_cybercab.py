@@ -1375,25 +1375,35 @@ def grooves(f, v, t, mat, pan):
 
 def region_loop(v, ue, fa, fb, sel):
     """The outline of the faces sel (edges between them and the rest) chained into its longest closed loop,
-    resampled to ~1 cm (metres)."""
+    resampled to ~1 cm (metres). Walked edge by edge: where the region touches itself at a vertex (round 12: the side
+    red's rear end at the crease's foot) the walk runs on through it (by vertex it stopped there, half the loop lost)."""
     a, b = sel[fa], np.where(fb >= 0, sel[np.maximum(fb, 0)], False)
+    edges = ue[a != b]
     nb = {}
-    for i, j in ue[a != b]:
-        nb.setdefault(i, []).append(j)
-        nb.setdefault(j, []).append(i)
-    seen, best = set(), []
-    for s in nb:
-        if s in seen:
-            continue
-        loop, prev, cur = [s], None, s
-        seen.add(s)
+    for k, (i, j) in enumerate(edges):
+        nb.setdefault(i, []).append(k)
+        nb.setdefault(j, []).append(k)
+    used, best = np.zeros(len(edges), bool), []
+
+    def walk(s):
+        loop, cur = [s], s
         while True:
-            nxt = [k for k in nb[cur] if k != prev and k not in seen]
+            nxt = [k for k in nb[cur] if not used[k]]
             if not nxt:
-                break
-            prev, cur = cur, nxt[0]
-            seen.add(cur)
+                return loop
+            used[nxt[0]] = True
+            i, j = edges[nxt[0]]
+            cur = j if i == cur else i
             loop.append(cur)
+
+    for s in nb:
+        loop, n = walk(s), 0
+        while n < len(loop):            # a lobe left at a pinch: walked from it and spliced in there
+            if any(not used[k] for k in nb[loop[n]]):
+                loop = loop[:n] + walk(loop[n]) + loop[n + 1:]
+            n += 1
+        if len(loop) > 1 and loop[-1] == s:
+            loop.pop()                      # (closed: back at its start)
         best = loop if len(loop) > len(best) else best
     p = v[best]
     keep = [0]
