@@ -204,8 +204,10 @@ SECTION = dict(
                               # rounded ridge behind the C pillar; round 12 over the front fender 0.050 / 0.055 ->
                               # 0.035: 01 front's fender top rolls in sharper)
 )
-# wheel houses (01: the arch openings 241 / 257 px about the hubs), inner wall, lip rounding
-ARCH = dict(front=dict(R=0.421, x_in=0.50, lip=0.012), rear=dict(R=0.448, x_in=0.50, lip=0.016))
+# wheel houses (01: the arch openings 241 / 257 px about the hubs), inner wall, lip rounding; fl: the opening's front
+# lower quarter that much smaller (round 12, CybercabFit r11n: the rear arch's front-lower edge 2.2 cm too far forward,
+# 01 side 10.9 / 03 6.0 px -> 0.7 / 1.2 px with it; its top and rear as they were)
+ARCH = dict(front=dict(R=0.421, x_in=0.50, lip=0.012, fl=0.0), rear=dict(R=0.448, x_in=0.50, lip=0.016, fl=0.022))
 # front lower intake (01 front, 02: the black trapezoid under the plate, grille inside), recessed: half width at
 # its top and bottom, z range, depth
 INTAKE = dict(x=(0.60, 0.52), z=(0.292, 0.337), y=1.95, depth=0.035)   # 01 front: grille under the black's top
@@ -256,13 +258,17 @@ SPOILER = dict(z=((0.0, 0.882), (1.13, 0.882)), top=0.930,
                # the strip standing out of it from 4 mm above its lower edge (a step at the edge itself: a grazing cut
                # and a bright line under the strip, 03)
 SPOILER_LAMPS = (0.045, 0.250)       # |x| of the lighter (lens) segments in the strip either side of the camera (03)
-TAIL_LAMP = ((0.0, 0.538), (1.13, 0.538)), 0.252, 0.006, 0.675   # bar top z by q, |x| of its dark middle, middle
-               # recess, |x| past which the lip's corner behind the crease is black. Round 11 (01 side 0.488-0.538,
-               # 03, 07): red only on the side ahead of the crease, the face from the crease in to the dark middle a
-               # light grey lens (the reversing lens, unlit), the lip's corner bulge black
+TAIL_LAMP = ((0.0, 0.538), (0.55, 0.538), (0.97, 0.514), (1.13, 0.514)), 0.252, 0.006, 0.675   # bar top z by q, |x|
+               # of its dark middle, middle recess, |x| past which the lip's corner behind the crease is black. Round 11
+               # (01 side 0.488-0.538, 03, 07): red only on the side ahead of the crease, the face from the crease in to
+               # the dark middle a light grey lens (the reversing lens, unlit), the lip's corner bulge black. Round 12
+               # (CybercabFit r11n, 03 / x59 triangulated, 01 side's black_rear at y -1.86 alike): at the corner (the
+               # crease's foot, q ~0.97) and along the side 2.4 cm lower, official (0.658, -1.940, 0.514): the lip's
+               # face under the corner's shelf (TAIL_CREASE step 0.512-0.524; at 0.517 a gold sliver of the lip's
+               # face under the shelf); the face's middle as it was (the grey's inner end within 0.5 cm)
 # for the game's texture (cybercab_lines.json tail_lamp_red_left): the red side segment, from y[0] (01 side: exposed
 # from -1.794) back to the crease (output frame), band z from the bumper's top to the lamp's top
-TAIL_RED_GAME = dict(y=(-1.794, -1.98), z=(0.488, 0.538))
+TAIL_RED_GAME = dict(y=(-1.794, -1.98), z=(0.488, 0.514))
 # region outlines boundary_off() may miss without failing prep: (|x|, y, z), radius, largest miss (m). The lamp's
 # lens where its bottom leaves the bar's (round 11, LAMP: q ~0.675): two cuts 6 mm apart crossing at a shallow angle
 # under a 6.5 mm cell, one vertex 0.7 mm off (round 8-10 the bar's rising outer end, z 0.698 / 0.683, alike).
@@ -520,6 +526,15 @@ def interp_tab(tab, x):
     return np.interp(x, tab[o, 0], tab[o, 1])
 
 
+def arch_dc(nm, y, z):
+    """Distance outside the wheel arch's circle (ARCH / TYRES), its front-lower quarter smaller by ARCH fl."""
+    a, ty = ARCH[nm], TYRES[nm]
+    dy, dz = y - ty["y"], z - ty["r"]
+    d = np.hypot(dy, dz)
+    c = np.maximum(d, 1e-9)
+    return d - a["R"] + a["fl"] * ss((dy / c - 0.5) / 0.4) * ss((0.75 - dz / c) / 0.4)
+
+
 def plan_w(y):
     return np.interp(y, PLAN[:, 0], PLAN[:, 1], left=0.0, right=0.0)
 
@@ -611,8 +626,7 @@ class Field:
         """Wheel houses (negative inside the carved volume)."""
         d = np.full(len(x), 1e3)
         for nm, a in ARCH.items():
-            ty = TYRES[nm]
-            dc = np.hypot(y - ty["y"], z - ty["r"]) - a["R"]
+            dc = arch_dc(nm, y, z)
             d = np.minimum(d, smax(dc, a["x_in"] - x, 0.02))
         return d
 
@@ -662,8 +676,7 @@ class Field:
         cap = smax(d, z - hood_cap(x, np.clip(y, 1.08, 2.09)) - (1.0 * yb + 3.0 * yb ** 2), 0.004)
         d = np.where(y < 2.09, cap, d)
         for nm, a in ARCH.items():
-            ty = TYRES[nm]
-            dc = np.hypot(y - ty["y"], z - ty["r"]) - a["R"]
+            dc = arch_dc(nm, y, z)
             d = smax(d, -smax(dc, a["x_in"] - x, 0.02), a["lip"])
         it = INTAKE
         xi = it["x"][1] + (it["x"][0] - it["x"][1]) * np.clip((z - it["z"][0]) / (it["z"][1] - it["z"][0]), 0, 1)
