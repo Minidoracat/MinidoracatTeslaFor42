@@ -239,8 +239,9 @@ CAR = dict(
     GROOVE_INK=dict(file="cybercab_lines.json", lines=("hood",), w=round(0.006 * K, 4), k=0.6,
                     reach=round(0.012 * K, 4), rgb=(58, 58, 60)),
     # by day: the lower body, bumpers and seam grooves dark grey (01: sill p50 50), the wheel house liners and B pillar
-    # black, the light bar white, the tail lamps' side runs red, the plate light grey, the side markers amber
-    MAT_RGB={"Trim": (58, 58, 60), "Liner": (24, 24, 26), "Glass": (26, 30, 34), "HeadLight": (226, 228, 232),
+    # black, the light bar grey (02 unlit: its upper half ~150 and the lens ~60-75 by paint ~240, scaled to our paint;
+    # it read white), the tail lamps' side runs red, the plate light grey, the side markers amber
+    MAT_RGB={"Trim": (58, 58, 60), "Liner": (24, 24, 26), "Glass": (26, 30, 34), "HeadLight": (128, 130, 138),
              "TailLight": (122, 30, 36), "Plate": (206, 208, 212), "Marker": (196, 122, 44)},
     # (pane, box lo, hi, colour, object): the tail face's grey runs and the spoiler's paler runs (01 rear: p50 112 /
     # 118 on the bar's 90); the boxes on each object's own range (convert.py classify RECOLOR), the spoiler's one box a
@@ -248,6 +249,11 @@ CAR = dict(
     RECOLOR=(("Glass", _g(-0.01, -0.01, -0.01), _g(0.01, 0.01, 0.01), (112, 112, 116), "Glass_ReverseLens"),
              ("Glass", _g(-0.01, -0.01, -0.01), _g(-0.29, 0.01, 0.01), (118, 118, 120), "Glass_SpoilerLamp"),
              ("Glass", _g(0.29, -0.01, -0.01), _g(0.01, 0.01, 0.01), (118, 118, 120), "Glass_SpoilerLamp")),
+    # r13: the paint notch's ledge under the spoiler's lip (faces up, z 0.79-0.80 m) lit like the roof by the game's
+    # light from above, a pale band under the black lip (official erg-p04 / 01 rear: shadow there): a darker gold of its
+    # own (convert.py classify CARBON; the Cybercab has one paint)
+    CARBON=dict(rgb=(96, 78, 54), zones=(dict(lo=_g(-0.70, -2.20, 0.785), hi=_g(0.70, -1.995, 0.81), of="Paint",
+                                              facing=((0, 0, 1), (0.5, 1.0))),)),
     GLASS_MATS=("Glass",),
     GLASS_OPAQUE=("Glass_ReverseLens", "Glass_SpoilerLamp", "RearCamera"),
     GLASS_BACKS=("WinLH", "WinLT", "WinRH", "WinRT"),
@@ -317,7 +323,6 @@ CAR = dict(
     GATE_COMPS=(),
     GATE_CUT_COMPS=(),
     PART_OBJS={},
-    CARBON=None,
     PANES={"Body": {"WinT", "WinLT", "WinRT"}, "DoorFrontLeft": {"WinLH"}, "DoorFrontRight": {"WinRH"},
            "TrunkDoor": set()},
     # badges: none drawn (the prep has the front camera, plate and grille)
@@ -416,9 +421,10 @@ CAR = dict(
     # behind it through the door glass; at ae38316 a gold band)
     PILLAR_COVER=dict(pairs=(("WinT", "WinLH"), ("WinT", "WinRH")), gap=round(0.15 * K, 4), depth=0.5, cell="bed_rib"),
     # the slot between the windscreen's foot and the dash closed (convert.py cowl_shelf): a dark strip from the glass's
-    # bottom edge back and down at 45 degrees to the cabin within 25 cm. r11 (the same commit) widened it; through it,
-    # from behind and the sides, the ground showed below (iso N/W/NW/NE/SW)
-    COWL_SHELF=dict(reach=round(0.25 * K, 4), cell="liner"),
+    # bottom edge back and down at 45 degrees to the cabin within 40 cm. r11 (the same commit) widened it; through it,
+    # from behind and the sides, the ground showed below (iso N/W/NW/NE/SW). r13 moved the foot 15 cm forward (under
+    # the cowl trim, y 1.352 m on the centre line): the ray passes under the dash to the firewall, 32-37 cm (r11: 25 cm)
+    COWL_SHELF=dict(reach=round(0.40 * K, 4), cell="liner"),
     # cabin.py: the parts' names -> palette cells (MinidoracatTesla_vehicle.frag CABIN; the detail model's: DETAIL_RGB
     # and DETAIL_RGB_EXTRA): the seats near black (rider guide 05 / p.7 x742; bed_wall_lo, a cell no other Cybercab
     # part takes: seat_head finds the seats by it), their seams darker, the dash's layers (the silver band appended to

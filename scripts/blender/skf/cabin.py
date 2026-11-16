@@ -987,7 +987,9 @@ def detail_mesh(opening, windscreen, roof=None):
     wv, wt = windscreen
     rc = pv.CAR.get("ROOF_CONSOLE")
     if rc:
-        roof_console(add, rc, wv, roof)
+        # the windscreen's own vertices: the body glass's all reach the quarter lights, whose top beside the bar's ends
+        # stood over the windscreen's once the roof curved down to the sides (r13: the bar 32 cm back, through the roof)
+        roof_console(add, rc, wv[np.unique(wt)], roof)
     else:
         # rear-view mirror: 6.5 cm under the windscreen's top on the centre line (no higher than 33 cm over the dash:
         # Model X's windscreen runs over the heads), turned 12 deg to the driver, on a stem square to the glass

@@ -49,47 +49,47 @@ module Base
         textureDamage2Shell = Vehicles/Veh_Damage2,
         textureRust = Vehicles/Veh_Rust,
         template = PassengerSeat2,
-        extents = 0.8152 0.5731 2.0638,
-        physicsChassisShape = 0.8152 0.5731 2.0638,
+        extents = 0.8045 0.5736 2.0637,
+        physicsChassisShape = 0.8045 0.5736 2.0637,
         centerOfMassOffset = 0.0000 0.1978 0.0000,
-        shadowExtents = 0.8152 2.0638,
+        shadowExtents = 0.8045 2.0637,
         shadowOffset = 0.0 0.0,
         useChassisPhysicsCollision = false,
         physics box
         {
-            offset = 0.0000 0.0941 0.0000,
-            extents = 0.7987 0.3658 2.0308,
+            offset = 0.0000 0.0939 0.0000,
+            extents = 0.7880 0.3657 2.0307,
         }
         physics box
         {
             offset = 0.0000 0.3807 -0.1769,
-            extents = 0.6593 0.2074 0.6885,
+            extents = 0.6593 0.2078 0.6885,
         }
         wheel FrontLeft
         {
             front = true,
-            offset = 0.3352 -0.2501 0.6325,
+            offset = 0.3352 -0.2504 0.6323,
             radius = 0.1541,
             width = 0.1776,
         }
         wheel FrontRight
         {
             front = true,
-            offset = -0.3352 -0.2501 0.6325,
+            offset = -0.3352 -0.2504 0.6323,
             radius = 0.1541,
             width = 0.1776,
         }
         wheel RearLeft
         {
             front = false,
-            offset = 0.2973 -0.2301 -0.5929,
+            offset = 0.2973 -0.2303 -0.5930,
             radius = 0.1741,
             width = 0.1858,
         }
         wheel RearRight
         {
             front = false,
-            offset = -0.2973 -0.2301 -0.5929,
+            offset = -0.2973 -0.2303 -0.5930,
             radius = 0.1741,
             width = 0.1858,
         }
@@ -112,12 +112,12 @@ module Base
             showPassenger = true,
             position inside
             {
-                offset = 0.1484 -0.3234 -0.0033,
+                offset = 0.1484 -0.3236 -0.0034,
                 rotate = 0.0 0.0 0.0,
             }
             position outside
             {
-                offset = 0.5724 -0.3520 -0.0033,
+                offset = 0.5671 -0.3522 -0.0034,
                 rotate = 0.0 0.0 0.0,
                 area = SeatFrontLeft,
             }
@@ -127,68 +127,68 @@ module Base
             showPassenger = true,
             position inside
             {
-                offset = -0.1484 -0.3234 -0.0033,
+                offset = -0.1484 -0.3236 -0.0034,
                 rotate = 0.0 0.0 0.0,
             }
             position outside
             {
-                offset = -0.5724 -0.3520 -0.0033,
+                offset = -0.5671 -0.3522 -0.0034,
                 rotate = 0.0 0.0 0.0,
                 area = SeatFrontRight,
             }
         }
         area Engine
         {
-            xywh = 0.0000 1.2681 0.8152 0.4725,
+            xywh = 0.0000 1.2681 0.8045 0.4725,
         }
         area TruckBed
         {
-            xywh = 0.0000 -1.2681 0.8152 0.4725,
+            xywh = 0.0000 -1.2681 0.8045 0.4725,
         }
         area GasTank
         {
-            xywh = 0.6438 -0.9448 0.4725 0.4725,
+            xywh = 0.6385 -0.9526 0.4725 0.4725,
         }
         area SeatFrontLeft
         {
-            xywh = 0.6438 0.0846 0.4725 0.6142,
+            xywh = 0.6385 0.0845 0.4725 0.6142,
         }
         area SeatFrontRight
         {
-            xywh = -0.6438 0.0846 0.4725 0.6142,
+            xywh = -0.6385 0.0845 0.4725 0.6142,
         }
         area TireFrontLeft
         {
-            xywh = 0.6438 0.6325 0.4725 0.4725,
+            xywh = 0.6385 0.6323 0.4725 0.4725,
         }
         area TireFrontRight
         {
-            xywh = -0.6438 0.6325 0.4725 0.4725,
+            xywh = -0.6385 0.6323 0.4725 0.4725,
         }
         area TireRearLeft
         {
-            xywh = 0.6438 -0.5929 0.4725 0.4725,
+            xywh = 0.6385 -0.5930 0.4725 0.4725,
         }
         area TireRearRight
         {
-            xywh = -0.6438 -0.5929 0.4725 0.4725,
+            xywh = -0.6385 -0.5930 0.4725 0.4725,
         }
         attachment trailer
         {
-            offset = 0.0000 -0.2426 -1.0484,
+            offset = 0.0000 -0.2428 -1.0483,
             rotate = 0.0 0.0 0.0,
             zoffset = -1.0,
         }
         attachment trailerfront
         {
-            offset = 0.0000 -0.2426 1.0484,
+            offset = 0.0000 -0.2428 1.0483,
             rotate = 0.0 0.0 0.0,
             zoffset = 1.0,
         }
         /* charge port: real Cybercab: the rear bumper's driver side corner under the trunk lid (ERG p.6, rider guide 01 rear, 07) */
         attachment chargeport
         {
-            offset = 0.2836 -0.1698 -0.9448,
+            offset = 0.2952 -0.1708 -0.9526,
             rotate = 0.0 0.0 0.0,
         }
         part DoorFrontLeft

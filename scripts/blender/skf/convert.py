@@ -2792,11 +2792,12 @@ def pillar_cover(V, T, glass, pane, cab_attr):
 
 
 def cowl_shelf(V, T, glass, pane, solid, cab_attr):
-    """COWL_SHELF (optional, Cybercab) {reach, cell}: a strip from the windscreen's (WinT) bottom edge back (against
-    the pane's normal) and down at 45 degrees to the first face of solid (the cabin: the body's trim at the glass's
-    foot stopped it at once; level, it passed over the dash's top beside the middle) within `reach`, facing up and
-    back: the slot between the glass's foot and the dash's front opened into the nose, whose walls face the wheel
-    wells (Cybercab r11: through the windscreen's foot from behind and the sides, the ground showed along it)."""
+    """COWL_SHELF (optional, Cybercab) {reach, cell}: a strip from the windscreen's (WinT) bottom edge back (level,
+    against the edge's way out of the pane) and down at 45 degrees to the first face of solid (the cabin: the body's
+    trim at the glass's foot stopped it at once; level, it passed over the dash's top beside the middle) within
+    `reach`, facing up and back: the slot between the glass's foot and the dash's front opened into the nose, whose
+    walls face the wheel wells (Cybercab r11: through the windscreen's foot from behind and the sides, the ground
+    showed along it)."""
     cs = C["COWL_SHELF"]
     sa = glass & (pane == GLASS_ZONES.index("WinT"))
     pid = np.unique(np.round(V / 1e-5).astype(np.int64), axis=0, return_inverse=True)[1].ravel()
@@ -2806,23 +2807,36 @@ def cowl_shelf(V, T, glass, pane, solid, cab_attr):
     ed = np.concatenate([tri[:, [0, 1, 2]], tri[:, [1, 2, 0]], tri[:, [2, 0, 1]]])   # edge, third corner
     _, inv, cnt = np.unique(np.sort(pid[ed[:, :2]], 1), axis=0, return_inverse=True, return_counts=True)
     open_ = cnt[inv.ravel()] == 1
-    tris, n_edges = [], 0
+    bottom, way = [], {}
     for (i, j, k), n in zip(ed[open_], np.tile(fn, (3, 1))[open_]):
         p0, p1 = V[i], V[j]
         t = np.cross(p1 - p0, n)
         t = t / np.linalg.norm(t) * np.sign(t @ ((p0 + p1) / 2 - V[k]))   # in the pane's plane, out of it
-        dh = np.array([0.0, 0.0, -1.0]) + n[2] * n          # downhill in the pane's plane (its foot lies nearly level)
-        if t @ dh < 0.7 * np.linalg.norm(dh):   # the bottom edge only (not the sides, the top)
+        # out of the pane forward, level: the bottom edge only (not the sides, the top). r13's foot lies level for its
+        # last 6 cm (the cowl's smooth arc), where the pane's downhill (and normal's back) direction was undefined
+        th = np.array([t[0], t[1], 0.0]) / max(math.hypot(t[0], t[1]), 1e-12)
+        if th[1] < 0.7:
             continue
-        n_edges += 1
-        d = (Vector((-n[0], -n[1], 0.0)).normalized() + Vector((0, 0, -1))).normalized()
-        hits = [solid.ray_cast(Vector(p) + Vector((0, 0, -1e-3)), d, cs["reach"])[0] for p in (p0, p1)]
-        if None in hits:
+        bottom.append((i, j))
+        for v in (pid[i], pid[j]):
+            way[v] = way.get(v, 0) + th
+    # one ray per corner (its edges' mean way out): per edge, a shared corner's two rays parted and the strips
+    # between them let the nose through (r13: iso NE / SW 36 rays each)
+    hit = {}
+    for v, th in way.items():
+        p = V[np.flatnonzero(pid == v)[0]]
+        d = (Vector((-th[0], -th[1], 0.0)).normalized() + Vector((0, 0, -1))).normalized()
+        h = solid.ray_cast(Vector(p) + Vector((0, 0, -1e-3)), d, cs["reach"])[0]
+        hit[v] = None if h is None else np.array(h) + (0, 0, 1e-3)
+    tris = []
+    for i, j in bottom:
+        p0, p1, h0, h1 = V[i], V[j], hit[pid[i]], hit[pid[j]]
+        if h0 is None or h1 is None:
             continue
-        h0, h1 = (np.array(h) + (0, 0, 1e-3) for h in hits)
         for t3 in ((p0, p1, h1), (p0, h1, h0)):
             nt = np.cross(t3[1] - t3[0], t3[2] - t3[0])
             tris.append(t3 if nt[2] > 0 else (t3[0], t3[2], t3[1]))
+    n_edges = len(bottom)
     P = np.array(tris, float).reshape(-1, 3, 3)
     n = np.cross(P[:, 1] - P[:, 0], P[:, 2] - P[:, 0])
     n /= np.maximum(np.linalg.norm(n, axis=1, keepdims=True), 1e-12)
