@@ -285,7 +285,7 @@ BAR = (0.009, 0.011, 0.0045)        # light bar: its top at least this far under
 # residuals <= 1.8 px: z 0.582 / 0.584 / 0.585 / 0.590 / 0.596 / 0.604 / 0.616 at |x| 0.55 ... 0.78 by 0.04), eased
 # in from the middle's at 0.45; from 0.66 out the knots over the targets by what the mesh read under them (a8 first
 # try: 3-7.5 mm low, the q taken where Fit's surface y sat, the model's surface there further back)
-LAMP = (((0.0, 0.582), (0.3, 0.582), (0.4, 0.593), (0.572, 0.610), (0.730, 0.622), (0.866, 0.643), (0.961, 0.665),
+LAMP = (((0.0, 0.582), (0.3, 0.582), (0.4, 0.593), (0.572, 0.604), (0.730, 0.622), (0.866, 0.643), (0.961, 0.665),
          (1.08, 0.690)),
         (1.01, 0.683),
         ((0.0, 0.571), (0.3, 0.572), (0.4, 0.573), (0.480, 0.574), (0.649, 0.582), (0.702, 0.584), (0.771, 0.585),
@@ -656,7 +656,7 @@ _y = np.r_[TIP_A - 0.001, np.arange(-2.13, 1.6151, 0.01)]
 PLAN = np.c_[_y, x92_w(np.maximum(out_y(_y), TAIL_TIP + TAIL_BOW[0])) + np.interp(_y, *PLAN_PAD.T)]
 if NOSE == "B":
     _y = np.r_[np.arange(1.62, 2.12, 0.005), np.arange(2.12, 2.1405, 0.0025), 2.141]
-    PLAN = np.concatenate([PLAN, np.c_[_y, np.interp(out_y(2.141) - out_y(_y), *np.array(NOSE_PLAN_B).T)]])
+    PLAN = np.concatenate([PLAN, np.c_[_y, np.interp(out_y(2.141) - out_y(_y), *_smooth_tab(NOSE_PLAN_B).T)]])
     PLATE = (PLATE[0], PLATE[1] + NOSE_B["plate_dz"], PLATE[2] + NOSE_B["plate_dz"], PLATE[3])
 else:
     PLAN = np.concatenate([PLAN, PLAN_NOSE_A])
@@ -733,6 +733,23 @@ def nose_y(ax, y):
     return y + NOSE_ROUND * (ax / 0.80) ** 2 * ss((y - 1.97) / 0.06)
 
 
+_S_FACE = _smooth_tab([k for k in NOSE_SET["s"] if k[0] >= 0.30])
+
+
+def s_face(z):
+    """NOSE_SET s by z: linear under the lip's top (0.30), eased over 0.30-0.33 into a smooth curve through its knots
+    (round 13 a9, Main: the linear table's kinks were horizontal light / dark bands across the nose's face, front34;
+    a hard switch at 0.30 left a crease the cuts found, BOUNDARY_OFF 1 at |x| 0.67)."""
+    lin = interp_tab(NOSE_SET["s"], z)
+    return lin + (interp_tab(_S_FACE, z) - lin) * ss((z - 0.30) / 0.03)
+
+
+# the lip's tables by |x| as smooth curves through their knots (round 13 a9, Main: linear, their kinks were dents and
+# a wavy edge along the black lip, front34 / 02)
+_LIP = dict(s=_smooth_tab(NOSE_SET["lip_s"]), lift=_smooth_tab(LIP_LIFT), y=_smooth_tab(LIP_EDGE["y"]),
+            zb=_smooth_tab(LIP_EDGE["zb"]))
+
+
 def nose_wy(ax, y, z):
     """Build y the nose is read at (NOSE_SET): ahead by s(z) in the output frame, gated in toward the nose; the face,
     the leading edge and the plan's corners stand back on the corners, the lip by its own table."""
@@ -741,10 +758,10 @@ def nose_wy(ax, y, z):
     g = np.asarray(ns["gate"], float)
     yo = out_y(y)
     k, cx, cw, cz, czw = ns["corner"]
-    face = (interp_tab(ns["s"], z) * ss((ax - ns["fade"][0]) / ns["fade"][1])
+    face = (s_face(z) * ss((ax - ns["fade"][0]) / ns["fade"][1])
             * (1 - k * ss((ax - cx) / cw) * ss((cz - z) / czw)))
     w = ss((z - z0 + dz * ss((ax - x0) / xw)) / wz)
-    s = (face * w + interp_tab(ns["lip_s"], ax) * (1 - w)) * ss((yo - np.interp(z, g[:, 0], g[:, 1])) / ns["gw"])
+    s = (face * w + interp_tab(_LIP["s"], ax) * (1 - w)) * ss((yo - np.interp(z, g[:, 0], g[:, 1])) / ns["gw"])
     return in_y(yo + s)
 
 
@@ -983,7 +1000,7 @@ class Field:
     def raw(self, p):
         rise = roof_rise(np.abs(p[:, 0]), p[:, 1], p[:, 2])
         ax, yo, z0 = np.abs(p[:, 0]), out_y(p[:, 1]), p[:, 2]
-        zl = z0 - interp_tab(LIP_LIFT, ax) * ss((yo - 2.15) / 0.05) * ss((0.28 - z0) / 0.03)   # (the lip's top: LIP_LIFT)
+        zl = z0 - interp_tab(_LIP["lift"], ax) * ss((yo - 2.15) / 0.05) * ss((0.28 - z0) / 0.03)   # (the lip's top)
         p = np.column_stack([p[:, 0], body_wy(ax, p[:, 1], zl), zl])   # (round 13)
         x, y, z = np.abs(p[:, 0]), p[:, 1], p[:, 2]
         d1, d2, hard = self.parts(p)
@@ -1005,7 +1022,7 @@ class Field:
                                * ss((y - it["y"]) / 0.04))
         # the nose's lip: its underside chamfered up to its front's bottom (LIP_EDGE), off the corners past |x| 0.72
         le = LIP_EDGE
-        d = smax(d, interp_tab(le["zb"], ax) - z0 - le["slope"] * (interp_tab(le["y"], ax) - yo)
+        d = smax(d, interp_tab(_LIP["zb"], ax) - z0 - le["slope"] * (interp_tab(_LIP["y"], ax) - yo)
                  - 5.0 * np.maximum(2.05 - yo, 0) - 5.0 * np.maximum(ax - 0.72, 0), 0.003)
         # tail: the tail lamp's dark middle set in (01 rear, 03); the rear overhang's underside up inboard (REAR_FLOOR)
         qt = wrap_q(x, y, TAIL_C, front=False)
@@ -1195,9 +1212,10 @@ def black_top(ax, y):
 
 def lamp_top(ax, y):
     """Top of the head lamp's light bar (LAMP[0], a smooth curve through its knots), kept under the hood's leading
-    edge (BAR[0]; a smooth minimum: a kink is a corner in its cuts)."""
+    edge (BAR[0]; a smooth minimum: a kink is a corner in its cuts; round 13 a9 radius 0.004 -> 0.012 with LAMP[0]'s
+    0.572 knot 0.610 -> 0.604: the bar's top met the edge at |x| 0.44 and ran along its dip to 0.54, a bend on 02)."""
     e = hood_cap(ax, np.clip(y, 1.09, 2.08)) - BAR[0]
-    return -smax(-e, -interp_tab(_smooth_tab(LAMP[0]), wrap_q(ax, y, NOSE_C)), 0.004)
+    return -smax(-e, -interp_tab(_smooth_tab(LAMP[0]), wrap_q(ax, y, NOSE_C)), 0.012)
 
 
 def lens_bottom(ax, y):
@@ -1206,8 +1224,10 @@ def lens_bottom(ax, y):
 
 
 def bar_bottom(ax, y):
-    """Bottom of the light bar: BAR[1] under its top, or the lamp's bottom where that is higher (no lens there)."""
-    return np.maximum(lens_bottom(ax, y), lamp_top(ax, y) - BAR[1])
+    """Bottom of the light bar: the lamp's bottom on the middle, eased over q 0.30-0.52 to BAR[1] under its top (round
+    13 a9: the larger of the two turned a corner at |x| 0.33 where the dark lens starts under the bar, 02)."""
+    lb, w = lens_bottom(ax, y), ss((wrap_q(ax, y, NOSE_C) - 0.30) / 0.22)
+    return np.maximum(lb, lb + (lamp_top(ax, y) - BAR[1] - lb) * w)
 
 
 def door_polygon():
