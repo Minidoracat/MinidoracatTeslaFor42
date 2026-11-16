@@ -472,6 +472,12 @@ if NOSE == "B":
     PLATE = (PLATE[0], PLATE[1] + NOSE_B["plate_dz"], PLATE[2] + NOSE_B["plate_dz"], PLATE[3])
 else:
     PLAN = np.concatenate([PLAN, PLAN_NOSE_A])
+# round 12: behind the rear doors a 3 cm Gaussian over the plan (x92's knots and PLAN_PAD's, linear between: their
+# slope steps up to 0.25 -> 0.5 in 1.2 cm shaded the side ahead of the crease as upright bands, 03 / rear 3/4); at
+# most 3.5 mm off, the held corner (TAIL_BOW) untouched
+_m = (PLAN[:, 0] > in_y(np.array([TAIL_TIP + TAIL_BOW[0]]))[0]) & (PLAN[:, 0] < -1.0)
+_k = np.exp(-0.5 * (np.arange(-9, 10) / 3.0) ** 2)
+PLAN[_m, 1] = np.convolve(np.pad(PLAN[:, 1], 9, mode="edge"), _k / _k.sum(), "valid")[_m]
 
 
 def poly_sdf(poly, py, pz, chunk=20000):
@@ -673,9 +679,10 @@ class Field:
         aft = ss((-2.00 - yt) / 0.03) * ss((1.0 - qt) / 0.08)
         zb = interp_tab(SPOILER["z"], qt)
         b0, bs = SPOILER["bevel"]
-        # (round 11: on the face only, out to the crease: on the side ahead of it a 6 mm groove under the strip's end)
+        # (round 11: on the face only, out to the crease; round 12 faded in over 2 cm inboard of it: at 6 mm its end
+        # under the strip's end shaded as a dark notch down the crease, 03 / rear 3/4)
         d = d + (aft * bs * CREASE * np.logaddexp(0, (z - b0) / CREASE) * ss((zb + 0.016 - z) / 0.012)
-                 * ss((d1 - d2) / 0.006))
+                 * ss((d1 - d2) / 0.020))
         lt = interp_tab(TAIL_LAMP[0], qt)
         rb = np.maximum(interp_tab(REAR_BLACK, qt), 0.502)   # (round 11: the black's top went under the lip's tip;
         # the recess stays over it, the tip at full length)
@@ -1035,7 +1042,8 @@ def classify(f, v, t):
     pan[door] = np.where(x[door] < 0, 1, 2)
     tg = s["trunk_y"] & s["trunk_x"] & ~s["tail_top"] & ~liner & ~glass & ~s["black"]   # (round 11: the black trim
     # behind the rear arch went up with the tailgate, CybercabCar)
-    pan[tg] = 3
+    pan[tg | spoil] = 3              # (round 12: the strip whole, out to the creases: split at the seam's |x| its two
+    # black pieces met in a groove ring over the strip's ends, 03 / rear 3/4; now gold | black, no groove)
     hood = ~s["cowl"] & s["hood_x"] & ~s["hood_z"] & (mat == 0)
     pan[hood] = 4
     port = aft & ~s["port_x0"] & s["port_x1"] & ~s["port_z0"] & s["port_z1"]
