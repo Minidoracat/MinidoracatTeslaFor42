@@ -307,7 +307,7 @@ T.Specs = {
         -- side view door panel median by convert.py's formula (s + 0.47, v + 0.05) as a stand-in; convert.py build
         -- writes the skin's own. Same order and append-only rules as above.
         colors = {
-            { name = "Gold", h = 0.104, s = 0.888, v = 0.868 },
+            { name = "Gold", h = 0.104, s = 0.888, v = 0.869 },
         },
     },
 }

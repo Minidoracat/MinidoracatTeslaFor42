@@ -250,10 +250,14 @@ CAR = dict(
              "TailLight": (122, 30, 36), "Plate": (206, 208, 212), "Marker": (196, 122, 44)},
     # (pane, box lo, hi, colour, object): the tail face's grey runs and the spoiler's paler runs (01 rear: p50 112 /
     # 118 on the bar's 90); the boxes on each object's own range (convert.py classify RECOLOR), the spoiler's one box a
-    # side: the rear camera's glass between them (|x| < 0.01) stays dark
+    # side: the rear camera's glass between them (|x| < 0.01) stays dark. The head lamps' dots (the plate's material)
+    # dark grey unlit, in their dark lens (02 unlit: lens p10-p90 31-78; lit they take the lights texture as before);
+    # the plate keeps its colour (its own boxes miss it)
     RECOLOR=(("Glass", _g(-0.01, -0.01, -0.01), _g(0.01, 0.01, 0.01), (112, 112, 116), "Glass_ReverseLens"),
              ("Glass", _g(-0.01, -0.01, -0.01), _g(-0.29, 0.01, 0.01), (118, 118, 120), "Glass_SpoilerLamp"),
-             ("Glass", _g(0.29, -0.01, -0.01), _g(0.01, 0.01, 0.01), (118, 118, 120), "Glass_SpoilerLamp")),
+             ("Glass", _g(0.29, -0.01, -0.01), _g(0.01, 0.01, 0.01), (118, 118, 120), "Glass_SpoilerLamp"),
+             ("Plate", _g(-0.01, -0.01, -0.01), _g(0.01, 0.01, 0.01), (84, 84, 88), "LampDots_Left"),
+             ("Plate", _g(-0.01, -0.01, -0.01), _g(0.01, 0.01, 0.01), (84, 84, 88), "LampDots_Right")),
     # the shadow under the spoiler's duck lip (official 01 rear: 0.30 of the face under the lip, 0.90 at the fold),
     # by the texels' height between the lip's black face and the notch's ledge (convert.py lip_shade: both from the
     # shell); r13's CARBON box on the ledge's faces drew a brown line as ragged as the collapsed triangles
