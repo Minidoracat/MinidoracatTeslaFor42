@@ -460,8 +460,8 @@ def furniture(add, opening, grow=0.0, fine=1, between=None):
         part((w, bt, bb), 0.025, "seat", (cx, front - bt / 2, foot + bb / 2),
              cuts=(4 if bg else 2, 0, 18 if bg else 8 if sh else 0), tilt=rec, shoulder=sh,
              bulge=((0, *s["seams"], 1), bg) if bg else None, thin=bt - s.get("back_top", bt), wing=s.get("wing"))
-        # the headrest `back` behind the backrest's front, leaning `up` forward about its foot's front, which then goes
-        # where the recline puts it
+        # the headrest `back` behind the backrest's front (negative: ahead of it), leaning `up` forward about its foot's
+        # front, which then goes where the recline puts it
         hf = np.array([0.0, front - back, foot + bb + gap])
         mv = (hf - [0, rec[0], rec[1]]) @ rot_x(rec[2]).T + [0, rec[0], rec[1]] - hf
         part((w * w0, d0, hh), 0.035, "seat", (cx, hf[1] - d0 / 2, hf[2] + hh / 2), cuts=(0, 0, 6), taper=1 - w1 / w0,

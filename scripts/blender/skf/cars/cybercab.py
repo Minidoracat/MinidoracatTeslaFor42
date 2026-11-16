@@ -169,9 +169,11 @@ CAR = dict(
     SEAT=dict(x=0.27, h=0.384, z=-0.222, back=(0.16,), out=0.30, front_only=True),
     # scripts/seat_anim.py POSES: the shared front pose sat up 4 deg (Bip01 21, the shared 25) to the recline-29
     # backrest, the thighs 4 deg less down (-6, the shared -10: the feet stay where they were), and the hands from the
-    # wheel to the lap (no steering wheel): upper arms down 35 put both hands on the thighs' middle
+    # wheel to the lap (no steering wheel): upper arms down 35 put both hands on the thighs' middle; the neck bent 20
+    # deg forward (a reclined rider's head stays level: the face 1 deg up of vanilla Bob_IdleDriving's, it was 21),
+    # which takes the back of the head and the helmets off the headrest so that it stands where ERG p.22 has it
     SEAT_POSE={"front": [("Bip01", 21.0), ("Bip01_L_Thigh", -6.0), ("Bip01_R_Thigh", -6.0),
-                         ("Bip01_L_UpperArm", -35.0), ("Bip01_R_UpperArm", -35.0)]},
+                         ("Bip01_L_UpperArm", -35.0), ("Bip01_R_UpperArm", -35.0), ("Bip01_Neck", -20.0)]},
     BODY_W_Z=0.55,
     # butterfly doors about DOOR_HINGE along _axis, 93 deg, 2 s (fitted on rider guide p.7: the door's top 2.36 m up);
     # the trunk lid at its top edge, 45 deg (rider guide 04: 49.5 fitted on the photo; Main 2026-11-14: 45), 3 s like
@@ -386,15 +388,16 @@ CAR = dict(
     # ribs (ribs: cell, spacing, half span inside the trunk walls, the cell of their sides: side on through the rear
     # quarter window the outer rib's light side read as a 2 px grey upright, e2e cc8a SW shut)
     TRUNK_BULKHEAD=dict(z=0.05, cells=("liner", "bed_wall_hi"), ribs=("bed_rib", 0.10, 0.30, "floor")),
-    # the front seats (06, ERG p.22, rider guide pp.10-12 / 05; cabin.py slim): a backrest 0.11 thick at its foot,
-    # 0.08 at its top (back, back_top; ERG p.22 side 11-15 cm; 24-48 cm free behind it to the bulkhead and the floor),
+    # the front seats (06, ERG p.22, rider guide pp.10-12 / 05; cabin.py slim): a backrest 0.13 thick at its foot,
+    # 0.105 at its top (back, back_top: 15.7 / 12.7 cm, grown backwards only; ERG p.22 side across the backrest 15-17 /
+    # 13 cm; 22-46 cm free behind it to the bulkhead and the floor, 8 cm from its top's outer corner to the side liner),
     # its own headrest over a 2 cm neck gap (head: 0.16 high, 0.75 / 0.62 of the seat wide at its foot / top, 0.124 /
-    # 0.085 deep, its front 25 deg more upright (4 deg off plumb: ERG p.22 side 3.4) and its foot's front 0.001 behind
-    # the backrest's front, 3.5 cm ahead of where it was and 1.45 cm back from where the other hats clear it by 5 mm,
-    # so that the fireman helmet's brim, which sinks into it (Main 2026-11-17: the headrest where ERG p.22 has it),
-    # ends inside it and not out of its back; seat_head HEADREST / DUMP what-if, temp/skf_cc_car/a14; ERG p.22 side
-    # 19 cm high, 15 cm deep, rider guide p.10 x1227 75 / 55 %; back = backrest + gap + headrest, as tall as the
-    # one-piece one was), three slightly convex bands between the
+    # 0.085 deep, its front 25 deg more upright (4 deg off plumb: ERG p.22 side 3.4) and its foot's front 0.046 ahead
+    # of the backrest's front (side view: its front 1.5 cm ahead of the backrest top's front corner, its rear 2.3 cm
+    # behind the top's rear corner; ERG p.22 side: rear flush, front 3 cm+ ahead), where with the neck bent (SEAT_POSE)
+    # the back of the head and the other hats clear it by 6 mm and the fireman helmet by 24 mm; seat_head HEADREST /
+    # DUMP what-if, temp/skf_cc_car/a14; ERG p.22 side 19 cm high, 15 cm deep, rider guide p.10 x1227 75 / 55 %;
+    # back = backrest + gap + headrest, as tall as the one-piece one was), three slightly convex bands between the
     # backrest's two seams (bulge; ERG p.22 front), its top corners rounded (shoulder), its sides a little forward
     # (wing: low wide bolsters, no tubes), a thick cushion ending in a waterfall roll (roll) with the dark trim on its
     # lower front (apron) on one low pedestal, its front 6 deg up about the hips' end (rake: ERG p.22 side); 0.44
@@ -405,8 +408,8 @@ CAR = dict(
     # them (centre: its top over the cushions' top, length, top width; 05: a raised block filling the gap, the
     # buckles at its rear sides) one console block with the cup holders on its top
     SEATS=dict(front=dict(w=0.44, back=0.655, recline=29, dy=0.056, dz=-0.121, cushion=0.10,
-                          slim=dict(back=0.11, back_top=0.08, ahead=0.0,
-                                    head=(0.16, 0.02, (0.75, 0.62), (0.124, 0.085), 25, 0.001), seams=(0.57, 0.84),
+                          slim=dict(back=0.13, back_top=0.105, ahead=0.0,
+                                    head=(0.16, 0.02, (0.75, 0.62), (0.124, 0.085), 25, -0.046), seams=(0.57, 0.84),
                                     pedestal=(0.26, 0.30), round=0.045, front=0.26, roll=(0.06, 0.02),
                                     shoulder=(0.15, 0.10), bulge=0.006, wing=(0.6, 0.02), apron=(0.70, 0.55), rake=6),
                           centre=(0.04, 0.39, 0.09)),
