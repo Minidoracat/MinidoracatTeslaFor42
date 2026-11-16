@@ -432,24 +432,27 @@ def furniture(add, opening, grow=0.0, fine=1, between=None):
         forward: slightly convex; one part, seat_head.py back measures it), wing (part wing: the backrest's sides a
         little forward, low wide bolsters on the same part), apron ((width share, height share): a dark "base" panel on
         the roll's front, that share of the cushion's width, from its foot up that share of its height; ERG p.22's
-        trim under the cushion's front)."""
+        trim under the cushion's front), rake (deg: the cushion, roll and apron turned about the cushion's rear top
+        edge, its front that much higher; the hips' end stays: ERG p.22 side)."""
         s, t, bh, w = b["slim"], b["cushion"], b["back"], b["w"]
         ped = z0 - 0.015 - t - CABIN_FLOOR
         if ped > 0.01:
             part((*s["pedestal"], ped), 0.015, "base", (cx, fy + 0.08, CABIN_FLOOR + ped / 2), seg=1)
         ztop, fc = z0 - 0.015, fy + s.get("front", 0.30)
         cd = fc - (fy - 0.12)
+        rk, hip = s.get("rake"), np.array([0.0, fy - 0.12, ztop])
+        turn = (lambda v: (v - hip) @ rot_x(rk).T + hip) if rk else None
         part((w, cd, t), s["round"], "seat", (cx, fc - cd / 2, ztop - t / 2), cuts=(2, 0, 0), sag=0.025,
-             seams=("top", (((-0.42, 0.22), (0.42, 0.22)),)))
+             seams=("top", (((-0.42, 0.22), (0.42, 0.22)),)), fit=turn)
         if "roll" in s:
             rd, drop = s["roll"]
             rh = t - 0.004 + drop
             part((w - 0.012, rd, rh), min(rd, rh) / 2 - 0.002, "seat", (cx, fc - rd / 2 + 0.008, ztop - 0.004 - rh / 2),
-                 tilt=(fc - rd / 2, ztop - t / 2, -12), seg=3)
+                 tilt=(fc - rd / 2, ztop - t / 2, -12), seg=3, fit=turn)
             if "apron" in s:
                 aw_, ah_ = s["apron"]
                 part((w * aw_, 0.010, rh * ah_), 0.004, "base", (cx, fc + 0.006, ztop - 0.004 - rh + rh * ah_ / 2),
-                     tilt=(fc - rd / 2, ztop - t / 2, -12), seg=1)
+                     tilt=(fc - rd / 2, ztop - t / 2, -12), seg=1, fit=turn)
         bt, foot, front = s["back"], z0 - 0.03, fy - 0.115 + s["ahead"]
         sh, bg = s.get("shoulder"), s.get("bulge")
         hh, gap, (w0, w1), (d0, d1), up, back = s["head"]
