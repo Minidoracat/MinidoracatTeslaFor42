@@ -247,9 +247,10 @@ CAR = dict(
     GROOVE_INK=dict(file="cybercab_lines.json", lines=("hood",), w=round(0.006 * K, 4), k=0.6,
                     reach=round(0.012 * K, 4), rgb=(58, 58, 60)),
     # by day: the lower body, bumpers and seam grooves dark grey (01: sill p50 50), the wheel house liners and B pillar
-    # black, the light bar grey (02 unlit: its upper half ~150 and the lens ~60-75 by paint ~240, scaled to our paint;
-    # it read white), the tail lamps' side runs red, the plate light grey, the side markers amber
-    MAT_RGB={"Trim": (58, 58, 60), "Liner": (24, 24, 26), "Glass": (26, 30, 34), "HeadLight": (128, 130, 138),
+    # black, the light bar grey (02 unlit: its upper half ~150 and the lens ~60-75 by paint ~240, i.e. 0.55-0.62 of the
+    # paint; 128 read 0.73-0.77 of it on the a10 shell in the pairs' soft and rim light and the game's flat light), the
+    # tail lamps' side runs red, the plate light grey, the side markers amber
+    MAT_RGB={"Trim": (58, 58, 60), "Liner": (24, 24, 26), "Glass": (26, 30, 34), "HeadLight": (106, 108, 114),
              "TailLight": (122, 30, 36), "Plate": (206, 208, 212), "Marker": (196, 122, 44)},
     # (pane, box lo, hi, colour, object): the tail face's grey runs and the spoiler's paler runs (01 rear: p50 112 /
     # 118 on the bar's 90); the boxes on each object's own range (convert.py classify RECOLOR), the spoiler's one box a
