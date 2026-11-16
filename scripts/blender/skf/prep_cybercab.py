@@ -331,7 +331,12 @@ TAIL_RED_GAME = dict(y=(-1.79, -1.995), z=((0.486, 0.507), (0.512, 0.533)))
 BOUNDARY_KNOWN = (((0.8000, 0.8944, 0.9517), 0.010, 0.0010), ((0.500, 1.8365, 0.2776), 0.008, 0.0010),
                   ((0.2447, -2.0775, 0.9072), 0.010, 0.0025), ((0.0725, -2.0822, 0.9110), 0.006, 0.0012),
                   ((0.5605, -1.0722, 1.2062), 0.006, 0.0012), ((0.6745, -1.9932, 0.9086), 0.006, 0.0012),
-                  ((0.5765, -2.0143, 0.5189), 0.006, 0.0010), ((0.6305, -2.0018, 0.7949), 0.006, 0.0012))
+                  ((0.5765, -2.0143, 0.5189), 0.006, 0.0010), ((0.6305, -2.0018, 0.7949), 0.006, 0.0012),
+                  # (round 13 a12) the belt band's front end on the door's front seam (B, the end and the seam's
+                  # groove within 2 mm: up to 0.6 mm); the rear arch's top, Paint | Liner, where the side table
+                  # turns the haunch into the lip (y -1.27..-1.45, up to 0.8 mm)
+                  ((0.8385, 0.9380, 0.9143), 0.004, 0.0010), ((0.8010, -1.3070, 0.8590), 0.045, 0.0010),
+                  ((0.7980, -1.4310, 0.8430), 0.020, 0.0010))
 TAIL_BOW = (0.185, 0.692, 3.43)      # the lip (TAIL_SHELF's shelf and tip) sets forward a (|x| / b)^p (output metres):
                                      # x92's outline within a of its tip (half width 0 -> b, where the lip turns into
                                      # the side; rms 4.5 mm, at most 8.6 mm in |x| over x92's 0.004-0.21 m); round 9's
@@ -878,6 +883,49 @@ def wrap_q(ax, y, c, front=True):
     return np.where(ax <= xc, ax, xc + r * th)
 
 
+# ---- the side (round 13 a12, Main): the shoulder, the knee crease C, the haunch and the belt band redone after the
+# official pictures (output y -1.96..1.26). Main measured dx(y_out, z) (m, + = outboard, 2 mm grid, 0 on its four
+# edges; temp/skf_cc/work/r13/a12_handoff/): added to Field's hw, read where raw() is asked (before body_wy and the
+# lip's lift). band_*: the belt band (black trim under the side glass), z of its lower edge B and of its upper edge
+# (the glass's lower edge, behind the quarter glass's tip the tailgate seam, as built) per output y.
+_SIDE = np.load(os.path.join(os.path.dirname(os.path.abspath(__file__)), "cybercab_side.npz"))
+SIDE_DX = dict(y=_SIDE["y"], z=_SIDE["z"], dx=_SIDE["dx"].astype(float))
+BELT = dict(y=_SIDE["band_y"], zb=_SIDE["band_zb"], zt=_SIDE["band_zt"])
+
+
+def side_dx(yo, z):
+    """The side table's dx at output y, z (bilinear; 0 off the grid). Over the band's length the cell B crosses is
+    read from the two rows on z's own side of B (extrapolated to B): B a sharp edge, not one smeared over a cell (the
+    skin's slope bent toward the band's there: the corners under B shaded off their faces by 10-30 deg)."""
+    hy, hz, D = SIDE_DX["y"], SIDE_DX["z"], SIDE_DX["dx"]
+    fy = np.clip((yo - hy[0]) / (hy[1] - hy[0]), 0, len(hy) - 1.001)
+    fz = np.clip((z - hz[0]) / (hz[1] - hz[0]), 0, len(hz) - 1.001)
+    i, j = fy.astype(int), fz.astype(int)
+    zb = belt_zb(yo)
+    jb = np.clip(((zb - hz[0]) / (hz[1] - hz[0])).astype(int), 1, len(hz) - 3)
+    cut = (yo >= BELT["y"][0]) & (yo <= BELT["y"][-1]) & (j == jb)
+    j = np.where(cut, np.where(z < zb, jb - 1, jb + 1), j)
+    a, b = fy - i, fz - j
+    v = (1 - a) * (1 - b) * D[i, j] + (1 - a) * b * D[i, j + 1] + a * (1 - b) * D[i + 1, j] + a * b * D[i + 1, j + 1]
+    return np.where((yo < hy[0]) | (yo > hy[-1]) | (z < hz[0]) | (z > hz[-1]), 0.0, v)
+
+
+def belt_zb(yo):
+    return np.interp(yo, BELT["y"], BELT["zb"])
+
+
+def belt_loop(yo, z):
+    """Negative inside the belt band's loop: over B, between the band's ends and under 3.5 cm over its upper edge (on
+    the glass, behind its tip on the deck: the band's top is the glass's and the seam's own cut; 3.5 cm keeps this one
+    clear of the door's outline 2 cm up the glass, and at 5 cm it ran through the quarter glass's tip and the B
+    pillar's top: cracks). Its ends cut across the 4-5.5 mm the band has left there. Ahead of the glass's corner
+    (output y > 0.89) the upper edge is the A-pillar's paint, no cut of its own: there the loop's top is a line on it,
+    from the band's front end up and back at its slope (0.44), into the glass at y 0.875 (24 deg across its edge)."""
+    b = BELT
+    top = np.minimum(np.interp(yo, b["y"], b["zt"]) + 0.035, b["zt"][-1] + 0.44 * (b["y"][-1] - yo))
+    return np.maximum.reduce([belt_zb(yo) - z, z - top, b["y"][0] - yo, yo - b["y"][-1]])
+
+
 class Field:
     """The body's SDF (built once: the side profile's distance grid)."""
 
@@ -957,8 +1005,9 @@ class Field:
         (h0, h1), z0 = tc["hard"], tc["lip"]
         return ss((h0 - out_y(y)) / (h0 - h1)) * ss((z - z0) / 0.006) * ss((tc["top"] - z) / 0.008)
 
-    def parts(self, p):
-        """The side profile's (d1) and the plan's (d2) distances, and the corner's hardness (corner())."""
+    def parts(self, p, sdx=None):
+        """The side profile's (d1) and the plan's (d2) distances, and the corner's hardness (corner()); sdx: the side
+        table's dx where raw() was asked (side_dx), else read here."""
         x, y, z = np.abs(p[:, 0]), p[:, 1], p[:, 2]
         # the nose rounds in plan (nose_y); round the tail the side profile is read further back by how far each part
         # bows forward toward its corners: above the shelf the face (face_bow), under it the lip (tail_bow) and,
@@ -983,7 +1032,7 @@ class Field:
         # 5-8 cm deep at z 0.51-0.525 behind output y -1.93)
         crown = self.knot("crown", y) * (1 - ss((-1.80 - out_y(y)) / 0.05) * ss((0.70 - zs) / 0.05))
         d1 = ds + crown * tx ** 2 * np.maximum(nz, 0)
-        hw = self.hw(y, z, w)
+        hw = self.hw(y, z, w) + (side_dx(out_y(y), z) if sdx is None else sdx)
         yo, tc, tf = out_y(y), TAIL_CREASE, TAIL_FACE
         # above the shelf the side comes in to the crease's |x| over the last few cm ahead of it
         c = np.asarray(tf["crease"])
@@ -1019,10 +1068,11 @@ class Field:
     def raw(self, p):
         rise = roof_rise(np.abs(p[:, 0]), p[:, 1], p[:, 2])
         ax, yo, z0 = np.abs(p[:, 0]), out_y(p[:, 1]), p[:, 2]
+        sdx = side_dx(yo, z0)
         zl = z0 - interp_tab(_LIP["lift"], ax) * ss((yo - 2.15) / 0.05) * ss((0.28 - z0) / 0.03)   # (the lip's top)
         p = np.column_stack([p[:, 0], body_wy(ax, p[:, 1], zl), zl])   # (round 13)
         x, y, z = np.abs(p[:, 0]), p[:, 1], p[:, 2]
-        d1, d2, hard = self.parts(p)
+        d1, d2, hard = self.parts(p, sdx)
         d = smax(d1, d2, self.knot("k", y) * (1.0 - hard))
         # behind the cap's rear edge (y 1.08) it lifts away up a ramp steeper than the windshield: the fender top runs
         # up into the A pillar's base (it stopped at a step: a flat ledge outside the windshield's corners, 01 front)
@@ -1340,7 +1390,9 @@ def levels(f):
         port_z1=lambda x, y, z, ax: z - PORT[3] + far(yt(ax, y) + 2.0) + far(x + 0.50) + far(-0.745 - x),
         # the short seam from the head lamp's outer end back to the arch: a closed slot (round ends) on the side, its
         # inside a dark line (grooves(); nothing open-ended: a plane cut stopped short would run on somewhere)
-        fender_seam=lambda x, y, z, ax: seam_d(y, z) - GROOVE[0] + far(0.70 - ax))
+        fender_seam=lambda x, y, z, ax: seam_d(y, z) - GROOVE[0] + far(0.70 - ax),
+        # the belt band (round 13 a12): a closed loop, B its lower edge (belt_loop)
+        belt=lambda x, y, z, ax: belt_loop(out_y(y), z))
     # round 13: every outline read where the body is (nose_wy: the face's lamps, bar, black and seams set back with it)
     return {k: (lambda g: lambda x, y, z, ax: g(x, nose_wy(ax, y, z), z, ax))(g) for k, g in lv.items()}
 
@@ -1359,9 +1411,11 @@ def weld(v, t, eps=2e-5):
     return v[used], inv.reshape(-1, 3)
 
 
-def split_mesh(f, v, t, g):
+def split_mesh(f, v, t, g, gf=None):
     """Cut the triangles crossing g = 0 (g per vertex): new vertices where the edges cross, pulled onto the
-    surface; each cut triangle becomes three, all on one side (orientation kept)."""
+    surface; each cut triangle becomes three, all on one side (orientation kept). gf (g as a level, x, y, z, ax): the
+    new vertices onto f = 0 and gf = 0 both (Newton, min norm steps; a cut along a crease of f, a12's B: pulled onto
+    f alone they slid up to 1 mm off the cut)."""
     s = g[t] >= 0
     cnt = s.sum(1)
     cr = (cnt == 1) | (cnt == 2)
@@ -1375,6 +1429,18 @@ def split_mesh(f, v, t, g):
     ue, inv = np.unique(e, axis=0, return_inverse=True)
     w = g[ue[:, 0]] / (g[ue[:, 0]] - g[ue[:, 1]])
     nv = project(f, v[ue[:, 0]] + w[:, None] * (v[ue[:, 1]] - v[ue[:, 0]]), steps=2)
+    if gf is not None:
+        gp = lambda p: gf(p[:, 0], p[:, 1], p[:, 2], np.abs(p[:, 0]))
+        h = 1e-4
+        for _ in range(3):
+            F = np.stack([f(nv), gp(nv)], 1)
+            J = np.stack([np.stack([(fn(nv + o) - fn(nv - o)) / (2 * h) for o in np.eye(3) * h], 1)
+                          for fn in (f, gp)], 1)                                  # (n, 2, 3)
+            JJ = J @ J.transpose(0, 2, 1)
+            ok = np.abs(np.linalg.det(JJ)) > 1e-8
+            st = np.zeros_like(nv)
+            st[ok] = (J[ok].transpose(0, 2, 1) @ np.linalg.solve(JJ[ok], F[ok][..., None]))[..., 0]
+            nv = nv - np.clip(st, -0.5 * CELL, 0.5 * CELL)
     pab, pac = np.split(len(v) + inv.ravel(), 2)
     new = np.concatenate([np.stack([a, pab, pac], 1), np.stack([pab, b, c], 1), np.stack([pab, c, pac], 1)])
     return np.concatenate([v, nv]), np.concatenate([t[~cr], new])
@@ -1427,6 +1493,9 @@ def classify(f, v, t):
     # behind the rear arch went up with the tailgate, CybercabCar)
     pan[tg | spoil] = 3              # (round 12: the strip whole, out to the creases: split at the seam's |x| its two
     # black pieces met in a groove ring over the strip's ends, 03 / rear 3/4; now gold | black, no groove)
+    # the belt band under the side glass, to the tailgate seam behind the glass's tip (round 13 a12): black trim, its
+    # panel as it was (the door's on the door)
+    mat[s["belt"] & (mat == 0) & ~tg] = 2
     hood = ~s["cowl"] & s["hood_x"] & ~s["hood_z"] & (mat == 0)
     pan[hood] = 4
     port = aft & ~s["port_x0"] & s["port_x1"] & ~s["port_z0"] & s["port_z1"]
@@ -1846,10 +1915,10 @@ def build(h=CELL):
     outline vertex and edge)."""
     f, v, t = body_mesh(h)
     lv = levels(f)
-    cuts = list(lv.values()) + [(lambda g, s: lambda x, y, z, ax: g(x, y, z, ax) - s)(lv[k], s)
-                                for k in SEAMS for s in (-GROOVE[0], GROOVE[0])]
-    for g in cuts:
-        v, t = split_mesh(f, v, t, g(v[:, 0], v[:, 1], v[:, 2], np.abs(v[:, 0])))
+    cuts = list(lv.items()) + [(k, (lambda g, s: lambda x, y, z, ax: g(x, y, z, ax) - s)(lv[k], s))
+                               for k in SEAMS for s in (-GROOVE[0], GROOVE[0])]
+    for k, g in cuts:
+        v, t = split_mesh(f, v, t, g(v[:, 0], v[:, 1], v[:, 2], np.abs(v[:, 0])), g if k == "belt" else None)
     v, t = weld(v, t)
     mat, pan, pane = classify(f, v, t)
     boundary = boundary_off(f, v, t, mat.astype(np.int32) * 64 + pan * 8 + pane + 1)
@@ -1953,14 +2022,15 @@ NOSE_FAIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cybercab_n
 NOSE_FAIR_Z = 0.55
 
 
-def nose_fair(obs):
+def nose_fair(obs, f):
     """Add the table to the objects obs (Paint, Trim: vertices and custom normals); returns the report entry and
-    dz(points) for the lines. Stops when the shell under the table is no longer the one it was measured on (a chk
-    vertex more than 0.2 mm from every vertex)."""
+    dz(points) for the lines. Stops when the surface under the table is no longer the one it was measured on (a chk
+    point more than 0.3 mm off it: the surface, not a10's vertices; a12's side moved the decimation's vertices on the
+    nose, the surface held)."""
     t = np.load(NOSE_FAIR)
     hx, hy, D = t["x"], t["y"], t["dz"].astype(float)
     GY, GX = np.gradient(D, hy, hx)
-    REN, GXN, GYN = t["ren"].astype(float), t["gxn"].astype(float), t["gyn"].astype(float)
+    RENW = t["renw"].astype(float)
 
     def bil(F, x, y):
         """Bilinear F at (x <= 0, y); 0 off the grid."""
@@ -1978,21 +2048,39 @@ def nose_fair(obs):
         d = np.where(p[:, 2] >= NOSE_FAIR_Z, bil(D, -np.abs(p[:, 0]), p[:, 1]), 0.0)
         return np.where(np.abs(d) < 1e-5, 0.0, d)
 
-    cos = []
+    # chk (a10's vertices, output frame) against the surface: the field's value over its slope (read in the build
+    # frame), or for the seam grooves' vertices (2 mm under the field) the nearest face of obs
+    from mathutils.bvhtree import BVHTree
+    q = np.array(t["chk"], float)
+    qb = q.copy()
+    qb[:, 1] = in_y(q[:, 1])
+    e = 2e-4
+    g = np.stack([(f(qb + o) - f(qb - o)) / (2 * e) for o in np.eye(3) * e], 1)
+    miss = np.abs(f(qb)) / np.maximum(np.linalg.norm(g, axis=1), 1e-9)
+    vs, ts = [], []
     for ob in obs:
-        assert np.allclose(np.array(ob.matrix_world), np.eye(4), atol=1e-6), ob.name
         co = np.empty(len(ob.data.vertices) * 3)
         ob.data.vertices.foreach_get("co", co)
-        cos.append(co.reshape(-1, 3))
-    allco = np.concatenate(cos)
-    miss = max(np.linalg.norm(allco - c, axis=1).min() for c in t["chk"])
-    if miss > 2e-4:
-        raise SystemExit(f"NOSE_FAIR: 車鼻頂面變了，位移表要重做 (a chk vertex {miss * 1e3:.2f} mm from the shell; "
+        li = np.empty(len(ob.data.loops), np.int32)
+        ob.data.loops.foreach_get("vertex_index", li)
+        ts.append(li.reshape(-1, 3) + sum(len(x) for x in vs))
+        vs.append(co.reshape(-1, 3))
+    tree = BVHTree.FromPolygons(np.concatenate(vs).tolist(), np.concatenate(ts).tolist(), all_triangles=True)
+    near = np.array([tree.find_nearest(p.tolist())[3] for p in q])
+    miss = float(np.minimum(miss, near).max())
+    if miss > 3e-4:
+        raise SystemExit(f"NOSE_FAIR: 車鼻頂面變了，位移表要重做 (a chk point {miss * 1e3:.2f} mm off the surface; "
                          f"{NOSE_FAIR})")
-    rep = dict(table=os.path.basename(NOSE_FAIR), chk_max_mm=round(miss * 1e3, 4), moved={}, renormal_corners=0)
+    rep = dict(table=os.path.basename(NOSE_FAIR), chk_max_mm=round(miss * 1e3, 4), moved={}, renormal_corners=0,
+               faceted_corners=0)
     lo = hi = 0.0
-    for ob, co in zip(obs, cos):
+    c40 = np.cos(np.radians(40.0))
+    for ob in obs:
+        assert np.allclose(np.array(ob.matrix_world), np.eye(4), atol=1e-6), ob.name
         me = ob.data
+        co = np.empty(len(me.vertices) * 3)
+        me.vertices.foreach_get("co", co)
+        co = co.reshape(-1, 3)
         ax, sg = -np.abs(co[:, 0]), np.where(co[:, 0] > 0, -1.0, 1.0)
         on = co[:, 2] >= NOSE_FAIR_Z
         dz = dz_at(co)
@@ -2003,42 +2091,38 @@ def nose_fair(obs):
         n = np.empty(len(me.loops) * 3)
         me.corner_normals.foreach_get("vector", n)
         n = n.reshape(-1, 3)
-        # corner normals tilted by dz's slope; Paint faces in the ren zone (the rebuilt step) take the new top's own
-        # slope, read 30 % of the way to the face centre
+        # corner normals tilted by dz's slope
         n2 = np.stack([n[:, 0] - n[:, 2] * gx[li], n[:, 1] - n[:, 2] * gy[li], n[:, 2]], 1)
-        if ob.name == "Paint":
-            ls = np.empty(len(me.polygons), np.int32)
-            me.polygons.foreach_get("loop_start", ls)
-            lt = np.empty(len(me.polygons), np.int32)
-            me.polygons.foreach_get("loop_total", lt)
-            pol = np.repeat(np.arange(len(ls)), lt)
-            cen = np.zeros((len(ls), 3))
-            np.add.at(cen, pol, co[li])
-            cen /= lt[:, None]
-            lin = ((bil(REN, -np.abs(cen[:, 0]), cen[:, 1]) > 0.5) & (cen[:, 2] >= NOSE_FAIR_Z))[pol]
-            p = co[li] + 0.3 * (cen[pol] - co[li])
-            pax, psg = -np.abs(p[:, 0]), np.where(p[:, 0] > 0, -1.0, 1.0)
-            nr = np.stack([-bil(GXN, pax, p[:, 1]) * psg, -bil(GYN, pax, p[:, 1]), np.ones(len(p))], 1)
-            sel = lin & (n[:, 2] > 0.05)
-            n2[sel] = nr[sel]
-            rep["renormal_corners"] += int(sel.sum())
         n2 /= np.linalg.norm(n2, axis=1)[:, None]
         co[:, 2] += dz
+        tri = li.reshape(-1, 3)                                    # make()'s triangles: loop i on face i // 3
+        fa = np.cross(co[tri[:, 1]] - co[tri[:, 0]], co[tri[:, 2]] - co[tri[:, 0]])      # 2 * area * normal
+        fu = fa / np.maximum(np.linalg.norm(fa, axis=1), 1e-20)[:, None]
+        if ob.name == "Paint":
+            # where the top was rebuilt (renw: 1 in ren, to 0 over 2 cm) the old normals mean nothing: blended into
+            # the moved mesh's own, per corner the area-weighted face normals round its vertex within 40 deg of its
+            # face (Main a12: gxn / gyn read across ren's edge ringed the lamp's outer end with light triangles)
+            wl = np.where(on, bil(RENW, ax, co[:, 1]), 0.0)[li]
+            pick = np.nonzero(wl > 0)[0]
+            byv = np.argsort(li, kind="stable")
+            sv = li[byv]
+            for vi in np.unique(li[pick]):
+                idx = byv[np.searchsorted(sv, vi, "left"):np.searchsorted(sv, vi, "right")]
+                fi = idx // 3
+                own = np.where(fu[fi] @ fu[fi].T >= c40, 1.0, 0.0) @ fa[fi]
+                own /= np.maximum(np.linalg.norm(own, axis=1), 1e-20)[:, None]
+                w = wl[idx][:, None]
+                n2[idx] = (1 - w) * n2[idx] + w * own
+            n2 /= np.maximum(np.linalg.norm(n2, axis=1), 1e-20)[:, None]
+            rep["renormal_corners"] += len(pick)
+        flat = (n2 * fu[np.arange(len(li)) // 3]).sum(1) < 0.05    # make()'s rule: a corner normal past its face
+        n2[flat] = fu[np.arange(len(li)) // 3][flat]
+        rep["faceted_corners"] += int(flat.sum())
         me.vertices.foreach_set("co", co.ravel())
         me.update()
-        me.normals_split_custom_set([tuple(x) for x in n2])
-        # (it averages each vertex fan: a sliver at the lamp's outer tip, 0.002 mm2, took its ren neighbours' normal,
-        # 6 corners past their face) such corners faceted, make()'s rule; make()'s triangles: loop i on face i // 3
-        cn = np.empty(len(me.loops) * 3, np.float32)
-        me.attributes["custom_normal"].data.foreach_get("vector", cn)
-        cn = cn.reshape(-1, 3)
-        fn = np.empty(len(me.polygons) * 3, np.float32)
-        me.polygons.foreach_get("normal", fn)
-        fn = fn.reshape(-1, 3)[np.arange(len(me.loops)) // 3]
-        flat = (cn * fn).sum(1) < 0.05
-        cn[flat] = fn[flat]
-        me.attributes["custom_normal"].data.foreach_set("vector", cn.ravel())
-        rep["faceted_corners"] = rep.get("faceted_corners", 0) + int(flat.sum())
+        # straight into make()'s attribute (Blender 5.2: with a "custom_normal" attribute on the mesh
+        # normals_split_custom_set() does nothing; a11's normals were a10's)
+        me.attributes["custom_normal"].data.foreach_set("vector", n2.astype(np.float32).ravel())
         mv = np.abs(dz) > 1e-5
         rep["moved"][ob.name] = int(mv.sum())
         if mv.any():
@@ -2160,9 +2244,9 @@ def main():
     m = body.modifiers.new("mir", "MIRROR")
     m.use_axis[0], m.use_mirror_merge, m.merge_threshold, m.use_clip = True, True, 1e-5, True
     apply(body, m)
-    bm = bmesh.new()                    # vertices a cut left within 0.05 mm of one another: one vertex
-    bm.from_mesh(body.data)
-    bmesh.ops.remove_doubles(bm, verts=bm.verts[:], dist=5e-5)
+    bm = bmesh.new()                    # vertices a cut left within 0.15 mm of one another: one vertex (a12: two
+    bm.from_mesh(body.data)             # 0.14 mm apart on the rear arch's top, y -1.41 z 0.83, left a crack)
+    bmesh.ops.remove_doubles(bm, verts=bm.verts[:], dist=1.5e-4)
     bmesh.ops.triangulate(bm, faces=bm.faces[:])
     bm.to_mesh(body.data)
     bm.free()
@@ -2191,6 +2275,21 @@ def main():
     gv = gradient(f, (0.75 * v[t] + 0.25 * cen).reshape(-1, 3)).reshape(-1, 3, 3)
     nrm = np.where(((gv * fn[:, None]).sum(2) > 0.3)[..., None], gv, fn[:, None])   # ... faceted on sharp tips
     mat, pan, pane, groove = lab // 64 % 8, lab // 8 % 8, lab % 8 - 1, lab // 512 % 2 > 0
+    # (round 13 a12) the side table is bilinear: B's edge smeared over a cell, the slope there half the band's, half
+    # the skin's (a light line along it, 01 side). Corners within 3 mm of B read 3 mm under it (Paint) or half way up
+    # the band (Trim)
+    vt = v[t]
+    yo_c = out_y(vt[..., 1])
+    zb_c = belt_zb(yo_c)
+    nb = ((np.abs(vt[..., 2] - zb_c) < 0.003) & (yo_c >= BELT["y"][0]) & (yo_c <= BELT["y"][-1])
+          & (np.abs(vt[..., 0]) > 0.5) & np.isin(mat, (0, 2))[:, None])
+    if nb.any():
+        rp = (0.75 * vt + 0.25 * cen)[nb]
+        zt_c = np.interp(yo_c[nb], BELT["y"], BELT["zt"])
+        rp[:, 2] = np.where(np.broadcast_to((mat == 2)[:, None], nb.shape)[nb], 0.5 * (zb_c[nb] + zt_c),
+                            zb_c[nb] - 0.003)
+        gb = gradient(f, rp)
+        nrm[nb] = np.where(((gb * np.broadcast_to(fn[:, None], nrm.shape)[nb]).sum(1) > 0.3)[:, None], gb, nrm[nb])
     nrm[groove] = fn[groove][:, None]                            # the seam grooves' flanks shade flat
     right = v[t][:, :, 0].mean(1) > 0                            # the mirror copied the left's names
     pan[right & (pan == PANELS.index("DoorFrontLeft"))] = PANELS.index("DoorFrontRight")
@@ -2262,9 +2361,16 @@ def main():
                 gap.append(hit[3])
     report["side_marker"] = dict(buried=buried, off_skin=off_skin, facing_in=len(facing_in),
                                  lift_mm=[round(min(gap, default=0) * 1e3, 2), round(max(gap, default=0) * 1e3, 2)])
+    cs = vt.mean(1)
+    belt_faces = (mat == 2) & ~groove & (belt_loop(out_y(cs[:, 1]), cs[:, 2]) < 0)
+    report["side"] = dict(table="cybercab_side.npz", dx_mm=[round(float(SIDE_DX["dx"].min()) * 1e3, 2),
+                                                           round(float(SIDE_DX["dx"].max()) * 1e3, 2)],
+                          belt_faces=[int((belt_faces & (cs[:, 0] < 0)).sum()), int((belt_faces & (cs[:, 0] > 0)).sum())],
+                          belt_normal_corners=int(nb.sum()))
+    print("SIDE", report["side"])
     fair_dz = None
     if NOSE == "B":
-        report["nose_fair"], fair_dz = nose_fair([bpy.data.objects["Paint"], bpy.data.objects["Trim"]])
+        report["nose_fair"], fair_dz = nose_fair([bpy.data.objects["Paint"], bpy.data.objects["Trim"]], f)
         print("NOSE_FAIR", report["nose_fair"])
     for ob in bpy.context.scene.objects:
         me = ob.data
