@@ -239,7 +239,9 @@ CAR = dict(
     DECIMATE_SNAP=round(0.001 * K, 6),     # (pzveh.decimate: a few held-seam collapses stood up to 19 cm off)
     # (pzveh.decimate smooth) the paint's corner normals the fine faces' mean within 4 cm: one fine face each gave a
     # vertex's corners different normals, and the prep's 3 mm ripples (the nose's plaid, the hood's bands) came along
-    DECIMATE_SMOOTH={"Paint": round(0.04 * K, 4)},
+    # Trim 4 cm (a12 r3): the rear bumper's face and the tail's groove read as big lit triangles and the nose's lower
+    # lip as streaks (the trim's corners one fine face each; 2 cm left the groove's V); the 30 deg cap keeps the slats
+    DECIMATE_SMOOTH={"Paint": round(0.04 * K, 4), "Trim": round(0.04 * K, 4)},
     # (pzveh.decimate crease) the side table's knee crease C cut into the paint, held through the collapse, and the
     # smoothing above kept to each side of it: across it the 4 cm mean drew the a12 door's crease (prep: 9-21 deg
     # within +-1.5 cm) out into a 4 cm ramp of 2-6 deg
@@ -445,7 +447,8 @@ CAR = dict(
     # the gap and out to the door glass's front edge, wherever they are within 15 cm (r11: 5-20). r11 widened the
     # windscreen 4 cm onto the pillar: seen through it, the far pillar's skin stood edge on (a grey line, the ground
     # behind it through the door glass; at ae38316 a gold band)
-    PILLAR_COVER=dict(pairs=(("WinT", "WinLH"), ("WinT", "WinRH")), gap=round(0.15 * K, 4), depth=0.5, cell="bed_rib"),
+    # a12 r3: cell "bed_rib" (120 grey) -> "silver" (226, the dash's bright strip): the guide's 05 pillars measure 202-220
+    PILLAR_COVER=dict(pairs=(("WinT", "WinLH"), ("WinT", "WinRH")), gap=round(0.15 * K, 4), depth=0.5, cell="silver"),
     # the slot between the windscreen's foot and the dash closed (convert.py cowl_shelf): a dark strip from the glass's
     # bottom edge back and down at 45 degrees to the cabin within 40 cm. r11 (the same commit) widened it; through it,
     # from behind and the sides, the ground showed below (iso N/W/NW/NE/SW). r13 moved the foot 15 cm forward (under
