@@ -240,6 +240,14 @@ CAR = dict(
     # (pzveh.decimate smooth) the paint's corner normals the fine faces' mean within 4 cm: one fine face each gave a
     # vertex's corners different normals, and the prep's 3 mm ripples (the nose's plaid, the hood's bands) came along
     DECIMATE_SMOOTH={"Paint": round(0.04 * K, 4)},
+    # (pzveh.decimate crease) the side table's knee crease C cut into the paint, held through the collapse, and the
+    # smoothing above kept to each side of it: across it the 4 cm mean drew the a12 door's crease (prep: 9-21 deg
+    # within +-1.5 cm) out into a 4 cm ramp of 2-6 deg
+    DECIMATE_CREASE={"Paint": ("cybercab_side.npz", 0.5)},
+    # (convert.py share_seams) Paint and Trim each thinned their shared outlines on their own: along the belt band's
+    # lower edge they parted by up to 0.36 mm (127 of 197 1 cm stations a crack); Paint / Liner the same round the
+    # rear arch top (66 of 204 points, INTEGRATE a12's BOUNDARY_KNOWN)
+    SEAM_SHARE=(("Paint", "Trim", round(0.001 * K, 6)), ("Paint", "Liner", round(0.001 * K, 6))),
     PAINT_MAT="Paint",
     UV_FILL=True,                          # (convert.py fill_slivers) texels the bake left black under sliver UVs
     UV_FILL_TONE=True,                     # (convert.py textures) the filled texels stay out of the paint's quantiles

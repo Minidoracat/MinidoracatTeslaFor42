@@ -246,6 +246,145 @@ def drop_comps(o, name):
 
 # ---------------------------------------------------------------- source
 
+def share_seams(a, b, tol, thin=None):
+    """SEAM_SHARE (Cybercab): each of the two objects' open-edge vertices within tol of the other's open edge goes into
+    that edge (split there, the face round it triangulated), so the shared outlines run through the same points: Paint
+    and Trim collapsed and thinned their seams each on its own, and the two outlines along the belt band's lower edge
+    parted by up to 0.36 mm, a crack; one beside an open vertex instead (not over its edges) moves it there. thin (the
+    DECIMATE_THIN pair): then thin_shared, so the points put back do not stay (+10k triangles each side). -> (vertices
+    added, moved, welded pairs, thinned)."""
+    from mathutils.kdtree import KDTree
+    added = nmoved = 0
+    for dst, src in ((a, b), (b, a)):
+        bm = bmesh.new()
+        bm.from_mesh(src.data)
+        pts = [v.co.copy() for v in bm.verts if any(e.is_boundary for e in v.link_edges)]
+        bm.free()
+        bm = bmesh.new()
+        bm.from_mesh(dst.data)
+        ov = [v for v in bm.verts if any(e.is_boundary for e in v.link_edges)]
+        kd = KDTree(len(ov))
+        for i, v in enumerate(ov):
+            kd.insert(v.co, i)
+        kd.balance()
+        ins, moved = {}, {}                 # (start, end) open edge -> [(t, point)]; open vertex -> point
+        for p in pts:
+            near = kd.find_range(p, 0.03)
+            if not near or min(d for _, _, d in near) < 1e-6:
+                continue
+            best = None
+            for _, i, _ in near:
+                for e in ov[i].link_edges:
+                    if not e.is_boundary:
+                        continue
+                    s, f = e.verts
+                    ab = f.co - s.co
+                    t = (p - s.co).dot(ab) / ab.length_squared
+                    d = (s.co + ab * t - p).length
+                    if 0 < t < 1 and d < tol and (best is None or d < best[0]):
+                        best = (d, (s, f), t)
+            _, i, dq = min(near, key=lambda h: h[2])
+            if dq < tol and (best is None or dq < best[0]) and ov[i] not in moved:   # beside a vertex: that one
+                moved[ov[i]] = p
+            elif best:
+                ins.setdefault(best[1], []).append((best[2], p))
+        for v, p in moved.items():
+            v.co = p
+        nmoved += len(moved)
+        for (s, f), L in ins.items():
+            for t, p in sorted(L, key=lambda x: x[0]):
+                e = next(e for e in s.link_edges if e.other_vert(s) is f)
+                k = (p - s.co).dot(f.co - s.co) / (f.co - s.co).length_squared
+                nv = bmesh.utils.edge_split(e, s, min(max(k, 1e-4), 1 - 1e-4))[1]
+                nv.co = p
+                s = nv
+                added += 1
+        bmesh.ops.triangulate(bm, faces=[f for f in bm.faces if len(f.verts) > 3], quad_method="BEAUTY",
+                              ngon_method="BEAUTY")
+        bm.to_mesh(dst.data)
+        bm.free()
+        dst.data.update()
+    # where the two outlines then take the same points in another order (the prep's seam zigzags 0.3 mm: A-B-C-D in one,
+    # A-C-B-D in the other), a short edge both have between two points of unmatched edges is welded to one point in both
+    key = lambda v: tuple(np.round(v.co[:], 6))
+    bms = []
+    for o in (a, b):
+        bm = bmesh.new()
+        bm.from_mesh(o.data)
+        bms.append((o, bm, {frozenset(map(key, e.verts)): e for e in bm.edges if e.is_boundary}))
+    (_, _, ea), (_, _, eb) = bms[0], bms[1]
+    bad = {p for k in ea.keys() ^ eb.keys() for p in k}
+    pairs = [tuple(k) for k in ea.keys() & eb.keys() if k <= bad and len(k) == 2
+             and np.linalg.norm(np.subtract(*k)) < tol]
+    for o, bm, edges in bms:
+        vs = {key(v): v for e in edges.values() for v in e.verts}
+        # the point kept: the higher (y, z), so mirror pairs weld alike
+        bmesh.ops.weld_verts(bm, targetmap={vs[min(k, key=lambda p: (p[1], p[2]))]: vs[max(k, key=lambda p: (p[1], p[2]))]
+                                            for k in pairs})
+    nthin = thin_shared([bm for _, bm, _ in bms], *thin) if thin else 0
+    for o, bm, _ in bms:
+        bm.to_mesh(o.data)
+        bm.free()
+        o.data.update()
+    return added, nmoved, len(pairs), nthin
+
+
+def thin_shared(bms, tol, max_len):
+    """pzveh.thin_seams on the outline two bmeshes share (an open vertex in both, the same two open neighbours in both):
+    a point merges into its nearer neighbour only where it can in both (SEAM_SHARE: the shared points put back are
+    thinned again, alike on both sides). -> merged."""
+    key = lambda v: tuple(np.round(v.co[:], 6))
+    n = 0
+    for _ in range(8):                      # rounds of non-touching merges, as thin_seams
+        maps = []
+        for bm in bms:
+            bm.normal_update()
+            maps.append({key(v): v for v in bm.verts if any(e.is_boundary for e in v.link_edges)})
+        common = maps[0].keys() & maps[1].keys()
+        weld, touched = [{}, {}], [set(), set()]
+        for k in sorted(common, key=lambda k: (abs(k[0]), k[1], k[2], k[0])):   # mirror pairs
+            vs = [m[k] for m in maps]
+            ns = [sorted(key(e.other_vert(v)) for e in v.link_edges if e.is_boundary) for v in vs]
+            if len(ns[0]) != 2 or ns[0] != ns[1] or not set(ns[0]) <= common:
+                continue
+            a, b, p = Vector(ns[0][0]), Vector(ns[0][1]), Vector(k)
+            ab = b - a
+            if ab.length > max_len or ab.length < 1e-9:
+                continue
+            t = (p - a).dot(ab) / ab.length_squared
+            if not 0 < t < 1 or (a + ab * t - p).length > tol:
+                continue
+            tk = ns[0][0] if (p - a).length <= (p - b).length else ns[0][1]
+            rings = [{w for f in v.link_faces for w in f.verts} for v in vs]
+            ok = not any(r & tc for r, tc in zip(rings, touched))
+            # thin_seams' test: no face round it turned over or left a sliver -- unless it was one (the fans the put
+            # back points cut from the face across)
+            for i, v in enumerate(vs):
+                for f in v.link_faces if ok else ():
+                    if maps[i][tk] in f.verts:
+                        continue
+                    q = [maps[i][tk].co if w is v else w.co for w in f.verts]
+                    nn = (q[1] - q[0]).cross(q[2] - q[0])
+                    long_ = max((q[j] - q[j - 1]).length for j in range(3))
+                    o_ = [w.co for w in f.verts]
+                    o_long = max((o_[j] - o_[j - 1]).length for j in range(3))
+                    was = (o_[1] - o_[0]).cross(o_[2] - o_[0]).length / o_long < o_long / 12
+                    if nn.length < 1e-12 or nn.normalized().dot(f.normal) < 0.7 or \
+                            nn.length / long_ < long_ / 12 and not was:
+                        ok = False
+                        break
+            if ok:
+                for i, v in enumerate(vs):
+                    weld[i][v] = maps[i][tk]
+                    touched[i] |= rings[i]
+        if not weld[0]:
+            break
+        for bm, w in zip(bms, weld):
+            bmesh.ops.weld_verts(bm, targetmap=w)
+        n += len(weld[0])
+    return n
+
+
 def drop_covered(o, over, gap):
     """DROP_COVERED (Model S): delete o's faces lying on a face of the objects `over` (within gap along the normal,
     either side, facing the same way, the face's corners pulled 15 % in and its centre all covered). The source's
@@ -360,9 +499,15 @@ def load_source():
             # DECIMATE_HOLD_UNDER (Cybercab): the flat underside's outline held too; DECIMATE_THIN (Cybercab): the held
             # seams' near-straight runs thinned (pzveh.thin_seams); DECIMATE_SMOOTH {object prefix: radius}
             # (Cybercab): the corner normals the fine faces' mean within that radius
+            # DECIMATE_CREASE {object prefix: (side table npz, |x| min m)} (Cybercab): the table's knee crease C cut in
+            # first, its vertices held and the smoothing kept to each side of it (pzveh.cut_crease)
+            cr = next((v for p, v in C.get("DECIMATE_CREASE", {}).items() if o.name.startswith(p)), None)
+            if cr:
+                side = np.load(os.path.join(HERE, cr[0]))
+                cr = (side["crease_y"] * K, side["crease_z"] * K, cr[1] * K)
             pv.decimate(o, target, C.get("DECIMATE_KEEP_BOUNDARY", False), C.get("DECIMATE_SNAP"),
                         C.get("DECIMATE_HOLD_UNDER", False), C.get("DECIMATE_THIN"),
-                        next((r for p, r in C.get("DECIMATE_SMOOTH", {}).items() if o.name.startswith(p)), None))
+                        next((r for p, r in C.get("DECIMATE_SMOOTH", {}).items() if o.name.startswith(p)), None), cr)
         for under, over, gap in C.get("DROP_COVERED", ()):
             if under == name:
                 drop_covered(o, [obs[names.index(n)] for n in over], gap)
@@ -376,6 +521,9 @@ def load_source():
             big = [(int(cnt[k]), np.round(fc[comp == k].mean(0), 2).tolist()) for k in np.argsort(-cnt)[:12]]
             print("COMPS", name, "(tris, mean face centre)", big)
         obs.append(o)
+    for a, b, tol in C.get("SEAM_SHARE", ()):   # (Cybercab) two objects' shared outlines through the same points
+        print("SEAM_SHARE", a, b, "(vertices added, moved, welded pairs, thinned)",
+              share_seams(obs[names.index(a)], obs[names.index(b)], tol, C.get("DECIMATE_THIN")))
     # wheels: (side, centre y, centre z, outer |x|) per tire, pre-centre frame, and the tire's radius and width (the
     # procedural wheel is built to them: the arches were modelled round these tires)
     if C.get("TIRE", {}).get("centres"):   # tyres merged into a trim object (Model S): axle (y, z) given, no tire object

@@ -198,7 +198,38 @@ def thin_seams(bm, tol, max_len):
     return n
 
 
-def decimate(ob, target, keep_boundary=False, snap=None, hold_under=False, thin=None, smooth=None):
+def _crease_side(p, crease):
+    """+1 above the crease line z(y), -1 under it, 0 off its y range or inside |x| xmin (crease: ys, zs, xmin)."""
+    ys, zs, xmin = crease
+    s = np.sign(p[:, 2] - np.interp(p[:, 1], ys, zs))
+    s[(p[:, 1] < ys[0]) | (p[:, 1] > ys[-1]) | (np.abs(p[:, 0]) < xmin)] = 0
+    return s
+
+
+def cut_crease(bm, crease):
+    """Cut the side faces (|normal x| > 0.5) along the crease line z(y) (crease: ys, zs, xmin; both sides, |x| >
+    xmin) -> the vertices on it."""
+    ys, zs, xmin = crease
+    bm.normal_update()
+    vs = [v for v in bm.verts if ys[0] <= v.co.y <= ys[-1] and abs(v.co.x) > xmin]
+    d = {v: v.co.z - np.interp(v.co.y, ys, zs) for v in vs}
+    cut = [(e, d[e.verts[0]] / (d[e.verts[0]] - d[e.verts[1]])) for e in bm.edges
+           if e.verts[0] in d and e.verts[1] in d and d[e.verts[0]] * d[e.verts[1]] < 0
+           and any(abs(f.normal.x) > 0.5 for f in e.link_faces)]
+    on = {v for v, dv in d.items() if dv == 0}
+    for e, t in cut:
+        on.add(bmesh.utils.edge_split(e, e.verts[0], t)[1])
+    pairs = set()
+    for f in {f for v in on for f in v.link_faces}:
+        fv = [v for v in f.verts if v in on]
+        if len(fv) == 2 and not any(set(e.verts) == set(fv) for e in f.edges):
+            pairs.add(frozenset(fv))
+    for a, b in pairs:
+        bmesh.ops.connect_verts(bm, verts=[a, b])
+    return on
+
+
+def decimate(ob, target, keep_boundary=False, snap=None, hold_under=False, thin=None, smooth=None, crease=None):
     """Collapse to target triangles (X symmetric). keep_boundary: open-edge vertices are left out of the decimate
     modifier's vertex group at factor 1000, so collapsing their edges costs that much more and the outline stays; so are
     the vertices between two faces of different `panel` (a face attribute: Cybercab's prep, its seams inside an object).
@@ -212,8 +243,19 @@ def decimate(ob, target, keep_boundary=False, snap=None, hold_under=False, thin=
     more times. smooth (a radius, with snap): each corner's normal is then the area-weighted mean of the fine faces'
     normals within that radius of its sample point, those within 30 deg of its own (creases stay): one fine face's
     normal per corner gave a vertex's corners different normals, and the prep's own ripples came along (Cybercab:
-    the rear quarters like crumpled paper, the hood in light and dark blocks)."""
+    the rear quarters like crumpled paper, the hood in light and dark blocks). crease ((ys, zs, xmin), optional, with
+    snap): first cut_crease, the cut's vertices held through the collapse, and the smoothing takes for a corner beside
+    the line only the fine faces on its own side (Cybercab's knee crease: smoothed across, the door's 9-21 deg turn
+    within +-1.5 cm came out a 4 cm ramp of 2-6 deg)."""
     from mathutils.bvhtree import BVHTree
+    keep = set()
+    if crease:                              # cut along the crease first: its vertices held, its two sides smoothed apart
+        bm = bmesh.new()
+        bm.from_mesh(ob.data)
+        keep = {tuple(np.round(v.co[:], 6)) for v in cut_crease(bm, crease)}
+        bm.to_mesh(ob.data)
+        bm.free()
+        print("DECIMATE crease", ob.name, len(keep), "vertices on it")
     if snap:                                # the mesh as it was, and each face's smooth normal (its corners' mean)
         me = ob.data
         ref = BVHTree.FromPolygons([v.co.copy() for v in me.vertices], [p.vertices[:] for p in me.polygons])
@@ -227,7 +269,8 @@ def decimate(ob, target, keep_boundary=False, snap=None, hold_under=False, thin=
         ref_a = np.array([p.area for p in me.polygons])
         fine = me.copy()
     select_only(ob)
-    hold = set()                            # fine-mesh vertex positions held after a pass left faces off the surface
+    hold = set(keep)                        # fine-mesh vertex positions held: the crease's, and after a pass left faces
+    # off the surface those under them
     for attempt in range(4 if snap else 1):
         if attempt:                         # back to the fine mesh in the same datablock (callers hold it)
             bm = bmesh.new()
@@ -315,10 +358,17 @@ def decimate(ob, target, keep_boundary=False, snap=None, hold_under=False, thin=
         n = np.where(far[:, None], n[1], n[0])
         if smooth:
             c30, out = np.cos(np.radians(30)), n.copy()
-            for i, p in enumerate(co[lv] + (fc - co[lv]) * 0.05):
+            ps = co[lv] + (fc - co[lv]) * 0.05
+            if crease:                      # a corner beside the crease takes the fine faces on its own side only
+                sp = _crease_side(ps, crease)
+                rs = _crease_side(np.array([ref_co[list(f)].mean(0) for f in ref_f]), crease)
+            for i, p in enumerate(ps):
                 hits = [h[2] for h in ref.find_nearest_range(Vector(p), smooth)]
                 if hits:
-                    s = (ref_a[hits] * ((ref_n[hits] @ n[i]) > c30)) @ ref_n[hits]
+                    w = ref_a[hits] * ((ref_n[hits] @ n[i]) > c30)
+                    if crease and sp[i]:
+                        w = w * (rs[hits] == sp[i])
+                    s = w @ ref_n[hits]
                     if s @ s > 1e-18:
                         out[i] = s / np.sqrt(s @ s)
             print("DECIMATE smooth", ob.name, smooth, int(((out * n).sum(1) < np.cos(np.radians(2))).sum()), "of",

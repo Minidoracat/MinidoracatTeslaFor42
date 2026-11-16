@@ -49,47 +49,47 @@ module Base
         textureDamage2Shell = Vehicles/Veh_Damage2,
         textureRust = Vehicles/Veh_Rust,
         template = PassengerSeat2,
-        extents = 0.8197 0.5736 2.0637,
-        physicsChassisShape = 0.8197 0.5736 2.0637,
+        extents = 0.8197 0.5734 2.0637,
+        physicsChassisShape = 0.8197 0.5734 2.0637,
         centerOfMassOffset = 0.0000 0.1978 0.0000,
         shadowExtents = 0.8197 2.0637,
         shadowOffset = 0.0 0.0,
         useChassisPhysicsCollision = false,
         physics box
         {
-            offset = 0.0000 0.0939 0.0000,
+            offset = 0.0000 0.0940 0.0000,
             extents = 0.8032 0.3658 2.0307,
         }
         physics box
         {
             offset = 0.0000 0.3807 -0.1770,
-            extents = 0.6593 0.2079 0.6885,
+            extents = 0.6593 0.2076 0.6885,
         }
         wheel FrontLeft
         {
             front = true,
-            offset = 0.3352 -0.2503 0.6323,
+            offset = 0.3352 -0.2502 0.6323,
             radius = 0.1541,
             width = 0.1776,
         }
         wheel FrontRight
         {
             front = true,
-            offset = -0.3352 -0.2503 0.6323,
+            offset = -0.3352 -0.2502 0.6323,
             radius = 0.1541,
             width = 0.1776,
         }
         wheel RearLeft
         {
             front = false,
-            offset = 0.2973 -0.2303 -0.5931,
+            offset = 0.2973 -0.2302 -0.5931,
             radius = 0.1741,
             width = 0.1858,
         }
         wheel RearRight
         {
             front = false,
-            offset = -0.2973 -0.2303 -0.5931,
+            offset = -0.2973 -0.2302 -0.5931,
             radius = 0.1741,
             width = 0.1858,
         }
@@ -112,12 +112,12 @@ module Base
             showPassenger = true,
             position inside
             {
-                offset = 0.1484 -0.3236 -0.0035,
+                offset = 0.1484 -0.3235 -0.0035,
                 rotate = 0.0 0.0 0.0,
             }
             position outside
             {
-                offset = 0.5747 -0.3522 -0.0035,
+                offset = 0.5747 -0.3521 -0.0035,
                 rotate = 0.0 0.0 0.0,
                 area = SeatFrontLeft,
             }
@@ -127,12 +127,12 @@ module Base
             showPassenger = true,
             position inside
             {
-                offset = -0.1484 -0.3236 -0.0035,
+                offset = -0.1484 -0.3235 -0.0035,
                 rotate = 0.0 0.0 0.0,
             }
             position outside
             {
-                offset = -0.5747 -0.3522 -0.0035,
+                offset = -0.5747 -0.3521 -0.0035,
                 rotate = 0.0 0.0 0.0,
                 area = SeatFrontRight,
             }
@@ -175,20 +175,20 @@ module Base
         }
         attachment trailer
         {
-            offset = 0.0000 -0.2429 -1.0483,
+            offset = 0.0000 -0.2427 -1.0483,
             rotate = 0.0 0.0 0.0,
             zoffset = -1.0,
         }
         attachment trailerfront
         {
-            offset = 0.0000 -0.2429 1.0483,
+            offset = 0.0000 -0.2427 1.0483,
             rotate = 0.0 0.0 0.0,
             zoffset = 1.0,
         }
         /* charge port: real Cybercab: the rear bumper's driver side corner under the trunk lid (ERG p.6, rider guide 01 rear, 07) */
         attachment chargeport
         {
-            offset = 0.2952 -0.1708 -0.9525,
+            offset = 0.2952 -0.1707 -0.9525,
             rotate = 0.0 0.0 0.0,
         }
         part DoorFrontLeft
