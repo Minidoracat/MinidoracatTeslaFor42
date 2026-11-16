@@ -352,11 +352,13 @@ def furniture(add, opening, grow=0.0, fine=1, between=None):
         return rbox(np.add(size, 2 * grow), r + grow, cuts, seg * fine) if grow else rbox(size, r, cuts, seg)
 
     def part(size, r, c, at, cuts=(0, 0, 0), sag=0.0, bend=0.0, taper=0.0, tilt=None, seg=2, seams=None, fit=None,
-             shoulder=None, bulge=None):
+             shoulder=None, bulge=None, thin=0.0, wing=None):
         """rbox + shaping: `sag` dips the top's middle (x), `bend` brings the sides forward (+y), `taper` narrows the
         top; `bulge` = (edges, b): between each two edges (fractions of the height, bottom up) the front (+y) swells
         up to b forward, none at the edges and the sides (slightly convex sections); `shoulder` = (share of the
         height, narrowing) rounds the top's corners in over that top share (smooth, the top that much narrower);
+        `thin` moves the rear (-y) half that much forward at the top, none at the foot (thick low, thin high);
+        `wing` = (share of the half width, b): the sides out from there come up to b forward (smooth; low bolsters);
         `tilt` = (pivot y, pivot z, deg) reclines about a line along x (top to the rear). Shaped on `size`, so a grown
         part follows its coarse one; seams = (face, lines) for seam_strips, grown parts only; `fit(v)` moves the
         placed points last (the trunk sill onto the body's lip)."""
@@ -376,6 +378,12 @@ def furniture(add, opening, grow=0.0, fine=1, between=None):
             k0, k = shoulder
             u = np.clip((v[:, 2] / size[2] + 0.5 - (1 - k0)) / k0, 0, 1)
             v[:, 0] *= 1 - k * u * u * (3 - 2 * u)
+        if thin:
+            v[:, 1] += thin * np.clip(v[:, 2] / size[2] + 0.5, 0, 1) * (v[:, 1] < 0)
+        if wing:
+            w0, b = wing
+            u = np.clip((np.abs(x) - w0) / (1 - w0), 0, 1)
+            v[:, 1] += b * u * u * (3 - 2 * u)
         cells = c
         if grow and seams:
             v, f, cells = seam_strips(v, f, c, size, *seams)
@@ -411,19 +419,20 @@ def furniture(add, opening, grow=0.0, fine=1, between=None):
 
     def slim(cx, fy, z0, b, rec):
         """(SEATS row `slim`, Cybercab: ERG p.22, rider guide pp.10-12) on one low pedestal (pedestal: width, depth) a
-        thick cushion `cushion` with a round front edge (round: its edge radius) and one seam across, a thin backrest
-        (back: its thickness), its front `ahead` ahead of the other buckets' (the passengers' backs, seat_head.py back:
-        the thin one's flat front sits further from their shoulders), dark seams across it at `seams` (fractions of
-        its height), the headrest on it narrower (head: width, height over the backrest, depth; a shoulder step each
-        side; 1 cm proud of its front), 4 cm down into it; head None: no headrest, the backrest runs up to the top in
-        one piece as wide (rider guide 05, ERG p.22). Optional: front (the cushion's front edge ahead of the row's
-        y, default 0.30), roll ((depth, drop): the cushion's front a rounded roll that far deep reaching `drop` under
-        it, its top 4 mm under the cushion's: a waterfall front), shoulder (part shoulder: the backrest's top corners
-        rounded in towards the headrest), bulge (each section of the backrest between the seams swells that far
-        forward: slightly convex; one part, seat_head.py back measures it), side ((width, height): low bolsters along
-        the backrest's sides and the cushion's door side, that high over their faces), apron ((width share, height
-        share): a dark "base" panel on the roll's front, that share of the cushion's width, from its foot up that
-        share of its height; ERG p.22's trim under the cushion's front)."""
+        thick cushion `cushion` with a round front edge (round: its edge radius) and one seam across, a backrest (back:
+        its thickness at the foot; back_top: at its top, thick low and thin high; its front `ahead` ahead of the other
+        buckets', the passengers' backs, seat_head.py back), dark seams across it at `seams` (fractions of its height
+        under the headrest), the headrest its own part over a neck gap (head: (height, gap, (foot width, top width) as
+        shares of the seat's, (foot depth, top depth), deg its front leans forward of the backrest's, its foot's front
+        that far behind the backrest's); the row's `back` is the backrest + gap + headrest, ERG p.22 side, rider guide
+        p.10 x1227). Optional: front (the cushion's front
+        edge ahead of the row's y, default 0.30), roll ((depth, drop): the cushion's front a rounded roll that far deep
+        reaching `drop` under it, its top 4 mm under the cushion's: a waterfall front), shoulder (part shoulder: the
+        backrest's top corners rounded), bulge (each section of the backrest between the seams swells that far
+        forward: slightly convex; one part, seat_head.py back measures it), wing (part wing: the backrest's sides a
+        little forward, low wide bolsters on the same part), apron ((width share, height share): a dark "base" panel on
+        the roll's front, that share of the cushion's width, from its foot up that share of its height; ERG p.22's
+        trim under the cushion's front)."""
         s, t, bh, w = b["slim"], b["cushion"], b["back"], b["w"]
         ped = z0 - 0.015 - t - CABIN_FLOOR
         if ped > 0.01:
@@ -443,23 +452,21 @@ def furniture(add, opening, grow=0.0, fine=1, between=None):
                      tilt=(fc - rd / 2, ztop - t / 2, -12), seg=1)
         bt, foot, front = s["back"], z0 - 0.03, fy - 0.115 + s["ahead"]
         sh, bg = s.get("shoulder"), s.get("bulge")
-        part((w, bt, bh), 0.025, "seat", (cx, front - bt / 2, foot + bh / 2),
+        hh, gap, (w0, w1), (d0, d1), up, back = s["head"]
+        bb = bh - gap - hh                              # the backrest under the neck gap and the headrest
+        part((w, bt, bb), 0.025, "seat", (cx, front - bt / 2, foot + bb / 2),
              cuts=(4 if bg else 2, 0, 18 if bg else 8 if sh else 0), tilt=rec, shoulder=sh,
-             bulge=((0, *s["seams"], 1), bg) if bg else None)
-        if s["head"]:
-            hw, hh, hd = s["head"]
-            part((hw, hd, hh + 0.04), 0.03, "seat", (cx, front + 0.01 - hd / 2, foot + bh + hh / 2 - 0.02), tilt=rec,
-                 seg=3)
+             bulge=((0, *s["seams"], 1), bg) if bg else None, thin=bt - s.get("back_top", bt), wing=s.get("wing"))
+        # the headrest `back` behind the backrest's front, leaning `up` forward about its foot's front, which then goes
+        # where the recline puts it
+        hf = np.array([0.0, front - back, foot + bb + gap])
+        mv = (hf - [0, rec[0], rec[1]]) @ rot_x(rec[2]).T + [0, rec[0], rec[1]] - hf
+        part((w * w0, d0, hh), 0.035, "seat", (cx, hf[1] - d0 / 2, hf[2] + hh / 2), cuts=(0, 0, 6), taper=1 - w1 / w0,
+             tilt=(hf[1], hf[2], rec[2] - up), seg=3, thin=d0 - d1, shoulder=(0.4, 0.12), fit=lambda v: v + mv)
+        # its neck: a narrow block across the gap, into both (ERG p.22 side: the headrest stands on a short stem)
+        part((w * w0 * 0.55, 0.05, gap + 0.05), 0.012, "seat", (cx, hf[1] - 0.035, foot + bb + gap / 2), tilt=rec, seg=1)
         for k in s["seams"]:
-            seam_box((w - 0.06, 0.006, 0.010), "seam", (cx, front, foot + k * bh), rec)
-        if "side" in s:     # the cushion's on its door side only (the inner side runs on into the centre bench)
-            sw_, sh_ = s["side"]
-            out_ = 1 if cx > 0 else -1
-            part((sw_, cd - 0.08, 0.07), 0.018, "seat", (cx + out_ * (w / 2 - sw_ / 2), fc - cd / 2 - 0.01,
-                                                         ztop + sh_ - 0.035))
-            for e in (-1, 1):
-                part((sw_, 0.045, bh * 0.62), 0.018, "seat",
-                     (cx + e * (w / 2 - sw_ / 2), front + sh_ - 0.0225, foot + 0.03 + bh * 0.31), tilt=rec)
+            seam_box((w - 0.06, 0.006, 0.010), "seam", (cx, front, foot + k * bb), rec)
         return fy, z0
 
     def bucket(cx, fy, b, bolster=(0.185, 0.19), z0=z0):   # a bucket seat: base, cushion, backrest, headrest, bolsters

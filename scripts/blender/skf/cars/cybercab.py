@@ -381,11 +381,16 @@ CAR = dict(
     # ribs (ribs: cell, spacing, half span inside the trunk walls, the cell of their sides: side on through the rear
     # quarter window the outer rib's light side read as a 2 px grey upright, e2e cc8a SW shut)
     TRUNK_BULKHEAD=dict(z=0.05, cells=("liner", "bed_wall_hi"), ribs=("bed_rib", 0.10, 0.30, "floor")),
-    # the front seats (06, ERG p.22, rider guide pp.10-12 / 05; cabin.py slim): a thin backrest up to the top in one
-    # piece as wide (head None: no headrest on it; back = the old backrest + headrest top), three slightly convex
-    # bands between its two seams (bulge; ERG p.22 front: from the top 0.30 / 0.29 / the rest), its top corners
-    # rounded (shoulder), low side bolsters on the backrest and the cushion (side), a thick cushion ending in a
-    # waterfall roll (roll) with the dark trim on its lower front (apron) on one low pedestal; 0.44 wide, 0.10 apart
+    # the front seats (06, ERG p.22, rider guide pp.10-12 / 05; cabin.py slim): a backrest 0.11 thick at its foot,
+    # 0.08 at its top (back, back_top; ERG p.22 side 11-15 cm; 24-48 cm free behind it to the bulkhead and the floor),
+    # its own headrest over a 2 cm neck gap (head: 0.16 high, 0.75 / 0.62 of the seat wide at its foot / top, 0.124 /
+    # 0.085 deep, its front 6 deg more upright and its foot 0.03 behind the backrest's front; ERG p.22 side 19 cm high,
+    # 15 cm deep, set back and upright, rider guide p.10 x1227 75 / 55 %; ERG's 15 deg put the fireman helmet's brim
+    # 18-25 mm into it, this clears it by 4 mm, seat_head HEADREST what-if; back = backrest + gap + headrest, as tall as
+    # the one-piece one was), three slightly convex bands between the
+    # backrest's two seams (bulge; ERG p.22 front), its top corners rounded (shoulder), its sides a little forward
+    # (wing: low wide bolsters, no tubes), a thick cushion ending in a waterfall roll (roll) with the dark trim on its
+    # lower front (apron) on one low pedestal; 0.44 wide, 0.10 apart
     # (06 top view, cabin-r2); the cushion's front 4 cm back from the bucket's (front: 06 side view 0.392 of the
     # wheelbase behind the front axle, it was 0.362); its top where the bucket had it (06 reads it 0.22 m higher: the
     # head would stand 8 cm through the roof), recline kept 32 for the passengers' pose (the official reads ~26:
@@ -393,9 +398,10 @@ CAR = dict(
     # top, length, top width; 05: a raised block filling the gap, the buckles at its rear sides) one console block
     # with the cup holders on its top
     SEATS=dict(front=dict(w=0.44, back=0.655, recline=32, dy=0.056, dz=-0.121, cushion=0.10,
-                          slim=dict(back=0.06, ahead=0.0, head=None, seams=(0.41, 0.70),
+                          slim=dict(back=0.11, back_top=0.08, ahead=0.0,
+                                    head=(0.16, 0.02, (0.75, 0.62), (0.124, 0.085), 6, 0.03), seams=(0.57, 0.84),
                                     pedestal=(0.26, 0.30), round=0.045, front=0.26, roll=(0.06, 0.02),
-                                    shoulder=(0.10, 0.10), bulge=0.006, side=(0.04, 0.025), apron=(0.70, 0.55)),
+                                    shoulder=(0.15, 0.10), bulge=0.006, wing=(0.6, 0.02), apron=(0.70, 0.55)),
                           centre=(0.04, 0.39, 0.09)),
                # 04: the sill plate over the opening's lower edge, the floor mat (bin) inside the trunk walls
                sill=(0.80, 0.06), bin=(0.66, 1.00)),
