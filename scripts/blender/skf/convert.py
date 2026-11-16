@@ -2730,6 +2730,106 @@ def cut_z(P, t, a, rows, zc):
     return np.array(P), np.array(t), np.array(a), np.concatenate([rows, np.array(new, int)])
 
 
+def pillar_cover(V, T, glass, pane, cab_attr):
+    """PILLAR_COVER (optional, Cybercab) {pairs: ((pane A, pane B), ..), gap, depth, cell}: an inner trim across the
+    gap between two window panes (GLASS_ZONES names), from the panes' own edges: along every open edge of A whose
+    two ends have B within `gap` across it (not along it: the windscreen's top edge by the door glass's corner), two
+    quads from A's edge in to a ridge `depth` x the gap behind the gap's middle (against both panes' normals) and out
+    to B's nearest points, facing the cabin. The A pillar of a body whose panes
+    are a skin over a thin corner (Cybercab r11: windscreen to door glass 5-20 cm): seen through the windscreen the
+    far pillar's reversed skin stood edge on, a grey line with the ground through the door glass behind it (e2e
+    cc7a arch-m-S0)."""
+    pc = C["PILLAR_COVER"]
+    pid = np.unique(np.round(V / 1e-5).astype(np.int64), axis=0, return_inverse=True)[1].ravel()
+    fn = np.cross(V[T[:, 1]] - V[T[:, 0]], V[T[:, 2]] - V[T[:, 0]])
+    fn /= np.maximum(np.linalg.norm(fn, axis=1, keepdims=True), 1e-12)
+    tris, nin, gaps = [], [], []
+    for a, b in pc["pairs"]:
+        sa, sb = glass & (pane == GLASS_ZONES.index(a)), glass & (pane == GLASS_ZONES.index(b))
+        if not (sa.any() and sb.any()):
+            continue
+        bb = bvh_of([(V, T[sb])])
+        tri, n_a = T[sa], fn[sa]
+        ed = np.concatenate([tri[:, [0, 1]], tri[:, [1, 2]], tri[:, [2, 0]]])
+        _, inv, cnt = np.unique(np.sort(pid[ed], 1), axis=0, return_inverse=True, return_counts=True)
+        open_ = cnt[inv.ravel()] == 1
+        memo = {}       # one ridge point per edge vertex (its first face's normal): per edge, the faces cracked apart
+        for (i, j), na in zip(ed[open_], np.tile(n_a, (3, 1))[open_]):
+            ends = []
+            for v in (i, j):
+                if pid[v] not in memo:
+                    p = V[v]
+                    q, nb, _, d = bb.find_nearest(Vector(p), pc["gap"])
+                    if q is not None:
+                        n = na + np.array(nb)
+                        n /= np.linalg.norm(n)
+                        q = np.array(q)
+                        memo[pid[v]] = (p, q, (p + q) / 2 - n * pc["depth"] * d, n)
+                    else:
+                        memo[pid[v]] = None
+                if memo[pid[v]] is None:
+                    break
+                ends.append(memo[pid[v]])
+            if len(ends) < 2:
+                continue
+            (p0, q0, m0, n0), (p1, q1, m1, n1) = ends
+            e, g = p1 - p0, (q0 + q1 - p0 - p1) / 2
+            if abs(e @ g) > 0.8 * np.linalg.norm(e) * np.linalg.norm(g):
+                continue
+            gaps += [np.linalg.norm(q0 - p0), np.linalg.norm(q1 - p1)]
+            for quad, away in (((p0, p1, m1, m0), q0), ((m0, m1, q1, q0), p0)):   # facing away from the other pane
+                for t3 in ((quad[0], quad[1], quad[2]), (quad[0], quad[2], quad[3])):
+                    nt = np.cross(t3[1] - t3[0], t3[2] - t3[0])
+                    tris.append(t3 if nt @ (away - t3[0]) < 0 else (t3[0], t3[2], t3[1]))
+                    nin.append(-(n0 + n1))
+    P = np.array(tris, float).reshape(-1, 3, 3)
+    # lit as one surface facing in (against the panes): the panes' dense, ragged edges folded the faces over each
+    # other, light chevrons along the pillar
+    n = np.array(nin, float).reshape(-1, 3)
+    n /= np.maximum(np.linalg.norm(n, axis=1, keepdims=True), 1e-12)
+    print(f"PILLAR_COVER {len(P)} tris, gap {min(gaps, default=0):.4f}-{max(gaps, default=0):.4f}")
+    return P.reshape(-1, 3), np.arange(3 * len(P)).reshape(-1, 3), corners(cab_attr(pc["cell"]), n)
+
+
+def cowl_shelf(V, T, glass, pane, solid, cab_attr):
+    """COWL_SHELF (optional, Cybercab) {reach, cell}: a strip from the windscreen's (WinT) bottom edge back (against
+    the pane's normal) and down at 45 degrees to the first face of solid (the cabin: the body's trim at the glass's
+    foot stopped it at once; level, it passed over the dash's top beside the middle) within `reach`, facing up and
+    back: the slot between the glass's foot and the dash's front opened into the nose, whose walls face the wheel
+    wells (Cybercab r11: through the windscreen's foot from behind and the sides, the ground showed along it)."""
+    cs = C["COWL_SHELF"]
+    sa = glass & (pane == GLASS_ZONES.index("WinT"))
+    pid = np.unique(np.round(V / 1e-5).astype(np.int64), axis=0, return_inverse=True)[1].ravel()
+    tri = T[sa]
+    fn = np.cross(V[tri[:, 1]] - V[tri[:, 0]], V[tri[:, 2]] - V[tri[:, 0]])
+    fn /= np.maximum(np.linalg.norm(fn, axis=1, keepdims=True), 1e-12)
+    ed = np.concatenate([tri[:, [0, 1, 2]], tri[:, [1, 2, 0]], tri[:, [2, 0, 1]]])   # edge, third corner
+    _, inv, cnt = np.unique(np.sort(pid[ed[:, :2]], 1), axis=0, return_inverse=True, return_counts=True)
+    open_ = cnt[inv.ravel()] == 1
+    tris, n_edges = [], 0
+    for (i, j, k), n in zip(ed[open_], np.tile(fn, (3, 1))[open_]):
+        p0, p1 = V[i], V[j]
+        t = np.cross(p1 - p0, n)
+        t = t / np.linalg.norm(t) * np.sign(t @ ((p0 + p1) / 2 - V[k]))   # in the pane's plane, out of it
+        dh = np.array([0.0, 0.0, -1.0]) + n[2] * n          # downhill in the pane's plane (its foot lies nearly level)
+        if t @ dh < 0.7 * np.linalg.norm(dh):   # the bottom edge only (not the sides, the top)
+            continue
+        n_edges += 1
+        d = (Vector((-n[0], -n[1], 0.0)).normalized() + Vector((0, 0, -1))).normalized()
+        hits = [solid.ray_cast(Vector(p) + Vector((0, 0, -1e-3)), d, cs["reach"])[0] for p in (p0, p1)]
+        if None in hits:
+            continue
+        h0, h1 = (np.array(h) + (0, 0, 1e-3) for h in hits)
+        for t3 in ((p0, p1, h1), (p0, h1, h0)):
+            nt = np.cross(t3[1] - t3[0], t3[2] - t3[0])
+            tris.append(t3 if nt[2] > 0 else (t3[0], t3[2], t3[1]))
+    P = np.array(tris, float).reshape(-1, 3, 3)
+    n = np.cross(P[:, 1] - P[:, 0], P[:, 2] - P[:, 0])
+    n /= np.maximum(np.linalg.norm(n, axis=1, keepdims=True), 1e-12)
+    print(f"COWL_SHELF {len(P)} tris on {n_edges} bottom edges")
+    return P.reshape(-1, 3), np.arange(3 * len(P)).reshape(-1, 3), corners(cab_attr(cs["cell"]), n)
+
+
 def pieces(car, c, shift):
     """Whole car -> body FBX and doors FBX (slab doors, VehicleSkeleton, hinge keys). -> triangles per piece."""
     V, T, A, _ = pv.soup(car, shift)
@@ -2754,6 +2854,18 @@ def pieces(car, c, shift):
         for lo, hi in C["TRIM_BACKS"]:
             lo, hi = np.array(lo) + shift, np.array(hi) + shift
             back_liner |= (part == 0) & ~glass & ~panel & np.all((ctr >= lo) & (ctr <= hi), 1)
+    # TRIM_BACKS_GLASS (optional, Cybercab): every body non-panel face (window surrounds, the B pillar's divider, the A
+    # pillars' feet) with a corner or its centre within this distance of a window pane gets it too, from the panes
+    # themselves, so a new body round needs no boxes: from inside, a culled divider between the door glass and the
+    # quarter light let the sky through (e2e cc7a vd-day-driver-e)
+    if C.get("TRIM_BACKS_GLASS"):
+        win = glass & (c["pane"][tf] >= 0) & (c["pane"][tf] != GLASS_ZONES.index("LightBarL"))
+        gw = bvh_of([(V, T[win])])
+        cand = np.nonzero((part == 0) & ~glass & ~panel & ~back_liner)[0]
+        r = C["TRIM_BACKS_GLASS"]
+        near = [any(gw.find_nearest(Vector(p), r)[0] is not None for p in (*V[T[i]], V[T[i]].mean(0))) for i in cand]
+        back_liner[cand[near]] = True
+        print(f"TRIM_BACKS_GLASS {int(np.sum(near))} faces within {r} of the panes")
 
     def backs(sel, recolour, base, up=None):
         """Reversed copies on their own vertices (the FBX import keeps one of two faces on the same vertices). up (the
@@ -2931,6 +3043,14 @@ def pieces(car, c, shift):
     body_t.append(ct + len(bodyV))
     bodyV = np.concatenate([bodyV, cv + shift])
     body_a.append(ca)
+    # PILLAR_COVER, COWL_SHELF: after the cabin (its shell's rays must not meet them; the shelf reaches the dash)
+    trims = [pillar_cover(V, T, glass, c["pane"][tf], cab_attr)] if C.get("PILLAR_COVER") else []
+    if C.get("COWL_SHELF"):
+        trims.append(cowl_shelf(V, T, glass, c["pane"][tf], bvh_of([(cv + shift, ct)]), cab_attr))
+    for v, t, a in trims:
+        body_t.append(t + len(bodyV))
+        bodyV = np.concatenate([bodyV, v])
+        body_a.append(a)
     Tb, Ab = np.concatenate(body_t), np.concatenate(body_a)
     body = pv.soup_object(pv.NAME, bodyV - shift, Tb, Ab, mat)
     # glass drawn last (template part CabinGlass, Liftgate.lua): every window in a static model drawn after every door,

@@ -403,11 +403,21 @@ CAR = dict(
     LINER_UP=dict(cell="bed_rib", dz=0.0, y=_cr(-0.60)),
     # the black trim behind the cabin (the rear arches' lips) seen from inside over the trunk walls' top: reversed
     # liner copies too, else through the windscreen's top corners its culled backs showed the ground (cabin-r2
-    # e_windscreen's light triangles; convert.py pieces). From the trunk floor up, behind the cabin's rear wall; and the
-    # A pillars' black feet at the windscreen's lower corners (r11 moved them 4 cm out: from inside, ~1 cm of sky
-    # between the pillar, the cowl and the glass)
-    TRIM_BACKS=(((-1.0, -2.5, -0.25), (1.0, _cr(-0.60), 0.5)),
-                ((-0.85, 0.55, -0.05), (-0.50, 1.00, 0.30)), ((0.50, 0.55, -0.05), (0.85, 1.00, 0.30))),
+    # e_windscreen's light triangles; convert.py pieces). From the trunk floor up, behind the cabin's rear wall
+    TRIM_BACKS=(((-1.0, -2.5, -0.25), (1.0, _cr(-0.60), 0.5)),),
+    # and every body trim face within 3 cm of a window pane (convert.py pieces): the door glass / quarter light
+    # divider (from inside, a line of sky behind it: e2e cc7a vd-day-driver-e), the A pillars' feet at the windscreen's
+    # lower corners (r11: ~1 cm of sky), the window surrounds; from the panes, not boxes (the body rounds move them)
+    TRIM_BACKS_GLASS=round(0.03 * K, 4),
+    # the A pillars' inner trim, dark (convert.py pillar_cover): from each windscreen side edge in to a ridge behind
+    # the gap and out to the door glass's front edge, wherever they are within 15 cm (r11: 5-20). r11 widened the
+    # windscreen 4 cm onto the pillar: seen through it, the far pillar's skin stood edge on (a grey line, the ground
+    # behind it through the door glass; at ae38316 a gold band)
+    PILLAR_COVER=dict(pairs=(("WinT", "WinLH"), ("WinT", "WinRH")), gap=round(0.15 * K, 4), depth=0.5, cell="liner"),
+    # the slot between the windscreen's foot and the dash closed (convert.py cowl_shelf): a dark strip from the glass's
+    # bottom edge back and down at 45 degrees to the cabin within 25 cm. r11 (the same commit) widened it; through it,
+    # from behind and the sides, the ground showed below (iso N/W/NW/NE/SW)
+    COWL_SHELF=dict(reach=round(0.25 * K, 4), cell="liner"),
     # cabin.py: the parts' names -> palette cells (MinidoracatTesla_vehicle.frag CABIN; the detail model's: DETAIL_RGB
     # and DETAIL_RGB_EXTRA): the seats near black (rider guide 05 / p.7 x742; bed_wall_lo, a cell no other Cybercab
     # part takes: seat_head finds the seats by it), their seams darker, the dash's layers (the silver band appended to
