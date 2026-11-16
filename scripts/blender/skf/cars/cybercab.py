@@ -221,15 +221,20 @@ CAR = dict(
     # no gap); clipped to dashes where they met the tail lamp bar, its bottom edge's strips hung under the open lid
     SEAL_NONE=("TrunkDoor",),
     RAIL=None,
-    # the prep's 146k-triangle body (a 3 mm cut mesh) collapsed to about the other cars' size: each object X
+    # the prep's 54k-triangle paint (a 3 mm cut mesh) collapsed to about the other cars' size: each object X
     # symmetric, its open edges, its panel seams and its flat underside's outline held (DECIMATE_KEEP_BOUNDARY,
-    # DECIMATE_HOLD_UNDER: pzveh.decimate)
-    DECIMATE={"Paint": 16000, "Trim": 15000, "Liner": 4000, "Glass_Windshield": 1200, "Glass_Door": 700,
+    # DECIMATE_HOLD_UNDER: pzveh.decimate). Paint 16000 -> 24000: at 16000 the held seams left the panels so few
+    # triangles that 3,400 faces stood off the surface and three more passes held patches of fine vertices (18.0k out,
+    # the rear quarters and hood faceted); at 24000 one pass, the seams thinned after it (15.9k out)
+    DECIMATE={"Paint": 24000, "Trim": 15000, "Liner": 4000, "Glass_Windshield": 1200, "Glass_Door": 700,
               "Glass_Quarter": 350, "Glass_ReverseLens": 300, "HeadLight": 800, "TailLight": 1000, "Grille": 700},
     DECIMATE_KEEP_BOUNDARY=True,
     DECIMATE_HOLD_UNDER=True,
     DECIMATE_THIN=(round(0.0003 * K, 6), round(0.02 * K, 4)),   # (pzveh.thin_seams: the cut's 1-2 mm seam vertices)
     DECIMATE_SNAP=round(0.001 * K, 6),     # (pzveh.decimate: a few held-seam collapses stood up to 19 cm off)
+    # (pzveh.decimate smooth) the paint's corner normals the fine faces' mean within 4 cm: one fine face each gave a
+    # vertex's corners different normals, and the prep's 3 mm ripples (the nose's plaid, the hood's bands) came along
+    DECIMATE_SMOOTH={"Paint": round(0.04 * K, 4)},
     PAINT_MAT="Paint",
     UV_FILL=True,                          # (convert.py fill_slivers) texels the bake left black under sliver UVs
     UV_FILL_TONE=True,                     # (convert.py textures) the filled texels stay out of the paint's quantiles
@@ -249,11 +254,11 @@ CAR = dict(
     RECOLOR=(("Glass", _g(-0.01, -0.01, -0.01), _g(0.01, 0.01, 0.01), (112, 112, 116), "Glass_ReverseLens"),
              ("Glass", _g(-0.01, -0.01, -0.01), _g(-0.29, 0.01, 0.01), (118, 118, 120), "Glass_SpoilerLamp"),
              ("Glass", _g(0.29, -0.01, -0.01), _g(0.01, 0.01, 0.01), (118, 118, 120), "Glass_SpoilerLamp")),
-    # r13: the paint notch's ledge under the spoiler's lip (faces up, z 0.79-0.80 m) lit like the roof by the game's
-    # light from above, a pale band under the black lip (official erg-p04 / 01 rear: shadow there): a darker gold of its
-    # own (convert.py classify CARBON; the Cybercab has one paint)
-    CARBON=dict(rgb=(96, 78, 54), zones=(dict(lo=_g(-0.70, -2.20, 0.785), hi=_g(0.70, -1.995, 0.81), of="Paint",
-                                              facing=((0, 0, 1), (0.5, 1.0))),)),
+    # the shadow under the spoiler's duck lip (official 01 rear: 0.30 of the face under the lip, 0.90 at the fold),
+    # by the texels' height between the lip's black face and the notch's ledge (convert.py lip_shade: both from the
+    # shell); r13's CARBON box on the ledge's faces drew a brown line as ragged as the collapsed triangles
+    CARBON=None,
+    LIP_SHADE=dict(k=(0.30, 0.60), soft=round(0.004 * K, 4), reach=round(0.06 * K, 4)),
     GLASS_MATS=("Glass",),
     GLASS_OPAQUE=("Glass_ReverseLens", "Glass_SpoilerLamp", "RearCamera"),
     GLASS_BACKS=("WinLH", "WinLT", "WinRH", "WinRT"),

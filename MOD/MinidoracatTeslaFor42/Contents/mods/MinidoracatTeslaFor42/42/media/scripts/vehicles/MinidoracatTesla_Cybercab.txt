@@ -63,7 +63,7 @@ module Base
         physics box
         {
             offset = 0.0000 0.3807 -0.1769,
-            extents = 0.6593 0.2078 0.6885,
+            extents = 0.6593 0.2079 0.6885,
         }
         wheel FrontLeft
         {

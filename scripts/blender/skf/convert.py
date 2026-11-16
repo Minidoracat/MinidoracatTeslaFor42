@@ -358,9 +358,11 @@ def load_source():
             # an open edge's vertex across a panel and tear the skin; keep_boundary prices those collapses out.
             # DECIMATE_SNAP (Cybercab, grid): vertices the collapse left that far off the surface go back onto it;
             # DECIMATE_HOLD_UNDER (Cybercab): the flat underside's outline held too; DECIMATE_THIN (Cybercab): the held
-            # seams' near-straight runs thinned (pzveh.thin_seams)
+            # seams' near-straight runs thinned (pzveh.thin_seams); DECIMATE_SMOOTH {object prefix: radius}
+            # (Cybercab): the corner normals the fine faces' mean within that radius
             pv.decimate(o, target, C.get("DECIMATE_KEEP_BOUNDARY", False), C.get("DECIMATE_SNAP"),
-                        C.get("DECIMATE_HOLD_UNDER", False), C.get("DECIMATE_THIN"))
+                        C.get("DECIMATE_HOLD_UNDER", False), C.get("DECIMATE_THIN"),
+                        next((r for p, r in C.get("DECIMATE_SMOOTH", {}).items() if o.name.startswith(p)), None))
         for under, over, gap in C.get("DROP_COVERED", ()):
             if under == name:
                 drop_covered(o, [obs[names.index(n)] for n in over], gap)
@@ -1540,6 +1542,54 @@ def paint_hsv(hsvs):
     print("LUA colors", hsvs)
 
 
+def lip_shade(car, c, pos, paint, nrm):
+    """LIP_SHADE=dict(k=(top, bottom), soft, reach) (Cybercab): the shadow under the duck lip, H x W factor (1 = none)
+    on the paint texels by their baked height alone, so its edges run level and it keeps one width across the car.
+    From the shell: the top is the lowest corner of the trunk lid's black rear face (Trim on the TrunkDoor part facing
+    back); the band's texels lie within `reach` in plan of the lip (that Trim up to 10 cm over the top and not facing
+    up: round the corners into the end caps too), the bottom is the ledge under it (paint facing up within 10 cm under
+    the top there: the notch's floor). Shaded k[0] at the top to k[1] at the ledge, back to 1 over `soft` under it.
+    Faces coloured by a box (r13 CARBON on the ledge) followed the collapsed triangles: a brown line with a bump in
+    the middle and a V spike each side (int-r13 rear.png row 455). Official 01 rear: under the lip 0.30 of the face,
+    rising to 0.90 at the fold."""
+    from mathutils.kdtree import KDTree
+    ls = C["LIP_SHADE"]
+    me = car.data
+    co = pv.mesh_co(car)
+    fn = np.array([p.normal[:] for p in me.polygons])
+    fv = [p.vertices[:] for p in me.polygons]
+    fc = pv.face_centres(car)
+    lid = (c["obj"] == "Trim") & (c["part"] == PARTS.index("TrunkDoor"))
+    top = np.percentile(co[np.concatenate([fv[i] for i in np.flatnonzero(lid & (fn[:, 1] < -0.95))])][:, 2], 2)
+    rim = np.flatnonzero(lid & (fc[:, 2] > top) & (fc[:, 2] < top + 0.10 * pv.K) & (fn[:, 2] < 0.5))
+    pts = np.concatenate([fc[rim], co[np.concatenate([fv[i] for i in rim])]])
+    kd = KDTree(len(pts))
+    for i, p in enumerate(pts):
+        kd.insert((p[0], p[1], 0.0), i)
+    kd.balance()
+
+    def near(p):                            # within reach of the lip in plan
+        return np.array([kd.find((x, y, 0.0))[2] < ls["reach"] for x, y in p[:, :2]], bool)
+    band = (fc[:, 2] < top) & (fc[:, 2] > top - 0.10 * pv.K)
+    up = np.flatnonzero(c["paint"] & (fn[:, 2] > 0.7) & band)
+    up = up[near(fc[up])]
+    floor = np.percentile(co[np.concatenate([fv[i] for i in up])][:, 2], 5)
+    ys, xs = np.nonzero(paint & (pos[..., 2] < top) & (pos[..., 2] > floor - ls["soft"]))
+    ok = near(pos[ys, xs])
+    ys, xs = ys[ok], xs[ok]
+    z = pos[ys, xs, 2]
+    k = ls["k"][0] + (ls["k"][1] - ls["k"][0]) * np.clip((top - z) / (top - floor), 0, 1)
+    f = np.ones(paint.shape, np.float32)
+    # round the corners it fades as the paint turns to the side (the ledge kept): a reach cut alone left a dark
+    # rectangle on the rear quarter by the end cap, ending square
+    n_ = nrm[ys, xs]
+    w = np.maximum(pv.smoothstep(0.2, 0.6, -n_[:, 1]), pv.smoothstep(0.5, 0.8, n_[:, 2]))
+    f[ys, xs] = 1 + (k - 1) * w * pv.smoothstep(floor - ls["soft"], floor, z)
+    print("LIP_SHADE lip faces", len(rim), "top z %.4f floor z %.4f" % (top, floor), "ledge faces", len(up),
+          "texels", len(ys))
+    return f
+
+
 def recess(pos, sel):
     """RECESS (Model Y's rear bumper corners): a shadowed recess drawn in the skin, H x W factor (1 = none) for the
     texels sel at their baked positions pos (pre-centre; |x| mirrored onto the left side). In the plane (s, z), s =
@@ -1748,7 +1798,7 @@ def textures(car, c, shift=0.0):
         layers["rail"] = np.repeat(c["rail"][:, None], 3, 1)
     if c["tone"][:, 0].any():
         layers["tone"] = c["tone"]
-    if C.get("SEAM_SHADE") or C.get("RECESS") or C.get("GROOVE_INK"):   # each corner's position, 0..1 over the bbox
+    if C.get("SEAM_SHADE") or C.get("RECESS") or C.get("GROOVE_INK") or C.get("LIP_SHADE"):   # each corner's position
         co = pv.mesh_co(car)
         lo_, span = co.min(0), np.ptp(co, 0)
         lv = np.empty(len(car.data.loops), np.int64)
@@ -1765,6 +1815,7 @@ def textures(car, c, shift=0.0):
     seam = seam_shade(car, c, pos, paint) if C.get("SEAM_SHADE") else None
     rec = recess(pos + shift, paint & (b["recess"][..., 0] > 0.5)) if "recess" in b else None
     gink, gfill = groove_ink(pos + shift, paint, col) if C.get("GROOVE_INK") else (None, None)
+    lips = lip_shade(car, c, pos, paint, nrm) if C.get("LIP_SHADE") else None
     # badges flat: their strokes overlap at the joints, coplanar faces whose AO rays start on each other (dark specks)
     shade = np.where(b["badge"][..., 0] > 0.25, 1.0, 0.55 + 0.45 * ao)
     chrome = b["badge"][..., 0] > 0.75
@@ -1843,6 +1894,8 @@ def textures(car, c, shift=0.0):
         skin = np.clip(s, 0, 1)
         if rec is not None:                # (after the medians above and the damage tint below: the paint's own)
             skin[paint] *= rec[paint][:, None]
+        if lips is not None:               # LIP_SHADE: likewise
+            skin[paint] *= lips[paint][:, None]
         skin = np.concatenate([skin, alpha], -1)
         pv.cabin_corners(skin)              # the cabin's colour under Viewpoint (pzveh CABIN_UV0_RGB)
         pv.save_png(skin, os.path.join(pv.TEX_DIR, f"{pv.NAME}_{p}.png"), p)

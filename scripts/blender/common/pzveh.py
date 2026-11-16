@@ -198,7 +198,7 @@ def thin_seams(bm, tol, max_len):
     return n
 
 
-def decimate(ob, target, keep_boundary=False, snap=None, hold_under=False, thin=None):
+def decimate(ob, target, keep_boundary=False, snap=None, hold_under=False, thin=None, smooth=None):
     """Collapse to target triangles (X symmetric). keep_boundary: open-edge vertices are left out of the decimate
     modifier's vertex group at factor 1000, so collapsing their edges costs that much more and the outline stays; so are
     the vertices between two faces of different `panel` (a face attribute: Cybercab's prep, its seams inside an object).
@@ -209,7 +209,10 @@ def decimate(ob, target, keep_boundary=False, snap=None, hold_under=False, thin=
     few dozen collapses stood 1-19 cm off, spikes out of the roof and sills); then a face whose middle or edge middles
     still stand 8 x snap off the surface (a long triangle across a notch: the Cybercab's bumper corners, 6-10 cm
     spikes) gets the fine mesh's vertices under it held too and the collapse runs again from the fine mesh, up to 3
-    more times."""
+    more times. smooth (a radius, with snap): each corner's normal is then the area-weighted mean of the fine faces'
+    normals within that radius of its sample point, those within 30 deg of its own (creases stay): one fine face's
+    normal per corner gave a vertex's corners different normals, and the prep's own ripples came along (Cybercab:
+    the rear quarters like crumpled paper, the hood in light and dark blocks)."""
     from mathutils.bvhtree import BVHTree
     if snap:                                # the mesh as it was, and each face's smooth normal (its corners' mean)
         me = ob.data
@@ -221,6 +224,7 @@ def decimate(ob, target, keep_boundary=False, snap=None, hold_under=False, thin=
         ls = np.array([p.loop_start for p in me.polygons])
         ref_n = np.add.reduceat(cn.reshape(-1, 3), ls)
         ref_n /= np.maximum(np.linalg.norm(ref_n, axis=1, keepdims=True), 1e-12)
+        ref_a = np.array([p.area for p in me.polygons])
         fine = me.copy()
     select_only(ob)
     hold = set()                            # fine-mesh vertex positions held after a pass left faces off the surface
@@ -309,6 +313,17 @@ def decimate(ob, target, keep_boundary=False, snap=None, hold_under=False, thin=
         far = (n[0] * n[1]).sum(1) < np.cos(np.radians(10))
         print("DECIMATE normals", ob.name, int(far.sum()), "of", len(far), "corners 25 % in")
         n = np.where(far[:, None], n[1], n[0])
+        if smooth:
+            c30, out = np.cos(np.radians(30)), n.copy()
+            for i, p in enumerate(co[lv] + (fc - co[lv]) * 0.05):
+                hits = [h[2] for h in ref.find_nearest_range(Vector(p), smooth)]
+                if hits:
+                    s = (ref_a[hits] * ((ref_n[hits] @ n[i]) > c30)) @ ref_n[hits]
+                    if s @ s > 1e-18:
+                        out[i] = s / np.sqrt(s @ s)
+            print("DECIMATE smooth", ob.name, smooth, int(((out * n).sum(1) < np.cos(np.radians(2))).sum()), "of",
+                  len(n), "corners turned > 2 deg")
+            n = out
         if "custom_normal" in me.attributes:
             me.attributes.remove(me.attributes["custom_normal"])
         me.attributes.new("custom_normal", "FLOAT_VECTOR", "CORNER").data.foreach_set("vector", n.ravel())
