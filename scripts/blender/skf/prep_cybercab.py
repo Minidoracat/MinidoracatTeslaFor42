@@ -504,7 +504,10 @@ DIFFUSER = (0.475, 0.305, 0.345, 0.015)         # rear bumper's lower step: |x|,
 SEAMS = ("door", "cowl", "hood_x", "hood_z", "trunk_y", "trunk_x", "tail_top", "port_x0", "port_x1", "port_z0",
          "port_z1")
 GROOVE = (0.0025, 0.0020)
-FENDER_CAM = ((1.230, 0.768), (1.126, 0.794), (1.178, 0.741), 0.028)   # tip, rear top, rear bottom, height
+FENDER_CAM = ((1.230, 0.768), (1.126, 0.794), (1.178, 0.741), 0.028, 0.55)   # tip, rear top, rear bottom, height,
+# where along tip -> rear top the top's outer corner stands (round 13 a13, Main: over the rear top the lens faced back
+# and down 45 deg, no outward part, unseen from the side and the game's 30 deg cameras; at 0.55 it faces out and back,
+# a triangle in 01 side as in the official picture)
 PLATE = (0.0, 0.415, 0.572, 0.150)               # plate (x, z0, z1, half width): round 11 the corners 02 / x253 / 03
                                                  # triangulated (r10c3b: |x| 0.150-0.151, z 0.379-0.536 with nose B);
                                                  # round 13 8 mm lower (CybercabFit: the holder 2-9 px past 01 side's
@@ -1573,11 +1576,12 @@ def side_point(f, y, z, x0=-1.2):
 
 def fender_camera(f):
     """A wedge on the front fender behind the arch pointing back, its rear face the dark lens (01 side, 02)."""
-    tip, top, bot, hgt = FENDER_CAM
-    ys, zs = np.array([tip[0], top[0], bot[0]]), np.array([tip[1], top[1], bot[1]])
+    tip, top, bot, hgt, k = FENDER_CAM
+    mid = (tip[0] + k * (top[0] - tip[0]), tip[1] + k * (top[1] - tip[1]))
+    ys, zs = np.array([tip[0], top[0], bot[0], mid[0]]), np.array([tip[1], top[1], bot[1], mid[1]])
     p, n = side_point(f, ys, zs)
-    up = p[1:] + n[1:] * hgt
-    v = np.concatenate([p, up])             # 0 tip, 1 top, 2 bottom, 3 top out, 4 bottom out
+    up = p[[3, 2]] + n[[3, 2]] * hgt
+    v = np.concatenate([p[:3], up])         # 0 tip, 1 top, 2 bottom, 3 top out (over k of tip -> top), 4 bottom out
     shell = np.array([(0, 3, 4), (0, 1, 3), (0, 4, 2)])
     lens = np.array([(1, 2, 4), (1, 4, 3)])
     return v, shell, lens
