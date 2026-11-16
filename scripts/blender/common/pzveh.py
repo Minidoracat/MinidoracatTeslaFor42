@@ -301,8 +301,14 @@ def decimate(ob, target, keep_boundary=False, snap=None, hold_under=False, thin=
         lv = np.empty(len(me.loops), np.int64)
         me.loops.foreach_get("vertex_index", lv)
         fc = np.repeat(face_centres(ob), [p.loop_total for p in me.polygons], 0)
-        q = co[lv] + (fc - co[lv]) * 0.05
-        n = np.array([ref_n[ref.find_nearest(Vector(p))[2]] for p in q], np.float32)
+        n = [np.array([ref_n[ref.find_nearest(Vector(p))[2]] for p in co[lv] + (fc - co[lv]) * t], np.float32)
+             for t in (0.05, 0.25)]
+        # a corner on a fillet (its normal 5 % in turns > 10 deg by 25 % in) takes the face's own side 25 % in: else a
+        # long triangle from a fillet across a flat face shades as one long streak (the rear bumper's stripes, the port
+        # lid's bright triangle, batch 6); elsewhere 5 % (25 % everywhere facets the curved paint)
+        far = (n[0] * n[1]).sum(1) < np.cos(np.radians(10))
+        print("DECIMATE normals", ob.name, int(far.sum()), "of", len(far), "corners 25 % in")
+        n = np.where(far[:, None], n[1], n[0])
         if "custom_normal" in me.attributes:
             me.attributes.remove(me.attributes["custom_normal"])
         me.attributes.new("custom_normal", "FLOAT_VECTOR", "CORNER").data.foreach_set("vector", n.ravel())
