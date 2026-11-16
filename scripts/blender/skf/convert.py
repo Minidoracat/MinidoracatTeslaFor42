@@ -1856,6 +1856,8 @@ def textures(car, c, shift=0.0):
         # the finish flag: per paint where the car sets one (PAINT_ALPHAS: 253 stainless, 252 satin film)
         pa = C["PAINT_ALPHAS"].get(p, C["PAINT_ALPHA_DEFAULT"]) / 255 if C.get("PAINT_ALPHAS") else PAINT_ALPHA
         alpha = np.where((paint if gfill is None else paint | gfill) & ~badge, pa, 1.0)[..., None]
+        if lips is not None:               # LIP_SHADE: the lip hides the sky, so no paint flag (no sky sheen): the sheen,
+            alpha[lips < 0.999] = 1.0      # added over the shade, lit the ledge's ragged up-facing faces (light specks)
         ramp = pv.official_ramp(code) if code else chart_ramp(C["PAINT_CHART"][p]) if C.get("PAINT_CHART") else \
             pv.film_ramp(C["FILMS"][p], mix=C.get("FILM_MIX", {}).get(p))
         xp = (np.arange(len(ramp)) + 0.5) / len(ramp)
