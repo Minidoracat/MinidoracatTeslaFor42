@@ -466,8 +466,12 @@ def furniture(add, opening, grow=0.0, fine=1, between=None):
         mv = (hf - [0, rec[0], rec[1]]) @ rot_x(rec[2]).T + [0, rec[0], rec[1]] - hf
         part((w * w0, d0, hh), 0.035, "seat", (cx, hf[1] - d0 / 2, hf[2] + hh / 2), cuts=(0, 0, 6), taper=1 - w1 / w0,
              tilt=(hf[1], hf[2], rec[2] - up), seg=3, thin=d0 - d1, shoulder=(0.4, 0.12), fit=lambda v: v + mv)
-        # its neck: a narrow block across the gap, into both (ERG p.22 side: the headrest stands on a short stem)
-        part((w * w0 * 0.55, 0.05, gap + 0.05), 0.012, "seat", (cx, hf[1] - 0.035, foot + bb + gap / 2), tilt=rec, seg=1)
+        # its neck: a narrow block across the gap, into both, under the part of the headrest's foot over the backrest's
+        # top, up to where its lean lifted that foot (ERG p.22 side: the headrest stands on a short stem)
+        y0, y1 = max(hf[1] - d0, front - s.get("back_top", bt)), min(hf[1], front)
+        yc, lift = (y0 + y1) / 2, (hf[1] - (y0 + y1) / 2) * np.sin(np.radians(up))
+        nz0, nz1 = foot + bb - 0.025, foot + bb + gap + max(lift, 0) + 0.025
+        part((w * w0 * 0.55, min(0.05, y1 - y0), nz1 - nz0), 0.012, "seat", (cx, yc, (nz0 + nz1) / 2), tilt=rec, seg=1)
         for k in s["seams"]:
             seam_box((w - 0.06, 0.006, 0.010), "seam", (cx, front, foot + k * bb), rec)
         return fy, z0
