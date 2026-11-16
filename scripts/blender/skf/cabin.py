@@ -748,12 +748,13 @@ def cabin_mesh(bvh, belt, trunk_floor, trunk_end, arch, opening):
                  **(dict(cuts=(24, 0, 0), fit=to_lip) if fit else {}))
             part((bw, bd, 0.012), 0.004, "console", (0, (TRUNK_Y + trunk_end) / 2 - 0.04, trunk_floor + 0.006), seg=1)
         if bk and "ribs" in bk:     # TRUNK_BULKHEAD ribs (cell, spacing, half span): upright ribs on its trunk side,
-            rc_, gap_, span_ = bk["ribs"]   # floor to 3 cm under the skin (04's slatted wall)
-            for x in np.arange(-span_, span_ + 1e-6, gap_):
-                o = Vector((x, yk - 0.01, trunk_floor + 0.01))
+            rc_, gap_, span_ = bk["ribs"]   # floor to 3 cm under the skin (04's slatted wall). Their front faces 8 mm
+            yr = yk - 0.014                 # behind the wall's: flush, the two fought for depth and the light ribs
+            for x in np.arange(-span_, span_ + 1e-6, gap_):     # showed on its cabin side (e2e cc7a E0, door glass)
+                o = Vector((x, yr, trunk_floor + 0.01))
                 hs = [h[0].z for b in bvh.values() for h in (b.ray_cast(o, Vector((0, 0, 1))),) if h[0] is not None]
                 top = min(hs) - 0.03 if hs else trunk_floor + 0.3
-                part((0.022, 0.012, top - trunk_floor), 0.004, rc_, (x, yk - 0.006, (top + trunk_floor) / 2), seg=1)
+                part((0.022, 0.012, top - trunk_floor), 0.004, rc_, (x, yr, (top + trunk_floor) / 2), seg=1)
         if PARCEL:
             parcel_shelf(add, bvh)
 

@@ -409,11 +409,12 @@ CAR = dict(
     # divider (from inside, a line of sky behind it: e2e cc7a vd-day-driver-e), the A pillars' feet at the windscreen's
     # lower corners (r11: ~1 cm of sky), the window surrounds; from the panes, not boxes (the body rounds move them)
     TRIM_BACKS_GLASS=round(0.03 * K, 4),
-    # the A pillars' inner trim, dark (convert.py pillar_cover): from each windscreen side edge in to a ridge behind
+    # the A pillars' inner trim, light as the headliner (rider guide 05: white A pillars; 02 shows the far one grey
+    # through the windscreen; convert.py pillar_cover): from each windscreen side edge in to a ridge behind
     # the gap and out to the door glass's front edge, wherever they are within 15 cm (r11: 5-20). r11 widened the
     # windscreen 4 cm onto the pillar: seen through it, the far pillar's skin stood edge on (a grey line, the ground
     # behind it through the door glass; at ae38316 a gold band)
-    PILLAR_COVER=dict(pairs=(("WinT", "WinLH"), ("WinT", "WinRH")), gap=round(0.15 * K, 4), depth=0.5, cell="liner"),
+    PILLAR_COVER=dict(pairs=(("WinT", "WinLH"), ("WinT", "WinRH")), gap=round(0.15 * K, 4), depth=0.5, cell="bed_rib"),
     # the slot between the windscreen's foot and the dash closed (convert.py cowl_shelf): a dark strip from the glass's
     # bottom edge back and down at 45 degrees to the cabin within 25 cm. r11 (the same commit) widened it; through it,
     # from behind and the sides, the ground showed below (iso N/W/NW/NE/SW)
