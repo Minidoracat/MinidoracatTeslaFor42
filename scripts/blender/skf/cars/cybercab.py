@@ -217,9 +217,11 @@ CAR = dict(
         (0.33, 0.16), (0.60, 0.16), (0.62, 0.22), (0.65, 0.40), (0.65, 0.59), (0.63, 0.61), (0.33, 0.61))),
              (0, -1, 0), "arch_liner") for s in (-1, 1)),
     SEAL_CLIP=True,
-    # none on the trunk lid (convert.py SEAL_NONE): its panels share their edges with the body (the prep's grooves,
-    # no gap); clipped to dashes where they met the tail lamp bar, its bottom edge's strips hung under the open lid
-    SEAL_NONE=("TrunkDoor",),
+    # none on the trunk lid and the doors (convert.py SEAL_NONE): their panels share their edges with the body (the
+    # prep's grooves, no gap); clipped to dashes where they met the tail lamp bar, the lid's bottom edge's strips hung
+    # under the open lid as a dashed black line; the doors' strips (2 cm past the edge, 8 mm behind) showed along the
+    # open door's rear edge as a broken black line, mostly under a pixel wide (e2e cc8a SW all)
+    SEAL_NONE=("TrunkDoor", "DoorFrontLeft", "DoorFrontRight"),
     RAIL=None,
     # the prep's 54k-triangle paint (a 3 mm cut mesh) collapsed to about the other cars' size: each object X
     # symmetric, its open edges, its panel seams and its flat underside's outline held (DECIMATE_KEEP_BOUNDARY,
@@ -324,7 +326,9 @@ CAR = dict(
     DAMAGE_BOX_REF={11: dict(islands=(12, 36), y=(0.0, 0.75))},
     # (pzveh damage_own) body faces whose UV1 lands on opaque damage-map texels no ModernCar body panel owns (a lamp's
     # or nobody's) try the next 8 nearest ModernCar islands: the rear corner facet (r10 on) ran off ModernCar's tail
-    # panel onto its tail lamp's hole (brown block at < 40), the duck lip's end cap onto a grey streak (white dot)
+    # panel onto its tail lamp's hole (brown block at < 40), the duck lip's end cap onto a grey streak (white dot); one
+    # then landing mostly on solid art takes a less opaque island (the corner's rear facets: a solid dent spot on
+    # ModernCar's hood front, a grey-brown blob under the lip's end at < 60, e2e cc8a)
     DAMAGE_OWN=8,
     PANEL_ZONES={4: ("GuardLH", "GuardRH")},
     CUT={},
@@ -364,8 +368,9 @@ CAR = dict(
     HUMP_BACKS=False,
     # rider guide 04: the trunk's front wall (cabin.py TRUNK_BULKHEAD, on the first shell ring behind TRUNK_Y: the open
     # lid shows it, not the seats; from inside the dark wall behind them), its trunk side mid grey with light upright
-    # ribs (ribs: cell, spacing, half span inside the trunk walls)
-    TRUNK_BULKHEAD=dict(z=0.05, cells=("liner", "bed_wall_hi"), ribs=("bed_rib", 0.10, 0.30)),
+    # ribs (ribs: cell, spacing, half span inside the trunk walls, the cell of their sides: side on through the rear
+    # quarter window the outer rib's light side read as a 2 px grey upright, e2e cc8a SW shut)
+    TRUNK_BULKHEAD=dict(z=0.05, cells=("liner", "bed_wall_hi"), ribs=("bed_rib", 0.10, 0.30, "floor")),
     # the front seats (06, ERG p.22, rider guide pp.10-12 / 05; cabin.py slim): a thin backrest up to the top in one
     # piece as wide (head None: no headrest on it; back = the old backrest + headrest top), three slightly convex
     # bands between its two seams (bulge; ERG p.22 front: from the top 0.30 / 0.29 / the rest), its top corners

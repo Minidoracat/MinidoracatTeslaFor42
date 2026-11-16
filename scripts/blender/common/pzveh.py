@@ -768,16 +768,19 @@ def damage_own(me, co, fc, fn, blv, fgrp, fisl, out, rco, rn, ru1, risl, rcls, t
     it does; out (UV1 per loop) and fisl change in place. Why (Cybercab r10 on): our rear corner facet sits where
     ModernCar has its tail lamp, extrapolated off ModernCar's tail panel (one half of a UV quad, the other half the
     lamp) onto the lamp hole: a brown block at condition < 40; the duck lip's end cap ran off it onto a grey streak no
-    ModernCar triangle uses, drawn untinted in Tail: a white dot at < 60."""
+    ModernCar triangle uses, drawn untinted in Tail: a white dot at < 60. One landing mostly on solid art (mean alpha of
+    the two maps over 0.5) takes, among islands as clean, one where they are less opaque: the rear corner's small rear
+    facets, nearest-clean on ModernCar's hood front, sat on a solid dent spot there and drew it as a lone grey-brown
+    blob under the lip's end at < 60 (e2e cc8a r55). (Every landing to its least opaque: 12,700 cm2 moved, the front's
+    damage a third fainter.)"""
     def grow(m):                    # one texel, 8 neighbours
         p = np.pad(m, 1)
         return np.any([p[1 + i:513 + i, 1 + j:513 + j] for i in (-1, 0, 1) for j in (-1, 0, 1)], 0)
 
     body = grow(grow(uv_cover(ru1[rcls == 0])))     # 2 px: just past an island's edge is still that panel's pattern
     VT = os.path.join(vanilla.PZ, "textures", "Vehicles")
-    opaque = np.zeros((512, 512), bool)
-    for i in (1, 2):
-        opaque |= img_np(bpy.data.images.load(os.path.join(VT, f"Veh_Damage{i}.png")))[..., 3] > 0.5
+    ink = np.max([img_np(bpy.data.images.load(os.path.join(VT, f"Veh_Damage{i}.png")))[..., 3] for i in (1, 2)], 0)
+    opaque = ink > 0.5
     # grow: the maps are sampled bilinear; a lamp's art runs ~3 px past its triangle (ModernCar's tail panel shares the
     # lamp's UV quad: the hole crosses the diagonal into the panel's half). Not-skin triangles (-1) are not grown: the
     # rocker undersides border the door strip
@@ -788,16 +791,18 @@ def damage_own(me, co, fc, fn, blv, fgrp, fisl, out, rco, rn, ru1, risl, rcls, t
     r[r.sum(1) > 1] = 1 - r[r.sum(1) > 1]
     w = np.stack([1 - r.sum(1), r[:, 0], r[:, 1]], 1)
 
-    def frac(uv, F):
-        """Share of the faces' (F) UV1 samples on bad texels (maps repeat)."""
+    def frac(uv, F, m=None):
+        """Share of the faces' (F) UV1 samples on bad texels, or their mean of m (maps repeat)."""
         t = np.flatnonzero(np.isin(fp, F))
         s = np.einsum("sk,tkc->tsc", w, uv[ft[t]]) % 1
-        hit = bad[(s[..., 1] * 512).astype(int) % 512, (s[..., 0] * 512).astype(int) % 512].mean(1)
+        hit = (bad if m is None else m)[(s[..., 1] * 512).astype(int) % 512, (s[..., 0] * 512).astype(int) % 512]
+        hit = hit.mean(1)
         return (np.bincount(fp[t], hit, len(fc)) / np.maximum(np.bincount(fp[t], minlength=len(fc)), 1))[F]
 
     F = np.flatnonzero(fgrp == 0)
     best = frac(out, F)
     F, best = F[best > 0], best[best > 0]
+    best_ink = frac(out, F, ink)
     T = np.flatnonzero(rcls == 0)
     isl = np.unique(risl[T])
     cand = np.empty((len(F), len(isl)))            # distance from each face to each island (normals as nearest_tri)
@@ -814,7 +819,7 @@ def damage_own(me, co, fc, fn, blv, fgrp, fisl, out, rco, rn, ru1, risl, rcls, t
     me.polygons.foreach_get("loop_total", lt)
     for j in range(order.shape[1]):
         for k in np.unique(order[:, j]):
-            S = np.flatnonzero((order[:, j] == k) & (best > 0) & np.isfinite(cand[np.arange(len(F)), order[:, j]]))
+            S = np.flatnonzero((order[:, j] == k) & np.isfinite(cand[np.arange(len(F)), order[:, j]]))
             if not len(S):
                 continue
             L = np.concatenate([np.arange(ls[f], ls[f] + lt[f]) for f in F[S]])
@@ -822,12 +827,12 @@ def damage_own(me, co, fc, fn, blv, fgrp, fisl, out, rco, rn, ru1, risl, rcls, t
             kk, bc = nearest_tri(co[blv[L]], rco[TT])
             uv = out.copy()
             uv[L] = np.einsum("nk,nkc->nc", bc, ru1[TT[kk]])
-            fr = frac(uv, F[S])
-            better = fr < best[S]
+            fr, fi = frac(uv, F[S]), frac(uv, F[S], ink)
+            better = (fr < best[S]) | ((fr == best[S]) & (best_ink[S] > 0.5) & (fi < best_ink[S]))
             for i in np.flatnonzero(better):
                 f = F[S[i]]
                 out[ls[f]:ls[f] + lt[f]] = uv[ls[f]:ls[f] + lt[f]]
-            fisl[F[S[better]]], best[S[better]] = isl[k], fr[better]
+            fisl[F[S[better]]], best[S[better]], best_ink[S[better]] = isl[k], fr[better], fi[better]
     print("DAMAGE_OWN", len(F), "body faces on bad texels:", int((best == 0).sum()), "moved off them,",
           int((best > 0).sum()), "still partly on them")
 

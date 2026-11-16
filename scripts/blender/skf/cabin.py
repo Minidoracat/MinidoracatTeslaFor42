@@ -747,14 +747,21 @@ def cabin_mesh(bvh, belt, trunk_floor, trunk_end, arch, opening):
             part((sw, sd, TRUNK_DROP + 0.005), 0.01, "base", (0, yc, trunk_floor + TRUNK_DROP / 2), seg=1,
                  **(dict(cuts=(24, 0, 0), fit=to_lip) if fit else {}))
             part((bw, bd, 0.012), 0.004, "console", (0, (TRUNK_Y + trunk_end) / 2 - 0.04, trunk_floor + 0.006), seg=1)
-        if bk and "ribs" in bk:     # TRUNK_BULKHEAD ribs (cell, spacing, half span): upright ribs on its trunk side,
-            rc_, gap_, span_ = bk["ribs"]   # floor to 3 cm under the skin (04's slatted wall). Their front faces 8 mm
-            yr = yk - 0.014                 # behind the wall's: flush, the two fought for depth and the light ribs
-            for x in np.arange(-span_, span_ + 1e-6, gap_):     # showed on its cabin side (e2e cc7a E0, door glass)
-                o = Vector((x, yr, trunk_floor + 0.01))
+        if bk and "ribs" in bk:     # TRUNK_BULKHEAD ribs (cell, spacing, half span[, side cell]): upright ribs on its
+            rc_, gap_, span_, *side_ = bk["ribs"]   # trunk side, floor to 3 cm under the skin (04's slatted wall).
+            yr = yk - 0.014                 # Their front faces 8 mm behind the wall's: flush, the two fought for depth
+            for x in np.arange(-span_, span_ + 1e-6, gap_):     # and the light ribs showed on its cabin side (e2e
+                o = Vector((x, yr, trunk_floor + 0.01))           # cc7a E0, door glass)
                 hs = [h[0].z for b in bvh.values() for h in (b.ray_cast(o, Vector((0, 0, 1))),) if h[0] is not None]
                 top = min(hs) - 0.03 if hs else trunk_floor + 0.3
-                part((0.022, 0.012, top - trunk_floor), 0.004, rc_, (x, yr, (top + trunk_floor) / 2), seg=1)
+                v, f = part((0.022, 0.012, top - trunk_floor), 0.004, rc_, (x, yr, (top + trunk_floor) / 2), seg=1)
+                if side_:   # (Cybercab) faces turned more to x than to y (sides, their bevels) in that cell: side on
+                    n0 = len(cell) - len(f)         # through the rear quarter window the outer rib's side was a light
+                    for i, fc in enumerate(f):      # upright line
+                        p = v[fc[:3]]
+                        nx, ny, nz = np.abs(np.cross(p[1] - p[0], p[2] - p[0]))
+                        if nx >= max(ny, nz):
+                            cell[n0 + i] = side_[0]
         if PARCEL:
             parcel_shelf(add, bvh)
 
