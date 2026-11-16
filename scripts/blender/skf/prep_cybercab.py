@@ -68,10 +68,10 @@ SIDE_TOP = np.array((
     (-0.4914, 1.3743), (-0.5239, 1.3686), (-0.5830, 1.3600), (-0.6098, 1.3546),
     (-0.6831, 1.3419), (-0.8124, 1.3151), (-0.8369, 1.3091), (-0.8841, 1.2992),
     (-1.0279, 1.2640), (-1.1507, 1.2314), (-1.2356, 1.2076), (-1.3786, 1.1660),
-    (-1.5691, 1.1066), (-1.7704, 1.0403), (-1.9376, 0.9830), (-2.0707, 0.9358),
-    (-2.0813, 0.9302), (-2.0871, 0.9235), (-2.0912, 0.9120), (-2.0934, 0.8952),
-    (-2.0955, 0.5593), (-2.0964, 0.5421), (-2.0990, 0.5344), (-2.1039, 0.5298),
-    (-2.1100, 0.5273), (-2.1296, 0.5217), (-2.1395, 0.5171),
+    (-1.5691, 1.1066), (-1.7704, 1.0403), (-1.9376, 0.9830), (-2.0628, 0.9358),
+    (-2.0734, 0.9302), (-2.0792, 0.9235), (-2.0833, 0.9120), (-2.0855, 0.8952),
+    (-2.0876, 0.5450), (-2.1310, 0.5450), (-2.1355, 0.5435), (-2.1374, 0.5405),
+    (-2.1378, 0.5360),
 ))
 # round 11: the leading edge 3.2 cm lower, eased out 20 cm back (01 side through r10c3n: the nose's top 3-5 cm under
 # the model's over its first 15 cm, 0.5 cm at 20 cm; 02 / 01 front: the bar 3.1-3.5 cm lower, the edge right over it,
@@ -89,9 +89,13 @@ SIDE_BOT = np.array((
     (-1.9814, 0.2048), (-2.0008, 0.2084), (-2.0120, 0.2115), (-2.0301, 0.2207),
     (-2.0375, 0.2242), (-2.0845, 0.2530), (-2.1000, 0.2600), (-2.1150, 0.2665), (-2.1215, 0.2735),
     (-2.1225, 0.2830), (-2.1180, 0.2920), (-2.1040, 0.2990), (-2.1017, 0.3152), (-2.1038, 0.4561), (-2.1048, 0.4704),
-    (-2.1063, 0.4751), (-2.1090, 0.4788), (-2.1277, 0.4903), (-2.1337, 0.4964),
-    (-2.1407, 0.5057),
+    (-2.1065, 0.4770), (-2.1100, 0.4840), (-2.1290, 0.5040), (-2.1345, 0.5150),
+    (-2.1378, 0.5250),
 ))
+# round 12 (Main's tail correction; TAIL_FACE): the face at x 0 0.79 cm further forward (the strip's face at output
+# -2.160, the gold under it 1 cm further in), straight down to the lip's top, a flat shelf at TAIL_SHELF[0] back to a
+# 2 cm thick tip (01 rear: the lens right under the gold, the black shelf under it; 01 side: the tip 2 cm, the
+# underside sloping in to the bumper's face)
 # round 11 (01 side through r10c3n's camera, the dark mask's lower edge): behind the rear arch the bumper's lower
 # edge 1.1-1.2 cm lower, 3.4-5.0 cm lower 25-35 cm ahead of the tip, 3.6 cm at its rear end; a small lip juts 2 cm
 # back under the rear face (z 0.27-0.30: 01 side, the light grey face's foot)
@@ -233,8 +237,6 @@ FRONT_BLACK = ((0.0, 0.378), (0.15, 0.375), (0.30, 0.352), (0.45, 0.346), (0.74,
                                      # end (q 0.71-0.74) a short step, a thin black at the corner. Round 12 (02 / x253
                                      # through r10c3n): under the plate at its bottom, past it 3.5-4 cm lower (02 20-28
                                      # px), the corner 1-1.5 cm lower
-REAR_BLACK = ((0.0, 0.488), (1.13, 0.488))    # rear bumper top by q (round 11, 01 side: the band 0.488-0.538): across
-                                     # the lip's underside at the face, on the bumper's side under the corner
 BAR = (0.009, 0.015, 0.0045)        # light bar: from / to depth under the leading edge, and its dark shadow line's top
                                      # (all on the face under the edge's 4 mm rounding: cut in the rounding, a plane
                                      # lying along the surface lands mm off, the boundary check)
@@ -251,58 +253,89 @@ LAMP = ((0.66, 0.612), (1.01, 0.683), ((0.48, 0.640), (0.62, 0.625), (0.70, 0.60
 # round 12 (erg p24 x222 / x230, x253): a short seam from the head lamp's outer end back along the fender's side to the
 # arch's lip, rising a little: (output y, z) of its two ends, 8 mm short of the lamp's end cut, 2 cm short of the arch
 FENDER_SEAM = ((1.875, 0.685), (1.690, 0.712))
-SPOILER = dict(z=((0.0, 0.882), (1.13, 0.882)), top=0.930,
-               bevel=(0.860, 0.30))  # the duck lip's black rear face: a strip between z and top, right under the
-               # deck's trailing edge (01 side 0.866-0.936; 01 rear: full width), from crease to crease (round 11: 03
-               # half round 10's 6.8 cm, its ends at the creases); the gold face's top rounds forward from bevel[0],
-               # the strip standing out of it from 4 mm above its lower edge (a step at the edge itself: a grazing cut
-               # and a bright line under the strip, 03)
-SPOILER_LAMPS = (0.045, 0.250)       # |x| of the lighter (lens) segments in the strip either side of the camera (03)
-TAIL_LAMP = ((0.0, 0.538), (0.55, 0.538), (0.97, 0.514), (1.13, 0.514)), 0.252, 0.006, 0.675   # bar top z by q, |x|
-               # of its dark middle, middle recess, |x| past which the lip's corner behind the crease is black. Round 11
-               # (01 side 0.488-0.538, 03, 07): red only on the side ahead of the crease, the face from the crease in to
-               # the dark middle a light grey lens (the reversing lens, unlit), the lip's corner bulge black. Round 12
-               # (CybercabFit r11n, 03 / x59 triangulated, 01 side's black_rear at y -1.86 alike): at the corner (the
-               # crease's foot, q ~0.97) and along the side 2.4 cm lower, official (0.658, -1.940, 0.514): the lip's
-               # face under the corner's shelf (TAIL_CREASE step 0.512-0.524; at 0.517 a gold sliver of the lip's
-               # face under the shelf); the face's middle as it was (the grey's inner end within 0.5 cm)
+# the duck lip's black rear face, right under the deck's trailing edge, from crease to crease: black from z (by q) up
+# to top; its upper part upright, its lower part (TAIL_FACE bev) the lip's underside sloping in to the gold face.
+# Round 12 (Main's tail correction: 01 side's end cap z 0.858-0.923, 03 ~20 px, 01 rear far taller: the underside
+# seen from below; round 11's 0.882-0.930 too thin; its top at 0.930 still 6 px high on 03). lamp: |x| of the two
+# lighter (lens) segments either side of the camera, along the strip's top, and their height (01 rear rows 266-280:
+# 1.8 cm; 03)
+SPOILER = dict(z=((0.0, 0.857), (1.13, 0.857)), top=0.923, lamp=((0.070, 0.245), 0.018))
+# the tail lamp (round 12, Main's tail correction: 01 rear, 01 side, 03 one picture): a lens (Main ~2 cm) on the gold face
+# right under the gold, a black shelf under it back to the lip's tip (TAIL_SHELF). TAIL_LAMP: its top along the face
+# by |x| (corner 0.537, 03 / 01 side triangulated) and along the side by output y (01 side: 0.511 at -1.79, rising to
+# the corner's), the lens' height (the black under it; 01 rear rows 604-618: 1.6 cm, 4 mm over the shelf's edge), the
+# |x| where the dark middle turns grey and the grey red (01 rear row 608: cols 393-861 dark, 152-392 grey, 74-150 red;
+# 03: the red 11 cm onto the face past the crease), the dark middle's recess. Red on the face and on the side (one
+# lamp round the corner)
+TAIL_LAMP = (((0.0, 0.565), (0.28, 0.560), (0.58, 0.550), (0.70, 0.537)), ((-1.79, 0.511), (-1.995, 0.537)), 0.016,
+             (0.28, 0.585), 0.006)
 # for the game's texture (cybercab_lines.json tail_lamp_red_left): the red side segment, from y[0] (01 side: exposed
-# from -1.794) back to the crease (output frame), band z from the bumper's top to the lamp's top
-TAIL_RED_GAME = dict(y=(-1.794, -1.98), z=(0.488, 0.514))
+# from -1.79) back to the crease (output frame), band z (bottom, top) at either end
+TAIL_RED_GAME = dict(y=(-1.79, -1.995), z=((0.495, 0.511), (0.521, 0.537)))
 # region outlines boundary_off() may miss without failing prep: (|x|, y, z), radius, largest miss (m). The lamp's
 # lens where its bottom leaves the bar's (round 11, LAMP: q ~0.675): two cuts 6 mm apart crossing at a shallow angle
 # under a 6.5 mm cell, one vertex 0.7 mm off (round 8-10 the bar's rising outer end, z 0.698 / 0.683, alike).
 # Round 10 (x92's plan moved the side 1-4 cm): the side glass's two tips, the door glass's front (y 0.89) and the
 # quarter glass's rear (-1.07), each a 1.6 cm rounded turn (round_poly) under a 6.5 mm cell: one chord's middle
-# 0.56 / 0.60 mm off its cut. Round 11 (the tail's crease, TAIL_CREASE): the red's rear end and the black corner's
-# inner edge cross the lip's tip edge where it wraps the corner (z ~0.507, the profile's corner: chords 0.6-1.5 mm
-# off); the crease's two ends, where it softens into the step and into the strip's bevel (0.5-0.7 mm). The front
-# black's top (FRONT_BLACK) where it runs into the arch's inner rim (|x| 0.50): 0.7 mm. Round 12 (C15: the black's
+# 0.56 / 0.60 mm off its cut. (Round 11's four on the tail's crease went with Main's tail correction, round 12.) The
+# front black's top (FRONT_BLACK) where it runs into the arch's inner rim (|x| 0.50): 0.7 mm. Round 12 (C15: the black's
 # top 2-5 cm lower inboard, the fender's upper half in, C14): the black top's two corner knots (q 0.81 / 0.95, a
 # kinked line under a 6.5 mm cell: 0.6-0.7 mm), the bar's shadow line where the hood's leading edge cut (4.7 mm off
-# it) bends away off the fender at |x| 0.62 (1.0 mm)
+# it) bends away off the fender at |x| 0.62 (1.0 mm). Round 12 tail (Main's correction): the strip's lens's lower outer
+# corner (|x| 0.245, z 0.905: its end and bottom cut at right angles on the strip's face, 4 corner vertices 1.6-2.4 mm
+# off, unchanged sharp or rounded 4 mm, t6 / t7); the strip's end at the crease's top (z 0.918-0.923: the strip's top
+# cut runs into the crease's snapped vertices where its hardness eases off, up to 2.4 mm; unchanged with the hard top
+# 0.935 -> 0.944, t7). Both found with the strip's top at 0.930 (t6-t8), 7 mm higher than now
 BOUNDARY_KNOWN = (((0.5817, 2.0332, 0.6030), 0.010, 0.0010), ((0.8000, 0.8944, 0.9517), 0.010, 0.0010),
-                  ((0.6002, -1.0658, 1.2143), 0.010, 0.0010), ((0.698, -1.964, 0.509), 0.020, 0.0016),
-                  ((0.676, -2.001, 0.509), 0.010, 0.0014), ((0.6538, -1.966, 0.529), 0.008, 0.0008),
-                  ((0.604, -1.9852, 0.9158), 0.008, 0.0008), ((0.500, 1.8365, 0.2776), 0.008, 0.0010),
+                  ((0.6002, -1.0658, 1.2143), 0.010, 0.0010), ((0.500, 1.8365, 0.2776), 0.008, 0.0010),
                   ((0.6614, 2.0027, 0.3007), 0.008, 0.0009), ((0.7860, 1.9400, 0.2757), 0.008, 0.0009),
-                  ((0.6151, 2.0123, 0.6371), 0.008, 0.0012))
-TAIL_BOW = (0.197, 0.692, 3.43)      # the tail (face, bumper, lip) sets forward a (|x| / b)^p (output metres): x92's
-                                     # outline within a of its tip (half width 0 -> b, where the face turns into the
-                                     # side; rms 4.5 mm, at most 8.6 mm in |x| over x92's 0.004-0.21 m); round 9's
+                  ((0.6151, 2.0123, 0.6371), 0.008, 0.0012), ((0.2447, -2.0775, 0.9072), 0.010, 0.0025),
+                  ((0.6921, -1.9447, 0.9200), 0.010, 0.0025))
+TAIL_BOW = (0.197, 0.692, 3.43)      # the lip (TAIL_SHELF's shelf and tip) sets forward a (|x| / b)^p (output metres):
+                                     # x92's outline within a of its tip (half width 0 -> b, where the lip turns into
+                                     # the side; rms 4.5 mm, at most 8.6 mm in |x| over x92's 0.004-0.21 m); round 9's
                                      # a (|x| / 1.16)^3.46 off 06 top had p alike, a 0.55 (x92: 1.16). Past b the bow
                                      # runs on under the plan's side (no crease where it stops), cut at 0.80 off the body
                                      # (a table of x92 points kinked the face: vertical shading bands)
-# round 11 (03, 01 side, 01 rear): the gold side turns into the tail face at a sharp crease, the face a trapezoid
-# (wide at the bottom). Above the lip (step: z ramp) the side comes in toward the crease's |x| (x: (z, |x|)) from y[0]
-# back to y[1] (output frame; 25-30 cm, the rest of the side as it was); the lip and bumper below keep the full plan
-# (x92's outline at the tail is the lip). The side and face meet at a hard max where `hard` (output y) and z between
-# the step's top and `top` (the deck's trailing edge rounds as before); the mesh's vertices are snapped onto the
-# crease (body_mesh), the normals split there (main: read a quarter into each face). Under the step the red's rear
-# end is a plane across at `foot` (output y; at -1.98 it crossed the lip's tip edge where its cut folded: 3 crossed
-# face pairs a side, -1.99 left its cut 4 mm off; -1.97 clean)
-TAIL_CREASE = dict(y=(-1.70, -1.98), x=((0.525, 0.656), (0.93, 0.610)), step=(0.512, 0.524), hard=(-1.86, -1.92),
-                   top=0.935, foot=-1.97)
+# round 12 (Main's tail correction: 01 rear, 01 side and 03 one picture, on x92's outline): the face, the lip and the
+# bumper each bow forward their own way, the side profile read that much further back. The face (above the shelf):
+# output y + (crease y - y) (|x| / crease |x|)^p, the crease (z, y, |x|) where the gold side ends (01 rear col 67.5
+# rows 420-580 upright; 01 side cols 2443 / 2453 / 2460; 03; x92 0.6986 at -2.00), p through the lamp's top on the
+# face (0.58, -2.057; 0.277, -2.129); the strip's upright part bev[2] further back than the gold under it inboard of
+# |x| bev[3], flush at the corners (bev[3] + 0.20: the end out there left x92's outline 3 cm), the lip's underside
+# between bev[0] and bev[1]. The side comes in over `taper` (output y, length) ahead of the crease to its |x|
+TAIL_FACE = dict(y=-2.150, p=2.84, bev=(0.858, 0.890, 0.010, 0.45), taper=(-1.99, 0.04),
+                 crease=((0.52, -1.993, 0.700), (0.54, -1.995, 0.700), (0.70, -2.019, 0.693), (0.85, -2.039, 0.690),
+                         (0.95, -2.052, 0.689)))
+# the bumper's face under the lip (zs < TAIL_SHELF[1]): output y + a (|x| / b)^p, square at the corner (round 11
+# reached -1.971 at |x| 0.70, z 0.46: 01 rear rows 640-780), on the side out to hw (01 rear cols 59-62, the gold
+# body's 67.5) from z0 up to the shelf's black
+TAIL_BUMPER = dict(y=-2.180, a=0.165, b=0.70, p=4.0, hw=0.708, z0=0.27)   # (under its face the small lower lip
+# on the lip's bow: TAIL_SHELF[3], no further back than x92)
+# the lip's shelf: the profile's flat top (z at x 0; along the face it follows the lamp, TAIL_LAMP: the lip's z warped
+# by the lamp top's drop over TAIL_WARP), the lip | bumper bow blend's z (the underside)
+TAIL_SHELF = (0.545, 0.505, 0.470, 0.305)
+TAIL_WARP = (0.46, 0.05, 0.66, 0.08)  # z the warp fades in from, over, out to, over (the bumper's face and the lip's
+# underside under it as they were: under the port's top, 0.49, its cut ran jagged over the warped underside)
+# the side and face meet at a hard max where `hard` (output y) and z between `lip` (round 12: the lip's underside;
+# from the step's top its corner rounded k: k over the 1 cm lip ate a 5 cm slot in, z 0.513-0.525 at |x| 0.62-0.69)
+# and `top` (the deck's trailing edge rounds as before); the mesh's vertices are snapped onto the crease (body_mesh),
+# the normals split there (main: read a quarter into each face). Under the step (the shelf at the corner) the crease
+# level is a plane across at `foot` (output y)
+TAIL_CREASE = dict(step=(0.517, 0.523), hard=(-1.95, -1.98), lip=0.470, top=0.935, foot=-2.00)
+# round 12 (Main's tail correction: 01 rear, the body's bottom over the middle 20 px over the tyres' (round 10 16,
+# round 11 under them; 01 side right): the rear overhang's underside inboard of floor[1] at round 10's (build y, z),
+# 4 mm higher (under the bumper's face 1 cm: there it was the lowest, row 838); outboard of floor[1] + floor[2] the
+# side profile's (round 11, 01 side). Read on the bumper's bow
+REAR_FLOOR = (((-1.68, 0.100), (-1.72, 0.196), (-1.7557, 0.209), (-1.8020, 0.215), (-1.8371, 0.218),
+               (-1.8831, 0.224), (-1.9122, 0.227), (-1.9520, 0.234), (-1.9658, 0.237), (-1.9814, 0.243),
+               (-2.0008, 0.252), (-2.0120, 0.259), (-2.0301, 0.274), (-2.0375, 0.278), (-2.0845, 0.291),
+               (-2.1000, 0.275), (-2.1300, 0.272), (-2.1500, 0.000)), 0.45, 0.17)
+# the small lower lip under the bumper inboard of REAR_FLOOR's |x| (fading out as it does) read dz lower in the profile
+# (it stands that much higher) under z1 (over w), behind build y0 (over wy, on the bumper's bow): 01 rear its bottom
+# row 836 (the tyres' 856; dz 0.036 left it at 0.294 behind y -2.17, row 836.5), the band rows 815-836; 03 the band
+# right across (removed, 03's IoU 0.917 -> 0.910)
+TAIL_LOWLIP = dict(dz=0.039, z1=0.345, w=0.03, y0=-2.07, wy=0.015)
 WINDSHIELD = dict(cowl=(1.20, 0.178), top=(0.324, 0.40), side=((0.21, 0.578), (1.098, 0.757)), z=0.88)   # side: 01
 # front (round 7 tried its top 3.5 cm in for a broader A pillar on 02: 01 front's side lines 7.7 / 12.7 -> 13 / 18 px).
 # Round 11 (r10c3b triangulated, 02 / 01 front): the bottom corners (0.757, 1.098, 0.899) where the cap is 0.892 (were
@@ -319,7 +352,7 @@ B_PILLAR = 0.007                     # the B pillar between the door and quarter
                                      # DIVIDER (01 side: a dark line ~8 px, 03)
 TRUNK_Y = -0.845                     # tailgate front seam across the roof (01 side: the roof's step)
 TRUNK_PLAN = ((-0.845, 0.580), (-1.00, 0.566), (-1.15, 0.573), (-1.45, 0.598), (-1.65, 0.589), (-1.84, 0.603),
-              (-1.95, 0.598), (-2.00, 0.585), (-2.20, 0.585))   # (y, |x|) its side seam: along the
+              (-1.95, 0.600), (-2.20, 0.600))   # (y, |x|) its side seam: along the
               # deck's edge to the tail (01 side's seam line read back onto the surface, 03, 06 top view), then down
               # the face just inside the corner (a cut through the corner's rounding folds the mesh) with no groove
               # there (grooves(): 01 rear shows no line). Round 9 up to 3.5 cm inboard over the haunch: on the deck,
@@ -358,8 +391,11 @@ CREASE = 0.015                      # rounding of the hood ridges and the should
 NOSE_ROUND = 0.06                    # the nose's side profile slides back by this (|x| / 0.8)^2: round face in plan
 SHOULDER = ((1.15, 0.790), (0.50, 0.850), (-0.42, 0.915), (-1.40, 0.925), (-2.10, 0.915))   # crease (y, z): 01 side
 TUCK = (0.10, 0.012)                 # below the crease the side leans in: slope, at most
-PORT = (-0.670, -0.575, 0.330, 0.470)            # charge port door (x0, x1, z0, z1), driver side: the square cover
-                                                 # at the bumper's outer corner (01 rear; mirrored: a blank cover)
+PORT = (-0.698, -0.600, 0.360, 0.488)            # charge port door (x0, x1, z0, z1), driver side: the square cover
+                                                 # at the bumper's outer corner under the red (01 rear cols 72-150,
+                                                 # rows 654-750; mirrored: a blank cover). Main round 12: z 0.36-0.49
+                                                 # (at 0.490 its inner top corner on the lip's underside left a
+                                                 # sub-mm sliver, one open edge, t9)
 DIFFUSER = (0.475, 0.305, 0.345, 0.015)         # rear bumper's lower step: |x|, z range, set in (01 rear, 03, 04)
 # seams: the outlines of the doors, tailgate, hood and charge port door as V grooves (GROOVE: half width, depth)
 SEAMS = ("door", "cowl", "hood_x", "hood_z", "trunk_y", "trunk_x", "tail_top", "port_x0", "port_x1", "port_z0",
@@ -369,8 +405,10 @@ FENDER_CAM = ((1.230, 0.768), (1.126, 0.794), (1.178, 0.741), 0.028)   # tip, re
 PLATE = (0.0, 0.423, 0.580, 0.150)               # plate (x, z0, z1, half width): round 11 the corners 02 / x253 / 03
                                                  # triangulated (r10c3b: |x| 0.150-0.151, z 0.379-0.536 with nose B)
 LAMP_DOTS = 8                                    # small lamps in each head lamp lens (01 front, 02)
-SIDE_MARKER = (1.870, 1.892, 0.330, 0.495)       # amber reflector strip ahead of the front wheel (y0, y1, z0, z1):
-                                                 # 01 side 1.862-1.889 wide, hugging the arch (round 10; was 6 mm)
+# red reflector strip ahead of the front wheel, leaning with the arch's front edge (erg p24 x222, Main round 12: z
+# 0.32-0.505; the old fixed y 1.868-1.893 ran off the skin into the arch under z 0.40): its rear edge `gap` (output y)
+# ahead of the arch liner's cut, `w` wide (output y; bottom, top: x222's 16-17 px rows), `lift` off the skin
+SIDE_MARKER = dict(z=(0.320, 0.505), w=(0.017, 0.024), gap=0.001, lift=0.0025, rows=12)
 BUTTON = (-0.490, 1.071, 0.030, 0.012)          # B pillar button (y, z, length, height), 01 side + rider guide p.5
 
 # ---- the nose (round 10). The official pictures come in two families that disagree on its length (temp/skf_cc/
@@ -474,7 +512,6 @@ PLAN = np.c_[_y, x92_w(np.maximum(out_y(_y), TAIL_TIP + TAIL_BOW[0])) + np.inter
 if NOSE == "B":
     _y = np.r_[np.arange(1.62, 2.12, 0.005), np.arange(2.12, 2.1405, 0.0025), 2.141]
     PLAN = np.concatenate([PLAN, np.c_[_y, np.interp(out_y(2.141) - out_y(_y), *np.array(NOSE_PLAN_B).T)]])
-    SIDE_MARKER = (*in_y(np.array(SIDE_MARKER[:2])).round(4).tolist(), *SIDE_MARKER[2:])
     PLATE = (PLATE[0], PLATE[1] + NOSE_B["plate_dz"], PLATE[2] + NOSE_B["plate_dz"], PLATE[3])
 else:
     PLAN = np.concatenate([PLAN, PLAN_NOSE_A])
@@ -552,9 +589,46 @@ def nose_y(ax, y):
 
 
 def tail_bow(ax):
-    """How far the tail sets forward at |x| in the build frame (TAIL_BOW, read back through out_y)."""
+    """How far the lip sets forward at |x| in the build frame (TAIL_BOW, read back through out_y)."""
     a, b, p = TAIL_BOW
     return in_y(TAIL_TIP + a * (np.minimum(ax, 0.80) / b) ** p) - TIP_A
+
+
+def face_bow(ax, z):
+    """How far the face (above the shelf) sets forward at (|x|, z) in the build frame (TAIL_FACE): 0 for the strip's
+    upright part at x 0, where the side profile has it."""
+    tf = TAIL_FACE
+    c = np.asarray(tf["crease"])
+    yc, xc = np.interp(z, c[:, 0], c[:, 1]), np.interp(z, c[:, 0], c[:, 2])
+    z0, z1, bev, bx = tf["bev"]
+    yo = (tf["y"] + (yc - tf["y"]) * (np.minimum(ax, 0.80) / xc) ** tf["p"]
+          - bev * ss((z - z0) / (z1 - z0)) * (1 - ss((ax - bx) / 0.20)))
+    return in_y(yo) - in_y(tf["y"] - bev)
+
+
+def bumper_bow(ax):
+    """How far the bumper's face (under the lip) sets forward at |x| in the build frame (TAIL_BUMPER)."""
+    tb = TAIL_BUMPER
+    return in_y(tb["y"] + tb["a"] * (np.minimum(ax, 0.80) / tb["b"]) ** tb["p"]) - in_y(tb["y"])
+
+
+def tail_lamp_top(ax, y):
+    """Top of the tail lamp's lens at (|x|, build y): along the face by |x|, along the side by y (TAIL_LAMP)."""
+    face, side = TAIL_LAMP[0], TAIL_LAMP[1]
+    return interp_tab(face, ax) + interp_tab(side, out_y(y)) - side[-1][1]
+
+
+def tail_zs(ax, y, z):
+    """The z the side profile is read at round the tail: the lip and its shelf follow the lamp's top down toward the
+    corners (TAIL_WARP; the face and the bumper's face upright there, unchanged); inboard the small lower lip under
+    the bumper stands higher (TAIL_LOWLIP)."""
+    z0, w0, z1, w1 = TAIL_WARP
+    dz = interp_tab(TAIL_LAMP[0], ax) - TAIL_LAMP[0][0][1]
+    fade = ss((-1.75 - y) / 0.10)
+    tl, (_, fx, fw) = TAIL_LOWLIP, REAR_FLOOR
+    low = (tl["dz"] * ss((fx + fw - ax) / fw) * ss((tl["z1"] - z) / tl["w"])
+           * ss((tl["y0"] - y + bumper_bow(ax) * fade) / tl["wy"]))
+    return z - dz * ss((z - z0) / w0) * ss((z1 - z) / w1) * fade - low
 
 
 def hood_cap(ax, y):
@@ -591,6 +665,12 @@ class Field:
         gy, gz = np.gradient(self.side, SIDE_H)
         n = np.maximum(np.hypot(gy, gz), 1e-9)
         self.gy, self.gz = gy / n, gz / n
+        # the lip's read (Field.parts): the profile with the tail face's drop to the shelf taken out (a block over the
+        # lip; the shelf's top is put back behind the face where the face's own read has it)
+        i = int(np.nonzero((SIDE_TOP[:, 0] < -2.0) & (SIDE_TOP[:, 1] <= TAIL_SHELF[0] + 1e-6))[0][0])
+        self.foot = SIDE_TOP[i, 0]
+        top = np.concatenate([SIDE_TOP[:i], [(SIDE_TOP[i + 1, 0], SIDE_TOP[i - 1, 1])], SIDE_TOP[i + 1:]])
+        self.lip = poly_sdf(np.concatenate([top, SIDE_BOT[::-1]]), yy.ravel(), zz.ravel()).reshape(ny, nz)
 
     def samp(self, g, y, z):
         fy = np.clip((y - self.y0) / SIDE_H, 0, g.shape[0] - 1.001)
@@ -631,35 +711,47 @@ class Field:
         return d
 
     def corner(self, y, z):
-        """The tail corner (TAIL_CREASE) at build y: how far the side above the lip comes in (m), how hard its edge
-        with the face is (0: the k rounding, 1: a crease)."""
+        """How hard the tail's side | face edge is at build y (TAIL_CREASE; 0: the k rounding, 1: a crease)."""
         tc = TAIL_CREASE
-        yo = out_y(y)
-        (y0, y1), (h0, h1), (s0, s1) = tc["y"], tc["hard"], tc["step"]
-        r = ss((y0 - yo) / (y0 - y1)) * ss((z - s0) / (s1 - s0))
-        n = np.zeros(np.shape(y))
-        m = r > 0
-        if m.any():
-            yc = np.full(m.sum(), in_y(y1))
-            side = self.hw(yc, z[m], self.plan(yc))      # the side's half width where the crease starts
-            n[m] = r[m] * np.maximum(side - interp_tab(tc["x"], z[m]), 0.0)
-        hard = ss((h0 - yo) / (h0 - h1)) * ss((z - s1) / 0.006) * ss((tc["top"] - z) / 0.008)
-        return n, hard
+        (h0, h1), z0 = tc["hard"], tc["lip"]
+        return ss((h0 - out_y(y)) / (h0 - h1)) * ss((z - z0) / 0.006) * ss((tc["top"] - z) / 0.008)
 
     def parts(self, p):
         """The side profile's (d1) and the plan's (d2) distances, and the corner's hardness (corner())."""
         x, y, z = np.abs(p[:, 0]), p[:, 1], p[:, 2]
-        # the nose rounds in plan (nose_y); the tail (face, bumper, lip) bows forward toward its corners (tail_bow),
-        # the side profile read that much further back
-        ys = nose_y(x, y) - tail_bow(x) * ss((-1.75 - y) / 0.10)
-        ds = self.samp(self.side, ys, z)
-        nz = self.samp(self.gz, ys, z)
+        # the nose rounds in plan (nose_y); round the tail the side profile is read further back by how far each part
+        # bows forward toward its corners: above the shelf the face (face_bow), under it the lip (tail_bow) and,
+        # under the lip's underside, the bumper (bumper_bow); the lip's z follows the lamp (tail_zs). The shelf is
+        # flat in the profile (TAIL_SHELF[0]): over it the face's read, under it the lip's, the two meeting on it
+        zs = tail_zs(x, y, z)
+        lip, bump = tail_bow(x), bumper_bow(x)
+        bump = bump + (np.maximum(bump, lip) - bump) * ss((TAIL_SHELF[3] - zs) / 0.015)   # (the small lower lip)
+        fb, s0, fade = face_bow(x, z), TAIL_SHELF[0], ss((-1.75 - y) / 0.10)
+        sh = np.where(zs > s0, fb, lip + (bump - lip) * ss((TAIL_SHELF[1] - zs) / (TAIL_SHELF[1] - TAIL_SHELF[2])))
+        ys = nose_y(x, y) - sh * fade
+        # under the shelf the lip's block, its top behind where the face stands (the profile's own face, read on the
+        # lip's bow, stood 3.5 cm ahead of it at the corners: the band's side rounded 7-12 mm in toward it)
+        ds = np.where(zs > s0, self.samp(self.side, ys, zs),
+                      np.maximum(self.samp(self.lip, ys, zs), np.minimum(zs - s0, self.foot + (fb - sh) * fade - ys)))
+        nz = self.samp(self.gz, ys, zs)
         w = self.plan(y)
         tx = np.clip(x / np.maximum(w, 1e-3), 0, 1.2)
-        d1 = ds + self.knot("crown", y) * tx ** 2 * np.maximum(nz, 0)
-        n, hard = self.corner(y, z)
-        d2 = x - self.hw(y, z, w) + n
-        return d1, d2, hard
+        # (the deck's crown; round the tail not on the lip's shelf: there it dropped the shelf 2 cm at the side, a slot
+        # 5-8 cm deep at z 0.51-0.525 behind output y -1.93)
+        crown = self.knot("crown", y) * (1 - ss((-1.80 - out_y(y)) / 0.05) * ss((0.70 - zs) / 0.05))
+        d1 = ds + crown * tx ** 2 * np.maximum(nz, 0)
+        hw = self.hw(y, z, w)
+        yo, tc, tf = out_y(y), TAIL_CREASE, TAIL_FACE
+        # above the shelf the side comes in to the crease's |x| over the last few cm ahead of it
+        c = np.asarray(tf["crease"])
+        n = (np.maximum(hw - np.interp(z, c[:, 0], c[:, 2]), 0.0) * ss((tf["taper"][0] - yo) / tf["taper"][1])
+             * ss((z - tc["step"][0]) / (tc["step"][1] - tc["step"][0])))
+        # the bumper under the lamp's black stands out to TAIL_BUMPER hw on the side round the tail's corner
+        tb = TAIL_BUMPER
+        bt = tail_lamp_top(x, y) - TAIL_LAMP[2] - 0.004
+        wb = ss((z - tb["z0"]) / 0.06) * ss((bt - z) / 0.010) * ss((-1.86 - yo) / 0.06)
+        d2 = x - hw + n - wb * 0.003 * np.logaddexp(0, (tb["hw"] - hw) / 0.003)
+        return d1, d2, self.corner(y, z)
 
     def crease(self, p):
         """d1 - d2: zero where the tail face meets the side (and along every other edge between the two)."""
@@ -685,24 +777,21 @@ class Field:
         # reads as a dent: 02)
         d = d + it["depth"] * (ss((xi - x) / 0.06) * ss((z - it["z"][0]) / 0.006) * ss((it["z"][1] - z) / 0.006)
                                * ss((y - it["y"]) / 0.04))
-        # tail: the gold face's top rounding forward under the duck lip, the tail lamp bar's dark middle set in
-        # (01 side, 01 rear, 03)
+        # tail: the tail lamp's dark middle set in (01 rear, 03); the rear overhang's underside up inboard (REAR_FLOOR)
         qt = wrap_q(x, y, TAIL_C, front=False)
         yt = y - tail_bow(x)                    # the tail's own y: its features keep their place on the bow
         aft = ss((-2.00 - yt) / 0.03) * ss((1.0 - qt) / 0.08)
-        zb = interp_tab(SPOILER["z"], qt)
-        b0, bs = SPOILER["bevel"]
-        # (round 11: on the face only, out to the crease; round 12 faded in over 2 cm inboard of it: at 6 mm its end
-        # under the strip's end shaded as a dark notch down the crease, 03 / rear 3/4)
-        d = d + (aft * bs * CREASE * np.logaddexp(0, (z - b0) / CREASE) * ss((zb + 0.016 - z) / 0.012)
-                 * ss((d1 - d2) / 0.020))
-        lt = interp_tab(TAIL_LAMP[0], qt)
-        rb = np.maximum(interp_tab(REAR_BLACK, qt), 0.502)   # (round 11: the black's top went under the lip's tip;
-        # the recess stays over it, the tip at full length)
+        lt = tail_lamp_top(x, y)
+        rb = lt - TAIL_LAMP[2]
+        fl, fx, fw = REAR_FLOOR
+        yf = y - bumper_bow(x) * ss((-1.75 - y) / 0.10)
+        d = smax(d, interp_tab(fl, yf) - 0.3 * (1 - ss((fx + fw - x) / fw)) - z, 0.008)
         dx, dz0, dz1, dd = DIFFUSER
-        d = d + dd * (ss((dx - x) / 0.012) * ss((z - dz0) / 0.004) * ss((dz1 - z) / 0.004) * ss((-2.06 - yt) / 0.02))
+        zs = tail_zs(x, y, z)                   # (in the profile's z: over the small lower lip)
+        d = d + dd * (ss((dx - x) / 0.012) * ss((zs - dz0) / 0.004) * ss((dz1 - zs) / 0.004)
+                      * ss((-2.06 - yt) / 0.02))
         # the recess's steps sit 4-7 mm inside its outline's cuts (a cut along a step runs grazing: mm off)
-        return d + aft * TAIL_LAMP[2] * (ss((TAIL_LAMP[1] - 0.004 - x) / 0.006) * ss((z - rb - 0.004) / 0.003)
+        return d + aft * TAIL_LAMP[4] * (ss((TAIL_LAMP[3][0] - 0.004 - x) / 0.006) * ss((z - rb - 0.004) / 0.003)
                                           * ss((lt - 0.004 - z) / 0.003))
 
 
@@ -790,7 +879,7 @@ def crease_snap(f, v, lo, h, eps=2e-4, tol=0.02):
     corners straddle both f = 0 and d1 = d2) gets its vertex on the crease (Newton on both, min norm steps), so
     the mesh's edges follow it (a dual contouring of the one sharp feature). lo: the cells' low corners.
     Returns the snapped vertex indices."""
-    cand = np.nonzero(f.corner(v[:, 1], v[:, 2])[1] > 0.98)[0]
+    cand = np.nonzero(f.corner(v[:, 1], v[:, 2]) > 0.98)[0]
     if not len(cand):
         return cand
     off = np.array([(i, j, k) for i in (0, 1) for j in (0, 1) for k in (0, 1)], float) * h
@@ -807,7 +896,7 @@ def crease_snap(f, v, lo, h, eps=2e-4, tol=0.02):
         p = p - dp
     F = np.abs(np.stack([f(p), f.crease(p)], 1)).max(1)
     ok = ((F < 1e-6) & ((p > lo[cand] - tol * h) & (p < lo[cand] + (1 + tol) * h)).all(1)
-          & (f.corner(p[:, 1], p[:, 2])[1] > 0.98))
+          & (f.corner(p[:, 1], p[:, 2]) > 0.98))
     v[cand[ok]] = p[ok]
     return cand[ok]
 
@@ -866,11 +955,11 @@ def windshield(x, y):
 
 
 def black_top(ax, y):
-    """Top of the black lower body: the sill between the arches, FRONT_BLACK round the nose, REAR_BLACK round the
-    tail (the blends sit inside the arch openings)."""
+    """Top of the black lower body: the sill between the arches, FRONT_BLACK round the nose, the tail lamp's lens
+    bottom round the tail (the blends sit inside the arch openings)."""
     wn, wt = ss((y - 1.80) / 0.08), ss((-1.66 - y) / 0.08)
     return ((SILL[0] + SILL[1] * y) * (1 - wn - wt) + wn * interp_tab(FRONT_BLACK, wrap_q(ax, y, NOSE_C))
-            + wt * interp_tab(REAR_BLACK, wrap_q(ax, y, TAIL_C, front=False)))
+            + wt * (tail_lamp_top(ax, y) - TAIL_LAMP[2]))
 
 
 def lamp_top(ax, y):
@@ -940,8 +1029,12 @@ def levels(f):
         aft=lambda x, y, z, ax: yt(ax, y) + 2.0 + 0.030 * ss((ax - 0.70) / 0.04),
         lip=lambda x, y, z, ax: z - SPOILER["top"] + far(yt(ax, y) + 1.95),   # the strip's top: the deck's rear edge
         spoiler=lambda x, y, z, ax: z - sz(ax, y),
-        spoiler_lamp=lambda x, y, z, ax: (np.abs(ax - sum(SPOILER_LAMPS) / 2) - (SPOILER_LAMPS[1] - SPOILER_LAMPS[0]) / 2
-                                          + far(z - 0.95) + far(0.86 - z) + far(yt(ax, y) + 1.95)),
+        # the strip's lenses: a box rounded 4 mm (its bottom a distance too: a plateau over a steep bend reads cm off
+        # its cut; a sharp corner 2.4 mm), bent off over the deck (a closed loop)
+        spoiler_lamp=lambda x, y, z, ax: (smax(np.abs(ax - sum(SPOILER["lamp"][0]) / 2)
+                                               - (SPOILER["lamp"][0][1] - SPOILER["lamp"][0][0]) / 2,
+                                               SPOILER["top"] - SPOILER["lamp"][1] - z, 0.004)
+                                          + far(z - 0.95) + far(yt(ax, y) + 1.95)),
         # the tail face | side (Field.crease; its vertices snapped on, body_mesh): the band's red, the strip's ends.
         # Under the step the lip's corner rounds off tangent to the side (d1 - d2 ~ 0 for cm, its cut mm off): there
         # a plane across at the crease's foot, added with the sign d1 - d2 has on face and side (no new zero set
@@ -950,9 +1043,10 @@ def levels(f):
                                     + (1 - ss((z - TAIL_CREASE["step"][0])
                                               / (TAIL_CREASE["step"][1] - TAIL_CREASE["step"][0])))
                                     * (in_y(TAIL_CREASE["foot"]) - y)),
-        tail_red=lambda x, y, z, ax: ax - TAIL_LAMP[3] - far(yt(ax, y) + 2.0),
-        tail_top=lambda x, y, z, ax: z - interp_tab(TAIL_LAMP[0], qt(ax, y)) + far(yt(ax, y) + 1.95),   # also the
-        tail_mid=lambda x, y, z, ax: ax - TAIL_LAMP[1] - far(yt(ax, y) + 2.0),                       # tailgate's bottom
+        # the lens' segments: bent up off the body over the lens (the tailgate's side seam runs down the face)
+        tail_red=lambda x, y, z, ax: ax - TAIL_LAMP[3][1] - far(yt(ax, y) + 2.0) - far(z - 0.575),
+        tail_top=lambda x, y, z, ax: z - tail_lamp_top(ax, y) + far(yt(ax, y) + 1.95),   # also the tailgate's bottom
+        tail_mid=lambda x, y, z, ax: ax - TAIL_LAMP[3][0] - far(yt(ax, y) + 2.0) - far(z - 0.575),
         liner=lambda x, y, z, ax: f.well(ax, y, z) - 0.010,   # over the lip's rounding, past its tangent start
         door=lambda x, y, z, ax: poly_sdf(door, y, z) + far(0.35 - ax),
         trunk_y=lambda x, y, z, ax: y - TRUNK_Y,
@@ -965,8 +1059,8 @@ def levels(f):
         hood_z=lambda x, y, z, ax: (z - hood_cap(ax, np.clip(y, 1.09, 2.08)) + BAR[0] + far(1.85 - y)
                                     + far(ax - 0.62 - 4 * np.maximum(1.9 - y, 0))),   # (off the fenders at the nose)
         # the port's outline: its four lines bent off the body beyond the box (not up the whole tail face)
-        port_x0=lambda x, y, z, ax: x - PORT[0] + far(yt(ax, y) + 2.0) + far(4 * (z - 0.48)) + far(0.30 - z),
-        port_x1=lambda x, y, z, ax: x - PORT[1] + far(yt(ax, y) + 2.0) + far(4 * (z - 0.48)) + far(0.30 - z),
+        port_x0=lambda x, y, z, ax: x - PORT[0] + far(yt(ax, y) + 2.0) + far(4 * (z - 0.505)) + far(0.30 - z),
+        port_x1=lambda x, y, z, ax: x - PORT[1] + far(yt(ax, y) + 2.0) + far(4 * (z - 0.505)) + far(0.30 - z),
         port_z0=lambda x, y, z, ax: z - PORT[2] + far(yt(ax, y) + 2.0) + far(x + 0.50) + far(-0.745 - x),
         port_z1=lambda x, y, z, ax: z - PORT[3] + far(yt(ax, y) + 2.0) + far(x + 0.50) + far(-0.745 - x),
         # the short seam from the head lamp's outer end back to the arch: a closed slot (round ends) on the side, its
@@ -1024,17 +1118,16 @@ def classify(f, v, t):
     glass = ws | (in_side & ~bpil)
     mat[glass] = 1
     # black: lower body round the nose and tail; the duck lip's rear face, from crease to crease (two lighter lens
-    # segments in it); tail lamp bar: dark middle, light grey (reversing) lens out to the crease, the lip's corner
-    # bulge past it black, red on the side ahead of the crease (round 11: 01 side, 03, 07)
+    # segments along its top); tail lamp lens: dark middle, light grey (reversing) lens, red from TAIL_LAMP[3][1] on
+    # round the corner and along the side (round 12, Main's tail correction: 01 rear, 01 side, 03)
     aft = s["aft"]
     face = ~s["crease"]
     spoil = aft & ~s["spoiler"] & s["lip"] & face
     slamp = spoil & s["spoiler_lamp"]
     tl = aft & ~s["black"] & s["tail_top"]
     mat[s["black"] | spoil | (tl & s["tail_mid"])] = 2
-    mat[tl & face & ~s["tail_mid"] & s["tail_red"]] = 1   # glass (its pane: none; split out with the body's glass below)
-    mat[tl & face & ~s["tail_red"]] = 2
-    mat[tl & ~face] = 5
+    mat[tl & ~s["tail_mid"] & s["tail_red"]] = 1   # glass (its pane: none; split out with the body's glass below)
+    mat[tl & ~s["tail_red"]] = 5
     mat[slamp] = 1
     # head lamps: the light bar under the leading edge, the dark lens under it toward the corners, wrapping onto
     # the side (01 front, 02)
@@ -1208,7 +1301,7 @@ def quad_on(p, n, half_u, half_v, lift):
 
 def front_parts(f):
     """Plate holder and plate on the bumper face, the intake's grille and camera (01 front, 02), the lamp dots in
-    each lens and the amber side marker ahead of the front wheel (left; mirrored)."""
+    each lens and the red side marker ahead of the front wheel (left; mirrored)."""
     out = {}
     x0, z0, z1, hw_ = PLATE
     yf = ray_point(f, [0, 2.6, (z0 + z1) / 2], [0, -1, 0])[0][0, 1]
@@ -1253,17 +1346,33 @@ def front_parts(f):
         p, n = ray_point(f, o, dr)
         dots.append(quad_on(p[0], n[0], 0.003, 0.002, 0.001))
     out["LampDots"] = merge(dots)
-    nr = 12                                     # rows: a 17 cm strip on a curved corner sinks in as one quad
-    ys, zs = np.meshgrid(SIDE_MARKER[:2], np.linspace(SIDE_MARKER[2], SIDE_MARKER[3], nr))
-    p, n = side_point(f, ys.ravel(), zs.ravel())
-    r = 2 * np.arange(nr - 1)[:, None]
-    out["SideMarker"] = (p + n * 0.002, np.concatenate([r + [0, 1, 3], r + [0, 3, 2]]))
+    out["SideMarker"] = side_marker(f)
+    return out
+
+
+def side_marker(f):
+    """The red strip ahead of the left front wheel (SIDE_MARKER): rows up the arch's front edge, each from the liner's
+    cut + gap forward, on the first surface seen from outside (the skin, never the arch's inside), lifted off it."""
+    sm = SIDE_MARKER
+    zs = np.linspace(*sm["z"], sm["rows"])
+    lo, hi = np.full(sm["rows"], in_y(1.80)), np.full(sm["rows"], in_y(1.95))
+    for _ in range(30):                          # the liner's cut: f.well 0.010 (the `liner` level) along the skin
+        mid = (lo + hi) / 2
+        p, _n = ray_point(f, np.c_[np.full(sm["rows"], -1.2), mid, zs], [1, 0, 0], far=0.8)
+        ahead = f.well(np.abs(p[:, 0]), p[:, 1], p[:, 2]) > 0.010
+        hi, lo = np.where(ahead, mid, hi), np.where(ahead, lo, mid)
+    y0 = out_y(hi) + sm["gap"]
+    y1 = y0 + np.interp(zs, sm["z"], sm["w"])
+    ys = in_y(np.stack([y0, y1], 1)).ravel()
+    p, n = ray_point(f, np.c_[np.full(len(ys), -1.2), ys, np.repeat(zs, 2)], [1, 0, 0], far=0.8)
+    r = 2 * np.arange(sm["rows"] - 1)[:, None]
+    return p + n * sm["lift"], np.concatenate([r + [0, 1, 3], r + [0, 3, 2]])
     return out
 
 
 def rear_parts(f):
     """The tailgate camera in the duck lip's black face (01 rear)."""
-    zc = interp_tab(SPOILER["z"], 0.0) + 0.020                   # (triangulated z 0.901: 02 / 03 / x253 / x59)
+    zc = 0.901                                                   # (triangulated: 02 / 03 / x253 / x59)
     p, n = ray_point(f, [0, -2.6, zc], [0, 1, 0])
     a = np.linspace(0, 2 * np.pi, 12, endpoint=False)
     ring = np.stack([0.010 * np.cos(a), np.zeros(12), zc + 0.010 * np.sin(a)], 1)
@@ -1438,9 +1547,9 @@ def seam_loops(f, v, t, mat, pan, pane):
 def tail_red_outline(f):
     """The official tail lamp's red part on the car's left (TAIL_RED_GAME), for the game's texture: a closed loop
     on the side surface, top / bottom at its front end, then bottom / top at the crease (metres)."""
-    z0, z1 = TAIL_RED_GAME["z"]
+    (z0f, z1f), (z0c, z1c) = TAIL_RED_GAME["z"]
     yf, yc = in_y(np.array(TAIL_RED_GAME["y"]))
-    p = side_point(f, np.array([yf, yf, yc, yc]), np.array([z1, z0, z0, z1]))[0]
+    p = side_point(f, np.array([yf, yf, yc, yc]), np.array([z1f, z0f, z0c, z1c]))[0]
     return np.concatenate([p, p[:1]]).round(4).tolist()
 
 
@@ -1646,7 +1755,7 @@ def main():
     held = np.zeros(len(hv), bool)
     held[ue[(fb < 0) | (hl[fa] != hl[np.maximum(fb, 0)])].ravel()] = True     # the cut at x = 0, the outlines
     held |= np.abs(hv[:, 1]) > L / 2 - 0.012                                    # the nose and tail tips (length)
-    held |= ((f.corner(hv[:, 1], hv[:, 2])[1] > 0.98) & (np.abs(f.crease(hv)) < 1e-5)   # the tail's crease
+    held |= ((f.corner(hv[:, 1], hv[:, 2]) > 0.98) & (np.abs(f.crease(hv)) < 1e-5)   # the tail's crease
              & (np.abs(f(hv)) < 1e-5))
     g = body.vertex_groups.new(name="interior")
     g.add([int(i) for i in np.nonzero(~held)[0]], 1.0, "REPLACE")
@@ -1738,6 +1847,26 @@ def main():
     for nm, (vv, tt) in B["wheels"].items():
         ob = make(nm, vv, tt, "Tyre" if nm.startswith("Tyre") else "Cover")
         ob.data.polygons.foreach_set("use_smooth", np.ones(len(ob.data.polygons), bool))
+    # the side markers on the skin: from every vertex nothing of the body further out along the strip's outward normal,
+    # and the skin within lift + 1.5 mm under it (Main round 12: x222 showed the old strip half under the fender and 5
+    # of its vertices in the arch)
+    from mathutils.bvhtree import BVHTree
+    tree = BVHTree.FromPolygons(v.tolist(), t.tolist(), all_triangles=True)
+    buried, off_skin, gap = [], [], []
+    for side in ("Left", "Right"):
+        me = bpy.data.objects["SideMarker_" + side].data
+        for vx in me.vertices:
+            p, nv = np.array(vx.co), np.array(vx.normal)
+            nv = nv * np.sign(nv[0] * p[0])                          # outward: away from the car's middle
+            if tree.ray_cast((p + nv * 1e-4).tolist(), nv.tolist(), 0.5)[0] is not None:
+                buried.append(p.round(4).tolist())
+            hit = tree.ray_cast(p.tolist(), (-nv).tolist(), SIDE_MARKER["lift"] + 0.0015)
+            if hit[0] is None:
+                off_skin.append(p.round(4).tolist())
+            else:
+                gap.append(hit[3])
+    report["side_marker"] = dict(buried=buried, off_skin=off_skin,
+                                 lift_mm=[round(min(gap, default=0) * 1e3, 2), round(max(gap, default=0) * 1e3, 2)])
     for ob in bpy.context.scene.objects:
         me = ob.data
         report["objects"][ob.name] = len(me.polygons)
@@ -1758,9 +1887,14 @@ def main():
     bpy.ops.wm.save_as_mainfile(filepath=os.path.join(out, "cybercab_src.blend"))
     bpy.ops.export_scene.gltf(filepath=os.path.join(out, "cybercab_src.glb"), export_format="GLB")
     print("PREP", report["body_tris"], "body triangles; bbox", report["body_bbox"])
+    sm = report["side_marker"]
+    print("SIDE_MARKER", len(sm["buried"]), "vertices under the body,", len(sm["off_skin"]), "off the skin; lift",
+          sm["lift_mm"], "mm")
     if len(off):
         raise SystemExit(f"BOUNDARY_OFF {len(off)} points, up to {dist.max() * 1e3:.2f} mm off their cut "
                          "(prep_report.json boundary_off)")
+    if sm["buried"] or sm["off_skin"]:
+        raise SystemExit("SIDE_MARKER: vertices under the body or off the skin (prep_report.json side_marker)")
 
 
 if __name__ == "__main__":
