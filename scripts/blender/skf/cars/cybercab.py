@@ -303,6 +303,10 @@ CAR = dict(
     # one flat orange patch mid-deck at condition < 40 (bb1f119 on). Islands only: the deck's front edge still on the
     # blob's tip (787 cm2); ModernCar's own deck front reaches u 82 there. 0.75: none (temp/skf_cc_car/blob_hit.py)
     DAMAGE_BOX_REF={11: dict(islands=(12, 36), y=(0.0, 0.75))},
+    # (pzveh damage_own) body faces whose UV1 lands on opaque damage-map texels no ModernCar body panel owns (a lamp's
+    # or nobody's) try the next 8 nearest ModernCar islands: the rear corner facet (r10 on) ran off ModernCar's tail
+    # panel onto its tail lamp's hole (brown block at < 40), the duck lip's end cap onto a grey streak (white dot)
+    DAMAGE_OWN=8,
     PANEL_ZONES={4: ("GuardLH", "GuardRH")},
     CUT={},
     PLANES={},

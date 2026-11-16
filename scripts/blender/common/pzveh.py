@@ -721,6 +721,96 @@ def nearest_tri(p, tri, chunk=256, normals=None, tn=None):
     return idx, bary
 
 
+def uv_cover(tris):
+    """512 x 512 texels (rows from the bottom, as img_np) whose centres lie in any of the UV triangles (N x 3 x 2)."""
+    m = np.zeros((512, 512), bool)
+    yy, xx = np.mgrid[0:512, 0:512]
+    P = np.stack([(xx + 0.5) / 512, (yy + 0.5) / 512], -1)
+    for q in tris:
+        lo = np.clip(np.floor(q.min(0) * 512).astype(int), 0, 512)
+        hi = np.clip(np.ceil(q.max(0) * 512).astype(int), 0, 512)
+        e1, e2 = q[1] - q[0], q[2] - q[0]
+        den = e1[0] * e2[1] - e1[1] * e2[0]
+        if (hi <= lo).any() or abs(den) < 1e-12:
+            continue
+        p = P[lo[1]:hi[1], lo[0]:hi[0]] - q[0]
+        b1 = (p[..., 0] * e2[1] - p[..., 1] * e2[0]) / den
+        b2 = (e1[0] * p[..., 1] - e1[1] * p[..., 0]) / den
+        m[lo[1]:hi[1], lo[0]:hi[0]] |= (b1 >= 0) & (b2 >= 0) & (b1 + b2 <= 1)
+    return m
+
+
+def damage_own(me, co, fc, fn, blv, fgrp, fisl, out, rco, rn, ru1, risl, rcls, tries):
+    """DAMAGE_OWN (optional per car: how many other ModernCar islands to try): a body face (group 0) whose UV1 lands on
+    texels of Veh_Damage1/2 that are opaque but no ModernCar body panel's (a lamp's broken-glass art, or art no ModernCar
+    triangle maps) takes the next nearest ModernCar body island (same pick as damage_uv1, nearest first) where less of
+    it does; out (UV1 per loop) and fisl change in place. Why (Cybercab r10 on): our rear corner facet sits where
+    ModernCar has its tail lamp, extrapolated off ModernCar's tail panel (one half of a UV quad, the other half the
+    lamp) onto the lamp hole: a brown block at condition < 40; the duck lip's end cap ran off it onto a grey streak no
+    ModernCar triangle uses, drawn untinted in Tail: a white dot at < 60."""
+    def grow(m):                    # one texel, 8 neighbours
+        p = np.pad(m, 1)
+        return np.any([p[1 + i:513 + i, 1 + j:513 + j] for i in (-1, 0, 1) for j in (-1, 0, 1)], 0)
+
+    body = grow(grow(uv_cover(ru1[rcls == 0])))     # 2 px: just past an island's edge is still that panel's pattern
+    VT = os.path.join(vanilla.PZ, "textures", "Vehicles")
+    opaque = np.zeros((512, 512), bool)
+    for i in (1, 2):
+        opaque |= img_np(bpy.data.images.load(os.path.join(VT, f"Veh_Damage{i}.png")))[..., 3] > 0.5
+    # grow: the maps are sampled bilinear; a lamp's art runs ~3 px past its triangle (ModernCar's tail panel shares the
+    # lamp's UV quad: the hole crosses the diagonal into the panel's half). Not-skin triangles (-1) are not grown: the
+    # rocker undersides border the door strip
+    other = grow(grow(grow(uv_cover(ru1[rcls > 0])))) | uv_cover(ru1[rcls < 0])
+    bad = grow(opaque) & ~(body & ~other)
+    ft, fp = fan_tris(me)
+    r = np.random.default_rng(0).random((16, 2))
+    r[r.sum(1) > 1] = 1 - r[r.sum(1) > 1]
+    w = np.stack([1 - r.sum(1), r[:, 0], r[:, 1]], 1)
+
+    def frac(uv, F):
+        """Share of the faces' (F) UV1 samples on bad texels (maps repeat)."""
+        t = np.flatnonzero(np.isin(fp, F))
+        s = np.einsum("sk,tkc->tsc", w, uv[ft[t]]) % 1
+        hit = bad[(s[..., 1] * 512).astype(int) % 512, (s[..., 0] * 512).astype(int) % 512].mean(1)
+        return (np.bincount(fp[t], hit, len(fc)) / np.maximum(np.bincount(fp[t], minlength=len(fc)), 1))[F]
+
+    F = np.flatnonzero(fgrp == 0)
+    best = frac(out, F)
+    F, best = F[best > 0], best[best > 0]
+    T = np.flatnonzero(rcls == 0)
+    isl = np.unique(risl[T])
+    cand = np.empty((len(F), len(isl)))            # distance from each face to each island (normals as nearest_tri)
+    for s in range(0, len(F), 256):
+        d, _ = tri_dist(fc[F[s:s + 256], None], rco[T][None, :, 0], rco[T][None, :, 1], rco[T][None, :, 2])
+        ok = np.abs(fn[F[s:s + 256]] @ rn[T].T) > 0.3
+        d = np.where(ok | ~ok.any(1, keepdims=True), d, np.inf)
+        cand[s:s + 256] = np.stack([d[:, risl[T] == k].min(1) for k in isl], 1)
+    cand[np.arange(len(F)), np.searchsorted(isl, fisl[F])] = np.inf       # the island it has
+    order = np.argsort(cand, 1)[:, :tries]
+    ls = np.empty(len(me.polygons), np.int64)
+    me.polygons.foreach_get("loop_start", ls)
+    lt = np.empty(len(me.polygons), np.int64)
+    me.polygons.foreach_get("loop_total", lt)
+    for j in range(order.shape[1]):
+        for k in np.unique(order[:, j]):
+            S = np.flatnonzero((order[:, j] == k) & (best > 0) & np.isfinite(cand[np.arange(len(F)), order[:, j]]))
+            if not len(S):
+                continue
+            L = np.concatenate([np.arange(ls[f], ls[f] + lt[f]) for f in F[S]])
+            TT = T[risl[T] == isl[k]]
+            kk, bc = nearest_tri(co[blv[L]], rco[TT])
+            uv = out.copy()
+            uv[L] = np.einsum("nk,nkc->nc", bc, ru1[TT[kk]])
+            fr = frac(uv, F[S])
+            better = fr < best[S]
+            for i in np.flatnonzero(better):
+                f = F[S[i]]
+                out[ls[f]:ls[f] + lt[f]] = uv[ls[f]:ls[f] + lt[f]]
+            fisl[F[S[better]]], best[S[better]] = isl[k], fr[better]
+    print("DAMAGE_OWN", len(F), "body faces on bad texels:", int((best == 0).sum()), "moved off them,",
+          int((best > 0).sum()), "still partly on them")
+
+
 def damage_uv1(body, fzone):
     """UV1 of the body (the shared Veh_Damage1/2, Veh_Rust and Veh_Blood_* 512 maps) taken over from vanilla ModernCar:
     its skin is stretched onto ours (length and height by bbox, width by the half width below the belt) and every face
@@ -809,6 +899,8 @@ def damage_uv1(body, fzone):
         vv, inv = np.unique(blv[L], return_inverse=True)
         k, bc = nearest_tri(put(co[vv], kk % 16), rco[T])
         out[L] = np.einsum("nk,nkc->nc", bc, ru1[T[k]])[inv]
+    if CAR.get("DAMAGE_OWN"):
+        damage_own(me, co, fc, fn, blv, fgrp, fisl, out, rco, rn, ru1, risl, rcls, CAR["DAMAGE_OWN"])
     for g in CAR.get("DAMAGE_FILL", ()):   # optional per car: the group's UV1 stretched box onto ModernCar's island box
         L, q = np.flatnonzero(fgrp[lf] == g), ru1[rcls == g].reshape(-1, 2)
         if len(L) and len(q):
