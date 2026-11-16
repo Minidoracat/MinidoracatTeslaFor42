@@ -271,19 +271,21 @@ FRONT_BLACK = ((0.0, 0.378), (0.15, 0.375), (0.30, 0.352), (0.45, 0.346), (0.74,
                                      # end (q 0.71-0.74) a short step, a thin black at the corner. Round 12 (02 / x253
                                      # through r10c3n): under the plate at its bottom, past it 3.5-4 cm lower (02 20-28
                                      # px), the corner 1-1.5 cm lower
-BAR = (0.009, 0.015, 0.0045)        # light bar: from / to depth under the leading edge, and its dark shadow line's top
-                                     # (all on the face under the edge's 4 mm rounding: cut in the rounding, a plane
-                                     # lying along the surface lands mm off, the boundary check)
-# head lamp: the bar runs on along the lens' top, which leaves the bar's line at LAMP[0] (q, z) and rises straight
-# (eased in over 10 cm of q) to the tip LAMP[1] (q, z); the lens' bottom LAMP[2] (q, z); the outer end leans back
-# LAMP[3] in q per metre up (01 front, 01 side: top 0.627 -> 0.692, bottom 0.603 -> 0.624; 02: a slim wedge, the
-# bar's extension). Round 10: the tip round the corner to q 1.00 (|x| ~0.78, y ~1.89): 01 front puts the outer end
-# at |x| 0.795, 01 side at y 1.873, 02 + x253 triangulated (0.83, 1.89). Round 11 (r10c3b triangulated; erg p24's
-# corner pictures: thick at the outer end, cut on a slant, narrowing inboard into the bar): from its inner tip
-# (0.553, 2.198, 0.616: q 0.66) to its outer tip (0.826, 1.902, 0.683: q 1.01), its top 2-3 cm lower along the outer
-# half (it ran along the edge, 0.688)
-LAMP = ((0.66, 0.612), (1.01, 0.683), ((0.48, 0.640), (0.62, 0.625), (0.70, 0.603), (0.85, 0.610), (1.00, 0.622),
-                                       (1.08, 0.630)), 0.8)   # (the bottom crosses the bar's at q ~0.675, not grazing)
+BAR = (0.009, 0.011, 0.0045)        # light bar: its top at least this far under the leading edge, its height (the lens'
+                                     # bottom where that is higher), its dark shadow line's top (all on the face under the
+                                     # edge's 4 mm rounding: cut in the rounding, a plane lying along the surface lands mm
+                                     # off, the boundary check)
+# head lamp: the bar's top LAMP[0] (q, z) (under the leading edge, BAR[0]), the lens' bottom LAMP[2] (q, z): the
+# lamp's whole height; the bar BAR[1] of it, the dark lens under it toward the corners; the outer end through the tip
+# LAMP[1] (q, z) leans back LAMP[3] in q per metre up. Round 13 (CybercabFit fit_t18.json, 02 + x253b triangulated, 01
+# side; Main: the official's grey bar ~1 cm over the middle, a thin bar over the dotted dark lens on the corners): the
+# official's dark band (q where the target's |x| and z meet the surface); t18's bar sat on its top edge, 1.9 cm high
+# over the middle. At |x| 0.5 the leading edge holds the top 1 cm under the official's 0.610
+LAMP = (((0.0, 0.582), (0.3, 0.582), (0.4, 0.593), (0.572, 0.610), (0.730, 0.622), (0.866, 0.643), (0.961, 0.665),
+         (1.08, 0.690)),
+        (1.01, 0.683),
+        ((0.0, 0.571), (0.3, 0.572), (0.4, 0.573), (0.564, 0.576), (0.724, 0.580), (0.858, 0.612), (0.948, 0.629),
+         (1.08, 0.650)), 0.8)
 # round 12 (erg p24 x222 / x230, x253): a short seam from the head lamp's outer end back along the fender's side to the
 # arch's lip, rising a little: (output y, z) of its two ends, 8 mm short of the lamp's end cut, 2 cm short of the arch
 FENDER_SEAM = ((1.875, 0.685), (1.690, 0.712))
@@ -396,7 +398,7 @@ REAR_FLOOR = (((-1.68, 0.100), (-1.72, 0.196), (-1.7557, 0.209), (-1.8020, 0.215
 # right across (removed, 03's IoU 0.917 -> 0.910)
 TAIL_LOWLIP = dict(dz=0.039, z1=0.345, w=0.03, y0=-2.048, wy=0.015)   # (round 13: y0 -2.07 -> -2.048 with the lip)
 WINDSHIELD = dict(cowl=((0.0, 1.352), (0.16, 1.347), (0.256, 1.337), (0.352, 1.323), (0.448, 1.304), (0.544, 1.2775),
-                        (0.616, 1.2505), (0.688, 1.214), (0.736, 1.182), (0.784, 1.142), (0.84, 1.080)),
+                        (0.616, 1.2505), (0.688, 1.214), (0.736, 1.182), (0.784, 1.142), (0.84, 1.110)),
                   top=((0.0, 0.4206), (0.064, 0.4206), (0.136, 0.4165), (0.208, 0.4123), (0.28, 0.4040),
                        (0.352, 0.3946), (0.424, 0.3821), (0.50, 0.3654), (0.57, 0.3424), (0.65, 0.3184),
                        (0.75, 0.2849), (0.85, 0.2493)),
@@ -423,9 +425,10 @@ ROOF_RISE = dict(y=((1.352, 0.0), (1.254, 0.0), (1.200, 0.014), (1.158, 0.042), 
                     (0.421, 0.0455), (0.371, 0.0398), (0.330, 0.0386), (0.289, 0.0351), (0.228, 0.0242),
                     (0.176, 0.0162), (0.071, 0.0045), (-0.034, 0.0)), x=0.50, z=(0.85, 0.05))
 DIVIDER = ((-0.508, 1.319), (-0.455, 1.066))      # door glass rear edge (01 side)
-DOOR = ((0.938, 0.932), (1.026, 0.828), (1.082, 0.744), (1.152, 0.668), (1.20, 0.62))   # front seam down into the
-                                     # arch (its corner inside the wheel house: on the lip, its chord ran mm off the cut;
-                                     # round 11: its top 1.4 cm forward, r10c3b's (0.855, 0.977, 0.869))
+DOOR = ((0.9266, 0.932), (1.0126, 0.828), (1.0820, 0.744), (1.1449, 0.668), (1.1846, 0.62))   # front seam down into
+                                     # the arch (its corner inside the wheel house: on the lip, its chord ran mm off the
+                                     # cut). Round 13 (Main, 02 / x253: an S there, the official's straight): a straight
+                                     # line fitted on 01 side's seam (z 0.64-0.89, x -0.87; at most 6.8 mm off it)
 B_SEAM = ((-0.530, 1.077), (-0.274, 0.342))       # door rear seam below the belt; its top runs 1.2 cm inside the
                                      # quarter glass to the divider (along the glass's lower edge the two cuts crossed
                                      # back and forth: slivers; under it, a groove of its own on 02)
@@ -492,8 +495,10 @@ SEAMS = ("door", "cowl", "hood_x", "hood_z", "trunk_y", "trunk_x", "tail_top", "
          "port_z1")
 GROOVE = (0.0025, 0.0020)
 FENDER_CAM = ((1.230, 0.768), (1.126, 0.794), (1.178, 0.741), 0.028)   # tip, rear top, rear bottom, height
-PLATE = (0.0, 0.423, 0.580, 0.150)               # plate (x, z0, z1, half width): round 11 the corners 02 / x253 / 03
-                                                 # triangulated (r10c3b: |x| 0.150-0.151, z 0.379-0.536 with nose B)
+PLATE = (0.0, 0.415, 0.572, 0.150)               # plate (x, z0, z1, half width): round 11 the corners 02 / x253 / 03
+                                                 # triangulated (r10c3b: |x| 0.150-0.151, z 0.379-0.536 with nose B);
+                                                 # round 13 8 mm lower (CybercabFit: the holder 2-9 px past 01 side's
+                                                 # outline at rows 688-692; 02 within 3.5 px of it)
 LAMP_DOTS = 8                                    # small lamps in each head lamp lens (01 front, 02)
 # red reflector strip ahead of the front wheel, leaning with the arch's front edge (erg p24 x222, Main round 12: z
 # 0.32-0.505; the old fixed y 1.868-1.893 ran off the skin into the arch under z 0.40): its rear edge `gap` (output y)
@@ -557,7 +562,7 @@ LIP_EDGE = dict(y=((0.0, 2.295), (0.1, 2.293), (0.2, 2.278), (0.3, 2.257), (0.4,
 # y a[0] + a[1] .. b[0] - b[1], eased in over a[1] and out over b[1]); the region outlines stay
 # (t11: z 0.86 over 0.04 -> 0.84 over 0.08: its 4 cm in 4 cm of height folded the fender top's ramp up into the A
 # pillar's base, at (0.80, 1.12, 0.88) five sheets over one another, a hole and slivers on 02)
-WS_SHIFT = dict(d=0.04, a=(0.80, 0.30), b=(1.35, 0.15), z=(0.84, 0.08))
+WS_SHIFT = dict(d=0.04, a=(0.80, 0.30), b=(1.35, 0.15), z=(0.80, 0.20))
 
 
 def smax(a, b, k):
@@ -882,7 +887,10 @@ class Field:
         sr = 0.02 + 0.08 * ss((-1.05 - y) / 0.15) * ss((y + 1.95) / 0.15)
         sp = sr * np.logaddexp(0, (z - zs) / sr)
         sq = 0.015 * np.logaddexp(0, (z - zs) / 0.015)
-        up = (b * CREASE * np.logaddexp(0, (z - zw) / CREASE) + b2 * 0.006 * np.logaddexp(0, (z - zw - 0.04) / 0.006)
+        # (b2 starts at the arch's height behind it: following zw down to the cowl it narrowed the fender's top at y
+        # 1.2-1.3 more than at either end, a dip beside the A pillar's base on 02 / x253, round 13 Main)
+        zb = np.where(y < KY[3], np.maximum(zw, SECTION["zw"][3]), zw) + 0.04
+        up = (b * CREASE * np.logaddexp(0, (z - zw) / CREASE) + b2 * 0.006 * np.logaddexp(0, (z - zb) / 0.006)
               + g * ss((z - zs) / 0.06 + 0.5) + t * sp + sat * (1 - np.exp(-sq / lam)))
         # shoulder crease (01 side, 02, 03): from behind the front arch up to the B pillar and along the haunch;
         # below it the side leans in a little
@@ -1162,18 +1170,20 @@ def black_top(ax, y):
 
 
 def lamp_top(ax, y):
-    """Top of the head lamp's light bar: just under the hood's leading edge across the nose; from LAMP[0] on it
-    rises straight to the tip under the fender's front face (01 front, 01 side, 02)."""
-    q = wrap_q(ax, y, NOSE_C)
+    """Top of the head lamp's light bar (LAMP[0], a smooth curve through its knots), kept under the hood's leading
+    edge (BAR[0]; a smooth minimum: a kink is a corner in its cuts)."""
     e = hood_cap(ax, np.clip(y, 1.09, 2.08)) - BAR[0]
-    (q0, z0), (q1, z1) = LAMP[:2]
-    s = ss((q - q0) / 0.10)                     # (eased: a kink where it starts rising is a corner in its cuts)
-    return np.minimum(e, (1 - s) * e + s * (z0 + (q - q0) * (z1 - z0) / (q1 - q0)))
+    return -smax(-e, -interp_tab(_smooth_tab(LAMP[0]), wrap_q(ax, y, NOSE_C)), 0.004)
 
 
 def lens_bottom(ax, y):
-    """Bottom of the head lamp's dark lens (LAMP[2]; inboard it closes on the bar)."""
-    return np.minimum(lamp_top(ax, y) - (BAR[1] - BAR[0]), interp_tab(LAMP[2], wrap_q(ax, y, NOSE_C)))
+    """Bottom of the head lamp's dark lens: the lamp's bottom (LAMP[2])."""
+    return interp_tab(_smooth_tab(LAMP[2]), wrap_q(ax, y, NOSE_C))
+
+
+def bar_bottom(ax, y):
+    """Bottom of the light bar: BAR[1] under its top, or the lamp's bottom where that is higher (no lens there)."""
+    return np.maximum(lens_bottom(ax, y), lamp_top(ax, y) - BAR[1])
 
 
 def door_polygon():
@@ -1197,7 +1207,6 @@ def levels(f):
     needed in one place is bent off the body elsewhere (`far`): a cut running the car's length lands next to other
     cuts at a shallow angle and leaves slivers that mesh non-manifold. No two share a zero set (a cut over a cut)."""
     door, side_glass = round_poly(door_polygon()), round_poly(SIDE_GLASS, 0.016)   # (the quarter glass's 4 cm end)
-    bw = BAR[1] - BAR[0]
     qn = lambda ax, y: wrap_q(ax, y, NOSE_C)
     qt = lambda ax, y: wrap_q(ax, y, TAIL_C, front=False)
     far = lambda a: 5.0 * np.maximum(a, 0)
@@ -1221,9 +1230,9 @@ def levels(f):
         # the pane's corners: at 0.88 it ran on the fender top's 0.877-0.889 behind the A pillar, slivers, a hole)
         black=lambda x, y, z, ax: z - black_top(ax, y),
         nose=lambda x, y, z, ax: y - 1.82,
-        lamp_end=lambda x, y, z, ax: (qn(ax, y) - LAMP[1][0] - LAMP[3] * (z - LAMP[1][1]) + far(0.58 - z)
+        lamp_end=lambda x, y, z, ax: (qn(ax, y) - LAMP[1][0] - LAMP[3] * (z - LAMP[1][1]) + far(0.555 - z)
                                       + far(z - 0.76) + far(1.70 - y)),
-        bar_top=lambda x, y, z, ax: z - lt(ax, y), bar_bot=lambda x, y, z, ax: z - lt(ax, y) + bw,
+        bar_top=lambda x, y, z, ax: z - lt(ax, y), bar_bot=lambda x, y, z, ax: z - bar_bottom(ax, y) + far(1.80 - y),
         bar_gap=lambda x, y, z, ax: z - lt(ax, y) - BAR[0] + BAR[2],
         lens_bot=lambda x, y, z, ax: z - lens_bottom(ax, y) + far(1.80 - y),
         # (round 11: on the side 3 cm further back, the band's front end at y -1.794: 01 side)
@@ -1555,7 +1564,7 @@ def front_parts(f):
             p, n = ray_point(f, o, dr)
             ax_ = np.abs(p[:, 0])
             y_ = nose_wy(ax_, p[:, 1], p[:, 2])                # (round 13: where the lamp's outlines are read)
-            o[:, 2] = (lamp_top(ax_, y_) - (BAR[1] - BAR[0]) + lens_bottom(ax_, y_)) / 2
+            o[:, 2] = (bar_bottom(ax_, y_) + lens_bottom(ax_, y_)) / 2
         p, n = ray_point(f, o, dr)
         dots.append(quad_on(p[0], n[0], 0.003, 0.002, 0.001))
     out["LampDots"] = merge(dots)
@@ -1579,8 +1588,8 @@ def side_marker(f):
     ys = in_y(np.stack([y0, y1], 1)).ravel()
     p, n = ray_point(f, np.c_[np.full(len(ys), -1.2), ys, np.repeat(zs, 2)], [1, 0, 0], far=0.8)
     r = 2 * np.arange(sm["rows"] - 1)[:, None]
-    return p + n * sm["lift"], np.concatenate([r + [0, 1, 3], r + [0, 3, 2]])
-    return out
+    # (wound to face away from the car's middle: round 13 Main, both strips faced in, culled from outside in game)
+    return p + n * sm["lift"], np.concatenate([r + [0, 3, 1], r + [0, 2, 3]])
 
 
 def rear_parts(f):
@@ -2070,9 +2079,10 @@ def main():
     # of its vertices in the arch)
     from mathutils.bvhtree import BVHTree
     tree = BVHTree.FromPolygons(v.tolist(), t.tolist(), all_triangles=True)
-    buried, off_skin, gap = [], [], []
+    buried, off_skin, gap, facing_in = [], [], [], []
     for side in ("Left", "Right"):
         me = bpy.data.objects["SideMarker_" + side].data
+        facing_in += [side for pg in me.polygons if pg.normal.x * pg.center.x <= 0]   # (a back face from outside)
         for vx in me.vertices:
             p, nv = np.array(vx.co), np.array(vx.normal)
             nv = nv * np.sign(nv[0] * p[0])                          # outward: away from the car's middle
@@ -2083,7 +2093,7 @@ def main():
                 off_skin.append(p.round(4).tolist())
             else:
                 gap.append(hit[3])
-    report["side_marker"] = dict(buried=buried, off_skin=off_skin,
+    report["side_marker"] = dict(buried=buried, off_skin=off_skin, facing_in=len(facing_in),
                                  lift_mm=[round(min(gap, default=0) * 1e3, 2), round(max(gap, default=0) * 1e3, 2)])
     for ob in bpy.context.scene.objects:
         me = ob.data
@@ -2106,13 +2116,14 @@ def main():
     bpy.ops.export_scene.gltf(filepath=os.path.join(out, "cybercab_src.glb"), export_format="GLB")
     print("PREP", report["body_tris"], "body triangles; bbox", report["body_bbox"])
     sm = report["side_marker"]
-    print("SIDE_MARKER", len(sm["buried"]), "vertices under the body,", len(sm["off_skin"]), "off the skin; lift",
-          sm["lift_mm"], "mm")
+    print("SIDE_MARKER", len(sm["buried"]), "vertices under the body,", len(sm["off_skin"]), "off the skin,",
+          sm["facing_in"], "faces facing in; lift", sm["lift_mm"], "mm")
     if len(off):
         raise SystemExit(f"BOUNDARY_OFF {len(off)} points, up to {dist.max() * 1e3:.2f} mm off their cut "
                          "(prep_report.json boundary_off)")
-    if sm["buried"] or sm["off_skin"]:
-        raise SystemExit("SIDE_MARKER: vertices under the body or off the skin (prep_report.json side_marker)")
+    if sm["buried"] or sm["off_skin"] or sm["facing_in"]:
+        raise SystemExit("SIDE_MARKER: vertices under the body or off the skin, or faces facing in "
+                         "(prep_report.json side_marker)")
 
 
 if __name__ == "__main__":
