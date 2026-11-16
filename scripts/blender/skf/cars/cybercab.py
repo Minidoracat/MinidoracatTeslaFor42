@@ -225,9 +225,12 @@ CAR = dict(
     # symmetric, its open edges, its panel seams and its flat underside's outline held (DECIMATE_KEEP_BOUNDARY,
     # DECIMATE_HOLD_UNDER: pzveh.decimate). Paint 16000 -> 24000: at 16000 the held seams left the panels so few
     # triangles that 3,400 faces stood off the surface and three more passes held patches of fine vertices (18.0k out,
-    # the rear quarters and hood faceted); at 24000 one pass, the seams thinned after it (15.9k out)
-    DECIMATE={"Paint": 24000, "Trim": 15000, "Liner": 4000, "Glass_Windshield": 1200, "Glass_Door": 700,
-              "Glass_Quarter": 350, "Glass_ReverseLens": 300, "HeadLight": 800, "TailLight": 1000, "Grille": 700},
+    # the rear quarters and hood faceted); at 24000 one pass, the seams thinned after it (15.9k out). Trim 15000 ->
+    # 35000 (frontlip batch): below ~27000 the collapse took held seam vertices, ~2000 faces stood off the surface and
+    # three more passes held fine patches that the rest fanned round (the nose lip's corners crumpled, 19.8k out);
+    # at 35000 one pass, 0 faces off (20.8k out). The Grille's 1.5k fins stay whole: halved they turned to spikes
+    DECIMATE={"Paint": 24000, "Trim": 35000, "Liner": 4000, "Glass_Windshield": 1200, "Glass_Door": 700,
+              "Glass_Quarter": 350, "Glass_ReverseLens": 300, "HeadLight": 800, "TailLight": 1000},
     DECIMATE_KEEP_BOUNDARY=True,
     DECIMATE_HOLD_UNDER=True,
     DECIMATE_THIN=(round(0.0003 * K, 6), round(0.02 * K, 4)),   # (pzveh.thin_seams: the cut's 1-2 mm seam vertices)
