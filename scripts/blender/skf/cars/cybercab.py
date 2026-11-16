@@ -464,8 +464,10 @@ CAR = dict(
     # the gap and out to the door glass's front edge, wherever they are within 15 cm (r11: 5-20). r11 widened the
     # windscreen 4 cm onto the pillar: seen through it, the far pillar's skin stood edge on (a grey line, the ground
     # behind it through the door glass; at ae38316 a gold band)
-    # a12 r3: cell "bed_rib" (120 grey) -> "silver" (226, the dash's bright strip): the guide's 05 pillars measure 202-220
-    PILLAR_COVER=dict(pairs=(("WinT", "WinLH"), ("WinT", "WinRH")), gap=round(0.15 * K, 4), depth=0.5, cell="silver"),
+    # cell "bed_rib" (120 grey): a12 r3's "silver" (226, the guide's 05 pillars inside measure 202-220) read in the game
+    # as a bright white line from outside (e2e cc11-03adf74 jokeknife-x2); the official 02 shows them mid grey
+    # through the windscreen, and outside wins
+    PILLAR_COVER=dict(pairs=(("WinT", "WinLH"), ("WinT", "WinRH")), gap=round(0.15 * K, 4), depth=0.5, cell="bed_rib"),
     # the slot between the windscreen's foot and the dash closed (convert.py cowl_shelf): a dark strip from the glass's
     # bottom edge back and down at 45 degrees to the cabin within 40 cm. r11 (the same commit) widened it; through it,
     # from behind and the sides, the ground showed below (iso N/W/NW/NE/SW). r13 moved the foot 15 cm forward (under
