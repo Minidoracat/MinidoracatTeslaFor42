@@ -153,7 +153,7 @@ check(frag:find("reflectionsOn*ref_en", 1, true) ~= nil and frag:find("reflectio
 local cells = 0
 for _ in (frag:match("const vec3 CABIN%[%d+%] = vec3%[%d+%]%((.-)%);") or ""):gmatch("vec3%(") do cells = cells + 1 end
 local declared = tonumber(frag:match("const vec3 CABIN%[(%d+)%]") or "0")
-check(cells == 16 and declared == cells, "cabin palette has pzveh.py's 16 CABIN_CELLS (" .. cells .. ", declared "
+check(cells == 17 and declared == cells, "cabin palette has pzveh.py's 17 CABIN_CELLS (" .. cells .. ", declared "
     .. declared .. ")")
 for _, v in ipairs({ "MinidoracatTesla_vehicle_static.vert", "MinidoracatTesla_vehicle.vert" }) do
     local src = read("shaders/" .. v) or ""

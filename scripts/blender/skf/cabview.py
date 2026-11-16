@@ -43,10 +43,10 @@ for pb in arm.pose.bones:
     pb.location, pb.rotation_quaternion = poses.get(pb.name, (Vector(), (1, 0, 0, 0)))
 bpy.context.view_layer.update()
 
-# the coarse cabin's 16 cells (pzveh.CABIN_CELLS order; sRGB as MinidoracatTesla_vehicle.frag CABIN)
+# the coarse cabin's cells (pzveh.CABIN_CELLS order; sRGB as MinidoracatTesla_vehicle.frag CABIN)
 CAB = [(22, 22, 24), (40, 40, 44), (100, 100, 106), (30, 30, 32), (58, 58, 62), (112, 106, 98), (46, 46, 50),
        (28, 28, 30), (16, 16, 18), (170, 192, 214), (88, 88, 92), (120, 120, 126), (44, 44, 48), (58, 58, 62),
-       (72, 72, 76), (128, 128, 134)]
+       (72, 72, 76), (128, 128, 134), (226, 226, 230)]
 GAME, mode = 0.85, job.get("mode", "game")
 lin = lambda c: [(x / 255) ** 2.2 for x in c]   # noqa: E731
 skin_img = bpy.data.images.load(job["skin"])
@@ -84,7 +84,7 @@ for o in [o for o in bpy.data.objects if o.type == "MESH"]:
     me.polygons.foreach_get("loop_start", ls)
     fu, fv = u1[0::2][ls], u1[1::2][ls]
     # UV1 u: glass over 1.5, the cabin's cells under -1 (pzveh.CABIN_UV1_U - cell), the paint between
-    idx = np.where(fu > 1.5, 1, np.where(fu < -1.0, 2 + np.clip(np.round(-fu - 2.5).astype(int), 0, 15), 0))
+    idx = np.where(fu > 1.5, 1, np.where(fu < -1.0, 2 + np.clip(np.round(-fu - 2.5).astype(int), 0, len(CAB) - 1), 0))
     me.materials.clear()
     for m in M:
         me.materials.append(m)

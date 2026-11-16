@@ -415,12 +415,15 @@ def furniture(add, opening, grow=0.0, fine=1, between=None):
         (back: its thickness), its front `ahead` ahead of the other buckets' (the passengers' backs, seat_head.py back:
         the thin one's flat front sits further from their shoulders), dark seams across it at `seams` (fractions of
         its height), the headrest on it narrower (head: width, height over the backrest, depth; a shoulder step each
-        side; 1 cm proud of its front), 4 cm down into it. Optional: front (the cushion's front edge ahead of the row's
+        side; 1 cm proud of its front), 4 cm down into it; head None: no headrest, the backrest runs up to the top in
+        one piece as wide (rider guide 05, ERG p.22). Optional: front (the cushion's front edge ahead of the row's
         y, default 0.30), roll ((depth, drop): the cushion's front a rounded roll that far deep reaching `drop` under
         it, its top 4 mm under the cushion's: a waterfall front), shoulder (part shoulder: the backrest's top corners
         rounded in towards the headrest), bulge (each section of the backrest between the seams swells that far
         forward: slightly convex; one part, seat_head.py back measures it), side ((width, height): low bolsters along
-        the backrest's sides and the cushion's door side, that high over their faces)."""
+        the backrest's sides and the cushion's door side, that high over their faces), apron ((width share, height
+        share): a dark "base" panel on the roll's front, that share of the cushion's width, from its foot up that
+        share of its height; ERG p.22's trim under the cushion's front)."""
         s, t, bh, w = b["slim"], b["cushion"], b["back"], b["w"]
         ped = z0 - 0.015 - t - CABIN_FLOOR
         if ped > 0.01:
@@ -434,13 +437,19 @@ def furniture(add, opening, grow=0.0, fine=1, between=None):
             rh = t - 0.004 + drop
             part((w - 0.012, rd, rh), min(rd, rh) / 2 - 0.002, "seat", (cx, fc - rd / 2 + 0.008, ztop - 0.004 - rh / 2),
                  tilt=(fc - rd / 2, ztop - t / 2, -12), seg=3)
+            if "apron" in s:
+                aw_, ah_ = s["apron"]
+                part((w * aw_, 0.010, rh * ah_), 0.004, "base", (cx, fc + 0.006, ztop - 0.004 - rh + rh * ah_ / 2),
+                     tilt=(fc - rd / 2, ztop - t / 2, -12), seg=1)
         bt, foot, front = s["back"], z0 - 0.03, fy - 0.115 + s["ahead"]
         sh, bg = s.get("shoulder"), s.get("bulge")
         part((w, bt, bh), 0.025, "seat", (cx, front - bt / 2, foot + bh / 2),
-             cuts=(4 if bg else 2, 0, 14 if bg else 8 if sh else 0), tilt=rec, shoulder=sh,
+             cuts=(4 if bg else 2, 0, 18 if bg else 8 if sh else 0), tilt=rec, shoulder=sh,
              bulge=((0, *s["seams"], 1), bg) if bg else None)
-        hw, hh, hd = s["head"]
-        part((hw, hd, hh + 0.04), 0.03, "seat", (cx, front + 0.01 - hd / 2, foot + bh + hh / 2 - 0.02), tilt=rec, seg=3)
+        if s["head"]:
+            hw, hh, hd = s["head"]
+            part((hw, hd, hh + 0.04), 0.03, "seat", (cx, front + 0.01 - hd / 2, foot + bh + hh / 2 - 0.02), tilt=rec,
+                 seg=3)
         for k in s["seams"]:
             seam_box((w - 0.06, 0.006, 0.010), "seam", (cx, front, foot + k * bh), rec)
         if "side" in s:     # the cushion's on its door side only (the inner side runs on into the centre bench)
@@ -480,25 +489,21 @@ def furniture(add, opening, grow=0.0, fine=1, between=None):
             part((aw * 0.7, 0.07, ah + 0.065), 0.015, "seat", (ax, fy - 0.08, z0 - 0.105 + (ah + 0.065) / 2))
         return fy, z0
     out["front"] = [bucket(s * FRONT_X, seat_y[0], fs) for s in (-1, 1)][0]     # front buckets
-    if fs.get("centre"):    # (Cybercab: 06 top view, rider guide 05, pp.10-12, ERG p.5) between the slim front seats
-        ah, al, aw = fs["centre"]   # the cushions run on as one bench (a piece across the gap at their height, on its
-        fy, zf = out["front"]       # own base), a seat-belt buckle each side at its rear; over it an armrest pad
-        sl, t = fs["slim"], fs["cushion"]   # (centre: its top over the cushions' top, length, width) from between the
-        ztop, fc, gap = zf - 0.015, fy + sl.get("front", 0.30), 2 * FRONT_X - fs["w"]  # backrests forward on one
-        bench = ztop - 0.005                # small rear support; out cups / buckles: the detail model's cup holders
-        part((gap + 0.02, fc - fy + 0.10, t - 0.02), 0.02, "seat", (0, (fc + fy - 0.12) / 2 - 0.01, bench - (t - 0.02) / 2))
-        ped = ztop - t - CABIN_FLOOR        # (on its front) and the buckles' buttons
-        if ped > 0.01:
-            part((gap - 0.02, 0.26, ped), 0.012, "base", (0, fy + 0.08, CABIN_FLOOR + ped / 2), seg=1)
-        fb = fy - 0.115 + sl["ahead"]
-        part((aw, al, 0.045), 0.018, "seat", (0, fb - 0.06 + al / 2, ztop + ah - 0.0225))
-        part((aw * 0.6, 0.05, ah - 0.03), 0.01, "base", (0, fb + 0.02, bench - 0.005 + (ah - 0.03) / 2), seg=1)
+    if fs.get("centre"):    # (Cybercab: rider guide 05, pp.10-12, ERG p.5) between the slim front seats one console
+        ah, al, aw = fs["centre"]   # block from the floor (centre: its top over the cushions' top, length from behind
+        fy, zf = out["front"]       # the backrests' foot forward, top width), wider down so it fills the gap at the
+        sl = fs["slim"]             # cushions' top (5 mm into each); a seat-belt buckle each side at its rear; out
+        ztop, gap = zf - 0.015, 2 * FRONT_X - fs["w"]           # cups / buckles: the detail model's cup holders (on
+        fb = fy - 0.115 + sl["ahead"]                          # its top's front) and the buckles' buttons
+        h, kc = ztop + ah - CABIN_FLOOR, (ztop - CABIN_FLOOR) / (ztop + ah - CABIN_FLOOR)
+        wf = (gap + 0.01 - aw * kc) / (1 - kc)                  # foot width: linear taper through both widths
+        part((wf, al, h), 0.02, "seat", (0, fb - 0.04 + al / 2, CABIN_FLOOR + h / 2), taper=1 - aw / wf)
         out["buckles"] = []
         for s in (-1, 1):
-            at = (s * (gap / 2 - 0.012), fy - 0.04, bench + 0.02)
+            at = (s * (gap / 2 + 0.008), fb + 0.03, ztop + 0.02)
             part((0.020, 0.035, 0.05), 0.007, "buckle", at)
             out["buckles"].append((at[0], at[1], at[2] + 0.025))
-        out["cups"] = [(0, fc - 0.04, bench), (0, fc - 0.10, bench)]
+        out["cups"] = [(0, fb - 0.04 + al - 0.06, ztop + ah), (0, fb - 0.04 + al - 0.12, ztop + ah)]
     ry, z1 = seat_y[-1], z0 - SEAT.get("rear", 0)      # the 2nd row sits SEAT["rear"] lower (pzveh.geometry, same)
     if SEAT.get("front_only"):  # a two-seater (SEAT front_only, PassengerSeat2): the front row is the last row (`last`
         out["rear"] = out["front"]   # below: its backrests' rear; the detail model's 2nd-row mats then span nothing)
@@ -706,6 +711,21 @@ def cabin_mesh(bvh, belt, trunk_floor, trunk_end, arch, opening):
         add(sv[np.ravel([sf[i] for i in hump])], [[3 * k + 2, 3 * k + 1, 3 * k] for k in range(len(hump))], "liner",
             smooth=False, door=[door[i] for i in hump])
     shell_n = len(sf) + len(hump)
+    bk = pv.CAR.get("TRUNK_BULKHEAD")
+    if bk:  # (Cybercab: rider guide 04) a wall across the shell on its first ring behind TRUNK_Y, from the trunk floor
+        yk = ys[ys < TRUNK_Y].max()     # up under the skin (rays round the axis at z, 1 cm in): the open tailgate shows
+        o = Vector((0, yk, bk["z"]))    # it, not the seats; the cabin's rear wall behind them. Both sides drawn
+        rim = []                        # (cells: cabin side, trunk side), on the shell's side of shell_n (not turned)
+        for t in np.radians(np.arange(0, 360, 5)):
+            d = Vector((math.cos(t), 0, math.sin(t)))
+            hs = [h for b in bvh.values() for h in (b.ray_cast(o, d),) if h[0] is not None]
+            p = min(hs, key=lambda h: h[3])[0] - d * 0.01 if hs else o + d
+            rim.append((p.x, yk, max(p.z, trunk_floor)))
+        m = len(rim)
+        fan = np.concatenate([[(0, yk, bk["z"])], rim])
+        add(fan, [[0, 1 + (j + 1) % m, 1 + j] for j in range(m)], bk["cells"][0], smooth=False)
+        add(fan, [[0, 1 + j, 1 + (j + 1) % m] for j in range(m)], bk["cells"][1], smooth=False)
+        shell_n += 2 * m
 
     def trunk_plates(part):
         # trunk: sill plate over the opening's lower edge (the floor ends TRUNK_DROP under it, CABIN_INSET short of the
@@ -727,6 +747,13 @@ def cabin_mesh(bvh, belt, trunk_floor, trunk_end, arch, opening):
             part((sw, sd, TRUNK_DROP + 0.005), 0.01, "base", (0, yc, trunk_floor + TRUNK_DROP / 2), seg=1,
                  **(dict(cuts=(24, 0, 0), fit=to_lip) if fit else {}))
             part((bw, bd, 0.012), 0.004, "console", (0, (TRUNK_Y + trunk_end) / 2 - 0.04, trunk_floor + 0.006), seg=1)
+        if bk and "ribs" in bk:     # TRUNK_BULKHEAD ribs (cell, spacing, half span): upright ribs on its trunk side,
+            rc_, gap_, span_ = bk["ribs"]   # floor to 3 cm under the skin (04's slatted wall)
+            for x in np.arange(-span_, span_ + 1e-6, gap_):
+                o = Vector((x, yk - 0.01, trunk_floor + 0.01))
+                hs = [h[0].z for b in bvh.values() for h in (b.ray_cast(o, Vector((0, 0, 1))),) if h[0] is not None]
+                top = min(hs) - 0.03 if hs else trunk_floor + 0.3
+                part((0.022, 0.012, top - trunk_floor), 0.004, rc_, (x, yk - 0.006, (top + trunk_floor) / 2), seg=1)
         if PARCEL:
             parcel_shelf(add, bvh)
 
@@ -741,7 +768,7 @@ def cabin_mesh(bvh, belt, trunk_floor, trunk_end, arch, opening):
     bm.faces.ensure_lookup_table()
     bmesh.ops.recalc_face_normals(bm, faces=bm.faces[shell_n:])
     for f, c, fl, k in zip(bm.faces, cell, flat, dk):
-        f.material_index = names.index(CELL_MAP.get(c, c)) + 16 * k     # cell and door through triangulate (reset below)
+        f.material_index = names.index(CELL_MAP.get(c, c)) + 32 * k     # cell and door through triangulate (reset below)
         f.smooth = not fl
     bmesh.ops.triangulate(bm, faces=bm.faces[:])
     bm.to_mesh(me)
@@ -758,10 +785,10 @@ def cabin_mesh(bvh, belt, trunk_floor, trunk_end, arch, opening):
     co = np.empty(len(me.vertices) * 3)
     me.vertices.foreach_get("co", co)
     y, z = co.reshape(-1, 3)[vi, 1], co.reshape(-1, 3)[vi, 2]
-    k = np.repeat(ci // 16, lt)
+    k = np.repeat(ci // 32, lt)
     d = np.where(k == 5, opening["gate"] - z, opening["sill"] - z)
     d = np.where((k == 3) | (k == 4), np.maximum(d, arch[2] - np.hypot(y - arch[0], z - arch[1])), d)
-    uv1 = np.stack([CABIN_UV1_U - np.repeat(ci % 16, lt), np.where(k > 0, k + np.clip(d, -0.45, 0.45), 0)], 1)
+    uv1 = np.stack([CABIN_UV1_U - np.repeat(ci % 32, lt), np.where(k > 0, k + np.clip(d, -0.45, 0.45), 0)], 1)
     me.uv_layers.new(name="UV1").data.foreach_set("uv", uv1.ravel())
     me.polygons.foreach_set("material_index", np.zeros(len(me.polygons), np.int64))
     me.update()
@@ -791,16 +818,25 @@ def rot_z(deg):
 
 def roof_console(add, rc, wv, roof):
     """(ROOF_CONSOLE, Cybercab: rider guide 05 / p.14 x1691, no rear-view mirror) the overhead console on the headliner's
-    centre line from the windscreen's top back: a pod (size: width, length, thickness) along the roof (rays up onto the
-    body at its two ends: `roof`, the body FBX's verts and tris), under it a capsule light across it (strip: length
-    across, width; strip_y: its centre along the pod from the pod's middle, + forward) with the STOP button in its
-    middle (stop: the button's width, length; a red triangle on it), the camera housing at its front end (camera:
-    width, length, height)."""
+    centre line from the windscreen's top back (behind its top across each part's width): a pod (size: width, length,
+    thickness) along the roof (rays up onto the body at its two ends: `roof`, the body FBX's verts and tris; across,
+    bent down with the roof), optional bar (width, length, thickness: a thinner part across the roof from the pod's
+    front, bent the same), under the pod a capsule light across it (strip: length across, width; strip_y: its centre
+    along the pod from the pod's middle, + forward) with the STOP button in its middle (stop: the button's width,
+    length; a red triangle on it), the camera housing at its front end (camera: width, length, height)."""
     from mathutils.bvhtree import BVHTree
     rb = BVHTree.FromPolygons(roof[0].tolist(), roof[1].tolist())
     mid = np.abs(wv[:, 0]) < 0.08
     top = wv[mid][np.argmax(wv[mid][:, 2])]                    # the windscreen's top on the centre line
     w, ln, t = rc["size"]
+    bw, bl, bt = rc.get("bar", (w, ln, t))
+
+    def front(width):
+        """The windscreen's top behind which a part `width` wide fits (the top curves back to the sides)."""
+        ys = [top[1]] + [near[np.argmax(near[:, 2])][1] for x in (-width / 2, width / 2)
+                         for near in (wv[np.abs(wv[:, 0] - x) < 0.04],)]
+        return min(ys) - 0.01
+    top[1] = front(w) + 0.01
     ends = []
     for y in (top[1] - 0.01, top[1] - 0.01 - ln):
         hit = rb.ray_cast(Vector((0, y, top[2] - 0.12)), Vector((0, 0, 1)))[0]
@@ -809,35 +845,47 @@ def roof_console(add, rc, wv, roof):
         ends.append(np.array(hit[:]))
     (f_, r_) = ends
     m = rot_x(math.degrees(math.atan2(f_[2] - r_[2], f_[1] - r_[1])))   # local +y forward along the roof, +z up
-    # the pod's top on the chord between the two hits (on the roof's outer skin: the headliner is its reversed copy
-    # there), then down in 0.001 steps until every pod vertex lies at least 0.001 (grid, 1.2 mm) under the roof: the
-    # roof falls away to the sides and between the ends (r10: a line at y 0.31 and a patch at y -0.08, |x| <= 0.08,
-    # stood through it, the top 4 mm over the chord)
-    pv_, _ = rbox((w, ln, t), 0.012, seg=1)
+    c0 = (f_ + r_) / 2
 
-    def clear(c):
-        """Per pod vertex at centre c: how far up to the roof (None: no roof over it)."""
-        return [None if (h := rb.ray_cast(Vector(p), Vector((0, 0, 1)))[0]) is None else h[2] - p[2]
-                for p in pv_ @ m.T + c]
-    ctr = (f_ + r_) / 2 - m @ [0, 0, t / 2]
-    for _ in range(40):
-        d = clear(ctr)
-        if all(x is not None and x >= 0.001 for x in d):
-            break
-        ctr = ctr - np.array([0, 0, 0.001])
-    d = clear(ctr)
-    if not all(x is not None and x >= 0.001 for x in d):
-        raise SystemExit(f"cabin detail: the overhead console's top stands through the roof (worst "
-                         f"{min((x for x in d if x is not None), default=float('nan')):.4f}, "
-                         f"{sum(x is None for x in d)} vertices with no roof over them)")
-    dt = [x for x, p in zip(d, pv_) if p[2] > 0]                  # the top's vertices (grid; x 1000 / K: mm)
-    print(f"ROOF_CONSOLE top {min(dt) / 0.826 * 1000:.1f}-{max(dt) / 0.826 * 1000:.1f} mm under the roof, "
-          f"centre z {ctr[2]:.4f}")
+    def seat(size, dy, name):
+        """A part `size` bent across with the roof (sampled on its middle line), `dy` forward of the pod's middle: its
+        top on the chord between the two hits (on the roof's outer skin: the headliner is its reversed copy there),
+        then down in 0.001 steps until every vertex lies at least 0.001 (grid, 1.2 mm) under the roof: the roof falls
+        away to the sides and between the ends (r10: a line at y 0.31 and a patch at y -0.08, |x| <= 0.08, stood
+        through it, the top 4 mm over the chord). -> local verts, faces, centre."""
+        v, f = rbox(size, 0.012, cuts=(24, 0, 0), seg=1)
+        p = c0 + m @ [0, dy, 0]
+        zr = [rb.ray_cast(Vector((x, p[1], p[2] - 0.12)), Vector((0, 0, 1)))[0] for x in (0.0, *v[:, 0])]
+        v[:, 2] += [h[2] - zr[0][2] if h is not None else 0.0 for h in zr[1:]]
+
+        def clear(c):
+            """Per vertex at centre c: how far up to the roof (None: no roof over it)."""
+            return [None if (h := rb.ray_cast(Vector(q), Vector((0, 0, 1)))[0]) is None else h[2] - q[2]
+                    for q in v @ m.T + c]
+        c = p - m @ [0, 0, size[2] / 2]
+        for _ in range(40):
+            d = clear(c)
+            if all(x is not None and x >= 0.001 for x in d):
+                break
+            c = c - np.array([0, 0, 0.001])
+        d = clear(c)
+        if not all(x is not None and x >= 0.001 for x in d):
+            raise SystemExit(f"cabin detail: the overhead console's {name} stands through the roof (worst "
+                             f"{min((x for x in d if x is not None), default=float('nan')):.4f}, "
+                             f"{sum(x is None for x in d)} vertices with no roof over them)")
+        dt = [x for x, q in zip(d, v) if q[2] > 0]                # the top's vertices (grid; x 1000 / K: mm)
+        print(f"ROOF_CONSOLE {name} top {min(dt) / 0.826 * 1000:.1f}-{max(dt) / 0.826 * 1000:.1f} mm under the roof, "
+              f"centre z {c[2]:.4f}")
+        return v, f, c
+    pv_, pf_, ctr = seat((w, ln, t), 0.0, "pod")
 
     def put(size, r, at, c):
         v, f = rbox(size, r, seg=1)
         add((v + at) @ m.T + ctr, f, c)
-    put((w, ln, t), 0.012, (0, 0, 0), "pod")
+    add(pv_ @ m.T + ctr, pf_, "pod")
+    if "bar" in rc:     # 05: the bar across the headliner each side of the pod, its front behind the windscreen's top
+        v, f, c = seat((bw, bl, bt), (front(bw) - bl / 2 - c0[1]) / m[1, 1], "bar")    # (p.14: one long ridge)
+        add(v @ m.T + c, f, "pod")
     under = -t / 2
     lw, ll, sy = rc["strip"][1], rc["strip"][0], rc.get("strip_y", 0.0)
     v, f = cylinder(lw / 2, 0.006, 32)                         # a stadium: a cylinder's halves pulled apart (along x)

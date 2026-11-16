@@ -66,7 +66,7 @@ TALL_MM = -10   # --tall-lua: deeper out of the shell than this (mm) = hidden in
 # allow less of it than of sinking (clothes sit 5-15 mm off the body and fill some).
 FIT = {"sit": (-25, 10), "back": (-25, 20), "feet": (-25, 25), "knees": (-25, float("inf"))}
 CELLS = ("floor", "liner", "seat", "base", "dash", "trim", "console", "wheel", "screen_back", "screen", "bed_floor",
-         "bed_rib", "bed_wall_lo", "bed_wall_mid", "bed_wall_hi", "bed_rim")                # pzveh.py CABIN_CELLS
+         "bed_rib", "bed_wall_lo", "bed_wall_mid", "bed_wall_hi", "bed_rim", "silver")      # pzveh.py CABIN_CELLS
 CABIN_UV1_U = -2.5                                                                # pzveh.py CABIN_UV1_U
 PARTS = ("seat", "base", "dash", "console", "wheel")   # closed cabin parts (cabin.py part() / the wheel's torus)
 
