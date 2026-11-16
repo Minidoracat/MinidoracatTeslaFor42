@@ -1945,6 +1945,108 @@ def close_pinholes(t, lab, v, size=6e-3, area=1e-6):
     return t, lab, filled
 
 
+# ---- the nose top's fairing (round 13 a11): a10's hood had an S-shaped turn (y 1.7-2.3) and a step over the lamp's
+# outer half the field's tables could not smooth. Main measured dz(|x|, y) on the a10 shell (temp/skf_cc/work/r13/
+# main_fair/: left half, 2 mm grid, metres): added to the finished Paint and Trim tops (z >= 0.55) and the lines on
+# them. Nose B only (the table was measured on it).
+NOSE_FAIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cybercab_nose_fair.npz")
+NOSE_FAIR_Z = 0.55
+
+
+def nose_fair(obs):
+    """Add the table to the objects obs (Paint, Trim: vertices and custom normals); returns the report entry and
+    dz(points) for the lines. Stops when the shell under the table is no longer the one it was measured on (a chk
+    vertex more than 0.2 mm from every vertex)."""
+    t = np.load(NOSE_FAIR)
+    hx, hy, D = t["x"], t["y"], t["dz"].astype(float)
+    GY, GX = np.gradient(D, hy, hx)
+    REN, GXN, GYN = t["ren"].astype(float), t["gxn"].astype(float), t["gyn"].astype(float)
+
+    def bil(F, x, y):
+        """Bilinear F at (x <= 0, y); 0 off the grid."""
+        fx = np.clip((x - hx[0]) / (hx[1] - hx[0]), 0, len(hx) - 1.001)
+        fy = np.clip((y - hy[0]) / (hy[1] - hy[0]), 0, len(hy) - 1.001)
+        i, j = fy.astype(int), fx.astype(int)
+        a, b = fy - i, fx - j
+        v = (1 - a) * (1 - b) * F[i, j] + (1 - a) * b * F[i, j + 1] + a * (1 - b) * F[i + 1, j] + a * b * F[i + 1, j + 1]
+        return np.where((y < hy[0]) | (y > hy[-1]) | (x < hx[0]), 0.0, v)
+
+    def dz_at(p):
+        """dz at points (n, 3); the table's last 0.01 mm left out: 4 um on the lamp bar's top edge (y 2.302) lifted
+        Paint's face across a HeadLight sliver (2 self intersections)."""
+        p = np.asarray(p, float)
+        d = np.where(p[:, 2] >= NOSE_FAIR_Z, bil(D, -np.abs(p[:, 0]), p[:, 1]), 0.0)
+        return np.where(np.abs(d) < 1e-5, 0.0, d)
+
+    cos = []
+    for ob in obs:
+        assert np.allclose(np.array(ob.matrix_world), np.eye(4), atol=1e-6), ob.name
+        co = np.empty(len(ob.data.vertices) * 3)
+        ob.data.vertices.foreach_get("co", co)
+        cos.append(co.reshape(-1, 3))
+    allco = np.concatenate(cos)
+    miss = max(np.linalg.norm(allco - c, axis=1).min() for c in t["chk"])
+    if miss > 2e-4:
+        raise SystemExit(f"NOSE_FAIR: 車鼻頂面變了，位移表要重做 (a chk vertex {miss * 1e3:.2f} mm from the shell; "
+                         f"{NOSE_FAIR})")
+    rep = dict(table=os.path.basename(NOSE_FAIR), chk_max_mm=round(miss * 1e3, 4), moved={}, renormal_corners=0)
+    lo = hi = 0.0
+    for ob, co in zip(obs, cos):
+        me = ob.data
+        ax, sg = -np.abs(co[:, 0]), np.where(co[:, 0] > 0, -1.0, 1.0)
+        on = co[:, 2] >= NOSE_FAIR_Z
+        dz = dz_at(co)
+        gx = np.where(on, bil(GX, ax, co[:, 1]), 0.0) * sg
+        gy = np.where(on, bil(GY, ax, co[:, 1]), 0.0)
+        li = np.empty(len(me.loops), np.int32)
+        me.loops.foreach_get("vertex_index", li)
+        n = np.empty(len(me.loops) * 3)
+        me.corner_normals.foreach_get("vector", n)
+        n = n.reshape(-1, 3)
+        # corner normals tilted by dz's slope; Paint faces in the ren zone (the rebuilt step) take the new top's own
+        # slope, read 30 % of the way to the face centre
+        n2 = np.stack([n[:, 0] - n[:, 2] * gx[li], n[:, 1] - n[:, 2] * gy[li], n[:, 2]], 1)
+        if ob.name == "Paint":
+            ls = np.empty(len(me.polygons), np.int32)
+            me.polygons.foreach_get("loop_start", ls)
+            lt = np.empty(len(me.polygons), np.int32)
+            me.polygons.foreach_get("loop_total", lt)
+            pol = np.repeat(np.arange(len(ls)), lt)
+            cen = np.zeros((len(ls), 3))
+            np.add.at(cen, pol, co[li])
+            cen /= lt[:, None]
+            lin = ((bil(REN, -np.abs(cen[:, 0]), cen[:, 1]) > 0.5) & (cen[:, 2] >= NOSE_FAIR_Z))[pol]
+            p = co[li] + 0.3 * (cen[pol] - co[li])
+            pax, psg = -np.abs(p[:, 0]), np.where(p[:, 0] > 0, -1.0, 1.0)
+            nr = np.stack([-bil(GXN, pax, p[:, 1]) * psg, -bil(GYN, pax, p[:, 1]), np.ones(len(p))], 1)
+            sel = lin & (n[:, 2] > 0.05)
+            n2[sel] = nr[sel]
+            rep["renormal_corners"] += int(sel.sum())
+        n2 /= np.linalg.norm(n2, axis=1)[:, None]
+        co[:, 2] += dz
+        me.vertices.foreach_set("co", co.ravel())
+        me.update()
+        me.normals_split_custom_set([tuple(x) for x in n2])
+        # (it averages each vertex fan: a sliver at the lamp's outer tip, 0.002 mm2, took its ren neighbours' normal,
+        # 6 corners past their face) such corners faceted, make()'s rule; make()'s triangles: loop i on face i // 3
+        cn = np.empty(len(me.loops) * 3, np.float32)
+        me.attributes["custom_normal"].data.foreach_get("vector", cn)
+        cn = cn.reshape(-1, 3)
+        fn = np.empty(len(me.polygons) * 3, np.float32)
+        me.polygons.foreach_get("normal", fn)
+        fn = fn.reshape(-1, 3)[np.arange(len(me.loops)) // 3]
+        flat = (cn * fn).sum(1) < 0.05
+        cn[flat] = fn[flat]
+        me.attributes["custom_normal"].data.foreach_set("vector", cn.ravel())
+        rep["faceted_corners"] = rep.get("faceted_corners", 0) + int(flat.sum())
+        mv = np.abs(dz) > 1e-5
+        rep["moved"][ob.name] = int(mv.sum())
+        if mv.any():
+            lo, hi = min(lo, dz[mv].min()), max(hi, dz[mv].max())
+    rep["dz_mm"] = [round(lo * 1e3, 2), round(hi * 1e3, 2)]
+    return rep, dz_at
+
+
 def main():
     import bmesh
     import bpy
@@ -2160,6 +2262,10 @@ def main():
                 gap.append(hit[3])
     report["side_marker"] = dict(buried=buried, off_skin=off_skin, facing_in=len(facing_in),
                                  lift_mm=[round(min(gap, default=0) * 1e3, 2), round(max(gap, default=0) * 1e3, 2)])
+    fair_dz = None
+    if NOSE == "B":
+        report["nose_fair"], fair_dz = nose_fair([bpy.data.objects["Paint"], bpy.data.objects["Trim"]])
+        print("NOSE_FAIR", report["nose_fair"])
     for ob in bpy.context.scene.objects:
         me = ob.data
         report["objects"][ob.name] = len(me.polygons)
@@ -2174,7 +2280,12 @@ def main():
                                  r=TYRES[ax]["r"], w=TYRES[ax]["w"]) for ax in TYRES}
     report["wheels"]["note"] = "track: front off 01 front's fitted camera, rear x92's rear / front ratio; not official"
     json.dump(report, open(os.path.join(out, "prep_report.json"), "w"), indent=1)
-    lines = {k: out_pts(p).round(4).tolist() for k, p in B["lines"].items()}
+    lines = {}
+    for k, p in B["lines"].items():
+        q = np.atleast_2d(out_pts(p))
+        if fair_dz is not None:
+            q[:, 2] += fair_dz(q)                    # the hood line stays on the faired top
+        lines[k] = q.reshape(np.shape(p)).round(4).tolist()
     json.dump(dict(frame="metres, +Y front, +Z up, -X the car's left, ground 0 (prep_cybercab.py)",
                    **lines), open(os.path.join(out, "cybercab_lines.json"), "w"), indent=1)
     bpy.ops.wm.save_as_mainfile(filepath=os.path.join(out, "cybercab_src.blend"))
