@@ -317,12 +317,14 @@ TAIL_RED_GAME = dict(y=(-1.79, -1.995), z=((0.486, 0.507), (0.512, 0.533)))
 # 1.6-2.4 mm off, unchanged sharp or rounded 4 mm, t6 / t7). Round 13 (t12, all 1.02 mm or less; round 12's entries
 # that no longer caught a vertex went): the same lens's lower inner corner (|x| 0.073); the quarter glass's rear tip
 # (round 10's turn, at -1.072 now); the strip's end at the crease's top (z 0.909: its top cut into the crease's
-# snapped vertices where the hardness eases off); the lamp's grey | red split (|x| 0.585) on the lamp's bottom
-# cut, right angles under a 6.5 mm cell; the recess's lower edge at the crease (0.63, -2.00, 0.795), one side only
+# snapped vertices where the hardness eases off); the lamp's grey | red split on the lamp's bottom cut, where the
+# set-in under the lens crosses the cut (TAIL_FACE gap eased from over to under it, |x| 0.576: 0.89 mm, t17; round
+# 13 t12 at |x| 0.585, right angles under a 6.5 mm cell); the recess's lower edge at the crease (0.63, -2.00, 0.795),
+# one side only
 BOUNDARY_KNOWN = (((0.8000, 0.8944, 0.9517), 0.010, 0.0010), ((0.500, 1.8365, 0.2776), 0.008, 0.0010),
                   ((0.2447, -2.0775, 0.9072), 0.010, 0.0025), ((0.0725, -2.0822, 0.9110), 0.006, 0.0012),
                   ((0.5605, -1.0722, 1.2062), 0.006, 0.0012), ((0.6745, -1.9932, 0.9086), 0.006, 0.0012),
-                  ((0.5848, -2.0109, 0.5231), 0.006, 0.0012), ((0.6305, -2.0018, 0.7949), 0.006, 0.0012))
+                  ((0.5765, -2.0143, 0.5189), 0.006, 0.0010), ((0.6305, -2.0018, 0.7949), 0.006, 0.0012))
 TAIL_BOW = (0.185, 0.692, 3.43)      # the lip (TAIL_SHELF's shelf and tip) sets forward a (|x| / b)^p (output metres):
                                      # x92's outline within a of its tip (half width 0 -> b, where the lip turns into
                                      # the side; rms 4.5 mm, at most 8.6 mm in |x| over x92's 0.004-0.21 m); round 9's
@@ -340,7 +342,10 @@ TAIL_BOW = (0.185, 0.692, 3.43)      # the lip (TAIL_SHELF's shelf and tip) sets
 # Round 13 (FINDINGS E, wheel-anchored 01 side / 01 rear): the crease 1.6-2.3 cm further forward and 1.5-2.2 cm in,
 # the face (x 0 at the strip's -2.157, flush, p 3.9) touching 01 side's sightline (|x| 0.45, -2.128; 0.30, -2.178
 # ... 0.60, -2.078); gap: under the lens from gap[1] over its bottom the face set gap[0] in (over gap[2]; 01 side rows
-# 710-716 8-10 px in); notch: under the end cap (z notch[1]-notch[2], ramps notch[3]) the face notch[0] further in,
+# 710-716 8-10 px in), gap[1] eased to gap[3][2] outboard of gap[3] (|x|, over): on the red the set-in sits under
+# the lens' bottom, its step 5 mm under the cut (Main round 13, x59: a flat red strip; from gap[1] over it the
+# set-in's underside was red, a wedge, its edge jagged; the step right on the cut put 26 points 1.4 mm off it, t16);
+# notch: under the end cap (z notch[1]-notch[2], ramps notch[3]) the face notch[0] further in,
 # the full width (Main: 01 rear's lit fold at rows 380-382, z 0.80-0.81, the recess deepest at 0.815-0.835, 01 side
 # rows 536-548; nose_main.json lim01s_tail: at 0.80 1.1-1.7 cm over with its bottom at 0.803); cham: the end cap's
 # lower part forward, cham[0] at its bottom (z cham[1]) easing to 0 at cham[2] (rows 512-524: the cap's face leans
@@ -350,7 +355,8 @@ TAIL_FACE = dict(y=-2.157, p=3.9, bev=(0.846, 0.875, 0.0, 0.45), taper=(-1.97, 0
                  crease=((0.50, -1.982, 0.697), (0.555, -1.985, 0.696), (0.607, -1.992, 0.694), (0.660, -1.998, 0.691),
                          (0.712, -2.003, 0.690), (0.764, -2.009, 0.688), (0.816, -2.013, 0.688), (0.86, -2.016, 0.690),
                          (0.95, -2.022, 0.692)),   # (over the end cap 0.69: 01 rear rows 260-280, col 80)
-                 gap=(0.017, 0.010, 0.005), notch=(0.030, 0.795, 0.856, 0.004), cham=(0.022, 0.856, 0.92))
+                 gap=(0.017, 0.010, 0.005, (0.56, 0.04, -0.005)), notch=(0.030, 0.795, 0.856, 0.004),
+                 cham=(0.022, 0.856, 0.92))
 # the bumper's face under the lip (zs < TAIL_SHELF[1]): output y + a (|x| / b)^p, square at the corner (round 11
 # reached -1.971 at |x| 0.70, z 0.46: 01 rear rows 640-780), on the side out to hw (01 rear cols 59-62, the gold
 # body's 67.5) from z0 up to the shelf's black. Round 13 (FINDINGS E.4: 01 side rows 752-820 2.5-2.9 cm out, the
@@ -763,7 +769,8 @@ def face_bow(ax, z):
     lb = interp_tab(TAIL_LAMP[0], ax) - TAIL_LAMP[2]
     corner = 1 - ss((ax - 0.64) / 0.04)    # (notch and cham eased out at the crease: across its cuts, t4; from 0.58
     #                                         01 side rows 536-548 stood 10-11 px short)
-    return (in_y(yo) - in_y(tf["y"] - bev) + g[0] * ss((lb + g[1] - z) / g[2])
+    g1 = g[1] + (g[3][2] - g[1]) * ss((ax - g[3][0]) / g[3][1])
+    return (in_y(yo) - in_y(tf["y"] - bev) + g[0] * ss((lb + g1 - z) / g[2])
             + corner * (n[0] * ss((z - n[1]) / n[3]) * ss((n[2] - z) / n[3])
                         + ch * (1 - ss((z - c0) / (c1 - c0))) * ss((z - c0 + 0.004) / 0.003)))
 
@@ -840,6 +847,15 @@ class Field:
         self.foot = SIDE_TOP[i, 0]
         top = np.concatenate([SIDE_TOP[:i], [(SIDE_TOP[i + 1, 0], SIDE_TOP[i - 1, 1])], SIDE_TOP[i + 1:]])
         self.lip = poly_sdf(np.concatenate([top, SIDE_BOT[::-1]]), yy.ravel(), zz.ravel()).reshape(ny, nz)
+        # round the tail under z 0.40 the read blurred (Gaussian 9 mm): the small lower lip's polyline (SIDE_BOT, ~1 cm
+        # segments 20-40 deg apart) read on bows that change with |x| left its corners as oblique creases along the
+        # lower edge, normals 10-20 deg apart 3 mm along it (Main round 13; the lip's tip above 0.40 as it was)
+        k = np.exp(-0.5 * (np.arange(-4, 5) * SIDE_H / 0.009) ** 2)
+        k /= k.sum()
+        b = self.lip
+        for ax in (0, 1):
+            b = np.apply_along_axis(lambda r: np.convolve(np.pad(r, 4, mode="edge"), k, "valid"), ax, b)
+        self.lip = self.lip + ss((-1.80 - yy) / 0.10) * ss((0.40 - zz) / 0.04) * (b - self.lip)
 
     def samp(self, g, y, z):
         fy = np.clip((y - self.y0) / SIDE_H, 0, g.shape[0] - 1.001)
@@ -897,7 +913,9 @@ class Field:
         # flat in the profile (TAIL_SHELF[0]): over it the face's read, under it the lip's, the two meeting on it
         zs = tail_zs(x, y, z)
         lip, bump = tail_bow(x), bumper_bow(x)
-        bump = bump + (np.maximum(bump, lip) - bump) * ss((TAIL_SHELF[3] - zs) / 0.015)   # (the small lower lip)
+        # (the small lower lip: the bow's blend over 4.5 cm, round 13 Main: over 1.5 cm a 4 cm shift sheared a shelf into
+        # the lower edge's rounding at |x| 0.47-0.70, normals 10-20 deg apart 3 mm along it)
+        bump = bump + (np.maximum(bump, lip) - bump) * ss((TAIL_SHELF[3] + 0.015 - zs) / 0.045)
         fb, s0, fade = face_bow(x, z), TAIL_SHELF[0], ss((-1.75 - y) / 0.10)
         sh = np.where(zs > s0, fb, lip + (bump - lip) * ss((TAIL_SHELF[1] - zs) / (TAIL_SHELF[1] - TAIL_SHELF[2])))
         ys = nose_y(x, y) - sh * fade
@@ -968,7 +986,8 @@ class Field:
         d = smax(d, interp_tab(fl, yf) - 0.3 * (1 - ss((fx + fw - x) / fw)) - z, 0.008)
         dx, dz0, dz1, dd = DIFFUSER
         zs = tail_zs(x, y, z)                   # (in the profile's z: over the small lower lip)
-        d = d + dd * (ss((dx - x) / 0.012) * ss((zs - dz0) / 0.004) * ss((dz1 - zs) / 0.004)
+        # (its steps over 8 mm, past the 6.5 mm cell: over 4 mm the top edge aliased into dashes, Main round 13)
+        d = d + dd * (ss((dx - x) / 0.012) * ss((zs - dz0) / 0.008) * ss((dz1 - zs) / 0.008)
                       * ss((-2.06 - yt) / 0.02))
         # the recess's steps sit 4-7 mm inside its outline's cuts (a cut along a step runs grazing: mm off)
         return d + aft * TAIL_LAMP[4] * (ss((TAIL_LAMP[3][0] - 0.004 - x) / 0.006) * ss((z - rb - 0.004) / 0.003)
