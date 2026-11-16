@@ -280,12 +280,16 @@ BAR = (0.009, 0.011, 0.0045)        # light bar: its top at least this far under
 # LAMP[1] (q, z) leans back LAMP[3] in q per metre up. Round 13 (CybercabFit fit_t18.json, 02 + x253b triangulated, 01
 # side; Main: the official's grey bar ~1 cm over the middle, a thin bar over the dotted dark lens on the corners): the
 # official's dark band (q where the target's |x| and z meet the surface); t18's bar sat on its top edge, 1.9 cm high
-# over the middle. At |x| 0.5 the leading edge holds the top 1 cm under the official's 0.610
+# over the middle. At |x| 0.5 the leading edge holds the top 1 cm under the official's 0.610. The lens' bottom from
+# |x| 0.55 out (round 13 a8, CybercabFit: the official's dark housing's bottom triangulated on 01 side / 02 / x253t,
+# residuals <= 1.8 px: z 0.582 / 0.584 / 0.585 / 0.590 / 0.596 / 0.604 / 0.616 at |x| 0.55 ... 0.78 by 0.04), eased
+# in from the middle's at 0.45; from 0.66 out the knots over the targets by what the mesh read under them (a8 first
+# try: 3-7.5 mm low, the q taken where Fit's surface y sat, the model's surface there further back)
 LAMP = (((0.0, 0.582), (0.3, 0.582), (0.4, 0.593), (0.572, 0.610), (0.730, 0.622), (0.866, 0.643), (0.961, 0.665),
          (1.08, 0.690)),
         (1.01, 0.683),
-        ((0.0, 0.571), (0.3, 0.572), (0.4, 0.573), (0.564, 0.576), (0.724, 0.580), (0.858, 0.612), (0.948, 0.629),
-         (1.08, 0.650)), 0.8)
+        ((0.0, 0.571), (0.3, 0.572), (0.4, 0.573), (0.480, 0.574), (0.649, 0.582), (0.702, 0.584), (0.771, 0.585),
+         (0.822, 0.593), (0.870, 0.598), (0.920, 0.607), (0.970, 0.624), (1.08, 0.653)), 0.8)
 # round 12 (erg p24 x222 / x230, x253): a short seam from the head lamp's outer end back along the fender's side to the
 # arch's lip, rising a little: (output y, z) of its two ends, 8 mm short of the lamp's end cut, 2 cm short of the arch
 FENDER_SEAM = ((1.875, 0.685), (1.690, 0.712))
@@ -563,6 +567,11 @@ LIP_EDGE = dict(y=((0.0, 2.295), (0.1, 2.293), (0.2, 2.278), (0.3, 2.257), (0.4,
 # (t11: z 0.86 over 0.04 -> 0.84 over 0.08: its 4 cm in 4 cm of height folded the fender top's ramp up into the A
 # pillar's base, at (0.80, 1.12, 0.88) five sheets over one another, a hole and slivers on 02)
 WS_SHIFT = dict(d=0.04, a=(0.80, 0.30), b=(1.35, 0.15), z=(0.80, 0.20))
+# round 13 (Main, 02 / x253 close-ups: the A pillar's foot twisted, light and dark bands): where the fender top's cap
+# meets the windshield's sloped base (y 1.09-1.13) the surface ran up a 4 cm step with 6 mm ripples, the shift's
+# shear (WS_SHIFT z) over it; the field there averaged over r (m) along y and z (|x|, output y, z boxes eased in
+# over `ease`), the windshield's base kept forward
+FOOT_BLUR = dict(x=(0.66, 0.95), y=(1.03, 1.20), z=(0.84, 0.97), ease=0.04, r=0.016)
 
 
 def smax(a, b, k):
@@ -957,6 +966,21 @@ class Field:
         return d1 - d2
 
     def __call__(self, p):
+        """The field, at the A pillar's foot averaged over its neighbours (FOOT_BLUR)."""
+        d = self.raw(p)
+        b = FOOT_BLUR
+        yo, ax, z = out_y(p[:, 1]), np.abs(p[:, 0]), p[:, 2]
+        w = np.ones(len(p))
+        for v, (lo, hi) in ((ax, b["x"]), (yo, b["y"]), (z, b["z"])):
+            w = w * ss((v - lo) / b["ease"]) * ss((hi - v) / b["ease"])
+        m = w > 0
+        if m.any():
+            q, s = p[m], b["r"]
+            avg = sum(self.raw(q + o) for o in ([0, s, 0], [0, -s, 0], [0, 0, s], [0, 0, -s])) / 4
+            d[m] += w[m] * (avg - d[m])
+        return d
+
+    def raw(self, p):
         rise = roof_rise(np.abs(p[:, 0]), p[:, 1], p[:, 2])
         ax, yo, z0 = np.abs(p[:, 0]), out_y(p[:, 1]), p[:, 2]
         zl = z0 - interp_tab(LIP_LIFT, ax) * ss((yo - 2.15) / 0.05) * ss((0.28 - z0) / 0.03)   # (the lip's top: LIP_LIFT)
