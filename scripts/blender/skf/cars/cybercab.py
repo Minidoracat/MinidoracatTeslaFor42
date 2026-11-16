@@ -39,7 +39,9 @@ def _axis(sd):
 _TMP = pathlib.Path(__file__).resolve().parents[4] / "temp" / "skf_cc"
 _SNAP = pathlib.Path(__file__).with_name("cybercab_body.json")
 _KEYS = {"prep_report.json": ("body_bbox", "wheels"),
-         "cybercab_lines.json": ("door_left", "trunk", "charge_port_centre", "tail_lamp_red_left")}
+         "cybercab_lines.json": ("door_left", "trunk", "charge_port_centre", "tail_lamp_side_red_left",
+                                 "tail_lamp_side_red_right", "tail_lamp_grey_left", "tail_lamp_grey_right",
+                                 "tail_lamp_centre", "spoiler_lamp_left", "spoiler_lamp_right")}
 
 
 def _from_tmp():
@@ -98,15 +100,20 @@ _TRUNK_X = max(abs(q[0]) for q in _LN["trunk"])
 _PORT = _LN["charge_port_centre"]
 
 
-def _red():
-    """The tail lamp's red ring on the car's left (cybercab_lines.json tail_lamp_red_left, five points): the rear
-    face's corner from its inner |x| round to its y on the side (01 side: only the corner's last cm are red); ahead of
-    it the side's run is smoked grey. The ring's inner |x| and front y bound the red."""
-    ring = _LN["tail_lamp_red_left"]
-    return dict(x=round(min(abs(q[0]) for q in ring), 4), y=round(max(q[1] for q in ring), 4))
+def _box(*keys):
+    """(lo, hi) of the closed loops `keys` (cybercab_lines.json, metres)."""
+    p = [q for k in keys for q in _LN[k]]
+    return [min(q[i] for q in p) for i in range(3)], [max(q[i] for q in p) for i in range(3)]
 
 
-_RED = _red()
+# The tail lamp band (eleventh round): the side's red runs (TailLight) and the rear face's grey runs (Glass_ReverseLens)
+# are the tail lamps, lit with the head lamps; between the grey runs the dark centre (a run of the Trim, no object of
+# its own: tail_lamp_centre) and the spoiler's two pale runs on the lid (Glass_SpoilerLamp) the brake lamps. The centre
+# is cut out of the Trim along its loop's box (LAMPS brake_box): it shares the grey runs' inner edge
+_CTR = _box("tail_lamp_centre")
+_CX = _CTR[1][0]
+if abs(_CX - min(abs(q[0]) for k in ("tail_lamp_grey_left", "tail_lamp_grey_right") for q in _LN[k])) > 0.002:
+    raise SystemExit("cars/cybercab.py: tail_lamp_centre's |x| is not the grey runs' inner edge (cybercab_lines.json)")
 
 CAR = dict(
     # ---- pzveh: paths and names
@@ -232,27 +239,31 @@ CAR = dict(
     GROOVE_INK=dict(file="cybercab_lines.json", lines=("hood",), w=round(0.006 * K, 4), k=0.6,
                     reach=round(0.012 * K, 4), rgb=(58, 58, 60)),
     # by day: the lower body, bumpers and seam grooves dark grey (01: sill p50 50), the wheel house liners and B pillar
-    # black, the light bar white, the tail bar smoked grey (its corners red: LAMPS areas), the plate light grey, the
-    # side markers amber
+    # black, the light bar white, the tail lamps' side runs red, the plate light grey, the side markers amber
     MAT_RGB={"Trim": (58, 58, 60), "Liner": (24, 24, 26), "Glass": (26, 30, 34), "HeadLight": (226, 228, 232),
-             "TailLight": (104, 104, 108), "Plate": (206, 208, 212), "Marker": (196, 122, 44)},
-    # (pane, box lo, hi, colour, object): the reverse lens bar under the tail face, grey, dark in its middle but for
-    # 0.166 m at each end (01 rear); the boxes on the lens's own range (convert.py classify RECOLOR)
-    RECOLOR=(("Glass", _g(-0.01, -0.066, -0.012), _g(0.01, 0.061, 0.014), (112, 112, 116), "Glass_ReverseLens"),
-             ("Glass", _g(0.166, -0.066, -0.012), _g(-0.166, 0.061, 0.014), (40, 40, 42), "Glass_ReverseLens")),
+             "TailLight": (122, 30, 36), "Plate": (206, 208, 212), "Marker": (196, 122, 44)},
+    # (pane, box lo, hi, colour, object): the tail face's grey runs and the spoiler's paler runs (01 rear: p50 112 /
+    # 118 on the bar's 90); the boxes on each object's own range (convert.py classify RECOLOR), the spoiler's one box a
+    # side: the rear camera's glass between them (|x| < 0.01) stays dark
+    RECOLOR=(("Glass", _g(-0.01, -0.01, -0.01), _g(0.01, 0.01, 0.01), (112, 112, 116), "Glass_ReverseLens"),
+             ("Glass", _g(-0.01, -0.01, -0.01), _g(-0.29, 0.01, 0.01), (118, 118, 120), "Glass_SpoilerLamp"),
+             ("Glass", _g(0.29, -0.01, -0.01), _g(0.01, 0.01, 0.01), (118, 118, 120), "Glass_SpoilerLamp")),
     GLASS_MATS=("Glass",),
-    GLASS_OPAQUE=("Glass_ReverseLens", "RearCamera"),
+    GLASS_OPAQUE=("Glass_ReverseLens", "Glass_SpoilerLamp", "RearCamera"),
     GLASS_BACKS=("WinLH", "WinLT", "WinRH", "WinRT"),
     ROOF_PANE="-",                         # (a body-colour roof)
     MIRROR_CAP="-",                        # (no mirrors: cameras)
-    # lamps: the light bar and the wedge head lamps (HeadLight) with their dots (LampDots, the plate's material); the
-    # tail bar (TailLight): its corners red tail lamps (LightLT / RT), its smoked inner part brake lamps (|x| under
-    # STOP_X: StopL / R), its run along the side ahead of the red smoked and dark (rider guide 01 side)
+    # lamps: the light bar and the wedge head lamps (HeadLight) with their dots (LampDots, the plate's material); tail
+    # lamps (LightLT / RT) the side's red runs (TailLight) and the rear face's grey runs (tail_objs); brake lamps
+    # (StopL / R) the centre run of the Trim (brake_box: its faces between the four planes, the Trim bisected along
+    # them, so its edges are the loop's straight lines) and the spoiler's runs on the lid (brake_objs)
     LAMPS=dict(head=("HeadLight",), head_y=0.5, head_objs=("LampDots_Left", "LampDots_Right"),
-               tail=("TailLight",), tail_z=0.3, tail_y=-1.0, blade=None,
-               areas=((dict(lo=_g(-9, -9, -9), hi=_g(-_RED["x"], _RED["y"], 9)), (122, 30, 36), True),
-                      (dict(lo=_g(_RED["x"], -9, -9), hi=_g(9, _RED["y"], 9)), (122, 30, 36), True),
-                      (dict(lo=_g(-9, _RED["y"], -9), hi=_g(9, -1.0, 9)), (46, 46, 48), False))),
+               tail=("TailLight",), tail_z=0.3, tail_y=-1.0, blade=None, tail_objs=("Glass_ReverseLens",),
+               brake_objs=("Glass_SpoilerLamp",),
+               brake_box=dict(mat="Trim", cut=True, lo=_g(-_CX - 0.03, -9, _CTR[0][2] - 0.03),
+                              hi=_g(_CX + 0.03, _CTR[1][1] + 0.03, _CTR[1][2] + 0.03),
+                              below=((_g(0, 0, _CTR[0][2]), (0, 0, -1)), (_g(0, 0, _CTR[1][2]), (0, 0, 1)),
+                                     (_g(_CX, 0, 0), (1, 0, 0)), (_g(-_CX, 0, 0), (-1, 0, 0))))),
     # part lines, side view (y, z): the door's rear edge, a straight line through the prep's door outline at z 0.65 and
     # 0.95 (cybercab_lines.json door_left), out to z 0.35
     LINES={"S": (_g(_D35, 0.35), _g(_D95, 0.95)), "BF": (_g(_D35, 0.35), _g(_D95, 0.95))},
@@ -262,10 +273,10 @@ CAR = dict(
     # door front edge and rear edge (B pillar) at the belt (the outline at 0.95), the cabin's ring cut behind the seats
     # (no door): 0.557 m ahead of the rear axle
     DOOR_Y=_g(0.919, _D95, _RA + 0.5574),
-    GATE_Z=round(0.466 * K, 4),            # the trunk lid's lower edge (prep panel 3)
+    GATE_Z=round(min(q[2] for q in _LN["trunk"]) * K, 4),   # the trunk lid's lower edge (its seam's lowest point)
     REAR_ARCH=(*_g(_RA, _WR["r"]), round(0.338 * K, 4)),
     GATE_X=round((_TRUNK_X - 0.034) * K, 4),   # (inside the trunk lid's seam; unused: IN_GATE off, no CUT_X)
-    STOP_X=round(_RED["x"] * K, 4),
+    STOP_X=0.0,                            # (no brake lamps by |x|: LAMPS brake_objs / brake_box)
     PANELS=dict(x=9.0, z=-9.0, front=(9.0, 9.0), rear=(9.0, 9.0), gate=(-9.0, 9.0), lid=(9.0, 9.0)),   # (PANEL_PARTS)
     # the faces' panels (prep PANELS: Body, DoorFrontLeft, DoorFrontRight, TrunkDoor, EngineDoor, ChargePortDoor):
     # the doors and the trunk lid are parts, the hood and the port lid stay on the body
@@ -382,8 +393,11 @@ CAR = dict(
     LINER_UP=dict(cell="bed_rib", dz=0.0, y=_cr(-0.60)),
     # the black trim behind the cabin (the rear arches' lips) seen from inside over the trunk walls' top: reversed
     # liner copies too, else through the windscreen's top corners its culled backs showed the ground (cabin-r2
-    # e_windscreen's light triangles; convert.py pieces). From the trunk floor up, behind the cabin's rear wall
-    TRIM_BACKS=((-1.0, -2.5, -0.25), (1.0, _cr(-0.60), 0.5)),
+    # e_windscreen's light triangles; convert.py pieces). From the trunk floor up, behind the cabin's rear wall; and the
+    # A pillars' black feet at the windscreen's lower corners (r11 moved them 4 cm out: from inside, ~1 cm of sky
+    # between the pillar, the cowl and the glass)
+    TRIM_BACKS=(((-1.0, -2.5, -0.25), (1.0, _cr(-0.60), 0.5)),
+                ((-0.85, 0.55, -0.05), (-0.50, 1.00, 0.30)), ((0.50, 0.55, -0.05), (0.85, 1.00, 0.30))),
     # cabin.py: the parts' names -> palette cells (MinidoracatTesla_vehicle.frag CABIN; the detail model's: DETAIL_RGB
     # and DETAIL_RGB_EXTRA): the seats darker than the other cars' (ERG p.9 through the windscreen: mid-dark grey),
     # their seams, the dash's layers, the screen's dark back, the screen's car block the other cars' seat grey

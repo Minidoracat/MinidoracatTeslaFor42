@@ -857,6 +857,8 @@ def edit(car, names):
     if LAMPS.get("areas"):
         lm = [m.name for m in car.data.materials].index(LAMPS["head"][0])
         zcuts += [(zn, lm) for zn, _, _ in LAMPS["areas"] if zn.get("cut")]
+    if LAMPS.get("brake_box", {}).get("cut"):   # (Cybercab) the brake lamps' run of a shared material, cut out
+        zcuts.append((LAMPS["brake_box"], [m.name for m in car.data.materials].index(LAMPS["brake_box"]["mat"])))
     for zn, mi in zcuts:
         lo, hi = np.array(zn["lo"]), np.array(zn["hi"])
         for p, nrm in zn["below"]:
@@ -1042,6 +1044,18 @@ def classify(car, names, sizes):
         lit_obj, lit_x = LAMPS["blade_lit"]
         lit |= (obj == lit_obj) & (fnorm[:, 1] < -0.5) & (np.abs(cen[:, 0]) > lit_x)
     tail |= lit
+    # LAMPS tail_objs / brake_objs (Cybercab): whole objects lit as tail / brake lamps, on the body or a part (the grey
+    # runs are Glass, the spoiler's runs are on the lid); brake_box {mat, lo, hi, below}: that material's faces centred
+    # in the box and below its planes (edit() bisected them along the planes with `cut`) are brake lamps
+    tail |= np.isin(obj, LAMPS.get("tail_objs", ()))
+    brake = np.isin(obj, LAMPS.get("brake_objs", ()))
+    if LAMPS.get("brake_box"):
+        bb = LAMPS["brake_box"]
+        bm_ = (mat == bb["mat"]) & (cen > bb["lo"]).all(1) & (cen < bb["hi"]).all(1)
+        for p, nrm in bb.get("below", ()):
+            bm_ &= (cen - np.array(p, float)) @ np.array(nrm, float) < 0
+        brake |= bm_
+    tail |= brake
     # LAMPS areas (Model S: one housing material for the head and tail lamps): ((zone, rgb, lit), ...), its faces
     # centred in a zone's box and below its planes take rgb (a later area over an earlier one); lit False: no lamp
     # there (the front bumper's slots inside the Plaid's side intakes)
@@ -1094,6 +1108,7 @@ def classify(car, names, sizes):
     if LAMPS.get("brake"):     # (object, |x|): that object's tail faces outboard of |x| are brake lights (the real
         b_obj, b_x = LAMPS["brake"]   # corner lamps' inner C: unlit with the tail lights, lit when braking)
         stop |= tail & (obj == b_obj) & (np.abs(cen[:, 0]) > b_x)
+    stop |= brake
     put(tail & ~stop, "LightLT", "LightRT")
     put(stop, "StopL", "StopR")
     # glass zones: the mask zone and the UV1 pane code (GLASS_ZONES)
@@ -2730,13 +2745,15 @@ def pieces(car, c, shift):
         return np.array([0, 0, pv.CABIN_UV1_U - CELL[cell], 0, 0, 0, 1], float)
     back_liner = ~glass & ((part == 0) & panel | (part > 0) & ~panel)
     # TRIM_BACKS (optional, Cybercab int-r10): the body's non-panel faces (black trim: the rear arches' lips) whose centre
-    # is in this box (lo, hi; centred mesh coords) get the reversed liner copy too. Behind the cabin the trunk walls'
-    # top drops below them, and through the windscreen's top corners (the game's front views) their culled backs let
-    # the ground through: light triangles, cabin-r2 e_windscreen
+    # is in one of these boxes ((lo, hi), ...; centred mesh coords) get the reversed liner copy too. Behind the cabin the
+    # trunk walls' top drops below them, and through the windscreen's top corners (the game's front views) their culled
+    # backs let the ground through: light triangles, cabin-r2 e_windscreen; at the windscreen's lower corners (r11) the
+    # A pillars' black feet let the sky through from inside
     if C.get("TRIM_BACKS"):
-        lo, hi = (np.array(b) + shift for b in C["TRIM_BACKS"])
         ctr = V[T].mean(1)
-        back_liner |= (part == 0) & ~glass & ~panel & np.all((ctr >= lo) & (ctr <= hi), 1)
+        for lo, hi in C["TRIM_BACKS"]:
+            lo, hi = np.array(lo) + shift, np.array(hi) + shift
+            back_liner |= (part == 0) & ~glass & ~panel & np.all((ctr >= lo) & (ctr <= hi), 1)
 
     def backs(sel, recolour, base, up=None):
         """Reversed copies on their own vertices (the FBX import keeps one of two faces on the same vertices). up (the

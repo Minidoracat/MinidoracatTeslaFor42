@@ -556,7 +556,7 @@ def car_roadster(c):
 
 def car_cybercab(c):
     """Cybercab (rider guide: 1,754 mm wide) at the Model Y's 0.0259 viewBox units per mm, nose on the Model Y's (x 146),
-    on the built body (scripts/blender/skf/cars/cybercab.py, prep_cybercab.py's tenth round, metres; nose y 2.330, tail
+    on the built body (scripts/blender/skf/cars/cybercab.py, prep_cybercab.py's eleventh round, metres; nose y 2.330, tail
     -2.218): tail 28.2, axles x 123.2 (y 1.4495) and 53.3 (y -1.2505, the rear track 65 mm in each side). The outline is
     the body's plan (|x| max per 0.1 m of y, y 25.3-70.7 at its widest, narrower and round at the rear). The doors x
     77.0-115.0 (their outer edge at the body's widest, z 0.65: y -0.333 to 1.133), the windscreen ahead of them, the
@@ -565,9 +565,9 @@ def car_cybercab(c):
     for x0, w, ys in ((114.2, 18.0, (19.5, 68.5)), (44.0, 18.6, (21.7, 66.3))):  # front and rear tyres (rider guide
         for y in ys:                                                                # sizes) on the axles
             c.rrect(x0, y, w, 8, 2, fill="#0B0D0F", outline="#8E98A3", ow=1.1)
-    half = [(28.2, 48), (28.7, 37.0), (30.0, 33.7), (32.0, 30.8), (34.6, 29.6), (37.2, 28.9), (39.8, 28.2), (42.4, 27.6),
+    half = [(28.2, 48), (28.7, 38.6), (30.0, 34.8), (32.0, 31.6), (34.6, 29.6), (37.2, 28.9), (39.8, 28.2), (42.4, 27.6),
             (45.0, 27.5), (52.8, 27.2), (76.1, 26.5), (109.7, 25.9), (130.5, 25.3), (133.1, 25.4), (135.6, 26.0),
-            (138.2, 27.4), (140.8, 30.0), (143.4, 33.2), (146, 41.6)]      # tail centre round the left side to the nose
+            (138.2, 27.5), (140.8, 29.9), (143.4, 33.2), (146, 41.6)]      # tail centre round the left side to the nose
     body = ([("M", *half[0])] + [("L", x, y) for x, y in half[1:]] + [("L", x, 96 - y) for x, y in half[::-1]]
             + [("Z",)])
     c.fill(body, "#2A3037")
