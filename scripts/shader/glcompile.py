@@ -8,10 +8,20 @@ rewrites #version 330 -> 120, layout(...) in -> attribute (:296-350). Hidden GLF
 Also checks the reflection test: an empty texture unit 8 must read reflectionsOn = 0, a bound 4 x 4 texture 1.
 
   uv run scripts/shader/glcompile.py          (exit 1 on any compile / link failure; set PZ_DIR for another install)
+
+No GPU OpenGL (a VM: glGetString fails with error 1282)? Point PZ_GL_DLL at a Mesa opengl32.dll (llvmpipe), e.g.
+C:/temp/blender52-mesa/opengl32.dll.
 """
 import os
 import re, sys
 from pathlib import Path
+
+if os.environ.get("PZ_GL_DLL"):
+    # GLFW finds the loaded module by name; PyOpenGL asks find_library for a full path and would take system32's
+    import ctypes, ctypes.util
+    ctypes.WinDLL(os.environ["PZ_GL_DLL"])
+    _find = ctypes.util.find_library
+    ctypes.util.find_library = lambda n: os.environ["PZ_GL_DLL"] if n.lower() == "opengl32" else _find(n)
 import glfw
 from OpenGL import GL
 
