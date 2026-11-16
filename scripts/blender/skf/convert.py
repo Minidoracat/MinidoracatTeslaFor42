@@ -514,6 +514,8 @@ def load_source():
         if C.get("POST_FIELD"):    # (Model S) a car's displacement after the decimation: its collapse order stays put
             C["POST_FIELD"](o)
         _label(o, len(names))
+        if name in C.get("LENS_FLAT", ()):   # (Cybercab) a lens lit as the upright face it reads as (_upright_normals)
+            _upright_normals(me)
         names.append(name)
         if target:          # the components' triangles now: CUT / GATE_CUT_COMPS / ROOF_PANE / MIRROR_CAP keys
             comp = np.array([d.value for d in me.attributes["comp"].data])
@@ -654,6 +656,20 @@ def _flat_normals(me):
     me.update()
     lt = [p.loop_total for p in me.polygons]
     fn = np.array([p.normal[:] for p in me.polygons], np.float32)
+    if "custom_normal" in me.attributes:
+        me.attributes.remove(me.attributes["custom_normal"])
+    me.attributes.new("custom_normal", "FLOAT_VECTOR", "CORNER").data.foreach_set("vector", np.repeat(fn, lt, 0).ravel())
+
+
+def _upright_normals(me):
+    """custom_normal = the face normal's horizontal part on every corner (LENS_FLAT: the tail lamp's grey runs, their
+    lower half slanted 50-80 deg down, read dark under the top light; nearly level faces keep their own)."""
+    me.update()
+    lt = [p.loop_total for p in me.polygons]
+    fn = np.array([p.normal[:] for p in me.polygons], np.float32)
+    h = fn * np.array([1, 1, 0], np.float32)
+    hl = np.linalg.norm(h, axis=1, keepdims=True)
+    fn = np.where(hl > 0.2, h / np.maximum(hl, 1e-6), fn)
     if "custom_normal" in me.attributes:
         me.attributes.remove(me.attributes["custom_normal"])
     me.attributes.new("custom_normal", "FLOAT_VECTOR", "CORNER").data.foreach_set("vector", np.repeat(fn, lt, 0).ravel())
@@ -1296,7 +1312,7 @@ def classify(car, names, sizes):
     # RAIL: 0..1 weight of the median paint tone (textures()), body panels only
     rail = paint * (part == 0) * pv.smoothstep(*RAIL, cen[:, 2]) if RAIL else np.zeros(n)
     return dict(part=part, zone=zone, rgb=rgb, paint=paint, lamp=lamp, glass=glass, pane=pane, obj=obj, csize=csize,
-                badge=np.array([o.startswith(("Badge_", "Caliper")) for o in obj]),
+                badge=np.array([o.startswith(("Badge_", "Caliper")) or o in C.get("LENS_FLAT", ()) for o in obj]),
                 mat=mat, mirror=mirror, carbon=carbon, rail=rail, recess=recess, area=area, tone=tone)
 
 

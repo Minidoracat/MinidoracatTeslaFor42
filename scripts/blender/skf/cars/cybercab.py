@@ -261,15 +261,17 @@ CAR = dict(
     # by day: the lower body, bumpers and seam grooves dark grey (01: sill p50 50), the wheel house liners and B pillar
     # black, the light bar grey (02 unlit: its upper half ~150 and the lens ~60-75 by paint ~240, i.e. 0.55-0.62 of the
     # paint; 128 read 0.73-0.77 of it on the a10 shell in the pairs' soft and rim light and the game's flat light), the
-    # tail lamps' side runs red, the plate light grey, the side markers amber
+    # tail lamps' side runs a dark red unlit (01 rear: (64, 46, 46) by the tail paint's 145; 122 / 30 / 36 read 0.62 of
+    # the paint, a bright red; lit they take the lights texture), the plate light grey, the side markers amber
     MAT_RGB={"Trim": (58, 58, 60), "Liner": (24, 24, 26), "Glass": (26, 30, 34), "HeadLight": (106, 108, 114),
-             "TailLight": (122, 30, 36), "Plate": (206, 208, 212), "Marker": (196, 122, 44)},
-    # (pane, box lo, hi, colour, object): the tail face's grey runs and the spoiler's paler runs (01 rear: p50 112 /
-    # 118 on the bar's 90); the boxes on each object's own range (convert.py classify RECOLOR), the spoiler's one box a
-    # side: the rear camera's glass between them (|x| < 0.01) stays dark. The head lamps' dots (the plate's material)
-    # dark grey unlit, in their dark lens (02 unlit: lens p10-p90 31-78; lit they take the lights texture as before);
-    # the plate keeps its colour (its own boxes miss it)
-    RECOLOR=(("Glass", _g(-0.01, -0.01, -0.01), _g(0.01, 0.01, 0.01), (112, 112, 116), "Glass_ReverseLens"),
+             "TailLight": (88, 62, 62), "Plate": (206, 208, 212), "Marker": (196, 122, 44)},
+    # (pane, box lo, hi, colour, object): the tail face's grey runs (01 rear: 115-124 by the tail paint's 145, 0.82;
+    # 112 with AO read 0.5 and only their top 0.6 cm showed: LENS_FLAT) and the spoiler's paler runs (118 on the bar's
+    # 90); the boxes on each object's own range (convert.py classify RECOLOR), the spoiler's one box a side: the rear
+    # camera's glass between them (|x| < 0.01) stays dark. The head lamps' dots (the plate's material) dark grey unlit,
+    # in their dark lens (02 unlit: lens p10-p90 31-78; lit they take the lights texture as before); the plate keeps
+    # its colour (its own boxes miss it)
+    RECOLOR=(("Glass", _g(-0.01, -0.01, -0.01), _g(0.01, 0.01, 0.01), (156, 156, 158), "Glass_ReverseLens"),
              ("Glass", _g(-0.01, -0.01, -0.01), _g(-0.29, 0.01, 0.01), (118, 118, 120), "Glass_SpoilerLamp"),
              ("Glass", _g(0.29, -0.01, -0.01), _g(0.01, 0.01, 0.01), (118, 118, 120), "Glass_SpoilerLamp"),
              ("Plate", _g(-0.01, -0.01, -0.01), _g(0.01, 0.01, 0.01), (84, 84, 88), "LampDots_Left"),
@@ -281,6 +283,9 @@ CAR = dict(
     LIP_SHADE=dict(k=(0.30, 0.60), soft=round(0.004 * K, 4), reach=round(0.06 * K, 4)),
     GLASS_MATS=("Glass",),
     GLASS_OPAQUE=("Glass_ReverseLens", "Glass_SpoilerLamp", "RearCamera"),
+    # objects flat like a badge (no AO) and lit as upright faces (convert.py _upright_normals): the grey runs' lower
+    # half slants down into the groove, it read 77-85 of 112 and dark under the top light
+    LENS_FLAT=("Glass_ReverseLens",),
     GLASS_BACKS=("WinLH", "WinLT", "WinRH", "WinRT"),
     ROOF_PANE="-",                         # (a body-colour roof)
     MIRROR_CAP="-",                        # (no mirrors: cameras)
@@ -403,8 +408,10 @@ CAR = dict(
                                     pedestal=(0.26, 0.30), round=0.045, front=0.26, roll=(0.06, 0.02),
                                     shoulder=(0.15, 0.10), bulge=0.006, wing=(0.6, 0.02), apron=(0.70, 0.55)),
                           centre=(0.04, 0.39, 0.09)),
-               # 04: the sill plate over the opening's lower edge, the floor mat (bin) inside the trunk walls
-               sill=(0.80, 0.06), bin=(0.66, 1.00)),
+               # 04: the sill plate over the opening's lower edge, the floor mat (bin) inside the trunk walls; its rear
+               # half fitted 4 mm inside the body (its ends had stuck out of the tail face as two black blocks at the
+               # grey runs' inner ends, official01_rear)
+               sill=(0.80, 0.06, 0.004), bin=(0.66, 1.00)),
     PARCEL=None,
     # rider guide 05 / pp.7 / 11-14, ERG pp.19 / 23 (temp/plan-next8-1114/cabin-r1, -r2): a low dash, no console (the
     # footwell open), no steering wheel (wheel None). In 05 / p.7 x742's layers: the top and the lower body dark grey
