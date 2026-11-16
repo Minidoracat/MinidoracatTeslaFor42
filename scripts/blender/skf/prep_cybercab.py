@@ -123,9 +123,11 @@ X92_PLAN = np.array((
     (1573, 0.0)))
 # what the section takes off the plan's width at the body's widest (the tuck under, the shoulder's lean; over the rear
 # arch, where the arch carves the body below z ~0.85, the round hip's softplus up to 4.7 cm), measured on the field
-# (build frame y, metres): the plan is x92 plus this
+# (build frame y, metres): the plan is x92 plus this. Round 13 (HANDOFF_SHELL5 5, 01 rear row 320 6 px wide each
+# side, x92 at -2.00 1.0 cm wide): behind -1.92 1.2 mm less. More takes the top corner down with it (2.5 mm: row
+# 320 -4 but top col 80 +5 -> +7); the -2.00 knot's zs up to hold the corner raised the deck's edge 3-5 mm at -1.90
 PLAN_PAD = np.array((
-    (-1.990, 0.0170), (-1.980, 0.0150), (-1.950, 0.0148), (-1.940, 0.0138), (-1.930, 0.0110), (-1.920, 0.0104),
+    (-1.990, 0.0158), (-1.980, 0.0138), (-1.950, 0.0136), (-1.940, 0.0126), (-1.930, 0.0098), (-1.920, 0.0092),
     (-1.880, 0.0113), (-1.810, 0.0155), (-1.750, 0.0156), (-1.730, 0.0162), (-1.680, 0.0205), (-1.560, 0.0362),
     (-1.510, 0.0418), (-1.450, 0.0467), (-1.410, 0.0474), (-1.360, 0.0466), (-1.310, 0.0444), (-1.200, 0.0356),
     (-1.180, 0.0320), (-1.140, 0.0196), (-1.120, 0.0144), (-1.100, 0.0118), (-1.060, 0.0089), (-0.890, 0.0097),
@@ -307,25 +309,20 @@ TAIL_LAMP = (((0.0, 0.546), (0.45, 0.546), (0.70, 0.533)), ((-1.79, 0.507), (-1.
 # for the game's texture (cybercab_lines.json tail_lamp_red_left): the red side segment, from y[0] (01 side: exposed
 # from -1.79) back to the crease (output frame), band z (bottom, top) at either end
 TAIL_RED_GAME = dict(y=(-1.79, -1.995), z=((0.486, 0.507), (0.512, 0.533)))
-# region outlines boundary_off() may miss without failing prep: (|x|, y, z), radius, largest miss (m). The lamp's
-# lens where its bottom leaves the bar's (round 11, LAMP: q ~0.675): two cuts 6 mm apart crossing at a shallow angle
-# under a 6.5 mm cell, one vertex 0.7 mm off (round 8-10 the bar's rising outer end, z 0.698 / 0.683, alike).
-# Round 10 (x92's plan moved the side 1-4 cm): the side glass's two tips, the door glass's front (y 0.89) and the
-# quarter glass's rear (-1.07), each a 1.6 cm rounded turn (round_poly) under a 6.5 mm cell: one chord's middle
-# 0.56 / 0.60 mm off its cut. (Round 11's four on the tail's crease went with Main's tail correction, round 12.) The
-# front black's top (FRONT_BLACK) where it runs into the arch's inner rim (|x| 0.50): 0.7 mm. Round 12 (C15: the black's
-# top 2-5 cm lower inboard, the fender's upper half in, C14): the black top's two corner knots (q 0.81 / 0.95, a
-# kinked line under a 6.5 mm cell: 0.6-0.7 mm), the bar's shadow line where the hood's leading edge cut (4.7 mm off
-# it) bends away off the fender at |x| 0.62 (1.0 mm). Round 12 tail (Main's correction): the strip's lens's lower outer
-# corner (|x| 0.245, z 0.905: its end and bottom cut at right angles on the strip's face, 4 corner vertices 1.6-2.4 mm
-# off, unchanged sharp or rounded 4 mm, t6 / t7); the strip's end at the crease's top (z 0.918-0.923: the strip's top
-# cut runs into the crease's snapped vertices where its hardness eases off, up to 2.4 mm; unchanged with the hard top
-# 0.935 -> 0.944, t7). Both found with the strip's top at 0.930 (t6-t8), 7 mm higher than now
-BOUNDARY_KNOWN = (((0.5817, 2.0332, 0.6030), 0.010, 0.0010), ((0.8000, 0.8944, 0.9517), 0.010, 0.0010),
-                  ((0.6002, -1.0658, 1.2143), 0.010, 0.0010), ((0.500, 1.8365, 0.2776), 0.008, 0.0010),
-                  ((0.6614, 2.0027, 0.3007), 0.008, 0.0009), ((0.7860, 1.9400, 0.2757), 0.008, 0.0009),
-                  ((0.6151, 2.0123, 0.6371), 0.008, 0.0012), ((0.2447, -2.0775, 0.9072), 0.010, 0.0025),
-                  ((0.6921, -1.9447, 0.9200), 0.010, 0.0025))
+# region outlines boundary_off() may miss without failing prep: (|x|, y, z) in the build frame, radius, largest miss
+# (m). Round 10 (x92's plan moved the side 1-4 cm): the door glass's front (y 0.89), a 1.6 cm rounded turn
+# (round_poly) under a 6.5 mm cell, one chord's middle 0.6 mm off its cut. The front black's top (FRONT_BLACK) where
+# it runs into the arch's inner rim (|x| 0.50): 0.7 mm. Round 12 tail (Main's correction): the strip's lens's lower
+# outer corner (|x| 0.245, z 0.905: its end and bottom cut at right angles on the strip's face, 4 corner vertices
+# 1.6-2.4 mm off, unchanged sharp or rounded 4 mm, t6 / t7). Round 13 (t12, all 1.02 mm or less; round 12's entries
+# that no longer caught a vertex went): the same lens's lower inner corner (|x| 0.073); the quarter glass's rear tip
+# (round 10's turn, at -1.072 now); the strip's end at the crease's top (z 0.909: its top cut into the crease's
+# snapped vertices where the hardness eases off); the lamp's grey | red split (|x| 0.585) on the lamp's bottom
+# cut, right angles under a 6.5 mm cell; the recess's lower edge at the crease (0.63, -2.00, 0.795), one side only
+BOUNDARY_KNOWN = (((0.8000, 0.8944, 0.9517), 0.010, 0.0010), ((0.500, 1.8365, 0.2776), 0.008, 0.0010),
+                  ((0.2447, -2.0775, 0.9072), 0.010, 0.0025), ((0.0725, -2.0822, 0.9110), 0.006, 0.0012),
+                  ((0.5605, -1.0722, 1.2062), 0.006, 0.0012), ((0.6745, -1.9932, 0.9086), 0.006, 0.0012),
+                  ((0.5848, -2.0109, 0.5231), 0.006, 0.0012), ((0.6305, -2.0018, 0.7949), 0.006, 0.0012))
 TAIL_BOW = (0.185, 0.692, 3.43)      # the lip (TAIL_SHELF's shelf and tip) sets forward a (|x| / b)^p (output metres):
                                      # x92's outline within a of its tip (half width 0 -> b, where the lip turns into
                                      # the side; rms 4.5 mm, at most 8.6 mm in |x| over x92's 0.004-0.21 m); round 9's
@@ -783,17 +780,24 @@ def tail_lamp_top(ax, y):
     return interp_tab(face, ax) + interp_tab(side, out_y(y)) - side[-1][1]
 
 
+# round 13 (HANDOFF_SHELL5 5, 01 side tail row 722 8 px short: there the outline is the shelf's top at |x| 0.36, z
+# 0.494, rounded off under the official's corner): the shelf and lip read lower by this (|x|, m) from z 0.48 up (4 mm:
+# 722 -7 -> -2 on the field's own outline; 8 mm overshot 728, a ramp from |x| 0.10 lifted row 716 15 px)
+TAIL_LIPRISE = ((0.20, 0.0), (0.40, 0.004), (0.52, 0.004), (0.62, 0.0))
+
+
 def tail_zs(ax, y, z):
     """The z the side profile is read at round the tail: the lip and its shelf follow the lamp's top down toward the
     corners (TAIL_WARP; the face and the bumper's face upright there, unchanged); inboard the small lower lip under
-    the bumper stands higher (TAIL_LOWLIP)."""
+    the bumper stands higher (TAIL_LOWLIP); the shelf's corner up TAIL_LIPRISE."""
     z0, w0, z1, w1, k = TAIL_WARP
     dz = interp_tab(TAIL_LAMP[0], ax) - TAIL_LAMP[0][0][1]
     fade = ss((-1.75 - y) / 0.10)
     tl, (_, fx, fw) = TAIL_LOWLIP, REAR_FLOOR
     low = (tl["dz"] * ss((fx + fw - ax) / fw) * ss((tl["z1"] - z) / tl["w"])
            * ss((tl["y0"] - y + bumper_bow(ax) * fade) / tl["wy"]))
-    return z - k * dz * ss((z - z0) / w0) * ss((z1 - z) / w1) * fade - low
+    rise = interp_tab(TAIL_LIPRISE, ax) * ss((z - 0.482) / 0.010) * ss((0.62 - z) / 0.08)
+    return z - (k * dz * ss((z - z0) / w0) * ss((z1 - z) / w1) + rise) * fade - low
 
 
 def hood_cap(ax, y):
