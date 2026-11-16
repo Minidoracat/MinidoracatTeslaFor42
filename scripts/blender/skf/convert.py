@@ -2216,6 +2216,46 @@ def corners(attr, n):
     return a
 
 
+def slab_seam_dark(V, tri, others, a, dark, glass_bvh, tol, reach):
+    """SLAB_SEAM_DARK (tol, reach; optional, Cybercab doors): pv.slab's edge strips (the last 2 x boundary-edge rows of
+    a) on a seam, not the door's rim, and within reach of the glass take dark's colour. tri: slab's skin (the paint);
+    others: the whole door outside (paint and trim, outer_extra). The trim has no inner panel, so slab gives every
+    paint / trim seam a DOOR_T-deep strip; the one under the window's belt took the paint beside it and ran 2-3 cm in
+    past the glass foot, a light line seen through the glass from the front three-quarters. A seam: a face of others,
+    sharing no vertex with the edge, within tol of the edge's middle and out past it (or on it); a rim has only its
+    own face's side behind it. The strips stay (dropped, the slab's hollow under the belt trim showed through from
+    the cabin), and away from the glass keep the paint: along the door's edges the seam strip by the groove's trim
+    half is the jamb face seen with the door open."""
+    from mathutils.bvhtree import BVHTree
+    ed = np.concatenate([tri[:, [0, 1]], tri[:, [1, 2]], tri[:, [2, 0]]])
+    third = np.concatenate([tri[:, 2], tri[:, 0], tri[:, 1]])
+    _, inv, cnt = np.unique(np.sort(ed, 1), axis=0, return_inverse=True, return_counts=True)
+    bnd = cnt[inv.ravel()] == 1                      # as pv.slab (by vertex index), same order
+    e, th = ed[bnd], third[bnd]
+    bvh = BVHTree.FromPolygons([Vector(p) for p in V], others.tolist())
+    seam = np.zeros(len(e), bool)
+    near = np.zeros(len(e), bool)
+    for j, ((i0, i1), k) in enumerate(zip(e, th)):
+        m = (V[i0] + V[i1]) / 2
+        near[j] = glass_bvh.find_nearest(Vector(m), reach)[0] is not None
+        d = V[i1] - V[i0]
+        w = m - V[k]
+        out = w - d * (w @ d) / max(d @ d, 1e-18)
+        out /= max(np.linalg.norm(out), 1e-12)
+        for co, _, f, dd in bvh.find_nearest_range(Vector(m), tol):
+            if i0 in others[f] or i1 in others[f]:
+                continue
+            if dd < tol * 0.03 or (np.array(co) - m) @ out > 0.3 * dd:
+                seam[j] = True
+                break
+    nb = len(e)
+    pick = np.where(seam & near)[0]
+    rows = len(a) - 2 * nb + np.concatenate([pick, nb + pick])
+    a[rows, :, :4] = dark[:4]
+    print(f"SLAB_SEAM_DARK {nb} edge strips: {int(seam.sum())} on seams, {int(near.sum())} by the glass, {len(pick)} dark")
+    return a
+
+
 def in_outline(bvh):
     """p -> inside the outline of bvh (the car) from all eight game cameras (30 degrees down, every 45): a line through
     p along each view meets it. Outside, a dark strip shows past the car's edge and blocks no gap."""
@@ -3186,6 +3226,8 @@ def pieces(car, c, shift):
             # left door) passes the belt in V's frame. The published cars keep theirs.
             P, t, a, _ = pv.slab(V, T, A, skin, off, cab_attr("dash"), BELT_Z - (0 if C.get("SLAB_BELT_PRE") else shift[2]),
                                  outer_extra=sel & ~skin, by_pos=bool(C.get("SPLIT_COLOURS")))
+            if sd and C.get("SLAB_SEAM_DARK"):
+                a = slab_seam_dark(V, T[skin], T[sel], a, cab_attr("dash"), gb, *C["SLAB_SEAM_DARK"])
             if sd and C.get("DOOR_INNER"):  # (Cybercab: rider guide pp.7 / 11, ERG p.19) the inner panel's cell (cell);
                 di = C["DOOR_INNER"]         # optional upper = (cell, dz): over the belt + dz that cell, cut on that line
                 n0 = int((sel & ~skin).sum() + skin.sum())
