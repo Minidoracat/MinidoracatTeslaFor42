@@ -502,7 +502,10 @@ def furniture(add, opening, grow=0.0, fine=1, between=None):
             part((aw, al, 0.05), 0.02, "seat", (ax, fy - 0.115 + al / 2, z0 - 0.04 + ah))
             part((aw * 0.7, 0.07, ah + 0.065), 0.015, "seat", (ax, fy - 0.08, z0 - 0.105 + (ah + 0.065) / 2))
         return fy, z0
-    out["front"] = [bucket(s * FRONT_X, seat_y[0], fs) for s in (-1, 1)][0]     # front buckets
+    at = SEAT.get("at")     # (Semi) each front seat its own: (mesh x, y shift[, its SEATS entry]); pzveh.geometry the same
+    out["front"] = [bucket(a[0], seat_y[0] + a[1], SEATS[a[2]] if len(a) > 2 else fs) for a in
+                    (at["FrontLeft"], at["FrontRight"])][0] if at else \
+        [bucket(s * FRONT_X, seat_y[0], fs) for s in (-1, 1)][0]     # front buckets
     if fs.get("centre"):    # (Cybercab: rider guide 05, pp.10-12, ERG p.5) between the slim front seats one console
         ah, al, aw = fs["centre"]   # block from the floor (centre: its top over the cushions' top, length from behind
         fy, zf = out["front"]       # the backrests' foot forward, top width), wider down so it fills the gap at the
@@ -998,13 +1001,17 @@ def detail_mesh(opening, windscreen, roof=None):
         add(v + [cx, nose - 0.38, top + 0.0008], f, "screen_back")
         v, f = rbox((0.13, 0.004, 0.075), 0.0015, seg=1)
         add(v + [cx, cy - 0.40 - GROW - 0.0018, cz + 0.03], f, "screen")
-    # floor mats: in front of each front seat to under the dash, and in front of each 2nd-row seat to the front seats
+    # floor mats: in front of each front seat to under the dash, and in front of each 2nd-row seat to the front seats;
+    # SEAT at (Semi): one in front of each seat at its own x and y
     fy, ry = placed["front"][0], placed["rear"][0]
-    for y0, y1, sx in ((fy + 0.30, min(fy + 0.74, CABIN_FRONT_Y - 0.10), FRONT_X), (ry + 0.30, fy - 0.12, SEAT_X)):
-        for s in (-1, 1):
+    at = SEAT.get("at")     # (fy is FrontLeft's: its own shift taken back out)
+    rows = [(fy - at["FrontLeft"][1] + a[1] + 0.30, min(fy - at["FrontLeft"][1] + a[1] + 0.74, CABIN_FRONT_Y - 0.10),
+             (a[0],)) for a in at.values()] if at else [(fy + 0.30, min(fy + 0.74, CABIN_FRONT_Y - 0.10), (-FRONT_X, FRONT_X))]
+    for y0, y1, xs in rows + [(ry + 0.30, fy - 0.12, (-SEAT_X, SEAT_X))]:
+        for x in xs:
             if y1 - y0 > 0.12:
                 v, f = rbox((0.40, y1 - y0, 0.008), 0.004, seg=1)
-                add(v + [s * sx, (y0 + y1) / 2, CABIN_FLOOR + 0.004], f, "mat")
+                add(v + [x, (y0 + y1) / 2, CABIN_FLOOR + 0.004], f, "mat")
     wv, wt = windscreen
     rc = pv.CAR.get("ROOF_CONSOLE")
     if rc:

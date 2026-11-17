@@ -3,11 +3,12 @@ module Base
     /* Shared EV base for every Tesla. Numbers, sounds and the part list; geometry lives in each car's own script, */
     /* and so do the per-car numbers and rules (power, cargo, hatch or sedan rear lid) in its TeslaLogic part. */
     /* Based on template vehicle ModernCar (generated/vehicles/vehicle_car_modern_template.txt) without Muffler. */
-    /* CoreNoFrunk: what every Tesla has, the front doors, seats and side windows (the Cybercab: template! = */
+    /* Cab: what every Tesla has, the front doors, seats and side windows, with no trunk lid, trunk or glove box (the */
+    /* Semi: template! = MinidoracatTeslaCab). CoreNoFrunk adds those three (the Cybercab: template! = */
     /* MinidoracatTeslaCoreNoFrunk, geometry template PassengerSeat2). MinidoracatTeslaCore adds the frunk (a */
     /* two-seater with one: the Roadster), MinidoracatTeslaBase at the end the rear doors, seats and side windows too: a */
     /* script only adds parts, never drops one (VehicleScript.java:909-915). */
-    template vehicle MinidoracatTeslaCoreNoFrunk
+    template vehicle MinidoracatTeslaCab
     {
         mechanicType = 3,
         engineRepairLevel = 6,
@@ -58,11 +59,8 @@ module Base
         /* tesla-brake-feel-c2-1026a; 51 before, -base-1026b); the lower CoM alone at 1.8 stopped as short but spun 2 of */
         /* 8 times (-c1-1026a) */
         wheelFriction = 2.0,
-        template = TrunkDoor,
-        template = Trunk/part/TruckBed,
         template = Seat/part/SeatFrontLeft,
         template = Seat/part/SeatFrontRight,
-        template = GloveBox,
         template = GasTank,
         /* 12V battery: tryStartEngine dereferences it without a null check (BaseVehicle.java:7570-7612) */
         template = Battery,
@@ -121,17 +119,6 @@ module Base
                 create = MinidoracatTesla.Create.Motor,
                 update = MinidoracatTesla.Update.Engine,
                 checkEngine = Vehicles.CheckEngine.Engine,
-            }
-        }
-        part TrunkDoor
-        {
-            table install
-            {
-                recipes = Advanced Mechanics,
-            }
-            table uninstall
-            {
-                recipes = Advanced Mechanics,
             }
         }
         part Seat*
@@ -262,6 +249,45 @@ module Base
             category = nodisplay,
             setAllModelsVisible = false,
         }
+    }
+    /* CoreNoFrunk = Cab + the trunk lid, the trunk and the glove box: Core's way (below), the template lines first in */
+    /* the order they had before Cab existed, then the trunk lid's block, then Cab, so every part keeps its place */
+    /* (scripts/vehicle_parts.py) */
+    template vehicle MinidoracatTeslaCoreNoFrunk
+    {
+        template = TrunkDoor,
+        template = Trunk/part/TruckBed,
+        template = Seat/part/SeatFrontLeft,
+        template = Seat/part/SeatFrontRight,
+        template = GloveBox,
+        template = GasTank,
+        template = Battery,
+        template = Engine,
+        template = EngineDoor,
+        template = Heater,
+        template = Windshield/part/Windshield,
+        template = Windshield/part/WindshieldRear,
+        template = Window/part/WindowFrontLeft,
+        template = Window/part/WindowFrontRight,
+        template = Door/part/DoorFrontLeft,
+        template = Door/part/DoorFrontRight,
+        template = Tire,
+        template = Brake,
+        template = Suspension,
+        template = Radio,
+        template = Headlight,
+        part TrunkDoor
+        {
+            table install
+            {
+                recipes = Advanced Mechanics,
+            }
+            table uninstall
+            {
+                recipes = Advanced Mechanics,
+            }
+        }
+        template! = MinidoracatTeslaCab,
     }
     /* Core = CoreNoFrunk + the frunk: every Tesla with a front trunk. The template lines first, then the frunk, then */
     /* CoreNoFrunk: a part keeps the place it was first added at and a template line copies over it in place */
