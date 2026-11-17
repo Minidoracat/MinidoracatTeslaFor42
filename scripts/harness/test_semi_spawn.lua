@@ -75,6 +75,7 @@ addVehicleDebug = function(script, dir, skin, sq)
 end
 
 H.setRand(0.5) -- ZombRand: E / W and N / S pick the second, no alarm, no rust
+H.side(false, true) -- a dedicated server until the single player section
 H.require("MinidoracatTesla/SemiSpawn")
 local S = T.SemiSpawn
 local SEMI, TRAILER = S.CARS[1], S.CARS[2]
@@ -219,6 +220,15 @@ H.section("semi spawn: chance 0")
 SandboxVars.MinidoracatTesla.SemiSpawnChance = 0
 H.fire("LoadChunk", chunkAt(600, 96))
 check(queued() == 0 and H.count("EveryOneMinute") == hooks, "chance 0: nothing queued, no hook")
+
+H.section("semi spawn: single player")
+SandboxVars.MinidoracatTesla.SemiSpawnChance = 100
+H.side(false, false)
+H.fire("LoadChunk", chunkAt(600, 96))
+H.fire("EveryOneMinute")
+check(#placed == 5 and placed[5].x >= 600 and queued() == 0 and H.count("EveryOneMinute") == hooks,
+    "single player: put down the next game minute, no settle wait")
+H.side(false, true)
 SandboxVars.MinidoracatTesla.SemiSpawnChance = nil
 check(T.semiSpawnPct() == 1.5, "unset: 1.5%")
 

@@ -1,7 +1,7 @@
 {
     "Sandbox_MinidoracatTesla": "Tesla Collection",
     "Sandbox_MinidoracatTesla_SemiSpawnChance": "Szansa pojawienia się Semi i naczepy",
-    "Sandbox_MinidoracatTesla_SemiSpawnChance_tooltip": "Szansa w %%, że każdy długi parking na świecie dostanie zaparkowanego Tesla Semi; losowane raz na parking. 53-stopowa naczepa jest losowana osobno z tą samą szansą; nigdy nie są połączone.\nTylko na wolnym terenie: nigdy w kryjówce ani na ścianie, drzewie, pojeździe czy czymś zbudowanym lub upuszczonym. Już zbadane obszary istniejącego zapisu też je dostaną, jeden raz.\n1.5 = około 23 Semi i 19 naczep na mapie podstawowej. 0 = brak.\nDomyślnie 1.5.",
+    "Sandbox_MinidoracatTesla_SemiSpawnChance_tooltip": "Szansa w %%, że każdy długi parking na świecie dostanie zaparkowanego Tesla Semi; losowane raz na parking. 53-stopowa naczepa jest losowana osobno z tą samą szansą; nigdy nie są połączone.\nTylko na wolnym terenie: nigdy w kryjówce ani na ścianie, drzewie, pojeździe czy czymś zbudowanym lub upuszczonym. Już zbadane obszary istniejącego zapisu też je dostaną, jeden raz.\n0 = brak.\nDomyślnie 1.5.",
     "Sandbox_MinidoracatTesla_RangeMultiplier": "Mnożnik zasięgu",
     "Sandbox_MinidoracatTesla_RangeMultiplier_tooltip": "Jak daleko zajedziesz na pełnym akumulatorze.\n1.0 = tyle, co pełny bak w zwykłym samochodzie tej samej klasy; 2.0 = dwa razy dalej.\nSkaluje się też z „Zużycie paliwa” z gry podstawowej: 2 = o połowę bliżej; 0 = jazda nie zużywa prądu.",
     "Sandbox_MinidoracatTesla_ChargeSpeedMultiplier": "Mnożnik prędkości ładowania",

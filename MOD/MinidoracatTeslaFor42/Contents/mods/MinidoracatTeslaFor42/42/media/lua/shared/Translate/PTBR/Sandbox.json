@@ -1,7 +1,7 @@
 {
     "Sandbox_MinidoracatTesla": "Tesla Collection",
     "Sandbox_MinidoracatTesla_SemiSpawnChance": "Chance de aparecer o Semi e o reboque",
-    "Sandbox_MinidoracatTesla_SemiSpawnChance_tooltip": "Chance em %% de cada estacionamento longo do mundo receber um Tesla Semi estacionado, sorteada uma vez por estacionamento. O reboque de 53 pés é sorteado à parte com a mesma chance; os dois nunca aparecem engatados.\nSó em chão livre: nunca em um abrigo nem sobre parede, árvore, veículo ou algo construído ou largado. Áreas já exploradas de um jogo salvo existente também recebem, uma vez.\n1.5 = cerca de 23 Semis e 19 reboques no mapa original. 0 = nenhum.\nPadrão 1.5.",
+    "Sandbox_MinidoracatTesla_SemiSpawnChance_tooltip": "Chance em %% de cada estacionamento longo do mundo receber um Tesla Semi estacionado, sorteada uma vez por estacionamento. O reboque de 53 pés é sorteado à parte com a mesma chance; os dois nunca aparecem engatados.\nSó em chão livre: nunca em um abrigo nem sobre parede, árvore, veículo ou algo construído ou largado. Áreas já exploradas de um jogo salvo existente também recebem, uma vez.\n0 = nenhum.\nPadrão 1.5.",
     "Sandbox_MinidoracatTesla_RangeMultiplier": "Multiplicador de autonomia",
     "Sandbox_MinidoracatTesla_RangeMultiplier_tooltip": "Quanto uma bateria cheia permite rodar.\n1.0 = o mesmo que um tanque cheio em um carro comum da mesma categoria; 2.0 = o dobro.\nTambém varia com “Consumo de Combustível” do jogo base: 2 = metade; 0 = dirigir não gasta bateria.",
     "Sandbox_MinidoracatTesla_ChargeSpeedMultiplier": "Multiplicador de velocidade de carregamento",

@@ -9,15 +9,16 @@
 --   MVSC_Respawn.lua:55-73): 1,563 lots for the Semi and 1,293 for the trailer on the vanilla map.
 -- - each lot's roll is a hash of the lot and a per-world seed: the same lot gets the same roll in every session, so a
 --   lot is rolled once and the misses need no record. Sandbox SemiSpawnChance (% of the lots, default 1.5, 0 = none):
---   about 23 Semis and 19 trailers on the whole vanilla map.
+--   a simulated estimate of about 23 Semis and 19 trailers on the whole vanilla map, before the lots with no room.
 -- - LoadChunk (new chunks and the save's, so explored worlds get them too, like SuperchargerSpawn.lua): one table
 --   lookup; a lot that rolled a hit and is not done yet is queued.
--- - EveryOneMinute, only while the queue has something: SETTLE after its chunk loaded (a dedicated server reads the
---   chunk's saved cars after LoadChunk, ServerMap.java:827-838, VehiclesDB2.java:346-351,494-525: the wait
---   VehicleSpawnControl measured, MVSC_Respawn.lua:6-7) and once every square the check reads is loaded, it looks for
---   a free stretch along the lot's long axis, middle first, and puts the car there (addVehicleDebug, as
---   VehicleSpawnControl does). Placed or no room, the lot is done for good: ModData keeps only the lots that rolled a
---   hit (at most every candidate lot, ~2,900 on the vanilla map, so it cannot keep growing).
+-- - EveryOneMinute, only while the queue has something: on a dedicated server SETTLE after its chunk loaded (it reads
+--   the chunk's saved cars after LoadChunk, ServerMap.java:827-838, VehiclesDB2.java:346-351,494-525: the wait
+--   VehicleSpawnControl measured, MVSC_Respawn.lua:5-7,565, and waits on a dedicated server only); in single player
+--   the next game minute (a driver is there within 15 s and would see it appear). Once every square the check reads
+--   is loaded, it looks for a free stretch along the lot's long axis, middle first, and puts the car there
+--   (addVehicleDebug, as VehicleSpawnControl does). Placed or no room, the lot is done for good: ModData keeps only
+--   the lots that rolled a hit (at most every candidate lot, ~2,900 on the vanilla map, so it cannot keep growing).
 if isClient() then return end
 require "MinidoracatTesla/Core"
 
@@ -27,7 +28,7 @@ T.SemiSpawn = S
 
 S.MODDATA = "MinidoracatTeslaSemiSpawn"
 S.RULES = 1           -- the rules' version, kept with every done lot
-S.SETTLE_MS = 15000   -- after the chunk loads (VehicleSpawnControl's SETTLE_MP)
+S.SETTLE_MS = 15000   -- after the chunk loads, dedicated server only (VehicleSpawnControl's SETTLE_MP)
 S.TTL_MS = 300000     -- a lot whose squares do not all load in this long leaves the queue; its next load queues it again
 S.RECENT_MS = 60000   -- a car just placed is not in its chunk's vehicle list for a few frames (MVSC_Respawn.lua:24)
 S.CARS = {
@@ -253,7 +254,7 @@ local function tick()
     for k, q in pairs(S.queue) do
         if t.done[k] then drop[#drop + 1] = k; S.known[k] = true
         elseif now - q.at > S.TTL_MS then drop[#drop + 1] = k
-        elseif not due and now - q.at >= S.SETTLE_MS then due = k end
+        elseif not due and now - q.at >= (isServer() and S.SETTLE_MS or 0) then due = k end
     end
     for _, k in ipairs(drop) do S.queue[k] = nil end
     if due then
