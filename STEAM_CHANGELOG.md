@@ -3,7 +3,7 @@
 
 [b]English summary[/b]
 [list]
-[*] New car: the Cybercab, Tesla's two-seat robotaxi, gold only. Parking lots only, at a third of the Model Y's chance.
+[*] New car: the Cybercab, Tesla's two-seat robotaxi, gold only, with the Cybercab wordmark on both doors and the trunk lid. Parking lots only, at a third of the Model Y's chance.
 [*] About 9 seconds to 100 km/h, like a vanilla sedan (Tesla publishes no figure; 380 hp in the mechanics window).
 [*] No steering wheel, but you drive it from the left seat. Doors swing up; the app's Doors button opens both. No front trunk.
 [*] 47.6 kWh; Superchargers peak at 152 kW. The charge port is at the back: reverse into the stall.
@@ -13,7 +13,7 @@
 
 [h3]✨ 新增[/h3]
 [list]
-[*] [b]第八台特斯拉：Cybercab[/b]：特斯拉的兩座無人計程車，2026 年量產版，只有金色。只出現在停車格，機率是 Model Y 的三分之一。
+[*] [b]第八台特斯拉：Cybercab[/b]：特斯拉的兩座無人計程車，2026 年量產版，只有金色，車門與行李廂蓋有 Cybercab 字樣。只出現在停車格，機率是 Model Y 的三分之一。
 [*] [b]性能[/b]：0 到 100 km/h 約 9 秒，比 Model Y 慢、和原版一般轎車同級；官方沒有公布加速，這是遊戲裡定的手感（維修介面 380 hp）。
 [*] [b]沒有方向盤[/b]：只有中央一塊橫置大螢幕；坐左邊座位照樣用鍵盤或手把開。
 [*] [b]上掀門[/b]：兩扇車門往上往前掀。App 控制頁多一格「車門」，一次開關兩扇；打開會先解鎖並關掉哨兵，關上不會自動上鎖。

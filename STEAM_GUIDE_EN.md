@@ -152,7 +152,7 @@ https://steamcommunity.com/sharedfiles/filedetails/?id=3829501237
 [*] [b]Battery[/b]: a 47.6 kWh High Voltage Battery, the smallest of any Tesla here; a full charge still goes as far as a full tank in a vanilla car of the same class.
 [*] [b]Charging times[/b]: empty to 90% takes about 4 hours on a Wall Connector and about 6 on a Mobile Connector; a Supercharger peaks at 152 kW (Tesla publishes no figure, so it is the Model Y's 250 kW scaled to the battery size) and slows down as it fills like the others, about 36 minutes from 10% to 90%, the same as the Model Y (game time).
 [*] [b]Charge port at the back[/b]: in the rear bumper under the trunk, on the driver's side (left). The Supercharger's cable only reaches about 2.5 tiles, so reverse into the stall with the tail to the post; nose-in, the menu option is grey and says The cable does not reach the car. The Wall Connector's and Mobile Connector's cables are longer, but nose-in they may not reach either: turn the tail toward them.
-[*] [b]Paint[/b]: gold only.
+[*] [b]Paint[/b]: gold only, with the black Cybercab wordmark low on both doors and on the trunk lid, as on the cars in service.
 [*] [b]Seats and storage[/b]: 2 seats; the trunk holds 45, like the Model 3's; no front trunk.
 [*] [b]No Bioweapon Defense Mode[/b]: Tesla's documents mention no HEPA filter, so its V radial menu has no such slice.
 [*] [b]Everything else[/b]: key card, phone key, the app, Summon, Sentry, Camp Mode, Chill, towing and the Project Viewpoint cabin details work as on the other Teslas; a new one may also come with a phone in the glove box and a Mobile Connector in the trunk.
