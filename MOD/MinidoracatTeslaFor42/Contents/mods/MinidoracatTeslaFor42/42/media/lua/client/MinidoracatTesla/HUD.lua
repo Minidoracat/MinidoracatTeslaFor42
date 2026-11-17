@@ -57,8 +57,10 @@ local POW2 = { 1, 2, 4, 8, 16, 32, 64, 128, 256 }
 -- The Cybercab (build_atlas.py car_cybercab, on the built body): the trunk lid from the roof's end (viewBox 65.2 =
 -- x 57.1), the doors from viewBox 77.0 to 115.0 (x 67.4-100.6), split at the roof's spine like the other cars' doors;
 -- the rear quarter (x 57.1-67.4) and the hood (no front trunk, T.hasFrunk) open nothing.
--- The Semi (tractor only, no trailer): its two cab doors and nothing else (no frunk, no trunk: T.hasTrunk).
--- PROVISIONAL x until build_atlas.py draws car_semi: set them from that drawing's door seams.
+-- The Semi (build_atlas.py car_semi, on the built body; a tractor: its cab and the drive axles behind it fill the
+-- picture at 19.6 viewBox units per metre): its two cab doors from their rear seam (viewBox 100.7 = x 88.9), where
+-- they hinge, to the windscreen's corners (viewBox 131.2 = x 115.8), split at the roof's spine like the other cars'
+-- doors; nothing else opens (no frunk, no trunk: T.hasTrunk). Its seats and wheels are no zones (zones are doors).
 local ZONES = {
     ModelY = {
         { 5, 0, 0, 45, 85 }, { 3, 45, 0, 69, 42.5 }, { 4, 45, 42.5, 69, 85 },
@@ -92,9 +94,15 @@ local ZONES = {
         { 5, 0, 0, 57.1, 85 }, { 1, 67.4, 0, 100.6, 42.5 }, { 2, 67.4, 42.5, 100.6, 85 },
     },
     Semi = {
-        { 1, 97, 0, 125, 42.5 }, { 2, 97, 42.5, 125, 85 },
+        { 1, 88.9, 0, 115.8, 42.5 }, { 2, 88.9, 42.5, 115.8, 85 },
     },
 }
+-- where the charge bolt sits on the car picture (design units from its top-left): over the charge port, the Semi's on
+-- its left side behind the cab (build_atlas.py car_semi, viewBox 67.0 = x 59.1); the cars' ports are at their tail
+local BOLT_AT = { Semi = { 50, 1 } }
+local BOLT_TAIL = { 2, -4 }
+-- what a tractor tows, drawn over its top view while hitched (tow_<model>, build_atlas.py), by the trailer's script
+local TOWS = { Semi = "Base.MinidoracatTesla_SemiTrailer" }
 HUD.ZONES = ZONES
 local PART_KEY = {} -- vanilla part-name keys; the tip maps them through T.partNameKey (this car's Tesla names)
 for i = 1, #DOORS do PART_KEY[i] = "IGUI_VehiclePart" .. DOORS[i] end
@@ -273,6 +281,10 @@ function HUD:attach(vehicle)
     end
     self.fake = BaseVehicle.getFakeSpeedModifier() -- BaseVehicle.java:666; vanilla :256 multiplies the gauge too
     self.script, self.carSpr, self.zones = vehicle:getScriptName(), "car_" .. model, ZONES[model]
+    self.bolt = BOLT_AT[model] or BOLT_TAIL
+    -- the trailer this tractor tows, drawn while one is hitched (readSlow); nil for the cars
+    self.towScript = TOWS[model]
+    self.towSpr = self.towScript and T.HUDAtlas[1]["tow_" .. model] and "tow_" .. model or nil
     self.msgId = nil -- the message names this car's doors: rebuild it even when the door bits match the last car's
     local st = self.st
     for k in pairs(st) do st[k] = nil end
@@ -379,6 +391,8 @@ function HUD:readSlow()
     local rp = self.radioPart
     local dd = rp and rp:getDeviceData()
     st.radio = dd ~= nil and dd:getIsTurnedOn()
+    local tw = self.towSpr and v:getVehicleTowing() -- a tractor only: the cars never ask
+    st.tow = tw and tw:getScriptName() == self.towScript or false
     local md = part and part:getModData()
     st.camp = md ~= nil and md.camp ~= nil
     st.sentry = md ~= nil and md.sentry ~= nil
@@ -560,9 +574,10 @@ function HUD:build()
         self.chillX, self.chillY = math.floor(bx + 6 * S + 0.5), math.floor(by + (bh - self.FH) / 2 + 0.5)
     end
 
-    -- car, open doors, charge indicator
+    -- car, the trailer it tows, open doors, charge indicator
     local cx, cy = CAR_X * S, CAR_Y * S
     spr(self, A[self.carSpr], cx, cy, C.white, 1)
+    if st.tow then spr(self, A[self.towSpr], cx, cy, C.white, 1) end
     for i = 1, #self.doors do
         local d = self.doors[i]
         if math.floor(st.doors / d.bit) % 2 == 1 then -- a top that is down is a state, not a warning
@@ -578,7 +593,8 @@ function HUD:build()
     end
     if st.chg > 0 then
         local col = st.chg == 3 and C.accent or C.ok
-        local idx = spr(self, A.i_bolt, cx + 2 * S, cy - 4 * S, col, 1)
+        local b = self.bolt
+        local idx = spr(self, A.i_bolt, cx + b[1] * S, cy + b[2] * S, col, 1)
         if st.chg == 1 then self.pulseIdx = idx end
     end
 
@@ -665,12 +681,13 @@ function HUD:update()
         or on ~= st.on
     self.tick = self.tick + 1
     if self.tick % 3 == 0 then
-        local pct, range, locked, doors, avail, heater, radio, camp, sentry, chg, chill =
-            st.pct, st.range, st.locked, st.doors, st.avail, st.heater, st.radio, st.camp, st.sentry, st.chg, st.chill
+        local pct, range, locked, doors, avail, heater, radio, camp, sentry, chg, chill, tow =
+            st.pct, st.range, st.locked, st.doors, st.avail, st.heater, st.radio, st.camp, st.sentry, st.chg, st.chill,
+            st.tow
         self:readSlow()
         changed = changed or pct ~= st.pct or range ~= st.range or locked ~= st.locked or doors ~= st.doors
             or avail ~= st.avail or heater ~= st.heater or radio ~= st.radio or camp ~= st.camp or sentry ~= st.sentry
-            or chg ~= st.chg or chill ~= st.chill
+            or chg ~= st.chg or chill ~= st.chill or tow ~= st.tow
     end
     if changed or self.dirty then self:build() end
     if self.pulseIdx then -- charging: slow green pulse (owner's manual charge-port light), 10 Hz steps

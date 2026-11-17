@@ -331,10 +331,10 @@ T.Specs = {
         chillForce = 1630,
         frunk = false, -- no front trunk, no rear trunk (template MinidoracatTeslaCab: no TrunkDoor, TruckBed, GloveBox)
         trunk = false,
-        -- built in white only. h/s/v: a Pearl White stand-in; convert.py build writes the skin's own. Same order and
-        -- append-only rules as above.
+        -- built in white only. h/s/v: the skin's own, written by convert.py build. Same order and append-only rules as
+        -- above.
         colors = {
-            { name = "White", h = 0.6, s = 0.49, v = 0.85 },
+            { name = "White", h = 0.603, s = 0.496, v = 0.938 },
         },
     },
 }

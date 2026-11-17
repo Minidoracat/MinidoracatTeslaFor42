@@ -585,6 +585,76 @@ ccc.parts.DoorFrontLeft.door.open = false
 h:update(); h:update(); h:update()
 mx = nil
 end
+do -- Semi: its own top view and two cab doors hinged at their rear edge; the trailer drawn over it while one is hitched
+-- (read with the doors in readSlow, every third 10 Hz update: no poll of its own); the charge bolt over its port, on
+-- the left side behind the cab (the cars' at their tail)
+local smc = car({ script = "Base.MinidoracatTesla_Semi", kwh = 822 })
+smc.parts.DoorRearLeft, smc.parts.DoorRearRight, smc.parts.TrunkDoor = nil, nil, nil
+local asks = 0
+function smc:getVehicleTowing() asks = asks + 1; return self.towing end
+function smc:getMass() return 9000 end
+dash:setVehicle(smc)
+local smSpr = {}
+for _, d in ipairs(h.doors) do smSpr[d.name] = T.HUDAtlas[1][d.spr] and T.HUDAtlas[2][d.spr] and d.spr end
+check(h.carSpr == "car_Semi" and h.zones == HUD.ZONES.Semi and T.HUDAtlas[1].car_Semi ~= nil
+    and T.HUDAtlas[2].car_Semi ~= nil and #h.doors == 2 and smSpr.DoorFrontLeft == "door_FL_Semi"
+    and smSpr.DoorFrontRight == "door_FR_Semi" and h.towSpr == "tow_Semi" and T.HUDAtlas[2].tow_Semi ~= nil,
+    "Semi: car_Semi, its zones, two doors with their own overlays, the trailer's sprite, at both scales")
+toggled = {}
+local smOk = select(1, clickAt(92, 20)) == true and select(1, clickAt(112, 64)) == true
+check(smOk and toggled[1] == "DoorFrontLeft" and toggled[2] == "DoorFrontRight" and #toggled == 2,
+    "Semi: both cab doors toggle their part")
+toggled = {}
+check(select(1, clickAt(128, 42)) == false and select(1, clickAt(84, 20)) == false and select(1, clickAt(40, 42)) == false
+    and #toggled == 0, "Semi: the windscreen (x 128), the cab's side behind the doors (x 84) and the drive axles (x 40) pass through")
+-- index of the sprite's quad in the list (the first at x, y when given), or nil
+local function drawn(name, x, y)
+    local e, L = h.A[name], h.L
+    for i = 1, h.n, 12 do
+        if L[i] == e[1] and L[i + 1] == e[2] and L[i + 2] == e[3] and L[i + 3] == e[4]
+            and (not x or L[i + 4] == math.floor(x + 0.5) and L[i + 5] == math.floor(y + 0.5)) then return i end
+    end
+end
+local builds, realBuild = 0, h.build
+h.build = function(self) builds = builds + 1; return realBuild(self) end
+h:update(); h:update(); h:update()
+asks, builds = 0, 0
+for _ = 1, 9 do h:update() end
+check(h.st.tow == false and drawn("tow_Semi") == nil and asks == 6 and builds == 0,
+    "no trailer: none drawn; asked only in readSlow (3 of 9 updates, its range's tow factor and the trailer), nothing rebuilt")
+smc.towing = { getScriptName = function() return "Base.Trailer" end, getMass = function() return 600 end }
+h:update(); h:update(); h:update()
+check(h.st.tow == false and drawn("tow_Semi") == nil, "a vanilla trailer: not drawn")
+smc.towing = { getScriptName = function() return "Base.MinidoracatTesla_SemiTrailer" end, getMass = function() return 6000 end }
+builds = 0
+h:update(); h:update(); h:update()
+local ti, ci = drawn("tow_Semi"), drawn("car_Semi")
+check(h.st.tow == true and builds == 1 and ti == ci + 12 and drawn("tow_Semi", 172 * h.S + h.A.tow_Semi[5] * h.f,
+    14 * h.S + h.A.tow_Semi[6] * h.f) == ti,
+    "the Semi trailer hitched: one rebuild, its quad on the car picture right after the car's (under the doors)")
+smc.parts.DoorFrontLeft.door.open = true
+h:update(); h:update(); h:update()
+check(drawn(smSpr.DoorFrontLeft) > ti, "an open door drawn over the trailer")
+smc.parts.DoorFrontLeft.door.open = false
+smc.towing = nil
+h:update(); h:update(); h:update()
+check(h.st.tow == false and drawn("tow_Semi") == nil, "unhitched: the trailer gone")
+local smPart = T.Battery.part(smc)
+smPart:getModData().chg = { kw = 0, last = H.hours(), added = 0, target = 100, paused = "full" }
+h:update(); h:update(); h:update()
+check(drawn("i_bolt", (172 + 50) * h.S, (14 + 1) * h.S) ~= nil,
+    "Semi charged: the bolt over its port behind the cab (x 50, y 1 on the picture)")
+smPart:getModData().chg = nil
+h.build = nil
+dash:setVehicle(tesla)
+part:getModData().chg = { kw = 0, last = H.hours(), added = 0, target = 100, paused = "full" }
+h:update(); h:update(); h:update()
+check(h.towSpr == nil and h.st.tow == false and drawn("i_bolt", (172 + 2) * h.S, (14 - 4) * h.S) ~= nil,
+    "a car: no trailer sprite, the trailer never read (its fake has no getVehicleTowing); its bolt at the tail")
+part:getModData().chg = nil
+h:update(); h:update(); h:update()
+mx = nil
+end
 -- every car's zones: inside the picture before the quick keys (x <= 140, 0 <= y <= 85), none overlapping
 local zOk = true
 for model, zs in pairs(HUD.ZONES) do

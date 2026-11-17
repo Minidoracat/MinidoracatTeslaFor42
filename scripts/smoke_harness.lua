@@ -39,7 +39,7 @@ end
 -- Lua and data first; the checks that read its script, build file, skins or app pictures run once it does (and fail
 -- then if anything is missing). Any other car counts as built, so a released car's checks never skip (a missing file
 -- fails). Take the car out of H.BUILDING once its body is merged.
-H.BUILDING = { Semi = true }
+H.BUILDING = {}
 function H.bodyBuilt(car)
     if not H.BUILDING[car] then return true end
     local f = io.open(MEDIA:gsub("/lua$", "/scripts/") .. "vehicles/MinidoracatTesla_" .. car .. ".txt", "r")

@@ -312,6 +312,39 @@ check(plug.item == "Base.MinidoracatTesla_CablePlugSemi" and not plug.rear
     and has("scripts/models/MinidoracatTesla_props.txt", "mesh = WorldItems/MinidoracatTesla_CablePlugSemi,")
     and has("models_X/WorldItems/MinidoracatTesla_CablePlugSemi.fbx", "FBX"),
     "Semi: its plug item, model block and mesh (MCS handle), not plug.rear")
+-- its port from its script: on the left side just behind the cab (cars/semi.py PORT, shell y -3.45), outboard of the
+-- wheels' centres, between the front axle and the first drive axle; the plug comes in from the flank onto it
+local SEMI = "Base.MinidoracatTesla_Semi"
+PORTS[SEMI] = scriptPort(SEMI)
+local smTxt = assert(io.open(media .. "scripts/vehicles/MinidoracatTesla_Semi.txt", "r"))
+local smScript = smTxt:read("*a")
+smTxt:close()
+local smModel = smScript:match("\n        model\n        {(.-)\n        }")
+local ox, _, oz = smModel:match("offset = ([-%d.]+) ([-%d.]+) ([-%d.]+)")
+local scale = tonumber(smModel:match("scale = ([-%d.]+)"))
+local function wheel(id)
+    local x, _, z = smScript:match("wheel " .. id .. "%s*{[^}]-offset = ([-%d.]+) ([-%d.]+) ([-%d.]+)")
+    return (tonumber(x) + tonumber(ox)) * scale, (tonumber(z) + tonumber(oz)) * scale
+end
+local frontX, frontZ = wheel("FrontLeft")
+local _, driveZ = wheel("RearLeft")
+check(PORTS[SEMI][1] > frontX and PORTS[SEMI][3] < frontZ and PORTS[SEMI][3] > driveZ,
+    "cable: the Semi's chargeport from its script (left flank x " .. string.format("%.3f", PORTS[SEMI][1])
+    .. " outboard of the front wheel's " .. string.format("%.3f", frontX) .. ", z " .. string.format("%.3f", PORTS[SEMI][3])
+    .. " between the front axle " .. string.format("%.3f", frontZ) .. " and the first drive axle " .. string.format("%.3f", driveZ) .. ")")
+local msm = car(51.2, 24.0, 0.3, SEMI)
+local osm = { x = 50, y = 20, z = 0, kind = "Supercharger", facing = "S", vid = msm:getId() }
+T.onChargerChanged(osm)
+frame()
+local smp
+for _, d in ipairs(draws) do
+    if d.item.type == "Base.MinidoracatTesla_CablePlugSemi" then smp = d end
+end
+local flank = msm:getWorldPos(PORTS[SEMI][1] + C.PLUG_REACH, PORTS[SEMI][2], PORTS[SEMI][3], Vector3f.new())
+check(smp ~= nil and tipOn(smp, msm) and H.near(smp.x, flank:x(), 1e-6) and H.near(smp.y, flank:y(), 1e-6),
+    "cable: Semi draws its own plug from the flank, tip on its port")
+T.onChargerChanged(osm, true)
+H.removeVehicle(msm)
 end
 
 -- ---- Mobile Connector: cable leaves at floor level (cableExit h = 0), no hang segment ----

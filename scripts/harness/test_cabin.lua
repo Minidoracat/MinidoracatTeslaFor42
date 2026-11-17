@@ -23,12 +23,9 @@ local models = read("scripts/models/MinidoracatTesla_vehicles.txt")
 -- <car>_WheelAxle for one whose rear tyres are whole axles, PHYS axle) and the Viewpoint detail on the merged shader;
 -- the cabin glass model, no cabin / window models. The frunk lid only on a car with a frunk (T.hasFrunk: the
 -- Cybercab's hood is no model), the rear lid only on one with a trunk (Specs trunk ~= false: the Semi has none)
-local semiText = read("scripts/vehicles/MinidoracatTesla_Semi.txt")
--- shortcut: the Semi's checks wait for its Specs entry and H.TEMPLATE_DOORS Cab (feat/semi-lua); drop the guard once merged
-local semi = semiText and MinidoracatTesla.Specs["Base.MinidoracatTesla_Semi"] and H.carDoors("Semi") and semiText
+local semi = read("scripts/vehicles/MinidoracatTesla_Semi.txt")
 local cars = { "MinidoracatTesla_ModelY", "MinidoracatTesla_Model3", "MinidoracatTesla_ModelS", "MinidoracatTesla_ModelX",
-    "MinidoracatTesla_ModelYL", "MinidoracatTesla_Cybercab" }
-if semi then cars[#cars + 1] = "MinidoracatTesla_Semi" end
+    "MinidoracatTesla_ModelYL", "MinidoracatTesla_Cybercab", "MinidoracatTesla_Semi" }
 for _, car in ipairs(cars) do
     local shaders, names, wheels = {}, {}, 0
     for name, block in models:gmatch("model ([%w_]+)%s*(%b{})") do
@@ -78,7 +75,7 @@ local geos = { ModelY = geo, Model3 = m3:sub((m3:find("---- geometry", 1, true))
     ModelYL = yl:sub((yl:find("---- geometry (TeslaModelYL)", 1, true))),
     Roadster = rd:sub((rd:find("---- geometry", 1, true))),
     Cybercab = cc:sub((cc:find("---- geometry", 1, true))),
-    Semi = semi and semi:sub((semi:find("---- geometry", 1, true))) or nil }
+    Semi = semi:sub((semi:find("---- geometry", 1, true))) }
 for car, g in pairs(geos) do
     check(g:find("part GloveBox", 1, true) == nil and g:find("part Window", 1, true) == nil
         and g:find("part WindshieldRear", 1, true) == nil, car .. ": no models on GloveBox, Window* or WindshieldRear")
@@ -136,7 +133,7 @@ check(not (tpl .. m3):find("requireUninstalled = WindshieldRear", 1, true) and n
 -- door anim rate: one model per door, one player update a frame; every door the car has (its template's side doors,
 -- H.carDoors, the tailgate on a car with a trunk and, on a car with a frunk (T.hasFrunk), the frunk lid) and no other
 local texts = { ModelY = veh, Model3 = m3, ModelS = ms, ModelX = mx, Cybertruck = ct, ModelYL = yl, Roadster = rd,
-    Cybercab = cc, Semi = semi or nil }
+    Cybercab = cc, Semi = semi }
 for car, g in pairs(geos) do
     local rates, bad = 0, {}
     for door in pairs({ DoorFrontLeft = 1, DoorFrontRight = 1, DoorRearLeft = 1, DoorRearRight = 1, TrunkDoor = 1,
