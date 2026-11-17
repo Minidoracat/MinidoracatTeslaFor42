@@ -2,7 +2,7 @@
 <!-- Steam 指南稿源（繁中）：MOD 的完整說明以本指南為準，簡介只放摘要。格式、版面與同步方式見 pz-family-docs/release.md「完整說明：Steam 指南」 -->
 <!-- 標題：📖 Minidoracat Tesla Collection MOD 完整說明：車、充電、鑰匙與 App -->
 <!-- 摘要：Minidoracat Tesla Collection 的圖文說明：Model Y 與 Model 3 Performance、Model Y L（六座）、Model S 與 Model X Plaid（鷹翼門與 6 座）、初代 Roadster 2.5 Sport（敞篷軟頂篷）、Cybertruck Cyberbeast（車斗、Powershare 住宅備援與車斗插座）、Cybercab（兩座無人計程車：上掀門、沒有方向盤、充電口在車尾）、電池與拖車耗電、壁掛式充電座、行動充電器與加油站的 V4 超級充電座、特斯拉風格儀表、卡片鑰匙與手機鑰匙、手機 Tesla App 與召喚、哨兵與露營模式、生物武器防禦模式與舒適模式、驅動單元零件，以及和 Vehicle Manager、小地圖、AutoDrive、Project Viewpoint 一起用的規則與沙盒選項。 -->
-<!-- 截圖：docs/screenshots/steam/zh/，拍法見家族庫 e2e/MinidoracatTeslaFor42 的 guide-shots-sp（生物武器防禦與舒適模式只跑那段用 --define part=feat，圓盤停留文字要另開 hover.py；Cybertruck 圖用 guide-ct-sp、Model S／X 圖用 guide-sx-sp、Model Y L 的圖（33、34）用 guide-yl-sp、Roadster 的圖（35、36）用 guide-rd-sp（只跑 CH 一輪、中英同一張；35 是四台車頭朝 S、縮放 1.0 裁 (210,622,1710,967)，36 是同一台 Radiant Red 軟頂篷蓋著與收起、縮放 0.5 各裁 (284,320,854,880) 左右拼、間隔 16）、Cybercab 的圖（37、38、39）用 guide-cc-sp（只跑 CH 一輪、中英同一張；37 是 gcc-line-075，左台朝 S、右台朝 N、縮放 0.75 裁 (330,340,1590,710)；38 是同一台朝 S、縮放 0.5，左 gcc-doors-open-050（App 車門鍵兩門全開）、右 gcc-doors-trunk-050（門關、行李廂蓋全開），各裁 (220,260,935,820) 左右拼、間隔 16；39 是 gcc-charge-050，車頭朝 W、車尾對 V4 超級充電座插著線、縮放 0.5 裁 (150,320,1110,800)）、召喚圖用 phone-summon-sp、FSD 圖用 fsd-shot-sp（01c 是 01b 裁 (350,370,1090,977)，指南不用，給 Workshop 簡介引用：重拍 01b 要一起重裁，並照 release.md 換簡介裡的圖片網址）、「和其他 MOD 一起用」用 guide-mods-sp；Project Viewpoint 那張（31）是本 repo 一次性情境 temp/oneoff/vp-detail-sp 的 vd-first-ModelS 裁 (80,40,1660,1080)，中英同一張，要裝 ZombieBuddy 才拍得到；V4 超級充電座那張（32）是 supercharger-sp 的 sc-CH-card／sc-EN-card 裁 (480,160,1480,990)） -->
+<!-- 截圖：docs/screenshots/steam/zh/，拍法見家族庫 e2e/MinidoracatTeslaFor42 的 guide-shots-sp（生物武器防禦與舒適模式只跑那段用 --define part=feat，圓盤停留文字要另開 hover.py；Cybertruck 圖用 guide-ct-sp、Model S／X 圖用 guide-sx-sp、Model Y L 的圖（33、34）用 guide-yl-sp、Roadster 的圖（35、36）用 guide-rd-sp（只跑 CH 一輪、中英同一張；35 是四台車頭朝 S、縮放 1.0 裁 (210,622,1710,967)，36 是同一台 Radiant Red 軟頂篷蓋著與收起、縮放 0.5 各裁 (284,320,854,880) 左右拼、間隔 16）、Cybercab 的圖（37、38、39）用 guide-cc-sp（只跑 CH 一輪、中英同一張；37 是 gcc-line-075，左台朝 S、右台朝 N、縮放 0.75 裁 (330,340,1590,710)；38 是同一台朝 S、縮放 0.5，左 gcc-doors-open-050（App 車門鍵兩門全開）、右 gcc-doors-trunk-050（門關、行李廂蓋全開），各裁 (220,260,935,820) 左右拼、間隔 16；39 是 gcc-charge-050，車頭朝 W、車尾對 V4 超級充電座插著線、縮放 0.5 裁 (150,320,1110,800)）、Cybercab 坐進兩個人那張（40）是本 repo 一次性情境 temp/plan-next8-1114/e2e/oneoff/seated2-rv-mp（多人、兩個帳號坐同一台、兩扇門全開、縮放拉到最近）的 seated2-open-SW 裁 (598,280,1313,840) 與 seated2-open-SE 裁 (651,350,1366,910)，左右拼、間隔 16，中英同一張；多人模式一定會在車頂上方畫座位號與帳號名，用旁邊的路面蓋掉，車和人物不修、召喚圖用 phone-summon-sp、FSD 圖用 fsd-shot-sp（01c 是 01b 裁 (350,370,1090,977)，指南不用，給 Workshop 簡介引用：重拍 01b 要一起重裁，並照 release.md 換簡介裡的圖片網址）、「和其他 MOD 一起用」用 guide-mods-sp；Project Viewpoint 那張（31）是本 repo 一次性情境 temp/oneoff/vp-detail-sp 的 vd-first-ModelS 裁 (80,40,1660,1080)，中英同一張，要裝 ZombieBuddy 才拍得到；V4 超級充電座那張（32）是 supercharger-sp 的 sc-CH-card／sc-EN-card 裁 (480,160,1480,990)） -->
 === 🚀 快速上手
 [b]English version:[/b] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3829449879]Minidoracat Tesla Collection Mod Guide[/url]
 
@@ -161,7 +161,7 @@ https://steamcommunity.com/sharedfiles/filedetails/?id=3829501237
 [tr][th]車型[/th][th]原廠車色[/th][th]前行李廂[/th][th]後行李廂[/th][/tr]
 [tr][td]Cybercab[/td][td]Gold（金色）[/td][td]沒有[/td][td]45[/td][/tr]
 [/table]
-[h3]上掀門、沒有前車廂與車內[/h3]
+[h3]上掀門與沒有前車廂[/h3]
 {{img:38-cybercab-doors-zh.jpg}}
 [list]
 [*] [b]上掀門[/b]：兩扇車門往上、往前掀開，全開時一樣進得了單層車庫；上車時角色會等車門掀起來再坐進去。
@@ -170,7 +170,12 @@ https://steamcommunity.com/sharedfiles/filedetails/?id=3829501237
 [*] [b]儀表[/b]：有自己的俯視圖，點車子圖開關兩扇車門與行李廂蓋；前蓋那一塊點了不會開。
 [*] [b]沒有前車廂[/b]：實車的前蓋打不開（乘客手冊）；App 首頁只有三個快捷圖示，控制頁也沒有前行李廂。
 [*] [b]修車[/b]：在車頭按 E 一樣會打開引擎蓋和維修介面，修驅動單元照常；維修介面的零件叫「引擎蓋」「行李廂蓋」。拆下引擎蓋時車頭不會開洞（前蓋和車身是一體的）。
+[/list]
+[h3]Cybercab 的兩個座位[/h3]
+{{img:40-cybercab-seats-zh.jpg}}
+[list]
 [*] [b]車內[/b]：兩個座位，中央一塊橫置的大螢幕；坐在車上的人手放在腿上。
+[*] [b]兩個人一起坐[/b]：多人遊戲可以一人坐一邊，左邊的人開車；隔著玻璃或開著的車門，從車外看得到坐著的人。
 [/list]
 === 🧰 Cybertruck（Cyberbeast）
 {{img:23-cybertruck-zh.jpg}}
