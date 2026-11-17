@@ -83,15 +83,17 @@ CAR = dict(
     COMPOSITOR_MODEL="",
     OFFICIAL_OPTS="",
     RAMP=dict(t=(0.0, 1.0), u=(0.0, 1.0), wheels=()),   # (official_ramp: unused, no design-studio renders)
-    # ---- pzveh: wheel. 22.5" aluminium disc wheels (prep RIM_R 0.29 m on 0.49 m tyres), a flat silver face with a hub
+    # ---- pzveh: wheel. 22.5" aluminium disc wheels (prep RIM_R 0.29 m on 0.49 m tyres), a flat silver face with a hub;
+    # the drive axles' flat grey covers (axle_face). Greys from the shell's ratios to the white paint (prep_semi.py
+    # COLORS) x 230: front rim 0.70, drive covers 0.35
     WHEEL_RIM=round(0.29 / 0.49, 4),
     WHEEL_SPOKE=dict(n=0, shape=dict(outer=((0.22, 0.045), (1.0, 0.066)), inner=((1.0, 0.0),)),
                      cap=0.22, inset=-0.0107, dish=0.002, depth=0.004, sweep=0.0, at=0.0),
-    WHEEL_FACETS=dict(sink=0.0, rings=4, face="facet", n=0, at=0.0, shapes=()),
+    WHEEL_FACETS=dict(sink=0.0, rings=4, face="facet", n=0, at=0.0, shapes=(), axle_face="cap"),
     WHEEL_DISC=dict(rotor=0.5, hat=0.3),
     WHEEL_RGB=dict(spoke=60, cap=60, barrel=12, lip=14, rotor=20, hat=20, dark=10, gap=8, tire=(26, 32), tread=22,
                    facet=60, lit=60),
-    WHEEL_TINT={"facet": (176, 178, 182), "cap": (120, 122, 126)},
+    WHEEL_TINT={"facet": (161, 163, 167), "cap": (80, 80, 84)},
     TIRE_SHOULDER=(0.055, 0.012),
     TIRE_BULGE=(0.0066, 0.026),
     # ---- pzveh: vehicle script (OY, CAB_BOX: unused, PHYS gives the boxes and the offsets)
@@ -141,32 +143,45 @@ CAR = dict(
     SRC_FLIP=False,
     BELT_Z=round(1.85 * K, 4),             # the door glass's foot (PREP.md)
     TIRE_OBJ="Tyre_",
-    DROP=("Tyre_", "Cover_"),
+    DROP=("Tyre_", "Cover_", "Hub_"),     # (the wheels are pzveh's: the shell's tyres, covers and hubs stay out)
     DROP_COMPS=(),
     ARCH_LINER=None,
     PLATES=(),
     SEAL_CLIP=True,
     SEAL_NONE=("DoorFrontLeft", "DoorFrontRight"),   # (the prep's grooves: the doors share their edges with the body)
     RAIL=None,
-    # Paint / Trim: the whole car near the Model X's 123k triangles (the Cybercab ships 132k; models.md budget)
-    DECIMATE={"Paint": 22000, "Trim": 24000, "Liner": 4000, "Glass_Windshield": 1200, "Glass_Door": 700,
-              "Glass_Vent": 500, "HeadLight": 800},
+    # the whole car near the Model X's 123k triangles (the Cybercab ships 132k; models.md budget)
+    DECIMATE={"Paint": 22000, "Trim": 5000, "Liner": 4000, "Frame": 6000, "SkirtGrey": 9000, "RearWall": 4000,
+              "Glass_Windshield": 1200, "Glass_Door": 700, "Glass_Vent": 500, "HeadLight": 800},
     DECIMATE_KEEP_BOUNDARY=True,
     DECIMATE_HOLD_UNDER=True,
     DECIMATE_THIN=(round(0.0003 * K, 6), round(0.02 * K, 4)),
     DECIMATE_SNAP=round(0.001 * K, 6),
     DECIMATE_SMOOTH={"Paint": round(0.04 * K, 4), "Trim": round(0.04 * K, 4)},
     DECIMATE_CREASE={},
-    SEAM_SHARE=(("Paint", "Trim", round(0.001 * K, 6)), ("Paint", "Liner", round(0.001 * K, 6))),
+    # the shell is not quite X symmetric: the symmetric collapse folded 61 paint triangles over (the rear side panels'
+    # dark diagonal stripes) and 58 on the skirts; the collapse leaves the winding as modelled, and the recalc after it
+    # turned the cab liner's inward faces all outward (pzveh.decimate)
+    DECIMATE_SYMMETRY=False,
+    DECIMATE_RECALC=False,
+    # the decimated objects' shared open edges (the shell's seams, 1 mm: Paint / Frame 5901 points, Paint / SkirtGrey
+    # 922, RearWall / SkirtGrey 693, Paint / Trim 505, Liner / Trim 293, Liner / SkirtGrey 157, Frame / SkirtGrey 106)
+    SEAM_SHARE=tuple((a, b, round(0.001 * K, 6)) for a, b in (
+        ("Paint", "Frame"), ("Paint", "SkirtGrey"), ("RearWall", "SkirtGrey"), ("Paint", "Trim"), ("Liner", "Trim"),
+        ("Liner", "SkirtGrey"), ("Frame", "SkirtGrey"))),
     PAINT_MAT="Paint",
-    # the shell's later parts (round 2: new objects, new materials) drawn as Trim until MAT_RGB names them (convert.py)
+    # a later shell's new material drawn as Trim until MAT_RGB names it (convert.py prints SRC_UNKNOWN)
     SRC_UNKNOWN="Trim",
     UV_FILL=True,
     UV_FILL_TONE=True,
     HGT_CORNER=True,
     GROOVE_INK=None,
+    # sRGB 230 x the shell's ratio to the white paint (prep_semi.py COLORS: base = 0.80 x q ** 2.2): the skirts and
+    # deflector 0.30, frames, pillars and mirrors 0.15, the rear wall 0.20, the fenders 0.50; the lamps' lenses unlit
     MAT_RGB={"Trim": (34, 34, 36), "Liner": (24, 24, 26), "Glass": (26, 30, 34), "HeadLight": (106, 108, 114),
-             "TailLight": (88, 62, 62)},
+             "SkirtGrey": (69, 69, 71), "Frame": (34, 34, 36), "Mirror": (34, 34, 36), "RearWall": (46, 46, 48),
+             "Fender": (114, 114, 116), "TailLight": (120, 52, 54), "BrakeLight": (136, 48, 48),
+             "MarkerLight": (220, 140, 50), "ReflectorRed": (186, 43, 43), "ReflectorWhite": (223, 223, 223)},
     RECOLOR=(),
     CARBON=None,
     LIP_SHADE=None,
@@ -176,8 +191,11 @@ CAR = dict(
     GLASS_BACKS=("WinLH", "WinLT", "WinRH", "WinRT"),
     ROOF_PANE="-",
     MIRROR_CAP="-",
-    # the light bar across the nose (HeadLight); the tail lamps on the frame's end (TailLight), no brake lamps by |x|
-    LAMPS=dict(head=("HeadLight",), tail=("TailLight",), tail_z=0.0, tail_y=0.0, blade=None),
+    # lit with the headlights: the light bar and wedge lamps (HeadLight) and the five amber marker lights over the
+    # windshield (MarkerLight, lit amber) in LightLH / LightRH, the round tail lamps' rings (TailLight) in LightLT /
+    # LightRT; lit when braking: the tail lamps' centres (BrakeLight) in StopL / StopR. The reflectors stay unlit
+    LAMPS=dict(head=("HeadLight", "MarkerLight"), tail=("TailLight",), tail_z=0.0, tail_y=0.0, blade=None,
+               brake_objs=("BrakeLight",), lit_rgb={"MarkerLight": (255, 140, 20)}),
     # part lines (y, z): the door's rear edge
     LINES={k: (_g(_DOOR_Y[1], _DOOR_Z[0]), _g(_DOOR_Y[1], _DOOR_Z[1])) for k in ("S", "BF")},
     FRONT_Y=round(_DOOR_Y[0] * K, 4), SILL_Z=round(_DOOR_Z[0] * K, 4), ARCH=(0.0, -9.0),
@@ -191,9 +209,11 @@ CAR = dict(
     STOP_X=0.0,
     PANELS=dict(x=9.0, z=-9.0, front=(9.0, 9.0), rear=(9.0, 9.0), gate=(-9.0, 9.0), lid=(9.0, 9.0)),   # (PANEL_PARTS)
     PANEL_PARTS={1: "DoorFrontLeft", 2: "DoorFrontRight"},
-    # front guards ahead of the doors, rear guards behind the cab; the ends' trim in Head / Tail
+    # front guards ahead of the doors, rear guards behind the cab (the grey fenders: GUARD_REAR_MATS); the ends' trim
+    # in Head / Tail
     GUARDS=dict(front=(round(_DOOR_Y[0] * K, 4), round(1.40 * K, 4), round(0.80 * K, 4)),
                 rear=(round(-3.64 * K, 4), round(1.40 * K, 4), round(0.80 * K, 4))),
+    GUARD_REAR_MATS=("Fender",),
     HEAD_TAIL=(round(0.60 * K, 4), round(-6.20 * K, 4)),
     DAMAGE_OWN=8,
     CUT={},
