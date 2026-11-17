@@ -131,4 +131,12 @@ module Base
         scale = 1.0,
         undoCoreScale = true,
     }
+
+    model MinidoracatTesla_CablePlugSemi
+    {
+        mesh = WorldItems/MinidoracatTesla_CablePlugSemi,
+        texture = WorldItems/MinidoracatTesla_Cable,
+        scale = 1.0,
+        undoCoreScale = true,
+    }
 }

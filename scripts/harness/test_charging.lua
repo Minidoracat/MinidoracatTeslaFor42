@@ -699,6 +699,30 @@ do -- own scope: the main chunk is at Lua's 200-local limit
     T.MOBILE_IN_TRUNK_PCT, T.PHONE_IN_GLOVEBOX_PCT = pct0, phonePct0
 end
 
+H.section("Semi (no trunk, no glove box): the Mobile Connector on the jump seat, the phone on the driver's seat")
+do
+    local function seat(v, id)
+        local box = { items = {} }
+        function box:AddItem(t) self.items[#self.items + 1] = t end
+        v.parts[id] = { getItemContainer = function() return box end, getId = function() return id end }
+        return box
+    end
+    local pct0, phonePct0 = T.MOBILE_IN_TRUNK_PCT, T.PHONE_IN_GLOVEBOX_PCT
+    T.MOBILE_IN_TRUNK_PCT, T.PHONE_IN_GLOVEBOX_PCT = 100, 100
+    local sv = H.vehicle({ script = "Base.MinidoracatTesla_Semi" })
+    local drv, jump = seat(sv, "SeatFrontLeft"), seat(sv, "SeatFrontRight")
+    T.Create.Motor(sv, sv:getPartById("Engine"))
+    check(#jump.items == 1 and jump.items[1] == MC.item and #drv.items == 1 and drv.items[1] == "Base.MinidoracatTesla_Phone",
+        "Semi at 100 %: the Mobile Connector in SeatFrontRight, the Smartphone in SeatFrontLeft")
+    local mv = H.vehicle({ script = "Base.MinidoracatTesla_ModelY" })
+    local mdrv, mjump = seat(mv, "SeatFrontLeft"), seat(mv, "SeatFrontRight")
+    local trunk, glove = seat(mv, "TruckBed"), seat(mv, "GloveBox")
+    T.Create.Motor(mv, mv:getPartById("Engine"))
+    check(#trunk.items == 1 and #glove.items == 1 and #mdrv.items == 0 and #mjump.items == 0,
+        "Model Y: still the trunk and the glove box, nothing on its seats")
+    T.MOBILE_IN_TRUNK_PCT, T.PHONE_IN_GLOVEBOX_PCT = pct0, phonePct0
+end
+
 H.section("keyless rules (user 2026-10-28): plug, unplug, charge card, pick up and rotate the charger")
 -- No VehicleManager: a key, a hotwired car (both on a locked car) or an unlocked car -> allowed; a locked car without a
 -- key -> CAR_LOCKED everywhere. VehicleManager present: only its FUEL right, locked or not.
@@ -978,7 +1002,7 @@ check(ak == 11.5 * 2 and ah == 2 and B.chargeHours({ kw = 11.5 }, 78.4, 10, 70.5
 local qk = B.chargeGain({ kw = 11.5, peak = 250 }, 78.4, 20, 1, 70.56)
 check(near(qk, 11.5, 1e-9), "a 11.5 kW share on the curve: 11.5 kWh an hour")
 check(T.chargerKw("Supercharger", car(10, 0, 0)) == 250 and T.chargerKw("WallConnector", car(10, 0, 0)) == 11.5,
-    "chargerKw: a Model Y takes 250 of the 325 kW post; the Wall Connector stays 11.5")
+    "chargerKw: a Model Y takes 250 of the 1200 kW post; the Wall Connector stays 11.5")
 
 -- gas pump power (ItemContainer.java:2347-2349): outdoors, no room near
 local slo, siso, ssq = charger(700, 700, { outside = true }, SCS)
@@ -1096,6 +1120,38 @@ check(near(B.chargeKwAt(cchg, 47.6, 4.76), 152, 1e-9) and near(B.chargeKwAt(cchg
     "the curve at its peak: 152 kW at 10 %, 77.8 at 50 %")
 C.unplug(sp, cv)
 H.removeVehicle(cv)
+end
+
+-- V4 Supercharger 325 -> 1200 kW for the Semi's 1.2 MW: every other car gets what it got on the 325 kW post (its
+-- chargerKw before the change, written out here), on the Wall and Mobile Connectors too; the Semi its 1200 on DC, the
+-- connectors' own kW on AC
+H.section("Supercharger 1200 kW: the eight cars as at 325, the Semi 1200")
+do
+local before = { -- { Supercharger, WallConnector, MobileConnector } at kw 325
+    ModelY = { 250, 11.5, 7.6 }, Model3 = { 250, 11.5, 7.6 }, Cybertruck = { 325, 11.5, 7.6 }, ModelS = { 250, 11.5, 7.6 },
+    ModelX = { 250, 11.5, 7.6 }, ModelYL = { 250, 11.5, 7.6 }, Roadster = { 16.8, 11.5, 7.6 }, Cybercab = { 152, 11.5, 7.6 },
+    Semi = { 1200, 11.5, 7.6 },
+}
+local KINDS = { "Supercharger", "WallConnector", "MobileConnector" }
+check(T.Chargers.Supercharger.kw == 1200, "the Supercharger's cap: 1200 kW")
+local seen = 0
+for script in pairs(T.Specs) do
+    local car = script:match("_(%w+)$")
+    local want = before[car]
+    check(want ~= nil, car .. ": its kW per charger written out above")
+    local sv = H.vehicle({ script = script, kwh = 0 })
+    for i, kind in ipairs(KINDS) do
+        check(want and T.chargerKw(kind, sv) == want[i], string.format("%s on the %s: %s kW (%s)", car, kind,
+            tostring(T.chargerKw(kind, sv)), tostring(want and want[i])))
+    end
+    H.removeVehicle(sv)
+    seen = seen + 1
+end
+check(seen == 9, "nine cars in Specs (" .. seen .. ")")
+local sv = H.vehicle({ script = "Base.MinidoracatTesla_Semi", kwh = 0 })
+check(B.capacity(B.part(sv)) == 822 and T.dcPeak("Supercharger", sv, 1200) == 1200 and T.dcPeak("WallConnector", sv, 11.5) == nil,
+    "Semi: 822 kWh; the DC curve peaks at 1200 on the Supercharger, flat on AC")
+H.removeVehicle(sv)
 end
 
 -- the grid gone: a generator 2 tiles off, full speed, fuel per kWh

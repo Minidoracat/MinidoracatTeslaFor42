@@ -105,4 +105,15 @@ module Base
         WorldStaticModel = Base.MinidoracatTesla_CablePlugCybercab,
         Hidden = true,
     }
+
+    /* Semi: the MCS handle (Megawatt Charging System); its port is on the left flank behind the cab */
+    item MinidoracatTesla_CablePlugSemi
+    {
+        Weight = 0.1,
+        ItemType = base:normal,
+        DisplayCategory = Electronics,
+        Icon = MinidoracatTesla_Cable,
+        WorldStaticModel = Base.MinidoracatTesla_CablePlugSemi,
+        Hidden = true,
+    }
 }

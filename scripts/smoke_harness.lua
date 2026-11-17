@@ -25,7 +25,8 @@ end
 -- the side doors a Tesla has, by the template its script inherits (MinidoracatTesla_template.txt: Core and CoreNoFrunk
 -- the front two, Base all four; test_cabin checks the template file against this); car = "ModelY". -> door ids, template
 -- name
-H.TEMPLATE_DOORS = { MinidoracatTeslaCore = { "DoorFrontLeft", "DoorFrontRight" },
+H.TEMPLATE_DOORS = { MinidoracatTeslaCab = { "DoorFrontLeft", "DoorFrontRight" },
+    MinidoracatTeslaCore = { "DoorFrontLeft", "DoorFrontRight" },
     MinidoracatTeslaCoreNoFrunk = { "DoorFrontLeft", "DoorFrontRight" },
     MinidoracatTeslaBase = { "DoorFrontLeft", "DoorFrontRight", "DoorRearLeft", "DoorRearRight" } }
 function H.carDoors(car)
@@ -34,10 +35,23 @@ function H.carDoors(car)
     f:close()
     return H.TEMPLATE_DOORS[tpl], tpl
 end
+-- does the car's vehicle script exist yet (car = "ModelY"): a car whose body is still being built (H.BUILDING) has its
+-- Lua and data first; the checks that read its script, build file, skins or app pictures run once it does (and fail
+-- then if anything is missing). Any other car counts as built, so a released car's checks never skip (a missing file
+-- fails). Take the car out of H.BUILDING once its body is merged.
+H.BUILDING = { Semi = true }
+function H.bodyBuilt(car)
+    if not H.BUILDING[car] then return true end
+    local f = io.open(MEDIA:gsub("/lua$", "/scripts/") .. "vehicles/MinidoracatTesla_" .. car .. ".txt", "r")
+    if f then f:close() end
+    return f ~= nil
+end
 -- per Tesla: its script's engineForce and its pack item's int MaxCapacity (H.vehicle; other packs get 63)
 local ENGINE_FORCE, PACK_CAP = {}, {}
-for _, car in ipairs({ "ModelY", "Model3", "Cybertruck", "ModelS", "ModelX", "ModelYL", "Roadster", "Cybercab" }) do
-    ENGINE_FORCE["Base.MinidoracatTesla_" .. car] = H.scriptValue("vehicles/MinidoracatTesla_" .. car .. ".txt", "engineForce")
+for _, car in ipairs({ "ModelY", "Model3", "Cybertruck", "ModelS", "ModelX", "ModelYL", "Roadster", "Cybercab", "Semi" }) do
+    if H.bodyBuilt(car) then
+        ENGINE_FORCE["Base.MinidoracatTesla_" .. car] = H.scriptValue("vehicles/MinidoracatTesla_" .. car .. ".txt", "engineForce")
+    end
     PACK_CAP["Base.MinidoracatTesla_" .. car .. "Battery"] = H.scriptValue("items/MinidoracatTesla_items.txt", "MaxCapacity",
         "item MinidoracatTesla_" .. car .. "Battery")
 end
@@ -265,7 +279,7 @@ end
 -- vanilla tables the MOD calls into
 Vehicles = { Update = { Engine = function(v) v.vanillaEngine = (v.vanillaEngine or 0) + 1 end }, Use = { EngineDoor = function() end } }
 VehicleUtils = { createPartInventoryItem = function(part) return part:getInventoryItem() end }
-VehicleZoneDistribution = { parkingstall = { vehicles = {} }, good = { vehicles = {} } }
+VehicleZoneDistribution = { parkingstall = { vehicles = {} }, good = { vehicles = {} }, delivery = { vehicles = {} } }
 
 -- Global ModData (ModData.java) and the server's GOS systems (SGlobalObjects.java:31-39): one in-memory copy for the
 -- whole run, H.moddata[tag] / H.gos[name] = { md, keys, registers } for the tests to look into

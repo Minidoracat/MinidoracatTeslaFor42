@@ -57,6 +57,8 @@ local POW2 = { 1, 2, 4, 8, 16, 32, 64, 128, 256 }
 -- The Cybercab (build_atlas.py car_cybercab, on the built body): the trunk lid from the roof's end (viewBox 65.2 =
 -- x 57.1), the doors from viewBox 77.0 to 115.0 (x 67.4-100.6), split at the roof's spine like the other cars' doors;
 -- the rear quarter (x 57.1-67.4) and the hood (no front trunk, T.hasFrunk) open nothing.
+-- The Semi (tractor only, no trailer): its two cab doors and nothing else (no frunk, no trunk: T.hasTrunk).
+-- PROVISIONAL x until build_atlas.py draws car_semi: set them from that drawing's door seams.
 local ZONES = {
     ModelY = {
         { 5, 0, 0, 45, 85 }, { 3, 45, 0, 69, 42.5 }, { 4, 45, 42.5, 69, 85 },
@@ -88,6 +90,9 @@ local ZONES = {
     },
     Cybercab = {
         { 5, 0, 0, 57.1, 85 }, { 1, 67.4, 0, 100.6, 42.5 }, { 2, 67.4, 42.5, 100.6, 85 },
+    },
+    Semi = {
+        { 1, 97, 0, 125, 42.5 }, { 2, 97, 42.5, 125, 85 },
     },
 }
 HUD.ZONES = ZONES

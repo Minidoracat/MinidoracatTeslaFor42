@@ -528,6 +528,28 @@ F.fire("OnClientCommand", "vehicle", "attachTrailer", sharer, { vehicleA = trail
 check(wc.alarmTriggered == t0 + 3 and md(wc).sentry == nil, "someone with VehicleManager's PASSENGER right hooks it up: sentry off")
 MinidoracatVehicleManagerAPI = nil
 trailer.towing = nil
+-- the Semi and its 53 ft trailer (client SemiHitch.lua sends the same vanilla attachTrailer, Semi = A)
+do
+    local semi = F.track(F.vehicle({ pct = 80, script = "Base.MinidoracatTesla_Semi" }))
+    local semiOwner = F.player("sowner", { keys = { [semi.keyId] = true } })
+    local online0 = F.online
+    F.online = { semiOwner, thief }
+    local st = { id = 9003, getId = function(self) return self.id end, getScriptName = function() return "Base.MinidoracatTesla_SemiTrailer" end }
+    function st:getVehicleTowing() return self.towing end
+    F.vehicles[st.id] = st
+    cmds.sentryArm(semiOwner, { vid = semi:getId() })
+    local armed, a0 = md(semi).sentry ~= nil, semi.alarmTriggered
+    semi.towing = st
+    F.fire("OnClientCommand", "vehicle", "attachTrailer", semiOwner, { vehicleA = semi:getId(), vehicleB = st.id })
+    check(armed and semi.alarmTriggered == a0 and md(semi).sentry == nil and alertsTo("sowner") == 0,
+        "the owner hitches his own trailer to his armed Semi: no alarm, no alert, sentry off")
+    cmds.sentryArm(semiOwner, { vid = semi:getId() })
+    F.fire("OnClientCommand", "vehicle", "attachTrailer", thief, { vehicleA = semi:getId(), vehicleB = st.id })
+    check(semi.alarmTriggered == a0 + 1 and F.lastSent("alert").to == "sowner" and F.lastSent("alert").args.what == "tow",
+        "a stranger hitches a trailer to the armed Semi: alarm, owner alerted (tow)")
+    semi.towing, F.online = nil, online0
+    F.vehicles[st.id] = nil
+end
 -- fitting glass: the part takes the item's condition (VehiclePart.java:202), a worse pane is no hit
 wc.parts.Windshield.cond = 100
 cmds.sentryArm(wOwner, { vid = wc:getId() })

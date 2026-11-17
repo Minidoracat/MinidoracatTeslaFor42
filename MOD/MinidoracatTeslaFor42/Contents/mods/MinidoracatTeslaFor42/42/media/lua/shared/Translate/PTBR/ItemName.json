@@ -7,6 +7,7 @@
     "Base.MinidoracatTesla_ModelYLBattery": "Bateria de alta tensão Model Y L (82 kWh)",
     "Base.MinidoracatTesla_RoadsterBattery": "Bateria de alta tensão Roadster (56 kWh)",
     "Base.MinidoracatTesla_CybercabBattery": "Bateria de alta tensão Cybercab (47,6 kWh)",
+    "Base.MinidoracatTesla_SemiBattery": "Bateria de alta tensão Semi (822 kWh)",
     "Base.MinidoracatTesla_WallConnector": "Tesla Wall Connector (3ª ger.)",
     "Base.MinidoracatTesla_MobileConnector": "Tesla Mobile Connector (3ª ger.)",
     "Base.MinidoracatTesla_Supercharger": "Supercharger Tesla V4",

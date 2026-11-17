@@ -7,6 +7,7 @@
     "Base.MinidoracatTesla_ModelYLBattery": "Model Y L 高压电池（82 kWh）",
     "Base.MinidoracatTesla_RoadsterBattery": "Roadster 高压电池（56 kWh）",
     "Base.MinidoracatTesla_CybercabBattery": "Cybercab 高压电池（47.6 kWh）",
+    "Base.MinidoracatTesla_SemiBattery": "Semi 高压电池（822 kWh）",
     "Base.MinidoracatTesla_WallConnector": "特斯拉第三代家庭充电桩",
     "Base.MinidoracatTesla_MobileConnector": "特斯拉第三代移动充电连接器",
     "Base.MinidoracatTesla_Supercharger": "特斯拉 V4 超级充电桩",

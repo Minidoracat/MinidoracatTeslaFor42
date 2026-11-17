@@ -147,18 +147,22 @@ function T.Create.Motor(vehicle, part)
     -- Engine create runs once per car: the part has no item, so createParts never re-creates it (VehicleParts.java:229-
     -- 247, `created` is saved, VehiclePart.java:543,609; OnSpawnVehicleEnd fires on every load instead). Part containers
     -- exist before any create (VehicleParts.java:309), and with no VehicleDistributions entry for our cars
-    -- randomizeContainers never clears or fills them (BaseVehicle.java:8797-8817).
-    local bed = vehicle:getPartById("TruckBed")
+    -- randomizeContainers never clears or fills them (BaseVehicle.java:8797-8817). A car with no rear trunk (Specs
+    -- trunk = false, the Semi: no TruckBed or GloveBox) has them on its seats: the charger on the jump seat
+    -- (SeatFrontRight), the phone on the driver's (SeatFrontLeft).
+    local trunk = T.hasTrunk(s)
+    local bedId, gloveId = trunk and "TruckBed" or "SeatFrontRight", trunk and "GloveBox" or "SeatFrontLeft"
+    local bed = vehicle:getPartById(bedId)
     local box = bed and bed:getItemContainer()
     if box and ZombRand(100) < T.MOBILE_IN_TRUNK_PCT then
         box:AddItem("Base.MinidoracatTesla_MobileConnector")
-        T.log("new car " .. tostring(vehicle:getScriptName()) .. ": Mobile Connector in the trunk")
+        T.log("new car " .. tostring(vehicle:getScriptName()) .. ": Mobile Connector in " .. bedId)
     end
-    local glove = vehicle:getPartById("GloveBox")
+    local glove = vehicle:getPartById(gloveId)
     local gb = glove and glove:getItemContainer()
     if gb and ZombRand(100) < T.PHONE_IN_GLOVEBOX_PCT then
         gb:AddItem("Base.MinidoracatTesla_Phone")
-        T.log("new car " .. tostring(vehicle:getScriptName()) .. ": Smartphone in the glove box")
+        T.log("new car " .. tostring(vehicle:getScriptName()) .. ": Smartphone in " .. gloveId)
     end
 end
 

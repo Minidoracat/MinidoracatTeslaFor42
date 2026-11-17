@@ -79,9 +79,17 @@ check(cs.massKg == 1412 and cs.dcKw == 152 and cs.acKw == nil and cs.regenEff ==
 check(cs.chillForce == 1800, "Cybercab: its own Chill force 1800 (E2E feel-sp 19.99 s to 100 km/h, the user's pick)")
 local others = {}
 for name, s in pairs(T.Specs) do
-    if name ~= CC and (s.butterfly ~= nil or s.frunk ~= nil or not T.hasFrunk(s)) then others[#others + 1] = name end
+    if name ~= CC and name ~= "Base.MinidoracatTesla_Semi" and (s.butterfly ~= nil or s.frunk ~= nil or not T.hasFrunk(s)) then
+        others[#others + 1] = name
+    end
 end
 check(#others == 0 and T.hasFrunk(nil), "the other seven: no butterfly, a front trunk (no frunk field) (" .. table.concat(others, ",") .. ")")
+local notrunk = {}
+for name, s in pairs(T.Specs) do
+    if s.trunk ~= nil or not T.hasTrunk(s) then notrunk[#notrunk + 1] = name end
+end
+check(#notrunk == 1 and notrunk[1] == "Base.MinidoracatTesla_Semi" and T.hasTrunk(nil),
+    "only the Semi has trunk = false; every other car a rear trunk (" .. table.concat(notrunk, ",") .. ")")
 local f = assert(io.open("MOD/MinidoracatTeslaFor42/Contents/mods/MinidoracatTeslaFor42/42/media/scripts/vehicles/MinidoracatTesla_Cybercab.txt", "r"))
 local txt = f:read("*a")
 f:close()
@@ -578,8 +586,10 @@ check(B.part(cv):getModData().chill == true and cv.feature[1] == 87 and cv.featu
     and cv.engineTx == 1 and cv.transmits == cmd0 + 1, "chill by the driver: force CHILL_FORCE (quality, loudness kept), engine and modData sent")
 check(cv.maxSpeedSet == nil, "Chill: top speed never touched")
 for name, s in pairs(T.Specs) do -- Chill must slow the car: a new car below T.CHILL_FORCE needs Specs chillForce
-    local force = H.scriptValue("vehicles/MinidoracatTesla_" .. s.model .. ".txt", "engineForce") -- the car's vehicle script
-    check((s.chillForce or T.CHILL_FORCE) < force, name .. ": Chill force below its script force " .. tostring(force))
+    if H.bodyBuilt(s.model) then
+        local force = H.scriptValue("vehicles/MinidoracatTesla_" .. s.model .. ".txt", "engineForce") -- the car's vehicle script
+        check((s.chillForce or T.CHILL_FORCE) < force, name .. ": Chill force below its script force " .. tostring(force))
+    end
 end
 local tx = cv.engineTx -- the same fake car as a Roadster, then back as it was (Model Y, Chill on)
 cv.script = "Base.MinidoracatTesla_Roadster"
@@ -654,6 +664,10 @@ check(Z.good.vehicles["Base.MinidoracatTesla_Roadster"].spawnChance == 2
     and Z.parkingstall.vehicles["Base.MinidoracatTesla_Roadster"] == nil, "spawn table Roadster: good 2, not in parking stalls")
 check(Z.parkingstall.vehicles["Base.MinidoracatTesla_Cybercab"].spawnChance == 1
     and Z.good.vehicles["Base.MinidoracatTesla_Cybercab"] == nil, "spawn table Cybercab: parkingstall 1, not in good (a fleet car)")
+for _, s in ipairs({ "Base.MinidoracatTesla_Semi", "Base.MinidoracatTesla_SemiTrailer" }) do
+    check(Z.delivery.vehicles[s].spawnChance == 1 and Z.good.vehicles[s] == nil and Z.parkingstall.vehicles[s] == nil,
+        "spawn table " .. s .. ": delivery 1 on its own, not in good or parking stalls")
+end
 
 H.section("dispatch")
 local hits = 0
