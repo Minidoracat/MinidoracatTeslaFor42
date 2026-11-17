@@ -19,17 +19,23 @@ local geo = veh:sub((veh:find("---- geometry", 1, true))) -- the generated part 
 local tpl = read("scripts/vehicles/MinidoracatTesla_template.txt")
 local models = read("scripts/models/MinidoracatTesla_vehicles.txt")
 
--- every Tesla model but the wheels (<car>_Wheel, and <car>_WheelRear for a car with its own rear tyres, TIRE_AXLES)
--- and the Viewpoint detail on the merged shader; the cabin glass model, no cabin / window models. The frunk lid only on
--- a car with a frunk (T.hasFrunk: the Cybercab's hood is no model)
-for _, car in ipairs({ "MinidoracatTesla_ModelY", "MinidoracatTesla_Model3", "MinidoracatTesla_ModelS", "MinidoracatTesla_ModelX",
-    "MinidoracatTesla_ModelYL", "MinidoracatTesla_Cybercab" }) do
+-- every Tesla model but the wheels (<car>_Wheel, and <car>_WheelRear for a car with its own rear tyres, TIRE_AXLES, or
+-- <car>_WheelAxle for one whose rear tyres are whole axles, PHYS axle) and the Viewpoint detail on the merged shader;
+-- the cabin glass model, no cabin / window models. The frunk lid only on a car with a frunk (T.hasFrunk: the
+-- Cybercab's hood is no model), the rear lid only on one with a trunk (Specs trunk ~= false: the Semi has none)
+local semiText = read("scripts/vehicles/MinidoracatTesla_Semi.txt")
+-- shortcut: the Semi's checks wait for its Specs entry and H.TEMPLATE_DOORS Cab (feat/semi-lua); drop the guard once merged
+local semi = semiText and MinidoracatTesla.Specs["Base.MinidoracatTesla_Semi"] and H.carDoors("Semi") and semiText
+local cars = { "MinidoracatTesla_ModelY", "MinidoracatTesla_Model3", "MinidoracatTesla_ModelS", "MinidoracatTesla_ModelX",
+    "MinidoracatTesla_ModelYL", "MinidoracatTesla_Cybercab" }
+if semi then cars[#cars + 1] = "MinidoracatTesla_Semi" end
+for _, car in ipairs(cars) do
     local shaders, names, wheels = {}, {}, 0
     for name, block in models:gmatch("model ([%w_]+)%s*(%b{})") do
         -- the car itself or car_<part> only: "MinidoracatTesla_ModelY" must not take the Model Y L's models
         if name == car or name:sub(1, #car + 1) == car .. "_" then
             names[#names + 1] = name
-            if name == car .. "_Wheel" or name == car .. "_WheelRear" then
+            if name == car .. "_Wheel" or name == car .. "_WheelRear" or name == car .. "_WheelAxle" then
                 wheels = wheels + 1
             elseif name ~= car .. "_Detail" then
                 shaders[#shaders + 1] = name .. "=" .. tostring(block:match("shader = ([%w_]+),"))
@@ -41,11 +47,13 @@ for _, car in ipairs({ "MinidoracatTesla_ModelY", "MinidoracatTesla_Model3", "Mi
         if not s:find("=MinidoracatTesla_vehicle$") then wrong[#wrong + 1] = s end
     end
     local nd = #(H.carDoors(car:match("_(%w+)$")) or {})   -- side doors by the car's template (4; a two-seater 2)
-    local lid = MinidoracatTesla.hasFrunk(MinidoracatTesla.Specs["Base." .. car]) and 1 or 0
-    check(nd > 0 and #shaders == 3 + lid + nd and #wrong == 0, car .. ": body, glass, " .. nd .. " doors, rear lid"
-        .. (lid == 1 and ", frunk lid" or "") .. " on MinidoracatTesla_vehicle (off: " .. table.concat(wrong, ",") .. ")")
-    check(#names == 4 + lid + nd + wheels and wheels >= 1, car .. ": " .. (4 + lid + nd) .. " models and its wheel(s), the "
-        .. "cabin glass and the Viewpoint detail but no cabin / window models (" .. table.concat(names, ",") .. ")")
+    local spec = MinidoracatTesla.Specs["Base." .. car]
+    local lid, rear = MinidoracatTesla.hasFrunk(spec) and 1 or 0, (spec == nil or spec.trunk ~= false) and 1 or 0
+    check(nd > 0 and #shaders == 2 + rear + lid + nd and #wrong == 0, car .. ": body, glass, " .. nd .. " doors"
+        .. (rear == 1 and ", rear lid" or "") .. (lid == 1 and ", frunk lid" or "") .. " on MinidoracatTesla_vehicle (off: "
+        .. table.concat(wrong, ",") .. ")")
+    check(#names == 3 + rear + lid + nd + wheels and wheels >= 1, car .. ": " .. (3 + rear + lid + nd) .. " models and its "
+        .. "wheel(s), the cabin glass and the Viewpoint detail but no cabin / window models (" .. table.concat(names, ",") .. ")")
     check(read("models_X/vehicles/" .. car .. "_Cabin.fbx") == nil and read("models_X/vehicles/" .. car .. "_Glass.fbx") ~= nil
         and read("textures/Vehicles/" .. car .. "_cabin.png") == nil, car .. ": the glass FBX, no cabin FBX or cabin palette")
     local block = models:match("model " .. car .. "_Glass%s*(%b{})") or ""
@@ -69,7 +77,8 @@ local geos = { ModelY = geo, Model3 = m3:sub((m3:find("---- geometry", 1, true))
     Cybertruck = ct:sub((ct:find("---- geometry", 1, true))),
     ModelYL = yl:sub((yl:find("---- geometry (TeslaModelYL)", 1, true))),
     Roadster = rd:sub((rd:find("---- geometry", 1, true))),
-    Cybercab = cc:sub((cc:find("---- geometry", 1, true))) }
+    Cybercab = cc:sub((cc:find("---- geometry", 1, true))),
+    Semi = semi and semi:sub((semi:find("---- geometry", 1, true))) or nil }
 for car, g in pairs(geos) do
     check(g:find("part GloveBox", 1, true) == nil and g:find("part Window", 1, true) == nil
         and g:find("part WindshieldRear", 1, true) == nil, car .. ": no models on GloveBox, Window* or WindshieldRear")
@@ -125,9 +134,9 @@ check(not (tpl .. m3):find("requireUninstalled = WindshieldRear", 1, true) and n
     "Model 3 (and the shared template): trunk lid and rear glass come off and go on independently (glass in the body)")
 
 -- door anim rate: one model per door, one player update a frame; every door the car has (its template's side doors,
--- H.carDoors, the tailgate and, on a car with a frunk (T.hasFrunk), the frunk lid) and no other
+-- H.carDoors, the tailgate on a car with a trunk and, on a car with a frunk (T.hasFrunk), the frunk lid) and no other
 local texts = { ModelY = veh, Model3 = m3, ModelS = ms, ModelX = mx, Cybertruck = ct, ModelYL = yl, Roadster = rd,
-    Cybercab = cc }
+    Cybercab = cc, Semi = semi or nil }
 for car, g in pairs(geos) do
     local rates, bad = 0, {}
     for door in pairs({ DoorFrontLeft = 1, DoorFrontRight = 1, DoorRearLeft = 1, DoorRearRight = 1, TrunkDoor = 1,
@@ -138,8 +147,9 @@ for car, g in pairs(geos) do
             if r ~= "1.0" then bad[#bad + 1] = door .. "=" .. r end
         end
     end
-    local want = 2 * (#(H.carDoors(car) or {}) + 1
-        + (MinidoracatTesla.hasFrunk(MinidoracatTesla.Specs["Base.MinidoracatTesla_" .. car]) and 1 or 0))
+    local spec = MinidoracatTesla.Specs["Base.MinidoracatTesla_" .. car]
+    local want = 2 * (#(H.carDoors(car) or {}) + ((spec == nil or spec.trunk ~= false) and 1 or 0)
+        + (MinidoracatTesla.hasFrunk(spec) and 1 or 0))
     check(rates == want and #bad == 0, car .. ": door Open / Close rate 1.0 (" .. rates .. " rates of " .. want .. ", off: "
         .. table.concat(bad, ",") .. ")")
 end
@@ -173,15 +183,17 @@ for car, g in pairs(geos) do
     end
     local n, side = tonumber(texts[car]:match("\n        seats = (%d+),")), select(2, H.carDoors(car))
     check(n ~= nil and seats == n and #shown == n and g:find("template = PassengerSeat" .. tostring(n) .. ",", 1, true) ~= nil
-        and (side == "MinidoracatTeslaCore" or side == "MinidoracatTeslaCoreNoFrunk") == (n == 2), car .. ": " .. tostring(n) .. " seats (" .. tostring(side)
+        and (side == "MinidoracatTeslaCore" or side == "MinidoracatTeslaCoreNoFrunk" or side == "MinidoracatTeslaCab") == (n == 2), car .. ": " .. tostring(n) .. " seats (" .. tostring(side)
         .. ", PassengerSeat" .. tostring(n) .. ") show their passenger (" .. table.concat(shown, ",") .. ")")
 end
 
--- the three templates (MinidoracatTesla_template.txt): CoreNoFrunk has the front doors, seats and side windows and no
--- frunk (Cybercab); Core is CoreNoFrunk's template lines, then part Frunk, then template! = CoreNoFrunk and nothing
--- else; Base is Core's template lines up to its last pair of front doors, each front pair followed by its rear pair,
--- then template! = Core and nothing else. Each keeps the single template's part order (scripts/vehicle_parts.py
--- --against <rev>: the frunk right after the template parts, the rear three pairs among them)
+-- the four templates (MinidoracatTesla_template.txt): Cab has every shared part block, the front doors, seats and side
+-- windows, and no trunk lid, trunk, glove box or frunk (Semi); CoreNoFrunk is the 21 template lines, then part
+-- TrunkDoor, then template! = Cab and nothing else (Cybercab); Core is CoreNoFrunk's template lines, then part Frunk,
+-- then template! = CoreNoFrunk and nothing else; Base is Core's template lines up to its last pair of front doors, each
+-- front pair followed by its rear pair, then template! = Core and nothing else. Each keeps the single template's part
+-- order (scripts/vehicle_parts.py --against <rev>: the frunk right after the template parts, the rear three pairs
+-- among them)
 local function tlines(block)
     local t = {}
     for ln in block:gmatch("\n        (template!? = [^\n]+),") do t[#t + 1] = ln end
@@ -189,18 +201,25 @@ local function tlines(block)
 end
 local core, base = tpl:match("template vehicle MinidoracatTeslaCore%s*(%b{})") or "", tpl:match("template vehicle MinidoracatTeslaBase%s*(%b{})") or ""
 local nf = tpl:match("template vehicle MinidoracatTeslaCoreNoFrunk%s*(%b{})") or ""
+local cab = tpl:match("template vehicle MinidoracatTeslaCab%s*(%b{})") or ""
 local cl, bl, nl, want = tlines(core), tlines(base), tlines(nf), {}
 local function at(s, pat) return s:find(pat, 1, true) or -1 end
-local rest = core:gsub("/%*.-%*/", "")
-rest = rest:gsub("\n        template!? = [^\n]+,", "")
-rest = rest:gsub("\n        part Frunk%s*%b{}", "")
+local function only(block, part)   -- the block holds its template lines and that part block and nothing else
+    local r = block:gsub("/%*.-%*/", ""):gsub("\n        template!? = [^\n]+,", ""):gsub("\n        part " .. part .. "%s*%b{}", "")
+    return r:match("^{%s*}$") ~= nil
+end
 local fr, lastTpl = at(core, "\n        part Frunk"), at(core, "\n        template = Headlight,")
-check(#nl == 21 and table.concat(cl, "\n") == table.concat(nl, "\n") .. "\ntemplate! = MinidoracatTeslaCoreNoFrunk"
-    and rest:match("^{%s*}$") ~= nil and fr > lastTpl and lastTpl > 0 and fr < at(core, "template! = ")
-    and nl[#nl] == "template = Headlight",
+local nh = { table.unpack(nl, 1, 21) }
+check(#nl == 22 and table.concat(cl, "\n") == table.concat(nh, "\n") .. "\ntemplate! = MinidoracatTeslaCoreNoFrunk"
+    and only(core, "Frunk") and fr > lastTpl and lastTpl > 0 and fr < at(core, "template! = ")
+    and nh[21] == "template = Headlight",
     "template Core: CoreNoFrunk's 21 template lines, then part Frunk, then template! = CoreNoFrunk, nothing else")
-check(not nf:find("Frunk", 1, true) and nf:find("part GasTank", 1, true) ~= nil and nf:find("part CabinDetail", 1, true) ~= nil,
-    "template CoreNoFrunk: every shared part block, no Frunk")
+check(nl[22] == "template! = MinidoracatTeslaCab" and only(nf, "TrunkDoor") and at(nf, "\n        part TrunkDoor") > at(nf, "template = Headlight,")
+    and nh[1] == "template = TrunkDoor" and nh[2] == "template = Trunk/part/TruckBed" and nh[5] == "template = GloveBox",
+    "template CoreNoFrunk: the 21 template lines, then part TrunkDoor, then template! = Cab, nothing else")
+check(not cab:find("Frunk", 1, true) and not cab:find("TrunkDoor", 1, true) and not cab:find("TruckBed", 1, true)
+    and not cab:find("GloveBox", 1, true) and cab:find("part GasTank", 1, true) ~= nil and cab:find("part CabinDetail", 1, true) ~= nil,
+    "template Cab: every shared part block, no trunk lid, trunk, glove box or frunk")
 for _, ln in ipairs(cl) do
     want[#want + 1] = ln
     local pre = ln:match("^(template = %w+/part/%w+)FrontRight$")

@@ -534,12 +534,13 @@ def spoke_outline(rr, rb, shape=None):
     return [(r, ang + sp["sweep"] * (r - h) / (rb - h)) for r, ang in out] if sp["sweep"] else out
 
 
-def stage_wheel(r, width, rim=None, tag=""):
+def stage_wheel(r, width, rim=None, tag="", axle=None):
     """Procedural wheel (axle along X, vanilla Vehicles_Wheel convention), both faces alike: tire radius r and width in
     grid, spokes per the car's WHEEL_SPOKE (Model Y 21" Arachnid 2.0, Model 3 20" Warp); MOD wheel FBX (two equal UV layers) + 64^2 texture. -> triangle count.
     rim: the rim flange radius (grid; default WHEEL_RIM x r), tag: after "_Wheel" / "_wheel" in the file names (a
-    second wheel model: TIRE_AXLES' rear, the front's rim on the rear tyre). Fresh scene: the caller saves its own
-    .blend first."""
+    second wheel model: TIRE_AXLES' rear, the front's rim on the rear tyre). axle (Semi's PHYS): one model for a whole
+    axle, this wheel at each x (grid) round the axle's one physics wheel, on the untagged wheel's texture (no PNG of
+    its own). Fresh scene: the caller saves its own .blend first."""
     from mathutils.geometry import tessellate_polygon
     bpy.ops.wm.read_factory_settings(use_empty=True)
     rr = rim or WHEEL_RIM * r
@@ -695,11 +696,23 @@ def stage_wheel(r, width, rim=None, tag=""):
     # VertexBufferObject.java:324-345). With one UV map the shader read attribute 3 left over from an earlier draw:
     # garbage UVs. UV1 = UV0 puts the wheel's own UVs there
     me.uv_layers.new(name="UV1")
-    args = (strips[0][3][1] / r, rr / r if rim else WHEEL_RIM)
-    grey = wheel_texture(*args)[::-1]                                                          # rows run bottom-up
-    rgb = [wheel_texture(*args, ch=i)[::-1] for i in range(3)] if CAR.get("WHEEL_TINT") else [grey] * 3
-    save_png(np.dstack([*rgb, np.ones_like(grey)]), os.path.join(TEX_DIR, NAME + "_wheel" + tag.lower() + ".png"),
-             "wheel" + tag.lower())
+    if axle:            # the copies joined into `low` (active, last): the attributes and UVs go with them
+        from mathutils import Matrix
+        cps = []
+        for x in axle[:-1]:
+            m2 = me.copy()
+            m2.transform(Matrix.Translation((x, 0, 0)))
+            cps.append(bpy.data.objects.new(f"{low.name}_{len(cps)}", m2))
+            bpy.context.scene.collection.objects.link(cps[-1])
+        me.transform(Matrix.Translation((axle[-1], 0, 0)))
+        select_only(*cps, low)
+        bpy.ops.object.join()
+    else:
+        args = (strips[0][3][1] / r, rr / r if rim else WHEEL_RIM)
+        grey = wheel_texture(*args)[::-1]                                                      # rows run bottom-up
+        rgb = [wheel_texture(*args, ch=i)[::-1] for i in range(3)] if CAR.get("WHEEL_TINT") else [grey] * 3
+        save_png(np.dstack([*rgb, np.ones_like(grey)]), os.path.join(TEX_DIR, NAME + "_wheel" + tag.lower() + ".png"),
+                 "wheel" + tag.lower())
     mat = bpy.data.materials.new(NAME + "_Wheel" + tag)
     me.materials.append(mat)
     export_fbx(low, os.path.join(VEH_DIR, NAME + "_Wheel" + tag + ".fbx"))
@@ -1319,8 +1332,8 @@ def geometry(body, zmid, wl, r, tire_w, belt_z, doors_y, port_yz, extra_areas=()
     port = (-hit.x / S, (port_yz[1] - zmid) / S, port_yz[0] / S)
     belt = belt_z - zmid
     front_y, bpil_y, rear_y = doors_y
-    # SEAT front_only (a two-seater): the front row only, PassengerSeat2, the head on template MinidoracatTeslaCore or
-    # MinidoracatTeslaCoreNoFrunk;
+    # SEAT front_only (a two-seater): the front row only, PassengerSeat2, the head on template MinidoracatTeslaCore,
+    # MinidoracatTeslaCoreNoFrunk or MinidoracatTeslaCab;
     # doors_y's third value is then where the cabin ends (cabin.py's ring cut), no door
     two = SEAT.get("front_only")
     if two and SEAT.get("third"):
@@ -1328,9 +1341,34 @@ def geometry(body, zmid, wl, r, tire_w, belt_z, doors_y, port_yz, extra_areas=()
     lo = (bc[:, 2].min() + belt) / 2
     cab = ((belt + bc[:, 2].max()) / 2, *CAB_BOX)
     aw, ah = 0.4725, 0.4725
+    # PHYS (Semi): the physics in the prep's metres (front axle y 0, +Y front, ground 0, -X left), not off the mesh: the
+    # centre of mass `com` (y, height) is the body's origin and the chassis box `body`, the physics `boxes` and the areas
+    # sit relative to it; the wheels, attachments and passengers relative to the model offset `mo`, the mesh centre
+    # placed by the front axle (wl) and the ground (zmid) (VehicleScript.toBullet, BaseVehicle.areaPositionWorld,
+    # getAttachmentLocalPos; the stage-1 prototype's common_head / pbox)
+    ph = CAR.get("PHYS")
+    if ph:
+        cy, ch = ph["com"]
+        fa = max(w[1] for w in wl)                       # the front axle's mesh y
+        mo = (0.0, (zmid - K * ch) / S, -(fa + K * cy) / S)
+
+        def rel(x, y, z):                                # a prep point from the centre of mass (script)
+            return 0.0 - K * x / S, K * (z - ch) / S, K * (y - cy) / S   # (0.0 -: no "-0.0000" on the centre line)
+
+        def box(b):                                      # ((x0, x1), (y0, y1), (z0, z1)) -> (centre, size) (script)
+            (x0, x1), (y0, y1), (z0, z1) = b
+            return rel((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2), (K * abs(x1 - x0) / S, K * (z1 - z0) / S,
+                                                                      K * (y1 - y0) / S)
+        com, ext = box(ph["body"])
+        pbox = [box(b) for b in ph["boxes"]]
+    else:
+        mo = com = (0.0, OY, 0.0)
+        pbox = [((0, lo / S + OY, 0), ((w_body - 0.03) / S, (belt - bc[:, 2].min()) / S, (ln - 0.06) / S)),
+                ((0, cab[0] / S + OY, (cab[2] + cab[3]) / 2 / S), (cab[1] / S, (bc[:, 2].max() - belt) / S,
+                                                                  (cab[2] - cab[3]) / S))]
     sx = ext[0] / 2 + aw / 2
     out = [
-        "        model", "        {", f"            file = {NAME},", f"            scale = {S},", f"            offset = {f4(0, OY, 0)},", "        }",
+        "        model", "        {", f"            file = {NAME},", f"            scale = {S},", f"            offset = {f4(*mo)},", "        }",
         *[ln for p, _ in PAINTS for ln in ("        skin", "        {", f"            texture = Vehicles/{NAME}_{p},", "        }")],
         f"        textureMask = Vehicles/{NAME}_mask,", f"        textureLights = Vehicles/{NAME}_lights,",
         "        textureDamage1Overlay = Vehicles/Veh_Blood_Mask,", "        textureDamage2Overlay = Vehicles/Veh_Blood_Hvy,",
@@ -1338,29 +1376,37 @@ def geometry(body, zmid, wl, r, tire_w, belt_z, doors_y, port_yz, extra_areas=()
         "        textureRust = Vehicles/Veh_Rust,",
         f"        template = {'PassengerSeat2' if two else 'PassengerSeat6' if SEAT.get('third') else 'PassengerSeat4'},",
         f"        extents = {f4(*ext)},", f"        physicsChassisShape = {f4(*ext)},",
-        f"        centerOfMassOffset = {f4(0, OY, 0)},",
-        f"        shadowExtents = {f4(ext[0], ext[2])},", "        shadowOffset = 0.0 0.0,",
+        f"        centerOfMassOffset = {f4(*com)},",
+        f"        shadowExtents = {f4(ext[0], ext[2])},", f"        shadowOffset = {f4(0, com[2]) if ph else '0.0 0.0'},",
         "        useChassisPhysicsCollision = false,",
-        "        physics box", "        {", f"            offset = {f4(0, lo / S + OY, 0)},",
-        f"            extents = {f4((w_body - 0.03) / S, (belt - bc[:, 2].min()) / S, (ln - 0.06) / S)},", "        }",
-        "        physics box", "        {", f"            offset = {f4(0, cab[0] / S + OY, (cab[2] + cab[3]) / 2 / S)},",
-        f"            extents = {f4(cab[1] / S, (bc[:, 2].max() - belt) / S, (cab[2] - cab[3]) / S)},", "        }",
     ]
+    for (o, e) in pbox:
+        out += ["        physics box", "        {", f"            offset = {f4(*o)},", f"            extents = {f4(*e)},", "        }"]
     names = {(-1, 1): "FrontLeft", (1, 1): "FrontRight", (-1, -1): "RearLeft", (1, -1): "RearRight"}
     # mirror each axle: the source tires sit up to 1 mm apart side to side, and with only the rear wheels braking
     # (PZVehicle::control) that asymmetry seeds a yaw that grows through every full stop, always the same way: Model 3
     # 0.3460/-0.3464 front, 0.3499/-0.3496 rear spun 9-29 deg from 122 km/h, mirrored 0-7 (feel-sp tesla-m3m-1028-brake-a, -m)
     wl = [(sxn, *np.mean([w[1:] for w in wl if (w[1] > 0) == (yc > 0)], 0)) for sxn, yc, zc, xo in wl]
-    for sxn, yc, zc, xo in wl:
-        nm = names[(sxn, 1 if yc > 0 else -1)]
-        wr, ww = rear if rear and yc < 0 else (r, tire_w)
-        out += [f"        wheel {nm}", "        {", f"            front = {'true' if yc > 0 else 'false'},",
-                f"            offset = {f4(-sxn * (xo - ww / 2 - WHEEL_INSET) / S, (zc - zmid - WHEEL_LIFT) / S, yc / S)},",
-                f"            radius = {(wr - 0.015) / S:.4f},", f"            width = {ww:.4f},", "        }"]
+    if ph:      # PHYS wheels: (name, prep x, prep y) of the tyre (r, w metres); each Rear* one a whole axle (WheelAxle)
+        pr, pw = ph["tyre"]
+        for nm, x, y in ph["wheels"]:
+            o = np.subtract(rel(x, y, pr), mo) - (0, WHEEL_LIFT / S, 0)
+            out += [f"        wheel {nm}", "        {", f"            front = {str(nm.startswith('Front')).lower()},",
+                    f"            offset = {f4(*o)},", f"            radius = {(K * pr - 0.015) / S:.4f},",
+                    f"            width = {K * pw:.4f},", "        }"]
+    else:
+        for sxn, yc, zc, xo in wl:
+            nm = names[(sxn, 1 if yc > 0 else -1)]
+            wr, ww = rear if rear and yc < 0 else (r, tire_w)
+            out += [f"        wheel {nm}", "        {", f"            front = {'true' if yc > 0 else 'false'},",
+                    f"            offset = {f4(-sxn * (xo - ww / 2 - WHEEL_INSET) / S, (zc - zmid - WHEEL_LIFT) / S, yc / S)},",
+                    f"            radius = {(wr - 0.015) / S:.4f},", f"            width = {ww:.4f},", "        }"]
     # a part's models are its own: `part TireRear*` loads into the parts the template made, each its own model list
     # (VehicleScript.java:310-322, 967-972); installing / removing a tyre shows / hides that part's model
     # (VehiclePart.java:148-155, 175-182), drawn at its wheel (BaseVehicle.java:1752, 4503-4518)
-    for pat, tag in ((("TireFront*", ""), ("TireRear*", "Rear")) if rear else (("Tire*", ""),)):
+    tags = (("TireFront*", ""), ("TireRear*", "Axle")) if ph else (("TireFront*", ""), ("TireRear*", "Rear")) if rear \
+        else (("Tire*", ""),)
+    for pat, tag in tags:
         out += [f"        part {pat}", "        {", "            model InflatedTirePlusWheel", "            {",
                 f"                file = {NAME}_Wheel{tag},", "            }", "        }"]
     seat_y, ground = (SEAT["h"] - zmid) / S, -zmid / S
@@ -1375,6 +1421,7 @@ def geometry(body, zmid, wl, r, tire_w, belt_z, doors_y, port_yz, extra_areas=()
         span = (tz + aw * S / 2, tz - aw * S / 2)
         seats = seats[:2] + (("MiddleLeft", 1, rz, (bpil_y, rear_y)), ("MiddleRight", -1, rz, (bpil_y, rear_y)),
                              ("RearLeft", 1, tz, span), ("RearRight", -1, tz, span))
+    at = SEAT.get("at", {})
     for nm, side, z, door in seats:        # showPassenger: the 3-D cabin shows whoever sits there through the glass
         row3 = bool(third) and nm.startswith("Rear")
         # optional SEAT front_x: the front row's side x apart from the 2nd row's x (default x; cabin.py FRONT_X)
@@ -1384,8 +1431,10 @@ def geometry(body, zmid, wl, r, tire_w, belt_z, doors_y, port_yz, extra_areas=()
         sy = seat_y - (third["drop"] if row3 else SEAT.get("rear", 0) if nm[0] in "RM" else 0) / S
         sy -= seat_anim.seat_drop(CAR) / S   # at the depth reference: the car's own clips lift the body (seat_anim.py)
         own = [f"            door = Door{nm.replace('Middle', 'Rear')},"] if third and nm.startswith("Middle") else []
+        # SEAT at (Semi): {seat: (mesh x, - left; mesh y shift[, ...])}, a seat off the side-by-side row (cabin.py)
+        ix, iz = (0.0 - at[nm][0] / S, (z + at[nm][1]) / S) if nm in at else (side * x / S, z / S)
         out += [f"        passenger {nm}", "        {", *own, "            showPassenger = true,", "            position inside", "            {",
-                f"                offset = {f4(side * x / S, sy, z / S)},", "                rotate = 0.0 0.0 0.0,", "            }",
+                f"                offset = {f4(ix, sy, iz)},", "                rotate = 0.0 0.0 0.0,", "            }",
                 "            position outside", "            {",
                 f"                offset = {f4(side * (w_body / 2 + SEAT['out']) / S, ground, oz / S)},", "                rotate = 0.0 0.0 0.0,",
                 f"                area = Seat{oa},", "            }", "        }"]
@@ -1393,18 +1442,27 @@ def geometry(body, zmid, wl, r, tire_w, belt_z, doors_y, port_yz, extra_areas=()
              ("GasTank", sx, port[2], aw, ah)]
     for nm, side, z, door in seats:
         areas.append(("Seat" + nm, side * sx, ((door[0] + door[1]) / 2) / S, aw, (door[0] - door[1]) / S))
-    for sxn, yc, zc, xo in wl:
-        areas.append(("Tire" + names[(sxn, 1 if yc > 0 else -1)], -sxn * sx, yc / S, aw, ah))
     for nm, yc_, ln_ in extra_areas:           # across the body and both standing strips (a pickup's bed sides)
         areas.append((nm, 0, yc_ / S, ext[0] + 2 * aw, ln_ / S))
+    if ph:      # areas from the centre of mass: Engine / TruckBed off the chassis box, the rest off the mesh centre
+        areas = [(a[0], a[1], a[2] + (com[2] if i < 2 else mo[2]), *a[3:]) for i, a in enumerate(areas)]
+        areas += [("Tire" + nm, sx if "Left" in nm else -sx, rel(x, y, 0)[2], aw, ah) for nm, x, y in ph["wheels"]]
+    else:
+        areas[3 + len(seats):3 + len(seats)] = [("Tire" + names[(sxn, 1 if yc > 0 else -1)], -sxn * sx, yc / S, aw, ah)
+                                                for sxn, yc, zc, xo in wl]
     for nm, ax, az, w, h in areas:
         out += [f"        area {nm}", "        {", f"            xywh = {f4(ax, az, w, h)},", "        }"]
-    tow = (bc[:, 2].min() + 0.08) / S
-    out += ["        attachment trailer", "        {", f"            offset = {f4(0, tow, -(ln / 2 + 0.03) / S)},",
-            "            rotate = 0.0 0.0 0.0,", "            zoffset = -1.0,", "        }",
-            "        attachment trailerfront", "        {", f"            offset = {f4(0, tow, (ln / 2 + 0.03) / S)},",
-            "            rotate = 0.0 0.0 0.0,", "            zoffset = 1.0,", "        }",
-            f"        /* charge port: side end of the left tail light ({CAR['PORT_NOTE']}) */" if not CAR.get("PORT")
+    if ph:      # PHYS attach: (name, prep point, canAttach) instead of the vanilla trailer / trailerfront hitches
+        for nm, p, can in ph["attach"]:
+            out += [f"        attachment {nm}", "        {", f"            offset = {f4(*np.subtract(rel(*p), mo))},",
+                    "            rotate = 0.0 0.0 0.0,", f"            canAttach = {can},", "        }"]
+    else:
+        tow = (bc[:, 2].min() + 0.08) / S
+        out += ["        attachment trailer", "        {", f"            offset = {f4(0, tow, -(ln / 2 + 0.03) / S)},",
+                "            rotate = 0.0 0.0 0.0,", "            zoffset = -1.0,", "        }",
+                "        attachment trailerfront", "        {", f"            offset = {f4(0, tow, (ln / 2 + 0.03) / S)},",
+                "            rotate = 0.0 0.0 0.0,", "            zoffset = 1.0,", "        }"]
+    out += [f"        /* charge port: side end of the left tail light ({CAR['PORT_NOTE']}) */" if not CAR.get("PORT")
             else f"        /* charge port: {CAR['PORT_NOTE']} */",
             "        attachment chargeport", "        {", f"            offset = {f4(*port)},", "            rotate = 0.0 0.0 0.0,", "        }"]
     out += list(extra)
@@ -1436,18 +1494,27 @@ def geometry(body, zmid, wl, r, tire_w, belt_z, doors_y, port_yz, extra_areas=()
     open(os.path.join(TMP, "geometry_block.txt"), "w", newline="\n").write(block)
     # splice into the vehicle script: everything after the geometry marker up to the vehicle's closing brace is ours.
     # The hand-written head above the marker inherits the template with these doors and seats (MinidoracatTesla_
-    # template.txt: Core the front doors and seats, CoreNoFrunk the same without the frunk (Cybercab), Base the rear
-    # ones too) and says as many seats
+    # template.txt: Core the front doors and seats, CoreNoFrunk the same without the frunk (Cybercab), Cab without the
+    # frunk, trunk and glove box (Semi), Base the rear ones too) and says as many seats
     path = os.path.join(MEDIA, "scripts", "vehicles", NAME + ".txt")
     text = open(path, encoding="utf-8").read()
     head = text.index("\n", text.index(SCRIPT_MARK)) + 1
-    tpls = ("Core", "CoreNoFrunk") if two else ("Base",)
+    tpls = ("Core", "CoreNoFrunk", "Cab") if two else ("Base",)
     seats_line = f"\n        seats = {len(seats)},"
     if not (any(f"template! = MinidoracatTesla{t}," in text[:head] for t in tpls) and seats_line in text[:head]):
         raise SystemExit(f"{NAME}.txt: the head above {SCRIPT_MARK!r} must have template! = MinidoracatTesla"
                          f"{' or '.join(tpls)} and {seats_line.strip()!r} (SEAT front_only {bool(two)})")
     tail = text.rindex("    }\n}")
-    open(path, "w", encoding="utf-8", newline="\n").write(text[:head] + block + text[tail:])
+    script = text[:head] + block + text[tail:]
+    # a whole `template = X` (not X/part/Y) clears the physics boxes and turns useChassisPhysicsCollision back on
+    # (VehicleScript.java:1226-1241, 1298-1305): every one must come before both, or the car keeps its chassis box only
+    lines = [ln.strip() for ln in script.split("\n")]
+    whole = [i for i, ln in enumerate(lines) if ln.startswith("template = ") and "/" not in ln]
+    phys = [i for i, ln in enumerate(lines) if ln.startswith(("useChassisPhysicsCollision", "physics box"))]
+    if whole and phys and whole[-1] > phys[0]:
+        raise SystemExit(f"{NAME}.txt: {lines[whole[-1]]!r} (line {whole[-1] + 1}) after {lines[phys[0]]!r} "
+                         f"(line {phys[0] + 1}): it would clear the physics boxes")
+    open(path, "w", encoding="utf-8", newline="\n").write(script)
     return {"zmid_ground": zmid, "body_width": w_body, "body_height": hgt, "length": ln,
             "port_mesh": [hit.x, port_yz[0], port_yz[1]], "wheelbase": wl[0][1] - wl[2][1], "wheel_radius": r,
             **({"wheel_radius_rear": rear[0]} if rear else {})}

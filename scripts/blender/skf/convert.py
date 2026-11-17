@@ -430,6 +430,12 @@ def load_source():
         if o.name.startswith(DROP):
             bpy.data.objects.remove(o)
             continue
+        unk = C.get("SRC_UNKNOWN")   # (Semi) a material this config does not know is drawn as that one (logged)
+        if unk and any(m and m.name not in {PAINT_MAT, *MAT_RGB, *GLASS_MATS} for m in me.materials):
+            print("SRC_UNKNOWN", o.name, [m.name for m in me.materials if m], "->", unk)
+            for i, m in enumerate(me.materials):
+                if m and m.name not in {PAINT_MAT, *MAT_RGB, *GLASS_MATS}:
+                    me.materials[i] = bpy.data.materials[unk]
         M = P @ o.matrix_world
         R = M.to_3x3().normalized()
         cn = np.empty(len(me.loops) * 3, np.float32)
@@ -2214,6 +2220,8 @@ def stage_build():
         # that fraction of the rear tyre's radius
         rim = C["WHEEL_RIM_REAR"] * rear[0] if C.get("WHEEL_RIM_REAR") else pv.WHEEL_RIM * tire[0]
         g["tris"]["WheelRear"] = pv.stage_wheel(*rear, rim=rim, tag="Rear")
+    if C.get("PHYS"):   # (Semi) each drive axle one model: its tyres at PHYS axle (metres from the centre line)
+        g["tris"]["WheelAxle"] = pv.stage_wheel(*tire, tag="Axle", axle=[x * K for x in C["PHYS"]["axle"]])
     g["tris"]["Detail"] = stage_detail(float(ctr[1]))
     json.dump(g, open(os.path.join(TMP, "geometry.json"), "w"), indent=1)
     print("GEOMETRY", json.dumps(g))
@@ -2221,10 +2229,12 @@ def stage_build():
 
 def script_cy():
     """The body's centring along y (stage_build's ctr[1]) read back from its vehicle script: pzveh.geometry writes the
-    front passengers at z = ((front + B pillar) / 2 - SEAT back - cy) / S, 4 decimals (cy +-0.0002)."""
+    front passengers at z = ((front + B pillar) / 2 - SEAT back - cy) / S, 4 decimals (cy +-0.0002), plus SEAT at's
+    y shift (Semi)."""
     text = open(os.path.join(pv.MEDIA, "scripts", "vehicles", pv.NAME + ".txt"), encoding="utf-8").read()
     m = re.search(r"passenger FrontLeft\s*\{.*?position inside\s*\{\s*offset = \S+ \S+ (\S+),", text, re.S)
-    return (DOOR_Y[0] + DOOR_Y[1]) / 2 - pv.SEAT["back"][0] - float(m.group(1)) * pv.S
+    dy = pv.SEAT.get("at", {}).get("FrontLeft", (0, 0))[1]
+    return (DOOR_Y[0] + DOOR_Y[1]) / 2 - pv.SEAT["back"][0] + dy - float(m.group(1)) * pv.S
 
 
 def stage_detail(cy=None):
@@ -3646,10 +3656,11 @@ def stage_view(out, heads, state, skin="UltraRed", app=False):
         bpy.context.selected_objects[0].data.materials.append(mat("extra", (176, 140, 112)))
     # WHEELS=1: the wheel FBX at the four script offsets (rendered centre = offset + WHEEL_LIFT), STEER=<rad> turns the
     # front pair about the vertical (the game's m.rotationY, BaseVehicle.java:7440), SPIN=<rad> turns all about the axle;
-    # the rear pair on <NAME>_WheelRear when the script has it (TIRE_AXLES)
+    # the rear pair on <NAME>_WheelRear when the script has it (TIRE_AXLES), on <NAME>_WheelAxle (Semi's PHYS: whole
+    # axles, the front wheel's texture)
     if app or os.environ.get("WHEELS") == "1":
         block = open(os.path.join(TMP, "geometry_block.txt"), encoding="utf-8").read()
-        tags = {"true": "", "false": "Rear" if "part TireRear*" in block else ""}
+        tags = {"true": "", "false": "Axle" if "_WheelAxle," in block else "Rear" if "part TireRear*" in block else ""}
         src = {}
         for tag in dict.fromkeys(tags.values()):
             bpy.ops.import_scene.fbx(filepath=os.path.join(pv.VEH_DIR, pv.NAME + "_Wheel" + tag + ".fbx"),
@@ -3659,7 +3670,8 @@ def stage_view(out, heads, state, skin="UltraRed", app=False):
             wm.use_backface_culling = True
             wm.use_nodes = True
             tx = wm.node_tree.nodes.new("ShaderNodeTexImage")
-            tx.image = bpy.data.images.load(os.path.join(pv.TEX_DIR, pv.NAME + "_wheel" + tag.lower() + ".png"))
+            tx.image = bpy.data.images.load(os.path.join(pv.TEX_DIR, pv.NAME + "_wheel" + tag.lower().replace("axle", "")
+                                                         + ".png"))
             tx.interpolation = "Closest"
             wm.node_tree.links.new(tx.outputs[0], wm.node_tree.nodes["Principled BSDF"].inputs[0])
             wheel.data.materials.clear()

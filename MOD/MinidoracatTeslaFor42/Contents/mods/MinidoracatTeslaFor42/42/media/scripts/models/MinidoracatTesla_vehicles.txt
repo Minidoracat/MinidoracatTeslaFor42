@@ -729,4 +729,61 @@ module Base
         invertX = false,
         scale = 0.5495,
     }
+
+    /* Semi: same build, units and shaders (CAR=semi; the MOD's own body from Tesla's pictures, */
+    /* scripts/blender/skf/prep_semi.py). The front tyres on Wheel, each drive axle's four tyres on one WheelAxle */
+    /* model (one physics wheel per axle on the centre line: cars/semi.py PHYS), on the front wheel's texture. */
+    model MinidoracatTesla_Semi
+    {
+        mesh = vehicles/MinidoracatTesla_Semi,
+        shader = MinidoracatTesla_vehicle,
+        static = true,
+        invertX = false,
+        scale = 0.5495,
+    }
+    model MinidoracatTesla_Semi_Glass
+    {
+        mesh = vehicles/MinidoracatTesla_Semi_Glass,
+        shader = MinidoracatTesla_vehicle,
+        static = true,
+        invertX = false,
+        scale = 0.5495,
+    }
+    model MinidoracatTesla_Semi_Wheel
+    {
+        mesh = vehicles/MinidoracatTesla_Semi_Wheel,
+        texture = Vehicles/MinidoracatTesla_Semi_wheel,
+        shader = vehiclewheel,
+        scale = 0.5495,
+    }
+    model MinidoracatTesla_Semi_WheelAxle
+    {
+        mesh = vehicles/MinidoracatTesla_Semi_WheelAxle,
+        texture = Vehicles/MinidoracatTesla_Semi_wheel,
+        shader = vehiclewheel,
+        scale = 0.5495,
+    }
+    model MinidoracatTesla_Semi_DoorFrontLeft
+    {
+        mesh = vehicles/MinidoracatTesla_Semi_Doors|DoorFrontLeft,
+        shader = MinidoracatTesla_vehicle,
+        static = false,
+        scale = 0.5495,
+    }
+    model MinidoracatTesla_Semi_DoorFrontRight
+    {
+        mesh = vehicles/MinidoracatTesla_Semi_Doors|DoorFrontRight,
+        shader = MinidoracatTesla_vehicle,
+        static = false,
+        scale = 0.5495,
+    }
+    model MinidoracatTesla_Semi_Detail
+    {
+        mesh = vehicles/MinidoracatTesla_Semi_Detail,
+        texture = Vehicles/MinidoracatTesla_Detail,
+        shader = MinidoracatTesla_viewpoint,
+        static = true,
+        invertX = false,
+        scale = 0.5495,
+    }
 }
