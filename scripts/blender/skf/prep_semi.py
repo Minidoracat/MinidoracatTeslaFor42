@@ -66,7 +66,19 @@ FIN = ((W0 - 0.0585, -3.51, 2.62), (0.0585, 0.13, 1.42), 0.03)   # deflector sid
 ARCH = dict(y=-0.035, z=0.503, r=0.577, x_in=0.85)  # front wheel house: through the feet (+0.50 / -0.57, z 0.72)
 #                                                   and the top (1.08), side p04-x53
 ARCH_LIP = 0.04                      # the black lip round the front wheel house (side p04-x53)
-MIRROR = dict(head=((1.43, 0.295, 2.04), (0.07, 0.095, 0.37), 0.04), arm=((1.29, 0.26, 1.74), (0.13, 0.04, 0.04), 0.02))
+# mirror: a rounded head on an arm out of the windshield's foot (hr 1920 x 1280: arm (430-470, 640), head 560-660)
+MIRROR = dict(head=((1.43, 0.295, 2.04), (0.07, 0.095, 0.37), 0.065), arm=((1.17, 0.36, 1.72), (1.42, 0.30, 1.74), 0.03))
+# character lines (|x|, y, z polyline on the surface, height, half width), ray cast off the pictures onto the shell:
+# the crease from the windshield's foot down to the headlight's inner end (hr (628, 660) -> (553, 795)) and the waist
+# from the headlight's tip back over the wheel arch to the door (side (113, 391) -> (263, 350))
+RIDGES = ((((0.63, 0.716, 1.573), (0.621, 0.791, 1.457), (0.613, 0.875, 1.323), (0.608, 0.961, 1.19),
+            (0.613, 1.039, 1.06)), 0.006, 0.07),
+          (((1.15, 0.56, 1.089), (1.21, 0.246, 1.178), (1.256, -0.086, 1.274), (1.259, -0.408, 1.354),
+            (1.259, -0.673, 1.418)), 0.005, 0.07))
+INTAKE = ((0.0, 1.255, 0.42), (0.50, 0.145, 0.06), 0.015)   # the black lower nose's recess, 3 cm deep (hr: z 0.36-0.48,
+#                                                             |x| < 0.46 at (500, 948))
+REAR_RECESS = ((0.0, -3.57, 2.49), (W0 - 0.10, 0.13, 1.37), 0.04)  # the cab's back wall: a 10 cm frame round a 20 cm
+#                                                                    deep wall (rear_left p01-x892)
 GRID = dict(half=1.53, y=(-3.98, 1.24), z=(0.05, 4.12))
 CELL = 0.03                          # surface nets cell: about 210k cab triangles (Cybercab's source: 145k)
 
@@ -74,18 +86,28 @@ CELL = 0.03                          # surface nets cell: about 210k cab triangl
 GLASS = ((2.0, 1.66), (0.27, 1.66), (-0.66, 1.85), (-1.55, 2.08), (-1.63, 2.15), (-1.65, 2.46), (-1.60, 2.75),
          (2.0, 2.75))                                # side glass band (y, z); the windshield its front part
 GLASS_FRAME = 0.03                   # black border round the glass band
-A_PILLAR = (0.307, -0.514, 0.035)    # y at z 1.66, dy/dz, half width: windshield | vent window (side 165,280-210,192)
+COWL = 0.08                          # black band along the windshield's foot (hr: the wipers' strip, ~(200-560, 640-660))
+A_PILLAR = (0.307, -0.514, 0.05)     # y at z 1.66, dy/dz, half width: windshield | vent window (side 165,280-210,192)
 DOOR = dict(y=(-1.73, -0.66), z=(0.72, 2.77))       # door seams (u 395 / 262), its top the belt under the roof cap
 SEAM2 = -2.79                        # second panel seam (u 527)
 BELT = ((-1.73, 2.77), (-2.79, 2.79), (-3.37, 2.95))  # roof cap's lower edge behind the door
 GROOVE = 0.003
-WHITE_Z = 0.715                      # white body | black skirt and lower bumper (side rows 437-440)
+WHITE_Z = 0.715                      # white body | dark skirt (side rows 437-440)
+WHITE_NOSE = (0.55, (0.66, 0.72))    # the white nose wraps down to z 0.55 in front of y 0.66-0.72 (side (75, 453), hr
+#                                      (350, 929)); the black below it, the intake in its middle
 WHITE_Y = -3.375                     # white roof / side end, black deflector behind (u 600)
 HANDLE = (-0.88, -0.82, 1.08, 1.15)  # door handle recess (y0, y1, z0, z1): side (285, 388), p07-x82
 REPEATER = (-0.52, -0.46, 1.09, 1.13)   # side repeater in front of the door
-LAMP = dict(y=(0.95, 0.54), z0=(0.995, 1.035), z1=(1.025, 1.085))   # light bar: (front, rear) of its corner wedge
+# light bar across the nose, on into the corner wedges (head lamps): y = (front, tip); z0 / z1 (bottom / top) over
+# t = 0 at the tip .. 1 in front: a wedge 6 cm tall at its front end narrowing to 1.7 cm at the tip (a point there
+# comes out of the 3 cm cells as slivers; side (72-113, 391-398); hr
+# (553, 815) the bar meets the lamp at |x| 0.61)
+LAMP = dict(y=(1.06, 0.53), z0=((0.0, 1.078), (0.85, 0.985), (1.0, 0.995)), z1=((0.0, 1.095), (0.85, 1.05), (1.0, 1.025)))
+LAMP_RIM = 0.01                      # the lamps' dark surround (hr: a grey line round the bar)
+# amber marker lamps along the windshield's top (hr: five at (585-794, 396-425)), |x| symmetrised
+MARKERS = (-0.64, -0.137, 0.0, 0.137, 0.64)
 
-MATS = ("Paint", "Glass", "Trim", "Liner", "HeadLight", "TailLight")
+MATS = ("Paint", "Glass", "Trim", "Liner", "HeadLight", "TailLight", "Frame", "RearWall", "SkirtGrey", "Mirror")
 PANELS = ("Body", "DoorFrontLeft", "DoorFrontRight")
 PANES = ("Glass_Windshield", "Glass_DoorLeft", "Glass_DoorRight", "Glass_VentLeft", "Glass_VentRight")
 
@@ -105,13 +127,17 @@ BOXES = dict(   # name: (material, (x0, x1) on the right (mirrored), (y0, y1), (
     axle_r=("Trim", (0.0, 0.62), (-5.73, -5.55), (0.40, 0.58)),
     fifth=("Trim", (0.0, 0.46), (-5.50, -4.67), (1.13, 1.19)),        # fifth wheel plate, top z 1.19
     fifth_mount=("Trim", (0.30, 0.42), (-5.30, -4.85), (1.01, 1.13)),
-    tail_lamp=("TailLight", (0.20, 0.32), (-6.232, -6.22), (0.80, 0.88)),
+    tail_lamp_mount=("Trim", (0.18, 0.34), (-6.232, -6.22), (0.78, 0.90)),
 )
+TAIL_LAMPS = (0.26, -6.232, 0.84, 0.05)   # round tail lamps on the cross member (|x|, y, z, r): rear_left (705, 600);
+BRAKE_R = 0.03                            # [INFERENCE] combination lamps: their middle (BrakeLight) the brake light
+REFLECTOR = (0.66, 1.20, -6.654, 0.84, 0.88, 4)   # red / white strips on the rear fenders' back (x0, x1, y, z0, z1,
+#                                                  segments; 6 mm thick to y -6.66): rear_left (620-680, 610)
 PRISMS = dict(  # name: (material, (x0, x1), (y, z) outline): fenders between and behind the drive axles
-    fender_mid=("Trim", (1.19, 1.23), ((-4.70, 1.03), (-5.22, 1.03), (-5.16, 0.50), (-5.10, 0.10), (-4.95, 0.10),
-                                       (-4.89, 0.50))),
-    fender_rear=("Trim", (0.62, 1.235), ((-6.02, 0.99), (-6.66, 0.90), (-6.66, 0.26), (-6.30, 0.22), (-6.12, 0.12),
-                                         (-6.18, 0.30), (-6.18, 0.70), (-6.10, 0.90))),
+    fender_mid=("Fender", (1.19, 1.23), ((-4.70, 1.03), (-5.22, 1.03), (-5.16, 0.50), (-5.10, 0.10), (-4.95, 0.10),
+                                        (-4.89, 0.50))),
+    fender_rear=("Fender", (0.62, 1.235), ((-6.02, 0.99), (-6.654, 0.90), (-6.654, 0.26), (-6.30, 0.22),
+                                          (-6.12, 0.12), (-6.18, 0.30), (-6.18, 0.70), (-6.10, 0.90))),
 )
 CABIN = dict(floor_z=0.80, y=(0.25, -3.30))   # [INFERENCE] the door sill 0.72; front: the cowl, rear: inside the wall
 
@@ -121,19 +147,60 @@ def interp(tab, x):
     return np.interp(x, tab[:, 0], tab[:, 1])
 
 
+def sinterp(tab, x):
+    """interp with a smoothstep between the knots: no slope breaks (a break shades as a band across the nose)."""
+    tab = np.asarray(tab, float)
+    i = np.clip(np.searchsorted(tab[:, 0], x) - 1, 0, len(tab) - 2)
+    s = np.clip((x - tab[i, 0]) / (tab[i + 1, 0] - tab[i, 0]), 0, 1)
+    return tab[i, 1] + (tab[i + 1, 1] - tab[i, 1]) * s * s * (3 - 2 * s)
+
+
 def bow(ax, z):
     """How far the nose's outline sits back of its centreline at |x| and height z (the plan's rounding)."""
-    return interp(BOW_Z, z) * (1.19 - interp(PLAN_NOSE, ax))
+    return sinterp(BOW_Z, z) * (1.19 - interp(PLAN_NOSE, ax))
 
 
-_PROF = np.r_[PROFILE[:, ::-1], [(-8.0, PROFILE[-1, 0]), (-8.0, SKIRT_Z), (-0.62, SKIRT_Z), (-0.55, BUMPER_Z),
-                                 (0.95, BUMPER_Z)]]
+def smooth_poly(p, fixed, it):
+    """[1 2 1] / 4 passes over a polyline, the `fixed` points held."""
+    p = np.array(p, float)
+    for _ in range(it):
+        q = p.copy()
+        q[1:-1] = 0.25 * p[:-2] + 0.5 * p[1:-1] + 0.25 * p[2:]
+        q[fixed] = p[fixed]
+        p = q
+    return p
+
+
+# the fitted rows zig-zag by 1-2 cm, which shades as bands across the nose: smoothed, the bar's edge (z 0.93), the
+# windshield's foot (1.668) and the roof from z 3.585 back held
+_PROFILE = smooth_poly(PROFILE, [0, 8, 20] + list(range(37, len(PROFILE))), 4)
+_PROF = np.r_[_PROFILE[:, ::-1], [(-8.0, PROFILE[-1, 0]), (-8.0, SKIRT_Z), (-0.62, SKIRT_Z), (-0.55, BUMPER_Z),
+                                  (0.95, BUMPER_Z)]]
+
+
+def seg_dist(p, line):
+    """Distance from the points p to a 3-D polyline."""
+    best = np.full(len(p), np.inf)
+    for a, b in zip(line[:-1], line[1:]):
+        ab = b - a
+        t = np.clip((p - a) @ ab / (ab @ ab), 0, 1)
+        best = np.minimum(best, np.linalg.norm(p - a - t[:, None] * ab, axis=1))
+    return best
+
+
+def ridges(pm):
+    """Character lines raised off the surface (pm: |x|, y, z): a soft ridge (a sharp one is finer than the 3 cm
+    surface nets cell and comes out jagged) reads as a crease in the light."""
+    s = np.zeros(len(pm))
+    for line, h, w in RIDGES:
+        s += h * np.clip(1 - (seg_dist(pm, np.asarray(line, float)) / w) ** 2, 0, 1) ** 2
+    return s
 
 
 def half_width(y, z):
     tuck = ROOF_TUCK["d"] * np.clip((z - ROOF_TUCK["z"][0]) / (ROOF_TUCK["z"][1] - ROOF_TUCK["z"][0]), 0, 1) * \
         np.clip((y - ROOF_TUCK["y"][0]) / (ROOF_TUCK["y"][1] - ROOF_TUCK["y"][0]), 0, 1)
-    w = W0 - interp(LEAN, z) - tuck
+    w = W0 - sinterp(LEAN, z) - tuck
     t = np.clip((REAR["defl_y"] - y) / (REAR["defl_y"] - REAR["y"]), 0, 1)
     wr = REAR["w_bot"] + (REAR["w_top"] - REAR["w_bot"]) * np.clip((z - 1.19) / 2.86, 0, 1)
     return np.where(z > REAR["box_z"], w + (wr - w) * t, W0)
@@ -150,14 +217,17 @@ def cab_parts(p):
     ax = np.abs(x)
     d_prof = poly_sdf(_PROF, y + bow(ax, z), z)
     d_side = ax - half_width(y, z)
-    d = smax(d_prof, d_side, interp(SHOULDER, z))
+    pm = np.c_[ax, y, z]
+    d = smax(d_prof, d_side, interp(SHOULDER, z)) - ridges(pm)
+    d = np.maximum(d, -rbox(p, *INTAKE))
     d_rear = np.minimum(REAR["y"] - y, np.maximum(REAR["box_y"] - y, z - REAR["box_z"]))
     d = np.maximum(d, d_rear)
-    d = np.minimum(d, rbox(np.c_[ax, y, z], *FIN))
+    d = np.minimum(d, rbox(pm, *FIN))
+    d = np.maximum(d, -rbox(p, *REAR_RECESS))
     house = np.maximum(np.hypot(y - ARCH["y"], z - ARCH["z"]) - ARCH["r"], ARCH["x_in"] - ax)
-    d = np.maximum(d, -house)
-    pm = np.c_[ax, y, z]
-    mir = np.minimum(rbox(pm, *MIRROR["head"]), rbox(pm, *MIRROR["arm"]))
+    d = smax(d, -house, 0.025)       # a rounded arch edge: a sharp one comes out of the surface nets stair-stepped
+    a, b, r = MIRROR["arm"]
+    mir = np.minimum(rbox(pm, *MIRROR["head"]), seg_dist(pm, np.array((a, b))) - r)
     return d, mir
 
 
@@ -216,16 +286,20 @@ def levels():
         glass_frame=lambda x, y, z, ax: poly_sdf(_GLASS, y, z) + GLASS_FRAME,
         ap_front=lambda x, y, z, ax: y_ap(z) + A_PILLAR[2] - y,
         ap_rear=lambda x, y, z, ax: y_ap(z) - A_PILLAR[2] - y,
-        white_z=lambda x, y, z, ax: WHITE_Z - z,
+        white_z=lambda x, y, z, ax: interp(((WHITE_NOSE[1][0], WHITE_Z), (WHITE_NOSE[1][1], WHITE_NOSE[0])), y) - z,
+        cowl=lambda x, y, z, ax: z - GLASS[0][1] - COWL,
+        rear_wall=lambda x, y, z, ax: rbox(np.c_[x, y, z], *REAR_RECESS) - 0.005,
         white_y=lambda x, y, z, ax: WHITE_Y - y,
         door=box_g(DOOR["y"], DOOR["z"]),
         seam2=lambda x, y, z, ax: np.maximum.reduce([y - SEAM2, WHITE_Z - z, z - interp(BELT[::-1], y), 0.9 - ax]),
         belt=lambda x, y, z, ax: np.maximum(z - interp(BELT[::-1], y), np.maximum(y - DOOR["y"][0], 0.9 - ax)),
         handle=box_g(HANDLE[:2], HANDLE[2:]),
         repeater=box_g(REPEATER[:2], REPEATER[2:]),
-        lamp=lambda x, y, z, ax: np.maximum.reduce([LAMP["y"][1] - y,
-                                                    interp(((0.0, LAMP["z0"][1]), (1.0, LAMP["z0"][0])), lamp_t(y)) - z,
-                                                    z - interp(((0.0, LAMP["z1"][1]), (1.0, LAMP["z1"][0])), lamp_t(y))]),
+        lamp=lambda x, y, z, ax: np.maximum.reduce([LAMP["y"][1] - y, interp(LAMP["z0"], lamp_t(y)) - z,
+                                                    z - interp(LAMP["z1"], lamp_t(y))]),
+        lamp_rim=lambda x, y, z, ax: np.maximum.reduce([LAMP["y"][1] - y,
+                                                        interp(LAMP["z0"], lamp_t(y)) - LAMP_RIM - z,
+                                                        z - interp(LAMP["z1"], lamp_t(y)) - LAMP_RIM]),
         arch_lip=lambda x, y, z, ax: np.hypot(y - ARCH["y"], z - ARCH["z"]) - ARCH["r"] - ARCH_LIP,
     )
 
@@ -248,23 +322,28 @@ def classify(v, t):
     pan = np.zeros(len(t), np.int8)
     pane = np.full(len(t), -1, np.int8)
     glass = s["glass_frame"]
-    ws = glass & s["ap_front"]
+    ws = glass & s["ap_front"] & ~s["cowl"]
     vent = glass & ~s["ap_rear"] & (y > DOOR["y"][1] + 0.02)
     door_glass = glass & (y < DOOR["y"][1] - 0.02)
     mat[ws | vent | door_glass] = 1
     pane[ws] = 0
     pane[door_glass] = np.where(x[door_glass] < 0, 1, 2)
     pane[vent] = np.where(x[vent] < 0, 3, 4)
-    mat[s["glass"] & (mat == 0)] = 2                 # frame, pillars, door glass frame
-    mat[~s["white_z"] | ~s["white_y"]] = 2
-    mat[s["handle"] | s["repeater"]] = 2
-    mat[s["lamp"] & (mat == 0)] = 4
+    mat[s["glass"] & (mat == 0)] = 6                 # frame, pillars, the cowl band, door glass frame
+    low = ~s["white_z"]
+    mat[low] = 2                                     # black lower nose and intake
+    mat[low & (y < ARCH["y"]) | ~s["white_y"]] = 8   # dark grey: side skirt behind the front wheel (the change of colour
+    #                                                  hidden in the arch), deflector, rear frame
+    mat[s["handle"] | s["repeater"]] = 6
+    mat[s["lamp_rim"] & (mat == 0)] = 6             # the lamps' dark surround: white lamps read on white paint
+    mat[s["lamp"] & (mat == 6)] = 4
+    mat[s["rear_wall"]] = 7
     house = np.hypot(y - ARCH["y"], z - ARCH["z"])
     liner = (house < ARCH["r"] + 0.004) & (ax < ARCH["x_in"] + 0.004) & (ax > 0.3) | \
             (house < ARCH["r"] + 0.004) & (ax < half_width(y, z) - 0.004)
     mat[s["arch_lip"] & (mat == 0)] = 2                # black arch lip
     mat[liner] = 3
-    mat[mir < cab] = 2
+    mat[mir < cab] = 9
     door = s["door"] & ~liner
     pan[door] = np.where(x[door] < 0, 1, 2)
     return mat, pan, pane
@@ -278,7 +357,7 @@ def grooves(v, t, mat):
     near = np.zeros(len(t), bool)
     for k in SEAMS:
         near |= np.abs(lv[k](c[:, 0], c[:, 1], c[:, 2], ax)) < GROOVE
-    return np.where(near & (mat == 0), 2, mat)
+    return np.where(near & (mat == 0), 6, mat)
 
 
 def cab_mesh(h=CELL):
@@ -355,6 +434,24 @@ def cover(rr, dish=0.02):
     return v, t
 
 
+def disc(r, th, n=24):
+    """A closed short cylinder along +x from 0 to th (r, n sides)."""
+    return lathe(((0.0, 0.0), (r, 0.0), (r, th), (0.0, th)), n)
+
+
+def hub(sx):
+    """The front rim's dark holes (ten round the bolt circle) and its hub cap, as discs just proud of the rim face."""
+    vs, ts, n = [], [], 0
+    for c, r in [((0.0, 0.0), 0.085)] + [((0.205 * np.cos(a), 0.205 * np.sin(a)), 0.032)
+                                          for a in np.linspace(0, 2 * np.pi, 10, endpoint=False)]:
+        v, t = disc(r, 0.006, 16)
+        vs.append(v + (0.0, *c))
+        ts.append(t + n)
+        n += len(v)
+    v, t = np.concatenate(vs), np.concatenate(ts)
+    return v * (sx, 1, 1), (t if sx > 0 else t[:, ::-1])
+
+
 def wheels():
     """name -> (origin, vertices relative to it, triangles, material). Drive tyres keep their axle's centre."""
     out = {}
@@ -365,12 +462,15 @@ def wheels():
         cv, ct = cover(RIM_R)
         face = sx * (FRONT["x"] + FRONT["w"] / 2 - 0.035)
         out[f"Cover_F_{side}"] = (o, cv * (sx, 1, 1) + (face, 0, 0), ct if sx > 0 else ct[:, ::-1], "Rim")
+        hv, ht = hub(sx)
+        out[f"Hub_F_{side}"] = (o, hv + (face - sx * 0.005, 0, 0), ht, "Hub")
         for k, y in enumerate(DRIVE["y"], 1):
             o = np.array((0.0, y, TYRE_R))
             for io, x in (("O", DRIVE["x"][0]), ("I", DRIVE["x"][1])):
                 tv, tt = tyre(DRIVE["w"])
                 out[f"Tyre_D{k}_{side}{io}"] = (o, tv + (sx * x, 0, 0), tt, "Tyre")
-            cv, ct = cover(0.31, dish=0.0)
+            # aero cover: a shallow dome (side p04-x53: the covers' sheen)
+            cv, ct = lathe(((0.0, 0.035), (0.08, 0.033), (0.2, 0.022), (0.31, 0.0)))
             face = sx * (DRIVE["x"][0] + DRIVE["w"] / 2 - 0.01)
             out[f"Cover_D{k}_{side}O"] = (o, cv * (sx, 1, 1) + (face, 0, 0), ct if sx > 0 else ct[:, ::-1], "Cover")
     return out
@@ -391,7 +491,40 @@ def chassis():
         v, t = prism(poly, x)
         v2, t2 = mirror_x(v, t)
         out[nm] = (np.concatenate([v, v2]), np.concatenate([t, t2 + len(v)]), m)
+    for r, th, m in ((TAIL_LAMPS[3], 0.012, "TailLight"), (BRAKE_R, 0.016, "BrakeLight")):   # discs facing back (-y)
+        v, t = disc(r, th)
+        v, t = v[:, [1, 0, 2]] * (1, -1, 1) + (TAIL_LAMPS[0], TAIL_LAMPS[1], TAIL_LAMPS[2]), t
+        v2, t2 = mirror_x(v, t)
+        out[m.lower()] = (np.concatenate([v, v2]), np.concatenate([t, t2 + len(v)]), m)
+    x0, x1, y, z0, z1, n = REFLECTOR
+    xs = np.linspace(x0, x1, n + 1)
+    for col, ks in (("ReflectorRed", range(0, n, 2)), ("ReflectorWhite", range(1, n, 2))):
+        vs, ts, m = [], [], 0
+        for k in ks:
+            for sx in (1, -1):
+                v, t = box((xs[k], xs[k + 1]), (y - 0.006, y), (z0, z1))
+                v, t = (v, t) if sx > 0 else mirror_x(v, t)
+                vs.append(v)
+                ts.append(t + m)
+                m += len(v)
+        out[col.lower()] = (np.concatenate(vs), np.concatenate(ts), col)
+    out["markers"] = markers()
     return out
+
+
+def markers():
+    """Five amber lamps on the windshield's top frame: small boxes sat on the shell (surface found along -y)."""
+    z = GLASS[-1][1] + 0.015
+    vs, ts, m = [], [], 0
+    for x in MARKERS:
+        ys = np.linspace(1.0, -1.0, 2001)
+        d = field(np.c_[np.full_like(ys, x), ys, np.full_like(ys, z)])
+        y = ys[np.argmax(d < 0)]
+        v, t = box((x - 0.035, x + 0.035), (y - 0.015, y + 0.012), (z - 0.012, z + 0.012))
+        vs.append(v)
+        ts.append(t + m)
+        m += len(v)
+    return np.concatenate(vs), np.concatenate(ts), "MarkerLight"
 
 
 def all_mesh():
@@ -419,15 +552,30 @@ def lines():
         cabin_floor_z=CABIN["floor_z"], cabin_y=list(CABIN["y"]),
         cabin_note="[INFERENCE] floor from the door sill (z 0.72), not measured; driver seat on the centreline, "
                    "the folding seat behind it on the right (ERG p5)",
+        tail_lamps=dict(centres=[[-TAIL_LAMPS[0], TAIL_LAMPS[1] - 0.012, TAIL_LAMPS[2]],
+                                 [TAIL_LAMPS[0], TAIL_LAMPS[1] - 0.012, TAIL_LAMPS[2]]], r=TAIL_LAMPS[3],
+                        normal=[0, -1, 0], object="TailLight"),
+        brake_lamps=dict(centres=[[-TAIL_LAMPS[0], TAIL_LAMPS[1] - 0.016, TAIL_LAMPS[2]],
+                                  [TAIL_LAMPS[0], TAIL_LAMPS[1] - 0.016, TAIL_LAMPS[2]]], r=BRAKE_R,
+                         normal=[0, -1, 0], object="BrakeLight",
+                         note="[INFERENCE] the round lamps as tail + brake combination lamps, their middle the brake"),
     )
 
 
 # ---- Blender
+# (base, metallic, roughness[, emission strength]); greys set from the official pictures' pixel ratio q to the white
+# paint beside them (sRGB), base = 0.80 * q ** 2.2: skirt / deflector q 0.27-0.34 (side), frames and pillars 0.15,
+# rear wall 0.11-0.21 (rear_left), fenders 0.36-0.61, drive covers 0.33-0.37, tyres 0.25, front rim 0.70 (side p75)
 COLORS = dict(Paint=((0.80, 0.81, 0.82), 0.0, 0.30), Glass=((0.02, 0.025, 0.03), 0.0, 0.08),
-              Trim=((0.03, 0.03, 0.033), 0.0, 0.55), Liner=((0.012, 0.012, 0.013), 0.0, 0.85),
-              HeadLight=((0.92, 0.94, 0.96), 0.0, 0.15), TailLight=((0.35, 0.02, 0.02), 0.0, 0.25),
-              Tyre=((0.02, 0.02, 0.022), 0.0, 0.8), Rim=((0.62, 0.63, 0.65), 0.7, 0.35),
-              Cover=((0.03, 0.03, 0.033), 0.2, 0.45))
+              Trim=((0.02, 0.02, 0.022), 0.0, 0.55), Liner=((0.012, 0.012, 0.013), 0.0, 0.85),
+              SkirtGrey=((0.057, 0.057, 0.06), 0.0, 0.6), Mirror=((0.012, 0.012, 0.013), 0.0, 0.3),
+              HeadLight=((0.92, 0.94, 0.96), 0.0, 0.15, 4.0), TailLight=((0.6, 0.02, 0.02), 0.0, 0.25, 3.0),
+              BrakeLight=((0.8, 0.03, 0.03), 0.0, 0.2, 5.0),
+              Frame=((0.012, 0.012, 0.013), 0.0, 0.35), RearWall=((0.023, 0.023, 0.025), 0.0, 0.7),
+              Fender=((0.17, 0.17, 0.175), 0.0, 0.6), MarkerLight=((1.0, 0.45, 0.05), 0.0, 0.3, 3.0),
+              ReflectorRed=((0.5, 0.02, 0.02), 0.0, 0.2), ReflectorWhite=((0.75, 0.75, 0.75), 0.0, 0.2),
+              Tyre=((0.038, 0.038, 0.04), 0.0, 0.8), Rim=((0.62, 0.63, 0.65), 0.6, 0.3),
+              Hub=((0.03, 0.03, 0.033), 0.3, 0.5), Cover=((0.079, 0.079, 0.083), 0.2, 0.45))
 
 
 def main():
@@ -438,13 +586,16 @@ def main():
     os.makedirs(out, exist_ok=True)
     bpy.ops.wm.read_factory_settings(use_empty=True)
     mats = {}
-    for nm, (rgb, metal, rough) in COLORS.items():
+    for nm, (rgb, metal, rough, *emit) in COLORS.items():
         m = bpy.data.materials.new(nm)
         m.use_nodes = True
         bs = m.node_tree.nodes["Principled BSDF"]
         bs.inputs["Base Color"].default_value = (*rgb, 1)
         bs.inputs["Metallic"].default_value = metal
         bs.inputs["Roughness"].default_value = rough
+        if emit:
+            bs.inputs["Emission Color"].default_value = (*rgb, 1)
+            bs.inputs["Emission Strength"].default_value = emit[0]
         m.diffuse_color = (*rgb, 1)
         mats[nm] = m
 
@@ -511,9 +662,10 @@ def main():
     # report / lines
     report = dict(objects={ob.name: len(ob.data.polygons) for ob in bpy.context.scene.objects})
     allv = np.concatenate([np.array([tuple(ob.matrix_world @ vv.co) for vv in ob.data.vertices])
-                           for ob in bpy.context.scene.objects if not ob.name.startswith(("Tyre", "Cover"))])
+                           for ob in bpy.context.scene.objects if not ob.name.startswith(("Tyre", "Cover", "Hub"))])
     report["body_bbox"] = [allv.min(0).round(4).tolist(), allv.max(0).round(4).tolist()]
-    report["body_tris"] = int(sum(n for k, n in report["objects"].items() if not k.startswith(("Tyre", "Cover"))))
+    report["body_tris"] = int(sum(n for k, n in report["objects"].items()
+                                  if not k.startswith(("Tyre", "Cover", "Hub"))))
     report["panels"] = PANELS
     report["wheels"] = dict(front=dict(y=FRONT["y"], r=TYRE_R, w=FRONT["w"], track_m=round(2 * FRONT["x"], 4)),
                             drive=dict(y=list(DRIVE["y"]), r=TYRE_R, w=DRIVE["w"], x=list(DRIVE["x"])),
