@@ -956,8 +956,17 @@ def badges(obs, names):
         wm = C["WORDMARK"]                 # our strokes of the official artwork, laid point by point on the panel
         with open(os.path.join(HERE, wm["file"]), encoding="utf-8") as f:
             strokes = json.load(f)["strokes"]
-        for part, o, eu, ev, n, width in wm["places"]:
+        for part, o, eu, ev, n, width in wm.get("places", ()):
             flat("Badge_WORD_" + part, [stroke_quads(strokes, width, wm["seg"])], (o, eu, ev, n), "badge_black")
+        for part, (o, a, b) in wm.get("affine", {}).items():   # laid as an official picture shows it: (u 0 v 0) point,
+            a, b = np.array(a, float), np.array(b, float)       # grid per unit u, per unit v (any length, any angle)
+            n = np.cross(a, b) / np.linalg.norm(np.cross(a, b))
+            e1 = a / np.linalg.norm(a)
+            e2 = np.cross(n, e1)
+            m = np.array([[a @ e1, b @ e1], [a @ e2, b @ e2]])
+            quads = [[tuple(m @ np.array(q)) for q in quad] for quad in
+                     stroke_quads(strokes, 1.0, wm["seg"] / max(np.linalg.norm(a), np.linalg.norm(b)))]
+            flat("Badge_WORD_" + part, [quads], (o, tuple(e1), tuple(e2), tuple(n)), "badge_black")
 
 
 def stroke_quads(strokes, s, seg):
@@ -1221,7 +1230,8 @@ def classify(car, names, sizes):
         gsel |= (obj == o) & (csize == s) & in_gate(cen)
     part[gsel | np.isin(obj, ("Badge_BLADE", "Badge_TESLA", "Badge_MODELY", "Badge_PERF"))] = 5
     part[obj == "Badge_T"] = 6
-    for pname, *_ in (C.get("WORDMARK") or {}).get("places", ()):   # (Cybercab) each wordmark on its door / lid
+    wm = C.get("WORDMARK") or {}           # (Cybercab) each wordmark on its door / lid
+    for pname in [p[0] for p in wm.get("places", ())] + list(wm.get("affine", {})):
         part[obj == "Badge_WORD_" + pname] = PARTS.index(pname)
     # lamps. Tail: the red light bar (a 1 cm strip on the spoiler's lower lip, about a pixel in game), the corner
     # lamps, and the rear face of the smoked light-bar cover across the tailgate (LAMPS blade), which glows red at
