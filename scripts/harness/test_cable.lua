@@ -297,6 +297,22 @@ check(yp ~= nil and H.near(yp.x, flank:x(), 1e-6) and H.near(yp.y, flank:y(), 1e
 T.onChargerChanged(oside, true)
 H.removeVehicle(side)
 end
+-- ---- Semi: the MCS handle on its own plug item (props_blender.py PLUG_MCS), from the flank like the others ----
+do
+local media = "MOD/MinidoracatTeslaFor42/Contents/mods/MinidoracatTeslaFor42/42/media/"
+local function has(file, text)
+    local f = io.open(media .. file, "rb")
+    local s = f and f:read("*a") or ""
+    if f then f:close() end
+    return s:find(text, 1, true) ~= nil
+end
+local plug = T.Specs["Base.MinidoracatTesla_Semi"].plug
+check(plug.item == "Base.MinidoracatTesla_CablePlugSemi" and not plug.rear
+    and has("scripts/items/MinidoracatTesla_cable.txt", "WorldStaticModel = Base.MinidoracatTesla_CablePlugSemi,")
+    and has("scripts/models/MinidoracatTesla_props.txt", "mesh = WorldItems/MinidoracatTesla_CablePlugSemi,")
+    and has("models_X/WorldItems/MinidoracatTesla_CablePlugSemi.fbx", "FBX"),
+    "Semi: its plug item, model block and mesh (MCS handle), not plug.rear")
+end
 
 -- ---- Mobile Connector: cable leaves at floor level (cableExit h = 0), no hang segment ----
 local mm = car(51.2, 24.0, 0.3)

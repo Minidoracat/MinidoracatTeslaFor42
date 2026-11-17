@@ -102,7 +102,7 @@ local NAV = {
 local REMOTE = { "lock", "qcharge", "qfrunk", "qtrunk", "flash", "horn", "frunk", "trunk", "tonneau", "falcon", "butterfly", "softtop",
     "sentry", "charge", "psToggle", "floorDown", "floorUp", "outlet" }
 local QUICK = { "lock", "qcharge", "qfrunk", "qtrunk" }
-local QUICK_NO_FRUNK = { "lock", "qcharge", "qtrunk" } -- a car without a front trunk (Core.lua T.hasFrunk)
+-- a car without a front trunk (Core.lua T.hasFrunk) has no qfrunk, one without a rear trunk (T.hasTrunk) no qtrunk
 local LIST = { "controls", "location", "summon", "security", "charging" }
 local LIST_ICON = { controls = "i_carfront", location = "i_nav", summon = "i_wheel", security = "i_shield", charging = "i_bolt" }
 local TITLE = { controls = "Controls", location = "Location", security = "Security", charging = "ChargingTitle", cars = "Cars",
@@ -996,14 +996,17 @@ function App:read()
     self.paintName, self.model = paint and paint.name, spec and spec.model
     self.carSpr = spec and "car_" .. spec.model -- top view glyph on the summon radar and the maps
     self.carTex = paint and carTexture(spec.appCar .. paint.name)
-    local grid = {} -- the controls page's cells for this car (GRID_NEED; no frunk cell without a front trunk)
-    local frunk = T.hasFrunk(spec)
+    -- the controls page's cells for this car (GRID_NEED; no frunk cell without a front trunk, no liftgate cell without
+    -- a rear trunk: T.hasFrunk, T.hasTrunk)
+    local grid = {}
+    local frunk, trunk = T.hasFrunk(spec), T.hasTrunk(spec)
     for _, id in ipairs(GRID) do
         local need = GRID_NEED[id]
-        if (id ~= "frunk" or frunk) and (not need or (spec and spec[need])) then grid[#grid + 1] = id end
+        if (id ~= "frunk" or frunk) and (id ~= "trunk" or trunk) and (not need or (spec and spec[need])) then grid[#grid + 1] = id end
     end
     self.cells = grid
-    self.quick = frunk and QUICK or QUICK_NO_FRUNK
+    self.quick = { "lock", "qcharge", frunk and "qfrunk" or nil }
+    if trunk then self.quick[#self.quick + 1] = "qtrunk" end
     local sep = getText("IGUI_MinidoracatTesla_Sep")
     if not st then
         self.sSub = txt("Connecting")

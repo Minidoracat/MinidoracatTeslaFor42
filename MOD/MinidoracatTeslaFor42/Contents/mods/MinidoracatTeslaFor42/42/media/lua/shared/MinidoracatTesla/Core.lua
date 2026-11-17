@@ -57,7 +57,8 @@ T.DRIVE_SCALE = 10
 -- command have no hood (T.hasFrunk). The hood part EngineDoor stays for vanilla's mechanics (E at the hood).
 -- A flag counts only when it is truthy: no field = no such feature (hepa, falcon, tonneau, softTop ...). dcKw is not
 -- a flag: a number = the DC peak, nil = T.DC_KW, false = no DC charging (then acKw is a must, Chargers.lua T.chargerKw).
--- Nor is frunk: nil = the car has its front trunk, false = none.
+-- Nor is frunk: nil = the car has its front trunk, false = none. trunk the same for the rear trunk (Semi: no TrunkDoor,
+-- TruckBed or GloveBox part; T.hasTrunk): the dashboard, the app and the `liftgate` command have no liftgate.
 T.Specs = {
     ["Base.MinidoracatTesla_ModelY"] = {
         model = "ModelY",
@@ -310,6 +311,32 @@ T.Specs = {
             { name = "Gold", h = 0.104, s = 0.889, v = 0.867 },
         },
     },
+    -- Tesla Semi Long Range (2026; references/semi.md, temp/plan-semi-1117/specs.md). Its trailer
+    -- (Base.MinidoracatTesla_SemiTrailer) is no Tesla: not here, so the HUD, battery, sentry and keys leave it alone.
+    ["Base.MinidoracatTesla_Semi"] = {
+        model = "Semi",
+        appCar = "app_car_semi_",
+        -- z: estimate (the port is on the left flank behind the cab, under the catwalk, ERG p6); measure it (E2E
+        -- integration-mp `port`) once the body is in
+        plug = { item = "Base.MinidoracatTesla_CablePlugSemi", z = 1.10 },
+        -- Tesla gives no low voltage battery size for the Semi: the Model Y's 15.5 V, 6.9 Ah
+        v12Kwh = 15.5 * 6.9 / 1000,
+        -- the Model Y coefficients x 822 / 78.4: a full pack still drives one vanilla tank's distance
+        idleKw = 0.394 * T.DRIVE_SCALE,
+        kwPerKmh = 0.0600 * T.DRIVE_SCALE,
+        massKg = 10433, -- the real curb mass, shown only; the script's mass is 1250 (the engine's suspension, semi.md 2)
+        dcKw = 1200, -- 1.2 MW on MCS (tesla.com/semi "1.2 MW Charge Capable"); no acKw: Tesla publishes no AC figure
+        regenEff = 0.6,
+        -- the script's 3267 is barely over T.CHILL_FORCE 3100: half, as the Roadster's first pick; tune by E2E feel-sp
+        chillForce = 1630,
+        frunk = false, -- no front trunk, no rear trunk (template MinidoracatTeslaCab: no TrunkDoor, TruckBed, GloveBox)
+        trunk = false,
+        -- built in white only. h/s/v: a Pearl White stand-in; convert.py build writes the skin's own. Same order and
+        -- append-only rules as above.
+        colors = {
+            { name = "White", h = 0.6, s = 0.49, v = 0.85 },
+        },
+    },
 }
 
 -- Index into a colors table, drawn by each entry's weight (none = 1: the Model Y and Model 3 paints stay even)
@@ -342,6 +369,8 @@ T.Packs = {
     ["Base.MinidoracatTesla_RoadsterBattery"] = 56,
     -- Cybercab: 47.6 kWh, the EPA filing's 326 V x 146 Ah
     ["Base.MinidoracatTesla_CybercabBattery"] = 47.6,
+    -- Semi Long Range: 822 kWh, the ERG's pack (temp/plan-semi-1117/specs.md 1)
+    ["Base.MinidoracatTesla_SemiBattery"] = 822,
 }
 
 -- Tesla display names for vanilla text keys: vanilla key -> Tesla key. Read by client/MinidoracatTesla/PartNames.lua
@@ -430,6 +459,14 @@ T.CarPartNames = {
         IGUI_MinidoracatTesla_Tip_AppTrunk = "IGUI_MinidoracatTesla_Tip_AppTrunkLid",
         IGUI_MinidoracatTesla_App_ControlsSub = "IGUI_MinidoracatTesla_App_ControlsSubCybercab",
     },
+    -- Semi: three axles on four physics wheels (references/semi.md 1): TireRearLeft is the whole middle axle,
+    -- TireRearRight the whole rear axle; SeatFrontLeft the centre driver's seat (vanilla's key says so), SeatFrontRight
+    -- the jump seat behind it on the right
+    ["Base.MinidoracatTesla_Semi"] = {
+        IGUI_VehiclePartTireRearLeft = "IGUI_MinidoracatTesla_Part_TireMidAxle",
+        IGUI_VehiclePartTireRearRight = "IGUI_MinidoracatTesla_Part_TireRearAxle",
+        IGUI_VehiclePartSeatFrontRight = "IGUI_MinidoracatTesla_Part_JumpSeat",
+    },
 }
 -- the Tesla key for a key on this car (script full name), or nil
 function T.partNameKey(script, key)
@@ -466,6 +503,8 @@ function T.driveMul() return T.gasMul() / T.rangeMul() end
 function T.chargeMul() return math.max(0.1, math.min(10, sandbox("ChargeSpeedMultiplier", 1))) end
 -- generator fuel per kWh as a multiple of the default (sandbox ChargeFuelMultiplier, user 2026-10-29; Chargers.lua T.fuelPerKwh)
 function T.chargeFuelMul() return math.max(0, math.min(10, sandbox("ChargeFuelMultiplier", 1))) end
+-- % of the long parking lots that get a Semi, and again a trailer (sandbox SemiSpawnChance, SemiSpawn.lua); 0 = none
+function T.semiSpawnPct() return math.max(0, math.min(100, sandbox("SemiSpawnChance", 1.5))) end
 T.Camp = T.Camp or {}
 -- Camp Mode low-battery limit (sandbox CampMinBattery, 10-20 %; Tesla's Low Power Mode setting has the same range)
 function T.Camp.minPct() return math.max(10, math.min(20, sandbox("CampMinBattery", 20))) end
@@ -477,6 +516,9 @@ function T.isTesla(vehicle) return T.spec(vehicle) ~= nil end
 -- the car has a front trunk (Specs frunk ~= false; spec = a T.Specs entry or nil): the frunk, and the hood on the
 -- dashboard's car picture and in the app, are this car's
 function T.hasFrunk(spec) return spec == nil or spec.frunk ~= false end
+-- the car has a rear trunk (Specs trunk ~= false): the liftgate on the dashboard's car picture, in the app and the
+-- `liftgate` command
+function T.hasTrunk(spec) return spec == nil or spec.trunk ~= false end
 -- clip seconds a part anim (door swing) advances this update: 1/60 x 0.8 x the unmodded multiplier
 -- (BaseVehicle.java:3898-3904), which carries the game speed (GameTime.java:1018-1022): fast forward runs it sooner,
 -- a pause holds it. Timers that wait on a door count on this clock.

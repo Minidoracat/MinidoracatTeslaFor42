@@ -9,6 +9,7 @@
 -- The Roadster 2.5 Sport (plan-next-1114): a rare sports car, the "good" zone only, at 2 like the Model S, X and Cybertruck.
 -- The Cybercab (plan-next8-1114): a fleet car Tesla does not sell to people, so parking stalls only (a robotaxi waiting
 -- in a lot), at 1, never the "good" zone.
+-- The Semi and its trailer are not in these tables: the server puts them down itself (server SemiSpawn.lua).
 local Z = VehicleZoneDistribution
 if Z and Z.parkingstall and Z.parkingstall.vehicles then
     Z.parkingstall.vehicles["Base.MinidoracatTesla_ModelY"] = { index = -1, spawnChance = 3 }

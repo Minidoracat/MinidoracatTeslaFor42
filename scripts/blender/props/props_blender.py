@@ -57,9 +57,13 @@ PLUGS = {"MinidoracatTesla_CablePlug": 0.87,                  # Model Y (tesla-y
          "MinidoracatTesla_CablePlugModelX": 0.84,            # Model X (tesla-mx-1101b modelx-sp: port 0.837)
          "MinidoracatTesla_CablePlugModelYL": 0.90,           # Model Y L (tesla-ylb-geo integration-mp: port 0.900)
          "MinidoracatTesla_CablePlugRoadster": 0.78,          # Roadster (cars/roadster.py PORT z 0.750 + 0.03, as Y L / X)
-         "MinidoracatTesla_CablePlugCybercab": 0.36}          # Cybercab (tesla-cc1 integration-mp-cc, 94f2d6d body: port 0.355)
+         "MinidoracatTesla_CablePlugCybercab": 0.36,          # Cybercab (tesla-cc1 integration-mp-cc, 94f2d6d body: port 0.355)
+         "MinidoracatTesla_CablePlugSemi": 1.10}              # Semi (provisional: no Semi body yet; E2E port to confirm)
 # plugs with the first-generation Roadster's round connector (2.5 owner's manual 5-7) instead of the NACS handle
 PLUG_ROUND = ("MinidoracatTesla_CablePlugRoadster",)
+# plugs with the MCS (Megawatt Charging System) handle: thick liquid-cooled cable, face a rounded triangle with its tip
+# down and the two DC pins in the upper corners (CharIN prototype shown at EVS35, electrive.com 2022-06-14)
+PLUG_MCS = ("MinidoracatTesla_CablePlugSemi",)
 PLUG_REACH = 0.36                             # handle tip reaches +x (into the car flank)
 XFORM = {"S": (0.0, 180.0, 0.0), "E": (0.0, -90.0, 0.0), "N": (0.0, 0.0, 0.0), "W": (0.0, 90.0, 0.0)}
 # Mobile Connector Gen 3, Facing S frame, lying on the floor: control box 179.8 x 81.7 x 47.3 mm (official.md 1.2) x 1.3
@@ -307,13 +311,46 @@ def cable_floor(image):
     return mb.build("MinidoracatTesla_CableFloor", image)
 
 
+def rounded_tri(w, top, bot, rc, n=6):
+    """YZ outline counter-clockwise seen from +X: triangle (-w, top), (0, -bot), (w, top), corners rounded by rc."""
+    c = [Vector((-w, top)), Vector((0, -bot)), Vector((w, top))]
+    pts = []
+    for i in range(3):
+        p, a, b = c[i], c[i - 1], c[(i + 1) % 3]
+        a1 = math.atan2(-(p - a).x, (p - a).y)            # outward normals of the edges into and out of this corner
+        a2 = math.atan2(-(b - p).x, (b - p).y)
+        a2 += 2 * math.pi if a2 < a1 else 0
+        pts += [p + rc * Vector((math.cos(a1 + (a2 - a1) * k / n), math.sin(a1 + (a2 - a1) * k / n))) for k in range(n + 1)]
+    return pts
+
+
 def cable_plug(image, name, plug_z):
     mb = MB()
     r = R_CABLE
     h0 = PLUG_REACH - 0.17                               # handle starts here
     path = catmull([(0, 0, r), (0.07, 0, r), (0.15, 0, 0.10), (0.17, 0, plug_z * 0.55), (0.15, 0, plug_z - 0.07),
                     (h0, 0, plug_z)])
-    tube(mb, path, r, swatch("rubber", CSW, 32, CTEX))
+    mcs = name in PLUG_MCS
+    tube(mb, path, r, swatch("rubber", CSW, 32, CTEX),
+         radii=[r + (0.036 - r) * min(1.0, i / (len(path) / 3)) for i in range(len(path))] if mcs else None)
+    if mcs:
+        # MCS handle: a fat grip, then the nose lofted on the rounded-triangle face, the dark face at the tip, the
+        # latch lever on top of the grip
+        xn, tip = PLUG_REACH - 0.07, PLUG_REACH - 0.012
+        grip = [Vector((h0 - 0.02 + (xn - h0 + 0.03) * k / 5, 0, plug_z + 0.010 * math.sin(math.pi * k / 5)))
+                for k in range(6)]
+        tube(mb, grip, 0, swatch("handle", CSW, 32, CTEX), sides=10, radii=[0.038, 0.050, 0.055, 0.055, 0.054, 0.050])
+        face = rounded_tri(0.046, 0.030, 0.052, 0.018)
+        rings = [[Vector((x, p.x * s, plug_z + 0.006 + p.y * s)) for p in face]
+                 for x, s in ((xn, 1.0), (xn + 0.03, 1.06), (tip, 1.0), (PLUG_REACH, 0.86))]
+        hsw = swatch("handle", CSW, 32, CTEX)
+        for a, b in zip(rings, rings[1:]):
+            for k in range(len(face)):
+                mb.patch([a[k], a[(k + 1) % len(face)], b[(k + 1) % len(face)], b[k]], hsw)
+        mb.patch(list(reversed(rings[0])), hsw)
+        mb.patch(rings[-1], swatch("ring", CSW, 32, CTEX))
+        cuboid(mb, (h0 + 0.03, -0.012, plug_z + 0.050), (h0 + 0.09, 0.012, plug_z + 0.066), swatch("ring", CSW, 32, CTEX))
+        return mb.build(name, image)
     if name in PLUG_ROUND:
         # Roadster connector (2.5 owner's manual 5-7): a straight round body, a ribbed boot where the cable goes in,
         # the locking collar (pushed forward and turned onto the port), its latch tab on top, the nose up to the tip

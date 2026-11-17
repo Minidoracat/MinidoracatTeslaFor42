@@ -48,13 +48,14 @@ T.Chargers = {
         noPower = "ContextMenu_MinidoracatTesla_MobileNoPower",
     },
     -- Tesla V4 Supercharger post on a V3 cabinet (Tesla Supercharger datasheet: 325 kW, 90 kg, 3 m cable). DC: each
-    -- car charges on the DC curve up to its own peak (Core.lua B.chargeKwAt, Specs dcKw). Power as a gas pump
+    -- car charges on the DC curve up to its own peak (Core.lua B.chargeKwAt, Specs dcKw). kw 1200: the Semi's 1.2 MW (no
+    -- charger of its own); every other car's peak is at most 325, so it gets what the 325 kW post gave. Power as a gas pump
     -- (ItemContainer.java:2347-2349: the grid outdoors, no room needed; a generator through haveElectricity), or
     -- straight into a running generator genTiles away like the Mobile Connector. Spawned by gas stations
     -- (SuperchargerSpawn.lua) or crafted at Electrical 6 (MinidoracatTesla_recipes.txt MakeSupercharger).
     Supercharger = {
         kind = "Supercharger",
-        kw = 325,
+        kw = 1200,
         cableTiles = 2.5, -- 3 m x 6 / 7.3 = 2.47: half a tile, so parking need not be exact
         item = "Base.MinidoracatTesla_Supercharger",
         sprites = { S = "minidoracat_tesla_01_16", E = "minidoracat_tesla_01_17", N = "minidoracat_tesla_01_18", W = "minidoracat_tesla_01_19" },

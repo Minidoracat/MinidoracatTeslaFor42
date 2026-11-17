@@ -1,9 +1,11 @@
 {
     "Sandbox_MinidoracatTesla": "特斯拉電動車",
+    "Sandbox_MinidoracatTesla_SemiSpawnChance": "Semi 與拖車生成機率",
+    "Sandbox_MinidoracatTesla_SemiSpawnChance_tooltip": "世界上每個夠長的停車場各擲一次，有這個百分比（%%）的機率停一台 Tesla Semi；53 呎拖車用同樣的機率另外擲，兩台不會掛在一起。\n只放在空地上：安全屋、牆、樹、車輛或玩家蓋的、丟的東西上都不放。舊存檔已探索過的地方也會補一次。\n0＝不生成。\n預設 1.5。",
     "Sandbox_MinidoracatTesla_RangeMultiplier": "續航倍率",
     "Sandbox_MinidoracatTesla_RangeMultiplier_tooltip": "電池充滿能開多遠。\n1.0＝和原版同級車加滿一箱油一樣遠；2.0＝兩倍遠。\n也會跟著原版「耗油量」增減：2＝只剩一半遠；0＝開車不耗電。",
     "Sandbox_MinidoracatTesla_ChargeSpeedMultiplier": "充電速度倍率",
-    "Sandbox_MinidoracatTesla_ChargeSpeedMultiplier_tooltip": "1.0＝照官方功率充電（壁掛式充電座 11.5 kW、行動充電器 7.6 kW、超級充電座最高 250 kW，Cybertruck 325 kW）\n2.0＝兩倍快。",
+    "Sandbox_MinidoracatTesla_ChargeSpeedMultiplier_tooltip": "1.0＝照官方功率充電（壁掛式充電座 11.5 kW、行動充電器 7.6 kW、超級充電座最高 250 kW，Cybertruck 325 kW、Semi 1200 kW）\n2.0＝兩倍快。",
     "Sandbox_MinidoracatTesla_ChargeFuelMultiplier": "充電耗油倍率",
     "Sandbox_MinidoracatTesla_ChargeFuelMultiplier_tooltip": "特斯拉用發電機的電時耗多少油：充電，以及插著線時車上的空調、露營模式用電。市電不耗油。\n1.0＝原版預設「發電機油耗」下，Model Y 從沒電充到滿約用一桶；0.5＝一半；0＝不耗油。\n也會跟著「發電機油耗」等比例增減。",
     "Sandbox_MinidoracatTesla_CampMinBattery": "露營模式電量下限",

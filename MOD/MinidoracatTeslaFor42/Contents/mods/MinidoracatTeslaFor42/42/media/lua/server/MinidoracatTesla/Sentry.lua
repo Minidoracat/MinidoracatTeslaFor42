@@ -376,8 +376,9 @@ end
 
 -- Towing: owner's manuals, "a lot of jerky movement like when getting towed" sounds the alarm (the break tier). The
 -- only vanilla way to hook up is attachTrailer (ISAttachTrailerToVehicle.lua:42-48; the radial's three branches,
--- ISVehicleMenu.lua:492-588), which checks no key or owner (VehicleCommands.lua:399-411). The menu swaps A and B by
--- hitch (:530-560): look at both. Legit (the owner, a key, VehicleManager's PASSENGER) takes the car away: disarm,
+-- ISVehicleMenu.lua:459-592, and the Semi's own slice, client SemiHitch.lua), which checks no key or owner
+-- (VehicleCommands.lua:330-341). The menu swaps A and B by hitch (:506-516): look at both. A Semi hooking its trailer
+-- is the same tow. Legit (the owner, a key, VehicleManager's PASSENGER) takes the car away: disarm,
 -- always. A stranger's tow alerts once per car per S.towHours(), whatever it is hooked to: vanilla unhooks and hooks
 -- again on every send (BaseVehicle.java:10047-10062) and the "vehicle" module skips CmdRate, so attach / detach in a
 -- loop must not flood the owner, and a link broken elsewhere (a third car's attach, a hitch mismatch :10059-10067, a
@@ -402,7 +403,7 @@ end
 -- (VehicleManager's CommandGate.lua:157-158: Autotsar, rSemiTruck loadVehicle) do not come this way.
 --   attachTrailer: the tow, once vanilla linked the two (addPointConstraint sets the link at once, BaseVehicle.java:10104-10106).
 --   damageWindow: MP only, a client works out a weapon hit and sends it (VehicleWindow.java:79-81); vanilla applied it
---   (VehicleCommands.lua:169-185; nothing for amount <= 0 or no such window, VehicleWindow.java:77). It speaks for its
+--   (VehicleCommands.lua:100-116; nothing for amount <= 0 or no such window, VehicleWindow.java:77). It speaks for its
 --   own drop only: S.preHit (shared ParkModes.lua, before vanilla) is the condition the server held when it came in.
 --   The sender is named, or kept quiet when legit, only if the car stood at its baseline then (that window at
 --   preHit, every other window untouched) and S.trusted holds; otherwise a loss nobody saw is in the mix (the clamp at
