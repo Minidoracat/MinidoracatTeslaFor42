@@ -66,8 +66,12 @@ FIN = ((W0 - 0.0585, -3.51, 2.62), (0.0585, 0.13, 1.42), 0.03)   # deflector sid
 ARCH = dict(y=-0.035, z=0.503, r=0.577, x_in=0.85)  # front wheel house: through the feet (+0.50 / -0.57, z 0.72)
 #                                                   and the top (1.08), side p04-x53
 ARCH_LIP = 0.04                      # the black lip round the front wheel house (side p04-x53)
-# mirror: a rounded head on an arm out of the windshield's foot (hr 1920 x 1280: arm (430-470, 640), head 560-660)
-MIRROR = dict(head=((1.43, 0.295, 2.04), (0.07, 0.095, 0.37), 0.065), arm=((1.17, 0.36, 1.72), (1.42, 0.30, 1.74), 0.03))
+# mirror: a head tapering to the top on an arm out of the windshield's foot. Side p04-x53: head (127-155, 226-292) ->
+# y 0.154-0.377 at its foot, 0.186-0.345 at its top, z 1.89-2.40; arm (128-152, 292-317) down to z 1.68. hr: the arm
+# runs from the head's foot in to the windshield's corner; the head's top back-projects to |x| 1.67, held to the
+# body's 1.50 overall width (outer face at 1.50, 0.62 m off the shell at z 2.0)
+MIRROR = dict(head=((1.44, 0.265, 2.145), (0.06, 0.11, 0.255), 0.05), taper=0.27,
+              arm=((0.98, 0.28, 1.76), (1.40, 0.26, 1.90), 0.035))
 # character lines (|x|, y, z polyline on the surface, height, half width), ray cast off the pictures onto the shell:
 # the crease from the windshield's foot down to the headlight's inner end (hr (628, 660) -> (553, 795)) and the waist
 # from the headlight's tip back over the wheel arch to the door (side (113, 391) -> (263, 350))
@@ -79,6 +83,7 @@ INTAKE = ((0.0, 1.255, 0.42), (0.50, 0.145, 0.06), 0.015)   # the black lower no
 #                                                             |x| < 0.46 at (500, 948))
 REAR_RECESS = ((0.0, -3.57, 2.49), (W0 - 0.10, 0.13, 1.37), 0.04)  # the cab's back wall: a 10 cm frame round a 20 cm
 #                                                                    deep wall (rear_left p01-x892)
+GRILLE = 0.04                         # the intake's horizontal slats' pitch: three 1.6 cm slats (hr's lower nose)
 GRID = dict(half=1.53, y=(-3.98, 1.24), z=(0.05, 4.12))
 CELL = 0.03                          # surface nets cell: about 210k cab triangles (Cybercab's source: 145k)
 
@@ -95,7 +100,10 @@ GROOVE = 0.003
 WHITE_Z = 0.715                      # white body | dark skirt (side rows 437-440)
 WHITE_NOSE = (0.55, (0.66, 0.72))    # the white nose wraps down to z 0.55 in front of y 0.66-0.72 (side (75, 453), hr
 #                                      (350, 929)); the black below it, the intake in its middle
-WHITE_Y = -3.375                     # white roof / side end, black deflector behind (u 600)
+# white roof / side end, the black deflector behind: (z, y) up the side, side p04-x53's first dark pixel per row
+# (u 599-606 above row 400) and the white's rounded lower rear corner (rows 400-437)
+WHITE_Y = ((0.715, -3.12), (0.738, -3.148), (0.778, -3.212), (0.858, -3.30), (0.938, -3.388), (1.02, -3.412),
+           (2.9, -3.415), (3.4, -3.40), (3.9, -3.364))
 HANDLE = (-0.88, -0.82, 1.08, 1.15)  # door handle recess (y0, y1, z0, z1): side (285, 388), p07-x82
 REPEATER = (-0.52, -0.46, 1.09, 1.13)   # side repeater in front of the door
 # light bar across the nose, on into the corner wedges (head lamps): y = (front, tip); z0 / z1 (bottom / top) over
@@ -226,8 +234,10 @@ def cab_parts(p):
     d = np.maximum(d, -rbox(p, *REAR_RECESS))
     house = np.maximum(np.hypot(y - ARCH["y"], z - ARCH["z"]) - ARCH["r"], ARCH["x_in"] - ax)
     d = smax(d, -house, 0.025)       # a rounded arch edge: a sharp one comes out of the surface nets stair-stepped
-    a, b, r = MIRROR["arm"]
-    mir = np.minimum(rbox(pm, *MIRROR["head"]), seg_dist(pm, np.array((a, b))) - r)
+    c, h, r = MIRROR["head"]
+    k = 1 - MIRROR["taper"] * np.clip((z - c[2] + h[2]) / (2 * h[2]), 0, 1)    # the head narrows (y) to its top
+    a, b, ra = MIRROR["arm"]
+    mir = np.minimum(rbox(np.c_[ax, c[1] + (y - c[1]) / k, z], c, h, r), seg_dist(pm, np.array((a, b))) - ra)
     return d, mir
 
 
@@ -247,6 +257,34 @@ def project(v, steps=4, eps=2e-4, cap=0.5 * CELL):
 def normals(v, eps=2e-4):
     g = np.stack([(field(v + e) - field(v - e)) / (2 * eps) for e in np.eye(3) * eps], 1)
     return g / np.maximum(np.linalg.norm(g, axis=1, keepdims=True), 1e-12)
+
+
+def shade_normals(v, k=0.6, a=0.04, w=0.15):
+    """Field normals with the character lines (RIDGES) creased in: the normals lean away from a line, by k at a off it
+    and back to none at w, faded out over w at its ends, so the line reads as a light / dark break where the 3 cm cells
+    cannot hold a sharp ridge (the geometry keeps the soft one). The lean starts from 0 on the line: a step there
+    comes out zigzagging along the triangles."""
+    n = normals(v)
+    pm = np.c_[np.abs(v[:, 0]), v[:, 1], v[:, 2]]
+    for line, _, _ in RIDGES:
+        line = np.asarray(line, float)
+        seg = np.linalg.norm(np.diff(line, axis=0), axis=1)
+        s0, total = np.r_[0, np.cumsum(seg)[:-1]], seg.sum()
+        best, foot, arc = np.full(len(v), np.inf), np.zeros((len(v), 3)), np.zeros(len(v))
+        for p0, p1, l0, ln in zip(line[:-1], line[1:], s0, seg):
+            ab = p1 - p0
+            t = np.clip((pm - p0) @ ab / (ab @ ab), 0, 1)
+            q = p0 + t[:, None] * ab
+            dd = np.linalg.norm(pm - q, axis=1)
+            sel = dd < best
+            best[sel], foot[sel], arc[sel] = dd[sel], q[sel], l0 + t[sel] * ln
+        s = (pm - foot) * np.c_[np.sign(v[:, 0]), np.ones(len(v)), np.ones(len(v))]   # back to the point's side
+        s -= (s * n).sum(1, keepdims=True) * n
+        s /= np.maximum(np.linalg.norm(s, axis=1, keepdims=True), 1e-12)
+        lean = k * np.clip(best / a, 0, 1) * np.clip((w - best) / (w - a), 0, 1) * \
+            np.clip(np.minimum(arc, total - arc) / w, 0, 1)
+        n = n + lean[:, None] * s
+    return n / np.maximum(np.linalg.norm(n, axis=1, keepdims=True), 1e-12)
 
 
 def split(v, t, g):
@@ -289,7 +327,7 @@ def levels():
         white_z=lambda x, y, z, ax: interp(((WHITE_NOSE[1][0], WHITE_Z), (WHITE_NOSE[1][1], WHITE_NOSE[0])), y) - z,
         cowl=lambda x, y, z, ax: z - GLASS[0][1] - COWL,
         rear_wall=lambda x, y, z, ax: rbox(np.c_[x, y, z], *REAR_RECESS) - 0.005,
-        white_y=lambda x, y, z, ax: WHITE_Y - y,
+        white_y=lambda x, y, z, ax: interp(WHITE_Y, z) - y,
         door=box_g(DOOR["y"], DOOR["z"]),
         seam2=lambda x, y, z, ax: np.maximum.reduce([y - SEAM2, WHITE_Z - z, z - interp(BELT[::-1], y), 0.9 - ax]),
         belt=lambda x, y, z, ax: np.maximum(z - interp(BELT[::-1], y), np.maximum(y - DOOR["y"][0], 0.9 - ax)),
@@ -301,6 +339,8 @@ def levels():
                                                         interp(LAMP["z0"], lamp_t(y)) - LAMP_RIM - z,
                                                         z - interp(LAMP["z1"], lamp_t(y)) - LAMP_RIM]),
         arch_lip=lambda x, y, z, ax: np.hypot(y - ARCH["y"], z - ARCH["z"]) - ARCH["r"] - ARCH_LIP,
+        grille=lambda x, y, z, ax: np.where((rbox(np.c_[x, y, z], *INTAKE) < 0.005) & (ax < INTAKE[1][0] - 0.02),
+                                            0.3 - np.cos(2 * np.pi * (z - INTAKE[0][2]) / GRILLE), 1.0),
     )
 
 
@@ -336,6 +376,7 @@ def classify(v, t):
     #                                                  hidden in the arch), deflector, rear frame
     mat[s["handle"] | s["repeater"]] = 6
     mat[s["lamp_rim"] & (mat == 0)] = 6             # the lamps' dark surround: white lamps read on white paint
+    mat[s["grille"] & (mat == 2)] = 8               # the intake's slats, dark grey on the black
     mat[s["lamp"] & (mat == 6)] = 4
     mat[s["rear_wall"]] = 7
     house = np.hypot(y - ARCH["y"], z - ARCH["z"])
@@ -344,6 +385,7 @@ def classify(v, t):
     mat[s["arch_lip"] & (mat == 0)] = 2                # black arch lip
     mat[liner] = 3
     mat[mir < cab] = 9
+    pane[mir < cab] = -1                             # the mirror sits in the glass rows: off the glass objects
     door = s["door"] & ~liner
     pan[door] = np.where(x[door] < 0, 1, 2)
     return mat, pan, pane
@@ -565,12 +607,13 @@ def lines():
 # ---- Blender
 # (base, metallic, roughness[, emission strength]); greys set from the official pictures' pixel ratio q to the white
 # paint beside them (sRGB), base = 0.80 * q ** 2.2: skirt / deflector q 0.27-0.34 (side), frames and pillars 0.15,
-# rear wall 0.11-0.21 (rear_left), fenders 0.36-0.61, drive covers 0.33-0.37, tyres 0.25, front rim 0.70 (side p75)
+# rear wall 0.11-0.21 (rear_left), fenders 0.36-0.61, drive covers 0.33-0.37, tyres 0.25, front rim 0.70 (side p75);
+# the round tail lamps' red lens (rear_left (441, 377), (491, 367)): sRGB (113, 68, 70) on white 210, red q 0.54
 COLORS = dict(Paint=((0.80, 0.81, 0.82), 0.0, 0.30), Glass=((0.02, 0.025, 0.03), 0.0, 0.08),
               Trim=((0.02, 0.02, 0.022), 0.0, 0.55), Liner=((0.012, 0.012, 0.013), 0.0, 0.85),
               SkirtGrey=((0.057, 0.057, 0.06), 0.0, 0.6), Mirror=((0.012, 0.012, 0.013), 0.0, 0.3),
-              HeadLight=((0.92, 0.94, 0.96), 0.0, 0.15, 4.0), TailLight=((0.6, 0.02, 0.02), 0.0, 0.25, 3.0),
-              BrakeLight=((0.8, 0.03, 0.03), 0.0, 0.2, 5.0),
+              HeadLight=((0.92, 0.94, 0.96), 0.0, 0.15, 4.0), TailLight=((0.21, 0.02, 0.02), 0.0, 0.25, 0.6),
+              BrakeLight=((0.25, 0.025, 0.025), 0.0, 0.2, 0.8),
               Frame=((0.012, 0.012, 0.013), 0.0, 0.35), RearWall=((0.023, 0.023, 0.025), 0.0, 0.7),
               Fender=((0.17, 0.17, 0.175), 0.0, 0.6), MarkerLight=((1.0, 0.45, 0.05), 0.0, 0.3, 3.0),
               ReflectorRed=((0.5, 0.02, 0.02), 0.0, 0.2), ReflectorWhite=((0.75, 0.75, 0.75), 0.0, 0.2),
@@ -624,7 +667,7 @@ def main():
             fn = np.cross(p[:, 1] - p[:, 0], p[:, 2] - p[:, 0])
             n = np.repeat(fn / np.maximum(np.linalg.norm(fn, axis=1, keepdims=True), 1e-12), 3, 0)
             c = np.repeat(sm, 3)
-            n[c] = normals(vv[tt[sm].ravel()])
+            n[c] = shade_normals(vv[tt[sm].ravel()])
             me.attributes.new("custom_normal", "FLOAT_VECTOR", "CORNER").data.foreach_set(
                 "vector", n.astype(np.float32).ravel())
         me.polygons.foreach_set("use_smooth", sm)
