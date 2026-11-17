@@ -8,6 +8,7 @@ MTSemiProto_A2S's (temp/skf_semi/PREP.md, references/semi.md), in the prep's met
 (+Y front, +Z up, -X the truck's left, ground z 0, the front axle at y 0; the prep's metres x 0.826) unless noted.
 """
 import json
+import math
 import os
 import pathlib
 
@@ -53,7 +54,10 @@ _BB = _REP["body_bbox"]
 _DOOR_Y = (max(q[1] for q in _LN["door_left"]), min(q[1] for q in _LN["door_left"]))   # (front, rear) edge
 _DOOR_Z = (min(q[2] for q in _LN["door_left"]), max(q[2] for q in _LN["door_left"]))   # (sill, top)
 _HX, _HY, _ = _LN["door_hinge_left"][0]
-_FLOOR = _LN["cabin_floor_z"]
+# the cab floor (m) over semi_lines.json's 0.80 guess: ERG 2026 p.26 side line art (p26-x264.png, its axles 260.4 px/m:
+# z = (1095.6 - row) / 260.4) draws the battery frame's top at 1.15 under the cab and p.24 (p24-x244.png, 174.4 px/m)
+# the HV zone's top under the footwell at 1.195; the floor on them [INFERENCE: +-0.05, no section drawing of the floor]
+_FLOOR = 1.20
 _CAB_F, _CAB_R = _LN["cabin_y"]
 # stage_build centres the mesh on its bbox: the cabin's numbers below are mesh (centred) coordinates
 _YC, _ZC = (_BB[0][1] + _BB[1][1]) / 2 * K, (_BB[0][2] + _BB[1][2]) / 2 * K
@@ -65,8 +69,23 @@ def _c(y, z=None):
 
 
 _HIP = _DOOR_Y[1] + 0.68                  # the driver's hip (m): 0.15 m ahead of the door opening's middle
-_CUSHION = _FLOOR + 0.45                   # the cushion's top (m) [INFERENCE: a truck seat over the 0.80 floor]
-_WHEEL = (_HIP + 0.545, _CUSHION + 0.40)   # steering wheel hub (m): Model 3's hub to hip and cushion, on this cab
+# the driver's seat drawn in p26-x264.png: the cushion's top at row 676 (1.61 m), the headrest's top at row 389
+# (2.71 m), its hip pivot at y -1.05 (_HIP); p24-x244.png 1.53-1.55 / 2.70-2.72. The folding seat: 1.58 / 2.51 (p26)
+_CUSHION, _HEADREST, _JUMP_HEADREST = 1.61, 2.71, 2.51
+_SIT = _CUSHION + 0.124 / K                # seat point (m): SEATS dz -0.109 and the cushion's 15 mm under its top
+_WHEEL = (_HIP + 0.545, _SIT + 0.40)       # steering wheel hub (m): Model 3's hub to hip and seat point, on this cab
+
+
+def _tall(top, recline=10):
+    """SEATS head / back / back_z (cabin.py bucket, grid over the seat's z0) putting the headrest's top front edge `top`
+    m up: z0 is 15 mm over the cushion's top, the recline turns about z0 - 0.03 and 0.02 ahead of the headrest's front,
+    the 0.17 headrest's top 0.115 over that pivot past `head`; the backrest from its usual foot (z0 - 0.03) 2 cm into
+    the headrest"""
+    head = ((top - _CUSHION) * K + 0.015 + 0.02 * math.sin(math.radians(recline))) / math.cos(math.radians(recline)) \
+        - 0.115
+    back = head - 0.035
+    return dict(head=round(head, 4), back=round(back, 4), back_z=round(back / 2 - 0.03, 4), recline=recline)
+
 
 CAR = dict(
     # ---- pzveh: paths and names
@@ -83,17 +102,22 @@ CAR = dict(
     COMPOSITOR_MODEL="",
     OFFICIAL_OPTS="",
     RAMP=dict(t=(0.0, 1.0), u=(0.0, 1.0), wheels=()),   # (official_ramp: unused, no design-studio renders)
-    # ---- pzveh: wheel. 22.5" aluminium disc wheels (prep RIM_R 0.29 m on 0.49 m tyres), a flat silver face with a hub;
-    # the drive axles' flat grey covers (axle_face). Greys from the shell's ratios to the white paint (prep_semi.py
-    # COLORS) x 230: front rim 0.70, drive covers 0.35
+    # ---- pzveh: wheel. 22.5" aluminium disc wheels (prep RIM_R 0.29 m on 0.49 m tyres). Tesla's LR spec picture
+    # (Semi-LR-Specs-Desktop.jpg, the front wheel at px 760-960 x 870-1060): the front a polished disc out to the tyre,
+    # its dark hub to 0.37 of the rim's radius, ten lug nuts round 0.50 and ten round hand holes (radius 0.10) round
+    # 0.77: the face on the disc's planar UV, those drawn in the texture (WHEEL_FACETS pattern, no faces). The drive
+    # axles (px 1440-1720 x 800-1040): flat dark covers (axle_face, the `cap` grey) with a small lighter centre disc
+    # (axle_cap: the hub cap in WHEEL_RGB `lit`)
     WHEEL_RIM=round(0.29 / 0.49, 4),
     WHEEL_SPOKE=dict(n=0, shape=dict(outer=((0.22, 0.045), (1.0, 0.066)), inner=((1.0, 0.0),)),
                      cap=0.22, inset=-0.0107, dish=0.002, depth=0.004, sweep=0.0, at=0.0),
-    WHEEL_FACETS=dict(sink=0.0, rings=4, face="facet", n=0, at=0.0, shapes=(), axle_face="cap"),
+    WHEEL_FACETS=dict(sink=0.0, rings=4, face="facet", n=0, at=0.0, shapes=(), axle_face="cap", axle_cap="lit",
+                      pattern=dict(face="facet", marks=(("hat", 1, 0.0, 0.37, 0.37), ("spoke", 10, 0.50, 0.07, 0.07),
+                                                        ("dark", 10, 0.77, 0.10, 0.10)))),
     WHEEL_DISC=dict(rotor=0.5, hat=0.3),
     WHEEL_RGB=dict(spoke=60, cap=60, barrel=12, lip=14, rotor=20, hat=20, dark=10, gap=8, tire=(26, 32), tread=22,
-                   facet=60, lit=60),
-    WHEEL_TINT={"facet": (161, 163, 167), "cap": (80, 80, 84)},
+                   facet=60, lit=110),
+    WHEEL_TINT={"facet": (235, 237, 242), "cap": (62, 62, 66)},          # facet: polished, near the top of the curve
     TIRE_SHOULDER=(0.055, 0.012),
     TIRE_BULGE=(0.0066, 0.026),
     # ---- pzveh: vehicle script (OY, CAB_BOX: unused, PHYS gives the boxes and the offsets)
@@ -122,12 +146,15 @@ CAR = dict(
     # seats: the driver on the centre line (front_x 0: the wheel and column there too), 0.15 m ahead of the door
     # opening's middle (back); the folding seat (SEATS jump) behind it on the right, 1.0 m back (ERG p5). at: each front
     # passenger's (mesh x, y shift[, SEATS entry]); FrontLeft the driver, FrontRight the folding seat (PassengerSeat2)
-    SEAT=dict(x=0.0, front_x=0.0, h=round(_CUSHION * K - 0.02, 4), z=round(_CUSHION * K - _ZC, 4),
+    SEAT=dict(x=0.0, front_x=0.0, h=round(_SIT * K - 0.02, 4), z=round(_SIT * K - _ZC, 4),
               back=(round(((_DOOR_Y[0] + _DOOR_Y[1]) / 2 - _HIP) * K, 4),), out=0.30, front_only=True,
               at={"FrontLeft": (0.0, 0.0), "FrontRight": (round(0.70 * K, 4), round(-1.0 * K, 4), "jump")}),
-    # a truck's upright seat (scripts/seat_anim.py POSES): the shared front pose leans 25 deg and left the back 63-102 mm
-    # in the backrest and the feet 157 mm over the cab floor (seat_head.py, 2026-11-18); this one fits both seats
-    SEAT_POSE={"front": [("Bip01", 10.0), ("Bip01_L_Thigh", -10.0), ("Bip01_R_Thigh", -10.0)]},
+    # a truck's upright seat (scripts/seat_anim.py POSES) against the backrest p26-x264.png draws, 10 deg back (_tall):
+    # the body upright, the thighs and calves set back onto the cushion and the floor 0.41 m under it (seat_head.py
+    # 2026-11-18: sit -12..4, back -20..-10 / -7..3, feet 2 mm; Bip01 10 left the back 51-95 mm in the backrest,
+    # Bip01 -5 without the calves the feet 28 mm in the floor); this one fits both seats
+    SEAT_POSE={"front": [("Bip01", -5.0), ("Bip01_L_Thigh", -8.0), ("Bip01_R_Thigh", -8.0),
+                         ("Bip01_L_Calf", 14.0), ("Bip01_R_Calf", 14.0)]},
     BODY_W_Z=0.40,                         # (under the mirrors: 0.40 x 3.98 = 1.59 m, the mirror arms from 1.67)
     # rear-hinged doors (PREP.md: the handle at the front edge), 65 deg about the upright at their rear edge
     DOORS={"DoorFrontLeft": (-1, (0, 0, 1), 65, 0.8), "DoorFrontRight": (1, (0, 0, 1), -65, 0.8)},
@@ -251,18 +278,26 @@ CAR = dict(
     SEAM_CLEAR=0.065,
     TRUNK_WALL=False,
     HUMP_BACKS=False,
-    # dz -0.109: the cushions 15 mm higher than the family's -0.121, under the upright pose's hips (seat_head.py sit)
-    SEATS=dict(front=dict(w=0.44, back=0.50, recline=20, dy=0.059, dz=-0.109),
-               jump=dict(w=0.40, back=0.50, recline=20, dy=0.048, dz=-0.109),
+    DOOR_RISER=True,                       # (cabin.py: the floor 0.48 m over the door openings' lower edge)
+    # dz -0.109: the cushions 15 mm higher than the family's -0.121, under the upright pose's hips (seat_head.py sit);
+    # tall truck seats, the headrests' tops where p26-x264.png draws them (_tall)
+    SEATS=dict(front=dict(w=0.44, **_tall(_HEADREST), dy=0.059, dz=-0.109),
+               jump=dict(w=0.40, **_tall(_JUMP_HEADREST), dy=0.048, dz=-0.109),
                sill=None, bin=None),
     PARCEL=None,
-    # a wide dash across the cab (no console: the centre seat), the wheel on the centre line, the screen on its right
+    # a wide dash across the cab (no console: the centre seat), the wheel on the centre line, a screen each side of it
+    # turned toward the driver: ERG 2026 p.6 (p06-x73.png, the driver's view) draws two equal screens, each 0.92 of the
+    # wheel's width wide and 0.50 tall, their centres 0.99 wheel widths out of the wheel's and a little over its hub; p.5
+    # (p05-x66.png, from above) both turned in, ~25 deg [INFERENCE: sizes against this wheel (0.42 m), the screens
+    # behind it drawn smaller: 0.40 x 0.22 m, centres +-0.45 m]
     DASH=dict(size=(1.80, 0.34, 0.16), console=None,
               dash=(0, _c(_WHEEL[0] + 0.525), _c(0, _WHEEL[1])[1] - 0.081),
               trim=(0, _c(_WHEEL[0] + 0.315), _c(0, _WHEEL[1])[1] - 0.061),
               light=(0, _c(_WHEEL[0] + 0.317), _c(0, _WHEEL[1])[1] - 0.085),
-              stand=(0.35, _c(_WHEEL[0] + 0.33), _c(0, _WHEEL[1])[1] + 0.013),
-              screen=(0.35, _c(_WHEEL[0] + 0.30), _c(0, _WHEEL[1])[1] + 0.10),
+              stands=tuple((s * round(0.45 * K, 4), _c(_WHEEL[0] + 0.33), _c(0, _WHEEL[1])[1] + 0.013) for s in (-1, 1)),
+              screens=tuple(((s * round(0.45 * K, 4), _c(_WHEEL[0] + 0.30), _c(0, _WHEEL[1])[1] + 0.10), -s * 25)
+                            for s in (-1, 1)),
+              screen_size=(round(0.40 * K, 4), round(0.22 * K, 4)),
               wheel=_c(*_WHEEL)),
     DOOR_CARD={
         "front": [
