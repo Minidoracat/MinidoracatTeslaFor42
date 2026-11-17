@@ -523,6 +523,20 @@ def load_source():
         _label(o, len(names))
         if name in C.get("LENS_FLAT", ()):   # (Cybercab) a lens lit as the upright face it reads as (_upright_normals)
             _upright_normals(me)
+        if C.get("NORMALS_UNREVERSE"):   # (Semi) a corner normal against its own face takes the face's: the source's own
+            me.update()                  # (the mirror arm's root) and the snap's, taken off a thin part's far side
+            a = me.attributes["custom_normal"]
+            cn = np.empty(len(me.loops) * 3, np.float32)
+            a.data.foreach_get("vector", cn)
+            cn = cn.reshape(-1, 3)
+            fn = np.empty(len(me.polygons) * 3, np.float32)
+            me.polygons.foreach_get("normal", fn)
+            lf = np.repeat(np.arange(len(me.polygons)), [p.loop_total for p in me.polygons])
+            bad = (cn * fn.reshape(-1, 3)[lf]).sum(1) < 0
+            if bad.any():
+                cn[bad] = fn.reshape(-1, 3)[lf[bad]]
+                a.data.foreach_set("vector", cn.ravel())
+                print("NORMALS_UNREVERSE", name, int(bad.sum()), "corners -> their face's normal")
         names.append(name)
         if target:          # the components' triangles now: CUT / GATE_CUT_COMPS / ROOF_PANE / MIRROR_CAP keys
             comp = np.array([d.value for d in me.attributes["comp"].data])
@@ -1289,6 +1303,9 @@ def classify(car, names, sizes):
     (gy, gz, gx), (ry, rz, rx) = GUARDS["front"], GUARDS["rear"]
     put(paint & (part == 0) & (cen[:, 1] > gy) & (cen[:, 2] < gz) & (np.abs(cen[:, 0]) > gx), "GuardLH", "GuardRH")
     put(paint & (part == 0) & (cen[:, 1] < ry) & (cen[:, 2] < rz) & (np.abs(cen[:, 0]) > rx), "GuardLT", "GuardRT")
+    # GUARD_REAR_MATS (Semi): those materials' faces behind the rear guards' y too (its grey fenders over the drive
+    # axles: no paint there). Vanilla damages GuardLT / GuardRT with TruckBed's condition (checkDamage 7, 15)
+    put(np.isin(mat, C.get("GUARD_REAR_MATS", ())) & (part == 0) & (cen[:, 1] < ry), "GuardLT", "GuardRT")
     # HEAD_TAIL (y front, y rear; Cybercab): the rest of the body ahead of / behind those, left in Roof, never damaged
     # (no part sets Roof's). Its paint in the guards' zones (EngineDoor / TruckBed: BaseVehicle.java
     # doOtherBodyWorkDamage checkDamage 3, 11 / 7, 15 = texen1 [3][0], [3][2] / [3][1], [3][3]), its bumper trim in
@@ -2029,6 +2046,11 @@ def textures(car, c, shift=0.0):
         layers["pos"] = (co[lv] - lo_) / span
     if C.get("RECESS"):
         layers["recess"] = np.repeat(c["recess"][:, None].astype(float), 3, 1)
+    if LAMPS.get("lit_rgb"):
+        lc = np.where((c["lamp"] == 2)[:, None], np.array(LIGHT_RGB["tail"]), np.array(LIGHT_RGB["head"])).astype(float)
+        for m_, rgb in LAMPS["lit_rgb"].items():
+            lc[c["mat"] == m_] = rgb
+        layers["lrgb"] = lc / 255
     b = bake(car, layers)
     col, zon, aux, ao = b["col"][..., :3], b["zone"][..., :3], b["aux"][..., :3], b["ao"][..., 0]
     nrm = b["nrm"][..., :3] * 2 - 1
@@ -2138,7 +2160,9 @@ def textures(car, c, shift=0.0):
     pv.save_png(m, os.path.join(pv.TEX_DIR, pv.NAME + "_mask.png"), "mask")
     lx = aux[f // 2::f, f // 2::f]
     lamp = lx[..., 1] > 0.5
-    lrgb = np.where((lx[..., 2] > 0.5)[..., None], np.array(LIGHT_RGB["tail"]) / 255, np.array(LIGHT_RGB["head"]) / 255)
+    # LAMPS lit_rgb {material: rgb} (Semi): those lamps' own lit colour (the amber marker lights) over LIGHT_RGB's
+    lrgb = b["lrgb"][f // 2::f, f // 2::f, :3] if "lrgb" in b else np.where(
+        (lx[..., 2] > 0.5)[..., None], np.array(LIGHT_RGB["tail"]) / 255, np.array(LIGHT_RGB["head"]) / 255)
     pv.save_png(np.concatenate([lrgb * lamp[..., None], lamp[..., None].astype(float)], -1),
                 os.path.join(pv.TEX_DIR, pv.NAME + "_lights.png"), "lights")
     print("TEX zones px", {ZN[k]: int((near == k).sum()) for k in np.unique(near)}, "AO median paint",

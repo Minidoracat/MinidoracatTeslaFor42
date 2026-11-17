@@ -284,7 +284,9 @@ def decimate(ob, target, keep_boundary=False, snap=None, hold_under=False, thin=
             m = ob.modifiers.new("dec", "DECIMATE")
             m.decimate_type = "COLLAPSE"
             m.ratio = target / n
-            m.use_symmetry, m.symmetry_axis = True, "X"
+            # DECIMATE_SYMMETRY False (Semi): the X-symmetric collapse on a source not quite symmetric folded triangles
+            # over (61 on the Semi's paint, 0.54 m2: dark diagonal stripes on its rear side panels)
+            m.use_symmetry, m.symmetry_axis = CAR.get("DECIMATE_SYMMETRY", True), "X"
             if keep_boundary:
                 bm = bmesh.new()
                 bm.from_mesh(ob.data)
@@ -332,7 +334,8 @@ def decimate(ob, target, keep_boundary=False, snap=None, hold_under=False, thin=
                     bad.append(probes)
             print("DECIMATE snap", ob.name, len(off), "vertices back onto the surface,", len(bad), "faces off it",
                   f"(pass {attempt + 1})")
-        bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+        if CAR.get("DECIMATE_RECALC", True):   # False (Semi): it turned its cab liner's inward faces all outward
+            bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
         bm.to_mesh(ob.data)
         bm.free()
         if not bad or attempt == 3:
@@ -652,7 +655,8 @@ def stage_wheel(r, width, rim=None, tag="", axle=None):
     # front of the face. `ring` (inner radius / rim flange radius, swatch[, step swatch]): a band from there out to the
     # barrel, and the step from the flange into the barrel, in that swatch or the step swatch if given (a thin machined
     # rim edge: the 64 px texture blurs a flange ring away; a dark step leaves the band alone, thinner); the shapes stop
-    # at its inner radius
+    # at its inner radius. `axle_face` (Semi): the whole-axle model's face in that swatch instead (the drive axles' flat
+    # grey covers on the front wheel's texture)
     if fc:
         cx = lambda rad: spoke_x(rad, rr, hw) - fc["sink"]                    # noqa: E731
         radii = np.linspace(sp["cap"] * rr, rb, fc["rings"] + 1)
@@ -663,7 +667,8 @@ def stage_wheel(r, width, rim=None, tag="", axle=None):
                   for rad in radii]
             for a_, b_ in zip(rg[:-1], rg[1:]):
                 for j in range(n):
-                    flat([a_[j], a_[(j + 1) % n], b_[(j + 1) % n], b_[j]], out, fc["face"])
+                    flat([a_[j], a_[(j + 1) % n], b_[(j + 1) % n], b_[j]], out,
+                         fc.get("axle_face", fc["face"]) if axle else fc["face"])
             if lip:
                 band = [[bm.verts.new((side * (cx(rad) + 0.0015), rad * math.cos(a), rad * math.sin(a)))
                          for a in ang[:n]] for rad in (rmax, rb)]

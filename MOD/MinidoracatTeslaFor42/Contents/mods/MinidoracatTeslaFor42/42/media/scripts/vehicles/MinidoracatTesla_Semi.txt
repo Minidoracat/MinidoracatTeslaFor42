@@ -39,7 +39,7 @@ module Base
         {
             file = MinidoracatTesla_Semi,
             scale = 1.82,
-            offset = 0.0000 0.6350 -0.3274,
+            offset = 0.0000 0.6350 -0.3276,
         }
         skin
         {
@@ -82,28 +82,28 @@ module Base
         wheel FrontLeft
         {
             front = true,
-            offset = 0.4970 -0.7752 1.2406,
+            offset = 0.4970 -0.7752 1.2408,
             radius = 0.2141,
             width = 0.2230,
         }
         wheel FrontRight
         {
             front = true,
-            offset = -0.4970 -0.7752 1.2406,
+            offset = -0.4970 -0.7752 1.2408,
             radius = 0.2141,
             width = 0.2230,
         }
         wheel RearLeft
         {
             front = false,
-            offset = 0.0000 -0.7752 -0.7654,
+            offset = 0.0000 -0.7752 -0.7652,
             radius = 0.2141,
             width = 0.2230,
         }
         wheel RearRight
         {
             front = false,
-            offset = 0.0000 -0.7752 -1.3191,
+            offset = 0.0000 -0.7752 -1.3189,
             radius = 0.2141,
             width = 0.2230,
         }
@@ -126,12 +126,12 @@ module Base
             showPassenger = true,
             position inside
             {
-                offset = 0.0000 -0.9086 0.7640,
+                offset = 0.0000 -0.9086 0.7642,
                 rotate = 0.0 0.0 0.0,
             }
             position outside
             {
-                offset = 0.7360 -0.9372 0.7640,
+                offset = 0.7383 -0.9372 0.7642,
                 rotate = 0.0 0.0 0.0,
                 area = SeatFrontLeft,
             }
@@ -141,12 +141,12 @@ module Base
             showPassenger = true,
             position inside
             {
-                offset = -0.3177 -0.9086 0.3102,
+                offset = -0.3177 -0.9086 0.3104,
                 rotate = 0.0 0.0 0.0,
             }
             position outside
             {
-                offset = -0.7360 -0.9372 0.7640,
+                offset = -0.7383 -0.9372 0.7642,
                 rotate = 0.0 0.0 0.0,
                 area = SeatFrontRight,
             }
@@ -189,14 +189,14 @@ module Base
         }
         attachment mtsemi_fifthwheel
         {
-            offset = 0.0000 -0.3971 -1.0650,
+            offset = 0.0000 -0.3971 -1.0648,
             rotate = 0.0 0.0 0.0,
             canAttach = mtsemi_kingpin,
         }
         /* charge port: [INFERENCE] the truck's left side behind the cab, at the frame's height (MCS port; not measured) */
         attachment chargeport
         {
-            offset = 0.5712 -0.4380 -0.3252,
+            offset = 0.5712 -0.4380 -0.3250,
             rotate = 0.0 0.0 0.0,
         }
         part DoorFrontLeft
