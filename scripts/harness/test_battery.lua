@@ -586,10 +586,8 @@ check(B.part(cv):getModData().chill == true and cv.feature[1] == 87 and cv.featu
     and cv.engineTx == 1 and cv.transmits == cmd0 + 1, "chill by the driver: force CHILL_FORCE (quality, loudness kept), engine and modData sent")
 check(cv.maxSpeedSet == nil, "Chill: top speed never touched")
 for name, s in pairs(T.Specs) do -- Chill must slow the car: a new car below T.CHILL_FORCE needs Specs chillForce
-    if H.bodyBuilt(s.model) then
-        local force = H.scriptValue("vehicles/MinidoracatTesla_" .. s.model .. ".txt", "engineForce") -- the car's vehicle script
-        check((s.chillForce or T.CHILL_FORCE) < force, name .. ": Chill force below its script force " .. tostring(force))
-    end
+    local force = H.scriptValue("vehicles/MinidoracatTesla_" .. s.model .. ".txt", "engineForce") -- the car's vehicle script
+    check((s.chillForce or T.CHILL_FORCE) < force, name .. ": Chill force below its script force " .. tostring(force))
 end
 local tx = cv.engineTx -- the same fake car as a Roadster, then back as it was (Model Y, Chill on)
 cv.script = "Base.MinidoracatTesla_Roadster"

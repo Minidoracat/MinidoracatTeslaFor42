@@ -3,8 +3,11 @@
 local check = H.check
 local T = MinidoracatTesla
 local saved = { getCell = getCell, SafeHouse = SafeHouse, ScriptManager = ScriptManager, addVehicleDebug = addVehicleDebug,
-    IsoDirections = IsoDirections, cm = __classmetatables, IsoWorld = IsoWorld,
+    IsoDirections = IsoDirections, cm = __classmetatables, IsoWorld = IsoWorld, WorldGenParams = WorldGenParams,
     pct = SandboxVars.MinidoracatTesla.SemiSpawnChance }
+-- the world generation seed string (single player: the new game screen's; a server: its ini's Seed)
+local seedString = "Kentucky1993"
+WorldGenParams = { INSTANCE = { getSeedString = function() return seedString end } }
 
 local function list(t) return { size = function() return #t end, get = function(_, i) return t[i + 1] end } end
 
@@ -17,9 +20,10 @@ end }
 IsoWorld = { class = "IsoWorld.class" }
 __classmetatables = { [IsoWorld.class] = { __index = methods } }
 
--- the cars' boxes (runtime extents x 1.82 scale: Semi about 6.49 x 2.08, trailer 13.3 x 2.6)
+-- the cars' boxes as the scripts give them (runtime: extents and centre of mass x 1.82): Semi 2.079 x 6.492 with the
+-- centre of mass 0.601 behind, trailer 2.148 x 13.343 with it 2.937 ahead (len 7.695 and 19.217, half 4 and 10)
 local function vec(x, y, z) return { x = function() return x end, y = function() return y end, z = function() return z end } end
-local DIMS = { ["Base.MinidoracatTesla_Semi"] = { 2.08, 6.29, 0.1 }, ["Base.MinidoracatTesla_SemiTrailer"] = { 2.6, 13.3, 0 } }
+local DIMS = { ["Base.MinidoracatTesla_Semi"] = { 2.079, 6.492, -0.601 }, ["Base.MinidoracatTesla_SemiTrailer"] = { 2.148, 13.343, 2.937 } }
 ScriptManager = { instance = { getVehicle = function(_, name)
     local d = DIMS[name]
     return d and { getExtents = function() return vec(d[1], 2, d[2]) end,
@@ -28,8 +32,9 @@ end } }
 IsoDirections = { N = "N", S = "S", E = "E", W = "W" }
 
 -- the world: every square clear outdoor floor unless `mods` says otherwise ({ wall = true } an object on it,
--- { safe = true } in a safehouse, { car = true } a car over it, { zombie = true } / { player = true } someone on it)
-local mods, squares, unloaded = {}, {}, false
+-- { safe = true } in a safehouse, { car = true } a car over it, { zombie = true } / { player = true } someone on it);
+-- `unloaded` true: no chunk loaded, { x0, x1 }: none whose squares x0..x1; `others`: the cars in the cell
+local mods, squares, unloaded, others = {}, {}, false, {}
 local function square(x, y)
     local k = x .. "," .. y
     if squares[k] then return squares[k] end
@@ -48,8 +53,25 @@ end
 local function setMods(m) mods, squares = m, {} end
 getCell = function() return {
     getGridSquare = function(_, x, y, z) return z == 0 and square(x, y) or nil end,
-    getChunkForGridSquare = function() return not unloaded or nil end,
+    getChunkForGridSquare = function(_, x)
+        if unloaded == true or (type(unloaded) == "table" and x >= unloaded[1] and x <= unloaded[2]) then return nil end
+        return true
+    end,
+    -- IsoCell.vehicles, a HashSet: iterator() only
+    getVehicles = function() return { iterator = function()
+        local i = 0
+        return { hasNext = function() return i < #others end, next = function() i = i + 1; return others[i] end }
+    end } end,
 } end
+-- a car standing at x, y whose body covers the squares x0..x1, y0..y1 (isIntersectingSquare, z 0); `asked` counts
+local function otherCar(x, y, x0, y0, x1, y1, script)
+    return { asked = 0, getX = function() return x end, getY = function() return y end,
+        getScriptName = function() return script or "Base.CarNormal" end,
+        isIntersectingSquare = function(self, sx, sy, sz)
+            self.asked = self.asked + 1
+            return sz == 0 and sx >= x0 and sx <= x1 and sy >= y0 and sy <= y1
+        end }
+end
 SafeHouse = { getSafeHouse = function(sq) return sq._safe and {} or nil end }
 
 -- addVehicleDebug: placed[i] = { script, dir, x, y, v }; rejectNext: the engine refuses the next one (sqlId -1)
@@ -83,31 +105,37 @@ local SEMI, TRAILER = S.CARS[1], S.CARS[2]
 H.section("semi spawn: the lots")
 check(S.installed, "the registerVehiclesZone wrap is in")
 local function zone(name, kind, x, y, z, w, h) return methods.registerVehiclesZone({}, name, kind, x, y, z, w, h, {}) end
-local z1 = zone("", "ParkingStall", 100, 100, 0, 40, 5) -- both fit, one after the other (40 >= 8 + 15 + margins)
+local z1 = zone("", "ParkingStall", 100, 100, 0, 60, 5) -- both fit, one after the other (the boxes 9 and 21 + margins)
 check(z1 and z1.name == "" and registered[1] == "", "the wrap runs vanilla's register and returns its zone")
 zone("parkingstall", "ParkingStall", 200, 100, 0, 5, 10)  -- Semi only, north-south: the wall lot
 zone("", "ParkingStall", 300, 100, 0, 10, 5)              -- Semi only: the safehouse lot
 zone("", "ParkingStall", 400, 100, 0, 10, 5)              -- Semi only: the free lot
 zone("", "ParkingStall", 500, 100, 0, 10, 5)              -- Semi only: the lot the engine refuses
 zone("", "ParkingStall", 600, 100, 0, 10, 5)              -- Semi only: chance 0
-zone("", "ParkingStall", 100, 100, 0, 40, 5)              -- the same rect again: dropped like checkVehiclesZones
+zone("", "ParkingStall", 100, 100, 0, 60, 5)              -- the same rect again: dropped like checkVehiclesZones
 zone("", "ParkingStall", 700, 100, 1, 30, 5)              -- upstairs: not a lot
 zone("", "TrafficJam", 800, 100, 0, 30, 5)                -- another kind
 zone("", "ParkingStall", 900, 100, 0, 7, 5)               -- too short for the Semi
 zone("", "ParkingStall", 1000, 100, 0, 30, 2)             -- too narrow
-check(#S.zones == 8, "parkingstall zones at z 0, no duplicate rect: " .. #S.zones)
+zone("", "ParkingStall", 1100, 100, 0, 10, 5)             -- Semi only: a long car's body over it
+zone("", "ParkingStall", 1200, 100, 0, 10, 5)             -- Semi only: placed while another waits
+zone("", "ParkingStall", 1300, 100, 0, 10, 5)             -- Semi only: the settle
+zone("", "ParkingStall", 1400, 100, 0, 10, 5)             -- Semi only: the chance turned down
+zone("", "ParkingStall", 1500, 100, 0, 19, 5)             -- 19 long: the Semi, not the trailer (20)
+check(#S.zones == 13, "parkingstall zones at z 0, no duplicate rect: " .. #S.zones)
 H.fire("OnLoadedMapZones")
-check(SEMI.half == 4 and TRAILER.half == 7, "the bodies by the script's box: Semi half " .. tostring(SEMI.half)
-    .. ", trailer half " .. tostring(TRAILER.half))
+check(SEMI.half == 4 and TRAILER.half == 10, "the bodies by the script's box and centre of mass: Semi half "
+    .. tostring(SEMI.half) .. ", trailer half " .. tostring(TRAILER.half))
 local function lotsIn(wx, wy)
     local t, l = {}, S.byChunk[wx * 100000 + wy] or {}
     for i = 1, #l, 2 do t[#t + 1] = S.CARS[l[i + 1]].key .. "@" .. S.zones[l[i]].x end
     return table.concat(t, " ")
 end
-check(lotsIn(12, 12) == "semi@100 trailer@100" and lotsIn(14, 13) == "semi@100 trailer@100",
-    "the 40 x 5 lot: both cars, in every chunk it touches (" .. lotsIn(12, 12) .. ")")
+check(lotsIn(12, 12) == "semi@100 trailer@100" and lotsIn(19, 13) == "semi@100 trailer@100",
+    "the 60 x 5 lot: both cars, in every chunk it touches (" .. lotsIn(12, 12) .. ")")
 check(lotsIn(112, 12) == "" and lotsIn(125, 12) == "", "too short or too narrow: no lot")
 check(lotsIn(37, 12) == "semi@300", "a 10 x 5 lot: the Semi only")
+check(lotsIn(187, 12) == "semi@1500", "19 long: the Semi only (the trailer's centred box needs 20)")
 
 H.section("semi spawn: the roll")
 local seed = 12345
@@ -120,6 +148,14 @@ for x = 0, 99 do
     end
 end
 check(same and hits > 100 and hits < 200, "the same lot rolls the same; 1.5% of 10000 lots hit: " .. hits)
+local s1 = S.seed()
+seedString = "Kentucky1994"
+local s2 = S.seed()
+seedString = ""
+local s0 = S.seed()
+seedString = "Kentucky1993"
+check(s1 == S.seed() and s1 ~= s2 and s0 == 0 and s1 > 0 and s1 < 2147483647,
+    "the seed from the world generation seed string: the same string the same seed, another one another (" .. s1 .. ")")
 
 local function chunkAt(ox, oy)
     return { getGridSquare = function(_, x, y, z) return square(ox + x, oy + y) end }
@@ -149,7 +185,7 @@ local a, b = box(placed[1]), box(placed[2])
 local inLot = true
 for _, f in ipairs({ a, b }) do
     -- the box with the turn margin inside the lot's long side
-    if f[1] < 100 or f[3] > 139 then inLot = false end
+    if f[1] < 100 or f[3] > 159 then inLot = false end
 end
 check(inLot and placed[1].y == 102 and placed[2].y == 102 and (placed[1].dir == "E" or placed[1].dir == "W"),
     "along the lot's long side, on its middle row")
@@ -164,25 +200,24 @@ check(done()[k1] == S.RULES and done()[S.lotKey(S.zones[1], TRAILER)] == S.RULES
 
 H.section("semi spawn: rolled once")
 H.fire("LoadChunk", chunkAt(96, 96))
-check(queued() == 0 and H.count("EveryOneMinute") == hooks, "the lot loads again this session: nothing queued")
-S.known = {} -- the next session: only ModData remembers
-H.fire("LoadChunk", chunkAt(96, 96))
-H.advanceMs(S.SETTLE_MS)
-H.fire("EveryOneMinute")
-check(#placed == 2 and queued() == 0 and H.count("EveryOneMinute") == hooks, "the next session: done in ModData, not again")
+check(queued() == 0 and H.count("EveryOneMinute") == hooks, "the lot loads again (this session or the next): done in ModData, nothing queued")
 
 H.section("semi spawn: no room")
+-- a dedicated server: the first minute sees the lot's chunks loaded, SETTLE later it is put down
+local function settleTick()
+    H.fire("EveryOneMinute")
+    H.advanceMs(S.SETTLE_MS)
+    H.fire("EveryOneMinute")
+end
 -- the north-south lot 200,100 5 x 10: a wall on its middle row under every place the Semi could take
 setMods({ ["201,105"] = { wall = true }, ["202,105"] = { wall = true }, ["203,105"] = { wall = true } })
 H.fire("LoadChunk", chunkAt(200, 104))
-H.advanceMs(S.SETTLE_MS)
-H.fire("EveryOneMinute")
+settleTick()
 check(#placed == 2 and done()[S.lotKey(S.zones[2], SEMI)] == S.RULES and H.count("EveryOneMinute") == hooks,
     "a wall in the way: no car, the lot done")
 setMods({ ["305,102"] = { safe = true } }) -- one square of the lot in a safehouse
 H.fire("LoadChunk", chunkAt(296, 96))
-H.advanceMs(S.SETTLE_MS)
-H.fire("EveryOneMinute")
+settleTick()
 check(#placed == 2 and done()[S.lotKey(S.zones[3], SEMI)] == S.RULES, "one square under the body in a safehouse: no car")
 
 setMods({ ["1,1"] = { wall = true }, ["2,1"] = { car = true }, ["3,1"] = { player = true }, ["4,1"] = { inside = true },
@@ -204,17 +239,88 @@ check(queued() == 0 and done()[S.lotKey(S.zones[4], SEMI)] == nil and H.count("E
     "never loaded: dropped from the queue, not done")
 unloaded = false
 H.fire("LoadChunk", chunkAt(400, 96))
-H.advanceMs(S.SETTLE_MS)
-H.fire("EveryOneMinute")
+settleTick()
 check(#placed == 3 and placed[3].x == 405, "loaded next time: put down (a zombie does not block, as vanilla)")
 
 H.section("semi spawn: refused")
 rejectNext = true
 H.fire("LoadChunk", chunkAt(496, 96))
-H.advanceMs(S.SETTLE_MS)
-H.fire("EveryOneMinute")
+settleTick()
 check(#placed == 4 and placed[4].v.zone == nil and done()[S.lotKey(S.zones[5], SEMI)] == S.RULES,
     "the engine refuses it (sqlId -1): left alone, the lot done")
+
+H.section("semi spawn: a long car standing off the lot")
+-- the lot 1100,100 10 x 5: a car standing 8 squares north of its middle row (further than isVehicleIntersecting's
+-- 4, the squares say free) with its body over the whole lot; another one far off is not even asked
+local over, far = otherCar(1105, 94, 1095, 95, 1115, 106), otherCar(5000, 5000, 4990, 4990, 5010, 5010)
+others = { over, far }
+H.fire("LoadChunk", chunkAt(1096, 96))
+settleTick()
+check(#placed == 4 and done()[S.lotKey(S.zones[9], SEMI)] == S.RULES and over.asked > 0 and far.asked == 0,
+    "every car in the cell near the lot asked (isIntersectingSquare): its body over the lot, no room")
+others = {}
+
+H.section("semi spawn: a lot waiting does not hold the others up")
+-- the lot at 1300 queued first, its chunks not loaded; the one at 1200 a moment later
+unloaded = { 1280, 1340 }
+H.fire("LoadChunk", chunkAt(1296, 96))
+H.advanceMs(1)
+H.fire("LoadChunk", chunkAt(1200, 96))
+settleTick()
+local kA = S.lotKey(S.zones[11], SEMI)
+check(#placed == 5 and placed[5].x >= 1200 and placed[5].x < 1210 and queued() == 1 and S.queue[kA] and not S.queue[kA].ready
+    and done()[kA] == nil, "the older lot still not loaded: the newer one put down past it, the older waits")
+
+H.section("semi spawn: SETTLE from its chunks all loaded")
+-- the lot at 1300 has been queued SETTLE and more: loaded now, it still waits SETTLE from this minute
+unloaded = false
+H.fire("EveryOneMinute")
+H.advanceMs(S.SETTLE_MS - 1)
+H.fire("EveryOneMinute")
+check(#placed == 5 and S.queue[kA], "loaded a minute ago, queued long before: not before SETTLE from the load")
+unloaded = { 1280, 1340 } -- one chunk gone again: the settle starts over
+H.fire("EveryOneMinute")
+unloaded = false
+H.fire("EveryOneMinute")
+H.advanceMs(S.SETTLE_MS - 1)
+H.fire("EveryOneMinute")
+check(#placed == 5 and S.queue[kA], "a chunk unloaded in between: SETTLE again from the reload")
+H.advanceMs(1)
+H.fire("EveryOneMinute")
+check(#placed == 6 and placed[6].x >= 1300 and done()[kA] == S.RULES and H.count("EveryOneMinute") == hooks,
+    "SETTLE after the reload: put down")
+
+H.section("semi spawn: the chance turned down with lots queued")
+H.fire("LoadChunk", chunkAt(1400, 96))
+local kC = S.lotKey(S.zones[12], SEMI)
+SandboxVars.MinidoracatTesla.SemiSpawnChance = 0
+H.fire("EveryOneMinute")
+check(#placed == 6 and queued() == 0 and done()[kC] == nil and H.count("EveryOneMinute") == hooks,
+    "chance 0 before it settles: off the queue, not done, hook removed")
+SandboxVars.MinidoracatTesla.SemiSpawnChance = 100
+H.fire("LoadChunk", chunkAt(1400, 96))
+settleTick()
+check(#placed == 7 and placed[7].x >= 1400 and done()[kC] == S.RULES, "turned back up: its next load puts it down")
+
+H.section("semi spawn: its car already in the lot (G1)")
+-- the Semi's lot 1500,100 19 x 5: a Semi standing just north of it (not in the lot, not over it) is no record
+local k15 = S.lotKey(S.zones[13], SEMI)
+others = { otherCar(1509, 94, 1509, 94, 1509, 94, SEMI.script) }
+H.fire("LoadChunk", chunkAt(1496, 96))
+settleTick()
+check(#placed == 8 and placed[8].x >= 1500 and placed[8].x < 1520 and done()[k15] == S.RULES,
+    "a Semi parked off the lot: the lot gets its own")
+-- a crash after vehicles.db took the car, before the world save took the done mark: the next session sees the lot
+-- again, with the car we put down standing in it
+done()[k15] = nil
+local p = placed[8]
+others[#others + 1] = otherCar(p.x, p.y, p.x - 1, p.y - 1, p.x + 1, p.y + 1, SEMI.script)
+H.fire("LoadChunk", chunkAt(1496, 96))
+settleTick()
+check(#placed == 8 and done()[k15] == S.RULES and queued() == 0 and H.count("EveryOneMinute") == hooks,
+    "the done mark lost, its Semi in the lot: nothing put down again, the lot done")
+check(ModData.getOrCreate(S.MODDATA).seed == nil, "no seed kept in ModData: the world's seed string is the record")
+others = {}
 
 H.section("semi spawn: chance 0")
 SandboxVars.MinidoracatTesla.SemiSpawnChance = 0
@@ -226,13 +332,14 @@ SandboxVars.MinidoracatTesla.SemiSpawnChance = 100
 H.side(false, false)
 H.fire("LoadChunk", chunkAt(600, 96))
 H.fire("EveryOneMinute")
-check(#placed == 5 and placed[5].x >= 600 and queued() == 0 and H.count("EveryOneMinute") == hooks,
+check(#placed == 9 and placed[9].x >= 600 and queued() == 0 and H.count("EveryOneMinute") == hooks,
     "single player: put down the next game minute, no settle wait")
 H.side(false, true)
 SandboxVars.MinidoracatTesla.SemiSpawnChance = nil
 check(T.semiSpawnPct() == 1.5, "unset: 1.5%")
 
 setMods({})
-getCell, SafeHouse, ScriptManager, addVehicleDebug, IsoDirections, __classmetatables, IsoWorld =
-    saved.getCell, saved.SafeHouse, saved.ScriptManager, saved.addVehicleDebug, saved.IsoDirections, saved.cm, saved.IsoWorld
+getCell, SafeHouse, ScriptManager, addVehicleDebug, IsoDirections, __classmetatables, IsoWorld, WorldGenParams =
+    saved.getCell, saved.SafeHouse, saved.ScriptManager, saved.addVehicleDebug, saved.IsoDirections, saved.cm, saved.IsoWorld,
+    saved.WorldGenParams
 SandboxVars.MinidoracatTesla.SemiSpawnChance = saved.pct

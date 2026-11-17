@@ -1353,6 +1353,15 @@ check(a.b.frunk.joypadFocused, "Model Y joypad: left -> Frunk")
 a:setFocus(nil)
 a.b.back:forceClick()
 end
+do -- Semi (frunk, trunk = false): flash and honk only; the controls line and the lock tip name only those and two doors
+state({ car = "MinidoracatTesla_Semi", skin = 0 })
+a.b.controls:forceClick()
+local sc = table.concat(a.cells, ",")
+check(sc == "flash,horn" and not a.b.frunk.shown and not a.b.trunk.shown and a.rowSub.controls == "IGUI_MinidoracatTesla_App_ControlsSubSemi"
+    and a.b.lock.tipKey == "IGUI_MinidoracatTesla_Tip_AppUnlockSemi",
+    "Semi: cells " .. sc .. ", its controls line, the (locked) lock tip names its two doors, no liftgate")
+a.b.back:forceClick()
+end
 state({ car = "MinidoracatTesla_Model3", skin = 5 })
 a.b.controls:forceClick()
 check(table.concat(a.cells, ",") == "flash,horn,frunk,trunk" and not a.b.tonneau.shown and not a.b.falcon.shown,
@@ -1371,22 +1380,19 @@ check(a.carHint == "MinidoracatTesla_Model3" and a.model == "Model3" and a.carSp
     and a.carTex.path:find("app_car_model3_", 1, true) ~= nil, "no model in the record: the phone key's mirror says Model 3")
 mirror[1] = "MinidoracatTesla_ModelY"
 -- every car in T.Specs has what the HUD and the app draw for it: zones, top view and wordmark at both scales, a
--- picture per paint, a plug item (a third car added to Specs without them fails here, not in game). A car still being
--- built (H.BUILDING): its art is checked once its script is in, the plug always.
+-- picture per paint, a plug item (a third car added to Specs without them fails here, not in game).
 local gaps = {}
 for script, s in pairs(T.Specs) do
     local function need(ok, what) if not ok then gaps[#gaps + 1] = script .. " " .. what end end
-    if H.bodyBuilt(s.model) then
-        need(T.HUD.ZONES[s.model], "HUD.ZONES")
-        for k = 1, 2 do
-            for _, pre in ipairs({ "car_", "wm_", "trim_" }) do need(T.HUDAtlas[k][pre .. s.model], pre .. s.model .. "@" .. k) end
-        end
-        for _, c in ipairs(s.colors) do -- the app pictures (convert.py appcar)
-            local f = io.open("MOD/MinidoracatTeslaFor42/Contents/mods/MinidoracatTeslaFor42/42/media/textures/MinidoracatTesla/HUD/"
-                .. s.appCar .. c.name .. ".png", "rb")
-            need(f, s.appCar .. c.name)
-            if f then f:close() end
-        end
+    need(T.HUD.ZONES[s.model], "HUD.ZONES")
+    for k = 1, 2 do
+        for _, pre in ipairs({ "car_", "wm_", "trim_" }) do need(T.HUDAtlas[k][pre .. s.model], pre .. s.model .. "@" .. k) end
+    end
+    for _, c in ipairs(s.colors) do -- the app pictures (convert.py appcar)
+        local f = io.open("MOD/MinidoracatTeslaFor42/Contents/mods/MinidoracatTeslaFor42/42/media/textures/MinidoracatTesla/HUD/"
+            .. s.appCar .. c.name .. ".png", "rb")
+        need(f, s.appCar .. c.name)
+        if f then f:close() end
     end
     need(s.plug and s.plug.item and s.plug.z, "plug")
 end

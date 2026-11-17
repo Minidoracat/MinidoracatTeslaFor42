@@ -125,6 +125,18 @@ check(ccw.names[1] == "IGUI_MinidoracatTesla_Part_GasTank" and ccw.names[3] == "
     and T.partNameKey("Base.MinidoracatTesla_ModelY", "IGUI_OpenHood") == "IGUI_MinidoracatTesla_OpenFrunk",
     "Cybercab: the trunk lid, vanilla's hood words (no front trunk); the Model Y still opens its frunk")
 end
+do -- Semi (no front or rear trunk): the hood in vanilla's words too, the app's texts its own; the axles and jump seat
+local SM = "Base.MinidoracatTesla_Semi"
+local same = true
+for _, k in ipairs({ "IGUI_VehiclePartEngineDoor", "IGUI_OpenHood", "IGUI_CloseHood", "IGUI_LockHood", "IGUI_UnlockHood" }) do
+    same = same and T.partNameKey(SM, k) == k
+end
+check(same and T.partNameKey(SM, "IGUI_MinidoracatTesla_Tip_AppLock") == "IGUI_MinidoracatTesla_Tip_AppLockSemi"
+    and T.partNameKey(SM, "IGUI_MinidoracatTesla_Tip_AppUnlock") == "IGUI_MinidoracatTesla_Tip_AppUnlockSemi"
+    and T.partNameKey(SM, "IGUI_MinidoracatTesla_App_ControlsSub") == "IGUI_MinidoracatTesla_App_ControlsSubSemi"
+    and T.partNameKey(SM, "IGUI_VehiclePartTireRearLeft") == "IGUI_MinidoracatTesla_Part_TireMidAxle",
+    "Semi: vanilla's hood words, its own lock tips and controls line (two doors, flash and honk), the axles")
+end
 check(ISVehicleMechanics.render(tw) == "IGUI_MinidoracatTesla_OutOfCharge", "Tesla: empty pack says out of charge")
 local vw = { vehicle = H.vehicle({ script = "Base.CarNormal" }) }
 ISVehicleMechanics.initParts(vw)

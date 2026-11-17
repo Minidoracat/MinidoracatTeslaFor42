@@ -6,19 +6,27 @@
 -- Instead, on the server only:
 -- - map load: vanilla doMapZones registers each parking zone (metazoneHandler.lua:120,143); a wrap of
 --   registerVehiclesZone keeps the parkingstall ones long enough for each car (the same wrap VehicleSpawnControl uses,
---   MVSC_Respawn.lua:55-73): 1,563 lots for the Semi and 1,293 for the trailer on the vanilla map.
--- - each lot's roll is a hash of the lot and a per-world seed: the same lot gets the same roll in every session, so a
---   lot is rolled once and the misses need no record. Sandbox SemiSpawnChance (% of the lots, default 1.5, 0 = none):
---   a simulated estimate of about 23 Semis and 19 trailers on the whole vanilla map, before the lots with no room.
+--   MVSC_Respawn.lua:55-73): 1,563 lots for the Semi (8 squares or longer) and 937 for the trailer (20 or longer: its
+--   box is centred on the centre of mass, 2.94 squares ahead of the 13.3-square body's middle, S.buildIndex) on the
+--   vanilla map (7,668 parkingstall zones at z 0 once duplicates are dropped).
+-- - each lot's roll is a hash of the lot and the world generation seed (S.seed): the same lot gets the same roll in
+--   every session, so a lot is rolled once and the misses need no record. Sandbox SemiSpawnChance (% of the lots,
+--   default 1.5, 0 = none): about 23 Semis and 14 trailers on the whole vanilla map (the lots x 1.5%), before the lots
+--   with no room.
 -- - LoadChunk (new chunks and the save's, so explored worlds get them too, like SuperchargerSpawn.lua): one table
 --   lookup; a lot that rolled a hit and is not done yet is queued.
--- - EveryOneMinute, only while the queue has something: on a dedicated server SETTLE after its chunk loaded (it reads
---   the chunk's saved cars after LoadChunk, ServerMap.java:827-838, VehiclesDB2.java:346-351,494-525: the wait
---   VehicleSpawnControl measured, MVSC_Respawn.lua:5-7,565, and waits on a dedicated server only); in single player
---   the next game minute (a driver is there within 15 s and would see it appear). Once every square the check reads
---   is loaded, it looks for a free stretch along the lot's long axis, middle first, and puts the car there
---   (addVehicleDebug, as VehicleSpawnControl does). Placed or no room, the lot is done for good: ModData keeps only
---   the lots that rolled a hit (at most every candidate lot, ~2,900 on the vanilla map, so it cannot keep growing).
+-- - EveryOneMinute, only while the queue has something: the lot's roll again at today's chance (turned down, the
+--   queued ones go too), then the lots whose squares are all loaded, oldest first, until one is placed or has no room.
+--   On a dedicated server a lot waits SETTLE from the first minute all its chunks are seen loaded, again if one
+--   unloads (the server reads a chunk's saved cars after LoadChunk, ServerMap.java:827-838, VehiclesDB2.java:346-351,
+--   494-525: the wait VehicleSpawnControl measured, MVSC_Respawn.lua:5-7,565); in single player none (a driver is
+--   there within 15 s and would see it appear). It looks for a free stretch along the lot's long axis, middle first,
+--   and puts the car there (addVehicleDebug, as VehicleSpawnControl does). Placed, no room, or the same car already
+--   standing in the lot, the lot is done for good: ModData keeps only the lots that rolled a hit (at most every
+--   candidate lot, ~2,500 on the vanilla map).
+-- shortcut: the done mark is in global ModData and the car in vehicles.db, saved apart; after a crash between the two
+-- saves the car found in its lot stands for the lost mark, but one driven out of the lot before the crash is not seen,
+-- and the lot gets a second car next session.
 if isClient() then return end
 require "MinidoracatTesla/Core"
 
@@ -28,17 +36,17 @@ T.SemiSpawn = S
 
 S.MODDATA = "MinidoracatTeslaSemiSpawn"
 S.RULES = 1           -- the rules' version, kept with every done lot
-S.SETTLE_MS = 15000   -- after the chunk loads, dedicated server only (VehicleSpawnControl's SETTLE_MP)
+S.SETTLE_MS = 15000   -- after all the lot's chunks are seen loaded, dedicated server only (VehicleSpawnControl's SETTLE_MP)
 S.TTL_MS = 300000     -- a lot whose squares do not all load in this long leaves the queue; its next load queues it again
 S.RECENT_MS = 60000   -- a car just placed is not in its chunk's vehicle list for a few frames (MVSC_Respawn.lua:24)
+S.NEAR = 10           -- how far a parked car's body reaches from its position: our trailer's 2.94 + 13.3 / 2 = 9.6
 S.CARS = {
     { key = "semi", script = "Base.MinidoracatTesla_Semi" },
     { key = "trailer", script = "Base.MinidoracatTesla_SemiTrailer" },
 }
 S.zones = {}   -- { x, y, w, h } parkingstall zones at z 0, as registered
 S.byChunk = {} -- [chunk key] = { zone index, car index, ... } candidate lots touching that chunk
-S.queue = {}   -- [lot key] = { zi, ci, at (ms) }
-S.known = {}   -- [lot key] = true: done in the save, seen this session (LoadChunk skips it without ModData)
+S.queue = {}   -- [lot key] = { zi, ci, at (ms queued), ready (ms its chunks were first seen all loaded) }
 S.recent = {}  -- { x0, y0, x1, y1, ms } footprints placed lately
 local ORIG_KEY = "MinidoracatTesla_SemiSpawn_registerVehiclesZone"
 local seenRect = {}
@@ -49,9 +57,20 @@ function S.lotKey(z, car) return z.x .. "," .. z.y .. "," .. z.w .. "," .. z.h .
 local function md()
     local t = ModData.getOrCreate(S.MODDATA)
     t.done = t.done or {}
-    if not t.seed then t.seed = ZombRand(1000000000) + 1 end
     t.v = S.RULES
     return t
+end
+
+-- the world's seed, the same from its first boot, never through our unsaved ModData: the world generation seed string
+-- (WorldGenParams, exposed LuaManager.java:2226; vanilla Lua reads it, MainScreen.lua:672). Single player: the new
+-- game screen always fills it (MapSpawnSelect.lua:900-913) and the loading state saves map_worldgen.bin at once
+-- (GameLoadingState.java:326-336, GameWindow.java:1030). Dedicated server: a new world takes the ini's Seed or a
+-- generated one and writes it into the ini right away (IsoWorld.java:1880-1888, ServerOptions.java:363-370), which the
+-- next boot reads back if map_worldgen.bin was never saved. Folded into an int below 2^31 (an empty one gives 0).
+function S.seed()
+    local s, h = WorldGenParams.INSTANCE:getSeedString() or "", 0
+    for i = 1, #s do h = (h * 31 + string.byte(s, i)) % 2147483647 end
+    return h
 end
 
 -- ---- the lots ----
@@ -198,24 +217,69 @@ function S.naturalize(v)
     v:setRust(ZombRand(100) < 100 - math.min(q * 120, 100) and 1 or 0)
 end
 
--- one lot: "placed", "noroom", or "wait" (squares not loaded yet)
-function S.place(z, car, now)
+-- the stretch the car's position may take along the lot (lo..hi), on its middle row
+local function span(z, car)
     local alongX = z.w >= z.h
     local lo = (alongX and z.x or z.y) + car.half
     local hi = (alongX and z.x + z.w or z.y + z.h) - car.half
     local mid = alongX and z.y + math.floor(z.h / 2) or z.x + math.floor(z.w / 2)
-    -- isVehicleIntersecting looks 4 squares past the square (IsoGridSquare.java:9853-9874)
-    local reach = math.ceil(car.len * 0.6 + 0.3) + 4
-    if alongX then
-        if not loaded(lo - reach, mid - reach, hi + reach, mid + reach) then return "wait" end
-    elseif not loaded(mid - reach, lo - reach, mid + reach, hi + reach) then return "wait" end
+    return alongX, lo, hi, mid, math.ceil(car.len * 0.6 + 0.3) -- the last: how far a footprint reaches from its centre
+end
+local function spanBox(alongX, lo, hi, mid, r)
+    if alongX then return lo - r, mid - r, hi + r, mid + r end
+    return mid - r, lo - r, mid + r, hi + r
+end
+
+-- every chunk the check reads loaded: the footprints, and S.NEAR past them for the cars standing there (a car in a
+-- chunk not loaded is in no list; isVehicleIntersecting itself looks 4 past, IsoGridSquare.java:9853-9874)
+function S.ready(z, car)
+    local alongX, lo, hi, mid, r = span(z, car)
+    return loaded(spanBox(alongX, lo, hi, mid, r + S.NEAR))
+end
+
+-- the cars whose body may reach the footprints. isVehicleIntersecting finds a car by the chunks 4 squares round the
+-- square, so a long one standing further off is missed; every car in the world is asked here instead. IsoCell.vehicles
+-- holds them on a dedicated server too: createPhysics adds the car to the cell's addVehicles (BaseVehicle.java:895-898),
+-- the cell's update moves those in (IsoCell.java:2164-2169,4059), which the server runs every frame (GameServer.java:1060
+-- IngameState.update -> IngameState.java:1535 -> IsoWorld.java:2962), removeFromWorld takes it out (BaseVehicle.java:
+-- 8119-8120). A HashSet: walked with iterator(), as SemiHitch.lua does. Also the one walk that sees this lot's own car
+-- standing in it already: put down before a crash that lost the done mark (VehiclesDB2 commits the car itself,
+-- VehiclesDB2.java:805-821,841-855; global ModData waits for the world save).
+local function carsNear(z, car, x0, y0, x1, y1)
+    local out, it = {}, getCell():getVehicles():iterator()
+    while it:hasNext() do
+        local v = it:next()
+        local x, y = v:getX(), v:getY()
+        if x >= z.x and x <= z.x + z.w and y >= z.y and y <= z.y + z.h and v:getScriptName() == car.script then
+            return nil
+        end
+        if x >= x0 - S.NEAR and x <= x1 + 1 + S.NEAR and y >= y0 - S.NEAR and y <= y1 + 1 + S.NEAR then out[#out + 1] = v end
+    end
+    return out
+end
+
+-- one lot whose squares are loaded: "placed", "there" (its car stands in it already) or "noroom"
+function S.place(z, car, now)
+    local alongX, lo, hi, mid, r = span(z, car)
+    local cars = carsNear(z, car, spanBox(alongX, lo, hi, mid, r))
+    if not cars then
+        T.log("semi spawn: the " .. car.key .. " is in the lot " .. S.lotKey(z, car) .. " already")
+        return "there"
+    end
     local dir = alongX and (ZombRand(2) == 0 and "E" or "W") or (ZombRand(2) == 0 and "S" or "N")
     local cell, seen = getCell(), {}
+    local function free(x, y)
+        if not S.free(cell:getGridSquare(x, y, 0)) then return false end
+        for i = 1, #cars do
+            if cars[i]:isIntersectingSquare(x, y, 0) then return false end -- BaseVehicle.java:5785-5797
+        end
+        return true
+    end
     local function fits(x0, y0, x1, y1)
         for x = x0, x1 do
             for y = y0, y1 do
                 local k = x * 100000 + y
-                if seen[k] == nil then seen[k] = S.free(cell:getGridSquare(x, y, 0)) end
+                if seen[k] == nil then seen[k] = free(x, y) end
                 if not seen[k] then return false end
             end
         end
@@ -246,27 +310,31 @@ function S.place(z, car, now)
 end
 
 -- ---- the queue ----
--- each game minute while a lot waits (no tick: AGENTS.md rule 2), one lot at most; unhooks itself when none is left
+-- each game minute while a lot waits (no tick: AGENTS.md rule 2). Rolled again at today's chance (a miss leaves the
+-- queue, not done: the chance turned back up queues it on its next load). A lot whose chunks are not all loaded waits
+-- (its settle starts over) without holding the others up; of the settled ones the oldest (queued first, then by key)
+-- is put down or has no room, the one square scan of the minute. No table.sort (verify_mod): one pass keeps the
+-- oldest. Unhooks itself when none is left.
 local hooked = false
 local function tick()
     local t, now = md(), getTimestampMs()
-    local drop, due = {}, nil
+    local pct, settle, seed = T.semiSpawnPct(), isServer() and S.SETTLE_MS or 0, S.seed()
+    local pick, pq
     for k, q in pairs(S.queue) do
-        if t.done[k] then drop[#drop + 1] = k; S.known[k] = true
-        elseif now - q.at > S.TTL_MS then drop[#drop + 1] = k
-        elseif not due and now - q.at >= (isServer() and S.SETTLE_MS or 0) then due = k end
-    end
-    for _, k in ipairs(drop) do S.queue[k] = nil end
-    if due then
-        local q = S.queue[due]
-        local ok, res = pcall(S.place, S.zones[q.zi], S.CARS[q.ci], now)
-        if not ok then T.log("semi spawn: error " .. tostring(res)); res = "error" end
-        -- done before anything else: an error half way does not put a second car down later
-        if res ~= "wait" then
-            t.done[due] = S.RULES
-            S.known[due] = true
-            S.queue[due] = nil
+        if not q.ready and now - q.at > S.TTL_MS then S.queue[k] = nil -- never all loaded: its next load queues it again
+        elseif S.roll(S.zones[q.zi], q.ci, seed) * 100 >= pct then S.queue[k] = nil
+        elseif not S.ready(S.zones[q.zi], S.CARS[q.ci]) then q.ready = nil
+        else
+            q.ready = q.ready or now
+            if now - q.ready >= settle and (not pq or q.at < pq.at or (q.at == pq.at and k < pick)) then pick, pq = k, q end
         end
+    end
+    if pick then
+        -- done before anything else: an error half way does not put a second car down later
+        t.done[pick] = S.RULES
+        S.queue[pick] = nil
+        local ok, res = pcall(S.place, S.zones[pq.zi], S.CARS[pq.ci], now)
+        if not ok then T.log("semi spawn: error " .. tostring(res)) end
     end
     for _ in pairs(S.queue) do return end
     Events.EveryOneMinute.Remove(tick)
@@ -292,12 +360,12 @@ function S.onLoadChunk(chunk)
     if not list then return end
     local pct = T.semiSpawnPct()
     if pct <= 0 then return end
-    local seed = md().seed
+    local t, seed = md(), S.seed()
     for i = 1, #list, 2 do
         local zi, ci = list[i], list[i + 1]
         local z, car = S.zones[zi], S.CARS[ci]
         local k = S.lotKey(z, car)
-        if not S.known[k] and not S.queue[k] and S.roll(z, ci, seed) * 100 < pct then
+        if not t.done[k] and not S.queue[k] and S.roll(z, ci, seed) * 100 < pct then
             S.queue[k] = { zi = zi, ci = ci, at = getTimestampMs() }
             if not hooked then
                 hooked = true

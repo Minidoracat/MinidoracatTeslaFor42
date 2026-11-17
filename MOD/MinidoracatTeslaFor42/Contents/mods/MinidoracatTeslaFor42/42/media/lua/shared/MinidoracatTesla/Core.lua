@@ -316,9 +316,9 @@ T.Specs = {
     ["Base.MinidoracatTesla_Semi"] = {
         model = "Semi",
         appCar = "app_car_semi_",
-        -- z: estimate (the port is on the left flank behind the cab, under the catwalk, ERG p6); measure it (E2E
-        -- integration-mp `port`) once the body is in
-        plug = { item = "Base.MinidoracatTesla_CablePlugSemi", z = 1.10 },
+        -- the port on the left flank behind the cab, under the catwalk (ERG p6); z: E2E integration-mp semiA-port-1
+        -- (port 0.946 with the truck settled on its suspension, no trailer; the model's 1.10 sat higher)
+        plug = { item = "Base.MinidoracatTesla_CablePlugSemi", z = 0.946 },
         -- Tesla gives no low voltage battery size for the Semi: the Model Y's 15.5 V, 6.9 Ah
         v12Kwh = 15.5 * 6.9 / 1000,
         -- the Model Y coefficients x 822 / 78.4: a full pack still drives one vanilla tank's distance
@@ -461,11 +461,21 @@ T.CarPartNames = {
     },
     -- Semi: three axles on four physics wheels (references/semi.md 1): TireRearLeft is the whole middle axle,
     -- TireRearRight the whole rear axle; SeatFrontLeft the centre driver's seat (vanilla's key says so), SeatFrontRight
-    -- the jump seat behind it on the right
+    -- the jump seat behind it on the right. No front or rear trunk (Specs frunk, trunk false): the hood keeps vanilla's
+    -- own words in every language (ours say frunk lid in some), as the Cybercab's; the app's lock texts and the
+    -- controls page name only what it has (two doors; flash and honk, PhoneApp.lua GRID)
     ["Base.MinidoracatTesla_Semi"] = {
         IGUI_VehiclePartTireRearLeft = "IGUI_MinidoracatTesla_Part_TireMidAxle",
         IGUI_VehiclePartTireRearRight = "IGUI_MinidoracatTesla_Part_TireRearAxle",
         IGUI_VehiclePartSeatFrontRight = "IGUI_MinidoracatTesla_Part_JumpSeat",
+        IGUI_VehiclePartEngineDoor = "IGUI_VehiclePartEngineDoor",
+        IGUI_OpenHood = "IGUI_OpenHood",
+        IGUI_CloseHood = "IGUI_CloseHood",
+        IGUI_LockHood = "IGUI_LockHood",
+        IGUI_UnlockHood = "IGUI_UnlockHood",
+        IGUI_MinidoracatTesla_Tip_AppLock = "IGUI_MinidoracatTesla_Tip_AppLockSemi",
+        IGUI_MinidoracatTesla_Tip_AppUnlock = "IGUI_MinidoracatTesla_Tip_AppUnlockSemi",
+        IGUI_MinidoracatTesla_App_ControlsSub = "IGUI_MinidoracatTesla_App_ControlsSubSemi",
     },
 }
 -- the Tesla key for a key on this car (script full name), or nil
