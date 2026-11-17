@@ -580,8 +580,90 @@ def car_cybercab(c):
             c.stroke([("M", x, a + 0.6), ("V", b - 0.6)], w=1.0, color="#4A525B")
 
 
+def _semi_x(y):  # Semi: a prep length coordinate (metres, nose +1.193, tail -6.66) to viewBox x
+    return round(SEMI_NOSE - (1.193 - y) * SEMI_K, 2)
+
+
+def _semi_y(x):  # a prep width coordinate (metres, the left side negative) to viewBox y (the left side up)
+    return round(48 + x * SEMI_K, 2)
+
+
+# the Semi at 19.6 viewBox units per metre (76 % of the Model Y's 25.9: its 7.85 m tractor fills the picture), nose
+# at x 158 (the Cybertruck's reaches 159), tail at 4.1
+SEMI_K, SEMI_NOSE = 19.6, 158.0
+
+
+def car_semi(c):
+    """Semi (tractor), on the built body (temp/skf_semi/semi_src.glb, the prep frame: front +y, left -x; metres): the
+    cab and its side fairings 2.517 m wide from the nose (y 1.193) to y -3.93, rounded in plan ahead of y 0.25; the
+    front axle at y 0 (its tyres under the cab, out of a plan view), the two drive axles at
+    -4.42 / -5.64 with dual tyres (x 0.623-0.893 and 0.957-1.227) open behind the cab, the frame between them with the
+    fifth wheel (y -5.08), the fenders at the tail (-6.14 to -6.66). The doors y -0.66 to -1.73 (seams), hinged at
+    their rear edge; the windscreen (y -0.175 at its corners, 0.69 at the middle of its foot), the vent windows ahead
+    of the doors, the mirrors on their arms (x 1.5); the roof's crown sloping down ahead of y -2.1; the charge port on
+    the left fairing behind the cab (y -3.45, cars/semi.py PORT). HUD.lua ZONES.Semi follows these edges."""
+    X, Y = _semi_x, _semi_y
+    tyre = dict(fill="#0B0D0F", outline="#8E98A3", ow=1.1)
+    for yc in (-4.42, -5.64):  # drive axles: dual tyres each side, 0.98 m across
+        for x0, x1 in ((-1.227, -0.957), (-0.893, -0.623), (0.623, 0.893), (0.957, 1.227)):
+            c.rrect(X(yc - 0.49), Y(x0), X(yc + 0.49) - X(yc - 0.49), Y(x1) - Y(x0), 1.5, **tyre)
+    c.rrect(X(-6.24), Y(-0.6), X(-3.9) - X(-6.24), Y(0.6) - Y(-0.6), 1.5, fill="#20252B", outline="#4A525B", ow=1.0)
+    for x0, x1 in ((-1.235, -0.62), (0.62, 1.235)):  # fenders behind the rear axle
+        c.rrect(X(-6.66), Y(x0), X(-6.14) - X(-6.66), Y(x1) - Y(x0), 1.2, fill="#2A3037", outline="#8E98A3", ow=1.0)
+    c.rrect(X(-5.5), Y(-0.5), X(-4.66) - X(-5.5), Y(0.5) - Y(-0.5), 3, fill="#3A424B", outline="#8E98A3", ow=1.0)
+    c.stroke([("M", X(-5.08), 48), ("H", X(-5.5))], w=1.2, color="#15191E")  # the fifth wheel's throat, open behind
+    half = [(-3.93, 1.258), (0.25, 1.248), (0.45, 1.218), (0.6, 1.187), (0.7, 1.137), (0.8, 1.074), (0.9, 0.974),
+            (1.0, 0.827), (1.1, 0.601), (1.15, 0.44), (1.185, 0.25)]  # |x| per y: the body's plan
+    body = ([("M", X(half[0][0]), Y(-half[0][1]))] + [("L", X(y), Y(-x)) for y, x in half[1:]]
+            + [("L", X(y), Y(x)) for y, x in half[::-1]] + [("Z",)])
+    c.fill(body, "#2A3037")
+    c.stroke(body, w=1.3, color="#AEB6BF")
+    for s in (-1, 1):  # mirrors on their arms
+        c.stroke([("M", X(0.3), Y(1.24 * s)), ("V", Y(1.40 * s))], w=1.0, color="#AEB6BF")
+        c.rrect(X(0.2), Y(-1.5) if s < 0 else Y(1.38), X(0.39) - X(0.2), Y(-1.38) - Y(-1.5), 0.8, fill="#2A3037",
+                outline="#AEB6BF", ow=1.0)
+        c.fill([("M", X(-0.65), Y(1.25 * s)), ("L", X(0.22), Y(1.235 * s)), ("L", X(0.12), Y(1.0 * s)), ("Z",)],
+               "#15191E")  # vent window
+    c.fill([("M", X(-0.175), Y(-0.875)), ("Q", X(0.225), 48, X(-0.175), Y(0.875)), ("L", X(0.35), Y(1.0)),
+            ("Q", X(1.03), 48, X(0.35), Y(-1.0)), ("Z",)], "#15191E")  # windscreen
+    c.stroke([("M", X(-3.3), Y(-1.12)), ("H", X(-2.1)), ("Q", X(-0.95), Y(-1.05), X(-0.85), 48),
+              ("Q", X(-0.95), Y(1.05), X(-2.1), Y(1.12)), ("H", X(-3.3))], w=1.0, color="#4A525B")  # roof crown
+    c.stroke([("M", X(-3.38), Y(-1.2)), ("V", Y(1.2))], w=1.0, color="#4A525B")  # the cab's back, fairings behind
+    for y in (-0.66, -1.73):  # door seams, from the body's edge 3 units in
+        for a, b in ((Y(-1.258), Y(-1.258) + 3), (Y(1.258) - 3, Y(1.258))):
+            c.stroke([("M", X(y), a + 0.6), ("V", b - 0.6)], w=1.0, color="#4A525B")
+    c.rrect(X(-3.45) - 1.3, Y(-1.258) + 0.6, 2.6, 2.2, 0.6, fill="#8E98A3")  # charge port (left fairing)
+
+
+def tow_semi(c):
+    """The Semi's 53 ft trailer, hitched (HUD.lua draws it over car_Semi while the Semi tows one): 16.15 x 2.6 m, its
+    front 0.914 m ahead of the kingpin on the fifth wheel (y -4.166, references/semi.md 1), at the tractor's scale.
+    Its roof covers the drive axles; the picture has room for 2.7 of its 16 m, so the box is drawn as a technical
+    drawing's break: its front, a zigzag cut, its tail (the rear frame) at the picture's left edge."""
+    X, Y = _semi_x, _semi_y
+    front, y0, y1 = X(-4.166), Y(-1.3), Y(1.3)
+    cut0, cut1, tail = 37.0, 27.0, 2.0
+    zig = [(y0 + (y1 - y0) * i / 4, 2.4 if i % 2 else -2.4) for i in range(5)]
+    pieces = ([("M", front, y0), ("V", y1), ("H", cut0 + zig[-1][1])] + [("L", cut0 + d, y) for y, d in zig[::-1]]
+              + [("Z",)],
+              [("M", tail, y0), ("H", cut1 + zig[0][1])] + [("L", cut1 + d, y) for y, d in zig] + [("H", tail), ("Z",)])
+    # the cut between, in the panel's colour: the tractor's frame drawn under it stays hidden
+    c.fill([("M", cut1 + zig[0][1], y0)] + [("L", cut1 + d, y) for y, d in zig[1:]]
+           + [("L", cut0 + d, y) for y, d in zig[::-1]] + [("Z",)], "#121417")
+    for p in pieces:
+        c.fill(p, "#262B32")
+        c.stroke(p, w=1.3, color="#AEB6BF")
+    for y in (y0 + 2.2, y1 - 2.2):  # the roof's side rails
+        c.stroke([("M", front - 2.2, y), ("H", cut0 + 4)], w=1.0, color="#4A525B")
+        c.stroke([("M", cut1 - 4, y), ("H", tail + 3.6)], w=1.0, color="#4A525B")
+    c.stroke([("M", front - 2.2, y0 + 2.2), ("V", y1 - 2.2)], w=1.0, color="#4A525B")  # the front wall's top
+    c.rrect(tail + 0.7, y0 + 0.7, 2.2, y1 - y0 - 1.4, 0.5, fill="#3A424B")  # the rear frame over the doors
+
+
 CARS = {"ModelY": car_modely, "Model3": car_model3, "Cybertruck": car_cybertruck, "ModelS": car_models, "ModelX": car_modelx,
-        "ModelYL": car_modelyl, "Roadster": car_roadster, "Cybercab": car_cybercab}
+        "ModelYL": car_modelyl, "Roadster": car_roadster, "Cybercab": car_cybercab, "Semi": car_semi}
+# what a car tows, drawn over its top view (tow_<model>, HUD.lua)
+TOWS = {"Semi": tow_semi}
 
 
 def dashed(c, x0, y0, x1, y1, w=1.8, dash=3.0, gap=2.0):
@@ -622,6 +704,9 @@ DOOR_GEOM = {
     # door_HD)
     "Cybercab": {"front": (77.0, 115.0), "rear": (77.0, 77.0), "y": (26.0, 70.0), "butterfly": True,
                  "tr": ((28.2, 38, 58), (22.2, 36, 60)), "kinds": ("FL", "FR", "TR")},
+    # Semi: two doors (x 100.7-121.7, car_semi's seams) hinged at their rear edge, swung 65 degrees (cars/semi.py
+    # DOORS), along the cab's side (y 23.3 / 72.7); no trunk, no hood (no front trunk)
+    "Semi": {"front": (100.7, 121.7), "rear": (100.7, 100.7), "y": (23.3, 72.7), "rearhinge": 65, "kinds": ("FL", "FR")},
 }
 
 
@@ -640,6 +725,13 @@ def door_overlay(kind, g):
             out = -9 if kind == "FL" else 9
             dashed(c, x0, y, x1, y)
             c.stroke([("M", x1, y), ("L", x1 - 6, y + out), ("H", x0 + 8), ("L", x0 + 4, y + out * 0.4)], w=2.8)
+        elif kind in ("FL", "FR") and g.get("rearhinge"):  # hinged at the rear edge: the front edge swings out
+            x0, x1 = g["front"]
+            y = g["y"][0] if kind == "FL" else g["y"][1]
+            out = -1 if kind == "FL" else 1
+            a = math.radians(g["rearhinge"])
+            dashed(c, x0, y, x1, y)
+            c.stroke([("M", x0, y), ("L", x0 + (x1 - x0) * math.cos(a), y + out * (x1 - x0) * math.sin(a))], w=2.8)
         elif kind in ("FL", "RL", "FR", "RR"):
             x0, x1 = g["front"] if kind[0] == "F" else g["rear"]
             y = g["y"][0] if kind[1] == "L" else g["y"][1]
@@ -689,7 +781,9 @@ WORDS = [("kmh", "Inter-Regular.ttf", 14, "km/h", 0), ("km", "Inter-Regular.ttf"
          # the Roadster 2.5 Sport (the car's own badge reads "Roadster Sport")
          ("wm_Roadster", "Inter-Light.ttf", 15, "ROADSTER", 5), ("trim_Roadster", "Inter-Regular.ttf", 13, "2.5 Sport", 0),
          # the Cybercab comes in one version (gold, 47.6 kWh); Tesla runs it as its Robotaxi
-         ("wm_Cybercab", "Inter-Light.ttf", 15, "CYBERCAB", 3), ("trim_Cybercab", "Inter-Regular.ttf", 13, "Robotaxi", 0)]
+         ("wm_Cybercab", "Inter-Light.ttf", 15, "CYBERCAB", 3), ("trim_Cybercab", "Inter-Regular.ttf", 13, "Robotaxi", 0),
+         # the Semi built here is the Long Range (822 kWh)
+         ("wm_Semi", "Inter-Light.ttf", 15, "SEMI", 5), ("trim_Semi", "Inter-Regular.ttf", 13, "Long Range", 0)]
 
 
 def render_text(fontfile, size, s, track=0):
@@ -763,6 +857,12 @@ def build_sprites(k):
         c = Canvas(cw, ch, CAR_VB[0], CAR_VB[1])
         draw(c)
         sp["car_" + model] = (c.out(), 0, 0, 0)
+    for model, draw in TOWS.items():  # cropped like the door overlays
+        c = Canvas(cw, ch, CAR_VB[0], CAR_VB[1])
+        draw(c)
+        im = c.out()
+        bb = im.getbbox()
+        sp["tow_" + model] = (im.crop(bb), bb[0], bb[1], 0)
     for model, g in DOOR_GEOM.items():
         for kind in g["kinds"]:
             c = Canvas(cw, ch, CAR_VB[0], CAR_VB[1])
