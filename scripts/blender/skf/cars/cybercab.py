@@ -359,7 +359,7 @@ CAR = dict(
     PART_OBJS={},
     PANES={"Body": {"WinT", "WinLT", "WinRT"}, "DoorFrontLeft": {"WinLH"}, "DoorFrontRight": {"WinRH"},
            "TrunkDoor": set()},
-    # badges: none drawn (the prep has the front camera, plate and grille)
+    # badges: none of the Tesla ones (the prep has the front camera, plate and grille); the Cybercab wordmark below
     T_BADGE=None,
     TESLA=None,
     LENS_X=0.0,
@@ -368,6 +368,25 @@ CAR = dict(
     MODELY=None,
     PERF_BADGE=None,
     CALIPER=None,
+    # the Cybercab wordmark (NHTSA AQ26002 INRD-19468: "the Cybercab wordmark on the sides and trunk lid"; ERG p.4 x57
+    # left side, x59 trunk lid): black (badge_black), our strokes of the official artwork (cybercab_wordmark.json, its
+    # note), pieces of at most 4 cm laid point by point on the panel (convert.py badges, stroke_quads). places: (part,
+    # (u 0, v 0) point, u, v, outward normal, width), grid in the pre-centre frame; u along the ink's width (read left
+    # to right from outside), v up the letters (the lid's: towards the front). From the wheel-anchored cameras
+    # (pairs views erg_p04_x57_side, erg_p04_x59): rays through the official pixels of 15 wordmark points onto the
+    # build (temp/skf_cc_car/a16/place.py) and a rigid fit to the hits (a16/rigid.py). Left door: 0.6915 m wide, its
+    # u 0 end 0.48 m behind the front axle, the lowest ink at the front wheel centre's height, hits within 0.8 cm.
+    # Right door: the left's place mirrored, the letters not (u towards the front), laid on its own panel. Lid: the
+    # measured width 0.6763 m and centre (0.1 cm off the centre line: on it), u +x, v up the lid's slope; the official
+    # picture's letters stand 1.54 x taller than a rigid wordmark on this lid would through that camera (a16 notes).
+    # zone: the mask's (convert.py stage_build): Roof, never damaged (HEAD_TAIL), so a hit door or lid keeps them black
+    WORDMARK=dict(file="cybercab_wordmark.json", seg=round(0.04 * K, 4), zone="Roof", places=(
+        ("DoorFrontLeft", (-0.7006, 0.8028, 0.2946), (0.029, -0.9996, -0.0035), (-0.0677, -0.0055, 0.9977),
+         (-0.9973, -0.0287, -0.0679), 0.5712),
+        ("DoorFrontRight", (0.684, 0.2318, 0.2926), (0.029, 0.9996, 0.0035), (0.0677, -0.0055, 0.9977),
+         (0.9973, -0.0287, -0.0679), 0.5712),
+        ("TrunkDoor", (-0.2793, -1.6317, 0.8097), (1.0, 0.0, 0.0), (0.0, 0.9655, 0.2605), (0.0, -0.2605, 0.9655),
+         0.5587))),
     FRUNK_TUB=None,                        # (no front trunk)
     # charge port (ERG p.6, rider guide 01 rear / 07): the prep's port lid centre (cybercab_lines.json
     # charge_port_centre), from behind onto the bumper (pzveh PORT_X)

@@ -88,13 +88,14 @@ T_BADGE, TESLA, LENS_X, MODELY, CALIPER = (C[k] for k in ("T_BADGE", "TESLA", "L
 BADGE_Y, BLADE, PERF_BADGE = C["BADGE_Y"], C["BLADE"], C["PERF_BADGE"]
 SWATCH = ("Badge_T", "Badge_TESLA", "Badge_MODELY", "Caliper") + (("Badge_CERB",) if C.get("CERBERUS") else ()) \
     + (("Badge_CAM",) if C.get("CAMERA") else ()) + (("Badge_BLADE",) if LAMPS.get("blade_swatch") else ()) \
-    + (("Badge_BLADE_R",) if LAMPS.get("blade_split") else ())
+    + (("Badge_BLADE_R",) if LAMPS.get("blade_split") else ()) + (("Badge_WORD",) if C.get("WORDMARK") else ())
 #                                            one flat-colour UV spot each (unwrap()); LAMPS blade_swatch (Model Y L,
 #                                            a flat red bar): the blade too, so the lights texture lights it whole
 #                                            (its own thin island came out dashed at 512); LAMPS blade_split (Model Y):
 #                                            its right half (x > 0) on a spot of its own, so each half takes its own
 #                                            side's tail zone (one spot baked the whole bar LightRT: a removed right
-#                                            rear lamp put out all of it)
+#                                            rear lamp put out all of it); WORDMARK (Cybercab): its three wordmarks
+#                                            (Badge_WORD_<part>) on one spot
 SWATCH_U = 0.03                            # UV0 strip kept for them at u > 1 - SWATCH_U
 # SEAM_LINE tone: the lines' flat UV0 / UV1 spot, a 512 texel's centre in that strip between the first two spots
 SEAM_SPOT = (504.5 / 512, (round(512 / len(SWATCH)) + 0.5) / 512)
@@ -951,6 +952,32 @@ def badges(obs, names):
         ro, ri = ring(cm["r"]), ring(cm["r"] - cm["w"])
         flat("Badge_CAM", [[[ro[i], ro[i + 1], ri[i + 1], ri[i]] for i in range(16)]],
              ((0, cm["y"], cm["z"]), (-1, 0, 0), (0, 0, 1), (0, 1, 0)), "badge_cam", planar=True)
+    if C.get("WORDMARK"):                  # (Cybercab) the Cybercab wordmark on each front door and the trunk lid:
+        wm = C["WORDMARK"]                 # our strokes of the official artwork, laid point by point on the panel
+        with open(os.path.join(HERE, wm["file"]), encoding="utf-8") as f:
+            strokes = json.load(f)["strokes"]
+        for part, o, eu, ev, n, width in wm["places"]:
+            flat("Badge_WORD_" + part, [stroke_quads(strokes, width, wm["seg"])], (o, eu, ev, n), "badge_black")
+
+
+def stroke_quads(strokes, s, seg):
+    """Quads (u, v) of polylines with a width at each point ([{pts, w}], a unit wide) at s grid per unit: each segment
+    a quad from its start's width to its end's, run on half a width past both ends (as stroke_text), cut into pieces at
+    most seg long, so laid point by point (badges flat) they follow the panel's curve."""
+    quads = []
+    for st in strokes:
+        p, w = np.array(st["pts"]) * s, np.array(st["w"]) * s
+        for a, b, wa, wb in zip(p, p[1:], w, w[1:]):
+            if np.allclose(a, b):
+                continue
+            d = (b - a) / np.linalg.norm(b - a)
+            a, b = a - d * wa / 2, b + d * wb / 2
+            t = np.linspace(0, 1, max(1, math.ceil(np.linalg.norm(b - a) / seg)) + 1)
+            c, hw = a + t[:, None] * (b - a), (wa + t * (wb - wa)) / 2
+            nrm = np.array((-d[1], d[0]))
+            quads += [[tuple(c[i] - hw[i] * nrm), tuple(c[i + 1] - hw[i + 1] * nrm), tuple(c[i + 1] + hw[i + 1] * nrm),
+                       tuple(c[i] + hw[i] * nrm)] for i in range(len(t) - 1)]
+    return quads
 
 
 def _runs(row):
@@ -1194,6 +1221,8 @@ def classify(car, names, sizes):
         gsel |= (obj == o) & (csize == s) & in_gate(cen)
     part[gsel | np.isin(obj, ("Badge_BLADE", "Badge_TESLA", "Badge_MODELY", "Badge_PERF"))] = 5
     part[obj == "Badge_T"] = 6
+    for pname, *_ in (C.get("WORDMARK") or {}).get("places", ()):   # (Cybercab) each wordmark on its door / lid
+        part[obj == "Badge_WORD_" + pname] = PARTS.index(pname)
     # lamps. Tail: the red light bar (a 1 cm strip on the spoiler's lower lip, about a pixel in game), the corner
     # lamps, and the rear face of the smoked light-bar cover across the tailgate (LAMPS blade), which glows red at
     # night like the real light blade (night-N showed one corner patch only)
@@ -1576,9 +1605,21 @@ def unwrap(car, obj, big=None):
         me.uv_layers.remove(me.uv_layers[nm])
     me.uv_layers.new(name="UV0")
     pv.select_only(car)
+    word = np.flatnonzero([str(o).startswith("Badge_WORD_") for o in obj]) if C.get("WORDMARK") else ()
+
+    def select_all():
+        """Every face but WORDMARK's (Cybercab): its wordmarks go on the swatch below, no islands in the packing (the
+        other islands' layout as without them)."""
+        bpy.ops.mesh.select_all(action="SELECT")
+        if len(word):
+            bm = bmesh.from_edit_mesh(me)
+            bm.faces.ensure_lookup_table()
+            for i in word:
+                bm.faces[i].select_set(False)
+            bmesh.update_edit_mesh(me)
     bpy.ops.object.mode_set(mode="EDIT")
     bpy.ops.mesh.select_mode(type="FACE")
-    bpy.ops.mesh.select_all(action="SELECT")
+    select_all()
     bpy.ops.uv.smart_project(angle_limit=math.radians(60), island_margin=0.002, area_weight=0.0, scale_to_bounds=False)
     if big is not None and big.any():
         from bpy_extras import mesh_utils
@@ -1595,7 +1636,7 @@ def unwrap(car, obj, big=None):
                 uv[lp] = c + (uv[lp] - c) * C["STOP_UV_SCALE"]
         me.uv_layers["UV0"].data.foreach_set("uv", uv.ravel())
         bpy.ops.object.mode_set(mode="EDIT")
-        bpy.ops.mesh.select_all(action="SELECT")
+        select_all()
     # 4 mask texels (512) between islands: the bake's margin meets halfway, and the shader samples the mask
     # bilinearly, so at 2 a zone's edge texels mixed in the neighbour island's zone colour
     bpy.ops.uv.pack_islands(rotate=True, margin=0.008)
@@ -1610,6 +1651,8 @@ def unwrap(car, obj, big=None):
     if LAMPS.get("blade_split"):            # the blade's right half on the Badge_BLADE_R spot (SWATCH)
         fx = pv.face_centres(car)[:, 0]
         sobj = np.where((obj == "Badge_BLADE") & (fx > 0), "Badge_BLADE_R", obj.astype(object))
+    if C.get("WORDMARK"):                   # the three wordmarks on the one Badge_WORD spot (SWATCH)
+        sobj = np.where([str(o).startswith("Badge_WORD_") for o in sobj], "Badge_WORD", np.asarray(sobj, object))
     for k, name in enumerate(SWATCH):       # 4 texels (2048) a side: the bake's margin fills the rest of the strip
         cu, cv, h = 1 - SWATCH_U / 2, (k + 0.5) / len(SWATCH), 2 / SKIN
         for i, d in enumerate(((-h, -h), (h, -h), (0, h))):
@@ -2107,6 +2150,11 @@ def stage_build():
         end_zones(car, c)
     elif C.get("LAMP_ZONES"):              # (Cybercab: HEAD_TAIL put its lamps' housings in Head / Tail)
         lamp_zones(car, c, C["LAMP_ZONES"])
+    if C.get("WORDMARK"):                  # (Cybercab) its wordmarks stay black when hit (user 2026-11-16, the lids'
+        # black trim): in the mask only (lamp_zones' way), the WORDMARK zone; their faces and UV1 keep their part's
+        mz = c.get("mask_zone", np.full(len(c["zone"]), -1))
+        mz[[str(o).startswith("Badge_WORD_") for o in c["obj"]]] = ZN.index(C["WORDMARK"]["zone"])
+        c["mask_zone"] = mz
     # centre the bbox (mesh centre == model offset == centerOfMassOffset, vanilla convention)
     co = pv.mesh_co(car)
     ctr = (co.min(0) + co.max(0)) / 2
@@ -3117,6 +3165,8 @@ def pieces(car, c, shift):
     def cab_attr(cell):
         return np.array([0, 0, pv.CABIN_UV1_U - CELL[cell], 0, 0, 0, 1], float)
     back_liner = ~glass & ((part == 0) & panel | (part > 0) & ~panel)
+    if C.get("WORDMARK"):    # (Cybercab) no reversed copies under its wordmarks: 3 mm over their panel's skin, whose
+        back_liner &= ~np.array([str(o).startswith("Badge_WORD_") for o in c["obj"][tf]])   # slab is behind them
     # TRIM_BACKS (optional, Cybercab int-r10): the body's non-panel faces (black trim: the rear arches' lips) whose centre
     # is in one of these boxes ((lo, hi), ...; centred mesh coords) get the reversed liner copy too. Behind the cabin the
     # trunk walls' top drops below them, and through the windscreen's top corners (the game's front views) their culled
