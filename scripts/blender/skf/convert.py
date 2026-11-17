@@ -523,6 +523,20 @@ def load_source():
         _label(o, len(names))
         if name in C.get("LENS_FLAT", ()):   # (Cybercab) a lens lit as the upright face it reads as (_upright_normals)
             _upright_normals(me)
+        if C.get("NORMALS_UNREVERSE"):   # (Semi) a corner normal against its own face takes the face's: the source's own
+            me.update()                  # (the mirror arm's root) and the snap's, taken off a thin part's far side
+            a = me.attributes["custom_normal"]
+            cn = np.empty(len(me.loops) * 3, np.float32)
+            a.data.foreach_get("vector", cn)
+            cn = cn.reshape(-1, 3)
+            fn = np.empty(len(me.polygons) * 3, np.float32)
+            me.polygons.foreach_get("normal", fn)
+            lf = np.repeat(np.arange(len(me.polygons)), [p.loop_total for p in me.polygons])
+            bad = (cn * fn.reshape(-1, 3)[lf]).sum(1) < 0
+            if bad.any():
+                cn[bad] = fn.reshape(-1, 3)[lf[bad]]
+                a.data.foreach_set("vector", cn.ravel())
+                print("NORMALS_UNREVERSE", name, int(bad.sum()), "corners -> their face's normal")
         names.append(name)
         if target:          # the components' triangles now: CUT / GATE_CUT_COMPS / ROOF_PANE / MIRROR_CAP keys
             comp = np.array([d.value for d in me.attributes["comp"].data])

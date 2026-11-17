@@ -164,6 +164,11 @@ CAR = dict(
     # turned the cab liner's inward faces all outward (pzveh.decimate)
     DECIMATE_SYMMETRY=False,
     DECIMATE_RECALC=False,
+    # the shell's nose and waist lines are shading only (prep_semi.shade_normals: the custom normals lean off the line);
+    # load_source keeps the corner normals and the snap resamples them off the fine mesh, so they survive the collapse.
+    # 31 of the source's mirror-arm corners point against their faces, and the snap took ~430 off thin parts' far sides
+    # (Frame, Paint, Trim): those take their face's normal
+    NORMALS_UNREVERSE=True,
     # the decimated objects' shared open edges (the shell's seams, 1 mm: Paint / Frame 5901 points, Paint / SkirtGrey
     # 922, RearWall / SkirtGrey 693, Paint / Trim 505, Liner / Trim 293, Liner / SkirtGrey 157, Frame / SkirtGrey 106)
     SEAM_SHARE=tuple((a, b, round(0.001 * K, 6)) for a, b in (
@@ -180,7 +185,7 @@ CAR = dict(
     # deflector 0.30, frames, pillars and mirrors 0.15, the rear wall 0.20, the fenders 0.50; the lamps' lenses unlit
     MAT_RGB={"Trim": (34, 34, 36), "Liner": (24, 24, 26), "Glass": (26, 30, 34), "HeadLight": (106, 108, 114),
              "SkirtGrey": (69, 69, 71), "Frame": (34, 34, 36), "Mirror": (34, 34, 36), "RearWall": (46, 46, 48),
-             "Fender": (114, 114, 116), "TailLight": (120, 52, 54), "BrakeLight": (136, 48, 48),
+             "Fender": (114, 114, 116), "TailLight": (125, 43, 43), "BrakeLight": (136, 48, 48),
              "MarkerLight": (220, 140, 50), "ReflectorRed": (186, 43, 43), "ReflectorWhite": (223, 223, 223)},
     RECOLOR=(),
     CARBON=None,
@@ -192,10 +197,11 @@ CAR = dict(
     ROOF_PANE="-",
     MIRROR_CAP="-",
     # lit with the headlights: the light bar and wedge lamps (HeadLight) and the five amber marker lights over the
-    # windshield (MarkerLight, lit amber) in LightLH / LightRH, the round tail lamps' rings (TailLight) in LightLT /
-    # LightRT; lit when braking: the tail lamps' centres (BrakeLight) in StopL / StopR. The reflectors stay unlit
+    # windshield (MarkerLight, lit amber) in LightLH / LightRH, the round tail lamps' rings (TailLight, lit at 3/4 of
+    # the brake red: the shell's emission 0.6 / 0.8) in LightLT / LightRT; lit when braking: the tail lamps' centres
+    # (BrakeLight, the full tail red) in StopL / StopR. The reflectors stay unlit
     LAMPS=dict(head=("HeadLight", "MarkerLight"), tail=("TailLight",), tail_z=0.0, tail_y=0.0, blade=None,
-               brake_objs=("BrakeLight",), lit_rgb={"MarkerLight": (255, 140, 20)}),
+               brake_objs=("BrakeLight",), lit_rgb={"MarkerLight": (255, 140, 20), "TailLight": (191, 22, 22)}),
     # part lines (y, z): the door's rear edge
     LINES={k: (_g(_DOOR_Y[1], _DOOR_Z[0]), _g(_DOOR_Y[1], _DOOR_Z[1])) for k in ("S", "BF")},
     FRONT_Y=round(_DOOR_Y[0] * K, 4), SILL_Z=round(_DOOR_Z[0] * K, 4), ARCH=(0.0, -9.0),
