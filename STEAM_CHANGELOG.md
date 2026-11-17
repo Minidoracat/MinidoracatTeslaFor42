@@ -1,5 +1,5 @@
-[h1]Minidoracat Tesla Collection for B42 42.22.2-x.y.z[/h1]
-[i]Unreleased[/i]
+[h1]Minidoracat Tesla Collection for B42 42.22.2-0.9.0[/h1]
+[i]2026-11-17[/i]
 
 [b]English summary[/b]
 [list]
