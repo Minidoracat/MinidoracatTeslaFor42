@@ -6,7 +6,7 @@ local check = H.check
 for _, m in ipairs({ "Vehicles/ISUI/ISVehicleMenu", "Vehicles/ISVehicleTrailerUtils", "Vehicles/TimedActions/ISAttachTrailerToVehicle",
     "Vehicles/TimedActions/ISDetachTrailerFromVehicle" }) do H.stub(m) end
 local saved = { ISVehicleMenu, ISVehicleTrailerUtils, ISAttachTrailerToVehicle, ISDetachTrailerFromVehicle, ISTimedActionQueue,
-    getCell, getServerOptions, getPlayerRadialMenu, UIManager, getTexture }
+    getCell, getServerOptions, getPlayerRadialMenu, UIManager, getTexture, ISVehicleMechanics, ISPathFindAction, Vector3f }
 
 -- vanilla fakes: doTowingMenu adds one "vanilla" slice (its own branches are vanilla's business), the radial a toggle
 ISVehicleMenu = {}
@@ -24,8 +24,31 @@ function getTexture(p) return { path = p } end
 UIManager = { getSpeedControls = function() return { getCurrentGameSpeed = function() return 1 end } end }
 local queue = {}
 ISTimedActionQueue = { add = function(a) queue[#queue + 1] = a end }
-local walked
-ISVehicleTrailerUtils = { walkToTrailer = function(p, v, att, next) walked = { p = p, v = v, att = att }; queue[#queue + 1] = next; return true end }
+-- vanilla's walk as it goes for the fifth wheel (semiA-hitch-2): its spot behind the hitch is inside the trailer,
+-- getPlayerTrailerWorldPos is nil on both sides, so it says "no way to the trailer" and queues nothing; a car with
+-- `vanillaClear` gets its walk and the next action (another car's hitch, the cheat)
+local walked, fails = nil, 0
+ISVehicleMechanics = { cheat = false }
+ISVehicleTrailerUtils = {}
+function ISVehicleTrailerUtils.onTrailerPathFail() fails = fails + 1 end
+function ISVehicleTrailerUtils.walkToTrailer(p, v, att, next)
+    walked = { p = p, v = v, att = att, vanilla = true }
+    if not (v.vanillaClear or ISVehicleMechanics.cheat) then ISVehicleTrailerUtils.onTrailerPathFail(p); return false end
+    queue[#queue + 1] = next
+    return true
+end
+ISPathFindAction = { Type = "ISPathFindAction" }
+function ISPathFindAction:pathToNearest(character, locations)
+    return { Type = "ISPathFindAction", character = character, locations = locations,
+        setOnFail = function(self, fn, arg) self.onFail, self.failArg = fn, arg end }
+end
+Vector3f = { new = function()
+    local v = { _x = 0, _y = 0, _z = 0 }
+    function v:x() return self._x end
+    function v:y() return self._y end
+    function v:z() return self._z end
+    return v
+end }
 local function action(name)
     local cls = { Type = name }
     cls.__index = cls
@@ -41,21 +64,45 @@ function ISDetachTrailerFromVehicle:new(character, v, att) return setmetatable({
 local option = false
 function getServerOptions() return { getBoolean = function(_, k) return k == "DisableTrailerTowing" and option end } end
 
--- vehicles: canAttachTrailer as the engine for the pair it was told is in place (`hitchable`), names checked
+-- vehicles: canAttachTrailer as the engine for the pair it was told is in place (`hitchable`), names checked; a
+-- position (x, y, level z) and heading `yaw` with the engine's local frame (x across, z along) for the stand spots;
+-- each car's runtime box (extents and centre of mass x 1.82, the scripts) and the fifth wheel / kingpin
 local cars = {}
 local hitchable = true
 local nextId = 900
+local BOX = { ["Base.MinidoracatTesla_Semi"] = { 2.079, 6.492, -0.601 },
+    ["Base.MinidoracatTesla_SemiTrailer"] = { 2.148, 13.343, 2.937 } }
 local function car(script)
     nextId = nextId + 1
-    local v = { script = script, id = nextId }
+    local v = { script = script, id = nextId, x = 0, y = 0, z = 0, yaw = 0 }
     function v:getScriptName() return self.script end
     function v:getId() return self.id end
+    function v:getZ() return self.z end
     function v:getVehicleTowing() return self.towing end
     function v:getVehicleTowedBy() return self.towedBy end
     function v:isDriver(p) return self.driver == p end
     function v:canAttachTrailer(b, attA, attB)
         return hitchable and self.script == "Base.MinidoracatTesla_Semi" and b.script == "Base.MinidoracatTesla_SemiTrailer"
             and attA == "mtsemi_fifthwheel" and attB == "mtsemi_kingpin"
+    end
+    local b = BOX[script] or { 1.8, 4.5, 0 }
+    local ext, com = Vector3f.new(), Vector3f.new()
+    ext._x, ext._y, ext._z, com._z = b[1], 1.5, b[2], b[3]
+    function v:getScript() return { getExtents = function() return ext end, getCenterOfMassOffset = function() return com end } end
+    function v:getWorldPos(lx, _, lz, w)
+        local c, s = math.cos(self.yaw), math.sin(self.yaw)
+        w._x, w._y, w._z = self.x + lx * c - lz * s, self.y + lx * s + lz * c, self.z
+        return w
+    end
+    function v:getLocalPos(wx, wy, _, l)
+        local c, s, dx, dy = math.cos(self.yaw), math.sin(self.yaw), wx - self.x, wy - self.y
+        l._x, l._y, l._z = dx * c + dy * s, 0, -dx * s + dy * c
+        return l
+    end
+    function v:getTowingLocalPos(att, l)
+        if att ~= "mtsemi_fifthwheel" or self.script ~= "Base.MinidoracatTesla_Semi" then return nil end
+        l._x, l._y, l._z = 0, 0, -2.4
+        return l
     end
     cars[#cars + 1] = v
     return v
@@ -74,6 +121,10 @@ local SH = MinidoracatTesla.SemiHitch
 local p = H.player({})
 local semi, trailer, my = car("Base.MinidoracatTesla_Semi"), car("Base.MinidoracatTesla_SemiTrailer"), car("Base.MinidoracatTesla_ModelY")
 local van = car("Base.Van")
+-- in place: the Semi at 100,100 heading 0.6 rad, the trailer behind it, its kingpin (0.76 m inside its nose: local z
+-- 2.937 + 13.343 / 2 - 0.76 = 8.85) on the fifth wheel (the Semi's local z -2.4)
+semi.x, semi.y, semi.yaw, trailer.yaw = 100, 100, 0.6, 0.6
+do local w = semi:getWorldPos(0, 0, -2.4 - 8.85, Vector3f.new()); trailer.x, trailer.y = w._x, w._y end
 
 local function outside(v)
     local m = { slices = {} }
@@ -101,6 +152,13 @@ semi.towing = nil
 trailer.towedBy = semi
 check(#outside(trailer) == 1, "the trailer already towed: no attach slice")
 trailer.towedBy = nil
+-- the same place one floor apart (a parking deck): canAttachTrailer compares x and y only
+trailer.z = 1
+check(#outside(semi) == 1 and #outside(trailer) == 1, "the trailer on the floor above, right over the fifth wheel: no slice")
+local n1 = #H.clientSent
+SH.Attach:new(p, semi, trailer, "mtsemi_fifthwheel", "mtsemi_kingpin"):attachTrailer()
+check(#H.clientSent == n1, "floors apart when the action starts: nothing sent")
+trailer.z = 0
 
 H.section("Semi hitch: server option DisableTrailerTowing (as vanilla, MP only)")
 H.side(true, false)
@@ -114,13 +172,33 @@ check(#outside(semi) == 2, "SP: no server options, the slice")
 option = false
 H.side(false, true)
 
-H.section("Semi hitch: choosing the slice walks to the fifth wheel, then vanilla's attachTrailer command")
+H.section("Semi hitch: choosing the slice walks beside the fifth wheel, then vanilla's attachTrailer command")
 s = outside(semi)[2]
-queue, walked = {}, nil
+queue, walked, fails = {}, nil, 0
 s.fn(table.unpack(s.args))
-local act = queue[1]
-check(walked and walked.v == semi and walked.att == "mtsemi_fifthwheel", "walks to the Semi's fifth wheel (vanilla walkToTrailer)")
+local walk, act = queue[1], queue[2]
+check(walked == nil and fails == 0 and walk and walk.Type == "ISPathFindAction" and walk.character == p
+    and walk.onFail == ISVehicleTrailerUtils.onTrailerPathFail and walk.failArg == p,
+    "vanilla's walk would find no way (its spot is inside the trailer): ours walks, 'no way' if the path fails")
 check(act and getmetatable(act) == SH.Attach and act.vehicleB == trailer and act.attachmentB == "mtsemi_kingpin", "then our attach action")
+-- each spot: on the Semi's level, clear of both boxes by 0.35, within 3.5 of the fifth wheel, one each side
+local function spotsOk(locs, tr)
+    local hitch = semi:getWorldPos(0, 0, -2.4, Vector3f.new())
+    local ok, sides = #locs == 6, 0
+    for i = 1, #locs, 3 do
+        local x, y = locs[i], locs[i + 1]
+        for _, v in ipairs({ semi, tr }) do
+            local l, b = v:getLocalPos(x, y, 0, Vector3f.new()), BOX[v.script]
+            ok = ok and (math.abs(l._x) > b[1] / 2 + 0.35 or math.abs(l._z - b[3]) > b[2] / 2 + 0.35)
+        end
+        local l = semi:getLocalPos(x, y, 0, Vector3f.new())
+        sides = sides + (l._x > 0 and 1 or 2)
+        ok = ok and locs[i + 2] == semi.z and math.sqrt((x - hitch._x) ^ 2 + (y - hitch._y) ^ 2) <= 3.5
+            and math.abs(l._z + 2.4) < 1e-9
+    end
+    return ok and sides == 3
+end
+check(spotsOk(walk.locations, trailer), "two spots, either side of the fifth wheel: clear of the Semi and the trailer, within reach")
 local n0 = #H.clientSent
 act:attachTrailer()
 local m = H.clientSent[#H.clientSent]
@@ -131,6 +209,45 @@ hitchable = false
 act:attachTrailer()
 check(#H.clientSent == n0 + 1, "moved apart before the action starts: nothing sent")
 hitchable = true
+
+H.section("Semi hitch: unhitching from outside (vanilla's onDetachTrailer -> walkToTrailer)")
+semi.towing, trailer.towedBy = trailer, semi
+trailer.yaw = 0.6 + 0.35 -- swung 20 degrees about the kingpin
+do
+    local k = semi:getWorldPos(0, 0, -2.4, Vector3f.new())
+    trailer.x, trailer.y = k._x + 8.85 * math.sin(trailer.yaw), k._y - 8.85 * math.cos(trailer.yaw)
+end
+queue, walked, fails = {}, nil, 0
+local det = ISDetachTrailerFromVehicle:new(p, semi, "mtsemi_fifthwheel")
+local okWalk = ISVehicleTrailerUtils.walkToTrailer(p, semi, "mtsemi_fifthwheel", det)
+check(okWalk == true and walked == nil and fails == 0 and queue[1].Type == "ISPathFindAction" and queue[2] == det
+    and spotsOk(queue[1].locations, trailer), "the trailer swung 20 degrees: walks to a clear spot beside the fifth wheel, then detaches")
+trailer.yaw = 0.6
+do local w = semi:getWorldPos(0, 0, -2.4 - 8.85, Vector3f.new()); trailer.x, trailer.y = w._x, w._y end
+
+H.section("Semi hitch: every other walk stays vanilla's")
+queue, walked, fails = {}, nil, 0
+my.vanillaClear = true
+ISVehicleTrailerUtils.walkToTrailer(p, my, "trailer", "next")
+check(walked and walked.vanilla and walked.v == my and queue[1] == "next", "another car's hitch: vanilla's walk")
+queue, walked = {}, nil
+ISVehicleTrailerUtils.walkToTrailer(p, semi, "trailer", "next")
+check(walked and walked.v == semi and fails == 1 and #queue == 0, "the Semi's rear hitch (not the fifth wheel): vanilla's walk")
+queue, walked, fails = {}, nil, 0
+ISVehicleMechanics.cheat = true
+ISVehicleTrailerUtils.walkToTrailer(p, semi, "mtsemi_fifthwheel", "next")
+check(walked and walked.vanilla and queue[1] == "next" and fails == 0, "ISVehicleMechanics.cheat: vanilla's (no walk at all)")
+ISVehicleMechanics.cheat = false
+-- nowhere clear within reach (a trailer three times as wide): 'no way to the trailer', nothing queued
+queue, walked, fails = {}, nil, 0
+local trailerScript = trailer.getScript
+BOX["Base.MinidoracatTesla_SemiTrailer"][1] = 8
+trailer.getScript = car("Base.MinidoracatTesla_SemiTrailer").getScript
+cars[#cars] = nil
+check(ISVehicleTrailerUtils.walkToTrailer(p, semi, "mtsemi_fifthwheel", det) == false and fails == 1 and #queue == 0
+    and walked == nil, "no clear spot within 3.5 of the fifth wheel: 'no way to the trailer', nothing queued")
+BOX["Base.MinidoracatTesla_SemiTrailer"][1], trailer.getScript = 2.148, trailerScript
+semi.towing, trailer.towedBy = nil, nil
 
 H.section("Semi hitch: the driver's radial stays off (SH.IN_CAR)")
 p.vehicle = semi
@@ -160,4 +277,5 @@ check(#radial.slices == 0, "not the Semi's driver: nothing")
 SH.IN_CAR = false
 
 ISVehicleMenu, ISVehicleTrailerUtils, ISAttachTrailerToVehicle, ISDetachTrailerFromVehicle, ISTimedActionQueue,
-    getCell, getServerOptions, getPlayerRadialMenu, UIManager, getTexture = table.unpack(saved, 1, 10)
+    getCell, getServerOptions, getPlayerRadialMenu, UIManager, getTexture, ISVehicleMechanics, ISPathFindAction, Vector3f =
+    table.unpack(saved, 1, 13)
