@@ -1,5 +1,7 @@
 {
     "Sandbox_MinidoracatTesla": "Tesla Collection",
+    "Sandbox_MinidoracatTesla_SemiSpawnChance": "Semi and trailer spawn chance",
+    "Sandbox_MinidoracatTesla_SemiSpawnChance_tooltip": "Chance in %% that each long parking lot in the world gets a parked Tesla Semi, rolled once per lot. The 53 ft trailer is rolled separately with the same chance; the two are never hitched.\nOnly on clear ground: never in a safehouse or on a wall, tree, car or anything built or dropped. Areas already explored in an existing save get them too, once.\n1.5 = about 23 Semis and 19 trailers on the vanilla map. 0 = none.\nDefault 1.5.",
     "Sandbox_MinidoracatTesla_RangeMultiplier": "Range multiplier",
     "Sandbox_MinidoracatTesla_RangeMultiplier_tooltip": "How far a full battery drives.\n1.0 = as far as a full tank in a vanilla car of the same class; 2.0 = twice as far.\nVanilla Gas Consumption scales it too: 2 = half as far; 0 = driving uses no charge.",
     "Sandbox_MinidoracatTesla_ChargeSpeedMultiplier": "Charging speed multiplier",

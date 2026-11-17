@@ -9,9 +9,7 @@
 -- The Roadster 2.5 Sport (plan-next-1114): a rare sports car, the "good" zone only, at 2 like the Model S, X and Cybertruck.
 -- The Cybercab (plan-next8-1114): a fleet car Tesla does not sell to people, so parking stalls only (a robotaxi waiting
 -- in a lot), at 1, never the "good" zone.
--- The Semi and its 53 ft trailer (plan-semi-1117): each on its own in the "delivery" zone (vanilla Van and StepVan at 20
--- each, VehicleZoneDefinition.lua:517-523), at 1, never hitched together: half the vanilla spawn points cannot hold the
--- rig (proto RESULTS.md 4.5: 10-11 of 20 stuck in a wall or tilted 9-17 degrees).
+-- The Semi and its trailer are not in these tables: the server puts them down itself (server SemiSpawn.lua).
 local Z = VehicleZoneDistribution
 if Z and Z.parkingstall and Z.parkingstall.vehicles then
     Z.parkingstall.vehicles["Base.MinidoracatTesla_ModelY"] = { index = -1, spawnChance = 3 }
@@ -26,8 +24,4 @@ if Z and Z.good and Z.good.vehicles then
     Z.good.vehicles["Base.MinidoracatTesla_ModelX"] = { index = -1, spawnChance = 2 }
     Z.good.vehicles["Base.MinidoracatTesla_Roadster"] = { index = -1, spawnChance = 2 }
     Z.good.vehicles["Base.MinidoracatTesla_ModelYL"] = { index = -1, spawnChance = 4 }
-end
-if Z and Z.delivery and Z.delivery.vehicles then
-    Z.delivery.vehicles["Base.MinidoracatTesla_Semi"] = { index = -1, spawnChance = 1 }
-    Z.delivery.vehicles["Base.MinidoracatTesla_SemiTrailer"] = { index = -1, spawnChance = 1 }
 end

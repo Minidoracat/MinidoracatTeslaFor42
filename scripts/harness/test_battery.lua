@@ -665,8 +665,8 @@ check(Z.good.vehicles["Base.MinidoracatTesla_Roadster"].spawnChance == 2
 check(Z.parkingstall.vehicles["Base.MinidoracatTesla_Cybercab"].spawnChance == 1
     and Z.good.vehicles["Base.MinidoracatTesla_Cybercab"] == nil, "spawn table Cybercab: parkingstall 1, not in good (a fleet car)")
 for _, s in ipairs({ "Base.MinidoracatTesla_Semi", "Base.MinidoracatTesla_SemiTrailer" }) do
-    check(Z.delivery.vehicles[s].spawnChance == 1 and Z.good.vehicles[s] == nil and Z.parkingstall.vehicles[s] == nil,
-        "spawn table " .. s .. ": delivery 1 on its own, not in good or parking stalls")
+    check(Z.delivery.vehicles[s] == nil and Z.good.vehicles[s] == nil and Z.parkingstall.vehicles[s] == nil,
+        "spawn table " .. s .. ": in no zone table (SemiSpawn.lua puts it down)")
 end
 
 H.section("dispatch")

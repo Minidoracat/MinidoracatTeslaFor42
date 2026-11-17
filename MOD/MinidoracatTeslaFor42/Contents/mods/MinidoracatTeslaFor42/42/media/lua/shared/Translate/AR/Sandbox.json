@@ -1,5 +1,7 @@
 {
     "Sandbox_MinidoracatTesla": "Tesla Collection",
+    "Sandbox_MinidoracatTesla_SemiSpawnChance": "Probabilidad de aparición del Semi y el remolque",
+    "Sandbox_MinidoracatTesla_SemiSpawnChance_tooltip": "Probabilidad en %% de que cada estacionamiento largo del mundo tenga un Tesla Semi estacionado; se tira una vez por estacionamiento. El remolque de 53 pies se tira aparte con la misma probabilidad; nunca aparecen enganchados.\nSolo en terreno despejado: nunca en un refugio ni sobre una pared, un árbol, un vehículo o algo construido o tirado. Las zonas ya exploradas de una partida existente también los reciben, una vez.\n1.5 = unos 23 Semis y 19 remolques en el mapa original. 0 = ninguno.\nPor defecto 1.5.",
     "Sandbox_MinidoracatTesla_RangeMultiplier": "Multiplicador de autonomía",
     "Sandbox_MinidoracatTesla_RangeMultiplier_tooltip": "Cuánto recorre una batería llena.\n1.0 = lo mismo que un tanque lleno en un coche normal de la misma clase; 2.0 = el doble.\nTambién varía con «Consumo de nafta» del juego base: 2 = la mitad; 0 = manejar no gasta batería.",
     "Sandbox_MinidoracatTesla_ChargeSpeedMultiplier": "Multiplicador de velocidad de carga",
