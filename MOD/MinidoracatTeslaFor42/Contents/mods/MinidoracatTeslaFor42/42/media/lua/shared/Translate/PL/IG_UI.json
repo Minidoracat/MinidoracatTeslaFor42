@@ -16,6 +16,7 @@
     "IGUI_MinidoracatTesla_Sentry_BreakWindowHit": "Sentry: uderzenie w szybę, włączony alarm",
     "IGUI_MinidoracatTesla_Sentry_BreakHotwire": "Sentry: próba odpalenia na krótko, włączony alarm",
     "IGUI_MinidoracatTesla_Sentry_BreakPart": "Sentry: zdjęto część, włączony alarm",
+    "IGUI_MinidoracatTesla_Sentry_BreakTrailerPart": "Sentry: zdjęto część przyczepy, włączony alarm",
     "IGUI_MinidoracatTesla_Sentry_BreakTow": "Sentry: auto podpięte do holowania, włączony alarm",
     "IGUI_MinidoracatTesla_Sentry_LowBattery": "Tryb Sentry wyłączony: akumulator poniżej 20%%",
     "IGUI_MinidoracatTesla_Camp_LowBattery": "Tryb kempingowy wyłączony: akumulator poniżej %1%%",

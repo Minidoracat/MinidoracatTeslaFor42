@@ -1,7 +1,7 @@
 {
     "Sandbox_MinidoracatTesla": "特斯拉电动车",
     "Sandbox_MinidoracatTesla_SemiSpawnChance": "Semi 与挂车生成概率",
-    "Sandbox_MinidoracatTesla_SemiSpawnChance_tooltip": "世界上每个够长的停车场各掷一次，有这个百分比（%%）的概率停一辆 Tesla Semi；53 英尺挂车用同样的概率另外掷，两辆不会挂在一起。\n只放在空地上：安全屋、墙、树、车辆或玩家建造、丢下的东西上都不放。旧存档已探索过的地方也会补一次。\n0＝不生成。\n默认 1.5。",
+    "Sandbox_MinidoracatTesla_SemiSpawnChance_tooltip": "世界上每个够长的停车场各掷一次，有这个百分比（%%）的概率停一辆 Tesla Semi；53 英尺挂车用两倍的概率另外掷，两辆不会挂在一起。\n只放在空地上：安全屋、墙、树、车辆或玩家建造、丢下的东西上都不放。旧存档已探索过的地方也会补一次。\n0＝不生成。\n默认 1.5。",
     "Sandbox_MinidoracatTesla_RangeMultiplier": "续航倍率",
     "Sandbox_MinidoracatTesla_RangeMultiplier_tooltip": "电池充满能开多远。\n1.0＝和原版同级车加满一箱油一样远；2.0＝两倍远。\n也会跟着原版「耗油量」增减：2＝只剩一半远；0＝开车不耗电。",
     "Sandbox_MinidoracatTesla_ChargeSpeedMultiplier": "充电速度倍率",

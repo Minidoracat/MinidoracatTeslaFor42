@@ -141,7 +141,7 @@ local TITLE = {
         hitch = "IGUI_MinidoracatTesla_Sentry_TouchHitch" },
     ["break"] = { window = "IGUI_MinidoracatTesla_Sentry_BreakWindow", windowHit = "IGUI_MinidoracatTesla_Sentry_BreakWindowHit",
         hotwire = "IGUI_MinidoracatTesla_Sentry_BreakHotwire", part = "IGUI_MinidoracatTesla_Sentry_BreakPart",
-        tow = "IGUI_MinidoracatTesla_Sentry_BreakTow" },
+        trailerPart = "IGUI_MinidoracatTesla_Sentry_BreakTrailerPart", tow = "IGUI_MinidoracatTesla_Sentry_BreakTow" },
     lowBattery = { sentry = "IGUI_MinidoracatTesla_Sentry_LowBattery", camp = "IGUI_MinidoracatTesla_Camp_LowBattery",
         powershare = "IGUI_MinidoracatTesla_Powershare_LowBattery", -- powershare: %1 = its discharge limit
         powershareSpot = "IGUI_MinidoracatTesla_Powershare_Spot" }, -- no outdoor square near the truck for its generator
@@ -157,8 +157,9 @@ function UI.card(e)
     if e.car and e.car ~= "" then bits[#bits + 1] = getText("IGUI_VehicleName" .. e.car) end
     if e.part then
         local pk = "IGUI_VehiclePart" .. e.part
-        -- events are always a Tesla's (Core.lua T.partNameKey; e.car = the script name without "Base.")
-        local pn = getTextOrNull(T.partNameKey("Base." .. tostring(e.car), pk) or pk)
+        -- events are always a Tesla's (Core.lua T.partNameKey; e.car = the script name without "Base."); a trailerPart
+        -- is its trailer's part: vanilla's name, as the trailer's own mechanics window shows it
+        local pn = getTextOrNull(e.what ~= "trailerPart" and T.partNameKey("Base." .. tostring(e.car), pk) or pk)
         if pn then bits[#bits + 1] = pn end
     end
     -- a bare % in a getText argument crashes formatted() (verify_mod check 4); names are player-chosen. by = false: an

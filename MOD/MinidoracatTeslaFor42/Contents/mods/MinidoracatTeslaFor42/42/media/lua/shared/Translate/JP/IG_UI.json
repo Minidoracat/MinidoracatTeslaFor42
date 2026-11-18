@@ -16,6 +16,7 @@
     "IGUI_MinidoracatTesla_Sentry_BreakWindowHit": "セントリー：窓が叩かれ、アラームが鳴っています",
     "IGUI_MinidoracatTesla_Sentry_BreakHotwire": "セントリー：直結が試みられ、アラームが鳴っています",
     "IGUI_MinidoracatTesla_Sentry_BreakPart": "セントリー：部品が外され、アラームが鳴っています",
+    "IGUI_MinidoracatTesla_Sentry_BreakTrailerPart": "セントリー：トレーラーの部品が外され、アラームが鳴っています",
     "IGUI_MinidoracatTesla_Sentry_BreakTow": "セントリー：車がけん引用に連結され、アラームが鳴っています",
     "IGUI_MinidoracatTesla_Sentry_LowBattery": "セントリーモードをオフにしました：バッテリー残量20%%未満",
     "IGUI_MinidoracatTesla_Camp_LowBattery": "キャンプモードをオフにしました：バッテリー残量%1%%未満",

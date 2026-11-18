@@ -16,6 +16,7 @@
     "IGUI_MinidoracatTesla_Sentry_BreakWindowHit": "Sentinela: janela atingida, alarme a tocar",
     "IGUI_MinidoracatTesla_Sentry_BreakHotwire": "Sentinela: tentativa de ligação direta, alarme a tocar",
     "IGUI_MinidoracatTesla_Sentry_BreakPart": "Sentinela: peça removida, alarme a tocar",
+    "IGUI_MinidoracatTesla_Sentry_BreakTrailerPart": "Sentinela: peça do reboque removida, alarme a tocar",
     "IGUI_MinidoracatTesla_Sentry_BreakTow": "Sentinela: carro engatado a um reboque, alarme a tocar",
     "IGUI_MinidoracatTesla_Sentry_LowBattery": "Modo Sentinela desligado: bateria abaixo de 20%%",
     "IGUI_MinidoracatTesla_Camp_LowBattery": "Modo Acampamento desligado: bateria abaixo de %1%%",

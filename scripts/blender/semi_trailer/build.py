@@ -512,7 +512,13 @@ def vehicle_script():
            # a whole `template = X` clears the physics boxes and resets useChassisPhysicsCollision
            # (VehicleScript.java:1226-1241,1298-1305): every whole template before both
            "        template = Trunk/part/TrailerTrunk,", "        template = Tire,", "        template = Brake,",
-           "        template = Suspension,", "        useChassisPhysicsCollision = false,",
+           "        template = Suspension,",
+           # after its template line: a template line copies over the part (VehicleScript.java:1271-1295)
+           "        /* 300: the user's pick 2026-11-18 (vanilla's trailer 100, StepVan 160). Vanilla writes it into the trunk item */",
+           "        /* on spawn (Vehicles.lua:1181-1183); a spare TrailerTrunk fitted later holds its own 100 */",
+           "        part TrailerTrunk", "        {", "            container", "            {",
+           "                capacity = 300,", "            }", "        }",
+           "        useChassisPhysicsCollision = false,",
            *pbox(0, 0, TW, TL, T_FLOOR, TH, cz),
            *pbox(LEG_X, zc - LEG_D, LEG_W, LEG_LEN, LEG_LOW, T_FLOOR, cz),
            *pbox(-LEG_X, zc - LEG_D, LEG_W, LEG_LEN, LEG_LOW, T_FLOOR, cz),
@@ -539,7 +545,8 @@ def model_script():
 
 def check_physics(lines):
     """The script's lines equal MTSemiProtoTrailerT3's but for names, textures, the comment, the dropped vanilla
-    `attachment trailer` and the prototype's measuring points (prints the table; fails on any other difference)."""
+    `attachment trailer`, the prototype's measuring points and the trunk's capacity (the user's pick; the cargo's
+    weight is the load's, no script field). Prints the table; fails on any other difference."""
     if not os.path.exists(PROTO):
         print("PHYSICS proto script not found, skipped:", PROTO)
         return
@@ -548,15 +555,16 @@ def check_physics(lines):
     proto = t[a:t.index("    }", a) + 1]
 
     def norm(ls):
-        out, skip = [], 0
+        out, skip, depth = [], False, 0
         for s in ls:
             s = s.strip()
             if s.startswith("/*") or s.startswith("Semi hitches") or s == "forcedColor = 0.0 0.0 0.9,":
                 continue
-            if s == "attachment trailer" or s.startswith(("attachment mtsemi_leg", "attachment mtsemi_c_")):
+            if s in ("attachment trailer", "part TrailerTrunk") or s.startswith(("attachment mtsemi_leg", "attachment mtsemi_c_")):
                 skip = True
             if skip:
-                skip = s != "}"
+                depth += (s == "{") - (s == "}")
+                skip = not (s == "}" and depth == 0)
                 continue
             for old, new in (("MTSemiProtoTrailerT3", NAME), ("MTSemiProto_Trailer", NAME), ("MTSemiProto_shell", NAME),
                              ("MTSemiProto_mask", NAME + "_mask"), ("MTSemiProto_lights", NAME + "_lights"),

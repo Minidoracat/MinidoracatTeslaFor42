@@ -16,6 +16,7 @@
     "IGUI_MinidoracatTesla_Sentry_BreakWindowHit": "Güvenlik: cama vuruldu, alarm çalıyor",
     "IGUI_MinidoracatTesla_Sentry_BreakHotwire": "Güvenlik: düz kontak denemesi, alarm çalıyor",
     "IGUI_MinidoracatTesla_Sentry_BreakPart": "Güvenlik: parça söküldü, alarm çalıyor",
+    "IGUI_MinidoracatTesla_Sentry_BreakTrailerPart": "Güvenlik: römork parçası söküldü, alarm çalıyor",
     "IGUI_MinidoracatTesla_Sentry_BreakTow": "Güvenlik: araç çekiciye bağlandı, alarm çalıyor",
     "IGUI_MinidoracatTesla_Sentry_LowBattery": "Güvenlik Modu kapandı: batarya %%20'nin altında",
     "IGUI_MinidoracatTesla_Camp_LowBattery": "Kamp Modu kapandı: batarya %%%1 sınırının altına düştü",

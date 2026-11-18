@@ -327,8 +327,8 @@ T.Specs = {
         massKg = 10433, -- the real curb mass, shown only; the script's mass is 1250 (the engine's suspension, semi.md 2)
         dcKw = 1200, -- 1.2 MW on MCS (tesla.com/semi "1.2 MW Charge Capable"); no acKw: Tesla publishes no AC figure
         regenEff = 0.6,
-        -- the script's 3267 is barely over T.CHILL_FORCE 3100: half, as the Roadster's first pick; tune by E2E feel-sp
-        chillForce = 1630,
+        -- half the script's 3920, as the Roadster's first pick: 0-100 km/h 37.2 s alone, 49.7 s with the empty trailer
+        chillForce = 1960,
         frunk = false, -- no front trunk, no rear trunk (template MinidoracatTeslaCab: no TrunkDoor, TruckBed, GloveBox)
         trunk = false,
         -- built in white only. h/s/v: the skin's own, written by convert.py build. Same order and append-only rules as
@@ -518,7 +518,7 @@ function T.driveMul() return T.gasMul() / T.rangeMul() end
 function T.chargeMul() return math.max(0.1, math.min(10, sandbox("ChargeSpeedMultiplier", 1))) end
 -- generator fuel per kWh as a multiple of the default (sandbox ChargeFuelMultiplier, user 2026-10-29; Chargers.lua T.fuelPerKwh)
 function T.chargeFuelMul() return math.max(0, math.min(10, sandbox("ChargeFuelMultiplier", 1))) end
--- % of the long parking lots that get a Semi, and again a trailer (sandbox SemiSpawnChance, SemiSpawn.lua); 0 = none
+-- % of the long parking lots that get a Semi, and again a trailer at twice it (sandbox SemiSpawnChance, SemiSpawn.lua); 0 = none
 function T.semiSpawnPct() return math.max(0, math.min(100, sandbox("SemiSpawnChance", 1.5))) end
 T.Camp = T.Camp or {}
 -- Camp Mode low-battery limit (sandbox CampMinBattery, 10-20 %; Tesla's Low Power Mode setting has the same range)

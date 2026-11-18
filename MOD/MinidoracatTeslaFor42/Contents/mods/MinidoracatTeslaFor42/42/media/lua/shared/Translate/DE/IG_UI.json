@@ -16,6 +16,7 @@
     "IGUI_MinidoracatTesla_Sentry_BreakWindowHit": "Wächter: Schlag gegen die Scheibe, Alarm ausgelöst",
     "IGUI_MinidoracatTesla_Sentry_BreakHotwire": "Wächter: Kurzschließversuch, Alarm ausgelöst",
     "IGUI_MinidoracatTesla_Sentry_BreakPart": "Wächter: Teil entfernt, Alarm ausgelöst",
+    "IGUI_MinidoracatTesla_Sentry_BreakTrailerPart": "Wächter: Anhängerteil entfernt, Alarm ausgelöst",
     "IGUI_MinidoracatTesla_Sentry_BreakTow": "Wächter: Auto an Abschleppfahrzeug gehängt, Alarm ausgelöst",
     "IGUI_MinidoracatTesla_Sentry_LowBattery": "Wächter-Modus aus: Batterie unter 20 %%",
     "IGUI_MinidoracatTesla_Camp_LowBattery": "Camp-Modus aus: Batterie unter %1 %%",

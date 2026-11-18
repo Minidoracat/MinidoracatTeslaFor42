@@ -16,6 +16,7 @@
     "IGUI_MinidoracatTesla_Sentry_BreakWindowHit": "Sentinelle : vitre frappée, alarme déclenchée",
     "IGUI_MinidoracatTesla_Sentry_BreakHotwire": "Sentinelle : tentative de démarrage aux fils, alarme déclenchée",
     "IGUI_MinidoracatTesla_Sentry_BreakPart": "Sentinelle : pièce retirée, alarme déclenchée",
+    "IGUI_MinidoracatTesla_Sentry_BreakTrailerPart": "Sentinelle : pièce de la remorque retirée, alarme déclenchée",
     "IGUI_MinidoracatTesla_Sentry_BreakTow": "Sentinelle : véhicule attelé pour remorquage, alarme déclenchée",
     "IGUI_MinidoracatTesla_Sentry_LowBattery": "Mode Sentinelle désactivé : batterie sous 20 %%",
     "IGUI_MinidoracatTesla_Camp_LowBattery": "Mode Camping désactivé : batterie sous %1 %%",

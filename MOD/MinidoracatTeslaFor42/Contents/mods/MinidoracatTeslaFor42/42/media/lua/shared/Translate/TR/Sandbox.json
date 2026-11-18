@@ -1,7 +1,7 @@
 {
     "Sandbox_MinidoracatTesla": "Tesla Collection",
     "Sandbox_MinidoracatTesla_SemiSpawnChance": "Semi ve dorse çıkma şansı",
-    "Sandbox_MinidoracatTesla_SemiSpawnChance_tooltip": "Dünyadaki her uzun otoparkın park edilmiş bir Tesla Semi alma şansı (%%); otopark başına bir kez zar atılır. 53 ft dorse aynı şansla ayrıca atılır; ikisi asla bağlı çıkmaz.\nYalnızca boş zeminde: asla bir güvenli evde ya da duvar, ağaç, araç veya inşa edilmiş ya da bırakılmış bir şeyin üzerinde değil. Mevcut bir kayıtta zaten keşfedilmiş yerler de bunları bir kez alır.\n0 = hiç.\nVarsayılan 1.5.",
+    "Sandbox_MinidoracatTesla_SemiSpawnChance_tooltip": "Dünyadaki her uzun otoparkın park edilmiş bir Tesla Semi alma şansı (%%); otopark başına bir kez zar atılır. 53 ft dorse bunun iki katı şansla ayrıca atılır; ikisi asla bağlı çıkmaz.\nYalnızca boş zeminde: asla bir güvenli evde ya da duvar, ağaç, araç veya inşa edilmiş ya da bırakılmış bir şeyin üzerinde değil. Mevcut bir kayıtta zaten keşfedilmiş yerler de bunları bir kez alır.\n0 = hiç.\nVarsayılan 1.5.",
     "Sandbox_MinidoracatTesla_RangeMultiplier": "Menzil çarpanı",
     "Sandbox_MinidoracatTesla_RangeMultiplier_tooltip": "Dolu bir bataryayla ne kadar gidilebileceği.\n1.0 = aynı sınıftaki normal bir aracın dolu depoyla gittiği kadar; 2.0 = iki katı.\nOyunun “Yakıt Tüktetimi” ayarıyla da değişir: 2 = yarısı kadar; 0 = sürüş şarj harcamaz.",
     "Sandbox_MinidoracatTesla_ChargeSpeedMultiplier": "Şarj hızı çarpanı",

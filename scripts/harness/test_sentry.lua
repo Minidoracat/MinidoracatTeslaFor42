@@ -643,6 +643,34 @@ do
     F.online = online0
     F.vehicles[st.id], F.vehicles[third.id] = nil, nil
 end
+-- a part off the trailer an armed Tesla has hitched rings that Tesla (user 2026-11-18, the acceptance page's "parts")
+do
+    local semi = F.track(F.vehicle({ pct = 80, script = "Base.MinidoracatTesla_Semi" }))
+    local pOwner = F.player("powner", { keys = { [semi.keyId] = true } })
+    local online0 = F.online
+    F.online = { pOwner, thief }
+    local st = { getScriptName = function() return "Base.MinidoracatTesla_SemiTrailer" end }
+    function st:getVehicleTowedBy() return self.towedBy end
+    local tyre = { getId = function() return "TireRearLeft" end }
+    cmds.sentryArm(pOwner, { vid = semi:getId() })
+    F.sent = {}
+    local a0 = semi.alarmTriggered
+    ISUninstallVehiclePart.complete({ vehicle = st, character = thief, part = tyre })
+    check(semi.alarmTriggered == a0 and alertsTo("powner") == 0, "a part off a trailer standing free: nothing")
+    st.towedBy = semi
+    ISUninstallVehiclePart.complete({ vehicle = st, character = pOwner, part = tyre })
+    check(semi.alarmTriggered == a0 and alertsTo("powner") == 0 and md(semi).sentry ~= nil,
+        "the owner takes a part off the trailer on his armed Semi: nothing, sentry stays on")
+    ISUninstallVehiclePart.complete({ vehicle = st, character = thief, part = tyre })
+    local last = F.lastSent("alert")
+    check(semi.alarmTriggered == a0 + 1 and alertsTo("powner") == 1 and last.args.kind == "break"
+        and last.args.what == "trailerPart" and last.args.part == "TireRearLeft" and md(semi).sentry ~= nil,
+        "a stranger takes a part off the trailer on the armed Semi: the Semi's alarm, its owner told (trailerPart), still armed")
+    cmds.sentryDisarm(pOwner, { vid = semi:getId() })
+    ISUninstallVehiclePart.complete({ vehicle = st, character = thief, part = tyre })
+    check(semi.alarmTriggered == a0 + 1 and alertsTo("powner") == 1, "sentry off: nothing")
+    F.online = online0
+end
 -- fitting glass: the part takes the item's condition (VehiclePart.java:202), a worse pane is no hit
 wc.parts.Windshield.cond = 100
 cmds.sentryArm(wOwner, { vid = wc:getId() })
@@ -697,6 +725,13 @@ if H and H.stub and H.clientSent then
     local hitch = T.ParkUI.card({ kind = "touch", what = "hitch", by = "thief", car = "MinidoracatTesla_Semi" })
     check(hitch and hitch.title:find("Sentry_TouchHitch", 1, true) and hitch.detail:find("Sentry_ByPlayer", 1, true)
         and hitch.detail:find("Sentry_Flashed", 1, true), "client card: an unhitch has its title, the intruder and the flash")
+    -- a trailer's part off an armed Semi: its own title; the part by vanilla's name, not the Semi's name for that id
+    local tp = T.ParkUI.card({ kind = "break", what = "trailerPart", part = "TireRearLeft", by = "thief",
+        car = "MinidoracatTesla_Semi" })
+    local sp = T.ParkUI.card({ kind = "break", what = "part", part = "TireRearLeft", car = "MinidoracatTesla_Semi" })
+    check(tp and tp.title:find("Sentry_BreakTrailerPart", 1, true) and tp.detail:find("IGUI_VehiclePartTireRearLeft", 1, true)
+        and tp.detail:find("Sentry_ByPlayer", 1, true) and sp and sp.title:find("Sentry_BreakPart", 1, true),
+        "client card: a trailer's part has its title, vanilla's part name and the intruder")
     getTextManager, getTexture = oldTM, oldTex
     getSpecificPlayer = oldGSP
 end

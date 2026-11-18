@@ -16,6 +16,7 @@
     "IGUI_MinidoracatTesla_Sentry_BreakWindowHit": "哨兵：車窗遭到敲擊，警報響起",
     "IGUI_MinidoracatTesla_Sentry_BreakHotwire": "哨兵：有人試圖短接發動，警報響起",
     "IGUI_MinidoracatTesla_Sentry_BreakPart": "哨兵：零件被拆，警報響起",
+    "IGUI_MinidoracatTesla_Sentry_BreakTrailerPart": "哨兵：拖車的零件被拆，警報響起",
     "IGUI_MinidoracatTesla_Sentry_BreakTow": "哨兵：車子被掛上拖車，警報響起",
     "IGUI_MinidoracatTesla_Sentry_LowBattery": "哨兵模式已關閉：電量低於 20%%",
     "IGUI_MinidoracatTesla_Camp_LowBattery": "露營模式已關閉：電量低於 %1%%",

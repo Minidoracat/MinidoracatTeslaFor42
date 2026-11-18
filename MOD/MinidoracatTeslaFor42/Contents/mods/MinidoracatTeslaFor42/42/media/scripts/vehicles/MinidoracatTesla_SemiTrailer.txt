@@ -56,6 +56,15 @@ module Base
         template = Tire,
         template = Brake,
         template = Suspension,
+        /* 300: the user's pick 2026-11-18 (vanilla's trailer 100, StepVan 160). Vanilla writes it into the trunk item */
+        /* on spawn (Vehicles.lua:1181-1183); a spare TrailerTrunk fitted later holds its own 100 */
+        part TrailerTrunk
+        {
+            container
+            {
+                capacity = 300,
+            }
+        }
         useChassisPhysicsCollision = false,
         physics box
         {

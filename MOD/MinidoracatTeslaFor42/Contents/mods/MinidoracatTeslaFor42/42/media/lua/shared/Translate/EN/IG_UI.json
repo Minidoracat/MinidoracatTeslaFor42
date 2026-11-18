@@ -16,6 +16,7 @@
     "IGUI_MinidoracatTesla_Sentry_BreakWindowHit": "Sentry: window struck, alarm sounding",
     "IGUI_MinidoracatTesla_Sentry_BreakHotwire": "Sentry: hotwire attempt, alarm sounding",
     "IGUI_MinidoracatTesla_Sentry_BreakPart": "Sentry: part removed, alarm sounding",
+    "IGUI_MinidoracatTesla_Sentry_BreakTrailerPart": "Sentry: trailer part removed, alarm sounding",
     "IGUI_MinidoracatTesla_Sentry_BreakTow": "Sentry: car hooked up to a tow, alarm sounding",
     "IGUI_MinidoracatTesla_Sentry_LowBattery": "Sentry Mode off: battery below 20%%",
     "IGUI_MinidoracatTesla_Camp_LowBattery": "Camp Mode off: battery below %1%%",

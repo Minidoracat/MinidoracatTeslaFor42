@@ -99,6 +99,12 @@ check(H.scriptValue("vehicles/MinidoracatTesla_Cybercab.txt", "engineForce") == 
     "Cybercab script: engineForce 3800 (E2E feel-sp 9.08 s to 100 km/h, the user's pick), mass 556 (800 x 1,412 / 2,033), CoreNoFrunk, no Frunk part")
 H.removeVehicle(cc)
 end
+-- Semi and its trailer: the user's picks on the acceptance page (2026-11-18); Chill is half the script's force
+check(H.scriptValue("vehicles/MinidoracatTesla_Semi.txt", "engineForce") == 3920
+    and H.scriptValue("vehicles/MinidoracatTesla_Semi.txt", "maxSpeed") == 86
+    and T.Specs["Base.MinidoracatTesla_Semi"].chillForce == 1960
+    and H.scriptValue("vehicles/MinidoracatTesla_SemiTrailer.txt", "capacity", "part TrailerTrunk") == 300,
+    "Semi script: engineForce 3920, maxSpeed 86, chillForce 1960 (half); its trailer's trunk 300")
 local full = H.vehicle({ kwh = 78.4 })
 -- vanilla repair() fills the tank to the item's int MaxCapacity (VehiclePart.java:989-992): 79 for the 78.4 kWh pack
 B.part(full):setContainerContentAmount(79)

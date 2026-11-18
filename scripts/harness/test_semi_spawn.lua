@@ -189,6 +189,11 @@ for x = 0, 99 do
     end
 end
 check(same and hits > 100 and hits < 200, "the same lot rolls the same; 1.5% of 10000 lots hit: " .. hits)
+-- the trailer's lots at twice the chance (user 2026-11-18): a roll between the chance and twice it is the trailer's only
+local rs, rt = S.roll(S.zones[1], 1, seed) * 100, S.roll(S.zones[1], 2, seed) * 100
+check(S.hit(S.zones[1], 1, seed, rs * 1.01) and not S.hit(S.zones[1], 1, seed, rs * 0.99)
+    and S.hit(S.zones[1], 2, seed, rt * 0.51) and not S.hit(S.zones[1], 2, seed, rt * 0.49),
+    "a hit: the Semi's roll under the chance, the trailer's under twice it (rolls " .. rs .. ", " .. rt .. ")")
 local s1 = S.seed()
 seedString = "Kentucky1994"
 local s2 = S.seed()

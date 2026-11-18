@@ -16,6 +16,7 @@
     "IGUI_MinidoracatTesla_Sentry_BreakWindowHit": "감시 모드: 창문이 공격받아 경보가 울립니다",
     "IGUI_MinidoracatTesla_Sentry_BreakHotwire": "감시 모드: 배선 따기 시도로 경보가 울립니다",
     "IGUI_MinidoracatTesla_Sentry_BreakPart": "감시 모드: 부품이 분리되어 경보가 울립니다",
+    "IGUI_MinidoracatTesla_Sentry_BreakTrailerPart": "감시 모드: 트레일러 부품이 분리되어 경보가 울립니다",
     "IGUI_MinidoracatTesla_Sentry_BreakTow": "감시 모드: 차량이 견인 연결되어 경보가 울립니다",
     "IGUI_MinidoracatTesla_Sentry_LowBattery": "감시 모드가 꺼졌습니다: 배터리 20%% 미만",
     "IGUI_MinidoracatTesla_Camp_LowBattery": "캠핑 모드가 꺼졌습니다: 배터리 %1%% 미만",

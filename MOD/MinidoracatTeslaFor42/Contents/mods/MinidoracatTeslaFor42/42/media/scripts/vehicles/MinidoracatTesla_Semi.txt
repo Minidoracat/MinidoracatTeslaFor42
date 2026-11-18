@@ -14,10 +14,11 @@ module Base
         {
             itemType = Base.MinidoracatTesla_SemiBattery,
         }
-        /* maxSpeed 88 or 86 and engineForce: picked on the acceptance page (references/semi.md 2) */
+        /* engineForce 3920, maxSpeed 86: the user's pick on the acceptance page (2026-11-18). Measured: 0-100 km/h */
+        /* 18.5 s alone, 25.0 s with the empty trailer, top 105.6 km/h (references/semi.md 2) */
         mass = 1250,
-        engineForce = 3267,
-        maxSpeed = 88,
+        engineForce = 3920,
+        maxSpeed = 86,
         steeringClamp = 0.15,
         /* 0.05: both rear physics wheels sit on the centre line, so only the front axle resists roll; at 0.2 an
            AutoDrive summon leaned the cab 10.9 deg and a corner of the front box scraped the ground (references/semi.md) */

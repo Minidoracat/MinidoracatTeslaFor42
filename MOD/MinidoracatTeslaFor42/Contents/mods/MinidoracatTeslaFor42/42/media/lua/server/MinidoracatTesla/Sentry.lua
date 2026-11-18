@@ -243,7 +243,15 @@ hook(ISSmashWindow, "ISSmashWindow", function(a)
     S.onBreak(part:getVehicle(), a.character, w:isDestroyed() and "window" or "windowHit", part:getId())
 end)
 hook(ISHotwireVehicle, "ISHotwireVehicle", function(a) S.onBreak(a.character:getVehicle(), a.character, "hotwire") end)
-hook(ISUninstallVehiclePart, "ISUninstallVehiclePart", function(a) S.onBreak(a.vehicle, a.character, "part", partId(a.part)) end)
+-- A part off the trailer an armed Tesla has hitched rings that Tesla (user 2026-11-18, the acceptance page's "parts"):
+-- the trailer is no Tesla and has no sentry of its own. The Tesla's rules decide who is legit; the card names the
+-- trailer's part (what trailerPart). A car armed itself: its own break, as before.
+hook(ISUninstallVehiclePart, "ISUninstallVehiclePart", function(a)
+    local v = a.vehicle
+    if armedState(v) then return S.onBreak(v, a.character, "part", partId(a.part)) end
+    local tractor = v and v:getVehicleTowedBy()
+    if tractor then S.onBreak(tractor, a.character, "trailerPart", partId(a.part)) end
+end)
 -- Fitting glass is no break, whoever does it: the installed part takes the item's condition (VehiclePart.java:202;
 -- uninstalling left the old one, :215-222), so a worse pane would read as a hit on the next scan. That window only, and
 -- only when it went in: a failed skill check also returns true from complete (ISInstallVehiclePart.lua:102-114,120)

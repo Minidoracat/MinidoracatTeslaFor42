@@ -11,8 +11,8 @@
 --   duplicates are dropped).
 -- - each lot's roll is a hash of the lot and the world generation seed (S.seed): the same lot gets the same roll in
 --   every session, so a lot is rolled once and the misses need no record. Sandbox SemiSpawnChance (% of the lots,
---   default 1.5, 0 = none): about 23 Semis and 19 trailers on the whole vanilla map (the lots x 1.5%), before the lots
---   with no room.
+--   default 1.5, 0 = none; the trailer's lots at twice it, S.CARS mul): about 23 Semis and 39 trailers on the whole
+--   vanilla map (the lots x the chance), before the lots with no room.
 -- - LoadChunk (new chunks and the save's, so explored worlds get them too, like SuperchargerSpawn.lua): one table
 --   lookup; a lot that rolled a hit and is not done yet is queued.
 -- - EveryOneMinute, only while the queue has something: the lot's roll again at today's chance (turned down, the
@@ -44,7 +44,9 @@ S.NEAR = 10           -- how far a parked car's body reaches from its position: 
 S.MARGIN = 0.3        -- round the body's box (VehicleSpawnControl's footprint, MVSC_Respawn.lua:200-208)
 S.CARS = {
     { key = "semi", script = "Base.MinidoracatTesla_Semi" },
-    { key = "trailer", script = "Base.MinidoracatTesla_SemiTrailer" },
+    -- mul 2 (user 2026-11-18): at the same chance about half as many trailers as Semis were left once the lots with
+    -- no room were out (23 to 11, the vanilla map at 1.5%)
+    { key = "trailer", script = "Base.MinidoracatTesla_SemiTrailer", mul = 2 },
 }
 S.zones = {}   -- { x, y, w, h } parkingstall zones at z 0, as registered
 S.byChunk = {} -- [chunk key] = { zone index, car index, ... } candidate lots touching that chunk
@@ -167,6 +169,8 @@ function S.roll(z, ci, seed)
     for _ = 1, 3 do h = (h * 48271) % 2147483647 end
     return h / 2147483647
 end
+-- the lot rolled a hit at this chance (%), the car's own multiple of it (S.CARS mul)
+function S.hit(z, ci, seed, pct) return S.roll(z, ci, seed) * 100 < pct * (S.CARS[ci].mul or 1) end
 
 -- ---- the squares ----
 -- free for a parked truck: VehicleSpawnControl's open ground, its conditions copied (no call across mods: openGround
@@ -371,7 +375,7 @@ local function tick()
     local pick, pq
     for k, q in pairs(S.queue) do
         if not q.ready and now - q.at > S.TTL_MS then S.queue[k] = nil -- never all loaded: its next load queues it again
-        elseif S.roll(S.zones[q.zi], q.ci, seed) * 100 >= pct then S.queue[k] = nil
+        elseif not S.hit(S.zones[q.zi], q.ci, seed, pct) then S.queue[k] = nil
         elseif not S.ready(S.zones[q.zi], S.CARS[q.ci]) then q.ready = nil
         else
             q.ready = q.ready or now
@@ -414,7 +418,7 @@ function S.onLoadChunk(chunk)
         local zi, ci = list[i], list[i + 1]
         local z, car = S.zones[zi], S.CARS[ci]
         local k = S.lotKey(z, car)
-        if not t.done[k] and not S.queue[k] and S.roll(z, ci, seed) * 100 < pct then
+        if not t.done[k] and not S.queue[k] and S.hit(z, ci, seed, pct) then
             S.queue[k] = { zi = zi, ci = ci, at = getTimestampMs() }
             if not hooked then
                 hooked = true

@@ -16,6 +16,7 @@
     "IGUI_MinidoracatTesla_Sentry_BreakWindowHit": "Centinela: golpe en la ventanilla, alarma sonando",
     "IGUI_MinidoracatTesla_Sentry_BreakHotwire": "Centinela: intento de puente, alarma sonando",
     "IGUI_MinidoracatTesla_Sentry_BreakPart": "Centinela: pieza retirada, alarma sonando",
+    "IGUI_MinidoracatTesla_Sentry_BreakTrailerPart": "Centinela: pieza del remolque retirada, alarma sonando",
     "IGUI_MinidoracatTesla_Sentry_BreakTow": "Centinela: vehículo enganchado para remolcar, alarma sonando",
     "IGUI_MinidoracatTesla_Sentry_LowBattery": "Modo centinela desactivado: batería por debajo del 20%%",
     "IGUI_MinidoracatTesla_Camp_LowBattery": "Modo acampada desactivado: batería por debajo del %1%%",

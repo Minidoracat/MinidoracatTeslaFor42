@@ -1,7 +1,7 @@
 {
     "Sandbox_MinidoracatTesla": "Tesla Collection",
     "Sandbox_MinidoracatTesla_SemiSpawnChance": "Semi とトレーラーの出現確率",
-    "Sandbox_MinidoracatTesla_SemiSpawnChance_tooltip": "世界の長い駐車場ごとに一度だけ判定し、この確率（%%）で Tesla Semi が駐車されます。53 フィートトレーラーも同じ確率で別に判定され、連結された状態では出ません。\n空いた地面にだけ置かれます：セーフハウス、壁、木、車両、プレイヤーが建てた物や置いた物の上には置きません。既存のセーブで探索済みの場所にも一度だけ出ます。\n0 = 出現しません。\n初期値 1.5。",
+    "Sandbox_MinidoracatTesla_SemiSpawnChance_tooltip": "世界の長い駐車場ごとに一度だけ判定し、この確率（%%）で Tesla Semi が駐車されます。53 フィートトレーラーはその 2 倍の確率で別に判定され、連結された状態では出ません。\n空いた地面にだけ置かれます：セーフハウス、壁、木、車両、プレイヤーが建てた物や置いた物の上には置きません。既存のセーブで探索済みの場所にも一度だけ出ます。\n0 = 出現しません。\n初期値 1.5。",
     "Sandbox_MinidoracatTesla_RangeMultiplier": "航続距離の倍率",
     "Sandbox_MinidoracatTesla_RangeMultiplier_tooltip": "満充電のバッテリーで走れる距離。\n1.0 = 同クラスのバニラ車が満タンで走れる距離と同じ、2.0 = その2倍。\nバニラの「車両の燃料消費量」にも連動します：2 = 半分の距離、0 = 走行で電気を使いません。",
     "Sandbox_MinidoracatTesla_ChargeSpeedMultiplier": "充電速度の倍率",
