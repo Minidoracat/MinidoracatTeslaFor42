@@ -133,35 +133,5 @@ module Base
             rotate = 0.0 0.0 0.0,
             canAttach = mtsemi_fifthwheel,
         }
-        attachment mtsemi_legL
-        {
-            offset = 0.4085 0.0681 2.2134,
-            rotate = 0.0 0.0 0.0,
-        }
-        attachment mtsemi_legR
-        {
-            offset = -0.4085 0.0681 2.2134,
-            rotate = 0.0 0.0 0.0,
-        }
-        attachment mtsemi_c_fl
-        {
-            offset = 0.5900 0.0000 3.6657,
-            rotate = 0.0 0.0 0.0,
-        }
-        attachment mtsemi_c_fr
-        {
-            offset = -0.5900 0.0000 3.6657,
-            rotate = 0.0 0.0 0.0,
-        }
-        attachment mtsemi_c_rl
-        {
-            offset = 0.5900 0.0000 -3.6657,
-            rotate = 0.0 0.0 0.0,
-        }
-        attachment mtsemi_c_rr
-        {
-            offset = -0.5900 0.0000 -3.6657,
-            rotate = 0.0 0.0 0.0,
-        }
     }
 }

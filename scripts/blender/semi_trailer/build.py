@@ -524,11 +524,6 @@ def vehicle_script():
     out += ["        part Tire*", "        {", "            model InflatedTirePlusWheel", "            {",
             f"                file = {NAME}_Wheel,", "            }", "        }"]
     out += attach("mtsemi_kingpin", 0, FIFTH_H, zc - KINGPIN, "mtsemi_fifthwheel")
-    # measuring points for the E2E scenarios (landing leg clearance, box corners), as the prototype's
-    for nm, x in (("L", LEG_X), ("R", -LEG_X)):
-        out += attach("mtsemi_leg" + nm, x, LEG_LOW, zc - LEG_D)
-    for nm, x, z in (("fl", TW / 2, zc), ("fr", -TW / 2, zc), ("rl", TW / 2, zc - TL), ("rr", -TW / 2, zc - TL)):
-        out += attach("mtsemi_c_" + nm, x, 0, z)
     out += ["    }", "}", ""]
     return out
 
@@ -543,8 +538,8 @@ def model_script():
 
 
 def check_physics(lines):
-    """The script's lines equal MTSemiProtoTrailerT3's but for names, textures, the comment and the dropped vanilla
-    `attachment trailer` (prints the table; fails on any other difference)."""
+    """The script's lines equal MTSemiProtoTrailerT3's but for names, textures, the comment, the dropped vanilla
+    `attachment trailer` and the prototype's measuring points (prints the table; fails on any other difference)."""
     if not os.path.exists(PROTO):
         print("PHYSICS proto script not found, skipped:", PROTO)
         return
@@ -558,7 +553,7 @@ def check_physics(lines):
             s = s.strip()
             if s.startswith("/*") or s.startswith("Semi hitches") or s == "forcedColor = 0.0 0.0 0.9,":
                 continue
-            if s == "attachment trailer":
+            if s == "attachment trailer" or s.startswith(("attachment mtsemi_leg", "attachment mtsemi_c_")):
                 skip = True
             if skip:
                 skip = s != "}"
