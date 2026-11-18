@@ -977,7 +977,8 @@ def badges(obs, names):
         with open(os.path.join(HERE, wm["file"]), encoding="utf-8") as f:
             strokes = json.load(f)["strokes"]
         for part, o, eu, ev, n, width in wm.get("places", ()):
-            flat("Badge_WORD_" + part, [stroke_quads(strokes, width, wm["seg"])], (o, eu, ev, n), "badge_black")
+            flat("Badge_WORD_" + part, [stroke_quads(strokes, width, wm["seg"], wm.get("min_w", {}).get(part, 0))],
+                 (o, eu, ev, n), "badge_black")
         for part, (o, a, b) in wm.get("affine", {}).items():   # laid as an official picture shows it: (u 0 v 0) point,
             a, b = np.array(a, float), np.array(b, float)       # grid per unit u, per unit v (any length, any angle)
             n = np.cross(a, b) / np.linalg.norm(np.cross(a, b))
@@ -985,14 +986,16 @@ def badges(obs, names):
             e2 = np.cross(n, e1)
             m = np.array([[a @ e1, b @ e1], [a @ e2, b @ e2]])
             quads = [[tuple(m @ np.array(q)) for q in quad] for quad in
-                     stroke_quads(strokes, 1.0, wm["seg"] / max(np.linalg.norm(a), np.linalg.norm(b)))]
+                     stroke_quads(strokes, 1.0, wm["seg"] / max(np.linalg.norm(a), np.linalg.norm(b)),
+                                  wm.get("min_w", {}).get(part, 0), m)]
             flat("Badge_WORD_" + part, [quads], (o, tuple(e1), tuple(e2), tuple(n)), "badge_black")
 
 
-def stroke_quads(strokes, s, seg):
+def stroke_quads(strokes, s, seg, wmin=0.0, m=None):
     """Quads (u, v) of polylines with a width at each point ([{pts, w}], a unit wide) at s grid per unit: each segment
     a quad from its start's width to its end's, run on half a width past both ends (as stroke_text), cut into pieces at
-    most seg long, so laid point by point (badges flat) they follow the panel's curve."""
+    most seg long, so laid point by point (badges flat) they follow the panel's curve. wmin: no quad narrower than that
+    (grid) across its segment, once mapped by m (2 x 2, the affine the caller lays them with; None: as they are)."""
     quads = []
     for st in strokes:
         p, w = np.array(st["pts"]) * s, np.array(st["w"]) * s
@@ -1003,6 +1006,8 @@ def stroke_quads(strokes, s, seg):
             a, b = a - d * wa / 2, b + d * wb / 2
             t = np.linspace(0, 1, max(1, math.ceil(np.linalg.norm(b - a) / seg)) + 1)
             c, hw = a + t[:, None] * (b - a), (wa + t * (wb - wa)) / 2
+            if wmin:        # m widens a stroke across d by |det m| / |m d|
+                hw = np.maximum(hw, wmin / 2 / (abs(np.linalg.det(m)) / np.linalg.norm(m @ d) if m is not None else 1))
             nrm = np.array((-d[1], d[0]))
             quads += [[tuple(c[i] - hw[i] * nrm), tuple(c[i + 1] - hw[i + 1] * nrm), tuple(c[i + 1] + hw[i + 1] * nrm),
                        tuple(c[i] + hw[i] * nrm)] for i in range(len(t) - 1)]

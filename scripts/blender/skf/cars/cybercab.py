@@ -380,8 +380,14 @@ CAR = dict(
     # per unit u, grid per unit v)}, pre-centre: the lid's as the official rear three-quarter picture (x59) shows it
     # (user 2026-11-17, over a rigid one): the free affine fit to those hits (a16/place.json trunk_x59), 68 x 39 cm,
     # its axes 82° apart, letters 1.54 x taller than the doors' for their width; u +x, v towards the front.
-    # zone: the mask's (convert.py stage_build): Roof, never damaged (HEAD_TAIL), so a hit door or lid keeps them black
-    WORDMARK=dict(file="cybercab_wordmark.json", seg=round(0.04 * K, 4), zone="Roof", places=(
+    # zone: the mask's (convert.py stage_build): Roof, never damaged (HEAD_TAIL), so a hit door or lid keeps them black.
+    # min_w: {part: grid} no stroke narrower than that across, measured on the panel (P6, 2026-11-19): the artwork's
+    # thinnest strokes (4.8 mm) are under the game's 1 px at its nearest zoom (~0.15 px/mm), so lines broke into
+    # dots. Breaks counted in the 8 headings (temp/p09/PipeP09.md P6): the doors' stop falling at 12 mm, the lid's
+    # facing views reach 0 at 13.5 mm; the lid seen edge-on from the front (S, E, SE) is still dotted at 15 mm (tried)
+    WORDMARK=dict(file="cybercab_wordmark.json", seg=round(0.04 * K, 4), zone="Roof",
+                  min_w={"DoorFrontLeft": round(0.012 * K, 4), "DoorFrontRight": round(0.012 * K, 4),
+                         "TrunkDoor": round(0.0135 * K, 4)}, places=(
         ("DoorFrontLeft", (-0.7006, 0.8028, 0.2946), (0.029, -0.9996, -0.0035), (-0.0677, -0.0055, 0.9977),
          (-0.9973, -0.0287, -0.0679), 0.5712),
         ("DoorFrontRight", (0.684, 0.2318, 0.2926), (0.029, 0.9996, 0.0035), (0.0677, -0.0055, 0.9977),
