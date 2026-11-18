@@ -103,8 +103,18 @@ end
 check(H.scriptValue("vehicles/MinidoracatTesla_Semi.txt", "engineForce") == 3920
     and H.scriptValue("vehicles/MinidoracatTesla_Semi.txt", "maxSpeed") == 86
     and T.Specs["Base.MinidoracatTesla_Semi"].chillForce == 1960
-    and H.scriptValue("vehicles/MinidoracatTesla_SemiTrailer.txt", "capacity", "part TrailerTrunk") == 300,
-    "Semi script: engineForce 3920, maxSpeed 86, chillForce 1960 (half); its trailer's trunk 300")
+    and H.scriptValue("vehicles/MinidoracatTesla_SemiTrailer.txt", "capacity", "part SemiTrailerCargo") == 300,
+    "Semi script: engineForce 3920, maxSpeed 86, chillForce 1960 (half); its trailer's cargo part 300")
+do -- the engine sets a part called TrailerTrunk to max(80, condition) on every setCondition (VehiclePart.java:893-895)
+    local tf = assert(io.open("MOD/MinidoracatTeslaFor42/Contents/mods/MinidoracatTeslaFor42/42/media/scripts/vehicles/MinidoracatTesla_SemiTrailer.txt", "r"))
+    local tr = tf:read("*a")
+    tf:close()
+    check(not tr:find("\n%s*part TrailerTrunk") and not tr:find("\n%s*template%s*=%s*Trunk/part/TrailerTrunk"),
+        "the trailer has no part called TrailerTrunk (the engine would hold it at 80-100)")
+    -- VehicleManager keeps its ownership record on part 0 of a car with no Engine, Battery, TrailerTrunk or TruckBed
+    check(tr:find("\n%s*part SemiTrailerCargo") < tr:find("\n%s*template%s*="),
+        "the trailer's cargo part comes before every template line: it is part 0")
+end
 local full = H.vehicle({ kwh = 78.4 })
 -- vanilla repair() fills the tank to the item's int MaxCapacity (VehiclePart.java:989-992): 79 for the 78.4 kWh pack
 B.part(full):setContainerContentAmount(79)

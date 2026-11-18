@@ -114,6 +114,7 @@
     "IGUI_VehiclePartFrunk": "Vorderer Kofferraum",
     "IGUI_VehiclePartTrunkTonneau": "Laderaumabdeckung",
     "IGUI_VehiclePartSoftTop": "Stoffverdeck",
+    "IGUI_VehiclePartSemiTrailerCargo": "Anhänger",
     "IGUI_Vehicle_ContainerCapacity_Electricity": "Ladung (kWh): %1",
     "IGUI_MinidoracatTesla_Deny_NO_VEHICLE": "Auto nicht gefunden",
     "IGUI_MinidoracatTesla_Deny_NO_CHARGER": "Hier ist kein Ladegerät",

@@ -606,7 +606,6 @@ Options elsewhere that also affect Teslas:
 [list]
 [*] With cargo in the trailer, braking hard from about 105 km/h now and then swings the trailer out; it did not come loose or roll over in testing, and a full stop from 60 km/h sways it 2° at most
 [*] Hitting something like a roadblock while towing can unhitch the trailer at that moment; hitch it again
-[*] Fit a vanilla trailer storage part in place of its own and it holds the vanilla 100
 [*] Sentry does not report anyone taking things from the towed trailer's storage
 [*] With the view under a gas station canopy, the part of the trailer under the canopy is not drawn
 [*] Pressing V on the other side of a wall, near the fifth wheel of a Semi with its trailer hitched, opens the Semi's radial menu

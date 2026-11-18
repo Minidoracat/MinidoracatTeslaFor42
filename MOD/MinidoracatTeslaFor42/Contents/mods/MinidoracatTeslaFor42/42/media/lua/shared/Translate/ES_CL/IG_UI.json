@@ -114,6 +114,7 @@
     "IGUI_VehiclePartFrunk": "Maletero delantero",
     "IGUI_VehiclePartTrunkTonneau": "Cubierta de la caja",
     "IGUI_VehiclePartSoftTop": "Capota de lona",
+    "IGUI_VehiclePartSemiTrailerCargo": "Remolque",
     "IGUI_Vehicle_ContainerCapacity_Electricity": "Carga (kWh): %1",
     "IGUI_MinidoracatTesla_Deny_NO_VEHICLE": "No se encuentra el auto",
     "IGUI_MinidoracatTesla_Deny_NO_CHARGER": "Aquí no hay ningún cargador",

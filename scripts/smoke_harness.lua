@@ -305,6 +305,7 @@ end }
 -- vanilla part install (ISInstallVehiclePart.lua:93-95, fits the item); Liftgate.lua wraps complete()
 ISInstallVehiclePart = { complete = function() return true end }
 ISUninstallVehiclePart = { complete = function() return true end }
+ContainerButtonIcons = { TrailerTrunk = "trunk" } -- shared/Definitions/ContainerButtonIcons.lua:102
 -- vanilla floor / wall placement check (ISMoveableSpriteProps.lua:1736); Chargers.lua wraps it. `free` stands in for
 -- everything vanilla checks. The cursor panel text (:577) and vanilla's red line helper (:519-527) for the move guard.
 -- removeComponentsBeforePlacing: the last call on a placed object before it goes on the square (:2527; Chargers.lua).

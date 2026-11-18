@@ -114,6 +114,7 @@
     "IGUI_VehiclePartFrunk": "Coffre avant",
     "IGUI_VehiclePartTrunkTonneau": "Couvre-benne",
     "IGUI_VehiclePartSoftTop": "Capote souple",
+    "IGUI_VehiclePartSemiTrailerCargo": "Remorque",
     "IGUI_Vehicle_ContainerCapacity_Electricity": "Charge (kWh) : %1",
     "IGUI_MinidoracatTesla_Deny_NO_VEHICLE": "Voiture introuvable",
     "IGUI_MinidoracatTesla_Deny_NO_CHARGER": "Aucun chargeur ici",

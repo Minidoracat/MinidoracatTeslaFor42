@@ -114,6 +114,7 @@
     "IGUI_VehiclePartFrunk": "Porta-malas dianteiro",
     "IGUI_VehiclePartTrunkTonneau": "Capota da caçamba",
     "IGUI_VehiclePartSoftTop": "Capota de lona",
+    "IGUI_VehiclePartSemiTrailerCargo": "Reboque",
     "IGUI_Vehicle_ContainerCapacity_Electricity": "Carga (kWh): %1",
     "IGUI_MinidoracatTesla_Deny_NO_VEHICLE": "Carro não encontrado",
     "IGUI_MinidoracatTesla_Deny_NO_CHARGER": "Não há carregador aqui",

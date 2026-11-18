@@ -114,6 +114,7 @@
     "IGUI_VehiclePartFrunk": "Ön Bagaj",
     "IGUI_VehiclePartTrunkTonneau": "Kasa Kapağı",
     "IGUI_VehiclePartSoftTop": "Yumuşak Tavan",
+    "IGUI_VehiclePartSemiTrailerCargo": "Römork",
     "IGUI_Vehicle_ContainerCapacity_Electricity": "Şarj (kWh): %1",
     "IGUI_MinidoracatTesla_Deny_NO_VEHICLE": "Araç bulunamadı",
     "IGUI_MinidoracatTesla_Deny_NO_CHARGER": "Burada şarj cihazı yok",

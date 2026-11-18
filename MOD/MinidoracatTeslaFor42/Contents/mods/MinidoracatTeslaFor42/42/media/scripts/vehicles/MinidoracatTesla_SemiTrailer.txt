@@ -52,19 +52,35 @@ module Base
         frontEndHealth = 150,
         rearEndHealth = 150,
         seats = 2,
-        template = Trunk/part/TrailerTrunk,
-        template = Tire,
-        template = Brake,
-        template = Suspension,
-        /* 300: the user's pick 2026-11-18 (vanilla's trailer 100, StepVan 160). Vanilla writes it into the trunk item */
-        /* on spawn (Vehicles.lua:1181-1183); a spare TrailerTrunk fitted later holds its own 100 */
-        part TrailerTrunk
+        /* The cargo box: vanilla's Trunk/part/TrailerTrunk under its own id. The engine sets a part called */
+        /* TrailerTrunk to a capacity of max(80, condition) each time its condition is set, the random one on */
+        /* spawn too (VehiclePart.java:893-895). 300: the user's pick 2026-11-18 (vanilla's trailer 100, */
+        /* StepVan 160); vanilla writes it into the trunk item on spawn (Vehicles.lua:1181-1183). Before the */
+        /* templates, so it is the first part as the template's was: VehicleManager keeps its record on a */
+        /* car's first part when it has none of the four it looks for (its OwnershipSystem hostPart) */
+        part SemiTrailerCargo
         {
+            mechanicArea = Back,
+            area = TruckBed,
+            category = bodywork,
+            itemType = Base.TrailerTrunk,
+            mechanicRequireKey = false,
+            repairMechanic = true,
+            durability = 5,
             container
             {
                 capacity = 300,
+                conditionAffectsCapacity = false,
+                test = Vehicles.ContainerAccess.TruckBedOpen,
+            }
+            lua
+            {
+                create = Vehicles.Create.Default,
             }
         }
+        template = Tire,
+        template = Brake,
+        template = Suspension,
         useChassisPhysicsCollision = false,
         physics box
         {

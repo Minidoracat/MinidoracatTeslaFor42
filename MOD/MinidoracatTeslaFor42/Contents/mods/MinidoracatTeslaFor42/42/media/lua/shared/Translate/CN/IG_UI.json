@@ -114,6 +114,7 @@
     "IGUI_VehiclePartFrunk": "前备箱",
     "IGUI_VehiclePartTrunkTonneau": "车斗盖",
     "IGUI_VehiclePartSoftTop": "软顶篷",
+    "IGUI_VehiclePartSemiTrailerCargo": "拖车",
     "IGUI_Vehicle_ContainerCapacity_Electricity": "电量（kWh）：%1",
     "IGUI_MinidoracatTesla_Deny_NO_VEHICLE": "找不到这辆车",
     "IGUI_MinidoracatTesla_Deny_NO_CHARGER": "这里没有充电桩",

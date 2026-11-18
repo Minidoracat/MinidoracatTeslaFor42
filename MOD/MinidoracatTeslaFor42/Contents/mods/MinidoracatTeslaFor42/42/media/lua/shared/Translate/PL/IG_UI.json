@@ -114,6 +114,7 @@
     "IGUI_VehiclePartFrunk": "Przedni bagażnik",
     "IGUI_VehiclePartTrunkTonneau": "Pokrywa skrzyni ładunkowej",
     "IGUI_VehiclePartSoftTop": "Miękki dach",
+    "IGUI_VehiclePartSemiTrailerCargo": "Przyczepa",
     "IGUI_Vehicle_ContainerCapacity_Electricity": "Ładunek (kWh): %1",
     "IGUI_MinidoracatTesla_Deny_NO_VEHICLE": "Nie znaleziono samochodu",
     "IGUI_MinidoracatTesla_Deny_NO_CHARGER": "Brak tu ładowarki",

@@ -114,6 +114,7 @@
     "IGUI_VehiclePartFrunk": "전면 트렁크",
     "IGUI_VehiclePartTrunkTonneau": "토노 커버",
     "IGUI_VehiclePartSoftTop": "소프트톱",
+    "IGUI_VehiclePartSemiTrailerCargo": "트레일러",
     "IGUI_Vehicle_ContainerCapacity_Electricity": "충전량(kWh): %1",
     "IGUI_MinidoracatTesla_Deny_NO_VEHICLE": "차량을 찾을 수 없습니다",
     "IGUI_MinidoracatTesla_Deny_NO_CHARGER": "여기에 충전기가 없습니다",

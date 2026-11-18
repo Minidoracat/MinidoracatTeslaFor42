@@ -4,7 +4,7 @@ local H = H
 local check = H.check
 
 for _, m in ipairs({ "Vehicles/ISUI/ISVehicleMenu", "Vehicles/ISVehicleTrailerUtils", "Vehicles/TimedActions/ISAttachTrailerToVehicle",
-    "Vehicles/TimedActions/ISDetachTrailerFromVehicle" }) do H.stub(m) end
+    "Vehicles/TimedActions/ISDetachTrailerFromVehicle", "Definitions/ContainerButtonIcons" }) do H.stub(m) end
 local saved = { ISVehicleMenu, ISVehicleTrailerUtils, ISAttachTrailerToVehicle, ISDetachTrailerFromVehicle, ISTimedActionQueue,
     getCell, getServerOptions, getPlayerRadialMenu, UIManager, getTexture, ISVehicleMechanics, ISPathFindAction, Vector3f,
     ISBaseTimedAction }

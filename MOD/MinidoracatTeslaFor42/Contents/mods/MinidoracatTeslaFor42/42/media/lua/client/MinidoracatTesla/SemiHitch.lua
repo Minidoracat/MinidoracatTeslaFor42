@@ -12,6 +12,7 @@ require "Vehicles/ISUI/ISVehicleMenu"
 require "Vehicles/ISVehicleTrailerUtils"
 require "Vehicles/TimedActions/ISAttachTrailerToVehicle"
 require "Vehicles/TimedActions/ISDetachTrailerFromVehicle"
+require "Definitions/ContainerButtonIcons"
 require "MinidoracatTesla/Core"
 
 local T = MinidoracatTesla
@@ -23,6 +24,8 @@ SH.FIFTH_WHEEL, SH.KINGPIN = "mtsemi_fifthwheel", "mtsemi_kingpin"
 function SH.disabled()
     return isClient() and getServerOptions():getBoolean("DisableTrailerTowing")
 end
+-- the trailer's cargo part has its own id (the script's comment has why): vanilla's trailer icon for its loot button
+ContainerButtonIcons.SemiTrailerCargo = ContainerButtonIcons.TrailerTrunk
 
 -- the Semi and the trailer ready to hitch, from either one; nil when this is neither or no other half is in place.
 -- IsoCell.vehicles is a HashSet (IsoCell.java:159,2732): no get(i), walk it with iterator() (HashSet and Iterator are

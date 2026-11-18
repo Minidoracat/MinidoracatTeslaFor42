@@ -114,6 +114,7 @@
     "IGUI_VehiclePartFrunk": "Front Trunk",
     "IGUI_VehiclePartTrunkTonneau": "Tonneau Cover",
     "IGUI_VehiclePartSoftTop": "Soft Top",
+    "IGUI_VehiclePartSemiTrailerCargo": "Trailer",
     "IGUI_Vehicle_ContainerCapacity_Electricity": "Charge (kWh): %1",
     "IGUI_MinidoracatTesla_Deny_NO_VEHICLE": "Car not found",
     "IGUI_MinidoracatTesla_Deny_NO_CHARGER": "No charger here",

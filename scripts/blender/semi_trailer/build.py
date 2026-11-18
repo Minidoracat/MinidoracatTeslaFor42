@@ -99,7 +99,7 @@ def uv0(kind, x, d, z):
 # UV1: the shared 512 maps (Veh_Damage1/2, Veh_Rust, Veh_Blood_*) in vanilla Vehicle_StepVan's layout, the vanilla box
 # body nearest to this one (its UV1 plotted on Veh_Damage1): sides on the top strip, roof on its roof panel, ends on a
 # rear panel. The trailer is cut in thirds along its length (each about StepVan's 5.1 m) so the pattern keeps StepVan's
-# density. Only rust really shows: the trailer has no part behind any damage zone (TrailerTrunk is not TruckBed,
+# density. Only rust really shows: the trailer has no part behind any damage zone (its cargo part is not TruckBed,
 # BaseVehicle.java:6221-6297), same as vanilla Trailer.
 THIRD = TL / 3
 
@@ -570,15 +570,22 @@ def vehicle_script():
            "        suspensionDamping = 4.88,", "        maxSuspensionTravelCm = 10.0,", "        suspensionRestLength = 0.2,",
            f"        wheelFriction = {WHEEL_FRICTION},", "        frontEndHealth = 150,", "        rearEndHealth = 150,",
            "        seats = 2,",
+           "        /* The cargo box: vanilla's Trunk/part/TrailerTrunk under its own id. The engine sets a part called */",
+           "        /* TrailerTrunk to a capacity of max(80, condition) each time its condition is set, the random one on */",
+           "        /* spawn too (VehiclePart.java:893-895). 300: the user's pick 2026-11-18 (vanilla's trailer 100, */",
+           "        /* StepVan 160); vanilla writes it into the trunk item on spawn (Vehicles.lua:1181-1183). Before the */",
+           "        /* templates, so it is the first part as the template's was: VehicleManager keeps its record on a */",
+           "        /* car's first part when it has none of the four it looks for (its OwnershipSystem hostPart) */",
+           "        part SemiTrailerCargo", "        {", "            mechanicArea = Back,", "            area = TruckBed,",
+           "            category = bodywork,", "            itemType = Base.TrailerTrunk,",
+           "            mechanicRequireKey = false,", "            repairMechanic = true,", "            durability = 5,",
+           "            container", "            {", "                capacity = 300,",
+           "                conditionAffectsCapacity = false,",
+           "                test = Vehicles.ContainerAccess.TruckBedOpen,", "            }",
+           "            lua", "            {", "                create = Vehicles.Create.Default,", "            }", "        }",
            # a whole `template = X` clears the physics boxes and resets useChassisPhysicsCollision
            # (VehicleScript.java:1226-1241,1298-1305): every whole template before both
-           "        template = Trunk/part/TrailerTrunk,", "        template = Tire,", "        template = Brake,",
-           "        template = Suspension,",
-           # after its template line: a template line copies over the part (VehicleScript.java:1271-1295)
-           "        /* 300: the user's pick 2026-11-18 (vanilla's trailer 100, StepVan 160). Vanilla writes it into the trunk item */",
-           "        /* on spawn (Vehicles.lua:1181-1183); a spare TrailerTrunk fitted later holds its own 100 */",
-           "        part TrailerTrunk", "        {", "            container", "            {",
-           "                capacity = 300,", "            }", "        }",
+           "        template = Tire,", "        template = Brake,", "        template = Suspension,",
            "        useChassisPhysicsCollision = false,",
            *pbox(0, 0, TW, TL, T_FLOOR, TH, cz),
            *pbox(LEG_X, zc - LEG_D, LEG_W, LEG_LEN, LEG_LOW, T_FLOOR, cz),
@@ -606,8 +613,9 @@ def model_script():
 
 def check_physics(lines):
     """The script's lines equal MTSemiProtoTrailerT3's but for names, textures, the comment, the dropped vanilla
-    `attachment trailer`, the prototype's measuring points and the trunk's capacity (the user's pick; the cargo's
-    weight is the load's, no script field). Prints the table; fails on any other difference."""
+    `attachment trailer`, the prototype's measuring points and the cargo part (the prototype's is vanilla's
+    TrailerTrunk template; ours has its own id and the user's capacity. The cargo's weight is the load's, no script
+    field). Prints the table; fails on any other difference."""
     if not os.path.exists(PROTO):
         print("PHYSICS proto script not found, skipped:", PROTO)
         return
@@ -619,9 +627,10 @@ def check_physics(lines):
         out, skip, depth = [], False, 0
         for s in ls:
             s = s.strip()
-            if s.startswith("/*") or s.startswith("Semi hitches") or s == "forcedColor = 0.0 0.0 0.9,":
+            if (s.startswith("/*") or s.startswith("Semi hitches") or s == "forcedColor = 0.0 0.0 0.9,"
+                    or s == "template = Trunk/part/TrailerTrunk,"):
                 continue
-            if s in ("attachment trailer", "part TrailerTrunk") or s.startswith(("attachment mtsemi_leg", "attachment mtsemi_c_")):
+            if s in ("attachment trailer", "part SemiTrailerCargo") or s.startswith(("attachment mtsemi_leg", "attachment mtsemi_c_")):
                 skip = True
             if skip:
                 depth += (s == "{") - (s == "}")
