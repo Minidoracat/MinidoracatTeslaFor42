@@ -267,9 +267,10 @@ S.armed = {}   -- vehicle id -> true: armed and loaded (S.arm, OnSpawnVehicleEnd
 S.lastHit = {} -- vehicle id -> { account = T.account, at = world hour }: the last trusted MP weapon hit (damageWindow)
 S.HIT_HOURS = 2 / 60 -- the server's own PlayerHitVehicle pass may take more glass later with no event: same player
 S.tow = {}     -- vehicle id -> world hour of the last tow report (attachTrailer below)
+S.unhook = {}  -- vehicle id -> world hour of the last unhitch report (onUnhook below)
 
 -- per-car memory keyed by id (ids are reused, VehicleIDMap.java:49-62): cleared on arm, disarm, load, leaving the list
-function S.forget(id) S.lastHit[id], S.tow[id] = nil, nil end
+function S.forget(id) S.lastHit[id], S.tow[id], S.unhook[id] = nil, nil, nil end
 
 -- SP: vanilla's smash breaks the glass mid-swing in Java (SmashWindowState.java:120-125) and complete (our hook, with
 -- the name) runs after the animation. A scan in between would ring once more naming nobody: skip the car until then.
@@ -399,10 +400,15 @@ end
 
 -- Unhitching (a stranger's detachTrailer, or a third car's attachTrailer taking the trailer, which unhooks it from the
 -- old tractor first: BaseVehicle.java:10108-10109) is the touch tier: the car stays where it is. A legit user's
--- unhitch is nobody's business: sentry stays on (no disarm, unlike the other touches).
+-- unhitch is nobody's business: sentry stays on (no disarm, unlike the other touches). Once per car per S.towHours()
+-- like the tow: detachTrailer checks no owner or distance either (VehicleCommands.lua:344-351), and a loop of it would
+-- push the tow report out of the owner's inbox (Inbox.lua keeps 20). A flash still running told the owner already.
 local function onUnhook(vehicle, player)
     local s = armedState(vehicle)
-    if not s or T.legit(player, vehicle, s.by) then return end
+    if not s or T.legit(player, vehicle, s.by) or S.isFlashing(vehicle) then return end
+    local id, t = vehicle:getId(), now()
+    if S.unhook[id] and t - S.unhook[id] < S.towHours() then return end
+    S.unhook[id] = t
     S.onTouch(vehicle, player, "hitch")
 end
 -- The pairs S.preTow (shared ParkModes.lua, before vanilla) saw hooked that vanilla has now pulled apart. A pair still

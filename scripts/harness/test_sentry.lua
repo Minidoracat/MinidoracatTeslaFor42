@@ -605,15 +605,21 @@ do
         "a stranger unhitches the armed Semi's trailer (detach sent for the Semi): flash, owner told (hitch), no alarm, still armed")
     F.runTicks(100, 100)
     hook(semi, st)
+    send(thief, "detachTrailer", { vehicle = semi:getId() }, function() unhook(semi) end)
+    check(hitches() == 1 and S.stats.flashes == f0 + 1,
+        "...hooked up and unhitched again inside S.towHours() (a loop of vanilla's commands): nothing more")
+    F.hours = F.hours + S.towHours() + 1 / 60
+    hook(semi, st)
     send(thief, "detachTrailer", { vehicle = st.id }, function() unhook(st) end)
     n, last = hitches()
     check(n == 2 and last.by == "thief" and S.stats.flashes == f0 + 2 and semi.alarmTriggered == a0 and md(semi).sentry ~= nil,
-        "...detach sent for the trailer: the same")
+        "...past the window, detach sent for the trailer: the same")
     F.runTicks(100, 100)
     hook(semi, st)
     send(hOwner, "detachTrailer", { vehicle = semi:getId() }, function() unhook(semi) end)
     check(hitches() == 2 and S.stats.flashes == f0 + 2 and md(semi).sentry ~= nil,
         "the owner unhitches his own trailer: nothing, sentry stays on")
+    F.hours = F.hours + S.towHours() + 1 / 60
     hook(semi, st)
     send(thief, "attachTrailer", { vehicleA = third.id, vehicleB = st.id }, function() unhook(third); unhook(st); hook(third, st) end)
     n, last = hitches()

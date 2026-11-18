@@ -115,7 +115,8 @@ end
 -- Vanilla's detach gives up, silently, past 4 of the hitch, measured with DistTo(x, y): the int overload, Manhattan
 -- on truncated coordinates (ISDetachTrailerFromVehicle.lua:34, IsoMovingObject.java:601-603). With the Semi on a
 -- diagonal the driver's seat (3.47 straight) reads about 5 (semiE-incar-3), and a stand spot SH.REACH out can too.
--- For the fifth wheel: anyone in this Semi's cab, or the same 4 measured straight. Every other hitch: vanilla's.
+-- For the fifth wheel: anyone in this Semi's cab once it stands (T.stopped: the slice may have been picked before it
+-- moved off, and nothing stops a seated action), or the same 4 measured straight. Every other hitch: vanilla's.
 SH.NEAR = 4
 local origDetach = ISDetachTrailerFromVehicle.perform
 function ISDetachTrailerFromVehicle:perform()
@@ -123,7 +124,8 @@ function ISDetachTrailerFromVehicle:perform()
     if self.attachment ~= SH.FIFTH_WHEEL or v:getScriptName() ~= SH.TRACTOR then return origDetach(self) end
     self:stopSound()
     local dx, dy = c:getX() - h:x(), c:getY() - h:y()
-    if c:getVehicle() == v or dx * dx + dy * dy <= SH.NEAR * SH.NEAR then
+    local seated = c:getVehicle() == v
+    if seated and T.stopped(v) or not seated and dx * dx + dy * dy <= SH.NEAR * SH.NEAR then
         sendClientCommand(c, "vehicle", "detachTrailer", { vehicle = v:getId() })
     end
     ISBaseTimedAction.perform(self)
@@ -185,7 +187,8 @@ end
 
 -- the driver's radial: vanilla has no towing slices there; the toggle and paused-game returns as HUDRadial.lua.
 -- Seated works: MP play gave the driver both cars' authority after the hitch (semiE-incar-1); the detach from the
--- seat goes through the wrapped perform above.
+-- seat goes through the wrapped perform above. Standing still only, like every Park-only action (T.stopped): vanilla
+-- unhitches from outside, and a 53 ft trailer let go at speed is a weapon.
 local origRadial = ISVehicleMenu.showRadialMenu
 function ISVehicleMenu.showRadialMenu(playerObj)
     local menu = getPlayerRadialMenu(playerObj:getPlayerNum())
@@ -195,7 +198,7 @@ function ISVehicleMenu.showRadialMenu(playerObj)
     local sc = UIManager.getSpeedControls()
     if sc and sc:getCurrentGameSpeed() == 0 then return end
     local v = playerObj:getVehicle()
-    if not v or v:getScriptName() ~= SH.TRACTOR or not v:isDriver(playerObj) then return end
+    if not v or v:getScriptName() ~= SH.TRACTOR or not v:isDriver(playerObj) or not T.stopped(v) then return end
     local towed = v:getVehicleTowing()
     if towed then
         menu:addSlice(getText("ContextMenu_Vehicle_DetachTrailer", ISVehicleMenu.getVehicleDisplayName(towed)),

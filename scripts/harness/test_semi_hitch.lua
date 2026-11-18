@@ -92,6 +92,7 @@ local function car(script)
     function v:getVehicleTowing() return self.towing end
     function v:getVehicleTowedBy() return self.towedBy end
     function v:isDriver(p) return self.driver == p end
+    function v:getCurrentSpeedKmHour() return self.kmh or 0 end
     function v:canAttachTrailer(b, attA, attB)
         return hitchable and self.script == "Base.MinidoracatTesla_Semi" and b.script == "Base.MinidoracatTesla_SemiTrailer"
             and attA == "mtsemi_fifthwheel" and attB == "mtsemi_kingpin"
@@ -294,9 +295,21 @@ check(#H.clientSent == n2 + 2 and baseDone == 3, "on foot past 4 straight: nothi
 p.vehicle = semi
 d:perform()
 check(#H.clientSent == n2 + 3, "back in the cab at the same spot: sent")
+semi.kmh = -30
+d:perform()
+check(#H.clientSent == n2 + 3 and baseDone == 5, "seated, the Semi moving by the time the action ends: nothing sent")
 ISDetachTrailerFromVehicle:new(p, my, "trailer"):perform()
 ISDetachTrailerFromVehicle:new(p, semi, "trailer"):perform()
-check(vanillaDetached == 2 and #H.clientSent == n2 + 3 and baseDone == 4, "another car's hitch, the Semi's rear hitch: vanilla's perform")
+check(vanillaDetached == 2 and #H.clientSent == n2 + 3 and baseDone == 5, "another car's hitch, the Semi's rear hitch: vanilla's perform")
+semi.driver = p
+radial.open = false
+ISVehicleMenu.showRadialMenu(p)
+check(#radial.slices == 0, "the driver while moving: no hitch slices")
+semi.kmh = -0.2 -- what the Semi reads standing (semiA-hitch-6)
+radial.open = false
+ISVehicleMenu.showRadialMenu(p)
+check(#radial.slices == 1, "standing (-0.2 km/h): the detach slice")
+semi.kmh = nil
 semi.towing, semi.driver = nil, nil
 p.vehicle = trailer
 radial.open = false

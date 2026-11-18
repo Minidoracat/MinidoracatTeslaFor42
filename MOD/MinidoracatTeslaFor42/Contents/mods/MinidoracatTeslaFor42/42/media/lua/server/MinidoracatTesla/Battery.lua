@@ -256,19 +256,20 @@ end
 
 -- Engine update: vanilla temperature and needPartsUpdate shut-off (Vehicles.lua:526-560), then camp mode; Chill's force
 -- back after an admin repair (vanilla repair() sets the script force, VehiclePart.java:999-1005).
--- MP: a trailer's physics hand-back (no driver of its own) puts its tractor back on Server authority too, driver seated
--- and motor running (BaseVehicle.java:3991-4010). The engine grants the driver only on entering a running car or on
--- the motor starting (:7505-7508, VehicleEnterPacket.java:123-129), so that car never moves again: grant it here.
+-- MP, last (an engine error here must not cost camp or Chill their minute): a trailer's physics hand-back (no driver
+-- of its own) puts its tractor back on Server authority too, driver seated and motor running
+-- (BaseVehicle.java:3991-4010). The engine grants the driver only on entering a running car or on the motor starting
+-- (:7505-7508, VehicleEnterPacket.java:123-129), so that car never moves again: grant it here.
 function T.Update.Engine(vehicle, part, elapsedMinutes)
     Vehicles.Update.Engine(vehicle, part, elapsedMinutes)
-    if isServer() and instanceof(vehicle, "BaseVehicle") and vehicle:isEngineRunning() and vehicle:getNetPlayerId() == -1 then
-        local driver = vehicle:getDriver()
-        if driver and instanceof(driver, "IsoPlayer") then vehicle:authorizationServerOnSeat(driver, true) end
-    end
     local f = T.Camp and T.Camp.onEngineUpdate
     if f then f(vehicle, part, elapsedMinutes) end
     local bp = B.part(vehicle)
     if bp and bp:getModData().chill then B.setForce(vehicle, true) end
+    if isServer() and instanceof(vehicle, "BaseVehicle") and vehicle:isEngineRunning() and vehicle:getNetPlayerId() == -1 then
+        local driver = vehicle:getDriver()
+        if driver and instanceof(driver, "IsoPlayer") then vehicle:authorizationServerOnSeat(driver, true) end
+    end
 end
 
 -- ------------------------------------------------------------------ Chill
