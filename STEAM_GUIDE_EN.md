@@ -1,15 +1,15 @@
 <!-- 指南網址：https://steamcommunity.com/sharedfiles/filedetails/?id=3829449879 -->
 <!-- Steam guide source (English). The full description lives in this guide; the Workshop page only has a summary. Format and sync: pz-family-docs/release.md "完整說明：Steam 指南" -->
 <!-- 標題：📖 Minidoracat Tesla Collection Mod Guide: Cars, Charging, Keys and the App -->
-<!-- 摘要：A picture guide to Minidoracat Tesla Collection: the Model Y and Model 3 Performance, the Model Y L (six seats), the Model S and Model X Plaid (falcon wing doors and six seats), the first-generation Roadster 2.5 Sport (soft top), the Cybertruck Cyberbeast (cargo bed, Powershare home backup and the bed outlets), the Cybercab (a two-seat robotaxi: doors that swing up, no steering wheel, the charge port at the back), the battery and towing, the Wall Connector, the Mobile Connector and the V4 Superchargers at gas stations, the Tesla-style dashboard, key cards and phone keys, the Tesla app and Summon, Sentry and Camp Mode, Bioweapon Defense Mode and Chill, drive unit parts, and how it works with Vehicle Manager, the MiniMap, AutoDrive and Project Viewpoint, plus the sandbox options. -->
-<!-- Screenshots: docs/screenshots/steam/en/, shot by guide-shots-sp in the family repo's e2e/MinidoracatTeslaFor42 (Bioweapon Defense and Chill only: --define part=feat, with hover.py for the radial's hover text; Cybertruck shots: guide-ct-sp; Model S / X: guide-sx-sp; Model Y L shots (33, 34): guide-yl-sp; Roadster shots (35, 36): guide-rd-sp (one CH run, same pictures as zh; 35 is four cars facing S at zoom 1.0 cropped (210,622,1710,967), 36 is one Radiant Red car with the soft top closed and stowed at zoom 0.5, each cropped (284,320,854,880), side by side with a 16 px gap); Cybercab shots (37, 38, 39): guide-cc-sp (one CH run, same pictures as zh; 37 is gcc-line-075, the left car facing S and the right one facing N at zoom 0.75 cropped (330,340,1590,710); 38 is one car facing S at zoom 0.5, gcc-doors-open-050 (both doors open by the app's Doors button) beside gcc-doors-trunk-050 (doors shut, trunk lid open), each cropped (220,260,935,820), side by side with a 16 px gap; 39 is gcc-charge-050, the car facing W with its tail plugged into a V4 Supercharger at zoom 0.5 cropped (150,320,1110,800)); Cybercab with two riders (40): this repo's one-off temp/plan-next8-1114/e2e/oneoff/seated2-rv-mp (multiplayer, two accounts in one car, both doors open, zoomed all the way in), seated2-open-SW cropped (598,280,1313,840) beside seated2-open-SE cropped (651,350,1366,910) with a 16 px gap, same picture as zh; multiplayer always draws the seat number and account name above the roof, so that label is covered with the road next to it, the car and the riders are not retouched; Summon shots: phone-summon-sp; FSD: fsd-shot-sp (01c is 01b cropped (350,370,1090,977), not used in the guide, referenced by the Workshop description: re-crop it when 01b is reshot and update the image URL in the description, see release.md); With other mods: guide-mods-sp; Project Viewpoint (31): vd-first-ModelS from this repo's one-off temp/oneoff/vp-detail-sp, cropped (80,40,1660,1080), same picture as zh, needs ZombieBuddy; V4 Supercharger (32): supercharger-sp's sc-EN-card / sc-CH-card, cropped (480,160,1480,990)) -->
+<!-- 摘要：A picture guide to Minidoracat Tesla Collection: the Model Y and Model 3 Performance, the Model Y L (six seats), the Model S and Model X Plaid (falcon wing doors and six seats), the first-generation Roadster 2.5 Sport (soft top), the Cybertruck Cyberbeast (cargo bed, Powershare home backup and the bed outlets), the Cybercab (a two-seat robotaxi: doors that swing up, no steering wheel, the charge port at the back), the Tesla Semi (an electric semi truck: a centre driver's seat, 1,200 kW Supercharging and a 53 ft box trailer to hitch), the battery and towing, the Wall Connector, the Mobile Connector and the V4 Superchargers at gas stations, the Tesla-style dashboard, key cards and phone keys, the Tesla app and Summon, Sentry and Camp Mode, Bioweapon Defense Mode and Chill, drive unit parts, and how it works with Vehicle Manager, the MiniMap, AutoDrive and Project Viewpoint, plus the sandbox options. -->
+<!-- Screenshots: docs/screenshots/steam/en/, shot by guide-shots-sp in the family repo's e2e/MinidoracatTeslaFor42 (Bioweapon Defense and Chill only: --define part=feat, with hover.py for the radial's hover text; Cybertruck shots: guide-ct-sp; Model S / X: guide-sx-sp; Model Y L shots (33, 34): guide-yl-sp; Roadster shots (35, 36): guide-rd-sp (one CH run, same pictures as zh; 35 is four cars facing S at zoom 1.0 cropped (210,622,1710,967), 36 is one Radiant Red car with the soft top closed and stowed at zoom 0.5, each cropped (284,320,854,880), side by side with a 16 px gap); Cybercab shots (37, 38, 39): guide-cc-sp (one CH run, same pictures as zh; 37 is gcc-line-075, the left car facing S and the right one facing N at zoom 0.75 cropped (330,340,1590,710); 38 is one car facing S at zoom 0.5, gcc-doors-open-050 (both doors open by the app's Doors button) beside gcc-doors-trunk-050 (doors shut, trunk lid open), each cropped (220,260,935,820), side by side with a 16 px gap; 39 is gcc-charge-050, the car facing W with its tail plugged into a V4 Supercharger at zoom 0.5 cropped (150,320,1110,800)); Cybercab with two riders (40): this repo's one-off temp/plan-next8-1114/e2e/oneoff/seated2-rv-mp (multiplayer, two accounts in one car, both doors open, zoomed all the way in), seated2-open-SW cropped (598,280,1313,840) beside seated2-open-SE cropped (651,350,1366,910) with a 16 px gap, same picture as zh; multiplayer always draws the seat number and account name above the roof, so that label is covered with the road next to it, the car and the riders are not retouched; Summon shots: phone-summon-sp; FSD: fsd-shot-sp (01c is 01b cropped (350,370,1090,977), not used in the guide, referenced by the Workshop description: re-crop it when 01b is reshot and update the image URL in the description, see release.md); With other mods: guide-mods-sp; Project Viewpoint (31): vd-first-ModelS from this repo's one-off temp/oneoff/vp-detail-sp, cropped (80,40,1660,1080), same picture as zh, needs ZombieBuddy; V4 Supercharger (32): supercharger-sp's sc-EN-card / sc-CH-card, cropped (480,160,1480,990); the three Semi shots (semi-truck: the truck and the trailer side by side, semi-hitch: the hitch radial from beside the fifth wheel, semi-charge: plugged into a V4 Supercharger) are still to be shot (待拍), scenario not decided yet, numbered once taken) -->
 === 🚀 Quick start
 [b]中文版：[/b] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3829449828]Minidoracat Tesla Collection 完整說明[/url]
 
 Mod page (Steam Workshop):
 https://steamcommunity.com/sharedfiles/filedetails/?id=3829501237
 [olist]
-[*] [b]Find a car[/b]: the Model Y and Model 3 park in parking lots, and the Model Y also turns up in upscale neighbourhoods; the Model Y L turns up in both, at the Model Y's chance; the Model S, Model X, Roadster and Cybertruck only turn up in upscale neighbourhoods; the Cybercab only in parking lots.
+[*] [b]Find a car[/b]: the Model Y and Model 3 park in parking lots, and the Model Y also turns up in upscale neighbourhoods; the Model Y L turns up in both, at the Model Y's chance; the Model S, Model X, Roadster and Cybertruck only turn up in upscale neighbourhoods; the Cybercab only in parking lots; the Semi and the 53 ft trailer only in long parking lots, each parked on its own, never hitched together.
 [*] [b]Get the key[/b]: a Tesla's car key turns into that car's Key Card when you pick it up.
 [*] [b]Start it[/b]: sit in the driver's seat and click the power button at the top left of the dashboard (or start it the vanilla way).
 [*] [b]Charge it[/b]: with Electrical 3, make a Tesla Wall Connector (Gen 3) and mount it on a powered wall, or set a Tesla Mobile Connector (Gen 3) on the floor; right-click it to plug in the charge cable. The Tesla V4 Superchargers next to gas stations fast-charge as soon as you plug in.
@@ -177,6 +177,40 @@ https://steamcommunity.com/sharedfiles/filedetails/?id=3829501237
 [*] [b]Cabin[/b]: two seats and a wide centre screen; riders rest their hands on their laps.
 [*] [b]Two riders[/b]: in multiplayer one player sits on each side and the one on the left drives; from outside you can see the riders through the glass or the open doors.
 [/list]
+=== 🧰 Semi and the 53 ft trailer
+{{img:semi-truck-en.jpg}}
+[list]
+[*] [b]Tesla's electric semi truck[/b]: the production Semi Long Range of 2026, built to Tesla's website, emergency response guide and the California Air Resources Board filing; only this version.
+[*] [b]Performance[/b]: it drives like a truck. About 18.5 seconds to 100 km/h on its own and about 25 with an empty trailer, topping out around 105 km/h; Tesla publishes no top speed, so this is a feel set for the game. Multiplayer servers also cap it with SpeedLimit, see Battery and range.
+[*] [b]Where it spawns[/b]: the Semi and the 53 ft trailer each park in long parking lots, never hitched together, the trailer at twice the Semi's chance; only on clear ground. The sandbox option Semi and trailer spawn chance changes it, and when you add the mod mid-save, places you already explored get them too, once.
+[*] [b]Seats[/b]: 2 seats and two doors: the driver's seat sits in the middle, with a folding seat behind it on the right.
+[*] [b]No trunk[/b]: no front trunk, rear trunk or glove box; the phone and Mobile Connector a new one may come with sit on the driver's seat and the folding seat.
+[*] [b]Battery[/b]: an 822 kWh High Voltage Battery, the biggest of any Tesla here; a full charge still goes as far as a full tank in a vanilla car of the same class. Towing the trailer uses more for the weight, see Battery and range.
+[*] [b]Charging times[/b]: a Supercharger peaks at 1,200 kW (Tesla's 1.2 MW), about 80 minutes from 10% to 90% (game time). The Wall Connector and Mobile Connector charge it too, at the same power as for the other cars, but its battery is more than 10 times the Model Y's, so it takes a very long time; a full charge on generator power burns about ten tanks.
+[*] [b]Charge port[/b]: on the left side, low down behind the cab.
+[*] [b]Paint[/b]: white only (the real truck is white only for now).
+[*] [b]The 53 ft trailer's look[/b]: a white dry van made after the one in Tesla's Semi hero photo: aero side skirts, riveted side panels, an aluminum lower rail with spaced red and white reflective tape, rounded nose corners with a vent, white steel wheels; no maker's badge.
+[*] [b]No Bioweapon Defense Mode[/b]: it has no HEPA filter, so its V radial menu has no such slice.
+[*] [b]Everything else[/b]: key card, phone key, the app, Sentry, Camp Mode, Chill and the Project Viewpoint cabin details work as on the other Teslas; the dashboard has the Semi's own top view, where only the two doors can be clicked.
+[/list]
+[table]
+[tr][th]Car[/th][th]Factory paints[/th][th]Storage[/th][/tr]
+[tr][td]Tesla Semi[/td][td]White[/td][td]No trunk[/td][/tr]
+[tr][td]53 ft Box Trailer[/td][td]White[/td][td]Trailer 300[/td][/tr]
+[/table]
+[h3]Hitching and unhitching the trailer[/h3]
+{{img:semi-hitch-en.jpg}}
+[list]
+[*] [b]Semi only[/b]: the 53 ft trailer only hitches to a Semi, and the Semi cannot tow vanilla trailers.
+[*] [b]From outside[/b]: back the Semi up to the trailer with the fifth wheel lined up under the trailer's front, stand beside the fifth wheel behind the cab and press V, then pick Attach … to … in the radial; your character walks over and hitches it.
+[*] [b]From the driver's seat[/b]: when the truck is at a standstill, the driver's V radial menu has hitch and unhitch too; they do not show while moving.
+[*] [b]Unhitching[/b]: from beside the fifth wheel or the driver's seat, pick Detach … in the radial.
+[*] [b]Servers that turn towing off[/b]: when a multiplayer server turns on DisableTrailerTowing, neither shows, as with vanilla trailers.
+[*] [b]Trailer storage[/b]: 300, three times a vanilla trailer.
+[*] [b]Turning[/b]: the trailer is far longer than the truck; keep full lock on and it folds to about 76° and stops there. Straighten up and you can drive off.
+[*] [b]Dashboard[/b]: with the trailer hitched, the dashboard draws it behind the car picture (the middle cut short).
+[*] [b]Multiplayer: driving off right after hitching[/b]: get in and start the motor right after hitching and now and then the truck starts but will not move; it now recovers by itself within a game minute. The same goes for any Tesla towing a trailer.
+[/list]
 === 🧰 Cybertruck (Cyberbeast)
 {{img:23-cybertruck-en.jpg}}
 [list]
@@ -220,8 +254,8 @@ https://steamcommunity.com/sharedfiles/filedetails/?id=3829501237
 [*] [b]Out of charge[/b]: the motor stops and will not start until you charge.
 [*] [b]Low Voltage Battery[/b]: the main battery tops it up while it holds 5% or more, so a car parked for a long time still starts.
 [*] [b]Power in the car[/b]: climate, Bioweapon Defense Mode, Camp Mode and Sentry Mode use the main battery too; plugged into a powered charger, the charger supplies them instead, and on generator power that burns the generator's fuel.
-[*] [b]Towing uses more[/b]: towing a trailer or another car, driving uses more charge for the weight behind you: about 1.5 times with a small trailer, about 3 times with an ordinary car (3 times at most), more with cargo in the trailer; standing still uses the same as before. The range on the dashboard and in the app drops to match, and you cannot Summon while towing.
-[*] [b]Multiplayer speed limit[/b]: the server setting SpeedLimit defaults to 70 km/h; neither vanilla cars nor Teslas go faster.
+[*] [b]Towing uses more[/b]: towing a trailer or another car, driving uses more charge for the weight behind you: about 1.5 times with a small trailer, about 3 times with an ordinary car (3 times at most), about 1.7 times for a Semi with an empty 53 ft trailer, more with cargo in the trailer; standing still uses the same as before. The range on the dashboard and in the app drops to match, and you cannot Summon while towing.
+[*] [b]Multiplayer speed limit[/b]: the server setting SpeedLimit defaults to 70 km/h; neither vanilla cars nor Teslas go faster. A Semi with an empty trailer topped out at about 66 km/h in testing.
 [/list]
 === 🧰 Charging: the Wall Connector, the Mobile Connector and the cable
 {{img:02-cable-en.jpg}}
@@ -256,10 +290,10 @@ A charger that works on the floor, no wall needed; slower than the Wall Connecto
 [*] [b]Motor on is fine[/b]: the car only has to stand still; you can also start it while plugged in.
 [*] [b]No driving off plugged in[/b]: throttle or reverse says Unplug the charge cable first and the dashboard shows P; unplug and drive away.
 [*] [b]Auto unplug[/b]: towed or pushed past the cable's reach, the car is unplugged and you are told.
-[*] [b]Charging speed[/b]: 11.5 kW at the Wall Connector, 7.6 kW at the Mobile Connector; a Model Y or Model 3 takes about 6 and 9 in-game hours from empty to 90%, cars with a bigger battery take longer in proportion and smaller ones less (about 4 and 7 hours for the Roadster, about 4 and 6 for the Cybercab); the sandbox option Charging speed multiplier changes it. A Supercharger is far faster, see V4 Supercharger.
+[*] [b]Charging speed[/b]: 11.5 kW at the Wall Connector, 7.6 kW at the Mobile Connector; a Model Y or Model 3 takes about 6 and 9 in-game hours from empty to 90%, cars with a bigger battery take longer in proportion and smaller ones less (about 4 and 7 hours for the Roadster, about 4 and 6 for the Cybercab; the Semi's battery is more than 10 times the Model Y's, so it takes a very long time); the sandbox option Charging speed multiplier changes it. A Supercharger is far faster, see V4 Supercharger.
 [*] [b]Time skips count[/b]: charge is settled by the hours that passed, so sleeping or fast-forwarding loses nothing.
 [*] [b]Other players see the cable[/b]: it hangs from the Wall Connector or the Supercharger to the ground (it leaves the Mobile Connector right on the ground) and runs to the car's charge port.
-[*] [b]The Cybercab's charge port is at the back[/b]: the other Teslas have theirs on the left side toward the rear; the Cybercab's is in the rear bumper (driver's side), so park with the tail toward the charger. The Supercharger's cable is the shortest, see V4 Supercharger.
+[*] [b]Where the charge port is[/b]: the other Teslas have theirs on the left side toward the rear; the Cybercab's is in the rear bumper (driver's side), so park with the tail toward the charger; the Semi's is on the left side, low down behind the cab. The Supercharger's cable is the shortest, see V4 Supercharger.
 [*] [b]The holster[/b]: with no car plugged in, the Wall Connector's and the Supercharger's connector sits in its holster with the cable hung up; once a car is plugged in, the holster is empty. Other players see the same.
 [/list]
 {{img:04-charging-en.jpg}}
@@ -276,16 +310,17 @@ A charger that works on the floor, no wall needed; slower than the Wall Connecto
 [*] [b]Where[/b]: 2 to 4 Tesla V4 Superchargers stand next to gas stations, each with its parking spot in front. If you add the mod mid-save, the gas stations you already visited get theirs the next time they load; each station gets them only once, and posts taken away do not come back. They only go on empty pavement (gravel floors players lay count too), never on furniture or cars; on a multiplayer server none appear inside a safehouse.
 [*] [b]Make one[/b]: Electrical 6 learns the recipe Make Tesla V4 Supercharger; craft it next to a work surface such as a table with a Screwdriver and Pliers (kept), Electrical Wire 12, Scrap Electronics 9, Steel Sheet - Small 6 and Screws 12.
 [*] [b]Plug in[/b]: right-click it and plug in the charge cable like any charger. The cable reaches about 2.5 tiles (3 m in the real world), so park in the spot in front of the post.
-[*] [b]Slower as it fills[/b]: it follows the real cars' DC fast-charging curve: fastest at a low charge, slowing down past half, and slow above 80%. Peak power follows Tesla's numbers: 325 kW for the Cybertruck, 250 kW for the other Teslas; Tesla publishes none for the Cybercab, so it takes 152 kW, the Model Y's scaled to its battery size. The Roadster is the exception: the real car has no DC fast charging, so a Supercharger gives it a flat 16.8 kW that does not slow down.
-[*] [b]How long[/b]: 10% to 90% (game time) takes about 36 minutes for the Model Y, Model 3 and Cybercab, about 38 for the Model Y L, about 46 for the Model S and Model X, about 44 for the Cybertruck, and about 2 hours 40 minutes for the Roadster; the sandbox option Charging speed multiplier still applies.
+[*] [b]Slower as it fills[/b]: it follows the real cars' DC fast-charging curve: fastest at a low charge, slowing down past half, and slow above 80%. Peak power follows Tesla's numbers: 1,200 kW for the Semi, 325 kW for the Cybertruck, 250 kW for the other Teslas; Tesla publishes none for the Cybercab, so it takes 152 kW, the Model Y's scaled to its battery size. The Roadster is the exception: the real car has no DC fast charging, so a Supercharger gives it a flat 16.8 kW that does not slow down.
+[*] [b]How long[/b]: 10% to 90% (game time) takes about 36 minutes for the Model Y, Model 3 and Cybercab, about 38 for the Model Y L, about 46 for the Model S and Model X, about 44 for the Cybertruck, about 80 for the Semi (30 minutes take it from 10% to about 59%; Tesla says up to 60% in 30 minutes), and about 2 hours 40 minutes for the Roadster; the sandbox option Charging speed multiplier still applies.
 [*] [b]Power[/b]: the same rule as a gas pump: outdoors on the grid it just works. After the power cut it charges at full speed within a generator's range or with a running, fuelled generator within 2 tiles (same floor); when the server turns off Generator Working in Exterior, only a generator within 2 tiles counts. With no power, right-clicking it shows a grey line saying so.
-[*] [b]Fuel[/b]: each kWh burns the same fuel as on any charger, so a full charge still takes about one tank; but at this power it burns fuel much faster per hour: at 250 kW a full vanilla generator runs dry in about 19 minutes.
+[*] [b]Fuel[/b]: each kWh burns the same fuel as on any charger, so a full charge still takes about one tank (about ten for the Semi); but at this power it burns fuel much faster per hour: at 250 kW a full vanilla generator runs dry in about 19 minutes.
 [*] [b]Take one home[/b]: picking one up or placing it takes Electrical 6 and a screwdriver; it weighs as much as a vanilla generator (40) and takes both hands, so drop other gear if you cannot pick it up. Once placed, the power rule above applies. A gas station's posts belong to nobody, so the car's key rules alone decide who may plug in or unplug; one you place yourself is yours (see the FAQ Someone else's car is plugged into my charger. What now?).
 [*] [b]Destroy one[/b]: a vanilla sledgehammer's Destroy takes it down at any Electrical level; it is gone for good and drops nothing, and a car plugged into it is unplugged first. A server that allows sledgehammers only in safehouses applies that rule here too.
 [*] [b]Solid[/b]: you cannot walk through it, and zombies do not break it.
 [*] [b]Reverse the Cybercab in[/b]: its charge port is at the back, so nose-in the cable does not reach (the option is grey and says The cable does not reach the car); reverse into the stall with the tail to the post and it plugs in.
 [/list]
 {{img:39-cybercab-charge-en.jpg}}
+{{img:semi-charge-en.jpg}}
 === 🧰 Powershare and the bed outlets (Cybertruck)
 {{img:25-ct-powershare-en.jpg}}
 [h3]Powershare home backup[/h3]
@@ -329,11 +364,11 @@ A charger that works on the floor, no wall needed; slower than the Wall Connecto
 [list]
 [*] [b]Replaces the vanilla dashboard[/b]: in a Tesla you get the gear, speed, charge, range and live use / regen.
 [*] [b]Power button[/b]: top left; click to start, click again to power off; powering off needs the car stopped.
-[*] [b]Click the car to open doors[/b]: click the top view of the car on the dashboard to open or close that door, the liftgate or the hood (on the Cybertruck the bed is the tonneau cover, on the Model X the rear half is the falcon wing doors, on the Roadster the roof is the soft top, and the Cybercab's hood does nothing, as it has no front trunk; the Model Y L, Roadster and Cybercab have their own top views); a locked door unlocks first, and nothing opens while driving.
+[*] [b]Click the car to open doors[/b]: click the top view of the car on the dashboard to open or close that door, the liftgate or the hood (on the Cybertruck the bed is the tonneau cover, on the Model X the rear half is the falcon wing doors, on the Roadster the roof is the soft top, the Cybercab's hood does nothing, as it has no front trunk, and on the Semi only the two doors can be clicked; the Model Y L, Roadster, Cybercab and Semi have their own top views, and a Semi with its trailer hitched has the trailer drawn behind it); a locked door unlocks first, and nothing opens while driving.
 [*] [b]Quick keys[/b]: headlights, climate controls, radio, Camp Mode; a key that is on turns blue with an underline.
 [*] [b]Reminders[/b]: a door open, charging, charged, no power at the charger, low battery, Camp or Sentry on show as one line below.
 [*] [b]Hover help[/b]: every button and every area of the car picture says what it does when the mouse is over it.
-[*] [b]V radial menu[/b]: adds Turn on Camp Mode, Charging Status and Turn on Chill (driver only); a car with a HEPA filter also has Turn on Bioweapon Defense Mode (see Bioweapon Defense Mode and Chill); the Cybertruck also has Powershare, the bed outlets and the light bar (the light bar for the driver only). When one is not available its icon is grey and the second line says why.
+[*] [b]V radial menu[/b]: adds Turn on Camp Mode, Charging Status and Turn on Chill (driver only); a car with a HEPA filter also has Turn on Bioweapon Defense Mode (see Bioweapon Defense Mode and Chill); the Cybertruck also has Powershare, the bed outlets and the light bar (the light bar for the driver only); a Semi at a standstill also gives the driver hitch and unhitch. When one is not available its icon is grey and the second line says why.
 [*] [b]With AutoDrive[/b]: AutoDrive's autopilot card sits above the Tesla dashboard, and above the charge card while that is open.
 [/list]
 === 🧰 Key card and phone key
@@ -349,7 +384,7 @@ A charger that works on the floor, no wall needed; slower than the Wall Connecto
 {{img:07-pair-menu-en.jpg}}
 [h3]Phone Key[/h3]
 [list]
-[*] [b]Where phones come from[/b]: the Smartphone is a new item, most common in electronics stores; sometimes in mall electronics, office desks and bedside tables. A newly spawned Tesla has a one-in-four chance of an unpaired one in its glove box.
+[*] [b]Where phones come from[/b]: the Smartphone is a new item, most common in electronics stores; sometimes in mall electronics, office desks and bedside tables. A newly spawned Tesla has a one-in-four chance of an unpaired one in its glove box (the Semi has no glove box, so on the driver's seat).
 [*] [b]Set it up[/b]: sit in the Tesla with its key card on you (or in the ignition), right-click the phone and choose Set Up as Phone Key; a phone in the glove box works too, it is taken out first. Without Vehicle Manager, sitting in a hotwired car works too, no card needed.
 [*] [b]Walk up and it unlocks[/b]: pull a door handle with the phone key on you and the door unlocks and opens; a backpack or fanny pack is fine.
 [*] [b]Starting[/b]: sit in the driver's seat and start; the phone can stay in a bag.
@@ -369,12 +404,12 @@ A charger that works on the floor, no wall needed; slower than the Wall Connecto
 [*] [b]Open it[/b]: right-click the phone key and choose Open Tesla App; the phone appears on the right of the screen. An unpaired phone lists the option in red, with hover help on how to pair it.
 [*] [b]Move it[/b]: hold any spot of the phone that is not a button and drag it elsewhere on the screen; it stays there and opens there next time (remembered on this computer, for each split-screen player).
 [*] [b]Home[/b]: car name, battery and range, a status such as Parked · Locked, and a picture of the car in its paint.
-[*] [b]Four quick icons[/b]: lock / unlock, stop / start charging, open / close the frunk, open / close the liftgate (the trunk on the Model 3, Roadster and Cybercab); the Cybercab has no frunk, so it has three. White when on, dim when not available.
+[*] [b]Four quick icons[/b]: lock / unlock, stop / start charging, open / close the frunk, open / close the liftgate (the trunk on the Model 3, Roadster and Cybercab); the Cybercab has no frunk, so it has three; the Semi has neither trunk, so it has just lock and charging. White when on, dim when not available.
 [*] [b]Controller[/b]: D-pad moves, A presses, B goes back home from a page and closes the app from home.
 [/list]
 [table]
 [tr][th]Page[/th][th]What it does[/th][/tr]
-[tr][td]Controls[/td][td]Flash the lights to find the car, honk for a second (like the car's horn: nearby zombies hear it), open / close the frunk and the liftgate; the Model X adds the falcon wing doors (both at once); the Cybertruck adds the tonneau cover and Powershare (see Powershare and the bed outlets); the Roadster adds the soft top (parked only); the Cybercab has no frunk and adds Doors (both at once)[/td][/tr]
+[tr][td]Controls[/td][td]Flash the lights to find the car, honk for a second (like the car's horn: nearby zombies hear it), open / close the frunk and the liftgate; the Model X adds the falcon wing doors (both at once); the Cybertruck adds the tonneau cover and Powershare (see Powershare and the bed outlets); the Roadster adds the soft top (parked only); the Cybercab has no frunk and adds Doors (both at once); the Semi has only flash and honk[/td][/tr]
 [tr][td]Location[/td][td]Arrow, distance, compass direction; Show on Map opens the world map; Navigate to Car with the MiniMap[/td][/tr]
 [tr][td]Summon[/td][td]Only with AutoDrive; see Summon[/td][/tr]
 [tr][td]Security[/td][td]Turn Sentry Mode on / off, see this car's Sentry Alerts[/td][/tr]
@@ -428,6 +463,8 @@ A charger that works on the floor, no wall needed; slower than the Wall Connecto
 [*] [b]Hooked up to a tow[/b]: someone else uses the vanilla tow hitch (Attach … to … in the V radial menu) to hook the car to a trailer or behind another car: the vanilla alarm sounds and the owner is told "car hooked up to a tow".
 [*] [b]One alarm per tow[/b]: while the alarm sounds (about 13 game minutes by default, as long as the vanilla alarm), the same car sounds and notifies only once, however often it is hooked up and to whatever.
 [*] [b]Owners towing[/b]: when one of the owners below hooks it up, Sentry simply turns off instead.
+[*] [b]Trailer unhitched[/b]: when a stranger unhitches the trailer a Tesla is towing (Detach … in the V radial menu), or takes the trailer away with another vehicle, the lights flash and the owner is told who, as when someone touches the car; no alarm. While the alarm would sound, the same car notifies only once. The owners below unhitching set nothing off and leave Sentry on; a trailer that comes loose by itself does not count.
+[*] [b]Trailer parts removed[/b]: when a stranger takes a part off the trailer a Tesla is towing, the truck sounds the vanilla alarm and the owner is told.
 [*] [b]Who counts as the owner[/b]: whoever turned it on, and anyone carrying this car's key, key card or phone key; with Vehicle Manager and a claimed car, only its Ride permission counts.
 [*] [b]Offline owners[/b]: events wait until the owner logs in next.
 [*] [b]Turning it off[/b]: unlocking with the key card, the phone key or the app turns Sentry off too.
@@ -449,7 +486,7 @@ A charger that works on the floor, no wall needed; slower than the Wall Connecto
 [h3]Bioweapon Defense Mode (HEPA filter)[/h3]
 {{img:29-bdm-en.jpg}}
 [list]
-[*] [b]Which cars[/b]: the Model Y, Model Y L, Model S, Model X and Cybertruck have a HEPA filter; going by Tesla's owner's manuals and the Cybercab's rider guide, the Model 3, Roadster and Cybercab have none, and their V radial menu has no such slice.
+[*] [b]Which cars[/b]: the Model Y, Model Y L, Model S, Model X and Cybertruck have a HEPA filter; going by Tesla's owner's manuals and the Cybercab's rider guide, the Model 3, Roadster and Cybercab have none, nor does the Semi, and their V radial menu has no such slice.
 [*] [b]Climate on means filtered[/b]: when enough corpses lie around to give you corpse sickness, sit in the car with the climate on and nobody inside gets any sicker.
 [*] [b]Turn it on[/b]: in the car, pick Turn on Bioweapon Defense Mode in the V radial menu; anyone inside can. While it is on, the fan filters the air even with the climate knob at 0. Pick Turn off Bioweapon Defense Mode to stop it.
 [*] [b]Needs power[/b]: it works only while the motor runs or in Camp Mode.
@@ -460,7 +497,7 @@ A charger that works on the floor, no wall needed; slower than the Wall Connecto
 {{img:30-chill-en.jpg}}
 [list]
 [*] [b]Switching[/b]: the driver picks Turn on Chill in the V radial menu, and Turn off Chill to go back; it works while driving too.
-[*] [b]Acceleration only[/b]: acceleration gets smooth and gentle, top speed stays. Every Tesla but the Roadster and Cybercab uses the same pull: the Model Y and Cybertruck both take about 16 seconds to 100 km/h (normally about 7 for the Model Y and 5 for the Cybertruck); the Roadster is light, so it uses a smaller pull of its own and takes about 16 seconds too (normally about 8); the Cybercab also uses a smaller pull of its own and takes about 20 seconds (normally about 9).
+[*] [b]Acceleration only[/b]: acceleration gets smooth and gentle, top speed stays. Every Tesla but the Roadster, Cybercab and Semi uses the same pull: the Model Y and Cybertruck both take about 16 seconds to 100 km/h (normally about 7 for the Model Y and 5 for the Cybertruck); the Roadster is light, so it uses a smaller pull of its own and takes about 16 seconds too (normally about 8); the Cybercab also uses a smaller pull of its own and takes about 20 seconds (normally about 9); the Semi uses its own pull and takes about 37 seconds on its own and about 50 with an empty trailer (normally about 18.5 and 25).
 [*] [b]Dashboard[/b]: Chill shows next to the speed while it is on.
 [*] [b]Stays with the car[/b]: still on when you get out and back in, or someone else drives.
 [*] [b]No extra saving[/b]: charge use still depends on how you drive; Chill alone does not save charge.
@@ -518,7 +555,7 @@ A charger that works on the floor, no wall needed; slower than the Wall Connecto
 [h3]Project Viewpoint (3D view)[/h3]
 {{img:31-viewpoint-en.jpg}}
 [list]
-[*] [b]Cabin details[/b]: sit in a Tesla and you see stitched seats, the steering wheel with its T badge (the Cybercab has none), the centre screen with a map, air vents, cup holders, the phone mount, floor mats and the rear-view mirror; in all eight cars and every seat.
+[*] [b]Cabin details[/b]: sit in a Tesla and you see stitched seats, the steering wheel with its T badge (the Cybercab has none), the centre screen with a map, air vents, cup holders, the phone mount, floor mats and the rear-view mirror; in all nine cars and every seat.
 [*] [b]Only the car you sit in[/b]: other cars keep the plain look, with a dark grey cabin.
 [*] [b]Nothing changes without it[/b]: players without Project Viewpoint see the same picture and get the same performance as before.
 [*] [b]Can vanish for a moment in multiplayer[/b]: when a part on the car you sit in is installed, removed or repaired, the details disappear and come back within one in-game minute.
@@ -529,10 +566,11 @@ On the Tesla Collection page of the sandbox settings.
 [table]
 [tr][th]Option[/th][th]Default[/th][th]Range[/th][th]What it does[/th][/tr]
 [tr][td]Range multiplier[/td][td]1.0[/td][td]0.25–10.0[/td][td]How far a full battery drives; 1.0 = as far as a full tank in a vanilla car of the same class; vanilla Gas Consumption scales it too[/td][/tr]
-[tr][td]Charging speed multiplier[/td][td]1.0[/td][td]0.1–10.0[/td][td]1.0 = official charger power (Wall Connector 11.5 kW, Mobile Connector 7.6 kW, Supercharger up to 250 kW, 325 kW for the Cybertruck and 152 kW for the Cybercab; the Roadster at most 16.8 kW from any charger); the Cybertruck's Powershare 11.5 kW and bed outlet 9.6 kW limits and the Roadster's 16.8 kW scale with it too[/td][/tr]
+[tr][td]Charging speed multiplier[/td][td]1.0[/td][td]0.1–10.0[/td][td]1.0 = official charger power (Wall Connector 11.5 kW, Mobile Connector 7.6 kW, Supercharger up to 250 kW, 325 kW for the Cybertruck, 152 kW for the Cybercab and 1,200 kW for the Semi; the Roadster at most 16.8 kW from any charger); the Cybertruck's Powershare 11.5 kW and bed outlet 9.6 kW limits and the Roadster's 16.8 kW scale with it too[/td][/tr]
 [tr][td]Charging fuel multiplier[/td][td]1.0[/td][td]0–10.0[/td][td]Generator fuel a Tesla burns, charging and the car's own loads while plugged in; 1.0 = about one tank for a full charge at the default Generator Fuel Consumption, 0 = no fuel[/td][/tr]
 [tr][td]Camp Mode battery limit[/td][td]20[/td][td]10–20 (%)[/td][td]Below this charge Camp Mode cannot turn on, and while camping it turns off[/td][/tr]
 [tr][td]App Bluetooth range after power cut (tiles)[/td][td]50[/td][td]0–64[/td][td]After the power goes out the app reaches the car within this many tiles only (1 tile = 1 m), Summon included; no limit while the grid is up; 0 = no link after the power cut[/td][/tr]
+[tr][td]Semi and trailer spawn chance[/td][td]1.5[/td][td]0–100 (%)[/td][td]Rolled once per long parking lot: the chance of a parked Semi; the 53 ft trailer is rolled separately at twice this chance, and the two are never hitched; 0 = none[/td][/tr]
 [/table]
 Options elsewhere that also affect Teslas:
 [table]
@@ -564,12 +602,21 @@ Options elsewhere that also affect Teslas:
 [*] Split-screen players 2–4 have no account: with the key they can use the car, but they get no owner notices, and cannot use a car claimed in Vehicle Manager
 [*] Admins cannot rebind an account name; on a Steam friends game (player-hosted) the login name is the Steam display name, so after changing it, earlier notices, Sentry and Camp no longer count as yours
 [/list]
+[*] [b]The Semi and the 53 ft trailer[/b]:
+[list]
+[*] With cargo in the trailer, braking hard from about 105 km/h now and then swings the trailer out; it did not come loose or roll over in testing, and a full stop from 60 km/h sways it 2° at most
+[*] Hitting something like a roadblock while towing can unhitch the trailer at that moment; hitch it again
+[*] Fit a vanilla trailer storage part in place of its own and it holds the vanilla 100
+[*] Sentry does not report anyone taking things from the towed trailer's storage
+[*] With the view under a gas station canopy, the part of the trailer under the canopy is not drawn
+[*] Pressing V on the other side of a wall, near the fifth wheel of a Semi with its trailer hitched, opens the Semi's radial menu
+[/list]
 [*] [b]One console line[/b]: in multiplayer the driver's console gets a container already has id line on each start; it is vanilla (normal cars too), and no key is duplicated or lost.
 [/list]
 === ❓ FAQ: keys, summon and permissions
 [h3]Where do I find a phone?[/h3]
 [list]
-[*] The Smartphone only comes from loot: most common in electronics stores, sometimes in mall and store electronics, office desks and bedside tables; a newly spawned Tesla has a one-in-four chance of one in its glove box.
+[*] The Smartphone only comes from loot: most common in electronics stores, sometimes in mall and store electronics, office desks and bedside tables; a newly spawned Tesla has a one-in-four chance of one in its glove box (on the driver's seat in the Semi).
 [*] There is no recipe and you do not spawn with one; the vanilla cordless phone cannot be paired.
 [/list]
 [h3]I lost my key card. What now?[/h3]
@@ -636,7 +683,7 @@ Without Vehicle Manager:
 [/list]
 [h3]I added the mod mid-save and see no Teslas, phones or Superchargers?[/h3]
 [list]
-[*] Teslas appear only in areas loaded for the first time after that, and phones only in containers nobody searched yet, so go somewhere new. The gas stations' Superchargers are different: stations you already visited get theirs the next time they load, and with Electrical 6 you can make one.
+[*] Teslas appear only in areas loaded for the first time after that, and phones only in containers nobody searched yet, so go somewhere new. The Semi and the 53 ft trailer are the exception: parking lots you already visited get them too, once. The gas stations' Superchargers are different as well: stations you already visited get theirs the next time they load, and with Electrical 6 you can make one.
 [/list]
 [h3]What should I do before removing this mod?[/h3]
 [list]
