@@ -384,7 +384,9 @@ CAR = dict(
     # min_w: {part: grid} no stroke narrower than that across, measured on the panel (P6, 2026-11-19): the artwork's
     # thinnest strokes (4.8 mm) are under the game's 1 px at its nearest zoom (~0.15 px/mm), so lines broke into
     # dots. Breaks counted in the 8 headings (temp/p09/PipeP09.md P6): the doors' stop falling at 12 mm, the lid's
-    # facing views reach 0 at 13.5 mm; the lid seen edge-on from the front (S, E, SE) is still dotted at 15 mm (tried)
+    # facing views reach 0 at 13.5 mm. The lid seen at 0.24-0.31 (S, E, SE; cosine to the view) stays dotted (real
+    # p09p6-cc too): 1 px there takes up to 27 mm across its letters' horizontals, and one width serves all headings;
+    # tried (temp/p09/pipe/p6b/min_px10.patch, every heading 1 px): no breaks, but 30% more ink in every view
     WORDMARK=dict(file="cybercab_wordmark.json", seg=round(0.04 * K, 4), zone="Roof",
                   min_w={"DoorFrontLeft": round(0.012 * K, 4), "DoorFrontRight": round(0.012 * K, 4),
                          "TrunkDoor": round(0.0135 * K, 4)}, places=(
