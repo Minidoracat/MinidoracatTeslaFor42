@@ -459,14 +459,19 @@ T.CarPartNames = {
         IGUI_MinidoracatTesla_Tip_AppTrunk = "IGUI_MinidoracatTesla_Tip_AppTrunkLid",
         IGUI_MinidoracatTesla_App_ControlsSub = "IGUI_MinidoracatTesla_App_ControlsSubCybercab",
     },
-    -- Semi: three axles on four physics wheels (references/semi.md 1): TireRearLeft is the whole middle axle,
-    -- TireRearRight the whole rear axle; SeatFrontLeft the centre driver's seat (vanilla's key says so), SeatFrontRight
-    -- the jump seat behind it on the right. No front or rear trunk (Specs frunk, trunk false): the hood keeps vanilla's
-    -- own words in every language (ours say frunk lid in some), as the Cybercab's; the app's lock texts and the
-    -- controls page name only what it has (two doors; flash and honk, PhoneApp.lua GRID)
+    -- Semi: three axles on four physics wheels (references/semi.md 1): the RearLeft wheel's tire, brake and suspension
+    -- are the whole middle axle's, the RearRight wheel's the whole rear axle's; SeatFrontLeft the centre driver's seat
+    -- (vanilla's key says so), SeatFrontRight the jump seat behind it on the right. No front or rear trunk (Specs
+    -- frunk, trunk false): the hood keeps vanilla's own words in every language (ours say frunk lid in some), as the
+    -- Cybercab's; the app's lock texts and the controls page name only what it has (two doors; flash and honk,
+    -- PhoneApp.lua GRID)
     ["Base.MinidoracatTesla_Semi"] = {
         IGUI_VehiclePartTireRearLeft = "IGUI_MinidoracatTesla_Part_TireMidAxle",
         IGUI_VehiclePartTireRearRight = "IGUI_MinidoracatTesla_Part_TireRearAxle",
+        IGUI_VehiclePartBrakeRearLeft = "IGUI_MinidoracatTesla_Part_BrakeMidAxle",
+        IGUI_VehiclePartBrakeRearRight = "IGUI_MinidoracatTesla_Part_BrakeRearAxle",
+        IGUI_VehiclePartSuspensionRearLeft = "IGUI_MinidoracatTesla_Part_SuspensionMidAxle",
+        IGUI_VehiclePartSuspensionRearRight = "IGUI_MinidoracatTesla_Part_SuspensionRearAxle",
         IGUI_VehiclePartSeatFrontRight = "IGUI_MinidoracatTesla_Part_JumpSeat",
         IGUI_VehiclePartEngineDoor = "IGUI_VehiclePartEngineDoor",
         IGUI_OpenHood = "IGUI_OpenHood",

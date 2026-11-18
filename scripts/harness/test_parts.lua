@@ -134,8 +134,12 @@ end
 check(same and T.partNameKey(SM, "IGUI_MinidoracatTesla_Tip_AppLock") == "IGUI_MinidoracatTesla_Tip_AppLockSemi"
     and T.partNameKey(SM, "IGUI_MinidoracatTesla_Tip_AppUnlock") == "IGUI_MinidoracatTesla_Tip_AppUnlockSemi"
     and T.partNameKey(SM, "IGUI_MinidoracatTesla_App_ControlsSub") == "IGUI_MinidoracatTesla_App_ControlsSubSemi"
-    and T.partNameKey(SM, "IGUI_VehiclePartTireRearLeft") == "IGUI_MinidoracatTesla_Part_TireMidAxle",
-    "Semi: vanilla's hood words, its own lock tips and controls line (two doors, flash and honk), the axles")
+    and T.partNameKey(SM, "IGUI_VehiclePartTireRearLeft") == "IGUI_MinidoracatTesla_Part_TireMidAxle"
+    and T.partNameKey(SM, "IGUI_VehiclePartBrakeRearLeft") == "IGUI_MinidoracatTesla_Part_BrakeMidAxle"
+    and T.partNameKey(SM, "IGUI_VehiclePartSuspensionRearRight") == "IGUI_MinidoracatTesla_Part_SuspensionRearAxle"
+    and T.partNameKey(SM, "IGUI_VehiclePartBrakeFrontLeft") == T.PartNames.IGUI_VehiclePartBrakeFrontLeft,
+    "Semi: vanilla's hood words, its own lock tips and controls line (two doors, flash and honk), the axles' tires, "
+    .. "brakes and suspension (the front ones as on every Tesla)")
 end
 check(ISVehicleMechanics.render(tw) == "IGUI_MinidoracatTesla_OutOfCharge", "Tesla: empty pack says out of charge")
 local vw = { vehicle = H.vehicle({ script = "Base.CarNormal" }) }
