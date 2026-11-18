@@ -68,12 +68,21 @@ def _c(y, z=None):
     return round(y * K - _YC, 4) if z is None else (round(y * K - _YC, 4), round(z * K - _ZC, 4))
 
 
-_HIP = _DOOR_Y[1] + 0.68                  # the driver's hip (m): 0.15 m ahead of the door opening's middle
+# the driver's hip (m): ERG p26-x264.png (y = (265.5 - column) / 260.4) draws the driver's cushion front at y -0.48 and
+# the headrest's front at -1.10; this hip puts the game seat's 2 cm ahead / 3 cm behind them (seat_vs_official_side.png)
+_HIP = _DOOR_Y[1] + 0.86
 # the driver's seat drawn in p26-x264.png: the cushion's top at row 676 (1.61 m), the headrest's top at row 389
-# (2.71 m), its hip pivot at y -1.05 (_HIP); p24-x244.png 1.53-1.55 / 2.70-2.72. The folding seat: 1.58 / 2.51 (p26)
+# (2.71 m); p24-x244.png 1.53-1.55 / 2.70-2.72. The folding seat: 1.58 / 2.51 (p26)
 _CUSHION, _HEADREST, _JUMP_HEADREST = 1.61, 2.71, 2.51
 _SIT = _CUSHION + 0.124 / K                # seat point (m): SEATS dz -0.109 and the cushion's 15 mm under its top
 _WHEEL = (_HIP + 0.545, _SIT + 0.40)       # steering wheel hub (m): Model 3's hub to hip and seat point, on this cab
+# the dash's fore-aft reference (m; the hub's y before the seat moved forward): the dash, its trim, the screens on it
+# stay against the windshield (p26: the glass at y 0.18 at the dash's top, 2.16 m) and the wheel comes 0.175 m closer
+# to them on a shorter column
+_DASH_Y = _DOOR_Y[1] + 1.225
+# the folding seat behind the driver on the right (SEAT at): p26 draws its cushion front 1.56 m behind the driver's and
+# p03-x20.png (top view) its centre 0.46 x that apart to the right of the driver's [INFERENCE: +-0.05, no scale bar]
+_JUMP_X, _JUMP_BACK = 0.72, 1.52
 
 
 def _tall(top, recline=10):
@@ -143,12 +152,13 @@ CAR = dict(
         axle=(-_WD["x"][0], -_WD["x"][1], _WD["x"][1], _WD["x"][0]),
         attach=(("mtsemi_fifthwheel", (0.0, -5.08, 1.19), "mtsemi_kingpin"),),
     ),
-    # seats: the driver on the centre line (front_x 0: the wheel and column there too), 0.15 m ahead of the door
-    # opening's middle (back); the folding seat (SEATS jump) behind it on the right, 1.0 m back (ERG p5). at: each front
-    # passenger's (mesh x, y shift[, SEATS entry]); FrontLeft the driver, FrontRight the folding seat (PassengerSeat2)
+    # seats: the driver on the centre line (front_x 0: the wheel and column there too), _HIP 0.325 m ahead of the door
+    # opening's middle (back); the folding seat (SEATS jump) behind it on the right (_JUMP_X, _JUMP_BACK). at: each
+    # front passenger's (mesh x, y shift[, SEATS entry]); FrontLeft the driver, FrontRight the folding seat
+    # (PassengerSeat2). Both get in and out beside the driver's hip, in the door opening (pzveh: position outside)
     SEAT=dict(x=0.0, front_x=0.0, h=round(_SIT * K - 0.02, 4), z=round(_SIT * K - _ZC, 4),
               back=(round(((_DOOR_Y[0] + _DOOR_Y[1]) / 2 - _HIP) * K, 4),), out=0.30, front_only=True,
-              at={"FrontLeft": (0.0, 0.0), "FrontRight": (round(0.70 * K, 4), round(-1.0 * K, 4), "jump")}),
+              at={"FrontLeft": (0.0, 0.0), "FrontRight": (round(_JUMP_X * K, 4), round(-_JUMP_BACK * K, 4), "jump")}),
     # a truck's upright seat (scripts/seat_anim.py POSES) against the backrest p26-x264.png draws, 10 deg back (_tall):
     # the body upright, the thighs and calves set back onto the cushion and the floor 0.41 m under it (seat_head.py
     # 2026-11-18: sit -12..4, back -20..-10 / -7..3, feet 2 mm; Bip01 10 left the back 51-95 mm in the backrest,
@@ -291,11 +301,11 @@ CAR = dict(
     # (p05-x66.png, from above) both turned in, ~25 deg [INFERENCE: sizes against this wheel (0.42 m), the screens
     # behind it drawn smaller: 0.40 x 0.22 m, centres +-0.45 m]
     DASH=dict(size=(1.80, 0.34, 0.16), console=None,
-              dash=(0, _c(_WHEEL[0] + 0.525), _c(0, _WHEEL[1])[1] - 0.081),
-              trim=(0, _c(_WHEEL[0] + 0.315), _c(0, _WHEEL[1])[1] - 0.061),
-              light=(0, _c(_WHEEL[0] + 0.317), _c(0, _WHEEL[1])[1] - 0.085),
-              stands=tuple((s * round(0.45 * K, 4), _c(_WHEEL[0] + 0.33), _c(0, _WHEEL[1])[1] + 0.013) for s in (-1, 1)),
-              screens=tuple(((s * round(0.45 * K, 4), _c(_WHEEL[0] + 0.30), _c(0, _WHEEL[1])[1] + 0.10), -s * 25)
+              dash=(0, _c(_DASH_Y + 0.525), _c(0, _WHEEL[1])[1] - 0.081),
+              trim=(0, _c(_DASH_Y + 0.315), _c(0, _WHEEL[1])[1] - 0.061),
+              light=(0, _c(_DASH_Y + 0.317), _c(0, _WHEEL[1])[1] - 0.085),
+              stands=tuple((s * round(0.45 * K, 4), _c(_DASH_Y + 0.33), _c(0, _WHEEL[1])[1] + 0.013) for s in (-1, 1)),
+              screens=tuple(((s * round(0.45 * K, 4), _c(_DASH_Y + 0.30), _c(0, _WHEEL[1])[1] + 0.10), -s * 25)
                             for s in (-1, 1)),
               screen_size=(round(0.40 * K, 4), round(0.22 * K, 4)),
               wheel=_c(*_WHEEL)),

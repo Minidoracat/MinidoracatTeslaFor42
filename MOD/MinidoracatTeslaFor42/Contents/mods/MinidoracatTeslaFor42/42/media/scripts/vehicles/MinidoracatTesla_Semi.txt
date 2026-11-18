@@ -126,12 +126,12 @@ module Base
             showPassenger = true,
             position inside
             {
-                offset = 0.0000 -0.9086 0.7642,
+                offset = 0.0000 -0.9086 0.8459,
                 rotate = 0.0 0.0 0.0,
             }
             position outside
             {
-                offset = 0.7383 -0.9372 0.7642,
+                offset = 0.7383 -0.9372 0.8459,
                 rotate = 0.0 0.0 0.0,
                 area = SeatFrontLeft,
             }
@@ -141,12 +141,12 @@ module Base
             showPassenger = true,
             position inside
             {
-                offset = -0.3177 -0.9086 0.3104,
+                offset = -0.3268 -0.9086 0.1561,
                 rotate = 0.0 0.0 0.0,
             }
             position outside
             {
-                offset = -0.7383 -0.9372 0.7642,
+                offset = -0.7383 -0.9372 0.8459,
                 rotate = 0.0 0.0 0.0,
                 area = SeatFrontRight,
             }
