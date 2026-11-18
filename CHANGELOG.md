@@ -36,6 +36,7 @@
 - **撞到障礙物時拖車可能脫鉤**：拖著拖車撞上路障這類東西的那一刻，拖車可能脫開，要重新掛接。
 - **哨兵不管拖車貨艙**：有人從被拖著的拖車貨艙拿東西，哨兵不會通知。
 - **從加油站頂棚下看拖車**：視角在頂棚下時，頂棚下那一段拖車畫不出來。
+- **拖車的尾燈不會亮**：開大燈時拖車後面的燈不亮，只有煞車燈跟著車頭亮；原版拖車沒有電池與車燈零件，也是這樣。
 
 > 技術要點：
 > - ID：車輛 `Base.MinidoracatTesla_Semi`、拖車 `Base.MinidoracatTesla_SemiTrailer`；電池 `Base.MinidoracatTesla_SemiBattery`（822 kWh，CARB EO A-374-0095 的 Rated 822.029 kWh）；充電插頭 `Base.MinidoracatTesla_CablePlugSemi`（MCS 外形）。
