@@ -21,7 +21,7 @@
 --   unloads (the server reads a chunk's saved cars after LoadChunk, ServerMap.java:827-838, VehiclesDB2.java:346-351,
 --   494-525: the wait VehicleSpawnControl measured, MVSC_Respawn.lua:5-7,565); in single player none (a driver is
 --   there within 15 s and would see it appear). It looks for a free stretch along the lot's long axis, middle first,
---   facing one way and then the other, and puts the car there (addVehicleDebug, as VehicleSpawnControl does), turned
+--   facing a random way along it, and puts the car there (addVehicleDebug, as VehicleSpawnControl does), turned
 --   square to the lot. Placed, no room, or the same car already
 --   standing in the lot, the lot is done for good: ModData keeps only the lots that rolled a hit (at most every
 --   candidate lot, ~2,900 on the vanilla map).
