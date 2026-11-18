@@ -2322,7 +2322,7 @@ def slab_seam_dark(V, tri, others, a, dark, glass_bvh, tol, reach):
     sharing no vertex with the edge, within tol of the edge's middle and out past it (or on it); a rim has only its
     own face's side behind it. The strips stay (dropped, the slab's hollow under the belt trim showed through from
     the cabin), and away from the glass keep the paint: along the door's edges the seam strip by the groove's trim
-    half is the jamb face seen with the door open."""
+    half is the jamb face seen with the door open. -> (a, the seam strips kept in the paint, per boundary edge)."""
     from mathutils.bvhtree import BVHTree
     ed = np.concatenate([tri[:, [0, 1]], tri[:, [1, 2]], tri[:, [2, 0]]])
     third = np.concatenate([tri[:, 2], tri[:, 0], tri[:, 1]])
@@ -2350,6 +2350,29 @@ def slab_seam_dark(V, tri, others, a, dark, glass_bvh, tol, reach):
     rows = len(a) - 2 * nb + np.concatenate([pick, nb + pick])
     a[rows, :, :4] = dark[:4]
     print(f"SLAB_SEAM_DARK {nb} edge strips: {int(seam.sum())} on seams, {int(near.sum())} by the glass, {len(pick)} dark")
+    return a, seam & ~near
+
+
+def slab_seam_dup(P, t, a, keep, tol):
+    """SLAB_SEAM_DUP (tol; optional, Cybercab doors): pv.slab's edge strips of keep (per boundary edge; slab_seam_dark's
+    paint seam strips) lying within tol of the rim strips (the others) everywhere take the nearest rim strip's colour
+    and normal (its corners' mean): along the door's foot the skin's outline ran a rim edge and a seam edge under
+    0.5 mm apart, their strips fought in the game's depth and the seam's showed through as light dots on the open
+    door's foot (p09 P4, the V2 colour test: blue). Dropped or pushed 2 mm back, 4-9 px a view of the open doors went
+    dark (the rim strips leave sub-pixel cracks the seam's filled)."""
+    from mathutils.bvhtree import BVHTree
+    nb = len(keep)
+    s0 = len(t) - 2 * nb + np.arange(nb)
+    rim = np.concatenate([s0[~keep], s0[~keep] + nb])
+    bvh = BVHTree.FromPolygons([Vector(p) for p in P], t[rim].tolist())
+    n = 0
+    for j in np.flatnonzero(keep):
+        for r in (s0[j], s0[j] + nb):
+            hit = [bvh.find_nearest(Vector(p), tol) for p in [P[t[r]].mean(0)] + list(P[t[r]] * 0.8 + P[t[r]].mean(0) * 0.2)]
+            if all(h[0] is not None for h in hit):
+                a[r] = a[rim[hit[0][2]]].mean(0)
+                n += 1
+    print(f"SLAB_SEAM_DUP {n} of {2 * int(keep.sum())} paint seam strip triangles on a rim strip")
     return a
 
 
@@ -3351,7 +3374,9 @@ def pieces(car, c, shift):
             P, t, a, _ = pv.slab(V, T, A, skin, off, cab_attr("dash"), BELT_Z - (0 if C.get("SLAB_BELT_PRE") else shift[2]),
                                  outer_extra=sel & ~skin, by_pos=bool(C.get("SPLIT_COLOURS")))
             if sd and C.get("SLAB_SEAM_DARK"):
-                a = slab_seam_dark(V, T[skin], T[part0 == k], a, cab_attr("dash"), gb, *C["SLAB_SEAM_DARK"])
+                a, keep = slab_seam_dark(V, T[skin], T[part0 == k], a, cab_attr("dash"), gb, *C["SLAB_SEAM_DARK"])
+                if C.get("SLAB_SEAM_DUP"):
+                    a = slab_seam_dup(P, t, a, keep, C["SLAB_SEAM_DUP"])
             if sd and C.get("DOOR_INNER"):  # (Cybercab: rider guide pp.7 / 11, ERG p.19) the inner panel's cell (cell);
                 di = C["DOOR_INNER"]         # optional upper = (cell, dz): over the belt + dz that cell, cut on that line
                 n0 = int((sel & ~skin).sum() + skin.sum())
