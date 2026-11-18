@@ -20,6 +20,8 @@ function ISVehicleMenu.showRadialMenu()
     radial.slices = {}; radial.open = true
 end
 function ISVehicleMenu.getVehicleDisplayName(v) return v.script end
+local vanillaPick -- what vanilla's own pick finds; nil: no car in its reach
+function ISVehicleMenu.getVehicleToInteractWith() return vanillaPick end
 function getPlayerRadialMenu() return radial end
 function getTexture(p) return { path = p } end
 UIManager = { getSpeedControls = function() return { getCurrentGameSpeed = function() return 1 end } end }
@@ -300,6 +302,31 @@ p.vehicle = trailer
 radial.open = false
 ISVehicleMenu.showRadialMenu(p)
 check(#radial.slices == 0, "not the Semi's driver: nothing")
+
+H.section("Semi hitch: V on a stand spot (vanilla finds no car past the trailer's nose)")
+p.vehicle, p.z = nil, 0
+semi.towing, trailer.towedBy = trailer, semi
+local spots = SH.standPoints(semi, trailer)
+p.x, p.y = spots[1], spots[2]
+vanillaPick = my
+check(ISVehicleMenu.getVehicleToInteractWith(p) == my, "vanilla picked a car: that one")
+vanillaPick = nil
+check(ISVehicleMenu.getVehicleToInteractWith(p) == semi, "vanilla none, on a stand spot, the trailer hitched: the Semi")
+semi.towing, trailer.towedBy = nil, nil
+check(ISVehicleMenu.getVehicleToInteractWith(p) == semi, "unhitched, the kingpin still over the fifth wheel: the Semi")
+hitchable = false
+check(ISVehicleMenu.getVehicleToInteractWith(p) == nil, "no trailer at the fifth wheel (vanilla's line is clear there): vanilla's nil")
+hitchable = true
+p.z = 1
+check(ISVehicleMenu.getVehicleToInteractWith(p) == nil, "on the floor above: nil")
+p.z = 0
+do local w = semi:getWorldPos(3.6, 0, -2.4, Vector3f.new()); p.x, p.y = w._x, w._y end
+check(ISVehicleMenu.getVehicleToInteractWith(p) == nil, "3.6 from the fifth wheel (past the spots' reach): nil")
+local semi2 = car("Base.MinidoracatTesla_Semi")
+semi2.x, semi2.y, semi2.yaw, semi2.towing = semi.x + 3, semi.y, 0.6, trailer
+do local w = semi2:getWorldPos(-1, 0, -2.4, Vector3f.new()); p.x, p.y = w._x, w._y end
+check(ISVehicleMenu.getVehicleToInteractWith(p) == semi2, "two Semis in reach (2.2 and 1.0 from their fifth wheels): the nearer one")
+cars[#cars] = nil
 
 ISVehicleMenu, ISVehicleTrailerUtils, ISAttachTrailerToVehicle, ISDetachTrailerFromVehicle, ISTimedActionQueue,
     getCell, getServerOptions, getPlayerRadialMenu, UIManager, getTexture, ISVehicleMechanics, ISPathFindAction, Vector3f,

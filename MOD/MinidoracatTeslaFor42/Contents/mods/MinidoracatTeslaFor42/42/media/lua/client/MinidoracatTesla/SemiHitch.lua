@@ -153,6 +153,36 @@ function ISVehicleMenu.doTowingMenu(playerObj, vehicle, menu)
     if not vehicle:getVehicleTowing() and not vehicle:getVehicleTowedBy() then addAttach(playerObj, vehicle, menu, false) end
 end
 
+-- On a stand spot with the trailer on (or still over the fifth wheel), V finds no car and toggles the UI instead
+-- (ISUIHandler.lua:43-53): getNearVehicle wants a clear line from the player to where he faces the Semi, and the
+-- trailer's nose (its box plus 0.15) lies across it (IsoPlayer.java:4302-4330; semiB-ssp-EN, semiF-ssp1
+-- `vehicle=nil`). Vanilla's pick first; with none, the nearest Semi on this floor with a trailer at its fifth wheel
+-- and the player within the spots' reach of it. One pass over the cell's cars per key released on foot away from
+-- any car vanilla can pick (ISVehicleMenu.lua:1652).
+local origPick = ISVehicleMenu.getVehicleToInteractWith
+local hitchW
+function ISVehicleMenu.getVehicleToInteractWith(playerObj)
+    local v = origPick(playerObj)
+    if v then return v end
+    local px, py, z = playerObj:getX(), playerObj:getY(), math.floor(playerObj:getZ())
+    local best = SH.REACH * SH.REACH
+    local it = getCell():getVehicles():iterator()
+    while it:hasNext() do
+        local o = it:next()
+        if o:getScriptName() == SH.TRACTOR and level(o) == z then
+            hitchW = hitchW or Vector3f.new()
+            local h = o:getTowingLocalPos(SH.FIFTH_WHEEL, hitchW)
+            if h then
+                o:getWorldPos(h:x(), 0, h:z(), h)
+                local dx, dy = h:x() - px, h:y() - py
+                local d = dx * dx + dy * dy
+                if d <= best and (o:getVehicleTowing() or SH.pair(o)) then v, best = o, d end
+            end
+        end
+    end
+    return v
+end
+
 -- the driver's radial: vanilla has no towing slices there; the toggle and paused-game returns as HUDRadial.lua.
 -- Seated works: MP play gave the driver both cars' authority after the hitch (semiE-incar-1); the detach from the
 -- seat goes through the wrapped perform above.
