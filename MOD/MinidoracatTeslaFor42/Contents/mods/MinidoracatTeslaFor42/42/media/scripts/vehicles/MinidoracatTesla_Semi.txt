@@ -19,7 +19,9 @@ module Base
         engineForce = 3267,
         maxSpeed = 88,
         steeringClamp = 0.15,
-        rollInfluence = 0.2,
+        /* 0.05: both rear physics wheels sit on the centre line, so only the front axle resists roll; at 0.2 an
+           AutoDrive summon leaned the cab 10.9 deg and a corner of the front box scraped the ground (references/semi.md) */
+        rollInfluence = 0.05,
         suspensionStiffness = 40.0,
         /* StepVan's (vehicle_stepvan_template.txt), as the prototype had them */
         brakingForce = 60,
