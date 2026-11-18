@@ -2308,9 +2308,11 @@ def corners(attr, n):
     return a
 
 
-def slab_seam_dark(V, tri, others, a, dark, glass_bvh, tol, reach):
-    """SLAB_SEAM_DARK (tol, reach; optional, Cybercab doors): pv.slab's edge strips (the last 2 x boundary-edge rows of
-    a) on a seam, not the door's rim, and within reach of the glass take dark's colour. tri: slab's skin (the paint);
+def slab_seam_dark(V, tri, others, a, dark, glass_bvh, tol, reach, rims=False):
+    """SLAB_SEAM_DARK (tol, reach[, rims]; optional, Cybercab doors): pv.slab's edge strips (the last 2 x boundary-edge
+    rows of a) on a seam, not the door's rim, and within reach of the glass take dark's colour; rims: the rims within
+    reach too (SLAB_BELT_PRE cars: the window channel's inner lip took the paint, a light bar along the open door's
+    sill and through the far side's glass shut, p09 S1). tri: slab's skin (the paint);
     others: the whole door outside (paint and trim, outer_extra). The trim has no inner panel, so slab gives every
     paint / trim seam a DOOR_T-deep strip; the one under the window's belt took the paint beside it and ran 2-3 cm in
     past the glass foot, a light line seen through the glass from the front three-quarters. A seam: a face of others,
@@ -2341,7 +2343,7 @@ def slab_seam_dark(V, tri, others, a, dark, glass_bvh, tol, reach):
                 seam[j] = True
                 break
     nb = len(e)
-    pick = np.where(seam & near)[0]
+    pick = np.where((seam | rims) & near)[0]
     rows = len(a) - 2 * nb + np.concatenate([pick, nb + pick])
     a[rows, :, :4] = dark[:4]
     print(f"SLAB_SEAM_DARK {nb} edge strips: {int(seam.sum())} on seams, {int(near.sum())} by the glass, {len(pick)} dark")
@@ -3317,8 +3319,12 @@ def pieces(car, c, shift):
             # V is pre-centre (soup + shift) but the slab's belt is the centred BELT_Z - zmid: every edge strip of a door
             # (its lowest point 0.25 over the ground, the centred belt 0.145) came out the liner's, not only the window
             # frames'; optional SLAB_BELT_PRE (Cybercab, cabin-r2: 242 of 1,163 strips over the belt on the front
-            # left door) passes the belt in V's frame. The published cars keep theirs.
-            P, t, a, _ = pv.slab(V, T, A, skin, off, cab_attr("dash"), BELT_Z - (0 if C.get("SLAB_BELT_PRE") else shift[2]),
+            # left door) passes the belt in V's frame (all but Semi). With it the hood (EngineDoor) keeps every strip
+            # the liner's: its skin's edge sampled a baked stripe band (Model 3) and its grooves (Roadster) into a
+            # light / dark comb (p09 S1)
+            pre = C.get("SLAB_BELT_PRE")
+            belt = -np.inf if lid and pre else BELT_Z - (0 if pre else shift[2])
+            P, t, a, _ = pv.slab(V, T, A, skin, off, cab_attr("dash"), belt,
                                  outer_extra=sel & ~skin, by_pos=bool(C.get("SPLIT_COLOURS")))
             if sd and C.get("SLAB_SEAM_DARK"):
                 a = slab_seam_dark(V, T[skin], T[sel], a, cab_attr("dash"), gb, *C["SLAB_SEAM_DARK"])

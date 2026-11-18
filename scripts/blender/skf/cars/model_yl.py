@@ -118,6 +118,11 @@ CAR = dict(
     },
     GATE_IN=(0.0, 0.894, -0.447),
     GATE_HINGE="top",
+    # the doors', lids' edge strips under the belt in the paint next to them, over it black (convert.py pieces: the
+    # belt in the pieces' pre-centre frame; the centred one made every strip the liner's)
+    SLAB_BELT_PRE=True,
+    # (convert.py slab_seam_dark) the window channel's inner lip and the seams by the glass dark again (6 cm, rims too)
+    SLAB_SEAM_DARK=(0.0015, 0.05, True),
 
     # ---- convert.py: the source (TMP/src, gitignored; temp/sketchfab-modely-std in the main checkout)
     SRC=("src", "source", "model_yl.obj"),

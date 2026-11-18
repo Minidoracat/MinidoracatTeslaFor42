@@ -165,6 +165,11 @@ CAR = dict(
     },
     GATE_IN=(0.0, 0.894, -0.447),   # tailgate inward direction (forward and down: the glass leans, the panel stands)
     GATE_HINGE="top",               # the tailgate hinges at its top edge (a sedan's lid: "front")
+    # the doors', lids' edge strips under the belt in the paint next to them, over it black (convert.py pieces: the
+    # belt in the pieces' pre-centre frame; the centred one made every strip the liner's)
+    SLAB_BELT_PRE=True,
+    # (convert.py slab_seam_dark) the window channel's inner lip and the seams by the glass dark again (6 cm, rims too)
+    SLAB_SEAM_DARK=(0.0015, 0.05, True),
 
     # ---- convert.py: the source (gitignored): prep_model_y.py's output from the OBJ inside the Sketchfab download
     SRC=("src", "source", "model_y.obj"),
