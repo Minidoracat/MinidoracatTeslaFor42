@@ -2329,7 +2329,7 @@ def main():
     # small parts: fender camera housings (paint) and lenses, B pillar buttons (trim)
     cv, cs, cl = B["parts"]["camera"]
     bv, bt = B["parts"]["button"]
-    for sx, side in ((-1, "Left"), (1, "Right")):
+    for sx, side in ((-1, "Right"), (1, "Left")):          # computed on the left (-x): sx -1 mirrors to the right
         p = out_pts(cv * [sx, 1, 1])
         flip = (lambda a: a[:, ::-1]) if sx > 0 else (lambda a: a)
         make(f"FenderCam_{side}", p, flip(cs), "Paint")
