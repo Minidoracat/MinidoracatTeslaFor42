@@ -10,7 +10,10 @@ the ground and COM_Z behind the body centre. Wheels as pzveh (WHEEL_LIFT, physic
 Physics fields are the prototype's MTSemiProtoTrailerT3 (impl-rulings 2026-11-18, semi.md section 2); check_physics()
 compares them line by line with the prototype's script when its worktree is there.
 Sizes (specs.md 5, XTRA / Premier 53 ft plates): 16.154 x 2.6 x 4.115 m, coupler 1.19 m (47 in), kingpin 0.914 m (36 in)
-behind the nose, tandem slider at the back (axles 12.47 / 13.72 m), 295/75R22.5 duals (r 0.49, w 0.27)."""
+behind the nose, tandem slider at the back (axles 12.47 / 13.72 m), 295/75R22.5 duals (r 0.49, w 0.27).
+Looks as the trailer in tesla.com/semi's hero photo (temp/plan-semi-1117/img/teslacom/Semi-Main-Hero-Desktop-v3.jpg):
+sheet-and-post sides, tall polished lower rail with spaced tape, radiused polished nose corners, nose vent, aero side
+skirts, white steel wheels. No maker's badge. The rear is a generic swing-door dry van (no official photo shows it)."""
 import bpy, bmesh, math, os, sys
 import numpy as np
 
@@ -38,6 +41,9 @@ KINGPIN, FIFTH_H = 0.914, 1.19
 LEG_D, LEG_LEN, LEG_W, LEG_X, LEG_LOW = 3.2, 0.3, 0.25, 0.9, 0.15
 REAR = TL - 0.04                         # door face (the rear frame stands 4 cm proud of it)
 TAPE = (0.18, 0.28)                      # DOT-C2 conspicuity tape: red, white segment lengths
+NOSE_R = 0.16                            # nose corner radius
+RAIL_H = 0.36                            # lower side rail above the floor line
+SKIRT = (LEG_D + 0.65, T_AX[0] - R_TIRE - 0.30, 0.36)   # aero skirt: from, to (d), lower edge above the ground
 
 
 def sc(m):            # metres -> script units
@@ -146,13 +152,13 @@ class Mesh:
             pts, out = sides[key]
             self.quad(pts, out, (side_kind or {}).get(key, kind))
 
-    def tape(self, x, d0, d1, z0, z1, out, start_red=True):
-        """Red / white conspicuity tape along d on a face at x (out = +-1), red first."""
-        d, red = d0, start_red
+    def tape(self, x, d0, d1, z0, z1, out, gap=0.0):
+        """Red / white conspicuity tape along d on a face at x (out = +-1), red first; gap: bare rail after each pair."""
+        d, red = d0, True
         while d < d1 - 0.01:
             e = min(d + TAPE[0 if red else 1], d1)
             self.quad([(x, d, z0), (x, e, z0), (x, e, z1), (x, d, z1)], (out, 0, 0), "tape_r" if red else "tape_w")
-            d, red = e, not red
+            d, red = (e, False) if red else (e + gap, True)
 
     def tape_x(self, d, x0, x1, z0, z1, horizontal=True):
         """Tape on a rear-facing face at d: along x (horizontal) or along z (vertical, x0..x1 its width)."""
@@ -164,6 +170,20 @@ class Mesh:
                    else [(x0, d, t), (x1, d, t), (x1, d, e), (x0, d, e)])
             self.quad(pts, (0, -1, 0), "tape_r" if red else "tape_w")
             t, red = e, not red
+
+    def slab(self, a, b, z0, z1, s, kind, t=0.03):
+        """Upright panel from a to b ((x, d) of its outer face, a in front, on side s = +-1), t thick inwards."""
+        (xa, da), (xb, db) = a, b
+        nx, nd = db - da, xa - xb
+        if nx * s < 0:
+            nx, nd = -nx, -nd
+        ix, id_ = -nx / math.hypot(nx, nd) * t, -nd / math.hypot(nx, nd) * t
+        self.quad([(xa, da, z0), (xb, db, z0), (xb, db, z1), (xa, da, z1)], (nx, -nd, 0), kind)
+        self.quad([(xa + ix, da + id_, z0), (xb + ix, db + id_, z0), (xb + ix, db + id_, z1), (xa + ix, da + id_, z1)],
+                  (-nx, nd, 0), kind)
+        self.quad([(xa, da, z0), (xb, db, z0), (xb + ix, db + id_, z0), (xa + ix, da + id_, z0)], (0, 0, -1), kind)
+        for x, d, o in ((xa, da, 1), (xb, db, -1)):
+            self.quad([(x, d, z0), (x + ix, d + id_, z0), (x + ix, d + id_, z1), (x, d, z1)], (0, o, 0), kind)
 
     def finish(self, name):
         me = bpy.data.meshes.new(name)
@@ -177,32 +197,66 @@ class Mesh:
 def body():
     m = Mesh()
     hw = TW / 2
-    # box: sides and roof in thirds (UV1 thirds); the rear face is the doors, the bottom the floor's underside
+    R, W = NOSE_R, NOSE_R + 0.02          # nose corners: the skin, the polished wrap standing 2 cm proud of it
+    wrap_d, nx = R + 0.12, hw - R - 0.10  # where the wrap ends on the side (d) and on the nose (x)
+
+    def arc(s, r, n=4):                   # (x, d) from the nose face round to the side
+        return [(s * (hw - R + r * math.sin(t)), R - r * math.cos(t)) for t in np.linspace(0, math.pi / 2, n + 1)]
+
+    # box: sides and roof in thirds (UV1 thirds); the rear face is the doors, the bottom the floor's underside; the
+    # first third's roof and floor follow the radiused nose corners
     for k in range(3):
         a, b = k * THIRD, min((k + 1) * THIRD, REAR)
-        m.box(-hw, hw, a, b, T_FLOOR, TH, "side", faces="xXzZ", side_kind={"z": "under", "Z": "roof"})
-    m.quad([(-hw, 0, T_FLOOR), (hw, 0, T_FLOOR), (hw, 0, TH), (-hw, 0, TH)], (0, 1, 0), "front")
+        if k:
+            m.box(-hw, hw, a, b, T_FLOOR, TH, "side", faces="xXzZ", side_kind={"z": "under", "Z": "roof"})
+            continue
+        m.box(-hw, hw, R, b, T_FLOOR, TH, "side", faces="xX")
+        for z, up, kind in ((TH, 1, "roof"), (T_FLOOR, -1, "under")):
+            m.quad([(-hw + R, 0, z), (hw - R, 0, z), (hw - R, b, z), (-hw + R, b, z)], (0, 0, up), kind)
+            for s in (-1, 1):
+                m.quad([(s * (hw - R), R, z), (s * hw, R, z), (s * hw, b, z), (s * (hw - R), b, z)], (0, 0, up), kind)
+                p = arc(s, R)
+                for i in range(len(p) - 1):
+                    m.quad([(s * (hw - R), R, z), (*p[i], z), (*p[i + 1], z)], (0, 0, up), kind)
+    m.quad([(-hw + R, 0, T_FLOOR), (hw - R, 0, T_FLOOR), (hw - R, 0, TH), (-hw + R, 0, TH)], (0, 1, 0), "front")
     m.quad([(-hw, REAR, T_FLOOR), (hw, REAR, T_FLOOR), (hw, REAR, TH), (-hw, REAR, TH)], (0, -1, 0), "rear")
-    # rails: top and bottom along both sides and across the nose; tape on the bottom rails
+    # rails: top and bottom along both sides and across the nose; spaced tape on the tall bottom rails
     for s in (-1, 1):
         xo, xi = s * (hw + 0.015), s * hw
-        m.box(min(xo, xi), max(xo, xi), 0, REAR, TH - 0.115, TH, "alu", faces="xXzZ"[0:2] + "zZ")
+        m.box(min(xo, xi), max(xo, xi), wrap_d, REAR, TH - 0.115, TH, "alu", faces="xXzZ")
+        x2 = s * (hw + 0.035)             # upper amber clearance lamp at the front of the side
+        m.box(min(xo, x2), max(xo, x2), wrap_d + 0.06, wrap_d + 0.16, TH - 0.085, TH - 0.035, "marker_a")
         xo = s * (hw + 0.02)
-        m.box(min(xo, xi), max(xo, xi), 0, REAR, T_FLOOR - 0.08, T_FLOOR + 0.15, "alu", faces="xXzZ")
-        m.tape(xo + s * 0.002, 0.3, REAR - 0.3, T_FLOOR - 0.0, T_FLOOR + 0.08, s)
-        # front corner posts
-        m.box(min(s * (hw - 0.04), s * (hw + 0.02)), max(s * (hw - 0.04), s * (hw + 0.02)), -0.02, 0.06,
-              T_FLOOR - 0.08, TH, "alu")
+        m.box(min(xo, xi), max(xo, xi), wrap_d, REAR, T_FLOOR - 0.08, T_FLOOR + RAIL_H, "alu", faces="xXzZ")
+        m.tape(xo + s * 0.002, 0.46, REAR - 0.3, T_FLOOR + 0.025, T_FLOOR + 0.075, s, gap=sum(TAPE))
+        # polished wrap round the nose corner, full height: nose flat, arc, side flat; end and top caps
+        outer = [(s * nx, -0.02)] + arc(s, W) + [(s * (hw + 0.02), wrap_d)]
+        inner = [(s * nx, 0)] + arc(s, R) + [(s * hw, wrap_d)]
+        for i in range(len(outer) - 1):
+            (x0, d0), (x1, d1) = outer[i], outer[i + 1]
+            out = ((x0 + x1) / 2 - s * (hw - R), R - (d0 + d1) / 2, 0)
+            m.quad([(x0, d0, T_FLOOR - 0.08), (x1, d1, T_FLOOR - 0.08), (x1, d1, TH), (x0, d0, TH)], out, "alu")
+            m.quad([(*inner[i], TH), (x0, d0, TH), (x1, d1, TH), (*inner[i + 1], TH)], (0, 0, 1), "alu")
+        m.quad([(s * nx, -0.02, T_FLOOR - 0.08), (s * nx, 0, T_FLOOR - 0.08), (s * nx, 0, TH), (s * nx, -0.02, TH)],
+               (-s, 0, 0), "alu")
+        m.quad([(s * hw, wrap_d, T_FLOOR - 0.08), (s * (hw + 0.02), wrap_d, T_FLOOR - 0.08), (s * (hw + 0.02), wrap_d, TH),
+                (s * hw, wrap_d, TH)], (0, -1, 0), "alu")
         # side marker lamps: amber at the front and the middle, red at the rear (on the bottom rail, above the tape)
-        for dd, kind in ((0.25, "marker_a"), (TL / 2, "marker_a"), (REAR - 0.25, "marker_r")):
-            x2 = s * (hw + 0.035)
-            m.box(min(xo, x2), max(xo, x2), dd - 0.05, dd + 0.05, T_FLOOR + 0.09, T_FLOOR + 0.14, kind)
-    m.box(-hw - 0.02, hw + 0.02, -0.015, 0, TH - 0.115, TH, "alu", faces="Yz Z".replace(" ", ""))
-    m.box(-hw - 0.02, hw + 0.02, -0.02, 0, T_FLOOR - 0.08, T_FLOOR + 0.15, "alu", faces="Yz Z".replace(" ", ""))
-    # front: upper amber clearance lamps, the electrical / air connection box (gladhands) low on the left
+        for dd, kind in ((0.40, "marker_a"), (TL / 2, "marker_a"), (REAR - 0.25, "marker_r")):
+            m.box(min(xo, x2), max(xo, x2), dd - 0.05, dd + 0.05, T_FLOOR + 0.11, T_FLOOR + 0.16, kind)
+    m.box(-nx, nx, -0.015, 0, TH - 0.115, TH, "alu", faces="YzZ")
+    m.box(-nx, nx, -0.02, 0, T_FLOOR - 0.08, T_FLOOR + 0.15, "alu", faces="YzZ")
+    # front: upper amber clearance lamps; on the driver's (left) side the vent with its louvres, the document box and
+    # the electrical / air connection plate with the 7-way socket
     for s in (-1, 1):
-        m.box(s * (hw - 0.12) - 0.04, s * (hw - 0.12) + 0.04, -0.03, -0.015, TH - 0.10, TH - 0.04, "marker_a", faces="xXYzZ")
-    m.box(-0.45, -0.15, -0.08, 0, 1.40, 1.62, "plate", faces="xXYzZ")
+        m.box(s * (nx - 0.10) - 0.04, s * (nx - 0.10) + 0.04, -0.03, -0.015, TH - 0.10, TH - 0.04, "marker_a", faces="xXYzZ")
+    m.box(-hw + 0.30, -hw + 0.64, -0.035, 0, TH - 0.44, TH - 0.15, "galv", faces="xXYzZ")
+    for zc in np.arange(TH - 0.40, TH - 0.18, 0.055):
+        m.quad([(-hw + 0.33, -0.037, zc), (-hw + 0.61, -0.037, zc), (-hw + 0.61, -0.037, zc + 0.025),
+                (-hw + 0.33, -0.037, zc + 0.025)], (0, 1, 0), "plate")
+    m.box(-hw + 0.30, -hw + 0.50, -0.06, 0, 1.88, 2.22, "plate", faces="xXYzZ")
+    m.box(-hw + 0.28, -hw + 0.52, -0.02, 0, 1.48, 1.70, "galv", faces="xXYzZ")
+    m.box(-hw + 0.36, -hw + 0.44, -0.05, -0.02, 1.55, 1.63, "plate", faces="xXYzZ")
     # rear frame: corner posts, header, sill (lamps and tape on it)
     for s in (-1, 1):
         a, b = sorted((s * (hw - 0.14), s * (hw + 0.02)))
@@ -240,6 +294,12 @@ def body():
         for s in (-1, 1):
             a, b = sorted((s * 0.56, s * (hw - 0.05)))
             m.box(a, b, dd - 0.04, dd + 0.04, T_FLOOR - 0.12, T_FLOOR, "chassis", faces="xXyYz")
+    # aero side skirts between the landing gear and the tandem, toed in at the front, rubber lower edge
+    k0, k1, kz = SKIRT
+    for s in (-1, 1):
+        for a, b in (((s * (hw - 0.40), k0), (s * (hw - 0.02), k0 + 1.1)), ((s * (hw - 0.02), k0 + 1.1), (s * (hw - 0.02), k1))):
+            m.slab(a, b, kz, kz + 0.06, s, "rubber")
+            m.slab(a, b, kz + 0.06, T_FLOOR - 0.08, s, "frame")
     # landing gear: outer tube, inner leg, sand shoe (the collision box: 0.25 x 0.30, bottom LEG_LOW), cross shaft,
     # brace to the main beam; gear box and crank handle on the curb (right) side
     for s in (-1, 1):
@@ -286,7 +346,7 @@ def body():
 
 
 # ---------------- dual tyres ----------------
-WHEEL = {"tread": (0.07, 0.07, 0.07), "side": (0.13, 0.13, 0.14), "rim": (0.76, 0.77, 0.78), "disc": (0.66, 0.67, 0.68),
+WHEEL = {"tread": (0.07, 0.07, 0.07), "side": (0.13, 0.13, 0.14), "rim": (0.88, 0.88, 0.87), "disc": (0.84, 0.84, 0.83),
          "hole": (0.05, 0.05, 0.05), "hub": (0.30, 0.30, 0.31), "nut": (0.85, 0.85, 0.86)}
 W_CELLS = 4
 
@@ -379,14 +439,15 @@ def skin(n=1024):
     px = np.zeros((n, n, 4), np.float32)
     px[..., :3], px[..., 3] = 0.5, 1.0
     white = np.array(SWATCH["white"], np.float32)
-    # sides: composite plate panels with riveted vertical seams every 1.22 m (48 in), road grime on the lowest 0.5 m
+    # sides: sheet and post, posts every 0.61 m (24 in) with two rivet rows each, sheet laps every 1.22 m; road grime
+    # on the lowest 0.5 m
     sl, (u, v) = region(n, SIDE_UV)
     d, z = u * TL, T_FLOOR + v * (TH - T_FLOOR)
     c = np.broadcast_to(white, d.shape + (3,)).copy()
-    seam = lines(d, np.arange(0.61, TL, 1.22), 0.035)
-    rivet = seam & (np.abs(((z - T_FLOOR) / 0.1) % 1 - 0.5) < 0.18)
-    c[seam] *= 0.86
-    c[rivet] *= 0.80
+    post = np.arange(0.305, TL, 0.61)
+    rivet = lines(d, np.concatenate((post - 0.04, post + 0.04)), 0.022) & (np.abs(((z - T_FLOOR) / 0.1) % 1 - 0.5) < 0.13)
+    c[lines(d, np.arange(1.22, TL, 1.22), 0.02)] *= 0.93
+    c[rivet] *= 0.74
     c *= (1 - 0.10 * np.clip((T_FLOOR + 0.5 - z) / 0.5, 0, 1))[..., None]
     px[sl][..., :3] = c
     # roof: translucent-white panel with the roof bows every 0.6 m
@@ -648,6 +709,7 @@ def render(out_dir, ob, wob):
         "top": ((0, 0, 60), (0, 0, 0), L * 1.08),
         "34": ((-g(9.5), g(16.0), g(5.2)), (0, g(1.5), g(1.4)), None),
         "34rear": ((g(7.5), -g(15.0), g(4.5)), (0, -g(3.0), g(1.6)), None),
+        "hero": ((-g(4.5), g(TL / 2 + 5.5), g(1.5)), (-g(TW / 2), g(TL / 2 - 6.0), g(2.2)), None),   # as the hero photo
     }
     for nm, (loc, at, ortho) in views.items():
         cam.location = loc
