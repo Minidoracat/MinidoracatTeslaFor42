@@ -137,7 +137,8 @@ local function icon(name)
 end
 
 local TITLE = {
-    touch = { door = "IGUI_MinidoracatTesla_Sentry_TouchDoor", unlock = "IGUI_MinidoracatTesla_Sentry_TouchUnlock" },
+    touch = { door = "IGUI_MinidoracatTesla_Sentry_TouchDoor", unlock = "IGUI_MinidoracatTesla_Sentry_TouchUnlock",
+        hitch = "IGUI_MinidoracatTesla_Sentry_TouchHitch" },
     ["break"] = { window = "IGUI_MinidoracatTesla_Sentry_BreakWindow", windowHit = "IGUI_MinidoracatTesla_Sentry_BreakWindowHit",
         hotwire = "IGUI_MinidoracatTesla_Sentry_BreakHotwire", part = "IGUI_MinidoracatTesla_Sentry_BreakPart",
         tow = "IGUI_MinidoracatTesla_Sentry_BreakTow" },

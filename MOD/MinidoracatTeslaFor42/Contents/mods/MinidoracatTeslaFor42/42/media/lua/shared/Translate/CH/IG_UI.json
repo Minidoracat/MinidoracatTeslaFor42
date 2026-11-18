@@ -11,6 +11,7 @@
     "IGUI_MinidoracatTesla_Deny_KEY_IN_IGNITION": "鑰匙還插在車上，先拔下來",
     "IGUI_MinidoracatTesla_Sentry_TouchDoor": "哨兵：有人拉了車門",
     "IGUI_MinidoracatTesla_Sentry_TouchUnlock": "哨兵：有人試著解鎖",
+    "IGUI_MinidoracatTesla_Sentry_TouchHitch": "哨兵：有人分離了拖車",
     "IGUI_MinidoracatTesla_Sentry_BreakWindow": "哨兵：車窗被打破，警報響起",
     "IGUI_MinidoracatTesla_Sentry_BreakWindowHit": "哨兵：車窗遭到敲擊，警報響起",
     "IGUI_MinidoracatTesla_Sentry_BreakHotwire": "哨兵：有人試圖短接發動，警報響起",

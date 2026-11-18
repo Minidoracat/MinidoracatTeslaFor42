@@ -11,6 +11,7 @@
     "IGUI_MinidoracatTesla_Deny_KEY_IN_IGNITION": "La llave sigue puesta en el auto: sácala primero",
     "IGUI_MinidoracatTesla_Sentry_TouchDoor": "Centinela: alguien tiró de una puerta",
     "IGUI_MinidoracatTesla_Sentry_TouchUnlock": "Centinela: alguien intentó desbloquear",
+    "IGUI_MinidoracatTesla_Sentry_TouchHitch": "Centinela: alguien desenganchó el remolque",
     "IGUI_MinidoracatTesla_Sentry_BreakWindow": "Centinela: ventanilla rota, alarma sonando",
     "IGUI_MinidoracatTesla_Sentry_BreakWindowHit": "Centinela: golpe en la ventanilla, alarma sonando",
     "IGUI_MinidoracatTesla_Sentry_BreakHotwire": "Centinela: intento de puente, alarma sonando",

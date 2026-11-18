@@ -1,5 +1,6 @@
 -- Sentry Mode (server). Two tiers (user decision 2026-10-23):
---   touch (open door, unlock): stranger -> headlights flash 3 times + owner notified; legit user -> disarm.
+--   touch (open door, unlock, unhitch a trailer): stranger -> headlights flash 3 times + owner notified; legit user ->
+--   disarm (an unhitch by a legit user changes nothing).
 --   break (smash window, hotwire, uninstall part, tow; any window losing condition): stranger -> vanilla alarm;
 --   sentry stays armed.
 -- No polling: standby drain is settled on events (arm/disarm, touch, break, plug-in, vehicle load). Windows hit with no
@@ -396,12 +397,42 @@ local function onTow(vehicle, player)
     S.onBreak(vehicle, player, "tow")
 end
 
+-- Unhitching (a stranger's detachTrailer, or a third car's attachTrailer taking the trailer, which unhooks it from the
+-- old tractor first: BaseVehicle.java:10108-10109) is the touch tier: the car stays where it is. A legit user's
+-- unhitch is nobody's business: sentry stays on (no disarm, unlike the other touches).
+local function onUnhook(vehicle, player)
+    local s = armedState(vehicle)
+    if not s or T.legit(player, vehicle, s.by) then return end
+    S.onTouch(vehicle, player, "hitch")
+end
+-- The pairs S.preTow (shared ParkModes.lua, before vanilla) saw hooked that vanilla has now pulled apart. A pair still
+-- hooked (the same hook-up sent again: vanilla unhooks and hooks again) or a refused packet (nothing noted) is none.
+local function unhooked(player)
+    local pre = S.preTow
+    S.preTow = nil
+    if not (pre and pre.player == player) then return end
+    local seen = {}
+    for _, l in ipairs(pre.links) do
+        local v, o = l[1], l[2]
+        if v:getVehicleTowing() ~= o and v:getVehicleTowedBy() ~= o then
+            for _, car in ipairs({ v, o }) do
+                if not seen[car] then
+                    seen[car] = true
+                    onUnhook(car, player)
+                end
+            end
+        end
+    end
+end
+
 -- Vanilla "vehicle" commands, after vanilla handled them (server/Vehicles/VehicleCommands.lua loads before this file);
 -- read only, never refused. VehicleManager's gate (shared, first) empties args and sets vehicle / vehicleA / vehicleB
 -- to -1 when it refuses (MinidoracatVehicleManager_CommandGate.lua:271-279), so a refused try never reaches here,
 -- like the other sentry hooks. SP routes sendClientCommand here too. Other mods' ways of carrying a car off
 -- (VehicleManager's CommandGate.lua:157-158: Autotsar, rSemiTruck loadVehicle) do not come this way.
---   attachTrailer: the tow, once vanilla linked the two (addPointConstraint sets the link at once, BaseVehicle.java:10104-10106).
+--   attachTrailer: first the cars it unhooked from others (unhooked, above); then the tow, once vanilla linked the
+--   two (addPointConstraint sets the link at once, BaseVehicle.java:10104-10106).
+--   detachTrailer: an unhitch (unhooked). Not detachTrailerSpontaneous: physics broke the link, nobody did.
 --   damageWindow: MP only, a client works out a weapon hit and sends it (VehicleWindow.java:79-81); vanilla applied it
 --   (VehicleCommands.lua:100-116; nothing for amount <= 0 or no such window, VehicleWindow.java:77). It speaks for its
 --   own drop only: S.preHit (shared ParkModes.lua, before vanilla) is the condition the server held when it came in.
@@ -446,15 +477,15 @@ end
 
 Events.OnClientCommand.Add(function(module, command, player, args)
     if module ~= "vehicle" or not player or type(args) ~= "table" then return end
-    if command ~= "attachTrailer" and command ~= "damageWindow" then return end
+    if command ~= "attachTrailer" and command ~= "detachTrailer" and command ~= "damageWindow" then return end
     local ok, err = pcall(function()
+        if command == "damageWindow" then return S.onDamageWindow(player, args) end
+        unhooked(player)
         if command == "attachTrailer" then
             local a, b = getVehicleById(tonumber(args.vehicleA) or -1), getVehicleById(tonumber(args.vehicleB) or -1)
             if not (a and b and a:getVehicleTowing() == b) then return end
             onTow(a, player)
             onTow(b, player)
-        else
-            S.onDamageWindow(player, args)
         end
     end)
     if not ok then T.log("sentry " .. command .. " error " .. tostring(err)) end

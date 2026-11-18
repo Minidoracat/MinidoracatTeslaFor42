@@ -121,14 +121,35 @@ function C.canDisable(player, vehicle)
     return true
 end
 
--- Sentry reads vanilla's damageWindow after vanilla applied it (server/MinidoracatTesla/Sentry.lua). VehicleWindow.damage
--- clamps at 0 (VehicleWindow.java:76-89, VehiclePart.java:870-872), so the drop after the fact cannot tell this packet's
--- part from glass lost earlier and not scanned yet. This shared file's listener runs before vanilla's: shared Lua loads
--- before server Lua (GameServer.java:1469-1471; SP: LuaManager.java:1247 then GameLoadingState.java:148), and
--- vanilla's VehicleCommands is server Lua. It notes the window's condition the server held when the packet came in.
--- Not on an MP client: its OnClientCommand never fires (SP routes sendClientCommand here, so SP keeps it).
+-- Sentry reads vanilla's "vehicle" commands after vanilla applied them (server/MinidoracatTesla/Sentry.lua); some leave
+-- nothing to read by then. This shared file's listener runs before vanilla's: shared Lua loads before server Lua
+-- (GameServer.java:1469-1471; SP: LuaManager.java:1247 then GameLoadingState.java:148), and vanilla's VehicleCommands
+-- is server Lua. Not on an MP client: its OnClientCommand never fires (SP routes sendClientCommand here, so SP keeps it).
+--   damageWindow: VehicleWindow.damage clamps at 0 (VehicleWindow.java:76-89, VehiclePart.java:870-872), so the drop
+--   after the fact cannot tell this packet's part from glass lost earlier and not scanned yet: S.preHit is the
+--   window's condition the server held when the packet came in.
+--   attachTrailer / detachTrailer: the link is gone by then, and with it whom the car was hooked to. Detach unhooks
+--   args.vehicle, either side (VehicleCommands.lua:344-351); attach first unhooks whatever A and B were hooked to
+--   (BaseVehicle.java:10108-10109), so a third car taking the trailer leaves the old tractor without it. S.preTow is
+--   each named car's partners when the packet came in.
 function S.beforeVehicleCommand(module, command, player, args)
-    if module ~= "vehicle" or command ~= "damageWindow" then return end
+    if module ~= "vehicle" then return end
+    if command == "attachTrailer" or command == "detachTrailer" then
+        S.preTow = nil
+        if type(args) ~= "table" then return end
+        local links = {}
+        for _, k in ipairs({ "vehicle", "vehicleA", "vehicleB" }) do
+            local v = getVehicleById(tonumber(args[k]) or -1)
+            if v then
+                local towing, by = v:getVehicleTowing(), v:getVehicleTowedBy()
+                if towing then links[#links + 1] = { v, towing } end
+                if by then links[#links + 1] = { v, by } end
+            end
+        end
+        S.preTow = { player = player, links = links }
+        return
+    end
+    if command ~= "damageWindow" then return end
     S.preHit = nil
     if type(args) ~= "table" or type(args.part) ~= "string" then return end
     local v = getVehicleById(tonumber(args.vehicle) or -1)

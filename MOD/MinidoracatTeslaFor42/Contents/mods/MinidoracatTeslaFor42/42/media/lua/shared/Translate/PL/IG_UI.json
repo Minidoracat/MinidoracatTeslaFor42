@@ -11,6 +11,7 @@
     "IGUI_MinidoracatTesla_Deny_KEY_IN_IGNITION": "Kluczyk wciąż jest w stacyjce: najpierw go wyjmij",
     "IGUI_MinidoracatTesla_Sentry_TouchDoor": "Sentry: ktoś szarpnął drzwi",
     "IGUI_MinidoracatTesla_Sentry_TouchUnlock": "Sentry: ktoś próbował odblokować",
+    "IGUI_MinidoracatTesla_Sentry_TouchHitch": "Sentry: ktoś odłączył przyczepę",
     "IGUI_MinidoracatTesla_Sentry_BreakWindow": "Sentry: wybita szyba, włączony alarm",
     "IGUI_MinidoracatTesla_Sentry_BreakWindowHit": "Sentry: uderzenie w szybę, włączony alarm",
     "IGUI_MinidoracatTesla_Sentry_BreakHotwire": "Sentry: próba odpalenia na krótko, włączony alarm",

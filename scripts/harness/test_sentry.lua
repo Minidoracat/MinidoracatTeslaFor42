@@ -483,6 +483,7 @@ F.track(wc)
 -- ---- towing: vanilla attachTrailer (the only way to hook up), after vanilla linked the two ----
 local trailer = { id = 9001, getId = function(self) return self.id end, getScriptName = function() return "Base.TrailerCover" end }
 function trailer:getVehicleTowing() return self.towing end
+function trailer:getVehicleTowedBy() return nil end
 F.vehicles[trailer.id] = trailer
 F.sent = {}
 local t0 = wc.alarmTriggered
@@ -494,7 +495,8 @@ check(wc.alarmTriggered == t0 + 1 and F.lastSent("alert").to == "wowner" and F.l
     and F.lastSent("alert").args.by == "thief" and md(wc).sentry ~= nil, "a stranger hooks the Tesla (A) to a trailer: alarm, owner alerted (tow)")
 F.fire("OnClientCommand", "vehicle", "attachTrailer", thief, { vehicleA = wc:getId(), vehicleB = trailer.id })
 check(wc.alarmTriggered == t0 + 1, "the same hook-up sent again (vanilla unhooks and hooks again, BaseVehicle.java:10047-10062): no second alarm")
-local trailer2 = { id = 9002, getId = function(self) return self.id end, getScriptName = function() return "Base.Trailer" end }
+local trailer2 = { id = 9002, getId = function(self) return self.id end, getScriptName = function() return "Base.Trailer" end,
+    getVehicleTowing = function() return nil end, getVehicleTowedBy = function() return nil end }
 F.vehicles[trailer2.id] = trailer2
 wc.towing = trailer2 -- moved to another trailer (B-C), then back to the first (A-B), all inside the window
 F.fire("OnClientCommand", "vehicle", "attachTrailer", thief, { vehicleA = wc:getId(), vehicleB = trailer2.id })
@@ -536,6 +538,7 @@ do
     F.online = { semiOwner, thief }
     local st = { id = 9003, getId = function(self) return self.id end, getScriptName = function() return "Base.MinidoracatTesla_SemiTrailer" end }
     function st:getVehicleTowing() return self.towing end
+    function st:getVehicleTowedBy() return nil end
     F.vehicles[st.id] = st
     cmds.sentryArm(semiOwner, { vid = semi:getId() })
     local armed, a0 = md(semi).sentry ~= nil, semi.alarmTriggered
@@ -549,6 +552,90 @@ do
         "a stranger hitches a trailer to the armed Semi: alarm, owner alerted (tow)")
     semi.towing, F.online = nil, online0
     F.vehicles[st.id] = nil
+end
+-- unhitching is the touch tier. Vanilla breaks the link between the two listeners: the shared note (ParkModes.lua
+-- S.preTow, before vanilla), then vanilla (detachTrailer VehicleCommands.lua:344-351; attachTrailer unhooks A and B,
+-- BaseVehicle.java:10108-10109, then hooks them), then Sentry. F.vanillaTow is what vanilla does to the links.
+do
+    local semi = F.track(F.vehicle({ pct = 80, script = "Base.MinidoracatTesla_Semi" }))
+    local hOwner = F.player("howner", { keys = { [semi.keyId] = true } })
+    local online0 = F.online
+    F.online = { hOwner, thief }
+    local function car(id)
+        local c = { id = id, getId = function(self) return self.id end,
+            getScriptName = function() return "Base.MinidoracatTesla_SemiTrailer" end }
+        function c:getVehicleTowing() return self.towing end
+        function c:getVehicleTowedBy() return self.towedBy end
+        F.vehicles[id] = c
+        return c
+    end
+    local st, third = car(9004), car(9005)
+    local function hook(a, b) a.towing, b.towedBy = b, a end
+    local function unhook(a)
+        if a.towing then a.towing.towedBy = nil end
+        if a.towedBy then a.towedBy.towing = nil end
+        a.towing, a.towedBy = nil, nil
+    end
+    local before0 = S.beforeVehicleCommand
+    S.beforeVehicleCommand = function(...)
+        before0(...)
+        local f = F.vanillaTow
+        F.vanillaTow = nil
+        if f then f() end
+    end
+    local function send(p, cmd, args, vanilla)
+        F.vanillaTow = vanilla
+        F.fire("OnClientCommand", "vehicle", cmd, p, args)
+    end
+    local function hitches()
+        local n, last = 0, nil
+        for _, m in ipairs(F.sent) do
+            if m.cmd == "alert" and m.to == "howner" and m.args.what == "hitch" then n, last = n + 1, m.args end
+        end
+        return n, last
+    end
+    hook(semi, st)
+    cmds.sentryArm(hOwner, { vid = semi:getId() })
+    F.sent = {}
+    local a0, f0 = semi.alarmTriggered, S.stats.flashes
+    send(thief, "detachTrailer", { vehicle = semi:getId() }, function() unhook(semi) end)
+    local n, last = hitches()
+    check(n == 1 and last.kind == "touch" and last.by == "thief" and S.stats.flashes == f0 + 1
+        and semi.alarmTriggered == a0 and md(semi).sentry ~= nil and S.preTow == nil,
+        "a stranger unhitches the armed Semi's trailer (detach sent for the Semi): flash, owner told (hitch), no alarm, still armed")
+    F.runTicks(100, 100)
+    hook(semi, st)
+    send(thief, "detachTrailer", { vehicle = st.id }, function() unhook(st) end)
+    n, last = hitches()
+    check(n == 2 and last.by == "thief" and S.stats.flashes == f0 + 2 and semi.alarmTriggered == a0 and md(semi).sentry ~= nil,
+        "...detach sent for the trailer: the same")
+    F.runTicks(100, 100)
+    hook(semi, st)
+    send(hOwner, "detachTrailer", { vehicle = semi:getId() }, function() unhook(semi) end)
+    check(hitches() == 2 and S.stats.flashes == f0 + 2 and md(semi).sentry ~= nil,
+        "the owner unhitches his own trailer: nothing, sentry stays on")
+    hook(semi, st)
+    send(thief, "attachTrailer", { vehicleA = third.id, vehicleB = st.id }, function() unhook(third); unhook(st); hook(third, st) end)
+    n, last = hitches()
+    check(n == 3 and last.by == "thief" and semi.alarmTriggered == a0 and md(semi).sentry ~= nil,
+        "a stranger hooks the Semi's trailer to a third car (vanilla unhooks it from the Semi first): the Semi's owner told (hitch)")
+    F.runTicks(100, 100)
+    unhook(third)
+    hook(semi, st)
+    send(thief, "attachTrailer", { vehicleA = semi:getId(), vehicleB = st.id }, function() unhook(semi); unhook(st); hook(semi, st) end)
+    check(hitches() == 3 and semi.alarmTriggered == a0 + 1 and F.lastSent("alert").args.what == "tow",
+        "a stranger sends the hook-up already in place again (vanilla unhooks and hooks again): no hitch, the tow as before")
+    F.runTicks(100, 100)
+    cmds.sentryArm(hOwner, { vid = semi:getId() })
+    send(thief, "detachTrailer", {}, nil) -- VehicleManager's gate refused it: args emptied
+    send(thief, "detachTrailer", { vehicle = -1 }, nil) -- ...and the id set to -1 (CommandGate.lua:271-279)
+    send(thief, "detachTrailer", { vehicle = semi:getId() }, nil) -- vanilla did not unhook it
+    check(hitches() == 3 and semi:getVehicleTowing() == st and md(semi).sentry ~= nil,
+        "detachTrailer refused by VehicleManager or not carried out by vanilla: nothing")
+    S.beforeVehicleCommand = before0
+    unhook(semi)
+    F.online = online0
+    F.vehicles[st.id], F.vehicles[third.id] = nil, nil
 end
 -- fitting glass: the part takes the item's condition (VehiclePart.java:202), a worse pane is no hit
 wc.parts.Windshield.cond = 100
@@ -601,6 +688,9 @@ if H and H.stub and H.clientSent then
     check(tow and tow.title:find("Sentry_BreakTow", 1, true) and scanned
         and not (scanned.detail or ""):find("Sentry_By", 1, true),
         "client card: tow has its title; a window found by the scan names nobody")
+    local hitch = T.ParkUI.card({ kind = "touch", what = "hitch", by = "thief", car = "MinidoracatTesla_Semi" })
+    check(hitch and hitch.title:find("Sentry_TouchHitch", 1, true) and hitch.detail:find("Sentry_ByPlayer", 1, true)
+        and hitch.detail:find("Sentry_Flashed", 1, true), "client card: an unhitch has its title, the intruder and the flash")
     getTextManager, getTexture = oldTM, oldTex
     getSpecificPlayer = oldGSP
 end

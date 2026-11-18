@@ -11,6 +11,7 @@
     "IGUI_MinidoracatTesla_Deny_KEY_IN_IGNITION": "A chave ainda está no carro: tire-a primeiro",
     "IGUI_MinidoracatTesla_Sentry_TouchDoor": "Sentinela: alguém puxou uma porta",
     "IGUI_MinidoracatTesla_Sentry_TouchUnlock": "Sentinela: alguém tentou destrancar",
+    "IGUI_MinidoracatTesla_Sentry_TouchHitch": "Sentinela: alguém separou o reboque",
     "IGUI_MinidoracatTesla_Sentry_BreakWindow": "Sentinela: janela partida, alarme a tocar",
     "IGUI_MinidoracatTesla_Sentry_BreakWindowHit": "Sentinela: janela atingida, alarme a tocar",
     "IGUI_MinidoracatTesla_Sentry_BreakHotwire": "Sentinela: tentativa de ligação direta, alarme a tocar",

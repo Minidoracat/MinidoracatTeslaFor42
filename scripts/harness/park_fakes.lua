@@ -173,6 +173,7 @@ function F.vehicle(o)
     function v:getPartCount() return #self.order end
     function v:getPartByIndex(i) return self.order[i + 1] end
     function v:getVehicleTowing() return self.towing end -- set by a test (a towed fake)
+    function v:getVehicleTowedBy() return self.towedBy end
     function v:getMass() return self.mass or 900 end
     function v:getId() return self.id end
     function v:getColorHue() return 0.6 end -- Liftgate's shell bits (OnSpawnVehicleEnd): no door open on these fakes

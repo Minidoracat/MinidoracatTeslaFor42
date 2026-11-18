@@ -11,6 +11,7 @@
     "IGUI_MinidoracatTesla_Deny_KEY_IN_IGNITION": "Anahtar hâlâ araçta takılı: önce çıkar",
     "IGUI_MinidoracatTesla_Sentry_TouchDoor": "Güvenlik: biri kapıyı çekti",
     "IGUI_MinidoracatTesla_Sentry_TouchUnlock": "Güvenlik: biri kilidi açmaya çalıştı",
+    "IGUI_MinidoracatTesla_Sentry_TouchHitch": "Güvenlik: biri römorku ayırdı",
     "IGUI_MinidoracatTesla_Sentry_BreakWindow": "Güvenlik: cam kırıldı, alarm çalıyor",
     "IGUI_MinidoracatTesla_Sentry_BreakWindowHit": "Güvenlik: cama vuruldu, alarm çalıyor",
     "IGUI_MinidoracatTesla_Sentry_BreakHotwire": "Güvenlik: düz kontak denemesi, alarm çalıyor",
