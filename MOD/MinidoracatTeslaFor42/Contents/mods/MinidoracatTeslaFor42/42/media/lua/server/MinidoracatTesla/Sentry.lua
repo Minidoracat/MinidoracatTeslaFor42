@@ -243,9 +243,10 @@ hook(ISSmashWindow, "ISSmashWindow", function(a)
     S.onBreak(part:getVehicle(), a.character, w:isDestroyed() and "window" or "windowHit", part:getId())
 end)
 hook(ISHotwireVehicle, "ISHotwireVehicle", function(a) S.onBreak(a.character:getVehicle(), a.character, "hotwire") end)
--- A part off the trailer an armed Tesla has hitched rings that Tesla (user 2026-11-18, the acceptance page's "parts"):
--- the trailer is no Tesla and has no sentry of its own. The Tesla's rules decide who is legit; the card names the
--- trailer's part (what trailerPart). A car armed itself: its own break, as before.
+-- A part off what an armed Tesla has hitched rings that Tesla (user 2026-11-18, the acceptance page's "parts"): the
+-- Semi's trailer has no sentry of its own. The Tesla's rules decide who is legit; the card says trailer part (what
+-- trailerPart). A towed Tesla with its sentry off counts too; the card then shows vanilla's name for its part
+-- (sentry-camp.md). A car armed itself: its own break, as before.
 hook(ISUninstallVehiclePart, "ISUninstallVehiclePart", function(a)
     local v = a.vehicle
     if armedState(v) then return S.onBreak(v, a.character, "part", partId(a.part)) end

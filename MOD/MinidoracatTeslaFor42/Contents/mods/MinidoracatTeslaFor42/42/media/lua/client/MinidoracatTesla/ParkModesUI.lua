@@ -158,7 +158,8 @@ function UI.card(e)
     if e.part then
         local pk = "IGUI_VehiclePart" .. e.part
         -- events are always a Tesla's (Core.lua T.partNameKey; e.car = the script name without "Base."); a trailerPart
-        -- is its trailer's part: vanilla's name, as the trailer's own mechanics window shows it
+        -- is a part of what that Tesla tows, which the record does not name: vanilla's part name, right for the Semi's
+        -- trailer and vanilla cars (a towed Tesla's battery and motor read as vanilla's too, sentry-camp.md)
         local pn = getTextOrNull(e.what ~= "trailerPart" and T.partNameKey("Base." .. tostring(e.car), pk) or pk)
         if pn then bits[#bits + 1] = pn end
     end

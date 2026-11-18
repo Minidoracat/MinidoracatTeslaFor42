@@ -400,6 +400,20 @@ H.fire("EveryOneMinute")
 check(#placed == 9 and placed[9].x >= 600 and queued() == 0 and H.count("EveryOneMinute") == hooks,
     "single player: put down the next game minute, no settle wait")
 H.side(false, true)
+
+H.section("semi spawn: the trailer's doubled chance, from the load to the put-down")
+-- the 15 long lot 1600,100, the chance between half the trailer's roll and the roll: only the doubling hits it, and
+-- the minute's re-roll must hit it as the load did (else it leaves the queue unplaced)
+local zt = S.zones[14]
+local pct = S.roll(zt, 2, S.seed()) * 100 * 0.6
+SandboxVars.MinidoracatTesla.SemiSpawnChance = pct
+local semiToo = S.hit(zt, 1, S.seed(), pct)
+H.fire("LoadChunk", chunkAt(1600, 96))
+settleTick()
+local last = placed[#placed]
+check(not semiToo and #placed == 10 and last.script == TRAILER.script and last.x >= 1600
+    and done()[S.lotKey(zt, TRAILER)] == S.RULES and done()[S.lotKey(zt, SEMI)] == nil and queued() == 0,
+    "a trailer's roll between the chance and twice it: the trailer put down, no Semi")
 SandboxVars.MinidoracatTesla.SemiSpawnChance = nil
 check(T.semiSpawnPct() == 1.5, "unset: 1.5%")
 

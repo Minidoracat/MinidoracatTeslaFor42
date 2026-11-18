@@ -669,6 +669,19 @@ do
     cmds.sentryDisarm(pOwner, { vid = semi:getId() })
     ISUninstallVehiclePart.complete({ vehicle = st, character = thief, part = tyre })
     check(semi.alarmTriggered == a0 + 1 and alertsTo("powner") == 1, "sentry off: nothing")
+    -- what it tows armed itself: that car's own break, the Semi silent
+    cmds.sentryArm(pOwner, { vid = semi:getId() })
+    local my = F.track(F.vehicle({ pct = 80 }))
+    local tOwner = F.player("towner", { keys = { [my.keyId] = true } })
+    F.online = { pOwner, tOwner, thief }
+    my.towedBy = semi
+    cmds.sentryArm(tOwner, { vid = my:getId() })
+    F.sent = {}
+    local s0, m0 = semi.alarmTriggered, my.alarmTriggered
+    ISUninstallVehiclePart.complete({ vehicle = my, character = thief, part = tyre })
+    check(my.alarmTriggered == m0 + 1 and semi.alarmTriggered == s0 and alertsTo("towner") == 1 and alertsTo("powner") == 0
+        and F.lastSent("alert").args.what == "part", "a part off a towed Tesla armed itself: its own alarm and owner, the Semi silent")
+    my.towedBy = nil
     F.online = online0
 end
 -- fitting glass: the part takes the item's condition (VehiclePart.java:202), a worse pane is no hit
