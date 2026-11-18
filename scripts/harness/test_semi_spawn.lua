@@ -77,9 +77,11 @@ getCell = function() return {
         return { hasNext = function() return i < #others end, next = function() i = i + 1; return others[i] end }
     end } end,
 } end
--- a car standing at x, y whose body covers the squares x0..x1, y0..y1 (isIntersectingSquare, z 0); `asked` counts
-local function otherCar(x, y, x0, y0, x1, y1, script)
+-- a car standing at x, y whose body covers the squares x0..x1, y0..y1 (isIntersectingSquare, z 0); `asked` counts;
+-- level and kmh: on a floor above, moving
+local function otherCar(x, y, x0, y0, x1, y1, script, level, kmh)
     return { asked = 0, getX = function() return x end, getY = function() return y end,
+        getZ = function() return level or 0 end, getCurrentSpeedKmHour = function() return kmh or 0 end,
         getScriptName = function() return script or "Base.CarNormal" end,
         isIntersectingSquare = function(self, sx, sy, sz)
             self.asked = self.asked + 1
@@ -358,13 +360,16 @@ settleTick()
 check(#placed == 7 and placed[7].x >= 1400 and done()[kC] == S.RULES, "turned back up: its next load puts it down")
 
 H.section("semi spawn: its car already in the lot (G1)")
--- the Semi's lot 1500,100 14 x 5: a Semi standing just north of it (not in the lot, not over it) is no record
+-- the Semi's lot 1500,100 14 x 5: a Semi standing just north of it (not in the lot, not over it) is no record; nor is
+-- one on a deck above it, one driving through it, one on the next lot's first square (bodies kept off the lot here)
 local k15 = S.lotKey(S.zones[13], SEMI)
-others = { otherCar(1509, 94, 1509, 94, 1509, 94, SEMI.script) }
+others = { otherCar(1509, 94, 1509, 94, 1509, 94, SEMI.script), otherCar(1505, 102, 1509, 94, 1509, 94, SEMI.script, 1),
+    otherCar(1506, 102, 1509, 94, 1509, 94, SEMI.script, 0, -40), otherCar(1514, 102, 1509, 94, 1509, 94, SEMI.script) }
 H.fire("LoadChunk", chunkAt(1496, 96))
 settleTick()
 check(#placed == 8 and placed[8].x >= 1500 and placed[8].x < 1520 and done()[k15] == S.RULES,
-    "a Semi parked off the lot: the lot gets its own")
+    "a Semi parked off the lot, above it, driving through, on the next lot's edge: the lot gets its own")
+others = {}
 -- a crash after vehicles.db took the car, before the world save took the done mark: the next session sees the lot
 -- again, with the car we put down standing in it
 done()[k15] = nil

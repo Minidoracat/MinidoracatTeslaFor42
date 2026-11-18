@@ -280,13 +280,16 @@ end
 -- IngameState.update -> IngameState.java:1535 -> IsoWorld.java:2962), removeFromWorld takes it out (BaseVehicle.java:
 -- 8119-8120). A HashSet: walked with iterator(), as SemiHitch.lua does. Also the one walk that sees this lot's own car
 -- standing in it already: put down before a crash that lost the done mark (VehiclesDB2 commits the car itself,
--- VehiclesDB2.java:805-821,841-855; global ModData waits for the world save).
+-- VehiclesDB2.java:805-821,841-855; global ModData waits for the world save). Standing, on the ground, inside the lot
+-- (half-open, like span): "there" marks the lot done for good, so one driving through, on a deck above or on the next
+-- lot's first square must not count.
 local function carsNear(z, car, x0, y0, x1, y1)
     local out, it = {}, getCell():getVehicles():iterator()
     while it:hasNext() do
         local v = it:next()
         local x, y = v:getX(), v:getY()
-        if x >= z.x and x <= z.x + z.w and y >= z.y and y <= z.y + z.h and v:getScriptName() == car.script then
+        if x >= z.x and x < z.x + z.w and y >= z.y and y < z.y + z.h and math.floor(v:getZ()) == 0
+            and v:getScriptName() == car.script and T.stopped(v) then
             return nil
         end
         if x >= x0 - S.NEAR and x <= x1 + 1 + S.NEAR and y >= y0 - S.NEAR and y <= y1 + 1 + S.NEAR then out[#out + 1] = v end
