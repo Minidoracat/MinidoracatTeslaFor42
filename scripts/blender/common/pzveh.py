@@ -462,6 +462,19 @@ def wheel_texture(r_out, rim, ch=None):
     img = mix(g["dark"], g["rotor"], inside(WHEEL_DISC["rotor"] * rim))   # behind the spokes: rotor, dark round it
     img = mix(img, g["hat"], inside(WHEEL_DISC["hat"] * rim))
     img = mix(img, g["lip"], 1 - inside(rim - 0.015))                  # flange face
+    # WHEEL_FACETS pattern (Semi's front aluminium disc wheel): the face's planar UV (stage_wheel) on the disc out to the
+    # flange (the flange too: polished out to the tyre), in the `face` grey, `marks` on it: (WHEEL_RGB key, n round the
+    # wheel, centre radius, radial and tangential half size; rim flange radius units) each an ellipse (the dark hub,
+    # the lug nuts' ring, the hand holes)
+    pat = (CAR.get("WHEEL_FACETS") or {}).get("pattern")
+    if pat:
+        face = inside(rim)
+        img = mix(img, g[pat["face"]], face)
+        th = np.arctan2(y, x)
+        for key, k, rc, hr, ht in pat["marks"]:
+            d = th - np.round(th * k / (2 * np.pi)) * 2 * np.pi / k              # off the nearest mark's centreline
+            e = np.hypot((r * np.cos(d) - rc * rim) / hr, r * np.sin(d) / ht) / rim   # 1 on the ellipse
+            img = mix(img, g[key], np.clip((1 - e) * min(hr, ht) * rim / aa + 0.5, 0, 1) * face)
     t = np.clip((r - rim) / (r_out - rim), 0, 1)
     side = mix(g["tire"][0], g["tire"][1], np.sin(np.pi * t) ** 2)     # faint sheen mid-sidewall (round: it spins)
     side = mix(side, g["gap"], inside(rim + 0.02))                     # dark joint between the flange and the bead
@@ -592,13 +605,13 @@ def stage_wheel(r, width, rim=None, tag="", axle=None):
                         loop_v.append(lp.vert)
 
     def flat(vs, want, spot):
-        """Face on verts vs, wound to face `want`, flat normal, UV on a swatch."""
+        """Face on verts vs, wound to face `want`, flat normal, UV on a swatch (spot None: the disc's planar layout)."""
         f = bm.faces.new(vs)
         f.normal_update()
         if f.normal.dot(want) < 0:
             f.normal_flip()
         for lp in f.loops:
-            lp[uv].uv = sw[spot]
+            lp[uv].uv = sw[spot] if spot else (cu - lp.vert.co.y / r * rho, cv + lp.vert.co.z / r * rho)
             loop_n.append(tuple(f.normal))
             loop_v.append(lp.vert)
 
@@ -644,10 +657,11 @@ def stage_wheel(r, width, rim=None, tag="", axle=None):
         cf = [bm.verts.new((side * xc, rc * math.cos(a), fc_ * rc * math.sin(a))) for a in ca]
         cb = [bm.verts.new((side * (xc - sp["depth"] - 0.006), rc * math.cos(a), fc_ * rc * math.sin(a))) for a in ca]
         hub = bm.verts.new((side * (xc + 0.003), 0.0, 0.0))
+        cap = fc.get("axle_cap", "cap") if fc and axle else "cap"
         for j in range(cn):
-            flat([hub, cf[j], cf[(j + 1) % cn]], out, "cap")
+            flat([hub, cf[j], cf[(j + 1) % cn]], out, cap)
             flat([cf[j], cf[(j + 1) % cn], cb[(j + 1) % cn], cb[j]],
-                 Vector((0, math.cos(ca[j] + math.pi / cn), fc_ * math.sin(ca[j] + math.pi / cn))), "cap")
+                 Vector((0, math.cos(ca[j] + math.pi / cn), fc_ * math.sin(ca[j] + math.pi / cn))), cap)
     # WHEEL_FACETS (an aero cover, Model Y L's 19" Machina 2.0): a flat face over the spokes' back, `sink` behind their
     # front, from the hub cap to the barrel (the disc and barrel behind it hidden), the spokes (if any) standing out of
     # it as relief; the face takes the `face` swatch's colour. On it, `n` times round the wheel (the first `at` deg off
@@ -656,7 +670,8 @@ def stage_wheel(r, width, rim=None, tag="", axle=None):
     # barrel, and the step from the flange into the barrel, in that swatch or the step swatch if given (a thin machined
     # rim edge: the 64 px texture blurs a flange ring away; a dark step leaves the band alone, thinner); the shapes stop
     # at its inner radius. `axle_face` (Semi): the whole-axle model's face in that swatch instead (the drive axles' flat
-    # grey covers on the front wheel's texture)
+    # grey covers on the front wheel's texture), `axle_cap` its hub cap's swatch (their small centre disc); `pattern`
+    # (Semi, wheel_texture): the other wheel's face on the disc's planar layout instead of the `face` swatch
     if fc:
         cx = lambda rad: spoke_x(rad, rr, hw) - fc["sink"]                    # noqa: E731
         radii = np.linspace(sp["cap"] * rr, rb, fc["rings"] + 1)
@@ -668,7 +683,7 @@ def stage_wheel(r, width, rim=None, tag="", axle=None):
             for a_, b_ in zip(rg[:-1], rg[1:]):
                 for j in range(n):
                     flat([a_[j], a_[(j + 1) % n], b_[(j + 1) % n], b_[j]], out,
-                         fc.get("axle_face", fc["face"]) if axle else fc["face"])
+                         fc.get("axle_face", fc["face"]) if axle else None if "pattern" in fc else fc["face"])
             if lip:
                 band = [[bm.verts.new((side * (cx(rad) + 0.0015), rad * math.cos(a), rad * math.sin(a)))
                          for a in ang[:n]] for rad in (rmax, rb)]

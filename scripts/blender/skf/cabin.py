@@ -489,9 +489,11 @@ def furniture(add, opening, grow=0.0, fine=1, between=None):
         t = b.get("cushion")
         part((b["w"], 0.40, t or 0.09), 0.035, "seat", (cx, fy + 0.08, z0 - 0.06 if t is None else z0 - 0.015 - t / 2),
              cuts=(2, 0, 0), sag=0.025, seams=("top", channels((-0.28, -0.10, 0.08, 0.26), (-0.40, 0.40))))
-        # backrest 8 cm thick, its front where the 11 cm one had it: the knees of the passenger behind (seat_head.py knees)
-        part((b["w"], 0.08, b["back"]), 0.035, "seat", (cx, fy - 0.155, z0 + 0.22), cuts=(2, 0, 0), bend=0.05, taper=0.12,
-             tilt=rec, seams=("front", channels((-0.30, -0.15, 0.0, 0.15, 0.30), (-0.42, 0.42))))
+        # backrest 8 cm thick, its front where the 11 cm one had it: the knees of the passenger behind (seat_head.py
+        # knees). Optional per row: back_z = its centre over z0 (default 0.22; Semi's tall truck seat: its foot where
+        # the default 0.50 one has it, the top up to the raised headrest `head`)
+        part((b["w"], 0.08, b["back"]), 0.035, "seat", (cx, fy - 0.155, z0 + b.get("back_z", 0.22)), cuts=(2, 0, 0),
+             bend=0.05, taper=0.12, tilt=rec, seams=("front", channels((-0.30, -0.15, 0.0, 0.15, 0.30), (-0.42, 0.42))))
         part((0.25, 0.10, 0.17), 0.05, "seat", (cx, fy - 0.18, z0 + b.get("head", 0.54)), taper=0.1, tilt=rec, seg=3)
         for e in (-1, 1):
             part((0.07, 0.34, 0.07), 0.03, "seat", (cx + e * bolster[0], fy + 0.07, z0 - 0.01))
@@ -557,18 +559,23 @@ def furniture(add, opening, grow=0.0, fine=1, between=None):
         part((1.10, 0.012, 0.006), 0.002, "screen", DASH["light"], seg=1)          # ambient light line under the trim
     if between:
         between(part)
-    if DASH["stand"]:       # (Cybercab: none, the screen stands on the dash's ledge, DASH parts)
-        part((0.05, 0.04, 0.09), 0.012, "screen_back", DASH["stand"])           # screen stand
+    # DASH screens (optional, Semi: one each side of the wheel, ERG p.6 / p.5): [(centre, deg turned about the
+    # vertical, + its face toward +x)] in place of the one `screen`, stands: their stands in place of `stand`
+    screens = DASH.get("screens") or ((DASH["screen"], 0),)
+    for at in DASH.get("stands") or ((DASH["stand"],) if DASH["stand"] else ()):   # (Cybercab: none, the screen
+        part((0.05, 0.04, 0.09), 0.012, "screen_back", at)                          # stands on the dash's ledge)
     # DASH screen_size (optional, (width, height)): another screen than the 15.4" (Cybercab's big landscape one), its
     # picture blocks scaled with it; rear (optional): its back's cell (Cybercab's silver)
     sw, sh = DASH.get("screen_size", (0.30, 0.19))
     kx, kz = (sw / 0.30, sh / 0.19) if "screen_size" in DASH else (1, 1)
-    v, f = box((sw, 0.022, sh), 0.012)                                            # 15.4" landscape screen
-    v = v @ rot_x(-12).T + DASH["screen"]
-    fn = np.array([np.cross(v[fc[1]] - v[fc[0]], v[fc[2]] - v[fc[0]]) for fc in f])
+    v0, f = box((sw, 0.022, sh), 0.012)                                           # 15.4" landscape screen
+    v0 = v0 @ rot_x(-12).T
+    fn = np.array([np.cross(v0[fc[1]] - v0[fc[0]], v0[fc[2]] - v0[fc[0]]) for fc in f])
     fn /= np.linalg.norm(fn, axis=1, keepdims=True)
     rear = DASH.get("rear", "screen_back")
-    add(v, f, ["screen" if k < -0.9 else rear if k > 0.9 else "screen_back" for k in fn[:, 1]])
+    cells = ["screen" if k < -0.9 else rear if k > 0.9 else "screen_back" for k in fn[:, 1]]
+    for at, yaw in screens:
+        add((v0 @ rot_z(yaw).T if yaw else v0) + at, f, cells)
     # its picture in blocks just in front of the lit face (one flat light panel before, user image 12): the dark dock
     # along the bottom, the car view on the driver's third (dark ground, the car a lit block), a route line on the map
     for size, at, c in ((() if grow else                # the detail model has the picture itself (detail_mesh)
@@ -581,7 +588,9 @@ def furniture(add, opening, grow=0.0, fine=1, between=None):
         if kx != 1:
             size, at = (size[0] * kx, size[1], size[2] * kz), (at[0] * kx, at[1], at[2] * kz)
         v, f = rbox(size, 0.001, seg=1)
-        add((v + at) @ rot_x(-12).T + DASH["screen"], f, c)
+        v = (v + at) @ rot_x(-12).T
+        for sc, yaw in screens:
+            add((v @ rot_z(yaw).T if yaw else v) + sc, f, c)
     if DASH["wheel"] is None:          # (Cybercab: no steering wheel, column or pedals)
         out["wr"] = None
         return out
@@ -710,6 +719,8 @@ def cabin_mesh(bvh, belt, trunk_floor, trunk_end, arch, opening):
         k = next((k for k in side if abs(p[:, 0].mean()) > 0.3 and np.sign(p[:, 0].mean()) == side[k]
                   and len(ri) == 3 and span[k][0] <= min(ri) and max(ri) <= span[k][1]), 0)
         door.append(k or (5 if any(who.flat[x] == 5 for x in f if x < nr * n) else 0))
+    if pv.CAR.get("DOOR_RISER"):    # a floor over the opening's lower edge stays with the door open (DOOR_RISER below)
+        door = [0 if c == "floor" else k for k, c in zip(door, sc)]
     backs = pv.CAR.get("HUMP_BACKS", True)
     y_hump = {True: 9.0, "trunk": opening["y"][2], False: -9.0}[backs]
     hump = [i for i, (f, k) in enumerate(zip(sf, sc)) if k == "liner" for cen in (sv[f].mean(0),)
@@ -728,6 +739,26 @@ def cabin_mesh(bvh, belt, trunk_floor, trunk_end, arch, opening):
         add(sv[np.ravel([sf[i] for i in hump])], [[3 * k + 2, 3 * k + 1, 3 * k] for k in range(len(hump))], "liner",
             smooth=False, door=[door[i] for i in hump])
     shell_n = len(sf) + len(hump)
+    # DOOR_RISER (Semi: the cab floor 0.48 m over the door openings' lower edge, ERG p.26): in each front door's
+    # opening a wall from just under that edge up to the floor, CABIN_INSET inside the shut door (rays out to it from
+    # the centre line; under the door's foot its innermost x), facing the opening: through the open door the space
+    # under the floor was a hole through the cab. Shell side of shell_n (not turned)
+    if pv.CAR.get("DOOR_RISER"):
+        zs = np.linspace(opening["sill"] - 0.03, CABIN_FLOOR, 5)
+        ys_ = np.linspace(opening["y"][0] + 0.03, opening["y"][1] - 0.03, 8)
+        for nm, b in opening["each"].items():
+            for s in (-1, 1) if nm.startswith("DoorFront") else ():
+                hx = np.array([[np.nan if h is None else h.x for z in zs
+                                for h in (b.ray_cast(Vector((0, y, z)), Vector((s, 0, 0)))[0],)] for y in ys_])
+                if np.isnan(hx).all():
+                    continue
+                hx = np.where(np.isnan(hx), s * np.nanmin(s * hx), hx) - s * CABIN_INSET
+                g = np.stack(np.broadcast_arrays(hx, ys_[:, None], zs[None, :]), -1).reshape(-1, 3)
+                m = len(zs)
+                q = [[i * m + j, (i + 1) * m + j, (i + 1) * m + j + 1, i * m + j + 1]
+                     for i in range(len(ys_) - 1) for j in range(m - 1)]
+                add(g, [f[::-1] for f in q] if s > 0 else q, "liner", smooth=False)
+                shell_n += len(q)
     bk = pv.CAR.get("TRUNK_BULKHEAD")
     if bk:  # (Cybercab: rider guide 04) a wall across the shell on its first ring behind TRUNK_Y, from the trunk floor
         yk = ys[ys < TRUNK_Y].max()     # up under the skin (rays round the axis at z, 1 cm in): the open tailgate shows
@@ -949,15 +980,17 @@ def detail_mesh(opening, windscreen, roof=None):
 
     placed = furniture(add, opening, GROW, FINE)
     grown = list(parts)
-    # the screen's picture: a thin panel just proud of the grown screen and of the coarse picture blocks, its front
-    # DETAIL_PICTURE (u along +x: the car view on the driver's side), the rest the screen's black
+    # each screen's picture: a thin panel just proud of the grown screen and of the coarse picture blocks, its front
+    # DETAIL_PICTURE (u along +x: the car view on the driver's side), the rest the screen's black (DASH screens: each)
     pw, ph = (DASH["screen_size"][0] + 0.002, DASH["screen_size"][1] + 0.002) if "screen_size" in DASH else (0.302, 0.192)
     v, f = rbox((pw, 0.003, ph), 0.0012)
     (u0, v0, u1, v1), e = pv.DETAIL_PICTURE, 0.5 / pv.DETAIL_PX
     uv = np.c_[u0 + e + (v[:, 0] / pw + 0.5) * (u1 - u0 - 2 * e), v0 + e + (v[:, 2] / ph + 0.5) * (v1 - v0 - 2 * e)]
     fn = np.array([np.cross(v[q[1]] - v[q[0]], v[q[2]] - v[q[0]]) for q in f])
     front = fn[:, 1] / np.linalg.norm(fn, axis=1) < -0.9
-    add((v + [0, -0.0172, 0]) @ rot_x(-12).T + DASH["screen"], f, ["picture" if k else "screen_back" for k in front], uv)
+    v = (v + [0, -0.0172, 0]) @ rot_x(-12).T
+    for sc, yaw in DASH.get("screens") or ((DASH["screen"], 0),):
+        add((v @ rot_z(yaw).T if yaw else v) + sc, f, ["picture" if k else "screen_back" for k in front], uv)
     # steering wheel: scroll wheels on the cross spoke at the thumbs, a T on the hub (wheel frame: +z to the driver)
     wr = placed["wr"]
     wheel = lambda v, at: [(wr @ Vector(p + np.array(at)))[:] for p in v]   # noqa: E731
@@ -1042,12 +1075,13 @@ def detail_mesh(opening, windscreen, roof=None):
         add(v @ q.T + back + d * ln / 2, f, "mirror")
 
     # no coarse part pokes out of its grown twin: furniture adds them in the same order, the coarse picture blocks
-    # (5, after the screen) aside; signed distance of each coarse vertex to its twin's surface, the twin's normals made
-    # outward first (furniture leaves the wheel rim's to cabin_mesh), seams aside
+    # (5 per screen, after the screens) aside; signed distance of each coarse vertex to its twin's surface, the twin's
+    # normals made outward first (furniture leaves the wheel rim's to cabin_mesh), seams aside
     coarse = []
     furniture(lambda v, f, c, **_: coarse.append(np.asarray(v, float)), opening)
     k = next(i for i, (_, _, c) in enumerate(grown) if "screen" in c and "screen_back" in c)
-    coarse = coarse[:k + 1] + coarse[k + 6:]
+    ns = len(DASH.get("screens") or (DASH["screen"],))
+    coarse = coarse[:k + ns] + coarse[k + ns * 6:]
     worst = (-1.0, None)
     for cv, (gv, gf, gc) in zip(coarse, grown):
         bm = bmesh.new()
