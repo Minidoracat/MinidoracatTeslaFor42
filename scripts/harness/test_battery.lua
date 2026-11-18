@@ -624,6 +624,25 @@ T.Update.Engine(virtual, virtual:getPartById("Engine"), 1)
 check(virtual.feature == nil, "an unloaded SP car (VirtualVehicle): left alone")
 T.Remote = savedRemote
 
+H.section("MP: driver left on Server physics authority (a trailer's hand-back) gets it back")
+local av = H.vehicle({ running = true })
+av._class = "BaseVehicle"
+local adrv = H.player({ name = "adrv" })
+av.driver = adrv
+T.Update.Engine(av, av:getPartById("Engine"), 1)
+check(av.grants == 1 and av.npid == adrv:getOnlineID(), "driver seated, motor running, Server authority: granted to the driver")
+T.Update.Engine(av, av:getPartById("Engine"), 1)
+check(av.grants == 1, "the driver's already: nothing")
+av.npid, av.running = -1, false
+T.Update.Engine(av, av:getPartById("Engine"), 1)
+av.running, av.driver = true, nil
+T.Update.Engine(av, av:getPartById("Engine"), 1)
+av.driver = adrv
+H.side(false, false)
+T.Update.Engine(av, av:getPartById("Engine"), 1)
+H.side(false, true)
+check(av.grants == 1, "motor off, no driver, or single player: nothing")
+
 H.section("command guard")
 local gv = H.vehicle({ kwh = 5 })
 local cheat = H.player({ name = "mallory" })

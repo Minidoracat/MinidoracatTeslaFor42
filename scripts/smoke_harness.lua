@@ -209,6 +209,8 @@ function H.vehicle(o)
     function v:isGoodCar() return self.good end
     function v:isDriver(p) return self.driver == p end
     function v:getDriver() return self.driver end
+    function v:getNetPlayerId() return self.npid or -1 end -- MP physics authority: -1 = the server's (BaseVehicle.java:657)
+    function v:authorizationServerOnSeat(p) self.grants, self.npid = (self.grants or 0) + 1, p:getOnlineID() end
     function v:getX() return self.x end
     function v:getY() return self.y end
     function v:getZ() return self.z end
