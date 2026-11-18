@@ -6,7 +6,8 @@ local check = H.check
 for _, m in ipairs({ "Vehicles/ISUI/ISVehicleMenu", "Vehicles/ISVehicleTrailerUtils", "Vehicles/TimedActions/ISAttachTrailerToVehicle",
     "Vehicles/TimedActions/ISDetachTrailerFromVehicle" }) do H.stub(m) end
 local saved = { ISVehicleMenu, ISVehicleTrailerUtils, ISAttachTrailerToVehicle, ISDetachTrailerFromVehicle, ISTimedActionQueue,
-    getCell, getServerOptions, getPlayerRadialMenu, UIManager, getTexture, ISVehicleMechanics, ISPathFindAction, Vector3f }
+    getCell, getServerOptions, getPlayerRadialMenu, UIManager, getTexture, ISVehicleMechanics, ISPathFindAction, Vector3f,
+    ISBaseTimedAction }
 
 -- vanilla fakes: doTowingMenu adds one "vanilla" slice (its own branches are vanilla's business), the radial a toggle
 ISVehicleMenu = {}
@@ -59,8 +60,16 @@ ISAttachTrailerToVehicle = action("ISAttachTrailerToVehicle")
 function ISAttachTrailerToVehicle:new(character, a, b, attA, attB)
     return setmetatable({ character = character, vehicleA = a, vehicleB = b, attachmentA = attA, attachmentB = attB }, self)
 end
+-- vanilla's fields (ISDetachTrailerFromVehicle.lua:51-61); its perform only counted here: the wrap must leave other
+-- hitches to it
 ISDetachTrailerFromVehicle = action("ISDetachTrailerFromVehicle")
-function ISDetachTrailerFromVehicle:new(character, v, att) return setmetatable({ character = character, vehicleA = v, attachmentA = att }, self) end
+function ISDetachTrailerFromVehicle:new(character, v, att)
+    return setmetatable({ character = character, vehicle = v, attachment = att, hitchPos = Vector3f.new() }, self)
+end
+local vanillaDetached, baseDone = 0, 0
+function ISDetachTrailerFromVehicle:perform() vanillaDetached = vanillaDetached + 1 end
+function ISDetachTrailerFromVehicle:stopSound() end
+ISBaseTimedAction = { perform = function() baseDone = baseDone + 1 end }
 local option = false
 function getServerOptions() return { getBoolean = function(_, k) return k == "DisableTrailerTowing" and option end } end
 
@@ -264,7 +273,28 @@ ISVehicleMenu.showRadialMenu(p)
 check(#radial.slices == 1 and radial.slices[1].text == "ContextMenu_Vehicle_DetachTrailer", "towing: the detach slice")
 queue = {}
 radial.slices[1].fn(table.unpack(radial.slices[1].args))
-check(getmetatable(queue[1]) == ISDetachTrailerFromVehicle and queue[1].attachmentA == "mtsemi_fifthwheel", "detach: vanilla's action")
+local d = queue[1]
+check(getmetatable(d) == ISDetachTrailerFromVehicle and d.attachment == "mtsemi_fifthwheel", "detach: vanilla's action")
+-- vanilla's own check reads Manhattan distance on truncated coordinates and then does nothing (semiE-incar-3)
+d.hitchPos._x, d.hitchPos._y = 100.9, 100.9
+p.x, p.y = 103.35, 103.35 -- 3.47 straight; vanilla reads |100 - 103.35| * 2 = 6.7
+local n2 = #H.clientSent
+d:perform()
+local m2 = H.clientSent[#H.clientSent]
+check(#H.clientSent == n2 + 1 and m2.module == "vehicle" and m2.command == "detachTrailer" and m2.args.vehicle == semi.id
+    and baseDone == 1 and vanillaDetached == 0, "seated, the Semi on a diagonal: detachTrailer sent, the action ends")
+p.vehicle = nil
+d:perform()
+check(#H.clientSent == n2 + 2, "on foot 3.47 straight from the fifth wheel: sent")
+p.x, p.y = 103.8, 103.8 -- 4.1 straight
+d:perform()
+check(#H.clientSent == n2 + 2 and baseDone == 3, "on foot past 4 straight: nothing sent, the action still ends")
+p.vehicle = semi
+d:perform()
+check(#H.clientSent == n2 + 3, "back in the cab at the same spot: sent")
+ISDetachTrailerFromVehicle:new(p, my, "trailer"):perform()
+ISDetachTrailerFromVehicle:new(p, semi, "trailer"):perform()
+check(vanillaDetached == 2 and #H.clientSent == n2 + 3 and baseDone == 4, "another car's hitch, the Semi's rear hitch: vanilla's perform")
 semi.towing, semi.driver = nil, nil
 p.vehicle = trailer
 radial.open = false
@@ -272,5 +302,5 @@ ISVehicleMenu.showRadialMenu(p)
 check(#radial.slices == 0, "not the Semi's driver: nothing")
 
 ISVehicleMenu, ISVehicleTrailerUtils, ISAttachTrailerToVehicle, ISDetachTrailerFromVehicle, ISTimedActionQueue,
-    getCell, getServerOptions, getPlayerRadialMenu, UIManager, getTexture, ISVehicleMechanics, ISPathFindAction, Vector3f =
-    table.unpack(saved, 1, 13)
+    getCell, getServerOptions, getPlayerRadialMenu, UIManager, getTexture, ISVehicleMechanics, ISPathFindAction, Vector3f,
+    ISBaseTimedAction = table.unpack(saved, 1, 14)

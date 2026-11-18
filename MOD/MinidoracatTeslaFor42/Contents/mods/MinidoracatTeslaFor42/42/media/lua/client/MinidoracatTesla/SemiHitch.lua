@@ -6,7 +6,7 @@
 -- vanilla's walk, timed action and "attachTrailer" command (VehicleCommands.lua:330-341). No command of our own.
 -- Unhitching stays vanilla's: the first two branches of doTowingMenu take any towing pair. Both walk through
 -- ISVehicleTrailerUtils.walkToTrailer (onDetachTrailer too, ISVehicleMenu.lua:1738-1741), wrapped below for the fifth
--- wheel only: vanilla's spot behind it is inside the trailer.
+-- wheel only: vanilla's spot behind it is inside the trailer. So is the detach action's distance check (SH.NEAR).
 -- Wrapped, not replaced: every other vehicle (another MOD's trailers too) gets exactly vanilla's slices.
 require "Vehicles/ISUI/ISVehicleMenu"
 require "Vehicles/ISVehicleTrailerUtils"
@@ -112,6 +112,23 @@ function SH.Attach:attachTrailer()
     end
 end
 
+-- Vanilla's detach gives up, silently, past 4 of the hitch, measured with DistTo(x, y): the int overload, Manhattan
+-- on truncated coordinates (ISDetachTrailerFromVehicle.lua:34, IsoMovingObject.java:601-603). With the Semi on a
+-- diagonal the driver's seat (3.47 straight) reads about 5 (semiE-incar-3), and a stand spot SH.REACH out can too.
+-- For the fifth wheel: anyone in this Semi's cab, or the same 4 measured straight. Every other hitch: vanilla's.
+SH.NEAR = 4
+local origDetach = ISDetachTrailerFromVehicle.perform
+function ISDetachTrailerFromVehicle:perform()
+    local v, c, h = self.vehicle, self.character, self.hitchPos
+    if self.attachment ~= SH.FIFTH_WHEEL or v:getScriptName() ~= SH.TRACTOR then return origDetach(self) end
+    self:stopSound()
+    local dx, dy = c:getX() - h:x(), c:getY() - h:y()
+    if c:getVehicle() == v or dx * dx + dy * dy <= SH.NEAR * SH.NEAR then
+        sendClientCommand(c, "vehicle", "detachTrailer", { vehicle = v:getId() })
+    end
+    ISBaseTimedAction.perform(self)
+end
+
 local function onAttach(player, a, b, seated)
     local action = SH.Attach:new(player, a, b, SH.FIFTH_WHEEL, SH.KINGPIN)
     if seated then ISTimedActionQueue.add(action) else ISVehicleTrailerUtils.walkToTrailer(player, a, SH.FIFTH_WHEEL, action) end
@@ -137,9 +154,8 @@ function ISVehicleMenu.doTowingMenu(playerObj, vehicle, menu)
 end
 
 -- the driver's radial: vanilla has no towing slices there; the toggle and paused-game returns as HUDRadial.lua.
--- Seated works: MP play gave the driver both cars' authority after the hitch (semiE-incar-1), and the detach still
--- passes vanilla's 4-tile check (ISDetachTrailerFromVehicle.lua:34) with the driver's seat 3.47 tiles from the fifth
--- wheel. Moving the seat or the fifth wheel means measuring that again.
+-- Seated works: MP play gave the driver both cars' authority after the hitch (semiE-incar-1); the detach from the
+-- seat goes through the wrapped perform above.
 local origRadial = ISVehicleMenu.showRadialMenu
 function ISVehicleMenu.showRadialMenu(playerObj)
     local menu = getPlayerRadialMenu(playerObj:getPlayerNum())
