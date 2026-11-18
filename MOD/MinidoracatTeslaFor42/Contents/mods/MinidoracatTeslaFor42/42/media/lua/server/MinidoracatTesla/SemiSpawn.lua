@@ -6,12 +6,12 @@
 -- Instead, on the server only:
 -- - map load: vanilla doMapZones registers each parking zone (metazoneHandler.lua:120,143); a wrap of
 --   registerVehiclesZone keeps the parkingstall ones long enough for each car (the same wrap VehicleSpawnControl uses,
---   MVSC_Respawn.lua:55-73): 1,563 lots for the Semi (8 squares or longer) and 937 for the trailer (20 or longer: its
---   box is centred on the centre of mass, 2.94 squares ahead of the 13.3-square body's middle, S.buildIndex) on the
---   vanilla map (7,668 parkingstall zones at z 0 once duplicates are dropped).
+--   MVSC_Respawn.lua:55-73): 1,563 lots for the Semi (8 squares or longer) and 1,293 for the trailer (15 or longer:
+--   the squares its body covers with the margin, S.box) on the vanilla map (7,668 parkingstall zones at z 0 once
+--   duplicates are dropped).
 -- - each lot's roll is a hash of the lot and the world generation seed (S.seed): the same lot gets the same roll in
 --   every session, so a lot is rolled once and the misses need no record. Sandbox SemiSpawnChance (% of the lots,
---   default 1.5, 0 = none): about 23 Semis and 14 trailers on the whole vanilla map (the lots x 1.5%), before the lots
+--   default 1.5, 0 = none): about 23 Semis and 19 trailers on the whole vanilla map (the lots x 1.5%), before the lots
 --   with no room.
 -- - LoadChunk (new chunks and the save's, so explored worlds get them too, like SuperchargerSpawn.lua): one table
 --   lookup; a lot that rolled a hit and is not done yet is queued.
@@ -21,9 +21,10 @@
 --   unloads (the server reads a chunk's saved cars after LoadChunk, ServerMap.java:827-838, VehiclesDB2.java:346-351,
 --   494-525: the wait VehicleSpawnControl measured, MVSC_Respawn.lua:5-7,565); in single player none (a driver is
 --   there within 15 s and would see it appear). It looks for a free stretch along the lot's long axis, middle first,
---   and puts the car there (addVehicleDebug, as VehicleSpawnControl does). Placed, no room, or the same car already
+--   facing one way and then the other, and puts the car there (addVehicleDebug, as VehicleSpawnControl does), turned
+--   square to the lot. Placed, no room, or the same car already
 --   standing in the lot, the lot is done for good: ModData keeps only the lots that rolled a hit (at most every
---   candidate lot, ~2,500 on the vanilla map).
+--   candidate lot, ~2,900 on the vanilla map).
 -- shortcut: the done mark is in global ModData and the car in vehicles.db, saved apart; after a crash between the two
 -- saves the car found in its lot stands for the lost mark, but one driven out of the lot before the crash is not seen,
 -- and the lot gets a second car next session.
@@ -39,7 +40,8 @@ S.RULES = 1           -- the rules' version, kept with every done lot
 S.SETTLE_MS = 15000   -- after all the lot's chunks are seen loaded, dedicated server only (VehicleSpawnControl's SETTLE_MP)
 S.TTL_MS = 300000     -- a lot whose squares do not all load in this long leaves the queue; its next load queues it again
 S.RECENT_MS = 60000   -- a car just placed is not in its chunk's vehicle list for a few frames (MVSC_Respawn.lua:24)
-S.NEAR = 10           -- how far a parked car's body reaches from its position: our trailer's 2.94 + 13.3 / 2 = 9.6
+S.NEAR = 10           -- how far a parked car's body reaches from its position: our trailer's 9.61 (S.box, measured)
+S.MARGIN = 0.3        -- round the body's box (VehicleSpawnControl's footprint, MVSC_Respawn.lua:200-208)
 S.CARS = {
     { key = "semi", script = "Base.MinidoracatTesla_Semi" },
     { key = "trailer", script = "Base.MinidoracatTesla_SemiTrailer" },
@@ -104,9 +106,29 @@ function S.installZoneIndex()
     return true
 end
 
--- each car's body as the engine boxes it: the extents centred on the centre of mass offset (VehiclePoly.java:52-88),
--- the offset added on both sides (VehicleSpawnControl's MVSC_Respawn.lua:377-379). A lot fits a car when its long
--- side holds the body and it is 3 or more wide (a stall's width).
+-- each car's body round its position, put down square to its heading (S.place): a squares out on the side it faces
+-- (N: -y, E: +x), b on the other, wid / 2 across. The engine boxes the body as the extents centred on the centre of
+-- mass offset (VehiclePoly.java:52-88), so a = len / 2 + com z and b = len / 2 - com z: Semi 2.64 / 3.85, trailer
+-- 9.61 / 3.73, as measured round the placed cars (semiA-bcd-1, temp/plan-semi-1117/e2e/RESULTS-A.md "生成放下率與擺正").
+-- Offsets of the box from the position, without the margin.
+function S.box(car, dir)
+    local a, b, w = car.a, car.b, car.wid / 2
+    if dir == "N" then return -w, -a, w, b end
+    if dir == "S" then return -w, -b, w, a end
+    if dir == "W" then return -a, -w, b, w end
+    return -b, -w, a, w
+end
+
+-- the squares the body covers at cx, cy (a square's north-west corner, where addVehicleDebug puts the position), with
+-- S.MARGIN round it
+function S.footprint(cx, cy, dir, car)
+    local x0, y0, x1, y1 = S.box(car, dir)
+    local m = S.MARGIN
+    return math.floor(cx + x0 - m), math.floor(cy + y0 - m), math.floor(cx + x1 + m), math.floor(cy + y1 + m)
+end
+
+-- A lot fits a car when its long side holds the footprint facing one way or the other along it and it is 3 or more
+-- wide (a stall's width); the footprint reaches past the lot's sides, S.free checks those squares too.
 function S.buildIndex()
     S.byChunk = {}
     local lots = {}
@@ -114,12 +136,14 @@ function S.buildIndex()
         local vs = ScriptManager.instance:getVehicle(car.script)
         if vs then
             local ext, com = vs:getExtents(), vs:getCenterOfMassOffset()
-            car.len, car.wid = ext:z() + 2 * math.abs(com:z()), ext:x() + 2 * math.abs(com:x())
-            car.half = math.ceil(car.len / 2)
+            car.a, car.b, car.wid = ext:z() / 2 + com:z(), ext:z() / 2 - com:z(), ext:x()
+            local _, n0, _, n1 = S.footprint(0, 0, "N", car)
+            local _, s0, _, s1 = S.footprint(0, 0, "S", car)
+            car.need = math.min(n1 - n0, s1 - s0) + 1
         end
         lots[ci] = 0
         for zi, z in ipairs(S.zones) do
-            if car.half and math.max(z.w, z.h) >= 2 * car.half and math.min(z.w, z.h) >= 3 then
+            if car.need and math.max(z.w, z.h) >= car.need and math.min(z.w, z.h) >= 3 then
                 lots[ci] = lots[ci] + 1
                 for wx = math.floor(z.x / 8), math.floor((z.x + z.w - 1) / 8) do
                     for wy = math.floor(z.y / 8), math.floor((z.y + z.h - 1) / 8) do
@@ -145,29 +169,35 @@ function S.roll(z, ci, seed)
 end
 
 -- ---- the squares ----
--- free for a parked truck: outdoor solid floor with nothing on it but the floor (no wall, fence, door, tree, sign,
--- litter, furniture or anything a player built or dropped), no car (isVehicleIntersecting, IsoGridSquare.java:9853-9874),
--- nobody but zombies (as vanilla, a car may spawn on one), no body, not water and in no safehouse (SafeHouse.getSafeHouse:
--- the one holding the square, whoever the player, SafeHouse.java:157-159)
+-- free for a parked truck: VehicleSpawnControl's open ground, its conditions copied (no call across mods: openGround
+-- and R.squareFree, MVSC_Respawn.lua:211-220,332-352): solid floor; nothing solid, see-through solid (a fence) or a
+-- tree; not water; nothing dropped on it (getWorldObjects) and nothing a player built (IsoThumpable); outdoors; no
+-- stairs, garage door or wall, window, door or hoppable edge. What has no collision stays allowed: road paint
+-- (street_decoration_01_40..45), grass, litter, as measured blocking the trailer before (semiA-lots-2). Ours kept: no
+-- car (isVehicleIntersecting, IsoGridSquare.java:9853-9874), nobody but zombies (as vanilla, a car may spawn on one),
+-- no body, in no safehouse (SafeHouse.getSafeHouse: the one holding the square, whoever the player,
+-- SafeHouse.java:157-159).
+local EDGES = { "collideN", "collideW", "WallN", "WallW", "WallNW", "WallSE", "WindowN", "WindowW", "DoorWallN",
+    "DoorWallW", "doorN", "doorW", "HoppableN", "HoppableW" }
 function S.free(sq)
-    if not sq or not sq:isSolidFloor() or not sq:isOutside() or sq:isWaterSquare() then return false end
+    if not sq or not sq:isSolidFloor() or sq:isSolid() or sq:isSolidTrans() or sq:HasTree() or sq:isWaterSquare() then
+        return false
+    end
+    if not sq:getWorldObjects():isEmpty() then return false end
     local objs = sq:getObjects()
-    if objs:size() ~= 1 or objs:get(0) ~= sq:getFloor() then return false end
+    for i = 0, objs:size() - 1 do
+        if instanceof(objs:get(i), "IsoThumpable") then return false end
+    end
+    if not sq:isOutside() or sq:HasStairs() or sq:has(IsoPropertyType.GARAGE_DOOR) then return false end
+    for _, flag in ipairs(EDGES) do
+        if sq:has(IsoFlagType[flag]) then return false end
+    end
     if sq:isVehicleIntersecting() or sq:getDeadBody() ~= nil then return false end
     local mov = sq:getMovingObjects()
     for i = 0, mov:size() - 1 do
         if not instanceof(mov:get(i), "IsoZombie") then return false end
     end
     return SafeHouse.getSafeHouse(sq) == nil
-end
-
--- addVehicleDebug puts the car's centre on the square's north-west corner and turns it up to 0.2 rad off its heading
--- (LuaManager.java addVehicleDebug): the body's box widened by that turn and 0.3 (MVSC_Respawn.lua:200-208)
-function S.footprint(cx, cy, dir, len, wid)
-    local hx, hy = wid / 2, len / 2
-    if dir == "W" or dir == "E" then hx, hy = len / 2, wid / 2 end
-    local ex, ey = hx + 0.2 * hy + 0.3, hy + 0.2 * hx + 0.3
-    return math.floor(cx - ex), math.floor(cy - ey), math.floor(cx + ex), math.floor(cy + ey)
 end
 
 -- every chunk under x0..x1, y0..y1 loaded (SuperchargerSpawn.lua's loaded)
@@ -217,24 +247,30 @@ function S.naturalize(v)
     v:setRust(ZombRand(100) < 100 - math.min(q * 120, 100) and 1 or 0)
 end
 
--- the stretch the car's position may take along the lot (lo..hi), on its middle row
-local function span(z, car)
-    local alongX = z.w >= z.h
-    local lo = (alongX and z.x or z.y) + car.half
-    local hi = (alongX and z.x + z.w or z.y + z.h) - car.half
-    local mid = alongX and z.y + math.floor(z.h / 2) or z.x + math.floor(z.w / 2)
-    return alongX, lo, hi, mid, math.ceil(car.len * 0.6 + 0.3) -- the last: how far a footprint reaches from its centre
+-- the middle row across the lot, where the position goes
+local function midRow(z)
+    if z.w >= z.h then return z.y + math.floor(z.h / 2) end
+    return z.x + math.floor(z.w / 2)
 end
-local function spanBox(alongX, lo, hi, mid, r)
-    if alongX then return lo - r, mid - r, hi + r, mid + r end
-    return mid - r, lo - r, mid + r, hi + r
+-- the stretch along the lot the position may take facing dir (lo..hi; none when lo > hi), its footprint in the lot
+-- end to end (floor(p + offset) = p + floor(offset) for a whole p)
+local function span(z, car, dir)
+    local x0, y0, x1, y1 = S.footprint(0, 0, dir, car)
+    if z.w >= z.h then return z.x - x0, z.x + z.w - 1 - x1 end
+    return z.y - y0, z.y + z.h - 1 - y1
+end
+-- every square a footprint in the lot may cover: the lot's length by the footprint's width on the middle row
+local function lotBox(z, car)
+    local m, w = midRow(z), car.wid / 2 + S.MARGIN
+    if z.w >= z.h then return z.x, m + math.floor(-w), z.x + z.w - 1, m + math.floor(w) end
+    return m + math.floor(-w), z.y, m + math.floor(w), z.y + z.h - 1
 end
 
 -- every chunk the check reads loaded: the footprints, and S.NEAR past them for the cars standing there (a car in a
 -- chunk not loaded is in no list; isVehicleIntersecting itself looks 4 past, IsoGridSquare.java:9853-9874)
 function S.ready(z, car)
-    local alongX, lo, hi, mid, r = span(z, car)
-    return loaded(spanBox(alongX, lo, hi, mid, r + S.NEAR))
+    local x0, y0, x1, y1 = lotBox(z, car)
+    return loaded(x0 - S.NEAR, y0 - S.NEAR, x1 + S.NEAR, y1 + S.NEAR)
 end
 
 -- the cars whose body may reach the footprints. isVehicleIntersecting finds a car by the chunks 4 squares round the
@@ -258,14 +294,17 @@ local function carsNear(z, car, x0, y0, x1, y1)
     return out
 end
 
--- one lot whose squares are loaded: "placed", "there" (its car stands in it already) or "noroom"
+-- one lot whose squares are loaded: "placed", "there" (its car stands in it already) or "noroom". Facing a random way
+-- along the lot; the other way would add no room: its footprints are the same windows of the lot, shifted (S.footprint,
+-- the same length both ways for both cars). Nothing here asks the car just put down: isIntersectingSquare is false for
+-- all its squares within the call that made it (semiA-bcd-1); S.recent keeps its footprint for the next ones.
 function S.place(z, car, now)
-    local alongX, lo, hi, mid, r = span(z, car)
-    local cars = carsNear(z, car, spanBox(alongX, lo, hi, mid, r))
+    local cars = carsNear(z, car, lotBox(z, car))
     if not cars then
         T.log("semi spawn: the " .. car.key .. " is in the lot " .. S.lotKey(z, car) .. " already")
         return "there"
     end
+    local alongX = z.w >= z.h
     local dir = alongX and (ZombRand(2) == 0 and "E" or "W") or (ZombRand(2) == 0 and "S" or "N")
     local cell, seen = getCell(), {}
     local function free(x, y)
@@ -285,17 +324,24 @@ function S.place(z, car, now)
         end
         return not recentOverlap(x0, y0, x1, y1, now)
     end
-    local c = math.floor((lo + hi) / 2)
+    local lo, hi = span(z, car, dir)
+    local c, mid = math.floor((lo + hi) / 2), midRow(z)
     for d = 0, hi - lo do
         for _, p in ipairs(d == 0 and { c } or { c + d, c - d }) do
             if p >= lo and p <= hi then
                 local cx, cy = p, mid
                 if not alongX then cx, cy = mid, p end
-                local x0, y0, x1, y1 = S.footprint(cx, cy, dir, car.len, car.wid)
+                local x0, y0, x1, y1 = S.footprint(cx, cy, dir, car)
                 if fits(x0, y0, x1, y1) then
                     local v = addVehicleDebug(car.script, IsoDirections[dir], nil, cell:getGridSquare(cx, cy, 0))
                     -- a car it could not put down still comes back, never in the world: sqlId -1 (MVSC_Respawn.lua:316)
                     if not v or v:getSqlId() == -1 then return "noroom" end
+                    -- addVehicleDebug turns it up to 0.2 rad off the heading (LuaManager.java addVehicleDebug): squared
+                    -- here, in the same call (setAngles -> setWorldTransform, BaseVehicle.java:4083-4129; the save
+                    -- keeps that transform, :2637-2645). Measured -10.7..+7.7 degrees off -> 0.00, held 6 s and after a
+                    -- reload, read the same by a dedicated server's client (semiA-bcd-1, semiA-smp-1, semiA-sload-1).
+                    -- It does nothing when the whole degrees already match (:4115).
+                    v:setAngles(0, math.deg(IsoDirections[dir]:toAngle() + math.pi), 0)
                     S.naturalize(v)
                     S.recent[#S.recent + 1] = { x0, y0, x1, y1, now }
                     T.log("semi spawn: " .. car.key .. " at " .. cx .. "," .. cy .. " facing " .. dir .. " in the lot "

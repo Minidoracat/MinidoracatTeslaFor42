@@ -4,7 +4,7 @@ local check = H.check
 local T = MinidoracatTesla
 local saved = { getCell = getCell, SafeHouse = SafeHouse, ScriptManager = ScriptManager, addVehicleDebug = addVehicleDebug,
     IsoDirections = IsoDirections, cm = __classmetatables, IsoWorld = IsoWorld, WorldGenParams = WorldGenParams,
-    pct = SandboxVars.MinidoracatTesla.SemiSpawnChance }
+    IsoFlagType = IsoFlagType, IsoPropertyType = IsoPropertyType, pct = SandboxVars.MinidoracatTesla.SemiSpawnChance }
 -- the world generation seed string (single player: the new game screen's; a server: its ini's Seed)
 local seedString = "Kentucky1993"
 WorldGenParams = { INSTANCE = { getSeedString = function() return seedString end } }
@@ -21,7 +21,7 @@ IsoWorld = { class = "IsoWorld.class" }
 __classmetatables = { [IsoWorld.class] = { __index = methods } }
 
 -- the cars' boxes as the scripts give them (runtime: extents and centre of mass x 1.82): Semi 2.079 x 6.492 with the
--- centre of mass 0.601 behind, trailer 2.148 x 13.343 with it 2.937 ahead (len 7.695 and 19.217, half 4 and 10)
+-- centre of mass 0.601 behind, trailer 2.148 x 13.343 with it 2.937 ahead
 local function vec(x, y, z) return { x = function() return x end, y = function() return y end, z = function() return z end } end
 local DIMS = { ["Base.MinidoracatTesla_Semi"] = { 2.079, 6.492, -0.601 }, ["Base.MinidoracatTesla_SemiTrailer"] = { 2.148, 13.343, 2.937 } }
 ScriptManager = { instance = { getVehicle = function(_, name)
@@ -29,22 +29,36 @@ ScriptManager = { instance = { getVehicle = function(_, name)
     return d and { getExtents = function() return vec(d[1], 2, d[2]) end,
         getCenterOfMassOffset = function() return vec(0, 0, d[3]) end }
 end } }
-IsoDirections = { N = "N", S = "S", E = "E", W = "W" }
+-- IsoDirections.java:9-29: the angle is ordinal x 2 pi / 8 (N 0, W 2, S 4, E 6)
+local function isoDir(name, ordinal) return { name = name, toAngle = function() return ordinal * math.pi / 4 end } end
+IsoDirections = { N = isoDir("N", 0), W = isoDir("W", 2), S = isoDir("S", 4), E = isoDir("E", 6) }
+IsoFlagType = setmetatable({}, { __index = function(_, k) return k end })
+IsoPropertyType = { GARAGE_DOOR = "GarageDoor" }
 
--- the world: every square clear outdoor floor unless `mods` says otherwise ({ wall = true } an object on it,
--- { safe = true } in a safehouse, { car = true } a car over it, { zombie = true } / { player = true } someone on it);
+-- the world: every square clear outdoor floor unless `mods` says otherwise ({ solid = true }, { trans = true } a fence,
+-- { tree = true }, { stairs = true }, { flag = "WallN" } that flag or property, { thump = true } a player's build,
+-- { item = true } something dropped on it, { paint = true } / { grass = true } an object with no collision, { safe =
+-- true } in a safehouse, { car = true } a car over it, { zombie = true } / { player = true } someone on it);
 -- `unloaded` true: no chunk loaded, { x0, x1 }: none whose squares x0..x1; `others`: the cars in the cell
 local mods, squares, unloaded, others = {}, {}, false, {}
 local function square(x, y)
     local k = x .. "," .. y
     if squares[k] then return squares[k] end
     local o, floor = mods[k] or {}, { floor = true }
-    local objs = o.wall and { floor, { wall = true } } or { floor }
+    local objs = { floor }
+    if o.paint then objs[#objs + 1] = { sprite = "street_decoration_01_40" } end
+    if o.grass then objs[#objs + 1] = { sprite = "e_newgrass_1_0" } end
+    if o.thump then objs[#objs + 1] = { _class = "IsoThumpable" } end
     local mov = (o.zombie and { { _class = "IsoZombie" } }) or (o.player and { { _class = "IsoPlayer" } }) or {}
+    local items = o.item and { { _class = "IsoWorldInventoryObject" } } or {}
     local sq = { _safe = o.safe,
         getX = function() return x end, getY = function() return y end,
         isSolidFloor = function() return true end, isOutside = function() return not o.inside end,
+        isSolid = function() return o.solid == true end, isSolidTrans = function() return o.trans == true end,
+        HasTree = function() return o.tree == true end, HasStairs = function() return o.stairs == true end,
+        has = function(_, f) return f ~= nil and o.flag == f end,
         isWaterSquare = function() return false end, getObjects = function() return list(objs) end,
+        getWorldObjects = function() return { isEmpty = function() return #items == 0 end } end,
         getFloor = function() return floor end, isVehicleIntersecting = function() return o.car == true end,
         getDeadBody = function() return nil end, getMovingObjects = function() return list(mov) end }
     squares[k] = sq
@@ -90,9 +104,10 @@ addVehicleDebug = function(script, dir, skin, sq)
         getPartById = function(self, id) return id == "Engine" and script == "Base.MinidoracatTesla_Semi" and parts[1] or nil end,
         setAlarmed = function(self, a) self.alarmed = a end,
         getPartCount = function() return #parts end, getPartByIndex = function(_, i) return parts[i + 1] end,
-        setRust = function(self, r) self.rust = r end }
+        setRust = function(self, r) self.rust = r end,
+        setAngles = function(self, x, y, z) self.angles = { x, y, z } end }
     rejectNext = false
-    placed[#placed + 1] = { script = script, dir = dir, x = sq:getX(), y = sq:getY(), v = v }
+    placed[#placed + 1] = { script = script, dir = dir.name, x = sq:getX(), y = sq:getY(), v = v }
     return v
 end
 
@@ -105,7 +120,7 @@ local SEMI, TRAILER = S.CARS[1], S.CARS[2]
 H.section("semi spawn: the lots")
 check(S.installed, "the registerVehiclesZone wrap is in")
 local function zone(name, kind, x, y, z, w, h) return methods.registerVehiclesZone({}, name, kind, x, y, z, w, h, {}) end
-local z1 = zone("", "ParkingStall", 100, 100, 0, 60, 5) -- both fit, one after the other (the boxes 9 and 21 + margins)
+local z1 = zone("", "ParkingStall", 100, 100, 0, 60, 5) -- both fit, one after the other (the footprints 8 and 15 long)
 check(z1 and z1.name == "" and registered[1] == "", "the wrap runs vanilla's register and returns its zone")
 zone("parkingstall", "ParkingStall", 200, 100, 0, 5, 10)  -- Semi only, north-south: the wall lot
 zone("", "ParkingStall", 300, 100, 0, 10, 5)              -- Semi only: the safehouse lot
@@ -121,11 +136,34 @@ zone("", "ParkingStall", 1100, 100, 0, 10, 5)             -- Semi only: a long c
 zone("", "ParkingStall", 1200, 100, 0, 10, 5)             -- Semi only: placed while another waits
 zone("", "ParkingStall", 1300, 100, 0, 10, 5)             -- Semi only: the settle
 zone("", "ParkingStall", 1400, 100, 0, 10, 5)             -- Semi only: the chance turned down
-zone("", "ParkingStall", 1500, 100, 0, 19, 5)             -- 19 long: the Semi, not the trailer (20)
-check(#S.zones == 13, "parkingstall zones at z 0, no duplicate rect: " .. #S.zones)
+zone("", "ParkingStall", 1500, 100, 0, 14, 5)             -- 14 long: the Semi, not the trailer (15)
+zone("", "ParkingStall", 1600, 100, 0, 15, 5)             -- 15 long: both
+check(#S.zones == 14, "parkingstall zones at z 0, no duplicate rect: " .. #S.zones)
 H.fire("OnLoadedMapZones")
-check(SEMI.half == 4 and TRAILER.half == 10, "the bodies by the script's box and centre of mass: Semi half "
-    .. tostring(SEMI.half) .. ", trailer half " .. tostring(TRAILER.half))
+local function near(a, b) return math.abs(a - b) < 0.006 end
+check(near(SEMI.a, 2.64) and near(SEMI.b, 3.85) and near(TRAILER.a, 9.61) and near(TRAILER.b, 3.73)
+    and near(SEMI.wid, 2.079) and near(TRAILER.wid, 2.148),
+    "the bodies from the script's extents and centre of mass = the measured ones (semiA-bcd-1): Semi a " .. SEMI.a
+    .. " b " .. SEMI.b .. ", trailer a " .. TRAILER.a .. " b " .. TRAILER.b)
+-- isIntersectingSquare round the car put down squared, relative to its square (RESULTS-A.md, SP and a dedicated
+-- server's client the same): x0, y0, x1, y1
+local MEASURED = {
+    semi = { N = { -2, -3, 1, 3 }, E = { -4, -2, 2, 1 }, S = { -2, -4, 1, 2 }, W = { -3, -2, 3, 1 } },
+    trailer = { N = { -2, -10, 1, 3 }, E = { -4, -2, 9, 1 }, S = { -2, -4, 1, 9 }, W = { -10, -2, 3, 1 } },
+}
+for _, car in ipairs({ SEMI, TRAILER }) do
+    for dir, m in pairs(MEASURED[car.key]) do
+        local x0, y0, x1, y1 = S.box(car, dir)
+        local got = { math.floor(x0), math.floor(y0), math.floor(x1), math.floor(y1) }
+        local f = { S.footprint(0, 0, dir, car) }
+        check(got[1] == m[1] and got[2] == m[2] and got[3] == m[3] and got[4] == m[4]
+            and f[1] <= m[1] and f[2] <= m[2] and f[3] >= m[3] and f[4] >= m[4],
+            car.key .. " facing " .. dir .. ": the squares under the box = the measured " .. table.concat(m, ",")
+            .. " (got " .. table.concat(got, ",") .. "), the footprint with the margin round them (" .. table.concat(f, ",") .. ")")
+    end
+end
+check(SEMI.need == 8 and TRAILER.need == 15, "a lot's long side needs the footprint: Semi " .. tostring(SEMI.need)
+    .. ", trailer " .. tostring(TRAILER.need) .. " (vanilla map: 1,563 and 1,293 lots)")
 local function lotsIn(wx, wy)
     local t, l = {}, S.byChunk[wx * 100000 + wy] or {}
     for i = 1, #l, 2 do t[#t + 1] = S.CARS[l[i + 1]].key .. "@" .. S.zones[l[i]].x end
@@ -133,9 +171,10 @@ local function lotsIn(wx, wy)
 end
 check(lotsIn(12, 12) == "semi@100 trailer@100" and lotsIn(19, 13) == "semi@100 trailer@100",
     "the 60 x 5 lot: both cars, in every chunk it touches (" .. lotsIn(12, 12) .. ")")
-check(lotsIn(112, 12) == "" and lotsIn(125, 12) == "", "too short or too narrow: no lot")
+check(lotsIn(112, 12) == "" and lotsIn(125, 12) == "", "too short (7) or too narrow: no lot")
 check(lotsIn(37, 12) == "semi@300", "a 10 x 5 lot: the Semi only")
-check(lotsIn(187, 12) == "semi@1500", "19 long: the Semi only (the trailer's centred box needs 20)")
+check(lotsIn(187, 12) == "semi@1500" and lotsIn(200, 12) == "semi@1600 trailer@1600",
+    "14 long: the Semi only; 15 long: the trailer too")
 
 H.section("semi spawn: the roll")
 local seed = 12345
@@ -166,7 +205,11 @@ local done = function() return ModData.getOrCreate(S.MODDATA).done end
 
 H.section("semi spawn: placed")
 SandboxVars.MinidoracatTesla.SemiSpawnChance = 100
-setMods({})
+-- the 60 x 5 lot painted and grown over: road paint along its middle row, grass along the row past it (no collision:
+-- they block nothing, semiA-lots-2)
+local painted = {}
+for x = 96, 163 do painted[x .. ",102"] = { paint = true }; painted[x .. ",103"] = { grass = true } end
+setMods(painted)
 H.fire("LoadChunk", chunkAt(96, 96))
 H.fire("LoadChunk", chunkAt(104, 96)) -- the same lot from its next chunk: queued once
 check(queued() == 2 and H.count("EveryOneMinute") == hooks + 1, "a hit lot's chunk loads: both cars queued, one minute hook")
@@ -179,17 +222,20 @@ H.fire("EveryOneMinute")
 check(#placed == 2 and queued() == 0 and H.count("EveryOneMinute") == hooks, "both put down, the queue empty, hook removed")
 local function box(p)
     local car = p.script == SEMI.script and SEMI or TRAILER
-    return { S.footprint(p.x, p.y, p.dir, car.len, car.wid) }
+    return { S.footprint(p.x, p.y, p.dir, car) }
 end
 local a, b = box(placed[1]), box(placed[2])
 local inLot = true
 for _, f in ipairs({ a, b }) do
-    -- the box with the turn margin inside the lot's long side
+    -- the footprint with the margin inside the lot's long side
     if f[1] < 100 or f[3] > 159 then inLot = false end
 end
-check(inLot and placed[1].y == 102 and placed[2].y == 102 and (placed[1].dir == "E" or placed[1].dir == "W"),
-    "along the lot's long side, on its middle row")
+check(inLot and placed[1].y == 102 and placed[2].y == 102 and placed[1].dir == "W" and placed[2].dir == "W",
+    "along the lot's long side, on its middle row, over the paint and the grass")
 check(a[3] < b[1] or b[3] < a[1], "the second car not on the first (" .. a[1] .. "-" .. a[3] .. ", " .. b[1] .. "-" .. b[3] .. ")")
+local ang1, ang2 = placed[1].v.angles, placed[2].v.angles
+check(ang1 and ang2 and ang1[1] == 0 and math.abs(ang1[2] - 270) < 1e-9 and ang1[3] == 0 and math.abs(ang2[2] - 270) < 1e-9,
+    "squared to its heading when put down: setAngles(0, deg(W's angle + pi) = 270, 0)")
 local v = placed[1].v
 check(v.zone == "parkingstall" and v.type == "parkingstall" and v.parts[1].cond == "random" and v.parts[2].cond == "random",
     "a parked car's condition: parkingstall zone and type, each part's random condition")
@@ -209,22 +255,31 @@ local function settleTick()
     H.advanceMs(S.SETTLE_MS)
     H.fire("EveryOneMinute")
 end
--- the north-south lot 200,100 5 x 10: a wall on its middle row under every place the Semi could take
-setMods({ ["201,105"] = { wall = true }, ["202,105"] = { wall = true }, ["203,105"] = { wall = true } })
+-- the north-south lot 200,100 5 x 10: a fence on its middle row under every place the Semi could take
+setMods({ ["201,105"] = { trans = true }, ["202,105"] = { trans = true }, ["203,105"] = { trans = true } })
 H.fire("LoadChunk", chunkAt(200, 104))
 settleTick()
 check(#placed == 2 and done()[S.lotKey(S.zones[2], SEMI)] == S.RULES and H.count("EveryOneMinute") == hooks,
-    "a wall in the way: no car, the lot done")
+    "a fence in the way: no car, the lot done")
 setMods({ ["305,102"] = { safe = true } }) -- one square of the lot in a safehouse
 H.fire("LoadChunk", chunkAt(296, 96))
 settleTick()
 check(#placed == 2 and done()[S.lotKey(S.zones[3], SEMI)] == S.RULES, "one square under the body in a safehouse: no car")
 
-setMods({ ["1,1"] = { wall = true }, ["2,1"] = { car = true }, ["3,1"] = { player = true }, ["4,1"] = { inside = true },
-    ["5,1"] = { safe = true }, ["6,1"] = { zombie = true } })
-check(S.free(square(0, 1)) and not S.free(square(1, 1)) and not S.free(square(2, 1)) and not S.free(square(3, 1))
-    and not S.free(square(4, 1)) and not S.free(square(5, 1)) and S.free(square(6, 1)) and not S.free(nil),
-    "a square: clear floor yes; an object, a car, a player, indoors, a safehouse no; a zombie yes")
+setMods({ ["1,1"] = { solid = true }, ["2,1"] = { car = true }, ["3,1"] = { player = true }, ["4,1"] = { inside = true },
+    ["5,1"] = { safe = true }, ["6,1"] = { zombie = true }, ["7,1"] = { paint = true }, ["8,1"] = { grass = true },
+    ["9,1"] = { trans = true }, ["10,1"] = { tree = true }, ["11,1"] = { stairs = true }, ["12,1"] = { thump = true },
+    ["13,1"] = { item = true }, ["14,1"] = { flag = "WallN" }, ["15,1"] = { flag = "HoppableW" },
+    ["16,1"] = { flag = "GarageDoor" } })
+local function sqFree(x) return S.free(square(x, 1)) end
+check(sqFree(0) and sqFree(6) and sqFree(7) and sqFree(8) and not S.free(nil),
+    "a square: clear floor, a zombie, road paint, grass yes")
+local blocked = {}
+for x = 1, 16 do
+    if x < 6 or x > 8 then blocked[#blocked + 1] = sqFree(x) and x or nil end
+end
+check(#blocked == 0, "a square: solid, a car, a player, indoors, a safehouse, a fence, a tree, stairs, a player's build, "
+    .. "an item on it, a wall edge, a hoppable edge, a garage door no (free: " .. table.concat(blocked, ",") .. ")")
 
 H.section("semi spawn: waits for its squares")
 setMods({ ["405,102"] = { zombie = true } })
@@ -240,7 +295,7 @@ check(queued() == 0 and done()[S.lotKey(S.zones[4], SEMI)] == nil and H.count("E
 unloaded = false
 H.fire("LoadChunk", chunkAt(400, 96))
 settleTick()
-check(#placed == 3 and placed[3].x == 405, "loaded next time: put down (a zombie does not block, as vanilla)")
+check(#placed == 3 and placed[3].x == 404, "loaded next time: put down over the zombie at 405 (it does not block, as vanilla)")
 
 H.section("semi spawn: refused")
 rejectNext = true
@@ -303,7 +358,7 @@ settleTick()
 check(#placed == 7 and placed[7].x >= 1400 and done()[kC] == S.RULES, "turned back up: its next load puts it down")
 
 H.section("semi spawn: its car already in the lot (G1)")
--- the Semi's lot 1500,100 19 x 5: a Semi standing just north of it (not in the lot, not over it) is no record
+-- the Semi's lot 1500,100 14 x 5: a Semi standing just north of it (not in the lot, not over it) is no record
 local k15 = S.lotKey(S.zones[13], SEMI)
 others = { otherCar(1509, 94, 1509, 94, 1509, 94, SEMI.script) }
 H.fire("LoadChunk", chunkAt(1496, 96))
@@ -342,4 +397,5 @@ setMods({})
 getCell, SafeHouse, ScriptManager, addVehicleDebug, IsoDirections, __classmetatables, IsoWorld, WorldGenParams =
     saved.getCell, saved.SafeHouse, saved.ScriptManager, saved.addVehicleDebug, saved.IsoDirections, saved.cm, saved.IsoWorld,
     saved.WorldGenParams
+IsoFlagType, IsoPropertyType = saved.IsoFlagType, saved.IsoPropertyType
 SandboxVars.MinidoracatTesla.SemiSpawnChance = saved.pct
