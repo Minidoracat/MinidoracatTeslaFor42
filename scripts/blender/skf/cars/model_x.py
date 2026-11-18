@@ -147,8 +147,8 @@ CAR = dict(
     # the doors', lids' edge strips under the belt in the paint next to them, over it black (convert.py pieces: the
     # belt in the pieces' pre-centre frame; the centred one made every strip the liner's)
     SLAB_BELT_PRE=True,
-    # (convert.py slab_seam_dark) the window channel's inner lip and the seams by the glass dark again (6 cm, rims too)
-    SLAB_SEAM_DARK=(0.0015, 0.05, True),
+    # (convert.py slab_shut_seen) the edge strips the camera sees shut keep the liner's colour, as published
+    SLAB_SHUT_SEEN=True,
     # (convert.py pieces) the hinge 3 cm under the tailgate's top edge: the roof's crown put the front edge's sides 2-4
     # cm under a hinge at its top, so open they swung back and up off the roof: from the front, over the roof, the
     # ground showed through under the raised gate (game SE 751 px, b9fe78a 156; 0.01 / 0.02 / 0.03: 294 / 63 / 1)

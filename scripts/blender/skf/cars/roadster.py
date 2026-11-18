@@ -173,8 +173,8 @@ CAR = dict(
     # the doors', lids' edge strips under the belt in the paint next to them, over it black (convert.py pieces: the
     # belt in the pieces' pre-centre frame; the centred one made every strip the liner's)
     SLAB_BELT_PRE=True,
-    # (convert.py slab_seam_dark) the window channel's inner lip and the seams by the glass dark again (6 cm, rims too)
-    SLAB_SEAM_DARK=(0.0015, 0.05, True),
+    # (convert.py slab_shut_seen) the edge strips the camera sees shut keep the liner's colour, as published
+    SLAB_SHUT_SEEN=True,
     # the soft top's strips (convert.py soft_strips / stow_pose): n strips (prep_roadster.py SOFT); after the top's
     # centre line their front edges follow this path (y, z): a little up over the roll hoop (the strips' sides hang
     # 0.11 under their middle, clear of its sails and the rear window), down behind it through the deck, on down

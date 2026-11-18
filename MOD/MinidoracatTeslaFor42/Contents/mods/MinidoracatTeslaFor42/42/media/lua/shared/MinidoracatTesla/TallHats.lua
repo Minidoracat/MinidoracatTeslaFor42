@@ -2,13 +2,13 @@
 -- vanilla ClothingItems that leave the roof by more than 10 mm. HatHide.lua hides them there.
 -- The inputs it was measured on (scripts/tall_hats.py; verify_local fails when one changes):
 -- input tool 41272eeec61d57a5
--- input ModelY f49bfa9f86cafe9b
--- input Model3 7ae246438be41ae3
--- input ModelS 1e44e115a84bf928
--- input ModelX 4be4fc4626198d71
--- input Cybertruck 7b4ff6c2b16acc8e
--- input ModelYL 07ab68b22ec1c396
--- input Roadster 3d19185861410b64
+-- input ModelY 0158ba8018b19056
+-- input Model3 d9d84cfe23df21a9
+-- input ModelS 873cbdf26ce6a347
+-- input ModelX 5738390b8a4d65bd
+-- input Cybertruck 3e15e6bac4b8f030
+-- input ModelYL 66dfc218b38bb303
+-- input Roadster a2b24a9d20973663
 -- input Cybercab bc7b54ef889cfc32
 -- input Semi c6a180e60d762f41
 MinidoracatTesla = MinidoracatTesla or {}

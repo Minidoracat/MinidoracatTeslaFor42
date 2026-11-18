@@ -114,8 +114,8 @@ CAR = dict(
     # the doors', lids' edge strips under the belt in the paint next to them, over it black (convert.py pieces: the
     # belt in the pieces' pre-centre frame; the centred one made every strip the liner's)
     SLAB_BELT_PRE=True,
-    # (convert.py slab_seam_dark) the window channel's inner lip and the seams by the glass dark again (6 cm, rims too)
-    SLAB_SEAM_DARK=(0.0015, 0.05, True),
+    # (convert.py slab_shut_seen) the edge strips the camera sees shut keep the liner's colour, as published
+    SLAB_SHUT_SEEN=True,
     # ---- convert.py: the source (TMP/src, gitignored; temp/sketchfab-model3-perf/src in the main checkout)
     SRC=("src", "source", "model_3.obj"),  # prep_model_3.py's output from 2024_tesla_model_3.glb (run it first)
     SRC_C=(-5.2665, -9.9305),              # source bbox centre, x (length) and y (width), source units
