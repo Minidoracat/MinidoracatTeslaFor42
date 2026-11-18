@@ -443,11 +443,12 @@ CAR = dict(
     # 05's label 4; 2.8 x the screen's width, 05), under it the body's dark lower edge; the ledge the big screen
     # (screen_size, 1.54:1, top 12 deg forward) stands on, no stand, its back dark (rear: 05 / ERG p.9 x99), the window
     # switches on the ledge under it (the detail model's marks: icons); vent: the detail model's groove in the lower
-    # edge. Its ends 4 cm inside the door cards (x 0.64 at its height)
+    # edge. Its ends 4 cm inside the door cards (x 0.64 at its height); dash_up's end faces dark (dash_top's cell: lit
+    # silver they read as a white bar in the open front door, Steam 38)
     DASH=dict(size=(1.18, 0.30, 0.16), console=None, dash=(0, _cf(0.80), 0.030), stand=None,
               screen=(0, _cf(0.597), 0.0455), screen_size=(0.42, 0.272), rear="screen_rear", wheel=None, vent=-0.022,
               parts=(((1.20, 0.075, 0.034), 0.015, "dash_top", (0, _cf(0.6625), 0.093)),
-                     ((1.19, 0.016, 0.070), 0.006, "dash_up", (0, _cf(0.645), 0.040)),
+                     ((1.19, 0.016, 0.070), 0.006, ("dash_up", "dash_top"), (0, _cf(0.645), 0.040)),
                      ((1.176, 0.008, 0.008), 0.002, "strip", (0, _cf(0.6355), 0.047)),
                      ((0.24, 0.105, 0.030), 0.010, "dash", (0, _cf(0.6075), -0.103)),
                      ((0.10, 0.008, 0.014), 0.003, "switch", (0, _cf(0.5545), -0.097))),

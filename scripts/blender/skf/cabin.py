@@ -385,6 +385,10 @@ def furniture(add, opening, grow=0.0, fine=1, between=None):
             u = np.clip((np.abs(x) - w0) / (1 - w0), 0, 1)
             v[:, 1] += b * u * u * (3 - 2 * u)
         cells = c
+        # c = (cell, its ends' cell): faces turned over 0.3 to +-x (the ends and their rounded corners) take the second
+        if isinstance(c, tuple):    # (Cybercab dash_up)
+            n = np.array([np.cross(v[fc[1]] - v[fc[0]], v[fc[2]] - v[fc[0]]) for fc in f])
+            cells = c = [c[1] if abs(k) > 0.3 else c[0] for k in n[:, 0] / np.linalg.norm(n, axis=1)]
         if grow and seams:
             v, f, cells = seam_strips(v, f, c, size, *seams)
         v += at
