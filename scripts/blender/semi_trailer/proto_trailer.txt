@@ -1,0 +1,170 @@
+/* Not a game file. The 53 ft trailer as measured in the block prototype (branch proto/semi-1117 926dec8a,
+   MTSemiProto.txt, vehicle MTSemiProtoTrailerT3): build.py check_physics compares the generated script's
+   physics lines with these. Change it only with new in-game measurements. */
+    vehicle MTSemiProtoTrailerT3
+    {
+        /* stage-1 box prototype: 53 ft dry van; vanilla Trailer's numbers, 4 physics wheels */
+        neverSpawnKey = true,
+        mechanicType = 1,
+        offRoadEfficiency = 0.8,
+        engineRepairLevel = 4,
+        playerDamageProtection = 0.8,
+        model
+        {
+            file = MTSemiProto_Trailer,
+            scale = 1.82,
+            offset = 0.0000 -0.4538 1.6140,
+        }
+        skin
+        {
+            texture = Vehicles/MTSemiProto_shell,
+        }
+        textureMask = Vehicles/MTSemiProto_mask,
+        textureLights = Vehicles/MTSemiProto_lights,
+        textureDamage1Overlay = Vehicles/Veh_Blood_Mask,
+        textureDamage2Overlay = Vehicles/Veh_Blood_Hvy,
+        textureDamage1Shell = Vehicles/Veh_Damage1,
+        textureDamage2Shell = Vehicles/Veh_Damage2,
+        textureRust = Vehicles/Veh_Rust,
+        extents = 1.1800 1.8676 7.3314,
+        physicsChassisShape = 1.1800 1.8676 7.3314,
+        centerOfMassOffset = 0.0000 0.4799 1.6140,
+        shadowExtents = 1.1800 7.3314,
+        shadowOffset = 0.0000 1.6140,
+        mass = 400,
+        engineForce = 3600,
+        engineQuality = 60,
+        engineLoudness = 55,
+        maxSpeed = 105.0,
+        brakingForce = 1,
+        stoppingMovementForce = 2.0,
+        rollInfluence = 0.3,
+        steeringIncrement = 0.03,
+        steeringClamp = 0.3,
+        suspensionStiffness = 40.0,
+        suspensionCompression = 3.83,
+        suspensionDamping = 4.88,
+        maxSuspensionTravelCm = 10.0,
+        suspensionRestLength = 0.2,
+        wheelFriction = 4.0,
+        frontEndHealth = 150,
+        rearEndHealth = 150,
+        seats = 2,
+        template = Trunk/part/TrailerTrunk,
+        template = Tire,
+        template = Brake,
+        template = Suspension,
+        useChassisPhysicsCollision = false,
+        physics box
+        {
+            offset = 0.0000 0.7636 1.6140,
+            extents = 1.1800 1.3003 7.3314,
+        }
+        physics box
+        {
+            offset = 0.4085 -0.1362 3.8274,
+            extents = 0.1135 0.4992 0.1362,
+        }
+        physics box
+        {
+            offset = -0.4085 -0.1362 3.8274,
+            extents = 0.1135 0.4992 0.1362,
+        }
+        wheel FrontLeft
+        {
+            front = true,
+            offset = 0.4198 0.1619 -1.9937,
+            radius = 0.2141,
+            width = 0.2230,
+        }
+        wheel FrontRight
+        {
+            front = true,
+            offset = -0.4198 0.1619 -1.9937,
+            radius = 0.2141,
+            width = 0.2230,
+        }
+        wheel RearLeft
+        {
+            front = false,
+            offset = 0.4198 0.1619 -2.5611,
+            radius = 0.2141,
+            width = 0.2230,
+        }
+        wheel RearRight
+        {
+            front = false,
+            offset = -0.4198 0.1619 -2.5611,
+            radius = 0.2141,
+            width = 0.2230,
+        }
+        area TruckBed
+        {
+            xywh = 0.0000 -2.2880 1.1800 0.4725,
+        }
+        area TireFrontLeft
+        {
+            xywh = 0.8263 -0.3797 0.4725 0.4725,
+        }
+        area TireFrontRight
+        {
+            xywh = -0.8263 -0.3797 0.4725 0.4725,
+        }
+        area TireRearLeft
+        {
+            xywh = 0.8263 -0.9470 0.4725 0.4725,
+        }
+        area TireRearRight
+        {
+            xywh = -0.8263 -0.9470 0.4725 0.4725,
+        }
+        part Tire*
+        {
+            model InflatedTirePlusWheel
+            {
+                file = MTSemiProto_Dual,
+            }
+        }
+        attachment trailer
+        {
+            offset = 0.0000 0.5401 3.2509,
+            rotate = 0.0 0.0 0.0,
+            canAttach = trailer,
+        }
+        attachment mtsemi_kingpin
+        {
+            offset = 0.0000 0.5401 3.2509,
+            rotate = 0.0 0.0 0.0,
+            canAttach = mtsemi_fifthwheel,
+        }
+        attachment mtsemi_legL
+        {
+            offset = 0.4085 0.0681 2.2134,
+            rotate = 0.0 0.0 0.0,
+        }
+        attachment mtsemi_legR
+        {
+            offset = -0.4085 0.0681 2.2134,
+            rotate = 0.0 0.0 0.0,
+        }
+        attachment mtsemi_c_fl
+        {
+            offset = 0.5900 0.0000 3.6657,
+            rotate = 0.0 0.0 0.0,
+        }
+        attachment mtsemi_c_fr
+        {
+            offset = -0.5900 0.0000 3.6657,
+            rotate = 0.0 0.0 0.0,
+        }
+        attachment mtsemi_c_rl
+        {
+            offset = 0.5900 0.0000 -3.6657,
+            rotate = 0.0 0.0 0.0,
+        }
+        attachment mtsemi_c_rr
+        {
+            offset = -0.5900 0.0000 -3.6657,
+            rotate = 0.0 0.0 0.0,
+        }
+    }

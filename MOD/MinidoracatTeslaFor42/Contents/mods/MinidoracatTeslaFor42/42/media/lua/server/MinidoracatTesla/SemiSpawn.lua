@@ -228,8 +228,10 @@ end
 -- addVehicleDebug makes it as good as new (parts setGeneralPartCondition(1.3, 10), rust 0). As VehicleSpawnControl's
 -- R.naturalize (MVSC_Respawn.lua:258-280): the parkingstall zone and type, each part's setRandomCondition by them
 -- (VehiclePart.java setRandomCondition), rust by the zone's baseVehicleQuality, the alarm by sandbox CarAlarm as
--- AddVehicles_OnZone (:1008-1031; a trailer has no engine to sound it). Not its re-run of the part creates: ours ran in
--- addToWorld already (the charge, the paint, the Mobile Connector and phone, Battery.lua) and would add the gifts twice.
+-- AddVehicles_OnZone (:1008-1031; a trailer has no engine to sound it) and only on a locked car, as vanilla's door
+-- create leaves it (Vehicles.lua:158-170: an unlocked car loses its alarm, or its first door pull would sound it).
+-- Not its re-run of the part creates: ours ran in addToWorld already (the charge, the paint, the Mobile Connector and
+-- phone, Battery.lua) and would add the gifts twice.
 -- The key: the engine rolls it in addToWorld (MVSC_Respawn.lua:262). Tyres full (user 2026-11-18): the vanilla tyre
 -- create leaves them at 67-100% (Vehicles.lua Create.Tire).
 function S.naturalize(v)
@@ -237,7 +239,8 @@ function S.naturalize(v)
     v:setVehicleType("parkingstall")
     local def = VehicleZoneDistribution and VehicleZoneDistribution.parkingstall
     local q = def and tonumber(def.baseVehicleQuality) or 0.7
-    if v:getPartById("Engine") then
+    local door = v:getPartById("DoorFrontLeft")
+    if v:getPartById("Engine") and door and door:getDoor() and door:getDoor():isLocked() then
         local alarm = ({ -1, 3, 8, 15, 25, 50 })[SandboxVars.CarAlarm or 4] or 15
         if ZombRand(100) < alarm then v:setAlarmed(true) end
     end

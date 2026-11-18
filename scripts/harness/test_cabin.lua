@@ -185,12 +185,12 @@ for car, g in pairs(geos) do
 end
 
 -- the four templates (MinidoracatTesla_template.txt): Cab has every shared part block, the front doors, seats and side
--- windows, and no trunk lid, trunk, glove box or frunk (Semi); CoreNoFrunk is the 21 template lines, then part
--- TrunkDoor, then template! = Cab and nothing else (Cybercab); Core is CoreNoFrunk's template lines, then part Frunk,
--- then template! = CoreNoFrunk and nothing else; Base is Core's template lines up to its last pair of front doors, each
--- front pair followed by its rear pair, then template! = Core and nothing else. Each keeps the single template's part
--- order (scripts/vehicle_parts.py --against <rev>: the frunk right after the template parts, the rear three pairs
--- among them)
+-- windows, and no trunk lid, trunk, glove box, frunk or rear windshield (Semi); CoreNoFrunk is the 21 template lines,
+-- then part TrunkDoor and part WindshieldRear (Cab's blocks do not reach these two), then template! = Cab and nothing
+-- else (Cybercab); Core is CoreNoFrunk's template lines, then part Frunk, then template! = CoreNoFrunk and nothing
+-- else; Base is Core's template lines up to its last pair of front doors, each front pair followed by its rear pair,
+-- then template! = Core and nothing else. Each keeps the single template's part order (scripts/vehicle_parts.py
+-- --against <rev>: the frunk right after the template parts, the rear three pairs among them)
 local function tlines(block)
     local t = {}
     for ln in block:gmatch("\n        (template!? = [^\n]+),") do t[#t + 1] = ln end
@@ -211,12 +211,15 @@ check(#nl == 22 and table.concat(cl, "\n") == table.concat(nh, "\n") .. "\ntempl
     and only(core, "Frunk") and fr > lastTpl and lastTpl > 0 and fr < at(core, "template! = ")
     and nh[21] == "template = Headlight",
     "template Core: CoreNoFrunk's 21 template lines, then part Frunk, then template! = CoreNoFrunk, nothing else")
-check(nl[22] == "template! = MinidoracatTeslaCab" and only(nf, "TrunkDoor") and at(nf, "\n        part TrunkDoor") > at(nf, "template = Headlight,")
+local nfRest = nf:gsub("\n        part WindshieldRear%s*%b{}", "")
+check(nl[22] == "template! = MinidoracatTeslaCab" and only(nfRest, "TrunkDoor") and at(nf, "\n        part TrunkDoor") > at(nf, "template = Headlight,")
+    and at(nf, "\n        part WindshieldRear") > at(nf, "template = Headlight,") and at(nf, "\n        part WindshieldRear") < at(nf, "template! = ")
     and nh[1] == "template = TrunkDoor" and nh[2] == "template = Trunk/part/TruckBed" and nh[5] == "template = GloveBox",
-    "template CoreNoFrunk: the 21 template lines, then part TrunkDoor, then template! = Cab, nothing else")
+    "template CoreNoFrunk: the 21 template lines, then part TrunkDoor and part WindshieldRear, then template! = Cab, nothing else")
 check(not cab:find("Frunk", 1, true) and not cab:find("TrunkDoor", 1, true) and not cab:find("TruckBed", 1, true)
-    and not cab:find("GloveBox", 1, true) and cab:find("part GasTank", 1, true) ~= nil and cab:find("part CabinDetail", 1, true) ~= nil,
-    "template Cab: every shared part block, no trunk lid, trunk, glove box or frunk")
+    and not cab:find("GloveBox", 1, true) and not cab:find("WindshieldRear", 1, true) and not semi:find("WindshieldRear", 1, true)
+    and cab:find("part GasTank", 1, true) ~= nil and cab:find("part CabinDetail", 1, true) ~= nil,
+    "template Cab: every shared part block, no trunk lid, trunk, glove box, frunk or rear windshield (nor the Semi's own script)")
 for _, ln in ipairs(cl) do
     want[#want + 1] = ln
     local pre = ln:match("^(template = %w+/part/%w+)FrontRight$")

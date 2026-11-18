@@ -201,7 +201,7 @@ https://steamcommunity.com/sharedfiles/filedetails/?id=3829501237
 [h3]Hitching and unhitching the trailer[/h3]
 {{img:semi-hitch-en.jpg}}
 [list]
-[*] [b]Semi only[/b]: the 53 ft trailer only hitches to a Semi, and the Semi cannot tow vanilla trailers.
+[*] [b]Semi only[/b]: the 53 ft trailer only hitches to a Semi. The Semi cannot tow vanilla trailers or other vehicles, and no other vehicle can tow it.
 [*] [b]From outside[/b]: back the Semi up to the trailer with the fifth wheel lined up under the trailer's front, stand beside the fifth wheel behind the cab and press V, then pick Attach … to … in the radial; your character walks over and hitches it.
 [*] [b]From the driver's seat[/b]: when the truck is at a standstill, the driver's V radial menu has hitch and unhitch too; they do not show while moving.
 [*] [b]Unhitching[/b]: from beside the fifth wheel or the driver's seat, pick Detach … in the radial.
@@ -255,7 +255,7 @@ https://steamcommunity.com/sharedfiles/filedetails/?id=3829501237
 [*] [b]Low Voltage Battery[/b]: the main battery tops it up while it holds 5% or more, so a car parked for a long time still starts.
 [*] [b]Power in the car[/b]: climate, Bioweapon Defense Mode, Camp Mode and Sentry Mode use the main battery too; plugged into a powered charger, the charger supplies them instead, and on generator power that burns the generator's fuel.
 [*] [b]Towing uses more[/b]: towing a trailer or another car, driving uses more charge for the weight behind you: about 1.5 times with a small trailer, about 3 times with an ordinary car (3 times at most), about 1.7 times for a Semi with an empty 53 ft trailer, more with cargo in the trailer; standing still uses the same as before. The range on the dashboard and in the app drops to match, and you cannot Summon while towing.
-[*] [b]Multiplayer speed limit[/b]: the server setting SpeedLimit defaults to 70 km/h; neither vanilla cars nor Teslas go faster. A Semi with an empty trailer topped out at about 66 km/h in testing.
+[*] [b]Multiplayer speed limit[/b]: the server setting SpeedLimit defaults to 70 km/h; neither vanilla cars nor Teslas go faster. A Semi with an empty trailer tops out at about 65 km/h.
 [/list]
 === 🧰 Charging: the Wall Connector, the Mobile Connector and the cable
 {{img:02-cable-en.jpg}}

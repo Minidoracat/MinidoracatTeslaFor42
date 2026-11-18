@@ -22,8 +22,7 @@ REPO = os.path.abspath(os.path.join(HERE, "..", "..", ".."))
 MEDIA = os.path.join(REPO, "MOD/MinidoracatTeslaFor42/Contents/mods/MinidoracatTeslaFor42/42/media")
 VEH_DIR = os.path.join(MEDIA, "models_X", "vehicles")
 TEX_DIR = os.path.join(MEDIA, "textures", "Vehicles")
-PROTO = os.path.join(REPO, "..", "wt-semi-proto", "MOD/MinidoracatTeslaFor42/Contents/mods/MinidoracatTeslaFor42/42/media",
-                     "scripts", "vehicles", "MTSemiProto.txt")
+PROTO = os.path.join(HERE, "proto_trailer.txt")  # the prototype's measured trailer block, copied in (its header)
 NAME = "MinidoracatTesla_SemiTrailer"
 K, S, LIFT = 0.826, 1.82, 0.11
 
@@ -616,9 +615,6 @@ def check_physics(lines):
     `attachment trailer`, the prototype's measuring points and the cargo part (the prototype's is vanilla's
     TrailerTrunk template; ours has its own id and the user's capacity. The cargo's weight is the load's, no script
     field). Prints the table; fails on any other difference."""
-    if not os.path.exists(PROTO):
-        print("PHYSICS proto script not found, skipped:", PROTO)
-        return
     t = open(PROTO, encoding="utf-8").read().split("\n")
     a = t.index("    vehicle MTSemiProtoTrailerT3")
     proto = t[a:t.index("    }", a) + 1]

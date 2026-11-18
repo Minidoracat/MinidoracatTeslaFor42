@@ -391,9 +391,9 @@ end
 -- (VehicleCommands.lua:330-341). The menu swaps A and B by hitch (:506-516): look at both. A Semi hooking its trailer
 -- is the same tow. Legit (the owner, a key, VehicleManager's PASSENGER) takes the car away: disarm,
 -- always. A stranger's tow alerts once per car per S.towHours(), whatever it is hooked to: vanilla unhooks and hooks
--- again on every send (BaseVehicle.java:10047-10062) and the "vehicle" module skips CmdRate, so attach / detach in a
--- loop must not flood the owner, and a link broken elsewhere (a third car's attach, a hitch mismatch :10059-10067, a
--- spontaneous detach) leaves nothing to clear. The window is vanilla's own alarm length: it rings until
+-- again on every send (BaseVehicle.java:10108-10109) and the "vehicle" module skips CmdRate, so attach / detach in a
+-- loop must not flood the owner, and a link broken elsewhere (a third car's attach, no hitch point :10113-10115,
+-- a spontaneous detach) leaves nothing to clear. The window is vanilla's own alarm length: it rings until
 -- startTime + 0.66 x getDeltaMinutesPerDay() world hours (VehicleAlarm.java:85; GameTime.java:433-435), about 13 game
 -- minutes at the default 90-minute day; past it the car is quiet again and a new tow rings again.
 function S.towHours() return 0.66 * getGameTime():getDeltaMinutesPerDay() end

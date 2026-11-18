@@ -91,7 +91,7 @@ end
 SafeHouse = { getSafeHouse = function(sq) return sq._safe and {} or nil end }
 
 -- addVehicleDebug: placed[i] = { script, dir, x, y, v }; rejectNext: the engine refuses the next one (sqlId -1)
-local placed, rejectNext = {}, false
+local placed, rejectNext, doorLocked = {}, false, false
 local function part(wheel)
     return { cond = nil, amount = 20, getInventoryItem = function() return {} end,
         setRandomCondition = function(self) self.cond = "random" end,
@@ -103,7 +103,11 @@ addVehicleDebug = function(script, dir, skin, sq)
     local v = { script = script, sqlId = rejectNext and -1 or 1, parts = parts,
         getSqlId = function(self) return self.sqlId end,
         setZone = function(self, z) self.zone = z end, setVehicleType = function(self, t) self.type = t end,
-        getPartById = function(self, id) return id == "Engine" and script == "Base.MinidoracatTesla_Semi" and parts[1] or nil end,
+        getPartById = function(self, id)
+            if script ~= "Base.MinidoracatTesla_Semi" then return nil end
+            if id == "Engine" then return parts[1] end
+            if id == "DoorFrontLeft" then return { getDoor = function() return { isLocked = function() return doorLocked end } end } end
+        end,
         setAlarmed = function(self, a) self.alarmed = a end,
         getPartCount = function() return #parts end, getPartByIndex = function(_, i) return parts[i + 1] end,
         setRust = function(self, r) self.rust = r end,
@@ -248,6 +252,19 @@ check(v.zone == "parkingstall" and v.type == "parkingstall" and v.parts[1].cond 
     "a parked car's condition: parkingstall zone and type, each part's random condition")
 check(v.parts[2].amount == 35 and v.parts[3].amount == 35 and v.parts[1].amount == 20 and v.rust == 0,
     "tyres full, other parts untouched, rust by the zone quality")
+-- the alarm (rand 0 = the sandbox chance hits): vanilla's door create takes it off an unlocked car (Vehicles.lua:158-170)
+local function alarmOf(script, locked)
+    doorLocked = locked
+    local c = addVehicleDebug(script, { name = "W" }, nil, { getX = function() return 0 end, getY = function() return 0 end })
+    placed[#placed] = nil
+    H.setRand(0)
+    S.naturalize(c)
+    H.setRand(0.5)
+    doorLocked = false
+    return c.alarmed
+end
+check(alarmOf(SEMI.script, true) == true and alarmOf(SEMI.script, false) == nil and alarmOf(TRAILER.script, true) == nil,
+    "the alarm: a locked Semi can have one; an unlocked one never (its first door pull would sound it), nor a trailer")
 local k1 = S.lotKey(S.zones[1], SEMI)
 check(done()[k1] == S.RULES and done()[S.lotKey(S.zones[1], TRAILER)] == S.RULES, "both lots done with the rules' version")
 
