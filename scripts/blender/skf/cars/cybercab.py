@@ -482,6 +482,9 @@ CAR = dict(
     # the one under the window's belt took the paint and ran 2-3 cm in past the glass foot, a light line through the
     # glass from the front three-quarters (cc10a-3778b4a strip-E / strip-S; convert.py slab_seam_dark)
     SLAB_SEAM_DARK=(0.0015, round(0.06 * K, 4)),
+    # the door seams' whole V groove on the body: the door half went out with the open door as a dashed black line
+    # past its edge strips (p09 P4; convert.py pieces)
+    DOOR_GROOVE_BODY=True,
     # the headliner, the pillars and the roof rails inside light grey (rider guide 05; the body's reversed faces over
     # the belt, ahead of the trunk)
     LINER_UP=dict(cell="bed_rib", dz=0.0, y=_cr(-0.60)),

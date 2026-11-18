@@ -3207,6 +3207,31 @@ def pieces(car, c, shift):
     tf = np.repeat(np.arange(len(me.polygons)), [p.loop_total - 2 for p in me.polygons])
     part, glass, mirror = c["part"][tf], c["glass"][tf], c["mirror"][tf]
     panel = (c["paint"] | c["carbon"])[tf]                # body panels, whatever their colour (CARBON's are black)
+    part0 = part                                          # (slab_seam_dark: a door's strips along its grooves stay seams)
+    if C.get("DOOR_GROOVE_BODY"):   # (Cybercab) a door seam's whole V groove (prep grooves()) on the body: its door half
+        # (Trim on the door's panel) went out with the open door past its edge strips, a 2.5 mm dark lip drawn as a
+        # dashed line. Its faces: a door's Trim faces with every corner within 4 mm of the seam (the V's bottom, the
+        # door Trim edges shared with the body's Trim): the cut 2.5 mm out, 2 mm up, measured up to 3.8 mm; the door's
+        # other trim (belt, mirror base) from 4.1 mm. Here, not in classify: there the UVs repacked and the textures
+        # moved; in prep the panel change re-held the Trim's seams in the decimation and moved every vertex
+        part = part.copy()
+        P, pk = np.unique(np.round(V, 6), axis=0, return_inverse=True)
+        pk = pk.ravel()[T]
+        trim = c["obj"][tf] == "Trim"
+        on_body = np.zeros(len(P), bool)
+        on_body[pk[trim & (part == 0)]] = True
+        for d in ("DoorFrontLeft", "DoorFrontRight"):
+            door = trim & (part == PARTS.index(d))
+            e = pk[door][:, [0, 1, 1, 2, 2, 0]].reshape(-1, 2)
+            a, b = P[e[on_body[e].all(1)]].transpose(1, 0, 2)
+            vs = np.unique(pk[door])
+            q, ab = P[vs][:, None] - a, b - a
+            s = np.clip((q * ab).sum(2) / np.maximum((ab * ab).sum(1), 1e-18), 0, 1)
+            near = np.zeros(len(P), bool)
+            near[vs] = np.linalg.norm(q - s[..., None] * ab, axis=2).min(1) < 0.004 * K
+            g = door & near[pk].all(1)
+            part[g] = 0
+            print(f"DOOR_GROOVE_BODY {d}: {int(g.sum())} of {int(door.sum())} trim tris, seam {len(a)} edges")
     # SHELL_OBJS (Model Y L's Blade_YL): closed solids riding a door, outer faces only like the mirror cap (a slab's
     # inner copy of a face along the door's offset lay in that face's plane: dark depth fight on the spoiler's ends)
     shell = np.isin(c["obj"][tf], C.get("SHELL_OBJS", ()))
@@ -3326,7 +3351,7 @@ def pieces(car, c, shift):
             P, t, a, _ = pv.slab(V, T, A, skin, off, cab_attr("dash"), BELT_Z - (0 if C.get("SLAB_BELT_PRE") else shift[2]),
                                  outer_extra=sel & ~skin, by_pos=bool(C.get("SPLIT_COLOURS")))
             if sd and C.get("SLAB_SEAM_DARK"):
-                a = slab_seam_dark(V, T[skin], T[sel], a, cab_attr("dash"), gb, *C["SLAB_SEAM_DARK"])
+                a = slab_seam_dark(V, T[skin], T[part0 == k], a, cab_attr("dash"), gb, *C["SLAB_SEAM_DARK"])
             if sd and C.get("DOOR_INNER"):  # (Cybercab: rider guide pp.7 / 11, ERG p.19) the inner panel's cell (cell);
                 di = C["DOOR_INNER"]         # optional upper = (cell, dz): over the belt + dz that cell, cut on that line
                 n0 = int((sel & ~skin).sum() + skin.sum())
