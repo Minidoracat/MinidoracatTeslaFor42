@@ -1321,6 +1321,7 @@ def inside(bvh, p):
 
 
 S = 1.82              # vehicle scale (R5 3), model script scale = 1/S
+SURROUND_STEP = 0.6   # world (= mesh) units between zombies' stands along a car's side (SurroundVehicle.java:70-90)
 
 
 def f4(*v):
@@ -1460,8 +1461,16 @@ def geometry(body, zmid, wl, r, tire_w, belt_z, doors_y, port_yz, extra_areas=()
                 f"                area = Seat{oa},", "            }", "        }"]
     areas = [("Engine", 0, ext[2] / 2 + ah / 2, ext[0], ah), ("TruckBed", 0, -(ext[2] / 2 + ah / 2), ext[0], ah),
              ("GasTank", sx, port[2], aw, ah)]
+    # a seat off its door (SEAT at) behind the door's rear edge (Semi's folding seat): its area's rear edge one stand
+    # spacing behind the seat. A zombie hits a seat's window only standing in that seat's area, else its own area's door /
+    # bodywork part, else nothing (AttackVehicleState.java:123-178), and reaches the passenger only there
+    # (isPassengerExposed :203-237); its stands are 0.155 out of the sides every 0.6 along them (SurroundVehicle.java:
+    # 47-93; world = mesh units). So every stand within 0.6 of the seat is in the area, whatever the stands' phase.
+    # The area's centre is also where that seat gets in and out (position outside area, BaseVehicle.java:2111-2130,
+    # 6643-6656)
     for nm, side, z, door in seats:
-        areas.append(("Seat" + nm, side * sx, ((door[0] + door[1]) / 2) / S, aw, (door[0] - door[1]) / S))
+        back = min(door[1], z + at[nm][1] - SURROUND_STEP) if nm in at else door[1]
+        areas.append(("Seat" + nm, side * sx, ((door[0] + back) / 2) / S, aw, (door[0] - back) / S))
     for nm, yc_, ln_ in extra_areas:           # across the body and both standing strips (a pickup's bed sides)
         areas.append((nm, 0, yc_ / S, ext[0] + 2 * aw, ln_ / S))
     if ph:      # areas from the centre of mass: Engine / TruckBed off the chassis box, the rest off the mesh centre

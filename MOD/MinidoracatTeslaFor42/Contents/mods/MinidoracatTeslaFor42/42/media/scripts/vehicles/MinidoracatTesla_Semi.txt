@@ -169,7 +169,7 @@ module Base
         }
         area SeatFrontRight
         {
-            xywh = -0.8074 0.3708 0.4725 0.4856,
+            xywh = -0.8074 0.0562 0.4725 1.1148,
         }
         area TireFrontLeft
         {
