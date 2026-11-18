@@ -1,5 +1,5 @@
 -- client/SemiHitch.lua: the Semi <-> 53 ft trailer slice in the outside radial (vanilla's doTowingMenu wrapped), the
--- server option DisableTrailerTowing, vanilla's command on the hitch, and the driver's radial behind SH.IN_CAR.
+-- server option DisableTrailerTowing, vanilla's command on the hitch, and the driver's radial inside the cab.
 local H = H
 local check = H.check
 
@@ -249,16 +249,12 @@ check(ISVehicleTrailerUtils.walkToTrailer(p, semi, "mtsemi_fifthwheel", det) == 
 BOX["Base.MinidoracatTesla_SemiTrailer"][1], trailer.getScript = 2.148, trailerScript
 semi.towing, trailer.towedBy = nil, nil
 
-H.section("Semi hitch: the driver's radial stays off (SH.IN_CAR)")
+H.section("Semi hitch: the driver's radial")
 p.vehicle = semi
 semi.driver = p
 radial.open = false
 ISVehicleMenu.showRadialMenu(p)
-check(SH.IN_CAR == false and #radial.slices == 0, "default: no hitch slice inside the cab")
-SH.IN_CAR = true
-radial.open = false
-ISVehicleMenu.showRadialMenu(p)
-check(#radial.slices == 1 and radial.slices[1].args[4] == true, "switched on: the driver gets the attach slice")
+check(#radial.slices == 1 and radial.slices[1].args[4] == true, "the driver gets the attach slice")
 queue, walked = {}, nil
 radial.slices[1].fn(table.unpack(radial.slices[1].args))
 check(walked == nil and getmetatable(queue[1]) == SH.Attach, "seated: the action straight away, no walk")
@@ -274,7 +270,6 @@ p.vehicle = trailer
 radial.open = false
 ISVehicleMenu.showRadialMenu(p)
 check(#radial.slices == 0, "not the Semi's driver: nothing")
-SH.IN_CAR = false
 
 ISVehicleMenu, ISVehicleTrailerUtils, ISAttachTrailerToVehicle, ISDetachTrailerFromVehicle, ISTimedActionQueue,
     getCell, getServerOptions, getPlayerRadialMenu, UIManager, getTexture, ISVehicleMechanics, ISPathFindAction, Vector3f =

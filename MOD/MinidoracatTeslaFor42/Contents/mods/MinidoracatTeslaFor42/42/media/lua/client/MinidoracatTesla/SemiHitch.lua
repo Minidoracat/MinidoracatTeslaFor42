@@ -19,10 +19,6 @@ local SH = {}
 T.SemiHitch = SH
 SH.TRACTOR, SH.TRAILER = "Base.MinidoracatTesla_Semi", "Base.MinidoracatTesla_SemiTrailer"
 SH.FIFTH_WHEEL, SH.KINGPIN = "mtsemi_fifthwheel", "mtsemi_kingpin"
--- the driver's radial (inside the cab): off until MP play shows both cars' authority right after the hitch
--- (BaseVehicle.java:10180-10195 constraintChanged, read only; impl-rulings.md 5)
-SH.IN_CAR = false
-
 -- as vanilla (ISVehicleMenu.lua:580-581): the server option only exists in MP
 function SH.disabled()
     return isClient() and getServerOptions():getBoolean("DisableTrailerTowing")
@@ -140,13 +136,16 @@ function ISVehicleMenu.doTowingMenu(playerObj, vehicle, menu)
     if not vehicle:getVehicleTowing() and not vehicle:getVehicleTowedBy() then addAttach(playerObj, vehicle, menu, false) end
 end
 
--- the driver's radial: vanilla has no towing slices there; the toggle and paused-game returns as HUDRadial.lua
+-- the driver's radial: vanilla has no towing slices there; the toggle and paused-game returns as HUDRadial.lua.
+-- Seated works: MP play gave the driver both cars' authority after the hitch (semiE-incar-1), and the detach still
+-- passes vanilla's 4-tile check (ISDetachTrailerFromVehicle.lua:34) with the driver's seat 3.47 tiles from the fifth
+-- wheel. Moving the seat or the fifth wheel means measuring that again.
 local origRadial = ISVehicleMenu.showRadialMenu
 function ISVehicleMenu.showRadialMenu(playerObj)
     local menu = getPlayerRadialMenu(playerObj:getPlayerNum())
     local wasOpen = menu:isReallyVisible()
     origRadial(playerObj)
-    if not SH.IN_CAR or wasOpen then return end
+    if wasOpen then return end
     local sc = UIManager.getSpeedControls()
     if sc and sc:getCurrentGameSpeed() == 0 then return end
     local v = playerObj:getVehicle()
