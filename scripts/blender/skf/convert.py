@@ -2744,13 +2744,14 @@ def runs_of(rows, taper=True):
 
 
 def groove_line(V, T, part, panel):
-    """GROOVE_LINE=dict(w, lift, step, along) (Cybercab): GROOVE_INK's paths (the hood's seam) also as a strip `w` wide
-    centred on the path, `lift` over the paint, every corner on SEAM_SPOT (SEAM_LINE's tone: the trunk lid's lines'
-    colour): the 6 mm ink, under a texel and a pixel, read as dots seen at an angle (p09 R1, SE z1: the hood's two
-    sides); SEAM_LINE's 2 x 8 mm read 93-100 % every heading (P5). Only where the path runs within `along` (cos) of the
-    car's length, its sides: the front run lies on the leading edge 9 mm over the light bar, the rear one by the
-    windscreen. The edges: rays along -n (the paint's normal nearest the path) onto the paint `w` / 2 to either side;
-    a sample without paint under both splits the run; runs taper to a point. Grid units. -> (points, tris, attrs)."""
+    """GROOVE_LINE=dict(w, lift, step, along[, front]) (Cybercab): GROOVE_INK's paths (the hood's seam) also as a strip
+    `w` wide centred on the path, `lift` over the paint, every corner on SEAM_SPOT (SEAM_LINE's tone: the trunk lid's
+    lines' colour): the 6 mm ink, under a texel and a pixel, read as dots seen at an angle (p09 R1, SE z1: the hood's
+    two sides); SEAM_LINE's 2 x 8 mm read 93-100 % every heading (P5). Where the path runs within `along` (cos) of the
+    car's length, its sides; across it only the front run (under the path's middle height) and only with `front`: a
+    strip `front` wide from the path up the hood (the run lies 9 mm over the light bar); the rear one, by the
+    windscreen, none. The edges: rays along -n (the paint's normal nearest the path) onto the paint; a sample without
+    paint under both splits the run; runs taper to a point. Grid units. -> (points, tris, attrs)."""
     gl = C["GROOVE_LINE"]
     assert C["SEAM_LINE"].get("tone"), "GROOVE_LINE paints SEAM_SPOT: SEAM_LINE tone"
     src = json.load(open(os.path.join(TMP, C["GROOVE_INK"]["file"]), encoding="utf-8"))
@@ -2764,15 +2765,26 @@ def groove_line(V, T, part, panel):
         q = np.stack([np.interp(u, s, p[:, i]) for i in range(3)], 1)
         tg = np.gradient(q, axis=0)
         tg /= np.linalg.norm(tg, axis=1, keepdims=True)
+        zmid = (q[:, 2].min() + q[:, 2].max()) / 2
         rows = []
         for x, t in zip(q, tg):
             n = np.array(pb.find_nearest(Vector(x))[1])
             n = n if n @ (x - ctr) > 0 else -n
             side = np.cross(t, n)
             side /= np.linalg.norm(side)
-            e = [pb.ray_cast(Vector(x + side * sg * gl["w"] / 2 + n * 0.02), Vector(-n), 0.04)[0] for sg in (-1, 1)]
-            ok = abs(t[1]) >= gl["along"] and None not in e
-            rows.append((np.array(e[0]) + n * gl["lift"], np.array(e[1]) + n * gl["lift"], n, None) if ok else None)
+            if abs(t[1]) >= gl["along"]:
+                off = (-gl["w"] / 2, gl["w"] / 2)
+            elif gl.get("front") and x[2] < zmid:      # into the hood, off the bar: from the first paint past the
+                sg = np.sign(side @ (q.mean(0) - x))      # ink's edge (the groove's own faces under the path are no paint)
+                o0 = next((o for o in np.arange(C["GROOVE_INK"]["w"] / 2, gl["front"], 0.001 * K) if
+                           pb.ray_cast(Vector(x + side * sg * o + n * 0.02), Vector(-n), 0.04)[0]), gl["front"])
+                off = sorted((sg * o0, sg * (o0 + gl["front"])))
+            else:
+                rows.append(None)
+                continue
+            e = [pb.ray_cast(Vector(x + side * o + n * 0.02), Vector(-n), 0.04)[0] for o in off]
+            rows.append((np.array(e[0]) + n * gl["lift"], np.array(e[1]) + n * gl["lift"], n, None)
+                        if None not in e else None)
         for run in runs_of(rows):
             P += strip_tris(run)[0]
     R = np.array(P, float)
