@@ -270,14 +270,14 @@ CAR = dict(
     BAR_WIDE=dict(obj="HeadLight", lamp=("HeadLight", "Trim", "LampDots_Left", "LampDots_Right"),
                   h=(round(0.011 * K, 6), round(0.020 * K, 6)), x=(round(0.58 * K, 4), round(0.68 * K, 4)),
                   lift=round(0.001 * K, 6), step=round(0.004 * K, 6)),
-    # the trunk lid's seams (roof and sides) as SEAM_LINE strips (convert.py seam_lines; Model S / X): its 5 mm groove
+    # the trunk lid's and the doors' seams as SEAM_LINE strips (convert.py seam_lines; Model S / X): the lid's 5 mm groove
     # and a skin-drawn line both came out of the game's 512 skin as dashes (p09 R1: 0.07-1.0 continuous; the game-sampled
     # build 4-60 % in E / S / SE / NW). 8 mm in: 4 mm (Model S) left SE at 4 % (the roof's cross seam under half a
     # pixel seen at 30 degrees), 6 mm 75 % at the next zoom out; 8 mm 93-100 % every heading at both zooms (p09 P5).
-    # Not the doors' (DOOR_GROOVE / SLAB, p09 P4)
+    # The doors' outline (DOOR_GROOVE's V, p09 P4) read as dots in S / E at z1 the same way (p09 R)
     SEAM_LINE=dict(w=round(0.008 * K, 6), over=round(0.002 * K, 6), bridge=round(0.003 * K, 6), lift=round(0.001 * K, 6),
                    gap=round(0.025 * K, 6), glass=round(0.03 * K, 6), step=round(0.006 * K, 6), chain=round(0.04 * K, 6),
-                   tone=0.5, flat=True, skip=("DoorFrontLeft", "DoorFrontRight")),
+                   tone=0.5, flat=True),
     # by day: the lower body, bumpers and seam grooves dark grey (01: sill p50 50), the wheel house liners and B pillar
     # black, the light bar grey (02 unlit: its upper half ~150 and the lens ~60-75 by paint ~240, i.e. 0.55-0.62 of the
     # paint; 128 read 0.73-0.77 of it on the a10 shell in the pairs' soft and rim light and the game's flat light), the

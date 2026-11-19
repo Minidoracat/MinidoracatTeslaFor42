@@ -9,7 +9,7 @@
 -- input Cybertruck d582310ecd9eab4e
 -- input ModelYL 398a4927a62f91d2
 -- input Roadster 85fc6a41db528a1c
--- input Cybercab 678b02ec722c81a9
+-- input Cybercab 0624de667a13a48a
 -- input Semi c6a180e60d762f41
 MinidoracatTesla = MinidoracatTesla or {}
 MinidoracatTesla.TallHats = {
