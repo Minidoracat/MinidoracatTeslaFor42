@@ -2500,7 +2500,7 @@ def seals(V, T, sel, attr, glass_bvh, solid=None, seams=None, full=False, near_f
 
 
 def seam_lines(V, T, part, panel, glass_bvh):
-    """SEAM_LINE=dict(w, over, bridge, lift, gap, glass, step, chain, tone | cell[, skip, flat, wide]) (Model S): every gap between
+    """SEAM_LINE=dict(w, over, bridge, lift, gap, glass, step, chain, tone | cell[, skip, flat, wide, one_side]) (Model S): every gap between
     two parts (doors, lids, the body; not within `glass` of a pane, not the parts in `skip`) as one continuous dark
     line of even width, half on each side. Its colour: with `tone`, every corner on SEAM_SPOT, which textures()
     paints the skin's median paint x tone (a shade of each paint: a dark cabin cell was a black line on the white
@@ -2521,7 +2521,9 @@ def seam_lines(V, T, part, panel, glass_bvh):
     without antialiasing: the ground through them, a hairline on one panel (SEAL_RIBBON) broke into dots and dashes;
     halves meeting edge to edge fell between the pixel centres, and a rolled door bottom put a line in its own plane
     out of sight. `wide` {part: w} (Model X's frunk lid): that part's strips and the ones across from it `w` in
-    instead (4 mm drew the lid's sides, seen obliquely, as dashes). Grid units. -> {part: (points, tris, attributes)}."""
+    instead (4 mm drew the lid's sides, seen obliquely, as dashes). `one_side` (parts): their outlines bound the
+    others' strips, no strip of their own (Cybercab's doors: the door's half showed on its face, open, as dashes).
+    Grid units. -> {part: (points, tris, attributes)}."""
     from mathutils.kdtree import KDTree
     from mathutils.bvhtree import BVHTree
     sl = C["SEAM_LINE"]
@@ -2529,6 +2531,7 @@ def seam_lines(V, T, part, panel, glass_bvh):
     wide = sl.get("wide", {})
     wmax = max([w, *wide.values()])
     skip = [PARTS.index(nm) for nm in pv.DOORS if nm in sl.get("skip", ())]
+    one = [PARTS.index(nm) for nm in pv.DOORS if nm in sl.get("one_side", ())]
     pid = np.unique(np.round(V / 1e-5).astype(np.int64), axis=0, return_inverse=True)[1].ravel()
     fn = np.cross(V[T[:, 1]] - V[T[:, 0]], V[T[:, 2]] - V[T[:, 0]])
     fn = fn / np.maximum(np.linalg.norm(fn, axis=1), 1e-12)[:, None]
@@ -2599,7 +2602,7 @@ def seam_lines(V, T, part, panel, glass_bvh):
         return None if f is None else (np.array(loc), int(part[f]) if panel[f] else -1)
     # chains of the kept edges per part (by position)
     out = {}
-    for k in np.unique(op[ok]):
+    for k in np.setdiff1d(np.unique(op[ok]), one):
         es = np.flatnonzero(ok & (op == k))
         adj = {}
         for e in es:
