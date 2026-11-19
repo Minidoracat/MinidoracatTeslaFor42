@@ -62,7 +62,7 @@
 > - 建置可重現：`pzveh.py` 的 `cut_crease` 原本迭代裝 BMesh 元素的 set，順序跟記憶體位址走（`PYTHONHASHSEED` 管不到），同一份輸入建兩次 Cybercab 結果不同；改成照 `bm.faces` 的順序後連建三次相同（FBX 只差時間戳）。Cybercab 因此重排 UV，Gold／lights／mask 整組重產，關門 8 向對 0.9.0 不同的像素 99% 以上只差 1～4 階。
 > - Cybercab prep：`FenderCam_*`、`FenderCamLens_*`、`Button_*` 的左右名稱原本顛倒（產線定義 −X 是車左），現在改對；幾何不變，建出來的三角形集合相同。
 > - 刪掉 `SLAB_BELT_PRE`，改成唯一做法：slab 邊條的腰線一律用車殼未置中的座標（前蓋每條邊條仍取內襯色）。九台改前改後的產物逐位元相同（FBX 只差時間戳）。
-> - 新的建置鍵：`SLAB_SHUT_SEEN`（七台各一個，可單台退回；關門 8 向看得到、封在 slab 內、腰線下 0.1 內、朝上，或所在漆段短於 0.1 m 的邊條維持已發布色，其餘上車漆色）；Cybercab 專用的 `SLAB_SKIN_NORMALS`（門板邊條用門面的頂點法線）、`DOOR_GROOVE_BODY`（門縫 V 溝的門半邊歸車身）、`SEAM_LINE` 的 `one_side`（列出的零件只當細條的邊界、不畫自己那半）、`GROOVE_LINE`（前蓋兩側與前緣細條）、`BAR_WIDE`（燈條轉角加高）、`WORDMARK.min_w`（各零件最細筆寬）、`cabin.py` `part()` 的格可給 `(格, 兩端的格, 端長)`。Cybercab 專用的鍵加上後，其他八台的產物不變。
+> - 新的建置鍵：`SLAB_SHUT_SEEN`（七台各一個，可單台退回；車門上關門 8 向看得到、封在 slab 內、腰線下 0.1 內、朝上，或所在漆段短於 0.1 m 的邊條維持已發布色，其餘上車漆色；尾門／行李廂蓋整組維持已發布色，Model S 開尾門時改色會成花斑）；Cybercab 專用的 `SLAB_SKIN_NORMALS`（門板邊條用門面的頂點法線）、`DOOR_GROOVE_BODY`（門縫 V 溝的門半邊歸車身）、`SEAM_LINE` 的 `one_side`（列出的零件只當細條的邊界、不畫自己那半）、`GROOVE_LINE`（前蓋兩側與前緣細條）、`BAR_WIDE`（燈條轉角加高）、`WORDMARK.min_w`（各零件最細筆寬）、`cabin.py` `part()` 的格可給 `(格, 兩端的格, 端長)`。Cybercab 專用的鍵加上後，其他八台的產物不變。
 > - 素材：Semi 的車身是本 MOD 照 Tesla 官方公開的圖自己做的，53 呎拖車是本 MOD 自己的產生器做的，都沒有用第三方模型。
 
 ## [42.22.2-0.9.0] - 2026-11-17
