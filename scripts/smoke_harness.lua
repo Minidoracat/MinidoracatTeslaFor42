@@ -210,7 +210,23 @@ function H.vehicle(o)
     function v:isDriver(p) return self.driver == p end
     function v:getDriver() return self.driver end
     function v:getNetPlayerId() return self.npid or -1 end -- MP physics authority: -1 = the server's (BaseVehicle.java:657)
-    function v:authorizationServerOnSeat(p) self.grants, self.npid = (self.grants or 0) + 1, p:getOnlineID() end
+    -- enter = true, a car on Server only (BaseVehicle.java:4012-4022): towing a driverless car, the engine re-hitches
+    -- and constraintChanged (:10183-10198) gives both to this car's driver; towed by a driverless car, the same from
+    -- that side (no driver there: both on Server); else this car alone goes to the player
+    function v:authorizationServerOnSeat(p)
+        self.grants = (self.grants or 0) + 1
+        if self:getNetPlayerId() ~= -1 then return end
+        local t, h = self.getVehicleTowing and self:getVehicleTowing(), self:getVehicleTowedBy()
+        if t and not t:getDriver() then
+            self.rehitches = (self.rehitches or 0) + 1
+            self.npid = self.driver and self.driver:getOnlineID() or -1
+            t.npid = self.npid
+        elseif h and not h:getDriver() then
+            h.rehitches, h.npid = (h.rehitches or 0) + 1, -1
+        else
+            self.npid = p:getOnlineID()
+        end
+    end
     function v:getVehicleTowedBy() return self.towedBy end
     function v:getX() return self.x end
     function v:getY() return self.y end

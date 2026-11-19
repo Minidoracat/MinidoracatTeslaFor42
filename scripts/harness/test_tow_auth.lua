@@ -82,12 +82,15 @@ check(bumpedVanilla.npid == 2 and driven.npid == 4 and truckHeld.npid == 4 and t
     and not truckHeld.changes and not towedHeld.changes,
     "a vanilla car on a gone id, pairs their online driver holds: untouched")
 
--- no one joins, someone else takes the wheel: the Engine update frees the pair, then grants him the tractor
+-- no one joins, someone else takes the wheel: the Engine update frees the pair, then the engine's grant (a re-hitch
+-- that hands both to the driver)
 local taken, takenTrailer = rig("Base.MinidoracatTesla_Semi", 2, 2)
 taken._class, taken.running, taken.driver = "BaseVehicle", true, H.player({ name = "taker" })
+local taker = taken.driver:getOnlineID()
 T.Update.Engine(taken, taken:getPartById("Engine"), 1)
-check(taken.changes == 1 and takenTrailer.npid == -1 and taken.grants == 1 and taken.npid == taken.driver:getOnlineID(),
-    "motor running on a gone id: tractor and trailer back on the server, then the tractor granted to its driver")
+check(taken.changes == 1 and takenTrailer.changes == 1 and taken.rehitches == 1 and taken.npid == taker
+    and takenTrailer.npid == taker,
+    "motor running on a gone id: tractor and trailer back on the server, then both granted to the one driving")
 local mine = car("Base.MinidoracatTesla_Semi", 4)
 mine._class, mine.running, mine.driver = "BaseVehicle", true, H.player({ name = "holder" })
 T.Update.Engine(mine, mine:getPartById("Engine"), 1)
@@ -100,6 +103,7 @@ check(idleTrailer.npid == -1 and not idle.grants, "motor running, no driver, tra
 local nextDriver, nextTrailer = rig("Base.MinidoracatTesla_Semi", -1, 2)
 nextDriver._class, nextDriver.running, nextDriver.driver = "BaseVehicle", true, H.player({ name = "next" })
 T.Update.Engine(nextDriver, nextDriver:getPartById("Engine"), 1)
-check(nextTrailer.npid == -1 and nextDriver.grants == 1, "the same with someone at the wheel: trailer back, then the grant")
+check(nextTrailer.changes == 1 and nextDriver.grants == 1 and nextTrailer.npid == nextDriver.driver:getOnlineID(),
+    "the same with someone at the wheel: trailer back first, then both granted to him")
 
 getCell, getPlayerByOnlineID = savedCell, savedById
