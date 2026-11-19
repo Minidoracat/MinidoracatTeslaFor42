@@ -13,9 +13,14 @@
 -- fast the reconnect or long the game minute. Animals are IsoPlayers too (IsoPlayer.java:518-559): skipped. The pair
 -- is not always set together: a towed car with its own driver gets its own authority while the tractor's driver sits
 -- with the engine off (BaseVehicle.java:4019-4021 over :7506-7507; entering gives none with the engine off,
--- VehicleEnterPacket.java:123-129), so only a trailer whose holder is not online is handed back: disconnect drops the
+-- VehicleEnterPacket.java:123-129), so each car is judged alone, by whether its holder is online: disconnect drops the
 -- id from the server's map (GameServer.java:2668) and a joining player is put in it after this event (:2864). A car
 -- loaded again (chunk, server restart) starts on Server (BaseVehicle.java:294-295; load does not read it).
+-- The tractor itself can be left behind too: hitching on foot puts both on the player as LocalCollide
+-- (:10157-10164), only his client gives them back, seconds later (WorldSimulation.java:184-197), and the server never
+-- times it out (netPlayerTimeout is written at :633 and read nowhere). Dropping inside those seconds leaves both on
+-- his id, and no one else can then drive the pair: a driver is granted a car on Server only (:7505-7508,
+-- VehicleEnterPacket.java:123-129). The Engine update (Battery.lua) frees such a car for the one driving it now.
 if not isServer() then return end
 require "MinidoracatTesla/Core"
 
@@ -23,20 +28,29 @@ local T = MinidoracatTesla
 local TA = {}
 T.TowAuth = TA
 
--- every loaded towing Tesla on Server whose trailer is still held by an id no one online has: trailer back to Server
--- (authorizationChanged nil = Server, -1, BaseVehicle.java:10175-10180). IsoCell.vehicles is a HashSet: iterator()
--- (SemiHitch.lua has why).
+-- one car still held by an id no one online has: back to Server (authorizationChanged nil = Server, -1,
+-- BaseVehicle.java:10175-10180)
+local function back(v, head, what)
+    local id = v:getNetPlayerId()
+    if id == -1 or getPlayerByOnlineID(id) then return end
+    T.log("towauth: " .. head:getScriptName() .. " #" .. head:getId() .. what .. " still on online id " .. id
+        .. ", handed back to the server")
+    v:authorizationChanged(nil)
+end
+
+-- a Tesla and what it tows
+function TA.free(v)
+    local t = v:getVehicleTowing()
+    back(v, v, "")
+    if t then back(t, v, " trailer #" .. t:getId()) end
+end
+
+-- every loaded Tesla. IsoCell.vehicles is a HashSet: iterator() (SemiHitch.lua has why).
 function TA.handBack()
     local it = getCell():getVehicles():iterator()
     while it:hasNext() do
         local v = it:next()
-        local t = v:getVehicleTowing()
-        if t and v:getNetPlayerId() == -1 and t:getNetPlayerId() ~= -1 and T.isTesla(v)
-            and not getPlayerByOnlineID(t:getNetPlayerId()) then
-            T.log("towauth: " .. v:getScriptName() .. " #" .. v:getId() .. " trailer #" .. t:getId() .. " still on online id "
-                .. t:getNetPlayerId() .. ", handed back to the server")
-            t:authorizationChanged(nil)
-        end
+        if T.isTesla(v) then TA.free(v) end
     end
 end
 

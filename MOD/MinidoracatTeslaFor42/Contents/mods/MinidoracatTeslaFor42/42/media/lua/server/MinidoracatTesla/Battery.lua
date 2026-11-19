@@ -261,17 +261,21 @@ end
 -- (BaseVehicle.java:3991-4010). The engine grants the driver only on entering a running car or on the motor starting
 -- (:7505-7508, VehicleEnterPacket.java:123-129), so that car never moves again: grant it here. Not a car being towed:
 -- there the same call hooks it up the other way round, or leaves the two ends with two owners (:4012-4022), and only
--- the towing side was played (semiF-fix1/2).
+-- the towing side was played (semiF-fix1/2). First off an id no one online has (TowAuth.lua), which is not Server
+-- either.
 function T.Update.Engine(vehicle, part, elapsedMinutes)
     Vehicles.Update.Engine(vehicle, part, elapsedMinutes)
     local f = T.Camp and T.Camp.onEngineUpdate
     if f then f(vehicle, part, elapsedMinutes) end
     local bp = B.part(vehicle)
     if bp and bp:getModData().chill then B.setForce(vehicle, true) end
-    if isServer() and instanceof(vehicle, "BaseVehicle") and vehicle:isEngineRunning() and vehicle:getNetPlayerId() == -1
-        and not vehicle:getVehicleTowedBy() then
+    if isServer() and instanceof(vehicle, "BaseVehicle") and vehicle:isEngineRunning() and not vehicle:getVehicleTowedBy() then
+        local free = T.TowAuth and T.TowAuth.free
+        if free then free(vehicle) end
         local driver = vehicle:getDriver()
-        if driver and instanceof(driver, "IsoPlayer") then vehicle:authorizationServerOnSeat(driver, true) end
+        if vehicle:getNetPlayerId() == -1 and driver and instanceof(driver, "IsoPlayer") then
+            vehicle:authorizationServerOnSeat(driver, true)
+        end
     end
 end
 
