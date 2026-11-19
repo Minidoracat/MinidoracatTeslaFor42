@@ -219,12 +219,12 @@ def cut_crease(bm, crease):
     on = {v for v, dv in d.items() if dv == 0}
     for e, t in cut:
         on.add(bmesh.utils.edge_split(e, e.verts[0], t)[1])
-    pairs = set()
-    for f in {f for v in on for f in v.link_faces}:
+    pairs = {}                              # walked in bm.faces order: BMesh elements hash by address (not
+    for f in bm.faces:                      # PYTHONHASHSEED), so a set of them made the build differ run to run
         fv = [v for v in f.verts if v in on]
         if len(fv) == 2 and not any(set(e.verts) == set(fv) for e in f.edges):
-            pairs.add(frozenset(fv))
-    for a, b in pairs:
+            pairs.setdefault(frozenset(fv), fv)
+    for a, b in pairs.values():
         bmesh.ops.connect_verts(bm, verts=[a, b])
     return on
 

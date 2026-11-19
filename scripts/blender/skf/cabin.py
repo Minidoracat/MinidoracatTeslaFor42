@@ -362,7 +362,12 @@ def furniture(add, opening, grow=0.0, fine=1, between=None):
         `tilt` = (pivot y, pivot z, deg) reclines about a line along x (top to the rear). Shaped on `size`, so a grown
         part follows its coarse one; seams = (face, lines) for seam_strips, grown parts only; `fit(v)` moves the
         placed points last (the trunk sill onto the body's lip)."""
-        v, f = box(size, r, cuts, seg)
+        end = c[2] if isinstance(c, tuple) and len(c) > 2 else 0.0
+        v, f = box(size, r, (2, cuts[1], cuts[2]) if end else cuts, seg)
+        if end:     # the two x loops (at +-1/6) moved out to `end` short of the ends: the end lengths' own faces
+            lx = v[:, 0].max()
+            k = np.abs(np.abs(v[:, 0]) - lx / 3) < 1e-5
+            v[k, 0] = np.sign(v[k, 0]) * (lx - end)
         x = 2 * v[:, 0] / size[0]
         if sag:
             v[:, 2] -= sag * np.clip(1 - x * x, 0, 1) * (v[:, 2] > 0)
@@ -385,6 +390,12 @@ def furniture(add, opening, grow=0.0, fine=1, between=None):
             u = np.clip((np.abs(x) - w0) / (1 - w0), 0, 1)
             v[:, 1] += b * u * u * (3 - 2 * u)
         cells = c
+        # c = (cell, its ends' cell[, end]): faces turned over 0.1 to +-x (the ends and all their rounded corners'
+        # facets; at 0.3 the first, about 15 degrees, stayed silver) and those over `end` from an end take the second
+        if isinstance(c, tuple):    # (Cybercab dash_up)
+            n = np.array([np.cross(v[fc[1]] - v[fc[0]], v[fc[2]] - v[fc[0]]) for fc in f])
+            out = [end and abs(v[fc, 0].mean()) > v[:, 0].max() - end for fc in f]
+            cells = c = [c[1] if abs(k) > 0.1 or o else c[0] for k, o in zip(n[:, 0] / np.linalg.norm(n, axis=1), out)]
         if grow and seams:
             v, f, cells = seam_strips(v, f, c, size, *seams)
         v += at

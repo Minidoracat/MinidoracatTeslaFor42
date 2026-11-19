@@ -977,7 +977,8 @@ def badges(obs, names):
         with open(os.path.join(HERE, wm["file"]), encoding="utf-8") as f:
             strokes = json.load(f)["strokes"]
         for part, o, eu, ev, n, width in wm.get("places", ()):
-            flat("Badge_WORD_" + part, [stroke_quads(strokes, width, wm["seg"])], (o, eu, ev, n), "badge_black")
+            flat("Badge_WORD_" + part, [stroke_quads(strokes, width, wm["seg"], wm.get("min_w", {}).get(part, 0))],
+                 (o, eu, ev, n), "badge_black")
         for part, (o, a, b) in wm.get("affine", {}).items():   # laid as an official picture shows it: (u 0 v 0) point,
             a, b = np.array(a, float), np.array(b, float)       # grid per unit u, per unit v (any length, any angle)
             n = np.cross(a, b) / np.linalg.norm(np.cross(a, b))
@@ -985,14 +986,16 @@ def badges(obs, names):
             e2 = np.cross(n, e1)
             m = np.array([[a @ e1, b @ e1], [a @ e2, b @ e2]])
             quads = [[tuple(m @ np.array(q)) for q in quad] for quad in
-                     stroke_quads(strokes, 1.0, wm["seg"] / max(np.linalg.norm(a), np.linalg.norm(b)))]
+                     stroke_quads(strokes, 1.0, wm["seg"] / max(np.linalg.norm(a), np.linalg.norm(b)),
+                                  wm.get("min_w", {}).get(part, 0), m)]
             flat("Badge_WORD_" + part, [quads], (o, tuple(e1), tuple(e2), tuple(n)), "badge_black")
 
 
-def stroke_quads(strokes, s, seg):
+def stroke_quads(strokes, s, seg, wmin=0.0, m=None):
     """Quads (u, v) of polylines with a width at each point ([{pts, w}], a unit wide) at s grid per unit: each segment
     a quad from its start's width to its end's, run on half a width past both ends (as stroke_text), cut into pieces at
-    most seg long, so laid point by point (badges flat) they follow the panel's curve."""
+    most seg long, so laid point by point (badges flat) they follow the panel's curve. wmin: no quad narrower than that
+    (grid) across its segment, once mapped by m (2 x 2, the affine the caller lays them with; None: as they are)."""
     quads = []
     for st in strokes:
         p, w = np.array(st["pts"]) * s, np.array(st["w"]) * s
@@ -1003,6 +1006,8 @@ def stroke_quads(strokes, s, seg):
             a, b = a - d * wa / 2, b + d * wb / 2
             t = np.linspace(0, 1, max(1, math.ceil(np.linalg.norm(b - a) / seg)) + 1)
             c, hw = a + t[:, None] * (b - a), (wa + t * (wb - wa)) / 2
+            if wmin:        # m widens a stroke across d by |det m| / |m d|
+                hw = np.maximum(hw, wmin / 2 / (abs(np.linalg.det(m)) / np.linalg.norm(m @ d) if m is not None else 1))
             nrm = np.array((-d[1], d[0]))
             quads += [[tuple(c[i] - hw[i] * nrm), tuple(c[i + 1] - hw[i + 1] * nrm), tuple(c[i + 1] + hw[i + 1] * nrm),
                        tuple(c[i] + hw[i] * nrm)] for i in range(len(t) - 1)]
@@ -2348,6 +2353,27 @@ def slab_seam_dark(V, tri, others, a, dark, glass_bvh, tol, reach):
     return a
 
 
+def slab_skin_normals(V, tri, att, a, by_pos=False):
+    """SLAB_SKIN_NORMALS (optional, Cybercab doors): pv.slab's edge strips (the last 2 x boundary-edge rows of a) that
+    kept the paint take the skin's corner normals (each outer corner its own, the inner twin its outer's), not the
+    strip's flat one. The game's depth across a door is coarse: on the open door's foot the strips just behind the
+    skin won pixels from it, lit along their own normal as light gold dots (p09 P4: 23 of 38 a rim strip's, the rest
+    the seam strips'; their colour is already the skin's, pv.slab pull_in). Edges as pv.slab (same order)."""
+    ed = np.concatenate([tri[:, [0, 1]], tri[:, [1, 2]], tri[:, [2, 0]]])
+    en = np.concatenate([att[:, [0, 1], 4:], att[:, [1, 2], 4:], att[:, [2, 0], 4:]])
+    und = np.sort(np.unique(np.round(V, 6), axis=0, return_inverse=True)[1].ravel()[ed] if by_pos else ed, 1)
+    _, inv, cnt = np.unique(und, axis=0, return_inverse=True, return_counts=True)
+    bnd = cnt[inv.ravel()] == 1
+    na, nb_ = en[bnd, 0], en[bnd, 1]
+    nb = len(na)
+    s0 = len(a) - 2 * nb
+    st = np.concatenate([np.stack([nb_, na, na], 1), np.stack([nb_, na, nb_], 1)])   # pv.slab's st: (b, a, a'), (b, a', b')
+    paint = uv1_class(a[s0:]) == 0
+    a[s0:][paint, :, 4:] = st[paint]
+    print(f"SLAB_SKIN_NORMALS {int(paint.sum())} of {2 * nb} edge strip triangles")
+    return a
+
+
 def in_outline(bvh):
     """p -> inside the outline of bvh (the car) from all eight game cameras (30 degrees down, every 45): a line through
     p along each view meets it. Outside, a dark strip shows past the car's edge and blocks no gap."""
@@ -2474,7 +2500,7 @@ def seals(V, T, sel, attr, glass_bvh, solid=None, seams=None, full=False, near_f
 
 
 def seam_lines(V, T, part, panel, glass_bvh):
-    """SEAM_LINE=dict(w, over, bridge, lift, gap, glass, step, chain, tone | cell[, skip, flat, wide]) (Model S): every gap between
+    """SEAM_LINE=dict(w, over, bridge, lift, gap, glass, step, chain, tone | cell[, skip, flat, wide, one_side]) (Model S): every gap between
     two parts (doors, lids, the body; not within `glass` of a pane, not the parts in `skip`) as one continuous dark
     line of even width, half on each side. Its colour: with `tone`, every corner on SEAM_SPOT, which textures()
     paints the skin's median paint x tone (a shade of each paint: a dark cabin cell was a black line on the white
@@ -2495,7 +2521,9 @@ def seam_lines(V, T, part, panel, glass_bvh):
     without antialiasing: the ground through them, a hairline on one panel (SEAL_RIBBON) broke into dots and dashes;
     halves meeting edge to edge fell between the pixel centres, and a rolled door bottom put a line in its own plane
     out of sight. `wide` {part: w} (Model X's frunk lid): that part's strips and the ones across from it `w` in
-    instead (4 mm drew the lid's sides, seen obliquely, as dashes). Grid units. -> {part: (points, tris, attributes)}."""
+    instead (4 mm drew the lid's sides, seen obliquely, as dashes). `one_side` (parts): their outlines bound the
+    others' strips, no strip of their own (Cybercab's doors: the door's half showed on its face, open, as dashes).
+    Grid units. -> {part: (points, tris, attributes)}."""
     from mathutils.kdtree import KDTree
     from mathutils.bvhtree import BVHTree
     sl = C["SEAM_LINE"]
@@ -2503,6 +2531,7 @@ def seam_lines(V, T, part, panel, glass_bvh):
     wide = sl.get("wide", {})
     wmax = max([w, *wide.values()])
     skip = [PARTS.index(nm) for nm in pv.DOORS if nm in sl.get("skip", ())]
+    one = [PARTS.index(nm) for nm in pv.DOORS if nm in sl.get("one_side", ())]
     pid = np.unique(np.round(V / 1e-5).astype(np.int64), axis=0, return_inverse=True)[1].ravel()
     fn = np.cross(V[T[:, 1]] - V[T[:, 0]], V[T[:, 2]] - V[T[:, 0]])
     fn = fn / np.maximum(np.linalg.norm(fn, axis=1), 1e-12)[:, None]
@@ -2573,7 +2602,7 @@ def seam_lines(V, T, part, panel, glass_bvh):
         return None if f is None else (np.array(loc), int(part[f]) if panel[f] else -1)
     # chains of the kept edges per part (by position)
     out = {}
-    for k in np.unique(op[ok]):
+    for k in np.setdiff1d(np.unique(op[ok]), one):
         es = np.flatnonzero(ok & (op == k))
         adj = {}
         for e in es:
@@ -2684,6 +2713,143 @@ def seam_lines(V, T, part, panel, glass_bvh):
                                             [0, 0, pv.CABIN_UV1_U - CELL[sl["cell"]], 0, 0, 0, 1], float), rn))
         print(f"SEAM_LINE part {k}: {len(Tt)} tris, {int((ok & (op == k)).sum())} outline edges")
     return out
+
+
+def strip_tris(rows):
+    """Triangles between consecutive stations (top, bottom, n, attribute row | None) of one run, facing n; each quad
+    takes its first station's UVs (a source's UV islands change between stations: no texels between them). -> (P, A)."""
+    P, At = [], []
+    for (a0, a1, na, ra), (b0, b1, nb_, rb) in zip(rows[:-1], rows[1:]):
+        rb = rb if ra is None else np.r_[ra[:4], rb[4:]]
+        for tr, at in (((a0, b0, b1), (ra, rb, rb)), ((a0, b1, a1), (ra, rb, ra))):
+            cr = np.cross(tr[1] - tr[0], tr[2] - tr[0])
+            if np.linalg.norm(cr) > 1e-12:
+                flip = cr @ (na + nb_) < 0
+                P.append((tr[0], tr[2], tr[1]) if flip else tr)
+                At.append((at[0], at[2], at[1]) if flip else at)
+    return P, At
+
+
+def runs_of(rows, taper=True):
+    """Runs of consecutive non-None stations (3 or more), each run's end stations pinched to their middle."""
+    out, cur = [], []
+    for r in rows + [None]:
+        if r is not None:
+            cur.append(list(r))
+            continue
+        if len(cur) >= 3:
+            if taper:
+                for e in (cur[0], cur[-1]):
+                    e[0] = e[1] = (e[0] + e[1]) / 2
+            out.append(cur)
+        cur = []
+    return out
+
+
+def groove_line(V, T, part, panel):
+    """GROOVE_LINE=dict(w, lift, step, along[, front]) (Cybercab): GROOVE_INK's paths (the hood's seam) also as a strip
+    `w` wide centred on the path, `lift` over the paint, every corner on SEAM_SPOT (SEAM_LINE's tone: the trunk lid's
+    lines' colour): the 6 mm ink, under a texel and a pixel, read as dots seen at an angle (p09 R1, SE z1: the hood's
+    two sides); SEAM_LINE's 2 x 8 mm read 93-100 % every heading (P5). Where the path runs within `along` (cos) of the
+    car's length, its sides; across it only the front run (under the path's middle height) and only with `front`: a
+    strip `front` wide from the path up the hood (the run lies 9 mm over the light bar); the rear one, by the
+    windscreen, none. The edges: rays along -n (the paint's normal nearest the path) onto the paint; a sample without
+    paint under both splits the run; runs taper to a point. Grid units. -> (points, tris, attrs)."""
+    gl = C["GROOVE_LINE"]
+    assert C["SEAM_LINE"].get("tone"), "GROOVE_LINE paints SEAM_SPOT: SEAM_LINE tone"
+    src = json.load(open(os.path.join(TMP, C["GROOVE_INK"]["file"]), encoding="utf-8"))
+    pb = bvh_of([(V, T[(part == 0) & panel])])
+    ctr = V.mean(0)
+    P = []
+    for name in C["GROOVE_INK"]["lines"]:
+        p = np.array(src[name], float) * K
+        s = np.r_[0, np.cumsum(np.linalg.norm(np.diff(p, axis=0), axis=1))]
+        u = np.arange(0, s[-1], gl["step"])
+        q = np.stack([np.interp(u, s, p[:, i]) for i in range(3)], 1)
+        tg = np.gradient(q, axis=0)
+        tg /= np.linalg.norm(tg, axis=1, keepdims=True)
+        zmid = (q[:, 2].min() + q[:, 2].max()) / 2
+        rows = []
+        for x, t in zip(q, tg):
+            n = np.array(pb.find_nearest(Vector(x))[1])
+            n = n if n @ (x - ctr) > 0 else -n
+            side = np.cross(t, n)
+            side /= np.linalg.norm(side)
+            if abs(t[1]) >= gl["along"]:
+                off = (-gl["w"] / 2, gl["w"] / 2)
+            elif gl.get("front") and x[2] < zmid:      # into the hood, off the bar: from the first paint past the
+                sg = np.sign(side @ (q.mean(0) - x))      # ink's edge (the groove's own faces under the path are no paint)
+                o0 = next((o for o in np.arange(C["GROOVE_INK"]["w"] / 2, gl["front"], 0.001 * K) if
+                           pb.ray_cast(Vector(x + side * sg * o + n * 0.02), Vector(-n), 0.04)[0]), gl["front"])
+                off = sorted((sg * o0, sg * (o0 + gl["front"])))
+            else:
+                rows.append(None)
+                continue
+            e = [pb.ray_cast(Vector(x + side * o + n * 0.02), Vector(-n), 0.04)[0] for o in off]
+            rows.append((np.array(e[0]) + n * gl["lift"], np.array(e[1]) + n * gl["lift"], n, None)
+                        if None not in e else None)
+        for run in runs_of(rows):
+            P += strip_tris(run)[0]
+    R = np.array(P, float)
+    rn = np.cross(R[:, 1] - R[:, 0], R[:, 2] - R[:, 0])
+    rn /= np.maximum(np.linalg.norm(rn, axis=1, keepdims=True), 1e-12)
+    print(f"GROOVE_LINE {len(R)} tris")
+    return R.reshape(-1, 3), np.arange(len(R) * 3).reshape(-1, 3), corners(np.array([*SEAM_SPOT, *SEAM_SPOT, 0, 0, 1],
+                                                                                    float), rn)
+
+
+def bar_strip(V, T, A, part, obj):
+    """BAR_WIDE=dict(obj, lamp, h, x, lift, step) (Cybercab): the light bar's corners drawn taller, from its top edge
+    down over the dark lens, `lift` over it: h[0] (the bar's own height) at |x| x[0] to h[1] from x[1] out. Its 11 mm
+    there, seen across the corner from S and E, was under a pixel and lit as dashes (p09 R1: 0.67 of the rows); the
+    prep's bar stays (a prep re-run moves 13 % of the shell's faces). Every corner takes the bar's own attributes (UV0,
+    UV1, normal) at the bar's middle under its station: its colour, lights texel and light zone. The top edge: the bar
+    faces' outline points over the bar's middle round them, resampled every `step`; the bottom on the surface below,
+    a ray in along the bar's level normal, held on the lamp's faces (`lamp` objects: the bar's outer end leans back
+    with height, the paint past it), else less tall. Grid units. -> (points, tris, attributes)."""
+    bw = C["BAR_WIDE"]
+    bar = (part == 0) & (obj == bw["obj"])
+    tb, ab = T[bar], A[bar]
+    bb = bvh_of([(V, tb)])
+    body = bvh_of([(V, T[part == 0])])
+    bobj = obj[part == 0]
+    pid = np.unique(np.round(V / 1e-5).astype(np.int64), axis=0, return_inverse=True)[1].ravel()
+    ed = np.concatenate([tb[:, [0, 1]], tb[:, [1, 2]], tb[:, [2, 0]]])
+    _, inv, cnt = np.unique(np.sort(pid[ed], 1), axis=0, return_inverse=True, return_counts=True)
+    ov = np.unique(ed[cnt[inv.ravel()] == 1])
+    bv = V[np.unique(tb)]
+    top = np.array([V[i][2] > (lambda z: (z.max() + z.min()) / 2)(
+        bv[np.linalg.norm(bv[:, :2] - V[i][:2], axis=1) < 0.012, 2]) for i in ov])
+    P, At = [], []
+    for sg in (-1, 1):
+        tp = V[ov[top & (V[ov, 0] * sg > bw["x"][0])]]
+        tp = np.unique(np.round(tp, 5), axis=0)
+        tp = tp[np.argsort(np.arctan2(tp[:, 1] - (bv[:, 1].min() - 0.05), tp[:, 0] * sg))]
+        s = np.r_[0, np.cumsum(np.linalg.norm(np.diff(tp, axis=0), axis=1))]
+        u = np.arange(0, s[-1], bw["step"])
+        rows = []
+        for x in np.stack([np.interp(u, s, tp[:, i]) for i in range(3)], 1):
+            hh = bw["h"][0] + (bw["h"][1] - bw["h"][0]) * np.clip((x[0] * sg - bw["x"][0]) / (bw["x"][1] - bw["x"][0]),
+                                                                    0, 1)
+            loc, _, f, _ = bb.find_nearest(Vector(x - (0, 0, bw["h"][0] / 2)))
+            w = np.clip(np.linalg.lstsq(np.r_[V[tb[f]].T, np.ones((1, 3))], np.r_[np.array(loc), 1], rcond=None)[0], 0, 1)
+            ra = (w / w.sum()) @ ab[f]
+            n = ra[4:] / np.linalg.norm(ra[4:])
+            ra[4:] = n
+            lv = np.array([n[0], n[1], 0]) / np.linalg.norm(n[:2])
+            bot = None
+            for k in np.arange(hh, bw["h"][0] - 1e-9, -0.001):
+                hit = body.ray_cast(Vector(x - (0, 0, k) + lv * 0.03), Vector(-lv), 0.06)
+                if hit[0] is not None and bobj[hit[2]] in bw["lamp"]:
+                    bot = np.array(hit[0])
+                    break
+            rows.append(None if bot is None else (x + n * bw["lift"], bot + n * bw["lift"], n, ra))
+        for run in runs_of(rows, taper=False):
+            p_, a_ = strip_tris(run)
+            P += p_
+            At += a_
+    print(f"BAR_WIDE {len(P)} tris")
+    return (np.array(P, float).reshape(-1, 3), np.arange(len(P) * 3).reshape(-1, 3), np.array(At, float))
 
 
 def uv1_class(a):
@@ -3202,6 +3368,31 @@ def pieces(car, c, shift):
     tf = np.repeat(np.arange(len(me.polygons)), [p.loop_total - 2 for p in me.polygons])
     part, glass, mirror = c["part"][tf], c["glass"][tf], c["mirror"][tf]
     panel = (c["paint"] | c["carbon"])[tf]                # body panels, whatever their colour (CARBON's are black)
+    part0 = part                                          # (slab_seam_dark: a door's strips along its grooves stay seams)
+    if C.get("DOOR_GROOVE_BODY"):   # (Cybercab) a door seam's whole V groove (prep grooves()) on the body: its door half
+        # (Trim on the door's panel) went out with the open door past its edge strips, a 2.5 mm dark lip drawn as a
+        # dashed line. Its faces: a door's Trim faces with every corner within 4 mm of the seam (the V's bottom, the
+        # door Trim edges shared with the body's Trim): the cut 2.5 mm out, 2 mm up, measured up to 3.8 mm; the door's
+        # other trim (belt, mirror base) from 4.1 mm. Here, not in classify: there the UVs repacked and the textures
+        # moved; in prep the panel change re-held the Trim's seams in the decimation and moved every vertex
+        part = part.copy()
+        P, pk = np.unique(np.round(V, 6), axis=0, return_inverse=True)
+        pk = pk.ravel()[T]
+        trim = c["obj"][tf] == "Trim"
+        on_body = np.zeros(len(P), bool)
+        on_body[pk[trim & (part == 0)]] = True
+        for d in ("DoorFrontLeft", "DoorFrontRight"):
+            door = trim & (part == PARTS.index(d))
+            e = pk[door][:, [0, 1, 1, 2, 2, 0]].reshape(-1, 2)
+            a, b = P[e[on_body[e].all(1)]].transpose(1, 0, 2)
+            vs = np.unique(pk[door])
+            q, ab = P[vs][:, None] - a, b - a
+            s = np.clip((q * ab).sum(2) / np.maximum((ab * ab).sum(1), 1e-18), 0, 1)
+            near = np.zeros(len(P), bool)
+            near[vs] = np.linalg.norm(q - s[..., None] * ab, axis=2).min(1) < 0.004 * K
+            g = door & near[pk].all(1)
+            part[g] = 0
+            print(f"DOOR_GROOVE_BODY {d}: {int(g.sum())} of {int(door.sum())} trim tris, seam {len(a)} edges")
     # SHELL_OBJS (Model Y L's Blade_YL): closed solids riding a door, outer faces only like the mirror cap (a slab's
     # inner copy of a face along the door's offset lay in that face's plane: dark depth fight on the spoiler's ends)
     shell = np.isin(c["obj"][tf], C.get("SHELL_OBJS", ()))
@@ -3287,6 +3478,8 @@ def pieces(car, c, shift):
     adds += [seals(V, T, (part == 0) & panel, cab_attr("base"), gb, solid, seams and (*seams, 0), near_full=near_full)]
     lines = seam_lines(V, T, part, panel, gb) if C.get("SEAM_LINE") else {}
     adds += [lines[0]] if 0 in lines else []
+    adds += [groove_line(V, T, part, panel)] if C.get("GROOVE_LINE") else []
+    adds += [bar_strip(V, T, A, part, c["obj"][tf])] if C.get("BAR_WIDE") else []
     for v, t, a in adds:
         body_t.append(t + len(bodyV))
         bodyV = np.concatenate([bodyV, v])
@@ -3321,7 +3514,9 @@ def pieces(car, c, shift):
             P, t, a, _ = pv.slab(V, T, A, skin, off, cab_attr("dash"), BELT_Z - (0 if C.get("SLAB_BELT_PRE") else shift[2]),
                                  outer_extra=sel & ~skin, by_pos=bool(C.get("SPLIT_COLOURS")))
             if sd and C.get("SLAB_SEAM_DARK"):
-                a = slab_seam_dark(V, T[skin], T[sel], a, cab_attr("dash"), gb, *C["SLAB_SEAM_DARK"])
+                a = slab_seam_dark(V, T[skin], T[part0 == k], a, cab_attr("dash"), gb, *C["SLAB_SEAM_DARK"])
+            if sd and C.get("SLAB_SKIN_NORMALS"):
+                a = slab_skin_normals(V, T[skin], A[skin], a, by_pos=bool(C.get("SPLIT_COLOURS")))
             if sd and C.get("DOOR_INNER"):  # (Cybercab: rider guide pp.7 / 11, ERG p.19) the inner panel's cell (cell);
                 di = C["DOOR_INNER"]         # optional upper = (cell, dz): over the belt + dz that cell, cut on that line
                 n0 = int((sel & ~skin).sum() + skin.sum())

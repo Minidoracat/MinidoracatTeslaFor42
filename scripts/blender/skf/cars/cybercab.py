@@ -260,6 +260,29 @@ CAR = dict(
     # own hood path instead of its 5 mm groove's ragged dark texels (convert.py groove_ink)
     GROOVE_INK=dict(file="cybercab_lines.json", lines=("hood",), w=round(0.006 * K, 4), k=0.6,
                     reach=round(0.012 * K, 4), rgb=(58, 58, 60)),
+    # and over it a strip on its two sides (convert.py groove_line): the 6 mm ink read as dots seen at an angle (p09 R1
+    # SE z1); 16 mm wide (SEAM_LINE's two 8 mm halves on the trunk lid), its colour too. The front run (dashes over the
+    # light bar in SE, p09 R) 16 mm up the hood from the path, off the bar: 8 mm still left SE z1 0.76-0.81 of its columns
+    GROOVE_LINE=dict(w=round(0.016 * K, 6), lift=round(0.001 * K, 6), step=round(0.006 * K, 6), along=0.7,
+                     front=round(0.016 * K, 6)),
+    # the light bar's corners 2 cm tall (11 mm, prep BAR) over the dark lens under it (convert.py bar_strip): seen across
+    # the corner from S and E the 11 mm lit as dashes (p09 R1: 0.67 of the rows; the offline lit views 0.80-0.84 ->
+    # 0.98-1.0, 2.6 cm no better); eased in over |x| 0.58-0.68 m, the corner's turn: from 0.45 m the front view's (SE)
+    # ends 3.7 px thick for 1.9 in the middle, 3.1 from 0.58; from 0.64 S / E fell to 0.94-0.95
+    BAR_WIDE=dict(obj="HeadLight", lamp=("HeadLight", "Trim", "LampDots_Left", "LampDots_Right"),
+                  h=(round(0.011 * K, 6), round(0.020 * K, 6)), x=(round(0.58 * K, 4), round(0.68 * K, 4)),
+                  lift=round(0.001 * K, 6), step=round(0.004 * K, 6)),
+    # the trunk lid's and the doors' seams as SEAM_LINE strips (convert.py seam_lines; Model S / X): the lid's 5 mm groove
+    # and a skin-drawn line both came out of the game's 512 skin as dashes (p09 R1: 0.07-1.0 continuous; the game-sampled
+    # build 4-60 % in E / S / SE / NW). 8 mm in: 4 mm (Model S) left SE at 4 % (the roof's cross seam under half a
+    # pixel seen at 30 degrees), 6 mm 75 % at the next zoom out; 8 mm 93-100 % every heading at both zooms (p09 P5).
+    # The doors' outline (DOOR_GROOVE's V, p09 P4) read as dots in S / E at z1 the same way (p09 R): the body's half only
+    # (one_side; the door's half on its front edge showed, open, as dashes on the door's face: p09 r2 doors-open), 16 mm
+    # in (wide, parts 1 / 2: the doors), the two halves' width (8 mm alone drew the front edge fainter, broken at S z1: r4)
+    SEAM_LINE=dict(w=round(0.008 * K, 6), over=round(0.002 * K, 6), bridge=round(0.003 * K, 6), lift=round(0.001 * K, 6),
+                   gap=round(0.025 * K, 6), glass=round(0.03 * K, 6), step=round(0.006 * K, 6), chain=round(0.04 * K, 6),
+                   tone=0.5, flat=True, one_side=("DoorFrontLeft", "DoorFrontRight"),
+                   wide={1: round(0.016 * K, 6), 2: round(0.016 * K, 6)}),
     # by day: the lower body, bumpers and seam grooves dark grey (01: sill p50 50), the wheel house liners and B pillar
     # black, the light bar grey (02 unlit: its upper half ~150 and the lens ~60-75 by paint ~240, i.e. 0.55-0.62 of the
     # paint; 128 read 0.73-0.77 of it on the a10 shell in the pairs' soft and rim light and the game's flat light), the
@@ -380,8 +403,16 @@ CAR = dict(
     # per unit u, grid per unit v)}, pre-centre: the lid's as the official rear three-quarter picture (x59) shows it
     # (user 2026-11-17, over a rigid one): the free affine fit to those hits (a16/place.json trunk_x59), 68 x 39 cm,
     # its axes 82° apart, letters 1.54 x taller than the doors' for their width; u +x, v towards the front.
-    # zone: the mask's (convert.py stage_build): Roof, never damaged (HEAD_TAIL), so a hit door or lid keeps them black
-    WORDMARK=dict(file="cybercab_wordmark.json", seg=round(0.04 * K, 4), zone="Roof", places=(
+    # zone: the mask's (convert.py stage_build): Roof, never damaged (HEAD_TAIL), so a hit door or lid keeps them black.
+    # min_w: {part: grid} no stroke narrower than that across, measured on the panel (P6, 2026-11-19): the artwork's
+    # thinnest strokes (4.8 mm) are under the game's 1 px at its nearest zoom (~0.15 px/mm), so lines broke into
+    # dots. Breaks counted in the 8 headings (temp/p09/PipeP09.md P6): the doors' stop falling at 12 mm, the lid's
+    # facing views reach 0 at 13.5 mm. The lid seen at 0.24-0.31 (S, E, SE; cosine to the view) stays dotted (real
+    # p09p6-cc too): 1 px there takes up to 27 mm across its letters' horizontals, and one width serves all headings;
+    # tried (temp/p09/pipe/p6b/min_px10.patch, every heading 1 px): no breaks, but 30% more ink in every view
+    WORDMARK=dict(file="cybercab_wordmark.json", seg=round(0.04 * K, 4), zone="Roof",
+                  min_w={"DoorFrontLeft": round(0.012 * K, 4), "DoorFrontRight": round(0.012 * K, 4),
+                         "TrunkDoor": round(0.0135 * K, 4)}, places=(
         ("DoorFrontLeft", (-0.7006, 0.8028, 0.2946), (0.029, -0.9996, -0.0035), (-0.0677, -0.0055, 0.9977),
          (-0.9973, -0.0287, -0.0679), 0.5712),
         ("DoorFrontRight", (0.684, 0.2318, 0.2926), (0.029, 0.9996, 0.0035), (0.0677, -0.0055, 0.9977),
@@ -443,11 +474,13 @@ CAR = dict(
     # 05's label 4; 2.8 x the screen's width, 05), under it the body's dark lower edge; the ledge the big screen
     # (screen_size, 1.54:1, top 12 deg forward) stands on, no stand, its back dark (rear: 05 / ERG p.9 x99), the window
     # switches on the ledge under it (the detail model's marks: icons); vent: the detail model's groove in the lower
-    # edge. Its ends 4 cm inside the door cards (x 0.64 at its height)
+    # edge. Its ends 4 cm inside the door cards (x 0.64 at its height); dash_up's ends dark, faces and their last 3 cm
+    # (dash_top's cell: lit silver they read as a white bar in the open front door, Steam 38; dark end faces alone
+    # left a 1 px line, real p09p3b-guide 050 (556,610): the cabin model's band, its last 2.5 cm show in that view)
     DASH=dict(size=(1.18, 0.30, 0.16), console=None, dash=(0, _cf(0.80), 0.030), stand=None,
               screen=(0, _cf(0.597), 0.0455), screen_size=(0.42, 0.272), rear="screen_rear", wheel=None, vent=-0.022,
               parts=(((1.20, 0.075, 0.034), 0.015, "dash_top", (0, _cf(0.6625), 0.093)),
-                     ((1.19, 0.016, 0.070), 0.006, "dash_up", (0, _cf(0.645), 0.040)),
+                     ((1.19, 0.016, 0.070), 0.006, ("dash_up", "dash_top", 0.03), (0, _cf(0.645), 0.040)),
                      ((1.176, 0.008, 0.008), 0.002, "strip", (0, _cf(0.6355), 0.047)),
                      ((0.24, 0.105, 0.030), 0.010, "dash", (0, _cf(0.6075), -0.103)),
                      ((0.10, 0.008, 0.014), 0.003, "switch", (0, _cf(0.5545), -0.097))),
@@ -472,6 +505,12 @@ CAR = dict(
     # the one under the window's belt took the paint and ran 2-3 cm in past the glass foot, a light line through the
     # glass from the front three-quarters (cc10a-3778b4a strip-E / strip-S; convert.py slab_seam_dark)
     SLAB_SEAM_DARK=(0.0015, round(0.06 * K, 4)),
+    # the door seams' whole V groove on the body: the door half went out with the open door as a dashed black line
+    # past its edge strips (p09 P4; convert.py pieces)
+    DOOR_GROOVE_BODY=True,
+    # the doors' paint edge strips in the skin's normals: the open door's foot showed strips just behind the skin as
+    # light gold dots in the game's coarse depth (p09 P4 / R; convert.py slab_skin_normals)
+    SLAB_SKIN_NORMALS=True,
     # the headliner, the pillars and the roof rails inside light grey (rider guide 05; the body's reversed faces over
     # the belt, ahead of the trunk)
     LINER_UP=dict(cell="bed_rib", dz=0.0, y=_cr(-0.60)),
