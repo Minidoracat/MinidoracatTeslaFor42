@@ -3583,7 +3583,8 @@ def pieces(car, c, shift):
             # the liner's, its lowest point 0.25 over the ground, the centred belt 0.145: Cybercab cabin-r2, 242 of 1,163
             # strips over the belt on the front left door). The lids (the hood: EngineDoor; Cybercab and Semi have none)
             # keep every strip the liner's: their skin's edge sampled a baked stripe band (Model 3) and their grooves
-            # (Roadster) into a light / dark comb (p09 S1)
+            # (Roadster) into a light / dark comb (p09 S1). With SLAB_SHUT_SEEN the tailgate / trunk lid (TrunkDoor)
+            # keeps its published strips (pub) whole
             belt = -np.inf if lid else BELT_Z
             slab = lambda bz: pv.slab(V, T, A, skin, off, cab_attr("dash"), bz,  # noqa: E731
                                       outer_extra=sel & ~skin, by_pos=bool(C.get("SPLIT_COLOURS")))
@@ -3594,7 +3595,9 @@ def pieces(car, c, shift):
                 a = slab_skin_normals(V, T[skin], A[skin], a, by_pos=bool(C.get("SPLIT_COLOURS")))
             if C.get("SLAB_SHUT_SEEN"):     # the published slab (centred belt): seen strips' colours, the cabin's doors
                 pub = slab(BELT_Z - shift[2])[2]
-            if pub is not None and not lid:     # t past the piece's outer faces (in T, its glass taken out)
+            if pub is not None and pname == "TrunkDoor":   # (p09 review) shut-seen gave Model S's open tailgate foot
+                a = pub                                     # a red / grey / dark red patchwork
+            elif pub is not None and not lid:   # t past the piece's outer faces (in T, its glass taken out)
                 n0 = int(sel.sum())
                 a = slab_shut_seen(V, T[~glass], (back_liner | (part > 0) & panel)[~glass], P, t[n0:],
                                    np.concatenate([T[sel & ~glass], t[n0:]]), a, len(sedge), pub, belt)
