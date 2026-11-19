@@ -1,5 +1,6 @@
--- MP server: a Tesla, what it tows and what tows it, left on a gone player's physics authority, go back to the server:
--- when anyone joins (before that online id is given out again), and every game minute while the Tesla's motor runs.
+-- MP server: cars left on a gone player's physics authority go back to the server. When anyone joins (before that
+-- online id is given out again): a Tesla, what it tows and what tows it. Every game minute while the motor of a Tesla
+-- not being towed runs: it and what it tows (Battery.lua; a towed Tesla waits for the next join).
 -- The engine's disconnect hands back the driver's own car only (GameServer.java:2642-2652);
 -- stepping out hands back the trailer too (BaseVehicle.java:4027-4034). The next player given that id (slot x 4 + the
 -- split-screen index, GameServer.java:2706-2727, ConnectCoopPacket.java:125; the one reconnecting, usually) gets the

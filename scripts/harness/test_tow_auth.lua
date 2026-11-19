@@ -1,8 +1,8 @@
--- TowAuth.lua: a joining player (OnCreateLivingCharacter on the server) puts every Tesla, and what it tows, that is
--- still on a gone player's online id back on Server; a pair someone is driving, a towed car whose own driver is
--- online, an animal, a vanilla tractor and single player are left alone. The Engine update does the same for the car
--- someone drives before anyone joins. That the client then keeps its hands off the trailer is engine behaviour: E2E
--- semi-sp lk20 params.
+-- TowAuth.lua: a joining player (OnCreateLivingCharacter on the server) puts every Tesla, what it tows and what tows
+-- it, that is still on a gone player's online id back on Server; a pair someone is driving, a towed car whose own
+-- driver is online, an animal, a vanilla pair (no Tesla in it) and single player are left alone. The Engine update
+-- does the same for the car someone drives, and what it tows, before anyone joins. That the client then keeps its
+-- hands off the trailer is engine behaviour: E2E semi-sp lk20 params.
 local check = H.check
 local T = MinidoracatTesla
 
@@ -73,11 +73,12 @@ local bumped = car("Base.MinidoracatTesla_ModelY", 2)
 local bumpedVanilla = car("Base.PickUpTruck", 2)
 local truck, towedTesla = rig("Base.PickUpTruck", 2, 2, "Base.MinidoracatTesla_ModelY")
 local truckHeld, towedHeld = rig("Base.PickUpTruck", 4, 4, "Base.MinidoracatTesla_ModelY")
+local truckLeft = rig("Base.PickUpTruck", 2, -1, "Base.MinidoracatTesla_ModelY") -- the towed Tesla already back
 H.fire("OnCreateLivingCharacter", H.player(), {})
 check(footHead.npid == -1 and footTrailer.npid == -1 and bumped.npid == -1,
     "a player joining: a tractor, its trailer and a lone Tesla on a gone id all back on the server")
-check(truck.npid == -1 and towedTesla.npid == -1 and #H.logLines == logs + 6,
-    "a towed Tesla and the vanilla truck towing it, both on a gone id: both back (never one end only), one log line a car")
+check(truck.npid == -1 and towedTesla.npid == -1 and truckLeft.npid == -1 and #H.logLines == logs + 7,
+    "a towed Tesla and the vanilla truck towing it on a gone id: both back, or the truck alone, one log line a car")
 check(bumpedVanilla.npid == 2 and driven.npid == 4 and truckHeld.npid == 4 and towedHeld.npid == 4
     and not truckHeld.changes and not towedHeld.changes,
     "a vanilla car on a gone id, pairs their online driver holds: untouched")

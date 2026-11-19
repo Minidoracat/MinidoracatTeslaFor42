@@ -212,7 +212,7 @@ function H.vehicle(o)
     function v:getNetPlayerId() return self.npid or -1 end -- MP physics authority: -1 = the server's (BaseVehicle.java:657)
     -- enter = true, a car on Server only (BaseVehicle.java:4012-4022): hitched to a driverless car, towing it or towed
     -- by it, the engine re-hitches with this car as the tractor and constraintChanged (:10183-10198) gives both to
-    -- this car's driver; else this car alone goes to the player
+    -- this car's driver; else this car alone goes to the player. Authority only: who tows whom is not swapped here
     function v:authorizationServerOnSeat(p)
         self.grants = (self.grants or 0) + 1
         if self:getNetPlayerId() ~= -1 then return end
