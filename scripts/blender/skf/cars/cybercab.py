@@ -260,6 +260,9 @@ CAR = dict(
     # own hood path instead of its 5 mm groove's ragged dark texels (convert.py groove_ink)
     GROOVE_INK=dict(file="cybercab_lines.json", lines=("hood",), w=round(0.006 * K, 4), k=0.6,
                     reach=round(0.012 * K, 4), rgb=(58, 58, 60)),
+    # and over it a strip on its two sides (convert.py groove_line): the 6 mm ink read as dots seen at an angle (p09 R1
+    # SE z1); 16 mm wide (SEAM_LINE's two 8 mm halves on the trunk lid), its colour too
+    GROOVE_LINE=dict(w=round(0.016 * K, 6), lift=round(0.001 * K, 6), step=round(0.006 * K, 6), along=0.7),
     # the trunk lid's seams (roof and sides) as SEAM_LINE strips (convert.py seam_lines; Model S / X): its 5 mm groove
     # and a skin-drawn line both came out of the game's 512 skin as dashes (p09 R1: 0.07-1.0 continuous; the game-sampled
     # build 4-60 % in E / S / SE / NW). 8 mm in: 4 mm (Model S) left SE at 4 % (the roof's cross seam under half a

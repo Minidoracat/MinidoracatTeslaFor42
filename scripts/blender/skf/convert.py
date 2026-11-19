@@ -2712,6 +2712,77 @@ def seam_lines(V, T, part, panel, glass_bvh):
     return out
 
 
+def strip_tris(rows):
+    """Triangles between consecutive stations (top, bottom, n, attribute row | None) of one run, facing n; each quad
+    takes its first station's UVs (a source's UV islands change between stations: no texels between them). -> (P, A)."""
+    P, At = [], []
+    for (a0, a1, na, ra), (b0, b1, nb_, rb) in zip(rows[:-1], rows[1:]):
+        rb = rb if ra is None else np.r_[ra[:4], rb[4:]]
+        for tr, at in (((a0, b0, b1), (ra, rb, rb)), ((a0, b1, a1), (ra, rb, ra))):
+            cr = np.cross(tr[1] - tr[0], tr[2] - tr[0])
+            if np.linalg.norm(cr) > 1e-12:
+                flip = cr @ (na + nb_) < 0
+                P.append((tr[0], tr[2], tr[1]) if flip else tr)
+                At.append((at[0], at[2], at[1]) if flip else at)
+    return P, At
+
+
+def runs_of(rows, taper=True):
+    """Runs of consecutive non-None stations (3 or more), each run's end stations pinched to their middle."""
+    out, cur = [], []
+    for r in rows + [None]:
+        if r is not None:
+            cur.append(list(r))
+            continue
+        if len(cur) >= 3:
+            if taper:
+                for e in (cur[0], cur[-1]):
+                    e[0] = e[1] = (e[0] + e[1]) / 2
+            out.append(cur)
+        cur = []
+    return out
+
+
+def groove_line(V, T, part, panel):
+    """GROOVE_LINE=dict(w, lift, step, along) (Cybercab): GROOVE_INK's paths (the hood's seam) also as a strip `w` wide
+    centred on the path, `lift` over the paint, every corner on SEAM_SPOT (SEAM_LINE's tone: the trunk lid's lines'
+    colour): the 6 mm ink, under a texel and a pixel, read as dots seen at an angle (p09 R1, SE z1: the hood's two
+    sides); SEAM_LINE's 2 x 8 mm read 93-100 % every heading (P5). Only where the path runs within `along` (cos) of the
+    car's length, its sides: the front run lies on the leading edge 9 mm over the light bar, the rear one by the
+    windscreen. The edges: rays along -n (the paint's normal nearest the path) onto the paint `w` / 2 to either side;
+    a sample without paint under both splits the run; runs taper to a point. Grid units. -> (points, tris, attrs)."""
+    gl = C["GROOVE_LINE"]
+    assert C["SEAM_LINE"].get("tone"), "GROOVE_LINE paints SEAM_SPOT: SEAM_LINE tone"
+    src = json.load(open(os.path.join(TMP, C["GROOVE_INK"]["file"]), encoding="utf-8"))
+    pb = bvh_of([(V, T[(part == 0) & panel])])
+    ctr = V.mean(0)
+    P = []
+    for name in C["GROOVE_INK"]["lines"]:
+        p = np.array(src[name], float) * K
+        s = np.r_[0, np.cumsum(np.linalg.norm(np.diff(p, axis=0), axis=1))]
+        u = np.arange(0, s[-1], gl["step"])
+        q = np.stack([np.interp(u, s, p[:, i]) for i in range(3)], 1)
+        tg = np.gradient(q, axis=0)
+        tg /= np.linalg.norm(tg, axis=1, keepdims=True)
+        rows = []
+        for x, t in zip(q, tg):
+            n = np.array(pb.find_nearest(Vector(x))[1])
+            n = n if n @ (x - ctr) > 0 else -n
+            side = np.cross(t, n)
+            side /= np.linalg.norm(side)
+            e = [pb.ray_cast(Vector(x + side * sg * gl["w"] / 2 + n * 0.02), Vector(-n), 0.04)[0] for sg in (-1, 1)]
+            ok = abs(t[1]) >= gl["along"] and None not in e
+            rows.append((np.array(e[0]) + n * gl["lift"], np.array(e[1]) + n * gl["lift"], n, None) if ok else None)
+        for run in runs_of(rows):
+            P += strip_tris(run)[0]
+    R = np.array(P, float)
+    rn = np.cross(R[:, 1] - R[:, 0], R[:, 2] - R[:, 0])
+    rn /= np.maximum(np.linalg.norm(rn, axis=1, keepdims=True), 1e-12)
+    print(f"GROOVE_LINE {len(R)} tris")
+    return R.reshape(-1, 3), np.arange(len(R) * 3).reshape(-1, 3), corners(np.array([*SEAM_SPOT, *SEAM_SPOT, 0, 0, 1],
+                                                                                    float), rn)
+
+
 def uv1_class(a):
     """0 paint, 1 cabin, 2 glass per triangle (attributes N x 3 x 7) by UV1 u at its first corner (pzveh face_classes)."""
     u = a[:, 0, 2]
@@ -3338,6 +3409,7 @@ def pieces(car, c, shift):
     adds += [seals(V, T, (part == 0) & panel, cab_attr("base"), gb, solid, seams and (*seams, 0), near_full=near_full)]
     lines = seam_lines(V, T, part, panel, gb) if C.get("SEAM_LINE") else {}
     adds += [lines[0]] if 0 in lines else []
+    adds += [groove_line(V, T, part, panel)] if C.get("GROOVE_LINE") else []
     for v, t, a in adds:
         body_t.append(t + len(bodyV))
         bodyV = np.concatenate([bodyV, v])
