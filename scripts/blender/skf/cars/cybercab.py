@@ -493,9 +493,9 @@ CAR = dict(
     # the door seams' whole V groove on the body: the door half went out with the open door as a dashed black line
     # past its edge strips (p09 P4; convert.py pieces)
     DOOR_GROOVE_BODY=True,
-    # the paint seam strips lying on a rim strip (within 0.5 mm) in its colour and normal: along the doors' foot the two
-    # fought in the game's depth, light dots on the open door's foot (p09 P4; convert.py slab_seam_dup)
-    SLAB_SEAM_DUP=round(0.0005 * K, 6),
+    # the doors' paint edge strips in the skin's normals: the open door's foot showed strips just behind the skin as
+    # light gold dots in the game's coarse depth (p09 P4 / R; convert.py slab_skin_normals)
+    SLAB_SKIN_NORMALS=True,
     # the headliner, the pillars and the roof rails inside light grey (rider guide 05; the body's reversed faces over
     # the belt, ahead of the trunk)
     LINER_UP=dict(cell="bed_rib", dz=0.0, y=_cr(-0.60)),
