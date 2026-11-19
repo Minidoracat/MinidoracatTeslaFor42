@@ -2374,6 +2374,77 @@ def slab_skin_normals(V, tri, att, a, by_pos=False):
     return a
 
 
+def slab_shut_seen(V, T, two, P, t, own, a, nb, pub, top, n=32, amin=2.0, band=0.1, run_min=0.1):
+    """SLAB_SHUT_SEEN (optional; SLAB_BELT_PRE cars, p09 S1): pv.slab's edge strips (the last 2 x nb rows of t / a)
+    keep their published colours, pub's rows (the slab with the centred belt, before SLAB_BELT_PRE: mostly the
+    liner's), unless only an open door shows them: those the game's camera sees with every door shut (through the
+    glass, paint strips put light bars under the rear window and on the far door's front edge), and those no camera
+    sees at all, shut in the slab (a seam inside the skin: its strip's inner edge on the inner panel, a dashed light
+    line along the open door card; Roadster). Seen shut: from one of n azimuths round the car, 30 degrees down, that
+    the strip faces, at least amin px^2 of it at 182.8 px a unit (the eight shut views p09 S1 was checked on), by rays
+    from a grid of points on it (about 1 cm apart, 4 across) that leave without meeting a face the camera sees: of T
+    (the car's opaque faces, all doors shut; `two`: those with a reversed copy, the liner's or a door's inner panel,
+    hide from both sides) or of the piece's own slab (P, t). Faces turned away are culled, the glass hides nothing. A
+    strip seen only as a sliver through a panel gap (a few px of the gap's dotted line) still takes the paint: with
+    any ray counted, few jambs were left to paint (the gaps show most of them). Shut in: no ray over the hemisphere
+    the strip faces leaves `own` (the piece's opaque faces, over P) from 3 x 3 points on it. Also kept: strips reaching
+    within `band` under the belt `top` (the window channel's notches: a dashed box on the Model X's open front door
+    card), strips facing up (a step in the outline: a light slash over the Roadster's open door card), and paint runs
+    (strips joined end to end) shorter than run_min (light blocks between liner strips; 0.2 drops the Cybertruck's
+    rear door foot)."""
+    bvh, ob = bvh_of([(V, T), (P, t)]), bvh_of([(P, own)])
+    s = t[len(t) - 2 * nb:]
+    b, a0, a1, b1 = P[s[:nb, 0]], P[s[:nb, 1]], P[s[:nb, 2]], P[s[nb:, 2]]    # (b, a, a') and (b, a', b')
+    f = np.array([0.1, 0.5, 0.9])
+    u, w = [x.ravel()[None, :, None] for x in np.meshgrid(f, f)]
+    pts = (1 - w) * ((1 - u) * a0[:, None] + u * b[:, None]) + w * ((1 - u) * a1[:, None] + u * b1[:, None])
+    nrm = np.cross(a0 - b, a1 - b)
+    nrm /= np.maximum(np.linalg.norm(nrm, axis=1, keepdims=True), 1e-12)
+    el, az = math.radians(30), np.radians(np.arange(n) * 360 / n)
+    D = np.column_stack([np.sin(az) * math.cos(el), np.cos(az) * math.cos(el), np.full(n, math.sin(el))])
+    k = np.arange(64) + 0.5                          # 64 directions round the sphere (Fibonacci)
+    z, ph = 1 - 2 * k / 64, math.pi * (1 + 5 ** 0.5) * k
+    S = np.column_stack([np.sqrt(1 - z * z) * np.cos(ph), np.sqrt(1 - z * z) * np.sin(ph), z])
+
+    def leaves(o, d):
+        o, d = Vector(o + d * 1e-3), Vector(d)
+        while True:
+            hit, hn, f, _ = bvh.ray_cast(o, d)
+            if hit is None:
+                return True
+            if hn.dot(d) > 0 or f < len(T) and two[f]:
+                return False
+            o = hit + d * 1e-4
+    span, deep = np.linalg.norm(b - a0, axis=1), np.linalg.norm(a1 - a0, axis=1)
+    seen = np.zeros(nb, bool)
+    for j in range(nb):
+        nu = int(np.clip(np.ceil(span[j] / 0.01), 2, 8))
+        uu, ww = [x.ravel()[:, None] for x in np.meshgrid((np.arange(nu) + 0.5) / nu, (np.arange(4) + 0.5) / 4)]
+        pj = (1 - ww) * ((1 - uu) * a0[j] + uu * b[j]) + ww * ((1 - uu) * a1[j] + uu * b1[j])
+        cell = span[j] * deep[j] / (4 * nu) * 182.8 ** 2      # px^2 at the game's default zoom (182.8 px a unit)
+        seen[j] = any(sum(leaves(p, d) for p in pj) * cell * (d @ nrm[j]) >= amin for d in D[D @ nrm[j] > 0])
+    shut_in = np.array([not any(ob.ray_cast(Vector(p + d * 1e-3), Vector(d))[0] is None
+                                for d in S[S @ nrm[j] > 0] for p in pts[j]) for j in range(nb)], bool)
+    sill = (np.maximum(b[:, 2], a0[:, 2]) > top - band) | (nrm[:, 2] > 0.7)   # the window channel; a step facing up
+    keep = seen | shut_in | sill
+    root = {}                                         # runs of paint strips along the edge, joined at their ends
+
+    def find(x):
+        while root.setdefault(x, x) != x:
+            x = root[x]
+        return x
+    for i, j in s[:nb, :2][~keep]:
+        root[find(i)] = find(j)
+    run = np.array([find(i) for i in s[:nb, 0]])
+    short = ~keep & np.isin(run, [r for r in set(run[~keep]) if span[~keep & (run == r)].sum() < run_min])
+    pick = np.nonzero(keep | short)[0]
+    rows = len(a) - 2 * nb + np.concatenate([pick, nb + pick])
+    a[rows] = pub[rows]
+    print(f"SLAB_SHUT_SEEN {nb} edge strips: {int(seen.sum())} seen shut, {int(shut_in.sum())} shut in the slab, "
+          f"{int(sill.sum())} at the sill or facing up, {int(short.sum())} in short runs")
+    return a
+
+
 def in_outline(bvh):
     """p -> inside the outline of bvh (the car) from all eight game cameras (30 degrees down, every 45): a line through
     p along each view meets it. Outside, a dark strip shows past the car's edge and blocks no gap."""
@@ -3485,7 +3556,7 @@ def pieces(car, c, shift):
         bodyV = np.concatenate([bodyV, v])
         body_a.append(a)
     conv = np.array(Matrix.Rotation(-math.pi / 2, 3, "X"))
-    meshes, hinges, strips, elbows, upper, stows = [], {}, {}, {}, {}, {}
+    meshes, hinges, strips, elbows, upper, stows, cab_a = [], {}, {}, {}, {}, {}, {}
     mat = bpy.data.materials.new(pv.NAME)
     for pname, (sd, axis, ang, secs) in pv.DOORS.items():
         k = PARTS.index(pname)
@@ -3502,6 +3573,7 @@ def pieces(car, c, shift):
             d = np.column_stack([np.zeros(len(V)), -k * w, -np.ones(len(V))])
             off = d / np.linalg.norm(d, axis=1, keepdims=True) * pv.DOOR_T
         skin = sel & panel & ~mirror & ~shell            # the mirror cap: outer faces only (a closed shell)
+        pub = None
         if ang == "roll":                                # the tonneau: strips of its own (tonneau_strips)
             P, t, a, strips[pname] = tonneau_strips(V[np.unique(T[sel])], cab_attr)
         elif ang == "stow":                              # the soft top: its own strips, no slab (soft_strips)
@@ -3510,13 +3582,24 @@ def pieces(car, c, shift):
             # V is pre-centre (soup + shift) but the slab's belt is the centred BELT_Z - zmid: every edge strip of a door
             # (its lowest point 0.25 over the ground, the centred belt 0.145) came out the liner's, not only the window
             # frames'; optional SLAB_BELT_PRE (Cybercab, cabin-r2: 242 of 1,163 strips over the belt on the front
-            # left door) passes the belt in V's frame. The published cars keep theirs.
-            P, t, a, _ = pv.slab(V, T, A, skin, off, cab_attr("dash"), BELT_Z - (0 if C.get("SLAB_BELT_PRE") else shift[2]),
-                                 outer_extra=sel & ~skin, by_pos=bool(C.get("SPLIT_COLOURS")))
+            # left door) passes the belt in V's frame. With it the hood (EngineDoor; Cybercab and Semi have none) keeps
+            # every strip the liner's: its skin's edge sampled a baked stripe band (Model 3) and its grooves (Roadster)
+            # into a light / dark comb (p09 S1)
+            pre = C.get("SLAB_BELT_PRE")
+            belt = -np.inf if lid and pre else BELT_Z - (0 if pre else shift[2])
+            slab = lambda bz: pv.slab(V, T, A, skin, off, cab_attr("dash"), bz,  # noqa: E731
+                                      outer_extra=sel & ~skin, by_pos=bool(C.get("SPLIT_COLOURS")))
+            P, t, a, sedge = slab(belt)
             if sd and C.get("SLAB_SEAM_DARK"):
                 a = slab_seam_dark(V, T[skin], T[part0 == k], a, cab_attr("dash"), gb, *C["SLAB_SEAM_DARK"])
             if sd and C.get("SLAB_SKIN_NORMALS"):
                 a = slab_skin_normals(V, T[skin], A[skin], a, by_pos=bool(C.get("SPLIT_COLOURS")))
+            if C.get("SLAB_SHUT_SEEN"):     # the published slab (centred belt): seen strips' colours, the cabin's doors
+                pub = slab(BELT_Z - shift[2])[2]
+            if pub is not None and not lid:     # t past the piece's outer faces (in T, its glass taken out)
+                n0 = int(sel.sum())
+                a = slab_shut_seen(V, T[~glass], (back_liner | (part > 0) & panel)[~glass], P, t[n0:],
+                                   np.concatenate([T[sel & ~glass], t[n0:]]), a, len(sedge), pub, belt)
             if sd and C.get("DOOR_INNER"):  # (Cybercab: rider guide pp.7 / 11, ERG p.19) the inner panel's cell (cell);
                 di = C["DOOR_INNER"]         # optional upper = (cell, dz): over the belt + dz that cell, cut on that line
                 n0 = int((sel & ~skin).sum() + skin.sum())
@@ -3591,6 +3674,8 @@ def pieces(car, c, shift):
             h = np.array([0.0, dv[:, 1].max(), dv[:, 2].max() - C.get("GATE_HINGE_DROP", 0.0)])
         hinges[pname] = h - shift
         meshes.append((pname, P - shift, t, a))
+        if pub is not None:     # (SLAB_SHUT_SEEN) for build_cabin, whose shell rays meet the doors' paint: the paint
+            cab_a[pname] = np.concatenate([pub, a[len(pub):]])    # strips moved its walls (Model X: through the glass)
         print(f"DOOR {pname}: {int(sel.sum())} faces, {len(t)} tris, hinge {np.round(h, 3).tolist()}")
     for build, cfg in ((bed_tub, "BED_TUB"), (roof_bar, "ROOF_BAR"), (cell_prisms, "CELL_PRISMS")):   # a pickup's bed, its
         # roof light bar, palette-cell solids (no skin island: the skin's layout stays)
@@ -3603,7 +3688,7 @@ def pieces(car, c, shift):
     # (a stowing soft top is no wall of the cabin: the shell's rays pass it, so none of the shell stays up there with
     # the top stowed)
     cv, ct, ca = build_cabin(bodyV - shift, np.concatenate(body_t), np.concatenate(body_a),
-                             [m for m in meshes if m[0] not in stows], shift)
+                             [(p, P, t, cab_a.get(p, a)) for p, P, t, a in meshes if p not in stows], shift)
     body_t.append(ct + len(bodyV))
     bodyV = np.concatenate([bodyV, cv + shift])
     body_a.append(ca)

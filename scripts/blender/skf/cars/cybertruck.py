@@ -124,6 +124,11 @@ CAR = dict(
     },
     GATE_IN=(0.0, 1.0, 0.0),               # tailgate inner panel: forward into the bed
     GATE_HINGE="bottom",
+    # the doors', lids' edge strips under the belt in the paint next to them, over it black (convert.py pieces: the
+    # belt in the pieces' pre-centre frame; the centred one made every strip the liner's)
+    SLAB_BELT_PRE=True,
+    # (convert.py slab_shut_seen) the edge strips the camera sees shut keep the liner's colour, as published
+    SLAB_SHUT_SEEN=True,
     TONNEAU_T=0.025,                       # tonneau slab: about 3 cm (the real cover's slats)
     # ---- convert.py: the source (TMP/src, gitignored; temp/sketchfab-cybertruck in the main checkout)
     # prep_cybertruck.py's output (the source FBX on the manual and the official side render; run it first)
