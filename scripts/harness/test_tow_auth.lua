@@ -104,7 +104,8 @@ check(idleTrailer.npid == -1 and not idle.grants, "motor running, no driver, tra
 local nextDriver, nextTrailer = rig("Base.MinidoracatTesla_Semi", -1, 2)
 nextDriver._class, nextDriver.running, nextDriver.driver = "BaseVehicle", true, H.player({ name = "next" })
 T.Update.Engine(nextDriver, nextDriver:getPartById("Engine"), 1)
-check(nextTrailer.changes == 1 and nextDriver.grants == 1 and nextTrailer.npid == nextDriver.driver:getOnlineID(),
+local nextId = nextDriver.driver:getOnlineID()
+check(nextTrailer.changes == 1 and nextDriver.grants == 1 and nextDriver.npid == nextId and nextTrailer.npid == nextId,
     "the same with someone at the wheel: trailer back first, then both granted to him")
 
 getCell, getPlayerByOnlineID = savedCell, savedById
