@@ -263,6 +263,13 @@ CAR = dict(
     # and over it a strip on its two sides (convert.py groove_line): the 6 mm ink read as dots seen at an angle (p09 R1
     # SE z1); 16 mm wide (SEAM_LINE's two 8 mm halves on the trunk lid), its colour too
     GROOVE_LINE=dict(w=round(0.016 * K, 6), lift=round(0.001 * K, 6), step=round(0.006 * K, 6), along=0.7),
+    # the light bar's corners 2 cm tall (11 mm, prep BAR) over the dark lens under it (convert.py bar_strip): seen across
+    # the corner from S and E the 11 mm lit as dashes (p09 R1: 0.67 of the rows; the offline lit views 0.80-0.84 ->
+    # 0.98-1.0, 2.6 cm no better); eased in over |x| 0.58-0.68 m, the corner's turn: from 0.45 m the front view's (SE)
+    # ends 3.7 px thick for 1.9 in the middle, 3.1 from 0.58; from 0.64 S / E fell to 0.94-0.95
+    BAR_WIDE=dict(obj="HeadLight", lamp=("HeadLight", "Trim", "LampDots_Left", "LampDots_Right"),
+                  h=(round(0.011 * K, 6), round(0.020 * K, 6)), x=(round(0.58 * K, 4), round(0.68 * K, 4)),
+                  lift=round(0.001 * K, 6), step=round(0.004 * K, 6)),
     # the trunk lid's seams (roof and sides) as SEAM_LINE strips (convert.py seam_lines; Model S / X): its 5 mm groove
     # and a skin-drawn line both came out of the game's 512 skin as dashes (p09 R1: 0.07-1.0 continuous; the game-sampled
     # build 4-60 % in E / S / SE / NW). 8 mm in: 4 mm (Model S) left SE at 4 % (the roof's cross seam under half a

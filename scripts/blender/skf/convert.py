@@ -2783,6 +2783,60 @@ def groove_line(V, T, part, panel):
                                                                                     float), rn)
 
 
+def bar_strip(V, T, A, part, obj):
+    """BAR_WIDE=dict(obj, lamp, h, x, lift, step) (Cybercab): the light bar's corners drawn taller, from its top edge
+    down over the dark lens, `lift` over it: h[0] (the bar's own height) at |x| x[0] to h[1] from x[1] out. Its 11 mm
+    there, seen across the corner from S and E, was under a pixel and lit as dashes (p09 R1: 0.67 of the rows); the
+    prep's bar stays (a prep re-run moves 13 % of the shell's faces). Every corner takes the bar's own attributes (UV0,
+    UV1, normal) at the bar's middle under its station: its colour, lights texel and light zone. The top edge: the bar
+    faces' outline points over the bar's middle round them, resampled every `step`; the bottom on the surface below,
+    a ray in along the bar's level normal, held on the lamp's faces (`lamp` objects: the bar's outer end leans back
+    with height, the paint past it), else less tall. Grid units. -> (points, tris, attributes)."""
+    bw = C["BAR_WIDE"]
+    bar = (part == 0) & (obj == bw["obj"])
+    tb, ab = T[bar], A[bar]
+    bb = bvh_of([(V, tb)])
+    body = bvh_of([(V, T[part == 0])])
+    bobj = obj[part == 0]
+    pid = np.unique(np.round(V / 1e-5).astype(np.int64), axis=0, return_inverse=True)[1].ravel()
+    ed = np.concatenate([tb[:, [0, 1]], tb[:, [1, 2]], tb[:, [2, 0]]])
+    _, inv, cnt = np.unique(np.sort(pid[ed], 1), axis=0, return_inverse=True, return_counts=True)
+    ov = np.unique(ed[cnt[inv.ravel()] == 1])
+    bv = V[np.unique(tb)]
+    top = np.array([V[i][2] > (lambda z: (z.max() + z.min()) / 2)(
+        bv[np.linalg.norm(bv[:, :2] - V[i][:2], axis=1) < 0.012, 2]) for i in ov])
+    P, At = [], []
+    for sg in (-1, 1):
+        tp = V[ov[top & (V[ov, 0] * sg > bw["x"][0])]]
+        tp = np.unique(np.round(tp, 5), axis=0)
+        tp = tp[np.argsort(np.arctan2(tp[:, 1] - (bv[:, 1].min() - 0.05), tp[:, 0] * sg))]
+        s = np.r_[0, np.cumsum(np.linalg.norm(np.diff(tp, axis=0), axis=1))]
+        u = np.arange(0, s[-1], bw["step"])
+        rows = []
+        for x in np.stack([np.interp(u, s, tp[:, i]) for i in range(3)], 1):
+            hh = bw["h"][0] + (bw["h"][1] - bw["h"][0]) * np.clip((x[0] * sg - bw["x"][0]) / (bw["x"][1] - bw["x"][0]),
+                                                                    0, 1)
+            loc, _, f, _ = bb.find_nearest(Vector(x - (0, 0, bw["h"][0] / 2)))
+            w = np.clip(np.linalg.lstsq(np.r_[V[tb[f]].T, np.ones((1, 3))], np.r_[np.array(loc), 1], rcond=None)[0], 0, 1)
+            ra = (w / w.sum()) @ ab[f]
+            n = ra[4:] / np.linalg.norm(ra[4:])
+            ra[4:] = n
+            lv = np.array([n[0], n[1], 0]) / np.linalg.norm(n[:2])
+            bot = None
+            for k in np.arange(hh, bw["h"][0] - 1e-9, -0.001):
+                hit = body.ray_cast(Vector(x - (0, 0, k) + lv * 0.03), Vector(-lv), 0.06)
+                if hit[0] is not None and bobj[hit[2]] in bw["lamp"]:
+                    bot = np.array(hit[0])
+                    break
+            rows.append(None if bot is None else (x + n * bw["lift"], bot + n * bw["lift"], n, ra))
+        for run in runs_of(rows, taper=False):
+            p_, a_ = strip_tris(run)
+            P += p_
+            At += a_
+    print(f"BAR_WIDE {len(P)} tris")
+    return (np.array(P, float).reshape(-1, 3), np.arange(len(P) * 3).reshape(-1, 3), np.array(At, float))
+
+
 def uv1_class(a):
     """0 paint, 1 cabin, 2 glass per triangle (attributes N x 3 x 7) by UV1 u at its first corner (pzveh face_classes)."""
     u = a[:, 0, 2]
@@ -3410,6 +3464,7 @@ def pieces(car, c, shift):
     lines = seam_lines(V, T, part, panel, gb) if C.get("SEAM_LINE") else {}
     adds += [lines[0]] if 0 in lines else []
     adds += [groove_line(V, T, part, panel)] if C.get("GROOVE_LINE") else []
+    adds += [bar_strip(V, T, A, part, c["obj"][tf])] if C.get("BAR_WIDE") else []
     for v, t, a in adds:
         body_t.append(t + len(bodyV))
         bodyV = np.concatenate([bodyV, v])
