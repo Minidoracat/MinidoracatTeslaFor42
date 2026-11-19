@@ -1,5 +1,6 @@
--- MP server: a towing Tesla's trailer left on a gone driver's physics authority goes back to the server before anyone
--- gets that online id again. The engine's disconnect hands back the driver's own car only (GameServer.java:2642-2652);
+-- MP server: a Tesla, what it tows and what tows it, left on a gone player's physics authority, go back to the server:
+-- when anyone joins (before that online id is given out again), and every game minute while the Tesla's motor runs.
+-- The engine's disconnect hands back the driver's own car only (GameServer.java:2642-2652);
 -- stepping out hands back the trailer too (BaseVehicle.java:4027-4034). The next player given that id (slot x 4 + the
 -- split-screen index, GameServer.java:2706-2727, ConnectCoopPacket.java:125; the one reconnecting, usually) gets the
 -- trailer as Local before the two hook up again and runs its physics (BaseVehicle.java:629-637 over :845-850): a Semi
@@ -20,7 +21,8 @@
 -- (:10157-10164), only his client gives them back, seconds later (WorldSimulation.java:184-197), and the server never
 -- times it out (netPlayerTimeout is written at :633 and read nowhere). Dropping inside those seconds leaves both on
 -- his id, and no one else can then drive the pair: a driver is granted a car on Server only (:7505-7508,
--- VehicleEnterPacket.java:123-129). The Engine update (Battery.lua) frees such a car for the one driving it now.
+-- VehicleEnterPacket.java:123-129). The Engine update (Battery.lua) frees such a car every game minute while its
+-- motor runs, then grants it to whoever drives.
 if not isServer() then return end
 require "MinidoracatTesla/Core"
 
@@ -38,11 +40,13 @@ local function back(v, head, what)
     v:authorizationChanged(nil)
 end
 
--- a Tesla and what it tows
+-- a Tesla, what it tows and what tows it: the engine sets a pair together (:3974-4010, :10157-10164), and one end on
+-- Server with the other on a gone id is the state the reconnect drop comes from
 function TA.free(v)
-    local t = v:getVehicleTowing()
+    local t, h = v:getVehicleTowing(), v:getVehicleTowedBy()
     back(v, v, "")
     if t then back(t, v, " trailer #" .. t:getId()) end
+    if h then back(h, v, " tractor #" .. h:getId()) end
 end
 
 -- every loaded Tesla. IsoCell.vehicles is a HashSet: iterator() (SemiHitch.lua has why).

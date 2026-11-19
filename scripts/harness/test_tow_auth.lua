@@ -25,10 +25,11 @@ local function car(script, npid)
     cars[#cars + 1] = v
     return v
 end
--- a tractor towing a trailer
-local function rig(script, headNpid, trailerNpid)
-    local head, trailer = car(script, headNpid), car("Base.MinidoracatTesla_SemiTrailer", trailerNpid)
+-- a tractor towing a trailer (or the car named)
+local function rig(script, headNpid, trailerNpid, towed)
+    local head, trailer = car(script, headNpid), car(towed or "Base.MinidoracatTesla_SemiTrailer", trailerNpid)
     function head:getVehicleTowing() return trailer end
+    trailer.towedBy = head
     return head, trailer
 end
 
@@ -65,14 +66,21 @@ check(#lines == 1 and lines[1]:find("[MinidoracatTeslaFor42] towauth: Base.Minid
 H.fire("OnCreateLivingCharacter", H.player(), {})
 check(gone.changes == 1 and #H.logLines == logs + 1, "the next join: nothing left to do, no log")
 
--- hitched on foot, then dropped before his client gave the two back: both still on his id; so is a car he bumped
+-- hitched on foot, then dropped before his client gave the two back: both still on his id; so is a car he bumped,
+-- and a vanilla truck he hitched a Tesla to
 local footHead, footTrailer = rig("Base.MinidoracatTesla_Semi", 2, 2)
 local bumped = car("Base.MinidoracatTesla_ModelY", 2)
 local bumpedVanilla = car("Base.PickUpTruck", 2)
+local truck, towedTesla = rig("Base.PickUpTruck", 2, 2, "Base.MinidoracatTesla_ModelY")
+local truckHeld, towedHeld = rig("Base.PickUpTruck", 4, 4, "Base.MinidoracatTesla_ModelY")
 H.fire("OnCreateLivingCharacter", H.player(), {})
-check(footHead.npid == -1 and footTrailer.npid == -1 and bumped.npid == -1 and #H.logLines == logs + 4,
-    "a player joining: a tractor, its trailer and a lone Tesla on a gone id all back on the server, one log line each")
-check(bumpedVanilla.npid == 2 and driven.npid == 4, "a vanilla car on a gone id, a pair its online driver holds: untouched")
+check(footHead.npid == -1 and footTrailer.npid == -1 and bumped.npid == -1,
+    "a player joining: a tractor, its trailer and a lone Tesla on a gone id all back on the server")
+check(truck.npid == -1 and towedTesla.npid == -1 and #H.logLines == logs + 6,
+    "a towed Tesla and the vanilla truck towing it, both on a gone id: both back (never one end only), one log line a car")
+check(bumpedVanilla.npid == 2 and driven.npid == 4 and truckHeld.npid == 4 and towedHeld.npid == 4
+    and not truckHeld.changes and not towedHeld.changes,
+    "a vanilla car on a gone id, pairs their online driver holds: untouched")
 
 -- no one joins, someone else takes the wheel: the Engine update frees the pair, then grants him the tractor
 local taken, takenTrailer = rig("Base.MinidoracatTesla_Semi", 2, 2)
@@ -84,5 +92,14 @@ local mine = car("Base.MinidoracatTesla_Semi", 4)
 mine._class, mine.running, mine.driver = "BaseVehicle", true, H.player({ name = "holder" })
 T.Update.Engine(mine, mine:getPartById("Engine"), 1)
 check(mine.npid == 4 and not mine.changes and not mine.grants, "motor running on an online id: left alone")
+-- the driver dropped at the wheel, motor running: the engine took the tractor back, the trailer is freed with no one in
+local idle, idleTrailer = rig("Base.MinidoracatTesla_Semi", -1, 2)
+idle._class, idle.running = "BaseVehicle", true
+T.Update.Engine(idle, idle:getPartById("Engine"), 1)
+check(idleTrailer.npid == -1 and not idle.grants, "motor running, no driver, trailer on a gone id: trailer back, no grant")
+local nextDriver, nextTrailer = rig("Base.MinidoracatTesla_Semi", -1, 2)
+nextDriver._class, nextDriver.running, nextDriver.driver = "BaseVehicle", true, H.player({ name = "next" })
+T.Update.Engine(nextDriver, nextDriver:getPartById("Engine"), 1)
+check(nextTrailer.npid == -1 and nextDriver.grants == 1, "the same with someone at the wheel: trailer back, then the grant")
 
 getCell, getPlayerByOnlineID = savedCell, savedById
