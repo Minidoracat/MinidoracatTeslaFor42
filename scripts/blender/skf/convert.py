@@ -2375,8 +2375,8 @@ def slab_skin_normals(V, tri, att, a, by_pos=False):
 
 
 def slab_shut_seen(V, T, two, P, t, own, a, nb, pub, top, n=32, amin=2.0, band=0.1, run_min=0.1):
-    """SLAB_SHUT_SEEN (optional; SLAB_BELT_PRE cars, p09 S1): pv.slab's edge strips (the last 2 x nb rows of t / a)
-    keep their published colours, pub's rows (the slab with the centred belt, before SLAB_BELT_PRE: mostly the
+    """SLAB_SHUT_SEEN (optional, p09 S1): pv.slab's edge strips (the last 2 x nb rows of t / a)
+    keep their published colours, pub's rows (the slab with the centred belt, before the belt in V's frame: mostly the
     liner's), unless only an open door shows them: those the game's camera sees with every door shut (through the
     glass, paint strips put light bars under the rear window and on the far door's front edge), and those no camera
     sees at all, shut in the slab (a seam inside the skin: its strip's inner edge on the inner panel, a dashed light
@@ -3579,14 +3579,12 @@ def pieces(car, c, shift):
         elif ang == "stow":                              # the soft top: its own strips, no slab (soft_strips)
             P, t, a, stows[pname] = soft_strips(V, T, A, sel, shift)
         else:
-            # V is pre-centre (soup + shift) but the slab's belt is the centred BELT_Z - zmid: every edge strip of a door
-            # (its lowest point 0.25 over the ground, the centred belt 0.145) came out the liner's, not only the window
-            # frames'; optional SLAB_BELT_PRE (Cybercab, cabin-r2: 242 of 1,163 strips over the belt on the front
-            # left door) passes the belt in V's frame. With it the hood (EngineDoor; Cybercab and Semi have none) keeps
-            # every strip the liner's: its skin's edge sampled a baked stripe band (Model 3) and its grooves (Roadster)
-            # into a light / dark comb (p09 S1)
-            pre = C.get("SLAB_BELT_PRE")
-            belt = -np.inf if lid and pre else BELT_Z - (0 if pre else shift[2])
+            # the belt in V's frame (pre-centre: soup + shift; the centred BELT_Z - zmid made every edge strip of a door
+            # the liner's, its lowest point 0.25 over the ground, the centred belt 0.145: Cybercab cabin-r2, 242 of 1,163
+            # strips over the belt on the front left door). The lids (the hood: EngineDoor; Cybercab and Semi have none)
+            # keep every strip the liner's: their skin's edge sampled a baked stripe band (Model 3) and their grooves
+            # (Roadster) into a light / dark comb (p09 S1)
+            belt = -np.inf if lid else BELT_Z
             slab = lambda bz: pv.slab(V, T, A, skin, off, cab_attr("dash"), bz,  # noqa: E731
                                       outer_extra=sel & ~skin, by_pos=bool(C.get("SPLIT_COLOURS")))
             P, t, a, sedge = slab(belt)

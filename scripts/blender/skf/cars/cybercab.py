@@ -498,9 +498,6 @@ CAR = dict(
         ],
     },
     DOOR_INNER=dict(cell="bed_floor"),
-    # the doors' and the trunk lid's edge strips under the belt in the paint next to them, over it black (convert.py
-    # pieces: the belt in the pieces' pre-centre frame; cabin-r2 D)
-    SLAB_BELT_PRE=True,
     # the doors' edge strips on a paint / trim seam inside the skin (grid tolerance) and near the glass (grid) black:
     # the one under the window's belt took the paint and ran 2-3 cm in past the glass foot, a light line through the
     # glass from the front three-quarters (cc10a-3778b4a strip-E / strip-S; convert.py slab_seam_dark)

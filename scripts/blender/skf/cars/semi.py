@@ -318,7 +318,6 @@ CAR = dict(
         ],
     },
     DOOR_INNER=dict(cell="bed_floor"),
-    SLAB_BELT_PRE=True,
     SLAB_SEAM_DARK=(0.0015, round(0.06 * K, 4)),
     LINER_UP=dict(cell="bed_rib", dz=0.0, y=_c(_CAB_R)),
     TRIM_BACKS=(),

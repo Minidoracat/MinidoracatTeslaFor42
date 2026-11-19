@@ -144,9 +144,6 @@ CAR = dict(
     FALCON=dict(hinge=(0.14, 1.37), elbow=(0.55, 1.30), side=(0.75, 0.86)),
     GATE_IN=(0.0, 0.894, -0.447),
     GATE_HINGE="top",
-    # the doors', lids' edge strips under the belt in the paint next to them, over it black (convert.py pieces: the
-    # belt in the pieces' pre-centre frame; the centred one made every strip the liner's)
-    SLAB_BELT_PRE=True,
     # (convert.py slab_shut_seen) the edge strips the camera sees shut keep the liner's colour, as published
     SLAB_SHUT_SEEN=True,
     # (convert.py pieces) the hinge 3 cm under the tailgate's top edge: the roof's crown put the front edge's sides 2-4

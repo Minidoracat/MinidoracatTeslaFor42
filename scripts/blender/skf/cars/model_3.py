@@ -111,9 +111,6 @@ CAR = dict(
     # carried the plate recess ledge's panel 17 mm out through the recess wall (seals analyze.py, from the side)
     GATE_IN=(0.0, 0.9, -0.44),
     GATE_HINGE="front",
-    # the doors', lids' edge strips under the belt in the paint next to them, over it black (convert.py pieces: the
-    # belt in the pieces' pre-centre frame; the centred one made every strip the liner's)
-    SLAB_BELT_PRE=True,
     # (convert.py slab_shut_seen) the edge strips the camera sees shut keep the liner's colour, as published
     SLAB_SHUT_SEEN=True,
     # ---- convert.py: the source (TMP/src, gitignored; temp/sketchfab-model3-perf/src in the main checkout)

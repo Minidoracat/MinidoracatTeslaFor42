@@ -118,9 +118,6 @@ CAR = dict(
     },
     GATE_IN=(0.0, 0.894, -0.447),
     GATE_HINGE="top",
-    # the doors', lids' edge strips under the belt in the paint next to them, over it black (convert.py pieces: the
-    # belt in the pieces' pre-centre frame; the centred one made every strip the liner's)
-    SLAB_BELT_PRE=True,
     # (convert.py slab_shut_seen) the edge strips the camera sees shut keep the liner's colour, as published
     SLAB_SHUT_SEEN=True,
 
