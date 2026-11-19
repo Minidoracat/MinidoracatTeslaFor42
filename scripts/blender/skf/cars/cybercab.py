@@ -262,9 +262,9 @@ CAR = dict(
                     reach=round(0.012 * K, 4), rgb=(58, 58, 60)),
     # and over it a strip on its two sides (convert.py groove_line): the 6 mm ink read as dots seen at an angle (p09 R1
     # SE z1); 16 mm wide (SEAM_LINE's two 8 mm halves on the trunk lid), its colour too. The front run (dashes over the
-    # light bar in SE, p09 R) 8 mm up the hood from the path, off the bar
+    # light bar in SE, p09 R) 16 mm up the hood from the path, off the bar: 8 mm still left SE z1 0.76-0.81 of its columns
     GROOVE_LINE=dict(w=round(0.016 * K, 6), lift=round(0.001 * K, 6), step=round(0.006 * K, 6), along=0.7,
-                     front=round(0.008 * K, 6)),
+                     front=round(0.016 * K, 6)),
     # the light bar's corners 2 cm tall (11 mm, prep BAR) over the dark lens under it (convert.py bar_strip): seen across
     # the corner from S and E the 11 mm lit as dashes (p09 R1: 0.67 of the rows; the offline lit views 0.80-0.84 ->
     # 0.98-1.0, 2.6 cm no better); eased in over |x| 0.58-0.68 m, the corner's turn: from 0.45 m the front view's (SE)
