@@ -1,7 +1,8 @@
 -- A hitch a client missed (client/MinidoracatTesla/TowLink.lua, towAsk in server/MinidoracatTesla/TowAuth.lua): each
--- Tesla or trailer the client builds asks the server once who tows it, cars built during the loading screen at the
--- first tick; the server answers for a pair with a Tesla in it; the client hooks the two only when it has both and
--- neither end is taken. That the engine then keeps the pair together is E2E join-race-mp (X5, X7).
+-- Tesla or trailer the client builds asks the server once what it is hitched to, cars built during the loading screen
+-- one a tick from the first; the server answers for a pair with a Tesla in it, asked about either end; the client
+-- hooks the two only when it has both and neither end is taken. That the engine then keeps the pair together is E2E
+-- join-race-mp (X5, X7).
 local check = H.check
 local T = MinidoracatTesla
 local MEDIA_LUA = "MOD/MinidoracatTeslaFor42/Contents/mods/MinidoracatTeslaFor42/42/media/lua"
@@ -10,11 +11,14 @@ local SEMI, TRAILER = "Base.MinidoracatTesla_Semi", "Base.MinidoracatTesla_SemiT
 H.section("tow link: the server's answer")
 H.side(false, true)
 H.require("MinidoracatTesla/TowAuth")
-local function car(script) return H.vehicle({ script = script }) end
+local function car(script)
+    local v = H.vehicle({ script = script })
+    function v:getVehicleTowing() return self.towing end
+    return v
+end
 -- `head` tows `tail` on the server
 local function hitch(head, tail, attA, attB)
-    tail.towedBy = head
-    function head:getVehicleTowing() return tail end
+    head.towing, tail.towedBy = tail, head
     function head:getTowAttachmentSelf() return attA end
     function head:getTowAttachmentOther() return attB end
     return head, tail
@@ -27,19 +31,21 @@ local function answer(vid)
 end
 
 local semi, trailer = hitch(car(SEMI), car(TRAILER), "mtsemi_fifthwheel", "mtsemi_kingpin")
-local n, m = answer(trailer:getId())
-check(n == 1 and m.player == asker and m.module == T.MODULE and m.command == "towLink" and m.args.a == semi:getId()
-    and m.args.b == trailer:getId() and m.args.attA == "mtsemi_fifthwheel" and m.args.attB == "mtsemi_kingpin",
-    "a hitched Semi trailer: its tractor and the hitch's two attachments, to the one who asked")
+local function isSemiPair(n, m)
+    return n == 1 and m.player == asker and m.module == T.MODULE and m.command == "towLink" and m.args.a == semi:getId()
+        and m.args.b == trailer:getId() and m.args.attA == "mtsemi_fifthwheel" and m.args.attB == "mtsemi_kingpin"
+end
+check(isSemiPair(answer(trailer:getId())), "a hitched Semi trailer: its tractor and the hitch's two attachments, to the one who asked")
+check(isSemiPair(answer(semi:getId())), "asked about the tractor (it was the late one): the same answer")
 local _, cart = hitch(car("Base.MinidoracatTesla_Cybertruck"), car("Base.Trailer"), "trailer", "trailer")
 local _, roped = hitch(car("Base.PickUpTruck"), car("Base.MinidoracatTesla_ModelY"), "trailer", "trailerfront")
 check(answer(cart:getId()) == 1 and answer(roped:getId()) == 1, "a vanilla trailer behind a Tesla, a Tesla behind a vanilla truck: answered")
-local _, vanilla = hitch(car("Base.PickUpTruck"), car("Base.Trailer"), "trailer", "trailer")
-check(answer(vanilla:getId()) == 0, "a pair with no Tesla in it: no answer, left to vanilla")
-check(answer(semi:getId()) == 0 and answer(car(TRAILER):getId()) == 0, "the tractor itself, a trailer on its own: no answer")
+local pickup, vanilla = hitch(car("Base.PickUpTruck"), car("Base.Trailer"), "trailer", "trailer")
+check(answer(vanilla:getId()) == 0 and answer(pickup:getId()) == 0, "a pair with no Tesla in it, either end: no answer, left to vanilla")
+check(answer(car(SEMI):getId()) == 0 and answer(car(TRAILER):getId()) == 0, "a tractor or a trailer on its own: no answer")
 local logs = #H.logLines
-check(answer(987654) == 0 and answer("7") == 0 and answer(nil) == 0 and #H.logLines == logs,
-    "an id no car has, a string, none at all: no answer, no error")
+check(answer(987654) == 0 and answer("7") == 0 and answer(nil) == 0 and answer(trailer:getId() + 0.5) == 0
+    and #H.logLines == logs, "an id no car has, a string, none at all, a fraction: no answer, no error")
 
 H.section("tow link: the client asking")
 local savedPlayer = getSpecificPlayer
@@ -82,10 +88,14 @@ check(#asks(from) == 0, "cars built during the loading screen: nothing sent yet 
 hook.OnGameStart()
 check(#asks(from) == 0 and hook.OnTick ~= nil, "login: still nothing, waiting for the first tick")
 hook.OnTick(0)
+check(#asks(from) == 1 and hook.OnTick ~= nil, "the first tick after login: one question, the rest wait their tick")
+hook.OnTick(0)
 local got = asks(from)
-check(#got == 2 and got[1] == early1:getId() and got[2] == early2:getId(),
-    "the first tick after login: one question for each Tesla or trailer built by then, none for a vanilla car")
-check(hook.OnTick == nil, "the tick hook took itself off")
+table.sort(got)
+check(#got == 2 and got[1] == math.min(early1:getId(), early2:getId()) and got[2] == math.max(early1:getId(), early2:getId()),
+    "a tick each: one question for each Tesla or trailer built by then, none for a vanilla car")
+hook.OnTick(0)
+check(#asks(from) == 2 and hook.OnTick == nil, "all asked: the tick hook took itself off")
 
 from = #H.clientSent
 local late = car("Base.Trailer")
@@ -98,7 +108,7 @@ built(car(SEMI))
 check(#asks(from) == 1, "no local player (dead): not sent")
 alive = true
 
--- the busiest window: a login beside 40 Teslas and trailers, all asked in one tick
+-- a busy moment after login: 40 Teslas and trailers built in one go, each asked as it is built
 from = #H.clientSent
 for _ = 1, 40 do built(car(TRAILER)) end
 local served = H.serve(from)
@@ -109,11 +119,10 @@ check(served.towAsk == 40 and row.max >= 1.5 * 40, "40 cars built at once all re
 H.section("tow link: the client hooking up")
 local function linkable(script)
     local v = car(script)
-    function v:getVehicleTowing() return self.towing end
     function v:addPointConstraint(p, other, attA, attB)
         self.hooks = (self.hooks or 0) + 1
         self.hook = { p = p, other = other, attA = attA, attB = attB }
-        self.towing, other.towedBy = other, self
+        if not other.unbuilt then self.towing, other.towedBy = other, self end
     end
     return v
 end
@@ -140,7 +149,14 @@ link({ a = f:getId(), b = gone:getId(), attA = "x", attB = "y" })
 link({ a = gone:getId(), b = d:getId(), attA = "x", attB = "y" })
 link({ a = f:getId(), b = f:getId(), attA = "x", attB = "y" })
 check(not f.hooks and not gone.hooks, "either one not built here, or one car named twice: nothing hooked")
+-- a car known by id whose chunk is not loaded: the engine's hook does nothing (no script yet)
+local known = linkable(TRAILER)
+known.unbuilt = true
+logs = #H.logLines
+link({ a = f:getId(), b = known:getId(), attA = "x", attB = "y" })
+check(f.hooks == 1 and not f.towing and #H.logLines == logs, "the engine did not hook them (one is not built yet): no catch-up logged")
 
+Events.OnSpawnVehicleEnd.Remove(T.TowLink.onSpawn)
 for name, real in pairs(realEvents) do rawset(Events, name, real) end
 for _, name in ipairs({ "OnGameStart", "OnTick" }) do if not realEvents[name] then rawset(Events, name, nil) end end
 getSpecificPlayer = savedPlayer
