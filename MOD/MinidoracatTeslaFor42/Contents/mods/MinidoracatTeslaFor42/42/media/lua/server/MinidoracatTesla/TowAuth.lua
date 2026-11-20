@@ -62,3 +62,17 @@ end
 Events.OnCreateLivingCharacter.Add(function(character)
     if not instanceof(character, "IsoAnimal") then TA.handBack() end
 end)
+
+-- A client asking who tows the car it just built: it may have missed the hitch (client TowLink.lua has why). Answered
+-- only for a pair with a Tesla in it. Nothing changes here, and who tows whom goes to every client anyway
+-- (VehicleManager.java:367-372), so no distance or owner check; the ids in the answer are the server's own.
+T.ServerCommands = T.ServerCommands or {}
+T.ServerCommands.towAsk = function(player, args)
+    local v = type(args.vid) == "number" and getVehicleById(args.vid) or nil
+    local h = v and v:getVehicleTowedBy()
+    if h and (T.isTesla(h) or T.isTesla(v)) then
+        -- the tractor's Self / Other are the hitch's attachmentA / attachmentB (BaseVehicle.java:9947-9952)
+        T.send(player, "towLink", { a = h:getId(), b = v:getId(), attA = h:getTowAttachmentSelf(),
+            attB = h:getTowAttachmentOther() })
+    end
+end

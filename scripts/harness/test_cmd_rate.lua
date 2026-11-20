@@ -2,7 +2,7 @@
 -- budget dropped before the handler, counted, one log line a window; players apart; the window recovers, a clock set
 -- back starts over; SP and unknown commands are left alone. The real client's busiest minute through it (H.serve) is
 -- in test_sound_remote (motor), test_phone_app (the app), test_liftgate (car picture), test_hud (charge card),
--- test_seat_pose (seat) and test_keys (walk-away lock, key sweep, key card taps, pairing).
+-- test_seat_pose (seat), test_keys (walk-away lock, key sweep, key card taps, pairing) and test_tow_link (towAsk).
 local check = H.check
 local T = MinidoracatTesla
 local CR = T.CommandRate
