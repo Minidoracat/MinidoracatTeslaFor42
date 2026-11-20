@@ -7,12 +7,13 @@
 -- chunks (11 squares between their centres). E2E join-race-mp: X7 walking up 8/8 missed, X5 9/9 when the server
 -- hitched 100 ms or more before the trailer was built here; vanilla's pickup and trailer the same across a chunk edge
 -- (8/8), the engine's own. The tractor can be the late one too: a car whose chunk is not loaded yet is known by id but
--- not built (VehicleFullUpdatePacket.java:85-93), and hooking it does nothing (no script yet, :810-812, :10113).
+-- not built (VehicleFullUpdatePacket.java:85-93), and has no script until it is (:810-812), so hooking it finds no
+-- attachment and does nothing (:10113).
 -- Here: each Tesla or trailer this client builds asks the server once what it is hitched to (towAsk, server
 -- TowAuth.lua); the answer (towLink) hooks the two as the missed packet would have. No tick: OnSpawnVehicleEnd fires
 -- once per car built (BaseVehicle.java:913). A pair with no Tesla in it is left to vanilla (the server does not
--- answer). So is a Tesla towing a vanilla car on a rope when the vanilla car is the late one: asking about every car
--- a client builds would cost more than that case is worth.
+-- answer). So is a pair whose late car is a vanilla car other than a trailer (a rope tow with a Tesla at the other
+-- end): asking about every car a client builds would cost more than that case is worth.
 if not isClient() then return end
 require "MinidoracatTesla/Core"
 require "MinidoracatTesla/Net"

@@ -74,9 +74,11 @@ CR.LIMITS = {
                                              -- perform and on the server's echo, BaseVehicle.java:2528-2529), one per
                                              -- seat switch or exit; each tells the clients near, again 1 s after a
                                              -- player's last (HatHide.lua)
-    towAsk = { max = 120, ms = 10000 },      -- legit 40: one per Tesla or trailer the client builds (client TowLink.lua),
-                                             -- a login beside a lot of them all at once; a drop leaves a missed hitch
-                                             -- as vanilla has it
+    towAsk = { max = 120, ms = 10000 },      -- legit 80: one per Tesla or trailer the client builds, and one check per
+                                             -- pair it then hooks on the answer (client TowLink.lua); 40 trailers
+                                             -- turning up behind tractors already there. A dropped question leaves a
+                                             -- missed hitch as vanilla has it, a dropped check a hook the server may
+                                             -- no longer have
 }
 T.CommandRate = CR
 

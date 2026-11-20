@@ -117,14 +117,14 @@ built(car(SEMI))
 check(#asks(from) == 1, "no local player (dead): not sent")
 alive = true
 
--- a busy moment after login: 40 Teslas and trailers built in one go, each asked as it is built; a pair hooked on an
--- answer checks once more, so at most half as many again
+-- a busy moment after login: 40 Teslas and trailers built in one go, each asked as it is built. Each answer hooks one
+-- pair at most and checks it once, so as many checks again at most (40 trailers behind tractors already here)
 from = #H.clientSent
 for _ = 1, 40 do built(car(TRAILER)) end
 local served = H.serve(from)
 local row = T.CommandRate.LIMITS.towAsk
-check(served.towAsk == 40 and row.max >= 1.5 * 60, "40 cars built at once all reach the server's handler; the budget ("
-    .. row.max .. ") is at least 1.5 times those and their 20 checks")
+check(served.towAsk == 40 and row.max >= 1.5 * 80, "40 cars built at once all reach the server's handler; the budget ("
+    .. row.max .. ") is at least 1.5 times those and their 40 checks")
 
 H.section("tow link: the client hooking up")
 local function linkable(script)
