@@ -67,12 +67,18 @@ end)
 -- may be the late one, so the car asked about is looked up as the trailer, then as the tractor. Answered only for a
 -- pair with a Tesla in it. Nothing changes here, and who tows whom goes to every client anyway
 -- (VehicleManager.java:367-372), so no distance or owner check; the ids in the answer are the server's own.
+-- With `a`: the client hooked car `vid` behind car `a` on an answer from here and checks it; told only if that is no
+-- longer so (the answer crossed an unhitch on the way).
 local function isInt(n) return type(n) == "number" and n == n and math.floor(n) == n end
 T.ServerCommands = T.ServerCommands or {}
 T.ServerCommands.towAsk = function(player, args)
     local v = isInt(args.vid) and getVehicleById(args.vid) or nil -- whole numbers only: fractions truncate to another id
     if not v then return end
     local h, t = v:getVehicleTowedBy(), v
+    if isInt(args.a) then
+        if not h or h:getId() ~= args.a then T.send(player, "towLink", { a = args.a, b = args.vid, apart = true }) end
+        return
+    end
     if not h then h, t = v, v:getVehicleTowing() end
     if t and (T.isTesla(h) or T.isTesla(t)) then
         -- the tractor's Self / Other are the hitch's attachmentA / attachmentB (BaseVehicle.java:9947-9952)

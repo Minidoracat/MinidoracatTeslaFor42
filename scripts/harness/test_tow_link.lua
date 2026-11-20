@@ -24,9 +24,9 @@ local function hitch(head, tail, attA, attB)
     return head, tail
 end
 local asker = H.player({ name = "asker" })
-local function answer(vid)
+local function answer(vid, a)
     local from = #H.sent
-    H.fire("OnClientCommand", T.MODULE, "towAsk", asker, { vid = vid })
+    H.fire("OnClientCommand", T.MODULE, "towAsk", asker, { vid = vid, a = a })
     return #H.sent - from, H.sent[#H.sent]
 end
 
@@ -46,6 +46,15 @@ check(answer(car(SEMI):getId()) == 0 and answer(car(TRAILER):getId()) == 0, "a t
 local logs = #H.logLines
 check(answer(987654) == 0 and answer("7") == 0 and answer(nil) == 0 and answer(trailer:getId() + 0.5) == 0
     and #H.logLines == logs, "an id no car has, a string, none at all, a fraction: no answer, no error")
+-- the check a client sends after hooking on an answer: told only when that answer has gone stale
+local loose = car(TRAILER)
+local n, m = answer(loose:getId(), semi:getId())
+check(answer(trailer:getId(), semi:getId()) == 0 and answer(987654, semi:getId()) == 0,
+    "a check on a pair still hitched, or on a car that is gone: no word")
+check(n == 1 and m.player == asker and m.command == "towLink" and m.args.apart == true and m.args.a == semi:getId()
+    and m.args.b == loose:getId(), "a check on a trailer that is loose now: told they are apart")
+n, m = answer(trailer:getId(), pickup:getId())
+check(n == 1 and m.args.apart == true, "a check naming another tractor than the one towing it: apart")
 
 H.section("tow link: the client asking")
 local savedPlayer = getSpecificPlayer
@@ -108,13 +117,14 @@ built(car(SEMI))
 check(#asks(from) == 1, "no local player (dead): not sent")
 alive = true
 
--- a busy moment after login: 40 Teslas and trailers built in one go, each asked as it is built
+-- a busy moment after login: 40 Teslas and trailers built in one go, each asked as it is built; a pair hooked on an
+-- answer checks once more, so at most half as many again
 from = #H.clientSent
 for _ = 1, 40 do built(car(TRAILER)) end
 local served = H.serve(from)
 local row = T.CommandRate.LIMITS.towAsk
-check(served.towAsk == 40 and row.max >= 1.5 * 40, "40 cars built at once all reach the server's handler; the budget ("
-    .. row.max .. ") is at least 1.5 times that")
+check(served.towAsk == 40 and row.max >= 1.5 * 60, "40 cars built at once all reach the server's handler; the budget ("
+    .. row.max .. ") is at least 1.5 times those and their 20 checks")
 
 H.section("tow link: the client hooking up")
 local function linkable(script)
@@ -124,17 +134,43 @@ local function linkable(script)
         self.hook = { p = p, other = other, attA = attA, attB = attB }
         if not other.unbuilt then self.towing, other.towedBy = other, self end
     end
+    function v:breakConstraint(forget, remote)
+        self.breaks = { forget = forget, remote = remote }
+        self.towing.towedBy, self.towing = nil, nil
+    end
     return v
 end
 local link = T.ClientCommands.towLink
+-- the towAsk commands this client sent since `from`
+local function sentAsks(from)
+    local list = {}
+    for i = from + 1, #H.clientSent do
+        if H.clientSent[i].command == "towAsk" then list[#list + 1] = H.clientSent[i].args end
+    end
+    return list
+end
 local a, b = linkable(SEMI), linkable(TRAILER)
 logs = #H.logLines
+from = #H.clientSent
 link({ a = a:getId(), b = b:getId(), attA = "mtsemi_fifthwheel", attB = "mtsemi_kingpin" })
 check(a.hooks == 1 and a.hook.p == nil and a.hook.other == b and a.hook.attA == "mtsemi_fifthwheel"
     and a.hook.attB == "mtsemi_kingpin" and not b.hooks, "both built, neither hooked: the tractor hooks the trailer, as the packet would")
 check(#H.logLines == logs + 1 and H.logLines[#H.logLines]:find("towlink:", 1, true) ~= nil, "one log line for the catch-up")
+local sent = sentAsks(from)
+check(#sent == 1 and sent[1].vid == b:getId() and sent[1].a == a:getId(), "and one check back to the server: this trailer behind this tractor")
 link({ a = a:getId(), b = b:getId(), attA = "mtsemi_fifthwheel", attB = "mtsemi_kingpin" })
-check(a.hooks == 1 and #H.logLines == logs + 1, "already hooked (the packet or the engine's retry got there): left alone")
+check(a.hooks == 1 and #H.logLines == logs + 1 and #sentAsks(from) == 1,
+    "already hooked (the packet or the engine's retry got there): left alone, no check")
+-- the answer had crossed an unhitch: the server says apart
+link({ a = a:getId(), b = b:getId(), apart = true })
+sent = sentAsks(from)
+check(a.breaks and a.breaks.forget == true and a.breaks.remote == true and not a.towing and not b.towedBy,
+    "apart: this client lets go, as the unhitch packet does")
+check(#H.logLines == logs + 2 and #sent == 2 and sent[2].vid == b:getId() and sent[2].a == nil,
+    "one log line, and the trailer asks afresh (that word may have been the late one)")
+a.breaks = nil
+link({ a = a:getId(), b = b:getId(), apart = true })
+check(not a.breaks and #sentAsks(from) == 2 and #H.logLines == logs + 2, "apart for a pair not hooked here: nothing to do")
 local c, d, e = linkable(SEMI), linkable(TRAILER), linkable(TRAILER)
 c.towing, e.towedBy = e, c
 link({ a = c:getId(), b = d:getId(), attA = "x", attB = "y" })
