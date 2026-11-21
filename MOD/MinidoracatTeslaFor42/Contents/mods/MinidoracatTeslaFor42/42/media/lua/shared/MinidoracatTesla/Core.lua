@@ -738,6 +738,22 @@ function T.ContainerAccess.Vault(vehicle, part, chr)
     return vehicle:isInArea("BedSide", chr) and T.lidOpen(vehicle, "TrunkTonneau")
 end
 
+-- Semi trailer cargo init (each load, both sides). The box is sized from the part item's MaxCapacity, not the script, on
+-- load (VehicleParts.setScript ends in setInventoryItem -> doInventoryItemStats, VehicleParts.java:362-365,
+-- VehiclePart.java:184-190) and on a repair or a zombie hit; vanilla writes that MaxCapacity once on spawn
+-- (Vehicles.lua:1181-1183) and the save keeps it (InventoryItem.java:1807-1809). Trailers spawned at 300 (through
+-- 0.10.1) stayed 300 after the script went to 1000 (semicap-sp-loadA / -mp-checkA), so raise item and box here.
+-- VehicleScript.Container has public fields and no getter (VehicleScript.java:2169-2176), hence the copy of the value.
+T.SEMI_CARGO_CAP = 1000 -- = MinidoracatTesla_SemiTrailer.txt SemiTrailerCargo capacity (test_battery.lua checks)
+T.Init = T.Init or {}
+function T.Init.SemiCargo(vehicle, part)
+    local item = part:getInventoryItem()
+    if item and item:getMaxCapacity() < T.SEMI_CARGO_CAP then
+        item:setMaxCapacity(T.SEMI_CARGO_CAP)
+        part:setContainerCapacity(T.SEMI_CARGO_CAP)
+    end
+end
+
 -- ---- authorization ----
 -- VehicleManager present: its canUse (server authoritative, client projection; MinidoracatVehicleManager_API.lua:141).
 -- Otherwise: holds this car's key or the key is in the ignition (ISVehicleMenu.lua:96); the key card / phone key also

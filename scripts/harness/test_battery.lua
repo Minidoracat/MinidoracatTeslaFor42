@@ -99,12 +99,14 @@ check(H.scriptValue("vehicles/MinidoracatTesla_Cybercab.txt", "engineForce") == 
     "Cybercab script: engineForce 3800 (E2E feel-sp 9.08 s to 100 km/h, the user's pick), mass 556 (800 x 1,412 / 2,033), CoreNoFrunk, no Frunk part")
 H.removeVehicle(cc)
 end
--- Semi and its trailer: the user's picks on the acceptance page (2026-11-18); Chill is half the script's force
+-- Semi and its trailer: the user's picks on the acceptance pages (2026-11-18; trailer cargo 1000, 2026-11-21); Chill is
+-- half the script's force
 check(H.scriptValue("vehicles/MinidoracatTesla_Semi.txt", "engineForce") == 3920
     and H.scriptValue("vehicles/MinidoracatTesla_Semi.txt", "maxSpeed") == 86
     and T.Specs["Base.MinidoracatTesla_Semi"].chillForce == 1960
-    and H.scriptValue("vehicles/MinidoracatTesla_SemiTrailer.txt", "capacity", "part SemiTrailerCargo") == 300,
-    "Semi script: engineForce 3920, maxSpeed 86, chillForce 1960 (half); its trailer's cargo part 300")
+    and H.scriptValue("vehicles/MinidoracatTesla_SemiTrailer.txt", "capacity", "part SemiTrailerCargo") == T.SEMI_CARGO_CAP
+    and T.SEMI_CARGO_CAP == 1000,
+    "Semi script: engineForce 3920, maxSpeed 86, chillForce 1960 (half); its trailer's cargo part 1000 = T.SEMI_CARGO_CAP")
 do -- the engine sets a part called TrailerTrunk to max(80, condition) on every setCondition (VehiclePart.java:893-895)
     local tf = assert(io.open("MOD/MinidoracatTeslaFor42/Contents/mods/MinidoracatTeslaFor42/42/media/scripts/vehicles/MinidoracatTesla_SemiTrailer.txt", "r"))
     local tr = tf:read("*a")
@@ -114,6 +116,17 @@ do -- the engine sets a part called TrailerTrunk to max(80, condition) on every 
     -- VehicleManager keeps its ownership record on part 0 of a car with no Engine, Battery, TrailerTrunk or TruckBed
     check(tr:find("\n%s*part SemiTrailerCargo") < tr:find("\n%s*template%s*="),
         "the trailer's cargo part comes before every template line: it is part 0")
+    -- a trailer saved at 300 keeps it in the item and loads its box from it: init raises both to 1000
+    check(tr:find("\n%s*init = MinidoracatTesla.Init.SemiCargo,") ~= nil, "the trailer's cargo part runs T.Init.SemiCargo")
+    local max, box = 300, 300
+    local item = { getMaxCapacity = function() return max end, setMaxCapacity = function(_, n) max = n end }
+    local part = { getInventoryItem = function() return item end, setContainerCapacity = function(_, n) box = n end }
+    T.Init.SemiCargo(nil, part)
+    check(max == 1000 and box == 1000, "T.Init.SemiCargo: an old trailer's item and box 300 -> 1000 (" .. max .. ", " .. box .. ")")
+    box = 7
+    T.Init.SemiCargo(nil, part)
+    check(box == 7, "T.Init.SemiCargo: a trailer already at 1000 is left alone")
+    T.Init.SemiCargo(nil, { getInventoryItem = function() return nil end })
 end
 local full = H.vehicle({ kwh = 78.4 })
 -- vanilla repair() fills the tank to the item's int MaxCapacity (VehiclePart.java:989-992): 79 for the 78.4 kWh pack

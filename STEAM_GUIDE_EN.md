@@ -196,7 +196,7 @@ https://steamcommunity.com/sharedfiles/filedetails/?id=3829501237
 [table]
 [tr][th]Car[/th][th]Factory paints[/th][th]Storage[/th][/tr]
 [tr][td]Tesla Semi[/td][td]White[/td][td]No trunk[/td][/tr]
-[tr][td]53 ft Box Trailer[/td][td]White[/td][td]Trailer 300[/td][/tr]
+[tr][td]53 ft Box Trailer[/td][td]White[/td][td]Trailer 1000[/td][/tr]
 [/table]
 [h3]Hitching and unhitching the trailer[/h3]
 {{img:42-semi-hitch-en.jpg}}
@@ -206,7 +206,7 @@ https://steamcommunity.com/sharedfiles/filedetails/?id=3829501237
 [*] [b]From the driver's seat[/b]: when the truck is at a standstill, the driver's V radial menu has hitch and unhitch too; they do not show while moving.
 [*] [b]Unhitching[/b]: from beside the fifth wheel or the driver's seat, pick Detach … in the radial.
 [*] [b]Servers that turn towing off[/b]: when a multiplayer server turns on DisableTrailerTowing, neither shows, as with vanilla trailers.
-[*] [b]Trailer storage[/b]: 300, three times a vanilla trailer.
+[*] [b]Trailer storage[/b]: 1000, ten times a vanilla trailer and the most the game allows a vehicle container; a character with the Organized trait fits 1300.
 [*] [b]Turning[/b]: the trailer is far longer than the truck; keep full lock on and it folds to about 76° and stops there. Straighten up and you can drive off.
 [*] [b]Dashboard[/b]: with the trailer hitched, the dashboard draws it behind the car picture (the middle cut short).
 [*] [b]Multiplayer: driving off right after hitching[/b]: get in and start the motor right after hitching and now and then the truck starts but will not move; it now recovers by itself within a game minute. The same goes for any Tesla towing a trailer.
@@ -507,6 +507,7 @@ A charger that works on the floor, no wall needed; slower than the Wall Connecto
 [list]
 [*] [b]Repair[/b]: right-click the Drive Unit in the mechanics window and choose Repair Drive Unit; it takes Drive Unit Parts. Mechanics level, wrench, time and repair per part are the same as vanilla engine repair.
 [*] [b]Take parts[/b]: Take Drive Unit Parts sets the drive unit's condition to 0 and gives you some parts.
+[*] [b]Stalls below 50[/b]: with the drive unit under 50 condition, the car can stall at random while running, more often the lower it gets, as a vanilla engine does; repair it to 50 or more and it stops.
 [*] [b]No Spare Engine Parts[/b]: Teslas do not take vanilla Spare Engine Parts; other cars still do.
 [*] [b]Getting them[/b]: take them from another Tesla or craft them; they are not in loot.
 [/list]
