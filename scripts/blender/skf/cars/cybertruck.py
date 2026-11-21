@@ -102,7 +102,8 @@ CAR = dict(
     # 6 % bigger and 2.5 cm further out
     TIRE=dict(r=0.4393, w=0.285, track=1.772),
     # ---- pzveh: vehicle script
-    OY=0.1978,
+    OY=0.2878,                             # Model Y's: CoM 0.09 lower, the look unchanged (model_y.py); 0.1978 rolled
+    #                                        onto two wheels at 100-120 km/h steering (feel-sp 2026-11-21)
     WHEEL_LIFT=0.11,
     WHEEL_INSET=0.03,
     CAB_BOX=(1.40, 0.95, -0.95),

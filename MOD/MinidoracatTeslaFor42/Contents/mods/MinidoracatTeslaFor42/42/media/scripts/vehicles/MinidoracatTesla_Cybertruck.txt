@@ -161,7 +161,7 @@ module Base
         {
             file = MinidoracatTesla_Cybertruck,
             scale = 1.82,
-            offset = 0.0000 0.1978 0.0000,
+            offset = 0.0000 0.2878 0.0000,
         }
         skin
         {
@@ -221,18 +221,18 @@ module Base
         template = PassengerSeat4,
         extents = 0.9221 0.6973 2.5790,
         physicsChassisShape = 0.9221 0.6973 2.5790,
-        centerOfMassOffset = 0.0000 0.1978 0.0000,
+        centerOfMassOffset = 0.0000 0.2878 0.0000,
         shadowExtents = 0.9221 2.5790,
         shadowOffset = 0.0 0.0,
         useChassisPhysicsCollision = false,
         physics box
         {
-            offset = 0.0000 0.0775 0.0000,
+            offset = 0.0000 0.1675 0.0000,
             extents = 0.9056 0.4567 2.5460,
         }
         physics box
         {
-            offset = 0.0000 0.4261 0.0000,
+            offset = 0.0000 0.5161 0.0000,
             extents = 0.7692 0.2406 1.0440,
         }
         wheel FrontLeft
