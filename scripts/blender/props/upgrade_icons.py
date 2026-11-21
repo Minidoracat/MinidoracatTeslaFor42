@@ -26,14 +26,14 @@ TEX = ROOT / "MOD/MinidoracatTeslaFor42/Contents/mods/MinidoracatTeslaFor42/42/m
 KINDS = ("ArmorInner", "ArmorOuter", "Fridge")
 
 
-def mat(name, rgb):
+def mat(name, rgb, rough=0.85, spec=0.15):
     m = bpy.data.materials.new(name)
     m.diffuse_color = (*rgb, 1)                    # Workbench MATERIAL colour
     m.use_nodes = True                             # Cycles (--cpu)
     bsdf = m.node_tree.nodes["Principled BSDF"]
     bsdf.inputs["Base Color"].default_value = (*rgb, 1)
-    bsdf.inputs["Roughness"].default_value = 0.85  # the white world would grey out the dark parts
-    bsdf.inputs["Specular IOR Level"].default_value = 0.15
+    bsdf.inputs["Roughness"].default_value = rough  # 0.85: the white world would grey out the dark parts
+    bsdf.inputs["Specular IOR Level"].default_value = spec
     return m
 
 
@@ -71,19 +71,20 @@ def armor_inner():
 
 
 def armor_outer():
-    """Bull bar, wide and low: black tubes (bottom bar, centre hoop, grille bars, side wings) on steel brackets."""
-    black, mount = mat("black", (0.04, 0.04, 0.045)), mat("mount", (0.50, 0.52, 0.55))
+    """Bull bar, wide and low: gunmetal tubes (bottom bar, centre hoop, grille bars, side wings) on steel brackets.
+    Semi-gloss so the tubes catch a highlight along their length: the matte near-black of v1 vanished on dark panels."""
+    gun, mount = mat("gunmetal", (0.26, 0.27, 0.29), rough=0.35, spec=0.6), mat("mount", (0.50, 0.52, 0.55))
     r = 0.085
-    tube((-0.7, 0, 0), (0.7, 0, 0), black, r * 1.2)                                   # bottom bar
+    tube((-0.7, 0, 0), (0.7, 0, 0), gun, r * 1.2)                                     # bottom bar
     for s in (-1, 1):
-        tube((s * 0.3, 0, 0), (s * 0.3, 0, 0.5), black, r)                            # hoop uprights
-        tube((s * 0.1, 0, 0), (s * 0.1, 0, 0.75), black, r * 0.8)                     # grille bars
-        tube((s * 0.3, 0, 0.45), (s * 0.68, 0, 0.02), black, r)                       # side wings
+        tube((s * 0.3, 0, 0), (s * 0.3, 0, 0.5), gun, r)                              # hoop uprights
+        tube((s * 0.1, 0, 0), (s * 0.1, 0, 0.75), gun, r * 0.8)                       # grille bars
+        tube((s * 0.3, 0, 0.45), (s * 0.68, 0, 0.02), gun, r)                         # side wings
         add("cube", (s * 0.3, 0.2, 0.05), (0, 0, 0), mount, (0.16, 0.34, 0.22), size=1)  # mounting brackets
-    add("torus", (0, 0, 0.5), (math.radians(90), 0, 0), black, major_radius=0.3, minor_radius=r,
+    add("torus", (0, 0, 0.5), (math.radians(90), 0, 0), gun, major_radius=0.3, minor_radius=r,
         major_segments=48, minor_segments=16)
     hoop = bpy.context.object
-    cut = add("cube", (0, 0, 0.2), (0, 0, 0), black, (1.0, 0.4, 0.6), size=1)        # keep the hoop's top half
+    cut = add("cube", (0, 0, 0.2), (0, 0, 0), gun, (1.0, 0.4, 0.6), size=1)          # keep the hoop's top half
     b = hoop.modifiers.new("cut", "BOOLEAN")
     b.operation, b.object = "DIFFERENCE", cut
     bpy.context.view_layer.objects.active = hoop
