@@ -8,6 +8,9 @@
   沒有 skills（門檻只放在配方；有 skills 就有失敗機率，Vehicles.lua:1463-1485）
 - TeslaFridge：capacity = 0（沒裝時打不開，BaseVehicle.java:8439-8453）、conditionAffectsCapacity = false、拆卸 requireEmpty
 - itemType 的物品都存在、ConditionMax = 100；TeslaArmor 的 itemType 等於 Upgrades.lua 的 T.Armor.K 鍵集
+- 三個升級件物品的 Icon 有對應的 textures/Item_<Icon>.png（不借原版圖示）
+- 三條配方存在、產物與技能門檻照方案（MetalWelding:3／MetalWelding:5／Electricity:4）；本 MOD 每條 craftRecipe
+  都列在 Recipes.lua 的 RECIPES（漏列的話專用伺服器上進度條跑完卻做不出東西）
 - MOD/ 沒有試做殘留（S0 的 ArmorTrial／FridgeTrial 等名稱與 TRIAL 註解）
 """
 import glob
@@ -81,6 +84,29 @@ for base, _, files in os.walk(os.path.join(REPO, "MOD")):
         path = os.path.join(base, name)
         text = open(path, encoding="utf-8", errors="replace").read()
         bad += [f"{os.path.relpath(path, REPO)}: 試做殘留 {w}" for w in RESIDUE if w in name or re.search(rf"\b{w}\b", text)]
+
+KITS = {"MinidoracatTesla_MakeArmorInner": ("Base.MinidoracatTesla_ArmorInner", "MetalWelding:3"),
+        "MinidoracatTesla_MakeArmorOuter": ("Base.MinidoracatTesla_ArmorOuter", "MetalWelding:5"),
+        "MinidoracatTesla_MakeFridge": ("Base.MinidoracatTesla_Fridge", "Electricity:4")}
+for recipe, (item, _) in KITS.items():
+    icon = items.get(item, {}).get("Icon", "")
+    if not os.path.isfile(os.path.join(MEDIA, "textures", f"Item_{icon}.png")):
+        bad.append(f"{item}: Icon {icon or '（沒有）'} 找不到 textures/Item_{icon}.png")
+recipes = {}
+for p in glob.glob(os.path.join(MEDIA, "scripts", "recipes", "*.txt")):
+    for chunk in re.split(r"\bcraftRecipe\s+", vp.strip_comments(open(p, encoding="utf-8").read()))[1:]:
+        name, body = re.match(r"(\w+)\s*\{(.*)", chunk, re.S).groups()
+        out = re.search(r"\boutputs\s*\{([^{}]*)\}", body)
+        skill = re.search(r"\bSkillRequired\s*=\s*([^,\n]*)", body)
+        recipes[name] = (re.findall(r"\bitem\s+\d+\s+([\w.]+)", out[1]) if out else [], skill[1].strip() if skill else "")
+for recipe, (item, skill) in KITS.items():
+    got = recipes.get(recipe)
+    if not got or got[0] != [item] or got[1] != skill:
+        bad.append(f"配方 {recipe} 要產出 {item}、SkillRequired = {skill}（實際 {got}）")
+learn = open(os.path.join(MEDIA, "lua/server/MinidoracatTesla/Recipes.lua"), encoding="utf-8").read()
+listed = re.search(r"\blocal RECIPES\s*=\s*\{(.*?)\}", learn, re.S)
+listed = set(re.findall(r'"(\w+)"', listed[1])) if listed else set()
+bad += [f"配方 {r} 沒列在 Recipes.lua 的 RECIPES" for r in sorted(set(recipes) - listed)]
 
 checked = sum(1 for c in cars if not c.endswith("Trailer"))
 if bad:
