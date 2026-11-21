@@ -123,6 +123,7 @@
     "IGUI_MinidoracatTesla_Deny_PLUGGED": "Зарядный кабель уже подключен",
     "IGUI_MinidoracatTesla_Deny_NOT_PLUGGED": "Зарядный кабель не подключен",
     "IGUI_MinidoracatTesla_Deny_CABLE_SHORT": "Кабель не дотягивается до машины",
+    "IGUI_MinidoracatTesla_Deny_SEMI_NO_SPOT": "Рядом с полуприцепом нет места, чтобы с ним работать",
     "IGUI_MinidoracatTesla_Unplugged_TooFar": "Зарядный кабель выдернут: машина отъехала слишком далеко",
     "IGUI_MinidoracatTesla_Tip_Headlight": "Включить или выключить фары",
     "IGUI_MinidoracatTesla_Tip_Heater": "Включить или выключить климат (расходует заряд)",

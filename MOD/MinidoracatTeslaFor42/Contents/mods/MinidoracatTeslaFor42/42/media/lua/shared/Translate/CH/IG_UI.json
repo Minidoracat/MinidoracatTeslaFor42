@@ -123,6 +123,7 @@
     "IGUI_MinidoracatTesla_Deny_PLUGGED": "已經插著充電線",
     "IGUI_MinidoracatTesla_Deny_NOT_PLUGGED": "沒有插充電線",
     "IGUI_MinidoracatTesla_Deny_CABLE_SHORT": "充電線拉不到車子",
+    "IGUI_MinidoracatTesla_Deny_SEMI_NO_SPOT": "拖車旁邊沒有空位，走不過去",
     "IGUI_MinidoracatTesla_Unplugged_TooFar": "充電線被扯掉了：車子離充電座太遠",
     "IGUI_MinidoracatTesla_Tip_Headlight": "開關大燈",
     "IGUI_MinidoracatTesla_Tip_Heater": "開關恆溫控制（耗電）",

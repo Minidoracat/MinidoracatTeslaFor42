@@ -367,7 +367,7 @@ local function kinds(v, locs)
     for i = 1, #locs, 3 do
         local x, y = locs[i], locs[i + 1]
         local l = v:getLocalPos(x, y, 0, Vector3f.new())
-        if locs[i + 2] ~= v.z or math.abs(x - fx) + math.abs(y - fy) >= 6 then k.out = k.out + 1 end
+        if locs[i + 2] ~= v.z or math.abs(x - fx) + math.abs(y - fy) > SH.WINDOW then k.out = k.out + 1 end
         if math.abs(math.abs(l._x) - (2.148 / 2 + 0.35)) < 1e-9 then k.beside = k.beside + 1 end
         if math.abs(l._x) < 1e-9 and math.abs(l._z - (cz - half)) < 1e-9 then k.tail = k.tail + 1 end
         if math.abs(l._x) < 1e-9 and math.abs(l._z - (cz + half)) < 1e-9 then k.nose = k.nose + 1 end
@@ -396,6 +396,19 @@ local moved = queued.engineGoal[2]
 check(queued.engineGoal[1] == "Nearest" and math.abs(moved[1] - 260.5) < 3 and math.abs(moved[2] - 340.5) < 3,
     "towed away after queuing: the walk goes to where the trailer is when it starts")
 trailer.x, trailer.y, trailer.yaw = tx, ty, tyaw
+-- no spot reachable: vanilla's walk stops silently (ISPathFindAction.lua:16-33); this one says why
+local walk = ISPathFindAction:pathToVehicleAdjacent(p, trailer)
+walk:start()
+local said, realHalo = nil, HaloTextHelper
+HaloTextHelper = { addBadText = function(chr, t) said = chr == p and t end }
+walk.onFailFunc(walk.onFailArgs[1])
+HaloTextHelper = realHalo
+check(said == MinidoracatTesla.denyText("SEMI_NO_SPOT"), "the trailer's walk finds no spot: the player is told (SEMI_NO_SPOT)")
+local own = function() end
+local mine = ISPathFindAction:pathToVehicleAdjacent(p, trailer)
+mine.onFailFunc = own
+mine:start()
+check(mine.onFailFunc == own, "a walk with its own failure handler keeps it")
 local function vanillaGoal(v)
     local a = ISPathFindAction:pathToVehicleAdjacent(p, v)
     a:start()

@@ -149,9 +149,12 @@ local function player(name, inv, x, y, num)
     return p
 end
 
-H.stub("Vehicles/TimedActions/ISUnlockVehicleDoor") -- park_fakes made the class; Keys.lua wraps start() and complete()
+H.stub("Vehicles/TimedActions/ISUnlockVehicleDoor") -- park_fakes made the class; Keys.lua wraps new(), start() and complete()
 ISUnlockVehicleDoor.start = ISUnlockVehicleDoor.start or function() return true end
-local unlockBefore = { start = ISUnlockVehicleDoor.start, complete = ISUnlockVehicleDoor.complete } -- restored at the end
+ISUnlockVehicleDoor.new = ISUnlockVehicleDoor.new or function(_, character, part) -- ISUnlockVehicleDoor.lua:85-96
+    return { character = character, part = part, vehicle = part and part:getVehicle() }
+end
+local unlockBefore = { new = ISUnlockVehicleDoor.new, start = ISUnlockVehicleDoor.start, complete = ISUnlockVehicleDoor.complete } -- restored at the end
 -- vanilla ISStartVehicleEngine:complete (ISStartVehicleEngine.lua:26-44): haveKey from haveThisKeyId only
 H.stub("Vehicles/TimedActions/ISStartVehicleEngine")
 ISStartVehicleEngine = { waitToStart = function() return false end, complete = function(self) -- (ISBaseTimedAction's)
@@ -618,7 +621,7 @@ local stranger = player("stranger", container(), v.x - 1, v.y)
 ISUnlockVehicleDoor.complete({ vehicle = v, part = v.doors[1], character = stranger })
 check(v.doors[1].d.locked, "handle: no key -> stays locked")
 -- the frunk lid locks with the car; vanilla's hood entries (Use.EngineDoor, the Mechanics radial) queue no unlock for
--- a key holder, so opening it has to unlock it for whoever may (Keys.lua K.lidUnlock)
+-- a key holder, so opening it has to unlock it for whoever may (Keys.lua K.lidKey)
 check(v:areAllDoorsLocked() and v.frunk.d.locked, "frunk: locked with the car (walk-away lock above)")
 ISOpenVehicleDoor.complete({ vehicle = v, part = v.frunk, character = stranger })
 check(v.frunk.d.locked and not v.frunk.d.open, "frunk: a stranger's open leaves it shut and locked")
@@ -635,13 +638,54 @@ check(T.authorized(owner, v, "PASSENGER") == true and T.authorized(stranger, v, 
 local walletOnly = player("walletonly", container(bag("Base.Wallet", item(K.CARD, v.keyId))), v.x - 1, v.y)
 ISUnlockVehicleDoor.complete({ vehicle = v, part = v.doors[1], character = walletOnly })
 check(v.doors[1].d.locked, "handle: key card in the wallet -> stays locked (tap the reader)")
--- the hood takes this car's card anywhere on the player, as the start does (K.bagKeyStarts): the Mechanics radial and
--- E queue vanilla's unlock first (the key not in hand), and a failed unlock drops the queue silently (semimech-repro-e)
-ISUnlockVehicleDoor.complete({ vehicle = v, part = v.frunk, character = stranger })
-check(v.frunk.d.locked, "frunk unlock (Mechanics radial): a stranger -> stays locked")
-ISUnlockVehicleDoor.complete({ vehicle = v, part = v.frunk, character = walletOnly })
-check(not v.frunk.d.locked and not v.frunk.d.open, "frunk unlock (Mechanics radial): the key card in a wallet unlocks it")
+-- the hood takes this car's card anywhere on the player, as the start does (K.bagKeyStarts), and only as it opens:
+-- vanilla's unlock stays out of the queue for the lid unless vanilla's own rule unlocks it (Keys.lua
+-- ISUnlockVehicleDoor:new); queued, it failed for a card in a bag and dropped the queue (semimech-repro-e). Each side:
+-- SP (neither client nor server), an MP client, the server.
+local function as(cli, srv, fn)
+    local c, s = isClient, isServer
+    isClient, isServer = function() return cli end, function() return srv end
+    local ok, r = pcall(fn)
+    isClient, isServer = c, s
+    assert(ok, r)
+    return r
+end
+local function ignored(chr, part) return ISUnlockVehicleDoor:new(chr, part).ignoreAction == true end
+local function openLid(chr) -- locked and shut first; what the open leaves
+    v.frunk.d.locked, v.frunk.d.open = true, false
+    ISOpenVehicleDoor.complete({ vehicle = v, part = v.frunk, character = chr })
+    local open, locked = v.frunk.d.open, v.frunk.d.locked
+    if open then ISCloseVehicleDoor.complete({ vehicle = v, part = v.frunk, character = chr }) end
+    return open, locked
+end
+for _, side in ipairs({ { "SP", false, false }, { "MP client", true, false } }) do
+    local name, cli, srv = side[1], side[2], side[3]
+    as(cli, srv, function()
+        check(ignored(walletOnly, v.frunk) and ignored(owner, v.frunk) and ignored(stranger, v.frunk),
+            name .. ": the lid's unlock stays out of the queue for a card or phone key in a bag, and a stranger")
+        check(not ignored(loose, v.frunk) and not ignored(walletOnly, v.doors[1]) and not ignored(owner, v.doors[1]),
+            name .. ": queued for the key in hand (vanilla unlocks it) and for every cabin door")
+    end)
+end
+as(false, true, function()
+    check(not ignored(walletOnly, v.frunk), "server: never drops an unlock (the client queues them)")
+end)
+as(false, false, function()
+    local o1 = openLid(walletOnly)
+    local o2, l2 = openLid(stranger)
+    check(o1 and not o2 and l2, "SP: the open with the card in a wallet opens the lid; a stranger's leaves it locked")
+end)
+as(true, false, function()
+    local o, l = openLid(walletOnly)
+    check(not o and l, "MP client: the open's complete never unlocks locally (the server's does)")
+end)
+local o3 = openLid(walletOnly)
+local o4, l4 = openLid(stranger)
+check(o3 and not o4 and l4, "server: the card in a wallet opens the lid; a stranger's leaves it locked")
 v.frunk.d.locked = true
+ISUnlockVehicleDoor.complete({ vehicle = v, part = v.frunk, character = owner })
+ISUnlockVehicleDoor.start({ vehicle = v, part = v.frunk, character = owner })
+check(v.frunk.d.locked, "frunk: an unlock that still comes (an older client): the phone key in a bag leaves the lid locked")
 ISOpenVehicleDoor.complete({ vehicle = v, part = v.frunk, character = walletOnly })
 check(v.frunk.d.open, "frunk: the key card in a wallet opens it (the hood, not the doors: those want the reader)")
 ISCloseVehicleDoor.complete({ vehicle = v, part = v.frunk, character = walletOnly })
@@ -667,13 +711,13 @@ check(v.frunk.d.locked and not v.frunk.d.open, "frunk: VehicleManager UNCLAIMED 
 MinidoracatVehicleManagerAPI = nil
 -- VehicleManager refuses the hood to someone holding this car's key (a share without REPAIR or SALVAGE, VirtualKey
 -- off, a rental lock that stops the owner too, not ready yet): the lock stays as it was, whatever key they hold, in
--- the unlock (start() in SP calls the same phoneUnlock/lidUnlock), the open and the handle
+-- the unlock (start() in SP calls the same phoneUnlock), the open and the handle
 local function lidRefused(chr, label)
     v.frunk.d.locked, v.frunk.d.open = true, false
     ISUnlockVehicleDoor.complete({ vehicle = v, part = v.frunk, character = chr })
     local afterUnlock = v.frunk.d.locked
     ISOpenVehicleDoor.complete({ vehicle = v, part = v.frunk, character = chr })
-    check(afterUnlock and not K.phoneUnlock(v, v.frunk, chr) and not K.lidUnlock(v, v.frunk, chr)
+    check(afterUnlock and not K.phoneUnlock(v, v.frunk, chr) and not K.lidKey(v, v.frunk, chr)
         and v.frunk.d.locked and not v.frunk.d.open, label)
 end
 MinidoracatVehicleManagerAPI = { canUse = function(_, _, code)
@@ -719,7 +763,7 @@ check(o3 and not a3, "alarm: the phone key in a bag opens the lid without settin
 local o4, a4 = alarmOnOpen(stranger)
 check(not o4 and a4, "alarm: a stranger's try stays vanilla's (shut, locked, the alarm goes)")
 local o5, _, e5 = alarmOnOpen(bagCard, true)
-check(o5 and not e5, "alarm: the unlock alone leaves the car's entered flag (and the alarm) to vanilla")
+check(not o5 and not e5, "alarm: the unlock alone touches neither the lid nor the car's entered flag")
 MinidoracatVehicleManagerAPI = { canUse = function() return false, "NOT_AUTHORIZED" end }
 local o6, a6 = alarmOnOpen(bagCard)
 check(not o6 and a6, "alarm: VM refuses the card holder: the lid stays locked, the alarm rule untouched")
@@ -754,7 +798,7 @@ isServer = function() return false end
 ISUnlockVehicleDoor.start(unlock)
 check(v.doors[1].d.locked, "handle (MP client start): never unlocks locally")
 isClient, isServer = cli, srv
-ISUnlockVehicleDoor.start, ISUnlockVehicleDoor.complete = unlockBefore.start, unlockBefore.complete -- other tests' fake parts have no getDoor
+ISUnlockVehicleDoor.new, ISUnlockVehicleDoor.start, ISUnlockVehicleDoor.complete = unlockBefore.new, unlockBefore.start, unlockBefore.complete -- other tests' fake parts have no getDoor
 
 -- ------------------------------------------------------------------ starting with the phone key or key card in a bag
 local starts = {}

@@ -135,11 +135,17 @@ function SH.mechSpots(v)
     add(cx - vx, cz, true); add(cx + vx, cz, true); add(cx, cz - vz, true); add(cx, cz + vz, true)
     return out
 end
+-- no spot reachable: vanilla's walk stops without a word (ISPathFindAction.lua:16-33); vanilla's own spots would not
+-- help (the sides and the tail are among these, the nose end is out of the window's reach), so say why instead
+function SH.noSpot(chr)
+    HaloTextHelper.addBadText(chr, T.denyText("SEMI_NO_SPOT"))
+end
 local origStart = ISPathFindAction.start
 function ISPathFindAction:start()
     local g = self.goal
     if g and g[1] == "VehicleAdjacent" and g[2]:getScriptName() == SH.TRAILER then
         self.goal = { "Nearest", SH.mechSpots(g[2]) }
+        if not self.onFailFunc then self.onFailFunc, self.onFailArgs = SH.noSpot, { self.character } end
     end
     return origStart(self)
 end

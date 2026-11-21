@@ -123,6 +123,7 @@
     "IGUI_MinidoracatTesla_Deny_PLUGGED": "Un câble de recharge est déjà branché",
     "IGUI_MinidoracatTesla_Deny_NOT_PLUGGED": "Aucun câble de recharge branché",
     "IGUI_MinidoracatTesla_Deny_CABLE_SHORT": "Le câble n'atteint pas la voiture",
+    "IGUI_MinidoracatTesla_Deny_SEMI_NO_SPOT": "Pas de place à côté de la remorque pour y travailler",
     "IGUI_MinidoracatTesla_Unplugged_TooFar": "Câble de recharge arraché : la voiture s'est trop éloignée",
     "IGUI_MinidoracatTesla_Tip_Headlight": "Allumer ou éteindre les phares",
     "IGUI_MinidoracatTesla_Tip_Heater": "Allumer ou éteindre la climatisation (consomme la batterie)",
