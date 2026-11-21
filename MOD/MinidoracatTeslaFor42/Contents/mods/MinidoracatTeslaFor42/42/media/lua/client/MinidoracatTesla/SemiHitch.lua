@@ -109,26 +109,39 @@ end
 -- ISVehicleMenu.lua:1002-1005). The engine walks to the nearest of four spots 0.3 off each side and each end of the box
 -- (PathFindBehavior2.java:497-546); the trailer's nose end is ~9.9 from its origin, and the window closes itself past 6
 -- of the origin, Manhattan on the truncated position (ISVehicleMechanics.lua:20-22, IsoMovingObject.java:601), the
--- frame it opens in: from the nose or the front half nothing happened (semimech-repro-a strl/front, DistTo 10.64).
--- Here: beside the box at its origin and 1.5 either way, each <= 2.1 straight from it (<= 5 that way), near the tyres
--- and the cargo door (the script's areas). Every other vehicle: vanilla's spots.
-SH.BESIDE = { 0, -1.5, 1.5 }
-function SH.besideOrigin(v)
+-- frame it opens in: from the nose end nothing happened (semimech-repro-a strl/front, DistTo 10.64); the tail end
+-- (5.53 there) kept it open. Here: beside the box at its origin and 1.5 either way, each <= 2.1 straight from it (<= 5
+-- that way), near the tyres and the cargo door (the script's areas), plus those of vanilla's four inside the window's
+-- reach (SH.WINDOW: the tail end when the heading lets it), so a trailer with both sides blocked still opens from its
+-- tail. Worked out when the walk starts, as vanilla does (ISPathFindAction.lua:54-56): the trailer may have been towed
+-- away while the walk waited in the queue. Every other vehicle: vanilla's spots.
+SH.BESIDE, SH.WINDOW = { 0, -1.5, 1.5 }, 5.9
+function SH.mechSpots(v)
     local s = v:getScript()
-    local half, cx, z = s:getExtents():x() / 2 + SH.CLEAR, s:getCenterOfMassOffset():x(), level(v)
+    local e, c = s:getExtents(), s:getCenterOfMassOffset()
+    local half, cx, cz, z = e:x() / 2 + SH.CLEAR, c:x(), c:z(), level(v)
+    local fx, fy = math.floor(v:getX()), math.floor(v:getY())
     local out, w = {}, Vector3f.new()
-    for _, lz in ipairs(SH.BESIDE) do
-        for side = 1, -1, -2 do
-            v:getWorldPos(cx + side * half, 0, lz, w)
+    local function add(lx, lz, reach)
+        v:getWorldPos(lx, 0, lz, w)
+        if not reach or math.abs(w:x() - fx) + math.abs(w:y() - fy) <= SH.WINDOW then
             out[#out + 1] = w:x(); out[#out + 1] = w:y(); out[#out + 1] = z
         end
     end
+    for _, lz in ipairs(SH.BESIDE) do
+        for side = 1, -1, -2 do add(cx + side * half, lz) end
+    end
+    local vx, vz = e:x() / 2 + 0.3, e:z() / 2 + 0.3
+    add(cx - vx, cz, true); add(cx + vx, cz, true); add(cx, cz - vz, true); add(cx, cz + vz, true)
     return out
 end
-local origAdjacent = ISPathFindAction.pathToVehicleAdjacent
-function ISPathFindAction:pathToVehicleAdjacent(character, vehicle)
-    if vehicle:getScriptName() ~= SH.TRAILER then return origAdjacent(self, character, vehicle) end
-    return self:pathToNearest(character, SH.besideOrigin(vehicle))
+local origStart = ISPathFindAction.start
+function ISPathFindAction:start()
+    local g = self.goal
+    if g and g[1] == "VehicleAdjacent" and g[2]:getScriptName() == SH.TRAILER then
+        self.goal = { "Nearest", SH.mechSpots(g[2]) }
+    end
+    return origStart(self)
 end
 
 -- Vanilla's action looks for the trailer again within 6 squares when it starts (ISAttachTrailerToVehicle.lua:42-48);

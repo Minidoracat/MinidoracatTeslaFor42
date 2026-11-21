@@ -665,6 +665,65 @@ MinidoracatVehicleManagerAPI = { canUse = function() return true, "UNCLAIMED" en
 ISOpenVehicleDoor.complete({ vehicle = v, part = v.frunk, character = stranger })
 check(v.frunk.d.locked and not v.frunk.d.open, "frunk: VehicleManager UNCLAIMED is nobody's key")
 MinidoracatVehicleManagerAPI = nil
+-- VehicleManager refuses the hood to someone holding this car's key (a share without REPAIR or SALVAGE, VirtualKey
+-- off, a rental lock that stops the owner too, not ready yet): the lock stays as it was, whatever key they hold, in
+-- the unlock (start() in SP calls the same phoneUnlock/lidUnlock), the open and the handle
+local function lidRefused(chr, label)
+    v.frunk.d.locked, v.frunk.d.open = true, false
+    ISUnlockVehicleDoor.complete({ vehicle = v, part = v.frunk, character = chr })
+    local afterUnlock = v.frunk.d.locked
+    ISOpenVehicleDoor.complete({ vehicle = v, part = v.frunk, character = chr })
+    check(afterUnlock and not K.phoneUnlock(v, v.frunk, chr) and not K.lidUnlock(v, v.frunk, chr)
+        and v.frunk.d.locked and not v.frunk.d.open, label)
+end
+MinidoracatVehicleManagerAPI = { canUse = function(_, _, code)
+    return code == "PASSENGER", code == "PASSENGER" and "SHARED" or "NOT_AUTHORIZED"
+end }
+lidRefused(walletOnly, "VM share without the hood (PASSENGER only), key card in a wallet: the lid stays locked")
+lidRefused(owner, "VM share without the hood, phone key in a bag: the lid stays locked")
+lidRefused(loose, "VM share without the hood, the key in hand: the lid stays locked")
+SandboxVars.MinidoracatVehicleManager = { VirtualKey = false }
+lidRefused(walletOnly, "VM VirtualKey off, PASSENGER only, key card in a wallet: the lid stays locked")
+SandboxVars.MinidoracatVehicleManager = nil
+v.doors[1].d.locked = true
+check(K.phoneUnlock(v, v.doors[1], owner) and not v.doors[1].d.locked,
+    "VM PASSENGER share, phone key in a bag: the cabin door handle still unlocks")
+v.doors[1].d.locked = true
+MinidoracatVehicleManagerAPI = { canUse = function() return false, "RENT_LOCKED" end }
+lidRefused(owner, "VM rental lock: the owner's phone key in a bag leaves the lid locked")
+lidRefused(walletOnly, "VM rental lock: the key card in a wallet leaves the lid locked")
+check(not K.phoneUnlock(v, v.doors[1], owner) and v.doors[1].d.locked, "VM rental lock: the cabin door stays locked too")
+MinidoracatVehicleManagerAPI = { canUse = function() return false, "NOT_READY" end }
+lidRefused(owner, "VM not ready: fail closed, the lid stays locked")
+MinidoracatVehicleManagerAPI = nil
+
+-- vanilla's open sets off a never-entered alarmed car unless the opener holds the key it sees (haveThisKeyId) or the key
+-- is in the ignition, and marks it entered (ISOpenVehicleDoor.lua:83-93): replayed on what our open leaves behind. The
+-- same card loose and in a bag: neither sets it off; a stranger and a refused holder: vanilla's rule as it was
+local function alarmOnOpen(chr, unlockOnly)
+    v.frunk.d.locked, v.frunk.d.open, v.entered = true, false, false
+    local act = { vehicle = v, part = v.frunk, character = chr }
+    if unlockOnly then ISUnlockVehicleDoor.complete(act) else ISOpenVehicleDoor.complete(act) end
+    local opened = v.frunk.d.open or (unlockOnly and not v.frunk.d.locked)
+    local alarm = not unlockOnly and not v:isPreviouslyEntered() and chr:getInventory():haveThisKeyId(v.keyId) == nil
+    if v.frunk.d.open then ISCloseVehicleDoor.complete(act) end
+    return opened, alarm, v:isPreviouslyEntered()
+end
+local looseCard = player("loosecard", container(key(K.CARD, v.keyId)), v.x - 1, v.y)
+local bagCard = player("bagcard", container(bag("Base.Bag_Schoolbag", key(K.CARD, v.keyId))), v.x - 1, v.y)
+local o1, a1 = alarmOnOpen(looseCard)
+local o2, a2 = alarmOnOpen(bagCard)
+check(o1 and not a1 and o2 and not a2, "alarm: this car's card loose or in a bag opens the lid without setting it off")
+local o3, a3 = alarmOnOpen(owner)
+check(o3 and not a3, "alarm: the phone key in a bag opens the lid without setting it off")
+local o4, a4 = alarmOnOpen(stranger)
+check(not o4 and a4, "alarm: a stranger's try stays vanilla's (shut, locked, the alarm goes)")
+local o5, _, e5 = alarmOnOpen(bagCard, true)
+check(o5 and not e5, "alarm: the unlock alone leaves the car's entered flag (and the alarm) to vanilla")
+MinidoracatVehicleManagerAPI = { canUse = function() return false, "NOT_AUTHORIZED" end }
+local o6, a6 = alarmOnOpen(bagCard)
+check(not o6 and a6, "alarm: VM refuses the card holder: the lid stays locked, the alarm rule untouched")
+MinidoracatVehicleManagerAPI = nil
 -- the action's vehicle and part are separate arguments: this car's key must not unlock another car's lid or door
 local otherLid, otherDoor = door("EngineDoor"), door("DoorFrontLeft")
 otherLid.d.locked, otherDoor.d.locked = true, true

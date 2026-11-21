@@ -47,8 +47,12 @@ function ISPathFindAction:pathToNearest(character, locations)
     return { Type = "ISPathFindAction", character = character, locations = locations,
         setOnFail = function(self, fn, arg) self.onFail, self.failArg = fn, arg end }
 end
--- vanilla's walk for a vehicle with no hood (ISVehicleMenu.onMechanic, :1002-1005)
-function ISPathFindAction:pathToVehicleAdjacent(character, vehicle) return { vanillaAdjacent = vehicle } end
+-- vanilla's walk for a vehicle with no hood (ISVehicleMenu.onMechanic, :1002-1005): the goal is kept until start(),
+-- which hands it to the engine (ISPathFindAction.lua:38-62, :160-168); here start() records what it got
+function ISPathFindAction:pathToVehicleAdjacent(character, vehicle)
+    return setmetatable({ character = character, goal = { "VehicleAdjacent", vehicle } }, { __index = ISPathFindAction })
+end
+function ISPathFindAction:start() self.engineGoal = self.goal end
 Vector3f = { new = function()
     local v = { _x = 0, _y = 0, _z = 0 }
     function v:x() return self._x end
@@ -93,6 +97,8 @@ local function car(script)
     function v:getScriptName() return self.script end
     function v:getId() return self.id end
     function v:getZ() return self.z end
+    function v:getX() return self.x end
+    function v:getY() return self.y end
     function v:getVehicleTowing() return self.towing end
     function v:getVehicleTowedBy() return self.towedBy end
     function v:isDriver(p) return self.driver == p end
@@ -345,32 +351,57 @@ do local w = semi2:getWorldPos(-1, 0, -2.4, Vector3f.new()); p.x, p.y = w._x, w.
 check(ISVehicleMenu.getVehicleToInteractWith(p) == semi2, "two Semis in reach (2.2 and 1.0 from their fifth wheels): the nearer one")
 cars[#cars] = nil
 
-H.section("Semi hitch: Vehicle Mechanics on the trailer walks beside its origin (the window's reach)")
+H.section("Semi hitch: Vehicle Mechanics on the trailer walks where the window stays open")
 -- the window closes past 6 of the vehicle, Manhattan on the truncated origin (ISVehicleMechanics.lua:20-22,
--- IsoMovingObject.java:601-603): every spot inside that at any heading, 0.35 off either side of the box, on its floor
-local function inReach(v)
-    local locs = ISPathFindAction:pathToVehicleAdjacent(p, v).locations
-    local ok, fx, fy = locs and #locs == 18, math.floor(v.x), math.floor(v.y)
-    for i = 1, ok and #locs or 0, 3 do
+-- IsoMovingObject.java:601-603): every spot inside that at any heading, on its floor; always the six 0.35 off either
+-- side of the box, and vanilla's (0.3 off, PathFindBehavior2.java:497-546) that are inside too, never its nose end
+local function spots(v)
+    local a = ISPathFindAction:pathToVehicleAdjacent(p, v)
+    a:start()
+    local g = a.engineGoal
+    return g[1] == "Nearest" and g[2] or nil
+end
+local function kinds(v, locs)
+    local k = { beside = 0, tail = 0, nose = 0, out = 0 }
+    local fx, fy, cz, half = math.floor(v.x), math.floor(v.y), 2.937, 13.343 / 2 + 0.3
+    for i = 1, #locs, 3 do
         local x, y = locs[i], locs[i + 1]
         local l = v:getLocalPos(x, y, 0, Vector3f.new())
-        ok = ok and locs[i + 2] == v.z and math.abs(math.abs(l._x) - (2.148 / 2 + 0.35)) < 1e-9
-            and math.abs(x - fx) + math.abs(y - fy) < 6
+        if locs[i + 2] ~= v.z or math.abs(x - fx) + math.abs(y - fy) >= 6 then k.out = k.out + 1 end
+        if math.abs(math.abs(l._x) - (2.148 / 2 + 0.35)) < 1e-9 then k.beside = k.beside + 1 end
+        if math.abs(l._x) < 1e-9 and math.abs(l._z - (cz - half)) < 1e-9 then k.tail = k.tail + 1 end
+        if math.abs(l._x) < 1e-9 and math.abs(l._z - (cz + half)) < 1e-9 then k.nose = k.nose + 1 end
     end
-    return ok
+    return k
 end
 local tx, ty, tyaw = trailer.x, trailer.y, trailer.yaw
-local allIn = true
+local allIn, tails = true, 0
 for _, yaw in ipairs({ 0, 0.6, math.pi / 4, 2.4, 3 * math.pi / 4 }) do
     for _, off in ipairs({ 0.01, 0.99 }) do
         trailer.x, trailer.y, trailer.yaw = 200 + off, 300 + off, yaw
-        allIn = allIn and inReach(trailer)
+        local k = kinds(trailer, spots(trailer))
+        allIn = allIn and k.out == 0 and k.beside == 6 and k.nose == 0
+        tails = tails + k.tail
     end
 end
+check(allIn, "the trailer, five headings: six spots beside it plus vanilla's in reach, all within the window's reach")
+-- both sides walled off (beside spots and vanilla's side spots unreachable): the engine can still walk to the tail
+trailer.x, trailer.y, trailer.yaw = 200.01, 300.01, 0
+check(kinds(trailer, spots(trailer)).tail == 1 and tails >= 2, "heading along an axis: vanilla's tail spot is one of them")
+-- queued, then the trailer towed off before the walk starts: the spots are where it is at the start
+local queued = ISPathFindAction:pathToVehicleAdjacent(p, trailer)
+trailer.x, trailer.y = 260.5, 340.5
+queued:start()
+local moved = queued.engineGoal[2]
+check(queued.engineGoal[1] == "Nearest" and math.abs(moved[1] - 260.5) < 3 and math.abs(moved[2] - 340.5) < 3,
+    "towed away after queuing: the walk goes to where the trailer is when it starts")
 trailer.x, trailer.y, trailer.yaw = tx, ty, tyaw
-check(allIn, "the trailer, five headings: six spots beside it, all within the window's reach")
-check(ISPathFindAction:pathToVehicleAdjacent(p, my).vanillaAdjacent == my
-    and ISPathFindAction:pathToVehicleAdjacent(p, semi).vanillaAdjacent == semi, "a Model Y, the Semi: vanilla's walk")
+local function vanillaGoal(v)
+    local a = ISPathFindAction:pathToVehicleAdjacent(p, v)
+    a:start()
+    return a.engineGoal[1] == "VehicleAdjacent" and a.engineGoal[2] == v
+end
+check(vanillaGoal(my) and vanillaGoal(semi), "a Model Y, the Semi: vanilla's walk")
 
 ISVehicleMenu, ISVehicleTrailerUtils, ISAttachTrailerToVehicle, ISDetachTrailerFromVehicle, ISTimedActionQueue,
     getCell, getServerOptions, getPlayerRadialMenu, UIManager, getTexture, ISVehicleMechanics, ISPathFindAction, Vector3f,

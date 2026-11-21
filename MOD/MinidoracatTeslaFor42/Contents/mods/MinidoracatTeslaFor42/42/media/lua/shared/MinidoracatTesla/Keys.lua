@@ -206,6 +206,20 @@ function K.canAutoLock(player, vehicle)
     return true
 end
 
+-- VehicleManager refuses chr this door of a claimed car: no key of ours (loose, phone, card) gets past it, and the lock
+-- is left as it is (our unlocks run before its guards: start() in SP, ahead of its complete() on the server). Its own
+-- codes: the hood is REPAIR or SALVAGE (its Actions.lua doorAction), any other door PASSENGER (its unlock guard). No
+-- VehicleManager or an unclaimed car (canUse true, "UNCLAIMED"): false, the key rules alone.
+local function vmRefuses(chr, vehicle, part)
+    local api = MinidoracatVehicleManagerAPI
+    if not (api and api.canUse) then return false end
+    local codes = part:getId() == "EngineDoor" and { "REPAIR", "SALVAGE" } or { "PASSENGER" }
+    for _, code in ipairs(codes) do
+        if T.authorized(chr, vehicle, code) then return false end
+    end
+    return true
+end
+
 -- Phone key in a bag or belt bag, or one whose item keyId is another car (a phone paired with several, K.pairedWith):
 -- pulling a locked door's handle unlocks it, as the real car does with the phone in a pocket or bag. Vanilla
 -- canUnlockDoor only sees loose keys and keyrings with this keyId (BaseVehicle.java:1274-1301 ->
@@ -217,6 +231,7 @@ function K.phoneUnlock(vehicle, part, chr)
     if not door or not door:isLocked() or door:isLockBroken() or not chr or not T.isTesla(vehicle) then return false end
     if part:getVehicle() ~= vehicle then return false end -- vehicle and part travel apart (see K.lidUnlock)
     if chr:getInventory():haveThisKeyId(vehicle:getKeyId()) or not K.phoneKey(chr, vehicle) then return false end
+    if vmRefuses(chr, vehicle, part) then return false end
     door:setLocked(false)
     vehicle:transmitPartDoor(part) -- no-op off the server
     return true
@@ -240,25 +255,26 @@ end
 -- The frunk lid locks with the car (Liftgate.lockLids). Vanilla's hood entries queue the unlock only when the key is
 -- NOT found (the interact key's Vehicles.Use.EngineDoor, Vehicles.lua:849-852; the Mechanics radial,
 -- ISVehicleMenu.lua:990-993; DriveUnitMenu.lua), and then the open (ISOpenVehicleDoor.lua:61-64), which only acts on an
--- unlocked lid. Whoever may unlock it (vanilla canUnlockDoor: seated, or the key in hand, BaseVehicle.java:1275-1301;
--- this car's phone key or key card anywhere on them, as they start it, K.bagKeyStarts; a VehicleManager user it lets
--- work on the hood, whose virtual key is no item) has it unlocked right before vanilla looks: in the unlock above (the
+-- unlocked lid. Whoever may open it (K.lidKey) has it unlocked right before vanilla looks: in the unlock above (the
 -- key not found) and in the open below (found); a stranger finds it locked. The unlock once took only the phone: with
 -- the card in a wallet or bag the Mechanics radial did nothing, the unlock failed and vanilla dropped the queue
 -- (ISUnlockVehicleDoor.lua:22-36; semimech-repro-e semiC/yC). Cabin doors keep the reader for the card.
 -- complete() runs on the server in MP and locally in SP.
-function K.lidUnlock(vehicle, part, chr)
+-- May chr open this Tesla's frunk lid: VehicleManager does not refuse it (vmRefuses), and vanilla canUnlockDoor
+-- (seated, or the key in hand, BaseVehicle.java:1275-1301), this car's phone key or key card anywhere on them (as they
+-- start it, K.bagKeyStarts), or a VehicleManager user it lets work on the hood (its virtual key is no item).
+function K.lidKey(vehicle, part, chr)
     -- the action carries vehicle and part as separate arguments (ISOpenVehicleDoor.lua:142-145): the key must be this car's
     if not part or part:getId() ~= "EngineDoor" or not chr or part:getVehicle() ~= vehicle or not T.isTesla(vehicle) then
         return false
     end
-    local door = part:getDoor()
-    if not door or not door:isLocked() or door:isLockBroken() then return false end
-    -- VehicleManager's own codes for opening the hood (its Actions.lua EngineDoor; the app's frunk, Remote.lua)
-    if not (vehicle:canUnlockDoor(part, chr) or K.phoneKey(chr, vehicle) or K.card(chr, vehicle)
-        or vmGrants(chr, vehicle, { "REPAIR", "SALVAGE" })) then
-        return false
-    end
+    if vmRefuses(chr, vehicle, part) then return false end
+    return vehicle:canUnlockDoor(part, chr) or K.phoneKey(chr, vehicle) ~= nil or K.card(chr, vehicle) ~= nil
+        or vmGrants(chr, vehicle, { "REPAIR", "SALVAGE" })
+end
+function K.lidUnlock(vehicle, part, chr)
+    local door = part and part:getDoor()
+    if not door or not door:isLocked() or door:isLockBroken() or not K.lidKey(vehicle, part, chr) then return false end
     door:setLocked(false)
     vehicle:transmitPartDoor(part) -- no-op off the server
     return true
@@ -267,7 +283,20 @@ end
 require "Vehicles/TimedActions/ISOpenVehicleDoor"
 local openComplete = ISOpenVehicleDoor.complete
 function ISOpenVehicleDoor:complete(...)
-    if not isClient() then K.lidUnlock(self.vehicle, self.part, self.character) end
+    local v, part, chr = self.vehicle, self.part, self.character
+    local door = not isClient() and K.lidKey(v, part, chr) and part:getDoor()
+    if door then
+        if door:isLocked() and not door:isLockBroken() then
+            door:setLocked(false)
+            v:transmitPartDoor(part)
+        end
+        -- vanilla's alarm spares the key it sees (haveThisKeyId: loose or on a keyring, ISOpenVehicleDoor.lua:83-93);
+        -- this car's card or phone key in a bag opening the lid gets the same: the car counts as entered
+        if not door:isLocked() and not chr:getInventory():haveThisKeyId(v:getKeyId())
+            and (K.phoneKey(chr, v) or K.card(chr, v)) then
+            v:setPreviouslyEntered(true)
+        end
+    end
     return openComplete(self, ...)
 end
 
