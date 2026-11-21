@@ -373,17 +373,19 @@ CAR = dict(
     },
     # TeslaArmor's visible kit (armor.py; ARMOR_STYLE=<key> builds the other): heights z over the ground, y pre-centre
     # (rear, front), x = |x|; every piece stands `gap` off the measured surface. keep: where the plates go (no mesh
-    # feature marks them; |x| half width, z bottom, top), the views must still see them (armor.check)
+    # feature marks them; |x| half width, z bottom, top) and the headlamp clusters in the bumper's pockets (END_ZONES'
+    # first box: |x| from, to, z bottom, top; their lenses aren't lit in the lights texture), the views must still see
+    # them (armor.check)
     ARMOR=dict(
         style="A",
-        keep=dict(front_plate=(0.22, 0.30, 0.45), rear_plate=(0.22, 0.29, 0.47)),
+        keep=dict(front_plate=(0.22, 0.30, 0.45), rear_plate=(0.22, 0.29, 0.47), head_lamps=(0.50, 0.77, 0.41, 0.54)),
         # A: steel tubes: low bar and corner hoops front and rear, sill tubes, basket roof rack
         A=dict(
-            front=dict(kind="tube", z=0.19, top=0.50, x=0.60, corners=[(0.34, 0.56)], brackets=(0.15, 0.42), gap=0.025,
+            front=dict(kind="tube", z=0.19, top=0.46, x=0.60, corners=[(0.33, 0.47)], brackets=(0.15, 0.42), gap=0.025,
                        r=0.022, sides=10, bend=0.05),
             rear=dict(kind="tube", z=0.21, top=0.44, x=0.64, corners=[(0.40, 0.60)], brackets=(0.15, 0.44), gap=0.025,
                       r=0.022, sides=10, bend=0.05),
-            sill=dict(kind="tube", z=0.155, y=(-0.78, 0.82), r=0.022, sides=10, gap=0.012, bend=0.05,
+            sill=dict(kind="tube", z=0.165, y=(-0.78, 0.82), r=0.022, sides=10, gap=0.012, bend=0.05,
                       brackets=(-0.45, 0.0, 0.45)),
             roof=dict(kind="basket", x=0.40, y=(-0.86, 0.20), feet_x=0.46, bars=(-0.74, 0.12), bar=(0.03, 0.022),
                       gap=0.03, r=0.013, sides=8, rail=0.06, corner=0.06, slats=(-0.2, 0.0, 0.2), slat_r=0.009),
@@ -391,11 +393,11 @@ CAR = dict(
         # B: folded steel plate: low band with its lip folded out and corner panels front and rear, step boards,
         # low platform roof rack
         B=dict(
-            front=dict(kind="plate", z=0.19, h=0.10, t=0.012, flange=0.03, top=0.50, x=0.60, corners=[(0.34, 0.58)],
+            front=dict(kind="plate", z=0.19, h=0.10, t=0.012, flange=0.03, top=0.46, x=0.60, corners=[(0.31, 0.48)],
                        brackets=(0.15, 0.42), gap=0.025),
             rear=dict(kind="plate", z=0.21, h=0.09, t=0.012, flange=0.03, top=0.44, x=0.64, corners=[(0.40, 0.62)],
                       brackets=(0.15, 0.44), gap=0.025),
-            sill=dict(kind="board", z=0.15, y=(-0.78, 0.82), w=0.085, t=0.012, lip=0.03, gap=0.01,
+            sill=dict(kind="board", z=0.16, y=(-0.72, 0.78), w=0.085, t=0.012, lip=0.03, gap=0.01,
                       brackets=(-0.45, 0.0, 0.45)),
             roof=dict(kind="platform", x=0.42, y=(-0.88, 0.22), feet_x=0.46, bars=(-0.76, 0.12), bar=(0.045, 0.014),
                       gap=0.012, frame=(0.022, 0.008), corner=0.04, plank=(0.05, 0.006), planks=9),

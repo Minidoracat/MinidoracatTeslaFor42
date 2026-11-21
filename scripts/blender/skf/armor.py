@@ -238,38 +238,45 @@ def guard(kit, car, g, sign, Z):
 
 
 def sills(kit, car, g, Z, Ysh):
-    """Both sill guards: a tube or a step board along the rocker below the doors, ends and brackets to the rocker."""
+    """Both sill guards: a tube or a step board along the rocker below the doors, `gap` off its tapering face, ends and
+    brackets to the rocker."""
     z, y0, y1 = Z(g["z"]), g["y"][0] + Ysh, g["y"][1] + Ysh          # y: (rear, front)
-    ys = np.linspace(y0, y1, 33)
     half = g["r"] if g["kind"] == "tube" else g["t"] / 2
-    rock = max(car.side(y, z - half - 0.01, z + half + 0.01) for y in ys)
+    bend = g.get("bend", 0.0)
+    # the rocker's outer face over the straight run (the arch lips past it flare out), a quartic in y lifted onto
+    # every station: the piece follows the rocker's taper (narrower mid-door than at the lips) instead of standing off
+    # its widest point
+    ys = np.linspace(y0 + bend, y1 - bend, 17)
+    req = np.array([car.side(y, z - half - 0.01, z + half + 0.01) for y in ys])
+    c = np.polyfit(ys, req, 4)
+    c[-1] += (req - np.polyval(c, ys)).max()
+    rock = lambda y: float(np.polyval(c, y)) + g["gap"]   # noqa: E731  (the piece's inner face)
     for s in (1, -1):                       # path along +y on the right, -y on the left: b = outward
         along = (y0, y1) if s > 0 else (y1, y0)
         if g["kind"] == "tube":
-            xc = rock + g["gap"] + g["r"]
+            r = g["r"]
+            inner = lambda y: rock(y) + r   # noqa: E731  (centre line)
+            mid = [(s * inner(y), y, z) for y in np.linspace(along[0] + s * bend, along[1] - s * bend, 7)]
             # each end turns in to the rocker, then out in 2 mm steps until its centre line is r + MIN_GAP["piece"] +
             # 2 mm off the car (rays miss the arch lips' edges)
-            ends = [car.side(y, z - g["r"], z + g["r"]) for y in along]
-            pts = lambda: fillet([(s * ends[0], along[0], z), (s * xc, along[0] + s * g["bend"], z),   # noqa: E731
-                                  (s * xc, along[1] - s * g["bend"], z), (s * ends[1], along[1], z)], g["bend"])
+            ends = [car.side(y, z - r, z + r) for y in along]
+            bent = lambda i: (fillet([(s * ends[0], along[0], z), mid[0], mid[1]], bend)[:-1] if i == 0  # noqa: E731
+                              else fillet([mid[-2], mid[-1], (s * ends[1], along[1], z)], bend)[1:])
             for i in (0, 1):
-                while True:
-                    p = pts()
-                    p = p[:len(p) // 2] if i == 0 else p[len(p) // 2:]
-                    if min(car.bvh.find_nearest(Vector(q))[3] for q in p) >= g["r"] + MIN_GAP["piece"] + 0.002:
+                for _ in range(50):         # at most 10 cm out; armor.check reports what still comes too close
+                    if min(car.bvh.find_nearest(Vector(q))[3] for q in bent(i)) >= r + MIN_GAP["piece"] + 0.002:
                         break
                     ends[i] += 0.002
-            kit.sweep(pts(), circle(g["r"], g["sides"]))
-            inner = xc
+            kit.sweep(bent(0) + mid[1:-1] + bent(1), circle(r, g["sides"]))
         else:
-            x0, w, t = rock + g["gap"], g["w"], g["t"]
-            line = [(s * x0, y, z) for y in along]
+            w, t = g["w"], g["t"]
+            line = [(s * rock(y), y, z) for y in np.linspace(*along, 7)]
             kit.sweep(line, rect(0, w, -t / 2, t / 2), smooth=False)
             kit.sweep(line, rect(w - t, w, -t / 2 - g["lip"], t / 2), smooth=False)     # outer edge folded down
-            inner = x0 + t
+            inner = lambda y: rock(y) + t   # noqa: E731
         for y in [y + Ysh for y in g["brackets"]]:
             face = max(car.side(y + dy, z - 0.012, z + 0.012) for dy in (-0.015, 0, 0.015))
-            kit.sweep([(s * inner, y, z), (s * (face + STANDOFF), y, z)],
+            kit.sweep([(s * inner(y), y, z), (s * (face + STANDOFF), y, z)],
                       rect(-0.015, 0.015, -0.012, 0.012), cell="mount", tag="mount", smooth=False)
 
 
@@ -444,13 +451,17 @@ def check(car, ob, kit, zmid, cy, geo):
                 for k, x in gap(b, v).items():
                     worst[k] = min(worst[k], x)
         note(f"tyre {name} (steer +-{STEER if front == 'true' else 0}, travel +-{TRAVEL})", pairs, worst, "tyre")
-    # what the game's eight views must still see: lamps, plates (ARMOR keep boxes), the charge port
+    # what the game's eight views must still see: lamps, plates and headlamp pockets (ARMOR keep), the charge port
     keep = pv.CAR["ARMOR"]["keep"]
     pts = lamp_points(car)
     for nm, sign in (("front plate", 1), ("rear plate", -1)):
         hx, z0, z1 = keep[nm.replace(" ", "_")]
         pts[nm] = np.array([h for x in np.linspace(-hx, hx, 9) for z in np.linspace(z0 - zmid, z1 - zmid, 5)
                             for h in [car.hit((x, 4 * sign, z), (0, -sign, 0))] if h is not None])
+    if "head_lamps" in keep:
+        x0, x1, z0, z1 = keep["head_lamps"]
+        pts["head lamps"] = np.array([h for s in (1, -1) for x in np.linspace(x0, x1, 7) for z in np.linspace(z0 - zmid, z1 - zmid, 5)
+                                      for h in [car.hit((s * x, 4, z), (0, -1, 0))] if h is not None])
     px, py, pz = geo["port_mesh"]
     pts["charge port"] = np.array([h for a in np.linspace(0, 2 * math.pi, 9)[:-1] for rr in (0, 0.03)
                                    for h in [car.hit((4 * np.sign(px), py + rr * math.cos(a), pz - zmid + rr * math.sin(a)),
@@ -464,8 +475,9 @@ def check(car, ob, kit, zmid, cy, geo):
             seen = [p for p in P if car.bvh.ray_cast(Vector(p) + d * 1e-3, d)[0] is None]
             hidden[deg] = sum(abvh.ray_cast(Vector(p) + d * 1e-3, d)[0] is not None for p in seen) / max(1, len(seen))
         res[nm] = {"samples": len(P), "hidden_by_view_deg": {k: round(v, 3) for k, v in hidden.items()}}
-        # a plate counts from the views within 45 deg of facing it (side on, its face is edge-on); the rest from all
-        sign = {"front plate": 1, "rear plate": -1}.get(nm)
+        # plates and the headlamp pockets count from the views within 45 deg of facing them (side on, they're edge-on
+        # in their pockets); the rest from all
+        sign = {"front plate": 1, "rear plate": -1, "head lamps": 1}.get(nm)
         if max(v for k, v in hidden.items() if sign is None or math.cos(math.radians(k)) * sign > 0.7) > 0:
             bad.append(nm)
     return res, bad
