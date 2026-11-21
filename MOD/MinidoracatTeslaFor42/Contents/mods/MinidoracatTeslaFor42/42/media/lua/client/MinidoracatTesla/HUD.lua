@@ -304,15 +304,30 @@ function HUD:show(vehicle)
         self:addToUIManager()
         self.inUI = true
     end
+    self.dark = nil
     self:setVisible(true)
 end
 
 function HUD:hide()
+    local v = self.vehicle
     self.vehicle = nil
+    -- its driver still seated (all UI hidden before getting in, ISVehicleDashboard.lua:226-228; the gamepad inventory,
+    -- ISInventoryPage.lua:774): stays in UIManager unseen, update() only watches for the end of a start (startEdge)
+    self.dark = v and v:getDriver() == self.character and v or nil
+    if self.dark then return self:setVisible(false) end
     if self.inUI then
         self:removeFromUIManager()
         self.inUI = false
     end
+end
+
+-- A start just ended (Running, or failed back to Idle): the phone key vanilla put into the ignition comes back to the
+-- driver (KeysUI.phoneBack). On that edge only: a phone already lying in the ignition stays when someone gets in
+-- (ISVehicleDashboard:setVehicle below resets wasStart; hiding and showing the HUD keeps it).
+function HUD:startEdge(v)
+    local starting = v:isEngineStarted()
+    if self.wasStart and not starting and T.KeysUI then T.KeysUI.phoneBack(v) end
+    self.wasStart = starting
 end
 
 function HUD.get(playerNum)
@@ -355,6 +370,7 @@ function HUD:readFast()
     self.prevKmh = raw
     st.use, st.regen = use, regen
     st.lights = v:getHeadlightsOn()
+    self:startEdge(v)
     -- vanilla plays the ignition-key sounds from its prerender (ISVehicleDashboard.lua:313-327); keep them
     local keyOn = (v:isKeysInIgnition() or running or v:isStarting()) and not v:isHotwired()
     if keyOn ~= (self.wasKey or false) then
@@ -673,7 +689,14 @@ end
 -- ---------------------------------------------------------------- UI callbacks
 function HUD:update()
     local v = self.vehicle
-    if not v then return end
+    if not v then
+        local d = self.dark
+        if d then
+            if d:getDriver() ~= self.character then return self:hide() end
+            self:startEdge(d)
+        end
+        return
+    end
     local st = self.st
     local kmh, gear, use, regen, lights, on = st.kmh, st.gear, st.use, st.regen, st.lights, st.on
     self:readFast()
@@ -846,6 +869,8 @@ end
 local origSetVehicle = ISVehicleDashboard.setVehicle
 function ISVehicleDashboard:setVehicle(vehicle)
     self.mtTesla = vehicle ~= nil and T.isTesla(vehicle)
+    local h = huds[self.playerNum]
+    if h then h.wasStart = nil end -- got in, out or changed seat (ISVehicleDashboard.lua:601-622): no start edge carried over
     origSetVehicle(self, vehicle) -- calls add/removeFromUIManager below (ISVehicleDashboard.lua:180-229)
 end
 

@@ -901,11 +901,12 @@ local sink = setmetatable({}, { __index = function(t, name) -- KeysUI's events s
 end })
 local realEvents = Events
 local stubs = { "TimedActions/ISBaseTimedAction", "TimedActions/ISTimedActionQueue", "TimedActions/ISInventoryTransferAction",
-    "TimedActions/ISGrabItemAction", "Vehicles/TimedActions/ISExitVehicle", "ISUI/ISInventoryPane" }
+    "TimedActions/ISGrabItemAction", "Vehicles/TimedActions/ISExitVehicle", "Vehicles/TimedActions/ISSwitchVehicleSeat",
+    "ISUI/ISInventoryPane" }
 for _, m in ipairs(stubs) do H.stub(m) end
 local GLOBALS = { "ISBaseTimedAction", "ISTimedActionQueue", "ISInventoryTransferAction", "ISGrabItemAction", "ISExitVehicle",
-    "ISWorldObjectContextMenu", "ISMinidoracatTeslaKeyTap", "ISMinidoracatTeslaPairPhone", "ISInventoryPane",
-    "ISInventoryPaneContextMenu", "getSpecificPlayer" }
+    "ISSwitchVehicleSeat", "ISWorldObjectContextMenu", "ISMinidoracatTeslaKeyTap", "ISMinidoracatTeslaPairPhone",
+    "ISInventoryPane", "ISInventoryPaneContextMenu", "getSpecificPlayer" }
 local before = {}
 for _, g in ipairs(GLOBALS) do before[g] = _G[g] end
 ISBaseTimedAction = { perform = function() end }
@@ -914,7 +915,9 @@ function ISBaseTimedAction:new(ch) return setmetatable({ character = ch }, self)
 ISTimedActionQueue = { add = function() end }
 ISInventoryTransferAction = { perform = function() end }
 ISGrabItemAction = { start = function() end, perform = function(self) table.remove(self.queueList, 1) end }
-ISExitVehicle = { perform = function(self) self.character.vehicle = nil end }
+ISExitVehicle = { perform = function(self) self.character.vehicle = nil end, waitToStart = function(self) return self.doorWait == true end,
+    isValid = function() return true end }
+ISSwitchVehicleSeat = { waitToStart = function() return false end, isValid = function() return true end }
 ISWorldObjectContextMenu = { addToolTip = function() return {} end }
 ISInventoryPane = { refreshContainer = function(self) self.refreshed = (self.refreshed or 0) + 1 end } -- vanilla lists
 local function pane(inv, onCharacter) -- an inventory window's list: the player's own, or loot (floor, glove box)
@@ -1164,6 +1167,147 @@ do
     tickFor(1000)
     check(sweeps(from) == 1, "getting out asks again for a CarKey asked before (the seated ask may have been refused)")
     sc.driver = nil
+end
+
+-- A phone key loose or on a key ring goes into the ignition with the start like any key (vanilla); the driver's client
+-- takes it back when the start has ended and before leaving the driver seat (KeysUI.lua phoneBack; Discord 2026-11-19).
+H.section("keys: the phone key never stays in the ignition (client)")
+do
+    local pc = tesla({ pct = 60 })
+    local backs = 0
+    function pc:setKeysInIgnition(on) -- vanilla (BaseVehicle.java:8727-8750): the ignition's key to the driver
+        if on or not self.ignitionKey or self.hotwired then return end -- :8695: nothing on a hotwired car
+        backs = backs + 1
+        self.driver.inv:AddItem(self.ignitionKey)
+        self.ignitionKey = nil
+    end
+    local drv = player("phonedriver", container(), pc.x, pc.y)
+    local rider = player("rider", container(), pc.x, pc.y)
+    drv.vehicle, rider.vehicle, pc.driver = pc, pc, drv
+    local phone = key(K.PHONE_KEY, pc.keyId)
+    local function leave(cls, p) return setmetatable({ character = p or drv }, { __index = cls }):waitToStart() end
+    H.advanceMs(K.START_MS) -- the start asked in the section above has settled
+    pc.ignitionKey, pc.starting = phone, true
+    check(leave(ISExitVehicle) == true and leave(ISSwitchVehicleSeat) == true and backs == 0 and pc.ignitionKey == phone,
+        "driver leaving mid-start, phone key in the ignition: waits, nothing moved (StartingSuccess would put it back)")
+    check(leave(ISExitVehicle, rider) == false and backs == 0, "a passenger leaving mid-start: no wait, the phone stays")
+    pc.starting = false
+    check(leave(ISExitVehicle, rider) == false and backs == 0 and pc.ignitionKey == phone, "a passenger leaving: the phone stays in the ignition")
+    check(leave(ISExitVehicle) == false and backs == 1 and pc.ignitionKey == nil and drv.inv.items[1] == phone,
+        "start over, driver getting out: the phone key is back on the driver first, then the action goes")
+    pc.ignitionKey = phone
+    drv.inv:Remove(phone)
+    check(leave(ISSwitchVehicleSeat) == false and backs == 2 and drv.inv.items[1] == phone, "... changing seat too")
+    check(leave(ISExitVehicle) == false and backs == 2, "nothing in the ignition: goes, nothing asked")
+    -- the start action went a moment ago; its Starting state is not here yet (SP: the next tick, MP: a round trip)
+    setmetatable({ character = drv }, { __index = ISStartVehicleEngine }):waitToStart()
+    check(leave(ISExitVehicle) == true and leave(ISSwitchVehicleSeat) == true and backs == 2,
+        "a start asked a moment ago, not Starting here yet, the phone key still on the driver: waits")
+    pc.running = true
+    check(leave(ISExitVehicle) == false, "... the motor runs already (nothing will move the key now): goes")
+    pc.running = false
+    drv.inv:Remove(phone)
+    check(leave(ISExitVehicle) == false, "... no phone key on the driver (card, CarKey): goes")
+    drv.inv:AddItem(phone)
+    H.advanceMs(K.START_MS)
+    check(leave(ISExitVehicle) == false and backs == 2, "... no Starting within START_MS (the start was refused): goes")
+    -- only the key vanilla would move (haveThisKeyId): a phone key in a bag never reaches the ignition
+    setmetatable({ character = drv }, { __index = ISStartVehicleEngine }):waitToStart()
+    drv.inv:Remove(phone)
+    local sack = bag("Base.Bag_Schoolbag", phone)
+    drv.inv:AddItem(sack)
+    check(K.phoneKey(drv, pc) == phone and leave(ISExitVehicle) == false, "a start asked a moment ago, the phone key in a bag: goes")
+    drv.inv:Remove(sack)
+    -- on a key ring vanilla does take it (ItemContainer.java:3290-3301 returns the key, not the ring)
+    local ring = bag("Base.KeyRing", phone)
+    drv.inv:AddItem(ring)
+    check(leave(ISExitVehicle) == true, "... on a key ring: waits")
+    drv.inv:Remove(ring)
+    local carRing = bag("Base.KeyRing", key("Base.CarKey", pc.keyId))
+    drv.inv:AddItem(carRing)
+    check(leave(ISExitVehicle) == false, "... a CarKey on the ring: goes")
+    drv.inv:Remove(carRing)
+    drv.inv:AddItem(phone)
+    check(leave(ISExitVehicle) == true, "... loose again: waits")
+    H.advanceMs(K.START_MS)
+    -- split screen: the other local player's start is not this driver's
+    local p2car = tesla({ pct = 60 })
+    local p2 = player("second", container(), p2car.x, p2car.y, 1)
+    p2.vehicle, p2car.driver = p2car, p2
+    setmetatable({ character = p2 }, { __index = ISStartVehicleEngine }):waitToStart()
+    check(leave(ISExitVehicle) == false and backs == 2, "split screen: player 2 asked a start, player 1 leaving its own car does not wait")
+    p2.vehicle, p2car.driver = nil, nil
+    H.advanceMs(K.START_MS)
+    -- a start that never ends here (engine state stuck) does not keep the driver seated
+    drv.inv:Remove(phone)
+    pc.ignitionKey, pc.starting = phone, true
+    local stuck = setmetatable({ character = drv }, { __index = ISExitVehicle })
+    check(stuck:waitToStart() == true, "mid-start: waits ...")
+    H.advanceMs(4999)
+    check(stuck:waitToStart() == true and backs == 2, "... still at 4.999 s")
+    H.advanceMs(1)
+    check(stuck:waitToStart() == false and backs == 3 and pc.ignitionKey == nil and drv.inv.items[1] == phone,
+        "... 5 s: goes, the phone key taken back anyway")
+    -- the phone key back in the ignition after the action went (the start retried; a pedal start; a late Starting)
+    check(stuck:isValid() == true, "... gone, the ignition empty: the action stays valid")
+    drv.inv:Remove(phone)
+    pc.ignitionKey = phone
+    check(stuck:isValid() == false and backs == 3, "... the phone key in the ignition again before the seat is left: the action stops")
+    check(setmetatable({ character = rider, mtLeft = true }, { __index = ISSwitchVehicleSeat }):isValid() == true,
+        "... a passenger's action: not stopped")
+    local again = setmetatable({ character = drv }, { __index = ISExitVehicle })
+    check(again:isValid() == true and again:waitToStart() == true and again:isValid() == true,
+        "asked again mid-start: waits, never stopped while it waits")
+    pc.starting = false
+    check(again:waitToStart() == false and again:isValid() == true and backs == 4 and drv.inv.items[1] == phone,
+        "... the start over: the phone key back on the driver, the action goes")
+    -- the PC clock set back while waiting: counts as over, no longer wait
+    drv.inv:Remove(phone)
+    pc.ignitionKey, pc.starting = phone, true
+    local clock = setmetatable({ character = drv }, { __index = ISExitVehicle })
+    check(clock:waitToStart() == true, "mid-start: waits ...")
+    H.advanceMs(-60000)
+    check(clock:waitToStart() == false and backs == 5 and drv.inv.items[1] == phone, "... the clock set back a minute: goes, the phone key taken back")
+    H.advanceMs(60000)
+    pc.starting = false
+    -- the wrapped wait still counts (EnterDoor.lua's door wait on ISExitVehicle)
+    local door = setmetatable({ character = drv, doorWait = true }, { __index = ISExitVehicle })
+    check(door:waitToStart() == true, "nothing to wait for here, the door still swinging: the wrapped waitToStart decides")
+    door.doorWait = false
+    check(door:waitToStart() == false, "... door open: goes")
+    for _, ft in ipairs({ K.CARD, "Base.CarKey" }) do
+        pc.ignitionKey, pc.starting = key(ft, pc.keyId), true
+        local mid = leave(ISExitVehicle)
+        pc.starting = false
+        check(mid == false and leave(ISExitVehicle) == false and leave(ISSwitchVehicleSeat) == false and backs == 5
+            and pc.ignitionKey ~= nil, ft .. " in the ignition: no wait, stays (vanilla)")
+        UI.phoneBack(pc)
+        check(backs == 5 and pc.ignitionKey ~= nil, "phoneBack: " .. ft .. " stays")
+    end
+    -- a key already in the ignition (here the CarKey): vanilla takes no second one (BaseVehicle.java:8696)
+    function pc:isKeysInIgnition() return self.ignitionKey ~= nil end
+    setmetatable({ character = drv }, { __index = ISStartVehicleEngine }):waitToStart()
+    check(leave(ISExitVehicle) == false, "a start asked a moment ago, a CarKey in the ignition, the phone key loose: goes")
+    H.advanceMs(K.START_MS)
+    -- hotwired with a phone key in the ignition (an admin's Hotwire on a car an older build left the phone in): vanilla
+    -- can neither put nor take one (:8695), so no wait and no stop: the driver must still get out
+    drv.inv:Remove(phone)
+    pc.ignitionKey, pc.hotwired, pc.starting = phone, true, true
+    local hot = setmetatable({ character = drv }, { __index = ISExitVehicle })
+    check(hot:waitToStart() == false and hot:isValid() == true and backs == 5 and pc.ignitionKey == phone,
+        "hotwired, a phone key in the ignition, mid-start: no wait, the action stays valid, nothing asked")
+    pc.starting = false
+    hot = setmetatable({ character = drv }, { __index = ISSwitchVehicleSeat })
+    check(hot:waitToStart() == false and hot:isValid() == true, "... the start over, changing seat: goes too")
+    pc.ignitionKey, pc.hotwired = nil, false
+    drv.inv:AddItem(phone)
+    local other = H.vehicle({ script = "Base.CarNormal" })
+    function other:getCurrentKey() return phone end
+    function other:setKeysInIgnition() backs = backs + 1 end
+    drv.vehicle, other.driver = other, drv
+    check(leave(ISExitVehicle) == false and backs == 5, "not a Tesla: vanilla, the key stays")
+    drv.vehicle, rider.vehicle, pc.driver = nil, nil, nil
+    H.removeVehicle(other)
 end
 
 -- A CarKey later than the grab's perform (a busy MP client: seconds; keys-mp latekey) or with no client action at all

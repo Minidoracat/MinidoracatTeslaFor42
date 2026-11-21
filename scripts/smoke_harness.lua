@@ -232,6 +232,7 @@ function H.vehicle(o)
     function v:getZ() return self.z end
     function v:getKeyId() return self.keyId end
     function v:isKeysInIgnition() return false end
+    function v:isEngineStarted() return self.starting == true end -- Starting..StartingSuccess (VehicleEngine.java:365-370)
     function v:isHotwired() return self.hotwired == true end -- H.vehicle(...).hotwired = true
     function v:isAnyDoorLocked() return self.locked == true end -- H.vehicle(...).locked = true (BaseVehicle.java:9343)
     function v:setEngineFeature(q, l, f) self.feature = { q, l, f } end

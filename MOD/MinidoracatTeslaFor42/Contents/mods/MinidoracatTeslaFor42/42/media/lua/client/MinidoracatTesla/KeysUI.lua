@@ -9,14 +9,18 @@
 --   * Getting out with a phone key starts a 2 Hz distance check that ends once the car locks or you get back in;
 --     players without one never run it. Pulling a locked door's handle with the key on you is vanilla already
 --     (ISVehicleMenu.onOpenDoor queues unlock + open; canUnlockDoor accepts any Key with the keyId, BaseVehicle.java:1274).
+--   * A phone key vanilla moved into the ignition comes back to its driver once the start has ended (HUD.lua readFast)
+--     and before the driver leaves the seat (ISExitVehicle / ISSwitchVehicleSeat waitToStart); the card stays there.
 require "MinidoracatTesla/Core"
 require "MinidoracatTesla/Keys"
+require "MinidoracatTesla/EnterDoor" -- its door wait on ISExitVehicle is wrapped below: this file's wait comes first
 require "TimedActions/ISBaseTimedAction"
 require "TimedActions/ISTimedActionQueue"
 require "TimedActions/ISInventoryTransferAction"
 require "TimedActions/ISGrabItemAction"
 require "Vehicles/TimedActions/ISExitVehicle"
 require "Vehicles/TimedActions/ISStartVehicleEngine"
+require "Vehicles/TimedActions/ISSwitchVehicleSeat"
 require "ISUI/ISInventoryPane"
 
 local T = MinidoracatTesla
@@ -37,14 +41,13 @@ end
 -- ------------------------------------------------------------------ CarKey -> key card
 -- Ask once per CarKey item (force: any CarKey, asked or not); the server knows which keyIds are Tesla keys and swaps
 -- what is in the inventory, seated too, never the ignition's key (KeyActions.lua K.sweep).
-local asked, sentAt, startAt = {}, nil, nil
+local asked, sentAt, startAt = {}, nil, {} -- startAt: by player number (split screen)
 -- Driving, a start just went out: its Starting state may still move this car's key into the ignition, and a swap
 -- meanwhile leaves the client a ghost card (K.sweep). Until when to wait before asking; nil: ask now.
 local function startSettles(player)
     local v = player and player:getVehicle()
-    if v and v:getDriver() == player and startAt and getTimestampMs() - startAt < K.START_MS then
-        return startAt + K.START_MS
-    end
+    local at = v and v:getDriver() == player and startAt[player:getPlayerNum()]
+    if at and getTimestampMs() - at < K.START_MS then return at + K.START_MS end
 end
 function UI.checkKeys(player, force)
     if not player then return end
@@ -80,7 +83,7 @@ local startWait = ISStartVehicleEngine.waitToStart
 function ISStartVehicleEngine:waitToStart()
     local v = self.character:getVehicle()
     if v and UI.swapPending(self.character, v) then return true end
-    startAt = getTimestampMs()
+    startAt[self.character:getPlayerNum()] = getTimestampMs()
     return startWait(self)
 end
 
@@ -251,6 +254,79 @@ function ISExitVehicle:perform(...)
         if K.phoneKey(p, v) then UI.watch(p, v) end
     end
     return r
+end
+
+-- ------------------------------------------------------------------ the phone key never stays in the ignition
+-- A phone key loose or on a key ring is a vanilla key: a start moves it into the ignition (BaseVehicle.java:7525,7544 ->
+-- setKeysInIgnition :8690-8724) and only a shut-off by a seated driver brings it back (:7597, off with the "leave key in
+-- ignition" option). This HUD shows no ignition, so a driver who got out with the motor on lost the phone to the car
+-- (Discord 2026-11-19). Here the driver's client takes it back with vanilla's own call (local move + the
+-- removeKeyFromIgnition command, SP: local only) once the start has ended (HUD.lua readFast) and before leaving the
+-- driver seat; the motor keeps running, as with the phone in a bag (Keys.lua K.bagKeyStarts). Never during a start:
+-- StartingSuccess would put it back (:7544). The key card stays on the console reader.
+-- Not on a hotwired car: vanilla neither puts nor takes a key there (:8695), so there is nothing to wait for or to
+-- stop a driver over; a phone an older build left in that ignition stays until the hotwire is undone.
+local function phoneIn(vehicle)
+    if vehicle:isHotwired() then return false end
+    local key = vehicle:getCurrentKey()
+    return key ~= nil and key:getFullType() == K.PHONE_KEY
+end
+function UI.phoneBack(vehicle)
+    if phoneIn(vehicle) then vehicle:setKeysInIgnition(false) end
+end
+
+-- Getting out or changing seat as the driver: waits while a start still holds the phone key, then takes it back.
+-- Always a boolean: nil would keep the action from ever starting (LuaTimedActionNew.java:84-89). At most
+-- LEAVE_WAIT_MS per action (a clock set back counts as over): an engine state stuck in a start must not keep the
+-- driver seated. Before the door wait (EnterDoor.lua), not after: the removeKeyFromIgnition command and the exit /
+-- seat packet are not ordered against each other, and a command that lands after the seat change is refused
+-- (VehicleCommands.lua:186-192).
+-- shortcut: that command resent until it lands after the seat packet leaves the phone in the car on the server and a
+-- phone only this client sees (gone at the next login); back with the next start, or after a login when a driver
+-- next leaves the seat. Have the server hand it back on leaving if reported.
+local LEAVE_WAIT_MS = 5000
+local function leavingSeat(action)
+    local p = action.character
+    local v = p:getVehicle()
+    if not v or v:getDriver() ~= p or not T.isTesla(v) then return false end
+    local held
+    if v:isEngineStarted() then
+        held = phoneIn(v)
+    else
+        -- a start asked a moment ago does not show as Starting yet (SP: the next tick, phoneign-1121e-ring quickSwitch;
+        -- MP: a round trip) and would move the key after this action went. Only the key vanilla would take
+        -- (haveThisKeyId: loose or on a key ring, not a phone in a bag), and only where it takes one (:8695-8696)
+        local key = startSettles(p) and not v:isEngineRunning() and not v:isHotwired() and not v:isKeysInIgnition()
+            and p:getInventory():haveThisKeyId(v:getKeyId())
+        held = key and key:getFullType() == K.PHONE_KEY
+    end
+    local now = getTimestampMs()
+    action.mtLeaveAt = action.mtLeaveAt or now
+    local waited = now - action.mtLeaveAt
+    if held and waited >= 0 and waited < LEAVE_WAIT_MS then return true end
+    UI.phoneBack(v)
+    return false
+end
+for _, cls in ipairs({ ISExitVehicle, ISSwitchVehicleSeat }) do
+    local wait = cls.waitToStart -- ISExitVehicle: EnterDoor.lua's door wait; ISSwitchVehicleSeat: ISBaseTimedAction's
+    cls.waitToStart = function(self)
+        local waits = leavingSeat(self) or wait(self)
+        self.mtLeft = not waits
+        return waits
+    end
+    -- The phone key reached the ignition after the action went (a pedal start in MP sets no startAt,
+    -- CarController.java:329-331; a Starting later than K.START_MS; a retry after LEAVE_WAIT_MS): the action stops
+    -- (isValid runs every tick, IsoGameCharacter.java:9177-9186) instead of leaving the phone behind; asked again, it
+    -- waits above. Not taken back in perform: that command would race the seat packet of the same tick.
+    local valid = cls.isValid
+    cls.isValid = function(self)
+        if self.mtLeft then
+            local p = self.character
+            local v = p:getVehicle()
+            if v and v:getDriver() == p and T.isTesla(v) and phoneIn(v) then return false end
+        end
+        return valid(self)
+    end
 end
 
 -- ------------------------------------------------------------------ key card tap (client-only action: no

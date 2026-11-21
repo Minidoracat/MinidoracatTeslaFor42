@@ -143,6 +143,76 @@ check(visq and wq <= 632 and xq >= 0 and xq + wq <= 640, "640 px wide split view
 SCREEN_W, fontH = 1920, 19
 dash:setVehicle(nil)
 
+-- ---------------------------------------------------------------- a start's phone key comes back (KeysUI.phoneBack)
+H.section("phone key back from the ignition once the start ends")
+do
+    local keysUI, backs = T.KeysUI, 0
+    T.KeysUI = { phoneBack = function() backs = backs + 1 end, checkSoon = function() end }
+    local c = car({ kwh = 30 })
+    dash:setVehicle(c)
+    h:update()
+    check(backs == 0, "getting in: nothing asked (a phone key lying in the ignition stays)")
+    c.starting = true
+    h:update()
+    check(backs == 0, "starting: not yet (StartingSuccess would put the key back)")
+    c.starting, c.running = false, true
+    h:update(); h:update()
+    check(backs == 1, "running: asked once")
+    c.starting, c.running = true, false
+    h:update()
+    dash:setVehicle(tesla)
+    h:update()
+    check(backs == 1, "another car: the last car's start is forgotten")
+    dash:setVehicle(c)
+    check(backs == 1, "back in mid-start: not yet")
+    c.starting = false
+    h:update()
+    check(backs == 2, "the start failed (back to idle): asked too")
+    -- hidden over the end of the start (gamepad inventory: ISInventoryPage.lua:759,774), nobody known in the seat
+    -- (this fake has no driver): asked once it is shown again, same car and seat
+    c.starting = true
+    h:update()
+    dash:removeFromUIManager()
+    check(h.inManager == false, "hidden, no driver in the seat: out of UIManager")
+    c.starting, c.running = false, true
+    dash:addToUIManager()
+    h:update()
+    check(backs == 3, "HUD hidden while the start ended: asked once when it is back")
+    c.running = false
+    -- hidden with its driver seated: stays in UIManager unseen and still sees the start end
+    c.driver = h.character
+    dash:removeFromUIManager()
+    check(h.inManager == true and h.visible == false and h.vehicle == nil and select(5, MinidoracatTeslaAPI.hudRect(0)) == false,
+        "hidden, its driver seated: unseen, still in UIManager, hudRect not visible")
+    c.starting = true
+    h:update()
+    c.starting, c.running = false, true
+    h:update(); h:update()
+    check(backs == 4, "... a whole start while hidden: asked once")
+    dash:addToUIManager()
+    c.driver = h.character
+    h:update()
+    check(backs == 4 and h.visible == true and h.vehicle == c, "... shown again: nothing asked twice")
+    c.running = false
+    -- all UI hidden before getting in: vanilla adds, then removes the dashboard (ISVehicleDashboard.lua:219-228)
+    c.driver = nil
+    dash:setVehicle(nil)
+    dash:setVehicle(c)
+    c.driver = h.character
+    dash:removeFromUIManager()
+    c.starting = true
+    h:update()
+    c.starting, c.running = false, true
+    h:update()
+    check(backs == 5 and h.visible == false, "UI hidden before getting in: the start is still seen")
+    c.driver = nil
+    h:update()
+    check(h.inManager == false and h.dark == nil, "... the driver left: out of UIManager")
+    c.running = false
+    dash:setVehicle(nil)
+    T.KeysUI = keysUI
+end
+
 -- ---------------------------------------------------------------- read model
 H.section("read model")
 dash:setVehicle(tesla)
@@ -1082,7 +1152,6 @@ local realKeys, bagKey = T.Keys, true
 T.Keys = { bagKeyStarts = function(pl, v) return bagKey and pl == p and v == tesla end }
 tesla.driver, tesla.running, tesla.speed = p, false, 0
 function tesla:isEngineWorking() return true end
-function tesla:isEngineStarted() return false end
 local function startSlices()
     local starts, hotwire, at = 0, false, nil
     for i, s in ipairs(menu.slices) do
@@ -1109,7 +1178,7 @@ ISVehicleMenu.showRadialMenu(p)
 local starts, hotwire = startSlices()
 check(starts == 0 and hotwire and menu.slices[2].command[1] == ISVehicleMenu.onHotwire,
     "radial, no key: vanilla hotwiring stays, no Start Engine")
-T.Keys, hotwireSlice, tesla.driver, tesla.isEngineWorking, tesla.isEngineStarted = realKeys, nil, nil, nil, nil
+T.Keys, hotwireSlice, tesla.driver, tesla.isEngineWorking = realKeys, nil, nil, nil
 menu.open = false
 
 -- Bioweapon Defense Mode (Specs hepa: anyone inside) and Chill (the driver). The official French name stands in for the

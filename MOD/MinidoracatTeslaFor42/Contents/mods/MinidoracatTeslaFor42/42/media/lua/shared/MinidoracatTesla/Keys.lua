@@ -268,9 +268,9 @@ end
 -- wallet like the phone (user 2026-10-31, after a Workshop comment). Vanilla complete()
 -- passes haveKey from haveThisKeyId only (ISStartVehicleEngine.lua:29); here tryStartEngine(true) instead. complete()
 -- runs on the server in MP, locally in SP. No key goes into the ignition: the Starting state's setKeysInIgnition looks
--- with haveThisKeyId too (BaseVehicle.java:7484,7503 -> :8647-8675), finds nothing and sends no putKeyInIgnition, so
+-- with haveThisKeyId too (BaseVehicle.java:7525,7544 -> :8690-8724), finds nothing and sends no putKeyInIgnition, so
 -- no extra "container already has id" (pitfalls.md). A key loose or on a keyring: vanilla (into the ignition; the card
--- onto the console reader).
+-- stays there, on the console reader; the phone key comes back to its driver when the start ends, KeysUI.lua phoneBack).
 function K.bagKeyStarts(chr, vehicle)
     return T.isTesla(vehicle) and not vehicle:isKeysInIgnition() and not vehicle:isHotwired()
         and not chr:getInventory():haveThisKeyId(vehicle:getKeyId())
