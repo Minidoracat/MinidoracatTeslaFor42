@@ -248,6 +248,94 @@ module Base
             category = nodisplay,
             setAllModelsVisible = false,
         }
+        /* upgrades (references/upgrades.md; part ids, items, model id Armor fixed once released): category upgrade, */
+        /* never door / bodywork (zombies and melee pick those, empty ones too: BaseVehicle.java:9596-9599). Both */
+        /* tables carry a test or canInstallPart says no (BaseVehicle.java:8459-8467); no skills, so fitting always */
+        /* succeeds (Vehicles.lua:1463-1485). Protection: Inner (no look, k 0.5) or Outer (a bull bar, k 0.25), */
+        /* Upgrades.lua; each car script adds its model Armor (none here: a model without a file throws). Wrench and */
+        /* 300 as a vanilla door (template_door.txt:169-204). */
+        part TeslaArmor
+        {
+            area = Engine,
+            category = upgrade,
+            specificItem = false,
+            mechanicRequireKey = true,
+            setAllModelsVisible = false,
+            itemType = Base.MinidoracatTesla_ArmorInner;Base.MinidoracatTesla_ArmorOuter,
+            lua
+            {
+                init = MinidoracatTesla.Init.Armor,
+            }
+            table install
+            {
+                items
+                {
+                    1
+                    {
+                        tags = base:wrench,
+                        count = 1,
+                        keep = true,
+                        equip = primary,
+                    }
+                }
+                time = 300,
+                test = Vehicles.InstallTest.Default,
+                complete = MinidoracatTesla.InstallComplete.Armor,
+            }
+            table uninstall
+            {
+                items
+                {
+                    1
+                    {
+                        tags = base:wrench,
+                        count = 1,
+                        keep = true,
+                        equip = primary,
+                    }
+                }
+                time = 300,
+                test = Vehicles.UninstallTest.Default,
+                complete = MinidoracatTesla.UninstallComplete.Armor,
+            }
+        }
+        /* fridge in the trunk: its container type is the part id, never fridge / freezer (ItemContainer.java:3872-3881). */
+        /* The item gives the capacity (capacity 0 here: shut until fitted, BaseVehicle.java:8439-8453); vanilla's menu */
+        /* reads the install table's door for fitting and removing alike (ISVehiclePartMenu.lua:183-198,216-231). The */
+        /* Cybertruck and the Semi override it in their own scripts (a part block merges by id, VehicleScript.java: */
+        /* 909-988). Plug and play: no tool, no skill. */
+        part TeslaFridge
+        {
+            area = TruckBed,
+            category = upgrade,
+            specificItem = false,
+            mechanicRequireKey = true,
+            itemType = Base.MinidoracatTesla_Fridge,
+            container
+            {
+                capacity = 0,
+                conditionAffectsCapacity = false,
+                test = Vehicles.ContainerAccess.TruckBed,
+            }
+            lua
+            {
+                init = MinidoracatTesla.Init.Fridge,
+            }
+            table install
+            {
+                time = 60,
+                door = TrunkDoor,
+                test = Vehicles.InstallTest.Default,
+            }
+            table uninstall
+            {
+                time = 60,
+                door = TrunkDoor,
+                requireEmpty = true,
+                test = Vehicles.UninstallTest.Default,
+                complete = MinidoracatTesla.UninstallComplete.Fridge,
+            }
+        }
     }
     /* CoreNoFrunk = Cab + the trunk lid, the trunk, the glove box and the rear windshield: Core's way (below), the */
     /* template lines first in the order they had before Cab existed, then the blocks of the two parts Cab's own */

@@ -14,6 +14,24 @@ module Base
         {
             itemType = Base.MinidoracatTesla_SemiBattery,
         }
+        /* no trunk: the fridge goes in the cab by the folding seat, reached like vanilla's glove box (sitting up */
+        /* front, or at the open right door, Vehicles.lua:88-102), fitted and removed through that door */
+        part TeslaFridge
+        {
+            area = SeatFrontRight,
+            container
+            {
+                test = Vehicles.ContainerAccess.GloveBox,
+            }
+            table install
+            {
+                door = DoorFrontRight,
+            }
+            table uninstall
+            {
+                door = DoorFrontRight,
+            }
+        }
         /* engineForce 3920, maxSpeed 86: the user's pick on the acceptance page (2026-11-18). Measured: 0-100 km/h */
         /* 18.5 s alone, 25.0 s with the empty trailer, top 105.6 km/h (references/semi.md 2) */
         mass = 1250,

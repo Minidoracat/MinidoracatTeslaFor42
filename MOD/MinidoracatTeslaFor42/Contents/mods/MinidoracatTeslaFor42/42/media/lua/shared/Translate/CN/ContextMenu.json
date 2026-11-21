@@ -14,5 +14,9 @@
     "ContextMenu_MinidoracatTesla_ChargeItem": "用车上插座充电",
     "ContextMenu_MinidoracatTesla_OpenApp": "打开 Tesla App",
     "ContextMenu_MinidoracatTesla_AddCar": "添加这辆车（已配对 %1 辆）",
+    "ContextMenu_MinidoracatTesla_Fridge": "车载冰箱",
+    "ContextMenu_MinidoracatTesla_FridgeOff": "关闭",
+    "ContextMenu_MinidoracatTesla_FridgeCool": "冷藏",
+    "ContextMenu_MinidoracatTesla_FridgeFreeze": "冷冻",
     "ContextMenu_MinidoracatTesla_Unpair": "从手机移除"
 }

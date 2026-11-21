@@ -1,0 +1,89 @@
+# -*- coding: utf-8 -*-
+"""升級件（防護件 TeslaArmor、車用冰箱 TeslaFridge）的腳本契約：scripts/verify_local.py 會呼叫；單獨跑
+`python scripts/upgrades_check.py`。每台車照 scripts/vehicle_parts.py 解析完範本與覆寫後檢查（references/upgrades.md）。
+
+- 容器零件的 id 不是 fridge／freezer：容器類型就是零件 id，這兩個名字會被引擎當成家用冰箱、冷凍庫（ItemContainer.java:3872-3881）
+- 兩個升級件九台車都有；install／uninstall 都有 test（沒有就裝不上、拆不下，BaseVehicle.java:8459-8478）；
+  category 不是 door／bodywork（殭屍與近戰挑這兩類，空零件也挑，BaseVehicle.java:9596-9599）；mechanicRequireKey；
+  沒有 skills（門檻只放在配方；有 skills 就有失敗機率，Vehicles.lua:1463-1485）
+- TeslaFridge：capacity = 0（沒裝時打不開，BaseVehicle.java:8439-8453）、conditionAffectsCapacity = false、拆卸 requireEmpty
+- itemType 的物品都存在、ConditionMax = 100；TeslaArmor 的 itemType 等於 Upgrades.lua 的 T.Armor.K 鍵集
+- MOD/ 沒有試做殘留（S0 的 ArmorTrial／FridgeTrial 等名稱與 TRIAL 註解）
+"""
+import glob
+import os
+import re
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import vehicle_parts as vp  # noqa: E402
+
+REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+MEDIA = os.path.join(REPO, "MOD/MinidoracatTeslaFor42/Contents/mods/MinidoracatTeslaFor42/42/media")
+UPGRADES = ("TeslaArmor", "TeslaFridge")
+RESIDUE = ("ArmorTrial", "ArmorS0", "FridgeTrial", "UpgTest", "UpgBox", "TRIAL")
+
+if not os.path.isdir(vp.PZ):
+    print(f"升級件檢查略過：找不到原版腳本 {vp.PZ}")
+    sys.exit(0)
+vanilla = [t for t in (open(p, encoding="utf-8", errors="replace").read()
+                       for p in glob.glob(os.path.join(vp.PZ, "**", "*.txt"), recursive=True)) if "template vehicle" in t]
+cars = vp.resolve({os.path.basename(p): open(p, encoding="utf-8").read()
+                   for p in glob.glob(os.path.join(REPO, vp.VEH, "*.txt"))}, vanilla)
+
+items = {}
+for p in glob.glob(os.path.join(MEDIA, "scripts", "items", "*.txt")):
+    body = vp.strip_comments(open(p, encoding="utf-8").read())
+    for m in re.finditer(r"\bitem\s+(\w+)\s*\{([^{}]*)\}", body):
+        items["Base." + m[1]] = {k: v.strip() for k, v in re.findall(r"(\w+)\s*=\s*([^,\n]*)", m[2])}
+lua = open(os.path.join(MEDIA, "lua/shared/MinidoracatTesla/Upgrades.lua"), encoding="utf-8").read()
+kblock = re.search(r"\bA\.K\s*=\s*\{(.*?)\n\}", lua, re.S)
+armor_k = set(re.findall(r'\["([\w.]+)"\]\s*=', kblock[1])) if kblock else set()
+
+bad = []
+for car, r in sorted(cars.items()):
+    if car.endswith("Trailer"):   # the Semi's trailer has its own script, not template Cab
+        continue
+    parts = dict(r["parts"])
+    bad += [f"{car}: 容器零件 {pid} 的 id 是 {pid.lower()}" for pid, p in parts.items()
+            if "container" in p and pid.lower() in ("fridge", "freezer")]
+    for pid in UPGRADES:
+        p = parts.get(pid)
+        if not p:
+            bad.append(f"{car}: 沒有 part {pid}")
+            continue
+        v, tabs = p["values"], p.get("tables", {})
+        if v.get("category") in ("door", "bodywork"):
+            bad.append(f"{car}: {pid} category = {v.get('category')}")
+        if v.get("mechanicRequireKey") != "true":
+            bad.append(f"{car}: {pid} 沒有 mechanicRequireKey = true")
+        for t in ("install", "uninstall"):
+            if not tabs.get(t, {}).get("test"):
+                bad.append(f"{car}: {pid} 的 {t} 表沒有 test")
+            if "skills" in tabs.get(t, {}):
+                bad.append(f"{car}: {pid} 的 {t} 表有 skills")
+        types = [x.strip() for x in v.get("itemType", "").split(";") if x.strip()]
+        bad += [f"{car}: {pid} itemType {x} 沒有定義或 ConditionMax 不是 100" for x in types
+                if items.get(x, {}).get("ConditionMax") != "100"]
+        if pid == "TeslaArmor" and set(types) != armor_k:
+            bad.append(f"{car}: TeslaArmor itemType {sorted(types)} 和 Upgrades.lua T.Armor.K {sorted(armor_k)} 不同")
+        if pid == "TeslaFridge":
+            c = p.get("container", {})
+            if c.get("capacity") != "0" or c.get("conditionAffectsCapacity") != "false":
+                bad.append(f"{car}: TeslaFridge container 要 capacity = 0、conditionAffectsCapacity = false（{c}）")
+            if tabs.get("uninstall", {}).get("requireEmpty") != "true":
+                bad.append(f"{car}: TeslaFridge 拆卸沒有 requireEmpty = true")
+
+for base, _, files in os.walk(os.path.join(REPO, "MOD")):
+    for name in files:
+        if os.path.splitext(name)[1] not in (".lua", ".txt", ".json", ".xml"):
+            continue
+        path = os.path.join(base, name)
+        text = open(path, encoding="utf-8", errors="replace").read()
+        bad += [f"{os.path.relpath(path, REPO)}: 試做殘留 {w}" for w in RESIDUE if w in name or re.search(rf"\b{w}\b", text)]
+
+checked = sum(1 for c in cars if not c.endswith("Trailer"))
+if bad:
+    print("升級件腳本契約不符：" + "；".join(bad))
+    sys.exit(1)
+print(f"升級件腳本契約（{checked} 台車）")

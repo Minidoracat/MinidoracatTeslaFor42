@@ -29,6 +29,14 @@ module Base
                 test = MinidoracatTesla.ContainerAccess.Vault,
             }
         }
+        /* the fridge sits in the bed: reached like the bed itself (template part TeslaFridge) */
+        part TeslaFridge
+        {
+            container
+            {
+                test = MinidoracatTesla.ContainerAccess.Vault,
+            }
+        }
         /* frunk 200 / bed 1,589 L x 110 = 13.8 -> 14 (owner's manual p.249) */
         part Frunk
         {

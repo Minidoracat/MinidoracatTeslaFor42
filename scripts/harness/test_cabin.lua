@@ -216,10 +216,13 @@ check(nl[22] == "template! = MinidoracatTeslaCab" and only(nfRest, "TrunkDoor") 
     and at(nf, "\n        part WindshieldRear") > at(nf, "template = Headlight,") and at(nf, "\n        part WindshieldRear") < at(nf, "template! = ")
     and nh[1] == "template = TrunkDoor" and nh[2] == "template = Trunk/part/TruckBed" and nh[5] == "template = GloveBox",
     "template CoreNoFrunk: the 21 template lines, then part TrunkDoor and part WindshieldRear, then template! = Cab, nothing else")
-check(not cab:find("Frunk", 1, true) and not cab:find("TrunkDoor", 1, true) and not cab:find("TruckBed", 1, true)
-    and not cab:find("GloveBox", 1, true) and not cab:find("WindshieldRear", 1, true) and not semi:find("WindshieldRear", 1, true)
-    and cab:find("part GasTank", 1, true) ~= nil and cab:find("part CabinDetail", 1, true) ~= nil,
-    "template Cab: every shared part block, no trunk lid, trunk, glove box, frunk or rear windshield (nor the Semi's own script)")
+-- the upgrade fridge names the trunk lid and the bed in its own rules (fitted through the trunk; the Semi overrides it)
+local cabOwn = cab:gsub("\n        part TeslaFridge%s*%b{}", "")
+check(not cabOwn:find("Frunk", 1, true) and not cabOwn:find("TrunkDoor", 1, true) and not cabOwn:find("TruckBed", 1, true)
+    and not cabOwn:find("GloveBox", 1, true) and not cabOwn:find("WindshieldRear", 1, true) and not semi:find("WindshieldRear", 1, true)
+    and cab:find("part GasTank", 1, true) ~= nil and cab:find("part CabinDetail", 1, true) ~= nil
+    and cab:find("part TeslaArmor", 1, true) ~= nil and cab:find("part TeslaFridge", 1, true) ~= nil,
+    "template Cab: every shared part block (the upgrades too), no trunk lid, trunk, glove box, frunk or rear windshield (nor the Semi's own script)")
 for _, ln in ipairs(cl) do
     want[#want + 1] = ln
     local pre = ln:match("^(template = %w+/part/%w+)FrontRight$")

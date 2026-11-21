@@ -409,5 +409,13 @@
     "IGUI_MinidoracatTesla_Tip_AppPsFloorDown": "放電下限降 5%%",
     "IGUI_MinidoracatTesla_Tip_AppPsFloorUp": "放電下限升 5%%",
     "IGUI_MinidoracatTesla_Tip_AppOutletOn": "開啟車斗插座",
+    "IGUI_VehiclePartCatupgrade": "升級件",
+    "IGUI_VehiclePartTeslaArmor": "防護件",
+    "IGUI_VehiclePartTeslaFridge": "車用冰箱",
+    "IGUI_MinidoracatTesla_Radial_FridgeOff": "關閉車用冰箱",
+    "IGUI_MinidoracatTesla_Radial_FridgeCool": "車用冰箱：冷藏",
+    "IGUI_MinidoracatTesla_Radial_FridgeFreeze": "車用冰箱：冷凍",
+    "IGUI_MinidoracatTesla_Fridge_LowBattery": "車用冰箱已關閉：電量低於 20%%",
+    "IGUI_MinidoracatTesla_Deny_NO_FRIDGE": "沒有裝車用冰箱",
     "IGUI_MinidoracatTesla_Tip_AppOutletOff": "關閉車斗插座"
 }

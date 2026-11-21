@@ -409,5 +409,13 @@
     "IGUI_MinidoracatTesla_Tip_AppPsFloorDown": "방전 한도 5%% 낮추기",
     "IGUI_MinidoracatTesla_Tip_AppPsFloorUp": "방전 한도 5%% 높이기",
     "IGUI_MinidoracatTesla_Tip_AppOutletOn": "적재함 콘센트 켜기",
+    "IGUI_VehiclePartCatupgrade": "Upgrades",
+    "IGUI_VehiclePartTeslaArmor": "Protection",
+    "IGUI_VehiclePartTeslaFridge": "Fridge",
+    "IGUI_MinidoracatTesla_Radial_FridgeOff": "Turn off Fridge",
+    "IGUI_MinidoracatTesla_Radial_FridgeCool": "Fridge: Cool",
+    "IGUI_MinidoracatTesla_Radial_FridgeFreeze": "Fridge: Freeze",
+    "IGUI_MinidoracatTesla_Fridge_LowBattery": "Fridge off: battery below 20%%",
+    "IGUI_MinidoracatTesla_Deny_NO_FRIDGE": "No fridge is installed",
     "IGUI_MinidoracatTesla_Tip_AppOutletOff": "적재함 콘센트 끄기"
 }

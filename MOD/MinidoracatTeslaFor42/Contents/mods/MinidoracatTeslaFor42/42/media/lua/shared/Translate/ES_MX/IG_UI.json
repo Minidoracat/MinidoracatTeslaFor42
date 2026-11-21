@@ -409,5 +409,13 @@
     "IGUI_MinidoracatTesla_Tip_AppPsFloorDown": "Bajar el límite de descarga un 5%%",
     "IGUI_MinidoracatTesla_Tip_AppPsFloorUp": "Subir el límite de descarga un 5%%",
     "IGUI_MinidoracatTesla_Tip_AppOutletOn": "Activar tomas de la caja",
+    "IGUI_VehiclePartCatupgrade": "Upgrades",
+    "IGUI_VehiclePartTeslaArmor": "Protection",
+    "IGUI_VehiclePartTeslaFridge": "Fridge",
+    "IGUI_MinidoracatTesla_Radial_FridgeOff": "Turn off Fridge",
+    "IGUI_MinidoracatTesla_Radial_FridgeCool": "Fridge: Cool",
+    "IGUI_MinidoracatTesla_Radial_FridgeFreeze": "Fridge: Freeze",
+    "IGUI_MinidoracatTesla_Fridge_LowBattery": "Fridge off: battery below 20%%",
+    "IGUI_MinidoracatTesla_Deny_NO_FRIDGE": "No fridge is installed",
     "IGUI_MinidoracatTesla_Tip_AppOutletOff": "Desactivar tomas de la caja"
 }
