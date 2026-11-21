@@ -14,9 +14,9 @@
     "ContextMenu_MinidoracatTesla_ChargeItem": "An der Fahrzeugsteckdose laden",
     "ContextMenu_MinidoracatTesla_OpenApp": "Tesla-App öffnen",
     "ContextMenu_MinidoracatTesla_AddCar": "Dieses Auto hinzufügen (%1 gekoppelt)",
-    "ContextMenu_MinidoracatTesla_Fridge": "Car Fridge",
-    "ContextMenu_MinidoracatTesla_FridgeOff": "Off",
-    "ContextMenu_MinidoracatTesla_FridgeCool": "Cool",
-    "ContextMenu_MinidoracatTesla_FridgeFreeze": "Freeze",
+    "ContextMenu_MinidoracatTesla_Fridge": "Autokühlschrank",
+    "ContextMenu_MinidoracatTesla_FridgeOff": "Aus",
+    "ContextMenu_MinidoracatTesla_FridgeCool": "Kühlen",
+    "ContextMenu_MinidoracatTesla_FridgeFreeze": "Gefrieren",
     "ContextMenu_MinidoracatTesla_Unpair": "Vom Telefon entfernen"
 }

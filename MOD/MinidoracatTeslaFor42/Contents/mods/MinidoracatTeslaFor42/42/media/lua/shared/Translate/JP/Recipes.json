@@ -3,7 +3,7 @@
     "MinidoracatTesla_MakeSupercharger": "Tesla V4 スーパーチャージャーを作る",
     "MinidoracatTesla_MakeMobileConnector": "Tesla モバイルコネクターを作る",
     "MinidoracatTesla_MakeDriveUnitParts": "ドライブユニット部品を作る",
-    "MinidoracatTesla_MakeArmorInner": "Make Reinforcement Kit",
-    "MinidoracatTesla_MakeArmorOuter": "Make Bull Bar Kit",
-    "MinidoracatTesla_MakeFridge": "Make Car Fridge"
+    "MinidoracatTesla_MakeArmorInner": "車体補強キットを作る",
+    "MinidoracatTesla_MakeArmorOuter": "グリルガードキットを作る",
+    "MinidoracatTesla_MakeFridge": "車載冷蔵庫を作る"
 }
