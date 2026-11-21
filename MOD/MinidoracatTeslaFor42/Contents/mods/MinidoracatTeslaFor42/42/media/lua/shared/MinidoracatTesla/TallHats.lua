@@ -2,7 +2,7 @@
 -- vanilla ClothingItems that leave the roof by more than 10 mm. HatHide.lua hides them there.
 -- The inputs it was measured on (scripts/tall_hats.py; verify_local fails when one changes):
 -- input tool 41272eeec61d57a5
--- input ModelY eb6fafff8647ebc9
+-- input ModelY 103cd68e653ab989
 -- input Model3 d58441f0f8c2a89f
 -- input ModelS 2f011e2818903a5c
 -- input ModelX 067b8269c9bfa565

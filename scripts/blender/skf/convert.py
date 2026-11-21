@@ -11,6 +11,10 @@ of the vehicle script.
     "$B" -b --factory-startup --python scripts/blender/skf/convert.py -- inspect  # source objects -> TMP/inspect.json
     "$B" -b --factory-startup --python scripts/blender/skf/convert.py -- detail   # cabin detail FBX (Viewpoint) only,
                                                                                   # from the built body: no source needed
+    "$B" -b --factory-startup --python scripts/blender/skf/convert.py -- armor    # TeslaArmor kit only (armor.py, after
+                                                                                  # a build; ARMOR_STYLE=<A|B> overrides
+                                                                                  # the car's ARMOR style); view ARMOR=1
+                                                                                  # draws it, state `every` opens all
     CAR=<car> "$B" ...                                                            # another cars/<car>.py
 
 Source (gitignored): TMP/<the car's SRC>; Model Y: temp/skf/src/source/Tesla Model Y Performance 2026.obj (+ .mtl),
@@ -2253,6 +2257,10 @@ def stage_build():
         g["tris"]["WheelAxle"] = pv.stage_wheel(*tire, tag="Axle", axle=[x * K for x in C["PHYS"]["axle"]])
     g["tris"]["Detail"] = stage_detail(float(ctr[1]))
     json.dump(g, open(os.path.join(TMP, "geometry.json"), "w"), indent=1)
+    if C.get("ARMOR"):    # last: it opens the doors blend (armor.Car)
+        import armor
+        g["tris"]["Armor"] = armor.build(zmid, float(ctr[1]))
+        json.dump(g, open(os.path.join(TMP, "geometry.json"), "w"), indent=1)
     print("GEOMETRY", json.dumps(g))
 
 
@@ -3890,6 +3898,7 @@ def stage_view(out, heads, state, skin="UltraRed", app=False):
     doors = [bpy.data.objects[p] for p in pv.DOORS]
     arm.matrix_world = Matrix.Rotation(math.pi / 2, 4, "X")
     openp = {"all": [p for p in pv.DOORS if p in PARTS[1:5]], "gate": ["TrunkDoor"], "frunk": ["EngineDoor"], "shut": [],
+             "every": list(pv.DOORS),
              "fl": ["DoorFrontLeft"], "fr": ["DoorFrontRight"], "rl": ["DoorRearLeft"], "rr": ["DoorRearRight"],
              "rear": ["DoorRearLeft", "DoorRearRight"], "tonneau": ["TrunkTonneau"], "bed": ["TrunkDoor", "TrunkTonneau"],
              "soft": ["SoftTop"]}[state]
@@ -3954,6 +3963,20 @@ def stage_view(out, heads, state, skin="UltraRed", app=False):
     hide = set(filter(None, os.environ.get("HIDE", "").split(",")))
     for o in bpy.data.objects:
         o.hide_render = o.type == "MESH" and (not (o is body or o in doors) or o.name in hide)
+    # ARMOR=1: the TeslaArmor kit (<NAME>_Armor.fbx, armor.py) on its palette
+    if os.environ.get("ARMOR") == "1":
+        bpy.ops.import_scene.fbx(filepath=os.path.join(pv.VEH_DIR, pv.NAME + "_Armor.fbx"), axis_forward="-Z", axis_up="Y")
+        kit = bpy.context.selected_objects[0]
+        km = bpy.data.materials.new("armor")
+        km.use_backface_culling = True
+        km.use_nodes = True
+        tx = km.node_tree.nodes.new("ShaderNodeTexImage")
+        tx.image = bpy.data.images.load(os.path.join(pv.TEX_DIR, "MinidoracatTesla_Armor.png"))
+        tx.interpolation = "Closest"
+        km.node_tree.links.new(tx.outputs[0], km.node_tree.nodes["Principled BSDF"].inputs[0])
+        kit.data.materials.clear()
+        kit.data.materials.append(km)
+        kit.data.uv_layers.active = kit.data.uv_layers[0]
     # EXTRA=<a.ply>,..: more meshes in this frame (+Y front, +Z up, grid units; e.g. passengers posed by seat_head.py's
     # place()), drawn plain skin-coloured
     for f in filter(None, os.environ.get("EXTRA", "").split(",")):
@@ -4075,3 +4098,6 @@ if __name__ == "__main__":
         stage_inspect()
     elif argv[0] == "detail":
         stage_detail()
+    elif argv[0] == "armor":
+        import armor
+        armor.build()

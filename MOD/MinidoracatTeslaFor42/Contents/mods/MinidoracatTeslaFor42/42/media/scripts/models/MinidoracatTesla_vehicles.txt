@@ -786,4 +786,16 @@ module Base
         invertX = false,
         scale = 0.5495,
     }
+
+    /* TeslaArmor's outer kit (scripts/blender/skf/armor.py, cars/<car>.py ARMOR): one static model on its own
+       palette, shown by Upgrades.lua T.Armor.sync only with Base.MinidoracatTesla_ArmorOuter installed. */
+    model MinidoracatTesla_ModelY_Armor
+    {
+        mesh = vehicles/MinidoracatTesla_ModelY_Armor,
+        texture = Vehicles/MinidoracatTesla_Armor,
+        shader = vehiclewheel,
+        static = true,
+        invertX = false,
+        scale = 0.5495,
+    }
 }

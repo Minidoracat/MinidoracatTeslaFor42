@@ -8,6 +8,8 @@
   沒有 skills（門檻只放在配方；有 skills 就有失敗機率，Vehicles.lua:1463-1485）
 - TeslaFridge：capacity = 0（沒裝時打不開，BaseVehicle.java:8439-8453）、conditionAffectsCapacity = false、拆卸 requireEmpty
 - itemType 的物品都存在、ConditionMax = 100；TeslaArmor 的 itemType 等於 Upgrades.lua 的 T.Armor.K 鍵集
+- TeslaArmor 的 model Armor（有外觀件）：ARMOR_CARS 每台都要有；有寫的車 file 要指到有 mesh 的 model 區塊、fbx 存在、
+  兩層 UV（vehiclewheel 著色器讀第二層，verify_mod 第 17 項同理）
 - MOD/ 沒有試做殘留（S0 的 ArmorTrial／FridgeTrial 等名稱與 TRIAL 註解）
 """
 import glob
@@ -22,6 +24,8 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MEDIA = os.path.join(REPO, "MOD/MinidoracatTeslaFor42/Contents/mods/MinidoracatTeslaFor42/42/media")
 UPGRADES = ("TeslaArmor", "TeslaFridge")
 RESIDUE = ("ArmorTrial", "ArmorS0", "FridgeTrial", "UpgTest", "UpgBox", "TRIAL")
+# 已做有外觀件模型的車（scripts/blender/skf/armor.py）；shortcut: 只查做好的車，九台都做完後改成每台都要有
+ARMOR_CARS = {"MinidoracatTesla_ModelY"}
 
 if not os.path.isdir(vp.PZ):
     print(f"升級件檢查略過：找不到原版腳本 {vp.PZ}")
@@ -39,6 +43,10 @@ for p in glob.glob(os.path.join(MEDIA, "scripts", "items", "*.txt")):
 lua = open(os.path.join(MEDIA, "lua/shared/MinidoracatTesla/Upgrades.lua"), encoding="utf-8").read()
 kblock = re.search(r"\bA\.K\s*=\s*\{(.*?)\n\}", lua, re.S)
 armor_k = set(re.findall(r'\["([\w.]+)"\]\s*=', kblock[1])) if kblock else set()
+models = {}
+for p in glob.glob(os.path.join(MEDIA, "scripts", "models", "*.txt")):
+    for m in re.finditer(r"\bmodel\s+(\w+)\s*\{([^{}]*)\}", vp.strip_comments(open(p, encoding="utf-8").read())):
+        models[m[1]] = dict(re.findall(r"(\w+)\s*=\s*([^,\n]*)", m[2]))
 
 bad = []
 for car, r in sorted(cars.items()):
@@ -67,6 +75,16 @@ for car, r in sorted(cars.items()):
                 if items.get(x, {}).get("ConditionMax") != "100"]
         if pid == "TeslaArmor" and set(types) != armor_k:
             bad.append(f"{car}: TeslaArmor itemType {sorted(types)} 和 Upgrades.lua T.Armor.K {sorted(armor_k)} 不同")
+        if pid == "TeslaArmor":
+            f = p.get("models", {}).get("Armor", {}).get("values", {}).get("file")
+            mesh = models.get(f, {}).get("mesh", "").strip()
+            fbx = os.path.join(MEDIA, "models_X", mesh + ".fbx")
+            if car in ARMOR_CARS and not f:
+                bad.append(f"{car}: TeslaArmor 沒有 model Armor")
+            elif f and not (mesh and os.path.isfile(fbx)):
+                bad.append(f"{car}: TeslaArmor model Armor 的 file {f} 沒有 model 區塊或 fbx（{mesh}）")
+            elif f and open(fbx, "rb").read().count(b"\x0eLayerElementUV") < 2:
+                bad.append(f"{car}: {mesh}.fbx 不到兩層 UV")
         if pid == "TeslaFridge":
             c = p.get("container", {})
             if c.get("capacity") != "0" or c.get("conditionAffectsCapacity") != "false":

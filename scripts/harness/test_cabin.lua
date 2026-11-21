@@ -20,20 +20,24 @@ local tpl = read("scripts/vehicles/MinidoracatTesla_template.txt")
 local models = read("scripts/models/MinidoracatTesla_vehicles.txt")
 
 -- every Tesla model but the wheels (<car>_Wheel, and <car>_WheelRear for a car with its own rear tyres, TIRE_AXLES, or
--- <car>_WheelAxle for one whose rear tyres are whole axles, PHYS axle) and the Viewpoint detail on the merged shader;
+-- <car>_WheelAxle for one whose rear tyres are whole axles, PHYS axle), the Viewpoint detail and the armour kit
+-- (<car>_Armor, skf/armor.py: its own palette on vehiclewheel) on the merged shader;
 -- the cabin glass model, no cabin / window models. The frunk lid only on a car with a frunk (T.hasFrunk: the
 -- Cybercab's hood is no model), the rear lid only on one with a trunk (Specs trunk ~= false: the Semi has none)
 local semi = read("scripts/vehicles/MinidoracatTesla_Semi.txt")
 local cars = { "MinidoracatTesla_ModelY", "MinidoracatTesla_Model3", "MinidoracatTesla_ModelS", "MinidoracatTesla_ModelX",
     "MinidoracatTesla_ModelYL", "MinidoracatTesla_Cybercab", "MinidoracatTesla_Semi" }
 for _, car in ipairs(cars) do
-    local shaders, names, wheels = {}, {}, 0
+    local shaders, names, wheels, armor = {}, {}, 0, 0
     for name, block in models:gmatch("model ([%w_]+)%s*(%b{})") do
         -- the car itself or car_<part> only: "MinidoracatTesla_ModelY" must not take the Model Y L's models
         if name == car or name:sub(1, #car + 1) == car .. "_" then
             names[#names + 1] = name
             if name == car .. "_Wheel" or name == car .. "_WheelRear" or name == car .. "_WheelAxle" then
                 wheels = wheels + 1
+            elseif name == car .. "_Armor" then
+                armor = armor + 1
+                check(block:find("shader = vehiclewheel,", 1, true) ~= nil, name .. ": on vehiclewheel")
             elseif name ~= car .. "_Detail" then
                 shaders[#shaders + 1] = name .. "=" .. tostring(block:match("shader = ([%w_]+),"))
             end
@@ -49,7 +53,7 @@ for _, car in ipairs(cars) do
     check(nd > 0 and #shaders == 2 + rear + lid + nd and #wrong == 0, car .. ": body, glass, " .. nd .. " doors"
         .. (rear == 1 and ", rear lid" or "") .. (lid == 1 and ", frunk lid" or "") .. " on MinidoracatTesla_vehicle (off: "
         .. table.concat(wrong, ",") .. ")")
-    check(#names == 3 + rear + lid + nd + wheels and wheels >= 1, car .. ": " .. (3 + rear + lid + nd) .. " models and its "
+    check(#names == 3 + rear + lid + nd + wheels + armor and wheels >= 1, car .. ": " .. (3 + rear + lid + nd) .. " models and its "
         .. "wheel(s), the cabin glass and the Viewpoint detail but no cabin / window models (" .. table.concat(names, ",") .. ")")
     check(read("models_X/vehicles/" .. car .. "_Cabin.fbx") == nil and read("models_X/vehicles/" .. car .. "_Glass.fbx") ~= nil
         and read("textures/Vehicles/" .. car .. "_cabin.png") == nil, car .. ": the glass FBX, no cabin FBX or cabin palette")
