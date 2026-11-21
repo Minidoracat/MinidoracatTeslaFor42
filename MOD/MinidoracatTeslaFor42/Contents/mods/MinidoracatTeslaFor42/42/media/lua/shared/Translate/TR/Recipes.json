@@ -2,5 +2,8 @@
     "MinidoracatTesla_MakeWallConnector": "Tesla Wall Connector Yap",
     "MinidoracatTesla_MakeSupercharger": "Tesla V4 Supercharger Yap",
     "MinidoracatTesla_MakeMobileConnector": "Tesla Mobile Connector Yap",
-    "MinidoracatTesla_MakeDriveUnitParts": "Tahrik Ünitesi Parçaları Yap"
+    "MinidoracatTesla_MakeDriveUnitParts": "Tahrik Ünitesi Parçaları Yap",
+    "MinidoracatTesla_MakeArmorInner": "Make Reinforcement Kit",
+    "MinidoracatTesla_MakeArmorOuter": "Make Bull Bar Kit",
+    "MinidoracatTesla_MakeFridge": "Make Car Fridge"
 }

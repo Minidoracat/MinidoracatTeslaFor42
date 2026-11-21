@@ -2,5 +2,8 @@
     "MinidoracatTesla_MakeWallConnector": "Fabricar Tesla Wall Connector",
     "MinidoracatTesla_MakeSupercharger": "Fabricar Supercharger Tesla V4",
     "MinidoracatTesla_MakeMobileConnector": "Fabricar Tesla Mobile Connector",
-    "MinidoracatTesla_MakeDriveUnitParts": "Fabricar peças de unidade de acionamento"
+    "MinidoracatTesla_MakeDriveUnitParts": "Fabricar peças de unidade de acionamento",
+    "MinidoracatTesla_MakeArmorInner": "Make Reinforcement Kit",
+    "MinidoracatTesla_MakeArmorOuter": "Make Bull Bar Kit",
+    "MinidoracatTesla_MakeFridge": "Make Car Fridge"
 }
