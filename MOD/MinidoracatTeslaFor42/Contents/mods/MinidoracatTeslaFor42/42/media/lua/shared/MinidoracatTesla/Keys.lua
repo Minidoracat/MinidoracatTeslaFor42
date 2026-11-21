@@ -225,21 +225,28 @@ end
 require "Vehicles/TimedActions/ISUnlockVehicleDoor"
 local unlockStart, unlockComplete = ISUnlockVehicleDoor.start, ISUnlockVehicleDoor.complete
 function ISUnlockVehicleDoor:start(...)
-    if not isClient() and not isServer() then K.phoneUnlock(self.vehicle, self.part, self.character) end
+    if not isClient() and not isServer() and not K.phoneUnlock(self.vehicle, self.part, self.character) then
+        K.lidUnlock(self.vehicle, self.part, self.character)
+    end
     return unlockStart(self, ...)
 end
 function ISUnlockVehicleDoor:complete(...)
-    if isServer() then K.phoneUnlock(self.vehicle, self.part, self.character) end
+    if isServer() and not K.phoneUnlock(self.vehicle, self.part, self.character) then
+        K.lidUnlock(self.vehicle, self.part, self.character)
+    end
     return unlockComplete(self, ...)
 end
 
--- The frunk lid locks with the car (Liftgate.lockLids). Vanilla's other hood entries queue the unlock only when the
--- key is NOT found (the interact key's Vehicles.Use.EngineDoor, Vehicles.lua:849-852; the Mechanics radial,
--- ISVehicleMenu.lua:990-993; DriveUnitMenu.lua), so the owner's open would fail on the lock (ISOpenVehicleDoor.lua:61-64).
--- Whoever may unlock it (vanilla canUnlockDoor: seated, or the key in hand, BaseVehicle.java:1275-1301; the phone key
--- in a bag, as at a door handle; a VehicleManager user it lets work on the hood, whose virtual key is no item) has it
--- unlocked right before vanilla complete() looks; a stranger finds it locked. The key card in a wallet does not count
--- (tap the reader, as for the doors). complete() runs on the server in MP and locally in SP.
+-- The frunk lid locks with the car (Liftgate.lockLids). Vanilla's hood entries queue the unlock only when the key is
+-- NOT found (the interact key's Vehicles.Use.EngineDoor, Vehicles.lua:849-852; the Mechanics radial,
+-- ISVehicleMenu.lua:990-993; DriveUnitMenu.lua), and then the open (ISOpenVehicleDoor.lua:61-64), which only acts on an
+-- unlocked lid. Whoever may unlock it (vanilla canUnlockDoor: seated, or the key in hand, BaseVehicle.java:1275-1301;
+-- this car's phone key or key card anywhere on them, as they start it, K.bagKeyStarts; a VehicleManager user it lets
+-- work on the hood, whose virtual key is no item) has it unlocked right before vanilla looks: in the unlock above (the
+-- key not found) and in the open below (found); a stranger finds it locked. The unlock once took only the phone: with
+-- the card in a wallet or bag the Mechanics radial did nothing, the unlock failed and vanilla dropped the queue
+-- (ISUnlockVehicleDoor.lua:22-36; semimech-repro-e semiC/yC). Cabin doors keep the reader for the card.
+-- complete() runs on the server in MP and locally in SP.
 function K.lidUnlock(vehicle, part, chr)
     -- the action carries vehicle and part as separate arguments (ISOpenVehicleDoor.lua:142-145): the key must be this car's
     if not part or part:getId() ~= "EngineDoor" or not chr or part:getVehicle() ~= vehicle or not T.isTesla(vehicle) then
@@ -248,7 +255,8 @@ function K.lidUnlock(vehicle, part, chr)
     local door = part:getDoor()
     if not door or not door:isLocked() or door:isLockBroken() then return false end
     -- VehicleManager's own codes for opening the hood (its Actions.lua EngineDoor; the app's frunk, Remote.lua)
-    if not (vehicle:canUnlockDoor(part, chr) or K.phoneKey(chr, vehicle) or vmGrants(chr, vehicle, { "REPAIR", "SALVAGE" })) then
+    if not (vehicle:canUnlockDoor(part, chr) or K.phoneKey(chr, vehicle) or K.card(chr, vehicle)
+        or vmGrants(chr, vehicle, { "REPAIR", "SALVAGE" })) then
         return false
     end
     door:setLocked(false)

@@ -12,6 +12,7 @@ require "Vehicles/ISUI/ISVehicleMenu"
 require "Vehicles/ISVehicleTrailerUtils"
 require "Vehicles/TimedActions/ISAttachTrailerToVehicle"
 require "Vehicles/TimedActions/ISDetachTrailerFromVehicle"
+require "Vehicles/TimedActions/ISPathFindAction"
 require "Definitions/ContainerButtonIcons"
 require "MinidoracatTesla/Core"
 
@@ -102,6 +103,32 @@ function ISVehicleTrailerUtils.walkToTrailer(playerObj, vehicle, attachment, nex
     ISTimedActionQueue.add(action)
     if nextAction then ISTimedActionQueue.add(nextAction) end
     return true
+end
+
+-- Vehicle Mechanics on the 53 ft trailer (no hood: ISVehicleMenu.onMechanic walks pathToVehicleAdjacent,
+-- ISVehicleMenu.lua:1002-1005). The engine walks to the nearest of four spots 0.3 off each side and each end of the box
+-- (PathFindBehavior2.java:497-546); the trailer's nose end is ~9.9 from its origin, and the window closes itself past 6
+-- of the origin, Manhattan on the truncated position (ISVehicleMechanics.lua:20-22, IsoMovingObject.java:601), the
+-- frame it opens in: from the nose or the front half nothing happened (semimech-repro-a strl/front, DistTo 10.64).
+-- Here: beside the box at its origin and 1.5 either way, each <= 2.1 straight from it (<= 5 that way), near the tyres
+-- and the cargo door (the script's areas). Every other vehicle: vanilla's spots.
+SH.BESIDE = { 0, -1.5, 1.5 }
+function SH.besideOrigin(v)
+    local s = v:getScript()
+    local half, cx, z = s:getExtents():x() / 2 + SH.CLEAR, s:getCenterOfMassOffset():x(), level(v)
+    local out, w = {}, Vector3f.new()
+    for _, lz in ipairs(SH.BESIDE) do
+        for side = 1, -1, -2 do
+            v:getWorldPos(cx + side * half, 0, lz, w)
+            out[#out + 1] = w:x(); out[#out + 1] = w:y(); out[#out + 1] = z
+        end
+    end
+    return out
+end
+local origAdjacent = ISPathFindAction.pathToVehicleAdjacent
+function ISPathFindAction:pathToVehicleAdjacent(character, vehicle)
+    if vehicle:getScriptName() ~= SH.TRAILER then return origAdjacent(self, character, vehicle) end
+    return self:pathToNearest(character, SH.besideOrigin(vehicle))
 end
 
 -- Vanilla's action looks for the trailer again within 6 squares when it starts (ISAttachTrailerToVehicle.lua:42-48);

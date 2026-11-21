@@ -635,8 +635,17 @@ check(T.authorized(owner, v, "PASSENGER") == true and T.authorized(stranger, v, 
 local walletOnly = player("walletonly", container(bag("Base.Wallet", item(K.CARD, v.keyId))), v.x - 1, v.y)
 ISUnlockVehicleDoor.complete({ vehicle = v, part = v.doors[1], character = walletOnly })
 check(v.doors[1].d.locked, "handle: key card in the wallet -> stays locked (tap the reader)")
+-- the hood takes this car's card anywhere on the player, as the start does (K.bagKeyStarts): the Mechanics radial and
+-- E queue vanilla's unlock first (the key not in hand), and a failed unlock drops the queue silently (semimech-repro-e)
+ISUnlockVehicleDoor.complete({ vehicle = v, part = v.frunk, character = stranger })
+check(v.frunk.d.locked, "frunk unlock (Mechanics radial): a stranger -> stays locked")
+ISUnlockVehicleDoor.complete({ vehicle = v, part = v.frunk, character = walletOnly })
+check(not v.frunk.d.locked and not v.frunk.d.open, "frunk unlock (Mechanics radial): the key card in a wallet unlocks it")
+v.frunk.d.locked = true
 ISOpenVehicleDoor.complete({ vehicle = v, part = v.frunk, character = walletOnly })
-check(v.frunk.d.locked and not v.frunk.d.open, "frunk: the key card in a wallet does not open it (tap the reader)")
+check(v.frunk.d.open, "frunk: the key card in a wallet opens it (the hood, not the doors: those want the reader)")
+ISCloseVehicleDoor.complete({ vehicle = v, part = v.frunk, character = walletOnly })
+check(v.frunk.d.locked and v.doors[1].d.locked, "frunk: shut on the locked car -> locked again, the door untouched")
 MinidoracatVehicleManagerAPI = { canUse = function(p, _, code) return code == "PASSENGER" and p == stranger, "SHARED" end }
 ISOpenVehicleDoor.complete({ vehicle = v, part = v.frunk, character = stranger })
 check(v.frunk.d.locked and not v.frunk.d.open, "frunk: a VehicleManager rider only (PASSENGER) is not the hood's right")

@@ -4,7 +4,9 @@ local H = H
 local check = H.check
 
 for _, m in ipairs({ "Vehicles/ISUI/ISVehicleMenu", "Vehicles/ISVehicleTrailerUtils", "Vehicles/TimedActions/ISAttachTrailerToVehicle",
-    "Vehicles/TimedActions/ISDetachTrailerFromVehicle", "Definitions/ContainerButtonIcons" }) do H.stub(m) end
+    "Vehicles/TimedActions/ISDetachTrailerFromVehicle", "Vehicles/TimedActions/ISPathFindAction", "Definitions/ContainerButtonIcons" }) do
+    H.stub(m)
+end
 local saved = { ISVehicleMenu, ISVehicleTrailerUtils, ISAttachTrailerToVehicle, ISDetachTrailerFromVehicle, ISTimedActionQueue,
     getCell, getServerOptions, getPlayerRadialMenu, UIManager, getTexture, ISVehicleMechanics, ISPathFindAction, Vector3f,
     ISBaseTimedAction }
@@ -45,6 +47,8 @@ function ISPathFindAction:pathToNearest(character, locations)
     return { Type = "ISPathFindAction", character = character, locations = locations,
         setOnFail = function(self, fn, arg) self.onFail, self.failArg = fn, arg end }
 end
+-- vanilla's walk for a vehicle with no hood (ISVehicleMenu.onMechanic, :1002-1005)
+function ISPathFindAction:pathToVehicleAdjacent(character, vehicle) return { vanillaAdjacent = vehicle } end
 Vector3f = { new = function()
     local v = { _x = 0, _y = 0, _z = 0 }
     function v:x() return self._x end
@@ -340,6 +344,33 @@ semi2.x, semi2.y, semi2.yaw, semi2.towing = semi.x + 3, semi.y, 0.6, trailer
 do local w = semi2:getWorldPos(-1, 0, -2.4, Vector3f.new()); p.x, p.y = w._x, w._y end
 check(ISVehicleMenu.getVehicleToInteractWith(p) == semi2, "two Semis in reach (2.2 and 1.0 from their fifth wheels): the nearer one")
 cars[#cars] = nil
+
+H.section("Semi hitch: Vehicle Mechanics on the trailer walks beside its origin (the window's reach)")
+-- the window closes past 6 of the vehicle, Manhattan on the truncated origin (ISVehicleMechanics.lua:20-22,
+-- IsoMovingObject.java:601-603): every spot inside that at any heading, 0.35 off either side of the box, on its floor
+local function inReach(v)
+    local locs = ISPathFindAction:pathToVehicleAdjacent(p, v).locations
+    local ok, fx, fy = locs and #locs == 18, math.floor(v.x), math.floor(v.y)
+    for i = 1, ok and #locs or 0, 3 do
+        local x, y = locs[i], locs[i + 1]
+        local l = v:getLocalPos(x, y, 0, Vector3f.new())
+        ok = ok and locs[i + 2] == v.z and math.abs(math.abs(l._x) - (2.148 / 2 + 0.35)) < 1e-9
+            and math.abs(x - fx) + math.abs(y - fy) < 6
+    end
+    return ok
+end
+local tx, ty, tyaw = trailer.x, trailer.y, trailer.yaw
+local allIn = true
+for _, yaw in ipairs({ 0, 0.6, math.pi / 4, 2.4, 3 * math.pi / 4 }) do
+    for _, off in ipairs({ 0.01, 0.99 }) do
+        trailer.x, trailer.y, trailer.yaw = 200 + off, 300 + off, yaw
+        allIn = allIn and inReach(trailer)
+    end
+end
+trailer.x, trailer.y, trailer.yaw = tx, ty, tyaw
+check(allIn, "the trailer, five headings: six spots beside it, all within the window's reach")
+check(ISPathFindAction:pathToVehicleAdjacent(p, my).vanillaAdjacent == my
+    and ISPathFindAction:pathToVehicleAdjacent(p, semi).vanillaAdjacent == semi, "a Model Y, the Semi: vanilla's walk")
 
 ISVehicleMenu, ISVehicleTrailerUtils, ISAttachTrailerToVehicle, ISDetachTrailerFromVehicle, ISTimedActionQueue,
     getCell, getServerOptions, getPlayerRadialMenu, UIManager, getTexture, ISVehicleMechanics, ISPathFindAction, Vector3f,
