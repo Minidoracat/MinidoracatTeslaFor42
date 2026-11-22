@@ -71,14 +71,15 @@ end
 -- ---------------------------------------------------------------- Fridge
 -- part modData `fridge` = { mode = "cool" | "freeze", at, by, full, items = { ["<item id>"] = { age, ft, fr } } }
 -- (server only writes it; items is keyed by tostring(getID()), which survives reloads and restarts,
--- references/upgrades.md); command `fridge` { vid, mode = "cool" | "freeze" | false }. Off = no `fridge` table; the
--- last settle's { at, items } then stays as `fridgeLast` for the clients' display only (FridgeUI.lua).
+-- references/upgrades.md); command `fridge` { vid, mode = "cool" | "freeze" | false }. Off = no `fridge` table; a
+-- client showing it then asks the server for the food's values (`fridgeFoodPull` -> `fridgeFood`, Fridge.lua).
 local F = {}
 T.Fridge = F
 
 F.KW = 0.06            -- draw while on: 60 W
--- food tracked per fridge, in container order: fridge.items rides in the part's modData and in the car's update
--- packet, both sized by a 16-bit short (VehiclePartModData.java, VehicleUpdatePacket.java); ~54 bytes an entry
+-- food tracked per fridge, in container order: fridge.items rides in the part's modData (length unsigned 16-bit,
+-- VehiclePartModData.java:23-29) inside the car's update packet (total a signed short, 32,767,
+-- VehicleUpdatePacket.java:82); ~54 bytes an entry. The off answer (fridgeFood) sends as many.
 F.MAX_ITEMS = 400
 F.FREEZE_HOURS = 4     -- freezing time 0 -> 100 in a powered freezer (Food.java:835,839)
 F.THAW_HOURS = 1.5     -- 100 -> 0 anywhere else; twice that in a powered fridge (Food.java:836,843-846)
@@ -151,11 +152,10 @@ function T.Init.Fridge(vehicle, part)
     if it then it:setItemCapacity(0) end
 end
 
--- removed (empty, requireEmpty): forget its state and the last one; transmitPartModData reaches the clients from the
--- server only (BaseVehicle.java:8274-8281)
+-- removed (empty, requireEmpty): forget its state; transmitPartModData reaches the clients from the server only
+-- (BaseVehicle.java:8274-8281)
 function T.UninstallComplete.Fridge(vehicle, part)
-    local md = part:getModData()
-    md.fridge, md.fridgeLast = nil, nil
+    part:getModData().fridge = nil
     vehicle:transmitPartModData(part)
     if F.untrack then F.untrack(vehicle) end
 end

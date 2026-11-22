@@ -1,8 +1,10 @@
 -- Car fridge (server Fridge.lua, Upgrades.lua F.step / F.canSet, client FridgeUI.lua): one food's state over time
 -- (F.step: freezing, thawing, ageing; one catch-up == many ten-minute settles), the cool and freeze rates from each
--- food's baseline, new food only getting one, the item flags never read back, the cap on tracked food, frozen eggs,
--- the 20 % cut-off told once and fridgeLast kept, charger hours free, the catch-up on load, the late registration of a
--- car loaded at id -1, every guard of command `fridge`, and the client copy.
+-- food's baseline, new food only getting one, the item flags never read back (nor left frozen with no freezing time),
+-- the cap on tracked food, frozen eggs (also when one catch-up froze and thawed them), the 20 % cut-off told once,
+-- charger hours free, the catch-up on load, the late registration of a car loaded at id -1, every guard of command
+-- `fridge`, the off answer (`fridgeFoodPull` -> `fridgeFood`: who gets one, what is in it) and the client copy (only
+-- on a page that can be seen; on: once per food instance per settle; off: when it asks, which answer it takes).
 local F = dofile("scripts/harness/park_fakes.lua")
 local check, near = H.check, H.near
 H.stub("Definitions/ContainerButtonIcons")
@@ -41,9 +43,17 @@ end
 local function fit(v, items)
     local p = { md = {}, items = items or {}, item = { getFullType = function() return "Base.MinidoracatTesla_Fridge" end } }
     function p:getId() return "TeslaFridge" end
+    function p:getIndex() return 8 end
     function p:getModData() return self.md end
     function p:getInventoryItem() return self.item end
-    function p:getItemContainer() local list = self.items; return { getItems = function() return F.list(list) end } end
+    function p:getItemContainer()
+        local list = self.items
+        return { getItems = function() return F.list(list) end,
+            contains = function(_, it) for _, x in ipairs(list) do if x == it then return true end end return false end }
+    end
+    -- the part's ContainerAccess test (BaseVehicle.canAccessContainer): true unless a test blocks that player
+    v.canAccessContainer = v.canAccessContainer
+        or function(self, i, chr) self.access = i; return not (self.blocked and self.blocked[chr]) end
     function p:getVehicle() return v end
     v.parts.TeslaFridge = p
     return p
@@ -153,7 +163,7 @@ tick(2)
 check(near(c.age, 2 + ROOM + 2 * COOL, 1e-9), "from its baseline on: the fridge rate")
 -- planted: a settle that books every food, baseline or not, would back-date it: the check above goes red on it
 local src = io.open("MOD/MinidoracatTeslaFor42/Contents/mods/MinidoracatTeslaFor42/42/media/lua/server/MinidoracatTesla/Fridge.lua"):read("a")
-local bad, n = src:gsub("local b = old%[k%]", "local b = old[k] or { age = it:getAge(), ft = it:getFreezingTime(), fr = it:isFrozen() }")
+local bad, n = src:gsub("local b, was = old%[k%], nil", "local b, was = old[k] or { age = it:getAge(), ft = it:getFreezingTime(), fr = it:isFrozen() }, nil")
 local real = { settle = FR.settle, setMode = FR.setMode, track = FR.track, untrack = FR.untrack, cars = FR.cars,
     late = FR.late, cmd = T.ServerCommands.fridge }
 local noEvents = setmetatable({}, { __index = function() return { Add = function() end, Remove = function() end } end })
@@ -185,20 +195,41 @@ check(s.items["106"].fr == false and s.items["107"].fr == true,
 remove(fp.items, claimed); remove(fp.items, real100)
 tick(0)
 
-H.section("Fridge: fertilized eggs")
+H.section("Fridge: fertilized eggs (dead once freezing, Food.isFreezing: can freeze, in a powered freezer; Food.java:837-838, 2188-2190)")
 local eggCar = F.track(F.vehicle({ pct = 80 }))
-local egg, warm = food(601, { fert = true }), food(602, { fert = true })
-local eggPart = fit(eggCar, { egg })
+local egg, hard = food(601, { fert = true }), food(603, { fert = true, freezable = false })
+local eggPart = fit(eggCar, { egg, hard })
 FR.setMode(eggCar, "freeze", "owner")
+check(not egg.fert and egg.ft == 0 and hard.fert,
+    "switched on in freeze (the first settle: only a baseline, ft 0): dead at once; one that cannot freeze: not")
+remove(eggPart.items, egg)
+check(not egg.fert, "taken out within the first ten minutes: dead all the same")
+local late = food(604, { fert = true })
+eggPart.items[#eggPart.items + 1] = late
+tick(1 / 6)
+check(not late.fert and late.ft == 0, "put in a running freezer: dead at the first settle that sees it (its baseline only, ft 0)")
 local coolCar = F.track(F.vehicle({ pct = 80 }))
+local warm = food(602, { fert = true })
 fit(coolCar, { warm })
 FR.setMode(coolCar, "cool", "owner")
-check(egg.fert, "freeze, first settle (only a baseline, ft 0): still fertilized")
 tick(1)
-check(not egg.fert and near(egg.ft, 25, 1e-9) and warm.fert, "freezing begun: no longer fertilized (Food.java:837-838); cool: still fertilized")
+check(warm.fert and warm.ft == 0, "cool an hour: still fertilized")
+local tx0 = coolCar.transmits
+FR.setMode(coolCar, "freeze", "owner")
+check(not warm.fert and warm.ft == 0 and coolCar.transmits == tx0 + 2,
+    "cool -> freeze: dead at the switch, before any freezing time (one transmit for the old mode's settle, one for the switch)")
 FR.setMode(eggCar, false); FR.setMode(coolCar, false)
-FR.untrack(eggCar); F.vehicles[eggCar:getId()] = nil; F.vehicles[coolCar:getId()] = nil
-check(eggPart.md.fridgeLast and eggPart.md.fridgeLast.items["601"], "switched off: fridgeLast kept")
+check(eggPart.md.fridge == nil and eggPart.md.fridgeLast == nil, "switched off: the state goes, nothing kept")
+local deadCar = F.track(F.vehicle({ pct = 20 })) -- at the floor: may switch on, pays for nothing
+local deadPart = fit(deadCar, {})
+FR.setMode(deadCar, "freeze", "owner")
+local cold = food(606, { fert = true })
+deadPart.items[1] = cold
+tick(1)
+check(deadPart.md.fridge == nil and cold.fert,
+    "freeze mode but no power the whole stretch (off for low battery in the settle that first sees it): still fertilized")
+FR.untrack(eggCar)
+for _, c in ipairs({ eggCar, coolCar, deadCar }) do F.vehicles[c:getId()] = nil end
 
 H.section("Fridge: at most F.MAX_ITEMS foods")
 check(FR.MAX_ITEMS == 400, "F.MAX_ITEMS is 400")
@@ -278,9 +309,7 @@ tick(20)
 check(near(kwh(lv), 15, 1e-9) and lp.md.fridge == nil and not FR.cars[lv:getId()],
     "battery reaches 20 %: stops at the floor, switched off, unlisted")
 check(near(e.age, 1 + (7.5 + 12.5 * 0.2) / 24, 1e-9), "food: 12.5 h at the fridge rate, the 7.5 h without power at room rate")
-local last = lp.md.fridgeLast
-check(last and last.at == F.hours and near(last.items["105"].age, e.age, 1e-12) and tx == 1,
-    "fridgeLast = that settle's values, in the one transmit that switches it off")
+check(lp.md.fridgeLast == nil and tx == 1, "switched off in the one transmit; nothing kept for the clients (they ask)")
 check(alerts("lo") == 1, "the one who switched it on hears it (lowBattery, what fridge)")
 tick(5); FR.settle(lv)
 check(alerts("lo") == 1, "told once: off is off")
@@ -289,15 +318,23 @@ T.ServerCommands.fridge(lo, { vid = lv:getId(), mode = "cool" })
 check(lp.md.fridge == nil and denied() == "LOW_BATTERY", "below 20 %: cannot switch it on again")
 local sent = #F.sent
 T.ServerCommands.fridge(lo, { vid = lv:getId(), mode = false })
-check(#F.sent == sent and lp.md.fridge == nil and lp.md.fridgeLast == last, "switching off below 20 %: no deny, nothing changes")
+check(#F.sent == sent and lp.md.fridge == nil, "switching off below 20 %: no deny, nothing changes")
 chg(lv).chg = { power = "grid" }
 T.ServerCommands.fridge(lo, { vid = lv:getId(), mode = "freeze" })
-check(lp.md.fridge and lp.md.fridge.mode == "freeze" and #F.sent == sent and lp.md.fridgeLast == nil,
-    "below 20 % on a charger: switches on, fridgeLast cleared")
+check(lp.md.fridge and lp.md.fridge.mode == "freeze" and #F.sent == sent, "below 20 % on a charger: switches on")
 chg(lv).chg = nil
 lp.items = {}
 FR.setMode(lv, false)
-check(lp.md.fridge == nil and lp.md.fridgeLast == nil, "switched off with nothing in it: no fridgeLast")
+local gv = F.track(F.vehicle({ pct = 21 }))
+local gp = fit(gv, {})
+FR.setMode(gv, "cool", "owner")
+local liar = food(108, { age = 1, fr = true }) -- frozen flag, no freezing time (a client's word, or a stale item)
+gp.items[1] = liar
+F.hours = F.hours + 20
+FR.settle(gv)
+check(gp.md.fridge == nil and not liar.fr,
+    "new food first seen by the settle that switches it off (low battery): frozen with ft 0 cleared in the baseline and on the item")
+F.vehicles[gv:getId()] = nil
 
 H.section("Fridge: catch-up on load")
 local fz, cl = F.track(F.vehicle({ pct = 80 })), F.track(F.vehicle({ pct = 80 }))
@@ -407,26 +444,103 @@ H.section("Fridge: removal")
 FR.setMode(v, "cool", "owner")
 fp.item = nil
 FR.settle(v)
-check(fp.md.fridge == nil and fp.md.fridgeLast == nil and not FR.cars[v:getId()], "state left on a removed fridge: cleared at the next settle")
+check(fp.md.fridge == nil and not FR.cars[v:getId()], "state left on a removed fridge: cleared at the next settle")
 fp.item = { getFullType = function() return "Base.MinidoracatTesla_Fridge" end }
 FR.setMode(v, "cool", "owner")
 FR.setMode(v, false)
-check(fp.md.fridgeLast ~= nil, "switched off with food: fridgeLast kept")
 T.UninstallComplete.Fridge(v, fp)
-check(fp.md.fridge == nil and fp.md.fridgeLast == nil and not FR.cars[v:getId()], "uninstall complete: state and fridgeLast dropped, unlisted")
+check(fp.md.fridge == nil and not FR.cars[v:getId()], "uninstall complete: state dropped, unlisted")
 
-H.section("Fridge: client copy")
+H.section("Fridge: off, the food's values on request (fridgeFoodPull -> fridgeFood)")
+-- the server's answer to p (the `fridgeFood` it sent), who it went to and how many commands went out; nil: none
+local function pull(p, args)
+    local h, n = T.ServerCommands.fridgeFoodPull, #F.sent
+    if not h then return nil end
+    h(p, args)
+    for i = n + 1, #F.sent do
+        if F.sent[i].cmd == "fridgeFood" then return F.sent[i].args, F.sent[i].to, #F.sent - n end
+    end
+end
+-- the page asks by itself: a request that gets no answer sends nothing at all (no deny, no red text over the player)
+local function quiet(p, args)
+    local n = #F.sent
+    T.ServerCommands.fridgeFoodPull(p, args)
+    return #F.sent == n
+end
+local pv = F.track(F.vehicle({ pct = 80 }))
+local p1, p2, p3 = food(901, { age = 1 }), food(902, { age = 1, fert = true }), food(903, { age = 1, offMax = 1000000000 })
+local pp = fit(pv, { p1, p2, p3 })
+local asker = F.player("asker") -- no key: seeing what the loot page shows needs none
+FR.setMode(pv, "cool", "owner")
+tick(1)
+check(quiet(asker, { vid = pv:getId(), seq = 1 }), "switched on: no answer, no deny (the clients read fridge.items)")
+FR.setMode(pv, false)
+local offAge, ptx = p1.age, pv.transmits
+F.hours = F.hours + 5
+local pr, pto, nSent = pull(asker, { vid = pv:getId(), seq = 7 })
+check(pr and pr.vid == pv:getId() and pr.seq == 7 and pto == "asker" and nSent == 1,
+    "off: one answer, to the asker only, its seq as sent")
+check(pr and near(pr.items["901"].age, offAge + 5 * ROOM, 1e-12) and pr.items["901"].ft == p1.ft and pr.items["901"].fr == false,
+    "the food as the engine has it now (its own room-rate catch-up over the 5 h off)")
+check(pr and pr.items["902"].fe == true and pr.items["901"].fe == nil and pr.items["903"] == nil,
+    "fe only on the fertilized one; food that never spoils not sent")
+check(pp.md.fridge == nil and pv.transmits == ptx, "nothing stored, nothing transmitted")
+check(pv.access == pp:getIndex(), "reach asked for the fridge's own part index (canAccessContainer)")
+pv.blocked = { [asker] = true }
+check(quiet(asker, { vid = pv:getId(), seq = 8 }), "the container out of this player's reach (canAccessContainer false): no answer, no deny")
+pv.blocked = nil
+asker.dist = 11
+check(quiet(asker, { vid = pv:getId(), seq = 9 }), "11 tiles away: no answer, no deny (no TOO_FAR)")
+asker.vehicle = pv
+check(pull(asker, { vid = pv:getId(), seq = 10 }) ~= nil, "seated in it (a Semi cab, any distance): answered")
+asker.vehicle, asker.dist = nil, 2
+check(quiet(asker, { vid = 99999, seq = 11 }), "no such car: no answer, no deny (no NO_VEHICLE)")
+check(quiet(asker, { vid = pv:getId() + 0.5, seq = 11 }), "fractional id: no answer, no deny")
+local notTesla = F.track(F.vehicle({ pct = 80, script = "Base.CarNormal" }))
+fit(notTesla, { food(904, { age = 1 }) })
+check(quiet(asker, { vid = notTesla:getId(), seq = 12 }), "not a Tesla: no answer, no deny")
+local pItem = pp.item
+pp.item = nil
+check(quiet(asker, { vid = pv:getId(), seq = 13 }), "no fridge fitted: no answer, no deny")
+pp.item = pItem
+pp.items = { p3 }
+check(quiet(asker, { vid = pv:getId(), seq = 14 }), "nothing in it that spoils: no answer, no deny")
+local many = {}
+for i = 1, 405 do many[i] = food(30000 + i, { age = 1 }) end
+pp.items = many
+pr = pull(asker, { vid = pv:getId(), seq = 15 })
+local nKeys = 0
+for _ in pairs(pr and pr.items or {}) do nKeys = nKeys + 1 end
+check(nKeys == FR.MAX_ITEMS and pr.items["30400"] and pr.items["30401"] == nil, "405 foods: the first F.MAX_ITEMS in container order")
+F.vehicles[pv:getId()], F.vehicles[notTesla:getId()] = nil, nil
+
+H.section("Fridge: client copy, switched on (fridge.items)")
 FR.setMode(v, "cool", "owner")
 tick(1)
 local mine = food(101, { age = 0 }) -- this client's copy of the server's food 101
-local view = fit({ parts = {}, getId = function() return 7001 end }, { mine })
+-- a client's car: getVehicleById finds it under its own id
+local function clientCar(id) return F.track({ parts = {}, getId = function() return id end,
+    getPartById = function(self, k) return self.parts[k] end }) end
+local view = fit(clientCar(7001), { mine })
 view.md = fp.md -- the part modData the server sent
 local client = isClient
 isClient = function() return true end
 H.require("MinidoracatTesla/FridgeUI")
 isClient = client
 local UI = T.FridgeUI
-local page = { shown = true, backpacks = { { inventory = { getVehiclePart = function() return view end } } } }
+local asks, realSend, realPlayer = {}, sendClientCommand, getSpecificPlayer
+sendClientCommand = function(p, module, cmd, args) asks[#asks + 1] = { p = p, module = module, cmd = cmd, args = args } end
+getSpecificPlayer = function() return owner end
+-- the server's answer to ask i (default the last) about server car `srv`, under the client car's id (as a client and
+-- the server both know the car); deliver: this client takes it, returns how many foods did
+local function answerTo(srv, i)
+    local q = asks[i or #asks]
+    if not q then return nil end
+    local r = pull(q.p, { vid = srv:getId(), seq = q.args.seq })
+    return r and { vid = q.args.vid, seq = r.seq, items = r.items }
+end
+local function deliver(r) local h = T.ClientCommands.fridgeFood; return r and h and h(r) or 0 end
+local page = { shown = true, player = 0, backpacks = { { inventory = { getVehiclePart = function() return view end } } } }
 function page:getIsVisible() return self.shown end
 local m0 = H.count("EveryOneMinute")
 H.fire("OnRefreshInventoryWindowContainers", page, "end")
@@ -447,27 +561,192 @@ check(mine.age == 0 and H.count("EveryOneMinute") == m0 + 1, "page hidden: nothi
 page.shown = true
 H.fire("EveryOneMinute")
 check(near(mine.age, fp.md.fridge.items["101"].age, 1e-9), "shown again: applied at the next minute")
-local offAt = F.hours
+page.isCollapsed = true -- ISInventoryPage:collapseNow: still shown, only the title bar
+mine.age = 0
+tick(1)
+H.fire("EveryOneMinute")
+check(mine.age == 0 and UI.watched[page], "page collapsed (shown, isCollapsed): nothing applied, still watched")
+page.isCollapsed = false
+H.fire("EveryOneMinute")
+check(near(mine.age, fp.md.fridge.items["101"].age, 1e-9), "uncollapsed: applied at the next minute")
+page.shown = false
+mine.age = 0
+tick(1)
+H.fire("OnRefreshInventoryWindowContainers", page, "end")
+check(mine.age == 0 and UI.watched[page], "page rebuilt while hidden: nothing applied, still watched")
+page.shown = true
+H.fire("EveryOneMinute")
+check(near(mine.age, fp.md.fridge.items["101"].age, 1e-9), "shown again after that: applied at the next minute")
+local mineB = food(102, { age = 0, freezable = false }) -- reaches this client after the page took this settle
+view.items[#view.items + 1] = mineB
+H.fire("EveryOneMinute")
+check(near(mineB.age, fp.md.fridge.items["102"].age, 1e-9),
+    "a food instance that arrives after the page took the settle: applied at the next minute, no new settle needed")
+local mine2 = food(101, { age = 0 }) -- the same food sent again (moved out and back by someone else): same id, new instance
+view.items[1] = mine2
+mine.age = 0
+H.fire("EveryOneMinute")
+check(near(mine2.age, fp.md.fridge.items["101"].age, 1e-9) and mine.age == 0, "same id, another instance: applied at the next minute")
+
+H.section("Fridge: client copy, switched off (asks the server: fridgeFoodPull -> fridgeFood)")
 FR.setMode(v, false)
-local fl = fp.md.fridgeLast
-check(fp.md.fridge == nil and fl and fl.at == offAt and fl.items["101"], "switched off: fridgeLast { at, items } for the clients")
+check(fp.md.fridge == nil and fp.md.fridgeLast == nil, "switched off: no fridge table, nothing left in modData for the clients")
+local aOff = a.age
 F.hours = F.hours + 5
-mine.age = 0
+mine2.age, mineB.age = 0, 0
+local n0 = #asks
 H.fire("EveryOneMinute")
-check(near(mine.age, FR.step(fl.items["101"], 5, nil, true).age, 1e-9) and UI.applied[7001] == "last " .. offAt,
-    "off 5 h: fridgeLast run on at room rate to now, under a version of its own (not the same `at` as on)")
-mine.age = 0
+local q = asks[#asks]
+check(#asks == n0 + 1 and q.cmd == "fridgeFoodPull" and q.module == T.MODULE and q.p == owner and q.args.vid == 7001
+    and mine2.age == 0, "off: the page's player asks once (fridgeFoodPull), nothing applied before the answer")
+check(deliver(answerTo(v)) == 2 and near(mine2.age, aOff + 5 * ROOM, 1e-12) and near(mine2.age, a.age, 1e-12)
+    and near(mineB.age, b.age, 1e-12) and mine2.ft == a.ft and mine2.fr == a.fr,
+    "the answer: each food = the server's now (off 5 h: the engine's own room rate)")
+n0 = #asks
 H.fire("EveryOneMinute")
-check(mine.age == 0, "same fridgeLast: not applied again")
-local eggView = fit({ parts = {}, getId = function() return 7301 end }, { food(701, { fert = true }), food(702, { fert = true }) })
-eggView.md.fridge = { mode = "freeze", at = F.hours, items = { ["701"] = { age = 1, ft = 30, fr = false }, ["702"] = { age = 1, ft = 0, fr = false } } }
-check(UI.apply(eggView) == 2 and not eggView.items[1].fert and eggView.items[2].fert, "client copy: an egg with freezing time is no longer fertilized")
+check(#asks == n0, "the same ten minutes, the same instances: no second ask")
+F.hours = F.hours + 1 / 6
+H.fire("EveryOneMinute")
+check(#asks == n0 + 1 and deliver(answerTo(v)) == 2 and near(mine2.age, a.age, 1e-12),
+    "the ten-minute bucket moved on: asks again and takes it (a page left open follows the server)")
+local mine3 = food(101, { age = 0 })
+view.items[1] = mine3
+n0 = #asks
+H.fire("EveryOneMinute")
+check(#asks == n0 + 1 and deliver(answerTo(v)) == 2 and near(mine3.age, a.age, 1e-12),
+    "same ten minutes, same count and ids, one food another instance: asks again, the new instance takes it")
+F.hours = F.hours + 1 / 6
+H.fire("EveryOneMinute")
+local first = #asks
+F.hours = F.hours + 1 / 6
+H.fire("EveryOneMinute")
+local older, newer = answerTo(v, first), answerTo(v)
+check(#asks == first + 1 and deliver(newer) == 2 and near(mine3.age, a.age, 1e-12), "the last ask's answer: taken")
+mine3.age = -1
+check(deliver(older) == 0 and mine3.age == -1, "an older ask's answer arriving after it (RELIABLE, not ordered): dropped")
+F.hours = F.hours + 1 / 6
+H.fire("EveryOneMinute")
+local r1 = answerTo(v)
+local mine4 = food(101, { age = 0 })
+view.items[1] = mine4
+check(deliver(r1) == 1 and mine4.age == 0 and near(mineB.age, b.age, 1e-12),
+    "a food swapped for another instance between ask and answer: not written, the rest is")
+H.fire("EveryOneMinute")
+check(deliver(answerTo(v)) == 2 and near(mine4.age, a.age, 1e-12), "the next minute asks for it, and it takes that answer")
+F.hours = F.hours + 1 / 6
+H.fire("EveryOneMinute")
+local r2 = answerTo(v)
+FR.setMode(v, "cool", "owner")
+mine4.age = -1
+check(r2 and deliver(r2) == 0 and mine4.age == -1, "switched on before the answer came: dropped")
+FR.setMode(v, false)
+F.hours = F.hours + 1 / 6
+H.fire("EveryOneMinute")
+local r3 = answerTo(v)
+local fItem = view.item
+view.item = nil
+check(r3 and deliver(r3) == 0 and mine4.age == -1, "the fridge removed before the answer came: dropped")
+view.item = fItem
+page.shown = false
+F.hours = F.hours + 1 / 6
+n0 = #asks
+H.fire("EveryOneMinute")
+check(#asks == n0, "page hidden: no ask")
+page.shown = true
+H.fire("EveryOneMinute")
+check(#asks == n0 + 1 and deliver(answerTo(v)) == 2 and near(mine4.age, a.age, 1e-12), "shown again: asks at the next minute")
+-- (c) food put in after it went off, a fertilized egg the server has as fertilized and this copy not
+local srvEgg, cliEgg = food(905, { age = 1, fert = true }), food(905, { age = 0, fert = false })
+fp.items[#fp.items + 1] = srvEgg
+view.items[#view.items + 1] = cliEgg
+H.fire("EveryOneMinute")
+check(deliver(answerTo(v)) == 3 and cliEgg.fert == true and near(cliEgg.age, srvEgg.age, 1e-12),
+    "food put in after it went off: the server's values too, its fertilized flag taken (server true, copy false)")
+remove(fp.items, srvEgg); remove(view.items, cliEgg)
+-- (a) this client takes a food out and puts it back while off; meanwhile the server's value moved on (in another
+-- fridge, say): the copy shows the server's value, not one guessed from the switch-off
+remove(view.items, mine4); remove(fp.items, a)
+F.hours = F.hours + 3
+a.age, a.last = a.age + 3 * COOL, F.hours
+table.insert(fp.items, 1, a)
+table.insert(view.items, 1, mine4)
+mine4.age = 0
+F.hours = F.hours + 1 / 6
+H.fire("EveryOneMinute")
+check(deliver(answerTo(v)) == 2 and near(mine4.age, a.age, 1e-12), "(a) out and back in while off: the server's value")
+-- (b) the answer first, a food after it (the item and the answer ride different channels)
+remove(view.items, mineB)
+F.hours = F.hours + 1 / 6
+H.fire("EveryOneMinute")
+local early = answerTo(v)
+local mineB2 = food(102, { age = 0, freezable = false })
+view.items[#view.items + 1] = mineB2
+check(deliver(early) == 1 and mineB2.age == 0, "(b) an answer from before the food arrived: not written to it")
+H.fire("EveryOneMinute")
+check(deliver(answerTo(v)) == 2 and near(mineB2.age, b.age, 1e-12), "(b) the next minute (same ten minutes) asks for it: the server's value")
+local nEmpty = #asks
+local ev = F.track(F.vehicle({ pct = 80 }))
+local evFood = food(906, { age = 2 })
+local evp = fit(ev, { evFood })
+local evCopy = food(906, { age = 0 })
+local eview = fit(clientCar(7003), {})
+local epage = { shown = true, player = 0, backpacks = { { inventory = { getVehiclePart = function() return eview end } } } }
+epage.getIsVisible = page.getIsVisible
+H.fire("OnRefreshInventoryWindowContainers", epage, "end")
+check(#asks == nEmpty, "an empty fridge: no ask")
+eview.items[1] = evCopy
+H.fire("EveryOneMinute")
+check(#asks == nEmpty + 1 and deliver(answerTo(ev)) == 1 and near(evCopy.age, evFood.age, 1e-12),
+    "scanned empty, the food arriving later in the same ten minutes: asks at once, takes it")
+H.fire("OnRefreshInventoryWindowContainers", epage, "begin")
+epage.backpacks = {}
+H.fire("OnRefreshInventoryWindowContainers", epage, "end")
+F.vehicles[ev:getId()] = nil
+FR.setMode(v, "cool", "owner")
+local eggView = fit({ parts = {}, getId = function() return 7301 end },
+    { food(701, { fert = true }), food(702, { fert = true }), food(703, { fert = true, freezable = false }) })
+eggView.md.fridge = { mode = "freeze", at = F.hours, items = { ["701"] = { age = 1, ft = 30, fr = false },
+    ["702"] = { age = 1, ft = 0, fr = false }, ["703"] = { age = 1, ft = 0, fr = false } } }
+check(UI.apply(eggView) == 3 and not eggView.items[1].fert and not eggView.items[2].fert and eggView.items[3].fert,
+    "client copy, freezer running: eggs that can freeze are dead, ft 0 too (Food.isFreezing); one that cannot: not")
+local coolView = fit({ parts = {}, getId = function() return 7302 end }, { food(704, { fert = true }), food(705, { fert = true }) })
+coolView.md.fridge = { mode = "cool", at = F.hours, items = { ["704"] = { age = 1, ft = 0, fr = false }, ["705"] = { age = 1, ft = 20, fr = false } } }
+check(UI.apply(coolView) == 2 and coolView.items[1].fert and not coolView.items[2].fert,
+    "client copy, cool: an egg with no freezing time still fertilized, one with some not")
 H.fire("OnRefreshInventoryWindowContainers", { backpacks = {} }, "end")
 check(H.count("EveryOneMinute") == m0 + 1, "another page without one: the check stays for the first")
 H.fire("OnRefreshInventoryWindowContainers", page, "begin")
 page.backpacks = {}
 H.fire("OnRefreshInventoryWindowContainers", page, "end")
 check(H.count("EveryOneMinute") == m0 and UI.nWatched == 0, "no page lists a fridge: the per-minute check is removed")
+
+H.section("Fridge: a fertilized egg frozen, then thawed (one catch-up == ten-minute settles == a late client)")
+local LC, SC = F.track(F.vehicle({ pct = 21 })), F.track(F.vehicle({ pct = 21 }))
+local le, se = food(801, { age = 1, fert = true }), food(802, { age = 1, fert = true })
+local lcp = fit(LC, { le })
+local scp = fit(SC, { se })
+FR.setMode(LC, "freeze", "owner"); FR.setMode(SC, "freeze", "owner")
+local le2 = food(803, { age = 1, fert = true }) -- put in after the switch-on settle: first seen by the catch-up
+lcp.items[#lcp.items + 1] = le2
+local t1 = F.hours
+unload(LC)
+for _ = 1, 87 do tick(1 / 6) end -- 14.5 h: 12.5 h freezing on the pack down to 20 %, then 2 h without power
+F.hours = t1 + 14.5
+reload(LC, 7501)
+check(le.ft == 0 and not le.fr and not le.fert and near(le.age, 1 + 4 * COOL + 0.5 * ROOM, 1e-9),
+    "one catch-up: frozen, then thawed by its end (ft 0); the egg dead")
+check(not le2.fert and le2.ft == 0,
+    "first seen by a catch-up that had power in freeze mode (12.5 h of 14.5): dead, though only a baseline (ft 0)")
+check(not se.fert and scp.md.fridge == nil, "ten-minute settles: the same egg, dead since the first settle; off at 20 %")
+local copy = food(802, { age = 0, fert = true }) -- a client that never looked until now (its copy still fertilized)
+local cview = fit(clientCar(7502), { copy })
+cview.md = scp.md
+local na = #asks
+check(UI.apply(cview, owner) == 1 and #asks == na + 1, "a client looking after it went off: asks")
+check(deliver(answerTo(SC)) == 1 and not copy.fert and copy.ft == se.ft and near(copy.age, se.age, 1e-12),
+    "the answer: dead (no fe), the server's age and freezing time")
+sendClientCommand, getSpecificPlayer = realSend, realPlayer
+unload(LC); F.vehicles[SC:getId()] = nil
 
 T.Charge = realCharge
 F.done()

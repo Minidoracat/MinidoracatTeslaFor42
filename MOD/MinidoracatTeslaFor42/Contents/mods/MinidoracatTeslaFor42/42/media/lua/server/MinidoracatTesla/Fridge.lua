@@ -2,7 +2,8 @@
 -- settled here and nowhere else. The engine's own fridge rule needs a powered sourceGrid, which a vehicle container
 -- never has (Food.java:760; VehicleParts.java:309), so each settle puts the age and freezing each food would have had
 -- since the last settle: Upgrades.lua F.step from the baseline the last settle wrote (fridge.items), the hours the
--- fridge ran in its mode, then the hours it had no power. The clients copy items for display (FridgeUI.lua).
+-- fridge ran in its mode, then the hours it had no power. The clients copy items for display while it is on; off,
+-- a client asks for the food's values now (fridgeFoodPull below; FridgeUI.lua).
 -- When: every ten game minutes over the cars registered below, on every load (OnSpawnVehicleEnd: catch-up), before a
 -- mode change, and with every charging settle (Charging.lua settleSentry), so the power it ran on is booked as sentry's.
 if isClient() then return end
@@ -26,15 +27,9 @@ function F.track(v)
 end
 function F.untrack(v) cars[v:getId()] = nil end
 
--- switched off: `fridge` goes (the server reads only that as on); `fridgeLast` keeps the last settle's values for the
--- clients that have not applied them (FridgeUI.lua), until it is switched on again, removed (Upgrades.lua), or there
--- was nothing in it. One transmit.
-local function off(v, part, at, items)
-    local md = part:getModData()
-    md.fridge = nil
-    local any = false
-    for _ in pairs(items or {}) do any = true; break end -- Kahlua has no next()
-    md.fridgeLast = at and any and { at = at, items = items } or nil
+-- switched off: `fridge` goes (the server reads only that as on). One transmit.
+local function off(v, part)
+    part:getModData().fridge = nil
     F.untrack(v)
     v:transmitPartModData(part)
 end
@@ -64,6 +59,10 @@ function F.settle(v, t, freeUntil)
     if paid > 0 then B.set(v, bp, cur - paid * F.KW) end
     local on = free + paid -- hours it ran; the rest of dt it had no power
     local dead = on < dt - 1e-9
+    -- an egg dies once it is freezing (Food.isFreezing: can freeze, in a powered freezer; Food.java:837-838, 2188-2190)
+    -- and stays dead thawed: freeze mode with power in this stretch (dt 0 is a switch-on or switch-to-freeze settle,
+    -- powered), or freezing time already. A stretch with no power at all freezes nothing.
+    local freezing = s.mode == "freeze" and (on > 0 or dt == 0)
     local old, new, n, full = s.items or {}, {}, 0, false
     local items = part:getItemContainer():getItems()
     for i = 0, items:size() - 1 do
@@ -74,23 +73,27 @@ function F.settle(v, t, freeUntil)
             n = n + 1
             it:updateAge() -- lastAged = now: the engine adds nothing on top of what is set here
             local k, cf = tostring(it:getID()), it:canBeFrozen()
-            local b = old[k]
+            local b, was = old[k], nil -- was: its freezing time before this stretch
             if b then -- from its baseline only, never from the item's own (client-writable) flags
+                was = b.ft
                 b = F.step(F.step(b, on, s.mode, cf), dt - on, nil, cf)
                 it:setAge(b.age)
                 it:setFreezingTime(b.ft)
                 it:setFrozen(b.fr)
-            else -- new food only gets a baseline; frozen only with freezing time to show for it
-                local ft = it:getFreezingTime()
-                b = { age = it:getAge(), ft = ft, fr = ft > 0 and it:isFrozen() }
+            else -- new food only gets a baseline; frozen only with freezing time to show for it, on the item too
+                was = it:getFreezingTime()
+                b = { age = it:getAge(), ft = was, fr = was > 0 and it:isFrozen() }
+                -- a frozen flag with ft 0 neither ages nor thaws (Food.java:757-758, 2193-2198); no later settle may fix
+                -- it (this one may switch the fridge off)
+                if it:isFrozen() ~= b.fr then it:setFrozen(b.fr) end
             end
-            if b.ft > 0 and it:isFertilized() then it:setFertilized(false) end -- frozen eggs die (Food.java:837-838)
+            if (was > 0 or cf and freezing) and it:isFertilized() then it:setFertilized(false) end
             new[k] = b
         end
     end
     if full and not s.full then T.log("fridge full vid=" .. v:getId() .. ": " .. F.MAX_ITEMS .. " foods tracked, the rest at room rate") end
     if dead then
-        off(v, part, t, new)
+        off(v, part)
         T.log("fridge off low battery vid=" .. v:getId())
         T.Inbox.notify(s.by, T.Inbox.entry(v, "lowBattery", "fridge"))
         return
@@ -109,12 +112,12 @@ function F.setMode(v, mode, by)
     F.settle(v)
     if was and not md.fridge then return end -- that settle just switched it off for low battery (and said so)
     if not mode then
-        if md.fridge then off(v, part, md.fridge.at, md.fridge.items) end
+        if md.fridge then off(v, part) end
     elseif md.fridge then
         md.fridge.mode = mode
-        v:transmitPartModData(part)
+        F.settle(v) -- dt 0, in place of a bare transmit: switched to freeze, its eggs die now (as a freezer's first update)
     else
-        md.fridge, md.fridgeLast = { mode = mode, at = T.hours(), by = by, items = {} }, nil
+        md.fridge = { mode = mode, at = T.hours(), by = by, items = {} }
         F.settle(v) -- the food in it now gets its baseline
     end
     T.log("fridge " .. tostring(mode or "off") .. " vid=" .. v:getId() .. " by " .. tostring(by))
@@ -131,6 +134,33 @@ T.ServerCommands.fridge = function(player, args)
         return
     end
     F.setMode(v, args.mode, T.account(player))
+end
+
+-- client -> server: { vid, seq } from a page that shows the fridge while it is off (FridgeUI.lua). Answers that
+-- player only with `fridgeFood` { vid, seq, items = { ["<item id>"] = { age, ft, fr, fe } } } (fe only when
+-- fertilized): its first F.MAX_ITEMS spoiling foods as the engine has them now (updateAge: its own catch-up; false:
+-- no ItemStats to the players around, Food.java:735-745). In the car or within T.NEAR (T.commandVehicle, quiet: the
+-- page asks by itself, so no deny ever reaches the player), and the container in this player's reach by the test the
+-- loot page uses (canAccessContainer runs the part's ContainerAccess function, BaseVehicle.java:8439-8455). No car,
+-- too far, no fridge, switched on (the clients read fridge.items), out of reach or nothing spoiling in it: no answer
+-- and no deny. Stores nothing.
+T.ServerCommands.fridgeFoodPull = function(player, args)
+    local v = T.commandVehicle(player, args, nil, true)
+    local part = v and F.part(v)
+    local c = part and part:getItemContainer()
+    if not c or part:getModData().fridge or not v:canAccessContainer(part:getIndex(), player) then return end
+    local items, out, n = c:getItems(), {}, 0
+    for i = 0, items:size() - 1 do
+        local it = items:get(i)
+        if instanceof(it, "Food") and it:getOffAgeMax() < 1000000000 then
+            if n == F.MAX_ITEMS then break end
+            n = n + 1
+            it:updateAge(false)
+            out[tostring(it:getID())] = { age = it:getAge(), ft = it:getFreezingTime(), fr = it:isFrozen(),
+                fe = it:isFertilized() or nil }
+        end
+    end
+    if n > 0 then T.send(player, "fridgeFood", { vid = v:getId(), seq = args.seq, items = out }) end
 end
 
 local function settleSafe(v, t)
