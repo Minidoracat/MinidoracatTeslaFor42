@@ -532,7 +532,7 @@ A charger that works on the floor, no wall needed; slower than the Wall Connecto
 [*] [b]Freeze[/b]: food freezes in about 4 to 4.5 hours and does not spoil once frozen; switching off or back to Cool thaws it. Food that never spoils or cannot be frozen stays unfrozen.
 [*] [b]How much[/b]: one fridge keeps up to 400 perishable foods at a time; any beyond that spoil at room rate. Food that never spoils does not count.
 [*] [b]Power[/b]: while on it runs on the high voltage battery at 0.06 kW, about 1.4 kWh a game day. With a powered charge cable in, the car's charge is not used.
-[*] [b]Below 20% charge[/b]: the fridge switches off and tells whoever turned it on; switch it back on yourself after charging. It cannot be switched on below 20% either, unless a charge cable is in.
+[*] [b]Below 20% charge[/b]: the fridge switches off and tells whoever turned it on; switch it back on yourself after charging. It cannot be switched on below 20% either, unless a charge cable is in. With Sentry Mode on as well, the two together run the battery down to 20% and then both switch off.
 [*] [b]While you are away[/b]: it keeps running, and the time is made up in one go when you come back to the car.
 [*] [b]Empty it before removing[/b]: Uninstall is grey while anything is inside.
 [/list]
