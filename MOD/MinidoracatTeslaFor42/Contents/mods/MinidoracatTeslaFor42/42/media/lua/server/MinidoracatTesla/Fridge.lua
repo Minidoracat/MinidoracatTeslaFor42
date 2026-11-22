@@ -5,7 +5,8 @@
 -- fridge ran in its mode, then the hours it had no power. The clients copy items for display while it is on; off,
 -- a client asks for the food's values now (fridgeFoodPull below; FridgeUI.lua).
 -- When: every ten game minutes over the cars registered below, on every load (OnSpawnVehicleEnd: catch-up), before a
--- mode change, and with every charging settle (Charging.lua settleSentry), so the power it ran on is booked as sentry's.
+-- mode change, and with every charging settle (Charging.lua settleSentry), so the power it ran on is booked as sentry's;
+-- each time through F.settleAll, which books sentry with it.
 if isClient() then return end
 require "MinidoracatTesla/Core"
 require "MinidoracatTesla/ParkModes"
@@ -37,8 +38,9 @@ end
 -- Books the fridge from fridge.at to t (default now). freeUntil: as Sentry.settle (world hour a charger powered the
 -- car until; nil = Charge.powerUntil); that stretch costs the pack nothing and goes into chg.fed off the grid. The
 -- rest runs on the pack down to S.MIN_PCT; short of that the fridge switches off and its `by` hears it once (it stays
--- off until switched on again, as sentry).
-function F.settle(v, t, freeUntil)
+-- off until switched on again, as sentry). besideKw: another draw on the pack over the same hours (F.settleAll:
+-- sentry's), so the fridge runs as long as the two together reach the floor; it pays only its own.
+function F.settle(v, t, freeUntil, besideKw)
     local part = v and v:getPartById("TeslaFridge")
     local s = part and part:getModData().fridge
     if not s then return end
@@ -55,7 +57,7 @@ function F.settle(v, t, freeUntil)
     local free = math.max(0, math.min(dt, (freeUntil or at) - at))
     if free > 0 and md.chg and md.chg.power ~= "grid" then md.chg.fed = (md.chg.fed or 0) + free * F.KW end
     local cur = B.kwh(bp)
-    local paid = math.min(dt - free, math.max(0, (cur - B.capacity(bp) * S.MIN_PCT / 100) / F.KW))
+    local paid = math.min(dt - free, math.max(0, (cur - B.capacity(bp) * S.MIN_PCT / 100) / (F.KW + (besideKw or 0))))
     if paid > 0 then B.set(v, bp, cur - paid * F.KW) end
     local on = free + paid -- hours it ran; the rest of dt it had no power
     local dead = on < dt - 1e-9
@@ -103,13 +105,28 @@ function F.settle(v, t, freeUntil)
     v:transmitPartModData(part)
 end
 
+-- The fridge and sentry standby (Sentry.lua) both on: one pack, both drawing, so both stop when the two together
+-- reach S.MIN_PCT. Booked one after the other with its own draw alone, the first would take the whole stretch and the
+-- second only what is left (sentry first: the fridge none of it). So the fridge goes first with sentry's draw beside
+-- it, then sentry, which takes the rest down to the floor and switches off there as well. Every fridge settle that
+-- covers time goes through here (sentry is booked every ten minutes while the fridge is on), and so does every
+-- charging settle (Charging.lua settleSentry). ponytail: sentry armed or disarmed since the last joint settle (at most
+-- ten game minutes while loaded; setMode books sentry first, so switching the fridge on is not one) counts beside the
+-- fridge for all of that stretch or none of it.
+function F.settleAll(v, t, freeUntil)
+    local bp = B.part(v)
+    local sentry = bp and bp:getModData().sentry and S.settle
+    F.settle(v, t, freeUntil, sentry and S.KW or nil)
+    if sentry then sentry(v, t, freeUntil) end
+end
+
 -- mode "cool" / "freeze" / false (off). Settled first, so the hours so far count under the old mode.
 function F.setMode(v, mode, by)
     local part = F.part(v)
     if not part then return end
     local md = part:getModData()
     local was = md.fridge ~= nil
-    F.settle(v)
+    F.settleAll(v) -- also books sentry, so switching on starts both from now
     if was and not md.fridge then return end -- that settle just switched it off for low battery (and said so)
     if not mode then
         if md.fridge then off(v, part) end
@@ -167,7 +184,7 @@ T.ServerCommands.fridgeFoodPull = function(player, args)
 end
 
 local function settleSafe(v, t)
-    local ok, err = pcall(F.settle, v, t)
+    local ok, err = pcall(F.settleAll, v, t)
     if not ok then T.log("fridge settle failed vid=" .. tostring(v:getId()) .. ": " .. tostring(err)) end
 end
 

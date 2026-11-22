@@ -252,11 +252,9 @@ end
 
 -- Sentry standby and the car fridge (Fridge.lua) are booked on events (Sentry.settle, Fridge.settle) with the power
 -- state they ran under (Battery.onCharger), so settle them before that state changes: every charging settle, and
--- before the link goes.
+-- before the link goes. Both on one pack go together (Fridge.lua F.settleAll: neither takes the stretch alone).
 local function settleSentry(vehicle, now, freeUntil)
-    local f = T.Sentry and T.Sentry.settle
-    if f then f(vehicle, now, freeUntil) end
-    f = T.Fridge and T.Fridge.settle
+    local f = T.Fridge and T.Fridge.settleAll or T.Sentry and T.Sentry.settle
     if f then f(vehicle, now, freeUntil) end
 end
 

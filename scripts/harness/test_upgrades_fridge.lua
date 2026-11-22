@@ -336,6 +336,48 @@ check(gp.md.fridge == nil and not liar.fr,
     "new food first seen by the settle that switches it off (low battery): frozen with ft 0 cleared in the baseline and on the item")
 F.vehicles[gv:getId()] = nil
 
+H.section("Fridge: with sentry on (one pack, both drawing: F.settleAll)")
+H.require("MinidoracatTesla/Sentry")
+local SKW = T.Sentry.KW + FR.KW
+local function both(pct)
+    local car = F.track(F.vehicle({ pct = pct }))
+    local f = food(109, { age = 1 })
+    local p = fit(car, { f })
+    FR.setMode(car, "cool", "owner")
+    B.part(car):getModData().sentry = { at = F.hours, kwh = kwh(car), since = F.hours }
+    return car, p, f
+end
+local function stopped(car, p, f, a0, label)
+    local ran = 3.75 / SKW -- 25 % of 75 kWh = 18.75, the floor 15: 12.1 h for the two together
+    check(near(kwh(car), 15, 1e-9) and p.md.fridge == nil and B.part(car):getModData().sentry == nil,
+        label .. ": both stop at the floor")
+    f:updateAge() -- the engine's own pass since the last settle (off: room rate)
+    check(near(f.age, a0 + ran * COOL + (30 - ran) * ROOM, 1e-9), label .. ": the fridge ran as long as the two together "
+        .. "lasted (12.1 h), not 0 h (sentry booked first) nor 30 h (the fridge first, alone)")
+    F.vehicles[car:getId()] = nil
+end
+local sc, sp, sf = both(25)
+local t0, a0 = F.hours, sf.age
+F.hours = F.hours + 30
+FR.settleAll(sc, F.hours, t0) -- Charging.lua settleSentry: the charger's power ended at t0
+stopped(sc, sp, sf, a0, "charging settle 30 h after the power ended")
+sc, sp, sf = both(25)
+a0 = sf.age
+unload(sc)
+F.hours = F.hours + 30
+reload(sc, 7110)
+stopped(sc, sp, sf, a0, "catch-up on load after 30 h away")
+sc, sp, sf = both(25)
+a0 = sf.age
+for _ = 1, 180 do tick(1 / 6) end
+stopped(sc, sp, sf, a0, "30 h of ten-minute settles")
+sc, sp, sf = both(80)
+local k1 = kwh(sc)
+for _ = 1, 12 do tick(1 / 6) end
+check(near(k1 - kwh(sc), 2 * SKW, 1e-9) and sp.md.fridge and B.part(sc):getModData().sentry.at == F.hours,
+    "plenty of charge: each pays its own draw, sentry booked with every fridge settle")
+F.vehicles[sc:getId()] = nil
+
 H.section("Fridge: catch-up on load")
 local fz, cl = F.track(F.vehicle({ pct = 80 })), F.track(F.vehicle({ pct = 80 }))
 local x, y = food(301, { age = 1 }), food(302, { age = 1 })
@@ -738,6 +780,48 @@ view.items[#view.items + 1] = mineB2
 check(deliver(early) == 1 and mineB2.age == 0, "(b) an answer from before the food arrived: not written to it")
 H.fire("EveryOneMinute")
 check(deliver(answerTo(v)) == 2 and near(mineB2.age, b.age, 1e-12), "(b) the next minute (same ten minutes) asks for it: the server's value")
+-- no answer (the server drops an ask it may not answer: container out of reach, Fridge.lua; or the budget,
+-- Commands.lua): asked once more a minute later, then not again until the bucket moves on
+local function nextBucket() F.hours = (math.floor(F.hours * 6) + 1) / 6 + 1 / 600 end
+nextBucket()
+n0 = #asks
+H.fire("EveryOneMinute")
+check(#asks == n0 + 1, "no-answer: the new bucket asks")
+H.fire("EveryOneMinute")
+check(#asks == n0 + 1, "no-answer: the same game minute again (a page refresh): no second ask yet")
+F.hours = F.hours + 1 / 60
+H.fire("EveryOneMinute")
+check(#asks == n0 + 2 and asks[#asks].args.seq == asks[#asks - 1].args.seq + 1,
+    "no answer by the next minute: asked once more, a new seq")
+F.hours = F.hours + 1 / 60
+H.fire("EveryOneMinute")
+F.hours = F.hours + 1 / 60
+H.fire("EveryOneMinute")
+check(#asks == n0 + 2, "still no answer: no third ask in these ten minutes (at most two a bucket)")
+nextBucket()
+H.fire("EveryOneMinute")
+check(#asks == n0 + 3 and deliver(answerTo(v)) == 2 and near(mineB2.age, b.age, 1e-12),
+    "the next bucket asks again and takes the answer")
+F.hours = F.hours + 1 / 60
+H.fire("EveryOneMinute")
+check(#asks == n0 + 3, "answered: no second ask a minute later")
+-- the player died with the page open: vanilla only marks it removed (ISPlayerData.lua:21,204;
+-- ISUIElement.lua:1373-1380), no refresh, still visible
+nextBucket()
+H.fire("EveryOneMinute")
+local dying = answerTo(v)
+page.removed = true
+mineB2.age = -1
+check(dying and deliver(dying) == 0 and mineB2.age == -1, "page removed (player died) before the answer came: not written")
+nextBucket()
+n0 = #asks
+H.fire("EveryOneMinute")
+check(#asks == n0 and UI.cars[7001] == nil and not UI.watched[page] and UI.nWatched == 0
+    and H.count("EveryOneMinute") == m0, "page removed: no ask, the car's state gone, unwatched, per-minute check removed")
+page.removed = nil
+H.fire("OnRefreshInventoryWindowContainers", page, "end")
+check(#asks == n0 + 1 and deliver(answerTo(v)) == 2 and UI.watched[page] and H.count("EveryOneMinute") == m0 + 1,
+    "a page (the new life's) listing it again: watched, asks at once")
 local nEmpty = #asks
 local ev = F.track(F.vehicle({ pct = 80 }))
 local evFood = food(906, { age = 2 })

@@ -6,10 +6,11 @@
 -- its contents can be seen (shown and not collapsed): when the page is built, then once a game minute,
 --   on:  each food takes its values in fridge.items, once per food instance per settle (`fridge.at`);
 --   off: the page's player asks the server for the values now (`fridgeFoodPull`, answer `fridgeFood` below), again
---        every ten game minutes, and at once when a food instance shows up that the last ask did not see.
+--        every ten game minutes, and at once when a food instance shows up that the last ask did not see; an ask
+--        still unanswered a game minute later is asked once more (the server says nothing when it drops one).
 -- One state per car: UI.cars[vid] = { ver, items = { [id] = the instance applied (on) / asked about (off) }, seq,
--- bucket }, kept only while a page shows that car's fridge (it holds food instances). No page lists one: nothing
--- runs. The switches are in ParkModesUI.lua (right-click) and HUDRadial.lua.
+-- bucket, minute, retry }, kept only while a page shows that car's fridge (it holds food instances). No page lists
+-- one: nothing runs. The switches are in ParkModesUI.lua (right-click) and HUDRadial.lua.
 require "Definitions/ContainerButtonIcons"
 require "MinidoracatTesla/Core"
 ContainerButtonIcons.TeslaFridge = ContainerButtonIcons.fridge
@@ -34,7 +35,10 @@ end
 
 -- this fridge's food to the server's values. On: each food instance not yet given this settle's values gets them;
 -- returns how many. Off: asks through `player` (the page's) when the ten-minute bucket moved on or a food instance is
--- new since the last ask; returns how many foods it asked about (0: no ask)
+-- new since the last ask; returns how many foods it asked about (0: no ask). The server answers nothing when the
+-- player cannot reach the container (Fridge.lua fridgeFoodPull) or the budget drops the ask (Commands.lua): an ask
+-- with no answer by a later minute is asked once more (`retry`), then the next ask waits for the bucket or a new
+-- food, so a container the server never lets this player see costs at most two asks per ten minutes.
 function UI.apply(part, player)
     local md = part:getModData()
     local vid, s = part:getVehicle():getId(), md.fridge
@@ -60,7 +64,8 @@ function UI.apply(part, player)
         end
         return n
     end
-    local st, bucket = state(vid, "off"), math.floor(T.hours() * 6) -- ten game minutes
+    local t = T.hours()
+    local st, bucket, minute = state(vid, "off"), math.floor(t * 6), math.floor(t * 60) -- ten game minutes, one
     local due, now = st.bucket ~= bucket, {}
     for i = 0, items:size() - 1 do
         local it = items:get(i)
@@ -71,17 +76,20 @@ function UI.apply(part, player)
             if st.items[id] ~= it then due = true end
         end
     end
-    if n == 0 or not due or not player then return 0 end
+    local retry = not due and st.retry and minute > st.minute
+    if n == 0 or not (due or retry) or not player then return 0 end
     UI.seq = UI.seq + 1
-    st.items, st.bucket, st.seq = now, bucket, UI.seq
+    st.items, st.bucket, st.seq, st.minute, st.retry = now, bucket, UI.seq, minute, due or nil
     T.request(player, "fridgeFoodPull", { vid = vid, seq = UI.seq })
     return n
 end
 
 -- can this page's contents be seen? Hidden (inventory toggled off) or collapsed to its title bar (ISInventoryPage
--- collapseNow sets only isCollapsed, ISInventoryPage.lua:1276-1280): nothing to show, so nothing applied
+-- collapseNow sets only isCollapsed, ISInventoryPage.lua:1276-1280): nothing to show, so nothing applied. A page
+-- taken off the screen for good (the player died: ISPlayerData.lua:21,204 removeFromUIManager, which sets only
+-- `removed`, ISUIElement.lua:1373-1380, and fires no refresh) is never seen again.
 local function seen(page)
-    return page:getIsVisible() and not page.isCollapsed
+    return page:getIsVisible() and not page.isCollapsed and not page.removed
 end
 
 -- the TeslaFridge parts the page lists, in order
@@ -115,6 +123,7 @@ end
 T.ClientCommands.fridgeFood = function(args)
     local st = UI.cars[args.vid]
     if not (st and st.ver == "off" and st.seq == args.seq and type(args.items) == "table") then return 0 end
+    st.retry = nil -- answered: no second ask
     if not shown(args.vid) then
         UI.cars[args.vid] = nil
         return 0
@@ -138,7 +147,7 @@ T.ClientCommands.fridgeFood = function(args)
 end
 
 -- applies (or asks about) every fridge the page lists while its contents can be seen, noting each such car in `vis`
--- (when given); true when it lists one
+-- (when given); true when it lists one and is still on the screen (a removed page goes unwatched)
 local function scan(page, vis)
     local list = fridges(page)
     if list[1] and seen(page) then
@@ -148,7 +157,7 @@ local function scan(page, vis)
             if vis then vis[part:getVehicle():getId()] = true end
         end
     end
-    return list[1] ~= nil
+    return list[1] ~= nil and not page.removed
 end
 
 -- drops every car's state but those in `keep`: the state holds food instances (food -> container -> car), so it lives
