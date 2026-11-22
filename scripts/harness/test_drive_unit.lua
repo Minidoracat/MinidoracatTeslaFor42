@@ -33,10 +33,10 @@ function sendRemoveItemFromContainer() end
 function sendAddItemsToContainer() end
 getGameTime().getCalender = function() return { getTimeInMillis = function() return 0 end } end
 
--- VehicleManager's adapter registration hooks (not fired here: H.fire would run every test's handlers)
-local onStart, evBefore = {}, { rawget(Events, "OnGameStart"), rawget(Events, "OnServerStarted") }
-rawset(Events, "OnGameStart", { Add = function(fn) onStart[#onStart + 1] = fn end })
-rawset(Events, "OnServerStarted", rawget(Events, "OnGameStart"))
+-- VehicleManager's adapter registration hooks, one fake event each (not fired here: H.fire would run every test's handlers)
+local onServer, onGame, evBefore = {}, {}, { rawget(Events, "OnGameStart"), rawget(Events, "OnServerStarted") }
+rawset(Events, "OnGameStart", { Add = function(fn) onGame[#onGame + 1] = fn end })
+rawset(Events, "OnServerStarted", { Add = function(fn) onServer[#onServer + 1] = fn end })
 require "MinidoracatTesla/DriveUnit"
 rawset(Events, "OnGameStart", evBefore[1])
 rawset(Events, "OnServerStarted", evBefore[2])
@@ -217,20 +217,32 @@ check(nwin.context.options[2].name == "IGUI_TakeEngineParts" and nwin.context.op
 H.section("VehicleManager's action guard over our two actions")
 local specs = {}
 MinidoracatVehicleManagerAPI = { registerActionAdapter = function(spec) specs[#specs + 1] = spec end }
-if onStart[1] then onStart[1]() end
-local byClass = {}
-for _, s in ipairs(specs) do byClass[s.class] = s end
-local sr, ss = byClass.ISMinidoracatTeslaRepairDriveUnit, byClass.ISMinidoracatTeslaTakeDriveUnitParts
+-- one event's handlers fired alone: the adapters they register, by class
+local function fired(handlers)
+    specs = {}
+    for _, fn in ipairs(handlers) do fn() end
+    local by = {}
+    for _, s in ipairs(specs) do by[s.class] = s end
+    return by, #specs
+end
 local probe = { part = te }
-check(#onStart == 2 and onStart[1] == onStart[2] and #specs == 2 and sr and ss
-    and sr.class == ISMinidoracatTeslaRepairDriveUnit.Type and ss.class == ISMinidoracatTeslaTakeDriveUnitParts.Type
-    and sr.action == "REPAIR" and ss.action == "SALVAGE" and #sr.stages == 1 and sr.stages[1] == "complete"
-    and ss.stages[1] == "complete" and sr.vehicleOf(probe) == tv and sr.partOf(probe) == te
-    and ss.vehicleOf({}) == nil, "D1 registered on server start and game start: repair REPAIR, salvage SALVAGE, at complete")
+local function registersOurs(handlers)
+    local by, n = fired(handlers)
+    local sr, ss = by.ISMinidoracatTeslaRepairDriveUnit, by.ISMinidoracatTeslaTakeDriveUnitParts
+    return n == 2 and sr ~= nil and ss ~= nil and sr.class == ISMinidoracatTeslaRepairDriveUnit.Type
+        and ss.class == ISMinidoracatTeslaTakeDriveUnitParts.Type and sr.action == "REPAIR" and ss.action == "SALVAGE"
+        and #sr.stages == 1 and sr.stages[1] == "complete" and #ss.stages == 1 and ss.stages[1] == "complete"
+        and sr.vehicleOf(probe) == tv and sr.partOf(probe) == te and ss.vehicleOf({}) == nil
+end
+check(#onServer == 1 and registersOurs(onServer),
+    "D1 OnServerStarted alone (a dedicated server): repair REPAIR, salvage SALVAGE, at complete")
+check(#onGame == 1 and registersOurs(onGame), "D1 OnGameStart alone (SP, a client): repair REPAIR, salvage SALVAGE, at complete")
+local byClass = fired(onGame) -- D3's guard below wraps these
+local sr, ss = byClass.ISMinidoracatTeslaRepairDriveUnit, byClass.ISMinidoracatTeslaTakeDriveUnitParts
 MinidoracatVehicleManagerAPI = nil
-local quiet = pcall(onStart[1] or function() error("none") end)
+local quiet = pcall(onGame[1] or function() error("none") end)
 MinidoracatVehicleManagerAPI = {}
-quiet = quiet and pcall(onStart[1])
+quiet = quiet and pcall(onGame[1]) and pcall(onServer[1] or function() error("none") end)
 check(quiet, "D2 no VehicleManager, or one without registerActionAdapter: nothing, no error")
 MinidoracatVehicleManagerAPI = nil
 -- VehicleManager's outer wrap (its ActionGuards.lua install/makeWrapper): canUse for the adapter's action; refused, false
@@ -255,3 +267,59 @@ check(sr and ISMinidoracatTeslaRepairDriveUnit:new(mechanic(6, 3), te, wrench, 3
 check(ss and ISMinidoracatTeslaTakeDriveUnitParts:new(mechanic(6, 0), te, wrench, 300):complete() == true and te.cond == 0,
     "D3 SALVAGE only: the salvage runs")
 for cls, inner in pairs(completeBefore) do cls.complete = inner end
+
+H.section("D4 the mechanics window asks VehicleManager before it queues (repair REPAIR, take SALVAGE)")
+local globals = { "ISVehicleMenu", "VehicleUtils", "ItemTag", "ISVehiclePartMenu", "ISTimedActionQueue", "ISPathFindAction",
+    "ISUnlockVehicleDoor", "ISOpenVehicleDoor", "ISCloseVehicleDoor", "HaloTextHelper", "MinidoracatVehicleManagerAPI" }
+local before = {}
+for i, g in ipairs(globals) do before[i] = rawget(_G, g) end
+local queued, told, exited = {}, {}, 0
+local function action(kind) return { new = function() return { kind = kind } end } end
+ISVehicleMenu = { onExit = function() exited = exited + 1 end }
+VehicleUtils = { getItems = function() return nil, { WRENCH = { wrench } } end, RequiredKeyNotFound = function() return true end }
+ItemTag = { WRENCH = "WRENCH" }
+ISVehiclePartMenu = { toPlayerInventory = function() end }
+ISTimedActionQueue = { add = function(a) queued[#queued + 1] = a.kind or a.Type end }
+ISPathFindAction = { pathToVehicleArea = function() return { kind = "path" } end }
+ISUnlockVehicleDoor, ISOpenVehicleDoor, ISCloseVehicleDoor = action("unlock"), action("open"), action("close")
+HaloTextHelper = { addBadText = function(chr, t) told[#told + 1] = { chr = chr, t = t } end }
+-- the hood shut and locked, the mechanic seated, no key in hand (VehicleUtils.RequiredKeyNotFound above)
+local hood = { locked = true, open = false }
+function hood:isLocked() return self.locked end
+function hood:isOpen() return self.open end
+tv.parts.EngineDoor = { getId = function() return "EngineDoor" end, getVehicle = function() return tv end,
+    getDoor = function() return hood end, getInventoryItem = function() return {} end }
+local pm = mechanic(6, 1)
+function pm:getVehicle() return tv end
+function pm:getPlayerNum() return 0 end
+function pm.inv:getFirstTypeRecurse() return {} end
+local vmSays -- canUse's answer for each code
+local function ask(fn)
+    queued, told, exited = {}, {}, 0
+    fn(pm, te)
+    return table.concat(queued, ",")
+end
+local full = "path,unlock,open,"
+MinidoracatVehicleManagerAPI = { canUse = function(_, _, code) local a = vmSays[code] or { false, "NO_SHARE" }; return a[1], a[2] end }
+vmSays = { REPAIR = { true, "OWNER" } }
+local got = ask(DU.onTake)
+check(got == "" and exited == 0 and hood.locked and not hood.open and #told == 1 and told[1].chr == pm
+    and told[1].t == T.denyText("NOT_OWNER"),
+    "D4a SALVAGE refused, the hood shut and locked: nothing queued (no exit, unlock, open), still locked, the reason once")
+vmSays = { REPAIR = { false, "RENT_LOCKED" }, SALVAGE = { true, "SHARED" } }
+got = ask(DU.onRepair)
+check(got == "" and exited == 0 and #told == 1 and told[1].t == T.denyText("RENT_LOCKED"),
+    "D4b REPAIR refused for a rent lock: nothing queued, its own reason once")
+vmSays = { SALVAGE = { true, "SHARED" } }
+got = ask(DU.onTake)
+check(got == full .. "ISMinidoracatTeslaTakeDriveUnitParts,close" and exited == 1 and #told == 0,
+    "D4c SALVAGE granted: vanilla's queue (exit, walk, unlock, open, take, close), nothing said")
+vmSays = { REPAIR = { true, "OWNER" } }
+got = ask(DU.onRepair)
+check(got == full .. "ISMinidoracatTeslaRepairDriveUnit,close" and #told == 0, "D4c REPAIR granted: vanilla's queue")
+vmSays = { REPAIR = { true, "UNCLAIMED" }, SALVAGE = { true, "UNCLAIMED" } }
+check(ask(DU.onTake) == full .. "ISMinidoracatTeslaTakeDriveUnitParts,close" and #told == 0, "D4d an unclaimed car: queued")
+MinidoracatVehicleManagerAPI = nil
+check(ask(DU.onTake) == full .. "ISMinidoracatTeslaTakeDriveUnitParts,close" and #told == 0, "D4d no VehicleManager: queued")
+tv.parts.EngineDoor = nil
+for i, g in ipairs(globals) do rawset(_G, g, before[i]) end

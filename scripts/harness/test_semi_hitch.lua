@@ -445,6 +445,16 @@ s, n = walkedTo(trailer, 5, 5, function(x) got = x end)
 check(got == "mine" and n == 0 and s.stopped, "S4 a walk with its own failure handler: that one is called")
 s = walkedTo(my, 20, 0)
 check(s.performed and not s.stopped, "S5 not the trailer: vanilla's end wherever it stopped")
+-- the reach is the engine's DistTo(int, int): Manhattan, from the trailer's spot cut to whole tiles (smoke_harness H.player)
+trailer.x, trailer.y = 200, 300
+s, n = walkedTo(trailer, 4, 2.5)
+check(n == 1 and s.stopped and not s.performed, "S6 4 and 2.5 tiles off: 6.5 Manhattan, past the reach (a straight line: 4.7)")
+trailer.x, trailer.y = 200.9, 300.9
+s, n = walkedTo(trailer, 2.6, 2.1)
+check(n == 1 and s.stopped, "S7 2.6 and 2.1 off a trailer at (200.9, 300.9): 6.5 from tile (200, 300), past (4.7 from its spot)")
+s, n = walkedTo(trailer, -5.4, -0.9)
+check(s.performed and n == 0, "S7 5.4 and 0.9 the other way: 4.5 from tile (200, 300), within (6.3 from its spot)")
+trailer.x, trailer.y = tx, ty
 
 ISVehicleMenu, ISVehicleTrailerUtils, ISAttachTrailerToVehicle, ISDetachTrailerFromVehicle, ISTimedActionQueue,
     getCell, getServerOptions, getPlayerRadialMenu, UIManager, getTexture, ISVehicleMechanics, ISPathFindAction, Vector3f,

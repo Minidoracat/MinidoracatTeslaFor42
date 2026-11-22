@@ -7,8 +7,15 @@ require "MinidoracatTesla/DriveUnit"
 
 local T, DU = MinidoracatTesla, MinidoracatTesla.DriveUnit
 
--- ISVehicleMechanics.onRepairEngine / onTakeEngineParts (:418-449, :463-493)
-local function queue(playerObj, part, cls, withParts)
+-- ISVehicleMechanics.onRepairEngine / onTakeEngineParts (:418-449, :463-493). VehicleManager refuses this work (repair:
+-- REPAIR, take: SALVAGE, as DriveUnit.lua registerVM gives its guard): its reason, nothing queued, before the hood's
+-- unlock and open, which its guard on our complete() would leave open behind the refusal (the queue drops the close).
+local function queue(playerObj, part, cls, withParts, code)
+    local refused = T.vmRefusal(playerObj, part:getVehicle(), { code })
+    if refused then
+        HaloTextHelper.addBadText(playerObj, T.denyText(refused))
+        return
+    end
     if playerObj:getVehicle() then ISVehicleMenu.onExit(playerObj) end
     local _, tagToItem = VehicleUtils.getItems(playerObj:getPlayerNum())
     local wrench = tagToItem[ItemTag.WRENCH][1]
@@ -28,8 +35,8 @@ local function queue(playerObj, part, cls, withParts)
     if lid then ISTimedActionQueue.add(ISCloseVehicleDoor:new(playerObj, vehicle, lid)) end
 end
 
-function DU.onRepair(playerObj, part) queue(playerObj, part, ISMinidoracatTeslaRepairDriveUnit, true) end
-function DU.onTake(playerObj, part) queue(playerObj, part, ISMinidoracatTeslaTakeDriveUnitParts, false) end
+function DU.onRepair(playerObj, part) queue(playerObj, part, ISMinidoracatTeslaRepairDriveUnit, true, "REPAIR") end
+function DU.onTake(playerObj, part) queue(playerObj, part, ISMinidoracatTeslaTakeDriveUnitParts, false, "SALVAGE") end
 
 -- ISVehicleMechanics:doMenuTooltip "takeengineparts" / "repairengine" (:628-686) with our item and texts
 local function tooltip(chr, part, option, wrench, repair)

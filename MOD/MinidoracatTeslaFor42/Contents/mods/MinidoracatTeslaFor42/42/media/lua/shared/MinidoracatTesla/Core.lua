@@ -777,6 +777,20 @@ function T.ownRule(player, vehicle)
 end
 -- VehicleManager refusals that keep their own reason text (IGUI_MinidoracatTesla_Deny_<reason>); any other is NOT_OWNER
 T.VM_REASONS = { RENT_LOCKED = true, FACTION_PAUSED = true, QUARANTINED = true }
+-- VehicleManager refuses `player` every one of `codes` on this car: the reason to show (as T.mayUseCable: its rent /
+-- faction / quarantine locks keep theirs, any other is NOT_OWNER); nil when one is granted, without VehicleManager, or on
+-- an unclaimed car (canUse true, "UNCLAIMED"). MP client: its projection, so a pre-check; its server guard decides.
+function T.vmRefusal(player, vehicle, codes)
+    local api = MinidoracatVehicleManagerAPI
+    if not (api and api.canUse) then return nil end
+    local why
+    for _, code in ipairs(codes) do
+        local ok, w = T.authorized(player, vehicle, code)
+        if ok then return nil end
+        why = w
+    end
+    return T.VM_REASONS[why] and why or "NOT_OWNER"
+end
 
 -- Admin: same capability VehicleManager uses (MinidoracatVehicleManager_OwnershipSystem.lua:192-195).
 function T.isAdmin(player)
@@ -817,8 +831,10 @@ function T.send(player, cmd, args)
         if fn then fn(args or {}) end
     end
 end
+-- `pn`: the player's split-screen slot on its machine (IsoPlayer getPlayerNum; on a server the index its client sent
+-- when it connected, GameServer.java:2833,2858 <- ConnectPacket.java:43), so the client shows it over that player
 function T.deny(player, reason, vid)
-    T.send(player, "deny", { reason = reason, vid = vid })
+    T.send(player, "deny", { reason = reason, vid = vid, pn = player:getPlayerNum() })
 end
 -- Text of IGUI_MinidoracatTesla_Deny_<reason>; CAMP_LOW_BATTERY carries the sandbox limit as %1, NO_LINK the Bluetooth
 -- range (Keys.btRange, this side's SandboxVars: the server sends the code only). A summon refused by
