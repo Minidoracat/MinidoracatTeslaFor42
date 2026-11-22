@@ -1101,8 +1101,13 @@ def edit(car, names):
     sizes = {k: len(v) for k, v in groups.items()}
     bm.to_mesh(car.data)
     bm.free()
-    # custom normals of split corners: zero after the bisect interpolation fails -> face normal
-    me = car.data
+    bad = lost_normals(car.data)
+    print("EDIT corners with lost normals", bad)
+    return sizes
+
+
+def lost_normals(me):
+    """Custom normals of split corners: zero after the bisect interpolation fails -> face normal. -> how many."""
     cn = np.empty(len(me.loops) * 3, np.float32)
     me.attributes["custom_normal"].data.foreach_get("vector", cn)
     cn = cn.reshape(-1, 3)
@@ -1113,8 +1118,36 @@ def edit(car, names):
         lt = np.array([p.loop_total for p in me.polygons])
         cn[bad] = np.repeat(fn.reshape(-1, 3), lt, 0)[bad]
         me.attributes["custom_normal"].data.foreach_set("vector", cn.ravel())
-    print("EDIT corners with lost normals", int(bad.sum()))
-    return sizes
+    return int(bad.sum())
+
+
+def head_cut(car):
+    """LAMPS head_cut (Model Y L) {mats, lo, hi, x}: bisect those materials' faces centred in the box (|x|, y, z centred
+    as head_boxes) at |x| = each x, so a head_boxes box ends on the cut, not on the headlamp pocket's back-wall
+    triangles that run out to its rim. After unwrap: the pieces keep their triangle's UV0 / UV1 (interpolated), so the
+    packing, the skins and the paint stay as without the cut (cut in edit(), smart_project packed every island anew)."""
+    hc = LAMPS["head_cut"]
+    bm = bmesh.new()
+    bm.from_mesh(car.data)
+    vco = np.array([v.co for v in bm.verts])
+    off = np.r_[0.0, ((vco.min(0) + vco.max(0)) / 2)[1:]]
+    hmi = {i for i, m in enumerate(car.data.materials) if m and m.name in hc["mats"]}
+    lo, hi = np.array(hc["lo"], float), np.array(hc["hi"], float)
+
+    def in_box(f):
+        c = np.array(f.calc_center_median()) - off
+        c[0] = abs(c[0])
+        return (lo < c).all() and (c < hi).all()
+    for x in hc["x"]:
+        for sx in (x, -x):
+            fs = [f for f in bm.faces if f.is_valid and f.material_index in hmi and in_box(f)]
+            # (ordered: a set's order follows memory addresses, and the bisect's new vertex order followed it)
+            geom = list(dict.fromkeys([*fs, *[e for f in fs for e in f.edges], *[v for f in fs for v in f.verts]]))
+            bmesh.ops.bisect_plane(bm, geom=geom, dist=1e-6, plane_co=(sx, 0, 0), plane_no=(1, 0, 0))
+    bmesh.ops.triangulate(bm, faces=[f for f in bm.faces if len(f.verts) > 3])
+    bm.to_mesh(car.data)
+    bm.free()
+    print("HEAD_CUT faces", len(car.data.polygons), "corners with lost normals", lost_normals(car.data))
 
 
 def match(spec, obj, csize):
@@ -1128,8 +1161,9 @@ def match(spec, obj, csize):
     return m
 
 
-def classify(car, names, sizes):
-    """Per face: part, zone (ZN index), skin colour, paint flag, lamp kind, glass flag and pane (GLASS_ZONES index)."""
+def classify(car, names, sizes, heads=True):
+    """Per face: part, zone (ZN index), skin colour, paint flag, lamp kind, glass flag and pane (GLASS_ZONES index).
+    heads False: without LAMPS head_boxes (stage_build before head_cut)."""
     me = car.data
     n = len(me.polygons)
     src, comp = (np.empty(n, np.int64) for _ in range(2))
@@ -1272,7 +1306,7 @@ def classify(car, names, sizes):
     # END_ZONES' boxes): those materials' faces centred in a box are head lamps too, for a lamp in a material the car
     # uses elsewhere (Model Y / Y L: the main headlamps in the bumper's pockets under the light bar, dark at night
     # before, E2E armorY-night 2026-11-22)
-    if LAMPS.get("head_boxes"):
+    if LAMPS.get("head_boxes") and heads:
         co_ = pv.mesh_co(car)
         cc = cen - np.r_[0.0, ((co_.min(0) + co_.max(0)) / 2)[1:]]   # centred as stage_build centres the mesh
         cc[:, 0] = np.abs(cc[:, 0])
@@ -2189,11 +2223,20 @@ def textures(car, c, shift=0.0):
 
 # ---------------------------------------------------------------- build
 
-def stage_build():
-    os.makedirs(TMP, exist_ok=True)
-    car, names, wheels, tire, rear = load_source()
-    sizes = edit(car, names)
-    c = classify(car, names, sizes)
+def zones(car, names, sizes, shift=None, heads=True):
+    """classify, the mesh split where the mask zone changes (split_zone_edges), classify again, END_ZONES /
+    LAMP_ZONES / WORDMARK's zones. shift: the mesh is centred by it (stage_build's head_cut pass): classified in the
+    source's coordinates, its vertices put back as they were. heads: classify's."""
+    def in_source(fn):
+        if shift is None:
+            return fn()
+        co = pv.mesh_co(car)
+        pv.set_co(car, co + shift)
+        try:
+            return fn()
+        finally:
+            pv.set_co(car, co)
+    c = in_source(lambda: classify(car, names, sizes, heads))
     # and the CARBON border: crisp, not texel steps; SPLIT_COLOURS (Model X: its body is one mesh in several materials,
     # so the paint / black trim borders ran through UV islands as texel steps, blurred at 512, user 2026-11-01) every
     # skin colour border too
@@ -2203,16 +2246,26 @@ def stage_build():
     if C.get("SPLIT_COLOURS"):
         key = key * len(c["rgb"]) + np.unique(np.c_[c["rgb"], c["paint"]], axis=0, return_inverse=True)[1].ravel()
     split_zone_edges(car, key, every=bool(C.get("SPLIT_COLOURS")))
-    c = classify(car, names, sizes)         # same faces, new vertex split
+    c = in_source(lambda: classify(car, names, sizes, heads))  # same faces, new vertex split
     if C.get("END_ZONES"):
-        end_zones(car, c)
+        in_source(lambda: end_zones(car, c))
     elif C.get("LAMP_ZONES"):              # (Cybercab: HEAD_TAIL put its lamps' housings in Head / Tail)
-        lamp_zones(car, c, C["LAMP_ZONES"])
+        in_source(lambda: lamp_zones(car, c, C["LAMP_ZONES"]))
     if C.get("WORDMARK"):                  # (Cybercab) its wordmarks stay black when hit (user 2026-11-16, the lids'
         # black trim): in the mask only (lamp_zones' way), the WORDMARK zone; their faces and UV1 keep their part's
         mz = c.get("mask_zone", np.full(len(c["zone"]), -1))
         mz[[str(o).startswith("Badge_WORD_") for o in c["obj"]]] = ZN.index(C["WORDMARK"]["zone"])
         c["mask_zone"] = mz
+    return c
+
+
+def stage_build():
+    os.makedirs(TMP, exist_ok=True)
+    car, names, wheels, tire, rear = load_source()
+    sizes = edit(car, names)
+    # head_cut (Model Y L): its head_boxes after the cut, and not before: their faces' new zone borders would split
+    # UV islands and the packing (the skins) would change with them
+    c = zones(car, names, sizes, heads=not LAMPS.get("head_cut"))
     # centre the bbox (mesh centre == model offset == centerOfMassOffset, vanilla convention)
     co = pv.mesh_co(car)
     ctr = (co.min(0) + co.max(0)) / 2
@@ -2220,6 +2273,9 @@ def stage_build():
     shift = np.array([0.0, ctr[1], zmid])
     pv.set_co(car, co - shift)
     unwrap(car, c["obj"], np.isin(c["zone"], [ZN.index("StopL"), ZN.index("StopR")]) if C.get("STOP_UV_SCALE") else None)
+    if LAMPS.get("head_cut"):              # (Model Y L) after the packing: new faces, so classified anew
+        head_cut(car)
+        c = zones(car, names, sizes, shift)
     textures(car, c, shift)
     if C.get("UV_HOLD_MOVE"):
         hold_move(car, shift)

@@ -180,13 +180,17 @@ CAR = dict(
     # (|x| 0.394-0.638, on the body and the tailgate) is the corner lamps' inner C, the brake light as on Model Y
     # (the bar and the thin outer strip the tail lights; teslaoracle.com 2026-01-05, teslaownersonline.com "Juniper
     # rear brake lights as an extension of the light bar")
-    # head_boxes: the main headlamps, the projector lenses (chrome, |x| 0.603-0.665, y 1.80, z -0.28..-0.245 centred)
-    # in the bumper's pockets under the light bar, lit with the headlights (dark before, as the Model Y's; E2E
-    # armorML-yl 2026-11-22)
+    # head_boxes: the main headlamps in the bumper's pockets under the light bar, lit with the headlights (dark before,
+    # as the Model Y's; E2E armorML-yl 2026-11-22): the pocket's inside (black_base, the chrome projector lens at |x|
+    # 0.603-0.665) across |x| 0.570-0.685, the Model Y's lit lamp unit's width (black_refl |x| 0.562-0.675; the lens
+    # alone was 6 x 3 cm, a dot beside the Model Y's, Main 2026-11-22); head_cut bisects the pocket's back-wall
+    # triangles (|x| 0.515-0.718, deep to y 1.64) at those |x|; y < 1.85 leaves out the pocket's rim and the bumper face
     LAMPS=dict(head=("front_white_light",), tail=("back_red_Light", "red_plastic", "M22"), tail_z=0.75, tail_y=-1.5,
                blade="Badge_BLADE", blade_rgb=(236, 78, 44), blade_flush=True, blade_swatch=True, blade_round=0.019,
                blade_split=True, brake=("Plane.043", 0.39),
-               head_boxes=((("chrome",), (0.59, 1.78, -0.29), (0.68, 1.82, -0.235)),)),
+               head_cut=dict(mats=("black_base", "chrome"), lo=(0.50, 1.60, -0.30), hi=(0.75, 1.86, -0.23),
+                             x=(0.570, 0.685)),
+               head_boxes=((("black_base", "chrome"), (0.570, 1.60, -0.30), (0.685, 1.85, -0.23)),)),
     # part lines, side view (y, z): S, BF, BR off this source's panel edges; D the rear door glass / quarter glass
     # divider bar's middle; R1 (z ascending) the rear door's rear edge, upright from the belt to the arch since the
     # prep (work/outline.py; prep FIELD fit moved them forward: work/remap.py)
