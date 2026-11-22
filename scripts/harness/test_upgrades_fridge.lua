@@ -278,6 +278,9 @@ tick(20)
 check(near(kwh(lv), 15, 1e-9) and lp.md.fridge == nil and not FR.cars[lv:getId()],
     "battery reaches 20 %: stops at the floor, switched off, unlisted")
 check(near(e.age, 1 + (7.5 + 12.5 * 0.2) / 24, 1e-9), "food: 12.5 h at the fridge rate, the 7.5 h without power at room rate")
+local last = lp.md.fridgeLast
+check(last and last.at == F.hours and near(last.items["105"].age, e.age, 1e-12) and tx == 1,
+    "fridgeLast = that settle's values, in the one transmit that switches it off")
 check(alerts("lo") == 1, "the one who switched it on hears it (lowBattery, what fridge)")
 tick(5); FR.settle(lv)
 check(alerts("lo") == 1, "told once: off is off")
