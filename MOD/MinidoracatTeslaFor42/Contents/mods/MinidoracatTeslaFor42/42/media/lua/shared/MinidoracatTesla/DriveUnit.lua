@@ -134,6 +134,8 @@ function ISMinidoracatTeslaTakeDriveUnitParts:complete()
         addXp(chr, Perks.Mechanics, 1)
     end
     part:setCondition(0)
+    -- a kit (server/Armor.lua) would give the salvaged condition back at the next game minute: parts for free, again
+    if T.Armor and T.Armor.resnap then T.Armor.resnap(v) end
     v:transmitPartCondition(part)
     chr:sendObjectChange(IsoObjectChange.MECHANIC_ACTION_DONE, { success = (numParts > 0) })
     if numParts > 0 then

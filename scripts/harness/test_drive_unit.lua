@@ -123,8 +123,12 @@ te.cond = 64
 local tm = mechanic(6, 0)
 local tk = ISMinidoracatTeslaTakeDriveUnitParts:new(tm, te, wrench, 300)
 check(tk:isValid() and tk.jobType == "IGUI_MinidoracatTesla_TakeDriveUnitParts", "take: valid on a Tesla, our job text")
+local armor, snapped = T.Armor, nil
+T.Armor = { resnap = function(v) snapped = v end }
 check(tk:complete() == true and tm.inv.added == 6 and te.cond == 0 and tm.xp == 3,
     "level 6: random(20/3, 20) -> 10 points a part, 64 -> 6 parts, condition 0, 6/2 XP")
+check(snapped == tv, "take: a kit's new snapshot after the 0 (else it gives the salvaged condition back)")
+T.Armor = armor
 check(rolled[1] == 20 / 3 and rolled[2] == 20, "roll range is vanilla's c/3..c with c = 20 - skill")
 DU.salvage(50, 30)
 check(rolled[2] == 5, "c never below 5")
