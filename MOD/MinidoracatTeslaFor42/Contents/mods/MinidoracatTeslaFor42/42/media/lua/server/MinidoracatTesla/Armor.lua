@@ -5,9 +5,11 @@
 -- c + loss * (1 - k), randomly rounded, never above the snapshot; higher -> new snapshot only; item changed or gone ->
 -- new snapshot only (a pane or a light knocked out stays out: refitting the old item would copy it).
 -- When: every game minute after the sentry scan (required first, so it still sees the loss) and at once on a crash
--- (OnPlayerGetDamage CARCRASHDAMAGE: only for a car with someone in it, BaseVehicle.java:9494-9505). After any part
--- install / uninstall and the vanilla vehicle commands setPartCondition / repair / repairPart: new snapshot only.
--- Also the server's half of mechanicRequireKey for both upgrade parts (A.mayRemove).
+-- (OnPlayerGetDamage CARCRASHDAMAGE: only for a car with someone in it, BaseVehicle.java:9494-9505). Around anything
+-- that changes conditions on purpose (part install / uninstall, drive unit repair / salvage, vanilla engine actions,
+-- an Armor Glass smash): settle first, then a new snapshot (A.around), so what was owed is given back and the change
+-- itself is kept. After an admin's vanilla vehicle commands setPartCondition / repair / repairPart: new snapshot only.
+-- Also the server's half of mechanicRequireKey for both upgrade parts (A.mayRemove) and of the install checks.
 if isClient() then return end
 require "MinidoracatTesla/Core"
 require "MinidoracatTesla/Sentry"
@@ -119,10 +121,12 @@ function A.onLoad(v)
 end
 Events.OnSpawnVehicleEnd.Add(A.onLoad)
 
--- vanilla vehicle commands that set conditions; Commands.lua calls this after vanilla's handler ran
+-- vanilla vehicle commands that set conditions; Commands.lua calls this after vanilla's handler ran. Vanilla runs them
+-- for UseMechanicsCheat only (VehicleCommands.lua:28-30,261-263,289-291): anyone else's would drop what is owed.
 local RESNAP = { setPartCondition = true, repair = true, repairPart = true }
 function A.onVehicleCommand(module, command, player, args)
     if module ~= "vehicle" or not RESNAP[command] or type(args) ~= "table" then return end
+    if isServer() and not checkPermissions(player, Capability.UseMechanicsCheat) then return end
     local v = getVehicleById(tonumber(args.vehicle) or -1)
     if v then A.resnap(v) end
 end
@@ -165,17 +169,50 @@ end
 -- install / uninstall complete run on the server in MP (NetTimedAction.java:132-134) and locally in SP. Refused: the
 -- part and the item stay as they are; complete returns false (the client gets the action rejected, ActionManager.java:
 -- 74-97), its mechanics window flashes red, and the part is sent again. A snapshot error never breaks the action.
-local function resnapAfter(v)
-    if not v then return end
-    local ok, err = pcall(A.resnap, v)
-    if not ok then T.log("armor resnap error " .. tostring(err)) end
+local function safely(fn, v)
+    local ok, err = pcall(fn, v)
+    if not ok then T.log("armor snapshot error " .. tostring(err)) end
+end
+
+-- fn changes conditions on purpose: what the kit owes is given back first, fn's own change is kept (new snapshot)
+function A.around(v, fn)
+    if not v then return fn() end
+    safely(A.settle, v)
+    local r = fn()
+    safely(A.resnap, v)
+    return r
+end
+
+-- why: logged; deny: the reason the player is told (nil: none, the mechanics window still flashes red)
+local function refuse(v, part, chr, what, why, deny)
+    T.log("upgrade " .. what .. " refused vid=" .. v:getId() .. " part=" .. part:getId() .. " by "
+        .. tostring(chr:getUsername()) .. " why=" .. tostring(why))
+    v:transmitPartItem(part)
+    chr:sendObjectChange(IsoObjectChange.MECHANIC_ACTION_DONE, { success = false })
+    if deny then T.deny(chr, deny, v:getId()) end
+    return false
+end
+
+-- vanilla's complete fits self.item over whatever is there and takes it from the main inventory without asking
+-- (ISInstallVehiclePart.lua:61-99): two players fitting the same empty slot, the second one's kit replaced the first.
+-- So on the server: the slot still empty, the item in the player's main inventory (where vanilla removes it from)
+-- and one this part takes. No deny message (no reason key for it): the mechanics window flashes red.
+local function installRefusal(self)
+    local part, it, chr = self.part, self.item, self.character
+    if part:getInventoryItem() then return "taken" end
+    if not (it and chr:getInventory():contains(it)) then return "item" end
+    local types = part:getItemType()
+    if not (types and types:contains(it:getFullType())) then return "type" end
 end
 
 local install = ISInstallVehiclePart.complete
 ISInstallVehiclePart.complete = function(self)
-    local r = install(self)
-    resnapAfter(self.vehicle)
-    return r
+    local v, part, chr = self.vehicle, self.part, self.character
+    if isServer() and v and part and chr and A.GUARDED[part:getId()] then
+        local bad = installRefusal(self)
+        if bad then return refuse(v, part, chr, "install", bad) end
+    end
+    return A.around(v, function() return install(self) end)
 end
 
 local uninstall = ISUninstallVehiclePart.complete
@@ -183,16 +220,7 @@ ISUninstallVehiclePart.complete = function(self)
     local v, part, chr = self.vehicle, self.part, self.character
     if isServer() and v and part and chr and A.GUARDED[part:getId()] and part:getInventoryItem() then
         local ok, why = A.mayRemove(chr, v, part)
-        if not ok then
-            T.log("upgrade uninstall refused vid=" .. v:getId() .. " part=" .. part:getId() .. " by "
-                .. tostring(chr:getUsername()) .. " why=" .. tostring(why))
-            v:transmitPartItem(part)
-            chr:sendObjectChange(IsoObjectChange.MECHANIC_ACTION_DONE, { success = false })
-            if why then T.deny(chr, why, v:getId()) end
-            return false
-        end
+        if not ok then return refuse(v, part, chr, "uninstall", why, why) end
     end
-    local r = uninstall(self)
-    resnapAfter(v)
-    return r
+    return A.around(v, function() return uninstall(self) end)
 end

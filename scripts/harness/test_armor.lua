@@ -1,8 +1,8 @@
 -- Armor.lua (references/upgrades.md section 4): the kits give back loss * (1 - k) after the fact, never above the
 -- snapshot and never twice; a changed or missing item is only re-recorded (no refit); what is covered; tracking by
--- the car, not its reused id; the crash event only; new snapshots after part actions and vanilla vehicle commands;
--- the sentry scan registered first; the server's key / empty / VehicleManager check on taking TeslaArmor or
--- TeslaFridge off.
+-- the car, not its reused id; the crash event only; settle before and a new snapshot after part actions (A.around),
+-- a new snapshot after an admin's vanilla vehicle commands only; the sentry scan registered first; the server's key /
+-- empty / VehicleManager check on taking TeslaArmor or TeslaFridge off and its slot / item check on fitting them.
 local check = H.check
 local T = MinidoracatTesla
 local MEDIA = "MOD/MinidoracatTeslaFor42/Contents/mods/MinidoracatTeslaFor42/42/media/lua"
@@ -21,9 +21,17 @@ require = function(name)
 end
 Events.EveryOneMinute.Add = function(fn) order[#order + 1] = "minute"; return minuteAdd(fn) end
 T.Liftgate = { glassLast = function() end }
--- vanilla uninstall on success (ISUninstallVehiclePart.lua:62-69): the item leaves the part
+-- vanilla install / uninstall on success (ISInstallVehiclePart.lua:73-99, ISUninstallVehiclePart.lua:62-69): the item
+-- leaves the player's inventory for the part, or the part
 local vanilla = { install = 0, uninstall = 0 }
-ISInstallVehiclePart = { complete = function() vanilla.install = vanilla.install + 1; return true end }
+ISInstallVehiclePart = { complete = function(self)
+    vanilla.install = vanilla.install + 1
+    if self.item then
+        if self.character.inv then self.character.inv[self.item] = nil end
+        self.part.item = self.item
+    end
+    return true
+end }
 ISUninstallVehiclePart = { complete = function(self)
     vanilla.uninstall = vanilla.uninstall + 1
     self.part.item = nil
@@ -43,10 +51,16 @@ local function item(full)
     function it:getID() return self.id end
     return it
 end
+local function list(...) -- a java ArrayList<String> (VehiclePart.getItemType)
+    local l = { ... }
+    function l:contains(x) for _, y in ipairs(self) do if y == x then return true end end return false end
+    return l
+end
 local function part(id, o)
     o = o or {}
     local p = { id = id, cat = o.cat, item = o.item, window = o.window, light = o.light, cond = o.cond or 100,
-        sets = 0, refits = 0, tbl = o.tbl, box = o.box, content = 0 }
+        sets = 0, refits = 0, tbl = o.tbl, box = o.box, content = 0, types = o.types }
+    function p:getItemType() return self.types end
     function p:getId() return self.id end
     function p:getCategory() return self.cat end
     function p:getWindow() return self.window end
@@ -75,8 +89,9 @@ local function car(kit, id)
     add(part("GasTank", { item = item() }))
     add(part("TireFrontLeft", { cat = "tire", item = item() }))
     add(part("Battery", { item = item() }))
-    add(part("TeslaArmor", { cat = "upgrade", item = kit and item("Base.MinidoracatTesla_Armor" .. kit) or nil }))
-    add(part("TeslaFridge", { cat = "upgrade", item = item("Base.MinidoracatTesla_Fridge"),
+    add(part("TeslaArmor", { cat = "upgrade", item = kit and item("Base.MinidoracatTesla_Armor" .. kit) or nil,
+        types = list("Base.MinidoracatTesla_ArmorInner", "Base.MinidoracatTesla_ArmorOuter") }))
+    add(part("TeslaFridge", { cat = "upgrade", item = item("Base.MinidoracatTesla_Fridge"), types = list("Base.MinidoracatTesla_Fridge"),
         tbl = { uninstall = { requireEmpty = "true" } }, box = { n = 0, isEmpty = function(b) return b.n == 0 end } }))
     function v:getId() return self.id end
     function v:getPartCount() return #self.list end
@@ -222,12 +237,18 @@ check(cond(v, "DoorFrontLeft") == 80, "CARCRASHDAMAGE: the car settles at once")
 local walker = H.player({ name = "walk" })
 H.fire("OnPlayerGetDamage", walker, "CARCRASHDAMAGE", 5)
 check(true, "CARCRASHDAMAGE on someone not in a car: nothing")
-
+H.side(false, true)
+local mech = H.player({ name = "mech" }) -- no UseMechanicsCheat: vanilla refuses the command (VehicleCommands.lua:30)
+hit(v, "DoorFrontLeft", 60)
+H.fire("OnClientCommand", "vehicle", "setPartCondition", mech, { vehicle = v.id, part = "DoorFrontLeft", condition = 60 })
+H.fire("OnClientCommand", "vehicle", "repair", mech, { vehicle = v.id })
+A.settle(v)
+check(cond(v, "DoorFrontLeft") == 70, "a non-admin's setPartCondition / repair (refused by vanilla): no new snapshot, still given back")
 local admin = H.player({ name = "adm", admin = true })
 hit(v, "DoorFrontLeft", 50) -- an admin sets the condition (vanilla VehicleCommands setPartCondition)
 H.fire("OnClientCommand", "vehicle", "setPartCondition", admin, { vehicle = v.id, part = "DoorFrontLeft", condition = 50 })
 A.settle(v)
-check(cond(v, "DoorFrontLeft") == 50, "after vanilla setPartCondition: new snapshot, not given back")
+check(cond(v, "DoorFrontLeft") == 50, "after an admin's setPartCondition: new snapshot, not given back")
 hit(v, "EngineDoor", 40)
 H.fire("OnClientCommand", "vehicle", "repairPart", admin, { vehicle = v.id })
 A.settle(v)
@@ -236,16 +257,27 @@ hit(v, "EngineDoor", 30)
 H.fire("OnClientCommand", "vehicle", "crash", admin, { vehicle = v.id })
 A.settle(v)
 check(cond(v, "EngineDoor") == 35, "other vanilla commands leave the snapshot")
+-- part actions: what is owed is given back first, the action's own change kept (A.around)
 hit(v, "WindowFrontLeft", 70)
-ISInstallVehiclePart.complete({ vehicle = v, part = v.parts.Battery, character = admin })
+local tyre = item()
+v.parts.TireFrontLeft.item = nil
+ISInstallVehiclePart.complete({ vehicle = v, part = v.parts.TireFrontLeft, item = tyre, character = admin })
+check(cond(v, "WindowFrontLeft") == 85 and v.parts.TireFrontLeft.item == tyre and vanilla.install == 1,
+    "a tyre fitted: the window's loss from before is still given back (70 -> 85), not dropped by a new snapshot")
 A.settle(v)
-check(cond(v, "WindowFrontLeft") == 70 and vanilla.install == 1, "after any part install complete: new snapshot")
-hit(v, "WindowFrontLeft", 60)
+check(cond(v, "WindowFrontLeft") == 85, "...and only once")
+hit(v, "WindowFrontLeft", 65)
 H.side(false, false)
-ISUninstallVehiclePart.complete({ vehicle = v, part = v.parts.Battery, character = admin })
+ISUninstallVehiclePart.complete({ vehicle = v, part = v.parts.TireFrontLeft, character = admin })
 H.side(false, true)
-A.settle(v)
-check(cond(v, "WindowFrontLeft") == 60 and vanilla.uninstall == 1, "after any part uninstall complete: new snapshot")
+check(cond(v, "WindowFrontLeft") == 75 and v.parts.TireFrontLeft.item == nil and vanilla.uninstall == 1,
+    "SP, the tyre taken off: the window's loss given back first (85 -> 65 back to 75)")
+hit(v, "WindowFrontLeft", 60)
+A.around(v, function() v.parts.EngineDoor.cond = 0 end) -- e.g. vanilla's engine-parts salvage on a covered part
+check(cond(v, "WindowFrontLeft") == 68 and cond(v, "EngineDoor") == 0,
+    "A.around: what is owed given back first (75 -> 60 back to 68: keeps 7 of 7.5 at roll 0.5), the action's 35 -> 0 kept")
+H.fire("EveryOneMinute")
+check(cond(v, "EngineDoor") == 0 and cond(v, "WindowFrontLeft") == 68, "...the next minute gives none of it back")
 
 H.section("Armor: taking an upgrade off (server)")
 T.Keys = { card = function(p) return p.card end, phoneKey = function() return nil end }
@@ -270,12 +302,17 @@ local function takeOff(chr, car_, pid)
     return r, vanilla.uninstall > before
 end
 v = car("Inner")
+A.track(v)
+hit(v, "WindowFrontLeft", 60)
 local kit = v.parts.TeslaArmor.item
 local thief = player("thief")
 local r, ran = takeOff(thief, v, "TeslaArmor")
 check(r == false and not ran and v.parts.TeslaArmor.item == kit, "no key, locked car: refused, kit stays, vanilla complete not run")
 check(lastDeny() == "CAR_LOCKED" and v.itemTx == 1 and thief.changes[1] and thief.changes[1].success == false,
     "refused: told why (CAR_LOCKED), part sent again, mechanics window flashes red")
+check(cond(v, "WindowFrontLeft") == 60, "refused: no settling around it (the window's loss waits for the minute)")
+A.settle(v)
+check(cond(v, "WindowFrontLeft") == 80, "...nor a new snapshot: the minute still gives it back (60 -> 80)")
 r, ran = takeOff(thief, v, "TeslaFridge")
 check(r == false and not ran and v.parts.TeslaFridge.item ~= nil, "no key: the fridge stays too")
 r, ran = takeOff(thief, v, "Battery")
@@ -338,6 +375,65 @@ H.side(false, false)
 r, ran = takeOff(thief, v, "TeslaArmor")
 H.side(false, true)
 check(r == true and ran, "SP: no server check (vanilla's own test on this machine)")
+
+H.section("Armor: fitting an upgrade (server)")
+-- a player holding `items` in the main inventory (ItemContainer.contains: that container only, ItemContainer.java:693)
+local function fitter(name, ...)
+    local p = player(name)
+    p.inv = {}
+    for _, it in ipairs({ ... }) do p.inv[it] = true end
+    function p:getInventory()
+        local inv = self.inv
+        return { contains = function(_, it) return inv[it] == true end, haveThisKeyId = function() return nil end }
+    end
+    return p
+end
+local function fit(chr, car_, pid, it)
+    H.sent = {}
+    local before = vanilla.install
+    local r = ISInstallVehiclePart.complete({ vehicle = car_, part = car_.parts[pid], item = it, character = chr })
+    return r, vanilla.install > before
+end
+v = car(nil)
+local kitA, kitB = item("Base.MinidoracatTesla_ArmorInner"), item("Base.MinidoracatTesla_ArmorOuter")
+local pa, pb = fitter("a", kitA), fitter("b", kitB)
+r, ran = fit(pa, v, "TeslaArmor", kitA)
+check(r == true and ran and v.parts.TeslaArmor.item == kitA and pa.inv[kitA] == nil, "empty slot, A's kit in A's inventory: fitted")
+v.itemTx = 0
+r, ran = fit(pb, v, "TeslaArmor", kitB)
+check(r == false and not ran and v.parts.TeslaArmor.item == kitA and pb.inv[kitB] == true,
+    "B's install completes second on the same slot: refused, A's kit stays on the car, B keeps his")
+check(v.itemTx == 1 and pb.changes[1] and pb.changes[1].success == false and #H.sent == 0,
+    "refused: the part sent again, B's mechanics window flashes red, no deny message")
+v.parts.TeslaArmor.item = nil
+r, ran = fit(pb, v, "TeslaArmor", item("Base.MinidoracatTesla_ArmorOuter"))
+check(r == false and not ran and v.parts.TeslaArmor.item == nil, "an item not in the player's main inventory: refused")
+r, ran = fit(pb, v, "TeslaArmor", nil)
+check(r == false and not ran, "no item at all: refused")
+local fr = item("Base.MinidoracatTesla_Fridge")
+pb.inv[fr] = true
+r, ran = fit(pb, v, "TeslaArmor", fr)
+check(r == false and not ran and v.parts.TeslaArmor.item == nil and pb.inv[fr] == true,
+    "an item the slot does not take (the fridge into TeslaArmor): refused, kept")
+v.parts.TeslaFridge.item = nil
+r, ran = fit(pb, v, "TeslaFridge", fr)
+check(r == true and ran and v.parts.TeslaFridge.item == fr, "the fridge into an empty TeslaFridge: fitted")
+local fr2 = item("Base.MinidoracatTesla_Fridge")
+pa.inv[fr2] = true
+r, ran = fit(pa, v, "TeslaFridge", fr2)
+check(r == false and not ran and v.parts.TeslaFridge.item == fr and pa.inv[fr2] == true, "a second fridge on a fitted one: refused")
+local bat = item()
+r, ran = fit(pb, v, "Battery", bat)
+check(r == true and ran and v.parts.Battery.item == bat, "any other part: vanilla as is")
+v = car("Inner")
+A.track(v)
+hit(v, "WindowFrontLeft", 60)
+r, ran = fit(pa, v, "TeslaFridge", fr2)
+check(r == false and cond(v, "WindowFrontLeft") == 60, "refused install: no settling around it")
+H.side(false, false)
+r, ran = fit(pb, v, "TeslaArmor", kitB)
+H.side(false, true)
+check(r == true and ran and v.parts.TeslaArmor.item == kitB, "SP: no server check (vanilla's own on this machine)")
 
 -- leave the shared world as it was
 A.cars = {}

@@ -252,6 +252,53 @@ wy.open = true
 a = setmetatable({ character = thief, window = wy }, { __index = ISSmashWindow })
 check(a:isValid() == true, "a Model Y window rolled down: vanilla (no Armor Glass)")
 
+H.section("Cybertruck: Armor Glass with a protection kit fitted (Armor.lua A.around)")
+-- the real Armor.lua (loaded by test_armor; test_drive_unit puts it back): a kit settles and snapshots around each
+-- smash, so the minute after a smash gives none of it back (before: k = 0.5 took 34 -> 17 back, never broke)
+local A = T.Armor
+local function kitted(kit)
+    local c = truck()
+    local w = glass(c)
+    local wp, pane = w:getPart(), { getID = function() return 501 end }
+    function wp:getInventoryItem() if w.glassGone then return nil end return pane end
+    function wp:getCategory() return nil end
+    function wp:getWindow() return w end
+    function wp:getLight() return nil end
+    function wp:getCondition() return w.hp end -- the window's health is the part's condition (VehicleWindow.java:76-89)
+    function wp:setCondition(n) w.hp = n end
+    local kp = { getId = function() return "TeslaArmor" end, getCategory = function() return "upgrade" end }
+    local kitItem = { getFullType = function() return "Base.MinidoracatTesla_Armor" .. kit end, getID = function() return 502 end }
+    function kp:getInventoryItem() return kitItem end
+    c.parts.TeslaArmor = kp
+    local list = { wp, kp }
+    function c:getPartCount() return #list end
+    function c:getPartByIndex(i) return list[i + 1] end
+    function c:transmitPartCondition() end
+    function c:transmitPartWindow() end
+    A.track(c)
+    return c, w
+end
+check(A and A.around and A.minute, "Armor.lua's A.around / A.minute are loaded")
+for _, s in ipairs({ { false, "SP" }, { true, "MP server" } }) do
+    for _, kit in ipairs({ "Inner", "Outer" }) do
+        H.side(false, s[1])
+        local c, kw = kitted(kit)
+        a = setmetatable({ character = thief, window = kw }, { __index = ISSmashWindow })
+        local hps = {}
+        for i = 1, 3 do a:complete(); A.minute(); hps[i] = kw.hp end
+        check(hps[1] == 66 and hps[2] == 32 and hps[3] == 0 and kw:isDestroyed(),
+            s[2] .. ", kit " .. kit .. ": a minute after each smash gives nothing back (66, 32), the third breaks it")
+        A.untrack(c); H.removeVehicle(c)
+    end
+end
+H.side(false, false)
+local kc, kw = kitted("Inner")
+kw.hp = 80 -- a zombie's hit since the last minute
+a = setmetatable({ character = thief, window = kw }, { __index = ISSmashWindow })
+a:complete()
+check(kw.hp == 56, "a loss from before the smash is given back first (80 -> 90), the smash's 34 kept (56)")
+A.untrack(kc); H.removeVehicle(kc)
+
 ISSmashWindow, instanceof, getOnlinePlayers, sendDamage = saved.ISSmashWindow, saved.instanceof, saved.getOnlinePlayers, saved.sendDamage
 getPlayer, ISOpenVehicleDoor, ISCloseVehicleDoor = saved.getPlayer, saved.ISOpenVehicleDoor, saved.ISCloseVehicleDoor
 H.side(false, true)
