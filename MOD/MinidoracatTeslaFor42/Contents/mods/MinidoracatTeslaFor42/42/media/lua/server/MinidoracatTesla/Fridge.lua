@@ -139,12 +139,13 @@ end
 -- client -> server: { vid, seq } from a page that shows the fridge while it is off (FridgeUI.lua). Answers that
 -- player only with `fridgeFood` { vid, seq, items = { ["<item id>"] = { age, ft, fr, fe } } } (fe only when
 -- fertilized): its first F.MAX_ITEMS spoiling foods as the engine has them now (updateAge: its own catch-up; false:
--- no ItemStats to the players around, Food.java:735-745). In the car or within T.NEAR (T.commandVehicle), and the
--- container in this player's reach by the test the loot page uses (canAccessContainer runs the part's
--- ContainerAccess function, BaseVehicle.java:8439-8455). No fridge, switched on (the clients read fridge.items),
--- out of reach or nothing spoiling in it: no answer. Stores nothing.
+-- no ItemStats to the players around, Food.java:735-745). In the car or within T.NEAR (T.commandVehicle, quiet: the
+-- page asks by itself, so no deny ever reaches the player), and the container in this player's reach by the test the
+-- loot page uses (canAccessContainer runs the part's ContainerAccess function, BaseVehicle.java:8439-8455). No car,
+-- too far, no fridge, switched on (the clients read fridge.items), out of reach or nothing spoiling in it: no answer
+-- and no deny. Stores nothing.
 T.ServerCommands.fridgeFoodPull = function(player, args)
-    local v = T.commandVehicle(player, args)
+    local v = T.commandVehicle(player, args, nil, true)
     local part = v and F.part(v)
     local c = part and part:getItemContainer()
     if not c or part:getModData().fridge or not v:canAccessContainer(part:getIndex(), player) then return end

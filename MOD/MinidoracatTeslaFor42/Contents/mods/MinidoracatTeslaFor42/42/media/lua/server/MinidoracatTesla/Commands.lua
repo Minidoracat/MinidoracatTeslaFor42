@@ -9,17 +9,18 @@ T.NEAR = 10 -- tiles between player and car for commands sent from outside
 
 local function isInt(n) return type(n) == "number" and n == n and math.floor(n) == n end
 
--- Shared validation for handlers: player, Tesla by args.vid, distance. Denies and returns nil on failure.
-function T.commandVehicle(player, args, maxDist)
+-- Shared validation for handlers: player, Tesla by args.vid, distance. Denies and returns nil on failure; `quiet`:
+-- returns nil without the deny (requests a client sends by itself, not on the player's action).
+function T.commandVehicle(player, args, maxDist, quiet)
     if not player then return nil end
     local vid = args and args.vid
     local v = isInt(vid) and getVehicleById(vid) or nil -- whole numbers only: fractions truncate to another id
     if not v or not T.isTesla(v) then
-        T.deny(player, "NO_VEHICLE", isInt(vid) and vid or nil)
+        if not quiet then T.deny(player, "NO_VEHICLE", isInt(vid) and vid or nil) end
         return nil
     end
     if player:getVehicle() ~= v and player:DistTo(v) > (maxDist or T.NEAR) then
-        T.deny(player, "TOO_FAR", vid)
+        if not quiet then T.deny(player, "TOO_FAR", vid) end
         return nil
     end
     return v

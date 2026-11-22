@@ -461,13 +461,19 @@ local function pull(p, args)
         if F.sent[i].cmd == "fridgeFood" then return F.sent[i].args, F.sent[i].to, #F.sent - n end
     end
 end
+-- the page asks by itself: a request that gets no answer sends nothing at all (no deny, no red text over the player)
+local function quiet(p, args)
+    local n = #F.sent
+    T.ServerCommands.fridgeFoodPull(p, args)
+    return #F.sent == n
+end
 local pv = F.track(F.vehicle({ pct = 80 }))
 local p1, p2, p3 = food(901, { age = 1 }), food(902, { age = 1, fert = true }), food(903, { age = 1, offMax = 1000000000 })
 local pp = fit(pv, { p1, p2, p3 })
 local asker = F.player("asker") -- no key: seeing what the loot page shows needs none
 FR.setMode(pv, "cool", "owner")
 tick(1)
-check(pull(asker, { vid = pv:getId(), seq = 1 }) == nil, "switched on: no answer (the clients read fridge.items)")
+check(quiet(asker, { vid = pv:getId(), seq = 1 }), "switched on: no answer, no deny (the clients read fridge.items)")
 FR.setMode(pv, false)
 local offAge, ptx = p1.age, pv.transmits
 F.hours = F.hours + 5
@@ -481,23 +487,24 @@ check(pr and pr.items["902"].fe == true and pr.items["901"].fe == nil and pr.ite
 check(pp.md.fridge == nil and pv.transmits == ptx, "nothing stored, nothing transmitted")
 check(pv.access == pp:getIndex(), "reach asked for the fridge's own part index (canAccessContainer)")
 pv.blocked = { [asker] = true }
-check(pull(asker, { vid = pv:getId(), seq = 8 }) == nil, "the container out of this player's reach (canAccessContainer false): no answer")
+check(quiet(asker, { vid = pv:getId(), seq = 8 }), "the container out of this player's reach (canAccessContainer false): no answer, no deny")
 pv.blocked = nil
 asker.dist = 11
-check(pull(asker, { vid = pv:getId(), seq = 9 }) == nil, "11 tiles away: no answer")
+check(quiet(asker, { vid = pv:getId(), seq = 9 }), "11 tiles away: no answer, no deny (no TOO_FAR)")
 asker.vehicle = pv
 check(pull(asker, { vid = pv:getId(), seq = 10 }) ~= nil, "seated in it (a Semi cab, any distance): answered")
 asker.vehicle, asker.dist = nil, 2
-check(pull(asker, { vid = 99999, seq = 11 }) == nil, "no such car: no answer")
+check(quiet(asker, { vid = 99999, seq = 11 }), "no such car: no answer, no deny (no NO_VEHICLE)")
+check(quiet(asker, { vid = pv:getId() + 0.5, seq = 11 }), "fractional id: no answer, no deny")
 local notTesla = F.track(F.vehicle({ pct = 80, script = "Base.CarNormal" }))
 fit(notTesla, { food(904, { age = 1 }) })
-check(pull(asker, { vid = notTesla:getId(), seq = 12 }) == nil, "not a Tesla: no answer")
+check(quiet(asker, { vid = notTesla:getId(), seq = 12 }), "not a Tesla: no answer, no deny")
 local pItem = pp.item
 pp.item = nil
-check(pull(asker, { vid = pv:getId(), seq = 13 }) == nil, "no fridge fitted: no answer")
+check(quiet(asker, { vid = pv:getId(), seq = 13 }), "no fridge fitted: no answer, no deny")
 pp.item = pItem
 pp.items = { p3 }
-check(pull(asker, { vid = pv:getId(), seq = 14 }) == nil, "nothing in it that spoils: no answer")
+check(quiet(asker, { vid = pv:getId(), seq = 14 }), "nothing in it that spoils: no answer, no deny")
 local many = {}
 for i = 1, 405 do many[i] = food(30000 + i, { age = 1 }) end
 pp.items = many
