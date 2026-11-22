@@ -690,6 +690,19 @@ ISOpenVehicleDoor.complete({ vehicle = v, part = v.frunk, character = walletOnly
 check(v.frunk.d.open, "frunk: the key card in a wallet opens it (the hood, not the doors: those want the reader)")
 ISCloseVehicleDoor.complete({ vehicle = v, part = v.frunk, character = walletOnly })
 check(v.frunk.d.locked and v.doors[1].d.locked, "frunk: shut on the locked car -> locked again, the door untouched")
+-- the mechanics window's "key required" (PartKeys.lua): this Tesla's card or phone key anywhere on the player counts,
+-- as for the start; vanilla (a loose key, Vehicles.lua:1380-1389 without the sandbox and open-door outs) for the rest
+VehicleUtils.RequiredKeyNotFound = function(part, chr)
+    return not (chr and chr:getInventory():haveThisKeyId(part:getVehicle():getKeyId()))
+end
+require "MinidoracatTesla/PartKeys"
+local otherPart = { getVehicle = function() return other end }
+local otherCard = player("othercard", container(bag("Base.Bag_Schoolbag", item(K.CARD, other.keyId))), v.x - 1, v.y)
+local needKey = VehicleUtils.RequiredKeyNotFound
+check(not needKey(v.frunk, walletOnly) and not needKey(v.frunk, owner) and not needKey(v.frunk, loose),
+    "part key: card in a wallet, phone key in a bag, a loose key -> no key missing")
+check(needKey(v.frunk, stranger) and needKey(v.frunk, nil), "part key: no key, or no one -> still missing")
+check(needKey(otherPart, otherCard), "part key: another car keeps vanilla (a card in a bag is not its key)")
 MinidoracatVehicleManagerAPI = { canUse = function(p, _, code) return code == "PASSENGER" and p == stranger, "SHARED" end }
 ISOpenVehicleDoor.complete({ vehicle = v, part = v.frunk, character = stranger })
 check(v.frunk.d.locked and not v.frunk.d.open, "frunk: a VehicleManager rider only (PASSENGER) is not the hood's right")
