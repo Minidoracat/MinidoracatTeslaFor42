@@ -3,6 +3,15 @@
 
 [b]English summary[/b]
 [list]
+[*] New upgrades for all nine Teslas (not the 53 ft trailer): Vehicle Mechanics has a new Upgrades category with two slots, Protection and Fridge. Both start empty; craft the parts or find them as loot.
+[*] Car Fridge: capacity 12, in the trunk (the bed on the Cybertruck, the cab on the Semi). Right-click the car or use the V radial menu to switch Cool, Freeze or Off. It runs on the high-voltage battery and turns itself off at 20%.
+[*] Protection: the Reinforcement Kit about halves crash damage and cannot be seen; the Bull Bar Kit cuts it by about three quarters and adds a steel bull bar, shaped for each car.
+[*] The Semi's 53 ft trailer now holds 1000 instead of 300, trailers already on your map included. A full trailer is slower and harder to stop.
+[*] The Cybertruck no longer rolls over when you steer hard above 100 km/h. The bumper headlights on the Model Y and Model Y L now light up.
+[*] Vehicle Mechanics fixes: it opens with the key card in a bag, it no longer closes itself on the 53 ft trailer, and on servers with VehicleManager the hood and the drive unit now follow its permissions.
+[/list]
+
+[list]
 [*] Fixed phone keys seeming to vanish: with the phone carried loose or on a key ring, starting the car put it in the ignition like a normal key, and the Tesla dashboard does not show the ignition. Getting out with the motor running left the phone in the car. Phones kept in a backpack or fanny pack were not affected.
 [*] Now the phone comes back to you (or to its key ring) as soon as the car has started, and the motor keeps running. If you get out or change seats mid-start, the game waits for the start to finish first.
 [*] A phone lost this way is still in that car: sit in its driver's seat and get out again, or start the car once, and it returns to you. Unlock with the key card first if the car is locked. Exception: if someone else has switched that car off from the driver's seat since, the phone is on them.
