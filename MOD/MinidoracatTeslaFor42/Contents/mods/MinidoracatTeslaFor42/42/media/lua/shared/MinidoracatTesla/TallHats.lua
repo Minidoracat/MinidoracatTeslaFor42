@@ -8,7 +8,7 @@
 -- input ModelX 767dafade05d71ac
 -- input Cybertruck c8ad2f71a28079a1
 -- input ModelYL e0efc822d12b7f13
--- input Roadster a2b24a9d20973663
+-- input Roadster 8d088f9fc0c80e7e
 -- input Cybercab 9ef5ad512565bf18
 -- input Semi 40101d23802a5adf
 MinidoracatTesla = MinidoracatTesla or {}

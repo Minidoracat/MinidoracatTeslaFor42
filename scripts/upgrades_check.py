@@ -25,7 +25,7 @@ MEDIA = os.path.join(REPO, "MOD/MinidoracatTeslaFor42/Contents/mods/MinidoracatT
 UPGRADES = ("TeslaArmor", "TeslaFridge")
 RESIDUE = ("ArmorTrial", "ArmorS0", "FridgeTrial", "UpgTest", "UpgBox", "TRIAL")
 # 已做有外觀件模型的車（scripts/blender/skf/armor.py）；shortcut: 只查做好的車，九台都做完後改成每台都要有
-ARMOR_CARS = {"MinidoracatTesla_ModelY", "MinidoracatTesla_ModelX"}
+ARMOR_CARS = {"MinidoracatTesla_ModelY", "MinidoracatTesla_ModelX", "MinidoracatTesla_Roadster"}
 
 if not os.path.isdir(vp.PZ):
     print(f"升級件檢查略過：找不到原版腳本 {vp.PZ}")

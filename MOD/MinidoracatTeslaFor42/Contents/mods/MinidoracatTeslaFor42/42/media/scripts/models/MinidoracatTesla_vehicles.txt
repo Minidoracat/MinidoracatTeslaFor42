@@ -602,6 +602,17 @@ module Base
         scale = 0.5495,
     }
 
+    /* TeslaArmor's outer kit (as MinidoracatTesla_ModelY_Armor) */
+    model MinidoracatTesla_Roadster_Armor
+    {
+        mesh = vehicles/MinidoracatTesla_Roadster_Armor,
+        texture = Vehicles/MinidoracatTesla_Armor,
+        shader = vehiclewheel,
+        static = true,
+        invertX = false,
+        scale = 0.5495,
+    }
+
     /* The cabin's detail for Project Viewpoint (part CabinDetail; scripts/blender/skf/cabin.py detail_mesh): the
        furniture a little larger and finer over the body's own, coloured from MinidoracatTesla_Detail. Only the car a
        local player sits in shows it, and only with Viewpoint loaded (client ViewpointCabin.lua); Viewpoint draws it
