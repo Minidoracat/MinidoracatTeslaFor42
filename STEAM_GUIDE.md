@@ -2,7 +2,7 @@
 <!-- Steam 指南稿源（繁中）：MOD 的完整說明以本指南為準，簡介只放摘要。格式、版面與同步方式見 pz-family-docs/release.md「完整說明：Steam 指南」 -->
 <!-- 標題：📖 Minidoracat Tesla Collection MOD 完整說明：車、充電、鑰匙與 App -->
 <!-- 摘要：Minidoracat Tesla Collection 的圖文說明：Model Y 與 Model 3 Performance、Model Y L（六座）、Model S 與 Model X Plaid（鷹翼門與 6 座）、初代 Roadster 2.5 Sport（敞篷軟頂篷）、Cybertruck Cyberbeast（車斗、Powershare 住宅備援與車斗插座）、Cybercab（兩座無人計程車：上掀門、沒有方向盤、充電口在車尾）、Tesla Semi（電動半掛卡車：中置駕駛座、1,200 kW 超充、掛接 53 呎廂式半拖車）、電池與拖車耗電、壁掛式充電座、行動充電器與加油站的 V4 超級充電座、特斯拉風格儀表、卡片鑰匙與手機鑰匙、手機 Tesla App 與召喚、哨兵與露營模式、生物武器防禦模式與舒適模式、驅動單元零件、升級件（車用冰箱與防護件），以及和 Vehicle Manager、小地圖、AutoDrive、Project Viewpoint 一起用的規則與沙盒選項。 -->
-<!-- 截圖：docs/screenshots/steam/zh/，拍法見家族庫 e2e/MinidoracatTeslaFor42 的 guide-shots-sp（生物武器防禦與舒適模式只跑那段用 --define part=feat，圓盤停留文字要另開 hover.py；Cybertruck 圖用 guide-ct-sp、Model S／X 圖用 guide-sx-sp、Model Y L 的圖（33、34）用 guide-yl-sp、Roadster 的圖（35、36）用 guide-rd-sp（只跑 CH 一輪、中英同一張；35 是四台車頭朝 S、縮放 1.0 裁 (210,622,1710,967)，36 是同一台 Radiant Red 軟頂篷蓋著與收起、縮放 0.5 各裁 (284,320,854,880) 左右拼、間隔 16）、Cybercab 的圖（37、38、39）用 guide-cc-sp（只跑 CH 一輪、中英同一張；37 是 gcc-line-075，左台朝 S、右台朝 N、縮放 0.75 裁 (330,340,1590,710)；38 是同一台朝 S、縮放 0.5，左 gcc-doors-open-050（App 車門鍵兩門全開）、右 gcc-doors-trunk-050（門關、行李廂蓋全開），各裁 (220,260,935,820) 左右拼、間隔 16；39 是 gcc-charge-050，車頭朝 W、車尾對 V4 超級充電座插著線、縮放 0.5 裁 (150,320,1110,800)）、Cybercab 坐進兩個人那張（40）用 seated2-mp 跑 --clients 3 --define cam=1（多人、兩個帳號坐同一台、兩扇門全開，第三台客戶端當鏡頭，畫面沒有名字與座位號），JPG 用它資料夾裡的 make_jpg.py 做（cam-seated2-open-SW 與 cam-seated2-open-SE 依車在畫面上的座標各裁 715×560，左右拼、間隔 16，中英同一張）、召喚圖用 phone-summon-sp、FSD 圖用 fsd-shot-sp（01c 是 01b 裁 (350,370,1090,977)，指南不用，給 Workshop 簡介引用：重拍 01b 要一起重裁，並照 release.md 換簡介裡的圖片網址）、「和其他 MOD 一起用」用 guide-mods-sp；Project Viewpoint 那張（31）是本 repo 一次性情境 temp/oneoff/vp-detail-sp 的 vd-first-ModelS 裁 (80,40,1660,1080)，中英同一張，要裝 ZombieBuddy 才拍得到；V4 超級充電座那張（32）是 supercharger-sp 的 sc-CH-card／sc-EN-card 裁 (480,160,1480,990)；Semi 的圖（41、42、43）用 guide-semi-sp，JPG 用它資料夾裡的 make_jpg.py 壓（41 是 CH 那輪的 gsm-truck-side-125，Semi 掛著拖車、旁邊一台 Model Y 比大小、縮放 1.25 裁 (400,0,1540,800)，中英同一張；42 是 gsm-hitch-075，站在鞍座旁按 V 的掛接圓盤、縮放 0.75 裁 (280,70,1350,790)，CH／EN 各一輪；43 要另跑 --define only=charge：整輪拍完才充電會超過 1,200 kW 那段，gsm-charge-075 是單車頭插著 V4 超級充電座、縮放 0.75 裁 (140,100,1230,970)，CH／EN 各一輪）） -->
+<!-- 截圖：docs/screenshots/steam/zh/，拍法見家族庫 e2e/MinidoracatTeslaFor42 的 guide-shots-sp（生物武器防禦與舒適模式只跑那段用 --define part=feat，圓盤停留文字要另開 hover.py；Cybertruck 圖用 guide-ct-sp、Model S／X 圖用 guide-sx-sp、Model Y L 的圖（33、34）用 guide-yl-sp、Roadster 的圖（35、36）用 guide-rd-sp（只跑 CH 一輪、中英同一張；35 是四台車頭朝 S、縮放 1.0 裁 (210,622,1710,967)，36 是同一台 Radiant Red 軟頂篷蓋著與收起、縮放 0.5 各裁 (284,320,854,880) 左右拼、間隔 16）、Cybercab 的圖（37、38、39）用 guide-cc-sp（只跑 CH 一輪、中英同一張；37 是 gcc-line-075，左台朝 S、右台朝 N、縮放 0.75 裁 (330,340,1590,710)；38 是同一台朝 S、縮放 0.5，左 gcc-doors-open-050（App 車門鍵兩門全開）、右 gcc-doors-trunk-050（門關、行李廂蓋全開），各裁 (220,260,935,820) 左右拼、間隔 16；39 是 gcc-charge-050，車頭朝 W、車尾對 V4 超級充電座插著線、縮放 0.5 裁 (150,320,1110,800)）、Cybercab 坐進兩個人那張（40）用 seated2-mp 跑 --clients 3 --define cam=1（多人、兩個帳號坐同一台、兩扇門全開，第三台客戶端當鏡頭，畫面沒有名字與座位號），JPG 用它資料夾裡的 make_jpg.py 做（cam-seated2-open-SW 與 cam-seated2-open-SE 依車在畫面上的座標各裁 715×560，左右拼、間隔 16，中英同一張）、召喚圖用 phone-summon-sp、FSD 圖用 fsd-shot-sp（01c 是 01b 裁 (350,370,1090,977)，指南不用，給 Workshop 簡介引用：重拍 01b 要一起重裁，並照 release.md 換簡介裡的圖片網址）、「和其他 MOD 一起用」用 guide-mods-sp；Project Viewpoint 那張（31）是本 repo 一次性情境 temp/oneoff/vp-detail-sp 的 vd-first-ModelS 裁 (80,40,1660,1080)，中英同一張，要裝 ZombieBuddy 才拍得到；V4 超級充電座那張（32）是 supercharger-sp 的 sc-CH-card／sc-EN-card 裁 (480,160,1480,990)；Semi 的圖（41、42、43）用 guide-semi-sp，JPG 用它資料夾裡的 make_jpg.py 壓（41 是 CH 那輪的 gsm-truck-side-125，Semi 掛著拖車、旁邊一台 Model Y 比大小、縮放 1.25 裁 (400,0,1540,800)，中英同一張；42 是 gsm-hitch-075，站在鞍座旁按 V 的掛接圓盤、縮放 0.75 裁 (280,70,1350,790)，CH／EN 各一輪；43 要另跑 --define only=charge：整輪拍完才充電會超過 1,200 kW 那段，gsm-charge-075 是單車頭插著 V4 超級充電座、縮放 0.75 裁 (140,100,1230,970)，CH／EN 各一輪）；升級件的圖（44、45、46）用 guide-upg-sp，CH 一輪、EN 一輪（EN 加 --define parts=a,c），兩輪都要開 hover.py，JPG 用它資料夾裡的 make_jpg.py 壓（44 是 gu-CH／EN-mech-armor，Model Y 裝好防撞桿套件與冰箱，維修視窗捲到最下面選「防護件」，只裁視窗 (550,230,1370,850)，CH／EN 各一輪；45 是 CH 那輪的 gu-CH-line3-075，Model 3、Model X、Cybertruck 朝 S 裝著防撞桿套件、縮放 0.75 裁 (150,290,1770,700)，中英同一張；46 是 gu-CH／EN-fridge-100，站在車尾、尾門開著、附近欄選冰箱，車外右鍵選單展開「車用冰箱」子選單（冷藏打勾），縮放 1.0 裁 (586,0,1610,854)，CH／EN 各一輪）） -->
 === 🚀 快速上手
 [b]English version:[/b] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3829449879]Minidoracat Tesla Collection Mod Guide[/url]
 
@@ -522,7 +522,9 @@ https://steamcommunity.com/sharedfiles/filedetails/?id=3829501237
 [*] [b]防偷[/b]：和原版要鑰匙的零件一樣。車門都鎖著、車窗都關著又完好時，要有這台車的鑰匙才拆得下；有門沒鎖，或有車窗開著、破了，誰都拆得走。
 [*] [b]整體車況[/b]：空著的位置也算進維修介面的整體車況，兩個都空時少約 4～6，裝上就回來；不影響行駛。
 [/list]
+{{img:44-upg-mech-zh.jpg}}
 [h3]車用冰箱[/h3]
+{{img:46-upg-fridge-zh.jpg}}
 [list]
 [*] [b]位置[/b]：容量 12，裝在行李廂；安裝、拆卸、拿東西都要站在車尾、尾門開著，尾門關著時看不到它。Cybertruck 裝在車斗，拿東西的規則和車斗一樣。Semi 裝在駕駛室：坐在車上就拿得到，在車外要站在右側車門旁、門開著。
 [*] [b]開關[/b]：在車外對車按右鍵選「車用冰箱」，再選「關閉」「冷藏」或「冷凍」；坐在車上按 V 鍵圓盤也能切換（關閉、冷藏、冷凍依序輪流），車上每個人都能按。車鎖著時要有這台車的鑰匙（鑰匙插在車上或車已短接也算）。
@@ -535,6 +537,7 @@ https://steamcommunity.com/sharedfiles/filedetails/?id=3829501237
 [*] [b]拆卸前先清空[/b]：裡面有東西時「拆卸」是灰的。
 [/list]
 [h3]防護件[/h3]
+{{img:45-upg-bullbar-zh.jpg}}
 [list]
 [*] [b]兩種擇一[/b]：「防護件」位置裝「車身補強套件」或「防撞桿套件」其中一種；要換另一種，先拆下原來的。
 [*] [b]車身補強套件[/b]：外觀看不出來，撞擊造成的車損約減半。重 10。
