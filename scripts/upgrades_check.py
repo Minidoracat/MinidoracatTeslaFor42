@@ -14,6 +14,10 @@
 - 三條配方存在、產物與技能門檻照方案（MetalWelding:3／MetalWelding:5／Electricity:4）；本 MOD 每條 craftRecipe
   都列在 Recipes.lua 的 RECIPES（漏列的話專用伺服器上進度條跑完卻做不出東西）
 - MOD/ 沒有試做殘留（S0 的 ArmorTrial／FridgeTrial 等名稱與 TRIAL 註解）
+- Charging.lua C.UPGRADE_LOOT 的戰利品清單名稱都在原版 ProceduralDistributions.lua（injectLoot 遇到不存在的名稱會靜默略過）
+
+只靠本 repo 的檢查先跑；每台車的零件檢查（範本要用原版腳本解析）與戰利品清單名稱要原版遊戲，找不到時印 SKIP、
+其他檢查照常判定。
 """
 import glob
 import os
@@ -27,14 +31,6 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MEDIA = os.path.join(REPO, "MOD/MinidoracatTeslaFor42/Contents/mods/MinidoracatTeslaFor42/42/media")
 UPGRADES = ("TeslaArmor", "TeslaFridge")
 RESIDUE = ("ArmorTrial", "ArmorS0", "FridgeTrial", "UpgTest", "UpgBox", "TRIAL")
-
-if not os.path.isdir(vp.PZ):
-    print(f"升級件檢查略過：找不到原版腳本 {vp.PZ}")
-    sys.exit(0)
-vanilla = [t for t in (open(p, encoding="utf-8", errors="replace").read()
-                       for p in glob.glob(os.path.join(vp.PZ, "**", "*.txt"), recursive=True)) if "template vehicle" in t]
-cars = vp.resolve({os.path.basename(p): open(p, encoding="utf-8").read()
-                   for p in glob.glob(os.path.join(REPO, vp.VEH, "*.txt"))}, vanilla)
 
 items = {}
 for p in glob.glob(os.path.join(MEDIA, "scripts", "items", "*.txt")):
@@ -50,49 +46,6 @@ for p in glob.glob(os.path.join(MEDIA, "scripts", "models", "*.txt")):
         models[m[1]] = dict(re.findall(r"(\w+)\s*=\s*([^,\n]*)", m[2]))
 
 bad = []
-for car, r in sorted(cars.items()):
-    if car.endswith("Trailer"):   # the Semi's trailer has its own script, not template Cab
-        continue
-    parts = dict(r["parts"])
-    bad += [f"{car}: 容器零件 {pid} 的 id 是 {pid.lower()}" for pid, p in parts.items()
-            if "container" in p and pid.lower() in ("fridge", "freezer")]
-    for pid in UPGRADES:
-        p = parts.get(pid)
-        if not p:
-            bad.append(f"{car}: 沒有 part {pid}")
-            continue
-        v, tabs = p["values"], p.get("tables", {})
-        if v.get("category") in ("door", "bodywork"):
-            bad.append(f"{car}: {pid} category = {v.get('category')}")
-        if v.get("mechanicRequireKey") != "true":
-            bad.append(f"{car}: {pid} 沒有 mechanicRequireKey = true")
-        for t in ("install", "uninstall"):
-            if not tabs.get(t, {}).get("test"):
-                bad.append(f"{car}: {pid} 的 {t} 表沒有 test")
-            if "skills" in tabs.get(t, {}):
-                bad.append(f"{car}: {pid} 的 {t} 表有 skills")
-        types = [x.strip() for x in v.get("itemType", "").split(";") if x.strip()]
-        bad += [f"{car}: {pid} itemType {x} 沒有定義或 ConditionMax 不是 100" for x in types
-                if items.get(x, {}).get("ConditionMax") != "100"]
-        if pid == "TeslaArmor" and set(types) != armor_k:
-            bad.append(f"{car}: TeslaArmor itemType {sorted(types)} 和 Upgrades.lua T.Armor.K {sorted(armor_k)} 不同")
-        if pid == "TeslaArmor":
-            f = p.get("models", {}).get("Armor", {}).get("values", {}).get("file")
-            mesh = models.get(f, {}).get("mesh", "").strip()
-            fbx = os.path.join(MEDIA, "models_X", mesh + ".fbx")
-            if not f:
-                bad.append(f"{car}: TeslaArmor 沒有 model Armor")
-            elif not (mesh and os.path.isfile(fbx)):
-                bad.append(f"{car}: TeslaArmor model Armor 的 file {f} 沒有 model 區塊或 fbx（{mesh}）")
-            elif open(fbx, "rb").read().count(b"\x0eLayerElementUV") < 2:
-                bad.append(f"{car}: {mesh}.fbx 不到兩層 UV")
-        if pid == "TeslaFridge":
-            c = p.get("container", {})
-            if c.get("capacity") != "0" or c.get("conditionAffectsCapacity") != "false":
-                bad.append(f"{car}: TeslaFridge container 要 capacity = 0、conditionAffectsCapacity = false（{c}）")
-            if tabs.get("uninstall", {}).get("requireEmpty") != "true":
-                bad.append(f"{car}: TeslaFridge 拆卸沒有 requireEmpty = true")
-
 for base, _, files in os.walk(os.path.join(REPO, "MOD")):
     for name in files:
         if os.path.splitext(name)[1] not in (".lua", ".txt", ".json", ".xml"):
@@ -124,8 +77,69 @@ listed = re.search(r"\blocal RECIPES\s*=\s*\{(.*?)\}", learn, re.S)
 listed = set(re.findall(r'"(\w+)"', listed[1])) if listed else set()
 bad += [f"配方 {r} 沒列在 Recipes.lua 的 RECIPES" for r in sorted(set(recipes) - listed)]
 
-checked = sum(1 for c in cars if not c.endswith("Trailer"))
+DISTS = os.path.join(os.path.dirname(vp.PZ), "lua", "server", "Items", "ProceduralDistributions.lua")
+charging = open(os.path.join(MEDIA, "lua/server/MinidoracatTesla/Charging.lua"), encoding="utf-8").read()
+loot = re.search(r"\bC\.UPGRADE_LOOT\s*=\s*\{(.*?)\n\}", charging, re.S)
+loot_lists = set(re.findall(r"(\w+)\s*=\s*[\d.]+", loot[1])) if loot else set()
+if not loot_lists:
+    bad.append("Charging.lua 找不到 C.UPGRADE_LOOT 的清單名稱")
+
+if not (os.path.isdir(vp.PZ) and os.path.isfile(DISTS)):
+    skipped = f"SKIP 每台車的升級零件與戰利品清單名稱（找不到原版 {vp.PZ} 或 {DISTS}）"
+    checked = 0
+else:
+    skipped = ""
+    vanilla = [t for t in (open(p, encoding="utf-8", errors="replace").read()
+                           for p in glob.glob(os.path.join(vp.PZ, "**", "*.txt"), recursive=True)) if "template vehicle" in t]
+    cars = vp.resolve({os.path.basename(p): open(p, encoding="utf-8").read()
+                       for p in glob.glob(os.path.join(REPO, vp.VEH, "*.txt"))}, vanilla)
+    for car, r in sorted(cars.items()):
+        if car.endswith("Trailer"):   # the Semi's trailer has its own script, not template Cab
+            continue
+        parts = dict(r["parts"])
+        bad += [f"{car}: 容器零件 {pid} 的 id 是 {pid.lower()}" for pid, p in parts.items()
+                if "container" in p and pid.lower() in ("fridge", "freezer")]
+        for pid in UPGRADES:
+            p = parts.get(pid)
+            if not p:
+                bad.append(f"{car}: 沒有 part {pid}")
+                continue
+            v, tabs = p["values"], p.get("tables", {})
+            if v.get("category") in ("door", "bodywork"):
+                bad.append(f"{car}: {pid} category = {v.get('category')}")
+            if v.get("mechanicRequireKey") != "true":
+                bad.append(f"{car}: {pid} 沒有 mechanicRequireKey = true")
+            for t in ("install", "uninstall"):
+                if not tabs.get(t, {}).get("test"):
+                    bad.append(f"{car}: {pid} 的 {t} 表沒有 test")
+                if "skills" in tabs.get(t, {}):
+                    bad.append(f"{car}: {pid} 的 {t} 表有 skills")
+            types = [x.strip() for x in v.get("itemType", "").split(";") if x.strip()]
+            bad += [f"{car}: {pid} itemType {x} 沒有定義或 ConditionMax 不是 100" for x in types
+                    if items.get(x, {}).get("ConditionMax") != "100"]
+            if pid == "TeslaArmor" and set(types) != armor_k:
+                bad.append(f"{car}: TeslaArmor itemType {sorted(types)} 和 Upgrades.lua T.Armor.K {sorted(armor_k)} 不同")
+            if pid == "TeslaArmor":
+                f = p.get("models", {}).get("Armor", {}).get("values", {}).get("file")
+                mesh = models.get(f, {}).get("mesh", "").strip()
+                fbx = os.path.join(MEDIA, "models_X", mesh + ".fbx")
+                if not f:
+                    bad.append(f"{car}: TeslaArmor 沒有 model Armor")
+                elif not (mesh and os.path.isfile(fbx)):
+                    bad.append(f"{car}: TeslaArmor model Armor 的 file {f} 沒有 model 區塊或 fbx（{mesh}）")
+                elif open(fbx, "rb").read().count(b"\x0eLayerElementUV") < 2:
+                    bad.append(f"{car}: {mesh}.fbx 不到兩層 UV")
+            if pid == "TeslaFridge":
+                c = p.get("container", {})
+                if c.get("capacity") != "0" or c.get("conditionAffectsCapacity") != "false":
+                    bad.append(f"{car}: TeslaFridge container 要 capacity = 0、conditionAffectsCapacity = false（{c}）")
+                if tabs.get("uninstall", {}).get("requireEmpty") != "true":
+                    bad.append(f"{car}: TeslaFridge 拆卸沒有 requireEmpty = true")
+    lists = set(re.findall(r"^\t(\w+)\s*=\s*\{", open(DISTS, encoding="utf-8", errors="replace").read(), re.M))
+    bad += [f"C.UPGRADE_LOOT 的清單 {n} 不在原版 ProceduralDistributions.lua" for n in sorted(loot_lists - lists)]
+    checked = sum(1 for c in cars if not c.endswith("Trailer"))
+
 if bad:
-    print("升級件腳本契約不符：" + "；".join(bad))
+    print("升級件腳本契約不符：" + "；".join(bad) + (f"；{skipped}" if skipped else ""))
     sys.exit(1)
-print(f"升級件腳本契約（{checked} 台車）")
+print(f"升級件腳本契約（{checked} 台車、{len(loot_lists)} 張戰利品清單）" + (f"；{skipped}" if skipped else ""))
