@@ -153,3 +153,18 @@ function ISMinidoracatTeslaTakeDriveUnitParts:new(character, part, item, maxTime
     o.jobType = getText("IGUI_MinidoracatTesla_TakeDriveUnitParts")
     return o
 end
+
+-- VehicleManager guards actions by exact class name (its Actions.lua:155-166, ActionGuards.lua G.install): ours run their
+-- own complete(), so its guard on ISRepairEngine / ISTakeEngineParts never sees them. The same spec on both sides: the
+-- client sends the intent its server guard asks for (its ClientGuards.lua:26-47). Before its install (OnServerStarted on
+-- a server, OnGameStart elsewhere, its ActionGuards.lua:349-350): this shared file adds its handler first.
+local function registerVM()
+    local api = MinidoracatVehicleManagerAPI
+    if not (api and api.registerActionAdapter) then return end
+    for class, action in pairs({ ISMinidoracatTeslaRepairDriveUnit = "REPAIR", ISMinidoracatTeslaTakeDriveUnitParts = "SALVAGE" }) do
+        api.registerActionAdapter({ class = class, action = action, stages = { "complete" }, push = { "condition" },
+            vehicleOf = function(a) return a.part and a.part:getVehicle() end, partOf = function(a) return a.part end })
+    end
+end
+if Events.OnServerStarted then Events.OnServerStarted.Add(registerVM) end
+Events.OnGameStart.Add(registerVM)

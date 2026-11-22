@@ -241,15 +241,28 @@ function K.phoneUnlock(vehicle, part, chr)
 end
 
 require "Vehicles/TimedActions/ISUnlockVehicleDoor"
-local unlockNew, unlockStart, unlockComplete, unlockStop = ISUnlockVehicleDoor.new, ISUnlockVehicleDoor.start,
-    ISUnlockVehicleDoor.complete, ISUnlockVehicleDoor.stop
+local unlockNew, unlockStart, unlockComplete = ISUnlockVehicleDoor.new, ISUnlockVehicleDoor.start, ISUnlockVehicleDoor.complete
+-- Vanilla's unlock just failed on a Tesla's lid (still locked, lock not broken): say so. Only the side that ran the
+-- unlock calls this: never for a cancel, never after VehicleManager refused (its guard, outside ours, did not call us).
+local function lidDenied(a)
+    local v, part = a.vehicle, a.part
+    local door = part and part:getDoor()
+    if door and v and part:getId() == "EngineDoor" and T.isTesla(v) and door:isLocked() and not door:isLockBroken() then
+        T.deny(a.character, "LID_LOCKED", v:getId())
+    end
+end
 function ISUnlockVehicleDoor:start(...)
-    if not isClient() and not isServer() then K.phoneUnlock(self.vehicle, self.part, self.character) end
-    return unlockStart(self, ...)
+    local sp = not isClient() and not isServer()
+    if sp then K.phoneUnlock(self.vehicle, self.part, self.character) end
+    local r = unlockStart(self, ...)
+    if sp then lidDenied(self) end -- vanilla toggled here and force-stopped if still locked (ISUnlockVehicleDoor.lua:26-31)
+    return r
 end
 function ISUnlockVehicleDoor:complete(...)
     if isServer() then K.phoneUnlock(self.vehicle, self.part, self.character) end
-    return unlockComplete(self, ...)
+    local ok = unlockComplete(self, ...)
+    if isServer() and not ok then lidDenied(self) end -- MP: only the server's complete() unlocks (:55-76)
+    return ok
 end
 
 -- The frunk lid locks with the car (Liftgate.lockLids) and unlocks only as it opens: in the open's complete() below
@@ -257,54 +270,63 @@ end
 -- (ISOpenVehicleDoor.lua:71-74). Vanilla's hood entries queue its unlock before the open when the key is not in hand
 -- (Vehicles.Use.EngineDoor, Vehicles.lua:849-852; the Mechanics radial, ISVehicleMenu.lua:997-998; the mechanics
 -- window's engine and headlight actions, ISVehicleMechanics.lua:440,484,516; DriveUnitMenu.lua), the radial's Open
--- Hood when it is (ISVehicleMenu.lua:1230-1231). On a Tesla's lid that unlock is left out of the queue (vanilla skips an
--- ignoreAction, ISTimedActionQueue.lua:158,204) for whoever the open will let in (K.lidKey) and for whoever
--- VehicleManager refuses the hood (its guard on the open refuses and says why), unless vanilla's own rule unlocks it
--- (canUnlockDoor: seated or the key in hand, BaseVehicle.java:1287-1314). Queued, a card or phone key in a bag failed it
--- (toggleLockedDoor asks canUnlockDoor, :1242-1256) and that dropped the whole queue (ISUnlockVehicleDoor.lua:22-36;
--- semimech-repro-e); VehicleManager wants PASSENGER for every unlock (its Actions.lua) but REPAIR or SALVAGE for the
--- hood's open (its doorAction), so a mechanic share stopped at the unlock and a rider got the lid unlocked (its virtual
--- key, ActionGuards.lua:190-198), then refused open. Anyone else (no key at all) keeps vanilla's unlock: it fails and
--- drops the queue, so no mechanics window opens on a locked car (stop() below says why).
-function ISUnlockVehicleDoor:new(character, part, ...)
+-- Hood when it is (ISVehicleMenu.lua:1230-1231); every one runs outside the car. On a Tesla's lid, four kinds of
+-- opener (vanilla skips an ignoreAction, ISTimedActionQueue.lua:158,204):
+-- - VehicleManager refuses them the hood: left out, whatever key they hold. It wants PASSENGER for every unlock (its
+--   Actions.lua) but REPAIR or SALVAGE for the hood's open (its doorAction), so a rider's unlock went through (its
+--   virtual key, ActionGuards.lua:190-198) and left the lid unlocked behind a refused open.
+-- - the key in hand: vanilla's unlock, which unlocks it (canUnlockDoor, BaseVehicle.java:1287-1314).
+-- - a card or phone key in a bag, or VehicleManager's virtual key: left out, the open unlocks it. Queued, vanilla's
+--   unlock failed for them (toggleLockedDoor asks canUnlockDoor, :1242-1256) and dropped the whole queue
+--   (ISUnlockVehicleDoor.lua:22-36; semimech-repro-e).
+-- - no key: vanilla's unlock, which fails and drops the queue, so no mechanics window opens on a locked car;
+--   lidDenied above says why.
+function ISUnlockVehicleDoor:new(character, part, ...) -- vanilla's parameter names: they are the wire format (NetTimedAction.java:41-50)
     local o = unlockNew(self, character, part, ...)
     local v = part and part:getVehicle()
-    if not isServer() and v and part:getId() == "EngineDoor" and T.isTesla(v) and not v:canUnlockDoor(part, character)
-        and (vmRefuses(character, v, part) or K.lidKey(v, part, character)) then
+    if not isServer() and character and v and part:getId() == "EngineDoor" and T.isTesla(v)
+        and (vmRefuses(character, v, part)
+            or not character:getInventory():haveThisKeyId(v:getKeyId()) and K.lidKey(v, part, character)) then
         o.ignoreAction = true
     end
     return o
 end
 
--- That failed unlock is silent in vanilla but for a lock sound (stop(), ISUnlockVehicleDoor.lua:39-47): say once that
--- the lid is locked. stop() runs on the acting client only: SP's forceStop in start(), an MP server's reject
--- (LuaTimedActionNew.java:99-100). Not when VehicleManager refuses (it says why itself) or the lock is broken (vanilla's text).
-function ISUnlockVehicleDoor:stop(...)
-    local v, part, chr = self.vehicle, self.part, self.character
-    local door = part and part:getDoor()
-    if not isServer() and door and part:getId() == "EngineDoor" and v and T.isTesla(v) and door:isLocked()
-        and not door:isLockBroken() and not vmRefuses(chr, v, part) and not K.lidKey(v, part, chr) then
-        HaloTextHelper.addBadText(chr, T.denyText("LID_LOCKED"))
-    end
-    return unlockStop(self, ...)
-end
-
 -- May chr open this Tesla's frunk lid: VehicleManager does not refuse it (vmRefuses; its own guard on the open, outside
--- ours, refuses first), and vanilla canUnlockDoor (seated, or the key in hand), this car's phone key or key card
--- anywhere on them (as they start it, K.bagKeyStarts), or a VehicleManager user it lets work on the hood (its virtual
--- key is no item).
+-- ours, refuses first), and this car's key in hand (vanilla's haveThisKeyId: loose or on a keyring), its phone key or
+-- key card anywhere on them (as they start it, K.bagKeyStarts), or a VehicleManager user it lets work on the hood (its
+-- virtual key is no item). Not the seat: vanilla's hood entries all run outside the car, and the dashboard's frunk
+-- button goes through the liftgate command, not here.
 function K.lidKey(vehicle, part, chr)
     -- the action carries vehicle and part as separate arguments (ISOpenVehicleDoor.lua:142-145): the key must be this car's
     if not part or part:getId() ~= "EngineDoor" or not chr or part:getVehicle() ~= vehicle or not T.isTesla(vehicle) then
         return false
     end
     if vmRefuses(chr, vehicle, part) then return false end
-    return vehicle:canUnlockDoor(part, chr) or K.phoneKey(chr, vehicle) ~= nil or K.card(chr, vehicle) ~= nil
-        or vmGrants(chr, vehicle, { "REPAIR", "SALVAGE" })
+    return chr:getInventory():haveThisKeyId(vehicle:getKeyId()) ~= nil or K.phoneKey(chr, vehicle) ~= nil
+        or K.card(chr, vehicle) ~= nil or vmGrants(chr, vehicle, { "REPAIR", "SALVAGE" })
 end
 
 require "Vehicles/TimedActions/ISOpenVehicleDoor"
-local openComplete = ISOpenVehicleDoor.complete
+local openNew, openValidStart, openComplete = ISOpenVehicleDoor.new, ISOpenVehicleDoor.isValidStart, ISOpenVehicleDoor.complete
+-- Queued by someone our rule lets in, so with no vanilla unlock ahead of it; by its turn the key may be gone (the bag put
+-- down on the walk). Asked once as its turn comes (ISTimedActionQueue.lua:82; false drops the queue) and before anything
+-- is sent: end as vanilla's failed unlock would have. An open that starts as it is queued (:9-18) has no such gap.
+function ISOpenVehicleDoor:new(character, vehicle, part, ...) -- vanilla's parameter names: the wire format
+    local o = openNew(self, character, vehicle, part, ...)
+    if not isServer() then o.lidKeyed = K.lidKey(vehicle, part, character) end
+    return o
+end
+function ISOpenVehicleDoor:isValidStart(...)
+    local v, part, chr = self.vehicle, self.part, self.character
+    local door = self.lidKeyed and part:getDoor()
+    if door and door:isLocked() and not door:isOpen() and not door:isLockBroken()
+        and not vmRefuses(chr, v, part) and not K.lidKey(v, part, chr) then
+        HaloTextHelper.addBadText(chr, T.denyText("LID_LOCKED"))
+        return false
+    end
+    return openValidStart(self, ...)
+end
 function ISOpenVehicleDoor:complete(...)
     local v, part, chr = self.vehicle, self.part, self.character
     local door = not isClient() and K.lidKey(v, part, chr) and part:getDoor()

@@ -33,7 +33,13 @@ function sendRemoveItemFromContainer() end
 function sendAddItemsToContainer() end
 getGameTime().getCalender = function() return { getTimeInMillis = function() return 0 end } end
 
+-- VehicleManager's adapter registration hooks (not fired here: H.fire would run every test's handlers)
+local onStart, evBefore = {}, { rawget(Events, "OnGameStart"), rawget(Events, "OnServerStarted") }
+rawset(Events, "OnGameStart", { Add = function(fn) onStart[#onStart + 1] = fn end })
+rawset(Events, "OnServerStarted", rawget(Events, "OnGameStart"))
 require "MinidoracatTesla/DriveUnit"
+rawset(Events, "OnGameStart", evBefore[1])
+rawset(Events, "OnServerStarted", evBefore[2])
 local DU = T.DriveUnit
 
 local function car(script, cond)
@@ -183,3 +189,45 @@ local nwin = { chr = win.chr, playerNum = 0 }
 ISVehicleMechanics.doPartContextMenu(nwin, ne, 0, 0)
 check(nwin.context.options[2].name == "IGUI_TakeEngineParts" and nwin.context.options[3].onSelect == "vanilla",
     "vanilla car: vanilla options untouched")
+
+H.section("VehicleManager's action guard over our two actions")
+local specs = {}
+MinidoracatVehicleManagerAPI = { registerActionAdapter = function(spec) specs[#specs + 1] = spec end }
+if onStart[1] then onStart[1]() end
+local byClass = {}
+for _, s in ipairs(specs) do byClass[s.class] = s end
+local sr, ss = byClass.ISMinidoracatTeslaRepairDriveUnit, byClass.ISMinidoracatTeslaTakeDriveUnitParts
+local probe = { part = te }
+check(#onStart == 2 and onStart[1] == onStart[2] and #specs == 2 and sr and ss
+    and sr.class == ISMinidoracatTeslaRepairDriveUnit.Type and ss.class == ISMinidoracatTeslaTakeDriveUnitParts.Type
+    and sr.action == "REPAIR" and ss.action == "SALVAGE" and #sr.stages == 1 and sr.stages[1] == "complete"
+    and ss.stages[1] == "complete" and sr.vehicleOf(probe) == tv and sr.partOf(probe) == te
+    and ss.vehicleOf({}) == nil, "D1 registered on server start and game start: repair REPAIR, salvage SALVAGE, at complete")
+MinidoracatVehicleManagerAPI = nil
+local quiet = pcall(onStart[1] or function() error("none") end)
+MinidoracatVehicleManagerAPI = {}
+quiet = quiet and pcall(onStart[1])
+check(quiet, "D2 no VehicleManager, or one without registerActionAdapter: nothing, no error")
+MinidoracatVehicleManagerAPI = nil
+-- VehicleManager's outer wrap (its ActionGuards.lua install/makeWrapper): canUse for the adapter's action; refused, false
+local granted
+local completeBefore = {}
+for _, s in ipairs(specs) do
+    local cls, inner = _G[s.class], _G[s.class].complete
+    completeBefore[cls] = inner
+    cls.complete = function(a) if s.action ~= granted then return false end return inner(a) end
+end
+granted = "REPAIR"
+te.cond = 64
+local dm = mechanic(6, 3)
+check(ss and ISMinidoracatTeslaTakeDriveUnitParts:new(dm, te, wrench, 300):complete() == false and te.cond == 64
+    and dm.inv.added == 0, "D3 REPAIR only: the salvage refused, condition and items untouched")
+check(sr and ISMinidoracatTeslaRepairDriveUnit:new(dm, te, wrench, 300):complete() == true and te.cond > 64,
+    "D3 REPAIR only: the repair runs")
+granted = "SALVAGE"
+local cond3 = te.cond
+check(sr and ISMinidoracatTeslaRepairDriveUnit:new(mechanic(6, 3), te, wrench, 300):complete() == false and te.cond == cond3,
+    "D3 SALVAGE only: the repair refused, condition untouched")
+check(ss and ISMinidoracatTeslaTakeDriveUnitParts:new(mechanic(6, 0), te, wrench, 300):complete() == true and te.cond == 0,
+    "D3 SALVAGE only: the salvage runs")
+for cls, inner in pairs(completeBefore) do cls.complete = inner end

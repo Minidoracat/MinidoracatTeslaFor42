@@ -140,14 +140,27 @@ end
 function SH.noSpot(chr)
     HaloTextHelper.addBadText(chr, T.denyText("SEMI_NO_SPOT"))
 end
-local origStart = ISPathFindAction.start
+local origStart, origPerform = ISPathFindAction.start, ISPathFindAction.perform
 function ISPathFindAction:start()
     local g = self.goal
     if g and g[1] == "VehicleAdjacent" and g[2]:getScriptName() == SH.TRAILER then
+        self.semiTrailer = g[2]
         self.goal = { "Nearest", SH.mechSpots(g[2]) }
         if not self.onFailFunc then self.onFailFunc, self.onFailArgs = SH.noSpot, { self.character } end
     end
     return origStart(self)
+end
+-- The engine's path ends where it could get to, not always on the spot asked for (PathFindBehavior2.java:1471-1481;
+-- reach-f: 0.23 off), and the trailer may have moved meanwhile: past the window's own reach (ISVehicleMechanics.lua:20-22)
+-- it would open and shut at once, so end as a failed walk does (ISPathFindAction.lua:23-33)
+function ISPathFindAction:perform()
+    local t = self.semiTrailer
+    if t and self.character:DistTo(t:getX(), t:getY()) > 6 then
+        local args = self.onFailArgs
+        self.onFailFunc(args[1], args[2], args[3], args[4])
+        return self:stop()
+    end
+    return origPerform(self)
 end
 
 -- Vanilla's action looks for the trailer again within 6 squares when it starts (ISAttachTrailerToVehicle.lua:42-48);

@@ -53,6 +53,9 @@ function ISPathFindAction:pathToVehicleAdjacent(character, vehicle)
     return setmetatable({ character = character, goal = { "VehicleAdjacent", vehicle } }, { __index = ISPathFindAction })
 end
 function ISPathFindAction:start() self.engineGoal = self.goal end
+-- the walk's end (ISPathFindAction.lua:68-91): perform() when it got there, stop() drops it and the queue after it
+function ISPathFindAction:perform() self.performed = true end
+function ISPathFindAction:stop() self.stopped = true end
 Vector3f = { new = function()
     local v = { _x = 0, _y = 0, _z = 0 }
     function v:x() return self._x end
@@ -415,6 +418,33 @@ local function vanillaGoal(v)
     return a.engineGoal[1] == "VehicleAdjacent" and a.engineGoal[2] == v
 end
 check(vanillaGoal(my) and vanillaGoal(semi), "a Model Y, the Semi: vanilla's walk")
+-- the walk over: the window's own reach measured again from where it ended (ISVehicleMechanics.lua:20-22)
+local function walkedTo(v, dx, dy, own)
+    local a = ISPathFindAction:pathToVehicleAdjacent(p, v)
+    if own then a.onFailFunc, a.onFailArgs = own, { "mine" } end
+    a:start()
+    local px, py = p.x, p.y
+    p.x, p.y = v.x + dx, v.y + dy
+    local told, halo = 0, HaloTextHelper
+    HaloTextHelper = { addBadText = function(chr, t)
+        if chr == p and t == MinidoracatTesla.denyText("SEMI_NO_SPOT") then told = told + 1 end
+    end }
+    a:perform()
+    HaloTextHelper, p.x, p.y = halo, px, py
+    return a, told
+end
+local s1, s1my = ISPathFindAction:pathToVehicleAdjacent(p, trailer), ISPathFindAction:pathToVehicleAdjacent(p, my)
+s1:start(); s1my:start()
+check(s1.semiTrailer == trailer and s1my.semiTrailer == nil, "S1 start(): the trailer's walk remembers the trailer, others nothing")
+local s, n = walkedTo(trailer, 2, 2)
+check(s.performed and not s.stopped and n == 0, "S2 ended within the window's reach: vanilla's end, nothing said")
+s, n = walkedTo(trailer, 5, 5)
+check(n == 1 and s.stopped and not s.performed, "S3 ended past it: SEMI_NO_SPOT once, stopped (no window), vanilla's end not run")
+local got
+s, n = walkedTo(trailer, 5, 5, function(x) got = x end)
+check(got == "mine" and n == 0 and s.stopped, "S4 a walk with its own failure handler: that one is called")
+s = walkedTo(my, 20, 0)
+check(s.performed and not s.stopped, "S5 not the trailer: vanilla's end wherever it stopped")
 
 ISVehicleMenu, ISVehicleTrailerUtils, ISAttachTrailerToVehicle, ISDetachTrailerFromVehicle, ISTimedActionQueue,
     getCell, getServerOptions, getPlayerRadialMenu, UIManager, getTexture, ISVehicleMechanics, ISPathFindAction, Vector3f,
