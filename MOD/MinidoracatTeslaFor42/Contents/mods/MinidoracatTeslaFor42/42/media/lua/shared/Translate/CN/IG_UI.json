@@ -124,6 +124,7 @@
     "IGUI_MinidoracatTesla_Deny_NOT_PLUGGED": "没有插充电线",
     "IGUI_MinidoracatTesla_Deny_CABLE_SHORT": "充电线够不到车",
     "IGUI_MinidoracatTesla_Deny_SEMI_NO_SPOT": "挂车旁边没有空位，走不过去",
+    "IGUI_MinidoracatTesla_Deny_LID_LOCKED": "前备箱盖已上锁",
     "IGUI_MinidoracatTesla_Unplugged_TooFar": "充电线被扯掉了：车离充电桩太远",
     "IGUI_MinidoracatTesla_Tip_Headlight": "开关大灯",
     "IGUI_MinidoracatTesla_Tip_Heater": "开关温度控制（耗电）",

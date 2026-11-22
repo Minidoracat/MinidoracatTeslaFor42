@@ -124,6 +124,7 @@
     "IGUI_MinidoracatTesla_Deny_NOT_PLUGGED": "Takılı şarj kablosu yok",
     "IGUI_MinidoracatTesla_Deny_CABLE_SHORT": "Kablo araca yetişmiyor",
     "IGUI_MinidoracatTesla_Deny_SEMI_NO_SPOT": "Römorkun yanında çalışacak yer yok",
+    "IGUI_MinidoracatTesla_Deny_LID_LOCKED": "Kaput kilitli",
     "IGUI_MinidoracatTesla_Unplugged_TooFar": "Şarj kablosu çıktı: araç çok uzaklaştı",
     "IGUI_MinidoracatTesla_Tip_Headlight": "Farları aç veya kapat",
     "IGUI_MinidoracatTesla_Tip_Heater": "İklimlendirmeyi aç veya kapat (batarya harcar)",
