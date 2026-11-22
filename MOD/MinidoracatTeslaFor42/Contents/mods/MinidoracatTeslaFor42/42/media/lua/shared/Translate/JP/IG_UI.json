@@ -123,6 +123,8 @@
     "IGUI_MinidoracatTesla_Deny_PLUGGED": "充電ケーブルはすでに差し込まれています",
     "IGUI_MinidoracatTesla_Deny_NOT_PLUGGED": "充電ケーブルが差し込まれていません",
     "IGUI_MinidoracatTesla_Deny_CABLE_SHORT": "ケーブルが車まで届きません",
+    "IGUI_MinidoracatTesla_Deny_SEMI_NO_SPOT": "トレーラーの横に作業できる場所がありません",
+    "IGUI_MinidoracatTesla_Deny_LID_LOCKED": "フードはロックされています",
     "IGUI_MinidoracatTesla_Unplugged_TooFar": "充電ケーブルが抜けました：車が離れすぎました",
     "IGUI_MinidoracatTesla_Tip_Headlight": "ヘッドライトのオン/オフ",
     "IGUI_MinidoracatTesla_Tip_Heater": "空調のオン/オフ（バッテリーを使います）",

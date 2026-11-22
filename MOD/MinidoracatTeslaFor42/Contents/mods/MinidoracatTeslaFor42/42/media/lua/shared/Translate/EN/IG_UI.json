@@ -123,6 +123,8 @@
     "IGUI_MinidoracatTesla_Deny_PLUGGED": "A charge cable is already plugged in",
     "IGUI_MinidoracatTesla_Deny_NOT_PLUGGED": "No charge cable plugged in",
     "IGUI_MinidoracatTesla_Deny_CABLE_SHORT": "The cable does not reach the car",
+    "IGUI_MinidoracatTesla_Deny_SEMI_NO_SPOT": "No room beside the trailer to work on it",
+    "IGUI_MinidoracatTesla_Deny_LID_LOCKED": "The hood is locked",
     "IGUI_MinidoracatTesla_Unplugged_TooFar": "Charge cable pulled out: the car moved too far",
     "IGUI_MinidoracatTesla_Tip_Headlight": "Turn the headlights on or off",
     "IGUI_MinidoracatTesla_Tip_Heater": "Turn the climate controls on or off (uses battery)",

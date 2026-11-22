@@ -123,6 +123,8 @@
     "IGUI_MinidoracatTesla_Deny_PLUGGED": "Kabel ładowania jest już podłączony",
     "IGUI_MinidoracatTesla_Deny_NOT_PLUGGED": "Kabel ładowania nie jest podłączony",
     "IGUI_MinidoracatTesla_Deny_CABLE_SHORT": "Kabel nie sięga do samochodu",
+    "IGUI_MinidoracatTesla_Deny_SEMI_NO_SPOT": "Obok naczepy nie ma miejsca, by przy niej pracować",
+    "IGUI_MinidoracatTesla_Deny_LID_LOCKED": "Pokrywa przedniego bagażnika jest zablokowana",
     "IGUI_MinidoracatTesla_Unplugged_TooFar": "Kabel ładowania wyrwany: samochód odjechał za daleko",
     "IGUI_MinidoracatTesla_Tip_Headlight": "Włącz lub wyłącz reflektory",
     "IGUI_MinidoracatTesla_Tip_Heater": "Włącz lub wyłącz klimatyzację (zużywa energię akumulatora)",
