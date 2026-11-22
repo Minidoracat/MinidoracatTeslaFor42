@@ -430,6 +430,17 @@ module Base
         scale = 0.5495,
     }
 
+    /* TeslaArmor's outer kit (as MinidoracatTesla_ModelY_Armor) */
+    model MinidoracatTesla_ModelX_Armor
+    {
+        mesh = vehicles/MinidoracatTesla_ModelX_Armor,
+        texture = Vehicles/MinidoracatTesla_Armor,
+        shader = vehiclewheel,
+        static = true,
+        invertX = false,
+        scale = 0.5495,
+    }
+
     /* Model Y L: same build, units and shaders as the Model Y above (CAR=model_yl; BloxBloger's "2025 Tesla Model Y", */
     /* CC BY-NC 4.0, CREDITS.md, lengthened by scripts/blender/skf/prep_model_yl.py). Four plain doors. */
     model MinidoracatTesla_ModelYL
