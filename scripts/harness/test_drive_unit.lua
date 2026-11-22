@@ -77,9 +77,11 @@ end
 local wrench = { getID = function() return 9 end, setJobType = function() end }
 
 -- a kit (server/Armor.lua A.around) stands in here: records the car and the drive unit's condition when it settles
--- (before the action's change) and when it takes the new snapshot (after)
-local armor, arounds, te = T.Armor, {}, nil
+-- (before the action's change) and when it takes the new snapshot (after). owed = the condition the settle gives the
+-- drive unit back to (what a kit owes from a hit since the last minute), once
+local armor, arounds, te, owed = T.Armor, {}, nil, nil
 T.Armor = { around = function(v, fn)
+    if owed and te then te.cond, owed = owed, nil end
     local s = { v = v, before = te and te.cond }
     arounds[#arounds + 1] = s
     local r = fn()
@@ -140,6 +142,18 @@ check(ISMinidoracatTeslaRepairDriveUnit:new(m0, te, wrench, 300):complete() == t
 local low = mechanic(5, 3)
 check(ISMinidoracatTeslaRepairDriveUnit:new(low, te, wrench, 300):complete() == false and te.cond == 50 and low.inv.n == 3,
     "under the repair level: refused on the server")
+-- 2026-11-22 round 2: the kit's settle can make the drive unit whole (snapshot 100, 99 now, nothing kept)
+te.cond, owed = 99, 100
+local mFull = mechanic(10, 3)
+local cTx = tv.condTx
+check(ISMinidoracatTeslaRepairDriveUnit:new(mFull, te, wrench, 300):complete() == false and te.cond == 100
+    and mFull.inv.n == 3 and mFull.inv.removed == 0 and mFull.xp == 0 and next(mFull.mech) == nil and tv.condTx == cTx,
+    "repair, 99 given back to 100 by the kit's settle: refused, no part used, no XP, no mechanics item")
+te.cond = 100
+local mFull2 = mechanic(6, 2)
+check(ISMinidoracatTeslaRepairDriveUnit:new(mFull2, te, wrench, 300):complete() == false and mFull2.inv.removed == 0
+    and mFull2.xp == 0, "repair at 100 (someone finished first): refused the same way")
+te.cond = 50
 
 H.section("take Drive Unit Parts")
 local zr = ZombRand
@@ -154,6 +168,13 @@ check(tk:complete() == true and tm.inv.added == 6 and te.cond == 0 and tm.xp == 
     "level 6: random(20/3, 20) -> 10 points a part, 64 -> 6 parts, condition 0, 6/2 XP")
 check(#arounds == 1 and arounds[1].v == tv and arounds[1].before == 64 and arounds[1].after == 0,
     "take: the kit settles at 64 and snapshots the 0 (else it gives the salvaged condition back)")
+-- the kit gives back 59 -> 65 before the take: parts counted from 65 (6), not 59 (5)
+te.cond, owed = 59, 65
+local tmK = mechanic(6, 0)
+arounds = {}
+check(ISMinidoracatTeslaTakeDriveUnitParts:new(tmK, te, wrench, 300):complete() == true and tmK.inv.added == 6
+    and te.cond == 0 and #arounds == 1 and arounds[1].before == 65 and arounds[1].after == 0,
+    "take right before the minute: what the kit gives back (59 -> 65) counts, 6 parts not 5, then 0")
 check(rolled[1] == 20 / 3 and rolled[2] == 20, "roll range is vanilla's c/3..c with c = 20 - skill")
 DU.salvage(50, 30)
 check(rolled[2] == 5, "c never below 5")
