@@ -64,6 +64,10 @@ function F.settle(v, t, freeUntil)
     if paid > 0 then B.set(v, bp, cur - paid * F.KW) end
     local on = free + paid -- hours it ran; the rest of dt it had no power
     local dead = on < dt - 1e-9
+    -- an egg dies once it is freezing (Food.isFreezing: can freeze, in a powered freezer; Food.java:837-838, 2188-2190)
+    -- and stays dead thawed: freeze mode with power in this stretch (dt 0 is a switch-on or switch-to-freeze settle,
+    -- powered), or freezing time already. A stretch with no power at all freezes nothing.
+    local freezing = s.mode == "freeze" and (on > 0 or dt == 0)
     local old, new, n, full = s.items or {}, {}, 0, false
     local items = part:getItemContainer():getItems()
     for i = 0, items:size() - 1 do
@@ -74,25 +78,21 @@ function F.settle(v, t, freeUntil)
             n = n + 1
             it:updateAge() -- lastAged = now: the engine adds nothing on top of what is set here
             local k, cf = tostring(it:getID()), it:canBeFrozen()
-            local b, cold = old[k], false
+            local b, was = old[k], nil -- was: its freezing time before this stretch
             if b then -- from its baseline only, never from the item's own (client-writable) flags
-                local mid = F.step(b, on, s.mode, cf) -- where the power stopped
-                cold = b.ft > 0 or mid.ft > 0 -- its most freezing time this stretch: the unpowered rest only thaws
-                b = F.step(mid, dt - on, nil, cf)
+                was = b.ft
+                b = F.step(F.step(b, on, s.mode, cf), dt - on, nil, cf)
                 it:setAge(b.age)
                 it:setFreezingTime(b.ft)
                 it:setFrozen(b.fr)
             else -- new food only gets a baseline; frozen only with freezing time to show for it, on the item too
-                local ft = it:getFreezingTime()
-                b = { age = it:getAge(), ft = ft, fr = ft > 0 and it:isFrozen() }
+                was = it:getFreezingTime()
+                b = { age = it:getAge(), ft = was, fr = was > 0 and it:isFrozen() }
                 -- a frozen flag with ft 0 neither ages nor thaws (Food.java:757-758, 2193-2198); no later settle may fix
                 -- it (this one may switch the fridge off)
                 if it:isFrozen() ~= b.fr then it:setFrozen(b.fr) end
-                cold = ft > 0
             end
-            -- frozen eggs die when freezing begins and stay dead when thawed (Food.java:837-838): an egg that had
-            -- freezing time at any point of this stretch, so one long catch-up does what ten-minute settles do
-            if cold and it:isFertilized() then it:setFertilized(false) end
+            if (was > 0 or cf and freezing) and it:isFertilized() then it:setFertilized(false) end
             new[k] = b
         end
     end
@@ -120,7 +120,7 @@ function F.setMode(v, mode, by)
         if md.fridge then off(v, part, md.fridge.at, md.fridge.items) end
     elseif md.fridge then
         md.fridge.mode = mode
-        v:transmitPartModData(part)
+        F.settle(v) -- dt 0, in place of a bare transmit: switched to freeze, its eggs die now (as a freezer's first update)
     else
         md.fridge, md.fridgeLast = { mode = mode, at = T.hours(), by = by, items = {} }, nil
         F.settle(v) -- the food in it now gets its baseline

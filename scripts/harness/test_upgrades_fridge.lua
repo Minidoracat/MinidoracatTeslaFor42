@@ -154,7 +154,7 @@ tick(2)
 check(near(c.age, 2 + ROOM + 2 * COOL, 1e-9), "from its baseline on: the fridge rate")
 -- planted: a settle that books every food, baseline or not, would back-date it: the check above goes red on it
 local src = io.open("MOD/MinidoracatTeslaFor42/Contents/mods/MinidoracatTeslaFor42/42/media/lua/server/MinidoracatTesla/Fridge.lua"):read("a")
-local bad, n = src:gsub("local b, cold = old%[k%], false", "local b, cold = old[k] or { age = it:getAge(), ft = it:getFreezingTime(), fr = it:isFrozen() }, false")
+local bad, n = src:gsub("local b, was = old%[k%], nil", "local b, was = old[k] or { age = it:getAge(), ft = it:getFreezingTime(), fr = it:isFrozen() }, nil")
 local real = { settle = FR.settle, setMode = FR.setMode, track = FR.track, untrack = FR.untrack, cars = FR.cars,
     late = FR.late, cmd = T.ServerCommands.fridge }
 local noEvents = setmetatable({}, { __index = function() return { Add = function() end, Remove = function() end } end })
@@ -186,20 +186,41 @@ check(s.items["106"].fr == false and s.items["107"].fr == true,
 remove(fp.items, claimed); remove(fp.items, real100)
 tick(0)
 
-H.section("Fridge: fertilized eggs")
+H.section("Fridge: fertilized eggs (dead once freezing, Food.isFreezing: can freeze, in a powered freezer; Food.java:837-838, 2188-2190)")
 local eggCar = F.track(F.vehicle({ pct = 80 }))
-local egg, warm = food(601, { fert = true }), food(602, { fert = true })
-local eggPart = fit(eggCar, { egg })
+local egg, hard = food(601, { fert = true }), food(603, { fert = true, freezable = false })
+local eggPart = fit(eggCar, { egg, hard })
 FR.setMode(eggCar, "freeze", "owner")
+check(not egg.fert and egg.ft == 0 and hard.fert,
+    "switched on in freeze (the first settle: only a baseline, ft 0): dead at once; one that cannot freeze: not")
+remove(eggPart.items, egg)
+check(not egg.fert, "taken out within the first ten minutes: dead all the same")
+local late = food(604, { fert = true })
+eggPart.items[#eggPart.items + 1] = late
+tick(1 / 6)
+check(not late.fert and late.ft == 0, "put in a running freezer: dead at the first settle that sees it (its baseline only, ft 0)")
 local coolCar = F.track(F.vehicle({ pct = 80 }))
+local warm = food(602, { fert = true })
 fit(coolCar, { warm })
 FR.setMode(coolCar, "cool", "owner")
-check(egg.fert, "freeze, first settle (only a baseline, ft 0): still fertilized")
 tick(1)
-check(not egg.fert and near(egg.ft, 25, 1e-9) and warm.fert, "freezing begun: no longer fertilized (Food.java:837-838); cool: still fertilized")
+check(warm.fert and warm.ft == 0, "cool an hour: still fertilized")
+local tx0 = coolCar.transmits
+FR.setMode(coolCar, "freeze", "owner")
+check(not warm.fert and warm.ft == 0 and coolCar.transmits == tx0 + 2,
+    "cool -> freeze: dead at the switch, before any freezing time (one transmit for the old mode's settle, one for the switch)")
 FR.setMode(eggCar, false); FR.setMode(coolCar, false)
-FR.untrack(eggCar); F.vehicles[eggCar:getId()] = nil; F.vehicles[coolCar:getId()] = nil
-check(eggPart.md.fridgeLast and eggPart.md.fridgeLast.items["601"], "switched off: fridgeLast kept")
+check(eggPart.md.fridgeLast and eggPart.md.fridgeLast.items["604"], "switched off: fridgeLast kept")
+local deadCar = F.track(F.vehicle({ pct = 20 })) -- at the floor: may switch on, pays for nothing
+local deadPart = fit(deadCar, {})
+FR.setMode(deadCar, "freeze", "owner")
+local cold = food(606, { fert = true })
+deadPart.items[1] = cold
+tick(1)
+check(deadPart.md.fridge == nil and deadPart.md.fridgeLast and deadPart.md.fridgeLast.items["606"] and cold.fert,
+    "freeze mode but no power the whole stretch (off for low battery in the settle that first sees it): still fertilized")
+FR.untrack(eggCar)
+for _, c in ipairs({ eggCar, coolCar, deadCar }) do F.vehicles[c:getId()] = nil end
 
 H.section("Fridge: at most F.MAX_ITEMS foods")
 check(FR.MAX_ITEMS == 400, "F.MAX_ITEMS is 400")
@@ -491,9 +512,16 @@ F.hours = F.hours + 3 -- looked at it once after it went off; looks again hours 
 H.fire("EveryOneMinute")
 check(near(mine.age, FR.step(fl.items["101"], 8, nil, true).age, 1e-9),
     "same fridgeLast, hours later: applied again, run on to the new now (not left at the first look)")
-local eggView = fit({ parts = {}, getId = function() return 7301 end }, { food(701, { fert = true }), food(702, { fert = true }) })
-eggView.md.fridge = { mode = "freeze", at = F.hours, items = { ["701"] = { age = 1, ft = 30, fr = false }, ["702"] = { age = 1, ft = 0, fr = false } } }
-check(UI.apply(eggView) == 2 and not eggView.items[1].fert and eggView.items[2].fert, "client copy: an egg with freezing time is no longer fertilized")
+local eggView = fit({ parts = {}, getId = function() return 7301 end },
+    { food(701, { fert = true }), food(702, { fert = true }), food(703, { fert = true, freezable = false }) })
+eggView.md.fridge = { mode = "freeze", at = F.hours, items = { ["701"] = { age = 1, ft = 30, fr = false },
+    ["702"] = { age = 1, ft = 0, fr = false }, ["703"] = { age = 1, ft = 0, fr = false } } }
+check(UI.apply(eggView) == 3 and not eggView.items[1].fert and not eggView.items[2].fert and eggView.items[3].fert,
+    "client copy, freezer running: eggs that can freeze are dead, ft 0 too (Food.isFreezing); one that cannot: not")
+local coolView = fit({ parts = {}, getId = function() return 7302 end }, { food(704, { fert = true }), food(705, { fert = true }) })
+coolView.md.fridge = { mode = "cool", at = F.hours, items = { ["704"] = { age = 1, ft = 0, fr = false }, ["705"] = { age = 1, ft = 20, fr = false } } }
+check(UI.apply(coolView) == 2 and coolView.items[1].fert and not coolView.items[2].fert,
+    "client copy, cool: an egg with no freezing time still fertilized, one with some not")
 H.fire("OnRefreshInventoryWindowContainers", { backpacks = {} }, "end")
 check(H.count("EveryOneMinute") == m0 + 1, "another page without one: the check stays for the first")
 H.fire("OnRefreshInventoryWindowContainers", page, "begin")
@@ -504,16 +532,20 @@ check(H.count("EveryOneMinute") == m0 and UI.nWatched == 0, "no page lists a fri
 H.section("Fridge: a fertilized egg frozen, then thawed (one catch-up == ten-minute settles == a late client)")
 local LC, SC = F.track(F.vehicle({ pct = 21 })), F.track(F.vehicle({ pct = 21 }))
 local le, se = food(801, { age = 1, fert = true }), food(802, { age = 1, fert = true })
-fit(LC, { le })
+local lcp = fit(LC, { le })
 local scp = fit(SC, { se })
 FR.setMode(LC, "freeze", "owner"); FR.setMode(SC, "freeze", "owner")
+local le2 = food(803, { age = 1, fert = true }) -- put in after the switch-on settle: first seen by the catch-up
+lcp.items[#lcp.items + 1] = le2
 local t1 = F.hours
 unload(LC)
 for _ = 1, 87 do tick(1 / 6) end -- 14.5 h: 12.5 h freezing on the pack down to 20 %, then 2 h without power
 F.hours = t1 + 14.5
 reload(LC, 7501)
 check(le.ft == 0 and not le.fr and not le.fert and near(le.age, 1 + 4 * COOL + 0.5 * ROOM, 1e-9),
-    "one catch-up: frozen, then thawed by its end (ft 0), and the egg is dead (it froze within the stretch)")
+    "one catch-up: frozen, then thawed by its end (ft 0); the egg dead")
+check(not le2.fert and le2.ft == 0 and lcp.md.fridgeLast.items["803"],
+    "first seen by a catch-up that had power in freeze mode (12.5 h of 14.5): dead, though only a baseline (ft 0)")
 local sl = scp.md.fridgeLast
 local sEnd = sl and FR.step(sl.items["802"], F.hours - sl.at, nil, true)
 check(not se.fert and sEnd and sEnd.ft == 0 and near(sEnd.age, le.age, 1e-9),

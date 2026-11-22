@@ -32,13 +32,15 @@ function UI.apply(part)
     if UI.applied[vid] == ver then return 0 end
     UI.applied[vid] = ver
     local off = not md.fridge and math.max(0, now - s.at) or 0 -- hours since it went off: room rate, as the server
+    local freezing = md.fridge and md.fridge.mode == "freeze"
     local n, items = 0, part:getItemContainer():getItems()
     for i = 0, items:size() - 1 do
         local it = items:get(i)
         local b = instanceof(it, "Food") and s.items[tostring(it:getID())]
         if b then
-            -- an egg with freezing time is dead (as the server, Fridge.lua), read before the run-on: room rate only thaws
-            if b.ft > 0 and it:isFertilized() then it:setFertilized(false) end
+            -- an egg in a running freezer, or with freezing time before the run-on (room rate only thaws), is dead
+            -- (as the server, Fridge.lua; Food.isFreezing)
+            if (b.ft > 0 or freezing and it:canBeFrozen()) and it:isFertilized() then it:setFertilized(false) end
             if off > 0 then b = T.Fridge.step(b, off, nil, it:canBeFrozen()) end -- shared Upgrades.lua
             it:updateAge() -- lastAged = now, so the room-rate gap is not added again
             it:setAge(b.age)
