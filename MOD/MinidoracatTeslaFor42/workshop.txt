@@ -35,6 +35,7 @@ description=[*] [b]Tesla-style dashboard[/b]: speed, charge and range; click the
 description=[*] [b]Phone key and Tesla app[/b]: unlocks as you walk up, locks as you walk away; lock, find the car and watch it charge from afar
 description=[*] [b]Sentry and Camp Mode[/b]: get told when someone touches, breaks into or tows the car, keep the climate on while camping
 description=[*] [b]Bioweapon Defense Mode and Chill[/b]: the HEPA filter keeps corpse sickness out, and acceleration can go gentle
+description=[*] [b]Upgrades[/b]: a Car Fridge that cools or freezes food, and protection kits that cut crash damage by about half or about three quarters
 description=[*] [b]Family mods[/b]: AutoDrive's FSD view and Summon, Vehicle Manager permissions, your cars on the minimap
 description=[/list]
 description=[b]With AutoDrive:[/b] its self-driving card sits above the Tesla dashboard.
