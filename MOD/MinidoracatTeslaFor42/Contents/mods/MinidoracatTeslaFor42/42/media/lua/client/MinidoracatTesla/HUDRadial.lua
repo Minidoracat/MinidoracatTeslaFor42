@@ -140,12 +140,12 @@ local function addSlices(menu, player, vehicle)
         local f = fp:getModData().fridge
         local mode = not f and "cool" or f.mode == "cool" and "freeze" or false
         local label = getText(FRIDGE_KEY[mode] or "IGUI_MinidoracatTesla_Radial_FridgeOff")
-        local tex = getTexture("media/ui/Container_Fridge.png") -- vanilla's fridge, as the container button
         local ok, why = T.Fridge.canSet(player, vehicle, mode)
+        -- one icon for every mode like the other switches (the centre text names the mode); _off only when greyed
         if ok then
-            menu:addSlice(label, tex, onFridge, player, vehicle, mode)
+            menu:addSlice(label, getTexture(TEX .. "radial_fridge.png"), onFridge, player, vehicle, mode)
         else
-            menu:addSlice(label .. (why and line2(T.denyText(why)) or ""), tex, nil)
+            menu:addSlice(label .. (why and line2(T.denyText(why)) or ""), getTexture(TEX .. "radial_fridge_off.png"), nil)
         end
     end
     -- vanilla's own "Sleep" slice (ISVehicleMenu.lua:225): second line = vanilla's bed tooltip (Tooltip_BedType)
