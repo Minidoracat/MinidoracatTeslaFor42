@@ -235,8 +235,12 @@ CAR = dict(
     # rear faces with it), lit with the tail lights at night. brake (both): the C is the brake light (Juniper: the bar
     # and a thin outer strip are the tail lights, the brake lights sit at the tailgate's corners; teslaoracle.com
     # 2026-01-05, teslaownersonline.com "Juniper rear brake lights as an extension of the light bar")
+    # head_boxes: the main headlamps, the lamp units (black_refl, |x| 0.56-0.68, z -0.265..-0.20 centred) in the
+    # bumper's pockets under the light bar (the light bar is the DRL; Juniper's low / high beams sit in those pockets),
+    # lit with the headlights (dark before, E2E armorY-night 2026-11-22); not the black_refl strip down the pocket's
+    # outer edge (|x| 0.705-0.726) into the lower intake
     LAMPS=dict(head=("front_white_light",), tail=("back_red_Light", "red_plastic111"), tail_z=0.75, tail_y=-1.4,
-               brake=("Plane.034", 0.509),
+               brake=("Plane.034", 0.509), head_boxes=((("black_refl",), (0.55, 1.50, -0.27), (0.70, 1.84, -0.19)),),
                **(dict(blade="Badge_BLADE", blade_rgb=(236, 78, 44), blade_flush=True, blade_swatch=True,
                        blade_split=True, blade_round=0.019, blade_n=57, blade_rays=9, blade_lit=("Plane.034", 0.509))
                if _RED_BAR else dict(blade="Plane.034"))),

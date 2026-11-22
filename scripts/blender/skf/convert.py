@@ -1269,6 +1269,16 @@ def classify(car, names, sizes):
     #                                                                                     front and rear (Model S)
     head |= np.isin(obj, LAMPS.get("head_objs", ()))   # whole objects lit as head lamps (Cybercab's lamp dots: their
     #                                                    material is the plate's)
+    # LAMPS head_boxes ((materials, lo, hi), ...; lo / hi (|x|, y, z) in the built mesh's centred coordinates, as
+    # END_ZONES' boxes): those materials' faces centred in a box are head lamps too, for a lamp in a material the car
+    # uses elsewhere (Model Y / Y L: the main headlamps in the bumper's pockets under the light bar, dark at night
+    # before, E2E armorY-night 2026-11-22)
+    if LAMPS.get("head_boxes"):
+        co_ = pv.mesh_co(car)
+        cc = cen - np.r_[0.0, ((co_.min(0) + co_.max(0)) / 2)[1:]]   # centred as stage_build centres the mesh
+        cc[:, 0] = np.abs(cc[:, 0])
+        for mats, lo, hi in LAMPS["head_boxes"]:
+            head |= np.isin(mat, mats) & (cc > np.array(lo, float)).all(1) & (cc < np.array(hi, float)).all(1)
     tail = np.isin(mat, LAMPS["tail"]) & (cen[:, 2] > LAMPS["tail_z"]) & (cen[:, 1] < LAMPS["tail_y"])
     blade = (obj == LAMPS["blade"]) & (fnorm[:, 1] < -0.5) | (obj == "Badge_BLADE")
     # LAMPS blade_lit (Model Y): (object, |x|) whose rear faces outboard of |x| stay lit and smoked with the blade gone
