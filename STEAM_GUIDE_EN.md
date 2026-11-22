@@ -378,7 +378,7 @@ A charger that works on the floor, no wall needed; slower than the Wall Connecto
 [*] [b]How you get one[/b]: a Tesla's car key becomes that car's Key Card, named after the car, even while you sit in it. A key in the ignition changes once you switch the car off and it comes back to you.
 [*] [b]Tap to lock or unlock[/b]: outside the car, right-click the Tesla and choose Tap Key Card: Lock / Unlock; your character walks to the driver's door and taps it, and every door, the liftgate and the hood lock or unlock together.
 [*] [b]Lights and sound[/b]: locking flashes once with a short horn chirp (zombies ignore it); unlocking flashes twice.
-[*] [b]Wallet is fine[/b]: the card taps and starts the car from a wallet or bag too.
+[*] [b]Wallet is fine[/b]: the card taps and starts the car from a wallet or bag too. On a locked car, a key card or phone key in a bag also counts as the key for opening Vehicle Mechanics and for fitting or removing parts that need the key.
 [*] [b]Starting[/b]: carried loose or on a key ring, the card goes into the ignition (the console's card reader) like a vanilla key; in a wallet or bag it stays there.
 [/list]
 {{img:07-pair-menu-en.jpg}}
@@ -677,6 +677,7 @@ Without Vehicle Manager:
 [list]
 [*] [b]Car unlocked[/b]: plug in or unplug the charge cable, set the target or stop charging on the charge card, and pick up or rotate a charger the car is plugged into.
 [*] [b]Car locked[/b]: all of that needs this car's key; the menu is grey and says The car is locked: you need this car's key, and the server refuses too.
+[*] [b]Vehicle Mechanics[/b]: on a locked car without its key the mechanics window does not open: your character walks to the front, stops, and The hood is locked shows overhead; the hood stays shut.
 [*] [b]After hotwiring[/b]: it counts as the key in the ignition: plug in, unplug and use the charge card whether it is locked or not; sitting in it you can turn on Camp Mode and set up a phone as its phone key.
 [*] [b]Not for Sentry[/b]: hotwiring alone does not make you the owner; a stranger's hotwire still sounds the alarm, tells the owner and cannot turn Sentry off. Setting up a phone key in the hotwired car, though, is like carrying its key, so that player can turn Sentry off; for real theft protection use Vehicle Manager.
 [*] With Vehicle Manager: its rights decide, locked or not, hotwired or not.
