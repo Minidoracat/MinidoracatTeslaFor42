@@ -198,6 +198,16 @@ def envelope(xs, req):
     return lambda x: c[0] + c[1] * x ** 2 + c[2] * x ** 4
 
 
+def folded(xs, req, knots):
+    """Smallest even piecewise-linear y(|x|) through the knots (|x|, ascending, from 0), least squares shape lifted onto
+    every requirement: a straight bar bent at the knots, for a faceted nose (the Cybertruck's)."""
+    k = np.asarray(knots, float)
+    A = np.stack([np.interp(np.abs(xs), k, row) for row in np.eye(len(k))], 1)
+    c = np.linalg.lstsq(A, req, rcond=None)[0]
+    c += (req - A @ c).max()
+    return lambda x: float(np.interp(abs(x), k, c))
+
+
 def guard(kit, car, g, sign, Z):
     """Front (sign +1) or rear (-1) guard: a low bar across, two corner pieces (tube loops or folded panels) rising to
     `top`, brackets back to the bumper."""
@@ -214,6 +224,8 @@ def guard(kit, car, g, sign, Z):
         hi = z_top + half + 0.01 if any(min(a, b) - 0.02 <= x <= max(a, b) + 0.02 for a, b in loops) else z_band[1]
         req.append(car.front(x, z_band[0], hi, sign) + g["gap"] + half)
     Y = envelope(xs, np.array(req))
+    if g.get("knots"):                     # optional: a bar folded at these |x| (folded), not the quartic
+        Y = folded(xs, np.array(req), g["knots"])
     yw = lambda x: sign * Y(x)             # noqa: E731  (mesh y)
     order = xs if sign > 0 else xs[::-1]   # b = direction x up points into the car (front +x, rear -x)
     if g["kind"] == "tube":
@@ -461,6 +473,8 @@ def check(car, ob, kit, zmid, cy, geo):
     keep = pv.CAR["ARMOR"]["keep"]
     pts = lamp_points(car)
     for nm, sign in (("front plate", 1), ("rear plate", -1)):
+        if nm.replace(" ", "_") not in keep:        # no such plate to keep (the Semi's tractor: front guard only)
+            continue
         hx, z0, z1 = keep[nm.replace(" ", "_")]
         pts[nm] = np.array([h for x in np.linspace(-hx, hx, 9) for z in np.linspace(z0 - zmid, z1 - zmid, 5)
                             for h in [car.hit((x, 4 * sign, z), (0, -sign, 0))] if h is not None])

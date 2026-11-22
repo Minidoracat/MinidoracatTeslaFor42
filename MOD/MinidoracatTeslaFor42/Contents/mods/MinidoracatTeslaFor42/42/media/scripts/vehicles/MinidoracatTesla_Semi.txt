@@ -280,5 +280,12 @@ module Base
                 file = MinidoracatTesla_Semi_Detail,
             }
         }
+        part TeslaArmor
+        {
+            model Armor
+            {
+                file = MinidoracatTesla_Semi_Armor,
+            }
+        }
     }
 }
