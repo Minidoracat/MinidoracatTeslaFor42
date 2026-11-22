@@ -267,9 +267,16 @@ function H.player(o)
     function p:getX() return self.x end
     function p:getY() return self.y end
     function p:getZ() return self.z end
-    function p:DistTo(a, b) -- the engine's: Manhattan, an object or x, y (IsoMovingObject.java:601-607, IsoUtils.java:44-46)
-        local x, y = a, b
-        if type(a) == "table" then x, y = a:getX(), a:getY() end
+    -- the engine's: Manhattan (IsoUtils.java:43-45). An object: both floats (IsoMovingObject.java:605-607); x, y: the
+    -- DistTo(int, int) overload (:601-603), Lua's numbers cut toward zero (KahluaNumberConverter.java:28-30 intValue)
+    function p:DistTo(a, b)
+        local x, y
+        if type(a) == "table" then
+            x, y = a:getX(), a:getY()
+        else
+            local function int(n) return n < 0 and math.ceil(n) or math.floor(n) end
+            x, y = int(a), int(b)
+        end
         return math.abs(self.x - x) + math.abs(self.y - y)
     end
     function p:getSteamID() return self.sid or 0 end -- H.player{ sid = } (IsoPlayer.java:6412; 0 off Steam)

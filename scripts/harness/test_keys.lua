@@ -944,6 +944,37 @@ as(true, false, function()
 end)
 check(ISUnlockVehicleDoor.stop == vanillaUnlockStop and startSaid(loose, v.frunk) == 0,
     "A6d stop() is vanilla's, unwrapped")
+-- A6f split screen: the line goes over the player who ran the unlock (T.deny's pn -> Net.lua's handler), not slot 0
+do
+    local deny, dispatch = T.ClientCommands.deny, T.clientDispatch
+    T.ClientCommands.deny, T.clientDispatch = nil, true -- Net.lua: its handler only if none, no second dispatcher
+    dofile("MOD/MinidoracatTeslaFor42/Contents/mods/MinidoracatTeslaFor42/42/media/lua/client/MinidoracatTesla/Net.lua")
+    local netDeny = T.ClientCommands.deny
+    T.ClientCommands.deny, T.clientDispatch = deny, dispatch
+    local second = player("second", container(), v.x - 1, v.y, 1) -- slot 1, no key
+    local slots, getBefore, over = { [0] = stranger, [1] = second }, getSpecificPlayer, {}
+    getSpecificPlayer = function(n) return slots[n] end
+    local function heardBy(fn)
+        over = { [stranger] = 0, [second] = 0 }
+        local halo, ours = HaloTextHelper, T.ClientCommands.deny
+        HaloTextHelper = { addBadText = function(chr, t) if t == T.denyText("LID_LOCKED") then over[chr] = (over[chr] or 0) + 1 end end }
+        T.ClientCommands.deny = netDeny
+        fn()
+        HaloTextHelper, T.ClientCommands.deny = halo, ours
+        return over[second] == 1 and over[stranger] == 0
+    end
+    check(heardBy(function()
+        v.frunk.d.locked = true
+        as(false, false, function() ISUnlockVehicleDoor:new(second, v.frunk):start() end)
+    end), "A6f SP: player 2's unlock fails on the lid: the line over player 2 once, none over player 1")
+    check(heardBy(function()
+        v.frunk.d.locked, F.sent = true, {}
+        as(false, true, function() ISUnlockVehicleDoor:new(second, v.frunk):complete() end)
+        local m = F.lastSent("deny")
+        as(true, false, function() netDeny(m.args) end) -- its client (one connection, both players)
+    end), "A6f MP: the server's deny for player 2 shows over player 2 once, none over player 1")
+    getSpecificPlayer = getBefore
+end
 SandboxVars.MinidoracatVehicleManager = { VirtualKey = false }
 vm({ REPAIR = true })
 local r6 = scenario(false, "mechanics", stranger)
@@ -979,11 +1010,16 @@ for _, side in ipairs({ { "SP", false }, { "MP client", true } }) do
         giveCard()
         MinidoracatVehicleManagerAPI = nil
         check(ok == true and n == 0, "A7d " .. side[1] .. ": VM refuses by its turn: starts, VM's guard speaks")
-        local e1 = select(2, validStart(bagCard, function() dropCard(); v.frunk.d.locked = false end))
-        local e2 = select(2, validStart(bagCard, function() v.frunk.d.open = true end))
-        local e3 = select(2, validStart(bagCard, function() v.frunk.d.broken = true end))
-        giveCard()
-        check(e1 and e2 and e3, "A7e " .. side[1] .. ": the lid unlocked, open, or its lock broken by then: starts")
+        -- marked as queued with the card held; the card dropped on the walk and the lid changed by its turn: starts
+        for _, e in ipairs({ { "unlocked", function() v.frunk.d.locked = false end },
+            { "open", function() v.frunk.d.open = true end },
+            { "with its lock broken", function() v.frunk.d.broken = true end } }) do
+            local ea, eok, en = validStart(bagCard, function() dropCard(); e[2]() end)
+            giveCard()
+            v.frunk.d.locked, v.frunk.d.open, v.frunk.d.broken = true, false, false
+            check(ea.lidKeyed == true and eok == true and en == 0,
+                "A7e " .. side[1] .. ": marked with the card, the card dropped, the lid " .. e[1] .. " by then: starts, nothing said")
+        end
     end)
 end
 as(false, true, function() check(not openAct(bagCard).lidKeyed, "A7f server: new() leaves no mark") end)
