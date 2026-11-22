@@ -765,6 +765,10 @@ function T.authorized(player, vehicle, perm)
     if not player or not vehicle then return false, "NO_TARGET" end
     local api = MinidoracatVehicleManagerAPI
     if api and api.canUse then return api.canUse(player, vehicle, perm or "DRIVE", { mod = T.MODULE }) end
+    return T.ownRule(player, vehicle)
+end
+-- the "otherwise" above on its own: also for a car VehicleManager has no owner for ("UNCLAIMED", Upgrades.lua F.canSet)
+function T.ownRule(player, vehicle)
     if SandboxVars and SandboxVars.VehicleEasyUse then return true, "EASY_USE" end
     if vehicle:isKeysInIgnition() or player:getInventory():haveThisKeyId(vehicle:getKeyId()) then return true, "KEY" end
     if T.Keys and T.Keys.card and (T.Keys.card(player, vehicle) or T.Keys.phoneKey(player, vehicle)) then return true, "KEY" end

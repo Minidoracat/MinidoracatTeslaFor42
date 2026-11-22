@@ -69,19 +69,48 @@ function T.UninstallComplete.Armor(vehicle, part)
 end
 
 -- ---------------------------------------------------------------- Fridge
--- part modData `fridge` = { mode = "cool" | "freeze", at, by, items = { ["<item id>"] = { age, ft, fr } } } (server
--- only writes it; items is keyed by tostring(getID()), which survives reloads and restarts, references/upgrades.md);
--- command `fridge` { vid, mode = "cool" | "freeze" | false }. Off = no `fridge` table.
+-- part modData `fridge` = { mode = "cool" | "freeze", at, by, full, items = { ["<item id>"] = { age, ft, fr } } }
+-- (server only writes it; items is keyed by tostring(getID()), which survives reloads and restarts,
+-- references/upgrades.md); command `fridge` { vid, mode = "cool" | "freeze" | false }. Off = no `fridge` table; the
+-- last settle's { at, items } then stays as `fridgeLast` for the clients' display only (FridgeUI.lua).
 local F = {}
 T.Fridge = F
 
 F.KW = 0.06            -- draw while on: 60 W
-F.FREEZE_HOURS = 4     -- unfrozen food freezes fully in 4 h, as in a freezer (Food.java:839)
+-- food tracked per fridge, in container order: fridge.items rides in the part's modData and in the car's update
+-- packet, both sized by a 16-bit short (VehiclePartModData.java, VehicleUpdatePacket.java); ~54 bytes an entry
+F.MAX_ITEMS = 400
+F.FREEZE_HOURS = 4     -- freezing time 0 -> 100 in a powered freezer (Food.java:835,839)
+F.THAW_HOURS = 1.5     -- 100 -> 0 anywhere else; twice that in a powered fridge (Food.java:836,843-846)
 -- vanilla's fridge slow-down and rot speed by the sandbox values; any other value is the default 3 (Food.java:713-732)
 F.FRIDGE_FACTOR = { 0.4, 0.3, 0.2, 0.1, 0.03, 0 }
 F.ROT_SPEED = { 1.7, 1.4, 1.0, 0.7, 0.4 }
 function F.fridgeFactor() return F.FRIDGE_FACTOR[SandboxVars.FridgeFactor] or F.FRIDGE_FACTOR[3] end
 function F.rotSpeed() return F.ROT_SPEED[SandboxVars.FoodRotSpeed] or F.ROT_SPEED[3] end
+
+-- one food's { age, ft, fr } after h hours with the fridge powered in `mode` ("cool" / "freeze"), or with no power
+-- (mode nil: room rate). Vanilla's freezer and fridge rules in exact pieces, so step(step(b, x), y) == step(b, x + y):
+-- frozen food does not age (Food.java:757-758) and stays frozen until thawed to 0 (setFreezingTime, :2156-2163);
+-- a powered freezer raises ft 100 per 4 h (:837-839), unfrozen food ageing at the fridge factor meanwhile
+-- (:759-761); anywhere else ft falls 100 per 1.5 h, 3 h in a powered fridge (:842-852; its /6 is for a container
+-- above 1.0, a stove: a powered fridge reads 0.2, a car's 1.0, ItemContainer.java:2442-2462). A food that cannot
+-- freeze keeps its ft (:2189-2199).
+function F.step(b, h, mode, canFreeze)
+    local ft, fr = b.ft, b.fr
+    local still = fr and h or 0 -- the hours of h spent frozen
+    if canFreeze and mode == "freeze" then
+        if not fr then still = math.max(0, h - (100 - ft) / 100 * F.FREEZE_HOURS) end
+        ft = math.min(100, ft + h * 100 / F.FREEZE_HOURS)
+        fr = fr or ft >= 100
+    elseif canFreeze and ft > 0 then
+        local th = mode == "cool" and 2 * F.THAW_HOURS or F.THAW_HOURS
+        if fr then still = math.min(h, ft / 100 * th) end
+        ft = math.max(0, ft - h * 100 / th)
+        fr = fr and ft > 0
+    end
+    local rate = (mode and F.fridgeFactor() or 1) * F.rotSpeed() / 24 -- age is in days (Food.java:773)
+    return { age = b.age + (h - still) * rate, ft = ft, fr = fr }
+end
 
 -- the fitted fridge part, or nil
 function F.part(vehicle)
@@ -89,17 +118,21 @@ function F.part(vehicle)
     return p and p:getInventoryItem() and p or nil
 end
 
--- may player switch the fridge to `mode`? The server's `fridge` command and the menus' greying. The charge cable's
--- structure (Chargers.lua T.mayUseCable) with VehicleManager's CARGO; switching on needs sentry's 20 % or a charger.
+-- may player switch the fridge to `mode`? The server's `fridge` command and the menus' greying. VehicleManager's
+-- CARGO decides a car it has an owner for; otherwise (none installed, or the car "UNCLAIMED") this MOD's own rule
+-- (Core.lua T.ownRule: a key, the card or phone key, hotwired, VehicleEasyUse) or an unlocked car, as the guide says
+-- (STEAM_GUIDE.md "車沒綁定"). Switching on needs sentry's 20 % or a charger.
 -- Returns true, or false and the deny reason (nil for a mode no client sends).
 F.MODES = { cool = true, freeze = true }
 function F.canSet(player, vehicle, mode)
     if mode ~= false and not F.MODES[mode] then return false end
     if not F.part(vehicle) then return false, "NO_FRIDGE" end
     local ok, why = T.authorized(player, vehicle, "CARGO")
+    local api = MinidoracatVehicleManagerAPI
+    local vm = api and api.canUse and why ~= "UNCLAIMED"
+    if why == "UNCLAIMED" then ok = T.ownRule(player, vehicle) end
     if not ok then
-        local api = MinidoracatVehicleManagerAPI
-        if api and api.canUse then return false, T.VM_REASONS[why] and why or "NOT_OWNER" end
+        if vm then return false, T.VM_REASONS[why] and why or "NOT_OWNER" end
         if vehicle:isAnyDoorLocked() then return false, "CAR_LOCKED" end
     end
     if mode then
@@ -118,10 +151,11 @@ function T.Init.Fridge(vehicle, part)
     if it then it:setItemCapacity(0) end
 end
 
--- removed (empty, requireEmpty): forget its state; transmitPartModData reaches the clients from the server only
--- (BaseVehicle.java:8274-8281)
+-- removed (empty, requireEmpty): forget its state and the last one; transmitPartModData reaches the clients from the
+-- server only (BaseVehicle.java:8274-8281)
 function T.UninstallComplete.Fridge(vehicle, part)
-    part:getModData().fridge = nil
+    local md = part:getModData()
+    md.fridge, md.fridgeLast = nil, nil
     vehicle:transmitPartModData(part)
     if F.untrack then F.untrack(vehicle) end
 end
