@@ -1,7 +1,7 @@
 <!-- 指南網址：https://steamcommunity.com/sharedfiles/filedetails/?id=3829449879 -->
 <!-- Steam guide source (English). The full description lives in this guide; the Workshop page only has a summary. Format and sync: pz-family-docs/release.md "完整說明：Steam 指南" -->
 <!-- 標題：📖 Minidoracat Tesla Collection Mod Guide: Cars, Charging, Keys and the App -->
-<!-- 摘要：A picture guide to Minidoracat Tesla Collection: the Model Y and Model 3 Performance, the Model Y L (six seats), the Model S and Model X Plaid (falcon wing doors and six seats), the first-generation Roadster 2.5 Sport (soft top), the Cybertruck Cyberbeast (cargo bed, Powershare home backup and the bed outlets), the Cybercab (a two-seat robotaxi: doors that swing up, no steering wheel, the charge port at the back), the Tesla Semi (an electric semi truck: a centre driver's seat, 1,200 kW Supercharging and a 53 ft box trailer to hitch), the battery and towing, the Wall Connector, the Mobile Connector and the V4 Superchargers at gas stations, the Tesla-style dashboard, key cards and phone keys, the Tesla app and Summon, Sentry and Camp Mode, Bioweapon Defense Mode and Chill, drive unit parts, and how it works with Vehicle Manager, the MiniMap, AutoDrive and Project Viewpoint, plus the sandbox options. -->
+<!-- 摘要：A picture guide to Minidoracat Tesla Collection: the Model Y and Model 3 Performance, the Model Y L (six seats), the Model S and Model X Plaid (falcon wing doors and six seats), the first-generation Roadster 2.5 Sport (soft top), the Cybertruck Cyberbeast (cargo bed, Powershare home backup and the bed outlets), the Cybercab (a two-seat robotaxi: doors that swing up, no steering wheel, the charge port at the back), the Tesla Semi (an electric semi truck: a centre driver's seat, 1,200 kW Supercharging and a 53 ft box trailer to hitch), the battery and towing, the Wall Connector, the Mobile Connector and the V4 Superchargers at gas stations, the Tesla-style dashboard, key cards and phone keys, the Tesla app and Summon, Sentry and Camp Mode, Bioweapon Defense Mode and Chill, drive unit parts, upgrades (the Car Fridge and protection kits), and how it works with Vehicle Manager, the MiniMap, AutoDrive and Project Viewpoint, plus the sandbox options. -->
 <!-- Screenshots: docs/screenshots/steam/en/, shot by guide-shots-sp in the family repo's e2e/MinidoracatTeslaFor42 (Bioweapon Defense and Chill only: --define part=feat, with hover.py for the radial's hover text; Cybertruck shots: guide-ct-sp; Model S / X: guide-sx-sp; Model Y L shots (33, 34): guide-yl-sp; Roadster shots (35, 36): guide-rd-sp (one CH run, same pictures as zh; 35 is four cars facing S at zoom 1.0 cropped (210,622,1710,967), 36 is one Radiant Red car with the soft top closed and stowed at zoom 0.5, each cropped (284,320,854,880), side by side with a 16 px gap); Cybercab shots (37, 38, 39): guide-cc-sp (one CH run, same pictures as zh; 37 is gcc-line-075, the left car facing S and the right one facing N at zoom 0.75 cropped (330,340,1590,710); 38 is one car facing S at zoom 0.5, gcc-doors-open-050 (both doors open by the app's Doors button) beside gcc-doors-trunk-050 (doors shut, trunk lid open), each cropped (220,260,935,820), side by side with a 16 px gap; 39 is gcc-charge-050, the car facing W with its tail plugged into a V4 Supercharger at zoom 0.5 cropped (150,320,1110,800)); Cybercab with two riders (40): seated2-mp with --clients 3 --define cam=1 (multiplayer, two accounts in one car, both doors open, a third client as the camera so no name or seat number is drawn), JPG made by the make_jpg.py in its folder (cam-seated2-open-SW beside cam-seated2-open-SE, each a 715x560 box around the car's screen position, 16 px gap, same picture as zh); Summon shots: phone-summon-sp; FSD: fsd-shot-sp (01c is 01b cropped (350,370,1090,977), not used in the guide, referenced by the Workshop description: re-crop it when 01b is reshot and update the image URL in the description, see release.md); With other mods: guide-mods-sp; Project Viewpoint (31): vd-first-ModelS from this repo's one-off temp/oneoff/vp-detail-sp, cropped (80,40,1660,1080), same picture as zh, needs ZombieBuddy; V4 Supercharger (32): supercharger-sp's sc-EN-card / sc-CH-card, cropped (480,160,1480,990); Semi shots (41, 42, 43): guide-semi-sp, JPGs made by the make_jpg.py in its folder (41 is gsm-truck-side-125 from the CH run, the Semi with its trailer beside a Model Y for scale, zoom 1.25 cropped (400,0,1540,800), same picture as zh; 42 is gsm-hitch-075, the hitch radial opened with V from beside the fifth wheel, zoom 0.75 cropped (280,70,1350,790), one CH and one EN run; 43 needs its own run with --define only=charge, because charging after the whole run is already past the 1,200 kW stretch: gsm-charge-075, the tractor alone plugged into a V4 Supercharger, zoom 0.75 cropped (140,100,1230,970), one CH and one EN run)) -->
 === 🚀 Quick start
 [b]中文版：[/b] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3829449828]Minidoracat Tesla Collection 完整說明[/url]
@@ -368,7 +368,7 @@ A charger that works on the floor, no wall needed; slower than the Wall Connecto
 [*] [b]Quick keys[/b]: headlights, climate controls, radio, Camp Mode; a key that is on turns blue with an underline.
 [*] [b]Reminders[/b]: a door open, charging, charged, no power at the charger, low battery, Camp or Sentry on show as one line below.
 [*] [b]Hover help[/b]: every button and every area of the car picture says what it does when the mouse is over it.
-[*] [b]V radial menu[/b]: adds Turn on Camp Mode, Charging Status and Turn on Chill (driver only); a car with a HEPA filter also has Turn on Bioweapon Defense Mode (see Bioweapon Defense Mode and Chill); the Cybertruck also has Powershare, the bed outlets and the light bar (the light bar for the driver only); a Semi at a standstill also gives the driver hitch and unhitch. When one is not available its icon is grey and the second line says why.
+[*] [b]V radial menu[/b]: adds Turn on Camp Mode, Charging Status and Turn on Chill (driver only); a car with a HEPA filter also has Turn on Bioweapon Defense Mode (see Bioweapon Defense Mode and Chill); the Cybertruck also has Powershare, the bed outlets and the light bar (the light bar for the driver only); a Semi at a standstill also gives the driver hitch and unhitch; a car with a Car Fridge fitted also has the fridge switch (anyone in the car can use it, see Upgrades). When one is not available its icon is grey and the second line says why.
 [*] [b]With AutoDrive[/b]: AutoDrive's autopilot card sits above the Tesla dashboard, and above the charge card while that is open.
 [/list]
 === 🧰 Key card and phone key
@@ -515,6 +515,44 @@ A charger that works on the floor, no wall needed; slower than the Wall Connecto
 [tr][th]Recipe[/th][th]Tools (kept)[/th][th]Materials[/th][th]Makes[/th][/tr]
 [tr][td]Make Drive Unit Parts (learned automatically at Electrical 4)[/td][td]Screwdriver, Pliers[/td][td]Scrap Electronics 2, Electrical Wire 2, Copper Scrap 1[/td][td]Drive Unit Parts 2[/td][/tr]
 [/table]
+=== 🧰 Upgrades: the Car Fridge and protection
+[list]
+[*] [b]Two slots[/b]: all nine Teslas have an Upgrades category at the bottom of the mechanics window, with two slots, Protection and Fridge; the 53 ft trailer has none. Both are empty on a new car: craft the upgrades or find them in loot.
+[*] [b]Fitting and removing[/b]: right-click the slot in the mechanics window and choose Install or Uninstall, with a Wrench or Ratchet Wrench on you; Mechanics level does not matter and it never fails. A locked car needs its key, so someone without the key cannot take them off.
+[*] [b]Overall condition[/b]: an empty slot counts in the mechanics window's overall condition: about 4 to 6 lower with both empty, back to normal once fitted. Driving is not affected.
+[/list]
+[h3]Car Fridge[/h3]
+[list]
+[*] [b]Where it is[/b]: capacity 12, in the Rear Trunk; fitting, removing and reaching it all need you at the back of the car with the liftgate open, and it is not shown while the liftgate is closed. On the Cybertruck it goes in the Cargo Bed and follows the bed's rules. On the Semi it goes in the cab: reach it from either seat, or from outside at the right door with that door open.
+[*] [b]Switch[/b]: right-click the car from outside and choose Car Fridge, then Off, Cool or Freeze; in the car, the V radial menu steps through off, cool and freeze, and anyone in the car can use it. A locked car needs its key.
+[*] [b]Cool[/b]: food spoils more slowly, as in a powered fridge at home, following the sandbox fridge setting.
+[*] [b]Freeze[/b]: food freezes in about 4 to 4.5 hours and does not spoil once frozen; switching off or back to Cool thaws it. Food that cannot be frozen stays unfrozen.
+[*] [b]Power[/b]: while on it runs on the high voltage battery at 0.06 kW, about 1.4 kWh a game day. With a powered charge cable in, the car's charge is not used.
+[*] [b]Below 20% charge[/b]: the fridge switches off and tells whoever turned it on; switch it back on yourself after charging. It cannot be switched on below 20% either, unless a charge cable is in.
+[*] [b]While you are away[/b]: it keeps running, and the time is made up in one go when you come back to the car.
+[*] [b]Empty it before removing[/b]: Uninstall is grey while anything is inside.
+[/list]
+[h3]Protection[/h3]
+[list]
+[*] [b]One of two[/b]: the Protection slot takes either a Reinforcement Kit or a Bull Bar Kit; to change, take the fitted one off first.
+[*] [b]Reinforcement Kit[/b]: nothing shows on the outside; impact damage to the car is about halved. Weight 10.
+[*] [b]Bull Bar Kit[/b]: a tubular steel bull bar shows on the car; impact damage is cut by about three quarters. Weight 20, which is heavy.
+[*] [b]What it protects[/b]: doors, the hood and liftgate, windows and windshields, lights, the Drive Unit and the High Voltage Battery. Tires, brakes, suspension and seats are not covered.
+[*] [b]Zombies[/b]: windows are harder to break. Because they last longer, Sentry sends more knocking notices.
+[*] [b]How it works[/b]: damage lands as usual and part of it is given back: usually at once in a crash, within a game minute otherwise. A window or light that is already broken stays broken.
+[*] [b]Looks by car[/b]: on the Model Y, Model Y L, Model 3 and Model S the Bull Bar Kit includes a roof rack; the Model X, Roadster, Cybercab and Cybertruck get none; the Semi only has the bar at the front.
+[/list]
+[h3]Getting them[/h3]
+You learn each recipe automatically at its level; craft next to a work surface such as a table.
+[table]
+[tr][th]Recipe[/th][th]Tools (kept)[/th][th]Materials[/th][th]Makes[/th][/tr]
+[tr][td]Make Reinforcement Kit (Welding 3)[/td][td]Welder Mask, Screwdriver[/td][td]Welding Torch 4 uses, Steel Sheet 2, Steel Sheet - Small 2, Screws 8[/td][td]Reinforcement Kit 1[/td][/tr]
+[tr][td]Make Bull Bar Kit (Welding 5)[/td][td]Welder Mask, Wrench, Sheet Metal Snips or Hacksaw[/td][td]Welding Torch 10 uses, Iron Pipe 6, Steel Rod 4, Steel Sheet - Small 2, Nuts and Bolts 6[/td][td]Bull Bar Kit 1[/td][/tr]
+[tr][td]Make Car Fridge (Electrical 4)[/td][td]Screwdriver, Pliers[/td][td]an empty Cooler 1 (any of the five kinds), Scrap Electronics 4, Electrical Wire 4, Screws 4[/td][td]Car Fridge 1[/td][/tr]
+[/table]
+[list]
+[*] [b]Loot[/b]: Reinforcement Kits and Bull Bar Kits turn up on mechanic shop shelves, in the metalwork aisle of tool stores, in garages, and in mechanics and metalwork crates; Car Fridges in camping stores, car supply stores and electronics stores, now and then in mechanic shops and garages. New cars come without them.
+[/list]
 === 🧰 With other mods
 [h3]Vehicle Manager[/h3]
 {{img:19-vm-menu-en.jpg}}
@@ -529,7 +567,7 @@ A charger that works on the floor, no wall needed; slower than the Wall Connecto
 [table]
 [tr][th]Action[/th][th]Vehicle Manager permission[/th][/tr]
 [tr][td]Key card tap, app lock / unlock, flash, honk, Sentry on / off, app falcon wing doors, the Cybercab's doors and the soft top, Bioweapon Defense Mode[/td][td]Ride[/td][/tr]
-[tr][td]App liftgate / trunk[/td][td]Trunk[/td][/tr]
+[tr][td]App liftgate / trunk, switching the Car Fridge[/td][td]Trunk[/td][/tr]
 [tr][td]App frunk[/td][td]Repair or Salvage[/td][/tr]
 [tr][td]Plugging in or unplugging, the charge card, picking up or rotating a charger with the car plugged in, app stop / start charging[/td][td]Fuel (except the charger owner's unplug, charge card Stop, pick-up and rotate, see the FAQ; not the app)[/td][/tr]
 [tr][td]App location and status[/td][td]Location[/td][/tr]
@@ -688,16 +726,16 @@ Without Vehicle Manager:
 [h3]What should I do before removing this mod?[/h3]
 [list]
 [*] [b]Back up the save first[/b]: once the save is loaded without this mod and saved, the changes below stay in it, and adding the mod back does not undo them.
-[*] [b]Items vanish[/b]: key cards, phones, phone keys, drive unit parts and chargers not yet placed vanish on the next load, in inventories, containers and cars alike; they do not turn into other items, and vanilla items stay. An offline player loses them the next time they log in.
+[*] [b]Items vanish[/b]: key cards, phones, phone keys, drive unit parts, chargers not yet placed and upgrades not yet fitted (Car Fridge, Reinforcement Kit, Bull Bar Kit) vanish on the next load, in inventories, containers and cars alike; they do not turn into other items, and vanilla items stay. An offline player loses them the next time they log in.
 [*] [b]Teslas become other vehicles[/b]: each car stays on its spot facing the same way, but its type is picked at random from every vehicle with wheels, vanilla, wrecked or from other mods (tests turned them into vans, a wrecked pickup and sedan, and another mod's utility truck). The new car's gas tank slot is empty, with no tank and no fuel, and its keys are gone too: treat it like a car whose key was lost.
 [*] [b]The replacement car keeps the Tesla's pulling power[/b]: the engine force is saved with the car, so the new type drives with the Tesla's force, not its own (tested: a Model Y became a van at 626 hp where that van has 400; a Model 3 left in Chill became a pickup at 310 hp where that pickup has 420). Its top speed is the new type's. An admin's full vehicle repair sets the force back to the new type's.
-[*] [b]Things in the car[/b]: whatever is in the Front Trunk is always lost (vanilla cars have no such slot). Rear Trunk, seats and glove box: one that somebody opened keeps its contents if the new type has the same slot; one nobody ever opened is emptied and refilled with the new type's random loot. If the new type lacks the slot, its contents are lost too.
+[*] [b]Things in the car[/b]: whatever is in the Front Trunk is always lost (vanilla cars have no such slot). Rear Trunk, seats and glove box: one that somebody opened keeps its contents if the new type has the same slot; one nobody ever opened is emptied and refilled with the new type's random loot. If the new type lacks the slot, its contents are lost too. Upgrades fitted to the car are lost as well, the Car Fridge with the food in it.
 [*] [b]Placed chargers[/b]: Wall Connectors, Mobile Connectors and Superchargers (the gas stations' too) turn into invisible objects that cannot be picked up and stay on that square without blocking it; a plugged cable disappears too.
 [*] [b]A Cybertruck's Powershare[/b]: turn it off first; one powering the home at save time stays as a vanilla generator (vanilla noise, draws zombies) until its fuel runs out, 30 days at most.
 [*] [b]The server's Tesla data[/b]: app records, offline notices and phone pairings are in gos_MinidoracatTeslaApp.bin in the save folder, the charger list in gos_MinidoracatTeslaCharger.bin. Without the mod the game neither reads nor changes them; leaving them there is harmless.
 [*] [b]Steps for server admins[/b]:
 [olist]
-[*] Tell players to unplug the cables, pick up their chargers (the picked-up chargers vanish later too, but no blank object is left on the square), turn off their Cybertrucks' Powershare, and move anything they want to keep out of the Teslas' Front and Rear Trunks, Cargo Beds, seats and glove boxes.
+[*] Tell players to unplug the cables, pick up their chargers (the picked-up chargers vanish later too, but no blank object is left on the square), turn off their Cybertrucks' Powershare, and move anything they want to keep out of the Teslas' Front and Rear Trunks, Cargo Beds, seats, glove boxes and Car Fridges.
 [*] Shut the server down and back up the whole save folder Zomboid/Saves/Multiplayer/<server name>/.
 [*] In the server settings file Zomboid/Server/<server name>.ini, remove MinidoracatTeslaFor42 from Mods= and this mod's Workshop ID from WorkshopItems=.
 [*] Start the server. Players join as usual; the server console shows extra lines such as cannot create item and item == null, skipped bytes for the dropped Tesla items, which are not errors.
