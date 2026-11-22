@@ -322,4 +322,22 @@ CAR = dict(
             ("speaker grille", "front", 0.08, -0.330, 0.14, 0.110, 0.018, "console", 0.045),
         ],
     },
+    # TeslaArmor's visible kit (armor.py; the Model Y's style A, proportions to this body): heights z over the ground,
+    # y pre-centre (rear, front), x = |x|. keep: the plates (no mesh feature marks them: the front one above the lower
+    # intake, the rear one in the trunk lid's recess over GATE_Z; |x| half width, z bottom, top); the headlamps are lit
+    # in the lights texture (armor.lamp_points), no keep box
+    ARMOR=dict(
+        style="A",
+        keep=dict(front_plate=(0.22, 0.27, 0.40), rear_plate=(0.18, 0.54, 0.67)),
+        A=dict(
+            front=dict(kind="tube", z=0.18, top=0.42, x=0.58, corners=[(0.32, 0.46)], brackets=(0.15, 0.30), gap=0.025,
+                       r=0.022, sides=10, bend=0.05),
+            rear=dict(kind="tube", z=0.24, top=0.46, x=0.60, corners=[(0.38, 0.56)], brackets=(0.15, 0.32), gap=0.025,
+                      r=0.022, sides=10, bend=0.05),
+            sill=dict(kind="tube", z=0.16, y=(-0.78, 0.82), r=0.022, sides=10, gap=0.012, bend=0.05,
+                      brackets=(-0.45, 0.0, 0.45)),
+            roof=dict(kind="basket", x=0.38, y=(-0.80, 0.16), feet_x=0.44, bars=(-0.68, 0.08), bar=(0.03, 0.022),
+                      gap=0.03, r=0.013, sides=8, rail=0.06, corner=0.06, slats=(-0.2, 0.0, 0.2), slat_r=0.009),
+        ),
+    ),
 )
