@@ -123,6 +123,8 @@
     "IGUI_MinidoracatTesla_Deny_PLUGGED": "Zaten bir şarj kablosu takılı",
     "IGUI_MinidoracatTesla_Deny_NOT_PLUGGED": "Takılı şarj kablosu yok",
     "IGUI_MinidoracatTesla_Deny_CABLE_SHORT": "Kablo araca yetişmiyor",
+    "IGUI_MinidoracatTesla_Deny_SEMI_NO_SPOT": "Römorkun yanında çalışacak yer yok",
+    "IGUI_MinidoracatTesla_Deny_LID_LOCKED": "Kaput kilitli",
     "IGUI_MinidoracatTesla_Unplugged_TooFar": "Şarj kablosu çıktı: araç çok uzaklaştı",
     "IGUI_MinidoracatTesla_Tip_Headlight": "Farları aç veya kapat",
     "IGUI_MinidoracatTesla_Tip_Heater": "İklimlendirmeyi aç veya kapat (batarya harcar)",
@@ -409,5 +411,13 @@
     "IGUI_MinidoracatTesla_Tip_AppPsFloorDown": "Boşaltma sınırını %%5 düşür",
     "IGUI_MinidoracatTesla_Tip_AppPsFloorUp": "Boşaltma sınırını %%5 yükselt",
     "IGUI_MinidoracatTesla_Tip_AppOutletOn": "Kasa prizlerini aç",
+    "IGUI_VehiclePartCatupgrade": "Yükseltmeler",
+    "IGUI_VehiclePartTeslaArmor": "Koruma",
+    "IGUI_VehiclePartTeslaFridge": "Buzdolabı",
+    "IGUI_MinidoracatTesla_Radial_FridgeOff": "Buzdolabını kapat",
+    "IGUI_MinidoracatTesla_Radial_FridgeCool": "Buzdolabı: Soğut",
+    "IGUI_MinidoracatTesla_Radial_FridgeFreeze": "Buzdolabı: Dondur",
+    "IGUI_MinidoracatTesla_Fridge_LowBattery": "Buzdolabı kapandı: batarya %%20'nin altında",
+    "IGUI_MinidoracatTesla_Deny_NO_FRIDGE": "Takılı buzdolabı yok",
     "IGUI_MinidoracatTesla_Tip_AppOutletOff": "Kasa prizlerini kapat"
 }

@@ -123,6 +123,8 @@
     "IGUI_MinidoracatTesla_Deny_PLUGGED": "Un câble de recharge est déjà branché",
     "IGUI_MinidoracatTesla_Deny_NOT_PLUGGED": "Aucun câble de recharge branché",
     "IGUI_MinidoracatTesla_Deny_CABLE_SHORT": "Le câble n'atteint pas la voiture",
+    "IGUI_MinidoracatTesla_Deny_SEMI_NO_SPOT": "Pas de place à côté de la remorque pour y travailler",
+    "IGUI_MinidoracatTesla_Deny_LID_LOCKED": "Le capot est verrouillé",
     "IGUI_MinidoracatTesla_Unplugged_TooFar": "Câble de recharge arraché : la voiture s'est trop éloignée",
     "IGUI_MinidoracatTesla_Tip_Headlight": "Allumer ou éteindre les phares",
     "IGUI_MinidoracatTesla_Tip_Heater": "Allumer ou éteindre la climatisation (consomme la batterie)",
@@ -409,5 +411,13 @@
     "IGUI_MinidoracatTesla_Tip_AppPsFloorDown": "Baisser la limite de décharge de 5%%",
     "IGUI_MinidoracatTesla_Tip_AppPsFloorUp": "Monter la limite de décharge de 5%%",
     "IGUI_MinidoracatTesla_Tip_AppOutletOn": "Activer les prises de la benne",
+    "IGUI_VehiclePartCatupgrade": "Améliorations",
+    "IGUI_VehiclePartTeslaArmor": "Protection",
+    "IGUI_VehiclePartTeslaFridge": "Frigo",
+    "IGUI_MinidoracatTesla_Radial_FridgeOff": "Éteindre le frigo",
+    "IGUI_MinidoracatTesla_Radial_FridgeCool": "Frigo : réfrigérer",
+    "IGUI_MinidoracatTesla_Radial_FridgeFreeze": "Frigo : congeler",
+    "IGUI_MinidoracatTesla_Fridge_LowBattery": "Frigo éteint : batterie sous 20 %%",
+    "IGUI_MinidoracatTesla_Deny_NO_FRIDGE": "Aucun frigo n'est installé",
     "IGUI_MinidoracatTesla_Tip_AppOutletOff": "Désactiver les prises de la benne"
 }

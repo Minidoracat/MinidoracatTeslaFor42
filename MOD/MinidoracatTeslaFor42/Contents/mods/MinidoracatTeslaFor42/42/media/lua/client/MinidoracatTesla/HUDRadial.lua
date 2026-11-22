@@ -1,7 +1,7 @@
 -- V key / D-pad up vehicle radial menu: adds "Camp Mode" and "Charging status" for Teslas, Bioweapon Defense Mode for
 -- a car with HEPA (Specs hepa), Chill for the driver, Powershare, the bed outlet and the light bar for a Cybertruck
--- (Specs powershare / bedOutlet, part RoofLight), and the bed quality under vanilla "Sleep" (an average bed while
--- camping, Camp.bedType).
+-- (Specs powershare / bedOutlet, part RoofLight), the car fridge once fitted (part TeslaFridge), and the bed quality
+-- under vanilla "Sleep" (an average bed while camping, Camp.bedType).
 -- ISVehicleMenu.showRadialMenu is a toggle (ISVehicleMenu.lua:70-76); remember whether the menu was
 -- open BEFORE the vanilla call, because isReallyVisible() lies right after addToUIManager (pitfalls.md UI).
 require "Vehicles/ISUI/ISVehicleMenu"
@@ -35,6 +35,11 @@ end
 local function onCommand(player, vehicle, cmd)
     T.request(player, cmd, { vid = vehicle:getId() })
 end
+
+local function onFridge(player, vehicle, mode)
+    T.request(player, "fridge", { vid = vehicle:getId(), mode = mode }) -- server Fridge.lua
+end
+local FRIDGE_KEY = { cool = "IGUI_MinidoracatTesla_Radial_FridgeCool", freeze = "IGUI_MinidoracatTesla_Radial_FridgeFreeze" }
 
 -- Cybertruck switches (server Powershare.lua PS.set): the charge cable's rule (T.mayUseCable), like the charge card.
 -- id: "Powershare" / "Outlet" (texts and icons), cmd: the server command prefix, on: switched on now, note: switched on
@@ -127,6 +132,21 @@ local function addSlices(menu, player, vehicle)
         menu:addSlice(getText(on and "IGUI_MinidoracatTesla_Radial_ChillOff" or "IGUI_MinidoracatTesla_Radial_ChillOn")
             .. (on and "" or line2(getText("IGUI_MinidoracatTesla_Tip_Chill"))), getTexture(TEX .. "radial_chill.png"),
             onCommand, player, vehicle, "chill")
+    end
+    -- the car fridge (Upgrades.lua), once fitted: anyone inside steps it off -> cool -> freeze -> off; greyed with the
+    -- server's reason (Fridge.canSet)
+    local fp = T.Fridge and T.Fridge.part(vehicle) -- shared Upgrades.lua (shared loads before client)
+    if fp then
+        local f = fp:getModData().fridge
+        local mode = not f and "cool" or f.mode == "cool" and "freeze" or false
+        local label = getText(FRIDGE_KEY[mode] or "IGUI_MinidoracatTesla_Radial_FridgeOff")
+        local ok, why = T.Fridge.canSet(player, vehicle, mode)
+        -- one icon for every mode like the other switches (the centre text names the mode); _off only when greyed
+        if ok then
+            menu:addSlice(label, getTexture(TEX .. "radial_fridge.png"), onFridge, player, vehicle, mode)
+        else
+            menu:addSlice(label .. (why and line2(T.denyText(why)) or ""), getTexture(TEX .. "radial_fridge_off.png"), nil)
+        end
     end
     -- vanilla's own "Sleep" slice (ISVehicleMenu.lua:225): second line = vanilla's bed tooltip (Tooltip_BedType)
     for i, s in ipairs(menu.slices) do

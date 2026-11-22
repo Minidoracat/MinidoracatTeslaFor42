@@ -180,9 +180,21 @@ CAR = dict(
     # (|x| 0.394-0.638, on the body and the tailgate) is the corner lamps' inner C, the brake light as on Model Y
     # (the bar and the thin outer strip the tail lights; teslaoracle.com 2026-01-05, teslaownersonline.com "Juniper
     # rear brake lights as an extension of the light bar")
+    # head_boxes: the main headlamps in the bumper's pockets under the light bar, lit with the headlights (dark before,
+    # as the Model Y's; E2E armorML-yl 2026-11-22): the pocket's inside (black_base, the chrome projector lens at |x|
+    # 0.603-0.665) across |x| 0.580-0.680 and y <= 1.830, sized to the Model Y's lit lamp on screen (game cameras SE
+    # 14 x 9 px and S 29 x 9 px). Its deep side wall (|x| 0.67, y 1.70-1.80) gives the S camera's width; the floor's
+    # front (y 1.83-1.85) and the pocket's outer upper corner the SE camera's extra height (whole pocket |x|
+    # 0.570-0.685, y 1.60-1.85: SE 17-19 x 13-15, E2E ylamp-yl 2026-11-22). Lit pieces cut off on all sides lose the
+    # bake margin and break up on screen (only the floor's front, |x| 0.590-0.675, y 1.797-1.830: SE 11 x 6-8, S 8
+    # x 8, E2E ylamp2-yl; plus z <= -0.250, y <= 1.845: S 17 x 8, E2E ylamp3b-yl), so cut few planes and keep the
+    # deep pocket. head_cut bisects the pocket's triangles (|x| 0.515-0.718, deep to y 1.64) at those |x| and y
     LAMPS=dict(head=("front_white_light",), tail=("back_red_Light", "red_plastic", "M22"), tail_z=0.75, tail_y=-1.5,
                blade="Badge_BLADE", blade_rgb=(236, 78, 44), blade_flush=True, blade_swatch=True, blade_round=0.019,
-               blade_split=True, brake=("Plane.043", 0.39)),
+               blade_split=True, brake=("Plane.043", 0.39),
+               head_cut=dict(mats=("black_base", "chrome"), lo=(0.50, 1.60, -0.30), hi=(0.75, 1.86, -0.23),
+                             x=(0.580, 0.680), y=(1.830,)),
+               head_boxes=((("black_base", "chrome"), (0.580, 1.60, -0.30), (0.680, 1.830, -0.23)),)),
     # part lines, side view (y, z): S, BF, BR off this source's panel edges; D the rear door glass / quarter glass
     # divider bar's middle; R1 (z ascending) the rear door's rear edge, upright from the belt to the arch since the
     # prep (work/outline.py; prep FIELD fit moved them forward: work/remap.py)
@@ -322,4 +334,19 @@ CAR = dict(
             ("speaker grille", "front", 0.08, -0.370, 0.14, 0.120, 0.018, "console", 0.045),
         ],
     },
+    # TeslaArmor's visible kit (armor.py; the Model Y's on this longer, taller body): heights z over the ground, y
+    # pre-centre (rear, front), x = |x|. keep: the plates (|x| half width, z bottom, top: the source's plates Object_11
+    # / 12, dropped above, x K; the rear one also the bumper_lit frame in the black lower bumper it hangs in) and the
+    # headlamp clusters in the bumper's pockets (|x| from, to, z bottom, top; only their lenses lit), the views must
+    # still see them (armor.check)
+    ARMOR=dict(
+        keep=dict(front_plate=(0.18, 0.32, 0.40), rear_plate=(0.18, 0.31, 0.46), head_lamps=(0.50, 0.73, 0.45, 0.52)),
+        front=dict(z=0.21, top=0.46, x=0.60, corners=[(0.33, 0.47)], brackets=(0.15, 0.42), gap=0.025, r=0.022, sides=10,
+                   bend=0.05),
+        rear=dict(z=0.27, top=0.44, x=0.64, corners=[(0.40, 0.60)], brackets=(0.15, 0.44), gap=0.025, r=0.022, sides=10,
+                  bend=0.05),
+        sill=dict(z=0.19, y=(-0.82, 0.86), r=0.022, sides=10, gap=0.012, bend=0.05, brackets=(-0.45, 0.0, 0.45)),
+        roof=dict(x=0.40, y=(-0.90, 0.22), feet_x=0.46, bars=(-0.78, 0.14), bar=(0.03, 0.022), gap=0.03, r=0.013,
+                  sides=8, rail=0.06, corner=0.06, slats=(-0.2, 0.0, 0.2), slat_r=0.009),
+    ),
 )

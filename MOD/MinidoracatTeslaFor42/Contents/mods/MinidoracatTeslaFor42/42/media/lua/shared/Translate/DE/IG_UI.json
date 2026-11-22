@@ -123,6 +123,8 @@
     "IGUI_MinidoracatTesla_Deny_PLUGGED": "Es ist schon ein Ladekabel eingesteckt",
     "IGUI_MinidoracatTesla_Deny_NOT_PLUGGED": "Kein Ladekabel eingesteckt",
     "IGUI_MinidoracatTesla_Deny_CABLE_SHORT": "Das Kabel reicht nicht bis zum Auto",
+    "IGUI_MinidoracatTesla_Deny_SEMI_NO_SPOT": "Neben dem Auflieger ist kein Platz zum Arbeiten",
+    "IGUI_MinidoracatTesla_Deny_LID_LOCKED": "Die Haube ist verriegelt",
     "IGUI_MinidoracatTesla_Unplugged_TooFar": "Ladekabel herausgerissen: Das Auto ist zu weit weggefahren",
     "IGUI_MinidoracatTesla_Tip_Headlight": "Scheinwerfer ein- oder ausschalten",
     "IGUI_MinidoracatTesla_Tip_Heater": "Klimaregelung ein- oder ausschalten (verbraucht Batterie)",
@@ -409,5 +411,13 @@
     "IGUI_MinidoracatTesla_Tip_AppPsFloorDown": "Entladegrenze 5%% tiefer",
     "IGUI_MinidoracatTesla_Tip_AppPsFloorUp": "Entladegrenze 5%% höher",
     "IGUI_MinidoracatTesla_Tip_AppOutletOn": "Steckdosen der Ladefläche ein",
+    "IGUI_VehiclePartCatupgrade": "Nachrüstungen",
+    "IGUI_VehiclePartTeslaArmor": "Schutz",
+    "IGUI_VehiclePartTeslaFridge": "Kühlschrank",
+    "IGUI_MinidoracatTesla_Radial_FridgeOff": "Kühlschrank aus",
+    "IGUI_MinidoracatTesla_Radial_FridgeCool": "Kühlschrank: Kühlen",
+    "IGUI_MinidoracatTesla_Radial_FridgeFreeze": "Kühlschrank: Gefrieren",
+    "IGUI_MinidoracatTesla_Fridge_LowBattery": "Kühlschrank aus: Batterie unter 20 %%",
+    "IGUI_MinidoracatTesla_Deny_NO_FRIDGE": "Kein Kühlschrank eingebaut",
     "IGUI_MinidoracatTesla_Tip_AppOutletOff": "Steckdosen der Ladefläche aus"
 }

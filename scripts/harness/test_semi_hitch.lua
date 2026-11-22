@@ -4,7 +4,9 @@ local H = H
 local check = H.check
 
 for _, m in ipairs({ "Vehicles/ISUI/ISVehicleMenu", "Vehicles/ISVehicleTrailerUtils", "Vehicles/TimedActions/ISAttachTrailerToVehicle",
-    "Vehicles/TimedActions/ISDetachTrailerFromVehicle", "Definitions/ContainerButtonIcons" }) do H.stub(m) end
+    "Vehicles/TimedActions/ISDetachTrailerFromVehicle", "Vehicles/TimedActions/ISPathFindAction", "Definitions/ContainerButtonIcons" }) do
+    H.stub(m)
+end
 local saved = { ISVehicleMenu, ISVehicleTrailerUtils, ISAttachTrailerToVehicle, ISDetachTrailerFromVehicle, ISTimedActionQueue,
     getCell, getServerOptions, getPlayerRadialMenu, UIManager, getTexture, ISVehicleMechanics, ISPathFindAction, Vector3f,
     ISBaseTimedAction }
@@ -45,6 +47,15 @@ function ISPathFindAction:pathToNearest(character, locations)
     return { Type = "ISPathFindAction", character = character, locations = locations,
         setOnFail = function(self, fn, arg) self.onFail, self.failArg = fn, arg end }
 end
+-- vanilla's walk for a vehicle with no hood (ISVehicleMenu.onMechanic, :1002-1005): the goal is kept until start(),
+-- which hands it to the engine (ISPathFindAction.lua:38-62, :160-168); here start() records what it got
+function ISPathFindAction:pathToVehicleAdjacent(character, vehicle)
+    return setmetatable({ character = character, goal = { "VehicleAdjacent", vehicle } }, { __index = ISPathFindAction })
+end
+function ISPathFindAction:start() self.engineGoal = self.goal end
+-- the walk's end (ISPathFindAction.lua:68-91): perform() when it got there, stop() drops it and the queue after it
+function ISPathFindAction:perform() self.performed = true end
+function ISPathFindAction:stop() self.stopped = true end
 Vector3f = { new = function()
     local v = { _x = 0, _y = 0, _z = 0 }
     function v:x() return self._x end
@@ -89,6 +100,8 @@ local function car(script)
     function v:getScriptName() return self.script end
     function v:getId() return self.id end
     function v:getZ() return self.z end
+    function v:getX() return self.x end
+    function v:getY() return self.y end
     function v:getVehicleTowing() return self.towing end
     function v:getVehicleTowedBy() return self.towedBy end
     function v:isDriver(p) return self.driver == p end
@@ -340,6 +353,108 @@ semi2.x, semi2.y, semi2.yaw, semi2.towing = semi.x + 3, semi.y, 0.6, trailer
 do local w = semi2:getWorldPos(-1, 0, -2.4, Vector3f.new()); p.x, p.y = w._x, w._y end
 check(ISVehicleMenu.getVehicleToInteractWith(p) == semi2, "two Semis in reach (2.2 and 1.0 from their fifth wheels): the nearer one")
 cars[#cars] = nil
+
+H.section("Semi hitch: Vehicle Mechanics on the trailer walks where the window stays open")
+-- the window closes past 6 of the vehicle, Manhattan on the truncated origin (ISVehicleMechanics.lua:20-22,
+-- IsoMovingObject.java:601-603): every spot inside that at any heading, on its floor; always the six 0.35 off either
+-- side of the box, and vanilla's (0.3 off, PathFindBehavior2.java:497-546) that are inside too, never its nose end
+local function spots(v)
+    local a = ISPathFindAction:pathToVehicleAdjacent(p, v)
+    a:start()
+    local g = a.engineGoal
+    return g[1] == "Nearest" and g[2] or nil
+end
+local function kinds(v, locs)
+    local k = { beside = 0, tail = 0, nose = 0, out = 0 }
+    local fx, fy, cz, half = math.floor(v.x), math.floor(v.y), 2.937, 13.343 / 2 + 0.3
+    for i = 1, #locs, 3 do
+        local x, y = locs[i], locs[i + 1]
+        local l = v:getLocalPos(x, y, 0, Vector3f.new())
+        if locs[i + 2] ~= v.z or math.abs(x - fx) + math.abs(y - fy) > SH.WINDOW then k.out = k.out + 1 end
+        if math.abs(math.abs(l._x) - (2.148 / 2 + 0.35)) < 1e-9 then k.beside = k.beside + 1 end
+        if math.abs(l._x) < 1e-9 and math.abs(l._z - (cz - half)) < 1e-9 then k.tail = k.tail + 1 end
+        if math.abs(l._x) < 1e-9 and math.abs(l._z - (cz + half)) < 1e-9 then k.nose = k.nose + 1 end
+    end
+    return k
+end
+local tx, ty, tyaw = trailer.x, trailer.y, trailer.yaw
+local allIn, tails = true, 0
+for _, yaw in ipairs({ 0, 0.6, math.pi / 4, 2.4, 3 * math.pi / 4 }) do
+    for _, off in ipairs({ 0.01, 0.99 }) do
+        trailer.x, trailer.y, trailer.yaw = 200 + off, 300 + off, yaw
+        local k = kinds(trailer, spots(trailer))
+        allIn = allIn and k.out == 0 and k.beside == 6 and k.nose == 0
+        tails = tails + k.tail
+    end
+end
+check(allIn, "the trailer, five headings: six spots beside it plus vanilla's in reach, all within the window's reach")
+-- both sides walled off (beside spots and vanilla's side spots unreachable): the engine can still walk to the tail
+trailer.x, trailer.y, trailer.yaw = 200.01, 300.01, 0
+check(kinds(trailer, spots(trailer)).tail == 1 and tails >= 2, "heading along an axis: vanilla's tail spot is one of them")
+-- queued, then the trailer towed off before the walk starts: the spots are where it is at the start
+local queued = ISPathFindAction:pathToVehicleAdjacent(p, trailer)
+trailer.x, trailer.y = 260.5, 340.5
+queued:start()
+local moved = queued.engineGoal[2]
+check(queued.engineGoal[1] == "Nearest" and math.abs(moved[1] - 260.5) < 3 and math.abs(moved[2] - 340.5) < 3,
+    "towed away after queuing: the walk goes to where the trailer is when it starts")
+trailer.x, trailer.y, trailer.yaw = tx, ty, tyaw
+-- no spot reachable: vanilla's walk stops silently (ISPathFindAction.lua:16-33); this one says why
+local walk = ISPathFindAction:pathToVehicleAdjacent(p, trailer)
+walk:start()
+local said, realHalo = nil, HaloTextHelper
+HaloTextHelper = { addBadText = function(chr, t) said = chr == p and t end }
+walk.onFailFunc(walk.onFailArgs[1])
+HaloTextHelper = realHalo
+check(said == MinidoracatTesla.denyText("SEMI_NO_SPOT"), "the trailer's walk finds no spot: the player is told (SEMI_NO_SPOT)")
+local own = function() end
+local mine = ISPathFindAction:pathToVehicleAdjacent(p, trailer)
+mine.onFailFunc = own
+mine:start()
+check(mine.onFailFunc == own, "a walk with its own failure handler keeps it")
+local function vanillaGoal(v)
+    local a = ISPathFindAction:pathToVehicleAdjacent(p, v)
+    a:start()
+    return a.engineGoal[1] == "VehicleAdjacent" and a.engineGoal[2] == v
+end
+check(vanillaGoal(my) and vanillaGoal(semi), "a Model Y, the Semi: vanilla's walk")
+-- the walk over: the window's own reach measured again from where it ended (ISVehicleMechanics.lua:20-22)
+local function walkedTo(v, dx, dy, own)
+    local a = ISPathFindAction:pathToVehicleAdjacent(p, v)
+    if own then a.onFailFunc, a.onFailArgs = own, { "mine" } end
+    a:start()
+    local px, py = p.x, p.y
+    p.x, p.y = v.x + dx, v.y + dy
+    local told, halo = 0, HaloTextHelper
+    HaloTextHelper = { addBadText = function(chr, t)
+        if chr == p and t == MinidoracatTesla.denyText("SEMI_NO_SPOT") then told = told + 1 end
+    end }
+    a:perform()
+    HaloTextHelper, p.x, p.y = halo, px, py
+    return a, told
+end
+local s1, s1my = ISPathFindAction:pathToVehicleAdjacent(p, trailer), ISPathFindAction:pathToVehicleAdjacent(p, my)
+s1:start(); s1my:start()
+check(s1.semiTrailer == trailer and s1my.semiTrailer == nil, "S1 start(): the trailer's walk remembers the trailer, others nothing")
+local s, n = walkedTo(trailer, 2, 2)
+check(s.performed and not s.stopped and n == 0, "S2 ended within the window's reach: vanilla's end, nothing said")
+s, n = walkedTo(trailer, 5, 5)
+check(n == 1 and s.stopped and not s.performed, "S3 ended past it: SEMI_NO_SPOT once, stopped (no window), vanilla's end not run")
+local got
+s, n = walkedTo(trailer, 5, 5, function(x) got = x end)
+check(got == "mine" and n == 0 and s.stopped, "S4 a walk with its own failure handler: that one is called")
+s = walkedTo(my, 20, 0)
+check(s.performed and not s.stopped, "S5 not the trailer: vanilla's end wherever it stopped")
+-- the reach is the engine's DistTo(int, int): Manhattan, from the trailer's spot cut to whole tiles (smoke_harness H.player)
+trailer.x, trailer.y = 200, 300
+s, n = walkedTo(trailer, 4, 2.5)
+check(n == 1 and s.stopped and not s.performed, "S6 4 and 2.5 tiles off: 6.5 Manhattan, past the reach (a straight line: 4.7)")
+trailer.x, trailer.y = 200.9, 300.9
+s, n = walkedTo(trailer, 2.6, 2.1)
+check(n == 1 and s.stopped, "S7 2.6 and 2.1 off a trailer at (200.9, 300.9): 6.5 from tile (200, 300), past (4.7 from its spot)")
+s, n = walkedTo(trailer, -5.4, -0.9)
+check(s.performed and n == 0, "S7 5.4 and 0.9 the other way: 4.5 from tile (200, 300), within (6.3 from its spot)")
+trailer.x, trailer.y = tx, ty
 
 ISVehicleMenu, ISVehicleTrailerUtils, ISAttachTrailerToVehicle, ISDetachTrailerFromVehicle, ISTimedActionQueue,
     getCell, getServerOptions, getPlayerRadialMenu, UIManager, getTexture, ISVehicleMechanics, ISPathFindAction, Vector3f,

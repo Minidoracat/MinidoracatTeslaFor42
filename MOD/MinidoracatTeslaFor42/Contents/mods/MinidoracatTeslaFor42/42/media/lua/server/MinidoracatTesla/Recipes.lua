@@ -1,6 +1,6 @@
--- The Tesla recipes are AutoLearnAny Electricity (scripts/recipes/MinidoracatTesla_recipes.txt). On a dedicated server
--- vanilla keeps the two copies of a character's known recipes apart (E2E craft-chargers-mp: tesla-craftmp-1030b, and
--- after a relog tesla-craftmp-relog-1030a):
+-- The Tesla recipes are AutoLearnAny Electricity or MetalWelding (scripts/recipes/MinidoracatTesla_recipes.txt). On a
+-- dedicated server vanilla keeps the two copies of a character's known recipes apart (E2E craft-chargers-mp:
+-- tesla-craftmp-1030b, and after a relog tesla-craftmp-relog-1030a):
 -- * the client learns them at login (IsoWorld.java:2424 checkAutoLearn on the local player); the server only on a
 --   level-up (server/XpSystem/XpUpdate.lua:197-198). A character who had the level before this MOD was added knows
 --   them on the client only: the window lets them craft, the action runs, and the server's perform refuses
@@ -16,8 +16,9 @@ require "MinidoracatTesla/Core"
 
 local T = MinidoracatTesla
 local RECIPES = { "MinidoracatTesla_MakeWallConnector", "MinidoracatTesla_MakeMobileConnector", "MinidoracatTesla_MakeDriveUnitParts",
-    "MinidoracatTesla_MakeSupercharger" }
-local OURS = {} -- exactly these four: a name prefix would also take another MOD's recipe named alike
+    "MinidoracatTesla_MakeSupercharger", "MinidoracatTesla_MakeArmorInner", "MinidoracatTesla_MakeArmorOuter",
+    "MinidoracatTesla_MakeFridge" }
+local OURS = {} -- exactly these names: a name prefix would also take another MOD's recipe named alike
 for _, name in ipairs(RECIPES) do OURS[name] = true end
 
 -- the server half of a craft (NetTimedAction.java:95-104 -> ISHandcraftAction.lua:67-83), before vanilla rebuilds the
@@ -32,14 +33,14 @@ function ISHandcraftAction:serverStart()
     return serverStart(self)
 end
 
--- an Electricity level-up (IsoGameCharacter.java:4810-4833): learn ours here too (not relying on vanilla's handler
--- running first) and send the list to that player (LuaManager.java:4273; the client adds what it lacks,
--- SyncPlayerFieldsPacket.java:86-93). Electricity levels only: a few packets per character, ever.
+-- an Electricity or MetalWelding level-up (IsoGameCharacter.java:4810-4833): learn ours here too (not relying on vanilla's
+-- handler running first) and send the list to that player (LuaManager.java:4273; the client adds what it lacks,
+-- SyncPlayerFieldsPacket.java:86-93). Those two skills' levels only: a few packets per character, ever.
 -- A recipe script not loaded (renamed in MinidoracatTesla_recipes.txt, replaced by another MOD) is an install problem:
 -- logged once per name, not at every level-up.
 local warned = {}
 Events.LevelPerk.Add(function(owner, perk)
-    if perk ~= Perks.Electricity then return end
+    if perk ~= Perks.Electricity and perk ~= Perks.MetalWelding then return end
     local sm = getScriptManager()
     for _, name in ipairs(RECIPES) do
         local r = sm:getCraftRecipe(name)

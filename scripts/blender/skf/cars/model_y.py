@@ -235,8 +235,12 @@ CAR = dict(
     # rear faces with it), lit with the tail lights at night. brake (both): the C is the brake light (Juniper: the bar
     # and a thin outer strip are the tail lights, the brake lights sit at the tailgate's corners; teslaoracle.com
     # 2026-01-05, teslaownersonline.com "Juniper rear brake lights as an extension of the light bar")
+    # head_boxes: the main headlamps, the lamp units (black_refl, |x| 0.56-0.68, z -0.265..-0.20 centred) in the
+    # bumper's pockets under the light bar (the light bar is the DRL; Juniper's low / high beams sit in those pockets),
+    # lit with the headlights (dark before, E2E armorY-night 2026-11-22); not the black_refl strip down the pocket's
+    # outer edge (|x| 0.705-0.726) into the lower intake
     LAMPS=dict(head=("front_white_light",), tail=("back_red_Light", "red_plastic111"), tail_z=0.75, tail_y=-1.4,
-               brake=("Plane.034", 0.509),
+               brake=("Plane.034", 0.509), head_boxes=((("black_refl",), (0.55, 1.50, -0.27), (0.70, 1.84, -0.19)),),
                **(dict(blade="Badge_BLADE", blade_rgb=(236, 78, 44), blade_flush=True, blade_swatch=True,
                        blade_split=True, blade_round=0.019, blade_n=57, blade_rays=9, blade_lit=("Plane.034", 0.509))
                if _RED_BAR else dict(blade="Plane.034"))),
@@ -371,4 +375,19 @@ CAR = dict(
             ("speaker grille", "front", 0.08, -0.370, 0.14, 0.120, 0.018, "console", 0.045),
         ],
     },
+    # TeslaArmor's visible kit (armor.py), steel tubes: low bar and corner hoops front and rear, sill tubes, basket roof
+    # rack. Heights z over the ground, y pre-centre (rear, front), x = |x|; every piece stands `gap` off the measured
+    # surface. keep: the plates (|x| half width, z bottom, top: the source's plates Object_11 / 12, dropped above, x K)
+    # and the headlamp clusters in the bumper's pockets (END_ZONES' first box: |x| from, to, z bottom, top), the views
+    # must still see them (armor.check)
+    ARMOR=dict(
+        keep=dict(front_plate=(0.18, 0.33, 0.41), rear_plate=(0.17, 0.32, 0.41), head_lamps=(0.50, 0.77, 0.41, 0.54)),
+        front=dict(z=0.19, top=0.46, x=0.60, corners=[(0.33, 0.47)], brackets=(0.15, 0.42), gap=0.025, r=0.022, sides=10,
+                   bend=0.05),
+        rear=dict(z=0.21, top=0.44, x=0.64, corners=[(0.40, 0.60)], brackets=(0.15, 0.44), gap=0.025, r=0.022, sides=10,
+                  bend=0.05),
+        sill=dict(z=0.165, y=(-0.78, 0.82), r=0.022, sides=10, gap=0.012, bend=0.05, brackets=(-0.45, 0.0, 0.45)),
+        roof=dict(x=0.40, y=(-0.86, 0.20), feet_x=0.46, bars=(-0.74, 0.12), bar=(0.03, 0.022), gap=0.03, r=0.013,
+                  sides=8, rail=0.06, corner=0.06, slats=(-0.2, 0.0, 0.2), slat_r=0.009),
+    ),
 )

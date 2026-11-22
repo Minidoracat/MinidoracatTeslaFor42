@@ -415,7 +415,7 @@ if not isClient() then
         local orig = cls.complete
         cls.complete = function(self)
             local ok = orig(self)
-            local v, part = self.vehicle, self.part -- two arguments: only a part of this car (Keys.lua K.lidUnlock)
+            local v, part = self.vehicle, self.part -- two arguments: only a part of this car (Keys.lua K.lidKey)
             if ok and v and part and T.isTesla(v) and part:getDoor() and part:getVehicle() == v
                 and part:getDoor():isOpen() == open then
                 if not open and L.relock(v, part) then v:transmitPartDoor(part) end

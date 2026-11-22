@@ -12,6 +12,7 @@ require "Vehicles/ISUI/ISVehicleMenu"
 require "Vehicles/ISVehicleTrailerUtils"
 require "Vehicles/TimedActions/ISAttachTrailerToVehicle"
 require "Vehicles/TimedActions/ISDetachTrailerFromVehicle"
+require "Vehicles/TimedActions/ISPathFindAction"
 require "Definitions/ContainerButtonIcons"
 require "MinidoracatTesla/Core"
 
@@ -102,6 +103,64 @@ function ISVehicleTrailerUtils.walkToTrailer(playerObj, vehicle, attachment, nex
     ISTimedActionQueue.add(action)
     if nextAction then ISTimedActionQueue.add(nextAction) end
     return true
+end
+
+-- Vehicle Mechanics on the 53 ft trailer (no hood: ISVehicleMenu.onMechanic walks pathToVehicleAdjacent,
+-- ISVehicleMenu.lua:1002-1005). The engine walks to the nearest of four spots 0.3 off each side and each end of the box
+-- (PathFindBehavior2.java:497-546); the trailer's nose end is ~9.9 from its origin, and the window closes itself past 6
+-- of the origin, Manhattan on the truncated position (ISVehicleMechanics.lua:20-22, IsoMovingObject.java:601), the
+-- frame it opens in: from the nose end nothing happened (semimech-repro-a strl/front, DistTo 10.64); the tail end
+-- (5.53 there) kept it open. Here: beside the box at its origin and 1.5 either way, each <= 2.1 straight from it (<= 5
+-- that way), near the tyres and the cargo door (the script's areas), plus those of vanilla's four inside the window's
+-- reach (SH.WINDOW: the tail end when the heading lets it), so a trailer with both sides blocked still opens from its
+-- tail. Worked out when the walk starts, as vanilla does (ISPathFindAction.lua:54-56): the trailer may have been towed
+-- away while the walk waited in the queue. Every other vehicle: vanilla's spots.
+SH.BESIDE, SH.WINDOW = { 0, -1.5, 1.5 }, 5.9
+function SH.mechSpots(v)
+    local s = v:getScript()
+    local e, c = s:getExtents(), s:getCenterOfMassOffset()
+    local half, cx, cz, z = e:x() / 2 + SH.CLEAR, c:x(), c:z(), level(v)
+    local fx, fy = math.floor(v:getX()), math.floor(v:getY())
+    local out, w = {}, Vector3f.new()
+    local function add(lx, lz, reach)
+        v:getWorldPos(lx, 0, lz, w)
+        if not reach or math.abs(w:x() - fx) + math.abs(w:y() - fy) <= SH.WINDOW then
+            out[#out + 1] = w:x(); out[#out + 1] = w:y(); out[#out + 1] = z
+        end
+    end
+    for _, lz in ipairs(SH.BESIDE) do
+        for side = 1, -1, -2 do add(cx + side * half, lz) end
+    end
+    local vx, vz = e:x() / 2 + 0.3, e:z() / 2 + 0.3
+    add(cx - vx, cz, true); add(cx + vx, cz, true); add(cx, cz - vz, true); add(cx, cz + vz, true)
+    return out
+end
+-- no spot reachable: vanilla's walk stops without a word (ISPathFindAction.lua:16-33); vanilla's own spots would not
+-- help (the sides and the tail are among these, the nose end is out of the window's reach), so say why instead
+function SH.noSpot(chr)
+    HaloTextHelper.addBadText(chr, T.denyText("SEMI_NO_SPOT"))
+end
+local origStart, origPerform = ISPathFindAction.start, ISPathFindAction.perform
+function ISPathFindAction:start()
+    local g = self.goal
+    if g and g[1] == "VehicleAdjacent" and g[2]:getScriptName() == SH.TRAILER then
+        self.semiTrailer = g[2]
+        self.goal = { "Nearest", SH.mechSpots(g[2]) }
+        if not self.onFailFunc then self.onFailFunc, self.onFailArgs = SH.noSpot, { self.character } end
+    end
+    return origStart(self)
+end
+-- The engine's path ends where it could get to, not always on the spot asked for (PathFindBehavior2.java:1471-1481;
+-- reach-f: 0.23 off), and the trailer may have moved meanwhile: past the window's own reach (ISVehicleMechanics.lua:20-22)
+-- it would open and shut at once, so end as a failed walk does (ISPathFindAction.lua:23-33)
+function ISPathFindAction:perform()
+    local t = self.semiTrailer
+    if t and self.character:DistTo(t:getX(), t:getY()) > 6 then
+        local args = self.onFailArgs
+        self.onFailFunc(args[1], args[2], args[3], args[4])
+        return self:stop()
+    end
+    return origPerform(self)
 end
 
 -- Vanilla's action looks for the trailer again within 6 squares when it starts (ISAttachTrailerToVehicle.lua:42-48);

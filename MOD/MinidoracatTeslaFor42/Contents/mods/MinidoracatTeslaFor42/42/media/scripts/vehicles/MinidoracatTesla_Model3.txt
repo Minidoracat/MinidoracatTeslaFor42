@@ -411,5 +411,12 @@ module Base
                 file = MinidoracatTesla_Model3_Detail,
             }
         }
+        part TeslaArmor
+        {
+            model Armor
+            {
+                file = MinidoracatTesla_Model3_Armor,
+            }
+        }
     }
 }

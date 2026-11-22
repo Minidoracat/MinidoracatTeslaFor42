@@ -123,6 +123,8 @@
     "IGUI_MinidoracatTesla_Deny_PLUGGED": "Kabel ładowania jest już podłączony",
     "IGUI_MinidoracatTesla_Deny_NOT_PLUGGED": "Kabel ładowania nie jest podłączony",
     "IGUI_MinidoracatTesla_Deny_CABLE_SHORT": "Kabel nie sięga do samochodu",
+    "IGUI_MinidoracatTesla_Deny_SEMI_NO_SPOT": "Obok naczepy nie ma miejsca, by przy niej pracować",
+    "IGUI_MinidoracatTesla_Deny_LID_LOCKED": "Pokrywa przedniego bagażnika jest zablokowana",
     "IGUI_MinidoracatTesla_Unplugged_TooFar": "Kabel ładowania wyrwany: samochód odjechał za daleko",
     "IGUI_MinidoracatTesla_Tip_Headlight": "Włącz lub wyłącz reflektory",
     "IGUI_MinidoracatTesla_Tip_Heater": "Włącz lub wyłącz klimatyzację (zużywa energię akumulatora)",
@@ -409,5 +411,13 @@
     "IGUI_MinidoracatTesla_Tip_AppPsFloorDown": "Obniż limit rozładowania o 5%%",
     "IGUI_MinidoracatTesla_Tip_AppPsFloorUp": "Podnieś limit rozładowania o 5%%",
     "IGUI_MinidoracatTesla_Tip_AppOutletOn": "Włącz gniazda na pace",
+    "IGUI_VehiclePartCatupgrade": "Ulepszenia",
+    "IGUI_VehiclePartTeslaArmor": "Ochrona",
+    "IGUI_VehiclePartTeslaFridge": "Lodówka",
+    "IGUI_MinidoracatTesla_Radial_FridgeOff": "Wyłącz lodówkę",
+    "IGUI_MinidoracatTesla_Radial_FridgeCool": "Lodówka: chłodzenie",
+    "IGUI_MinidoracatTesla_Radial_FridgeFreeze": "Lodówka: mrożenie",
+    "IGUI_MinidoracatTesla_Fridge_LowBattery": "Lodówka wyłączona: akumulator poniżej 20%%",
+    "IGUI_MinidoracatTesla_Deny_NO_FRIDGE": "Brak zamontowanej lodówki",
     "IGUI_MinidoracatTesla_Tip_AppOutletOff": "Wyłącz gniazda na pace"
 }

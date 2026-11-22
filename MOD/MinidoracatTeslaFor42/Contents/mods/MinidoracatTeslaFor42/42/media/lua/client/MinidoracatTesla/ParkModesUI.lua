@@ -24,6 +24,11 @@ end
 
 local denyText = T.denyText
 
+local function onFridge(player, vehicle, mode)
+    T.request(player, "fridge", { vid = vehicle:getId(), mode = mode }) -- server Fridge.lua
+end
+local FRIDGE_MODES = { { false, "FridgeOff" }, { "cool", "FridgeCool" }, { "freeze", "FridgeFreeze" } }
+
 function UI.fillMenu(playerNum, context, worldobjects, test)
     if test then return end
     local player = getSpecificPlayer(playerNum)
@@ -48,6 +53,20 @@ function UI.fillMenu(playerNum, context, worldobjects, test)
     -- camp is switched from the seat (V radial menu); shown here greyed so players know where it is
     local camp = context:addOption(getText("ContextMenu_MinidoracatTesla_CampOn"), nil, nil)
     tip(camp, denyText("NOT_INSIDE"), true)
+    -- the car fridge (Upgrades.lua, server Fridge.lua), once fitted: off / cool / freeze, the current one ticked
+    local fp = T.Fridge and T.Fridge.part(vehicle) -- shared Upgrades.lua (shared loads before client)
+    if not fp then return end
+    local f = fp:getModData().fridge
+    local sub = context:getNew(context)
+    context:addSubMenu(context:addOption(getText("ContextMenu_MinidoracatTesla_Fridge")), sub)
+    local far = player:DistTo(vehicle) > S.RANGE
+    for _, m in ipairs(FRIDGE_MODES) do
+        local opt = sub:addOption(getText("ContextMenu_MinidoracatTesla_" .. m[2]), player, onFridge, vehicle, m[1])
+        sub:setOptionChecked(opt, (f and f.mode or false) == m[1])
+        local ok, why = T.Fridge.canSet(player, vehicle, m[1])
+        if far then ok, why = false, "TOO_FAR" end
+        if not ok then tip(opt, denyText(why), true) end
+    end
 end
 Events.OnFillWorldObjectContextMenu.Add(UI.fillMenu)
 
@@ -143,6 +162,7 @@ local TITLE = {
         hotwire = "IGUI_MinidoracatTesla_Sentry_BreakHotwire", part = "IGUI_MinidoracatTesla_Sentry_BreakPart",
         trailerPart = "IGUI_MinidoracatTesla_Sentry_BreakTrailerPart", tow = "IGUI_MinidoracatTesla_Sentry_BreakTow" },
     lowBattery = { sentry = "IGUI_MinidoracatTesla_Sentry_LowBattery", camp = "IGUI_MinidoracatTesla_Camp_LowBattery",
+        fridge = "IGUI_MinidoracatTesla_Fridge_LowBattery",
         powershare = "IGUI_MinidoracatTesla_Powershare_LowBattery", -- powershare: %1 = its discharge limit
         powershareSpot = "IGUI_MinidoracatTesla_Powershare_Spot" }, -- no outdoor square near the truck for its generator
 }
@@ -173,7 +193,8 @@ function UI.card(e)
         detail = #bits > 0 and table.concat(bits, getText("IGUI_MinidoracatTesla_Sep")) or nil,
         time = tonumber(e.hh) and string.format("%02d:%02d", e.hh, tonumber(e.mm) or 0) or nil,
         icon = icon(e.what == "camp" and "toast_camp"
-            or ((e.kind == "touch" or e.what == "powershare" or e.what == "powershareSpot") and "toast_sentry_touch"
+            or ((e.kind == "touch" or e.what == "powershare" or e.what == "powershareSpot" or e.what == "fridge")
+                and "toast_sentry_touch"
                 or "toast_sentry_break")),
     }
     c.titleH = tm:getFontHeight(FONT_T)

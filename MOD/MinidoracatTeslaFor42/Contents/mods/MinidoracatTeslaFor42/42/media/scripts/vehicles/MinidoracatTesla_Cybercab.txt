@@ -274,5 +274,12 @@ module Base
                 file = MinidoracatTesla_Cybercab_Detail,
             }
         }
+        part TeslaArmor
+        {
+            model Armor
+            {
+                file = MinidoracatTesla_Cybercab_Armor,
+            }
+        }
     }
 }

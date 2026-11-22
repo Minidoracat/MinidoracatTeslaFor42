@@ -267,4 +267,52 @@ module Base
         WorldRender = false,
         Hidden = true,
     }
+
+    /* Protection kits for part TeslaArmor (Upgrades.lua T.Armor.K): Inner shows nothing and halves the car's impact */
+    /* damage; Outer adds a bull bar (each car's model Armor) and cuts it to a quarter. Any Tesla: no VehicleType. */
+    /* Icons: upgrade_icons.py. World model: vanilla SheetMetal's (generated/items/normal.txt:8488), as the MOD's other */
+    /* carried items reuse vanilla's. Crafted (MinidoracatTesla_recipes.txt) or loot (Charging.lua C.UPGRADE_LOOT). */
+    /* ConditionMax 100: a part's condition is its item's (VehiclePart.java:185-193). */
+    item MinidoracatTesla_ArmorInner
+    {
+        DisplayCategory = VehicleMaintenance,
+        Weight = 10.0,
+        ItemType = base:normal,
+        Icon = MinidoracatTesla_ArmorInner,
+        ConditionMax = 100,
+        ChanceToSpawnDamaged = 0,
+        MechanicsItem = true,
+        WorldStaticModel = MetalSheet,
+        Tooltip = Tooltip_MinidoracatTesla_ArmorInner,
+    }
+
+    item MinidoracatTesla_ArmorOuter
+    {
+        DisplayCategory = VehicleMaintenance,
+        Weight = 20.0,
+        ItemType = base:normal,
+        Icon = MinidoracatTesla_ArmorOuter,
+        ConditionMax = 100,
+        ChanceToSpawnDamaged = 0,
+        MechanicsItem = true,
+        WorldStaticModel = MetalSheet,
+        Tooltip = Tooltip_MinidoracatTesla_ArmorOuter,
+    }
+
+    /* Car fridge for part TeslaFridge: the fitted item's MaxCapacity is the container's (VehiclePart.java:185-193), */
+    /* 12 as vanilla's Cooler (generated/items/container.txt:899-916), whose world model it borrows; icon: */
+    /* upgrade_icons.py. Crafted from a Cooler (MinidoracatTesla_recipes.txt) or loot (Charging.lua C.UPGRADE_LOOT). */
+    item MinidoracatTesla_Fridge
+    {
+        DisplayCategory = VehicleMaintenance,
+        Weight = 5.0,
+        ItemType = base:normal,
+        Icon = MinidoracatTesla_Fridge,
+        MaxCapacity = 12,
+        ConditionMax = 100,
+        ChanceToSpawnDamaged = 0,
+        MechanicsItem = true,
+        WorldStaticModel = Cooler_Ground,
+        Tooltip = Tooltip_MinidoracatTesla_Fridge,
+    }
 }

@@ -14,5 +14,9 @@
     "ContextMenu_MinidoracatTesla_ChargeItem": "Naładuj z gniazda w samochodzie",
     "ContextMenu_MinidoracatTesla_OpenApp": "Otwórz aplikację Tesla",
     "ContextMenu_MinidoracatTesla_AddCar": "Dodaj ten samochód (sparowane: %1)",
+    "ContextMenu_MinidoracatTesla_Fridge": "Lodówka samochodowa",
+    "ContextMenu_MinidoracatTesla_FridgeOff": "Wyłączona",
+    "ContextMenu_MinidoracatTesla_FridgeCool": "Chłodzenie",
+    "ContextMenu_MinidoracatTesla_FridgeFreeze": "Mrożenie",
     "ContextMenu_MinidoracatTesla_Unpair": "Usuń z telefonu"
 }

@@ -2,7 +2,8 @@
 -- budget dropped before the handler, counted, one log line a window; players apart; the window recovers, a clock set
 -- back starts over; SP and unknown commands are left alone. The real client's busiest minute through it (H.serve) is
 -- in test_sound_remote (motor), test_phone_app (the app), test_liftgate (car picture), test_hud (charge card),
--- test_seat_pose (seat), test_keys (walk-away lock, key sweep, key card taps, pairing) and test_tow_link (towAsk).
+-- test_seat_pose (seat), test_keys (walk-away lock, key sweep, key card taps, pairing) and test_tow_link (towAsk);
+-- the fridge's fridgeFoodPull (no row, `default`) is played here.
 local check = H.check
 local T = MinidoracatTesla
 local CR = T.CommandRate
@@ -10,8 +11,8 @@ local cmds = T.ServerCommands
 
 H.section("command budget: server dispatch")
 H.side(false, true)
-local hits, saved, names = {}, {}, { "rateA", "rateB", "liftgate" }
-for _, c in ipairs(names) do -- rateA / rateB: no row (default); liftgate: its own row
+local hits, saved, names = {}, {}, { "rateA", "rateB", "liftgate", "fridgeFoodPull" }
+for _, c in ipairs(names) do -- rateA / rateB / fridgeFoodPull: no row (default); liftgate: its own row
     saved[c] = cmds[c]
     cmds[c] = function() hits[c] = (hits[c] or 0) + 1 end
 end
@@ -60,6 +61,12 @@ check(logs() == l0 + 1, "one log line for the window, not one per drop")
 check(H.logLines[#H.logLines]:find("default", 1, true) and H.logLines[#H.logLines]:find("p1", 1, true),
     "the line names the bucket and the player")
 check(#H.sent == s0, "no reply to the client (a reply per drop would grow with the flood)")
+-- fridgeFoodPull (FridgeUI.lua, a page showing a switched-off fridge): no row, so it spends the shared `default`
+local pf = H.player({ name = "pf" })
+local df = CR.dropped.default
+check(CR.LIMITS.fridgeFoodPull == nil and send(pf, "rateA", D.max - 2) == D.max - 2
+    and send(pf, "fridgeFoodPull", 3) == 2 and CR.dropped.default == df + 1,
+    "fridgeFoodPull has no row: it shares `default` with the other one-per-click commands (dropped past it)")
 check(send(p1, "liftgate", G.max) == G.max and send(p1, "liftgate", 3) == 0 and (CR.dropped.liftgate or 0) == 3,
     "a command with a row has its own budget (" .. G.max .. "), apart from the spent default")
 check(send(p2, "rateA", D.max) == D.max, "another player's budget is their own")

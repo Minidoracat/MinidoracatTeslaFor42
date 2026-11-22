@@ -2,5 +2,8 @@
     "MinidoracatTesla_MakeWallConnector": "Tesla Wall Connector bauen",
     "MinidoracatTesla_MakeSupercharger": "Tesla V4 Supercharger bauen",
     "MinidoracatTesla_MakeMobileConnector": "Tesla Mobile Connector bauen",
-    "MinidoracatTesla_MakeDriveUnitParts": "Antriebseinheit-Teile bauen"
+    "MinidoracatTesla_MakeDriveUnitParts": "Antriebseinheit-Teile bauen",
+    "MinidoracatTesla_MakeArmorInner": "Verstärkungssatz bauen",
+    "MinidoracatTesla_MakeArmorOuter": "Frontschutzbügel-Satz bauen",
+    "MinidoracatTesla_MakeFridge": "Autokühlschrank bauen"
 }

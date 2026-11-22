@@ -9,17 +9,18 @@ T.NEAR = 10 -- tiles between player and car for commands sent from outside
 
 local function isInt(n) return type(n) == "number" and n == n and math.floor(n) == n end
 
--- Shared validation for handlers: player, Tesla by args.vid, distance. Denies and returns nil on failure.
-function T.commandVehicle(player, args, maxDist)
+-- Shared validation for handlers: player, Tesla by args.vid, distance. Denies and returns nil on failure; `quiet`:
+-- returns nil without the deny (requests a client sends by itself, not on the player's action).
+function T.commandVehicle(player, args, maxDist, quiet)
     if not player then return nil end
     local vid = args and args.vid
     local v = isInt(vid) and getVehicleById(vid) or nil -- whole numbers only: fractions truncate to another id
     if not v or not T.isTesla(v) then
-        T.deny(player, "NO_VEHICLE", isInt(vid) and vid or nil)
+        if not quiet then T.deny(player, "NO_VEHICLE", isInt(vid) and vid or nil) end
         return nil
     end
     if player:getVehicle() ~= v and player:DistTo(v) > (maxDist or T.NEAR) then
-        T.deny(player, "TOO_FAR", vid)
+        if not quiet then T.deny(player, "TOO_FAR", vid) end
         return nil
     end
     return v
@@ -55,7 +56,12 @@ end
 -- least 1.5 times it, motor exactly it. No reply: past these only a modified client gets, and a reply per drop would
 -- grow with the flood. Not played there, one per click or per login, inside `default`: camp, sentry, chargeInfo,
 -- phoneUnpair, inboxPull, the radial's bdm and chill, the Cybertruck's radial slices roofLight, psOn, psOff,
--- outletOn and outletOff.
+-- outletOn and outletOff, and fridge (the right-click menu and the radial, Fridge.lua). Also inside `default`,
+-- played in test_cmd_rate.lua: fridgeFoodPull, sent by a client whose inventory page shows a switched-off fridge
+-- (FridgeUI.lua): once per ten game minutes plus one retry a minute later if unanswered, and once per food
+-- instance that shows up in it (one per item moved in, a timed transfer action each); while everyone sleeps the
+-- server fast-forwards (GameTime.java:968-971) and the buckets come faster (not measured). A drop only leaves the
+-- copy's values stale until the retry or the next bucket.
 local CR = { dropped = {} }
 CR.LIMITS = {
     default = { max = 40, ms = 10000 },      -- legit 20: one per click (charge card, camp, sentry, pairing), autoLock 2 a
@@ -124,10 +130,13 @@ if not T.serverDispatch then
         if not ok then T.log("command " .. tostring(command) .. " failed: " .. tostring(err)) end
     end)
     -- Liftgate.onVehicleCommand (the cabin glass back to the end after an admin repair) wants the parts vanilla's repair
-    -- refits: a mod's server Lua loads after vanilla's (LuaManager.java:1192-1195), so this listener runs after
+    -- refits, Armor.onVehicleCommand (a new snapshot after setPartCondition / repair / repairPart) the conditions it
+    -- set: a mod's server Lua loads after vanilla's (LuaManager.java:1192-1195), so this listener runs after
     -- VehicleCommands'. Looked up per call: the harness loads the files in its own order.
     Events.OnClientCommand.Add(function(...)
         local L = T.Liftgate
         if L and L.onVehicleCommand then L.onVehicleCommand(...) end
+        local A = T.Armor
+        if A and A.onVehicleCommand then A.onVehicleCommand(...) end
     end)
 end

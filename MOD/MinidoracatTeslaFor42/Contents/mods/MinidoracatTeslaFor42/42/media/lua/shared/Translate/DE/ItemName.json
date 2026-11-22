@@ -19,5 +19,8 @@
     "Base.MinidoracatTesla_KeyCard": "Schlüsselkarte",
     "Base.MinidoracatTesla_Phone": "Smartphone",
     "Base.MinidoracatTesla_PhoneKey": "Handyschlüssel",
+    "Base.MinidoracatTesla_ArmorInner": "Verstärkungssatz",
+    "Base.MinidoracatTesla_ArmorOuter": "Frontschutzbügel-Satz",
+    "Base.MinidoracatTesla_Fridge": "Autokühlschrank",
     "Base.MinidoracatTesla_Powershare": "Powershare"
 }

@@ -14,5 +14,9 @@
     "ContextMenu_MinidoracatTesla_ChargeItem": "Зарядить от розетки автомобиля",
     "ContextMenu_MinidoracatTesla_OpenApp": "Открыть приложение Tesla",
     "ContextMenu_MinidoracatTesla_AddCar": "Добавить эту машину (привязано: %1)",
+    "ContextMenu_MinidoracatTesla_Fridge": "Автохолодильник",
+    "ContextMenu_MinidoracatTesla_FridgeOff": "Выключен",
+    "ContextMenu_MinidoracatTesla_FridgeCool": "Охлаждение",
+    "ContextMenu_MinidoracatTesla_FridgeFreeze": "Заморозка",
     "ContextMenu_MinidoracatTesla_Unpair": "Удалить из телефона"
 }

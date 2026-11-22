@@ -5,9 +5,11 @@ require "MinidoracatTesla/Core"
 local T = MinidoracatTesla
 T.ClientCommands = T.ClientCommands or {}
 
--- default deny handler: red halo text over the local player (HaloTextHelper.java; vanilla ISWorldObjectContextMenu.lua:1038)
+-- default deny handler: red halo text over the player it is for (`pn`, T.deny: its split-screen slot here; slot 0 when
+-- missing or not playing now) (HaloTextHelper.java; vanilla ISWorldObjectContextMenu.lua:1038)
 T.ClientCommands.deny = T.ClientCommands.deny or function(args)
-    local p = getSpecificPlayer(0)
+    local pn = type(args) == "table" and args.pn
+    local p = type(pn) == "number" and getSpecificPlayer(pn) or getSpecificPlayer(0)
     local reason = type(args) == "table" and tostring(args.reason) or "?"
     if p then HaloTextHelper.addBadText(p, T.denyText(reason)) end
 end

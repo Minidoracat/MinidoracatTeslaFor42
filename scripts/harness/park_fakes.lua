@@ -211,6 +211,9 @@ function F.vehicle(o)
     function v:getY() return self.y end
     function v:getZ() return 0 end
     function v:setAlarmed(b) self.alarmed = b end
+    function v:isAlarmed() return self.alarmed == true end
+    function v:isPreviouslyEntered() return self.entered == true end
+    function v:setPreviouslyEntered(b) self.entered = b end
     function v:triggerAlarm()
         if self.alarmed then self.alarmTriggered = self.alarmTriggered + 1 end
         self.alarmed = false

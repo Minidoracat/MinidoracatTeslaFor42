@@ -1,0 +1,198 @@
+-- Car fridge, client side (references/upgrades.md section 4): its container button wears vanilla's fridge icon, and an
+-- MP client shows the server's food values. The server settles the fridge (server Fridge.lua) but a food's age and
+-- freezing time are not in ItemStatsPacket (ItemStatsPacket.java:172-199, only isFrozen), and this client's copy of the
+-- food does not age on its own (Food.update ages on the server only, Food.java:378-380): it only jumps at room rate
+-- when this client puts it in or takes it out (:2476-2483). While an inventory page lists a TeslaFridge container and
+-- its contents can be seen (shown and not collapsed): when the page is built, then once a game minute,
+--   on:  each food takes its values in fridge.items, once per food instance per settle (`fridge.at`);
+--   off: the page's player asks the server for the values now (`fridgeFoodPull`, answer `fridgeFood` below), again
+--        every ten game minutes, and at once when a food instance shows up that the last ask did not see; an ask
+--        still unanswered a game minute later is asked once more (the server says nothing when it drops one).
+-- One state per car: UI.cars[vid] = { ver, items = { [id] = the instance applied (on) / asked about (off) }, seq,
+-- bucket, minute, retry }, kept only while a page shows that car's fridge (it holds food instances). No page lists
+-- one: nothing runs. The switches are in ParkModesUI.lua (right-click) and HUDRadial.lua.
+require "Definitions/ContainerButtonIcons"
+require "MinidoracatTesla/Core"
+ContainerButtonIcons.TeslaFridge = ContainerButtonIcons.fridge
+if not isClient() then return end
+
+local T = MinidoracatTesla
+T.ClientCommands = T.ClientCommands or {}
+local UI = { cars = {}, seq = 0, watched = {}, nWatched = 0, hooked = false }
+T.FridgeUI = UI
+
+local function spoils(it) return instanceof(it, "Food") and it:getOffAgeMax() < 1000000000 end -- the server's test
+
+-- car vid's state, a fresh one when the version changed (switched on or off, or a new settle)
+local function state(vid, ver)
+    local st = UI.cars[vid]
+    if not (st and st.ver == ver) then
+        st = { ver = ver, items = {} }
+        UI.cars[vid] = st
+    end
+    return st
+end
+
+-- this fridge's food to the server's values. On: each food instance not yet given this settle's values gets them;
+-- returns how many. Off: asks through `player` (the page's) when the ten-minute bucket moved on or a food instance is
+-- new since the last ask; returns how many foods it asked about (0: no ask). The server answers nothing when the
+-- player cannot reach the container (Fridge.lua fridgeFoodPull) or the budget drops the ask (Commands.lua): an ask
+-- with no answer by a later minute is asked once more (`retry`), then the next ask waits for the bucket or a new
+-- food, so a container the server never lets this player see costs at most two asks per ten minutes.
+function UI.apply(part, player)
+    local md = part:getModData()
+    local vid, s = part:getVehicle():getId(), md.fridge
+    local items, n = part:getItemContainer():getItems(), 0
+    if s then
+        if not (s.items and s.at) then return 0 end
+        local st = state(vid, "on " .. tostring(s.at)) -- also drops an off state, so an answer still due is dropped
+        local freezing = s.mode == "freeze"
+        for i = 0, items:size() - 1 do
+            local it = items:get(i)
+            local id = instanceof(it, "Food") and tostring(it:getID())
+            local b = id and s.items[id]
+            if b and st.items[id] ~= it then
+                st.items[id] = it
+                -- an egg in a running freezer, or with freezing time, is dead (as the server, Fridge.lua; Food.isFreezing)
+                if (b.ft > 0 or freezing and it:canBeFrozen()) and it:isFertilized() then it:setFertilized(false) end
+                it:updateAge() -- lastAged = now, so the room-rate gap is not added again
+                it:setAge(b.age)
+                it:setFreezingTime(b.ft)
+                it:setFrozen(b.fr == true)
+                n = n + 1
+            end
+        end
+        return n
+    end
+    local t = T.hours()
+    local st, bucket, minute = state(vid, "off"), math.floor(t * 6), math.floor(t * 60) -- ten game minutes, one
+    local due, now = st.bucket ~= bucket, {}
+    for i = 0, items:size() - 1 do
+        local it = items:get(i)
+        if spoils(it) then
+            local id = tostring(it:getID())
+            now[id] = it
+            n = n + 1
+            if st.items[id] ~= it then due = true end
+        end
+    end
+    local retry = not due and st.retry and minute > st.minute
+    if n == 0 or not (due or retry) or not player then return 0 end
+    UI.seq = UI.seq + 1
+    st.items, st.bucket, st.seq, st.minute, st.retry = now, bucket, UI.seq, minute, due or nil
+    T.request(player, "fridgeFoodPull", { vid = vid, seq = UI.seq })
+    return n
+end
+
+-- can this page's contents be seen? Hidden (inventory toggled off) or collapsed to its title bar (ISInventoryPage
+-- collapseNow sets only isCollapsed, ISInventoryPage.lua:1276-1280): nothing to show, so nothing applied. A page
+-- taken off the screen for good (the player died: ISPlayerData.lua:21,204 removeFromUIManager, which sets only
+-- `removed`, ISUIElement.lua:1373-1380, and fires no refresh) is never seen again.
+local function seen(page)
+    return page:getIsVisible() and not page.isCollapsed and not page.removed
+end
+
+-- the TeslaFridge parts the page lists, in order
+local function fridges(page)
+    local out = {}
+    for _, b in ipairs(page.backpacks or {}) do
+        local part = b.inventory and b.inventory:getVehiclePart()
+        if part and part:getId() == "TeslaFridge" then out[#out + 1] = part end
+    end
+    return out
+end
+
+-- does a watched page whose contents can be seen list car vid's fridge now?
+local function shown(vid)
+    for page in pairs(UI.watched) do
+        if seen(page) then
+            for _, part in ipairs(fridges(page)) do
+                if part:getVehicle():getId() == vid then return true end
+            end
+        end
+    end
+    return false
+end
+
+-- server -> this client: { vid, seq, items = { [id] = { age, ft, fr, fe } } }, the answer to an ask. Only the last
+-- ask's answer counts (answers may arrive out of order: sendServerCommand is RELIABLE, not ordered, GameServer.java:
+-- 3507-3528, PacketTypes.java:508,722-724); dropped when the fridge was switched on or removed meanwhile, and when no
+-- page shows the fridge any more (collapsed, hidden or no longer listing it: the car's state goes with it, so a page
+-- that shows it again asks again). Written only to a food that is still the instance the ask saw (another player's
+-- food, or one moved out and back, is a new instance: the next scan asks again). Returns how many foods took it.
+T.ClientCommands.fridgeFood = function(args)
+    local st = UI.cars[args.vid]
+    if not (st and st.ver == "off" and st.seq == args.seq and type(args.items) == "table") then return 0 end
+    st.retry = nil -- answered: no second ask
+    if not shown(args.vid) then
+        UI.cars[args.vid] = nil
+        return 0
+    end
+    local v = getVehicleById(args.vid)
+    local part = v and T.Fridge and T.Fridge.part(v)
+    if not part or part:getModData().fridge then return 0 end
+    local c, n = part:getItemContainer(), 0
+    for id, b in pairs(args.items) do
+        local it = st.items[id]
+        if it and c:contains(it) then
+            it:updateAge() -- lastAged = now, so the room-rate gap is not added again
+            it:setAge(b.age)
+            it:setFreezingTime(b.ft)
+            it:setFrozen(b.fr == true)
+            if it:isFertilized() ~= (b.fe == true) then it:setFertilized(b.fe == true) end
+            n = n + 1
+        end
+    end
+    return n
+end
+
+-- applies (or asks about) every fridge the page lists while its contents can be seen, noting each such car in `vis`
+-- (when given); true when it lists one and is still on the screen (a removed page goes unwatched)
+local function scan(page, vis)
+    local list = fridges(page)
+    if list[1] and seen(page) then
+        local player = getSpecificPlayer(page.player or 0)
+        for _, part in ipairs(list) do
+            UI.apply(part, player)
+            if vis then vis[part:getVehicle():getId()] = true end
+        end
+    end
+    return list[1] ~= nil and not page.removed
+end
+
+-- drops every car's state but those in `keep`: the state holds food instances (food -> container -> car), so it lives
+-- only while a page shows that car's fridge
+local function forget(keep)
+    for vid in pairs(UI.cars) do
+        if not (keep and keep[vid]) then UI.cars[vid] = nil end
+    end
+end
+
+local everyMinute
+local function watch(page, on)
+    if on and not UI.watched[page] then UI.nWatched = UI.nWatched + 1 end
+    if not on and UI.watched[page] then UI.nWatched = UI.nWatched - 1 end
+    UI.watched[page] = on or nil
+    if UI.nWatched > 0 and not UI.hooked then
+        Events.EveryOneMinute.Add(everyMinute)
+    elseif UI.nWatched == 0 and UI.hooked then
+        Events.EveryOneMinute.Remove(everyMinute)
+    end
+    UI.hooked = UI.nWatched > 0
+    if UI.nWatched == 0 then forget() end
+end
+-- a page whose contents cannot be seen stays watched but applies nothing: showing it again does not rebuild it
+-- (ISInventoryPage.onKeyPressed / toggleInventory only setVisible; uncollapsing clears isCollapsed), so the next
+-- minute after that applies. After the scan, a car no page shows (another split-screen page may still show it) loses
+-- its state: shown again after a minute or more, a switched-on fridge applies each food once more (the same values)
+-- and a switched-off one asks once more.
+everyMinute = function()
+    local pages, vis = {}, {}
+    for page in pairs(UI.watched) do pages[#pages + 1] = page end
+    for _, page in ipairs(pages) do watch(page, scan(page, vis)) end
+    forget(vis)
+end
+
+Events.OnRefreshInventoryWindowContainers.Add(function(page, step)
+    if step == "end" then watch(page, scan(page)) end
+end)

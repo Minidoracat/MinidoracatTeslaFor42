@@ -123,6 +123,8 @@
     "IGUI_MinidoracatTesla_Deny_PLUGGED": "A charge cable is already plugged in",
     "IGUI_MinidoracatTesla_Deny_NOT_PLUGGED": "No charge cable plugged in",
     "IGUI_MinidoracatTesla_Deny_CABLE_SHORT": "The cable does not reach the car",
+    "IGUI_MinidoracatTesla_Deny_SEMI_NO_SPOT": "No room beside the trailer to work on it",
+    "IGUI_MinidoracatTesla_Deny_LID_LOCKED": "The hood is locked",
     "IGUI_MinidoracatTesla_Unplugged_TooFar": "Charge cable pulled out: the car moved too far",
     "IGUI_MinidoracatTesla_Tip_Headlight": "Turn the headlights on or off",
     "IGUI_MinidoracatTesla_Tip_Heater": "Turn the climate controls on or off (uses battery)",
@@ -409,5 +411,13 @@
     "IGUI_MinidoracatTesla_Tip_AppPsFloorDown": "Discharge limit down 5%%",
     "IGUI_MinidoracatTesla_Tip_AppPsFloorUp": "Discharge limit up 5%%",
     "IGUI_MinidoracatTesla_Tip_AppOutletOn": "Turn on bed outlets",
+    "IGUI_VehiclePartCatupgrade": "Upgrades",
+    "IGUI_VehiclePartTeslaArmor": "Protection",
+    "IGUI_VehiclePartTeslaFridge": "Fridge",
+    "IGUI_MinidoracatTesla_Radial_FridgeOff": "Turn off Fridge",
+    "IGUI_MinidoracatTesla_Radial_FridgeCool": "Fridge: Cool",
+    "IGUI_MinidoracatTesla_Radial_FridgeFreeze": "Fridge: Freeze",
+    "IGUI_MinidoracatTesla_Fridge_LowBattery": "Fridge off: battery below 20%%",
+    "IGUI_MinidoracatTesla_Deny_NO_FRIDGE": "No fridge is installed",
     "IGUI_MinidoracatTesla_Tip_AppOutletOff": "Turn off bed outlets"
 }

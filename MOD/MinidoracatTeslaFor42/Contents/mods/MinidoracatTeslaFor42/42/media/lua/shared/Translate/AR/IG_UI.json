@@ -123,6 +123,8 @@
     "IGUI_MinidoracatTesla_Deny_PLUGGED": "Ya hay un cable de carga conectado",
     "IGUI_MinidoracatTesla_Deny_NOT_PLUGGED": "No hay ningún cable de carga conectado",
     "IGUI_MinidoracatTesla_Deny_CABLE_SHORT": "El cable no llega al coche",
+    "IGUI_MinidoracatTesla_Deny_SEMI_NO_SPOT": "No hay lugar junto al remolque para trabajar en él",
+    "IGUI_MinidoracatTesla_Deny_LID_LOCKED": "El capó está bloqueado",
     "IGUI_MinidoracatTesla_Unplugged_TooFar": "Cable de carga arrancado: el coche se alejó demasiado",
     "IGUI_MinidoracatTesla_Tip_Headlight": "Encender o apagar los faros",
     "IGUI_MinidoracatTesla_Tip_Heater": "Encender o apagar la climatización (gasta batería)",
@@ -409,5 +411,13 @@
     "IGUI_MinidoracatTesla_Tip_AppPsFloorDown": "Bajar el límite de descarga un 5%%",
     "IGUI_MinidoracatTesla_Tip_AppPsFloorUp": "Subir el límite de descarga un 5%%",
     "IGUI_MinidoracatTesla_Tip_AppOutletOn": "Activar tomas de la caja",
+    "IGUI_VehiclePartCatupgrade": "Mejoras",
+    "IGUI_VehiclePartTeslaArmor": "Protección",
+    "IGUI_VehiclePartTeslaFridge": "Heladera",
+    "IGUI_MinidoracatTesla_Radial_FridgeOff": "Apagar heladera",
+    "IGUI_MinidoracatTesla_Radial_FridgeCool": "Heladera: enfriar",
+    "IGUI_MinidoracatTesla_Radial_FridgeFreeze": "Heladera: congelar",
+    "IGUI_MinidoracatTesla_Fridge_LowBattery": "Heladera apagada: batería por debajo del 20%%",
+    "IGUI_MinidoracatTesla_Deny_NO_FRIDGE": "No hay ninguna heladera instalada",
     "IGUI_MinidoracatTesla_Tip_AppOutletOff": "Desactivar tomas de la caja"
 }

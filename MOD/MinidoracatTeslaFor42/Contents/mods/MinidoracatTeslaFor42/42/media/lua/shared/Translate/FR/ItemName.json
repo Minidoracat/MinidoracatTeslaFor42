@@ -19,5 +19,8 @@
     "Base.MinidoracatTesla_KeyCard": "Carte-clé",
     "Base.MinidoracatTesla_Phone": "Smartphone",
     "Base.MinidoracatTesla_PhoneKey": "Clé sur téléphone",
+    "Base.MinidoracatTesla_ArmorInner": "Kit de renforcement",
+    "Base.MinidoracatTesla_ArmorOuter": "Kit pare-buffle",
+    "Base.MinidoracatTesla_Fridge": "Frigo de voiture",
     "Base.MinidoracatTesla_Powershare": "Powershare"
 }

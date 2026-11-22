@@ -123,6 +123,8 @@
     "IGUI_MinidoracatTesla_Deny_PLUGGED": "충전 케이블이 이미 꽂혀 있습니다",
     "IGUI_MinidoracatTesla_Deny_NOT_PLUGGED": "꽂힌 충전 케이블이 없습니다",
     "IGUI_MinidoracatTesla_Deny_CABLE_SHORT": "케이블이 차까지 닿지 않습니다",
+    "IGUI_MinidoracatTesla_Deny_SEMI_NO_SPOT": "트레일러 옆에 작업할 공간이 없습니다",
+    "IGUI_MinidoracatTesla_Deny_LID_LOCKED": "후드가 잠겨 있습니다",
     "IGUI_MinidoracatTesla_Unplugged_TooFar": "충전 케이블이 빠졌습니다: 차가 너무 멀리 이동했습니다",
     "IGUI_MinidoracatTesla_Tip_Headlight": "전조등 켜기/끄기",
     "IGUI_MinidoracatTesla_Tip_Heater": "실내 온도 조절 켜기/끄기 (배터리 사용)",
@@ -409,5 +411,13 @@
     "IGUI_MinidoracatTesla_Tip_AppPsFloorDown": "방전 한도 5%% 낮추기",
     "IGUI_MinidoracatTesla_Tip_AppPsFloorUp": "방전 한도 5%% 높이기",
     "IGUI_MinidoracatTesla_Tip_AppOutletOn": "적재함 콘센트 켜기",
+    "IGUI_VehiclePartCatupgrade": "업그레이드",
+    "IGUI_VehiclePartTeslaArmor": "보호 장치",
+    "IGUI_VehiclePartTeslaFridge": "냉장고",
+    "IGUI_MinidoracatTesla_Radial_FridgeOff": "냉장고 끄기",
+    "IGUI_MinidoracatTesla_Radial_FridgeCool": "냉장고: 냉장",
+    "IGUI_MinidoracatTesla_Radial_FridgeFreeze": "냉장고: 냉동",
+    "IGUI_MinidoracatTesla_Fridge_LowBattery": "냉장고가 꺼졌습니다: 배터리 20%% 미만",
+    "IGUI_MinidoracatTesla_Deny_NO_FRIDGE": "냉장고가 장착되어 있지 않습니다",
     "IGUI_MinidoracatTesla_Tip_AppOutletOff": "적재함 콘센트 끄기"
 }

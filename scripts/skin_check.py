@@ -16,7 +16,8 @@ from PIL import Image
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 WANT = (52, 52, 56)     # pzveh.CABIN_UV0_RGB
-SKIP = ("_mask.png", "_lights.png", "_wheel.png", "_wheelrear.png", "_Detail.png")    # the cabin detail textures
+SKIP = ("_mask.png", "_lights.png", "_wheel.png", "_wheelrear.png", "_Detail.png",    # the cabin detail textures
+        "_Armor.png")                                                                # the TeslaArmor kit's palette
 bad, n = [], 0
 for p in sorted(glob.glob(os.path.join(REPO, "MOD", "**", "textures", "Vehicles", "MinidoracatTesla_*.png"), recursive=True)):
     if p.endswith(SKIP):

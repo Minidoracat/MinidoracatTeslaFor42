@@ -313,4 +313,17 @@ CAR = dict(
             ("map pocket", "end", (0.10, 0.30), -0.320, None, 0.070, 0.040, "base", 0.015),
         ],
     },
+    # TeslaArmor's visible kit (armor.py; model_y.py ARMOR has the keys): steel tubes as the Model Y's, no roof rack
+    # (soft top). Low car: the bars sit over the body's lowest edge (z 0.11), across the intake and diffuser only.
+    # keep: the plates (the body has none: front: the nose between the badge and the intake; rear: the recess under
+    # the tail lamps)
+    ARMOR=dict(
+        keep=dict(front_plate=(0.18, 0.31, 0.41), rear_plate=(0.18, 0.36, 0.47)),
+        front=dict(z=0.17, top=0.36, x=0.58, corners=[(0.30, 0.44)], brackets=(0.15, 0.40), gap=0.025, r=0.020, sides=10,
+                   bend=0.045),
+        rear=dict(z=0.26, top=0.42, x=0.58, corners=[(0.30, 0.46)], brackets=(0.12, 0.25), gap=0.025, r=0.020, sides=10,
+                  bend=0.045),
+        sill=dict(z=0.15, y=(-0.66, 0.54), r=0.020, sides=10, gap=0.012, bend=0.045, brackets=(-0.40, -0.06)),
+        roof=None,
+    ),
 )

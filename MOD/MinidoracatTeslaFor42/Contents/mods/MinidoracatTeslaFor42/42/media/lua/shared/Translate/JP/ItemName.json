@@ -19,5 +19,8 @@
     "Base.MinidoracatTesla_KeyCard": "キーカード",
     "Base.MinidoracatTesla_Phone": "スマートフォン",
     "Base.MinidoracatTesla_PhoneKey": "電話キー",
+    "Base.MinidoracatTesla_ArmorInner": "車体補強キット",
+    "Base.MinidoracatTesla_ArmorOuter": "グリルガードキット",
+    "Base.MinidoracatTesla_Fridge": "車載冷蔵庫",
     "Base.MinidoracatTesla_Powershare": "Powershare"
 }

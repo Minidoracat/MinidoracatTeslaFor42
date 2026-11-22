@@ -14,5 +14,9 @@
     "ContextMenu_MinidoracatTesla_ChargeItem": "車のコンセントで充電",
     "ContextMenu_MinidoracatTesla_OpenApp": "Tesla アプリを開く",
     "ContextMenu_MinidoracatTesla_AddCar": "この車を追加（%1 台登録済み）",
+    "ContextMenu_MinidoracatTesla_Fridge": "車載冷蔵庫",
+    "ContextMenu_MinidoracatTesla_FridgeOff": "オフ",
+    "ContextMenu_MinidoracatTesla_FridgeCool": "冷蔵",
+    "ContextMenu_MinidoracatTesla_FridgeFreeze": "冷凍",
     "ContextMenu_MinidoracatTesla_Unpair": "電話から削除"
 }

@@ -1519,6 +1519,10 @@ def geometry(body, zmid, wl, r, tire_w, belt_z, doors_y, port_yz, extra_areas=()
     # the cabin's detail, shown only under Viewpoint (template part CabinDetail, ViewpointCabin.lua, cabin.detail_mesh)
     out += ["        part CabinDetail", "        {", "            model Detail", "            {",
             f"                file = {NAME}_Detail,", "            }", "        }"]
+    # the outer armour kit (template part TeslaArmor, Upgrades.lua T.Armor.sync; skf/armor.py builds it)
+    if CAR.get("ARMOR"):
+        out += ["        part TeslaArmor", "        {", "            model Armor", "            {",
+                f"                file = {NAME}_Armor,", "            }", "        }"]
     block = "\n".join(out) + "\n"
     open(os.path.join(TMP, "geometry_block.txt"), "w", newline="\n").write(block)
     # splice into the vehicle script: everything after the geometry marker up to the vehicle's closing brace is ours.

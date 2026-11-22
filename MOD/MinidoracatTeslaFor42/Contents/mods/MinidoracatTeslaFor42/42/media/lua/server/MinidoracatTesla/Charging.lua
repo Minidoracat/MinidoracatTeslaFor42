@@ -250,10 +250,11 @@ function C.onChargerLoaded(o, iso)
     C.schedule(o, T.hours() + C.RETRY_H)
 end
 
--- Sentry standby is booked on events (Sentry.settle) with the power state it ran under (Battery.onCharger), so settle
--- it before that state changes: every charging settle, and before the link goes.
+-- Sentry standby and the car fridge (Fridge.lua) are booked on events (Sentry.settle, Fridge.settle) with the power
+-- state they ran under (Battery.onCharger), so settle them before that state changes: every charging settle, and
+-- before the link goes. Both on one pack go together (Fridge.lua F.settleAll: neither takes the stretch alone).
 local function settleSentry(vehicle, now, freeUntil)
-    local f = T.Sentry and T.Sentry.settle
+    local f = T.Fridge and T.Fridge.settleAll or T.Sentry and T.Sentry.settle
     if f then f(vehicle, now, freeUntil) end
 end
 
@@ -840,10 +841,13 @@ end
 -- Our pairs go first so a reload does not stack them (KeyActions.lua phone loot).
 C.LOOT_ITEM = "Base.MinidoracatTesla_MobileConnector"
 C.LOOT_SHARE = 0.5
-local function addLoot(items)
+local function dropOurs(items, item)
     for i = #items - 1, 1, -2 do
-        if items[i] == C.LOOT_ITEM then table.remove(items, i + 1); table.remove(items, i) end
+        if items[i] == item then table.remove(items, i + 1); table.remove(items, i) end
     end
+end
+local function addLoot(items)
+    dropOurs(items, C.LOOT_ITEM)
     local w = 0
     for i = 1, #items - 1, 2 do
         if items[i] == "CarBatteryCharger" or items[i] == "Base.CarBatteryCharger" then w = w + (tonumber(items[i + 1]) or 0) end
@@ -853,6 +857,19 @@ local function addLoot(items)
         table.insert(items, w * C.LOOT_SHARE)
     end
 end
+-- Upgrade kits (Upgrades.lua; decisions.md 2026-11-22 "craft-loot"): fixed weights in chosen lists, all under the Mobile
+-- Connector's, the Bull Bar Kit rarest; each beside vanilla's rarest stock of that list (ProceduralDistributions.lua
+-- 42.22: MechanicSpecial ModernTire3 / ModernBrake3 0.5, GarageMetalwork BenchAnvil 0.1, MechanicShelfElectric
+-- LightbarRedBlue 0.5, CarSupplyTools HeavyChain_Hook 1, CrateElectronics Mov_Microwave 0.1). Armour: mechanics,
+-- garages, metalwork / hardware; fridge: camping, car supply, appliances, garages. New cars carry none.
+C.UPGRADE_LOOT = {
+    ["Base.MinidoracatTesla_ArmorInner"] = { MechanicSpecial = 0.5, MechanicShelfTools = 0.5, ToolStoreMetalwork = 0.5,
+        GarageMechanics = 0.2, GarageMetalwork = 0.2, CrateMechanics = 0.2, CrateMetalwork = 0.2 },
+    ["Base.MinidoracatTesla_ArmorOuter"] = { MechanicSpecial = 0.2, MechanicShelfTools = 0.2, ToolStoreMetalwork = 0.2,
+        GarageMechanics = 0.1, GarageMetalwork = 0.1, CrateMechanics = 0.1, CrateMetalwork = 0.1 },
+    ["Base.MinidoracatTesla_Fridge"] = { CampingStoreCases = 1, CarSupplyTools = 1, ElectronicStoreAppliances = 1,
+        MechanicShelfElectric = 0.5, GarageMechanics = 0.2, CrateCamping = 0.2, CrateElectronics = 0.1 },
+}
 function C.injectLoot()
     local lists = ProceduralDistributions and ProceduralDistributions.list
     if not lists then return end
@@ -860,6 +877,16 @@ function C.injectLoot()
         if type(l) == "table" then
             if type(l.items) == "table" then addLoot(l.items) end
             if type(l.junk) == "table" and type(l.junk.items) == "table" then addLoot(l.junk.items) end
+        end
+    end
+    for item, where in pairs(C.UPGRADE_LOOT) do
+        for name, w in pairs(where) do
+            local items = type(lists[name]) == "table" and lists[name].items
+            if type(items) == "table" then
+                dropOurs(items, item)
+                table.insert(items, item)
+                table.insert(items, w)
+            end
         end
     end
 end

@@ -14,5 +14,9 @@
     "ContextMenu_MinidoracatTesla_ChargeItem": "Cargar en la toma del coche",
     "ContextMenu_MinidoracatTesla_OpenApp": "Abrir la app de Tesla",
     "ContextMenu_MinidoracatTesla_AddCar": "Añadir este coche (%1 vinculados)",
+    "ContextMenu_MinidoracatTesla_Fridge": "Refrigerador de coche",
+    "ContextMenu_MinidoracatTesla_FridgeOff": "Apagado",
+    "ContextMenu_MinidoracatTesla_FridgeCool": "Enfriar",
+    "ContextMenu_MinidoracatTesla_FridgeFreeze": "Congelar",
     "ContextMenu_MinidoracatTesla_Unpair": "Quitar del teléfono"
 }

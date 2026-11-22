@@ -49,15 +49,23 @@ function DU.salvage(cond, skill)
     return math.floor(cond / c), c
 end
 
+-- a kit (server/Armor.lua A.around; not on an MP client) gives back what the car lost before fn and keeps fn's change:
+-- otherwise the next minute gives salvaged condition back (parts for free, again) or the pending loss is dropped
+local function kept(v, fn)
+    local A = T.Armor
+    if A and A.around then return A.around(v, fn) end
+    return fn()
+end
+
 -- ---- vanilla actions refuse a Tesla
--- only on the drive unit: a job on any other part (another mod's heater repair) is not refused here
+-- only on the drive unit: a job on any other part (another mod's heater repair) is not refused here, only kept
 local function onDriveUnit(a) return T.isTesla(a.vehicle) and a.part:getId() == "Engine" end
 for _, cls in ipairs({ ISRepairEngine, ISTakeEngineParts }) do
     local isValid, complete = cls.isValid, cls.complete
     function cls:isValid() return not onDriveUnit(self) and isValid(self) end
     function cls:complete()
         if onDriveUnit(self) then return false end
-        return complete(self)
+        return kept(self.vehicle, function() return complete(self) end)
     end
 end
 
@@ -71,14 +79,22 @@ function ISMinidoracatTeslaRepairDriveUnit:start()
     self:setActionAnim("VehicleWorkOnMid")
 end
 
--- ISRepairEngine.lua:37-89; also refuses a non-Tesla and a mechanic under the repair level (vanilla trusts the menu)
+-- ISRepairEngine.lua:37-89; also refuses a non-Tesla and a mechanic under the repair level (vanilla trusts the menu).
+-- A drive unit already at 100 once the kit has given back what it owed (snapshot 100, 99 now) is refused like the
+-- menu refuses it (ISVehicleMechanics.lua:333, condition < 100): no part used, no XP, no mechanics item, complete
+-- false with no message, as this function's other refusals; the kit's settle has already sent the condition.
 function ISMinidoracatTeslaRepairDriveUnit:complete()
     local v, part, chr = self.vehicle, self.part, self.character
     if not part or not self.item or not T.isTesla(v) then return false end
     local skill = DU.skillOver(chr, v)
     if skill < 0 then return false end
     local giveXP = chr:getMechanicsItem(v:getMechanicalID() .. "2") == nil
-    local done = DU.repair(part, DU.count(chr), skill)
+    local full
+    local done = kept(v, function()
+        if part:getCondition() >= 100 then full = true return 0 end
+        return DU.repair(part, DU.count(chr), skill)
+    end)
+    if full then return false end
     if done > 0 then
         if giveXP then addXp(chr, Perks.Mechanics, done) end
         local used = chr:getInventory():getSomeTypeRecurse(DU.ITEM, done)
@@ -119,21 +135,24 @@ function ISMinidoracatTeslaTakeDriveUnitParts:start()
     self.item:setJobType(getText("IGUI_MinidoracatTesla_TakeDriveUnitParts"))
 end
 
--- ISTakeEngineParts.lua:31-71; same extra refusals as the repair
+-- ISTakeEngineParts.lua:31-71; same extra refusals as the repair. The parts are counted from the condition after the
+-- kit has given back what it owed (inside kept, with the zeroing), not from the condition before it.
 function ISMinidoracatTeslaTakeDriveUnitParts:complete()
     local v, part, chr = self.vehicle, self.part, self.character
     if not part or not self.item or not T.isTesla(v) then return false end
     local skill = DU.skillOver(chr, v)
     if skill < 0 then return false end
-    local cond = part:getCondition()
-    local numParts, condForPart = DU.salvage(cond, skill)
+    local numParts = kept(v, function()
+        local n = DU.salvage(part:getCondition(), skill)
+        part:setCondition(0)
+        return n
+    end)
     if numParts > 0 then
         local items = chr:getInventory():AddItems(DU.ITEM, numParts)
         sendAddItemsToContainer(chr:getInventory(), items)
     else
         addXp(chr, Perks.Mechanics, 1)
     end
-    part:setCondition(0)
     v:transmitPartCondition(part)
     chr:sendObjectChange(IsoObjectChange.MECHANIC_ACTION_DONE, { success = (numParts > 0) })
     if numParts > 0 then
@@ -153,3 +172,18 @@ function ISMinidoracatTeslaTakeDriveUnitParts:new(character, part, item, maxTime
     o.jobType = getText("IGUI_MinidoracatTesla_TakeDriveUnitParts")
     return o
 end
+
+-- VehicleManager guards actions by exact class name (its Actions.lua:155-166, ActionGuards.lua G.install): ours run their
+-- own complete(), so its guard on ISRepairEngine / ISTakeEngineParts never sees them. The same spec on both sides: the
+-- client sends the intent its server guard asks for (its ClientGuards.lua:26-47). Before its install (OnServerStarted on
+-- a server, OnGameStart elsewhere, its ActionGuards.lua:349-350): this shared file adds its handler first.
+local function registerVM()
+    local api = MinidoracatVehicleManagerAPI
+    if not (api and api.registerActionAdapter) then return end
+    for class, action in pairs({ ISMinidoracatTeslaRepairDriveUnit = "REPAIR", ISMinidoracatTeslaTakeDriveUnitParts = "SALVAGE" }) do
+        api.registerActionAdapter({ class = class, action = action, stages = { "complete" }, push = { "condition" },
+            vehicleOf = function(a) return a.part and a.part:getVehicle() end, partOf = function(a) return a.part end })
+    end
+end
+if Events.OnServerStarted then Events.OnServerStarted.Add(registerVM) end
+Events.OnGameStart.Add(registerVM)

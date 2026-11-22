@@ -329,4 +329,18 @@ CAR = dict(
         ((0.76, -2.06, 0.37), (0.665, -2.06, 0.37)), ((0.7, -2.06, 0.245), (0.665, -2.06, 0.263)),
         ((0.6, -2.24, 0.4), (0.52, -2.262, 0.4)), ((0.53, -2.24, 0.274), (0.54, -2.262, 0.297)),
         ((0.6, -2.265, 0.4), (0.52, -2.275, 0.4)), ((0.55, -2.265, 0.372), (0.52, -2.275, 0.368)))),
+    # TeslaArmor's visible kit (armor.py; keys as model_y.py's ARMOR): front guard, sill tubes, rear guard, no roof rack
+    # (user 2026-11-22). keep: the plates (|x| half width, z bottom, top; the source has no plates: the front one on the
+    # black bumper over the grille, the rear one in the bumper's recess under the tailgate, |x| < 0.25, z 0.48-0.62)
+    ARMOR=dict(
+        keep=dict(front_plate=(0.18, 0.39, 0.52), rear_plate=(0.18, 0.48, 0.62)),
+        # steel tubes, thicker than the Model Y's; the front bar folded at the nose's chamfer (knots), the rear one
+        # straight; the rear loops' top under the open tailgate (its underside 0.478 over the ground)
+        front=dict(z=0.34, top=0.50, x=0.71, corners=[(0.44, 0.70)], brackets=(0.15, 0.40), gap=0.025, r=0.026, sides=10,
+                   bend=0.04, knots=(0.0, 0.22, 0.71)),
+        rear=dict(z=0.33, top=0.44, x=0.71, corners=[(0.44, 0.70)], brackets=(0.15, 0.40), gap=0.025, r=0.026, sides=10,
+                  bend=0.04),
+        sill=dict(z=0.27, y=(-0.84, 1.04), r=0.025, sides=10, gap=0.012, bend=0.05, brackets=(-0.45, 0.10, 0.65)),
+        roof=None,
+    ),
 )

@@ -123,6 +123,8 @@
     "IGUI_MinidoracatTesla_Deny_PLUGGED": "Зарядный кабель уже подключен",
     "IGUI_MinidoracatTesla_Deny_NOT_PLUGGED": "Зарядный кабель не подключен",
     "IGUI_MinidoracatTesla_Deny_CABLE_SHORT": "Кабель не дотягивается до машины",
+    "IGUI_MinidoracatTesla_Deny_SEMI_NO_SPOT": "Рядом с полуприцепом нет места, чтобы с ним работать",
+    "IGUI_MinidoracatTesla_Deny_LID_LOCKED": "Передний багажник заперт",
     "IGUI_MinidoracatTesla_Unplugged_TooFar": "Зарядный кабель выдернут: машина отъехала слишком далеко",
     "IGUI_MinidoracatTesla_Tip_Headlight": "Включить или выключить фары",
     "IGUI_MinidoracatTesla_Tip_Heater": "Включить или выключить климат (расходует заряд)",
@@ -409,5 +411,13 @@
     "IGUI_MinidoracatTesla_Tip_AppPsFloorDown": "Снизить предел разряда на 5%%",
     "IGUI_MinidoracatTesla_Tip_AppPsFloorUp": "Повысить предел разряда на 5%%",
     "IGUI_MinidoracatTesla_Tip_AppOutletOn": "Включить розетки кузова",
+    "IGUI_VehiclePartCatupgrade": "Улучшения",
+    "IGUI_VehiclePartTeslaArmor": "Защита",
+    "IGUI_VehiclePartTeslaFridge": "Холодильник",
+    "IGUI_MinidoracatTesla_Radial_FridgeOff": "Выключить холодильник",
+    "IGUI_MinidoracatTesla_Radial_FridgeCool": "Холодильник: охлаждение",
+    "IGUI_MinidoracatTesla_Radial_FridgeFreeze": "Холодильник: заморозка",
+    "IGUI_MinidoracatTesla_Fridge_LowBattery": "Холодильник выключен: заряд ниже 20%%",
+    "IGUI_MinidoracatTesla_Deny_NO_FRIDGE": "Холодильник не установлен",
     "IGUI_MinidoracatTesla_Tip_AppOutletOff": "Выключить розетки кузова"
 }
