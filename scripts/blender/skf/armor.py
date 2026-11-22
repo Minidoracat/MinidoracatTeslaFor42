@@ -348,20 +348,27 @@ def mesh(kit):
 
 # ---- what it must clear ----
 def lamp_points(car):
-    """Centres of the body's lamp faces (lit texels of <NAME>_lights.png at their UV0)."""
-    me = car.body.data
-    tri = np.empty(len(me.polygons) * 3, np.int64)
-    me.polygons.foreach_get("vertices", tri)
-    co = np.array(car.world(car.body)[0])
-    fc = co[tri.reshape(-1, 3)].mean(1)
-    uv = np.empty(len(me.loops) * 2)
-    me.uv_layers["UV0"].data.foreach_get("uv", uv)
-    uv = uv.reshape(-1, 3, 2).mean(1)
+    """Centres of the lamp faces (lit texels of <NAME>_lights.png at their UV0) on the body and on the parts shut
+    (a tailgate carries part of the tail and brake lamps)."""
     img = bpy.data.images.load(os.path.join(pv.TEX_DIR, pv.NAME + "_lights.png"))
     w, h = img.size
     px = np.array(img.pixels[:]).reshape(h, w, 4)
-    lit = px[np.clip((uv[:, 1] * h).astype(int), 0, h - 1), np.clip((uv[:, 0] * w).astype(int), 0, w - 1), :3].max(1) > 0.05
-    return {"front lamps": fc[lit & (fc[:, 1] > 0)], "rear lamps": fc[lit & (fc[:, 1] < 0)]}
+    fcs = []
+    for ob in [car.body, *car.doors]:
+        me = ob.data
+        me.calc_loop_triangles()
+        loops = np.empty(len(me.loop_triangles) * 3, np.int64)
+        me.loop_triangles.foreach_get("loops", loops)
+        tri = np.empty(len(me.loop_triangles) * 3, np.int64)
+        me.loop_triangles.foreach_get("vertices", tri)
+        co = car.world(ob)[0]           # the armature's rest pose: shut, as in Car's ray tree
+        uv = np.empty(len(me.loops) * 2)
+        me.uv_layers["UV0"].data.foreach_get("uv", uv)
+        uv = uv.reshape(-1, 2)[loops].reshape(-1, 3, 2).mean(1)
+        lit = px[np.clip((uv[:, 1] * h).astype(int), 0, h - 1), np.clip((uv[:, 0] * w).astype(int), 0, w - 1), :3].max(1) > 0.05
+        fcs.append(co[tri.reshape(-1, 3)].mean(1)[lit])
+    fc = np.concatenate(fcs)
+    return {"front lamps": fc[fc[:, 1] > 0], "rear lamps": fc[fc[:, 1] < 0]}
 
 
 def check(car, ob, kit, zmid, cy, geo):
@@ -371,6 +378,7 @@ def check(car, ob, kit, zmid, cy, geo):
     samp = np.concatenate([V[T].mean(1), V[T].reshape(-1, 3)])
     stag = np.concatenate([tag, np.repeat(tag, 3)])
     res, bad = {}, []
+    pts = lamp_points(car)      # before car.poses() moves the parts off the shut pose of Car's ray tree
 
     def gap(bvh, verts, cap=0.3, where=None):
         """Smallest distance between the kit and a mesh (kit samples to it, its vertices near the kit back); where: a
@@ -412,8 +420,12 @@ def check(car, ob, kit, zmid, cy, geo):
         res[part + " (every frame)"].update({k: v for k, v in worst.items() if k.endswith("_frame")})
     # tyres: cylinders at the script's wheel offsets (convert.py stage_view's WHEELS), front ones over the steering
     block = open(os.path.join(pv.TMP, "geometry_block.txt"), encoding="utf-8").read()
-    for name, front, ox, oy, oz, wid in re.findall(
-            r"wheel (\w+)\s*\{\s*front = (\w+),\s+offset = (\S+) (\S+) (\S+),\s+radius = \S+,\s+width = (\S+),", block):
+    wheels = re.findall(
+        r"wheel (\w+)\s*\{\s*front = (\w+),\s+offset = (\S+) (\S+) (\S+),\s+radius = \S+,\s+width = (\S+),", block)
+    n_wheels = len(re.findall(r"\bwheel \w+\s*\{", block))
+    if len(wheels) != n_wheels or n_wheels < 4:     # an unparsed wheel would pass unchecked
+        raise SystemExit(f"{pv.NAME} armour: parsed {len(wheels)} of {n_wheels} wheels in TMP/geometry_block.txt")
+    for name, front, ox, oy, oz, wid in wheels:
         c = Vector((-float(ox) * pv.S, float(oz) * pv.S, float(oy) * pv.S + pv.WHEEL_LIFT))
         r = geo["wheel_radius_rear"] if front == "false" and "wheel_radius_rear" in geo else geo["wheel_radius"]
         n, w = 24, float(wid)
@@ -432,7 +444,6 @@ def check(car, ob, kit, zmid, cy, geo):
         note(f"tyre {name} (steer +-{STEER if front == 'true' else 0}, travel +-{TRAVEL})", pairs, worst, "tyre")
     # what the game's eight views must still see: lamps, plates and headlamp pockets (ARMOR keep), the charge port
     keep = pv.CAR["ARMOR"]["keep"]
-    pts = lamp_points(car)
     for nm, sign in (("front plate", 1), ("rear plate", -1)):
         if nm.replace(" ", "_") not in keep:        # no such plate to keep (the Semi's tractor: front guard only)
             continue
@@ -451,6 +462,8 @@ def check(car, ob, kit, zmid, cy, geo):
     views = {k * 45: Vector((math.sin(math.radians(k * 45)) * math.cos(el), math.cos(math.radians(k * 45)) * math.cos(el),
                               math.sin(el))) for k in range(8)}
     for nm, P in pts.items():
+        if not len(P):      # a keep box off the car, no lamp texels: nothing seen would read as nothing hidden
+            raise SystemExit(f"{pv.NAME} armour: no samples in {nm}")
         hidden = {}
         for deg, d in views.items():
             seen = [p for p in P if car.bvh.ray_cast(Vector(p) + d * 1e-3, d)[0] is None]
