@@ -486,6 +486,17 @@ check(pr and pr.items["902"].fe == true and pr.items["901"].fe == nil and pr.ite
     "fe only on the fertilized one; food that never spoils not sent")
 check(pp.md.fridge == nil and pv.transmits == ptx, "nothing stored, nothing transmitted")
 check(pv.access == pp:getIndex(), "reach asked for the fridge's own part index (canAccessContainer)")
+-- `seq` goes back in the answer as sent: only a whole number 1 .. 2^31 - 1, checked before any food is touched
+local ages, realAge = 0, Food.updateAge
+Food.updateAge = function(self, ...) ages = ages + 1; return realAge(self, ...) end
+for _, bad in ipairs({ { "a string", "7" }, { "a table", { 1, { 2 } } }, { "a fraction", 7.5 }, { "negative", -3 },
+    { "zero", 0 }, { "2^31", 2147483648 }, { "NaN", 0 / 0 }, { "infinite", math.huge } }) do
+    check(quiet(asker, { vid = pv:getId(), seq = bad[2] }) and ages == 0, "seq " .. bad[1] .. ": no answer, no deny, no food touched")
+end
+check(quiet(asker, { vid = pv:getId() }) and ages == 0, "seq nil: no answer, no deny, no food touched")
+Food.updateAge = realAge
+pr = pull(asker, { vid = pv:getId(), seq = 2147483647 })
+check(pr and pr.seq == 2147483647, "seq 2^31 - 1: answered")
 pv.blocked = { [asker] = true }
 check(quiet(asker, { vid = pv:getId(), seq = 8 }), "the container out of this player's reach (canAccessContainer false): no answer, no deny")
 pv.blocked = nil
@@ -652,9 +663,52 @@ F.hours = F.hours + 1 / 6
 n0 = #asks
 H.fire("EveryOneMinute")
 check(#asks == n0, "page hidden: no ask")
+check(UI.cars[7001] == nil and UI.watched[page], "page hidden a minute: still watched, the car's state (food instances) let go")
 page.shown = true
 H.fire("EveryOneMinute")
 check(#asks == n0 + 1 and deliver(answerTo(v)) == 2 and near(mine4.age, a.age, 1e-12), "shown again: asks at the next minute")
+-- an answer on its way when the page stops showing the fridge: dropped with the car's state; shown again, asks anew
+F.hours = F.hours + 1 / 6
+H.fire("EveryOneMinute")
+local late = answerTo(v)
+page.isCollapsed = true
+mine4.age = -1
+check(late and deliver(late) == 0 and mine4.age == -1 and UI.cars[7001] == nil,
+    "collapsed before the answer came: not written, the car's state gone")
+page.isCollapsed = false
+n0 = #asks
+H.fire("EveryOneMinute")
+check(#asks == n0 + 1 and deliver(answerTo(v)) == 2 and near(mine4.age, a.age, 1e-12),
+    "uncollapsed: asks again at the next minute and takes that answer")
+local packs = page.backpacks
+F.hours = F.hours + 1 / 6
+H.fire("EveryOneMinute")
+late = answerTo(v)
+page.backpacks = {}
+H.fire("OnRefreshInventoryWindowContainers", page, "end")
+mine4.age = -1
+check(UI.cars[7001] == nil and not UI.watched[page], "the last page no longer lists the fridge: the car's state gone")
+check(late and deliver(late) == 0 and mine4.age == -1, "an answer arriving after that: not written")
+page.backpacks = packs
+n0 = #asks
+H.fire("OnRefreshInventoryWindowContainers", page, "end")
+check(#asks == n0 + 1 and deliver(answerTo(v)) == 2 and near(mine4.age, a.age, 1e-12), "listed again: asks at once, takes it")
+-- split screen: another page lists the same car; one of them stops listing it, the other still shows it
+local page2 = { shown = true, player = 0, backpacks = packs }
+page2.getIsVisible = page.getIsVisible
+H.fire("OnRefreshInventoryWindowContainers", page2, "end")
+page2.backpacks = {}
+H.fire("OnRefreshInventoryWindowContainers", page2, "end")
+H.fire("EveryOneMinute")
+check(UI.cars[7001] ~= nil and UI.watched[page], "two pages list the car, one stops: the state stays (the other still shows it)")
+page2.backpacks = packs
+H.fire("OnRefreshInventoryWindowContainers", page2, "end")
+page.shown = false
+H.fire("EveryOneMinute")
+check(UI.cars[7001] ~= nil, "two pages list the car, one hidden: the state stays")
+page.shown = true
+page2.backpacks = {}
+H.fire("OnRefreshInventoryWindowContainers", page2, "end")
 -- (c) food put in after it went off, a fertilized egg the server has as fertilized and this copy not
 local srvEgg, cliEgg = food(905, { age = 1, fert = true }), food(905, { age = 0, fert = false })
 fp.items[#fp.items + 1] = srvEgg
@@ -741,8 +795,11 @@ check(not se.fert and scp.md.fridge == nil, "ten-minute settles: the same egg, d
 local copy = food(802, { age = 0, fert = true }) -- a client that never looked until now (its copy still fertilized)
 local cview = fit(clientCar(7502), { copy })
 cview.md = scp.md
+local cpage = { shown = true, player = 0, backpacks = { { inventory = { getVehiclePart = function() return cview end } } } }
+cpage.getIsVisible = page.getIsVisible
 local na = #asks
-check(UI.apply(cview, owner) == 1 and #asks == na + 1, "a client looking after it went off: asks")
+H.fire("OnRefreshInventoryWindowContainers", cpage, "end")
+check(#asks == na + 1 and asks[#asks].args.vid == 7502, "a client looking after it went off: its page asks")
 check(deliver(answerTo(SC)) == 1 and not copy.fert and copy.ft == se.ft and near(copy.age, se.age, 1e-12),
     "the answer: dead (no fe), the server's age and freezing time")
 sendClientCommand, getSpecificPlayer = realSend, realPlayer

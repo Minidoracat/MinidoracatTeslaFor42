@@ -8,7 +8,8 @@
 --   off: the page's player asks the server for the values now (`fridgeFoodPull`, answer `fridgeFood` below), again
 --        every ten game minutes, and at once when a food instance shows up that the last ask did not see.
 -- One state per car: UI.cars[vid] = { ver, items = { [id] = the instance applied (on) / asked about (off) }, seq,
--- bucket }. No page lists one: nothing runs. The switches are in ParkModesUI.lua (right-click) and HUDRadial.lua.
+-- bucket }, kept only while a page shows that car's fridge (it holds food instances). No page lists one: nothing
+-- runs. The switches are in ParkModesUI.lua (right-click) and HUDRadial.lua.
 require "Definitions/ContainerButtonIcons"
 require "MinidoracatTesla/Core"
 ContainerButtonIcons.TeslaFridge = ContainerButtonIcons.fridge
@@ -77,14 +78,47 @@ function UI.apply(part, player)
     return n
 end
 
+-- can this page's contents be seen? Hidden (inventory toggled off) or collapsed to its title bar (ISInventoryPage
+-- collapseNow sets only isCollapsed, ISInventoryPage.lua:1276-1280): nothing to show, so nothing applied
+local function seen(page)
+    return page:getIsVisible() and not page.isCollapsed
+end
+
+-- the TeslaFridge parts the page lists, in order
+local function fridges(page)
+    local out = {}
+    for _, b in ipairs(page.backpacks or {}) do
+        local part = b.inventory and b.inventory:getVehiclePart()
+        if part and part:getId() == "TeslaFridge" then out[#out + 1] = part end
+    end
+    return out
+end
+
+-- does a watched page whose contents can be seen list car vid's fridge now?
+local function shown(vid)
+    for page in pairs(UI.watched) do
+        if seen(page) then
+            for _, part in ipairs(fridges(page)) do
+                if part:getVehicle():getId() == vid then return true end
+            end
+        end
+    end
+    return false
+end
+
 -- server -> this client: { vid, seq, items = { [id] = { age, ft, fr, fe } } }, the answer to an ask. Only the last
 -- ask's answer counts (answers may arrive out of order: sendServerCommand is RELIABLE, not ordered, GameServer.java:
--- 3507-3528, PacketTypes.java:508,722-724); dropped when the fridge was switched on or removed meanwhile. Written only
--- to a food that is still the instance the ask saw (another player's food, or one moved out and back, is a new
--- instance: the next scan asks again). Returns how many foods took it.
+-- 3507-3528, PacketTypes.java:508,722-724); dropped when the fridge was switched on or removed meanwhile, and when no
+-- page shows the fridge any more (collapsed, hidden or no longer listing it: the car's state goes with it, so a page
+-- that shows it again asks again). Written only to a food that is still the instance the ask saw (another player's
+-- food, or one moved out and back, is a new instance: the next scan asks again). Returns how many foods took it.
 T.ClientCommands.fridgeFood = function(args)
     local st = UI.cars[args.vid]
     if not (st and st.ver == "off" and st.seq == args.seq and type(args.items) == "table") then return 0 end
+    if not shown(args.vid) then
+        UI.cars[args.vid] = nil
+        return 0
+    end
     local v = getVehicleById(args.vid)
     local part = v and T.Fridge and T.Fridge.part(v)
     if not part or part:getModData().fridge then return 0 end
@@ -103,24 +137,26 @@ T.ClientCommands.fridgeFood = function(args)
     return n
 end
 
--- can this page's contents be seen? Hidden (inventory toggled off) or collapsed to its title bar (ISInventoryPage
--- collapseNow sets only isCollapsed, ISInventoryPage.lua:1276-1280): nothing to show, so nothing applied
-local function seen(page)
-    return page:getIsVisible() and not page.isCollapsed
-end
-
--- applies (or asks about) every fridge the page lists while its contents can be seen; true when it lists one
-local function scan(page)
-    local found, show = false, nil
-    for _, b in ipairs(page.backpacks or {}) do
-        local part = b.inventory and b.inventory:getVehiclePart()
-        if part and part:getId() == "TeslaFridge" then
-            found = true
-            if show == nil then show = seen(page) end
-            if show then UI.apply(part, getSpecificPlayer(page.player or 0)) end
+-- applies (or asks about) every fridge the page lists while its contents can be seen, noting each such car in `vis`
+-- (when given); true when it lists one
+local function scan(page, vis)
+    local list = fridges(page)
+    if list[1] and seen(page) then
+        local player = getSpecificPlayer(page.player or 0)
+        for _, part in ipairs(list) do
+            UI.apply(part, player)
+            if vis then vis[part:getVehicle():getId()] = true end
         end
     end
-    return found
+    return list[1] ~= nil
+end
+
+-- drops every car's state but those in `keep`: the state holds food instances (food -> container -> car), so it lives
+-- only while a page shows that car's fridge
+local function forget(keep)
+    for vid in pairs(UI.cars) do
+        if not (keep and keep[vid]) then UI.cars[vid] = nil end
+    end
 end
 
 local everyMinute
@@ -134,14 +170,18 @@ local function watch(page, on)
         Events.EveryOneMinute.Remove(everyMinute)
     end
     UI.hooked = UI.nWatched > 0
+    if UI.nWatched == 0 then forget() end
 end
 -- a page whose contents cannot be seen stays watched but applies nothing: showing it again does not rebuild it
 -- (ISInventoryPage.onKeyPressed / toggleInventory only setVisible; uncollapsing clears isCollapsed), so the next
--- minute after that applies
+-- minute after that applies. After the scan, a car no page shows (another split-screen page may still show it) loses
+-- its state: shown again after a minute or more, a switched-on fridge applies each food once more (the same values)
+-- and a switched-off one asks once more.
 everyMinute = function()
-    local pages = {}
+    local pages, vis = {}, {}
     for page in pairs(UI.watched) do pages[#pages + 1] = page end
-    for _, page in ipairs(pages) do watch(page, scan(page)) end
+    for _, page in ipairs(pages) do watch(page, scan(page, vis)) end
+    forget(vis)
 end
 
 Events.OnRefreshInventoryWindowContainers.Add(function(page, step)
