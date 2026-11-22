@@ -368,7 +368,7 @@ A charger that works on the floor, no wall needed; slower than the Wall Connecto
 [*] [b]Quick keys[/b]: headlights, climate controls, radio, Camp Mode; a key that is on turns blue with an underline.
 [*] [b]Reminders[/b]: a door open, charging, charged, no power at the charger, low battery, Camp or Sentry on show as one line below.
 [*] [b]Hover help[/b]: every button and every area of the car picture says what it does when the mouse is over it.
-[*] [b]V radial menu[/b]: adds Turn on Camp Mode, Charging Status and Turn on Chill (driver only); a car with a HEPA filter also has Turn on Bioweapon Defense Mode (see Bioweapon Defense Mode and Chill); the Cybertruck also has Powershare, the bed outlets and the light bar (the light bar for the driver only); a Semi at a standstill also gives the driver hitch and unhitch; a car with a Car Fridge fitted also has the fridge switch (anyone in the car can use it, see Upgrades). When one is not available its icon is grey and the second line says why.
+[*] [b]V radial menu[/b]: adds Turn on Camp Mode, Charging Status and Turn on Chill (driver only); a car with a HEPA filter also has Turn on Bioweapon Defense Mode (see Bioweapon Defense Mode and Chill); the Cybertruck also has Powershare, the bed outlets and the light bar (the light bar for the driver only); a Semi at a standstill also gives the driver hitch and unhitch; a car with a Car Fridge fitted also has the fridge switch (anyone in the car can use it; with Vehicle Manager and a claimed car it needs the Trunk permission, see Upgrades). When one is not available its icon is grey and the second line says why.
 [*] [b]With AutoDrive[/b]: AutoDrive's autopilot card sits above the Tesla dashboard, and above the charge card while that is open.
 [/list]
 === 🧰 Key card and phone key
@@ -572,7 +572,8 @@ You learn each recipe automatically at its level; craft next to a work surface s
 [table]
 [tr][th]Action[/th][th]Vehicle Manager permission[/th][/tr]
 [tr][td]Key card tap, app lock / unlock, flash, honk, Sentry on / off, app falcon wing doors, the Cybercab's doors and the soft top, Bioweapon Defense Mode[/td][td]Ride[/td][/tr]
-[tr][td]App liftgate / trunk, switching the Car Fridge[/td][td]Trunk[/td][/tr]
+[tr][td]App liftgate / trunk[/td][td]Trunk[/td][/tr]
+[tr][td]Switching the Car Fridge (right-click outside the car, or the V radial menu)[/td][td]Trunk[/td][/tr]
 [tr][td]App frunk[/td][td]Repair or Salvage[/td][/tr]
 [tr][td]Taking off Protection or the Car Fridge[/td][td]Salvage[/td][/tr]
 [tr][td]Plugging in or unplugging, the charge card, picking up or rotating a charger with the car plugged in, app stop / start charging[/td][td]Fuel (except the charger owner's unplug, charge card Stop, pick-up and rotate, see the FAQ; not the app)[/td][/tr]
