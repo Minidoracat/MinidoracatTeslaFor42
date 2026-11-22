@@ -518,15 +518,17 @@ A charger that works on the floor, no wall needed; slower than the Wall Connecto
 === 🧰 Upgrades: the Car Fridge and protection
 [list]
 [*] [b]Two slots[/b]: all nine Teslas have an Upgrades category at the bottom of the mechanics window, with two slots, Protection and Fridge; the 53 ft trailer has none. Both are empty on a new car: craft the upgrades or find them in loot.
-[*] [b]Fitting and removing[/b]: right-click the slot in the mechanics window and choose Install or Uninstall, with a Wrench or Ratchet Wrench on you; Mechanics level does not matter and it never fails. A locked car needs its key, so someone without the key cannot take them off.
+[*] [b]Fitting and removing[/b]: right-click the slot in the mechanics window and choose Install or Uninstall; Mechanics level does not matter and it never fails. Protection needs a Wrench or Ratchet Wrench on you; the Car Fridge needs no tool.
+[*] [b]Theft[/b]: the same rule as vanilla parts that need the key. With every door locked and every window closed and intact, only someone with this car's key can take them off; with a door unlocked, or a window open or broken, anyone can.
 [*] [b]Overall condition[/b]: an empty slot counts in the mechanics window's overall condition: about 4 to 6 lower with both empty, back to normal once fitted. Driving is not affected.
 [/list]
 [h3]Car Fridge[/h3]
 [list]
 [*] [b]Where it is[/b]: capacity 12, in the Rear Trunk; fitting, removing and reaching it all need you at the back of the car with the liftgate open, and it is not shown while the liftgate is closed. On the Cybertruck it goes in the Cargo Bed and follows the bed's rules. On the Semi it goes in the cab: reach it from either seat, or from outside at the right door with that door open.
-[*] [b]Switch[/b]: right-click the car from outside and choose Car Fridge, then Off, Cool or Freeze; in the car, the V radial menu steps through off, cool and freeze, and anyone in the car can use it. A locked car needs its key.
-[*] [b]Cool[/b]: food spoils more slowly, as in a powered fridge at home, following the sandbox fridge setting.
-[*] [b]Freeze[/b]: food freezes in about 4 to 4.5 hours and does not spoil once frozen; switching off or back to Cool thaws it. Food that cannot be frozen stays unfrozen.
+[*] [b]Switch[/b]: right-click the car from outside and choose Car Fridge, then Off, Cool or Freeze; in the car, the V radial menu steps through off, cool and freeze, and anyone in the car can use it. A locked car needs its key (a key in the ignition or a hotwired car counts).
+[*] [b]Cool[/b]: food spoils more slowly, as in a powered fridge at home, following the sandbox fridge setting. Put food straight into the fridge: food inside a bag or box does not count.
+[*] [b]Freeze[/b]: food freezes in about 4 to 4.5 hours and does not spoil once frozen; switching off or back to Cool thaws it. Food that never spoils or cannot be frozen stays unfrozen.
+[*] [b]How much[/b]: one fridge keeps up to 400 perishable foods at a time; any beyond that spoil at room rate. Food that never spoils does not count.
 [*] [b]Power[/b]: while on it runs on the high voltage battery at 0.06 kW, about 1.4 kWh a game day. With a powered charge cable in, the car's charge is not used.
 [*] [b]Below 20% charge[/b]: the fridge switches off and tells whoever turned it on; switch it back on yourself after charging. It cannot be switched on below 20% either, unless a charge cable is in.
 [*] [b]While you are away[/b]: it keeps running, and the time is made up in one go when you come back to the car.
@@ -569,6 +571,7 @@ You learn each recipe automatically at its level; craft next to a work surface s
 [tr][td]Key card tap, app lock / unlock, flash, honk, Sentry on / off, app falcon wing doors, the Cybercab's doors and the soft top, Bioweapon Defense Mode[/td][td]Ride[/td][/tr]
 [tr][td]App liftgate / trunk, switching the Car Fridge[/td][td]Trunk[/td][/tr]
 [tr][td]App frunk[/td][td]Repair or Salvage[/td][/tr]
+[tr][td]Taking off Protection or the Car Fridge[/td][td]Salvage[/td][/tr]
 [tr][td]Plugging in or unplugging, the charge card, picking up or rotating a charger with the car plugged in, app stop / start charging[/td][td]Fuel (except the charger owner's unplug, charge card Stop, pick-up and rotate, see the FAQ; not the app)[/td][/tr]
 [tr][td]App location and status[/td][td]Location[/td][/tr]
 [tr][td]App Summon, Chill[/td][td]Drive[/td][/tr]
