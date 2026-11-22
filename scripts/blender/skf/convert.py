@@ -1122,11 +1122,11 @@ def lost_normals(me):
 
 
 def head_cut(car):
-    """LAMPS head_cut (Model Y L) {mats, lo, hi, x, y}: bisect those materials' faces centred in the box (|x|, y, z
-    centred as head_boxes) at |x| = each x and at y = each y, so a head_boxes box ends on the cuts, not on the headlamp
-    pocket's triangles that run out to its rim and its back wall. After unwrap: the pieces keep their triangle's UV0 /
-    UV1 (interpolated), so the packing, the skins and the paint stay as without the cut (cut in edit(),
-    smart_project packed every island anew)."""
+    """LAMPS head_cut (Model Y L) {mats, lo, hi, x, y, z}: bisect those materials' faces centred in the box (|x|, y,
+    z centred as head_boxes) at |x| = each x, y = each y and z = each z, so a head_boxes box ends on the cuts, not on
+    the headlamp pocket's triangles that run out to its rim and its walls. After unwrap: the pieces keep their
+    triangle's UV0 / UV1 (interpolated), so the packing, the skins and the paint stay as without the cut (cut in
+    edit(), smart_project packed every island anew)."""
     hc = LAMPS["head_cut"]
     bm = bmesh.new()
     bm.from_mesh(car.data)
@@ -1141,6 +1141,7 @@ def head_cut(car):
         return (lo < c).all() and (c < hi).all()
     planes = [((sx, 0, 0), (1, 0, 0)) for x in hc["x"] for sx in (x, -x)]
     planes += [((0, y + off[1], 0), (0, 1, 0)) for y in hc.get("y", ())]
+    planes += [((0, 0, z + off[2]), (0, 0, 1)) for z in hc.get("z", ())]
     for co, no in planes:
         fs = [f for f in bm.faces if f.is_valid and f.material_index in hmi and in_box(f)]
         # (ordered: a set's order follows memory addresses, and the bisect's new vertex order followed it)

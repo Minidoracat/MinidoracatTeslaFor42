@@ -191,8 +191,8 @@ CAR = dict(
                blade="Badge_BLADE", blade_rgb=(236, 78, 44), blade_flush=True, blade_swatch=True, blade_round=0.019,
                blade_split=True, brake=("Plane.043", 0.39),
                head_cut=dict(mats=("black_base", "chrome"), lo=(0.50, 1.60, -0.30), hi=(0.75, 1.86, -0.23),
-                             x=(0.590, 0.675), y=(1.797, 1.830)),
-               head_boxes=((("black_base", "chrome"), (0.590, 1.797, -0.30), (0.675, 1.830, -0.23)),)),
+                             x=(0.590, 0.685), y=(1.845,), z=(-0.250,)),
+               head_boxes=((("black_base", "chrome"), (0.590, 1.60, -0.30), (0.685, 1.845, -0.250)),)),
     # part lines, side view (y, z): S, BF, BR off this source's panel edges; D the rear door glass / quarter glass
     # divider bar's middle; R1 (z ascending) the rear door's rear edge, upright from the belt to the arch since the
     # prep (work/outline.py; prep FIELD fit moved them forward: work/remap.py)
