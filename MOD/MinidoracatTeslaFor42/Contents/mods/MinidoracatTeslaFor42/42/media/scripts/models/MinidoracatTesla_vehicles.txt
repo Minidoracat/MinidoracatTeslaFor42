@@ -752,6 +752,17 @@ module Base
         scale = 0.5495,
     }
 
+    /* TeslaArmor's outer kit (as MinidoracatTesla_ModelY_Armor) */
+    model MinidoracatTesla_Cybercab_Armor
+    {
+        mesh = vehicles/MinidoracatTesla_Cybercab_Armor,
+        texture = Vehicles/MinidoracatTesla_Armor,
+        shader = vehiclewheel,
+        static = true,
+        invertX = false,
+        scale = 0.5495,
+    }
+
     /* Semi: same build, units and shaders (CAR=semi; the MOD's own body from Tesla's pictures, */
     /* scripts/blender/skf/prep_semi.py). The front tyres on Wheel, each drive axle's four tyres on one WheelAxle */
     /* model (one physics wheel per axle on the centre line: cars/semi.py PHYS), on the front wheel's texture. */
