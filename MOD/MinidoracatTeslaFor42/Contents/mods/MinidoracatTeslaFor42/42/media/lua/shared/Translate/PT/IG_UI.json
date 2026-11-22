@@ -123,7 +123,7 @@
     "IGUI_MinidoracatTesla_Deny_PLUGGED": "Já há um cabo de carregamento conectado",
     "IGUI_MinidoracatTesla_Deny_NOT_PLUGGED": "Nenhum cabo de carregamento conectado",
     "IGUI_MinidoracatTesla_Deny_CABLE_SHORT": "O cabo não alcança o carro",
-    "IGUI_MinidoracatTesla_Deny_SEMI_NO_SPOT": "Não há espaço ao lado do semirreboque para trabalhar nele",
+    "IGUI_MinidoracatTesla_Deny_SEMI_NO_SPOT": "Não há espaço ao lado do reboque para trabalhar nele",
     "IGUI_MinidoracatTesla_Unplugged_TooFar": "Cabo de carregamento arrancado: o carro afastou-se demasiado",
     "IGUI_MinidoracatTesla_Tip_Headlight": "Ligar ou desligar os faróis",
     "IGUI_MinidoracatTesla_Tip_Heater": "Ligar ou desligar a climatização (gasta bateria)",

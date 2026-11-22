@@ -207,9 +207,11 @@ function K.canAutoLock(player, vehicle)
 end
 
 -- VehicleManager refuses chr this door of a claimed car: no key of ours (loose, phone, card) gets past it, and the lock
--- is left as it is (our unlocks run before its guards: start() in SP, ahead of its complete() on the server). Its own
--- codes: the hood is REPAIR or SALVAGE (its Actions.lua doorAction), any other door PASSENGER (its unlock guard). No
--- VehicleManager or an unclaimed car (canUse true, "UNCLAIMED"): false, the key rules alone.
+-- is left as it is. Its guard wraps complete() outermost once every mod is loaded (its ActionGuards.lua:214-228,349-350):
+-- on the server a refusal never reaches ours, and with its VirtualKey on a granted unlock unlocks the door itself without
+-- calling ours (:190-198); in SP our unlock runs in start(), before that guard, hence this check. Its own codes: the hood
+-- is REPAIR or SALVAGE (its Actions.lua doorAction), any other door PASSENGER (its unlock guard). No VehicleManager or
+-- an unclaimed car (canUse true, "UNCLAIMED"): false, the key rules alone.
 local function vmRefuses(chr, vehicle, part)
     local api = MinidoracatVehicleManagerAPI
     if not (api and api.canUse) then return false end
@@ -222,8 +224,8 @@ end
 
 -- Phone key in a bag or belt bag, or one whose item keyId is another car (a phone paired with several, K.pairedWith):
 -- pulling a locked door's handle unlocks it, as the real car does with the phone in a pocket or bag. Vanilla
--- canUnlockDoor only sees loose keys and keyrings with this keyId (BaseVehicle.java:1274-1301 ->
--- ItemContainer.java:3242-3256), so the vanilla unlock action (queued by ISVehicleMenu.onOpenDoor / onEnter) would fail.
+-- canUnlockDoor only sees loose keys and keyrings with this keyId (BaseVehicle.java:1287-1314 ->
+-- ItemContainer.java:3290-3304), so the vanilla unlock action (queued by ISVehicleMenu.onOpenDoor / onEnter) would fail.
 -- Runs right before that action toggles the lock: in start() in SP (ISUnlockVehicleDoor.lua:22-36), in complete() on
 -- the server (:55-76); never on an MP client. The key card keeps vanilla rules (loose: auto; in the wallet: tap the reader).
 function K.phoneUnlock(vehicle, part, chr)
@@ -256,7 +258,7 @@ end
 -- window's engine and headlight actions, ISVehicleMechanics.lua:440,484,516; DriveUnitMenu.lua), the radial's Open
 -- Hood when it is (ISVehicleMenu.lua:1230-1231). On a Tesla's lid that unlock is left out of the queue (vanilla skips an
 -- ignoreAction, ISTimedActionQueue.lua:158,204) unless vanilla's own rule unlocks it (canUnlockDoor: seated or the key
--- in hand, BaseVehicle.java:1287-1313). Queued, a card or phone key in a bag failed it (toggleLockedDoor asks
+-- in hand, BaseVehicle.java:1287-1314). Queued, a card or phone key in a bag failed it (toggleLockedDoor asks
 -- canUnlockDoor, :1242-1256) and that dropped the whole queue (ISUnlockVehicleDoor.lua:22-36; semimech-repro-e);
 -- VehicleManager wants PASSENGER for every unlock (its Actions.lua) but REPAIR or SALVAGE for the hood's open (its
 -- doorAction), so a mechanic share stopped at the unlock and a rider got the lid unlocked, then refused open; a walk
