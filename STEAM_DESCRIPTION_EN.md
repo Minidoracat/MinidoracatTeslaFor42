@@ -32,6 +32,7 @@ Drive a Tesla Model S, Model 3, Model X, Model Y, Model Y L, Roadster, Cybertruc
 [*] [b]Phone key and Tesla app[/b]: unlocks as you walk up, locks as you walk away; lock, find the car and watch it charge from afar
 [*] [b]Sentry and Camp Mode[/b]: get told when someone touches, breaks into or tows the car, keep the climate on while camping
 [*] [b]Bioweapon Defense Mode and Chill[/b]: the HEPA filter keeps corpse sickness out, and acceleration can go gentle
+[*] [b]Upgrades[/b]: a Car Fridge that cools or freezes food, and protection kits that cut crash damage by about half or about three quarters
 [*] [b]Family mods[/b]: AutoDrive's FSD view and Summon, Vehicle Manager permissions, your cars on the minimap
 [/list]
 [b]With AutoDrive:[/b] its self-driving card sits above the Tesla dashboard.
