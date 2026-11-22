@@ -198,9 +198,21 @@ def envelope(xs, req):
     return lambda x: c[0] + c[1] * x ** 2 + c[2] * x ** 4
 
 
+def folded(xs, req, knots):
+    """Smallest even piecewise-linear y(|x|) through the knots (|x|, ascending, from 0), least squares shape lifted onto
+    every requirement: a straight bar bent at the knots, for a faceted nose (the Cybertruck's)."""
+    k = np.asarray(knots, float)
+    A = np.stack([np.interp(np.abs(xs), k, row) for row in np.eye(len(k))], 1)
+    c = np.linalg.lstsq(A, req, rcond=None)[0]
+    c += (req - A @ c).max()
+    return lambda x: float(np.interp(abs(x), k, c))
+
+
 def guard(kit, car, g, sign, Z):
     """Front (sign +1) or rear (-1) guard: a low bar across, two corner pieces (tube loops or folded panels) rising to
     `top`, brackets back to the bumper."""
+    if g is None:          # this car has no such piece (its ARMOR style sets it None)
+        return
     z_lo, z_top, xe = Z(g["z"]), Z(g["top"]), g["x"]
     loops = [(s * a, s * b) for a, b in g["corners"] for s in (1, -1)]
     half = g["r"] if g["kind"] == "tube" else g["t"] / 2
@@ -212,6 +224,8 @@ def guard(kit, car, g, sign, Z):
         hi = z_top + half + 0.01 if any(min(a, b) - 0.02 <= x <= max(a, b) + 0.02 for a, b in loops) else z_band[1]
         req.append(car.front(x, z_band[0], hi, sign) + g["gap"] + half)
     Y = envelope(xs, np.array(req))
+    if g.get("knots"):                     # optional: a bar folded at these |x| (folded), not the quartic
+        Y = folded(xs, np.array(req), g["knots"])
     yw = lambda x: sign * Y(x)             # noqa: E731  (mesh y)
     order = xs if sign > 0 else xs[::-1]   # b = direction x up points into the car (front +x, rear -x)
     if g["kind"] == "tube":
@@ -240,6 +254,8 @@ def guard(kit, car, g, sign, Z):
 def sills(kit, car, g, Z, Ysh):
     """Both sill guards: a tube or a step board along the rocker below the doors, `gap` off its tapering face, ends and
     brackets to the rocker."""
+    if g is None:          # this car has no such piece (its ARMOR style sets it None)
+        return
     z, y0, y1 = Z(g["z"]), g["y"][0] + Ysh, g["y"][1] + Ysh          # y: (rear, front)
     half = g["r"] if g["kind"] == "tube" else g["t"] / 2
     bend = g.get("bend", 0.0)
@@ -283,6 +299,8 @@ def sills(kit, car, g, Z, Ysh):
 def roof(kit, car, g, Ysh):
     """Roof rack on four feet: two crossbars, then a basket (tube frame, rail, posts, slats) or a low platform (flat-bar
     frame, plank slats)."""
+    if g is None:          # this car has no such piece (its ARMOR style sets it None)
+        return
     xf, (yr, yf) = g["feet_x"], (g["y"][0] + Ysh, g["y"][1] + Ysh)
     bars = [y + Ysh for y in g["bars"]]
     xb = g["x"]

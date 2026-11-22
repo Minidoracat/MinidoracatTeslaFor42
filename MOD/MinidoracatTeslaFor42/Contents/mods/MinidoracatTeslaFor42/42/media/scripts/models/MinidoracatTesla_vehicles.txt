@@ -645,6 +645,16 @@ module Base
         scale = 0.5495,
     }
 
+    model MinidoracatTesla_Cybertruck_Armor
+    {
+        mesh = vehicles/MinidoracatTesla_Cybertruck_Armor,
+        texture = Vehicles/MinidoracatTesla_Armor,
+        shader = vehiclewheel,
+        static = true,
+        invertX = false,
+        scale = 0.5495,
+    }
+
     model MinidoracatTesla_ModelYL_Detail
     {
         mesh = vehicles/MinidoracatTesla_ModelYL_Detail,
