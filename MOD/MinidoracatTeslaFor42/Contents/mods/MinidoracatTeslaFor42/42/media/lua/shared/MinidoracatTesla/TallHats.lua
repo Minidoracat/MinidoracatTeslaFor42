@@ -10,7 +10,7 @@
 -- input ModelYL e0efc822d12b7f13
 -- input Roadster a2b24a9d20973663
 -- input Cybercab 9ef5ad512565bf18
--- input Semi 40101d23802a5adf
+-- input Semi 26c937153b1532c3
 MinidoracatTesla = MinidoracatTesla or {}
 MinidoracatTesla.TallHats = {
     ["Cybercab/FrontLeft"] = { Hat_Antlers = true, Hat_BunnyEarsBlack = true, Hat_BunnyEarsWhite = true, Hat_CrashHelmetFULL_Black_Spiked = true, Hat_CrashHelmetFULL_Spiked = true, Hat_DeerHeadress = true, Hat_GoldStar = true, Hat_Spiffo = true, Hat_Stovepipe = true, Hat_Stovepipe_Black = true, Hat_Stovepipe_UncleSam = true, Hat_TinFoilHat = true, Hat_Witch = true, Hat_Wizard = true },

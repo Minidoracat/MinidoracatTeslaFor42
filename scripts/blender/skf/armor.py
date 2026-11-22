@@ -473,6 +473,8 @@ def check(car, ob, kit, zmid, cy, geo):
     keep = pv.CAR["ARMOR"]["keep"]
     pts = lamp_points(car)
     for nm, sign in (("front plate", 1), ("rear plate", -1)):
+        if nm.replace(" ", "_") not in keep:        # no such plate to keep (the Semi's tractor: front guard only)
+            continue
         hx, z0, z1 = keep[nm.replace(" ", "_")]
         pts[nm] = np.array([h for x in np.linspace(-hx, hx, 9) for z in np.linspace(z0 - zmid, z1 - zmid, 5)
                             for h in [car.hit((x, 4 * sign, z), (0, -sign, 0))] if h is not None])
