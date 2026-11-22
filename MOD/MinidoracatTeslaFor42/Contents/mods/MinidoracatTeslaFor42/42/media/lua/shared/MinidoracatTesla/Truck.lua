@@ -54,6 +54,8 @@ end
 -- in complete (ISSmashWindow.lua:46-60). On an armoured car start plays a heavy swing instead and complete, on the
 -- server or in SP, takes a third of the glass each time (VehicleWindow.damage: the alarm, the smash sound and the
 -- broken glass at 0 as vanilla, VehicleWindow.java:76-107); the condition is the count, so a new window starts over.
+-- With a protection kit the smash goes through Armor.lua's A.around (server and SP): the kit settles what it owes
+-- first and keeps the smash, so a minute between smashes gives nothing back and it is still 3.
 -- Bare hands cut like vanilla. Loaded from shared, before VehicleManager's server wrap of the same complete
 -- (MinidoracatVehicleManager_ActionGuards.lua, SALVAGE): its refusal comes first and counts no hit.
 -- A window already broken, or with no glass fitted, is vanilla's (nothing left to resist). A window rolled down with
@@ -83,7 +85,9 @@ function ISSmashWindow:complete()
     if not hits then return complete(self) end
     if self.window:isOpen() then return false end -- rolled down meanwhile (isValid)
     if not isClient() then
-        self.window:damage(math.ceil(100 / hits))
+        local v, A = self.window:getPart():getVehicle(), T.Armor
+        local function smash() self.window:damage(math.ceil(100 / hits)) end
+        if A and A.around then A.around(v, smash) else smash() end
         local c = self.character
         if not instanceof(c:getPrimaryHandItem(), "HandWeapon") and not instanceof(c:getSecondaryHandItem(), "HandWeapon") then
             c:getBodyDamage():setScratchedWindow()

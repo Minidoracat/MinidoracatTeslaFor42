@@ -49,15 +49,23 @@ function DU.salvage(cond, skill)
     return math.floor(cond / c), c
 end
 
+-- a kit (server/Armor.lua A.around; not on an MP client) gives back what the car lost before fn and keeps fn's change:
+-- otherwise the next minute gives salvaged condition back (parts for free, again) or the pending loss is dropped
+local function kept(v, fn)
+    local A = T.Armor
+    if A and A.around then return A.around(v, fn) end
+    return fn()
+end
+
 -- ---- vanilla actions refuse a Tesla
--- only on the drive unit: a job on any other part (another mod's heater repair) is not refused here
+-- only on the drive unit: a job on any other part (another mod's heater repair) is not refused here, only kept
 local function onDriveUnit(a) return T.isTesla(a.vehicle) and a.part:getId() == "Engine" end
 for _, cls in ipairs({ ISRepairEngine, ISTakeEngineParts }) do
     local isValid, complete = cls.isValid, cls.complete
     function cls:isValid() return not onDriveUnit(self) and isValid(self) end
     function cls:complete()
         if onDriveUnit(self) then return false end
-        return complete(self)
+        return kept(self.vehicle, function() return complete(self) end)
     end
 end
 
@@ -78,7 +86,7 @@ function ISMinidoracatTeslaRepairDriveUnit:complete()
     local skill = DU.skillOver(chr, v)
     if skill < 0 then return false end
     local giveXP = chr:getMechanicsItem(v:getMechanicalID() .. "2") == nil
-    local done = DU.repair(part, DU.count(chr), skill)
+    local done = kept(v, function() return DU.repair(part, DU.count(chr), skill) end)
     if done > 0 then
         if giveXP then addXp(chr, Perks.Mechanics, done) end
         local used = chr:getInventory():getSomeTypeRecurse(DU.ITEM, done)
@@ -133,9 +141,7 @@ function ISMinidoracatTeslaTakeDriveUnitParts:complete()
     else
         addXp(chr, Perks.Mechanics, 1)
     end
-    part:setCondition(0)
-    -- a kit (server/Armor.lua) would give the salvaged condition back at the next game minute: parts for free, again
-    if T.Armor and T.Armor.resnap then T.Armor.resnap(v) end
+    kept(v, function() part:setCondition(0) end)
     v:transmitPartCondition(part)
     chr:sendObjectChange(IsoObjectChange.MECHANIC_ACTION_DONE, { success = (numParts > 0) })
     if numParts > 0 then

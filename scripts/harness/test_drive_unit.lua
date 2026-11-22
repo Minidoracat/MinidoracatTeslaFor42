@@ -70,23 +70,40 @@ local function mechanic(level, parts)
 end
 local wrench = { getID = function() return 9 end, setJobType = function() end }
 
+-- a kit (server/Armor.lua A.around) stands in here: records the car and the drive unit's condition when it settles
+-- (before the action's change) and when it takes the new snapshot (after)
+local armor, arounds, te = T.Armor, {}, nil
+T.Armor = { around = function(v, fn)
+    local s = { v = v, before = te and te.cond }
+    arounds[#arounds + 1] = s
+    local r = fn()
+    s.after = te and te.cond
+    return r
+end }
+
 H.section("vanilla Engine Parts actions refuse a Tesla")
-local tv, te = car(nil, 50)
+local tv
+tv, te = car(nil, 50)
 local who = mechanic(10, 3)
 local act = ISRepairEngine:new(who, te, wrench, 300)
 check(act:isValid() == false and act:complete() == false and not act.vanillaRan and te.cond == 50,
     "ISRepairEngine on a Tesla: isValid false, complete false (server), condition unchanged")
 local take = ISTakeEngineParts:new(who, te, wrench, 300)
 check(take:isValid() == false and take:complete() == false and not take.vanillaRan, "ISTakeEngineParts on a Tesla: refused")
+check(#arounds == 0, "refused: no kit settling around it")
 local nv, ne = car("Base.CarNormal", 50)
 local va = ISRepairEngine:new(who, ne, wrench, 300)
 check(va:isValid() == true and va:complete() == true and va.vanillaRan, "ISRepairEngine on a vanilla car: vanilla runs")
 check(ISTakeEngineParts:new(who, ne, wrench, 300):complete() == true, "ISTakeEngineParts on a vanilla car: vanilla runs")
 -- another mod reuses ISRepairEngine for a part without an item (Repair & Dismantle Any Car: heater, frunk)
 local heater = { getId = function() return "Heater" end, getVehicle = function() return tv end }
+arounds = {}
 local ha = ISRepairEngine:new(who, heater, wrench, 300)
 check(ha:isValid() == true and ha:complete() == true and ha.vanillaRan,
     "ISRepairEngine on a Tesla part that is not the Engine: not refused, the wrapped action runs")
+local ht = ISTakeEngineParts:new(who, heater, wrench, 300)
+check(ht:complete() == true and ht.vanillaRan and #arounds == 2 and arounds[1].v == tv and arounds[2].v == tv,
+    "...both vanilla actions on it run inside the kit's settle / new snapshot (else a kit gives salvaged condition back)")
 
 H.section("repair with Drive Unit Parts")
 check(ISMinidoracatTeslaRepairDriveUnit:new(who, ne, wrench, 300):isValid() == false
@@ -95,8 +112,11 @@ check(ISMinidoracatTeslaRepairDriveUnit:new(who, ne, wrench, 300):isValid() == f
 local m6 = mechanic(6, 3)
 local r = ISMinidoracatTeslaRepairDriveUnit:new(m6, te, wrench, 300)
 check(r:isValid() and r.jobType == "IGUI_MinidoracatTesla_RepairDriveUnit" and r.maxTimeInit == 300, "new(): fields named as parameters, our job text")
+arounds = {}
 check(r:complete() == true and te.cond == 53 and m6.inv.removed == 3 and tv.condTx == 1 and m6.xp == 3,
     "level 6 (= repair level): +1 per part, 3 parts used, condition sent, 3 XP")
+check(#arounds == 1 and arounds[1].v == tv and arounds[1].before == 50 and arounds[1].after == 53,
+    "repair: the kit settles at 50, before the parts go in, and snapshots the repaired 53")
 local again = ISMinidoracatTeslaRepairDriveUnit:new(mechanic(6, 1), te, wrench, 300)
 again.character.mech["M" .. tv.id .. "2"] = true
 again:complete()
@@ -123,12 +143,11 @@ te.cond = 64
 local tm = mechanic(6, 0)
 local tk = ISMinidoracatTeslaTakeDriveUnitParts:new(tm, te, wrench, 300)
 check(tk:isValid() and tk.jobType == "IGUI_MinidoracatTesla_TakeDriveUnitParts", "take: valid on a Tesla, our job text")
-local armor, snapped = T.Armor, nil
-T.Armor = { resnap = function(v) snapped = v end }
+arounds = {}
 check(tk:complete() == true and tm.inv.added == 6 and te.cond == 0 and tm.xp == 3,
     "level 6: random(20/3, 20) -> 10 points a part, 64 -> 6 parts, condition 0, 6/2 XP")
-check(snapped == tv, "take: a kit's new snapshot after the 0 (else it gives the salvaged condition back)")
-T.Armor = armor
+check(#arounds == 1 and arounds[1].v == tv and arounds[1].before == 64 and arounds[1].after == 0,
+    "take: the kit settles at 64 and snapshots the 0 (else it gives the salvaged condition back)")
 check(rolled[1] == 20 / 3 and rolled[2] == 20, "roll range is vanilla's c/3..c with c = 20 - skill")
 DU.salvage(50, 30)
 check(rolled[2] == 5, "c never below 5")
@@ -144,6 +163,7 @@ check(tm3.inv.added == 0 and te.cond == 0 and tm3.xp == 2, "condition below one 
 check(ISMinidoracatTeslaTakeDriveUnitParts:new(mechanic(5, 0), te, wrench, 300):complete() == false, "under the repair level: refused")
 check(ISMinidoracatTeslaTakeDriveUnitParts:new(tm, ne, wrench, 300):complete() == false, "vanilla car: refused")
 ZombRand = zr
+T.Armor = armor
 
 H.section("menu requirements (ISVehicleMechanics.lua:325,333)")
 te.cond = 50
