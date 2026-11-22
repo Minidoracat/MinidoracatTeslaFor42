@@ -1,11 +1,12 @@
 -- Car fridge, client side (references/upgrades.md section 4): its container button wears vanilla's fridge icon, and an
 -- MP client shows the server's food values. The server settles the fridge (server Fridge.lua) but a food's age and
--- freezing time are not in ItemStatsPacket (ItemStatsPacket.java:172-199, only isFrozen), so this client's copy of the
--- food ages at room rate. While an inventory page lists a TeslaFridge container, its food takes the values in
--- fridge.items (or, the fridge off, fridgeLast.items run on at room rate to now): when the page is built, then once a
--- game minute while it stays listed and shown (the server settles every ten); the table and its `at` are the version,
--- one already applied is skipped. No page lists one: nothing runs. The switches are in ParkModesUI.lua (right-click)
--- and HUDRadial.lua.
+-- freezing time are not in ItemStatsPacket (ItemStatsPacket.java:172-199, only isFrozen), and this client's copy of the
+-- food does not age on its own (Food.update ages on the server only, Food.java:378-380): it only jumps at room rate
+-- when this client puts it in or takes it out (:2476-2483). While an inventory page lists a TeslaFridge container, its
+-- food takes the values in fridge.items (or, the fridge off, fridgeLast.items run on at room rate to now): when the
+-- page is built, then once a game minute while it stays listed and shown (the server settles every ten); the table and
+-- its `at` are the version, one already applied is skipped. No page lists one: nothing runs. The switches are in
+-- ParkModesUI.lua (right-click) and HUDRadial.lua.
 require "Definitions/ContainerButtonIcons"
 require "MinidoracatTesla/Core"
 ContainerButtonIcons.TeslaFridge = ContainerButtonIcons.fridge
