@@ -55,7 +55,7 @@ end
 -- least 1.5 times it, motor exactly it. No reply: past these only a modified client gets, and a reply per drop would
 -- grow with the flood. Not played there, one per click or per login, inside `default`: camp, sentry, chargeInfo,
 -- phoneUnpair, inboxPull, the radial's bdm and chill, the Cybertruck's radial slices roofLight, psOn, psOff,
--- outletOn and outletOff.
+-- outletOn and outletOff, and fridge (the right-click menu and the radial, Fridge.lua).
 local CR = { dropped = {} }
 CR.LIMITS = {
     default = { max = 40, ms = 10000 },      -- legit 20: one per click (charge card, camp, sentry, pairing), autoLock 2 a
@@ -124,10 +124,13 @@ if not T.serverDispatch then
         if not ok then T.log("command " .. tostring(command) .. " failed: " .. tostring(err)) end
     end)
     -- Liftgate.onVehicleCommand (the cabin glass back to the end after an admin repair) wants the parts vanilla's repair
-    -- refits: a mod's server Lua loads after vanilla's (LuaManager.java:1192-1195), so this listener runs after
+    -- refits, Armor.onVehicleCommand (a new snapshot after setPartCondition / repair / repairPart) the conditions it
+    -- set: a mod's server Lua loads after vanilla's (LuaManager.java:1192-1195), so this listener runs after
     -- VehicleCommands'. Looked up per call: the harness loads the files in its own order.
     Events.OnClientCommand.Add(function(...)
         local L = T.Liftgate
         if L and L.onVehicleCommand then L.onVehicleCommand(...) end
+        local A = T.Armor
+        if A and A.onVehicleCommand then A.onVehicleCommand(...) end
     end)
 end

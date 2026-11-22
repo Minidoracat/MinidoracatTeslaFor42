@@ -2,5 +2,8 @@
     "MinidoracatTesla_MakeWallConnector": "制作特斯拉家庭充电桩",
     "MinidoracatTesla_MakeSupercharger": "制作特斯拉 V4 超级充电桩",
     "MinidoracatTesla_MakeMobileConnector": "制作特斯拉移动充电连接器",
-    "MinidoracatTesla_MakeDriveUnitParts": "制作驱动电机零件"
+    "MinidoracatTesla_MakeDriveUnitParts": "制作驱动电机零件",
+    "MinidoracatTesla_MakeArmorInner": "制作车身加固套件",
+    "MinidoracatTesla_MakeArmorOuter": "制作防撞杠套件",
+    "MinidoracatTesla_MakeFridge": "制作车载冰箱"
 }

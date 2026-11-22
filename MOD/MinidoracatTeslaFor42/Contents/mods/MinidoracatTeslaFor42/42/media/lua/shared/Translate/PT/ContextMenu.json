@@ -14,9 +14,9 @@
     "ContextMenu_MinidoracatTesla_ChargeItem": "Carregar na tomada do carro",
     "ContextMenu_MinidoracatTesla_OpenApp": "Abrir a app Tesla",
     "ContextMenu_MinidoracatTesla_AddCar": "Adicionar este carro (%1 emparelhados)",
-    "ContextMenu_MinidoracatTesla_Fridge": "Car Fridge",
-    "ContextMenu_MinidoracatTesla_FridgeOff": "Off",
-    "ContextMenu_MinidoracatTesla_FridgeCool": "Cool",
-    "ContextMenu_MinidoracatTesla_FridgeFreeze": "Freeze",
+    "ContextMenu_MinidoracatTesla_Fridge": "Frigorífico de carro",
+    "ContextMenu_MinidoracatTesla_FridgeOff": "Desligado",
+    "ContextMenu_MinidoracatTesla_FridgeCool": "Arrefecer",
+    "ContextMenu_MinidoracatTesla_FridgeFreeze": "Congelar",
     "ContextMenu_MinidoracatTesla_Unpair": "Remover do telefone"
 }

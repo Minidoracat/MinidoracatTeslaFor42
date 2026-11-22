@@ -5,6 +5,7 @@
 -- when they exist (never on a client).
 require "MinidoracatTesla/Core"
 require "MinidoracatTesla/Liftgate"
+require "MinidoracatTesla/ParkModes"
 
 local T = MinidoracatTesla
 T.Init = T.Init or {}
@@ -68,8 +69,9 @@ function T.UninstallComplete.Armor(vehicle, part)
 end
 
 -- ---------------------------------------------------------------- Fridge
--- part modData `fridge` = { mode = "cool" | "freeze", at, by, items = { [full type] = { age, ft, fr } } } (server only
--- writes it); command `fridge` { vid, mode }. Off = no `fridge` table.
+-- part modData `fridge` = { mode = "cool" | "freeze", at, by, items = { ["<item id>"] = { age, ft, fr } } } (server
+-- only writes it; items is keyed by tostring(getID()), which survives reloads and restarts, references/upgrades.md);
+-- command `fridge` { vid, mode = "cool" | "freeze" | false }. Off = no `fridge` table.
 local F = {}
 T.Fridge = F
 
@@ -85,6 +87,26 @@ function F.rotSpeed() return F.ROT_SPEED[SandboxVars.FoodRotSpeed] or F.ROT_SPEE
 function F.part(vehicle)
     local p = vehicle and vehicle:getPartById("TeslaFridge")
     return p and p:getInventoryItem() and p or nil
+end
+
+-- may player switch the fridge to `mode`? The server's `fridge` command and the menus' greying. The charge cable's
+-- structure (Chargers.lua T.mayUseCable) with VehicleManager's CARGO; switching on needs sentry's 20 % or a charger.
+-- Returns true, or false and the deny reason (nil for a mode no client sends).
+F.MODES = { cool = true, freeze = true }
+function F.canSet(player, vehicle, mode)
+    if mode ~= false and not F.MODES[mode] then return false end
+    if not F.part(vehicle) then return false, "NO_FRIDGE" end
+    local ok, why = T.authorized(player, vehicle, "CARGO")
+    if not ok then
+        local api = MinidoracatVehicleManagerAPI
+        if api and api.canUse then return false, T.VM_REASONS[why] and why or "NOT_OWNER" end
+        if vehicle:isAnyDoorLocked() then return false, "CAR_LOCKED" end
+    end
+    if mode then
+        local bp = T.Battery.part(vehicle)
+        if not bp or T.Battery.pct(bp) < T.Sentry.MIN_PCT and not T.Battery.onCharger(bp) then return false, "LOW_BATTERY" end
+    end
+    return true
 end
 
 -- every load (both sides) and an admin repair. repair() fills the item's capacity (VehiclePart.java:964-966) and a

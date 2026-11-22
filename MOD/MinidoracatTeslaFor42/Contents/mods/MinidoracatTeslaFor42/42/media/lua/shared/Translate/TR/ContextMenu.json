@@ -14,9 +14,9 @@
     "ContextMenu_MinidoracatTesla_ChargeItem": "Araç prizinden şarj et",
     "ContextMenu_MinidoracatTesla_OpenApp": "Tesla uygulamasını aç",
     "ContextMenu_MinidoracatTesla_AddCar": "Bu arabayı ekle (%1 eşleşmiş)",
-    "ContextMenu_MinidoracatTesla_Fridge": "Car Fridge",
-    "ContextMenu_MinidoracatTesla_FridgeOff": "Off",
-    "ContextMenu_MinidoracatTesla_FridgeCool": "Cool",
-    "ContextMenu_MinidoracatTesla_FridgeFreeze": "Freeze",
+    "ContextMenu_MinidoracatTesla_Fridge": "Araç Buzdolabı",
+    "ContextMenu_MinidoracatTesla_FridgeOff": "Kapalı",
+    "ContextMenu_MinidoracatTesla_FridgeCool": "Soğut",
+    "ContextMenu_MinidoracatTesla_FridgeFreeze": "Dondur",
     "ContextMenu_MinidoracatTesla_Unpair": "Telefondan kaldır"
 }

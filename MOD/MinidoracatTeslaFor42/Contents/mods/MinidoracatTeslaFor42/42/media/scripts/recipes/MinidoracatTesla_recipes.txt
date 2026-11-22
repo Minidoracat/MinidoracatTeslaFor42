@@ -104,4 +104,92 @@ module Base
             item 2 Base.MinidoracatTesla_DriveUnitParts,
         }
     }
+
+    /* Upgrade kits (Upgrades.lua; user's draft 2026-11-22, decisions.md): learnt as the recipes above. The welded two */
+    /* are vanilla's hand welding (MakeScrapMetalHelmet, recipes_metalWelding_Armor.txt:120-145): blowtorch uses, the */
+    /* mask kept, Welding_Surface. Reinforcement Kit, Metal Welding 3: plates and screws, more than a sheet-metal */
+    /* barricade (entity_barricade_metalsheet.txt:52-60, 1 sheet and 1 torch use) for a whole car. */
+    craftRecipe MinidoracatTesla_MakeArmorInner
+    {
+        timedAction = Welding_Surface,
+        time = 600,
+        NeedToBeLearn = true,
+        SkillRequired = MetalWelding:3,
+        Tags = AnySurfaceCraft,
+        category = Metalworking,
+        AutoLearnAny = MetalWelding:3,
+        xpAward = MetalWelding:25,
+        inputs
+        {
+            item 4 [Base.BlowTorch],
+            item 1 tags[base:weldingmask] mode:keep,
+            item 1 tags[base:screwdriver] mode:keep flags[Prop1],
+            item 2 [Base.SheetMetal],
+            item 2 [Base.SmallSheetMetal],
+            item 8 [Base.Screws],
+        }
+        outputs
+        {
+            item 1 Base.MinidoracatTesla_ArmorInner,
+        }
+    }
+
+    /* Bull Bar Kit, Metal Welding 5: pipes and bars as vanilla's double pole gate (entity_metal_doublepolegate.txt: */
+    /* 41-50, 10 pipes and 10 torch uses at the same level), bolted on like MakeScrapMetalWeapon */
+    /* (recipes_blacksmith_welded_etc_weapons.txt:147-193). Costs well over the Reinforcement Kit: it protects twice */
+    /* as much (Upgrades.lua T.Armor.K). */
+    craftRecipe MinidoracatTesla_MakeArmorOuter
+    {
+        timedAction = Welding_Surface,
+        time = 1200,
+        NeedToBeLearn = true,
+        SkillRequired = MetalWelding:5,
+        Tags = AnySurfaceCraft,
+        category = Metalworking,
+        AutoLearnAny = MetalWelding:5,
+        xpAward = MetalWelding:50,
+        inputs
+        {
+            item 10 [Base.BlowTorch],
+            item 1 tags[base:weldingmask] mode:keep,
+            item 1 tags[base:wrench] mode:keep flags[MayDegradeLight],
+            item 1 tags[base:sheetmetalsnips;base:metalsaw] mode:keep flags[MayDegradeLight],
+            item 6 [Base.MetalPipe],
+            item 4 [Base.MetalBar],
+            item 2 [Base.SmallSheetMetal],
+            item 6 [Base.NutsBolts],
+        }
+        outputs
+        {
+            item 1 Base.MinidoracatTesla_ArmorOuter,
+        }
+    }
+
+    /* Car Fridge, Electricity 4: an empty cooler (flags[IsEmpty], InputScript.java:1041: food inside is never */
+    /* consumed) wired with a cooling board; tools and amounts as the Wall Connector above and vanilla's */
+    /* MakeRemoteControllerV2 (recipes_traps.txt:27-49, Electricity 4: 3 scrap, screwdriver, pliers). */
+    craftRecipe MinidoracatTesla_MakeFridge
+    {
+        timedAction = MakingElectrical,
+        time = 400,
+        NeedToBeLearn = true,
+        SkillRequired = Electricity:4,
+        Tags = AnySurfaceCraft,
+        category = Electrical,
+        AutoLearnAny = Electricity:4,
+        xpAward = Electricity:25,
+        inputs
+        {
+            item 1 tags[base:screwdriver] mode:keep flags[Prop1],
+            item 1 tags[base:pliers] mode:keep flags[MayDegradeVeryLight],
+            item 1 [Base.Cooler;Base.Cooler_Beer;Base.Cooler_Meat;Base.Cooler_Soda;Base.Cooler_Seafood] flags[IsEmpty],
+            item 4 [Base.ElectronicsScrap],
+            item 4 [Base.ElectricWire],
+            item 4 [Base.Screws],
+        }
+        outputs
+        {
+            item 1 Base.MinidoracatTesla_Fridge,
+        }
+    }
 }

@@ -9,7 +9,7 @@
 Outputs (overwritten):
   media/textures/MinidoracatTesla/HUD/atlas1x.png, atlas2x.png
   media/textures/MinidoracatTesla/HUD/radial_camp.png, radial_camp_off.png, radial_charge.png, radial_lightbar.png,
-  radial_powershare(_off).png, radial_outlet(_off).png, radial_bdm.png, radial_chill.png
+  radial_powershare(_off).png, radial_outlet(_off).png, radial_bdm.png, radial_chill.png, radial_fridge(_off).png
   media/textures/MinidoracatTesla/HUD/app_arrow1x.png, app_arrow2x.png (phone app location page arrow, drawn rotated)
   media/textures/MinidoracatTesla/HUD/app_ring.png (phone app summon range: radar and pick map, tinted when drawn)
   media/textures/MinidoracatTesla/HUD/map_car.png, map_round.png (MiniMap car marker and its disc)
@@ -368,6 +368,13 @@ def ic_chill(c):  # Chill (radial): a speedometer arc with the needle resting lo
     a = math.radians(160)
     c.stroke([("M", cx, cy), ("L", cx + 4.3 * math.cos(a), cy - 4.3 * math.sin(a))], w=1.5)
     c.circle(cx, cy, 1.2, fill="#FFFFFF")
+
+
+def ic_fridge(c):  # car fridge (radial): an upright fridge, freezer door over the main door, a handle on each
+    c.rrect(3.4, 1.8, 9.2, 12.4, 1.6, outline="#FFFFFF", ow=1.3)
+    c.stroke([("M", 4.1, 7.0), ("H", 11.9)], w=1.3)  # rrect strokes inward; caps stay inside the outline
+    c.stroke([("M", 5.9, 4.3), ("V", 5.2)], w=1.3)
+    c.stroke([("M", 5.9, 9.2), ("V", 11.4)], w=1.3)
 
 
 def app_ring():  # the summon range on the app's radar and its pick map: 10% disc, full ring; white, tinted when drawn
@@ -899,7 +906,8 @@ def radial_icons():
                            ("radial_charge", ic_plug, "#F3F5F7"), ("radial_lightbar", ic_lightbar, "#F3F5F7"),
                            ("radial_powershare", ic_house, "#F3F5F7"), ("radial_powershare_off", ic_house, "#6B737C"),
                            ("radial_outlet", ic_outlet, "#F3F5F7"), ("radial_outlet_off", ic_outlet, "#6B737C"),
-                           ("radial_bdm", ic_biohazard, "#F3F5F7"), ("radial_chill", ic_chill, "#F3F5F7")):
+                           ("radial_bdm", ic_biohazard, "#F3F5F7"), ("radial_chill", ic_chill, "#F3F5F7"),
+                           ("radial_fridge", ic_fridge, "#F3F5F7"), ("radial_fridge_off", ic_fridge, "#6B737C")):
         c = Canvas(48, 48, 16)
         # draw at 1.5px scale-adjusted stroke so it reads at 48px like vanilla radial icons
         fn(c)
