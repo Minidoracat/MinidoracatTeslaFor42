@@ -56,7 +56,12 @@ end
 -- least 1.5 times it, motor exactly it. No reply: past these only a modified client gets, and a reply per drop would
 -- grow with the flood. Not played there, one per click or per login, inside `default`: camp, sentry, chargeInfo,
 -- phoneUnpair, inboxPull, the radial's bdm and chill, the Cybertruck's radial slices roofLight, psOn, psOff,
--- outletOn and outletOff, and fridge (the right-click menu and the radial, Fridge.lua).
+-- outletOn and outletOff, and fridge (the right-click menu and the radial, Fridge.lua). Also inside `default`,
+-- played in test_cmd_rate.lua: fridgeFoodPull, sent by a client whose inventory page shows a switched-off fridge
+-- (FridgeUI.lua): once per ten game minutes plus one retry a minute later if unanswered, and once per food
+-- instance that shows up in it (one per item moved in, a timed transfer action each); while everyone sleeps the
+-- server fast-forwards (GameTime.java:968-971) and the buckets come faster (not measured). A drop only leaves the
+-- copy's values stale until the retry or the next bucket.
 local CR = { dropped = {} }
 CR.LIMITS = {
     default = { max = 40, ms = 10000 },      -- legit 20: one per click (charge card, camp, sentry, pairing), autoLock 2 a
