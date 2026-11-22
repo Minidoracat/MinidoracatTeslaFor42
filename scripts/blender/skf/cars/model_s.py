@@ -480,23 +480,19 @@ CAR = dict(
             ("speaker grille", "front", 0.08, -0.330, 0.14, 0.110, 0.018, "console", 0.045),
         ],
     },
-    # TeslaArmor's visible kit (armor.py; the Model Y's style A, proportions to this body): heights z over the ground,
-    # y pre-centre of the built body (rear, front; _moved_positions leaves it alone), x = |x|. keep: the plates (no
-    # mesh feature marks them: the front one above the grille, the rear one in the liftgate's recess; |x| half width,
-    # z bottom, top); the headlamps are lit in the lights texture (armor.lamp_points), no keep box
+    # TeslaArmor's visible kit (armor.py; the Model Y's, proportions to this body): heights z over the ground, y
+    # pre-centre of the built body (rear, front; _moved_positions leaves it alone), x = |x|. keep: the plates (the body
+    # has none: the front one above the grille, the rear one in the liftgate's recess; |x| half width, z bottom, top);
+    # the headlamps are lit in the lights texture (armor.lamp_points), no keep box
     ARMOR=dict(
-        style="A",
         keep=dict(front_plate=(0.22, 0.27, 0.40), rear_plate=(0.18, 0.52, 0.66)),
-        A=dict(
-            front=dict(kind="tube", z=0.20, top=0.44, x=0.62, corners=[(0.34, 0.50)], brackets=(0.42, 0.56), gap=0.025,
-                       r=0.022, sides=10, bend=0.05),
-            rear=dict(kind="tube", z=0.21, top=0.44, x=0.66, corners=[(0.40, 0.60)], brackets=(0.15, 0.36), gap=0.025,
-                      r=0.022, sides=10, bend=0.05),
-            sill=dict(kind="tube", z=0.155, y=(-0.78, 0.86), r=0.022, sides=10, gap=0.012, bend=0.05,
-                      brackets=(-0.45, 0.0, 0.45)),
-            roof=dict(kind="basket", x=0.40, y=(-0.84, 0.18), feet_x=0.46, bars=(-0.72, 0.10), bar=(0.03, 0.022),
-                      gap=0.03, r=0.013, sides=8, rail=0.06, corner=0.06, slats=(-0.2, 0.0, 0.2), slat_r=0.009),
-        ),
+        front=dict(z=0.20, top=0.44, x=0.62, corners=[(0.34, 0.50)], brackets=(0.42, 0.56), gap=0.025, r=0.022, sides=10,
+                   bend=0.05),
+        rear=dict(z=0.21, top=0.44, x=0.66, corners=[(0.40, 0.60)], brackets=(0.15, 0.36), gap=0.025, r=0.022, sides=10,
+                  bend=0.05),
+        sill=dict(z=0.155, y=(-0.78, 0.86), r=0.022, sides=10, gap=0.012, bend=0.05, brackets=(-0.45, 0.0, 0.45)),
+        roof=dict(x=0.40, y=(-0.84, 0.18), feet_x=0.46, bars=(-0.72, 0.10), bar=(0.03, 0.022), gap=0.03, r=0.013,
+                  sides=8, rail=0.06, corner=0.06, slats=(-0.2, 0.0, 0.2), slat_r=0.009),
     ),
 )
 

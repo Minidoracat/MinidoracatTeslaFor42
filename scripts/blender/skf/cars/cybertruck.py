@@ -333,18 +333,14 @@ CAR = dict(
     # (user 2026-11-22). keep: the plates (|x| half width, z bottom, top; the source has no plates: the front one on the
     # black bumper over the grille, the rear one in the bumper's recess under the tailgate, |x| < 0.25, z 0.48-0.62)
     ARMOR=dict(
-        style="A",
         keep=dict(front_plate=(0.18, 0.39, 0.52), rear_plate=(0.18, 0.48, 0.62)),
-        # A: steel tubes, thicker than Model Y's; the front bar folded at the nose's chamfer (knots), the rear one
+        # steel tubes, thicker than the Model Y's; the front bar folded at the nose's chamfer (knots), the rear one
         # straight; the rear loops' top under the open tailgate (its underside 0.478 over the ground)
-        A=dict(
-            front=dict(kind="tube", z=0.34, top=0.50, x=0.71, corners=[(0.44, 0.70)], brackets=(0.15, 0.40), gap=0.025,
-                       r=0.026, sides=10, bend=0.04, knots=(0.0, 0.22, 0.71)),
-            rear=dict(kind="tube", z=0.33, top=0.44, x=0.71, corners=[(0.44, 0.70)], brackets=(0.15, 0.40), gap=0.025,
-                      r=0.026, sides=10, bend=0.04),
-            sill=dict(kind="tube", z=0.27, y=(-0.84, 1.04), r=0.025, sides=10, gap=0.012, bend=0.05,
-                      brackets=(-0.45, 0.10, 0.65)),
-            roof=None,
-        ),
+        front=dict(z=0.34, top=0.50, x=0.71, corners=[(0.44, 0.70)], brackets=(0.15, 0.40), gap=0.025, r=0.026, sides=10,
+                   bend=0.04, knots=(0.0, 0.22, 0.71)),
+        rear=dict(z=0.33, top=0.44, x=0.71, corners=[(0.44, 0.70)], brackets=(0.15, 0.40), gap=0.025, r=0.026, sides=10,
+                  bend=0.04),
+        sill=dict(z=0.27, y=(-0.84, 1.04), r=0.025, sides=10, gap=0.012, bend=0.05, brackets=(-0.45, 0.10, 0.65)),
+        roof=None,
     ),
 )

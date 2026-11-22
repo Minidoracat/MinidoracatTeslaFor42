@@ -3,7 +3,7 @@ and roof rack in one static mesh in the body's frame (part model offset 0), on t
 MinidoracatTesla_Armor (a face's UV0 at its cell's centre, UV1 the same: vehiclewheel reads location 3, models.md 0).
 
 The car's ARMOR (cars/<car>.py) says where each piece goes (heights over the ground, |x|, y, pre-centre like the rest of
-the config) and its style; ARMOR_STYLE=<key> builds another style of it. Every piece stands its gap off the surface it
+the config). Every piece stands its gap off the surface it
 faces, measured by rays on the built body and the shut doors, gate and frunk lid (TMP/skf_doors.blend), so a rebuilt
 body moves the kit with it. check() then proves what it must clear: no triangle crosses the body, nor any door, the
 gate or the frunk lid at any frame of its clip, nor the tyres over full steering lock and the suspension's travel;
@@ -209,42 +209,29 @@ def folded(xs, req, knots):
 
 
 def guard(kit, car, g, sign, Z):
-    """Front (sign +1) or rear (-1) guard: a low bar across, two corner pieces (tube loops or folded panels) rising to
-    `top`, brackets back to the bumper."""
-    if g is None:          # this car has no such piece (its ARMOR style sets it None)
+    """Front (sign +1) or rear (-1) guard: a low tube bar across, two corner hoops rising to `top`, brackets back to
+    the bumper."""
+    if g is None:          # this car has no such piece (its ARMOR sets it None)
         return
     z_lo, z_top, xe = Z(g["z"]), Z(g["top"]), g["x"]
     loops = [(s * a, s * b) for a, b in g["corners"] for s in (1, -1)]
-    half = g["r"] if g["kind"] == "tube" else g["t"] / 2
-    hb = 2 * g["r"] if g["kind"] == "tube" else g["h"]                  # the low bar's height
-    z_band = (z_lo - hb / 2 - 0.01, z_lo + hb / 2 + 0.01)
+    r = g["r"]
+    z_band = (z_lo - r - 0.01, z_lo + r + 0.01)
     xs = np.linspace(-xe, xe, 25)
     req = []
     for x in xs:
-        hi = z_top + half + 0.01 if any(min(a, b) - 0.02 <= x <= max(a, b) + 0.02 for a, b in loops) else z_band[1]
-        req.append(car.front(x, z_band[0], hi, sign) + g["gap"] + half)
+        hi = z_top + r + 0.01 if any(min(a, b) - 0.02 <= x <= max(a, b) + 0.02 for a, b in loops) else z_band[1]
+        req.append(car.front(x, z_band[0], hi, sign) + g["gap"] + r)
     Y = envelope(xs, np.array(req))
     if g.get("knots"):                     # optional: a bar folded at these |x| (folded), not the quartic
         Y = folded(xs, np.array(req), g["knots"])
     yw = lambda x: sign * Y(x)             # noqa: E731  (mesh y)
     order = xs if sign > 0 else xs[::-1]   # b = direction x up points into the car (front +x, rear -x)
-    if g["kind"] == "tube":
-        circ = circle(g["r"], g["sides"])
-        kit.sweep([(x, yw(x), z_lo) for x in order], circ)
-        for a, b in loops:
-            kit.sweep(fillet([(a, yw(a), z_lo), (a, yw(a), z_top), (b, yw(b), z_top), (b, yw(b), z_lo)], g["bend"]),
-                      circ, up=(0, sign, 0))
-    else:
-        t, h, fl = g["t"], g["h"], g["flange"]
-        line = [(x, yw(x), z_lo) for x in order]
-        kit.sweep(line, rect(-t / 2, t / 2, -h / 2, h / 2), smooth=False)
-        kit.sweep(line, rect(-t / 2 - fl, t / 2, -h / 2, -h / 2 + t), smooth=False)       # lower lip folded out
-        for a, b in loops:                 # corner panels stand on the band (no coplanar faces with it)
-            hp = (z_top - z_lo - h / 2) / 2
-            seg = [(x, yw(x), z_top - hp) for x in np.linspace(a, b, 6)]
-            seg = seg if (b - a) * sign > 0 else seg[::-1]
-            kit.sweep(seg, rect(-t / 2, t / 2, -hp, hp), smooth=False)
-            kit.sweep(seg, rect(-t / 2 - fl, t / 2, hp - t, hp), smooth=False)          # top edge folded out
+    circ = circle(r, g["sides"])
+    kit.sweep([(x, yw(x), z_lo) for x in order], circ)
+    for a, b in loops:
+        kit.sweep(fillet([(a, yw(a), z_lo), (a, yw(a), z_top), (b, yw(b), z_top), (b, yw(b), z_lo)], g["bend"]),
+                  circ, up=(0, sign, 0))
     for x in [s * v for v in g["brackets"] for s in (1, -1)]:            # brackets back to the bumper face
         face = max(car.front(x + dx, z_lo - 0.012, z_lo + 0.012, sign) for dx in (-0.015, 0, 0.015))
         kit.sweep([(x, yw(x), z_lo), (x, sign * (face + STANDOFF), z_lo)],
@@ -252,44 +239,35 @@ def guard(kit, car, g, sign, Z):
 
 
 def sills(kit, car, g, Z, Ysh):
-    """Both sill guards: a tube or a step board along the rocker below the doors, `gap` off its tapering face, ends and
-    brackets to the rocker."""
-    if g is None:          # this car has no such piece (its ARMOR style sets it None)
+    """Both sill tubes along the rocker below the doors, `gap` off its tapering face, ends turned in and brackets to
+    the rocker."""
+    if g is None:          # this car has no such piece (its ARMOR sets it None)
         return
     z, y0, y1 = Z(g["z"]), g["y"][0] + Ysh, g["y"][1] + Ysh          # y: (rear, front)
-    half = g["r"] if g["kind"] == "tube" else g["t"] / 2
-    bend = g.get("bend", 0.0)
+    r, bend = g["r"], g.get("bend", 0.0)
     # the rocker's outer face over the straight run (the arch lips past it flare out), a quartic in y lifted onto
     # every station: the piece follows the rocker's taper (narrower mid-door than at the lips) instead of standing off
     # its widest point
     ys = np.linspace(y0 + bend, y1 - bend, 17)
-    req = np.array([car.side(y, z - half - 0.01, z + half + 0.01) for y in ys])
+    req = np.array([car.side(y, z - r - 0.01, z + r + 0.01) for y in ys])
     c = np.polyfit(ys, req, 4)
     c[-1] += (req - np.polyval(c, ys)).max()
     rock = lambda y: float(np.polyval(c, y)) + g["gap"]   # noqa: E731  (the piece's inner face)
     for s in (1, -1):                       # path along +y on the right, -y on the left: b = outward
         along = (y0, y1) if s > 0 else (y1, y0)
-        if g["kind"] == "tube":
-            r = g["r"]
-            inner = lambda y: rock(y) + r   # noqa: E731  (centre line)
-            mid = [(s * inner(y), y, z) for y in np.linspace(along[0] + s * bend, along[1] - s * bend, 7)]
-            # each end turns in to the rocker, then out in 2 mm steps until its centre line is r + MIN_GAP["piece"] +
-            # 2 mm off the car (rays miss the arch lips' edges)
-            ends = [car.side(y, z - r, z + r) for y in along]
-            bent = lambda i: (fillet([(s * ends[0], along[0], z), mid[0], mid[1]], bend)[:-1] if i == 0  # noqa: E731
-                              else fillet([mid[-2], mid[-1], (s * ends[1], along[1], z)], bend)[1:])
-            for i in (0, 1):
-                for _ in range(50):         # at most 10 cm out; armor.check reports what still comes too close
-                    if min(car.bvh.find_nearest(Vector(q))[3] for q in bent(i)) >= r + MIN_GAP["piece"] + 0.002:
-                        break
-                    ends[i] += 0.002
-            kit.sweep(bent(0) + mid[1:-1] + bent(1), circle(r, g["sides"]))
-        else:
-            w, t = g["w"], g["t"]
-            line = [(s * rock(y), y, z) for y in np.linspace(*along, 7)]
-            kit.sweep(line, rect(0, w, -t / 2, t / 2), smooth=False)
-            kit.sweep(line, rect(w - t, w, -t / 2 - g["lip"], t / 2), smooth=False)     # outer edge folded down
-            inner = lambda y: rock(y) + t   # noqa: E731
+        inner = lambda y: rock(y) + r   # noqa: E731  (centre line)
+        mid = [(s * inner(y), y, z) for y in np.linspace(along[0] + s * bend, along[1] - s * bend, 7)]
+        # each end turns in to the rocker, then out in 2 mm steps until its centre line is r + MIN_GAP["piece"] +
+        # 2 mm off the car (rays miss the arch lips' edges)
+        ends = [car.side(y, z - r, z + r) for y in along]
+        bent = lambda i: (fillet([(s * ends[0], along[0], z), mid[0], mid[1]], bend)[:-1] if i == 0  # noqa: E731
+                          else fillet([mid[-2], mid[-1], (s * ends[1], along[1], z)], bend)[1:])
+        for i in (0, 1):
+            for _ in range(50):             # at most 10 cm out; armor.check reports what still comes too close
+                if min(car.bvh.find_nearest(Vector(q))[3] for q in bent(i)) >= r + MIN_GAP["piece"] + 0.002:
+                    break
+                ends[i] += 0.002
+        kit.sweep(bent(0) + mid[1:-1] + bent(1), circle(r, g["sides"]))
         for y in [y + Ysh for y in g["brackets"]]:
             face = max(car.side(y + dy, z - 0.012, z + 0.012) for dy in (-0.015, 0, 0.015))
             kit.sweep([(s * inner(y), y, z), (s * (face + STANDOFF), y, z)],
@@ -297,9 +275,8 @@ def sills(kit, car, g, Z, Ysh):
 
 
 def roof(kit, car, g, Ysh):
-    """Roof rack on four feet: two crossbars, then a basket (tube frame, rail, posts, slats) or a low platform (flat-bar
-    frame, plank slats)."""
-    if g is None:          # this car has no such piece (its ARMOR style sets it None)
+    """Roof rack on four feet: two crossbars, then a basket (tube frame, rail, posts, slats)."""
+    if g is None:          # this car has no such piece (its ARMOR sets it None)
         return
     xf, (yr, yf) = g["feet_x"], (g["y"][0] + Ysh, g["y"][1] + Ysh)
     bars = [y + Ysh for y in g["bars"]]
@@ -316,42 +293,26 @@ def roof(kit, car, g, Ysh):
                       rect(-0.022, 0.022, -0.03, 0.03), cell="rubber", tag="mount", up=(0, 1, 0), smooth=False)
     z_f = z_cb + cb_h / 2
     frame = [(-xb, yr), (xb, yr), (xb, yf), (-xb, yf)]
-    if g["kind"] == "basket":
-        r, c = g["r"], circle(g["r"], g["sides"])
-        z0, z1 = z_f + r, z_f + r + g["rail"]
-        for zz in (z0, z1):
-            kit.sweep(fillet([(x, y, zz) for x, y in frame], g["corner"], closed=True), c, closed=True)
-        for x, y in [(sx * xb, y) for sx in (1, -1) for y in (yr + g["corner"], (yr + yf) / 2, yf - g["corner"])] + \
-                [(0, yr), (0, yf)]:
-            kit.sweep([(x, y, z0), (x, y, z1)], c, up=(0, 1, 0))
-        for x in g["slats"]:
-            kit.sweep([(x, yr, z0), (x, yf, z0)], circle(g["slat_r"], g["sides"]))
-    else:
-        h, t = g["frame"]
-        z0 = z_f + h / 2
-        kit.sweep(fillet([(x, y, z0) for x, y in frame], g["corner"], closed=True), rect(-t / 2, t / 2, -h / 2, h / 2),
-                  closed=True, smooth=False)
-        w, pt = g["plank"]
-        for y in np.linspace(yr + g["corner"], yf - g["corner"], g["planks"]):
-            kit.sweep([(-xb + t, y, z_f + pt / 2), (xb - t, y, z_f + pt / 2)], rect(-w / 2, w / 2, -pt / 2, pt / 2),
-                      smooth=False)
-
-
-def style():
-    a = pv.CAR["ARMOR"]
-    key = os.environ.get("ARMOR_STYLE", a["style"])
-    return key, a[key]
+    r, c = g["r"], circle(g["r"], g["sides"])
+    z0, z1 = z_f + r, z_f + r + g["rail"]
+    for zz in (z0, z1):
+        kit.sweep(fillet([(x, y, zz) for x, y in frame], g["corner"], closed=True), c, closed=True)
+    for x, y in [(sx * xb, y) for sx in (1, -1) for y in (yr + g["corner"], (yr + yf) / 2, yf - g["corner"])] + \
+            [(0, yr), (0, yf)]:
+        kit.sweep([(x, y, z0), (x, y, z1)], c, up=(0, 1, 0))
+    for x in g["slats"]:
+        kit.sweep([(x, yr, z0), (x, yf, z0)], circle(g["slat_r"], g["sides"]))
 
 
 def build_kit(car, zmid, cy):
-    key, st = style()
+    a = pv.CAR["ARMOR"]
     Z = lambda z: z - zmid                 # noqa: E731  (heights over the ground -> mesh z)
     kit = Kit()
-    guard(kit, car, st["front"], 1, Z)
-    guard(kit, car, st["rear"], -1, Z)
-    sills(kit, car, st["sill"], Z, -cy)
-    roof(kit, car, st["roof"], -cy)
-    return key, kit
+    guard(kit, car, a["front"], 1, Z)
+    guard(kit, car, a["rear"], -1, Z)
+    sills(kit, car, a["sill"], Z, -cy)
+    roof(kit, car, a["roof"], -cy)
+    return kit
 
 
 # ---- texture, mesh, export ----
@@ -504,22 +465,21 @@ def check(car, ob, kit, zmid, cy, geo):
 
 
 def build(zmid=None, cy=None):
-    """Build the car's kit (its ARMOR style, or ARMOR_STYLE), check it, write <NAME>_Armor.fbx and the palette.
+    """Build the car's kit (its ARMOR), check it, write <NAME>_Armor.fbx and the palette.
     zmid, cy: the body's centring (stage_build's), else TMP/geometry.json's. -> its triangles."""
     geo = json.load(open(os.path.join(pv.TMP, "geometry.json")))
     zmid = geo["zmid"] if zmid is None else zmid
     cy = geo["centre_y"] if cy is None else cy
     car = Car()
-    key, kit = build_kit(car, zmid, cy)
+    kit = build_kit(car, zmid, cy)
     ob = mesh(kit)
     res, bad = check(car, ob, kit, zmid, cy, geo)
     V = np.concatenate(kit.V)
-    res = {"style": key, "tris": len(ob.data.polygons), "bbox": [V.min(0).round(4).tolist(), V.max(0).round(4).tolist()],
-           **res}
-    json.dump(res, open(os.path.join(pv.TMP, f"armor_check_{key}.json"), "w"), indent=1)
+    res = {"tris": len(ob.data.polygons), "bbox": [V.min(0).round(4).tolist(), V.max(0).round(4).tolist()], **res}
+    json.dump(res, open(os.path.join(pv.TMP, "armor_check.json"), "w"), indent=1)
     print("ARMOR", json.dumps(res))
     if bad:
-        raise SystemExit(f"{pv.NAME} armour {key}: fails {bad} (TMP/armor_check_{key}.json)")
+        raise SystemExit(f"{pv.NAME} armour: fails {bad} (TMP/armor_check.json)")
     texture()
     pv.export_fbx(ob, os.path.join(pv.VEH_DIR, pv.NAME + "_Armor.fbx"))
     return len(ob.data.polygons)

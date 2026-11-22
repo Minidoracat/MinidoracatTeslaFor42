@@ -8,7 +8,7 @@
   沒有 skills（門檻只放在配方；有 skills 就有失敗機率，Vehicles.lua:1463-1485）
 - TeslaFridge：capacity = 0（沒裝時打不開，BaseVehicle.java:8439-8453）、conditionAffectsCapacity = false、拆卸 requireEmpty
 - itemType 的物品都存在、ConditionMax = 100；TeslaArmor 的 itemType 等於 Upgrades.lua 的 T.Armor.K 鍵集
-- TeslaArmor 的 model Armor（有外觀件）：ARMOR_CARS 每台都要有；有寫的車 file 要指到有 mesh 的 model 區塊、fbx 存在、
+- TeslaArmor 的 model Armor（有外觀件）：九台都要有；file 要指到有 mesh 的 model 區塊、fbx 存在、
   兩層 UV（vehiclewheel 著色器讀第二層，verify_mod 第 17 項同理）
 - 三個升級件物品的 Icon 有對應的 textures/Item_<Icon>.png（不借原版圖示）
 - 三條配方存在、產物與技能門檻照方案（MetalWelding:3／MetalWelding:5／Electricity:4）；本 MOD 每條 craftRecipe
@@ -27,9 +27,6 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MEDIA = os.path.join(REPO, "MOD/MinidoracatTeslaFor42/Contents/mods/MinidoracatTeslaFor42/42/media")
 UPGRADES = ("TeslaArmor", "TeslaFridge")
 RESIDUE = ("ArmorTrial", "ArmorS0", "FridgeTrial", "UpgTest", "UpgBox", "TRIAL")
-# 已做有外觀件模型的車（scripts/blender/skf/armor.py）；shortcut: 只查做好的車，九台都做完後改成每台都要有
-ARMOR_CARS = {"MinidoracatTesla_ModelY", "MinidoracatTesla_ModelX", "MinidoracatTesla_Roadster", "MinidoracatTesla_Cybercab",
-              "MinidoracatTesla_Cybertruck", "MinidoracatTesla_Semi"}
 
 if not os.path.isdir(vp.PZ):
     print(f"升級件檢查略過：找不到原版腳本 {vp.PZ}")
@@ -83,11 +80,11 @@ for car, r in sorted(cars.items()):
             f = p.get("models", {}).get("Armor", {}).get("values", {}).get("file")
             mesh = models.get(f, {}).get("mesh", "").strip()
             fbx = os.path.join(MEDIA, "models_X", mesh + ".fbx")
-            if car in ARMOR_CARS and not f:
+            if not f:
                 bad.append(f"{car}: TeslaArmor 沒有 model Armor")
-            elif f and not (mesh and os.path.isfile(fbx)):
+            elif not (mesh and os.path.isfile(fbx)):
                 bad.append(f"{car}: TeslaArmor model Armor 的 file {f} 沒有 model 區塊或 fbx（{mesh}）")
-            elif f and open(fbx, "rb").read().count(b"\x0eLayerElementUV") < 2:
+            elif open(fbx, "rb").read().count(b"\x0eLayerElementUV") < 2:
                 bad.append(f"{car}: {mesh}.fbx 不到兩層 UV")
         if pid == "TeslaFridge":
             c = p.get("container", {})

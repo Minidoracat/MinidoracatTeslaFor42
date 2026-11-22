@@ -12,9 +12,8 @@ of the vehicle script.
     "$B" -b --factory-startup --python scripts/blender/skf/convert.py -- detail   # cabin detail FBX (Viewpoint) only,
                                                                                   # from the built body: no source needed
     "$B" -b --factory-startup --python scripts/blender/skf/convert.py -- armor    # TeslaArmor kit only (armor.py, after
-                                                                                  # a build; ARMOR_STYLE=<A|B> overrides
-                                                                                  # the car's ARMOR style); view ARMOR=1
-                                                                                  # draws it, state `every` opens all
+                                                                                  # a build); view ARMOR=1 draws it,
+                                                                                  # state `every` opens all
     CAR=<car> "$B" ...                                                            # another cars/<car>.py
 
 Source (gitignored): TMP/<the car's SRC>; Model Y: temp/skf/src/source/Tesla Model Y Performance 2026.obj (+ .mtl),

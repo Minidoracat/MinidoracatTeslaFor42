@@ -328,12 +328,9 @@ CAR = dict(
     # sill or roof piece, the 53 ft trailer none). keep: the front plate (the source has none: on the black bumper band's
     # centre, |x| half width, z bottom, top). The bar runs over it and under the lamp strip (z 0.81-0.90), thicker tube
     ARMOR=dict(
-        style="A",
         keep=dict(front_plate=(0.20, 0.26, 0.40)),
-        A=dict(
-            front=dict(kind="tube", z=0.55, top=0.75, x=0.88, corners=[(0.60, 0.86)], brackets=(0.28, 0.52), gap=0.045,
-                       r=0.032, sides=12, bend=0.06),
-            rear=None, sill=None, roof=None,
-        ),
+        front=dict(z=0.55, top=0.75, x=0.88, corners=[(0.60, 0.86)], brackets=(0.28, 0.52), gap=0.045, r=0.032, sides=12,
+                   bend=0.06),
+        rear=None, sill=None, roof=None,
     ),
 )
