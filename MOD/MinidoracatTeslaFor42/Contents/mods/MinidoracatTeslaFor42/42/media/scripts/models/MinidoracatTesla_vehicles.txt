@@ -808,4 +808,14 @@ module Base
         invertX = false,
         scale = 0.5495,
     }
+
+    model MinidoracatTesla_ModelS_Armor
+    {
+        mesh = vehicles/MinidoracatTesla_ModelS_Armor,
+        texture = Vehicles/MinidoracatTesla_Armor,
+        shader = vehiclewheel,
+        static = true,
+        invertX = false,
+        scale = 0.5495,
+    }
 }
