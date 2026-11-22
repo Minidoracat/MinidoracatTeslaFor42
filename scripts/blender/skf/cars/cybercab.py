@@ -554,4 +554,20 @@ CAR = dict(
     # the white capsule across it, the dark STOP button with its red triangle in the capsule's middle)
     ROOF_CONSOLE=dict(size=(0.30, 0.18, 0.070), bar=(0.96, 0.10, 0.030), strip=(0.13, 0.045), strip_y=-0.03,
                       stop=(0.040, 0.024), camera=(0.12, 0.06, 0.060)),
+    # TeslaArmor's visible kit (armor.py; model_y.py ARMOR has the keys): steel tubes as Model Y's A, no roof rack
+    # (the butterfly doors open through the roof). keep: the front plate (its mesh), the rear one's place in the
+    # bumper's band (no mesh marks it); the rear corners stay inboard of the charge port's cover at |x| 0.54
+    ARMOR=dict(
+        style="A",
+        keep=dict(front_plate=(0.13, 0.30, 0.43), rear_plate=(0.14, 0.30, 0.42)),
+        A=dict(
+            front=dict(kind="tube", z=0.19, top=0.40, x=0.60, corners=[(0.28, 0.44)], brackets=(0.15, 0.42), gap=0.025,
+                       r=0.022, sides=10, bend=0.05),
+            rear=dict(kind="tube", z=0.20, top=0.40, x=0.60, corners=[(0.26, 0.40)], brackets=(0.13, 0.33), gap=0.025,
+                      r=0.022, sides=10, bend=0.05),
+            sill=dict(kind="tube", z=0.19, y=(-0.62, 0.74), r=0.022, sides=10, gap=0.012, bend=0.05,
+                      brackets=(-0.45, 0.0, 0.45)),
+            roof=None,
+        ),
+    ),
 )

@@ -201,6 +201,8 @@ def envelope(xs, req):
 def guard(kit, car, g, sign, Z):
     """Front (sign +1) or rear (-1) guard: a low bar across, two corner pieces (tube loops or folded panels) rising to
     `top`, brackets back to the bumper."""
+    if g is None:          # this car has no such piece (its ARMOR style sets it None)
+        return
     z_lo, z_top, xe = Z(g["z"]), Z(g["top"]), g["x"]
     loops = [(s * a, s * b) for a, b in g["corners"] for s in (1, -1)]
     half = g["r"] if g["kind"] == "tube" else g["t"] / 2
@@ -240,6 +242,8 @@ def guard(kit, car, g, sign, Z):
 def sills(kit, car, g, Z, Ysh):
     """Both sill guards: a tube or a step board along the rocker below the doors, `gap` off its tapering face, ends and
     brackets to the rocker."""
+    if g is None:          # this car has no such piece (its ARMOR style sets it None)
+        return
     z, y0, y1 = Z(g["z"]), g["y"][0] + Ysh, g["y"][1] + Ysh          # y: (rear, front)
     half = g["r"] if g["kind"] == "tube" else g["t"] / 2
     bend = g.get("bend", 0.0)
@@ -283,6 +287,8 @@ def sills(kit, car, g, Z, Ysh):
 def roof(kit, car, g, Ysh):
     """Roof rack on four feet: two crossbars, then a basket (tube frame, rail, posts, slats) or a low platform (flat-bar
     frame, plank slats)."""
+    if g is None:          # this car has no such piece (its ARMOR style sets it None)
+        return
     xf, (yr, yf) = g["feet_x"], (g["y"][0] + Ysh, g["y"][1] + Ysh)
     bars = [y + Ysh for y in g["bars"]]
     xb = g["x"]
