@@ -1,8 +1,8 @@
 -- Car fridge (server and SP; references/upgrades.md section 4): part TeslaFridge's state `fridge` (Upgrades.lua) is
 -- settled here and nowhere else. The engine's own fridge rule needs a powered sourceGrid, which a vehicle container
--- never has (Food.java:760; VehicleParts.java:309), so each settle puts the age (and the freezing) the food
--- would have had: since the last settle, the hours the fridge ran at the fridge factor, the rest at room rate,
--- counted from the baseline the last settle wrote (fridge.items). The clients copy items for display (FridgeUI.lua).
+-- never has (Food.java:760; VehicleParts.java:309), so each settle puts the age and freezing each food would have had
+-- since the last settle: Upgrades.lua F.step from the baseline the last settle wrote (fridge.items), the hours the
+-- fridge ran in its mode, then the hours it had no power. The clients copy items for display (FridgeUI.lua).
 -- When: every ten game minutes over the cars registered below, on every load (OnSpawnVehicleEnd: catch-up), before a
 -- mode change, and with every charging settle (Charging.lua settleSentry), so the power it ran on is booked as sentry's.
 if isClient() then return end
@@ -16,26 +16,33 @@ local F, B, S = T.Fridge, T.Battery, T.Sentry
 T.ServerCommands = T.ServerCommands or {}
 
 -- vehicle id -> true for the loaded cars with the fridge on. Memory only: ids change on every load and an old one goes
--- to another car (BaseVehicle.java:800-806). A car still at id -1 when it loads is not listed; `late` makes the next
--- ten-minute tick look for it in the cell.
-local cars, late = {}, false
-F.cars = cars
+-- to another car (BaseVehicle.java:800-806). A car still at id -1 when it loads goes on `late` instead: the next
+-- ten-minute tick lists it if it has an id by then and drops it either way (its next load puts it back).
+local cars, late = {}, {}
+F.cars, F.late = cars, late
 function F.track(v)
     local id = v:getId()
-    if id == -1 then late = true else cars[id] = true end
+    if id == -1 then late[v] = true else cars[id] = true end
 end
 function F.untrack(v) cars[v:getId()] = nil end
 
-local function off(v, part)
-    part:getModData().fridge = nil
+-- switched off: `fridge` goes (the server reads only that as on); `fridgeLast` keeps the last settle's values for the
+-- clients that have not applied them (FridgeUI.lua), until it is switched on again, removed (Upgrades.lua), or there
+-- was nothing in it. One transmit.
+local function off(v, part, at, items)
+    local md = part:getModData()
+    md.fridge = nil
+    local any = false
+    for _ in pairs(items or {}) do any = true; break end -- Kahlua has no next()
+    md.fridgeLast = at and any and { at = at, items = items } or nil
     F.untrack(v)
     v:transmitPartModData(part)
 end
 
 -- Books the fridge from fridge.at to t (default now). freeUntil: as Sentry.settle (world hour a charger powered the
 -- car until; nil = Charge.powerUntil); that stretch costs the pack nothing and goes into chg.fed off the grid. The
--- rest runs on the pack down to S.MIN_PCT; short of that the fridge switches off and its `by` hears it once (off
--- clears the state: it stays off until switched on again, as sentry).
+-- rest runs on the pack down to S.MIN_PCT; short of that the fridge switches off and its `by` hears it once (it stays
+-- off until switched on again, as sentry).
 function F.settle(v, t, freeUntil)
     local part = v and v:getPartById("TeslaFridge")
     local s = part and part:getModData().fridge
@@ -57,39 +64,38 @@ function F.settle(v, t, freeUntil)
     if paid > 0 then B.set(v, bp, cur - paid * F.KW) end
     local on = free + paid -- hours it ran; the rest of dt it had no power
     local dead = on < dt - 1e-9
-    local factor, perHour = F.fridgeFactor(), F.rotSpeed() / 24 -- age is in days (Food.java:773)
-    local freeze = s.mode == "freeze"
-    local old, new = s.items or {}, {}
+    local old, new, n, full = s.items or {}, {}, 0, false
     local items = part:getItemContainer():getItems()
     for i = 0, items:size() - 1 do
         local it = items:get(i)
-        if instanceof(it, "Food") then
+        -- food that spoils (Food.java:1377-1381); the first F.MAX_ITEMS of it, the rest at room rate
+        if instanceof(it, "Food") and it:getOffAgeMax() < 1000000000 then
+            if n == F.MAX_ITEMS then full = true; break end
+            n = n + 1
             it:updateAge() -- lastAged = now: the engine adds nothing on top of what is set here
-            local k = tostring(it:getID())
+            local k, cf = tostring(it:getID()), it:canBeFrozen()
             local b = old[k]
-            -- only food that was here at the last settle runs from its baseline; new food only gets one
-            if b then
-                it:setAge(b.age + ((dt - on) + on * (b.fr and 0 or factor)) * perHour)
-                if freeze and it:canBeFrozen() then
-                    if not b.fr then
-                        it:setFreezingTime(math.min(100, b.ft + on / F.FREEZE_HOURS * 100))
-                        if it:getFreezingTime() >= 100 then it:setFrozen(true) end
-                    elseif not dead then
-                        it:setFreezingTime(100)
-                        it:setFrozen(true)
-                    end
-                end
+            if b then -- from its baseline only, never from the item's own (client-writable) flags
+                b = F.step(F.step(b, on, s.mode, cf), dt - on, nil, cf)
+                it:setAge(b.age)
+                it:setFreezingTime(b.ft)
+                it:setFrozen(b.fr)
+            else -- new food only gets a baseline; frozen only with freezing time to show for it
+                local ft = it:getFreezingTime()
+                b = { age = it:getAge(), ft = ft, fr = ft > 0 and it:isFrozen() }
             end
-            new[k] = { age = it:getAge(), ft = it:getFreezingTime(), fr = it:isFrozen() }
+            if b.ft > 0 and it:isFertilized() then it:setFertilized(false) end -- frozen eggs die (Food.java:837-838)
+            new[k] = b
         end
     end
+    if full and not s.full then T.log("fridge full vid=" .. v:getId() .. ": " .. F.MAX_ITEMS .. " foods tracked, the rest at room rate") end
     if dead then
-        off(v, part)
+        off(v, part, t, new)
         T.log("fridge off low battery vid=" .. v:getId())
         T.Inbox.notify(s.by, T.Inbox.entry(v, "lowBattery", "fridge"))
         return
     end
-    s.at, s.items = t, new
+    s.at, s.items, s.full = t, new, full or nil
     F.track(v)
     v:transmitPartModData(part)
 end
@@ -103,12 +109,12 @@ function F.setMode(v, mode, by)
     F.settle(v)
     if was and not md.fridge then return end -- that settle just switched it off for low battery (and said so)
     if not mode then
-        if md.fridge then off(v, part) end
+        if md.fridge then off(v, part, md.fridge.at, md.fridge.items) end
     elseif md.fridge then
         md.fridge.mode = mode
         v:transmitPartModData(part)
     else
-        md.fridge = { mode = mode, at = T.hours(), by = by, items = {} }
+        md.fridge, md.fridgeLast = { mode = mode, at = T.hours(), by = by, items = {} }, nil
         F.settle(v) -- the food in it now gets its baseline
     end
     T.log("fridge " .. tostring(mode or "off") .. " vid=" .. v:getId() .. " by " .. tostring(by))
@@ -132,19 +138,15 @@ local function settleSafe(v, t)
     if not ok then T.log("fridge settle failed vid=" .. tostring(v:getId()) .. ": " .. tostring(err)) end
 end
 
--- the cars that loaded at id -1 (IsoCell.getVehicles is a HashSet: iterator)
-local function sweep()
-    late = false
-    local it = getCell():getVehicles():iterator()
-    while it:hasNext() do
-        local v = it:next()
-        local p = v:getPartById("TeslaFridge")
-        if p and p:getModData().fridge then F.track(v) end
-    end
-end
-
 Events.EveryTenMinutes.Add(function()
-    if late then sweep() end
+    local retry = {}
+    for v in pairs(late) do retry[#retry + 1] = v end
+    for _, v in ipairs(retry) do
+        late[v] = nil
+        local id = v:getId()
+        local p = id ~= -1 and getVehicleById(id) == v and v:getPartById("TeslaFridge")
+        if p and p:getModData().fridge then cars[id] = true end
+    end
     local ids = {}
     for id in pairs(cars) do ids[#ids + 1] = id end
     local t = T.hours()
