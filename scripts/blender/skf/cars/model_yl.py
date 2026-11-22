@@ -182,17 +182,19 @@ CAR = dict(
     # rear brake lights as an extension of the light bar")
     # head_boxes: the main headlamps in the bumper's pockets under the light bar, lit with the headlights (dark before,
     # as the Model Y's; E2E armorML-yl 2026-11-22): the pocket's inside (black_base, the chrome projector lens at |x|
-    # 0.603-0.665) across |x| 0.590-0.675 and y 1.797-1.830, sized to the Model Y's lit lamp on screen (game camera
-    # SE: 14 x 9 px; the whole pocket |x| 0.570-0.685, y 1.60-1.85 lit 17-19 x 13-15 px, E2E ylamp-yl 2026-11-22;
-    # the lens alone was a dot, Main 2026-11-22). The pocket's floor (z -0.284, y 1.80-1.85) and its upper step
-    # (z -0.26, y 1.74-1.80) both face the camera, so y sets the lit height: y0 1.795-1.802 keeps 10 px, 1.805 drops
-    # the step's lip to 5. head_cut bisects the pocket's triangles (|x| 0.515-0.718, deep to y 1.64) at those |x| and y
+    # 0.603-0.665) across |x| 0.580-0.680 and y <= 1.830, sized to the Model Y's lit lamp on screen (game cameras SE
+    # 14 x 9 px and S 29 x 9 px). Its deep side wall (|x| 0.67, y 1.70-1.80) gives the S camera's width; the floor's
+    # front (y 1.83-1.85) and the pocket's outer upper corner the SE camera's extra height (whole pocket |x|
+    # 0.570-0.685, y 1.60-1.85: SE 17-19 x 13-15, E2E ylamp-yl 2026-11-22). Lit pieces cut off on all sides lose the
+    # bake margin and break up on screen (only the floor's front, |x| 0.590-0.675, y 1.797-1.830: SE 11 x 6-8, S 8
+    # x 8, E2E ylamp2-yl; plus z <= -0.250, y <= 1.845: S 17 x 8, E2E ylamp3b-yl), so cut few planes and keep the
+    # deep pocket. head_cut bisects the pocket's triangles (|x| 0.515-0.718, deep to y 1.64) at those |x| and y
     LAMPS=dict(head=("front_white_light",), tail=("back_red_Light", "red_plastic", "M22"), tail_z=0.75, tail_y=-1.5,
                blade="Badge_BLADE", blade_rgb=(236, 78, 44), blade_flush=True, blade_swatch=True, blade_round=0.019,
                blade_split=True, brake=("Plane.043", 0.39),
                head_cut=dict(mats=("black_base", "chrome"), lo=(0.50, 1.60, -0.30), hi=(0.75, 1.86, -0.23),
-                             x=(0.590, 0.685), y=(1.845,), z=(-0.250,)),
-               head_boxes=((("black_base", "chrome"), (0.590, 1.60, -0.30), (0.685, 1.845, -0.250)),)),
+                             x=(0.580, 0.680), y=(1.830,)),
+               head_boxes=((("black_base", "chrome"), (0.580, 1.60, -0.30), (0.680, 1.830, -0.23)),)),
     # part lines, side view (y, z): S, BF, BR off this source's panel edges; D the rear door glass / quarter glass
     # divider bar's middle; R1 (z ascending) the rear door's rear edge, upright from the belt to the arch since the
     # prep (work/outline.py; prep FIELD fit moved them forward: work/remap.py)
