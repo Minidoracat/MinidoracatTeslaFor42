@@ -143,8 +143,11 @@ end
 -- page asks by itself, so no deny ever reaches the player), and the container in this player's reach by the test the
 -- loot page uses (canAccessContainer runs the part's ContainerAccess function, BaseVehicle.java:8439-8455). No car,
 -- too far, no fridge, switched on (the clients read fridge.items), out of reach or nothing spoiling in it: no answer
--- and no deny. Stores nothing.
+-- and no deny. Stores nothing. `seq` goes back as sent, so it must be a whole number 1 .. 2^31 - 1 (an argument can
+-- be any table): anything else is dropped before the car is looked up or a food touched.
 T.ServerCommands.fridgeFoodPull = function(player, args)
+    local seq = args.seq
+    if type(seq) ~= "number" or not (seq >= 1 and seq < 2147483648) or math.floor(seq) ~= seq then return end
     local v = T.commandVehicle(player, args, nil, true)
     local part = v and F.part(v)
     local c = part and part:getItemContainer()
