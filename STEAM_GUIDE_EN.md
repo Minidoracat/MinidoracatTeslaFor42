@@ -519,7 +519,7 @@ A charger that works on the floor, no wall needed; slower than the Wall Connecto
 [list]
 [*] [b]Two slots[/b]: all nine Teslas have an Upgrades category at the bottom of the mechanics window, with two slots, Protection and Fridge; the 53 ft trailer has none. Both are empty on a new car: craft the upgrades or find them in loot.
 [*] [b]Fitting and removing[/b]: right-click the slot in the mechanics window and choose Install or Uninstall; Mechanics level does not matter and it never fails. Protection needs a Wrench or Ratchet Wrench on you; the Car Fridge needs no tool.
-[*] [b]Theft[/b]: the same rule as vanilla parts that need the key. With every door locked and every window closed and intact, only someone with this car's key can take them off; with a door unlocked, or a window open or broken, anyone can.
+[*] [b]Theft[/b]: the same rule as vanilla parts that need the key. With every door locked and every window closed and intact, only someone with this car's key can take them off; with a door unlocked, or a window open or broken, no key is needed. On a car claimed in Vehicle Manager you also need its Salvage permission; that permission does not replace the rule above, you need both.
 [*] [b]Overall condition[/b]: an empty slot counts in the mechanics window's overall condition: about 4 to 6 lower with both empty, back to normal once fitted. Driving is not affected.
 [/list]
 [h3]Car Fridge[/h3]
