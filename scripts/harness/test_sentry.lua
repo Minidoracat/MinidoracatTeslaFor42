@@ -539,11 +539,15 @@ for _, q in ipairs(vmAsked) do queries = queries and q end
 check(queries, "sorting out a touch, a break, a tow: VehicleManager is asked as a query (the action was its to record)")
 MinidoracatVehicleManagerAPI = nil
 cmds.sentryArm(wOwner, { vid = wc:getId() })
-vmAsked = {}
-MinidoracatVehicleManagerAPI = { canUse = function(_, _, _, ctx) vmAsked[#vmAsked + 1] = ctx.query == true; return true, "ADMIN" end }
+local override = {} -- each question: is it the one VehicleManager records as this car's PASSENGER override?
+MinidoracatVehicleManagerAPI = { canUse = function(p, car, code, ctx)
+    override[#override + 1] = p == thief and car == wc and code == "PASSENGER" and ctx.mod == T.MODULE
+        and ctx.query ~= true and ctx.silent ~= true
+    return true, "ADMIN"
+end }
 S.onTouch(wc, thief, "door")
-check(md(wc).sentry == nil and #vmAsked == 2 and vmAsked[1] and not vmAsked[2],
-    "an admin's override decides the touch (sentry off): asked again, not as a query, so VehicleManager records the override")
+check(md(wc).sentry == nil and #override == 2 and not override[1] and override[2],
+    "an admin's override decides the touch (sentry off): asked again as Tesla, PASSENGER, no query, not silent (on VM's record)")
 MinidoracatVehicleManagerAPI = nil
 trailer.towing = nil
 -- the Semi and its 53 ft trailer (client SemiHitch.lua sends the same vanilla attachTrailer, Semi = A)

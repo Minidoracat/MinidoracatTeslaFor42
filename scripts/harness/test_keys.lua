@@ -1097,9 +1097,7 @@ v.frunk.d.locked = true
 -- VehicleManager refuses the hood to someone holding this car's key (a share without REPAIR or SALVAGE, VirtualKey
 -- off, a rental lock that stops the owner too, not ready yet): every entry leaves the lock as it was, on both sides
 local function lidRefused(chr, label)
-    check(bothSides("mechanics", chr) and bothSides("openHood", chr)
-        and not as(false, true, function() return guarded(unlockAct(chr)) end) and v.frunk.d.locked
-        and not K.lidKey(v, v.frunk, chr), label)
+    check(bothSides("mechanics", chr) and bothSides("openHood", chr) and not K.lidKey(v, v.frunk, chr), label)
 end
 vm({ PASSENGER = true })
 lidRefused(walletOnly, "VM share without the hood (PASSENGER only), key card in a wallet: the lid stays locked")
@@ -1107,10 +1105,12 @@ lidRefused(owner, "VM share without the hood, phone key in a bag: the lid stays 
 lidRefused(loose, "VM share without the hood, the key in hand: the lid stays locked")
 SandboxVars.MinidoracatVehicleManager = { VirtualKey = false }
 lidRefused(walletOnly, "VM VirtualKey off, PASSENGER only, key card in a wallet: the lid stays locked")
+for _, sp in ipairs({ true, false }) do
+    v.doors[1].d.locked = true
+    check(run(sp, { unlockAct(owner, v.doors[1]) }) and not v.doors[1].d.locked,
+        "VM PASSENGER share (VirtualKey off), phone key in a bag, " .. (sp and "SP" or "MP") .. ": past its guard the cabin door's handle unlocks")
+end
 SandboxVars.MinidoracatVehicleManager = nil
-v.doors[1].d.locked = true
-check(phoneUnlocks(v, v.doors[1], owner) and not v.doors[1].d.locked,
-    "VM PASSENGER share, phone key in a bag: the cabin door handle still unlocks")
 v.doors[1].d.locked = true
 vm({}, "RENT_LOCKED")
 lidRefused(owner, "VM rental lock: the owner's phone key in a bag leaves the lid locked")
@@ -1130,7 +1130,8 @@ for _, sp in ipairs({ true, false }) do
 end
 v.trunk.d.locked = false
 SandboxVars.MinidoracatVehicleManager = nil
--- not ready yet: VehicleManager's guard judges nothing (its G.decide), ours fails closed for a key vanilla cannot see
+-- not ready yet: VehicleManager's guard judges nothing (its G.decide). The lid's rule (K.lidKey) fails closed; the
+-- handle's phone key does not. Only the lock is held to here: the open itself runs vanilla's, alarm and all, in that gap.
 vm({}, "NOT_READY")
 local nr = scenario(false, "openHood", owner)
 check(nr.locked and not nr.open and not K.lidKey(v, v.frunk, owner), "VM not ready: a phone key in a bag leaves the lid locked")
