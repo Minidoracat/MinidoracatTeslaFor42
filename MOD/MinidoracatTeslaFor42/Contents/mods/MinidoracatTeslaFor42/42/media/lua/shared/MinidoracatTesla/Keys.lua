@@ -138,7 +138,8 @@ end
 -- VehicleManager grants one of `codes` on this car to chr, as a virtual key (no item). Not installed, its VirtualKey
 -- sandbox option off (vanilla key rules, VehicleManager ActionGuards.lua virtualKey, default on), or an unclaimed car
 -- (anyone's: no key from it) -> false. VehicleManager's admin override ("ADMIN") counts: opt-in in its fleet window, and
--- it writes ADMIN_BYPASS with our mod name (its OwnershipSystem.lua O.allowsRecord). MP client: its projection, UX only.
+-- asked without query (K.canPair) it writes ADMIN_BYPASS with our mod name (its OwnershipSystem.lua O.allowsRecord);
+-- the lid asks as a query, the override on record from its guard on the open. MP client: its projection, UX only.
 -- Fails closed, unlike Remote.vmAllows (no VehicleManager or UNCLAIMED = yes there): here only a VehicleManager grant counts.
 -- (T.authorized's HOTWIRED, like KEY and EASY_USE, only comes without VehicleManager, which already returned false.)
 -- query: as T.authorized.
@@ -221,8 +222,9 @@ end
 -- ItemContainer.java:3290-3304), so the vanilla unlock action (queued by ISVehicleMenu.onOpenDoor / onEnter) would fail.
 -- Runs right before that action toggles the lock: in start() in SP (ISUnlockVehicleDoor.lua:22-36), in complete() on
 -- the server (:55-76); never on an MP client. The key card keeps vanilla rules (loose: auto; in the wallet: tap the reader).
--- VehicleManager is not asked: its guard, outside ours, has let this unlock through by its own door rule (0.15.0 on).
-function K.phoneUnlock(vehicle, part, chr)
+-- VehicleManager is not asked: its guard, outside the two wraps below, has let this unlock through by its own door
+-- rule (0.15.0 on). Local for that: nothing else may call it.
+local function phoneUnlock(vehicle, part, chr)
     local door = part and part:getDoor()
     if not door or not door:isLocked() or door:isLockBroken() or not chr or not T.isTesla(vehicle) then return false end
     if part:getVehicle() ~= vehicle then return false end -- vehicle and part travel apart (see K.lidKey)
@@ -246,13 +248,13 @@ local function lidDenied(a)
 end
 function ISUnlockVehicleDoor:start(...)
     local sp = not isClient() and not isServer()
-    if sp then K.phoneUnlock(self.vehicle, self.part, self.character) end
+    if sp then phoneUnlock(self.vehicle, self.part, self.character) end
     local r = unlockStart(self, ...)
     if sp then lidDenied(self) end -- vanilla toggled here and force-stopped if still locked (ISUnlockVehicleDoor.lua:26-31)
     return r
 end
 function ISUnlockVehicleDoor:complete(...)
-    if isServer() then K.phoneUnlock(self.vehicle, self.part, self.character) end
+    if isServer() then phoneUnlock(self.vehicle, self.part, self.character) end
     local ok = unlockComplete(self, ...)
     if isServer() and not ok then lidDenied(self) end -- MP: only the server's complete() unlocks (:55-76)
     return ok

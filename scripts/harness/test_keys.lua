@@ -692,6 +692,19 @@ local function as(cli, srv, fn)
     assert(ok, r)
     return r
 end
+-- Keys.lua's phone-key unlock is its own (a local): seen as the server's complete() runs it, by its transmit on top of
+-- vanilla's. The wrap is kept here: the class gets its earlier methods back further down.
+local phoneUnlocks
+do
+    local complete = ISUnlockVehicleDoor.complete
+    phoneUnlocks = function(car, part, chr)
+        return as(false, true, function()
+            local n = car.doorTx
+            complete({ vehicle = car, part = part, character = chr })
+            return car.doorTx == n + 2
+        end)
+    end
+end
 local function ignored(chr, part) return ISUnlockVehicleDoor:new(chr, part).ignoreAction == true end
 local function openLid(chr) -- locked and shut first; what the open leaves
     v.frunk.d.locked, v.frunk.d.open = true, false
@@ -771,7 +784,8 @@ do -- its own scope: the main chunk's 200-local limit
 -- and on the unlock's start() (its ActionGuards.lua makeWrapper, SPECIAL): canUse for the door's codes (its Actions.lua
 -- doorAction: the hood REPAIR or SALVAGE, a trunk CARGO, any other door PASSENGER; unlock and open alike). Refused, ours
 -- is never called: complete() is false, and SP stops the action or drops the queue itself (its haltLocal). Its virtual
--- key (VirtualKey not off, a claimed car) unlocks by itself and marks the car entered on an open.
+-- key (VirtualKey not off, a claimed car) unlocks by itself and marks the car entered on an open. Left out: its pass
+-- for someone seated at their own seat's door (ownSeatDoor); nobody here unlocks from a seat.
 local vmQ = {} -- our own questions in this block (as Tesla: ctx.mod), each: was it a query?
 local function vm(codes, reason) -- grants these codes, refuses the rest
     MinidoracatVehicleManagerAPI = { canUse = function(_, _, code, ctx)
@@ -784,12 +798,14 @@ local function vmDecides(a) -- allowed, and whether its virtual key acts
     local api = MinidoracatVehicleManagerAPI
     if not api then return true, false end
     local id = a.part:getId()
-    local codes = id == "EngineDoor" and { "REPAIR", "SALVAGE" } or id:find("Trunk", 1, true) and { "CARGO" } or { "PASSENGER" }
+    local codes = id == "EngineDoor" and { "REPAIR", "SALVAGE" }
+        or (id:find("Trunk", 1, true) or id == "DoorRear") and { "CARGO" } or { "PASSENGER" }
     local ok, why
     for _, code in ipairs(codes) do
         ok, why = api.canUse(a.character, a.vehicle, code)
         if ok then break end
     end
+    if why == "NOT_READY" then return true, false end -- its ledger not loaded yet: its guard judges nothing (G.decide)
     local page = SandboxVars and SandboxVars.MinidoracatVehicleManager
     return ok, ok and not (page and page.VirtualKey == false) and why ~= "UNCLAIMED"
 end
@@ -1081,7 +1097,8 @@ v.frunk.d.locked = true
 -- VehicleManager refuses the hood to someone holding this car's key (a share without REPAIR or SALVAGE, VirtualKey
 -- off, a rental lock that stops the owner too, not ready yet): every entry leaves the lock as it was, on both sides
 local function lidRefused(chr, label)
-    check(bothSides("mechanics", chr) and bothSides("openHood", chr) and not K.phoneUnlock(v, v.frunk, chr)
+    check(bothSides("mechanics", chr) and bothSides("openHood", chr)
+        and not as(false, true, function() return guarded(unlockAct(chr)) end) and v.frunk.d.locked
         and not K.lidKey(v, v.frunk, chr), label)
 end
 vm({ PASSENGER = true })
@@ -1092,7 +1109,7 @@ SandboxVars.MinidoracatVehicleManager = { VirtualKey = false }
 lidRefused(walletOnly, "VM VirtualKey off, PASSENGER only, key card in a wallet: the lid stays locked")
 SandboxVars.MinidoracatVehicleManager = nil
 v.doors[1].d.locked = true
-check(K.phoneUnlock(v, v.doors[1], owner) and not v.doors[1].d.locked,
+check(phoneUnlocks(v, v.doors[1], owner) and not v.doors[1].d.locked,
     "VM PASSENGER share, phone key in a bag: the cabin door handle still unlocks")
 v.doors[1].d.locked = true
 vm({}, "RENT_LOCKED")
@@ -1106,13 +1123,21 @@ end
 -- past VM's guard our own rule is not asked again: its door codes are its own (a trunk is CARGO, not PASSENGER)
 SandboxVars.MinidoracatVehicleManager = { VirtualKey = false }
 vm({ CARGO = true })
-v.trunk.d.locked = true
-check(run(false, { unlockAct(owner, v.trunk) }) and not v.trunk.d.locked,
-    "VM CARGO share only (VirtualKey off), phone key in a bag: the liftgate's handle unlocks")
+for _, sp in ipairs({ true, false }) do
+    v.trunk.d.locked = true
+    check(run(sp, { unlockAct(owner, v.trunk) }) and not v.trunk.d.locked,
+        "VM CARGO share only (VirtualKey off), phone key in a bag, " .. (sp and "SP" or "MP") .. ": the liftgate's handle unlocks")
+end
 v.trunk.d.locked = false
 SandboxVars.MinidoracatVehicleManager = nil
+-- not ready yet: VehicleManager's guard judges nothing (its G.decide), ours fails closed for a key vanilla cannot see
 vm({}, "NOT_READY")
-lidRefused(owner, "VM not ready: fail closed, the lid stays locked")
+local nr = scenario(false, "openHood", owner)
+check(nr.locked and not nr.open and not K.lidKey(v, v.frunk, owner), "VM not ready: a phone key in a bag leaves the lid locked")
+v.doors[1].d.locked = true
+check(run(false, { unlockAct(owner, v.doors[1]) }) and not v.doors[1].d.locked,
+    "VM not ready: a phone key in a bag unlocks the cabin door, as the key in hand would")
+v.doors[1].d.locked = true
 vm({})
 local r10 = scenario(false, "mechanics", stranger)
 check(as(true, false, function() return not ignored(stranger, v.frunk) end) and kept(r10) and r10.said == 0 and not r10.win,
@@ -1131,7 +1156,7 @@ otherLid.getVehicle = function() return {} end
 otherDoor.getVehicle = otherLid.getVehicle
 ISOpenVehicleDoor.complete({ vehicle = v, part = otherLid, character = loose })
 check(otherLid.d.locked and not otherLid.d.open, "frunk: a key for car A does not unlock car B's lid (vehicle/part mismatch)")
-check(not K.phoneUnlock(v, otherDoor, owner) and otherDoor.d.locked, "handle: phone key for car A leaves car B's door locked")
+check(not phoneUnlocks(v, otherDoor, owner) and otherDoor.d.locked, "handle: phone key for car A leaves car B's door locked")
 otherLid.d.locked, otherLid.d.open = false, true -- car B's lid, unlocked and open
 ISCloseVehicleDoor.complete({ vehicle = v, part = otherLid, character = loose })
 check(v:areAllDoorsLocked() and not otherLid.d.open and not otherLid.d.locked,
@@ -1231,10 +1256,10 @@ multi.x = carA.x - 1
 check(mInv:haveThisKeyId(carA.keyId) == nil and K.phoneKey(multi, carA) == ph and K.phoneKey(multi, carB) == ph,
     "loose phone key: vanilla lookup misses A, Keys.phoneKey finds it for A and B")
 carA.doors[1].d.locked = true
-check(K.phoneUnlock(carA, carA.doors[1], multi) and not carA.doors[1].d.locked, "handle on A with the loose two-car phone: unlocked")
+check(phoneUnlocks(carA, carA.doors[1], multi) and not carA.doors[1].d.locked, "handle on A with the loose two-car phone: unlocked")
 carB.doors[1].d.locked = true
-check(not K.phoneUnlock(carB, carB.doors[1], multi) and carB.doors[1].d.locked,
-    "handle on B: vanilla's own (the item's keyId is B), Tesla's does not double up")
+check(not phoneUnlocks(carB, carB.doors[1], multi) and not carB.doors[1].d.locked,
+    "handle on B: vanilla's own unlocks it (the item's keyId is B), Tesla's does not double up")
 carB.doors[1].d.locked = false
 local startsA = {}
 function carA:tryStartEngine(h) startsA[#startsA + 1] = h end
@@ -1250,7 +1275,7 @@ check(T.authorized(multi, carA, "PASSENGER") == true and T.legit(multi, carA) ==
 -- a phone paired with A only does nothing at B
 local onlyA = player("onlyA", container(key(K.PHONE_KEY, carA.keyId)), carB.x - 1, carB.y)
 carB.doors[1].d.locked = true
-check(K.phoneKey(onlyA, carB) == nil and not K.phoneUnlock(carB, carB.doors[1], onlyA) and carB.doors[1].d.locked,
+check(K.phoneKey(onlyA, carB) == nil and not phoneUnlocks(carB, carB.doors[1], onlyA) and carB.doors[1].d.locked,
     "a phone key for A only: B's handle stays locked")
 function carB:tryStartEngine(h) self.startArg = h end
 function carB:isDriver(p) return p.vehicle == self end
