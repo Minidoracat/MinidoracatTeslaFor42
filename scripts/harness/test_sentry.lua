@@ -639,6 +639,13 @@ do
     send(hOwner, "detachTrailer", { vehicle = semi:getId() }, function() unhook(semi) end)
     check(hitches() == 2 and S.stats.flashes == f0 + 2 and md(semi).sentry ~= nil,
         "the owner unhitches his own trailer: nothing, sentry stays on")
+    hook(semi, st)
+    local asked = {} -- with VehicleManager: was the unhitch question a query?
+    MinidoracatVehicleManagerAPI = { canUse = function(_, _, _, ctx) asked[#asked + 1] = ctx.query == true; return false, "NOT_AUTHORIZED" end }
+    send(thief, "detachTrailer", { vehicle = semi:getId() }, function() unhook(semi) end)
+    MinidoracatVehicleManagerAPI = nil
+    check(#asked == 1 and asked[1] and hitches() == 2,
+        "sorting out an unhitch: VehicleManager is asked once, as a query (inside the window: nothing more)")
     F.hours = F.hours + S.towHours() + 1 / 60
     hook(semi, st)
     send(thief, "attachTrailer", { vehicleA = third.id, vehicleB = st.id }, function() unhook(third); unhook(st); hook(third, st) end)
