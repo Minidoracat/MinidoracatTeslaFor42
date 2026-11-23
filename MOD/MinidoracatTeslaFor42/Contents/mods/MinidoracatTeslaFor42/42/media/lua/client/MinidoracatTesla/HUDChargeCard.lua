@@ -5,9 +5,11 @@ require "ISUI/ISPanelJoypad"
 require "ISUI/ISButton"
 require "MinidoracatTesla/Core"
 require "MinidoracatTesla/HUD"
+require "MinidoracatTesla/Units"
 
 local T = MinidoracatTesla
 local HUD = T.HUD
+local U = T.Units
 local C = HUD.C
 local Card = ISPanelJoypad:derive("MinidoracatTeslaChargeCard")
 T.ChargeCard = Card
@@ -158,7 +160,7 @@ function Card:read()
         local kwh, added, hours, cap = T.Battery.chargeEstimate(part, chg, T.hours())
         pct = math.min(100, math.floor(kwh * 100 / math.max(1, cap) + 0.5)) -- int container cap can exceed the pack's kWh
         local kmk = T.kmPerKwh(v) -- nil: no range limit (Gas Consumption 0): "+-- km", the game fonts have no ∞
-        addKm = kmk and math.floor(added * kmk + 0.5) or "--"
+        addKm = kmk and U.len(math.floor(added * kmk + 0.5)) or "--"
         addKwh = math.floor(added * 10 + 0.5)
         mins = math.floor(hours * 60 + 0.5)
         kw = math.floor(T.Battery.chargeKwAt(chg, cap, kwh) * 10 + 0.5) -- a Supercharger's on its DC curve now
@@ -181,8 +183,9 @@ function Card:read()
         local ok, why = T.mayUseCable(self.player, v)
         if not ok then deny, own = why, T.chargerOwner(self.player, chg.x, chg.y, chg.z) end
     end
+    local imp = U.imperial()
     local key = state .. pct .. "/" .. kw .. "/" .. addKm .. "/" .. addKwh .. "/" .. mins .. "/" .. self:target() .. src
-        .. (deny or "") .. (own and "o" or "")
+        .. (deny or "") .. (own and "o" or "") .. (imp and "i" or "")
     if key == self.key then return false end
     self.key = key
     local was = self.state
@@ -194,7 +197,7 @@ function Card:read()
     self.sDaily, self.sTrip = getText("IGUI_MinidoracatTesla_Card_Daily"), getText("IGUI_MinidoracatTesla_Card_Trip")
     self.sKw = fmt1(kw / 10) .. " kW"
     self.sKind = self.kind and getItemName("Base.MinidoracatTesla_" .. self.kind) or "" -- LuaManager.java:8745-8763
-    self.sAddKm = "+" .. tostring(addKm) .. " km"
+    self.sAddKm = "+" .. tostring(addKm) .. (imp and " mi" or " km")
     self.sAddKwh = getText("IGUI_MinidoracatTesla_Card_AddedKwh", fmt1(addKwh / 10))
     self.sTime = state == "charging" and hmm(mins) or "--"
     self.sToTarget = getText("IGUI_MinidoracatTesla_Card_ToTarget", tgt)

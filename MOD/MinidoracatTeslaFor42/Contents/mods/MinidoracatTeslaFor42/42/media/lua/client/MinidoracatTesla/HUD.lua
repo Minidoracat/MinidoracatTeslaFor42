@@ -9,8 +9,10 @@ require "Vehicles/ISUI/ISVehicleDashboard"
 require "MinidoracatTesla/Core"
 require "MinidoracatTesla/HUDAtlas"
 require "MinidoracatTesla/Liftgate"
+require "MinidoracatTesla/Units"
 
 local T = MinidoracatTesla
+local U = T.Units
 local HUD = ISUIElement:derive("MinidoracatTeslaHUD")
 T.HUD = HUD
 local huds = {} -- [playerNum] = HUD
@@ -347,6 +349,11 @@ function HUD:readFast()
     local v, st = self.vehicle, self.st
     local running = v:isEngineRunning()
     st.on = running
+    local imp = U.imperial()
+    if imp ~= st.imp then -- the Units option changed: redraw, and the pill's distance line again
+        st.imp, self.dirty = imp, true
+        if self.msgId then self:setMessage() end
+    end
     local raw = math.abs(v:getCurrentSpeedKmHour()) * self.fake
     st.kmh = math.floor(raw + 0.5)
     local gear = 1
@@ -452,7 +459,7 @@ end
 
 -- Only runs when the message or its numbers change: builds the strings, measures them, re-lays out.
 function HUD:setMessage()
-    local id, a1, a2 = self.msgId, self.msgA1, self.msgA2
+    local id, a1, a2, imp = self.msgId, self.msgA1, self.msgA2, U.imperial()
     local title, sub, icon, color
     if id == 1 then
         local n, first = 0, nil
@@ -469,10 +476,12 @@ function HUD:setMessage()
         title, sub, icon, color = getText("IGUI_MinidoracatTesla_HUD_NoPower"), getText("IGUI_MinidoracatTesla_HUD_NoPowerSub"), "i_warn", C.warn
     elseif id == 3 then
         title, sub, icon, color = getText("IGUI_MinidoracatTesla_HUD_LowBattery"),
-            getText("IGUI_MinidoracatTesla_HUD_LowBatterySub", a1 and tostring(a1) or "--"), "i_warn", C.warn
+            getText(imp and "IGUI_MinidoracatTesla_HUD_LowBatterySubMi" or "IGUI_MinidoracatTesla_HUD_LowBatterySub",
+                a1 and tostring(U.len(a1)) or "--"), "i_warn", C.warn
     elseif id == 4 then
         title, sub, icon, color = getText("IGUI_MinidoracatTesla_HUD_Charging"),
-            getText("IGUI_MinidoracatTesla_HUD_ChargingSub", a1 and tostring(a1) or "--", hmm(a2), tostring(self.st.target or 100)), "i_bolt", C.ok
+            getText(imp and "IGUI_MinidoracatTesla_HUD_ChargingSubMi" or "IGUI_MinidoracatTesla_HUD_ChargingSub",
+                a1 and tostring(U.len(a1)) or "--", hmm(a2), tostring(self.st.target or 100)), "i_bolt", C.ok
     elseif id == 5 then
         title, sub, icon, color = getText("IGUI_MinidoracatTesla_HUD_Charged", tostring(a1)),
             getText("IGUI_MinidoracatTesla_HUD_ChargedSub"), "i_check", C.ok
@@ -574,10 +583,10 @@ function HUD:build()
     rect(self, PM_X * S - 3 * S, mid, pw + 6 * S, math.max(1, S), C.text3, 1)
 
     -- speed + unit
-    digits(self, A.big, st.kmh, GEAR_X * S - 2 * S, py + 2 * S, C.text, 1)
-    spr(self, A.kmh, GEAR_X * S, py + 48 * S, C.text2, 1)
-    -- Chill (owner's manuals: "Chill displays ... above the driving speed"): an accent outline badge beside km/h, the
-    -- gear row having no room; text drawn in prerender
+    digits(self, A.big, U.len(st.kmh), GEAR_X * S - 2 * S, py + 2 * S, C.text, 1)
+    spr(self, U.imperial() and A.mph or A.kmh, GEAR_X * S, py + 48 * S, C.text2, 1)
+    -- Chill (owner's manuals: "Chill displays ... above the driving speed"): an accent outline badge beside km/h (it
+    -- stays there beside the narrower mph), the gear row having no room; text drawn in prerender
     self.chillX = nil
     if st.chill then
         local bh = self.FH + 2 * S
@@ -644,14 +653,16 @@ function HUD:build()
     if st.locked then spr(self, A.i_lock, x, ry + 1 * S, C.text2, 1) else spr(self, A.i_unlock, x, ry + 1 * S, C.text3, 1) end
 
     -- range
-    local kmW = A.km[3] * self.f
+    local unit = U.imperial() and A.mi or A.km
+    local kmW = unit[3] * self.f
     if st.range then
-        local rx = R - kmW - digitsWidth(self, A.sm, st.range) - 4 * S
-        digits(self, A.sm, st.range, rx, SPD_Y * S, C.text2, 1)
+        local range = U.len(st.range)
+        local rx = R - kmW - digitsWidth(self, A.sm, range) - 4 * S
+        digits(self, A.sm, range, rx, SPD_Y * S, C.text2, 1)
     else -- no range limit: the atlas "∞" (Inter; the game fonts have none)
         spr(self, A.inf, R - kmW - A.inf[7] * self.f - 4 * S, SPD_Y * S, C.text2, 1)
     end
-    spr(self, A.km, R - kmW, SPD_Y * S, C.text2, 1)
+    spr(self, unit, R - kmW, SPD_Y * S, C.text2, 1)
 
     -- power key: same look as the quick keys, smaller (icon blue + underline while on)
     local ps = PWR * S

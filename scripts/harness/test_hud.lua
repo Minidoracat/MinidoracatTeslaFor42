@@ -1012,6 +1012,146 @@ dash:setVehicle(nil); dash:setVehicle(tesla)
 check(h.st.range == range1, "Gas Consumption unset: the range as before (" .. tostring(h.st.range) .. ")")
 card:read()
 getItemName = savedItemName
+
+-- ---------------------------------------------------------------- units (Units.lua)
+-- Imperial is display only: the read model stays km and km/h; the unit words, the digits and the strings change
+H.section("units")
+do
+    local U, A, MI = T.Units, h.A, 0.621371
+    local function draws(e) -- the atlas sprite is in the quad list
+        for i = 1, h.n, 12 do
+            if h.L[i] == e[1] and h.L[i + 1] == e[2] and h.L[i + 2] == e[3] then return true end
+        end
+        return false
+    end
+    local function number(set) -- the digits of `set` in the quad list, in draw order
+        local s = ""
+        for i = 1, h.n, 12 do
+            for d = 0, 9 do
+                local e = set[d]
+                if h.L[i] == e[1] and h.L[i + 1] == e[2] and h.L[i + 2] == e[3] then s = s .. d end
+            end
+        end
+        return s
+    end
+    local function mi(km) return math.floor(km * MI + 0.5) end
+    local function three() h:update(); h:update(); h:update() end
+    local unit, speed0, realGT, cardPlayer0 = 1, tesla.speed, getText, card.player
+    getText = function(k, a) return a and (k .. "|" .. a) or k end
+    getItemName = function(t) return t end
+    card.player = nil
+    tesla.speed = 70 -- the speed shows with the motor off too (a towed or rolling car)
+    three()
+    local _, _, w0 = MinidoracatTeslaAPI.hudRect(0)
+    local function metric()
+        return h.st.kmh == 70 and number(A.big) == "70" and number(A.sm) == tostring(range1) and draws(A.kmh)
+            and draws(A.km) and not draws(A.mph) and not draws(A.mi)
+    end
+    check(metric(), "no option (the harness has no PZAPI): 70 km/h, the range in km")
+    U.opt = { getValue = function() return unit end }
+    h:update()
+    check(metric(), "the option on Metric: the same")
+    unit = 2
+    h:update()
+    check(h.st.kmh == 70 and number(A.big) == "43" and draws(A.mph) and not draws(A.kmh),
+        "Imperial, one update later: 70 km/h reads 43 mph (AutoDrive's card at a 70 limit); the read model stays 70 (" .. number(A.big) .. ")")
+    check(h.st.range == range1 and number(A.sm) == tostring(mi(range1)) and draws(A.mi) and not draws(A.km),
+        "... the range in mi, right of its digits (" .. range1 .. " km -> " .. number(A.sm) .. ")")
+    local steady = true
+    for i = 1, 20 do -- 43.47 and 43.52 mph: rounding the mph itself would flip 43 / 44
+        tesla.speed = i % 2 == 0 and 69.96 or 70.04
+        h:update()
+        steady = steady and number(A.big) == "43"
+    end
+    check(steady, "a cruise wobbling around 70 km/h: 43 mph every update")
+    tesla.speed = 0.4
+    h:update()
+    local slow = number(A.big)
+    tesla.speed = -30
+    h:update()
+    check(slow == "0" and number(A.big) == "19", "0.4 km/h reads 0; reversing at 30 km/h reads 19 mph")
+    tesla.speed = 0
+    three()
+    local _, _, w1 = MinidoracatTeslaAPI.hudRect(0)
+    check(w1 == w0, "hudRect: the same width in mph (AutoDrive places its HUD by it)")
+
+    -- the pill and the charge card
+    unit = 1
+    tmd.chg = { kind = "WallConnector", x = 0, y = 0, z = 0, kw = 11.5, target = 90, last = T.hours() - 0.5, added = 0 }
+    three()
+    card.key = ""
+    card:read()
+    local km = tonumber(tostring(h.msgSub):match("ChargingSub|(%d+)$"))
+    local cardKm = tonumber(card.sAddKm:match("^%+(%d+) km$"))
+    check(h.msgId == 4 and (km or 0) > 0 and (cardKm or 0) > 0, "Metric, charging: +N km on the pill and the card ("
+        .. tostring(h.msgSub) .. ", " .. card.sAddKm .. ")")
+    unit = 2
+    h:update()
+    card:read() -- its key holds the unit: the strings again with nothing else changed
+    check(h.msgSub == "IGUI_MinidoracatTesla_HUD_ChargingSubMi|" .. mi(km or 0),
+        "Imperial, one update later: the pill's own key with the miles (" .. tostring(h.msgSub) .. ")")
+    check(card.sAddKm == "+" .. mi(cardKm or 0) .. " mi", "... the card's next read: " .. card.sAddKm)
+    tmd.chg = nil
+    unit = 1
+    tpart:setContainerContentAmount(7.84) -- 10 %
+    three()
+    local left = tonumber(tostring(h.msgSub):match("LowBatterySub|(%d+)$"))
+    unit = 2
+    h:update()
+    check(h.msgId == 3 and left ~= nil and h.msgSub == "IGUI_MinidoracatTesla_HUD_LowBatterySubMi|" .. mi(left or 0),
+        "low battery: " .. tostring(left) .. " km left -> " .. tostring(h.msgSub))
+    -- no range limit (Gas Consumption 0): the unit words still follow, with no number to convert
+    SandboxVars.CarGasConsumption = 0
+    dash:setVehicle(nil); dash:setVehicle(tesla)
+    three()
+    check(h.st.range == nil and draws(A.inf) and draws(A.mi) and not draws(A.km)
+        and h.msgSub == "IGUI_MinidoracatTesla_HUD_LowBatterySubMi|--", "no range limit: ∞ before mi, -- mi left")
+    tmd.chg = { kind = "WallConnector", x = 0, y = 0, z = 0, kw = 11.5, target = 90, last = T.hours() - 0.5, added = 0 }
+    three()
+    card.key = ""
+    card:read()
+    check(h.msgSub == "IGUI_MinidoracatTesla_HUD_ChargingSubMi|--" and card.sAddKm == "+-- mi",
+        "no range limit, charging: +-- mi (" .. tostring(h.msgSub) .. ", " .. card.sAddKm .. ")")
+    unit = 1
+    h:update()
+    card:read()
+    check(card.sAddKm == "+-- km" and h.msgSub == "IGUI_MinidoracatTesla_HUD_ChargingSub|--"
+        and draws(A.km) and not draws(A.mi), "back on Metric with no number to change: every unit word follows")
+    tmd.chg = nil
+    tpart:setContainerContentAmount(39.2)
+    SandboxVars.CarGasConsumption = nil
+    dash:setVehicle(nil); dash:setVehicle(tesla)
+
+    -- the Chill badge sits beside the unit word: not moved by the narrower mph, which must not be the wider one
+    tmd.chill = true
+    unit = 2
+    three()
+    local chillX = h.chillX
+    collectgarbage("collect")
+    collectgarbage("stop")
+    local kb0 = collectgarbage("count")
+    for _ = 1, 1000 do h:prerender() end
+    local kbGrew = collectgarbage("count") - kb0
+    collectgarbage("restart")
+    check(kbGrew == 0, "Imperial: prerender x1000 allocates nothing (" .. kbGrew .. " KB)")
+    unit = 1
+    three()
+    check(chillX ~= nil and h.chillX == chillX, "the Chill badge: the same place in both units")
+    for k = 1, 2 do
+        local a = T.HUDAtlas[k]
+        check(a.mph[7] <= a.kmh[7], "atlas " .. k .. "x: mph is no wider than km/h (" .. a.mph[7] .. " <= " .. a.kmh[7] .. ")")
+    end
+    tmd.chill = nil
+
+    U.opt = nil
+    tesla.speed, getText, card.player = speed0, realGT, cardPlayer0
+    card.key = ""
+    card:read()
+    getItemName = savedItemName
+    three()
+    check(h.st.range == range1 and number(A.sm) == tostring(range1) and draws(A.km) and h.st.chill == false,
+        "the option gone: as before")
+end
 -- the driver on the charge card's buttons twice a second for a minute (+, +, -, start/stop), each request through the
 -- server's dispatch (Commands.lua CommandRate, the `default` budget the camp key and the rest share): none dropped,
 -- and the busiest 10 s keeps half its budget again to spare

@@ -31,8 +31,10 @@ require "MinidoracatTesla/Core"
 require "MinidoracatTesla/Keys"
 require "MinidoracatTesla/Chargers"
 require "MinidoracatTesla/HUD"
+require "MinidoracatTesla/Units"
 
 local T = MinidoracatTesla
+local U = T.Units
 local K = T.Keys
 local HUD = T.HUD
 local App = ISPanelJoypad:derive("MinidoracatTeslaPhoneApp")
@@ -123,6 +125,13 @@ local HEAD = { "close", "back" } -- header buttons (never scroll)
 local MAIN = { "map", "charge" } -- the blue main actions
 
 local function txt(key, ...) return getText(P .. key, ...) end
+-- T.denyText with NO_LINK's Bluetooth range in this player's unit (NO_LINK is only ever shown in this app)
+local function denyText(why)
+    if why == "NO_LINK" and U.imperial() then
+        return getText("IGUI_MinidoracatTesla_Deny_NO_LINK_Ft", tostring(U.feet(T.Keys.btRange())))
+    end
+    return T.denyText(why)
+end
 
 -- the longest head of `s` that fits `maxW` in `font`, with "..." when cut. Kahlua strings index UTF-16 units, so sub
 -- never splits a CJK character in game.
@@ -634,7 +643,7 @@ T.ClientCommands.appDone = function(args)
     if ended then
         text, ok = App.summonText(args.why), args.why == "ARRIVED"
     elseif args.why then
-        text, ok = T.denyText(args.why), false
+        text, ok = denyText(args.why), false
     else
         text, ok = getText(carKey(script, "IGUI_MinidoracatTesla_App_Done_" .. tostring(args.act))), true
     end
@@ -666,7 +675,7 @@ T.ClientCommands.appAlerts = function(args)
             if c then rows[#rows + 1] = { title = c.title, detail = c.detail or "", time = c.time or "", icon = c.icon } end
         end
         a.alerts = rows
-        a.alertsWhy = args.deny and T.denyText(args.deny) -- VehicleManager said no: say why instead of "no alerts"
+        a.alertsWhy = args.deny and denyText(args.deny) -- VehicleManager said no: say why instead of "no alerts"
         a.sig = nil
         if a.S then a:read(); a:layout() end -- render reads each row's place: lay them out before the next frame
     end)
@@ -682,6 +691,7 @@ local function ageText(hours)
 end
 
 local function distText(d)
+    if U.imperial() then return txt(U.dist(d)) end
     if d < 1000 then return txt("Meters", tostring(math.floor(d + 0.5))) end
     local t = math.floor(d / 100 + 0.5)
     return txt("Km", tostring(math.floor(t / 10)) .. "." .. tostring(t % 10))
@@ -894,7 +904,7 @@ function App:summonRead(api)
         end
         if not self.sumCome then self.sPickNote = why or "" end -- the pick page says why too
         s1 = where and txt("SummonCarAt", where) or self.sSub or ""
-        s2 = R > 0 and txt("SummonRange", tostring(R)) or ""
+        s2 = R <= 0 and "" or U.imperial() and txt("SummonRangeFt", tostring(U.feet(R))) or txt("SummonRange", tostring(R))
         note = why or note
     elseif phase == "starting" then
         s1, s2 = txt("SummonStarting"), txt("SummonChecking")
@@ -903,14 +913,14 @@ function App:summonRead(api)
             or sum.dir == -1 and txt("SummonRevNow") or sum.dir == 1 and txt("SummonFwdNow") or txt("Driving")
         local dist = ss and ss.vid == vid and tonumber(ss.dist) or d
         local kmh = v and math.floor(math.abs(v:getCurrentSpeedKmHour()) + 0.5) or 0
-        s2 = distText(dist) .. sep .. txt("SummonKmh", tostring(kmh))
+        s2 = distText(dist) .. sep .. txt(U.imperial() and "SummonMph" or "SummonKmh", tostring(U.len(kmh)))
     elseif phase == "arrived" then
         s1 = txt("SummonArrived")
         s2 = where and (d < 3 and where or txt("SummonParkedAt", where)) or ""
         if v and not v:isEngineRunning() then s2 = s2 .. sep .. txt("SummonEngineOff") end
         note = nil
     elseif sum.why then -- refused before it started: the reason in full under the buttons
-        s1, s2, note = txt("SummonRefused"), where and txt("SummonCarAt", where) or "", T.denyText(sum.why)
+        s1, s2, note = txt("SummonRefused"), where and txt("SummonCarAt", where) or "", denyText(sum.why)
     else
         s1, s2, note = txt("SummonStopped", App.summonText(sum.code)), where and txt("SummonCarAt", where) or "", nil
     end
@@ -959,6 +969,8 @@ function App:read()
     local hh, mm = gt:getHour(), gt:getMinutes()
     local now = getTimestampMs()
     if self.toast and now >= self.toast.untilMs then self.toast, self.sig = nil, nil end
+    local imp = U.imperial() -- the Units option changed: every string again
+    if imp ~= self.imp then self.imp, self.sig, self.distKey = imp, nil, nil end
     -- position: every update (the player walks); a new tile or direction redoes the strings that show it
     if st and st.x and p then
         local d, ci, ang = K.bearing(p:getX(), p:getY(), st.x + 0.5, st.y + 0.5)
@@ -1011,7 +1023,7 @@ function App:read()
     if not st then
         self.sSub = txt("Connecting")
     elseif st.deny then
-        self.sSub = T.denyText(st.deny)
+        self.sSub = denyText(st.deny)
     elseif vmOnly then
         self.sSub = txt("LastSeen", ageText(ageH)) -- VehicleManager's position; the line below says why no controls
     elseif not rec then
@@ -1024,10 +1036,10 @@ function App:read()
     -- why the controls are grey; with the grid down and the car past Bluetooth, the reason and the range
     -- (Keys.lua K.appReach: generators do not bring the network back; Workshop guide comment 2026-11-07)
     local offGrid = st ~= nil and not st.deny and not self.grid and not link
-    self.sSub2 = vmOnly and txt("NotPaired") or (offGrid and T.denyText("NO_LINK"))
+    self.sSub2 = vmOnly and txt("NotPaired") or (offGrid and denyText("NO_LINK"))
         or (rec and not link and txt("FootOff")) or nil
     -- no km: no range limit (Gas Consumption 0, Remote.lua record); the game fonts have no ∞
-    self.sBat = rec and (txt("Km", st.km and tostring(st.km) or "--") .. sep .. tostring(st.pct) .. "%") or ""
+    self.sBat = rec and (txt(imp and "Miles" or "Km", st.km and tostring(U.len(st.km)) or "--") .. sep .. tostring(st.pct) .. "%") or ""
     self.pct = rec and st.pct or 0
     self.sWhen = hasPos and (link and txt("JustNow") or ageText(ageH)) or ""
     self.sTitle = TITLE[self.page] and txt(TITLE[self.page]) or ""
@@ -1191,7 +1203,7 @@ function App:carLine(e)
     end
     local st = App.seen[e.key]
     if not st then return txt("Loading") end
-    if st.deny then return T.denyText(st.deny) end
+    if st.deny then return denyText(st.deny) end
     if st.pct == nil then return txt("NoRecord") end
     local w = st.link and where(st.x, st.y)
     return tostring(st.pct) .. "%" .. sep .. (w or txt("LastSeen", ageText(T.hours() - (st.h or 0))))

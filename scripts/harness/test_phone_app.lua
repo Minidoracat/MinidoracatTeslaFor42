@@ -1100,6 +1100,30 @@ check(a.sSub2 == nil, "grid down but refused: the refusal is the status line, no
 state({ link = false })
 check(a.sSub2 == "IGUI_MinidoracatTesla_App_FootOff", "grid up, no link (car not loaded): the last-record line")
 getText = realGTkm
+-- units (Units.lua): imperial is display only; the app's next read picks the option up with no new state
+H.section("phone app: units")
+getText = function(k, n) return n and (k .. "|" .. n) or k end
+state()
+local metricBat = a.sBat
+T.Units.opt = { getValue = function() return 2 end }
+local rereadU = a:read()
+check(rereadU == true and a.sBat:find("_App_Miles|373", 1, true) ~= nil and a.sDist == "IGUI_MinidoracatTesla_App_Feet|30",
+    "Imperial, the next read: 600 km is 373 mi, the car 10.5 tiles away is 30 ft (" .. a.sBat .. ", " .. tostring(a.sDist) .. ")")
+state({ km = false })
+check(a.sBat:find("_App_Miles|--", 1, true) ~= nil, "... no km in the record: -- with the miles key (" .. a.sBat .. ")")
+state({ y = 2000 + 1609 })
+check(a.sDist == "IGUI_MinidoracatTesla_App_Miles|1.0", "... a mile away: 1.0 mi (" .. tostring(a.sDist) .. ")")
+state({ link = false, grid = false })
+check(a.sSub2 == "IGUI_MinidoracatTesla_Deny_NO_LINK_Ft|160",
+    "... grid down, past Bluetooth: the reason's own key with the 50 tiles in feet (" .. tostring(a.sSub2) .. ")")
+T.Units.opt = nil
+rereadU = a:read()
+check(rereadU == true and a.sSub2 == "IGUI_MinidoracatTesla_Deny_NO_LINK|50", "back on Metric, the next read: metres again")
+state()
+check(a.sBat == metricBat and a.sDist == "IGUI_MinidoracatTesla_App_Meters|11",
+    "... the home page as before (" .. a.sBat .. ", " .. tostring(a.sDist) .. ")")
+getText = realGTkm
+a.distKey = nil -- the distance line again in the harness's plain getText
 state()
 -- each car its own picture files, paints, wordmark, map glyph and lid words (Specs appCar / colors / model,
 -- T.CarPartNames): the Model 3 shares six paint names with the Model Y, so a shared file name would show the other car
@@ -1879,6 +1903,19 @@ check(a.sSumState == P .. "SummonCarAt" and a.sSumSub == P .. "SummonRange" and 
     and a.radCarY > a.radCY, "ready: where the car is, the range, the car's dot south of the player")
 ok, why = textInside()
 check(ok, "summon page: text inside (" .. why .. ")")
+do -- units: the summon range in feet
+    local realGTu = getText
+    getText = function(k, n) return n and (k .. "|" .. n) or k end
+    T.Units.opt = { getValue = function() return 2 end }
+    sread()
+    local ft = a.sSumSub
+    T.Units.opt = nil
+    sread()
+    check(ft == P .. "SummonRangeFt|210" and a.sSumSub == P .. "SummonRange|64",
+        "Imperial: the 64 tile range reads 210 ft (" .. tostring(ft) .. "); Metric: 64 m")
+    getText = realGTu
+    sread()
+end
 -- come: starting -> driving -> stop pressed -> CANCELLED
 bs.come:forceClick()
 cmd, args = sentLast()
@@ -1893,6 +1930,21 @@ CL.st = { vid = VID, phase = "driving", dist = 12, mode = "come" }
 sread()
 check(a.sumPhase == "driving" and a.sSumState == P .. "SummonComing" and a.rowEm.summon == a.sSumState,
     "AutoDrive driving: the car is coming (the home row says so too)")
+do -- units: the driving line (how far, how fast)
+    local realGTu, speedU = getText, v.kmh
+    getText = function(k, n) return n and (k .. "|" .. n) or k end
+    v.kmh = 30
+    T.Units.opt = { getValue = function() return 2 end }
+    sread()
+    local line = a.sSumSub
+    T.Units.opt = nil
+    sread()
+    check(line:find(P .. "Feet|40", 1, true) == 1 and line:find(P .. "SummonMph|19", 1, true) ~= nil
+        and a.sSumSub:find(P .. "Meters|12", 1, true) == 1 and a.sSumSub:find(P .. "SummonKmh|30", 1, true) ~= nil,
+        "driving, 12 tiles away at 30 km/h: 40 ft and 19 mph (" .. line .. "); Metric: 12 m and 30 km/h")
+    getText, v.kmh = realGTu, speedU
+    sread()
+end
 bs.come:forceClick()
 cmd, args = sentLast()
 check(args.act == "summon" and args.on == false and a.sum.stopAsked, "Stop -> appAction summon off")
