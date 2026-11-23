@@ -370,6 +370,7 @@ A charger that works on the floor, no wall needed; slower than the Wall Connecto
 [*] [b]Hover help[/b]: every button and every area of the car picture says what it does when the mouse is over it.
 [*] [b]V radial menu[/b]: adds Turn on Camp Mode, Charging Status and Turn on Chill (driver only); a car with a HEPA filter also has Turn on Bioweapon Defense Mode (see Bioweapon Defense Mode and Chill); the Cybertruck also has Powershare, the bed outlets and the light bar (the light bar for the driver only); a Semi at a standstill also gives the driver hitch and unhitch; a car with a Car Fridge fitted also has the fridge switch (anyone in the car can use it; with Vehicle Manager and a claimed car it needs the Trunk permission, see Upgrades). When one is not available its icon is grey and the second line says why.
 [*] [b]With AutoDrive[/b]: AutoDrive's autopilot card sits above the Tesla dashboard, and above the charge card while that is open.
+[*] [b]mph and miles[/b]: the Mods tab of the game's Options has Speed and distance units; on Imperial the dashboard shows the speed in mph and the range in mi, and the reminders, the charge card and the phone app use miles and feet. Metric is the default; it is set per computer (split-screen players share it), and it changes only what is shown: the car drives the same. AutoDrive's autopilot card has its own option of the same name.
 [/list]
 === 🧰 Key card and phone key
 {{img:06-car-menu-en.jpg}}

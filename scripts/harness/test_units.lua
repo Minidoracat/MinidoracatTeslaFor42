@@ -76,10 +76,10 @@ check(o and #o.texts == 1 and #o.combos == 1 and c.id == "Units" and c.tooltip =
 check(c and #c.items == 2 and c.items[1][2] == true and not c.items[2][2] and T.Units.opt == c,
     "two items, Metric first and the default; Units.opt is the combo box")
 -- the family UI framework's backup, only when it is there and new enough (ModOptionsBackup: API revision 23)
-local protected = {}
+local protected, restored = {}, 0
 local function framework(rev, cap)
     return { v1 = { API_MAJOR = 1, API_REVISION = rev, CAPABILITIES = { modOptionsBackup = cap },
-        ModOptionsBackup = { protect = function(opts) protected[#protected + 1] = opts; return 0 end } } }
+        ModOptionsBackup = { protect = function(opts) protected[#protected + 1] = opts; return restored end } } }
 end
 MinidoracatUI = nil
 local ok = boot ~= nil and pcall(boot)
@@ -92,6 +92,8 @@ check(#protected == 0, "an older framework (revision 22) or one without the capa
 MinidoracatUI = framework(23, true)
 boot()
 check(#protected == 1 and protected[1] == o, "revision 23 with modOptionsBackup: protect(this mod's options) once")
+restored = 2
+check(pcall(boot) and #protected == 2, "the backup restored 2 settings: logged, no error")
 
 PZAPI, MinidoracatUI = savedPZAPI, savedUI
 T.Units = U -- the displays hold the first load's table

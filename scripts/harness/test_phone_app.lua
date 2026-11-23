@@ -1950,6 +1950,15 @@ cmd, args = sentLast()
 check(args.act == "summon" and args.on == false and a.sum.stopAsked, "Stop -> appAction summon off")
 T.ClientCommands.appDone({ key = 9001, act = "summon", why = "NO_LINK" })
 check(a.sumPhase == "driving" or a.sum.phase == "driving", "the stop refused (NO_LINK): still driving")
+do -- units: the server's NO_LINK (Remote.lua appAction) as a toast
+    local realGTu = getText
+    getText = function(k, n) return n and (k .. "|" .. n) or k end
+    T.Units.opt = { getValue = function() return 2 end }
+    T.ClientCommands.appDone({ key = 9001, act = "summon", why = "NO_LINK" })
+    local toast = a.toast and a.toast.text
+    T.Units.opt, getText = nil, realGTu
+    check(toast == "IGUI_MinidoracatTesla_Deny_NO_LINK_Ft|160", "Imperial: the server's NO_LINK toast in feet (" .. tostring(toast) .. ")")
+end
 T.ClientCommands.appDone({ key = 9001, act = "summonEnd", why = "ARRIVED" })
 sread()
 check(a.sumPhase == "arrived" and a.toast.text == "R_ARRIVED" and a.toast.ok and bs.finish.shown and not bs.come.shown,
