@@ -695,8 +695,12 @@ check(args.part == "TireFrontLeft", "other Tesla parts (tire air) are untouched"
 H.section("authorized and spawns")
 local owner = H.player({ name = "own", keys = { [77] = true } })
 check(T.authorized(owner, gv) == true and T.authorized(cheat, gv) == false, "no VehicleManager: key decides")
-MinidoracatVehicleManagerAPI = { canUse = function(p, veh, perm) return p == cheat, "VM" end }
-check(T.authorized(cheat, gv, "FUEL") == true and T.authorized(owner, gv, "FUEL") == false, "VehicleManager present: canUse decides")
+local vmCtx
+MinidoracatVehicleManagerAPI = { canUse = function(p, veh, perm, ctx) vmCtx = ctx; return p == cheat, "VM" end }
+check(T.authorized(cheat, gv, "FUEL") == true and T.authorized(owner, gv, "FUEL") == false and vmCtx.mod == T.MODULE
+    and vmCtx.query == nil, "VehicleManager present: canUse decides, asked as Tesla, no query (a refusal is recorded)")
+T.authorized(owner, gv, "FUEL", true)
+check(vmCtx.mod == T.MODULE and vmCtx.query == true, "a pre-check asks VehicleManager as a query")
 MinidoracatVehicleManagerAPI = nil
 local Z = VehicleZoneDistribution
 check(Z.parkingstall.vehicles["Base.MinidoracatTesla_ModelY"].spawnChance == 3

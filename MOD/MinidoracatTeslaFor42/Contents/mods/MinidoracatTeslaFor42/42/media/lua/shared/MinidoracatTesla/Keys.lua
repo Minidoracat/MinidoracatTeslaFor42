@@ -141,13 +141,14 @@ end
 -- it writes ADMIN_BYPASS with our mod name (its OwnershipSystem.lua O.allowsRecord). MP client: its projection, UX only.
 -- Fails closed, unlike Remote.vmAllows (no VehicleManager or UNCLAIMED = yes there): here only a VehicleManager grant counts.
 -- (T.authorized's HOTWIRED, like KEY and EASY_USE, only comes without VehicleManager, which already returned false.)
-local function vmGrants(chr, vehicle, codes)
+-- query: as T.authorized.
+local function vmGrants(chr, vehicle, codes, query)
     local api = MinidoracatVehicleManagerAPI
     if not (api and api.canUse) then return false end
     local page = SandboxVars and SandboxVars.MinidoracatVehicleManager
     if page and page.VirtualKey == false then return false end
     for _, code in ipairs(codes) do
-        local ok, why = T.authorized(chr, vehicle, code) -- VehicleManager's canUse, as Tesla (Core.lua)
+        local ok, why = T.authorized(chr, vehicle, code, query) -- VehicleManager's canUse, as Tesla (Core.lua)
         if ok == true and why ~= "UNCLAIMED" then return true end
     end
     return false
@@ -206,14 +207,12 @@ function K.canAutoLock(player, vehicle)
     return true
 end
 
--- VehicleManager refuses chr this door of a claimed car: no key of ours (loose, phone, card) gets past it, and the lock
--- is left as it is. Its guard wraps complete() outermost once every mod is loaded (its ActionGuards.lua:214-228,349-350):
--- on the server a refusal never reaches ours, and with its VirtualKey on a granted unlock unlocks the door itself without
--- calling ours (:190-198); in SP our unlock runs in start(), before that guard, hence this check. Its own codes: the hood
--- is REPAIR or SALVAGE (its Actions.lua doorAction), any other door PASSENGER (its unlock guard). T.vmRefusal: no
--- VehicleManager or an unclaimed car is false, the key rules alone.
-local function vmRefuses(chr, vehicle, part)
-    return T.vmRefusal(chr, vehicle, part:getId() == "EngineDoor" and { "REPAIR", "SALVAGE" } or { "PASSENGER" }) ~= nil
+-- VehicleManager refuses chr this car's hood (REPAIR or SALVAGE, its Actions.lua doorAction: lock, unlock, open and
+-- close alike): no key of ours gets past it. Its guard, outside ours (complete(), and the unlock's start() in SP; its
+-- ActionGuards.lua), refuses the unlock and the open itself and says why; this only keeps our own key rules out of its
+-- way, so a query. T.vmRefusal: no VehicleManager or an unclaimed car is false, the key rules alone.
+local function vmRefuses(chr, vehicle)
+    return T.vmRefusal(chr, vehicle, { "REPAIR", "SALVAGE" }, true) ~= nil
 end
 
 -- Phone key in a bag or belt bag, or one whose item keyId is another car (a phone paired with several, K.pairedWith):
@@ -222,13 +221,13 @@ end
 -- ItemContainer.java:3290-3304), so the vanilla unlock action (queued by ISVehicleMenu.onOpenDoor / onEnter) would fail.
 -- Runs right before that action toggles the lock: in start() in SP (ISUnlockVehicleDoor.lua:22-36), in complete() on
 -- the server (:55-76); never on an MP client. The key card keeps vanilla rules (loose: auto; in the wallet: tap the reader).
+-- VehicleManager is not asked: its guard, outside ours, has let this unlock through by its own door rule (0.15.0 on).
 function K.phoneUnlock(vehicle, part, chr)
     local door = part and part:getDoor()
     if not door or not door:isLocked() or door:isLockBroken() or not chr or not T.isTesla(vehicle) then return false end
     if part:getVehicle() ~= vehicle then return false end -- vehicle and part travel apart (see K.lidKey)
     if part:getId() == "EngineDoor" then return false end -- the lid: a phone key unlocks it as it opens (below)
     if chr:getInventory():haveThisKeyId(vehicle:getKeyId()) or not K.phoneKey(chr, vehicle) then return false end
-    if vmRefuses(chr, vehicle, part) then return false end
     door:setLocked(false)
     vehicle:transmitPartDoor(part) -- no-op off the server
     return true
@@ -267,9 +266,8 @@ end
 -- window's engine and headlight actions, ISVehicleMechanics.lua:440,484,516; DriveUnitMenu.lua), the radial's Open
 -- Hood when it is (ISVehicleMenu.lua:1230-1231); every one runs outside the car. On a Tesla's lid, four kinds of
 -- opener (vanilla skips an ignoreAction, ISTimedActionQueue.lua:158,204):
--- - VehicleManager refuses them the hood: left out, whatever key they hold. It wants PASSENGER for every unlock (its
---   Actions.lua) but REPAIR or SALVAGE for the hood's open (its doorAction), so a rider's unlock went through (its
---   virtual key, ActionGuards.lua:190-198) and left the lid unlocked behind a refused open.
+-- - VehicleManager refuses them the hood: vanilla's unlock, whatever key they hold (K.lidKey is false for them); its
+--   guard refuses that unlock and says why (0.15.0 on: the hood's unlock wants REPAIR or SALVAGE, as its open).
 -- - the key in hand: vanilla's unlock, which unlocks it (canUnlockDoor, BaseVehicle.java:1287-1314).
 -- - a card or phone key in a bag, or VehicleManager's virtual key: left out, the open unlocks it. Queued, vanilla's
 --   unlock failed for them (toggleLockedDoor asks canUnlockDoor, :1242-1256) and dropped the whole queue
@@ -280,8 +278,7 @@ function ISUnlockVehicleDoor:new(character, part, ...) -- vanilla's parameter na
     local o = unlockNew(self, character, part, ...)
     local v = part and part:getVehicle()
     if not isServer() and character and v and part:getId() == "EngineDoor" and T.isTesla(v)
-        and (vmRefuses(character, v, part)
-            or not character:getInventory():haveThisKeyId(v:getKeyId()) and K.lidKey(v, part, character)) then
+        and not character:getInventory():haveThisKeyId(v:getKeyId()) and K.lidKey(v, part, character) then
         o.ignoreAction = true
     end
     return o
@@ -297,9 +294,9 @@ function K.lidKey(vehicle, part, chr)
     if not part or part:getId() ~= "EngineDoor" or not chr or part:getVehicle() ~= vehicle or not T.isTesla(vehicle) then
         return false
     end
-    if vmRefuses(chr, vehicle, part) then return false end
+    if vmRefuses(chr, vehicle) then return false end
     return chr:getInventory():haveThisKeyId(vehicle:getKeyId()) ~= nil or K.phoneKey(chr, vehicle) ~= nil
-        or K.card(chr, vehicle) ~= nil or vmGrants(chr, vehicle, { "REPAIR", "SALVAGE" })
+        or K.card(chr, vehicle) ~= nil or vmGrants(chr, vehicle, { "REPAIR", "SALVAGE" }, true)
 end
 
 require "Vehicles/TimedActions/ISOpenVehicleDoor"
@@ -316,7 +313,7 @@ function ISOpenVehicleDoor:isValidStart(...)
     local v, part, chr = self.vehicle, self.part, self.character
     local door = self.lidKeyed and part:getDoor()
     if door and door:isLocked() and not door:isOpen() and not door:isLockBroken()
-        and not vmRefuses(chr, v, part) and not K.lidKey(v, part, chr) then
+        and not vmRefuses(chr, v) and not K.lidKey(v, part, chr) then
         HaloTextHelper.addBadText(chr, T.denyText("LID_LOCKED"))
         return false
     end

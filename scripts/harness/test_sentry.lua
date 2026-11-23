@@ -62,12 +62,14 @@ SandboxVars.VehicleEasyUse = easy
 -- VehicleManager decides a claimed car: this car's key, card or phone key is anyone's who picked it up (the found card
 -- must not disarm sentry from the right-click menu either, like the card tap: KeyActions keyTap)
 local finder = F.player("finder", { keys = { [v.keyId] = true } })
-MinidoracatVehicleManagerAPI = { canUse = function() return false, "NOT_SHARED" end }
+local finderAsk -- the context of the last question to VehicleManager
+MinidoracatVehicleManagerAPI = { canUse = function(_, _, _, ctx) finderAsk = ctx; return false, "NOT_SHARED" end }
 check(T.legit(finder, v) == false, "legit: this car's key on a car claimed by someone else (VehicleManager says no) does not count")
 F.sent = {}
 cmds.sentryDisarm(finder, { vid = v:getId() })
-check(md(v).sentry ~= nil and F.lastSent("deny") and F.lastSent("deny").args.reason == "NOT_OWNER",
-    "sentryDisarm with a found key on a claimed car: NOT_OWNER, sentry stays armed")
+check(md(v).sentry ~= nil and F.lastSent("deny") and F.lastSent("deny").args.reason == "NOT_OWNER"
+    and finderAsk.query == nil,
+    "sentryDisarm with a found key on a claimed car: NOT_OWNER, sentry stays armed; the command is no query (VM records it)")
 MinidoracatVehicleManagerAPI = { canUse = function() return true, "UNCLAIMED" end }
 check(T.legit(finder, v) == true, "legit: on an unclaimed car the key counts")
 MinidoracatVehicleManagerAPI = nil
@@ -525,9 +527,16 @@ check(wc.alarmTriggered == t0 + 3 and md(wc).sentry == nil and S.tow[wc:getId()]
     "the owner hooks it up inside the stranger's window: sentry off all the same, no alarm, the window forgotten")
 cmds.sentryArm(wOwner, { vid = wc:getId() })
 local sharer = F.player("sharer")
-MinidoracatVehicleManagerAPI = { canUse = function(p) return p == sharer, "SHARED" end }
+local vmAsked = {} -- each question to VehicleManager: was it a query?
+MinidoracatVehicleManagerAPI = { canUse = function(p, _, _, ctx) vmAsked[#vmAsked + 1] = ctx.query == true; return p == sharer, "SHARED" end }
+S.onTouch(wc, thief, "door")
+S.onBreak(wc, thief, "window")
+local t1 = wc.alarmTriggered
 F.fire("OnClientCommand", "vehicle", "attachTrailer", sharer, { vehicleA = trailer.id, vehicleB = wc:getId() })
-check(wc.alarmTriggered == t0 + 3 and md(wc).sentry == nil, "someone with VehicleManager's PASSENGER right hooks it up: sentry off")
+check(wc.alarmTriggered == t1 and md(wc).sentry == nil, "someone with VehicleManager's PASSENGER right hooks it up: sentry off")
+local queries = #vmAsked == 3
+for _, q in ipairs(vmAsked) do queries = queries and q end
+check(queries, "sorting out a touch, a break, a tow: VehicleManager is asked as a query (the action was its to record)")
 MinidoracatVehicleManagerAPI = nil
 trailer.towing = nil
 -- the Semi and its 53 ft trailer (client SemiHitch.lua sends the same vanilla attachTrailer, Semi = A)

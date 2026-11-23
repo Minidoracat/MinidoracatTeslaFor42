@@ -176,7 +176,7 @@ function S.onTouch(vehicle, actor, what, partId)
     S.settle(vehicle)
     local s = armedState(vehicle)
     if not s then return end
-    if T.legit(actor, vehicle, s.by) then
+    if T.legit(actor, vehicle, s.by, true) then
         S.disarm(vehicle, actor:getUsername())
         return
     end
@@ -193,7 +193,7 @@ function S.onBreak(vehicle, actor, what, partId)
     S.settle(vehicle)
     local s = armedState(vehicle)
     if not s then return end
-    if actor and T.legit(actor, vehicle, s.by) then return S.markWindows(vehicle) end
+    if actor and T.legit(actor, vehicle, s.by, true) then return S.markWindows(vehicle) end
     -- triggerAlarm only rings when alarmed and not previouslyEntered; setAlarmed(true) clears the latter
     -- (BaseVehicle.java:9379-9384, 9406-9413). Sentry itself stays in modData, i.e. re-armed.
     vehicle:setAlarmed(true)
@@ -400,7 +400,7 @@ function S.towHours() return 0.66 * getGameTime():getDeltaMinutesPerDay() end
 local function onTow(vehicle, player)
     local s = armedState(vehicle)
     if not s then return end
-    if T.legit(player, vehicle, s.by) then return S.disarm(vehicle, player:getUsername()) end
+    if T.legit(player, vehicle, s.by, true) then return S.disarm(vehicle, player:getUsername()) end
     local id, t = vehicle:getId(), now()
     if S.tow[id] and t - S.tow[id] < S.towHours() then return end
     S.tow[id] = t
@@ -414,7 +414,7 @@ end
 -- push the tow report out of the owner's inbox (Inbox.lua keeps 20). A flash still running told the owner already.
 local function onUnhook(vehicle, player)
     local s = armedState(vehicle)
-    if not s or T.legit(player, vehicle, s.by) or S.isFlashing(vehicle) then return end
+    if not s or T.legit(player, vehicle, s.by, true) or S.isFlashing(vehicle) then return end
     local id, t = vehicle:getId(), now()
     if S.unhook[id] and t - S.unhook[id] < S.towHours() then return end
     S.unhook[id] = t

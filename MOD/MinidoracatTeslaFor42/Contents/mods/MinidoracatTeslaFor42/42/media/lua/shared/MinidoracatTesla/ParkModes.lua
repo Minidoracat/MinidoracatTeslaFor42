@@ -57,11 +57,12 @@ end
 -- UNCLAIMED, EASY_USE (sandbox VehicleEasyUse), a key left in the ignition and a hotwired car (HOTWIRED) would let any
 -- stranger pulling the door handle disarm sentry. Hotwiring alone never disarms it; whoever then sets up a phone key
 -- in the hotwired car (Keys.lua canPair, user 2026-10-28 "得到") holds a key like any owner and counts from then on.
-function T.legit(player, vehicle, by)
+-- query: as T.authorized; sentry sorting out a touch VehicleManager already let through (server Sentry.lua).
+function T.legit(player, vehicle, by, query)
     if by and T.account(player) == by then return true end -- a split-screen guest's name proves nothing (Core.lua)
     local api = MinidoracatVehicleManagerAPI
     if api and api.canUse then
-        local ok, why = T.authorized(player, vehicle, "PASSENGER")
+        local ok, why = T.authorized(player, vehicle, "PASSENGER", query)
         if why ~= "UNCLAIMED" then return ok == true end
     end
     if player:getInventory():haveThisKeyId(vehicle:getKeyId()) then return true end -- ISOpenVehicleDoor.lua:86

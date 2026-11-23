@@ -532,7 +532,7 @@ vmOwner.vehicle, vmDriver.vehicle = v, v
 local vmAsked = {}
 local function fakeVM(adminFor)
     return { canUse = function(p, car, code, ctx)
-        vmAsked[#vmAsked + 1] = { code = code, mod = ctx and ctx.mod, silent = ctx and ctx.silent }
+        vmAsked[#vmAsked + 1] = { code = code, mod = ctx and ctx.mod, silent = ctx and ctx.silent, query = ctx and ctx.query }
         if car ~= v then return false, "NOT_AUTHORIZED" end
         if p == vmOwner then return true, "OWNER" end
         if p == vmDriver and (code == "DRIVE" or code == "PASSENGER") then return true, "MEMBER" end
@@ -543,8 +543,9 @@ end
 MinidoracatVehicleManagerAPI = fakeVM()
 ok, why = K.canPair(vmOwner, v, vmOwner.inv.items[1])
 check(ok == true and why == "VM", "pair: VehicleManager owner without the card -> allowed (tooltip says why)")
-check(vmAsked[#vmAsked].code == "MANAGE" and vmAsked[#vmAsked].mod == T.MODULE and vmAsked[#vmAsked].silent == nil,
-    "pair: asks VehicleManager MANAGE, as Tesla, not silent (an admin's override is audited)")
+check(vmAsked[#vmAsked].code == "MANAGE" and vmAsked[#vmAsked].mod == T.MODULE and vmAsked[#vmAsked].silent == nil
+    and vmAsked[#vmAsked].query == nil,
+    "pair: asks VehicleManager MANAGE, as Tesla, not silent and no query (an admin's override is audited)")
 local asked0 = #vmAsked
 local spare = item(K.PHONE)
 ownerInv:AddItem(spare)
@@ -766,32 +767,46 @@ ISOpenVehicleDoor.complete({ vehicle = v, part = v.frunk, character = stranger }
 check(v.frunk.d.locked and not v.frunk.d.open, "frunk: VehicleManager UNCLAIMED is nobody's key")
 MinidoracatVehicleManagerAPI = nil
 do -- its own scope: the main chunk's 200-local limit
--- ---- the hood's entries end to end. VehicleManager's guard sits outside every mod's wrap and guards complete() only
--- (its ActionGuards.lua makeWrapper, SPECIAL): canUse for the action's codes (its Actions.lua: an unlock PASSENGER, the
--- hood's open REPAIR or SALVAGE); refused, complete() is false and ours is never called. Its virtual key (VirtualKey not
--- off, a claimed car) unlocks by itself and marks the car entered on an open.
+-- ---- the hood's entries end to end. VehicleManager's guard (0.15.0 on) sits outside every mod's wrap, on complete()
+-- and on the unlock's start() (its ActionGuards.lua makeWrapper, SPECIAL): canUse for the door's codes (its Actions.lua
+-- doorAction: the hood REPAIR or SALVAGE, a trunk CARGO, any other door PASSENGER; unlock and open alike). Refused, ours
+-- is never called: complete() is false, and SP stops the action or drops the queue itself (its haltLocal). Its virtual
+-- key (VirtualKey not off, a claimed car) unlocks by itself and marks the car entered on an open.
+local vmQ = {} -- our own questions in this block (as Tesla: ctx.mod), each: was it a query?
 local function vm(codes, reason) -- grants these codes, refuses the rest
-    MinidoracatVehicleManagerAPI = { canUse = function(_, _, code)
+    MinidoracatVehicleManagerAPI = { canUse = function(_, _, code, ctx)
+        if ctx and ctx.mod then vmQ[#vmQ + 1] = ctx.query == true end
         if codes[code] then return true, reason or "SHARED" end
         return false, reason or "NOT_AUTHORIZED"
     end }
 end
-local VM_CODES = { unlock = { "PASSENGER" }, open = { "REPAIR", "SALVAGE" } }
-local function guarded(a)
+local function vmDecides(a) -- allowed, and whether its virtual key acts
     local api = MinidoracatVehicleManagerAPI
-    if not api then return a:complete() end
+    if not api then return true, false end
+    local id = a.part:getId()
+    local codes = id == "EngineDoor" and { "REPAIR", "SALVAGE" } or id:find("Trunk", 1, true) and { "CARGO" } or { "PASSENGER" }
     local ok, why
-    for _, code in ipairs(VM_CODES[a.kind]) do
+    for _, code in ipairs(codes) do
         ok, why = api.canUse(a.character, a.vehicle, code)
         if ok then break end
     end
-    if not ok then return false end
     local page = SandboxVars and SandboxVars.MinidoracatVehicleManager
-    if not (page and page.VirtualKey == false) and why ~= "UNCLAIMED" then
+    return ok, ok and not (page and page.VirtualKey == false) and why ~= "UNCLAIMED"
+end
+local function guarded(a)
+    local ok, virtual = vmDecides(a)
+    if not ok then a.vmRefused = true; return false end
+    if virtual then
         if a.kind == "unlock" then a.part:getDoor():setLocked(false); return true end
         a.vehicle:setPreviouslyEntered(true)
     end
     return a:complete()
+end
+local function guardedStart(a) -- SP: the unlock's start()
+    local ok, virtual = vmDecides(a)
+    if not ok then a.stopped = true; return end -- its forceStop: the queue drops
+    if virtual then a.part:getDoor():setLocked(false) end
+    a:start()
 end
 -- every "lid locked" a player would see: a halo line, SP's deny handler, the server's deny command
 local said = {}
@@ -806,25 +821,28 @@ local function heard()
 end
 -- the queue as vanilla runs it (ISTimedActionQueue.lua): an ignoreAction never starts; isValidStart false or a stopped
 -- action drops the rest. SP: start() then complete() here, its engine ignoring complete's result
--- (IsoGameCharacter.java:9185-9187). MP: the client's start(), the server's complete(); false rejects the client's
--- action (its stop(), LuaTimedActionNew.java:99-100) and drops the queue. true: the queue ran out (the window opens).
+-- (IsoGameCharacter.java:9185-9187), so only VehicleManager's refusal ends the queue there. MP: the client's start(),
+-- the server's complete(); false rejects the client's action (its stop(), LuaTimedActionNew.java:99-100) and drops the
+-- queue. true: the queue ran out (the window opens).
 local function run(sp, q)
     for _, a in ipairs(q) do
         if not a.ignoreAction then
             if not as(not sp, false, function()
                 if a.isValidStart and not a:isValidStart() then return false end
-                if a.kind == "unlock" then a:start() end
+                if a.kind == "unlock" then
+                    if sp then guardedStart(a) else a:start() end
+                end
                 return not a.stopped
             end) then return false end
-            if not as(false, not sp, function() return guarded(a) end) and not sp then
-                if a.stop then as(true, false, function() a:stop() end) end
+            if not as(false, not sp, function() return guarded(a) end) and (a.vmRefused or not sp) then
+                if not sp and a.stop then as(true, false, function() a:stop() end) end
                 return false
             end
         end
     end
     return true
 end
-local function unlockAct(chr) local a = ISUnlockVehicleDoor:new(chr, v.frunk); a.kind = "unlock"; return a end
+local function unlockAct(chr, part) local a = ISUnlockVehicleDoor:new(chr, part or v.frunk); a.kind = "unlock"; return a end
 local function openAct(chr) local a = ISOpenVehicleDoor:new(chr, v, v.frunk); a.kind = "open"; return a end
 local ENTRY = { -- what each queues for the locked lid (ISVehicleMenu.lua; PartKeys.lua decides "the key is found")
     mechanics = function(chr) -- onMechanic :975-1006
@@ -869,19 +887,19 @@ for _, side in ipairs({ { "SP", false }, { "MP client", true } }) do
         v.seats[0] = stranger
         check(not ignored(stranger, v.frunk), "A2 " .. side[1] .. ": a stranger seated: vanilla's unlock stays queued (it fails outside)")
         vm({ PASSENGER = true })
-        check(ignored(stranger, v.frunk), "A2 " .. side[1] .. ": a rider seated (PASSENGER only, no key): left out, VM refuses the hood")
+        check(not ignored(stranger, v.frunk), "A2 " .. side[1] .. ": a rider seated (PASSENGER only, no key): vanilla's unlock stays queued, VM refuses it")
         vm({ REPAIR = true })
         check(ignored(stranger, v.frunk), "A2 " .. side[1] .. ": a VM mechanic seated, its virtual key only: left out, the open unlocks")
         MinidoracatVehicleManagerAPI = nil
         v.seats[0] = seat0
     end)
 end
--- A3: VehicleManager's refusal of the hood comes first, whatever key is in hand; the doors keep vanilla's unlock
+-- A3: VehicleManager refuses the hood, the key in hand: vanilla's unlock is queued like a door's; VM's guard refuses it
 for _, refuse in ipairs({ { "PASSENGER only", { PASSENGER = true } }, { "RENT_LOCKED", {}, "RENT_LOCKED" } }) do
     as(true, false, function()
         vm(refuse[2], refuse[3])
-        check(ignored(loose, v.frunk) and not ignored(loose, v.doors[1]),
-            "A3 VM " .. refuse[1] .. ", the key in hand: the lid's unlock left out, the door's queued")
+        check(not ignored(loose, v.frunk) and not ignored(loose, v.doors[1]),
+            "A3 VM " .. refuse[1] .. ", the key in hand: the lid's unlock is queued (VM's to refuse), the door's too")
     end)
 end
 -- A4: VirtualKey off, REPAIR only, no key: VehicleManager does not refuse the hood, no key opens it: vanilla's unlock
@@ -908,10 +926,10 @@ MinidoracatVehicleManagerAPI = nil
 local r5d, r5ds = scenario(false, "unlockHood", loose), scenario(true, "unlockHood", loose)
 check(not r5d.locked and not r5d.open and not r5ds.locked and not r5ds.open, "A5d Unlock Hood, the key in hand, no VM: unlocked, shut")
 vm({ PASSENGER = true })
-check(scenario(false, "unlockHood", loose).locked and scenario(true, "unlockHood", loose).locked,
-    "A5e Unlock Hood, PASSENGER only, the key in hand: still locked")
+local r5e, r5es = scenario(false, "unlockHood", loose), scenario(true, "unlockHood", loose)
+check(r5e.locked and r5es.locked and not r5e.win and not r5es.win and r5e.said == 0,
+    "A5e Unlock Hood, PASSENGER only, the key in hand: VM's guard stops the unlock (not left out), still locked")
 MinidoracatVehicleManagerAPI = nil
--- (VehicleManager lets a PASSENGER share's bare unlock open the lid, its Actions.lua :67-68: its rule, not ours)
 
 -- A6: "lid locked" comes from the side that ran vanilla's failed unlock, once; never for a cancel or VM's refusal
 local nonTeslaLid = door("EngineDoor")
@@ -978,7 +996,8 @@ end
 SandboxVars.MinidoracatVehicleManager = { VirtualKey = false }
 vm({ REPAIR = true })
 local r6 = scenario(false, "mechanics", stranger)
-check(kept(r6) and r6.said == 0 and not r6.win, "A6e VM refuses the unlock (VirtualKey off, REPAIR only): no line of ours")
+check(kept(r6) and r6.said == 1 and not r6.win,
+    "A6e VM lets the hood's unlock through (VirtualKey off, REPAIR only), no key: vanilla's fails, one 'lid locked'")
 SandboxVars.MinidoracatVehicleManager = nil
 MinidoracatVehicleManagerAPI = nil
 
@@ -990,7 +1009,7 @@ local function dropCard() cardBag.inv:Remove(theCard) end
 local function giveCard() cardBag.inv:AddItem(theCard) end
 local function validStart(chr, change) -- queued on a locked, shut lid; `change` before its turn
     v.frunk.d.locked, v.frunk.d.open, v.frunk.d.broken = true, false, false
-    said = {}
+    said, F.sent = {}, {}
     local a = openAct(chr)
     if change then change() end
     local ok = a:isValidStart()
@@ -1079,13 +1098,28 @@ v.doors[1].d.locked = true
 vm({}, "RENT_LOCKED")
 lidRefused(owner, "VM rental lock: the owner's phone key in a bag leaves the lid locked")
 lidRefused(walletOnly, "VM rental lock: the key card in a wallet leaves the lid locked")
-check(not K.phoneUnlock(v, v.doors[1], owner) and v.doors[1].d.locked, "VM rental lock: the cabin door stays locked too")
+for _, sp in ipairs({ true, false }) do
+    v.doors[1].d.locked = true
+    check(not run(sp, { unlockAct(owner, v.doors[1]) }) and v.doors[1].d.locked,
+        "VM rental lock, phone key in a bag, " .. (sp and "SP" or "MP") .. ": its guard stops the cabin door's unlock, still locked")
+end
+-- past VM's guard our own rule is not asked again: its door codes are its own (a trunk is CARGO, not PASSENGER)
+SandboxVars.MinidoracatVehicleManager = { VirtualKey = false }
+vm({ CARGO = true })
+v.trunk.d.locked = true
+check(run(false, { unlockAct(owner, v.trunk) }) and not v.trunk.d.locked,
+    "VM CARGO share only (VirtualKey off), phone key in a bag: the liftgate's handle unlocks")
+v.trunk.d.locked = false
+SandboxVars.MinidoracatVehicleManager = nil
 vm({}, "NOT_READY")
 lidRefused(owner, "VM not ready: fail closed, the lid stays locked")
 vm({})
 local r10 = scenario(false, "mechanics", stranger)
-check(as(true, false, function() return ignored(stranger, v.frunk) end) and kept(r10) and r10.said == 0,
-    "VM claimed car, no share: the unlock stays out, VM's refusal of the open speaks, not us")
+check(as(true, false, function() return not ignored(stranger, v.frunk) end) and kept(r10) and r10.said == 0 and not r10.win,
+    "VM claimed car, no share: the unlock is queued, VM's refusal of it speaks, not us")
+local queries = #vmQ > 0
+for _, q in ipairs(vmQ) do queries = queries and q end
+check(queries, "the hood: every question of ours to VehicleManager is a query (its guard records the action itself)")
 MinidoracatVehicleManagerAPI = nil
 v.frunk.d.locked, v.frunk.d.open = true, false
 HaloTextHelper, T.ClientCommands.deny = haloBefore, denyBefore
