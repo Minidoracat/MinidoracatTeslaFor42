@@ -11,7 +11,7 @@ local T, DU = MinidoracatTesla, MinidoracatTesla.DriveUnit
 -- REPAIR, take: SALVAGE, as DriveUnit.lua registerVM gives its guard): its reason, nothing queued, before the hood's
 -- unlock and open, which its guard on our complete() would leave open behind the refusal (the queue drops the close).
 local function queue(playerObj, part, cls, withParts, code)
-    local refused = T.vmRefusal(playerObj, part:getVehicle(), { code })
+    local refused = T.vmRefusal(playerObj, part:getVehicle(), { code }, true)
     if refused then
         HaloTextHelper.addBadText(playerObj, T.denyText(refused))
         return

@@ -761,10 +761,13 @@ end
 -- like a key in the ignition ("HOTWIRED", user 2026-10-28, decisions.md keyless rules): vanilla starts it without a key
 -- (ISVehicleMenu.lua:100-101), so whoever sits in it already drives it. The flag is saved and synced to clients
 -- (BaseVehicle.java:2659,2767,8594; network/fields/vehicle/VehicleProperties.java:19,54).
-function T.authorized(player, vehicle, perm)
+-- query (true): a pre-check, or sorting out something VehicleManager already decided, not the action itself: it answers
+-- the same and records neither a DENY nor an ADMIN_BYPASS (0.15.0 on, its OwnershipSystem.lua O.allowsRecord; older
+-- versions ignore it). Leave it out where the refusal is the event to audit: a command.
+function T.authorized(player, vehicle, perm, query)
     if not player or not vehicle then return false, "NO_TARGET" end
     local api = MinidoracatVehicleManagerAPI
-    if api and api.canUse then return api.canUse(player, vehicle, perm or "DRIVE", { mod = T.MODULE }) end
+    if api and api.canUse then return api.canUse(player, vehicle, perm or "DRIVE", { mod = T.MODULE, query = query }) end
     return T.ownRule(player, vehicle)
 end
 -- the "otherwise" above on its own: also for a car VehicleManager has no owner for ("UNCLAIMED", Upgrades.lua F.canSet)
@@ -780,12 +783,13 @@ T.VM_REASONS = { RENT_LOCKED = true, FACTION_PAUSED = true, QUARANTINED = true }
 -- VehicleManager refuses `player` every one of `codes` on this car: the reason to show (as T.mayUseCable: its rent /
 -- faction / quarantine locks keep theirs, any other is NOT_OWNER); nil when one is granted, without VehicleManager, or on
 -- an unclaimed car (canUse true, "UNCLAIMED"). MP client: its projection, so a pre-check; its server guard decides.
-function T.vmRefusal(player, vehicle, codes)
+-- query: as T.authorized.
+function T.vmRefusal(player, vehicle, codes, query)
     local api = MinidoracatVehicleManagerAPI
     if not (api and api.canUse) then return nil end
     local why
     for _, code in ipairs(codes) do
-        local ok, w = T.authorized(player, vehicle, code)
+        local ok, w = T.authorized(player, vehicle, code, query)
         if ok then return nil end
         why = w
     end

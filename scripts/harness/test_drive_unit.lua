@@ -315,18 +315,23 @@ function pm:getVehicle() return tv end
 function pm:getPlayerNum() return 0 end
 function pm.inv:getFirstTypeRecurse() return {} end
 local vmSays -- canUse's answer for each code
+local vmAsks -- each question since ask(): code:query
 local function ask(fn)
-    queued, told, exited = {}, {}, 0
+    queued, told, exited, vmAsks = {}, {}, 0, {}
     fn(pm, te)
     return table.concat(queued, ",")
 end
 local full = "path,unlock,open,"
-MinidoracatVehicleManagerAPI = { canUse = function(_, _, code) local a = vmSays[code] or { false, "NO_SHARE" }; return a[1], a[2] end }
+MinidoracatVehicleManagerAPI = { canUse = function(_, _, code, ctx)
+    vmAsks[#vmAsks + 1] = code .. ":" .. tostring(ctx and ctx.query)
+    local a = vmSays[code] or { false, "NO_SHARE" }
+    return a[1], a[2]
+end }
 vmSays = { REPAIR = { true, "OWNER" } }
 local got = ask(DU.onTake)
 check(got == "" and exited == 0 and hood.locked and not hood.open and #told == 1 and told[1].chr == pm
-    and told[1].t == T.denyText("NOT_OWNER"),
-    "D4a SALVAGE refused, the hood shut and locked: nothing queued (no exit, unlock, open), still locked, the reason once")
+    and told[1].t == T.denyText("NOT_OWNER") and table.concat(vmAsks, ",") == "SALVAGE:true",
+    "D4a SALVAGE refused, the hood shut and locked: nothing queued (no exit, unlock, open), still locked, the reason once; asked as a query")
 vmSays = { REPAIR = { false, "RENT_LOCKED" }, SALVAGE = { true, "SHARED" } }
 got = ask(DU.onRepair)
 check(got == "" and exited == 0 and #told == 1 and told[1].t == T.denyText("RENT_LOCKED"),
