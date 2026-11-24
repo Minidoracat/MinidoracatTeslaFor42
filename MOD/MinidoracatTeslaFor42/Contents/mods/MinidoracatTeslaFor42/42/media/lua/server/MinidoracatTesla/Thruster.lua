@@ -154,10 +154,14 @@ local function airborne(v) return v:getDebugZ() - H.groundZ(v) > GROUND end
 -- off, so a car really in the air would have dropped ~1.25 m by then (~0.8 m in the server's copy, ~0.1 s behind); one
 -- that went quiet (a crash) never says rest. REST_DM: the server's copy still settles after its holder's (r2rest-mp-near2:
 -- 0.148 m in ABORT_MS; the same car rests 1.13 m up on its holder, 1.27-1.31 m on the others), so twice that
-local REST_DXY, REST_DM = 0.15, 0.3 -- tiles, metres
+-- REST_V: and its last physics sample still (the server's speed is the holder's last sample's, BaseVehicle.java:4360-4362,
+-- VehiclePhysicsPacket.java:163-165): no sample since a moving one is not "still where it was" (round3 T4; r2f5-rest:
+-- 0.000-0.001 m/s at rest, 0.06-0.12 settling, 0.3-3 moving), twice the client's REST_V
+local REST_DXY, REST_DM, REST_V = 0.15, 0.3, 0.4 -- tiles, metres, m/s
+local function speed(v) return v:getLinearVelocity(Vector3f.new()):length() end
 local function stillAt(v, r)
     return getPlayerByOnlineID(r.by:getOnlineID()) == r.by and math.abs(v:getX() - r.x) < REST_DXY
-        and math.abs(v:getY() - r.y) < REST_DXY and math.abs(v:getDebugZ() - r.z) * H.FLOOR < REST_DM
+        and math.abs(v:getY() - r.y) < REST_DXY and math.abs(v:getDebugZ() - r.z) * H.FLOOR < REST_DM and speed(v) < REST_V
 end
 -- moved, but only as a car settles once its thrusters let go (r2scan-mp-r2 boostnearhold: leaning on a roof's wall,
 -- 0.20-0.27 tiles on and 0.26-0.30 m lower each look, three hand-backs to its own driver): looked at again from where
@@ -327,10 +331,10 @@ d2 = function(v, p)
         if stillAt(v, r) then
             p.downMs = r.ms
             finish(v, p, p.up == true)
-            return T.log("thrust " .. p.act .. " ended at rest off the ground vid=" .. v:getId())
+            return T.log(string.format("thrust %s ended at rest off the ground vid=%d lv=%.3f", p.act, v:getId(), speed(v)))
         end
-        T.log(string.format("thrust %s said at rest but moved vid=%d dx=%.3f dy=%.3f dm=%.3f online=%s look=%d", p.act, v:getId(),
-            v:getX() - r.x, v:getY() - r.y, (v:getDebugZ() - r.z) * H.FLOOR, tostring(getPlayerByOnlineID(r.by:getOnlineID()) == r.by), r.looks or 0))
+        T.log(string.format("thrust %s said at rest but moved vid=%d dx=%.3f dy=%.3f dm=%.3f lv=%.3f online=%s look=%d", p.act, v:getId(),
+            v:getX() - r.x, v:getY() - r.y, (v:getDebugZ() - r.z) * H.FLOOR, speed(v), tostring(getPlayerByOnlineID(r.by:getOnlineID()) == r.by), r.looks or 0))
         if settling(v, r) then
             p.rest = { x = v:getX(), y = v:getY(), z = v:getDebugZ(), by = r.by, ms = r.ms, looks = (r.looks or 0) + 1 }
             return schedule(p, ABORT_MS, d2)
