@@ -689,6 +689,35 @@ check(TH.groundZ(rv) == 0, "R10: no floor at level 1 there: the ground")
 roof["302,302"] = 1
 check(TH.groundZ(rv) == 1, "R10: a floor built there since, the same tile and level: counted")
 roof["302,302"] = nil
+-- R13: a stunt asked on a roof's edge, the car off it before the answer: the driver's machine lands it at once and
+-- asks the soft landing; the server ends the driver's own stunt first, the landing approved, nobody handed the car
+online = { bystander }
+v.driver, p.vehicle, v.dz, v.speed, v.npid = p, v, 0, 30, nil
+part:getModData().thr = { gas = 1, at = H.hours() }
+check(ask(p, v, "kickflip") == "thrustOk", "R13: a kickflip approved")
+local sent13 = #H.sent
+v.dz = 1
+check(ask(p, v, "land") == "thrustOk" and entryOf(v).act == "land" and near(gas(part), 1 - 1 / 3, 1e-6) and v.npid == nil,
+    "R13: its soft landing at the server after it: the stunt ended (no look saw it go: its air back), the landing billed, the physics stays")
+wait(1000)
+v.dz = 0
+done(p, v, { done = true })
+local handed13 = false
+for i = sent13 + 1, #H.sent do if H.sent[i].command == "thrustLand" then handed13 = true end end
+check(entryOf(v) == nil and not handed13 and v.npid == nil, "R13: landed: over, nobody handed it")
+part:getModData().thr = { gas = 1, at = H.hours() }
+v.dz = 1
+check(ask(p, v, "land") == "thrustOk" and ask(p, v, "kickflip") == "THRUST_BUSY" and entryOf(v).act == "land",
+    "R13: the soft landing at the server first: the stunt after it THRUST_BUSY, the landing goes on")
+v.dz = 0
+done(p, v, { done = true })
+part:getModData().thr = { gas = 1, at = H.hours() }
+check(ask(p, v, "kickflip") == "thrustOk", "R13: a kickflip again")
+v.driver, bystander.vehicle = bystander, v
+check(ask(bystander, v, "land") == "THRUST_BUSY" and entryOf(v).act == "kickflip",
+    "R13: a soft landing asked by another driver while someone else's action runs: THRUST_BUSY as ever")
+v.driver, bystander.vehicle = p, nil
+done(p, v, { done = true })
 online = { caller, helper }
 
 H.section("thrusters: SP")
@@ -813,8 +842,11 @@ check(TH.active() and TH.active().phase == "wait" and TH.active().app == "show" 
     "the show: waits for the car's physics, with the server's n")
 H.advanceMs(-60000)
 TH.tick()
+check(TH.active() and TH.active().phase == "wait", "R14: the wall clock set back while it waits: no time passed, it waits on")
+H.advanceMs(2100)
+TH.tick()
 e = H.clientSent[#H.clientSent]
-check(TH.active() == nil and e.command == "thrustEnd" and e.args.n == 501, "A4: the wall clock set back while it waits: given up, not stuck")
+check(TH.active() == nil and e.command == "thrustEnd" and e.args.n == 501, "A4/R14: 2 s on from there: given up, not stuck")
 T.ClientCommands.thrustOk({ vid = cv:getId(), act = "kickflip", app = true, n = 502, pn = 0 })
 cv.local_ = true
 TH.tick()
@@ -948,6 +980,21 @@ TH.ask(cp, cv, "land")
 check(TH.active() and TH.groundZ(cv, true) == 1, "R10: a floor built since: the next action's start clears the cache")
 T.ClientCommands.deny({ reason = "THRUST_BUSY", vid = cv:getId(), pn = 0, n = lastN() })
 getCell, cv.dz = cell6, 0.075
+-- R13: a stunt asked, the car off the edge before the answer: the soft landing it fell into runs on through the stunt's
+-- late thrustOk (the server ends the stunt itself), nothing said
+cv.dz, cv.vy, cv.speed = 0.075, 0, 30
+TH.ask(cp, cv, "kickflip")
+local n13 = lastN()
+cv.dz, cv.vy = 0.075 + 4 / TH.FLOOR, -5
+check(TH.ask(cp, cv, "land") and TH.active() and TH.active().act == "land", "R13: off the edge before the stunt's answer: the soft landing runs")
+local c13 = #H.clientSent
+T.ClientCommands.thrustOk({ vid = cv:getId(), act = "kickflip", n = n13, pn = 0 })
+check(#H.clientSent == c13 and TH.active() and TH.active().act == "land" and not TH.active().ok,
+    "R13: the stunt's thrustOk while the landing waits for its own: no thrustEnd, the landing goes on")
+okFor("land")
+check(TH.active() and TH.active().ok, "R13: the landing approved")
+abort()
+cv.vy = 0
 -- flying a parked car whose physics won't switch on (r2fe-sp-g, 3 of 3 such stayed down): the motor creeps it
 -- first, then it lifts and flies, the cruise back as it was
 cv.dz, cv.vy, cv.speed, cv.impulses, cv.reg, cv.regSpd = 0.075, 0, 0, 0, nil, nil

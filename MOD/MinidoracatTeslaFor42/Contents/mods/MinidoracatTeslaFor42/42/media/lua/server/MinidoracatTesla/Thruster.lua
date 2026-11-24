@@ -453,13 +453,22 @@ local function bill(player, v, part, act, app, eng)
 end
 
 -- args { vid, act, n }: n the asker's number for this action (BAD_VALUE without one). A refusal changes nothing kept
--- (a stale busy flag aside); approved: thrustOk { vid, act, sec (flying: the seconds of air; nil: FreeFlight), n, pn }
+-- (a stale busy flag aside); approved: thrustOk { vid, act, sec (flying: the seconds of air; nil: FreeFlight), n, pn }.
+-- A soft landing asked by the driver whose own action still runs here (a stunt asked on a roof's edge, the car fallen
+-- off before its answer: the driver's machine lands it already, client H.watch) ends that one first (billed if a
+-- look saw it go, else the air back); anyone else's action, a show or a landing: THRUST_BUSY as ever
 cmds.thrust = function(player, args)
     local v = T.commandVehicle(player, args)
     if not v then return end
     local vid, act, n = v:getId(), args.act, args.n
     if type(act) ~= "string" or not H.ACTS[act] or not isN(n) then return deny(player, "BAD_VALUE", vid, n) end
     H.adopt()
+    local own = act == "land" and entry(v)
+    if own and own.player == player and not own.app and own.act ~= "land" and not own.helper and not own.orphan
+        and v:isDriver(player) then
+        finish(v, own, own.up == true)
+        T.log("thrust " .. own.act .. " ended by its driver's soft landing vid=" .. vid)
+    end
     local part = clearStale(v)
     local ok, why = H.can(player, v, act)
     if not ok then return deny(player, why, vid, n) end

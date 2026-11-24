@@ -446,9 +446,10 @@ function H.tick()
     if not f then return Events.OnTick.Remove(H.tick) end
     local v = f.v
     if f.phase == "wait" then -- the server handed the physics over: here within about 0.1 s (poc/APP.md)
-        local d = getTimestampMs() - f.ms0
+        local now = getTimestampMs()
+        if now < f.ms0 then f.ms0 = now end -- the wall clock set back: no time passed, the wait goes on from now
         if authority(v) then go(f)
-        elseif d < 0 or d > 2000 then return stop(false) end -- the wall clock set back counts as too long
+        elseif now - f.ms0 > 2000 then return stop(false) end
         return
     end
     -- someone took the driver's seat (the show: anyone; the helper lands it whoever sits there), or the physics left
@@ -560,13 +561,14 @@ end
 
 -- ---- asking ----
 -- [pn] = { vid, act, n, ms }: what each local player asked and has no answer for yet (thrustOk, deny); after
--- ASK_MS (or the wall clock set back) it is as good as unanswered (thrustOk then gives the air back)
+-- ASK_MS it is as good as unanswered (thrustOk then gives the air back). The wall clock set back counts no time
 local asked, ASK_MS = {}, 3000
 local function pendingAsk(pn)
     local a = asked[pn]
     if not a then return nil end
-    local d = getTimestampMs() - a.ms
-    if d < 0 or d > ASK_MS then
+    local now = getTimestampMs()
+    if now < a.ms then a.ms = now end -- the wall clock set back: no time passed, the wait goes on from now
+    if now - a.ms > ASK_MS then
         asked[pn] = nil
         return nil
     end
@@ -654,6 +656,9 @@ T.ClientCommands.thrustOk = function(args)
         f.ok = true
         return
     end
+    -- the driver's own action approved while the soft landing it fell into is not yet: the server ends that one
+    -- itself when the landing reaches it (server Thruster.lua cmds.thrust); a thrustEnd now would hand the car on
+    if f and f.act == "land" and not f.ok and f.vid == args.vid then return end
     if not a or f or not v or not v:isDriver(player) or not authority(v) then return back() end
     start(player, v, args.act, args.sec, nil, args.n)
     F.ok = true
