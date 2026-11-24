@@ -111,9 +111,9 @@ local function heightOf(v, rest) return (v:getDebugZ() - groundZ(v) - rest) * FL
 --   that square exists with a floor on it or under it); once listed only the 2D distance counts (:3045-3080). So the
 --   whole way (r15 KshotA: stopped 2.70 m up)
 -- * a static body (IsoChunk.java:1949-2107): a solid, solidtrans or blocksight square, stairs, a tree, a moveable, a
---   PhysicsShape / PhysicsMesh tile, a player's whole-square wall, on level 0 an outdoor lamp post or a hoop; a wall or
---   window (open or shut) on the square's own N / W edge. Built per level (updatePhysicsForLevel; their height is in
---   the native code, unread): taken as one floor high at most, so only where the car is under one floor
+--   PhysicsShape / PhysicsMesh tile, a player's whole-square wall, on level 0 an outdoor lamp post or a hoop; a wall,
+--   window (open or shut) or shut door on the square's own N / W edge. Built per level (updatePhysicsForLevel; their
+--   height is in the native code, unread): taken as one floor high at most, so only where the car is under one floor
 -- All the way, a floor up to the apex (a roof, a bridge). shortcut: tiles only, not the car's exact outline
 local function slows(sq)
     local objs = sq:getObjects()
@@ -128,7 +128,8 @@ local function body(sq, ground) -- ground: level 0, where lamp posts and hoops g
     if sq:isSolid() or sq:isSolidTrans() or sq:HasStairs() then return true end
     local f = sq:getProperties()
     if f and (f:has(IsoFlagType.blocksight) or f:has(IsoFlagType.collideN) or f:has(IsoFlagType.collideW)
-        or f:has(IsoFlagType.windowN) or f:has(IsoFlagType.windowW)) then return true end
+        or f:has(IsoFlagType.windowN) or f:has(IsoFlagType.windowW)
+        or (f:has(IsoFlagType.doorN) or f:has(IsoFlagType.doorW)) and not f:has(IsoFlagType.open)) then return true end
     if sq:has(IsoObjectType.tree) or sq:has(IsoObjectType.isMoveAbleObject) then return true end
     local objs = sq:getObjects()
     for i = 0, objs:size() - 1 do

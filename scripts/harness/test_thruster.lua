@@ -1458,14 +1458,17 @@ local bodies = {
     { "a wall on its W edge", { flags = { collideW = true } } },
     { "a window on its N edge", { flags = { windowN = true } } },
     { "a window on its W edge", { flags = { windowW = true } } },
+    { "a shut door on its N edge", { flags = { doorN = true } } },
+    { "a shut door on its W edge", { flags = { doorW = true } } },
 }
 for _, b in ipairs(bodies) do
     check(scan("kickflip", NEAR, b[2]) == "THRUST_ROOM" and scan("kickflip", MID, b[2]) == "ok" and scan("backflip", MID, b[2]) == "THRUST_ROOM",
         "scan: " .. b[1] .. ": a static body, refused under one floor (kickflip near, backflip all the way), not under the kickflip's high middle")
 end
 check(scan("kickflip", NEAR, { objs = { { class = "IsoThumpable", ball = false } } }) == "ok"
-    and scan("kickflip", NEAR, { objs = { { sprite = "recreational_sports_01_20" } } }) == "ok",
-    "scan: a thumpable not filling its square, another sports tile: go")
+    and scan("kickflip", NEAR, { objs = { { sprite = "recreational_sports_01_20" } } }) == "ok"
+    and scan("kickflip", NEAR, { flags = { doorN = true, open = true } }) == "ok",
+    "scan: a thumpable not filling its square, another sports tile, an open door: go")
 instanceof, getCell = savedInst, cellS
 
 -- restore
