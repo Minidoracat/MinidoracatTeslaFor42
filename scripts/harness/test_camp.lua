@@ -38,6 +38,14 @@ check(md(v).camp == nil and F.lastSent("deny").args.reason == "MOVING" and v.run
     "camp: moving car -> MOVING, motor keeps running")
 v.kmh = T.STOP_KMH + 0.5
 check(select(2, C.canEnable(owner, v)) == "MOVING", "camp: rolling just above STOP_KMH is still moving")
+-- hovering still in the air (a thruster action running: thr.busy on the pack, server Thruster.lua) reads 0 km/h: still
+-- moving (oracle-flight2: camp would shut the motor off under a flying car)
+v.kmh = 0
+md(v).thr = { gas = 1, busy = { act = "fly", by = "owner" } }
+check(select(2, C.canEnable(owner, v)) == "MOVING", "camp: hovering at 0 km/h with a thruster action running is still moving")
+md(v).thr = { gas = 1 }
+check(select(2, C.canEnable(owner, v)) ~= "MOVING", "camp: the thruster idle, stopped: not moving")
+md(v).thr = nil
 v.kmh, v.running = 0, false
 local stranger = F.player("stranger", { vehicle = v })
 cmds.campOn(stranger, { vid = v:getId() })
