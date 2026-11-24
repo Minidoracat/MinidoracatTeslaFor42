@@ -1559,12 +1559,13 @@ check(TH.active() == nil and e.command == "thrustEnd" and e.args.done == false, 
 check(zoom == 0.5, "D4: zoomed out, through the creep and flying again: the camera back as it was")
 -- the hover (integration, real body 2026-11-24, r2int-sp-t0: 3.49 m 3 s after a take-off for 3 m; the step to flyH
 -- wound the PID's integral up on the climb): a car that only moves up and down (g 10, its frame's impulse) takes
--- off to flyH no more than 0.2 m over and holds it within 0.2 m 2-4 s after the ask; PageUp held 2 s: flyMaxH, no
+-- off to flyH no more than 0.2 m over and holds it within 0.2 m 2-4 s after the ask; up (Space) held 2 s: flyMaxH, no
 -- more than 0.2 m over, within 0.2 m from 1.5 s after the key's release
 local fc = TH.conf(cv)
 local upHeld = false
-TH.KEYS.up = { getValue = function() return 201 end }
-isKeyDown = function(k) return k == 201 and upHeld end
+TH.KEYS.up = { getValue = function() return 57 end }
+isKeyDown = function(k) return k == 57 and upHeld end
+cp.sneak = true -- crouching when it takes off (C, the down key's default, toggles it: below)
 cv.dz, cv.vy, cv.speed, zoom = 0.075, 0, 0, 1
 -- Q1 (oracle-flight2): vanilla's shut-off / start actions (ISVehicleMenu.lua:1164,1176) and the car's heater, on at 22
 local q1 = { offs = 0, starts = 0 }
@@ -1603,7 +1604,7 @@ local overUp, worstUp = 0, 0
 step(75, function(h) overUp = math.max(overUp, h - fc.flyMaxH) end)
 step(75, function(h) overUp = math.max(overUp, h - fc.flyMaxH) worstUp = math.max(worstUp, math.abs(h - fc.flyMaxH)) end)
 check(overUp <= 0.2 and worstUp < 0.2,
-    string.format("hover: PageUp 2 s to flyMaxH %.1f m, %.2f m over at most, within %.2f m from 1.5 s after", fc.flyMaxH, overUp, worstUp))
+    string.format("hover: up 2 s to flyMaxH %.1f m, %.2f m over at most, within %.2f m from 1.5 s after", fc.flyMaxH, overUp, worstUp))
 do -- Q1 guard (oracle-flight2): the motor asked off in flight, vanilla's auto-start on W (CarController.java:329-341)
     -- is held back through CheckOperate.Battery: the brake forced once, read once, then the input held
     local fo, brakes = TH.active(), 0
@@ -1623,6 +1624,21 @@ do -- Q1 guard (oracle-flight2): the motor asked off in flight, vanilla's auto-s
     fo.sink = true
     check(T.CheckOperate.Battery(cv, bp) == true, "Q1 guard: coming down: released")
     fo.sink, fo.snap, cv.setForceBrake = nil, nil, nil
+end
+-- C, the down key's default, is vanilla's crouch toggle in a car too (IsoPlayer.java:3373-3377): the flight puts the
+-- crouch it found back the next frame, so it ends as it began
+do
+    local fs = TH.active()
+    cp.sneak = false -- C pressed
+    step(1)
+    check(fs.sneak == true and cp.sneak == true, "flying: C's crouch toggle put back the next frame (crouched at take-off)")
+end
+do -- the pill's seconds (HUD.lua) with the motor shut off in flight (Q1): counting down all the same
+    local s0 = TH.flight(cp, cv)
+    for _ = 1, 12 do H.advanceMs(100) step(1) end
+    local s1 = TH.flight(cp, cv)
+    check(not cv.running and type(s0) == "number" and type(s1) == "number" and s1 < s0,
+        string.format("motor off in flight: the pill's seconds count down all the same (%s > %s)", tostring(s0), tostring(s1)))
 end
 -- a controller's player flies with it as vanilla drives (CarController.java:958-967): RT ahead, LT back, the left
 -- stick steers; the right stick sets the height (pushed up: negative, PlayerCamera.java:148). A stick resting a little
@@ -1667,11 +1683,27 @@ pad.ay, pad.rb = 0, nil
 local realGetText, realKeyName = getText, getKeyName
 getText = function(k, ...) return table.concat({ k, ... }, "|") end
 getKeyName = function(k) return "K" .. tostring(k) end
-local padTip = TH.flyTip(cp)
+local padTip, padPill = TH.flyTip(cp), TH.flyTip(cp, "IGUI_MinidoracatTesla_HUD_FlyKeys")
 cp.pad = nil
-check(padTip == "IGUI_MinidoracatTesla_Tip_ThrustFlyPad" and TH.flyTip(cp) == "IGUI_MinidoracatTesla_Tip_ThrustFly|K201|K0|K0",
+check(padTip == "IGUI_MinidoracatTesla_Tip_ThrustFlyPad" and TH.flyTip(cp) == "IGUI_MinidoracatTesla_Tip_ThrustFly|K57|K0|K0",
     "the flying tip names the keys bound now (an unbound one: its 0); a controller's player: the controller's tip")
+check(padPill == "IGUI_MinidoracatTesla_HUD_FlyKeysPad"
+    and TH.flyTip(cp, "IGUI_MinidoracatTesla_HUD_FlyKeys") == "IGUI_MinidoracatTesla_HUD_FlyKeys|K57|K0|K0",
+    "the dashboard's flying pill: its own short words, the same keys")
 getText, getKeyName = realGetText, realKeyName
+-- the dashboard's flying pill (HUD.lua): the whole seconds of air left, real time counting them down as the server's
+-- D2 does; FreeFlight (no limit): true; "land" once landing is asked; nobody else's (a passenger, another car)
+do
+    local fl0, flown0 = TH.flight(cp, cv), fa.flown
+    for _ = 1, 12 do H.advanceMs(100) step(1) end
+    local fl1 = TH.flight(cp, cv)
+    check(fl0 == math.ceil(30 - flown0) and fa.flown > flown0 + 1 and fl1 == math.ceil(30 - fa.flown) and fl1 < fl0,
+        "flying: the pill's seconds left count real time down (" .. tostring(fl0) .. " -> " .. tostring(fl1) .. ")")
+end
+check(TH.flight({}, cv) == nil and TH.flight(cp, {}) == nil, "flying: not another player's, not another car's")
+fa.sec = nil
+check(TH.flight(cp, cv) == true, "FreeFlight: no seconds")
+fa.sec = 30
 -- flying: the V ring's thrusters slice is Land (the first press lands it, H.ask), and getting out (vanilla's exit: the
 -- A button, ISButtonPrompt.lua:444; the Interact key, OnUseVehicle) lands it too; the landing itself still holds on
 local slices, realTex = {}, getTexture
@@ -1685,17 +1717,22 @@ check(fa.wantLand == true, "the Land slice: lands it")
 fa.wantLand = nil
 local ex0, h0 = exits, #halo
 ISVehicleMenu.onExit(cp, 0)
-check(exits == ex0 and #halo == h0 and fa.wantLand == true, "flying: getting out lands it, nothing said, still in the seat")
+check(exits == ex0 and #halo == h0 and fa.wantLand == true and TH.flight(cp, cv) == "land",
+    "flying: getting out lands it, nothing said, still in the seat; the pill says landing")
 -- the landing first stops where it is (oracle-flight2 Q2: r2scan-sp-obst2 fenceland drifted on at its flying speed,
 -- came down on the fence and turned over): at its height, gliding on at GLIDE_V along its heading
 cv.speed = 36
 local brakeH = hm()
+cp.sneak = false -- C pressed as it stops to come down
 step(1)
 check(fa.phase == "land" and fa.brake and near(fa.st.rh, brakeH, 0.05) and fa.st.rvy == 0
     and near(math.sqrt(fa.st.vTx ^ 2 + fa.st.vTz ^ 2), 3, 1e-6), "time to land at 10 m/s: held at its height, slowing to 3 m/s ahead")
+check(TH.flight(cp, cv) == "land", "stopping at its height first: the pill says landing")
 ISVehicleMenu.onExit(cp, 0)
 check(fa.phase == "land" and exits == ex0 and halo[#halo] == "IGUI_MinidoracatTesla_Deny_THRUST_IN_AIR", "landing: no getting out yet")
 check(q1.starts == 0, "Q1: stopping at its height: the motor still off")
+step(1)
+check(cp.sneak == true, "landing: C's crouch toggle put back too")
 cv.speed = 10
 H.advanceMs(2300)
 step(1)
@@ -1706,6 +1743,11 @@ check(q1.starts == 1 and q1.hs and q1.hs.on == true and q1.hs.temp == 22, "Q1: c
 step(5)
 check(q1.starts == 1, "Q1: still off a moment later: not tried again")
 abort()
+check(TH.flight(cp, cv) == nil, "over: no flying pill")
+cp.sneak = false
+TH.tick()
+check(cp.sneak == false, "over: the crouch is the player's again (crouched as at take-off until then)")
+cp.sneak = nil
 do -- something under it (a fence, a hedge): glides on; after GLIDE_S down all the same
     local blocked = { getProperties = function() return { has = function(_, k) return k == "HitByCar" end } end }
     local fence = setmetatable({ getObjects = function() return { size = function() return 1 end, get = function() return blocked end } end },
@@ -1798,6 +1840,7 @@ getCell = function() return { getGridSquare = function(_, x, y, z)
 end } end
 -- kickflip at 30 km/h; backflip at its flipMaxKmh 15 (its way 17 m)
 cv.dz, cv.vy = 0.075, 0
+;(function() -- its own 200 locals (the main chunk's are used up)
 local function scan(act, at, t)
     world, cv.speed = { [at] = t }, act == "backflip" and 15 or 30
     local ok, why = TH.check(cp, cv, act)
@@ -1838,6 +1881,7 @@ check(scan("kickflip", NEAR, { objs = { { class = "IsoThumpable", ball = false }
     and scan("kickflip", NEAR, { objs = { { sprite = "recreational_sports_01_20" } } }) == "ok"
     and scan("kickflip", NEAR, { flags = { doorN = true, open = true } }) == "ok",
     "scan: a thumpable not filling its square, another sports tile, an open door: go")
+end)()
 instanceof, getCell = savedInst, cellS
 
 -- restore

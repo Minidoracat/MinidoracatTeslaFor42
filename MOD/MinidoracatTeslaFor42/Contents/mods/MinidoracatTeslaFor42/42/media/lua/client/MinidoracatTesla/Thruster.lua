@@ -29,7 +29,7 @@ end
 -- ---- controller constants (flight PoC) ----
 local G = 10
 local KP_H, KD_H, KI_H = 4, 4, 1 -- hover height PID
--- the hover's reference height moves to its goal (flyH at take-off, PageUp/PageDown) at most HOVER_V m/s, speeding
+-- the hover's reference height moves to its goal (flyH at take-off, the up / down keys) at most HOVER_V m/s, speeding
 -- up and slowing down at HOVER_A m/s^2 (its speed and acceleration fed forward); the integral only within IE_BAND m
 -- of it. A step to flyH wound the integral up on the climb: 3.49 m three seconds after a take-off for 3
 -- (r2int-sp-t0, the real body); a 2.5 m/s ramp alone still overshot 0.39 m (harness "hover:")
@@ -586,6 +586,12 @@ function H.tick()
     if (f.app == "show" and v:getDriver() ~= nil) or (not f.app and v:getDriver() ~= f.player) or not authority(v) then
         return stop(f.lifted, nil, true)
     end
+    -- C (down's default) is vanilla's crouch toggle too, seated or not (IsoPlayer.java:2313, :3373-3377): a flight keeps
+    -- the driver's crouch as it found it, put back each frame, so however the flight ends it is left so
+    if f.act == "fly" then
+        local p = f.player
+        if f.sneak == nil then f.sneak = p:isSneaking() elseif p:isSneaking() ~= f.sneak then p:setSneaking(f.sneak) end
+    end
     -- the flight's limit counts real time, as the server's D2 does (a slow frame's physics step is capped at DT_MAX;
     -- the wall clock set back or forward counts as no time or REAL_MAX)
     local now = getTimestampMs()
@@ -859,6 +865,14 @@ function H.air(v)
     local part = T.Battery.part(v)
     return H.gasNow(part and part:getModData().thr, T.hours())
 end
+-- this player flying v, for the dashboard's pill (HUD.lua readSlow): nil not flying; "land" coming down; else the
+-- whole seconds of air left (the limit's real time, as the server's D2), true in FreeFlight (no limit)
+function H.flight(player, v)
+    local f = F
+    if not f or f.v ~= v or f.act ~= "fly" or f.app or f.player ~= player then return nil end
+    if f.wantLand or f.phase == "land" then return "land" end
+    return f.sec and math.max(0, math.ceil(f.sec - f.flown)) or true
+end
 -- why refused, in words; THRUST_NO_AIR adds when this car's tank is full again (v may be nil: a car not loaded here)
 function H.whyText(v, why)
     local s = T.denyText(why)
@@ -981,12 +995,14 @@ local NAME = { kickflip = "Kickflip", backflip = "Backflip", boost = "Boost", fl
 local function line2(s) return "\n" .. T.wrapText(s, 220, UIFont.Medium) end -- the ring's width (HUDRadial.lua LINE_W)
 local function onAct(player, v, act) H.ask(player, v, act) end
 -- how to fly, with the keys bound now (the up / down binds; vanilla's exit, the Interact key: getting out lands it,
--- ISVehicleMenu.onExit below); a controller's player: the controller's way
-function H.flyTip(player)
-    if player:getJoypadBind() ~= -1 then return getText("IGUI_MinidoracatTesla_Tip_ThrustFlyPad") end
+-- ISVehicleMenu.onExit below); a controller's player: the controller's way (the key with "Pad"). The ring's words, or
+-- the ones given (the dashboard's flying pill: "IGUI_MinidoracatTesla_HUD_FlyKeys", HUD.lua setMessage)
+function H.flyTip(player, ...)
+    local key = ... or "IGUI_MinidoracatTesla_Tip_ThrustFly"
+    if player:getJoypadBind() ~= -1 then return getText(key .. "Pad") end
     local up, down = KEYS.up, KEYS.down
-    return getText("IGUI_MinidoracatTesla_Tip_ThrustFly", getKeyName(up and up:getValue() or 0),
-        getKeyName(down and down:getValue() or 0), getKeyName(getCore():getKey("Interact")))
+    return getText(key, getKeyName(up and up:getValue() or 0), getKeyName(down and down:getValue() or 0),
+        getKeyName(getCore():getKey("Interact")))
 end
 
 function H.openRing(player, v)
@@ -1041,8 +1057,11 @@ if PZAPI and PZAPI.ModOptions and PZAPI.ModOptions.getOptions then
         KEYS.backflip = o:addKeyBind("ThrustBackflip", "IGUI_MinidoracatTesla_Radial_ThrustBackflip", Keyboard.KEY_NONE)
         KEYS.boost = o:addKeyBind("ThrustBoost", "IGUI_MinidoracatTesla_Radial_ThrustBoost", Keyboard.KEY_NONE)
         KEYS.fly = o:addKeyBind("ThrustFly", "IGUI_MinidoracatTesla_Key_ThrustFly", Keyboard.KEY_NONE)
-        KEYS.up = o:addKeyBind("ThrustUp", "IGUI_MinidoracatTesla_Key_ThrustUp", Keyboard.KEY_PRIOR)
-        KEYS.down = o:addKeyBind("ThrustDown", "IGUI_MinidoracatTesla_Key_ThrustDown", Keyboard.KEY_NEXT)
+        -- left hand on the drive keys: Space up, C down (C's crouch toggle undone while flying, H.tick). Not Left Ctrl:
+        -- vanilla's aim key turns the seated driver to the mouse and, a gun in hand, skips the car's controls
+        -- (IsoPlayer.java:4359-4428). Unreleased binds before 2026-11-25 (Page Up / Page Down): no saved key to keep
+        KEYS.up = o:addKeyBind("ThrustUp", "IGUI_MinidoracatTesla_Key_ThrustUp", Keyboard.KEY_SPACE)
+        KEYS.down = o:addKeyBind("ThrustDown", "IGUI_MinidoracatTesla_Key_ThrustDown", Keyboard.KEY_C)
     end
 end
 H.KEYS = KEYS
