@@ -297,6 +297,22 @@ wait(20000)
 v.dz = 0
 done(p, v, { done = true, sec = 1 })
 check(near(gas(part), 0), "A3: 20 s up: billed the 8 s approved, never more")
+do -- round3 T3: the landing's glide at its height, said by its holder, is not billed (up to GLIDE_S)
+    local function gf(glideMs, glide)
+        part:getModData().thr = { gas = 1, at = H.hours() }
+        ask(p, v, "fly")
+        v.dz = 1
+        wait(500)
+        wait(3000 + glideMs + FLAT)
+        v.dz = 0
+        done(p, v, { done = true, sec = 1, glide = glide })
+        return gas(part)
+    end
+    check(near(gf(0, 0), 1 - 3 / 8, 1e-6) and near(gf(4000, 4), 1 - 3 / 8, 1e-6),
+        "T3: 3 s flown, no glide or a 4 s glide at height: the same bill")
+    check(near(gf(4000, 99), 1 - 3 / 8, 1e-6), "T3: a glide said as 99 s: taken as GLIDE_S 4")
+    check(near(gf(0, -5), 1 - 3 / 8, 1e-6) and near(gf(0, "3"), 1 - 3 / 8, 1e-6), "T3: a negative or string glide: none")
+end
 -- G1: D2 for a flight: 3 s + its seconds + 12 s + 5 s from approval
 local helper = H.player({ name = "near", x = v.x + 5, y = v.y })
 online = { helper }
@@ -1759,6 +1775,17 @@ step(1)
 check(fa.phase == "land" and fa.brake and near(fa.st.rh, brakeH, 0.05) and fa.st.rvy == 0
     and near(math.sqrt(fa.st.vTx ^ 2 + fa.st.vTz ^ 2), 3, 1e-6), "time to land at 10 m/s: held at its height, slowing to 3 m/s ahead")
 check(TH.flight(cp, cv) == "land", "stopping at its height first: the pill says landing")
+do -- round3 T2: an eave under it as it holds its height: the same height in the world, not over the new floor
+    local cellOpen, x0 = getCell, cv.x
+    local roof = setmetatable({}, { __index = ground })
+    getCell = function() return { getGridSquare = function(_, x, y, z) return (z == 0 or z == 1) and (z == 1 and roof or ground) or nil end } end
+    cv.x = cv.x + 1 -- a new square: the floor under it read again
+    step(1)
+    check(fa.brake and near(fa.st.rh, brakeH - TH.FLOOR, 0.1), "T2: over an eave one floor up while holding: asked the same world height")
+    getCell, cv.x = cellOpen, x0
+    step(1)
+    check(fa.brake and near(fa.st.rh, brakeH, 0.1), "T2: off it again: the same height over the ground")
+end
 ISVehicleMenu.onExit(cp, 0)
 check(fa.phase == "land" and exits == ex0 and halo[#halo] == "IGUI_MinidoracatTesla_Deny_THRUST_IN_AIR", "landing: no getting out yet")
 check(q1.starts == 0, "Q1: stopping at its height: the motor still off")
@@ -1770,10 +1797,12 @@ step(1)
 check(fa.phase == "land" and not fa.brake and fa.sink and fa.st.vTx == 0 and fa.st.vTz == 0,
     "... down to 2.8 m/s over open ground: coming down, stopping")
 q1.hs = q1.heater()
-check(q1.starts == 1 and q1.hs and q1.hs.on == true and q1.hs.temp == 22, "Q1: coming down 2.3 s after the motor went off: started once, the heater back on at 22")
+check(q1.starts == 1 and q1.hs == nil, "Q1: coming down 2.3 s after the motor went off: started once; the heater not yet (T8: at the end)")
 step(5)
 check(q1.starts == 1, "Q1: still off a moment later: not tried again")
 abort()
+q1.hs = q1.heater()
+check(q1.hs and q1.hs.on == true and q1.hs.temp == 22, "T8: the flight over (aborted): the heater back on at 22")
 check(TH.flight(cp, cv) == nil, "over: no flying pill")
 cp.sneak = false
 TH.tick()
@@ -1790,15 +1819,19 @@ do -- something under it (a fence, a hedge): glides on; after GLIDE_S down all t
     step(150)
     getCell = function() return { getGridSquare = function(_, x, y, z) return z == 0 and fence or nil end } end
     local fb = TH.active()
-    fb.wantLand, cv.speed = true, 10
+    fb.wantLand, cv.speed = true, -10 -- backing as it is told to land (round3 T9)
     check(q1.offs == 2, "Q1: the second flight's motor shut off too")
     step(1)
     check(fb.phase == "land" and fb.brake and not fb.sink, "time to land at 2.8 m/s over a fence: gliding on, not down")
+    check(near(fb.gdx, 0, 1e-6) and near(fb.gdz, -1, 1e-6), "T9: backing at 2.8 m/s: glides on the way it moves, not to its nose")
     step(150)
     check(fb.brake and not fb.sink, "... 3 s over it: still gliding")
     step(60)
     check(not fb.brake and fb.sink, "... past GLIDE_S 4 s: down all the same")
     check(q1.starts == 1, "Q1: coming down under 2.2 s (the wall clock) after the motor went off: not started (W or the power key will)")
+    H.advanceMs(2300)
+    step(1)
+    check(q1.starts == 2, "T8: still coming down 2.2 s after the motor went off: started then (each frame, not only as it turned down)")
     getCell = cellOpen
     abort()
     cv.running, cv.parts.Heater = true, nil -- the fakes' shut-off left it off
@@ -1818,6 +1851,22 @@ ISVehicleMenu.getBestSwitchSeatExit = function() return nil end
 local savedGV, savedSeat = cp.getVehicle, cv.getSeat
 cp.getVehicle = function() return cv end
 cv.getSeat = function() return 0 end
+-- round3 T1: the seat (500, 500) to its way out (502, 500) on the car's level, as setCharacterPosition puts it
+local t1 = { walls = {}, blockMv = false, mp = false, cell = getCell, ic = isClient, z = cv.getZ }
+getCell = function() return { getGridSquare = function(_, x, y, z)
+    if z ~= 0 then return nil end
+    return { x = x, y = y, isSolid = function() return t1.solidX == x end, isSolidTrans = function() return false end,
+        getFloor = function() return true end, TreatAsSolidFloor = function() return true end,
+        isBlockedTo = function(self, o) return t1.walls[math.min(self.x, o.x) .. "," .. math.max(self.x, o.x)] == true end }
+end } end
+isClient = function() return t1.mp end
+SafeHouse = { isPlayerAllowedOnSquare = function(_, sq) return sq.x ~= t1.safeX end }
+cp.isBlockMovement = function() return t1.blockMv end
+t1.pin = { wx = 500.5, wy = 500.5, getArea = function() return nil end }
+t1.pout = { wx = 502.5, wy = 500.5, getArea = function() return nil end }
+function cv:getPassengerPosition(_, id) return id == "inside" and t1.pin or t1.pout end
+function cv:getPassengerPositionWorldPos(pos) return { x = function() return pos.wx end, y = function() return pos.wy end } end
+function cv:getZ() return 0.46 end
 local UP = 0.075 + 1.13 / 2.44949
 cv.dz = UP
 local ex1 = exits
@@ -1835,6 +1884,26 @@ check(exits == ex1 + 1 and #queued == 0, "on the ground: vanilla's exit")
 cv.dz, blockedE = UP, false
 ISVehicleMenu.onExit(cp, 0)
 check(exits == ex1 + 2 and #queued == 0, "up, its way out clear: vanilla's exit")
+cv.dz, blockedE = UP, true
+function t1.try(seat) -- vanilla's exit, or out past what holds it up
+    local e0 = exits
+    queued = {}
+    ISVehicleMenu.onExit(cp, seat)
+    return exits == e0 + 1 and #queued == 0, exits == e0 and table.concat(queued, ","):find("exit") ~= nil
+end
+t1.walls["501,502"] = true
+check((t1.try(0)), "T1: up on a car, a wall between the seat and its way out: vanilla's exit (out nowhere), not through the wall")
+t1.walls["501,502"] = nil
+t1.mp, t1.safeX = true, 502
+check((t1.try(0)), "T1: MP, the way out in a safehouse this player may not enter: vanilla's exit")
+t1.mp, t1.safeX, t1.blockMv = false, nil, true
+check((t1.try(0)), "T1: the player busy (isBlockMovement): vanilla's exit, which does nothing")
+t1.blockMv, t1.solidX = false, 502
+check((t1.try(0)), "T1: the way out a solid square: vanilla's exit")
+t1.solidX = nil
+check(select(2, t1.try(nil)), "T1: the car's info / part menu from the seat (onExit without a seat), the way out clear past its support: out")
+getCell, isClient, cv.getZ, SafeHouse, cp.isBlockMovement = t1.cell, t1.ic, t1.z, nil, nil
+cv.getPassengerPosition, cv.getPassengerPositionWorldPos = nil, nil
 cv.dz, cp.getVehicle, cv.getSeat = 0.075, savedGV, savedSeat
 ISTimedActionQueue, ISExitVehicle, ISOpenVehicleDoor, ISCloseVehicleDoor, ISUnlockVehicleDoor = nil, nil, nil, nil, nil
 cv.isExitBlocked, cv.isStopped, cv.getPassengerDoor = nil, nil, nil

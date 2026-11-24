@@ -16,6 +16,9 @@ H.APP = { kickflip = true, backflip = true } -- the phone app's show: the empty 
 H.APP_RANGE = 30  -- tiles from the caller: the car must be loaded on his game, which flies it (poc/APP.md)
 H.HELP_RANGE = 70 -- tiles: who takes over a car left in the air (server Thruster.lua)
 H.FLOOR = 2.44949 -- metres per floor: physics y / getDebugZ (flight PoC r1, BaseVehicle.java:4207)
+-- seconds a flight's landing glides on at its height at most before it comes down (client Thruster.lua f.brake); the
+-- server bills no more than this of it off (server Thruster.lua finish, thrustEnd's glide)
+H.GLIDE_S = 4
 
 -- per-car values; a car's Specs `thruster` table overrides any of them (Specs `thruster = {}`: all defaults)
 H.DEFAULTS = {

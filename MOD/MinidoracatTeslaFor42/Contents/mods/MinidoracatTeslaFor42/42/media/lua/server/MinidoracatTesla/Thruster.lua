@@ -201,7 +201,8 @@ local function finish(v, p, done)
             local s
             if isServer() then
                 local air = p.upMs and math.max(0, (p.downMs or nowMs()) - p.upMs) / 1000 or 0
-                s = math.min(math.max(0, air - LAND_FLAT_S), p.avail or 0)
+                -- less the glide its holder said its landing held at height (thrustEnd), up to GLIDE_S
+                s = math.min(math.max(0, air - LAND_FLAT_S - (p.glide or 0)), p.avail or 0)
             else
                 local real = math.max(0, nowMs() - p.ms) / 1000
                 s = isN(p.sec) and p.sec or real
@@ -590,6 +591,10 @@ cmds.thrustEnd = function(player, args)
             return schedule(p, ABORT_MS, d2)
         end
         p.downMs = nowMs()
+        -- the holder's own flight, never handed over: its landing's glide at height, taken up to GLIDE_S (round3 T3)
+        if p.act == "fly" and not p.helper and not p.term and isN(args.glide) then
+            p.glide = math.min(math.max(0, args.glide), H.GLIDE_S)
+        end
         return d2(v, p)
     end
     if not p.helper then p.sec = tonumber(args.sec) end

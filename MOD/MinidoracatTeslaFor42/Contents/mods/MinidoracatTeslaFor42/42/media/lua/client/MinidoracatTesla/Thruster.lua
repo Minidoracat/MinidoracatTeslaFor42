@@ -57,7 +57,7 @@ local PROBE_A, PROBE_B, PROBE_DH, PROBE_DOT = 0.2, 0.4, 0.05, 0.99939
 local SLIDE_V, LIFT_DH, SLIDE_D, SLIDE_S = 2, 0.8, 3, 4
 -- a flight's landing stops at its height first (r2scan-sp-obst2 fenceland: down at its flying speed onto a fence,
 -- turned over): GLIDE_V m/s ahead while anything under it would catch it (landClear), down after GLIDE_S s at most
-local GLIDE_V, GLIDE_S = 3, 4
+local GLIDE_V, GLIDE_S = 3, H.GLIDE_S
 -- a flight's motor off above OFF_H m (its wheels clear), started START_MS ms after it was seen off at the earliest
 local OFF_H, START_MS = 0.6, 2200
 local WAKE_KMH = 3               -- the motor's creep that wakes a parked car before it flies (go)
@@ -416,6 +416,12 @@ local function halt()
     if not f then return end
     regBack(f)
     for _ = 1, f.zoom or 0 do getCore():doZoomScroll(f.player:getPlayerNum(), -1) end
+    -- the heater the shut-off turned off (BaseVehicle.java:7509-7514) back on, however the flight ends, started or not:
+    -- vanilla's toggleHeater needs no motor (VehicleCommands.lua:59-71), a Tesla's draws nothing unpowered (Camp.lua)
+    if f.offAsked and f.heat and not f.heatBack then
+        f.heatBack = true
+        sendClientCommand(f.player, "vehicle", "toggleHeater", { on = true, temp = f.heat })
+    end
     return f
 end
 
@@ -427,8 +433,11 @@ local function stop(done, ...)
     local f = halt()
     if not f then return end
     if rest then RESTED[f.vid] = true end
+    -- glide: a flight's landing held at its height (f.brake) before it came down, the server bills it not (MP's air
+    -- clock: server Thruster.lua finish); never at rest ends
+    local glide = f.act == "fly" and not rest and (f.glide or (f.brake and f.t)) or nil
     T.request(f.player, "thrustEnd", { vid = f.vid, act = f.act, done = done == true, sec = f.flown, abort = abort,
-        n = f.n, term = f.term, rest = rest })
+        n = f.n, term = f.term, rest = rest, glide = glide })
     if why then HaloTextHelper.addBadText(f.player, T.denyText(why)) end
 end
 
@@ -561,13 +570,12 @@ end
 
 -- a flight's motor, shut off at OFF_H m (fly), started again as its landing comes down: once, by the vanilla start
 -- (ISVehicleMenu.onStartEngine, the HUD's power key's way: every kind of key), START_MS after it was seen off
--- (ShuttingDown lasts 2 s, tryStartEngine acts only from Idle: BaseVehicle.java:7611-7653). Not tried again (each
--- try costs the 12V 0.025); the heater back on if it was (vanilla toggleHeater, VehicleCommands.lua:59-71)
+-- (ShuttingDown lasts 2 s, tryStartEngine acts only from Idle: BaseVehicle.java:7611-7653); asked each frame while it
+-- comes down until then. Not tried again (each try costs the 12V 0.025). The heater: halt
 local function startBack(f, v, now)
     if not f.offAsked or f.started or not f.offSeen or now - f.offSeen < START_MS or v:isEngineRunning() then return end
     f.started = true
     ISVehicleMenu.onStartEngine(f.player)
-    if f.heat then sendClientCommand(f.player, "vehicle", "toggleHeater", { on = true, temp = f.heat }) end
 end
 
 -- each frame while an action runs
@@ -669,10 +677,15 @@ function H.tick()
         if gain + f.v0 >= c.boostV or t > 1.5 then return boostOver(f, v) end
     elseif ph == "fly" then
         if f.wantLand or (f.sec and f.flown >= f.sec) then
-            -- stop at its height first, gliding on at GLIDE_V over anything that would catch it (landClear)
-            local psi = st.psiT
+            -- stop at its height first, gliding on at GLIDE_V over anything that would catch it (landClear), the way
+            -- it moves (backing or sliding sideways: not turned to its nose); held at that height in the world, not
+            -- over the floor under it, which may change on the way (an eave)
+            local lv = v:getLinearVelocity(V3.lv)
+            local gx, gz = lv:x(), lv:z()
+            local gl = math.sqrt(gx * gx + gz * gz)
+            if gl <= 0.5 then gx, gz, gl = math.cos(st.psiT), math.sin(st.psiT), 1 end
             setLand(f, hm)
-            f.brake, f.brakeH, f.gdx, f.gdz, f.cx, f.cy, f.clear = true, hm, math.cos(psi), math.sin(psi), nil, nil, nil
+            f.brake, f.brakeZ, f.gdx, f.gdz, f.cx, f.cy, f.clear = true, v:getDebugZ(), gx / gl, gz / gl, nil, nil, nil
         else
             f.flown = f.flown + real
             -- the motor off once the wheels are clear (oracle-flight2 Q1): a running motor's car hits what it flies
@@ -751,13 +764,13 @@ function H.tick()
                 if cx ~= f.cx or cy ~= f.cy then f.cx, f.cy, f.clear = cx, cy, landClear(v) end -- a new square: look once
             end
             if not f.clear and f.t <= GLIDE_S then
-                st.rh, st.rvy, st.ray = f.brakeH, 0, 0
+                st.rh, st.rvy, st.ray = hm + (f.brakeZ - v:getDebugZ()) * FLOOR, 0, 0
                 st.vTx, st.vTz = f.gdx * GLIDE_V, f.gdz * GLIDE_V
                 return drive(f, v, dt, hm)
             end
-            f.brake, f.sink, st.vTx, st.vTz = nil, true, 0, 0 -- coming down now, stopping where it is
-            startBack(f, v, now)
+            f.brake, f.sink, f.glide, st.vTx, st.vTz = nil, true, f.t, 0, 0 -- coming down now, stopping where it is
         end
+        if f.sink then startBack(f, v, now) end
         local s = f.slide
         if s then -- lifted clear of what held it and carried the way it leans; then down again
             s.t = s.t + dt
@@ -1094,11 +1107,13 @@ Events.OnKeyPressed.Add(function(key)
 end)
 
 -- no getting out mid-air: the car is this machine's to fly until it lands. Flying, getting out (vanilla's exit: a
--- controller's A, ISButtonPrompt.lua:444; the Interact key, Vehicles.lua OnUseVehicle) lands it instead.
+-- controller's A, ISButtonPrompt.lua:444; the Interact key, Vehicles.lua OnUseVehicle; the car's info and part menus
+-- from the seat, ISVehicleMechanics.lua:420, ISVehiclePartMenu.lua:166) lands it instead.
 -- At rest off the ground after (another car's roof, an eave), vanilla's way out from the seat runs into what holds it
 -- up (isExitBlocked, BaseVehicle.java:6669-6699: lineClearCollide on the car's floor; r2rest-mp-near2: both seats, no
--- seat to switch to) and nothing else may move it (THRUST_AIRBORNE): out as vanilla's onExitAux, without that check
--- (ISExitVehicle puts the player at the seat's outside spot on the car's floor, setCharacterPosition)
+-- seat to switch to) and nothing else may move it (THRUST_AIRBORNE): out as vanilla's onExitAux, without that line
+-- check (ISExitVehicle puts the player at the seat's outside spot on the car's floor, setCharacterPosition) - but only
+-- past what holds the car up: exitOk looks at the rest of what vanilla would (round3 T1)
 local function exitUp(p, v, seat)
     local part = v:getPassengerDoor(seat)
     local door = part and part:getInventoryItem() and part:getDoor()
@@ -1106,6 +1121,52 @@ local function exitUp(p, v, seat)
     if door and not door:isOpen() then ISTimedActionQueue.add(ISOpenVehicleDoor:new(p, v, part)) end
     ISTimedActionQueue.add(ISExitVehicle:new(p))
     if door then ISTimedActionQueue.add(ISCloseVehicleDoor:new(p, v, part)) end
+end
+-- square to square on one level, a tile at a time: no wall, window or shut door between (IsoGridSquare.isBlockedTo:
+-- the edge's own objects; a low fence and another car are none). A diagonal step: both right-angle ways clear
+local function wayClear(cell, x, y, ex, ey, z)
+    local cur = cell:getGridSquare(x, y, z)
+    for _ = 1, 8 do
+        if not cur then return false end
+        if x == ex and y == ey then return true end
+        local dx = ex > x and 1 or (ex < x and -1 or 0)
+        local dy = ey > y and 1 or (ey < y and -1 or 0)
+        local nxt = cell:getGridSquare(x + dx, y + dy, z)
+        if not nxt then return false end
+        if dx ~= 0 and dy ~= 0 then
+            local a, b = cell:getGridSquare(x + dx, y, z), cell:getGridSquare(x, y + dy, z)
+            if not (a and b) or cur:isBlockedTo(a) or a:isBlockedTo(nxt) or cur:isBlockedTo(b) or b:isBlockedTo(nxt) then
+                return false
+            end
+        elseif cur:isBlockedTo(nxt) then return false end
+        cur, x, y = nxt, x + dx, y + dy
+    end
+    return false
+end
+-- what vanilla's exit checks besides the line exitUp skips (ISVehicleMenu.onExit's isBlockMovement; isExitBlocked's
+-- safehouse, BaseVehicle.java:6686-6691) and what that line stood for apart from the car's support: the spot the
+-- player is put on (setCharacterPosition "outside": the area's interact point, the car's level) stands, and no wall,
+-- window or door lies between the seat and it
+local function exitOk(p, v, seat)
+    if p:isBlockMovement() then return false end
+    local pin, pout = v:getPassengerPosition(seat, "inside"), v:getPassengerPosition(seat, "outside")
+    if not pin or not pout then return false end
+    local area = pout:getArea() and v:getScript():getAreaById(pout:getArea())
+    local ex, ey
+    if area then
+        local a = v:areaPositionWorld4PlayerInteract(area)
+        ex, ey = math.floor(a:getX()), math.floor(a:getY())
+    else
+        local w = v:getPassengerPositionWorldPos(pout, V3.rel)
+        ex, ey = math.floor(w:x()), math.floor(w:y())
+    end
+    local z = math.floor(v:getZ())
+    local cell = getCell()
+    local sq = cell:getGridSquare(ex, ey, z)
+    if not sq or sq:isSolid() or sq:isSolidTrans() or not (sq:getFloor() or sq:TreatAsSolidFloor()) then return false end
+    if isClient() and not SafeHouse.isPlayerAllowedOnSquare(p, sq) then return false end
+    local w = v:getPassengerPositionWorldPos(pin, V3.rel)
+    return wayClear(cell, math.floor(w:x()), math.floor(w:y()), ex, ey, z)
 end
 local origExit = ISVehicleMenu.onExit
 function ISVehicleMenu.onExit(playerObj, seatFrom)
@@ -1122,7 +1183,8 @@ function ISVehicleMenu.onExit(playerObj, seatFrom)
     local c = v and H.conf(v)
     if c and heightOf(v, RESTS[v:getId()] or c.rest) > 0.4 and v:isStopped() then
         local seat = seatFrom or v:getSeat(playerObj)
-        if v:isExitBlocked(playerObj, seat) and not ISVehicleMenu.getBestSwitchSeatExit(playerObj, v, seat) then
+        if v:isExitBlocked(playerObj, seat) and not ISVehicleMenu.getBestSwitchSeatExit(playerObj, v, seat)
+            and exitOk(playerObj, v, seat) then
             return exitUp(playerObj, v, seat)
         end
     end
