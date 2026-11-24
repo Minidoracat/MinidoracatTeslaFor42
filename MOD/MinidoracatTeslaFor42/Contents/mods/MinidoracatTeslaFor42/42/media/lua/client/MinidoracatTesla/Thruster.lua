@@ -592,10 +592,13 @@ function H.tick()
         else
             f.flown = f.flown + real
             -- a controller's player (BaseVehicle.java:4661-4668): as vanilla drives (CarController.java:958-967), the
-            -- right stick for the height (pushed up: negative, PlayerCamera.java:148)
+            -- right stick for the height (pushed up: negative, PlayerCamera.java:148); with RB held it looks around
+            -- instead (PlayerCamera.java:144-146)
             local pad = f.player:getJoypadBind()
             if pad ~= -1 then
-                st.hG = clamp(st.hG - padAxis(getJoypadAimingAxisY(pad)) * c.flyClimb * dt, c.flyMinH, c.flyMaxH)
+                if not isJoypadRBPressed(pad) then
+                    st.hG = clamp(st.hG - padAxis(getJoypadAimingAxisY(pad)) * c.flyClimb * dt, c.flyMinH, c.flyMaxH)
+                end
             else
                 if keyDown(KEYS.up) then st.hG = math.min(c.flyMaxH, st.hG + c.flyClimb * dt) end
                 if keyDown(KEYS.down) then st.hG = math.max(c.flyMinH, st.hG - c.flyClimb * dt) end
