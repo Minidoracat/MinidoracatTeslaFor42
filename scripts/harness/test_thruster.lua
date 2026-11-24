@@ -992,7 +992,7 @@ function cv:isLocalPhysicSim() return self.local_ end
 function cv:getDebugZ() return self.dz end
 function cv:getLinearVelocity(o) return o:set(0, self.vy or 0, self.speed / 3.6) end
 function cv:getForwardVector(o) return o:set(0, 0, 1) end
-function cv:getUpVector(o) return o:set(0, self.uy or 1, 0) end
+function cv:getUpVector(o) return o:set(self.ux or 0, self.uy or 1, self.uz or 0) end
 function cv:isPhysicsActive() return true end
 function cv:getMass() return 1500 end
 function cv:addImpulse() self.impulses = (self.impulses or 0) + 1 end
@@ -1213,7 +1213,7 @@ do -- r2rest-mp-r2 boostnearhold: a car whose landing ended at rest, settled sin
 end
 do -- the probe finds it moving (a car on a roof's edge, held there by the landing's push): the landing goes on from
     -- where it is and never ends at rest after (as before 10f97657: 8 of 8 one-floor edges upright)
-    cv.dz, cv.vy, cv.uy, cv.speed = 0.075 + 2 / TH.FLOOR, 0, 1, 0
+    cv.dz, cv.vy, cv.uy, cv.speed, cv.ux = 0.075 + 2 / TH.FLOOR, 0, 1, 0, 0.3 -- leaning toward +x (its nose over the edge)
     TH.ask(cp, cv, "land")
     okFor("land")
     local n0 = #H.clientSent
@@ -1224,6 +1224,15 @@ do -- the probe finds it moving (a car on a roof's edge, held there by the landi
     local f = TH.active()
     check(f and f.act == "land" and f.phase == "land" and not f.probe and f.noRest and #H.clientSent == n0,
         "... 0.06 m lower 0.2 s later: moving, the landing goes on (no end, no more rest)")
+    -- r2f3-sp-probe: held on the edge by that push it hung there tilted 12 s (6 of 30), then fell and was asked again:
+    -- it slides off the way it leans, level, at SLIDE_V
+    check(f and f.slide and near(f.st.vTx, 2, 1e-6) and near(f.st.vTz, 0, 1e-6), "... sliding off the way it leans at 2 m/s")
+    TH.tick()
+    check(f.slide and near(f.st.vTx, 2, 1e-6), "... still sliding the next frame")
+    cv.dz = cv.dz - 0.9 / TH.FLOOR
+    TH.tick()
+    check(not f.slide and f.st.vTx == 0 and f.st.vTz == 0, "... 0.9 m lower: off the edge, stopping where it is")
+    cv.ux = nil
     cv.impulses = 0
     for _ = 1, 100 do if TH.active() then TH.tick() end end
     check(TH.active() and #H.clientSent == n0 and cv.impulses > 0, "... then still 2 s more: pushing on, never at rest")

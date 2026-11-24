@@ -48,6 +48,10 @@ local REST_S, REST_V, REST_DH = 0.7, 0.2, 0.03
 -- ended there and tipped over (r2fin-sp-full roof 1 #1: up 0.033, hit -4.22 m/s). Sampled at PROBE_A s (the springs
 -- settle first) and PROBE_B s: faster than REST_V, PROBE_DH m lower or turned over 1 degree is moving
 local PROBE_A, PROBE_B, PROBE_DH, PROBE_DOT = 0.2, 0.4, 0.05, 0.99985
+-- found moving, it slides off the way it leans (its up vector's level part; else its own way) at SLIDE_V, level, until
+-- SLIDE_DH m lower or SLIDE_S s: landing on in place, the push held it there tilted for LAND_S (r2f3-sp-probe: 6 of 30
+-- on the roofs' edges, up 0.64-0.97) and the watch asked again as it fell after
+local SLIDE_V, SLIDE_DH, SLIDE_S = 2, 0.8, 3
 -- a flight's landing stops at its height first (r2scan-sp-obst2 fenceland: down at its flying speed onto a fence,
 -- turned over): GLIDE_V m/s ahead while anything under it would catch it (landClear), down after GLIDE_S s at most
 local GLIDE_V, GLIDE_S = 3, 4
@@ -700,6 +704,12 @@ function H.tick()
             end
             f.brake, f.sink, st.vTx, st.vTz = nil, true, 0, 0 -- coming down now, stopping where it is
         end
+        local s = f.slide
+        if s then
+            s.t = s.t + dt
+            if s.h - hm > SLIDE_DH or s.t > SLIDE_S then f.slide, st.vTx, st.vTz = nil, 0, 0
+            else st.vTx, st.vTz = s.dx * SLIDE_V, s.dz * SLIDE_V end
+        end
         local p = f.probe
         if p then -- no push: does it stay put on its own? (the first PROBE_A s is the springs settling)
             p.t = p.t + dt
@@ -713,10 +723,18 @@ function H.tick()
                 T.log(string.format("thrust probe vid=%d dv=%.3f dh=%.3f dAng=%.2f h=%.2f %s", f.vid, dv, p.h - hm,
                     math.deg(math.acos(math.min(1, dot))), hm, moving and "moving" or "at rest"))
                 if not moving then return stop(f.lifted, nil, nil, true) end
-                -- held up by its own push (a roof's edge): land on from here, never at rest again this landing
+                -- held up by its own push (a roof's edge): land on from here, never at rest again this landing, and
+                -- slide off the way it leans
                 local t0 = f.t
+                local sx, sz = ux, uz
+                if sx * sx + sz * sz < 0.05 ^ 2 then sx, sz = lv:x(), lv:z() end
+                local l = math.sqrt(sx * sx + sz * sz)
                 setLand(f, hm)
                 f.t, f.noRest, f.probe = t0, true, nil
+                if l > 1e-3 then
+                    f.slide = { dx = sx / l, dz = sz / l, h = hm, t = 0 }
+                    f.st.vTx, f.st.vTz = f.slide.dx * SLIDE_V, f.slide.dz * SLIDE_V
+                end
             end
             return
         end
