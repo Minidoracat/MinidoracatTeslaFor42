@@ -570,6 +570,16 @@ def furniture(add, opening, grow=0.0, fine=1, between=None):
         for e in (-1, 1):
             v, f = cylinder(tk["r"] + 0.006 + grow, 0.04 + 2 * grow, n)
             add(v[:, [0, 2, 1]] + tk["at"] + [0, e * (tk["half"] - tk["dome"]) * 0.6, 0], f, "strap")
+    # DASH_DECK (optional, Roadster Rocket: its windscreen and side glass run ahead of the firewall, CABIN_FRONT_Y, over
+    # the front wheels, and the empty bay under them showed the far wheel and the ground through the far arch, E2E
+    # r2body-b2a-2 b2a-2-shut): a flat dark plate under the glass's foot from the firewall forward, its face up; pieces
+    # [[(x, y, z), ..], ..] (mesh coords, each a flat convex polygon), on their own vertices (flat shaded at the folds)
+    for poly in pv.CAR.get("DASH_DECK", ()):
+        v = np.asarray(poly, float) + [0, 0, grow]
+        f = [[0, i, i + 1] for i in range(1, len(v) - 1)]
+        if np.cross(v[1] - v[0], v[2] - v[0])[2] < 0:
+            f = [fc[::-1] for fc in f]
+        add(v, f, "dash")
     # DASH console None (Cybercab: rider guide 05, the footwell open between the seats): no centre console
     out["console"] = part((0.20, 0.80, 0.22), 0.04, "console", DASH["console"]) if DASH["console"] else None
     out["dash"] = part(*DASH_BOX, "dash", DASH["dash"])                               # dash, trim strip on its face

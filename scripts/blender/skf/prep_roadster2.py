@@ -87,12 +87,12 @@ FIN_IN = [(-0.45, 0.47), (-0.80, 0.40), (-1.40, 0.28), (-1.60, 0.50), (-2.00, 0.
 GLASS_END = -1.40                      # the rear glass runs down to the wing's leading edge (01, 825)
 ROOF_Y = 0.30                          # the windscreen / roof glass split (one canopy on the real car; TOP's knee)
 WING = dict(seam=-1.40, thick=0.045, thick_tail=0.030, gap=0.006, trail_y=-2.075)
-# the wing raised (x-sawyer HVc6jW2XgAAULlb rear 3/4, HVc6ftKXYAApLw- rear: up about 0.3 above the deck, its
-# trailing edge past the tail, level to a little nose up) on two black struts (HVc6ftKXYAApLw-: two posts under it):
-# open = moved `move` and turned `deg` about its front edge (wing_hinge; + nose up), cars/roadster2.py DOORS /
-# DOOR_LIFT. A strut is a flat plate along the move from the wing's underside, `sink` deeper than the move: open, its
-# foot still in the deck; shut, all of it inside the body under the deck
-WING_LIFT = dict(move=(0.0, -0.12, 0.30), deg=5.0)
+# the wing raised (x-sawyer HVc6jW2XgAAULlb rear 3/4, HVc6ftKXYAApLw- rear: up well above the deck, its trailing edge
+# past the tail, level to a little nose up; 0.45, user 2026-11-24 B2a review: 0.30 read too low) on two black struts
+# (HVc6ftKXYAApLw-: two posts under it): open = moved `move` and turned `deg` about its front edge (wing_hinge; + nose
+# up), cars/roadster2.py DOORS / DOOR_LIFT. A strut is a flat plate along the move from the wing's underside, `sink`
+# deeper than the move: open, its foot still in the deck; shut, all of it inside the body under the deck
+WING_LIFT = dict(move=(0.0, -0.12, 0.45), deg=5.0)
 STRUT = dict(x=0.30, y=-1.74, chord=0.07, t=0.014, sink=0.06)
 
 TYRES = dict(front=dict(y=1.272, r=0.307, w=0.255, disc=0.262, x=0.80),      # 03: contacts 750 px / bar 590 px

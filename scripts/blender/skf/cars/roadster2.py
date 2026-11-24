@@ -74,11 +74,21 @@ def _c(y):
     return round(y * K - _YC, 4)
 
 
+def _m(x, y, z):
+    """A pre-centre point (metres) as a centred mesh point (grid)."""
+    return (round(x * K, 4), _c(y), round(z * K - _ZC, 4))
+
+
 _DOOR = _LN["door_left"]
 _DOOR_F = max(q[1] for q in _DOOR)         # the door's front (A pillar, 0.79) and rear (B pillar top) y
 _DOOR_R = min(q[1] for q in _DOOR)
 _PORT = _LN["charge_port_centre"]
 _SEAT = _LN["seat"]                        # the H point (metres)
+# the seat 0.27 m ahead of the prep's H point and leant back 48 deg (SEAT_POSE): at the H point in the Roadster's pose
+# the head sat under the canopy's fall to the rear glass, 6 mm under it, a cap 49 mm through and 88 hairs and hats
+# that fit a ModernCar through (seat_head.py, B2b); here head 117 cap 48 legs 34 feet -7 knees -1 (SHIFT trials,
+# R2Body.md B2b). Lower instead put the calves through the floor pan (down 0.05 grid: legs -132, feet -68)
+_SEAT_FWD = 0.27
 _WL = _LN["wing_lift"]                     # the wing open: move (metres), deg nose up
 _TANK = _LN["copv"]                        # the air tank (metres)
 
@@ -119,11 +129,12 @@ CAR = dict(
     WHEEL_INSET=0.0,
     # the cabin's physics box (mesh coords): from the windscreen's foot to behind the seat
     CAB_BOX=(1.10, _c(0.75), _c(-0.92)),
-    # one seat (solo: the driver's, the right side's place the air tank's), at the prep's H point (roadster2_lines.json
-    # seat): behind the door opening's middle by back; low, in the Roadster's pose (SEAT_POSE)
+    # one seat (solo: the driver's, the right side's place the air tank's), _SEAT_FWD ahead of the prep's H point
+    # (roadster2_lines.json seat): behind the door opening's middle by back; low, leant back further than the Roadster
     SEAT=dict(x=round(-_SEAT[0] * K, 4), h=0.27, z=-0.255,
-              back=(round(((_c(_DOOR_F) + _c(_DOOR_R)) / 2 - _c(_SEAT[1])), 4),), out=0.30, front_only=True, solo=True),
-    SEAT_POSE={"front": [("Bip01", 42.0), ("Bip01_L_Thigh", -20.0), ("Bip01_R_Thigh", -20.0)]},
+              back=(round(((_c(_DOOR_F) + _c(_DOOR_R)) / 2 - _c(_SEAT[1] + _SEAT_FWD)), 4),), out=0.30, front_only=True,
+              solo=True),
+    SEAT_POSE={"front": [("Bip01", 48.0), ("Bip01_L_Thigh", -26.0), ("Bip01_R_Thigh", -26.0)]},
     BODY_W_Z=0.55,
     # butterfly doors (_door); the trunk lid (the V rear glass, prep panel 4) about its front edge over the seat back
     # (prep REAR0, REAR_C), up; the wing (prep WING_LIFT, x HVc6jW2XgAAULlb / HVc6ftKXYAApLw-) lifted up and back on its
@@ -191,7 +202,10 @@ CAR = dict(
     STOP_X=0.0,
     PANELS=dict(x=9.0, z=-9.0, front=(9.0, 9.0), rear=(9.0, 9.0), gate=(-9.0, 9.0), lid=(9.0, 9.0)),   # (PANEL_PARTS)
     PANEL_PARTS={1: "DoorFrontLeft", 2: "DoorFrontRight", 3: "TeslaWing", 4: "TrunkDoor"},
-    GUARDS=dict(front=(round(0.95 * K, 4), 0.80, 0.45), rear=(round((_RA + 0.75) * K, 4), 0.85, 0.45)),
+    # x 0: no hood or boot lid part (no EngineDoor model), so the paint between the pods and on the tail deck under
+    # the wing joins the guards' zones (EngineDoor / TruckBed condition, as vanilla's Hood / Boot), not Roof (never
+    # damaged); the Cybercab does it with PANEL_ZONES for its hood panel
+    GUARDS=dict(front=(round(0.95 * K, 4), 0.80, 0.0), rear=(round((_RA + 0.75) * K, 4), 0.85, 0.0)),
     HEAD_TAIL=(round((_FA + 0.35) * K, 4), round((_RA - 0.45) * K, 4)),
     CUT={},
     PLANES={},
@@ -224,7 +238,7 @@ CAR = dict(
     TRUNK_Y=_c(-0.92),                     # behind the reclined backrest (cabin.py: -0.71 grid at -0.55 m)
     CABIN_ZC=-0.10,
     SEAM_CLEAR=0.065,
-    SEATS=dict(front=dict(w=0.40, back=0.36, recline=28, head=0.47, dy=-0.066, dz=-0.085, cushion=0.035), sill=None,
+    SEATS=dict(front=dict(w=0.40, back=0.36, recline=33, head=0.47, dy=-0.066, dz=-0.067, cushion=0.035), sill=None,
                bin=None),
     PARCEL=None,
     DASH=dict(size=(0.84, 0.20, 0.16), console=None, dash=(0, _c(0.75), 0.04), trim=(0, _c(0.673), 0.075),
@@ -232,9 +246,16 @@ CAR = dict(
               wheel=(round(-_SEAT[0] * K, 4), 0.033)),
     TANK=dict(at=(round(_TANK["centre"][0] * K, 4), _c(_TANK["centre"][1]), round(_TANK["centre"][2] * K - _ZC, 4)),
               r=round(_TANK["r"] * K, 4), half=round(_TANK["length"] / 2 * K, 4), dome=round(_TANK["dome"] * K, 4)),
-    # the tank light grey (a metal liner's sheen: it reads through the mid glass), its straps black
-    CABIN_CELL_MAP=dict(tank="bed_rim", strap="screen_back"),
-    DETAIL_CELL_MAP=dict(tank="chrome", strap="mat"),
+    # the dark plate under the windscreen's and side glass's foot from the firewall (0.95) forward (cabin.py
+    # DASH_DECK): flat to the A pillars' base (COWL 1.19, glass foot z 0.75), then down along the glass's foot to the
+    # hood's rear corners (prep HC 0.49, 1.40, 0.655); 1.5 cm under the glass, over the front tyres (top 0.614)
+    DASH_DECK=[[_m(s * x, y, z) for s, x, y, z in q] for q in (
+        ((-1, 0.78, 0.95, 0.735), (1, 0.78, 0.95, 0.735), (1, 0.79, 1.19, 0.735), (-1, 0.79, 1.19, 0.735)),
+        ((-1, 0.79, 1.19, 0.735), (1, 0.79, 1.19, 0.735), (1, 0.47, 1.40, 0.64), (-1, 0.47, 1.40, 0.64)))],
+    # the seats white (x-sawyer HVc6hB9XAAAzCR2: white buckets; the cabin's silver cell, the detail's lightest), the
+    # tank light grey (a metal liner's sheen: it reads through the mid glass), its straps black
+    CABIN_CELL_MAP=dict(seat="silver", tank="bed_rim", strap="screen_back"),
+    DETAIL_CELL_MAP=dict(seat="chrome", tank="chrome", strap="mat"),
     DOOR_CARD={
         "front": [
             ("upper trim", "end", (0.08, 0.10), -0.050, None, 0.060, 0.030, "dash", 0.012),
