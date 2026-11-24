@@ -857,13 +857,19 @@ function H.check(player, v, act, ...)
     if act == "fly" and not clearAbove(v, c) then return false, "THRUST_ROOM" end
     return true
 end
--- the tank as this machine sees it, 0-1 (flying: what is left of the approved seconds); nil: no thrusters or off
+-- the tank as this machine sees it, 0-1 (flying: what is left of the approved seconds); nil: no thrusters or off.
+-- The refill estimate stops where the server's next settle would: the pack pays it down to its floor only
 function H.air(v)
     if not H.conf(v) or not H.enabled() then return nil end
     local f = F
     if f and f.v == v and f.act == "fly" and f.sec then return clamp((f.sec - f.flown) / H.flightSeconds(), 0, 1) end
     local part = T.Battery.part(v)
-    return H.gasNow(part and part:getModData().thr, T.hours())
+    local thr = part and part:getModData().thr
+    local g, kwh = H.gasNow(thr, T.hours()), H.refillKwh()
+    if kwh > 0 and type(thr) == "table" and type(thr.gas) == "number" then
+        g = math.min(g, thr.gas + H.packSpare(part) / kwh)
+    end
+    return g
 end
 -- this player flying v, for the dashboard's pill (HUD.lua readSlow): nil not flying; "land" coming down; else the
 -- whole seconds of air left (the limit's real time, as the server's D2), true in FreeFlight (no limit)
@@ -873,11 +879,15 @@ function H.flight(player, v)
     if f.wantLand or f.phase == "land" then return "land" end
     return f.sec and math.max(0, math.ceil(f.sec - f.flown)) or true
 end
--- why refused, in words; THRUST_NO_AIR adds when this car's tank is full again (v may be nil: a car not loaded here)
+-- why refused, in words; THRUST_NO_AIR adds when this car's tank is full again, or that the pack can't pay to fill
+-- it (H.refillShort) (v may be nil: a car not loaded here)
 function H.whyText(v, why)
     local s = T.denyText(why)
     local a = why == "THRUST_NO_AIR" and v and H.air(v)
-    if a and a < 1 then s = s .. " " .. getText("IGUI_MinidoracatTesla_Thrust_Refill", tostring(H.minutesToFull(a))) end
+    if a and a < 1 then
+        s = s .. " " .. (H.refillShort(v) and getText("IGUI_MinidoracatTesla_Thrust_RefillLow")
+            or getText("IGUI_MinidoracatTesla_Thrust_Refill", tostring(H.minutesToFull(a))))
+    end
     return s
 end
 

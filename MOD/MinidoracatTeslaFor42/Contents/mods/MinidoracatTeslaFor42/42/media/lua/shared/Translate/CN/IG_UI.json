@@ -72,6 +72,7 @@
     "IGUI_MinidoracatTesla_Radial_ThrustLand": "降落",
     "IGUI_MinidoracatTesla_Tip_ThrustAir": "空气 %1%%",
     "IGUI_MinidoracatTesla_Thrust_Refill": "%1 分钟后充满",
+    "IGUI_MinidoracatTesla_Thrust_RefillLow": "电池电量不足，充电后才能补气",
     "IGUI_MinidoracatTesla_Tip_ThrustTank": "推进器空气 %1%%",
     "IGUI_MinidoracatTesla_Tip_ThrustTankRefill": "推进器空气 %1%% · %2",
     "IGUI_MinidoracatTesla_Key_ThrustFly": "飞行／降落",

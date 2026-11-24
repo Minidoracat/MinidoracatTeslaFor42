@@ -217,8 +217,10 @@ local function drawQ(el, q)
             L[i + 8], L[i + 9], L[i + 10], L[i + 11])
     end
 end
--- key: a translation key (arg: a part's, its %1); nil: arg is the text itself, made already (HUD:readSlow's airTip)
-function HUD.drawTip(el, key, ax, ay, aw, ah, arg)
+-- key: a translation key (arg: a part's, its %1); nil: arg is the text itself, made already (HUD:readSlow's airTip).
+-- arg is optional: taken from `...` (most callers leave it out; family pitfalls.md)
+function HUD.drawTip(el, key, ax, ay, aw, ah, ...)
+    local arg = ...
     local S, pn = el.S, el.playerNum
     local padX, padY, gap = math.floor(10 * S), math.floor(5 * S), math.floor(6 * S)
     if key ~= el.tipKey or arg ~= el.tipArg then
@@ -431,13 +433,16 @@ function HUD:readSlow()
     -- thrusters: the air tank in 5 % steps (Thruster.lua H.air), nil on a car without them
     local air = T.Thruster and T.Thruster.air and T.Thruster.air(v)
     st.air = air and math.floor(air * 20 + 1e-6) * 5
-    if st.air then -- its hover tip (render), made again only when the numbers in it change: "Air 65% · full in N min"
+    if st.air then -- its hover tip (render), made again only when the numbers in it change: "Air 65% · full in N min";
+        -- the pack can't pay to fill it (Thruster.lua H.refillShort): mins -1, "charge the battery" in their place
         local mins = st.air < 100 and T.Thruster.minutesToFull(air) or 0
+        if mins > 0 and T.Thruster.refillShort(v) then mins = -1 end
         if st.air ~= self.airPct or mins ~= self.airMins then
             self.airPct, self.airMins = st.air, mins
             local p = tostring(st.air)
-            self.airTip = mins > 0 and getText("IGUI_MinidoracatTesla_Tip_ThrustTankRefill", p,
-                getText("IGUI_MinidoracatTesla_Thrust_Refill", tostring(mins))) or getText("IGUI_MinidoracatTesla_Tip_ThrustTank", p)
+            self.airTip = mins ~= 0 and getText("IGUI_MinidoracatTesla_Tip_ThrustTankRefill", p, mins < 0
+                and getText("IGUI_MinidoracatTesla_Thrust_RefillLow") or getText("IGUI_MinidoracatTesla_Thrust_Refill", tostring(mins)))
+                or getText("IGUI_MinidoracatTesla_Tip_ThrustTank", p)
         end
     end
     st.sentry = md ~= nil and md.sentry ~= nil
@@ -566,7 +571,7 @@ function HUD:scale()
     self.tex = getTexture(self.A.tex)
     self.f = S / k
     self:setWidth(math.floor(W * S))
-    self.tipKey = nil -- re-measure the hover help at the new scale
+    self.tipKey, self.tipArg = nil, nil -- re-measure the hover help at the new scale (the air tip: key nil, its text arg)
     self.chillText = getText("IGUI_MinidoracatTesla_HUD_Chill")
     self.chillW = getTextManager():MeasureStringX(UIFont.Small, self.chillText)
 end

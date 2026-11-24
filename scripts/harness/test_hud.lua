@@ -834,6 +834,51 @@ T.Thruster.air = function() return 1 end
 h:update(); h:update(); h:update()
 h:render()
 check(lastText == "IGUI_MinidoracatTesla_Tip_ThrustTank", "air full: the tip without a refill time")
+-- T7: the pack can't pay the refill (Thruster.lua H.refillShort): no "full in N min", "charge the battery" in its
+-- place; the tip made again when that alone changes (the same %)
+do
+    local realShort, gt0 = T.Thruster.refillShort, getText
+    local short = true
+    T.Thruster.refillShort = function(car) return car == h.vehicle and short end
+    getText = function(k, ...) return table.concat({ k, ... }, "|") end
+    T.Thruster.air = function() return 0.65 end
+    h:update(); h:update(); h:update()
+    mx, my = h.airX + 1, h.airY + 2
+    h:render()
+    local low = "IGUI_MinidoracatTesla_Tip_ThrustTankRefill|65|IGUI_MinidoracatTesla_Thrust_RefillLow"
+    check(lastText == low, "T7: air 65 %, the pack at its floor: the tip says charge the battery, no minutes (" .. tostring(lastText) .. ")")
+    short = false
+    h:update(); h:update(); h:update()
+    h:render()
+    check(lastText == "IGUI_MinidoracatTesla_Tip_ThrustTankRefill|65|IGUI_MinidoracatTesla_Thrust_Refill|"
+        .. T.Thruster.minutesToFull(0.65), "T7: the pack can pay again, the same %: the minutes back (" .. tostring(lastText) .. ")")
+    short = true
+    h:update(); h:update(); h:update()
+    T.Thruster.air = function() return 1 end
+    h:update(); h:update(); h:update()
+    h:render()
+    check(lastText == "IGUI_MinidoracatTesla_Tip_ThrustTank|100", "T7: a full tank: no refill line, short or not")
+    -- Codex residual: the air tip's text is its own cache key (drawTip key nil); a new scale (a resolution or font
+    -- change) with the same text must measure it again
+    T.Thruster.air = function() return 0.65 end
+    h:update(); h:update(); h:update()
+    h:render()
+    check(lastText == low and h.tipText2 == nil, "residual: 1920 px wide, the air tip on one line")
+    SCREEN_W = 640
+    h:layout()
+    mx, my = h.airX + 1, h.airY + 2
+    h:render()
+    check(h.tipText2 ~= nil and h.tipRect.x + h.tipRect.w <= 640,
+        "residual: 640 px wide after a new scale, the same text: measured again, two lines inside the view")
+    SCREEN_W = 1920
+    h:layout()
+    mx, my = h.airX + 1, h.airY + 2
+    h:render()
+    check(h.tipText2 == nil, "residual: back to 1920 px: one line again")
+    T.Thruster.refillShort, getText = realShort, gt0
+    T.Thruster.air = function() return 1 end
+    h:update(); h:update(); h:update()
+end
 -- flying (Thruster.lua H.flight): this driver's pill comes first, its seconds counting down, the last 3 a warning;
 -- FreeFlight: no seconds; coming down: "Landing", no keys; a controller's driver: its keys; not flying: no pill
 local realFlight, realGT, realTip = T.Thruster.flight, getText, T.Thruster.flyTip
