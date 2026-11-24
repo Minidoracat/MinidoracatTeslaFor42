@@ -1171,6 +1171,8 @@ CABIN_CELLS = ("floor", "liner", "seat", "base", "dash", "trim", "console", "whe
 CABIN_UV1_U = -2.5
 GLASS_UV1_SHIFT = 2.0     # glass faces: UV1 u + this (the shader takes it back off for the damage maps)
 GLASS_DOOR_U = 16.0       # a door's glass: UV1 u + this x its shell bit number (cabin.SHELL_DOORS, 1-based; 0 the body's)
+GLASS_TINT_U = 128.0      # every glass face: UV1 u + this x the car's GLASS_SHADE (cars/<car>.py, optional; 0 the family's
+#                           glass): the frag's GLASS_SHUT level; over the doors' 16 x 5 + 14
 
 # Project Viewpoint (Workshop 3809306528, a 3-D view; models.md 8 "Viewpoint") draws every vehicle face with the skin
 # at its UV0, and every cabin face sits on UV0 (0, 0) (cabin.py: MinidoracatTesla_vehicle.frag colours it from UV1 and

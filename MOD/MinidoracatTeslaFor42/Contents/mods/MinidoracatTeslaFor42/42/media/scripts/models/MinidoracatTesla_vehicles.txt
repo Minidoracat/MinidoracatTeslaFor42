@@ -839,6 +839,86 @@ module Base
         scale = 0.5495,
     }
 
+    /* Roadster Rocket: same build, units and shaders (CAR=roadster2; the MOD's own body from Tesla's pictures, */
+    /* scripts/blender/skf/prep_roadster2.py). No frunk; the trunk lid (the rear glass) and the rear wing (part */
+    /* TeslaWing) on the doors FBX. */
+    model MinidoracatTesla_Roadster2
+    {
+        mesh = vehicles/MinidoracatTesla_Roadster2,
+        shader = MinidoracatTesla_vehicle,
+        static = true,
+        invertX = false,
+        scale = 0.5495,
+    }
+    model MinidoracatTesla_Roadster2_Glass
+    {
+        mesh = vehicles/MinidoracatTesla_Roadster2_Glass,
+        shader = MinidoracatTesla_vehicle,
+        static = true,
+        invertX = false,
+        scale = 0.5495,
+    }
+    model MinidoracatTesla_Roadster2_Wheel
+    {
+        mesh = vehicles/MinidoracatTesla_Roadster2_Wheel,
+        texture = Vehicles/MinidoracatTesla_Roadster2_wheel,
+        shader = vehiclewheel,
+        scale = 0.5495,
+    }
+    model MinidoracatTesla_Roadster2_WheelRear
+    {
+        mesh = vehicles/MinidoracatTesla_Roadster2_WheelRear,
+        texture = Vehicles/MinidoracatTesla_Roadster2_wheelrear,
+        shader = vehiclewheel,
+        scale = 0.5495,
+    }
+    model MinidoracatTesla_Roadster2_DoorFrontLeft
+    {
+        mesh = vehicles/MinidoracatTesla_Roadster2_Doors|DoorFrontLeft,
+        shader = MinidoracatTesla_vehicle,
+        static = false,
+        scale = 0.5495,
+    }
+    model MinidoracatTesla_Roadster2_DoorFrontRight
+    {
+        mesh = vehicles/MinidoracatTesla_Roadster2_Doors|DoorFrontRight,
+        shader = MinidoracatTesla_vehicle,
+        static = false,
+        scale = 0.5495,
+    }
+    model MinidoracatTesla_Roadster2_TrunkDoor
+    {
+        mesh = vehicles/MinidoracatTesla_Roadster2_Doors|TrunkDoor,
+        shader = MinidoracatTesla_vehicle,
+        static = false,
+        scale = 0.5495,
+    }
+    model MinidoracatTesla_Roadster2_TeslaWing
+    {
+        mesh = vehicles/MinidoracatTesla_Roadster2_Doors|TeslaWing,
+        shader = MinidoracatTesla_vehicle,
+        static = false,
+        scale = 0.5495,
+    }
+    model MinidoracatTesla_Roadster2_Detail
+    {
+        mesh = vehicles/MinidoracatTesla_Roadster2_Detail,
+        texture = Vehicles/MinidoracatTesla_Detail,
+        shader = MinidoracatTesla_viewpoint,
+        static = true,
+        invertX = false,
+        scale = 0.5495,
+    }
+    model MinidoracatTesla_Roadster2_Armor
+    {
+        mesh = vehicles/MinidoracatTesla_Roadster2_Armor,
+        texture = Vehicles/MinidoracatTesla_Armor,
+        shader = vehiclewheel,
+        static = true,
+        invertX = false,
+        scale = 0.5495,
+    }
+
     /* TeslaArmor's outer kit (scripts/blender/skf/armor.py, cars/<car>.py ARMOR): one static model on its own
        palette, shown by Upgrades.lua T.Armor.sync only with Base.MinidoracatTesla_ArmorOuter installed. */
     model MinidoracatTesla_ModelY_Armor

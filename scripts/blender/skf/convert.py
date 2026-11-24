@@ -2291,7 +2291,7 @@ def stage_build():
     me.uv_layers["UV1"].data.foreach_get("uv", u1)
     u1 = u1.reshape(-1, 2)
     lp = np.repeat(c["pane"], lt)
-    u1[lp >= 0, 0] += pv.GLASS_UV1_SHIFT + 2 * lp[lp >= 0]
+    u1[lp >= 0, 0] += pv.GLASS_UV1_SHIFT + 2 * lp[lp >= 0] + pv.GLASS_TINT_U * C.get("GLASS_SHADE", 0)
     me.uv_layers["UV1"].data.foreach_set("uv", u1.ravel())
     # vehicle script geometry block
     fc = pv.face_centres(car)
@@ -2365,7 +2365,7 @@ def stage_detail(cy=None):
     # the windscreen: the body glass (no door shell bit) of pane WinT (classify's name for the front pane; UV1 u =
     # GLASS_UV1_SHIFT + 2 x pane + damage u)
     (gv, gt, gu), = pv.read_fbx(os.path.join(pv.VEH_DIR, pv.NAME + "_Glass.fbx"))
-    pane = (gu.reshape(-1, 3)[:, 0] - pv.GLASS_UV1_SHIFT) // 2
+    pane = np.mod(gu.reshape(-1, 3)[:, 0] - pv.GLASS_UV1_SHIFT, pv.GLASS_TINT_U) // 2
     ob = cab.detail_mesh(opening, (gv, gt[pane == GLASS_ZONES.index("WinT")]), (bv, bt))
     pv.detail_texture()
     pv.export_fbx(ob, os.path.join(pv.VEH_DIR, pv.NAME + "_Detail.fbx"))
@@ -3916,7 +3916,7 @@ def pieces(car, c, shift):
         ls = np.empty(len(o.data.polygons), np.int64)
         o.data.polygons.foreach_get("loop_start", ls)
         fu = u[0::2][ls]
-        t = fu[fu > 1.5] - pv.GLASS_UV1_SHIFT
+        t = np.mod(fu[fu > 1.5] - pv.GLASS_UV1_SHIFT, pv.GLASS_TINT_U)     # (less the GLASS_SHADE level)
         return {(int(k), GLASS_ZONES[int(z)]) for k, z in zip(np.floor(t / pv.GLASS_DOOR_U),
                                                                 np.floor(np.mod(t, pv.GLASS_DOOR_U) / 2))}
     info = lambda o: (o.name, pv.tris(o), len(o.vertex_groups), [u.name for u in o.data.uv_layers],  # noqa: E731

@@ -105,6 +105,12 @@ const float A_FRONT_SIDE = 0.28;   // WinLH, WinRH
 const float A_REAR = 0.40;         // WinLT, WinRT, WinH (privacy glass)
 const float A_ROOF = 0.50;         // LightBar L (colZone25): the roof glass, unused by any Tesla light
 const vec3 GLASS_TINT = vec3(0.06, 0.06, 0.07);
+// a car's darker glass (cars/<car>.py GLASS_SHADE; level 0 the family's above, unchanged): the share of the see-through
+// left that is closed, and a tea-brown tint with less sky (Roadster Rocket: the official canopy reads near opaque;
+// 1 mid: the driver's outline shows, 2 deep: the cabin nearly gone at default zoom; 0.45 / 0.80 read alike, b1-deep2)
+const float GLASS_SHUT[3] = float[3](0.0, 0.60, 0.93);
+const vec3 GLASS_DARK = vec3(0.12, 0.075, 0.04);
+const float SKY_MIX_DARK = 0.15;
 const vec3 SKY = vec3(0.50, 0.60, 0.75);
 const float SKY_MIX = 0.30;        // vanilla windows mix 30 % reflection at refWindows 0.4 (vehicle_multiuv.frag:151)
 // glass zone k (convert.py GLASS_ZONES): WinT, WinH, WinLH, WinLT, WinRH, WinRT, LightBar L (the roof glass)
@@ -174,6 +180,7 @@ const vec3 CABIN[17] = vec3[17](
 const int CABIN_SCREEN = 9;
 const float NIGHT_FLOOR = 0.12;    // cabin's lowest lighting (calibration knob)
 const float GLASS_DOOR_U = 16.0;   // pzveh.py
+const float GLASS_TINT_U = 128.0;  // pzveh.py: a car's glass tint level (GLASS_SHUT) rides UV1 u + this x the level
 
 // door d (cabin.py SHELL_DOORS, 1-based): its bit in the paint hue's integer part (open or swinging, Liftgate.lua)
 float doorBit(int door)
@@ -190,9 +197,11 @@ float doorGone(int door)
 void main()
 {
 	float glassFace = step(1.5, texCoords1.x);
-	float glassDoor = glassFace * floor((texCoords1.x - 2.0) / GLASS_DOOR_U);
-	float glassZone = glassFace * floor((texCoords1.x - 2.0 - GLASS_DOOR_U * glassDoor) * 0.5);
-	vec2 uv1 = texCoords1 - vec2(glassFace * (2.0 + 2.0 * glassZone + GLASS_DOOR_U * glassDoor), 0.0);
+	float glassTint = glassFace * floor((texCoords1.x - 2.0) / GLASS_TINT_U);
+	float u1x = texCoords1.x - GLASS_TINT_U * glassTint;
+	float glassDoor = glassFace * floor((u1x - 2.0) / GLASS_DOOR_U);
+	float glassZone = glassFace * floor((u1x - 2.0 - GLASS_DOOR_U * glassDoor) * 0.5);
+	vec2 uv1 = vec2(u1x - glassFace * (2.0 + 2.0 * glassZone + GLASS_DOOR_U * glassDoor), texCoords1.y);
 
 	// a door's window: the door's own while its bit is set, the closed copy in the glass model while it is clear
 	if (glassDoor > 0.5)
@@ -311,8 +320,11 @@ void main()
 
 		float alpha = A_WINDSCREEN * texen1[2][2] + A_FRONT_SIDE * (texen1[1][2] + texen1[2][0])
 			+ A_REAR * (texen1[1][3] + texen1[2][1] + texen1[2][3]) + A_ROOF * texen2[2][0];
+		int tint = int(glassTint + 0.5);
+		if (tint > 0)
+			alpha = mix(alpha, 1.0, GLASS_SHUT[tint]);
 
-		vec3 g = mix(GLASS_TINT, SKY, SKY_MIX);
+		vec3 g = tint > 0 ? mix(GLASS_DARK, SKY, SKY_MIX_DARK) : mix(GLASS_TINT, SKY, SKY_MIX);
 		g = mix(g, texColorRust.xyz, texColorRust.a * TextureRustA);
 
 		// blood under the cracks, as vanilla windows; cracked or bloody glass turns opaque where marked
