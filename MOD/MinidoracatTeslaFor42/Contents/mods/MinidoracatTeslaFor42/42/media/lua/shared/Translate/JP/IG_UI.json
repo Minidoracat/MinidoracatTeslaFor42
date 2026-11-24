@@ -73,6 +73,7 @@
     "IGUI_MinidoracatTesla_Tip_ThrustAir": "空気 %1%%",
     "IGUI_MinidoracatTesla_Thrust_Refill": "あと %1 分で満タン",
     "IGUI_MinidoracatTesla_Thrust_RefillLow": "バッテリーを充電すると補充できます",
+    "IGUI_MinidoracatTesla_Thrust_ExitCarry": "降車位置がふさがっています：車を横に移して着陸します",
     "IGUI_MinidoracatTesla_Tip_ThrustTank": "スラスターの空気 %1%%",
     "IGUI_MinidoracatTesla_Tip_ThrustTankRefill": "スラスターの空気 %1%% · %2",
     "IGUI_MinidoracatTesla_Key_ThrustFly": "飛行／着陸",

@@ -73,6 +73,7 @@
     "IGUI_MinidoracatTesla_Tip_ThrustAir": "공기 %1%%",
     "IGUI_MinidoracatTesla_Thrust_Refill": "%1분 후 가득 참",
     "IGUI_MinidoracatTesla_Thrust_RefillLow": "배터리를 충전해야 채울 수 있습니다",
+    "IGUI_MinidoracatTesla_Thrust_ExitCarry": "내리는 곳이 막혔습니다: 차를 옆으로 옮겨 착륙합니다",
     "IGUI_MinidoracatTesla_Tip_ThrustTank": "스러스터 공기 %1%%",
     "IGUI_MinidoracatTesla_Tip_ThrustTankRefill": "스러스터 공기 %1%% · %2",
     "IGUI_MinidoracatTesla_Key_ThrustFly": "비행 / 착륙",

@@ -73,6 +73,7 @@
     "IGUI_MinidoracatTesla_Tip_ThrustAir": "Luft %1 %%",
     "IGUI_MinidoracatTesla_Thrust_Refill": "In %1 min wieder voll",
     "IGUI_MinidoracatTesla_Thrust_RefillLow": "Lade die Batterie zum Auffüllen",
+    "IGUI_MinidoracatTesla_Thrust_ExitCarry": "Ausstieg blockiert: Das Auto weicht zum Landen aus",
     "IGUI_MinidoracatTesla_Tip_ThrustTank": "Schubdüsenluft %1 %%",
     "IGUI_MinidoracatTesla_Tip_ThrustTankRefill": "Schubdüsenluft %1 %% · %2",
     "IGUI_MinidoracatTesla_Key_ThrustFly": "Fliegen / landen",

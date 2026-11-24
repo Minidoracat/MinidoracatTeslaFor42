@@ -73,6 +73,7 @@
     "IGUI_MinidoracatTesla_Tip_ThrustAir": "Hava %%%1",
     "IGUI_MinidoracatTesla_Thrust_Refill": "%1 dk içinde dolar",
     "IGUI_MinidoracatTesla_Thrust_RefillLow": "Doldurmak için bataryayı şarj et",
+    "IGUI_MinidoracatTesla_Thrust_ExitCarry": "Çıkış engelli: araç inmek için kenara çekiliyor",
     "IGUI_MinidoracatTesla_Tip_ThrustTank": "İtici havası %%%1",
     "IGUI_MinidoracatTesla_Tip_ThrustTankRefill": "İtici havası %%%1 · %2",
     "IGUI_MinidoracatTesla_Key_ThrustFly": "Uç / iniş yap",
