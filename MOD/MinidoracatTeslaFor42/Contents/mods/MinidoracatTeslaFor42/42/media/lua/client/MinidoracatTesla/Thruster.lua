@@ -42,18 +42,19 @@ local DT_MAX = 0.083             -- the physics step's own cap
 local ROLL_S, LAND_S = 3, 12     -- roll-up and soft landing give up after these seconds (server Thruster.lua D2/D3)
 -- the soft landing at rest off the ground (on its side, an eave, a fence, another car: r2int-mp-prof fix 1, up 0.141
 -- at 0.817 m, ran its 12 s): this long under REST_V m/s within REST_DH m of one height is over. A landing never sinks
--- slower than 0.7 m/s (landVy), so a car still coming down never reads as at rest
-local REST_S, REST_V, REST_DH = 0.7, 0.2, 0.03
+-- slower than 0.7 m/s (landVy), so a car still coming down never reads as at rest; a car pressed down on what holds it
+-- sinks 0.05-0.1 m/s (r2f3-mp-c boostnearhold: 1.6 s on a fence top, never 0.7 s within 0.03 m)
+local REST_S, REST_V, REST_DH = 0.7, 0.2, 0.1
 -- at rest REST_S, then a probe with no push: a car held on a roof's edge by the landing's own push read as at rest,
 -- ended there and tipped over (r2fin-sp-full roof 1 #1: up 0.033, hit -4.22 m/s). Sampled at PROBE_A s (the springs
--- settle first) and PROBE_B s: faster than REST_V, PROBE_DH m lower or turned over 5 degrees is moving (r2f3-sp-probe2:
--- a car settled 2 m up on something past a roof's edge rocked 3.76 degrees; edges' hung cars 12-30, roof 2's 6.09)
-local PROBE_A, PROBE_B, PROBE_DH, PROBE_DOT = 0.2, 0.4, 0.05, 0.99619
--- found moving, it slides off the way it leans (its up vector's level part; else its own way) at SLIDE_V, level, until
--- SLIDE_DH m lower; SLIDE_S s and no lower is something holding it up: over, at rest. Landing on in place instead, the
--- push held it on the roofs' edges tilted for LAND_S (r2f3-sp-probe: 6 of 30, up 0.64-0.97) and the watch asked again
--- as it fell after
-local SLIDE_V, SLIDE_DH, SLIDE_S = 2, 0.8, 3
+-- settle first) and PROBE_B s: faster than REST_V, PROBE_DH m lower or turned over 2 degrees is moving (r2f3-sp-probe2:
+-- a car read at rest at 3.76 fell after; hung cars 8.6-30. Read moving wrongly, it is only carried 3 m)
+local PROBE_A, PROBE_B, PROBE_DH, PROBE_DOT = 0.2, 0.4, 0.05, 0.99939
+-- found moving, it is lifted LIFT_DH m and carried the way it leans (its up vector's level part: the side hanging free)
+-- at SLIDE_V, until SLIDE_D m off or SLIDE_S s; then down again, probed again if it stops. Held on an edge the landing
+-- pushes down at -G and its attitude PD levels it about the edge (r2f3-sp-probe3: slid level 3 s, rose 0.1-0.25 m,
+-- never got off, 8 of 8 one floor up); landing on in place, it hung there LAND_S (r2f3-sp-probe: 6 of 30)
+local SLIDE_V, LIFT_DH, SLIDE_D, SLIDE_S = 2, 0.8, 3, 4
 -- a flight's landing stops at its height first (r2scan-sp-obst2 fenceland: down at its flying speed onto a fence,
 -- turned over): GLIDE_V m/s ahead while anything under it would catch it (landClear), down after GLIDE_S s at most
 local GLIDE_V, GLIDE_S = 3, 4
@@ -692,7 +693,10 @@ function H.tick()
         -- the curve's own braking fed forward (d rvy/dt = 6 vy / rvy on it): the PD alone trailed it by 0.7-1.2 m/s
         -- and touched down at -2.7 (kickflip) / -3.2 (backflip) m/s (r2fe-sp-a, switching at 1.5 m)
         st.ray = (st.rvy > -8 and st.rvy < -0.7) and math.max(0, 6 * vy / st.rvy) or 0
-        if hm < 0.05 or (hm < 0.4 and vy > -0.25) or f.t > LAND_S then return stop(f.lifted) end
+        if hm < 0.05 or (hm < 0.4 and vy > -0.25) then return stop(f.lifted) end
+        -- still up after LAND_S: over where it is, as at rest (RESTED: the watch's tilt branch asks no more; on its
+        -- own, SP's busy cleared at once, it asked again and billed the tank twice: r2f3-sp-probe 6 of 30)
+        if f.t > LAND_S then return stop(f.lifted, nil, nil, true) end
         local lv = v:getLinearVelocity(V3.lv)
         if f.brake then -- a flight's landing: held at its height, slowed to GLIDE_V; down once clear or after GLIDE_S
             if lv:x() ^ 2 + lv:z() ^ 2 <= (GLIDE_V * 1.1) ^ 2 then
@@ -707,13 +711,18 @@ function H.tick()
             f.brake, f.sink, st.vTx, st.vTz = nil, true, 0, 0 -- coming down now, stopping where it is
         end
         local s = f.slide
-        if s then
+        if s then -- lifted clear of what held it and carried the way it leans; then down again
             s.t = s.t + dt
-            if s.h - hm > SLIDE_DH then f.slide, st.vTx, st.vTz = nil, 0, 0
-            elseif s.t > SLIDE_S then
-                T.log(string.format("thrust slide vid=%d held h=%.2f", f.vid, hm))
-                return stop(f.lifted, nil, nil, true)
-            else st.vTx, st.vTz = s.dx * SLIDE_V, s.dz * SLIDE_V end
+            local dx, dy = v:getX() - s.x, v:getY() - s.y
+            if dx * dx + dy * dy >= SLIDE_D * SLIDE_D or s.t > SLIDE_S then
+                T.log(string.format("thrust carry vid=%d d=%.2f t=%.1f h=%.2f", f.vid, math.sqrt(dx * dx + dy * dy), s.t, hm))
+                f.slide, f.restH, st.vTx, st.vTz = nil, nil, 0, 0
+            else
+                -- an absolute height: the floor under it (hm's) may change on the way
+                st.rh, st.rvy, st.ray = hm + (s.z - v:getDebugZ()) * FLOOR, 0, 0
+                st.vTx, st.vTz = s.dx * SLIDE_V, s.dz * SLIDE_V
+                return drive(f, v, dt, hm)
+            end
         end
         local p = f.probe
         if p then -- no push: does it stay put on its own? (the first PROBE_A s is the springs settling)
@@ -725,21 +734,19 @@ function H.tick()
                 local dot = (ux * p.ux + uy * p.uy + uz * p.uz)
                     / math.max(1e-9, math.sqrt((ux * ux + uy * uy + uz * uz) * (p.ux ^ 2 + p.uy ^ 2 + p.uz ^ 2)))
                 local moving = dv > REST_V or p.h - hm > PROBE_DH or dot < PROBE_DOT
-                T.log(string.format("thrust probe vid=%d dv=%.3f dh=%.3f dAng=%.2f h=%.2f %s", f.vid, dv, p.h - hm,
-                    math.deg(math.acos(math.min(1, dot))), hm, moving and "moving" or "at rest"))
-                if not moving then return stop(f.lifted, nil, nil, true) end
-                -- held up by its own push (a roof's edge): land on from here, never at rest again this landing, and
-                -- slide off the way it leans
-                local t0 = f.t
                 local sx, sz = ux, uz
                 if sx * sx + sz * sz < 0.05 ^ 2 then sx, sz = lv:x(), lv:z() end
                 local l = math.sqrt(sx * sx + sz * sz)
+                T.log(string.format("thrust probe vid=%d dv=%.3f dh=%.3f dAng=%.2f h=%.2f dir=%.0f %s", f.vid, dv, p.h - hm,
+                    math.deg(math.acos(math.min(1, dot))), hm, math.deg(math.atan2(sz, sx)), moving and "moving" or "at rest"))
+                if not moving then return stop(f.lifted, nil, nil, true) end
+                -- held up by its own push (a roof's edge): lifted off it and carried away, then down and probed again
+                local t0 = f.t
                 setLand(f, hm)
-                f.t, f.noRest, f.probe = t0, true, nil
+                f.t, f.probe = t0, nil
                 if l > 1e-3 then
-                    f.slide = { dx = sx / l, dz = sz / l, h = hm, t = 0 }
-                    f.st.vTx, f.st.vTz = f.slide.dx * SLIDE_V, f.slide.dz * SLIDE_V
-                end
+                    f.slide = { dx = sx / l, dz = sz / l, x = v:getX(), y = v:getY(), z = v:getDebugZ() + LIFT_DH / FLOOR, t = 0 }
+                else f.noRest = true end -- no way to go: land on in place
             end
             return
         end
@@ -893,7 +900,11 @@ T.ClientCommands.deny = function(args)
         local a = asked[pn]
         if a and a.n == args.n then asked[pn] = nil end
         local f = F
-        if f and f.n == args.n and not f.ok then halt() end
+        if f and f.n == args.n and not f.ok then
+            halt()
+            -- a landing refused: the watch's tilt branch (no vy past 53 degrees) asks no more for this car at rest
+            if f.act == "land" then RESTED[f.vid] = true end
+        end
         local p = getSpecificPlayer(pn) or getSpecificPlayer(0)
         if p then HaloTextHelper.addBadText(p, H.whyText(args.vid and getVehicleById(args.vid), tostring(args.reason))) end
         return
@@ -904,7 +915,8 @@ end
 -- HUD.lua, each dashboard update (10 Hz) of a car with thrusters: notes where it rests on the ground, and catches a
 -- fall (off a roof, a stunt gone wrong) to land it softly when there is air for it. A car tipping nose-first over an
 -- edge slides down the wall under it slower than a fall (r2int-sp-full roof 1 #1: -1.9 m/s at most, on its nose
--- after): tilted past 37 degrees and coming down over the drop counts too
+-- after): tilted past 37 degrees and coming down over the drop counts too, past 53 at any speed (r2f3-mp-c boostnear:
+-- rolling over on a fence top at -0.1 m/s, asked only at up 0)
 function H.watch(player, v)
     if F or not v:isDriver(player) then return end
     local c = H.conf(v)
@@ -915,7 +927,7 @@ function H.watch(player, v)
     if hm < 0.2 and math.abs(vy) < 0.05 then
         RESTS[vid] = clamp(v:getDebugZ() - groundZ(v), 0.02, 0.25)
         RESTED[vid] = nil
-    elseif ((hm > 1.5 and vy < -2) or (hm > 1 and vy < -0.5 and not RESTED[vid] and v:getUpVector(V3.u):y() < 0.8))
+    elseif ((hm > 1.5 and vy < -2) or (hm > 1 and not RESTED[vid] and v:getUpVector(V3.u):y() < (vy < -0.5 and 0.8 or 0.6)))
         and (H.air(v) or 0) >= H.COST.land and H.check(player, v, "land") then
         H.ask(player, v, "land")
     end

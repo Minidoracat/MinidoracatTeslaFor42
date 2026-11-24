@@ -1211,36 +1211,59 @@ do -- r2rest-mp-r2 boostnearhold: a car whose landing ended at rest, settled sin
     okFor("land")
     cv.driver = nil; TH.tick(); cv.driver = cp
 end
-do -- the probe finds it moving (a car on a roof's edge, held there by the landing's push): the landing goes on from
-    -- where it is and never ends at rest after (as before 10f97657: 8 of 8 one-floor edges upright)
-    cv.dz, cv.vy, cv.uy, cv.speed, cv.ux = 0.075 + 2 / TH.FLOOR, 0, 1, 0, 0.3 -- leaning toward +x (its nose over the edge)
+-- the probe finds it moving (a car hung on a roof's edge: the landing pushes it down at -G and levels it about the edge,
+-- r2f3-sp-probe3 slid level 3 s and rose instead, 8 of 8): lifted LIFT_DH m and carried SLIDE_D m the way it leans,
+-- then down again and probed again
+do -- (main chunk locals at Lua's 200)
+local function hungProbe(h)
+    cv.dz, cv.vy, cv.uy, cv.speed, cv.ux, cv.x = 0.075 + h / TH.FLOOR, 0, 1, 0, 0.3, 500.5 -- its nose over the edge, +x
     TH.ask(cp, cv, "land")
     okFor("land")
     local n0 = #H.clientSent
-    for _ = 1, 46 do TH.tick() end -- the first tick sets its height, 0.7 s still, then 0.2 s into the probe: its first sample
-    check(TH.active() and TH.active().probe and TH.active().probe.h, "still 0.7 s at 2 m: probing, the first sample taken")
+    for _ = 1, 46 do TH.tick() end -- the first tick sets its height, 0.7 s still, then 0.2 s into the probe
+    local ok1 = TH.active() and TH.active().probe and TH.active().probe.h
     cv.dz = cv.dz - 0.06 / TH.FLOOR -- sagging with no push: 0.06 m in the probe's second 0.2 s
     for _ = 1, 12 do if TH.active() then TH.tick() end end
-    local f = TH.active()
-    check(f and f.act == "land" and f.phase == "land" and not f.probe and f.noRest and #H.clientSent == n0,
-        "... 0.06 m lower 0.2 s later: moving, the landing goes on (no end, no more rest)")
-    -- r2f3-sp-probe: held on the edge by that push it hung there tilted 12 s (6 of 30), then fell and was asked again:
-    -- it slides off the way it leans, level, at SLIDE_V
-    check(f and f.slide and near(f.st.vTx, 2, 1e-6) and near(f.st.vTz, 0, 1e-6), "... sliding off the way it leans at 2 m/s")
+    return TH.active(), n0, ok1
+end
+do
+    local f, n0, ok1 = hungProbe(5)
+    check(ok1, "still 0.7 s at 5 m: probing, the first sample taken")
+    check(f and f.phase == "land" and not f.probe and f.slide and not f.noRest and #H.clientSent == n0,
+        "... 0.06 m lower 0.2 s later: moving, carried off (no end, probed again after)")
     TH.tick()
-    check(f.slide and near(f.st.vTx, 2, 1e-6), "... still sliding the next frame")
+    local rh = f.st.rh
+    check(near(f.st.vTx, 2, 1e-6) and near(f.st.vTz, 0, 1e-6) and f.st.rvy == 0,
+        "... the way it leans at 2 m/s, holding its height")
     cv.dz = cv.dz - 0.9 / TH.FLOOR
     TH.tick()
-    check(not f.slide and f.st.vTx == 0 and f.st.vTz == 0, "... 0.9 m lower: off the edge, stopping where it is")
-    cv.ux = nil
-    cv.impulses = 0
-    for _ = 1, 100 do if TH.active() then TH.tick() end end
-    check(TH.active() and #H.clientSent == n0 and cv.impulses > 0, "... then still 2 s more: pushing on, never at rest")
+    check(f.slide and near(f.st.rh, rh, 1e-6), "... 0.9 m lower: still carried, the same height asked (0.8 m over where it hung)")
+    cv.x, roof["502,500"] = 502.5, 1 -- 2 m on, over a floor a level up
+    TH.tick()
+    check(f.slide and near(f.st.rh, rh - TH.FLOOR, 1e-6), "... over a floor a level up: the same height asked, counted from there")
+    roof["502,500"] = nil
+    cv.x = 503.6
+    TH.tick()
+    check(not f.slide and f.st.vTx == 0 and f.st.vTz == 0, "... 3.1 m off: down again, stopping where it is")
+    TH.tick()
+    check(f.st.rvy < -0.7 and #H.clientSent == n0, "... coming down the landing's way")
+    for _ = 1, 60 do if TH.active() then TH.tick() end end
+    check(TH.active() == nil and #H.clientSent == n0 + 1 and H.clientSent[n0 + 1].args.rest == true,
+        "... still 0.7 s again, then the probe finds it staying put: over, at rest")
+    cv.ux, cv.x = nil, 500.5
     cv.driver = nil; TH.tick(); cv.driver = cp
 end
-do -- r2f3-sp-probe2 rboost: a car settled on something past a roof's edge, rocking 3.76 degrees in the probe's 0.2 s
-    -- (dv 0.04, dh 0.005) read as moving, slid 3 s without dropping, held up 12 s, then asked again (the tank billed
-    -- twice, up 0.43): under 5 degrees is its springs, at rest
+do -- carried SLIDE_S s and not 3 m off: down where it is, no end, probed again later
+    local f, n0 = hungProbe(2)
+    local ticks = 0
+    while f.slide and ticks < 300 do TH.tick() ticks = ticks + 1 end
+    check(not f.slide and ticks >= 195 and ticks <= 202 and TH.active() == f and not f.probe and #H.clientSent == n0,
+        "carried 4 s and still where it hung: down again there, no end said")
+    cv.ux = nil
+    cv.driver = nil; TH.tick(); cv.driver = cp
+end
+end
+do -- r2f3-sp-probe2 rboost: 3.76 degrees in the probe's 0.2 s read at rest, it fell after (lands 2, up 0.43): moving
     cv.dz, cv.vy, cv.uy, cv.speed, cv.ux = 0.075 + 2 / TH.FLOOR, 0, 1, 0, nil
     TH.ask(cp, cv, "land")
     okFor("land")
@@ -1248,27 +1271,53 @@ do -- r2f3-sp-probe2 rboost: a car settled on something past a roof's edge, rock
     check(TH.active() and TH.active().probe and TH.active().probe.h, "rocking: probing, the first sample taken")
     cv.ux = math.tan(math.rad(3.76))
     for _ = 1, 12 do if TH.active() then TH.tick() end end
-    check(TH.active() == nil and H.clientSent[#H.clientSent].args.rest == true, "... 3.76 degrees in 0.2 s: at rest")
+    check(TH.active() and TH.active().slide, "... 3.76 degrees in 0.2 s: moving, carried off")
+    cv.ux = nil
     cv.driver = nil; TH.tick(); cv.driver = cp
 end
-do -- found moving, it slides; SLIDE_S s on and no lower: something holds it up (r2f3-sp-probe2 rboost #3: held 2 m
-    -- up past the edge, asked again after LAND_S): over, at rest
-    cv.dz, cv.vy, cv.uy, cv.speed, cv.ux = 0.075 + 2 / TH.FLOOR, 0, 1, 0, 0.3
+do -- pressed down on what holds it it sinks 0.05 m/s (r2f3-mp-c boostnearhold: 1.6 s on a fence top, never probed)
+    cv.dz, cv.vy, cv.uy, cv.speed = 0.075 + 2 / TH.FLOOR, -0.05, 1, 0
+    TH.ask(cp, cv, "land")
+    okFor("land")
+    for _ = 1, 37 do cv.dz = cv.dz - 0.001 / TH.FLOOR TH.tick() end
+    check(TH.active() and TH.active().probe, "sinking 0.05 m/s for 0.7 s: probed")
+    cv.driver = nil; TH.tick(); cv.driver = cp
+end
+do -- still up after LAND_S: over where it is, as at rest (SP: it asked again at once and billed the tank twice)
+    cv.dz, cv.vy, cv.uy, cv.speed = 0.075 + 3 / TH.FLOOR, -0.7, 1, 0
     TH.ask(cp, cv, "land")
     okFor("land")
     local n0 = #H.clientSent
-    for _ = 1, 46 do TH.tick() end
-    cv.dz = cv.dz - 0.06 / TH.FLOOR
-    for _ = 1, 12 do if TH.active() then TH.tick() end end
-    local f = TH.active()
-    check(f and f.slide and #H.clientSent == n0, "moving: sliding off the way it leans")
-    for _ = 1, 140 do if TH.active() then TH.tick() end end -- 2.8 s
-    check(TH.active() == f and f.slide, "... 2.8 s on, no lower: still sliding")
-    for _ = 1, 15 do if TH.active() then TH.tick() end end
-    check(TH.active() == nil and #H.clientSent == n0 + 1 and H.clientSent[#H.clientSent].args.rest == true,
-        "... past 3 s and no lower: something holds it up, over at rest")
-    cv.ux = nil
+    for _ = 1, 650 do if TH.active() then TH.tick() end end
+    check(TH.active() == nil and #H.clientSent == n0 + 1 and H.clientSent[n0 + 1].args.rest == true,
+        "12 s and still 3 m up: over, said as at rest")
+    cv.dz, cv.vy, cv.uy = 0.075 + 1.5 / TH.FLOOR, -0.6, 0.5
+    TH.watch(cp, cv)
+    check(TH.active() == nil and #H.clientSent == n0 + 1, "... then tilted and slipping: no new landing")
+    cv.dz, cv.vy, cv.uy = 0.075 + 2.5 / TH.FLOOR, -3, 1
+    TH.watch(cp, cv)
+    check(TH.active() and TH.active().act == "land", "... then falling at -3 m/s from 2.5 m: the soft landing asked")
+    okFor("land")
     cv.driver = nil; TH.tick(); cv.driver = cp
+end
+do -- the watch: past 53 degrees on what holds it, at any speed (r2f3-mp-c boostnear: rolled over on a fence top at
+    -- -0.1 m/s, asked only at up 0); a refusal of that landing marks it at rest, asked no more
+    cv.dz, cv.vy, cv.uy = 0.075, 0, 1
+    TH.watch(cp, cv) -- on the ground: the rest mark gone
+    cv.dz, cv.uy = 0.075 + 2.2 / TH.FLOOR, 0.7
+    local n0 = #H.clientSent
+    TH.watch(cp, cv)
+    check(TH.active() == nil and #H.clientSent == n0, "45 degrees, still, 2.2 m up: no landing")
+    cv.uy = 0.55
+    TH.watch(cp, cv)
+    check(TH.active() and TH.active().act == "land", "57 degrees, still, 2.2 m up: the soft landing asked")
+    T.ClientCommands.deny({ n = lastN(), pn = 0, vid = cv:getId(), reason = "THRUST_NO_AIR" })
+    check(TH.active() == nil, "... refused: stopped")
+    n0 = #H.clientSent
+    TH.watch(cp, cv)
+    check(TH.active() == nil and #H.clientSent == n0, "... the same again: asked no more")
+    cv.dz, cv.vy, cv.uy = 0.075, 0, 1
+    TH.watch(cp, cv)
 end
 cv.dz, cv.vy, cv.uy, cv.speed = 0.075, 0, nil, 30
 -- what the client asks VehicleManager is a query; AutoDrive driving this car refuses
