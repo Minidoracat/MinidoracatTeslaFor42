@@ -34,10 +34,10 @@ local HELP_MS = 2000 + LAND_MS + 1000
 local START_MS, START_TRIES = 2000, 3 -- tryStartEngine takes 1.7 s; 15 of 16 start first time (poc/APP.md)
 local ABORT_MS = 500   -- an end said in the air: look again this much later (the server's copy lags ~0.1 s)
 -- MP flying is billed by the server's own clock: from the look that saw it up to the end said on the ground, less
--- the landing from hover height. shortcut: the look sees the lift-off 0-0.5 s late (billed that much less), the end
--- arrives ~0.1 s after touchdown, and a landing from higher or lower than 3 m takes longer or shorter
--- (MEASURED_BY_r2fix)
-H.LAND_FLAT_S = 1.5
+-- LAND_FLAT_S. r2fix-mp-a (FlightSeconds 20, flown 10 s and 20 s at 3 m): that span came out flown + 0.26 s both
+-- times (the look sees the lift-off 0-0.5 s late, which eats most of the ~1.4 s landing from 3 m); 0.25 bills
+-- what was flown to within a look. A landing from higher or lower than 3 m takes longer or shorter
+H.LAND_FLAT_S = 0.25
 local LAND_FLAT_S = H.LAND_FLAT_S
 
 -- [vid] = { v = the car approved (ids are reused, VehicleIDMap.java:49-61), act, player, n = the asker's action
