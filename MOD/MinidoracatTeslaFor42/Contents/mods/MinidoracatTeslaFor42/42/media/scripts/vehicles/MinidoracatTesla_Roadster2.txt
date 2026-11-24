@@ -1,0 +1,386 @@
+module Base
+{
+    vehicle MinidoracatTesla_Roadster2
+    {
+        template! = MinidoracatTeslaSoloNoFrunk,
+        /* ---- numbers and parts (TeslaLogic) ---- */
+        /* Roadster Rocket (references/roadster2.md): one seat (the passenger's place holds a 400 L air tank), two */
+        /* doors that swing up and out like the Cybercab's; no front trunk (Not a Tesla App #4850 "No Frunk"): */
+        /* SoloNoFrunk has no Frunk part and no passenger seat, the hood (EngineDoor) stays for vanilla's mechanics */
+        seats = 1,
+        part GasTank
+        {
+            itemType = Base.MinidoracatTesla_Roadster2Battery,
+        }
+        /* hp x 10 as on the other cars: "more than 1 megawatt" (temp/plan-next-1114/specs-roadster.md A1) = 1,341 */
+        /* hp -> 13400. Candidates for the feel-sp pick: 10200 (the Plaids' value), 15000 (MotorTrend's ~1,500 hp). */
+        /* The mechanics window shows power / 10 hp (ISVehicleMechanics.lua:1178). Create.Motor and vanilla */
+        /* repair() (VehiclePart.java:999-1005) both set this value. */
+        engineForce = 13400,
+        /* just under 1,700 kg (references/roadster2.md) on the template's 800 = Model 3's 2,033 kg: */
+        /* 800 x 1,700 / 2,033 */
+        mass = 669,
+        maxSpeed = 120,
+        /* trunk behind the seat: 300-400 L there less the 200 L tank, <= 100 L usable, at the Roadster 2.5's */
+        /* scale (its 170 L trunk = 30): 100 x 30 / 170 = 17.6 -> 18. A script capacity becomes the trunk item's */
+        /* MaxCapacity (VehicleUtils.createPartInventoryItem, Vehicles.lua:1181-1183). */
+        part TruckBed
+        {
+            container
+            {
+                capacity = 18,
+            }
+        }
+        /* the active rear wing (roadster2.md TeslaWing), the charge port behind it (Not a Tesla App #4850): a lid */
+        /* raised and lowered from the dashboard's car picture and the app (Liftgate.lua PARTS, Remote wing), and */
+        /* by the charge cable (Liftgate.lua L.chargeWing). Open = up. No use = ...: the interact key keeps opening */
+        /* the doors and lids (getUseablePart takes parts with a use function, BaseVehicle.java:2326-2360). Never */
+        /* locked: TrunkDoorOpen (Vehicles.lua:176-181), not in Liftgate.lua LIDS. The trunk lid item stands in for */
+        /* it (no new item id). Not while moving (Liftgate.check). */
+        part TeslaWing
+        {
+            mechanicArea = Back,
+            category = bodywork,
+            /* where the mechanic stands to fit, take off or repair it (vanilla walks to part:getArea()) */
+            area = TruckBed,
+            durability = 5,
+            itemType = Base.TrunkDoor,
+            mechanicRequireKey = true,
+            repairMechanic = true,
+            door
+            {
+            }
+            anim Open
+            {
+                sound = VehicleTrunkOpenStandard,
+            }
+            anim Close
+            {
+                sound = VehicleTrunkCloseStandard,
+            }
+            table install
+            {
+                items
+                {
+                    1
+                    {
+                        tags = base:wrench,
+                        count = 1,
+                        keep = true,
+                        equip = primary,
+                    }
+                }
+                time = 300,
+                skills = Mechanics:3,
+                recipes = Advanced Mechanics,
+                test = Vehicles.InstallTest.Default,
+                complete = Vehicles.InstallComplete.Door,
+            }
+            table uninstall
+            {
+                items
+                {
+                    1
+                    {
+                        tags = base:wrench,
+                        count = 1,
+                        keep = true,
+                        equip = primary,
+                    }
+                }
+                time = 300,
+                skills = Mechanics:3,
+                recipes = Advanced Mechanics,
+                test = Vehicles.UninstallTest.Default,
+                complete = Vehicles.UninstallComplete.Door,
+            }
+            lua
+            {
+                create = Vehicles.Create.TrunkDoorOpen,
+                init = Vehicles.Init.Door,
+            }
+        }
+        /* Roadster Rocket thrusters' jets (references/roadster2.md; shared/MinidoracatTesla/ThrusterFx.lua shows the */
+        /* models per mode: lift Lift, flip Lift + Side, boost Rear). No item, all hidden until the flight code turns */
+        /* them on, so not setAllModelsVisible (it would hide them anyway for want of an item, VehiclePart.java:148-155) */
+        /* and no init. Part models are not saved (VehiclePart.save), so a car saved mid-flight loads with none showing. */
+        part TeslaThruster
+        {
+            category = nodisplay,
+            setAllModelsVisible = false,
+            model Lift
+            {
+                file = MinidoracatTesla_Roadster2_JetLift,
+            }
+            model Side
+            {
+                file = MinidoracatTesla_Roadster2_JetSide,
+            }
+            model Rear
+            {
+                file = MinidoracatTesla_Roadster2_JetRear,
+            }
+        }
+        /* ---- geometry (TeslaRoadster2): stand-in, the Roadster 2.5's shell (MinidoracatTesla_Roadster.txt) with one */
+        /* seat and no wing model, until scripts/blender/skf/convert.py (CAR=roadster2) writes its own block here ---- */
+        model
+        {
+            file = MinidoracatTesla_Roadster,
+            scale = 1.82,
+            offset = 0.0000 0.1978 0.0000,
+        }
+        skin
+        {
+            texture = Vehicles/MinidoracatTesla_Roadster_ArcticWhite,
+        }
+        textureMask = Vehicles/MinidoracatTesla_Roadster_mask,
+        textureLights = Vehicles/MinidoracatTesla_Roadster_lights,
+        textureDamage1Overlay = Vehicles/Veh_Blood_Mask,
+        textureDamage2Overlay = Vehicles/Veh_Blood_Hvy,
+        textureDamage1Shell = Vehicles/Veh_Damage1,
+        textureDamage2Shell = Vehicles/Veh_Damage2,
+        textureRust = Vehicles/Veh_Rust,
+        template = MinidoracatTeslaPassengerSeat1,
+        extents = 0.7917 0.4513 1.7909,
+        physicsChassisShape = 0.7917 0.4513 1.7909,
+        centerOfMassOffset = 0.0000 0.1978 0.0000,
+        shadowExtents = 0.7917 1.7909,
+        shadowOffset = 0.0 0.0,
+        useChassisPhysicsCollision = false,
+        physics box
+        {
+            offset = 0.0000 0.1192 0.0000,
+            extents = 0.7752 0.2942 1.7579,
+        }
+        physics box
+        {
+            offset = 0.0000 0.3449 -0.0275,
+            extents = 0.6044 0.1571 0.5495,
+        }
+        wheel FrontRight
+        {
+            front = true,
+            offset = -0.3303 -0.2095 0.4999,
+            radius = 0.1282,
+            width = 0.1567,
+        }
+        wheel FrontLeft
+        {
+            front = true,
+            offset = 0.3303 -0.2095 0.4999,
+            radius = 0.1282,
+            width = 0.1567,
+        }
+        wheel RearLeft
+        {
+            front = false,
+            offset = 0.3369 -0.2024 -0.5671,
+            radius = 0.1357,
+            width = 0.1815,
+        }
+        wheel RearRight
+        {
+            front = false,
+            offset = -0.3369 -0.2024 -0.5671,
+            radius = 0.1357,
+            width = 0.1815,
+        }
+        part TireFront*
+        {
+            model InflatedTirePlusWheel
+            {
+                file = MinidoracatTesla_Roadster_Wheel,
+            }
+        }
+        part TireRear*
+        {
+            model InflatedTirePlusWheel
+            {
+                file = MinidoracatTesla_Roadster_WheelRear,
+            }
+        }
+        passenger FrontLeft
+        {
+            showPassenger = true,
+            position inside
+            {
+                offset = 0.1330 -0.2573 -0.0037,
+                rotate = 0.0 0.0 0.0,
+            }
+            position outside
+            {
+                offset = 0.5607 -0.2859 -0.0037,
+                rotate = 0.0 0.0 0.0,
+                area = SeatFrontLeft,
+            }
+        }
+        area Engine
+        {
+            xywh = 0.0000 1.1317 0.7917 0.4725,
+        }
+        area TruckBed
+        {
+            xywh = 0.0000 -1.1317 0.7917 0.4725,
+        }
+        area GasTank
+        {
+            xywh = 0.6321 -0.3111 0.4725 0.4725,
+        }
+        area SeatFrontLeft
+        {
+            xywh = 0.6321 0.0237 0.4725 0.4873,
+        }
+        /* no seat: the right door and window's area (Door*, Window* mechanicArea / area) */
+        area SeatFrontRight
+        {
+            xywh = -0.6321 0.0237 0.4725 0.4873,
+        }
+        area TireFrontRight
+        {
+            xywh = -0.6321 0.4999 0.4725 0.4725,
+        }
+        area TireFrontLeft
+        {
+            xywh = 0.6321 0.4999 0.4725 0.4725,
+        }
+        area TireRearLeft
+        {
+            xywh = 0.6321 -0.5671 0.4725 0.4725,
+        }
+        area TireRearRight
+        {
+            xywh = -0.6321 -0.5671 0.4725 0.4725,
+        }
+        attachment trailer
+        {
+            offset = 0.0000 -0.1817 -0.9119,
+            rotate = 0.0 0.0 0.0,
+            zoffset = -1.0,
+        }
+        attachment trailerfront
+        {
+            offset = 0.0000 -0.1817 0.9119,
+            rotate = 0.0 0.0 0.0,
+            zoffset = 1.0,
+        }
+        /* charge port: behind the wing (Not a Tesla App #4850); stand-in at the Roadster 2.5's until measured */
+        attachment chargeport
+        {
+            offset = 0.2681 0.1262 -0.3111,
+            rotate = 0.0 0.0 0.0,
+        }
+        part DoorFrontLeft
+        {
+            model Default
+            {
+                file = MinidoracatTesla_Roadster_DoorFrontLeft,
+            }
+            anim Close
+            {
+                anim = DoorFrontLeft_closing,
+                rate = 1.0,
+            }
+            anim Open
+            {
+                anim = DoorFrontLeft_closing,
+                reverse = true,
+                rate = 1.0,
+            }
+            anim Opened
+            {
+                anim = DoorFrontLeft_closing,
+                animate = false,
+            }
+        }
+        part DoorFrontRight
+        {
+            model Default
+            {
+                file = MinidoracatTesla_Roadster_DoorFrontRight,
+            }
+            anim Close
+            {
+                anim = DoorFrontRight_closing,
+                rate = 1.0,
+            }
+            anim Open
+            {
+                anim = DoorFrontRight_closing,
+                reverse = true,
+                rate = 1.0,
+            }
+            anim Opened
+            {
+                anim = DoorFrontRight_closing,
+                animate = false,
+            }
+        }
+        part TrunkDoor
+        {
+            model Default
+            {
+                file = MinidoracatTesla_Roadster_TrunkDoor,
+            }
+            anim Close
+            {
+                anim = TrunkDoor_closing,
+                rate = 1.0,
+            }
+            anim Open
+            {
+                anim = TrunkDoor_closing,
+                reverse = true,
+                rate = 1.0,
+            }
+            anim Opened
+            {
+                anim = TrunkDoor_closing,
+                animate = false,
+            }
+        }
+        part EngineDoor
+        {
+            model Default
+            {
+                file = MinidoracatTesla_Roadster_EngineDoor,
+            }
+            anim Close
+            {
+                anim = EngineDoor_closing,
+                rate = 1.0,
+            }
+            anim Open
+            {
+                anim = EngineDoor_closing,
+                reverse = true,
+                rate = 1.0,
+            }
+            anim Opened
+            {
+                anim = EngineDoor_closing,
+                animate = false,
+            }
+        }
+        part CabinGlass
+        {
+            model Glass
+            {
+                file = MinidoracatTesla_Roadster_Glass,
+            }
+        }
+        part CabinDetail
+        {
+            model Detail
+            {
+                file = MinidoracatTesla_Roadster_Detail,
+            }
+        }
+        part TeslaArmor
+        {
+            model Armor
+            {
+                file = MinidoracatTesla_Roadster2_Armor,
+            }
+        }
+    }
+}

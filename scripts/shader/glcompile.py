@@ -82,7 +82,8 @@ def program(name, gl21, vsuffix="_static"):
     GL.glLinkProgram(p)
     if not GL.glGetProgramiv(p, GL.GL_LINK_STATUS):
         raise RuntimeError(GL.glGetProgramInfoLog(p).decode())
-    loc = {u: GL.glGetUniformLocation(p, u) for u in ("TextureRust", "TextureMask", "TexturePainColor", "Texture", "MatrixPalette", "Alpha")}
+    loc = {u: GL.glGetUniformLocation(p, u) for u in ("TextureRust", "TextureMask", "TexturePainColor", "Texture", "MatrixPalette", "Alpha",
+                                                       "ReflectionParam")}
     return loc
 
 
@@ -93,7 +94,7 @@ glfw.make_context_current(win)
 print("GL", GL.glGetString(GL.GL_VERSION).decode(), "|", GL.glGetString(GL.GL_RENDERER).decode())
 bad = 0
 for name, vs in (("vehicle_multiuv_noreflect", "_static"), ("MinidoracatTesla_vehicle", "_static"), ("MinidoracatTesla_vehicle", ""),
-                 ("MinidoracatTesla_viewpoint", "_static")):
+                 ("MinidoracatTesla_viewpoint", "_static"), ("MinidoracatTesla_jet", "_static")):
     for gl21 in (False, True):
         try:
             print("OK  ", name + vs, "GL2.1" if gl21 else "GL3.3", program(name, gl21, vs))

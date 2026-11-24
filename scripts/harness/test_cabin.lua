@@ -188,10 +188,12 @@ for car, g in pairs(geos) do
         .. ", PassengerSeat" .. tostring(n) .. ") show their passenger (" .. table.concat(shown, ",") .. ")")
 end
 
--- the four templates (MinidoracatTesla_template.txt): Cab has every shared part block, the front doors, seats and side
--- windows, and no trunk lid, trunk, glove box, frunk or rear windshield (Semi); CoreNoFrunk is the 21 template lines,
--- then part TrunkDoor and part WindshieldRear (Cab's blocks do not reach these two), then template! = Cab and nothing
--- else (Cybercab); Core is CoreNoFrunk's template lines, then part Frunk, then template! = CoreNoFrunk and nothing
+-- the templates (MinidoracatTesla_template.txt): Solo has every shared part block, the driver's seat, the front doors
+-- and side windows, and no passenger seat, trunk lid, trunk, glove box, frunk or rear windshield; Cab is the two seat
+-- lines, then template! = Solo and nothing else (Semi); SoloNoFrunk is CoreNoFrunk's template lines without the
+-- passenger seat, then part TrunkDoor and part WindshieldRear (Solo's blocks do not reach these two), then template! =
+-- Solo (Roadster Rocket); CoreNoFrunk is the 21 template lines, then template! = SoloNoFrunk and nothing else
+-- (Cybercab); Core is CoreNoFrunk's template lines, then part Frunk, then template! = CoreNoFrunk and nothing
 -- else; Base is Core's template lines up to its last pair of front doors, each front pair followed by its rear pair,
 -- then template! = Core and nothing else. Each keeps the single template's part order (scripts/vehicle_parts.py
 -- --against <rev>: the frunk right after the template parts, the rear three pairs among them)
@@ -203,7 +205,9 @@ end
 local core, base = tpl:match("template vehicle MinidoracatTeslaCore%s*(%b{})") or "", tpl:match("template vehicle MinidoracatTeslaBase%s*(%b{})") or ""
 local nf = tpl:match("template vehicle MinidoracatTeslaCoreNoFrunk%s*(%b{})") or ""
 local cab = tpl:match("template vehicle MinidoracatTeslaCab%s*(%b{})") or ""
-local cl, bl, nl, want = tlines(core), tlines(base), tlines(nf), {}
+local solo = tpl:match("template vehicle MinidoracatTeslaSolo%s*(%b{})") or ""
+local snf = tpl:match("template vehicle MinidoracatTeslaSoloNoFrunk%s*(%b{})") or ""
+local cl, bl, nl, sl, want = tlines(core), tlines(base), tlines(nf), tlines(snf), {}
 local function at(s, pat) return s:find(pat, 1, true) or -1 end
 local function only(block, part)   -- the block holds its template lines and that part block and nothing else
     local r = block:gsub("/%*.-%*/", ""):gsub("\n        template!? = [^\n]+,", ""):gsub("\n        part " .. part .. "%s*%b{}", "")
@@ -215,18 +219,28 @@ check(#nl == 22 and table.concat(cl, "\n") == table.concat(nh, "\n") .. "\ntempl
     and only(core, "Frunk") and fr > lastTpl and lastTpl > 0 and fr < at(core, "template! = ")
     and nh[21] == "template = Headlight",
     "template Core: CoreNoFrunk's 21 template lines, then part Frunk, then template! = CoreNoFrunk, nothing else")
-local nfRest = nf:gsub("\n        part WindshieldRear%s*%b{}", "")
-check(nl[22] == "template! = MinidoracatTeslaCab" and only(nfRest, "TrunkDoor") and at(nf, "\n        part TrunkDoor") > at(nf, "template = Headlight,")
-    and at(nf, "\n        part WindshieldRear") > at(nf, "template = Headlight,") and at(nf, "\n        part WindshieldRear") < at(nf, "template! = ")
+check(nl[22] == "template! = MinidoracatTeslaSoloNoFrunk" and #nl == 22 and only(nf, "NONE")
     and nh[1] == "template = TrunkDoor" and nh[2] == "template = Trunk/part/TruckBed" and nh[5] == "template = GloveBox",
-    "template CoreNoFrunk: the 21 template lines, then part TrunkDoor and part WindshieldRear, then template! = Cab, nothing else")
+    "template CoreNoFrunk: the 21 template lines, then template! = SoloNoFrunk, nothing else")
+local snh = {}
+for _, ln in ipairs(nh) do
+    if ln ~= "template = Seat/part/SeatFrontRight" then snh[#snh + 1] = ln end
+end
+local snfRest = snf:gsub("\n        part WindshieldRear%s*%b{}", "")
+check(#sl == 21 and table.concat(sl, "\n") == table.concat(snh, "\n") .. "\ntemplate! = MinidoracatTeslaSolo"
+    and only(snfRest, "TrunkDoor") and at(snf, "\n        part TrunkDoor") > at(snf, "template = Headlight,")
+    and at(snf, "\n        part WindshieldRear") > at(snf, "template = Headlight,") and at(snf, "\n        part WindshieldRear") < at(snf, "template! = "),
+    "template SoloNoFrunk: CoreNoFrunk's template lines but the passenger seat, then part TrunkDoor and part WindshieldRear, then template! = Solo")
+check(table.concat(tlines(cab), "\n") == "template = Seat/part/SeatFrontLeft\ntemplate = Seat/part/SeatFrontRight\ntemplate! = MinidoracatTeslaSolo"
+    and only(cab, "NONE"), "template Cab: the two seat lines, then template! = Solo, nothing else")
 -- the upgrade fridge names the trunk lid and the bed in its own rules (fitted through the trunk; the Semi overrides it)
-local cabOwn = cab:gsub("\n        part TeslaFridge%s*%b{}", "")
-check(not cabOwn:find("Frunk", 1, true) and not cabOwn:find("TrunkDoor", 1, true) and not cabOwn:find("TruckBed", 1, true)
-    and not cabOwn:find("GloveBox", 1, true) and not cabOwn:find("WindshieldRear", 1, true) and not semi:find("WindshieldRear", 1, true)
-    and cab:find("part GasTank", 1, true) ~= nil and cab:find("part CabinDetail", 1, true) ~= nil
-    and cab:find("part TeslaArmor", 1, true) ~= nil and cab:find("part TeslaFridge", 1, true) ~= nil,
-    "template Cab: every shared part block (the upgrades too), no trunk lid, trunk, glove box, frunk or rear windshield (nor the Semi's own script)")
+local soloOwn = solo:gsub("\n        part TeslaFridge%s*%b{}", "")
+check(not soloOwn:find("Frunk", 1, true) and not soloOwn:find("TrunkDoor", 1, true) and not soloOwn:find("TruckBed", 1, true)
+    and not soloOwn:find("GloveBox", 1, true) and not soloOwn:find("WindshieldRear", 1, true) and not semi:find("WindshieldRear", 1, true)
+    and not solo:find("SeatFrontRight", 1, true) and solo:find("template = Seat/part/SeatFrontLeft,", 1, true) ~= nil
+    and solo:find("part GasTank", 1, true) ~= nil and solo:find("part CabinDetail", 1, true) ~= nil
+    and solo:find("part TeslaArmor", 1, true) ~= nil and solo:find("part TeslaFridge", 1, true) ~= nil,
+    "template Solo: every shared part block (the upgrades too), the driver's seat; no passenger seat, trunk lid, trunk, glove box, frunk or rear windshield (nor the Semi's own script)")
 for _, ln in ipairs(cl) do
     want[#want + 1] = ln
     local pre = ln:match("^(template = %w+/part/%w+)FrontRight$")
@@ -244,10 +258,36 @@ local function doorsOf(block)
 end
 check(doorsOf(core) == table.concat(H.TEMPLATE_DOORS.MinidoracatTeslaCore, ",")
     and doorsOf(nf) == table.concat(H.TEMPLATE_DOORS.MinidoracatTeslaCoreNoFrunk, ",")
+    and doorsOf(snf) == table.concat(H.TEMPLATE_DOORS.MinidoracatTeslaSoloNoFrunk, ",")
+    and doorsOf(solo) == table.concat(H.TEMPLATE_DOORS.MinidoracatTeslaSolo, ",")
     and doorsOf(base) == table.concat(H.TEMPLATE_DOORS.MinidoracatTeslaBase, ",")
-    and not (core .. nf):find("SeatRear", 1, true) and not (core .. nf):find("WindowRear", 1, true)
-    and not (core .. nf):find("DoorRear", 1, true),
-    "template Core / CoreNoFrunk: the front doors only, no rear seat / window / door; Base all four (H.TEMPLATE_DOORS)")
+    and not (core .. nf .. snf .. solo):find("SeatRear", 1, true) and not (core .. nf .. snf .. solo):find("WindowRear", 1, true)
+    and not (core .. nf .. snf .. solo):find("DoorRear", 1, true),
+    "template Core / CoreNoFrunk / SoloNoFrunk / Solo: the front doors only, no rear seat / window / door; Base all four (H.TEMPLATE_DOORS)")
+
+-- One seat (the Roadster Rocket): seats = 1 on SoloNoFrunk, the geometry's one passenger (FrontLeft) on
+-- MinidoracatTeslaPassengerSeat1 (vanilla PassengerSeat2's driver without its switchSeat), and Specs seatless = the
+-- template's side doors no passenger gets in through (Liftgate.lua L.seatless)
+H.section("Roadster Rocket one seat")
+local r2 = read("scripts/vehicles/MinidoracatTesla_Roadster2.txt")
+local r2g = r2:sub((r2:find("---- geometry", 1, true) or #r2 + 1))
+local p1 = tpl:match("template vehicle MinidoracatTeslaPassengerSeat1%s*(%b{})") or ""
+check(p1:find("template = PassengerPosition2/passenger/FrontLeft,", 1, true) and p1:find("door = DoorFrontLeft,", 1, true)
+    and p1:find("area = SeatFrontLeft,", 1, true) and p1:find("template! = PassengerCommon,", 1, true)
+    and not p1:find("switchSeat", 1, true), "PassengerSeat1: vanilla's driver (door, area), no switchSeat")
+local r2pas, r2doors = {}, {}
+for id, block in r2g:gmatch("passenger (%w+)%s*(%b{})") do r2pas[#r2pas + 1] = id .. (block:find("showPassenger = true", 1, true) and "+" or "") end
+local r2side, r2tpl = H.carDoors("Roadster2")
+for _, id in ipairs(r2side or {}) do r2doors[id] = true end
+r2doors.DoorFrontLeft = nil -- PassengerSeat1's door
+local sl2 = MinidoracatTesla.Specs["Base.MinidoracatTesla_Roadster2"].seatless
+local same = true
+for id in pairs(r2doors) do same = same and sl2[id] == true end
+for id in pairs(sl2) do same = same and r2doors[id] == true end
+check(r2:find("\n        seats = 1,", 1, true) and r2tpl == "MinidoracatTeslaSoloNoFrunk"
+    and r2g:find("template = MinidoracatTeslaPassengerSeat1,", 1, true) and table.concat(r2pas, ",") == "FrontLeft+",
+    "seats = 1 on SoloNoFrunk, one shown passenger on PassengerSeat1 (" .. table.concat(r2pas, ",") .. ")")
+check(same, "Specs seatless = the side doors no seat gets in through (DoorFrontRight)")
 
 -- Six seats (template PassengerSeat6): the Model X and the Model Y L. The 2nd row (Middle*) gets in through the rear
 -- doors (DoorRear*: the Model X's falcon wings, the Model Y L's ordinary doors); the 3rd row (Rear*) has its own way in

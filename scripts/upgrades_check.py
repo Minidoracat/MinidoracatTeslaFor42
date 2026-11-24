@@ -3,12 +3,12 @@
 `python scripts/upgrades_check.py`。每台車照 scripts/vehicle_parts.py 解析完範本與覆寫後檢查（references/upgrades.md）。
 
 - 容器零件的 id 不是 fridge／freezer：容器類型就是零件 id，這兩個名字會被引擎當成家用冰箱、冷凍庫（ItemContainer.java:3872-3881）
-- 兩個升級件九台車都有；install／uninstall 都有 test（沒有就裝不上、拆不下，BaseVehicle.java:8459-8478）；
+- 兩個升級件十台車都有；install／uninstall 都有 test（沒有就裝不上、拆不下，BaseVehicle.java:8459-8478）；
   category 不是 door／bodywork（殭屍與近戰挑這兩類，空零件也挑，BaseVehicle.java:9596-9599）；mechanicRequireKey；
   沒有 skills（門檻只放在配方；有 skills 就有失敗機率，Vehicles.lua:1463-1485）
 - TeslaFridge：capacity = 0（沒裝時打不開，BaseVehicle.java:8439-8453）、conditionAffectsCapacity = false、拆卸 requireEmpty
 - itemType 的物品都存在、ConditionMax = 100；TeslaArmor 的 itemType 等於 Upgrades.lua 的 T.Armor.K 鍵集
-- TeslaArmor 的 model Armor（有外觀件）：九台都要在本車腳本寫，file 是本車的 <車>_Armor、那個 model 區塊的 mesh 是
+- TeslaArmor 的 model Armor（有外觀件）：十台都要在本車腳本寫，file 是本車的 <車>_Armor、那個 model 區塊的 mesh 是
   vehicles/<車>_Armor（不借別台的護桿）、fbx 存在、兩層 UV（vehiclewheel 著色器讀第二層，verify_mod 第 17 項同理）、
   texture 是共用色盤 Vehicles/MinidoracatTesla_Armor 且圖檔存在
 - 三個升級件物品的 Icon 有對應的 textures/Item_<Icon>.png（不借原版圖示）
@@ -17,8 +17,8 @@
 - MOD/ 沒有試做殘留（S0 的 ArmorTrial／FridgeTrial 等名稱與 TRIAL 註解）
 - Charging.lua C.UPGRADE_LOOT 的戰利品清單名稱都在原版 ProceduralDistributions.lua（injectLoot 遇到不存在的名稱會靜默略過）
 
-只靠本 repo 的檢查先跑（含九台車的 model Armor）；每台車的零件檢查（範本要用原版腳本解析）要原版腳本、戰利品清單名稱
-要原版 ProceduralDistributions.lua，各自缺哪個就只 SKIP 那一段，其他檢查照常判定。車數不是 9 台就 FAIL（腳本搬家或
+只靠本 repo 的檢查先跑（含十台車的 model Armor）；每台車的零件檢查（範本要用原版腳本解析）要原版腳本、戰利品清單名稱
+要原版 ProceduralDistributions.lua，各自缺哪個就只 SKIP 那一段，其他檢查照常判定。車數不是 10 台就 FAIL（腳本搬家或
 改名時不會一條都沒查卻通過）。
 """
 import glob
@@ -87,7 +87,7 @@ if not loot_lists:
     bad.append("Charging.lua 找不到 C.UPGRADE_LOOT 的清單名稱")
 
 # local: each car's own script names its model Armor (the template has none: a model without a file throws)
-CARS = 9   # Model Y / 3 / S / X / YL, Roadster, Cybertruck, Cybercab, Semi (its trailer is a separate script)
+CARS = 10   # Model Y / 3 / S / X / YL, Roadster, Cybertruck, Cybercab, Semi, Roadster Rocket (the Semi's trailer is a separate script)
 ARMOR_TEX = "Vehicles/MinidoracatTesla_Armor"
 if not os.path.isfile(os.path.join(MEDIA, "textures", ARMOR_TEX + ".png")):
     bad.append(f"共用色盤 textures/{ARMOR_TEX}.png 不存在")

@@ -55,6 +55,11 @@ T.DRIVE_SCALE = 10
 -- frunk = false: no front trunk (Cybercab, rider guide: "not equipped with a front trunk. The hood cannot be opened"):
 -- its script inherits MinidoracatTeslaCoreNoFrunk (no Frunk part), and the dashboard, the app and the `liftgate`
 -- command have no hood (T.hasFrunk). The hood part EngineDoor stays for vanilla's mechanics (E at the hood).
+-- Roadster Rocket only: wing (the active rear wing, part TeslaWing, opened and closed like a door, never locked: the
+-- HUD car picture, the app's wing button, Remote.lua ACT.wing; raised while a charge cable is in, Liftgate.lua
+-- L.chargeWing, since the port is behind it). thruster: the cold-gas thrusters (Thruster.lua). seatless: the cabin
+-- doors no seat gets in through (Liftgate.lua L.seatless; the Roadster Rocket's one seat: its script inherits
+-- MinidoracatTeslaSoloNoFrunk, no SeatFrontRight); test_cabin checks it against the script's seats.
 -- A flag counts only when it is truthy: no field = no such feature (hepa, falcon, tonneau, softTop ...). dcKw is not
 -- a flag: a number = the DC peak, nil = T.DC_KW, false = no DC charging (then acKw is a must, Chargers.lua T.chargerKw).
 -- Nor is frunk: nil = the car has its front trunk, false = none. trunk the same for the rear trunk (Semi: no TrunkDoor,
@@ -337,6 +342,38 @@ T.Specs = {
             { name = "White", h = 0.603, s = 0.496, v = 0.938 },
         },
     },
+    -- Roadster Rocket (2026, the next-gen Roadster's top trim: one seat, cold-gas thrusters, it flies;
+    -- references/roadster2.md, temp/plan-next-1114/specs-roadster.md A1)
+    ["Base.MinidoracatTesla_Roadster2"] = {
+        model = "Roadster2",
+        appCar = "app_car_roadster2_",
+        -- the port behind the wing at the left rear corner (Not a Tesla App #4850 "The Charge Port Hides Behind the
+        -- Wing"); z: the first Roadster's as a stand-in, measure it (E2E integration-mp `port`) once the body is built
+        plug = { item = "Base.MinidoracatTesla_CablePlugRoadster2", z = 0.78 },
+        -- Tesla gives no low voltage battery size: the Model Y's 15.5 V, 6.9 Ah
+        v12Kwh = 15.5 * 6.9 / 1000,
+        -- the Model Y coefficients x 150 / 78.4: a full pack still drives one vanilla tank's distance
+        idleKw = 0.0719 * T.DRIVE_SCALE,
+        kwPerKmh = 0.01094 * T.DRIVE_SCALE,
+        massKg = 1700, -- "just under 1,700 kilos" (third party, roadster2.md)
+        dcKw = 500, -- V4 Supercharger (third party quoting Moravy)
+        regenEff = 0.6,
+        -- Chill at the other cars' 0-100 km/h (15.8 s): the Roadster's 2100 -> 15.91 s on mass 486, 0-100 about
+        -- mass / force, so 2100 x 669 / 486; measure it (feel-sp) with the body
+        chillForce = 2900,
+        butterfly = true, -- butterfly doors like the Cybercab's: the app opens both
+        frunk = false, -- "No Frunk, Because the Front Is a Giant Wing" (Not a Tesla App #4850), template SoloNoFrunk
+        wing = true, -- the active rear wing (part TeslaWing): app, HUD, radial and the charge port behind it
+        thruster = {}, -- the cold-gas thrusters (Thruster.lua T.Thruster.DEFAULTS as they are)
+        seatless = { DoorFrontRight = true }, -- one seat (a 400 L air tank in the passenger's place)
+        -- the stand-in shell's (the Roadster's files, cars/roadster.py DOORS) until the Rocket's own build sets its own
+        doorClip = { TrunkDoor = 1.0 },
+        -- one colour (tesla.com/roadster: Ano White). h/s/v a stand-in; convert.py build writes the skin's own. Same
+        -- order and append-only rules as above.
+        colors = {
+            { name = "AnoWhite", h = 0.6, s = 0.5, v = 0.94 },
+        },
+    },
 }
 
 -- Index into a colors table, drawn by each entry's weight (none = 1: the Model Y and Model 3 paints stay even)
@@ -371,6 +408,8 @@ T.Packs = {
     ["Base.MinidoracatTesla_CybercabBattery"] = 47.6,
     -- Semi Long Range: 822 kWh, the ERG's pack (temp/plan-semi-1117/specs.md 1)
     ["Base.MinidoracatTesla_SemiBattery"] = 822,
+    -- Roadster Rocket: 150 kWh (third party: Not a Tesla App; Tesla publishes none)
+    ["Base.MinidoracatTesla_Roadster2Battery"] = 150,
 }
 
 -- Tesla display names for vanilla text keys: vanilla key -> Tesla key. Read by client/MinidoracatTesla/PartNames.lua
@@ -458,6 +497,24 @@ T.CarPartNames = {
         IGUI_MinidoracatTesla_Tip_AppUnlock = "IGUI_MinidoracatTesla_Tip_AppUnlockLid",
         IGUI_MinidoracatTesla_Tip_AppTrunk = "IGUI_MinidoracatTesla_Tip_AppTrunkLid",
         IGUI_MinidoracatTesla_App_ControlsSub = "IGUI_MinidoracatTesla_App_ControlsSubCybercab",
+    },
+    -- Roadster Rocket: no front trunk (the front is one big wing), the hood keeps vanilla's words as the Cybercab's;
+    -- a trunk lid behind the seat (Not a Tesla App #4850)
+    ["Base.MinidoracatTesla_Roadster2"] = {
+        IGUI_VehiclePartTrunkDoor = "IGUI_MinidoracatTesla_Part_TrunkLid",
+        IGUI_VehiclePartEngineDoor = "IGUI_VehiclePartEngineDoor",
+        IGUI_OpenHood = "IGUI_OpenHood",
+        IGUI_CloseHood = "IGUI_CloseHood",
+        IGUI_LockHood = "IGUI_LockHood",
+        IGUI_UnlockHood = "IGUI_UnlockHood",
+        IGUI_MinidoracatTesla_App_Trunk = "IGUI_MinidoracatTesla_App_TrunkLid",
+        IGUI_MinidoracatTesla_App_Done_trunk = "IGUI_MinidoracatTesla_App_Done_trunkLid",
+        IGUI_MinidoracatTesla_App_Done_trunk_on = "IGUI_MinidoracatTesla_App_Done_trunkLid_on",
+        IGUI_MinidoracatTesla_App_Done_trunk_off = "IGUI_MinidoracatTesla_App_Done_trunkLid_off",
+        IGUI_MinidoracatTesla_Tip_AppLock = "IGUI_MinidoracatTesla_Tip_AppLockLid",
+        IGUI_MinidoracatTesla_Tip_AppUnlock = "IGUI_MinidoracatTesla_Tip_AppUnlockLid",
+        IGUI_MinidoracatTesla_Tip_AppTrunk = "IGUI_MinidoracatTesla_Tip_AppTrunkLid",
+        IGUI_MinidoracatTesla_App_ControlsSub = "IGUI_MinidoracatTesla_App_ControlsSubRoadster2",
     },
     -- Semi: three axles on four physics wheels (references/semi.md 1): the RearLeft wheel's tire, brake and suspension
     -- are the whole middle axle's, the RearRight wheel's the whole rear axle's; SeatFrontLeft the centre driver's seat
@@ -726,9 +783,10 @@ function T.lidOpen(vehicle, id)
     if lid and lid:getDoor() and lid:getInventoryItem() then return lid:getDoor():isOpen() end
     return true
 end
--- door parts that may stay open: the Roadster's soft top (a convertible drives and locks top down). The HUD's "close
--- before driving" and Walk-Away Door Lock (Keys.lua K.canAutoLock) skip them.
-T.OPEN_OK = { SoftTop = true }
+-- door parts that may stay open: the Roadster's soft top (a convertible drives and locks top down), the Roadster
+-- Rocket's wing (it is up while charging and when the player raises it). The HUD's "close before driving" and
+-- Walk-Away Door Lock (Keys.lua K.canAutoLock) skip them.
+T.OPEN_OK = { SoftTop = true, TeslaWing = true }
 
 -- Cybertruck bed, the vault (owner's manual p.60-61): from the rear (the bed's area) with the tailgate or the
 -- tonneau open; from either side (area BedSide) with the tonneau open.

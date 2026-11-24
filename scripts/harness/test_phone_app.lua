@@ -329,6 +329,30 @@ R.remember(v)
 check(R.record(9001).softtop == nil, "record: no softtop field on other cars")
 v.parts.SoftTop = nil
 end
+do -- the Roadster Rocket's wing (Specs wing): the soft top's rules, but it never locks; NO_DOOR without the flag
+local scriptY = v.script
+v.parts.TeslaWing = door("TeslaWing")
+local wing = v.parts.TeslaWing.d
+d = act(owner, "wing", true)
+check(d.why == "NO_DOOR" and not wing.open, "wing on a Model Y (no Specs wing), even with a TeslaWing part -> NO_DOOR")
+v.script = "Base.MinidoracatTesla_Roadster2"
+v.kmh = 20
+d = act(owner, "wing", true)
+check(d.why == "MOVING" and not wing.open, "wing while moving -> MOVING")
+v.kmh = 0
+d = act(owner, "wing", true)
+check(d.why == nil and d.on == true and wing.open and last("partAnim") and last("partAnim").part == "TeslaWing",
+    "wing: rises (appDone on = true, partAnim)")
+check(last("appState") and last("appState").wing == true, "wing: the record says up")
+d = act(owner, "wing", false)
+check(d.why == nil and d.on == false and not wing.open and not wing.locked, "wing lowered on a locked car: never locked")
+R.remember(v)
+check(R.record(9001).wing == false, "record: wing false when down on a Roadster Rocket")
+v.script = scriptY
+R.remember(v)
+check(R.record(9001).wing == nil, "record: no wing field on other cars")
+v.parts.TeslaWing = nil
+end
 do -- (a block: the main chunk is near Lua's 200 locals)
 -- the Model X's falcon wing doors (Specs falcon): both at once, the same rules as the liftgate. On a car without them
 -- (this Model Y: ordinary rear doors) falcon says NO_DOOR and its rear doors stay shut
@@ -579,6 +603,17 @@ d = act(owner, "softtop", true)
 check(asked[1].code == "PASSENGER" and d.why == answer.why and not v.parts.SoftTop.d.open,
     "soft top: VM PASSENGER (like the doors); refused (" .. tostring(d.why) .. ") -> nothing moves")
 v.parts.SoftTop, v.script = nil, vmScript
+end
+do
+local vmScript = v.script
+asked = {}
+v.script = "Base.MinidoracatTesla_Roadster2"
+v.parts.TeslaWing = door("TeslaWing")
+d = act(owner, "wing", true)
+check(asked[1] and asked[1].code == "PASSENGER" and d.why == answer.why and not v.parts.TeslaWing.d.open,
+    "Roadster Rocket wing: VM PASSENGER (like the soft top); refused (" .. tostring(d.why) .. ") -> nothing moves")
+v.parts.TeslaWing, v.script = nil, vmScript
+asked = {}
 end
 do
 local vmScript = v.script
