@@ -160,8 +160,10 @@ end
 -- ---- the action this machine flies (one at a time) ----
 local F = nil
 function H.active() return F end
--- { v, busy }: the boost this machine ended off an edge; its busy flag stays in this machine's copy until the server's
--- clear arrives (the server ends a driver's boost at its thrustEnd, sent first), so it is no bar to that fall's landing
+-- { vid, n, t }: the boost this machine ended off an edge (n: its number, t: its busy flag's time). Its busy flag stays
+-- in this machine's copy until the server's clear arrives, so it is no bar to that fall's landing, and the landing
+-- names it (over = n): its thrustEnd, sent the same frame, may reach the server after the landing (RELIABLE,
+-- unordered: PacketTypes.java:508). Used once (H.ask)
 local OFF_EDGE = nil
 local function busyOf(v)
     local part = T.Battery.part(v)
@@ -524,8 +526,8 @@ function H.tick()
         local lv = v:getLinearVelocity(V3.lv)
         local gain = math.sqrt(lv:x() ^ 2 + lv:z() ^ 2) - f.v0
         if hm > 1.5 and vy < -2 then -- off an edge: over now, the driver's soft landing takes the fall (H.watch)
-            local pl = f.player
-            OFF_EDGE = { v = v, busy = busyOf(v) }
+            local pl, busy = f.player, busyOf(v)
+            OFF_EDGE = { vid = f.vid, n = f.n, t = type(busy) == "table" and busy.t or nil }
             stop(f.lifted)
             return H.watch(pl, v)
         end
@@ -608,8 +610,8 @@ function H.check(player, v, act, ...)
     H.groundReset() -- the floors read afresh: one built under the car since the last action counts
     if F then return false, "THRUST_BUSY" end
     if act ~= "land" and not app and pendingAsk(player:getPlayerNum()) then return false, "THRUST_BUSY" end
-    local o = OFF_EDGE
-    local mine = act == "land" and o and o.v == v and o.busy and busyOf(v) == o.busy and o.busy or nil
+    local o, b = OFF_EDGE, act == "land" and busyOf(v)
+    local mine = o and o.vid == v:getId() and type(b) == "table" and b.act == "boost" and b.t == o.t and b or nil
     local ok, why = H.can(player, v, act, app, true, mine)
     if not ok then return false, why end
     if not app and not authority(v) then return false, "THRUST_AUTHORITY" end
@@ -651,9 +653,12 @@ function H.ask(player, v, act)
     end
     local n = H.nextN()
     local pn = player:getPlayerNum()
-    -- a soft landing names the unanswered ask of this car it takes over (server Thruster.lua cmds.thrust ends only that one)
-    local prev = act == "land" and pendingAsk(pn)
+    -- a soft landing names the unanswered ask of this car it takes over, or the boost this machine just ended off an
+    -- edge (server Thruster.lua cmds.thrust ends only that one)
+    local prev, o = act == "land" and pendingAsk(pn), OFF_EDGE
+    OFF_EDGE = nil
     local over = prev and prev.vid == v:getId() and prev.n or nil
+    if act == "land" and not over and o and o.vid == v:getId() then over = o.n end
     -- falling: no time to wait for the server (it bills after; a refusal stops it, the deny below)
     if act == "land" then start(player, v, act, nil, nil, n) end
     asked[pn] = { vid = v:getId(), act = act, n = n, ms = getTimestampMs() }

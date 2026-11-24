@@ -452,10 +452,12 @@ end
 
 -- args { vid, act, n, over }: n the asker's number for this action (BAD_VALUE without one). A refusal changes nothing
 -- kept (a stale busy flag aside); approved: thrustOk { vid, act, sec (flying: the seconds of air; nil: FreeFlight), n,
--- pn }. A soft landing asked by the driver whose own unanswered ask still runs here (a stunt asked on a roof's edge,
--- the car fallen off before its answer: the driver's machine lands it already, client H.watch) names it (over = its
--- n); checked with that one's busy flag as its own, it ends that one first (billed if a look saw it go, else the air
--- back). Refused (the motor off meanwhile, ...): that one stays as it was. Anyone else's action, a show, a landing, an
+-- pn }. A soft landing asked by the driver whose own action still runs here names it (over = its n): a stunt asked on
+-- a roof's edge, the car fallen off before its answer, or a boost the driver's machine ended off an edge (its
+-- thrustEnd, sent the same frame, may arrive after: RELIABLE, unordered, PacketTypes.java:508). Checked with that one's
+-- busy flag as its own, it ends that one first (billed if a look saw it go, a boost's speed read now; else the air
+-- back); that one's late thrustEnd then names no action here. Refused (the motor off meanwhile, ...): that one stays as
+-- it was. Anyone else's action, a show, a landing, an
 -- ask it does not name: THRUST_BUSY as ever. The car not found is refused here, with n (T.commandVehicle's own
 -- refusal has none: on the client it would answer no ask, and a soft landing begun before the answer would run on
 -- unbilled)
@@ -475,6 +477,7 @@ cmds.thrust = function(player, args)
     local ok, why = H.can(player, v, act, nil, nil, own and own.busy or nil)
     if not ok then return deny(player, why, vid, n) end
     if own then
+        if own.act == "boost" then look(v, own) end -- pushed out over the edge: its speed shows it went
         finish(v, own, own.up == true)
         T.log("thrust " .. own.act .. " ended by its driver's soft landing vid=" .. vid)
     end

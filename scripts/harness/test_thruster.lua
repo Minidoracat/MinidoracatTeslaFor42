@@ -733,6 +733,38 @@ done(rp, rv, { done = true })
 check(entryOf(rv) == nil and rpart:getModData().thr.busy == nil and rAuths == 0 and near(gas(rpart), 1 - 1 / 3, 1e-6),
     "R11: its end in the air: over now, busy cleared (the soft landing may ask), billed, the physics never moved")
 rv.authorizationChanged = rAuthOf
+-- a boost ended off an edge by its driver's machine: its thrustEnd and the soft landing (over = the boost's n) go out
+-- the same frame and may arrive either way round (RELIABLE, unordered: PacketTypes.java:508)
+local function boostOff(pushed)
+    rv.x, rv.y, rv.dz, rv.speed = 300.5, 300.5, 1.075, 0
+    rpart:getModData().thr = { gas = 1, at = H.hours() }
+    local _, a = ask(rp, rv, "boost")
+    rv.x, rv.dz, rv.speed = 301.5, 0.9, pushed and 30 or 0 -- past its edge, falling; no witness look yet
+    return a and a.n
+end
+local nb = boostOff(true)
+done(rp, rv, { act = "boost", done = true, n = nb })
+check(askLand(rp, rv, nb) == "thrustOk" and entryOf(rv).act == "land" and near(gas(rpart), 1 / 3, 1e-6),
+    "a boost off an edge, its end first: the boost billed, then the landing (naming it, now over) approved and billed")
+rv.dz = 0.075
+done(rp, rv, { done = true })
+nb = boostOff(true)
+local land1 = askLand(rp, rv, nb)
+local nl = entryOf(rv) and entryOf(rv).n
+check(land1 == "thrustOk" and entryOf(rv).act == "land" and near(gas(rpart), 1 / 3, 1e-6),
+    "a boost off an edge, the landing first: the boost ended billed (its speed read now: it went), the landing approved")
+done(rp, rv, { act = "boost", done = true, n = nb })
+check(entryOf(rv) and entryOf(rv).act == "land" and entryOf(rv).n == nl and rpart:getModData().thr.busy ~= nil
+    and near(gas(rpart), 1 / 3, 1e-6), "... the boost's late end: names no action here, the landing untouched")
+rv.dz = 0.075
+done(rp, rv, { done = true })
+check(entryOf(rv) == nil, "... the landing's own end: over")
+nb = boostOff(false)
+check(askLand(rp, rv, nb) == "thrustOk" and near(gas(rpart), 1 - 1 / 3, 1e-6),
+    "a boost that never pushed (fallen off before its answer), the landing first: the boost's air back, the landing billed")
+rv.dz = 0.075
+done(rp, rv, { done = true })
+check(entryOf(rv) == nil, "... over")
 -- S1: a boost handed on at D2 (no end from its driver): the helper's "can't" does not end it in the air
 rv.x, rv.y, rv.dz, rv.speed = 300.5, 300.5, 1.075, 0
 rpart:getModData().thr = { gas = 1, at = H.hours() }
@@ -972,15 +1004,15 @@ check(TH.active().phase == "boost" and cv.reg == false and cv.regSpd == 0, "at 6
 -- clear not here yet) no bar to it
 local cpart = T.Battery.part(cv)
 local thr0 = cpart:getModData().thr
-cpart:getModData().thr = { gas = 2 / 3, at = H.hours(), busy = { act = "boost", by = "test" } }
+cpart:getModData().thr = { gas = 2 / 3, at = H.hours(), busy = { act = "boost", by = "test", t = H.hours() } }
 local nbr = TH.active().n
 cv.dz, cv.vy = 0.075 + 2.2 / TH.FLOOR, -3
 sent = #H.clientSent
 TH.tick()
 local eb, lb = H.clientSent[sent + 1], H.clientSent[sent + 2]
 check(eb and eb.command == "thrustEnd" and eb.args.act == "boost" and eb.args.n == nbr and lb and lb.command == "thrust"
-    and lb.args.act == "land" and TH.active() and TH.active().act == "land",
-    "a boost falling off an edge: ended, the soft landing asked at once and running")
+    and lb.args.act == "land" and lb.args.over == nbr and TH.active() and TH.active().act == "land",
+    "a boost falling off an edge: ended, the soft landing (naming the boost: over) asked at once and running")
 okFor("land")
 cv.driver = nil; TH.tick(); cv.driver = cp -- the landing's end (driver gone: an abort)
 cpart:getModData().thr = thr0
