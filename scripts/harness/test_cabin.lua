@@ -61,6 +61,24 @@ for _, car in ipairs(cars) do
     check(block:find("static = true,", 1, true) and block:find("mesh = vehicles/" .. car .. "_Glass,", 1, true) ~= nil,
         car .. ": the glass model is static, its own FBX")
 end
+-- the Roadster Rocket's model list is its own: the rear wing (TeslaWing) a moving model on the merged shader like a
+-- door, the three thruster plumes on MinidoracatTesla_jet (ThrusterFx.lua), which the loop above does not count
+local r2m = {}
+for name, block in models:gmatch("model (MinidoracatTesla_Roadster2[%w_]*)%s*(%b{})") do
+    r2m[#r2m + 1] = name:sub(#"MinidoracatTesla_Roadster2" + 1) .. "=" .. tostring(block:match("shader = ([%w_]+),"))
+end
+table.sort(r2m)
+check(table.concat(r2m, ",") == "=MinidoracatTesla_vehicle,_Armor=vehiclewheel,_Detail=MinidoracatTesla_viewpoint,"
+    .. "_DoorFrontLeft=MinidoracatTesla_vehicle,_DoorFrontRight=MinidoracatTesla_vehicle,_Glass=MinidoracatTesla_vehicle,"
+    .. "_JetLift=MinidoracatTesla_jet,_JetRear=MinidoracatTesla_jet,_JetSide=MinidoracatTesla_jet,"
+    .. "_TeslaWing=MinidoracatTesla_vehicle,_TrunkDoor=MinidoracatTesla_vehicle,_Wheel=vehiclewheel,_WheelRear=vehiclewheel"
+    and read("models_X/vehicles/MinidoracatTesla_Roadster2_Cabin.fbx") == nil
+    and read("textures/Vehicles/MinidoracatTesla_Roadster2_cabin.png") == nil,
+    "Roadster Rocket: body, glass, 2 doors, trunk lid, wing on MinidoracatTesla_vehicle, 3 plumes on MinidoracatTesla_jet, "
+    .. "wheels, detail, armour; no cabin FBX or palette (" .. table.concat(r2m, ",") .. ")")
+local r2glass = models:match("model MinidoracatTesla_Roadster2_Glass%s*(%b{})") or ""
+check(r2glass:find("static = true,", 1, true) and r2glass:find("mesh = vehicles/MinidoracatTesla_Roadster2_Glass,", 1, true)
+    and read("models_X/vehicles/MinidoracatTesla_Roadster2_Glass.fbx") ~= nil, "Roadster Rocket: the glass model is static, its own FBX")
 -- the Cybertruck's model list is its own (test_truck); its cabin glass is the same kind
 local ctGlass = models:match("model MinidoracatTesla_Cybertruck_Glass%s*(%b{})") or ""
 check(ctGlass:find("static = true,", 1, true) and ctGlass:find("mesh = vehicles/MinidoracatTesla_Cybertruck_Glass,", 1, true)
@@ -72,6 +90,7 @@ local ct = read("scripts/vehicles/MinidoracatTesla_Cybertruck.txt")
 local yl = read("scripts/vehicles/MinidoracatTesla_ModelYL.txt")
 local rd = read("scripts/vehicles/MinidoracatTesla_Roadster.txt")
 local cc = read("scripts/vehicles/MinidoracatTesla_Cybercab.txt")
+local r2 = read("scripts/vehicles/MinidoracatTesla_Roadster2.txt")
 local geos = { ModelY = geo, Model3 = m3:sub((m3:find("---- geometry", 1, true))),
     ModelS = ms:sub((ms:find("---- geometry", 1, true))),
     ModelX = mx:sub((mx:find("---- geometry", 1, true))),
@@ -79,7 +98,8 @@ local geos = { ModelY = geo, Model3 = m3:sub((m3:find("---- geometry", 1, true))
     ModelYL = yl:sub((yl:find("---- geometry (TeslaModelYL)", 1, true))),
     Roadster = rd:sub((rd:find("---- geometry", 1, true))),
     Cybercab = cc:sub((cc:find("---- geometry", 1, true))),
-    Semi = semi:sub((semi:find("---- geometry", 1, true))) }
+    Semi = semi:sub((semi:find("---- geometry", 1, true))),
+    Roadster2 = r2:sub((r2:find("---- geometry (TeslaRoadster2)", 1, true))) }
 for car, g in pairs(geos) do
     check(g:find("part GloveBox", 1, true) == nil and g:find("part Window", 1, true) == nil
         and g:find("part WindshieldRear", 1, true) == nil, car .. ": no models on GloveBox, Window* or WindshieldRear")
@@ -137,7 +157,7 @@ check(not (tpl .. m3):find("requireUninstalled = WindshieldRear", 1, true) and n
 -- door anim rate: one model per door, one player update a frame; every door the car has (its template's side doors,
 -- H.carDoors, the tailgate on a car with a trunk and, on a car with a frunk (T.hasFrunk), the frunk lid) and no other
 local texts = { ModelY = veh, Model3 = m3, ModelS = ms, ModelX = mx, Cybertruck = ct, ModelYL = yl, Roadster = rd,
-    Cybercab = cc, Semi = semi }
+    Cybercab = cc, Semi = semi, Roadster2 = r2 }
 for car, g in pairs(geos) do
     local rates, bad = 0, {}
     for door in pairs({ DoorFrontLeft = 1, DoorFrontRight = 1, DoorRearLeft = 1, DoorRearRight = 1, TrunkDoor = 1,
@@ -174,8 +194,9 @@ end
 check((read("shaders/MinidoracatTesla_vehicle.vert") or ""):find("MatrixPalette", 1, true) ~= nil, "skinned vertex shader skins")
 check(read("shaders/vehicle_multiuv.vert") == nil, "no vehicle_multiuv.vert override left")
 
--- every seat shows its passenger; the passengers are the script's seats, the geometry's PassengerSeatN, and two for a
--- car on MinidoracatTeslaCore or MinidoracatTeslaCoreNoFrunk (front doors only), four or six on MinidoracatTeslaBase
+-- every seat shows its passenger; the passengers are the script's seats, the geometry's PassengerSeatN (one seat:
+-- MinidoracatTeslaPassengerSeat1, below), and two for a car on MinidoracatTeslaCore or MinidoracatTeslaCoreNoFrunk
+-- (front doors only), four or six on MinidoracatTeslaBase
 for car, g in pairs(geos) do
     local shown, seats = {}, 0
     for id, block in g:gmatch("passenger (%w+)%s*(%b{})") do
@@ -183,9 +204,10 @@ for car, g in pairs(geos) do
         if block:find("showPassenger = true", 1, true) then shown[#shown + 1] = id end
     end
     local n, side = tonumber(texts[car]:match("\n        seats = (%d+),")), select(2, H.carDoors(car))
-    check(n ~= nil and seats == n and #shown == n and g:find("template = PassengerSeat" .. tostring(n) .. ",", 1, true) ~= nil
+    local ptpl = n == 1 and "MinidoracatTeslaPassengerSeat1" or "PassengerSeat" .. tostring(n)
+    check(n ~= nil and seats == n and #shown == n and g:find("template = " .. ptpl .. ",", 1, true) ~= nil
         and (side == "MinidoracatTeslaCore" or side == "MinidoracatTeslaCoreNoFrunk" or side == "MinidoracatTeslaCab") == (n == 2), car .. ": " .. tostring(n) .. " seats (" .. tostring(side)
-        .. ", PassengerSeat" .. tostring(n) .. ") show their passenger (" .. table.concat(shown, ",") .. ")")
+        .. ", " .. ptpl .. ") show their passenger (" .. table.concat(shown, ",") .. ")")
 end
 
 -- the templates (MinidoracatTesla_template.txt): Solo has every shared part block, the driver's seat, the front doors
@@ -269,7 +291,6 @@ check(doorsOf(core) == table.concat(H.TEMPLATE_DOORS.MinidoracatTeslaCore, ",")
 -- MinidoracatTeslaPassengerSeat1 (vanilla PassengerSeat2's driver without its switchSeat), and Specs seatless = the
 -- template's side doors no passenger gets in through (Liftgate.lua L.seatless)
 H.section("Roadster Rocket one seat")
-local r2 = read("scripts/vehicles/MinidoracatTesla_Roadster2.txt")
 local r2g = r2:sub((r2:find("---- geometry", 1, true) or #r2 + 1))
 local p1 = tpl:match("template vehicle MinidoracatTeslaPassengerSeat1%s*(%b{})") or ""
 check(p1:find("template = PassengerPosition2/passenger/FrontLeft,", 1, true) and p1:find("door = DoorFrontLeft,", 1, true)

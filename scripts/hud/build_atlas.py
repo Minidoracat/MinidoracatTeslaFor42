@@ -624,11 +624,39 @@ def car_roadster(c):
 
 
 def car_roadster2(c):
-    """Roadster Rocket, placeholder until the Rocket's own body is drawn on its built body: the Roadster 2.5's outline
-    (car_roadster) with the wing across the tail (x 44.5-48.5). HUD.lua ZONES.Roadster2 follows these edges: the wing
-    to x 48.5, the trunk lid behind the seat from there to the doors (x 80.3), the doors x 80.3-110.2."""
-    car_roadster(c)
-    c.rrect(44.5, 27, 4, 42, 1, fill="#3A424B", outline="#AEB6BF", ow=1.0)  # the wing
+    """Roadster Rocket at the Model Y's 0.0259 viewBox units per mm, nose on the Model Y's (x 146), on the built body
+    (temp/skf_r2/roadster2_src.blend, prep_roadster2.py's frame, metres: nose y 2.05, tail -2.055, the nozzles to
+    -2.075): tail 39.3, tyres front x 117.9-133.8 and rear 48.1-65.5. The outline is the body's plan (|x| max per 0.1 m
+    of y, y 23.7-72.3 at its widest; the nose 1.44 m and the tail 1.70 m across, both square). The canopy glass to its
+    foot (y 1.40, x 129.2), the roof glass behind it to the hatch (y -0.45, x 81.2), the rear hatch (TrunkDoor, glass)
+    to the wing's front edge (y -1.40, x 56.6), the wing (y -2.075 to -1.40, |x| 0.734) over the tail; the doors x
+    83.1-113.4 (y -0.378 to 0.79). HUD.lua ZONES.Roadster2 follows these edges: the wing to x 56.6, the hatch from there
+    to the doors (x 83.1), the doors to x 113.4; the hood opens nothing (no front trunk)."""
+    for x0, w, ys in ((117.9, 15.9, (18.2, 69.8)), (48.1, 17.4, (18.2, 69.8))):
+        for y in ys:
+            c.rrect(x0, y, w, 8, 2, fill="#0B0D0F", outline="#8E98A3", ow=1.1)
+    half = [(39.3, 48), (39.3, 26.0), (41.1, 25.2), (43.7, 24.5), (46.3, 24.2), (48.9, 24.0), (54.1, 25.4), (59.2, 25.4),
+            (64.4, 24.0), (77.4, 24.4), (92.9, 24.7), (108.4, 24.3), (118.8, 23.8), (131.8, 23.7), (136.9, 24.6),
+            (139.5, 25.2), (142.1, 26.1), (143.4, 27.6), (144.7, 28.7), (146, 29.4)]   # tail centre round the left side
+    body = ([("M", *half[0])] + [("L", x, y) for x, y in half[1:]] + [("L", x, 96 - y) for x, y in half[::-1]]
+            + [("Z",)])
+    c.fill(body, "#2A3037")
+    c.stroke(body, w=1.3, color="#AEB6BF")
+    # the glass on the model's plan (GlassTop, GlassRoof, GlassDoorL / R, GlassHatch: |x| max per 0.05 m of y)
+    c.fill([("M", 100.7, 34.4), ("L", 108.4, 33.2), ("L", 112.3, 27.6), ("L", 122.7, 26.8), ("L", 127.9, 35.3),
+            ("Q", 130.5, 48, 127.9, 60.7), ("L", 122.7, 69.2), ("L", 112.3, 68.4), ("L", 108.4, 62.8), ("L", 100.7, 61.6),
+            ("Z",)], "#15191E")  # canopy: the windscreen wrapped round to the sides ahead of the doors
+    for s in (1, -1):  # door glass, the roof's sides down to the door's waist
+        c.fill([("M", 83.8, 48 - 18 * s), ("L", 112.3, 48 - 20.4 * s), ("L", 108.4, 48 - 14.8 * s), ("L", 100.7, 48 - 13.6 * s),
+                ("L", 83.8, 48 - 13.4 * s), ("Z",)], "#1B1F24")
+    c.fill([("M", 81.2, 34.6), ("H", 100.7), ("V", 61.4), ("H", 81.2), ("Z",)], "#15191E")  # roof glass
+    c.stroke([("M", 100.7, 34.6), ("V", 61.4)], w=1.0, color="#4A525B")  # the windscreen's top edge
+    c.fill([("M", 57.4, 40.7), ("L", 80.6, 35.8), ("V", 60.2), ("L", 57.4, 55.3), ("Z",)], "#15191E")  # rear hatch (V)
+    c.stroke([("M", 81.2, 34.6), ("V", 61.4)], w=1.0, color="#4A525B")  # its hinge seam at the roof's end
+    for x, y0 in ((83.1, 24.4), (113.4, 24.2)):  # door seams, from the body's edge 3 units in
+        for a, b in ((y0, y0 + 3), (96 - y0 - 3, 96 - y0)):
+            c.stroke([("M", x, a + 0.6), ("V", b - 0.6)], w=1.0, color="#4A525B")
+    c.rrect(39.6, 29.0, 17.0, 38.0, 1.5, fill="#3A424B", outline="#AEB6BF", ow=1.0)  # the wing over the tail
 
 
 def car_cybercab(c):
@@ -782,11 +810,12 @@ DOOR_GEOM = {
     # door_HD)
     "Cybercab": {"front": (77.0, 115.0), "rear": (77.0, 77.0), "y": (26.0, 70.0), "butterfly": True,
                  "tr": ((28.2, 38, 58), (22.2, 36, 60)), "kinds": ("FL", "FR", "TR")},
-    # Roadster Rocket (placeholder, car_roadster2): the Roadster's doors swung up as the Cybercab's (butterfly), the
-    # trunk lid behind the seat (its rear edge at the wing, x 48.5), the wing over the tail (wg: x0, x1, y0, y1); no
-    # hood (no front trunk)
-    "Roadster2": {"front": (80.3, 110.2), "rear": (80.3, 80.3), "y": (25, 71), "butterfly": True,
-                  "tr": ((48.5, 38, 58), (54.5, 36, 60)), "wg": (44.5, 48.5, 27, 69), "kinds": ("FL", "FR", "TR", "WG")},
+    # Roadster Rocket (car_roadster2): two doors (x 83.1-113.4) that swing up and out as the Cybercab's (butterfly),
+    # along the body's edge (y 24.5 / 71.5); the rear hatch hinged at its front (y -0.45), its rear edge at the wing
+    # (x 56.6) rising 50 degrees to about x 65.4 (cars/roadster2.py DOORS); the wing over the tail (wg: x0, x1, y0, y1;
+    # raised 0.12 m back, drawn 3 units behind); no hood (no front trunk)
+    "Roadster2": {"front": (83.1, 113.4), "rear": (83.1, 83.1), "y": (24.5, 71.5), "butterfly": True,
+                  "tr": ((56.6, 36, 60), (65.4, 35, 61)), "wg": (39.6, 56.6, 29, 67), "kinds": ("FL", "FR", "TR", "WG")},
     # Semi: two doors (x 100.7-121.7, car_semi's seams) hinged at their rear edge, swung 65 degrees (cars/semi.py
     # DOORS), along the cab's side (y 23.3 / 72.7); no trunk, no hood (no front trunk)
     "Semi": {"front": (100.7, 121.7), "rear": (100.7, 100.7), "y": (23.3, 72.7), "rearhinge": 65, "kinds": ("FL", "FR")},

@@ -348,8 +348,8 @@ T.Specs = {
         model = "Roadster2",
         appCar = "app_car_roadster2_",
         -- the port behind the wing at the left rear corner (Not a Tesla App #4850 "The Charge Port Hides Behind the
-        -- Wing"); z: the first Roadster's as a stand-in, measure it (E2E integration-mp `port`) once the body is built
-        plug = { item = "Base.MinidoracatTesla_CablePlugRoadster2", z = 0.78 },
+        -- Wing"); z: the built port (geometry port_mesh z 0.656) + 0.03, as the Roadster's
+        plug = { item = "Base.MinidoracatTesla_CablePlugRoadster2", z = 0.69 },
         -- Tesla gives no low voltage battery size: the Model Y's 15.5 V, 6.9 Ah
         v12Kwh = 15.5 * 6.9 / 1000,
         -- the Model Y coefficients x 150 / 78.4: a full pack still drives one vanilla tank's distance

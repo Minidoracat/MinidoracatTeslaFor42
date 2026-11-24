@@ -203,12 +203,12 @@ module Base
             showPassenger = true,
             position inside
             {
-                offset = 0.1634 -0.2436 -0.0942,
+                offset = 0.1634 -0.2436 0.0284,
                 rotate = 0.0 0.0 0.0,
             }
             position outside
             {
-                offset = 0.5915 -0.2722 -0.0942,
+                offset = 0.5915 -0.2722 0.0284,
                 rotate = 0.0 0.0 0.0,
                 area = SeatFrontLeft,
             }

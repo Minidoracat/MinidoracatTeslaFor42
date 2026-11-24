@@ -59,7 +59,7 @@ PLUGS = {"MinidoracatTesla_CablePlug": 0.87,                  # Model Y (tesla-y
          "MinidoracatTesla_CablePlugRoadster": 0.78,          # Roadster (cars/roadster.py PORT z 0.750 + 0.03, as Y L / X)
          "MinidoracatTesla_CablePlugCybercab": 0.36,          # Cybercab (tesla-cc1 integration-mp-cc, 94f2d6d body: port 0.355)
          "MinidoracatTesla_CablePlugSemi": 0.946,             # Semi (semiA-port-1, af10a661: port 0.946 settled, no trailer)
-         "MinidoracatTesla_CablePlugRoadster2": 0.78}         # Roadster Rocket (provisional: the Roadster's; E2E port to confirm)
+         "MinidoracatTesla_CablePlugRoadster2": 0.69}         # Roadster Rocket (cars/roadster2.py port 0.656 + 0.03, as Roadster)
 # plugs with the first-generation Roadster's round connector (2.5 owner's manual 5-7) instead of the NACS handle
 PLUG_ROUND = ("MinidoracatTesla_CablePlugRoadster",)
 # plugs with the MCS (Megawatt Charging System) handle: thick liquid-cooled cable, face a rounded triangle with its tip

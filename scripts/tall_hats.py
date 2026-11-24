@@ -26,7 +26,7 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MEDIA = "MOD/MinidoracatTeslaFor42/Contents/mods/MinidoracatTeslaFor42/42/media"
 LUA = f"{MEDIA}/lua/shared/MinidoracatTesla/TallHats.lua"
 # the cars with seats (vehicle script / Core.lua Specs model names); seat_head.py measures these
-TESLA = ("ModelY", "Model3", "ModelS", "ModelX", "Cybertruck", "ModelYL", "Roadster", "Cybercab", "Semi")
+TESLA = ("ModelY", "Model3", "ModelS", "ModelX", "Cybertruck", "ModelYL", "Roadster", "Cybercab", "Semi", "Roadster2")
 TOOL = ("scripts/blender/skf/seat_head.py", "scripts/blender/common/xanim.py")
 TEXT = (".txt", ".x", ".py", ".lua")
 CMD = ('"<Blender>" -b --factory-startup --python-use-system-env --python scripts/blender/skf/seat_head.py -- '

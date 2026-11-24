@@ -5,8 +5,8 @@ depth (the passenger referenced apart from the car, module comment at SAG) hides
     B="C:/Program Files/Blender Foundation/Blender 5.2/blender.exe"
     "$B" -b --factory-startup --python scripts/blender/skf/seat_head.py -- [car ...] [--json out.json] [--sweep]
         [--vanilla-pose] [--tall-lua MOD/.../shared/MinidoracatTesla/TallHats.lua]
-    cars: ModelY Model3 ModelS ModelX Cybertruck ModelYL Roadster Cybercab Semi (default: all); vanilla CarNormal ModernCar
-    SportsCar always (baseline).
+    cars: ModelY Model3 ModelS ModelX Cybertruck ModelYL Roadster Cybercab Semi Roadster2 (default: all); vanilla CarNormal
+    ModernCar SportsCar always (baseline).
     --sweep: for a red seat, how many mm lower it has to go for the head set (and the legs there).
     --vanilla-pose: every Tesla seat in vanilla Bob_IdleDriving instead of the car's clips (what a passenger shows
         without SeatPose.lua's variables: at the lowered seat point, the body DROP lower than the MOD pose).

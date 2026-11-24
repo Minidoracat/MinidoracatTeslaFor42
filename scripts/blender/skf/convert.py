@@ -3989,7 +3989,8 @@ def stage_view(out, heads, state, skin="UltraRed", app=False):
     img = bpy.data.images.load(os.path.join(pv.TEX_DIR, f"{pv.NAME}_{skin}.png"))
     CAB = [(22, 22, 24), (40, 40, 44), (100, 100, 106), (30, 30, 32), (58, 58, 62), (112, 106, 98), (46, 46, 50),
            (28, 28, 30), (16, 16, 18), (170, 192, 214),
-           (88, 88, 92), (120, 120, 126), (44, 44, 48), (58, 58, 62), (72, 72, 76), (128, 128, 134)]   # bed_*
+           (88, 88, 92), (120, 120, 126), (44, 44, 48), (58, 58, 62), (72, 72, 76), (128, 128, 134),   # bed_*
+           (226, 226, 230)]    # silver (the frag's CABIN, pzveh CABIN_CELLS; it was clipped to bed_rim here)
 
     def mat(name, rgb=None, tex=False):
         m = bpy.data.materials.new(name)
