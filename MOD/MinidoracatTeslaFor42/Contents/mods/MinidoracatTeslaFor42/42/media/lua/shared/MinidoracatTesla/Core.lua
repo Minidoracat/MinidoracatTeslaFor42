@@ -366,12 +366,12 @@ T.Specs = {
         wing = true, -- the active rear wing (part TeslaWing): app, HUD, radial and the charge port behind it
         thruster = {}, -- the cold-gas thrusters (Thruster.lua T.Thruster.DEFAULTS as they are)
         seatless = { DoorFrontRight = true }, -- one seat (a 400 L air tank in the passenger's place)
-        -- the stand-in shell's (the Roadster's files, cars/roadster.py DOORS) until the Rocket's own build sets its own
-        doorClip = { TrunkDoor = 1.0 },
-        -- one colour (tesla.com/roadster: Ano White). h/s/v a stand-in; convert.py build writes the skin's own. Same
+        -- the clips its build animates (cars/roadster2.py DOORS): butterfly doors 2 s, the trunk lid (the rear glass) 1 s
+        doorClip = { DoorFrontLeft = 2.0, DoorFrontRight = 2.0, TrunkDoor = 1.0 },
+        -- one colour (tesla.com/roadster: Ano White). h/s/v written by convert.py build (CAR=roadster2) from the skin. Same
         -- order and append-only rules as above.
         colors = {
-            { name = "AnoWhite", h = 0.6, s = 0.5, v = 0.94 },
+            { name = "AnoWhite", h = 0.625, s = 0.51, v = 0.867 },
         },
     },
 }

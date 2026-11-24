@@ -62,14 +62,18 @@ TOP_HW = [(1.19, 0.80), (0.90, 0.66), (0.50, 0.54), (0.0, 0.50), (-0.50, 0.52), 
 # are inverted triangles (hood corner, A pillar base, bar end); the ridge V -> AB is the side silhouette (02)
 COWL = 1.19                            # the A pillars' base (02: 1745 px)
 V = (0.656, 2.05, 0.39)                # bar end / notch point (03: bar 817-1400 px, row 607)
-HC = (0.49, 1.40, 0.705)               # hood rear corner: 08 near / far, z capped by 02's silhouette (R2Body.md)
+# hood rear corner: 08 near / far; 5 cm under the fender ridge (0.706 there) so the pods' inner walls stand over the
+# hood (03 / 08: the hood low between the pods, a crease each side; level with the ridge it read as one flat plane)
+HC = (0.49, 1.40, 0.655)
 AB = (0.82, 1.19, 0.75)                # A pillar base (03: 1481.7, 436.7)
+# the lit band in each V notch (03: about 0.15 m along the hood edge): plan width off the hood edge, y range
+HEAD_LAMP = dict(w=0.03, y=(1.80, 1.96))
 RIDGE = [(2.05, 0.39), (2.0, 0.478), (1.831, 0.572), (1.663, 0.634), (1.495, 0.682), (1.40, 0.706), (1.326, 0.724),
          (1.19, 0.753)]
 # centre line: hood, the glass between the pods, windshield, roof (TOP), rear glass and deck (01, Slide-2)
 REAR0 = -0.45
 REAR_C = [(-0.45, 1.082), (-0.80, 0.98), (-1.15, 0.89), (-1.40, 0.845), (-1.60, 0.84), (-2.055, 0.83)]
-ZC = [(2.05, 0.39), (1.40, 0.705), (1.074, 0.79)] + [p for p in TOP if -0.45 < p[0] < 1.0] + REAR_C
+ZC = [(2.05, 0.39), (HC[1], HC[2]), (1.074, 0.79)] + [p for p in TOP if -0.45 < p[0] < 1.0] + REAR_C
 # the buttresses' inner walls (paint) frame the V rear glass: 01 glass 0.40 half wide at the roof, 0.28 at its foot
 FIN_IN = [(-0.45, 0.47), (-0.80, 0.40), (-1.40, 0.28), (-1.60, 0.50), (-2.00, 0.72), (-2.055, 0.74)]  # 0.50: charge port
 GLASS_END = -1.40                      # the rear glass runs down to the wing's leading edge (01, 825)
@@ -175,9 +179,7 @@ def face_mat(k, y):
     if y > COWL:
         if k == 6:
             return "Paint"
-        if k == 7:
-            return "HeadLight" if y > 1.75 else "Paint"   # the lit V notch (03: about 0.15 m along the hood edge)
-        return "Paint" if y > HC[1] else "Glass"
+        return "Paint" if k <= 7 or y > HC[1] else "Glass"   # k 7: the pod's inner facet (its lamp: HEAD_LAMP)
     if y > REAR0:
         if k == 6 and y > 1.12:   # pod top to belt behind the cowl: paint, else a glass spike shows in 03 / 08
             return "Paint"
@@ -361,6 +363,22 @@ def rear_parts():
 
 
 # ---- lines (the car's left; door_right mirrored)
+def rail_z(y):
+    """The roof rail's height (u8) at y as the loft has it: straight between stations."""
+    st = [s for s in STATIONS if REAR0 - 0.1 < s < COWL][::-1]
+    return float(np.interp(y, st, [interp(ZC if s > REAR0 else TOP, s) for s in st]))
+
+
+def door_outline():
+    """(y, z) of the butterfly door's outline (02): from the sill top behind the front arch up its front edge and the A
+    pillar to the roof rail, along the rail (the roof stays on the body), down the B pillar to the sill top. The cut
+    (main) follows it; the sill top and the rail are loft edges already."""
+    front = [(0.73, interp(SILL, 0.73)), (0.745, 0.45), (0.76, 0.66), (0.79, 0.74)]
+    top = [(y, rail_z(y)) for y in (0.70, 0.60, 0.45, 0.30, 0.15, 0.0, -0.15, -0.30, -0.378)]
+    rear = [(-0.378, 0.85), (-0.33, 0.55), (-0.28, 0.33), (-0.26, interp(SILL, -0.26))]   # (z 0.30 dipped under the sill)
+    return front, top, rear
+
+
 def surface_x(y, z):
     """The left side's x at (y, z): along the section from the sill up to the rail."""
     s = section(y)[2:9]
@@ -372,11 +390,11 @@ def surface_x(y, z):
 
 def lines():
     out = {}
-    # the butterfly door (02): front cut behind the front arch, up the A pillar, along the rail, down the B pillar
-    door = [[surface_x(y, z), y, z] for y, z in ((0.73, 0.24), (0.745, 0.45), (0.76, 0.66), (0.79, 0.74))]
-    for y in (0.70, 0.40, 0.10, -0.20, -0.378):
-        door.append([-(interp(TOP_HW, y) - 0.04), y, interp(ZC, y)])
-    door += [[surface_x(y, z), y, z] for y, z in ((-0.378, 0.85), (-0.33, 0.55), (-0.28, 0.30), (-0.26, 0.24))]
+    # the butterfly door (02): door_outline, its x on the side (on the rail: the roof's edge)
+    front, top, rear = door_outline()
+    door = [[surface_x(y, z), y, z] for y, z in front] + [[-interp(TOP_HW, y), y, z] for y, z in top] + \
+        [[surface_x(y, z), y, z] for y, z in rear]
+    door = [[round(c, 4) for c in p] for p in door]
     door.append(door[0])
     out["door_left"] = door
     out["door_right"] = [[-p[0], p[1], p[2]] for p in door]
@@ -424,7 +442,8 @@ COLORS = dict(Paint=((0.80, 0.80, 0.80), 0.35, 0.30), Glass=((0.025, 0.02, 0.017
               Trim=((0.025, 0.025, 0.028), 0.0, 0.55), Liner=((0.015, 0.015, 0.016), 0.0, 0.85),
               HeadLight=((0.70, 0.85, 1.00), 0.0, 0.15), TailLight=((0.55, 0.02, 0.03), 0.0, 0.25),
               Dark=((0.10, 0.10, 0.11), 0.2, 0.40),
-              Tyre=((0.02, 0.02, 0.022), 0.0, 0.8), Disc=((0.78, 0.79, 0.80), 0.5, 0.30),
+              # the disc not metallic: at 0.5 it mirrored the dark review world and the rims read near black (R8)
+              Tyre=((0.02, 0.02, 0.022), 0.0, 0.8), Disc=((0.78, 0.79, 0.80), 0.0, 0.40),
               Spoke=((0.03, 0.03, 0.035), 0.3, 0.35), Nozzle=((0.55, 0.50, 0.45), 1.0, 0.3),
               Fan=((0.05, 0.05, 0.05), 0.5, 0.5), Plate=((0.75, 0.76, 0.78), 0.3, 0.4))
 
@@ -497,6 +516,26 @@ def main():
             c = f.calc_center_median()
             if on_cap(f) and c.z < zb(abs(c.x)):
                 f.material_index = MATS.index("Trim")
+    # the head lamps (03 / 08): a slim lit band along the foot of each pod's inner facet, in the V notch over the hood's
+    # front corner (the whole facet lit read as two big white triangles, R9 03); the facet cut along the hood edge
+    # HEAD_LAMP w out (plan) and at its two y
+    for sx in (-1, 1):
+        e0 = np.array([sx * V[0], V[1], V[2]])
+        n0 = np.cross([sx * (HC[0] - V[0]), HC[1] - V[1], HC[2] - V[2]], (0, 0, 1))
+        n0 *= np.sign(n0[0] * sx) / np.linalg.norm(n0)          # horizontal, out from the hood edge towards the ridge
+
+        def pod(f):
+            c = f.calc_center_median()
+            return f.material_index == MATS.index("Paint") and sx * c.x > 0.45 and 1.75 < c.y < 2.03
+        for co, no in ((e0 + HEAD_LAMP["w"] * n0, n0), ((0, HEAD_LAMP["y"][0], 0), (0, 1, 0)),
+                       ((0, HEAD_LAMP["y"][1], 0), (0, 1, 0))):
+            fs = [f for f in bm.faces if pod(f)]
+            bmesh.ops.bisect_plane(bm, geom=fs + list({e for f in fs for e in f.edges}) +
+                                   list({v for f in fs for v in f.verts}), plane_co=tuple(co), plane_no=tuple(no))
+        for f in [f for f in bm.faces if pod(f)]:
+            c = np.array(f.calc_center_median())
+            if HEAD_LAMP["y"][0] < c[1] < HEAD_LAMP["y"][1] and 0 < (c - e0) @ n0 < HEAD_LAMP["w"]:
+                f.material_index = MATS.index("HeadLight")
     bmesh.ops.triangulate(bm, faces=bm.faces[:])    # planar input: the boolean's n-gons stay flat (no crossings)
     body = link("Body", bm, MATS)
 
@@ -535,6 +574,49 @@ def main():
         c = p.center
         if p.normal.y > 0.9 and c.y > 2.0 and 0.370 < c.z < 0.395 and abs(c.x) < 0.66:
             p.material_index = idx["HeadLight"]
+    # the doors cut out of the sides along door_outline: a plane along x through each edge of its front and rear runs,
+    # on the side faces near it (the sill top and the rail are loft edges already); the door faces marked in the face
+    # attribute `panel` (convert.py PANEL_PARTS: 1 left, 2 right, the wing 3, the trunk lid 4: the V rear glass between
+    # the buttresses and their inner walls (paint: convert.py builds a lid's slab from its paint), REAR0 to the wing,
+    # hinged at its front; roadster2.md: a lid behind the seat). First the boolean's slivers (R8: 7 degenerate faces in
+    # the tail cap) dissolved
+    front, top, rear = door_outline()
+    poly = np.array(front + top + rear)
+    segs = list(zip(front, front[1:] + top[:1])) + list(zip(top[-1:] + rear[:-1], rear))
+    bm = bmesh.new()
+    bm.from_mesh(me)
+    bmesh.ops.dissolve_degenerate(bm, edges=bm.edges, dist=1e-5)
+
+    def side(f, sx):
+        return sx * f.normal.x > 0.2 and sx * f.calc_center_median().x > 0.3
+
+    def inside(y, z):                          # even-odd test against the outline (y, z)
+        (y0, z0), (y1, z1) = poly.T, np.roll(poly, -1, 0).T
+        cross = (z0 > z) != (z1 > z)
+        return bool((cross & (y < y0 + (z - z0) * (y1 - y0) / np.where(cross, z1 - z0, 1))).sum() % 2)
+
+    for sx in (-1, 1):
+        for (y0, z0), (y1, z1) in segs:
+            near = lambda c: (min(y0, y1) - 0.25 < c.y < max(y0, y1) + 0.25 and   # noqa: E731
+                              min(z0, z1) - 0.25 < c.z < max(z0, z1) + 0.25)
+            fs = [f for f in bm.faces if side(f, sx) and near(f.calc_center_median())]
+            nv = np.array([0.0, -(z1 - z0), y1 - y0]) / math.hypot(z1 - z0, y1 - y0)
+            bmesh.ops.bisect_plane(bm, geom=fs + list({e for f in fs for e in f.edges}) +
+                                   list({v for f in fs for v in f.verts}), plane_co=(0, y0, z0), plane_no=nv)
+    bmesh.ops.triangulate(bm, faces=bm.faces[:])
+    pan = bm.faces.layers.int.new("panel")
+    for f in bm.faces:
+        c = f.calc_center_median()
+        for sx, k in ((-1, 1), (1, 2)):
+            if side(f, sx) and inside(c.y, c.z):
+                f[pan] = k
+        if c.y < REAR0 and c.y > WING["seam"] and abs(c.x) < 0.5 and (
+                f.material_index == idx["Glass"] and f.normal.z > 0.3 or
+                f.material_index == idx["Paint"] and f.normal.x * math.copysign(1, c.x) < -0.6):
+            f[pan] = 4
+    bm.to_mesh(me)
+    bm.free()
+    me.update()
 
     # wing
     wv, wq = wing_loft()
@@ -544,6 +626,8 @@ def main():
         bm.faces.new([bw[i] for i in q])
     closed(bm)
     wing = link("Wing", bm, ["Paint"])
+    wing.data.attributes.new("panel", "INT", "FACE").data.foreach_set(
+        "value", np.full(len(wing.data.polygons), 3, np.int32))
 
     report = dict(objects={}, checks={})
     for ob in (body, wing):
@@ -559,6 +643,32 @@ def main():
         pairs = pairs[pairs[:, 0] < pairs[:, 1]]
         shared = (t[pairs[:, 0], :, None] == t[pairs[:, 1], None, :]).any((1, 2))
         report["checks"][ob.name]["self_intersections"] = int((~shared).sum())
+
+    # the glass per pane, each its own object (convert.py classify zones a pane by its connected component's centre:
+    # the canopy shares its edges with the paint, so every pane, door glass too, read as the windscreen, WinT)
+    me = body.data
+    n = len(me.polygons)
+    mi, pa = np.empty(n, np.int32), np.empty(n, np.int32)
+    me.polygons.foreach_get("material_index", mi)
+    me.attributes["panel"].data.foreach_get("value", pa)
+    nx = np.array([p.normal.x for p in me.polygons])
+    cx = np.array([p.center.x for p in me.polygons])
+    grp = np.select([mi != MATS.index("Glass"), pa == 1, pa == 2, pa == 4, np.abs(nx) > 0.6],
+                    ["", "GlassDoorL", "GlassDoorR", "GlassHatch", np.where(cx < 0, "GlassSideL", "GlassSideR")], "GlassTop")
+
+    def keep_faces(ob, keep):
+        bm_ = bmesh.new()
+        bm_.from_mesh(ob.data)
+        bm_.faces.ensure_lookup_table()
+        bmesh.ops.delete(bm_, geom=[f for f in bm_.faces if not keep[f.index]], context="FACES")
+        bm_.to_mesh(ob.data)
+        bm_.free()
+    for nm in sorted(set(grp) - {""}):
+        ob = body.copy()
+        ob.data, ob.name = me.copy(), nm
+        scn.collection.objects.link(ob)
+        keep_faces(ob, grp == nm)
+    keep_faces(body, grp == "")
 
     def make(name, vv, tt, matname):
         used, inv = np.unique(tt, return_inverse=True)
@@ -589,6 +699,8 @@ def main():
     report["sizes"] = dict(L=L, W=WIDTH, H=HEIGHT, wheelbase=round(TYRES["front"]["y"] - TYRES["rear"]["y"], 4),
                            tyres={k: dict(d=round(2 * v_["r"], 3), w=v_["w"], track=round(2 * v_["x"], 3))
                                   for k, v_ in TYRES.items()})
+    # (cars/roadster2.py) the tyres as the build's wheels take them: axle y, radius, width, track (metres)
+    report["wheels"] = {k: dict(y=v_["y"], r=v_["r"], w=v_["w"], track_m=round(2 * v_["x"], 4)) for k, v_ in TYRES.items()}
     json.dump(report, open(os.path.join(out, "prep_report.json"), "w"), indent=1)
     json.dump(dict(frame="metres, +Y front, +Z up, -X the car's left, ground 0 (prep_roadster2.py)", **lines()),
               open(os.path.join(out, "roadster2_lines.json"), "w"), indent=1)
