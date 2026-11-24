@@ -764,8 +764,11 @@ end
 -- Plugged in, T.onPluggedDrive (client ChargerMenu.lua) brakes the car while a pedal is down and says why; it holds
 -- the input back only on the frames it renews the brake, so the controls stay live (a pedal held since before the
 -- plug is braked too) and the brake key works. Cruise control presses the accelerator by itself
--- (CarController.java:242-246): switched off.
+-- (CarController.java:242-246): switched off. A Roadster Rocket flying with its motor off: client Thruster.lua
+-- H.offHold keeps vanilla from starting it again on W.
 function T.CheckOperate.Battery(vehicle, part)
+    local hold = T.Thruster and T.Thruster.offHold -- nil on a dedicated server
+    if hold and hold(vehicle) then return false end
     if part:getModData().chg == nil then return true end
     if vehicle:isRegulator() then vehicle:setRegulator(false) end
     local f = T.onPluggedDrive

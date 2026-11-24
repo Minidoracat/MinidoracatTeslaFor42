@@ -521,6 +521,99 @@ part:getModData().thr = { gas = 1, at = H.hours(), busy = { act = "fly", by = "x
 check(ask(p, v, "boost") == "thrustOk", "a stale busy flag (server restart) does not lock the car")
 done(p, v, { done = true })
 
+H.section("thrusters: at rest off the ground (thrustEnd rest)")
+-- a soft landing its holder ends at rest off the ground (on its side, an eave, another car: still up to the server's
+-- look; rest-brief, r2int-mp-prof fix 1): over where it is if it has not moved ABORT_MS later and its sayer is still
+-- online; anything else as before (D2)
+local function restAsk()
+    part:getModData().thr = { gas = 1, at = H.hours() }
+    v.npid = nil
+    local r = ask(p, v, "land")
+    wait(2000)
+    return r
+end
+local function handedSince(i0)
+    for i = i0 + 1, #H.sent do if H.sent[i].command == "thrustLand" then return true end end
+    return false
+end
+v.dz = 0.5 -- 1.22 m up
+check(restAsk() == "thrustOk", "R1: a soft landing asked 1.22 m up")
+local gl, sr = gas(part), #H.sent
+done(p, v, { act = "land", done = true, rest = true })
+check(entryOf(v) ~= nil, "R1: said at rest, still up: not over before the server's look ABORT_MS later")
+wait(500)
+check(entryOf(v) == nil and part:getModData().thr.busy == nil and not handedSince(sr) and v.npid == nil and near(gas(part), gl),
+    "R1: still there ABORT_MS later: over where it is, billed as flown, nobody handed it, the physics left with its driver")
+restAsk()
+done(p, v, { act = "land", done = true, rest = true })
+v.dz = 0.3
+wait(500)
+pe = entryOf(v)
+check(pe and pe.helper == helper and last().command == "thrustLand",
+    "R2: said at rest, 0.49 m lower ABORT_MS later (in the air after all): handed to the nearest as before")
+done(helper, v, { act = "land", done = true, rest = true })
+wait(500)
+check(entryOf(v) == nil and v.npid ~= helper:getOnlineID(),
+    "R2: its helper says it at rest, still there: over, the physics taken back from the helper")
+restAsk()
+done(p, v, { act = "land", done = true, rest = true })
+left[p] = true
+wait(500)
+pe = entryOf(v)
+check(pe and pe.helper == helper, "R3: its sayer gone before the look: no word to end it on, handed on as before")
+left[p] = nil
+done(helper, v, { act = "land", done = true, rest = true })
+wait(500)
+restAsk()
+done(p, v, { act = "land", done = true })
+wait(500)
+pe = entryOf(v)
+check(pe and pe.helper == helper, "R4: ended up without rest: handed on as before (D2)")
+v.dz = 0
+done(helper, v, { act = "land", done = true })
+check(entryOf(v) == nil, "R4: down: over")
+-- R5: the server's copy settles a little after the holder's (r2rest-mp-near2: 0.148 m higher ABORT_MS later; the
+-- same car rests 1.13 m up on its holder, 1.27-1.31 m on the others): still at rest
+v.dz = 0.5
+restAsk()
+sr = #H.sent
+done(p, v, { act = "land", done = true, rest = true })
+v.dz = 0.5 + 0.15 / 2.44949
+wait(500)
+check(entryOf(v) == nil and not handedSince(sr), "R5: 0.15 m off ABORT_MS later (the server's copy settling): over where it is")
+do
+    -- R6: still sliding when the thrusters let go (r2scan-mp-r2 boostnearhold: leaning on the roof's wall after a
+    -- boost off its edge, the server's copy 0.20-0.27 tiles on and 0.26-0.30 m lower each look; three hand-backs to its
+    -- own driver, then left in the air): a slide that small is the car settling, looked at again from where it is now
+    local y0 = v.y
+    v.dz = 0.5
+    restAsk()
+    local s6 = #H.sent
+    done(p, v, { act = "land", done = true, rest = true })
+    v.y, v.dz = y0 + 0.25, 0.5 - 0.27 / 2.44949
+    wait(500)
+    check(entryOf(v) ~= nil and not handedSince(s6), "R6: 0.25 tiles on, 0.27 m lower ABORT_MS later: still settling, looked at again, nobody handed it")
+    wait(500)
+    check(entryOf(v) == nil and not handedSince(s6) and part:getModData().thr.busy == nil,
+        "R6: still there at the next look: over where it is, nobody handed it")
+    -- R7: a slide that never stops is not a rest: handed on as before after a few looks
+    restAsk()
+    s6 = #H.sent
+    done(p, v, { act = "land", done = true, rest = true })
+    for _ = 1, 6 do
+        v.y = v.y + 0.25
+        wait(500)
+    end
+    pe = entryOf(v)
+    check(pe and pe.helper == helper and handedSince(s6), "R7: still sliding look after look: handed to the nearest as before")
+    v.y = y0
+    done(helper, v, { act = "land", done = true, rest = true })
+    wait(500)
+end
+v.dz = 0
+v.npid = nil
+part:getModData().thr = { gas = 1, at = H.hours() }
+
 H.section("thrusters: the phone app's show")
 local function show(pl, act, n)
     local c = #H.sent
@@ -829,14 +922,21 @@ local _, a3 = ask(p, v, "kickflip")
 v.dz = 1
 check(ask(p, v, "land") == "THRUST_BUSY" and askLand(p, v, a3.n + 1000) == "THRUST_BUSY" and entryOf(v).act == "kickflip"
     and entryOf(v).n == a3.n, "S3: a late soft landing naming no ask, or another one: THRUST_BUSY, the stunt goes on")
--- S2: the motor off before the soft landing reaches the server: refused, the stunt and its due checks as they were
+-- the motor off before the soft landing reaches the server (or off on purpose in the air): a soft landing needs no
+-- motor, it takes the stunt over as ever; a stunt or boost still does (oracle-flight2 Q1: a car off in the air would
+-- else fall with no landing)
 v.running = false
-check(askLand(p, v, a3.n) == "THRUST_ENGINE" and entryOf(v) and entryOf(v).act == "kickflip" and entryOf(v).n == a3.n
-    and part:getModData().thr.busy ~= nil and hooked, "S2: the land refused THRUST_ENGINE: the stunt still pending, busy kept, its timer on")
-v.running = true
+check(ask(p, v, "kickflip") == "THRUST_ENGINE" and askLand(p, v, a3.n) == "thrustOk" and entryOf(v) and entryOf(v).act == "land",
+    "S2: the motor off: the land taken all the same, over the stunt")
 v.dz = 0
 done(p, v, { done = true })
-check(entryOf(v) == nil, "S2: the stunt's own end: over")
+check(entryOf(v) == nil, "S2: the landing's own end: over")
+part:getModData().thr = { gas = 1, at = H.hours() }
+v.dz = 1
+check(ask(p, v, "land") == "thrustOk", "S2: the motor off, nothing running, up in the air: a soft landing asked is taken")
+v.dz = 0
+done(p, v, { done = true })
+v.running = true
 online = { caller, helper }
 
 H.section("thrusters: SP")
@@ -877,6 +977,10 @@ local function vec() return { set = function(s, x, y, z) s[1], s[2], s[3] = x, y
     x = function(s) return s[1] end, y = function(s) return s[2] end, z = function(s) return s[3] end } end
 Vector3f = { new = function() return vec():set(0, 0, 0) end }
 local gt = getGameTime()
+-- the engine's enums the take-off scan reads (client Thruster.lua body): their names
+local savedIFT, savedIOT = IsoFlagType, IsoObjectType
+IsoFlagType = setmetatable({}, { __index = function(_, k) return k end })
+IsoObjectType = setmetatable({}, { __index = function(_, k) return k end })
 gt.getPhysicsSecondsSinceLastUpdate = function() return 0.02 end
 assert(loadfile(MEDIA .. "/client/MinidoracatTesla/Thruster.lua"))()
 local cv, cp, cpart = car({ x = 500.5, y = 500.5 })
@@ -888,7 +992,7 @@ function cv:isLocalPhysicSim() return self.local_ end
 function cv:getDebugZ() return self.dz end
 function cv:getLinearVelocity(o) return o:set(0, self.vy or 0, self.speed / 3.6) end
 function cv:getForwardVector(o) return o:set(0, 0, 1) end
-function cv:getUpVector(o) return o:set(0, self.uy or 1, 0) end
+function cv:getUpVector(o) return o:set(self.ux or 0, self.uy or 1, self.uz or 0) end
 function cv:isPhysicsActive() return true end
 function cv:getMass() return 1500 end
 function cv:addImpulse() self.impulses = (self.impulses or 0) + 1 end
@@ -1026,6 +1130,57 @@ cv.dz, cv.vy, cv.speed = 0.075, 0, 7
 cv.driver = nil
 TH.tick()
 cv.driver, cv.speed = cp, 30
+do -- r2f3-mp-d2 boostnearhold: a boost ended at its speed on the edge's lip (not falling yet), its thrustEnd 300 ms late
+    -- to the server: the car rolled off over the drop meanwhile, its landing refused here on that boost's busy flag
+    -- until the clear came (asked at up 0.3, landed at 0.83). Any boost this machine ended is no bar to its own landing
+    local thr1 = cpart:getModData().thr
+    cv.dz, cv.vy, cv.uy, cv.speed = 0.075, 0, 1, 30
+    TH.ask(cp, cv, "boost")
+    okFor("boost")
+    local nb = TH.active().n
+    cpart:getModData().thr = { gas = 2 / 3, at = H.hours(), busy = { act = "boost", by = "test", t = H.hours() } }
+    cv.speed = 200
+    TH.tick()
+    check(TH.active() == nil, "a boost at its speed: over")
+    cv.dz, cv.vy, cv.uy, cv.speed = 0.075 + 2.2 / TH.FLOOR, -0.1, 0.55, 0
+    local n0 = #H.clientSent
+    TH.watch(cp, cv)
+    local lb = H.clientSent[n0 + 1]
+    check(lb and lb.command == "thrust" and lb.args.act == "land" and lb.args.over == nb and TH.active() and TH.active().act == "land",
+        "... its busy flag still here, the car tipping off the edge: the soft landing asked (naming the boost: over)")
+    okFor("land")
+    cv.driver = nil; TH.tick(); cv.driver = cp
+    cpart:getModData().thr = thr1
+    cv.dz, cv.vy, cv.uy, cv.speed = 0.075, 0, nil, 30
+    TH.watch(cp, cv)
+end
+do -- r2f3-mp-d3 boostnearhold: a boost up to speed and then stopped short by something in its way (the support east of
+    -- roof 1) ended as "no lift", its own landing refused on the busy flag until the server's clear (asked at up -0.66).
+    -- One that had picked up speed is over like any other: no bar to its landing
+    local thr1 = cpart:getModData().thr
+    cv.dz, cv.vy, cv.uy, cv.speed = 0.075, 0, 1, 30
+    TH.ask(cp, cv, "boost")
+    okFor("boost")
+    local nb = TH.active().n
+    cpart:getModData().thr = { gas = 2 / 3, at = H.hours(), busy = { act = "boost", by = "test", t = H.hours() } }
+    cv.speed = 60
+    TH.tick()
+    check(TH.active() and TH.active().lifted, "a boost picking up speed: lifted, still on")
+    cv.speed = 30
+    for _ = 1, 25 do if TH.active() then TH.tick() end end
+    local n1 = #H.clientSent
+    check(TH.active() == nil and H.clientSent[n1].command == "thrustEnd", "... stopped short after 0.4 s: over")
+    cv.dz, cv.vy, cv.uy, cv.speed = 0.075 + 2.2 / TH.FLOOR, 0.3, 0.3, 0
+    TH.watch(cp, cv)
+    local lb = H.clientSent[n1 + 1]
+    check(lb and lb.command == "thrust" and lb.args.act == "land" and lb.args.over == nb and TH.active() and TH.active().act == "land",
+        "... its busy flag still here, the car tipping over the drop: the soft landing asked (naming the boost: over)")
+    okFor("land")
+    cv.driver = nil; TH.tick(); cv.driver = cp
+    cpart:getModData().thr = thr1
+    cv.dz, cv.vy, cv.uy, cv.speed = 0.075, 0, nil, 30
+    TH.watch(cp, cv)
+end
 -- a car tipping nose-first over a roof's edge (r2int-sp-full roof 1 #1: it slid down the wall below at -1.9 m/s at
 -- most and stood on its nose, never past -2 m/s): tilted and coming down over the drop, the soft landing asked;
 -- upright at that speed it is not a fall yet
@@ -1040,6 +1195,181 @@ check(tl and tl.command == "thrust" and tl.args.act == "land" and TH.active() an
     "tipped 60 degrees over a drop at -1.2 m/s: the soft landing asked")
 okFor("land")
 cv.driver = nil; TH.tick(); cv.driver = cp
+cv.dz, cv.vy, cv.uy, cv.speed = 0.075, 0, nil, 30
+-- at rest off the ground (rest-brief; r2int-mp-prof fix 1 ran its 12 s at up 0.141, 0.817 m): still REST_S (0.7 s)
+-- in the soft landing, over, said as at rest; a car coming down at the landing's slowest never reads so
+cv.dz, cv.vy, cv.uy, cv.speed = 0.075 + 3 / TH.FLOOR, -0.7, 0.14, 0
+TH.ask(cp, cv, "land")
+okFor("land")
+sent = #H.clientSent
+for _ = 1, 60 do cv.dz = cv.dz - 0.014 / TH.FLOOR; TH.tick() end -- 1.2 s at 0.7 m/s: 3 m down to 2.16 m
+check(TH.active() and TH.active().act == "land" and #H.clientSent == sent,
+    "coming down at the landing's slowest 0.7 m/s for 1.2 s: never at rest, it runs on")
+cv.vy = 0
+for _ = 1, 30 do TH.tick() end
+check(TH.active() and #H.clientSent == sent, "still 0.6 s off the ground: it runs on")
+-- still REST_S: a probe first (r2fin-sp-full roof 1 #1: a car held on a roof's edge by the landing's own push read as
+-- at rest, ended, tipped over): 0.4 s with no push, the end only if it stays put on its own
+for _ = 1, 5 do TH.tick() end
+cv.impulses = 0
+for _ = 1, 5 do TH.tick() end
+check(TH.active() and TH.active().probe and #H.clientSent == sent and cv.impulses == 0,
+    "still 0.7 s at 2.16 m: probing, no push, not over yet")
+for _ = 1, 20 do if TH.active() then TH.tick() end end
+local er = H.clientSent[sent + 1]
+check(TH.active() == nil and er and er.command == "thrustEnd" and er.args.act == "land" and er.args.rest == true
+    and er.args.done == true, "... still 0.4 s with no push at 2.16 m on its side: over, said as at rest (done)")
+exits = 0
+function cv:isStopped() return true end
+function cv:isExitBlocked() return false end
+ISVehicleMenu.onExit(cp, 0)
+check(exits == 1, "... the driver may get out (its way out clear: vanilla's exit)")
+-- the watch after it: that car slipping on, tilted, is no new landing (a third each slip); a real fall still is
+cv.dz, cv.vy = 0.075 + 1.5 / TH.FLOOR, -0.6
+sent = #H.clientSent
+TH.watch(cp, cv)
+check(#H.clientSent == sent and TH.active() == nil, "ended at rest, then slipping on tilted at -0.6 m/s: no new landing")
+cv.dz, cv.vy = 0.075 + 2.5 / TH.FLOOR, -3
+TH.watch(cp, cv)
+check(H.clientSent[sent + 1] and H.clientSent[sent + 1].args.act == "land" and TH.active() and TH.active().act == "land",
+    "... falling at -3 m/s from 2.5 m: the soft landing asked")
+okFor("land")
+cv.driver = nil; TH.tick(); cv.driver = cp
+cv.dz, cv.vy = 0.075, 0
+TH.watch(cp, cv)
+cv.dz, cv.vy = 0.075 + 1.5 / TH.FLOOR, -0.6
+TH.watch(cp, cv)
+check(TH.active() and TH.active().act == "land", "on the ground since, then tipped over a drop at -0.6 m/s: the tilt branch asks again")
+okFor("land")
+cv.driver = nil; TH.tick(); cv.driver = cp
+do -- r2rest-mp-r2 boostnearhold: a car whose landing ended at rest, settled since to where a boost may start (not on the
+    -- ground: the watch never re-armed), boosted off over a drop and tipped nose-first: a boost or stunt started from
+    -- there leaves that rest behind, the tilt branch catches it
+    cv.dz, cv.vy, cv.uy, cv.speed = 0.075 + 0.6 / TH.FLOOR, 0, 0.7, 0
+    TH.ask(cp, cv, "land")
+    okFor("land")
+    for _ = 1, 60 do if TH.active() then TH.tick() end end
+    check(TH.active() == nil and H.clientSent[#H.clientSent].args.rest == true, "still 0.7 s at 0.6 m, then the probe: over, at rest")
+    cv.dz, cv.uy = 0.075 + 0.3 / TH.FLOOR, 0.9
+    TH.watch(cp, cv)
+    TH.ask(cp, cv, "boost")
+    okFor("boost")
+    check(TH.active() and TH.active().act == "boost", "... settled to 0.3 m: a boost starts there")
+    cv.driver = nil; TH.tick(); cv.driver = cp
+    cv.dz, cv.vy, cv.uy = 0.075 + 1.5 / TH.FLOOR, -0.6, 0.5
+    TH.watch(cp, cv)
+    check(TH.active() and TH.active().act == "land", "ended at rest, then a boost from there, then tipped over a drop: the tilt branch asks")
+    okFor("land")
+    cv.driver = nil; TH.tick(); cv.driver = cp
+end
+-- the probe finds it moving (a car hung on a roof's edge: the landing pushes it down at -G and levels it about the edge,
+-- r2f3-sp-probe3 slid level 3 s and rose instead, 8 of 8): lifted LIFT_DH m and carried SLIDE_D m the way it leans,
+-- then down again and probed again
+do -- (main chunk locals at Lua's 200)
+local function hungProbe(h)
+    cv.dz, cv.vy, cv.uy, cv.speed, cv.ux, cv.x = 0.075 + h / TH.FLOOR, 0, 1, 0, 0.3, 500.5 -- its nose over the edge, +x
+    TH.ask(cp, cv, "land")
+    okFor("land")
+    local n0 = #H.clientSent
+    for _ = 1, 46 do TH.tick() end -- the first tick sets its height, 0.7 s still, then 0.2 s into the probe
+    local ok1 = TH.active() and TH.active().probe and TH.active().probe.h
+    cv.dz = cv.dz - 0.06 / TH.FLOOR -- sagging with no push: 0.06 m in the probe's second 0.2 s
+    for _ = 1, 12 do if TH.active() then TH.tick() end end
+    return TH.active(), n0, ok1
+end
+do
+    local f, n0, ok1 = hungProbe(5)
+    check(ok1, "still 0.7 s at 5 m: probing, the first sample taken")
+    check(f and f.phase == "land" and not f.probe and f.slide and not f.noRest and #H.clientSent == n0,
+        "... 0.06 m lower 0.2 s later: moving, carried off (no end, probed again after)")
+    TH.tick()
+    local rh = f.st.rh
+    check(near(f.st.vTx, 2, 1e-6) and near(f.st.vTz, 0, 1e-6) and f.st.rvy == 0,
+        "... the way it leans at 2 m/s, holding its height")
+    cv.dz = cv.dz - 0.9 / TH.FLOOR
+    TH.tick()
+    check(f.slide and near(f.st.rh, rh, 1e-6), "... 0.9 m lower: still carried, the same height asked (0.8 m over where it hung)")
+    cv.x, roof["502,500"] = 502.5, 1 -- 2 m on, over a floor a level up
+    TH.tick()
+    check(f.slide and near(f.st.rh, rh - TH.FLOOR, 1e-6), "... over a floor a level up: the same height asked, counted from there")
+    roof["502,500"] = nil
+    cv.x = 503.6
+    TH.tick()
+    check(not f.slide and f.st.vTx == 0 and f.st.vTz == 0, "... 3.1 m off: down again, stopping where it is")
+    TH.tick()
+    check(f.st.rvy < -0.7 and #H.clientSent == n0, "... coming down the landing's way")
+    for _ = 1, 60 do if TH.active() then TH.tick() end end
+    check(TH.active() == nil and #H.clientSent == n0 + 1 and H.clientSent[n0 + 1].args.rest == true,
+        "... still 0.7 s again, then the probe finds it staying put: over, at rest")
+    cv.ux, cv.x = nil, 500.5
+    cv.driver = nil; TH.tick(); cv.driver = cp
+end
+do -- carried SLIDE_S s and not 3 m off: down where it is, no end, probed again later
+    local f, n0 = hungProbe(2)
+    local ticks = 0
+    while f.slide and ticks < 300 do TH.tick() ticks = ticks + 1 end
+    check(not f.slide and ticks >= 195 and ticks <= 202 and TH.active() == f and not f.probe and #H.clientSent == n0,
+        "carried 4 s and still where it hung: down again there, no end said")
+    cv.ux = nil
+    cv.driver = nil; TH.tick(); cv.driver = cp
+end
+end
+do -- r2f3-sp-probe2 rboost: 3.76 degrees in the probe's 0.2 s read at rest, it fell after (lands 2, up 0.43): moving
+    cv.dz, cv.vy, cv.uy, cv.speed, cv.ux = 0.075 + 2 / TH.FLOOR, 0, 1, 0, nil
+    TH.ask(cp, cv, "land")
+    okFor("land")
+    for _ = 1, 46 do TH.tick() end
+    check(TH.active() and TH.active().probe and TH.active().probe.h, "rocking: probing, the first sample taken")
+    cv.ux = math.tan(math.rad(3.76))
+    for _ = 1, 12 do if TH.active() then TH.tick() end end
+    check(TH.active() and TH.active().slide, "... 3.76 degrees in 0.2 s: moving, carried off")
+    cv.ux = nil
+    cv.driver = nil; TH.tick(); cv.driver = cp
+end
+do -- pressed down on what holds it it sinks 0.05 m/s (r2f3-mp-c boostnearhold: 1.6 s on a fence top, never probed)
+    cv.dz, cv.vy, cv.uy, cv.speed = 0.075 + 2 / TH.FLOOR, -0.05, 1, 0
+    TH.ask(cp, cv, "land")
+    okFor("land")
+    for _ = 1, 37 do cv.dz = cv.dz - 0.001 / TH.FLOOR TH.tick() end
+    check(TH.active() and TH.active().probe, "sinking 0.05 m/s for 0.7 s: probed")
+    cv.driver = nil; TH.tick(); cv.driver = cp
+end
+do -- still up after LAND_S: over where it is, as at rest (SP: it asked again at once and billed the tank twice)
+    cv.dz, cv.vy, cv.uy, cv.speed = 0.075 + 3 / TH.FLOOR, -0.7, 1, 0
+    TH.ask(cp, cv, "land")
+    okFor("land")
+    local n0 = #H.clientSent
+    for _ = 1, 650 do if TH.active() then TH.tick() end end
+    check(TH.active() == nil and #H.clientSent == n0 + 1 and H.clientSent[n0 + 1].args.rest == true,
+        "12 s and still 3 m up: over, said as at rest")
+    cv.dz, cv.vy, cv.uy = 0.075 + 1.5 / TH.FLOOR, -0.6, 0.5
+    TH.watch(cp, cv)
+    check(TH.active() == nil and #H.clientSent == n0 + 1, "... then tilted and slipping: no new landing")
+    cv.dz, cv.vy, cv.uy = 0.075 + 2.5 / TH.FLOOR, -3, 1
+    TH.watch(cp, cv)
+    check(TH.active() and TH.active().act == "land", "... then falling at -3 m/s from 2.5 m: the soft landing asked")
+    okFor("land")
+    cv.driver = nil; TH.tick(); cv.driver = cp
+end
+do -- the watch: past 53 degrees on what holds it, at any speed (r2f3-mp-c boostnear: rolled over on a fence top at
+    -- -0.1 m/s, asked only at up 0); a refusal of that landing marks it at rest, asked no more
+    cv.dz, cv.vy, cv.uy = 0.075, 0, 1
+    TH.watch(cp, cv) -- on the ground: the rest mark gone
+    cv.dz, cv.uy = 0.075 + 2.2 / TH.FLOOR, 0.7
+    local n0 = #H.clientSent
+    TH.watch(cp, cv)
+    check(TH.active() == nil and #H.clientSent == n0, "45 degrees, still, 2.2 m up: no landing")
+    cv.uy = 0.55
+    TH.watch(cp, cv)
+    check(TH.active() and TH.active().act == "land", "57 degrees, still, 2.2 m up: the soft landing asked")
+    T.ClientCommands.deny({ n = lastN(), pn = 0, vid = cv:getId(), reason = "THRUST_NO_AIR" })
+    check(TH.active() == nil, "... refused: stopped")
+    n0 = #H.clientSent
+    TH.watch(cp, cv)
+    check(TH.active() == nil and #H.clientSent == n0, "... the same again: asked no more")
+    cv.dz, cv.vy, cv.uy = 0.075, 0, 1
+    TH.watch(cp, cv)
+end
 cv.dz, cv.vy, cv.uy, cv.speed = 0.075, 0, nil, 30
 -- what the client asks VehicleManager is a query; AutoDrive driving this car refuses
 local seenQ, vmr = nil, T.vmRefusal
@@ -1068,7 +1398,8 @@ cv.driver = cp
 local savedCore, savedSH = getCore, getPlayerScreenHeight
 local ground = { isSolid = function() return false end, isSolidTrans = function() return false end,
     getObjects = function() return { size = function() return 0 end } end, isBlockedTo = function() return false end,
-    getFloor = function() return true end, TreatAsSolidFloor = function() return true end }
+    getFloor = function() return true end, TreatAsSolidFloor = function() return true end,
+    HasStairs = function() return false end, has = function() return false end, getProperties = function() return nil end }
 getCell = function() return { getGridSquare = function(_, x, y, z) return z == 0 and ground or nil end } end -- open, no roof
 -- the camera: zoom 1, out to 3 (0.25 a step)
 local zoom = 1
@@ -1183,6 +1514,27 @@ TH.tick()
 check(TH.active().phase == "fly" and cv.reg == false and cv.regSpd == 0 and near(cv.dz, 0.115, 1e-9),
     "awake and moving: the cruise back, lifted 0.04 floor, flying")
 abort()
+do -- Space (the default up key since 283b1e9b) is vanilla's brake: held as the flight is asked (r2f3-key-a: 0.1 m
+   -- up, given up) it drops the creep's cruise every frame (CarController.java:460-462)
+    cv.dz, cv.vy, cv.speed, cv.impulses, cv.reg, cv.regSpd = 0.075, 0, 0, 0, nil, nil
+    TH.ask(cp, cv, "fly")
+    okFor("fly", { sec = 8 })
+    while TH.active() and TH.active().t < 2 do cv.reg = false TH.tick() end
+    check(TH.active() and TH.active().phase == "wake" and cv.reg == true and cv.regSpd == 3,
+        "the brake held 2 s into the creep: still creeping, its cruise set again")
+    cv.awake, cv.speed = true, 2
+    TH.tick()
+    check(TH.active().phase == "fly", "let go: it moves and flies")
+    abort()
+    cv.awake, cv.speed, cv.reg, cv.regSpd = nil, 0, nil, nil
+    TH.ask(cp, cv, "fly")
+    okFor("fly", { sec = 8 })
+    local n0 = #H.clientSent
+    while TH.active() and TH.active().t < 4 do cv.reg = false TH.tick() end
+    local e1 = H.clientSent[#H.clientSent]
+    check(TH.active() == nil and #H.clientSent > n0 and e1.command == "thrustEnd" and e1.args.done == false and cv.regSpd == 0,
+        "held throughout: given up after ROLL_S, the cruise back")
+end
 function cv:isPhysicsActive() return true end
 cv.setPhysicsActive, cv.awake = nil, nil
 -- physics on, yet it stays put (r2fe-sp-i, 2 of 2): half a second up under 0.15 m, the creep once, then flies or gives up
@@ -1215,6 +1567,18 @@ TH.KEYS.up = { getValue = function() return 57 end }
 isKeyDown = function(k) return k == 57 and upHeld end
 cp.sneak = true -- crouching when it takes off (C, the down key's default, toggles it: below)
 cv.dz, cv.vy, cv.speed, zoom = 0.075, 0, 0, 1
+-- Q1 (oracle-flight2): vanilla's shut-off / start actions (ISVehicleMenu.lua:1164,1176) and the car's heater, on at 22
+local q1 = { offs = 0, starts = 0 }
+ISVehicleMenu.onShutOff = function(p) if p == cp then q1.offs = q1.offs + 1; cv.running = false end end
+ISVehicleMenu.onStartEngine = function(p) if p == cp then q1.starts = q1.starts + 1 end end
+cv.parts.Heater = { md = { active = true, temperature = 22 }, getModData = function(s) return s.md end }
+cv.running = true
+function q1.heater()
+    for i = #H.clientSent, 1, -1 do
+        local m = H.clientSent[i]
+        if m.module == "vehicle" and m.command == "toggleHeater" then return m.args end
+    end
+end
 TH.ask(cp, cv, "fly")
 okFor("fly", { sec = 30 })
 local function hm() return (cv.dz - 0.075) * TH.FLOOR end
@@ -1241,12 +1605,41 @@ step(75, function(h) overUp = math.max(overUp, h - fc.flyMaxH) end)
 step(75, function(h) overUp = math.max(overUp, h - fc.flyMaxH) worstUp = math.max(worstUp, math.abs(h - fc.flyMaxH)) end)
 check(overUp <= 0.2 and worstUp < 0.2,
     string.format("hover: up 2 s to flyMaxH %.1f m, %.2f m over at most, within %.2f m from 1.5 s after", fc.flyMaxH, overUp, worstUp))
+do -- Q1 guard (oracle-flight2): the motor asked off in flight, vanilla's auto-start on W (CarController.java:329-341)
+    -- is held back through CheckOperate.Battery: the brake forced once, read once, then the input held
+    local fo, brakes = TH.active(), 0
+    function cv:setForceBrake() brakes = brakes + 1 end
+    local bp = T.Battery.part(cv)
+    check(fo.offAsked and q1.offs == 1 and not cv.running and fo.heat == 22 and fo.offSeen ~= nil,
+        "Q1: up past 0.6 m: the motor shut off once (vanilla's action), seen off, the heater's 22 noted")
+    fo.offAsked = nil
+    check(T.CheckOperate.Battery(cv, bp) == true and brakes == 0, "Q1 guard: flying, the motor not asked off: input live")
+    fo.offAsked, cv.reg = true, true
+    local r1 = T.CheckOperate.Battery(cv, bp)
+    local r2 = T.CheckOperate.Battery(cv, bp)
+    local r3 = T.CheckOperate.Battery(cv, bp)
+    check(r1 == false and r2 == true and r3 == false and brakes == 1 and cv.reg == false,
+        "Q1 guard: asked off: the brake forced once, read once, then held; cruise off")
+    check(T.CheckOperate.Battery({}, bp) == true, "Q1 guard: another car: untouched")
+    fo.sink = true
+    check(T.CheckOperate.Battery(cv, bp) == true, "Q1 guard: coming down: released")
+    fo.sink, fo.snap, cv.setForceBrake = nil, nil, nil
+end
 -- C, the down key's default, is vanilla's crouch toggle in a car too (IsoPlayer.java:3373-3377): the flight puts the
 -- crouch it found back the next frame, so it ends as it began
-local fs = TH.active()
-cp.sneak = false -- C pressed
-step(1)
-check(fs.sneak == true and cp.sneak == true, "flying: C's crouch toggle put back the next frame (crouched at take-off)")
+do
+    local fs = TH.active()
+    cp.sneak = false -- C pressed
+    step(1)
+    check(fs.sneak == true and cp.sneak == true, "flying: C's crouch toggle put back the next frame (crouched at take-off)")
+end
+do -- the pill's seconds (HUD.lua) with the motor shut off in flight (Q1): counting down all the same
+    local s0 = TH.flight(cp, cv)
+    for _ = 1, 12 do H.advanceMs(100) step(1) end
+    local s1 = TH.flight(cp, cv)
+    check(not cv.running and type(s0) == "number" and type(s1) == "number" and s1 < s0,
+        string.format("motor off in flight: the pill's seconds count down all the same (%s > %s)", tostring(s0), tostring(s1)))
+end
 -- a controller's player flies with it as vanilla drives (CarController.java:958-967): RT ahead, LT back, the left
 -- stick steers; the right stick sets the height (pushed up: negative, PlayerCamera.java:148). A stick resting a little
 -- off (inside the dead zone) does nothing
@@ -1300,11 +1693,13 @@ check(padPill == "IGUI_MinidoracatTesla_HUD_FlyKeysPad"
 getText, getKeyName = realGetText, realKeyName
 -- the dashboard's flying pill (HUD.lua): the whole seconds of air left, real time counting them down as the server's
 -- D2 does; FreeFlight (no limit): true; "land" once landing is asked; nobody else's (a passenger, another car)
-local fl0, flown0 = TH.flight(cp, cv), fa.flown
-for _ = 1, 12 do H.advanceMs(100) step(1) end
-local fl1 = TH.flight(cp, cv)
-check(fl0 == math.ceil(30 - flown0) and fa.flown > flown0 + 1 and fl1 == math.ceil(30 - fa.flown) and fl1 < fl0,
-    "flying: the pill's seconds left count real time down (" .. tostring(fl0) .. " -> " .. tostring(fl1) .. ")")
+do
+    local fl0, flown0 = TH.flight(cp, cv), fa.flown
+    for _ = 1, 12 do H.advanceMs(100) step(1) end
+    local fl1 = TH.flight(cp, cv)
+    check(fl0 == math.ceil(30 - flown0) and fa.flown > flown0 + 1 and fl1 == math.ceil(30 - fa.flown) and fl1 < fl0,
+        "flying: the pill's seconds left count real time down (" .. tostring(fl0) .. " -> " .. tostring(fl1) .. ")")
+end
 check(TH.flight({}, cv) == nil and TH.flight(cp, {}) == nil, "flying: not another player's, not another car's")
 fa.sec = nil
 check(TH.flight(cp, cv) == true, "FreeFlight: no seconds")
@@ -1324,23 +1719,170 @@ local ex0, h0 = exits, #halo
 ISVehicleMenu.onExit(cp, 0)
 check(exits == ex0 and #halo == h0 and fa.wantLand == true and TH.flight(cp, cv) == "land",
     "flying: getting out lands it, nothing said, still in the seat; the pill says landing")
+-- the landing first stops where it is (oracle-flight2 Q2: r2scan-sp-obst2 fenceland drifted on at its flying speed,
+-- came down on the fence and turned over): at its height, gliding on at GLIDE_V along its heading
+cv.speed = 36
+local brakeH = hm()
+cp.sneak = false -- C pressed as it stops to come down
 step(1)
-cp.sneak = false -- C pressed while it comes down
+check(fa.phase == "land" and fa.brake and near(fa.st.rh, brakeH, 0.05) and fa.st.rvy == 0
+    and near(math.sqrt(fa.st.vTx ^ 2 + fa.st.vTz ^ 2), 3, 1e-6), "time to land at 10 m/s: held at its height, slowing to 3 m/s ahead")
+check(TH.flight(cp, cv) == "land", "stopping at its height first: the pill says landing")
 ISVehicleMenu.onExit(cp, 0)
 check(fa.phase == "land" and exits == ex0 and halo[#halo] == "IGUI_MinidoracatTesla_Deny_THRUST_IN_AIR", "landing: no getting out yet")
-check(TH.flight(cp, cv) == "land", "landing: the pill still says landing")
+check(q1.starts == 0, "Q1: stopping at its height: the motor still off")
 step(1)
 check(cp.sneak == true, "landing: C's crouch toggle put back too")
+cv.speed = 10
+H.advanceMs(2300)
+step(1)
+check(fa.phase == "land" and not fa.brake and fa.sink and fa.st.vTx == 0 and fa.st.vTz == 0,
+    "... down to 2.8 m/s over open ground: coming down, stopping")
+q1.hs = q1.heater()
+check(q1.starts == 1 and q1.hs and q1.hs.on == true and q1.hs.temp == 22, "Q1: coming down 2.3 s after the motor went off: started once, the heater back on at 22")
+step(5)
+check(q1.starts == 1, "Q1: still off a moment later: not tried again")
 abort()
 check(TH.flight(cp, cv) == nil, "over: no flying pill")
 cp.sneak = false
 TH.tick()
 check(cp.sneak == false, "over: the crouch is the player's again (crouched as at take-off until then)")
 cp.sneak = nil
+do -- something under it (a fence, a hedge): glides on; after GLIDE_S down all the same
+    local blocked = { getProperties = function() return { has = function(_, k) return k == "HitByCar" end } end }
+    local fence = setmetatable({ getObjects = function() return { size = function() return 1 end, get = function() return blocked end } end },
+        { __index = ground })
+    local cellOpen = getCell
+    cv.dz, cv.vy, cv.speed, cv.running = 0.075, 0, 0, true
+    TH.ask(cp, cv, "fly")
+    okFor("fly", { sec = 30 })
+    step(150)
+    getCell = function() return { getGridSquare = function(_, x, y, z) return z == 0 and fence or nil end } end
+    local fb = TH.active()
+    fb.wantLand, cv.speed = true, 10
+    check(q1.offs == 2, "Q1: the second flight's motor shut off too")
+    step(1)
+    check(fb.phase == "land" and fb.brake and not fb.sink, "time to land at 2.8 m/s over a fence: gliding on, not down")
+    step(150)
+    check(fb.brake and not fb.sink, "... 3 s over it: still gliding")
+    step(60)
+    check(not fb.brake and fb.sink, "... past GLIDE_S 4 s: down all the same")
+    check(q1.starts == 1, "Q1: coming down under 2.2 s (the wall clock) after the motor went off: not started (W or the power key will)")
+    getCell = cellOpen
+    abort()
+    cv.running, cv.parts.Heater = true, nil -- the fakes' shut-off left it off
+end
+-- at rest up on another car (r2rest-mp-near2: isExitBlocked on both seats, no seat to switch to; nothing else may
+-- move it, THRUST_AIRBORNE): out anyway, as vanilla's onExitAux without its line check. On the ground, or a way out
+-- clear: vanilla's own exit
+do
+local queued, blockedE, doorP = {}, true, nil
+ISTimedActionQueue = { add = function(a) queued[#queued + 1] = a.kind end }
+local function ta(kind) return { new = function() return { kind = kind } end } end
+ISExitVehicle, ISOpenVehicleDoor, ISCloseVehicleDoor, ISUnlockVehicleDoor = ta("exit"), ta("open"), ta("close"), ta("unlock")
+function cv:isExitBlocked() return blockedE end
+function cv:isStopped() return true end
+function cv:getPassengerDoor() return doorP end
+ISVehicleMenu.getBestSwitchSeatExit = function() return nil end
+local savedGV, savedSeat = cp.getVehicle, cv.getSeat
+cp.getVehicle = function() return cv end
+cv.getSeat = function() return 0 end
+local UP = 0.075 + 1.13 / 2.44949
+cv.dz = UP
+local ex1 = exits
+ISVehicleMenu.onExit(cp, 0)
+check(exits == ex1 and table.concat(queued, ",") == "exit", "up on another car, every way out blocked: out anyway (no door: straight out)")
+queued = {}
+doorP = { getInventoryItem = function() return true end,
+    getDoor = function() return { isLocked = function() return true end, isOpen = function() return false end } end }
+ISVehicleMenu.onExit(cp, 0)
+check(table.concat(queued, ",") == "unlock,open,exit,close", "a locked shut door: unlocked, opened, out, shut (as vanilla's onExitAux)")
+queued = {}
+cv.dz = 0.075
+ISVehicleMenu.onExit(cp, 0)
+check(exits == ex1 + 1 and #queued == 0, "on the ground: vanilla's exit")
+cv.dz, blockedE = UP, false
+ISVehicleMenu.onExit(cp, 0)
+check(exits == ex1 + 2 and #queued == 0, "up, its way out clear: vanilla's exit")
+cv.dz, cp.getVehicle, cv.getSeat = 0.075, savedGV, savedSeat
+ISTimedActionQueue, ISExitVehicle, ISOpenVehicleDoor, ISCloseVehicleDoor, ISUnlockVehicleDoor = nil, nil, nil, nil, nil
+cv.isExitBlocked, cv.isStopped, cv.getPassengerDoor = nil, nil, nil
+end
 TH.KEYS.up = nil
 isKeyDown, isJoypadRTPressed, isJoypadLTPressed, getJoypadMovementAxisX, getJoypadAimingAxisY = savedKD, nil, nil, nil, nil
 isJoypadRBPressed = nil
 getCore, getPlayerScreenHeight, cv.vy = savedCore, savedSH, nil
+
+-- the take-off scan (scan-brief 2026-11-24, R2Scan.md 5): what the engine slows or stops a car on at any height
+-- (CarSlowFactor, HitByCar: over open ground it reads level 0 however high, BaseVehicle.java:3404-3410) refuses the
+-- whole way; a static body (IsoChunk.java:1949-2107) only where the car is under one floor. The car at (500.5, 500.5)
+-- heading +y at 30 km/h: kickflip under one floor until 7.1 m and from 21.7 m (its height curve), backflip all the way
+local savedInst, cellS = instanceof, getCell
+instanceof = function(o, c) return type(o) == "table" and o._class == c end
+local world = {} -- ["x,y"] = { flags = {}, types = {}, stairs, objs = { { props = {}, sprite, class, ball } } }
+local function wobj(o)
+    local pr = { has = function(_, k) return o.props ~= nil and o.props[k] ~= nil end, get = function(_, k) return o.props and o.props[k] end }
+    return { _class = o.class, getProperties = function() return pr end, isBlockAllTheSquare = function() return o.ball == true end,
+        getSprite = function() return o.sprite and { getName = function() return o.sprite end } or nil end }
+end
+local function wsq(t)
+    local objs, flags, types = {}, t.flags or {}, t.types or {}
+    for i, o in ipairs(t.objs or {}) do objs[i] = wobj(o) end
+    return { isSolid = function() return flags.solid == true end, isSolidTrans = function() return flags.solidtrans == true end,
+        getProperties = function() return { has = function(_, k) return flags[k] == true end } end,
+        has = function(_, k) return types[k] == true end, HasStairs = function() return t.stairs == true end,
+        getObjects = function() return { size = function() return #objs end, get = function(_, i) return objs[i + 1] end } end,
+        isBlockedTo = function() return false end, getFloor = function() return true end, TreatAsSolidFloor = function() return true end }
+end
+getCell = function() return { getGridSquare = function(_, x, y, z)
+    if z ~= 0 then return nil end
+    return world[x .. "," .. y] and wsq(world[x .. "," .. y]) or ground
+end } end
+-- kickflip at 30 km/h; backflip at its flipMaxKmh 15 (its way 17 m)
+cv.dz, cv.vy = 0.075, 0
+;(function() -- its own 200 locals (the main chunk's are used up)
+local function scan(act, at, t)
+    world, cv.speed = { [at] = t }, act == "backflip" and 15 or 30
+    local ok, why = TH.check(cp, cv, act)
+    world = {}
+    return ok and "ok" or why
+end
+local k0, b0 = scan("kickflip", "0,0", {}), scan("backflip", "0,0", {})
+check(k0 == "ok" and b0 == "ok", "scan: open ground, both go (" .. tostring(k0) .. ", " .. tostring(b0) .. ")")
+local NEAR, MID, SIDE, FAR = "500,503", "500,514", "499,514", "500,600"
+check(scan("kickflip", MID, { objs = { { props = { CarSlowFactor = "5" } } } }) == "THRUST_ROOM",
+    "scan C1: a CarSlowFactor object under the kickflip's high middle: refused (the engine slows it at any height)")
+check(scan("kickflip", MID, { objs = { { props = { HitByCar = "" } } } }) == "THRUST_ROOM",
+    "scan C1: a HitByCar object under the kickflip's high middle: refused")
+check(scan("kickflip", SIDE, { objs = { { props = { HitByCar = "" } } } }) == "THRUST_ROOM", "scan: on the side lanes too")
+check(scan("kickflip", FAR, { objs = { { props = { HitByCar = "" } } } }) == "ok", "scan: past its way: goes")
+local bodies = {
+    { "blocksight", { flags = { blocksight = true } } },
+    { "stairs", { stairs = true } },
+    { "a tree (no HitByCar)", { types = { tree = true } } },
+    { "a moveable", { types = { isMoveAbleObject = true } } },
+    { "PhysicsShape", { objs = { { props = { PhysicsShape = "Solid" } } } } },
+    { "PhysicsMesh", { objs = { { props = { PhysicsMesh = "x" } } } } },
+    { "a whole-square player wall", { objs = { { class = "IsoThumpable", ball = true } } } },
+    { "a lamp post", { objs = { { sprite = "lighting_outdoor_01_5" } } } },
+    { "a hoop", { objs = { { sprite = "recreational_sports_01_19" } } } },
+    { "a wall on its N edge", { flags = { collideN = true } } },
+    { "a wall on its W edge", { flags = { collideW = true } } },
+    { "a window on its N edge", { flags = { windowN = true } } },
+    { "a window on its W edge", { flags = { windowW = true } } },
+    { "a shut door on its N edge", { flags = { doorN = true } } },
+    { "a shut door on its W edge", { flags = { doorW = true } } },
+}
+for _, b in ipairs(bodies) do
+    check(scan("kickflip", NEAR, b[2]) == "THRUST_ROOM" and scan("kickflip", MID, b[2]) == "ok" and scan("backflip", MID, b[2]) == "THRUST_ROOM",
+        "scan: " .. b[1] .. ": a static body, refused under one floor (kickflip near, backflip all the way), not under the kickflip's high middle")
+end
+check(scan("kickflip", NEAR, { objs = { { class = "IsoThumpable", ball = false } } }) == "ok"
+    and scan("kickflip", NEAR, { objs = { { sprite = "recreational_sports_01_20" } } }) == "ok"
+    and scan("kickflip", NEAR, { flags = { doorN = true, open = true } }) == "ok",
+    "scan: a thumpable not filling its square, another sports tile, an open door: go")
+end)()
+instanceof, getCell = savedInst, cellS
 
 -- restore
 H.side(false, true)
@@ -1351,3 +1893,4 @@ T.Remote.appLink = saved.appLink
 for _, k in ipairs(OPTS) do SandboxVars.MinidoracatTesla[k] = saved.sandbox[k] end
 gt.getPhysicsSecondsSinceLastUpdate = nil
 HaloTextHelper, ISVehicleMenu, Vector3f, getCell, getSpecificPlayer = nil, nil, nil, saved.getCell, savedGSP
+IsoFlagType, IsoObjectType = savedIFT, savedIOT

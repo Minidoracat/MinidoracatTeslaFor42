@@ -40,6 +40,26 @@ local GAIN = { lo = { 9, 6 }, hi = { 36, 12 } } -- attitude PD
 local LPAR = 0.02                -- torque of the force along it, kept until it is worth a torque-only frame
 local DT_MAX = 0.083             -- the physics step's own cap
 local ROLL_S, LAND_S = 3, 12     -- roll-up and soft landing give up after these seconds (server Thruster.lua D2/D3)
+-- the soft landing at rest off the ground (on its side, an eave, a fence, another car: r2int-mp-prof fix 1, up 0.141
+-- at 0.817 m, ran its 12 s): this long under REST_V m/s within REST_DH m of one height is over. A landing never sinks
+-- slower than 0.7 m/s (landVy), so a car still coming down never reads as at rest; a car pressed down on what holds it
+-- sinks 0.05-0.1 m/s (r2f3-mp-c boostnearhold: 1.6 s on a fence top, never 0.7 s within 0.03 m)
+local REST_S, REST_V, REST_DH = 0.7, 0.2, 0.1
+-- at rest REST_S, then a probe with no push: a car held on a roof's edge by the landing's own push read as at rest,
+-- ended there and tipped over (r2fin-sp-full roof 1 #1: up 0.033, hit -4.22 m/s). Sampled at PROBE_A s (the springs
+-- settle first) and PROBE_B s: faster than REST_V, PROBE_DH m lower or turned over 2 degrees is moving (r2f3-sp-probe2:
+-- a car read at rest at 3.76 fell after; hung cars 8.6-30. Read moving wrongly, it is only carried 3 m)
+local PROBE_A, PROBE_B, PROBE_DH, PROBE_DOT = 0.2, 0.4, 0.05, 0.99939
+-- found moving, it is lifted LIFT_DH m and carried the way it leans (its up vector's level part: the side hanging free)
+-- at SLIDE_V, until SLIDE_D m off or SLIDE_S s; then down again, probed again if it stops. Held on an edge the landing
+-- pushes down at -G and its attitude PD levels it about the edge (r2f3-sp-probe3: slid level 3 s, rose 0.1-0.25 m,
+-- never got off, 8 of 8 one floor up); landing on in place, it hung there LAND_S (r2f3-sp-probe: 6 of 30)
+local SLIDE_V, LIFT_DH, SLIDE_D, SLIDE_S = 2, 0.8, 3, 4
+-- a flight's landing stops at its height first (r2scan-sp-obst2 fenceland: down at its flying speed onto a fence,
+-- turned over): GLIDE_V m/s ahead while anything under it would catch it (landClear), down after GLIDE_S s at most
+local GLIDE_V, GLIDE_S = 3, 4
+-- a flight's motor off above OFF_H m (its wheels clear), started START_MS ms after it was seen off at the earliest
+local OFF_H, START_MS = 0.6, 2200
 local WAKE_KMH = 3               -- the motor's creep that wakes a parked car before it flies (go)
 -- the real seconds one frame may count toward the flight's limit: a pause (no OnTick) is not flown time
 local REAL_MAX = 0.25
@@ -95,18 +115,50 @@ end
 local function groundZ(v) return H.groundZ(v, true) end -- cached: H.groundReset at each action's start
 -- floors between the ground and the car's physics origin at rest, per car, measured when it stands on the ground
 local RESTS = {}
+-- [vid] = true: its soft landing ended at rest off the ground (REST_S); the watch's tilt branch skips it until it
+-- stands on the ground again or starts a boost or stunt (a car teetering on an eave would start a landing each time
+-- it slips, a third each)
+local RESTED = {}
 local function heightOf(v, rest) return (v:getDebugZ() - groundZ(v) - rest) * FLOOR end
 
--- kickflip / backflip: what lies on the car's way, read once before take-off. Near the ground (the engine checks
--- the car's own level, BaseVehicle.java:2965-3003: above one floor it no longer hits what stands on the ground) a
--- tree, fence or pole (CarSlowFactor, HitByCar), a solid tile or a wall; all the way, a floor up to the apex (a roof,
--- a bridge). shortcut: tiles only, not the car's exact outline; a wall between two side lanes is missed.
-local function blocked(sq)
-    if sq:isSolid() or sq:isSolidTrans() then return true end
+-- kickflip / backflip: what lies on the car's way, read once before take-off. Two kinds:
+-- * slowed or stopped at any height: an object with CarSlowFactor or HitByCar (a tree, a fence, a hedge, a pole). The
+--   engine reads the objects on the car's own level (breakingObjects, BaseVehicle.java:2965-3003), and that level
+--   stays 0 over open ground however high the car is (BaseVehicle.java:3404-3410: z is the origin's floor only where
+--   that square exists with a floor on it or under it); once listed only the 2D distance counts (:3045-3080). So the
+--   whole way (r15 KshotA: stopped 2.70 m up)
+-- * a static body (IsoChunk.java:1949-2107): a solid, solidtrans or blocksight square, stairs, a tree, a moveable, a
+--   PhysicsShape / PhysicsMesh tile, a player's whole-square wall, on level 0 an outdoor lamp post or a hoop; a wall,
+--   window (open or shut) or shut door on the square's own N / W edge. Built per level (updatePhysicsForLevel; their
+--   height is in the native code, unread): taken as one floor high at most, so only where the car is under one floor
+-- All the way, a floor up to the apex (a roof, a bridge). shortcut: tiles only, not the car's exact outline
+local function slows(sq)
     local objs = sq:getObjects()
     for i = 0, objs:size() - 1 do
         local p = objs:get(i):getProperties()
         if p and (p:has("CarSlowFactor") or p:has("HitByCar")) then return true end
+    end
+    return false
+end
+local HOOPS = { recreational_sports_01_19 = true, recreational_sports_01_21 = true, recreational_sports_01_32 = true }
+local function body(sq, ground) -- ground: level 0, where lamp posts and hoops get one (IsoChunk.java:1992-2013)
+    if sq:isSolid() or sq:isSolidTrans() or sq:HasStairs() then return true end
+    local f = sq:getProperties()
+    if f and (f:has(IsoFlagType.blocksight) or f:has(IsoFlagType.collideN) or f:has(IsoFlagType.collideW)
+        or f:has(IsoFlagType.windowN) or f:has(IsoFlagType.windowW)
+        or (f:has(IsoFlagType.doorN) or f:has(IsoFlagType.doorW)) and not f:has(IsoFlagType.open)) then return true end
+    if sq:has(IsoObjectType.tree) or sq:has(IsoObjectType.isMoveAbleObject) then return true end
+    local objs = sq:getObjects()
+    for i = 0, objs:size() - 1 do
+        local o = objs:get(i)
+        local p = o:getProperties()
+        if p and (p:has("PhysicsShape") or p:has("PhysicsMesh")) then return true end
+        if instanceof(o, "IsoThumpable") and o:isBlockAllTheSquare() then return true end
+        if ground then
+            local s = o:getSprite()
+            local n = s and s:getName()
+            if n and (n:find("lighting_outdoor_", 1, true) or HOOPS[n]) then return true end
+        end
     end
     return false
 end
@@ -139,7 +191,7 @@ local function clearPath(v, conf, act)
                 seen[k] = true
                 local sq = cell:getGridSquare(x, y, z0)
                 if not sq then return false end -- not loaded: can't tell
-                if low and blocked(sq) then return false end
+                if slows(sq) or low and body(sq, z0 == 0) then return false end
                 local pv = prev[o]
                 if low and pv and pv:isBlockedTo(sq) then return false end
                 if roofOver(cell, x, y, z0, levels) then return false end
@@ -162,8 +214,36 @@ local function clearAbove(v, conf)
     return true
 end
 
+-- where a flight's landing comes down: nothing under the car's outline (-2.5 to +4 m along it, a tile either side)
+-- that slows or stops a car on the level it lands on (slows / body above)
+local function landClear(v)
+    local fw = v:getForwardVector(V3.f)
+    local l = math.max(1e-6, math.sqrt(fw:x() ^ 2 + fw:z() ^ 2))
+    local fx, fy = fw:x() / l, fw:z() / l
+    local cell, z0 = getCell(), groundZ(v)
+    local x0, y0 = v:getX(), v:getY()
+    for d = -2.5, 4, 0.5 do
+        for o = -1, 1 do
+            local sq = cell:getGridSquare(math.floor(x0 + fx * d - fy * o), math.floor(y0 + fy * d + fx * o), z0)
+            if sq and (slows(sq) or body(sq, z0 == 0)) then return false end
+        end
+    end
+    return true
+end
+
 -- ---- the action this machine flies (one at a time) ----
 local F = nil
+-- the motor asked off in flight (offAsked): Core.lua CheckOperate.Battery holds the driver's input back until the
+-- landing comes down (sink), or vanilla starts it again on W once it idles (CarController.java:329-341). The brake
+-- forced once and read once: the controls kept from then on are braking or park()'s all-false (:983-990), no gas
+function H.offHold(v)
+    local f = F
+    if not f or f.v ~= v or not f.offAsked or f.sink then return false end
+    if v:isRegulator() then v:setRegulator(false) end -- cruise is gas too (CarController.java:243-247)
+    if not f.snap then f.snap = 1; v:setForceBrake(); return true end -- counts from the next ms (:974-975)
+    if f.snap == 1 then f.snap = 2; return false end -- one read with the brake forced on
+    return true
+end
 function H.active() return F end
 -- { vid, n, t }: the boost this machine ended off an edge (n: its number, t: its busy flag's time). Its busy flag stays
 -- in this machine's copy until the server's clear arrives, so it is no bar to that fall's landing, and the landing
@@ -340,13 +420,15 @@ local function halt()
 end
 
 -- abort: it can't go on here (the physics left, someone sat in); the server judges what happened (server thrustEnd).
--- why and abort optional (`...`: most callers leave them out, and Kahlua does not fill left-out fixed parameters)
+-- rest: a soft landing still off the ground but at rest (REST_S): the server ends it where it is.
+-- why, abort and rest optional (`...`: most callers leave them out, and Kahlua does not fill left-out fixed parameters)
 local function stop(done, ...)
-    local why, abort = ...
+    local why, abort, rest = ...
     local f = halt()
     if not f then return end
+    if rest then RESTED[f.vid] = true end
     T.request(f.player, "thrustEnd", { vid = f.vid, act = f.act, done = done == true, sec = f.flown, abort = abort,
-        n = f.n, term = f.term })
+        n = f.n, term = f.term, rest = rest })
     if why then HaloTextHelper.addBadText(f.player, T.denyText(why)) end
 end
 
@@ -447,9 +529,10 @@ local function start(player, v, act, sec, app, n, ...)
         bank = { jx = 0, jy = 0, jz = 0, lx = 0, ly = 0, lz = 0, lastTq = false } }
     if act == "land" then
         f.rest, f.lifted = RESTS[vid] or c.rest, true
-    else
+    else -- a boost or stunt leaves where it rested behind (r2rest-mp-r2 boostnearhold: still RESTED, it went over a
+        -- roof's edge nose-first and the tilt branch let it fall at -5.9 m/s)
         f.rest = clamp(v:getDebugZ() - groundZ(v), 0.02, 0.25)
-        RESTS[vid] = f.rest
+        RESTS[vid], RESTED[vid] = f.rest, nil
     end
     F = f
     if app and not authority(v) then f.phase, f.ms0 = "wait", getTimestampMs() else go(f) end
@@ -465,6 +548,26 @@ local function padAxis(a)
     local m = math.abs(a)
     if m <= PAD_DEAD then return 0 end
     return (a < 0 and -1 or 1) * (m - PAD_DEAD) / (1 - PAD_DEAD)
+end
+
+-- a boost over by this machine: its landing may pass that boost's busy flag until the server's clear comes (OFF_EDGE).
+-- Also one at its speed on an edge's lip: it rolls off a moment later (r2f3-mp-d2 boostnearhold: its thrustEnd 300 ms
+-- late, the landing refused here meanwhile, asked at up 0.3 and down at 0.83)
+local function boostOver(f, v)
+    local busy = busyOf(v)
+    OFF_EDGE = { vid = f.vid, n = f.n, t = type(busy) == "table" and busy.t or nil }
+    stop(f.lifted)
+end
+
+-- a flight's motor, shut off at OFF_H m (fly), started again as its landing comes down: once, by the vanilla start
+-- (ISVehicleMenu.onStartEngine, the HUD's power key's way: every kind of key), START_MS after it was seen off
+-- (ShuttingDown lasts 2 s, tryStartEngine acts only from Idle: BaseVehicle.java:7611-7653). Not tried again (each
+-- try costs the 12V 0.025); the heater back on if it was (vanilla toggleHeater, VehicleCommands.lua:59-71)
+local function startBack(f, v, now)
+    if not f.offAsked or f.started or not f.offSeen or now - f.offSeen < START_MS or v:isEngineRunning() then return end
+    f.started = true
+    ISVehicleMenu.onStartEngine(f.player)
+    if f.heat then sendClientCommand(f.player, "vehicle", "toggleHeater", { on = true, temp = f.heat }) end
 end
 
 -- each frame while an action runs
@@ -494,6 +597,7 @@ function H.tick()
     local now = getTimestampMs()
     local real = math.min(REAL_MAX, math.max(0, (now - (f.ms or now)) / 1000))
     f.ms = now
+    if f.offAsked and not f.offSeen and not v:isEngineRunning() then f.offSeen = now end -- ShuttingDown from here
     local dt = math.min(DT_MAX, math.max(0, getGameTime():getPhysicsSecondsSinceLastUpdate()))
     if dt <= 0 then return end -- paused
     if not v:isPhysicsActive() then v:setPhysicsActive(true) end -- a sleeping body takes no impulse (PoC r2)
@@ -510,6 +614,12 @@ function H.tick()
             return beginRun(f)
         end
         if t > ROLL_S then return stop(false, "THRUST_NO_LIFT") end
+        -- the brake (Space, the default up key, held as it was asked: r2f3-key-a) drops the cruise every frame
+        -- (CarController.java:460-462): set it again, so the creep goes on once it is let go, within ROLL_S
+        if not v:isRegulator() then
+            v:setRegulatorSpeed(WAKE_KMH)
+            v:setRegulator(true)
+        end
         return
     elseif ph == "drive" then
         if v:getCurrentSpeedKmHour() >= c.rollKmh then
@@ -545,19 +655,34 @@ function H.tick()
         local lv = v:getLinearVelocity(V3.lv)
         local gain = math.sqrt(lv:x() ^ 2 + lv:z() ^ 2) - f.v0
         if hm > 1.5 and vy < -2 then -- off an edge: over now, the driver's soft landing takes the fall (H.watch)
-            local pl, busy = f.player, busyOf(v)
-            OFF_EDGE = { vid = f.vid, n = f.n, t = type(busy) == "table" and busy.t or nil }
-            stop(f.lifted)
+            local pl = f.player
+            boostOver(f, v)
             return H.watch(pl, v)
         end
         if gain > 2 then f.lifted = true end
-        if t > 0.4 and gain < 1 then return stop(false, "THRUST_NO_LIFT") end
-        if gain + f.v0 >= c.boostV or t > 1.5 then return stop(f.lifted) end
+        -- stopped short once up to speed (r2f3-mp-d3 boostnearhold: into the support east of roof 1, asked to land at up
+        -- -0.66 on its busy flag): over like any other boost, not "no lift"
+        if t > 0.4 and gain < 1 then
+            if f.lifted then return boostOver(f, v) end
+            return stop(false, "THRUST_NO_LIFT")
+        end
+        if gain + f.v0 >= c.boostV or t > 1.5 then return boostOver(f, v) end
     elseif ph == "fly" then
         if f.wantLand or (f.sec and f.flown >= f.sec) then
+            -- stop at its height first, gliding on at GLIDE_V over anything that would catch it (landClear)
+            local psi = st.psiT
             setLand(f, hm)
+            f.brake, f.brakeH, f.gdx, f.gdz, f.cx, f.cy, f.clear = true, hm, math.cos(psi), math.sin(psi), nil, nil, nil
         else
             f.flown = f.flown + real
+            -- the motor off once the wheels are clear (oracle-flight2 Q1): a running motor's car hits what it flies
+            -- through (r2scan: zombies lying under it held it 21.6 s); started again as it comes down (startBack)
+            if not f.offAsked and hm > OFF_H and v:isEngineRunning() then
+                local h = v:getPartById("Heater")
+                local hd = h and h:getModData()
+                f.offAsked, f.heat = true, hd and hd.active and tonumber(hd.temperature) or nil
+                ISVehicleMenu.onShutOff(f.player) -- vanilla's 0 s action: vehicle:shutOff() on the server
+            end
             -- a controller's player (BaseVehicle.java:4661-4668): as vanilla drives (CarController.java:958-967), the
             -- right stick for the height (pushed up: negative, PlayerCamera.java:148); with RB held it looks around
             -- instead (PlayerCamera.java:144-146)
@@ -615,7 +740,70 @@ function H.tick()
         -- the curve's own braking fed forward (d rvy/dt = 6 vy / rvy on it): the PD alone trailed it by 0.7-1.2 m/s
         -- and touched down at -2.7 (kickflip) / -3.2 (backflip) m/s (r2fe-sp-a, switching at 1.5 m)
         st.ray = (st.rvy > -8 and st.rvy < -0.7) and math.max(0, 6 * vy / st.rvy) or 0
-        if hm < 0.05 or (hm < 0.4 and vy > -0.25) or f.t > LAND_S then return stop(f.lifted) end
+        if hm < 0.05 or (hm < 0.4 and vy > -0.25) then return stop(f.lifted) end
+        -- still up after LAND_S: over where it is, as at rest (RESTED: the watch's tilt branch asks no more; on its
+        -- own, SP's busy cleared at once, it asked again and billed the tank twice: r2f3-sp-probe 6 of 30)
+        if f.t > LAND_S then return stop(f.lifted, nil, nil, true) end
+        local lv = v:getLinearVelocity(V3.lv)
+        if f.brake then -- a flight's landing: held at its height, slowed to GLIDE_V; down once clear or after GLIDE_S
+            if lv:x() ^ 2 + lv:z() ^ 2 <= (GLIDE_V * 1.1) ^ 2 then
+                local cx, cy = math.floor(v:getX()), math.floor(v:getY())
+                if cx ~= f.cx or cy ~= f.cy then f.cx, f.cy, f.clear = cx, cy, landClear(v) end -- a new square: look once
+            end
+            if not f.clear and f.t <= GLIDE_S then
+                st.rh, st.rvy, st.ray = f.brakeH, 0, 0
+                st.vTx, st.vTz = f.gdx * GLIDE_V, f.gdz * GLIDE_V
+                return drive(f, v, dt, hm)
+            end
+            f.brake, f.sink, st.vTx, st.vTz = nil, true, 0, 0 -- coming down now, stopping where it is
+            startBack(f, v, now)
+        end
+        local s = f.slide
+        if s then -- lifted clear of what held it and carried the way it leans; then down again
+            s.t = s.t + dt
+            local dx, dy = v:getX() - s.x, v:getY() - s.y
+            if dx * dx + dy * dy >= SLIDE_D * SLIDE_D or s.t > SLIDE_S then
+                T.log(string.format("thrust carry vid=%d d=%.2f t=%.1f h=%.2f", f.vid, math.sqrt(dx * dx + dy * dy), s.t, hm))
+                f.slide, f.restH, st.vTx, st.vTz = nil, nil, 0, 0
+            else
+                -- an absolute height: the floor under it (hm's) may change on the way
+                st.rh, st.rvy, st.ray = hm + (s.z - v:getDebugZ()) * FLOOR, 0, 0
+                st.vTx, st.vTz = s.dx * SLIDE_V, s.dz * SLIDE_V
+                return drive(f, v, dt, hm)
+            end
+        end
+        local p = f.probe
+        if p then -- no push: does it stay put on its own? (the first PROBE_A s is the springs settling)
+            p.t = p.t + dt
+            if not p.h then
+                if p.t >= PROBE_A - 1e-6 then p.h, p.ux, p.uy, p.uz = hm, ux, uy, uz end
+            elseif p.t >= PROBE_B - 1e-6 then
+                local dv = math.sqrt(lv:x() ^ 2 + vy * vy + lv:z() ^ 2)
+                local dot = (ux * p.ux + uy * p.uy + uz * p.uz)
+                    / math.max(1e-9, math.sqrt((ux * ux + uy * uy + uz * uz) * (p.ux ^ 2 + p.uy ^ 2 + p.uz ^ 2)))
+                local moving = dv > REST_V or p.h - hm > PROBE_DH or dot < PROBE_DOT
+                local sx, sz = ux, uz
+                if sx * sx + sz * sz < 0.05 ^ 2 then sx, sz = lv:x(), lv:z() end
+                local l = math.sqrt(sx * sx + sz * sz)
+                T.log(string.format("thrust probe vid=%d dv=%.3f dh=%.3f dAng=%.2f h=%.2f dir=%.0f %s", f.vid, dv, p.h - hm,
+                    math.deg(math.acos(math.min(1, dot))), hm, math.deg(math.atan2(sz, sx)), moving and "moving" or "at rest"))
+                if not moving then return stop(f.lifted, nil, nil, true) end
+                -- held up by its own push (a roof's edge): lifted off it and carried away, then down and probed again
+                local t0 = f.t
+                setLand(f, hm)
+                f.t, f.probe = t0, nil
+                if l > 1e-3 then
+                    f.slide = { dx = sx / l, dz = sz / l, x = v:getX(), y = v:getY(), z = v:getDebugZ() + LIFT_DH / FLOOR, t = 0 }
+                else f.noRest = true end -- no way to go: land on in place
+            end
+            return
+        end
+        if f.noRest or lv:x() ^ 2 + vy * vy + lv:z() ^ 2 > REST_V * REST_V or not f.restH or math.abs(hm - f.restH) > REST_DH then
+            f.restH, f.restT = hm, 0
+        else
+            f.restT = f.restT + dt
+            if f.restT >= REST_S then f.probe = { t = 0 } return end
+        end
     end
     drive(f, v, dt, hm)
 end
@@ -768,7 +956,11 @@ T.ClientCommands.deny = function(args)
         local a = asked[pn]
         if a and a.n == args.n then asked[pn] = nil end
         local f = F
-        if f and f.n == args.n and not f.ok then halt() end
+        if f and f.n == args.n and not f.ok then
+            halt()
+            -- a landing refused: the watch's tilt branch (no vy past 53 degrees) asks no more for this car at rest
+            if f.act == "land" then RESTED[f.vid] = true end
+        end
         local p = getSpecificPlayer(pn) or getSpecificPlayer(0)
         if p then HaloTextHelper.addBadText(p, H.whyText(args.vid and getVehicleById(args.vid), tostring(args.reason))) end
         return
@@ -779,7 +971,8 @@ end
 -- HUD.lua, each dashboard update (10 Hz) of a car with thrusters: notes where it rests on the ground, and catches a
 -- fall (off a roof, a stunt gone wrong) to land it softly when there is air for it. A car tipping nose-first over an
 -- edge slides down the wall under it slower than a fall (r2int-sp-full roof 1 #1: -1.9 m/s at most, on its nose
--- after): tilted past 37 degrees and coming down over the drop counts too
+-- after): tilted past 37 degrees and coming down over the drop counts too, past 53 at any speed (r2f3-mp-c boostnear:
+-- rolling over on a fence top at -0.1 m/s, asked only at up 0)
 function H.watch(player, v)
     if F or not v:isDriver(player) then return end
     local c = H.conf(v)
@@ -789,7 +982,8 @@ function H.watch(player, v)
     local hm = heightOf(v, RESTS[vid] or c.rest)
     if hm < 0.2 and math.abs(vy) < 0.05 then
         RESTS[vid] = clamp(v:getDebugZ() - groundZ(v), 0.02, 0.25)
-    elseif ((hm > 1.5 and vy < -2) or (hm > 1 and vy < -0.5 and v:getUpVector(V3.u):y() < 0.8))
+        RESTED[vid] = nil
+    elseif ((hm > 1.5 and vy < -2) or (hm > 1 and not RESTED[vid] and v:getUpVector(V3.u):y() < (vy < -0.5 and 0.8 or 0.6)))
         and (H.air(v) or 0) >= H.COST.land and H.check(player, v, "land") then
         H.ask(player, v, "land")
     end
@@ -890,7 +1084,19 @@ Events.OnKeyPressed.Add(function(key)
 end)
 
 -- no getting out mid-air: the car is this machine's to fly until it lands. Flying, getting out (vanilla's exit: a
--- controller's A, ISButtonPrompt.lua:444; the Interact key, Vehicles.lua OnUseVehicle) lands it instead
+-- controller's A, ISButtonPrompt.lua:444; the Interact key, Vehicles.lua OnUseVehicle) lands it instead.
+-- At rest off the ground after (another car's roof, an eave), vanilla's way out from the seat runs into what holds it
+-- up (isExitBlocked, BaseVehicle.java:6669-6699: lineClearCollide on the car's floor; r2rest-mp-near2: both seats, no
+-- seat to switch to) and nothing else may move it (THRUST_AIRBORNE): out as vanilla's onExitAux, without that check
+-- (ISExitVehicle puts the player at the seat's outside spot on the car's floor, setCharacterPosition)
+local function exitUp(p, v, seat)
+    local part = v:getPassengerDoor(seat)
+    local door = part and part:getInventoryItem() and part:getDoor()
+    if door and door:isLocked() then ISTimedActionQueue.add(ISUnlockVehicleDoor:new(p, part)) end
+    if door and not door:isOpen() then ISTimedActionQueue.add(ISOpenVehicleDoor:new(p, v, part)) end
+    ISTimedActionQueue.add(ISExitVehicle:new(p))
+    if door then ISTimedActionQueue.add(ISCloseVehicleDoor:new(p, v, part)) end
+end
 local origExit = ISVehicleMenu.onExit
 function ISVehicleMenu.onExit(playerObj, seatFrom)
     local f = F
@@ -901,6 +1107,14 @@ function ISVehicleMenu.onExit(playerObj, seatFrom)
         end
         HaloTextHelper.addBadText(playerObj, T.denyText("THRUST_IN_AIR"))
         return
+    end
+    local v = playerObj:getVehicle()
+    local c = v and H.conf(v)
+    if c and heightOf(v, RESTS[v:getId()] or c.rest) > 0.4 and v:isStopped() then
+        local seat = seatFrom or v:getSeat(playerObj)
+        if v:isExitBlocked(playerObj, seat) and not ISVehicleMenu.getBestSwitchSeatExit(playerObj, v, seat) then
+            return exitUp(playerObj, v, seat)
+        end
     end
     return origExit(playerObj, seatFrom)
 end
