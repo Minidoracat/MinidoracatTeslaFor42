@@ -1470,18 +1470,23 @@ check(part:getModData().chg == nil and s.command == "deny" and s.args.reason == 
     "E1: a cable plugged in mid-action: THRUST_BUSY, not linked")
 thr.busy = nil
 -- S4: the pack at its 12V floor, plugged on the grid: the air is booked before the charge, so this settle refills
--- nothing (the tank and its clock stay), the charge goes to the pack
+-- nothing (the tank stays, its clock moves on: that stretch is not refilled), the charge goes to the pack; from the
+-- next settle the charge pays it, cut at the floor
 C.plug(pt, vt, iso)
 thr = part:getModData().thr
 thr.gas, thr.at = 0.5, H.hours()
-local at8 = H.hours()
 part:setContainerContentAmount(B.capacity(part) * T.DCDC_MIN_PCT / 100)
 local k8 = B.kwh(part)
 H.setHours(H.hours() + 0.125)
 C.settle(lo, H.hours())
-check(thr.gas == 0.5 and thr.at == at8 and near(B.kwh(part) - k8, 0.125 * 11.5, 1e-6),
-    "S4: the pack at its floor, plugged in: no refill this settle, the tank's clock not moved, only the charge added: "
+check(thr.gas == 0.5 and thr.at == H.hours() and near(B.kwh(part) - k8, 0.125 * 11.5, 1e-6),
+    "S4: the pack at its floor, plugged in: no refill this settle, the tank's clock moved on, only the charge added: "
     .. string.format("gas %.3f kWh %+.4f", thr.gas, B.kwh(part) - k8))
+H.setHours(H.hours() + 0.125)
+C.settle(lo, H.hours())
+check(near(thr.gas, 0.5 + 0.25 * (0.125 * 11.5) / 10, 1e-6) and thr.at == H.hours() and near(B.kwh(part) - k8, 0.125 * 11.5, 1e-6),
+    "S4: the next settle: the charge the last one added pays the refill, cut at the floor, then this stretch's charge: "
+    .. string.format("gas %.4f kWh %+.4f", thr.gas, B.kwh(part) - k8))
 C.unplug(pt, vt)
 YS.thruster = nil
 Events.OnSpawnVehicleEnd.Remove(TH.onLoad)
