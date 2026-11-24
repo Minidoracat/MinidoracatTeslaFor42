@@ -18,18 +18,21 @@ F.MODELS = { lift = { Lift = true }, flip = { Lift = true, Side = true }, boost 
 F.SOUND, F.SOUND_END = "MinidoracatTesla_RoadsterJet", "MinidoracatTesla_RoadsterJetEnd"
 -- Fog: a dense mound piling up round the spot, as the official touch-down (f1-ramp 07m18.5: about 3-4 car heights
 -- tall, 2.8 car lengths wide), low toward the camera and tall behind, densest at once and gone in 2-3 s.
--- { dx, dy, texture (1 tall, 2 tall in another shape, 3 mid, 4 low), peak alpha, life ms, delay ms }; +x +y is toward
--- the camera. The inner ring comes first and goes first, the outer ring 200-300 ms later and lasts longer, so the cloud
--- seems to roll outward (a marker cannot grow, IsoMarkers.java:142); behind the car the two tall shapes cross-fade on
--- one tile so it seems to churn. The bank on the car's own tile hides its lower half; none stands straight in front of
--- it ((1,1), (2,2)): one more low bank right under it read as a tier (r2fx-sp-10).
+-- { dx, dy, texture (1 tall, 2 tall in another shape, 3 mid, 4 low, 5 wide low), peak alpha, life ms, delay ms }; +x +y
+-- is toward the camera (screen: dx - dy across, dx + dy down). The inner ring comes first and goes first, the outer
+-- ring 200-300 ms later and lasts longer, so the cloud seems to roll outward (a marker cannot grow, IsoMarkers.java:142);
+-- behind the car the two tall shapes cross-fade on one tile so it seems to churn. The top is two tall mounds side by
+-- side (broad, round), the flanks differ (wide low on the left, mid on the right) and the banks sit off the even
+-- diagonals with uneven delays: mounds all centred and stepping out evenly read as a pointed tree (r2fx-sp-11). The
+-- bank on the car's own tile hides its lower half; none stands straight in front of it (a tier, r2fx-sp-10).
 F.FOG = { "media/textures/MinidoracatTesla/JetFog1.png", "media/textures/MinidoracatTesla/JetFog2.png",
-    "media/textures/MinidoracatTesla/JetFog3.png", "media/textures/MinidoracatTesla/JetFog4.png" }
+    "media/textures/MinidoracatTesla/JetFog3.png", "media/textures/MinidoracatTesla/JetFog4.png",
+    "media/textures/MinidoracatTesla/JetFog5.png" }
 F.PUFFS = {
-    land = { { -1, -1, 1, 0.9, 1300, 0 }, { -1, -1, 2, 0.85, 1700, 500 }, { -1, 1, 3, 0.85, 1800, 0 },
-        { 1, -1, 3, 0.85, 1800, 0 }, { 0, 0, 4, 0.85, 1800, 0 },
-        { -2, -2, 1, 0.55, 2400, 250 }, { -2, 0, 3, 0.6, 2400, 200 }, { 0, -2, 3, 0.6, 2400, 200 },
-        { 2, 0, 4, 0.6, 2500, 250 }, { 0, 2, 4, 0.6, 2500, 250 } },
+    land = { { -1, -1, 1, 0.9, 1300, 0 }, { -1, -1, 2, 0.85, 1700, 500 }, { -2, -1, 2, 0.7, 1600, 80 },
+        { -1, -2, 3, 0.7, 1700, 120 }, { -1, 1, 5, 0.85, 1800, 0 }, { 1, -1, 3, 0.8, 1800, 0 }, { 0, 0, 4, 0.85, 1800, 0 },
+        { -3, 0, 5, 0.55, 2400, 230 }, { 0, -3, 4, 0.5, 2300, 270 }, { 2, 0, 5, 0.55, 2500, 210 },
+        { -1, 2, 4, 0.5, 2500, 290 } },
     -- a dense ball right behind the tail (F.FOG_BEHIND), then spreading
     boost = { { 0, 0, 3, 0.9, 1500, 0 }, { -1, -1, 3, 0.6, 2000, 250 }, { 1, 1, 4, 0.6, 2000, 250 } },
 }
