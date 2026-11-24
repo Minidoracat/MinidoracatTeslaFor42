@@ -224,6 +224,17 @@ end
 
 -- ---- the action this machine flies (one at a time) ----
 local F = nil
+-- the motor asked off in flight (offAsked): Core.lua CheckOperate.Battery holds the driver's input back until the
+-- landing comes down (sink), or vanilla starts it again on W once it idles (CarController.java:329-341). The brake
+-- forced once and read once: the controls kept from then on are braking or park()'s all-false (:983-990), no gas
+function H.offHold(v)
+    local f = F
+    if not f or f.v ~= v or not f.offAsked or f.sink then return false end
+    if v:isRegulator() then v:setRegulator(false) end -- cruise is gas too (CarController.java:243-247)
+    if not f.snap then f.snap = 1; v:setForceBrake(); return true end -- counts from the next ms (:974-975)
+    if f.snap == 1 then f.snap = 2; return false end -- one read with the brake forced on
+    return true
+end
 function H.active() return F end
 -- { vid, n, t }: the boost this machine ended off an edge (n: its number, t: its busy flag's time). Its busy flag stays
 -- in this machine's copy until the server's clear arrives, so it is no bar to that fall's landing, and the landing

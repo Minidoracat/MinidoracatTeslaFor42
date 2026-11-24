@@ -1430,6 +1430,23 @@ step(75, function(h) overUp = math.max(overUp, h - fc.flyMaxH) end)
 step(75, function(h) overUp = math.max(overUp, h - fc.flyMaxH) worstUp = math.max(worstUp, math.abs(h - fc.flyMaxH)) end)
 check(overUp <= 0.2 and worstUp < 0.2,
     string.format("hover: PageUp 2 s to flyMaxH %.1f m, %.2f m over at most, within %.2f m from 1.5 s after", fc.flyMaxH, overUp, worstUp))
+do -- Q1 guard (oracle-flight2): the motor asked off in flight, vanilla's auto-start on W (CarController.java:329-341)
+    -- is held back through CheckOperate.Battery: the brake forced once, read once, then the input held
+    local fo, brakes = TH.active(), 0
+    function cv:setForceBrake() brakes = brakes + 1 end
+    local bp = T.Battery.part(cv)
+    check(T.CheckOperate.Battery(cv, bp) == true and brakes == 0, "Q1 guard: flying, the motor not asked off: input live")
+    fo.offAsked, cv.reg = true, true
+    local r1 = T.CheckOperate.Battery(cv, bp)
+    local r2 = T.CheckOperate.Battery(cv, bp)
+    local r3 = T.CheckOperate.Battery(cv, bp)
+    check(r1 == false and r2 == true and r3 == false and brakes == 1 and cv.reg == false,
+        "Q1 guard: asked off: the brake forced once, read once, then held; cruise off")
+    check(T.CheckOperate.Battery({}, bp) == true, "Q1 guard: another car: untouched")
+    fo.sink = true
+    check(T.CheckOperate.Battery(cv, bp) == true, "Q1 guard: coming down: released")
+    fo.offAsked, fo.sink, fo.snap, cv.setForceBrake = nil, nil, nil, nil
+end
 -- a controller's player flies with it as vanilla drives (CarController.java:958-967): RT ahead, LT back, the left
 -- stick steers; the right stick sets the height (pushed up: negative, PlayerCamera.java:148). A stick resting a little
 -- off (inside the dead zone) does nothing
