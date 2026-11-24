@@ -1044,6 +1044,37 @@ check(said == "IGUI_MinidoracatTesla_Deny_THRUST_NO_AIR IGUI_MinidoracatTesla_Th
     "F2: refused by the server: said with when the tank is full again (H.whyText), the ask answered (the next one may go)")
 check(TH.whyText(nil, "THRUST_NO_AIR") == "IGUI_MinidoracatTesla_Deny_THRUST_NO_AIR"
     and TH.whyText(cv, "THRUST_NO_AIR") == "IGUI_MinidoracatTesla_Deny_THRUST_NO_AIR", "no car, or a full tank: no refill time")
+-- T7: the pack pays the refill down to its 12V floor only (server H.refill): the client's estimate stops where the
+-- server's next settle would (thr.gas + spare / ThrusterRefillKwh), and the reason says to charge, not a time
+do
+    local NO_AIR = "IGUI_MinidoracatTesla_Deny_THRUST_NO_AIR"
+    local ccap, ckwh = B.capacity(cpart), cpart:getContainerContentAmount()
+    local floor = ccap * T.DCDC_MIN_PCT / 100
+    cpart:getModData().thr = { gas = 0.5, at = H.hours() - 1 } -- an hour ago: the plain estimate is full
+    cpart:setContainerContentAmount(floor)
+    check(near(TH.air(cv), 0.5, 1e-6) and TH.refillShort(cv) == true
+        and TH.whyText(cv, "THRUST_NO_AIR") == NO_AIR .. " IGUI_MinidoracatTesla_Thrust_RefillLow",
+        "T7: the pack at its floor: the air stays at the settled 50 %, short, the reason says charge the battery")
+    cpart:setContainerContentAmount(floor + 10)
+    check(near(TH.air(cv), 0.75, 1e-6) and TH.refillShort(cv) == true
+        and TH.whyText(cv, "THRUST_NO_AIR") == NO_AIR .. " IGUI_MinidoracatTesla_Thrust_RefillLow",
+        "T7: 10 kWh over the floor: a quarter tank more (40 kWh a tank), still short of full")
+    cpart:setContainerContentAmount(floor + 20)
+    check(near(TH.air(cv), 1, 1e-6) and TH.refillShort(cv) == false and TH.whyText(cv, "THRUST_NO_AIR") == NO_AIR,
+        "T7: 20 kWh over the floor pays the half tank: full, not short")
+    cpart:getModData().thr = { gas = 0.5, at = H.hours() }
+    check(TH.refillShort(cv) == false and TH.whyText(cv, "THRUST_NO_AIR") == NO_AIR .. " IGUI_MinidoracatTesla_Thrust_Refill",
+        "T7: the pack can pay it: the minutes to full, as before")
+    cpart:getModData().thr = { gas = 0.5, at = H.hours() - 1 }
+    cpart:setContainerContentAmount(floor)
+    SandboxVars.MinidoracatTesla.ThrusterRefillKwh = 0
+    check(near(TH.air(cv), 1, 1e-6) and TH.refillShort(cv) == false, "T7: ThrusterRefillKwh 0: a free refill, never short")
+    SandboxVars.MinidoracatTesla.ThrusterRefillKwh = nil
+    cpart:getModData().thr = { gas = 1 }
+    check(TH.refillShort(cv) == false, "T7: a full tank at the floor: not short (nothing to refill)")
+    cpart:getModData().thr = { gas = 1, at = H.hours() }
+    cpart:setContainerContentAmount(ckwh)
+end
 local ticks = H.count("OnTick")
 TH.ask(cp, cv, "boost")
 okFor("boost")

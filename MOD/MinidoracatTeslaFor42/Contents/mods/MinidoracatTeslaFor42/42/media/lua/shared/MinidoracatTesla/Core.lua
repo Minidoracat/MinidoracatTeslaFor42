@@ -601,6 +601,7 @@ function T.clipStep() return 0.8 / 60 * getGameTime():getUnmoddedMultiplier() en
 
 -- ---- battery readers (any side) ----
 local B = T.Battery
+T.DCDC_MIN_PCT = 5   -- the drive pack keeps the 12V topped up while it holds at least this much
 function B.part(vehicle)
     if not T.isTesla(vehicle) then return nil end
     local part = vehicle:getPartById(T.BATTERY_PART)

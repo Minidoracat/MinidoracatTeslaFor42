@@ -91,6 +91,21 @@ function H.gasNow(thr, now)
 end
 -- game minutes until the tank is full again
 function H.minutesToFull(gas) return math.ceil((1 - clamp(gas, 0, 1)) * H.refillMinutes()) end
+-- kWh the pack can give the tank: what it holds over its 12V floor (T.DCDC_MIN_PCT), as the server's refill pays it
+-- (server Thruster.lua H.refill)
+function H.packSpare(part)
+    local B = T.Battery
+    return math.max(0, B.kwh(part) - B.capacity(part) * T.DCDC_MIN_PCT / 100)
+end
+-- the pack can't pay to fill v's tank: the kWh from the settled air (thr.gas: the pack in the same part modData has
+-- paid up to it) to full is more than packSpare. False on a full tank or a free refill (ThrusterRefillKwh 0)
+function H.refillShort(v)
+    local part = T.Battery.part(v)
+    local thr = part and part:getModData().thr
+    if type(thr) ~= "table" or type(thr.gas) ~= "number" then return false end
+    local kwh = (1 - clamp(thr.gas, 0, 1)) * H.refillKwh()
+    return kwh > 1e-9 and kwh > H.packSpare(part) + 1e-9
+end
 
 -- Where the ground is under the car, the same on both sides (the server's "off the ground", the flying machine's
 -- height): the highest level at or under the car's physics origin with a floor there (a flat roof counts: flight PoC

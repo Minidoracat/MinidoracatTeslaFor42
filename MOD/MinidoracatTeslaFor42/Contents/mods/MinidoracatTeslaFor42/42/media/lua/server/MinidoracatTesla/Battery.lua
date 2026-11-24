@@ -8,7 +8,6 @@ local T = MinidoracatTesla
 local B = T.Battery
 
 T.MAX_ELAPSED = 10 -- cap per update: chunk reload hands in the whole unloaded time (GameTime.java:1374-1376)
-T.DCDC_MIN_PCT = 5   -- the drive pack keeps the 12V topped up while it holds at least this much
 T.BRAKE_WEAR = 0.5   -- regen does most of the braking (owner's manual, Maintenance Service Intervals)
 -- new cars carry a Mobile Connector in the trunk this often (%): Tesla shipped one with every car until 2022 and the
 -- manual says to keep it in the trunk for long trips; 1 in 4 keeps it a find next to loot and the recipe.

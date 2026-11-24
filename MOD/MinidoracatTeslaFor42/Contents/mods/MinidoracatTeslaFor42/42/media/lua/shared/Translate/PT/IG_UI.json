@@ -72,6 +72,7 @@
     "IGUI_MinidoracatTesla_Radial_ThrustLand": "Aterrar",
     "IGUI_MinidoracatTesla_Tip_ThrustAir": "Ar %1%%",
     "IGUI_MinidoracatTesla_Thrust_Refill": "Cheio em %1 min",
+    "IGUI_MinidoracatTesla_Thrust_RefillLow": "Charge the battery to refill",
     "IGUI_MinidoracatTesla_Tip_ThrustTank": "Ar dos propulsores %1%%",
     "IGUI_MinidoracatTesla_Tip_ThrustTankRefill": "Ar dos propulsores %1%% · %2",
     "IGUI_MinidoracatTesla_Key_ThrustFly": "Voar / aterrar",

@@ -72,6 +72,7 @@
     "IGUI_MinidoracatTesla_Radial_ThrustLand": "착륙",
     "IGUI_MinidoracatTesla_Tip_ThrustAir": "공기 %1%%",
     "IGUI_MinidoracatTesla_Thrust_Refill": "%1분 후 가득 참",
+    "IGUI_MinidoracatTesla_Thrust_RefillLow": "Charge the battery to refill",
     "IGUI_MinidoracatTesla_Tip_ThrustTank": "스러스터 공기 %1%%",
     "IGUI_MinidoracatTesla_Tip_ThrustTankRefill": "스러스터 공기 %1%% · %2",
     "IGUI_MinidoracatTesla_Key_ThrustFly": "비행 / 착륙",
