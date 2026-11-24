@@ -1130,6 +1130,30 @@ cv.dz, cv.vy, cv.speed = 0.075, 0, 7
 cv.driver = nil
 TH.tick()
 cv.driver, cv.speed = cp, 30
+do -- r2f3-mp-d2 boostnearhold: a boost ended at its speed on the edge's lip (not falling yet), its thrustEnd 300 ms late
+    -- to the server: the car rolled off over the drop meanwhile, its landing refused here on that boost's busy flag
+    -- until the clear came (asked at up 0.3, landed at 0.83). Any boost this machine ended is no bar to its own landing
+    local thr1 = cpart:getModData().thr
+    cv.dz, cv.vy, cv.uy, cv.speed = 0.075, 0, 1, 30
+    TH.ask(cp, cv, "boost")
+    okFor("boost")
+    local nb = TH.active().n
+    cpart:getModData().thr = { gas = 2 / 3, at = H.hours(), busy = { act = "boost", by = "test", t = H.hours() } }
+    cv.speed = 200
+    TH.tick()
+    check(TH.active() == nil, "a boost at its speed: over")
+    cv.dz, cv.vy, cv.uy, cv.speed = 0.075 + 2.2 / TH.FLOOR, -0.1, 0.55, 0
+    local n0 = #H.clientSent
+    TH.watch(cp, cv)
+    local lb = H.clientSent[n0 + 1]
+    check(lb and lb.command == "thrust" and lb.args.act == "land" and lb.args.over == nb and TH.active() and TH.active().act == "land",
+        "... its busy flag still here, the car tipping off the edge: the soft landing asked (naming the boost: over)")
+    okFor("land")
+    cv.driver = nil; TH.tick(); cv.driver = cp
+    cpart:getModData().thr = thr1
+    cv.dz, cv.vy, cv.uy, cv.speed = 0.075, 0, nil, 30
+    TH.watch(cp, cv)
+end
 -- a car tipping nose-first over a roof's edge (r2int-sp-full roof 1 #1: it slid down the wall below at -1.9 m/s at
 -- most and stood on its nose, never past -2 m/s): tilted and coming down over the drop, the soft landing asked;
 -- upright at that speed it is not a fall yet

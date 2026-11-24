@@ -548,6 +548,15 @@ local function padAxis(a)
     return (a < 0 and -1 or 1) * (m - PAD_DEAD) / (1 - PAD_DEAD)
 end
 
+-- a boost over by this machine: its landing may pass that boost's busy flag until the server's clear comes (OFF_EDGE).
+-- Also one at its speed on an edge's lip: it rolls off a moment later (r2f3-mp-d2 boostnearhold: its thrustEnd 300 ms
+-- late, the landing refused here meanwhile, asked at up 0.3 and down at 0.83)
+local function boostOver(f, v)
+    local busy = busyOf(v)
+    OFF_EDGE = { vid = f.vid, n = f.n, t = type(busy) == "table" and busy.t or nil }
+    stop(f.lifted)
+end
+
 -- each frame while an action runs
 function H.tick()
     local f = F
@@ -620,14 +629,13 @@ function H.tick()
         local lv = v:getLinearVelocity(V3.lv)
         local gain = math.sqrt(lv:x() ^ 2 + lv:z() ^ 2) - f.v0
         if hm > 1.5 and vy < -2 then -- off an edge: over now, the driver's soft landing takes the fall (H.watch)
-            local pl, busy = f.player, busyOf(v)
-            OFF_EDGE = { vid = f.vid, n = f.n, t = type(busy) == "table" and busy.t or nil }
-            stop(f.lifted)
+            local pl = f.player
+            boostOver(f, v)
             return H.watch(pl, v)
         end
         if gain > 2 then f.lifted = true end
         if t > 0.4 and gain < 1 then return stop(false, "THRUST_NO_LIFT") end
-        if gain + f.v0 >= c.boostV or t > 1.5 then return stop(f.lifted) end
+        if gain + f.v0 >= c.boostV or t > 1.5 then return boostOver(f, v) end
     elseif ph == "fly" then
         if f.wantLand or (f.sec and f.flown >= f.sec) then
             -- stop at its height first, gliding on at GLIDE_V over anything that would catch it (landClear)
