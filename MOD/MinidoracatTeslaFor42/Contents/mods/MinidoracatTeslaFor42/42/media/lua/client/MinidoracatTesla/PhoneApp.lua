@@ -74,6 +74,7 @@ local BTN = {
     back = {}, flash = { "controls", "flash" }, horn = { "controls", "horn" }, frunk = { "controls", "frunk" },
     trunk = { "controls", "trunk" }, tonneau = { "controls", "tonneau" }, falcon = { "controls", "falcon" },
     butterfly = { "controls", "butterfly" }, softtop = { "controls", "softtop" }, wing = { "controls", "wing" },
+    kickflip = { "controls", "kickflip" }, backflip = { "controls", "backflip" },
     map = { "location" }, navcar = { "location" },
     sentry = { "security", "sentry" },
     charge = { "charging", "charge" },
@@ -86,7 +87,7 @@ local BTN = {
 local BTN_ORDER = { "close", "cars", "lock", "qcharge", "qfrunk", "qtrunk", "controls", "location", "summon", "security",
     "charging", "back", "flash", "horn", "frunk", "trunk", "tonneau", "falcon", "butterfly", "softtop", "wing", "map", "navcar", "sentry",
     "charge", "come", "pick", "fwd", "rev", "again", "finish", "cancel", "go", "powershare", "psToggle", "floorDown",
-    "floorUp", "outlet" }
+    "floorUp", "outlet", "kickflip", "backflip" }
 -- the joypad's rows per page, top to bottom (buttons not shown are skipped); "cars" and "controls" are built (navRows)
 local NAV = {
     home = { { "cars", "close" }, { "lock", "qcharge", "qfrunk", "qtrunk" }, { "controls" }, { "location" }, { "summon" },
@@ -102,7 +103,7 @@ local NAV = {
 }
 -- the server actions: dimmed but pressable for a car this phone is not paired with (they say how to add it)
 local REMOTE = { "lock", "qcharge", "qfrunk", "qtrunk", "flash", "horn", "frunk", "trunk", "tonneau", "falcon", "butterfly", "softtop", "wing",
-    "sentry", "charge", "psToggle", "floorDown", "floorUp", "outlet" }
+    "sentry", "charge", "psToggle", "floorDown", "floorUp", "outlet", "kickflip", "backflip" }
 local QUICK = { "lock", "qcharge", "qfrunk", "qtrunk" }
 -- a car without a front trunk (Core.lua T.hasFrunk) has no qfrunk, one without a rear trunk (T.hasTrunk) no qtrunk
 local LIST = { "controls", "location", "summon", "security", "charging" }
@@ -112,13 +113,17 @@ local TITLE = { controls = "Controls", location = "Location", security = "Securi
 -- the summon pages' buttons (drawn as the mock's buttons: blue main, white stop, 1 px frame) and the summon each starts
 local SUM_BTNS = { "come", "pick", "fwd", "rev", "again", "finish", "cancel", "go" }
 local SUM_ID = { come = "come", target = "pick" } -- a running summon's button (dumb: fwd / rev by dir)
-local GRID = { "flash", "horn", "frunk", "trunk", "tonneau", "falcon", "butterfly", "softtop", "wing", "powershare" }
+local GRID = { "flash", "horn", "frunk", "trunk", "tonneau", "falcon", "butterfly", "softtop", "wing", "powershare", "kickflip",
+    "backflip" }
 -- a control cell only for cars whose Specs entry (Core.lua T.Specs) has this field; the page shows self.cells (read).
 -- The frunk cell: not on a car without a front trunk (T.hasFrunk)
 local GRID_NEED = { tonneau = "tonneau", falcon = "falcon", butterfly = "butterfly", softtop = "softTop", wing = "wing",
-    powershare = "powershare" }
+    powershare = "powershare", kickflip = "thruster", backflip = "thruster" }
 local GRID_ICON = { flash = "i_headlight", horn = "i_horn", frunk = "i_frunk", trunk = "i_trunk", tonneau = "i_tonneau",
     falcon = "i_falcon", butterfly = "i_butterfly", softtop = "i_softtop", wing = "i_wing", powershare = "i_powershare" }
+-- the thruster shows (Thruster.lua H.APP) draw the radial ring's icons (build_atlas.py radial_icons), tinted.
+-- shortcut: not in the atlas, which needs a Pillow with libraqm to rebuild; move them there on the next atlas build.
+local GRID_TEX = { kickflip = "radial_thrust_kickflip", backflip = "radial_thrust_backflip" }
 -- the tonneau, the Model X's falcon wing doors (both at once, Remote.lua ACT.falcon), the Cybercab's doors (both,
 -- ACT.butterfly), the Roadster's soft top and the Roadster Rocket's wing have no quick button on the home page
 local LIDS = { "frunk", "trunk", "tonneau", "falcon", "butterfly", "softtop", "wing" }
@@ -535,6 +540,11 @@ function App:onButton(b)
     end
     if b.hint then return self:showToast(txt("JoinHint"), false) end -- not paired with this phone: how to add it
     local st, act, on = self.st or {}, b.act, nil
+    if GRID_TEX[act] then -- the show: what only this machine sees first (the runway: client Thruster.lua H.check)
+        local v = self:summonCar()
+        local ok, why = v and T.Thruster.check(self.player, v, act, true)
+        if not ok then return self:showToast(denyText(why or "NOT_LOADED"), false) end
+    end
     if act == "lock" then act = st.locked and "unlock" or "lock"
     elseif act == "sentry" then on = not st.sentry
     elseif act == "frunk" or act == "trunk" or act == "tonneau" or act == "falcon" or act == "butterfly" or act == "softtop"
@@ -1095,6 +1105,10 @@ function App:read()
     b.flash.sub = txt("FlashSub")
     enable(b.horn, live, false, GRID_ICON.horn, TIP .. "Horn")
     b.horn.sub = txt("HornSub")
+    for id in pairs(GRID_TEX) do -- the thruster shows (Remote.lua ACT.kickflip / backflip)
+        enable(b[id], live, false, nil, TIP .. id:sub(1, 1):upper() .. id:sub(2))
+        b[id].sub = txt("ShowSub")
+    end
     local sentry = rec and st.sentry == true
     enable(b.sentry, live, sentry, nil, TIP .. (sentry and "SentryOff" or "SentryOn"))
     -- Powershare (Cybertruck, plan 4's four states) and the bed outlet, from the record (Remote.lua R.remember)
@@ -1226,6 +1240,8 @@ function App:layout()
     self.f = S / 2
     self.arrowTex = getTexture("media/textures/MinidoracatTesla/HUD/app_arrow" .. (S >= 1.5 and 2 or 1) .. "x.png")
     self.ringTex = getTexture("media/textures/MinidoracatTesla/HUD/app_ring.png") -- the summon range (build_atlas.py)
+    self.gridTex = {}
+    for id, file in pairs(GRID_TEX) do self.gridTex[id] = getTexture("media/textures/MinidoracatTesla/HUD/" .. file .. ".png") end
     local function u(n) return math.floor(n * S + 0.5) end
     local sw, sh = getPlayerScreenWidth(pn), getPlayerScreenHeight(pn)
     local w = math.min(math.floor(W * S), sw - 8)
@@ -1658,7 +1674,7 @@ function App:prerender()
             local b = self.b[id]
             local by = b.cy - o
             frame(self, b.cx, by, b.cw, b.ch, 6 * S, 1, b.on and b.lit and C.text or C.line, 1)
-            icon(self, b.icon, b.cx + 14 * S + 11 * S, by + 14 * S + 11 * S, 22, b.lit and C.text or C.weak, 1)
+            if b.icon then icon(self, b.icon, b.cx + 14 * S + 11 * S, by + 14 * S + 11 * S, 22, b.lit and C.text or C.weak, 1) end
         end
     elseif page == "security" then
         switchKnob(self, self.b.sentry, o)
@@ -1770,6 +1786,11 @@ function App:render()
             local b = self.b[id]
             local tx, ty = b.cx + math.floor(14 * S), b.cy - o + math.floor(44 * S)
             local tc = b.lit and c or cw
+            local tex = self.gridTex[id]
+            if tex then
+                local ic = b.lit and C.text or C.weak
+                self:drawTextureScaled(tex, b.cx + 14 * S, b.cy - o + 14 * S, 22 * S, 22 * S, 1, ic[1], ic[2], ic[3])
+            end
             jo:DrawText(Sm, b.sTitle, tx, ty, tc[1], tc[2], tc[3], 1)
             local sc = b.lit and c2 or cw
             jo:DrawText(Sm, b.sSubFit, tx, ty + self.FH + math.floor(2 * S), sc[1], sc[2], sc[3], 1)

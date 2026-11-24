@@ -133,6 +133,9 @@ local function addSlices(menu, player, vehicle)
             .. (on and "" or line2(getText("IGUI_MinidoracatTesla_Tip_Chill"))), getTexture(TEX .. "radial_chill.png"),
             onCommand, player, vehicle, "chill")
     end
+    -- thrusters (Roadster Rocket): the driver; opens its own ring (Thruster.lua H.openRing)
+    local thr = T.Thruster and T.Thruster.radialSlice
+    if thr then thr(menu, player, vehicle) end
     -- the car fridge (Upgrades.lua), once fitted: anyone inside steps it off -> cool -> freeze -> off; greyed with the
     -- server's reason (Fridge.canSet)
     local fp = T.Fridge and T.Fridge.part(vehicle) -- shared Upgrades.lua (shared loads before client)

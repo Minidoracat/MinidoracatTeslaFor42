@@ -426,6 +426,9 @@ function HUD:readSlow()
     st.tow = tw and tw:getScriptName() == self.towScript or false
     local md = part and part:getModData()
     st.camp = md ~= nil and md.camp ~= nil
+    -- thrusters: the air tank in 5 % steps (Thruster.lua H.air), nil on a car without them
+    local air = T.Thruster and T.Thruster.air and T.Thruster.air(v)
+    st.air = air and math.floor(air * 20 + 1e-6) * 5
     st.sentry = md ~= nil and md.sentry ~= nil
     st.chill = md ~= nil and md.chill == true
     local chg = md and md.chg
@@ -640,6 +643,11 @@ function HUD:build()
     spr(self, cell, cellX, ry + 4 * S, C.text2, 1)
     local fillW = 17.2 * S * st.pct / 100
     if fillW > 0 then rect(self, cellX + 2.4 * S, ry + 4 * S + 2.4 * S, fillW, 7.2 * S, st.chg == 1 and C.ok or C.text, 1) end
+    if st.air then -- the thrusters' air under the cell: accent once full
+        local bh = math.max(1, 2 * S)
+        rect(self, cellX, ry + 19 * S, cw, bh, C.track, 1)
+        if st.air > 0 then rect(self, cellX, ry + 19 * S, cw * st.air / 100, bh, st.air >= 100 and C.accent or C.text2, 1) end
+    end
     local pctW = digitsWidth(self, A.mid, st.pct) + A.mid_pct[7] * self.f
     x = cellX - 6 * S - pctW
     x = digits(self, A.mid, st.pct, x, ry + 2 * S, C.text, 1)
@@ -723,14 +731,15 @@ function HUD:update()
         or on ~= st.on
     self.tick = self.tick + 1
     if self.tick % 3 == 0 then
-        local pct, range, locked, doors, avail, heater, radio, camp, sentry, chg, chill, tow =
+        local pct, range, locked, doors, avail, heater, radio, camp, sentry, chg, chill, tow, air =
             st.pct, st.range, st.locked, st.doors, st.avail, st.heater, st.radio, st.camp, st.sentry, st.chg, st.chill,
-            st.tow
+            st.tow, st.air
         self:readSlow()
         changed = changed or pct ~= st.pct or range ~= st.range or locked ~= st.locked or doors ~= st.doors
             or avail ~= st.avail or heater ~= st.heater or radio ~= st.radio or camp ~= st.camp or sentry ~= st.sentry
-            or chg ~= st.chg or chill ~= st.chill or tow ~= st.tow
+            or chg ~= st.chg or chill ~= st.chill or tow ~= st.tow or air ~= st.air
     end
+    if st.air then T.Thruster.watch(self.character, v) end -- a fall to catch (Thruster.lua H.watch)
     if changed or self.dirty then self:build() end
     if self.pulseIdx then -- charging: slow green pulse (owner's manual charge-port light), 10 Hz steps
         self.L[self.pulseIdx] = 0.55 + 0.45 * math.abs(math.sin(getTimestampMs() / 600))

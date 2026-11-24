@@ -56,7 +56,9 @@ end
 -- least 1.5 times it, motor exactly it. No reply: past these only a modified client gets, and a reply per drop would
 -- grow with the flood. Not played there, one per click or per login, inside `default`: camp, sentry, chargeInfo,
 -- phoneUnpair, inboxPull, the radial's bdm and chill, the Cybertruck's radial slices roofLight, psOn, psOff,
--- outletOn and outletOff, and fridge (the right-click menu and the radial, Fridge.lua). Also inside `default`,
+-- outletOn and outletOff, fridge (the right-click menu and the radial, Fridge.lua), and the Roadster Rocket's thrust
+-- (one per press; the HUD's fall catch asks land once per fall) and thrustEnd (one per action, plus one per handover
+-- a helper can't take, Thruster.lua). Also inside `default`,
 -- played in test_cmd_rate.lua: fridgeFoodPull, sent by a client whose inventory page shows a switched-off fridge
 -- (FridgeUI.lua): once per ten game minutes plus one retry a minute later if unanswered, and once per food
 -- instance that shows up in it (one per item moved in, a timed transfer action each); while everyone sleeps the
