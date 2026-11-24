@@ -1,7 +1,7 @@
 <!-- 指南網址：https://steamcommunity.com/sharedfiles/filedetails/?id=3829449879 -->
 <!-- Steam guide source (English). The full description lives in this guide; the Workshop page only has a summary. Format and sync: pz-family-docs/release.md "完整說明：Steam 指南" -->
 <!-- 標題：📖 Minidoracat Tesla Collection Mod Guide: Cars, Charging, Keys and the App -->
-<!-- 摘要：A picture guide to Minidoracat Tesla Collection: the Model Y and Model 3 Performance, the Model Y L (six seats), the Model S and Model X Plaid (falcon wing doors and six seats), the first-generation Roadster 2.5 Sport (soft top), the Cybertruck Cyberbeast (cargo bed, Powershare home backup and the bed outlets), the Cybercab (a two-seat robotaxi: doors that swing up, no steering wheel, the charge port at the back), the Tesla Semi (an electric semi truck: a centre driver's seat, 1,200 kW Supercharging and a 53 ft box trailer to hitch), the battery and towing, the Wall Connector, the Mobile Connector and the V4 Superchargers at gas stations, the Tesla-style dashboard, key cards and phone keys, the Tesla app and Summon, Sentry and Camp Mode, Bioweapon Defense Mode and Chill, drive unit parts, upgrades (the Car Fridge and protection kits), and how it works with Vehicle Manager, the MiniMap, AutoDrive and Project Viewpoint, plus the sandbox options. -->
+<!-- 摘要：A picture guide to Minidoracat Tesla Collection: the Model Y and Model 3 Performance, the Model Y L (six seats), the Model S and Model X Plaid (falcon wing doors and six seats), the first-generation Roadster 2.5 Sport (soft top), the Roadster Rocket (one seat, a rear wing and thrusters: kickflip, backflip, boost and flight), the Cybertruck Cyberbeast (cargo bed, Powershare home backup and the bed outlets), the Cybercab (a two-seat robotaxi: doors that swing up, no steering wheel, the charge port at the back), the Tesla Semi (an electric semi truck: a centre driver's seat, 1,200 kW Supercharging and a 53 ft box trailer to hitch), the battery and towing, the Wall Connector, the Mobile Connector and the V4 Superchargers at gas stations, the Tesla-style dashboard, key cards and phone keys, the Tesla app and Summon, Sentry and Camp Mode, Bioweapon Defense Mode and Chill, drive unit parts, upgrades (the Car Fridge and protection kits), and how it works with Vehicle Manager, the MiniMap, AutoDrive and Project Viewpoint, plus the sandbox options. -->
 <!-- Screenshots: docs/screenshots/steam/en/, shot by guide-shots-sp in the family repo's e2e/MinidoracatTeslaFor42 (Bioweapon Defense and Chill only: --define part=feat, with hover.py for the radial's hover text; Cybertruck shots: guide-ct-sp; Model S / X: guide-sx-sp; Model Y L shots (33, 34): guide-yl-sp; Roadster shots (35, 36): guide-rd-sp (one CH run, same pictures as zh; 35 is four cars facing S at zoom 1.0 cropped (210,622,1710,967), 36 is one Radiant Red car with the soft top closed and stowed at zoom 0.5, each cropped (284,320,854,880), side by side with a 16 px gap); Cybercab shots (37, 38, 39): guide-cc-sp (one CH run, same pictures as zh; 37 is gcc-line-075, the left car facing S and the right one facing N at zoom 0.75 cropped (330,340,1590,710); 38 is one car facing S at zoom 0.5, gcc-doors-open-050 (both doors open by the app's Doors button) beside gcc-doors-trunk-050 (doors shut, trunk lid open), each cropped (220,260,935,820), side by side with a 16 px gap; 39 is gcc-charge-050, the car facing W with its tail plugged into a V4 Supercharger at zoom 0.5 cropped (150,320,1110,800)); Cybercab with two riders (40): seated2-mp with --clients 3 --define cam=1 (multiplayer, two accounts in one car, both doors open, a third client as the camera so no name or seat number is drawn), JPG made by the make_jpg.py in its folder (cam-seated2-open-SW beside cam-seated2-open-SE, each a 715x560 box around the car's screen position, 16 px gap, same picture as zh); Summon shots: phone-summon-sp; FSD: fsd-shot-sp (01c is 01b cropped (350,370,1090,977), not used in the guide, referenced by the Workshop description: re-crop it when 01b is reshot and update the image URL in the description, see release.md); With other mods: guide-mods-sp; Project Viewpoint (31): vd-first-ModelS from this repo's one-off temp/oneoff/vp-detail-sp, cropped (80,40,1660,1080), same picture as zh, needs ZombieBuddy; V4 Supercharger (32): supercharger-sp's sc-EN-card / sc-CH-card, cropped (480,160,1480,990); Semi shots (41, 42, 43): guide-semi-sp, JPGs made by the make_jpg.py in its folder (41 is gsm-truck-side-125 from the CH run, the Semi with its trailer beside a Model Y for scale, zoom 1.25 cropped (400,0,1540,800), same picture as zh; 42 is gsm-hitch-075, the hitch radial opened with V from beside the fifth wheel, zoom 0.75 cropped (280,70,1350,790), one CH and one EN run; 43 needs its own run with --define only=charge, because charging after the whole run is already past the 1,200 kW stretch: gsm-charge-075, the tractor alone plugged into a V4 Supercharger, zoom 0.75 cropped (140,100,1230,970), one CH and one EN run); Upgrade shots (44, 45, 46): guide-upg-sp, one CH run and one EN run (EN with --define parts=a,c), hover.py running for both, JPGs made by the make_jpg.py in its folder (44 is gu-CH/EN-mech-armor, a Model Y with the Bull Bar Kit and the Car Fridge fitted, the mechanics window scrolled to the bottom with Protection selected, the window alone cropped (550,230,1370,850), one CH and one EN run; 45 is gu-CH-line3-075 from the CH run, a Model 3, Model X and Cybertruck facing S with the Bull Bar Kit, zoom 0.75 cropped (150,290,1770,700), same picture as zh; 46 is gu-CH/EN-fridge-100, standing at the back with the liftgate open, the loot pane on the fridge and the outside right-click menu's Car Fridge submenu open (Cool ticked); the passenger doors must be locked for Enable Sentry Mode to be white, Enable Camp Mode is always red outside the car; zoom 1.0 cropped (586,0,1610,854), one CH and one EN run; to reshoot 46 alone, run both with --define parts=c and give make_jpg.py --only 46-upg-fridge)) -->
 === 🚀 Quick start
 [b]中文版：[/b] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3829449828]Minidoracat Tesla Collection 完整說明[/url]
@@ -9,7 +9,7 @@
 Mod page (Steam Workshop):
 https://steamcommunity.com/sharedfiles/filedetails/?id=3829501237
 [olist]
-[*] [b]Find a car[/b]: the Model Y and Model 3 park in parking lots, and the Model Y also turns up in upscale neighbourhoods; the Model Y L turns up in both, at the Model Y's chance; the Model S, Model X, Roadster and Cybertruck only turn up in upscale neighbourhoods; the Cybercab only in parking lots; the Semi and the 53 ft trailer only in long parking lots, each parked on its own, never hitched together.
+[*] [b]Find a car[/b]: the Model Y and Model 3 park in parking lots, and the Model Y also turns up in upscale neighbourhoods; the Model Y L turns up in both, at the Model Y's chance; the Model S, Model X, Roadster, Roadster Rocket and Cybertruck only turn up in upscale neighbourhoods; the Cybercab only in parking lots; the Semi and the 53 ft trailer only in long parking lots, each parked on its own, never hitched together.
 [*] [b]Get the key[/b]: a Tesla's car key turns into that car's Key Card when you pick it up.
 [*] [b]Start it[/b]: sit in the driver's seat and click the power button at the top left of the dashboard (or start it the vanilla way).
 [*] [b]Charge it[/b]: with Electrical 3, make a Tesla Wall Connector (Gen 3) and mount it on a powered wall, or set a Tesla Mobile Connector (Gen 3) on the floor; right-click it to plug in the charge cable. The Tesla V4 Superchargers next to gas stations fast-charge as soon as you plug in.
@@ -52,7 +52,7 @@ https://steamcommunity.com/sharedfiles/filedetails/?id=3829501237
 [list]
 [*] [b]Top trim before the end of production[/b]: both are the Plaid, built to Tesla's last official specs and owner's manuals; the mechanics window shows 1,020 hp.
 [*] [b]Where they spawn[/b]: upscale neighbourhoods only, at the Cybertruck's chance there (half the Model Y's); never in parking lots.
-[*] [b]Performance[/b]: they pull harder than the Cybertruck, and the Model S has the quickest launch of them all; the heavier Model X launches a little slower than the Model S. Top speed, grip and braking match the other Teslas.
+[*] [b]Performance[/b]: they pull harder than the Cybertruck, and the Model S has the quickest launch of them all after the Roadster Rocket; the heavier Model X launches a little slower than the Model S. Top speed, grip and braking match the other Teslas.
 [*] [b]Battery[/b]: a 100 kWh High Voltage Battery; a full charge still goes as far as a full tank in a vanilla car of the same class. Empty to 90% takes about 8 hours on a Wall Connector and about 12 on a Mobile Connector (game time).
 [*] [b]Paints[/b]: 8 per car, one picked at random: the last 6 US paints, plus Solid Black and Deep Blue from the Chinese market before the refresh; the app's picture of the car follows the paint.
 [*] [b]Model S doors[/b]: the four doors, the powered liftgate that lifts with the rear glass (about 4 seconds) and the hood open the way the real car's do.
@@ -211,6 +211,97 @@ https://steamcommunity.com/sharedfiles/filedetails/?id=3829501237
 [*] [b]Dashboard[/b]: with the trailer hitched, the dashboard draws it behind the car picture (the middle cut short).
 [*] [b]Multiplayer: driving off right after hitching[/b]: get in and start the motor right after hitching and now and then the truck starts but will not move; it now recovers by itself within a game minute. The same goes for any Tesla towing a trailer.
 [/list]
+=== 🧰 Roadster Rocket
+{{img:47-roadster2-en.jpg}}
+[list]
+[*] [b]The flying new Roadster[/b]: of the new-generation Roadster Tesla unveiled in 2026, the Rocket is the one with thrusters and a single seat (Tesla: "Air ready with seating for one"); Tesla says production starts in 2028. Built to what Tesla has published and shown in its demo videos; what it has not published (such as the dimensions) is estimated from its official pictures.
+[*] [b]Where it spawns[/b]: upscale neighbourhoods only, at half the Roadster 2.5's chance there (a quarter of the Model Y's), the rarest Tesla in those neighbourhoods; never in parking lots.
+[*] [b]Performance[/b]: about 2.6 seconds to 100 km/h, the quickest launch of any Tesla here; top speed, grip and braking match the other Teslas. The mechanics window shows 1,340 hp.
+[*] [b]Battery[/b]: a 150 kWh High Voltage Battery (Tesla has not published it; the figure is from third-party reporting); a full charge still goes as far as a full tank in a vanilla car of the same class. Refilling the thrusters' air also runs on this battery, see Thrusters.
+[*] [b]Charging times[/b]: empty to 90% takes about 12 hours on a Wall Connector and about 18 on a Mobile Connector; a Supercharger peaks at 500 kW (Tesla has not published it; the figure is a Tesla engineering lead's word as reported by third parties), about 35 minutes from 10% to 90% (game time).
+[*] [b]Charge port behind the wing[/b]: at the left rear corner; plugging in raises the wing by itself, and unplugging lowers it again (if the wing was already up before you plugged in, it stays up).
+[*] [b]Paint[/b]: Ano White only.
+[*] [b]One seat[/b]: only the driver's seat; the thrusters' air tank sits where the passenger would. The right door still opens: standing at it and pressing Interact only opens or closes the door, nobody gets in; locking the car locks both doors.
+[*] [b]Storage[/b]: an 18 trunk behind the seat and a glove box; no front trunk (neither the app nor the dashboard has one).
+[*] [b]No Bioweapon Defense Mode[/b]: it has no HEPA filter, so its V radial menu has no such slice.
+[*] [b]Everything else[/b]: key card, phone key, the app, Sentry, Camp Mode, Chill, damage looks and the Project Viewpoint cabin details work as on the other Teslas; a tall hat on someone in the car is hidden first where it would poke through the roof.
+[/list]
+[table]
+[tr][th]Car[/th][th]Factory paints[/th][th]Front trunk[/th][th]Rear trunk[/th][/tr]
+[tr][td]Roadster Rocket[/td][td]Ano White[/td][td]None[/td][td]18[/td][/tr]
+[/table]
+[h3]Doors, trunk lid and rear wing[/h3]
+{{img:48-roadster2-wing-en.jpg}}
+[list]
+[*] [b]Doors[/b]: the two doors swing up and out; Doors on the app's Controls page opens or closes both at once.
+[*] [b]Trunk lid[/b]: the rear window behind the seat is the trunk lid.
+[*] [b]Rear wing[/b]: with the car stopped, click the tail of the car picture on the dashboard (driver only) or tap Wing on the app's Controls page; it rises or folds away in about 1.5 seconds, and cannot be switched while moving. While the charge cable is plugged in, the app's Wing button is dimmed: unplug first.
+[*] [b]Locking[/b]: locking the car locks both doors and the trunk lid, not the wing.
+[*] [b]Dashboard[/b]: it has its own top view; click the car to open both doors, the trunk lid and the wing; clicking the nose does nothing.
+[*] [b]Part names[/b]: the mechanics window calls them Rear Wing and Trunk Lid.
+[/list]
+=== 🧰 Thrusters (Roadster Rocket)
+{{img:49-thrust-radial-en.jpg}}
+[list]
+[*] [b]Roadster Rocket only[/b]: modelled on the cold-gas thrusters Tesla showed (Cold-Gas Thrusters), with four moves: Kickflip, Backflip, Boost and Fly; a fall from high up is also caught with an automatic soft landing.
+[*] [b]How to use them[/b]: sit in the driver's seat with the car started, press V, pick Thrusters, then a move; the Thrusters slice shows how much air the tank has left ("Air N%").
+[*] [b]Keys[/b]: the four moves have no key by default; bind them under Thrusters on the Mods tab of the game's Options (the flight one is called Fly / land). Fly higher and Fly lower, which set the height while flying, default to Space and C.
+[*] [b]Air[/b]: every move uses air from the tank: Kickflip and Backflip each need a full tank, Boost and the soft landing each use a third, and by default a full tank flies for 8 seconds. Hovering over the battery area of the dashboard shows "Thruster air N% · Full again in M min".
+[*] [b]Refilling[/b]: the tank refills slowly by itself, empty to full in 30 game minutes by default, using 40 kWh of the High Voltage Battery (both can be changed in the sandbox). Off a charger, it stops refilling once the battery is below 5%.
+[*] [b]Loud[/b]: the jets carry as far as the horn and draw zombies; a flight sounds again every game minute.
+[*] [b]Camera[/b]: the camera zooms out as the car takes off and back in when it lands.
+[/list]
+[table]
+[tr][th]Move[/th][th]What it does[/th][th]Air[/th][th]Speed limit[/th][/tr]
+[tr][td]Kickflip[/td][td]Leaps about 8 m up (as high as Tesla's demo), rolls over once sideways and lands[/td][td]A full tank[/td][td]40 km/h[/td][/tr]
+[tr][td]Backflip[/td][td]Leaps about 8 m up, flips over once backwards and lands[/td][td]A full tank[/td][td]15 km/h[/td][/tr]
+[tr][td]Boost[/td][td]One hard push forward, to about 97 km/h in about 0.6 seconds[/td][td]A third[/td][td]60 km/h[/td][/tr]
+[tr][td]Fly[/td][td]Hovers off the ground; the drive keys fly it[/td][td]An eighth a second by default[/td][td]None[/td][/tr]
+[/table]
+[h3]Flying[/h3]
+{{img:50-thrust-fly-en.jpg}}
+[list]
+[*] [b]Taking off[/b]: pick Fly in the radial and the car rises to hover about 3 m off the ground; it cannot take off with a roof right above it.
+[*] [b]Controls[/b]: the drive keys move it ahead, back and around, up to about 15 m a second; Space flies higher and C lower, between 1 and 5 m off the ground. On a controller: RT / LT ahead and back, the left stick steers, the right stick sets the height.
+[*] [b]Dashboard[/b]: while flying, the dashboard's reminder pill shows "Flying · N s left" with the keys, turning to the warning colour in the last 3 seconds; only the driver who is flying sees it.
+[*] [b]Landing[/b]: pick Land in the radial (while flying, the Thrusters slice turns straight into Land), press the Fly / land key, or press the get-out key (A on a controller); it also lands by itself when the air runs out. Opening the mechanics window from inside the car counts as the get-out key, so the car lands first. It first slows down at its height; with a fence, hedge or anything else under the car, it glides on a little the way it was flying before coming down.
+[*] [b]Flying with the motor off[/b]: once off the ground the motor switches off, so fences, hedges, trees and lamp posts do not slow it; it starts again by itself as the car begins to come down, and takes about 1.5 seconds after touchdown to get going.
+[*] [b]It hits zombies[/b]: flying knocks down standing zombies, and the windows take damage as usual.
+[*] [b]Stuck up high[/b]: if it comes to rest up high, such as on another car or an eave, and the way out is blocked, your character gets out on the outside of the car instead. If a wall, door or window is in the way, or the spot is inside a safehouse you may not enter, you cannot get out there, as in the base game; park the car facing another way.
+[/list]
+[h3]Checks before take-off and refusal messages[/h3]
+{{img:51-thrust-deny-en.jpg}}
+A move that can't be used is greyed out in the radial with the reason underneath; a key press, or a move refused after you pick it, shows the reason over your character's head.
+[table]
+[tr][th]Message[/th][th]Why, and what to do[/th][/tr]
+[tr][td]Thrusters are turned off in this world's settings[/td][td]The sandbox option Roadster thrusters is off.[/td][/tr]
+[tr][td]Start the car first[/td][td]The motor must be running (landing aside).[/td][/tr]
+[tr][td]Only the driver can do this[/td][td]Sit in the driver's seat; with Vehicle Manager and a claimed car you need the Drive permission.[/td][/tr]
+[tr][td]The car is towing or being towed[/td][td]Unhitch the trailer or the tow first.[/td][/tr]
+[tr][td]The high voltage battery is missing[/td][td]Put the battery back.[/td][/tr]
+[tr][td]Unplug the charge cable first[/td][td]Not while the charge cable is plugged in.[/td][/tr]
+[tr][td]The thrusters are already working[/td][td]The last move hasn't finished, or AutoDrive is driving the car.[/td][/tr]
+[tr][td]Not enough air in the thruster tank[/td][td]It says how many minutes until full; wait for the refill.[/td][/tr]
+[tr][td]All four wheels must be on the ground[/td][td]The car hasn't settled yet.[/td][/tr]
+[tr][td]Not while reversing[/td][td]Stop or drive forward.[/td][/tr]
+[tr][td]Too fast for this: slow down first[/td][td]Above the speed limit in the table above.[/td][/tr]
+[tr][td]Not enough room: something is in the way or overhead[/td][td]A parked car first rolls ahead a little before the jets fire, so the way ahead must be clear; trees, fences, walls or a floor overhead all block it. Move somewhere open.[/td][/tr]
+[tr][td]The thrusters could not move the car: drive somewhere flat and open, then try again[/td][td]It gives up when the car hasn't moved within about 3 seconds of take-off.[/td][/tr]
+[tr][td]The car is still syncing: try again in a moment[/td][td]In multiplayer, right after getting in or a change of driver; wait a moment.[/td][/tr]
+[tr][td]Can't get out while the car is in the air[/td][td]No getting out during a stunt or a landing; while flying, the get-out key lands it.[/td][/tr]
+[/table]
+[h3]Automatic soft landing[/h3]
+[list]
+[*] [b]When it steps in[/b]: when a Roadster Rocket you are driving falls from high up (more than 1.5 m off the ground and dropping fast), or tips too far in the air, the thrusters take over and put it down on all four wheels.
+[*] [b]It needs a third of a tank[/b]: with less than a third of a tank it does not step in; a landing you ask for is never refused for air, it uses what is left.
+[/list]
+[h3]Stunts from the phone app[/h3]
+{{img:52-app-stunt-en.jpg}}
+[list]
+[*] [b]Empty car stunt[/b]: the app's Controls page has Kickflip and Backflip to have the empty car do one on the spot; you must be out of the car and within 30 tiles, nobody may be in it, and the way ahead of it must be clear.
+[*] [b]Motor[/b]: the car starts itself for the stunt and switches off afterwards.
+[*] [b]Permissions[/b]: with Vehicle Manager and a claimed car you need the car's Drive permission; Boost and Fly only work from the driver's seat.
+[/list]
 === 🧰 Cybertruck (Cyberbeast)
 {{img:23-cybertruck-en.jpg}}
 [list]
@@ -290,10 +381,10 @@ A charger that works on the floor, no wall needed; slower than the Wall Connecto
 [*] [b]Motor on is fine[/b]: the car only has to stand still; you can also start it while plugged in.
 [*] [b]No driving off plugged in[/b]: throttle or reverse says Unplug the charge cable first and the dashboard shows P; unplug and drive away.
 [*] [b]Auto unplug[/b]: towed or pushed past the cable's reach, the car is unplugged and you are told.
-[*] [b]Charging speed[/b]: 11.5 kW at the Wall Connector, 7.6 kW at the Mobile Connector; a Model Y or Model 3 takes about 6 and 9 in-game hours from empty to 90%, cars with a bigger battery take longer in proportion and smaller ones less (about 4 and 7 hours for the Roadster, about 4 and 6 for the Cybercab; the Semi's battery is more than 10 times the Model Y's, so it takes a very long time); the sandbox option Charging speed multiplier changes it. A Supercharger is far faster, see V4 Supercharger.
+[*] [b]Charging speed[/b]: 11.5 kW at the Wall Connector, 7.6 kW at the Mobile Connector; a Model Y or Model 3 takes about 6 and 9 in-game hours from empty to 90%, cars with a bigger battery take longer in proportion and smaller ones less (about 4 and 7 hours for the Roadster, about 4 and 6 for the Cybercab, about 12 and 18 for the Roadster Rocket; the Semi's battery is more than 10 times the Model Y's, so it takes a very long time); the sandbox option Charging speed multiplier changes it. A Supercharger is far faster, see V4 Supercharger.
 [*] [b]Time skips count[/b]: charge is settled by the hours that passed, so sleeping or fast-forwarding loses nothing.
 [*] [b]Other players see the cable[/b]: it hangs from the Wall Connector or the Supercharger to the ground (it leaves the Mobile Connector right on the ground) and runs to the car's charge port.
-[*] [b]Where the charge port is[/b]: the other Teslas have theirs on the left side toward the rear; the Cybercab's is in the rear bumper (driver's side), so park with the tail toward the charger; the Semi's is on the left side, low down behind the cab. The Supercharger's cable is the shortest, see V4 Supercharger.
+[*] [b]Where the charge port is[/b]: the other Teslas have theirs on the left side toward the rear; the Roadster Rocket's is at the left rear corner behind the wing, which rises by itself when you plug in; the Cybercab's is in the rear bumper (driver's side), so park with the tail toward the charger; the Semi's is on the left side, low down behind the cab. The Supercharger's cable is the shortest, see V4 Supercharger.
 [*] [b]The holster[/b]: with no car plugged in, the Wall Connector's and the Supercharger's connector sits in its holster with the cable hung up; once a car is plugged in, the holster is empty. Other players see the same.
 [/list]
 {{img:04-charging-en.jpg}}
@@ -310,8 +401,8 @@ A charger that works on the floor, no wall needed; slower than the Wall Connecto
 [*] [b]Where[/b]: 2 to 4 Tesla V4 Superchargers stand next to gas stations, each with its parking spot in front. If you add the mod mid-save, the gas stations you already visited get theirs the next time they load; each station gets them only once, and posts taken away do not come back. They only go on empty pavement (gravel floors players lay count too), never on furniture or cars; on a multiplayer server none appear inside a safehouse.
 [*] [b]Make one[/b]: Electrical 6 learns the recipe Make Tesla V4 Supercharger; craft it next to a work surface such as a table with a Screwdriver and Pliers (kept), Electrical Wire 12, Scrap Electronics 9, Steel Sheet - Small 6 and Screws 12.
 [*] [b]Plug in[/b]: right-click it and plug in the charge cable like any charger. The cable reaches about 2.5 tiles (3 m in the real world), so park in the spot in front of the post.
-[*] [b]Slower as it fills[/b]: it follows the real cars' DC fast-charging curve: fastest at a low charge, slowing down past half, and slow above 80%. Peak power follows Tesla's numbers: 1,200 kW for the Semi, 325 kW for the Cybertruck, 250 kW for the other Teslas; Tesla publishes none for the Cybercab, so it takes 152 kW, the Model Y's scaled to its battery size. The Roadster is the exception: the real car has no DC fast charging, so a Supercharger gives it a flat 16.8 kW that does not slow down.
-[*] [b]How long[/b]: 10% to 90% (game time) takes about 36 minutes for the Model Y, Model 3 and Cybercab, about 38 for the Model Y L, about 46 for the Model S and Model X, about 44 for the Cybertruck, about 80 for the Semi (30 minutes take it from 10% to about 59%; Tesla says up to 60% in 30 minutes), and about 2 hours 40 minutes for the Roadster; the sandbox option Charging speed multiplier still applies.
+[*] [b]Slower as it fills[/b]: it follows the real cars' DC fast-charging curve: fastest at a low charge, slowing down past half, and slow above 80%. Peak power follows Tesla's numbers: 1,200 kW for the Semi, 325 kW for the Cybertruck, 250 kW for the other Teslas; Tesla publishes none for the Cybercab, so it takes 152 kW, the Model Y's scaled to its battery size; Tesla publishes none for the Roadster Rocket either, so it takes the 500 kW reported by third parties. The Roadster is the exception: the real car has no DC fast charging, so a Supercharger gives it a flat 16.8 kW that does not slow down.
+[*] [b]How long[/b]: 10% to 90% (game time) takes about 36 minutes for the Model Y, Model 3 and Cybercab, about 35 for the Roadster Rocket, about 38 for the Model Y L, about 46 for the Model S and Model X, about 44 for the Cybertruck, about 80 for the Semi (30 minutes take it from 10% to about 59%; Tesla says up to 60% in 30 minutes), and about 2 hours 40 minutes for the Roadster; the sandbox option Charging speed multiplier still applies.
 [*] [b]Power[/b]: the same rule as a gas pump: outdoors on the grid it just works. After the power cut it charges at full speed within a generator's range or with a running, fuelled generator within 2 tiles (same floor); when the server turns off Generator Working in Exterior, only a generator within 2 tiles counts. With no power, right-clicking it shows a grey line saying so.
 [*] [b]Fuel[/b]: each kWh burns the same fuel as on any charger, so a full charge still takes about one tank (about ten for the Semi); but at this power it burns fuel much faster per hour: at 250 kW a full vanilla generator runs dry in about 19 minutes.
 [*] [b]Take one home[/b]: picking one up or placing it takes Electrical 6 and a screwdriver; it weighs as much as a vanilla generator (40) and takes both hands, so drop other gear if you cannot pick it up. Once placed, the power rule above applies. A gas station's posts belong to nobody, so the car's key rules alone decide who may plug in or unplug; one you place yourself is yours (see the FAQ Someone else's car is plugged into my charger. What now?).
@@ -364,11 +455,11 @@ A charger that works on the floor, no wall needed; slower than the Wall Connecto
 [list]
 [*] [b]Replaces the vanilla dashboard[/b]: in a Tesla you get the gear, speed, charge, range and live use / regen.
 [*] [b]Power button[/b]: top left; click to start, click again to power off; powering off needs the car stopped.
-[*] [b]Click the car to open doors[/b]: click the top view of the car on the dashboard to open or close that door, the liftgate or the hood (on the Cybertruck the bed is the tonneau cover, on the Model X the rear half is the falcon wing doors, on the Roadster the roof is the soft top, the Cybercab's hood does nothing, as it has no front trunk, and on the Semi only the two doors can be clicked; the Model Y L, Roadster, Cybercab and Semi have their own top views, and a Semi with its trailer hitched has the trailer drawn behind it); a locked door unlocks first, and nothing opens while driving.
+[*] [b]Click the car to open doors[/b]: click the top view of the car on the dashboard to open or close that door, the liftgate or the hood (on the Cybertruck the bed is the tonneau cover, on the Model X the rear half is the falcon wing doors, on the Roadster the roof is the soft top, on the Roadster Rocket the tail is the rear wing and the part behind the seat the trunk lid, the Cybercab's and Roadster Rocket's hood does nothing, as they have no front trunk, and on the Semi only the two doors can be clicked; the Model Y L, Roadster, Roadster Rocket, Cybercab and Semi have their own top views, and a Semi with its trailer hitched has the trailer drawn behind it); a locked door unlocks first, and nothing opens while driving.
 [*] [b]Quick keys[/b]: headlights, climate controls, radio, Camp Mode; a key that is on turns blue with an underline.
-[*] [b]Reminders[/b]: a door open, charging, charged, no power at the charger, low battery, Camp or Sentry on show as one line below.
+[*] [b]Reminders[/b]: a door open, charging, charged, no power at the charger, low battery, Camp or Sentry on show as one line below; a flying Roadster Rocket shows the seconds left and the keys (see Thrusters).
 [*] [b]Hover help[/b]: every button and every area of the car picture says what it does when the mouse is over it.
-[*] [b]V radial menu[/b]: adds Turn on Camp Mode, Charging Status and Turn on Chill (driver only); a car with a HEPA filter also has Turn on Bioweapon Defense Mode (see Bioweapon Defense Mode and Chill); the Cybertruck also has Powershare, the bed outlets and the light bar (the light bar for the driver only); a Semi at a standstill also gives the driver hitch and unhitch; a car with a Car Fridge fitted also has the fridge switch (anyone in the car can use it; with Vehicle Manager and a claimed car it needs the Trunk permission, see Upgrades). When one is not available its icon is grey and the second line says why.
+[*] [b]V radial menu[/b]: adds Turn on Camp Mode, Charging Status and Turn on Chill (driver only); a car with a HEPA filter also has Turn on Bioweapon Defense Mode (see Bioweapon Defense Mode and Chill); the Cybertruck also has Powershare, the bed outlets and the light bar (the light bar for the driver only); a Semi at a standstill also gives the driver hitch and unhitch; the Roadster Rocket also gives the driver Thrusters (see Thrusters); a car with a Car Fridge fitted also has the fridge switch (anyone in the car can use it; with Vehicle Manager and a claimed car it needs the Trunk permission, see Upgrades). When one is not available its icon is grey and the second line says why.
 [*] [b]With AutoDrive[/b]: AutoDrive's autopilot card sits above the Tesla dashboard, and above the charge card while that is open.
 [*] [b]mph and miles[/b]: the Mods tab of the game's Options has Speed and distance units; on Imperial the dashboard shows the speed in mph and the range in mi, and the reminders, the charge card and the phone app use miles and feet. Metric is the default; it is set per computer (split-screen players share it), and it changes only what is shown: the car drives the same. AutoDrive's autopilot card has its own option of the same name.
 [/list]
@@ -405,12 +496,12 @@ A charger that works on the floor, no wall needed; slower than the Wall Connecto
 [*] [b]Open it[/b]: right-click the phone key and choose Open Tesla App; the phone appears on the right of the screen. An unpaired phone lists the option in red, with hover help on how to pair it.
 [*] [b]Move it[/b]: hold any spot of the phone that is not a button and drag it elsewhere on the screen; it stays there and opens there next time (remembered on this computer, for each split-screen player).
 [*] [b]Home[/b]: car name, battery and range, a status such as Parked · Locked, and a picture of the car in its paint.
-[*] [b]Four quick icons[/b]: lock / unlock, stop / start charging, open / close the frunk, open / close the liftgate (the trunk on the Model 3, Roadster and Cybercab); the Cybercab has no frunk, so it has three; the Semi has neither trunk, so it has just lock and charging. White when on, dim when not available.
+[*] [b]Four quick icons[/b]: lock / unlock, stop / start charging, open / close the frunk, open / close the liftgate (the trunk on the Model 3, Roadster, Roadster Rocket and Cybercab); the Cybercab and Roadster Rocket have no frunk, so they have three; the Semi has neither trunk, so it has just lock and charging. White when on, dim when not available.
 [*] [b]Controller[/b]: D-pad moves, A presses, B goes back home from a page and closes the app from home.
 [/list]
 [table]
 [tr][th]Page[/th][th]What it does[/th][/tr]
-[tr][td]Controls[/td][td]Flash the lights to find the car, honk for a second (like the car's horn: nearby zombies hear it), open / close the frunk and the liftgate; the Model X adds the falcon wing doors (both at once); the Cybertruck adds the tonneau cover and Powershare (see Powershare and the bed outlets); the Roadster adds the soft top (parked only); the Cybercab has no frunk and adds Doors (both at once); the Semi has only flash and honk[/td][/tr]
+[tr][td]Controls[/td][td]Flash the lights to find the car, honk for a second (like the car's horn: nearby zombies hear it), open / close the frunk and the liftgate; the Model X adds the falcon wing doors (both at once); the Cybertruck adds the tonneau cover and Powershare (see Powershare and the bed outlets); the Roadster adds the soft top (parked only); the Cybercab has no frunk and adds Doors (both at once); the Roadster Rocket has no frunk and adds Doors (both at once), Wing (parked only), Kickflip and Backflip (see Thrusters); the Semi has only flash and honk[/td][/tr]
 [tr][td]Location[/td][td]Arrow, distance, compass direction; Show on Map opens the world map; Navigate to Car with the MiniMap[/td][/tr]
 [tr][td]Summon[/td][td]Only with AutoDrive; see Summon[/td][/tr]
 [tr][td]Security[/td][td]Turn Sentry Mode on / off, see this car's Sentry Alerts[/td][/tr]
@@ -475,7 +566,7 @@ A charger that works on the floor, no wall needed; slower than the Wall Connecto
 === 🧰 Camp Mode
 {{img:14-camp-en.jpg}}
 [list]
-[*] [b]Turn it on[/b]: sitting in the stopped car, press the dashboard's camp key or Turn on Camp Mode in the V radial menu; the motor may be running: it stops and the climate keeps going (with the motor running only the driver can turn it on).
+[*] [b]Turn it on[/b]: sitting in the stopped car, press the dashboard's camp key or Turn on Camp Mode in the V radial menu; the motor may be running: it stops and the climate keeps going (with the motor running only the driver can turn it on). Not while a Roadster Rocket's thrusters are at work.
 [*] [b]Automatic climate[/b]: unless you set a temperature yourself, it heats or cools from the outside temperature to keep the cabin comfortable; turn the temperature knob and it follows yours.
 [*] [b]Sleep[/b]: sleeping in the car while camping counts as an Average bed (Average, with Pillow with a pillow) instead of vanilla's bad seat; multiplayer servers need sleep allowed.
 [*] [b]Screen entertainment[/b]: boredom of everyone awake in the car slowly goes down, about half as fast as watching TV.
@@ -487,7 +578,7 @@ A charger that works on the floor, no wall needed; slower than the Wall Connecto
 [h3]Bioweapon Defense Mode (HEPA filter)[/h3]
 {{img:29-bdm-en.jpg}}
 [list]
-[*] [b]Which cars[/b]: the Model Y, Model Y L, Model S, Model X and Cybertruck have a HEPA filter; going by Tesla's owner's manuals and the Cybercab's rider guide, the Model 3, Roadster and Cybercab have none, nor does the Semi, and their V radial menu has no such slice.
+[*] [b]Which cars[/b]: the Model Y, Model Y L, Model S, Model X and Cybertruck have a HEPA filter; going by Tesla's owner's manuals and the Cybercab's rider guide, the Model 3, Roadster and Cybercab have none, nor do the Semi and the Roadster Rocket, and their V radial menu has no such slice.
 [*] [b]Climate on means filtered[/b]: when enough corpses lie around to give you corpse sickness, sit in the car with the climate on and nobody inside gets any sicker.
 [*] [b]Turn it on[/b]: in the car, pick Turn on Bioweapon Defense Mode in the V radial menu; anyone inside can. While it is on, the fan filters the air even with the climate knob at 0. Pick Turn off Bioweapon Defense Mode to stop it.
 [*] [b]Needs power[/b]: it works only while the motor runs or in Camp Mode.
@@ -498,7 +589,7 @@ A charger that works on the floor, no wall needed; slower than the Wall Connecto
 {{img:30-chill-en.jpg}}
 [list]
 [*] [b]Switching[/b]: the driver picks Turn on Chill in the V radial menu, and Turn off Chill to go back; it works while driving too.
-[*] [b]Acceleration only[/b]: acceleration gets smooth and gentle, top speed stays. Every Tesla but the Roadster, Cybercab and Semi uses the same pull: the Model Y and Cybertruck both take about 16 seconds to 100 km/h (normally about 7 for the Model Y and 5 for the Cybertruck); the Roadster is light, so it uses a smaller pull of its own and takes about 16 seconds too (normally about 8); the Cybercab also uses a smaller pull of its own and takes about 20 seconds (normally about 9); the Semi uses its own pull and takes about 37 seconds on its own and about 50 with an empty trailer (normally about 18.5 and 25).
+[*] [b]Acceleration only[/b]: acceleration gets smooth and gentle, top speed stays. Every Tesla but the Roadster, Roadster Rocket, Cybercab and Semi uses the same pull: the Model Y and Cybertruck both take about 16 seconds to 100 km/h (normally about 7 for the Model Y and 5 for the Cybertruck); the Roadster is light, so it uses a smaller pull of its own and takes about 16 seconds too (normally about 8); the Roadster Rocket also uses a smaller pull of its own and takes about 16 seconds too (normally about 2.6); the Cybercab also uses a smaller pull of its own and takes about 20 seconds (normally about 9); the Semi uses its own pull and takes about 37 seconds on its own and about 50 with an empty trailer (normally about 18.5 and 25).
 [*] [b]Dashboard[/b]: Chill shows next to the speed while it is on.
 [*] [b]Stays with the car[/b]: still on when you get out and back in, or someone else drives.
 [*] [b]No extra saving[/b]: charge use still depends on how you drive; Chill alone does not save charge.
@@ -518,7 +609,7 @@ A charger that works on the floor, no wall needed; slower than the Wall Connecto
 [/table]
 === 🧰 Upgrades: the Car Fridge and protection
 [list]
-[*] [b]Two slots[/b]: all nine Teslas have an Upgrades category at the bottom of the mechanics window, with two slots, Protection and Fridge; the 53 ft trailer has none. Both are empty on a new car: craft the upgrades or find them in loot.
+[*] [b]Two slots[/b]: all ten Teslas have an Upgrades category at the bottom of the mechanics window, with two slots, Protection and Fridge; the 53 ft trailer has none. Both are empty on a new car: craft the upgrades or find them in loot.
 [*] [b]Fitting and removing[/b]: right-click the slot in the mechanics window and choose Install or Uninstall; Mechanics level does not matter and it never fails. Protection needs a Wrench or Ratchet Wrench on you; the Car Fridge needs no tool.
 [*] [b]Theft[/b]: the same rule as vanilla parts that need the key. With every door locked and every window closed and intact, only someone with this car's key can take them off; with a door unlocked, or a window open or broken, no key is needed. On a car claimed in Vehicle Manager you also need its Salvage permission; that permission does not replace the rule above, you need both.
 [*] [b]Overall condition[/b]: an empty slot counts in the mechanics window's overall condition: about 4 to 6 lower with both empty, back to normal once fitted. Driving is not affected.
@@ -546,7 +637,7 @@ A charger that works on the floor, no wall needed; slower than the Wall Connecto
 [*] [b]What it protects[/b]: doors, the hood and liftgate, windows and windshields, lights, the Drive Unit and the High Voltage Battery. Tires, brakes, suspension and seats are not covered.
 [*] [b]Zombies[/b]: windows are harder to break. Because they last longer, Sentry sends more knocking notices.
 [*] [b]How it works[/b]: damage lands as usual and part of it is given back: usually at once in a crash, within a game minute otherwise. A window or light that is already broken stays broken.
-[*] [b]Looks by car[/b]: on the Model Y, Model Y L, Model 3 and Model S the Bull Bar Kit includes a roof rack; the Model X, Roadster, Cybercab and Cybertruck get none; the Semi only has the bar at the front.
+[*] [b]Looks by car[/b]: on the Model Y, Model Y L, Model 3 and Model S the Bull Bar Kit includes a roof rack; the Model X, Roadster, Roadster Rocket, Cybercab and Cybertruck get none; the Semi only has the bar at the front.
 [/list]
 [h3]Getting them[/h3]
 You learn each recipe automatically at its level; craft next to a work surface such as a table.
@@ -572,14 +663,14 @@ You learn each recipe automatically at its level; craft next to a work surface s
 {{img:20-vm-app-en.jpg}}
 [table]
 [tr][th]Action[/th][th]Vehicle Manager permission[/th][/tr]
-[tr][td]Key card tap, app lock / unlock, flash, honk, Sentry on / off, app falcon wing doors, the Cybercab's doors and the soft top, Bioweapon Defense Mode[/td][td]Ride[/td][/tr]
+[tr][td]Key card tap, app lock / unlock, flash, honk, Sentry on / off, app falcon wing doors, the Cybercab's doors and the soft top, the Roadster Rocket's app Wing, Bioweapon Defense Mode[/td][td]Ride[/td][/tr]
 [tr][td]App liftgate / trunk[/td][td]Trunk[/td][/tr]
 [tr][td]Switching the Car Fridge (right-click outside the car, or the V radial menu)[/td][td]Trunk[/td][/tr]
 [tr][td]App frunk[/td][td]Repair or Salvage[/td][/tr]
 [tr][td]Taking off Protection or the Car Fridge[/td][td]Salvage[/td][/tr]
 [tr][td]Plugging in or unplugging, the charge card, picking up or rotating a charger with the car plugged in, app stop / start charging[/td][td]Fuel (except the charger owner's unplug, charge card Stop, pick-up and rotate, see the FAQ; not the app)[/td][/tr]
 [tr][td]App location and status[/td][td]Location[/td][/tr]
-[tr][td]App Summon, Chill[/td][td]Drive[/td][/tr]
+[tr][td]App Summon, Chill, thrusters (the four moves from the driver's seat and the app stunts)[/td][td]Drive[/td][/tr]
 [tr][td]Setting up a new phone key without the key card[/td][td]Owner (cannot be shared)[/td][/tr]
 [/table]
 [h3]Minidoracat MiniMap[/h3]
@@ -602,7 +693,7 @@ You learn each recipe automatically at its level; craft next to a work surface s
 [h3]Project Viewpoint (3D view)[/h3]
 {{img:31-viewpoint-en.jpg}}
 [list]
-[*] [b]Cabin details[/b]: sit in a Tesla and you see stitched seats, the steering wheel with its T badge (the Cybercab has none), the centre screen with a map, air vents, cup holders, the phone mount, floor mats and the rear-view mirror; in all nine cars and every seat.
+[*] [b]Cabin details[/b]: sit in a Tesla and you see stitched seats, the steering wheel with its T badge (the Cybercab has none), the centre screen with a map, air vents, cup holders, the phone mount, floor mats and the rear-view mirror; in all ten cars and every seat.
 [*] [b]Only the car you sit in[/b]: other cars keep the plain look, with a dark grey cabin.
 [*] [b]Nothing changes without it[/b]: players without Project Viewpoint see the same picture and get the same performance as before.
 [*] [b]Can vanish for a moment in multiplayer[/b]: when a part on the car you sit in is installed, removed or repaired, the details disappear and come back within one in-game minute.
@@ -613,11 +704,16 @@ On the Tesla Collection page of the sandbox settings.
 [table]
 [tr][th]Option[/th][th]Default[/th][th]Range[/th][th]What it does[/th][/tr]
 [tr][td]Range multiplier[/td][td]1.0[/td][td]0.25–10.0[/td][td]How far a full battery drives; 1.0 = as far as a full tank in a vanilla car of the same class; vanilla Gas Consumption scales it too[/td][/tr]
-[tr][td]Charging speed multiplier[/td][td]1.0[/td][td]0.1–10.0[/td][td]1.0 = official charger power (Wall Connector 11.5 kW, Mobile Connector 7.6 kW, Supercharger up to 250 kW, 325 kW for the Cybertruck, 152 kW for the Cybercab and 1,200 kW for the Semi; the Roadster at most 16.8 kW from any charger); the Cybertruck's Powershare 11.5 kW and bed outlet 9.6 kW limits and the Roadster's 16.8 kW scale with it too[/td][/tr]
+[tr][td]Charging speed multiplier[/td][td]1.0[/td][td]0.1–10.0[/td][td]1.0 = official charger power (Wall Connector 11.5 kW, Mobile Connector 7.6 kW, Supercharger up to 250 kW, 325 kW for the Cybertruck, 152 kW for the Cybercab, 500 kW for the Roadster Rocket and 1,200 kW for the Semi; the Roadster at most 16.8 kW from any charger); the Cybertruck's Powershare 11.5 kW and bed outlet 9.6 kW limits and the Roadster's 16.8 kW scale with it too[/td][/tr]
 [tr][td]Charging fuel multiplier[/td][td]1.0[/td][td]0–10.0[/td][td]Generator fuel a Tesla burns, charging and the car's own loads while plugged in; 1.0 = about one tank for a full charge at the default Generator Fuel Consumption, 0 = no fuel[/td][/tr]
 [tr][td]Camp Mode battery limit[/td][td]20[/td][td]10–20 (%)[/td][td]Below this charge Camp Mode cannot turn on, and while camping it turns off[/td][/tr]
 [tr][td]App Bluetooth range after power cut (tiles)[/td][td]50[/td][td]0–64[/td][td]After the power goes out the app reaches the car within this many tiles only (1 tile = 1 m), Summon included; no limit while the grid is up; 0 = no link after the power cut[/td][/tr]
 [tr][td]Semi and trailer spawn chance[/td][td]1.5[/td][td]0–100 (%)[/td][td]Rolled once per long parking lot: the chance of a parked Semi; the 53 ft trailer is rolled separately at twice this chance, and the two are never hitched; 0 = none[/td][/tr]
+[tr][td]Roadster thrusters[/td][td]On[/td][td]On / off[/td][td]The Roadster Rocket's kickflip, backflip, boost, flight and the automatic soft landing; off, none of them work (neither from the driver's seat nor the app), and the car still drives[/td][/tr]
+[tr][td]Thruster flight time (seconds)[/td][td]8[/td][td]2–120[/td][td]A full air tank lasts this many seconds of flight[/td][/tr]
+[tr][td]Unlimited flight[/td][td]Off[/td][td]On / off[/td][td]On, flying uses no air and lasts until you land; kickflip, backflip, boost and the soft landing still use air[/td][/tr]
+[tr][td]Thruster tank refill time (game minutes)[/td][td]30[/td][td]1–1440[/td][td]How long an empty air tank takes to fill[/td][/tr]
+[tr][td]Thruster tank refill energy (kWh)[/td][td]40[/td][td]0–150[/td][td]Energy a full refill takes from the High Voltage Battery; 0 = refilling is free. Off a charger, it stops refilling once the battery is below 5%[/td][/tr]
 [/table]
 Options elsewhere that also affect Teslas:
 [table]
@@ -656,6 +752,15 @@ Options elsewhere that also affect Teslas:
 [*] Sentry does not report anyone taking things from the towed trailer's storage
 [*] With the view under a gas station canopy, the part of the trailer under the canopy is not drawn
 [*] Pressing V on the other side of a wall, near the fifth wheel of a Semi with its trailer hitched, opens the Semi's radial menu
+[/list]
+[*] [b]Thrusters (Roadster Rocket)[/b]:
+[list]
+[*] Holding Space all through take-off sometimes keeps it from taking off (no air is used); let go and try again
+[*] A pay phone and the like stops a flying car and slows it right down; flying into the edge of a building's roof can push the car up
+[*] Landing on something low beside a house can leave the car resting at a tilt
+[*] With less than a third of a tank, a fall from high up gets no automatic soft landing
+[*] Multiplayer: when the player at the controls (the driver, or whoever called an app stunt) drops out mid-air, the car hangs in the air for a while (about 22 seconds in tests of an app stunt), then the nearest player within 70 tiles takes over and lands it; with nobody near, it stays up until someone comes close
+[*] Multiplayer: an app stunt called just after someone else started the car remotely may switch the motor off when the stunt ends
 [/list]
 [*] [b]One console line[/b]: in multiplayer the driver's console gets a container already has id line on each start; it is vanilla (normal cars too), and no key is duplicated or lost.
 [/list]
@@ -727,6 +832,12 @@ Without Vehicle Manager:
 [list]
 [*] After the power cut it is Bluetooth only, within 50 m (servers can change it in the sandbox: App Bluetooth range after power cut); a car outside the loaded area also shows its last record only.
 [*] With Vehicle Manager, buttons you have no permission for do not work.
+[/list]
+[h3]Why won't the thrusters work?[/h3]
+[list]
+[*] Only the Roadster Rocket has them, and you must be in the driver's seat with the car started.
+[*] A greyed-out move in the radial has the reason underneath; see the refusal table in the Thrusters section. The most common are not enough air (wait for the refill), something in the way ahead or overhead (move somewhere open) and the charge cable plugged in.
+[*] The server may have turned off Roadster thrusters in the sandbox.
 [/list]
 [h3]I added the mod mid-save and see no Teslas, phones or Superchargers?[/h3]
 [list]
