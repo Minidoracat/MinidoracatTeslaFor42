@@ -4,9 +4,8 @@ model_y.py (each is the module constant it sets); built as cybercab.py (the prep
 the face attribute `panel`: PANEL_PARTS). One seat (SEAT solo, template MinidoracatTeslaSoloNoFrunk: the passenger's
 place holds the air tank), two butterfly doors, the trunk lid (the rear glass), the active rear wing (TeslaWing, the
 charge port under it). One paint, Ano White. Grid units, pre-centre frame (+Y front, +Z up, -X car left, ground z 0;
-the prep's metres x 0.826) unless noted. Milestone A (shell in game): the doors', lid's and wing's hinges and angles,
-the cabin, nozzles and fans are stand-ins
-until milestone B (temp/plan-roadster2-1124/build/R2Body.md).
+the prep's metres x 0.826) unless noted. Milestone B2a: the butterfly doors' own axis, the wing on its struts, the
+single seat and the air tank, the rear nozzles and fans (temp/plan-roadster2-1124/build/R2Body.md).
 """
 import json
 import math
@@ -20,12 +19,17 @@ def _g(*m):
     return tuple(round(v * K, 4) for v in m)
 
 
-def _axis(sd):
-    """The butterfly hinge axis of the door on side sd (-1 left): the Cybercab's (cybercab.py _axis), until milestone B
-    fits the Roadster's own."""
-    x, y, z = -0.37 * sd, -0.43, 0.6
-    n = math.sqrt(x * x + y * y + z * z)
-    return (x / n, y / n, z / n)
+def _door(sd, splay=15.0, up=90.0):
+    """The butterfly door on side sd (-1 left): (axis, deg) of turning it `up` about the car's x through the A pillar's
+    top, then `splay` outward about the vertical (official Slide-3 front over, x HVc6jW2XgAAULlb rear 3/4: the doors
+    stand near upright over the opening's front, their tops a little out). R = Ry(-splay) Rx(-up) for the left door,
+    its axis-angle with the sign turned (left: axis x > 0, deg < 0); the right one mirrors x and the angle."""
+    cs, ss = math.cos(math.radians(splay)), math.sin(math.radians(splay))
+    cu, su = math.cos(math.radians(up)), math.sin(math.radians(up))
+    ax = (cs * su + su, ss * cu + ss, ss * su)
+    n = math.sqrt(sum(a * a for a in ax))
+    deg = math.degrees(math.acos((cs + cu + cs * cu - 1) / 2))
+    return (round(-sd * ax[0] / n, 4), round(ax[1] / n, 4), round(ax[2] / n, 4)), round(sd * deg, 2)
 
 
 # The prep's own numbers (metres in its frame: +Y front, ground 0) from a committed snapshot (cars/roadster2_body.json),
@@ -35,8 +39,8 @@ def _axis(sd):
 _TMP = pathlib.Path(__file__).resolve().parents[4] / "temp" / "skf_r2"
 _SNAP = pathlib.Path(__file__).with_name("roadster2_body.json")
 _KEYS = {"prep_report.json": ("body_bbox", "wheels"),
-         "roadster2_lines.json": ("door_left", "wing_hinge", "charge_port_centre", "head_light_bar", "tail_light_bar",
-                                  "seat")}
+         "roadster2_lines.json": ("door_left", "wing_hinge", "wing_lift", "charge_port_centre", "head_light_bar",
+                                  "tail_light_bar", "seat", "copv")}
 
 
 def _from_tmp():
@@ -62,6 +66,7 @@ _WF, _WR = _REP["wheels"]["front"], _REP["wheels"]["rear"]
 _FA, _RA = _WF["y"], _WR["y"]              # the axles' y (metres)
 _BB = _REP["body_bbox"]
 _YC = (_BB[0][1] + _BB[1][1]) / 2 * K     # stage_build centres the mesh on its bbox: the shift along y (grid)
+_ZC = (_BB[0][2] + _BB[1][2]) / 2 * K     # ... and along z (GEOMETRY zmid)
 
 
 def _c(y):
@@ -74,6 +79,8 @@ _DOOR_F = max(q[1] for q in _DOOR)         # the door's front (A pillar, 0.79) a
 _DOOR_R = min(q[1] for q in _DOOR)
 _PORT = _LN["charge_port_centre"]
 _SEAT = _LN["seat"]                        # the H point (metres)
+_WL = _LN["wing_lift"]                     # the wing open: move (metres), deg nose up
+_TANK = _LN["copv"]                        # the air tank (metres)
 
 CAR = dict(
     # ---- pzveh: paths and names
@@ -118,13 +125,15 @@ CAR = dict(
               back=(round(((_c(_DOOR_F) + _c(_DOOR_R)) / 2 - _c(_SEAT[1])), 4),), out=0.30, front_only=True, solo=True),
     SEAT_POSE={"front": [("Bip01", 42.0), ("Bip01_L_Thigh", -20.0), ("Bip01_R_Thigh", -20.0)]},
     BODY_W_Z=0.55,
-    # butterfly doors as the Cybercab's (stand-ins: milestone B); the trunk lid (the V rear glass, prep panel 4) about
-    # its front edge over the seat back (prep REAR0, REAR_C), up; the wing about its front edge (wing_hinge), up
+    # butterfly doors (_door); the trunk lid (the V rear glass, prep panel 4) about its front edge over the seat back
+    # (prep REAR0, REAR_C), up; the wing (prep WING_LIFT, x HVc6jW2XgAAULlb / HVc6ftKXYAApLw-) lifted up and back on its
+    # two struts (DOOR_LIFT: the move at full open) and its nose turned up about its front edge (wing_hinge)
     DOORS={
-        "DoorFrontLeft": (-1, _axis(-1), -93, 2.0), "DoorFrontRight": (1, _axis(1), 93, 2.0),
+        "DoorFrontLeft": (-1, *_door(-1), 2.0), "DoorFrontRight": (1, *_door(1), 2.0),
         "TrunkDoor": (0, (1, 0, 0), -50, 1.0),
-        "TeslaWing": (0, (1, 0, 0), -25, 1.5),
+        "TeslaWing": (0, (1, 0, 0), _WL["deg"], 1.5),
     },
+    DOOR_LIFT={"TeslaWing": _g(*_WL["move"])},
     DOOR_HINGE={"DoorFrontLeft": _g(-0.62, 0.72, 0.93), "DoorFrontRight": _g(0.62, 0.72, 0.93),
                 "TrunkDoor": _g(0.0, -0.45, 1.06), "TeslaWing": _g(0.0, *_LN["wing_hinge"][0][1:])},
     GATE_IN=(0.0, 0.9, -0.44),
@@ -138,8 +147,8 @@ CAR = dict(
     SRC_FLIP=False,
     BELT_Z=round(0.80 * K, 4),             # the side glass's foot
     TIRE_OBJ="Tyre_",
-    # the nozzles and the tail's fans are milestone B's
-    DROP=("Tyre_", "Rim_", "Disc_", "Nozzle_", "Fan_"),
+    # the tail's 4 bell nozzles (brass rings, x HVc6ftKXYAApLw- rear) over 4 fans in the black cavity
+    DROP=("Tyre_", "Rim_", "Disc_"),
     DROP_COMPS=(),
     ARCH_LINER=None,
     PLATES=(),
@@ -156,7 +165,8 @@ CAR = dict(
     # the lower body and nose band black-grey (03 / 08), the arches' liners black, the lamps' day colours (the head
     # lamps' slim lit bands white, the tail bar dark red), the rear plate light grey
     MAT_RGB={"Trim": (30, 30, 32), "Liner": (20, 20, 22), "Glass": (26, 30, 34), "HeadLight": (250, 252, 255),
-             "TailLight": (112, 32, 36), "Dark": (14, 14, 16), "Plate": (206, 208, 212)},
+             "TailLight": (112, 32, 36), "Dark": (14, 14, 16), "Plate": (206, 208, 212), "Nozzle": (150, 118, 72),
+             "Fan": (46, 46, 50)},
     CARBON=None,
     GLASS_MATS=("Glass",),
     GLASS_OPAQUE=(),
@@ -207,7 +217,8 @@ CAR = dict(
     # charge port under the wing (roadster2_lines.json charge_port_centre)
     PORT=_g(_PORT[1], _PORT[2]),
     PORT_X=round(_PORT[0] * K, 4),
-    # ---- cabin.py (mesh coords, centred): the Roadster 2.5's simple cabin (roadster.py) on this body until milestone B
+    # ---- cabin.py (mesh coords, centred): the Roadster 2.5's simple cabin (roadster.py) with one bucket (SEAT solo)
+    # and the air tank (TANK, roadster2_lines.json copv) in the passenger's place, no centre console (the tank's side)
     CABIN_FLOOR=-0.37,
     CABIN_FRONT_Y=_c(0.95),
     TRUNK_Y=_c(-0.92),                     # behind the reclined backrest (cabin.py: -0.71 grid at -0.55 m)
@@ -216,9 +227,14 @@ CAR = dict(
     SEATS=dict(front=dict(w=0.40, back=0.36, recline=28, head=0.47, dy=-0.066, dz=-0.085, cushion=0.035), sill=None,
                bin=None),
     PARCEL=None,
-    DASH=dict(size=(0.84, 0.20, 0.16), console=(0, 0.0, -0.25), dash=(0, _c(0.75), 0.04), trim=(0, _c(0.673), 0.075),
+    DASH=dict(size=(0.84, 0.20, 0.16), console=None, dash=(0, _c(0.75), 0.04), trim=(0, _c(0.673), 0.075),
               light=(0, _c(0.675), 0.051), stand=(0, _c(0.71), 0.05), screen=(0, _c(0.665), 0.05),
               wheel=(round(-_SEAT[0] * K, 4), 0.033)),
+    TANK=dict(at=(round(_TANK["centre"][0] * K, 4), _c(_TANK["centre"][1]), round(_TANK["centre"][2] * K - _ZC, 4)),
+              r=round(_TANK["r"] * K, 4), half=round(_TANK["length"] / 2 * K, 4), dome=round(_TANK["dome"] * K, 4)),
+    # the tank light grey (a metal liner's sheen: it reads through the mid glass), its straps black
+    CABIN_CELL_MAP=dict(tank="bed_rim", strap="screen_back"),
+    DETAIL_CELL_MAP=dict(tank="chrome", strap="mat"),
     DOOR_CARD={
         "front": [
             ("upper trim", "end", (0.08, 0.10), -0.050, None, 0.060, 0.030, "dash", 0.012),
@@ -229,12 +245,12 @@ CAR = dict(
     },
     # TeslaArmor's visible kit (armor.py; model_y.py ARMOR has the keys): steel tubes as the Roadster 2.5's, low over
     # the black nose band and the tail's black lower face, under the head lamps and the rear plate (keep: prep PLATE,
-    # HEAD_LAMP; no front plate)
+    # HEAD_LAMP; no front plate); the rear hoops outside the outer nozzles (x 0.354 m, r 0.036: 0.32 grid)
     ARMOR=dict(
         keep=dict(rear_plate=_g(0.153, 0.504, 0.656), head_lamps=_g(0.59, 0.66, 0.42, 0.50)),
         front=dict(z=0.13, top=0.28, x=0.52, corners=[(0.24, 0.40)], brackets=(0.15, 0.36), gap=0.025, r=0.020, sides=10,
                    bend=0.045),
-        rear=dict(z=0.20, top=0.40, x=0.62, corners=[(0.30, 0.45)], brackets=(0.12, 0.30), gap=0.025, r=0.020, sides=10,
+        rear=dict(z=0.20, top=0.40, x=0.62, corners=[(0.36, 0.52)], brackets=(0.12, 0.30), gap=0.025, r=0.020, sides=10,
                   bend=0.045),
         sill=dict(z=0.16, y=(-0.70, 0.62), r=0.020, sides=10, gap=0.012, bend=0.045, brackets=(-0.40, 0.0, 0.40)),
         roof=None,

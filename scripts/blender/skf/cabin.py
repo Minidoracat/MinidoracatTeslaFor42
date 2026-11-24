@@ -518,7 +518,8 @@ def furniture(add, opening, grow=0.0, fine=1, between=None):
     at = SEAT.get("at")     # (Semi) each front seat its own: (mesh x, y shift[, its SEATS entry]); pzveh.geometry the same
     out["front"] = [bucket(a[0], seat_y[0] + a[1], SEATS[a[2]] if len(a) > 2 else fs) for a in
                     (at["FrontLeft"], at["FrontRight"])][0] if at else \
-        [bucket(s * FRONT_X, seat_y[0], fs) for s in (-1, 1)][0]     # front buckets
+        [bucket(s * FRONT_X, seat_y[0], fs) for s in ((-1,) if SEAT.get("solo") else (-1, 1))][0]   # front buckets
+    # (SEAT solo, Roadster Rocket: the driver's seat only, template MinidoracatTeslaSolo)
     if fs.get("centre"):    # (Cybercab: rider guide 05, pp.10-12, ERG p.5) between the slim front seats one console
         ah, al, aw = fs["centre"]   # block from the floor (centre: its top over the cushions' top, length from behind
         fy, zf = out["front"]       # the backrests' foot forward, top width), wider down so it fills the gap at the
@@ -559,6 +560,16 @@ def furniture(add, opening, grow=0.0, fine=1, between=None):
     out["last"] = min(v[:, 1].min() for v in row)
     if SEAT.get("front_only") and out["last"] < TRUNK_Y:     # behind the front backrests: the trunk's floor (TRUNK_Y)
         raise SystemExit(f"cabin: the front backrests (y {out['last']:.3f}) reach behind TRUNK_Y {TRUNK_Y}")
+    # TANK (optional, Roadster Rocket: the thrusters' air tank in the passenger's place, roadster2_lines.json copv): a
+    # capsule along y, at (mesh centre), r, half (centre to each tip), dome (each end's depth); two dark straps round it
+    tk = pv.CAR.get("TANK")
+    if tk:
+        n, nd = 24 * (fine if grow else 1), 4 * (fine if grow else 1)
+        v, f = capsule(tk["r"] + grow, tk["half"] + grow, tk["dome"] + grow, n, nd)
+        add(v + tk["at"], f, "tank")
+        for e in (-1, 1):
+            v, f = cylinder(tk["r"] + 0.006 + grow, 0.04 + 2 * grow, n)
+            add(v[:, [0, 2, 1]] + tk["at"] + [0, e * (tk["half"] - tk["dome"]) * 0.6, 0], f, "strap")
     # DASH console None (Cybercab: rider guide 05, the footwell open between the seats): no centre console
     out["console"] = part((0.20, 0.80, 0.22), 0.04, "console", DASH["console"]) if DASH["console"] else None
     out["dash"] = part(*DASH_BOX, "dash", DASH["dash"])                               # dash, trim strip on its face
@@ -878,6 +889,22 @@ def cylinder(r, h, n=24):
     return V, [[i, (i + 1) % n, n + (i + 1) % n, n + i] for i in range(n)] + [list(range(n))[::-1], list(range(n, 2 * n))]
 
 
+def capsule(r, half, dome, n=24, nd=4):
+    """Closed tank on the origin along y: radius r, `half` from the centre to each end's tip, the ends half ellipsoids
+    `dome` deep; n sides, nd rings per dome (ring k at k x 90 / nd deg). -> verts, faces (quads, pole triangles)."""
+    a = np.linspace(0, 2 * math.pi, n, endpoint=False)
+    t = np.linspace(0, math.pi / 2, nd + 1)[:-1]            # the domes' rings, their foot (t 0) first
+    prof = [(r * math.cos(tk), -(half - dome) - dome * math.sin(tk)) for tk in t[::-1]] + \
+        [(r * math.cos(tk), (half - dome) + dome * math.sin(tk)) for tk in t]
+    V = [(rr * math.cos(ak), y, rr * math.sin(ak)) for rr, y in prof for ak in a] + [(0, -half, 0), (0, half, 0)]
+    m, F = len(prof), []
+    for j in range(m - 1):
+        F += [[j * n + i, (j + 1) * n + i, (j + 1) * n + (i + 1) % n, j * n + (i + 1) % n] for i in range(n)]
+    F += [[m * n, (i + 1) % n, i] for i in range(n)] + [[m * n + 1, (m - 1) * n + i, (m - 1) * n + (i + 1) % n]
+                                                         for i in range(n)]
+    return np.array(V, float), F
+
+
 def rot_z(deg):
     c, s = math.cos(math.radians(deg)), math.sin(math.radians(deg))
     return np.array([[c, -s, 0], [s, c, 0], [0, 0, 1]])
@@ -1050,7 +1077,8 @@ def detail_mesh(opening, windscreen, roof=None):
     fy, ry = placed["front"][0], placed["rear"][0]
     at = SEAT.get("at")     # (fy is FrontLeft's: its own shift taken back out)
     rows = [(fy - at["FrontLeft"][1] + a[1] + 0.30, min(fy - at["FrontLeft"][1] + a[1] + 0.74, CABIN_FRONT_Y - 0.10),
-             (a[0],)) for a in at.values()] if at else [(fy + 0.30, min(fy + 0.74, CABIN_FRONT_Y - 0.10), (-FRONT_X, FRONT_X))]
+             (a[0],)) for a in at.values()] if at else [(fy + 0.30, min(fy + 0.74, CABIN_FRONT_Y - 0.10),
+                                                         (-FRONT_X,) if SEAT.get("solo") else (-FRONT_X, FRONT_X))]
     for y0, y1, xs in rows + [(ry + 0.30, fy - 0.12, (-SEAT_X, SEAT_X))]:
         for x in xs:
             if y1 - y0 > 0.12:

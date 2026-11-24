@@ -87,6 +87,13 @@ FIN_IN = [(-0.45, 0.47), (-0.80, 0.40), (-1.40, 0.28), (-1.60, 0.50), (-2.00, 0.
 GLASS_END = -1.40                      # the rear glass runs down to the wing's leading edge (01, 825)
 ROOF_Y = 0.30                          # the windscreen / roof glass split (one canopy on the real car; TOP's knee)
 WING = dict(seam=-1.40, thick=0.045, thick_tail=0.030, gap=0.006, trail_y=-2.075)
+# the wing raised (x-sawyer HVc6jW2XgAAULlb rear 3/4, HVc6ftKXYAApLw- rear: up about 0.3 above the deck, its
+# trailing edge past the tail, level to a little nose up) on two black struts (HVc6ftKXYAApLw-: two posts under it):
+# open = moved `move` and turned `deg` about its front edge (wing_hinge; + nose up), cars/roadster2.py DOORS /
+# DOOR_LIFT. A strut is a flat plate along the move from the wing's underside, `sink` deeper than the move: open, its
+# foot still in the deck; shut, all of it inside the body under the deck
+WING_LIFT = dict(move=(0.0, -0.12, 0.30), deg=5.0)
+STRUT = dict(x=0.30, y=-1.74, chord=0.07, t=0.014, sink=0.06)
 
 TYRES = dict(front=dict(y=1.272, r=0.307, w=0.255, disc=0.262, x=0.80),      # 03: contacts 750 px / bar 590 px
              rear=dict(y=-1.392, r=0.337, w=0.305, disc=0.265, x=0.755))
@@ -242,6 +249,23 @@ def wing_loft():
         V_ += [(-w, y, zt), (w, y, zt), (w, y, zb), (-w, y, zb)]
     quads = [(r0[p], r0[(p + 1) % 4], r1[(p + 1) % 4], r1[p]) for r0, r1 in zip(rings[:-1], rings[1:]) for p in range(4)]
     return np.array(V_), quads + [tuple(rings[0]), tuple(rings[-1][::-1])]
+
+
+def wing_struts():
+    """The wing's two struts (STRUT): [(8 vertices, 6 quads)], a plate t thick (x) and chord long (y) from 1 cm inside
+    the wing's underside down along -WING_LIFT move."""
+    m = np.array(WING_LIFT["move"], float)
+    d = -m / np.linalg.norm(m) * (np.linalg.norm(m) + STRUT["sink"])
+    y, c, t = STRUT["y"], STRUT["chord"] / 2, STRUT["t"] / 2
+    z = interp(REAR_C, y) - wing_thick(y) + 0.01
+    out = []
+    for sx in (-1, 1):
+        top = np.array([sx * STRUT["x"], y, z])
+        v = [top + d * k + (dx, dy, 0) for k in (0, 1) for dy in (-c, c) for dx in (-t, t)]
+        # vertex i = 4k + 2 (dy > 0) + (dx > 0)
+        q = [(0, 1, 3, 2), (4, 6, 7, 5), (0, 4, 5, 1), (2, 3, 7, 6), (0, 2, 6, 4), (1, 5, 7, 3)]
+        out.append((np.array(v), q))
+    return out
 
 
 def box(x0, x1, y0, y1, z0, z1):
@@ -418,6 +442,7 @@ def lines():
     out["wing"] = [[round(c, 4) for c in p] for p in ring]
     ys = WING["seam"]
     out["wing_hinge"] = [[-0.20, ys, interp(REAR_C, ys)], [0.20, ys, interp(REAR_C, ys)]]
+    out["wing_lift"] = dict(move=list(WING_LIFT["move"]), deg=WING_LIFT["deg"])   # open: moved, nose up (deg)
     # charge port: no Tesla picture shows it; the rear left corner as on the family's other cars (a guess, to be
     # decided with the other cars' plug side): a 12 x 9 cm door in the deck under the wing
     cy, cx = -1.86, -0.60
@@ -435,9 +460,11 @@ def lines():
         r=NOZZLE["r_exit"],
         dir=dict(lift=[0, 0, -1], side=[[-1, 0, 0], [1, 0, 0]], rear=[0, -1, 0]))
     out["fans"] = [[x, FAN["y"], FAN["z"]] for x in NOZZLE_X]
-    # single seat (driver, left) H point; the passenger side holds the 400 L COPV (centre, axis, radius, length)
+    # single seat (driver, left) H point; the passenger side holds the COPV (roadster2.md: 400 L; centre, axis, radius,
+    # length tip to tip, dome: each 2:1 elliptical head's depth; with the heads ~373 L). Its foot 2 cm over the cabin
+    # floor (cars/roadster2.py CABIN_FLOOR -0.37 grid = 0.152 m), its top under the side glass's foot (BELT_Z 0.80 m)
     out["seat"] = [-0.36, -0.22, 0.27]
-    out["copv"] = dict(centre=[0.36, -0.25, 0.42], axis=[0, 1, 0], r=0.30, length=1.42)
+    out["copv"] = dict(centre=[0.36, -0.25, 0.47], axis=[0, 1, 0], r=0.30, length=1.42, dome=0.15)
     return out
 
 
@@ -647,14 +674,18 @@ def main():
     bm.free()
     me.update()
 
-    # wing
+    # wing and its struts (black)
     wv, wq = wing_loft()
     bm = bmesh.new()
     bw = [bm.verts.new(p) for p in wv]
     for q in wq:
         bm.faces.new([bw[i] for i in q])
+    for sv, sq in wing_struts():
+        bs_ = [bm.verts.new(p) for p in sv]
+        for q in sq:
+            bm.faces.new([bs_[i] for i in q]).material_index = 1
     closed(bm)
-    wing = link("Wing", bm, ["Paint"])
+    wing = link("Wing", bm, ["Paint", "Trim"])
     wing.data.attributes.new("panel", "INT", "FACE").data.foreach_set(
         "value", np.full(len(wing.data.polygons), 3, np.int32))
 

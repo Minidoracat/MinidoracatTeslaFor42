@@ -3837,10 +3837,14 @@ def pieces(car, c, shift):
     for pb in arm.pose.bones:
         pb.rotation_mode = "QUATERNION"
 
-    def hinge_pose(pname, deg):
-        q = Quaternion(Vector(conv @ np.array(pv.DOORS[pname][1], float)), math.radians(deg))
+    def hinge_pose(pname, o):
+        """Part pname open by o (0..1): turned its angle x o about its axis through its hinge; DOOR_LIFT (optional,
+        cars/<car>.py {part: (x, y, z) pre-centre grid}, the Roadster 2's wing rising on its struts) also moves it that
+        far x o."""
+        q = Quaternion(Vector(conv @ np.array(pv.DOORS[pname][1], float)), math.radians(pv.DOORS[pname][2] * o))
         h = Vector(conv @ hinges[pname])
-        return h - q @ h, q
+        lift = Vector(conv @ (np.array(C.get("DOOR_LIFT", {}).get(pname, (0.0, 0.0, 0.0)), float) * o))
+        return h - q @ h + lift, q
 
     def falcon_pose(pname, s, o):
         """Falcon door open by o: the upper part (s 0) turns up about the roof hinge; the lower part (s 1) turns with
@@ -3888,7 +3892,7 @@ def pieces(car, c, shift):
                 pb.location, pb.rotation_quaternion = (Vector((0, 0, 0)), Quaternion()) if bp != pname else \
                     roll_pose(pname, int(s or 0), o) if ang == "roll" else \
                     stow_pose(pname, int(s or 0), o) if ang == "stow" else \
-                    falcon_pose(pname, int(s or 0), o) if axis == "falcon" else hinge_pose(pname, ang * o)
+                    falcon_pose(pname, int(s or 0), o) if axis == "falcon" else hinge_pose(pname, o)
                 pb.keyframe_insert("location", frame=fr)
                 pb.keyframe_insert("rotation_quaternion", frame=fr)
         act.frame_range = (1, last)
@@ -3968,7 +3972,7 @@ def stage_view(out, heads, state, skin="UltraRed", app=False):
              "every": list(pv.DOORS),
              "fl": ["DoorFrontLeft"], "fr": ["DoorFrontRight"], "rl": ["DoorRearLeft"], "rr": ["DoorRearRight"],
              "rear": ["DoorRearLeft", "DoorRearRight"], "tonneau": ["TrunkTonneau"], "bed": ["TrunkDoor", "TrunkTonneau"],
-             "soft": ["SoftTop"]}[state]
+             "soft": ["SoftTop"], "wing": ["TeslaWing"]}[state]
     ad = arm.animation_data
     poses = {}
     for pb in arm.pose.bones:
