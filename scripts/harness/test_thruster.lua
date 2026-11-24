@@ -1283,11 +1283,25 @@ pad.ay, pad.rb = 0, nil
 local realGetText, realKeyName = getText, getKeyName
 getText = function(k, ...) return table.concat({ k, ... }, "|") end
 getKeyName = function(k) return "K" .. tostring(k) end
-local padTip = TH.flyTip(cp)
+local padTip, padPill = TH.flyTip(cp), TH.flyTip(cp, "IGUI_MinidoracatTesla_HUD_FlyKeys")
 cp.pad = nil
 check(padTip == "IGUI_MinidoracatTesla_Tip_ThrustFlyPad" and TH.flyTip(cp) == "IGUI_MinidoracatTesla_Tip_ThrustFly|K201|K0|K0",
     "the flying tip names the keys bound now (an unbound one: its 0); a controller's player: the controller's tip")
+check(padPill == "IGUI_MinidoracatTesla_HUD_FlyKeysPad"
+    and TH.flyTip(cp, "IGUI_MinidoracatTesla_HUD_FlyKeys") == "IGUI_MinidoracatTesla_HUD_FlyKeys|K201|K0|K0",
+    "the dashboard's flying pill: its own short words, the same keys")
 getText, getKeyName = realGetText, realKeyName
+-- the dashboard's flying pill (HUD.lua): the whole seconds of air left, real time counting them down as the server's
+-- D2 does; FreeFlight (no limit): true; "land" once landing is asked; nobody else's (a passenger, another car)
+local fl0, flown0 = TH.flight(cp, cv), fa.flown
+for _ = 1, 12 do H.advanceMs(100) step(1) end
+local fl1 = TH.flight(cp, cv)
+check(fl0 == math.ceil(30 - flown0) and fa.flown > flown0 + 1 and fl1 == math.ceil(30 - fa.flown) and fl1 < fl0,
+    "flying: the pill's seconds left count real time down (" .. tostring(fl0) .. " -> " .. tostring(fl1) .. ")")
+check(TH.flight({}, cv) == nil and TH.flight(cp, {}) == nil, "flying: not another player's, not another car's")
+fa.sec = nil
+check(TH.flight(cp, cv) == true, "FreeFlight: no seconds")
+fa.sec = 30
 -- flying: the V ring's thrusters slice is Land (the first press lands it, H.ask), and getting out (vanilla's exit: the
 -- A button, ISButtonPrompt.lua:444; the Interact key, OnUseVehicle) lands it too; the landing itself still holds on
 local slices, realTex = {}, getTexture
@@ -1301,11 +1315,14 @@ check(fa.wantLand == true, "the Land slice: lands it")
 fa.wantLand = nil
 local ex0, h0 = exits, #halo
 ISVehicleMenu.onExit(cp, 0)
-check(exits == ex0 and #halo == h0 and fa.wantLand == true, "flying: getting out lands it, nothing said, still in the seat")
+check(exits == ex0 and #halo == h0 and fa.wantLand == true and TH.flight(cp, cv) == "land",
+    "flying: getting out lands it, nothing said, still in the seat; the pill says landing")
 step(1)
 ISVehicleMenu.onExit(cp, 0)
 check(fa.phase == "land" and exits == ex0 and halo[#halo] == "IGUI_MinidoracatTesla_Deny_THRUST_IN_AIR", "landing: no getting out yet")
+check(TH.flight(cp, cv) == "land", "landing: the pill still says landing")
 abort()
+check(TH.flight(cp, cv) == nil, "over: no flying pill")
 TH.KEYS.up = nil
 isKeyDown, isJoypadRTPressed, isJoypadLTPressed, getJoypadMovementAxisX, getJoypadAimingAxisY = savedKD, nil, nil, nil, nil
 isJoypadRBPressed = nil

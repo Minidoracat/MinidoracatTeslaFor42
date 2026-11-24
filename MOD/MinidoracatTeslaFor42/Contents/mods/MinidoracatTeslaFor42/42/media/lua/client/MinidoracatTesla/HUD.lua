@@ -458,9 +458,14 @@ function HUD:readSlow()
         st.target = chg.target or 100
     end
     st.chg = cs
-    -- message: priority door > no power > low battery > charging > charged > camp > sentry
+    -- message: priority flying > door > no power > low battery > charging > charged > camp > sentry. Flying (this
+    -- player at the wheel, Thruster.lua H.flight) first: its seconds decide when the car comes down; the rest is back
+    -- once it has landed. A car without thrusters never asks (st.air nil).
+    local fl = st.air and T.Thruster.flight and T.Thruster.flight(self.character, v)
     local id, a1, a2 = 0, 0, 0
-    if warn > 0 then id, a1 = 1, warn
+    if fl == "land" then id = 9
+    elseif fl then id, a1, a2 = 8, fl, self.character:getJoypadBind() ~= -1
+    elseif warn > 0 then id, a1 = 1, warn
     elseif cs == 3 then id = 2
     elseif st.pct < LOW_PCT and cs == 0 then id, a1 = 3, st.range
     elseif cs == 1 then id, a1, a2 = 4, added, mins
@@ -511,6 +516,13 @@ function HUD:setMessage()
         title, sub, icon, color = getText("IGUI_MinidoracatTesla_HUD_Camp"), getText("IGUI_MinidoracatTesla_HUD_CampSub"), "i_tent", C.text2
     elseif id == 7 then
         title, sub, icon, color = getText("IGUI_MinidoracatTesla_HUD_Sentry"), getText("IGUI_MinidoracatTesla_HUD_SentrySub"), "i_ring", C.text2
+    elseif id == 8 then -- flying: the seconds left (FreeFlight: none), the last 3 as a warning; the keys bound now
+        local free = a1 == true
+        title = free and getText("IGUI_MinidoracatTesla_HUD_FlyingFree") or getText("IGUI_MinidoracatTesla_HUD_Flying", tostring(a1))
+        sub = T.Thruster.flyTip(self.character, "IGUI_MinidoracatTesla_HUD_FlyKeys")
+        if not free and a1 <= 3 then icon, color = "i_warn", C.warn else icon, color = "i_wing", C.accent end
+    elseif id == 9 then
+        title, icon, color = getText("IGUI_MinidoracatTesla_HUD_FlyLanding"), "i_chevdown", C.accent
     end
     self.msgTitle, self.msgSub, self.msgIcon, self.msgColor = title, sub, icon, color
     self:measureMessage()

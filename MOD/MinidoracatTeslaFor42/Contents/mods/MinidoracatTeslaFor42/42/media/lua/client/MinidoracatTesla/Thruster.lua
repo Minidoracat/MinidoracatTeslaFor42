@@ -671,6 +671,14 @@ function H.air(v)
     local part = T.Battery.part(v)
     return H.gasNow(part and part:getModData().thr, T.hours())
 end
+-- this player flying v, for the dashboard's pill (HUD.lua readSlow): nil not flying; "land" coming down; else the
+-- whole seconds of air left (the limit's real time, as the server's D2), true in FreeFlight (no limit)
+function H.flight(player, v)
+    local f = F
+    if not f or f.v ~= v or f.act ~= "fly" or f.app or f.player ~= player then return nil end
+    if f.wantLand or f.phase == "land" then return "land" end
+    return f.sec and math.max(0, math.ceil(f.sec - f.flown)) or true
+end
 -- why refused, in words; THRUST_NO_AIR adds when this car's tank is full again (v may be nil: a car not loaded here)
 function H.whyText(v, why)
     local s = T.denyText(why)
@@ -787,12 +795,14 @@ local NAME = { kickflip = "Kickflip", backflip = "Backflip", boost = "Boost", fl
 local function line2(s) return "\n" .. T.wrapText(s, 220, UIFont.Medium) end -- the ring's width (HUDRadial.lua LINE_W)
 local function onAct(player, v, act) H.ask(player, v, act) end
 -- how to fly, with the keys bound now (the up / down binds; vanilla's exit, the Interact key: getting out lands it,
--- ISVehicleMenu.onExit below); a controller's player: the controller's way
-function H.flyTip(player)
-    if player:getJoypadBind() ~= -1 then return getText("IGUI_MinidoracatTesla_Tip_ThrustFlyPad") end
+-- ISVehicleMenu.onExit below); a controller's player: the controller's way (the key with "Pad"). The ring's words, or
+-- the ones given (the dashboard's flying pill: "IGUI_MinidoracatTesla_HUD_FlyKeys", HUD.lua setMessage)
+function H.flyTip(player, ...)
+    local key = ... or "IGUI_MinidoracatTesla_Tip_ThrustFly"
+    if player:getJoypadBind() ~= -1 then return getText(key .. "Pad") end
     local up, down = KEYS.up, KEYS.down
-    return getText("IGUI_MinidoracatTesla_Tip_ThrustFly", getKeyName(up and up:getValue() or 0),
-        getKeyName(down and down:getValue() or 0), getKeyName(getCore():getKey("Interact")))
+    return getText(key, getKeyName(up and up:getValue() or 0), getKeyName(down and down:getValue() or 0),
+        getKeyName(getCore():getKey("Interact")))
 end
 
 function H.openRing(player, v)
