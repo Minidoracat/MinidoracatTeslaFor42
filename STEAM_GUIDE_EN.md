@@ -267,7 +267,7 @@ https://steamcommunity.com/sharedfiles/filedetails/?id=3829501237
 [*] [b]Landing[/b]: pick Land in the radial (while flying, the Thrusters slice turns straight into Land), press the Fly / land key, or press the get-out key (A on a controller); it also lands by itself when the air runs out. Opening the mechanics window from inside the car counts as the get-out key, so the car lands first. It first slows down at its height; with a fence, hedge or anything else under the car, it glides on a little the way it was flying before coming down.
 [*] [b]Flying with the motor off[/b]: once off the ground the motor switches off, so fences, hedges, trees and lamp posts do not slow it; it starts again by itself as the car begins to come down, and takes about 1.5 seconds after touchdown to get going.
 [*] [b]It hits zombies[/b]: flying knocks down standing zombies, and the windows take damage as usual.
-[*] [b]Stuck up high[/b]: if it comes to rest up high, such as on another car or an eave, and the way out is blocked, your character gets out on the outside of the car instead. If a wall, door or window is in the way, or the spot is inside a safehouse you may not enter, you cannot get out there, as in the base game; park the car facing another way.
+[*] [b]Stuck up high[/b]: if it comes to rest off the ground, such as on another car, a fence or an eave, you can pick Fly again and land somewhere open. If you press the get-out key there and the way out is blocked, the car lifts itself, moves about 3 metres to the side and lands (it uses a third of a tank if it has air, and still does it with none); press get out again once it is down.
 [/list]
 [h3]Checks before take-off and refusal messages[/h3]
 {{img:51-thrust-deny-en.jpg}}
@@ -282,7 +282,7 @@ A move that can't be used is greyed out in the radial with the reason underneath
 [tr][td]Unplug the charge cable first[/td][td]Not while the charge cable is plugged in.[/td][/tr]
 [tr][td]The thrusters are already working[/td][td]The last move hasn't finished, or AutoDrive is driving the car.[/td][/tr]
 [tr][td]Not enough air in the thruster tank[/td][td]It says how many minutes until full; wait for the refill.[/td][/tr]
-[tr][td]All four wheels must be on the ground[/td][td]The car hasn't settled yet.[/td][/tr]
+[tr][td]All four wheels must be on the ground[/td][td]The car hasn't settled yet, or it rests on something off the ground (only Fly works there).[/td][/tr]
 [tr][td]Not while reversing[/td][td]Stop or drive forward.[/td][/tr]
 [tr][td]Too fast for this: slow down first[/td][td]Above the speed limit in the table above.[/td][/tr]
 [tr][td]Not enough room: something is in the way or overhead[/td][td]A parked car first rolls ahead a little before the jets fire, so the way ahead must be clear; trees, fences, walls or a floor overhead all block it. Move somewhere open.[/td][/tr]
