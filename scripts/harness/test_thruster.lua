@@ -74,6 +74,10 @@ for name, s in pairs(T.Specs) do if s.thruster ~= nil and name:find("_Roadster2"
 local MS = T.Specs["Base.MinidoracatTesla_ModelS"]
 check(published == 0, "no published car has thrusters (only the new Roadster's Specs may)")
 
+local function vec() return { set = function(s, x, y, z) s[1], s[2], s[3] = x, y, z; return s end,
+    x = function(s) return s[1] end, y = function(s) return s[2] end, z = function(s) return s[3] end,
+    length = function(s) return math.sqrt(s[1] ^ 2 + s[2] ^ 2 + s[3] ^ 2) end } end
+Vector3f = { new = function() return vec():set(0, 0, 0) end }
 local function car(o)
     o = o or {}
     local v = H.vehicle({ script = "Base.MinidoracatTesla_ModelS", running = o.running ~= false, noPack = o.noPack,
@@ -82,6 +86,7 @@ local function car(o)
     if part:getInventoryItem() then part:setContainerContentAmount(B.capacity(part) * (o.pct or 80) / 100) end
     v.reads = 0 -- the car's height and speed read: by a look, never by a frame between them
     function v:getVehicleTowing() return self.towing end
+    function v:getLinearVelocity(o) return o:set(0, 0, self.lv or 0) end -- the holder's last sample (server, T4)
     function v:getDebugZ() self.reads = self.reads + 1 return self.dz or 0 end
     function v:getCurrentSpeedKmHour() self.reads = self.reads + 1 return self.speed end
     function v:authorizationChanged(q) self.npid = q and q:getOnlineID() or -1 end
@@ -625,6 +630,17 @@ do
     v.y = y0
     done(helper, v, { act = "land", done = true, rest = true })
     wait(500)
+    -- R8 (round3 T4): the holder's last sample still moving, none since (late or gone quiet): where it was is no rest
+    restAsk()
+    s6 = #H.sent
+    done(p, v, { act = "land", done = true, rest = true })
+    v.lv = 1
+    wait(500)
+    check(entryOf(v) ~= nil and not handedSince(s6), "R8: not moved but its last sample at 1 m/s ABORT_MS later: not over, looked at again")
+    v.lv = 0.1
+    wait(500)
+    check(entryOf(v) == nil and not handedSince(s6), "R8: 0.1 m/s at the next look (settling, r2f5-rest): over where it is")
+    v.lv = nil
 end
 v.dz = 0
 v.npid = nil
@@ -989,9 +1005,6 @@ local exits = 0
 ISVehicleMenu = { onExit = function() exits = exits + 1 end }
 H.stub("Vehicles/ISUI/ISVehicleMenu")
 H.stub("MinidoracatTesla/Units")
-local function vec() return { set = function(s, x, y, z) s[1], s[2], s[3] = x, y, z; return s end,
-    x = function(s) return s[1] end, y = function(s) return s[2] end, z = function(s) return s[3] end } end
-Vector3f = { new = function() return vec():set(0, 0, 0) end }
 local gt = getGameTime()
 -- the engine's enums the take-off scan reads (client Thruster.lua body): their names
 local savedIFT, savedIOT = IsoFlagType, IsoObjectType
