@@ -160,6 +160,23 @@ check(#v.played == p0 + 1 and v.played[#v.played] == F.SOUND and #markers == m0 
 T.ClientCommands.thrustFx(s.args)
 check(#v.played == p0 + 1 and #markers == m0, "E3: the next one: the hiss renewed only")
 T.ClientCommands.thrustFx({ vid = v.id, mode = "land" })
+-- R9: server-to-client commands are reliable, not ordered (PacketTypes.java:508): a renewal sent before the landing
+-- but arriving after it is dropped, else the hiss runs on to the backstop. Every state carries a rising seq
+H.side(false, true)
+F.set(v, "lift")
+local lift1 = H.sent[#H.sent].args
+F.set(v, "lift")
+local lift2 = H.sent[#H.sent].args
+F.set(v, "land")
+local landA = H.sent[#H.sent].args
+H.side(true, false)
+local p1 = #v.played
+T.ClientCommands.thrustFx(lift1)
+T.ClientCommands.thrustFx(landA)
+T.ClientCommands.thrustFx(lift2) -- late
+check(type(lift1.seq) == "number" and lift2.seq > lift1.seq and landA.seq > lift2.seq and #v.played == p1 + 2
+    and v.played[#v.played] == F.SOUND_END and minutes() == 0,
+    "R9: lift, land, then the late renewal: the landing stands (nothing restarted, no minute check)")
 
 H.advanceMs(4000)
 H.fire("OnTick")

@@ -47,6 +47,7 @@ F.GLOW, F.GLOW_AT, F.GLOW_ALPHA, F.GLOW_MS = "media/textures/MinidoracatTesla/Je
 F.last = {} -- server: each car's current jet mode, for the take-off glow
 F.SOUND_MAX_MS = 20 * 60000 -- backstop: a hiss no command renewed for this long stops (the car is checked anyway)
 F.stats = { set = 0, sent = 0, fog = 0, loops = 0, stops = 0 }
+F.seq = 0 -- server: the last state's number (F.set)
 
 function F.set(vehicle, mode)
     if isClient() or not vehicle then return end
@@ -55,7 +56,10 @@ function F.set(vehicle, mode)
     F.stats.set = F.stats.set + 1
     local on = F.MODELS[mode] or {}
     for _, id in ipairs(F.IDS) do part:setModelVisible(id, on[id] == true) end
-    local args = { vid = vehicle:getId(), mode = mode }
+    -- seq: rising with every state sent; a client plays none older than the last it had for the car (server to client
+    -- commands are reliable, not ordered, PacketTypes.java:508: a renewed hiss after the landing must not restart it)
+    F.seq = F.seq + 1
+    local args = { vid = vehicle:getId(), mode = mode, seq = F.seq }
     local x, y = vehicle:getX(), vehicle:getY()
     if mode == "boost" then
         local f = vehicle:getForwardVector(Vector3f.new()) -- physics frame: world y is its z
@@ -153,8 +157,16 @@ if not isServer() then
     end
 
     T.ClientCommands = T.ClientCommands or {}
+    -- [vid] = the newest seq played for the car (the end too: a late older state is dropped). A client that came near
+    -- later has none yet and plays the first it gets
+    local newest = {}
     T.ClientCommands.thrustFx = function(args)
         if type(args) ~= "table" or not args.vid then return end
+        local seq = tonumber(args.seq)
+        if seq then
+            if newest[args.vid] and seq <= newest[args.vid] then return end
+            newest[args.vid] = seq
+        end
         if args.fog then fog(args.fog, args.mode) end
         if args.glow then glow(args.glow) end
         sound(args.vid, F.MODELS[args.mode] ~= nil, args.mode == "land")
