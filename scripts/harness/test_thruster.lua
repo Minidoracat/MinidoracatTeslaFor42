@@ -297,6 +297,22 @@ wait(20000)
 v.dz = 0
 done(p, v, { done = true, sec = 1 })
 check(near(gas(part), 0), "A3: 20 s up: billed the 8 s approved, never more")
+do -- round3 T3: the landing's glide at its height, said by its holder, is not billed (up to GLIDE_S)
+    local function gf(glideMs, glide)
+        part:getModData().thr = { gas = 1, at = H.hours() }
+        ask(p, v, "fly")
+        v.dz = 1
+        wait(500)
+        wait(3000 + glideMs + FLAT)
+        v.dz = 0
+        done(p, v, { done = true, sec = 1, glide = glide })
+        return gas(part)
+    end
+    check(near(gf(0, 0), 1 - 3 / 8, 1e-6) and near(gf(4000, 4), 1 - 3 / 8, 1e-6),
+        "T3: 3 s flown, no glide or a 4 s glide at height: the same bill")
+    check(near(gf(4000, 99), 1 - 3 / 8, 1e-6), "T3: a glide said as 99 s: taken as GLIDE_S 4")
+    check(near(gf(0, -5), 1 - 3 / 8, 1e-6) and near(gf(0, "3"), 1 - 3 / 8, 1e-6), "T3: a negative or string glide: none")
+end
 -- G1: D2 for a flight: 3 s + its seconds + 12 s + 5 s from approval
 local helper = H.player({ name = "near", x = v.x + 5, y = v.y })
 online = { helper }
@@ -1728,6 +1744,17 @@ step(1)
 check(fa.phase == "land" and fa.brake and near(fa.st.rh, brakeH, 0.05) and fa.st.rvy == 0
     and near(math.sqrt(fa.st.vTx ^ 2 + fa.st.vTz ^ 2), 3, 1e-6), "time to land at 10 m/s: held at its height, slowing to 3 m/s ahead")
 check(TH.flight(cp, cv) == "land", "stopping at its height first: the pill says landing")
+do -- round3 T2: an eave under it as it holds its height: the same height in the world, not over the new floor
+    local cellOpen, x0 = getCell, cv.x
+    local roof = setmetatable({}, { __index = ground })
+    getCell = function() return { getGridSquare = function(_, x, y, z) return (z == 0 or z == 1) and (z == 1 and roof or ground) or nil end } end
+    cv.x = cv.x + 1 -- a new square: the floor under it read again
+    step(1)
+    check(fa.brake and near(fa.st.rh, brakeH - TH.FLOOR, 0.1), "T2: over an eave one floor up while holding: asked the same world height")
+    getCell, cv.x = cellOpen, x0
+    step(1)
+    check(fa.brake and near(fa.st.rh, brakeH, 0.1), "T2: off it again: the same height over the ground")
+end
 ISVehicleMenu.onExit(cp, 0)
 check(fa.phase == "land" and exits == ex0 and halo[#halo] == "IGUI_MinidoracatTesla_Deny_THRUST_IN_AIR", "landing: no getting out yet")
 check(q1.starts == 0, "Q1: stopping at its height: the motor still off")
@@ -1739,10 +1766,12 @@ step(1)
 check(fa.phase == "land" and not fa.brake and fa.sink and fa.st.vTx == 0 and fa.st.vTz == 0,
     "... down to 2.8 m/s over open ground: coming down, stopping")
 q1.hs = q1.heater()
-check(q1.starts == 1 and q1.hs and q1.hs.on == true and q1.hs.temp == 22, "Q1: coming down 2.3 s after the motor went off: started once, the heater back on at 22")
+check(q1.starts == 1 and q1.hs == nil, "Q1: coming down 2.3 s after the motor went off: started once; the heater not yet (T8: at the end)")
 step(5)
 check(q1.starts == 1, "Q1: still off a moment later: not tried again")
 abort()
+q1.hs = q1.heater()
+check(q1.hs and q1.hs.on == true and q1.hs.temp == 22, "T8: the flight over (aborted): the heater back on at 22")
 check(TH.flight(cp, cv) == nil, "over: no flying pill")
 cp.sneak = false
 TH.tick()
@@ -1759,15 +1788,19 @@ do -- something under it (a fence, a hedge): glides on; after GLIDE_S down all t
     step(150)
     getCell = function() return { getGridSquare = function(_, x, y, z) return z == 0 and fence or nil end } end
     local fb = TH.active()
-    fb.wantLand, cv.speed = true, 10
+    fb.wantLand, cv.speed = true, -10 -- backing as it is told to land (round3 T9)
     check(q1.offs == 2, "Q1: the second flight's motor shut off too")
     step(1)
     check(fb.phase == "land" and fb.brake and not fb.sink, "time to land at 2.8 m/s over a fence: gliding on, not down")
+    check(near(fb.gdx, 0, 1e-6) and near(fb.gdz, -1, 1e-6), "T9: backing at 2.8 m/s: glides on the way it moves, not to its nose")
     step(150)
     check(fb.brake and not fb.sink, "... 3 s over it: still gliding")
     step(60)
     check(not fb.brake and fb.sink, "... past GLIDE_S 4 s: down all the same")
     check(q1.starts == 1, "Q1: coming down under 2.2 s (the wall clock) after the motor went off: not started (W or the power key will)")
+    H.advanceMs(2300)
+    step(1)
+    check(q1.starts == 2, "T8: still coming down 2.2 s after the motor went off: started then (each frame, not only as it turned down)")
     getCell = cellOpen
     abort()
     cv.running, cv.parts.Heater = true, nil -- the fakes' shut-off left it off

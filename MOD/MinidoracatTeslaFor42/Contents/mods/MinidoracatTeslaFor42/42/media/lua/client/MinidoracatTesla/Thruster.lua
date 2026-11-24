@@ -57,7 +57,7 @@ local PROBE_A, PROBE_B, PROBE_DH, PROBE_DOT = 0.2, 0.4, 0.05, 0.99939
 local SLIDE_V, LIFT_DH, SLIDE_D, SLIDE_S = 2, 0.8, 3, 4
 -- a flight's landing stops at its height first (r2scan-sp-obst2 fenceland: down at its flying speed onto a fence,
 -- turned over): GLIDE_V m/s ahead while anything under it would catch it (landClear), down after GLIDE_S s at most
-local GLIDE_V, GLIDE_S = 3, 4
+local GLIDE_V, GLIDE_S = 3, H.GLIDE_S
 -- a flight's motor off above OFF_H m (its wheels clear), started START_MS ms after it was seen off at the earliest
 local OFF_H, START_MS = 0.6, 2200
 local WAKE_KMH = 3               -- the motor's creep that wakes a parked car before it flies (go)
@@ -416,6 +416,12 @@ local function halt()
     if not f then return end
     regBack(f)
     for _ = 1, f.zoom or 0 do getCore():doZoomScroll(f.player:getPlayerNum(), -1) end
+    -- the heater the shut-off turned off (BaseVehicle.java:7509-7514) back on, however the flight ends, started or not:
+    -- vanilla's toggleHeater needs no motor (VehicleCommands.lua:59-71), a Tesla's draws nothing unpowered (Camp.lua)
+    if f.offAsked and f.heat and not f.heatBack then
+        f.heatBack = true
+        sendClientCommand(f.player, "vehicle", "toggleHeater", { on = true, temp = f.heat })
+    end
     return f
 end
 
@@ -427,8 +433,11 @@ local function stop(done, ...)
     local f = halt()
     if not f then return end
     if rest then RESTED[f.vid] = true end
+    -- glide: a flight's landing held at its height (f.brake) before it came down, the server bills it not (MP's air
+    -- clock: server Thruster.lua finish); never at rest ends
+    local glide = f.act == "fly" and not rest and (f.glide or (f.brake and f.t)) or nil
     T.request(f.player, "thrustEnd", { vid = f.vid, act = f.act, done = done == true, sec = f.flown, abort = abort,
-        n = f.n, term = f.term, rest = rest })
+        n = f.n, term = f.term, rest = rest, glide = glide })
     if why then HaloTextHelper.addBadText(f.player, T.denyText(why)) end
 end
 
@@ -561,13 +570,12 @@ end
 
 -- a flight's motor, shut off at OFF_H m (fly), started again as its landing comes down: once, by the vanilla start
 -- (ISVehicleMenu.onStartEngine, the HUD's power key's way: every kind of key), START_MS after it was seen off
--- (ShuttingDown lasts 2 s, tryStartEngine acts only from Idle: BaseVehicle.java:7611-7653). Not tried again (each
--- try costs the 12V 0.025); the heater back on if it was (vanilla toggleHeater, VehicleCommands.lua:59-71)
+-- (ShuttingDown lasts 2 s, tryStartEngine acts only from Idle: BaseVehicle.java:7611-7653); asked each frame while it
+-- comes down until then. Not tried again (each try costs the 12V 0.025). The heater: halt
 local function startBack(f, v, now)
     if not f.offAsked or f.started or not f.offSeen or now - f.offSeen < START_MS or v:isEngineRunning() then return end
     f.started = true
     ISVehicleMenu.onStartEngine(f.player)
-    if f.heat then sendClientCommand(f.player, "vehicle", "toggleHeater", { on = true, temp = f.heat }) end
 end
 
 -- each frame while an action runs
@@ -669,10 +677,15 @@ function H.tick()
         if gain + f.v0 >= c.boostV or t > 1.5 then return boostOver(f, v) end
     elseif ph == "fly" then
         if f.wantLand or (f.sec and f.flown >= f.sec) then
-            -- stop at its height first, gliding on at GLIDE_V over anything that would catch it (landClear)
-            local psi = st.psiT
+            -- stop at its height first, gliding on at GLIDE_V over anything that would catch it (landClear), the way
+            -- it moves (backing or sliding sideways: not turned to its nose); held at that height in the world, not
+            -- over the floor under it, which may change on the way (an eave)
+            local lv = v:getLinearVelocity(V3.lv)
+            local gx, gz = lv:x(), lv:z()
+            local gl = math.sqrt(gx * gx + gz * gz)
+            if gl <= 0.5 then gx, gz, gl = math.cos(st.psiT), math.sin(st.psiT), 1 end
             setLand(f, hm)
-            f.brake, f.brakeH, f.gdx, f.gdz, f.cx, f.cy, f.clear = true, hm, math.cos(psi), math.sin(psi), nil, nil, nil
+            f.brake, f.brakeZ, f.gdx, f.gdz, f.cx, f.cy, f.clear = true, v:getDebugZ(), gx / gl, gz / gl, nil, nil, nil
         else
             f.flown = f.flown + real
             -- the motor off once the wheels are clear (oracle-flight2 Q1): a running motor's car hits what it flies
@@ -751,13 +764,13 @@ function H.tick()
                 if cx ~= f.cx or cy ~= f.cy then f.cx, f.cy, f.clear = cx, cy, landClear(v) end -- a new square: look once
             end
             if not f.clear and f.t <= GLIDE_S then
-                st.rh, st.rvy, st.ray = f.brakeH, 0, 0
+                st.rh, st.rvy, st.ray = hm + (f.brakeZ - v:getDebugZ()) * FLOOR, 0, 0
                 st.vTx, st.vTz = f.gdx * GLIDE_V, f.gdz * GLIDE_V
                 return drive(f, v, dt, hm)
             end
-            f.brake, f.sink, st.vTx, st.vTz = nil, true, 0, 0 -- coming down now, stopping where it is
-            startBack(f, v, now)
+            f.brake, f.sink, f.glide, st.vTx, st.vTz = nil, true, f.t, 0, 0 -- coming down now, stopping where it is
         end
+        if f.sink then startBack(f, v, now) end
         local s = f.slide
         if s then -- lifted clear of what held it and carried the way it leans; then down again
             s.t = s.t + dt
