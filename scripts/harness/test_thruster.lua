@@ -1492,10 +1492,41 @@ fa.wantLand = nil
 local ex0, h0 = exits, #halo
 ISVehicleMenu.onExit(cp, 0)
 check(exits == ex0 and #halo == h0 and fa.wantLand == true, "flying: getting out lands it, nothing said, still in the seat")
+-- the landing first stops where it is (oracle-flight2 Q2: r2scan-sp-obst2 fenceland drifted on at its flying speed,
+-- came down on the fence and turned over): at its height, gliding on at GLIDE_V along its heading
+cv.speed = 36
+local brakeH = hm()
 step(1)
+check(fa.phase == "land" and fa.brake and near(fa.st.rh, brakeH, 0.05) and fa.st.rvy == 0
+    and near(math.sqrt(fa.st.vTx ^ 2 + fa.st.vTz ^ 2), 3, 1e-6), "time to land at 10 m/s: held at its height, slowing to 3 m/s ahead")
 ISVehicleMenu.onExit(cp, 0)
 check(fa.phase == "land" and exits == ex0 and halo[#halo] == "IGUI_MinidoracatTesla_Deny_THRUST_IN_AIR", "landing: no getting out yet")
+cv.speed = 10
+step(1)
+check(fa.phase == "land" and not fa.brake and fa.sink and fa.st.vTx == 0 and fa.st.vTz == 0,
+    "... down to 2.8 m/s over open ground: coming down, stopping")
 abort()
+do -- something under it (a fence, a hedge): glides on; after GLIDE_S down all the same
+    local blocked = { getProperties = function() return { has = function(_, k) return k == "HitByCar" end } end }
+    local fence = setmetatable({ getObjects = function() return { size = function() return 1 end, get = function() return blocked end } end },
+        { __index = ground })
+    local cellOpen = getCell
+    cv.dz, cv.vy, cv.speed = 0.075, 0, 0
+    TH.ask(cp, cv, "fly")
+    okFor("fly", { sec = 30 })
+    step(150)
+    getCell = function() return { getGridSquare = function(_, x, y, z) return z == 0 and fence or nil end } end
+    local fb = TH.active()
+    fb.wantLand, cv.speed = true, 10
+    step(1)
+    check(fb.phase == "land" and fb.brake and not fb.sink, "time to land at 2.8 m/s over a fence: gliding on, not down")
+    step(150)
+    check(fb.brake and not fb.sink, "... 3 s over it: still gliding")
+    step(60)
+    check(not fb.brake and fb.sink, "... past GLIDE_S 4 s: down all the same")
+    getCell = cellOpen
+    abort()
+end
 -- at rest up on another car (r2rest-mp-near2: isExitBlocked on both seats, no seat to switch to; nothing else may
 -- move it, THRUST_AIRBORNE): out anyway, as vanilla's onExitAux without its line check. On the ground, or a way out
 -- clear: vanilla's own exit

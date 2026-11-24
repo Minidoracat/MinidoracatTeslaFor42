@@ -48,6 +48,9 @@ local REST_S, REST_V, REST_DH = 0.7, 0.2, 0.03
 -- ended there and tipped over (r2fin-sp-full roof 1 #1: up 0.033, hit -4.22 m/s). Sampled at PROBE_A s (the springs
 -- settle first) and PROBE_B s: faster than REST_V, PROBE_DH m lower or turned over 1 degree is moving
 local PROBE_A, PROBE_B, PROBE_DH, PROBE_DOT = 0.2, 0.4, 0.05, 0.99985
+-- a flight's landing stops at its height first (r2scan-sp-obst2 fenceland: down at its flying speed onto a fence,
+-- turned over): GLIDE_V m/s ahead while anything under it would catch it (landClear), down after GLIDE_S s at most
+local GLIDE_V, GLIDE_S = 3, 4
 local WAKE_KMH = 3               -- the motor's creep that wakes a parked car before it flies (go)
 -- the real seconds one frame may count toward the flight's limit: a pause (no OnTick) is not flown time
 local REAL_MAX = 0.25
@@ -197,6 +200,23 @@ local function clearAbove(v, conf)
     for x = x0 - 1, x0 + 1 do
         for y = y0 - 1, y0 + 1 do
             if roofOver(cell, x, y, z0, levels) then return false end
+        end
+    end
+    return true
+end
+
+-- where a flight's landing comes down: nothing under the car's outline (-2.5 to +4 m along it, a tile either side)
+-- that slows or stops a car on the level it lands on (slows / body above)
+local function landClear(v)
+    local fw = v:getForwardVector(V3.f)
+    local l = math.max(1e-6, math.sqrt(fw:x() ^ 2 + fw:z() ^ 2))
+    local fx, fy = fw:x() / l, fw:z() / l
+    local cell, z0 = getCell(), groundZ(v)
+    local x0, y0 = v:getX(), v:getY()
+    for d = -2.5, 4, 0.5 do
+        for o = -1, 1 do
+            local sq = cell:getGridSquare(math.floor(x0 + fx * d - fy * o), math.floor(y0 + fy * d + fx * o), z0)
+            if sq and (slows(sq) or body(sq, z0 == 0)) then return false end
         end
     end
     return true
@@ -592,7 +612,10 @@ function H.tick()
         if gain + f.v0 >= c.boostV or t > 1.5 then return stop(f.lifted) end
     elseif ph == "fly" then
         if f.wantLand or (f.sec and f.flown >= f.sec) then
+            -- stop at its height first, gliding on at GLIDE_V over anything that would catch it (landClear)
+            local psi = st.psiT
             setLand(f, hm)
+            f.brake, f.brakeH, f.gdx, f.gdz, f.cx, f.cy, f.clear = true, hm, math.cos(psi), math.sin(psi), nil, nil, nil
         else
             f.flown = f.flown + real
             -- a controller's player (BaseVehicle.java:4661-4668): as vanilla drives (CarController.java:958-967), the
@@ -654,6 +677,18 @@ function H.tick()
         st.ray = (st.rvy > -8 and st.rvy < -0.7) and math.max(0, 6 * vy / st.rvy) or 0
         if hm < 0.05 or (hm < 0.4 and vy > -0.25) or f.t > LAND_S then return stop(f.lifted) end
         local lv = v:getLinearVelocity(V3.lv)
+        if f.brake then -- a flight's landing: held at its height, slowed to GLIDE_V; down once clear or after GLIDE_S
+            if lv:x() ^ 2 + lv:z() ^ 2 <= (GLIDE_V * 1.1) ^ 2 then
+                local cx, cy = math.floor(v:getX()), math.floor(v:getY())
+                if cx ~= f.cx or cy ~= f.cy then f.cx, f.cy, f.clear = cx, cy, landClear(v) end -- a new square: look once
+            end
+            if not f.clear and f.t <= GLIDE_S then
+                st.rh, st.rvy, st.ray = f.brakeH, 0, 0
+                st.vTx, st.vTz = f.gdx * GLIDE_V, f.gdz * GLIDE_V
+                return drive(f, v, dt, hm)
+            end
+            f.brake, f.sink, st.vTx, st.vTz = nil, true, 0, 0 -- coming down now, stopping where it is
+        end
         local p = f.probe
         if p then -- no push: does it stay put on its own? (the first PROBE_A s is the springs settling)
             p.t = p.t + dt
