@@ -343,7 +343,7 @@ cpart:getModData().thr = { gas = 1, at = H.hours() }
 cv.local_, cv.dz = true, 0.075
 function cv:isLocalPhysicSim() return self.local_ end
 function cv:getDebugZ() return self.dz end
-function cv:getLinearVelocity(o) return o:set(0, 0, self.speed / 3.6) end
+function cv:getLinearVelocity(o) return o:set(0, self.vy or 0, self.speed / 3.6) end
 function cv:getForwardVector(o) return o:set(0, 0, 1) end
 function cv:getUpVector(o) return o:set(0, 1, 0) end
 function cv:isPhysicsActive() return true end
@@ -445,6 +445,35 @@ check(#H.clientSent == sent + 1 and e.command == "thrustEnd" and e.args.abort ==
 cv.driver = nil
 TH.tick()
 cv.driver = cp
+-- a stunt past its turn coming down faster than the soft landing's curve: the landing takes it, its braking fed
+-- forward (r2fe-sp-a: switched at 1.5 m on the PD alone, touchdown -2.7 / -3.2 m/s)
+local savedCore, savedSH, savedCell = getCore, getPlayerScreenHeight, getCell
+local ground = { isSolid = function() return false end, isSolidTrans = function() return false end,
+    getObjects = function() return { size = function() return 0 end } end, isBlockedTo = function() return false end }
+getCell = function() return { getGridSquare = function(_, x, y, z) return z == 0 and ground or nil end } end -- open, no roof
+getCore = function() return { getZoom = function() return 1 end, getMaxZoom = function() return 1 end,
+    doZoomScroll = function() end } end
+getPlayerScreenHeight = function() return 1080 end
+function cv:addImpulse(j) self.impulses, self.jy = (self.impulses or 0) + 1, j:y() end
+local function flipAt(vy)
+    cv.dz, cv.vy, cv.speed = 0.075, 0, 30
+    TH.ask(cp, cv, "kickflip")
+    T.ClientCommands.thrustOk({ vid = cv:getId(), act = "kickflip" })
+    cv.dz = 0.075 + 7 / TH.FLOOR -- 7 m: near its profile (8 m apex) through the turn (0.8-1.8 s)
+    while TH.active() and TH.active().t <= 1.85 do TH.tick() end
+    cv.vy = vy
+    TH.tick()
+    return TH.active() and TH.active().phase
+end
+local function abort() cv.driver = nil; TH.tick(); cv.driver = cp end
+check(flipAt(-5) == "stunt", "past its turn at 7 m sinking 5 m/s (the landing allows 8): the stunt goes on")
+abort()
+check(flipAt(-12) == "land", "past its turn at 7 m sinking 12 m/s: the soft landing takes it")
+cv.dz, cv.vy = 0.075 + 2 / TH.FLOOR, -math.sqrt(0.49 + 12 * 1.7)
+TH.tick()
+check(near(cv.jy, (10 + 6) * 1500 * 0.02 * 100, 1), "on the landing's curve at 2 m: g + its 6 m/s^2 braking, fed forward")
+abort()
+getCore, getPlayerScreenHeight, getCell, cv.vy = savedCore, savedSH, savedCell, nil
 
 -- restore
 H.side(false, true)

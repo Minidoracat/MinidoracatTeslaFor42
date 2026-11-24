@@ -36,7 +36,9 @@ local DT_MAX = 0.083             -- the physics step's own cap
 local ROLL_S, LAND_S = 3, 12     -- roll-up and soft landing give up after these seconds (server Thruster.lua D2/D3)
 -- the real seconds one frame may count toward the flight's limit: a pause (no OnTick) is not flown time
 local REAL_MAX = 0.25
-local SINK_MAX = 2.5             -- a stunt coming down faster than this (m/s), near the ground: the soft landing takes it
+-- the soft landing's sink speed (m/s, negative) at hm m: v^2 = 0.49 + 12 (hm - 0.3), a steady 6 m/s^2 braking,
+-- 0.7-8 m/s. A stunt past its turn coming down faster than this is taken over by it
+local function landVy(hm) return -math.max(0.7, math.min(8, math.sqrt(0.49 + 12 * math.max(0, hm - 0.3)))) end
 local V3 = { u = Vector3f.new(), f = Vector3f.new(), lv = Vector3f.new(), imp = Vector3f.new(), rel = Vector3f.new() }
 
 -- kickflip: height (m at apex 8) through these points (s, m), one roll about the nose axis between 0.8 and 1.8 s;
@@ -482,7 +484,7 @@ function H.tick()
         if t > 0.8 and not f.lifted then return stop(false, "THRUST_NO_LIFT") end
         if t > P.T * 0.6 and (hm < 0.05 or (hm < 0.4 and vy > -0.25)) then return stop(true) end
         if t > 1 and (math.abs(h - hm) > 3 or t > P.T + 4) then setLand(f, hm) -- off its profile: land it
-        elseif t > P.t2 and hm < 1.5 and vy < -SINK_MAX then setLand(f, hm) end -- upright, coming down hard: soften it
+        elseif t > P.t2 and vy < landVy(hm) then setLand(f, hm) end -- upright, coming down too hard: soften it
     elseif ph == "boost" then
         local lv = v:getLinearVelocity(V3.lv)
         local gain = math.sqrt(lv:x() ^ 2 + lv:z() ^ 2) - f.v0
@@ -522,7 +524,10 @@ function H.tick()
             st.udx, st.udy, st.udz = 0, 1, 0
         end
         st.rh = hm
-        st.rvy = -math.max(0.7, math.min(8, math.sqrt(0.49 + 12 * math.max(0, hm - 0.3))))
+        st.rvy = landVy(hm)
+        -- the curve's own braking fed forward (d rvy/dt = 6 vy / rvy on it): the PD alone trailed it by 0.7-1.2 m/s
+        -- and touched down at -2.7 (kickflip) / -3.2 (backflip) m/s (r2fe-sp-a, switching at 1.5 m)
+        st.ray = (st.rvy > -8 and st.rvy < -0.7) and math.max(0, 6 * vy / st.rvy) or 0
         if hm < 0.05 or (hm < 0.4 and vy > -0.25) or f.t > LAND_S then return stop(f.lifted) end
     end
     drive(f, v, dt, hm)
