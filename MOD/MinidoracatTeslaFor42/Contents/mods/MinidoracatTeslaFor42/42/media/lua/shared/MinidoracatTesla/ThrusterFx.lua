@@ -53,7 +53,7 @@ if not isServer() then
                 f.m:remove()
                 table.remove(fogs, i)
             else
-                f.m:setAlpha(F.FOG_ALPHA * (1 - k) ^ 1.5)
+                f.m:setAlpha(F.FOG_ALPHA * (1 - k)) -- linear: a 1.5 power left it near gone by 1.5 s (E2E r2fx-sp-1)
             end
         end
         if #fogs == 0 then Events.OnTick.Remove(fogTick) end

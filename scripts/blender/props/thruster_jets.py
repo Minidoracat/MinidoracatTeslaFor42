@@ -132,14 +132,15 @@ def periodic_noise(shape, octaves, seed):
 
 def jet_texture(path):
     """u (x, 256 px): white core at the nozzle to pale cyan-blue, alpha rising over the first few percent then fading
-    to nothing; v (y, 64 px, periodic): soft streaks."""
+    to nothing; v (y, 64 px, periodic): soft streaks. A 1.5 power fade hid the lower half of a 3 m column (E2E
+    r2fx-sp-2, next to f2-kickflip-replay 11m27, whose columns reach the ground)."""
     h, w = 64, 256
     t = np.arange(w) / (w - 1)
-    alpha = np.clip(t / 0.04, 0, 1) * (1 - t) ** 1.5 * 0.9
+    alpha = np.clip(t / 0.04, 0, 1) * (1 - t) ** 0.8 * 0.9
     streak = 0.7 + 0.3 * periodic_noise((h, w), (2, 3, 5), 7)
     a = alpha[None, :] * streak
-    col0, col1 = np.array([1.0, 1.0, 1.0]), np.array([0.62, 0.86, 1.0])
-    rgb = col0 + (col1 - col0) * (t ** 0.6)[:, None]
+    col0, col1 = np.array([1.0, 1.0, 1.0]), np.array([0.55, 0.84, 1.0])
+    rgb = col0 + (col1 - col0) * (t ** 0.5)[:, None]
     arr = np.zeros((h, w, 4))
     arr[..., :3] = rgb[None, :, :]
     arr[..., 3] = a
@@ -148,7 +149,8 @@ def jet_texture(path):
 
 def fog_texture(path):
     """Landing fog standing on the ground (IsoMarkers draws it at its own size, bottom centre on the tile): a wide,
-    low cloud of soft puffs, densest at the base, white with a faint blue."""
+    low cloud of soft puffs, densest just above the base, white with a faint blue. The bottom rows fade to nothing:
+    an opaque base showed as a hard horizontal edge under the car (E2E r2fx-sp-1)."""
     h, w = 256, 512
     rng = np.random.default_rng(11)
     y, x = np.meshgrid(np.arange(h) + 0.5, np.arange(w) + 0.5, indexing="ij")   # y up from the bottom row
@@ -159,7 +161,7 @@ def fog_texture(path):
         r = rng.uniform(0.09, 0.18) * w * (1 - abs(cx - w / 2) / w)
         d += np.exp(-(((x - cx) / r) ** 2 + ((y - cy) / (r * 0.7)) ** 2))
     d = 1 - np.exp(-0.75 * d)         # overlapping puffs saturate instead of showing their seams
-    d *= np.clip(1 - np.abs(x - w / 2) / (w / 2), 0, 1) ** 0.5 * np.clip(1 - y / h, 0, 1) ** 0.7
+    d *= np.clip(1 - np.abs(x - w / 2) / (w / 2), 0, 1) ** 0.5 * np.clip(1 - y / h, 0, 1) ** 0.7 * np.clip(y / (h * 0.16), 0, 1) ** 1.5
     arr = np.zeros((h, w, 4))
     arr[..., 0], arr[..., 1], arr[..., 2] = 0.94, 0.97, 1.0
     arr[..., 3] = np.clip(d * 0.85, 0, 1)
