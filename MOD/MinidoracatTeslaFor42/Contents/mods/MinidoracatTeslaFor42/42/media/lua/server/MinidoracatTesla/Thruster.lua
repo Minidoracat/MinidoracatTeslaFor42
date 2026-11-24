@@ -456,10 +456,15 @@ end
 -- (a stale busy flag aside); approved: thrustOk { vid, act, sec (flying: the seconds of air; nil: FreeFlight), n, pn }.
 -- A soft landing asked by the driver whose own action still runs here (a stunt asked on a roof's edge, the car fallen
 -- off before its answer: the driver's machine lands it already, client H.watch) ends that one first (billed if a
--- look saw it go, else the air back); anyone else's action, a show or a landing: THRUST_BUSY as ever
+-- look saw it go, else the air back); anyone else's action, a show or a landing: THRUST_BUSY as ever. The car not
+-- found is refused here, with n (T.commandVehicle's own refusal has none: on the client it would answer no ask, and
+-- a soft landing begun before the answer would run on unbilled)
 cmds.thrust = function(player, args)
-    local v = T.commandVehicle(player, args)
-    if not v then return end
+    local v = T.commandVehicle(player, args, nil, true)
+    if not v then
+        if not player or type(args) ~= "table" then return end
+        return deny(player, "NO_VEHICLE", isN(args.vid) and args.vid or nil, args.n)
+    end
     local vid, act, n = v:getId(), args.act, args.n
     if type(act) ~= "string" or not H.ACTS[act] or not isN(n) then return deny(player, "BAD_VALUE", vid, n) end
     H.adopt()

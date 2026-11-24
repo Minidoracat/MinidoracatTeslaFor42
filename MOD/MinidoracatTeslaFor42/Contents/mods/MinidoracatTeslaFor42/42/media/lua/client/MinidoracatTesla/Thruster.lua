@@ -678,14 +678,8 @@ T.ClientCommands.thrustLand = function(args)
 end
 
 -- a refusal of this machine's action n (server Thruster.lua deny): its ask is answered, and a soft landing started
--- before the answer stops here, nothing more said (the server kept nothing of it). A refusal with the car's vid and
--- no n (Commands.lua T.commandVehicle: the car unloaded, its id another car's) answers every unanswered ask for that
--- car the same way. Then the usual message (Net.lua)
-local function answered(pn, n)
-    asked[pn] = nil
-    local f = F
-    if f and f.n == n and not f.ok then halt() end
-end
+-- before the answer stops here, nothing more said (the server kept nothing of it). Then the usual message (Net.lua).
+-- A refusal without n is some other command's about the car (T.deny): no answer to an ask here
 local baseDeny = T.ClientCommands.deny
 T.ClientCommands.deny = function(args)
     if type(args) == "table" and type(args.n) == "number" then
@@ -694,10 +688,6 @@ T.ClientCommands.deny = function(args)
         if a and a.n == args.n then asked[pn] = nil end
         local f = F
         if f and f.n == args.n and not f.ok then halt() end
-    elseif type(args) == "table" and args.vid ~= nil then
-        for pn, a in pairs(asked) do
-            if a.vid == args.vid then answered(pn, a.n) end
-        end
     end
     return baseDeny(args)
 end

@@ -954,10 +954,14 @@ T.ClientCommands.deny({ reason = "THRUST_BUSY", vid = cv:getId(), pn = 0, n = la
 check(TH.active() and TH.active().ok, "D2: approved first: a refusal after cannot stop it")
 abort()
 cv.vy = 0
--- R6: the car gone on the server (unloaded, its id another's): the shared check refuses without n; the soft landing
--- not approved yet stops all the same, its ask answered
+-- R6: the car gone on the server (unloaded, its id another's): refused with the ask's n as any other refusal; the
+-- soft landing not approved yet stops, its ask answered. A refusal of another command about the car (T.deny: its
+-- vid, no n) is no answer to it: the landing goes on
 cv.dz, cv.vy = 0.075 + 4 / TH.FLOOR, -5
 TH.ask(cp, cv, "land")
+T.ClientCommands.deny({ reason = "MOVING", vid = cv:getId(), pn = 0 })
+check(TH.active() and TH.active().act == "land",
+    "R6: another command about the car refused meanwhile (no n): the unapproved landing goes on")
 H.side(false, true)
 H.removeVehicle(cv)
 cmds.thrust(cp, { vid = cv:getId(), act = "land", n = lastN() })
@@ -965,9 +969,9 @@ H.addVehicle(cv)
 local gone6 = H.sent[#H.sent]
 H.side(true, false)
 T.ClientCommands.deny(gone6.args)
-check(gone6.command == "deny" and gone6.args.n == nil and gone6.args.vid == cv:getId() and TH.active() == nil
-    and select(2, TH.check(cp, cv, "boost")) ~= "THRUST_BUSY",
-    "R6: refused by the server's shared check (no n): the unapproved landing stopped, its ask answered")
+check(gone6.command == "deny" and gone6.args.reason == "NO_VEHICLE" and gone6.args.n == lastN()
+    and gone6.args.vid == cv:getId() and TH.active() == nil and select(2, TH.check(cp, cv, "boost")) ~= "THRUST_BUSY",
+    "R6: the car gone on the server: refused with the ask's n, the unapproved landing stopped, its ask answered")
 cv.vy = 0
 -- R10: the flying machine's floor cache: kept within an action, cleared at the next one's start
 local lvl1 = false
