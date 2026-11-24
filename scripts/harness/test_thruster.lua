@@ -1207,12 +1207,13 @@ check(TH.active() == nil and e.command == "thrustEnd" and e.args.done == false, 
 check(zoom == 0.5, "D4: zoomed out, through the creep and flying again: the camera back as it was")
 -- the hover (integration, real body 2026-11-24, r2int-sp-t0: 3.49 m 3 s after a take-off for 3 m; the step to flyH
 -- wound the PID's integral up on the climb): a car that only moves up and down (g 10, its frame's impulse) takes
--- off to flyH no more than 0.2 m over and holds it within 0.2 m 2-4 s after the ask; PageUp held 2 s: flyMaxH, no
+-- off to flyH no more than 0.2 m over and holds it within 0.2 m 2-4 s after the ask; up (Space) held 2 s: flyMaxH, no
 -- more than 0.2 m over, within 0.2 m from 1.5 s after the key's release
 local fc = TH.conf(cv)
 local upHeld = false
-TH.KEYS.up = { getValue = function() return 201 end }
-isKeyDown = function(k) return k == 201 and upHeld end
+TH.KEYS.up = { getValue = function() return 57 end }
+isKeyDown = function(k) return k == 57 and upHeld end
+cp.sneak = true -- crouching when it takes off (C, the down key's default, toggles it: below)
 cv.dz, cv.vy, cv.speed, zoom = 0.075, 0, 0, 1
 TH.ask(cp, cv, "fly")
 okFor("fly", { sec = 30 })
@@ -1239,7 +1240,13 @@ local overUp, worstUp = 0, 0
 step(75, function(h) overUp = math.max(overUp, h - fc.flyMaxH) end)
 step(75, function(h) overUp = math.max(overUp, h - fc.flyMaxH) worstUp = math.max(worstUp, math.abs(h - fc.flyMaxH)) end)
 check(overUp <= 0.2 and worstUp < 0.2,
-    string.format("hover: PageUp 2 s to flyMaxH %.1f m, %.2f m over at most, within %.2f m from 1.5 s after", fc.flyMaxH, overUp, worstUp))
+    string.format("hover: up 2 s to flyMaxH %.1f m, %.2f m over at most, within %.2f m from 1.5 s after", fc.flyMaxH, overUp, worstUp))
+-- C, the down key's default, is vanilla's crouch toggle in a car too (IsoPlayer.java:3373-3377): the flight puts the
+-- crouch it found back the next frame, so it ends as it began
+local fs = TH.active()
+cp.sneak = false -- C pressed
+step(1)
+check(fs.sneak == true and cp.sneak == true, "flying: C's crouch toggle put back the next frame (crouched at take-off)")
 -- a controller's player flies with it as vanilla drives (CarController.java:958-967): RT ahead, LT back, the left
 -- stick steers; the right stick sets the height (pushed up: negative, PlayerCamera.java:148). A stick resting a little
 -- off (inside the dead zone) does nothing
@@ -1285,10 +1292,10 @@ getText = function(k, ...) return table.concat({ k, ... }, "|") end
 getKeyName = function(k) return "K" .. tostring(k) end
 local padTip, padPill = TH.flyTip(cp), TH.flyTip(cp, "IGUI_MinidoracatTesla_HUD_FlyKeys")
 cp.pad = nil
-check(padTip == "IGUI_MinidoracatTesla_Tip_ThrustFlyPad" and TH.flyTip(cp) == "IGUI_MinidoracatTesla_Tip_ThrustFly|K201|K0|K0",
+check(padTip == "IGUI_MinidoracatTesla_Tip_ThrustFlyPad" and TH.flyTip(cp) == "IGUI_MinidoracatTesla_Tip_ThrustFly|K57|K0|K0",
     "the flying tip names the keys bound now (an unbound one: its 0); a controller's player: the controller's tip")
 check(padPill == "IGUI_MinidoracatTesla_HUD_FlyKeysPad"
-    and TH.flyTip(cp, "IGUI_MinidoracatTesla_HUD_FlyKeys") == "IGUI_MinidoracatTesla_HUD_FlyKeys|K201|K0|K0",
+    and TH.flyTip(cp, "IGUI_MinidoracatTesla_HUD_FlyKeys") == "IGUI_MinidoracatTesla_HUD_FlyKeys|K57|K0|K0",
     "the dashboard's flying pill: its own short words, the same keys")
 getText, getKeyName = realGetText, realKeyName
 -- the dashboard's flying pill (HUD.lua): the whole seconds of air left, real time counting them down as the server's
@@ -1318,11 +1325,18 @@ ISVehicleMenu.onExit(cp, 0)
 check(exits == ex0 and #halo == h0 and fa.wantLand == true and TH.flight(cp, cv) == "land",
     "flying: getting out lands it, nothing said, still in the seat; the pill says landing")
 step(1)
+cp.sneak = false -- C pressed while it comes down
 ISVehicleMenu.onExit(cp, 0)
 check(fa.phase == "land" and exits == ex0 and halo[#halo] == "IGUI_MinidoracatTesla_Deny_THRUST_IN_AIR", "landing: no getting out yet")
 check(TH.flight(cp, cv) == "land", "landing: the pill still says landing")
+step(1)
+check(cp.sneak == true, "landing: C's crouch toggle put back too")
 abort()
 check(TH.flight(cp, cv) == nil, "over: no flying pill")
+cp.sneak = false
+TH.tick()
+check(cp.sneak == false, "over: the crouch is the player's again (crouched as at take-off until then)")
+cp.sneak = nil
 TH.KEYS.up = nil
 isKeyDown, isJoypadRTPressed, isJoypadLTPressed, getJoypadMovementAxisX, getJoypadAimingAxisY = savedKD, nil, nil, nil, nil
 isJoypadRBPressed = nil
