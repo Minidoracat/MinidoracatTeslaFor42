@@ -1399,7 +1399,7 @@ do -- still up after LAND_S: over where it is, as at rest (SP: it asked again at
     cv.driver = nil; TH.tick(); cv.driver = cp
 end
 do -- the watch: past 53 degrees on what holds it, at any speed (r2f3-mp-c boostnear: rolled over on a fence top at
-    -- -0.1 m/s, asked only at up 0); a refusal of that landing marks it at rest, asked no more
+    -- -0.1 m/s, asked only at up 0); a refusal of that landing marks it there, asked no more until it moves 0.3 m (T5)
     cv.dz, cv.vy, cv.uy = 0.075, 0, 1
     TH.watch(cp, cv) -- on the ground: the rest mark gone
     cv.dz, cv.uy = 0.075 + 2.2 / TH.FLOOR, 0.7
@@ -1414,6 +1414,15 @@ do -- the watch: past 53 degrees on what holds it, at any speed (r2f3-mp-c boost
     n0 = #H.clientSent
     TH.watch(cp, cv)
     check(TH.active() == nil and #H.clientSent == n0, "... the same again: asked no more")
+    cv.dz = cv.dz - 0.2 / TH.FLOOR
+    TH.watch(cp, cv)
+    check(TH.active() == nil and #H.clientSent == n0, "... slid 0.2 m down from there: still asked no more")
+    cv.dz = cv.dz - 0.2 / TH.FLOOR
+    TH.watch(cp, cv)
+    check(TH.active() and TH.active().act == "land" and #H.clientSent == n0 + 1,
+        "T5: ... slid 0.4 m down from there, still tilted: the soft landing asked again")
+    okFor("land")
+    cv.driver = nil; TH.tick(); cv.driver = cp
     cv.dz, cv.vy, cv.uy = 0.075, 0, 1
     TH.watch(cp, cv)
 end
