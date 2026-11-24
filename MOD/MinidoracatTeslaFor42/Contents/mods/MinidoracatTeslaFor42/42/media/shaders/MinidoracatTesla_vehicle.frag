@@ -106,8 +106,9 @@ const float A_REAR = 0.40;         // WinLT, WinRT, WinH (privacy glass)
 const float A_ROOF = 0.50;         // LightBar L (colZone25): the roof glass, unused by any Tesla light
 const vec3 GLASS_TINT = vec3(0.06, 0.06, 0.07);
 // a car's darker glass (cars/<car>.py GLASS_SHADE; level 0 the family's above, unchanged): the share of the see-through
-// left that is closed, and a tea-brown tint with less sky (Roadster Rocket: the official canopy reads near opaque)
-const float GLASS_SHUT[3] = float[3](0.0, 0.45, 0.80);
+// left that is closed, and a tea-brown tint with less sky (Roadster Rocket: the official canopy reads near opaque;
+// 1 mid: the driver's outline shows, 2 deep: the cabin nearly gone at default zoom; 0.45 / 0.80 read alike, b1-deep2)
+const float GLASS_SHUT[3] = float[3](0.0, 0.60, 0.93);
 const vec3 GLASS_DARK = vec3(0.12, 0.075, 0.04);
 const float SKY_MIX_DARK = 0.15;
 const vec3 SKY = vec3(0.50, 0.60, 0.75);

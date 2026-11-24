@@ -71,9 +71,10 @@ V = (0.656, 2.05, 0.39)                # bar end / notch point (03: bar 817-1400
 # hood (03 / 08: the hood low between the pods, a crease each side; level with the ridge it read as one flat plane)
 HC = (0.49, 1.40, 0.655)
 AB = (0.82, 1.19, 0.75)                # A pillar base (03: 1481.7, 436.7)
-# the lit band in each V notch (03: about 0.15 m along the hood edge): plan width off the hood edge, y range (w 0.055:
-# 0.03 read nowhere in game, E2E r2body-look-a3; 0.06's cut met the front recess's corner in 2 non-manifold edges)
-HEAD_LAMP = dict(w=0.055, y=(1.80, 1.96))
+# the lit band in each V notch (03: about 0.15 m along the hood edge): plan width off the hood edge, y range (0.03 x
+# 1.80-1.96 read nowhere in game, E2E r2body-look-a3; w 0.055: the armour's bar hid 9-14 % of the front lamps from the
+# 45 deg views, armor_check; 0.06's cut met the front recess's corner in 2 non-manifold edges)
+HEAD_LAMP = dict(w=0.04, y=(1.74, 2.0))
 NOSE_BAR = 0.035                       # the nose's lamp bar under the hood's edge (03), tall: 0.018 read nowhere (a3)
 RIDGE = [(2.05, 0.39), (2.0, 0.478), (1.831, 0.572), (1.663, 0.634), (1.495, 0.682), (1.40, 0.706), (1.326, 0.724),
          (1.19, 0.753)]
@@ -93,6 +94,7 @@ ARCH = dict(front=(1.272, 0.307, 0.350), rear=(-1.392, 0.337, 0.355))      # (y,
 # rear face (01 at the plate's scale): lamp band under the wing's lip, plate, the black cavity with nozzles and fans
 # (the band 5.8 cm: up to the lowered deck under the wing's lip, 0.794; 3.6 cm read under a pixel at default zoom, a3)
 LAMP_Z = (0.735, 0.793)
+BRAKE_X = 0.55                         # the bar's outer ends past this |x| brake lights (cars/roadster2.py LAMPS brake)
 PLATE = dict(z=0.58, w=0.3048, h=0.1524)
 CAVITY = dict(hw=0.78, top=0.48, back=-2.0)
 TAIL_BLACK = ((0.26, 0.48), (0.84, 0.63))   # the tail's black edge (|x|, z): flat under the plate, rising to the corners
@@ -582,8 +584,9 @@ def main():
     me.name = "Body"
     idx = {m.name: i for i, m in enumerate(me.materials)}
     for p in me.polygons:                    # the lamp bar: the nose face left above the recess (03: row 605-610)
-        c = p.center
-        if p.normal.y > 0.9 and c.y > 2.0 and V[2] - NOSE_BAR - 0.002 < c.z < 0.395 and abs(c.x) < 0.66:
+        c = p.center                         # and the hood's first 3 cm on top (the nose face alone: 1 px, b1-deep2)
+        if (p.normal.y > 0.9 and c.y > 2.0 and V[2] - NOSE_BAR - 0.002 < c.z < 0.395 and abs(c.x) < 0.66 or
+                p.normal.z > 0.8 and c.y > STATIONS[1] and abs(c.x) < 0.45):
             p.material_index = idx["HeadLight"]
     # the doors cut out of the sides along door_outline: a plane along x through each edge of its front and rear runs,
     # on the side faces near it (the sill top and the rail are loft edges already); the door faces marked in the face
@@ -607,6 +610,11 @@ def main():
     for f in bm.faces:
         if side_glass(f) and B_PILLAR[0] < f.calc_center_median().y < B_PILLAR[1]:
             f.material_index = idx["Trim"]
+    # the tail bar cut at |x| BRAKE_X: its outer ends the brake lights (cars/roadster2.py LAMPS brake, faces outboard)
+    for sx in (-1, 1):
+        fs = [f for f in bm.faces if f.material_index == idx["TailLight"]]
+        bmesh.ops.bisect_plane(bm, geom=fs + list({e for f in fs for e in f.edges}) + list(
+            {v for f in fs for v in f.verts}), plane_co=(sx * BRAKE_X, 0, 0), plane_no=(1, 0, 0))
 
     def side(f, sx):
         return sx * f.normal.x > 0.2 and sx * f.calc_center_median().x > 0.3

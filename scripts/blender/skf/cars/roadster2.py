@@ -155,13 +155,13 @@ CAR = dict(
                    wide={1: round(0.016 * K, 6), 2: round(0.016 * K, 6)}),
     # the lower body and nose band black-grey (03 / 08), the arches' liners black, the lamps' day colours (the head
     # lamps' slim lit bands white, the tail bar dark red), the rear plate light grey
-    MAT_RGB={"Trim": (30, 30, 32), "Liner": (20, 20, 22), "Glass": (26, 30, 34), "HeadLight": (236, 242, 250),
+    MAT_RGB={"Trim": (30, 30, 32), "Liner": (20, 20, 22), "Glass": (26, 30, 34), "HeadLight": (250, 252, 255),
              "TailLight": (112, 32, 36), "Dark": (14, 14, 16), "Plate": (206, 208, 212)},
     CARBON=None,
     GLASS_MATS=("Glass",),
     GLASS_OPAQUE=(),
     # the frag's darker glass level (pzveh GLASS_TINT_U; 1 mid, 2 deep): the official canopy reads near opaque, tea-brown
-    GLASS_SHADE=1,
+    GLASS_SHADE=2,
     GLASS_BACKS=("WinLH", "WinLT", "WinRH", "WinRT"),
     ROOF_PANE="GlassRoof",                 # the canopy behind the windscreen (prep ROOF_Y): zone LightBarL
     MIRROR_CAP="-",                        # (no mirrors: cameras)
