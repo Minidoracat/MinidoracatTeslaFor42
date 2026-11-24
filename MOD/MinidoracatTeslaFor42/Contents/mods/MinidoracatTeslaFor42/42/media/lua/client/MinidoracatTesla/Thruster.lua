@@ -29,6 +29,11 @@ end
 -- ---- controller constants (flight PoC) ----
 local G = 10
 local KP_H, KD_H, KI_H = 4, 4, 1 -- hover height PID
+-- the hover's reference height moves to its goal (flyH at take-off, PageUp/PageDown) at most HOVER_V m/s, speeding
+-- up and slowing down at HOVER_A m/s^2 (its speed and acceleration fed forward); the integral only within IE_BAND m
+-- of it. A step to flyH wound the integral up on the climb: 3.49 m three seconds after a take-off for 3
+-- (r2int-sp-t0, the real body); a 2.5 m/s ramp alone still overshot 0.39 m (harness "hover:")
+local HOVER_V, HOVER_A, IE_BAND = 3, 4, 0.5
 local KP_R, KD_R = 25, 10        -- profile height tracking
 local KV, AMAX = 2, 10           -- horizontal speed P, its acceleration cap (m/s^2)
 local GAIN = { lo = { 9, 6 }, hi = { 36, 12 } } -- attitude PD
@@ -244,8 +249,8 @@ local function drive(f, v, dt, hm)
         ay = clamp(G + st.ray + KP_R * (st.rh - hm) + KD_R * (st.rvy - vy), -G, 5 * G)
     elseif st.hT then
         local e = st.hT - hm
-        st.ie = clamp(st.ie + e * dt, -3 / KI_H, 3 / KI_H)
-        ay = clamp(G + KP_H * e - KD_H * vy + KI_H * st.ie, 0, 4 * G)
+        if math.abs(e) < IE_BAND then st.ie = clamp(st.ie + e * dt, -3 / KI_H, 3 / KI_H) end
+        ay = clamp(G + st.ha + KP_H * e + KD_H * (st.hv - vy) + KI_H * st.ie, 0, 4 * G)
     end
     if st.vTx then
         ax, az = KV * (st.vTx - vx), KV * (st.vTz - vz)
@@ -375,7 +380,7 @@ local function beginRun(f)
         f.v0 = math.sqrt(lv:x() ^ 2 + lv:z() ^ 2)
         f.phase = "boost"
     elseif f.act == "fly" then
-        st.att, st.hT, st.psiT = true, c.flyH, math.atan2(lz, lx)
+        st.att, st.hT, st.hG, st.hv, st.ha, st.psiT = true, heightOf(v, f.rest), c.flyH, 0, 0, math.atan2(lz, lx)
         local lv = v:getLinearVelocity(V3.lv)
         st.vTx, st.vTz = lv:x(), lv:z()
         f.spd, f.phase = lv:x() * lx + lv:z() * lz, "fly"
@@ -539,8 +544,14 @@ function H.tick()
             setLand(f, hm)
         else
             f.flown = f.flown + real
-            if keyDown(KEYS.up) then st.hT = math.min(c.flyMaxH, st.hT + c.flyClimb * dt) end
-            if keyDown(KEYS.down) then st.hT = math.max(c.flyMinH, st.hT - c.flyClimb * dt) end
+            if keyDown(KEYS.up) then st.hG = math.min(c.flyMaxH, st.hG + c.flyClimb * dt) end
+            if keyDown(KEYS.down) then st.hG = math.max(c.flyMinH, st.hG - c.flyClimb * dt) end
+            local d = st.hG - st.hT
+            local vRef = (d < 0 and -1 or 1) * math.min(HOVER_V, math.sqrt(2 * HOVER_A * math.abs(d)))
+            st.ha = clamp(vRef - st.hv, -HOVER_A * dt, HOVER_A * dt) / dt
+            st.hv = st.hv + st.ha * dt
+            st.hT = st.hT + st.hv * dt
+            if (st.hG - st.hT) * d < 0 then st.hT, st.hv, st.ha = st.hG, 0, 0 end -- not past the goal
             local core = getCore()
             local want = isKeyDown(core:getKey("Forward")) and c.flyVmax or (isKeyDown(core:getKey("Backward")) and -c.flyVmax / 3 or 0)
             local step = c.flyAcc * dt
@@ -723,7 +734,9 @@ T.ClientCommands.deny = function(args)
 end
 
 -- HUD.lua, each dashboard update (10 Hz) of a car with thrusters: notes where it rests on the ground, and catches a
--- fall (off a roof, a stunt gone wrong) to land it softly when there is air for it
+-- fall (off a roof, a stunt gone wrong) to land it softly when there is air for it. A car tipping nose-first over an
+-- edge slides down the wall under it slower than a fall (r2int-sp-full roof 1 #1: -1.9 m/s at most, on its nose
+-- after): tilted past 37 degrees and coming down over the drop counts too
 function H.watch(player, v)
     if F or not v:isDriver(player) then return end
     local c = H.conf(v)
@@ -733,7 +746,8 @@ function H.watch(player, v)
     local hm = heightOf(v, RESTS[vid] or c.rest)
     if hm < 0.2 and math.abs(vy) < 0.05 then
         RESTS[vid] = clamp(v:getDebugZ() - groundZ(v), 0.02, 0.25)
-    elseif hm > 1.5 and vy < -2 and (H.air(v) or 0) >= H.COST.land and H.check(player, v, "land") then
+    elseif ((hm > 1.5 and vy < -2) or (hm > 1 and vy < -0.5 and v:getUpVector(V3.u):y() < 0.8))
+        and (H.air(v) or 0) >= H.COST.land and H.check(player, v, "land") then
         H.ask(player, v, "land")
     end
 end

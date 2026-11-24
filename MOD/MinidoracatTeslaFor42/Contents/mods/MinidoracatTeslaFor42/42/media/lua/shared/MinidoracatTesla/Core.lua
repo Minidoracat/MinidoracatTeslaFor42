@@ -358,13 +358,15 @@ T.Specs = {
         massKg = 1700, -- "just under 1,700 kilos" (third party, roadster2.md)
         dcKw = 500, -- V4 Supercharger (third party quoting Moravy)
         regenEff = 0.6,
-        -- Chill at the other cars' 0-100 km/h (15.8 s): the Roadster's 2100 -> 15.91 s on mass 486, 0-100 about
-        -- mass / force, so 2100 x 669 / 486; measure it (feel-sp) with the body
-        chillForce = 2900,
+        -- Chill at the other cars' 0-100 km/h (15.8 s): 2900 measured 14.04 s on this body (feel-sp r2int-feel,
+        -- 2026-11-24), 0-100 about mass / force, so 2900 x 14.04 / 15.8
+        chillForce = 2580,
         butterfly = true, -- butterfly doors like the Cybercab's: the app opens both
         frunk = false, -- "No Frunk, Because the Front Is a Giant Wing" (Not a Tesla App #4850), template SoloNoFrunk
         wing = true, -- the active rear wing (part TeslaWing): app, HUD, radial and the charge port behind it
-        thruster = {}, -- the cold-gas thrusters (Thruster.lua T.Thruster.DEFAULTS as they are)
+        -- the cold-gas thrusters (Thruster.lua T.Thruster.DEFAULTS but its own inertia: flight PoC IC segment on this
+        -- body, r2int-ic 2026-11-24)
+        thruster = { inertia = { f = 0.300, r = 1.134, u = 1.285 } },
         seatless = { DoorFrontRight = true }, -- one seat (a 400 L air tank in the passenger's place)
         -- the clips its build animates (cars/roadster2.py DOORS): butterfly doors 2 s, the trunk lid (the rear glass) 1 s,
         -- the wing 1.5 s (no shell bit: E2E waits read it)
