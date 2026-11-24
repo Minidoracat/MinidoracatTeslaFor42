@@ -151,8 +151,10 @@ local function airborne(v) return v:getDebugZ() - H.groundZ(v) > GROUND end
 
 -- a car said at rest off the ground (cmds.thrustEnd rest: on its side, an eave, a fence, another car) still where it
 -- was ABORT_MS later, its sayer still online: down for good. The sayer's machine holds the physics with its controller
--- off, so a car really in the air would have dropped ~1.25 m by then; one that went quiet (a crash) never says rest
-local REST_DXY, REST_DM = 0.15, 0.1 -- tiles, metres
+-- off, so a car really in the air would have dropped ~1.25 m by then (~0.8 m in the server's copy, ~0.1 s behind); one
+-- that went quiet (a crash) never says rest. REST_DM: the server's copy still settles after its holder's (r2rest-mp-near2:
+-- 0.148 m in ABORT_MS; the same car rests 1.13 m up on its holder, 1.27-1.31 m on the others), so twice that
+local REST_DXY, REST_DM = 0.15, 0.3 -- tiles, metres
 local function stillAt(v, r)
     return getPlayerByOnlineID(r.by:getOnlineID()) == r.by and math.abs(v:getX() - r.x) < REST_DXY
         and math.abs(v:getY() - r.y) < REST_DXY and math.abs(v:getDebugZ() - r.z) * H.FLOOR < REST_DM

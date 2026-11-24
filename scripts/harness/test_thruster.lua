@@ -572,6 +572,16 @@ check(pe and pe.helper == helper, "R4: ended up without rest: handed on as befor
 v.dz = 0
 done(helper, v, { act = "land", done = true })
 check(entryOf(v) == nil, "R4: down: over")
+-- R5: the server's copy settles a little after the holder's (r2rest-mp-near2: 0.148 m higher ABORT_MS later; the
+-- same car rests 1.13 m up on its holder, 1.27-1.31 m on the others): still at rest
+v.dz = 0.5
+restAsk()
+sr = #H.sent
+done(p, v, { act = "land", done = true, rest = true })
+v.dz = 0.5 + 0.15 / 2.44949
+wait(500)
+check(entryOf(v) == nil and not handedSince(sr), "R5: 0.15 m off ABORT_MS later (the server's copy settling): over where it is")
+v.dz = 0
 v.npid = nil
 part:getModData().thr = { gas = 1, at = H.hours() }
 
@@ -1116,8 +1126,10 @@ local er = H.clientSent[sent + 1]
 check(TH.active() == nil and er and er.command == "thrustEnd" and er.args.act == "land" and er.args.rest == true
     and er.args.done == true, "still 0.7 s at 2.16 m on its side: over, said as at rest (done)")
 exits = 0
+function cv:isStopped() return true end
+function cv:isExitBlocked() return false end
 ISVehicleMenu.onExit(cp, 0)
-check(exits == 1, "... the driver may get out")
+check(exits == 1, "... the driver may get out (its way out clear: vanilla's exit)")
 -- the watch after it: that car slipping on, tilted, is no new landing (a third each slip); a real fall still is
 cv.dz, cv.vy = 0.075 + 1.5 / TH.FLOOR, -0.6
 sent = #H.clientSent
@@ -1398,6 +1410,42 @@ step(1)
 ISVehicleMenu.onExit(cp, 0)
 check(fa.phase == "land" and exits == ex0 and halo[#halo] == "IGUI_MinidoracatTesla_Deny_THRUST_IN_AIR", "landing: no getting out yet")
 abort()
+-- at rest up on another car (r2rest-mp-near2: isExitBlocked on both seats, no seat to switch to; nothing else may
+-- move it, THRUST_AIRBORNE): out anyway, as vanilla's onExitAux without its line check. On the ground, or a way out
+-- clear: vanilla's own exit
+do
+local queued, blockedE, doorP = {}, true, nil
+ISTimedActionQueue = { add = function(a) queued[#queued + 1] = a.kind end }
+local function ta(kind) return { new = function() return { kind = kind } end } end
+ISExitVehicle, ISOpenVehicleDoor, ISCloseVehicleDoor, ISUnlockVehicleDoor = ta("exit"), ta("open"), ta("close"), ta("unlock")
+function cv:isExitBlocked() return blockedE end
+function cv:isStopped() return true end
+function cv:getPassengerDoor() return doorP end
+ISVehicleMenu.getBestSwitchSeatExit = function() return nil end
+local savedGV, savedSeat = cp.getVehicle, cv.getSeat
+cp.getVehicle = function() return cv end
+cv.getSeat = function() return 0 end
+local UP = 0.075 + 1.13 / 2.44949
+cv.dz = UP
+local ex1 = exits
+ISVehicleMenu.onExit(cp, 0)
+check(exits == ex1 and table.concat(queued, ",") == "exit", "up on another car, every way out blocked: out anyway (no door: straight out)")
+queued = {}
+doorP = { getInventoryItem = function() return true end,
+    getDoor = function() return { isLocked = function() return true end, isOpen = function() return false end } end }
+ISVehicleMenu.onExit(cp, 0)
+check(table.concat(queued, ",") == "unlock,open,exit,close", "a locked shut door: unlocked, opened, out, shut (as vanilla's onExitAux)")
+queued = {}
+cv.dz = 0.075
+ISVehicleMenu.onExit(cp, 0)
+check(exits == ex1 + 1 and #queued == 0, "on the ground: vanilla's exit")
+cv.dz, blockedE = UP, false
+ISVehicleMenu.onExit(cp, 0)
+check(exits == ex1 + 2 and #queued == 0, "up, its way out clear: vanilla's exit")
+cv.dz, cp.getVehicle, cv.getSeat = 0.075, savedGV, savedSeat
+ISTimedActionQueue, ISExitVehicle, ISOpenVehicleDoor, ISCloseVehicleDoor, ISUnlockVehicleDoor = nil, nil, nil, nil, nil
+cv.isExitBlocked, cv.isStopped, cv.getPassengerDoor = nil, nil, nil
+end
 TH.KEYS.up = nil
 isKeyDown, isJoypadRTPressed, isJoypadLTPressed, getJoypadMovementAxisX, getJoypadAimingAxisY = savedKD, nil, nil, nil, nil
 getCore, getPlayerScreenHeight, cv.vy = savedCore, savedSH, nil

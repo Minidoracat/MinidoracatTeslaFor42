@@ -913,7 +913,19 @@ Events.OnKeyPressed.Add(function(key)
 end)
 
 -- no getting out mid-air: the car is this machine's to fly until it lands. Flying, getting out (vanilla's exit: a
--- controller's A, ISButtonPrompt.lua:444; the Interact key, Vehicles.lua OnUseVehicle) lands it instead
+-- controller's A, ISButtonPrompt.lua:444; the Interact key, Vehicles.lua OnUseVehicle) lands it instead.
+-- At rest off the ground after (another car's roof, an eave), vanilla's way out from the seat runs into what holds it
+-- up (isExitBlocked, BaseVehicle.java:6669-6699: lineClearCollide on the car's floor; r2rest-mp-near2: both seats, no
+-- seat to switch to) and nothing else may move it (THRUST_AIRBORNE): out as vanilla's onExitAux, without that check
+-- (ISExitVehicle puts the player at the seat's outside spot on the car's floor, setCharacterPosition)
+local function exitUp(p, v, seat)
+    local part = v:getPassengerDoor(seat)
+    local door = part and part:getInventoryItem() and part:getDoor()
+    if door and door:isLocked() then ISTimedActionQueue.add(ISUnlockVehicleDoor:new(p, part)) end
+    if door and not door:isOpen() then ISTimedActionQueue.add(ISOpenVehicleDoor:new(p, v, part)) end
+    ISTimedActionQueue.add(ISExitVehicle:new(p))
+    if door then ISTimedActionQueue.add(ISCloseVehicleDoor:new(p, v, part)) end
+end
 local origExit = ISVehicleMenu.onExit
 function ISVehicleMenu.onExit(playerObj, seatFrom)
     local f = F
@@ -924,6 +936,14 @@ function ISVehicleMenu.onExit(playerObj, seatFrom)
         end
         HaloTextHelper.addBadText(playerObj, T.denyText("THRUST_IN_AIR"))
         return
+    end
+    local v = playerObj:getVehicle()
+    local c = v and H.conf(v)
+    if c and heightOf(v, RESTS[v:getId()] or c.rest) > 0.4 and v:isStopped() then
+        local seat = seatFrom or v:getSeat(playerObj)
+        if v:isExitBlocked(playerObj, seat) and not ISVehicleMenu.getBestSwitchSeatExit(playerObj, v, seat) then
+            return exitUp(playerObj, v, seat)
+        end
     end
     return origExit(playerObj, seatFrom)
 end
