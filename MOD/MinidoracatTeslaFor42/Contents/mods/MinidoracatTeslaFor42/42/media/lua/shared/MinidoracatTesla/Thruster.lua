@@ -20,7 +20,7 @@ H.FLOOR = 2.44949 -- metres per floor: physics y / getDebugZ (flight PoC r1, Bas
 -- per-car values; a car's Specs `thruster` table overrides any of them (Specs `thruster = {}`: all defaults)
 H.DEFAULTS = {
     -- moment of inertia / mass about the body axes (m^2): f = roll (nose axis), r = pitch, u = yaw; Model S measured
-    -- (flight PoC r2 IC segment)
+    -- (flight PoC r2 IC segment). The Roadster Rocket has its own in Specs (r2int-ic: 0.300 / 1.134 / 1.285)
     inertia = { f = 0.387, r = 1.816, u = 1.897 },
     apex = 8,            -- kickflip / backflip top, metres above the ground (their timing: client Thruster.lua PROF)
     kickMaxKmh = 40,     -- the fastest each may start at: the landing spot stays near (path scan) and on screen

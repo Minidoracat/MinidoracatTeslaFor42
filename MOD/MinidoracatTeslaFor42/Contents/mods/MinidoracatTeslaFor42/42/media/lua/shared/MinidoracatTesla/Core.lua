@@ -364,7 +364,9 @@ T.Specs = {
         butterfly = true, -- butterfly doors like the Cybercab's: the app opens both
         frunk = false, -- "No Frunk, Because the Front Is a Giant Wing" (Not a Tesla App #4850), template SoloNoFrunk
         wing = true, -- the active rear wing (part TeslaWing): app, HUD, radial and the charge port behind it
-        thruster = {}, -- the cold-gas thrusters (Thruster.lua T.Thruster.DEFAULTS as they are)
+        -- the cold-gas thrusters (Thruster.lua T.Thruster.DEFAULTS but its own inertia: flight PoC IC segment on this
+        -- body, r2int-ic 2026-11-24)
+        thruster = { inertia = { f = 0.300, r = 1.134, u = 1.285 } },
         seatless = { DoorFrontRight = true }, -- one seat (a 400 L air tank in the passenger's place)
         -- the clips its build animates (cars/roadster2.py DOORS): butterfly doors 2 s, the trunk lid (the rear glass) 1 s,
         -- the wing 1.5 s (no shell bit: E2E waits read it)

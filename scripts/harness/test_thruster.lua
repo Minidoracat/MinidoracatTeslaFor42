@@ -1184,6 +1184,43 @@ while TH.active() and TH.active().t < 1.2 do TH.tick() end
 e = H.clientSent[#H.clientSent]
 check(TH.active() == nil and e.command == "thrustEnd" and e.args.done == false, "still down after the creep: given up, not crept again")
 check(zoom == 0.5, "D4: zoomed out, through the creep and flying again: the camera back as it was")
+-- the hover (integration, real body 2026-11-24, r2int-sp-t0: 3.49 m 3 s after a take-off for 3 m; the step to flyH
+-- wound the PID's integral up on the climb): a car that only moves up and down (g 10, its frame's impulse) takes
+-- off to flyH no more than 0.2 m over and holds it within 0.2 m 2-4 s after the ask; PageUp held 2 s: flyMaxH, no
+-- more than 0.2 m over, within 0.2 m from 1.5 s after the key's release
+local fc = TH.conf(cv)
+local upHeld = false
+TH.KEYS.up = { getValue = function() return 201 end }
+isKeyDown = function(k) return k == 201 and upHeld end
+cv.dz, cv.vy, cv.speed, zoom = 0.075, 0, 0, 1
+TH.ask(cp, cv, "fly")
+okFor("fly", { sec = 30 })
+local function hm() return (cv.dz - 0.075) * TH.FLOOR end
+local function step(n, fn)
+    for _ = 1, n do
+        cv.jy = 0
+        TH.tick()
+        cv.vy = cv.vy + cv.jy / (1500 * 100) - 10 * 0.02 -- the impulse sent x 100 (see "on the landing's curve" above)
+        cv.dz = cv.dz + cv.vy * 0.02 / TH.FLOOR
+        if cv.dz < 0.075 then cv.dz, cv.vy = 0.075, math.max(0, cv.vy) end
+        if fn then fn(hm()) end
+    end
+end
+local over, worst = 0, 0
+step(100, function(h) over = math.max(over, h - fc.flyH) end)
+step(100, function(h) over = math.max(over, h - fc.flyH) worst = math.max(worst, math.abs(h - fc.flyH)) end)
+check(TH.active() and TH.active().phase == "fly" and over <= 0.2 and worst < 0.2,
+    string.format("hover: up to flyH %.1f m, %.2f m over at most, within %.2f m 2-4 s after the ask", fc.flyH, over, worst))
+upHeld = true
+step(100)
+upHeld = false
+local overUp, worstUp = 0, 0
+step(75, function(h) overUp = math.max(overUp, h - fc.flyMaxH) end)
+step(75, function(h) overUp = math.max(overUp, h - fc.flyMaxH) worstUp = math.max(worstUp, math.abs(h - fc.flyMaxH)) end)
+check(overUp <= 0.2 and worstUp < 0.2,
+    string.format("hover: PageUp 2 s to flyMaxH %.1f m, %.2f m over at most, within %.2f m from 1.5 s after", fc.flyMaxH, overUp, worstUp))
+abort()
+TH.KEYS.up = nil
 isKeyDown = savedKD
 getCore, getPlayerScreenHeight, cv.vy = savedCore, savedSH, nil
 
