@@ -134,7 +134,11 @@ CAR = dict(
     SEAT=dict(x=round(-_SEAT[0] * K, 4), h=0.27, z=-0.255,
               back=(round(((_c(_DOOR_F) + _c(_DOOR_R)) / 2 - _c(_SEAT[1] + _SEAT_FWD)), 4),), out=0.30, front_only=True,
               solo=True),
-    SEAT_POSE={"front": [("Bip01", 48.0), ("Bip01_L_Thigh", -26.0), ("Bip01_R_Thigh", -26.0)]},
+    # the upper arms turned 22 deg down (and their children): the 48 deg lean back raised Bob_IdleDriving's hands
+    # 0.09 grid over the head bone, over the eyes in Viewpoint's first person (vp-detail-r2 r2int-b); now 0.04 under
+    # it, as Model S's 0.055 (DASH wheel: the hub at the hands)
+    SEAT_POSE={"front": [("Bip01", 48.0), ("Bip01_L_Thigh", -26.0), ("Bip01_R_Thigh", -26.0),
+                         ("Bip01_L_UpperArm", -22.0), ("Bip01_R_UpperArm", -22.0)]},
     BODY_W_Z=0.55,
     # butterfly doors (_door); the trunk lid (the V rear glass, prep panel 4) about its front edge over the seat back
     # (prep REAR0, REAR_C), up; the wing (prep WING_LIFT, x HVc6jW2XgAAULlb / HVc6ftKXYAApLw-) lifted up and back on its
@@ -243,7 +247,7 @@ CAR = dict(
     PARCEL=None,
     DASH=dict(size=(0.84, 0.20, 0.16), console=None, dash=(0, _c(0.75), 0.04), trim=(0, _c(0.673), 0.075),
               light=(0, _c(0.675), 0.051), stand=(0, _c(0.71), 0.05), screen=(0, _c(0.665), 0.05),
-              wheel=(round(-_SEAT[0] * K, 4), 0.033)),
+              wheel=(0.095, 0.064)),         # wheel: the hub at the reclined driver's hands (SEAT_POSE)
     TANK=dict(at=(round(_TANK["centre"][0] * K, 4), _c(_TANK["centre"][1]), round(_TANK["centre"][2] * K - _ZC, 4)),
               r=round(_TANK["r"] * K, 4), half=round(_TANK["length"] / 2 * K, 4), dome=round(_TANK["dome"] * K, 4)),
     # the dark plate under the windscreen's and side glass's foot from the firewall (0.95) forward (cabin.py
