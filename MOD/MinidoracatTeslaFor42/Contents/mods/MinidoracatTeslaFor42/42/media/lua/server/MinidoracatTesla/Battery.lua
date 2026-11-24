@@ -235,6 +235,8 @@ function T.Update.Battery(vehicle, part, elapsedMinutes)
     if not s then return end
     -- a truck that feeds other cars (Powershare, the bed outlet): whether it moved (Charging.lua C.noteMove)
     if (s.powershare or s.bedOutlet) and T.Charge and T.Charge.noteMove then T.Charge.noteMove(vehicle, part) end
+    -- thrusters: the tank's refill from this pack, a long flight's noise (Thruster.lua H.onUpdate)
+    if s.thruster and T.Thruster and T.Thruster.onUpdate and instanceof(vehicle, "BaseVehicle") then T.Thruster.onUpdate(vehicle, part) end
     local used = 0
     if vehicle:isEngineRunning() then
         if km then

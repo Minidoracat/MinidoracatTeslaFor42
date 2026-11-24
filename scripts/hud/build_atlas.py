@@ -377,6 +377,60 @@ def ic_fridge(c):  # car fridge (radial): an upright fridge, freezer door over t
     c.stroke([("M", 5.9, 9.2), ("V", 11.4)], w=1.3)
 
 
+def _arc(c, cx, cy, r, a0, a1, w=1.3):  # stroke an arc a0 -> a1 (degrees, counter-clockwise on screen) with a head at a1
+    n = max(2, int(abs(a1 - a0) / 8))
+    pts = [(cx + r * math.cos(math.radians(a0 + (a1 - a0) * i / n)), cy - r * math.sin(math.radians(a0 + (a1 - a0) * i / n)))
+           for i in range(n + 1)]
+    c.stroke([("M", *pts[0])] + [("L", *p) for p in pts[1:]], w=w)
+    a, s = math.radians(a1), 1 if a1 > a0 else -1  # head along the tangent
+    tx, ty = -math.sin(a) * s, -math.cos(a) * s
+    nx, ny = math.cos(a), -math.sin(a)
+    x, y = pts[-1]
+    c.fill([("M", x + 2.2 * tx, y + 2.2 * ty), ("L", x + 1.5 * nx, y + 1.5 * ny), ("L", x - 1.5 * nx, y - 1.5 * ny), ("Z",)])
+
+
+def _car_side(c, dy=0, dx=0):  # a low two-seater seen from the side, nose right
+    c.stroke([("M", 2.4 + dx, 11 + dy), ("V", 9.2 + dy), ("L", 6 + dx, 8.2 + dy), ("L", 8 + dx, 6.6 + dy), ("H", 10.4 + dx),
+              ("L", 13.6 + dx, 8.6 + dy), ("V", 11 + dy), ("Z",)], w=1.2)
+    c.circle(5 + dx, 11.4 + dy, 1.3, fill="#FFFFFF")
+    c.circle(11.2 + dx, 11.4 + dy, 1.3, fill="#FFFFFF")
+
+
+def ic_thruster(c):  # thrusters (radial entry): a rocket nozzle with its flame
+    c.stroke([("M", 6.4, 1.8), ("H", 9.6), ("L", 11.8, 7.6), ("H", 4.2), ("Z",)], w=1.3)
+    c.fill([("M", 5.2, 9), ("H", 10.8), ("Q", 10.6, 12.2, 8, 15.4), ("Q", 5.4, 12.2, 5.2, 9), ("Z",)])
+
+
+def ic_kickflip(c):  # kickflip: the car seen from behind, an arrow rolling round it
+    c.rrect(4.4, 8, 7.2, 3.2, 1, outline="#FFFFFF", ow=1.2)
+    c.stroke([("M", 5.6, 8.2), ("L", 6.6, 6), ("H", 9.4), ("L", 10.4, 8.2)], w=1.2)
+    _arc(c, 8, 8.4, 6.6, 200, -20)
+
+
+def ic_backflip(c):  # backflip: the car side on, an arrow going back over it
+    _car_side(c, 1.4)
+    _arc(c, 8, 9, 6.4, 20, 160)
+
+
+def ic_boost(c):  # boost: the car side on and speed lines behind it
+    _car_side(c, 0, 1.4)
+    c.stroke([("M", 0.6, 8.6), ("H", 2.6)], w=1.2)
+    c.stroke([("M", 0.2, 10.6), ("H", 2.6)], w=1.2)
+    c.stroke([("M", 1.4, 6.6), ("H", 5.4)], w=1.2)
+
+
+def ic_fly(c):  # fly: the car side on, lifted on two flames
+    _car_side(c, -3.4)
+    for x in (5, 11.2):
+        c.fill([("M", x, 10.4), ("Q", x + 1.8, 12.4, x, 15), ("Q", x - 1.8, 12.4, x, 10.4), ("Z",)])
+
+
+def ic_land(c):  # land: an arrow down onto the ground
+    c.stroke([("M", 8, 1.8), ("V", 9)], w=1.4)
+    c.fill([("M", 8, 11.6), ("L", 4.6, 7.6), ("H", 11.4), ("Z",)])
+    c.stroke([("M", 2.2, 14), ("H", 13.8)], w=1.4)
+
+
 def app_ring():  # the summon range on the app's radar and its pick map: 10% disc, full ring; white, tinted when drawn
     n = 256
     big = Image.new("RGBA", (n * SS // 2, n * SS // 2), (0, 0, 0, 0))
@@ -909,7 +963,12 @@ def radial_icons():
                            ("radial_powershare", ic_house, "#F3F5F7"), ("radial_powershare_off", ic_house, "#6B737C"),
                            ("radial_outlet", ic_outlet, "#F3F5F7"), ("radial_outlet_off", ic_outlet, "#6B737C"),
                            ("radial_bdm", ic_biohazard, "#F3F5F7"), ("radial_chill", ic_chill, "#F3F5F7"),
-                           ("radial_fridge", ic_fridge, "#F3F5F7"), ("radial_fridge_off", ic_fridge, "#6B737C")):
+                           ("radial_fridge", ic_fridge, "#F3F5F7"), ("radial_fridge_off", ic_fridge, "#6B737C"),
+                           ("radial_thrust", ic_thruster, "#F3F5F7"), ("radial_thrust_land", ic_land, "#F3F5F7"),
+                           ("radial_thrust_kickflip", ic_kickflip, "#F3F5F7"), ("radial_thrust_kickflip_off", ic_kickflip, "#6B737C"),
+                           ("radial_thrust_backflip", ic_backflip, "#F3F5F7"), ("radial_thrust_backflip_off", ic_backflip, "#6B737C"),
+                           ("radial_thrust_boost", ic_boost, "#F3F5F7"), ("radial_thrust_boost_off", ic_boost, "#6B737C"),
+                           ("radial_thrust_fly", ic_fly, "#F3F5F7"), ("radial_thrust_fly_off", ic_fly, "#6B737C")):
         c = Canvas(48, 48, 16)
         # draw at 1.5px scale-adjusted stroke so it reads at 48px like vanilla radial icons
         fn(c)

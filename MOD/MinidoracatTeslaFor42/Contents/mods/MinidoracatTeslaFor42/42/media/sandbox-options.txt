@@ -35,3 +35,33 @@ option MinidoracatTesla.SemiSpawnChance
     type = double, min = 0.0, max = 100.0, default = 1.5,
     page = MinidoracatTesla, translation = MinidoracatTesla_SemiSpawnChance,
 }
+
+option MinidoracatTesla.Thrusters
+{
+    type = boolean, default = true,
+    page = MinidoracatTesla, translation = MinidoracatTesla_Thrusters,
+}
+
+option MinidoracatTesla.FlightSeconds
+{
+    type = integer, min = 2, max = 120, default = 8,
+    page = MinidoracatTesla, translation = MinidoracatTesla_FlightSeconds,
+}
+
+option MinidoracatTesla.FreeFlight
+{
+    type = boolean, default = false,
+    page = MinidoracatTesla, translation = MinidoracatTesla_FreeFlight,
+}
+
+option MinidoracatTesla.ThrusterRefillMinutes
+{
+    type = integer, min = 1, max = 1440, default = 30,
+    page = MinidoracatTesla, translation = MinidoracatTesla_ThrusterRefillMinutes,
+}
+
+option MinidoracatTesla.ThrusterRefillKwh
+{
+    type = double, min = 0.0, max = 150.0, default = 40.0,
+    page = MinidoracatTesla, translation = MinidoracatTesla_ThrusterRefillKwh,
+}
