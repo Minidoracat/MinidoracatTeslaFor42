@@ -2,8 +2,8 @@
 the body's frame (part model offset 0, as armor.py), per nozzle two open cones: a thin bright core (uv v 0..1) and a
 wider faint sheath (v 2..3). Shader MinidoracatTesla_jet draws them procedurally (no texture: it runs as a vehicle
 shader for the time uniform, and that path binds the car's skin, shaders/MinidoracatTesla_jet.frag).
-Also writes the landing fog's banks MinidoracatTesla/JetFog1..3 (wide, mid, low) and the ground glow JetGlow
-(client ThrusterFx.lua; not under Vehicles/: verify_local reads those as car skins).
+Also writes the landing fog's mounds MinidoracatTesla/JetFog1..4 (tall, tall in another shape, mid, low) and the
+ground glow JetGlow (client ThrusterFx.lua; not under Vehicles/: verify_local reads those as car skins).
 
 Nozzles: `nozzles` of temp/skf_r2/roadster2_lines.json (R2Body's prep frame: metres, +Y front, +Z up, -X car left,
 ground z = 0, y = 0 at mid-length) taken to the mesh frame with temp/skf_r2/geometry.json (centre_y, zmid; grid);
@@ -30,10 +30,10 @@ ESTIMATE = {"lift": [[-0.55, 1.30, 0.22], [0.55, 1.30, 0.22], [-0.55, -1.30, 0.2
 GEOM_ESTIMATE = {"centre_y": 0.0, "zmid": 0.50}
 # Per group: direction (mesh frame; side: outward by the nozzle's x), length (metres), far-end radius of the core and of
 # the sheath, the core's share of the length. Narrow at the nozzle, the sheath opening wider than a wheel where the lift
-# columns reach the ground from about 3 m, a white plume spreading into fog (f2-kickflip-replay 11m27; the shader
-# frays its edge); the boost flame is short (thrust-060 17m27).
-SHAPE = {"lift": ((0, 0, -1), 4.0, 0.10, 0.55, 0.6), "side": (None, 1.2, 0.04, 0.22, 0.6),
-         "rear": ((0, -1, 0), 1.5, 0.07, 0.32, 0.6)}
+# columns reach the ground from about 3 m, a soft white plume spreading into fog (f2-kickflip-replay 11m27); the boost
+# jets are short and merged into one bundle a side (four side by side read as a comb, r2fx-sp-8; thrust-060 17m27).
+SHAPE = {"lift": ((0, 0, -1), 4.0, 0.14, 0.60, 0.7), "side": (None, 1.2, 0.05, 0.24, 0.7),
+         "rear": ((0, -1, 0), 1.6, 0.16, 0.50, 0.7)}
 RINGS, SIDES = 10, 16
 
 
@@ -82,6 +82,10 @@ def cone(p0, d, length, r0, r1, v0=0.0):
 
 def build(group, nozzles, r0):
     d0, length, r_core, r_sheath, core = SHAPE[group]
+    if group == "rear" and len(nozzles) > 2:   # one bundle a side, as wide at the nozzle as the pair it covers
+        sides = [[p for p in nozzles if p[0] < 0], [p for p in nozzles if p[0] >= 0]]
+        r0 += max(abs(s[0][0] - s[-1][0]) for s in sides) / 2
+        nozzles = [np.mean(s, axis=0) for s in sides]
     V, Q, U = [], [], []
     for p in nozzles:
         d = d0 or (float(np.sign(p[0])), 0.0, 0.0)
@@ -134,32 +138,39 @@ def value_noise(h, w, cells, rng):
     return top * (1 - fy) + bot * fy
 
 
-def bank_texture(path, w, h, seed):
-    """One bank of ground fog (IsoMarkers: bottom centre on its tile, its own size, no scaling;
-    IsoSprite.renderTextureWithDepth): low and wide, a ragged billowing top under a flat arch, fading out at the ends
-    and through the bottom rows with noise, so neither a straight top nor a cut bottom edge shows (r2fx-sp-1, r2fx-sp-6b
-    review: the bottom fade must not read as a line). Lit from above: white top, grey underside."""
+def mound_texture(path, w, h, seed):
+    """One mound of landing fog (IsoMarkers: bottom centre on its tile, its own size, no scaling;
+    IsoSprite.renderTextureWithDepth): dense, piled higher in the middle, built from soft round lobes summed into a
+    density with no threshold, so the outline is soft and uneven, neither the hard-edged cumulus of r2fx-sp-6b nor the
+    thin strips of r2fx-sp-7. The bottom rows thin out with noise so no cut line shows. Lit from above: white top,
+    slightly blue-grey underside (official fog is white with a cold tint, f1-ramp 07m18.5)."""
     rng = np.random.default_rng(seed)
     y, x = np.meshgrid(np.arange(h) + 0.5, np.arange(w) + 0.5, indexing="ij")   # y up from the bottom row
-    d, lit = np.zeros((h, w)), np.zeros((h, w))
-    for _ in range(70):
-        cx = rng.uniform(0.08, 0.92) * w
-        top = h * (0.3 + 0.65 * (1 - (2 * cx / w - 1) ** 2) ** 0.6 * rng.uniform(0.4, 1.0))   # flat arch, uneven
-        r = min(rng.uniform(0.12, 0.38) * h, cx, w - cx)
-        cy = rng.uniform(0.25 * h, max(0.25 * h, top - r))
-        g = np.exp(-(((x - cx) / (1.4 * r)) ** 2 + ((y - cy) / r) ** 2) ** 1.5)   # lobes wider than tall
-        d += g
-        lit += g * np.clip(0.55 + 0.45 * (y - cy) / r, 0.2, 1.0)
-    n = 0.6 * value_noise(h, w, 8, rng) + 0.4 * value_noise(h, w, 20, rng)
-    shade = lit / np.maximum(d, 1e-6)
-    d = 1 - np.exp(-0.9 * d * (0.2 + 1.6 * n))
-    ends = np.clip((np.minimum(x, w - x) / w + 0.06 * (n - 0.5)) / 0.12, 0, 1)
-    bottom = np.clip((y / h + 0.25 * (n - 0.5)) / 0.4, 0, 1) ** 1.5
-    a = np.clip((d - 0.15) / 0.6, 0, 1) * bottom * ends * np.clip((h - y) / (h * 0.06), 0, 1) * (0.6 + 0.4 * n)
-    shade = 0.66 + 0.34 * np.clip(0.6 * shade + 0.4 * y / h + 0.25 * (n - 0.5), 0, 1)
+    d, hi = np.zeros((h, w)), np.zeros((h, w))
+    for count, (r_lo, r_hi) in ((5, (0.07, 0.10)), (70, (0.04, 0.09))):   # a few core lobes, many billows
+        for _ in range(count):
+            cx = rng.uniform(0.15, 0.85) * w
+            top = h * (0.12 + 0.83 * max(0.0, 1 - abs(2 * cx / w - 1) / 0.85) ** 0.7 * rng.uniform(0.45, 1.0))
+            r = min(rng.uniform(r_lo, r_hi) * (w + h), cx - 6, w - cx - 6, 0.5 * top)
+            if r < 3:
+                continue
+            cy = top - r - rng.random() ** 1.5 * max(0.0, top - 2 * r)   # most at the surface, so the outline is lumpy
+            q = ((x - cx) / (1.15 * r)) ** 2 + ((y - cy) / r) ** 2
+            d += np.exp(-q ** 1.4)
+            # each billow lit on its upper side, a soft crease under it, so the lumps read through the dense mass
+            hi = np.maximum(hi, np.exp(-1.6 * q) * np.clip(0.45 + 0.65 * (y - cy) / r, 0, 1))
+    n = 0.55 * value_noise(h, w, 5, rng) + 0.45 * value_noise(h, w, 12, rng)
+    a = np.clip(1 - np.exp(-1.3 * d * (0.6 + 0.8 * n)) - 0.1, 0, 1) / 0.9
+    # an uneven, rounded base fading over 18%: a straight bright base read as tiers where mounds on nearer tiles
+    # overlap (r2fx-sp-10); the base is lit too, so no dark crease shows there
+    base = h * (0.12 * value_noise(1, w, 6, rng)[0] + 0.25 * np.abs(2 * x / w - 1) ** 3)
+    a *= np.clip((y - base) / (0.18 * h), 0, 1)
+    shade = np.clip(0.2 + 0.8 * hi + 0.1 * y / h + 0.2 * (n - 0.5), 0, 1)
+    shade += (1 - shade) * 0.6 * np.clip(1 - (y - base) / (0.35 * h), 0, 1)
     arr = np.zeros((h, w, 4))
-    arr[..., 0], arr[..., 1], arr[..., 2] = shade * 0.97, shade * 0.98, shade
-    arr[..., 3] = a * 0.9
+    for k, (lo, top_c) in enumerate(((0.62, 0.97), (0.70, 0.99), (0.78, 1.0))):
+        arr[..., k] = lo + (top_c - lo) * shade
+    arr[..., 3] = a * 0.92
     save_png(arr, path)
 
 
@@ -188,8 +199,10 @@ def main():
         export_fbx(ob, os.path.join(o["out"], "models_X", "vehicles", ob.name + ".fbx"))
         print(f"jets: {ob.name} {len(noz)} cones")
     tex = os.path.join(o["out"], "textures", "MinidoracatTesla")
-    for k, (w, h) in enumerate(((480, 150), (400, 130), (352, 100)), 1):   # wide, mid, low banks (car roof ~110 px)
-        bank_texture(os.path.join(tex, f"JetFog{k}.png"), w, h, 20 + k)
+    # official touch-down fog (f1-ramp 07m18.5): about 3-4 car heights tall, 2.8 car lengths wide, dense core 1.6;
+    # here the car's roof stands ~110 px over its tile at the default zoom, its length ~240 px across the screen
+    for k, (w, h) in enumerate(((384, 300), (384, 280), (400, 200), (416, 130)), 1):   # tall, tall (other), mid, low
+        mound_texture(os.path.join(tex, f"JetFog{k}.png"), w, h, 30 + k)
     glow_texture(os.path.join(tex, "JetGlow.png"))
 
 

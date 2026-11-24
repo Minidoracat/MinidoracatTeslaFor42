@@ -16,23 +16,27 @@ F.IDS = { "Lift", "Side", "Rear" }
 -- the models each mode shows; "land", nil and anything else: none
 F.MODELS = { lift = { Lift = true }, flip = { Lift = true, Side = true }, boost = { Rear = true } }
 F.SOUND, F.SOUND_END = "MinidoracatTesla_RoadsterJet", "MinidoracatTesla_RoadsterJetEnd"
--- Fog: a low ground layer spreading out, as the official landing (f2-kickflip 11m15): banks around the spot,
--- { dx, dy, texture (1 wide, 2 mid, 3 low), peak alpha, life ms, delay ms }. +x +y is toward the camera. The inner ring
--- comes first and goes first, the outer ring 200-300 ms later and lasts longer, so the layer seems to roll outward
--- (a marker cannot grow, IsoMarkers.java:142). Banks behind the car are the low ones: one stands higher on screen
--- the further back it is, and must not tower over the roof.
+-- Fog: a dense mound piling up round the spot, as the official touch-down (f1-ramp 07m18.5: about 3-4 car heights
+-- tall, 2.8 car lengths wide), low toward the camera and tall behind, densest at once and gone in 2-3 s.
+-- { dx, dy, texture (1 tall, 2 tall in another shape, 3 mid, 4 low), peak alpha, life ms, delay ms }; +x +y is toward
+-- the camera. The inner ring comes first and goes first, the outer ring 200-300 ms later and lasts longer, so the cloud
+-- seems to roll outward (a marker cannot grow, IsoMarkers.java:142); behind the car the two tall shapes cross-fade on
+-- one tile so it seems to churn. The bank on the car's own tile hides its lower half; none stands straight in front of
+-- it ((1,1), (2,2)): one more low bank right under it read as a tier (r2fx-sp-10).
 F.FOG = { "media/textures/MinidoracatTesla/JetFog1.png", "media/textures/MinidoracatTesla/JetFog2.png",
-    "media/textures/MinidoracatTesla/JetFog3.png" }
+    "media/textures/MinidoracatTesla/JetFog3.png", "media/textures/MinidoracatTesla/JetFog4.png" }
 F.PUFFS = {
-    land = { { -1, -1, 3, 0.8, 1900, 0 }, { 1, 1, 3, 0.7, 1700, 0 }, { -1, 1, 2, 0.75, 1800, 0 },
-        { 1, -1, 2, 0.75, 1800, 0 }, { -2, 2, 1, 0.7, 2700, 200 }, { 2, -2, 1, 0.7, 2600, 250 },
-        { 2, 2, 2, 0.6, 2400, 200 }, { -2, -2, 3, 0.4, 2600, 300 }, { -3, -1, 3, 0.4, 2500, 300 },
-        { -1, -3, 3, 0.4, 2500, 300 } },
-    -- right behind the tail (F.FOG_BEHIND), then spreading
-    boost = { { 0, 0, 2, 0.75, 1800, 0 }, { -1, -1, 3, 0.55, 2200, 200 }, { 1, 1, 3, 0.55, 2200, 200 } },
+    land = { { -1, -1, 1, 0.9, 1300, 0 }, { -1, -1, 2, 0.85, 1700, 500 }, { -1, 1, 3, 0.85, 1800, 0 },
+        { 1, -1, 3, 0.85, 1800, 0 }, { 0, 0, 4, 0.85, 1800, 0 },
+        { -2, -2, 1, 0.55, 2400, 250 }, { -2, 0, 3, 0.6, 2400, 200 }, { 0, -2, 3, 0.6, 2400, 200 },
+        { 2, 0, 4, 0.6, 2500, 250 }, { 0, 2, 4, 0.6, 2500, 250 } },
+    -- a dense ball right behind the tail (F.FOG_BEHIND), then spreading
+    boost = { { 0, 0, 3, 0.9, 1500, 0 }, { -1, -1, 3, 0.6, 2000, 250 }, { 1, 1, 4, 0.6, 2000, 250 } },
 }
 F.FOG_IN_MS = 150
-F.FOG_MIN_LIGHT = 0.3 -- puffs take their square's light once: a night fog must not shine like a lamp
+-- puffs take their square's light once: a night fog must not shine like a lamp, nor sink into the dark (official
+-- night fog is lit up by the car's lights; 0.3 left it barely there, r2fx-sp-8)
+F.FOG_MIN_LIGHT = 0.5
 F.FOG_BEHIND = 2 -- tiles behind the car's centre for the boost's fog: its tail and rear nozzles
 -- Ground glow at take-off (lift from no jets): one flat ellipse standing 2 tiles toward the camera so its middle lands
 -- under the car; the jets' light, so not shaded. Not on landing: there it tinted the fog's front bank blue (r2fx-sp-6b).
