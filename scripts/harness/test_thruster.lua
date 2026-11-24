@@ -1238,6 +1238,38 @@ do -- the probe finds it moving (a car on a roof's edge, held there by the landi
     check(TH.active() and #H.clientSent == n0 and cv.impulses > 0, "... then still 2 s more: pushing on, never at rest")
     cv.driver = nil; TH.tick(); cv.driver = cp
 end
+do -- r2f3-sp-probe2 rboost: a car settled on something past a roof's edge, rocking 3.76 degrees in the probe's 0.2 s
+    -- (dv 0.04, dh 0.005) read as moving, slid 3 s without dropping, held up 12 s, then asked again (the tank billed
+    -- twice, up 0.43): under 5 degrees is its springs, at rest
+    cv.dz, cv.vy, cv.uy, cv.speed, cv.ux = 0.075 + 2 / TH.FLOOR, 0, 1, 0, nil
+    TH.ask(cp, cv, "land")
+    okFor("land")
+    for _ = 1, 46 do TH.tick() end
+    check(TH.active() and TH.active().probe and TH.active().probe.h, "rocking: probing, the first sample taken")
+    cv.ux = math.tan(math.rad(3.76))
+    for _ = 1, 12 do if TH.active() then TH.tick() end end
+    check(TH.active() == nil and H.clientSent[#H.clientSent].args.rest == true, "... 3.76 degrees in 0.2 s: at rest")
+    cv.driver = nil; TH.tick(); cv.driver = cp
+end
+do -- found moving, it slides; SLIDE_S s on and no lower: something holds it up (r2f3-sp-probe2 rboost #3: held 2 m
+    -- up past the edge, asked again after LAND_S): over, at rest
+    cv.dz, cv.vy, cv.uy, cv.speed, cv.ux = 0.075 + 2 / TH.FLOOR, 0, 1, 0, 0.3
+    TH.ask(cp, cv, "land")
+    okFor("land")
+    local n0 = #H.clientSent
+    for _ = 1, 46 do TH.tick() end
+    cv.dz = cv.dz - 0.06 / TH.FLOOR
+    for _ = 1, 12 do if TH.active() then TH.tick() end end
+    local f = TH.active()
+    check(f and f.slide and #H.clientSent == n0, "moving: sliding off the way it leans")
+    for _ = 1, 140 do if TH.active() then TH.tick() end end -- 2.8 s
+    check(TH.active() == f and f.slide, "... 2.8 s on, no lower: still sliding")
+    for _ = 1, 15 do if TH.active() then TH.tick() end end
+    check(TH.active() == nil and #H.clientSent == n0 + 1 and H.clientSent[#H.clientSent].args.rest == true,
+        "... past 3 s and no lower: something holds it up, over at rest")
+    cv.ux = nil
+    cv.driver = nil; TH.tick(); cv.driver = cp
+end
 cv.dz, cv.vy, cv.uy, cv.speed = 0.075, 0, nil, 30
 -- what the client asks VehicleManager is a query; AutoDrive driving this car refuses
 local seenQ, vmr = nil, T.vmRefusal

@@ -46,11 +46,13 @@ local ROLL_S, LAND_S = 3, 12     -- roll-up and soft landing give up after these
 local REST_S, REST_V, REST_DH = 0.7, 0.2, 0.03
 -- at rest REST_S, then a probe with no push: a car held on a roof's edge by the landing's own push read as at rest,
 -- ended there and tipped over (r2fin-sp-full roof 1 #1: up 0.033, hit -4.22 m/s). Sampled at PROBE_A s (the springs
--- settle first) and PROBE_B s: faster than REST_V, PROBE_DH m lower or turned over 1 degree is moving
-local PROBE_A, PROBE_B, PROBE_DH, PROBE_DOT = 0.2, 0.4, 0.05, 0.99985
+-- settle first) and PROBE_B s: faster than REST_V, PROBE_DH m lower or turned over 5 degrees is moving (r2f3-sp-probe2:
+-- a car settled 2 m up on something past a roof's edge rocked 3.76 degrees; edges' hung cars 12-30, roof 2's 6.09)
+local PROBE_A, PROBE_B, PROBE_DH, PROBE_DOT = 0.2, 0.4, 0.05, 0.99619
 -- found moving, it slides off the way it leans (its up vector's level part; else its own way) at SLIDE_V, level, until
--- SLIDE_DH m lower or SLIDE_S s: landing on in place, the push held it there tilted for LAND_S (r2f3-sp-probe: 6 of 30
--- on the roofs' edges, up 0.64-0.97) and the watch asked again as it fell after
+-- SLIDE_DH m lower; SLIDE_S s and no lower is something holding it up: over, at rest. Landing on in place instead, the
+-- push held it on the roofs' edges tilted for LAND_S (r2f3-sp-probe: 6 of 30, up 0.64-0.97) and the watch asked again
+-- as it fell after
 local SLIDE_V, SLIDE_DH, SLIDE_S = 2, 0.8, 3
 -- a flight's landing stops at its height first (r2scan-sp-obst2 fenceland: down at its flying speed onto a fence,
 -- turned over): GLIDE_V m/s ahead while anything under it would catch it (landClear), down after GLIDE_S s at most
@@ -707,7 +709,10 @@ function H.tick()
         local s = f.slide
         if s then
             s.t = s.t + dt
-            if s.h - hm > SLIDE_DH or s.t > SLIDE_S then f.slide, st.vTx, st.vTz = nil, 0, 0
+            if s.h - hm > SLIDE_DH then f.slide, st.vTx, st.vTz = nil, 0, 0
+            elseif s.t > SLIDE_S then
+                T.log(string.format("thrust slide vid=%d held h=%.2f", f.vid, hm))
+                return stop(f.lifted, nil, nil, true)
             else st.vTx, st.vTz = s.dx * SLIDE_V, s.dz * SLIDE_V end
         end
         local p = f.probe
