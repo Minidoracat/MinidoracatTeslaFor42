@@ -264,10 +264,10 @@ https://steamcommunity.com/sharedfiles/filedetails/?id=3829501237
 [*] [b]Taking off[/b]: pick Fly in the radial and the car rises to hover about 3 m off the ground; it cannot take off with a roof right above it.
 [*] [b]Controls[/b]: the drive keys move it ahead, back and around, up to about 15 m a second; Space flies higher and C lower, between 1 and 5 m off the ground. On a controller: RT / LT ahead and back, the left stick steers, the right stick sets the height.
 [*] [b]Dashboard[/b]: while flying, the dashboard's reminder pill shows "Flying · N s left" with the keys, turning to the warning colour in the last 3 seconds; only the driver who is flying sees it.
-[*] [b]Landing[/b]: pick Land in the radial (while flying, the Thrusters slice turns straight into Land), press the Fly / land key, or press the get-out key (A on a controller); it also lands by itself when the air runs out. It first slows down at its height; with a fence, hedge or anything else under the car, it glides ahead a little before coming down.
+[*] [b]Landing[/b]: pick Land in the radial (while flying, the Thrusters slice turns straight into Land), press the Fly / land key, or press the get-out key (A on a controller); it also lands by itself when the air runs out. Opening the mechanics window from inside the car counts as the get-out key, so the car lands first. It first slows down at its height; with a fence, hedge or anything else under the car, it glides on a little the way it was flying before coming down.
 [*] [b]Flying with the motor off[/b]: once off the ground the motor switches off, so fences, hedges, trees and lamp posts do not slow it; it starts again by itself as the car begins to come down, and takes about 1.5 seconds after touchdown to get going.
 [*] [b]It hits zombies[/b]: flying knocks down standing zombies, and the windows take damage as usual.
-[*] [b]Stuck up high[/b]: if it comes to rest up high, such as on another car or an eave, and the way out is blocked, your character gets out on the outside of the car instead.
+[*] [b]Stuck up high[/b]: if it comes to rest up high, such as on another car or an eave, and the way out is blocked, your character gets out on the outside of the car instead. If a wall, door or window is in the way, or the spot is inside a safehouse you may not enter, you cannot get out there, as in the base game; park the car facing another way.
 [/list]
 [h3]Checks before take-off and refusal messages[/h3]
 {{img:51-thrust-deny-en.jpg}}
