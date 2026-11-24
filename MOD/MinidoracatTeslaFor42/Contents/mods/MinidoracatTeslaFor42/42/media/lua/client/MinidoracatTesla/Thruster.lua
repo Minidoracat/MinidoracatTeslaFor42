@@ -569,6 +569,13 @@ local function boostOver(f, v)
     stop(f.lifted)
 end
 
+-- a timed action running or waiting in the player's vanilla queue (ISTimedActionQueue.lua:7, :143-144: queue[1] is
+-- the one running); queues read as is, getTimedActionQueue would make one
+local function queued(p)
+    local q = ISTimedActionQueue.queues[p]
+    return q ~= nil and q.queue[1] ~= nil
+end
+
 -- a flight's motor, shut off at OFF_H m (fly), started again as its landing comes down: once, by the vanilla start
 -- (ISVehicleMenu.onStartEngine, the HUD's power key's way: every kind of key), START_MS after it was seen off
 -- (ShuttingDown lasts 2 s, tryStartEngine acts only from Idle: BaseVehicle.java:7611-7653); asked each frame while it
@@ -690,8 +697,10 @@ function H.tick()
         else
             f.flown = f.flown + real
             -- the motor off once the wheels are clear (oracle-flight2 Q1): a running motor's car hits what it flies
-            -- through (r2scan: zombies lying under it held it 21.6 s); started again as it comes down (startBack)
-            if not f.offAsked and hm > OFF_H and v:isEngineRunning() then
+            -- through (r2scan: zombies lying under it held it 21.6 s); started again as it comes down (startBack).
+            -- Not while the driver's timed actions run or wait (ISTimedActionQueue.lua:9-17, :157-200: the shut-off
+            -- would queue behind them and outlive the flight); asked each frame until the queue is empty
+            if not f.offAsked and hm > OFF_H and v:isEngineRunning() and not queued(f.player) then
                 local h = v:getPartById("Heater")
                 local hd = h and h:getModData()
                 f.offAsked, f.heat = true, hd and hd.active and tonumber(hd.temperature) or nil
