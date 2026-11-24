@@ -395,10 +395,29 @@ done(helper2, v, { act = "land", done = false, abort = true })
 wait(500)
 check(pe.orphan and part:getModData().thr.busy.orphan and v.npid == -1 and pe.helper == nil and next(pe.tried) == nil,
     "the next one can't either (said at once): nobody near who has not had it, the server holds it; tried forgotten")
-online = { far, helper, helper2 } -- the driver gone (off the seat); the first helper free now
+-- C2 + busy: the first helper flying a car of its own: not handed the orphan (its machine refuses, and the car falls
+-- while it holds the physics: r2fix-mp-c, 6.79 m in 15 s); its flight over, the next adopt hands it over
+local bv = car({ x = v.x + 8, y = v.y })
+bv.driver, helper.vehicle = helper, bv
+online = { far } -- the request's own adopt: nobody near yet
+local bw = ask(helper, bv, "fly")
+check(bw == "thrustOk" and entryOf(bv) and entryOf(bv).player == helper and pe.helper == nil,
+    "C2 busy: the helper flies its own car")
+online = { far, helper } -- the driver gone (off the seat); the second helper gone too
 v.driver = nil
+local auths, authOf = 0, v.authorizationChanged
+function v:authorizationChanged(q) auths = auths + 1 return authOf(self, q) end
 TH.onUpdate(v, part)
-check(pe.helper == helper and v.npid == helper:getOnlineID(), "C2: who could not before, free now: theirs to land")
+TH.adopt()
+check(pe.orphan and pe.helper == nil and v.npid == -1 and auths == 0,
+    "C2 busy: a helper flying its own car is not handed the orphan, its physics never given")
+bv.dz = 0
+done(helper, bv, { done = true, sec = 1 })
+wait(500)
+check(entryOf(bv) == nil, "C2 busy: the helper's own flight over")
+TH.onUpdate(v, part)
+check(pe.helper == helper and v.npid == helper:getOnlineID() and auths == 1, "C2: who could not before, free now: theirs to land")
+v.authorizationChanged = authOf
 v.dz = 0
 done(helper, v, { done = true })
 check(entryOf(v) == nil and part:getModData().thr.busy == nil and near(gas(part), 0) and v.npid == -1,

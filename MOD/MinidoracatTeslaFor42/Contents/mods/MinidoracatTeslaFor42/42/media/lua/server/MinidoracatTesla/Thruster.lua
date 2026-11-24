@@ -217,13 +217,24 @@ local function schedule(p, ms, on)
     p.due, p.on = nowMs() + ms, on
 end
 
--- the nearest player within H.HELP_RANGE who has not had it (the caller, the driver, a helper who could not)
+-- someone holding another action now (its driver, or the one landing it): a machine flying its own car refuses the
+-- hand-over, and the car falls while it holds the physics before saying so (r2fix-mp-c: handed 5 times in 15 s,
+-- 6.79 m down in steps). An orphan's own driver is not busy with it: back near, it is theirs to land
+local function holding(q, p)
+    for _, p2 in pairs(pending) do
+        if p2 ~= p and not p2.orphan and (p2.helper or p2.player) == q then return true end
+    end
+    return false
+end
+
+-- the nearest player within H.HELP_RANGE who has not had it (the caller, the driver, a helper who could not) and is
+-- not holding another action
 local function nearest(v, p)
     local best, bd = nil, H.HELP_RANGE
     local list = getOnlinePlayers()
     for i = 0, list:size() - 1 do
         local q = list:get(i)
-        if not p.tried[q] and not q:isDead() then
+        if not p.tried[q] and not q:isDead() and not holding(q, p) then
             local d = q:DistTo(v)
             if d < bd then best, bd = q, d end
         end
