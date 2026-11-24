@@ -118,7 +118,7 @@ function H.refill(v, part)
 end
 
 -- r (H.refill) written: the tank and the kWh paid. Returns thr and whether the client's copy (gas + the same refill
--- estimate) is now wrong. A pack at its floor paid nothing: the tank and its clock stay (the refill it owes waits)
+-- estimate) is now wrong. The clock always moves on: a stretch the pack could not pay (at its floor) is not refilled
 function H.applyRefill(v, part, r)
     if not r.thr then
         local thr = { gas = 1, at = r.now }
@@ -126,7 +126,6 @@ function H.applyRefill(v, part, r)
         return thr, true
     end
     if r.running then return r.thr, false end
-    if r.cut and r.pack <= 0 then return r.thr, true end
     if r.pack > 0 then B.set(v, part, B.kwh(part) - r.pack) end
     r.thr.gas, r.thr.at = r.gas, r.now
     return r.thr, r.cut

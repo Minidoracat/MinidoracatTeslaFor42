@@ -160,6 +160,14 @@ end
 -- ---- the action this machine flies (one at a time) ----
 local F = nil
 function H.active() return F end
+-- { v, busy }: the boost this machine ended off an edge; its busy flag stays in this machine's copy until the server's
+-- clear arrives (the server ends a driver's boost at its thrustEnd, sent first), so it is no bar to that fall's landing
+local OFF_EDGE = nil
+local function busyOf(v)
+    local part = T.Battery.part(v)
+    local thr = part and part:getModData().thr
+    return type(thr) == "table" and thr.busy or nil
+end
 
 local function authority(v) return not isClient() or v:isLocalPhysicSim() end -- BaseVehicle.java:682-686
 
@@ -515,6 +523,12 @@ function H.tick()
     elseif ph == "boost" then
         local lv = v:getLinearVelocity(V3.lv)
         local gain = math.sqrt(lv:x() ^ 2 + lv:z() ^ 2) - f.v0
+        if hm > 1.5 and vy < -2 then -- off an edge: over now, the driver's soft landing takes the fall (H.watch)
+            local pl = f.player
+            OFF_EDGE = { v = v, busy = busyOf(v) }
+            stop(f.lifted)
+            return H.watch(pl, v)
+        end
         if gain > 2 then f.lifted = true end
         if t > 0.4 and gain < 1 then return stop(false, "THRUST_NO_LIFT") end
         if gain + f.v0 >= c.boostV or t > 1.5 then return stop(f.lifted) end
@@ -594,7 +608,9 @@ function H.check(player, v, act, ...)
     H.groundReset() -- the floors read afresh: one built under the car since the last action counts
     if F then return false, "THRUST_BUSY" end
     if act ~= "land" and not app and pendingAsk(player:getPlayerNum()) then return false, "THRUST_BUSY" end
-    local ok, why = H.can(player, v, act, app, true)
+    local o = OFF_EDGE
+    local mine = act == "land" and o and o.v == v and o.busy and busyOf(v) == o.busy and o.busy or nil
+    local ok, why = H.can(player, v, act, app, true, mine)
     if not ok then return false, why end
     if not app and not authority(v) then return false, "THRUST_AUTHORITY" end
     local c = H.conf(v)

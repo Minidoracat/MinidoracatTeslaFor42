@@ -258,14 +258,14 @@ H.setHours(H.hours() + 0.25)
 TH.settle(v, part)
 check(near(gas(part), 1, 1e-6) and near(k1 - B.kwh(part), 20, 1e-6) and part:getModData().chg.fed == 1.5,
     "S4: on the grid 15 refill minutes: the pack pays (20 kWh), chg.fed untouched: " .. string.format("%.4f", k1 - B.kwh(part)))
--- S4: the pack at its 12V floor, plugged in: no refill this time, the tank and its clock as they were
+-- S4: the pack at its 12V floor, plugged in: no refill this time, the tank as it was, its clock moved on (that stretch
+-- is not refilled: the client's estimate from gas + at stays true)
 part:getModData().thr = { gas = 0.5, at = H.hours() }
-local at4 = H.hours()
 part:setContainerContentAmount(cap * T.DCDC_MIN_PCT / 100)
 H.setHours(H.hours() + 0.25)
 _, cut = TH.settle(v, part)
-check(near(gas(part), 0.5, 1e-6) and part:getModData().thr.at == at4 and near(B.pct(part), T.DCDC_MIN_PCT, 1e-6) and cut == true,
-    "S4: the pack at its floor, plugged in: nothing refilled, the tank's clock not moved, flagged to send")
+check(near(gas(part), 0.5, 1e-6) and part:getModData().thr.at == H.hours() and near(B.pct(part), T.DCDC_MIN_PCT, 1e-6) and cut == true,
+    "S4: the pack at its floor, plugged in: nothing refilled, the tank's clock moved on, flagged to send")
 part:setContainerContentAmount(cap * 0.8)
 part:getModData().chg = nil
 
@@ -967,6 +967,24 @@ check(TH.active().phase == "drive" and cv.reg == true and cv.regSpd == 8 and cv.
 cv.speed = 7
 TH.tick()
 check(TH.active().phase == "boost" and cv.reg == false and cv.regSpd == 0, "at 6 km/h: the cruise back as it was, the action runs")
+-- a boost off an edge (r2fix2-mp-r2 boostroof: its F ran on through the fall, H.watch waits on F, no soft landing): over
+-- as it falls, the driver's soft landing asked at once, the boost's busy flag in this machine's copy (the server's
+-- clear not here yet) no bar to it
+local cpart = T.Battery.part(cv)
+local thr0 = cpart:getModData().thr
+cpart:getModData().thr = { gas = 2 / 3, at = H.hours(), busy = { act = "boost", by = "test" } }
+local nbr = TH.active().n
+cv.dz, cv.vy = 0.075 + 2.2 / TH.FLOOR, -3
+sent = #H.clientSent
+TH.tick()
+local eb, lb = H.clientSent[sent + 1], H.clientSent[sent + 2]
+check(eb and eb.command == "thrustEnd" and eb.args.act == "boost" and eb.args.n == nbr and lb and lb.command == "thrust"
+    and lb.args.act == "land" and TH.active() and TH.active().act == "land",
+    "a boost falling off an edge: ended, the soft landing asked at once and running")
+okFor("land")
+cv.driver = nil; TH.tick(); cv.driver = cp -- the landing's end (driver gone: an abort)
+cpart:getModData().thr = thr0
+cv.dz, cv.vy, cv.speed = 0.075, 0, 7
 cv.driver = nil
 TH.tick()
 cv.driver, cv.speed = cp, 30
