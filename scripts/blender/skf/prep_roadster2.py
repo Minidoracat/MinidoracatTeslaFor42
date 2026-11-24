@@ -44,10 +44,10 @@ HW = [(2.05, 0.66), (1.95, 0.78), (1.80, 0.88), (1.60, 0.94), (1.27, 0.94), (0.9
       (-0.75, 0.92), (-1.39, 0.94), (-1.80, 0.925), (-1.95, 0.905), (-2.055, 0.84)]
 FLOOR = [(2.05, 0.13), (1.58, 0.10), (0.95, 0.13), (-1.80, 0.13), (-2.055, 0.18)]
 # black sill's top edge, rising to the rear wheel (02: 0.225 at y 0.94, 0.37 at -1.03); behind it the black rear
-# corners and the lower rear (825, 01); in front the bright lip under the intake (03)
-SILL = [(2.05, 0.12), (0.94, 0.225), (-1.03, 0.37), (-1.40, 0.47), (-1.80, 0.55), (-2.055, 0.56)]
+# corners and the lower rear (825, 01); the nose below the lamp bar is all dark (03, 08: the caps, see main)
+SILL = [(2.05, 0.21), (0.94, 0.225), (-1.03, 0.37), (-1.40, 0.47), (-1.80, 0.55), (-2.055, 0.63)]
 # the door's lower crease (02: 0.387 at y 0.77, 0.475 at -1.0); the facet below it faces down and out
-LOW = [(2.05, 0.24), (1.60, 0.28), (0.95, 0.36), (0.77, 0.39), (-1.0, 0.475), (-1.40, 0.55), (-2.055, 0.62)]
+LOW = [(2.05, 0.24), (1.60, 0.28), (0.95, 0.36), (0.77, 0.39), (-1.0, 0.475), (-1.40, 0.55), (-2.055, 0.66)]
 # shoulder crease (02 / 08: rising to the rear); 03: the pods reach the full width below z 0.60
 SHOULDER = [(2.05, 0.30), (1.75, 0.47), (1.45, 0.56), (1.19, 0.60), (0.90, 0.68), (0.5, 0.70), (0.0, 0.71),
             (-1.0, 0.74), (-1.6, 0.77), (-2.055, 0.79)]
@@ -68,11 +68,12 @@ RIDGE = [(2.05, 0.39), (2.0, 0.478), (1.831, 0.572), (1.663, 0.634), (1.495, 0.6
          (1.19, 0.753)]
 # centre line: hood, the glass between the pods, windshield, roof (TOP), rear glass and deck (01, Slide-2)
 REAR0 = -0.45
-REAR_C = [(-0.45, 1.082), (-0.80, 0.975), (-1.15, 0.875), (-1.60, 0.858), (-2.055, 0.835)]
+REAR_C = [(-0.45, 1.082), (-0.80, 0.98), (-1.15, 0.89), (-1.40, 0.845), (-1.60, 0.84), (-2.055, 0.83)]
 ZC = [(2.05, 0.39), (1.40, 0.705), (1.074, 0.79)] + [p for p in TOP if -0.45 < p[0] < 1.0] + REAR_C
-FIN_IN = [(-0.45, 0.47), (-0.80, 0.33), (-1.15, 0.20), (-1.60, 0.50), (-2.00, 0.72), (-2.055, 0.74)]
-GLASS_END = -1.15
-WING = dict(seam=-1.20, thick=0.045, thick_tail=0.030, gap=0.006, trail_y=-2.075)
+# the buttresses' inner walls (paint) frame the V rear glass: 01 glass 0.40 half wide at the roof, 0.28 at its foot
+FIN_IN = [(-0.45, 0.47), (-0.80, 0.40), (-1.40, 0.28), (-1.60, 0.45), (-2.00, 0.72), (-2.055, 0.74)]
+GLASS_END = -1.40                      # the rear glass runs down to the wing's leading edge (01, 825)
+WING = dict(seam=-1.40, thick=0.045, thick_tail=0.030, gap=0.006, trail_y=-2.075)
 
 TYRES = dict(front=dict(y=1.272, r=0.307, w=0.255, disc=0.262, x=0.80),      # 03: contacts 750 px / bar 590 px
              rear=dict(y=-1.392, r=0.337, w=0.305, disc=0.265, x=0.755))
@@ -81,12 +82,16 @@ ARCH = dict(front=(1.272, 0.307, 0.350), rear=(-1.392, 0.337, 0.355))      # (y,
 LAMP_Z = (0.757, 0.793)
 PLATE = dict(z=0.58, w=0.3048, h=0.1524)
 CAVITY = dict(hw=0.78, top=0.48, back=-2.0)
+TAIL_BLACK = ((0.26, 0.48), (0.84, 0.63))   # the tail's black edge (|x|, z): flat under the plate, rising to the corners
+# 03 silhouette above the pods (boosted 03, 461 px/m): pod face 0.94 up to z 0.65, pod corner (0.826, 0.75), then the
+# A-pillar line to (0.477, 1.067); nothing of the cabin or the haunches shows outside it, so their sections stay inside
+SIL03 = ((0.65, 0.75, 1.20), (0.94, 0.826, 0.331))
 NOZZLE_X = (-0.354, -0.118, 0.118, 0.354)
 NOZZLE = dict(z=0.40, r_exit=0.036, r_throat=0.018, length=0.075, y_exit=-2.075)
 FAN = dict(z=0.29, r=0.055, y=-2.0)
 STATIONS = [2.05, 2.02, 1.98, 1.94, 1.90, 1.85, 1.80, 1.72, 1.64, 1.56, 1.48, 1.40, 1.33, 1.26, 1.19, 1.12, 1.04,
             0.95, 0.85, 0.75, 0.60, 0.45, 0.30, 0.15, 0.0, -0.15, -0.30, -0.45, -0.58, -0.70, -0.82, -0.94, -0.986,
-            -1.06, -1.15, -1.20, -1.20, -1.30, -1.42, -1.54, -1.66, -1.78, -1.90, -1.98, -2.03, -2.055]
+            -1.06, -1.15, -1.22, -1.31, -1.40, -1.40, -1.48, -1.56, -1.66, -1.78, -1.90, -1.98, -2.03, -2.055]
 MATS = ("Paint", "Glass", "Trim", "Liner", "HeadLight", "TailLight", "Dark")
 
 
@@ -128,7 +133,8 @@ def section(y, lowered=False):
             edge = (HC[0] + (AB[0] - HC[0]) * s, HC[2] + (AB[2] - HC[2]) * s)
             zc = interp(ZC, y)
         x5, z5 = u[5]
-        u += [lerp((x5, z5), ridge, 0.5), ridge, edge,                     # the pod's outer face one flat facet
+        # the pod's outer face stands near vertical up to z ~0.72 (03: half width 0.92 there), then the top facet
+        u += [(x5 + 0.15 * (ridge[0] - x5), z5 + 0.75 * (ridge[1] - z5)), ridge, edge,
               (0.62 * edge[0], zc), (0.30 * edge[0], zc), (0.0, zc)]
         return u
     xe = interp(TOP_HW, y)
@@ -136,7 +142,10 @@ def section(y, lowered=False):
         ze = zc = interp(ZC, y)
     else:
         ze = interp(TOP, y)
-    belt = (max(hw - 0.12, xe + 0.02), interp(BELT, y))
+    lim = lambda z: float(np.interp(z, *SIL03))
+    u[5] = (min(hw, lim(u[5][1])), u[5][1])              # tumblehome: the shoulder crease stays at its 02 height
+    zb = interp(BELT, y)
+    belt = (max(min(hw - 0.12, lim(zb)), xe + 0.02), zb)
     rail = (xe, ze)
     if y >= -0.15:
         t7 = 0.5
@@ -169,15 +178,15 @@ def face_mat(k, y):
         if k == 7:
             return "HeadLight" if y > 1.85 else "Paint"
         return "Paint" if y > HC[1] else "Glass"
-    if y > REAR0:       # the strip right behind the cowl stays paint: the glass starts at the belt (03)
-        if k == 6 and y > 1.12:
+    if y > REAR0:
+        if k == 6 and y > 1.12:   # pod top to belt behind the cowl: paint, else a glass spike shows in 03 / 08
             return "Paint"
         return "Glass" if (k != 7 or y > -0.30) else "Paint"
     if k == 6:
         return "Glass" if y > DLO_END else "Paint"
-    if k < 10:
+    if k < 10:          # the buttresses incl. their inner walls stay paint (01: lit white beside the glass)
         return "Paint"
-    if y > GLASS_END:
+    if y > GLASS_END:   # the V rear glass, down to the wing's leading edge (01, 825)
         return "Glass"
     return "Paint" if y > WING["seam"] else "Trim"
 
@@ -411,9 +420,9 @@ def mesh_check(v, t):
 
 
 # ---- Blender
-COLORS = dict(Paint=((0.80, 0.80, 0.80), 0.35, 0.30), Glass=((0.03, 0.03, 0.035), 0.0, 0.12),
+COLORS = dict(Paint=((0.80, 0.80, 0.80), 0.35, 0.30), Glass=((0.025, 0.02, 0.017), 0.0, 0.12),
               Trim=((0.025, 0.025, 0.028), 0.0, 0.55), Liner=((0.015, 0.015, 0.016), 0.0, 0.85),
-              HeadLight=((0.95, 0.96, 0.98), 0.0, 0.15), TailLight=((0.55, 0.02, 0.03), 0.0, 0.25),
+              HeadLight=((0.70, 0.85, 1.00), 0.0, 0.15), TailLight=((0.55, 0.02, 0.03), 0.0, 0.25),
               Dark=((0.10, 0.10, 0.11), 0.2, 0.40),
               Tyre=((0.02, 0.02, 0.022), 0.0, 0.8), Disc=((0.78, 0.79, 0.80), 0.5, 0.30),
               Spoke=((0.03, 0.03, 0.035), 0.3, 0.35), Nozzle=((0.55, 0.50, 0.45), 1.0, 0.3),
@@ -469,14 +478,24 @@ def main():
     for ring in (nose, tail):
         bm.faces.new([bv[i] for i in ring]).material_index = MATS.index("Paint")
     closed(bm)
-    for yc in (STATIONS[0], STATIONS[-1]):
-        cap = [f for f in bm.faces if abs(f.normal.y) > 0.999 and abs(f.calc_center_median().y - yc) < 1e-6]
-        zs = interp(SILL, yc)
-        geom = cap + list({e for f in cap for e in f.edges}) + list({v for f in cap for v in f.verts})
-        bmesh.ops.bisect_plane(bm, geom=geom, plane_co=(0, 0, zs), plane_no=(0, 0, 1))
+    # cap materials: the nose all dark below the lamp bar (03, 08); the tail's black lower half rises from under the
+    # plate to the corners (825), so its edge is a polyline (planes) cut into the cap, not one horizontal line
+    zb_nose = lambda ax: V[2] - 0.018
+    zb_tail = lambda ax: TAIL_BLACK[0][1] + max(ax - TAIL_BLACK[0][0], 0) * (TAIL_BLACK[1][1] - TAIL_BLACK[0][1]) / \
+        (TAIL_BLACK[1][0] - TAIL_BLACK[0][0])
+    (x0, z0), (x1, z1) = TAIL_BLACK
+    nz = np.array([-(z1 - z0), 0.0, x1 - x0]) / math.hypot(z1 - z0, x1 - x0)
+    for yc, zb, planes in ((STATIONS[0], zb_nose, [((0, 0, V[2] - 0.018), (0, 0, 1))]),
+                           (STATIONS[-1], zb_tail, [((0, 0, z0), (0, 0, 1)), ((x0, 0, z0), tuple(nz)),
+                                                    ((-x0, 0, z0), (-nz[0], 0, nz[2]))])):
+        on_cap = lambda f: abs(f.normal.y) > 0.999 and abs(f.calc_center_median().y - yc) < 1e-6
+        for co, no in planes:
+            cap = [f for f in bm.faces if on_cap(f)]
+            geom = cap + list({e for f in cap for e in f.edges}) + list({v for f in cap for v in f.verts})
+            bmesh.ops.bisect_plane(bm, geom=geom, plane_co=co, plane_no=no)
         for f in bm.faces:
             c = f.calc_center_median()
-            if abs(f.normal.y) > 0.999 and abs(c.y - yc) < 1e-6 and c.z < zs:
+            if on_cap(f) and c.z < zb(abs(c.x)):
                 f.material_index = MATS.index("Trim")
     bmesh.ops.triangulate(bm, faces=bm.faces[:])    # planar input: the boolean's n-gons stay flat (no crossings)
     body = link("Body", bm, MATS)
