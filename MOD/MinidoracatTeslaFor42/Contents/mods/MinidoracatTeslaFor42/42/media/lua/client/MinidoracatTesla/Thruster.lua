@@ -608,6 +608,12 @@ function H.tick()
             return beginRun(f)
         end
         if t > ROLL_S then return stop(false, "THRUST_NO_LIFT") end
+        -- the brake (Space, the default up key, held as it was asked: r2f3-key-a) drops the cruise every frame
+        -- (CarController.java:460-462): set it again, so the creep goes on once it is let go, within ROLL_S
+        if not v:isRegulator() then
+            v:setRegulatorSpeed(WAKE_KMH)
+            v:setRegulator(true)
+        end
         return
     elseif ph == "drive" then
         if v:getCurrentSpeedKmHour() >= c.rollKmh then

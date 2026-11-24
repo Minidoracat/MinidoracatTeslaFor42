@@ -1514,6 +1514,27 @@ TH.tick()
 check(TH.active().phase == "fly" and cv.reg == false and cv.regSpd == 0 and near(cv.dz, 0.115, 1e-9),
     "awake and moving: the cruise back, lifted 0.04 floor, flying")
 abort()
+do -- Space (the default up key since 283b1e9b) is vanilla's brake: held as the flight is asked (r2f3-key-a: 0.1 m
+   -- up, given up) it drops the creep's cruise every frame (CarController.java:460-462)
+    cv.dz, cv.vy, cv.speed, cv.impulses, cv.reg, cv.regSpd = 0.075, 0, 0, 0, nil, nil
+    TH.ask(cp, cv, "fly")
+    okFor("fly", { sec = 8 })
+    while TH.active() and TH.active().t < 2 do cv.reg = false TH.tick() end
+    check(TH.active() and TH.active().phase == "wake" and cv.reg == true and cv.regSpd == 3,
+        "the brake held 2 s into the creep: still creeping, its cruise set again")
+    cv.awake, cv.speed = true, 2
+    TH.tick()
+    check(TH.active().phase == "fly", "let go: it moves and flies")
+    abort()
+    cv.awake, cv.speed, cv.reg, cv.regSpd = nil, 0, nil, nil
+    TH.ask(cp, cv, "fly")
+    okFor("fly", { sec = 8 })
+    local n0 = #H.clientSent
+    while TH.active() and TH.active().t < 4 do cv.reg = false TH.tick() end
+    local e1 = H.clientSent[#H.clientSent]
+    check(TH.active() == nil and #H.clientSent > n0 and e1.command == "thrustEnd" and e1.args.done == false and cv.regSpd == 0,
+        "held throughout: given up after ROLL_S, the cruise back")
+end
 function cv:isPhysicsActive() return true end
 cv.setPhysicsActive, cv.awake = nil, nil
 -- physics on, yet it stays put (r2fe-sp-i, 2 of 2): half a second up under 0.15 m, the creep once, then flies or gives up
