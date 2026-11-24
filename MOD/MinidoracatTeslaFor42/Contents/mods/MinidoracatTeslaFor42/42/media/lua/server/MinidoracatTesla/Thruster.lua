@@ -109,7 +109,7 @@ function H.refill(v, part)
     local add = H.gasNow(thr, now) - mid
     local kwh = add * H.refillKwh()
     if kwh > 0 then
-        local spare = math.max(0, B.kwh(part) - B.capacity(part) * T.DCDC_MIN_PCT / 100)
+        local spare = H.packSpare(part)
         if spare < kwh then add, kwh, r.cut = add * spare / kwh, spare, true end
     end
     r.pack = math.max(0, kwh)
