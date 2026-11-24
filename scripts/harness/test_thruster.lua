@@ -1950,21 +1950,110 @@ do -- round3 T1d: at rest up on another car's roof 2.4 m up (r2f5-pf: flew off f
     TH.ask(cp, cv, "fly")
     okFor("fly", { sec = 30 })
     for _ = 1, 60 do if TH.active() then TH.tick() end end
-    local e
-    for i = #H.clientSent, n0 + 1, -1 do
-        if H.clientSent[i].command == "thrustEnd" then e = H.clientSent[i].args break end
+    local function lastEnd(s0)
+        for i = #H.clientSent, s0 + 1, -1 do
+            if H.clientSent[i].command == "thrustEnd" then return H.clientSent[i].args end
+        end
     end
+    local e = lastEnd(n0)
     check(TH.active() == nil and halo[#halo] == "IGUI_MinidoracatTesla_Deny_THRUST_NO_LIFT" and e and e.act == "fly"
         and e.done == false and e.rest == true,
-        "T1d: off a perch, not up 0.3 m from it after 1 s: THRUST_NO_LIFT, said at rest (not done)")
+        "T1d: off a perch, still where it took off after 1 s: THRUST_NO_LIFT, said at rest (not done)")
+    -- round3 T1e: off the perch when it left where it took off (0.15 tiles aside, 0.3 m up or down), whatever floor
+    -- lies under it (its own function: the main chunk's 200 locals)
+    local function t1e()
+        -- the landing asked at 0.4 s, before it rose: down off the roof to the ground, done, not at rest
+        cv.dz, cv.vy, cv.running = perch, 0, true
+        n0 = #H.clientSent
+        TH.ask(cp, cv, "fly")
+        okFor("fly", { sec = 30 })
+        for _ = 1, 20 do if TH.active() then TH.tick() end end
+        local fa = TH.active()
+        if fa then fa.wantLand = true end
+        for _ = 1, 3000 do
+            if not TH.active() then break end
+            stepOn(1, 0.075)
+        end
+        e = lastEnd(n0)
+        check(fa and TH.active() == nil and e and e.act == "fly" and e.done == true and not e.rest and hm() < 0.1,
+            string.format("T1d: off a perch, landing asked at 0.4 s: down off it to the ground (%.2f m), done, not said at rest", hm()))
+        -- flown off it at its height straight away (the descend key held): off it, flying on past 1 s
+        local x0 = cv.x
+        cv.dz, cv.vy, cv.running = perch, 0, true -- the landing switched the motor off
+        TH.ask(cp, cv, "fly")
+        okFor("fly", { sec = 30 })
+        local fb = TH.active()
+        for _ = 1, 60 do
+            if TH.active() then
+                TH.tick()
+                cv.x = cv.x + 0.005
+            end
+        end
+        check(fb and TH.active() == fb and fb.lifted == true,
+            "T1d: off a perch, flown 0.3 tiles aside at its height in 1.2 s: off it, flying on (no THRUST_NO_LIFT)")
+        abort()
+        cv.x = x0
+        -- at rest when asked, coming down when approved (what held it gone meanwhile): not flown, its air back
+        cv.dz, cv.vy, cv.running = perch, 0, true
+        n0 = #H.clientSent
+        local askedF = TH.ask(cp, cv, "fly")
+        cv.vy = -1
+        okFor("fly", { sec = 30 })
+        e = lastEnd(n0)
+        check(askedF and TH.active() == nil and e and e.act == "fly" and e.done == false
+            and halo[#halo] == "IGUI_MinidoracatTesla_Deny_THRUST_AIRBORNE",
+            "T1d: at rest when asked, coming down when approved: not flown, its air back, THRUST_AIRBORNE")
+        -- the floors under it: where it is in the world tells, not its height over the floor under it
+        local cellOpen, lvl1 = getCell, true
+        getCell = function() return { getGridSquare = function(_, x, y, z) return (z == 0 or z == 1 and lvl1) and ground or nil end } end
+        cv.dz, cv.vy, cv.running = 1.075 + 1.0 / TH.FLOOR, 0, true
+        TH.groundReset()
+        n0 = #H.clientSent
+        TH.ask(cp, cv, "fly")
+        okFor("fly", { sec = 30 })
+        local fc1 = TH.active()
+        lvl1 = false
+        TH.groundReset()
+        for _ = 1, 60 do if TH.active() then TH.tick() end end
+        e = lastEnd(n0)
+        check(fc1 and TH.active() == nil and halo[#halo] == "IGUI_MinidoracatTesla_Deny_THRUST_NO_LIFT" and e and e.rest == true,
+            "T1d: off a perch 1 m over a floor, that floor gone from under it, not moved: not off it (THRUST_NO_LIFT, said at rest)")
+        cv.dz, cv.vy, cv.running = 0.075 + 2.4 / TH.FLOOR, 0, true
+        TH.groundReset()
+        TH.ask(cp, cv, "fly")
+        okFor("fly", { sec = 30 })
+        local fd = TH.active()
+        lvl1 = true
+        TH.groundReset()
+        cv.dz = cv.dz + 0.4 / TH.FLOOR
+        for _ = 1, 60 do if TH.active() then TH.tick() end end
+        check(fd and TH.active() == fd and fd.lifted == true,
+            "T1d: off a perch, 0.4 m up with a floor now under it: off it, flying on")
+        abort()
+        getCell = cellOpen
+        TH.groundReset()
+        -- on its side or its roof on flat ground (its origin as high: up 0.141 at 0.817 m): no flight
+        cv.dz, cv.vy, cv.running, cv.ux, cv.uy, cv.uz = 0.075 + 0.817 / TH.FLOOR, 0, true, 0.99, 0.141, 0
+        local okS, whyS = TH.check(cp, cv, "fly")
+        cv.ux, cv.uy = 0, -1
+        local okU, whyU = TH.check(cp, cv, "fly")
+        cv.ux, cv.uy = 0.61, 0.79
+        local okT = TH.check(cp, cv, "fly")
+        cv.ux, cv.uy, cv.uz = nil, nil, nil
+        check(not okS and whyS == "THRUST_AIRBORNE" and not okU and whyU == "THRUST_AIRBORNE",
+            "T1d: on its side or its roof, its origin 0.817 m up: a flight refused, THRUST_AIRBORNE")
+        check(okT == true, "T1d: at rest on a fence top tilted (up 0.79): a flight may take off")
+    end
+    t1e()
     cv.dz, cv.vy, cv.running = 0.075, 0, true
     q1.offs = offs0
 end
 do -- round3 T1d: the driver's exit at rest up on another car (r2rest-mp-near2: isExitBlocked on both seats, no seat
-    -- to switch to): a soft landing carries the car off it the way it leans, nothing queued. Anything else: vanilla's
-    local adds, blockedE, sw, bm, good = 0, true, nil, false, {}
+    -- to switch to): a soft landing carries the car off it the way it leans, nothing queued. Anything else: vanilla's.
+    -- round3 T1e: that landing waits for the server's answer (nothing on the car, nothing said before thrustOk)
+    local adds, blockedE, sw, bm, good, seatSeen = 0, true, nil, false, {}, nil
     ISTimedActionQueue.add = function() adds = adds + 1 end
-    function cv:isExitBlocked() return blockedE end
+    function cv:isExitBlocked(_, seat) seatSeen = seat return blockedE end
     ISVehicleMenu.getBestSwitchSeatExit = function() return sw end
     local savedGV, savedSeat, savedBM, savedDrv = cp.getVehicle, cv.getSeat, cp.isBlockMovement, cv.isDriver
     function cv:isDriver(pl) return pl == cp end
@@ -1978,23 +2067,85 @@ do -- round3 T1d: the driver's exit at rest up on another car (r2rest-mp-near2: 
             if H.clientSent[i].command == "thrust" then return H.clientSent[i].args end
         end
     end
-    local function carry(ux, uz)
-        cv.dz, cv.vy, cv.speed, cv.ux, cv.uy, cv.uz = UP, 0, 0, ux, 0.95, uz
-        local e0, s0, g0 = exits, #H.clientSent, #good
+    local function lastEnd(s0)
+        for i = #H.clientSent, s0 + 1, -1 do
+            if H.clientSent[i].command == "thrustEnd" then return H.clientSent[i].args end
+        end
+    end
+    local function carry(ux, uz, uy)
+        cv.dz, cv.vy, cv.speed, cv.ux, cv.uy, cv.uz = UP, 0, 0, ux, uy or 0.95, uz
+        local e0, s0, g0, i0 = exits, #H.clientSent, #good, cv.impulses or 0
         ISVehicleMenu.onExit(cp, 0)
-        local f, m = TH.active(), lastThrust(s0)
+        local m = lastThrust(s0)
+        local before = exits == e0 and m and m.act == "land" and TH.active() == nil and (cv.impulses or 0) == i0
+            and #good == g0 and adds == 0
+        cv.x = cv.x + 0.1 -- where it is when approved
+        okFor("land")
+        local f = TH.active()
         local s = f and f.slide
-        local ok = exits == e0 and m and m.act == "land" and f and f.act == "land" and s and adds == 0
+        local ok = before and f and f.act == "land" and f.n == m.n and s and adds == 0
             and #good == g0 + 1 and good[#good] == "IGUI_MinidoracatTesla_Thrust_ExitCarry"
             and near(s.z, UP + 0.8 / TH.FLOOR, 1e-6) and s.x == cv:getX() and s.y == cv:getY()
-        if f then okFor("land") abort() end
+        if f then abort() end
+        cv.x = cv.x - 0.1
         return ok and s.dx, ok and s.dz
     end
     local dx, dz = carry(0.3, 0)
     check(dx and near(dx, 1, 1e-6) and near(dz, 0, 1e-6),
-        "T1d: up on another car, its exit blocked, no seat to switch to: a soft landing carrying it 0.8 m up the way it leans, nothing queued")
+        "T1d: up on another car, its exit blocked, no seat to switch to: a soft landing asked, nothing on the car or said till approved; then carried 0.8 m up the way it leans from where it is, nothing queued")
     dx, dz = carry(0, 0)
     check(dx and near(dx, 0, 1e-6) and near(dz, 1, 1e-6), "T1d: ... level on it: carried the way it faces")
+    dx, dz = carry(0.03, 0)
+    check(dx and near(dx, 0, 1e-6) and near(dz, 1, 1e-6), "T1d: ... leaning 0.03 (under the probe's 0.05): carried the way it faces")
+    dx, dz = carry(0.99, 0, 0.141)
+    check(dx and near(dx, 1, 1e-6) and near(dz, 0, 1e-6), "T1d: on its side up there, its exit blocked: carried off all the same")
+    dx, dz = carry(0, 0, -1)
+    check(dx and near(dx, 0, 1e-6) and near(dz, 1, 1e-6), "T1d: on its roof up there, its exit blocked: carried off all the same")
+    -- round3 T1e: the carry refused, or approved too late (its own function: the main chunk's 200 locals)
+    local function refusals()
+        -- the server refuses it: nothing on the car, nothing said but why
+        cv.dz, cv.vy, cv.ux, cv.uy, cv.uz = UP, 0, 0.3, 0.95, 0
+        local g0, s0, e0 = #good, #H.clientSent, exits
+        ISVehicleMenu.onExit(cp, 0)
+        local m = lastThrust(s0)
+        T.ClientCommands.deny({ vid = cv:getId(), n = m and m.n, pn = 0, reason = "THRUST_AUTHORITY" })
+        check(m and TH.active() == nil and #good == g0 and exits == e0
+            and halo[#halo] == "IGUI_MinidoracatTesla_Deny_THRUST_AUTHORITY",
+            "T1d: the carry refused by the server: nothing on the car, no carry said, why said")
+        -- approved once no longer at rest up there: its air back (not done), nothing on the car
+        local function lateOk(set)
+            cv.dz, cv.vy = UP, 0
+            local gl, sl = #good, #H.clientSent
+            ISVehicleMenu.onExit(cp, 0)
+            set()
+            okFor("land")
+            local en = lastEnd(sl)
+            local r = lastThrust(sl) and TH.active() == nil and #good == gl and en and en.act == "land" and en.done == false
+            cv.dz, cv.vy = UP, 0
+            return r
+        end
+        check(lateOk(function() cv.dz = 0.075 end), "T1d: the carry approved once down on the ground: its air back, nothing on the car")
+        check(lateOk(function() cv.vy = -1 end), "T1d: the carry approved once coming down: its air back, nothing on the car")
+        -- refused here (H.check: the car's physics on another machine): vanilla's exit not run, nothing sent, why said
+        cv.local_ = false
+        g0, s0, e0 = #good, #H.clientSent, exits
+        local h0 = #halo
+        ISVehicleMenu.onExit(cp, 0)
+        check(exits == e0 and #good == g0 and lastThrust(s0) == nil and TH.active() == nil and #halo == h0 + 1
+            and halo[#halo] == "IGUI_MinidoracatTesla_Deny_THRUST_AUTHORITY",
+            "T1d: the carry refused here: vanilla's exit not run, nothing sent, no carry said, why said")
+        cv.local_ = true
+        -- the exit with no seat named (seatFrom nil): the driver's own seat
+        cv.getSeat = function() return 1 end
+        s0, seatSeen = #H.clientSent, nil
+        ISVehicleMenu.onExit(cp)
+        m = lastThrust(s0)
+        check(seatSeen == 1 and m and m.act == "land", "T1d: the exit with no seat named: its own seat's way out read, the carry asked")
+        okFor("land")
+        if TH.active() then abort() end
+        cv.getSeat = function() return 0 end
+    end
+    refusals()
     cv.ux, cv.uy, cv.uz = nil, nil, nil
     local function vanilla()
         local e0, s0 = exits, #H.clientSent

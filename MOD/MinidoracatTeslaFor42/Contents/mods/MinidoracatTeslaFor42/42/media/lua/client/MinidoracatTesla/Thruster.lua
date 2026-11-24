@@ -129,6 +129,10 @@ local function perched(v, c)
     local lv = v:getLinearVelocity(V3.lv)
     return lv:x() ^ 2 + lv:y() ^ 2 + lv:z() ^ 2 < REST_V * REST_V
 end
+-- a flight may take off from there upright only (up 0.6+, as H.watch reads a car at rest tilted): on its side or roof
+-- on flat ground the origin is as high (up 0.141 at 0.817 m, above) and a flight has no way to right it; on a fence
+-- top it rests up 0.79-0.89 (r2 fence, 2026-11-24)
+local function flyOff(v, c) return perched(v, c) and v:getUpVector(V3.u):y() >= 0.6 end
 
 -- kickflip / backflip: what lies on the car's way, read once before take-off. Two kinds:
 -- * slowed or stopped at any height: an object with CarSlowFactor or HitByCar (a tree, a fence, a hedge, a pole). The
@@ -443,7 +447,7 @@ local function stop(done, ...)
     if not f then return end
     -- a take-off from a perch that never rose (THRUST_NO_LIFT): still up there at rest, as it was (the server ends it
     -- where it is, no helper handed it)
-    if f.h0 and not f.lifted then rest = true end
+    if f.z0 and not f.lifted then rest = true end
     if rest then RESTED[f.vid] = true end
     -- glide: a flight's landing held at its height (f.brake) before it came down, the server bills it not (MP's air
     -- clock: server Thruster.lua finish); never at rest ends
@@ -483,7 +487,7 @@ local function beginRun(f)
         f.v0 = math.sqrt(lv:x() ^ 2 + lv:z() ^ 2)
         f.phase = "boost"
     elseif f.act == "fly" then
-        -- from a perch (f.h0) a metre over where it took off at least, within the climb's top
+        -- from a perch (f.z0) a metre over where it took off at least, within the climb's top
         local h = heightOf(v, f.rest)
         st.att, st.hT, st.hG, st.hv, st.ha = true, h, math.max(c.flyH, math.min(c.flyMaxH, h + 1)), 0, 0
         st.psiT = math.atan2(lz, lx)
@@ -556,8 +560,9 @@ local function start(player, v, act, sec, app, n, ...)
     else -- a boost or stunt leaves where it rested behind (r2rest-mp-r2 boostnearhold: still RESTED, it went over a
         -- roof's edge nose-first and the tilt branch let it fall at -5.9 m/s)
         local h0 = heightOf(v, RESTS[vid] or c.rest)
-        if h0 > 0.4 then -- a flight off a perch (H.check): its floors to the ground as known, not measured up there
-            f.rest, f.h0 = RESTS[vid] or c.rest, h0
+        if h0 > 0.4 then -- a flight off a perch (H.check): its floors to the ground as known, not measured up there;
+            -- off it or not told by where in the world it took off (the floor under it may change as it moves)
+            f.rest, f.x0, f.y0, f.z0 = RESTS[vid] or c.rest, v:getX(), v:getY(), v:getDebugZ()
         else
             f.rest = clamp(v:getDebugZ() - groundZ(v), 0.02, 0.25)
             RESTS[vid] = f.rest
@@ -641,7 +646,12 @@ function H.tick()
     local c = f.conf
     local hm = heightOf(v, f.rest)
     local vy = v:getLinearVelocity(V3.lv):y()
-    if hm > (f.h0 or 0) + 0.3 then f.lifted = true end
+    if f.z0 then -- off a perch: 0.15 tiles aside or 0.3 m up or down from where it took off (off what held it)
+        local dx, dy = v:getX() - f.x0, v:getY() - f.y0
+        if dx * dx + dy * dy > 0.15 ^ 2 or math.abs(v:getDebugZ() - f.z0) > 0.3 / FLOOR then f.lifted = true end
+    elseif hm > 0.3 then
+        f.lifted = true
+    end
     local st, ph, t = f.st, f.phase, f.t
     if ph == "wake" then -- moving under its own motor: awake (r2fe-sp-g, 3 km/h for 0.3 s)
         if v:isPhysicsActive() and v:getCurrentSpeedKmHour() > 1 then
@@ -891,7 +901,7 @@ function H.check(player, v, act, ...)
     local c = H.conf(v)
     if act ~= "land" then
         -- a flight may take off from a perch; nothing else (a stunt's or boost's push needs the ground under it)
-        if heightOf(v, RESTS[v:getId()] or c.rest) > 0.4 and not (act == "fly" and perched(v, c)) then
+        if heightOf(v, RESTS[v:getId()] or c.rest) > 0.4 and not (act == "fly" and flyOff(v, c)) then
             return false, "THRUST_AIRBORNE"
         end
         local kmh = v:getCurrentSpeedKmHour()
@@ -937,7 +947,10 @@ function H.whyText(v, why)
     return s
 end
 
-function H.ask(player, v, act)
+-- optional carry (`...`): { dx, dz } the way the driver's exit carries the car off a perch (ISVehicleMenu.onExit below):
+-- that landing waits for the server's answer like any other (thrustOk starts it, nothing forced on the car before)
+function H.ask(player, v, act, ...)
+    local carry = ...
     local f = F
     if act == "fly" and f and f.v == v and f.act == "fly" then f.wantLand = true return true end -- the second press lands
     local ok, why = H.check(player, v, act)
@@ -953,9 +966,10 @@ function H.ask(player, v, act)
     OFF_EDGE = nil
     local over = prev and prev.vid == v:getId() and prev.n or nil
     if act == "land" and not over and o and o.vid == v:getId() then over = o.n end
-    -- falling: no time to wait for the server (it bills after; a refusal stops it, the deny below)
-    if act == "land" then start(player, v, act, nil, nil, n) end
-    asked[pn] = { vid = v:getId(), act = act, n = n, ms = getTimestampMs() }
+    -- falling: no time to wait for the server (it bills after; a refusal stops it, the deny below). A carry off a
+    -- perch is at rest: it waits
+    if act == "land" and not carry then start(player, v, act, nil, nil, n) end
+    asked[pn] = { vid = v:getId(), act = act, n = n, ms = getTimestampMs(), carry = carry }
     T.request(player, "thrust", { vid = v:getId(), act = act, n = n, over = over })
     return true
 end
@@ -984,8 +998,25 @@ T.ClientCommands.thrustOk = function(args)
     -- itself when the landing reaches it (server Thruster.lua cmds.thrust); a thrustEnd now would hand the car on
     if f and f.act == "land" and not f.ok and f.vid == args.vid then return end
     if not a or f or not v or not v:isDriver(player) or not authority(v) then return back() end
+    -- still where it was asked from: a carry still at rest up there, a flight off a perch not falling now (what held
+    -- it gone while the answer came: the soft landing takes it, H.watch)
+    local c = H.conf(v)
+    if not c then return back() end
+    H.groundReset()
+    if a.carry then
+        if not perched(v, c) then return back() end
+    elseif args.act == "fly" and heightOf(v, RESTS[v:getId()] or c.rest) > 0.4 and not flyOff(v, c) then
+        back()
+        HaloTextHelper.addBadText(player, H.whyText(v, "THRUST_AIRBORNE"))
+        return
+    end
     start(player, v, args.act, args.sec, nil, args.n)
     F.ok = true
+    if a.carry then
+        F.slide = { dx = a.carry.dx, dz = a.carry.dz, x = v:getX(), y = v:getY(), z = v:getDebugZ() + LIFT_DH / FLOOR,
+            t = 0 }
+        HaloTextHelper.addGoodText(player, getText("IGUI_MinidoracatTesla_Thrust_ExitCarry"))
+    end
 end
 
 -- args { vid, pn, n, term }: the server handed this player's machine a car left in the air (its holder's game went
@@ -1151,9 +1182,9 @@ end)
 -- from the seat, ISVehicleMechanics.lua:420, ISVehiclePartMenu.lua:166) lands it instead.
 -- At rest off the ground after (another car's roof, an eave: perched), vanilla's way out from the seat may run into
 -- what holds it up (isExitBlocked, BaseVehicle.java:6669-6699: lineClearCollide on the car's floor; r2rest-mp-near2:
--- both seats, no seat to switch to). The driver's exit then asks a soft landing that lifts the car off what holds it
--- and carries it the way it leans (as the landing's probe does when held on an edge), down beside it; vanilla's exit
--- after, from the ground
+-- both seats, no seat to switch to). The driver's exit then asks a soft landing (the server's answer first, thrustOk)
+-- that lifts the car off what holds it and carries it the way it leans (as the landing's probe does when held on an
+-- edge), down beside it; vanilla's exit after, from the ground
 local origExit = ISVehicleMenu.onExit
 function ISVehicleMenu.onExit(playerObj, seatFrom)
     local f = F
@@ -1170,14 +1201,11 @@ function ISVehicleMenu.onExit(playerObj, seatFrom)
     if c and v:isDriver(playerObj) and not playerObj:isBlockMovement() and perched(v, c) then
         local seat = seatFrom or v:getSeat(playerObj)
         if v:isExitBlocked(playerObj, seat) and not ISVehicleMenu.getBestSwitchSeatExit(playerObj, v, seat) then
-            if H.ask(playerObj, v, "land") then -- refused: H.ask said why
-                local u = v:getUpVector(V3.u)
-                local sx, sz = u:x(), u:z()
-                if sx * sx + sz * sz < 1e-6 then sx, sz = levelHeading(v) end
-                local l = math.sqrt(sx * sx + sz * sz)
-                F.slide = { dx = sx / l, dz = sz / l, x = v:getX(), y = v:getY(), z = v:getDebugZ() + LIFT_DH / FLOOR, t = 0 }
-                HaloTextHelper.addGoodText(playerObj, getText("IGUI_MinidoracatTesla_Thrust_ExitCarry"))
-            end
+            local u = v:getUpVector(V3.u)
+            local sx, sz = u:x(), u:z()
+            if sx * sx + sz * sz < 0.05 ^ 2 then sx, sz = levelHeading(v) end
+            local l = math.sqrt(sx * sx + sz * sz)
+            H.ask(playerObj, v, "land", { dx = sx / l, dz = sz / l }) -- refused: H.ask said why
             return
         end
     end
