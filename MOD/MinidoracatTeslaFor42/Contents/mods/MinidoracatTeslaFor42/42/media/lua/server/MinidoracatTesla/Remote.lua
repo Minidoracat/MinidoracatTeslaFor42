@@ -1,7 +1,7 @@
 -- Tesla app on the phone key, server side (client: client/MinidoracatTesla/PhoneApp.lua; reach: Keys.appReach).
 --   * appStatus { key }: every 2 s while a holder has the app open. The car as it is when the server has it loaded and
 --     the phone reaches it (grid up: any distance; grid down: Bluetooth, Keys.btRange()); else its last record.
---   * appAction { key, act, on }: lock, unlock, flash, horn, sentry, charge, frunk, trunk, tonneau, falcon, butterfly, softtop,
+--   * appAction { key, act, on }: lock, unlock, flash, horn, sentry, charge, frunk, trunk, tonneau, falcon, butterfly, softtop, wing,
 --     summon (+ mode, x, y, dir), powershare, outlet, psFloor (+ pct).
 --     Holder, reach, the VehicleManager right for doing the same thing in person, and the action's own rules are
 --     checked every time, but a summoner stopping their own summon skips reach and the VehicleManager.
@@ -103,6 +103,8 @@ function R.remember(v, create)
     r.butterfly = (s and s.butterfly or nil) and (doorOpen(v, "DoorFrontLeft") or doorOpen(v, "DoorFrontRight"))
     -- Roadster soft top (Specs softTop): open = top down; nil on other cars
     r.softtop = (s and s.softTop or nil) and doorOpen(v, "SoftTop")
+    -- Roadster Rocket wing (Specs wing): open = up; nil on other cars
+    r.wing = (s and s.wing or nil) and doorOpen(v, "TeslaWing")
     -- Cybertruck: Powershare (T.psState, its limit, the house's load and hours left) and the bed outlet
     local ps = md.ps
     r.ps = s and s.powershare and T.psState(part) or nil
@@ -199,6 +201,7 @@ local VM_CODES = {
     falcon = { "PASSENGER" }, -- rear doors in person: PASSENGER (MinidoracatVehicleManager_Actions.lua:20-24 doorAction)
     butterfly = { "PASSENGER" }, -- the Cybercab's doors in person: PASSENGER, as the falcon wings
     softtop = { "PASSENGER" }, -- the top opens the cabin like a door: PASSENGER, as the doors
+    wing = { "PASSENGER" }, -- the Roadster Rocket's wing moves the body as the soft top does: PASSENGER
     charge = { "FUEL" },
     summon = { "DRIVE" }, -- the car moves: the right to drive it (VehicleManager also wraps startSummon itself)
     powershare = { "FUEL" }, outlet = { "FUEL" }, psFloor = { "FUEL" }, -- the charge cable's right (T.mayUseCable)
@@ -447,6 +450,12 @@ local ACT = {
         local s = T.spec(v)
         if not (s and s.softTop) then return "NO_DOOR" end
         return swing("SoftTop")(player, v, open)
+    end,
+    -- Roadster Rocket (Specs wing): the wing, the same rules as the lids (stopped); it never locks. NO_DOOR on any other car
+    wing = function(player, v, open)
+        local s = T.spec(v)
+        if not (s and s.wing) then return "NO_DOOR" end
+        return swing("TeslaWing")(player, v, open)
     end,
     summon = summon,
     -- Roadster thrusters (Specs thruster): the empty car's stunt, flown by the caller's machine (Thruster.lua H.appShow)

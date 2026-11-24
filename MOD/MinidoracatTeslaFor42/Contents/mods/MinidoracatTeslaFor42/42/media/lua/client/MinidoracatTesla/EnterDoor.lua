@@ -86,6 +86,13 @@ function E.wrapDoorUse()
     Vehicles.Use.Door = function(vehicle, part, chr)
         local seat = E.rowSeat(vehicle, part)
         if seat then return ISVehicleMenu.onEnter(chr, vehicle, seat) end
+        -- a door no seat gets in through (Specs seatless: the Roadster Rocket's right one, Liftgate.lua L.seatless) did
+        -- nothing on E; it opens or shuts it, as the gamepad's Interact prompt does there (ISButtonPrompt.lua:588-598)
+        local s = part and T.spec(vehicle)
+        if s and s.seatless and s.seatless[part:getId()] and part:getInventoryItem() and part:getDoor() then
+            if part:getDoor():isOpen() then return ISVehicleMenu.onCloseDoor(chr, part) end
+            return ISVehicleMenu.onOpenDoor(chr, part)
+        end
         return use(vehicle, part, chr)
     end
     -- the prompt is rebuilt every update with self.cmdEnterVehicle (a class method); its other caller, the no-door

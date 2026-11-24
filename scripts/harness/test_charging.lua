@@ -811,6 +811,29 @@ C.onChargerRemoved(klo)
 check(rchg() ~= nil and rchg().x == 950, "charger removed: the car holding its old id (plugged in elsewhere) stays plugged")
 klo.vid = false
 C.stop(ylo, reuse, "unplug")
+-- the Roadster Rocket (Specs wing): plugging in raises its wing (Liftgate.lua L.chargeWing, faked here), chg.wing
+-- remembers it; the unplug lowers it only when this cable raised it
+do
+    local realL, wingUps = T.Liftgate, {} -- this test loads no Liftgate.lua
+    local wasUp = false
+    T.Liftgate = { chargeWing = function(_, up) wingUps[#wingUps + 1] = up; local moved = wasUp ~= up; wasUp = up; return moved end }
+    local rocket = car(20, 950.5, 950.5)
+    rocket.script = "Base.MinidoracatTesla_Roadster2"
+    C.start(ylo, rocket)
+    check(B.part(rocket):getModData().chg.wing == true and wingUps[1] == true, "Rocket plugged in: wing raised, chg.wing = true")
+    C.stop(ylo, rocket, "unplug")
+    check(B.part(rocket):getModData().chg == nil and wingUps[2] == false, "...unplugged: the wing it raised lowers")
+    wasUp = true
+    C.start(ylo, rocket)
+    check(B.part(rocket):getModData().chg.wing == nil, "wing already up when plugged in: no chg.wing")
+    C.stop(ylo, rocket, "unplug")
+    check(#wingUps == 3 and wasUp, "...unplugged: the wing the player raised stays up")
+    wingUps = {}
+    C.start(ylo, reuse)
+    C.stop(ylo, reuse, "unplug")
+    check(#wingUps == 0, "a Model Y: the wing never asked")
+    T.Liftgate = realL
+end
 -- the charger's owner (main agent 2026-10-28): its placer, or the owner / a member of the safehouse its square is in,
 -- may unplug, stop on the card, pick up and rotate whatever is plugged in, locked or not; not plug in, not the target
 local function act(mode, who, onDone)
@@ -1130,7 +1153,7 @@ do
 local before = { -- { Supercharger, WallConnector, MobileConnector } at kw 325
     ModelY = { 250, 11.5, 7.6 }, Model3 = { 250, 11.5, 7.6 }, Cybertruck = { 325, 11.5, 7.6 }, ModelS = { 250, 11.5, 7.6 },
     ModelX = { 250, 11.5, 7.6 }, ModelYL = { 250, 11.5, 7.6 }, Roadster = { 16.8, 11.5, 7.6 }, Cybercab = { 152, 11.5, 7.6 },
-    Semi = { 1200, 11.5, 7.6 },
+    Semi = { 1200, 11.5, 7.6 }, Roadster2 = { 500, 11.5, 7.6 }, -- the Roadster Rocket came after: its dcKw 500 as is
 }
 local KINDS = { "Supercharger", "WallConnector", "MobileConnector" }
 check(T.Chargers.Supercharger.kw == 1200, "the Supercharger's cap: 1200 kW")
@@ -1147,7 +1170,7 @@ for script in pairs(T.Specs) do
     H.removeVehicle(sv)
     seen = seen + 1
 end
-check(seen == 9, "nine cars in Specs (" .. seen .. ")")
+check(seen == 10, "ten cars in Specs (" .. seen .. ")")
 local sv = H.vehicle({ script = "Base.MinidoracatTesla_Semi", kwh = 0 })
 check(B.capacity(B.part(sv)) == 822 and T.dcPeak("Supercharger", sv, 1200) == 1200 and T.dcPeak("WallConnector", sv, 11.5) == nil,
     "Semi: 822 kWh; the DC curve peaks at 1200 on the Supercharger, flat on AC")

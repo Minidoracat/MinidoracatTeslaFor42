@@ -1354,9 +1354,11 @@ def geometry(body, zmid, wl, r, tire_w, belt_z, doors_y, port_yz, extra_areas=()
     belt = belt_z - zmid
     front_y, bpil_y, rear_y = doors_y
     # SEAT front_only (a two-seater): the front row only, PassengerSeat2, the head on template MinidoracatTeslaCore,
-    # MinidoracatTeslaCoreNoFrunk or MinidoracatTeslaCab;
+    # MinidoracatTeslaCoreNoFrunk or MinidoracatTeslaCab; SEAT solo (one seat, the Roadster Rocket): the driver's only,
+    # MinidoracatTeslaPassengerSeat1, the head on MinidoracatTeslaSolo or MinidoracatTeslaSoloNoFrunk;
     # doors_y's third value is then where the cabin ends (cabin.py's ring cut), no door
-    two = SEAT.get("front_only")
+    solo = SEAT.get("solo")
+    two = SEAT.get("front_only") or solo
     if two and SEAT.get("third"):
         raise SystemExit("SEAT: front_only and third")
     lo = (bc[:, 2].min() + belt) / 2
@@ -1395,7 +1397,7 @@ def geometry(body, zmid, wl, r, tire_w, belt_z, doors_y, port_yz, extra_areas=()
         "        textureDamage1Overlay = Vehicles/Veh_Blood_Mask,", "        textureDamage2Overlay = Vehicles/Veh_Blood_Hvy,",
         "        textureDamage1Shell = Vehicles/Veh_Damage1,", "        textureDamage2Shell = Vehicles/Veh_Damage2,",
         "        textureRust = Vehicles/Veh_Rust,",
-        f"        template = {'PassengerSeat2' if two else 'PassengerSeat6' if SEAT.get('third') else 'PassengerSeat4'},",
+        f"        template = {'MinidoracatTeslaPassengerSeat1' if solo else 'PassengerSeat2' if two else 'PassengerSeat6' if SEAT.get('third') else 'PassengerSeat4'},",
         f"        extents = {f4(*ext)},", f"        physicsChassisShape = {f4(*ext)},",
         f"        centerOfMassOffset = {f4(*com)},",
         f"        shadowExtents = {f4(ext[0], ext[2])},", f"        shadowOffset = {f4(0, com[2]) if ph else '0.0 0.0'},",
@@ -1442,6 +1444,9 @@ def geometry(body, zmid, wl, r, tire_w, belt_z, doors_y, port_yz, extra_areas=()
         span = (tz + aw * S / 2, tz - aw * S / 2)
         seats = seats[:2] + (("MiddleLeft", 1, rz, (bpil_y, rear_y)), ("MiddleRight", -1, rz, (bpil_y, rear_y)),
                              ("RearLeft", 1, tz, span), ("RearRight", -1, tz, span))
+    places = seats      # every seat's place has its area: a solo car's empty one too (the right door and window's)
+    if solo:
+        seats = seats[:1]
     at = SEAT.get("at", {})
     for nm, side, z, door in seats:        # showPassenger: the 3-D cabin shows whoever sits there through the glass
         row3 = bool(third) and nm.startswith("Rear")
@@ -1468,7 +1473,7 @@ def geometry(body, zmid, wl, r, tire_w, belt_z, doors_y, port_yz, extra_areas=()
     # 47-93; world = mesh units). So every stand within 0.6 of the seat is in the area, whatever the stands' phase.
     # The area's centre is also where that seat gets in and out (position outside area, BaseVehicle.java:2111-2130,
     # 6643-6656)
-    for nm, side, z, door in seats:
+    for nm, side, z, door in places:
         back = min(door[1], z + at[nm][1] - SURROUND_STEP) if nm in at else door[1]
         areas.append(("Seat" + nm, side * sx, ((door[0] + back) / 2) / S, aw, (door[0] - back) / S))
     for nm, yc_, ln_ in extra_areas:           # across the body and both standing strips (a pickup's bed sides)
@@ -1477,7 +1482,7 @@ def geometry(body, zmid, wl, r, tire_w, belt_z, doors_y, port_yz, extra_areas=()
         areas = [(a[0], a[1], a[2] + (com[2] if i < 2 else mo[2]), *a[3:]) for i, a in enumerate(areas)]
         areas += [("Tire" + nm, sx if "Left" in nm else -sx, rel(x, y, 0)[2], aw, ah) for nm, x, y in ph["wheels"]]
     else:
-        areas[3 + len(seats):3 + len(seats)] = [("Tire" + names[(sxn, 1 if yc > 0 else -1)], -sxn * sx, yc / S, aw, ah)
+        areas[3 + len(places):3 + len(places)] = [("Tire" + names[(sxn, 1 if yc > 0 else -1)], -sxn * sx, yc / S, aw, ah)
                                                 for sxn, yc, zc, xo in wl]
     for nm, ax, az, w, h in areas:
         out += [f"        area {nm}", "        {", f"            xywh = {f4(ax, az, w, h)},", "        }"]
@@ -1528,15 +1533,16 @@ def geometry(body, zmid, wl, r, tire_w, belt_z, doors_y, port_yz, extra_areas=()
     # splice into the vehicle script: everything after the geometry marker up to the vehicle's closing brace is ours.
     # The hand-written head above the marker inherits the template with these doors and seats (MinidoracatTesla_
     # template.txt: Core the front doors and seats, CoreNoFrunk the same without the frunk (Cybercab), Cab without the
-    # frunk, trunk and glove box (Semi), Base the rear ones too) and says as many seats
+    # frunk, trunk and glove box (Semi), Solo / SoloNoFrunk the driver's seat only (Roadster Rocket), Base the rear
+    # ones too) and says as many seats
     path = os.path.join(MEDIA, "scripts", "vehicles", NAME + ".txt")
     text = open(path, encoding="utf-8").read()
     head = text.index("\n", text.index(SCRIPT_MARK)) + 1
-    tpls = ("Core", "CoreNoFrunk", "Cab") if two else ("Base",)
+    tpls = ("Solo", "SoloNoFrunk") if solo else ("Core", "CoreNoFrunk", "Cab") if two else ("Base",)
     seats_line = f"\n        seats = {len(seats)},"
     if not (any(f"template! = MinidoracatTesla{t}," in text[:head] for t in tpls) and seats_line in text[:head]):
         raise SystemExit(f"{NAME}.txt: the head above {SCRIPT_MARK!r} must have template! = MinidoracatTesla"
-                         f"{' or '.join(tpls)} and {seats_line.strip()!r} (SEAT front_only {bool(two)})")
+                         f"{' or '.join(tpls)} and {seats_line.strip()!r} (SEAT front_only {bool(two)}, solo {bool(solo)})")
     tail = text.rindex("    }\n}")
     script = text[:head] + block + text[tail:]
     # a whole `template = X` (not X/part/Y) clears the physics boxes and turns useChassisPhysicsCollision back on

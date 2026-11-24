@@ -3,12 +3,14 @@ module Base
     /* Shared EV base for every Tesla. Numbers, sounds and the part list; geometry lives in each car's own script, */
     /* and so do the per-car numbers and rules (power, cargo, hatch or sedan rear lid) in its TeslaLogic part. */
     /* Based on template vehicle ModernCar (generated/vehicles/vehicle_car_modern_template.txt) without Muffler. */
-    /* Cab: what every Tesla has, the front doors, seats and side windows, with no trunk lid, trunk, glove box or rear */
-    /* windshield (the Semi: template! = MinidoracatTeslaCab; its cab has a solid back wall). CoreNoFrunk adds those */
-    /* four (the Cybercab: template! = MinidoracatTeslaCoreNoFrunk, geometry template PassengerSeat2). */
+    /* Solo: what every Tesla has, the driver's seat, both front doors and side windows, with no passenger seat, trunk */
+    /* lid, trunk, glove box or rear windshield. Cab = Solo + the passenger seat (the Semi: template! = */
+    /* MinidoracatTeslaCab; its cab has a solid back wall). SoloNoFrunk = Solo + those four (the Roadster Rocket: one */
+    /* seat, the passenger's place holds a tank), CoreNoFrunk = SoloNoFrunk + the passenger seat (the Cybercab: */
+    /* template! = MinidoracatTeslaCoreNoFrunk, geometry template PassengerSeat2). */
     /* MinidoracatTeslaCore adds the frunk (a two-seater with one: the Roadster), MinidoracatTeslaBase at the end the */
     /* rear doors, seats and side windows too: a script only adds parts, never drops one (VehicleScript.java:909-915). */
-    template vehicle MinidoracatTeslaCab
+    template vehicle MinidoracatTeslaSolo
     {
         mechanicType = 3,
         engineRepairLevel = 6,
@@ -60,7 +62,6 @@ module Base
         /* 8 times (-c1-1026a) */
         wheelFriction = 2.0,
         template = Seat/part/SeatFrontLeft,
-        template = Seat/part/SeatFrontRight,
         template = GasTank,
         /* 12V battery: tryStartEngine dereferences it without a null check (BaseVehicle.java:7570-7612) */
         template = Battery,
@@ -337,16 +338,23 @@ module Base
             }
         }
     }
-    /* CoreNoFrunk = Cab + the trunk lid, the trunk, the glove box and the rear windshield: Core's way (below), the */
-    /* template lines first in the order they had before Cab existed, then the blocks of the two parts Cab's own */
-    /* blocks do not reach (the rear windshield's is Cab's part Windshield*), then Cab, so every part keeps its place */
+    /* Cab = Solo + the passenger seat: its two seat lines first, so the seats keep their places (a part keeps the */
+    /* place it was first added at, a template line copies over it in place, VehicleScript.java:1271-1295) */
+    template vehicle MinidoracatTeslaCab
+    {
+        template = Seat/part/SeatFrontLeft,
+        template = Seat/part/SeatFrontRight,
+        template! = MinidoracatTeslaSolo,
+    }
+    /* SoloNoFrunk = Solo + the trunk lid, the trunk, the glove box and the rear windshield: Core's way (below), the */
+    /* template lines first in the order they had before Cab existed, then the blocks of the two parts Solo's own */
+    /* blocks do not reach (the rear windshield's is Solo's part Windshield*), then Solo, so every part keeps its place */
     /* and fields (scripts/vehicle_parts.py) */
-    template vehicle MinidoracatTeslaCoreNoFrunk
+    template vehicle MinidoracatTeslaSoloNoFrunk
     {
         template = TrunkDoor,
         template = Trunk/part/TruckBed,
         template = Seat/part/SeatFrontLeft,
-        template = Seat/part/SeatFrontRight,
         template = GloveBox,
         template = GasTank,
         template = Battery,
@@ -386,7 +394,46 @@ module Base
                 recipes = Advanced Mechanics,
             }
         }
-        template! = MinidoracatTeslaCab,
+        template! = MinidoracatTeslaSolo,
+    }
+    /* CoreNoFrunk = SoloNoFrunk + the passenger seat: SoloNoFrunk's template lines with the passenger seat's after the */
+    /* driver's, then SoloNoFrunk, so every part keeps its place */
+    template vehicle MinidoracatTeslaCoreNoFrunk
+    {
+        template = TrunkDoor,
+        template = Trunk/part/TruckBed,
+        template = Seat/part/SeatFrontLeft,
+        template = Seat/part/SeatFrontRight,
+        template = GloveBox,
+        template = GasTank,
+        template = Battery,
+        template = Engine,
+        template = EngineDoor,
+        template = Heater,
+        template = Windshield/part/Windshield,
+        template = Windshield/part/WindshieldRear,
+        template = Window/part/WindowFrontLeft,
+        template = Window/part/WindowFrontRight,
+        template = Door/part/DoorFrontLeft,
+        template = Door/part/DoorFrontRight,
+        template = Tire,
+        template = Brake,
+        template = Suspension,
+        template = Radio,
+        template = Headlight,
+        template! = MinidoracatTeslaSoloNoFrunk,
+    }
+    /* one seat (the Roadster Rocket): the driver's of vanilla PassengerSeat2 (template_passenger.txt) without its */
+    /* switchSeat to a passenger seat the car does not have */
+    template vehicle MinidoracatTeslaPassengerSeat1
+    {
+        template = PassengerPosition2/passenger/FrontLeft,
+        passenger FrontLeft
+        {
+            door = DoorFrontLeft,
+            area = SeatFrontLeft,
+        }
+        template! = PassengerCommon,
     }
     /* Core = CoreNoFrunk + the frunk: every Tesla with a front trunk. The template lines first, then the frunk, then */
     /* CoreNoFrunk: a part keeps the place it was first added at and a template line copies over it in place */

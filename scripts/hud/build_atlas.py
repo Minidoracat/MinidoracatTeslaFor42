@@ -284,6 +284,14 @@ def ic_butterfly(c):  # Cybercab side view: the low body on its wheels, the door
         c.circle(x, 11.9, 1.7, fill="#FFFFFF")
 
 
+def ic_wing(c):  # Roadster Rocket side view: the low body on its wheels, the wing raised on its struts over the tail
+    c.stroke([("M", 1.5, 11), ("V", 8.5), ("L", 6, 7), ("H", 14.5), ("V", 11), ("Z",)], w=1.3)
+    c.stroke([("M", 3.5, 8), ("L", 3.5, 4.5)], w=1.3)
+    c.rrect(0.8, 2.6, 6.4, 2.0, 0.8, fill="#FFFFFF")
+    for x in (4.4, 11.6):
+        c.circle(x, 11.9, 1.7, fill="#FFFFFF")
+
+
 def ic_lightbar(c):  # roof light bar: the bar and its beams ahead
     c.rrect(2, 2.5, 12, 3, 1.2, outline="#FFFFFF", ow=1.3)
     for x0, x1 in ((4, 2.5), (8, 8), (12, 13.5)):
@@ -615,6 +623,14 @@ def car_roadster(c):
             c.stroke([("M", x, y0 + 0.6), ("V", y1 - 0.6)], w=1.0, color="#4A525B")
 
 
+def car_roadster2(c):
+    """Roadster Rocket, placeholder until the Rocket's own body is drawn on its built body: the Roadster 2.5's outline
+    (car_roadster) with the wing across the tail (x 44.5-48.5). HUD.lua ZONES.Roadster2 follows these edges: the wing
+    to x 48.5, the trunk lid behind the seat from there to the doors (x 80.3), the doors x 80.3-110.2."""
+    car_roadster(c)
+    c.rrect(44.5, 27, 4, 42, 1, fill="#3A424B", outline="#AEB6BF", ow=1.0)  # the wing
+
+
 def car_cybercab(c):
     """Cybercab (rider guide: 1,754 mm wide) at the Model Y's 0.0259 viewBox units per mm, nose on the Model Y's (x 146),
     on the built body (scripts/blender/skf/cars/cybercab.py, prep_cybercab.py's thirteenth round, metres; nose y 2.330,
@@ -722,7 +738,8 @@ def tow_semi(c):
 
 
 CARS = {"ModelY": car_modely, "Model3": car_model3, "Cybertruck": car_cybertruck, "ModelS": car_models, "ModelX": car_modelx,
-        "ModelYL": car_modelyl, "Roadster": car_roadster, "Cybercab": car_cybercab, "Semi": car_semi}
+        "ModelYL": car_modelyl, "Roadster": car_roadster, "Cybercab": car_cybercab, "Semi": car_semi,
+        "Roadster2": car_roadster2}
 # what a car tows, drawn over its top view (tow_<model>, HUD.lua)
 TOWS = {"Semi": tow_semi}
 
@@ -765,6 +782,11 @@ DOOR_GEOM = {
     # door_HD)
     "Cybercab": {"front": (77.0, 115.0), "rear": (77.0, 77.0), "y": (26.0, 70.0), "butterfly": True,
                  "tr": ((28.2, 38, 58), (22.2, 36, 60)), "kinds": ("FL", "FR", "TR")},
+    # Roadster Rocket (placeholder, car_roadster2): the Roadster's doors swung up as the Cybercab's (butterfly), the
+    # trunk lid behind the seat (its rear edge at the wing, x 48.5), the wing over the tail (wg: x0, x1, y0, y1); no
+    # hood (no front trunk)
+    "Roadster2": {"front": (80.3, 110.2), "rear": (80.3, 80.3), "y": (25, 71), "butterfly": True,
+                  "tr": ((48.5, 38, 58), (54.5, 36, 60)), "wg": (44.5, 48.5, 27, 69), "kinds": ("FL", "FR", "TR", "WG")},
     # Semi: two doors (x 100.7-121.7, car_semi's seams) hinged at their rear edge, swung 65 degrees (cars/semi.py
     # DOORS), along the cab's side (y 23.3 / 72.7); no trunk, no hood (no front trunk)
     "Semi": {"front": (100.7, 121.7), "rear": (100.7, 100.7), "y": (23.3, 72.7), "rearhinge": 65, "kinds": ("FL", "FR")},
@@ -812,6 +834,11 @@ def door_overlay(kind, g):
             for a, b, cc, d in ((x0, y0, x1, y0), (x0, y1, x1, y1), (x1, y0, x1, y1)):
                 dashed(c, a, b, cc, d)
             c.stroke([("M", x0, y0 - 1), ("V", y1 + 1)], w=2.8)
+        elif kind == "WG":  # wing: its footprint dashed, the raised wing drawn behind it
+            x0, x1, y0, y1 = g["wg"]
+            for a, b, cc, d in ((x0, y0, x1, y0), (x0, y1, x1, y1), (x0, y0, x0, y1), (x1, y0, x1, y1)):
+                dashed(c, a, b, cc, d)
+            c.stroke([("M", x0 - 3, y0 - 1), ("V", y1 + 1)], w=2.8)
         elif kind == "HD":  # hood (front = right)
             (dx, dy0, dy1), (sx, sy0, sy1) = g["hd"]
             dashed(c, dx, dy0, dx, dy1)
@@ -845,6 +872,8 @@ WORDS = [("kmh", "Inter-Regular.ttf", 14, "km/h", 0), ("km", "Inter-Regular.ttf"
          ("wm_Roadster", "Inter-Light.ttf", 15, "ROADSTER", 5), ("trim_Roadster", "Inter-Regular.ttf", 13, "2.5 Sport", 0),
          # the Cybercab comes in one version (gold, 47.6 kWh); Tesla runs it as its Robotaxi
          ("wm_Cybercab", "Inter-Light.ttf", 15, "CYBERCAB", 3), ("trim_Cybercab", "Inter-Regular.ttf", 13, "Robotaxi", 0),
+         # the Roadster Rocket (the new Roadster's top version, plan-roadster2-1124)
+         ("wm_Roadster2", "Inter-Light.ttf", 15, "ROADSTER", 5), ("trim_Roadster2", "Inter-Regular.ttf", 13, "Rocket", 0),
          # the Semi built here is the Long Range (822 kWh)
          ("wm_Semi", "Inter-Light.ttf", 15, "SEMI", 5), ("trim_Semi", "Inter-Regular.ttf", 13, "Long Range", 0)]
 
@@ -898,7 +927,7 @@ def build_sprites(k):
         "falcon": ic_falcon,
         "nav": ic_nav, "shield": ic_shield, "chev": ic_chev, "chevdown": ic_chevdown, "back": ic_back, "close": ic_close,
         "wheel": ic_wheel, "pin": ic_pin, "tonneau": ic_tonneau, "powershare": ic_house, "softtop": ic_softtop,
-        "butterfly": ic_butterfly,
+        "butterfly": ic_butterfly, "wing": ic_wing,
     }
     for key, fn in icons16.items():
         c = Canvas(18 * k, 18 * k, 16)

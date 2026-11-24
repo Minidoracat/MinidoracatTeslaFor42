@@ -11,10 +11,11 @@ local T = MinidoracatTesla
 local L = {}
 T.Liftgate = L
 -- doors the driver may open or close from the dashboard (the HUD car picture; nothing else is accepted); the
--- Cybertruck's tonneau cover too (owner's manual p.60: the touchscreen and the app open it), and the Roadster's soft
+-- Cybertruck's tonneau cover too (owner's manual p.60: the touchscreen and the app open it), the Roadster's soft
 -- top (Specs softTop; a switch here, user 2026-11-14; the 2.5 owner's manual 7-9: not while driving, L.check MOVING)
+-- and the Roadster Rocket's wing (Specs wing; up = open)
 L.PARTS = { DoorFrontLeft = true, DoorFrontRight = true, DoorRearLeft = true, DoorRearRight = true, TrunkDoor = true,
-    EngineDoor = true, TrunkTonneau = true, SoftTop = true }
+    EngineDoor = true, TrunkTonneau = true, SoftTop = true, TeslaWing = true }
 
 -- Returns the installed door part `id` (one of L.PARTS), or nil and an IGUI_MinidoracatTesla_Deny_<reason> suffix.
 -- A car without a front trunk (Specs frunk = false: Cybercab, "the hood cannot be opened") has no hood here.
@@ -25,6 +26,17 @@ function L.check(player, vehicle, id)
     if not part or not part:getInventoryItem() or not part:getDoor() then return nil, "NO_DOOR" end
     if not T.stopped(vehicle) then return nil, "MOVING" end
     return part
+end
+
+-- The cabin doors of car v no seat gets in through (Specs seatless: the Roadster Rocket's right door, a tank sits in
+-- the passenger's place): id -> true, never to be written. Vanilla's locks see only the seats' doors
+-- (areAllDoorsLocked, isAnyDoorLocked: BaseVehicle.java:9381-9401; ISLockDoors), and E at one does nothing
+-- (Vehicles.Use.Door, Vehicles.lua:816-827), so they lock like the lids (L.lockLids) and E opens or shuts them
+-- (EnterDoor.lua). Every door of the other cars serves a seat: empty there.
+local NONE = {}
+function L.seatless(v)
+    local s = T.spec(v)
+    return s and s.seatless or NONE
 end
 
 -- MP: the clients that can have car v loaded, i.e. every client with an online player within NEAR_TILES of it on both
@@ -332,16 +344,19 @@ if not isClient() then
     -- liftgate always did, through setTrunkLocked, BaseVehicle.java:9533-9545).
     -- The Roadster's soft top the same way as the tonneau: a shut top locks with the car, an open one stays open on a
     -- locked car (locking never closes it, so arming Sentry, which asks for locked doors, works with the top down too).
+    -- A cabin door no seat gets in through (L.seatless) locks with the car too. The Roadster Rocket's wing never locks
+    -- (it covers no cargo).
     L.LIDS = { TrunkDoor = true, EngineDoor = true, TrunkTonneau = true, SoftTop = true }
-    function L.lockLids(v, locked)
-        for id in pairs(L.LIDS) do
-            local part = v:getPartById(id)
-            local door = part and part:getInventoryItem() and part:getDoor()
-            if door and door:isLocked() ~= locked and not (locked and door:isLockBroken()) then
-                door:setLocked(locked)
-                v:transmitPartDoor(part) -- BaseVehicle.java:8247-8256
-            end
+    local function lockOne(v, part, locked)
+        local door = part and part:getInventoryItem() and part:getDoor()
+        if door and door:isLocked() ~= locked and not (locked and door:isLockBroken()) then
+            door:setLocked(locked)
+            v:transmitPartDoor(part) -- BaseVehicle.java:8247-8256
         end
+    end
+    function L.lockLids(v, locked)
+        for id in pairs(L.LIDS) do lockOne(v, v:getPartById(id), locked) end
+        for id in pairs(L.seatless(v)) do lockOne(v, v:getPartById(id), locked) end
     end
 
     -- A lid that shuts on a locked car locks again, however it was opened or shut (the app, the dashboard, by hand,
@@ -361,7 +376,7 @@ if not isClient() then
     function L.relock(v, part)
         local door, id = part:getDoor(), part:getId()
         if not part:getInventoryItem() or door:isOpen() or door:isLocked() or door:isLockBroken() then return false end
-        if L.LIDS[id] then
+        if L.LIDS[id] or L.seatless(v)[id] then
             if not v:areAllDoorsLocked() then return false end
         elseif not (WINGS[id] and T.spec(v) and T.spec(v).falcon and frontsLocked(v)) then
             return false
@@ -389,6 +404,17 @@ if not isClient() then
         roofMoved(v, part)
         broadcast(v, { vid = v:getId(), part = part:getId(), open = open, sound = true })
         T.log("liftgate " .. part:getId() .. " " .. (open and "open" or "close") .. " vid=" .. tostring(v:getId()) .. " by=" .. tostring(who))
+    end
+
+    -- The Roadster Rocket's charge port is behind its wing (Not a Tesla App #4850 "The Charge Port Hides Behind the
+    -- Wing"): a cable plugged in raises a lowered wing (Charging.lua C.start), and the cable coming out lowers it again
+    -- if the cable raised it (Charging.lua clearChg). True when the wing moved.
+    function L.chargeWing(v, up)
+        local part = v:getPartById("TeslaWing")
+        local door = part and part:getInventoryItem() and part:getDoor()
+        if not door or door:isOpen() == up then return false end
+        L.swing(v, part, up, "charge")
+        return true
     end
 
     T.ServerCommands = T.ServerCommands or {}
@@ -501,14 +527,17 @@ if not isClient() then
     end
 
     -- every load (BaseVehicle.java:904): a locked car from an older save or the world spawn (cabin doors locked by
-    -- Vehicles.Create.Door, the hood never) gets its shut lids locked; the shell bits are set to the saved doors at once
-    -- (they stand still; a save inside a swing kept the old bit, an older save's open door had none), dropping whatever
-    -- was still pending under this id. Named so harness test_liftgate runs this handler alone.
+    -- Vehicles.Create.Door, the hood never) gets its shut lids (and seatless doors, L.seatless) locked; the shell bits
+    -- are set to the saved doors at once (they stand still; a save inside a swing kept the old bit, an older save's
+    -- open door had none), dropping whatever was still pending under this id. Named so harness test_liftgate runs this
+    -- handler alone.
     function L.onLoad(v)
         if not T.isTesla(v) then return end
-        for id in pairs(L.LIDS) do
-            local part = v:getPartById(id)
-            if part and part:getInventoryItem() and part:getDoor() and L.relock(v, part) then v:transmitPartDoor(part) end
+        for _, ids in ipairs({ L.LIDS, L.seatless(v) }) do
+            for id in pairs(ids) do
+                local part = v:getPartById(id)
+                if part and part:getInventoryItem() and part:getDoor() and L.relock(v, part) then v:transmitPartDoor(part) end
+            end
         end
         L.syncShell(v, true)
     end
