@@ -2,7 +2,7 @@
 the body's frame (part model offset 0, as armor.py), per nozzle two open cones: a thin bright core (uv v 0..1) and a
 wider faint sheath (v 2..3). Shader MinidoracatTesla_jet draws them procedurally (no texture: it runs as a vehicle
 shader for the time uniform, and that path binds the car's skin, shaders/MinidoracatTesla_jet.frag).
-Also writes the landing fog's puffs MinidoracatTesla/JetFog1..3 (tall, mid, low) and the ground glow JetGlow
+Also writes the landing fog's banks MinidoracatTesla/JetFog1..3 (wide, mid, low) and the ground glow JetGlow
 (client ThrusterFx.lua; not under Vehicles/: verify_local reads those as car skins).
 
 Nozzles: `nozzles` of temp/skf_r2/roadster2_lines.json (R2Body's prep frame: metres, +Y front, +Z up, -X car left,
@@ -29,10 +29,11 @@ ESTIMATE = {"lift": [[-0.55, 1.30, 0.22], [0.55, 1.30, 0.22], [-0.55, -1.30, 0.2
             "r": 0.06}
 GEOM_ESTIMATE = {"centre_y": 0.0, "zmid": 0.50}
 # Per group: direction (mesh frame; side: outward by the nozzle's x), length (metres), far-end radius of the core and of
-# the sheath, the core's share of the length. Narrow at the nozzle, the sheath opening to about a wheel's size where
-# the lift columns reach the ground from about 3 m (f2-kickflip-replay 11m27); the boost flame is short (thrust-060 17m27).
-SHAPE = {"lift": ((0, 0, -1), 4.0, 0.09, 0.35, 0.75), "side": (None, 1.2, 0.04, 0.15, 0.7),
-         "rear": ((0, -1, 0), 1.5, 0.07, 0.22, 0.8)}
+# the sheath, the core's share of the length. Narrow at the nozzle, the sheath opening wider than a wheel where the lift
+# columns reach the ground from about 3 m, a white plume spreading into fog (f2-kickflip-replay 11m27; the shader
+# frays its edge); the boost flame is short (thrust-060 17m27).
+SHAPE = {"lift": ((0, 0, -1), 4.0, 0.10, 0.55, 0.6), "side": (None, 1.2, 0.04, 0.22, 0.6),
+         "rear": ((0, -1, 0), 1.5, 0.07, 0.32, 0.6)}
 RINGS, SIDES = 10, 16
 
 
@@ -133,37 +134,39 @@ def value_noise(h, w, cells, rng):
     return top * (1 - fy) + bot * fy
 
 
-def puff_texture(path, w, h, seed):
-    """One billowing cloud standing on the ground (IsoMarkers: bottom centre on its tile, its own size, no scaling;
-    IsoSprite.renderTextureWithDepth): overlapping round lobes under a dome outline, ragged by noise, lit from above
-    (white top, grey-blue underside). The bottom rows fade out: an opaque base read as a hard edge (E2E r2fx-sp-1)."""
+def bank_texture(path, w, h, seed):
+    """One bank of ground fog (IsoMarkers: bottom centre on its tile, its own size, no scaling;
+    IsoSprite.renderTextureWithDepth): low and wide, a ragged billowing top under a flat arch, fading out at the ends
+    and through the bottom rows with noise, so neither a straight top nor a cut bottom edge shows (r2fx-sp-1, r2fx-sp-6b
+    review: the bottom fade must not read as a line). Lit from above: white top, grey underside."""
     rng = np.random.default_rng(seed)
     y, x = np.meshgrid(np.arange(h) + 0.5, np.arange(w) + 0.5, indexing="ij")   # y up from the bottom row
     d, lit = np.zeros((h, w)), np.zeros((h, w))
-    for _ in range(40):
-        cx = rng.uniform(0.12, 0.88) * w
-        top = h * (0.3 + 0.68 * (1 - (2 * cx / w - 1) ** 2) ** 1.5)    # dome: lobes higher in the middle
-        r = min(rng.uniform(0.08, 0.17) * min(w, 1.6 * h), 0.45 * top, cx, w - cx)
-        cy = rng.uniform(0.12 * h + r * 0.5, max(0.12 * h + r * 0.5, top - r))
-        g = np.exp(-(((x - cx) / r) ** 2 + ((y - cy) / r) ** 2) ** 1.5)
+    for _ in range(70):
+        cx = rng.uniform(0.08, 0.92) * w
+        top = h * (0.3 + 0.65 * (1 - (2 * cx / w - 1) ** 2) ** 0.6 * rng.uniform(0.4, 1.0))   # flat arch, uneven
+        r = min(rng.uniform(0.12, 0.38) * h, cx, w - cx)
+        cy = rng.uniform(0.25 * h, max(0.25 * h, top - r))
+        g = np.exp(-(((x - cx) / (1.4 * r)) ** 2 + ((y - cy) / r) ** 2) ** 1.5)   # lobes wider than tall
         d += g
-        lit += g * np.clip(0.55 + 0.45 * (y - cy) / r, 0.2, 1.0)    # each lobe lit on top: cauliflower crevices
-    n = 0.6 * value_noise(h, w, 6, rng) + 0.4 * value_noise(h, w, 16, rng)
+        lit += g * np.clip(0.55 + 0.45 * (y - cy) / r, 0.2, 1.0)
+    n = 0.6 * value_noise(h, w, 8, rng) + 0.4 * value_noise(h, w, 20, rng)
     shade = lit / np.maximum(d, 1e-6)
-    d = 1 - np.exp(-0.9 * d * (0.35 + 1.3 * n))
-    edge = np.clip(np.minimum(x, w - x) / (w * 0.08), 0, 1) * np.clip((h - y) / (h * 0.08), 0, 1)
-    a = np.clip((d - 0.1) / 0.6, 0, 1) * np.clip(y / (h * 0.25), 0, 1) ** 1.5 * edge
-    shade = 0.62 + 0.38 * np.clip(0.6 * shade + 0.4 * y / h + 0.25 * (n - 0.5), 0, 1)
+    d = 1 - np.exp(-0.9 * d * (0.2 + 1.6 * n))
+    ends = np.clip((np.minimum(x, w - x) / w + 0.06 * (n - 0.5)) / 0.12, 0, 1)
+    bottom = np.clip((y / h + 0.25 * (n - 0.5)) / 0.4, 0, 1) ** 1.5
+    a = np.clip((d - 0.15) / 0.6, 0, 1) * bottom * ends * np.clip((h - y) / (h * 0.06), 0, 1) * (0.6 + 0.4 * n)
+    shade = 0.66 + 0.34 * np.clip(0.6 * shade + 0.4 * y / h + 0.25 * (n - 0.5), 0, 1)
     arr = np.zeros((h, w, 4))
-    arr[..., 0], arr[..., 1], arr[..., 2] = shade * 0.95, shade * 0.97, np.minimum(1, shade * 1.03)
+    arr[..., 0], arr[..., 1], arr[..., 2] = shade * 0.97, shade * 0.98, shade
     arr[..., 3] = a * 0.9
     save_png(arr, path)
 
 
 def glow_texture(path):
-    """Ground glow under the jets at take-off and landing: a 2:1 ellipse (a disc on the iso ground), white centre
-    to cyan, fading to nothing at the edge. Stands on the tile 2 down-right of the car (ThrusterFx.lua) so its
-    middle lands under the car."""
+    """Ground glow under the jets at take-off: a 2:1 ellipse (a disc on the iso ground), white centre to cyan, fading
+    to nothing at the edge. Stands on the tile 2 down-right of the car (ThrusterFx.lua) so its middle lands under the
+    car."""
     h, w = 256, 512
     y, x = np.meshgrid((np.arange(h) + 0.5) / h * 2 - 1, (np.arange(w) + 0.5) / w * 2 - 1, indexing="ij")
     r2 = np.clip(x * x + y * y, 0, 1)
@@ -185,8 +188,8 @@ def main():
         export_fbx(ob, os.path.join(o["out"], "models_X", "vehicles", ob.name + ".fbx"))
         print(f"jets: {ob.name} {len(noz)} cones")
     tex = os.path.join(o["out"], "textures", "MinidoracatTesla")
-    for k, (w, h) in enumerate(((288, 240), (320, 150), (352, 96)), 1):   # tall (far side), mid, low (camera side)
-        puff_texture(os.path.join(tex, f"JetFog{k}.png"), w, h, 20 + k)
+    for k, (w, h) in enumerate(((480, 150), (400, 130), (352, 100)), 1):   # wide, mid, low banks (car roof ~110 px)
+        bank_texture(os.path.join(tex, f"JetFog{k}.png"), w, h, 20 + k)
     glow_texture(os.path.join(tex, "JetGlow.png"))
 
 

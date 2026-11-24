@@ -3,7 +3,7 @@
 -- flight code calls it): it shows the mode's models, which the engine syncs to every client that has the car
 -- (BaseVehicle.setModelVisible sets PartModels, BaseVehicle.java:1737-1760; VehiclePartModels.java:23-46), and tells
 -- the clients near the car (Liftgate.sendNear; SP: the handler directly) to play the sound, drop the fog and flash
--- the ground glow: thrustFx { vid, mode, fog = { x, y, z } or nil, glow = { x, y, z } or nil }. A car without the
+-- the take-off glow: thrustFx { vid, mode, fog = { x, y, z } or nil, glow = { x, y, z } or nil }. A car without the
 -- part does nothing.
 require "MinidoracatTesla/Core"
 require "MinidoracatTesla/Liftgate"
@@ -16,21 +16,26 @@ F.IDS = { "Lift", "Side", "Rear" }
 -- the models each mode shows; "land", nil and anything else: none
 F.MODELS = { lift = { Lift = true }, flip = { Lift = true, Side = true }, boost = { Rear = true } }
 F.SOUND, F.SOUND_END = "MinidoracatTesla_RoadsterJet", "MinidoracatTesla_RoadsterJetEnd"
--- Fog: puffs around the spot, { dx, dy, texture (1 tall, 2 mid, 3 low), peak alpha, life ms }; +x +y is toward the
--- camera, so tall puffs stand on the far side (behind the car, its roof still shows), mid ones beside it and low ones
--- in front, close enough to touch it (3 tiles out read as a separate cloud on the road, E2E r2fx-sp-5).
+-- Fog: a low ground layer spreading out, as the official landing (f2-kickflip 11m15): banks around the spot,
+-- { dx, dy, texture (1 wide, 2 mid, 3 low), peak alpha, life ms, delay ms }. +x +y is toward the camera. The inner ring
+-- comes first and goes first, the outer ring 200-300 ms later and lasts longer, so the layer seems to roll outward
+-- (a marker cannot grow, IsoMarkers.java:142). Banks behind the car are the low ones: one stands higher on screen
+-- the further back it is, and must not tower over the roof.
 F.FOG = { "media/textures/MinidoracatTesla/JetFog1.png", "media/textures/MinidoracatTesla/JetFog2.png",
     "media/textures/MinidoracatTesla/JetFog3.png" }
 F.PUFFS = {
-    land = { { -2, -1, 1, 0.85, 3000 }, { -1, -2, 1, 0.85, 2800 }, { -2, -2, 1, 0.7, 2600 }, { -2, 1, 2, 0.75, 2500 },
-        { 1, -2, 2, 0.75, 2400 }, { 1, 1, 3, 0.6, 2200 }, { 2, 0, 3, 0.7, 2000 }, { 0, 2, 3, 0.7, 1900 } },
-    boost = { { -1, -1, 1, 0.8, 2600 }, { 0, 0, 2, 0.7, 2200 }, { 1, 1, 3, 0.6, 1800 } },
+    land = { { -1, -1, 3, 0.8, 1900, 0 }, { 1, 1, 3, 0.7, 1700, 0 }, { -1, 1, 2, 0.75, 1800, 0 },
+        { 1, -1, 2, 0.75, 1800, 0 }, { -2, 2, 1, 0.7, 2700, 200 }, { 2, -2, 1, 0.7, 2600, 250 },
+        { 2, 2, 2, 0.6, 2400, 200 }, { -2, -2, 3, 0.4, 2600, 300 }, { -3, -1, 3, 0.4, 2500, 300 },
+        { -1, -3, 3, 0.4, 2500, 300 } },
+    -- right behind the tail (F.FOG_BEHIND), then spreading
+    boost = { { 0, 0, 2, 0.75, 1800, 0 }, { -1, -1, 3, 0.55, 2200, 200 }, { 1, 1, 3, 0.55, 2200, 200 } },
 }
 F.FOG_IN_MS = 150
 F.FOG_MIN_LIGHT = 0.3 -- puffs take their square's light once: a night fog must not shine like a lamp
-F.FOG_BEHIND = 3 -- tiles behind the car's centre for the boost's fog: the rear jets end about 2 past its tail
--- Ground glow at take-off (lift from no jets) and landing: one flat ellipse standing 2 tiles toward the camera so its
--- middle lands under the car; the jets' light, so not shaded.
+F.FOG_BEHIND = 2 -- tiles behind the car's centre for the boost's fog: its tail and rear nozzles
+-- Ground glow at take-off (lift from no jets): one flat ellipse standing 2 tiles toward the camera so its middle lands
+-- under the car; the jets' light, so not shaded. Not on landing: there it tinted the fog's front bank blue (r2fx-sp-6b).
 F.GLOW, F.GLOW_AT, F.GLOW_ALPHA, F.GLOW_MS = "media/textures/MinidoracatTesla/JetGlow.png", 2, 0.7, 800
 F.last = {} -- server: each car's current jet mode, for the take-off glow
 F.SOUND_MAX_MS = 20 * 60000 -- backstop: a hiss no command renewed for this long stops (the car is checked anyway)
@@ -50,7 +55,7 @@ function F.set(vehicle, mode)
         x, y = x - f:x() * F.FOG_BEHIND, y - f:z() * F.FOG_BEHIND
     end
     if mode == "land" or mode == "boost" then args.fog = { x = x, y = y, z = vehicle:getZ() } end
-    if mode == "land" or (mode == "lift" and not F.last[args.vid]) then
+    if mode == "lift" and not F.last[args.vid] then
         args.glow = { x = vehicle:getX(), y = vehicle:getY(), z = vehicle:getZ() }
     end
     F.last[args.vid] = F.MODELS[mode] and mode or nil
@@ -63,8 +68,8 @@ if not isServer() then
     -- Fog and glow: IsoMarkers stand-up sprites, each drawn at its texture's own size, bottom centre on its tile's
     -- centre, with that tile's depth (IsoMarkers.java:116-150; IsoSprite.java:1302-1327). A marker has no scale or
     -- sub-tile position setter (setPos takes whole tiles, IsoMarkers.java:299-304; the size is the texture's, :142),
-    -- so the cloud is several puffs on different tiles, each on its own clock: in over F.FOG_IN_MS, then out
-    -- linearly. One OnTick, removed when the last one is gone.
+    -- so the cloud is several banks on different tiles, each on its own clock: hidden until its delay, in over
+    -- F.FOG_IN_MS, then out linearly. One OnTick, removed when the last one is gone.
     local fogs = {}
     local function fogTick()
         local now = getTimestampMs()
@@ -75,16 +80,16 @@ if not isServer() then
                 f.m:remove()
                 table.remove(fogs, i)
             else
-                f.m:setAlpha(f.peak * math.min(1, t / F.FOG_IN_MS) * (1 - t / f.life))
+                f.m:setAlpha(f.peak * math.max(0, math.min(1, t / F.FOG_IN_MS)) * (1 - t / f.life))
             end
         end
         if #fogs == 0 then Events.OnTick.Remove(fogTick) end
     end
-    local function add(tex, sq, c, peak, life)
+    local function add(tex, sq, c, peak, life, delay)
         local m = sq and getIsoMarkers():addIsoMarker({ tex }, sq, c, c, c, 0)
         if not m then return end
         if #fogs == 0 then Events.OnTick.Add(fogTick) end
-        fogs[#fogs + 1] = { m = m, at = getTimestampMs(), peak = peak, life = life }
+        fogs[#fogs + 1] = { m = m, at = getTimestampMs() + (delay or 0), peak = peak, life = life }
     end
     local function tile(p)
         if type(p) ~= "table" or not tonumber(p.x) or not tonumber(p.y) then return end
@@ -96,7 +101,7 @@ if not isServer() then
         if not sq then return end
         local c = math.max(F.FOG_MIN_LIGHT, math.min(1, sq:getLightLevel(0)))
         for _, q in ipairs(F.PUFFS[mode] or F.PUFFS.land) do
-            add(F.FOG[q[3]], getCell():getGridSquare(x + q[1], y + q[2], z), c, q[4], q[5])
+            add(F.FOG[q[3]], getCell():getGridSquare(x + q[1], y + q[2], z), c, q[4], q[5], q[6])
         end
         F.stats.fog = F.stats.fog + 1
     end
