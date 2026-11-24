@@ -34,6 +34,7 @@ local GAIN = { lo = { 9, 6 }, hi = { 36, 12 } } -- attitude PD
 local LPAR = 0.02                -- torque of the force along it, kept until it is worth a torque-only frame
 local DT_MAX = 0.083             -- the physics step's own cap
 local ROLL_S, LAND_S = 3, 12     -- roll-up and soft landing give up after these seconds (server Thruster.lua D2/D3)
+local WAKE_KMH = 3               -- the motor's creep that wakes a parked car before it flies (go)
 -- the real seconds one frame may count toward the flight's limit: a pause (no OnTick) is not flown time
 local REAL_MAX = 0.25
 -- the soft landing's sink speed (m/s, negative) at hm m: v^2 = 0.49 + 12 (hm - 0.3), a steady 6 m/s^2 braking,
@@ -393,13 +394,22 @@ local function beginRoll(f)
     preLift(v)
 end
 -- the driver's stunt from under conf.rollKmh: the motor's cruise takes it there (flight PoC: 17/17 from 6 km/h; the
--- thrusters' push left 3 of 13 parked cars stuck, r2f-sp-1124c). Flying from a standstill: lifted, then straight up.
+-- thrusters' push left 3 of 13 parked cars stuck, r2f-sp-1124c). Flying from a standstill: lifted, then straight up;
+-- a car whose physics won't switch on takes no impulse even lifted (r2fe-sp-g: 0 of 3 flew so, 3 of 3 after the
+-- motor's creep), so the motor creeps it until it does ("wake")
 local function go(f)
     local v, c = f.v, f.conf
     if f.act == "land" or v:getCurrentSpeedKmHour() >= c.rollKmh then return beginRun(f) end
     if f.act == "fly" then
-        preLift(v)
-        return beginRun(f)
+        if not v:isPhysicsActive() then v:setPhysicsActive(true) end
+        if v:isPhysicsActive() then
+            preLift(v)
+            return beginRun(f)
+        end
+        f.phase, f.t, f.reg0, f.regSpd0 = "wake", 0, v:isRegulator(), v:getRegulatorSpeed()
+        v:setRegulatorSpeed(WAKE_KMH)
+        v:setRegulator(true)
+        return
     end
     if f.app then return beginRoll(f) end
     f.phase, f.t, f.reg0, f.regSpd0 = "drive", 0, v:isRegulator(), v:getRegulatorSpeed()
@@ -455,7 +465,15 @@ function H.tick()
     local vy = v:getLinearVelocity(V3.lv):y()
     if hm > 0.3 then f.lifted = true end
     local st, ph, t = f.st, f.phase, f.t
-    if ph == "drive" then
+    if ph == "wake" then -- moving under its own motor: awake (r2fe-sp-g, 3 km/h for 0.3 s)
+        if v:isPhysicsActive() and v:getCurrentSpeedKmHour() > 1 then
+            regBack(f)
+            preLift(v)
+            return beginRun(f)
+        end
+        if t > ROLL_S then return stop(false, "THRUST_NO_LIFT") end
+        return
+    elseif ph == "drive" then
         if v:getCurrentSpeedKmHour() >= c.rollKmh then
             regBack(f)
             return beginRun(f)

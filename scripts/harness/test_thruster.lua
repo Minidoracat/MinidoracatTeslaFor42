@@ -473,6 +473,24 @@ cv.dz, cv.vy = 0.075 + 2 / TH.FLOOR, -math.sqrt(0.49 + 12 * 1.7)
 TH.tick()
 check(near(cv.jy, (10 + 6) * 1500 * 0.02 * 100, 1), "on the landing's curve at 2 m: g + its 6 m/s^2 braking, fed forward")
 abort()
+-- flying a parked car whose physics won't switch on (r2fe-sp-g, 3 of 3 such stayed down): the motor creeps it
+-- first, then it lifts and flies, the cruise back as it was
+cv.dz, cv.vy, cv.speed, cv.impulses, cv.reg, cv.regSpd = 0.075, 0, 0, 0, nil, nil
+function cv:isPhysicsActive() return self.awake == true end
+function cv:setPhysicsActive() end
+TH.ask(cp, cv, "fly")
+T.ClientCommands.thrustOk({ vid = cv:getId(), act = "fly", sec = 8 })
+check(TH.active().phase == "wake" and cv.reg == true and cv.regSpd == 3 and cv.impulses == 0,
+    "a parked car that won't wake: the motor's creep at 3 km/h, no thrust yet")
+TH.tick()
+check(TH.active().phase == "wake", "not awake yet: still creeping")
+cv.awake, cv.speed = true, 2
+TH.tick()
+check(TH.active().phase == "fly" and cv.reg == false and cv.regSpd == 0 and near(cv.dz, 0.115, 1e-9),
+    "awake and moving: the cruise back, lifted 0.04 floor, flying")
+abort()
+function cv:isPhysicsActive() return true end
+cv.setPhysicsActive, cv.awake = nil, nil
 getCore, getPlayerScreenHeight, getCell, cv.vy = savedCore, savedSH, savedCell, nil
 
 -- restore
