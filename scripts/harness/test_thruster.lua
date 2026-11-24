@@ -626,6 +626,19 @@ do
     done(helper, v, { act = "land", done = true, rest = true })
     wait(500)
 end
+do -- round3 T1d: a flight off a perch (another car's roof) that never rose: its holder says it at rest, not done
+    -- (client stop: THRUST_NO_LIFT): over where it is, nobody handed it
+    v.dz = 0.5
+    part:getModData().thr = { gas = 1, at = H.hours() }
+    v.npid = nil
+    local w = ask(p, v, "fly")
+    local s8 = #H.sent
+    wait(1000)
+    done(p, v, { act = "fly", done = false, sec = 0, rest = true })
+    wait(500)
+    check(w == "thrustOk" and entryOf(v) == nil and part:getModData().thr.busy == nil and not handedSince(s8),
+        "T1d: a flight off a perch that never rose, said at rest: over where it is, nobody handed it")
+end
 v.dz = 0
 v.npid = nil
 part:getModData().thr = { gas = 1, at = H.hours() }
@@ -1873,6 +1886,78 @@ do -- round3 T6: the driver's timed actions queued (eating, reading): the motor 
     check(f6 and f6.offAsked and q1.offs == offs0 + 1 and not cv.running, "T6: the queue empty mid-flight: asked off the next frame")
     if TH.active() then abort() end
     ISTimedActionQueue.queues[cp], cv.running = nil, true
+end
+do -- round3 T1d: at rest up on another car's roof 2.4 m up (r2f5-pf: flew off from there). A flight may take off from
+    -- there, its heights still from the ground (f.rest as on the ground, not measured up there: r2f5-pf's hg 3.62 and
+    -- the fall at -3.2 m/s); nothing else
+    local perch = 0.075 + 2.4 / TH.FLOOR
+    local function stepOn(n, sup)
+        for _ = 1, n do
+            if not TH.active() then return end
+            cv.jy = 0
+            TH.tick()
+            cv.vy = cv.vy + cv.jy / (1500 * 100) - 10 * 0.02
+            cv.dz = cv.dz + cv.vy * 0.02 / TH.FLOOR
+            if cv.dz < sup then cv.dz, cv.vy = sup, math.max(0, cv.vy) end
+        end
+    end
+    cv.dz, cv.vy, cv.speed = 0.075, 0, 0
+    TH.ask(cp, cv, "land")
+    okFor("land")
+    local r0 = TH.active() and TH.active().rest
+    abort()
+    cv.dz, cv.vy, cv.running = perch, 0, true
+    check(TH.check(cp, cv, "fly") == true, "T1d: at rest 2.4 m up on another car: a flight may take off")
+    cv.vy = -1
+    local okF, whyF = TH.check(cp, cv, "fly")
+    check(not okF and whyF == "THRUST_AIRBORNE", "T1d: as high, coming down at 1 m/s: not at rest, THRUST_AIRBORNE")
+    cv.vy = 0
+    local refused = 0
+    for _, a in ipairs({ "kickflip", "backflip", "boost" }) do
+        local okA, whyA = TH.check(cp, cv, a)
+        if not okA and whyA == "THRUST_AIRBORNE" then refused = refused + 1 end
+    end
+    check(refused == 3, "T1d: at rest up there, a stunt or boost: THRUST_AIRBORNE (" .. refused .. " of 3)")
+    local offs0 = q1.offs
+    TH.ask(cp, cv, "fly")
+    okFor("fly", { sec = 30 })
+    local fp = TH.active()
+    local h1 = hm()
+    check(fp and r0 and fp.rest == r0 and fp.st.hG and near(fp.st.hG, math.max(fc.flyH, math.min(fc.flyMaxH, h1 + 1)), 1e-6)
+        and fp.st.hG > fc.flyH + 0.4,
+        string.format("T1d: off it: its floors to the ground as on the ground (%s), hovering a metre over where it took off (%.2f m)",
+            tostring(fp and fp.rest), fp and fp.st.hG or -1))
+    stepOn(200, perch)
+    check(TH.active() and TH.active().phase == "fly" and math.abs(hm() - fp.st.hG) < 0.2,
+        string.format("T1d: 4 s on: at that height (%.2f m)", hm()))
+    fp.wantLand = true
+    local hEnd = 99
+    for _ = 1, 2000 do
+        if not TH.active() then break end
+        stepOn(1, 0.075) -- flown off the roof: the ground under it
+        hEnd = hm()
+    end
+    check(TH.active() == nil and hEnd < 0.1, string.format("T1d: landed off the roof: over at %.2f m (the ground's own height)", hEnd))
+    TH.ask(cp, cv, "land")
+    okFor("land")
+    check(TH.active() and TH.active().rest == r0, "T1d: the floors to the ground it knew are still the car's (RESTS not rewritten up there)")
+    abort()
+    -- off the perch, nothing lifts it (r2f5-pf's held fly key aside): after 1 s THRUST_NO_LIFT, and the server told it
+    -- is still at rest there (thrustEnd rest: ended where it is, no helper handed it)
+    cv.dz, cv.vy, cv.running = perch, 0, true
+    local n0 = #H.clientSent
+    TH.ask(cp, cv, "fly")
+    okFor("fly", { sec = 30 })
+    for _ = 1, 60 do if TH.active() then TH.tick() end end
+    local e
+    for i = #H.clientSent, n0 + 1, -1 do
+        if H.clientSent[i].command == "thrustEnd" then e = H.clientSent[i].args break end
+    end
+    check(TH.active() == nil and halo[#halo] == "IGUI_MinidoracatTesla_Deny_THRUST_NO_LIFT" and e and e.act == "fly"
+        and e.done == false and e.rest == true,
+        "T1d: off a perch, not up 0.3 m from it after 1 s: THRUST_NO_LIFT, said at rest (not done)")
+    cv.dz, cv.vy, cv.running = 0.075, 0, true
+    q1.offs = offs0
 end
 -- at rest up on another car (r2rest-mp-near2: isExitBlocked on both seats, no seat to switch to; nothing else may
 -- move it, THRUST_AIRBORNE): out anyway, as vanilla's onExitAux without its line check. On the ground, or a way out

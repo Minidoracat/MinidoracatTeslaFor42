@@ -121,6 +121,14 @@ local RESTS = {}
 -- (refused is not at rest: a late thrustEnd's THRUST_BUSY, then sliding down a wall slower than 2 m/s)
 local RESTED = {}
 local function heightOf(v, rest) return (v:getDebugZ() - groundZ(v) - rest) * FLOOR end
+-- at rest off the ground (another car's roof, an eave, a fence): over 0.4 m up and still. Read afresh each time (a
+-- game loaded with the car up there too). The engine never puts a car that high to rest (BaseVehicle.java:4370-4394,
+-- CarController.java:997-1029): its physics stay on, so it can fly off from there
+local function perched(v, c)
+    if heightOf(v, RESTS[v:getId()] or c.rest) <= 0.4 then return false end
+    local lv = v:getLinearVelocity(V3.lv)
+    return lv:x() ^ 2 + lv:y() ^ 2 + lv:z() ^ 2 < REST_V * REST_V
+end
 
 -- kickflip / backflip: what lies on the car's way, read once before take-off. Two kinds:
 -- * slowed or stopped at any height: an object with CarSlowFactor or HitByCar (a tree, a fence, a hedge, a pole). The
@@ -433,6 +441,9 @@ local function stop(done, ...)
     local why, abort, rest = ...
     local f = halt()
     if not f then return end
+    -- a take-off from a perch that never rose (THRUST_NO_LIFT): still up there at rest, as it was (the server ends it
+    -- where it is, no helper handed it)
+    if f.h0 and not f.lifted then rest = true end
     if rest then RESTED[f.vid] = true end
     -- glide: a flight's landing held at its height (f.brake) before it came down, the server bills it not (MP's air
     -- clock: server Thruster.lua finish); never at rest ends
@@ -472,7 +483,10 @@ local function beginRun(f)
         f.v0 = math.sqrt(lv:x() ^ 2 + lv:z() ^ 2)
         f.phase = "boost"
     elseif f.act == "fly" then
-        st.att, st.hT, st.hG, st.hv, st.ha, st.psiT = true, heightOf(v, f.rest), c.flyH, 0, 0, math.atan2(lz, lx)
+        -- from a perch (f.h0) a metre over where it took off at least, within the climb's top
+        local h = heightOf(v, f.rest)
+        st.att, st.hT, st.hG, st.hv, st.ha = true, h, math.max(c.flyH, math.min(c.flyMaxH, h + 1)), 0, 0
+        st.psiT = math.atan2(lz, lx)
         local lv = v:getLinearVelocity(V3.lv)
         st.vTx, st.vTz = lv:x(), lv:z()
         f.spd, f.phase = lv:x() * lx + lv:z() * lz, "fly"
@@ -541,8 +555,14 @@ local function start(player, v, act, sec, app, n, ...)
         f.rest, f.lifted = RESTS[vid] or c.rest, true
     else -- a boost or stunt leaves where it rested behind (r2rest-mp-r2 boostnearhold: still RESTED, it went over a
         -- roof's edge nose-first and the tilt branch let it fall at -5.9 m/s)
-        f.rest = clamp(v:getDebugZ() - groundZ(v), 0.02, 0.25)
-        RESTS[vid], RESTED[vid] = f.rest, nil
+        local h0 = heightOf(v, RESTS[vid] or c.rest)
+        if h0 > 0.4 then -- a flight off a perch (H.check): its floors to the ground as known, not measured up there
+            f.rest, f.h0 = RESTS[vid] or c.rest, h0
+        else
+            f.rest = clamp(v:getDebugZ() - groundZ(v), 0.02, 0.25)
+            RESTS[vid] = f.rest
+        end
+        RESTED[vid] = nil
     end
     F = f
     if app and not authority(v) then f.phase, f.ms0 = "wait", getTimestampMs() else go(f) end
@@ -621,7 +641,7 @@ function H.tick()
     local c = f.conf
     local hm = heightOf(v, f.rest)
     local vy = v:getLinearVelocity(V3.lv):y()
-    if hm > 0.3 then f.lifted = true end
+    if hm > (f.h0 or 0) + 0.3 then f.lifted = true end
     local st, ph, t = f.st, f.phase, f.t
     if ph == "wake" then -- moving under its own motor: awake (r2fe-sp-g, 3 km/h for 0.3 s)
         if v:isPhysicsActive() and v:getCurrentSpeedKmHour() > 1 then
@@ -870,7 +890,10 @@ function H.check(player, v, act, ...)
     if not app and not authority(v) then return false, "THRUST_AUTHORITY" end
     local c = H.conf(v)
     if act ~= "land" then
-        if heightOf(v, RESTS[v:getId()] or c.rest) > 0.4 then return false, "THRUST_AIRBORNE" end
+        -- a flight may take off from a perch; nothing else (a stunt's or boost's push needs the ground under it)
+        if heightOf(v, RESTS[v:getId()] or c.rest) > 0.4 and not (act == "fly" and perched(v, c)) then
+            return false, "THRUST_AIRBORNE"
+        end
         local kmh = v:getCurrentSpeedKmHour()
         if kmh < -1 then return false, "THRUST_REVERSE" end
         local max = SPEED_MAX[act]
