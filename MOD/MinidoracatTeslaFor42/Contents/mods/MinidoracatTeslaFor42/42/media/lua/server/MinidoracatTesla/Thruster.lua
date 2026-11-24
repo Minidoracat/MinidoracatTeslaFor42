@@ -159,6 +159,14 @@ local function stillAt(v, r)
     return getPlayerByOnlineID(r.by:getOnlineID()) == r.by and math.abs(v:getX() - r.x) < REST_DXY
         and math.abs(v:getY() - r.y) < REST_DXY and math.abs(v:getDebugZ() - r.z) * H.FLOOR < REST_DM
 end
+-- moved, but only as a car settles once its thrusters let go (r2scan-mp-r2 boostnearhold: leaning on a roof's wall,
+-- 0.20-0.27 tiles on and 0.26-0.30 m lower each look, three hand-backs to its own driver): looked at again from where
+-- it is now, up to SETTLE_N times; a car really in the air drops ~0.8 m in the server's copy by a look
+local SETTLE_DXY, SETTLE_DM, SETTLE_N = 0.4, 0.4, 4
+local function settling(v, r)
+    return (r.looks or 0) < SETTLE_N and getPlayerByOnlineID(r.by:getOnlineID()) == r.by and math.abs(v:getX() - r.x) < SETTLE_DXY
+        and math.abs(v:getY() - r.y) < SETTLE_DXY and math.abs(v:getDebugZ() - r.z) * H.FLOOR < SETTLE_DM
+end
 
 -- the clock every time here is on (ms): real time while the timer below runs, at most 250 ms a frame, never back.
 -- The wall clock (getTimestampMs, System.currentTimeMillis) set back or forward moves it one frame's worth at most,
@@ -320,8 +328,12 @@ d2 = function(v, p)
             finish(v, p, p.up == true)
             return T.log("thrust " .. p.act .. " ended at rest off the ground vid=" .. v:getId())
         end
-        T.log(string.format("thrust %s said at rest but moved vid=%d dx=%.3f dy=%.3f dm=%.3f online=%s", p.act, v:getId(),
-            v:getX() - r.x, v:getY() - r.y, (v:getDebugZ() - r.z) * H.FLOOR, tostring(getPlayerByOnlineID(r.by:getOnlineID()) == r.by)))
+        T.log(string.format("thrust %s said at rest but moved vid=%d dx=%.3f dy=%.3f dm=%.3f online=%s look=%d", p.act, v:getId(),
+            v:getX() - r.x, v:getY() - r.y, (v:getDebugZ() - r.z) * H.FLOOR, tostring(getPlayerByOnlineID(r.by:getOnlineID()) == r.by), r.looks or 0))
+        if settling(v, r) then
+            p.rest = { x = v:getX(), y = v:getY(), z = v:getDebugZ(), by = r.by, ms = r.ms, looks = (r.looks or 0) + 1 }
+            return schedule(p, ABORT_MS, d2)
+        end
     end
     if not isServer() or not airborne(v) then -- SP: this machine is the holder
         local done = p.up == true

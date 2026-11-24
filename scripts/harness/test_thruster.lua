@@ -581,6 +581,35 @@ done(p, v, { act = "land", done = true, rest = true })
 v.dz = 0.5 + 0.15 / 2.44949
 wait(500)
 check(entryOf(v) == nil and not handedSince(sr), "R5: 0.15 m off ABORT_MS later (the server's copy settling): over where it is")
+do
+    -- R6: still sliding when the thrusters let go (r2scan-mp-r2 boostnearhold: leaning on the roof's wall after a
+    -- boost off its edge, the server's copy 0.20-0.27 tiles on and 0.26-0.30 m lower each look; three hand-backs to its
+    -- own driver, then left in the air): a slide that small is the car settling, looked at again from where it is now
+    local y0 = v.y
+    v.dz = 0.5
+    restAsk()
+    local s6 = #H.sent
+    done(p, v, { act = "land", done = true, rest = true })
+    v.y, v.dz = y0 + 0.25, 0.5 - 0.27 / 2.44949
+    wait(500)
+    check(entryOf(v) ~= nil and not handedSince(s6), "R6: 0.25 tiles on, 0.27 m lower ABORT_MS later: still settling, looked at again, nobody handed it")
+    wait(500)
+    check(entryOf(v) == nil and not handedSince(s6) and part:getModData().thr.busy == nil,
+        "R6: still there at the next look: over where it is, nobody handed it")
+    -- R7: a slide that never stops is not a rest: handed on as before after a few looks
+    restAsk()
+    s6 = #H.sent
+    done(p, v, { act = "land", done = true, rest = true })
+    for _ = 1, 6 do
+        v.y = v.y + 0.25
+        wait(500)
+    end
+    pe = entryOf(v)
+    check(pe and pe.helper == helper and handedSince(s6), "R7: still sliding look after look: handed to the nearest as before")
+    v.y = y0
+    done(helper, v, { act = "land", done = true, rest = true })
+    wait(500)
+end
 v.dz = 0
 v.npid = nil
 part:getModData().thr = { gas = 1, at = H.hours() }
