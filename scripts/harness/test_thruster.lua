@@ -1545,6 +1545,18 @@ local upHeld = false
 TH.KEYS.up = { getValue = function() return 201 end }
 isKeyDown = function(k) return k == 201 and upHeld end
 cv.dz, cv.vy, cv.speed, zoom = 0.075, 0, 0, 1
+-- Q1 (oracle-flight2): vanilla's shut-off / start actions (ISVehicleMenu.lua:1164,1176) and the car's heater, on at 22
+local q1 = { offs = 0, starts = 0 }
+ISVehicleMenu.onShutOff = function(p) if p == cp then q1.offs = q1.offs + 1; cv.running = false end end
+ISVehicleMenu.onStartEngine = function(p) if p == cp then q1.starts = q1.starts + 1 end end
+cv.parts.Heater = { md = { active = true, temperature = 22 }, getModData = function(s) return s.md end }
+cv.running = true
+function q1.heater()
+    for i = #H.clientSent, 1, -1 do
+        local m = H.clientSent[i]
+        if m.module == "vehicle" and m.command == "toggleHeater" then return m.args end
+    end
+end
 TH.ask(cp, cv, "fly")
 okFor("fly", { sec = 30 })
 local function hm() return (cv.dz - 0.075) * TH.FLOOR end
@@ -1576,6 +1588,9 @@ do -- Q1 guard (oracle-flight2): the motor asked off in flight, vanilla's auto-s
     local fo, brakes = TH.active(), 0
     function cv:setForceBrake() brakes = brakes + 1 end
     local bp = T.Battery.part(cv)
+    check(fo.offAsked and q1.offs == 1 and not cv.running and fo.heat == 22 and fo.offSeen ~= nil,
+        "Q1: up past 0.6 m: the motor shut off once (vanilla's action), seen off, the heater's 22 noted")
+    fo.offAsked = nil
     check(T.CheckOperate.Battery(cv, bp) == true and brakes == 0, "Q1 guard: flying, the motor not asked off: input live")
     fo.offAsked, cv.reg = true, true
     local r1 = T.CheckOperate.Battery(cv, bp)
@@ -1586,7 +1601,7 @@ do -- Q1 guard (oracle-flight2): the motor asked off in flight, vanilla's auto-s
     check(T.CheckOperate.Battery({}, bp) == true, "Q1 guard: another car: untouched")
     fo.sink = true
     check(T.CheckOperate.Battery(cv, bp) == true, "Q1 guard: coming down: released")
-    fo.offAsked, fo.sink, fo.snap, cv.setForceBrake = nil, nil, nil, nil
+    fo.sink, fo.snap, cv.setForceBrake = nil, nil, nil
 end
 -- a controller's player flies with it as vanilla drives (CarController.java:958-967): RT ahead, LT back, the left
 -- stick steers; the right stick sets the height (pushed up: negative, PlayerCamera.java:148). A stick resting a little
@@ -1659,31 +1674,40 @@ check(fa.phase == "land" and fa.brake and near(fa.st.rh, brakeH, 0.05) and fa.st
     and near(math.sqrt(fa.st.vTx ^ 2 + fa.st.vTz ^ 2), 3, 1e-6), "time to land at 10 m/s: held at its height, slowing to 3 m/s ahead")
 ISVehicleMenu.onExit(cp, 0)
 check(fa.phase == "land" and exits == ex0 and halo[#halo] == "IGUI_MinidoracatTesla_Deny_THRUST_IN_AIR", "landing: no getting out yet")
+check(q1.starts == 0, "Q1: stopping at its height: the motor still off")
 cv.speed = 10
+H.advanceMs(2300)
 step(1)
 check(fa.phase == "land" and not fa.brake and fa.sink and fa.st.vTx == 0 and fa.st.vTz == 0,
     "... down to 2.8 m/s over open ground: coming down, stopping")
+q1.hs = q1.heater()
+check(q1.starts == 1 and q1.hs and q1.hs.on == true and q1.hs.temp == 22, "Q1: coming down 2.3 s after the motor went off: started once, the heater back on at 22")
+step(5)
+check(q1.starts == 1, "Q1: still off a moment later: not tried again")
 abort()
 do -- something under it (a fence, a hedge): glides on; after GLIDE_S down all the same
     local blocked = { getProperties = function() return { has = function(_, k) return k == "HitByCar" end } end }
     local fence = setmetatable({ getObjects = function() return { size = function() return 1 end, get = function() return blocked end } end },
         { __index = ground })
     local cellOpen = getCell
-    cv.dz, cv.vy, cv.speed = 0.075, 0, 0
+    cv.dz, cv.vy, cv.speed, cv.running = 0.075, 0, 0, true
     TH.ask(cp, cv, "fly")
     okFor("fly", { sec = 30 })
     step(150)
     getCell = function() return { getGridSquare = function(_, x, y, z) return z == 0 and fence or nil end } end
     local fb = TH.active()
     fb.wantLand, cv.speed = true, 10
+    check(q1.offs == 2, "Q1: the second flight's motor shut off too")
     step(1)
     check(fb.phase == "land" and fb.brake and not fb.sink, "time to land at 2.8 m/s over a fence: gliding on, not down")
     step(150)
     check(fb.brake and not fb.sink, "... 3 s over it: still gliding")
     step(60)
     check(not fb.brake and fb.sink, "... past GLIDE_S 4 s: down all the same")
+    check(q1.starts == 1, "Q1: coming down under 2.2 s (the wall clock) after the motor went off: not started (W or the power key will)")
     getCell = cellOpen
     abort()
+    cv.running, cv.parts.Heater = true, nil -- the fakes' shut-off left it off
 end
 -- at rest up on another car (r2rest-mp-near2: isExitBlocked on both seats, no seat to switch to; nothing else may
 -- move it, THRUST_AIRBORNE): out anyway, as vanilla's onExitAux without its line check. On the ground, or a way out

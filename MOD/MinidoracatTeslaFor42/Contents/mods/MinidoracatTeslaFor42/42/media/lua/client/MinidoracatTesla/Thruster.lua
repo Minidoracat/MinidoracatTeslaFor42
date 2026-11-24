@@ -58,6 +58,8 @@ local SLIDE_V, LIFT_DH, SLIDE_D, SLIDE_S = 2, 0.8, 3, 4
 -- a flight's landing stops at its height first (r2scan-sp-obst2 fenceland: down at its flying speed onto a fence,
 -- turned over): GLIDE_V m/s ahead while anything under it would catch it (landClear), down after GLIDE_S s at most
 local GLIDE_V, GLIDE_S = 3, 4
+-- a flight's motor off above OFF_H m (its wheels clear), started START_MS ms after it was seen off at the earliest
+local OFF_H, START_MS = 0.6, 2200
 local WAKE_KMH = 3               -- the motor's creep that wakes a parked car before it flies (go)
 -- the real seconds one frame may count toward the flight's limit: a pause (no OnTick) is not flown time
 local REAL_MAX = 0.25
@@ -557,6 +559,17 @@ local function boostOver(f, v)
     stop(f.lifted)
 end
 
+-- a flight's motor, shut off at OFF_H m (fly), started again as its landing comes down: once, by the vanilla start
+-- (ISVehicleMenu.onStartEngine, the HUD's power key's way: every kind of key), START_MS after it was seen off
+-- (ShuttingDown lasts 2 s, tryStartEngine acts only from Idle: BaseVehicle.java:7611-7653). Not tried again (each
+-- try costs the 12V 0.025); the heater back on if it was (vanilla toggleHeater, VehicleCommands.lua:59-71)
+local function startBack(f, v, now)
+    if not f.offAsked or f.started or not f.offSeen or now - f.offSeen < START_MS or v:isEngineRunning() then return end
+    f.started = true
+    ISVehicleMenu.onStartEngine(f.player)
+    if f.heat then sendClientCommand(f.player, "vehicle", "toggleHeater", { on = true, temp = f.heat }) end
+end
+
 -- each frame while an action runs
 function H.tick()
     local f = F
@@ -578,6 +591,7 @@ function H.tick()
     local now = getTimestampMs()
     local real = math.min(REAL_MAX, math.max(0, (now - (f.ms or now)) / 1000))
     f.ms = now
+    if f.offAsked and not f.offSeen and not v:isEngineRunning() then f.offSeen = now end -- ShuttingDown from here
     local dt = math.min(DT_MAX, math.max(0, getGameTime():getPhysicsSecondsSinceLastUpdate()))
     if dt <= 0 then return end -- paused
     if not v:isPhysicsActive() then v:setPhysicsActive(true) end -- a sleeping body takes no impulse (PoC r2)
@@ -649,6 +663,14 @@ function H.tick()
             f.brake, f.brakeH, f.gdx, f.gdz, f.cx, f.cy, f.clear = true, hm, math.cos(psi), math.sin(psi), nil, nil, nil
         else
             f.flown = f.flown + real
+            -- the motor off once the wheels are clear (oracle-flight2 Q1): a running motor's car hits what it flies
+            -- through (r2scan: zombies lying under it held it 21.6 s); started again as it comes down (startBack)
+            if not f.offAsked and hm > OFF_H and v:isEngineRunning() then
+                local h = v:getPartById("Heater")
+                local hd = h and h:getModData()
+                f.offAsked, f.heat = true, hd and hd.active and tonumber(hd.temperature) or nil
+                ISVehicleMenu.onShutOff(f.player) -- vanilla's 0 s action: vehicle:shutOff() on the server
+            end
             -- a controller's player (BaseVehicle.java:4661-4668): as vanilla drives (CarController.java:958-967), the
             -- right stick for the height (pushed up: negative, PlayerCamera.java:148); with RB held it looks around
             -- instead (PlayerCamera.java:144-146)
@@ -722,6 +744,7 @@ function H.tick()
                 return drive(f, v, dt, hm)
             end
             f.brake, f.sink, st.vTx, st.vTz = nil, true, 0, 0 -- coming down now, stopping where it is
+            startBack(f, v, now)
         end
         local s = f.slide
         if s then -- lifted clear of what held it and carried the way it leans; then down again
