@@ -202,6 +202,7 @@ local VM_CODES = {
     charge = { "FUEL" },
     summon = { "DRIVE" }, -- the car moves: the right to drive it (VehicleManager also wraps startSummon itself)
     powershare = { "FUEL" }, outlet = { "FUEL" }, psFloor = { "FUEL" }, -- the charge cable's right (T.mayUseCable)
+    kickflip = { "DRIVE" }, backflip = { "DRIVE" }, -- the show starts the motor and flies the car: the right to drive it
 }
 
 -- ------------------------------------------------------------------ horn: vanilla, one second
@@ -448,6 +449,9 @@ local ACT = {
         return swing("SoftTop")(player, v, open)
     end,
     summon = summon,
+    -- Roadster thrusters (Specs thruster): the empty car's stunt, flown by the caller's machine (Thruster.lua H.appShow)
+    kickflip = function(player, v, _, args) return T.Thruster.appShow(player, v, "kickflip", args.key) end,
+    backflip = function(player, v, _, args) return T.Thruster.appShow(player, v, "backflip", args.key) end,
 }
 
 -- ------------------------------------------------------------------ commands

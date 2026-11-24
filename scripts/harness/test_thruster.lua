@@ -1,9 +1,11 @@
 -- Thrusters (Roadster Rocket; shared/server/client Thruster.lua): the server approves and bills the air tank, refills
 -- it from the pack (never under the 12V floor off a charger), refunds what never took off, caps a flight's bill by the
--- time that passed, ends what the driver's machine never ended (its one-shot timer gone after), and only the approved
--- driver ends an action. The client: a late or unasked approval gives the air back, an approved action runs on its
--- OnTick and ends with thrustEnd when the driver is gone, and no getting out while it runs. The flying itself: real-game
--- E2E (thruster-sp / thruster-mp). Tested on the Model S with `thruster = {}` put in its Specs here only.
+-- time that passed, and only who flies it ends an action. No watchdog: due checks on a one-shot timer (gone after) -
+-- D2 hands a car left in the air to the nearest other player (thrustLand), or leaves it to the first who comes near;
+-- D3 ends it. The phone app's show: its checks, the motor started (3 tries), the caller's machine given the physics,
+-- D1 refunds what never lifted. The client: a late or unasked approval gives the air back, an approved action runs on
+-- its OnTick and ends with thrustEnd when the driver is gone, and no getting out while it runs. The flying itself:
+-- real-game E2E (thruster-sp / thruster-mp). Tested on the Model S with `thruster = {}` put in its Specs here only.
 local check, near = H.check, H.near
 local T = MinidoracatTesla
 local B = T.Battery
@@ -39,7 +41,10 @@ local function car(o)
     local part = v:getPartById("GasTank")
     if part:getInventoryItem() then part:setContainerContentAmount(B.capacity(part) * (o.pct or 80) / 100) end
     function v:getVehicleTowing() return self.towing end
-    function v:authorizationServerCollide(id, localCollide) self.collide = { id, localCollide } end
+    function v:getDebugZ() return self.dz or 0 end
+    function v:authorizationChanged(q) self.npid = q and q:getOnlineID() or -1 end
+    function v:tryStartEngine() self.starts = (self.starts or 0) + 1; if self.startsOk then self.running = true end end
+    function v:engineDoShuttingDown() self.running, self.shut = false, (self.shut or 0) + 1 end
     local p = H.player({ name = "pilot" .. v.id, x = v.x, y = v.y })
     v.driver, p.vehicle = p, v
     return v, p, part
@@ -151,30 +156,105 @@ what = ask(p, v, "land")
 check(what == "thrustOk" and near(gas(part), 0), "the soft landing is never refused for air; it takes what is left")
 cmds.thrustEnd(p, { vid = v:getId(), done = true })
 
-H.section("thrusters: expiry")
+H.section("thrusters: due checks (D2, D3)")
 part:getModData().thr.gas = 1
 ask(p, v, "kickflip")
-v.driver = nil
 local helper = H.player({ name = "near", x = v.x + 5, y = v.y })
 local far = H.player({ name = "far", x = v.x + 100, y = v.y })
-online = { far, helper }
-H.advanceMs(14999)
+online = { far, p, helper }
+H.advanceMs(8799)
 timer()
-check(TH.pending[v:getId()] ~= nil, "before the deadline: still pending")
-ticks = H.count("OnTick")
+check(TH.pending[v:getId()] ~= nil, "before D2 (roll-up 3 s + profile 3.8 s + 2 s): still pending")
+v.dz = 1 -- still up
 H.advanceMs(1)
 timer()
-check(TH.pending[v:getId()] == nil and part:getModData().thr.busy == nil and near(gas(part), 0),
-    "never ended: the server ends it at its deadline (billed: it may have flown)")
-check(v.collide and v.collide[1] == helper:getOnlineID() and v.collide[2] == true,
-    "driverless: the nearest player's machine takes the car's physics (LocalCollide) so it falls")
+local pe = TH.pending[v:getId()]
+check(pe and pe.helper == helper and v.npid == helper:getOnlineID() and last().command == "thrustLand"
+    and last().player == helper, "D2, still up: the nearest other player (not the driver, not 100 tiles off) lands it")
+cmds.thrustEnd(p, { vid = v:getId(), done = true })
+check(TH.pending[v:getId()] ~= nil, "the driver's late thrustEnd: ignored, the helper has it")
+ticks = H.count("OnTick")
+H.advanceMs(6000)
+timer()
+check(TH.pending[v:getId()] == nil and part:getModData().thr.busy == nil and near(gas(part), 0) and v.npid == p:getOnlineID(),
+    "D3: over, billed; the physics back to the server, then to the driver still seated")
 check(H.count("OnTick") == ticks - 1, "and the timer is gone")
-v.driver = p
+v.npid = nil
+-- the helper's own end; nobody near at D2: the server holds it and the first who comes near gets it
+part:getModData().thr.gas = 1
+ask(p, v, "backflip")
+v.dz = 0
+H.advanceMs(7800)
+timer()
+check(TH.pending[v:getId()] == nil and near(gas(part), 0), "D2 on the ground: over, billed")
+ask(p, v, "land")
+v.driver, online = nil, { far }
+H.advanceMs(17000)
+timer()
+check(TH.pending[v:getId()].orphan and part:getModData().thr.busy.orphan and v.npid == -1,
+    "D2 with nobody within 70 tiles: the server holds it, the busy flag says so")
+online = { far, helper }
+TH.onUpdate(v, part)
+check(TH.pending[v:getId()].helper == helper and v.npid == helper:getOnlineID(), "someone comes near: theirs to land")
+cmds.thrustEnd(helper, { vid = v:getId(), done = true })
+check(TH.pending[v:getId()] == nil and part:getModData().thr.busy == nil and v.npid == -1,
+    "the helper's thrustEnd ends it; the physics back to the server")
+timer()
+v.driver, v.npid = p, nil
 -- a busy flag with no pending entry (the server restarted mid-action): cleared on the next request
 part:getModData().thr = { gas = 1, at = H.hours(), busy = { act = "fly", by = "x", t = 0 } }
 check(ask(p, v, "boost") == "thrustOk", "a stale busy flag (server restart) does not lock the car")
 cmds.thrustEnd(p, { vid = v:getId(), done = true })
 timer()
+
+H.section("thrusters: the phone app's show")
+local function show(pl, act)
+    local n = #H.sent
+    local why = TH.appShow(pl, v, act, 7)
+    return why, #H.sent > n and last() or nil
+end
+local caller = H.player({ name = "caller", x = v.x + 10, y = v.y })
+online = { caller, helper }
+part:getModData().thr = { gas = 1, at = H.hours() }
+check(show(caller, "fly") == "THRUST_NONE", "only kickflip and backflip are shows")
+check(show(p, "kickflip") == "NOT_OUTSIDE", "the caller in a car: NOT_OUTSIDE")
+check(show(caller, "kickflip") == "OCCUPIED", "someone in the driver's seat: OCCUPIED")
+v.driver, p.vehicle = nil, nil
+local away = H.player({ name = "away", x = v.x + 31, y = v.y })
+check(show(away, "kickflip") == "TOO_FAR", "over 30 tiles off: TOO_FAR")
+v.npid = 99
+check(show(caller, "kickflip") == "THRUST_BUSY", "another machine holds the car: THRUST_BUSY")
+v.npid = nil
+v.running, v.startsOk, v.dz, v.shut = false, false, 0, 0
+local why, s = show(caller, "kickflip")
+check(why == nil and s == nil and v.starts == 1 and near(gas(part), 0) and part:getModData().thr.busy.app
+    and part:getModData().thr.busy.eng, "motor off: billed, busy (app, eng), the motor asked to start")
+H.advanceMs(2000) timer()
+H.advanceMs(2000) timer()
+check(v.starts == 3 and TH.pending[v:getId()] ~= nil, "not started: tried again every 2 s")
+H.advanceMs(2000) timer()
+check(TH.pending[v:getId()] == nil and near(gas(part), 1) and last().command == "appDone" and last().args.why == "CANT_START"
+    and last().args.key == 7 and v:getNetPlayerId() == -1, "3 tries: the air back, CANT_START to the caller's app")
+v.startsOk, v.starts = true, 0
+why = show(caller, "kickflip")
+H.advanceMs(2000) timer()
+s = last()
+check(why == nil and v.running and v.npid == caller:getOnlineID() and s.command == "thrustOk" and s.args.app
+    and s.player == caller, "started: the caller's machine gets the physics and flies it")
+H.advanceMs(2500) timer()
+check(TH.pending[v:getId()] == nil and near(gas(part), 1) and last().args.why == "THRUST_NO_LIFT" and v.npid == -1
+    and v.shut == 1 and part:getModData().thr.busy == nil,
+    "D1, never off the ground: the air back, the physics back, the motor the server started off")
+show(caller, "backflip")
+H.advanceMs(2000) timer()
+v.dz = 1
+H.advanceMs(2500) timer()
+check(TH.pending[v:getId()] ~= nil, "D1 up in the air: carries on")
+cmds.thrustEnd(caller, { vid = v:getId(), done = true })
+check(TH.pending[v:getId()] == nil and near(gas(part), 0) and v.npid == -1 and not v.running,
+    "the caller's end: billed, physics and motor back as they were")
+timer()
+v.driver, p.vehicle, v.running, v.dz, v.npid = p, v, true, 0, nil
 
 H.section("thrusters: client")
 H.side(true, false)
@@ -235,6 +315,20 @@ check(TH.active() == nil and H.count("OnTick") == ticks and e.command == "thrust
     "driver gone before it sped up: ended, not done, its OnTick removed")
 ISVehicleMenu.onExit(cp, 0)
 check(exits == 1, "getting out works again")
+-- the show: waits for the car's physics, then rolls up on its thrusters after a 0.04-floor lift; anyone sitting in ends it
+cv.driver, cp.vehicle, cv.speed, cv.local_, cv.dz = nil, nil, 0, false, 0.075
+function cv:setDebugZ(z) self.dz = z end
+T.ClientCommands.thrustOk({ vid = cv:getId(), act = "kickflip", app = true })
+check(TH.active() and TH.active().phase == "wait" and TH.active().app == "show", "the show: waits for the car's physics")
+cv.local_ = true
+TH.tick()
+check(TH.active().phase == "roll" and near(cv.dz, 0.115, 1e-9), "the physics here: lifted 0.04 floor, rolling up")
+cv.driver = cp
+sent = #H.clientSent
+TH.tick()
+e = H.clientSent[#H.clientSent]
+check(TH.active() == nil and #H.clientSent == sent + 1 and e.command == "thrustEnd" and e.args.done == false,
+    "someone sits in mid-show: ended, the air back")
 
 -- restore
 H.side(false, true)

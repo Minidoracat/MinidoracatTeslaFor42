@@ -1,7 +1,8 @@
 -- Thrusters (Roadster Rocket, Specs `thruster`): constants, sandbox readers, the air tank, and the preconditions both
--- sides check (T.Thruster.can). The server approves and bills (server Thruster.lua), the driver's machine flies the car
--- (client Thruster.lua). Design and sources: .claude/skills/tesla-dev/references/roadster2.md.
--- Air tank: battery part modData `thr = { gas = 0-1, at = world hours of the last settle, busy = { act, by, t } }`,
+-- sides check (T.Thruster.can). The server approves and bills (server Thruster.lua), the machine holding the car's
+-- physics flies it (client Thruster.lua). Design and sources: .claude/skills/tesla-dev/references/roadster2.md.
+-- Air tank: battery part modData `thr = { gas = 0-1, at = world hours of the last settle, busy = { act, by, t, app =
+-- the phone app's show, eng = the server started the motor for it, orphan = left in the air with nobody near } }`,
 -- written by the server only. A stunt costs a full tank, boost and the soft landing a third, flying 1/FlightSeconds a
 -- second; the tank refills from the pack in ThrusterRefillMinutes game minutes for ThrusterRefillKwh.
 require "MinidoracatTesla/Core"
@@ -11,6 +12,9 @@ local H = T.Thruster or {}
 T.Thruster = H
 
 H.ACTS = { kickflip = true, backflip = true, boost = true, land = true, fly = true }
+H.APP = { kickflip = true, backflip = true } -- the phone app's show: the empty car, the caller outside
+H.APP_RANGE = 30  -- tiles from the caller: the car must be loaded on his game, which flies it (poc/APP.md)
+H.HELP_RANGE = 70 -- tiles: who takes over a car left in the air (server Thruster.lua)
 H.FLOOR = 2.44949 -- metres per floor: physics y / getDebugZ (flight PoC r1, BaseVehicle.java:4207)
 
 -- per-car values; a car's Specs `thruster` table overrides any of them (Specs `thruster = {}`: all defaults)
@@ -83,12 +87,19 @@ function H.minutesToFull(gas) return math.ceil((1 - clamp(gas, 0, 1)) * H.refill
 
 -- What refuses `act` for `player` in `vehicle`, both sides: true, or false and a deny reason
 -- (IGUI_MinidoracatTesla_Deny_<reason>). The client adds what only it can see (speed, room around, physics
--- authority: client Thruster.lua); the server bills (server Thruster.lua).
-function H.can(player, vehicle, act)
-    if not H.ACTS[act] or not H.conf(vehicle) then return false, "THRUST_NONE" end
+-- authority: client Thruster.lua); the server bills (server Thruster.lua). app: the phone app's show (H.APP), the
+-- caller outside and the car empty; the server starts the motor itself.
+function H.can(player, vehicle, act, app)
+    if not H.ACTS[act] or not H.conf(vehicle) or (app and not H.APP[act]) then return false, "THRUST_NONE" end
     if not H.enabled() then return false, "THRUST_OFF" end
-    if not vehicle:isDriver(player) then return false, "NOT_DRIVER" end
-    if not vehicle:isEngineRunning() then return false, "THRUST_ENGINE" end
+    if app then
+        if player:getVehicle() then return false, "NOT_OUTSIDE" end
+        if vehicle:getDriver() then return false, "OCCUPIED" end -- the Roadster has one seat
+        if player:DistTo(vehicle) > H.APP_RANGE then return false, "TOO_FAR" end
+    else
+        if not vehicle:isDriver(player) then return false, "NOT_DRIVER" end
+        if not vehicle:isEngineRunning() then return false, "THRUST_ENGINE" end
+    end
     if vehicle:getVehicleTowedBy() or vehicle:getVehicleTowing() then return false, "TOWED" end
     local part = T.Battery.part(vehicle)
     if not part or not part:getInventoryItem() then return false, "NO_PACK" end
@@ -98,6 +109,8 @@ function H.can(player, vehicle, act)
     if why then return false, why end
     local thr = md.thr
     if type(thr) == "table" and thr.busy then return false, "THRUST_BUSY" end
+    -- someone else's game holds the car (a summon, another show, a driver): poc/APP.md step 1
+    if app and vehicle:getNetPlayerId() ~= -1 then return false, "THRUST_BUSY" end
     if H.gasNow(thr, T.hours()) + 1e-9 < H.need(act) then return false, "THRUST_NO_AIR" end
     return true
 end

@@ -316,10 +316,6 @@ local function stop(done, why)
     F = nil
     Events.OnTick.Remove(H.tick)
     if not f then return end
-    if f.phase == "roll" then
-        f.v:setRegulator(f.reg0 == true)
-        f.v:setRegulatorSpeed(f.regSpd0)
-    end
     for _ = 1, f.zoom or 0 do getCore():doZoomScroll(f.player:getPlayerNum(), -1) end
     T.request(f.player, "thrustEnd", { vid = f.vid, act = f.act, done = done == true, sec = f.flown })
     if why then HaloTextHelper.addBadText(f.player, T.denyText(why)) end
@@ -365,10 +361,27 @@ local function beginRun(f)
     end
 end
 
-local function start(player, v, act, sec)
+-- the car moving along its nose: a parked car may ignore addImpulse until it moves (flight PoC r18: 19 % of new cars),
+-- so it rolls up to conf.rollKmh first, pushed by the thrusters (poc/APP.md: a = 14.4 + 3.6 e + 2 integral e, 0-36
+-- m/s2, after a 0.04-floor lift off its wheels; an empty car's park brake holds it each update, BaseVehicle.java:
+-- 3398-3400). The driver's car rolls the same way.
+local function beginRoll(f)
+    local v, st = f.v, newState("lo")
+    st.pdx, st.pdz = levelHeading(v)
+    st.pushA, st.pushV = 0, math.huge
+    f.st, f.phase, f.t = st, "roll", 0
+    v:setDebugZ(v:getDebugZ() + 0.04) -- a teleport (BaseVehicle.java:4161-4168): off the ground 8/8 (poc/APP.md)
+end
+local function go(f)
+    if f.act ~= "land" and f.v:getCurrentSpeedKmHour() < f.conf.rollKmh then beginRoll(f) else beginRun(f) end
+end
+
+-- app: "show" = the phone app's show (the caller outside, the car empty), "help" = landing a car the server handed to
+-- this machine (server Thruster.lua handOver); both wait for the car's physics to arrive here first
+local function start(player, v, act, sec, app)
     local c = H.conf(v)
     local vid = v:getId()
-    local f = { player = player, v = v, vid = vid, act = act, conf = c, sec = sec, t = 0, flown = 0,
+    local f = { player = player, v = v, vid = vid, act = act, conf = c, sec = sec, t = 0, flown = 0, app = app,
         bank = { jx = 0, jy = 0, jz = 0, lx = 0, ly = 0, lz = 0, lastTq = false } }
     if act == "land" then
         f.rest, f.lifted = RESTS[vid] or c.rest, true
@@ -377,14 +390,7 @@ local function start(player, v, act, sec)
         RESTS[vid] = f.rest
     end
     F = f
-    if act ~= "land" and v:getCurrentSpeedKmHour() < c.rollKmh then
-        -- a parked car may ignore addImpulse until it moves (flight PoC r18: 19 % of new cars; 17/17 from 6 km/h)
-        f.phase, f.reg0, f.regSpd0 = "roll", v:isRegulator(), v:getRegulatorSpeed()
-        v:setRegulatorSpeed(c.rollKmh + 2)
-        v:setRegulator(true)
-    else
-        beginRun(f)
-    end
+    if app and not authority(v) then f.phase, f.ms0 = "wait", getTimestampMs() else go(f) end
     Events.OnTick.Add(H.tick)
 end
 
@@ -396,7 +402,15 @@ function H.tick()
     local f = F
     if not f then return Events.OnTick.Remove(H.tick) end
     local v = f.v
-    if v:getDriver() ~= f.player or not authority(v) then return stop(f.lifted) end
+    if f.phase == "wait" then -- the server handed the physics over: here within about 0.1 s (poc/APP.md)
+        if authority(v) then go(f)
+        elseif getTimestampMs() - f.ms0 > 2000 then return stop(false) end -- the server's D1 (2.5 s) would end it too
+        return
+    end
+    -- someone took the driver's seat (the show: anyone; the helper lands it whoever sits there), or the physics left
+    if (f.app == "show" and v:getDriver() ~= nil) or (not f.app and v:getDriver() ~= f.player) or not authority(v) then
+        return stop(f.lifted)
+    end
     local dt = math.min(DT_MAX, math.max(0, getGameTime():getPhysicsSecondsSinceLastUpdate()))
     if dt <= 0 then return end -- paused
     if not v:isPhysicsActive() then v:setPhysicsActive(true) end -- a sleeping body takes no impulse (PoC r2)
@@ -407,14 +421,13 @@ function H.tick()
     if hm > 0.3 then f.lifted = true end
     local st, ph, t = f.st, f.phase, f.t
     if ph == "roll" then
-        if v:getCurrentSpeedKmHour() >= c.rollKmh then
-            v:setRegulator(f.reg0 == true)
-            v:setRegulatorSpeed(f.regSpd0)
-            beginRun(f)
-        elseif t > ROLL_S then
-            stop(false, "THRUST_NO_LIFT")
-        end
-        return
+        local lv = v:getLinearVelocity(V3.lv)
+        local along = lv:x() * st.pdx + lv:z() * st.pdz
+        if along * 3.6 >= c.rollKmh then return beginRun(f) end
+        if t > ROLL_S then return stop(false, "THRUST_NO_LIFT") end
+        local e = c.rollKmh / 3.6 - along
+        st.ie = st.ie + e * dt
+        st.pushA = clamp(14.4 + 3.6 * e + 2 * st.ie, 0, 36)
     elseif ph == "stunt" then
         local P = f.P
         local h, hd, hdd
@@ -475,13 +488,14 @@ function H.tick()
 end
 
 -- ---- asking ----
--- the client's side of the rules: H.can plus what only the driver's machine sees
+-- the client's side of the rules: H.can plus what only this machine sees. app: the phone app's show (PhoneApp.lua
+-- asks before sending; the server gives this machine the physics only once it approves)
 local SPEED_MAX = { kickflip = "kickMaxKmh", backflip = "flipMaxKmh", boost = "boostMaxKmh" }
-function H.check(player, v, act)
+function H.check(player, v, act, app)
     if F then return false, "THRUST_BUSY" end
-    local ok, why = H.can(player, v, act)
+    local ok, why = H.can(player, v, act, app)
     if not ok then return false, why end
-    if not authority(v) then return false, "THRUST_AUTHORITY" end
+    if not app and not authority(v) then return false, "THRUST_AUTHORITY" end
     local c = H.conf(v)
     if act ~= "land" then
         if heightOf(v, RESTS[v:getId()] or c.rest) > 0.4 then return false, "THRUST_AIRBORNE" end
@@ -525,6 +539,7 @@ function H.ask(player, v, act)
     return true
 end
 
+-- app: the phone app's show, this machine's player called it (server Thruster.lua go: the physics is on its way)
 T.ClientCommands.thrustOk = function(args)
     local a = asked
     local f = F
@@ -532,6 +547,12 @@ T.ClientCommands.thrustOk = function(args)
     if args.act == "land" and f and f.vid == args.vid and f.act == "land" then return end -- already landing
     local v = getVehicleById(args.vid)
     local player = a and a.player or getSpecificPlayer(0)
+    if args.app then
+        if f or not v or v:getDriver() then
+            return T.request(player, "thrustEnd", { vid = args.vid, act = args.act, done = false, sec = 0 })
+        end
+        return start(player, v, args.act, nil, "show")
+    end
     if not a or a.vid ~= args.vid or a.act ~= args.act or getTimestampMs() - a.ms > 3000 or f or not v
         or not v:isDriver(player) or not authority(v) then
         -- too late or no longer possible here: the air back
@@ -539,6 +560,13 @@ T.ClientCommands.thrustOk = function(args)
         return
     end
     start(player, v, args.act, args.sec)
+end
+
+-- the server handed this machine a car left in the air (its holder's game went quiet): land it, driver or not
+T.ClientCommands.thrustLand = function(args)
+    local v = getVehicleById(args.vid)
+    if F or not v or not H.conf(v) then return end -- the server ends it at its D3 anyway
+    start(getSpecificPlayer(0), v, "land", nil, "help")
 end
 
 -- HUD.lua, each dashboard update (10 Hz) of a car with thrusters: notes where it rests on the ground, and catches a
