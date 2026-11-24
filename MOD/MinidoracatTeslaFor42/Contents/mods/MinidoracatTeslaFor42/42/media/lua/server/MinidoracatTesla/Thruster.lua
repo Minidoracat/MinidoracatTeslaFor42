@@ -37,6 +37,8 @@ local ABORT_MS = 500   -- an end said in the air: look again this much later (th
 -- LAND_FLAT_S. r2fix-mp-a (FlightSeconds 20, flown 10 s and 20 s at 3 m): that span came out flown + 0.26 s both
 -- times (the look sees the lift-off 0-0.5 s late, which eats most of the ~1.4 s landing from 3 m); 0.25 bills
 -- what was flown to within a look. A landing from higher or lower than 3 m takes longer or shorter
+-- shortcut: one flat landing time for every height (measured from 3 m only), when billing must be within a look
+-- from any height: take the landing's own time from the holder's height at the end
 H.LAND_FLAT_S = 0.25
 local LAND_FLAT_S = H.LAND_FLAT_S
 
@@ -74,6 +76,13 @@ local function fx(v, mode)
     if f then f(v, mode) end
 end
 
+-- the motor this file started, off, also while it is still starting: Starting / RetryingStarting / StartingSuccess
+-- run on into Running by themselves (VehicleEngine.java:202-212) while isEngineRunning is Running only (:355-357);
+-- engineDoShuttingDown from any state is ShuttingDown, Idle 2 s later (:222-224, :416-422)
+local function motorOff(v)
+    if not v:getDriver() and (v:isEngineRunning() or v:isEngineStarted()) then v:engineDoShuttingDown() end
+end
+
 local function noise(v)
     addSound(v, math.floor(v:getX()), math.floor(v:getY()), math.floor(v:getZ()), SOUND_R, SOUND_V)
 end
@@ -85,32 +94,52 @@ local function deny(player, why, vid, n)
     T.send(player, "deny", { reason = why, vid = vid, pn = player:getPlayerNum(), n = isN(n) and n or nil })
 end
 
--- Bring the tank up to now: the refill since `at`, paid from the pack (B.draw: a powered charger pays instead). Off a
--- charger the pack never goes under the 12V floor for it (T.DCDC_MIN_PCT): what it can't pay is not refilled.
--- Returns thr and whether the client's copy (gas + the same refill estimate) is now wrong; nil: no thrusters (no tank
--- is made). While an action runs nothing refills (its end sets `at`).
-function H.settle(v, part)
-    if not H.conf(v) then return nil, false end
-    local md, now = part:getModData(), T.hours()
-    local thr = md.thr
-    if type(thr) ~= "table" or type(thr.gas) ~= "number" then
-        thr = { gas = 1, at = now }
-        md.thr = thr
+-- What bringing the tank up to now would do, nothing written (a refusal changes nothing): { thr (nil: none yet, a
+-- full one is made), gas = the air after, charger = kWh its charger's source pays (B.draw), pack = kWh off the pack,
+-- cut = the pack's floor cut the refill }. The charger pays up to freeUntil (the world hour its power lasted to,
+-- Charging.lua C.powerUntil; nil: to now while B.onCharger says it has power), the pack the rest, never under the
+-- 12V floor for it (T.DCDC_MIN_PCT): what it can't pay is not refilled. While an action runs nothing refills (its
+-- end sets `at`). nil: no thrusters.
+function H.refill(v, part, freeUntil)
+    if not H.conf(v) then return nil end
+    local thr, now = part:getModData().thr, T.hours()
+    if type(thr) ~= "table" or type(thr.gas) ~= "number" then return { gas = 1, now = now } end
+    local r = { thr = thr, gas = thr.gas, now = now, charger = 0, pack = 0, cut = false }
+    if entry(v) then r.running = true return r end
+    local at = type(thr.at) == "number" and thr.at or now
+    local mid = H.gasNow(thr, math.max(at, math.min(now, freeUntil or (B.onCharger(part) and now or at))))
+    local kwhPer = H.refillKwh()
+    local add = H.gasNow(thr, now) - mid
+    local kwh = add * kwhPer
+    if kwh > 0 then
+        local spare = math.max(0, B.kwh(part) - B.capacity(part) * T.DCDC_MIN_PCT / 100)
+        if spare < kwh then add, kwh, r.cut = add * spare / kwh, spare, true end
+    end
+    r.charger, r.pack = math.max(0, mid - thr.gas) * kwhPer, math.max(0, kwh)
+    r.gas = math.max(0, math.min(1, mid + add))
+    return r
+end
+
+-- r (H.refill) written: the tank and the kWh paid. Returns thr and whether the client's copy (gas + the same refill
+-- estimate) is now wrong
+function H.applyRefill(v, part, r)
+    if not r.thr then
+        local thr = { gas = 1, at = r.now }
+        part:getModData().thr = thr
         return thr, true
     end
-    if entry(v) then return thr, false end
-    local add, cut = H.gasNow(thr, now) - thr.gas, false
-    if add > 0 then
-        local kwh = add * H.refillKwh()
-        if kwh > 0 and not B.onCharger(part) then
-            local spare = math.max(0, B.kwh(part) - B.capacity(part) * T.DCDC_MIN_PCT / 100)
-            if spare < kwh then add, kwh, cut = add * spare / kwh, spare, true end
-        end
-        B.draw(v, part, kwh)
-        thr.gas = math.max(0, math.min(1, thr.gas + add))
-    end
-    thr.at = now
-    return thr, cut
+    if r.running then return r.thr, false end
+    if r.charger > 0 then B.draw(v, part, r.charger) end
+    if r.pack > 0 then B.set(v, part, B.kwh(part) - r.pack) end
+    r.thr.gas, r.thr.at = r.gas, r.now
+    return r.thr, r.cut
+end
+
+-- the tank brought up to now (H.refill, then written); thr and whether the client's copy is wrong. nil: no thrusters
+function H.settle(v, part, freeUntil)
+    local r = H.refill(v, part, freeUntil)
+    if not r then return nil, false end
+    return H.applyRefill(v, part, r)
 end
 
 -- the show's caller: how it went (PhoneApp.lua appDone shows the reason)
@@ -177,7 +206,7 @@ local function finish(v, p, done)
         local d = v:getDriver()
         if d and instanceof(d, "IsoPlayer") then v:authorizationServerOnSeat(d, true) end
     end
-    if p.eng and not v:getDriver() and v:isEngineRunning() then v:engineDoShuttingDown() end
+    if p.eng then motorOff(v) end
 end
 
 -- one-shot timer while an action has a due check (as the horn's, Remote.lua); removed when none is left. It reads
@@ -217,18 +246,23 @@ local function schedule(p, ms, on)
     p.due, p.on = nowMs() + ms, on
 end
 
--- someone holding another action now (its driver, or the one landing it): a machine flying its own car refuses the
--- hand-over, and the car falls while it holds the physics before saying so (r2fix-mp-c: handed 5 times in 15 s,
--- 6.79 m down in steps). An orphan's own driver is not busy with it: back near, it is theirs to land
+-- a machine's slot: its online ids are slot * 4 + its split-screen index (Commands.lua T.sendClients)
+local function slot(q) return math.floor(q:getOnlineID() / 4) end
+
+-- someone on q's machine holding another action now (its driver, or the one landing it): the flying controller is
+-- the machine's own (client Thruster.lua F), so it refuses the hand-over, also for its other split-screen player,
+-- and the car falls while it holds the physics before saying so (r2fix-mp-c: handed 5 times in 15 s, 6.79 m down in
+-- steps). An orphan's own driver is not busy with it: back near, it is theirs to land
 local function holding(q, p)
+    local c = slot(q)
     for _, p2 in pairs(pending) do
-        if p2 ~= p and not p2.orphan and (p2.helper or p2.player) == q then return true end
+        if p2 ~= p and not p2.orphan and slot(p2.helper or p2.player) == c then return true end
     end
     return false
 end
 
--- the nearest player within H.HELP_RANGE who has not had it (the caller, the driver, a helper who could not) and is
--- not holding another action
+-- the nearest player within H.HELP_RANGE who has not had it (the caller, the driver, a helper who could not) and
+-- whose machine is not holding another action
 local function nearest(v, p)
     local best, bd = nil, H.HELP_RANGE
     local list = getOnlinePlayers()
@@ -252,11 +286,13 @@ local function d3(v, p)
 end
 
 -- q's machine takes the car's physics and lands it (client Thruster.lua thrustLand: the land controller, no driver;
--- it says thrustEnd with this action's n when down, or at once when it can't)
+-- it says thrustEnd with this action's n and this hand-over's term when down, or at once when it can't). term: one
+-- more each hand-over, as the same player may have it twice (tried forgotten, d2) and a late end of the first must
+-- not end the second (commands are reliable, not ordered)
 local function handOver(v, p, q)
-    p.helper, p.orphan, p.held = q, nil, q:getOnlineID()
+    p.helper, p.orphan, p.held, p.term = q, nil, q:getOnlineID(), (p.term or 0) + 1
     v:authorizationChanged(q)
-    T.send(q, "thrustLand", { vid = v:getId(), pn = q:getPlayerNum(), n = p.n })
+    T.send(q, "thrustLand", { vid = v:getId(), pn = q:getPlayerNum(), n = p.n, term = p.term })
     schedule(p, HELP_MS, d3)
     T.log("thrust " .. p.act .. " handed to " .. tostring(q:getUsername()) .. " vid=" .. v:getId())
 end
@@ -316,19 +352,23 @@ local function toD2(p)
     if ms then schedule(p, math.max(0, p.w0 + ms - nowMs()), d2) end
 end
 
--- the lift-off look (see LOOK_MS): seen, D2 on its time; the window over unseen: D2 on its time (the show: over now,
--- the air back: it never left the ground)
+-- the lift-off look (see LOOK_MS) on the looks' grid, w0 + k * LOOK_MS, the last at w0 + WINDOW_MS (a late frame
+-- moves no later look; looks missed are not made up): seen, D2 on its time; the window over unseen: D2 on its time
+-- (the show: over now, the air back: it never left the ground)
 local function witness(v, p)
     if look(v, p) then return toD2(p) end
-    if nowMs() - p.w0 >= WINDOW_MS then
+    local t = nowMs() - p.w0
+    if t >= WINDOW_MS then
         if p.app then return d2(v, p) end
         return toD2(p)
     end
-    schedule(p, LOOK_MS, witness)
+    schedule(p, math.min(WINDOW_MS, (math.floor(t / LOOK_MS) + 1) * LOOK_MS) - t, witness)
 end
 
--- the show still allowed as when it was approved: its caller online, near, with DRIVE; the car free, no cable in
--- (H.can, its own busy flag and the air it took aside). false and the reason (nil: the caller is gone, nobody to tell)
+-- the show still allowed as when it was approved: its caller online, near, with DRIVE, still holding the phone key
+-- with the car in the phone's reach (Remote.lua R.appLink: NO_PHONE_KEY, NO_LINK); the car free, no cable in, its
+-- busy flag still this show's (H.can with it and the air it took aside). false and the reason (nil: the caller is
+-- gone, nobody to tell)
 local function stillOk(v, p)
     if isServer() then
         local list, on = getOnlinePlayers(), false
@@ -337,7 +377,14 @@ local function stillOk(v, p)
         end
         if not on then return false, nil end
     end
-    return H.can(p.player, v, p.act, true, nil, p.busy)
+    local ok, why = H.can(p.player, v, p.act, true, nil, p.busy)
+    if not ok then return false, why end
+    local part = B.part(v)
+    local thr = part and part:getModData().thr
+    if type(thr) ~= "table" or thr.busy ~= p.busy then return false, "THRUST_BUSY" end
+    why = T.Remote.appLink(p.player, v, p.key)
+    if why then return false, why end
+    return true
 end
 local function refuse(v, p, why)
     finish(v, p, false)
@@ -379,20 +426,19 @@ local function clearStale(v)
     if not part or not part:getInventoryItem() then return part end
     local thr = part:getModData().thr
     if type(thr) == "table" and thr.busy and not entry(v) then
-        if thr.busy.eng and not v:getDriver() and v:isEngineRunning() then v:engineDoShuttingDown() end
+        if thr.busy.eng then motorOff(v) end
         thr.busy = nil
         v:transmitPartModData(part)
     end
     return part
 end
 
--- after H.can: the tank brought up to now (the refill paid), then the air there really is. Returns thr, or nil and
--- THRUST_NO_AIR (a cut refill sent: the clients' estimate was wrong)
+-- after H.can: the air there really is once the refill is paid (H.refill); enough: written, thr returned; not: nil
+-- and THRUST_NO_AIR, nothing written (the pack's floor cut the refill the clients' estimate counts on)
 local function settleFor(v, part, act)
-    local thr, cut = H.settle(v, part)
-    if thr.gas + 1e-9 >= H.need(act) then return thr end
-    if cut then v:transmitPartModData(part) end
-    return nil, "THRUST_NO_AIR"
+    local r = H.refill(v, part)
+    if r.gas + 1e-9 < H.need(act) then return nil, "THRUST_NO_AIR" end
+    return (H.applyRefill(v, part, r))
 end
 
 local function bill(player, v, part, act, app, eng)
@@ -460,19 +506,26 @@ function H.appShow(player, v, act, key, n)
     end
 end
 
--- args { vid, act, done, sec, abort, n }, from the holder's machine (the driver, the show's caller, or the helper
--- landing it) with this action's n (any other: ignored): the action is over, or it can't go on (the physics left,
--- someone sat in). MP: the server judges it, never the client's word: still up, it looks again ABORT_MS later and
--- hands it on (d2); down, over now (the air back only if no look saw it go). SP: done (false = the air back) and sec
--- (seconds flown, flying) are this machine's own.
+-- args { vid, act, done, sec, abort, n, term }, from the holder's machine (the driver, the show's caller, or the
+-- helper landing it) with this action's n (any other: ignored); a helper's also with its hand-over's term (handOver).
+-- The action is over, or it can't go on (the physics left, someone sat in). MP: the server judges it, never the
+-- client's word: still up, it looks again ABORT_MS later and hands it on (d2); down, over now (the air back only if
+-- no look saw it go). A boost is over at its end, up or not: it has no landing of its own and was billed on approval;
+-- a car falling off a roof after it is the driver's soft landing (client H.watch), which a busy flag would refuse.
+-- SP: done (false = the air back) and sec (seconds flown, flying) are this machine's own.
 cmds.thrustEnd = function(player, args)
     local v = T.commandVehicle(player, args, H.HELP_RANGE + 30, true) -- a show's caller stands up to 30 tiles away
     if not v then return end
     H.adopt()
     local p = entry(v)
     if not p or player ~= (p.helper or p.player) or args.n ~= p.n then return end -- only who flies it now ends it
+    if p.helper and args.term ~= p.term then return end -- a helper's end of an earlier hand-over
     if isServer() then
         look(v, p) -- a boost: its speed now
+        if p.act == "boost" then
+            finish(v, p, p.up == true)
+            return T.log("thrust boost ended vid=" .. v:getId())
+        end
         if airborne(v) then return schedule(p, ABORT_MS, d2) end
         p.downMs = nowMs()
         return d2(v, p)

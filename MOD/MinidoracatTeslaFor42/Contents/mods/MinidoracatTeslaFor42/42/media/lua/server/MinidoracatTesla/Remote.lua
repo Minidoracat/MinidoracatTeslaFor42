@@ -512,6 +512,15 @@ T.ServerCommands.appStatus = function(player, args)
     T.send(player, "appState", R.state(player, key))
 end
 
+-- the phone's hold on car v: player still holds phone key `key` and the car is in the phone's reach (K.appReach: the
+-- grid's link, or Bluetooth in a power cut). nil, or the reason (NO_PHONE_KEY, NO_LINK). Every app action checks it
+-- (appAction); the thrusters' show again before the physics goes (server Thruster.lua stillOk)
+function R.appLink(player, v, key)
+    if holder(player, { key = key }) ~= key then return "NO_PHONE_KEY" end
+    if not K.appReach(player, v) then return "NO_LINK" end
+    return nil
+end
+
 T.ServerCommands.appAction = function(player, args)
     local act = args.act
     local fn = type(act) == "string" and ACT[act]
@@ -533,7 +542,8 @@ T.ServerCommands.appAction = function(player, args)
     local api = act == "summon" and args.on ~= true and R.summonApi()
     local ownStop = api and R.isSummoner(player, api.summonInfo(v))
     if not ownStop then
-        if not K.appReach(player, v) then return done("NO_LINK") end
+        local why = R.appLink(player, v, key)
+        if why then return done(why) end
         local codes = VM_CODES[act]
         if codes then
             local ok, why = R.vmAllows(player, v, codes)

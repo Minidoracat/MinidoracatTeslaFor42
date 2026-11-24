@@ -343,14 +343,14 @@ function C.payFed(v, part, chg, sup, src, share)
 end
 
 -- The Roadster Rocket's air tank refilled up to now (server Thruster.lua H.settle), so the refill's kWh goes to what
--- powered it meanwhile (B.draw: the charger's source as chg.power says, else the pack) before that changes: plugging
--- in, a settle that may switch the source, unplugging. Not while a thruster action runs (its end books it); the
--- caller transmits.
-local function settleAir(v, part)
+-- powered it meanwhile before that changes (plugging in, a settle that may switch the source, unplugging): the
+-- charger's source as chg.power says (B.draw) up to freeUntil (C.powerUntil: a grid shut-off or a supply ended since
+-- the last settle), the pack after it. Not while a thruster action runs (its end books it); the caller transmits.
+local function settleAir(v, part, freeUntil)
     local H = T.Thruster
     local thr = part:getModData().thr
     if not (H and H.settle and H.conf(v)) or (type(thr) == "table" and thr.busy) then return end
-    H.settle(v, part)
+    H.settle(v, part, freeUntil)
 end
 
 -- The link goes: the stretch since the last settle is booked without a generator taking over after the grid shut-off
@@ -361,7 +361,7 @@ local function clearChg(vehicle, part)
     local now = T.hours()
     -- the record goes whatever the sentry booking does: a stale record holds the car in Park (CheckOperate.Battery)
     local ok, err = pcall(function()
-        settleAir(vehicle, part)
+        settleAir(vehicle, part, C.powerUntil(part:getModData().chg, now, false))
         local chg = part:getModData().chg
         settleSentry(vehicle, now, C.powerUntil(chg, now, false))
         if chg and chg.fed then
@@ -449,7 +449,8 @@ function C.settle(o, now, here, fresh)
         end
     end
     chg.hold = nil
-    settleAir(v, part) -- on the source the stretch ran on (chg.power, not yet the one picked below)
+    -- on the source the stretch ran on (chg.power, not yet the one picked below), as long as it lasted
+    settleAir(v, part, C.powerUntil(chg, now))
     local wasKw = 0
     if prevSup then
         wasKw = (draws[o] and draws[o].kw) or math.min(chg.kw or 0, shareLeft(o, supKey, wasSrc))

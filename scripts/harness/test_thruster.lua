@@ -78,8 +78,15 @@ local function car(o)
     function v:getDebugZ() self.reads = self.reads + 1 return self.dz or 0 end
     function v:getCurrentSpeedKmHour() self.reads = self.reads + 1 return self.speed end
     function v:authorizationChanged(q) self.npid = q and q:getOnlineID() or -1 end
-    function v:tryStartEngine() self.starts = (self.starts or 0) + 1; if self.startsOk then self.running = true end end
-    function v:engineDoShuttingDown() self.running, self.shut = false, (self.shut or 0) + 1 end
+    -- the motor: started at once (startsOk), or starting (startsSlow) until engineSettles runs it on into Running as the
+    -- engine does by itself (VehicleEngine.java:202-212)
+    function v:tryStartEngine()
+        self.starts = (self.starts or 0) + 1
+        if self.startsSlow then self.starting = true elseif self.startsOk then self.running = true end
+    end
+    function v:isEngineStarted() return self.starting == true end
+    function v:engineSettles() if self.starting then self.starting, self.running = false, true end end
+    function v:engineDoShuttingDown() self.running, self.starting, self.shut = false, false, (self.shut or 0) + 1 end
     local p = H.player({ name = "pilot" .. v.id, x = v.x, y = v.y })
     v.driver, p.vehicle = p, v
     return v, p, part
@@ -96,11 +103,12 @@ local function ask(p, v, act, n)
     return s.command == "deny" and s.args.reason or s.command, s.args
 end
 local function entryOf(v) return TH.pending[v:getId()] end
--- thrustEnd from pl with the action's own n unless a.n says otherwise
+-- thrustEnd from pl with the action's own n (and a helper's hand-over term) unless a.n / a.term say otherwise
 local function done(pl, v, a)
     a = a or {}
     a.vid = v:getId()
     if a.n == nil then a.n = entryOf(v) and entryOf(v).n end
+    if a.term == nil then a.term = entryOf(v) and entryOf(v).term end
     cmds.thrustEnd(pl, a)
 end
 local function gas(part) return part:getModData().thr.gas end
@@ -225,6 +233,16 @@ tx = v.transmits
 TH.onUpdate(v, part)
 check(v.transmits == tx + 1 and near(B.pct(part), T.DCDC_MIN_PCT, 1e-6), "the parts update sends a cut refill")
 part:setContainerContentAmount(cap * 0.8)
+-- R8: a charger whose power ended mid-stretch (a grid shut-off, Charging.lua C.powerUntil) pays up to then, the pack
+-- the rest
+part:getModData().thr = { gas = 0, at = H.hours() }
+part:getModData().chg = { power = "grid" }
+local k1 = B.kwh(part)
+H.setHours(H.hours() + 0.5)
+TH.settle(v, part, H.hours() - 0.25)
+check(near(gas(part), 1, 1e-6) and near(k1 - B.kwh(part), 20, 1e-6),
+    "R8: on the grid 15 of 30 refill minutes, then a power cut: the pack pays the second half (20 kWh), not the grid")
+part:getModData().chg = nil
 
 H.section("thrusters: flying (MP billed by the server's clock)")
 local FLAT = TH.LAND_FLAT_S * 1000
@@ -486,6 +504,11 @@ local function show(pl, act, n)
     return why, #H.sent > c and last() or nil
 end
 local caller = H.player({ name = "caller", x = v.x + 10, y = v.y })
+-- the phone's hold (Remote.lua R.appLink): link.why refuses, link.key the key it was asked about
+saved.appLink = T.Remote and T.Remote.appLink
+T.Remote = T.Remote or {}
+local link = {}
+T.Remote.appLink = function(_, _, key) link.key = key return link.why end
 online = { caller, helper }
 part:getModData().thr = { gas = 1, at = H.hours() }
 check(show(caller, "fly") == "THRUST_NONE", "only kickflip and backflip are shows")
@@ -567,6 +590,106 @@ done(helper, v, { done = false })
 check(entryOf(v) == nil and near(gas(part), 0) and v.npid == -1 and not v.running,
     "down: billed (the server saw it up) though the helper says not done; physics and motor back as they were")
 v.driver, p.vehicle, v.running, v.dz, v.npid = p, v, true, 0, nil
+
+H.section("thrusters: review round 2")
+v.driver, p.vehicle = nil, nil
+-- R1: the phone's hold and the show's own busy flag again before the physics goes
+got = startedThen(function() link.why = "NO_LINK" end, function() link.why = nil end)
+check(noPhysics(got, "NO_LINK") and link.key == 7,
+    "R1: past Bluetooth in a power cut while it started (still within 30 tiles): no physics, the air back, motor off, NO_LINK")
+got = startedThen(function() link.why = "NO_PHONE_KEY" end, function() link.why = nil end)
+check(noPhysics(got, "NO_PHONE_KEY"), "R1: the phone key handed away meanwhile: the same, NO_PHONE_KEY")
+got = startedThen(function() part:getModData().thr.busy = nil end, function() end)
+check(noPhysics(got, "THRUST_BUSY"), "R1: its busy flag cleared meanwhile: the same, THRUST_BUSY")
+-- R2: called off while the motor is still starting: shut down, never runs on
+v.startsSlow = true
+got = startedThen(function() caller.x = v.x + 31 end, function() caller.x = v.x + 10 end)
+v:engineSettles()
+check(noPhysics(got, "TOO_FAR") and not v.running, "R2: called off while the motor is starting: shut down, it never runs")
+part:getModData().thr = { gas = 1, at = H.hours(), busy = { act = "kickflip", eng = true } }
+v.starting, v.running, v.shut = true, false, 0
+TH.onLoad(v)
+v:engineSettles()
+check(v.shut == 1 and not v.running, "R2: a stale show's motor still starting on load: shut down, it never runs")
+v.startsSlow = nil
+v.driver, p.vehicle, v.running = p, v, true
+-- R3: refused for the air the pack can pay only part of: nothing written
+part:getModData().thr = { gas = 0, at = H.hours() - 1 } -- a full refill due
+part:setContainerContentAmount(cap * 0.06)
+s0 = snap(v, part)
+check(ask(p, v, "kickflip") == "THRUST_NO_AIR" and snap(v, part) == s0,
+    "R3: 6 % pack pays a sliver of the refill: THRUST_NO_AIR, the tank, its clock, the pack and the sends as they were")
+part:setContainerContentAmount(cap * 0.8)
+-- R4: the looks on the 500 ms grid from approval, the last at 4500 ms, with 60 ms frames
+part:getModData().thr = { gas = 1, at = H.hours() }
+local looksAt, t60 = {}, 0
+local dzOf = v.getDebugZ
+function v:getDebugZ() if looksAt[#looksAt] ~= t60 then looksAt[#looksAt + 1] = t60 end return dzOf(self) end
+ask(p, v, "kickflip")
+while t60 < 6000 do
+    H.advanceMs(60)
+    t60 = t60 + 60
+    if hooked then timer() end
+end
+local onGrid = #looksAt == 9
+for k, t in ipairs(looksAt) do if t < k * 500 or t >= k * 500 + 60 then onGrid = false end end
+check(onGrid, "R4: 9 looks, each in the first 60 ms frame at or past 500 ms * k (the last at 4500): " .. table.concat(looksAt, ","))
+v.getDebugZ = dzOf
+done(p, v, { done = true })
+-- R5: a machine whose other split-screen player flies a car of its own is no helper either
+part:getModData().thr = { gas = 1, at = H.hours() }
+online = {}
+ask(p, v, "kickflip")
+v.dz = 1
+wait(24800)
+pe = entryOf(v)
+check(pe.orphan, "R5: up at D2, nobody near: an orphan")
+local mate = H.player({ name = "mate", x = v.x + 5, y = v.y })
+mate.oid = helper:getOnlineID() + 1 -- the helper's machine, its second player
+B.part(bv):getModData().thr = { gas = 1, at = H.hours() }
+bv.dz = 0
+check(ask(helper, bv, "fly") == "thrustOk", "R5: the helper flies its own car")
+online = { mate, helper }
+TH.adopt()
+check(pe.orphan and pe.helper == nil and v.npid == -1, "R5: the helper's split-screen mate is not handed the orphan")
+done(helper, bv, { done = true, sec = 1 })
+TH.adopt()
+check(pe.helper == mate and pe.term ~= nil, "R5: the helper's flight over: the mate lands it")
+-- R7: the same player handed it twice; the first hand-over's late end leaves the second's due time
+online = { mate }
+done(mate, v, { act = "land", done = false, abort = true })
+wait(500)
+check(pe.orphan, "R7: the mate could not (said at once): an orphan again, tried forgotten")
+TH.adopt()
+local term2 = pe.term
+check(pe.helper == mate and term2 == 2 and last().command == "thrustLand" and last().args.term == 2,
+    "R7: the mate again, its thrustLand with the hand-over's term 2")
+done(mate, v, { act = "land", done = false, abort = true, term = 1 })
+wait(1000)
+check(pe.helper == mate and pe.term == 2 and not pe.orphan, "R7: the first hand-over's late end (term 1): ignored, D3 as it was")
+v.dz = 0
+done(mate, v, { done = true })
+check(entryOf(v) == nil, "R7: the second hand-over's end: over")
+v.npid = nil
+-- R11: a boost off a roof's edge: over at its end, the driver keeps the car (no hand-over), busy cleared
+rv.x, rv.y, rv.dz, rv.speed = 300.5, 300.5, 1.075, 0
+rpart:getModData().thr = { gas = 1, at = H.hours() }
+online = { bystander }
+local rAuths, rAuthOf = 0, rv.authorizationChanged
+function rv:authorizationChanged(q) rAuths = rAuths + 1 return rAuthOf(self, q) end
+check(ask(rp, rv, "boost") == "thrustOk", "R11: a boost on a roof")
+rv.x, rv.dz, rv.speed = 301.5, 0.9, 30 -- past its edge, falling
+done(rp, rv, { done = true })
+check(entryOf(rv) == nil and rpart:getModData().thr.busy == nil and rAuths == 0 and near(gas(rpart), 1 - 1 / 3, 1e-6),
+    "R11: its end in the air: over now, busy cleared (the soft landing may ask), billed, the physics never moved")
+rv.authorizationChanged = rAuthOf
+-- R10: the server reads the floors every time (a floor built since its last read counts)
+rv.x, rv.y, rv.dz = 302.5, 302.5, 1.075
+check(TH.groundZ(rv) == 0, "R10: no floor at level 1 there: the ground")
+roof["302,302"] = 1
+check(TH.groundZ(rv) == 1, "R10: a floor built there since, the same tile and level: counted")
+roof["302,302"] = nil
+online = { caller, helper }
 
 H.section("thrusters: SP")
 H.side(false, false)
@@ -743,10 +866,10 @@ check(not ok and why == "THRUST_BUSY", "the driver's AutoDrive on: THRUST_BUSY")
 TH.ask(cp, cv, "boost")
 okFor("boost")
 sent = #H.clientSent
-T.ClientCommands.thrustLand({ vid = cv:getId(), pn = 0, n = 777 })
+T.ClientCommands.thrustLand({ vid = cv:getId(), pn = 0, n = 777, term = 3 })
 e = H.clientSent[#H.clientSent]
-check(#H.clientSent == sent + 1 and e.command == "thrustEnd" and e.args.abort == true and e.args.done == false and e.args.n == 777,
-    "handed a car while busy here: can't, said at once with the server's n")
+check(#H.clientSent == sent + 1 and e.command == "thrustEnd" and e.args.abort == true and e.args.done == false and e.args.n == 777
+    and e.args.term == 3, "handed a car while busy here: can't, said at once with the server's n and the hand-over's term (R7)")
 cv.driver = nil
 TH.tick()
 cv.driver = cp
@@ -799,6 +922,32 @@ T.ClientCommands.deny({ reason = "THRUST_BUSY", vid = cv:getId(), pn = 0, n = la
 check(TH.active() and TH.active().ok, "D2: approved first: a refusal after cannot stop it")
 abort()
 cv.vy = 0
+-- R6: the car gone on the server (unloaded, its id another's): the shared check refuses without n; the soft landing
+-- not approved yet stops all the same, its ask answered
+cv.dz, cv.vy = 0.075 + 4 / TH.FLOOR, -5
+TH.ask(cp, cv, "land")
+H.side(false, true)
+H.removeVehicle(cv)
+cmds.thrust(cp, { vid = cv:getId(), act = "land", n = lastN() })
+H.addVehicle(cv)
+local gone6 = H.sent[#H.sent]
+H.side(true, false)
+T.ClientCommands.deny(gone6.args)
+check(gone6.command == "deny" and gone6.args.n == nil and gone6.args.vid == cv:getId() and TH.active() == nil
+    and select(2, TH.check(cp, cv, "boost")) ~= "THRUST_BUSY",
+    "R6: refused by the server's shared check (no n): the unapproved landing stopped, its ask answered")
+cv.vy = 0
+-- R10: the flying machine's floor cache: kept within an action, cleared at the next one's start
+local lvl1 = false
+local cell6 = getCell
+getCell = function() return { getGridSquare = function(_, x, y, z) return (z == 0 or z == 1 and lvl1) and ground or nil end } end
+cv.dz = 1.075
+check(TH.groundZ(cv, true) == 0, "R10: no floor at level 1: the ground (cached)")
+lvl1 = true
+TH.ask(cp, cv, "land")
+check(TH.active() and TH.groundZ(cv, true) == 1, "R10: a floor built since: the next action's start clears the cache")
+T.ClientCommands.deny({ reason = "THRUST_BUSY", vid = cv:getId(), pn = 0, n = lastN() })
+getCell, cv.dz = cell6, 0.075
 -- flying a parked car whose physics won't switch on (r2fe-sp-g, 3 of 3 such stayed down): the motor creeps it
 -- first, then it lifts and flies, the cruise back as it was
 cv.dz, cv.vy, cv.speed, cv.impulses, cv.reg, cv.regSpd = 0.075, 0, 0, 0, nil, nil
@@ -844,6 +993,7 @@ getCore, getPlayerScreenHeight, cv.vy = savedCore, savedSH, nil
 H.side(false, true)
 MS.thruster = nil
 addSound, getOnlinePlayers, T.ThrusterFx, T.vmRefusal = saved.addSound, saved.getOnlinePlayers, saved.fx, saved.vmRefusal
+T.Remote.appLink = saved.appLink
 for _, k in ipairs(OPTS) do SandboxVars.MinidoracatTesla[k] = saved.sandbox[k] end
 gt.getPhysicsSecondsSinceLastUpdate = nil
 HaloTextHelper, ISVehicleMenu, Vector3f, getCell, getSpecificPlayer = nil, nil, nil, saved.getCell, savedGSP

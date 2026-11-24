@@ -94,17 +94,21 @@ function H.minutesToFull(gas) return math.ceil((1 - clamp(gas, 0, 1)) * H.refill
 
 -- Where the ground is under the car, the same on both sides (the server's "off the ground", the flying machine's
 -- height): the highest level at or under the car's physics origin with a floor there (a flat roof counts: flight PoC
--- r4), else 0. Cached per tile and level
+-- r4), else 0. Optional `cached` (`...`, family pitfalls.md): the last tile and level's answer reused (the flying
+-- machine, every frame; client Thruster.lua clears it at each action's start, H.groundReset: a floor built or torn
+-- down since must not count). The server reads the floors every time (a dozen looks an action)
 local gx, gy, gtop, gz
-function H.groundZ(v)
+function H.groundReset() gx = nil end
+function H.groundZ(v, ...)
+    local cached = ...
     local x, y, top = math.floor(v:getX()), math.floor(v:getY()), math.floor(v:getDebugZ() + 0.01)
-    if x == gx and y == gy and top == gtop then return gz end
+    if cached and x == gx and y == gy and top == gtop then return gz end
     local cell, z = getCell(), 0
     for lv = math.max(0, top), 1, -1 do
         local sq = cell:getGridSquare(x, y, lv)
         if sq and (sq:getFloor() or sq:TreatAsSolidFloor()) then z = lv break end
     end
-    gx, gy, gtop, gz = x, y, top, z
+    if cached then gx, gy, gtop, gz = x, y, top, z end
     return z
 end
 

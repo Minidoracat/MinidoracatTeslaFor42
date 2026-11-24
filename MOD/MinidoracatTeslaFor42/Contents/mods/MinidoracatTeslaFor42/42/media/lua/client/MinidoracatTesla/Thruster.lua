@@ -87,7 +87,7 @@ local function quintic(t, t1, t2)
 end
 
 -- ---- where the ground is: shared Thruster.lua (the server judges "off the ground" by the same) ----
-local groundZ = H.groundZ
+local function groundZ(v) return H.groundZ(v, true) end -- cached: H.groundReset at each action's start
 -- floors between the ground and the car's physics origin at rest, per car, measured when it stands on the ground
 local RESTS = {}
 local function heightOf(v, rest) return (v:getDebugZ() - groundZ(v) - rest) * FLOOR end
@@ -329,7 +329,7 @@ local function stop(done, why, abort)
     local f = halt()
     if not f then return end
     T.request(f.player, "thrustEnd", { vid = f.vid, act = f.act, done = done == true, sec = f.flown, abort = abort,
-        n = f.n })
+        n = f.n, term = f.term })
     if why then HaloTextHelper.addBadText(f.player, T.denyText(why)) end
 end
 
@@ -419,11 +419,13 @@ end
 -- app: "show" = the phone app's show (the caller outside, the car empty), "help" = landing a car the server handed to
 -- this machine (server Thruster.lua handOver); both wait for the car's physics to arrive here first. n: the server's
 -- number for this action (its thrustEnd carries it). ok: approved (the soft landing starts before its answer)
-local function start(player, v, act, sec, app, n)
+local function start(player, v, act, sec, app, n, term)
+    H.groundReset() -- floors built or torn down since the last action count
     local c = H.conf(v)
     local vid = v:getId()
     local f = { player = player, v = v, vid = vid, act = act, conf = c, sec = sec, t = 0, flown = 0, app = app,
-        n = n, ok = app ~= nil, bank = { jx = 0, jy = 0, jz = 0, lx = 0, ly = 0, lz = 0, lastTq = false } }
+        n = n, term = term, ok = app ~= nil,
+        bank = { jx = 0, jy = 0, jz = 0, lx = 0, ly = 0, lz = 0, lastTq = false } }
     if act == "land" then
         f.rest, f.lifted = RESTS[vid] or c.rest, true
     else
@@ -577,11 +579,12 @@ function H.nextN()
     return seq
 end
 
--- the client's side of the rules: H.can plus what only this machine sees. app: the phone app's show (PhoneApp.lua
--- asks before sending; the server gives this machine the physics only once it approves). An action asked and not
--- answered yet refuses another (the soft landing aside: a fall can't wait)
+-- the client's side of the rules: H.can plus what only this machine sees. Optional app (`...`, as H.can): the phone
+-- app's show (PhoneApp.lua asks before sending; the server gives this machine the physics only once it approves). An
+-- action asked and not answered yet refuses another (the soft landing aside: a fall can't wait)
 local SPEED_MAX = { kickflip = "kickMaxKmh", backflip = "flipMaxKmh", boost = "boostMaxKmh" }
-function H.check(player, v, act, app)
+function H.check(player, v, act, ...)
+    local app = ...
     if F then return false, "THRUST_BUSY" end
     if act ~= "land" and not app and pendingAsk(player:getPlayerNum()) then return false, "THRUST_BUSY" end
     local ok, why = H.can(player, v, act, app, true)
@@ -656,19 +659,28 @@ T.ClientCommands.thrustOk = function(args)
     F.ok = true
 end
 
--- args { vid, pn, n }: the server handed this player's machine a car left in the air (its holder's game went quiet, or
--- it said it could not go on): land it, driver or not. Can't here: say so at once, the server hands it to the next one.
+-- args { vid, pn, n, term }: the server handed this player's machine a car left in the air (its holder's game went
+-- quiet, or it said it could not go on): land it, driver or not. Can't here: say so at once, the server hands it to
+-- the next one. Its thrustEnd carries term: the server tells this hand-over's end from an earlier one's
 T.ClientCommands.thrustLand = function(args)
     local player = getSpecificPlayer(args.pn or 0) or getSpecificPlayer(0)
     local v = getVehicleById(args.vid)
     if F or not v or not H.conf(v) then
-        return T.request(player, "thrustEnd", { vid = args.vid, act = "land", done = false, abort = true, n = args.n })
+        return T.request(player, "thrustEnd", { vid = args.vid, act = "land", done = false, abort = true, n = args.n,
+            term = args.term })
     end
-    start(player, v, "land", nil, "help", args.n)
+    start(player, v, "land", nil, "help", args.n, args.term)
 end
 
 -- a refusal of this machine's action n (server Thruster.lua deny): its ask is answered, and a soft landing started
--- before the answer stops here, nothing more said (the server kept nothing of it). Then the usual message (Net.lua)
+-- before the answer stops here, nothing more said (the server kept nothing of it). A refusal with the car's vid and
+-- no n (Commands.lua T.commandVehicle: the car unloaded, its id another car's) answers every unanswered ask for that
+-- car the same way. Then the usual message (Net.lua)
+local function answered(pn, n)
+    asked[pn] = nil
+    local f = F
+    if f and f.n == n and not f.ok then halt() end
+end
 local baseDeny = T.ClientCommands.deny
 T.ClientCommands.deny = function(args)
     if type(args) == "table" and type(args.n) == "number" then
@@ -677,6 +689,10 @@ T.ClientCommands.deny = function(args)
         if a and a.n == args.n then asked[pn] = nil end
         local f = F
         if f and f.n == args.n and not f.ok then halt() end
+    elseif type(args) == "table" and args.vid ~= nil then
+        for pn, a in pairs(asked) do
+            if a.vid == args.vid then answered(pn, a.n) end
+        end
     end
     return baseDeny(args)
 end
