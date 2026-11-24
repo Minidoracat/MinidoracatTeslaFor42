@@ -77,6 +77,7 @@ ZC = [(2.05, 0.39), (HC[1], HC[2]), (1.074, 0.79)] + [p for p in TOP if -0.45 < 
 # the buttresses' inner walls (paint) frame the V rear glass: 01 glass 0.40 half wide at the roof, 0.28 at its foot
 FIN_IN = [(-0.45, 0.47), (-0.80, 0.40), (-1.40, 0.28), (-1.60, 0.50), (-2.00, 0.72), (-2.055, 0.74)]  # 0.50: charge port
 GLASS_END = -1.40                      # the rear glass runs down to the wing's leading edge (01, 825)
+ROOF_Y = 0.30                          # the windscreen / roof glass split (one canopy on the real car; TOP's knee)
 WING = dict(seam=-1.40, thick=0.045, thick_tail=0.030, gap=0.006, trail_y=-2.075)
 
 TYRES = dict(front=dict(y=1.272, r=0.307, w=0.255, disc=0.262, x=0.80),      # 03: contacts 750 px / bar 590 px
@@ -653,8 +654,12 @@ def main():
     me.attributes["panel"].data.foreach_get("value", pa)
     nx = np.array([p.normal.x for p in me.polygons])
     cx = np.array([p.center.x for p in me.polygons])
-    grp = np.select([mi != MATS.index("Glass"), pa == 1, pa == 2, pa == 4, np.abs(nx) > 0.6],
-                    ["", "GlassDoorL", "GlassDoorR", "GlassHatch", np.where(cx < 0, "GlassSideL", "GlassSideR")], "GlassTop")
+    cy = np.array([p.center.y for p in me.polygons])
+    # GlassRoof: the canopy behind the windscreen's rake (TOP flattens past y 0.232), ROOF_PANE: the darker roof glass,
+    # else the whole canopy is the windscreen's 0.22 and the car reads open-topped (E2E r2body-look-a1)
+    grp = np.select([mi != MATS.index("Glass"), pa == 1, pa == 2, pa == 4, np.abs(nx) > 0.6, cy < ROOF_Y],
+                    ["", "GlassDoorL", "GlassDoorR", "GlassHatch", np.where(cx < 0, "GlassSideL", "GlassSideR"),
+                     "GlassRoof"], "GlassTop")
 
     def keep_faces(ob, keep):
         bm_ = bmesh.new()

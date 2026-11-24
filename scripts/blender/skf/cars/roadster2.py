@@ -161,7 +161,7 @@ CAR = dict(
     GLASS_MATS=("Glass",),
     GLASS_OPAQUE=(),
     GLASS_BACKS=("WinLH", "WinLT", "WinRH", "WinRT"),
-    ROOF_PANE="-",                         # (a body-colour roof)
+    ROOF_PANE="GlassRoof",                 # the canopy behind the windscreen (prep ROOF_Y): zone LightBarL
     MIRROR_CAP="-",                        # (no mirrors: cameras)
     LAMPS=dict(head=("HeadLight",), head_y=0.5, tail=("TailLight",), tail_z=0.3, tail_y=-1.0, blade=None,
                brake=("TailLight", 0.0)),
@@ -189,8 +189,8 @@ CAR = dict(
     GATE_COMPS=(),
     GATE_CUT_COMPS=(),
     PART_OBJS={},
-    # (the canopy's windscreen and roof glass one pane, GlassTop: WinT; the V rear glass the trunk lid's, GlassHatch)
-    PANES={"Body": {"WinT", "WinLT", "WinRT"}, "DoorFrontLeft": {"WinLH"}, "DoorFrontRight": {"WinRH"},
+    # (the canopy: windscreen GlassTop WinT, roof GlassRoof LightBarL; the V rear glass the trunk lid's, GlassHatch)
+    PANES={"Body": {"WinT", "LightBarL", "WinLT", "WinRT"}, "DoorFrontLeft": {"WinLH"}, "DoorFrontRight": {"WinRH"},
            "TrunkDoor": {"WinH"}, "TeslaWing": set()},
     T_BADGE=None,
     TESLA=None,
