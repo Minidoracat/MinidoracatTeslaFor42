@@ -138,19 +138,22 @@ def value_noise(h, w, cells, rng):
     return top * (1 - fy) + bot * fy
 
 
-def mound_texture(path, w, h, seed):
+def mound_texture(path, w, h, seed, shift=0.0, expo=2.2, soft=0.6):
     """One mound of landing fog (IsoMarkers: bottom centre on its tile, its own size, no scaling;
     IsoSprite.renderTextureWithDepth): dense, piled higher in the middle, built from soft round lobes summed into a
     density with no threshold, so the outline is soft and uneven, neither the hard-edged cumulus of r2fx-sp-6b nor the
     thin strips of r2fx-sp-7. The bottom rows thin out with noise so no cut line shows. Lit from above: white top,
-    slightly blue-grey underside (official fog is white with a cold tint, f1-ramp 07m18.5)."""
+    slightly blue-grey underside (official fog is white with a cold tint, f1-ramp 07m18.5). The crest stands `shift`
+    (of the half width) off centre and is broad and round (`expo`, `soft`): every mound peaking in its middle stacked
+    into a pointed tree with even steps (r2fx-sp-11); a marker cannot move off its tile, so the offset is drawn in."""
     rng = np.random.default_rng(seed)
     y, x = np.meshgrid(np.arange(h) + 0.5, np.arange(w) + 0.5, indexing="ij")   # y up from the bottom row
     d, hi = np.zeros((h, w)), np.zeros((h, w))
     for count, (r_lo, r_hi) in ((5, (0.07, 0.10)), (70, (0.04, 0.09))):   # a few core lobes, many billows
         for _ in range(count):
-            cx = rng.uniform(0.15, 0.85) * w
-            top = h * (0.12 + 0.83 * max(0.0, 1 - abs(2 * cx / w - 1) / 0.85) ** 0.7 * rng.uniform(0.45, 1.0))
+            cx = rng.uniform(0.12, 0.88) * w
+            xn = (2 * cx / w - 1 - shift) / (0.88 + abs(shift))
+            top = h * (0.12 + 0.83 * max(0.0, 1 - abs(xn) ** expo) ** soft * rng.uniform(0.7, 1.0))
             r = min(rng.uniform(r_lo, r_hi) * (w + h), cx - 6, w - cx - 6, 0.5 * top)
             if r < 3:
                 continue
@@ -164,7 +167,7 @@ def mound_texture(path, w, h, seed):
     # an uneven, rounded base fading over 18%: a straight bright base read as tiers where mounds on nearer tiles
     # overlap (r2fx-sp-10); the base is lit too, so no dark crease shows there
     base = h * (0.12 * value_noise(1, w, 6, rng)[0] + 0.25 * np.abs(2 * x / w - 1) ** 3)
-    a *= np.clip((y - base) / (0.18 * h), 0, 1)
+    a *= np.clip((y - base) / (0.18 * h), 0, 1) * np.clip(np.minimum(x, w - x) / (0.06 * w), 0, 1)
     shade = np.clip(0.2 + 0.8 * hi + 0.1 * y / h + 0.2 * (n - 0.5), 0, 1)
     shade += (1 - shade) * 0.6 * np.clip(1 - (y - base) / (0.35 * h), 0, 1)
     arr = np.zeros((h, w, 4))
@@ -200,9 +203,12 @@ def main():
         print(f"jets: {ob.name} {len(noz)} cones")
     tex = os.path.join(o["out"], "textures", "MinidoracatTesla")
     # official touch-down fog (f1-ramp 07m18.5): about 3-4 car heights tall, 2.8 car lengths wide, dense core 1.6;
-    # here the car's roof stands ~110 px over its tile at the default zoom, its length ~240 px across the screen
-    for k, (w, h) in enumerate(((384, 300), (384, 280), (400, 200), (416, 130)), 1):   # tall, tall (other), mid, low
-        mound_texture(os.path.join(tex, f"JetFog{k}.png"), w, h, 30 + k)
+    # here the car's roof stands ~110 px over its tile at the default zoom, its length ~240 px across the screen.
+    # (w, h), crest offset, roundness: tall, tall (other shape), mid, low, wide low (the flanks)
+    for k, ((w, h), shift, expo, soft) in enumerate((((460, 280), -0.12, 2.2, 0.5), ((440, 260), 0.15, 2.2, 0.5),
+                                                     ((420, 190), 0.10, 2.0, 0.6), ((416, 130), -0.05, 1.5, 0.7),
+                                                     ((520, 150), -0.10, 2.5, 0.6)), 1):
+        mound_texture(os.path.join(tex, f"JetFog{k}.png"), w, h, 30 + k, shift, expo, soft)
     glow_texture(os.path.join(tex, "JetGlow.png"))
 
 
