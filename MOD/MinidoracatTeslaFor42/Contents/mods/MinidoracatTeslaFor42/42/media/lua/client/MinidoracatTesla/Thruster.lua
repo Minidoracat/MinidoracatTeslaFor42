@@ -734,7 +734,9 @@ T.ClientCommands.deny = function(args)
 end
 
 -- HUD.lua, each dashboard update (10 Hz) of a car with thrusters: notes where it rests on the ground, and catches a
--- fall (off a roof, a stunt gone wrong) to land it softly when there is air for it
+-- fall (off a roof, a stunt gone wrong) to land it softly when there is air for it. A car tipping nose-first over an
+-- edge slides down the wall under it slower than a fall (r2int-sp-full roof 1 #1: -1.9 m/s at most, on its nose
+-- after): tilted past 37 degrees and coming down over the drop counts too
 function H.watch(player, v)
     if F or not v:isDriver(player) then return end
     local c = H.conf(v)
@@ -744,7 +746,8 @@ function H.watch(player, v)
     local hm = heightOf(v, RESTS[vid] or c.rest)
     if hm < 0.2 and math.abs(vy) < 0.05 then
         RESTS[vid] = clamp(v:getDebugZ() - groundZ(v), 0.02, 0.25)
-    elseif hm > 1.5 and vy < -2 and (H.air(v) or 0) >= H.COST.land and H.check(player, v, "land") then
+    elseif ((hm > 1.5 and vy < -2) or (hm > 1 and vy < -0.5 and v:getUpVector(V3.u):y() < 0.8))
+        and (H.air(v) or 0) >= H.COST.land and H.check(player, v, "land") then
         H.ask(player, v, "land")
     end
 end

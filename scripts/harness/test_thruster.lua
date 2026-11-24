@@ -888,7 +888,7 @@ function cv:isLocalPhysicSim() return self.local_ end
 function cv:getDebugZ() return self.dz end
 function cv:getLinearVelocity(o) return o:set(0, self.vy or 0, self.speed / 3.6) end
 function cv:getForwardVector(o) return o:set(0, 0, 1) end
-function cv:getUpVector(o) return o:set(0, 1, 0) end
+function cv:getUpVector(o) return o:set(0, self.uy or 1, 0) end
 function cv:isPhysicsActive() return true end
 function cv:getMass() return 1500 end
 function cv:addImpulse() self.impulses = (self.impulses or 0) + 1 end
@@ -1020,6 +1020,21 @@ cv.dz, cv.vy, cv.speed = 0.075, 0, 7
 cv.driver = nil
 TH.tick()
 cv.driver, cv.speed = cp, 30
+-- a car tipping nose-first over a roof's edge (r2int-sp-full roof 1 #1: it slid down the wall below at -1.9 m/s at
+-- most and stood on its nose, never past -2 m/s): tilted and coming down over the drop, the soft landing asked;
+-- upright at that speed it is not a fall yet
+cv.dz, cv.vy, cv.uy, cv.speed = 0.075 + 2.2 / TH.FLOOR, -1.2, 1, 5
+sent = #H.clientSent
+TH.watch(cp, cv)
+check(#H.clientSent == sent and TH.active() == nil, "upright over a drop at -1.2 m/s: no soft landing")
+cv.uy = 0.5
+TH.watch(cp, cv)
+local tl = H.clientSent[sent + 1]
+check(tl and tl.command == "thrust" and tl.args.act == "land" and TH.active() and TH.active().act == "land",
+    "tipped 60 degrees over a drop at -1.2 m/s: the soft landing asked")
+okFor("land")
+cv.driver = nil; TH.tick(); cv.driver = cp
+cv.dz, cv.vy, cv.uy, cv.speed = 0.075, 0, nil, 30
 -- what the client asks VehicleManager is a query; AutoDrive driving this car refuses
 local seenQ, vmr = nil, T.vmRefusal
 T.vmRefusal = function(_, _, _, qq) seenQ = qq end
