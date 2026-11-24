@@ -393,23 +393,26 @@ local function beginRoll(f)
     f.st, f.phase, f.t = st, "roll", 0
     preLift(v)
 end
+-- a parked car may take no impulse even lifted: its physics won't switch on (r2fe-sp-g: 0 of 3 flew), or it reads on
+-- and still stays put (r2fe-sp-i: 2 of 2). The motor's creep wakes it (r2fe-sp-g: 3 of 3 flew after it; the stunts'
+-- roll-up never stuck): from "wake" it flies once it moves. Once only, its flown time not counted
+local function wake(f)
+    local v = f.v
+    f.woke, f.flown = true, 0
+    f.phase, f.t, f.reg0, f.regSpd0 = "wake", 0, v:isRegulator(), v:getRegulatorSpeed()
+    v:setRegulatorSpeed(WAKE_KMH)
+    v:setRegulator(true)
+end
 -- the driver's stunt from under conf.rollKmh: the motor's cruise takes it there (flight PoC: 17/17 from 6 km/h; the
--- thrusters' push left 3 of 13 parked cars stuck, r2f-sp-1124c). Flying from a standstill: lifted, then straight up;
--- a car whose physics won't switch on takes no impulse even lifted (r2fe-sp-g: 0 of 3 flew so, 3 of 3 after the
--- motor's creep), so the motor creeps it until it does ("wake")
+-- thrusters' push left 3 of 13 parked cars stuck, r2f-sp-1124c). Flying from a standstill: lifted, then straight up
 local function go(f)
     local v, c = f.v, f.conf
     if f.act == "land" or v:getCurrentSpeedKmHour() >= c.rollKmh then return beginRun(f) end
     if f.act == "fly" then
         if not v:isPhysicsActive() then v:setPhysicsActive(true) end
-        if v:isPhysicsActive() then
-            preLift(v)
-            return beginRun(f)
-        end
-        f.phase, f.t, f.reg0, f.regSpd0 = "wake", 0, v:isRegulator(), v:getRegulatorSpeed()
-        v:setRegulatorSpeed(WAKE_KMH)
-        v:setRegulator(true)
-        return
+        if not v:isPhysicsActive() then return wake(f) end
+        preLift(v)
+        return beginRun(f)
     end
     if f.app then return beginRoll(f) end
     f.phase, f.t, f.reg0, f.regSpd0 = "drive", 0, v:isRegulator(), v:getRegulatorSpeed()
@@ -525,6 +528,9 @@ function H.tick()
             if isKeyDown(core:getKey("Left")) then st.psiT = st.psiT - yaw end
             if isKeyDown(core:getKey("Right")) then st.psiT = st.psiT + yaw end
             st.vTx, st.vTz = math.cos(st.psiT) * f.spd, math.sin(st.psiT) * f.spd
+            if t > 0.5 and not f.woke and not f.lifted and hm < 0.15 and v:getCurrentSpeedKmHour() < c.rollKmh then
+                return wake(f) -- a working takeoff is up 0.4 m by now (r2fe-sp-g)
+            end
             if t > 1 and not f.lifted then return stop(false, "THRUST_NO_LIFT") end
         end
     end

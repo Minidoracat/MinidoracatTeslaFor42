@@ -491,6 +491,26 @@ check(TH.active().phase == "fly" and cv.reg == false and cv.regSpd == 0 and near
 abort()
 function cv:isPhysicsActive() return true end
 cv.setPhysicsActive, cv.awake = nil, nil
+-- physics on, yet it stays put (r2fe-sp-i, 2 of 2): half a second up under 0.15 m, the creep once, then flies or gives up
+local savedKD = isKeyDown
+isKeyDown = function() return false end
+getCore = function() return { getZoom = function() return 1 end, getMaxZoom = function() return 1 end,
+    doZoomScroll = function() end, getKey = function() return 0 end } end
+cv.dz, cv.speed, cv.reg, cv.regSpd = 0.075, 0, nil, nil
+TH.ask(cp, cv, "fly")
+T.ClientCommands.thrustOk({ vid = cv:getId(), act = "fly", sec = 8 })
+check(TH.active().phase == "fly", "physics on: straight to flying")
+while TH.active() and TH.active().phase == "fly" and TH.active().t < 0.7 do TH.tick() end
+check(TH.active() and TH.active().phase == "wake" and cv.reg == true and TH.active().flown == 0,
+    "half a second still on the ground: the motor's creep, the flown time not counted")
+cv.speed = 2
+TH.tick()
+check(TH.active().phase == "fly" and TH.active().woke and cv.reg == false, "moving: flying again")
+sent = #H.clientSent
+while TH.active() and TH.active().t < 1.2 do TH.tick() end
+e = H.clientSent[#H.clientSent]
+check(TH.active() == nil and e.command == "thrustEnd" and e.args.done == false, "still down after the creep: given up, not crept again")
+isKeyDown = savedKD
 getCore, getPlayerScreenHeight, getCell, cv.vy = savedCore, savedSH, savedCell, nil
 
 -- restore
