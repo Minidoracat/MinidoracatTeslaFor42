@@ -918,8 +918,9 @@ check(TH.ask(cp, cv, "boost") and H.clientSent[#H.clientSent].command == "thrust
     and type(lastN()) == "number", "boost at 30 km/h: asked the server, with its n")
 local n1 = lastN()
 sent = #H.clientSent
-check(not TH.ask(cp, cv, "kickflip") and #H.clientSent == sent and halo[#halo] == "IGUI_MinidoracatTesla_Deny_THRUST_BUSY",
-    "D3: asked and not answered: another ask refused here, nothing sent")
+local said = #halo
+check(not TH.ask(cp, cv, "kickflip") and #H.clientSent == sent and #halo == said and select(2, TH.check(cp, cv, "kickflip")) == nil,
+    "D3: asked and not answered: another ask refused here, nothing sent, nothing said (the ring: no reason line)")
 okFor("boost", { n = n1 + 1 })
 local e = H.clientSent[#H.clientSent]
 check(TH.active() == nil and e.command == "thrustEnd" and e.args.n == n1 + 1 and e.args.done == false
@@ -931,9 +932,14 @@ e = H.clientSent[#H.clientSent]
 check(#H.clientSent == sent + 1 and e.command == "thrustEnd" and e.args.done == false and e.args.n == n1 and TH.active() == nil,
     "an approval after 3 s: not flown, the air back (its n)")
 TH.ask(cp, cv, "boost")
+cpart:getModData().thr = { gas = 0.5, at = H.hours() }
 T.ClientCommands.deny({ reason = "THRUST_NO_AIR", vid = cv:getId(), pn = 0, n = lastN() })
-check(halo[#halo] == "IGUI_MinidoracatTesla_Deny_THRUST_NO_AIR" and TH.check(cp, cv, "boost"),
-    "F2: refused by the server: said, the ask answered (the next one may go)")
+said = halo[#halo]
+cpart:getModData().thr = { gas = 1, at = H.hours() }
+check(said == "IGUI_MinidoracatTesla_Deny_THRUST_NO_AIR IGUI_MinidoracatTesla_Thrust_Refill" and TH.check(cp, cv, "boost"),
+    "F2: refused by the server: said with when the tank is full again (H.whyText), the ask answered (the next one may go)")
+check(TH.whyText(nil, "THRUST_NO_AIR") == "IGUI_MinidoracatTesla_Deny_THRUST_NO_AIR"
+    and TH.whyText(cv, "THRUST_NO_AIR") == "IGUI_MinidoracatTesla_Deny_THRUST_NO_AIR", "no car, or a full tank: no refill time")
 local ticks = H.count("OnTick")
 TH.ask(cp, cv, "boost")
 okFor("boost")
@@ -1234,9 +1240,69 @@ step(75, function(h) overUp = math.max(overUp, h - fc.flyMaxH) end)
 step(75, function(h) overUp = math.max(overUp, h - fc.flyMaxH) worstUp = math.max(worstUp, math.abs(h - fc.flyMaxH)) end)
 check(overUp <= 0.2 and worstUp < 0.2,
     string.format("hover: PageUp 2 s to flyMaxH %.1f m, %.2f m over at most, within %.2f m from 1.5 s after", fc.flyMaxH, overUp, worstUp))
+-- a controller's player flies with it as vanilla drives (CarController.java:958-967): RT ahead, LT back, the left
+-- stick steers; the right stick sets the height (pushed up: negative, PlayerCamera.java:148). A stick resting a little
+-- off (inside the dead zone) does nothing
+local pad = { mx = 0, ay = 0 }
+isJoypadRTPressed = function(id) return id == 3 and pad.rt == true end
+isJoypadLTPressed = function(id) return id == 3 and pad.lt == true end
+getJoypadMovementAxisX = function(id) return id == 3 and pad.mx or 0 end
+getJoypadAimingAxisY = function(id) return id == 3 and pad.ay or 0 end
+cp.pad = 3
+local fa = TH.active()
+local psi0, hG0, spd0 = fa.st.psiT, fa.st.hG, fa.spd
+pad.mx, pad.ay = 0.15, -0.15
+step(10)
+check(fa.st.psiT == psi0 and fa.st.hG == hG0 and fa.spd == spd0, "controller: sticks inside the dead zone, no trigger: holds course")
+pad.rt = true
+step(10)
+local spdRT = fa.spd
+pad.rt, pad.lt = false, true
+step(100)
+check(spdRT > spd0 and fa.spd < 0, "controller: RT ahead, LT back")
+pad.lt, pad.mx = false, 1
+step(10)
+local psiR = fa.st.psiT
+pad.mx = -1
+step(20)
+check(psiR > psi0 and fa.st.psiT < psiR, "controller: the left stick right turns right, left turns left")
+pad.mx, pad.ay = 0, 1
+step(10)
+local hDown = fa.st.hG
+pad.ay = -1
+step(5)
+check(hDown < hG0 and fa.st.hG > hDown, "controller: the right stick down lowers the hover, up raises it")
+pad.ay = 0
+-- the flying tip: the bound height keys and vanilla's exit key named (the Interact key: OnUseVehicle lands it, below);
+-- a controller's player: the controller's
+local realGetText, realKeyName = getText, getKeyName
+getText = function(k, ...) return table.concat({ k, ... }, "|") end
+getKeyName = function(k) return "K" .. tostring(k) end
+local padTip = TH.flyTip(cp)
+cp.pad = nil
+check(padTip == "IGUI_MinidoracatTesla_Tip_ThrustFlyPad" and TH.flyTip(cp) == "IGUI_MinidoracatTesla_Tip_ThrustFly|K201|K0|K0",
+    "the flying tip names the keys bound now (an unbound one: its 0); a controller's player: the controller's tip")
+getText, getKeyName = realGetText, realKeyName
+-- flying: the V ring's thrusters slice is Land (the first press lands it, H.ask), and getting out (vanilla's exit: the
+-- A button, ISButtonPrompt.lua:444; the Interact key, OnUseVehicle) lands it too; the landing itself still holds on
+local slices, realTex = {}, getTexture
+getTexture = function(p) return p end
+TH.radialSlice({ addSlice = function(_, text, tex, fn, a, b, c) slices[#slices + 1] = { text = text, fn = fn, a = a, b = b, c = c } end }, cp, cv)
+getTexture = realTex
+local ls = slices[1]
+check(#slices == 1 and ls.text == "IGUI_MinidoracatTesla_Radial_ThrustLand" and ls.fn and not fa.wantLand, "flying: the ring's slice is Land")
+ls.fn(ls.a, ls.b, ls.c)
+check(fa.wantLand == true, "the Land slice: lands it")
+fa.wantLand = nil
+local ex0, h0 = exits, #halo
+ISVehicleMenu.onExit(cp, 0)
+check(exits == ex0 and #halo == h0 and fa.wantLand == true, "flying: getting out lands it, nothing said, still in the seat")
+step(1)
+ISVehicleMenu.onExit(cp, 0)
+check(fa.phase == "land" and exits == ex0 and halo[#halo] == "IGUI_MinidoracatTesla_Deny_THRUST_IN_AIR", "landing: no getting out yet")
 abort()
 TH.KEYS.up = nil
-isKeyDown = savedKD
+isKeyDown, isJoypadRTPressed, isJoypadLTPressed, getJoypadMovementAxisX, getJoypadAimingAxisY = savedKD, nil, nil, nil, nil
 getCore, getPlayerScreenHeight, cv.vy = savedCore, savedSH, nil
 
 -- restore

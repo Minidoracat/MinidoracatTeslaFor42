@@ -140,6 +140,7 @@ local NKEYS = #KEYS
 -- hover help per quick key (translation keys); camp depends on its state
 local TIPS = { "IGUI_MinidoracatTesla_Tip_Headlight", "IGUI_MinidoracatTesla_Tip_Heater", "IGUI_MinidoracatTesla_Tip_Radio" }
 local TIP_OPEN, TIP_CLOSE = "IGUI_MinidoracatTesla_Tip_DoorOpen", "IGUI_MinidoracatTesla_Tip_DoorClose" -- %1 = part name
+local TIP_WING_UP, TIP_WING_DOWN = "IGUI_MinidoracatTesla_Tip_WingUp", "IGUI_MinidoracatTesla_Tip_WingDown" -- raised, not opened
 local TIP_ON, TIP_OFF = "IGUI_MinidoracatTesla_Tip_PowerOn", "IGUI_MinidoracatTesla_Tip_PowerOff"
 
 -- ---------------------------------------------------------------- quad list helpers
@@ -216,12 +217,13 @@ local function drawQ(el, q)
             L[i + 8], L[i + 9], L[i + 10], L[i + 11])
     end
 end
+-- key: a translation key (arg: a part's, its %1); nil: arg is the text itself, made already (HUD:readSlow's airTip)
 function HUD.drawTip(el, key, ax, ay, aw, ah, arg)
     local S, pn = el.S, el.playerNum
     local padX, padY, gap = math.floor(10 * S), math.floor(5 * S), math.floor(6 * S)
     if key ~= el.tipKey or arg ~= el.tipArg then
         el.tipKey, el.tipArg = key, arg
-        local tm, s = getTextManager(), arg and getText(key, getText(arg)) or getText(key)
+        local tm, s = getTextManager(), not key and arg or (arg and getText(key, getText(arg)) or getText(key))
         local tw = tm:MeasureStringX(UIFont.Small, s)
         el.tipText, el.tipText2 = s, nil
         if tw > getPlayerScreenWidth(pn) - 8 - 2 * padX then
@@ -429,6 +431,15 @@ function HUD:readSlow()
     -- thrusters: the air tank in 5 % steps (Thruster.lua H.air), nil on a car without them
     local air = T.Thruster and T.Thruster.air and T.Thruster.air(v)
     st.air = air and math.floor(air * 20 + 1e-6) * 5
+    if st.air then -- its hover tip (render), made again only when the numbers in it change: "Air 65% · full in N min"
+        local mins = st.air < 100 and T.Thruster.minutesToFull(air) or 0
+        if st.air ~= self.airPct or mins ~= self.airMins then
+            self.airPct, self.airMins = st.air, mins
+            local p = tostring(st.air)
+            self.airTip = mins > 0 and getText("IGUI_MinidoracatTesla_Tip_ThrustTankRefill", p,
+                getText("IGUI_MinidoracatTesla_Thrust_Refill", tostring(mins))) or getText("IGUI_MinidoracatTesla_Tip_ThrustTank", p)
+        end
+    end
     st.sentry = md ~= nil and md.sentry ~= nil
     st.chill = md ~= nil and md.chill == true
     local chg = md and md.chg
@@ -649,6 +660,9 @@ function HUD:build()
         if st.air > 0 then rect(self, cellX, ry + 19 * S, cw * st.air / 100, bh, st.air >= 100 and C.accent or C.text2, 1) end
     end
     local pctW = digitsWidth(self, A.mid, st.pct) + A.mid_pct[7] * self.f
+    -- the cell's area (its % to the right edge, the air bar under it): hovered, the air tip (render)
+    self.airX = st.air and cellX - 6 * S - pctW or nil
+    self.airY, self.airW, self.airH = ry, R - (self.airX or R), 19 * S + math.max(1, 2 * S)
     x = cellX - 6 * S - pctW
     x = digits(self, A.mid, st.pct, x, ry + 2 * S, C.text, 1)
     spr(self, A.mid_pct, x, ry + 2 * S, C.text, 1)
@@ -780,6 +794,10 @@ function HUD:render()
     if self:powerAt(mx, my) then
         return HUD.drawTip(self, self.st.on and TIP_OFF or TIP_ON, self.pwrX, self.pwrY, self.pwrS, self.pwrS)
     end
+    local ax = self.airX
+    if ax and mx >= ax and mx < ax + self.airW and my >= self.airY and my < self.airY + self.airH then
+        return HUD.drawTip(self, nil, ax, self.airY, self.airW, self.airH, self.airTip)
+    end
     local z = self:zoneAt(mx, my)
     if not z then return end
     local S = self.S
@@ -792,9 +810,10 @@ function HUD:render()
     self:doorTip(z[1], zx, zy, zw, zh)
 end
 
--- "Open / Close <Tesla part name>" for DOORS[k]
+-- "Open / Close <Tesla part name>" for DOORS[k]; the Roadster Rocket's wing rises and lowers
 function HUD:doorTip(k, ax, ay, aw, ah)
     local open = math.floor(self.st.doors / POW2[k]) % 2 == 1
+    if DOORS[k] == "TeslaWing" then return HUD.drawTip(self, open and TIP_WING_DOWN or TIP_WING_UP, ax, ay, aw, ah) end
     local name = PART_KEY[k]
     HUD.drawTip(self, open and TIP_CLOSE or TIP_OPEN, ax, ay, aw, ah, T.partNameKey(self.script, name) or name)
 end
