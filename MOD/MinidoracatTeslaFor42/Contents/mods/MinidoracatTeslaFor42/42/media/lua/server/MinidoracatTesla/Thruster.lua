@@ -149,6 +149,15 @@ end
 local GROUND = 0.25
 local function airborne(v) return v:getDebugZ() - H.groundZ(v) > GROUND end
 
+-- a car said at rest off the ground (cmds.thrustEnd rest: on its side, an eave, a fence, another car) still where it
+-- was ABORT_MS later, its sayer still online: down for good. The sayer's machine holds the physics with its controller
+-- off, so a car really in the air would have dropped ~1.25 m by then; one that went quiet (a crash) never says rest
+local REST_DXY, REST_DM = 0.15, 0.1 -- tiles, metres
+local function stillAt(v, r)
+    return getPlayerByOnlineID(r.by:getOnlineID()) == r.by and math.abs(v:getX() - r.x) < REST_DXY
+        and math.abs(v:getY() - r.y) < REST_DXY and math.abs(v:getDebugZ() - r.z) * H.FLOOR < REST_DM
+end
+
 -- the clock every time here is on (ms): real time while the timer below runs, at most 250 ms a frame, never back.
 -- The wall clock (getTimestampMs, System.currentTimeMillis) set back or forward moves it one frame's worth at most,
 -- so a due check never runs early nor waits for the wall clock to catch up; a hitch only makes them later. SP: it
@@ -288,7 +297,7 @@ end
 -- more each hand-over, as the same player may have it twice (tried forgotten, d2) and a late end of the first must
 -- not end the second (commands are reliable, not ordered)
 local function handOver(v, p, q)
-    p.helper, p.orphan, p.held, p.term = q, nil, q:getOnlineID(), (p.term or 0) + 1
+    p.helper, p.orphan, p.held, p.term, p.rest = q, nil, q:getOnlineID(), (p.term or 0) + 1, nil
     v:authorizationChanged(q)
     T.send(q, "thrustLand", { vid = v:getId(), pn = q:getPlayerNum(), n = p.n, term = p.term })
     schedule(p, HELP_MS, d3)
@@ -301,6 +310,13 @@ end
 -- where it is) and the busy flag says so until someone comes near (H.onUpdate, H.adopt), whoever that is: who could
 -- not before may now
 d2 = function(v, p)
+    local r = p.rest
+    p.rest = nil
+    if isServer() and r and airborne(v) and stillAt(v, r) then
+        p.downMs = r.ms
+        finish(v, p, p.up == true)
+        return T.log("thrust " .. p.act .. " ended at rest off the ground vid=" .. v:getId())
+    end
     if not isServer() or not airborne(v) then -- SP: this machine is the holder
         local done = p.up == true
         finish(v, p, done)
@@ -524,11 +540,13 @@ function H.appShow(player, v, act, key, n)
     end
 end
 
--- args { vid, act, done, sec, abort, n, term }, from the holder's machine (the driver, the show's caller, or the
+-- args { vid, act, done, sec, abort, n, term, rest }, from the holder's machine (the driver, the show's caller, or the
 -- helper landing it) with this action's n (any other: ignored); a helper's also with its hand-over's term (handOver).
 -- The action is over, or it can't go on (the physics left, someone sat in). MP: the server judges it, never the
 -- client's word: still up, it looks again ABORT_MS later and hands it on (d2); down, over now (the air back only if
--- no look saw it go). A boost its driver ends, still in the seat, is over at its end, up or not: it has no landing of
+-- no look saw it go). rest (true: a soft landing at rest off the ground): still up, and still where it was ABORT_MS
+-- later with its sayer online, it is over there (d2, stillAt).
+-- A boost its driver ends, still in the seat, is over at its end, up or not: it has no landing of
 -- its own and was billed on approval; a car falling off a roof after it is the driver's soft landing (client H.watch),
 -- which a busy flag would refuse. Handed on (a helper's end) or its driver gone, the air path as any action's.
 -- SP: done (false = the air back) and sec (seconds flown, flying) are this machine's own.
@@ -545,7 +563,12 @@ cmds.thrustEnd = function(player, args)
             finish(v, p, p.up == true)
             return T.log("thrust boost ended vid=" .. v:getId())
         end
-        if airborne(v) then return schedule(p, ABORT_MS, d2) end
+        if airborne(v) then
+            -- at rest off the ground (client: still REST_S in its soft landing): where it is now, to end it there if
+            -- it has not moved ABORT_MS later (d2). Only this end's spot counts: any other end, a hand-over drop it
+            p.rest = args.rest == true and { x = v:getX(), y = v:getY(), z = v:getDebugZ(), by = player, ms = nowMs() } or nil
+            return schedule(p, ABORT_MS, d2)
+        end
         p.downMs = nowMs()
         return d2(v, p)
     end

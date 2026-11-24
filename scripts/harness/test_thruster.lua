@@ -521,6 +521,60 @@ part:getModData().thr = { gas = 1, at = H.hours(), busy = { act = "fly", by = "x
 check(ask(p, v, "boost") == "thrustOk", "a stale busy flag (server restart) does not lock the car")
 done(p, v, { done = true })
 
+H.section("thrusters: at rest off the ground (thrustEnd rest)")
+-- a soft landing its holder ends at rest off the ground (on its side, an eave, another car: still up to the server's
+-- look; rest-brief, r2int-mp-prof fix 1): over where it is if it has not moved ABORT_MS later and its sayer is still
+-- online; anything else as before (D2)
+local function restAsk()
+    part:getModData().thr = { gas = 1, at = H.hours() }
+    v.npid = nil
+    local r = ask(p, v, "land")
+    wait(2000)
+    return r
+end
+local function handedSince(i0)
+    for i = i0 + 1, #H.sent do if H.sent[i].command == "thrustLand" then return true end end
+    return false
+end
+v.dz = 0.5 -- 1.22 m up
+check(restAsk() == "thrustOk", "R1: a soft landing asked 1.22 m up")
+local gl, sr = gas(part), #H.sent
+done(p, v, { act = "land", done = true, rest = true })
+check(entryOf(v) ~= nil, "R1: said at rest, still up: not over before the server's look ABORT_MS later")
+wait(500)
+check(entryOf(v) == nil and part:getModData().thr.busy == nil and not handedSince(sr) and v.npid == nil and near(gas(part), gl),
+    "R1: still there ABORT_MS later: over where it is, billed as flown, nobody handed it, the physics left with its driver")
+restAsk()
+done(p, v, { act = "land", done = true, rest = true })
+v.dz = 0.3
+wait(500)
+pe = entryOf(v)
+check(pe and pe.helper == helper and last().command == "thrustLand",
+    "R2: said at rest, 0.49 m lower ABORT_MS later (in the air after all): handed to the nearest as before")
+done(helper, v, { act = "land", done = true, rest = true })
+wait(500)
+check(entryOf(v) == nil and v.npid ~= helper:getOnlineID(),
+    "R2: its helper says it at rest, still there: over, the physics taken back from the helper")
+restAsk()
+done(p, v, { act = "land", done = true, rest = true })
+left[p] = true
+wait(500)
+pe = entryOf(v)
+check(pe and pe.helper == helper, "R3: its sayer gone before the look: no word to end it on, handed on as before")
+left[p] = nil
+done(helper, v, { act = "land", done = true, rest = true })
+wait(500)
+restAsk()
+done(p, v, { act = "land", done = true })
+wait(500)
+pe = entryOf(v)
+check(pe and pe.helper == helper, "R4: ended up without rest: handed on as before (D2)")
+v.dz = 0
+done(helper, v, { act = "land", done = true })
+check(entryOf(v) == nil, "R4: down: over")
+v.npid = nil
+part:getModData().thr = { gas = 1, at = H.hours() }
+
 H.section("thrusters: the phone app's show")
 local function show(pl, act, n)
     local c = #H.sent
@@ -1032,6 +1086,44 @@ TH.watch(cp, cv)
 local tl = H.clientSent[sent + 1]
 check(tl and tl.command == "thrust" and tl.args.act == "land" and TH.active() and TH.active().act == "land",
     "tipped 60 degrees over a drop at -1.2 m/s: the soft landing asked")
+okFor("land")
+cv.driver = nil; TH.tick(); cv.driver = cp
+cv.dz, cv.vy, cv.uy, cv.speed = 0.075, 0, nil, 30
+-- at rest off the ground (rest-brief; r2int-mp-prof fix 1 ran its 12 s at up 0.141, 0.817 m): still REST_S (0.7 s)
+-- in the soft landing, over, said as at rest; a car coming down at the landing's slowest never reads so
+cv.dz, cv.vy, cv.uy, cv.speed = 0.075 + 3 / TH.FLOOR, -0.7, 0.14, 0
+TH.ask(cp, cv, "land")
+okFor("land")
+sent = #H.clientSent
+for _ = 1, 60 do cv.dz = cv.dz - 0.014 / TH.FLOOR; TH.tick() end -- 1.2 s at 0.7 m/s: 3 m down to 2.16 m
+check(TH.active() and TH.active().act == "land" and #H.clientSent == sent,
+    "coming down at the landing's slowest 0.7 m/s for 1.2 s: never at rest, it runs on")
+cv.vy = 0
+for _ = 1, 30 do TH.tick() end
+check(TH.active() and #H.clientSent == sent, "still 0.6 s off the ground: it runs on")
+for _ = 1, 10 do if TH.active() then TH.tick() end end
+local er = H.clientSent[sent + 1]
+check(TH.active() == nil and er and er.command == "thrustEnd" and er.args.act == "land" and er.args.rest == true
+    and er.args.done == true, "still 0.7 s at 2.16 m on its side: over, said as at rest (done)")
+exits = 0
+ISVehicleMenu.onExit(cp, 0)
+check(exits == 1, "... the driver may get out")
+-- the watch after it: that car slipping on, tilted, is no new landing (a third each slip); a real fall still is
+cv.dz, cv.vy = 0.075 + 1.5 / TH.FLOOR, -0.6
+sent = #H.clientSent
+TH.watch(cp, cv)
+check(#H.clientSent == sent and TH.active() == nil, "ended at rest, then slipping on tilted at -0.6 m/s: no new landing")
+cv.dz, cv.vy = 0.075 + 2.5 / TH.FLOOR, -3
+TH.watch(cp, cv)
+check(H.clientSent[sent + 1] and H.clientSent[sent + 1].args.act == "land" and TH.active() and TH.active().act == "land",
+    "... falling at -3 m/s from 2.5 m: the soft landing asked")
+okFor("land")
+cv.driver = nil; TH.tick(); cv.driver = cp
+cv.dz, cv.vy = 0.075, 0
+TH.watch(cp, cv)
+cv.dz, cv.vy = 0.075 + 1.5 / TH.FLOOR, -0.6
+TH.watch(cp, cv)
+check(TH.active() and TH.active().act == "land", "on the ground since, then tipped over a drop at -0.6 m/s: the tilt branch asks again")
 okFor("land")
 cv.driver = nil; TH.tick(); cv.driver = cp
 cv.dz, cv.vy, cv.uy, cv.speed = 0.075, 0, nil, 30

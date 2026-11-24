@@ -40,6 +40,10 @@ local GAIN = { lo = { 9, 6 }, hi = { 36, 12 } } -- attitude PD
 local LPAR = 0.02                -- torque of the force along it, kept until it is worth a torque-only frame
 local DT_MAX = 0.083             -- the physics step's own cap
 local ROLL_S, LAND_S = 3, 12     -- roll-up and soft landing give up after these seconds (server Thruster.lua D2/D3)
+-- the soft landing at rest off the ground (on its side, an eave, a fence, another car: r2int-mp-prof fix 1, up 0.141
+-- at 0.817 m, ran its 12 s): this long under REST_V m/s within REST_DH m of one height is over. A landing never sinks
+-- slower than 0.7 m/s (landVy), so a car still coming down never reads as at rest
+local REST_S, REST_V, REST_DH = 0.7, 0.2, 0.03
 local WAKE_KMH = 3               -- the motor's creep that wakes a parked car before it flies (go)
 -- the real seconds one frame may count toward the flight's limit: a pause (no OnTick) is not flown time
 local REAL_MAX = 0.25
@@ -95,6 +99,9 @@ end
 local function groundZ(v) return H.groundZ(v, true) end -- cached: H.groundReset at each action's start
 -- floors between the ground and the car's physics origin at rest, per car, measured when it stands on the ground
 local RESTS = {}
+-- [vid] = true: its soft landing ended at rest off the ground (REST_S); the watch's tilt branch skips it until it
+-- stands on the ground again (a car teetering on an eave would start a landing each time it slips, a third each)
+local RESTED = {}
 local function heightOf(v, rest) return (v:getDebugZ() - groundZ(v) - rest) * FLOOR end
 
 -- kickflip / backflip: what lies on the car's way, read once before take-off. Near the ground (the engine checks
@@ -340,13 +347,15 @@ local function halt()
 end
 
 -- abort: it can't go on here (the physics left, someone sat in); the server judges what happened (server thrustEnd).
--- why and abort optional (`...`: most callers leave them out, and Kahlua does not fill left-out fixed parameters)
+-- rest: a soft landing still off the ground but at rest (REST_S): the server ends it where it is.
+-- why, abort and rest optional (`...`: most callers leave them out, and Kahlua does not fill left-out fixed parameters)
 local function stop(done, ...)
-    local why, abort = ...
+    local why, abort, rest = ...
     local f = halt()
     if not f then return end
+    if rest then RESTED[f.vid] = true end
     T.request(f.player, "thrustEnd", { vid = f.vid, act = f.act, done = done == true, sec = f.flown, abort = abort,
-        n = f.n, term = f.term })
+        n = f.n, term = f.term, rest = rest })
     if why then HaloTextHelper.addBadText(f.player, T.denyText(why)) end
 end
 
@@ -586,6 +595,13 @@ function H.tick()
         -- and touched down at -2.7 (kickflip) / -3.2 (backflip) m/s (r2fe-sp-a, switching at 1.5 m)
         st.ray = (st.rvy > -8 and st.rvy < -0.7) and math.max(0, 6 * vy / st.rvy) or 0
         if hm < 0.05 or (hm < 0.4 and vy > -0.25) or f.t > LAND_S then return stop(f.lifted) end
+        local lv = v:getLinearVelocity(V3.lv)
+        if lv:x() ^ 2 + vy * vy + lv:z() ^ 2 > REST_V * REST_V or not f.restH or math.abs(hm - f.restH) > REST_DH then
+            f.restH, f.restT = hm, 0
+        else
+            f.restT = f.restT + dt
+            if f.restT >= REST_S then return stop(f.lifted, nil, nil, true) end
+        end
     end
     drive(f, v, dt, hm)
 end
@@ -746,7 +762,8 @@ function H.watch(player, v)
     local hm = heightOf(v, RESTS[vid] or c.rest)
     if hm < 0.2 and math.abs(vy) < 0.05 then
         RESTS[vid] = clamp(v:getDebugZ() - groundZ(v), 0.02, 0.25)
-    elseif ((hm > 1.5 and vy < -2) or (hm > 1 and vy < -0.5 and v:getUpVector(V3.u):y() < 0.8))
+        RESTED[vid] = nil
+    elseif ((hm > 1.5 and vy < -2) or (hm > 1 and vy < -0.5 and not RESTED[vid] and v:getUpVector(V3.u):y() < 0.8))
         and (H.air(v) or 0) >= H.COST.land and H.check(player, v, "land") then
         H.ask(player, v, "land")
     end
