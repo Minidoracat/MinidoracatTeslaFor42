@@ -1149,109 +1149,11 @@ end)
 -- no getting out mid-air: the car is this machine's to fly until it lands. Flying, getting out (vanilla's exit: a
 -- controller's A, ISButtonPrompt.lua:444; the Interact key, Vehicles.lua OnUseVehicle; the car's info and part menus
 -- from the seat, ISVehicleMechanics.lua:420, ISVehiclePartMenu.lua:166) lands it instead.
--- At rest off the ground after (another car's roof, an eave), vanilla's way out from the seat runs into what holds it
--- up (isExitBlocked, BaseVehicle.java:6669-6699: lineClearCollide on the car's floor; r2rest-mp-near2: both seats, no
--- seat to switch to) and nothing else may move it (THRUST_AIRBORNE): out as vanilla's onExitAux, without that line
--- check (ISExitVehicle puts the player at the seat's outside spot on the car's floor, setCharacterPosition) - but only
--- past what holds the car up: spotOk looks at the rest of what vanilla would (round3 T1). That line is out of Lua's
--- reach (PolygonalMap2, not exposed), so the edges below stand in for it: never looser than it, but for a low fence.
--- Square to square on one level, an edge a player can't pass: a window (open or shut, isWindowTo) or a door (open or
--- shut, isDoorTo), an empty window frame (getWindowFrameTo: its square's WindowN/W is an IsoWindowFrame, which
--- isWindowTo misses, CellLoader.java:128-137, and isHoppableTo counts as hoppable, IsoObject.java:6847), or any other
--- edge that collides (isBlockedTo) - but a low fence alone: the edge's own square (the one it is the W / N side of)
--- still flagged HoppableW / N. The engine takes that flag off the square when a sprite there collides and can't be
--- hopped (IsoGridSquare.java:7281-7286, :7356-7364), so a fence with a wall or shut door on the same edge bars (as
--- vanilla reads it, ISClimbOverFence.lua:48). Another car is no edge
-local function barred(a, b)
-    if a:isWindowTo(b) or a:getWindowFrameTo(b) or a:isDoorTo(b) then return true end
-    if not a:isBlockedTo(b) then return false end
-    local w = a:getX() ~= b:getX()
-    local e = (w and b:getX() > a:getX() or not w and b:getY() > a:getY()) and b or a -- the edge is this square's W / N side
-    return not e:has(w and IsoFlagType.HoppableW or IsoFlagType.HoppableN)
-end
--- a tile at a time from the seat's square to the spot's: no square with stairs or a slope on the way (isStairBlockedTo
--- bars only from a stair's top, IsoGridSquare.java:2521-2527; vanilla's line bars their sides too), none stepped into
--- solid (the seat's own square not looked at: what holds the car up may stand there), no edge barred. A diagonal
--- step: both right-angle ways clear
-local function wayClear(cell, x, y, ex, ey, z)
-    local cur = cell:getGridSquare(x, y, z)
-    for _ = 1, 8 do
-        if not cur or cur:HasStairs() or cur:hasSlopedSurface() then return false end
-        if x == ex and y == ey then return true end
-        local dx = ex > x and 1 or (ex < x and -1 or 0)
-        local dy = ey > y and 1 or (ey < y and -1 or 0)
-        local nxt = cell:getGridSquare(x + dx, y + dy, z)
-        if not nxt or nxt:isSolid() then return false end
-        if dx ~= 0 and dy ~= 0 then
-            local a, b = cell:getGridSquare(x + dx, y, z), cell:getGridSquare(x, y + dy, z)
-            if not (a and b) or a:isSolid() or b:isSolid() or a:HasStairs() or a:hasSlopedSurface() or b:HasStairs()
-                or b:hasSlopedSurface() or barred(cur, a) or barred(a, nxt) or barred(cur, b) or barred(b, nxt) then
-                return false
-            end
-        elseif barred(cur, nxt) then return false end
-        cur, x, y = nxt, x + dx, y + dy
-    end
-    return false
-end
--- the spot itself a player's 0.3 clear of what bars (vanilla's line keeps him off walls; same square or not). A
--- neighbour that isn't there is nothing: a square above the ground exists only with a floor or an object on it
-local function roomAt(cell, sq, fx, fy, z)
-    local x, y = sq:getX(), sq:getY()
-    local dx = fx - x < 0.3 and -1 or (fx - x > 0.7 and 1 or 0)
-    local dy = fy - y < 0.3 and -1 or (fy - y > 0.7 and 1 or 0)
-    local n = dx ~= 0 and cell:getGridSquare(x + dx, y, z)
-    if n and barred(sq, n) then return false end
-    n = dy ~= 0 and cell:getGridSquare(x, y + dy, z)
-    return not (n and barred(sq, n))
-end
--- what vanilla's exit checks besides the line exitUp skips (isExitBlocked's safehouse, BaseVehicle.java:6686-6691)
--- and what that line stood for apart from the car's support: the spot the player is put on (setCharacterPosition
--- "outside": the area's interact point, the car's level) stands with room, and no wall, window or door lies between
--- the seat and it. Not the player's movement lock: the exit action sets it itself (ISExitVehicle.lua:25)
-local function spotOk(p, v, seat)
-    local pin, pout = v:getPassengerPosition(seat, "inside"), v:getPassengerPosition(seat, "outside")
-    if not pin or not pout then return false end
-    local area = pout:getArea() and v:getScript():getAreaById(pout:getArea())
-    local fx, fy
-    if area then
-        local a = v:areaPositionWorld4PlayerInteract(area)
-        fx, fy = a:getX(), a:getY()
-    else
-        local w = v:getPassengerPositionWorldPos(pout, V3.rel)
-        fx, fy = w:x(), w:y()
-    end
-    local ex, ey, z = math.floor(fx), math.floor(fy), math.floor(v:getZ())
-    local cell = getCell()
-    local sq = cell:getGridSquare(ex, ey, z)
-    if not sq or sq:isSolid() or sq:isSolidTrans() or not (sq:getFloor() or sq:TreatAsSolidFloor()) then return false end
-    if isClient() and not SafeHouse.isPlayerAllowedOnSquare(p, sq) then return false end
-    if not roomAt(cell, sq, fx, fy, z) then return false end
-    local w = v:getPassengerPositionWorldPos(pin, V3.rel)
-    return wayClear(cell, math.floor(w:x()), math.floor(w:y()), ex, ey, z)
-end
--- vanilla's onExit checks the movement lock too (ISVehicleMenu.onExit)
-local function exitOk(p, v, seat) return not p:isBlockMovement() and spotOk(p, v, seat) end
-local function exitUp(p, v, seat)
-    local part = v:getPassengerDoor(seat)
-    local door = part and part:getInventoryItem() and part:getDoor()
-    if door and door:isLocked() then ISTimedActionQueue.add(ISUnlockVehicleDoor:new(p, part)) end
-    if door and not door:isOpen() then ISTimedActionQueue.add(ISOpenVehicleDoor:new(p, v, part)) end
-    local out = ISExitVehicle:new(p)
-    -- looked at again as he is put there: the door unlocked and opened and the exit played out first, a wall built,
-    -- a safehouse claimed or the car moved meanwhile (vanilla's isValid asks only for a stopped car, its perform puts
-    -- him out: ISExitVehicle.lua:5-10, :49-63; vanilla never queues this one). The engine reads perform off the action
-    -- itself (LuaTimedActionNew.java:162). Not there: back to the seat's idle (update cleared the exit's variables
-    -- before forceComplete, :13-22), the queue goes on (the door shut after as asked)
-    out.perform = function(self)
-        local cv = p:getVehicle()
-        local s = cv and cv:getSeat(p)
-        if cv and s and s >= 0 and spotOk(p, cv, s) then return ISExitVehicle.perform(self) end
-        if cv and s and s >= 0 then cv:playPassengerAnim(s, "idle") end
-        ISBaseTimedAction.perform(self)
-    end
-    ISTimedActionQueue.add(out)
-    if door then ISTimedActionQueue.add(ISCloseVehicleDoor:new(p, v, part)) end
-end
+-- At rest off the ground after (another car's roof, an eave: perched), vanilla's way out from the seat may run into
+-- what holds it up (isExitBlocked, BaseVehicle.java:6669-6699: lineClearCollide on the car's floor; r2rest-mp-near2:
+-- both seats, no seat to switch to). The driver's exit then asks a soft landing that lifts the car off what holds it
+-- and carries it the way it leans (as the landing's probe does when held on an edge), down beside it; vanilla's exit
+-- after, from the ground
 local origExit = ISVehicleMenu.onExit
 function ISVehicleMenu.onExit(playerObj, seatFrom)
     local f = F
@@ -1265,11 +1167,18 @@ function ISVehicleMenu.onExit(playerObj, seatFrom)
     end
     local v = playerObj:getVehicle()
     local c = v and H.conf(v)
-    if c and heightOf(v, RESTS[v:getId()] or c.rest) > 0.4 and v:isStopped() then
+    if c and v:isDriver(playerObj) and not playerObj:isBlockMovement() and perched(v, c) then
         local seat = seatFrom or v:getSeat(playerObj)
-        if v:isExitBlocked(playerObj, seat) and not ISVehicleMenu.getBestSwitchSeatExit(playerObj, v, seat)
-            and exitOk(playerObj, v, seat) then
-            return exitUp(playerObj, v, seat)
+        if v:isExitBlocked(playerObj, seat) and not ISVehicleMenu.getBestSwitchSeatExit(playerObj, v, seat) then
+            if H.ask(playerObj, v, "land") then -- refused: H.ask said why
+                local u = v:getUpVector(V3.u)
+                local sx, sz = u:x(), u:z()
+                if sx * sx + sz * sz < 1e-6 then sx, sz = levelHeading(v) end
+                local l = math.sqrt(sx * sx + sz * sz)
+                F.slide = { dx = sx / l, dz = sz / l, x = v:getX(), y = v:getY(), z = v:getDebugZ() + LIFT_DH / FLOOR, t = 0 }
+                HaloTextHelper.addGoodText(playerObj, getText("IGUI_MinidoracatTesla_Thrust_ExitCarry"))
+            end
+            return
         end
     end
     return origExit(playerObj, seatFrom)
