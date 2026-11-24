@@ -634,7 +634,12 @@ function H.tick()
             return H.watch(pl, v)
         end
         if gain > 2 then f.lifted = true end
-        if t > 0.4 and gain < 1 then return stop(false, "THRUST_NO_LIFT") end
+        -- stopped short once up to speed (r2f3-mp-d3 boostnearhold: into the support east of roof 1, asked to land at up
+        -- -0.66 on its busy flag): over like any other boost, not "no lift"
+        if t > 0.4 and gain < 1 then
+            if f.lifted then return boostOver(f, v) end
+            return stop(false, "THRUST_NO_LIFT")
+        end
         if gain + f.v0 >= c.boostV or t > 1.5 then return boostOver(f, v) end
     elseif ph == "fly" then
         if f.wantLand or (f.sec and f.flown >= f.sec) then
