@@ -117,7 +117,8 @@ local function groundZ(v) return H.groundZ(v, true) end -- cached: H.groundReset
 local RESTS = {}
 -- [vid] = true: its soft landing ended at rest off the ground (REST_S); the watch's tilt branch skips it until it
 -- stands on the ground again or starts a boost or stunt (a car teetering on an eave would start a landing each time
--- it slips, a third each)
+-- it slips, a third each). { x, y, z }: a landing refused there (deny): skipped only until it moves 0.3 m from there
+-- (refused is not at rest: a late thrustEnd's THRUST_BUSY, then sliding down a wall slower than 2 m/s)
 local RESTED = {}
 local function heightOf(v, rest) return (v:getDebugZ() - groundZ(v) - rest) * FLOOR end
 
@@ -568,6 +569,13 @@ local function boostOver(f, v)
     stop(f.lifted)
 end
 
+-- a timed action running or waiting in the player's vanilla queue (ISTimedActionQueue.lua:7, :143-144: queue[1] is
+-- the one running); queues read as is, getTimedActionQueue would make one
+local function queued(p)
+    local q = ISTimedActionQueue.queues[p]
+    return q ~= nil and q.queue[1] ~= nil
+end
+
 -- a flight's motor, shut off at OFF_H m (fly), started again as its landing comes down: once, by the vanilla start
 -- (ISVehicleMenu.onStartEngine, the HUD's power key's way: every kind of key), START_MS after it was seen off
 -- (ShuttingDown lasts 2 s, tryStartEngine acts only from Idle: BaseVehicle.java:7611-7653); asked each frame while it
@@ -689,8 +697,10 @@ function H.tick()
         else
             f.flown = f.flown + real
             -- the motor off once the wheels are clear (oracle-flight2 Q1): a running motor's car hits what it flies
-            -- through (r2scan: zombies lying under it held it 21.6 s); started again as it comes down (startBack)
-            if not f.offAsked and hm > OFF_H and v:isEngineRunning() then
+            -- through (r2scan: zombies lying under it held it 21.6 s); started again as it comes down (startBack).
+            -- Not while the driver's timed actions run or wait (ISTimedActionQueue.lua:9-17, :157-200: the shut-off
+            -- would queue behind them and outlive the flight); asked each frame until the queue is empty
+            if not f.offAsked and hm > OFF_H and v:isEngineRunning() and not queued(f.player) then
                 local h = v:getPartById("Heater")
                 local hd = h and h:getModData()
                 f.offAsked, f.heat = true, hd and hd.active and tonumber(hd.temperature) or nil
@@ -981,8 +991,11 @@ T.ClientCommands.deny = function(args)
         local f = F
         if f and f.n == args.n and not f.ok then
             halt()
-            -- a landing refused: the watch's tilt branch (no vy past 53 degrees) asks no more for this car at rest
-            if f.act == "land" then RESTED[f.vid] = true end
+            -- a landing refused: the watch's tilt branch (no vy past 53 degrees) asks no more while it stays here
+            if f.act == "land" then
+                local v = f.v
+                RESTED[f.vid] = { x = v:getX(), y = v:getY(), z = v:getDebugZ() }
+            end
         end
         local p = getSpecificPlayer(pn) or getSpecificPlayer(0)
         if p then HaloTextHelper.addBadText(p, H.whyText(args.vid and getVehicleById(args.vid), tostring(args.reason))) end
@@ -1003,6 +1016,10 @@ function H.watch(player, v)
     local vid = v:getId()
     local vy = v:getLinearVelocity(V3.lv):y()
     local hm = heightOf(v, RESTS[vid] or c.rest)
+    local r = RESTED[vid]
+    if type(r) == "table" and (v:getX() - r.x) ^ 2 + (v:getY() - r.y) ^ 2 + ((v:getDebugZ() - r.z) * FLOOR) ^ 2 > 0.09 then
+        RESTED[vid] = nil -- moved 0.3 m from where its landing was refused
+    end
     if hm < 0.2 and math.abs(vy) < 0.05 then
         RESTS[vid] = clamp(v:getDebugZ() - groundZ(v), 0.02, 0.25)
         RESTED[vid] = nil

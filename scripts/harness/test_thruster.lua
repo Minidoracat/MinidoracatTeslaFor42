@@ -1399,7 +1399,7 @@ do -- still up after LAND_S: over where it is, as at rest (SP: it asked again at
     cv.driver = nil; TH.tick(); cv.driver = cp
 end
 do -- the watch: past 53 degrees on what holds it, at any speed (r2f3-mp-c boostnear: rolled over on a fence top at
-    -- -0.1 m/s, asked only at up 0); a refusal of that landing marks it at rest, asked no more
+    -- -0.1 m/s, asked only at up 0); a refusal of that landing marks it there, asked no more until it moves 0.3 m (T5)
     cv.dz, cv.vy, cv.uy = 0.075, 0, 1
     TH.watch(cp, cv) -- on the ground: the rest mark gone
     cv.dz, cv.uy = 0.075 + 2.2 / TH.FLOOR, 0.7
@@ -1414,6 +1414,15 @@ do -- the watch: past 53 degrees on what holds it, at any speed (r2f3-mp-c boost
     n0 = #H.clientSent
     TH.watch(cp, cv)
     check(TH.active() == nil and #H.clientSent == n0, "... the same again: asked no more")
+    cv.dz = cv.dz - 0.2 / TH.FLOOR
+    TH.watch(cp, cv)
+    check(TH.active() == nil and #H.clientSent == n0, "... slid 0.2 m down from there: still asked no more")
+    cv.dz = cv.dz - 0.2 / TH.FLOOR
+    TH.watch(cp, cv)
+    check(TH.active() and TH.active().act == "land" and #H.clientSent == n0 + 1,
+        "T5: ... slid 0.4 m down from there, still tilted: the soft landing asked again")
+    okFor("land")
+    cv.driver = nil; TH.tick(); cv.driver = cp
     cv.dz, cv.vy, cv.uy = 0.075, 0, 1
     TH.watch(cp, cv)
 end
@@ -1620,6 +1629,7 @@ ISVehicleMenu.onShutOff = function(p) if p == cp then q1.offs = q1.offs + 1; cv.
 ISVehicleMenu.onStartEngine = function(p) if p == cp then q1.starts = q1.starts + 1 end end
 cv.parts.Heater = { md = { active = true, temperature = 22 }, getModData = function(s) return s.md end }
 cv.running = true
+ISTimedActionQueue = { queues = {} } -- vanilla's per-player queues (ISTimedActionQueue.lua:7): none yet
 function q1.heater()
     for i = #H.clientSent, 1, -1 do
         local m = H.clientSent[i]
@@ -1835,6 +1845,34 @@ do -- something under it (a fence, a hedge): glides on; after GLIDE_S down all t
     getCell = cellOpen
     abort()
     cv.running, cv.parts.Heater = true, nil -- the fakes' shut-off left it off
+end
+do -- round3 T6: the driver's timed actions queued (eating, reading): the motor not asked off behind them, in flight
+    -- or after; the queue empty in flight: asked off the next frame
+    local busyQ = { queue = { {} } }
+    ISTimedActionQueue.queues[cp] = busyQ
+    local offs0, starts0 = q1.offs, q1.starts
+    cv.dz, cv.vy, cv.speed = 0.075, 0, 0
+    TH.ask(cp, cv, "fly")
+    okFor("fly", { sec = 30 })
+    step(150)
+    local f6 = TH.active()
+    check(f6 and f6.phase == "fly" and hm() > 1 and not f6.offAsked and q1.offs == offs0 and cv.running,
+        "T6: flying 3 s with another timed action queued: the motor not asked off")
+    f6.wantLand = true
+    for _ = 1, 1500 do if TH.active() then step(1) end end
+    check(TH.active() == nil and hm() < 0.05 and q1.offs == offs0 and q1.starts == starts0 and cv.running,
+        "T6: landed with it still queued: the motor never asked off, nor started")
+    cv.dz, cv.vy, cv.speed = 0.075, 0, 0
+    TH.ask(cp, cv, "fly")
+    okFor("fly", { sec = 30 })
+    step(150)
+    f6 = TH.active()
+    check(f6 and not f6.offAsked and q1.offs == offs0, "T6: a second flight, still queued: not asked off")
+    busyQ.queue[1] = nil
+    step(1)
+    check(f6 and f6.offAsked and q1.offs == offs0 + 1 and not cv.running, "T6: the queue empty mid-flight: asked off the next frame")
+    if TH.active() then abort() end
+    ISTimedActionQueue.queues[cp], cv.running = nil, true
 end
 -- at rest up on another car (r2rest-mp-near2: isExitBlocked on both seats, no seat to switch to; nothing else may
 -- move it, THRUST_AIRBORNE): out anyway, as vanilla's onExitAux without its line check. On the ground, or a way out
