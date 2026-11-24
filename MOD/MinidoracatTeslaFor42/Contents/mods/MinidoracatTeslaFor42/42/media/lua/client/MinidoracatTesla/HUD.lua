@@ -217,8 +217,10 @@ local function drawQ(el, q)
             L[i + 8], L[i + 9], L[i + 10], L[i + 11])
     end
 end
--- key: a translation key (arg: a part's, its %1); nil: arg is the text itself, made already (HUD:readSlow's airTip)
-function HUD.drawTip(el, key, ax, ay, aw, ah, arg)
+-- key: a translation key (arg: a part's, its %1); nil: arg is the text itself, made already (HUD:readSlow's airTip).
+-- arg is optional: taken from `...` (most callers leave it out; family pitfalls.md)
+function HUD.drawTip(el, key, ax, ay, aw, ah, ...)
+    local arg = ...
     local S, pn = el.S, el.playerNum
     local padX, padY, gap = math.floor(10 * S), math.floor(5 * S), math.floor(6 * S)
     if key ~= el.tipKey or arg ~= el.tipArg then
