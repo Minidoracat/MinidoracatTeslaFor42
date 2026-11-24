@@ -358,9 +358,9 @@ T.Specs = {
         massKg = 1700, -- "just under 1,700 kilos" (third party, roadster2.md)
         dcKw = 500, -- V4 Supercharger (third party quoting Moravy)
         regenEff = 0.6,
-        -- Chill at the other cars' 0-100 km/h (15.8 s): the Roadster's 2100 -> 15.91 s on mass 486, 0-100 about
-        -- mass / force, so 2100 x 669 / 486; measure it (feel-sp) with the body
-        chillForce = 2900,
+        -- Chill at the other cars' 0-100 km/h (15.8 s): 2900 measured 14.04 s on this body (feel-sp r2int-feel,
+        -- 2026-11-24), 0-100 about mass / force, so 2900 x 14.04 / 15.8
+        chillForce = 2580,
         butterfly = true, -- butterfly doors like the Cybercab's: the app opens both
         frunk = false, -- "No Frunk, Because the Front Is a Giant Wing" (Not a Tesla App #4850), template SoloNoFrunk
         wing = true, -- the active rear wing (part TeslaWing): app, HUD, radial and the charge port behind it
