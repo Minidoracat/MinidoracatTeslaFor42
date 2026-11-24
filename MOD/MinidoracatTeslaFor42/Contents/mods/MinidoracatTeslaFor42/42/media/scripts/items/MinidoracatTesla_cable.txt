@@ -106,6 +106,17 @@ module Base
         Hidden = true,
     }
 
+    /* Roadster Rocket: the NACS handle; its port is behind the wing (Liftgate.lua L.chargeWing) */
+    item MinidoracatTesla_CablePlugRoadster2
+    {
+        Weight = 0.1,
+        ItemType = base:normal,
+        DisplayCategory = Electronics,
+        Icon = MinidoracatTesla_Cable,
+        WorldStaticModel = Base.MinidoracatTesla_CablePlugRoadster2,
+        Hidden = true,
+    }
+
     /* Semi: the MCS handle (Megawatt Charging System); its port is on the left flank behind the cab */
     item MinidoracatTesla_CablePlugSemi
     {

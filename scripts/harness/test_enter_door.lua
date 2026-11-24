@@ -110,6 +110,31 @@ check(e == nil and van == true, "Model Y L front door: vanilla")
 e, van = useAt(car("Base.CarNormal", {}), "DoorRearLeft")
 check(e == nil and van == true, "a six-seat vanilla car: vanilla")
 
+H.section("a door no seat gets in through (Roadster Rocket's right door, Specs seatless): E opens or shuts it")
+do
+    local R2, swung = "Base.MinidoracatTesla_Roadster2", nil
+    ISVehicleMenu.onOpenDoor = function(_, part) swung = "open " .. part:getId() end
+    ISVehicleMenu.onCloseDoor = function(_, part) swung = "close " .. part:getId() end
+    local rv = { getMaxPassengers = function() return 1 end, getScriptName = function() return R2 end }
+    local function door(id, open, item)
+        return { getId = function() return id end, getInventoryItem = function() return item end,
+            getDoor = function() return { isOpen = function() return open end } end }
+    end
+    local function useDoor(v, part)
+        entered, vanilla, swung = nil, nil, nil
+        Vehicles.Use.Door(v, part, {})
+        return swung, vanilla
+    end
+    check(useDoor(rv, door("DoorFrontRight", false, {})) == "open DoorFrontRight", "shut right door: opened")
+    check(useDoor(rv, door("DoorFrontRight", true, {})) == "close DoorFrontRight", "open right door: shut")
+    local sw, van = useDoor(rv, door("DoorFrontRight", false, nil))
+    check(sw == nil and van == true, "right door taken off: vanilla")
+    sw, van = useDoor(rv, door("DoorFrontLeft", false, {}))
+    check(sw == nil and van == true, "the driver's door: vanilla (it gets in)")
+    sw, van = useDoor(car(Y, {}), door("DoorFrontRight", false, {}))
+    check(sw == nil and van == true, "Model Y's right door (a seat's): vanilla")
+end
+
 H.section("six-seat rear door gamepad Interact: the same seat as E")
 -- ISButtonPrompt binds self.cmdEnterVehicle(vehicle, seat) with the first seat the door serves (Rear* at a falcon wing:
 -- seat 2 left, 3 right), or getBestSeat when no door part is useable

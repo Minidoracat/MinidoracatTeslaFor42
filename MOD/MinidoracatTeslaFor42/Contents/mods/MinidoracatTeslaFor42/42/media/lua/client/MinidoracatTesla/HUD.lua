@@ -33,10 +33,11 @@ local MSG_Y, MSG_H, MSG_MINW, MSG_MAXW = 108, 30, 312, 474
 local H_NOMSG = 112
 local LOW_PCT = 20
 local DOORS = { "DoorFrontLeft", "DoorFrontRight", "DoorRearLeft", "DoorRearRight", "TrunkDoor", "DoorRear", "EngineDoor",
-    "TrunkTonneau", "SoftTop" }
+    "TrunkTonneau", "SoftTop", "TeslaWing" }
 -- door overlay sprites; a car whose doors sit elsewhere has its own, door_<kind>_<model> (build_atlas.py DOOR_GEOM)
-local DOOR_SPR = { "door_FL", "door_FR", "door_RL", "door_RR", "door_TR", "door_TR", "door_HD", "door_TN", "door_ST" }
-local POW2 = { 1, 2, 4, 8, 16, 32, 64, 128, 256 }
+local DOOR_SPR = { "door_FL", "door_FR", "door_RL", "door_RR", "door_TR", "door_TR", "door_HD", "door_TN", "door_ST",
+    "door_WG" }
+local POW2 = { 1, 2, 4, 8, 16, 32, 64, 128, 256, 512 }
 -- clickable car picture, per car model (Core.lua Specs model; sprite car_<model>, scripts/hud/build_atlas.py):
 -- { DOORS index, x0, y0, x1, y1 } in design units from the car sprite's top-left (150x85, nose right, left side up;
 -- build_atlas.py draws at 150/170 px per viewBox unit). Rear doors end at the B-pillar seam (x 69), the front doors
@@ -63,6 +64,10 @@ local POW2 = { 1, 2, 4, 8, 16, 32, 64, 128, 256 }
 -- picture at 19.6 viewBox units per metre): its two cab doors from their rear seam (viewBox 100.7 = x 88.9), where
 -- they hinge, to the windscreen's corners (viewBox 131.2 = x 115.8), split at the roof's spine like the other cars'
 -- doors; nothing else opens (no frunk, no trunk: T.hasTrunk). Its seats and wheels are no zones (zones are doors).
+-- The Roadster Rocket (build_atlas.py car_roadster2; placeholder: the Roadster's outline until its own body is drawn):
+-- the wing over the tail to its front edge (viewBox 48.5 = x 43), the trunk lid behind the seat from there to the
+-- doors (x 71), the doors as the Roadster's (x 71-97) split at the spine like the other cars' doors; the hood (no front
+-- trunk, T.hasFrunk) opens nothing.
 local ZONES = {
     ModelY = {
         { 5, 0, 0, 45, 85 }, { 3, 45, 0, 69, 42.5 }, { 4, 45, 42.5, 69, 85 },
@@ -94,6 +99,9 @@ local ZONES = {
     },
     Cybercab = {
         { 5, 0, 0, 57.1, 85 }, { 1, 67.4, 0, 100.6, 42.5 }, { 2, 67.4, 42.5, 100.6, 85 },
+    },
+    Roadster2 = {
+        { 10, 0, 0, 43, 85 }, { 5, 43, 0, 71, 85 }, { 1, 71, 0, 97, 42.5 }, { 2, 71, 42.5, 97, 85 },
     },
     Semi = {
         { 1, 88.9, 0, 115.8, 42.5 }, { 2, 88.9, 42.5, 115.8, 85 },
