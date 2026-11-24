@@ -84,7 +84,7 @@ local function finish(v, p, done, sec)
             local s = type(sec) == "number" and sec == sec and math.min(math.max(0, sec), real) or real
             thr.gas = math.max(0, (thr.gas or 0) - s / H.flightSeconds())
         end
-        thr.busy = nil
+        thr.busy, thr.at = nil, T.hours() -- no refill while it ran (r2f-sp-1124b: a 16 s flight got 0.16 back)
         v:transmitPartModData(part)
     end
     fx(v, done and p.act ~= "boost" and "land" or nil)
