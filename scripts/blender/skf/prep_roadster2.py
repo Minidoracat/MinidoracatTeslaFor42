@@ -55,6 +55,11 @@ SHOULDER = [(2.05, 0.30), (1.75, 0.47), (1.45, 0.56), (1.19, 0.60), (0.90, 0.68)
 BELT = [(1.19, 0.75), (-0.986, 0.923), (-2.055, 0.80)]
 DLO = [(-0.30, 1.095), (-0.986, 0.923)]       # the side window's top edge behind the roof (02)
 DLO_END = -0.986
+# the canopy's frame (08 / 02): a paint strip this wide (along the side glass, under the rail) from the A pillar's base
+# over the doors to the rear quarter window (the A pillar and the roof rail in one), and the black B pillar (y range)
+# behind the door's rear edge (-0.378 at the rail) between the door glass and the quarter glass
+RAIL_W = 0.045
+B_PILLAR = (-0.46, -0.39)
 # roof rail / buttress top half width: canopy 0.50 (03), buttresses widening to the tail corners (01)
 TOP_HW = [(1.19, 0.80), (0.90, 0.66), (0.50, 0.54), (0.0, 0.50), (-0.50, 0.52), (-1.00, 0.58), (-1.50, 0.68),
           (-1.85, 0.75), (-2.055, 0.78)]
@@ -66,8 +71,10 @@ V = (0.656, 2.05, 0.39)                # bar end / notch point (03: bar 817-1400
 # hood (03 / 08: the hood low between the pods, a crease each side; level with the ridge it read as one flat plane)
 HC = (0.49, 1.40, 0.655)
 AB = (0.82, 1.19, 0.75)                # A pillar base (03: 1481.7, 436.7)
-# the lit band in each V notch (03: about 0.15 m along the hood edge): plan width off the hood edge, y range
-HEAD_LAMP = dict(w=0.03, y=(1.80, 1.96))
+# the lit band in each V notch (03: about 0.15 m along the hood edge): plan width off the hood edge, y range (w 0.055:
+# 0.03 read nowhere in game, E2E r2body-look-a3; 0.06's cut met the front recess's corner in 2 non-manifold edges)
+HEAD_LAMP = dict(w=0.055, y=(1.80, 1.96))
+NOSE_BAR = 0.035                       # the nose's lamp bar under the hood's edge (03), tall: 0.018 read nowhere (a3)
 RIDGE = [(2.05, 0.39), (2.0, 0.478), (1.831, 0.572), (1.663, 0.634), (1.495, 0.682), (1.40, 0.706), (1.326, 0.724),
          (1.19, 0.753)]
 # centre line: hood, the glass between the pods, windshield, roof (TOP), rear glass and deck (01, Slide-2)
@@ -84,7 +91,8 @@ TYRES = dict(front=dict(y=1.272, r=0.307, w=0.255, disc=0.262, x=0.80),      # 0
              rear=dict(y=-1.392, r=0.337, w=0.305, disc=0.265, x=0.755))
 ARCH = dict(front=(1.272, 0.307, 0.350), rear=(-1.392, 0.337, 0.355))      # (y, z, radius): 02 arch tops 0.654 / 0.688
 # rear face (01 at the plate's scale): lamp band under the wing's lip, plate, the black cavity with nozzles and fans
-LAMP_Z = (0.757, 0.793)
+# (the band 5.8 cm: up to the lowered deck under the wing's lip, 0.794; 3.6 cm read under a pixel at default zoom, a3)
+LAMP_Z = (0.735, 0.793)
 PLATE = dict(z=0.58, w=0.3048, h=0.1524)
 CAVITY = dict(hw=0.78, top=0.48, back=-2.0)
 TAIL_BLACK = ((0.26, 0.48), (0.84, 0.63))   # the tail's black edge (|x|, z): flat under the plate, rising to the corners
@@ -152,12 +160,13 @@ def section(y, lowered=False):
     zb = interp(BELT, y)
     belt = (max(min(hw - 0.12, lim(zb)), xe + 0.02), zb)
     rail = (xe, ze)
-    if y >= -0.15:
-        t7 = 0.5
-    elif y >= -0.30:
-        t7 = 0.5 + 0.5 * (-0.15 - y) / 0.15
+    # u7: the side glass's top: under the canopy's frame (RAIL_W) to y -0.30, then down the DLO behind the roof (near
+    # the cowl, where belt and rail close in under 2 x RAIL_W: half each)
+    frame = max(0.5, 1 - RAIL_W / math.hypot(rail[0] - belt[0], rail[1] - belt[1]))
+    if y >= -0.30:
+        t7 = frame
     elif y > DLO_END:
-        t7 = np.clip((interp(DLO, y) - belt[1]) / (ze - belt[1]), 0, 1)
+        t7 = min(frame, np.clip((interp(DLO, y) - belt[1]) / (ze - belt[1]), 0, 1))
     else:
         t7 = 0.35
     u += [belt, lerp(belt, rail, t7), rail]
@@ -184,7 +193,7 @@ def face_mat(k, y):
     if y > REAR0:
         if k == 6 and y > 1.12:   # pod top to belt behind the cowl: paint, else a glass spike shows in 03 / 08
             return "Paint"
-        return "Glass" if (k != 7 or y > -0.30) else "Paint"
+        return "Paint" if k == 7 else "Glass"           # k 7: the canopy's frame (RAIL_W), u7 the glass's top
     if k == 6:
         return "Glass" if y > DLO_END else "Paint"
     if k < 10:          # the buttresses incl. their inner walls stay paint (01: lit white beside the glass)
@@ -246,8 +255,9 @@ def cutters():
             out.append((f"arch_{nm}_{sx}", [(sx * x, yw + ra * np.cos(t), zw + ra * np.sin(t)) for x in (0.50, 1.3)
                                             for t in a], "Liner"))
     # under the hood's lamp bar: a recessed face sloping back and down, the black intake, the lip below (03, 08)
+    zr = V[2] - NOSE_BAR
     out.append(("front_recess", [(sx * 0.70, y, z) for sx in (-1, 1) for y, z in
-                                 ((2.30, 0.372), (2.052, 0.372), (1.975, 0.26), (1.975, 0.17), (2.30, 0.17))], "Trim"))
+                                 ((2.30, zr), (2.052, zr), (1.975, 0.26), (1.975, 0.17), (2.30, 0.17))], "Trim"))
     out.append(("lamp_band", box(-0.85, 0.85, -2.30, -2.025, LAMP_Z[0], LAMP_Z[1]), "TailLight"))
     out.append(("plate_recess", box(-0.17, 0.17, -2.30, -2.040, 0.493, 0.667), "Trim"))
     out.append(("cavity", box(-CAVITY["hw"], CAVITY["hw"], -2.40, CAVITY["back"], -0.1, CAVITY["top"]), "Trim"))
@@ -413,8 +423,8 @@ def lines():
     out["charge_port"] = [[cx - 0.06, cy - 0.045, cz], [cx + 0.06, cy - 0.045, cz], [cx + 0.06, cy + 0.045, cz],
                           [cx - 0.06, cy + 0.045, cz], [cx - 0.06, cy - 0.045, cz]]
     out["charge_port_centre"] = [cx, cy, cz]
-    out["head_light_bar"] = [[-0.64, 2.05, 0.381], [0.64, 2.05, 0.381]]
-    out["tail_light_bar"] = [[-0.85, -2.025, 0.775], [0.85, -2.025, 0.775]]
+    out["head_light_bar"] = [[-0.64, 2.05, round(V[2] - NOSE_BAR / 2, 4)], [0.64, 2.05, round(V[2] - NOSE_BAR / 2, 4)]]
+    out["tail_light_bar"] = [[-0.85, -2.025, round(sum(LAMP_Z) / 2, 4)], [0.85, -2.025, round(sum(LAMP_Z) / 2, 4)]]
     # thrusters (exit centres; dir per group): lift 4 corners down, side 2 at the front, rear 4 the bells
     out["nozzles"] = dict(
         lift=[[-0.62, 1.78, 0.14], [0.62, 1.78, 0.14], [-0.62, -1.80, 0.14], [0.62, -1.80, 0.14]],
@@ -500,12 +510,12 @@ def main():
     closed(bm)
     # cap materials: the nose all dark below the lamp bar (03, 08); the tail's black lower half rises from under the
     # plate to the corners (825), so its edge is a polyline (planes) cut into the cap, not one horizontal line
-    zb_nose = lambda ax: V[2] - 0.018
+    zb_nose = lambda ax: V[2] - NOSE_BAR
     zb_tail = lambda ax: TAIL_BLACK[0][1] + max(ax - TAIL_BLACK[0][0], 0) * (TAIL_BLACK[1][1] - TAIL_BLACK[0][1]) / \
         (TAIL_BLACK[1][0] - TAIL_BLACK[0][0])
     (x0, z0), (x1, z1) = TAIL_BLACK
     nz = np.array([-(z1 - z0), 0.0, x1 - x0]) / math.hypot(z1 - z0, x1 - x0)
-    for yc, zb, planes in ((STATIONS[0], zb_nose, [((0, 0, V[2] - 0.018), (0, 0, 1))]),
+    for yc, zb, planes in ((STATIONS[0], zb_nose, [((0, 0, V[2] - NOSE_BAR), (0, 0, 1))]),
                            (STATIONS[-1], zb_tail, [((0, 0, z0), (0, 0, 1)), ((x0, 0, z0), tuple(nz)),
                                                     ((-x0, 0, z0), (-nz[0], 0, nz[2]))])):
         on_cap = lambda f: abs(f.normal.y) > 0.999 and abs(f.calc_center_median().y - yc) < 1e-6
@@ -573,7 +583,7 @@ def main():
     idx = {m.name: i for i, m in enumerate(me.materials)}
     for p in me.polygons:                    # the lamp bar: the nose face left above the recess (03: row 605-610)
         c = p.center
-        if p.normal.y > 0.9 and c.y > 2.0 and 0.370 < c.z < 0.395 and abs(c.x) < 0.66:
+        if p.normal.y > 0.9 and c.y > 2.0 and V[2] - NOSE_BAR - 0.002 < c.z < 0.395 and abs(c.x) < 0.66:
             p.material_index = idx["HeadLight"]
     # the doors cut out of the sides along door_outline: a plane along x through each edge of its front and rear runs,
     # on the side faces near it (the sill top and the rail are loft edges already); the door faces marked in the face
@@ -587,6 +597,16 @@ def main():
     bm = bmesh.new()
     bm.from_mesh(me)
     bmesh.ops.dissolve_degenerate(bm, edges=bm.edges, dist=1e-5)
+    # the black B pillar (02): the side glass between B_PILLAR's two y, cut along them
+    def side_glass(f):
+        return f.material_index == idx["Glass"] and abs(f.normal.x) > 0.5 and -0.70 < f.calc_center_median().y < -0.15
+    for yb in B_PILLAR:
+        fs = [f for f in bm.faces if side_glass(f)]
+        bmesh.ops.bisect_plane(bm, geom=fs + list({e for f in fs for e in f.edges}) +
+                               list({v for f in fs for v in f.verts}), plane_co=(0, yb, 0), plane_no=(0, 1, 0))
+    for f in bm.faces:
+        if side_glass(f) and B_PILLAR[0] < f.calc_center_median().y < B_PILLAR[1]:
+            f.material_index = idx["Trim"]
 
     def side(f, sx):
         return sx * f.normal.x > 0.2 and sx * f.calc_center_median().x > 0.3

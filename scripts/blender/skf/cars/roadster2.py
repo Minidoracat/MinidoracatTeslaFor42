@@ -94,17 +94,17 @@ CAR = dict(
     COMPOSITOR_MODEL="",
     OFFICIAL_OPTS="",
     RAMP=dict(t=(0.0, 1.0), u=(0.0, 1.0), wheels=()),   # (official_ramp: unused, no design-studio renders)
-    # ---- pzveh: wheel (02 / 08): a light silver flat disc nearly to the tyre (WHEEL_FACETS face), six slim dark Y
-    # spokes over it swept like turbine blades, a dark lip, a dark hub. Low-profile tyres: the rim flange 16 mm past
-    # the prep's disc (front 0.262, rear 0.265 m)
+    # ---- pzveh: wheel (02): a dark grey flat disc nearly to the tyre (WHEEL_FACETS face), six straight black blades
+    # from the hub to the rim, wider outward, a dark lip, a dark hub (B1: the light disc read near white in game, E2E
+    # r2body-look-a3). Low-profile tyres: the rim flange 16 mm past the prep's disc (front 0.262, rear 0.265 m)
     WHEEL_RIM=round((0.262 + 0.016) / _WF["r"], 4),
     WHEEL_RIM_REAR=round((0.265 + 0.016) / _WR["r"], 4),
-    WHEEL_SPOKE=dict(n=6, hub=0.12, fork=0.55, spread=math.radians(10), main=(0.045, 0.045), arm=0.022, cap=0.12,
-                     inset=0.010, dish=0.004, depth=0.012, sweep=0.45),
+    WHEEL_SPOKE=dict(n=6, hub=0.12, shape=dict(outer=[(0.12, 0.06), (1.0, 0.10)], inner=[(1.0, 0.0)]), cap=0.12,
+                     inset=0.010, dish=0.004, depth=0.012, sweep=0.10),
     WHEEL_FACETS=dict(sink=0.006, rings=4, face="facet", n=0, at=0.0, shapes=()),
     WHEEL_DISC=dict(rotor=0.5, hat=0.3),
-    WHEEL_RGB=dict(spoke=24, cap=30, barrel=14, lip=28, rotor=20, hat=20, dark=10, gap=8, tire=(22, 28), tread=20,
-                   facet=150, lit=150),
+    WHEEL_RGB=dict(spoke=10, cap=16, barrel=14, lip=20, rotor=20, hat=20, dark=10, gap=8, tire=(22, 28), tread=20,
+                   facet=72, lit=72),
     # ---- pzveh: vehicle script
     OY=0.1978,
     WHEEL_LIFT=0.11,
@@ -155,16 +155,19 @@ CAR = dict(
                    wide={1: round(0.016 * K, 6), 2: round(0.016 * K, 6)}),
     # the lower body and nose band black-grey (03 / 08), the arches' liners black, the lamps' day colours (the head
     # lamps' slim lit bands white, the tail bar dark red), the rear plate light grey
-    MAT_RGB={"Trim": (30, 30, 32), "Liner": (20, 20, 22), "Glass": (26, 30, 34), "HeadLight": (214, 218, 224),
+    MAT_RGB={"Trim": (30, 30, 32), "Liner": (20, 20, 22), "Glass": (26, 30, 34), "HeadLight": (236, 242, 250),
              "TailLight": (112, 32, 36), "Dark": (14, 14, 16), "Plate": (206, 208, 212)},
     CARBON=None,
     GLASS_MATS=("Glass",),
     GLASS_OPAQUE=(),
+    # the frag's darker glass level (pzveh GLASS_TINT_U; 1 mid, 2 deep): the official canopy reads near opaque, tea-brown
+    GLASS_SHADE=2,
     GLASS_BACKS=("WinLH", "WinLT", "WinRH", "WinRT"),
     ROOF_PANE="GlassRoof",                 # the canopy behind the windscreen (prep ROOF_Y): zone LightBarL
     MIRROR_CAP="-",                        # (no mirrors: cameras)
+    # brake: the tail bar's outer ends (|x| > 0.55 m x K; the bar's middle lit with the tail lights)
     LAMPS=dict(head=("HeadLight",), head_y=0.5, tail=("TailLight",), tail_z=0.3, tail_y=-1.0, blade=None,
-               brake=("TailLight", 0.0)),
+               brake=("Body", round(0.55 * K, 4))),
     # part lines, side view (y, z): the door's rear edge (B pillar, prep door_outline)
     LINES={"S": (_g(-0.28, 0.33), _g(-0.378, 0.85)), "BF": (_g(-0.28, 0.33), _g(-0.378, 0.85))},
     FRONT_Y=round(0.95 * K, 4), SILL_Z=round(0.25 * K, 4), ARCH=(0.0, -9.0),
