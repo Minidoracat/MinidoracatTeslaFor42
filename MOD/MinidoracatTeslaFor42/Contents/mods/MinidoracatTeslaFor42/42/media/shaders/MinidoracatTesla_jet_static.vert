@@ -1,8 +1,8 @@
 #version 330
 
-// MinidoracatTesla_jet (TeslaThruster's Lift / Side / Rear cones, scripts/blender/props/thruster_jets.py): the part
-// model path of Model.drawVehicle binds the model's texture as "Texture" and the vehicle's alpha as "Alpha";
-// static, so transform is the identity. facing = how squarely the cone's side faces the camera (1) or grazes (0).
+// MinidoracatTesla_jet (TeslaThruster's Lift / Side / Rear cones, scripts/blender/props/thruster_jets.py): a vehicle
+// shader (the fragment reads TextureRust), so Model.DrawVehicle's vehicle path sets the uniforms; static, so transform
+// is the identity (Model.java:586-587). facing = how squarely the cone's side faces the camera (1) or grazes (0).
 
 varying vec2 texCoords;
 varying float facing;

@@ -882,11 +882,10 @@ module Base
     }
 
     /* TeslaThruster's jets on the Roadster Rocket (models Lift / Side / Rear, shown by shared ThrusterFx.lua; built by
-       scripts/blender/props/thruster_jets.py): open cones in the body's frame, unlit gradient, edge-faded. */
+       scripts/blender/props/thruster_jets.py): open cones in the body's frame, unlit, drawn by the shader (no texture). */
     model MinidoracatTesla_Roadster2_JetLift
     {
         mesh = vehicles/MinidoracatTesla_Roadster2_JetLift,
-        texture = MinidoracatTesla/Jet,
         shader = MinidoracatTesla_jet,
         static = true,
         invertX = false,
@@ -896,7 +895,6 @@ module Base
     model MinidoracatTesla_Roadster2_JetSide
     {
         mesh = vehicles/MinidoracatTesla_Roadster2_JetSide,
-        texture = MinidoracatTesla/Jet,
         shader = MinidoracatTesla_jet,
         static = true,
         invertX = false,
@@ -906,7 +904,6 @@ module Base
     model MinidoracatTesla_Roadster2_JetRear
     {
         mesh = vehicles/MinidoracatTesla_Roadster2_JetRear,
-        texture = MinidoracatTesla/Jet,
         shader = MinidoracatTesla_jet,
         static = true,
         invertX = false,
