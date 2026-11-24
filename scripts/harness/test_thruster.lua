@@ -1148,6 +1148,26 @@ TH.watch(cp, cv)
 check(TH.active() and TH.active().act == "land", "on the ground since, then tipped over a drop at -0.6 m/s: the tilt branch asks again")
 okFor("land")
 cv.driver = nil; TH.tick(); cv.driver = cp
+do -- r2rest-mp-r2 boostnearhold: a car whose landing ended at rest, settled since to where a boost may start (not on the
+    -- ground: the watch never re-armed), boosted off over a drop and tipped nose-first: a boost or stunt started from
+    -- there leaves that rest behind, the tilt branch catches it
+    cv.dz, cv.vy, cv.uy, cv.speed = 0.075 + 0.6 / TH.FLOOR, 0, 0.7, 0
+    TH.ask(cp, cv, "land")
+    okFor("land")
+    for _ = 1, 40 do if TH.active() then TH.tick() end end
+    check(TH.active() == nil and H.clientSent[#H.clientSent].args.rest == true, "still 0.7 s at 0.6 m: over, at rest")
+    cv.dz, cv.uy = 0.075 + 0.3 / TH.FLOOR, 0.9
+    TH.watch(cp, cv)
+    TH.ask(cp, cv, "boost")
+    okFor("boost")
+    check(TH.active() and TH.active().act == "boost", "... settled to 0.3 m: a boost starts there")
+    cv.driver = nil; TH.tick(); cv.driver = cp
+    cv.dz, cv.vy, cv.uy = 0.075 + 1.5 / TH.FLOOR, -0.6, 0.5
+    TH.watch(cp, cv)
+    check(TH.active() and TH.active().act == "land", "ended at rest, then a boost from there, then tipped over a drop: the tilt branch asks")
+    okFor("land")
+    cv.driver = nil; TH.tick(); cv.driver = cp
+end
 cv.dz, cv.vy, cv.uy, cv.speed = 0.075, 0, nil, 30
 -- what the client asks VehicleManager is a query; AutoDrive driving this car refuses
 local seenQ, vmr = nil, T.vmRefusal

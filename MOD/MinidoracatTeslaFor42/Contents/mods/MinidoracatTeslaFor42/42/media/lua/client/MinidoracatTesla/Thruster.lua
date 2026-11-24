@@ -100,7 +100,8 @@ local function groundZ(v) return H.groundZ(v, true) end -- cached: H.groundReset
 -- floors between the ground and the car's physics origin at rest, per car, measured when it stands on the ground
 local RESTS = {}
 -- [vid] = true: its soft landing ended at rest off the ground (REST_S); the watch's tilt branch skips it until it
--- stands on the ground again (a car teetering on an eave would start a landing each time it slips, a third each)
+-- stands on the ground again or starts a boost or stunt (a car teetering on an eave would start a landing each time
+-- it slips, a third each)
 local RESTED = {}
 local function heightOf(v, rest) return (v:getDebugZ() - groundZ(v) - rest) * FLOOR end
 
@@ -484,9 +485,10 @@ local function start(player, v, act, sec, app, n, ...)
         bank = { jx = 0, jy = 0, jz = 0, lx = 0, ly = 0, lz = 0, lastTq = false } }
     if act == "land" then
         f.rest, f.lifted = RESTS[vid] or c.rest, true
-    else
+    else -- a boost or stunt leaves where it rested behind (r2rest-mp-r2 boostnearhold: still RESTED, it went over a
+        -- roof's edge nose-first and the tilt branch let it fall at -5.9 m/s)
         f.rest = clamp(v:getDebugZ() - groundZ(v), 0.02, 0.25)
-        RESTS[vid] = f.rest
+        RESTS[vid], RESTED[vid] = f.rest, nil
     end
     F = f
     if app and not authority(v) then f.phase, f.ms0 = "wait", getTimestampMs() else go(f) end
