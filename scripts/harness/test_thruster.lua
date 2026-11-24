@@ -1820,6 +1820,22 @@ ISVehicleMenu.getBestSwitchSeatExit = function() return nil end
 local savedGV, savedSeat = cp.getVehicle, cv.getSeat
 cp.getVehicle = function() return cv end
 cv.getSeat = function() return 0 end
+-- round3 T1: the seat (500, 500) to its way out (502, 500) on the car's level, as setCharacterPosition puts it
+local t1 = { walls = {}, blockMv = false, mp = false, cell = getCell, ic = isClient, z = cv.getZ }
+getCell = function() return { getGridSquare = function(_, x, y, z)
+    if z ~= 0 then return nil end
+    return { x = x, y = y, isSolid = function() return t1.solidX == x end, isSolidTrans = function() return false end,
+        getFloor = function() return true end, TreatAsSolidFloor = function() return true end,
+        isBlockedTo = function(self, o) return t1.walls[math.min(self.x, o.x) .. "," .. math.max(self.x, o.x)] == true end }
+end } end
+isClient = function() return t1.mp end
+SafeHouse = { isPlayerAllowedOnSquare = function(_, sq) return sq.x ~= t1.safeX end }
+cp.isBlockMovement = function() return t1.blockMv end
+t1.pin = { wx = 500.5, wy = 500.5, getArea = function() return nil end }
+t1.pout = { wx = 502.5, wy = 500.5, getArea = function() return nil end }
+function cv:getPassengerPosition(_, id) return id == "inside" and t1.pin or t1.pout end
+function cv:getPassengerPositionWorldPos(pos) return { x = function() return pos.wx end, y = function() return pos.wy end } end
+function cv:getZ() return 0.46 end
 local UP = 0.075 + 1.13 / 2.44949
 cv.dz = UP
 local ex1 = exits
@@ -1837,6 +1853,26 @@ check(exits == ex1 + 1 and #queued == 0, "on the ground: vanilla's exit")
 cv.dz, blockedE = UP, false
 ISVehicleMenu.onExit(cp, 0)
 check(exits == ex1 + 2 and #queued == 0, "up, its way out clear: vanilla's exit")
+cv.dz, blockedE = UP, true
+function t1.try(seat) -- vanilla's exit, or out past what holds it up
+    local e0 = exits
+    queued = {}
+    ISVehicleMenu.onExit(cp, seat)
+    return exits == e0 + 1 and #queued == 0, exits == e0 and table.concat(queued, ","):find("exit") ~= nil
+end
+t1.walls["501,502"] = true
+check((t1.try(0)), "T1: up on a car, a wall between the seat and its way out: vanilla's exit (out nowhere), not through the wall")
+t1.walls["501,502"] = nil
+t1.mp, t1.safeX = true, 502
+check((t1.try(0)), "T1: MP, the way out in a safehouse this player may not enter: vanilla's exit")
+t1.mp, t1.safeX, t1.blockMv = false, nil, true
+check((t1.try(0)), "T1: the player busy (isBlockMovement): vanilla's exit, which does nothing")
+t1.blockMv, t1.solidX = false, 502
+check((t1.try(0)), "T1: the way out a solid square: vanilla's exit")
+t1.solidX = nil
+check(select(2, t1.try(nil)), "T1: the car's info / part menu from the seat (onExit without a seat), the way out clear past its support: out")
+getCell, isClient, cv.getZ, SafeHouse, cp.isBlockMovement = t1.cell, t1.ic, t1.z, nil, nil
+cv.getPassengerPosition, cv.getPassengerPositionWorldPos = nil, nil
 cv.dz, cp.getVehicle, cv.getSeat = 0.075, savedGV, savedSeat
 ISTimedActionQueue, ISExitVehicle, ISOpenVehicleDoor, ISCloseVehicleDoor, ISUnlockVehicleDoor = nil, nil, nil, nil, nil
 cv.isExitBlocked, cv.isStopped, cv.getPassengerDoor = nil, nil, nil

@@ -1097,11 +1097,13 @@ Events.OnKeyPressed.Add(function(key)
 end)
 
 -- no getting out mid-air: the car is this machine's to fly until it lands. Flying, getting out (vanilla's exit: a
--- controller's A, ISButtonPrompt.lua:444; the Interact key, Vehicles.lua OnUseVehicle) lands it instead.
+-- controller's A, ISButtonPrompt.lua:444; the Interact key, Vehicles.lua OnUseVehicle; the car's info and part menus
+-- from the seat, ISVehicleMechanics.lua:420, ISVehiclePartMenu.lua:166) lands it instead.
 -- At rest off the ground after (another car's roof, an eave), vanilla's way out from the seat runs into what holds it
 -- up (isExitBlocked, BaseVehicle.java:6669-6699: lineClearCollide on the car's floor; r2rest-mp-near2: both seats, no
--- seat to switch to) and nothing else may move it (THRUST_AIRBORNE): out as vanilla's onExitAux, without that check
--- (ISExitVehicle puts the player at the seat's outside spot on the car's floor, setCharacterPosition)
+-- seat to switch to) and nothing else may move it (THRUST_AIRBORNE): out as vanilla's onExitAux, without that line
+-- check (ISExitVehicle puts the player at the seat's outside spot on the car's floor, setCharacterPosition) - but only
+-- past what holds the car up: exitOk looks at the rest of what vanilla would (round3 T1)
 local function exitUp(p, v, seat)
     local part = v:getPassengerDoor(seat)
     local door = part and part:getInventoryItem() and part:getDoor()
@@ -1109,6 +1111,52 @@ local function exitUp(p, v, seat)
     if door and not door:isOpen() then ISTimedActionQueue.add(ISOpenVehicleDoor:new(p, v, part)) end
     ISTimedActionQueue.add(ISExitVehicle:new(p))
     if door then ISTimedActionQueue.add(ISCloseVehicleDoor:new(p, v, part)) end
+end
+-- square to square on one level, a tile at a time: no wall, window or shut door between (IsoGridSquare.isBlockedTo:
+-- the edge's own objects; a low fence and another car are none). A diagonal step: both right-angle ways clear
+local function wayClear(cell, x, y, ex, ey, z)
+    local cur = cell:getGridSquare(x, y, z)
+    for _ = 1, 8 do
+        if not cur then return false end
+        if x == ex and y == ey then return true end
+        local dx = ex > x and 1 or (ex < x and -1 or 0)
+        local dy = ey > y and 1 or (ey < y and -1 or 0)
+        local nxt = cell:getGridSquare(x + dx, y + dy, z)
+        if not nxt then return false end
+        if dx ~= 0 and dy ~= 0 then
+            local a, b = cell:getGridSquare(x + dx, y, z), cell:getGridSquare(x, y + dy, z)
+            if not (a and b) or cur:isBlockedTo(a) or a:isBlockedTo(nxt) or cur:isBlockedTo(b) or b:isBlockedTo(nxt) then
+                return false
+            end
+        elseif cur:isBlockedTo(nxt) then return false end
+        cur, x, y = nxt, x + dx, y + dy
+    end
+    return false
+end
+-- what vanilla's exit checks besides the line exitUp skips (ISVehicleMenu.onExit's isBlockMovement; isExitBlocked's
+-- safehouse, BaseVehicle.java:6686-6691) and what that line stood for apart from the car's support: the spot the
+-- player is put on (setCharacterPosition "outside": the area's interact point, the car's level) stands, and no wall,
+-- window or door lies between the seat and it
+local function exitOk(p, v, seat)
+    if p:isBlockMovement() then return false end
+    local pin, pout = v:getPassengerPosition(seat, "inside"), v:getPassengerPosition(seat, "outside")
+    if not pin or not pout then return false end
+    local area = pout:getArea() and v:getScript():getAreaById(pout:getArea())
+    local ex, ey
+    if area then
+        local a = v:areaPositionWorld4PlayerInteract(area)
+        ex, ey = math.floor(a:getX()), math.floor(a:getY())
+    else
+        local w = v:getPassengerPositionWorldPos(pout, V3.rel)
+        ex, ey = math.floor(w:x()), math.floor(w:y())
+    end
+    local z = math.floor(v:getZ())
+    local cell = getCell()
+    local sq = cell:getGridSquare(ex, ey, z)
+    if not sq or sq:isSolid() or sq:isSolidTrans() or not (sq:getFloor() or sq:TreatAsSolidFloor()) then return false end
+    if isClient() and not SafeHouse.isPlayerAllowedOnSquare(p, sq) then return false end
+    local w = v:getPassengerPositionWorldPos(pin, V3.rel)
+    return wayClear(cell, math.floor(w:x()), math.floor(w:y()), ex, ey, z)
 end
 local origExit = ISVehicleMenu.onExit
 function ISVehicleMenu.onExit(playerObj, seatFrom)
@@ -1125,7 +1173,8 @@ function ISVehicleMenu.onExit(playerObj, seatFrom)
     local c = v and H.conf(v)
     if c and heightOf(v, RESTS[v:getId()] or c.rest) > 0.4 and v:isStopped() then
         local seat = seatFrom or v:getSeat(playerObj)
-        if v:isExitBlocked(playerObj, seat) and not ISVehicleMenu.getBestSwitchSeatExit(playerObj, v, seat) then
+        if v:isExitBlocked(playerObj, seat) and not ISVehicleMenu.getBestSwitchSeatExit(playerObj, v, seat)
+            and exitOk(playerObj, v, seat) then
             return exitUp(playerObj, v, seat)
         end
     end
