@@ -82,7 +82,8 @@ def program(name, gl21, vsuffix="_static"):
     GL.glLinkProgram(p)
     if not GL.glGetProgramiv(p, GL.GL_LINK_STATUS):
         raise RuntimeError(GL.glGetProgramInfoLog(p).decode())
-    loc = {u: GL.glGetUniformLocation(p, u) for u in ("TextureRust", "TextureMask", "TexturePainColor", "Texture", "MatrixPalette", "Alpha")}
+    loc = {u: GL.glGetUniformLocation(p, u) for u in ("TextureRust", "TextureMask", "TexturePainColor", "Texture", "MatrixPalette", "Alpha",
+                                                       "ReflectionParam")}
     return loc
 
 

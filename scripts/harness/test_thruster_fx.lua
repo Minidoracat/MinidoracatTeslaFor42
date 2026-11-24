@@ -6,12 +6,14 @@ local T = MinidoracatTesla
 local SRC = "MOD/MinidoracatTeslaFor42/Contents/mods/MinidoracatTeslaFor42/42/media/lua/shared/MinidoracatTesla/ThrusterFx.lua"
 local saved = { getOnlinePlayers = getOnlinePlayers, getCell = getCell, getIsoMarkers = getIsoMarkers, Vector3f = Vector3f }
 
--- engine fakes: squares, markers (IsoMarkers.addIsoMarker(table, sq, r, g, b, a)), a forward vector (physics frame)
+-- engine fakes: squares (light 0.1: night), markers (IsoMarkers.addIsoMarker(table, sq, r, g, b, a)), a forward vector
 local markers = {}
-function getCell() return { getGridSquare = function(_, x, y, z) return { x = x, y = y, z = z } end } end
+function getCell()
+    return { getGridSquare = function(_, x, y, z) return { x = x, y = y, z = z, getLightLevel = function() return 0.1 end } end }
+end
 function getIsoMarkers()
     return { addIsoMarker = function(_, tex, sq, r, g, b, a)
-        local m = { tex = tex[1], sq = sq, a = a }
+        local m = { tex = tex[1], sq = sq, r = r, a = a }
         function m:setAlpha(x) self.a = x end
         function m:remove() self.removed = true end
         markers[#markers + 1] = m
@@ -50,30 +52,42 @@ local function minutes() return H.count("EveryOneMinute") - minute0 end
 local function ticks() return H.count("OnTick") - tick0 end
 local v = car(true)
 F.set(v, "lift")
-check(shown(v) == "Lift" and v.played[1] == F.SOUND and #v.played == 1 and minutes() == 1,
-    "SP lift: Lift only, the hiss starts with its game-minute check")
+check(shown(v) == "Lift" and v.played[1] == F.SOUND and #v.played == 1 and minutes() == 1 and #markers == 1
+    and markers[1].tex == F.GLOW and markers[1].sq.x == 100 + F.GLOW_AT and markers[1].sq.y == 100 + F.GLOW_AT
+    and markers[1].r == 1 and ticks() == 1,
+    "SP lift from rest: Lift only, the hiss starts with its game-minute check, the take-off glow in front of the car")
 F.set(v, "flip")
-check(shown(v) == "Lift+Side" and #v.played == 1, "flip: Lift + Side, the same hiss keeps playing")
+check(shown(v) == "Lift+Side" and #v.played == 1 and #markers == 1, "flip: Lift + Side, the same hiss, no glow")
+F.set(v, "lift")
+check(#markers == 1, "lift again in the air: no glow")
 F.set(v, "boost")
-local fog = markers[#markers]
-check(shown(v) == "Rear" and #markers == 1 and fog.tex == F.FOG and fog.sq.x == 100 and fog.sq.y == 97
-    and ticks() == 1, "boost: Rear only, one fog marker 3 tiles behind the car (facing +y), fade tick on")
+local nb, fog = #F.PUFFS.boost, markers[2]
+check(shown(v) == "Rear" and #markers == 1 + nb and fog.tex == F.FOG[F.PUFFS.boost[1][3]]
+    and fog.sq.x == 100 + F.PUFFS.boost[1][1] and fog.sq.y == 97 + F.PUFFS.boost[1][2] and fog.a == 0
+    and fog.r == F.FOG_MIN_LIGHT and ticks() == 1,
+    "boost: Rear only, its puffs around 3 tiles behind the car (facing +y), shaded by a dark square, fading in")
 F.set(v, "land")
-check(shown(v) == "" and #v.stopped == 1 and v.played[2] == F.SOUND_END and #markers == 2
-    and markers[2].sq.x == 100 and markers[2].sq.y == 100 and minutes() == 0,
-    "land: all hidden, hiss stopped with its tail, fog under the car, minute check off")
+local nl = #F.PUFFS.land
+check(shown(v) == "" and #v.stopped == 1 and v.played[2] == F.SOUND_END and #markers == 2 + nb + nl
+    and markers[2 + nb].sq.x == 100 + F.PUFFS.land[1][1] and markers[2 + nb].sq.y == 100 + F.PUFFS.land[1][2]
+    and markers[#markers].tex == F.GLOW and minutes() == 0 and F.stats.fog == 2,
+    "land: all hidden, hiss stopped with its tail, puffs around the car, the glow, minute check off")
 F.set(v, nil)
-check(shown(v) == "" and #v.played == 2 and #markers == 2, "nil: all hidden, no tail, no fog")
+check(shown(v) == "" and #v.played == 2 and #markers == 2 + nb + nl, "nil: all hidden, no tail, no fog")
 F.set(v, "warp")
 check(shown(v) == "" and #v.played == 2, "an unknown mode: all hidden, nothing played")
 
--- fog fades over F.FOG_MS, then the markers go and the tick removes itself
-H.advanceMs(F.FOG_MS / 2)
+-- each marker fades in, then out over its own life; gone at the end, and the tick removes itself
+local p1 = markers[2 + nb]
+H.advanceMs(1000)
 H.fire("OnTick")
-check(markers[1].a < F.FOG_ALPHA and markers[1].a > 0 and not markers[1].removed, "fog: half way, fainter")
-H.advanceMs(F.FOG_MS)
+check(markers[1].removed and math.abs(p1.a - F.PUFFS.land[1][4] * (1 - 1000 / F.PUFFS.land[1][5])) < 1e-6
+    and not p1.removed, "fog: the glow gone after F.GLOW_MS, a puff a third of the way out")
+H.advanceMs(F.PUFFS.land[1][5])
 H.fire("OnTick")
-check(markers[1].removed and markers[2].removed and ticks() == 0, "fog: gone after FOG_MS, tick removed")
+local all = true
+for _, m in ipairs(markers) do all = all and m.removed end
+check(all and ticks() == 0, "fog: every puff gone after its life, tick removed")
 
 -- a car without the part: nothing at all
 local plain = car(false)
@@ -127,7 +141,7 @@ T.ClientCommands.thrustFx({ vid = 9999, mode = "lift" })
 T.ClientCommands.thrustFx("junk")
 check(minutes() == 0, "unknown car or junk args: nothing starts")
 
-H.advanceMs(F.FOG_MS + 1)
+H.advanceMs(F.PUFFS.land[1][5] + 1)
 H.fire("OnTick")
 H.side(false, true)
 getOnlinePlayers, getCell, getIsoMarkers, Vector3f = saved.getOnlinePlayers, saved.getCell, saved.getIsoMarkers, saved.Vector3f

@@ -1,8 +1,9 @@
 """TeslaThruster's jets (part TeslaThruster, models Lift / Side / Rear; roadster2.md): one static mesh per group in
-the body's frame (part model offset 0, as armor.py), an open cone per nozzle on the shared gradient
-MinidoracatTesla/Jet (not under Vehicles/: verify_local reads those as car skins), drawn by shader MinidoracatTesla_jet
-(unlit, edge-faded, alpha-tested). Also writes
-the landing fog marker MinidoracatTesla/JetFog (client ThrusterFx.lua).
+the body's frame (part model offset 0, as armor.py), per nozzle two open cones: a thin bright core (uv v 0..1) and a
+wider faint sheath (v 2..3). Shader MinidoracatTesla_jet draws them procedurally (no texture: it runs as a vehicle
+shader for the time uniform, and that path binds the car's skin, shaders/MinidoracatTesla_jet.frag).
+Also writes the landing fog's puffs MinidoracatTesla/JetFog1..3 (tall, mid, low) and the ground glow JetGlow
+(client ThrusterFx.lua; not under Vehicles/: verify_local reads those as car skins).
 
 Nozzles: `nozzles` of temp/skf_r2/roadster2_lines.json (R2Body's prep frame: metres, +Y front, +Z up, -X car left,
 ground z = 0, y = 0 at mid-length) taken to the mesh frame with temp/skf_r2/geometry.json (centre_y, zmid; grid);
@@ -27,9 +28,11 @@ ESTIMATE = {"lift": [[-0.55, 1.30, 0.22], [0.55, 1.30, 0.22], [-0.55, -1.30, 0.2
             "rear": [[-0.62, -2.15, 0.45], [-0.25, -2.15, 0.45], [0.25, -2.15, 0.45], [0.62, -2.15, 0.45]],
             "r": 0.06}
 GEOM_ESTIMATE = {"centre_y": 0.0, "zmid": 0.50}
-# Per group: direction (mesh frame; side: outward by the nozzle's x), length and far-end radius, metres. The official
-# film's columns run to the ground and spread to about a metre across (f2-kickflip-replay 11m27).
-SHAPE = {"lift": ((0, 0, -1), 3.0, 0.50), "side": (None, 1.4, 0.28), "rear": ((0, -1, 0), 2.6, 0.55)}
+# Per group: direction (mesh frame; side: outward by the nozzle's x), length (metres), far-end radius of the core and of
+# the sheath, the core's share of the length. Narrow at the nozzle, the sheath opening to about a wheel's size where
+# the lift columns reach the ground from about 3 m (f2-kickflip-replay 11m27); the boost flame is short (thrust-060 17m27).
+SHAPE = {"lift": ((0, 0, -1), 4.0, 0.09, 0.35, 0.75), "side": (None, 1.2, 0.04, 0.15, 0.7),
+         "rear": ((0, -1, 0), 1.5, 0.07, 0.22, 0.8)}
 RINGS, SIDES = 10, 16
 
 
@@ -54,8 +57,8 @@ def table(o):
     return {g: [to_mesh(p) for p in noz[g]] for g in ("lift", "side", "rear")}, noz.get("r", 0.06) * K
 
 
-def cone(p0, d, length, r0, r1):
-    """Open tube from p0 along unit d: verts, quads (outward), uv per quad corner."""
+def cone(p0, d, length, r0, r1, v0=0.0):
+    """Open tube from p0 along unit d: verts, quads (outward), uv per quad corner (u along, v around from v0)."""
     d = np.asarray(d, float)
     a = np.array([1.0, 0, 0]) if abs(d[0]) < 0.9 else np.array([0, 1.0, 0])
     e1 = np.cross(d, a); e1 /= np.linalg.norm(e1)
@@ -71,20 +74,21 @@ def cone(p0, d, length, r0, r1):
         for j in range(SIDES):
             a0, b0 = i * (SIDES + 1) + j, (i + 1) * (SIDES + 1) + j
             quads.append((a0, a0 + 1, b0 + 1, b0))      # e1 x e2 = d: counter-clockwise seen from outside
-            uvs.append([(i / RINGS, j / SIDES), (i / RINGS, (j + 1) / SIDES), ((i + 1) / RINGS, (j + 1) / SIDES),
-                        ((i + 1) / RINGS, j / SIDES)])
+            uvs.append([(i / RINGS, v0 + j / SIDES), (i / RINGS, v0 + (j + 1) / SIDES),
+                        ((i + 1) / RINGS, v0 + (j + 1) / SIDES), ((i + 1) / RINGS, v0 + j / SIDES)])
     return verts, quads, uvs
 
 
 def build(group, nozzles, r0):
-    d0, length, r1 = SHAPE[group]
+    d0, length, r_core, r_sheath, core = SHAPE[group]
     V, Q, U = [], [], []
     for p in nozzles:
         d = d0 or (float(np.sign(p[0])), 0.0, 0.0)
-        v, q, u = cone(p, d, length * K, r0, r1 * K)
-        Q += [tuple(k + len(V) for k in f) for f in q]
-        V += v
-        U += u
+        for v, q, u in (cone(p, d, length * core * K, r0 * 0.8, r_core * K),
+                        cone(p, d, length * K, r0 * 1.3, r_sheath * K, 2.0)):
+            Q += [tuple(k + len(V) for k in f) for f in q]
+            V += v
+            U += u
     me = bpy.data.meshes.new(group)
     me.from_pydata([tuple(x) for x in V], [], Q)
     uv = me.uv_layers.new(name="UVMap")
@@ -117,54 +121,57 @@ def save_png(arr, path):
     img.save()
 
 
-def periodic_noise(shape, octaves, seed):
-    """Sum of random sine waves, periodic across v (axis 0) so the seam does not show; 0..1."""
+def value_noise(h, w, cells, rng):
+    """Smooth noise 0..1: random cells x cells grid, bicubic-ish (smoothstep) upsampled to h x w."""
+    g = rng.random((cells + 1, cells + 1))
+    y, x = np.meshgrid(np.linspace(0, cells, h, endpoint=False), np.linspace(0, cells, w, endpoint=False), indexing="ij")
+    i, j = y.astype(int), x.astype(int)
+    fy, fx = y - i, x - j
+    fy, fx = fy * fy * (3 - 2 * fy), fx * fx * (3 - 2 * fx)
+    top = g[i, j] * (1 - fx) + g[i, j + 1] * fx
+    bot = g[i + 1, j] * (1 - fx) + g[i + 1, j + 1] * fx
+    return top * (1 - fy) + bot * fy
+
+
+def puff_texture(path, w, h, seed):
+    """One billowing cloud standing on the ground (IsoMarkers: bottom centre on its tile, its own size, no scaling;
+    IsoSprite.renderTextureWithDepth): overlapping round lobes under a dome outline, ragged by noise, lit from above
+    (white top, grey-blue underside). The bottom rows fade out: an opaque base read as a hard edge (E2E r2fx-sp-1)."""
     rng = np.random.default_rng(seed)
-    h, w = shape
-    v, u = np.meshgrid(np.arange(h) / h, np.arange(w) / w, indexing="ij")
-    n = np.zeros(shape)
-    for k in octaves:
-        for _ in range(3):
-            n += np.sin(2 * math.pi * (k * v + rng.uniform(1, 4) * k * 0.5 * u + rng.uniform()))
-    n -= n.min()
-    return n / n.max()
-
-
-def jet_texture(path):
-    """u (x, 256 px): white core at the nozzle to pale cyan-blue, alpha rising over the first few percent then fading
-    to nothing; v (y, 64 px, periodic): soft streaks. A 1.5 power fade hid the lower half of a 3 m column (E2E
-    r2fx-sp-2, next to f2-kickflip-replay 11m27, whose columns reach the ground)."""
-    h, w = 64, 256
-    t = np.arange(w) / (w - 1)
-    alpha = np.clip(t / 0.04, 0, 1) * (1 - t) ** 0.8 * 0.9
-    streak = 0.7 + 0.3 * periodic_noise((h, w), (2, 3, 5), 7)
-    a = alpha[None, :] * streak
-    col0, col1 = np.array([1.0, 1.0, 1.0]), np.array([0.55, 0.84, 1.0])
-    rgb = col0 + (col1 - col0) * (t ** 0.5)[:, None]
+    y, x = np.meshgrid(np.arange(h) + 0.5, np.arange(w) + 0.5, indexing="ij")   # y up from the bottom row
+    d, lit = np.zeros((h, w)), np.zeros((h, w))
+    for _ in range(40):
+        cx = rng.uniform(0.12, 0.88) * w
+        top = h * (0.3 + 0.68 * (1 - (2 * cx / w - 1) ** 2) ** 1.5)    # dome: lobes higher in the middle
+        r = min(rng.uniform(0.08, 0.17) * min(w, 1.6 * h), 0.45 * top, cx, w - cx)
+        cy = rng.uniform(0.12 * h + r * 0.5, max(0.12 * h + r * 0.5, top - r))
+        g = np.exp(-(((x - cx) / r) ** 2 + ((y - cy) / r) ** 2) ** 1.5)
+        d += g
+        lit += g * np.clip(0.55 + 0.45 * (y - cy) / r, 0.2, 1.0)    # each lobe lit on top: cauliflower crevices
+    n = 0.6 * value_noise(h, w, 6, rng) + 0.4 * value_noise(h, w, 16, rng)
+    shade = lit / np.maximum(d, 1e-6)
+    d = 1 - np.exp(-0.9 * d * (0.35 + 1.3 * n))
+    edge = np.clip(np.minimum(x, w - x) / (w * 0.08), 0, 1) * np.clip((h - y) / (h * 0.08), 0, 1)
+    a = np.clip((d - 0.1) / 0.6, 0, 1) * np.clip(y / (h * 0.25), 0, 1) ** 1.5 * edge
+    shade = 0.62 + 0.38 * np.clip(0.6 * shade + 0.4 * y / h + 0.25 * (n - 0.5), 0, 1)
     arr = np.zeros((h, w, 4))
-    arr[..., :3] = rgb[None, :, :]
-    arr[..., 3] = a
+    arr[..., 0], arr[..., 1], arr[..., 2] = shade * 0.95, shade * 0.97, np.minimum(1, shade * 1.03)
+    arr[..., 3] = a * 0.9
     save_png(arr, path)
 
 
-def fog_texture(path):
-    """Landing fog standing on the ground (IsoMarkers draws it at its own size, bottom centre on the tile): a wide,
-    low cloud of soft puffs, densest just above the base, white with a faint blue. The bottom rows fade to nothing:
-    an opaque base showed as a hard horizontal edge under the car (E2E r2fx-sp-1)."""
+def glow_texture(path):
+    """Ground glow under the jets at take-off and landing: a 2:1 ellipse (a disc on the iso ground), white centre
+    to cyan, fading to nothing at the edge. Stands on the tile 2 down-right of the car (ThrusterFx.lua) so its
+    middle lands under the car."""
     h, w = 256, 512
-    rng = np.random.default_rng(11)
-    y, x = np.meshgrid(np.arange(h) + 0.5, np.arange(w) + 0.5, indexing="ij")   # y up from the bottom row
-    d = np.zeros((h, w))
-    for _ in range(30):
-        cx = rng.normal(w / 2, w * 0.17)
-        cy = abs(rng.normal(0, h * 0.2)) + h * 0.14
-        r = rng.uniform(0.09, 0.18) * w * (1 - abs(cx - w / 2) / w)
-        d += np.exp(-(((x - cx) / r) ** 2 + ((y - cy) / (r * 0.7)) ** 2))
-    d = 1 - np.exp(-0.75 * d)         # overlapping puffs saturate instead of showing their seams
-    d *= np.clip(1 - np.abs(x - w / 2) / (w / 2), 0, 1) ** 0.5 * np.clip(1 - y / h, 0, 1) ** 0.7 * np.clip(y / (h * 0.16), 0, 1) ** 1.5
+    y, x = np.meshgrid((np.arange(h) + 0.5) / h * 2 - 1, (np.arange(w) + 0.5) / w * 2 - 1, indexing="ij")
+    r2 = np.clip(x * x + y * y, 0, 1)
+    g = (1 - r2) ** 2.5
     arr = np.zeros((h, w, 4))
-    arr[..., 0], arr[..., 1], arr[..., 2] = 0.94, 0.97, 1.0
-    arr[..., 3] = np.clip(d * 0.85, 0, 1)
+    for k, c in enumerate((0.30, 0.85, 1.0)):
+        arr[..., k] = c + (1 - c) * g ** 2
+    arr[..., 3] = g * 0.85
     save_png(arr, path)
 
 
@@ -177,8 +184,10 @@ def main():
         ob = build(g, noz, r0)
         export_fbx(ob, os.path.join(o["out"], "models_X", "vehicles", ob.name + ".fbx"))
         print(f"jets: {ob.name} {len(noz)} cones")
-    jet_texture(os.path.join(o["out"], "textures", "MinidoracatTesla", "Jet.png"))
-    fog_texture(os.path.join(o["out"], "textures", "MinidoracatTesla", "JetFog.png"))
+    tex = os.path.join(o["out"], "textures", "MinidoracatTesla")
+    for k, (w, h) in enumerate(((288, 240), (320, 150), (352, 96)), 1):   # tall (far side), mid, low (camera side)
+        puff_texture(os.path.join(tex, f"JetFog{k}.png"), w, h, 20 + k)
+    glow_texture(os.path.join(tex, "JetGlow.png"))
 
 
 main()
