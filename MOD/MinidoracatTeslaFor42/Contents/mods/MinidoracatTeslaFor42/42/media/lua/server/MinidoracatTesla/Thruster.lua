@@ -312,10 +312,14 @@ end
 d2 = function(v, p)
     local r = p.rest
     p.rest = nil
-    if isServer() and r and airborne(v) and stillAt(v, r) then
-        p.downMs = r.ms
-        finish(v, p, p.up == true)
-        return T.log("thrust " .. p.act .. " ended at rest off the ground vid=" .. v:getId())
+    if isServer() and r and airborne(v) then
+        if stillAt(v, r) then
+            p.downMs = r.ms
+            finish(v, p, p.up == true)
+            return T.log("thrust " .. p.act .. " ended at rest off the ground vid=" .. v:getId())
+        end
+        T.log(string.format("thrust %s said at rest but moved vid=%d dx=%.3f dy=%.3f dm=%.3f online=%s", p.act, v:getId(),
+            v:getX() - r.x, v:getY() - r.y, (v:getDebugZ() - r.z) * H.FLOOR, tostring(getPlayerByOnlineID(r.by:getOnlineID()) == r.by)))
     end
     if not isServer() or not airborne(v) then -- SP: this machine is the holder
         local done = p.up == true
@@ -567,6 +571,8 @@ cmds.thrustEnd = function(player, args)
             -- at rest off the ground (client: still REST_S in its soft landing): where it is now, to end it there if
             -- it has not moved ABORT_MS later (d2). Only this end's spot counts: any other end, a hand-over drop it
             p.rest = args.rest == true and { x = v:getX(), y = v:getY(), z = v:getDebugZ(), by = player, ms = nowMs() } or nil
+            T.log(string.format("thrust %s end said in the air vid=%d rest=%s abort=%s by=%s", p.act, v:getId(), tostring(args.rest == true),
+                tostring(args.abort), tostring(player:getUsername())))
             return schedule(p, ABORT_MS, d2)
         end
         p.downMs = nowMs()
