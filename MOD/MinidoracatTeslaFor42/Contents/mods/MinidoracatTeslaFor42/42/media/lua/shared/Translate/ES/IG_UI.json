@@ -63,7 +63,7 @@
     "IGUI_MinidoracatTesla_Tip_ThrustBoost": "Un empujón fuerte hacia delante",
     "IGUI_MinidoracatTesla_Radial_ThrustFly": "Volar",
     "IGUI_MinidoracatTesla_Tip_ThrustFly": "Flotar: las teclas de conducción dirigen, %1 / %2 cambian la altura. Para aterrizar, elige «Aterrizar» en el menú radial o pulsa %3",
-    "IGUI_MinidoracatTesla_Tip_ThrustFlyPad": "Flotar: RT / LT avanzan y retroceden, el stick izquierdo dirige, el derecho cambia la altura. Para aterrizar, elige «Aterrizar» en el menú radial o pulsa A",
+    "IGUI_MinidoracatTesla_Tip_ThrustFlyPad": "Flotar: RT / LT avanzan y retroceden, el stick izquierdo dirige, el derecho cambia la altura. Para aterrizar, elige «Aterrizar» o pulsa A",
     "IGUI_MinidoracatTesla_HUD_Flying": "Volando · quedan %1 s",
     "IGUI_MinidoracatTesla_HUD_FlyingFree": "Volando",
     "IGUI_MinidoracatTesla_HUD_FlyLanding": "Aterrizando",

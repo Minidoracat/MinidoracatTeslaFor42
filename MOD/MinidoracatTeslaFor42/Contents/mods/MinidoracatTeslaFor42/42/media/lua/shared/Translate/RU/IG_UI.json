@@ -63,7 +63,7 @@
     "IGUI_MinidoracatTesla_Tip_ThrustBoost": "Один мощный толчок вперёд",
     "IGUI_MinidoracatTesla_Radial_ThrustFly": "Полёт",
     "IGUI_MinidoracatTesla_Tip_ThrustFly": "Зависание: клавиши движения управляют, %1 / %2 меняют высоту. Чтобы сесть, выберите «Посадка» в радиальном меню или нажмите %3",
-    "IGUI_MinidoracatTesla_Tip_ThrustFlyPad": "Зависание: RT / LT вперёд и назад, левый стик поворачивает, правый стик меняет высоту. Чтобы сесть, выберите «Посадка» в радиальном меню или нажмите A",
+    "IGUI_MinidoracatTesla_Tip_ThrustFlyPad": "Зависание: RT / LT вперёд и назад, левый стик поворачивает, правый стик меняет высоту. Чтобы сесть, выберите «Посадка» или нажмите A",
     "IGUI_MinidoracatTesla_HUD_Flying": "Полёт · осталось %1 с",
     "IGUI_MinidoracatTesla_HUD_FlyingFree": "Полёт",
     "IGUI_MinidoracatTesla_HUD_FlyLanding": "Посадка",
