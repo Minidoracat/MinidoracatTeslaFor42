@@ -342,6 +342,17 @@ function C.payFed(v, part, chg, sup, src, share)
     if fed - paid > 1e-9 then B.set(v, part, math.max(0, B.kwh(part) - (fed - paid))) end
 end
 
+-- The Roadster Rocket's air tank refilled up to now (server Thruster.lua H.settle), so the refill's kWh goes to what
+-- powered it meanwhile (B.draw: the charger's source as chg.power says, else the pack) before that changes: plugging
+-- in, a settle that may switch the source, unplugging. Not while a thruster action runs (its end books it); the
+-- caller transmits.
+local function settleAir(v, part)
+    local H = T.Thruster
+    local thr = part:getModData().thr
+    if not (H and H.settle and H.conf(v)) or (type(thr) == "table" and thr.busy) then return end
+    H.settle(v, part)
+end
+
 -- The link goes: the stretch since the last settle is booked without a generator taking over after the grid shut-off
 -- (C.powerUntil with generator = false): on load with the charger gone or taken (relink) a powered square no longer
 -- says this car had a charger. ponytail: a car pulled out of reach after the shut-off pays that bit itself. Its
@@ -350,6 +361,7 @@ local function clearChg(vehicle, part)
     local now = T.hours()
     -- the record goes whatever the sentry booking does: a stale record holds the car in Park (CheckOperate.Battery)
     local ok, err = pcall(function()
+        settleAir(vehicle, part)
         local chg = part:getModData().chg
         settleSentry(vehicle, now, C.powerUntil(chg, now, false))
         if chg and chg.fed then
@@ -437,6 +449,7 @@ function C.settle(o, now, here, fresh)
         end
     end
     chg.hold = nil
+    settleAir(v, part) -- on the source the stretch ran on (chg.power, not yet the one picked below)
     local wasKw = 0
     if prevSup then
         wasKw = (draws[o] and draws[o].kw) or math.min(chg.kw or 0, shareLeft(o, supKey, wasSrc))
@@ -568,6 +581,7 @@ function C.start(o, v)
         T.Powershare.broke(v) -- a car it fed that is not loaded now books at most an hour more (C.supplyEnded)
     end
     local kw = T.chargerKw(o.kind, v)
+    settleAir(v, part) -- on the pack: no cable yet
     part:getModData().chg = { x = o.x, y = o.y, z = o.z, kind = o.kind, kw = kw, peak = T.dcPeak(o.kind, v, kw),
         last = now, added = 0, src = nil, target = C.DEFAULT_TARGET, paused = nil }
     -- the Roadster Rocket's port is behind its wing: up while the cable is in, chg.wing = this cable raised it
@@ -672,6 +686,9 @@ function C.plug(player, v, iso)
     if not part then return T.deny(player, "NO_VEHICLE", vid) end
     if not part:getInventoryItem() then return T.deny(player, "NO_PACK", vid) end
     if part:getModData().chg then return T.deny(player, "PLUGGED", vid) end
+    -- a thruster action running: its tank's refill would change hands mid-action (server Thruster.lua)
+    local thr = part:getModData().thr
+    if type(thr) == "table" and thr.busy then return T.deny(player, "THRUST_BUSY", vid) end
     if T.chargerCar(o, o.x, o.y, o.z) then return T.deny(player, "CHARGER_BUSY", vid) end -- a reused id is no car here
     if not T.stopped(v) then return T.deny(player, "MOVING", vid) end -- the motor may run: plugging in shifts to Park (owner's manual, Shifting)
     if not near(player, v, o.x, o.y, o.z) then return T.deny(player, "TOO_FAR", vid) end

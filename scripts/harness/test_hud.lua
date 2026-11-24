@@ -85,6 +85,7 @@ H.stub("ISUI/ISWorldObjectContextMenu")
 require "MinidoracatTesla/ParkModes"
 require "MinidoracatTesla/HUD"
 require "MinidoracatTesla/HUDRadial"
+require "MinidoracatTesla/Thruster" -- shared (in game every shared file loads before the client's)
 local T = MinidoracatTesla
 local HUD = T.HUD
 
@@ -211,6 +212,28 @@ do
     c.running = false
     dash:setVehicle(nil)
     T.KeysUI = keysUI
+end
+
+-- ---------------------------------------------------------------- D1: the soft landing's watch with the dashboard dark
+H.section("thrusters: a fall still watched with all UI hidden")
+do
+    local c = car({ kwh = 30 })
+    local spec = T.spec(c)
+    local watch, seen = T.Thruster.watch, {}
+    T.Thruster.watch = function(_, v) seen[#seen + 1] = v end
+    dash:setVehicle(c)
+    c.driver = h.character
+    dash:removeFromUIManager()
+    h:update()
+    check(h.vehicle == nil and h.dark == c and #seen == 0, "dark, a car without thrusters: nothing watched")
+    spec.thruster = {}
+    h:update()
+    check(#seen == 1 and seen[1] == c, "D1: dark, a car with thrusters: its fall still watched (Thruster.watch)")
+    spec.thruster = nil
+    T.Thruster.watch = watch
+    c.driver = nil
+    h:update()
+    dash:setVehicle(nil)
 end
 
 -- ---------------------------------------------------------------- read model

@@ -1435,3 +1435,38 @@ local slo2, siso2 = plugAt(1290, WC0)
 check(siso2.sprite == WC4 and siso2.sent == nil, "SP: plugged tile, nothing transmitted")
 H.side(false, true)
 end)()
+
+;(function() -- E1: the Roadster Rocket's air tank refill (server Thruster.lua H.settle) paid by what powered it
+H.section("thrusters: the tank's refill booked to its power source at plug and unplug")
+local YS = T.Specs["Base.MinidoracatTesla_ModelY"]
+H.require("MinidoracatTesla/Thruster") -- shared
+assert(loadfile("MOD/MinidoracatTeslaFor42/Contents/mods/MinidoracatTeslaFor42/42/media/lua/server/MinidoracatTesla/Thruster.lua"))()
+local TH = T.Thruster
+YS.thruster = {}
+local _, iso = charger(900, 900, { room = {} }) -- grid: free to the car
+local vt = car(40, 902.5, 903.5)
+local pt = H.player({ name = "own", keys = { [77] = true }, x = 901, y = 902 })
+local part = B.part(vt)
+H.setHours(120)
+part:getModData().thr = { gas = 0.5, at = H.hours() - 0.25 } -- half the 30 refill minutes due: half a tank, 20 kWh
+C.plug(pt, vt, iso)
+local thr = part:getModData().thr
+check(part:getModData().chg ~= nil and near(B.kwh(part), 20, 1e-6) and near(thr.gas, 1) and thr.at == H.hours(),
+    "E1 plug: the refill since the last settle booked first, paid by the pack (20 kWh), not by the grid")
+thr.gas, thr.at = 0.5, H.hours()
+H.setHours(H.hours() + 0.25)
+C.unplug(pt, vt)
+local k = B.kwh(part)
+check(near(k, 20 + 0.25 * 11.5, 1e-6) and near(thr.gas, 1) and thr.at == H.hours(),
+    "E1 unplug: the refill while plugged booked before the cable goes, on the grid (free): only the charge added")
+TH.settle(vt, part)
+check(near(B.kwh(part), k, 1e-6), "... nothing left for the pack to pay after")
+thr.busy = { act = "fly", by = "own" }
+C.plug(pt, vt, iso)
+local s = H.sent[#H.sent]
+check(part:getModData().chg == nil and s.command == "deny" and s.args.reason == "THRUST_BUSY",
+    "E1: a cable plugged in mid-action: THRUST_BUSY, not linked")
+thr.busy = nil
+YS.thruster = nil
+Events.OnSpawnVehicleEnd.Remove(TH.onLoad)
+end)()

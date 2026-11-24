@@ -145,6 +145,22 @@ T.ClientCommands.thrustFx({ vid = 9999, mode = "lift" })
 T.ClientCommands.thrustFx("junk")
 check(minutes() == 0, "unknown car or junk args: nothing starts")
 
+-- E3: in flight the server sends lift again each game minute (server Thruster.lua H.onUpdate): no glow, no fog; a
+-- client that came near since starts its hiss from it, the others' only renewed
+H.side(false, true)
+F.set(v, "lift")
+F.set(v, "lift")
+s = H.sent[#H.sent]
+check(s.args.mode == "lift" and s.args.glow == nil and s.args.fog == nil, "E3: lift renewed in flight: no glow, no fog")
+H.side(true, false)
+local p0, m0 = #v.played, #markers
+T.ClientCommands.thrustFx(s.args)
+check(#v.played == p0 + 1 and v.played[#v.played] == F.SOUND and #markers == m0 and minutes() == 1,
+    "E3: a client's first thrustFx mid-flight: its hiss starts, nothing else")
+T.ClientCommands.thrustFx(s.args)
+check(#v.played == p0 + 1 and #markers == m0, "E3: the next one: the hiss renewed only")
+T.ClientCommands.thrustFx({ vid = v.id, mode = "land" })
+
 H.advanceMs(4000)
 H.fire("OnTick")
 H.side(false, true)

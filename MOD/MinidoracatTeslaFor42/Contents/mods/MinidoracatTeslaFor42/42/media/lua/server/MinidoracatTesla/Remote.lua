@@ -451,16 +451,20 @@ local ACT = {
         if not (s and s.softTop) then return "NO_DOOR" end
         return swing("SoftTop")(player, v, open)
     end,
-    -- Roadster Rocket (Specs wing): the wing, the same rules as the lids (stopped); it never locks. NO_DOOR on any other car
+    -- Roadster Rocket (Specs wing): the wing, the same rules as the lids (stopped); it never locks. NO_DOOR on any other
+    -- car. It stays up while a charge cable is in (the port is behind it, Charging.lua C.start; Liftgate.lua L.check)
     wing = function(player, v, open)
         local s = T.spec(v)
         if not (s and s.wing) then return "NO_DOOR" end
+        local part = T.Battery.part(v)
+        if not open and part and part:getModData().chg then return "CABLE_PLUGGED" end
         return swing("TeslaWing")(player, v, open)
     end,
     summon = summon,
-    -- Roadster thrusters (Specs thruster): the empty car's stunt, flown by the caller's machine (Thruster.lua H.appShow)
-    kickflip = function(player, v, _, args) return T.Thruster.appShow(player, v, "kickflip", args.key) end,
-    backflip = function(player, v, _, args) return T.Thruster.appShow(player, v, "backflip", args.key) end,
+    -- Roadster thrusters (Specs thruster): the empty car's stunt, flown by the caller's machine (Thruster.lua H.appShow;
+    -- n: the caller's number for it, client Thruster.lua H.nextN)
+    kickflip = function(player, v, _, args) return T.Thruster.appShow(player, v, "kickflip", args.key, args.n) end,
+    backflip = function(player, v, _, args) return T.Thruster.appShow(player, v, "backflip", args.key, args.n) end,
 }
 
 -- ------------------------------------------------------------------ commands

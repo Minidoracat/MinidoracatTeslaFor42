@@ -344,6 +344,11 @@ d = act(owner, "wing", true)
 check(d.why == nil and d.on == true and wing.open and last("partAnim") and last("partAnim").part == "TeslaWing",
     "wing: rises (appDone on = true, partAnim)")
 check(last("appState") and last("appState").wing == true, "wing: the record says up")
+local bpart = T.Battery.part(v)
+bpart:getModData().chg = { power = "grid" }
+d = act(owner, "wing", false)
+check(d.why == "CABLE_PLUGGED" and wing.open, "E2: the wing lowered from the app with a charge cable in -> CABLE_PLUGGED, it stays up")
+bpart:getModData().chg = nil
 d = act(owner, "wing", false)
 check(d.why == nil and d.on == false and not wing.open and not wing.locked, "wing lowered on a locked car: never locked")
 R.remember(v)
@@ -2358,6 +2363,34 @@ check(draws == 2, "split-screen player 1 (no MiniMap markers for it): the tempor
 App.drawMapCar, App.mapCar = realDraw, nil
 B.registered = false
 MinidoracatMiniMapAPI, T.VMLink = nil, nil
+
+do -- the Roadster Rocket in the app: a show checked here first, its real reason shown (D5), then sent with its n; the
+    -- wing cell off while a charge cable is in (E2, Remote.lua wing refuses it then)
+local rv = H.vehicle({ script = "Base.MinidoracatTesla_Roadster2" })
+rv.keyId = 9001
+F.track(rv) -- loaded here (park_fakes' getVehicleById)
+local th, ok = T.Thruster, false
+T.Thruster = { check = function() if ok then return true end return false, "THRUST_ROOM" end, nextN = function() return 4242 end }
+state({ car = "MinidoracatTesla_Roadster2", vid = rv.id, wing = true, chg = "charging" })
+check(not a.b.wing.lit and a.b.wing.tipKey == "IGUI_MinidoracatTesla_Deny_CABLE_PLUGGED",
+    "E2: the wing up, a cable in: its cell off, the tip says why")
+state({ car = "MinidoracatTesla_Roadster2", vid = rv.id, wing = true })
+check(a.b.wing.lit, "E2: the wing up, no cable: its cell on")
+local n0 = #H.clientSent
+a:onButton({ act = "kickflip" })
+check(#H.clientSent == n0 and a.toast and a.toast.text == T.denyText("THRUST_ROOM"),
+    "D5: the car loaded here, no room for the show: the toast says THRUST_ROOM (not NOT_LOADED)")
+ok = true
+a:onButton({ act = "kickflip" })
+local cmd, args = sentLast()
+check(cmd == "appAction" and args.act == "kickflip" and args.n == 4242 and args.key == 9001, "the show asked with its n")
+state({ car = "MinidoracatTesla_Roadster2", vid = rv.id + 1000 })
+n0 = #H.clientSent
+a:onButton({ act = "backflip" })
+check(#H.clientSent == n0 and a.toast.text == T.denyText("NOT_LOADED"), "the car not loaded here: NOT_LOADED")
+T.Thruster = th
+F.vehicles[rv.id] = nil
+end
 
 -- redraw allocates nothing
 recording = false
