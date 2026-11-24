@@ -1,11 +1,16 @@
 -- Thrusters (Roadster Rocket; shared/server/client Thruster.lua): the server approves and bills the air tank, refills
--- it from the pack (never under the 12V floor off a charger), refunds what never took off, caps a flight's bill by the
--- time that passed, and only who flies it ends an action. No watchdog: due checks on a one-shot timer (gone after) -
--- D2 hands a car left in the air to the nearest other player (thrustLand), or leaves it to the first who comes near;
--- D3 ends it. The phone app's show: its checks, the motor started (3 tries), the caller's machine given the physics,
--- D1 refunds what never lifted. The client: a late or unasked approval gives the air back, an approved action runs on
--- its OnTick and ends with thrustEnd when the driver is gone, and no getting out while it runs. The flying itself:
--- real-game E2E (thruster-sp / thruster-mp). Tested on the Model S with `thruster = {}` put in its Specs here only.
+-- it from the pack (never under the 12V floor off a charger), and judges every end itself (MP): the air back only if
+-- its own look each frame never saw the car leave the ground (a boost: speed up), a flight billed by the seconds the
+-- client says but never under the server's clock less the roll-up and landing caps; an end said in the air hands
+-- the car on. No watchdog: due checks on a one-shot timer (gone after), only for the very car approved (ids are
+-- reused) - D2 hands a car left in the air to the nearest player who has not had it (thrustLand), or leaves it to
+-- the first who comes near; D3 still up: the next one; a helper who can't says so at once. A stale busy flag clears
+-- on load. SP: the client's word, and a pause runs no due check. The phone app's show: its checks, the motor started
+-- (3 tries), the caller's machine given the physics, D1 after the approach's budget. The client: the driver's
+-- roll-up on the motor's cruise, the show's on the thrusters after a lift within the floor (setDebugZ clamps like
+-- the engine), a flight's limit in real time (a pause not counted), aborts said as such, a helper who can't says
+-- so. The flying itself: real-game E2E (thruster-sp / thruster-mp). Tested on the Model S with `thruster = {}` put
+-- in its Specs here only.
 local check, near = H.check, H.near
 local T = MinidoracatTesla
 local B = T.Battery
@@ -63,6 +68,12 @@ local v, p, part = car()
 check(ask(p, v, "kickflip") == "THRUST_NONE", "a car without Specs `thruster`: THRUST_NONE")
 MS.thruster = {}
 check(TH.conf(v).apex == 8 and TH.conf(v).inertia.f == 0.387, "Specs thruster = {}: every value its default")
+MS.thruster = { inertia = { f = 0.5 } }
+check(TH.conf(v).inertia.f == 0.5 and TH.conf(v).inertia.r == 1.816, "inertia given in part: the rest its default, not nil")
+MS.thruster = {}
+MinidoracatAutoDriveAPI = { summonInfo = function(c) return c == v end }
+check(ask(p, v, "boost") == "THRUST_BUSY", "AutoDrive summons it: THRUST_BUSY")
+MinidoracatAutoDriveAPI = nil
 check(ask(p, v, "warp") == "BAD_VALUE", "an unknown action: BAD_VALUE")
 SandboxVars.MinidoracatTesla.Thrusters = false
 check(ask(p, v, "kickflip") == "THRUST_OFF", "sandbox Thrusters off: THRUST_OFF")
@@ -95,12 +106,14 @@ check(TH.pending[v:getId()] and H.count("OnTick") >= 1 and timer ~= nil, "pendin
 check(ask(p, v, "boost") == "THRUST_BUSY", "a second action meanwhile: THRUST_BUSY")
 cmds.thrustEnd(q, { vid = v:getId(), done = true })
 check(thr.busy ~= nil and TH.pending[v:getId()], "thrustEnd from anyone but the approved driver: ignored")
-cmds.thrustEnd(p, { vid = v:getId(), done = true })
-check(thr.busy == nil and TH.pending[v:getId()] == nil and near(thr.gas, 0) and fxs[#fxs] == "land",
-    "ended by the driver: not busy, still spent, the touchdown mist")
+v.dz = 1 timer() v.dz = 0 -- the server sees it up
 local ticks = H.count("OnTick")
+cmds.thrustEnd(p, { vid = v:getId(), done = false })
+check(TH.pending[v:getId()] ~= nil, "MP: the end is the server's to judge, on its next frame")
 timer()
-check(H.count("OnTick") == ticks - 1, "nothing pending: the timer removes itself")
+check(thr.busy == nil and TH.pending[v:getId()] == nil and near(thr.gas, 0) and fxs[#fxs] == "land"
+    and H.count("OnTick") == ticks - 1,
+    "the server saw it up: billed though the client says not done; the touchdown mist; the timer gone")
 check(ask(p, v, "kickflip") == "THRUST_NO_AIR", "an empty tank: THRUST_NO_AIR")
 
 H.section("thrusters: refill from the pack")
@@ -112,8 +125,9 @@ check(near(gas(part), 0.5, 1e-6) and near(kwh0 - B.kwh(part), 20, 1e-6) and cut 
 check(near(TH.gasNow(part:getModData().thr, H.hours() + 1), 1) and TH.minutesToFull(0.5) == 15, "estimate and minutes to full")
 what = ask(p, v, "boost")
 check(what == "thrustOk" and near(gas(part), 0.5 - 1 / 3, 1e-6), "boost takes a third")
-cmds.thrustEnd(p, { vid = v:getId(), done = false })
-check(near(gas(part), 0.5, 1e-6) and fxs[#fxs] == "off", "never took off: the air back, flames off")
+cmds.thrustEnd(p, { vid = v:getId(), done = true })
+timer()
+check(near(gas(part), 0.5, 1e-6) and fxs[#fxs] == "off", "a boost the server never saw speed up: the air back though the client says done")
 -- off a charger the pack never goes under the 12V floor for the tank
 part:getModData().thr.gas = 0
 local cap = B.capacity(part)
@@ -134,10 +148,18 @@ SandboxVars.MinidoracatTesla.FlightSeconds = 8
 what, args = ask(p, v, "fly")
 check(what == "thrustOk" and near(args.sec, 8) and near(gas(part), 1) and fxs[#fxs] == "lift",
     "fly approved with 8 s of air, billed at the end")
+v.dz = 1 timer() v.dz = 0
 H.advanceMs(3000)
 cmds.thrustEnd(p, { vid = v:getId(), done = true, sec = 100 })
+timer()
 check(near(gas(part), 1 - 3 / 8, 1e-6), "a client claiming 100 s after 3 s is billed 3 s")
-timer() -- nothing pending: gone
+part:getModData().thr.gas = 1
+ask(p, v, "fly")
+v.dz = 1 timer() v.dz = 0
+H.advanceMs(20000)
+cmds.thrustEnd(p, { vid = v:getId(), done = true, sec = 0 })
+timer()
+check(near(gas(part), 1 - 5 / 8, 1e-6), "a client claiming 0 s after 20 s: billed 5 s (20 less roll-up 3 and landing 12)")
 part:getModData().thr.gas = 0.1
 check(ask(p, v, "fly") == "THRUST_NO_AIR", "under one second of air: THRUST_NO_AIR")
 SandboxVars.MinidoracatTesla.FreeFlight = true
@@ -145,63 +167,82 @@ ticks = H.count("OnTick")
 what, args = ask(p, v, "fly")
 check(what == "thrustOk" and args.sec == nil and H.count("OnTick") == ticks, "FreeFlight: no limit, no expiry timer")
 cmds.thrustEnd(p, { vid = v:getId(), done = true, sec = 50 })
+timer()
 check(near(gas(part), 0.1), "FreeFlight: flying costs nothing")
 what = ask(p, v, "fly")
 v.driver = nil
 TH.onUpdate(v, part)
+timer()
 check(TH.pending[v:getId()] == nil and part:getModData().thr.busy == nil, "FreeFlight: driver gone, ended at the next parts update")
 v.driver = p
 SandboxVars.MinidoracatTesla.FreeFlight = false
 what = ask(p, v, "land")
 check(what == "thrustOk" and near(gas(part), 0), "the soft landing is never refused for air; it takes what is left")
 cmds.thrustEnd(p, { vid = v:getId(), done = true })
+timer()
 
 H.section("thrusters: due checks (D2, D3)")
 part:getModData().thr.gas = 1
 ask(p, v, "kickflip")
 local helper = H.player({ name = "near", x = v.x + 5, y = v.y })
+local helper2 = H.player({ name = "near2", x = v.x + 8, y = v.y })
 local far = H.player({ name = "far", x = v.x + 100, y = v.y })
-online = { far, p, helper }
-H.advanceMs(8799)
+online = { far, p, helper, helper2 }
+H.advanceMs(24799)
 timer()
-check(TH.pending[v:getId()] ~= nil, "before D2 (roll-up 3 s + profile 3.8 s + 2 s): still pending")
+check(TH.pending[v:getId()] ~= nil,
+    "before D2 (roll-up 3 s + profile 3.8 s + off it 4 s + landing 12 s + 2 s): still pending")
 v.dz = 1 -- still up
 H.advanceMs(1)
 timer()
 local pe = TH.pending[v:getId()]
 check(pe and pe.helper == helper and v.npid == helper:getOnlineID() and last().command == "thrustLand"
-    and last().player == helper, "D2, still up: the nearest other player (not the driver, not 100 tiles off) lands it")
+    and last().player == helper and last().args.pn == helper:getPlayerNum(),
+    "D2, still up: the nearest other player (not the driver, not 100 tiles off) lands it, told its split-screen slot")
 cmds.thrustEnd(p, { vid = v:getId(), done = true })
-check(TH.pending[v:getId()] ~= nil, "the driver's late thrustEnd: ignored, the helper has it")
-ticks = H.count("OnTick")
-H.advanceMs(6000)
+check(TH.pending[v:getId()] ~= nil and pe.helper == helper, "the driver's late thrustEnd: ignored, the helper has it")
+H.advanceMs(14000) timer()
+check(pe.helper == helper, "D3 not before the helper's 2 s wait + 12 s landing + 1 s")
+H.advanceMs(1000) timer()
+check(pe.helper == helper2 and pe.tried[helper] and last().command == "thrustLand" and last().player == helper2,
+    "D3 still up: that helper could not; the next nearest who has not had it")
+cmds.thrustEnd(helper2, { vid = v:getId(), act = "land", done = false, abort = true })
+H.advanceMs(500) timer()
+check(pe.orphan and part:getModData().thr.busy.orphan and v.npid == -1 and pe.helper == nil,
+    "the next one can't either (said at once): nobody near who has not had it, the server holds it")
+local newcomer = H.player({ name = "newcomer", x = v.x + 3, y = v.y })
+online = { far, p, helper, helper2, newcomer }
+TH.onUpdate(v, part)
+check(pe.helper == newcomer and v.npid == newcomer:getOnlineID(), "someone new comes near: theirs to land")
+v.dz = 0
+cmds.thrustEnd(newcomer, { vid = v:getId(), done = true })
 timer()
 check(TH.pending[v:getId()] == nil and part:getModData().thr.busy == nil and near(gas(part), 0) and v.npid == p:getOnlineID(),
-    "D3: over, billed; the physics back to the server, then to the driver still seated")
-check(H.count("OnTick") == ticks - 1, "and the timer is gone")
+    "down: over, billed; the physics back to the server, then to the driver still seated")
 v.npid = nil
--- the helper's own end; nobody near at D2: the server holds it and the first who comes near gets it
+-- never seen up by D2: the air back
 part:getModData().thr.gas = 1
 ask(p, v, "backflip")
-v.dz = 0
-H.advanceMs(7800)
+H.advanceMs(23800)
 timer()
-check(TH.pending[v:getId()] == nil and near(gas(part), 0), "D2 on the ground: over, billed")
-ask(p, v, "land")
-v.driver, online = nil, { far }
-H.advanceMs(17000)
+check(TH.pending[v:getId()] == nil and near(gas(part), 1), "D2 on the ground, never seen up: over, the air back")
+-- the id reused by another car before a due check: that car is never touched
+ask(p, v, "kickflip")
+H.removeVehicle(v)
+local v2 = H.vehicle({ id = v:getId(), script = "Base.MinidoracatTesla_ModelS" })
+function v2:authorizationChanged() self.touched = true end
+H.advanceMs(30000)
 timer()
-check(TH.pending[v:getId()].orphan and part:getModData().thr.busy.orphan and v.npid == -1,
-    "D2 with nobody within 70 tiles: the server holds it, the busy flag says so")
-online = { far, helper }
-TH.onUpdate(v, part)
-check(TH.pending[v:getId()].helper == helper and v.npid == helper:getOnlineID(), "someone comes near: theirs to land")
-cmds.thrustEnd(helper, { vid = v:getId(), done = true })
-check(TH.pending[v:getId()] == nil and part:getModData().thr.busy == nil and v.npid == -1,
-    "the helper's thrustEnd ends it; the physics back to the server")
-timer()
-v.driver, v.npid = p, nil
--- a busy flag with no pending entry (the server restarted mid-action): cleared on the next request
+check(TH.pending[v:getId()] == nil and not v2.touched and v2.transmits == 0, "its id now another car's: the entry dropped, that car untouched")
+H.addVehicle(v)
+-- the stale busy flag left behind: cleared when the car loads, the motor the server started off
+part:getModData().thr.busy.eng = true
+v.driver, v.running, v.shut = nil, true, 0
+tx = v.transmits
+TH.onLoad(v)
+check(part:getModData().thr.busy == nil and v.shut == 1 and v.transmits == tx + 1, "loaded with a stale busy flag: cleared, its motor off")
+v.driver, v.running = p, true
+-- a busy flag with no pending entry (the server restarted mid-action): cleared on the next request too
 part:getModData().thr = { gas = 1, at = H.hours(), busy = { act = "fly", by = "x", t = 0 } }
 check(ask(p, v, "boost") == "thrustOk", "a stale busy flag (server restart) does not lock the car")
 cmds.thrustEnd(p, { vid = v:getId(), done = true })
@@ -240,21 +281,47 @@ why = show(caller, "kickflip")
 H.advanceMs(2000) timer()
 s = last()
 check(why == nil and v.running and v.npid == caller:getOnlineID() and s.command == "thrustOk" and s.args.app
-    and s.player == caller, "started: the caller's machine gets the physics and flies it")
-H.advanceMs(2500) timer()
+    and s.player == caller and s.args.pn == caller:getPlayerNum(), "started: the caller's machine gets the physics and flies it")
+H.advanceMs(4499) timer()
+check(TH.pending[v:getId()] ~= nil, "D1 not before the approach's budget (3 s) + 1.5 s")
+H.advanceMs(1) timer()
 check(TH.pending[v:getId()] == nil and near(gas(part), 1) and last().args.why == "THRUST_NO_LIFT" and v.npid == -1
     and v.shut == 1 and part:getModData().thr.busy == nil,
     "D1, never off the ground: the air back, the physics back, the motor the server started off")
 show(caller, "backflip")
 H.advanceMs(2000) timer()
 v.dz = 1
-H.advanceMs(2500) timer()
+H.advanceMs(4500) timer()
 check(TH.pending[v:getId()] ~= nil, "D1 up in the air: carries on")
 cmds.thrustEnd(caller, { vid = v:getId(), done = true })
-check(TH.pending[v:getId()] == nil and near(gas(part), 0) and v.npid == -1 and not v.running,
-    "the caller's end: billed, physics and motor back as they were")
+H.advanceMs(499) timer()
+check(TH.pending[v:getId()] ~= nil and TH.pending[v:getId()].helper == nil, "an end said in the air (claimed done): not taken")
+H.advanceMs(1) timer()
+check(TH.pending[v:getId()].helper == helper and last().command == "thrustLand", "still up half a second later: the next one lands it")
+v.dz = 0
+cmds.thrustEnd(helper, { vid = v:getId(), done = false })
 timer()
+check(TH.pending[v:getId()] == nil and near(gas(part), 0) and v.npid == -1 and not v.running,
+    "down: billed (the server saw it up) though the helper says not done; physics and motor back as they were")
 v.driver, p.vehicle, v.running, v.dz, v.npid = p, v, true, 0, nil
+
+H.section("thrusters: SP")
+H.side(false, false)
+part:getModData().thr = { gas = 1, at = H.hours() }
+cmds.thrust(p, { vid = v:getId(), act = "fly" })
+check(TH.pending[v:getId()] ~= nil, "SP: fly approved")
+timer()
+H.paused = true
+for _ = 1, 600 do H.advanceMs(100) timer() end -- a minute's frames
+H.paused = false
+H.advanceMs(100) timer()
+check(TH.pending[v:getId()] ~= nil, "SP: a minute's pause runs no due check (D2 would be 25 s)")
+H.advanceMs(60000) timer()
+check(TH.pending[v:getId()] ~= nil, "SP: a minute's hitch counts as 0.25 s")
+cmds.thrustEnd(p, { vid = v:getId(), done = true, sec = 2 })
+check(TH.pending[v:getId()] == nil and near(gas(part), 1 - 2 / 8, 1e-6), "SP: billed the client's 2 s (its flight clock skips the pause)")
+timer()
+H.side(false, true)
 
 H.section("thrusters: client")
 H.side(true, false)
@@ -311,13 +378,14 @@ cv.driver = nil
 sent = #H.clientSent
 TH.tick()
 e = H.clientSent[#H.clientSent]
-check(TH.active() == nil and H.count("OnTick") == ticks and e.command == "thrustEnd" and e.args.done == false,
-    "driver gone before it sped up: ended, not done, its OnTick removed")
+check(TH.active() == nil and H.count("OnTick") == ticks and e.command == "thrustEnd" and e.args.done == false
+    and e.args.abort == true, "driver gone before it sped up: ended as an abort, not done, its OnTick removed")
 ISVehicleMenu.onExit(cp, 0)
 check(exits == 1, "getting out works again")
 -- the show: waits for the car's physics, then rolls up on its thrusters after a 0.04-floor lift; anyone sitting in ends it
 cv.driver, cp.vehicle, cv.speed, cv.local_, cv.dz = nil, nil, 0, false, 0.075
-function cv:setDebugZ(z) self.dz = z end
+-- the engine's: a fraction within the car's floor, clamped 0-0.99 (BaseVehicle.java:4161-4168)
+function cv:setDebugZ(z) self.dz = math.floor(self.dz) + math.max(0, math.min(0.99, z)) end
 T.ClientCommands.thrustOk({ vid = cv:getId(), act = "kickflip", app = true })
 check(TH.active() and TH.active().phase == "wait" and TH.active().app == "show", "the show: waits for the car's physics")
 cv.local_ = true
@@ -329,6 +397,54 @@ TH.tick()
 e = H.clientSent[#H.clientSent]
 check(TH.active() == nil and #H.clientSent == sent + 1 and e.command == "thrustEnd" and e.args.done == false,
     "someone sits in mid-show: ended, the air back")
+cv.driver = nil
+cv.local_, cv.dz = false, 1.075
+T.ClientCommands.thrustOk({ vid = cv:getId(), act = "backflip", app = true, pn = 0 })
+cv.local_ = true
+TH.tick()
+check(near(cv.dz, 1.115, 1e-6), "a show on the first floor: lifted 0.04 floor within it, no jump up a floor")
+cv.driver = cp
+TH.tick()
+cv.dz = 0.075
+-- the driver's roll-up: the motor's cruise to rollKmh, no thrust, then the action
+function cv:isRegulator() return self.reg == true end
+function cv:getRegulatorSpeed() return self.regSpd or 0 end
+function cv:setRegulator(b) self.reg = b end
+function cv:setRegulatorSpeed(s) self.regSpd = s end
+cp.vehicle, cv.speed, cv.impulses = cv, 0, 0
+TH.ask(cp, cv, "boost")
+T.ClientCommands.thrustOk({ vid = cv:getId(), act = "boost" })
+TH.tick()
+check(TH.active().phase == "drive" and cv.reg == true and cv.regSpd == 8 and cv.impulses == 0,
+    "the driver's car under 6 km/h: the motor's cruise at 8 km/h takes it there, no thrust")
+cv.speed = 7
+TH.tick()
+check(TH.active().phase == "boost" and cv.reg == false and cv.regSpd == 0, "at 6 km/h: the cruise back as it was, the action runs")
+cv.driver = nil
+TH.tick()
+cv.driver, cv.speed = cp, 30
+-- what the client asks VehicleManager is a query; AutoDrive driving this car refuses
+local seenQ, vmr = nil, T.vmRefusal
+T.vmRefusal = function(_, _, _, q) seenQ = q end
+TH.check(cp, cv, "boost")
+T.vmRefusal = vmr
+check(seenQ == true, "the client's look asks VehicleManager as a query")
+local mdad = MDAD
+MDAD = { Drive = { isActive = function(pn) return pn == 0 end } }
+ok, why = TH.check(cp, cv, "boost")
+MDAD = mdad
+check(not ok and why == "THRUST_BUSY", "the driver's AutoDrive on: THRUST_BUSY")
+-- a helper's machine that can't land it says so at once
+TH.ask(cp, cv, "boost")
+T.ClientCommands.thrustOk({ vid = cv:getId(), act = "boost" })
+sent = #H.clientSent
+T.ClientCommands.thrustLand({ vid = cv:getId(), pn = 0 })
+e = H.clientSent[#H.clientSent]
+check(#H.clientSent == sent + 1 and e.command == "thrustEnd" and e.args.abort == true and e.args.done == false,
+    "handed a car while busy here: can't, said at once")
+cv.driver = nil
+TH.tick()
+cv.driver = cp
 
 -- restore
 H.side(false, true)

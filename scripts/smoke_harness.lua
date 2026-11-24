@@ -58,6 +58,8 @@ function H.hours() return worldHours end
 function H.setHours(h) worldHours = h end
 function getTimestampMs() return nowMs end
 function H.advanceMs(ms) nowMs = nowMs + ms end
+H.paused = false
+function isGamePaused() return H.paused end -- SP pause (H.paused = true)
 local unmodded = 1 -- GameTime.getUnmoddedMultiplier: frame time x 60 x the game speed (GameTime.java:1018-1022)
 function H.setMultiplier(m) unmodded = m end
 local gameTime = {
@@ -233,6 +235,7 @@ function H.vehicle(o)
     function v:getX() return self.x end
     function v:getY() return self.y end
     function v:getZ() return self.z end
+    function v:getSquare() return vehicles[self.id] == self and {} or nil end -- removed (H.removeVehicle): no square
     function v:getKeyId() return self.keyId end
     function v:isKeysInIgnition() return false end
     function v:isEngineStarted() return self.starting == true end -- Starting..StartingSuccess (VehicleEngine.java:365-370)

@@ -63,6 +63,13 @@ function H.conf(vehicle)
     local c = confs[o]
     if not c then
         c = setmetatable({}, { __index = function(_, k) local x = o[k]; if x == nil then return H.DEFAULTS[k] end return x end })
+        -- a table field (inertia) given in part: the rest from DEFAULTS, not nil
+        for k, d in pairs(H.DEFAULTS) do
+            local x = o[k]
+            if type(d) == "table" and type(x) == "table" then
+                c[k] = setmetatable({}, { __index = function(_, j) local y = x[j]; if y == nil then return d[j] end return y end })
+            end
+        end
         confs[o] = c
     end
     return c
@@ -85,11 +92,22 @@ end
 -- game minutes until the tank is full again
 function H.minutesToFull(gas) return math.ceil((1 - clamp(gas, 0, 1)) * H.refillMinutes()) end
 
+-- AutoDrive drives it: a summon (both sides), or the driver's own AutoDrive (its machine only, MDAD_Driver.lua:1792
+-- Drive.isActive; while on it blocks other mods' addImpulse, :4119-4165)
+local function autoDriven(player, vehicle)
+    local api = MinidoracatAutoDriveAPI
+    if type(api) == "table" and type(api.summonInfo) == "function" and api.summonInfo(vehicle) then return true end
+    local D = type(MDAD) == "table" and MDAD.Drive
+    return type(D) == "table" and type(D.isActive) == "function" and vehicle:isDriver(player)
+        and D.isActive(player:getPlayerNum()) == true
+end
+
 -- What refuses `act` for `player` in `vehicle`, both sides: true, or false and a deny reason
 -- (IGUI_MinidoracatTesla_Deny_<reason>). The client adds what only it can see (speed, room around, physics
 -- authority: client Thruster.lua); the server bills (server Thruster.lua). app: the phone app's show (H.APP), the
--- caller outside and the car empty; the server starts the motor itself.
-function H.can(player, vehicle, act, app)
+-- caller outside and the car empty; the server starts the motor itself. query: a client's look before asking
+-- (VehicleManager's check, T.vmRefusal).
+function H.can(player, vehicle, act, app, query)
     if not H.ACTS[act] or not H.conf(vehicle) or (app and not H.APP[act]) then return false, "THRUST_NONE" end
     if not H.enabled() then return false, "THRUST_OFF" end
     if app then
@@ -105,10 +123,11 @@ function H.can(player, vehicle, act, app)
     if not part or not part:getInventoryItem() then return false, "NO_PACK" end
     local md = part:getModData()
     if md.chg ~= nil then return false, "CABLE_PLUGGED" end
-    local why = T.vmRefusal(player, vehicle, { "DRIVE" }, isClient())
+    local why = T.vmRefusal(player, vehicle, { "DRIVE" }, query)
     if why then return false, why end
     local thr = md.thr
     if type(thr) == "table" and thr.busy then return false, "THRUST_BUSY" end
+    if autoDriven(player, vehicle) then return false, "THRUST_BUSY" end
     -- someone else's game holds the car (a summon, another show, a driver): poc/APP.md step 1
     if app and vehicle:getNetPlayerId() ~= -1 then return false, "THRUST_BUSY" end
     if H.gasNow(thr, T.hours()) + 1e-9 < H.need(act) then return false, "THRUST_NO_AIR" end
