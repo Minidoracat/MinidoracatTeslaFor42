@@ -71,7 +71,7 @@ REAR0 = -0.45
 REAR_C = [(-0.45, 1.082), (-0.80, 0.98), (-1.15, 0.89), (-1.40, 0.845), (-1.60, 0.84), (-2.055, 0.83)]
 ZC = [(2.05, 0.39), (1.40, 0.705), (1.074, 0.79)] + [p for p in TOP if -0.45 < p[0] < 1.0] + REAR_C
 # the buttresses' inner walls (paint) frame the V rear glass: 01 glass 0.40 half wide at the roof, 0.28 at its foot
-FIN_IN = [(-0.45, 0.47), (-0.80, 0.40), (-1.40, 0.28), (-1.60, 0.45), (-2.00, 0.72), (-2.055, 0.74)]
+FIN_IN = [(-0.45, 0.47), (-0.80, 0.40), (-1.40, 0.28), (-1.60, 0.50), (-2.00, 0.72), (-2.055, 0.74)]  # 0.50: charge port
 GLASS_END = -1.40                      # the rear glass runs down to the wing's leading edge (01, 825)
 WING = dict(seam=-1.40, thick=0.045, thick_tail=0.030, gap=0.006, trail_y=-2.075)
 
@@ -176,7 +176,7 @@ def face_mat(k, y):
         if k == 6:
             return "Paint"
         if k == 7:
-            return "HeadLight" if y > 1.85 else "Paint"
+            return "HeadLight" if y > 1.75 else "Paint"   # the lit V notch (03: about 0.15 m along the hood edge)
         return "Paint" if y > HC[1] else "Glass"
     if y > REAR0:
         if k == 6 and y > 1.12:   # pod top to belt behind the cowl: paint, else a glass spike shows in 03 / 08
