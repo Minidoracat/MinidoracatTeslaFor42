@@ -269,6 +269,7 @@ function H.player(o)
     function p:getOnlineID() return self.oid end
     function p:getUsername() return self.name end
     function p:getPlayerNum() return self.num end -- split-screen slot (IsoPlayer.java:979)
+    function p:getJoypadBind() return self.pad or -1 end -- H.player.pad: a controller's id; -1 keyboard (IsoPlayer.java)
     function p:getVehicle() return self.vehicle end
     function p:getX() return self.x end
     function p:getY() return self.y end

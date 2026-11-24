@@ -467,6 +467,14 @@ end
 
 local function keyDown(o) local k = o and o:getValue() or 0 return k ~= 0 and isKeyDown(k) end
 local KEYS = {}
+-- a controller's stick: nothing inside PAD_DEAD (past the engine's own, JoypadManager.java:298-300: a worn stick resting
+-- a little off holds course), then 0-1 again to full
+local PAD_DEAD = 0.2
+local function padAxis(a)
+    local m = math.abs(a)
+    if m <= PAD_DEAD then return 0 end
+    return (a < 0 and -1 or 1) * (m - PAD_DEAD) / (1 - PAD_DEAD)
+end
 
 -- each frame while an action runs
 function H.tick()
@@ -553,22 +561,35 @@ function H.tick()
             setLand(f, hm)
         else
             f.flown = f.flown + real
-            if keyDown(KEYS.up) then st.hG = math.min(c.flyMaxH, st.hG + c.flyClimb * dt) end
-            if keyDown(KEYS.down) then st.hG = math.max(c.flyMinH, st.hG - c.flyClimb * dt) end
+            -- a controller's player (BaseVehicle.java:4661-4668): as vanilla drives (CarController.java:958-967), the
+            -- right stick for the height (pushed up: negative, PlayerCamera.java:148)
+            local pad = f.player:getJoypadBind()
+            if pad ~= -1 then
+                st.hG = clamp(st.hG - padAxis(getJoypadAimingAxisY(pad)) * c.flyClimb * dt, c.flyMinH, c.flyMaxH)
+            else
+                if keyDown(KEYS.up) then st.hG = math.min(c.flyMaxH, st.hG + c.flyClimb * dt) end
+                if keyDown(KEYS.down) then st.hG = math.max(c.flyMinH, st.hG - c.flyClimb * dt) end
+            end
             local d = st.hG - st.hT
             local vRef = (d < 0 and -1 or 1) * math.min(HOVER_V, math.sqrt(2 * HOVER_A * math.abs(d)))
             st.ha = clamp(vRef - st.hv, -HOVER_A * dt, HOVER_A * dt) / dt
             st.hv = st.hv + st.ha * dt
             st.hT = st.hT + st.hv * dt
             if (st.hG - st.hT) * d < 0 then st.hT, st.hv, st.ha = st.hG, 0, 0 end -- not past the goal
-            local core = getCore()
-            local want = isKeyDown(core:getKey("Forward")) and c.flyVmax or (isKeyDown(core:getKey("Backward")) and -c.flyVmax / 3 or 0)
-            local step = c.flyAcc * dt
-            f.spd = f.spd + clamp(want - f.spd, -step, step)
             -- psi = atan2(world y, world x): turning right (clockwise on the map) raises it
             local yaw = math.rad(c.flyYaw) * dt
-            if isKeyDown(core:getKey("Left")) then st.psiT = st.psiT - yaw end
-            if isKeyDown(core:getKey("Right")) then st.psiT = st.psiT + yaw end
+            local want
+            if pad ~= -1 then -- RT ahead, LT back, the left stick steers
+                want = isJoypadRTPressed(pad) and c.flyVmax or (isJoypadLTPressed(pad) and -c.flyVmax / 3 or 0)
+                st.psiT = st.psiT + padAxis(getJoypadMovementAxisX(pad)) * yaw
+            else
+                local core = getCore()
+                want = isKeyDown(core:getKey("Forward")) and c.flyVmax or (isKeyDown(core:getKey("Backward")) and -c.flyVmax / 3 or 0)
+                if isKeyDown(core:getKey("Left")) then st.psiT = st.psiT - yaw end
+                if isKeyDown(core:getKey("Right")) then st.psiT = st.psiT + yaw end
+            end
+            local step = c.flyAcc * dt
+            f.spd = f.spd + clamp(want - f.spd, -step, step)
             st.vTx, st.vTz = math.cos(st.psiT) * f.spd, math.sin(st.psiT) * f.spd
             if t > 0.5 and not f.woke and not f.lifted and hm < 0.15 and v:getCurrentSpeedKmHour() < c.rollKmh then
                 return wake(f) -- a working takeoff is up 0.4 m by now (r2fe-sp-g)
@@ -630,13 +651,14 @@ end
 
 -- the client's side of the rules: H.can plus what only this machine sees. Optional app (`...`, as H.can): the phone
 -- app's show (PhoneApp.lua asks before sending; the server gives this machine the physics only once it approves). An
--- action asked and not answered yet refuses another (the soft landing aside: a fall can't wait)
+-- action asked and not answered yet refuses another with no reason (nothing to say: the answer is on its way; the
+-- soft landing aside: a fall can't wait)
 local SPEED_MAX = { kickflip = "kickMaxKmh", backflip = "flipMaxKmh", boost = "boostMaxKmh" }
 function H.check(player, v, act, ...)
     local app = ...
     H.groundReset() -- the floors read afresh: one built under the car since the last action counts
     if F then return false, "THRUST_BUSY" end
-    if act ~= "land" and not app and pendingAsk(player:getPlayerNum()) then return false, "THRUST_BUSY" end
+    if act ~= "land" and not app and pendingAsk(player:getPlayerNum()) then return false end
     local o, b = OFF_EDGE, act == "land" and busyOf(v)
     local mine = o and o.vid == v:getId() and type(b) == "table" and b.act == "boost" and b.t == o.t and b or nil
     local ok, why = H.can(player, v, act, app, true, mine)
@@ -662,11 +684,11 @@ function H.air(v)
     local part = T.Battery.part(v)
     return H.gasNow(part and part:getModData().thr, T.hours())
 end
+-- why refused, in words; THRUST_NO_AIR adds when this car's tank is full again (v may be nil: a car not loaded here)
 function H.whyText(v, why)
     local s = T.denyText(why)
-    if why == "THRUST_NO_AIR" then
-        s = s .. " " .. getText("IGUI_MinidoracatTesla_Thrust_Refill", tostring(H.minutesToFull(H.air(v) or 1)))
-    end
+    local a = why == "THRUST_NO_AIR" and v and H.air(v)
+    if a and a < 1 then s = s .. " " .. getText("IGUI_MinidoracatTesla_Thrust_Refill", tostring(H.minutesToFull(a))) end
     return s
 end
 
@@ -675,7 +697,7 @@ function H.ask(player, v, act)
     if act == "fly" and f and f.v == v and f.act == "fly" then f.wantLand = true return true end -- the second press lands
     local ok, why = H.check(player, v, act)
     if not ok then
-        HaloTextHelper.addBadText(player, H.whyText(v, why))
+        if why then HaloTextHelper.addBadText(player, H.whyText(v, why)) end
         return false
     end
     local n = H.nextN()
@@ -735,8 +757,9 @@ T.ClientCommands.thrustLand = function(args)
 end
 
 -- a refusal of this machine's action n (server Thruster.lua deny): its ask is answered, and a soft landing started
--- before the answer stops here, nothing more said (the server kept nothing of it). Then the usual message (Net.lua).
--- A refusal without n is some other command's about the car (T.deny): no answer to an ask here
+-- before the answer stops here, nothing more said (the server kept nothing of it). Then why, as the ring says it
+-- (H.whyText). A refusal without n is some other command's about the car (T.deny): no answer to an ask here, the
+-- usual message (Net.lua)
 local baseDeny = T.ClientCommands.deny
 T.ClientCommands.deny = function(args)
     if type(args) == "table" and type(args.n) == "number" then
@@ -745,6 +768,9 @@ T.ClientCommands.deny = function(args)
         if a and a.n == args.n then asked[pn] = nil end
         local f = F
         if f and f.n == args.n and not f.ok then halt() end
+        local p = getSpecificPlayer(pn) or getSpecificPlayer(0)
+        if p then HaloTextHelper.addBadText(p, H.whyText(args.vid and getVehicleById(args.vid), tostring(args.reason))) end
+        return
     end
     return baseDeny(args)
 end
@@ -774,6 +800,14 @@ local ACTS = { "kickflip", "backflip", "boost", "fly" }
 local NAME = { kickflip = "Kickflip", backflip = "Backflip", boost = "Boost", fly = "Fly" }
 local function line2(s) return "\n" .. T.wrapText(s, 220, UIFont.Medium) end -- the ring's width (HUDRadial.lua LINE_W)
 local function onAct(player, v, act) H.ask(player, v, act) end
+-- how to fly, with the keys bound now (the up / down binds; vanilla's exit, the Interact key: getting out lands it,
+-- ISVehicleMenu.onExit below); a controller's player: the controller's way
+function H.flyTip(player)
+    if player:getJoypadBind() ~= -1 then return getText("IGUI_MinidoracatTesla_Tip_ThrustFlyPad") end
+    local up, down = KEYS.up, KEYS.down
+    return getText("IGUI_MinidoracatTesla_Tip_ThrustFly", getKeyName(up and up:getValue() or 0),
+        getKeyName(down and down:getValue() or 0), getKeyName(getCore():getKey("Interact")))
+end
 
 function H.openRing(player, v)
     local pn = player:getPlayerNum()
@@ -788,10 +822,10 @@ function H.openRing(player, v)
         else
             local ok, why = H.check(player, v, act)
             if ok then
-                menu:addSlice(title .. line2(getText("IGUI_MinidoracatTesla_Tip_Thrust" .. id)),
+                menu:addSlice(title .. line2(act == "fly" and H.flyTip(player) or getText("IGUI_MinidoracatTesla_Tip_Thrust" .. id)),
                     getTexture(TEX .. "radial_thrust_" .. act .. ".png"), onAct, player, v, act)
-            else
-                menu:addSlice(title .. line2(H.whyText(v, why)), getTexture(TEX .. "radial_thrust_" .. act .. "_off.png"), nil)
+            else -- no reason: an ask waits for its answer (H.check)
+                menu:addSlice(why and title .. line2(H.whyText(v, why)) or title, getTexture(TEX .. "radial_thrust_" .. act .. "_off.png"), nil)
             end
         end
     end
@@ -807,6 +841,11 @@ end
 
 function H.radialSlice(menu, player, v)
     if not H.conf(v) or not v:isDriver(player) then return end
+    local f = F
+    if f and f.v == v and f.act == "fly" then -- flying: the quickest way down (the second fly press lands it, H.ask)
+        return menu:addSlice(getText("IGUI_MinidoracatTesla_Radial_ThrustLand"), getTexture(TEX .. "radial_thrust_land.png"),
+            onAct, player, v, "fly")
+    end
     local a = H.air(v)
     local sub = a and getText("IGUI_MinidoracatTesla_Tip_ThrustAir", tostring(math.floor(a * 100))) or T.denyText("THRUST_OFF")
     menu:addSlice(getText("IGUI_MinidoracatTesla_Radial_Thrusters") .. line2(sub), getTexture(TEX .. "radial_thrust.png"),
@@ -845,11 +884,16 @@ Events.OnKeyPressed.Add(function(key)
     if v and H.conf(v) then H.ask(p, v, act) end
 end)
 
--- no getting out mid-air: the car is this machine's to fly until it lands
+-- no getting out mid-air: the car is this machine's to fly until it lands. Flying, getting out (vanilla's exit: a
+-- controller's A, ISButtonPrompt.lua:444; the Interact key, Vehicles.lua OnUseVehicle) lands it instead
 local origExit = ISVehicleMenu.onExit
 function ISVehicleMenu.onExit(playerObj, seatFrom)
     local f = F
     if f and f.player == playerObj then
+        if f.act == "fly" and f.phase ~= "land" then
+            f.wantLand = true
+            return
+        end
         HaloTextHelper.addBadText(playerObj, T.denyText("THRUST_IN_AIR"))
         return
     end

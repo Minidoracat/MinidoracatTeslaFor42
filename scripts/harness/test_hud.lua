@@ -810,6 +810,46 @@ local nOff = h.n
 tesla.running = true
 h:update()
 check(h.n == nOff + 12, "motor on: the power key gets its blue underline (one more quad)")
+-- the thrusters' air (Thruster.lua H.air): hovering the cell's area (its %, the cell, the air bar) says how much and
+-- when it is full again; full: no "full in"; a car without thrusters: no such tip
+local realAir, realWatch = T.Thruster.air, T.Thruster.watch
+T.Thruster.air, T.Thruster.watch = function() return 0.65 end, function() end
+h:update(); h:update(); h:update()
+mx, my = h.airX + 1, h.airY + 2
+h:render()
+local airLow = lastText
+mx = h.airX + h.airW - 1
+h:render()
+check(airLow == "IGUI_MinidoracatTesla_Tip_ThrustTankRefill" and lastText == airLow and h.airPct == 65,
+    "hover the cell area, air 65 %: the air tip with when it is full again (its % and the cell both)")
+collectgarbage("collect")
+collectgarbage("stop")
+h:render()
+before = collectgarbage("count")
+for _ = 1, 1000 do h:render() end
+grew = collectgarbage("count") - before
+collectgarbage("restart")
+check(grew == 0, "hovered air tip render x1000 allocates nothing (" .. grew .. " KB)")
+T.Thruster.air = function() return 1 end
+h:update(); h:update(); h:update()
+h:render()
+check(lastText == "IGUI_MinidoracatTesla_Tip_ThrustTank", "air full: the tip without a refill time")
+T.Thruster.air = realAir
+h:update(); h:update(); h:update()
+T.Thruster.watch = realWatch -- (after: the dashboard asks it while it still shows the air)
+drawCalls = 0
+h:render()
+check(h.airX == nil and drawCalls == 0, "no thrusters: no air tip")
+-- the Roadster Rocket's wing (DOORS' 10th) is raised and lowered, not opened
+local doors0 = h.st.doors
+h.st.doors = 0
+h:doorTip(10, 0, 100, 10, 10)
+local wingUp = lastText
+h.st.doors = 512
+h:doorTip(10, 0, 100, 10, 10)
+check(wingUp == "IGUI_MinidoracatTesla_Tip_WingUp" and lastText == "IGUI_MinidoracatTesla_Tip_WingDown" and h.tipArg == nil,
+    "the wing's tip: raise it / lower it (no part name)")
+h.st.doors = doors0
 mx = nil
 -- plugged in: Park, whatever the transmission says (owner's manual, Shifting)
 tesla.speed, tesla.gear = 0, 0
