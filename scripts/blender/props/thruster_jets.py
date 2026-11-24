@@ -1,8 +1,9 @@
 """TeslaThruster's jets (part TeslaThruster, models Lift / Side / Rear; roadster2.md): one static mesh per group in
 the body's frame (part model offset 0, as armor.py), per nozzle two open cones: a thin bright core (uv v 0..1) and a
-wider faint sheath (v 2..3). Shader MinidoracatTesla_jet draws them procedurally (no texture: it runs as a vehicle
-shader for the time uniform, and that path binds the car's skin, shaders/MinidoracatTesla_jet.frag).
-Also writes the landing fog's mounds MinidoracatTesla/JetFog1..4 (tall, tall in another shape, mid, low) and the
+wider faint sheath (v 2..3); the lift group's v runs 4 higher (LIFT_V), which picks the shader's lift look. Shader
+MinidoracatTesla_jet draws them procedurally (no texture: it runs as a vehicle shader for the time uniform, and that
+path binds the car's skin, shaders/MinidoracatTesla_jet.frag).
+Also writes the landing fog's mounds MinidoracatTesla/JetFog1..5 (tall, tall in another shape, mid, low, wide low) and the
 ground glow JetGlow (client ThrusterFx.lua; not under Vehicles/: verify_local reads those as car skins).
 
 Nozzles: `nozzles` of temp/skf_r2/roadster2_lines.json (R2Body's prep frame: metres, +Y front, +Z up, -X car left,
@@ -29,11 +30,13 @@ ESTIMATE = {"lift": [[-0.55, 1.30, 0.22], [0.55, 1.30, 0.22], [-0.55, -1.30, 0.2
             "r": 0.06}
 GEOM_ESTIMATE = {"centre_y": 0.0, "zmid": 0.50}
 # Per group: direction (mesh frame; side: outward by the nozzle's x), length (metres), far-end radius of the core and of
-# the sheath, the core's share of the length. Narrow at the nozzle, the sheath opening wider than a wheel where the lift
-# columns reach the ground from about 3 m, a soft white plume spreading into fog (f2-kickflip-replay 11m27); the boost
-# jets are short and merged into one bundle a side (four side by side read as a comb, r2fx-sp-8; thrust-060 17m27).
-SHAPE = {"lift": ((0, 0, -1), 4.0, 0.14, 0.60, 0.7), "side": (None, 1.2, 0.05, 0.24, 0.7),
+# the sheath, the core's share of the length. Narrow at the nozzle; the lift sheath spreads to about two wheels wide at
+# the ground from 3 m, steam fanning out into fog (f2-kickflip-replay 11m27; the user's pick of the r2fx-sp-12
+# look-alikes, V2: 0.60 m x 1.6); the boost jets are short and merged into one bundle a side (four side by side read as
+# a comb, r2fx-sp-8; thrust-060 17m27).
+SHAPE = {"lift": ((0, 0, -1), 4.0, 0.14, 0.96, 0.7), "side": (None, 1.2, 0.05, 0.24, 0.7),
          "rear": ((0, -1, 0), 1.6, 0.16, 0.50, 0.7)}
+LIFT_V = 4.0
 RINGS, SIDES = 10, 16
 
 
@@ -87,10 +90,11 @@ def build(group, nozzles, r0):
         r0 += max(abs(s[0][0] - s[-1][0]) for s in sides) / 2
         nozzles = [np.mean(s, axis=0) for s in sides]
     V, Q, U = [], [], []
+    v0 = LIFT_V if group == "lift" else 0.0
     for p in nozzles:
         d = d0 or (float(np.sign(p[0])), 0.0, 0.0)
-        for v, q, u in (cone(p, d, length * core * K, r0 * 0.8, r_core * K),
-                        cone(p, d, length * K, r0 * 1.3, r_sheath * K, 2.0)):
+        for v, q, u in (cone(p, d, length * core * K, r0 * 0.8, r_core * K, v0),
+                        cone(p, d, length * K, r0 * 1.3, r_sheath * K, v0 + 2.0)):
             Q += [tuple(k + len(V) for k in f) for f in q]
             V += v
             U += u
