@@ -1150,10 +1150,17 @@ check(TH.active() and TH.active().act == "land" and #H.clientSent == sent,
 cv.vy = 0
 for _ = 1, 30 do TH.tick() end
 check(TH.active() and #H.clientSent == sent, "still 0.6 s off the ground: it runs on")
-for _ = 1, 10 do if TH.active() then TH.tick() end end
+-- still REST_S: a probe first (r2fin-sp-full roof 1 #1: a car held on a roof's edge by the landing's own push read as
+-- at rest, ended, tipped over): 0.4 s with no push, the end only if it stays put on its own
+for _ = 1, 5 do TH.tick() end
+cv.impulses = 0
+for _ = 1, 5 do TH.tick() end
+check(TH.active() and TH.active().probe and #H.clientSent == sent and cv.impulses == 0,
+    "still 0.7 s at 2.16 m: probing, no push, not over yet")
+for _ = 1, 20 do if TH.active() then TH.tick() end end
 local er = H.clientSent[sent + 1]
 check(TH.active() == nil and er and er.command == "thrustEnd" and er.args.act == "land" and er.args.rest == true
-    and er.args.done == true, "still 0.7 s at 2.16 m on its side: over, said as at rest (done)")
+    and er.args.done == true, "... still 0.4 s with no push at 2.16 m on its side: over, said as at rest (done)")
 exits = 0
 function cv:isStopped() return true end
 function cv:isExitBlocked() return false end
@@ -1183,8 +1190,8 @@ do -- r2rest-mp-r2 boostnearhold: a car whose landing ended at rest, settled sin
     cv.dz, cv.vy, cv.uy, cv.speed = 0.075 + 0.6 / TH.FLOOR, 0, 0.7, 0
     TH.ask(cp, cv, "land")
     okFor("land")
-    for _ = 1, 40 do if TH.active() then TH.tick() end end
-    check(TH.active() == nil and H.clientSent[#H.clientSent].args.rest == true, "still 0.7 s at 0.6 m: over, at rest")
+    for _ = 1, 60 do if TH.active() then TH.tick() end end
+    check(TH.active() == nil and H.clientSent[#H.clientSent].args.rest == true, "still 0.7 s at 0.6 m, then the probe: over, at rest")
     cv.dz, cv.uy = 0.075 + 0.3 / TH.FLOOR, 0.9
     TH.watch(cp, cv)
     TH.ask(cp, cv, "boost")
@@ -1195,6 +1202,24 @@ do -- r2rest-mp-r2 boostnearhold: a car whose landing ended at rest, settled sin
     TH.watch(cp, cv)
     check(TH.active() and TH.active().act == "land", "ended at rest, then a boost from there, then tipped over a drop: the tilt branch asks")
     okFor("land")
+    cv.driver = nil; TH.tick(); cv.driver = cp
+end
+do -- the probe finds it moving (a car on a roof's edge, held there by the landing's push): the landing goes on from
+    -- where it is and never ends at rest after (as before 10f97657: 8 of 8 one-floor edges upright)
+    cv.dz, cv.vy, cv.uy, cv.speed = 0.075 + 2 / TH.FLOOR, 0, 1, 0
+    TH.ask(cp, cv, "land")
+    okFor("land")
+    local n0 = #H.clientSent
+    for _ = 1, 46 do TH.tick() end -- the first tick sets its height, 0.7 s still, then 0.2 s into the probe: its first sample
+    check(TH.active() and TH.active().probe and TH.active().probe.h, "still 0.7 s at 2 m: probing, the first sample taken")
+    cv.dz = cv.dz - 0.06 / TH.FLOOR -- sagging with no push: 0.06 m in the probe's second 0.2 s
+    for _ = 1, 12 do if TH.active() then TH.tick() end end
+    local f = TH.active()
+    check(f and f.act == "land" and f.phase == "land" and not f.probe and f.noRest and #H.clientSent == n0,
+        "... 0.06 m lower 0.2 s later: moving, the landing goes on (no end, no more rest)")
+    cv.impulses = 0
+    for _ = 1, 100 do if TH.active() then TH.tick() end end
+    check(TH.active() and #H.clientSent == n0 and cv.impulses > 0, "... then still 2 s more: pushing on, never at rest")
     cv.driver = nil; TH.tick(); cv.driver = cp
 end
 cv.dz, cv.vy, cv.uy, cv.speed = 0.075, 0, nil, 30

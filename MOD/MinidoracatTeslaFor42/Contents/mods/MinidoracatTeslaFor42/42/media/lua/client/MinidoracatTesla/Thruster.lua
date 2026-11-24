@@ -44,6 +44,10 @@ local ROLL_S, LAND_S = 3, 12     -- roll-up and soft landing give up after these
 -- at 0.817 m, ran its 12 s): this long under REST_V m/s within REST_DH m of one height is over. A landing never sinks
 -- slower than 0.7 m/s (landVy), so a car still coming down never reads as at rest
 local REST_S, REST_V, REST_DH = 0.7, 0.2, 0.03
+-- at rest REST_S, then a probe with no push: a car held on a roof's edge by the landing's own push read as at rest,
+-- ended there and tipped over (r2fin-sp-full roof 1 #1: up 0.033, hit -4.22 m/s). Sampled at PROBE_A s (the springs
+-- settle first) and PROBE_B s: faster than REST_V, PROBE_DH m lower or turned over 1 degree is moving
+local PROBE_A, PROBE_B, PROBE_DH, PROBE_DOT = 0.2, 0.4, 0.05, 0.99985
 local WAKE_KMH = 3               -- the motor's creep that wakes a parked car before it flies (go)
 -- the real seconds one frame may count toward the flight's limit: a pause (no OnTick) is not flown time
 local REAL_MAX = 0.25
@@ -650,11 +654,31 @@ function H.tick()
         st.ray = (st.rvy > -8 and st.rvy < -0.7) and math.max(0, 6 * vy / st.rvy) or 0
         if hm < 0.05 or (hm < 0.4 and vy > -0.25) or f.t > LAND_S then return stop(f.lifted) end
         local lv = v:getLinearVelocity(V3.lv)
-        if lv:x() ^ 2 + vy * vy + lv:z() ^ 2 > REST_V * REST_V or not f.restH or math.abs(hm - f.restH) > REST_DH then
+        local p = f.probe
+        if p then -- no push: does it stay put on its own? (the first PROBE_A s is the springs settling)
+            p.t = p.t + dt
+            if not p.h then
+                if p.t >= PROBE_A - 1e-6 then p.h, p.ux, p.uy, p.uz = hm, ux, uy, uz end
+            elseif p.t >= PROBE_B - 1e-6 then
+                local dv = math.sqrt(lv:x() ^ 2 + vy * vy + lv:z() ^ 2)
+                local dot = (ux * p.ux + uy * p.uy + uz * p.uz)
+                    / math.max(1e-9, math.sqrt((ux * ux + uy * uy + uz * uz) * (p.ux ^ 2 + p.uy ^ 2 + p.uz ^ 2)))
+                local moving = dv > REST_V or p.h - hm > PROBE_DH or dot < PROBE_DOT
+                T.log(string.format("thrust probe vid=%d dv=%.3f dh=%.3f dAng=%.2f h=%.2f %s", f.vid, dv, p.h - hm,
+                    math.deg(math.acos(math.min(1, dot))), hm, moving and "moving" or "at rest"))
+                if not moving then return stop(f.lifted, nil, nil, true) end
+                -- held up by its own push (a roof's edge): land on from here, never at rest again this landing
+                local t0 = f.t
+                setLand(f, hm)
+                f.t, f.noRest, f.probe = t0, true, nil
+            end
+            return
+        end
+        if f.noRest or lv:x() ^ 2 + vy * vy + lv:z() ^ 2 > REST_V * REST_V or not f.restH or math.abs(hm - f.restH) > REST_DH then
             f.restH, f.restT = hm, 0
         else
             f.restT = f.restT + dt
-            if f.restT >= REST_S then return stop(f.lifted, nil, nil, true) end
+            if f.restT >= REST_S then f.probe = { t = 0 } return end
         end
     end
     drive(f, v, dt, hm)
