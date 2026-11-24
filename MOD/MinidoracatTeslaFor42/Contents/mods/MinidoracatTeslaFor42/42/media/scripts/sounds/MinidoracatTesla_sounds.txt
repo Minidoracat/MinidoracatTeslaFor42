@@ -103,6 +103,36 @@ module Base
         }
     }
 
+    /* Roadster Rocket thrusters (shared/MinidoracatTesla/ThrusterFx.lua, playSoundLoopedImpl on each client): a broadband
+       pressure-release hiss, generated with ElevenLabs sound effects and low-passed to the official film's spectrum
+       (unveil 07:16, temp/plan-roadster2-1124/fx/sound/make.py), body RMS -18 dBFS like the loops above; the tail plays
+       once when the car lands. */
+    sound MinidoracatTesla_RoadsterJet
+    {
+        category = Vehicle,
+        loop = true,
+        maxInstancesPerEmitter = 1,
+        clip
+        {
+            file = media/sound/MinidoracatTesla/RoadsterJet.ogg,
+            distanceMin = 4,
+            distanceMax = 50,
+            volume = 0.4,
+        }
+    }
+
+    sound MinidoracatTesla_RoadsterJetEnd
+    {
+        category = Vehicle,
+        clip
+        {
+            file = media/sound/MinidoracatTesla/RoadsterJetEnd.ogg,
+            distanceMin = 4,
+            distanceMax = 50,
+            volume = 0.4,
+        }
+    }
+
     /* one-shots on vehicle:getEmitter() (BaseVehicle.java:7487-7547) */
     sound MinidoracatTesla_Contactors
     {
