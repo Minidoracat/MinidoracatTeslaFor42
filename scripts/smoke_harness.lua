@@ -22,10 +22,12 @@ function H.scriptValue(file, key, after)
     if after then s = s:sub((assert(s:find(after, 1, true), after))) end
     return tonumber(s:match("\n%s*" .. key .. "%s*=%s*([%d%.]+)"))
 end
--- the side doors a Tesla has, by the template its script inherits (MinidoracatTesla_template.txt: Core and CoreNoFrunk
--- the front two, Base all four; test_cabin checks the template file against this); car = "ModelY". -> door ids, template
--- name
+-- the side doors a Tesla has, by the template its script inherits (MinidoracatTesla_template.txt: Core, CoreNoFrunk,
+-- Cab, Solo and SoloNoFrunk the front two, Base all four; test_cabin checks the template file against this); car =
+-- "ModelY". -> door ids, template name
 H.TEMPLATE_DOORS = { MinidoracatTeslaCab = { "DoorFrontLeft", "DoorFrontRight" },
+    MinidoracatTeslaSolo = { "DoorFrontLeft", "DoorFrontRight" },
+    MinidoracatTeslaSoloNoFrunk = { "DoorFrontLeft", "DoorFrontRight" },
     MinidoracatTeslaCore = { "DoorFrontLeft", "DoorFrontRight" },
     MinidoracatTeslaCoreNoFrunk = { "DoorFrontLeft", "DoorFrontRight" },
     MinidoracatTeslaBase = { "DoorFrontLeft", "DoorFrontRight", "DoorRearLeft", "DoorRearRight" } }
@@ -37,7 +39,8 @@ function H.carDoors(car)
 end
 -- per Tesla: its script's engineForce and its pack item's int MaxCapacity (H.vehicle; other packs get 63)
 local ENGINE_FORCE, PACK_CAP = {}, {}
-for _, car in ipairs({ "ModelY", "Model3", "Cybertruck", "ModelS", "ModelX", "ModelYL", "Roadster", "Cybercab", "Semi" }) do
+for _, car in ipairs({ "ModelY", "Model3", "Cybertruck", "ModelS", "ModelX", "ModelYL", "Roadster", "Cybercab", "Semi",
+    "Roadster2" }) do
     ENGINE_FORCE["Base.MinidoracatTesla_" .. car] = H.scriptValue("vehicles/MinidoracatTesla_" .. car .. ".txt", "engineForce")
     PACK_CAP["Base.MinidoracatTesla_" .. car .. "Battery"] = H.scriptValue("items/MinidoracatTesla_items.txt", "MaxCapacity",
         "item MinidoracatTesla_" .. car .. "Battery")

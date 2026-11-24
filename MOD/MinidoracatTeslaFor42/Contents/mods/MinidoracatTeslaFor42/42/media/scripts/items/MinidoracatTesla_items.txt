@@ -119,6 +119,21 @@ module Base
         WorldStaticModel = CarBattery,
     }
 
+    /* Roadster Rocket: 150 kWh (Not a Tesla App; MotorTrend only says ">100"), Core.lua T.Packs */
+    item MinidoracatTesla_Roadster2Battery
+    {
+        DisplayCategory = VehicleMaintenance,
+        Weight = 45.0,
+        ItemType = base:normal,
+        Icon = CarBattery,
+        MaxCapacity = 150,
+        ConditionAffectsCapacity = false,
+        ConditionMax = 100,
+        ChanceToSpawnDamaged = 0,
+        MechanicsItem = true,
+        WorldStaticModel = CarBattery,
+    }
+
     /* Semi Long Range: 822 kWh (temp/plan-semi-1117/specs.md 1), Core.lua T.Packs */
     item MinidoracatTesla_SemiBattery
     {

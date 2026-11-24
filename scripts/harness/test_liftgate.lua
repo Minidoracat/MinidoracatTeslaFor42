@@ -413,15 +413,20 @@ n = #H.sent
 ISOpenVehicleDoor.complete({ vehicle = gas, part = gas.parts.DoorFrontLeft, character = driver })
 check(#H.sent == n, "not a Tesla: nothing sent")
 -- a shell door's bit clears when its Close clip is over: Specs doorClip (else 0.8) must be the clip the build animates
--- (scripts/blender/skf/cars/<car>.py DOORS, 4th value), for every shell door the car has (its template's side doors and
--- the tailgate if Specs has a trunk; a two-seater on MinidoracatTeslaCab, Core or CoreNoFrunk has no rear doors).
+-- (scripts/blender/skf/cars/<car>.py DOORS, 4th value, for the shell whose door files the script uses: a stand-in
+-- geometry plays another car's clips), for every shell door the car has (its template's side doors and the tailgate if
+-- Specs has a trunk; a two-seater on MinidoracatTeslaCab, Core or CoreNoFrunk has no rear doors).
 for name, s in pairs(T.Specs) do
     local car = name:match("MinidoracatTesla_(%w+)$")
-    local f = io.open("scripts/blender/skf/cars/" .. s.model:gsub("^Model", "model_"):lower() .. ".py", "r")
+    local vf = assert(io.open("MOD/MinidoracatTeslaFor42/Contents/mods/MinidoracatTeslaFor42/42/media/scripts/vehicles/MinidoracatTesla_"
+        .. car .. ".txt", "r"))
+    local shell = vf:read("*a"):match("file = MinidoracatTesla_(%w+)_DoorFrontLeft,") or s.model
+    vf:close()
+    local f = io.open("scripts/blender/skf/cars/" .. shell:gsub("^Model", "model_"):lower() .. ".py", "r")
     local src = f and f:read("*a") or ""
     if f then f:close() end
     local side = H.carDoors(car)
-    check(side ~= nil, name .. ": its script inherits MinidoracatTeslaCab, Core, CoreNoFrunk or Base")
+    check(side ~= nil, name .. ": its script inherits a template of smoke_harness H.TEMPLATE_DOORS")
     local has = { TrunkDoor = T.hasTrunk(s) }
     for _, id in ipairs(side or {}) do has[id] = true end
     for _, id in ipairs(L.SHELL_DOORS) do
@@ -648,6 +653,34 @@ local other = car({ script = "Base.CarNormal" })
 other.parts.EngineDoor.door.open = true
 e(other)
 check(#queued == 0 and vanillaUse == 1, "another make's open hood: vanilla")
+
+H.section("Roadster Rocket: the seatless right door locks with the car, the wing never; a cable raises the wing")
+local rr = car({ script = "Base.MinidoracatTesla_Roadster2" })
+for _, id in ipairs({ "DoorFrontRight", "TeslaWing" }) do -- same fakes as car()'s doors
+    local door = { open = false, locked = false, broken = false }
+    function door:isOpen() return self.open end
+    function door:setOpen(b) self.open = b end
+    function door:isLocked() return self.locked end
+    function door:setLocked(b) self.locked = b end
+    function door:isLockBroken() return self.broken end
+    rr.parts[id] = { id = id, door = door, item = newItem(), getId = function(self) return self.id end,
+        getDoor = function(self) return self.door end, getInventoryItem = function(self) return self.item end,
+        getVehicle = function() return rr end, getScriptPart = function() return { getModelCount = function() return 1 end } end }
+end
+local rd, wing = rr.parts.DoorFrontRight.door, rr.parts.TeslaWing.door
+check(L.seatless(rr).DoorFrontRight and next(L.seatless(v)) == nil, "Specs seatless: the Rocket's right door; a Model Y none")
+L.lockLids(rr, true)
+check(rd.locked and not wing.locked, "car locked: the right door locks with the lids, the wing stays unlocked")
+L.lockLids(rr, false)
+check(not rd.locked, "car unlocked: the right door unlocks")
+rr.cabinLocked, rd.open = true, false
+check(L.relock(rr, rr.parts.DoorFrontRight) and rd.locked, "right door shut on a locked car: locked again")
+check(not L.relock(rr, rr.parts.TeslaWing) and not wing.locked, "wing shut on a locked car: stays unlocked")
+rr.cabinLocked, rd.locked = false, false
+check(L.chargeWing(rr, true) and wing.open and not L.chargeWing(rr, true), "cable in: the lowered wing rises (true); already up: false")
+check(L.chargeWing(rr, false) and not wing.open, "cable out: the wing it raised lowers")
+rr.parts.TeslaWing.item = nil
+check(not L.chargeWing(rr, true) and not wing.open and not L.chargeWing(v, true), "no wing fitted, or a car without one: nothing")
 Vehicles.Use, getPlayerMechanicsUI, ISTimedActionQueue, ISCloseVehicleDoor.new = before.use, before.mech, before.queue, before.new
 H.side(true, false)
 getOnlinePlayers, ISOpenVehicleDoor, ISCloseVehicleDoor = saved.getOnlinePlayers, saved.ISOpenVehicleDoor, saved.ISCloseVehicleDoor

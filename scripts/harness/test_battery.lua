@@ -77,9 +77,15 @@ check(cs.massKg == 1412 and cs.dcKw == 152 and cs.acKw == nil and cs.regenEff ==
     and cs.softTop == nil and cs.tonneau == nil and cs.powershare == nil and #cs.colors == 1 and cs.colors[1].name == "Gold",
     "Cybercab: regen mass 1412 kg (EPA), DC 152 kW, butterfly doors, no front trunk; no HEPA, falcon, soft top, tonneau; Gold only")
 check(cs.chillForce == 1800, "Cybercab: its own Chill force 1800 (E2E feel-sp 19.99 s to 100 km/h, the user's pick)")
+local R2 = "Base.MinidoracatTesla_Roadster2"
+local rs = T.Specs[R2]
+check(rs.butterfly == true and rs.frunk == false and not T.hasFrunk(rs) and T.hasTrunk(rs) and rs.wing == true
+    and rs.seatless.DoorFrontRight == true and rs.massKg == 1700 and rs.dcKw == 500 and T.Packs[R2 .. "Battery"] == 150,
+    "Roadster Rocket: butterfly doors, no front trunk, a rear trunk, the wing, the right door seatless; 1700 kg, DC 500 kW, 150 kWh")
 local others = {}
 for name, s in pairs(T.Specs) do
-    if name ~= CC and name ~= "Base.MinidoracatTesla_Semi" and (s.butterfly ~= nil or s.frunk ~= nil or not T.hasFrunk(s)) then
+    if name ~= CC and name ~= R2 and name ~= "Base.MinidoracatTesla_Semi"
+        and (s.butterfly ~= nil or s.frunk ~= nil or not T.hasFrunk(s)) then
         others[#others + 1] = name
     end
 end

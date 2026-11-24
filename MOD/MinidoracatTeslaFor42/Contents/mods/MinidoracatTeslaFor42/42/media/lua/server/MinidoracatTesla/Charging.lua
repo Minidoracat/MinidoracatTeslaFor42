@@ -361,6 +361,7 @@ local function clearChg(vehicle, part)
         end
     end)
     if not ok then T.log("sentry / own loads before unplug failed: " .. tostring(err)) end
+    local raised = (part:getModData().chg or {}).wing
     part:getModData().chg = nil
     vehicle:transmitPartModData(part)
     touchVM(vehicle)
@@ -369,6 +370,11 @@ local function clearChg(vehicle, part)
     if PS then
         ok, err = pcall(PS.unplugged, vehicle, part)
         if not ok then T.log("powershare after unplug failed: " .. tostring(err)) end
+    end
+    -- the Roadster Rocket's wing the cable raised goes down again (Liftgate.lua L.chargeWing)
+    if raised then
+        ok, err = pcall(T.Liftgate.chargeWing, vehicle, false)
+        if not ok then T.log("lowering the wing after unplug failed: " .. tostring(err)) end
     end
 end
 
@@ -564,6 +570,14 @@ function C.start(o, v)
     local kw = T.chargerKw(o.kind, v)
     part:getModData().chg = { x = o.x, y = o.y, z = o.z, kind = o.kind, kw = kw, peak = T.dcPeak(o.kind, v, kw),
         last = now, added = 0, src = nil, target = C.DEFAULT_TARGET, paused = nil }
+    -- the Roadster Rocket's port is behind its wing: up while the cable is in, chg.wing = this cable raised it
+    -- (Liftgate.lua L.chargeWing; clearChg lowers it again)
+    local s = T.spec(v)
+    if s and s.wing then
+        local ok, up = pcall(T.Liftgate.chargeWing, v, true)
+        if not ok then T.log("raising the wing for the cable failed: " .. tostring(up)) end
+        part:getModData().chg.wing = ok and up or nil
+    end
     o.vid = v:getId()
     o:updateOnClient()
     C.setBusy(o, true)
