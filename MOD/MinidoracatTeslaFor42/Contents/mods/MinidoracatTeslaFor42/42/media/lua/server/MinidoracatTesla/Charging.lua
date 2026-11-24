@@ -342,15 +342,14 @@ function C.payFed(v, part, chg, sup, src, share)
     if fed - paid > 1e-9 then B.set(v, part, math.max(0, B.kwh(part) - (fed - paid))) end
 end
 
--- The Roadster Rocket's air tank refilled up to now (server Thruster.lua H.settle), so the refill's kWh goes to what
--- powered it meanwhile before that changes (plugging in, a settle that may switch the source, unplugging): the
--- charger's source as chg.power says (B.draw) up to freeUntil (C.powerUntil: a grid shut-off or a supply ended since
--- the last settle), the pack after it. Not while a thruster action runs (its end books it); the caller transmits.
-local function settleAir(v, part, freeUntil)
+-- The Roadster Rocket's air tank refilled up to now (server Thruster.lua H.settle): the pack pays it, plugged in or
+-- not, so C.settle books it before the charge it adds (the source, a shut-off, a generator's fuel, a Cybertruck's cap
+-- are the charge's books). Not while a thruster action runs (its end books it); the caller transmits.
+local function settleAir(v, part)
     local H = T.Thruster
     local thr = part:getModData().thr
     if not (H and H.settle and H.conf(v)) or (type(thr) == "table" and thr.busy) then return end
-    H.settle(v, part, freeUntil)
+    H.settle(v, part)
 end
 
 -- The link goes: the stretch since the last settle is booked without a generator taking over after the grid shut-off
@@ -361,7 +360,6 @@ local function clearChg(vehicle, part)
     local now = T.hours()
     -- the record goes whatever the sentry booking does: a stale record holds the car in Park (CheckOperate.Battery)
     local ok, err = pcall(function()
-        settleAir(vehicle, part, C.powerUntil(part:getModData().chg, now, false))
         local chg = part:getModData().chg
         settleSentry(vehicle, now, C.powerUntil(chg, now, false))
         if chg and chg.fed then
@@ -449,8 +447,8 @@ function C.settle(o, now, here, fresh)
         end
     end
     chg.hold = nil
-    -- on the source the stretch ran on (chg.power, not yet the one picked below), as long as it lasted
-    settleAir(v, part, C.powerUntil(chg, now))
+    -- the air first, off the pack: the charge below pays it back
+    settleAir(v, part)
     local wasKw = 0
     if prevSup then
         wasKw = (draws[o] and draws[o].kw) or math.min(chg.kw or 0, shareLeft(o, supKey, wasSrc))
@@ -582,7 +580,6 @@ function C.start(o, v)
         T.Powershare.broke(v) -- a car it fed that is not loaded now books at most an hour more (C.supplyEnded)
     end
     local kw = T.chargerKw(o.kind, v)
-    settleAir(v, part) -- on the pack: no cable yet
     part:getModData().chg = { x = o.x, y = o.y, z = o.z, kind = o.kind, kw = kw, peak = T.dcPeak(o.kind, v, kw),
         last = now, added = 0, src = nil, target = C.DEFAULT_TARGET, paused = nil }
     -- the Roadster Rocket's port is behind its wing: up while the cable is in, chg.wing = this cable raised it

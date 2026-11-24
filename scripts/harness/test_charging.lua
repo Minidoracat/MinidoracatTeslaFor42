@@ -1436,29 +1436,31 @@ check(siso2.sprite == WC4 and siso2.sent == nil, "SP: plugged tile, nothing tran
 H.side(false, true)
 end)()
 
-;(function() -- E1: the Roadster Rocket's air tank refill (server Thruster.lua H.settle) paid by what powered it
-H.section("thrusters: the tank's refill booked to its power source at plug and unplug")
+;(function() -- E1/S4: the Roadster Rocket's air tank refill (server Thruster.lua H.settle) always off the pack
+H.section("thrusters: the tank's refill paid by the pack, booked by C.settle before the charge it adds")
 local YS = T.Specs["Base.MinidoracatTesla_ModelY"]
 H.require("MinidoracatTesla/Thruster") -- shared
 assert(loadfile("MOD/MinidoracatTeslaFor42/Contents/mods/MinidoracatTeslaFor42/42/media/lua/server/MinidoracatTesla/Thruster.lua"))()
 local TH = T.Thruster
 YS.thruster = {}
-local _, iso = charger(900, 900, { room = {} }) -- grid: free to the car
+local lo, iso = charger(900, 900, { room = {} }) -- grid: free to the car
 local vt = car(40, 902.5, 903.5)
 local pt = H.player({ name = "own", keys = { [77] = true }, x = 901, y = 902 })
 local part = B.part(vt)
 H.setHours(120)
 part:getModData().thr = { gas = 0.5, at = H.hours() - 0.25 } -- half the 30 refill minutes due: half a tank, 20 kWh
+local k0 = B.kwh(part)
 C.plug(pt, vt, iso)
 local thr = part:getModData().thr
-check(part:getModData().chg ~= nil and near(B.kwh(part), 20, 1e-6) and near(thr.gas, 1) and thr.at == H.hours(),
-    "E1 plug: the refill since the last settle booked first, paid by the pack (20 kWh), not by the grid")
-thr.gas, thr.at = 0.5, H.hours()
+check(part:getModData().chg ~= nil and near(B.kwh(part), k0 - 20, 1e-6) and near(thr.gas, 1) and thr.at == H.hours(),
+    "S4 plug: the plug's settle books the refill owed so far off the pack (20 kWh)")
+thr.gas, thr.at = 0.75, H.hours() -- a quarter tank owed (10 kWh): the pack keeps more than its 12 V floor
 H.setHours(H.hours() + 0.25)
 C.unplug(pt, vt)
 local k = B.kwh(part)
-check(near(k, 20 + 0.25 * 11.5, 1e-6) and near(thr.gas, 1) and thr.at == H.hours(),
-    "E1 unplug: the refill while plugged booked before the cable goes, on the grid (free): only the charge added")
+check(near(k, k0 - 30 + 0.25 * 11.5, 1e-6) and near(thr.gas, 1) and thr.at == H.hours(),
+    "S4 unplug: the refill while plugged off the pack too (10 kWh), then the charge this stretch added: "
+    .. string.format("%.4f", k - k0))
 TH.settle(vt, part)
 check(near(B.kwh(part), k, 1e-6), "... nothing left for the pack to pay after")
 thr.busy = { act = "fly", by = "own" }
@@ -1467,6 +1469,20 @@ local s = H.sent[#H.sent]
 check(part:getModData().chg == nil and s.command == "deny" and s.args.reason == "THRUST_BUSY",
     "E1: a cable plugged in mid-action: THRUST_BUSY, not linked")
 thr.busy = nil
+-- S4: the pack at its 12V floor, plugged on the grid: the air is booked before the charge, so this settle refills
+-- nothing (the tank and its clock stay), the charge goes to the pack
+C.plug(pt, vt, iso)
+thr = part:getModData().thr
+thr.gas, thr.at = 0.5, H.hours()
+local at8 = H.hours()
+part:setContainerContentAmount(B.capacity(part) * T.DCDC_MIN_PCT / 100)
+local k8 = B.kwh(part)
+H.setHours(H.hours() + 0.125)
+C.settle(lo, H.hours())
+check(thr.gas == 0.5 and thr.at == at8 and near(B.kwh(part) - k8, 0.125 * 11.5, 1e-6),
+    "S4: the pack at its floor, plugged in: no refill this settle, the tank's clock not moved, only the charge added: "
+    .. string.format("gas %.3f kWh %+.4f", thr.gas, B.kwh(part) - k8))
+C.unplug(pt, vt)
 YS.thruster = nil
 Events.OnSpawnVehicleEnd.Remove(TH.onLoad)
 end)()
