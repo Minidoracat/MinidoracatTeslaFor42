@@ -931,6 +931,10 @@ local function vec() return { set = function(s, x, y, z) s[1], s[2], s[3] = x, y
     x = function(s) return s[1] end, y = function(s) return s[2] end, z = function(s) return s[3] end } end
 Vector3f = { new = function() return vec():set(0, 0, 0) end }
 local gt = getGameTime()
+-- the engine's enums the take-off scan reads (client Thruster.lua body): their names
+local savedIFT, savedIOT = IsoFlagType, IsoObjectType
+IsoFlagType = setmetatable({}, { __index = function(_, k) return k end })
+IsoObjectType = setmetatable({}, { __index = function(_, k) return k end })
 gt.getPhysicsSecondsSinceLastUpdate = function() return 0.02 end
 assert(loadfile(MEDIA .. "/client/MinidoracatTesla/Thruster.lua"))()
 local cv, cp, cpart = car({ x = 500.5, y = 500.5 })
@@ -1160,7 +1164,8 @@ cv.driver = cp
 local savedCore, savedSH = getCore, getPlayerScreenHeight
 local ground = { isSolid = function() return false end, isSolidTrans = function() return false end,
     getObjects = function() return { size = function() return 0 end } end, isBlockedTo = function() return false end,
-    getFloor = function() return true end, TreatAsSolidFloor = function() return true end }
+    getFloor = function() return true end, TreatAsSolidFloor = function() return true end,
+    HasStairs = function() return false end, has = function() return false end, getProperties = function() return nil end }
 getCell = function() return { getGridSquare = function(_, x, y, z) return z == 0 and ground or nil end } end -- open, no roof
 -- the camera: zoom 1, out to 3 (0.25 a step)
 local zoom = 1
@@ -1397,6 +1402,72 @@ TH.KEYS.up = nil
 isKeyDown, isJoypadRTPressed, isJoypadLTPressed, getJoypadMovementAxisX, getJoypadAimingAxisY = savedKD, nil, nil, nil, nil
 getCore, getPlayerScreenHeight, cv.vy = savedCore, savedSH, nil
 
+-- the take-off scan (scan-brief 2026-11-24, R2Scan.md 5): what the engine slows or stops a car on at any height
+-- (CarSlowFactor, HitByCar: over open ground it reads level 0 however high, BaseVehicle.java:3404-3410) refuses the
+-- whole way; a static body (IsoChunk.java:1949-2107) only where the car is under one floor. The car at (500.5, 500.5)
+-- heading +y at 30 km/h: kickflip under one floor until 7.1 m and from 21.7 m (its height curve), backflip all the way
+local savedInst, cellS = instanceof, getCell
+instanceof = function(o, c) return type(o) == "table" and o._class == c end
+local world = {} -- ["x,y"] = { flags = {}, types = {}, stairs, objs = { { props = {}, sprite, class, ball } } }
+local function wobj(o)
+    local pr = { has = function(_, k) return o.props ~= nil and o.props[k] ~= nil end, get = function(_, k) return o.props and o.props[k] end }
+    return { _class = o.class, getProperties = function() return pr end, isBlockAllTheSquare = function() return o.ball == true end,
+        getSprite = function() return o.sprite and { getName = function() return o.sprite end } or nil end }
+end
+local function wsq(t)
+    local objs, flags, types = {}, t.flags or {}, t.types or {}
+    for i, o in ipairs(t.objs or {}) do objs[i] = wobj(o) end
+    return { isSolid = function() return flags.solid == true end, isSolidTrans = function() return flags.solidtrans == true end,
+        getProperties = function() return { has = function(_, k) return flags[k] == true end } end,
+        has = function(_, k) return types[k] == true end, HasStairs = function() return t.stairs == true end,
+        getObjects = function() return { size = function() return #objs end, get = function(_, i) return objs[i + 1] end } end,
+        isBlockedTo = function() return false end, getFloor = function() return true end, TreatAsSolidFloor = function() return true end }
+end
+getCell = function() return { getGridSquare = function(_, x, y, z)
+    if z ~= 0 then return nil end
+    return world[x .. "," .. y] and wsq(world[x .. "," .. y]) or ground
+end } end
+-- kickflip at 30 km/h; backflip at its flipMaxKmh 15 (its way 17 m)
+cv.dz, cv.vy = 0.075, 0
+local function scan(act, at, t)
+    world, cv.speed = { [at] = t }, act == "backflip" and 15 or 30
+    local ok, why = TH.check(cp, cv, act)
+    world = {}
+    return ok and "ok" or why
+end
+local k0, b0 = scan("kickflip", "0,0", {}), scan("backflip", "0,0", {})
+check(k0 == "ok" and b0 == "ok", "scan: open ground, both go (" .. tostring(k0) .. ", " .. tostring(b0) .. ")")
+local NEAR, MID, SIDE, FAR = "500,503", "500,514", "499,514", "500,600"
+check(scan("kickflip", MID, { objs = { { props = { CarSlowFactor = "5" } } } }) == "THRUST_ROOM",
+    "scan C1: a CarSlowFactor object under the kickflip's high middle: refused (the engine slows it at any height)")
+check(scan("kickflip", MID, { objs = { { props = { HitByCar = "" } } } }) == "THRUST_ROOM",
+    "scan C1: a HitByCar object under the kickflip's high middle: refused")
+check(scan("kickflip", SIDE, { objs = { { props = { HitByCar = "" } } } }) == "THRUST_ROOM", "scan: on the side lanes too")
+check(scan("kickflip", FAR, { objs = { { props = { HitByCar = "" } } } }) == "ok", "scan: past its way: goes")
+local bodies = {
+    { "blocksight", { flags = { blocksight = true } } },
+    { "stairs", { stairs = true } },
+    { "a tree (no HitByCar)", { types = { tree = true } } },
+    { "a moveable", { types = { isMoveAbleObject = true } } },
+    { "PhysicsShape", { objs = { { props = { PhysicsShape = "Solid" } } } } },
+    { "PhysicsMesh", { objs = { { props = { PhysicsMesh = "x" } } } } },
+    { "a whole-square player wall", { objs = { { class = "IsoThumpable", ball = true } } } },
+    { "a lamp post", { objs = { { sprite = "lighting_outdoor_01_5" } } } },
+    { "a hoop", { objs = { { sprite = "recreational_sports_01_19" } } } },
+    { "a wall on its N edge", { flags = { collideN = true } } },
+    { "a wall on its W edge", { flags = { collideW = true } } },
+    { "a window on its N edge", { flags = { windowN = true } } },
+    { "a window on its W edge", { flags = { windowW = true } } },
+}
+for _, b in ipairs(bodies) do
+    check(scan("kickflip", NEAR, b[2]) == "THRUST_ROOM" and scan("kickflip", MID, b[2]) == "ok" and scan("backflip", MID, b[2]) == "THRUST_ROOM",
+        "scan: " .. b[1] .. ": a static body, refused under one floor (kickflip near, backflip all the way), not under the kickflip's high middle")
+end
+check(scan("kickflip", NEAR, { objs = { { class = "IsoThumpable", ball = false } } }) == "ok"
+    and scan("kickflip", NEAR, { objs = { { sprite = "recreational_sports_01_20" } } }) == "ok",
+    "scan: a thumpable not filling its square, another sports tile: go")
+instanceof, getCell = savedInst, cellS
+
 -- restore
 H.side(false, true)
 MS.thruster = nil
@@ -1406,3 +1477,4 @@ T.Remote.appLink = saved.appLink
 for _, k in ipairs(OPTS) do SandboxVars.MinidoracatTesla[k] = saved.sandbox[k] end
 gt.getPhysicsSecondsSinceLastUpdate = nil
 HaloTextHelper, ISVehicleMenu, Vector3f, getCell, getSpecificPlayer = nil, nil, nil, saved.getCell, savedGSP
+IsoFlagType, IsoObjectType = savedIFT, savedIOT

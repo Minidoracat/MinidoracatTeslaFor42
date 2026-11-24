@@ -104,16 +104,43 @@ local RESTS = {}
 local RESTED = {}
 local function heightOf(v, rest) return (v:getDebugZ() - groundZ(v) - rest) * FLOOR end
 
--- kickflip / backflip: what lies on the car's way, read once before take-off. Near the ground (the engine checks
--- the car's own level, BaseVehicle.java:2965-3003: above one floor it no longer hits what stands on the ground) a
--- tree, fence or pole (CarSlowFactor, HitByCar), a solid tile or a wall; all the way, a floor up to the apex (a roof,
--- a bridge). shortcut: tiles only, not the car's exact outline; a wall between two side lanes is missed.
-local function blocked(sq)
-    if sq:isSolid() or sq:isSolidTrans() then return true end
+-- kickflip / backflip: what lies on the car's way, read once before take-off. Two kinds:
+-- * slowed or stopped at any height: an object with CarSlowFactor or HitByCar (a tree, a fence, a hedge, a pole). The
+--   engine reads the objects on the car's own level (breakingObjects, BaseVehicle.java:2965-3003), and that level
+--   stays 0 over open ground however high the car is (BaseVehicle.java:3404-3410: z is the origin's floor only where
+--   that square exists with a floor on it or under it); once listed only the 2D distance counts (:3045-3080). So the
+--   whole way (r15 KshotA: stopped 2.70 m up)
+-- * a static body (IsoChunk.java:1949-2107): a solid, solidtrans or blocksight square, stairs, a tree, a moveable, a
+--   PhysicsShape / PhysicsMesh tile, a player's whole-square wall, on level 0 an outdoor lamp post or a hoop; a wall or
+--   window (open or shut) on the square's own N / W edge. Built per level (updatePhysicsForLevel; their height is in
+--   the native code, unread): taken as one floor high at most, so only where the car is under one floor
+-- All the way, a floor up to the apex (a roof, a bridge). shortcut: tiles only, not the car's exact outline
+local function slows(sq)
     local objs = sq:getObjects()
     for i = 0, objs:size() - 1 do
         local p = objs:get(i):getProperties()
         if p and (p:has("CarSlowFactor") or p:has("HitByCar")) then return true end
+    end
+    return false
+end
+local HOOPS = { recreational_sports_01_19 = true, recreational_sports_01_21 = true, recreational_sports_01_32 = true }
+local function body(sq, ground) -- ground: level 0, where lamp posts and hoops get one (IsoChunk.java:1992-2013)
+    if sq:isSolid() or sq:isSolidTrans() or sq:HasStairs() then return true end
+    local f = sq:getProperties()
+    if f and (f:has(IsoFlagType.blocksight) or f:has(IsoFlagType.collideN) or f:has(IsoFlagType.collideW)
+        or f:has(IsoFlagType.windowN) or f:has(IsoFlagType.windowW)) then return true end
+    if sq:has(IsoObjectType.tree) or sq:has(IsoObjectType.isMoveAbleObject) then return true end
+    local objs = sq:getObjects()
+    for i = 0, objs:size() - 1 do
+        local o = objs:get(i)
+        local p = o:getProperties()
+        if p and (p:has("PhysicsShape") or p:has("PhysicsMesh")) then return true end
+        if instanceof(o, "IsoThumpable") and o:isBlockAllTheSquare() then return true end
+        if ground then
+            local s = o:getSprite()
+            local n = s and s:getName()
+            if n and (n:find("lighting_outdoor_", 1, true) or HOOPS[n]) then return true end
+        end
     end
     return false
 end
@@ -146,7 +173,7 @@ local function clearPath(v, conf, act)
                 seen[k] = true
                 local sq = cell:getGridSquare(x, y, z0)
                 if not sq then return false end -- not loaded: can't tell
-                if low and blocked(sq) then return false end
+                if slows(sq) or low and body(sq, z0 == 0) then return false end
                 local pv = prev[o]
                 if low and pv and pv:isBlockedTo(sq) then return false end
                 if roofOver(cell, x, y, z0, levels) then return false end
