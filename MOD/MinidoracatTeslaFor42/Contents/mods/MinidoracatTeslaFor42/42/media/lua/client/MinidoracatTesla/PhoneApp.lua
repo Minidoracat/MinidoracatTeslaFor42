@@ -131,12 +131,14 @@ local HEAD = { "close", "back" } -- header buttons (never scroll)
 local MAIN = { "map", "charge" } -- the blue main actions
 
 local function txt(key, ...) return getText(P .. key, ...) end
--- T.denyText with NO_LINK's Bluetooth range in this player's unit (NO_LINK is only ever shown in this app)
-local function denyText(why)
+-- T.denyText with NO_LINK's Bluetooth range in this player's unit (NO_LINK is only ever shown in this app). Optional v
+-- (`...`): the car loaded here, for the thrusters' reasons said as the ring says them (client Thruster.lua H.whyText)
+local function denyText(why, ...)
     if why == "NO_LINK" and U.imperial() then
         return getText("IGUI_MinidoracatTesla_Deny_NO_LINK_Ft", tostring(U.feet(T.Keys.btRange())))
     end
-    return T.denyText(why)
+    local v = ...
+    return v and T.Thruster.whyText(v, why) or T.denyText(why)
 end
 
 -- the longest head of `s` that fits `maxW` in `font`, with "..." when cut. Kahlua strings index UTF-16 units, so sub
@@ -544,7 +546,7 @@ function App:onButton(b)
         local v = self:summonCar()
         if not v then return self:showToast(denyText("NOT_LOADED"), false) end
         local ok, why = T.Thruster.check(self.player, v, act, true)
-        if not ok then return self:showToast(denyText(why), false) end
+        if not ok then return self:showToast(denyText(why, v), false) end
         App.stats.sent = App.stats.sent + 1
         return self:send("appAction", { act = act, n = T.Thruster.nextN() }) -- n: client Thruster.lua H.nextN
     end
@@ -667,7 +669,7 @@ T.ClientCommands.appDone = function(args)
         elseif args.act == "summon" then a:summonDone(args) end
         if not args.why and args.on ~= nil then -- what the server did (a lid toggles what is there now)
             text = getText(carKey(script, "IGUI_MinidoracatTesla_App_Done_" .. args.act .. (args.on and "_on" or "_off")))
-        end
+        elseif args.why and GRID_TEX[args.act] then text = denyText(args.why, a:summonCar()) end -- the show's: its car here
         a:showToast(text, ok)
     end)
     App.lastDone = args

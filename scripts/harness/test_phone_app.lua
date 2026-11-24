@@ -2370,7 +2370,9 @@ local rv = H.vehicle({ script = "Base.MinidoracatTesla_Roadster2" })
 rv.keyId = 9001
 F.track(rv) -- loaded here (park_fakes' getVehicleById)
 local th, ok = T.Thruster, false
-T.Thruster = { check = function() if ok then return true end return false, "THRUST_ROOM" end, nextN = function() return 4242 end }
+local why = "THRUST_ROOM"
+T.Thruster = { check = function() if ok then return true end return false, why end, nextN = function() return 4242 end,
+    whyText = function(v, w) return T.denyText(w) .. (w == "THRUST_NO_AIR" and v == rv and " +refill" or "") end }
 state({ car = "MinidoracatTesla_Roadster2", vid = rv.id, wing = true, chg = "charging" })
 check(not a.b.wing.lit and a.b.wing.tipKey == "IGUI_MinidoracatTesla_Deny_CABLE_PLUGGED",
     "E2: the wing up, a cable in: its cell off, the tip says why")
@@ -2380,6 +2382,13 @@ local n0 = #H.clientSent
 a:onButton({ act = "kickflip" })
 check(#H.clientSent == n0 and a.toast and a.toast.text == T.denyText("THRUST_ROOM"),
     "D5: the car loaded here, no room for the show: the toast says THRUST_ROOM (not NOT_LOADED)")
+why = "THRUST_NO_AIR"
+a:onButton({ act = "kickflip" })
+local preSaid = a.toast.text
+T.ClientCommands.appDone({ key = 9001, act = "backflip", why = "THRUST_NO_AIR" })
+check(preSaid == T.denyText("THRUST_NO_AIR") .. " +refill" and a.toast.text == preSaid,
+    "no air for the show, checked here or refused by the server: said as the ring says it, with when it is full (H.whyText)")
+why = "THRUST_ROOM"
 ok = true
 a:onButton({ act = "kickflip" })
 local cmd, args = sentLast()
