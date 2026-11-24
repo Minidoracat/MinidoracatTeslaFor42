@@ -1443,7 +1443,7 @@ H.require("MinidoracatTesla/Thruster") -- shared
 assert(loadfile("MOD/MinidoracatTeslaFor42/Contents/mods/MinidoracatTeslaFor42/42/media/lua/server/MinidoracatTesla/Thruster.lua"))()
 local TH = T.Thruster
 YS.thruster = {}
-local _, iso = charger(900, 900, { room = {} }) -- grid: free to the car
+local lo, iso = charger(900, 900, { room = {} }) -- grid: free to the car
 local vt = car(40, 902.5, 903.5)
 local pt = H.player({ name = "own", keys = { [77] = true }, x = 901, y = 902 })
 local part = B.part(vt)
@@ -1467,6 +1467,18 @@ local s = H.sent[#H.sent]
 check(part:getModData().chg == nil and s.command == "deny" and s.args.reason == "THRUST_BUSY",
     "E1: a cable plugged in mid-action: THRUST_BUSY, not linked")
 thr.busy = nil
+-- R8: plugged on the grid, the grid shut off (336) before the next settle: the refill past the shut-off is the pack's
+H.setHours(335.875)
+C.plug(pt, vt, iso)
+thr = part:getModData().thr
+thr.gas, thr.at = 0.5, H.hours() -- 15 refill minutes due by 336.125: 7.5 on the grid, 7.5 (10 kWh) after it
+local k8 = B.kwh(part)
+H.setHours(336.125)
+C.settle(lo, H.hours())
+check(near(thr.gas, 1) and near(B.kwh(part) - k8, 0.125 * 11.5 - 10, 1e-6),
+    "R8: the grid shut off mid-refill: the charger paid to 336 (its 1/8 h of charge added), the pack the rest (10 kWh): "
+    .. string.format("%.4f", B.kwh(part) - k8))
+C.unplug(pt, vt)
 YS.thruster = nil
 Events.OnSpawnVehicleEnd.Remove(TH.onLoad)
 end)()
