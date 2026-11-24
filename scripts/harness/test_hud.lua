@@ -834,6 +834,65 @@ T.Thruster.air = function() return 1 end
 h:update(); h:update(); h:update()
 h:render()
 check(lastText == "IGUI_MinidoracatTesla_Tip_ThrustTank", "air full: the tip without a refill time")
+-- flying (Thruster.lua H.flight): this driver's pill comes first, its seconds counting down, the last 3 a warning;
+-- FreeFlight: no seconds; coming down: "Landing", no keys; a controller's driver: its keys; not flying: no pill
+local realFlight, realGT, realTip = T.Thruster.flight, getText, T.Thruster.flyTip
+local fl
+T.Thruster.flight = function(p, car) if p == h.character and car == h.vehicle then return fl end end
+getText = function(k, a) return a and (k .. "|" .. a) or k end
+-- the keys line is Thruster.lua H.flyTip's (test_thruster.lua: the keys bound now, the controller's words)
+T.Thruster.flyTip = function(p, key) return key .. (p:getJoypadBind() ~= -1 and "Pad" or "") end
+h.character.getJoypadBind = function() return -1 end
+local function slow() h:update(); h:update(); h:update() end
+slow()
+local id0, title0 = h.msgId, h.msgTitle
+fl = 8
+slow()
+check(h.msgId == 8 and h.msgTitle == "IGUI_MinidoracatTesla_HUD_Flying|8" and h.msgIcon == "i_wing"
+    and h.msgColor == HUD.C.accent and h.msgSub == "IGUI_MinidoracatTesla_HUD_FlyKeys",
+    "flying: 'Flying, 8 s left', the car icon in accent, the keys below (" .. tostring(h.msgSub) .. ")")
+fl = 7
+slow()
+check(h.msgTitle == "IGUI_MinidoracatTesla_HUD_Flying|7" and h.msgIcon == "i_wing", "a second later: 7 s left")
+fl = 3
+slow()
+check(h.msgTitle == "IGUI_MinidoracatTesla_HUD_Flying|3" and h.msgIcon == "i_warn" and h.msgColor == HUD.C.warn,
+    "3 s left: the warning icon and colour (the pill's own warning level)")
+fl = true
+slow()
+check(h.msgId == 8 and h.msgTitle == "IGUI_MinidoracatTesla_HUD_FlyingFree" and h.msgIcon == "i_wing",
+    "FreeFlight: 'Flying', no seconds, no warning")
+h.character.getJoypadBind = function() return 1 end
+slow()
+check(h.msgSub == "IGUI_MinidoracatTesla_HUD_FlyKeysPad", "a controller's driver: the controller's keys")
+collectgarbage("collect")
+collectgarbage("stop")
+before = collectgarbage("count")
+for _ = 1, 1000 do h:prerender() end
+grew = collectgarbage("count") - before
+collectgarbage("restart")
+check(grew == 0, "flying pill prerender x1000 allocates nothing (" .. grew .. " KB)")
+fl = "land"
+slow()
+check(h.msgId == 9 and h.msgTitle == "IGUI_MinidoracatTesla_HUD_FlyLanding" and h.msgSub == nil
+    and h.msgIcon == "i_chevdown", "coming down: 'Landing', no keys line")
+tesla.parts.DoorFrontLeft.door.open = true -- a door open too: flying first, the door's pill once it is down
+slow()
+local flyFirst = h.msgId
+fl = nil
+slow()
+check(flyFirst == 9 and h.msgId == 1, "a door open while landing: the landing's pill first, the door's after")
+tesla.parts.DoorFrontLeft.door.open = false
+slow()
+check(h.msgId == id0 and h.msgTitle == title0, "landed, door shut: the pill as before the flight (" .. tostring(h.msgTitle) .. ")")
+local realAir2 = T.Thruster.air
+T.Thruster.air = function() return nil end -- a car without thrusters: H.flight never asked
+local asked = false
+T.Thruster.flight = function() asked = true end
+slow()
+check(not asked, "no thrusters: the flight is never asked for")
+T.Thruster.air = realAir2
+T.Thruster.flight, getText, T.Thruster.flyTip, h.character.getJoypadBind = realFlight, realGT, realTip, nil
 T.Thruster.air = realAir
 h:update(); h:update(); h:update()
 T.Thruster.watch = realWatch -- (after: the dashboard asks it while it still shows the air)
