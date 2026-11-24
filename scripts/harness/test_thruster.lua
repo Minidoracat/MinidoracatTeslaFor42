@@ -1879,9 +1879,22 @@ end
 -- clear: vanilla's own exit
 do
 local queued, blockedE, doorP = {}, true, nil
-ISTimedActionQueue = { add = function(a) queued[#queued + 1] = a.kind end }
-local function ta(kind) return { new = function() return { kind = kind } end } end
+-- round3 T1: the seat (500, 500) to its way out (502, 500) on the car's level, as setCharacterPosition puts it
+local t1 = { edges = {}, flags = {}, stairs = {}, slope = {}, solid = {}, blockMv = false, mp = false, cell = getCell,
+    ic = isClient, z = cv.getZ, sc = cv.getScript, exitPerforms = 0, basePerforms = 0 }
+ISTimedActionQueue = { add = function(a)
+    queued[#queued + 1] = a.kind
+    if a.kind == "exit" then t1.out = a end
+end }
+local function ta(kind) -- an action: its own table, the class's methods behind it (as ISBaseObject:derive's new)
+    local cls = {}
+    cls.new = function() return setmetatable({ kind = kind }, { __index = cls }) end
+    return cls
+end
 ISExitVehicle, ISOpenVehicleDoor, ISCloseVehicleDoor, ISUnlockVehicleDoor = ta("exit"), ta("open"), ta("close"), ta("unlock")
+function ISExitVehicle.perform() t1.exitPerforms = t1.exitPerforms + 1 end
+ISBaseTimedAction = { perform = function() t1.basePerforms = t1.basePerforms + 1 end }
+function cv:playPassengerAnim(seat, anim) t1.anim = seat .. ":" .. anim end
 function cv:isExitBlocked() return blockedE end
 function cv:isStopped() return true end
 function cv:getPassengerDoor() return doorP end
@@ -1889,23 +1902,43 @@ ISVehicleMenu.getBestSwitchSeatExit = function() return nil end
 local savedGV, savedSeat = cp.getVehicle, cv.getSeat
 cp.getVehicle = function() return cv end
 cv.getSeat = function() return 0 end
--- round3 T1: the seat (500, 500) to its way out (502, 500) on the car's level, as setCharacterPosition puts it
-local t1 = { walls = {}, blockMv = false, mp = false, cell = getCell, ic = isClient, z = cv.getZ }
+-- an edge by the square it is the W side of ("x<x>,<y>", x one way) or the N side of ("y<x>,<y>", y one way):
+-- { block = isBlockedTo, win = isWindowTo, frame = getWindowFrameTo, door = isDoorTo }; flags, stairs, slope, solid
+-- by square ("<x>,<y>")
+local function edgeOf(a, b)
+    local k = a.x ~= b.x and "x" .. math.max(a.x, b.x) .. "," .. a.y or "y" .. a.x .. "," .. math.max(a.y, b.y)
+    return t1.edges[k] or {}
+end
 getCell = function() return { getGridSquare = function(_, x, y, z)
     if z ~= 0 then return nil end
-    return { x = x, y = y, isSolid = function() return t1.solidX == x end, isSolidTrans = function() return false end,
+    local k = x .. "," .. y
+    return { x = x, y = y, getX = function() return x end, getY = function() return y end,
+        isSolid = function() return t1.solid[k] == true end, isSolidTrans = function() return false end,
         getFloor = function() return true end, TreatAsSolidFloor = function() return true end,
-        isBlockedTo = function(self, o) return t1.walls[math.min(self.x, o.x) .. "," .. math.max(self.x, o.x)] == true end,
-        isHoppableTo = function() return t1.hop == true end, isWindowTo = function() return t1.win == true end }
+        isBlockedTo = function(s, o) return edgeOf(s, o).block == true end,
+        isWindowTo = function(s, o) return edgeOf(s, o).win == true end,
+        getWindowFrameTo = function(s, o) return edgeOf(s, o).frame end,
+        isDoorTo = function(s, o) return edgeOf(s, o).door == true end,
+        -- the engine's: a fence there (on its own or with a wall) or a window frame (IsoObject.java:6847); not read now
+        isHoppableTo = function(s, o) local e = edgeOf(s, o) return e.fence == true or e.frame ~= nil end,
+        has = function(_, flag) return (t1.flags[k] or {})[flag] == true end,
+        HasStairs = function() return t1.stairs[k] == true end,
+        hasSlopedSurface = function() return t1.slope[k] == true end }
 end } end
 isClient = function() return t1.mp end
 SafeHouse = { isPlayerAllowedOnSquare = function(_, sq) return sq.x ~= t1.safeX end }
 cp.isBlockMovement = function() return t1.blockMv end
 t1.pin = { wx = 500.5, wy = 500.5, getArea = function() return nil end }
-t1.pout = { wx = 502.5, wy = 500.5, getArea = function() return nil end }
+t1.pout = { wx = 502.5, wy = 500.5, getArea = function() return t1.areaId end }
 function cv:getPassengerPosition(_, id) return id == "inside" and t1.pin or t1.pout end
 function cv:getPassengerPositionWorldPos(pos) return { x = function() return pos.wx end, y = function() return pos.wy end } end
 function cv:getZ() return 0.46 end
+function cv:getScript()
+    local s = t1.sc(self)
+    s.getAreaById = function(_, id) return id == "SeatFrontLeft" and t1.area or nil end
+    return s
+end
+function cv:areaPositionWorld4PlayerInteract(a) return { getX = function() return a.wx end, getY = function() return a.wy end } end
 local UP = 0.075 + 1.13 / 2.44949
 cv.dz = UP
 local ex1 = exits
@@ -1916,7 +1949,7 @@ doorP = { getInventoryItem = function() return true end,
     getDoor = function() return { isLocked = function() return true end, isOpen = function() return false end } end }
 ISVehicleMenu.onExit(cp, 0)
 check(table.concat(queued, ",") == "unlock,open,exit,close", "a locked shut door: unlocked, opened, out, shut (as vanilla's onExitAux)")
-queued = {}
+queued, doorP = {}, nil
 cv.dz = 0.075
 ISVehicleMenu.onExit(cp, 0)
 check(exits == ex1 + 1 and #queued == 0, "on the ground: vanilla's exit")
@@ -1930,23 +1963,88 @@ function t1.try(seat) -- vanilla's exit, or out past what holds it up
     ISVehicleMenu.onExit(cp, seat)
     return exits == e0 + 1 and #queued == 0, exits == e0 and table.concat(queued, ","):find("exit") ~= nil
 end
-t1.walls["501,502"] = true
-check((t1.try(0)), "T1: up on a car, a wall between the seat and its way out: vanilla's exit (out nowhere), not through the wall")
-t1.hop = true
-check(select(2, t1.try(0)), "T1: a low fence a player hops between the seat and its way out (what holds the car up): out")
-t1.win = true
-check((t1.try(0)), "T1: a window frame between (hoppable too): vanilla's exit, not through the window")
-t1.walls["501,502"], t1.hop, t1.win = nil, nil, nil
+function t1.reset()
+    t1.edges, t1.flags, t1.stairs, t1.slope, t1.solid = {}, {}, {}, {}, {}
+    t1.pout.wx, t1.pout.wy, t1.areaId, t1.area = 502.5, 500.5, nil, nil
+end
+local FENCE = { block = true, fence = true }
+t1.edges["x502,500"] = { block = true }
+check((t1.try(0)), "T1: a wall between the seat and its way out: vanilla's exit (out nowhere), not through the wall")
+t1.flags["502,500"], t1.edges["x502,500"] = { HoppableW = true }, FENCE
+check(select(2, t1.try(0)), "T1: a low fence alone between (it collides, its square flagged HoppableW): out")
+t1.flags["502,500"] = { HoppableN = true }
+check((t1.try(0)), "T1: a fence across x read for HoppableN: vanilla's exit (the flag of the edge's own side only)")
+t1.flags["502,500"], t1.edges["x502,500"] = nil, { block = true, fence = true }
+check((t1.try(0)), "T1: a low fence and a wall on one edge (collides, the square's Hoppable flag taken off): vanilla's exit")
+t1.flags["502,500"], t1.edges["x502,500"] = { HoppableW = true }, { block = true, frame = {} }
+check((t1.try(0)), "T1: an empty window frame between (getWindowFrameTo), Hoppable flag or not: vanilla's exit")
+t1.reset()
+t1.edges["x502,500"] = { win = true }
+check((t1.try(0)), "T1: an open window between (not isBlockedTo, isWindowTo): vanilla's exit")
+t1.edges["x502,500"] = { door = true }
+check((t1.try(0)), "T1: an open door between (not isBlockedTo, isDoorTo): vanilla's exit")
+t1.reset()
+check(select(2, t1.try(0)), "T1: nothing between: out")
+t1.stairs["501,500"] = true
+check((t1.try(0)), "T1: stairs on a square on the way: vanilla's exit")
+t1.reset()
+t1.slope["501,500"] = true
+check((t1.try(0)), "T1: a slope on a square on the way: vanilla's exit")
+t1.reset()
+t1.solid["501,500"] = true
+check((t1.try(0)), "T1: a solid square on the way: vanilla's exit")
+t1.reset()
+-- a diagonal step (500, 500) to (501, 501): by (501, 500) and by (500, 501)
+t1.pout.wx, t1.pout.wy = 501.5, 501.5
+check(select(2, t1.try(0)), "T1: diagonal, both right-angle ways clear: out")
+t1.edges["x501,500"] = { block = true }
+check((t1.try(0)), "T1: diagonal, one right-angle way walled: vanilla's exit")
+t1.edges["x501,500"] = nil
+t1.edges["y500,501"], t1.flags["500,501"] = FENCE, { HoppableN = true }
+check(select(2, t1.try(0)), "T1: diagonal, a low fence across y: HoppableN read off the square with the larger y: out")
+t1.flags["500,501"], t1.flags["500,500"] = nil, { HoppableN = true }
+check((t1.try(0)), "T1: ... the flag on the smaller y's square instead (that's its other edge): vanilla's exit")
+t1.reset()
+-- the spot in the seat's own square: 0.3 clear of what bars
+t1.edges["x500,500"] = { block = true }
+t1.pout.wx = 500.2
+check((t1.try(0)), "T1: the spot in the seat's square 0.2 from a wall: vanilla's exit")
+t1.pout.wx = 500.5
+check(select(2, t1.try(0)), "T1: ... 0.5 from it: out")
+t1.reset()
+-- the spot at the area's interact point (an area named), not the passenger offset: the wall only across the area's way
+t1.areaId, t1.area = "SeatFrontLeft", { wx = 503.5, wy = 500.5 }
+t1.edges["x503,500"] = { block = true }
+check((t1.try(0)), "T1: an area's spot (503.5) past a wall the passenger offset (502.5) is short of: vanilla's exit")
+t1.edges["x503,500"] = nil
+check(select(2, t1.try(0)), "T1: ... no wall: out to the area's spot")
+t1.reset()
 t1.mp, t1.safeX = true, 502
 check((t1.try(0)), "T1: MP, the way out in a safehouse this player may not enter: vanilla's exit")
 t1.mp, t1.safeX, t1.blockMv = false, nil, true
 check((t1.try(0)), "T1: the player busy (isBlockMovement): vanilla's exit, which does nothing")
-t1.blockMv, t1.solidX = false, 502
+t1.blockMv, t1.solid["502,500"] = false, true
 check((t1.try(0)), "T1: the way out a solid square: vanilla's exit")
-t1.solidX = nil
+t1.solid["502,500"] = nil
 check(select(2, t1.try(nil)), "T1: the car's info / part menu from the seat (onExit without a seat), the way out clear past its support: out")
+-- looked at again as he is put there (the exit action's perform)
+t1.try(0)
+t1.mp, t1.safeX, t1.anim = true, 502, nil
+t1.out:perform()
+check(t1.exitPerforms == 0 and t1.basePerforms == 1 and t1.anim == "0:idle",
+    "T1: a safehouse claimed on the spot before the exit plays out: not put there, back to the seat's idle, the queue goes on")
+t1.mp, t1.safeX = false, nil
+t1.try(0)
+t1.edges["x502,500"] = { block = true }
+t1.out:perform()
+check(t1.exitPerforms == 0 and t1.basePerforms == 2, "T1: a wall built on the way before the exit plays out: not put there")
+t1.reset()
+t1.try(0)
+t1.out:perform()
+check(t1.exitPerforms == 1 and t1.basePerforms == 2, "T1: nothing changed as it plays out: vanilla's perform puts him out")
 getCell, isClient, cv.getZ, SafeHouse, cp.isBlockMovement = t1.cell, t1.ic, t1.z, nil, nil
-cv.getPassengerPosition, cv.getPassengerPositionWorldPos = nil, nil
+cv.getPassengerPosition, cv.getPassengerPositionWorldPos, cv.getScript, cv.areaPositionWorld4PlayerInteract = nil, nil, t1.sc, nil
+cv.playPassengerAnim, ISBaseTimedAction = nil, nil
 cv.dz, cp.getVehicle, cv.getSeat = 0.075, savedGV, savedSeat
 ISTimedActionQueue, ISExitVehicle, ISOpenVehicleDoor, ISCloseVehicleDoor, ISUnlockVehicleDoor = nil, nil, nil, nil, nil
 cv.isExitBlocked, cv.isStopped, cv.getPassengerDoor = nil, nil, nil
