@@ -679,6 +679,16 @@ check(not L.relock(rr, rr.parts.TeslaWing) and not wing.locked, "wing shut on a 
 rr.cabinLocked, rd.locked = false, false
 check(L.chargeWing(rr, true) and wing.open and not L.chargeWing(rr, true), "cable in: the lowered wing rises (true); already up: false")
 check(L.chargeWing(rr, false) and not wing.open, "cable out: the wing it raised lowers")
+-- E2: up while a cable is in (the port is behind it): the in-car switch can't lower it (the app's: test_phone_app)
+rr.driver, wing.open = driver, true
+local rbp = T.Battery.part(rr)
+rbp:getModData().chg = { power = "grid" }
+cmd(driver, { vid = rr:getId(), part = "TeslaWing" })
+check(wing.open and select(2, L.check(driver, rr, "TeslaWing")) == "CABLE_PLUGGED",
+    "E2: the wing up with a charge cable in: lowering it refused (CABLE_PLUGGED), it stays up")
+rbp:getModData().chg = nil
+check(L.check(driver, rr, "TeslaWing") == rr.parts.TeslaWing, "E2: no cable: the wing may be lowered")
+wing.open, rr.driver = false, nil
 rr.parts.TeslaWing.item = nil
 check(not L.chargeWing(rr, true) and not wing.open and not L.chargeWing(v, true), "no wing fitted, or a car without one: nothing")
 Vehicles.Use, getPlayerMechanicsUI, ISTimedActionQueue, ISCloseVehicleDoor.new = before.use, before.mech, before.queue, before.new

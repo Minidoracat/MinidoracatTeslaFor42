@@ -92,6 +92,22 @@ end
 -- game minutes until the tank is full again
 function H.minutesToFull(gas) return math.ceil((1 - clamp(gas, 0, 1)) * H.refillMinutes()) end
 
+-- Where the ground is under the car, the same on both sides (the server's "off the ground", the flying machine's
+-- height): the highest level at or under the car's physics origin with a floor there (a flat roof counts: flight PoC
+-- r4), else 0. Cached per tile and level
+local gx, gy, gtop, gz
+function H.groundZ(v)
+    local x, y, top = math.floor(v:getX()), math.floor(v:getY()), math.floor(v:getDebugZ() + 0.01)
+    if x == gx and y == gy and top == gtop then return gz end
+    local cell, z = getCell(), 0
+    for lv = math.max(0, top), 1, -1 do
+        local sq = cell:getGridSquare(x, y, lv)
+        if sq and (sq:getFloor() or sq:TreatAsSolidFloor()) then z = lv break end
+    end
+    gx, gy, gtop, gz = x, y, top, z
+    return z
+end
+
 -- AutoDrive drives it: a summon (both sides), or the driver's own AutoDrive (its machine only, MDAD_Driver.lua:1792
 -- Drive.isActive; while on it blocks other mods' addImpulse, :4119-4165)
 local function autoDriven(player, vehicle)
@@ -104,10 +120,13 @@ end
 
 -- What refuses `act` for `player` in `vehicle`, both sides: true, or false and a deny reason
 -- (IGUI_MinidoracatTesla_Deny_<reason>). The client adds what only it can see (speed, room around, physics
--- authority: client Thruster.lua); the server bills (server Thruster.lua). app: the phone app's show (H.APP), the
--- caller outside and the car empty; the server starts the motor itself. query: a client's look before asking
--- (VehicleManager's check, T.vmRefusal).
-function H.can(player, vehicle, act, app, query)
+-- authority: client Thruster.lua); the server bills (server Thruster.lua). Optional (`...`: callers leave them out,
+-- and Kahlua does not fill left-out fixed parameters with nil, family pitfalls.md): app = the phone app's show
+-- (H.APP), the caller outside and the car empty; the server starts the motor itself. query = a client's look before
+-- asking (VehicleManager's check, T.vmRefusal). mine = the busy flag of the action asking again (server Thruster.lua
+-- stillOk): that one is no refusal, nor the air it already took.
+function H.can(player, vehicle, act, ...)
+    local app, query, mine = ...
     if not H.ACTS[act] or not H.conf(vehicle) or (app and not H.APP[act]) then return false, "THRUST_NONE" end
     if not H.enabled() then return false, "THRUST_OFF" end
     if app then
@@ -126,11 +145,11 @@ function H.can(player, vehicle, act, app, query)
     local why = T.vmRefusal(player, vehicle, { "DRIVE" }, query)
     if why then return false, why end
     local thr = md.thr
-    if type(thr) == "table" and thr.busy then return false, "THRUST_BUSY" end
+    if type(thr) == "table" and thr.busy and thr.busy ~= mine then return false, "THRUST_BUSY" end
     if autoDriven(player, vehicle) then return false, "THRUST_BUSY" end
     -- someone else's game holds the car (a summon, another show, a driver): poc/APP.md step 1
     if app and vehicle:getNetPlayerId() ~= -1 then return false, "THRUST_BUSY" end
-    if H.gasNow(thr, T.hours()) + 1e-9 < H.need(act) then return false, "THRUST_NO_AIR" end
+    if not mine and H.gasNow(thr, T.hours()) + 1e-9 < H.need(act) then return false, "THRUST_NO_AIR" end
     return true
 end
 

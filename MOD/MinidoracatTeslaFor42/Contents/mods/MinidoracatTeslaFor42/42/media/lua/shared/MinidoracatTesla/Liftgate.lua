@@ -18,13 +18,18 @@ L.PARTS = { DoorFrontLeft = true, DoorFrontRight = true, DoorRearLeft = true, Do
     EngineDoor = true, TrunkTonneau = true, SoftTop = true, TeslaWing = true }
 
 -- Returns the installed door part `id` (one of L.PARTS), or nil and an IGUI_MinidoracatTesla_Deny_<reason> suffix.
--- A car without a front trunk (Specs frunk = false: Cybercab, "the hood cannot be opened") has no hood here.
+-- A car without a front trunk (Specs frunk = false: Cybercab, "the hood cannot be opened") has no hood here. The
+-- Roadster Rocket's wing stays up while a charge cable is in (the port is behind it, L.chargeWing; Remote.lua wing).
 function L.check(player, vehicle, id)
     if not vehicle or not player or vehicle:getDriver() ~= player then return nil, "NOT_DRIVER" end
     local part = type(id) == "string" and L.PARTS[id] and vehicle:getPartById(id)
     if id == "EngineDoor" and not T.hasFrunk(T.spec(vehicle)) then part = nil end
     if not part or not part:getInventoryItem() or not part:getDoor() then return nil, "NO_DOOR" end
     if not T.stopped(vehicle) then return nil, "MOVING" end
+    if id == "TeslaWing" and part:getDoor():isOpen() then
+        local bp = T.Battery.part(vehicle)
+        if bp and bp:getModData().chg then return nil, "CABLE_PLUGGED" end
+    end
     return part
 end
 

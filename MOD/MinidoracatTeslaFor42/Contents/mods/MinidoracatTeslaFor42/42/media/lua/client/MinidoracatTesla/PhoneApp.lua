@@ -542,8 +542,11 @@ function App:onButton(b)
     local st, act, on = self.st or {}, b.act, nil
     if GRID_TEX[act] then -- the show: what only this machine sees first (the runway: client Thruster.lua H.check)
         local v = self:summonCar()
-        local ok, why = v and T.Thruster.check(self.player, v, act, true)
-        if not ok then return self:showToast(denyText(why or "NOT_LOADED"), false) end
+        if not v then return self:showToast(denyText("NOT_LOADED"), false) end
+        local ok, why = T.Thruster.check(self.player, v, act, true)
+        if not ok then return self:showToast(denyText(why), false) end
+        App.stats.sent = App.stats.sent + 1
+        return self:send("appAction", { act = act, n = T.Thruster.nextN() }) -- n: client Thruster.lua H.nextN
     end
     if act == "lock" then act = st.locked and "unlock" or "lock"
     elseif act == "sentry" then on = not st.sentry
@@ -1097,8 +1100,11 @@ function App:read()
     for _, id in ipairs(LIDS) do
         local open = rec and st[id] == true
         local tip = carKey(self.script, TIP .. id:sub(1, 1):upper() .. id:sub(2))
-        if b["q" .. id] then enable(b["q" .. id], live, open, GRID_ICON[id], tip) end
-        enable(b[id], live, open, GRID_ICON[id], tip)
+        local on = live
+        -- the wing stays up while a charge cable is in (Remote.lua wing)
+        if id == "wing" and open and chg then on, tip = false, "IGUI_MinidoracatTesla_Deny_CABLE_PLUGGED" end
+        if b["q" .. id] then enable(b["q" .. id], on, open, GRID_ICON[id], tip) end
+        enable(b[id], on, open, GRID_ICON[id], tip)
         b[id].sub = open and txt("Opened") or txt("TapOpen")
     end
     enable(b.flash, live, false, GRID_ICON.flash, TIP .. "Flash")

@@ -721,6 +721,8 @@ function HUD:update()
         if d then
             if d:getDriver() ~= self.character then return self:hide() end
             self:startEdge(d)
+            -- a fall to catch with the dashboard dark too (the soft landing needs no screen: Thruster.lua H.watch)
+            if T.Thruster.conf(d) then T.Thruster.watch(self.character, d) end
         end
         return
     end

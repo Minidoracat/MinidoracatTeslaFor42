@@ -7,6 +7,7 @@
 if isServer() then return end
 require "MinidoracatTesla/Core"
 require "MinidoracatTesla/Units" -- the mod's options page (PZAPI.ModOptions) the key binds go on
+require "MinidoracatTesla/Net" -- its deny handler, wrapped at the end of this file
 require "Vehicles/ISUI/ISVehicleMenu"
 
 local T = MinidoracatTesla
@@ -85,21 +86,8 @@ local function quintic(t, t1, t2)
     return x * x * x * (10 - 15 * x + 6 * x * x), 30 * x * x * (1 - x) ^ 2 / d, (60 * x - 180 * x * x + 120 * x * x * x) / (d * d)
 end
 
--- ---- where the ground is ----
--- the highest level at or under the car's physics origin with a floor under it (a flat roof counts: flight PoC r4);
--- cached per tile and level
-local gx, gy, gtop, gz
-local function groundZ(v)
-    local x, y, top = math.floor(v:getX()), math.floor(v:getY()), math.floor(v:getDebugZ() + 0.01)
-    if x == gx and y == gy and top == gtop then return gz end
-    local cell, z = getCell(), 0
-    for lv = math.max(0, top), 1, -1 do
-        local sq = cell:getGridSquare(x, y, lv)
-        if sq and (sq:getFloor() or sq:TreatAsSolidFloor()) then z = lv break end
-    end
-    gx, gy, gtop, gz = x, y, top, z
-    return z
-end
+-- ---- where the ground is: shared Thruster.lua (the server judges "off the ground" by the same) ----
+local groundZ = H.groundZ
 -- floors between the ground and the car's physics origin at rest, per car, measured when it stands on the ground
 local RESTS = {}
 local function heightOf(v, rest) return (v:getDebugZ() - groundZ(v) - rest) * FLOOR end
@@ -314,7 +302,7 @@ local function zoomOut(f, top)
     local n = math.ceil((need - z) / 0.25 - 1e-6)
     n = clamp(math.min(n, math.floor((core:getMaxZoom() - z) / 0.25 + 1e-6)), 0, 6)
     for _ = 1, n do core:doZoomScroll(pn, 1) end
-    f.zoom = n
+    f.zoom = (f.zoom or 0) + n
 end
 
 -- the motor's cruise back as it was (the driver's roll-up, go)
@@ -325,15 +313,23 @@ local function regBack(f)
     f.reg0 = nil
 end
 
--- abort: it can't go on here (the physics left, someone sat in); the server judges what happened (server thrustEnd)
-local function stop(done, why, abort)
+-- the action over on this machine, nothing said: its controller off, the camera and the motor's cruise back
+local function halt()
     local f = F
     F = nil
     Events.OnTick.Remove(H.tick)
     if not f then return end
     regBack(f)
     for _ = 1, f.zoom or 0 do getCore():doZoomScroll(f.player:getPlayerNum(), -1) end
-    T.request(f.player, "thrustEnd", { vid = f.vid, act = f.act, done = done == true, sec = f.flown, abort = abort })
+    return f
+end
+
+-- abort: it can't go on here (the physics left, someone sat in); the server judges what happened (server thrustEnd)
+local function stop(done, why, abort)
+    local f = halt()
+    if not f then return end
+    T.request(f.player, "thrustEnd", { vid = f.vid, act = f.act, done = done == true, sec = f.flown, abort = abort,
+        n = f.n })
     if why then HaloTextHelper.addBadText(f.player, T.denyText(why)) end
 end
 
@@ -421,12 +417,13 @@ local function go(f)
 end
 
 -- app: "show" = the phone app's show (the caller outside, the car empty), "help" = landing a car the server handed to
--- this machine (server Thruster.lua handOver); both wait for the car's physics to arrive here first
-local function start(player, v, act, sec, app)
+-- this machine (server Thruster.lua handOver); both wait for the car's physics to arrive here first. n: the server's
+-- number for this action (its thrustEnd carries it). ok: approved (the soft landing starts before its answer)
+local function start(player, v, act, sec, app, n)
     local c = H.conf(v)
     local vid = v:getId()
     local f = { player = player, v = v, vid = vid, act = act, conf = c, sec = sec, t = 0, flown = 0, app = app,
-        bank = { jx = 0, jy = 0, jz = 0, lx = 0, ly = 0, lz = 0, lastTq = false } }
+        n = n, ok = app ~= nil, bank = { jx = 0, jy = 0, jz = 0, lx = 0, ly = 0, lz = 0, lastTq = false } }
     if act == "land" then
         f.rest, f.lifted = RESTS[vid] or c.rest, true
     else
@@ -447,17 +444,19 @@ function H.tick()
     if not f then return Events.OnTick.Remove(H.tick) end
     local v = f.v
     if f.phase == "wait" then -- the server handed the physics over: here within about 0.1 s (poc/APP.md)
+        local d = getTimestampMs() - f.ms0
         if authority(v) then go(f)
-        elseif getTimestampMs() - f.ms0 > 2000 then return stop(false) end -- the server's D1 (2.5 s) would end it too
+        elseif d < 0 or d > 2000 then return stop(false) end -- the wall clock set back counts as too long
         return
     end
     -- someone took the driver's seat (the show: anyone; the helper lands it whoever sits there), or the physics left
     if (f.app == "show" and v:getDriver() ~= nil) or (not f.app and v:getDriver() ~= f.player) or not authority(v) then
         return stop(f.lifted, nil, true)
     end
-    -- the flight's limit counts real time, as the server's D2 does (a slow frame's physics step is capped at DT_MAX)
+    -- the flight's limit counts real time, as the server's D2 does (a slow frame's physics step is capped at DT_MAX;
+    -- the wall clock set back or forward counts as no time or REAL_MAX)
     local now = getTimestampMs()
-    local real = math.min(REAL_MAX, (now - (f.ms or now)) / 1000)
+    local real = math.min(REAL_MAX, math.max(0, (now - (f.ms or now)) / 1000))
     f.ms = now
     local dt = math.min(DT_MAX, math.max(0, getGameTime():getPhysicsSecondsSinceLastUpdate()))
     if dt <= 0 then return end -- paused
@@ -558,11 +557,33 @@ function H.tick()
 end
 
 -- ---- asking ----
+-- [pn] = { vid, act, n, ms }: what each local player asked and has no answer for yet (thrustOk, deny); after
+-- ASK_MS (or the wall clock set back) it is as good as unanswered (thrustOk then gives the air back)
+local asked, ASK_MS = {}, 3000
+local function pendingAsk(pn)
+    local a = asked[pn]
+    if not a then return nil end
+    local d = getTimestampMs() - a.ms
+    if d < 0 or d > ASK_MS then
+        asked[pn] = nil
+        return nil
+    end
+    return a
+end
+-- the number for this machine's next action: rising, also past a restart of the game (the wall clock)
+local seq = 0
+function H.nextN()
+    seq = math.max(seq + 1, getTimestampMs())
+    return seq
+end
+
 -- the client's side of the rules: H.can plus what only this machine sees. app: the phone app's show (PhoneApp.lua
--- asks before sending; the server gives this machine the physics only once it approves)
+-- asks before sending; the server gives this machine the physics only once it approves). An action asked and not
+-- answered yet refuses another (the soft landing aside: a fall can't wait)
 local SPEED_MAX = { kickflip = "kickMaxKmh", backflip = "flipMaxKmh", boost = "boostMaxKmh" }
 function H.check(player, v, act, app)
     if F then return false, "THRUST_BUSY" end
+    if act ~= "land" and not app and pendingAsk(player:getPlayerNum()) then return false, "THRUST_BUSY" end
     local ok, why = H.can(player, v, act, app, true)
     if not ok then return false, why end
     if not app and not authority(v) then return false, "THRUST_AUTHORITY" end
@@ -594,7 +615,6 @@ function H.whyText(v, why)
     return s
 end
 
-local asked = nil
 function H.ask(player, v, act)
     local f = F
     if act == "fly" and f and f.v == v and f.act == "fly" then f.wantLand = true return true end -- the second press lands
@@ -603,45 +623,62 @@ function H.ask(player, v, act)
         HaloTextHelper.addBadText(player, H.whyText(v, why))
         return false
     end
-    if act == "land" then start(player, v, act, nil) end -- falling: no time to wait for the server (it bills after)
-    asked = { player = player, vid = v:getId(), act = act, ms = getTimestampMs() }
-    T.request(player, "thrust", { vid = v:getId(), act = act })
+    local n = H.nextN()
+    -- falling: no time to wait for the server (it bills after; a refusal stops it, the deny below)
+    if act == "land" then start(player, v, act, nil, nil, n) end
+    asked[player:getPlayerNum()] = { vid = v:getId(), act = act, n = n, ms = getTimestampMs() }
+    T.request(player, "thrust", { vid = v:getId(), act = act, n = n })
     return true
 end
 
--- app: the phone app's show, this machine's player called it (server Thruster.lua go: the physics is on its way)
+-- args { vid, act, sec, n, pn, app }: approved for the local player pn. app: the phone app's show this machine's
+-- player called (server Thruster.lua go: the physics is on its way)
 T.ClientCommands.thrustOk = function(args)
-    local a = asked
+    local pn = args.pn or 0
+    local player = getSpecificPlayer(pn) or getSpecificPlayer(0)
+    local a = pendingAsk(pn)
+    if a and a.n == args.n then asked[pn] = nil else a = nil end
     local f = F
-    if a and a.vid == args.vid and a.act == args.act then asked = nil end
-    if args.act == "land" and f and f.vid == args.vid and f.act == "land" then return end -- already landing
     local v = getVehicleById(args.vid)
-    -- pn: the split-screen slot of the player the server approved it for (server Thruster.lua go, T.deny's pn)
-    local player = a and a.player or getSpecificPlayer(args.pn or 0) or getSpecificPlayer(0)
-    if args.app then
-        if f or not v or v:getDriver() then
-            return T.request(player, "thrustEnd", { vid = args.vid, act = args.act, done = false, sec = 0 })
-        end
-        return start(player, v, args.act, nil, "show")
+    local function back() -- too late or no longer possible here: the air back
+        T.request(player, "thrustEnd", { vid = args.vid, act = args.act, done = false, sec = 0, n = args.n })
     end
-    if not a or a.vid ~= args.vid or a.act ~= args.act or getTimestampMs() - a.ms > 3000 or f or not v
-        or not v:isDriver(player) or not authority(v) then
-        -- too late or no longer possible here: the air back
-        T.request(player, "thrustEnd", { vid = args.vid, act = args.act, done = false, sec = 0 })
+    if args.app then
+        if f or not v or v:getDriver() then return back() end
+        return start(player, v, args.act, nil, "show", args.n)
+    end
+    if f and f.n == args.n then -- the soft landing, already under way
+        f.ok = true
         return
     end
-    start(player, v, args.act, args.sec)
+    if not a or f or not v or not v:isDriver(player) or not authority(v) then return back() end
+    start(player, v, args.act, args.sec, nil, args.n)
+    F.ok = true
 end
 
--- the server handed this player's machine a car left in the air (its holder's game went quiet, or it said it could
--- not go on): land it, driver or not. Can't here: say so at once, the server hands it to the next one.
+-- args { vid, pn, n }: the server handed this player's machine a car left in the air (its holder's game went quiet, or
+-- it said it could not go on): land it, driver or not. Can't here: say so at once, the server hands it to the next one.
 T.ClientCommands.thrustLand = function(args)
     local player = getSpecificPlayer(args.pn or 0) or getSpecificPlayer(0)
     local v = getVehicleById(args.vid)
     if F or not v or not H.conf(v) then
-        return T.request(player, "thrustEnd", { vid = args.vid, act = "land", done = false, abort = true })
+        return T.request(player, "thrustEnd", { vid = args.vid, act = "land", done = false, abort = true, n = args.n })
     end
-    start(player, v, "land", nil, "help")
+    start(player, v, "land", nil, "help", args.n)
+end
+
+-- a refusal of this machine's action n (server Thruster.lua deny): its ask is answered, and a soft landing started
+-- before the answer stops here, nothing more said (the server kept nothing of it). Then the usual message (Net.lua)
+local baseDeny = T.ClientCommands.deny
+T.ClientCommands.deny = function(args)
+    if type(args) == "table" and type(args.n) == "number" then
+        local pn = args.pn or 0
+        local a = asked[pn]
+        if a and a.n == args.n then asked[pn] = nil end
+        local f = F
+        if f and f.n == args.n and not f.ok then halt() end
+    end
+    return baseDeny(args)
 end
 
 -- HUD.lua, each dashboard update (10 Hz) of a car with thrusters: notes where it rests on the ground, and catches a
