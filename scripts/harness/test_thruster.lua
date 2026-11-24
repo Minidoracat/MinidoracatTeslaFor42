@@ -1857,7 +1857,8 @@ getCell = function() return { getGridSquare = function(_, x, y, z)
     if z ~= 0 then return nil end
     return { x = x, y = y, isSolid = function() return t1.solidX == x end, isSolidTrans = function() return false end,
         getFloor = function() return true end, TreatAsSolidFloor = function() return true end,
-        isBlockedTo = function(self, o) return t1.walls[math.min(self.x, o.x) .. "," .. math.max(self.x, o.x)] == true end }
+        isBlockedTo = function(self, o) return t1.walls[math.min(self.x, o.x) .. "," .. math.max(self.x, o.x)] == true end,
+        isHoppableTo = function() return t1.hop == true end, isWindowTo = function() return t1.win == true end }
 end } end
 isClient = function() return t1.mp end
 SafeHouse = { isPlayerAllowedOnSquare = function(_, sq) return sq.x ~= t1.safeX end }
@@ -1893,7 +1894,11 @@ function t1.try(seat) -- vanilla's exit, or out past what holds it up
 end
 t1.walls["501,502"] = true
 check((t1.try(0)), "T1: up on a car, a wall between the seat and its way out: vanilla's exit (out nowhere), not through the wall")
-t1.walls["501,502"] = nil
+t1.hop = true
+check(select(2, t1.try(0)), "T1: a low fence a player hops between the seat and its way out (what holds the car up): out")
+t1.win = true
+check((t1.try(0)), "T1: a window frame between (hoppable too): vanilla's exit, not through the window")
+t1.walls["501,502"], t1.hop, t1.win = nil, nil, nil
 t1.mp, t1.safeX = true, 502
 check((t1.try(0)), "T1: MP, the way out in a safehouse this player may not enter: vanilla's exit")
 t1.mp, t1.safeX, t1.blockMv = false, nil, true

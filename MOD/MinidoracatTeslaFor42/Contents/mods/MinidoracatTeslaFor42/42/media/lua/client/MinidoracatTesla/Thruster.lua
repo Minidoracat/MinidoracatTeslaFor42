@@ -1123,7 +1123,10 @@ local function exitUp(p, v, seat)
     if door then ISTimedActionQueue.add(ISCloseVehicleDoor:new(p, v, part)) end
 end
 -- square to square on one level, a tile at a time: no wall, window or shut door between (IsoGridSquare.isBlockedTo:
--- the edge's own objects; a low fence and another car are none). A diagonal step: both right-angle ways clear
+-- every edge that collides but a window, :784-805, a low fence too). A fence a player hops is none (isHoppableTo; what
+-- holds the car up is often one), a window frame is (it counts as hoppable too, :1018-1020). Another car is no edge.
+-- A diagonal step: both right-angle ways clear
+local function barred(a, b) return a:isBlockedTo(b) and not (a:isHoppableTo(b) and not a:isWindowTo(b)) end
 local function wayClear(cell, x, y, ex, ey, z)
     local cur = cell:getGridSquare(x, y, z)
     for _ = 1, 8 do
@@ -1135,10 +1138,10 @@ local function wayClear(cell, x, y, ex, ey, z)
         if not nxt then return false end
         if dx ~= 0 and dy ~= 0 then
             local a, b = cell:getGridSquare(x + dx, y, z), cell:getGridSquare(x, y + dy, z)
-            if not (a and b) or cur:isBlockedTo(a) or a:isBlockedTo(nxt) or cur:isBlockedTo(b) or b:isBlockedTo(nxt) then
+            if not (a and b) or barred(cur, a) or barred(a, nxt) or barred(cur, b) or barred(b, nxt) then
                 return false
             end
-        elseif cur:isBlockedTo(nxt) then return false end
+        elseif barred(cur, nxt) then return false end
         cur, x, y = nxt, x + dx, y + dy
     end
     return false
