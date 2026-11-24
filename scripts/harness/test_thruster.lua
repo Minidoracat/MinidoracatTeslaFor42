@@ -1248,6 +1248,7 @@ isJoypadRTPressed = function(id) return id == 3 and pad.rt == true end
 isJoypadLTPressed = function(id) return id == 3 and pad.lt == true end
 getJoypadMovementAxisX = function(id) return id == 3 and pad.mx or 0 end
 getJoypadAimingAxisY = function(id) return id == 3 and pad.ay or 0 end
+isJoypadRBPressed = function(id) return id == 3 and pad.rb == true end
 cp.pad = 3
 local fa = TH.active()
 local psi0, hG0, spd0 = fa.st.psiT, fa.st.hG, fa.spd
@@ -1272,7 +1273,11 @@ local hDown = fa.st.hG
 pad.ay = -1
 step(5)
 check(hDown < hG0 and fa.st.hG > hDown, "controller: the right stick down lowers the hover, up raises it")
-pad.ay = 0
+pad.rb = true
+local hRB = fa.st.hG
+step(5)
+check(fa.st.hG == hRB, "controller: RB held, the right stick looks around (vanilla), the height stays")
+pad.ay, pad.rb = 0, nil
 -- the flying tip: the bound height keys and vanilla's exit key named (the Interact key: OnUseVehicle lands it, below);
 -- a controller's player: the controller's
 local realGetText, realKeyName = getText, getKeyName
@@ -1303,6 +1308,7 @@ check(fa.phase == "land" and exits == ex0 and halo[#halo] == "IGUI_MinidoracatTe
 abort()
 TH.KEYS.up = nil
 isKeyDown, isJoypadRTPressed, isJoypadLTPressed, getJoypadMovementAxisX, getJoypadAimingAxisY = savedKD, nil, nil, nil, nil
+isJoypadRBPressed = nil
 getCore, getPlayerScreenHeight, cv.vy = savedCore, savedSH, nil
 
 -- restore
