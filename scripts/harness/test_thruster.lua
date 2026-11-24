@@ -922,14 +922,21 @@ local _, a3 = ask(p, v, "kickflip")
 v.dz = 1
 check(ask(p, v, "land") == "THRUST_BUSY" and askLand(p, v, a3.n + 1000) == "THRUST_BUSY" and entryOf(v).act == "kickflip"
     and entryOf(v).n == a3.n, "S3: a late soft landing naming no ask, or another one: THRUST_BUSY, the stunt goes on")
--- S2: the motor off before the soft landing reaches the server: refused, the stunt and its due checks as they were
+-- the motor off before the soft landing reaches the server (or off on purpose in the air): a soft landing needs no
+-- motor, it takes the stunt over as ever; a stunt or boost still does (oracle-flight2 Q1: a car off in the air would
+-- else fall with no landing)
 v.running = false
-check(askLand(p, v, a3.n) == "THRUST_ENGINE" and entryOf(v) and entryOf(v).act == "kickflip" and entryOf(v).n == a3.n
-    and part:getModData().thr.busy ~= nil and hooked, "S2: the land refused THRUST_ENGINE: the stunt still pending, busy kept, its timer on")
-v.running = true
+check(ask(p, v, "kickflip") == "THRUST_ENGINE" and askLand(p, v, a3.n) == "thrustOk" and entryOf(v) and entryOf(v).act == "land",
+    "S2: the motor off: the land taken all the same, over the stunt")
 v.dz = 0
 done(p, v, { done = true })
-check(entryOf(v) == nil, "S2: the stunt's own end: over")
+check(entryOf(v) == nil, "S2: the landing's own end: over")
+part:getModData().thr = { gas = 1, at = H.hours() }
+v.dz = 1
+check(ask(p, v, "land") == "thrustOk", "S2: the motor off, nothing running, up in the air: a soft landing asked is taken")
+v.dz = 0
+done(p, v, { done = true })
+v.running = true
 online = { caller, helper }
 
 H.section("thrusters: SP")

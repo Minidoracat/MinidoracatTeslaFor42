@@ -139,7 +139,9 @@ function H.can(player, vehicle, act, ...)
         if player:DistTo(vehicle) > H.APP_RANGE then return false, "TOO_FAR" end
     else
         if not vehicle:isDriver(player) then return false, "NOT_DRIVER" end
-        if not vehicle:isEngineRunning() then return false, "THRUST_ENGINE" end
+        -- a soft landing needs no motor: a car off in the air (its driver's own key, or a flight off since a reload)
+        -- would else fall with none
+        if act ~= "land" and not vehicle:isEngineRunning() then return false, "THRUST_ENGINE" end
     end
     if vehicle:getVehicleTowedBy() or vehicle:getVehicleTowing() then return false, "TOWED" end
     local part = T.Battery.part(vehicle)
