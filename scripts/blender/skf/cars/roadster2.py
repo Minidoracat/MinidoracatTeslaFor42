@@ -161,7 +161,7 @@ CAR = dict(
     GLASS_MATS=("Glass",),
     GLASS_OPAQUE=(),
     # the frag's darker glass level (pzveh GLASS_TINT_U; 1 mid, 2 deep): the official canopy reads near opaque, tea-brown
-    GLASS_SHADE=2,
+    GLASS_SHADE=1,
     GLASS_BACKS=("WinLH", "WinLT", "WinRH", "WinRT"),
     ROOF_PANE="GlassRoof",                 # the canopy behind the windscreen (prep ROOF_Y): zone LightBarL
     MIRROR_CAP="-",                        # (no mirrors: cameras)
