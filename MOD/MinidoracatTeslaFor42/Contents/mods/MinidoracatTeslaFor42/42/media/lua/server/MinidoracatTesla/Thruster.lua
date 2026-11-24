@@ -95,33 +95,30 @@ local function deny(player, why, vid, n)
 end
 
 -- What bringing the tank up to now would do, nothing written (a refusal changes nothing): { thr (nil: none yet, a
--- full one is made), gas = the air after, charger = kWh its charger's source pays (B.draw), pack = kWh off the pack,
--- cut = the pack's floor cut the refill }. The charger pays up to freeUntil (the world hour its power lasted to,
--- Charging.lua C.powerUntil; nil: to now while B.onCharger says it has power), the pack the rest, never under the
--- 12V floor for it (T.DCDC_MIN_PCT): what it can't pay is not refilled. While an action runs nothing refills (its
--- end sets `at`). nil: no thrusters.
-function H.refill(v, part, freeUntil)
+-- full one is made), gas = the air after, pack = kWh off the pack, cut = the pack's floor cut the refill }. The pack
+-- pays all of it, plugged in or not (a charger's source pays back through the charge it adds: Charging.lua C.settle
+-- settles the air first), never under the 12V floor for it (T.DCDC_MIN_PCT): what it can't pay is not refilled.
+-- While an action runs nothing refills (its end sets `at`). nil: no thrusters.
+function H.refill(v, part)
     if not H.conf(v) then return nil end
     local thr, now = part:getModData().thr, T.hours()
     if type(thr) ~= "table" or type(thr.gas) ~= "number" then return { gas = 1, now = now } end
-    local r = { thr = thr, gas = thr.gas, now = now, charger = 0, pack = 0, cut = false }
+    local r = { thr = thr, gas = thr.gas, now = now, pack = 0, cut = false }
     if entry(v) then r.running = true return r end
-    local at = type(thr.at) == "number" and thr.at or now
-    local mid = H.gasNow(thr, math.max(at, math.min(now, freeUntil or (B.onCharger(part) and now or at))))
-    local kwhPer = H.refillKwh()
+    local mid = H.gasNow(thr, type(thr.at) == "number" and thr.at or now)
     local add = H.gasNow(thr, now) - mid
-    local kwh = add * kwhPer
+    local kwh = add * H.refillKwh()
     if kwh > 0 then
         local spare = math.max(0, B.kwh(part) - B.capacity(part) * T.DCDC_MIN_PCT / 100)
         if spare < kwh then add, kwh, r.cut = add * spare / kwh, spare, true end
     end
-    r.charger, r.pack = math.max(0, mid - thr.gas) * kwhPer, math.max(0, kwh)
+    r.pack = math.max(0, kwh)
     r.gas = math.max(0, math.min(1, mid + add))
     return r
 end
 
 -- r (H.refill) written: the tank and the kWh paid. Returns thr and whether the client's copy (gas + the same refill
--- estimate) is now wrong
+-- estimate) is now wrong. A pack at its floor paid nothing: the tank and its clock stay (the refill it owes waits)
 function H.applyRefill(v, part, r)
     if not r.thr then
         local thr = { gas = 1, at = r.now }
@@ -129,15 +126,15 @@ function H.applyRefill(v, part, r)
         return thr, true
     end
     if r.running then return r.thr, false end
-    if r.charger > 0 then B.draw(v, part, r.charger) end
+    if r.cut and r.pack <= 0 then return r.thr, true end
     if r.pack > 0 then B.set(v, part, B.kwh(part) - r.pack) end
     r.thr.gas, r.thr.at = r.gas, r.now
     return r.thr, r.cut
 end
 
 -- the tank brought up to now (H.refill, then written); thr and whether the client's copy is wrong. nil: no thrusters
-function H.settle(v, part, freeUntil)
-    local r = H.refill(v, part, freeUntil)
+function H.settle(v, part)
+    local r = H.refill(v, part)
     if not r then return nil, false end
     return H.applyRefill(v, part, r)
 end
@@ -252,11 +249,13 @@ local function slot(q) return math.floor(q:getOnlineID() / 4) end
 -- someone on q's machine holding another action now (its driver, or the one landing it): the flying controller is
 -- the machine's own (client Thruster.lua F), so it refuses the hand-over, also for its other split-screen player,
 -- and the car falls while it holds the physics before saying so (r2fix-mp-c: handed 5 times in 15 s, 6.79 m down in
--- steps). An orphan's own driver is not busy with it: back near, it is theirs to land
+-- steps). An orphan's own driver is not busy with it: back near, it is theirs to land. Only one still online counts:
+-- a disconnected player's object keeps its online id, whose slot goes to the next connection (GameServer.java:2696-2726)
 local function holding(q, p)
     local c = slot(q)
     for _, p2 in pairs(pending) do
-        if p2 ~= p and not p2.orphan and slot(p2.helper or p2.player) == c then return true end
+        local h = p2.helper or p2.player
+        if p2 ~= p and not p2.orphan and getPlayerByOnlineID(h:getOnlineID()) == h and slot(h) == c then return true end
     end
     return false
 end
@@ -452,13 +451,15 @@ local function bill(player, v, part, act, app, eng)
     return thr, cost
 end
 
--- args { vid, act, n }: n the asker's number for this action (BAD_VALUE without one). A refusal changes nothing kept
--- (a stale busy flag aside); approved: thrustOk { vid, act, sec (flying: the seconds of air; nil: FreeFlight), n, pn }.
--- A soft landing asked by the driver whose own action still runs here (a stunt asked on a roof's edge, the car fallen
--- off before its answer: the driver's machine lands it already, client H.watch) ends that one first (billed if a
--- look saw it go, else the air back); anyone else's action, a show or a landing: THRUST_BUSY as ever. The car not
--- found is refused here, with n (T.commandVehicle's own refusal has none: on the client it would answer no ask, and
--- a soft landing begun before the answer would run on unbilled)
+-- args { vid, act, n, over }: n the asker's number for this action (BAD_VALUE without one). A refusal changes nothing
+-- kept (a stale busy flag aside); approved: thrustOk { vid, act, sec (flying: the seconds of air; nil: FreeFlight), n,
+-- pn }. A soft landing asked by the driver whose own unanswered ask still runs here (a stunt asked on a roof's edge,
+-- the car fallen off before its answer: the driver's machine lands it already, client H.watch) names it (over = its
+-- n); checked with that one's busy flag as its own, it ends that one first (billed if a look saw it go, else the air
+-- back). Refused (the motor off meanwhile, ...): that one stays as it was. Anyone else's action, a show, a landing, an
+-- ask it does not name: THRUST_BUSY as ever. The car not found is refused here, with n (T.commandVehicle's own
+-- refusal has none: on the client it would answer no ask, and a soft landing begun before the answer would run on
+-- unbilled)
 cmds.thrust = function(player, args)
     local v = T.commandVehicle(player, args, nil, true)
     if not v then
@@ -469,18 +470,19 @@ cmds.thrust = function(player, args)
     if type(act) ~= "string" or not H.ACTS[act] or not isN(n) then return deny(player, "BAD_VALUE", vid, n) end
     H.adopt()
     local own = act == "land" and entry(v)
-    if own and own.player == player and not own.app and own.act ~= "land" and not own.helper and not own.orphan
-        and v:isDriver(player) then
+    if not (own and own.player == player and not own.app and own.act ~= "land" and not own.helper and not own.orphan
+        and v:isDriver(player) and isN(args.over) and own.n == args.over) then own = nil end
+    local part = clearStale(v)
+    local ok, why = H.can(player, v, act, nil, nil, own and own.busy or nil)
+    if not ok then return deny(player, why, vid, n) end
+    if own then
         finish(v, own, own.up == true)
         T.log("thrust " .. own.act .. " ended by its driver's soft landing vid=" .. vid)
     end
-    local part = clearStale(v)
-    local ok, why = H.can(player, v, act)
-    if not ok then return deny(player, why, vid, n) end
     local thr
     thr, why = settleFor(v, part, act)
     if not thr then return deny(player, why, vid, n) end
-    local _, cost = bill(player, v, part, act)
+    local _, cost = bill(player, v, part, act, nil, nil) -- all six given: Kahlua does not fill left-out fixed parameters
     local sec = nil -- flying: the seconds of air there are (nil: FreeFlight, until the driver lands)
     if act == "fly" and not H.freeFlight() then sec = thr.gas * H.flightSeconds() end
     local now = nowMs()
@@ -524,8 +526,9 @@ end
 -- helper landing it) with this action's n (any other: ignored); a helper's also with its hand-over's term (handOver).
 -- The action is over, or it can't go on (the physics left, someone sat in). MP: the server judges it, never the
 -- client's word: still up, it looks again ABORT_MS later and hands it on (d2); down, over now (the air back only if
--- no look saw it go). A boost is over at its end, up or not: it has no landing of its own and was billed on approval;
--- a car falling off a roof after it is the driver's soft landing (client H.watch), which a busy flag would refuse.
+-- no look saw it go). A boost its driver ends, still in the seat, is over at its end, up or not: it has no landing of
+-- its own and was billed on approval; a car falling off a roof after it is the driver's soft landing (client H.watch),
+-- which a busy flag would refuse. Handed on (a helper's end) or its driver gone, the air path as any action's.
 -- SP: done (false = the air back) and sec (seconds flown, flying) are this machine's own.
 cmds.thrustEnd = function(player, args)
     local v = T.commandVehicle(player, args, H.HELP_RANGE + 30, true) -- a show's caller stands up to 30 tiles away
@@ -536,7 +539,7 @@ cmds.thrustEnd = function(player, args)
     if p.helper and args.term ~= p.term then return end -- a helper's end of an earlier hand-over
     if isServer() then
         look(v, p) -- a boost: its speed now
-        if p.act == "boost" then
+        if p.act == "boost" and not p.helper and v:getDriver() == player then
             finish(v, p, p.up == true)
             return T.log("thrust boost ended vid=" .. v:getId())
         end

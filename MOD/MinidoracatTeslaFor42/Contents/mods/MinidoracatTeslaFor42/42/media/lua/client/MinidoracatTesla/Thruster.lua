@@ -324,8 +324,10 @@ local function halt()
     return f
 end
 
--- abort: it can't go on here (the physics left, someone sat in); the server judges what happened (server thrustEnd)
-local function stop(done, why, abort)
+-- abort: it can't go on here (the physics left, someone sat in); the server judges what happened (server thrustEnd).
+-- why and abort optional (`...`: most callers leave them out, and Kahlua does not fill left-out fixed parameters)
+local function stop(done, ...)
+    local why, abort = ...
     local f = halt()
     if not f then return end
     T.request(f.player, "thrustEnd", { vid = f.vid, act = f.act, done = done == true, sec = f.flown, abort = abort,
@@ -418,8 +420,10 @@ end
 
 -- app: "show" = the phone app's show (the caller outside, the car empty), "help" = landing a car the server handed to
 -- this machine (server Thruster.lua handOver); both wait for the car's physics to arrive here first. n: the server's
--- number for this action (its thrustEnd carries it). ok: approved (the soft landing starts before its answer)
-local function start(player, v, act, sec, app, n, term)
+-- number for this action (its thrustEnd carries it). ok: approved (the soft landing starts before its answer). Optional
+-- term (`...`: a helper's hand-over term; callers leave it out, and Kahlua does not fill left-out fixed parameters)
+local function start(player, v, act, sec, app, n, ...)
+    local term = ...
     H.groundReset() -- floors built or torn down since the last action count
     local c = H.conf(v)
     local vid = v:getId()
@@ -587,6 +591,7 @@ end
 local SPEED_MAX = { kickflip = "kickMaxKmh", backflip = "flipMaxKmh", boost = "boostMaxKmh" }
 function H.check(player, v, act, ...)
     local app = ...
+    H.groundReset() -- the floors read afresh: one built under the car since the last action counts
     if F then return false, "THRUST_BUSY" end
     if act ~= "land" and not app and pendingAsk(player:getPlayerNum()) then return false, "THRUST_BUSY" end
     local ok, why = H.can(player, v, act, app, true)
@@ -629,10 +634,14 @@ function H.ask(player, v, act)
         return false
     end
     local n = H.nextN()
+    local pn = player:getPlayerNum()
+    -- a soft landing names the unanswered ask of this car it takes over (server Thruster.lua cmds.thrust ends only that one)
+    local prev = act == "land" and pendingAsk(pn)
+    local over = prev and prev.vid == v:getId() and prev.n or nil
     -- falling: no time to wait for the server (it bills after; a refusal stops it, the deny below)
     if act == "land" then start(player, v, act, nil, nil, n) end
-    asked[player:getPlayerNum()] = { vid = v:getId(), act = act, n = n, ms = getTimestampMs() }
-    T.request(player, "thrust", { vid = v:getId(), act = act, n = n })
+    asked[pn] = { vid = v:getId(), act = act, n = n, ms = getTimestampMs() }
+    T.request(player, "thrust", { vid = v:getId(), act = act, n = n, over = over })
     return true
 end
 

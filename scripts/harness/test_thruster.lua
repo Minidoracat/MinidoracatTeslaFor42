@@ -29,7 +29,7 @@ H.side(false, true)
 local roof, gone = {}, {}
 local solid = { getFloor = function() return true end, TreatAsSolidFloor = function() return true end }
 local saved = { addSound = addSound, getOnlinePlayers = getOnlinePlayers, fx = T.ThrusterFx, sandbox = {},
-    getCell = getCell, vmRefusal = T.vmRefusal }
+    getCell = getCell, vmRefusal = T.vmRefusal, byId = getPlayerByOnlineID, player = H.player }
 function getCell()
     return { getGridSquare = function(_, x, y, z)
         local k = x .. "," .. y
@@ -47,6 +47,13 @@ local sounds, fxs, online = {}, {}, {}
 function addSound(src, x, y, z, r, vol) sounds[#sounds + 1] = { src = src, r = r, vol = vol } end
 T.ThrusterFx = { set = function(v, mode) fxs[#fxs + 1] = mode or "off" end }
 function getOnlinePlayers() return { size = function() return #online end, get = function(_, i) return online[i + 1] end } end
+-- the server's IsoPlayer by online id: the newest player made with that id who has not left (left[q]: disconnected,
+-- its object kept; the slot may go to a new connection, GameServer.java:2696-2726)
+local made, left = {}, {}
+function H.player(o) local q = saved.player(o) made[#made + 1] = q return q end
+function getPlayerByOnlineID(id)
+    for i = #made, 1, -1 do if not left[made[i]] and made[i]:getOnlineID() == id then return made[i] end end
+end
 -- the timer the server adds: captured to run it frame by frame without firing every module's OnTick
 local onTick, tickAdd, tickRemove = Events.OnTick, Events.OnTick.Add, Events.OnTick.Remove
 local timer, hooked = nil, false
@@ -100,6 +107,15 @@ local function ask(p, v, act, n)
     cmds.thrust(p, { vid = v:getId(), act = act, n = n or nil })
     local s = H.sent[#H.sent]
     if #H.sent == c then return nil end
+    return s.command == "deny" and s.args.reason or s.command, s.args
+end
+-- a soft landing naming the unanswered ask it takes over (S3: client H.ask sends over = that ask's n)
+local function askLand(p, v, over)
+    N = N + 1
+    local c = #H.sent
+    cmds.thrust(p, { vid = v:getId(), act = "land", n = N, over = over })
+    if #H.sent == c then return nil end
+    local s = H.sent[#H.sent]
     return s.command == "deny" and s.args.reason or s.command, s.args
 end
 local function entryOf(v) return TH.pending[v:getId()] end
@@ -233,15 +249,24 @@ tx = v.transmits
 TH.onUpdate(v, part)
 check(v.transmits == tx + 1 and near(B.pct(part), T.DCDC_MIN_PCT, 1e-6), "the parts update sends a cut refill")
 part:setContainerContentAmount(cap * 0.8)
--- R8: a charger whose power ended mid-stretch (a grid shut-off, Charging.lua C.powerUntil) pays up to then, the pack
--- the rest
-part:getModData().thr = { gas = 0, at = H.hours() }
-part:getModData().chg = { power = "grid" }
+-- S4: plugged on the grid the pack still pays the refill (the charge pays it back: Charging.lua C.settle settles the
+-- air first); the charger's books (chg.fed) untouched
+part:getModData().thr = { gas = 0.5, at = H.hours() }
+part:getModData().chg = { power = "grid", fed = 1.5 }
 local k1 = B.kwh(part)
-H.setHours(H.hours() + 0.5)
-TH.settle(v, part, H.hours() - 0.25)
-check(near(gas(part), 1, 1e-6) and near(k1 - B.kwh(part), 20, 1e-6),
-    "R8: on the grid 15 of 30 refill minutes, then a power cut: the pack pays the second half (20 kWh), not the grid")
+H.setHours(H.hours() + 0.25)
+TH.settle(v, part)
+check(near(gas(part), 1, 1e-6) and near(k1 - B.kwh(part), 20, 1e-6) and part:getModData().chg.fed == 1.5,
+    "S4: on the grid 15 refill minutes: the pack pays (20 kWh), chg.fed untouched: " .. string.format("%.4f", k1 - B.kwh(part)))
+-- S4: the pack at its 12V floor, plugged in: no refill this time, the tank and its clock as they were
+part:getModData().thr = { gas = 0.5, at = H.hours() }
+local at4 = H.hours()
+part:setContainerContentAmount(cap * T.DCDC_MIN_PCT / 100)
+H.setHours(H.hours() + 0.25)
+_, cut = TH.settle(v, part)
+check(near(gas(part), 0.5, 1e-6) and part:getModData().thr.at == at4 and near(B.pct(part), T.DCDC_MIN_PCT, 1e-6) and cut == true,
+    "S4: the pack at its floor, plugged in: nothing refilled, the tank's clock not moved, flagged to send")
+part:setContainerContentAmount(cap * 0.8)
 part:getModData().chg = nil
 
 H.section("thrusters: flying (MP billed by the server's clock)")
@@ -671,6 +696,31 @@ v.dz = 0
 done(mate, v, { done = true })
 check(entryOf(v) == nil, "R7: the second hand-over's end: over")
 v.npid = nil
+-- S5: a player gone offline (its object kept, still the driver of a pending flight) holds nothing: a new connection
+-- given its online id is a helper like any other
+part:getModData().thr = { gas = 1, at = H.hours() }
+online = {}
+ask(p, v, "kickflip")
+v.dz = 1
+wait(24800)
+pe = entryOf(v)
+check(pe and pe.orphan, "S5: up at D2, nobody near: an orphan")
+local ov, op, opart = car({ x = 500.5, y = 500.5 })
+opart:getModData().thr = { gas = 1, at = H.hours() }
+check(ask(op, ov, "fly") == "thrustOk", "S5: another car's flight")
+left[op] = true
+local newP = H.player({ name = "new5", x = v.x + 5, y = v.y })
+newP.oid = op:getOnlineID()
+online = { newP }
+TH.adopt()
+check(pe.helper == newP and v.npid == newP:getOnlineID(),
+    "S5: its driver disconnected, a new connection given the same online id: handed the orphan (not held by the old object's flight)")
+v.dz = 0
+done(newP, v, { done = true })
+done(op, ov, { done = true })
+check(entryOf(v) == nil and entryOf(ov) == nil, "S5: both over")
+left[op] = nil
+v.npid = nil
 -- R11: a boost off a roof's edge: over at its end, the driver keeps the car (no hand-over), busy cleared
 rv.x, rv.y, rv.dz, rv.speed = 300.5, 300.5, 1.075, 0
 rpart:getModData().thr = { gas = 1, at = H.hours() }
@@ -683,6 +733,26 @@ done(rp, rv, { done = true })
 check(entryOf(rv) == nil and rpart:getModData().thr.busy == nil and rAuths == 0 and near(gas(rpart), 1 - 1 / 3, 1e-6),
     "R11: its end in the air: over now, busy cleared (the soft landing may ask), billed, the physics never moved")
 rv.authorizationChanged = rAuthOf
+-- S1: a boost handed on at D2 (no end from its driver): the helper's "can't" does not end it in the air
+rv.x, rv.y, rv.dz, rv.speed = 300.5, 300.5, 1.075, 0
+rpart:getModData().thr = { gas = 1, at = H.hours() }
+check(ask(rp, rv, "boost") == "thrustOk", "S1: a boost on a roof")
+rv.x, rv.dz, rv.speed = 301.5, 0.9, 30 -- past its edge, falling; its driver's machine says nothing
+local w1 = 0
+while not (entryOf(rv) and entryOf(rv).helper) and w1 < 30000 do wait(250) w1 = w1 + 250 end
+check(entryOf(rv) and entryOf(rv).helper == bystander, "S1: up at D2: handed to the bystander after " .. w1 .. " ms")
+done(bystander, rv, { act = "boost", done = false, abort = true })
+check(entryOf(rv) ~= nil and rpart:getModData().thr.busy ~= nil,
+    "S1: the helper could not (its own term): still pending in the air, not over, busy kept")
+wait(1000)
+check(entryOf(rv) ~= nil and (entryOf(rv).orphan or entryOf(rv).helper ~= bystander), "S1: ... D2 again: an orphan")
+rv.dz = 0.075
+TH.adopt() -- an orphan waits for someone near (tried cleared): the bystander again
+local h1 = entryOf(rv) and entryOf(rv).helper
+check(h1 == bystander, "S1: the orphan down near the bystander: handed to them again")
+if h1 then done(h1, rv, { act = "boost", done = true }) end
+check(entryOf(rv) == nil and rpart:getModData().thr.busy == nil, "S1: its helper's end on the ground: over, busy cleared")
+rv.npid = nil
 -- R10: the server reads the floors every time (a floor built since its last read counts)
 rv.x, rv.y, rv.dz = 302.5, 302.5, 1.075
 check(TH.groundZ(rv) == 0, "R10: no floor at level 1 there: the ground")
@@ -694,10 +764,11 @@ roof["302,302"] = nil
 online = { bystander }
 v.driver, p.vehicle, v.dz, v.speed, v.npid = p, v, 0, 30, nil
 part:getModData().thr = { gas = 1, at = H.hours() }
-check(ask(p, v, "kickflip") == "thrustOk", "R13: a kickflip approved")
+local _, a13 = ask(p, v, "kickflip")
+check(a13 and a13.n ~= nil, "R13: a kickflip approved")
 local sent13 = #H.sent
 v.dz = 1
-check(ask(p, v, "land") == "thrustOk" and entryOf(v).act == "land" and near(gas(part), 1 - 1 / 3, 1e-6) and v.npid == nil,
+check(askLand(p, v, a13.n) == "thrustOk" and entryOf(v).act == "land" and near(gas(part), 1 - 1 / 3, 1e-6) and v.npid == nil,
     "R13: its soft landing at the server after it: the stunt ended (no look saw it go: its air back), the landing billed, the physics stays")
 wait(1000)
 v.dz = 0
@@ -712,12 +783,28 @@ check(ask(p, v, "land") == "thrustOk" and ask(p, v, "kickflip") == "THRUST_BUSY"
 v.dz = 0
 done(p, v, { done = true })
 part:getModData().thr = { gas = 1, at = H.hours() }
-check(ask(p, v, "kickflip") == "thrustOk", "R13: a kickflip again")
+local _, a13b = ask(p, v, "kickflip")
+check(a13b and a13b.n ~= nil, "R13: a kickflip again")
 v.driver, bystander.vehicle = bystander, v
-check(ask(bystander, v, "land") == "THRUST_BUSY" and entryOf(v).act == "kickflip",
+check(askLand(bystander, v, a13b.n) == "THRUST_BUSY" and entryOf(v).act == "kickflip",
     "R13: a soft landing asked by another driver while someone else's action runs: THRUST_BUSY as ever")
 v.driver, bystander.vehicle = p, nil
 done(p, v, { done = true })
+-- S3: a soft landing names the ask it takes over (over = that ask's n): naming none, or another, THRUST_BUSY
+part:getModData().thr = { gas = 1, at = H.hours() }
+v.dz = 0
+local _, a3 = ask(p, v, "kickflip")
+v.dz = 1
+check(ask(p, v, "land") == "THRUST_BUSY" and askLand(p, v, a3.n + 1000) == "THRUST_BUSY" and entryOf(v).act == "kickflip"
+    and entryOf(v).n == a3.n, "S3: a late soft landing naming no ask, or another one: THRUST_BUSY, the stunt goes on")
+-- S2: the motor off before the soft landing reaches the server: refused, the stunt and its due checks as they were
+v.running = false
+check(askLand(p, v, a3.n) == "THRUST_ENGINE" and entryOf(v) and entryOf(v).act == "kickflip" and entryOf(v).n == a3.n
+    and part:getModData().thr.busy ~= nil and hooked, "S2: the land refused THRUST_ENGINE: the stunt still pending, busy kept, its timer on")
+v.running = true
+v.dz = 0
+done(p, v, { done = true })
+check(entryOf(v) == nil, "S2: the stunt's own end: over")
 online = { caller, helper }
 
 H.section("thrusters: SP")
@@ -983,6 +1070,14 @@ lvl1 = true
 TH.ask(cp, cv, "land")
 check(TH.active() and TH.groundZ(cv, true) == 1, "R10: a floor built since: the next action's start clears the cache")
 T.ClientCommands.deny({ reason = "THRUST_BUSY", vid = cv:getId(), pn = 0, n = lastN() })
+-- S6: the pre-flight check reads the floors afresh: a floor built under the car since the cache was filled
+lvl1 = false
+TH.groundReset()
+cv.dz, cv.vy, cv.speed = 1.075, 0, 0
+check(TH.groundZ(cv, true) == 0, "S6: no floor at level 1: the ground (cached)")
+lvl1 = true
+local _, why6 = TH.check(cp, cv, "kickflip")
+check(why6 ~= "THRUST_AIRBORNE", "S6: a floor built there since, the car on it: not THRUST_AIRBORNE (" .. tostring(why6) .. ")")
 getCell, cv.dz = cell6, 0.075
 -- R13: a stunt asked, the car off the edge before the answer: the soft landing it fell into runs on through the stunt's
 -- late thrustOk (the server ends the stunt itself), nothing said
@@ -991,6 +1086,8 @@ TH.ask(cp, cv, "kickflip")
 local n13 = lastN()
 cv.dz, cv.vy = 0.075 + 4 / TH.FLOOR, -5
 check(TH.ask(cp, cv, "land") and TH.active() and TH.active().act == "land", "R13: off the edge before the stunt's answer: the soft landing runs")
+local land13 = H.clientSent[#H.clientSent]
+check(land13.args.act == "land" and land13.args.over == n13, "S3: the soft landing names the unanswered stunt it takes over (over = its n)")
 local c13 = #H.clientSent
 T.ClientCommands.thrustOk({ vid = cv:getId(), act = "kickflip", n = n13, pn = 0 })
 check(#H.clientSent == c13 and TH.active() and TH.active().act == "land" and not TH.active().ok,
@@ -1044,6 +1141,7 @@ getCore, getPlayerScreenHeight, cv.vy = savedCore, savedSH, nil
 H.side(false, true)
 MS.thruster = nil
 addSound, getOnlinePlayers, T.ThrusterFx, T.vmRefusal = saved.addSound, saved.getOnlinePlayers, saved.fx, saved.vmRefusal
+getPlayerByOnlineID, H.player = saved.byId, saved.player
 T.Remote.appLink = saved.appLink
 for _, k in ipairs(OPTS) do SandboxVars.MinidoracatTesla[k] = saved.sandbox[k] end
 gt.getPhysicsSecondsSinceLastUpdate = nil
