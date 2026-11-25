@@ -69,6 +69,7 @@
     "IGUI_MinidoracatTesla_HUD_FlyLanding": "Pousando",
     "IGUI_MinidoracatTesla_HUD_FlyKeys": "%1 / %2 altura · %3 pousa",
     "IGUI_MinidoracatTesla_HUD_FlyKeysPad": "Analógico direito altura · A pousa",
+    "IGUI_MinidoracatTesla_KeyUnbound": "(não atribuída)",
     "IGUI_MinidoracatTesla_Radial_ThrustLand": "Pousar",
     "IGUI_MinidoracatTesla_Tip_ThrustAir": "Ar %1%%",
     "IGUI_MinidoracatTesla_Thrust_Refill": "Cheio em %1 min",

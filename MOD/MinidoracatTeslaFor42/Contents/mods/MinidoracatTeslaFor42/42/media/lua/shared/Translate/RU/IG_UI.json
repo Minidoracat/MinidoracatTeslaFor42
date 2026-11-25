@@ -69,6 +69,7 @@
     "IGUI_MinidoracatTesla_HUD_FlyLanding": "Посадка",
     "IGUI_MinidoracatTesla_HUD_FlyKeys": "%1 / %2 высота · %3 посадка",
     "IGUI_MinidoracatTesla_HUD_FlyKeysPad": "Правый стик высота · A посадка",
+    "IGUI_MinidoracatTesla_KeyUnbound": "(не назначена)",
     "IGUI_MinidoracatTesla_Radial_ThrustLand": "Посадка",
     "IGUI_MinidoracatTesla_Tip_ThrustAir": "Воздух %1%%",
     "IGUI_MinidoracatTesla_Thrust_Refill": "Заполнится через %1 мин",

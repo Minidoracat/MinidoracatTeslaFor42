@@ -69,6 +69,7 @@
     "IGUI_MinidoracatTesla_HUD_FlyLanding": "降落中",
     "IGUI_MinidoracatTesla_HUD_FlyKeys": "%1／%2 調高度 · %3 降落",
     "IGUI_MinidoracatTesla_HUD_FlyKeysPad": "右搖桿調高度 · A 降落",
+    "IGUI_MinidoracatTesla_KeyUnbound": "未設定",
     "IGUI_MinidoracatTesla_Radial_ThrustLand": "降落",
     "IGUI_MinidoracatTesla_Tip_ThrustAir": "空氣 %1%%",
     "IGUI_MinidoracatTesla_Thrust_Refill": "%1 分鐘後充滿",

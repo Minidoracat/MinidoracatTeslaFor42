@@ -69,6 +69,7 @@
     "IGUI_MinidoracatTesla_HUD_FlyLanding": "Landung",
     "IGUI_MinidoracatTesla_HUD_FlyKeys": "%1 / %2 Höhe · %3 landet",
     "IGUI_MinidoracatTesla_HUD_FlyKeysPad": "Rechter Stick Höhe · A landet",
+    "IGUI_MinidoracatTesla_KeyUnbound": "(nicht belegt)",
     "IGUI_MinidoracatTesla_Radial_ThrustLand": "Landen",
     "IGUI_MinidoracatTesla_Tip_ThrustAir": "Luft %1 %%",
     "IGUI_MinidoracatTesla_Thrust_Refill": "In %1 min wieder voll",

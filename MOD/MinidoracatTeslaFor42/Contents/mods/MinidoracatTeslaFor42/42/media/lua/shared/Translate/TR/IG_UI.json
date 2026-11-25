@@ -69,6 +69,7 @@
     "IGUI_MinidoracatTesla_HUD_FlyLanding": "İniyor",
     "IGUI_MinidoracatTesla_HUD_FlyKeys": "%1 / %2 yükseklik · %3 iniş",
     "IGUI_MinidoracatTesla_HUD_FlyKeysPad": "Sağ çubuk yükseklik · A iniş",
+    "IGUI_MinidoracatTesla_KeyUnbound": "(atanmamış)",
     "IGUI_MinidoracatTesla_Radial_ThrustLand": "İniş yap",
     "IGUI_MinidoracatTesla_Tip_ThrustAir": "Hava %%%1",
     "IGUI_MinidoracatTesla_Thrust_Refill": "%1 dk içinde dolar",

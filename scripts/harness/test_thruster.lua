@@ -1887,11 +1887,16 @@ getText = function(k, ...) return table.concat({ k, ... }, "|") end
 getKeyName = function(k) return "K" .. tostring(k) end
 local padTip, padPill = TH.flyTip(cp), TH.flyTip(cp, "IGUI_MinidoracatTesla_HUD_FlyKeys")
 cp.pad = nil
-check(padTip == "IGUI_MinidoracatTesla_Tip_ThrustFlyPad" and TH.flyTip(cp) == "IGUI_MinidoracatTesla_Tip_ThrustFly|K57|K0|K0",
-    "the flying tip names the keys bound now (an unbound one: its 0); a controller's player: the controller's tip")
-check(padPill == "IGUI_MinidoracatTesla_HUD_FlyKeysPad"
-    and TH.flyTip(cp, "IGUI_MinidoracatTesla_HUD_FlyKeys") == "IGUI_MinidoracatTesla_HUD_FlyKeys|K57|K0|K0",
-    "the dashboard's flying pill: its own short words, the same keys")
+do
+    local U = "IGUI_MinidoracatTesla_KeyUnbound"
+    check(padTip == "IGUI_MinidoracatTesla_Tip_ThrustFlyPad"
+        and TH.flyTip(cp) == "IGUI_MinidoracatTesla_Tip_ThrustFly|K57|" .. U .. "|" .. U,
+        "the flying tip names the keys bound now (an unbound one: the unbound word, not getKeyName(0)'s NONE, r2ui-ch-a); "
+        .. "a controller's player: the controller's tip")
+    check(padPill == "IGUI_MinidoracatTesla_HUD_FlyKeysPad"
+        and TH.flyTip(cp, "IGUI_MinidoracatTesla_HUD_FlyKeys") == "IGUI_MinidoracatTesla_HUD_FlyKeys|K57|" .. U .. "|" .. U,
+        "the dashboard's flying pill: its own short words, the same keys")
+end
 getText, getKeyName = realGetText, realKeyName
 -- the dashboard's flying pill (HUD.lua): the whole seconds of air left, real time counting them down as the server's
 -- D2 does; FreeFlight (no limit): true; "land" once landing is asked; nobody else's (a passenger, another car)

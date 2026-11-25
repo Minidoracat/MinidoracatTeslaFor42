@@ -69,6 +69,7 @@
     "IGUI_MinidoracatTesla_HUD_FlyLanding": "착륙 중",
     "IGUI_MinidoracatTesla_HUD_FlyKeys": "%1 / %2 고도 · %3 착륙",
     "IGUI_MinidoracatTesla_HUD_FlyKeysPad": "오른쪽 스틱 고도 · A 착륙",
+    "IGUI_MinidoracatTesla_KeyUnbound": "미지정",
     "IGUI_MinidoracatTesla_Radial_ThrustLand": "착륙",
     "IGUI_MinidoracatTesla_Tip_ThrustAir": "공기 %1%%",
     "IGUI_MinidoracatTesla_Thrust_Refill": "%1분 후 가득 참",
