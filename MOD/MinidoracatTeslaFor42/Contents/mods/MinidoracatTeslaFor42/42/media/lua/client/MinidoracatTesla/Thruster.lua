@@ -41,15 +41,21 @@ local LPAR = 0.02                -- torque of the force along it, kept until it 
 local DT_MAX = 0.083             -- the physics step's own cap
 local ROLL_S, LAND_S = 3, 12     -- roll-up and soft landing give up after these seconds (server Thruster.lua D2/D3)
 -- the soft landing at rest off the ground (on its side, an eave, a fence, another car: r2int-mp-prof fix 1, up 0.141
--- at 0.817 m, ran its 12 s): this long under REST_V m/s within REST_DH m of one height is over. A landing never sinks
--- slower than 0.7 m/s (landVy), so a car still coming down never reads as at rest; a car pressed down on what holds it
--- sinks 0.05-0.1 m/s (r2f3-mp-c boostnearhold: 1.6 s on a fence top, never 0.7 s within 0.03 m)
-local REST_S, REST_V, REST_DH = 0.7, 0.2, 0.1
+-- at 0.817 m, ran its 12 s): this long within REST_DXY m aside and REST_DH m of height of one spot is over. Where it
+-- is, not how fast: in MP the car under it is moved by the server's sync and a single frame's speed jumps between
+-- still samples (9950 b8eeb3c1 roof MP: under 0.04 m/s, 0.008 m in 0.7 s, its count reset 5 times by speed alone).
+-- A landing never sinks slower than 0.7 m/s (landVy): 0.1 m off in 0.14 s, so a car still coming down never reads as
+-- at rest, nor one sliding on at 0.3 m/s; a car pressed down on what holds it sinks 0.05-0.1 m/s (r2f3-mp-c
+-- boostnearhold: 1.6 s on a fence top, never 0.7 s within 0.03 m). REST_V: still at take-off (perched)
+local REST_S, REST_V, REST_DH, REST_DXY = 0.7, 0.2, 0.1, 0.1
 -- at rest REST_S, then a probe with no push: a car held on a roof's edge by the landing's own push read as at rest,
 -- ended there and tipped over (r2fin-sp-full roof 1 #1: up 0.033, hit -4.22 m/s). Sampled at PROBE_A s (the springs
--- settle first) and PROBE_B s: faster than REST_V, PROBE_DH m lower or turned over 2 degrees is moving (r2f3-sp-probe2:
--- a car read at rest at 3.76 fell after; hung cars 8.6-30. Read moving wrongly, it is only carried 3 m)
-local PROBE_A, PROBE_B, PROBE_DH, PROBE_DOT = 0.2, 0.4, 0.05, 0.99939
+-- settle first) and PROBE_B s: PROBE_DH m lower, turned over 2 degrees, or moved more than REST_V would in that time
+-- (aside or up) is moving (r2f3-sp-probe2: a car read at rest at 3.76 fell after; hung cars 8.6-30. Read moving
+-- wrongly, it is only carried 3 m). Risen, not lower, the first time: pushed back up by what holds it once let go, not
+-- hung by its own push (9950 b8eeb3c1 roof MP: up 0.102 m and 2.6 degrees, carried 3 m off a roof it sat on): probed
+-- once more PROBE_SETTLE s on, moving at once if it sinks PROBE_DH m under the first sample meanwhile
+local PROBE_A, PROBE_B, PROBE_DH, PROBE_DOT, PROBE_SETTLE = 0.2, 0.4, 0.05, 0.99939, 0.8
 -- found moving, it is lifted LIFT_DH m and carried the way it leans (its up vector's level part: the side hanging free)
 -- at SLIDE_V, until SLIDE_D m off or SLIDE_S s; then down again, probed again if it stops. Held on an edge the landing
 -- pushes down at -G and its attitude PD levels it about the edge (r2f3-sp-probe3: slid level 3 s, rose 0.1-0.25 m,
@@ -246,6 +252,8 @@ end
 
 -- ---- the action this machine flies (one at a time) ----
 local F = nil
+-- { f, ms }: a flight over at rest with its motor off and not started again (startBack after stop, from H.watch)
+local LATE = nil
 -- the motor asked off in flight (offAsked): Core.lua CheckOperate.Battery holds the driver's input back until the
 -- landing comes down (sink), or vanilla starts it again on W once it idles (CarController.java:329-341). The brake
 -- forced once and read once: the controls kept from then on are braking or park()'s all-false (:983-990), no gas
@@ -438,6 +446,21 @@ local function halt()
     return f
 end
 
+-- a flight's motor, shut off at OFF_H m (fly), started again as its landing comes down: once, by the vanilla start
+-- (ISVehicleMenu.onStartEngine, the HUD's power key's way: every kind of key), START_MS after it was seen off
+-- (ShuttingDown lasts 2 s, tryStartEngine acts only from Idle: BaseVehicle.java:7611-7653); asked each frame while it
+-- comes down until then. Not tried again (each try costs the 12V 0.025). The heater: halt
+local function startBack(f, v, now)
+    if not f.offAsked or f.started or not f.offSeen or now - f.offSeen < START_MS or v:isEngineRunning() then return end
+    f.started = true
+    ISVehicleMenu.onStartEngine(f.player)
+end
+
+-- a flight over at rest (taken off a roof and called off, THRUST_NO_LIFT: never came down to sink, where startBack
+-- runs) with its motor off and not started again: started once all the same, now or from the watch once START_MS has
+-- passed (H.watch: while its driver sits there, no other action, START_MS + LATE_MS at most). Not after an abort, a
+-- hand-over or a helper's landing
+local LATE_MS = 5000
 -- abort: it can't go on here (the physics left, someone sat in); the server judges what happened (server thrustEnd).
 -- rest: a soft landing still off the ground but at rest (REST_S): the server ends it where it is.
 -- why, abort and rest optional (`...`: most callers leave them out, and Kahlua does not fill left-out fixed parameters)
@@ -449,6 +472,12 @@ local function stop(done, ...)
     -- where it is, no helper handed it)
     if f.z0 and not f.lifted then rest = true end
     if rest then RESTED[f.vid] = true end
+    if rest and not abort and f.act == "fly" and f.offAsked and not f.started then
+        local now = getTimestampMs()
+        if not f.offSeen and not f.v:isEngineRunning() then f.offSeen = now end
+        startBack(f, f.v, now)
+        if not f.started then LATE = { f = f, ms = now } end
+    end
     -- glide: a flight's landing held at its height (f.brake) before it came down, the server bills it not (MP's air
     -- clock: server Thruster.lua finish); never at rest ends
     local glide = f.act == "fly" and not rest and (f.glide or (f.brake and f.t)) or nil
@@ -552,6 +581,7 @@ local function start(player, v, act, sec, app, n, ...)
     H.groundReset() -- floors built or torn down since the last action count
     local c = H.conf(v)
     local vid = v:getId()
+    LATE = nil -- another action now: its own motor
     local f = { player = player, v = v, vid = vid, act = act, conf = c, sec = sec, t = 0, flown = 0, app = app,
         n = n, term = term, ok = app ~= nil,
         bank = { jx = 0, jy = 0, jz = 0, lx = 0, ly = 0, lz = 0, lastTq = false } }
@@ -601,14 +631,20 @@ local function queued(p)
     return q ~= nil and q.queue[1] ~= nil
 end
 
--- a flight's motor, shut off at OFF_H m (fly), started again as its landing comes down: once, by the vanilla start
--- (ISVehicleMenu.onStartEngine, the HUD's power key's way: every kind of key), START_MS after it was seen off
--- (ShuttingDown lasts 2 s, tryStartEngine acts only from Idle: BaseVehicle.java:7611-7653); asked each frame while it
--- comes down until then. Not tried again (each try costs the 12V 0.025). The heater: halt
-local function startBack(f, v, now)
-    if not f.offAsked or f.started or not f.offSeen or now - f.offSeen < START_MS or v:isEngineRunning() then return end
-    f.started = true
-    ISVehicleMenu.onStartEngine(f.player)
+-- the probe found it moving: held up by its own push (a roof's edge), lifted off it and carried the way it leans (its
+-- velocity's way when level), then down and probed again; no way to go: land on in place
+local function leanOf(ux, uz, lv)
+    if ux * ux + uz * uz < 0.05 ^ 2 then return lv:x(), lv:z() end
+    return ux, uz
+end
+local function carryOff(f, v, hm, sx, sz)
+    local l = math.sqrt(sx * sx + sz * sz)
+    local t0 = f.t
+    setLand(f, hm)
+    f.t, f.probe = t0, nil
+    if l > 1e-3 then
+        f.slide = { dx = sx / l, dz = sz / l, x = v:getX(), y = v:getY(), z = v:getDebugZ() + LIFT_DH / FLOOR, t = 0 }
+    else f.noRest = true end
 end
 
 -- each frame while an action runs
@@ -826,33 +862,45 @@ function H.tick()
             end
         end
         local p = f.probe
-        if p then -- no push: does it stay put on its own? (the first PROBE_A s is the springs settling)
+        if p then -- no push: does it stay put on its own? (the first PROBE_A s is the springs settling; probed again,
+            -- PROBE_SETTLE s)
             p.t = p.t + dt
+            local sA = p.again and PROBE_SETTLE or PROBE_A
             if not p.h then
-                if p.t >= PROBE_A - 1e-6 then p.h, p.ux, p.uy, p.uz = hm, ux, uy, uz end
-            elseif p.t >= PROBE_B - 1e-6 then
-                local dv = math.sqrt(lv:x() ^ 2 + vy * vy + lv:z() ^ 2)
+                if p.h1 and p.h1 - hm > PROBE_DH then -- probed again, sinking under the first sample meanwhile
+                    local sx, sz = leanOf(ux, uz, lv)
+                    T.log(string.format("thrust probe vid=%d dh=%.3f h=%.2f dir=%.0f moving (again, sank waiting)", f.vid,
+                        p.h1 - hm, hm, math.deg(math.atan2(sz, sx))))
+                    return carryOff(f, v, hm, sx, sz)
+                end
+                if p.t >= sA - 1e-6 then p.h, p.x, p.y, p.ux, p.uy, p.uz = hm, v:getX(), v:getY(), ux, uy, uz end
+            elseif p.t >= sA + PROBE_B - PROBE_A - 1e-6 then
+                local d = REST_V * (PROBE_B - PROBE_A)
+                local dx, dy = v:getX() - p.x, v:getY() - p.y
+                local dxy = math.sqrt(dx * dx + dy * dy)
                 local dot = (ux * p.ux + uy * p.uy + uz * p.uz)
                     / math.max(1e-9, math.sqrt((ux * ux + uy * uy + uz * uz) * (p.ux ^ 2 + p.uy ^ 2 + p.uz ^ 2)))
-                local moving = dv > REST_V or p.h - hm > PROBE_DH or dot < PROBE_DOT
-                local sx, sz = ux, uz
-                if sx * sx + sz * sz < 0.05 ^ 2 then sx, sz = lv:x(), lv:z() end
-                local l = math.sqrt(sx * sx + sz * sz)
-                T.log(string.format("thrust probe vid=%d dv=%.3f dh=%.3f dAng=%.2f h=%.2f dir=%.0f %s", f.vid, dv, p.h - hm,
-                    math.deg(math.acos(math.min(1, dot))), hm, math.deg(math.atan2(sz, sx)), moving and "moving" or "at rest"))
+                local drop, rose = p.h - hm > PROBE_DH, hm - p.h > d
+                local again = rose and not drop and not p.again
+                local moving = drop or rose or dxy > d or dot < PROBE_DOT
+                local sx, sz = leanOf(ux, uz, lv)
+                T.log(string.format("thrust probe vid=%d dv=%.3f dh=%.3f dxy=%.3f dAng=%.2f h=%.2f dir=%.0f %s%s", f.vid,
+                    math.sqrt(lv:x() ^ 2 + vy * vy + lv:z() ^ 2), p.h - hm, dxy, math.deg(math.acos(math.min(1, dot))), hm,
+                    math.deg(math.atan2(sz, sx)), again and "rose: again" or moving and "moving" or "at rest",
+                    p.again and " (again)" or ""))
+                if again then
+                    f.probe = { t = 0, again = true, h1 = p.h }
+                    return
+                end
                 if not moving then return stop(f.lifted, nil, nil, true) end
-                -- held up by its own push (a roof's edge): lifted off it and carried away, then down and probed again
-                local t0 = f.t
-                setLand(f, hm)
-                f.t, f.probe = t0, nil
-                if l > 1e-3 then
-                    f.slide = { dx = sx / l, dz = sz / l, x = v:getX(), y = v:getY(), z = v:getDebugZ() + LIFT_DH / FLOOR, t = 0 }
-                else f.noRest = true end -- no way to go: land on in place
+                return carryOff(f, v, hm, sx, sz)
             end
             return
         end
-        if f.noRest or lv:x() ^ 2 + vy * vy + lv:z() ^ 2 > REST_V * REST_V or not f.restH or math.abs(hm - f.restH) > REST_DH then
-            f.restH, f.restT = hm, 0
+        local x, y = v:getX(), v:getY()
+        if f.noRest or not f.restH or math.abs(hm - f.restH) > REST_DH
+            or (x - f.restX) ^ 2 + (y - f.restY) ^ 2 > REST_DXY * REST_DXY then
+            f.restH, f.restX, f.restY, f.restT = hm, x, y, 0
         else
             f.restT = f.restT + dt
             if f.restT >= REST_S then f.probe = { t = 0 } return end
@@ -1065,6 +1113,20 @@ end
 -- rolling over on a fence top at -0.1 m/s, asked only at up 0)
 function H.watch(player, v)
     if F or not v:isDriver(player) then return end
+    local l = LATE
+    if l then -- a flight over at rest, its motor off (stop): started once START_MS after it was seen off
+        local now = getTimestampMs()
+        if now < l.ms then l.ms = now end -- the wall clock set back: no time passed
+        local lf = l.f
+        if lf.v ~= v or lf.player ~= player or now - l.ms > START_MS + LATE_MS then
+            LATE = nil
+        else
+            if not lf.offSeen and not v:isEngineRunning() then lf.offSeen = now end
+            if lf.offSeen and now < lf.offSeen then lf.offSeen = now end
+            startBack(lf, v, now)
+            if lf.started or (lf.offSeen and v:isEngineRunning()) then LATE = nil end -- started, here or by the driver
+        end
+    end
     local c = H.conf(v)
     if not c then return end
     local vid = v:getId()

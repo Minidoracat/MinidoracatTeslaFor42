@@ -1408,6 +1408,102 @@ do -- pressed down on what holds it it sinks 0.05 m/s (r2f3-mp-c boostnearhold: 
     check(TH.active() and TH.active().probe, "sinking 0.05 m/s for 0.7 s: probed")
     cv.driver = nil; TH.tick(); cv.driver = cp
 end
+do -- round3 T10: at rest by where it is, not how fast (9950 b8eeb3c1 roof MP: still to 0.008 m, its count reset 5 times
+    -- by a single frame's speed); the probe the same, and risen once let go: probed again (its own function: the main
+    -- chunk's 200 locals)
+    local function t10()
+        local function landAt(h, ...)
+            local ux = ... -- leaning that way: where a probe found moving carries it (none: lands on in place)
+            cv.dz, cv.vy, cv.uy, cv.speed, cv.ux, cv.x = 0.075 + h / TH.FLOOR, 0, 1, 0, ux, 500.5
+            TH.ask(cp, cv, "land")
+            okFor("land")
+            return TH.active(), #H.clientSent
+        end
+        local function off()
+            cv.vy, cv.ux, cv.x = 0, nil, 500.5
+            if TH.active() then cv.driver = nil; TH.tick(); cv.driver = cp end
+        end
+        local f = landAt(2)
+        for i = 1, 37 do
+            cv.vy = (i % 5 == 0) and 1 or 0 -- a 1 m/s frame every fifth, not moved
+            TH.tick()
+        end
+        check(f.probe ~= nil, "T10: still at 2 m, a 1 m/s frame every 0.1 s: probed at 0.7 s all the same")
+        off()
+        f = landAt(2)
+        local probed = false
+        for _ = 1, 60 do cv.x = cv.x + 0.006 TH.tick() probed = probed or f.probe ~= nil end
+        check(TH.active() == f and not probed, "T10: sliding on at 0.3 m/s (its speed reading nothing): never probed")
+        off()
+        f, probed = landAt(2), false
+        for _ = 1, 60 do cv.dz = cv.dz - 0.014 / TH.FLOOR TH.tick() probed = probed or f.probe ~= nil end
+        check(TH.active() == f and not probed, "T10: coming down at 0.7 m/s (its speed reading nothing): never probed")
+        off()
+        -- into the probe, its first sample taken
+        local function sampled(h, ...)
+            local g, n0 = landAt(h, ...)
+            for _ = 1, 100 do
+                if g.probe and g.probe.h then break end
+                TH.tick()
+            end
+            return g, g.probe, n0
+        end
+        local function judged(g, p)
+            for _ = 1, 100 do
+                if TH.active() ~= g or g.probe ~= p then return end
+                TH.tick()
+            end
+        end
+        local p, n0
+        f, p, n0 = sampled(2)
+        cv.dz, cv.ux = cv.dz + 0.11 / TH.FLOOR, math.tan(math.rad(2.6)) -- let go: up 0.11 m, 2.6 degrees
+        judged(f, p)
+        local p2 = f.probe
+        check(TH.active() == f and p2 and p2.again and not p2.h and not f.slide,
+            "T10: risen 0.11 m and turned 2.6 degrees once let go: probed again, not carried")
+        judged(f, p2)
+        local e = H.clientSent[#H.clientSent]
+        check(TH.active() == nil and #H.clientSent == n0 + 1 and e.args.rest == true and not f.slide,
+            "T10: ... still there 0.8 s on: over, at rest, never carried")
+        off()
+        f, p = sampled(2, 0.3)
+        cv.dz = cv.dz + 0.11 / TH.FLOOR
+        judged(f, p)
+        p2 = f.probe
+        for _ = 1, 100 do
+            if p2.h then break end
+            TH.tick()
+        end
+        cv.dz = cv.dz + 0.05 / TH.FLOOR -- up again in the second probe
+        judged(f, p2)
+        check(TH.active() == f and f.slide and not f.probe, "T10: ... risen again in the second probe: moving, carried off (no third)")
+        off()
+        f, p = sampled(2, 0.3)
+        cv.dz = cv.dz + 0.11 / TH.FLOOR
+        judged(f, p)
+        p2 = f.probe
+        cv.dz = cv.dz - 0.17 / TH.FLOOR -- 0.06 m under the first sample while it waits
+        TH.tick()
+        check(TH.active() == f and f.slide and not f.probe and p2 and not p2.h,
+            "T10: ... sinking 0.06 m under the first sample while it waits: moving at once, carried off")
+        off()
+        f, p = sampled(2, 0.3)
+        cv.x = cv.x + 0.05
+        judged(f, p)
+        check(TH.active() == f and f.slide and not f.probe, "T10: 0.05 m aside in the probe's 0.2 s: moving, carried off")
+        off()
+        f, p, n0 = sampled(2)
+        for _ = 1, 100 do
+            if TH.active() ~= f or f.probe ~= p then break end
+            cv.vy = (p.t + 0.02 >= 0.4 - 1e-6) and 1 or 0 -- 1 m/s on the frame it is judged, not moved
+            TH.tick()
+        end
+        check(TH.active() == nil and #H.clientSent == n0 + 1 and H.clientSent[n0 + 1].args.rest == true,
+            "T10: a 1 m/s frame as the probe judges, not moved: over, at rest")
+        off()
+    end
+    t10()
+end
 do -- still up after LAND_S: over where it is, as at rest (SP: it asked again at once and billed the tank twice)
     cv.dz, cv.vy, cv.uy, cv.speed = 0.075 + 3 / TH.FLOOR, -0.7, 1, 0
     TH.ask(cp, cv, "land")
@@ -2058,6 +2154,63 @@ do -- round3 T1d: at rest up on another car's roof 2.4 m up (r2f5-pf: flew off f
         check(okT == true, "T1d: at rest on a fence top tilted (up 0.79): a flight may take off")
     end
     t1e()
+    -- round3 T10: a flight over at rest with its motor off (9950 roof: called off at 0.3 s, ended at rest before it
+    -- came down to sink; fly again said THRUST_ENGINE): started once START_MS after it went off, from the watch
+    local function t10m()
+        local function flyOff(n)
+            cv.dz, cv.vy, cv.speed, cv.running = perch, 0, 0, true
+            TH.ask(cp, cv, "fly")
+            okFor("fly", { sec = 30 })
+            local g = TH.active()
+            for _ = 1, n do if TH.active() then TH.tick() end end
+            return g
+        end
+        local function after(s0)
+            local a = q1.starts - s0
+            TH.watch(cp, cv)
+            local b = q1.starts - s0
+            H.advanceMs(2300)
+            TH.watch(cp, cv)
+            TH.watch(cp, cv)
+            return a, q1.starts - s0
+        end
+        local s0 = q1.starts
+        local g = flyOff(15)
+        local off1 = g and g.offAsked and not cv.running
+        g.wantLand = true
+        for _ = 1, 300 do if TH.active() then TH.tick() end end
+        local e = H.clientSent[#H.clientSent].args
+        local a, b = after(s0)
+        check(off1 and TH.active() == nil and e.act == "fly" and e.rest == true and a == 0 and b == 1,
+            string.format("T10: off a roof, called off at 0.3 s, over at rest there before 2.2 s passed: started once 2.2 s"
+                .. " after the motor went off (%d then %d)", a, b))
+        s0 = q1.starts
+        g = flyOff(60)
+        a, b = after(s0)
+        check(TH.active() == nil and halo[#halo] == "IGUI_MinidoracatTesla_Deny_THRUST_NO_LIFT" and g.offAsked and a == 0
+            and b == 1, string.format("T10: THRUST_NO_LIFT off a roof, the motor off: started once 2.2 s on (%d then %d)", a, b))
+        s0 = q1.starts
+        g = flyOff(10)
+        abort()
+        a, b = after(s0)
+        check(g.offAsked and a == 0 and b == 0, "T10: off a roof, its motor off, then aborted: not started")
+        s0 = q1.starts
+        local busyQ = { queue = { {} } }
+        ISTimedActionQueue.queues[cp] = busyQ
+        g = flyOff(60)
+        ISTimedActionQueue.queues[cp] = nil
+        a, b = after(s0)
+        check(TH.active() == nil and not g.offAsked and a == 0 and b == 0, "T10: THRUST_NO_LIFT, the motor never asked off: not started")
+        s0 = q1.starts
+        flyOff(60)
+        cv.dz, cv.vy = 0.075, 0 -- its motor still off
+        TH.ask(cp, cv, "land")
+        okFor("land")
+        abort()
+        a, b = after(s0)
+        check(a == 0 and b == 0, "T10: THRUST_NO_LIFT, then another action: that one's motor, not started after")
+    end
+    t10m()
     cv.dz, cv.vy, cv.running = 0.075, 0, true
     q1.offs = offs0
 end
