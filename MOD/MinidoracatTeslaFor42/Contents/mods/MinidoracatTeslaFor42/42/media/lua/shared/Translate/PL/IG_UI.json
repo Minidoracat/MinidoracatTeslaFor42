@@ -432,7 +432,7 @@
     "IGUI_MinidoracatTesla_Deny_THRUST_FAST": "Za szybko: najpierw zwolnij",
     "IGUI_MinidoracatTesla_Deny_THRUST_REVERSE": "Nie podczas cofania",
     "IGUI_MinidoracatTesla_Deny_THRUST_ROOM": "Za mało miejsca: coś jest na drodze lub nad autem",
-    "IGUI_MinidoracatTesla_Deny_THRUST_SAFEHOUSE": "Za blisko schronienia, do którego nie masz wstępu",
+    "IGUI_MinidoracatTesla_Deny_THRUST_SAFEHOUSE": "Auto stoi za blisko schronienia, do którego nie masz wstępu",
     "IGUI_MinidoracatTesla_Deny_THRUST_AIRBORNE": "Wszystkie cztery koła muszą stać na ziemi",
     "IGUI_MinidoracatTesla_Deny_THRUST_AUTHORITY": "Auto wciąż się synchronizuje: spróbuj za chwilę",
     "IGUI_MinidoracatTesla_Deny_THRUST_NO_LIFT": "Pędniki nie zdołały ruszyć auta: podjedź w płaskie, otwarte miejsce i spróbuj ponownie",

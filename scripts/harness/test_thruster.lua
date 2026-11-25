@@ -684,33 +684,49 @@ local away = H.player({ name = "away", x = v.x + 31, y = v.y })
 check(show(away, "kickflip") == "TOO_FAR", "over 30 tiles off: TOO_FAR")
 do -- a safehouse the caller may not walk into within H.SHOW_REACH of the car: no show (nobody rides it for a
     -- safehouse's vehicle block to stop, thrsafe-1126a tapp); his own, or one past the reach: as ever (v.npid = 99: the
-    -- check after it refuses, so the safehouse one let it by)
+    -- check after it refuses, so the safehouse one let it by). The fakes answer as the game does: houses by index, and
+    -- isSafehouseAllowTrepass(nil, ...) true (SafeHouse.java:224-228), so "not loaded" is refused by the MOD's own check
     local savedSafe, savedCell = SafeHouse, getCell
-    local house, mayEnter, loaded, sqAsked = nil, false, true, nil
-    local function rect(x, y, w, h)
-        return { getX = function() return x end, getY = function() return y end, getX2 = function() return x + w end,
-            getY2 = function() return y + h end }
+    local houses, loaded, sqAsked = {}, true, nil
+    local function rect(x, y, w, h, mayEnter)
+        return { mayEnter = mayEnter, getX = function() return x end, getY = function() return y end,
+            getX2 = function() return x + w end, getY2 = function() return y + h end }
+    end
+    local function houseAt(sq)
+        for _, s in ipairs(houses) do
+            if sq.x >= s.getX() and sq.x < s.getX2() and sq.y >= s.getY() and sq.y < s.getY2() then return s end
+        end
     end
     SafeHouse = {
         getSafehouseList = function()
-            return { size = function() return house and 1 or 0 end, get = function() return house end }
+            return { size = function() return #houses end, get = function(_, i) return houses[i + 1] end }
         end,
-        isSafehouseAllowTrepass = function(sq, pl) sqAsked = sq return pl ~= caller or mayEnter end,
+        isSafehouseAllowTrepass = function(sq, pl)
+            sqAsked = sq
+            if not sq then return true end
+            local s = houseAt(sq)
+            return not s or pl ~= caller or s.mayEnter
+        end,
     }
     getCell = function() return { getGridSquare = function(_, x, y, z) return loaded and { x = x, y = y, z = z } or nil end } end
     local fx, fy = math.floor(v.x), math.floor(v.y)
-    house = rect(fx + 11, fy - 3, 8, 8)
+    houses = { rect(fx + 11, fy - 3, 8, 8, false) }
     s0 = snap(v, part)
     check(show(caller, "kickflip") == "THRUST_SAFEHOUSE" and snap(v, part) == s0 and sqAsked.x == fx + 11
         and sqAsked.y == fy and sqAsked.z == 0,
         "a safehouse the caller may not enter in reach: THRUST_SAFEHOUSE, nothing changed; asked by its square nearest the car")
     loaded = false
     check(show(caller, "backflip") == "THRUST_SAFEHOUSE", "that square not loaded: refused all the same")
-    loaded, mayEnter, v.npid = true, true, 99
+    loaded, v.npid = true, 99
+    houses = { rect(fx + 11, fy - 3, 8, 8, true) }
     check(show(caller, "kickflip") == "THRUST_BUSY", "a safehouse he may enter: no refusal of its own")
-    mayEnter, house = false, rect(fx + 13, fy - 3, 8, 8)
+    houses = { rect(fx + 11, fy - 3, 8, 8, true), rect(fx - 18, fy - 3, 8, 8, false) }
+    check(show(caller, "kickflip") == "THRUST_SAFEHOUSE", "his own first in the list, another's on the car's other side: refused")
+    houses = { rect(fx + 13, fy - 3, 8, 8, false) }
     check(show(caller, "kickflip") == "THRUST_BUSY", "a safehouse past the reach: no refusal of its own")
-    v.npid = nil
+    v.speed = 10 -- 2.8 m/s: H.SHOW_CARRY_S of it reaches 16.7 m further
+    check(show(caller, "kickflip") == "THRUST_SAFEHOUSE", "the same one with the empty car still rolling at 10 km/h: refused")
+    v.speed, v.npid = 0, nil
     SafeHouse, getCell = savedSafe, savedCell
 end
 v.npid = 99

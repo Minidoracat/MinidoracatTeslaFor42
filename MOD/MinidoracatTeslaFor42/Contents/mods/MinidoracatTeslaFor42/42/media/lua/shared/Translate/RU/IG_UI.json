@@ -432,7 +432,7 @@
     "IGUI_MinidoracatTesla_Deny_THRUST_FAST": "Слишком быстро: сначала сбавьте скорость",
     "IGUI_MinidoracatTesla_Deny_THRUST_REVERSE": "Не на заднем ходу",
     "IGUI_MinidoracatTesla_Deny_THRUST_ROOM": "Мало места: что-то мешает впереди или сверху",
-    "IGUI_MinidoracatTesla_Deny_THRUST_SAFEHOUSE": "Слишком близко к убежищу, куда вам нельзя входить",
+    "IGUI_MinidoracatTesla_Deny_THRUST_SAFEHOUSE": "Машина слишком близко к убежищу, куда вам нельзя входить",
     "IGUI_MinidoracatTesla_Deny_THRUST_AIRBORNE": "Все четыре колеса должны стоять на земле",
     "IGUI_MinidoracatTesla_Deny_THRUST_AUTHORITY": "Машина ещё синхронизируется: попробуйте чуть позже",
     "IGUI_MinidoracatTesla_Deny_THRUST_NO_LIFT": "Ускорители не смогли сдвинуть машину: выезжайте на ровное открытое место и попробуйте снова",

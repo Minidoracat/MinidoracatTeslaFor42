@@ -432,7 +432,7 @@
     "IGUI_MinidoracatTesla_Deny_THRUST_FAST": "Too fast for this: slow down first",
     "IGUI_MinidoracatTesla_Deny_THRUST_REVERSE": "Not while reversing",
     "IGUI_MinidoracatTesla_Deny_THRUST_ROOM": "Not enough room: something is in the way or overhead",
-    "IGUI_MinidoracatTesla_Deny_THRUST_SAFEHOUSE": "Too close to a safehouse you can't enter",
+    "IGUI_MinidoracatTesla_Deny_THRUST_SAFEHOUSE": "The car is too close to a safehouse you can't enter",
     "IGUI_MinidoracatTesla_Deny_THRUST_AIRBORNE": "All four wheels must be on the ground",
     "IGUI_MinidoracatTesla_Deny_THRUST_AUTHORITY": "The car is still syncing: try again in a moment",
     "IGUI_MinidoracatTesla_Deny_THRUST_NO_LIFT": "The thrusters could not move the car: drive somewhere flat and open, then try again",
