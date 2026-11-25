@@ -432,6 +432,7 @@
     "IGUI_MinidoracatTesla_Deny_THRUST_FAST": "速度が高すぎます。先に減速してください",
     "IGUI_MinidoracatTesla_Deny_THRUST_REVERSE": "後退中はできません",
     "IGUI_MinidoracatTesla_Deny_THRUST_ROOM": "スペースが足りません。前方か上方に障害物があります",
+    "IGUI_MinidoracatTesla_Deny_THRUST_SAFEHOUSE": "入れないセーフハウスに近すぎます",
     "IGUI_MinidoracatTesla_Deny_THRUST_AIRBORNE": "4 輪すべてが接地している必要があります",
     "IGUI_MinidoracatTesla_Deny_THRUST_AUTHORITY": "車を同期中です。少し待ってからもう一度お試しください",
     "IGUI_MinidoracatTesla_Deny_THRUST_NO_LIFT": "スラスターで車を動かせませんでした。平らで開けた場所に移動してからもう一度お試しください",

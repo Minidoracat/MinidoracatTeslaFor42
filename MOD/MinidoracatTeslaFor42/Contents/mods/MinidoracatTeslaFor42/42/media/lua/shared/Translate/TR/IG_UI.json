@@ -432,6 +432,7 @@
     "IGUI_MinidoracatTesla_Deny_THRUST_FAST": "Bunun için çok hızlısın: önce yavaşla",
     "IGUI_MinidoracatTesla_Deny_THRUST_REVERSE": "Geri giderken olmaz",
     "IGUI_MinidoracatTesla_Deny_THRUST_ROOM": "Yer yok: önde veya üstte bir şey engel",
+    "IGUI_MinidoracatTesla_Deny_THRUST_SAFEHOUSE": "Giremeyeceğin bir güvenli eve çok yakınsın",
     "IGUI_MinidoracatTesla_Deny_THRUST_AIRBORNE": "Dört tekerleğin de yerde olması gerek",
     "IGUI_MinidoracatTesla_Deny_THRUST_AUTHORITY": "Araç hâlâ eşitleniyor: birazdan tekrar dene",
     "IGUI_MinidoracatTesla_Deny_THRUST_NO_LIFT": "İticiler aracı hareket ettiremedi: düz ve açık bir yere sür, sonra tekrar dene",

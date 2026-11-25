@@ -432,6 +432,7 @@
     "IGUI_MinidoracatTesla_Deny_THRUST_FAST": "Zu schnell dafür: bremse zuerst ab",
     "IGUI_MinidoracatTesla_Deny_THRUST_REVERSE": "Nicht beim Rückwärtsfahren",
     "IGUI_MinidoracatTesla_Deny_THRUST_ROOM": "Nicht genug Platz: etwas ist im Weg oder darüber",
+    "IGUI_MinidoracatTesla_Deny_THRUST_SAFEHOUSE": "Zu nah an einem Safehouse, das du nicht betreten darfst",
     "IGUI_MinidoracatTesla_Deny_THRUST_AIRBORNE": "Alle vier Räder müssen am Boden sein",
     "IGUI_MinidoracatTesla_Deny_THRUST_AUTHORITY": "Das Auto synchronisiert noch: versuch es gleich noch mal",
     "IGUI_MinidoracatTesla_Deny_THRUST_NO_LIFT": "Die Schubdüsen konnten das Auto nicht bewegen: fahr an eine flache, freie Stelle und versuch es erneut",

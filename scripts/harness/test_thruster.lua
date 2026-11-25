@@ -682,6 +682,37 @@ s0 = snap(v, part)
 check(show(caller, "kickflip", false) == "BAD_VALUE" and snap(v, part) == s0, "D3: a show without n: BAD_VALUE, nothing changed")
 local away = H.player({ name = "away", x = v.x + 31, y = v.y })
 check(show(away, "kickflip") == "TOO_FAR", "over 30 tiles off: TOO_FAR")
+do -- a safehouse the caller may not walk into within H.SHOW_REACH of the car: no show (nobody rides it for a
+    -- safehouse's vehicle block to stop, thrsafe-1126a tapp); his own, or one past the reach: as ever (v.npid = 99: the
+    -- check after it refuses, so the safehouse one let it by)
+    local savedSafe, savedCell = SafeHouse, getCell
+    local house, mayEnter, loaded, sqAsked = nil, false, true, nil
+    local function rect(x, y, w, h)
+        return { getX = function() return x end, getY = function() return y end, getX2 = function() return x + w end,
+            getY2 = function() return y + h end }
+    end
+    SafeHouse = {
+        getSafehouseList = function()
+            return { size = function() return house and 1 or 0 end, get = function() return house end }
+        end,
+        isSafehouseAllowTrepass = function(sq, pl) sqAsked = sq return pl ~= caller or mayEnter end,
+    }
+    getCell = function() return { getGridSquare = function(_, x, y, z) return loaded and { x = x, y = y, z = z } or nil end } end
+    local fx, fy = math.floor(v.x), math.floor(v.y)
+    house = rect(fx + 11, fy - 3, 8, 8)
+    s0 = snap(v, part)
+    check(show(caller, "kickflip") == "THRUST_SAFEHOUSE" and snap(v, part) == s0 and sqAsked.x == fx + 11
+        and sqAsked.y == fy and sqAsked.z == 0,
+        "a safehouse the caller may not enter in reach: THRUST_SAFEHOUSE, nothing changed; asked by its square nearest the car")
+    loaded = false
+    check(show(caller, "backflip") == "THRUST_SAFEHOUSE", "that square not loaded: refused all the same")
+    loaded, mayEnter, v.npid = true, true, 99
+    check(show(caller, "kickflip") == "THRUST_BUSY", "a safehouse he may enter: no refusal of its own")
+    mayEnter, house = false, rect(fx + 13, fy - 3, 8, 8)
+    check(show(caller, "kickflip") == "THRUST_BUSY", "a safehouse past the reach: no refusal of its own")
+    v.npid = nil
+    SafeHouse, getCell = savedSafe, savedCell
+end
 v.npid = 99
 check(show(caller, "kickflip") == "THRUST_BUSY", "another machine holds the car: THRUST_BUSY")
 v.npid = nil
