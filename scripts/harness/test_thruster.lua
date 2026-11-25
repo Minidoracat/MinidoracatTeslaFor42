@@ -1382,11 +1382,12 @@ end
 -- round3 T11: carried SLIDE_S s and not SLIDE_STUCK m off (a wall in the way: 9950 e7d0fd6b r2f6-tiltw, 0.50-0.72 m):
 -- stuck, down where it is, then over at rest there, never probed again (it burnt LAND_S carried back and forth, ended
 -- 2 m up mid-carry, fell, landed again). 1 m or more: probed again as before
-local function carried(perTick)
+local function carried(perTick, after)
     local f, n0 = hungProbe(2)
     local ticks = 0
     while f.slide and ticks < 300 do cv.x = cv.x + perTick TH.tick() ticks = ticks + 1 end
     local slid = not f.slide and ticks >= 195 and ticks <= 202 and TH.active() == f and not f.probe and #H.clientSent == n0
+    cv.x = cv.x + (after or 0)
     local probed = false
     for _ = 1, 100 do if TH.active() then TH.tick() probed = probed or f.probe ~= nil end end
     local e = H.clientSent[n0 + 1]
@@ -1404,6 +1405,9 @@ do
         "T11: carried 0.6 m in 4 s (a wall in the way): stuck, over at rest where it came down, never probed again (one end)")
     f, slid, probed, over = carried(0.0075)
     check(slid and not f.stuck and probed and over, "T11: carried 1.5 m in 4 s: not stuck, probed again as before, then over at rest")
+    f, slid, probed, over = carried(0.003, 2)
+    check(slid and f.stuck and probed and over,
+        "T11: carried 0.6 m in 4 s, then at rest 2 m from there (slid off it): probed as ever, then over at rest")
 end
 end
 do -- r2f3-sp-probe2 rboost: 3.76 degrees in the probe's 0.2 s read at rest, it fell after (lands 2, up 0.43): moving
