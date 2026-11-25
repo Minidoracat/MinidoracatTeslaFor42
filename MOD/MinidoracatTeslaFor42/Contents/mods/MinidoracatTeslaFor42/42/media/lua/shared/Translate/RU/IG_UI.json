@@ -73,7 +73,7 @@
     "IGUI_MinidoracatTesla_Radial_ThrustLand": "Посадка",
     "IGUI_MinidoracatTesla_Tip_ThrustAir": "Воздух %1%%",
     "IGUI_MinidoracatTesla_Thrust_Refill": "Заполнится через %1 мин",
-    "IGUI_MinidoracatTesla_Thrust_RefillLow": "Зарядите батарею для заполнения",
+    "IGUI_MinidoracatTesla_Thrust_RefillLow": "Зарядите батарею",
     "IGUI_MinidoracatTesla_Thrust_ExitCarry": "Выход заблокирован: машина отходит в сторону для посадки",
     "IGUI_MinidoracatTesla_Tip_ThrustTank": "Воздух ускорителей %1%%",
     "IGUI_MinidoracatTesla_Tip_ThrustTankRefill": "Воздух ускорителей %1%% · %2",

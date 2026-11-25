@@ -224,7 +224,7 @@ https://steamcommunity.com/sharedfiles/filedetails/?id=3829501237
 [*] [b]One seat[/b]: only the driver's seat; the thrusters' air tank sits where the passenger would. The right door still opens: standing at it and pressing Interact only opens or closes the door, nobody gets in; locking the car locks both doors.
 [*] [b]Storage[/b]: an 18 trunk behind the seat and a glove box; no front trunk (neither the app nor the dashboard has one).
 [*] [b]No Bioweapon Defense Mode[/b]: it has no HEPA filter, so its V radial menu has no such slice.
-[*] [b]Everything else[/b]: key card, phone key, the app, Sentry, Camp Mode, Chill, damage looks and the Project Viewpoint cabin details work as on the other Teslas; a tall hat on someone in the car is hidden first where it would poke through the roof.
+[*] [b]Everything else[/b]: key card, phone key, the app, Summon, Sentry, Camp Mode, Chill, damage looks and the Project Viewpoint cabin details work as on the other Teslas; a tall hat on someone in the car is hidden first where it would poke through the roof.
 [/list]
 [table]
 [tr][th]Car[/th][th]Factory paints[/th][th]Front trunk[/th][th]Rear trunk[/th][/tr]
