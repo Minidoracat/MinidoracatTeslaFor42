@@ -177,6 +177,24 @@ T.ClientCommands.thrustFx(lift2) -- late
 check(type(lift1.seq) == "number" and lift2.seq > lift1.seq and landA.seq > lift2.seq and #v.played == p1 + 2
     and v.played[#v.played] == F.SOUND_END and minutes() == 0,
     "R9: lift, land, then the late renewal: the landing stands (nothing restarted, no minute check)")
+-- a car this client loads mid-flight comes without its models (the engine sends them on a change only,
+-- VehicleUpdatePacket.java:144-145; r2fxint-mp-2): the client sets them from each state it plays, never from a dropped
+-- older one, and the end turns them all off
+H.side(false, true)
+F.set(v, "lift")
+local lateLift = H.sent[#H.sent].args
+F.set(v, "flip")
+local lateFlip = H.sent[#H.sent].args
+F.set(v, "land")
+local lateEnd = H.sent[#H.sent].args
+H.side(true, false)
+v.shown = {}
+T.ClientCommands.thrustFx(lateFlip)
+check(shown(v) == "Lift+Side", "late client: the renewal it plays shows the mode's models")
+T.ClientCommands.thrustFx(lateLift)
+check(shown(v) == "Lift+Side", "late client: an older seq changes no model")
+T.ClientCommands.thrustFx(lateEnd)
+check(shown(v) == "", "late client: the end turns every model off")
 
 H.advanceMs(4000)
 H.fire("OnTick")
