@@ -16,7 +16,7 @@ H.APP = { kickflip = true, backflip = true } -- the phone app's show: the empty 
 H.APP_RANGE = 30  -- tiles from the caller: the car must be loaded on his game, which flies it (poc/APP.md)
 H.HELP_RANGE = 70 -- tiles: who takes over a car left in the air (server Thruster.lua)
 -- metres about the show's car (either axis) within which a safehouse its caller may not enter refuses it
--- (showTrespass). A stunt from rest moves the car's middle 8.5 m at most whichever way it faces: 7.3 m ahead, inside
+-- (H.showTrespass). A stunt from rest moves the car's middle 8.5 m at most whichever way it faces: 7.3 m ahead, inside
 -- the 10 m the caller's game clears (client Thruster.lua clearPath; thrsafe-1126g tappfar), and 4.2 m aside
 -- (thrsafe-1126a tkickm); its far corner is 2.4 m more
 H.SHOW_REACH = 12
