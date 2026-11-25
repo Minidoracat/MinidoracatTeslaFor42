@@ -142,6 +142,8 @@ end
 local function appTell(p, why)
     T.send(p.player, "appDone", { key = p.key, act = p.act, why = why })
 end
+-- why its caller's machine would not start the show (cmds.thrustEnd): the only reasons of a client's passed on to him
+local SHOW_WHY = { THRUST_SAFEHOUSE = true, THRUST_FAST = true, THRUST_REVERSE = true }
 
 -- off the ground: over GROUND floors above the highest floor under it (H.groundZ: a flat roof counts, as on the
 -- flying machine). A car at rest sits 0.075-0.152 into its floor (poc/APP.md).
@@ -580,9 +582,10 @@ cmds.thrustEnd = function(player, args)
     local p = entry(v)
     if not p or player ~= (p.helper or p.player) or args.n ~= p.n then return end -- only who flies it now ends it
     if p.helper and args.term ~= p.term then return end -- a helper's end of an earlier hand-over
-    -- the show its caller's machine would not start (client Thruster.lua go): the phone app says that, not "no lift".
-    -- Only this one reason, and only what the caller is told: billing and the landing stay this machine's own look
-    if p.app and not p.helper and args.why == "THRUST_SAFEHOUSE" then p.why = args.why end
+    -- the show its caller's machine would not start (client Thruster.lua go: a safehouse in reach, the car rolling too
+    -- fast or backwards): the phone app says that, not "no lift". Only these reasons, and only what the caller is
+    -- told: billing and the landing stay this machine's own look
+    if p.app and not p.helper and SHOW_WHY[args.why] then p.why = args.why end
     if isServer() then
         look(v, p) -- a boost: its speed now
         if p.act == "boost" and not p.helper and v:getDriver() == player then
@@ -607,7 +610,7 @@ cmds.thrustEnd = function(player, args)
     if not p.helper then p.sec = tonumber(args.sec) end
     local done = args.done == true
     finish(v, p, done)
-    if p.app and not done then appTell(p, "THRUST_NO_LIFT") end -- single player: no safehouse refuses (p.why never set)
+    if p.app and not done then appTell(p, p.why or "THRUST_NO_LIFT") end
 end
 
 -- Battery.lua T.Update.Battery, each game minute while the car's parts update: the refill's kWh as it goes, the

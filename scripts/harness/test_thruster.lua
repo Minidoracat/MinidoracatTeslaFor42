@@ -829,6 +829,11 @@ wait(2000)
 cmds.thrustEnd(caller, { vid = v:getId(), act = "kickflip", done = false, sec = 0, n = 79, why = "CANT_START" })
 check(entryOf(v) == nil and last().command == "appDone" and last().args.why == "THRUST_NO_LIFT",
     "another reason named by the client: not passed on (THRUST_NO_LIFT)")
+show(caller, "backflip", 80)
+wait(2000)
+cmds.thrustEnd(caller, { vid = v:getId(), act = "backflip", done = false, sec = 0, n = 80, why = "THRUST_FAST" })
+check(entryOf(v) == nil and near(gas(part), 1) and last().command == "appDone" and last().args.why == "THRUST_FAST"
+    and v.npid == -1, "the caller's machine found the car rolling too fast: the air and the physics back, the app told that")
 show(caller, "backflip")
 wait(2000)
 v.dz = 1
@@ -1302,6 +1307,31 @@ do -- the safehouse rule again as the show starts, by the car as this machine ha
     refused(508, "... or its last sample 4 m/s: refused")
     cv.lv = nil
     SafeHouse = savedSafe
+end
+do -- the driver's speed limits again as the show starts: its caller's machine read 0 km/h of the empty car when it asked
+    local imp0
+    local function refused(n, why, what)
+        e = H.clientSent[#H.clientSent]
+        check(TH.active() == nil and #H.clientSent == sent + 1 and e.command == "thrustEnd" and e.args.done == false
+            and e.args.n == n and e.args.why == why and halo[#halo] == "IGUI_MinidoracatTesla_Deny_" .. why
+            and (cv.impulses or 0) == imp0 and cv.dz == 0.075, what)
+    end
+    local function showAt(act, n, kmh)
+        cv.local_, cv.dz, cv.speed = false, 0.075, kmh
+        T.ClientCommands.thrustOk({ vid = cv:getId(), act = act, app = true, n = n, pn = 0 })
+        cv.local_ = true
+        sent, imp0 = #H.clientSent, cv.impulses or 0
+        TH.tick()
+    end
+    showAt("backflip", 509, 16)
+    refused(509, "THRUST_FAST", "the show's car rolling over flipMaxKmh as its physics comes: no backflip, the air back, told why")
+    showAt("kickflip", 510, -2)
+    refused(510, "THRUST_REVERSE", "... rolling backwards: none either")
+    showAt("backflip", 511, 5)
+    check(TH.active() and TH.active().phase == "roll", "under the limit: the show starts")
+    cv.driver = cp
+    TH.tick()
+    cv.driver, cv.speed = nil, 0
 end
 cv.local_, cv.dz = false, 1.075
 T.ClientCommands.thrustOk({ vid = cv:getId(), act = "backflip", app = true, pn = 0, n = 503 })

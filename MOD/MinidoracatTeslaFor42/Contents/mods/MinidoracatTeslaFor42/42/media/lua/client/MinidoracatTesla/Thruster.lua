@@ -563,13 +563,26 @@ local function wake(f)
     v:setRegulatorSpeed(WAKE_KMH)
     v:setRegulator(true)
 end
+-- never backwards, and no faster than conf allows each to start at: the driver's ask (H.check), and the show once its
+-- car's physics is here (before that an empty car reads 0 km/h on its caller's machine: thrsafe-1126m)
+local SPEED_MAX = { kickflip = "kickMaxKmh", backflip = "flipMaxKmh", boost = "boostMaxKmh" }
+local function speedWhy(v, c, act)
+    local kmh = v:getCurrentSpeedKmHour()
+    if kmh < -1 then return "THRUST_REVERSE" end
+    local max = SPEED_MAX[act]
+    if max and kmh > c[max] then return "THRUST_FAST" end
+end
 -- the driver's stunt from under conf.rollKmh: the motor's cruise takes it there (flight PoC: 17/17 from 6 km/h; the
 -- thrusters' push left 3 of 13 parked cars stuck, r2f-sp-1124c). Flying from a standstill: lifted, then straight up
 local function go(f)
     local v, c = f.v, f.conf
     -- the show's car as this machine has it now, its physics here: where it really is, at the speed it really has
     -- (shared Thruster.lua H.SHOW_CARRY_S)
-    if f.app == "show" and H.showTrespass(f.player, v) then return stop(false, "THRUST_SAFEHOUSE") end
+    if f.app == "show" then
+        if H.showTrespass(f.player, v) then return stop(false, "THRUST_SAFEHOUSE") end
+        local why = speedWhy(v, c, f.act)
+        if why then return stop(false, why) end
+    end
     if f.act == "land" or v:getCurrentSpeedKmHour() >= c.rollKmh then return beginRun(f) end
     if f.act == "fly" then
         if not v:isPhysicsActive() then v:setPhysicsActive(true) end
@@ -955,7 +968,6 @@ end
 -- app's show (PhoneApp.lua asks before sending; the server gives this machine the physics only once it approves). An
 -- action asked and not answered yet refuses another with no reason (nothing to say: the answer is on its way; the
 -- soft landing aside: a fall can't wait)
-local SPEED_MAX = { kickflip = "kickMaxKmh", backflip = "flipMaxKmh", boost = "boostMaxKmh" }
 function H.check(player, v, act, ...)
     local app = ...
     H.groundReset() -- the floors read afresh: one built under the car since the last action counts
@@ -972,10 +984,8 @@ function H.check(player, v, act, ...)
         if heightOf(v, RESTS[v:getId()] or c.rest) > 0.4 and not (act == "fly" and flyOff(v, c)) then
             return false, "THRUST_AIRBORNE"
         end
-        local kmh = v:getCurrentSpeedKmHour()
-        if kmh < -1 then return false, "THRUST_REVERSE" end
-        local max = SPEED_MAX[act]
-        if max and kmh > c[max] then return false, "THRUST_FAST" end
+        local why = speedWhy(v, c, act)
+        if why then return false, why end
     end
     if PROF[act] and not clearPath(v, c, act) then return false, "THRUST_ROOM" end
     if act == "fly" and not clearAbove(v, c) then return false, "THRUST_ROOM" end
