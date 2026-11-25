@@ -21,7 +21,9 @@ H.HELP_RANGE = 70 -- tiles: who takes over a car left in the air (server Thruste
 -- (thrsafe-1126a tkickm); its far corner is 2.4 m more
 H.SHOW_REACH = 12
 -- and seconds of the car's own speed more: one still rolling keeps its speed through the stunt (client Thruster.lua
--- go: no roll-up from conf.rollKmh up; the kickflip is 3.8 s in the air, PROF) and stops after it
+-- go: no roll-up from conf.rollKmh up; the kickflip is 3.8 s in the air, PROF) and stops after it. The server reads no
+-- speed of an empty car (BaseVehicle.java:4346-4354) and has it where its last update put it: the caller's machine,
+-- the car's physics there, asks again as the show starts (go; a car its driver just left, thrsafe-1126k tapproll)
 H.SHOW_CARRY_S = 6
 H.FLOOR = 2.44949 -- metres per floor: physics y / getDebugZ (flight PoC r1, BaseVehicle.java:4207)
 -- seconds a flight's landing glides on at its height at most before it comes down (client Thruster.lua f.brake); the
@@ -152,7 +154,7 @@ end
 -- SafeHouse.java:224-243; it asks by a square: the house's one nearest the car, loaded where the car is, and one not
 -- loaded refuses). Nobody rides the show's car, and what keeps a car out of a safehouse (the Safehouse mod's vehicle
 -- block) stops it through its driver: the empty car came down 2.29 m inside (thrsafe-1126a tapp).
-local function showTrespass(player, vehicle)
+function H.showTrespass(player, vehicle)
     if not SafeHouse then return false end -- the game always has it (LuaManager exposes the class); a test may not
     local x, y = vehicle:getX(), vehicle:getY()
     local r = H.SHOW_REACH + math.abs(vehicle:getCurrentSpeedKmHour()) / 3.6 * H.SHOW_CARRY_S
@@ -183,7 +185,7 @@ function H.can(player, vehicle, act, ...)
         if player:getVehicle() then return false, "NOT_OUTSIDE" end
         if vehicle:getDriver() then return false, "OCCUPIED" end -- the Roadster has one seat
         if player:DistTo(vehicle) > H.APP_RANGE then return false, "TOO_FAR" end
-        if showTrespass(player, vehicle) then return false, "THRUST_SAFEHOUSE" end
+        if H.showTrespass(player, vehicle) then return false, "THRUST_SAFEHOUSE" end
     else
         if not vehicle:isDriver(player) then return false, "NOT_DRIVER" end
         -- a soft landing needs no motor: a car off in the air (its driver's own key, or a flight off since a reload)

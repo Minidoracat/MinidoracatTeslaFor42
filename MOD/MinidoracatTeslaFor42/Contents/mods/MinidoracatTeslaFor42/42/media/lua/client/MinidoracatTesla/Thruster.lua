@@ -566,6 +566,9 @@ end
 -- thrusters' push left 3 of 13 parked cars stuck, r2f-sp-1124c). Flying from a standstill: lifted, then straight up
 local function go(f)
     local v, c = f.v, f.conf
+    -- the show's car as this machine has it now, its physics here: where it really is, at the speed it really has
+    -- (shared Thruster.lua H.SHOW_CARRY_S)
+    if f.app == "show" and H.showTrespass(f.player, v) then return stop(false, "THRUST_SAFEHOUSE") end
     if f.act == "land" or v:getCurrentSpeedKmHour() >= c.rollKmh then return beginRun(f) end
     if f.act == "fly" then
         if not v:isPhysicsActive() then v:setPhysicsActive(true) end

@@ -1215,6 +1215,26 @@ e = H.clientSent[#H.clientSent]
 check(TH.active() == nil and #H.clientSent == sent + 1 and e.command == "thrustEnd" and e.args.done == false,
     "someone sits in mid-show: ended, the air back")
 cv.driver = nil
+do -- the safehouse rule again as the show starts, by the car as this machine has it: one its caller may not enter in
+    -- reach now (the car rolled on after the server's look): no show, the air back, told why
+    local savedSafe = SafeHouse
+    local fx, fy = math.floor(cv:getX()), math.floor(cv:getY())
+    local near1 = { getX = function() return fx + 11 end, getY = function() return fy - 3 end,
+        getX2 = function() return fx + 19 end, getY2 = function() return fy + 5 end }
+    SafeHouse = { getSafehouseList = function() return { size = function() return 1 end, get = function() return near1 end } end,
+        isSafehouseAllowTrepass = function(sq) return sq == nil end }
+    cv.local_ = false
+    T.ClientCommands.thrustOk({ vid = cv:getId(), act = "kickflip", app = true, n = 504, pn = 0 })
+    cv.local_ = true
+    local imp0
+    sent, imp0 = #H.clientSent, cv.impulses or 0
+    TH.tick()
+    e = H.clientSent[#H.clientSent]
+    check(TH.active() == nil and #H.clientSent == sent + 1 and e.command == "thrustEnd" and e.args.done == false
+        and e.args.n == 504 and halo[#halo] == "IGUI_MinidoracatTesla_Deny_THRUST_SAFEHOUSE" and (cv.impulses or 0) == imp0,
+        "the show's start by a safehouse its caller may not enter: not flown, the air back, told why")
+    SafeHouse = savedSafe
+end
 cv.local_, cv.dz = false, 1.075
 T.ClientCommands.thrustOk({ vid = cv:getId(), act = "backflip", app = true, pn = 0, n = 503 })
 cv.local_ = true
