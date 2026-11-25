@@ -45,12 +45,14 @@ local function groundZ(sq, x, y)
 end
 
 -- Endpoints of one plugged cable into g (returned; the same table every call, read it before the next solve).
--- false when the car or the charger definition is not available here.
+-- false when the car or the charger definition is not available here, or the id names a car that is not plugged into
+-- this charger (T.chargerCar: a plugged car deleted while loaded leaves its id on the charger, and the next car
+-- spawned takes that id, VehicleIDMap.java:49-62,91-95; before 2026-11-26 the cable was drawn to that car).
 -- g.ex,ey: floor point under the charger's exit (hang origin); g.ax,ay: where the hang lies on the floor;
 -- g.bx,by,bz: plug segment origin on the floor; g.px,py: charge port; g.len: floor run a -> b;
 -- g.plug: the car's T.Specs plug ({ item, z, rear? }; rear: the port is in the rear bumper).
 function C.solve(e)
-    local vehicle = getVehicleById(e.vid)                    -- LuaManager.java:10276-10281
+    local vehicle = T.chargerCar(e, e.x, e.y, e.z)           -- Chargers.lua
     local def = vehicle and T.Chargers and T.Chargers[e.kind]
     local spec = def and T.spec(vehicle)
     g.plug = spec and spec.plug
