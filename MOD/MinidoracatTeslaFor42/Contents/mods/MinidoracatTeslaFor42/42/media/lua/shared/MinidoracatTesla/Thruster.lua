@@ -23,7 +23,8 @@ H.SHOW_REACH = 12
 -- and seconds of the car's own speed more: one still rolling keeps its speed through the stunt (client Thruster.lua
 -- go: no roll-up from conf.rollKmh up; the kickflip is 3.8 s in the air, PROF) and stops after it. The server reads no
 -- speed of an empty car (BaseVehicle.java:4346-4354) and has it where its last update put it: the caller's machine,
--- the car's physics there, asks again as the show starts (go; a car its driver just left, thrsafe-1126k tapproll)
+-- the car's physics there, asks again as the show starts (go). A car its driver left at 28 km/h 10 m out, the show
+-- asked at once: 8.7 m inside without that (thrsafe-1126m), never off the ground with it (thrsafe-1126l tapproll2)
 H.SHOW_CARRY_S = 6
 H.FLOOR = 2.44949 -- metres per floor: physics y / getDebugZ (flight PoC r1, BaseVehicle.java:4207)
 -- seconds a flight's landing glides on at its height at most before it comes down (client Thruster.lua f.brake); the
