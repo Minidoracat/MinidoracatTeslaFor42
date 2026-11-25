@@ -1,10 +1,10 @@
 -- Roadster Rocket thruster effects (references/roadster2.md): the jets of part TeslaThruster (models Lift, Side, Rear),
 -- their hiss and the white fog on landing and boost. F.set(vehicle, mode) runs on the server and in SP only (the
--- flight code calls it): it shows the mode's models, which the engine syncs to every client that has the car
--- (BaseVehicle.setModelVisible sets PartModels, BaseVehicle.java:1737-1760; VehiclePartModels.java:23-46), and tells
--- the clients near the car (Liftgate.sendNear; SP: the handler directly) to play the sound, drop the fog and flash
--- the take-off glow: thrustFx { vid, mode, fog = { x, y, z } or nil, glow = { x, y, z } or nil }. A car without the
--- part does nothing.
+-- flight code calls it): it shows the mode's models, which the engine syncs to every client that has the car on a
+-- change only (BaseVehicle.setModelVisible sets PartModels, BaseVehicle.java:1737-1760; VehiclePartModels.java:23-46),
+-- and tells the clients near the car (Liftgate.sendNear; SP: the handler directly) to show the mode's models too, play
+-- the sound, drop the fog and flash the take-off glow: thrustFx { vid, mode, seq, fog = { x, y, z } or nil,
+-- glow = { x, y, z } or nil }. A car without the part does nothing.
 require "MinidoracatTesla/Core"
 require "MinidoracatTesla/Liftgate"
 
@@ -49,13 +49,18 @@ F.SOUND_MAX_MS = 20 * 60000 -- backstop: a hiss no command renewed for this long
 F.stats = { set = 0, sent = 0, fog = 0, loops = 0, stops = 0 }
 F.seq = 0 -- server: the last state's number (F.set)
 
+-- the mode's models on, the others off; a model already in that state is left alone (BaseVehicle.java:1719-1760)
+local function show(part, mode)
+    local on = F.MODELS[mode] or {}
+    for _, id in ipairs(F.IDS) do part:setModelVisible(id, on[id] == true) end
+end
+
 function F.set(vehicle, mode)
     if isClient() or not vehicle then return end
     local part = vehicle:getPartById(F.PART)
     if not part then return end
     F.stats.set = F.stats.set + 1
-    local on = F.MODELS[mode] or {}
-    for _, id in ipairs(F.IDS) do part:setModelVisible(id, on[id] == true) end
+    show(part, mode)
     -- seq: rising with every state sent; a client plays none older than the last it had for the car (server to client
     -- commands are reliable, not ordered, PacketTypes.java:508: a renewed hiss after the landing must not restart it)
     F.seq = F.seq + 1
@@ -158,7 +163,10 @@ if not isServer() then
 
     T.ClientCommands = T.ClientCommands or {}
     -- [vid] = the newest seq played for the car (the end too: a late older state is dropped). A client that came near
-    -- later has none yet and plays the first it gets
+    -- later has none yet and plays the first it gets. Each state played also sets the models here: a car this client
+    -- loads mid-flight comes without them (VehicleFullUpdate is vehicle.save(), VehicleFullUpdatePacket.java:122-130;
+    -- the models only go with a change, VehicleUpdatePacket.java:144-145), so the next renewal shows them (r2fxint-mp-2).
+    -- A client's own setModelVisible goes nowhere (only the server sends updateFlags, VehicleManager.java:131-158)
     local newest = {}
     T.ClientCommands.thrustFx = function(args)
         if type(args) ~= "table" or not args.vid then return end
@@ -167,6 +175,9 @@ if not isServer() then
             if newest[args.vid] and seq <= newest[args.vid] then return end
             newest[args.vid] = seq
         end
+        local v = getVehicleById(args.vid)
+        local part = v and v:getPartById(F.PART)
+        if part then show(part, args.mode) end
         if args.fog then fog(args.fog, args.mode) end
         if args.glow then glow(args.glow) end
         sound(args.vid, F.MODELS[args.mode] ~= nil, args.mode == "land")
