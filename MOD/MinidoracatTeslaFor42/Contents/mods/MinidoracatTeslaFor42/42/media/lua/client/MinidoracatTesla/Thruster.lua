@@ -46,8 +46,10 @@ local ROLL_S, LAND_S = 3, 12     -- roll-up and soft landing give up after these
 -- still samples (9950 b8eeb3c1 roof MP: under 0.04 m/s, 0.008 m in 0.7 s, its count reset 5 times by speed alone).
 -- A landing never sinks slower than 0.7 m/s (landVy): 0.1 m off in 0.14 s, so a car still coming down never reads as
 -- at rest, nor one sliding on at 0.3 m/s; a car pressed down on what holds it sinks 0.05-0.1 m/s (r2f3-mp-c
--- boostnearhold: 1.6 s on a fence top, never 0.7 s within 0.03 m). REST_V: still at take-off (perched)
-local REST_S, REST_V, REST_DH, REST_DXY = 0.7, 0.2, 0.1, 0.1
+-- boostnearhold: 1.6 s on a fence top, never 0.7 s within 0.03 m). REST_V: still at take-off (perched). REST_DXY: as
+-- far as REST_V let it drift in REST_S before (0.14 m; SP on a roof drifts 0.073 m in 0.7 s, r2f6-xs2)
+local REST_S, REST_V, REST_DH = 0.7, 0.2, 0.1
+local REST_DXY = REST_V * REST_S
 -- at rest REST_S, then a probe with no push: a car held on a roof's edge by the landing's own push read as at rest,
 -- ended there and tipped over (r2fin-sp-full roof 1 #1: up 0.033, hit -4.22 m/s). Sampled at PROBE_A s (the springs
 -- settle first) and PROBE_B s: PROBE_DH m lower, turned over 2 degrees, or moved more than REST_V would in that time
