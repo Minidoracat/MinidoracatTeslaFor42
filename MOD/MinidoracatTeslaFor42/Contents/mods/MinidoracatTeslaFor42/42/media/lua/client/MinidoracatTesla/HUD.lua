@@ -64,7 +64,7 @@ local POW2 = { 1, 2, 4, 8, 16, 32, 64, 128, 256, 512 }
 -- picture at 19.6 viewBox units per metre): its two cab doors from their rear seam (viewBox 100.7 = x 88.9), where
 -- they hinge, to the windscreen's corners (viewBox 131.2 = x 115.8), split at the roof's spine like the other cars'
 -- doors; nothing else opens (no frunk, no trunk: T.hasTrunk). Its seats and wheels are no zones (zones are doors).
--- The Roadster Rocket (build_atlas.py car_roadster2; placeholder: the Roadster's outline until its own body is drawn):
+-- The Roadster Rocket (build_atlas.py car_roadster2, on the built body):
 -- the wing over the tail to its front edge (viewBox 48.5 = x 43), the trunk lid behind the seat from there to the
 -- doors (x 71), the doors as the Roadster's (x 71-97) split at the spine like the other cars' doors; the hood (no front
 -- trunk, T.hasFrunk) opens nothing.

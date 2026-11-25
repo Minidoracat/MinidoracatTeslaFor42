@@ -101,7 +101,8 @@ if not isServer() then
         end
         if #fogs == 0 then Events.OnTick.Remove(fogTick) end
     end
-    local function add(tex, sq, c, peak, life, delay)
+    local function add(tex, sq, c, peak, life, ...)
+        local delay = ... -- optional (glow passes none; family pitfalls.md)
         local m = sq and getIsoMarkers():addIsoMarker({ tex }, sq, c, c, c, 0)
         if not m then return end
         if #fogs == 0 then Events.OnTick.Add(fogTick) end

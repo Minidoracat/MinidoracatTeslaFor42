@@ -873,29 +873,30 @@ function H.tick()
         end
         local p = f.probe
         if p then -- no push: does it stay put on its own? (the first PROBE_A s is the springs settling; probed again,
-            -- PROBE_SETTLE s)
+            -- PROBE_SETTLE s). Up and down by an absolute height, as the slide's: the floor under it (hm's) may change
+            -- as its origin crosses a tile's edge (an eave: a whole floor more)
             p.t = p.t + dt
-            local sA = p.again and PROBE_SETTLE or PROBE_A
+            local sA, w = p.again and PROBE_SETTLE or PROBE_A, v:getDebugZ() * FLOOR
             if not p.h then
-                if p.h1 and p.h1 - hm > PROBE_DH then -- probed again, sinking under the first sample meanwhile
+                if p.h1 and p.h1 - w > PROBE_DH then -- probed again, sinking under the first sample meanwhile
                     local sx, sz = leanOf(ux, uz, lv)
                     T.log(string.format("thrust probe vid=%d dh=%.3f h=%.2f dir=%.0f moving (again, sank waiting)", f.vid,
-                        p.h1 - hm, hm, math.deg(math.atan2(sz, sx))))
+                        p.h1 - w, hm, math.deg(math.atan2(sz, sx))))
                     return carryOff(f, v, hm, sx, sz)
                 end
-                if p.t >= sA - 1e-6 then p.h, p.x, p.y, p.ux, p.uy, p.uz = hm, v:getX(), v:getY(), ux, uy, uz end
+                if p.t >= sA - 1e-6 then p.h, p.x, p.y, p.ux, p.uy, p.uz = w, v:getX(), v:getY(), ux, uy, uz end
             elseif p.t >= sA + PROBE_B - PROBE_A - 1e-6 then
                 local d = REST_V * (PROBE_B - PROBE_A)
                 local dx, dy = v:getX() - p.x, v:getY() - p.y
                 local dxy = math.sqrt(dx * dx + dy * dy)
                 local dot = (ux * p.ux + uy * p.uy + uz * p.uz)
                     / math.max(1e-9, math.sqrt((ux * ux + uy * uy + uz * uz) * (p.ux ^ 2 + p.uy ^ 2 + p.uz ^ 2)))
-                local drop, rose = p.h - hm > PROBE_DH, hm - p.h > d
+                local drop, rose = p.h - w > PROBE_DH, w - p.h > d
                 local again = rose and not drop and not p.again
                 local moving = drop or rose or dxy > d or dot < PROBE_DOT
                 local sx, sz = leanOf(ux, uz, lv)
                 T.log(string.format("thrust probe vid=%d dv=%.3f dh=%.3f dxy=%.3f dAng=%.2f h=%.2f dir=%.0f %s%s", f.vid,
-                    math.sqrt(lv:x() ^ 2 + vy * vy + lv:z() ^ 2), p.h - hm, dxy, math.deg(math.acos(math.min(1, dot))), hm,
+                    math.sqrt(lv:x() ^ 2 + vy * vy + lv:z() ^ 2), p.h - w, dxy, math.deg(math.acos(math.min(1, dot))), hm,
                     math.deg(math.atan2(sz, sx)), again and "rose: again" or moving and "moving" or "at rest",
                     p.again and " (again)" or ""))
                 if again then
@@ -1268,7 +1269,8 @@ end)
 -- that lifts the car off what holds it and carries it the way it leans (as the landing's probe does when held on an
 -- edge), down beside it; vanilla's exit after, from the ground
 local origExit = ISVehicleMenu.onExit
-function ISVehicleMenu.onExit(playerObj, seatFrom)
+function ISVehicleMenu.onExit(playerObj, ...)
+    local seatFrom = ... -- optional (family pitfalls.md: a fixed-arity call leaves a stale slot)
     local f = F
     if f and f.player == playerObj then
         if f.act == "fly" and f.phase ~= "land" then

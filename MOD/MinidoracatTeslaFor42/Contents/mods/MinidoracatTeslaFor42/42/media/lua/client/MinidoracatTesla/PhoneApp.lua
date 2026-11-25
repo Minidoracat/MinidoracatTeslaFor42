@@ -121,8 +121,8 @@ local GRID_NEED = { tonneau = "tonneau", falcon = "falcon", butterfly = "butterf
     powershare = "powershare", kickflip = "thruster", backflip = "thruster" }
 local GRID_ICON = { flash = "i_headlight", horn = "i_horn", frunk = "i_frunk", trunk = "i_trunk", tonneau = "i_tonneau",
     falcon = "i_falcon", butterfly = "i_butterfly", softtop = "i_softtop", wing = "i_wing", powershare = "i_powershare" }
--- the thruster shows (Thruster.lua H.APP) draw the radial ring's icons (build_atlas.py radial_icons), tinted.
--- shortcut: not in the atlas, which needs a Pillow with libraqm to rebuild; move them there on the next atlas build.
+-- the thruster shows (Thruster.lua H.APP) draw the radial ring's icons (build_atlas.py radial_icons), tinted: no i_*
+-- icons of their own in the app's set
 local GRID_TEX = { kickflip = "radial_thrust_kickflip", backflip = "radial_thrust_backflip" }
 -- the tonneau, the Model X's falcon wing doors (both at once, Remote.lua ACT.falcon), the Cybercab's doors (both,
 -- ACT.butterfly), the Roadster's soft top and the Roadster Rocket's wing have no quick button on the home page

@@ -1524,6 +1524,27 @@ do -- round3 T10: at rest by where it is, not how fast (9950 b8eeb3c1 roof MP: s
         check(TH.active() == nil and #H.clientSent == n0 + 1 and H.clientSent[n0 + 1].args.rest == true,
             "T10: a 1 m/s frame as the probe judges, not moved: over, at rest")
         off()
+        -- on a roof's edge, its origin over the edge's tile line: let go, it moves 0.03 m across onto open air (an eave),
+        -- the same height. Not risen (the floor under it a whole floor lower is not the car going up): at rest
+        local edge = math.floor(cv:getY())
+        roof["500," .. edge] = 1
+        cv.dz, cv.vy, cv.uy, cv.speed, cv.ux = 1 + 0.075 + 2 / TH.FLOOR, 0, 1, 0, nil -- 2 m over the roof, as landAt(2)
+        TH.ask(cp, cv, "land")
+        okFor("land")
+        cv.x = 500.98
+        f, n0 = TH.active(), #H.clientSent
+        for _ = 1, 100 do
+            if f.probe and f.probe.h then break end
+            cv.x = 500.98
+            TH.tick()
+        end
+        p = f.probe
+        cv.x = 501.01
+        judged(f, p)
+        check(TH.active() == nil and #H.clientSent == n0 + 1 and H.clientSent[n0 + 1].args.rest == true and not f.slide,
+            "T10: 0.03 m across a roof's edge in the probe, the same height (a floor less under it): over, at rest, not probed again")
+        roof["500," .. edge] = nil
+        off()
     end
     t10()
 end
