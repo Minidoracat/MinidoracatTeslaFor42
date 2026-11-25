@@ -1372,20 +1372,38 @@ do
     check(not f.slide and f.st.vTx == 0 and f.st.vTz == 0, "... 3.1 m off: down again, stopping where it is")
     TH.tick()
     check(f.st.rvy < -0.7 and #H.clientSent == n0, "... coming down the landing's way")
-    for _ = 1, 60 do if TH.active() then TH.tick() end end
-    check(TH.active() == nil and #H.clientSent == n0 + 1 and H.clientSent[n0 + 1].args.rest == true,
+    local probed = false
+    for _ = 1, 60 do if TH.active() then TH.tick() probed = probed or f.probe ~= nil end end
+    check(TH.active() == nil and #H.clientSent == n0 + 1 and H.clientSent[n0 + 1].args.rest == true and probed and not f.stuck,
         "... still 0.7 s again, then the probe finds it staying put: over, at rest")
     cv.ux, cv.x = nil, 500.5
     cv.driver = nil; TH.tick(); cv.driver = cp
 end
-do -- carried SLIDE_S s and not 3 m off: down where it is, no end, probed again later
+-- round3 T11: carried SLIDE_S s and not SLIDE_STUCK m off (a wall in the way: 9950 e7d0fd6b r2f6-tiltw, 0.50-0.72 m):
+-- stuck, down where it is, then over at rest there, never probed again (it burnt LAND_S carried back and forth, ended
+-- 2 m up mid-carry, fell, landed again). 1 m or more: probed again as before
+local function carried(perTick)
     local f, n0 = hungProbe(2)
     local ticks = 0
-    while f.slide and ticks < 300 do TH.tick() ticks = ticks + 1 end
-    check(not f.slide and ticks >= 195 and ticks <= 202 and TH.active() == f and not f.probe and #H.clientSent == n0,
-        "carried 4 s and still where it hung: down again there, no end said")
-    cv.ux = nil
-    cv.driver = nil; TH.tick(); cv.driver = cp
+    while f.slide and ticks < 300 do cv.x = cv.x + perTick TH.tick() ticks = ticks + 1 end
+    local slid = not f.slide and ticks >= 195 and ticks <= 202 and TH.active() == f and not f.probe and #H.clientSent == n0
+    local probed = false
+    for _ = 1, 100 do if TH.active() then TH.tick() probed = probed or f.probe ~= nil end end
+    local e = H.clientSent[n0 + 1]
+    local over = TH.active() == nil and #H.clientSent == n0 + 1 and e and e.command == "thrustEnd" and e.args.rest == true
+    cv.ux, cv.x = nil, 500.5
+    if TH.active() then cv.driver = nil; TH.tick(); cv.driver = cp end
+    return f, slid, probed, over
+end
+do
+    local f, slid, probed, over = carried(0)
+    check(slid, "carried 4 s and still where it hung: down again there, no end said")
+    check(f.stuck and not probed and over, "T11: ... carried 0 m: stuck, still 0.7 s: over at rest there, never probed again (one end)")
+    f, slid, probed, over = carried(0.003)
+    check(slid and f.stuck and not probed and over,
+        "T11: carried 0.6 m in 4 s (a wall in the way): stuck, over at rest where it came down, never probed again (one end)")
+    f, slid, probed, over = carried(0.0075)
+    check(slid and not f.stuck and probed and over, "T11: carried 1.5 m in 4 s: not stuck, probed again as before, then over at rest")
 end
 end
 do -- r2f3-sp-probe2 rboost: 3.76 degrees in the probe's 0.2 s read at rest, it fell after (lands 2, up 0.43): moving

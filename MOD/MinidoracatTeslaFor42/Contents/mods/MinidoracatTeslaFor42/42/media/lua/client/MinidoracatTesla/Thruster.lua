@@ -62,7 +62,11 @@ local PROBE_A, PROBE_B, PROBE_DH, PROBE_DOT, PROBE_SETTLE = 0.2, 0.4, 0.05, 0.99
 -- at SLIDE_V, until SLIDE_D m off or SLIDE_S s; then down again, probed again if it stops. Held on an edge the landing
 -- pushes down at -G and its attitude PD levels it about the edge (r2f3-sp-probe3: slid level 3 s, rose 0.1-0.25 m,
 -- never got off, 8 of 8 one floor up); landing on in place, it hung there LAND_S (r2f3-sp-probe: 6 of 30)
-local SLIDE_V, LIFT_DH, SLIDE_D, SLIDE_S = 2, 0.8, 3, 4
+-- Carried under SLIDE_STUCK m in SLIDE_S (a wall in the way: 9950 e7d0fd6b r2f6-tiltw, 0.50-0.72 m each time on a low
+-- thing by a house): stuck, never probed again. Probed again it is only carried back there, LAND_S spent up in the air
+-- until it ends mid-carry 2 m up, falls and the watch bills another landing; at rest there it is over where it is (a
+-- real fall after, over 1.5 m and faster than 2 m/s, the watch still catches). The driver's exit carry (thrustOk) too
+local SLIDE_V, LIFT_DH, SLIDE_D, SLIDE_S, SLIDE_STUCK = 2, 0.8, 3, 4, 1
 -- a flight's landing stops at its height first (r2scan-sp-obst2 fenceland: down at its flying speed onto a fence,
 -- turned over): GLIDE_V m/s ahead while anything under it would catch it (landClear), down after GLIDE_S s at most
 local GLIDE_V, GLIDE_S = 3, H.GLIDE_S
@@ -853,8 +857,11 @@ function H.tick()
         if s then -- lifted clear of what held it and carried the way it leans; then down again
             s.t = s.t + dt
             local dx, dy = v:getX() - s.x, v:getY() - s.y
-            if dx * dx + dy * dy >= SLIDE_D * SLIDE_D or s.t > SLIDE_S then
-                T.log(string.format("thrust carry vid=%d d=%.2f t=%.1f h=%.2f", f.vid, math.sqrt(dx * dx + dy * dy), s.t, hm))
+            local d2 = dx * dx + dy * dy
+            if d2 >= SLIDE_D * SLIDE_D or s.t > SLIDE_S then
+                if d2 < SLIDE_STUCK * SLIDE_STUCK then f.stuck = true end
+                T.log(string.format("thrust carry vid=%d d=%.2f t=%.1f h=%.2f%s", f.vid, math.sqrt(d2), s.t, hm,
+                    f.stuck and " stuck" or ""))
                 f.slide, f.restH, st.vTx, st.vTz = nil, nil, 0, 0
             else
                 -- an absolute height: the floor under it (hm's) may change on the way
@@ -905,7 +912,11 @@ function H.tick()
             f.restH, f.restX, f.restY, f.restT = hm, x, y, 0
         else
             f.restT = f.restT + dt
-            if f.restT >= REST_S then f.probe = { t = 0 } return end
+            if f.restT >= REST_S then
+                if f.stuck then return stop(f.lifted, nil, nil, true) end -- carried off nowhere: over where it is
+                f.probe = { t = 0 }
+                return
+            end
         end
     end
     drive(f, v, dt, hm)
