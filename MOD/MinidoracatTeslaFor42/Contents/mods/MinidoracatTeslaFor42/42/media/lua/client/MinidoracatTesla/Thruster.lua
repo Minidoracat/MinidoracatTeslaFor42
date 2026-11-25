@@ -490,7 +490,7 @@ local function stop(done, ...)
     local glide = f.act == "fly" and not rest and (f.glide or (f.brake and f.t)) or nil
     -- why: the show's own refusal (go), for the server to tell the phone app that and not THRUST_NO_LIFT
     T.request(f.player, "thrustEnd", { vid = f.vid, act = f.act, done = done == true, sec = f.flown, abort = abort,
-        n = f.n, term = f.term, rest = rest, glide = glide, why = f.app and why or nil })
+        n = f.n, term = f.term, rest = rest, glide = glide, why = f.app == "show" and why or nil })
     if why then HaloTextHelper.addBadText(f.player, T.denyText(why)) end
 end
 

@@ -96,9 +96,9 @@ local handlers = {}
 Events = setmetatable({}, {
     __index = function(t, name)
         local ev = { Add = function(fn) handlers[name] = handlers[name] or {}; table.insert(handlers[name], fn) end,
-            Remove = function(fn)
+            Remove = function(fn) -- the first one only, as the game's (Event.java:119): one added twice stays once
                 local list = handlers[name] or {}
-                for i = #list, 1, -1 do if list[i] == fn then table.remove(list, i) end end
+                for i = 1, #list do if list[i] == fn then table.remove(list, i) break end end
             end }
         rawset(t, name, ev)
         return ev

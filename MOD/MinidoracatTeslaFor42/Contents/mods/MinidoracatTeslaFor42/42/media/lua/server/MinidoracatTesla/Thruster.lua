@@ -607,7 +607,7 @@ cmds.thrustEnd = function(player, args)
     if not p.helper then p.sec = tonumber(args.sec) end
     local done = args.done == true
     finish(v, p, done)
-    if p.app and not done then appTell(p, p.why or "THRUST_NO_LIFT") end
+    if p.app and not done then appTell(p, "THRUST_NO_LIFT") end -- single player: no safehouse refuses (p.why never set)
 end
 
 -- Battery.lua T.Update.Battery, each game minute while the car's parts update: the refill's kWh as it goes, the

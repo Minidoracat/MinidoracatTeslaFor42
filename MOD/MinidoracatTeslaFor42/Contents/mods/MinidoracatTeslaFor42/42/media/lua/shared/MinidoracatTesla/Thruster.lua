@@ -20,14 +20,16 @@ H.HELP_RANGE = 70 -- tiles: who takes over a car left in the air (server Thruste
 -- the 10 m the caller's game clears (client Thruster.lua clearPath; thrsafe-1126g tappfar), and 4.2 m aside
 -- (thrsafe-1126a tkickm); its far corner is 2.4 m more
 H.SHOW_REACH = 12
--- and seconds of the car's own speed more: one still rolling keeps its speed through the stunt (client Thruster.lua
--- go: no roll-up from conf.rollKmh up; the kickflip is 3.8 s in the air, PROF) and stops after it. A car its driver
--- left at 28 km/h 10 m out, the show asked at once: 8.7 m inside (thrsafe-1126m, no speed looked at). Its speed is the
--- larger of two readings (H.showTrespass): getCurrentSpeedKmHour is the truth on the machine with its physics (the
--- caller's as the show starts: go) and 0 on a server for an empty car (BaseVehicle.java:4346-4354); getSpeed2D is the
--- last physics sample's (:4364-4368), on a server what the car did as its driver left it (8.6 m/s then, and still so
--- with the car standing until someone's physics moves it again: thrsafe-1126n). So the server refuses a car just
--- left rolling by itself, and one left so stays refused (within that reach of such a safehouse) until driven again
+-- and seconds more of the car's speed past conf.rollKmh: one rolling faster keeps its speed through the stunt (client
+-- Thruster.lua go: no roll-up from conf.rollKmh up; the kickflip is 3.8 s in the air, PROF) and stops after it; up to
+-- conf.rollKmh is in H.SHOW_REACH already (a stunt from rest rolls up to it first). A car its driver left at 28 km/h
+-- 10 m out, the show asked at once: 8.7 m inside (thrsafe-1126m, no speed looked at). Its speed is the larger of two
+-- readings (H.showTrespass): getCurrentSpeedKmHour is the truth on the machine with its physics (the caller's as the
+-- show starts: go) and 0 on a server for an empty car (BaseVehicle.java:4346-4354); getSpeed2D is the last physics
+-- sample's (:4364-4368), on a server what the car did as whoever had its physics let go: 8.6 m/s as its driver left
+-- it rolling, and still so with the car standing until someone's physics moves it again; conf.rollKmh after a show
+-- of its own (thrsafe-1126n). So the server refuses a car just left rolling by itself, and one left so stays refused
+-- (within that reach of such a safehouse) until driven again
 H.SHOW_CARRY_S = 6
 H.FLOOR = 2.44949 -- metres per floor: physics y / getDebugZ (flight PoC r1, BaseVehicle.java:4207)
 -- seconds a flight's landing glides on at its height at most before it comes down (client Thruster.lua f.brake); the
@@ -161,8 +163,8 @@ end
 function H.showTrespass(player, vehicle)
     if not SafeHouse then return false end -- the game always has it (LuaManager exposes the class); a test may not
     local x, y = vehicle:getX(), vehicle:getY()
-    local r = H.SHOW_REACH
-        + math.max(math.abs(vehicle:getCurrentSpeedKmHour()) / 3.6, vehicle:getSpeed2D()) * H.SHOW_CARRY_S
+    local s = math.max(math.abs(vehicle:getCurrentSpeedKmHour()) / 3.6, vehicle:getSpeed2D())
+    local r = H.SHOW_REACH + math.max(0, s - H.conf(vehicle).rollKmh / 3.6) * H.SHOW_CARRY_S
     local list = SafeHouse.getSafehouseList()
     for i = 0, list:size() - 1 do
         local s = list:get(i)
