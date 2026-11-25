@@ -1,26 +1,41 @@
-[h1]Minidoracat Tesla Collection for B42 42.22.2-0.12.0[/h1]
-[i]2026-11-23[/i]
+[h1]Minidoracat Tesla Collection for B42 42.22.2-0.13.0[/h1]
+[i]2026-11-26[/i]
 
 [b]English summary[/b]
 [list]
-[*] New option: Speed and distance units. Open the game's Options, go to the Mods tab and find Minidoracat Tesla Collection; choose Imperial to see mph, miles and feet on the dashboard, the charge card and the phone app. Metric is the default, and it changes only what is shown.
-[*] The option is set per computer, and it applies as soon as you press Apply. AutoDrive's autopilot card has its own option of the same name.
-[*] Servers with VehicleManager: update both mods together (VehicleManager 42.22.2-0.15.0 or newer). Unlock Hood on the V radial menu now tells you why it is refused instead of doing nothing.
-[*] Servers with VehicleManager and virtual keys off: a player who was shared only the Cargo permission can now unlock the liftgate with the phone key in a bag.
-[*] Servers with VehicleManager: Tesla's own checks no longer leave duplicate entries in VehicleManager's log.
+[*] New car: the Tesla Roadster Rocket, the single-seat version of the new Roadster with thrusters. It spawns only in upscale neighbourhoods, in Ano White only, and reaches 100 km/h in about 2.6 seconds.
+[*] Thrusters: in the driver's seat with the car on, open the V radial menu and choose Thrusters. Kickflip jumps about 8 m and rolls once, Backflip flips backwards, and Boost reaches about 97 km/h in 0.6 seconds.
+[*] Fly hovers about 3 m above the ground: steer with the driving keys, Space to climb and C to descend. Choose Land or press the exit key to come down. Every action uses thruster air, refilled from the battery.
+[*] If the car falls from a height or tilts too far in the air, the thrusters take over and land it on its wheels. From the phone app, the empty car can Kickflip or Backflip within 30 tiles.
+[*] The four moves have no key by default: bind them under Thrusters on the Mods tab of the game's Options. Servers can turn thrusters off, change the flight time or allow unlimited flight in the sandbox options.
+[*] Fixed: the charging plug on a Semi no longer floats about 15 cm above its charge port.
 [/list]
 
 [h3]✨ 新增[/h3]
 [list]
-[*] [b]速度與距離單位可以改成英制[/b]：主選單或遊戲中按 ESC →「選項」→「模組」分頁多一個「Minidoracat Tesla Collection」區段，裡面的「速度與距離單位」可以選「公制（km/h、公里）」或「英制（mph、英里）」，預設公制。
-[*] [b]選英制後換哪些地方[/b]：儀表的車速顯示 mph、續航顯示 mi；低電量與充電中的提示、充電卡增加的續航改用英里；手機 App 的續航、車子離你多遠、召喚範圍與召喚中的車速改用英里、英尺與 mph。
-[*] [b]只改畫面上的數字[/b]：車怎麼開、耗電與續航都不變。每台電腦各設各的（分割畫面的玩家共用），伺服器不用設定；按「套用」後不用下車就會換。AutoDrive 的自動駕駛卡片有它自己的同名選項，兩邊各設各的。
+[*] [b]第十台車：特斯拉 Roadster Rocket[/b]：特斯拉 2026 年發表的新一代 Roadster 裡帶推進器、只有一個座位的版本。只停在高級住宅區，是那裡最少見的特斯拉，只有 Ano White 一種顏色。
+[list]
+[*] 性能與充電：0 到 100 km/h 約 2.6 秒，全系列起步最快。電池是「Roadster Rocket 高電壓電池（150 kWh）」，超級充電座最高 500 kW，10% 到 90% 約 35 分鐘（遊戲時間）。
+[*] 車身：兩扇車門往上外翻開；座椅後方的後窗是行李廂蓋，前面沒有前車廂。只有駕駛座，右邊車門照樣開得了，但不能坐人。
+[*] 尾翼：充電口在左後角的「尾翼」後面，插上充電線時尾翼會自己升起、拔線後放下。停著時也能點儀表車尾或用手機 App 控制頁的「尾翼」升降。
+[*] 卡片鑰匙、手機鑰匙、App、哨兵、露營、舒適模式、升級件與 Project Viewpoint 車內細節都和其他特斯拉一樣。沒有 HEPA 濾網，所以沒有生物武器防禦模式。
+[*] 車身照官方公開的資料與示範影片做，官方沒公開的（例如尺寸）照官方圖片估。
+[/list]
+[*] [b]推進器：Roadster Rocket 能側翻、後空翻、推進起步與飛行[/b]：坐駕駛座、車子發動著，按 V 鍵圓盤選「推進器」，有四個動作。
+[list]
+[*] 「Kickflip 側翻」往上跳約 8 公尺、側翻一圈落地；「後空翻」往後翻一圈；「推進起步」往前猛推一下，約 0.6 秒到約 97 km/h。
+[*] 「飛行」離地約 3 公尺懸停，用駕駛鍵前後左右飛，Space 飛高、C 飛低（離地 1～5 公尺）。再選「降落」、按「飛行／降落」鍵或下車鍵就會減速落地。
+[*] 飛行時儀表的提醒膠囊顯示剩幾秒與按鍵。
+[*] 每個動作耗推進器氣罐的空氣，圓盤上的「推進器」會寫剩多少。氣罐會用高電壓電池的電慢慢補滿，儀表電池區滑過去看得到「推進器空氣」與多久補滿。
+[*] 不能用的動作在圓盤上變灰、第二行寫原因（空氣不夠、太快、前方或上方有東西擋住、插著充電線等）。
+[*] 從高處掉下來或在空中翻得太斜時，推進器會自動接手，四輪著地軟著陸。
+[*] 手機 App 控制頁多了「Kickflip 側翻」與「後空翻」，車上沒人時你在 30 格內就能叫空車表演。
+[*] 四個動作的按鍵在「選項」→「模組」分頁的「推進器」底下設定，預設沒有按鍵。
+[*] 噴氣聲會引來殭屍，範圍和喇叭一樣。
+[/list]
 [/list]
 
 [h3]🔧 修正[/h3]
 [list]
-[*] [b]搭配 VehicleManager 的伺服器請兩個 MOD 一起更新[/b]：這一版要搭配 VehicleManager 42.22.2-0.15.0 以上。
-[*] [b]裝了 VehicleManager 的伺服器，沒有前蓋權限的人按圓盤「解鎖前蓋」沒有任何反應[/b]：身上帶著這台車的鑰匙、但沒被分享「安裝修理」或「拆零件」權限的玩家，從車外按 V 鍵圓盤選「解鎖前蓋」，角色什麼也不做，也沒有說明。現在會顯示 VehicleManager 的拒絕說明，前蓋照樣鎖著（分割畫面的第 2 位玩家目前還看不到這則說明）。
-[*] [b]裝了 VehicleManager、關閉虛擬鑰匙的伺服器，只被分享「載貨」權限的人用袋子裡的手機鑰匙解不開鎖著的尾門[/b]：現在拉尾門把手會解鎖。車門與前蓋的規則不變。
-[*] [b]裝了 VehicleManager 的伺服器，特斯拉的檢查不再多留重複的紀錄[/b]：打開前蓋、修理或拆取驅動單元前的檢查，還有哨兵模式判斷碰車的人是不是自己人，以前有時會在 VehicleManager 多留一筆紀錄。現在這些檢查不留紀錄；真正被拒絕的操作照舊留下紀錄。
+[*] [b]Semi 的充電線插頭浮在充電口上方[/b]：插著充電線的 Semi，插頭比車身上的充電口高約 15 公分。現在照實測的充電口高度重做，插頭會插在充電口上。
 [/list]
