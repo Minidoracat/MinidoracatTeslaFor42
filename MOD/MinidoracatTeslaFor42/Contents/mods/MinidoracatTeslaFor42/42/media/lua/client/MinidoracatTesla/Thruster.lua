@@ -999,12 +999,14 @@ function H.flight(player, v)
     return f.sec and math.max(0, math.ceil(f.sec - f.flown)) or true
 end
 -- why refused, in words; THRUST_NO_AIR adds when this car's tank is full again, or that the pack can't pay to fill
--- it (H.refillShort) (v may be nil: a car not loaded here)
+-- it (H.refillShort), after " · " as the dashboard's Tip_ThrustTankRefill joins them (v may be nil: a car not loaded
+-- here). The dot is U+00B7 as UTF-8 escapes: Kahlua cuts a non-ASCII literal to one byte (verify_mod 4b)
+local DOT = " \194\183 "
 function H.whyText(v, why)
     local s = T.denyText(why)
     local a = why == "THRUST_NO_AIR" and v and H.air(v)
     if a and a < 1 then
-        s = s .. " " .. (H.refillShort(v) and getText("IGUI_MinidoracatTesla_Thrust_RefillLow")
+        s = s .. DOT .. (H.refillShort(v) and getText("IGUI_MinidoracatTesla_Thrust_RefillLow")
             or getText("IGUI_MinidoracatTesla_Thrust_Refill", tostring(H.minutesToFull(a))))
     end
     return s
