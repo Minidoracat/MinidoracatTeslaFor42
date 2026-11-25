@@ -87,6 +87,7 @@ local function car(o)
     v.reads = 0 -- the car's height and speed read: by a look, never by a frame between them
     function v:getVehicleTowing() return self.towing end
     function v:getLinearVelocity(o) return o:set(0, 0, self.lv or 0) end -- the holder's last sample (server, T4)
+    function v:getSpeed2D() return math.abs(self.lv or 0) end -- that sample's, level (BaseVehicle.java:4364-4368)
     function v:getDebugZ() self.reads = self.reads + 1 return self.dz or 0 end
     function v:getCurrentSpeedKmHour() self.reads = self.reads + 1 return self.speed end
     function v:authorizationChanged(q) self.npid = q and q:getOnlineID() or -1 end
@@ -739,15 +740,19 @@ do -- a safehouse the caller may not walk into within H.SHOW_REACH of the car: n
     houses = { rect(fx - 20, fy - 3, 9, 8, false) }
     check(show(caller, "kickflip") == "THRUST_SAFEHOUSE", "a metre more of the western one: refused")
     v.x = x0
-    -- the car's speed: H.SHOW_CARRY_S of it further (6 s: a house 24.5 m off is out of reach at 2 km/h, 15.3 m, and in
-    -- it at 10 km/h, 28.7 m; a second of it would be 14.8 m)
+    -- the car's speed: H.SHOW_CARRY_S of it further. A server reads none of an empty car (getCurrentSpeedKmHour 0) but
+    -- holds its last physics sample (lv, thrsafe-1126n): a house 24.5 m off is out of reach at 0.5 m/s (15 m) and in it
+    -- at 2.8 m/s (28.8 m; a second of it would be 14.8 m). The larger of the two readings counts
     houses = { rect(fx + 25, fy - 3, 8, 8, false) }
     check(show(caller, "kickflip") == "THRUST_BUSY", "a safehouse 24.5 m off, the car at rest: no refusal of its own")
-    v.speed = 2
-    check(show(caller, "kickflip") == "THRUST_BUSY", "... the empty car rolling at 2 km/h: still out of reach")
-    v.speed = 10
-    check(show(caller, "kickflip") == "THRUST_SAFEHOUSE", "... at 10 km/h: refused")
-    v.speed, v.npid = 0, nil
+    local lv0 = v.lv
+    v.lv = 0.5
+    check(show(caller, "kickflip") == "THRUST_BUSY", "... the empty car's last sample 0.5 m/s: still out of reach")
+    v.lv = 2.8
+    check(show(caller, "kickflip") == "THRUST_SAFEHOUSE", "... 2.8 m/s, as its driver left it rolling: refused by the server itself")
+    v.lv, v.speed = 0, 10
+    check(show(caller, "kickflip") == "THRUST_SAFEHOUSE", "... or read at 10 km/h (the machine with its physics): refused")
+    v.lv, v.speed, v.npid = lv0, 0, nil
     SafeHouse, getCell = savedSafe, savedCell
 end
 v.npid = 99
@@ -1282,8 +1287,14 @@ do -- the safehouse rule again as the show starts, by the car as this machine ha
     cv.local_ = true
     sent, imp0 = #H.clientSent, cv.impulses or 0
     TH.tick()
-    refused(507, "... the car still rolling at 10 km/h on this machine: refused (the server, reading none, let it by)")
-    cv.speed = 0
+    refused(507, "... the car still rolling at 10 km/h on this machine: refused")
+    cv.speed, cv.lv, cv.local_ = 0, 2.8, false
+    T.ClientCommands.thrustOk({ vid = cv:getId(), act = "kickflip", app = true, n = 508, pn = 0 })
+    cv.local_ = true
+    sent, imp0 = #H.clientSent, cv.impulses or 0
+    TH.tick()
+    refused(508, "... or its last sample 2.8 m/s: refused")
+    cv.lv = nil
     SafeHouse = savedSafe
 end
 cv.local_, cv.dz = false, 1.075
