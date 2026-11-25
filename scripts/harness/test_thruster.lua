@@ -699,7 +699,10 @@ do -- a safehouse the caller may not walk into within H.SHOW_REACH of the car: n
     end
     SafeHouse = {
         getSafehouseList = function()
-            return { size = function() return #houses end, get = function(_, i) return houses[i + 1] end }
+            return { size = function() return #houses end, get = function(_, i)
+                if i < 0 or i >= #houses then error("safehouse list index " .. tostring(i)) end -- as ArrayList.get
+                return houses[i + 1]
+            end }
         end,
         isSafehouseAllowTrepass = function(sq, pl)
             sqAsked = sq
@@ -722,6 +725,9 @@ do -- a safehouse the caller may not walk into within H.SHOW_REACH of the car: n
     check(show(caller, "kickflip") == "THRUST_BUSY", "a safehouse he may enter: no refusal of its own")
     houses = { rect(fx + 11, fy - 3, 8, 8, true), rect(fx - 18, fy - 3, 8, 8, false) }
     check(show(caller, "kickflip") == "THRUST_SAFEHOUSE", "his own first in the list, another's on the car's other side: refused")
+    houses = { rect(fx - 3, fy + 11, 8, 8, false) }
+    check(show(caller, "kickflip") == "THRUST_SAFEHOUSE" and sqAsked.x == fx and sqAsked.y == fy + 11,
+        "one to the south only (y in reach): refused, asked by its square nearest the car")
     houses = { rect(fx + 13, fy - 3, 8, 8, false) }
     check(show(caller, "kickflip") == "THRUST_BUSY", "a safehouse past the reach: no refusal of its own")
     v.speed = 10 -- 2.8 m/s: H.SHOW_CARRY_S of it reaches 16.7 m further

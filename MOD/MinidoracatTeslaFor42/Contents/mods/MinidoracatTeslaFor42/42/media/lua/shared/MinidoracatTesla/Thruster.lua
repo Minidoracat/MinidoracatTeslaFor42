@@ -15,9 +15,10 @@ H.ACTS = { kickflip = true, backflip = true, boost = true, land = true, fly = tr
 H.APP = { kickflip = true, backflip = true } -- the phone app's show: the empty car, the caller outside
 H.APP_RANGE = 30  -- tiles from the caller: the car must be loaded on his game, which flies it (poc/APP.md)
 H.HELP_RANGE = 70 -- tiles: who takes over a car left in the air (server Thruster.lua)
--- metres about the show's car within which a safehouse its caller may not enter refuses it (showTrespass): a stunt
--- from rest comes down inside the 10 m the caller's game clears ahead (client Thruster.lua clearPath; 7.3 m,
--- thrsafe-1126g tappfar), up to 4 m aside (thrsafe-1126a tkickm), and the car is 4.4 m long
+-- metres about the show's car (either axis) within which a safehouse its caller may not enter refuses it
+-- (showTrespass). A stunt from rest moves the car's middle 8.5 m at most whichever way it faces: 7.3 m ahead, inside
+-- the 10 m the caller's game clears (client Thruster.lua clearPath; thrsafe-1126g tappfar), and 4.2 m aside
+-- (thrsafe-1126a tkickm); its far corner is 2.4 m more
 H.SHOW_REACH = 12
 -- and seconds of the car's own speed more: one still rolling keeps its speed through the stunt (client Thruster.lua
 -- go: no roll-up from conf.rollKmh up; the kickflip is 3.8 s in the air, PROF) and stops after it
@@ -152,7 +153,7 @@ end
 -- loaded refuses). Nobody rides the show's car, and what keeps a car out of a safehouse (the Safehouse mod's vehicle
 -- block) stops it through its driver: the empty car came down 2.29 m inside (thrsafe-1126a tapp).
 local function showTrespass(player, vehicle)
-    if not SafeHouse then return false end
+    if not SafeHouse then return false end -- the game always has it (LuaManager exposes the class); a test may not
     local x, y = vehicle:getX(), vehicle:getY()
     local r = H.SHOW_REACH + math.abs(vehicle:getCurrentSpeedKmHour()) / 3.6 * H.SHOW_CARRY_S
     local list = SafeHouse.getSafehouseList()

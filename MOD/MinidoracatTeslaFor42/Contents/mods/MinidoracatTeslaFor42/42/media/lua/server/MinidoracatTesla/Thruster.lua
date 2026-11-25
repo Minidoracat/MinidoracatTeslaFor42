@@ -403,9 +403,9 @@ local function witness(v, p)
 end
 
 -- the show still allowed as when it was approved: its caller online, near, with DRIVE, still holding the phone key
--- with the car in the phone's reach (Remote.lua R.appLink: NO_PHONE_KEY, NO_LINK); the car free, no cable in, its
--- busy flag still this show's (H.can with it and the air it took aside). false and the reason (nil: the caller is
--- gone, nobody to tell)
+-- with the car in the phone's reach (Remote.lua R.appLink: NO_PHONE_KEY, NO_LINK); the car free, no cable in, no
+-- safehouse he may not enter in the show's reach, its busy flag still this show's (H.can with it and the air it took
+-- aside). false and the reason (nil: the caller is gone, nobody to tell)
 local function stillOk(v, p)
     if isServer() then
         local list, on = getOnlinePlayers(), false
