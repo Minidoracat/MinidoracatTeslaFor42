@@ -1433,6 +1433,16 @@ check(#tipLines >= 3 and tipOk and table.concat(tipLines, " ", 2) == "Charge lev
 -- balanced lines (Core.lua T.wrapText): the greedy "Powers the home in a / blackout" comes out even
 check(T.wrapText("Powers the home in a blackout", 220, UIFont.Medium) == "Powers the home\nin a blackout",
     "radial: two lines come out even, not a long line and one word")
+-- " · " (U+00B7, the thrusters' whyText join): the space before the dot holds, the one after breaks (8 px a byte, the
+-- dot 2 bytes): room up to the dot ends the line before the word ahead of it, never a line starting with the dot
+do
+    local s = "aa word \194\183 next"
+    local l1, rest = T.cutLine(s, 8 * 8, UIFont.Medium) -- "aa word " fits, "aa word ·" does not
+    check(l1 == "aa" and rest == "word \194\183 next", "cutLine: the room ends before the dot: the line breaks before its word ("
+        .. l1 .. "|" .. rest .. ")")
+    l1, rest = T.cutLine(s, 10 * 8, UIFont.Medium)
+    check(l1 == "aa word \194\183" and rest == "next", "cutLine: room for the dot: broken after it (" .. l1 .. "|" .. rest .. ")")
+end
 local sleep = menu.slices[2]
 check(sleep.text == "Sleep\nTooltip_BedType" and sleep.fn == ISVehicleMenu.onSleep, "radial: vanilla Sleep slice gets the bed quality line")
 check(ISWorldObjectContextMenu.getBedQuality(p, nil) == "badBed", "bed: not camping -> vanilla bad bed")

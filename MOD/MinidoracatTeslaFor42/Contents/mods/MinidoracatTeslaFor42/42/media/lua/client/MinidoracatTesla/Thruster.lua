@@ -999,12 +999,14 @@ function H.flight(player, v)
     return f.sec and math.max(0, math.ceil(f.sec - f.flown)) or true
 end
 -- why refused, in words; THRUST_NO_AIR adds when this car's tank is full again, or that the pack can't pay to fill
--- it (H.refillShort) (v may be nil: a car not loaded here)
+-- it (H.refillShort), after " · " as the dashboard's Tip_ThrustTankRefill joins them (v may be nil: a car not loaded
+-- here). The dot is U+00B7 as UTF-8 escapes: Kahlua cuts a non-ASCII literal to one byte (verify_mod 4b)
+local DOT = " \194\183 "
 function H.whyText(v, why)
     local s = T.denyText(why)
     local a = why == "THRUST_NO_AIR" and v and H.air(v)
     if a and a < 1 then
-        s = s .. " " .. (H.refillShort(v) and getText("IGUI_MinidoracatTesla_Thrust_RefillLow")
+        s = s .. DOT .. (H.refillShort(v) and getText("IGUI_MinidoracatTesla_Thrust_RefillLow")
             or getText("IGUI_MinidoracatTesla_Thrust_Refill", tostring(H.minutesToFull(a))))
     end
     return s
@@ -1166,14 +1168,19 @@ local NAME = { kickflip = "Kickflip", backflip = "Backflip", boost = "Boost", fl
 local function line2(s) return "\n" .. T.wrapText(s, 220, UIFont.Medium) end -- the ring's width (HUDRadial.lua LINE_W)
 local function onAct(player, v, act) H.ask(player, v, act) end
 -- how to fly, with the keys bound now (the up / down binds; vanilla's exit, the Interact key: getting out lands it,
--- ISVehicleMenu.onExit below); a controller's player: the controller's way (the key with "Pad"). The ring's words, or
--- the ones given (the dashboard's flying pill: "IGUI_MinidoracatTesla_HUD_FlyKeys", HUD.lua setMessage)
+-- ISVehicleMenu.onExit below); a key unbound says so (getKeyName(0) is "NONE", r2ui-ch-a); a controller's player: the
+-- controller's way (the key with "Pad"). The ring's words, or the ones given (the dashboard's flying pill:
+-- "IGUI_MinidoracatTesla_HUD_FlyKeys", HUD.lua setMessage)
+local function keyName(k)
+    if (k or 0) > 0 then return getKeyName(k) end
+    return getText("IGUI_MinidoracatTesla_KeyUnbound")
+end
 function H.flyTip(player, ...)
     local key = ... or "IGUI_MinidoracatTesla_Tip_ThrustFly"
     if player:getJoypadBind() ~= -1 then return getText(key .. "Pad") end
     local up, down = KEYS.up, KEYS.down
-    return getText(key, getKeyName(up and up:getValue() or 0), getKeyName(down and down:getValue() or 0),
-        getKeyName(getCore():getKey("Interact")))
+    return getText(key, keyName(up and up:getValue()), keyName(down and down:getValue()),
+        keyName(getCore():getKey("Interact")))
 end
 
 function H.openRing(player, v)

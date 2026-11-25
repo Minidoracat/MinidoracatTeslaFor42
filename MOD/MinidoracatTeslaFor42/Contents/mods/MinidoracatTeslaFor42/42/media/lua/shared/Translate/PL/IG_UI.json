@@ -69,6 +69,7 @@
     "IGUI_MinidoracatTesla_HUD_FlyLanding": "Lądowanie",
     "IGUI_MinidoracatTesla_HUD_FlyKeys": "%1 / %2 wysokość · %3 lądowanie",
     "IGUI_MinidoracatTesla_HUD_FlyKeysPad": "Prawa gałka wysokość · A lądowanie",
+    "IGUI_MinidoracatTesla_KeyUnbound": "(nieprzypisany)",
     "IGUI_MinidoracatTesla_Radial_ThrustLand": "Ląduj",
     "IGUI_MinidoracatTesla_Tip_ThrustAir": "Powietrze %1%%",
     "IGUI_MinidoracatTesla_Thrust_Refill": "Pełny za %1 min",

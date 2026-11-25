@@ -69,6 +69,7 @@
     "IGUI_MinidoracatTesla_HUD_FlyLanding": "着陸中",
     "IGUI_MinidoracatTesla_HUD_FlyKeys": "%1 / %2 で高度 · %3 で着陸",
     "IGUI_MinidoracatTesla_HUD_FlyKeysPad": "右スティックで高度 · A で着陸",
+    "IGUI_MinidoracatTesla_KeyUnbound": "無",
     "IGUI_MinidoracatTesla_Radial_ThrustLand": "着陸",
     "IGUI_MinidoracatTesla_Tip_ThrustAir": "空気 %1%%",
     "IGUI_MinidoracatTesla_Thrust_Refill": "あと %1 分で満タン",

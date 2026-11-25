@@ -923,7 +923,8 @@ end
 -- The family rules (pitfalls.md "self-written wrapping", "CJK code point ranges", "French punctuation"), copied from
 -- MinidoracatUI TextWrap.cut (this mod does not require the UI framework). A line may end at a space or beside a CJK
 -- character, not before closing punctuation (Japanese small kana, the long vowel mark) nor after an opening one; the
--- space before French ":;!?" and the one between a number and a CJK unit ("2 マス") hold. Kahlua strings are UTF-16
+-- space before French ":;!?" or a middle dot (" · " joins two phrases: the dot ends the line, never starts one) and the
+-- one between a number and a CJK unit ("2 マス") hold. Kahlua strings are UTF-16
 -- units, the harness's Lua is UTF-8 bytes: cuts land on character boundaries in both. Numbers only (Kahlua cuts
 -- non-ASCII literals). The app's old wrap took the last space in the right half: Japanese "...から 2 / マス...".
 -- One difference from TextWrap: Hangul syllables break at spaces only, like Korean UIs do (keep-all); breaking them
@@ -939,7 +940,9 @@ local NO_START = codeSet({ 0x21, 0x29, 0x2C, 0x2E, 0x3A, 0x3B, 0x3F, 0x5D, 0x7D,
     0x30A1, 0x30A3, 0x30A5, 0x30A7, 0x30A9, 0x30C3, 0x30E3, 0x30E5, 0x30E7, 0x30EE, 0x30F5, 0x30F6, 0x30FC })
 local NO_END = codeSet({ 0x28, 0x5B, 0x7B, 0x2018, 0x201C, 0x3008, 0x300A, 0x300C, 0x300E, 0x3010, 0x3014, 0x3016,
     0x3018, 0x301A, 0x301C, 0x301D, 0xFF08, 0xFF3B, 0xFF5B, 0xFF5E, 0xFF62 })
-local FRENCH_BEFORE, FRENCH_AFTER = codeSet({ 0x21, 0x3A, 0x3B, 0x3F, 0xBB }), 0xAB
+-- the space before these holds (French ":;!?", a right guillemet, the middle dot U+00B7), the space after GLUE_AFTER
+-- (a left guillemet) too
+local GLUE_BEFORE, GLUE_AFTER = codeSet({ 0x21, 0x3A, 0x3B, 0x3F, 0xB7, 0xBB }), 0xAB
 -- CJK ideographs and symbols, kana, fullwidth forms, astral characters: a line may break on either side
 local function ideographic(c)
     return (c >= 0x2E80 and c <= 0x9FFF) or (c >= 0xF900 and c <= 0xFAFF)
@@ -967,17 +970,17 @@ local function codeAt(s, i)
     local b2, b3 = string.byte(s, i + 1, i + 2)
     return (unit - 0xE0) * 4096 + (b2 - 0x80) * 64 + (b3 - 0x80)
 end
--- the spaces around unit n hold both sides: after a left guillemet, before French ":;!?" / a right guillemet, or
--- between an ASCII digit (or digit %) and a CJK character
+-- the spaces around unit n hold both sides: after a left guillemet, before French ":;!?" / a right guillemet / a middle
+-- dot, or between an ASCII digit (or digit %) and a CJK character
 local function gluedSpace(s, n)
     local i = n
     while i > 0 and string.byte(s, i) == 32 do i = i - 1 end
-    if i > 0 and codeAt(s, boundary(s, i - 1) + 1) == FRENCH_AFTER then return true end
+    if i > 0 and codeAt(s, boundary(s, i - 1) + 1) == GLUE_AFTER then return true end
     local j, len = n + 1, #s
     while j <= len and string.byte(s, j) == 32 do j = j + 1 end
     if i == 0 or j > len then return false end
     local right = codeAt(s, j)
-    if FRENCH_BEFORE[right] then return true end
+    if GLUE_BEFORE[right] then return true end
     local left = string.byte(s, i)
     if left == 37 and i > 1 then left = string.byte(s, i - 1) end
     return left >= 0x30 and left <= 0x39 and ideographic(right)

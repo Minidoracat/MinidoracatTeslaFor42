@@ -1083,8 +1083,8 @@ cpart:getModData().thr = { gas = 0.5, at = H.hours() }
 T.ClientCommands.deny({ reason = "THRUST_NO_AIR", vid = cv:getId(), pn = 0, n = lastN() })
 said = halo[#halo]
 cpart:getModData().thr = { gas = 1, at = H.hours() }
-check(said == "IGUI_MinidoracatTesla_Deny_THRUST_NO_AIR IGUI_MinidoracatTesla_Thrust_Refill" and TH.check(cp, cv, "boost"),
-    "F2: refused by the server: said with when the tank is full again (H.whyText), the ask answered (the next one may go)")
+check(said == "IGUI_MinidoracatTesla_Deny_THRUST_NO_AIR \194\183 IGUI_MinidoracatTesla_Thrust_Refill" and TH.check(cp, cv, "boost"),
+    "F2: refused by the server: said with when the tank is full again after ' · ' (H.whyText), the ask answered (the next one may go)")
 check(TH.whyText(nil, "THRUST_NO_AIR") == "IGUI_MinidoracatTesla_Deny_THRUST_NO_AIR"
     and TH.whyText(cv, "THRUST_NO_AIR") == "IGUI_MinidoracatTesla_Deny_THRUST_NO_AIR", "no car, or a full tank: no refill time")
 -- T7: the pack pays the refill down to its 12V floor only (server H.refill): the client's estimate stops where the
@@ -1096,17 +1096,17 @@ do
     cpart:getModData().thr = { gas = 0.5, at = H.hours() - 1 } -- an hour ago: the plain estimate is full
     cpart:setContainerContentAmount(floor)
     check(near(TH.air(cv), 0.5, 1e-6) and TH.refillShort(cv) == true
-        and TH.whyText(cv, "THRUST_NO_AIR") == NO_AIR .. " IGUI_MinidoracatTesla_Thrust_RefillLow",
+        and TH.whyText(cv, "THRUST_NO_AIR") == NO_AIR .. " \194\183 IGUI_MinidoracatTesla_Thrust_RefillLow",
         "T7: the pack at its floor: the air stays at the settled 50 %, short, the reason says charge the battery")
     cpart:setContainerContentAmount(floor + 10)
     check(near(TH.air(cv), 0.75, 1e-6) and TH.refillShort(cv) == true
-        and TH.whyText(cv, "THRUST_NO_AIR") == NO_AIR .. " IGUI_MinidoracatTesla_Thrust_RefillLow",
+        and TH.whyText(cv, "THRUST_NO_AIR") == NO_AIR .. " \194\183 IGUI_MinidoracatTesla_Thrust_RefillLow",
         "T7: 10 kWh over the floor: a quarter tank more (40 kWh a tank), still short of full")
     cpart:setContainerContentAmount(floor + 20)
     check(near(TH.air(cv), 1, 1e-6) and TH.refillShort(cv) == false and TH.whyText(cv, "THRUST_NO_AIR") == NO_AIR,
         "T7: 20 kWh over the floor pays the half tank: full, not short")
     cpart:getModData().thr = { gas = 0.5, at = H.hours() }
-    check(TH.refillShort(cv) == false and TH.whyText(cv, "THRUST_NO_AIR") == NO_AIR .. " IGUI_MinidoracatTesla_Thrust_Refill",
+    check(TH.refillShort(cv) == false and TH.whyText(cv, "THRUST_NO_AIR") == NO_AIR .. " \194\183 IGUI_MinidoracatTesla_Thrust_Refill",
         "T7: the pack can pay it: the minutes to full, as before")
     cpart:getModData().thr = { gas = 0.5, at = H.hours() - 1 }
     cpart:setContainerContentAmount(floor)
@@ -1887,11 +1887,16 @@ getText = function(k, ...) return table.concat({ k, ... }, "|") end
 getKeyName = function(k) return "K" .. tostring(k) end
 local padTip, padPill = TH.flyTip(cp), TH.flyTip(cp, "IGUI_MinidoracatTesla_HUD_FlyKeys")
 cp.pad = nil
-check(padTip == "IGUI_MinidoracatTesla_Tip_ThrustFlyPad" and TH.flyTip(cp) == "IGUI_MinidoracatTesla_Tip_ThrustFly|K57|K0|K0",
-    "the flying tip names the keys bound now (an unbound one: its 0); a controller's player: the controller's tip")
-check(padPill == "IGUI_MinidoracatTesla_HUD_FlyKeysPad"
-    and TH.flyTip(cp, "IGUI_MinidoracatTesla_HUD_FlyKeys") == "IGUI_MinidoracatTesla_HUD_FlyKeys|K57|K0|K0",
-    "the dashboard's flying pill: its own short words, the same keys")
+do
+    local U = "IGUI_MinidoracatTesla_KeyUnbound"
+    check(padTip == "IGUI_MinidoracatTesla_Tip_ThrustFlyPad"
+        and TH.flyTip(cp) == "IGUI_MinidoracatTesla_Tip_ThrustFly|K57|" .. U .. "|" .. U,
+        "the flying tip names the keys bound now (an unbound one: the unbound word, not getKeyName(0)'s NONE, r2ui-ch-a); "
+        .. "a controller's player: the controller's tip")
+    check(padPill == "IGUI_MinidoracatTesla_HUD_FlyKeysPad"
+        and TH.flyTip(cp, "IGUI_MinidoracatTesla_HUD_FlyKeys") == "IGUI_MinidoracatTesla_HUD_FlyKeys|K57|" .. U .. "|" .. U,
+        "the dashboard's flying pill: its own short words, the same keys")
+end
 getText, getKeyName = realGetText, realKeyName
 -- the dashboard's flying pill (HUD.lua): the whole seconds of air left, real time counting them down as the server's
 -- D2 does; FreeFlight (no limit): true; "land" once landing is asked; nobody else's (a passenger, another car)

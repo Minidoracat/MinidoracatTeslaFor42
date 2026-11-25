@@ -69,6 +69,7 @@
     "IGUI_MinidoracatTesla_HUD_FlyLanding": "Aterrizando",
     "IGUI_MinidoracatTesla_HUD_FlyKeys": "%1 / %2 altura · %3 aterriza",
     "IGUI_MinidoracatTesla_HUD_FlyKeysPad": "Stick derecho altura · A aterriza",
+    "IGUI_MinidoracatTesla_KeyUnbound": "(sin asignar)",
     "IGUI_MinidoracatTesla_Radial_ThrustLand": "Aterrizar",
     "IGUI_MinidoracatTesla_Tip_ThrustAir": "Aire %1%%",
     "IGUI_MinidoracatTesla_Thrust_Refill": "Lleno en %1 min",
