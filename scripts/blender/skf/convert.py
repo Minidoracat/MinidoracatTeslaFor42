@@ -2291,6 +2291,8 @@ def stage_build():
     me.uv_layers["UV1"].data.foreach_get("uv", u1)
     u1 = u1.reshape(-1, 2)
     lp = np.repeat(c["pane"], lt)
+    # the frag indexes GLASS_SHUT[3] with it: past 2 reads off the array, with no error anywhere
+    assert 0 <= C.get("GLASS_SHADE", 0) <= 2, "GLASS_SHADE: 0-2 (MinidoracatTesla_vehicle.frag GLASS_SHUT[3])"
     u1[lp >= 0, 0] += pv.GLASS_UV1_SHIFT + 2 * lp[lp >= 0] + pv.GLASS_TINT_U * C.get("GLASS_SHADE", 0)
     me.uv_layers["UV1"].data.foreach_set("uv", u1.ravel())
     # vehicle script geometry block
