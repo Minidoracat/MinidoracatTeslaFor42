@@ -432,6 +432,7 @@
     "IGUI_MinidoracatTesla_Deny_THRUST_FAST": "Rápido demais: abrande primeiro",
     "IGUI_MinidoracatTesla_Deny_THRUST_REVERSE": "Não é possível em marcha-atrás",
     "IGUI_MinidoracatTesla_Deny_THRUST_ROOM": "Sem espaço: algo está no caminho ou por cima",
+    "IGUI_MinidoracatTesla_Deny_THRUST_SAFEHOUSE": "O carro está perto demais de um asilo onde não pode entrar",
     "IGUI_MinidoracatTesla_Deny_THRUST_AIRBORNE": "As quatro rodas precisam de estar no chão",
     "IGUI_MinidoracatTesla_Deny_THRUST_AUTHORITY": "O carro ainda está a sincronizar: tente novamente daqui a pouco",
     "IGUI_MinidoracatTesla_Deny_THRUST_NO_LIFT": "Os propulsores não conseguiram mover o carro: vá para um sítio plano e aberto e tente novamente",

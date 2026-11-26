@@ -432,6 +432,7 @@
     "IGUI_MinidoracatTesla_Deny_THRUST_FAST": "Trop rapide : ralentissez d'abord",
     "IGUI_MinidoracatTesla_Deny_THRUST_REVERSE": "Impossible en marche arrière",
     "IGUI_MinidoracatTesla_Deny_THRUST_ROOM": "Pas assez de place : quelque chose gêne devant ou au-dessus",
+    "IGUI_MinidoracatTesla_Deny_THRUST_SAFEHOUSE": "La voiture est trop près d'un abri revendiqué où vous ne pouvez pas entrer",
     "IGUI_MinidoracatTesla_Deny_THRUST_AIRBORNE": "Les quatre roues doivent toucher le sol",
     "IGUI_MinidoracatTesla_Deny_THRUST_AUTHORITY": "La voiture se synchronise encore : réessayez dans un instant",
     "IGUI_MinidoracatTesla_Deny_THRUST_NO_LIFT": "Les propulseurs n'ont pas pu bouger la voiture : allez sur un terrain plat et dégagé, puis réessayez",

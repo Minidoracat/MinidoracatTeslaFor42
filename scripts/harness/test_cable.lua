@@ -60,9 +60,11 @@ local PORTS = { ["Base.MinidoracatTesla_ModelY"] = scriptPort("Base.MinidoracatT
     ["Base.MinidoracatTesla_ModelX"] = scriptPort("Base.MinidoracatTesla_ModelX"),
     ["Base.MinidoracatTesla_ModelYL"] = scriptPort("Base.MinidoracatTesla_ModelYL") }
 
--- car: yaw only; local x = right flank (+x), local z = forward; its own script's chargeport (default Model Y)
-local function car(x, y, yaw, script)
+-- car: yaw only; local x = right flank (+x), local z = forward; its own script's chargeport (default Model Y).
+-- cx, cy: the charger its battery's chg record names (default the one at 50,20): Cable.solve draws to T.chargerCar only
+local function car(x, y, yaw, script, cx, cy)
     local v = H.vehicle({ x = x, y = y, script = script })
+    v:getPartById("GasTank"):getModData().chg = { x = cx or 50, y = cy or 20, z = 0 }
     local c, s = math.cos(yaw), math.sin(yaw)
     v.port = PORTS[v.script]
     function v:getAttachmentLocalPos(name, out)
@@ -95,7 +97,7 @@ frame()
 check(C.count() == 0 and #draws == 0 and H.count("RenderOpaqueObjectsInWorld") == 0, "cable: charger without vid stays unhooked")
 
 -- ---- plugged: Facing S charger at (10,20), Model Y parked south of it ----
-local v = car(11.2, 24.0, 0.3)
+local v = car(11.2, 24.0, 0.3, nil, 10, 20)
 o.vid = v:getId()
 T.onChargerChanged(o)
 check(H.count("RenderOpaqueObjectsInWorld") == 1 and H.count("OnPostRender") == 1, "cable: plugging hooks both handlers once")
@@ -392,14 +394,27 @@ end
 H.removeVehicle(v)
 frame()
 check(#draws == 0 and #lines2d == 0, "cable: unknown vid -> 0 draws")
-local far = car(40, 20, 0)
+local far = car(40, 20, 0, nil, 10, 20)
 o.vid = far:getId()
 T.onChargerChanged(o)
 frame()
 check(#draws == 1 and draws[1].item.type == "Base.MinidoracatTesla_CableHang", "cable: floor run > MAX_FLOOR -> only the hang")
 
+-- ---- the id went to a Tesla that is not plugged into this charger (the plugged car deleted while loaded: nothing
+-- tells the charger, and the next car spawned takes the freed id, VehicleIDMap.java:49-62,91-95) ----
+H.removeVehicle(far)
+local stray = car(11.2, 24.0, 0.3, nil, 30, 20)   -- in reach of o, its record names the charger at 30,20
+o.vid = stray:getId()
+T.onChargerChanged(o)
+frame()
+check(#draws == 0 and C.solve(o) == false, "cable: vid names a Tesla plugged into another charger -> 0 draws")
+stray:getPartById("GasTank"):getModData().chg = nil
+frame()
+check(#draws == 0 and C.solve(o) == false, "cable: vid names a Tesla that is not plugged in -> 0 draws")
+H.removeVehicle(stray)
+
 -- ---- second charger, then unplug both: handlers removed ----
-local o2 = { x = 30, y = 20, z = 0, kind = "WallConnector", facing = "S", vid = car(31, 23, 0):getId() }
+local o2 = { x = 30, y = 20, z = 0, kind = "WallConnector", facing = "S", vid = car(31, 23, 0, nil, 30, 20):getId() }
 T.onChargerChanged(o2)
 check(C.count() == 2 and H.count("RenderOpaqueObjectsInWorld") == 1, "cable: two cables, one handler")
 o.vid = false               -- what the server syncs after unplugging (TeslaLogic, GOS only sends set keys)

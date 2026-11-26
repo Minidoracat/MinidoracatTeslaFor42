@@ -343,7 +343,7 @@ d2 = function(v, p)
     if not isServer() or not airborne(v) then -- SP: this machine is the holder
         local done = p.up == true
         finish(v, p, done)
-        if p.app and not done then appTell(p, "THRUST_NO_LIFT") end
+        if p.app and not done then appTell(p, p.why or "THRUST_NO_LIFT") end
         return T.log("thrust " .. p.act .. " ended by the server vid=" .. v:getId())
     end
     if not p.up then p.up, p.upMs = true, nowMs() end -- up now: it went
@@ -403,9 +403,9 @@ local function witness(v, p)
 end
 
 -- the show still allowed as when it was approved: its caller online, near, with DRIVE, still holding the phone key
--- with the car in the phone's reach (Remote.lua R.appLink: NO_PHONE_KEY, NO_LINK); the car free, no cable in, its
--- busy flag still this show's (H.can with it and the air it took aside). false and the reason (nil: the caller is
--- gone, nobody to tell)
+-- with the car in the phone's reach (Remote.lua R.appLink: NO_PHONE_KEY, NO_LINK); the car free, no cable in, no
+-- safehouse he may not enter in the show's reach, its busy flag still this show's (H.can with it and the air it took
+-- aside). false and the reason (nil: the caller is gone, nobody to tell)
 local function stillOk(v, p)
     if isServer() then
         local list, on = getOnlinePlayers(), false
@@ -580,6 +580,9 @@ cmds.thrustEnd = function(player, args)
     local p = entry(v)
     if not p or player ~= (p.helper or p.player) or args.n ~= p.n then return end -- only who flies it now ends it
     if p.helper and args.term ~= p.term then return end -- a helper's end of an earlier hand-over
+    -- the show its caller's machine would not start (client Thruster.lua go): the phone app says that, not "no lift".
+    -- Only this one reason, and only what the caller is told: billing and the landing stay this machine's own look
+    if p.app and not p.helper and args.why == "THRUST_SAFEHOUSE" then p.why = args.why end
     if isServer() then
         look(v, p) -- a boost: its speed now
         if p.act == "boost" and not p.helper and v:getDriver() == player then
@@ -604,7 +607,7 @@ cmds.thrustEnd = function(player, args)
     if not p.helper then p.sec = tonumber(args.sec) end
     local done = args.done == true
     finish(v, p, done)
-    if p.app and not done then appTell(p, "THRUST_NO_LIFT") end
+    if p.app and not done then appTell(p, "THRUST_NO_LIFT") end -- single player: no safehouse refuses (p.why never set)
 end
 
 -- Battery.lua T.Update.Battery, each game minute while the car's parts update: the refill's kWh as it goes, the

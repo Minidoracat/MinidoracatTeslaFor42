@@ -15,6 +15,22 @@ H.ACTS = { kickflip = true, backflip = true, boost = true, land = true, fly = tr
 H.APP = { kickflip = true, backflip = true } -- the phone app's show: the empty car, the caller outside
 H.APP_RANGE = 30  -- tiles from the caller: the car must be loaded on his game, which flies it (poc/APP.md)
 H.HELP_RANGE = 70 -- tiles: who takes over a car left in the air (server Thruster.lua)
+-- metres about the show's car (either axis) within which a safehouse its caller may not enter refuses it
+-- (H.showTrespass). A stunt from rest moves the car's middle 8.5 m at most whichever way it faces: 7.3 m ahead, inside
+-- the 10 m the caller's game clears (client Thruster.lua clearPath; thrsafe-1126g tappfar), and 4.2 m aside
+-- (thrsafe-1126a tkickm); its far corner is 2.4 m more
+H.SHOW_REACH = 12
+-- and seconds more of the car's speed past conf.rollKmh: one rolling faster keeps its speed through the stunt (client
+-- Thruster.lua go: no roll-up from conf.rollKmh up; the kickflip is 3.8 s in the air, PROF) and stops after it; up to
+-- conf.rollKmh is in H.SHOW_REACH already (a stunt from rest rolls up to it first). A car its driver left at 28 km/h
+-- 10 m out, the show asked at once: 8.7 m inside (thrsafe-1126m, no speed looked at). Its speed is the larger of two
+-- readings (H.showTrespass): getCurrentSpeedKmHour is the truth on the machine with its physics (the caller's as the
+-- show starts: go) and 0 on a server for an empty car (BaseVehicle.java:4346-4354); getSpeed2D is the last physics
+-- sample's (:4364-4368), on a server what the car did as whoever had its physics let go: 8.6 m/s as its driver left
+-- it rolling, and still so with the car standing until someone's physics moves it again; conf.rollKmh after a show
+-- of its own (thrsafe-1126n). So the server refuses a car just left rolling by itself, and one left so stays refused
+-- (within that reach of such a safehouse) until driven again
+H.SHOW_CARRY_S = 6
 H.FLOOR = 2.44949 -- metres per floor: physics y / getDebugZ (flight PoC r1, BaseVehicle.java:4207)
 -- seconds a flight's landing glides on at its height at most before it comes down (client Thruster.lua f.brake); the
 -- server bills no more than this of it off (server Thruster.lua finish, thrustEnd's glide)
@@ -140,6 +156,27 @@ local function autoDriven(player, vehicle)
         and D.isActive(player:getPlayerNum()) == true
 end
 
+-- The show's car within H.SHOW_REACH of a safehouse its caller may not walk into (SafeHouse.isSafehouseAllowTrepass,
+-- SafeHouse.java:224-243; it asks by a square: the house's one nearest the car, loaded where the car is, and one not
+-- loaded refuses). Nobody rides the show's car, and what keeps a car out of a safehouse (the Safehouse mod's vehicle
+-- block) stops it through its driver: the empty car came down 2.29 m inside (thrsafe-1126a tapp).
+function H.showTrespass(player, vehicle)
+    if not SafeHouse then return false end -- the game always has it (LuaManager exposes the class); a test may not
+    local x, y = vehicle:getX(), vehicle:getY()
+    local s = math.max(math.abs(vehicle:getCurrentSpeedKmHour()) / 3.6, vehicle:getSpeed2D())
+    local r = H.SHOW_REACH + math.max(0, s - H.conf(vehicle).rollKmh / 3.6) * H.SHOW_CARRY_S
+    local list = SafeHouse.getSafehouseList()
+    for i = 0, list:size() - 1 do
+        local s = list:get(i)
+        if x + r > s:getX() and x - r < s:getX2() and y + r > s:getY() and y - r < s:getY2() then
+            local sq = getCell():getGridSquare(clamp(math.floor(x), s:getX(), s:getX2() - 1),
+                clamp(math.floor(y), s:getY(), s:getY2() - 1), 0)
+            if not sq or not SafeHouse.isSafehouseAllowTrepass(sq, player) then return true end
+        end
+    end
+    return false
+end
+
 -- What refuses `act` for `player` in `vehicle`, both sides: true, or false and a deny reason
 -- (IGUI_MinidoracatTesla_Deny_<reason>). The client adds what only it can see (speed, room around, physics
 -- authority: client Thruster.lua); the server bills (server Thruster.lua). Optional (`...`: callers leave them out,
@@ -155,6 +192,7 @@ function H.can(player, vehicle, act, ...)
         if player:getVehicle() then return false, "NOT_OUTSIDE" end
         if vehicle:getDriver() then return false, "OCCUPIED" end -- the Roadster has one seat
         if player:DistTo(vehicle) > H.APP_RANGE then return false, "TOO_FAR" end
+        if H.showTrespass(player, vehicle) then return false, "THRUST_SAFEHOUSE" end
     else
         if not vehicle:isDriver(player) then return false, "NOT_DRIVER" end
         -- a soft landing needs no motor: a car off in the air (its driver's own key, or a flight off since a reload)

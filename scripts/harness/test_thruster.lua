@@ -87,6 +87,7 @@ local function car(o)
     v.reads = 0 -- the car's height and speed read: by a look, never by a frame between them
     function v:getVehicleTowing() return self.towing end
     function v:getLinearVelocity(o) return o:set(0, 0, self.lv or 0) end -- the holder's last sample (server, T4)
+    function v:getSpeed2D() return math.abs(self.lv or 0) end -- that sample's, level (BaseVehicle.java:4364-4368)
     function v:getDebugZ() self.reads = self.reads + 1 return self.dz or 0 end
     function v:getCurrentSpeedKmHour() self.reads = self.reads + 1 return self.speed end
     function v:authorizationChanged(q) self.npid = q and q:getOnlineID() or -1 end
@@ -682,6 +683,84 @@ s0 = snap(v, part)
 check(show(caller, "kickflip", false) == "BAD_VALUE" and snap(v, part) == s0, "D3: a show without n: BAD_VALUE, nothing changed")
 local away = H.player({ name = "away", x = v.x + 31, y = v.y })
 check(show(away, "kickflip") == "TOO_FAR", "over 30 tiles off: TOO_FAR")
+do -- a safehouse the caller may not walk into within H.SHOW_REACH of the car: no show (nobody rides it for a
+    -- safehouse's vehicle block to stop, thrsafe-1126a tapp); his own, or one past the reach: as ever (v.npid = 99: the
+    -- check after it refuses, so the safehouse one let it by). The fakes answer as the game does: houses by index, and
+    -- isSafehouseAllowTrepass(nil, ...) true (SafeHouse.java:224-228), so "not loaded" is refused by the MOD's own check
+    local savedSafe, savedCell = SafeHouse, getCell
+    local houses, loaded, sqAsked = {}, true, nil
+    local function rect(x, y, w, h, mayEnter)
+        return { mayEnter = mayEnter, getX = function() return x end, getY = function() return y end,
+            getX2 = function() return x + w end, getY2 = function() return y + h end }
+    end
+    local function houseAt(sq)
+        for _, s in ipairs(houses) do
+            if sq.x >= s.getX() and sq.x < s.getX2() and sq.y >= s.getY() and sq.y < s.getY2() then return s end
+        end
+    end
+    SafeHouse = {
+        getSafehouseList = function()
+            return { size = function() return #houses end, get = function(_, i)
+                if i < 0 or i >= #houses then error("safehouse list index " .. tostring(i)) end -- as ArrayList.get
+                return houses[i + 1]
+            end }
+        end,
+        isSafehouseAllowTrepass = function(sq, pl)
+            sqAsked = sq
+            if not sq then return true end
+            local s = houseAt(sq)
+            return not s or pl ~= caller or s.mayEnter
+        end,
+    }
+    getCell = function() return { getGridSquare = function(_, x, y, z) return loaded and { x = x, y = y, z = z } or nil end } end
+    local fx, fy = math.floor(v.x), math.floor(v.y)
+    houses = { rect(fx + 11, fy - 3, 8, 8, false) }
+    s0 = snap(v, part)
+    check(show(caller, "kickflip") == "THRUST_SAFEHOUSE" and snap(v, part) == s0 and sqAsked.x == fx + 11
+        and sqAsked.y == fy and sqAsked.z == 0,
+        "a safehouse the caller may not enter in reach: THRUST_SAFEHOUSE, nothing changed; asked by its square nearest the car")
+    loaded = false
+    check(show(caller, "backflip") == "THRUST_SAFEHOUSE", "that square not loaded: refused all the same")
+    loaded, v.npid = true, 99
+    houses = { rect(fx + 11, fy - 3, 8, 8, true) }
+    check(show(caller, "kickflip") == "THRUST_BUSY", "a safehouse he may enter: no refusal of its own")
+    houses = { rect(fx + 11, fy - 3, 8, 8, true), rect(fx - 18, fy - 3, 8, 8, false) }
+    check(show(caller, "kickflip") == "THRUST_SAFEHOUSE", "his own first in the list, another's on the car's other side: refused")
+    houses = { rect(fx - 3, fy + 11, 8, 8, false) }
+    check(show(caller, "kickflip") == "THRUST_SAFEHOUSE" and sqAsked.x == fx and sqAsked.y == fy + 11,
+        "one to the south only (y in reach): refused, asked by its square nearest the car")
+    houses = { rect(fx + 13, fy - 3, 8, 8, false) }
+    check(show(caller, "kickflip") == "THRUST_BUSY", "a safehouse past the reach: no refusal of its own")
+    houses = { rect(fx - 3, fy + 13, 8, 8, false) }
+    check(show(caller, "kickflip") == "THRUST_BUSY", "one to the south past the reach, alongside in x: no refusal of its own")
+    local x0 = v.x
+    v.x = fx -- on a whole metre: the reach ends on the houses' edges
+    houses = { rect(fx + 12, fy - 3, 8, 8, false), rect(fx - 20, fy - 3, 8, 8, false) }
+    check(show(caller, "kickflip") == "THRUST_BUSY", "houses the reach only touches, east and west (a house's far edge is not its own): no refusal")
+    houses = { rect(fx - 20, fy - 3, 9, 8, false) }
+    check(show(caller, "kickflip") == "THRUST_SAFEHOUSE", "a metre more of the western one: refused")
+    v.x = x0
+    -- the car's speed past conf.rollKmh (6 km/h, 1.67 m/s): H.SHOW_CARRY_S of it further. A server reads none of an
+    -- empty car (getCurrentSpeedKmHour 0) but holds its last physics sample (lv, thrsafe-1126n): a house 24.5 m off is
+    -- out of reach at 2.8 m/s (18.8 m) and in it at 4 m/s (26 m; a second of it would be 14.3 m). The larger of the
+    -- two readings counts
+    houses = { rect(fx + 25, fy - 3, 8, 8, false) }
+    check(show(caller, "kickflip") == "THRUST_BUSY", "a safehouse 24.5 m off, the car at rest: no refusal of its own")
+    local lv0 = v.lv
+    v.lv = 2.8
+    check(show(caller, "kickflip") == "THRUST_BUSY", "... the empty car's last sample 2.8 m/s: still out of reach")
+    v.lv = 4
+    check(show(caller, "kickflip") == "THRUST_SAFEHOUSE", "... 4 m/s, as its driver left it rolling: refused by the server itself")
+    v.lv, v.speed = 0, 15
+    check(show(caller, "kickflip") == "THRUST_SAFEHOUSE", "... or read at 15 km/h (the machine with its physics): refused")
+    -- up to conf.rollKmh is rest: a stunt from rest rolls up to it first (in H.SHOW_REACH already), and that is the
+    -- sample a show of its own leaves a server (1.67 m/s, thrsafe-1126n): the next show is no nearer refused for it
+    houses = { rect(fx + 15, fy - 3, 8, 8, false) }
+    v.lv, v.speed = 1.7, 0
+    check(show(caller, "kickflip") == "THRUST_BUSY", "a safehouse 14.5 m off, the car's last sample its own show's 1.7 m/s: no refusal")
+    v.lv, v.speed, v.npid = lv0, 0, nil
+    SafeHouse, getCell = savedSafe, savedCell
+end
 v.npid = 99
 check(show(caller, "kickflip") == "THRUST_BUSY", "another machine holds the car: THRUST_BUSY")
 v.npid = nil
@@ -738,6 +817,18 @@ wait(250)
 check(entryOf(v) == nil and near(gas(part), 1) and last().args.why == "THRUST_NO_LIFT" and v.npid == -1
     and v.shut == 1 and part:getModData().thr.busy == nil,
     "A2: never off the ground in the looks' window: the air back, the physics back, the motor the server started off")
+-- the show its caller's machine would not start by a safehouse (client go: thrustEnd says why): the app is told that, not
+-- "no lift"; nothing else a client names is passed on
+show(caller, "kickflip", 78)
+wait(2000)
+cmds.thrustEnd(caller, { vid = v:getId(), act = "kickflip", done = false, sec = 0, n = 78, why = "THRUST_SAFEHOUSE" })
+check(entryOf(v) == nil and near(gas(part), 1) and last().command == "appDone" and last().args.why == "THRUST_SAFEHOUSE"
+    and v.npid == -1, "the caller's machine refused the show by a safehouse: the air and the physics back, the app told that")
+show(caller, "kickflip", 79)
+wait(2000)
+cmds.thrustEnd(caller, { vid = v:getId(), act = "kickflip", done = false, sec = 0, n = 79, why = "CANT_START" })
+check(entryOf(v) == nil and last().command == "appDone" and last().args.why == "THRUST_NO_LIFT",
+    "another reason named by the client: not passed on (THRUST_NO_LIFT)")
 show(caller, "backflip")
 wait(2000)
 v.dz = 1
@@ -1162,6 +1253,56 @@ e = H.clientSent[#H.clientSent]
 check(TH.active() == nil and #H.clientSent == sent + 1 and e.command == "thrustEnd" and e.args.done == false,
     "someone sits in mid-show: ended, the air back")
 cv.driver = nil
+do -- the safehouse rule again as the show starts, by the car as this machine has it (the server reads no speed of an
+    -- empty car and has it where its last update put it: thrsafe-1126m): one its caller may not enter in reach now: no
+    -- show, the air back, he and the server told why
+    local savedSafe = SafeHouse
+    local fx, fy = math.floor(cv:getX()), math.floor(cv:getY())
+    local hx = fx + 11
+    local house = { getX = function() return hx end, getY = function() return fy - 3 end,
+        getX2 = function() return hx + 8 end, getY2 = function() return fy + 5 end }
+    SafeHouse = { getSafehouseList = function() return { size = function() return 1 end, get = function() return house end } end,
+        isSafehouseAllowTrepass = function(sq) return sq == nil end }
+    local ticks0, imp0 = H.count("OnTick"), nil
+    local function refused(n, what)
+        e = H.clientSent[#H.clientSent]
+        check(TH.active() == nil and #H.clientSent == sent + 1 and e.command == "thrustEnd" and e.args.done == false
+            and e.args.n == n and e.args.why == "THRUST_SAFEHOUSE"
+            and halo[#halo] == "IGUI_MinidoracatTesla_Deny_THRUST_SAFEHOUSE" and (cv.impulses or 0) == imp0
+            and cv.dz == 0.075 and H.count("OnTick") == ticks0, what)
+    end
+    cv.local_, cv.dz = false, 0.075
+    T.ClientCommands.thrustOk({ vid = cv:getId(), act = "kickflip", app = true, n = 504, pn = 0 })
+    cv.local_ = true
+    sent, imp0 = #H.clientSent, cv.impulses or 0
+    TH.tick()
+    refused(504, "the show's start by a safehouse its caller may not enter: not lifted or pushed, the air back, told why")
+    sent, imp0 = #H.clientSent, cv.impulses or 0
+    T.ClientCommands.thrustOk({ vid = cv:getId(), act = "kickflip", app = true, n = 505, pn = 0 })
+    refused(505, "the physics here already as the go-ahead comes: refused at once, no OnTick left behind")
+    hx = fx + 25 -- 24.5 m off: out of a resting car's reach, in it at 15 km/h (27 m)
+    cv.local_ = false
+    T.ClientCommands.thrustOk({ vid = cv:getId(), act = "kickflip", app = true, n = 506, pn = 0 })
+    cv.local_ = true
+    TH.tick()
+    check(TH.active() and TH.active().phase == "roll", "a safehouse 24.5 m off, the car at rest: the show starts")
+    cv.driver = cp
+    TH.tick()
+    cv.driver, cv.dz, cv.speed, cv.local_ = nil, 0.075, 15, false
+    T.ClientCommands.thrustOk({ vid = cv:getId(), act = "kickflip", app = true, n = 507, pn = 0 })
+    cv.local_ = true
+    sent, imp0 = #H.clientSent, cv.impulses or 0
+    TH.tick()
+    refused(507, "... the car still rolling at 15 km/h on this machine: refused")
+    cv.speed, cv.lv, cv.local_ = 0, 4, false
+    T.ClientCommands.thrustOk({ vid = cv:getId(), act = "kickflip", app = true, n = 508, pn = 0 })
+    cv.local_ = true
+    sent, imp0 = #H.clientSent, cv.impulses or 0
+    TH.tick()
+    refused(508, "... or its last sample 4 m/s: refused")
+    cv.lv = nil
+    SafeHouse = savedSafe
+end
 cv.local_, cv.dz = false, 1.075
 T.ClientCommands.thrustOk({ vid = cv:getId(), act = "backflip", app = true, pn = 0, n = 503 })
 cv.local_ = true

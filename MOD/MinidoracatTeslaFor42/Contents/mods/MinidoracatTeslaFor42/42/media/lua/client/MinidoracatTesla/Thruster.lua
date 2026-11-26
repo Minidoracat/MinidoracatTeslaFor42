@@ -488,8 +488,9 @@ local function stop(done, ...)
     -- glide: a flight's landing held at its height (f.brake) before it came down, the server bills it not (MP's air
     -- clock: server Thruster.lua finish); never at rest ends
     local glide = f.act == "fly" and not rest and (f.glide or (f.brake and f.t)) or nil
+    -- why: the show's own refusal (go), for the server to tell the phone app that and not THRUST_NO_LIFT
     T.request(f.player, "thrustEnd", { vid = f.vid, act = f.act, done = done == true, sec = f.flown, abort = abort,
-        n = f.n, term = f.term, rest = rest, glide = glide })
+        n = f.n, term = f.term, rest = rest, glide = glide, why = f.app == "show" and why or nil })
     if why then HaloTextHelper.addBadText(f.player, T.denyText(why)) end
 end
 
@@ -566,6 +567,9 @@ end
 -- thrusters' push left 3 of 13 parked cars stuck, r2f-sp-1124c). Flying from a standstill: lifted, then straight up
 local function go(f)
     local v, c = f.v, f.conf
+    -- the show's car as this machine has it now, its physics here: where it really is, at the speed it really has
+    -- (shared Thruster.lua H.SHOW_CARRY_S)
+    if f.app == "show" and H.showTrespass(f.player, v) then return stop(false, "THRUST_SAFEHOUSE") end
     if f.act == "land" or v:getCurrentSpeedKmHour() >= c.rollKmh then return beginRun(f) end
     if f.act == "fly" then
         if not v:isPhysicsActive() then v:setPhysicsActive(true) end
@@ -607,8 +611,8 @@ local function start(player, v, act, sec, app, n, ...)
         RESTED[vid] = nil
     end
     F = f
+    Events.OnTick.Add(H.tick) -- before go: it may end the action at once (stop takes the tick off again)
     if app and not authority(v) then f.phase, f.ms0 = "wait", getTimestampMs() else go(f) end
-    Events.OnTick.Add(H.tick)
 end
 
 local function keyDown(o) local k = o and o:getValue() or 0 return k ~= 0 and isKeyDown(k) end

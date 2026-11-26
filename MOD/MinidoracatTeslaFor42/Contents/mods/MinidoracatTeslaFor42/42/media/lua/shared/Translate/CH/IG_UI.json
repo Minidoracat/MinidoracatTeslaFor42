@@ -432,6 +432,7 @@
     "IGUI_MinidoracatTesla_Deny_THRUST_FAST": "車速太快，先減速",
     "IGUI_MinidoracatTesla_Deny_THRUST_REVERSE": "倒車時不行",
     "IGUI_MinidoracatTesla_Deny_THRUST_ROOM": "空間不夠：前方或上方有東西擋住",
+    "IGUI_MinidoracatTesla_Deny_THRUST_SAFEHOUSE": "車子太靠近你不能進入的安全屋",
     "IGUI_MinidoracatTesla_Deny_THRUST_AIRBORNE": "四個輪子都要著地才行",
     "IGUI_MinidoracatTesla_Deny_THRUST_AUTHORITY": "車子還在同步，稍後再試",
     "IGUI_MinidoracatTesla_Deny_THRUST_NO_LIFT": "推進器推不動車子：開到平坦空曠的地方再試",
