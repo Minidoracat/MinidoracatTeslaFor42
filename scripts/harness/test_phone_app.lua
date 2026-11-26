@@ -2016,7 +2016,7 @@ check(bs.rev.style == "stop" and not bs.come.shown, "back running: its button is
 T.ClientCommands.appDone({ key = 9001, act = "summon", why = "TOWED" })
 sread()
 check(a.sumPhase == "stopped" and a.sSumState == P .. "SummonRefused" and a.sSumNote == "IGUI_MinidoracatTesla_Deny_TOWED"
-    and bs.again.shown and bs.finish.shown, "refused (TOWED): why in full, Try again / Done")
+    and a.rowSub.summon == "" and bs.again.shown and bs.finish.shown, "refused (TOWED): why in full, Try again / Done")
 bs.again:forceClick()
 cmd, args = sentLast()
 check(args.mode == "dumb" and args.dir == -1 and a.sumPhase ~= nil, "Try again: the same summon (dumb back)")
@@ -2025,8 +2025,9 @@ sread()
 CL.st = { vid = VID, phase = "ended", code = "ZOMBIES", dist = 5 }
 sread()
 check(a.sumPhase == "stopped" and a.sum.code == "ZOMBIES" and a.sSumState == P .. "Done_summon_off"
-    and a.sSumNote == "R_ZOMBIES" and a.rowEm.summon == a.sSumState,
-    "AutoDrive ended (ZOMBIES) before the server's word: stopped, its reason in full in the note line")
+    and a.sSumNote == "R_ZOMBIES" and a.rowEm.summon == a.sSumState
+    and a.rowSub.summon == getText("IGUI_MinidoracatTesla_Sep") .. "R_ZOMBIES" and a.rowAlt.summon == "",
+    "AutoDrive ended (ZOMBIES) before the server's word: stopped, its reason in the note line and after the home row's headline")
 T.ClientCommands.appDone({ key = 9001, act = "summonEnd", why = "CANCELLED" })
 sread()
 check(a.sum == nil and a.sumPhase == "ready", "summonEnd CANCELLED: back to ready")

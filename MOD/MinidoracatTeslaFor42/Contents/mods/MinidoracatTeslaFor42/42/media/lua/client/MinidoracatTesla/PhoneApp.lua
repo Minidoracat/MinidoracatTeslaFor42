@@ -948,9 +948,11 @@ function App:summonRead(api)
     -- the running summon's button (it reads "Stop")
     self.sumRun = running(sum) and (sum.mode == "dumb" and (sum.dir == -1 and "rev" or "fwd") or SUM_ID[sum.mode] or "come") or nil
     -- the home list's row: what the car is doing, else whether it can come (and how far it is); shorter when it does not
-    -- fit: "Can't summon" for a reason (AutoDrive's run long; the Summon page has it in full), no distance
+    -- fit: "Can't summon" for a reason (AutoDrive's run long; the Summon page has it in full), no distance. A stop on
+    -- the way: its reason after the headline when the row has the room
     if phase ~= "ready" then
-        self.rowEm.summon, self.rowSub.summon, self.rowAlt.summon = s1, "", nil
+        local r = phase == "stopped" and not sum.why and note ~= "" and note
+        self.rowEm.summon, self.rowSub.summon, self.rowAlt.summon = s1, r and (sep .. r) or "", r and "" or nil
     else
         self.rowEm.summon = nil
         self.rowSub.summon = why or (txt("SummonReady") .. (where and (sep .. where) or ""))

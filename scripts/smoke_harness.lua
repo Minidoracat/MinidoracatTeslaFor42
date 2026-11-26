@@ -341,7 +341,7 @@ ContainerButtonIcons = { TrailerTrunk = "trunk" } -- shared/Definitions/Containe
 -- vanilla floor / wall placement check (ISMoveableSpriteProps.lua:1736); Chargers.lua wraps it. `free` stands in for
 -- everything vanilla checks. The cursor panel text (:577) and vanilla's red line helper (:519-527) for the move guard.
 -- removeComponentsBeforePlacing: the last call on a placed object before it goes on the square (:2527; Chargers.lua).
-ISMoveableSpriteProps = { canPlaceMoveableInternal = function(self) return self.free ~= false end,
+ISMoveableSpriteProps = { canPlaceMoveableInternal = function(self, ...) self.got = { n = select("#", ...), ... } return self.free ~= false end,
     getInfoPanelDescription = function() return {} end,
     addLineToInfoTable = function(t, txt, r, g, b) t[#t + 1] = { { txt = txt, r = r, g = g, b = b } }; return t end,
     bhc = { getR = function() return 1 end, getG = function() return 0 end, getB = function() return 0 end },

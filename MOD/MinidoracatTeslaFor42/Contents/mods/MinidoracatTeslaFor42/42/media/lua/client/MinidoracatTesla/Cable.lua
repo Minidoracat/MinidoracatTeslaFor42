@@ -211,7 +211,8 @@ function C.count() return count end
 function C.hooked() return hooked end
 
 local prev = T.onChargerChanged
-function T.onChargerChanged(o, removed)
+function T.onChargerChanged(o, ...)
+    local removed = ...
     if prev then prev(o, removed) end
     C.update(o, removed)
 end

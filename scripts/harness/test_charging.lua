@@ -620,6 +620,14 @@ check(props(mcS):canPlaceMoveableInternal(nil, placeSq(wcS)) == false
     and props(wcS):canPlaceMoveableInternal(nil, placeSq("minidoracat_tesla_01_11")) == false,
     "Wall Connector and Mobile Connector never share a square, either order")
 check(props("furniture_seating_01_0"):canPlaceMoveableInternal(nil, placeSq(mcS)) == true, "other furniture next to a charger: untouched")
+do -- the main chunk is at Lua's 200-local limit
+    local pr = props(mcS)
+    pr:canPlaceMoveableInternal(nil, placeSq("floors_01_0"), "item")
+    local n = pr.got.n
+    pr:canPlaceMoveableInternal(nil, placeSq("floors_01_0"), "item", false)
+    check(n == 3 and pr.got.n == 4 and pr.got[4] == false,
+        "vanilla gets the arguments as its caller passed them: none added when the last one was left out")
+end
 
 H.section("mobile connector loot")
 ProceduralDistributions = { list = {

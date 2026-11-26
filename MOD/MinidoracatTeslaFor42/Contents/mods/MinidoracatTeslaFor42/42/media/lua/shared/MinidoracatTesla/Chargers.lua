@@ -291,9 +291,10 @@ function T.chargerOnSquare(sq)
 end
 local canPlace = ISMoveableSpriteProps and ISMoveableSpriteProps.canPlaceMoveableInternal
 if canPlace then
-    function ISMoveableSpriteProps:canPlaceMoveableInternal(character, square, item, forceTypeObject)
+    -- `...`: vanilla leaves _forceTypeObject out at most call sites (ISMoveableSpriteProps.lua:1652,1687,2050)
+    function ISMoveableSpriteProps:canPlaceMoveableInternal(character, square, ...)
         if T.ChargerSprites[self.spriteName] and T.chargerOnSquare(square) then return false end
-        return canPlace(self, character, square, item, forceTypeObject)
+        return canPlace(self, character, square, ...)
     end
 else
     T.log("charger placement guard: ISMoveableSpriteProps.canPlaceMoveableInternal missing")
