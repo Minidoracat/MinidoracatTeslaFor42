@@ -7,6 +7,8 @@
 [*] Fixed: after a plugged-in Tesla was removed (for example deleted by an admin), the charger's charge cable could be drawn to another Tesla nearby that was not charging. It now only connects to the car actually plugged in.
 [*] Fixed: with Project Viewpoint installed, the driver's hands in the original Roadster 2.5 Sport no longer sit in front of your eyes in first person, and the steering wheel now sits where the hands hold it.
 [*] Multiplayer: a phone app stunt asked while the car is still rolling is now refused over 40 km/h (Kickflip) or 15 km/h (Backflip), while reversing, or with something in the way. A parked car works as before.
+[*] Server-side checks were hardened. Normal play is unchanged and you don't need to do anything.
+[*] Phone app (needs AutoDrive): when a Summon stops on its own, the app now shows "Summon stopped" and puts the full reason under the buttons, up to three lines. Longer reasons used to be cut off.
 [/list]
 
 [h3]🔧 修正[/h3]
