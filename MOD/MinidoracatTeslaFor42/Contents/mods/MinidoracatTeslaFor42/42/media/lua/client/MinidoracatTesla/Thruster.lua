@@ -566,8 +566,7 @@ end
 -- never backwards, and no faster than conf allows each to start at: the driver's ask (H.check), and the show once its
 -- car's physics is here (a machine without it reads 0 km/h of an empty car: BaseVehicle.java:4346-4354)
 local SPEED_MAX = { kickflip = "kickMaxKmh", backflip = "flipMaxKmh", boost = "boostMaxKmh" }
-local function speedWhy(v, c, act)
-    local kmh = v:getCurrentSpeedKmHour()
+local function speedWhy(kmh, c, act)
     if kmh < -1 then return "THRUST_REVERSE" end
     local max = SPEED_MAX[act]
     if max and kmh > c[max] then return "THRUST_FAST" end
@@ -580,7 +579,7 @@ local function go(f)
     -- (shared Thruster.lua H.SHOW_CARRY_S), and the way that speed takes it over (H.check scanned 0 km/h's way)
     if f.app == "show" then
         if H.showTrespass(f.player, v) then return stop(false, "THRUST_SAFEHOUSE") end
-        local why = speedWhy(v, c, f.act) or PROF[f.act] and not clearPath(v, c, f.act) and "THRUST_ROOM"
+        local why = speedWhy(v:getCurrentSpeedKmHour(), c, f.act) or PROF[f.act] and not clearPath(v, c, f.act) and "THRUST_ROOM"
         if why then return stop(false, why) end
     end
     if f.act == "land" or v:getCurrentSpeedKmHour() >= c.rollKmh then return beginRun(f) end
@@ -735,10 +734,12 @@ function H.tick()
         if t > ROLL_S then return stop(false, "THRUST_NO_LIFT") end
         return -- the motor drives it
     elseif ph == "roll" then
-        local why = speedWhy(v, c, f.act) -- only a show rolls up; shoved back or on as it does: its limits as at go
-        if why then return stop(false, why) end
         local lv = v:getLinearVelocity(V3.lv)
         local along = lv:x() * st.pdx + lv:z() * st.pdz
+        -- only a show rolls up; shoved back or on as it does: its limits as at go, each sample. Along its heading: the
+        -- engine's speed is |v| signed by forward . v (VehicleManager.java:237), and the car is dropping from its lift
+        local why = speedWhy(along * 3.6, c, f.act)
+        if why then return stop(false, why) end
         if along * 3.6 >= c.rollKmh then
             -- faster than the driver's cruise sets off at (go: rollKmh + 2): the way that speed takes it over, as at go
             if along * 3.6 > c.rollKmh + 2 and not clearPath(v, c, f.act) then return stop(false, "THRUST_ROOM") end
@@ -990,7 +991,7 @@ function H.check(player, v, act, ...)
         if heightOf(v, RESTS[v:getId()] or c.rest) > 0.4 and not (act == "fly" and flyOff(v, c)) then
             return false, "THRUST_AIRBORNE"
         end
-        local why = speedWhy(v, c, act)
+        local why = speedWhy(v:getCurrentSpeedKmHour(), c, act)
         if why then return false, why end
     end
     if PROF[act] and not clearPath(v, c, act) then return false, "THRUST_ROOM" end

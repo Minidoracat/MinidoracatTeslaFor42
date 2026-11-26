@@ -1373,6 +1373,16 @@ do -- the driver's speed limits again as the show starts: its caller's machine r
     check(TH.active() == nil and #H.clientSent == sent + 1 and e.command == "thrustEnd" and e.args.done == false
         and e.args.n == 514 and e.args.why == "THRUST_REVERSE" and (cv.impulses or 0) == imp0
         and H.count("OnTick") == ticks0, "... backwards while it rolls up: no push more, told why")
+    showAt("kickflip", 515, 0)
+    local kmh0 = cv.getCurrentSpeedKmHour
+    function cv:getCurrentSpeedKmHour() return -5 end -- the engine's: |v| signed by forward . v, the drop from its lift in it
+    TH.tick()
+    check(TH.active() and TH.active().n == 515 and TH.active().phase == "roll",
+        "... dropping from its lift (the engine reads that as backwards): it rolls up on, judged along its heading")
+    cv.getCurrentSpeedKmHour = kmh0
+    cv.driver = cp -- someone sits in: it ends
+    TH.tick()
+    cv.driver = nil
     cv.speed = 0
 end
 cv.local_, cv.dz = false, 1.075
