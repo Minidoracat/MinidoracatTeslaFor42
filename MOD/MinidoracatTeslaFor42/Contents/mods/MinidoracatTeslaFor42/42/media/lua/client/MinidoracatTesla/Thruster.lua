@@ -735,11 +735,13 @@ function H.tick()
         if t > ROLL_S then return stop(false, "THRUST_NO_LIFT") end
         return -- the motor drives it
     elseif ph == "roll" then
+        local why = speedWhy(v, c, f.act) -- only a show rolls up; shoved back or on as it does: its limits as at go
+        if why then return stop(false, why) end
         local lv = v:getLinearVelocity(V3.lv)
         local along = lv:x() * st.pdx + lv:z() * st.pdz
         if along * 3.6 >= c.rollKmh then
-            local why = speedWhy(v, c, f.act) -- shoved on as it rolled up (only a show rolls up): its limit as at go
-            if why then return stop(false, why) end
+            -- faster than the driver's cruise sets off at (go: rollKmh + 2): the way that speed takes it over, as at go
+            if along * 3.6 > c.rollKmh + 2 and not clearPath(v, c, f.act) then return stop(false, "THRUST_ROOM") end
             return beginRun(f)
         end
         if t > ROLL_S then return stop(false, "THRUST_NO_LIFT") end

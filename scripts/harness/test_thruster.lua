@@ -1365,6 +1365,14 @@ do -- the driver's speed limits again as the show starts: its caller's machine r
     check(TH.active() == nil and #H.clientSent == sent + 1 and e.command == "thrustEnd" and e.args.done == false
         and e.args.n == 511 and e.args.why == "THRUST_FAST" and H.count("OnTick") == ticks0,
         "... over flipMaxKmh by the time it has rolled up: no backflip, told why")
+    showAt("kickflip", 514, 5)
+    cv.speed = -2 -- shoved backwards while it rolls up
+    sent, imp0 = #H.clientSent, cv.impulses or 0
+    TH.tick()
+    e = H.clientSent[#H.clientSent]
+    check(TH.active() == nil and #H.clientSent == sent + 1 and e.command == "thrustEnd" and e.args.done == false
+        and e.args.n == 514 and e.args.why == "THRUST_REVERSE" and (cv.impulses or 0) == imp0
+        and H.count("OnTick") == ticks0, "... backwards while it rolls up: no push more, told why")
     cv.speed = 0
 end
 cv.local_, cv.dz = false, 1.075
@@ -2679,6 +2687,30 @@ e = H.clientSent[#H.clientSent]
 check(TH.active() == nil and #H.clientSent == sent + 1 and e.command == "thrustEnd" and e.args.done == false
     and e.args.n == 521 and e.args.why == "THRUST_ROOM",
     "scan, the show: rolling at 30 km/h as its physics comes, the same thing in its way: no show, told why")
+-- as it rolls up (at rest when its physics came, kmh by the next sample): past the driver's cruise (rollKmh + 2) the
+-- scan again at that speed. Something 12 m on: past the 10 m way of 6 km/h, on the 13.75 m way of 9 km/h
+local core0, sh0 = getCore, getPlayerScreenHeight
+getCore = function() return { getZoom = function() return 1 end, getMaxZoom = function() return 1 end } end
+getPlayerScreenHeight = function() return 1080 end
+local function rolled(n, kmh, at)
+    world = at and { [at] = { objs = { { props = { HitByCar = "" } } } } } or {}
+    cv.driver, cv.dz, cv.local_, cv.speed = nil, 0.075, false, 0
+    T.ClientCommands.thrustOk({ vid = cv:getId(), act = "kickflip", app = true, n = n, pn = 0 })
+    cv.local_ = true
+    TH.tick()
+    cv.speed = kmh
+    sent = #H.clientSent
+    TH.tick()
+    e = H.clientSent[#H.clientSent]
+    local got = TH.active() and TH.active().phase or #H.clientSent == sent + 1 and e.args.n == n and e.args.why
+    cv.driver = cp -- someone sits in: whatever goes on ends
+    TH.tick()
+    return got
+end
+check(rolled(522, 9, "500,512") == "THRUST_ROOM", "scan, the show: shoved on to 9 km/h as it rolls up, something on that way: no show, told why")
+check(rolled(523, 7.5, "500,512") == "stunt", "... at 7.5 km/h (the driver's cruise sets off there too): it sets off, as scanned at go")
+check(rolled(524, 30) == "stunt", "... shoved on to 30 km/h, nothing on its way: it sets off")
+getCore, getPlayerScreenHeight = core0, sh0
 world, cv.driver, cp.vehicle, cv.speed = {}, d0, pv0, 0
 end)()
 instanceof, getCell = savedInst, cellS
