@@ -564,7 +564,7 @@ local function wake(f)
     v:setRegulator(true)
 end
 -- never backwards, and no faster than conf allows each to start at: the driver's ask (H.check), and the show once its
--- car's physics is here (before that an empty car reads 0 km/h on its caller's machine: thrsafe-1126m)
+-- car's physics is here (a machine without it reads 0 km/h of an empty car: BaseVehicle.java:4346-4354)
 local SPEED_MAX = { kickflip = "kickMaxKmh", backflip = "flipMaxKmh", boost = "boostMaxKmh" }
 local function speedWhy(v, c, act)
     local kmh = v:getCurrentSpeedKmHour()
@@ -577,10 +577,10 @@ end
 local function go(f)
     local v, c = f.v, f.conf
     -- the show's car as this machine has it now, its physics here: where it really is, at the speed it really has
-    -- (shared Thruster.lua H.SHOW_CARRY_S)
+    -- (shared Thruster.lua H.SHOW_CARRY_S), and the way that speed takes it over (H.check scanned 0 km/h's way)
     if f.app == "show" then
         if H.showTrespass(f.player, v) then return stop(false, "THRUST_SAFEHOUSE") end
-        local why = speedWhy(v, c, f.act)
+        local why = speedWhy(v, c, f.act) or PROF[f.act] and not clearPath(v, c, f.act) and "THRUST_ROOM"
         if why then return stop(false, why) end
     end
     if f.act == "land" or v:getCurrentSpeedKmHour() >= c.rollKmh then return beginRun(f) end
@@ -737,7 +737,11 @@ function H.tick()
     elseif ph == "roll" then
         local lv = v:getLinearVelocity(V3.lv)
         local along = lv:x() * st.pdx + lv:z() * st.pdz
-        if along * 3.6 >= c.rollKmh then return beginRun(f) end
+        if along * 3.6 >= c.rollKmh then
+            local why = speedWhy(v, c, f.act) -- shoved on as it rolled up (only a show rolls up): its limit as at go
+            if why then return stop(false, why) end
+            return beginRun(f)
+        end
         if t > ROLL_S then return stop(false, "THRUST_NO_LIFT") end
         local e = c.rollKmh / 3.6 - along
         st.ie = st.ie + e * dt
