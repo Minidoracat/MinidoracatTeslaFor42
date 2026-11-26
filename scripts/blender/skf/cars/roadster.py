@@ -158,8 +158,11 @@ CAR = dict(
     # two seats (TwoDoorBase.md): passengers / seats behind the door opening's middle by back (front only); low (h)
     # and in the Roadster's own pose (SEAT_POSE): the shared front pose leaves the head over the soft top (seat_head.py)
     SEAT=dict(x=0.242, h=0.27, z=-0.255, back=(0.05,), out=0.30, front_only=True),
-    # scripts/seat_anim.py POSES: the whole body leant back further, the thighs lower than the shared front pose
-    SEAT_POSE={"front": [("Bip01", 42.0), ("Bip01_L_Thigh", -20.0), ("Bip01_R_Thigh", -20.0)]},
+    # scripts/seat_anim.py POSES: the whole body leant back further, the thighs lower than the shared front pose; the
+    # upper arms turned 17 deg down (as Roadster2): the 42 deg lean back raised Bob_IdleDriving's hands 0.05 grid over
+    # the head bone, over the eyes in Viewpoint's first person; now 0.05 under it, as the shared pose's 0.055
+    SEAT_POSE={"front": [("Bip01", 42.0), ("Bip01_L_Thigh", -20.0), ("Bip01_R_Thigh", -20.0),
+                         ("Bip01_L_UpperArm", -17.0), ("Bip01_R_UpperArm", -17.0)]},
     BODY_W_Z=0.55,
     # doors hinge at their front edge; the trunk lid at its front edge (gas struts, owner's manual 4-6); the hood at
     # the windscreen; the soft top stows into the body behind the roll hoop (SOFT_TOP)
@@ -303,7 +306,8 @@ CAR = dict(
     # 1.24 x 0.34 dash's front corners stood out through the windscreen's low corners as black wedges)
     DASH=dict(size=(0.84, 0.20, 0.16), console=(0, 0.0, -0.25), dash=(0, 0.43, 0.04), trim=(0, 0.367, 0.075),
               light=(0, 0.369, 0.051),
-              stand=(0, 0.40, 0.05), screen=(0, 0.362, 0.05), wheel=(0.307, 0.033)),
+              stand=(0, 0.40, 0.05), screen=(0, 0.362, 0.05),
+              wheel=(0.070, 0.065)),         # wheel: the hub at the reclined driver's hands (SEAT_POSE)
     DOOR_CARD={
         "front": [
             ("upper trim", "end", (0.08, 0.10), -0.050, None, 0.060, 0.030, "dash", 0.012),
