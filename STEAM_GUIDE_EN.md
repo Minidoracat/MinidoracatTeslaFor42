@@ -298,7 +298,7 @@ A move that can't be used is greyed out in the radial with the reason underneath
 [h3]Stunts from the phone app[/h3]
 {{img:52-app-stunt-en.jpg}}
 [list]
-[*] [b]Empty car stunt[/b]: the app's Controls page has Kickflip and Backflip to have the empty car do one on the spot; you must be out of the car and within 30 tiles, nobody may be in it, the way ahead of it must be clear, and it must not be too close to a safehouse you can't enter.
+[*] [b]Empty car stunt[/b]: the app's Controls page has Kickflip and Backflip to have the empty car do one on the spot; you must be out of the car and within 30 tiles, nobody may be in it, the way ahead of it must be clear, and it must not be too close to a safehouse you can't enter. While the car is still rolling, the same speed limits as from the driver's seat apply (40 km/h for Kickflip, 15 km/h for Backflip).
 [*] [b]Motor[/b]: the car starts itself for the stunt and switches off afterwards.
 [*] [b]Permissions[/b]: with Vehicle Manager and a claimed car you need the car's Drive permission; Boost and Fly only work from the driver's seat.
 [/list]

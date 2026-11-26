@@ -6,6 +6,7 @@
 [*] Multiplayer: the phone app now refuses Kickflip and Backflip when the car is too close to a safehouse you can't enter. Your own safehouse and thrusters used from the driver's seat work as before.
 [*] Fixed: after a plugged-in Tesla was removed (for example deleted by an admin), the charger's charge cable could be drawn to another Tesla nearby that was not charging. It now only connects to the car actually plugged in.
 [*] Fixed: with Project Viewpoint installed, the driver's hands in the original Roadster 2.5 Sport no longer sit in front of your eyes in first person, and the steering wheel now sits where the hands hold it.
+[*] Multiplayer: a phone app show asked while the car is still rolling (right after you get out) now follows the same limits as from the driver's seat: over 40 km/h for Kickflip or 15 km/h for Backflip, while reversing, or with something in the way, it is refused. A parked car works as before.
 [/list]
 
 [h3]🔧 修正[/h3]
