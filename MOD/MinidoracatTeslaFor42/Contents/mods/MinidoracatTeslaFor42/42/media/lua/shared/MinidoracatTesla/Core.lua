@@ -829,7 +829,8 @@ end
 -- query (true): a pre-check, or sorting out something VehicleManager already decided, not the action itself: it answers
 -- the same and records neither a DENY nor an ADMIN_BYPASS (0.15.0 on, its OwnershipSystem.lua O.allowsRecord; older
 -- versions ignore it). Leave it out where the refusal is the event to audit: a command.
-function T.authorized(player, vehicle, perm, query)
+function T.authorized(player, vehicle, perm, ...)
+    local query = ...
     if not player or not vehicle then return false, "NO_TARGET" end
     local api = MinidoracatVehicleManagerAPI
     if api and api.canUse then return api.canUse(player, vehicle, perm or "DRIVE", { mod = T.MODULE, query = query }) end
@@ -902,7 +903,8 @@ function T.send(player, cmd, args)
 end
 -- `pn`: the player's split-screen slot on its machine (IsoPlayer getPlayerNum; on a server the index its client sent
 -- when it connected, GameServer.java:2833,2858 <- ConnectPacket.java:43), so the client shows it over that player
-function T.deny(player, reason, vid)
+function T.deny(player, reason, ...)
+    local vid = ...
     T.send(player, "deny", { reason = reason, vid = vid, pn = player:getPlayerNum() })
 end
 -- Text of IGUI_MinidoracatTesla_Deny_<reason>; CAMP_LOW_BATTERY carries the sandbox limit as %1, NO_LINK the Bluetooth
@@ -1034,7 +1036,8 @@ function T.wrapText(s, maxW, font)
 end
 
 -- ---- client -> server ----
-function T.request(player, cmd, args)
+function T.request(player, cmd, ...)
+    local args = ...
     sendClientCommand(player, T.MODULE, cmd, args or {}) -- SP routes to OnClientCommand too (LuaManager.java:8936-8950)
 end
 

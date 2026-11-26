@@ -317,7 +317,8 @@ end
 -- charges, condition 0, fire, explosion, IsoGenerator.java:216,222,249,253; picked up; another mod) is not seen until
 -- the next settle (at most C.MAX_STEP_H): the charge since the last settle is not booked (src nil then), and Sentry's
 -- standby and the car's own loads for that stretch are free (chg.power was "generator": up to now; chg.fed dropped).
-function C.powerUntil(chg, now, generator)
+function C.powerUntil(chg, now, ...)
+    local generator = ...
     if not chg or not chg.power then return nil end
     if fromCar(chg.power) then
         local _, ended, away = C.supplyEnded(chg)

@@ -33,7 +33,8 @@ end
 -- `key` = the car's keyId: the phone app's alert list (Remote.lua) is per car. `by` = the intruder's account
 -- (T.account), false when it has none (a split-screen guest, a respawn renamed on a Steam server): the name it goes by
 -- is its client's word, and an alert naming it would frame whoever it chose to be called.
-function I.entry(vehicle, kind, what, actor, partId)
+function I.entry(vehicle, kind, what, ...)
+    local actor, partId = ...
     local gt = getGameTime()
     local script = vehicle:getScript()
     return {

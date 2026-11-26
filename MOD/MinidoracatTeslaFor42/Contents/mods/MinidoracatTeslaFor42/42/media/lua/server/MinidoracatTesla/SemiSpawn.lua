@@ -290,8 +290,8 @@ end
 -- VehiclesDB2.java:805-821,841-855; global ModData waits for the world save). Standing, on the ground, inside the lot
 -- (half-open, like span): "there" marks the lot done for good, so one driving through, on a deck above or on the next
 -- lot's first square must not count.
-local function carsNear(z, car, ...)
-    local x0, y0, x1, y1 = ...
+local function carsNear(z, car)
+    local x0, y0, x1, y1 = lotBox(z, car)
     local out, it = {}, getCell():getVehicles():iterator()
     while it:hasNext() do
         local v = it:next()
@@ -310,7 +310,7 @@ end
 -- the same length both ways for both cars). Nothing here asks the car just put down: isIntersectingSquare is false for
 -- all its squares within the call that made it (semiA-bcd-1); S.recent keeps its footprint for the next ones.
 function S.place(z, car, now)
-    local cars = carsNear(z, car, lotBox(z, car))
+    local cars = carsNear(z, car)
     if not cars then
         T.log("semi spawn: the " .. car.key .. " is in the lot " .. S.lotKey(z, car) .. " already")
         return "there"

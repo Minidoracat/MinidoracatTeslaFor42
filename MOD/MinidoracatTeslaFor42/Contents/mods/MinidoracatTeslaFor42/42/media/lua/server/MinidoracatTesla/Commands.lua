@@ -11,7 +11,8 @@ local function isInt(n) return type(n) == "number" and n == n and math.floor(n) 
 
 -- Shared validation for handlers: player, Tesla by args.vid, distance. Denies and returns nil on failure; `quiet`:
 -- returns nil without the deny (requests a client sends by itself, not on the player's action).
-function T.commandVehicle(player, args, maxDist, quiet)
+function T.commandVehicle(player, args, ...)
+    local maxDist, quiet = ...
     if not player then return nil end
     local vid = args and args.vid
     local v = isInt(vid) and getVehicleById(vid) or nil -- whole numbers only: fractions truncate to another id
@@ -31,7 +32,8 @@ end
 -- the client runs OnServerCommand once per packet with no player in it (GameClient.java:1055-1071), so one per player
 -- near would replay the anim or sound on a split-screen client for each of its players. A client is its online ids'
 -- slot: id = slot * 4 + split-screen index (GameServer.java:2686, ConnectCoopPacket.java:125). Returns how many.
-function T.sendClients(near, cmd, args, except)
+function T.sendClients(near, cmd, args, ...)
+    local except = ...
     local done, n = {}, 0
     if except then done[math.floor(except:getOnlineID() / 4)] = true end
     local list = getOnlinePlayers()

@@ -76,7 +76,8 @@ end
 
 -- remote: from the phone app (server/MinidoracatTesla/Remote.lua already checked the app's reach, Keys.appReach), so
 -- the 10-tile range and "be outside" do not apply; every other condition does.
-function S.canArm(player, vehicle, remote)
+function S.canArm(player, vehicle, ...)
+    local remote = ...
     local part = T.Battery.part(vehicle)
     if not part then return false end
     if not remote and player:getVehicle() then return false, "OCCUPIED" end
@@ -91,7 +92,8 @@ function S.canArm(player, vehicle, remote)
     return true
 end
 
-function S.canDisarm(player, vehicle, remote)
+function S.canDisarm(player, vehicle, ...)
+    local remote = ...
     local part = T.Battery.part(vehicle)
     local s = part and part:getModData().sentry
     if not s then return false end
