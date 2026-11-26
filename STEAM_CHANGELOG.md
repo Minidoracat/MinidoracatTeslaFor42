@@ -1,20 +1,14 @@
-[h1]Minidoracat Tesla Collection for B42 42.22.2-0.13.1[/h1]
-[i]2026-11-26[/i]
+[h1]Minidoracat Tesla Collection for B42 42.22.2-0.13.2[/h1]
+[i]2026-11-27[/i]
 
 [b]English summary[/b]
 [list]
-[*] Multiplayer: the phone app now refuses Kickflip and Backflip when the car is too close to a safehouse you can't enter. Your own safehouse and thrusters used from the driver's seat work as before.
-[*] Fixed: after a plugged-in Tesla was removed (for example deleted by an admin), the charger's charge cable could be drawn to another Tesla nearby that was not charging. It now only connects to the car actually plugged in.
-[*] Fixed: with Project Viewpoint installed, the driver's hands in the original Roadster 2.5 Sport no longer sit in front of your eyes in first person, and the steering wheel now sits where the hands hold it.
-[*] Multiplayer: a phone app stunt asked while the car is still rolling is now refused over 40 km/h (Kickflip) or 15 km/h (Backflip), while reversing, or with something in the way. A parked car works as before.
 [*] Server-side checks were hardened. Normal play is unchanged and you don't need to do anything.
 [*] Phone app (needs AutoDrive): when a Summon stops on its own, the app now shows "Summon stopped" and puts the full reason under the buttons, up to three lines. Longer reasons used to be cut off.
 [/list]
 
 [h3]🔧 修正[/h3]
 [list]
-[*] [b]強化手機 App「推進器表演」的安全屋驗證[/b]（只影響多人；42.22.2-0.13.0 起）：車子離你不能進入的安全屋太近時，App 的 Kickflip 側翻與後空翻會被拒絕，並顯示「車子太靠近你不能進入的安全屋」。自己的安全屋、離得夠遠的地方，以及坐在車上用推進器都照舊。
-[*] [b]充電線不再畫到沒插線的車上[/b]（從第一版就有）：插著充電線的特斯拉被移除（例如管理員刪車）之後，那座充電設備的線有時會畫到之後出現在附近的另一台特斯拉上，看起來像插著，其實那台車沒有在充電。現在只會畫到真的插在這座上的車。
-[*] [b]初代 Roadster 的駕駛手臂與方向盤[/b]（裝了 Project Viewpoint 才看得到；42.22.2-0.8.0 起）：第一人稱時駕駛的雙手不再舉在眼前，方向盤移到手握得到的位置。
-[*] [b]手機 App「推進器表演」：滑行中的車也照坐在車上的限制[/b]（只影響多人；42.22.2-0.13.0 起）：剛下車、車還在滑行時叫表演，以前可能照樣起跳。現在超過車速上限（Kickflip 側翻 40 km/h、後空翻 15 km/h）、倒車中或前方有東西擋著，都會被拒絕並顯示原因。停好的車照舊。
+[*] [b]強化伺服器端驗證[/b]：正常遊玩的行為不變，不必做任何事。
+[*] [b]手機 App 有更多空間顯示召喚停下的原因[/b]（要裝 AutoDrive）：現在大字寫「已停止召喚」，原因寫在按鈕下面，最多三行；首頁的召喚那一列放得下時也會接著寫。先前原因接在「已停止：」後面只畫一行，比較長的（例如「前方是你不能進入的安全屋」）後半段看不到。
 [/list]
