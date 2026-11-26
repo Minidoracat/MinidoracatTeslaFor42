@@ -563,13 +563,25 @@ local function wake(f)
     v:setRegulatorSpeed(WAKE_KMH)
     v:setRegulator(true)
 end
+-- never backwards, and no faster than conf allows each to start at: the driver's ask (H.check), and the show once its
+-- car's physics is here (a machine without it reads 0 km/h of an empty car: BaseVehicle.java:4346-4354)
+local SPEED_MAX = { kickflip = "kickMaxKmh", backflip = "flipMaxKmh", boost = "boostMaxKmh" }
+local function speedWhy(kmh, c, act)
+    if kmh < -1 then return "THRUST_REVERSE" end
+    local max = SPEED_MAX[act]
+    if max and kmh > c[max] then return "THRUST_FAST" end
+end
 -- the driver's stunt from under conf.rollKmh: the motor's cruise takes it there (flight PoC: 17/17 from 6 km/h; the
 -- thrusters' push left 3 of 13 parked cars stuck, r2f-sp-1124c). Flying from a standstill: lifted, then straight up
 local function go(f)
     local v, c = f.v, f.conf
     -- the show's car as this machine has it now, its physics here: where it really is, at the speed it really has
-    -- (shared Thruster.lua H.SHOW_CARRY_S)
-    if f.app == "show" and H.showTrespass(f.player, v) then return stop(false, "THRUST_SAFEHOUSE") end
+    -- (shared Thruster.lua H.SHOW_CARRY_S), and the way that speed takes it over (H.check scanned 0 km/h's way)
+    if f.app == "show" then
+        if H.showTrespass(f.player, v) then return stop(false, "THRUST_SAFEHOUSE") end
+        local why = speedWhy(v:getCurrentSpeedKmHour(), c, f.act) or PROF[f.act] and not clearPath(v, c, f.act) and "THRUST_ROOM"
+        if why then return stop(false, why) end
+    end
     if f.act == "land" or v:getCurrentSpeedKmHour() >= c.rollKmh then return beginRun(f) end
     if f.act == "fly" then
         if not v:isPhysicsActive() then v:setPhysicsActive(true) end
@@ -724,7 +736,15 @@ function H.tick()
     elseif ph == "roll" then
         local lv = v:getLinearVelocity(V3.lv)
         local along = lv:x() * st.pdx + lv:z() * st.pdz
-        if along * 3.6 >= c.rollKmh then return beginRun(f) end
+        -- only a show rolls up; shoved back or on as it does: its limits as at go, each sample. Along its heading: the
+        -- engine's speed is |v| signed by forward . v (VehicleManager.java:237), and the car is dropping from its lift
+        local why = speedWhy(along * 3.6, c, f.act)
+        if why then return stop(false, why) end
+        if along * 3.6 >= c.rollKmh then
+            -- faster than the driver's cruise sets off at (go: rollKmh + 2): the way that speed takes it over, as at go
+            if along * 3.6 > c.rollKmh + 2 and not clearPath(v, c, f.act) then return stop(false, "THRUST_ROOM") end
+            return beginRun(f)
+        end
         if t > ROLL_S then return stop(false, "THRUST_NO_LIFT") end
         local e = c.rollKmh / 3.6 - along
         st.ie = st.ie + e * dt
@@ -955,7 +975,6 @@ end
 -- app's show (PhoneApp.lua asks before sending; the server gives this machine the physics only once it approves). An
 -- action asked and not answered yet refuses another with no reason (nothing to say: the answer is on its way; the
 -- soft landing aside: a fall can't wait)
-local SPEED_MAX = { kickflip = "kickMaxKmh", backflip = "flipMaxKmh", boost = "boostMaxKmh" }
 function H.check(player, v, act, ...)
     local app = ...
     H.groundReset() -- the floors read afresh: one built under the car since the last action counts
@@ -972,10 +991,8 @@ function H.check(player, v, act, ...)
         if heightOf(v, RESTS[v:getId()] or c.rest) > 0.4 and not (act == "fly" and flyOff(v, c)) then
             return false, "THRUST_AIRBORNE"
         end
-        local kmh = v:getCurrentSpeedKmHour()
-        if kmh < -1 then return false, "THRUST_REVERSE" end
-        local max = SPEED_MAX[act]
-        if max and kmh > c[max] then return false, "THRUST_FAST" end
+        local why = speedWhy(v:getCurrentSpeedKmHour(), c, act)
+        if why then return false, why end
     end
     if PROF[act] and not clearPath(v, c, act) then return false, "THRUST_ROOM" end
     if act == "fly" and not clearAbove(v, c) then return false, "THRUST_ROOM" end

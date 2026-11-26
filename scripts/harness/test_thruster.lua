@@ -27,7 +27,11 @@ H.side(false, true)
 -- the world: open ground (level 0) everywhere but where gone["x,y"] (that cell not loaded); a flat roof at level
 -- roof["x,y"]
 local roof, gone = {}, {}
-local solid = { getFloor = function() return true end, TreatAsSolidFloor = function() return true end }
+-- a floor, and open ground to the take-off scan (client Thruster.lua clearPath: a stunt's ask and the show's start)
+local solid = { getFloor = function() return true end, TreatAsSolidFloor = function() return true end,
+    isSolid = function() return false end, isSolidTrans = function() return false end,
+    getObjects = function() return { size = function() return 0 end } end, isBlockedTo = function() return false end,
+    HasStairs = function() return false end, has = function() return false end, getProperties = function() return nil end }
 local saved = { addSound = addSound, getOnlinePlayers = getOnlinePlayers, fx = T.ThrusterFx, sandbox = {},
     getCell = getCell, vmRefusal = T.vmRefusal, byId = getPlayerByOnlineID, player = H.player }
 function getCell()
@@ -829,6 +833,16 @@ wait(2000)
 cmds.thrustEnd(caller, { vid = v:getId(), act = "kickflip", done = false, sec = 0, n = 79, why = "CANT_START" })
 check(entryOf(v) == nil and last().command == "appDone" and last().args.why == "THRUST_NO_LIFT",
     "another reason named by the client: not passed on (THRUST_NO_LIFT)")
+show(caller, "backflip", 80)
+wait(2000)
+cmds.thrustEnd(caller, { vid = v:getId(), act = "backflip", done = false, sec = 0, n = 80, why = "THRUST_FAST" })
+check(entryOf(v) == nil and near(gas(part), 1) and last().command == "appDone" and last().args.why == "THRUST_FAST"
+    and v.npid == -1, "the caller's machine found the car rolling too fast: the air and the physics back, the app told that")
+show(caller, "kickflip", 81)
+wait(2000)
+cmds.thrustEnd(caller, { vid = v:getId(), act = "kickflip", done = false, sec = 0, n = 81, why = "THRUST_ROOM" })
+check(entryOf(v) == nil and near(gas(part), 1) and last().command == "appDone" and last().args.why == "THRUST_ROOM"
+    and v.npid == -1, "... or something in the way it would go at that speed: the same")
 show(caller, "backflip")
 wait(2000)
 v.dz = 1
@@ -1096,6 +1110,19 @@ ask(p, v, "fly")
 wait(3000)
 done(p, v, { done = true, sec = 100 })
 check(near(gas(part), 1 - 3 / 8, 1e-6), "SP: a client saying 100 s after 3 s is billed the 3 s since approval")
+do -- the show its caller's machine would not start: the app is told why in SP as well (T.send calls its handler there)
+    local d0, pv0, savedAD, told = v.driver, p.vehicle, T.ClientCommands.appDone, nil
+    T.ClientCommands.appDone = function(a) told = a.why end
+    v.driver, p.vehicle = nil, nil
+    part:getModData().thr = { gas = 1, at = H.hours() }
+    show(caller, "kickflip")
+    wait(2000)
+    done(caller, v, { done = false, sec = 0, why = "THRUST_REVERSE" })
+    check(entryOf(v) == nil and near(gas(part), 1) and told == "THRUST_REVERSE",
+        "SP: the show refused for rolling backwards: the air back, the app told that")
+    T.ClientCommands.appDone = savedAD
+    v.driver, p.vehicle = d0, pv0
+end
 H.side(false, true)
 if hooked then timer() end
 check(not hooked and next(TH.pending) == nil, "nothing left pending on the server: its timer gone")
@@ -1302,6 +1329,61 @@ do -- the safehouse rule again as the show starts, by the car as this machine ha
     refused(508, "... or its last sample 4 m/s: refused")
     cv.lv = nil
     SafeHouse = savedSafe
+end
+do -- the driver's speed limits again as the show starts: its caller's machine reads 0 km/h of the empty car until its
+    -- physics is there (set here only then: a speed read before that would let all of these by)
+    local imp0
+    local ticks0 = H.count("OnTick")
+    local function refused(n, why, what)
+        e = H.clientSent[#H.clientSent]
+        check(TH.active() == nil and #H.clientSent == sent + 1 and e.command == "thrustEnd" and e.args.done == false
+            and e.args.n == n and e.args.why == why and halo[#halo] == "IGUI_MinidoracatTesla_Deny_" .. why
+            and (cv.impulses or 0) == imp0 and cv.dz == 0.075 and H.count("OnTick") == ticks0, what)
+    end
+    local function showAt(act, n, kmh)
+        cv.local_, cv.dz, cv.speed = false, 0.075, 0
+        T.ClientCommands.thrustOk({ vid = cv:getId(), act = act, app = true, n = n, pn = 0 })
+        cv.local_, cv.speed = true, kmh
+        sent, imp0 = #H.clientSent, cv.impulses or 0
+        TH.tick()
+    end
+    showAt("backflip", 509, 16)
+    refused(509, "THRUST_FAST", "the show's car rolling over flipMaxKmh as its physics comes: no backflip, the air back, told why")
+    showAt("kickflip", 510, -2)
+    refused(510, "THRUST_REVERSE", "... rolling backwards: none either")
+    showAt("kickflip", 512, 41)
+    refused(512, "THRUST_FAST", "... a kickflip over its own kickMaxKmh: none")
+    sent, imp0 = #H.clientSent, cv.impulses or 0
+    T.ClientCommands.thrustOk({ vid = cv:getId(), act = "kickflip", app = true, n = 513, pn = 0 })
+    refused(513, "THRUST_FAST", "... the physics here already as the go-ahead comes: refused at once, no OnTick left behind")
+    showAt("backflip", 511, 5)
+    check(TH.active() and TH.active().phase == "roll", "under the limit and under rollKmh: the show rolls up")
+    cv.speed = 25 -- shoved on while it rolls up
+    sent = #H.clientSent
+    TH.tick()
+    e = H.clientSent[#H.clientSent]
+    check(TH.active() == nil and #H.clientSent == sent + 1 and e.command == "thrustEnd" and e.args.done == false
+        and e.args.n == 511 and e.args.why == "THRUST_FAST" and H.count("OnTick") == ticks0,
+        "... over flipMaxKmh by the time it has rolled up: no backflip, told why")
+    showAt("kickflip", 514, 5)
+    cv.speed = -2 -- shoved backwards while it rolls up
+    sent, imp0 = #H.clientSent, cv.impulses or 0
+    TH.tick()
+    e = H.clientSent[#H.clientSent]
+    check(TH.active() == nil and #H.clientSent == sent + 1 and e.command == "thrustEnd" and e.args.done == false
+        and e.args.n == 514 and e.args.why == "THRUST_REVERSE" and (cv.impulses or 0) == imp0
+        and H.count("OnTick") == ticks0, "... backwards while it rolls up: no push more, told why")
+    showAt("kickflip", 515, 0)
+    local kmh0 = cv.getCurrentSpeedKmHour
+    function cv:getCurrentSpeedKmHour() return -5 end -- the engine's: |v| signed by forward . v, the drop from its lift in it
+    TH.tick()
+    check(TH.active() and TH.active().n == 515 and TH.active().phase == "roll",
+        "... dropping from its lift (the engine reads that as backwards): it rolls up on, judged along its heading")
+    cv.getCurrentSpeedKmHour = kmh0
+    cv.driver = cp -- someone sits in: it ends
+    TH.tick()
+    cv.driver = nil
+    cv.speed = 0
 end
 cv.local_, cv.dz = false, 1.075
 T.ClientCommands.thrustOk({ vid = cv:getId(), act = "backflip", app = true, pn = 0, n = 503 })
@@ -1760,10 +1842,7 @@ cv.driver = cp
 -- a stunt past its turn coming down faster than the soft landing's curve: the landing takes it, its braking fed
 -- forward (r2fe-sp-a: switched at 1.5 m on the PD alone, touchdown -2.7 / -3.2 m/s)
 local savedCore, savedSH = getCore, getPlayerScreenHeight
-local ground = { isSolid = function() return false end, isSolidTrans = function() return false end,
-    getObjects = function() return { size = function() return 0 end } end, isBlockedTo = function() return false end,
-    getFloor = function() return true end, TreatAsSolidFloor = function() return true end,
-    HasStairs = function() return false end, has = function() return false end, getProperties = function() return nil end }
+local ground = solid
 getCell = function() return { getGridSquare = function(_, x, y, z) return z == 0 and ground or nil end } end -- open, no roof
 -- the camera: zoom 1, out to 3 (0.25 a step)
 local zoom = 1
@@ -2598,6 +2677,51 @@ check(scan("kickflip", NEAR, { objs = { { class = "IsoThumpable", ball = false }
     and scan("kickflip", NEAR, { objs = { { sprite = "recreational_sports_01_20" } } }) == "ok"
     and scan("kickflip", NEAR, { flags = { doorN = true, open = true } }) == "ok",
     "scan: a thumpable not filling its square, another sports tile, an open door: go")
+-- the show's car once its physics is here: the same scan, at the speed it really has then (its caller's machine read
+-- 0 km/h of it as he asked, a 10 m way: a HitByCar object 13.5 m on is past that, and on the 40 m way of 30 km/h)
+local d0, pv0 = cv.driver, cp.vehicle
+cv.driver, cp.vehicle = nil, nil
+world, cv.speed, cv.local_ = { [MID] = { objs = { { props = { HitByCar = "" } } } } }, 0, false
+T.ClientCommands.thrustOk({ vid = cv:getId(), act = "kickflip", app = true, n = 520, pn = 0 })
+cv.local_ = true
+TH.tick()
+check(TH.active() and TH.active().phase == "roll", "scan, the show: the car at rest, something past its way: it rolls up")
+cv.driver = cp
+TH.tick()
+cv.driver, cv.dz, cv.local_ = nil, 0.075, false
+T.ClientCommands.thrustOk({ vid = cv:getId(), act = "kickflip", app = true, n = 521, pn = 0 })
+cv.local_, cv.speed = true, 30
+sent = #H.clientSent
+TH.tick()
+e = H.clientSent[#H.clientSent]
+check(TH.active() == nil and #H.clientSent == sent + 1 and e.command == "thrustEnd" and e.args.done == false
+    and e.args.n == 521 and e.args.why == "THRUST_ROOM",
+    "scan, the show: rolling at 30 km/h as its physics comes, the same thing in its way: no show, told why")
+-- as it rolls up (at rest when its physics came, kmh by the next sample): past the driver's cruise (rollKmh + 2) the
+-- scan again at that speed. Something 12 m on: past the 10 m way of 6 km/h, on the 13.75 m way of 9 km/h
+local core0, sh0 = getCore, getPlayerScreenHeight
+getCore = function() return { getZoom = function() return 1 end, getMaxZoom = function() return 1 end } end
+getPlayerScreenHeight = function() return 1080 end
+local function rolled(n, kmh, at)
+    world = at and { [at] = { objs = { { props = { HitByCar = "" } } } } } or {}
+    cv.driver, cv.dz, cv.local_, cv.speed = nil, 0.075, false, 0
+    T.ClientCommands.thrustOk({ vid = cv:getId(), act = "kickflip", app = true, n = n, pn = 0 })
+    cv.local_ = true
+    TH.tick()
+    cv.speed = kmh
+    sent = #H.clientSent
+    TH.tick()
+    e = H.clientSent[#H.clientSent]
+    local got = TH.active() and TH.active().phase or #H.clientSent == sent + 1 and e.args.n == n and e.args.why
+    cv.driver = cp -- someone sits in: whatever goes on ends
+    TH.tick()
+    return got
+end
+check(rolled(522, 9, "500,512") == "THRUST_ROOM", "scan, the show: shoved on to 9 km/h as it rolls up, something on that way: no show, told why")
+check(rolled(523, 7.5, "500,512") == "stunt", "... at 7.5 km/h (the driver's cruise sets off there too): it sets off, as scanned at go")
+check(rolled(524, 30) == "stunt", "... shoved on to 30 km/h, nothing on its way: it sets off")
+getCore, getPlayerScreenHeight = core0, sh0
+world, cv.driver, cp.vehicle, cv.speed = {}, d0, pv0, 0
 end)()
 instanceof, getCell = savedInst, cellS
 
