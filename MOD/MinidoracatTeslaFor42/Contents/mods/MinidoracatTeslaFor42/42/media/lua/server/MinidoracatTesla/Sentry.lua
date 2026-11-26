@@ -21,7 +21,8 @@ local function now() return getGameTime():getWorldAgeHours() end
 -- standby (Battery.onCharger): free until `freeUntil` (world hour), by default until its power ended
 -- (Charge.powerUntil: the grid shut-off, which an unloaded car can pass; without that module, while plugged in). On a
 -- generator that standby costs its fuel (chg.fed, as Battery.draw).
-function S.settle(vehicle, t, freeUntil)
+function S.settle(vehicle, ...)
+    local t, freeUntil = ...
     local part = T.Battery.part(vehicle)
     if not part then return end
     local md = part:getModData()
@@ -56,7 +57,8 @@ end
 
 -- Already on: stays as it is. A fresh record would drop the standby drain since the last settle (`at`) and hand
 -- the alerts to whoever pressed it again.
-function S.arm(player, vehicle, remote)
+function S.arm(player, vehicle, ...)
+    local remote = ...
     local part = T.Battery.part(vehicle)
     if part and part:getModData().sentry then return end
     local ok, why = S.canArm(player, vehicle, remote)
@@ -140,7 +142,8 @@ function S.isFlashing(vehicle)
 end
 
 -- toggles: on/off switches, default 3 flashes (key card / walk-away lock pass 2 or 4: KeyActions.lua)
-function S.flash(vehicle, toggles)
+function S.flash(vehicle, ...)
+    local toggles = ...
     if S.isFlashing(vehicle) then return end
     flashing[#flashing + 1] = { v = vehicle, id = vehicle:getId(), n = 0, nextAt = 0, was = vehicle:getHeadlightsOn(),
         toggles = toggles or S.FLASH_TOGGLES }
@@ -171,7 +174,8 @@ function S.markWindows(vehicle)
     s.win = win
 end
 
-function S.onTouch(vehicle, actor, what, partId)
+function S.onTouch(vehicle, actor, what, ...)
+    local partId = ...
     if not armedState(vehicle) or not actor then return end
     S.settle(vehicle)
     local s = armedState(vehicle)
@@ -188,7 +192,8 @@ end
 
 -- actor nil: a window found broken by the scan with nobody to blame (a crash, a zombie, a weapon in SP); the alert
 -- names nobody (Inbox.entry). A legit actor (the owner fixing or smashing their own glass) only moves the baseline.
-function S.onBreak(vehicle, actor, what, partId)
+function S.onBreak(vehicle, actor, what, ...)
+    local partId = ...
     if not armedState(vehicle) then return end
     S.settle(vehicle)
     local s = armedState(vehicle)

@@ -184,7 +184,8 @@ function A.around(v, fn)
 end
 
 -- why: logged; deny: the reason the player is told (nil: none, the mechanics window still flashes red)
-local function refuse(v, part, chr, what, why, deny)
+local function refuse(v, part, chr, what, why, ...)
+    local deny = ...
     T.log("upgrade " .. what .. " refused vid=" .. v:getId() .. " part=" .. part:getId() .. " by "
         .. tostring(chr:getUsername()) .. " why=" .. tostring(why))
     v:transmitPartItem(part)

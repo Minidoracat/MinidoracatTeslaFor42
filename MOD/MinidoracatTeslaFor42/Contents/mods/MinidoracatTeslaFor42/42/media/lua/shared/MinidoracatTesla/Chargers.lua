@@ -143,7 +143,8 @@ end
 
 -- plugged straight into a running generator up to genTiles from (x, y), same floor: generator, gx, gy. No sandbox
 -- AllowExteriorGenerator limit (decisions.md 2026-10-28).
-function T.directGenerator(kind, x, y, z, skip)
+function T.directGenerator(kind, x, y, z, ...)
+    local skip = ...
     local c = T.Chargers[kind]
     local r = c and c.genTiles
     if not r then return nil end
@@ -234,7 +235,8 @@ end
 -- Supercharger post is no 240 V plug), not `except`; else nil. Server / SP: the cars with the outlet on (T.OutletCars,
 -- kept by Powershare.lua), no map scan. MP client (the menu's hint): the cars on the squares around.
 T.OutletCars = T.OutletCars or {} -- vehicle id -> keyId (ids are handed out again: the keyId must still match)
-function T.bedOutlet(kind, x, y, z, except)
+function T.bedOutlet(kind, x, y, z, ...)
+    local except = ...
     local c = T.Chargers[kind]
     if not (c and c.genTiles) or c.dc then return nil end
     if not isClient() then

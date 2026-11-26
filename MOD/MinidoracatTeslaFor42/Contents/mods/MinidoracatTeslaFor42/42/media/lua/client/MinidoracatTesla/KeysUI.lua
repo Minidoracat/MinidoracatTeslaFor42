@@ -31,7 +31,8 @@ T.KeysUI = UI
 UI.stats = { sweeps = 0, watchAdds = 0, watchRemoves = 0, chirps = 0, chirpStops = 0, names = 0 }
 
 local function denyText(why) return getText("IGUI_MinidoracatTesla_Deny_" .. tostring(why)) end
-local function tip(option, text, blocked)
+local function tip(option, text, ...)
+    local blocked = ...
     local tt = ISWorldObjectContextMenu.addToolTip()
     tt.description = text
     option.toolTip = tt
@@ -49,7 +50,8 @@ local function startSettles(player)
     local at = v and v:getDriver() == player and startAt[player:getPlayerNum()]
     if at and getTimestampMs() - at < K.START_MS then return at + K.START_MS end
 end
-function UI.checkKeys(player, force)
+function UI.checkKeys(player, ...)
+    local force = ...
     if not player then return end
     local inv = player:getInventory()
     if not inv:containsTypeRecurse("Base.CarKey") then return end
@@ -102,7 +104,8 @@ local function laterTick()
     laterAt, laterForce = nil, nil
     UI.checkKeys(laterP, force)
 end
-function UI.checkSoon(player, force)
+function UI.checkSoon(player, ...)
+    local force = ...
     if not laterAt then Events.OnTick.Add(laterTick) end
     laterP, laterAt, laterForce = player, getTimestampMs() + 1000, laterForce or force
 end

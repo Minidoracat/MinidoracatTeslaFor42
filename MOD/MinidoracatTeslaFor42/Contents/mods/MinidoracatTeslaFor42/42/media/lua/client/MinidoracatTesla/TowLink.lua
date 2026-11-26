@@ -23,7 +23,8 @@ local TL = {}
 T.TowLink = TL
 
 -- `a` = the tractor this client just hooked car `id` to on an answer: a check, see towLink
-local function ask(id, a)
+local function ask(id, ...)
+    local a = ...
     local p = getSpecificPlayer(0)
     if p then T.request(p, "towAsk", { vid = id, a = a }) end
 end

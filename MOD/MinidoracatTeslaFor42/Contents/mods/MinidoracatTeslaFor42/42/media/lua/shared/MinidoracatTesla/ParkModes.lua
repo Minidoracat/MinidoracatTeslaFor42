@@ -60,7 +60,8 @@ end
 -- query: as T.authorized; sentry sorting out a touch VehicleManager already let through (server Sentry.lua). Sentry is
 -- a decision of its own (VehicleManager may not have checked PASSENGER on this car for that touch), so an admin's
 -- override deciding it is asked again, for the record.
-function T.legit(player, vehicle, by, query)
+function T.legit(player, vehicle, ...)
+    local by, query = ...
     if by and T.account(player) == by then return true end -- a split-screen guest's name proves nothing (Core.lua)
     local api = MinidoracatVehicleManagerAPI
     if api and api.canUse then

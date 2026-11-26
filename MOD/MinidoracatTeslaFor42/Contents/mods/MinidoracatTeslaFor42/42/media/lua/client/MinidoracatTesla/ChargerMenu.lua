@@ -9,7 +9,8 @@ local T = MinidoracatTesla
 T.Charge = T.Charge or {} -- shared with server/Charging.lua in SP
 local C = T.Charge
 
-local function changed(o, removed)
+local function changed(o, ...)
+    local removed = ...
     local f = T.onChargerChanged
     if f and o then f(o, removed) end
 end
@@ -104,7 +105,8 @@ local function disable(option, textKey)
 end
 -- grey a plug / unplug row the way the server would refuse it, with its reason: the shared cable rule (T.mayUseCable,
 -- Chargers.lua, which lists the reasons; unplug: T.mayUnplug, the charger's owner too)
-local function notOwner(option, player, vehicle, rule)
+local function notOwner(option, player, vehicle, ...)
+    local rule = ...
     local ok, deny = (rule or T.mayUseCable)(player, vehicle)
     if ok then return false end
     disable(option, "IGUI_MinidoracatTesla_Deny_" .. deny)

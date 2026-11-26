@@ -148,7 +148,8 @@ end
 
 -- applies (or asks about) every fridge the page lists while its contents can be seen, noting each such car in `vis`
 -- (when given); true when it lists one and is still on the screen (a removed page goes unwatched)
-local function scan(page, vis)
+local function scan(page, ...)
+    local vis = ...
     local list = fridges(page)
     if list[1] and seen(page) then
         local player = getSpecificPlayer(page.player or 0)
@@ -162,7 +163,8 @@ end
 
 -- drops every car's state but those in `keep`: the state holds food instances (food -> container -> car), so it lives
 -- only while a page shows that car's fridge
-local function forget(keep)
+local function forget(...)
+    local keep = ...
     for vid in pairs(UI.cars) do
         if not (keep and keep[vid]) then UI.cars[vid] = nil end
     end

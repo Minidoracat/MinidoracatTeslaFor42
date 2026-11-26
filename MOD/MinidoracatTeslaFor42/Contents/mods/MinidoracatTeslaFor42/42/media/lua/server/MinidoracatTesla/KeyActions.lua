@@ -52,7 +52,8 @@ Events.OnSpawnVehicleEnd.Add(K.register)
 -- car too) and a new one never takes a recorded id: two phone keys never share one (review 2026-10-27, round 1 and 2:
 -- a twin would inherit the other's cars). ponytail: phone keys paired before app v2 are not recorded, so a new one can
 -- still land on such an id (chance: their count / 2^31 per pairing); they get recorded at their next pairing.
-local function replace(old, fullType, keyId, ids, cars)
+local function replace(old, fullType, keyId, ids, ...)
+    local cars = ...
     local cont = old:getContainer()
     if not cont then return nil end
     local item = instanceItem(fullType)

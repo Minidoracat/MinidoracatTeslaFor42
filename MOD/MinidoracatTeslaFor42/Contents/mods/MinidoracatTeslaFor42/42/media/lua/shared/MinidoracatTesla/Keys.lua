@@ -143,7 +143,8 @@ end
 -- Fails closed, unlike Remote.vmAllows (no VehicleManager or UNCLAIMED = yes there): here only a VehicleManager grant counts.
 -- (T.authorized's HOTWIRED, like KEY and EASY_USE, only comes without VehicleManager, which already returned false.)
 -- query: as T.authorized.
-local function vmGrants(chr, vehicle, codes, query)
+local function vmGrants(chr, vehicle, codes, ...)
+    local query = ...
     local api = MinidoracatVehicleManagerAPI
     if not (api and api.canUse) then return false end
     local page = SandboxVars and SandboxVars.MinidoracatVehicleManager

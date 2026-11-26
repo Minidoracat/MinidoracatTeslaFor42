@@ -54,7 +54,8 @@ end
 -- Once per client, none to `except`'s (it played the anim in :start; its split-screen players share it): T.sendClients
 -- (server/MinidoracatTesla/Commands.lua).
 L.NEAR_TILES = 96
-local function sendNear(v, cmd, args, except)
+local function sendNear(v, cmd, args, ...)
+    local except = ...
     local x, y, r = v:getX(), v:getY(), L.NEAR_TILES
     T.sendClients(function(p) return math.abs(p:getX() - x) <= r and math.abs(p:getY() - y) <= r end, cmd, args, except)
 end
@@ -139,7 +140,8 @@ shellTick = function()
 end
 -- The server (and SP) sets the bits from the doors: an open door's at once, a shut door's after its closing clip;
 -- now: all at once (a car just loaded: its doors stand where they were saved)
-function L.syncShell(vehicle, now)
+function L.syncShell(vehicle, ...)
+    local now = ...
     local h = vehicle:getColorHue()
     local was, bits, vid = math.floor(h), 0, vehicle:getId()
     local ks = not now and pending[vid] or {}
@@ -335,7 +337,8 @@ end
 
 if not isClient() then
     -- to the clients near but `except` (MP), or straight to the handler (SP)
-    local function broadcast(v, out, except)
+    local function broadcast(v, out, ...)
+        local except = ...
         if not isServer() then return T.ClientCommands.partAnim(out) end
         sendNear(v, "partAnim", out, except)
     end

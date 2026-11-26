@@ -57,7 +57,8 @@ end
 -- The car as it is now, written over its record. Called on load, from the battery part update (driving, charging),
 -- on lock changes (Keys K.setLocked), after every app command and on each status asked over a live link. Only the
 -- last two (`create`) start a record: parked Teslas the world spawns (Spawns.lua) never get one.
-function R.remember(v, create)
+function R.remember(v, ...)
+    local create = ...
     local key = tostring(v:getKeyId())
     local all = store("seen")
     local r = all[key]
@@ -526,7 +527,8 @@ T.ServerCommands.appAction = function(player, args)
     local fn = type(act) == "string" and ACT[act]
     if not fn or not player then return end
     local key = holder(player, args)
-    local function done(why, on)
+    local function done(why, ...)
+        local on = ...
         if why then
             R.stats.denied = R.stats.denied + 1
             -- not a holder: counted, not logged (anyone can send these; a log line each would flood the console)

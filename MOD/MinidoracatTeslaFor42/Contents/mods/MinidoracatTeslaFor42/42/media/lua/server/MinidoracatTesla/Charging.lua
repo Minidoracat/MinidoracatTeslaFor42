@@ -181,7 +181,8 @@ function C.settleSupplied(sup)
         if not ok then T.log("settle for a supply change failed: " .. tostring(err)) end
     end
 end
-function C.settleAround(x, y, z, r, vr, except)
+function C.settleAround(x, y, z, r, vr, ...)
+    local except = ...
     local list = {}
     for o in pairs(active) do
         if math.abs(o.x - x) <= r and math.abs(o.y - y) <= r and math.abs(o.z - z) <= vr then list[#list + 1] = o end
@@ -213,7 +214,8 @@ end
 -- 628-647) and the client applies it by square index (GameClient.java:1133-1141): arriving after RemoveItemFromSquare
 -- (sent first on a sledgehammer, GameServer.java:2990-2998) it would paint whatever object took that index. A
 -- picked-up item keeps the plugged tile; it goes down idle (Chargers.lua removeComponentsBeforePlacing).
-function C.setBusy(o, busy, iso)
+function C.setBusy(o, busy, ...)
+    local iso = ...
     if o and o.removing then return end
     iso = iso or (o and o:getIsoObject())
     local info = iso and T.chargerInfo(iso)
@@ -391,7 +393,8 @@ end
 -- Book energy from chg.last to now, pick the source for what comes next, schedule the next settle.
 -- here = true skips the cable check (unplugging: the car is still at the charger). fresh = true: the car just loaded
 -- (relink): a stretch it ran on a Cybertruck not loaded now waits for it once more (below).
-function C.settle(o, now, here, fresh)
+function C.settle(o, now, ...)
+    local here, fresh = ...
     local v = T.chargerCar(o, o.x, o.y, o.z)
     if not v then
         -- no car on this cable. vid names no loaded car: unloaded, relink resumes it when it loads. vid names a loaded
@@ -659,7 +662,8 @@ end
 
 -- the cable rule (Chargers.lua T.mayUseCable; T.mayUnplug for unplug and stop, which the charger's owner may too) for
 -- plug, unplug and the charge card; refused: log, deny with the reason it gives, false
-local function mayCable(player, v, what, rule)
+local function mayCable(player, v, what, ...)
+    local rule = ...
     local ok, deny, why = (rule or T.mayUseCable)(player, v)
     if ok then return true end
     T.log(what .. " refused for " .. tostring(player:getUsername()) .. ": " .. tostring(why or deny))

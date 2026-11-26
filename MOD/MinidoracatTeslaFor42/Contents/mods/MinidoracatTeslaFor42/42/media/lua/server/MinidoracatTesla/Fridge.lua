@@ -40,7 +40,8 @@ end
 -- rest runs on the pack down to S.MIN_PCT; short of that the fridge switches off and its `by` hears it once (it stays
 -- off until switched on again, as sentry). besideKw: another draw on the pack over the same hours (F.settleAll:
 -- sentry's), so the fridge runs as long as the two together reach the floor; it pays only its own.
-function F.settle(v, t, freeUntil, besideKw)
+function F.settle(v, ...)
+    local t, freeUntil, besideKw = ...
     local part = v and v:getPartById("TeslaFridge")
     local s = part and part:getModData().fridge
     if not s then return end
@@ -113,7 +114,8 @@ end
 -- charging settle (Charging.lua settleSentry). ponytail: sentry armed or disarmed since the last joint settle (at most
 -- ten game minutes while loaded; setMode books sentry first, so switching the fridge on is not one) counts beside the
 -- fridge for all of that stretch or none of it.
-function F.settleAll(v, t, freeUntil)
+function F.settleAll(v, ...)
+    local t, freeUntil = ...
     local bp = B.part(v)
     local sentry = bp and bp:getModData().sentry and S.settle
     F.settle(v, t, freeUntil, sentry and S.KW or nil)
@@ -183,7 +185,8 @@ T.ServerCommands.fridgeFoodPull = function(player, args)
     if n > 0 then T.send(player, "fridgeFood", { vid = v:getId(), seq = args.seq, items = out }) end
 end
 
-local function settleSafe(v, t)
+local function settleSafe(v, ...)
+    local t = ...
     local ok, err = pcall(F.settleAll, v, t)
     if not ok then T.log("fridge settle failed vid=" .. tostring(v:getId()) .. ": " .. tostring(err)) end
 end

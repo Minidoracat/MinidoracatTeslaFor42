@@ -152,7 +152,8 @@ local function quad(self, sx, sy, sw, sh, x, y, w, h, c, a)
     self.n = n + 12
     return n + 12 -- index of the alpha slot (for pulses)
 end
-local function spr(self, e, x, y, c, a, scale)
+local function spr(self, e, x, y, c, a, ...)
+    local scale = ...
     local f = self.f * (scale or 1)
     return quad(self, e[1], e[2], e[3], e[4], x + e[5] * f, y + e[6] * f, e[3] * f, e[4] * f, c, a or 1)
 end

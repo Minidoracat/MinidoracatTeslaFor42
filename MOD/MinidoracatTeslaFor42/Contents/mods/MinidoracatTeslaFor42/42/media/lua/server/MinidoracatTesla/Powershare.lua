@@ -47,7 +47,8 @@ local function r0() return T.GEN_FUEL_PER_KWH * (SandboxVars.GeneratorFuelConsum
 local function key(x, y, z) return x .. "," .. y .. "," .. z end
 
 -- kWh above the discharge limit (0 within T.KWH_EPS of it: a float pack at its limit reads a hair above, Chargers.lua)
-function PS.avail(v, part)
+function PS.avail(v, ...)
+    local part = ...
     return T.psAbove(part or B.part(v))
 end
 
@@ -288,7 +289,8 @@ end
 -- ---------------------------------------------------------------- switches (radial menu, phone app)
 -- what: "ps" | "outlet" | "floor". The cable rule decides who (T.mayUseCable: VehicleManager's FUEL, else a key or an
 -- unlocked car), as for the charge card. Returns nil, or a deny reason.
-function PS.set(player, v, what, on, pct)
+function PS.set(player, v, what, on, ...)
+    local pct = ...
     local s = T.spec(v)
     local part = B.part(v)
     if not (s and part) then return "NO_VEHICLE" end
@@ -398,7 +400,8 @@ end)
 -- through these actions. Adding fuel changes nothing we bill (book) and the next settle sets it back (fill). cheat: a
 -- player in build cheat (an admin) may smash one, an orphan left by a truck gone (charging.md); taking, plugging and
 -- switching stay refused. A hook error never breaks the vanilla action.
-local function guard(cls, field, cheat)
+local function guard(cls, field, ...)
+    local cheat = ...
     local orig = cls and cls.complete
     if not orig then return end
     cls.complete = function(self)

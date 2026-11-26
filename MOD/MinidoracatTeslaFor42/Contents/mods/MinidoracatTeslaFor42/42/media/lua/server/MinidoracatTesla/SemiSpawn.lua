@@ -290,7 +290,8 @@ end
 -- VehiclesDB2.java:805-821,841-855; global ModData waits for the world save). Standing, on the ground, inside the lot
 -- (half-open, like span): "there" marks the lot done for good, so one driving through, on a deck above or on the next
 -- lot's first square must not count.
-local function carsNear(z, car, x0, y0, x1, y1)
+local function carsNear(z, car, ...)
+    local x0, y0, x1, y1 = ...
     local out, it = {}, getCell():getVehicles():iterator()
     while it:hasNext() do
         local v = it:next()

@@ -143,7 +143,8 @@ end
 
 -- the longest head of `s` that fits `maxW` in `font`, with "..." when cut. Kahlua strings index UTF-16 units, so sub
 -- never splits a CJK character in game.
-local function fitText(s, maxW, font)
+local function fitText(s, maxW, ...)
+    local font = ...
     font = font or UIFont.Small
     local tm = getTextManager()
     if tm:MeasureStringX(font, s) <= maxW then return s end
@@ -451,7 +452,8 @@ function App:focusAt(row, col)
     self.fRow, self.fCol = row, col
     self:setFocus(self.b[self:navRows()[row][col]])
 end
-function App:focusFirst(id)
+function App:focusFirst(...)
+    local id = ...
     local rows = self:navRows()
     for r, row in ipairs(rows) do
         for c, bid in ipairs(row) do
@@ -778,7 +780,8 @@ end
 -- the last summon this game asked for, by keyId: an app opened while it runs takes its x, y and dir from here (the
 -- server's state says only the mode). ponytail: one table for all split-screen players, like App.seen.
 App.sumReq = {}
-function App:summonSend(on, m)
+function App:summonSend(on, ...)
+    local m = ...
     App.stats.sent = App.stats.sent + 1
     if not on then
         self.sum.stopAsked = true -- a refusal of the stop leaves the summon as it is

@@ -57,7 +57,8 @@ function C.start(player, vehicle)
 end
 
 -- reason: nil (manual / motor started / sentry armed), "left", "lowBattery"
-function C.stop(vehicle, part, reason)
+function C.stop(vehicle, ...)
+    local part, reason = ...
     part = part or T.Battery.part(vehicle)
     local c = part and part:getModData().camp
     if not c then return end

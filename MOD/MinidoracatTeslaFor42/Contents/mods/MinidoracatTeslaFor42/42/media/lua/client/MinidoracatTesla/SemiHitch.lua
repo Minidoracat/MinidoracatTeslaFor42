@@ -122,7 +122,8 @@ function SH.mechSpots(v)
     local half, cx, cz, z = e:x() / 2 + SH.CLEAR, c:x(), c:z(), level(v)
     local fx, fy = math.floor(v:getX()), math.floor(v:getY())
     local out, w = {}, Vector3f.new()
-    local function add(lx, lz, reach)
+    local function add(lx, lz, ...)
+        local reach = ...
         v:getWorldPos(lx, 0, lz, w)
         if not reach or math.abs(w:x() - fx) + math.abs(w:y() - fy) <= SH.WINDOW then
             out[#out + 1] = w:x(); out[#out + 1] = w:y(); out[#out + 1] = z
