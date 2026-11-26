@@ -395,7 +395,6 @@
     "IGUI_MinidoracatTesla_App_SummonArrived": "Ha llegado",
     "IGUI_MinidoracatTesla_App_SummonParkedAt": "Aparcado a %1 de ti",
     "IGUI_MinidoracatTesla_App_SummonEngineOff": "Motor apagado",
-    "IGUI_MinidoracatTesla_App_SummonStopped": "Detenido: %1",
     "IGUI_MinidoracatTesla_App_SummonRefused": "No se puede convocar",
     "IGUI_MinidoracatTesla_App_SummonPickHint": "Toca el suelo dentro del círculo azul para poner un pin y pulsa Ir aquí",
     "IGUI_MinidoracatTesla_App_SummonSpotAt": "Lugar: %1",

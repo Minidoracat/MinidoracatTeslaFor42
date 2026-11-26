@@ -395,7 +395,6 @@
     "IGUI_MinidoracatTesla_App_SummonArrived": "Vardı",
     "IGUI_MinidoracatTesla_App_SummonParkedAt": "Sana göre %1 park etti",
     "IGUI_MinidoracatTesla_App_SummonEngineOff": "Motor kapatıldı",
-    "IGUI_MinidoracatTesla_App_SummonStopped": "Durdu: %1",
     "IGUI_MinidoracatTesla_App_SummonRefused": "Çağrılamıyor",
     "IGUI_MinidoracatTesla_App_SummonPickHint": "İğne koymak için mavi dairenin içindeki zemine dokun, sonra Buraya git'e bas",
     "IGUI_MinidoracatTesla_App_SummonSpotAt": "Hedef: %1",

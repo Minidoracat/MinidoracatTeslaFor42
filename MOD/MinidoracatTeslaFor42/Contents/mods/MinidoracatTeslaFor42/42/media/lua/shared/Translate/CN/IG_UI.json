@@ -395,7 +395,6 @@
     "IGUI_MinidoracatTesla_App_SummonArrived": "已到达",
     "IGUI_MinidoracatTesla_App_SummonParkedAt": "车停在你%1",
     "IGUI_MinidoracatTesla_App_SummonEngineOff": "电机已关闭",
-    "IGUI_MinidoracatTesla_App_SummonStopped": "已停止：%1",
     "IGUI_MinidoracatTesla_App_SummonRefused": "无法召唤",
     "IGUI_MinidoracatTesla_App_SummonPickHint": "点击蓝圈内的地面放置大头针，再按「开到这里」",
     "IGUI_MinidoracatTesla_App_SummonSpotAt": "目的地：%1",

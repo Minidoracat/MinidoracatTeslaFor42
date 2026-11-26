@@ -395,7 +395,6 @@
     "IGUI_MinidoracatTesla_App_SummonArrived": "Arrived",
     "IGUI_MinidoracatTesla_App_SummonParkedAt": "Parked %1 from you",
     "IGUI_MinidoracatTesla_App_SummonEngineOff": "Motor switched off",
-    "IGUI_MinidoracatTesla_App_SummonStopped": "Stopped: %1",
     "IGUI_MinidoracatTesla_App_SummonRefused": "Can't summon",
     "IGUI_MinidoracatTesla_App_SummonPickHint": "Tap the ground inside the blue circle to drop a pin, then press Go here",
     "IGUI_MinidoracatTesla_App_SummonSpotAt": "Spot: %1",

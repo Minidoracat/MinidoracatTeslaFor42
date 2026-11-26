@@ -395,7 +395,6 @@
     "IGUI_MinidoracatTesla_App_SummonArrived": "Angekommen",
     "IGUI_MinidoracatTesla_App_SummonParkedAt": "Geparkt: %1 von dir",
     "IGUI_MinidoracatTesla_App_SummonEngineOff": "Motor ausgeschaltet",
-    "IGUI_MinidoracatTesla_App_SummonStopped": "Gestoppt: %1",
     "IGUI_MinidoracatTesla_App_SummonRefused": "Herbeirufen nicht möglich",
     "IGUI_MinidoracatTesla_App_SummonPickHint": "Tippe in den blauen Kreis, um eine Nadel zu setzen, dann auf Hierher fahren",
     "IGUI_MinidoracatTesla_App_SummonSpotAt": "Ziel: %1",

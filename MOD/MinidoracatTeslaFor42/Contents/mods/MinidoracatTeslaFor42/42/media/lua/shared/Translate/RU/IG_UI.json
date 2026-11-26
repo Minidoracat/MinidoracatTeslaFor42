@@ -395,7 +395,6 @@
     "IGUI_MinidoracatTesla_App_SummonArrived": "Прибыла",
     "IGUI_MinidoracatTesla_App_SummonParkedAt": "Стоит %1 от вас",
     "IGUI_MinidoracatTesla_App_SummonEngineOff": "Мотор выключен",
-    "IGUI_MinidoracatTesla_App_SummonStopped": "Остановлена: %1",
     "IGUI_MinidoracatTesla_App_SummonRefused": "Вызов невозможен",
     "IGUI_MinidoracatTesla_App_SummonPickHint": "Нажмите на землю внутри синего круга, чтобы поставить метку, затем «Ехать сюда»",
     "IGUI_MinidoracatTesla_App_SummonSpotAt": "Место: %1",

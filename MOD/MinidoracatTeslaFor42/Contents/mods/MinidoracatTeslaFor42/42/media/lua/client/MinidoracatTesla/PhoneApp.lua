@@ -941,8 +941,8 @@ function App:summonRead(api)
         note = nil
     elseif sum.why then -- refused before it started: the reason in full under the buttons
         s1, s2, note = txt("SummonRefused"), where and txt("SummonCarAt", where) or "", denyText(sum.why)
-    else
-        s1, s2, note = txt("SummonStopped", App.summonText(sum.code)), where and txt("SummonCarAt", where) or "", nil
+    else -- stopped on the way: the reason under the buttons too (one headline line cuts AutoDrive's longer ones)
+        s1, s2, note = txt("Done_summon_off"), where and txt("SummonCarAt", where) or "", App.summonText(sum.code)
     end
     self.sumPhase, self.sSumState, self.sSumSub, self.sSumNote, self.sumWhy = phase, s1, s2, note, why
     -- the running summon's button (it reads "Stop")

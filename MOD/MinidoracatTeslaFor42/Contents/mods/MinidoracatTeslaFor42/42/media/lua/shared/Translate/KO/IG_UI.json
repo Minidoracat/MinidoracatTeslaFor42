@@ -395,7 +395,6 @@
     "IGUI_MinidoracatTesla_App_SummonArrived": "도착",
     "IGUI_MinidoracatTesla_App_SummonParkedAt": "내 %1에 정차",
     "IGUI_MinidoracatTesla_App_SummonEngineOff": "모터를 껐습니다",
-    "IGUI_MinidoracatTesla_App_SummonStopped": "정지: %1",
     "IGUI_MinidoracatTesla_App_SummonRefused": "호출할 수 없음",
     "IGUI_MinidoracatTesla_App_SummonPickHint": "파란 원 안의 땅을 눌러 핀을 놓고 '여기로 가기'를 누르세요",
     "IGUI_MinidoracatTesla_App_SummonSpotAt": "목적지: %1",

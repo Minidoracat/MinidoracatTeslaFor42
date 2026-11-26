@@ -395,7 +395,6 @@
     "IGUI_MinidoracatTesla_App_SummonArrived": "到着",
     "IGUI_MinidoracatTesla_App_SummonParkedAt": "あなたの%1に停車",
     "IGUI_MinidoracatTesla_App_SummonEngineOff": "モーターを停止しました",
-    "IGUI_MinidoracatTesla_App_SummonStopped": "停止：%1",
     "IGUI_MinidoracatTesla_App_SummonRefused": "サモンできません",
     "IGUI_MinidoracatTesla_App_SummonPickHint": "青い円の中の地面をタップしてピンを置き、「ここへ行く」を押してください",
     "IGUI_MinidoracatTesla_App_SummonSpotAt": "目的地：%1",

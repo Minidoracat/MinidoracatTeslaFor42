@@ -395,7 +395,6 @@
     "IGUI_MinidoracatTesla_App_SummonArrived": "Arrivée",
     "IGUI_MinidoracatTesla_App_SummonParkedAt": "Garée : %1 de vous",
     "IGUI_MinidoracatTesla_App_SummonEngineOff": "Moteur coupé",
-    "IGUI_MinidoracatTesla_App_SummonStopped": "Arrêtée : %1",
     "IGUI_MinidoracatTesla_App_SummonRefused": "Appel impossible",
     "IGUI_MinidoracatTesla_App_SummonPickHint": "Touchez le sol dans le cercle bleu pour poser une épingle, puis Aller ici",
     "IGUI_MinidoracatTesla_App_SummonSpotAt": "Lieu : %1",

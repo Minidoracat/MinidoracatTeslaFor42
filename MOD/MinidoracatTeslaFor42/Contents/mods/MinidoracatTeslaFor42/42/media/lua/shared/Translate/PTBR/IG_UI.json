@@ -395,7 +395,6 @@
     "IGUI_MinidoracatTesla_App_SummonArrived": "Chegou",
     "IGUI_MinidoracatTesla_App_SummonParkedAt": "Estacionado a %1 de você",
     "IGUI_MinidoracatTesla_App_SummonEngineOff": "Motor desligado",
-    "IGUI_MinidoracatTesla_App_SummonStopped": "Parado: %1",
     "IGUI_MinidoracatTesla_App_SummonRefused": "Não dá para chamar",
     "IGUI_MinidoracatTesla_App_SummonPickHint": "Toque no chão dentro do círculo azul para pôr um alfinete e depois em Ir para cá",
     "IGUI_MinidoracatTesla_App_SummonSpotAt": "Local: %1",

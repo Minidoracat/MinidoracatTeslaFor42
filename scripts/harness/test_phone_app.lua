@@ -2024,8 +2024,9 @@ CL.st = { vid = VID, phase = "driving", dist = 5, mode = "dumb" }
 sread()
 CL.st = { vid = VID, phase = "ended", code = "ZOMBIES", dist = 5 }
 sread()
-check(a.sumPhase == "stopped" and a.sum.code == "ZOMBIES" and a.sSumState == P .. "SummonStopped",
-    "AutoDrive ended (ZOMBIES) before the server's word: stopped with its code")
+check(a.sumPhase == "stopped" and a.sum.code == "ZOMBIES" and a.sSumState == P .. "Done_summon_off"
+    and a.sSumNote == "R_ZOMBIES" and a.rowEm.summon == a.sSumState,
+    "AutoDrive ended (ZOMBIES) before the server's word: stopped, its reason in full in the note line")
 T.ClientCommands.appDone({ key = 9001, act = "summonEnd", why = "CANCELLED" })
 sread()
 check(a.sum == nil and a.sumPhase == "ready", "summonEnd CANCELLED: back to ready")
