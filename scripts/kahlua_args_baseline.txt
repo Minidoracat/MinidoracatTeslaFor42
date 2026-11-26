@@ -1,0 +1,57 @@
+# 既有的「固定參數少傳」呼叫（scripts/verify_mod.py 第 1c 項）。只會變少：改掉一處就重跑
+# python scripts/verify_mod.py --rebase-args。不要為了讓新的呼叫通過而重跑：少的補 nil 傳齊，
+# 或把選用參數改成 ... 接。只有確定呼叫的是 Java 方法，或最後一個引數的呼叫確定每條路都回夠多個值
+# （key 裡是 ~，後面是那個呼叫的函式名）才加進來。
+1	client/MinidoracatTesla/ChargerMenu.lua|changed|1<2
+1	client/MinidoracatTesla/ChargerMenu.lua|changed|1~2|self:getLuaObjectByIndex
+1	client/MinidoracatTesla/ChargerMenu.lua|notOwner|3<4
+1	client/MinidoracatTesla/FridgeUI.lua|forget|0<1
+1	client/MinidoracatTesla/FridgeUI.lua|scan|1<2
+21	client/MinidoracatTesla/HUD.lua|spr|6<7
+2	client/MinidoracatTesla/KeysUI.lua|checkKeys|1~2|getSpecificPlayer
+2	client/MinidoracatTesla/KeysUI.lua|checkSoon|1<2
+1	client/MinidoracatTesla/KeysUI.lua|tip|2~3|getText
+26	client/MinidoracatTesla/PhoneApp.lua|fitText|2<3
+2	client/MinidoracatTesla/PhoneApp.lua|fitText|2~3|math.floor
+3	client/MinidoracatTesla/PhoneApp.lua|focusFirst|0<1
+1	client/MinidoracatTesla/PhoneApp.lua|summonSend|1<2
+1	client/MinidoracatTesla/SemiHitch.lua|add|2<3
+1	client/MinidoracatTesla/TowLink.lua|ask|1<2
+1	client/MinidoracatTesla/TowLink.lua|ask|1~2|b:getId
+1	client/MinidoracatTesla/TowLink.lua|ask|1~2|v:getId
+1	server/MinidoracatTesla/Armor.lua|refuse|5<6
+1	server/MinidoracatTesla/Camp.lua|stop|1<3
+1	server/MinidoracatTesla/Camp.lua|stop|2<3
+3	server/MinidoracatTesla/Charging.lua|avail|1<2
+1	server/MinidoracatTesla/Charging.lua|mayCable|3<4
+4	server/MinidoracatTesla/Charging.lua|setBusy|2<3
+1	server/MinidoracatTesla/Charging.lua|settleAround|5<6
+4	server/MinidoracatTesla/Charging.lua|settle|2<4
+8	server/MinidoracatTesla/Charging.lua|settle|2~4|T.hours
+2	server/MinidoracatTesla/Charging.lua|settle|3<4
+1	server/MinidoracatTesla/Fridge.lua|settleAll|1<3
+1	server/MinidoracatTesla/Fridge.lua|settleAll|2<3
+1	server/MinidoracatTesla/Fridge.lua|settleSafe|1<2
+2	server/MinidoracatTesla/Fridge.lua|settle|1<4
+1	server/MinidoracatTesla/KeyActions.lua|remember|1<2
+1	server/MinidoracatTesla/KeyActions.lua|replace|4<5
+3	server/MinidoracatTesla/Powershare.lua|guard|2<3
+1	server/MinidoracatTesla/Powershare.lua|set|4<5
+5	server/MinidoracatTesla/Remote.lua|done|1<2
+1	server/MinidoracatTesla/Remote.lua|remember|1<2
+2	server/MinidoracatTesla/Remote.lua|set|4<5
+1	server/MinidoracatTesla/Remote.lua|summon|2<3
+1	server/MinidoracatTesla/SemiSpawn.lua|carsNear|3~6|lotBox
+1	server/MinidoracatTesla/Sentry.lua|arm|2<3
+1	server/MinidoracatTesla/Sentry.lua|flash|1<2
+2	server/MinidoracatTesla/Sentry.lua|onBreak|3<4
+1	server/MinidoracatTesla/Sentry.lua|onTouch|3<4
+3	server/MinidoracatTesla/Sentry.lua|settle|1<3
+1	shared/MinidoracatTesla/Chargers.lua|bedOutlet|4<5
+1	shared/MinidoracatTesla/Chargers.lua|directGenerator|4<5
+1	shared/MinidoracatTesla/Keys.lua|vmGrants|3<4
+1	shared/MinidoracatTesla/Liftgate.lua|broadcast|2<3
+2	shared/MinidoracatTesla/Liftgate.lua|sendNear|3<4
+3	shared/MinidoracatTesla/Liftgate.lua|syncShell|1<2
+1	shared/MinidoracatTesla/ParkModes.lua|legit|2<4
+2	shared/MinidoracatTesla/ParkModes.lua|legit|3<4
