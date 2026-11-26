@@ -392,7 +392,7 @@
     "IGUI_MinidoracatTesla_App_SummonRevNow": "车子正在后退",
     "IGUI_MinidoracatTesla_App_SummonKmh": "%1 km/h",
     "IGUI_MinidoracatTesla_App_SummonMph": "%1 mph",
-    "IGUI_MinidoracatTesla_App_SummonArrived": "已到达",
+    "IGUI_MinidoracatTesla_App_SummonArrived": "已抵达",
     "IGUI_MinidoracatTesla_App_SummonParkedAt": "车停在你%1",
     "IGUI_MinidoracatTesla_App_SummonEngineOff": "电机已关闭",
     "IGUI_MinidoracatTesla_App_SummonRefused": "无法召唤",
